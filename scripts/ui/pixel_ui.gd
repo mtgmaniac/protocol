@@ -13,7 +13,9 @@ const ENEMY_ACCENT := Color(0.74, 0.28, 0.23, 1.0)
 const GOLD_ACCENT := Color(0.82, 0.58, 0.24, 1.0)
 const BLACK_EDGE := Color(0.005, 0.006, 0.010, 1.0)
 const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
-const UI_FONT_SCALE := 1.00
+const UI_FONT_SCALE := 1.35
+const UI_FONT_MIN_SIZE := 20
+const UI_FONT_STEPS := [20, 24, 28, 32, 36, 42, 48, 56, 64, 72]
 
 static var _pixel_font: Font = null
 
@@ -55,7 +57,11 @@ static func apply_pixel_font(control: Control) -> void:
 
 
 static func scale_font_size(font_size: int) -> int:
-	return maxi(1, int(round(float(font_size) * UI_FONT_SCALE)))
+	var scaled_size: int = maxi(UI_FONT_MIN_SIZE, int(round(float(font_size) * UI_FONT_SCALE)))
+	for stepped_size in UI_FONT_STEPS:
+		if scaled_size <= int(stepped_size):
+			return int(stepped_size)
+	return scaled_size
 
 
 static func style_panel(panel: Control, bg: Color = BG_PANEL, border: Color = LINE_DIM, border_width: int = 2, corner: int = 4) -> void:

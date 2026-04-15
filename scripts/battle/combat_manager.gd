@@ -356,7 +356,7 @@ func _get_total_rfe(state: Dictionary) -> int:
 
 
 func _add_rfe_stack(state: Dictionary, amount: int, turns: int) -> void:
-	state["rfe_stacks"].append({"amt": amount, "turns_left": turns})
+	state["rfe_stacks"].append({"amt": amount, "turns_left": turns, "skip_next_tick": true})
 	_log("%s gets -%d to rolls (%dt)." % [state["unit"].display_name, amount, turns])
 
 
@@ -386,6 +386,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var roll_buff_amount: int = int(raw.get("rfm", 0))
 	var roll_buff_turns: int = int(raw.get("rfmT", 1))
 	var roll_buff_targeted: bool = bool(raw.get("rfmTgt", false)) or shield_targeted or heal_targeted
+	var ignores_shield: bool = bool(raw.get("ignSh", false))
 
 	if damage > 0:
 		# First-ability damage bonus from gear
@@ -397,7 +398,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 
 		if hits_all:
 			for enemy_state in _enemy_states:
-				_damage_state(enemy_state, final_dmg)
+				_damage_state(enemy_state, final_dmg, ignores_shield)
 		else:
 			var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 			if target_enemy.is_empty():
@@ -411,7 +412,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 					target_enemy["counter_pct"] = 0
 				else:
 					target_enemy["counter_pct"] = 0
-					_damage_state(target_enemy, final_dmg)
+					_damage_state(target_enemy, final_dmg, ignores_shield)
 					_apply_poison(target_enemy, poison_amount, poison_turns)
 
 	if shield > 0:
@@ -473,6 +474,21 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				rfe_target = _first_living_state(_enemy_states)
 			if not rfe_target.is_empty():
 				_add_rfe_stack(rfe_target, rfe_amount, rfe_turns)
+
+	if bool(raw.get("taunt", false)):
+		for ally_state in _hero_states:
+			if ally_state != hero_state:
+				ally_state["taunting"] = false
+		hero_state["taunting"] = true
+		_log("%s is taunting — enemies will target them!" % hero_state["unit"].display_name)
+		_emit_event(hero_state, "taunt", 0, "hero")
+
+	if bool(raw.get("revive", false)):
+		var revive_target: Dictionary = _find_target_by_id_including_dead(_hero_states, str(hero_state.get("selected_target_id", "")))
+		if revive_target.is_empty():
+			revive_target = _first_dead_state(_hero_states)
+		if not revive_target.is_empty():
+			_revive_state(revive_target, 50)
 
 	# Cloak application
 	if bool(raw.get("cloak", false)):
@@ -536,7 +552,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 		_heal_state(enemy_state, heal)
 
 	if damage > 0:
-		var target_hero: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		var target_hero: Dictionary = _get_taunting_hero_state()
+		if target_hero.is_empty():
+			target_hero = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if target_hero.is_empty():
 			target_hero = _first_living_state(_hero_states)
 		if not target_hero.is_empty():
@@ -682,7 +700,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 			})
 
 
-func _damage_state(state: Dictionary, amount: int) -> void:
+func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) -> void:
 	if state.is_empty() or state["dead"] or amount <= 0:
 		return
 
@@ -707,26 +725,29 @@ func _damage_state(state: Dictionary, amount: int) -> void:
 
 	var remaining_damage: int = amount
 
-	# Absorb damage from shield stacks in FIFO order
-	var stacks: Array = state.get("shield_stacks", [])
 	var total_absorbed: int = 0
-	var i: int = 0
-	while i < stacks.size() and remaining_damage > 0:
-		var stack: Dictionary = stacks[i]
-		var available: int = int(stack["amt"])
-		var absorbed: int = mini(available, remaining_damage)
-		stack["amt"] = available - absorbed
-		remaining_damage -= absorbed
-		total_absorbed += absorbed
-		i += 1
+	if not ignore_shield:
+		# Absorb damage from shield stacks in FIFO order
+		var stacks: Array = state.get("shield_stacks", [])
+		var i: int = 0
+		while i < stacks.size() and remaining_damage > 0:
+			var stack: Dictionary = stacks[i]
+			var available: int = int(stack["amt"])
+			var absorbed: int = mini(available, remaining_damage)
+			stack["amt"] = available - absorbed
+			remaining_damage -= absorbed
+			total_absorbed += absorbed
+			i += 1
 
-	# Remove depleted stacks
-	var surviving_stacks: Array = []
-	for stack in stacks:
-		if int(stack["amt"]) > 0:
-			surviving_stacks.append(stack)
-	state["shield_stacks"] = surviving_stacks
-	state["shield"] = _get_total_shield(state)
+		# Remove depleted stacks
+		var surviving_stacks: Array = []
+		for stack in stacks:
+			if int(stack["amt"]) > 0:
+				surviving_stacks.append(stack)
+		state["shield_stacks"] = surviving_stacks
+		state["shield"] = _get_total_shield(state)
+	elif int(state.get("shield", 0)) > 0:
+		_log("%s's shield is pierced." % state["unit"].display_name)
 
 	if total_absorbed > 0:
 		_log("%s absorbs %d damage with shields." % [state["unit"].display_name, total_absorbed])
@@ -762,6 +783,26 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int) -> void:
 		state["frozen_die_value"] = last_die_value
 	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), freeze_amount])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
+
+
+func _revive_state(state: Dictionary, hp_pct: int) -> void:
+	if state.is_empty() or not bool(state.get("dead", false)):
+		return
+	state["dead"] = false
+	state["current_hp"] = maxi(1, int(state["max_hp"]) * hp_pct / 100)
+	state["cower_turns"] = 0
+	state["poison"] = 0
+	state["poison_turns"] = 0
+	state["poison_skip_next_tick"] = false
+	state["rfe_stacks"] = []
+	state["roll_buff"] = 0
+	state["roll_buff_turns"] = 0
+	state["shield"] = 0
+	state["shield_stacks"] = []
+	state["die_freeze_turns"] = 0
+	state["frozen_die_value"] = 0
+	_log("%s is revived at %d HP!" % [state["unit"].display_name, int(state["current_hp"])])
+	_emit_event(state, "heal", int(state["current_hp"]), _resolve_side_for_state(state))
 
 
 func _on_unit_killed(dead_state: Dictionary) -> void:
@@ -856,6 +897,13 @@ func _first_living_state(states: Array) -> Dictionary:
 	return {}
 
 
+func _first_dead_state(states: Array) -> Dictionary:
+	for state in states:
+		if bool(state["dead"]):
+			return state
+	return {}
+
+
 func _lowest_hp_state(states: Array) -> Dictionary:
 	var best: Dictionary = {}
 	var best_ratio: float = 2.0
@@ -885,6 +933,22 @@ func _find_target_by_id(states: Array, target_id: String) -> Dictionary:
 			continue
 		if str(state["id"]) == target_id:
 			return state
+	return {}
+
+
+func _find_target_by_id_including_dead(states: Array, target_id: String) -> Dictionary:
+	if target_id == "":
+		return {}
+	for state in states:
+		if str(state["id"]) == target_id:
+			return state
+	return {}
+
+
+func _get_taunting_hero_state() -> Dictionary:
+	for hero_state in _hero_states:
+		if not bool(hero_state["dead"]) and bool(hero_state.get("taunting", false)):
+			return hero_state
 	return {}
 
 
@@ -937,6 +1001,10 @@ func _tick_state(state: Dictionary) -> void:
 	if not state["dead"]:
 		var new_rfe_stacks: Array = []
 		for stack in state.get("rfe_stacks", []):
+			if bool(stack.get("skip_next_tick", false)):
+				stack["skip_next_tick"] = false
+				new_rfe_stacks.append(stack)
+				continue
 			var tl: int = int(stack["turns_left"]) - 1
 			if tl > 0:
 				new_rfe_stacks.append({"amt": stack["amt"], "turns_left": tl})
@@ -981,16 +1049,7 @@ func apply_item_roll_buff(target_state: Dictionary, amount: int, turns: int) -> 
 
 
 func apply_item_revive(target_state: Dictionary, hp_pct: int) -> void:
-	if not bool(target_state.get("dead", true)):
-		return
-	target_state["dead"] = false
-	target_state["current_hp"] = maxi(1, int(target_state["max_hp"]) * hp_pct / 100)
-	target_state["cower_turns"] = 0
-	target_state["poison"] = 0
-	target_state["poison_turns"] = 0
-	target_state["poison_skip_next_tick"] = false
-	_log("%s is revived at %d HP!" % [target_state["unit"].display_name, int(target_state["current_hp"])])
-	_emit_event(target_state, "heal", int(target_state["current_hp"]), "hero")
+	_revive_state(target_state, hp_pct)
 
 
 func apply_item_rfe(target_state: Dictionary, amount: int, turns: int) -> void:

@@ -39,6 +39,20 @@ const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
+const HELP_ICON_MAP := {
+	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
+	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
+	"shield": preload("res://assets/generated/icon_shield_1776027929.png"),
+	"heal": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
+	"rfe": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
+	"rfm": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
+	"pierce": preload("res://assets/generated/icon_damage_v2_1776040040.png"),
+	"blastAll": preload("res://assets/generated/icon_damage_1776027930.png"),
+	"cloak": preload("res://assets/generated/icon_dice_v2_1776040041.png"),
+	"freeze": preload("res://assets/generated/icon_frost_snowflake_1776027966.png"),
+	"taunt": preload("res://assets/generated/icon_shield_1776027929.png"),
+	"revive": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
+}
 
 var dice_manager: DiceManager = DiceManager.new()
 var combat_manager: CombatManager = CombatManager.new()
@@ -68,6 +82,9 @@ var _phase_before_item: String = ""
 var _round_complete_modal: Control = null
 var _round_complete_next_button: Button = null
 var _auto_turn_running: bool = false
+var _help_overlay: Control = null
+var _help_panel: PanelContainer = null
+var _help_close_button: Button = null
 
 
 func _game_state() -> Variant:
@@ -141,7 +158,7 @@ func _on_return_to_menu_button_pressed() -> void:
 
 
 func _on_toggle_log_button_pressed() -> void:
-	_set_battle_log_visible(not battle_log_panel.visible)
+	_show_help_overlay()
 
 
 func _on_auto_turn_button_pressed() -> void:
@@ -162,6 +179,14 @@ func _on_auto_turn_button_pressed() -> void:
 	_auto_turn_running = false
 	if is_instance_valid(auto_turn_button):
 		auto_turn_button.disabled = false
+
+
+func _input(event: InputEvent) -> void:
+	if _help_overlay == null or not is_instance_valid(_help_overlay) or not _help_overlay.visible:
+		return
+	if _event_closes_help_overlay(event):
+		_hide_help_overlay()
+		get_viewport().set_input_as_handled()
 
 
 func _populate_hero_cards() -> void:
@@ -1187,6 +1212,8 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return "hero"
 	if bool(raw.get("rfmTgt", false)):
 		return "hero"
+	if bool(raw.get("revive", false)):
+		return "dead_hero"
 	if bool(raw.get("blastAll", false)) or bool(raw.get("healAll", false)) or bool(raw.get("shieldAll", false)):
 		return ""
 	if int(raw.get("dmg", 0)) > 0:
@@ -1202,6 +1229,9 @@ func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: St
 	var hero_id: String = str(hero_state["id"])
 	var target_ids: Array = _get_legal_target_ids(manual_side)
 	pending_manual_target_ids.erase(hero_id)
+	if target_ids.is_empty():
+		_set_state_target(hero_state, "", _get_no_legal_target_display(manual_side))
+		return
 	if _try_auto_assign_single_manual_target(hero_state, manual_side, target_ids):
 		return
 	if not pending_manual_target_ids.has(hero_id):
@@ -1228,6 +1258,12 @@ func _try_auto_assign_single_manual_target(hero_state: Dictionary, target_side: 
 		else:
 			_refresh_summary("Select the next hero to target.")
 	return true
+
+
+func _get_no_legal_target_display(target_side: String) -> String:
+	if target_side == "dead_hero":
+		return "No Fallen"
+	return "--"
 
 
 func _auto_assign_hero_target(hero_state: Dictionary, ability_entry: Dictionary) -> void:
@@ -1337,10 +1373,16 @@ func _get_legal_target_ids(target_side: String) -> Array:
 	if target_side == "any":
 		states.append_array(combat_manager.get_hero_states())
 		states.append_array(combat_manager.get_enemy_states())
+	elif target_side == "dead_hero":
+		states = combat_manager.get_hero_states()
 	else:
 		states = combat_manager.get_hero_states() if target_side == "hero" else combat_manager.get_enemy_states()
 	for state_variant in states:
 		var state: Dictionary = state_variant
+		if target_side == "dead_hero":
+			if bool(state["dead"]):
+				ids.append(str(state["id"]))
+			continue
 		if bool(state["dead"]):
 			continue
 		ids.append(str(state["id"]))
@@ -1348,7 +1390,7 @@ func _get_legal_target_ids(target_side: String) -> Array:
 
 
 func _find_manual_target_state(target_side: String, target_id: String) -> Dictionary:
-	if target_side == "hero":
+	if target_side == "hero" or target_side == "dead_hero":
 		return _find_state_by_id(combat_manager.get_hero_states(), target_id)
 	if target_side == "enemy":
 		return _find_state_by_id(combat_manager.get_enemy_states(), target_id)
@@ -1489,6 +1531,8 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return legal_target_ids.has(state_id)
 	if legal_target_side == "hero" and accent_color == HERO_ACCENT:
 		return legal_target_ids.has(state_id)
+	if legal_target_side == "dead_hero" and accent_color == HERO_ACCENT:
+		return legal_target_ids.has(state_id)
 	if legal_target_side == "any" and (accent_color == HERO_ACCENT or accent_color == ENEMY_ACCENT):
 		return legal_target_ids.has(state_id)
 	return false
@@ -1560,6 +1604,8 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		return
 	if legal_target_side == "hero" and legal_target_ids.has(target_id):
 		_assign_target_to_active_hero(target_id, "hero")
+	elif legal_target_side == "dead_hero" and legal_target_ids.has(target_id):
+		_assign_target_to_active_hero(target_id, "dead_hero")
 	elif legal_target_side == "any" and legal_target_ids.has(target_id):
 		_assign_target_to_active_hero(target_id, "hero")
 
@@ -1581,6 +1627,309 @@ func _set_battle_log_visible(is_visible: bool) -> void:
 	toggle_log_button.text = "?"
 
 
+func _show_help_overlay() -> void:
+	if _help_overlay == null or not is_instance_valid(_help_overlay):
+		_build_help_overlay()
+	_help_overlay.visible = true
+	_help_overlay.move_to_front()
+
+
+func _hide_help_overlay() -> void:
+	if _help_overlay != null and is_instance_valid(_help_overlay):
+		_help_overlay.visible = false
+
+
+func _build_help_overlay() -> void:
+	_help_overlay = Control.new()
+	_help_overlay.name = "HelpOverlay"
+	_help_overlay.visible = false
+	_help_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_help_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_help_overlay.z_as_relative = false
+	_help_overlay.z_index = 200
+	_help_overlay.gui_input.connect(_on_help_overlay_gui_input)
+	float_layer.add_child(_help_overlay)
+
+	var dim: ColorRect = ColorRect.new()
+	dim.name = "HelpDim"
+	dim.color = Color(0.005, 0.007, 0.012, 0.82)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_help_overlay.add_child(dim)
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.name = "HelpOuterMargin"
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_top", 46)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_bottom", 46)
+	_help_overlay.add_child(margin)
+
+	_help_panel = PanelContainer.new()
+	_help_panel.name = "HelpPanel"
+	_help_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_help_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_help_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	PixelUI.style_panel(_help_panel, Color(0.018, 0.026, 0.044, 0.98), Color(0.36, 0.55, 0.78, 0.95), 4, 0)
+	margin.add_child(_help_panel)
+
+	var panel_margin: MarginContainer = MarginContainer.new()
+	panel_margin.mouse_filter = Control.MOUSE_FILTER_PASS
+	panel_margin.add_theme_constant_override("margin_left", 20)
+	panel_margin.add_theme_constant_override("margin_top", 18)
+	panel_margin.add_theme_constant_override("margin_right", 20)
+	panel_margin.add_theme_constant_override("margin_bottom", 18)
+	_help_panel.add_child(panel_margin)
+
+	var root: VBoxContainer = VBoxContainer.new()
+	root.mouse_filter = Control.MOUSE_FILTER_PASS
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 14)
+	panel_margin.add_child(root)
+
+	var header_row: HBoxContainer = HBoxContainer.new()
+	header_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_theme_constant_override("separation", 12)
+	root.add_child(header_row)
+
+	var title: Label = Label.new()
+	title.text = "TACTICAL REFERENCE"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	PixelUI.style_label(title, 34, PixelUI.TEXT_PRIMARY, 3)
+	header_row.add_child(title)
+
+	_help_close_button = Button.new()
+	_help_close_button.text = "X"
+	_help_close_button.custom_minimum_size = Vector2(58, 52)
+	_help_close_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_help_close_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	PixelUI.style_button(_help_close_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 30)
+	_help_close_button.button_down.connect(_hide_help_overlay)
+	_help_close_button.pressed.connect(_hide_help_overlay)
+	_help_close_button.gui_input.connect(_on_help_close_button_gui_input)
+	header_row.add_child(_help_close_button)
+
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(scroll)
+
+	var content: VBoxContainer = VBoxContainer.new()
+	content.mouse_filter = Control.MOUSE_FILTER_PASS
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 18)
+	scroll.add_child(content)
+
+	_add_help_section(content, "HOW A TURN WORKS", [
+		"All units, squad and hostile, roll D20 simultaneously.",
+		"Each roll lands in a range band on that unit's dice chart.",
+		"The ability shown for that range fires this turn.",
+		"Select targets for your units, then confirm to resolve.",
+	])
+	_add_help_section(content, "READING A UNIT CARD", [
+		"The top dice chart shows what each roll range does.",
+		"The star on the crit band means 20 fires the overload version.",
+		"The HP bar shows current / max health.",
+		"The thin bar below HP tracks XP toward evolution.",
+		"Status icons appear when active. Long press any icon for intel.",
+	])
+	_add_icon_reference_section(content)
+	_add_help_section(content, "PROTOCOL", [
+		"Protocol is a shared squad resource.",
+		"Spend it to manipulate dice before confirming the turn.",
+		"Nudge: shift a die result up or down by 1.",
+		"Reroll: reroll a single die.",
+		"Set: set a die to any value.",
+		"Protocol resets to 0 between battles and refills during the run.",
+	])
+	_add_help_section(content, "EVOLUTION", [
+		"Units earn XP each battle by dealing damage, healing, or applying effects.",
+		"When the XP bar fills, the unit evolves at battle end.",
+		"Choose from two evolution paths. Each changes abilities and raises max HP.",
+		"After evolution, continued XP advances toward a MAX tier upgrade.",
+	])
+	_add_help_section(content, "GEAR & ITEMS", [
+		"After each battle, choose one reward: gear or item.",
+		"Gear attaches permanently to a unit and extends capabilities.",
+		"Items are tactical consumables or limited-use assets.",
+		"A unit can hold one gear piece. Progression may unlock a second slot.",
+	])
+	_add_help_section(content, "RELICS", [
+		"Relics are run-wide effects that alter every battle.",
+		"Relic choices appear at battles 3, 6, and 9.",
+		"Relics are permanent for the run. Choose carefully.",
+		"Each relic carries a benefit and a burden.",
+	])
+
+
+func _on_help_overlay_gui_input(event: InputEvent) -> void:
+	if _event_closes_help_overlay(event):
+		_hide_help_overlay()
+		_help_overlay.accept_event()
+
+
+func _on_help_close_button_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_hide_help_overlay()
+			_help_overlay.accept_event()
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event
+		if touch_event.pressed:
+			_hide_help_overlay()
+			_help_overlay.accept_event()
+
+
+func _event_closes_help_overlay(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event: InputEventKey = event
+		return key_event.pressed and key_event.keycode == KEY_ESCAPE
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
+			return false
+		return _help_position_closes_overlay(mouse_event.global_position)
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event
+		if not touch_event.pressed:
+			return false
+		return _help_position_closes_overlay(touch_event.position)
+	return false
+
+
+func _help_position_closes_overlay(position: Vector2) -> bool:
+	if _help_close_button != null and is_instance_valid(_help_close_button):
+		if _help_close_button.get_global_rect().has_point(position):
+			return true
+	if _help_panel == null or not is_instance_valid(_help_panel):
+		return true
+	return not _help_panel.get_global_rect().has_point(position)
+
+
+func _add_help_section(parent: VBoxContainer, title_text: String, bullet_lines: Array) -> void:
+	var section: VBoxContainer = VBoxContainer.new()
+	section.mouse_filter = Control.MOUSE_FILTER_PASS
+	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	section.add_theme_constant_override("separation", 6)
+	parent.add_child(section)
+
+	var header: Label = Label.new()
+	header.text = title_text
+	header.autowrap_mode = TextServer.AUTOWRAP_WORD
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(header, 26, Color(0.72, 0.88, 1.0, 1.0), 3)
+	section.add_child(header)
+
+	for line_variant in bullet_lines:
+		_add_help_bullet(section, str(line_variant))
+
+
+func _add_help_bullet(parent: VBoxContainer, text: String) -> void:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+	parent.add_child(row)
+
+	var bullet: Label = Label.new()
+	bullet.text = ">"
+	bullet.custom_minimum_size = Vector2(22, 0)
+	bullet.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	PixelUI.style_label(bullet, 20, PixelUI.GOLD_ACCENT, 2)
+	row.add_child(bullet)
+
+	var label: Label = Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(label, 21, PixelUI.TEXT_PRIMARY, 2)
+	row.add_child(label)
+
+
+func _add_icon_reference_section(parent: VBoxContainer) -> void:
+	var section: VBoxContainer = VBoxContainer.new()
+	section.mouse_filter = Control.MOUSE_FILTER_PASS
+	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	section.add_theme_constant_override("separation", 8)
+	parent.add_child(section)
+
+	var header: Label = Label.new()
+	header.text = "ABILITY ICON REFERENCE"
+	header.autowrap_mode = TextServer.AUTOWRAP_WORD
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(header, 26, Color(0.72, 0.88, 1.0, 1.0), 3)
+	section.add_child(header)
+
+	var entries: Array = [
+		["dmg", "DMG", "Deals direct damage to the target."],
+		["dot", "DOT", "Deals damage over multiple turns."],
+		["shield", "SHIELD", "Applies a temporary shield to a unit."],
+		["heal", "HEAL", "Restores HP to a unit."],
+		["rfe", "ROLL DOWN", "Reduces a unit's next roll result."],
+		["rfm", "ROLL UP", "Increases a unit's next roll result."],
+		["pierce", "PIERCE", "Ignores the target's shield."],
+		["blastAll", "BLAST", "Hits all enemies simultaneously."],
+		["cloak", "CLOAK", "Unit becomes untargetable for one turn."],
+		["freeze", "FREEZE", "Locks a die result for set reveals."],
+		["taunt", "TAUNT", "Forces all enemies to target this unit."],
+		["revive", "REVIVE", "Revives a fallen unit at partial HP."],
+	]
+	for entry_variant in entries:
+		var entry: Array = entry_variant
+		_add_icon_reference_row(section, str(entry[0]), str(entry[1]), str(entry[2]))
+
+
+func _add_icon_reference_row(parent: VBoxContainer, icon_key: String, label_text: String, description: String) -> void:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 10)
+	parent.add_child(row)
+
+	var icon_frame: PanelContainer = PanelContainer.new()
+	icon_frame.custom_minimum_size = Vector2(42, 42)
+	icon_frame.mouse_filter = Control.MOUSE_FILTER_PASS
+	PixelUI.style_panel(icon_frame, Color(0.035, 0.050, 0.078, 0.92), Color(0.22, 0.34, 0.48, 0.95), 2, 0)
+	row.add_child(icon_frame)
+
+	var icon: TextureRect = TextureRect.new()
+	icon.texture = HELP_ICON_MAP.get(icon_key)
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(34, 34)
+	icon.mouse_filter = Control.MOUSE_FILTER_PASS
+	icon_frame.add_child(icon)
+
+	var text_box: VBoxContainer = VBoxContainer.new()
+	text_box.mouse_filter = Control.MOUSE_FILTER_PASS
+	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_box.add_theme_constant_override("separation", 2)
+	row.add_child(text_box)
+
+	var name_label: Label = Label.new()
+	name_label.text = label_text
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(name_label, 20, PixelUI.GOLD_ACCENT, 2)
+	text_box.add_child(name_label)
+
+	var desc_label: Label = Label.new()
+	desc_label.text = description
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(desc_label, 20, PixelUI.TEXT_PRIMARY, 2)
+	text_box.add_child(desc_label)
+
+
 func _build_hud_tooltip() -> void:
 	if _hud_tooltip_panel != null:
 		return
@@ -1589,7 +1938,7 @@ func _build_hud_tooltip() -> void:
 	_hud_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_tooltip_panel.z_as_relative = false
 	_hud_tooltip_panel.z_index = 100
-	_hud_tooltip_panel.custom_minimum_size = Vector2(360, 48)
+	_hud_tooltip_panel.custom_minimum_size = Vector2(640, 72)
 	var tooltip_style: StyleBoxFlat = StyleBoxFlat.new()
 	tooltip_style.bg_color = Color(0.018, 0.026, 0.044, 0.96)
 	tooltip_style.border_color = Color(0.36, 0.55, 0.78, 0.92)
@@ -1612,10 +1961,10 @@ func _build_hud_tooltip() -> void:
 	_hud_tooltip_label = Label.new()
 	_hud_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_hud_tooltip_label.custom_minimum_size.x = 320
+	_hud_tooltip_label.custom_minimum_size.x = 560
 	_hud_tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	PixelUI.apply_pixel_font(_hud_tooltip_label)
-	_hud_tooltip_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(24))
+	_hud_tooltip_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(26))
 	_hud_tooltip_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	_hud_tooltip_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
 	_hud_tooltip_label.add_theme_constant_override("outline_size", 3)
@@ -1946,16 +2295,23 @@ func _build_ability_chart_rows(unit: Resource) -> Array:
 			"zone": zone,
 			"range_text": range_text,
 			"ability_name": str(entry.get("ability_name", "")),
-			"description": str(entry.get("description", "")),
+			"description": _build_ability_row_description(entry),
 			"chips": _build_effect_chips(raw),
 		}
 		if is_hero_unit and zone == "crit" and not overload_entry.is_empty():
 			row["has_overload_marker"] = true
 			row["overload_ability_name"] = str(overload_entry.get("ability_name", ""))
-			row["overload_description"] = str(overload_entry.get("description", ""))
+			row["overload_description"] = _build_ability_row_description(overload_entry)
 			row["overload_chips"] = _build_effect_chips(overload_entry.get("raw", {}))
 		rows.append(row)
 	return rows
+
+
+func _build_ability_row_description(entry: Dictionary) -> String:
+	var raw: Dictionary = entry.get("raw", {})
+	if bool(raw.get("revive", false)):
+		return "Revives a fallen ally at 50% health."
+	return str(entry.get("description", ""))
 
 
 func _get_gear_detail_rows(unit_id: String) -> Array:
@@ -2293,6 +2649,8 @@ func _build_effect_chips(raw: Dictionary) -> Array:
 		chips.append(_make_effect_chip("◎", "A", Color(0.12, 0.38, 0.23, 0.98), Color(0.52, 1.0, 0.68, 0.95), "affects all valid targets"))
 	if freeze_turns > 0:
 		chips.append(_make_effect_chip("*", "%d" % freeze_turns, Color(0.12, 0.34, 0.48, 0.98), Color(0.62, 0.92, 1.0, 0.95), "freezes a die for %d reveal%s" % [freeze_turns, "" if freeze_turns == 1 else "s"], freeze_turns))
+	if bool(raw.get("revive", false)):
+		chips.append(_make_effect_chip("✚", "50%", Color(0.10, 0.34, 0.24, 0.98), Color(0.58, 1.0, 0.72, 0.95), "revives a fallen ally at 50% health"))
 	return chips
 
 

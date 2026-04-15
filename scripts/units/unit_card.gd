@@ -15,16 +15,16 @@ const CHIP_FROST_BG := Color(0.12, 0.34, 0.48, 0.98)
 const ICON_DAMAGE := "\u26A1"
 const ICON_HEAL := "\u271A"
 const ICON_DOT := "\u2620"
-const STATUS_BADGE_SIZE := Vector2(58, 24)
-const STATUS_ICON_SIZE := Vector2(14, 14)
-const STATUS_TEXT_SIZE := 14
+const STATUS_BADGE_SIZE := Vector2(70, 30)
+const STATUS_ICON_SIZE := Vector2(18, 18)
+const STATUS_TEXT_SIZE := 16
 const ABILITY_DETAIL_HEIGHT := 60
 const ABILITY_NAME_SIZE := 28
-const ABILITY_CHIP_HEIGHT := 40
-const ABILITY_CHIP_ICON_SIZE := Vector2(30, 30)
-const ABILITY_CHIP_TEXT_SIZE := 30
-const TOOLTIP_MIN_WIDTH := 360
-const TOOLTIP_TEXT_WIDTH := 320
+const ABILITY_CHIP_HEIGHT := 46
+const ABILITY_CHIP_ICON_SIZE := Vector2(34, 34)
+const ABILITY_CHIP_TEXT_SIZE := 22
+const TOOLTIP_MIN_WIDTH := 640
+const TOOLTIP_TEXT_WIDTH := 560
 const ICON_MAP = {
 	"damage": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"shield": preload("res://assets/generated/icon_shield_1776027929.png"),
@@ -116,7 +116,7 @@ func _ready() -> void:
 		tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_set_mouse_filter_recursive(tooltip_panel, Control.MOUSE_FILTER_IGNORE)
 		tooltip_panel.visible = false
-		tooltip_panel.custom_minimum_size = Vector2(TOOLTIP_MIN_WIDTH, 48)
+		tooltip_panel.custom_minimum_size = Vector2(TOOLTIP_MIN_WIDTH, 72)
 		_apply_tooltip_panel_style(tooltip_panel)
 		var tooltip_margin: MarginContainer = tooltip_panel.get_node_or_null("TooltipMargin") as MarginContainer
 		if tooltip_margin != null:
@@ -131,7 +131,7 @@ func _ready() -> void:
 			tooltip_label.custom_minimum_size.x = TOOLTIP_TEXT_WIDTH
 			tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			PixelUI.apply_pixel_font(tooltip_label)
-			tooltip_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(14))
+			tooltip_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(24))
 	
 	var xp_bar: ProgressBar = get_node_or_null("%XPBar")
 	if xp_bar:
@@ -256,14 +256,14 @@ func _ensure_details_controls() -> void:
 		_details_button = Button.new()
 		_details_button.name = "DetailsButton"
 		_details_button.text = "+"
-		_details_button.custom_minimum_size = Vector2(34, 30)
+		_details_button.custom_minimum_size = Vector2(46, 42)
 		_details_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		_details_button.z_as_relative = false
 		_details_button.z_index = 130
 		# set_as_top_level escapes PanelContainer's fill-all-children layout,
 		# preventing the button from stretching to cover the entire card.
 		_details_button.set_as_top_level(true)
-		PixelUI.style_button(_details_button, Color(0.045, 0.070, 0.100, 0.96), Color(0.42, 0.62, 0.78, 0.95), 20)
+		PixelUI.style_button(_details_button, Color(0.045, 0.070, 0.100, 0.96), Color(0.42, 0.62, 0.78, 0.95), 22)
 		_details_button.pressed.connect(_on_details_button_pressed)
 		add_child(_details_button)
 		set_notify_transform(true)
@@ -285,10 +285,10 @@ func _reposition_details_button() -> void:
 	if _details_button == null:
 		return
 	var card_rect := get_global_rect()
-	_details_button.size = Vector2(34, 30)
+	_details_button.size = Vector2(46, 42)
 	_details_button.global_position = Vector2(
 		card_rect.position.x + 8,
-		card_rect.end.y - 38
+		card_rect.end.y - 50
 	)
 
 
@@ -303,7 +303,7 @@ func _notification(what: int) -> void:
 func _refresh_details_controls() -> void:
 	if _details_button == null:
 		return
-	_details_button.text = "-" if _is_details_expanded else "+"
+	_details_button.text = "+"
 	_details_button.z_index = 130 if _is_details_expanded else 20
 	if _details_panel != null and _details_panel.visible:
 		_populate_details_panel()
@@ -339,7 +339,11 @@ func _input(event: InputEvent) -> void:
 		var click_position: Vector2 = mouse_event.global_position
 		var panel_rect: Rect2 = _details_panel.get_global_rect() if _details_panel != null else Rect2()
 		var button_rect: Rect2 = _details_button.get_global_rect() if _details_button != null else Rect2()
-		if panel_rect.has_point(click_position) or button_rect.has_point(click_position):
+		if button_rect.has_point(click_position):
+			_close_details_panel()
+			get_viewport().set_input_as_handled()
+			return
+		if panel_rect.has_point(click_position):
 			return
 		_close_details_panel()
 	if event is InputEventScreenTouch:
@@ -349,7 +353,11 @@ func _input(event: InputEvent) -> void:
 		var touch_position: Vector2 = touch_event.position
 		var touch_panel_rect: Rect2 = _details_panel.get_global_rect() if _details_panel != null else Rect2()
 		var touch_button_rect: Rect2 = _details_button.get_global_rect() if _details_button != null else Rect2()
-		if touch_panel_rect.has_point(touch_position) or touch_button_rect.has_point(touch_position):
+		if touch_button_rect.has_point(touch_position):
+			_close_details_panel()
+			get_viewport().set_input_as_handled()
+			return
+		if touch_panel_rect.has_point(touch_position):
 			return
 		_close_details_panel()
 
@@ -390,14 +398,6 @@ func _populate_details_panel() -> void:
 	header_row.add_theme_constant_override("separation", 8)
 	vbox.add_child(header_row)
 	_add_details_header(header_row, _detail_unit_name)
-	var close_button: Button = Button.new()
-	close_button.text = "-"
-	close_button.custom_minimum_size = Vector2(34, 30)
-	close_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	close_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_button(close_button, Color(0.045, 0.070, 0.100, 0.96), Color(0.42, 0.62, 0.78, 0.95), 20)
-	close_button.pressed.connect(_close_details_panel)
-	header_row.add_child(close_button)
 	_add_details_line(vbox, "HP: %d / %d" % [_detail_current_hp, _detail_max_hp], PixelUI.TEXT_PRIMARY, 20)
 	_add_details_line(vbox, "Roll: %s" % _detail_dice_result.replace("D20: ", ""), PixelUI.TEXT_PRIMARY, 20)
 	_add_details_line(vbox, "Target: %s" % _detail_target_text, _get_target_text_color(_detail_target_side, _detail_target_text), 20)
@@ -443,7 +443,7 @@ func _add_details_header(parent: Control, text: String) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_label(label, 22, Color(0.78, 0.88, 1.0, 1.0), 3)
+	PixelUI.style_label(label, 24, Color(0.78, 0.88, 1.0, 1.0), 3)
 	parent.add_child(label)
 
 
@@ -603,7 +603,7 @@ func setup_card(display_name: String, current_hp: int, max_hp: int, dice_result:
 	_fit_name_label(name_label, display_name)
 	if hp_bar != null and hp_label != null:
 		_place_hp_label_in_bar(hp_label, hp_bar)
-		PixelUI.style_label(hp_label, 21, Color(0.02, 0.04, 0.04, 1.0), 5)
+		PixelUI.style_label(hp_label, 24, Color(0.02, 0.04, 0.04, 1.0), 5)
 		hp_label.add_theme_color_override("font_outline_color", Color(0.86, 1.0, 0.88, 0.96))
 		
 		hp_bar.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -900,7 +900,7 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 	for child in container.get_children():
 		child.queue_free()
 
-	container.add_theme_constant_override("separation", 3)
+	container.add_theme_constant_override("separation", 4)
 	var has_merged_overload_marker: bool = false
 	for row_variant in rows:
 		var marker_row: Dictionary = row_variant
@@ -928,7 +928,7 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 	var range_strip: HBoxContainer = HBoxContainer.new()
 	range_strip.mouse_filter = Control.MOUSE_FILTER_PASS
 	range_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	range_strip.add_theme_constant_override("separation", 3)
+	range_strip.add_theme_constant_override("separation", 4)
 	container.add_child(range_strip)
 
 	for row_variant in display_rows:
@@ -941,14 +941,14 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 	var chip_strip: HBoxContainer = HBoxContainer.new()
 	chip_strip.mouse_filter = Control.MOUSE_FILTER_PASS
 	chip_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_strip.add_theme_constant_override("separation", 3)
+	chip_strip.add_theme_constant_override("separation", 4)
 	container.add_child(chip_strip)
 
 	for row_variant in display_rows:
 		var row_data: Dictionary = row_variant
 		var chip_col: VBoxContainer = VBoxContainer.new()
 		chip_col.mouse_filter = Control.MOUSE_FILTER_PASS
-		chip_col.custom_minimum_size = Vector2(0, 38)
+		chip_col.custom_minimum_size = Vector2(0, 52)
 		chip_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		chip_col.alignment = BoxContainer.ALIGNMENT_CENTER
 		chip_strip.add_child(chip_col)
@@ -961,14 +961,14 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 		chip_box.mouse_filter = Control.MOUSE_FILTER_PASS
 		chip_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		chip_box.alignment = BoxContainer.ALIGNMENT_CENTER
-		chip_box.add_theme_constant_override("separation", 3)
+		chip_box.add_theme_constant_override("separation", 4)
 		chip_col.add_child(chip_box)
 
 		if bool(active_display_row.get("is_overload_active", false)):
 			chip_box.add_child(_make_crit_badge())
-		var chip_size: Vector2 = Vector2(0, 34)
-		var icon_size: Vector2 = Vector2(28, 28)
-		var font_size: int = 14
+		var chip_size: Vector2 = Vector2(0, ABILITY_CHIP_HEIGHT)
+		var icon_size: Vector2 = ABILITY_CHIP_ICON_SIZE
+		var font_size: int = ABILITY_CHIP_TEXT_SIZE
 		_add_effect_chips_to_box(chip_box, active_display_row.get("chips", []), chip_size, icon_size, font_size)
 
 
@@ -990,7 +990,7 @@ func _make_range_tab(row_data: Dictionary, is_active_row: bool) -> PanelContaine
 	range_panel.mouse_entered.connect(_on_element_mouse_entered.bind(tooltip_text, range_panel))
 	range_panel.mouse_exited.connect(_on_element_mouse_exited)
 	_connect_passthrough_click(range_panel)
-	range_panel.custom_minimum_size = Vector2(0, 34)
+	range_panel.custom_minimum_size = Vector2(0, 38)
 	range_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	range_panel.add_theme_stylebox_override("panel", _make_range_tab_style(is_active_row))
 
@@ -1003,13 +1003,13 @@ func _make_range_tab(row_data: Dictionary, is_active_row: bool) -> PanelContaine
 	var range_label: Label = Label.new()
 	range_label.text = str(row_data.get("range_text", ""))
 	range_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	range_label.custom_minimum_size = Vector2(0, 34)
+	range_label.custom_minimum_size = Vector2(0, 38)
 	range_label.clip_text = true
 	range_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	range_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	range_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	PixelUI.apply_pixel_font(range_label)
-	range_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(22))
+	range_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(24))
 	range_label.add_theme_color_override("font_color", Color(0.90, 0.94, 1.0, 1.0) if is_active_row else PixelUI.TEXT_MUTED)
 	range_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
 	range_label.add_theme_constant_override("outline_size", 3)
@@ -1022,7 +1022,7 @@ func _make_range_tab(row_data: Dictionary, is_active_row: bool) -> PanelContaine
 		star_label.mouse_filter = Control.MOUSE_FILTER_PASS
 		star_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		PixelUI.apply_pixel_font(star_label)
-		star_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(22))
+		star_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(24))
 		star_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.28, 1.0))
 		star_label.add_theme_color_override("font_outline_color", Color(0.10, 0.05, 0.00, 0.95))
 		star_label.add_theme_constant_override("outline_size", 3)
@@ -1226,7 +1226,7 @@ func _make_crit_badge() -> PanelContainer:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	PixelUI.apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(14))
+	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(20))
 	label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.38, 1.0))
 	label.add_theme_color_override("font_outline_color", Color(0.09, 0.04, 0.00, 1.0))
 	label.add_theme_constant_override("outline_size", 3)
@@ -1566,7 +1566,7 @@ func _apply_editor_preview_theme() -> void:
 	gear_title.visible = false
 	gear_slots.visible = false
 
-	tooltip_panel.custom_minimum_size = Vector2(TOOLTIP_MIN_WIDTH, 48)
+	tooltip_panel.custom_minimum_size = Vector2(TOOLTIP_MIN_WIDTH, 72)
 	_apply_tooltip_panel_style(tooltip_panel)
 	tooltip_panel.visible = false
 

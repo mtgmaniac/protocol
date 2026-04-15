@@ -475,7 +475,7 @@ func _set_displayed_face_number(die: RigidBody3D, face_value: int, result: int) 
 func _apply_die_face_label_text(label: Label3D, result: int) -> void:
 	var value_text: String = "%d" % clampi(result, 1, 20)
 	label.text = value_text
-	label.font_size = 90 if value_text.length() == 1 else 76
+	label.font_size = 128 if value_text.length() == 1 else 108
 
 
 func _get_die_for_entry(side: String, unit_id: String) -> RigidBody3D:
@@ -1108,13 +1108,13 @@ func _add_face_labels(die: RigidBody3D) -> void:
 		label.name = "FaceNumber%d" % int(_face_values[i])
 		label.text = value_text
 		label.font = _get_dice_number_font()
-		label.font_size = 90 if value_text.length() == 1 else 76
+		label.font_size = 128 if value_text.length() == 1 else 108
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.modulate = Color(1.0, 1.0, 0.95, 1.0)
-		label.outline_size = 10
+		label.outline_size = 14
 		label.outline_modulate = Color(0.015, 0.020, 0.035, 1.0)
-		label.pixel_size = 0.0066
+		label.pixel_size = 0.0072
 		label.no_depth_test = false
 		label.position = _face_centers[i] + face_basis.y * (inradius * 0.12) + _face_normals[i] * 0.055
 		label.basis = face_basis
@@ -1256,12 +1256,12 @@ func _add_owner_label(die: RigidBody3D, unit_name: String, side: String) -> void
 	label.name = "OwnerLabel"
 	label.text = unit_name.left(10)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.font_size = 52
+	label.font_size = 64
 	label.modulate = Color(0.72, 1.0, 0.82, 0.95) if side == "hero" else Color(1.0, 0.66, 0.60, 0.95)
 	label.outline_size = 12
 	label.outline_modulate = Color(0.02, 0.03, 0.05, 1.0)
 	label.position = Vector3(0, DIE_RADIUS * 1.8, 0)
-	label.scale = Vector3(0.028, 0.028, 0.028)
+	label.scale = Vector3(0.030, 0.030, 0.030)
 	die.add_child(label)
 
 
@@ -1288,12 +1288,12 @@ func _set_die_frozen_visual(die: RigidBody3D, is_frozen: bool) -> void:
 		label.name = "FrozenOverlay"
 		label.text = "FROZEN"
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		label.font_size = 42
+		label.font_size = 56
 		label.modulate = Color(0.70, 0.94, 1.0, 0.92)
 		label.outline_size = 10
 		label.outline_modulate = Color(0.02, 0.06, 0.10, 1.0)
 		label.position = Vector3(0, DIE_RADIUS * 2.28, 0)
-		label.scale = Vector3(0.026, 0.026, 0.026)
+		label.scale = Vector3(0.030, 0.030, 0.030)
 		die.add_child(label)
 	label.visible = is_frozen
 
