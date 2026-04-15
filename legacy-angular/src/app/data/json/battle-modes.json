@@ -1,0 +1,548 @@
+{
+  "$schema": "../schemas/battle-modes.schema.json",
+  "order": [
+    "facility",
+    "hive",
+    "veil",
+    "voidCirclet",
+    "stellarMenagerie"
+  ],
+  "modes": {
+    "facility": {
+      "trackHpScale": 0.94,
+      "label": "Facility sweep",
+      "blurb": "Corporate drones, ECM skimmers, harmonic hexnodes, and the Scrapmaster.",
+      "victoryTitle": "VICTORY",
+      "victorySub": "Scrapmaster destroyed. Scrapfields clear.",
+      "battles": [
+        {
+          "enemies": [
+            {
+              "name": "Scrap Drone"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Scrap Drone"
+            },
+            {
+              "name": "Rust Drone"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Scrap Drone"
+            },
+            {
+              "name": "Rust Drone"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Patrol Elite"
+            },
+            {
+              "name": "Rust Drone"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Patrol Elite"
+            },
+            {
+              "name": "Whitenoise Skimmer"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Guard Elite"
+            },
+            {
+              "name": "Guard Elite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Heavy Warden"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Rust Drone"
+            },
+            {
+              "name": "Heavy Warden"
+            },
+            {
+              "name": "Rust Drone"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Volt Elite"
+            },
+            {
+              "name": "Harmonic Hexnode"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Patrol Elite"
+            },
+            {
+              "name": "SCRAPMASTER"
+            }
+          ]
+        }
+      ]
+    },
+    "hive": {
+      "trackHpScale": 1,
+      "label": "Hive incursion",
+      "blurb": "Skitterlings, bloodmites, chitin elites, and the Hive Matriarch.",
+      "victoryTitle": "VICTORY",
+      "victorySub": "Hive Matriarch slain. The brood splinters.",
+      "battles": [
+        {
+          "enemies": [
+            {
+              "name": "Skitterling"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Skitterling"
+            },
+            {
+              "name": "Bloodmite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Skitterling"
+            },
+            {
+              "name": "Skitterling"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Spine Stalker"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Carapace Beetle"
+            },
+            {
+              "name": "Skitterling"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Spine Stalker"
+            },
+            {
+              "name": "Skitterling"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Broodwarden"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Bloodmite"
+            },
+            {
+              "name": "Broodwarden"
+            },
+            {
+              "name": "Bloodmite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Caustic Spewer"
+            },
+            {
+              "name": "Caustic Spewer"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Spine Stalker"
+            },
+            {
+              "name": "Hive Matriarch"
+            }
+          ]
+        }
+      ]
+    },
+    "veil": {
+      "trackHpScale": 0.94,
+      "label": "Veil Concord",
+      "blurb": "Lattice elites, phase grunts, harmonic shields — and the Overseer.",
+      "victoryTitle": "VICTORY",
+      "victorySub": "The Overseer falls. The Concord withdraws.",
+      "battles": [
+        {
+          "enemies": [
+            {
+              "name": "Shardmite"
+            },
+            {
+              "name": "Prism Charger"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Aegis Anchor"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Shardmite"
+            },
+            {
+              "name": "Synapse Herald"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Prism Charger"
+            },
+            {
+              "name": "Shardmite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Resonance Warden"
+            },
+            {
+              "name": "Prism Charger"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Nullblade"
+            },
+            {
+              "name": "Stormweaver"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Aegis Anchor"
+            },
+            {
+              "name": "Aegis Anchor"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Stormweaver"
+            },
+            {
+              "name": "Stormweaver"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Synapse Herald"
+            },
+            {
+              "name": "Synapse Herald"
+            },
+            {
+              "name": "Shardmite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "CONCLAVE OVERSEER"
+            },
+            {
+              "name": "Aegis Anchor"
+            }
+          ]
+        }
+      ]
+    },
+    "voidCirclet": {
+      "trackHpScale": 0.94,
+      "label": "Void Circlet",
+      "blurb": "Arcane binders, countermagic, warp summons — face the Hierophant.",
+      "victoryTitle": "VICTORY",
+      "victorySub": "The Circlet breaks. The void gate seals.",
+      "battles": [
+        {
+          "enemies": [
+            {
+              "name": "Sparksprite"
+            },
+            {
+              "name": "Sparksprite"
+            },
+            {
+              "name": "Sparksprite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Levyn Acolyte"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Chronicle Scribe"
+            },
+            {
+              "name": "Sparksprite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Geas Binder"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Chronicle Scribe"
+            },
+            {
+              "name": "Chronicle Scribe"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Geas Binder"
+            },
+            {
+              "name": "Levyn Acolyte"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Glimmer Double"
+            },
+            {
+              "name": "Sparksprite"
+            },
+            {
+              "name": "Sparksprite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Arc-Titan Channeler"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Arc-Titan Channeler"
+            },
+            {
+              "name": "Chronicle Scribe"
+            },
+            {
+              "name": "Sparksprite"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "CIRCLET HIEROPHANT"
+            },
+            {
+              "name": "Chronicle Scribe"
+            }
+          ]
+        }
+      ]
+    },
+    "stellarMenagerie": {
+      "trackHpScale": 0.94,
+      "label": "Stellar Menagerie",
+      "blurb": "Escaped specimens: ticks, hunters, and things that should not herd. Silence the Void Reaver.",
+      "victoryTitle": "VICTORY",
+      "victorySub": "The Reaver falls. The menagerie goes quiet.",
+      "battles": [
+        {
+          "enemies": [
+            {
+              "name": "Rift Macaque"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Rift Macaque"
+            },
+            {
+              "name": "Void Wolf"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Void Wolf"
+            },
+            {
+              "name": "Void Wolf"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Eclipse Lynx"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Thunder Bison"
+            },
+            {
+              "name": "Rift Macaque"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Eclipse Lynx"
+            },
+            {
+              "name": "Rift Macaque"
+            },
+            {
+              "name": "Void Wolf"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Ridge Badger"
+            },
+            {
+              "name": "Rift Macaque"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Eclipse Hyena"
+            },
+            {
+              "name": "Void Wolf"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Thunder Bison"
+            },
+            {
+              "name": "Ridge Badger"
+            },
+            {
+              "name": "Rift Macaque"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "VOID REAVER"
+            },
+            {
+              "name": "Eclipse Lynx"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,174 @@
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
+.protocol-strip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin-top: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.protocol-bar-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 72px;
+  height: 28px;
+  border-radius: var(--radius-pixel);
+  border: 2px solid var(--border);
+  background: #080a0e;
+  overflow: hidden;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+.protocol-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--strike);
+  transition: width 0.2s steps(10, end);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+.protocol-bar-txt {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-pixel); font-size: 12px; font-weight: 700;
+  color: #e8f4ff; text-shadow: 0 1px 2px rgba(0,0,0,.85); pointer-events: none;
+}
+.protocol-actions {
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+}
+.proto-ic-btn {
+  position: relative;
+  width: 36px; height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: var(--bg3);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-pixel);
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 2px 2px 0 #000;
+  flex-shrink: 0;
+}
+.proto-ic-btn:hover:not(:disabled) { border-color: var(--strike); color: var(--strike); }
+.proto-ic-btn:active:not(:disabled) { filter: brightness(1.06); }
+.proto-ic-btn:disabled { opacity: .35; cursor: not-allowed; }
+.proto-ic-btn.active { border-color: var(--strike); color: var(--strike); background: rgba(46,125,212,.1); }
+.proto-svg { width: 20px; height: 20px; }
+.proto-cost {
+  position: absolute; bottom: 1px; right: 2px;
+  font-family: var(--font-pixel); font-size: 7px; font-weight: 800; opacity: .85; line-height: 1;
+}
+.inv-slot {
+  position: relative;
+  width: 32px; height: 28px;
+  padding: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border-radius: var(--radius-pixel);
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 2px 2px 0 #000;
+  flex-shrink: 0;
+  background: #0a0e14;
+  color: #b8cce8;
+}
+.inv-slot:disabled { opacity: .3; cursor: not-allowed; }
+.inv-slot:hover:not(:disabled) { filter: brightness(1.12); }
+.inv-slot.r-common { border: 2px solid #5a6a78; }
+.inv-slot.r-uncommon { border: 2px solid #2a9e72; }
+.inv-slot.r-rare { border: 2px solid #8b6fd4; }
+.inv-slot.r-legendary {
+  border: 2px solid #e8942a;
+  box-shadow: 0 0 10px rgba(232, 148, 42, 0.35), 2px 2px 0 #000;
+}
+.inv-slot.r-empty { border: 2px dashed var(--border); opacity: .55; }
+.inv-slot.active-pick {
+  box-shadow: inset 0 0 0 2px var(--strike), 2px 2px 0 #000;
+}
+.inv-slot.r-legendary.active-pick {
+  box-shadow: inset 0 0 0 2px var(--strike), 0 0 22px rgba(232, 148, 42, 0.65), 0 0 36px rgba(255, 170, 60, 0.35), 2px 2px 0 #000;
+}
+.inv-ic { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
+.inv-ic svg { width: 100%; height: 100%; }
+.inv-dot {
+  position: absolute; bottom: 1px; right: 2px;
+  font-family: var(--font-pixel); font-size: 7px; font-weight: 800; opacity: .9;
+}
+.inv-empty { font-family: var(--font-pixel); font-size: 10px; opacity: .4; }
+
+/* ── Augment (relic) slot — always visible; icon only ───────────────────────── */
+.relic-slot {
+  position: relative;
+  width: 32px;
+  height: 28px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pixel);
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.relic-slot--empty {
+  border: 2px dashed var(--border);
+  background: #0a0e14;
+  color: #6a7a8c;
+  opacity: 0.55;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.relic-slot--filled {
+  border: 2px solid #a07818;
+  background: var(--bg2);
+  box-shadow: 0 0 10px rgba(200, 146, 26, 0.45), 0 0 4px rgba(245, 200, 66, 0.2), 2px 2px 0 rgba(0, 0, 0, 0.45);
+  animation: relic-pulse 3s ease-in-out infinite;
+}
+
+@keyframes relic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(200, 146, 26, 0.45), 0 0 4px rgba(245, 200, 66, 0.2), 2px 2px 0 rgba(0, 0, 0, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(245, 200, 66, 0.7), 0 0 8px rgba(255, 220, 80, 0.4), 2px 2px 0 rgba(0, 0, 0, 0.45);
+  }
+}
+
+.relic-ic {
+  width: 16px;
+  height: 16px;
+  color: #f5c842;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.relic-ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.relic-empty {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  opacity: 0.5;
+  line-height: 1;
+}

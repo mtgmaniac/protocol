@@ -1,0 +1,107 @@
+/* Stepped / chunky motion — pixel-friendly */
+@keyframes bigSpin {
+  0% {
+    transform: scale(0.4) rotate(-24deg);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.08) rotate(6deg);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.96) rotate(-2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+/* Land: short downward settle (one direction), then rest */
+@keyframes diePixelLand {
+  0% {
+    transform: translate(0, -5px) scale(1.04);
+    filter: brightness(1.08);
+  }
+  45% {
+    transform: translate(0, 2px) scale(0.99);
+    filter: brightness(1.03);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes pfFlash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pfDeath {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.3;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pfShake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.pf-flash-red::after {
+  --pf: rgba(216, 74, 42, 0.55);
+  animation: pfFlash 0.22s steps(2, end);
+}
+.pf-flash-green::after {
+  --pf: rgba(46, 196, 106, 0.55);
+  animation: pfFlash 0.22s steps(2, end);
+}
+.pf-flash-blue::after {
+  --pf: rgba(46, 125, 212, 0.55);
+  animation: pfFlash 0.22s steps(2, end);
+}
+.pf-flash-amber::after {
+  --pf: rgba(232, 184, 74, 0.55);
+  animation: pfFlash 0.22s steps(2, end);
+}
+.pf-death::after {
+  --pf: rgba(232, 58, 58, 0.75);
+  animation: pfDeath 0.45s steps(3, end);
+}
+.pf-shake {
+  animation: pfShake 0.2s steps(4, end);
+}

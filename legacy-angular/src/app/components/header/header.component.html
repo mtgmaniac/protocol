@@ -1,0 +1,19 @@
+<header>
+  <div class="hdr-op-name" id="tut-op-name">{{ state.battleModeLabel() }}</div>
+  <div class="hdr-mid">
+    <div class="bn" id="tut-battle-counter">
+      BATTLE {{ state.battle() + 1 }} / {{ state.battleCountTotal() }}
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-sim-auto">
+      @if (!state.tutorial()?.active) {
+        <button type="button" class="hdr-btn hdr-btn--orange" (click)="simBattle()"
+                [disabled]="combat.simBattleRunning()">SIM BATTLE</button>
+      }
+      <button type="button" class="hdr-btn hdr-btn--orange" [disabled]="!canAutoPlay()" (click)="autoPlayTurn()">AUTO</button>
+    </div>
+    <button type="button" class="hdr-btn" (click)="backHomeClicked.emit()">BACK TO HOME</button>
+    <button type="button" class="hdr-btn" id="tut-help-btn" (click)="helpClicked.emit()">HELP</button>
+  </div>
+</header>

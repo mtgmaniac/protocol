@@ -1,0 +1,46 @@
+.tut-root {
+  position: fixed; inset: 0; z-index: 850; pointer-events: none;
+}
+.tut-clickwall {
+  position: absolute; inset: 0; pointer-events: auto; z-index: 0;
+  background: transparent;
+}
+.tut-spot {
+  position: fixed; z-index: 1; pointer-events: none;
+  border-radius: var(--radius-pixel);
+  box-shadow: 0 0 0 9999px rgba(4, 6, 10, 0.82);
+}
+.tut-panel {
+  position: fixed; z-index: 2; pointer-events: auto;
+  width: min(300px, calc(100vw - 20px));
+  max-height: min(420px, calc(100vh - 24px));
+  overflow: auto;
+  background: var(--bg2); border: 2px solid var(--border); border-radius: var(--radius-pixel);
+  padding: 14px 16px 16px;
+  box-shadow: 6px 6px 0 rgba(0,0,0,.55);
+}
+.tut-k {
+  font-family: var(--font-pixel); font-size: 9px; font-weight: 800; letter-spacing: 2px;
+  color: var(--muted); margin-bottom: 6px;
+}
+.tut-title {
+  font-size: 16px; font-weight: 800; color: #fff; letter-spacing: .5px; margin-bottom: 10px;
+}
+.tut-body {
+  font-family: var(--font-pixel); font-size: 10px; line-height: 1.5; color: var(--muted);
+  margin: 0 0 14px;
+}
+.tut-body strong { color: #fff; font-weight: 800; }
+.tut-body em { color: #9bc0dd; font-style: normal; font-weight: 700; }
+.tut-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.tut-btn {
+  font-family: var(--font-pixel); font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  color: var(--text); background: var(--bg3); border: 2px solid var(--border);
+  padding: 8px 14px; min-height: 40px; border-radius: var(--radius-pixel); cursor: pointer; touch-action: manipulation;
+  box-shadow: 2px 2px 0 #000;
+}
+.tut-btn:hover { border-color: var(--strike); color: var(--strike); }
+.tut-btn-primary {
+  border-color: rgba(46,125,212,.55); color: #cfe6ff; background: rgba(46,125,212,.15);
+}
+.tut-btn-primary:hover { border-color: #7ab8ff; color: #fff; }

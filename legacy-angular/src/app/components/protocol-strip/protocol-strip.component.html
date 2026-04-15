@@ -1,0 +1,106 @@
+<div class="protocol-strip" id="tut-protocol-strip">
+  <div class="protocol-bar-wrap" id="tut-protocol-meter">
+    <div class="protocol-bar-fill" [style.width]="barWidth()"></div>
+    <div class="protocol-bar-txt">PROTOCOL {{ state.protocol() }}/{{ max }}</div>
+  </div>
+  <div class="protocol-actions" id="tut-protocol-primary-icons">
+    <button id="protocol-reroll-btn" type="button" class="proto-ic-btn" [class.active]="state.pendingProtocol() === 'reroll'"
+            [disabled]="!canReroll()" (click)="protocol.startReroll()"
+            [opTooltip]="'Reroll — costs ' + rerollCost + ' Protocol. Tap, then a hero who has rolled.'">
+      <span class="sr-only">Reroll</span>
+      <svg class="proto-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="9" cy="9.5" r="1.35" fill="currentColor"/>
+        <circle cx="15" cy="9.5" r="1.35" fill="currentColor"/>
+        <circle cx="9" cy="14.5" r="1.35" fill="currentColor"/>
+        <circle cx="15" cy="14.5" r="1.35" fill="currentColor"/>
+        <path d="M18 2v4h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20.2 3.8A9 9 0 0 0 12 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span class="proto-cost">{{ rerollCost }}</span>
+    </button>
+    <button id="protocol-nudge-btn" type="button" class="proto-ic-btn" [class.active]="state.pendingProtocol() === 'nudge'"
+            [disabled]="!canNudge()" (click)="protocol.startNudge()"
+            [opTooltip]="'Nudge — +' + nudgeDelta + ' to effective roll for ' + nudgeCost + ' Protocol. Tap, then a hero (still capped at 20).'">
+      <span class="sr-only">Nudge</span>
+      <svg class="proto-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 4v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M7 9l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6 20h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".65"/>
+      </svg>
+      <span class="proto-cost">{{ nudgeCost }}</span>
+    </button>
+    @for (row of invRows(); track row.slot) {
+      <button type="button" class="inv-slot" [class]="row.rarityClass" [class.active-pick]="row.activePick"
+              [disabled]="!row.usable" (click)="toggleItem(row.slot)"
+              [opTooltip]="row.title">
+        @if (row.def; as d) {
+          <span class="inv-ic" aria-hidden="true">
+            @switch (d.icon) {
+              @case ('heart') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 19.2S6 15.2 3.6 11.4 5.4 6.6 8.8 6.6c1.6 0 2.6.8 3.2 1.6.6-.8 1.6-1.6 3.2-1.6 3.4 0 5.2 2.8 3 5.8C16.6 15.6 12 19.2 12 19.2z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+              }
+              @case ('shield') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+              }
+              @case ('die') {
+                <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.3"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/></svg>
+              }
+              @case ('bolt') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/></svg>
+              }
+              @case ('skull') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 4c4 0 7 2.6 7 6.4 0 2-1 3.8-2.6 4.9V18c0 .5-.4 1-1 1h-1.2v-2h-1.8v2H11v-2H9.2v2H8c-.6 0-1-.5-1-1v-2.7C5.4 14.2 5 12.4 5 10.4 5 6.6 8 4 12 4z" fill="currentColor" opacity=".35"/><circle cx="9" cy="11" r="1.2" fill="currentColor"/><circle cx="15" cy="11" r="1.2" fill="currentColor"/></svg>
+              }
+              @case ('cloak') {
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 10c2.5-2 5.5-3 7-3s4.5 1 7 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+                  <path d="M4 14c3.2-3.2 7.8-4.2 12.5-2.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>
+                  <ellipse cx="12" cy="16" rx="5" ry="2.2" fill="currentColor" opacity=".2"/>
+                  <circle cx="9.5" cy="11" r="1.6" fill="currentColor" opacity=".5"/>
+                  <circle cx="14.5" cy="11" r="1.6" fill="currentColor" opacity=".5"/>
+                </svg>
+              }
+              @default {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 17.8 5.7 21 8 14.4 2 9.4h7.6L12 2z" fill="currentColor" opacity=".85"/></svg>
+              }
+            }
+          </span>
+          <span class="inv-dot">{{ itemCost(d) }}</span>
+        } @else {
+          <span class="inv-empty">—</span>
+        }
+      </button>
+    }
+    @let relic = activeRelic();
+    <div
+      class="relic-slot"
+      [class.relic-slot--filled]="!!relic"
+      [class.relic-slot--empty]="!relic"
+      [opTooltip]="relicSlotTooltip()">
+      @if (relic) {
+        <span class="relic-ic" aria-hidden="true">
+          @switch (relic.icon) {
+            @case ('heart') {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 19.2S6 15.2 3.6 11.4 5.4 6.6 8.8 6.6c1.6 0 2.6.8 3.2 1.6.6-.8 1.6-1.6 3.2-1.6 3.4 0 5.2 2.8 3 5.8C16.6 15.6 12 19.2 12 19.2z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+            }
+            @case ('shield') {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+            }
+            @case ('die') {
+              <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.3"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/></svg>
+            }
+            @case ('skull') {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 4c4 0 7 2.6 7 6.4 0 2-1 3.8-2.6 4.9V18c0 .5-.4 1-1 1h-1.2v-2h-1.8v2H11v-2H9.2v2H8c-.6 0-1-.5-1-1v-2.7C5.4 14.2 5 12.4 5 10.4 5 6.6 8 4 12 4z" fill="currentColor" opacity=".35"/><circle cx="9" cy="11" r="1.2" fill="currentColor"/><circle cx="15" cy="11" r="1.2" fill="currentColor"/></svg>
+            }
+            @default {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/></svg>
+            }
+          }
+        </span>
+      } @else {
+        <span class="relic-empty" aria-hidden="true">—</span>
+      }
+    </div>
+  </div>
+</div>

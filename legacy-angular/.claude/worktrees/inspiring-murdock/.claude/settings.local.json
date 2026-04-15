@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx ng:*)",
+      "Bash(xargs grep:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git push:*)",
+      "WebFetch(domain:tann.itch.io)",
+      "WebSearch",
+      "WebFetch(domain:toucharcade.com)",
+      "WebFetch(domain:turnbasedlovers.com)",
+      "WebFetch(domain:bullethaven.com)",
+      "WebFetch(domain:tann.fun)",
+      "WebFetch(domain:www.neverplaythis.com)"
+    ]
+  }
+}

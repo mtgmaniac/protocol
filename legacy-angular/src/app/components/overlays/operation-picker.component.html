@@ -1,0 +1,148 @@
+<div class="op-page">
+  <div class="op-shell">
+    <header class="op-top-header">
+      <div class="op-hdr-left" aria-hidden="true"></div>
+      <div class="op-hdr-mid"></div>
+      <div class="op-hdr-right">
+        <button type="button" class="op-hdr-btn" (click)="helpClicked.emit()">HELP</button>
+        <div class="op-build-tag">{{ version }} · {{ stamp }}</div>
+      </div>
+    </header>
+
+    <div class="op-main-stack">
+    <div class="op-logo-hero" aria-label="Overload Protocol">
+      <img
+        src="ui/overload-protocol-logo.png"
+        alt=""
+        decoding="async"
+        fetchpriority="high"
+        class="op-logo-img" />
+    </div>
+
+    <div class="op-panel">
+      <h2 class="op-panel-title">Choose operation</h2>
+
+    <div class="op-section">
+      <div class="op-sec-lbl">Operation</div>
+      <div class="squad-mode-row" role="group" aria-label="Operation track mode">
+        <button
+          type="button"
+          class="squad-mode-btn"
+          [class.squad-mode-btn-on]="operationRandom()"
+          (click)="setOperationRandom(true)">
+          Random
+        </button>
+        <button
+          type="button"
+          class="squad-mode-btn"
+          [class.squad-mode-btn-on]="!operationRandom()"
+          (click)="setOperationRandom(false)">
+          Pick track
+        </button>
+      </div>
+      @if (!operationRandom()) {
+        <div class="op-modes" role="list">
+          @for (id of modeOrder; track id) {
+            <button
+              type="button"
+              class="op-card"
+              [class.op-card-on]="state.battleModeId() === id"
+              (click)="selectMode(id)"
+              role="listitem">
+              <span class="op-card-inner">
+                @if (trackBossPortraitSrc(id); as bossSrc) {
+                  <span class="op-card-portrait" aria-hidden="true">
+                    <img
+                      [src]="bossSrc"
+                      [attr.alt]="modes[id].label + ' final boss'"
+                      width="38"
+                      height="50"
+                      loading="lazy"
+                      decoding="async" />
+                  </span>
+                }
+                <span class="op-card-body">
+                  <span class="op-card-label">{{ modes[id].label }}</span>
+                  <span class="op-card-blurb">{{ modes[id].blurb }}</span>
+                </span>
+              </span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="op-section">
+      <div class="op-sec-lbl">Squad</div>
+      <div class="squad-mode-row" role="group" aria-label="Squad selection mode">
+        <button
+          type="button"
+          class="squad-mode-btn"
+          [class.squad-mode-btn-on]="squadRandom()"
+          (click)="setSquadRandom(true)">
+          Random
+        </button>
+        <button
+          type="button"
+          class="squad-mode-btn"
+          [class.squad-mode-btn-on]="!squadRandom()"
+          (click)="setSquadRandom(false)">
+          Pick 3
+        </button>
+      </div>
+      @if (!squadRandom()) {
+        <p class="squad-hint">Select exactly three heroes.</p>
+        @for (sec of heroesByPickerSection(); track sec.key) {
+          @if (sec.heroes.length) {
+            <div class="op-hero-cat" [attr.data-cat]="sec.key">
+              <div class="op-hero-cat-hdr">
+                <span class="op-hero-cat-lbl">{{ sec.label }}</span>
+              </div>
+              <div class="op-hero-cards">
+                @for (h of sec.heroes; track h.id) {
+                  <button
+                    type="button"
+                    class="op-hero-card"
+                    [class.op-hero-card-on]="isPicked(h.id)"
+                    [disabled]="!canToggle(h.id)"
+                    (click)="toggleHero(h.id)">
+                    <span class="op-hero-card-inner">
+                      <span class="op-hero-card-portrait" aria-hidden="true">
+                        <img
+                          [src]="pickerPortraitSrc(h)"
+                          [attr.alt]="h.name + ' portrait'"
+                          width="44"
+                          height="58"
+                          loading="lazy"
+                          decoding="async" />
+                      </span>
+                      <span class="op-hero-card-text">
+                        <span class="op-hero-card-name">{{ h.name }}</span>
+                        <span class="op-hero-card-cls">{{ h.cls }}</span>
+                        <span class="op-hero-card-desc">{{ h.pickerBlurb }}</span>
+                      </span>
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+        <div class="squad-count">{{ pickedOrder().length }} / 3</div>
+      }
+    </div>
+
+    <div class="op-footer-actions">
+      <button type="button" class="op-tut-btn" (click)="startTutorial.emit()">TUTORIAL</button>
+      <button
+        type="button"
+        class="op-begin"
+        [disabled]="!canBegin()"
+        (click)="begin()">
+        BEGIN RUN
+      </button>
+    </div>
+    </div>
+    </div>
+  </div>
+</div>

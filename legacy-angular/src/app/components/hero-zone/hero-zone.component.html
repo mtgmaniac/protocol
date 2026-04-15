@@ -1,0 +1,21 @@
+<div class="hero-zone-wrap">
+  <div class="hero-col-header">
+    <span class="hz-label">SQUAD</span>
+    <span class="hz-items">Items {{ itemCount() }}/3</span>
+  </div>
+  <div class="zone-row-labels">
+    <span class="row-lbl row-lbl--front">FRONT</span>
+    <span class="row-lbl">BACK</span>
+  </div>
+  <div class="hero-col">
+    @for (hero of state.heroes(); track heroZoneTrack(hero); let i = $index) {
+      <app-hero-card
+        [hero]="hero"
+        [index]="i"
+        [isSelected]="state.selectedHeroIdx() === i"
+        [pickMode]="getPickMode(i)"
+        (heroClicked)="targeting.onHeroCardClick(i)"
+        (allyPickClicked)="targeting.onAllyHeroPickClick(i)" />
+    }
+  </div>
+</div>

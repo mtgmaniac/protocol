@@ -1,0 +1,42 @@
+name: Deploy Angular App
+
+on:
+  push:
+    branches: [main]
+    
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+  
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build Angular app
+        run: npm run build -- --configuration production --base-href=/Overload/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/overload-protocol/browser
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

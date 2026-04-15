@@ -1,0 +1,20 @@
+<div class="enemy-zone-wrap">
+  <div class="enemy-col-header">
+    <span class="ez-label">ENEMIES</span>
+    <span class="ez-battle">Battle {{ state.battle() + 1 }}</span>
+  </div>
+  <div class="zone-row-labels">
+    <span class="row-lbl">BACK</span>
+    <span class="row-lbl row-lbl--front">FRONT</span>
+  </div>
+  <div class="enemy-col">
+    @for (enemy of state.enemies(); track enemy.id; let i = $index) {
+      <app-enemy-card
+        [enemy]="enemy"
+        [index]="i"
+        [isPickable]="isEnemyPickable(i)"
+        [hideRoll]="hideEnemyRolls()"
+        (enemyClicked)="targeting.onEnemyPickClick(i)" />
+    }
+  </div>
+</div>

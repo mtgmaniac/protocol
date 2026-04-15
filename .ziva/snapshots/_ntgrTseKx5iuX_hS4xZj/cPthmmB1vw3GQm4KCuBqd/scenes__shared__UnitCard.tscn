@@ -1,0 +1,299 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/units/unit_card.gd" id="1_gcx4k"]
+[ext_resource type="Texture2D" path="res://legacy-angular/public/heroes/pulse-portrait.png" id="2_j6a1q"]
+
+[node name="UnitCard" type="PanelContainer"]
+custom_minimum_size = Vector2(176, 276)
+size_flags_horizontal = 3
+clip_contents = true
+script = ExtResource("1_gcx4k")
+
+[node name="CardFrame" type="Panel" parent="."]
+unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(176, 276)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="CardFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CardFrame/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DiceChartPanel" type="PanelContainer" parent="CardFrame/Margin/VBox"]
+layout_mode = 2
+
+[node name="DiceChartMargin" type="MarginContainer" parent="CardFrame/Margin/VBox/DiceChartPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 4
+
+[node name="DiceChart" type="VBoxContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="PreviewRowOne" type="HBoxContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RangeLabel" type="Label" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowOne"]
+layout_mode = 2
+custom_minimum_size = Vector2(60, 28)
+theme_override_font_sizes/font_size = 24
+text = "1-4"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ChipRow" type="HFlowContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowOne"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 3
+
+[node name="DamageChip" type="Label" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowOne/ChipRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(66, 28)
+theme_override_font_sizes/font_size = 24
+text = "DMG 7"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RollChip" type="Label" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowOne/ChipRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(66, 28)
+theme_override_font_sizes/font_size = 22
+text = "D6 -1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PreviewRowTwo" type="HBoxContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RangeLabel" type="Label" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowTwo"]
+layout_mode = 2
+custom_minimum_size = Vector2(60, 28)
+theme_override_font_sizes/font_size = 22
+text = "5-10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ChipRow" type="HFlowContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowTwo"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 3
+
+[node name="ShieldChip" type="Label" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowTwo/ChipRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(66, 28)
+theme_override_font_sizes/font_size = 22
+text = "SH 8"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TargetChip" type="Label" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin/DiceChart/PreviewRowTwo/ChipRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(56, 28)
+theme_override_font_sizes/font_size = 22
+text = "T"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="NameLabel" type="Label" parent="CardFrame/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+theme_override_font_sizes/font_size = 30
+text = "Pulse Tech"
+
+[node name="TargetLabel" type="Label" parent="CardFrame/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+modulate = Color(0.66, 0.74, 0.84, 0.92)
+text = "Target: Rift Macaque"
+
+[node name="HPLabel" type="Label" parent="CardFrame/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "40/40"
+
+[node name="HPRow" type="HBoxContainer" parent="CardFrame/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="HPBar" type="ProgressBar" parent="CardFrame/Margin/VBox/HPRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 34)
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="HPSpacer" type="Control" parent="CardFrame/Margin/VBox/HPRow"]
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(44, 0)
+
+[node name="XPBar" type="ProgressBar" parent="CardFrame/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="ContentRow" type="HBoxContainer" parent="CardFrame/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="InfoColumn" type="VBoxContainer" parent="CardFrame/Margin/VBox/ContentRow"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="StatusTitle" type="Label" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+modulate = Color(0.66, 0.74, 0.84, 0.92)
+text = "Status"
+
+[node name="StatusEffects" type="HFlowContainer" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="ShieldBadge" type="Label" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn/StatusEffects"]
+layout_mode = 2
+custom_minimum_size = Vector2(84, 32)
+theme_override_font_sizes/font_size = 22
+text = "SH 8"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RollBadge" type="Label" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn/StatusEffects"]
+layout_mode = 2
+custom_minimum_size = Vector2(84, 32)
+theme_override_font_sizes/font_size = 22
+text = "ROLL-1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GearTitle" type="Label" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+modulate = Color(0.66, 0.74, 0.84, 0.92)
+text = "Gear"
+
+[node name="GearSlots" type="HFlowContainer" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="GearBadge" type="Label" parent="CardFrame/Margin/VBox/ContentRow/InfoColumn/GearSlots"]
+layout_mode = 2
+custom_minimum_size = Vector2(84, 32)
+theme_override_font_sizes/font_size = 22
+text = "Volt Rig"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PortraitMargin" type="MarginContainer" parent="CardFrame/Margin/VBox/ContentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.5
+theme_override_constants/margin_right = 10
+
+[node name="PortraitAspect" type="AspectRatioContainer" parent="CardFrame/Margin/VBox/ContentRow/PortraitMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+ratio = 1.0
+alignment_horizontal = 2
+alignment_vertical = 2
+
+[node name="PortraitFrame" type="PanelContainer" parent="CardFrame/Margin/VBox/ContentRow/PortraitMargin/PortraitAspect"]
+unique_name_in_owner = true
+clip_contents = true
+layout_mode = 2
+
+[node name="Portrait" type="TextureRect" parent="CardFrame/Margin/VBox/ContentRow/PortraitMargin/PortraitAspect/PortraitFrame"]
+unique_name_in_owner = true
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+texture = ExtResource("2_j6a1q")
+
+[node name="ClickButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+flat = true
+text = ""
+
+[node name="TooltipPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+offset_left = -6.0
+offset_top = -140.0
+offset_right = 194.0
+offset_bottom = -8.0
+mouse_filter = 2
+z_as_relative = false
+z_index = 25
+
+[node name="TooltipMargin" type="MarginContainer" parent="TooltipPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="TooltipLabel" type="Label" parent="TooltipPanel/TooltipMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 24
+text = "Pulse Tech\n1-4 Static Ping\n5-10 Guard Pulse\n11-16 Capacitor Net"
+
+[node name="HoldTimer" type="Timer" parent="."]
+wait_time = 0.45
+one_shot = true
+
+[connection signal="button_down" from="ClickButton" to="." method="_on_click_button_down"]
+[connection signal="button_up" from="ClickButton" to="." method="_on_click_button_up"]
+[connection signal="mouse_exited" from="ClickButton" to="." method="_on_click_button_mouse_exited"]
+[connection signal="timeout" from="HoldTimer" to="." method="_on_hold_timer_timeout"]

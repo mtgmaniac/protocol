@@ -1,0 +1,43 @@
+@if (pendingGear(); as g) {
+  <div class="ga-overlay">
+    <div class="ga-title">FIELD EQUIPMENT</div>
+    <p class="ga-sub">Choose a unit to equip this gear. Preview shows current stats and abilities.</p>
+    <div class="ga-gear-card">
+      <span class="ga-card-name">{{ g.name }}</span>
+      <p class="ga-card-desc">{{ g.desc }}</p>
+      <span class="ga-card-r">{{ g.rarity }}</span>
+    </div>
+    <div class="ga-hero-grid">
+      @for (hero of heroes(); track hero.id; let i = $index) {
+        <button
+          type="button"
+          class="ga-hero-card"
+          [class.ga-hero-taken]="heroHasGear(i)"
+          [disabled]="heroHasGear(i)"
+          (click)="assign(i)">
+          <div class="ga-portrait">
+            <app-portrait-frame [svg]="heroSvg(i)" [anchorId]="null" />
+          </div>
+          <div class="ga-hero-meta">
+            <span class="ga-hero-name">{{ hero.name }}</span>
+            <span class="ga-hero-hp">{{ hero.currentHp }} / {{ hero.maxHp }} HP</span>
+            <span class="ga-hero-status" [class.ga-open]="!heroHasGear(i)">
+              {{ heroHasGear(i) ? 'Equipped' : 'Open slot' }}
+            </span>
+          </div>
+          <div class="ga-hero-abs">
+            @for (ab of hero.abilities; track ab.name) {
+              <app-ability-row
+                [ability]="ab"
+                [zone]="ab.zone"
+                [rangeStr]="rangeStr(ab)"
+                [isCurrent]="false"
+                [highlightLocked]="false"
+                [tier]="hero.tier" />
+            }
+          </div>
+        </button>
+      }
+    </div>
+  </div>
+}

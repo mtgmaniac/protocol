@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overload Protocol — Mobile Landscape Mockups</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg:       #06080d;
+    --bg2:      #0c1018;
+    --bg3:      #121a28;
+    --border:   #2a3d5c;
+    --border2:  #3d5680;
+    --text:     #b8cad8;
+    --chip:     #d0e2f0;
+    --muted:    #5a6e88;
+    --build:    #2eb87a;
+    --strike:   #4a9eef;
+    --power:    #d4943a;
+    --over:     #e85a3a;
+    --cell:     #d4a84a;
+    --hg:       #3edc7a;
+    --hr:       #f05858;
+    --teal:     #28dcc8;
+    --mono: 'Share Tech Mono', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #000;
+    font-family: var(--mono);
+    color: var(--text);
+  }
+
+  /* ─── Page wrapper ─── */
+  .page { display:flex; flex-direction:column; gap:32px; padding:24px; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  /* ─── Phone frame ─── */
+  .phone-frame {
+    position: relative;
+    width: 667px;
+    height: 375px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px #111, 0 8px 32px rgba(0,0,0,0.8);
+    flex-shrink: 0;
+  }
+  .phone-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ════════════════════════════════════════════
+     MOCKUP 1 — ARENA: Left enemies | Center action | Right heroes
+  ════════════════════════════════════════════ */
+  .m1 {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    display: grid;
+    grid-template-columns: 195px 1fr 195px;
+    grid-template-rows: 1fr;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ── Left/Right zones ── */
+  .m1-zone {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .m1-zone-header {
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 5px 7px 4px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .m1-zone-header .dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+  .m1-unit-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 5px;
+    overflow: hidden;
+  }
+
+  /* ── Mini unit card (horizontal layout) ── */
+  .mini-card {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    overflow: hidden;
+    min-height: 0;
+  }
+  .mini-card.dead { opacity: 0.28; }
+  .mini-card.selectable {
+    box-shadow: inset 0 0 0 1px rgba(232,90,58,0.6), 2px 2px 0 rgba(0,0,0,0.5);
+  }
+
+  /* Portrait thumb */
+  .mini-portrait {
+    width: 44px;
+    flex-shrink: 0;
+    background: var(--bg3);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .mini-portrait svg { width:32px; height:32px; opacity:0.7; }
+  .mini-portrait .zone-pip {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 7px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 1px 3px;
+    background: rgba(0,0,0,0.7);
+  }
+
+  /* Card body */
+  .mini-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4px 5px;
+    gap: 2px;
+  }
+  .mini-name {
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+  }
+  .mini-ability {
+    font-size: 7px;
+    color: var(--chip);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  .mini-target {
+    font-size: 7px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+  }
+  .mini-target .tgt-enemy { color: #e07060; }
+  .mini-target .tgt-self  { color: #7dcea0; }
+  .mini-target .tgt-ally  { color: var(--build); }
+
+  /* HP bar */
+  .mini-hp {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .mini-hp-bar {
+    flex: 1;
+    height: 4px;
+    background: #0a0e14;
+    border: 1px solid #000;
+    overflow: hidden;
+  }
+  .mini-hp-fill { height:100%; }
+  .mini-hp-val {
+    font-size: 7px;
+    color: var(--chip);
+    white-space: nowrap;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* Die badge on portrait */
+  .mini-die-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 14px;
+    height: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--cell);
+    line-height: 1;
+  }
+
+  /* Hero card right side — additional status col */
+  .mini-right {
+    width: 28px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 3px 2px;
+    gap: 3px;
+    background: rgba(0,0,0,0.15);
+  }
+  .mini-shield-badge {
+    font-size: 7px;
+    color: var(--strike);
+    text-align: center;
+    line-height: 1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:1px;
+  }
+  .mini-shield-badge svg { width:8px; height:8px; }
+  .mini-gear-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    background: var(--teal);
+    opacity: 0.7;
+  }
+  .mini-protocol-badge {
+    font-size: 7px;
+    color: var(--cell);
+    line-height: 1;
+  }
+
+  /* ── Center action strip ── */
+  .m1-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 6px 6px 8px;
+    gap: 4px;
+    overflow: hidden;
+  }
+  .m1-header-strip {
+    width: 100%;
+    text-align: center;
+    font-size: 7px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    flex-shrink: 0;
+  }
+  .m1-battle-num {
+    color: var(--chip);
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .m1-dice-section {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .dice-section-label {
+    font-size: 7px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .dice-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    justify-content: center;
+  }
+  .die-row {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* Die widget */
+  .die {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .die.zone-recharge { border-color: #4a6040; color: var(--cell); }
+  .die.zone-strike   { border-color: #2a4880; color: var(--strike); }
+  .die.zone-surge    { border-color: #1a6040; color: var(--build); }
+  .die.zone-crit     { border-color: #805020; color: var(--power); }
+  .die.zone-overload { border-color: #802010; color: var(--over); }
+  .die-label {
+    position: absolute;
+    bottom: -1px;
+    right: 1px;
+    font-size: 6px;
+    color: var(--muted);
+    line-height: 1;
+  }
+
+  .m1-divider {
+    width: 80%;
+    height: 1px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .m1-protocol {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--cell);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .m1-protocol svg { width:12px; height:12px; }
+  .protocol-pips {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
+  }
+  .pip {
+    width: 6px;
+    height: 6px;
+    background: var(--cell);
+    opacity: 0.7;
+  }
+  .pip.empty { background: #1a2030; opacity: 1; border: 1px solid #2a3040; }
+
+  .btn-end-turn {
+    width: 100%;
+    padding: 8px 4px;
+    background: var(--strike);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .m1-log {
+    width: 100%;
+    font-size: 7px;
+    color: var(--muted);
+    line-height: 1.4;
+    overflow: hidden;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 3px;
+  }
+  .m1-log span { color: var(--chip); }
+
+  /* Zone colors */
+  .zone-recharge { color: var(--cell); }
+  .zone-strike   { color: var(--strike); }
+  .zone-surge    { color: var(--build); }
+  .zone-crit     { color: var(--power); }
+  .zone-overload { color: var(--over); }
+
+  /* ─── HP fill colors by % ─── */
+  .hp-high  { background: var(--hg); }
+  .hp-mid   { background: var(--power); }
+  .hp-low   { background: var(--hr); }
+
+
+  /* ════════════════════════════════════════════
+     MOCKUP 2 — STACKED: Enemies top | Slim action bar | Heroes bottom
+  ════════════════════════════════════════════ */
+  .m2 {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    display: grid;
+    grid-template-rows: 1fr auto 1fr;
+    overflow: hidden;
+  }
+
+  /* ── Shared zone rows ── */
+  .m2-zone {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .m2-zone-header {
+    font-size: 7px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 4px 8px 3px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .m2-unit-row {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    padding: 5px 6px 4px;
+    overflow: hidden;
+  }
+
+  /* Compact card — vertical layout, narrower */
+  .compact-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    overflow: hidden;
+    min-width: 0;
+  }
+  .compact-card.selectable {
+    box-shadow: inset 0 0 0 1px rgba(232,90,58,0.6), 2px 2px 0 rgba(0,0,0,0.5);
+  }
+
+  /* Ability panel on top */
+  .compact-ap {
+    flex-shrink: 0;
+    background: var(--bg);
+    padding: 3px 5px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .compact-ab-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+  }
+  .compact-ab-dot {
+    width: 5px;
+    height: 5px;
+    flex-shrink: 0;
+    border-radius: 1px;
+  }
+  .compact-ab-name {
+    font-size: 7px;
+    color: var(--chip);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.1;
+  }
+  .compact-ab-val {
+    font-size: 7px;
+    font-weight: 700;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  /* Card body */
+  .compact-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 3px 5px;
+    gap: 4px;
+  }
+  .compact-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+  .compact-name {
+    font-size: 8px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+  }
+  .compact-target {
+    font-size: 7px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+  }
+  .compact-target .tgt-enemy { color: #e07060; }
+  .compact-target .tgt-self  { color: #7dcea0; }
+  .compact-hp {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: 1px;
+  }
+  .compact-hp-bar {
+    flex: 1;
+    height: 3px;
+    background: #0a0e14;
+    border: 1px solid #000;
+    overflow: hidden;
+  }
+  .compact-hp-fill { height: 100%; }
+  .compact-hp-val {
+    font-size: 7px;
+    color: var(--chip);
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  /* Portrait column inside compact card */
+  .compact-portrait {
+    width: 36px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+  .compact-portrait svg { width: 28px; height: 28px; opacity: 0.7; }
+  .compact-die {
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .compact-die.zone-surge    { border-color:#1a6040; color:var(--build); }
+  .compact-die.zone-crit     { border-color:#805020; color:var(--power); }
+  .compact-die.zone-overload { border-color:#802010; color:var(--over); }
+  .compact-die.zone-strike   { border-color:#2a4880; color:var(--strike); }
+  .compact-die.zone-recharge { border-color:#4a6040; color:var(--cell); }
+
+  /* ── Center action bar ── */
+  .m2-action {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    border-top: 2px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    padding: 0 8px;
+    gap: 8px;
+    height: 52px;
+  }
+
+  .m2-protocol-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .m2-protocol-label {
+    font-size: 7px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .m2-protocol-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cell);
+    line-height: 1;
+  }
+  .m2-protocol-pips {
+    display: flex;
+    gap: 2px;
+  }
+  .m2-protocol-pips .pip { width:5px; height:5px; }
+
+  .btn-m2-endturn {
+    flex: 1;
+    max-width: 200px;
+    padding: 10px 8px;
+    background: var(--strike);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    line-height: 1;
+  }
+
+  .m2-action-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .m2-action-btn {
+    font-size: 7px;
+    color: var(--muted);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 3px 6px;
+    font-family: var(--mono);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .m2-log-strip {
+    font-size: 7px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    line-height: 1;
+  }
+  .m2-log-strip span { color: var(--chip); }
+
+  /* ── Enemy dice indicator row ── */
+  .m2-enemy-dice {
+    display: flex;
+    gap: 3px;
+    padding: 0 6px 4px;
+    flex-shrink: 0;
+  }
+  .m2-enemy-die {
+    flex: 1;
+    height: 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--over);
+  }
+
+  /* ─────── Shared helpers ─────── */
+  .enemy-border  { border-color: #5a1a1a !important; }
+  .enemy-name-color { color: #f08080; }
+
+  /* Scrollbar hide */
+  ::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══════════ MOCKUP 1 ═══════════ -->
+  <div>
+    <div class="section-label">Mockup 1 — Arena View (enemies left · action center · heroes right)</div>
+    <div class="phone-frame">
+      <div class="m1">
+
+        <!-- LEFT: Enemies -->
+        <div class="m1-zone">
+          <div class="m1-zone-header">
+            <div class="dot" style="background:var(--over)"></div>
+            <span>Enemies</span>
+            <span style="color:var(--muted);margin-left:auto;font-size:7px">Battle 3 / 10</span>
+          </div>
+          <div class="m1-unit-stack">
+
+            <!-- Enemy 1 -->
+            <div class="mini-card enemy-border selectable">
+              <div class="mini-portrait">
+                <svg viewBox="0 0 32 32" fill="none"><rect x="10" y="4" width="12" height="14" rx="1" fill="#c03030" opacity=".7"/><rect x="8" y="18" width="16" height="10" rx="1" fill="#902020" opacity=".6"/><rect x="7" y="8" width="4" height="6" fill="#c03030" opacity=".5"/><rect x="21" y="8" width="4" height="6" fill="#c03030" opacity=".5"/><rect x="13" y="8" width="3" height="3" fill="#ff8080"/><rect x="17" y="8" width="3" height="3" fill="#ff8080"/></svg>
+                <div class="die-badge zone-overload" style="position:absolute;top:3px;right:3px;width:14px;height:14px;background:var(--bg);border:1px solid #802010;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--over);">20</div>
+                <div class="zone-pip zone-overload">OVER</div>
+              </div>
+              <div class="mini-body">
+                <div class="mini-name enemy-name-color">Veil Warden</div>
+                <div class="mini-ability zone-overload">▸ Neural Crush — 24 dmg</div>
+                <div class="mini-target"><span class="tgt-enemy">→ Pulse Tech</span></div>
+                <div class="mini-hp">
+                  <div class="mini-hp-bar"><div class="mini-hp-fill hp-mid" style="width:58%"></div></div>
+                  <div class="mini-hp-val">21/36</div>
+                </div>
+              </div>
+              <div class="mini-right">
+                <div class="mini-shield-badge">
+                  <svg viewBox="0 0 8 8" fill="none"><path d="M4 1 L7 2.5 L7 5 L4 7 L1 5 L1 2.5 Z" fill="none" stroke="var(--strike)" stroke-width="1"/></svg>
+                  <span>8</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Enemy 2 -->
+            <div class="mini-card enemy-border">
+              <div class="mini-portrait">
+                <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="12" r="8" fill="#803060" opacity=".6"/><rect x="9" y="20" width="14" height="9" rx="1" fill="#602050" opacity=".6"/><rect x="13" y="9" width="3" height="3" fill="#ff60a0"/><rect x="17" y="9" width="3" height="3" fill="#ff60a0"/></svg>
+                <div class="die-badge zone-crit" style="position:absolute;top:3px;right:3px;width:14px;height:14px;background:var(--bg);border:1px solid #805020;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--power);">17</div>
+                <div class="zone-pip zone-crit">CRIT</div>
+              </div>
+              <div class="mini-body">
+                <div class="mini-name enemy-name-color">Veil Acolyte</div>
+                <div class="mini-ability zone-crit">▸ Void Siphon — 15 dmg +3 DoT</div>
+                <div class="mini-target"><span class="tgt-enemy">→ Medic</span></div>
+                <div class="mini-hp">
+                  <div class="mini-hp-bar"><div class="mini-hp-fill hp-high" style="width:85%"></div></div>
+                  <div class="mini-hp-val">28/33</div>
+                </div>
+              </div>
+              <div class="mini-right"></div>
+            </div>
+
+            <!-- Enemy 3 — dead -->
+            <div class="mini-card enemy-border dead">
+              <div class="mini-portrait">
+                <svg viewBox="0 0 32 32" fill="none"><rect x="10" y="6" width="12" height="12" rx="1" fill="#604030" opacity=".5"/><rect x="8" y="18" width="16" height="10" rx="1" fill="#402820" opacity=".4"/></svg>
+                <div class="zone-pip" style="color:var(--muted)">DEAD</div>
+              </div>
+              <div class="mini-body">
+                <div class="mini-name" style="color:var(--muted)">Shardmite</div>
+                <div class="mini-ability" style="color:var(--muted)">Defeated</div>
+                <div class="mini-hp">
+                  <div class="mini-hp-bar"><div class="mini-hp-fill hp-low" style="width:0%"></div></div>
+                  <div class="mini-hp-val" style="color:var(--muted)">0/14</div>
+                </div>
+              </div>
+              <div class="mini-right"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CENTER: Action -->
+        <div class="m1-center">
+          <div class="m1-header-strip">
+            <span class="m1-battle-num">ROUND 4</span>
+          </div>
+
+          <div class="m1-dice-section">
+            <div class="dice-section-label">Enemy Dice</div>
+            <div class="die-row">
+              <div class="die zone-overload">20<span class="die-label">WD</span></div>
+              <div class="die zone-crit">17<span class="die-label">VA</span></div>
+              <div class="die" style="opacity:0.3;color:var(--muted)">—</div>
+            </div>
+
+            <div class="m1-divider"></div>
+
+            <div class="dice-section-label">Hero Dice</div>
+            <div class="die-row">
+              <div class="die zone-surge">13<span class="die-label">PT</span></div>
+              <div class="die zone-overload">19<span class="die-label">BK</span></div>
+              <div class="die zone-strike">7<span class="die-label">MD</span></div>
+            </div>
+          </div>
+
+          <div style="width:100%;display:flex;flex-direction:column;gap:3px;align-items:center;flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--cell);font-weight:700;flex-shrink:0">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polygon points="5,1 9,4 7.5,9 2.5,9 1,4" fill="none" stroke="var(--cell)" stroke-width="1"/></svg>
+              PROTOCOL: 4
+            </div>
+            <div class="protocol-pips">
+              <div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div>
+              <div class="pip empty"></div><div class="pip empty"></div><div class="pip empty"></div><div class="pip empty"></div>
+              <div class="pip empty"></div><div class="pip empty"></div>
+            </div>
+          </div>
+
+          <button class="btn-end-turn">END TURN</button>
+
+          <div class="m1-log">
+            ▸ <span>Pulse Tech</span> fires Cryo Surge — 18 dmg<br>
+            ▸ <span>Breaker</span> lands OVERLOAD Blast
+          </div>
+        </div>
+
+        <!-- RIGHT: Heroes -->
+        <div class="m1-zone">
+          <div class="m1-zone-header">
+            <div class="dot" style="background:var(--build)"></div>
+            <span>Squad</span>
+            <span style="color:var(--muted);margin-left:auto;font-size:7px">Items: 2/3</span>
+          </div>
+          <div class="m1-unit-stack">
+
+            <!-- Hero 1 -->
+            <div class="mini-card" style="border-color:#1a4a6a">
+              <div class="mini-portrait" style="background:#0a1420">
+                <svg viewBox="0 0 32 32" fill="none"><rect x="11" y="3" width="10" height="13" rx="1" fill="#2a6090" opacity=".8"/><rect x="9" y="16" width="14" height="12" rx="1" fill="#1a5080" opacity=".7"/><rect x="7" y="8" width="4" height="5" fill="#3a80b0" opacity=".6"/><rect x="21" y="8" width="4" height="5" fill="#3a80b0" opacity=".6"/><rect x="13" y="7" width="3" height="3" fill="#80d0ff"/><rect x="17" y="7" width="3" height="3" fill="#80d0ff"/></svg>
+                <div class="die-badge zone-surge" style="position:absolute;top:3px;right:3px;width:14px;height:14px;background:var(--bg);border:1px solid #1a6040;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--build);">13</div>
+                <div class="zone-pip zone-surge">SURGE</div>
+              </div>
+              <div class="mini-body">
+                <div class="mini-name">Pulse Tech</div>
+                <div class="mini-ability zone-surge">▸ Cryo Surge — 18 dmg +2 DoT</div>
+                <div class="mini-target"><span class="tgt-enemy">→ Veil Warden</span></div>
+                <div class="mini-hp">
+                  <div class="mini-hp-bar"><div class="mini-hp-fill hp-high" style="width:78%"></div></div>
+                  <div class="mini-hp-val">14/18</div>
+                </div>
+              </div>
+              <div class="mini-right">
+                <div class="mini-gear-dot" title="Neural Splice"></div>
+                <div style="font-size:6px;color:var(--teal);line-height:1;text-align:center">+2<br>ROLL</div>
+              </div>
+            </div>
+
+            <!-- Hero 2 -->
+            <div class="mini-card" style="border-color:#1a4a6a">
+              <div class="mini-portrait" style="background:#0a1420">
+                <svg viewBox="0 0 32 32" fill="none"><rect x="9" y="3" width="14" height="14" rx="1" fill="#305020" opacity=".8"/><rect x="7" y="17" width="18" height="12" rx="1" fill="#203a18" opacity=".7"/><rect x="13" y="8" width="3" height="3" fill="#80ff80"/><rect x="17" y="8" width="3" height="3" fill="#80ff80"/><rect x="10" y="22" width="5" height="5" fill="#305020" opacity=".6"/><rect x="17" y="22" width="5" height="5" fill="#305020" opacity=".6"/></svg>
+                <div class="die-badge zone-overload" style="position:absolute;top:3px;right:3px;width:14px;height:14px;background:var(--bg);border:1px solid #802010;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--over);">19</div>
+                <div class="zone-pip zone-overload">OVER</div>
+              </div>
+              <div class="mini-body">
+                <div class="mini-name">Breaker</div>
+                <div class="mini-ability zone-overload">▸ Overload Blast — 32 dmg</div>
+                <div class="mini-target"><span class="tgt-enemy">→ Veil Acolyte</span></div>
+                <div class="mini-hp">
+                  <div class="mini-hp-bar"><div class="mini-hp-fill hp-mid" style="width:50%"></div></div>
+                  <div class="mini-hp-val">11/22</div>
+                </div>
+              </div>
+              <div class="mini-right">
+                <div class="mini-shield-badge">
+                  <svg viewBox="0 0 8 8" fill="none"><path d="M4 1 L7 2.5 L7 5 L4 7 L1 5 L1 2.5 Z" fill="none" stroke="var(--strike)" stroke-width="1"/></svg>
+                  <span>5</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hero 3 -->
+            <div class="mini-card" style="border-color:#1a4a6a">
+              <div class="mini-portrait" style="background:#0a1420">
+                <svg viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="11" rx="7" ry="8" fill="#602080" opacity=".7"/><rect x="9" y="19" width="14" height="11" rx="1" fill="#401860" opacity=".6"/><rect x="13" y="8" width="3" height="3" fill="#d080ff"/><rect x="17" y="8" width="3" height="3" fill="#d080ff"/></svg>
+                <div class="die-badge zone-strike" style="position:absolute;top:3px;right:3px;width:14px;height:14px;background:var(--bg);border:1px solid #2a4880;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--strike);">7</div>
+                <div class="zone-pip zone-strike">STRIKE</div>
+              </div>
+              <div class="mini-body">
+                <div class="mini-name">Field Medic</div>
+                <div class="mini-ability zone-strike">▸ Triage Pulse — heal 8</div>
+                <div class="mini-target"><span class="tgt-ally">→ Breaker (lowest HP)</span></div>
+                <div class="mini-hp">
+                  <div class="mini-hp-bar"><div class="mini-hp-fill hp-high" style="width:90%"></div></div>
+                  <div class="mini-hp-val">18/20</div>
+                </div>
+              </div>
+              <div class="mini-right">
+                <div class="mini-protocol-badge">⬡+1</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /m1 -->
+    </div><!-- /phone-frame -->
+  </div>
+
+  <!-- ═══════════ MOCKUP 2 ═══════════ -->
+  <div>
+    <div class="section-label">Mockup 2 — Stacked Compact (enemies top · slim action bar · heroes bottom)</div>
+    <div class="phone-frame">
+      <div class="m2">
+
+        <!-- TOP: Enemies -->
+        <div class="m2-zone">
+          <div class="m2-zone-header">
+            <span style="color:var(--over)">▲ Enemies</span>
+            <span style="color:var(--muted)">Battle 7 · Hive</span>
+          </div>
+          <div class="m2-unit-row">
+
+            <!-- Enemy 1 -->
+            <div class="compact-card enemy-border selectable">
+              <div class="compact-ap">
+                <div class="compact-ab-row">
+                  <div class="compact-ab-dot" style="background:var(--over)"></div>
+                  <div class="compact-ab-name zone-overload">Acid Spray</div>
+                  <div class="compact-ab-val zone-over" style="color:var(--over)">18+DoT</div>
+                </div>
+              </div>
+              <div class="compact-body">
+                <div class="compact-info">
+                  <div class="compact-name enemy-name-color">Brood Mother</div>
+                  <div class="compact-target"><span class="tgt-enemy">→ Ghost</span></div>
+                  <div class="compact-hp">
+                    <div class="compact-hp-bar"><div class="compact-hp-fill hp-mid" style="width:45%"></div></div>
+                    <div class="compact-hp-val">16/36</div>
+                  </div>
+                </div>
+                <div class="compact-portrait">
+                  <svg viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="9" ry="10" fill="#804020" opacity=".6"/><rect x="8" y="21" width="16" height="8" rx="1" fill="#603020" opacity=".5"/><rect x="4" y="12" width="5" height="3" fill="#804020" opacity=".5"/><rect x="23" y="12" width="5" height="3" fill="#804020" opacity=".5"/><rect x="4" y="17" width="4" height="3" fill="#804020" opacity=".4"/><rect x="24" y="17" width="4" height="3" fill="#804020" opacity=".4"/><rect x="13" y="9" width="3" height="3" fill="#ff8040"/><rect x="17" y="9" width="3" height="3" fill="#ff8040"/></svg>
+                  <div class="compact-die zone-overload">18</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Enemy 2 -->
+            <div class="compact-card enemy-border">
+              <div class="compact-ap">
+                <div class="compact-ab-row">
+                  <div class="compact-ab-dot" style="background:var(--power)"></div>
+                  <div class="compact-ab-name zone-crit">Bite</div>
+                  <div class="compact-ab-val" style="color:var(--power)">14 dmg</div>
+                </div>
+              </div>
+              <div class="compact-body">
+                <div class="compact-info">
+                  <div class="compact-name enemy-name-color">Hive Stalker</div>
+                  <div class="compact-target"><span class="tgt-enemy">→ Warden</span></div>
+                  <div class="compact-hp">
+                    <div class="compact-hp-bar"><div class="compact-hp-fill hp-high" style="width:75%"></div></div>
+                    <div class="compact-hp-val">21/28</div>
+                  </div>
+                </div>
+                <div class="compact-portrait">
+                  <svg viewBox="0 0 32 32" fill="none"><rect x="10" y="6" width="12" height="14" rx="1" fill="#205840" opacity=".7"/><rect x="8" y="20" width="16" height="9" rx="1" fill="#184030" opacity=".6"/><rect x="5" y="10" width="5" height="3" fill="#205840" opacity=".5"/><rect x="22" y="10" width="5" height="3" fill="#205840" opacity=".5"/><rect x="13" y="9" width="3" height="3" fill="#40ff80"/><rect x="17" y="9" width="3" height="3" fill="#40ff80"/></svg>
+                  <div class="compact-die zone-crit">16</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Enemy 3 -->
+            <div class="compact-card enemy-border">
+              <div class="compact-ap">
+                <div class="compact-ab-row">
+                  <div class="compact-ab-dot" style="background:var(--strike)"></div>
+                  <div class="compact-ab-name zone-strike">Chittering Rush</div>
+                  <div class="compact-ab-val" style="color:var(--strike)">9 dmg</div>
+                </div>
+              </div>
+              <div class="compact-body">
+                <div class="compact-info">
+                  <div class="compact-name enemy-name-color">Skitter Drone</div>
+                  <div class="compact-target"><span class="tgt-enemy">→ Warden</span></div>
+                  <div class="compact-hp">
+                    <div class="compact-hp-bar"><div class="compact-hp-fill hp-low" style="width:20%"></div></div>
+                    <div class="compact-hp-val">3/16</div>
+                  </div>
+                </div>
+                <div class="compact-portrait">
+                  <svg viewBox="0 0 32 32" fill="none"><rect x="12" y="8" width="8" height="10" rx="1" fill="#304828" opacity=".7"/><rect x="10" y="18" width="12" height="8" rx="1" fill="#283820" opacity=".6"/><rect x="6" y="11" width="6" height="2" fill="#304828" opacity=".5"/><rect x="20" y="11" width="6" height="2" fill="#304828" opacity=".5"/><rect x="6" y="14" width="5" height="2" fill="#304828" opacity=".4"/><rect x="21" y="14" width="5" height="2" fill="#304828" opacity=".4"/><rect x="13" y="10" width="2" height="2" fill="#80c040"/><rect x="17" y="10" width="2" height="2" fill="#80c040"/></svg>
+                  <div class="compact-die zone-strike">8</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CENTER: Action bar -->
+        <div class="m2-action">
+          <div class="m2-protocol-block">
+            <div class="m2-protocol-label">Protocol</div>
+            <div class="m2-protocol-val">⬡ 6</div>
+            <div class="m2-protocol-pips">
+              <div class="pip"></div><div class="pip"></div><div class="pip"></div>
+              <div class="pip"></div><div class="pip"></div><div class="pip"></div>
+              <div class="pip empty"></div><div class="pip empty"></div>
+              <div class="pip empty"></div><div class="pip empty"></div>
+            </div>
+          </div>
+
+          <button class="btn-m2-endturn">END TURN</button>
+
+          <div class="m2-action-right">
+            <button class="m2-action-btn">↺ REROLL  3⬡</button>
+            <button class="m2-action-btn">+1 NUDGE  1⬡</button>
+            <div class="m2-log-strip">▸ <span>Hive Stalker</span> bites Ghost…</div>
+          </div>
+        </div>
+
+        <!-- BOTTOM: Heroes -->
+        <div class="m2-zone">
+          <div class="m2-zone-header">
+            <span style="color:var(--build)">▼ Squad</span>
+            <span style="color:var(--muted)">Round 5 · Items 1/3</span>
+          </div>
+          <div class="m2-unit-row">
+
+            <!-- Hero 1 -->
+            <div class="compact-card" style="border-color:#1a4a6a">
+              <div class="compact-ap" style="border-bottom-color:#1a3050">
+                <div class="compact-ab-row">
+                  <div class="compact-ab-dot" style="background:var(--over)"></div>
+                  <div class="compact-ab-name zone-overload">Null Field</div>
+                  <div class="compact-ab-val" style="color:var(--over)">28 dmg</div>
+                </div>
+              </div>
+              <div class="compact-body">
+                <div class="compact-info">
+                  <div class="compact-name">Ghost</div>
+                  <div class="compact-target"><span class="tgt-enemy">→ Brood Mother</span></div>
+                  <div class="compact-hp">
+                    <div class="compact-hp-bar"><div class="compact-hp-fill hp-low" style="width:35%"></div></div>
+                    <div class="compact-hp-val">7/20</div>
+                  </div>
+                </div>
+                <div class="compact-portrait">
+                  <svg viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="12" rx="7" ry="9" fill="#1a3050" opacity=".8"/><rect x="9" y="20" width="14" height="10" rx="1" fill="#142440" opacity=".7"/><rect x="13" y="8" width="3" height="3" fill="#60a8e0"/><rect x="17" y="8" width="3" height="3" fill="#60a8e0"/></svg>
+                  <div class="compact-die zone-overload">20</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hero 2 -->
+            <div class="compact-card" style="border-color:#1a4a6a">
+              <div class="compact-ap" style="border-bottom-color:#1a3050">
+                <div class="compact-ab-row">
+                  <div class="compact-ab-dot" style="background:var(--build)"></div>
+                  <div class="compact-ab-name zone-surge">Iron Shell</div>
+                  <div class="compact-ab-val" style="color:var(--build)">+10 shld</div>
+                </div>
+              </div>
+              <div class="compact-body">
+                <div class="compact-info">
+                  <div class="compact-name">Warden</div>
+                  <div class="compact-target"><span class="tgt-self">→ Self</span></div>
+                  <div class="compact-hp">
+                    <div class="compact-hp-bar"><div class="compact-hp-fill hp-mid" style="width:60%"></div></div>
+                    <div class="compact-hp-val">15/25</div>
+                  </div>
+                </div>
+                <div class="compact-portrait">
+                  <svg viewBox="0 0 32 32" fill="none"><rect x="9" y="4" width="14" height="15" rx="1" fill="#2a4870" opacity=".8"/><rect x="7" y="19" width="18" height="10" rx="1" fill="#1a3860" opacity=".7"/><rect x="5" y="8" width="4" height="8" fill="#2a4870" opacity=".6"/><rect x="23" y="8" width="4" height="8" fill="#2a4870" opacity=".6"/><rect x="13" y="8" width="3" height="3" fill="#80b0ff"/><rect x="17" y="8" width="3" height="3" fill="#80b0ff"/></svg>
+                  <div class="compact-die zone-surge">13</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hero 3 -->
+            <div class="compact-card" style="border-color:#1a4a6a">
+              <div class="compact-ap" style="border-bottom-color:#1a3050">
+                <div class="compact-ab-row">
+                  <div class="compact-ab-dot" style="background:var(--strike)"></div>
+                  <div class="compact-ab-name zone-strike">Nano Repair</div>
+                  <div class="compact-ab-val" style="color:var(--strike)">heal 10</div>
+                </div>
+              </div>
+              <div class="compact-body">
+                <div class="compact-info">
+                  <div class="compact-name">Engineer</div>
+                  <div class="compact-target"><span class="tgt-ally">→ Ghost (lowest HP)</span></div>
+                  <div class="compact-hp">
+                    <div class="compact-hp-bar"><div class="compact-hp-fill hp-high" style="width:88%"></div></div>
+                    <div class="compact-hp-val">20/23</div>
+                  </div>
+                </div>
+                <div class="compact-portrait">
+                  <svg viewBox="0 0 32 32" fill="none"><rect x="10" y="5" width="12" height="13" rx="1" fill="#284840" opacity=".8"/><rect x="8" y="18" width="16" height="11" rx="1" fill="#1c3830" opacity=".7"/><rect x="13" y="9" width="3" height="3" fill="#60d0a0"/><rect x="17" y="9" width="3" height="3" fill="#60d0a0"/><rect x="22" y="16" width="6" height="3" fill="#284840" opacity=".5"/></svg>
+                  <div class="compact-die zone-strike">9</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /m2 -->
+    </div><!-- /phone-frame -->
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>

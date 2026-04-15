@@ -1,0 +1,77 @@
+<div
+  class="ap-row"
+  [class.cur]="isCurrent()"
+  [class.ap-row-muted]="dimInactive()"
+  [attr.aria-label]="abilityAriaLabel()">
+  <span class="az az-neutral" [opTooltip]="rangeTooltip()">{{ rangeLabel() }}</span>
+  <span class="ae ae-mini-row">
+    @for (tok of miniTokens(); track $index) {
+      <span [class]="miniRowClass(tok)" [opTooltip]="tok.tooltip">
+        @if (tok.icon) {
+          @switch (tok.icon) {
+          @case ('bolt') {
+            <svg class="ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/>
+            </svg>
+          }
+          @case ('plus') {
+            <svg class="ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M11 5h2v14h-2zM5 11h14v2H5z" fill="currentColor" opacity=".9"/>
+            </svg>
+          }
+          @case ('shield') {
+            <svg class="ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".25"/>
+              <path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" opacity=".9" fill="none"/>
+            </svg>
+          }
+          @case ('skull') {
+            <svg class="ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3c4.4 0 8 3 8 7.2 0 2.5-1.3 4.6-3.3 5.9V20c0 .6-.4 1-1 1h-1v-2h-2v2h-1v-2h-2v2H8.3c-.6 0-1-.4-1-1v-3.9C5.3 14.8 4 12.7 4 10.2 4 6 7.6 3 12 3z" fill="currentColor" opacity=".25"/>
+              <path d="M9.2 10.6c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6zm8.4 0c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6z" fill="currentColor" opacity=".9"/>
+              <path d="M10.2 15.2h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"/>
+            </svg>
+          }
+          @case ('die') {
+            <svg class="ic ic-die" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+              <circle cx="9" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+              <circle cx="9" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+              <circle cx="9" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+              <circle cx="15" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+              <circle cx="15" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+              <circle cx="15" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+            </svg>
+          }
+          @case ('frost') {
+            <svg class="ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2v3.2M12 18.8V22M4.2 6.1l2.8 1.6M17 16.3l2.8 1.6M2 12h3.2M18.8 12H22M4.2 17.9l2.8-1.6M17 7.7l2.8-1.6" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" opacity=".88"/>
+              <path d="M12 8.2c2.1 0 3.8 1.7 3.8 3.8S14.1 15.8 12 15.8 8.2 14.1 8.2 12 9.9 8.2 12 8.2z" fill="currentColor" opacity=".22"/>
+              <path d="M12 9.5c1.4 0 2.5 1.1 2.5 2.5S13.4 14.5 12 14.5 9.5 13.4 9.5 12s1.1-2.5 2.5-2.5z" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".9"/>
+            </svg>
+          }
+          }
+        }
+        @if (tok.label) {
+          <span class="n">{{ tok.label }}</span>
+        }
+        @if (tok.num !== undefined) {
+          <span class="n">{{ tok.num }}</span>
+        }
+        @if (tok.tagSelf) {
+          <span class="ic-tag-letter" aria-hidden="true">S</span>
+        }
+        @if (tok.tagAll) {
+          <span class="ic-tag-letter" aria-hidden="true">A</span>
+        }
+        @if (tok.turns != null && tok.turns > 1) {
+          <svg class="ic ic-clock-inline" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.35" fill="none" opacity=".85"/>
+            <path d="M12 6.75V12l3.25 2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" fill="none" opacity=".9"/>
+          </svg>
+          <span class="n n-turns">{{ tok.turns }}</span>
+        }
+      </span>
+    }
+  </span>
+</div>

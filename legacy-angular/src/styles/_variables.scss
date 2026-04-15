@@ -1,0 +1,31 @@
+:root {
+  /* Readable mono for all UI (chunky borders/shadows stay pixel-style) */
+  --font-pixel: 'Share Tech Mono', monospace;
+  --pixel: 4px;
+
+  --bg: #06080d;
+  --bg2: #0c1018;
+  --bg3: #121a28;
+  --border: #2a3d5c;
+  --border2: #3d5680;
+  --text: #b8cad8;
+  /** Slightly brighter for dense stat chips / ribbons (same family, easier to scan). */
+  --text-chip: #d0e2f0;
+  --muted: #5a6e88;
+  --build: #2eb87a;
+  --build-bg: #0a1f16;
+  --build-dim: #1a8f5c;
+  --strike: #4a9eef;
+  --strike-bg: #0a1422;
+  --power: #d4943a;
+  --power-bg: #1a1208;
+  --overload: #e85a3a;
+  --overload-bg: #1a0c08;
+  --cell: #d4a84a;
+  --cell-bg: #1a140a;
+  --hg: #3edc7a;
+  --hr: #f05858;
+  --bdg-gap: 3px;
+
+  --radius-pixel: 0;
+}

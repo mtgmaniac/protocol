@@ -1,0 +1,76 @@
+.usr {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+.usr--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: 4px;
+}
+.usr--inline .usr-row {
+  flex-shrink: 0;
+  justify-content: flex-start;
+  text-align: left;
+}
+.usr-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  text-align: right;
+}
+.usr-tag {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: var(--hp-label-font-size, 11px);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: var(--radius-pixel);
+  border: 1px solid rgba(140, 175, 215, 0.55);
+  color: var(--text-chip);
+  line-height: 1.25;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+.usr-cower .usr-tag {
+  border-color: rgba(200, 120, 160, 0.55);
+  color: #e8b8d0;
+}
+.usr-cloak .usr-tag {
+  border-color: rgba(120, 180, 220, 0.5);
+  color: #a8d8f0;
+}
+.usr-taunt .usr-tag {
+  border-color: rgba(232, 120, 80, 0.55);
+  color: #f0b090;
+}
+.usr-seal .usr-tag {
+  border-color: rgba(180, 140, 220, 0.5);
+  color: #d0b8e8;
+}
+.usr-rampage .usr-tag {
+  border-color: rgba(220, 60, 60, 0.55);
+  color: #f09088;
+}
+.usr-cursed .usr-tag {
+  border-color: rgba(160, 80, 220, 0.6);
+  color: #c8a0f0;
+}
+.usr-pack .usr-tag {
+  border-color: rgba(200, 150, 40, 0.6);
+  color: #f0cc78;
+}
+.usr-focus .usr-tag {
+  border-color: rgba(60, 210, 200, 0.6);
+  color: #80eee8;
+}

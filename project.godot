@@ -1,0 +1,41 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Overload Protocol"
+run/main_scene="res://scenes/ui/UnitSelect.tscn"
+config/features=PackedStringArray("4.6", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameState="*res://scripts/autoloads/GameState.gd"
+DataManager="*res://scripts/autoloads/DataManager.gd"
+SceneManager="*res://scripts/autoloads/SceneManager.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=2400
+window/size/window_width_override=585
+window/size/window_height_override=1300
+window/handheld/orientation="portrait"
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
+renderer/rendering_method="mobile"

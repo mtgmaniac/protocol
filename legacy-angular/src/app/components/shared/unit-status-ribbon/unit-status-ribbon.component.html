@@ -1,0 +1,19 @@
+@if (lines().length) {
+  <div class="usr" [class.usr--inline]="layout() === 'inline'" role="status">
+    @for (line of lines(); track line.key) {
+      <div
+        class="usr-row"
+        [class.usr-cower]="line.tag === 'COWER'"
+        [class.usr-cloak]="line.tag === 'CLOAK'"
+        [class.usr-taunt]="line.tag === 'TAUNT'"
+        [class.usr-seal]="line.tag === 'SEAL' || line.key === 'counter'"
+        [class.usr-rampage]="line.tag === 'RAMPAGE'"
+        [class.usr-cursed]="line.tag === 'CURSED'"
+        [class.usr-pack]="line.tag === 'PACK'"
+        [class.usr-focus]="line.tag === 'FOCUS'"
+        [opTooltip]="(line.tooltip ?? line.detail) || ''">
+        <span class="usr-tag">{{ line.tag }}</span>
+      </div>
+    }
+  </div>
+}

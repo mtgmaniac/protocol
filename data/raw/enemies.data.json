@@ -1,0 +1,2724 @@
+{
+  "$schema": "../schemas/enemies.data.schema.json",
+  "enemyAbilities": {
+    "scrap": {
+      "recharge": {
+        "name": "ECM Shell",
+        "eff": "8 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 8,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Stab",
+        "eff": "7 dmg",
+        "dmg": 7,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Overcharge",
+        "eff": "10 dmg, 1 DoT",
+        "dmg": 10,
+        "dot": 1,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Overcharge+",
+        "eff": "15 dmg, 2 DoT",
+        "dmg": 15,
+        "dot": 2,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "overload": {
+        "name": "Detonator",
+        "eff": "20 dmg, 3 DoT",
+        "dmg": 20,
+        "dot": 3,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      }
+    },
+    "rust": {
+      "recharge": {
+        "name": "ECM Jam",
+        "eff": "-1 roll, 5 shield",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 5,
+        "shT": 1,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "strike": {
+        "name": "Sparking Cut",
+        "eff": "6 dmg, -1 roll",
+        "dmg": 6,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "surge": {
+        "name": "Disrupt Pulse",
+        "eff": "9 dmg, -1 roll",
+        "dmg": 9,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "crit": {
+        "name": "EMP Spike",
+        "eff": "12 dmg, -2 roll",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      },
+      "overload": {
+        "name": "Total Jam",
+        "eff": "14 dmg, -3 roll",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 1
+      }
+    },
+    "patrol": {
+      "recharge": {
+        "name": "Regroup",
+        "eff": "6 shield, 2t, +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 2,
+        "erb": 1,
+        "erbT": 2
+      },
+      "strike": {
+        "name": "Assault",
+        "eff": "15 dmg, +1 enemy roll",
+        "dmg": 15,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 1
+      },
+      "surge": {
+        "name": "Heavy Barrage",
+        "eff": "18 dmg",
+        "dmg": 18,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Devastate",
+        "eff": "21 dmg, -1 roll, 2t",
+        "dmg": 21,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Annihilate",
+        "eff": "23 dmg, -2 roll, 3t",
+        "dmg": 23,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 3
+      }
+    },
+    "guard": {
+      "recharge": {
+        "name": "Bulwark Link",
+        "eff": "6 shield, 2t, ally 6 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 2,
+        "shieldAlly": 6
+      },
+      "strike": {
+        "name": "Suppressing Fire",
+        "eff": "12 dmg, ally 6 shield, 2t",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 6,
+        "shT": 2
+      },
+      "surge": {
+        "name": "Cover Field",
+        "eff": "11 dmg, ally 9 shield, 2t, all +1 enemy roll",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 9,
+        "shT": 2,
+        "erb": 1,
+        "erbT": 1,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Barrier Burst",
+        "eff": "15 dmg, ally 7 shield, 2t",
+        "dmg": 15,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 7,
+        "shT": 2
+      },
+      "overload": {
+        "name": "Fortress Protocol",
+        "eff": "18 dmg, ally 13 shield, 2t",
+        "dmg": 18,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 13,
+        "shT": 2
+      }
+    },
+    "warden": {
+      "recharge": {
+        "name": "Field Service",
+        "eff": "7 heal, 7 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 7,
+        "rfe": 0,
+        "shield": 7,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Crushing Blow",
+        "eff": "11 dmg",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Sustained Fire",
+        "eff": "11 dmg, 3 DoT, 3t",
+        "dmg": 11,
+        "dot": 3,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Punisher",
+        "eff": "24 dmg, +2 enemy roll, 2t",
+        "dmg": 24,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 2
+      },
+      "overload": {
+        "name": "Execution",
+        "eff": "29 dmg, 6 heal",
+        "dmg": 29,
+        "dot": 0,
+        "dT": 0,
+        "heal": 6,
+        "rfe": 0,
+        "shield": 0
+      }
+    },
+    "volt": {
+      "recharge": {
+        "name": "Grounding",
+        "eff": "—",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "strike": {
+        "name": "Arc Jab",
+        "eff": "9 dmg, 1 DoT, 2t",
+        "dmg": 9,
+        "dot": 1,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Chain Strike",
+        "eff": "11 dmg, 2 DoT, 2t",
+        "dmg": 11,
+        "dot": 2,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Conduction",
+        "eff": "13 dmg, 3 DoT, 2t, all +1 enemy roll, 2t",
+        "dmg": 13,
+        "dot": 3,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Meltdown Arc",
+        "eff": "15 dmg, 4 DoT, 3t",
+        "dmg": 15,
+        "dot": 4,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      }
+    },
+    "boss": {
+      "recharge": {
+        "name": "Shield Matrix",
+        "eff": "22 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 22,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Suppressor",
+        "eff": "19 dmg (P2 26), -2 roll, 2t",
+        "dmg": 19,
+        "dmgP2": 26,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      },
+      "surge": {
+        "name": "Core Blast",
+        "eff": "23 dmg (P2 29), 2 DoT, 2t",
+        "dmg": 23,
+        "dmgP2": 29,
+        "dot": 2,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "System Purge",
+        "eff": "28 dmg (P2 34), -3 roll, 2t",
+        "dmg": 28,
+        "dmgP2": 34,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Annihilate",
+        "eff": "30 dmg (P2 38), wipe shields",
+        "dmg": 30,
+        "dmgP2": 38,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true
+      }
+    },
+    "skitter": {
+      "recharge": {
+        "name": "Burrow Regen",
+        "eff": "5 heal",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 5,
+        "rfe": 0,
+        "shield": 0
+      },
+      "strike": {
+        "name": "Mandible Rake",
+        "eff": "7 dmg, lifesteal 50%",
+        "dmg": 7,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "lifestealPct": 50
+      },
+      "surge": {
+        "name": "Venom Nip",
+        "eff": "9 dmg, 2 DoT",
+        "dmg": 9,
+        "dot": 2,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Blood Frenzy",
+        "eff": "12 dmg, 3 DoT",
+        "dmg": 12,
+        "dot": 3,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "overload": {
+        "name": "Splatter Gland",
+        "eff": "17 dmg, 4 DoT",
+        "dmg": 17,
+        "dot": 4,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      }
+    },
+    "mite": {
+      "recharge": {
+        "name": "Pheromone Surge",
+        "eff": "-1 roll, 3 heal",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 3,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "strike": {
+        "name": "Proboscis Jab",
+        "eff": "6 dmg, -1 roll, lifesteal 40%",
+        "dmg": 6,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1,
+        "lifestealPct": 40
+      },
+      "surge": {
+        "name": "Neural Bite",
+        "eff": "8 dmg, 1 DoT, -1 roll",
+        "dmg": 8,
+        "dot": 1,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "crit": {
+        "name": "Symbiote Spike",
+        "eff": "10 dmg, 2 DoT, -2 roll",
+        "dmg": 10,
+        "dot": 2,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      },
+      "overload": {
+        "name": "Hive Latch",
+        "eff": "11 dmg, 3 DoT, -3 roll",
+        "dmg": 11,
+        "dot": 3,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 1
+      }
+    },
+    "stalker": {
+      "recharge": {
+        "name": "Chitin Regroup",
+        "eff": "6 shield, 2t, +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 2,
+        "erb": 1,
+        "erbT": 2
+      },
+      "strike": {
+        "name": "Spine Lunge",
+        "eff": "14 dmg, lifesteal 45%, +1 enemy roll",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "lifestealPct": 45,
+        "erb": 1,
+        "erbT": 1
+      },
+      "surge": {
+        "name": "Impaler Volley",
+        "eff": "15 dmg, 2 DoT, 3t",
+        "dmg": 15,
+        "dot": 2,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Shredding Spines",
+        "eff": "17 dmg, 3 DoT, 4t, -1 roll, 2t",
+        "dmg": 17,
+        "dot": 3,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Brood Execution",
+        "eff": "19 dmg, 4 DoT, 5t, -2 roll, 3t",
+        "dmg": 19,
+        "dot": 4,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 3
+      }
+    },
+    "carapace": {
+      "recharge": {
+        "name": "Chitin Link",
+        "eff": "6 shield, 2t, ally 6 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 2,
+        "shieldAlly": 6
+      },
+      "strike": {
+        "name": "Ramming Plate",
+        "eff": "11 dmg, ally 6 shield, 2t, lifesteal 50%",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 6,
+        "shT": 2,
+        "lifestealPct": 50
+      },
+      "surge": {
+        "name": "Living Bulwark",
+        "eff": "10 dmg, 2 DoT, 4t, ally 9 shield, 2t, all +1 enemy roll",
+        "dmg": 10,
+        "dot": 2,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 9,
+        "shT": 2,
+        "erb": 1,
+        "erbT": 1,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Carapace Burst",
+        "eff": "13 dmg, 3 DoT, 5t, ally 7 shield, 2t",
+        "dmg": 13,
+        "dot": 3,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 7,
+        "shT": 2
+      },
+      "overload": {
+        "name": "Fortress Beetle",
+        "eff": "16 dmg, 2 DoT, 5t, ally 13 shield, 2t",
+        "dmg": 16,
+        "dot": 2,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 13,
+        "shT": 2
+      }
+    },
+    "brood": {
+      "recharge": {
+        "name": "Nutrient Share",
+        "eff": "7 heal, 7 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 7,
+        "rfe": 0,
+        "shield": 7,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Brood Slam",
+        "eff": "11 dmg, lifesteal 55%",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "lifestealPct": 55
+      },
+      "surge": {
+        "name": "Acid Saliva",
+        "eff": "9 dmg, 4 DoT, 3t",
+        "dmg": 9,
+        "dot": 4,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Matriarch Crush",
+        "eff": "18 dmg, 4 DoT, 5t, +2 enemy roll, 2t",
+        "dmg": 18,
+        "dot": 4,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 2
+      },
+      "overload": {
+        "name": "Culling Feed",
+        "eff": "27 dmg, 6 heal, lifesteal 35%",
+        "dmg": 27,
+        "dot": 0,
+        "dT": 0,
+        "heal": 6,
+        "rfe": 0,
+        "shield": 0,
+        "lifestealPct": 35
+      }
+    },
+    "spewer": {
+      "recharge": {
+        "name": "Gland Rest",
+        "eff": "—",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "strike": {
+        "name": "Acid Spit",
+        "eff": "8 dmg, lifesteal 45%",
+        "dmg": 8,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "lifestealPct": 45
+      },
+      "surge": {
+        "name": "Caustic Spray",
+        "eff": "9 dmg, 3 DoT, 4t",
+        "dmg": 9,
+        "dot": 3,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Corrosive Hose",
+        "eff": "10 dmg, 4 DoT, 5t, +1 enemy roll, 2t",
+        "dmg": 10,
+        "dot": 4,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2
+      },
+      "overload": {
+        "name": "Melt Torrent",
+        "eff": "12 dmg, 5 DoT, 5t",
+        "dmg": 12,
+        "dot": 5,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      }
+    },
+    "hiveBoss": {
+      "recharge": {
+        "name": "Chitin Bulwark",
+        "eff": "22 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 22,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Royal Mandibles",
+        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
+        "dmg": 19,
+        "dmgP2": 26,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2,
+        "lifestealPct": 35
+      },
+      "surge": {
+        "name": "Brood Nova",
+        "eff": "20 dmg (P2 27), 3 DoT, 5t",
+        "dmg": 20,
+        "dmgP2": 27,
+        "dot": 3,
+        "dT": 5,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Biomass Purge",
+        "eff": "25 dmg (P2 31), 2 DoT, 4t, -3 roll, 2t",
+        "dmg": 25,
+        "dmgP2": 31,
+        "dot": 2,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Acid Cataclysm",
+        "eff": "28 dmg (P2 36), wipe shields, lifesteal 40%",
+        "dmg": 28,
+        "dmgP2": 36,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true,
+        "lifestealPct": 40
+      }
+    },
+    "veilShard": {
+      "recharge": {
+        "name": "Phase Jam",
+        "eff": "-1 roll",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "strike": {
+        "name": "Shard Cut",
+        "eff": "7 dmg, -1 roll",
+        "dmg": 7,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "surge": {
+        "name": "Lattice Flicker",
+        "eff": "9 dmg, -1 roll",
+        "dmg": 9,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "crit": {
+        "name": "Crystal Shatter",
+        "eff": "12 dmg, -2 roll",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      },
+      "overload": {
+        "name": "Harmonic Break",
+        "eff": "15 dmg, -3 roll",
+        "dmg": 15,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 1
+      }
+    },
+    "veilPrism": {
+      "recharge": {
+        "name": "Lattice Guard",
+        "eff": "—",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "enemySelfTaunt": true
+      },
+      "strike": {
+        "name": "Ram",
+        "eff": "8 dmg",
+        "dmg": 8,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Prism Surge",
+        "eff": "11 dmg, 4 shield",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 4,
+        "shT": 1
+      },
+      "crit": {
+        "name": "Focused Beam",
+        "eff": "14 dmg",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "overload": {
+        "name": "Overcharge Drive",
+        "eff": "18 dmg",
+        "dmg": 18,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      }
+    },
+    "veilAegis": {
+      "recharge": {
+        "name": "Lattice Link",
+        "eff": "6 shield, ally 6 shield, all +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 1,
+        "shieldAlly": 6,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Aegis Bash",
+        "eff": "12 dmg, ally 6 shield, all +1 enemy roll",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 6,
+        "shT": 1,
+        "erb": 1,
+        "erbT": 1,
+        "erbAll": true
+      },
+      "surge": {
+        "name": "Bulwark Pulse",
+        "eff": "14 dmg, ally 8 shield, all +1 enemy roll, 2t",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 8,
+        "shT": 1,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Fortress Lash",
+        "eff": "18 dmg, ally 9 shield, all +2 enemy roll, 2t",
+        "dmg": 18,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 9,
+        "shT": 1,
+        "erb": 2,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Conclave Bulwark",
+        "eff": "20 dmg, ally 12 shield, all +2 enemy roll, 3t, summon ~42% nat20",
+        "dmg": 20,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 12,
+        "shT": 1,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 42,
+        "summonName": "Shardmite"
+      }
+    },
+    "veilResonance": {
+      "recharge": {
+        "name": "Harmonic Mend",
+        "eff": "7 heal, 7 shield, 2t, all +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 7,
+        "rfe": 0,
+        "shield": 7,
+        "shT": 2,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Resonant Slam",
+        "eff": "12 dmg",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Pulse Burn",
+        "eff": "12 dmg, 3 DoT, 3t, all +1 enemy roll, 2t",
+        "dmg": 12,
+        "dot": 3,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Catastrophic Wave",
+        "eff": "22 dmg, all +2 enemy roll, 2t",
+        "dmg": 22,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Veil Collapse",
+        "eff": "28 dmg, 6 heal, all +2 enemy roll, 3t, summon ~40% nat20",
+        "dmg": 28,
+        "dot": 0,
+        "dT": 0,
+        "heal": 6,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 40,
+        "summonName": "Prism Charger"
+      }
+    },
+    "veilNull": {
+      "recharge": {
+        "name": "Void Stillness",
+        "eff": "5 shield, 2t, all +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 5,
+        "shT": 2,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Null Slash",
+        "eff": "14 dmg, -1 roll, 2t",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "surge": {
+        "name": "Erase Vector",
+        "eff": "16 dmg, -1 roll, 2t",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "crit": {
+        "name": "Annulment",
+        "eff": "19 dmg, -2 roll, 2t",
+        "dmg": 19,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Total Eclipse",
+        "eff": "24 dmg, -3 roll, 3t, summon ~40% nat20",
+        "dmg": 24,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 3,
+        "summonChance": 40,
+        "summonName": "Shardmite"
+      }
+    },
+    "veilStorm": {
+      "recharge": {
+        "name": "Capacitor Hum",
+        "eff": "all +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Arc Needle",
+        "eff": "10 dmg, 1 DoT, 2t",
+        "dmg": 10,
+        "dot": 1,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Storm Weave",
+        "eff": "12 dmg, 2 DoT, 2t, all +1 enemy roll, 2t",
+        "dmg": 12,
+        "dot": 2,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Psi Tempest",
+        "eff": "14 dmg, 3 DoT, 3t, all +1 enemy roll, 2t",
+        "dmg": 14,
+        "dot": 3,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Lattice Storm",
+        "eff": "16 dmg, 5 DoT, 4t, all +2 enemy roll, 3t, summon ~42% nat20",
+        "dmg": 16,
+        "dot": 5,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 42,
+        "summonName": "Prism Charger"
+      }
+    },
+    "veilSynapse": {
+      "recharge": {
+        "name": "Synaptic Tune",
+        "eff": "all +2 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Herald Strike",
+        "eff": "11 dmg, ally 6 shield",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 6,
+        "shT": 1
+      },
+      "surge": {
+        "name": "Weave Shield",
+        "eff": "10 dmg, ally 7 shield, all +1 enemy roll, 2t",
+        "dmg": 10,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 7,
+        "shT": 1,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Conduit Spike",
+        "eff": "15 dmg, ally 8 shield, all +1 enemy roll, 3t",
+        "dmg": 15,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 8,
+        "shT": 1,
+        "erb": 1,
+        "erbT": 3,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Broodlink Surge",
+        "eff": "17 dmg, 8 heal, all +2 enemy roll, 3t, summon ~40% nat20",
+        "dmg": 17,
+        "dot": 0,
+        "dT": 0,
+        "heal": 8,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 40,
+        "summonName": "Shardmite"
+      }
+    },
+    "veilBoss": {
+      "recharge": {
+        "name": "Overseer Mantle",
+        "eff": "22 shield, 2t, ally 8 shield, 2t, all +2 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 22,
+        "shT": 2,
+        "shieldAlly": 8,
+        "erb": 2,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Decree",
+        "eff": "19 dmg (P2 26), -2 roll, 2t",
+        "dmg": 19,
+        "dmgP2": 26,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      },
+      "surge": {
+        "name": "Judgment Arc",
+        "eff": "22 dmg (P2 28), 2 DoT, 2t, all +1 enemy roll, 2t",
+        "dmg": 22,
+        "dmgP2": 28,
+        "dot": 2,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Absolute Vector",
+        "eff": "26 dmg (P2 32), -3 roll, 2t, all +1 enemy roll, 2t",
+        "dmg": 26,
+        "dmgP2": 32,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 2,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Veil Cataclysm",
+        "eff": "30 dmg (P2 38), wipe shields, all +2 enemy roll, 3t, summon ~30% nat20",
+        "dmg": 30,
+        "dmgP2": 38,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 30,
+        "summonName": "Prism Charger"
+      }
+    },
+    "voidWisp": {
+      "recharge": {
+        "name": "Void Hum",
+        "eff": "-1 roll",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1,
+        "curseDice": true
+      },
+      "strike": {
+        "name": "Spark Flick",
+        "eff": "6 dmg, -1 roll",
+        "dmg": 6,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "surge": {
+        "name": "Arc Nibble",
+        "eff": "8 dmg, 1 DoT, -1 roll",
+        "dmg": 8,
+        "dot": 1,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "crit": {
+        "name": "Mana Burr",
+        "eff": "10 dmg, 2 DoT, -2 roll",
+        "dmg": 10,
+        "dot": 2,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      },
+      "overload": {
+        "name": "Circlet Surge",
+        "eff": "11 dmg, 3 DoT, -3 roll",
+        "dmg": 11,
+        "dot": 3,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 1
+      }
+    },
+    "voidAcolyte": {
+      "recharge": {
+        "name": "Seal Sigil",
+        "eff": "counter C 50%",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 50
+      },
+      "strike": {
+        "name": "Binding Lash",
+        "eff": "12 dmg, counter C 50%",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 50
+      },
+      "surge": {
+        "name": "Geas Needle",
+        "eff": "14 dmg, counter C 40%",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 40
+      },
+      "crit": {
+        "name": "Levyn Collar",
+        "eff": "17 dmg, counter C 40%",
+        "dmg": 17,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 40
+      },
+      "overload": {
+        "name": "Ritual Clamp",
+        "eff": "18 dmg, summon ~40% nat20, counter C 40%",
+        "dmg": 18,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 40,
+        "summonChance": 40,
+        "summonName": "Sparksprite"
+      }
+    },
+    "voidScribe": {
+      "recharge": {
+        "name": "Annotate Fate",
+        "eff": "all +1 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "strike": {
+        "name": "Glyph Strike",
+        "eff": "11 dmg, ally 6 shield",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 6,
+        "shT": 1
+      },
+      "surge": {
+        "name": "Codex Weave",
+        "eff": "10 dmg, ally 7 shield, all +1 enemy roll, 2t",
+        "dmg": 10,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 7,
+        "shT": 1,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "crit": {
+        "name": "Prophecy Spike",
+        "eff": "15 dmg, all +2 enemy roll, 2t",
+        "dmg": 15,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 2,
+        "erbAll": true
+      },
+      "overload": {
+        "name": "Summon Verse",
+        "eff": "16 dmg, all +2 enemy roll, 3t, summon ~45% nat20",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 45,
+        "summonName": "Sparksprite"
+      }
+    },
+    "voidBinder": {
+      "recharge": {
+        "name": "Quiet Pact",
+        "eff": "-1 roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "strike": {
+        "name": "Compulsion",
+        "eff": "14 dmg, -1 roll, 2t",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "surge": {
+        "name": "Geas Burst",
+        "eff": "16 dmg, -2 roll, 2t",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      },
+      "crit": {
+        "name": "Dominion Mark",
+        "eff": "19 dmg, -2 roll, 2t, counter C 40%",
+        "dmg": 19,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2,
+        "counterspellPct": 40
+      },
+      "overload": {
+        "name": "Mass Snare",
+        "eff": "21 dmg, -3 roll, 2t, summon ~35% nat20, counter C 50%",
+        "dmg": 21,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 2,
+        "counterspellPct": 50,
+        "summonChance": 35,
+        "summonName": "Sparksprite"
+      }
+    },
+    "voidGlimmer": {
+      "recharge": {
+        "name": "Shimmer Guard",
+        "eff": "6 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 2
+      },
+      "strike": {
+        "name": "False Edge",
+        "eff": "13 dmg, counter C 40%",
+        "dmg": 13,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 40
+      },
+      "surge": {
+        "name": "Mirror Break",
+        "eff": "12 dmg, wipe shields",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true
+      },
+      "crit": {
+        "name": "Afterimage",
+        "eff": "17 dmg, counter C 50%",
+        "dmg": 17,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 50
+      },
+      "overload": {
+        "name": "Total Eclipse",
+        "eff": "19 dmg, wipe shields, summon ~38% nat20, counter C 40%",
+        "dmg": 19,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true,
+        "counterspellPct": 40,
+        "summonChance": 38,
+        "summonName": "Sparksprite"
+      }
+    },
+    "voidChanneler": {
+      "recharge": {
+        "name": "Channel Focus",
+        "eff": "+2 enemy roll, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 2,
+        "erbT": 2
+      },
+      "strike": {
+        "name": "Arc Lance",
+        "eff": "16 dmg",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "surge": {
+        "name": "Storm Loom",
+        "eff": "15 dmg, 2 DoT, 3t",
+        "dmg": 15,
+        "dot": 2,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Starfall",
+        "eff": "20 dmg, 3 DoT, 4t",
+        "dmg": 20,
+        "dot": 3,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "overload": {
+        "name": "Warp Nova",
+        "eff": "22 dmg, 4 DoT, 4t, summon ~42% nat20, counter C 40%",
+        "dmg": 22,
+        "dot": 4,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "counterspellPct": 40,
+        "summonChance": 42,
+        "summonName": "Sparksprite"
+      }
+    },
+    "voidCircletBoss": {
+      "recharge": {
+        "name": "Hierophant Mantle",
+        "eff": "20 shield, 2t, ally 8 shield, 2t, all +2 enemy roll, 2t, counter C 52%",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 20,
+        "shT": 2,
+        "shieldAlly": 8,
+        "erb": 2,
+        "erbT": 2,
+        "erbAll": true,
+        "counterspellPct": 52
+      },
+      "strike": {
+        "name": "Decree of Stillness",
+        "eff": "19 dmg (P2 26), -2 roll, 2t, counter C 50%",
+        "dmg": 19,
+        "dmgP2": 26,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2,
+        "counterspellPct": 50
+      },
+      "surge": {
+        "name": "Circlet Cataclysm",
+        "eff": "22 dmg (P2 28), 2 DoT, 2t, all +1 enemy roll, 2t, counter C 40%",
+        "dmg": 22,
+        "dmgP2": 28,
+        "dot": 2,
+        "dT": 2,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2,
+        "erbAll": true,
+        "counterspellPct": 40
+      },
+      "crit": {
+        "name": "Absolute Binding",
+        "eff": "26 dmg (P2 32), -3 roll, 2t, counter C 40%",
+        "dmg": 26,
+        "dmgP2": 32,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 2,
+        "counterspellPct": 40
+      },
+      "overload": {
+        "name": "Void Gate",
+        "eff": "30 dmg (P2 38), wipe shields, all +2 enemy roll, 3t, summon ~32% nat20",
+        "dmg": 30,
+        "dmgP2": 38,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true,
+        "erb": 2,
+        "erbT": 3,
+        "erbAll": true,
+        "summonChance": 32,
+        "summonName": "Sparksprite"
+      }
+    },
+    "beastMonkey": {
+      "recharge": {
+        "name": "Still Perch",
+        "eff": "-1 roll",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "strike": {
+        "name": "Void Grasp",
+        "eff": "6 dmg, -1 roll",
+        "dmg": 6,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1,
+        "packBonus": true
+      },
+      "surge": {
+        "name": "Caustic Spittle",
+        "eff": "8 dmg, 2 DoT",
+        "dmg": 8,
+        "dot": 2,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Arterial Bite",
+        "eff": "11 dmg, -2 roll",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      },
+      "overload": {
+        "name": "Troop Frenzy",
+        "eff": "13 dmg, 3 DoT, -2 roll",
+        "dmg": 13,
+        "dot": 3,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      }
+    },
+    "beastWolf": {
+      "recharge": {
+        "name": "Low Tracking",
+        "eff": "rampage +1",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "grantRampage": 1
+      },
+      "strike": {
+        "name": "Rending Fang",
+        "eff": "7 dmg",
+        "dmg": 7,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "packBonus": true
+      },
+      "surge": {
+        "name": "Hamstring Lunge",
+        "eff": "9 dmg, 1 DoT",
+        "dmg": 9,
+        "dot": 1,
+        "dT": 1,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Throat Lock",
+        "eff": "12 dmg",
+        "dmg": 12,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "overload": {
+        "name": "Pack Surge",
+        "eff": "14 dmg, -1 roll, rampage +1",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "grantRampage": 1,
+        "rfm": 1,
+        "rfmT": 1
+      }
+    },
+    "beastLynx": {
+      "recharge": {
+        "name": "Eclipse Crouch",
+        "eff": "10 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 10,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Silent Opening",
+        "eff": "10 dmg, cower 1r",
+        "dmg": 10,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "cowerT": 1
+      },
+      "surge": {
+        "name": "Lunar Rake",
+        "eff": "12 dmg, 2 DoT, 3t",
+        "dmg": 12,
+        "dot": 2,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Gut Eclipse",
+        "eff": "16 dmg, cower 2r",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "cowerT": 2
+      },
+      "overload": {
+        "name": "Black Sky Shriek",
+        "eff": "18 dmg, cower all 1r",
+        "dmg": 18,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "cowerT": 1,
+        "cowerAll": true
+      }
+    },
+    "beastBison": {
+      "recharge": {
+        "name": "Iron Grazing",
+        "eff": "14 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 14,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Skull Drive",
+        "eff": "11 dmg, rampage +1",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "grantRampage": 1
+      },
+      "surge": {
+        "name": "Hooffall",
+        "eff": "14 dmg",
+        "dmg": 14,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Bonebreaker Line",
+        "eff": "17 dmg, +1 enemy roll, 2t",
+        "dmg": 17,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "erb": 1,
+        "erbT": 2
+      },
+      "overload": {
+        "name": "Void Stampede",
+        "eff": "16 dmg, -1 roll, 2t, wipe shields, rampage all +1",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true,
+        "grantRampageAll": 1,
+        "rfm": 1,
+        "rfmT": 2
+      }
+    },
+    "beastHyena": {
+      "recharge": {
+        "name": "Scavenge Breath",
+        "eff": "4 heal, 8 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 4,
+        "rfe": 0,
+        "shield": 8,
+        "shT": 2
+      },
+      "strike": {
+        "name": "Crack Jaw",
+        "eff": "9 dmg, lifesteal 40%",
+        "dmg": 9,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "lifestealPct": 40
+      },
+      "surge": {
+        "name": "Flank Rip",
+        "eff": "11 dmg, 2 DoT, 3t",
+        "dmg": 11,
+        "dot": 2,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Rictus Maul",
+        "eff": "15 dmg, cower 1r",
+        "dmg": 15,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "cowerT": 1
+      },
+      "overload": {
+        "name": "Call Friends",
+        "eff": "13 dmg, 2 DoT, 3t, summon ~50% nat20",
+        "dmg": 13,
+        "dot": 2,
+        "dT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "summonChance": 50,
+        "summonName": "Pack Wolf"
+      }
+    },
+    "beastBadger": {
+      "recharge": {
+        "name": "Den Stillness",
+        "eff": "-1 roll",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "strike": {
+        "name": "Gut Ripper",
+        "eff": "10 dmg, -1 roll",
+        "dmg": 10,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "surge": {
+        "name": "Rage Waltz",
+        "eff": "12 dmg, 2 DoT, 4t",
+        "dmg": 12,
+        "dot": 2,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Viscera Rake",
+        "eff": "16 dmg, -2 roll, 2t",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Den Requiem",
+        "eff": "20 dmg, -3 roll, 2t",
+        "dmg": 20,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 3,
+        "rfmT": 2
+      }
+    },
+    "beastTyrant": {
+      "recharge": {
+        "name": "Reaver Mantle",
+        "eff": "20 shield, 2t, rampage +1",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 20,
+        "shT": 2,
+        "grantRampage": 1
+      },
+      "strike": {
+        "name": "Titan Gouge",
+        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
+        "dmg": 19,
+        "dmgP2": 26,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2,
+        "lifestealPct": 35
+      },
+      "surge": {
+        "name": "Gravity Hoof",
+        "eff": "20 dmg (P2 27), 3 DoT, 4t",
+        "dmg": 20,
+        "dmgP2": 27,
+        "dot": 3,
+        "dT": 4,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
+      },
+      "crit": {
+        "name": "Annihilation Sweep",
+        "eff": "24 dmg (P2 31), rampage all +1",
+        "dmg": 24,
+        "dmgP2": 31,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "grantRampageAll": 1
+      },
+      "overload": {
+        "name": "Total Eclipse",
+        "eff": "26 dmg (P2 34), wipe shields, rampage all +1, cower all 1r",
+        "dmg": 26,
+        "dmgP2": 34,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "wipeShields": true,
+        "grantRampageAll": 1,
+        "cowerT": 1,
+        "cowerAll": true
+      }
+    },
+    "signalSkimmer": {
+      "recharge": {
+        "name": "ECM Ping",
+        "eff": "-1 roll, 2t, 5 shield",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 5,
+        "shT": 1,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "strike": {
+        "name": "Spike Bleed",
+        "eff": "5 dmg, -1 roll",
+        "dmg": 5,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "surge": {
+        "name": "Sideband Scrap",
+        "eff": "8 dmg, -1 roll, 2t",
+        "dmg": 8,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "crit": {
+        "name": "Nullburst",
+        "eff": "11 dmg, -2 roll",
+        "dmg": 11,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 1
+      },
+      "overload": {
+        "name": "Whitenoise Collapse",
+        "eff": "13 dmg, -2 roll, 2t",
+        "dmg": 13,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      }
+    },
+    "commsHex": {
+      "recharge": {
+        "name": "Lattice Lock",
+        "eff": "-1 roll, 6 shield, 2t",
+        "dmg": 0,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 6,
+        "shT": 2,
+        "rfm": 1,
+        "rfmT": 1
+      },
+      "strike": {
+        "name": "Phase Snare",
+        "eff": "13 dmg, -1 roll, 2t",
+        "dmg": 13,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "surge": {
+        "name": "Harmonic Clamp",
+        "eff": "16 dmg, -1 roll, 2t",
+        "dmg": 16,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
+      },
+      "crit": {
+        "name": "Hexfield Collapse",
+        "eff": "19 dmg, -2 roll, 2t",
+        "dmg": 19,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 2
+      },
+      "overload": {
+        "name": "Sector Bandkill",
+        "eff": "22 dmg, -2 roll, 3t",
+        "dmg": 22,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "rfm": 2,
+        "rfmT": 3
+      }
+    }
+  },
+  "enemyUnitDefs": {
+    "Scrap Drone": {
+      "hp": 40,
+      "dMin": 5,
+      "dMax": 9,
+      "type": "scrap",
+      "ai": "dumb"
+    },
+    "Rust Drone": {
+      "hp": 35,
+      "dMin": 5,
+      "dMax": 8,
+      "type": "rust",
+      "ai": "dumb"
+    },
+    "Whitenoise Skimmer": {
+      "hp": 34,
+      "dMin": 5,
+      "dMax": 8,
+      "type": "signalSkimmer",
+      "ai": "dumb"
+    },
+    "Harmonic Hexnode": {
+      "hp": 72,
+      "dMin": 12,
+      "dMax": 17,
+      "type": "commsHex",
+      "ai": "smart"
+    },
+    "Patrol Elite": {
+      "hp": 65,
+      "dMin": 12,
+      "dMax": 16,
+      "type": "patrol",
+      "ai": "smart"
+    },
+    "Guard Elite": {
+      "hp": 80,
+      "dMin": 14,
+      "dMax": 18,
+      "type": "guard",
+      "ai": "smart"
+    },
+    "Heavy Warden": {
+      "hp": 115,
+      "dMin": 17,
+      "dMax": 23,
+      "type": "warden",
+      "ai": "smart"
+    },
+    "Volt Elite": {
+      "hp": 90,
+      "dMin": 15,
+      "dMax": 21,
+      "type": "volt",
+      "ai": "smart"
+    },
+    "SCRAPMASTER": {
+      "hp": 180,
+      "dMin": 19,
+      "dMax": 25,
+      "type": "boss",
+      "ai": "smart",
+      "p2dMin": 27,
+      "p2dMax": 35,
+      "pThr": 86
+    },
+    "Skitterling": {
+      "hp": 40,
+      "dMin": 5,
+      "dMax": 9,
+      "type": "skitter",
+      "ai": "dumb"
+    },
+    "Bloodmite": {
+      "hp": 35,
+      "dMin": 5,
+      "dMax": 8,
+      "type": "mite",
+      "ai": "dumb"
+    },
+    "Spine Stalker": {
+      "hp": 65,
+      "dMin": 12,
+      "dMax": 16,
+      "type": "stalker",
+      "ai": "smart"
+    },
+    "Carapace Beetle": {
+      "hp": 80,
+      "dMin": 14,
+      "dMax": 18,
+      "type": "carapace",
+      "ai": "smart"
+    },
+    "Broodwarden": {
+      "hp": 115,
+      "dMin": 17,
+      "dMax": 23,
+      "type": "brood",
+      "ai": "smart"
+    },
+    "Caustic Spewer": {
+      "hp": 90,
+      "dMin": 15,
+      "dMax": 21,
+      "type": "spewer",
+      "ai": "smart"
+    },
+    "Hive Matriarch": {
+      "hp": 180,
+      "dMin": 15,
+      "dMax": 21,
+      "type": "hiveBoss",
+      "ai": "smart",
+      "p2dMin": 23,
+      "p2dMax": 31,
+      "pThr": 86
+    },
+    "Shardmite": {
+      "hp": 40,
+      "dMin": 5,
+      "dMax": 9,
+      "type": "veilShard",
+      "ai": "dumb"
+    },
+    "Prism Charger": {
+      "hp": 38,
+      "dMin": 6,
+      "dMax": 10,
+      "type": "veilPrism",
+      "ai": "dumb"
+    },
+    "Aegis Anchor": {
+      "hp": 68,
+      "dMin": 12,
+      "dMax": 16,
+      "type": "veilAegis",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Resonance Warden": {
+      "hp": 118,
+      "dMin": 17,
+      "dMax": 23,
+      "type": "veilResonance",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Nullblade": {
+      "hp": 70,
+      "dMin": 13,
+      "dMax": 17,
+      "type": "veilNull",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Stormweaver": {
+      "hp": 92,
+      "dMin": 15,
+      "dMax": 21,
+      "type": "veilStorm",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Synapse Herald": {
+      "hp": 76,
+      "dMin": 12,
+      "dMax": 16,
+      "type": "veilSynapse",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "CONCLAVE OVERSEER": {
+      "hp": 180,
+      "dMin": 19,
+      "dMax": 25,
+      "type": "veilBoss",
+      "ai": "smart",
+      "summonElite": true,
+      "p2dMin": 27,
+      "p2dMax": 35,
+      "pThr": 86
+    },
+    "Sparksprite": {
+      "hp": 38,
+      "dMin": 5,
+      "dMax": 9,
+      "type": "voidWisp",
+      "ai": "dumb"
+    },
+    "Levyn Acolyte": {
+      "hp": 62,
+      "dMin": 12,
+      "dMax": 16,
+      "type": "voidAcolyte",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Chronicle Scribe": {
+      "hp": 74,
+      "dMin": 12,
+      "dMax": 16,
+      "type": "voidScribe",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Geas Binder": {
+      "hp": 112,
+      "dMin": 17,
+      "dMax": 23,
+      "type": "voidBinder",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Glimmer Double": {
+      "hp": 68,
+      "dMin": 13,
+      "dMax": 17,
+      "type": "voidGlimmer",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Arc-Titan Channeler": {
+      "hp": 94,
+      "dMin": 15,
+      "dMax": 21,
+      "type": "voidChanneler",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "CIRCLET HIEROPHANT": {
+      "hp": 180,
+      "dMin": 19,
+      "dMax": 25,
+      "type": "voidCircletBoss",
+      "ai": "smart",
+      "summonElite": true,
+      "p2dMin": 27,
+      "p2dMax": 35,
+      "pThr": 86
+    },
+    "Rift Macaque": {
+      "hp": 38,
+      "dMin": 5,
+      "dMax": 9,
+      "type": "beastMonkey",
+      "ai": "dumb"
+    },
+    "Void Wolf": {
+      "hp": 42,
+      "dMin": 6,
+      "dMax": 10,
+      "type": "beastWolf",
+      "ai": "dumb"
+    },
+    "Pack Wolf": {
+      "hp": 34,
+      "dMin": 5,
+      "dMax": 9,
+      "type": "beastWolf",
+      "ai": "dumb"
+    },
+    "Eclipse Lynx": {
+      "hp": 74,
+      "dMin": 12,
+      "dMax": 17,
+      "type": "beastLynx",
+      "ai": "smart"
+    },
+    "Thunder Bison": {
+      "hp": 112,
+      "dMin": 16,
+      "dMax": 22,
+      "type": "beastBison",
+      "ai": "smart"
+    },
+    "Eclipse Hyena": {
+      "hp": 86,
+      "dMin": 13,
+      "dMax": 18,
+      "type": "beastHyena",
+      "ai": "smart",
+      "summonElite": true
+    },
+    "Ridge Badger": {
+      "hp": 98,
+      "dMin": 15,
+      "dMax": 21,
+      "type": "beastBadger",
+      "ai": "smart"
+    },
+    "VOID REAVER": {
+      "hp": 180,
+      "dMin": 19,
+      "dMax": 25,
+      "type": "beastTyrant",
+      "ai": "smart",
+      "p2dMin": 27,
+      "p2dMax": 35,
+      "pThr": 86
+    }
+  },
+  "battleEnemyScale": [
+    {
+      "hp": 1.05,
+      "dmg": 1.04
+    },
+    {
+      "hp": 1.06,
+      "dmg": 1.05
+    },
+    {
+      "hp": 1.06,
+      "dmg": 1.05
+    },
+    {
+      "hp": 1.02,
+      "dmg": 1.02
+    },
+    {
+      "hp": 1.11,
+      "dmg": 1.1
+    },
+    {
+      "hp": 1.01,
+      "dmg": 1.01
+    },
+    {
+      "hp": 1.02,
+      "dmg": 1.02
+    },
+    {
+      "hp": 1.06,
+      "dmg": 1.05
+    },
+    {
+      "hp": 1.05,
+      "dmg": 1.05
+    },
+    {
+      "hp": 0.9,
+      "dmg": 0.9
+    }
+  ]
+}

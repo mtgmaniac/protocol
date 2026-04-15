@@ -1,0 +1,171 @@
+/* Fixed row height — matches .bdg-slot (22px) so ability + badge panels align visually */
+.ap-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  margin-bottom: 1px;
+  opacity: 1;
+  transition: opacity 0.14s ease, filter 0.14s ease;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: help;
+}
+.ap-row.ap-row-muted {
+  opacity: 0.34;
+  filter: saturate(0.65) brightness(0.88);
+}
+.ap-row.cur {
+  opacity: 1;
+  filter: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-pixel);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.07), inset -1px -1px 0 rgba(0, 0, 0, 0.35);
+}
+/* Fixed width: longest roll-range labels are 5 chars (e.g. 10-15, 11-16); tight but with side breathing room */
+.az {
+  font-family: var(--font-pixel);
+  width: 38px;
+  min-width: 38px;
+  max-width: 38px;
+  padding: 0 1px;
+  border-radius: var(--radius-pixel);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.az-neutral {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-chip);
+  border: 1px solid rgba(80, 100, 128, 0.45);
+}
+.ae {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.ae-mini-row {
+  display: flex;
+  gap: 2px;
+  align-items: stretch;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.mi {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 1px;
+  min-height: 0;
+  border-radius: var(--radius-pixel);
+  border-width: 1px;
+  border-style: solid;
+  line-height: 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.mi .n,
+.mi .n-turns {
+  color: inherit;
+}
+.mi-neutral {
+  color: var(--muted);
+  border-color: var(--border);
+  background: var(--bg);
+}
+.mi-dmg {
+  color: #d84a2a;
+  border-color: rgba(216, 74, 42, 0.42);
+  background: rgba(216, 74, 42, 0.1);
+}
+.mi-heal {
+  color: #2ec46a;
+  border-color: rgba(46, 196, 106, 0.4);
+  background: rgba(46, 196, 106, 0.09);
+}
+.mi-shield {
+  color: #2e7dd4;
+  border-color: rgba(46, 125, 212, 0.4);
+  background: rgba(46, 125, 212, 0.09);
+}
+.mi-dot {
+  color: #b67bff;
+  border-color: rgba(182, 123, 255, 0.4);
+  background: rgba(182, 123, 255, 0.09);
+}
+.mi-rollAlly {
+  color: #2ec46a;
+  border-color: rgba(46, 196, 106, 0.38);
+  background: rgba(29, 158, 117, 0.1);
+}
+.mi-rollFoe {
+  color: #e8b84a;
+  border-color: rgba(232, 184, 74, 0.42);
+  background: rgba(232, 184, 74, 0.08);
+}
+/* Fear / cower — distinct from −roll (rollFoe gold). */
+.mi-fear {
+  color: #d8b8ff;
+  border-color: rgba(180, 130, 220, 0.48);
+  background: rgba(75, 35, 110, 0.22);
+}
+.mi-control {
+  color: #9bc0dd;
+  border-color: rgba(155, 192, 221, 0.35);
+  background: rgba(80, 120, 160, 0.12);
+}
+.mi-wide { padding: 0 1px; }
+.mi-wide .n { font-size: 12px; letter-spacing: 0; }
+.ic { width: 13px; height: 13px; flex-shrink: 0; color: currentColor; }
+/* AoE (A) / self (S) — matches badge density */
+.ic-tag-letter {
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  width: 10px;
+  min-width: 10px;
+  text-align: center;
+  color: currentColor;
+  opacity: 0.95;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.ic-die { width: 14px; height: 14px; }
+.ic-clock-inline { width: 12px; height: 12px; margin-left: 0; opacity: 0.92; }
+.n {
+  font-weight: 800;
+  font-size: 12px;
+  font-family: var(--font-pixel);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+.n-turns {
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.92;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}

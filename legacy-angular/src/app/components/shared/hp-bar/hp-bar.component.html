@@ -1,0 +1,17 @@
+@if (showLabel()) {
+  @if (compactHead()) {
+    <div class="hp-head hp-head--compact" [class.hp-head--tight]="tightMargins()">
+      <div class="hp-lbl" [style.color]="labelColor()">HP {{ current() }}/{{ max() }}</div>
+    </div>
+  } @else {
+    <div class="hp-head" [class.hp-head--tight]="tightMargins()">
+      <div class="hp-lbl" [style.color]="labelColor()">HP {{ current() }}/{{ max() }}</div>
+      <div class="hp-aside">
+        <ng-content select="[data-hp-aside]" />
+      </div>
+    </div>
+  }
+}
+<div class="hp-bar">
+  <div class="hp-fill" [class]="fillClass()" [style.width]="widthPct()"></div>
+</div>

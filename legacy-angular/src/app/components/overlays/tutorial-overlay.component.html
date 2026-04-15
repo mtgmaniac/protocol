@@ -1,0 +1,82 @@
+@if (visible()) {
+  <div class="tut-root" role="dialog" aria-modal="true">
+    @if (tutorial.tutorialPointerWall()) {
+      <div class="tut-clickwall" aria-hidden="true"></div>
+    }
+    @if (spotRect(); as r) {
+      <div
+        class="tut-spot"
+        [style.left.px]="r.left"
+        [style.top.px]="r.top"
+        [style.width.px]="r.width"
+        [style.height.px]="r.height"></div>
+    }
+    <div class="tut-panel" [style.left.px]="panelRect()?.left" [style.top.px]="panelRect()?.top">
+      @if (state.tutorial()!.showComplete) {
+        <div class="tut-k">DONE</div>
+        <div class="tut-title">First turn complete</div>
+        <p class="tut-body">
+          You finished a full player turn — dice, targets, <strong>END TURN</strong> — and watched the drone act. You're
+          set to leave this drill: go home, pick an operation, and start a real game whenever you like. Run the tutorial
+          again from <strong>HELP</strong> if you want another walkthrough.
+        </p>
+        <button type="button" class="tut-btn tut-btn-primary" (click)="exitRegular.emit()">
+          BACK TO HOME
+        </button>
+      } @else if (tutorial.coachPanelVisible()) {
+        @let t = state.tutorial()!;
+        @let cs = t.coachStep;
+        <div class="tut-k">AFTER ROLL · {{ cs }} / 4</div>
+        @switch (cs) {
+          @case (1) {
+            <div class="tut-title">Damage target</div>
+            <p class="tut-body">
+              <strong>{{ tutorial.coachPulseHero()?.name ?? 'Pulse Tech' }}</strong> rolled
+              <strong>{{ tutorial.coachPulseAbilityName() }}</strong> — a damage ability. Tap
+              <strong>{{ tutorial.coachPulseHero()?.name ?? 'Pulse Tech' }}</strong>, then the
+              <strong>Scrap Drone</strong> to assign damage. Unsure what a chip means?
+              <strong>Hover</strong> it (or <strong>focus</strong> it with the keyboard) for a tooltip.
+            </p>
+          }
+          @case (2) {
+            <div class="tut-title">Shield target</div>
+            <p class="tut-body">
+              <strong>{{ tutorial.coachShieldHero()?.name ?? 'Spite Guard' }}</strong> rolled
+              <strong>{{ tutorial.coachShieldAbilityName() }}</strong> — a shield ability. Tap
+              <strong>{{ tutorial.coachShieldHero()?.name ?? 'Spite Guard' }}</strong>, then an
+              <strong>ally</strong> (Pulse Tech or Systems Medic) to apply it.
+            </p>
+          }
+          @case (3) {
+            <div class="tut-title">Systems Medic</div>
+            <p class="tut-body">
+              <strong>{{ tutorial.coachMedicHero()?.name ?? 'Systems Medic' }}</strong> rolled
+              <strong>{{ tutorial.coachMedicAbilityName() }}</strong> — a support ability. Tap
+              <strong>Systems Medic</strong>, then an <strong>ally</strong> to grant the
+              <strong>+{{ tutorial.coachMedicRfmValue() }} roll</strong> on their next roll.
+            </p>
+          }
+          @case (4) {
+            <div class="tut-title">End the round</div>
+            <p class="tut-body">
+              Targets are set. Tap <strong>END TURN</strong> to resolve abilities and let the drone act.
+            </p>
+          }
+        }
+      } @else {
+        @let step = tutorial.introSteps[state.tutorial()!.introStep];
+        <div class="tut-k">TUTORIAL · {{ step.k }}</div>
+        <div class="tut-title">{{ step.title }}</div>
+        <p class="tut-body">{{ step.body }}</p>
+        <div class="tut-actions">
+          @if (state.tutorial()!.introStep > 0) {
+            <button type="button" class="tut-btn" (click)="tutorial.introBack()">BACK</button>
+          }
+          <button type="button" class="tut-btn tut-btn-primary" (click)="tutorial.introNext()">
+            {{ state.tutorial()!.introStep >= tutorial.introSteps.length - 1 ? 'BEGIN DRILL' : 'NEXT' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

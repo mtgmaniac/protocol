@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "overload-protocol:heroes.data",
+  "title": "Heroes & zone brackets",
+  "type": "object",
+  "required": ["heroZones", "heroes"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "heroZones": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            { "type": "integer", "minimum": 1, "maximum": 20 },
+            { "type": "integer", "minimum": 1, "maximum": 20 },
+            { "$ref": "#/$defs/zone" }
+          ]
+        }
+      }
+    },
+    "heroes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/heroDefinition" }
+    }
+  },
+  "$defs": {
+    "zone": {
+      "type": "string",
+      "enum": ["recharge", "strike", "surge", "crit", "overload"]
+    },
+    "heroId": {
+      "type": "string",
+      "enum": ["pulse", "combat", "shield", "avalanche", "medic", "engineer", "ghost", "breaker"]
+    },
+    "heroPickerCategory": {
+      "type": "string",
+      "enum": ["damage", "defense", "support", "control"]
+    },
+    "heroAbility": {
+      "type": "object",
+      "required": [
+        "zone",
+        "range",
+        "name",
+        "eff",
+        "dmg",
+        "dMin",
+        "dMax",
+        "dot",
+        "dT",
+        "rfe",
+        "heal"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "zone": { "$ref": "#/$defs/zone" },
+        "range": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "integer", "minimum": 1, "maximum": 20 }
+        },
+        "name": { "type": "string" },
+        "eff": { "type": "string" },
+        "dmg": { "type": "integer" },
+        "dMin": { "type": "integer" },
+        "dMax": { "type": "integer" },
+        "dot": { "type": "integer" },
+        "dT": { "type": "integer" },
+        "rfe": { "type": "integer" },
+        "heal": { "type": "integer" },
+        "rfT": { "type": "integer" },
+        "shTgt": { "type": "boolean" },
+        "shield": { "type": "integer" },
+        "shT": { "type": "integer" },
+        "shieldAll": { "type": "boolean" },
+        "healTgt": { "type": "boolean" },
+        "healAll": { "type": "boolean" },
+        "healLowest": { "type": "boolean" },
+        "revive": { "type": "boolean" },
+        "rfm": { "type": "integer" },
+        "rfmT": { "type": "integer" },
+        "rfmTgt": { "type": "boolean" },
+        "cloak": { "type": "boolean" },
+        "taunt": { "type": "boolean" },
+        "blastAll": { "type": "boolean" },
+        "multiHit": { "type": "boolean" },
+        "ignSh": { "type": "boolean" },
+        "splitDmg": { "type": "boolean" },
+        "rfeAll": { "type": "boolean" },
+        "rfeOnly": { "type": "boolean" },
+        "freezeAllEnemyDice": { "type": "integer", "minimum": 0 },
+        "freezeEnemyDice": { "type": "integer", "minimum": 0 },
+        "freezeAnyDice": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "evolutionTier": {
+      "type": "object",
+      "required": ["name", "focus", "hp", "abilities"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "focus": { "type": "string" },
+        "hp": { "type": "integer", "minimum": 0 },
+        "abilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/heroAbility" },
+          "minItems": 1
+        }
+      }
+    },
+    "heroDefinition": {
+      "type": "object",
+      "required": ["id", "name", "cls", "pickerCategory", "pickerBlurb", "hp", "sk", "abilities", "evolutions"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/heroId" },
+        "name": { "type": "string" },
+        "cls": { "type": "string" },
+        "pickerCategory": { "$ref": "#/$defs/heroPickerCategory" },
+        "pickerBlurb": { "type": "string", "minLength": 1 },
+        "hp": { "type": "integer", "minimum": 1 },
+        "sk": { "$ref": "#/$defs/heroId" },
+        "portraitPath": { "type": "string" },
+        "abilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/heroAbility" },
+          "minItems": 1
+        },
+        "evolutions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evolutionTier" }
+        }
+      }
+    }
+  }
+}

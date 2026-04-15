@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://ds4otxmn6jdms"]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_hs7fj"]
+
+[node name="MainMenu" type="Control" unique_id=109728186]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_hs7fj")
+
+[node name="Background" type="ColorRect" parent="." unique_id=417100028]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0313726, 0.0392157, 0.0666667, 1)
+
+[node name="Content" type="MarginContainer" parent="." unique_id=1495048945]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = 60.0
+offset_right = -80.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Content" unique_id=324228521]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="Logo" type="TextureRect" parent="Content/VBox" unique_id=1397903049]
+unique_name_in_owner = true
+texture_filter = 1
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_horizontal = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Title" type="Label" parent="Content/VBox" unique_id=1445762322]
+layout_mode = 2
+theme_override_font_sizes/font_size = 57
+text = "OVERLOAD PROTOCOL"
+
+[node name="SummaryLabel" type="Label" parent="Content/VBox" unique_id=1037276595]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 31
+text = "Main menu ready."
+autowrap_mode = 3
+
+[node name="StartRunButton" type="Button" parent="Content/VBox" unique_id=862615029]
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+text = "Start Run"
+
+[connection signal="pressed" from="Content/VBox/StartRunButton" to="." method="_on_start_run_pressed"]

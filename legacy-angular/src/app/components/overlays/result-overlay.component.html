@@ -1,0 +1,11 @@
+<div class="overlay" [class.show]="state.showOverlay()">
+  <div class="ov-box">
+    <div class="ov-title" [class.vc]="state.overlayIsVictory()" [class.dc]="!state.overlayIsVictory()">
+      {{ state.overlayTitle() }}
+    </div>
+    <div class="ov-sub">{{ state.overlaySub() }}</div>
+    @if (state.overlayBtnAction()) {
+      <button class="ov-btn" (click)="onBtnClick()">{{ state.overlayBtnText() }}</button>
+    }
+  </div>
+</div>

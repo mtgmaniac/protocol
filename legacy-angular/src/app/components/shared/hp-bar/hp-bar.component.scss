@@ -1,0 +1,44 @@
+:host {
+  /* Match badge zone / ability row numeric scale (~12px) */
+  --hp-label-font-size: 12px;
+}
+
+.hp-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 5px;
+  margin-bottom: 2px;
+  min-width: 0;
+}
+.hp-head--compact {
+  justify-content: flex-start;
+}
+.hp-head--tight {
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+.hp-lbl {
+  font-family: var(--font-pixel);
+  font-size: var(--hp-label-font-size);
+  font-weight: 800;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.hp-aside {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+.hp-bar { width: 100%; height: 5px; background: #0a0c10; border: 1px solid #000; border-radius: var(--radius-pixel); overflow: hidden; margin-bottom: 2px; }
+.hp-head--tight + .hp-bar {
+  margin-bottom: 0;
+}
+.hp-fill { height: 100%; border-radius: var(--radius-pixel); transition: width 0.25s steps(8, end); }
+.hp-fill-g { background: #1d9e75; }
+.hp-fill-y { background: #e8b84a; }
+.hp-fill-r { background: #d84a2a; }

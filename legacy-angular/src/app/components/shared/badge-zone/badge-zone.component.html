@@ -1,0 +1,173 @@
+@if (kind() === 'hero') {
+  @let h = heroSnap();
+  <div class="bdg-wrap bdg-wrap--hero">
+    <div class="bdg-lbl">Incoming</div>
+    <div class="bdg-row-4">
+      <div class="bdg-slot" [class.empty]="h.incomingDmg <= 0" [class.bdg-dmg]="h.incomingDmg > 0"
+           opTooltip="Damage enemies will deal to this hero when you press END TURN (preview after the squad roll).">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/>
+        </svg>
+        <span>{{ h.incomingDmg > 0 ? h.incomingDmg : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="h.incomingHeal <= 0" [class.bdg-heal]="h.incomingHeal > 0"
+           opTooltip="Heal this hero will receive from allied abilities when you press END TURN (preview).">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M11 5h2v14h-2zM5 11h14v2H5z" fill="currentColor" opacity=".9"/>
+        </svg>
+        <span>{{ h.incomingHeal > 0 ? h.incomingHeal : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="h.incomingShield <= 0" [class.bdg-sh]="h.incomingShield > 0"
+           opTooltip="Shield this hero will gain from abilities when you press END TURN (preview).">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".25"/>
+          <path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" opacity=".9" fill="none"/>
+        </svg>
+        <span>{{ h.incomingShield > 0 ? h.incomingShield : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="h.incomingRollNet === 0" [class.bdg-rollp]="h.incomingRollNet > 0" [class.bdg-rolln]="h.incomingRollNet < 0"
+           opTooltip="Net roll change on this die this turn: ally +roll on this roll, queued next-roll buffs, and planned enemy −roll (preview).">
+        <svg class="bdg-svg bdg-die-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+          <circle cx="9" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+        </svg>
+        <span>{{ rollModLabel(h.incomingRollNet) }}</span>
+      </div>
+    </div>
+    <div class="bdg-sep"></div>
+    <div class="bdg-lbl">Status</div>
+    <div class="bdg-row-3">
+      <div class="bdg-slot" [class.empty]="h.statusShield <= 0" [class.bdg-sh]="h.statusShield > 0"
+           opTooltip="Shield blocking damage now.">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".25"/>
+          <path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" opacity=".9" fill="none"/>
+        </svg>
+        <span>{{ h.statusShield > 0 ? h.statusShield : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="h.statusDot <= 0" [class.bdg-poison]="h.statusDot > 0"
+           opTooltip="DoT damage taken once when you press END TURN.">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3c4.4 0 8 3 8 7.2 0 2.5-1.3 4.6-3.3 5.9V20c0 .6-.4 1-1 1h-1v-2h-2v2h-1v-2h-2v2H8.3c-.6 0-1-.4-1-1v-3.9C5.3 14.8 4 12.7 4 10.2 4 6 7.6 3 12 3z" fill="currentColor" opacity=".25"/>
+          <path d="M9.2 10.6c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6zm8.4 0c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6z" fill="currentColor" opacity=".9"/>
+          <path d="M10.2 15.2h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"/>
+        </svg>
+        <span>{{ h.statusDot > 0 ? h.statusDot : '—' }}</span>
+      </div>
+      <div class="bdg-slot"
+           [class.empty]="heroRollCombined(h) === 0"
+           [class.bdg-rollp]="heroRollCombined(h) > 0"
+           [class.bdg-rolln]="heroRollCombined(h) < 0"
+           opTooltip="Roll on this die: ongoing buffs and debuffs, plus any +roll already banked for the next dice tray reveal.">
+        <svg class="bdg-svg bdg-die-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+          <circle cx="9" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+        </svg>
+        <span>{{ rollModLabel(heroRollCombined(h)) }}</span>
+      </div>
+    </div>
+    <div class="bdg-ribbon-row">
+      @if (ribbonLines().length) {
+        <app-unit-status-ribbon [lines]="ribbonLines()" [layout]="'inline'" />
+      }
+    </div>
+  </div>
+} @else {
+  @let e = enemySnap();
+  <div class="bdg-wrap bdg-wrap--hero">
+    <div class="bdg-lbl">Incoming</div>
+    <div class="bdg-row-4 bdg-enemy-incoming">
+      <div class="bdg-slot" [class.empty]="e.incomingDmg <= 0" [class.bdg-dmg]="e.incomingDmg > 0" opTooltip="Damage from heroes this turn">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/>
+        </svg>
+        <span>{{ e.incomingDmg > 0 ? e.incomingDmg : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="e.incomingRfe <= 0" [class.bdg-rolln]="e.incomingRfe > 0" opTooltip="Roll debuff from heroes">
+        <svg class="bdg-svg bdg-die-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+          <circle cx="9" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+        </svg>
+        <span>{{ e.incomingRfe > 0 ? '-' + e.incomingRfe : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="e.incomingDot <= 0" [class.bdg-poison]="e.incomingDot > 0" opTooltip="DoT from heroes">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3c4.4 0 8 3 8 7.2 0 2.5-1.3 4.6-3.3 5.9V20c0 .6-.4 1-1 1h-1v-2h-2v2h-1v-2h-2v2H8.3c-.6 0-1-.4-1-1v-3.9C5.3 14.8 4 12.7 4 10.2 4 6 7.6 3 12 3z" fill="currentColor" opacity=".25"/>
+          <path d="M9.2 10.6c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6zm8.4 0c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6z" fill="currentColor" opacity=".9"/>
+          <path d="M10.2 15.2h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"/>
+        </svg>
+        <span>{{ e.incomingDot > 0 ? e.incomingDot : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="e.incomingLifestealHeal <= 0" [class.bdg-heal]="e.incomingLifestealHeal > 0" opTooltip="Expected heal from this unit's next lifesteal hit">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M11 5h2v14h-2zM5 11h14v2H5z" fill="currentColor" opacity=".9"/>
+        </svg>
+        <span>{{ e.incomingLifestealHeal > 0 ? e.incomingLifestealHeal : '—' }}</span>
+      </div>
+    </div>
+    <div class="bdg-sep"></div>
+    <div class="bdg-lbl">Status</div>
+    <div class="bdg-row-4">
+      <div class="bdg-slot" [class.empty]="e.statusShield <= 0" [class.bdg-sh]="e.statusShield > 0">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".25"/>
+          <path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" opacity=".9" fill="none"/>
+        </svg>
+        <span>{{ e.statusShield > 0 ? e.statusShield : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="e.statusDot <= 0" [class.bdg-poison]="e.statusDot > 0"
+           opTooltip="DoT damage dealt once when you press END TURN (not total over remaining turns)">
+        <svg class="bdg-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3c4.4 0 8 3 8 7.2 0 2.5-1.3 4.6-3.3 5.9V20c0 .6-.4 1-1 1h-1v-2h-2v2h-1v-2h-2v2H8.3c-.6 0-1-.4-1-1v-3.9C5.3 14.8 4 12.7 4 10.2 4 6 7.6 3 12 3z" fill="currentColor" opacity=".25"/>
+          <path d="M9.2 10.6c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6zm8.4 0c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6z" fill="currentColor" opacity=".9"/>
+          <path d="M10.2 15.2h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"/>
+        </svg>
+        <span>{{ e.statusDot > 0 ? e.statusDot : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="e.statusRfe <= 0" [class.bdg-rolln]="e.statusRfe > 0">
+        <svg class="bdg-svg bdg-die-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+          <circle cx="9" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+        </svg>
+        <span>{{ e.statusRfe > 0 ? '-' + e.statusRfe : '—' }}</span>
+      </div>
+      <div class="bdg-slot" [class.empty]="e.statusErb <= 0" [class.bdg-rollp]="e.statusErb > 0">
+        <svg class="bdg-svg bdg-die-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+          <circle cx="9" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="9" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="8.5" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="12" r="1.35" fill="currentColor" opacity=".95"/>
+          <circle cx="15" cy="15.5" r="1.35" fill="currentColor" opacity=".95"/>
+        </svg>
+        <span>{{ e.statusErb > 0 ? '+' + e.statusErb : '—' }}</span>
+      </div>
+    </div>
+    <div class="bdg-ribbon-row">
+      @if (ribbonLines().length) {
+        <app-unit-status-ribbon [lines]="ribbonLines()" [layout]="'inline'" />
+      }
+    </div>
+  </div>
+}

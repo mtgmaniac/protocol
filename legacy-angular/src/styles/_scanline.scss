@@ -1,0 +1,27 @@
+/* Chunky pixel grid + light CRT grain — matches portrait dithering */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--pixel) - 1px),
+    rgba(180, 200, 220, 0.04) calc(var(--pixel) - 1px),
+    rgba(180, 200, 220, 0.04) var(--pixel)
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(45, 70, 110, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 70, 110, 0.14) 1px, transparent 1px);
+  background-size: var(--pixel) var(--pixel);
+  pointer-events: none;
+  z-index: 0;
+}

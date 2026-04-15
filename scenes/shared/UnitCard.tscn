@@ -1,0 +1,329 @@
+[gd_scene format=3 uid="uid://bc3jilcn1tasr"]
+
+[ext_resource type="Script" uid="uid://be04ojeobm30g" path="res://scripts/units/unit_card.gd" id="1_gcx4k"]
+[ext_resource type="Texture2D" uid="uid://cv0d5cdxbhf1u" path="res://legacy-angular/public/heroes/pulse-portrait.png" id="2_j6a1q"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xa6iq"]
+bg_color = Color(0.026, 0.044, 0.066, 0.68)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.3488, 0.8064, 0.7008, 1)
+shadow_color = Color(0.005, 0.006, 0.01, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4st8w"]
+content_margin_left = 0.0
+content_margin_top = 3.0
+content_margin_right = 0.0
+content_margin_bottom = 3.0
+bg_color = Color(0.02, 0.038, 0.06, 0.46)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.12, 0.24, 0.36, 0.58)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wpnxt"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.015, 0.02, 0.035, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.005, 0.006, 0.01, 1)
+shadow_color = Color(0.005, 0.006, 0.01, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vydk5"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.2, 0.62, 0.4, 1)
+border_color = Color(0.2, 0.62, 0.4, 1)
+shadow_color = Color(0.005, 0.006, 0.01, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rlt6a"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.015, 0.02, 0.035, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.005, 0.006, 0.01, 1)
+shadow_color = Color(0.005, 0.006, 0.01, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r6veq"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.35, 0.68, 1, 1)
+border_color = Color(0.35, 0.68, 1, 1)
+shadow_color = Color(0.005, 0.006, 0.01, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_af82r"]
+bg_color = Color(0.018, 0.03, 0.05, 0.62)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3488, 0.8064, 0.7008, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fev06"]
+bg_color = Color(0.035, 0.045, 0.075, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.005, 0.006, 0.01, 1)
+
+[node name="UnitCard" type="PanelContainer" unique_id=446725718]
+clip_contents = true
+custom_minimum_size = Vector2(176, 276)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_gcx4k")
+
+[node name="ClickButton" type="Button" parent="." unique_id=1938892258]
+layout_mode = 2
+mouse_filter = 2
+flat = true
+
+[node name="CardFrame" type="Panel" parent="." unique_id=533692558]
+unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(176, 276)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_xa6iq")
+
+[node name="Margin" type="MarginContainer" parent="CardFrame" unique_id=2067527417]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 10.0
+offset_right = -6.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CardFrame/Margin" unique_id=1444039307]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="DiceChartPanel" type="PanelContainer" parent="CardFrame/Margin/VBox" unique_id=307746145]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+clip_contents = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_4st8w")
+
+[node name="DiceChartMargin" type="MarginContainer" parent="CardFrame/Margin/VBox/DiceChartPanel" unique_id=51719729]
+layout_mode = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 4
+
+[node name="DiceChart" type="VBoxContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin" unique_id=326020977]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="BodyRow" type="HBoxContainer" parent="CardFrame/Margin/VBox" unique_id=23871233]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="InfoColumn" type="VBoxContainer" parent="CardFrame/Margin/VBox/BodyRow" unique_id=1267485179]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="NameLabel" type="Label" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=1592841008]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 30
+text = "Pulse Tech"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="TargetLabel" type="Label" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=412184034]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.66, 0.74, 0.84, 0.92)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 26
+text = "Target: Rift Macaque"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="BarStack" type="VBoxContainer" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=1929370462]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="HPRow" type="HBoxContainer" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn/BarStack" unique_id=893165784]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="HPBar" type="ProgressBar" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn/BarStack/HPRow" unique_id=1384984830]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_styles/background = SubResource("StyleBoxFlat_wpnxt")
+theme_override_styles/fill = SubResource("StyleBoxFlat_vydk5")
+value = 100.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn/BarStack/HPRow" unique_id=1148984286]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+theme_override_font_sizes/font_size = 28
+text = "40/40"
+
+[node name="HPSpacer" type="Control" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn/BarStack/HPRow" unique_id=660293865]
+visible = false
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="XPBar" type="ProgressBar" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn/BarStack" unique_id=342031755]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("StyleBoxFlat_rlt6a")
+theme_override_styles/fill = SubResource("StyleBoxFlat_r6veq")
+show_percentage = false
+
+[node name="StatusTitle" type="Label" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=581812862]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.66, 0.74, 0.84, 0.92)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 26
+text = "Status"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="StatusEffects" type="HFlowContainer" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=521400567]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="GearTitle" type="Label" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=920345297]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.66, 0.74, 0.84, 0.92)
+layout_mode = 2
+mouse_filter = 1
+theme_override_font_sizes/font_size = 14
+text = "Gear"
+
+[node name="GearSlots" type="HFlowContainer" parent="CardFrame/Margin/VBox/BodyRow/InfoColumn" unique_id=1963659740]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="PortraitMargin" type="MarginContainer" parent="CardFrame/Margin/VBox/BodyRow" unique_id=1448951192]
+custom_minimum_size = Vector2(202, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 3
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="PortraitAspect" type="AspectRatioContainer" parent="CardFrame/Margin/VBox/BodyRow/PortraitMargin" unique_id=1077983557]
+unique_name_in_owner = true
+layout_mode = 2
+ratio = 0.7570978
+alignment_horizontal = 2
+alignment_vertical = 2
+
+[node name="PortraitFrame" type="PanelContainer" parent="CardFrame/Margin/VBox/BodyRow/PortraitMargin/PortraitAspect" unique_id=864525574]
+unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(202, 266.792)
+layout_mode = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_af82r")
+
+[node name="Portrait" type="TextureRect" parent="CardFrame/Margin/VBox/BodyRow/PortraitMargin/PortraitAspect/PortraitFrame" unique_id=1247855123]
+unique_name_in_owner = true
+texture_filter = 1
+layout_mode = 2
+texture = ExtResource("2_j6a1q")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TooltipPanel" type="PanelContainer" parent="." unique_id=908019740]
+unique_name_in_owner = true
+visible = false
+top_level = true
+z_index = 100
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_fev06")
+
+[node name="TooltipMargin" type="MarginContainer" parent="TooltipPanel" unique_id=1921245268]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 8
+
+[node name="TooltipLabel" type="Label" parent="TooltipPanel/TooltipMargin" unique_id=293713211]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/shadow_outline_size = 2
+theme_override_font_sizes/font_size = 22
+text = "Tooltip Content"
+autowrap_mode = 2
+
+[node name="HoldTimer" type="Timer" parent="." unique_id=352276724]
+wait_time = 0.45
+one_shot = true
+
+[connection signal="button_down" from="ClickButton" to="." method="_on_click_button_down"]
+[connection signal="button_up" from="ClickButton" to="." method="_on_click_button_up"]
+[connection signal="mouse_exited" from="ClickButton" to="." method="_on_click_button_mouse_exited"]
+[connection signal="timeout" from="HoldTimer" to="." method="_on_hold_timer_timeout"]

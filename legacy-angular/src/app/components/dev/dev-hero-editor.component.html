@@ -1,0 +1,373 @@
+@if (devPanel.open()) {
+  <div class="dev-backdrop" (click)="devPanel.closePanel()"></div>
+  <div class="dev-panel" (click)="$event.stopPropagation()">
+    <header class="dev-hdr">
+      <h2>Game data (local dev)</h2>
+      <button type="button" class="dev-x" (click)="devPanel.closePanel()">×</button>
+    </header>
+    <p class="dev-note">
+      Heroes → <code>heroes.data.json</code> · Enemies → <code>enemies.data.json</code>. Stored in localStorage until you export
+      or reset.
+    </p>
+    <div class="dev-main-tabs">
+      <button type="button" [class.on]="mainTab() === 'heroes'" (click)="mainTab.set('heroes')">Heroes</button>
+      <button type="button" [class.on]="mainTab() === 'enemies'" (click)="onMainTabEnemies()">Enemies</button>
+    </div>
+    @if (mainTab() === 'heroes') {
+      <div class="dev-toolbar">
+        <button type="button" (click)="saveHeroStorage()">Save heroes to browser</button>
+        <button type="button" (click)="resetHeroBundled()">Reset heroes to bundled</button>
+        <button type="button" (click)="exportHeroFile()">Export heroes JSON</button>
+        <label class="dev-file">
+          Import heroes JSON
+          <input type="file" accept="application/json,.json" (change)="onImportHeroFile($event)" />
+        </label>
+        <button type="button" (click)="applySquad()">Apply squad (keep party)</button>
+        <button type="button" (click)="randomSquad()">New random 3</button>
+        <button type="button" (click)="reloadDraft()">Discard hero draft</button>
+      </div>
+    } @else {
+      <div class="dev-toolbar">
+        <button type="button" (click)="saveEnemyStorage()">Save enemies to browser</button>
+        <button type="button" (click)="resetEnemyBundled()">Reset enemies to bundled</button>
+        <button type="button" (click)="exportEnemyFile()">Export enemies JSON</button>
+        <label class="dev-file">
+          Import enemies JSON
+          <input type="file" accept="application/json,.json" (change)="onImportEnemyFile($event)" />
+        </label>
+      </div>
+    }
+    @if (msg()) {
+      <div class="dev-msg" [class.err]="msgIsErr()">{{ msg() }}</div>
+    }
+    <div class="dev-body-wrap">
+      <div class="dev-body">
+      @if (mainTab() === 'heroes') {
+        <div class="dev-row">
+          <label>Hero</label>
+          <select [ngModel]="selectedId()" (ngModelChange)="onPickHero($event)">
+            @for (id of heroIds(); track id) {
+              <option [value]="id">{{ heroLabel(id) }}</option>
+            }
+          </select>
+        </div>
+        @if (draftHero) {
+          <div class="dev-tabs">
+            <button type="button" [class.on]="tab() === 'core'" (click)="tab.set('core')">Core & abilities</button>
+            <button type="button" [class.on]="tab() === 'zones'" (click)="tab.set('zones')">Zone brackets</button>
+            <button type="button" [class.on]="tab() === 'evo'" (click)="tab.set('evo')">Evolutions</button>
+          </div>
+          @if (tab() === 'core') {
+            <section class="dev-sec">
+              <h3>Identity</h3>
+              <div class="dev-grid2">
+                <label>Name <input [(ngModel)]="draftHero.name" /></label>
+                <label>Class <input [(ngModel)]="draftHero.cls" /></label>
+                <label>HP <input type="number" [(ngModel)]="draftHero.hp" /></label>
+                <label>Portrait URL
+                  <input [(ngModel)]="draftHero.portraitPath" [placeholder]="defaultPortrait()" />
+                </label>
+              </div>
+              <div class="dev-row">
+                <label
+                  >Squad picker category
+                  <select [(ngModel)]="draftHero.pickerCategory">
+                    <option value="damage">Damage</option>
+                    <option value="defense">Defense</option>
+                    <option value="support">Support</option>
+                    <option value="control">Control</option>
+                  </select>
+                </label>
+              </div>
+              <div class="dev-row">
+                <label
+                  >Squad picker blurb
+                  <textarea rows="2" [(ngModel)]="draftHero.pickerBlurb"></textarea>
+                </label>
+              </div>
+              <p class="dev-hint">Leave portrait empty for default art. Blurb shows on the operation squad screen.</p>
+              <h3>Base abilities</h3>
+              @for (ab of draftHero.abilities; track $index; let ai = $index) {
+                <fieldset class="ab-field">
+                  <legend>#{{ ai + 1 }} {{ ab.name }}</legend>
+                  <div class="dev-grid3">
+                    <label>Zone
+                      <select [(ngModel)]="ab.zone">
+                        @for (z of zones; track z) {
+                          <option [value]="z">{{ z }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label>Range lo <input type="number" [(ngModel)]="ab.range[0]" /></label>
+                    <label>Range hi <input type="number" [(ngModel)]="ab.range[1]" /></label>
+                  </div>
+                  <label>Name <input [(ngModel)]="ab.name" /></label>
+                  <label>Effect text <input [(ngModel)]="ab.eff" /></label>
+                  <div class="dev-grid6">
+                    <label>dmg <input type="number" [(ngModel)]="ab.dmg" /></label>
+                    <label>dMin <input type="number" [(ngModel)]="ab.dMin" /></label>
+                    <label>dMax <input type="number" [(ngModel)]="ab.dMax" /></label>
+                    <label>dot <input type="number" [(ngModel)]="ab.dot" /></label>
+                    <label>dT <input type="number" [(ngModel)]="ab.dT" /></label>
+                    <label>rfe <input type="number" [(ngModel)]="ab.rfe" /></label>
+                    <label>heal <input type="number" [(ngModel)]="ab.heal" /></label>
+                    <label>rfT <input type="number" [ngModel]="ab.rfT ?? 0" (ngModelChange)="setOptNum(ab, 'rfT', $event)" /></label>
+                    <label>shield <input type="number" [ngModel]="ab.shield ?? 0" (ngModelChange)="setOptNum(ab, 'shield', $event)" /></label>
+                    <label>shT <input type="number" [ngModel]="ab.shT ?? 0" (ngModelChange)="setOptNum(ab, 'shT', $event)" /></label>
+                    <label>rfm <input type="number" [ngModel]="ab.rfm ?? 0" (ngModelChange)="setOptNum(ab, 'rfm', $event)" /></label>
+                    <label>rfmT <input type="number" [ngModel]="ab.rfmT ?? 0" (ngModelChange)="setOptNum(ab, 'rfmT', $event)" /></label>
+                  </div>
+                  <div class="dev-flags">
+                    <label><input type="checkbox" [(ngModel)]="ab.shTgt" /> shTgt</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.shieldAll" /> shieldAll</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.healTgt" /> healTgt</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.healAll" /> healAll</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.healLowest" /> healLowest</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.revive" /> revive</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.rfmTgt" /> rfmTgt</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.cloak" /> cloak</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.taunt" /> taunt</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.blastAll" /> blastAll</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.multiHit" /> multiHit</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.ignSh" /> ignSh</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.splitDmg" /> splitDmg</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.rfeAll" /> rfeAll</label>
+                    <label><input type="checkbox" [(ngModel)]="ab.rfeOnly" /> rfeOnly</label>
+                  </div>
+                </fieldset>
+              }
+            </section>
+          }
+          @if (tab() === 'zones') {
+            <section class="dev-sec">
+              <h3>Roll brackets for {{ selectedId() }}</h3>
+              @for (row of zoneBracketRows; track $index; let zi = $index) {
+                <div class="dev-bracket">
+                  <input type="number" [(ngModel)]="row.lo" />
+                  <span>–</span>
+                  <input type="number" [(ngModel)]="row.hi" />
+                  <select [(ngModel)]="row.zone">
+                    @for (z of zones; track z) {
+                      <option [value]="z">{{ z }}</option>
+                    }
+                  </select>
+                  <button type="button" class="dev-rm" (click)="removeBracket(zi)" [disabled]="zoneBracketRows.length <= 1">
+                    Remove
+                  </button>
+                </div>
+              }
+              <button type="button" (click)="addBracket()">Add bracket</button>
+            </section>
+          }
+          @if (tab() === 'evo') {
+            <section class="dev-sec">
+              <div class="dev-row">
+                <label>Evolution path</label>
+                <select [ngModel]="evoPathIdx" (ngModelChange)="evoPathIdx = +$event">
+                  @for (g of evoPathGroups(); track $index) {
+                    <option [value]="$index">{{ g.pathName }} · {{ g.indices.length }} zone slice(s)</option>
+                  }
+                </select>
+              </div>
+              @if (selectedEvoGroup(); as grp) {
+                @if (evoLead(grp); as lead) {
+                  <div class="dev-path-head">
+                    <h3>{{ grp.pathName }}</h3>
+                    <p class="dev-hint">
+                      One evolution path: all zone slices below use the same path name in data. Edit intro-tier focus / bonus HP
+                      on the first slice only.
+                    </p>
+                    <div class="dev-grid2">
+                      <label>Path name (all slices)
+                        <input [ngModel]="grp.pathName" (ngModelChange)="syncEvoPathName($event)" />
+                      </label>
+                      <label>Focus (intro tier)
+                        <input [(ngModel)]="lead.focus" />
+                      </label>
+                      <label>Bonus HP (intro tier)
+                        <input type="number" [(ngModel)]="lead.hp" />
+                      </label>
+                    </div>
+                  </div>
+                  <h3>All abilities for this path</h3>
+                  @for (row of evoPathAbilityRows(grp); track row.tierIdx + '-' + row.abi) {
+                    <fieldset class="ab-field">
+                      <legend>{{ row.ab.zone | uppercase }} — {{ row.ab.name }} <span class="dev-slice">(row {{ row.tierIdx + 1 }})</span></legend>
+                      <div class="dev-grid3">
+                        <label>Zone
+                          <select [(ngModel)]="row.ab.zone">
+                            @for (z of zones; track z) {
+                              <option [value]="z">{{ z }}</option>
+                            }
+                          </select>
+                        </label>
+                        <label>Range lo <input type="number" [(ngModel)]="row.ab.range[0]" /></label>
+                        <label>Range hi <input type="number" [(ngModel)]="row.ab.range[1]" /></label>
+                      </div>
+                      <label>Name <input [(ngModel)]="row.ab.name" /></label>
+                      <label>Effect text <input [(ngModel)]="row.ab.eff" /></label>
+                      <div class="dev-grid6">
+                        <label>dmg <input type="number" [(ngModel)]="row.ab.dmg" /></label>
+                        <label>dMin <input type="number" [(ngModel)]="row.ab.dMin" /></label>
+                        <label>dMax <input type="number" [(ngModel)]="row.ab.dMax" /></label>
+                        <label>dot <input type="number" [(ngModel)]="row.ab.dot" /></label>
+                        <label>dT <input type="number" [(ngModel)]="row.ab.dT" /></label>
+                        <label>rfe <input type="number" [(ngModel)]="row.ab.rfe" /></label>
+                        <label>heal <input type="number" [(ngModel)]="row.ab.heal" /></label>
+                        <label>rfT <input type="number" [ngModel]="row.ab.rfT ?? 0" (ngModelChange)="setOptNum(row.ab, 'rfT', $event)" /></label>
+                        <label>shield <input type="number" [ngModel]="row.ab.shield ?? 0" (ngModelChange)="setOptNum(row.ab, 'shield', $event)" /></label>
+                        <label>shT <input type="number" [ngModel]="row.ab.shT ?? 0" (ngModelChange)="setOptNum(row.ab, 'shT', $event)" /></label>
+                        <label>rfm <input type="number" [ngModel]="row.ab.rfm ?? 0" (ngModelChange)="setOptNum(row.ab, 'rfm', $event)" /></label>
+                        <label>rfmT <input type="number" [ngModel]="row.ab.rfmT ?? 0" (ngModelChange)="setOptNum(row.ab, 'rfmT', $event)" /></label>
+                      </div>
+                      <div class="dev-flags">
+                        <label><input type="checkbox" [(ngModel)]="row.ab.shTgt" /> shTgt</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.shieldAll" /> shieldAll</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.healTgt" /> healTgt</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.healAll" /> healAll</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.healLowest" /> healLowest</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.revive" /> revive</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.rfmTgt" /> rfmTgt</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.cloak" /> cloak</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.taunt" /> taunt</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.blastAll" /> blastAll</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.multiHit" /> multiHit</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.ignSh" /> ignSh</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.splitDmg" /> splitDmg</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.rfeAll" /> rfeAll</label>
+                        <label><input type="checkbox" [(ngModel)]="row.ab.rfeOnly" /> rfeOnly</label>
+                      </div>
+                    </fieldset>
+                  }
+                }
+              }
+            </section>
+          }
+          <footer class="dev-foot">
+            <button type="button" class="dev-primary" (click)="commitHero()">Save hero + zones</button>
+          </footer>
+        }
+      } @else {
+        @if (enemySuiteDraft && enemyUnitDraft && battleScaleDraft.length) {
+          <section class="dev-sec">
+            <h3>Operation zone</h3>
+            <div class="dev-row">
+              <label>Zone</label>
+              <select [ngModel]="enemyEditMode()" (ngModelChange)="onEnemyEditModeChange($event)">
+                @for (mid of battleModeOrder; track mid) {
+                  <option [value]="mid">{{ battleModeLabel(mid) }}</option>
+                }
+              </select>
+            </div>
+            <p class="dev-hint">Pick an operation first; ability suites and unit roster below are filtered to that track.</p>
+          </section>
+          <section class="dev-sec">
+            <h3>Ability suite by enemy type</h3>
+            <div class="dev-row">
+              <label>Enemy type</label>
+              <select [ngModel]="enemyAbilityType" (ngModelChange)="onEnemyTypeChange($event)">
+                @for (t of enemyTypesInEditMode(); track t) {
+                  <option [value]="t">{{ typeDisplayLabel(t) }}</option>
+                }
+              </select>
+            </div>
+            @for (z of zones; track z) {
+              @if (enemySuiteDraft[z]; as eab) {
+                <fieldset class="ab-field">
+                  <legend>{{ z | uppercase }}</legend>
+                  <label>Name <input [(ngModel)]="eab.name" /></label>
+                  <label>Effect <input [(ngModel)]="eab.eff" /></label>
+                  <div class="dev-grid6">
+                    <label>dmg <input type="number" [(ngModel)]="eab.dmg" /></label>
+                    <label>dmgP2 <input type="number" [ngModel]="eab.dmgP2 ?? 0" (ngModelChange)="setEnemyOptNum(eab, 'dmgP2', $event)" /></label>
+                    <label>dot <input type="number" [(ngModel)]="eab.dot" /></label>
+                    <label>dT <input type="number" [(ngModel)]="eab.dT" /></label>
+                    <label>heal <input type="number" [(ngModel)]="eab.heal" /></label>
+                    <label>rfe <input type="number" [(ngModel)]="eab.rfe" /></label>
+                    <label>shield <input type="number" [(ngModel)]="eab.shield" /></label>
+                    <label>shT <input type="number" [ngModel]="eab.shT ?? 0" (ngModelChange)="setEnemyOptNum(eab, 'shT', $event)" /></label>
+                    <label>shAlly <input type="number" [ngModel]="eab.shieldAlly ?? 0" (ngModelChange)="setEnemyOptNum(eab, 'shieldAlly', $event)" /></label>
+                    <label>rfm <input type="number" [ngModel]="eab.rfm ?? 0" (ngModelChange)="setEnemyOptNum(eab, 'rfm', $event)" /></label>
+                    <label>rfmT <input type="number" [ngModel]="eab.rfmT ?? 0" (ngModelChange)="setEnemyOptNum(eab, 'rfmT', $event)" /></label>
+                  </div>
+                  <label class="dev-flags"><input type="checkbox" [(ngModel)]="eab.wipeShields" /> wipeShields</label>
+                </fieldset>
+              }
+            }
+          </section>
+          <section class="dev-sec">
+            <h3>Unit roster</h3>
+            <div class="dev-row">
+              <label>Enemy name</label>
+              <select [ngModel]="enemyUnitKey" (ngModelChange)="onEnemyUnitKeyChange($event)">
+                @for (k of enemyUnitKeysInEditMode(); track k) {
+                  <option [value]="k">{{ k }}</option>
+                }
+              </select>
+            </div>
+            <div class="dev-grid2">
+              <label>HP <input type="number" [(ngModel)]="enemyUnitDraft.hp" /></label>
+              <label>dMin <input type="number" [(ngModel)]="enemyUnitDraft.dMin" /></label>
+              <label>dMax <input type="number" [(ngModel)]="enemyUnitDraft.dMax" /></label>
+              <label>type
+                <select [(ngModel)]="enemyUnitDraft.type">
+                  @for (t of enemyTypes; track t) {
+                    <option [value]="t">{{ typeDisplayLabel(t) }}</option>
+                  }
+                </select>
+              </label>
+              <label>ai
+                <select [(ngModel)]="enemyUnitDraft.ai">
+                  <option value="dumb">dumb</option>
+                  <option value="smart">smart</option>
+                </select>
+              </label>
+              <label>p2dMin <input type="number" [ngModel]="enemyUnitDraft.p2dMin ?? 0" (ngModelChange)="setUnitOptNum('p2dMin', $event)" /></label>
+              <label>p2dMax <input type="number" [ngModel]="enemyUnitDraft.p2dMax ?? 0" (ngModelChange)="setUnitOptNum('p2dMax', $event)" /></label>
+              <label>pThr <input type="number" [ngModel]="enemyUnitDraft.pThr ?? 0" (ngModelChange)="setUnitOptNum('pThr', $event)" /></label>
+            </div>
+          </section>
+          <section class="dev-sec">
+            <h3>Battle scaling (rows 1–10)</h3>
+            @for (row of battleScaleDraft; track $index; let bi = $index) {
+              <div class="dev-bracket">
+                <span class="dev-bi">B{{ bi + 1 }}</span>
+                <label>hp ×<input type="number" step="0.01" [(ngModel)]="row.hp" /></label>
+                <label>dmg ×<input type="number" step="0.01" [(ngModel)]="row.dmg" /></label>
+              </div>
+            }
+          </section>
+          <footer class="dev-foot">
+            <button type="button" class="dev-primary" (click)="commitEnemyData()">Save enemy data</button>
+          </footer>
+        }
+      }
+      </div>
+      <aside class="dev-sim-dock" aria-label="Battle progress Monte Carlo sim">
+        <h3 class="dev-sim-title">Battle sim</h3>
+        <p class="dev-sim-hint">
+          Random 3-hero squads vs encounter tables. Uses <strong>current</strong> hero &amp; enemy data (save to memory
+          first). Each operation: % reach battles 1–10, full clear %, and hero over-representation vs fair 3-of-8 odds.
+        </p>
+        <div class="dev-sim-row">
+          <label
+            >Iterations
+            <input type="number" min="50" max="20000" step="50" [(ngModel)]="simIterations" />
+          </label>
+          <button type="button" class="dev-sim-run" [disabled]="simRunning()" (click)="runBattleSim()">
+            {{ simRunning() ? 'Running…' : 'Run' }}
+          </button>
+          <button
+            type="button"
+            class="dev-sim-copy"
+            [disabled]="simRunning() || simOutput() === 'Running…'"
+            (click)="copyBattleSimOutput()"
+          >
+            {{ simJustCopied() ? 'Copied' : 'Copy text' }}
+          </button>
+        </div>
+        <pre class="dev-sim-out">{{ simOutput() }}</pre>
+      </aside>
+    </div>
+  </div>
+}

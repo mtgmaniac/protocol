@@ -1,0 +1,118 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/unit_select.gd" id="1_fh7rk"]
+[ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="2_e7chx"]
+
+[node name="UnitSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_fh7rk")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0470588, 0.0627451, 0.0980392, 1)
+
+[node name="BackgroundPattern" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_e7chx")
+
+[node name="Content" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Content/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 37
+text = "Select Squad"
+
+[node name="SummaryLabel" type="Label" parent="Content/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Pick 4 heroes."
+
+[node name="OperationPanel" type="PanelContainer" parent="Content/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OperationMargin" type="MarginContainer" parent="Content/VBox/OperationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="OperationVBox" type="VBoxContainer" parent="Content/VBox/OperationPanel/OperationMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OperationSelect" type="OptionButton" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 54)
+
+[node name="OperationBlurbLabel" type="Label" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "Select an operation track."
+
+[node name="HeroScroll" type="ScrollContainer" parent="Content/VBox"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HeroList" type="VBoxContainer" parent="Content/VBox/HeroScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 10
+
+[node name="RandomButton" type="Button" parent="Content/VBox/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(240, 58)
+text = "Random Squad"
+
+[node name="ContinueButton" type="Button" parent="Content/VBox/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(240, 58)
+disabled = true
+text = "Enter Battle"
+
+[connection signal="pressed" from="Content/VBox/ButtonRow/RandomButton" to="." method="_on_random_button_pressed"]
+[connection signal="pressed" from="Content/VBox/ButtonRow/ContinueButton" to="." method="_on_continue_button_pressed"]
+[connection signal="item_selected" from="Content/VBox/OperationPanel/OperationMargin/OperationVBox/OperationSelect" to="." method="_on_operation_selected"]

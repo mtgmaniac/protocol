@@ -1,0 +1,19 @@
+:host { display: contents; }
+.die-wrap {
+  width: 78px;
+  height: 78px;
+  position: relative;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+.die-clickable { cursor: pointer; }
+.die-clickable:hover .die-sprite { filter: brightness(1.08); }
+.die-clickable:active .die-sprite { transform: translate(1px, 1px); }
+.die-sprite {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-repeat: no-repeat;
+  background-size: 600% 600%;
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mockups",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/c/Users/Kev/overload-protocol/mockups/server.mjs"],
+      "port": 4300
+    }
+  ]
+}

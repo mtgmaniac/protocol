@@ -1,0 +1,24 @@
+@if (state.showOperationPicker()) {
+  <app-operation-picker
+    (startTutorial)="startTutorialFromHelp()"
+    (helpClicked)="helpOpen.set(true)" />
+} @else {
+  <div id="app">
+    <div class="arena">
+      <app-enemy-zone />
+      <app-dice-tray (helpClicked)="helpOpen.set(true)" />
+      <app-hero-zone />
+    </div>
+    <app-item-pending-banner />
+  </div>
+}
+<app-result-overlay />
+<app-help-overlay
+  [isOpen]="helpOpen()"
+  (closed)="helpOpen.set(false)"
+  (startTutorial)="startTutorialFromHelp()" />
+<app-tutorial-overlay (exitRegular)="onTutorialExitRegular()" />
+<app-evolution-overlay />
+<app-item-draft-overlay />
+<app-relic-draft-overlay />
+<app-gear-assign-overlay />

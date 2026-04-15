@@ -1,0 +1,48 @@
+<div class="evo-overlay" [class.show]="isVisible()">
+  <div class="evo-title">⬡ EVOLUTION AVAILABLE</div>
+  <p class="evo-lead">Choose a path. Preview shows HP and abilities after evolution.</p>
+  <div class="evo-heroes-row">
+    @for (pe of state.pendingEvolutions(); track pe.heroIdx; let ci = $index) {
+      <div class="evo-hero-card">
+        <div class="evo-hero-hdr">{{ getHeroName(pe.heroIdx) }}</div>
+        @for (path of getPaths(pe.heroIdx); track path.name; let ei = $index) {
+          <div
+            class="evo-path"
+            [class.selected]="pe.chosen === ei"
+            (click)="selectEvo(ci, ei)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="selectEvo(ci, ei)"
+            (keydown.space)="$event.preventDefault(); selectEvo(ci, ei)">
+            <div class="evo-path-top">
+              <div class="evo-path-portrait">
+                <app-portrait-frame [svg]="portraitSvg(pe.heroIdx)" [anchorId]="null" />
+              </div>
+              <div class="evo-path-head">
+                <div class="evo-path-name">{{ path.name }}</div>
+                @if (path.focus) {
+                  <div class="evo-path-focus">{{ path.focus }}</div>
+                }
+                <div class="evo-path-hp">HP {{ path.hp }}</div>
+              </div>
+            </div>
+            <div class="evo-path-abs">
+              @for (ab of path.abilities; track $index) {
+                <app-ability-row
+                  [ability]="ab"
+                  [zone]="ab.zone"
+                  [rangeStr]="rangeStr(ab)"
+                  [isCurrent]="false"
+                  [highlightLocked]="false"
+                  [tier]="2" />
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+  <button type="button" class="evo-confirm-btn" [disabled]="!allChosen()" (click)="confirm()">
+    CONFIRM EVOLUTIONS
+  </button>
+</div>

@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "overload-protocol:enemies.data",
+  "title": "Enemy abilities, unit roster stats, battle scaling",
+  "type": "object",
+  "required": ["enemyAbilities", "enemyUnitDefs", "battleEnemyScale"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "enemyAbilities": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/enemyAbilitySuite" }
+    },
+    "enemyUnitDefs": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/enemyUnitDef" }
+    },
+    "battleEnemyScale": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["hp", "dmg"],
+        "additionalProperties": false,
+        "properties": {
+          "hp": { "type": "number" },
+          "dmg": { "type": "number" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "enemyType": {
+      "type": "string",
+      "enum": [
+        "scrap",
+        "rust",
+        "patrol",
+        "guard",
+        "warden",
+        "volt",
+        "boss",
+        "skitter",
+        "mite",
+        "stalker",
+        "carapace",
+        "brood",
+        "spewer",
+        "hiveBoss",
+        "veilShard",
+        "veilPrism",
+        "veilAegis",
+        "veilResonance",
+        "veilNull",
+        "veilStorm",
+        "veilSynapse",
+        "veilBoss",
+        "voidWisp",
+        "voidAcolyte",
+        "voidScribe",
+        "voidBinder",
+        "voidGlimmer",
+        "voidChanneler",
+        "voidCircletBoss",
+        "beastMonkey",
+        "beastWolf",
+        "beastLynx",
+        "beastBison",
+        "beastHyena",
+        "beastBadger",
+        "beastTyrant",
+        "signalSkimmer",
+        "commsHex"
+      ]
+    },
+    "zone": {
+      "type": "string",
+      "enum": ["recharge", "strike", "surge", "crit", "overload"]
+    },
+    "enemyAbility": {
+      "type": "object",
+      "required": ["name", "eff", "dmg", "dot", "dT", "heal", "rfe", "shield"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "eff": { "type": "string" },
+        "dmg": { "type": "integer" },
+        "dmgP2": { "type": "integer" },
+        "dot": { "type": "integer" },
+        "dT": { "type": "integer" },
+        "heal": { "type": "integer" },
+        "rfe": { "type": "integer" },
+        "shield": { "type": "integer" },
+        "shT": { "type": "integer" },
+        "shieldAlly": { "type": "integer" },
+        "rfm": { "type": "integer" },
+        "rfmT": { "type": "integer" },
+        "wipeShields": { "type": "boolean" },
+        "lifestealPct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "summonChance": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "summonName": { "type": "string" },
+        "erb": { "type": "integer", "minimum": 0 },
+        "erbT": { "type": "integer", "minimum": 1 },
+        "erbAll": { "type": "boolean" },
+        "counterspellPct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "grantRampage": { "type": "integer", "minimum": 0 },
+        "grantRampageAll": { "type": "integer", "minimum": 0 },
+        "cowerT": { "type": "integer", "minimum": 1 },
+        "cowerAll": { "type": "boolean" },
+        "enemySelfTaunt": { "type": "boolean" },
+        "curseDice": { "type": "boolean" },
+        "packBonus": { "type": "boolean" }
+      }
+    },
+    "enemyAbilitySuite": {
+      "type": "object",
+      "required": ["recharge", "strike", "surge", "crit", "overload"],
+      "additionalProperties": false,
+      "properties": {
+        "recharge": { "$ref": "#/$defs/enemyAbility" },
+        "strike": { "$ref": "#/$defs/enemyAbility" },
+        "surge": { "$ref": "#/$defs/enemyAbility" },
+        "crit": { "$ref": "#/$defs/enemyAbility" },
+        "overload": { "$ref": "#/$defs/enemyAbility" }
+      }
+    },
+    "aiType": { "type": "string", "enum": ["dumb", "smart"] },
+    "enemyUnitDef": {
+      "type": "object",
+      "required": ["hp", "dMin", "dMax", "type", "ai"],
+      "additionalProperties": false,
+      "properties": {
+        "hp": { "type": "integer", "minimum": 1 },
+        "dMin": { "type": "integer", "minimum": 1 },
+        "dMax": { "type": "integer", "minimum": 1 },
+        "type": { "$ref": "#/$defs/enemyType" },
+        "ai": { "$ref": "#/$defs/aiType" },
+        "p2dMin": { "type": "integer", "minimum": 1 },
+        "p2dMax": { "type": "integer", "minimum": 1 },
+        "pThr": { "type": "integer", "minimum": 1 },
+        "summonElite": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+@if (choices(); as ids) {
+  <div class="id-overlay">
+    <div class="id-title">SUPPLY CACHE</div>
+    <div class="id-sub">Pick 1 item to stash or gear to equip (max 3 carried).</div>
+    <div class="id-row">
+      @for (id of ids; track id) {
+        @if (entryFor(id); as entry) {
+          @if (entry.kind === 'item') {
+            <button type="button" class="id-card" [class]="'r-' + entry.def.rarity" (click)="pick(entry.def.id)"
+                    [attr.aria-label]="entry.def.name + '. ' + entry.def.desc">
+              <span class="id-ic" aria-hidden="true">
+                @switch (entry.def.icon) {
+                  @case ('heart') {
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.6-9.6-9.2C.2 8.6 2.2 5 6 5c2.2 0 3.6 1.3 4 2.1.4-.8 1.8-2.1 4-2.1 3.8 0 5.8 3.6 3.6 6.8C15 16.4 12 21 12 21z" fill="currentColor" opacity=".35"/><path d="M12 19.2S6 15.2 3.6 11.4 5.4 6.6 8.8 6.6c1.6 0 2.6.8 3.2 1.6.6-.8 1.6-1.6 3.2-1.6 3.4 0 5.2 2.8 3 5.8C16.6 15.6 12 19.2 12 19.2z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+                  }
+                  @case ('shield') {
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".2"/><path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+                  }
+                  @case ('die') {
+                    <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="9" r="1.4" fill="currentColor"/><circle cx="15" cy="9" r="1.4" fill="currentColor"/><circle cx="9" cy="15" r="1.4" fill="currentColor"/><circle cx="15" cy="15" r="1.4" fill="currentColor"/></svg>
+                  }
+                  @case ('bolt') {
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/></svg>
+                  }
+                  @case ('skull') {
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 4c4 0 7 2.6 7 6.4 0 2-1 3.8-2.6 4.9V18c0 .5-.4 1-1 1h-1.2v-2h-1.8v2H11v-2H9.2v2H8c-.6 0-1-.5-1-1v-2.7C5.4 14.2 5 12.4 5 10.4 5 6.6 8 4 12 4z" fill="currentColor" opacity=".25"/><circle cx="9" cy="11" r="1.3" fill="currentColor"/><circle cx="15" cy="11" r="1.3" fill="currentColor"/><path d="M10 15h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                  }
+                  @case ('cloak') {
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M5 10c2.5-2 5.5-3 7-3s4.5 1 7 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+                      <path d="M4 14c3.2-3.2 7.8-4.2 12.5-2.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>
+                      <ellipse cx="12" cy="16" rx="5" ry="2.2" fill="currentColor" opacity=".2"/>
+                      <circle cx="9.5" cy="11" r="1.6" fill="currentColor" opacity=".5"/>
+                      <circle cx="14.5" cy="11" r="1.6" fill="currentColor" opacity=".5"/>
+                    </svg>
+                  }
+                  @default {
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 17.8 5.7 21 8 14.4 2 9.4h7.6L12 2z" fill="currentColor" opacity=".85"/></svg>
+                  }
+                }
+              </span>
+              <span class="id-name">{{ entry.def.name }}</span>
+              <p class="id-desc">{{ entry.def.desc }}</p>
+              <span class="id-r">{{ entry.def.rarity }}</span>
+            </button>
+          } @else {
+            <button type="button" class="id-card id-card-gear" [class]="'r-' + entry.def.rarity" (click)="pick(entry.def.id)"
+                    [attr.aria-label]="entry.def.name + '. ' + entry.def.desc">
+              <span class="id-ic" aria-hidden="true">
+                @switch (entry.def.icon) {
+                  @case ('heart') { <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.6-9.6-9.2C.2 8.6 2.2 5 6 5c2.2 0 3.6 1.3 4 2.1.4-.8 1.8-2.1 4-2.1 3.8 0 5.8 3.6 3.6 6.8C15 16.4 12 21 12 21z" fill="currentColor" opacity=".35"/><path d="M12 19.2S6 15.2 3.6 11.4 5.4 6.6 8.8 6.6c1.6 0 2.6.8 3.2 1.6.6-.8 1.6-1.6 3.2-1.6 3.4 0 5.2 2.8 3 5.8C16.6 15.6 12 19.2 12 19.2z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg> }
+                  @case ('shield') { <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".2"/><path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.3" fill="none"/></svg> }
+                  @case ('bolt') { <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/></svg> }
+                  @case ('skull') { <svg viewBox="0 0 24 24" fill="none"><path d="M12 4c4 0 7 2.6 7 6.4 0 2-1 3.8-2.6 4.9V18c0 .5-.4 1-1 1h-1.2v-2h-1.8v2H11v-2H9.2v2H8c-.6 0-1-.5-1-1v-2.7C5.4 14.2 5 12.4 5 10.4 5 6.6 8 4 12 4z" fill="currentColor" opacity=".25"/></svg> }
+                  @default { <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 17.8 5.7 21 8 14.4 2 9.4h7.6L12 2z" fill="currentColor" opacity=".85"/></svg> }
+                }
+              </span>
+              <span class="id-gear-tag">GEAR</span>
+              <span class="id-name">{{ entry.def.name }}</span>
+              <p class="id-desc">{{ entry.def.desc }}</p>
+              <span class="id-r">{{ entry.def.rarity }}</span>
+            </button>
+          }
+        }
+      }
+    </div>
+    <button type="button" class="id-skip" (click)="skip()">Skip</button>
+  </div>
+}

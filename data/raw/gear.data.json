@@ -1,0 +1,14 @@
+{
+  "gear": [
+    { "id": "neural_splice", "name": "Neural Splice", "desc": "+2 to all rolls.", "rarity": "uncommon", "icon": "die", "effect": { "type": "rollBonus", "amount": 2 } },
+    { "id": "combat_plating", "name": "Combat Plating", "desc": "Start each battle with 6 shield.", "rarity": "uncommon", "icon": "shield", "effect": { "type": "battleStartShield", "amount": 6 } },
+    { "id": "stim_injector", "name": "Stim Injector", "desc": "+4 max HP each battle.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 4 } },
+    { "id": "void_shard", "name": "Void Shard", "desc": "Enemy DoT ticks deal +2 damage.", "rarity": "uncommon", "icon": "skull", "effect": { "type": "dotDmgBonus", "amount": 2 } },
+    { "id": "phase_weave", "name": "Phase Weave", "desc": "Start each battle cloaked.", "rarity": "uncommon", "icon": "star", "effect": { "type": "battleStartCloak" } },
+    { "id": "scavenger_rig", "name": "Scavenger Rig", "desc": "Restore 3 HP when any enemy dies.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "healOnKill", "amount": 3 } },
+    { "id": "protocol_tap", "name": "Protocol Tap", "desc": "Gain +1 Protocol at the start of each battle.", "rarity": "uncommon", "icon": "bolt", "effect": { "type": "protocolOnBattleStart", "amount": 1 } },
+    { "id": "dead_mans_chip", "name": "Dead Man's Chip", "desc": "Once per battle: survive a killing blow at 1 HP.", "rarity": "rare", "icon": "heart", "effect": { "type": "surviveOnce" } },
+    { "id": "exile_blade_core", "name": "Exile Blade Core", "desc": "+4 damage on your first damaging ability each battle.", "rarity": "rare", "icon": "bolt", "effect": { "type": "firstAbilityDmgBonus", "amount": 4 } },
+    { "id": "signal_jammer_mk2", "name": "Signal Jammer Mk2", "desc": "Reduce all incoming damage by 2.", "rarity": "rare", "icon": "shield", "effect": { "type": "dmgReduction", "amount": 2 } }
+  ]
+}

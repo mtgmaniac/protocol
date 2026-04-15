@@ -1,0 +1,93 @@
+[
+  {
+    "id": "ironCurtain",
+    "name": "Iron Curtain",
+    "desc": "All enemies deal 75% damage (rounded down) for the rest of the run.",
+    "icon": "shield",
+    "effect": { "type": "enemyDmgMult", "mult": 0.75 }
+  },
+  {
+    "id": "openingGambit",
+    "name": "Opening Gambit",
+    "desc": "At the start of each battle, a random enemy and a random hero each take 50% of their max HP as damage.",
+    "icon": "bolt",
+    "effect": { "type": "battleStartHalfHp" }
+  },
+  {
+    "id": "bulwarkAura",
+    "name": "Bulwark Aura",
+    "desc": "Every hero gains 3 shield at the start of each enemy turn.",
+    "icon": "shield",
+    "effect": { "type": "heroShieldPerTurn", "amount": 3 }
+  },
+  {
+    "id": "naniteField",
+    "name": "Nanite Field",
+    "desc": "Every hero heals 3 HP at the start of each enemy turn.",
+    "icon": "heart",
+    "effect": { "type": "heroHealPerTurn", "amount": 3 }
+  },
+  {
+    "id": "plagueProtocol",
+    "name": "Plague Protocol",
+    "desc": "All enemies begin every battle with 3 damage-over-time.",
+    "icon": "skull",
+    "effect": { "type": "enemyDotPermanent", "amount": 3 }
+  },
+  {
+    "id": "overcharge",
+    "name": "Overcharge",
+    "desc": "All heroes deal 130% damage on ability hits (rounded up).",
+    "icon": "bolt",
+    "effect": { "type": "heroDmgMult", "mult": 1.3 }
+  },
+  {
+    "id": "signalJam",
+    "name": "Signal Jam",
+    "desc": "All enemies begin every battle with a permanent −2 roll penalty.",
+    "icon": "die",
+    "effect": { "type": "enemyStartRfe", "amount": 2 }
+  },
+  {
+    "id": "coordinatedStrike",
+    "name": "Coordinated Strike",
+    "desc": "All heroes begin every battle with a permanent +2 roll bonus.",
+    "icon": "die",
+    "effect": { "type": "heroStartRollBuff", "amount": 2 }
+  },
+  {
+    "id": "resonanceCascade",
+    "name": "Resonance Cascade",
+    "desc": "Enemy DoT ticks deal +2 extra damage each tick.",
+    "icon": "skull",
+    "effect": { "type": "dotAmplified", "bonus": 2 }
+  },
+  {
+    "id": "gravityWell",
+    "name": "Gravity Well",
+    "desc": "At the start of each enemy turn, all living enemies take 2 damage.",
+    "icon": "bolt",
+    "effect": { "type": "auraEnemyDmg", "amount": 2 }
+  },
+  {
+    "id": "protocolOverride",
+    "name": "Protocol Override",
+    "desc": "All items cost 0 Protocol for the remainder of the run.",
+    "icon": "die",
+    "effect": { "type": "protocolFree" }
+  },
+  {
+    "id": "entropyLeak",
+    "name": "Entropy Leak",
+    "desc": "Enemies lose 5 max HP per battle already cleared when they spawn (−25 to −50 HP for battles 6–10).",
+    "icon": "skull",
+    "effect": { "type": "enemyHpEscalation", "reductionPerBattle": 5 }
+  },
+  {
+    "id": "chainReaction",
+    "name": "Chain Reaction",
+    "desc": "When an enemy dies, all other living enemies take 4 damage.",
+    "icon": "bolt",
+    "effect": { "type": "chainReaction", "amount": 4 }
+  }
+]

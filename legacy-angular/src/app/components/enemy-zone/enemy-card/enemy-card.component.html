@@ -1,0 +1,59 @@
+<div class="ec-col">
+  <div class="ec-card"
+       [attr.id]="index() === 0 ? 'tut-drone-card' : null"
+       [class.is-dead]="enemy().dead"
+       [class.selectable-enemy-pick]="isPickable()"
+       [style.border-color]="unitFrameColor()"
+       (click)="onCardClick()">
+    <!-- Zone strip (left) -->
+    <div class="ec-zone-strip" [class]="'zone-' + (currentZone() || 'recharge')">
+      <span class="ec-zone-tag">{{ zoneAbbr(currentZone()) }}</span>
+    </div>
+    <!-- Card body -->
+    <div class="ec-body">
+      <div class="ec-top">
+        <span class="ec-name">{{ enemy().name }}</span>
+        <div class="ec-ability" [class]="'zone-' + (currentZone() || 'recharge')">
+          @if (currentAbility(); as ab) {
+            {{ ab.name }}@if (ab.dmg) { — {{ ab.dmg }} dmg }
+          }
+        </div>
+        <div class="ec-target">
+          @for (seg of targetLine().segments; track $index) {
+            @switch (seg.t) {
+              @case ('enemy') { <span class="tgt-enemy">{{ seg.text }}</span> }
+              @case ('ally')  { <span class="tgt-ally">{{ seg.text }}</span> }
+              @case ('self')  { <span class="tgt-self">{{ seg.text }}</span> }
+              @case ('muted') { <span class="tgt-muted">{{ seg.text }}</span> }
+              @default        { <span>{{ seg.text }}</span> }
+            }
+          }
+        </div>
+      </div>
+      <div class="ec-bot">
+        <app-hp-bar [current]="enemy().currentHp" [max]="enemy().maxHp" [compactHead]="true" [tightMargins]="true" />
+        <div class="ec-status">
+          @if (totalShieldAmt() > 0) {
+            <span class="st-sh">🛡{{ totalShieldAmt() }}</span>
+          }
+          @if ((enemy().dot ?? 0) > 0) {
+            <span class="st-dot">☠{{ enemy().dot }}</span>
+          }
+          @if ((enemy().rollBuff ?? 0) !== 0) {
+            <span class="st-roll" [class.pos]="(enemy().rollBuff ?? 0) > 0" [class.neg]="(enemy().rollBuff ?? 0) < 0">
+              {{ (enemy().rollBuff ?? 0) > 0 ? '+' : '' }}{{ enemy().rollBuff }}⚄
+            </span>
+          }
+        </div>
+      </div>
+    </div>
+    <!-- Portrait (right) -->
+    <div class="ec-portrait">
+      <app-portrait-frame
+        [svg]="enemySvg()"
+        [anchorId]="'action-enemy-' + index()"
+        [rampageGlow]="(enemy().rampageCharges || 0) > 0"
+        [rampageTip]="rampagePortraitTip()" />
+    </div>
+  </div>
+</div>

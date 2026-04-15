@@ -1,0 +1,22 @@
+<div class="log-wrap" id="tut-battle-log"
+     [class.log-collapsed]="!state.logOpen()">
+  <div class="log-hdr">
+    <div class="log-left">
+      <button class="log-toggle" (click)="logService.toggleOpen()">{{ state.logOpen() ? '−' : '+' }}</button>
+      <span class="log-title">BATTLE LOG</span>
+    </div>
+    @if (state.logOpen()) {
+      <div class="log-mode">
+        <button [class.active]="state.logMode() === 'min'" (click)="logService.setMode('min')">MAJOR</button>
+        <button [class.active]="state.logMode() === 'all'" (click)="logService.setMode('all')">ALL</button>
+      </div>
+    }
+  </div>
+  @if (state.logOpen()) {
+    <div class="battle-log">
+      @for (entry of logService.getFilteredLog(); track $index) {
+        <div class="le" [class]="entry.cls">{{ entry.msg }}</div>
+      }
+    </div>
+  }
+</div>

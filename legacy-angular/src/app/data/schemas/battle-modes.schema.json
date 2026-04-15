@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "overload-protocol:battle-modes",
+  "title": "Operation tracks & encounter tables",
+  "type": "object",
+  "required": ["order", "modes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "order": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "modes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "blurb", "victoryTitle", "victorySub", "battles"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "blurb": { "type": "string" },
+          "victoryTitle": { "type": "string" },
+          "victorySub": { "type": "string" },
+          "trackHpScale": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5,
+            "description": "Multiplies enemy max HP (after battle index scale). Use 1 for baseline; below 1 softens the operation."
+          },
+          "battles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["enemies"],
+              "additionalProperties": false,
+              "properties": {
+                "enemies": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

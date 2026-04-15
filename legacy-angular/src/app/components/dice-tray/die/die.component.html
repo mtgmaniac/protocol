@@ -1,0 +1,14 @@
+<div
+  class="die-wrap"
+  #dieWrap
+  [class.die-clickable]="clickable()"
+  [attr.role]="clickable() ? 'button' : 'img'"
+  [attr.aria-label]="dieAriaLabel()"
+  [attr.tabindex]="clickable() ? 0 : -1"
+  (click)="onDieClick()"
+  (keydown)="onDieKeydown($event)">
+  <div
+    class="die-sprite"
+    [style.background-image]="diceBg"
+    [style.background-position]="spriteBgPos()"></div>
+</div>

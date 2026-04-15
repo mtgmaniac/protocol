@@ -1,0 +1,83 @@
+@if (itemDef(); as def) {
+    <div class="ip-banner" role="status">
+      <div class="ip-item">
+        <span class="ip-item-lbl">Using item</span>
+        <span class="ip-item-name">{{ def.name }}</span>
+        <p class="ip-item-desc">{{ def.desc }}</p>
+      </div>
+      <p class="ip-hint">Tap a valid unit on the board to apply it, or tap the item slot again to cancel.</p>
+      @if (def.target === 'ally') {
+        <div class="ip-targets">
+          @for (idx of allyHeroIndices(); track idx) {
+            @if (state.heroes()[idx]; as hero) {
+              <div class="ip-unit">
+                <div class="ip-unit-portrait">
+                  <app-portrait-frame [svg]="heroSvg(idx)" [anchorId]="null" />
+                </div>
+                <div class="ip-unit-meta">
+                  <span class="ip-unit-name">{{ hero.name }}</span>
+                  <span class="ip-unit-hp">{{ hero.currentHp }} / {{ hero.maxHp }} HP</span>
+                </div>
+                <div class="ip-unit-abs">
+                  @for (ab of hero.abilities; track ab.name) {
+                    <app-ability-row
+                      [ability]="ab"
+                      [zone]="ab.zone"
+                      [rangeStr]="rangeStr(ab)"
+                      [isCurrent]="false"
+                      [highlightLocked]="false"
+                      [tier]="hero.tier" />
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+      @if (def.target === 'allyDead') {
+        <div class="ip-targets">
+          @for (idx of deadHeroIndices(); track idx) {
+            @if (state.heroes()[idx]; as hero) {
+              <div class="ip-unit ip-unit--dead">
+                <div class="ip-unit-portrait">
+                  <app-portrait-frame [svg]="heroSvg(idx)" [anchorId]="null" />
+                </div>
+                <div class="ip-unit-meta">
+                  <span class="ip-unit-name">{{ hero.name }}</span>
+                  <span class="ip-unit-hp">Down</span>
+                </div>
+                <div class="ip-unit-abs">
+                  @for (ab of hero.abilities; track ab.name) {
+                    <app-ability-row
+                      [ability]="ab"
+                      [zone]="ab.zone"
+                      [rangeStr]="rangeStr(ab)"
+                      [isCurrent]="false"
+                      [highlightLocked]="false"
+                      [tier]="hero.tier" />
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+      @if (def.target === 'enemy') {
+        <div class="ip-targets ip-targets--enemy">
+          @for (idx of enemyIndices(); track idx) {
+            @if (state.enemies()[idx]; as enemy) {
+              <div class="ip-unit ip-unit--enemy">
+                <div class="ip-unit-portrait ip-unit-portrait--enemy">
+                  <app-portrait-frame [svg]="enemySvg(idx)" [anchorId]="null" />
+                </div>
+                <div class="ip-unit-meta">
+                  <span class="ip-unit-name">{{ enemy.name }}</span>
+                  <span class="ip-unit-hp">{{ enemy.currentHp }} / {{ enemy.maxHp }} HP</span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+}

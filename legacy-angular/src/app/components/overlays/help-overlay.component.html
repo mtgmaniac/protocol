@@ -1,0 +1,179 @@
+<div class="help-overlay" [class.show]="isOpen()">
+  <div class="help-body">
+    <div class="help-top">
+      <div class="help-title">HELP</div>
+      <div class="help-top-btns">
+        <button class="hdr-btn hdr-btn-accent" type="button" (click)="startTutorial.emit(); closed.emit()">TUTORIAL</button>
+        @if (devBuild) {
+          <button class="hdr-btn hdr-btn-data" type="button" (click)="openDataPanel()">DATA</button>
+        }
+        <button class="hdr-btn" type="button" (click)="state.animOn.update(v => !v)">
+          {{ state.animOn() ? 'ANIMATIONS ON' : 'ANIMATIONS OFF' }}
+        </button>
+        <button class="hdr-btn" type="button" (click)="toggleSound()">
+          {{ state.soundOn() ? 'SOUND ON' : 'SOUND OFF' }}
+        </button>
+        <button class="hdr-btn" type="button" (click)="closed.emit()">CLOSE</button>
+      </div>
+    </div>
+    <div class="help-grid">
+
+      <!-- ── PROTOCOL & ITEMS ── -->
+      <div class="hsec">
+        <h3>PROTOCOL & REROLLS</h3>
+        <div class="help-mini">
+          <div>Gain <span class="k">+1 Protocol</span> after each END TURN (cap <span class="k">10</span>). Spend from the strip:</div>
+          <div><span class="k">Reroll</span> — 2 pts. Tap the dice icon, then a hero die to reroll it.</div>
+          <div><span class="k">Nudge +5</span> — 1 pt. Tap the arrow icon, then a hero to add +5 to their current roll.</div>
+        </div>
+      </div>
+
+      <!-- ── ITEMS ── -->
+      <div class="hsec">
+        <h3>ITEMS</h3>
+        <div class="help-mini">
+          <div>Up to <span class="k">3 consumable slots</span>. After winning a fight you draft one item if you have room.</div>
+          <div>Use cost by rarity: <span class="k">Common 1 · Uncommon 2 · Rare 3 · Legendary 5</span> Protocol.</div>
+          <div>Tap an item slot to select it, then tap a target on the board.</div>
+        </div>
+      </div>
+
+      <!-- ── XP & EVOLUTION ── -->
+      <div class="hsec hsec-span">
+        <h3>XP & EVOLUTION</h3>
+        <div class="help-mini">
+          <div>Tier-1 heroes earn <span class="k">XP after each battle win</span> based on their average d20 rolls that fight: low avg → 2 XP · mid → 5 XP · high → 8–15 XP.</div>
+          <div>When a living tier-1 hero reaches <span class="k">18 XP</span> after battle 3 or later, an <span class="k">Evolution</span> prompt appears. Choose a specialisation path — it replaces their ability kit, raises max HP, and locks them at tier 2 (no further XP).</div>
+          <div>Dead heroes do not earn XP. The XP bar below each hero portrait tracks progress.</div>
+        </div>
+      </div>
+
+      <!-- ── HERO BADGES ── -->
+      <div class="hsec hsec-span">
+        <h3>HERO BADGES</h3>
+        <p class="help-lead"><span class="k">Incoming</span> = queued effects resolving this END TURN. <span class="k">Status</span> = already active on the unit. The clock icon means more than 1 turn remains — the number is turns left.</p>
+        <div class="ref-rows ref-rows-compact">
+          <div class="ref-row">
+            <span class="ref-ic bdg-dmg" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/></svg></span>
+            <div><span class="ref-name">Bolt (Incoming)</span> — Damage hitting this hero from an enemy this turn.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-heal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M11 5h2v14h-2zM5 11h14v2H5z" fill="currentColor" opacity=".9"/></svg></span>
+            <div><span class="ref-name">Plus (Incoming / Status)</span> — Incoming: heal arriving this turn. Status: active regen or heal-over-time.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-sh" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".25"/><path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" opacity=".9" fill="none"/></svg></span>
+            <div><span class="ref-name">Shield (Incoming / Status)</span> — Absorbs damage before HP. Clock = turns until it expires.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-poison" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3c4.4 0 8 3 8 7.2 0 2.5-1.3 4.6-3.3 5.9V20c0 .6-.4 1-1 1h-1v-2h-2v2h-1v-2h-2v2H8.3c-.6 0-1-.4-1-1v-3.9C5.3 14.8 4 12.7 4 10.2 4 6 7.6 3 12 3z" fill="currentColor" opacity=".25"/><path d="M9.2 10.6c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6zm8.4 0c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6z" fill="currentColor" opacity=".9"/><path d="M10.2 15.2h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"/></svg></span>
+            <div><span class="ref-name">Skull (Incoming / Status)</span> — DoT (damage over time). Ticks once per player turn. Clock = ticks remaining.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-rollp" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="12" r="1.35" fill="currentColor"/><circle cx="15" cy="12" r="1.35" fill="currentColor"/></svg></span>
+            <div><span class="ref-name">Die — green (+) or red (−)</span> — Net roll modifier on the hero's next d20. Green = buff; red = debuff. Incoming shows queued; Status shows what's already active.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ENEMY BADGES ── -->
+      <div class="hsec hsec-span">
+        <h3>ENEMY BADGES</h3>
+        <p class="help-lead">Enemy cards show what <span class="k">heroes are doing to them</span> (Incoming) and their own active effects (Status). Same clock rule — number = turns left.</p>
+        <div class="ref-rows ref-rows-compact">
+          <div class="ref-row">
+            <span class="ref-ic bdg-dmg" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h8l-1 8 11-14h-8l0-6z" fill="currentColor" opacity=".9"/></svg></span>
+            <div><span class="ref-name">Bolt (Incoming)</span> — Total hero damage landing on this enemy this END TURN.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-rolln" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="12" r="1.35" fill="currentColor"/><circle cx="15" cy="12" r="1.35" fill="currentColor"/></svg></span>
+            <div><span class="ref-name">Red Die (Incoming)</span> — Roll penalty (RFE) about to be applied to this enemy's d20.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-poison" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3c4.4 0 8 3 8 7.2 0 2.5-1.3 4.6-3.3 5.9V20c0 .6-.4 1-1 1h-1v-2h-2v2h-1v-2h-2v2H8.3c-.6 0-1-.4-1-1v-3.9C5.3 14.8 4 12.7 4 10.2 4 6 7.6 3 12 3z" fill="currentColor" opacity=".25"/><path d="M9.2 10.6c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6zm8.4 0c0 .9-.6 1.6-1.4 1.6s-1.4-.7-1.4-1.6.6-1.6 1.4-1.6 1.4.7 1.4 1.6z" fill="currentColor" opacity=".9"/><path d="M10.2 15.2h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"/></svg></span>
+            <div><span class="ref-name">Skull (Incoming)</span> — DoT a hero is applying to this enemy this turn.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-heal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M11 5h2v14h-2zM5 11h14v2H5z" fill="currentColor" opacity=".9"/></svg></span>
+            <div><span class="ref-name">Plus (Incoming)</span> — Lifesteal: this enemy heals itself when it hits. Value shown is the heal it would gain next hit.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-sh" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v7c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-4z" fill="currentColor" opacity=".25"/><path d="M12 3.6l6.5 3.2v6.1c0 4.2-2.8 7.1-6.5 7.6-3.7-.5-6.5-3.4-6.5-7.6V6.8L12 3.6z" stroke="currentColor" stroke-width="1.2" opacity=".9" fill="none"/></svg></span>
+            <div><span class="ref-name">Shield (Status)</span> — Active shield absorbing the next hit(s). Clock = turns remaining.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-rolln" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="12" r="1.35" fill="currentColor"/><circle cx="15" cy="12" r="1.35" fill="currentColor"/></svg></span>
+            <div><span class="ref-name">Red Die (Status)</span> — Active RFE debuff: this number is subtracted from the enemy's d20 each turn. Clock = turns left.</div>
+          </div>
+          <div class="ref-row">
+            <span class="ref-ic bdg-rollp" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="12" r="1.35" fill="currentColor"/><circle cx="15" cy="12" r="1.35" fill="currentColor"/></svg></span>
+            <div><span class="ref-name">Green Die (Status)</span> — Active roll buff: this number is added to the enemy's d20. Clock = turns left.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STATUS RIBBON ── -->
+      <div class="hsec hsec-span">
+        <h3>STATUS RIBBON</h3>
+        <p class="help-lead">Word chips next to the HP bar. Tap any chip for a full description in-game.</p>
+        <div class="help-status-grid">
+          <div class="help-status-row">
+            <div class="help-status-section">
+              <div class="help-status-heading">Heroes</div>
+              <div class="help-mini help-status-list">
+                <div><span class="k">COWER</span> — Hero skips rolling and abilities this round. Inflicted by certain enemy abilities.</div>
+                <div><span class="k">CLOAK</span> — ~80% chance the next enemy hit that targets this hero misses; then cloak clears.</div>
+                <div><span class="k">TAUNT</span> — All enemies target this hero this round. Triggered by hero abilities.</div>
+                <div><span class="k">CURSED</span> — Next roll this hero makes is rolled twice and the lower result is kept. Clears after.</div>
+                <div><span class="k">SEAL N</span> — Abilities in the named zone (e.g. STRIKE) fizzle. N = player rounds remaining.</div>
+              </div>
+            </div>
+            <div class="help-status-section">
+              <div class="help-status-heading">Enemies</div>
+              <div class="help-mini help-status-list">
+                <div><span class="k">RAMPAGE N</span> — Next N direct hits deal ×2 damage; one charge consumed per hit.</div>
+                <div><span class="k">PACK +N</span> — Deals +N bonus damage when striking; N = number of living packmates of the same type.</div>
+                <div><span class="k">FOCUS</span> — Heroes must target this enemy next player round. Cleared if the enemy dies.</div>
+                <div><span class="k">FREEZE N</span> — Die is locked for N tray reveals; the frozen face is preserved and the enemy can't roll higher.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BALANCE SIM ── -->
+      <div class="hsec hsec-span sim-section">
+        <h3>BALANCE SIM</h3>
+        <p class="help-lead">
+          Monte Carlo — random 3-hero squads vs bundled encounter tables. Includes XP, evolution, DoT, and shield.
+          No items or summons. Max 2 000 runs (browser). Copy output for spreadsheet analysis.
+        </p>
+        <div class="sim-controls">
+          <label class="sim-label">
+            Runs
+            <input class="sim-input" type="number" min="50" max="2000" step="50"
+                   [(ngModel)]="simIterations" [disabled]="simRunning()" />
+          </label>
+          <label class="sim-label">
+            Protocol rerolls / track
+            <input class="sim-input" type="number" min="0" max="20" step="1"
+                   [(ngModel)]="simProtocolRerolls" [disabled]="simRunning()" />
+          </label>
+          <button class="hdr-btn sim-run-btn" type="button"
+                  [disabled]="simRunning()" (click)="runBalanceSim()">
+            {{ simRunning() ? 'RUNNING…' : 'RUN SIM' }}
+          </button>
+          @if (simOutput() && !simRunning()) {
+            <button class="hdr-btn sim-copy-btn" type="button" (click)="copySimOutput()">
+              {{ simJustCopied() ? 'COPIED' : 'COPY' }}
+            </button>
+          }
+        </div>
+        @if (simOutput()) {
+          <pre class="sim-output">{{ simOutput() }}</pre>
+        }
+      </div>
+
+    </div>
+  </div>
+</div>

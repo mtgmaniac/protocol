@@ -1,0 +1,23 @@
+// Floating tooltips (see OpTooltipDirective) — matches ov-box / in-game panels
+.op-tooltip-panel {
+  position: fixed;
+  z-index: 10050;
+  max-width: min(380px, calc(100vw - 20px));
+  padding: 11px 14px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text-chip);
+  text-align: left;
+  background: var(--bg2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-pixel);
+  box-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(46, 125, 212, 0.12),
+    0 0 24px rgba(46, 125, 212, 0.08);
+  pointer-events: none;
+  white-space: pre-line;
+  -webkit-font-smoothing: antialiased;
+}

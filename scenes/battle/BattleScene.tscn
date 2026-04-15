@@ -1,0 +1,325 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/battle_scene.gd" id="1_c4j2v"]
+[ext_resource type="PackedScene" path="res://scenes/battle/DiceTray3D.tscn" id="2_vc1ae"]
+[ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="3_1epkk"]
+
+[node name="BattleScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_c4j2v")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0352941, 0.0431373, 0.0705882, 1)
+
+[node name="BackgroundPattern" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_1epkk")
+
+[node name="FloatLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_as_relative = false
+z_index = 50
+
+[node name="Content" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="HeaderRow" type="HBoxContainer" parent="Content/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SummaryLabel" type="Label" parent="Content/VBox/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 28
+custom_minimum_size = Vector2(0, 60)
+vertical_alignment = 1
+autowrap_mode = 2
+text = "Veil Concord  Battle 1/10"
+
+[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 8
+alignment = 2
+theme_override_constants/separation = 6
+
+[node name="ToggleLogButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(48, 48)
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 28
+text = "?"
+
+[node name="AutoTurnButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(48, 48)
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 28
+text = "▶"
+
+[node name="ReturnToMenuButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(48, 48)
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 28
+text = "←"
+
+[node name="Board" type="VBoxContainer" parent="Content/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="HeroPanel" type="PanelContainer" parent="Content/VBox/Board"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 3.0
+
+[node name="HeroMargin" type="MarginContainer" parent="Content/VBox/Board/HeroPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="HeroVBox" type="VBoxContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="HeroScroll" type="MarginContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_bottom = 2
+
+[node name="HeroCards" type="GridContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroVBox/HeroScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="CenterPanel" type="PanelContainer" parent="Content/VBox/Board"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 190)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="CenterMargin" type="MarginContainer" parent="Content/VBox/Board/CenterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="CenterVBox" type="Control" parent="Content/VBox/Board/CenterPanel/CenterMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DiceTray3D" parent="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox" instance=ExtResource("2_vc1ae")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ActionButtonWrap" type="CenterContainer" parent="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 10
+size_flags_horizontal = 3
+
+[node name="RollButton" type="Button" parent="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(280, 76)
+text = "Roll All"
+
+[node name="EnemyPanel" type="PanelContainer" parent="Content/VBox/Board"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 3.0
+
+[node name="EnemyMargin" type="MarginContainer" parent="Content/VBox/Board/EnemyPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="EnemyVBox" type="VBoxContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="EnemyScroll" type="MarginContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_bottom = 2
+
+[node name="EnemyCards" type="GridContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyVBox/EnemyScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="BattleLogPanel" type="PanelContainer" parent="Content/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(0, 92)
+
+[node name="BattleLogMargin" type="MarginContainer" parent="Content/VBox/BattleLogPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 8
+
+[node name="BattleLogVBox" type="VBoxContainer" parent="Content/VBox/BattleLogPanel/BattleLogMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BattleLogTitle" type="Label" parent="Content/VBox/BattleLogPanel/BattleLogMargin/BattleLogVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Battle Log"
+
+[node name="BattleLogLabel" type="RichTextLabel" parent="Content/VBox/BattleLogPanel/BattleLogMargin/BattleLogVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = false
+fit_content = false
+scroll_active = true
+scroll_following = true
+text = ""
+
+[node name="ProtocolPanel" type="PanelContainer" parent="Content/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 104)
+
+[node name="ProtocolMargin" type="MarginContainer" parent="Content/VBox/ProtocolPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 10
+
+[node name="ProtocolRow" type="HBoxContainer" parent="Content/VBox/ProtocolPanel/ProtocolMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="ProtocolLabel" type="Label" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Protocol"
+
+[node name="ProtocolBar" type="ProgressBar" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 10.0
+value = 3.0
+show_percentage = false
+
+[node name="ProtocolValueLabel" type="Label" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow/ProtocolBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 18
+text = "3 / 10"
+
+[node name="ProtocolSpendButton" type="Button" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(82, 72)
+text = "↺"
+
+[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ToggleLogButton" to="." method="_on_toggle_log_button_pressed"]
+[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoTurnButton" to="." method="_on_auto_turn_button_pressed"]
+[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]
+[connection signal="pressed" from="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap/RollButton" to="." method="_on_roll_button_pressed"]

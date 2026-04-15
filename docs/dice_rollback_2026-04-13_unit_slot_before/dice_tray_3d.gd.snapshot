@@ -1,0 +1,961 @@
+class_name DiceTray3D
+extends Control
+
+signal roll_finished
+
+const DIE_RADIUS := 1.40
+const DIE_COLLISION_LAYER := 1
+const DIE_COLLISION_MASK := 1
+const TRAY_HALF_WIDTH := 5.5
+const TRAY_HALF_DEPTH := 3.5
+const COLLISION_FLOOR_HALF_WIDTH := 6.0
+const COLLISION_FLOOR_HALF_DEPTH := 4.0
+const COLLISION_WALL_HEIGHT := 7.0
+const SETTLE_LINEAR_SPEED := 0.018
+const SETTLE_ANGULAR_SPEED := 0.026
+const SETTLE_REQUIRED_TIME := 0.75
+const MIN_ROLL_TIME := 2.40
+const MAX_ROLL_TIME := 7.5
+const RESULT_PRESENTATION_TIME := 0.24
+const RESULT_FACE_NORMAL := Vector3(0.0, 0.82, 0.57)
+const RESULT_FACE_TEXT_UP := Vector3.UP
+const RESULT_MIN_SEPARATION := DIE_RADIUS * 2.05
+const RESULT_LAYOUT_ITERATIONS := 12
+
+var _viewport: SubViewport
+var _world_root: Node3D
+var _dice_root: Node3D
+var _hero_results: Dictionary = {}
+var _enemy_results: Dictionary = {}
+var _die_by_key: Dictionary = {}
+var _face_normals: Array[Vector3] = []
+var _face_centers: Array[Vector3] = []
+var _face_values: Array[int] = []
+var _is_rolling: bool = false
+var _number_block_material: StandardMaterial3D
+var _face_panel_material: StandardMaterial3D
+var _edge_line_material: StandardMaterial3D
+var _dice_number_font: Font
+
+
+func _ready() -> void:
+	_build_ui()
+	_build_world()
+	_build_d20_face_data()
+	reset()
+
+
+func reset() -> void:
+	_is_rolling = false
+	_hero_results.clear()
+	_enemy_results.clear()
+	_die_by_key.clear()
+	_clear_dice()
+	# Hide when not rolling so the Roll button underneath is visible
+	visible = false
+
+
+func get_hero_rolls() -> Dictionary:
+	return _hero_results.duplicate()
+
+
+func get_enemy_rolls() -> Dictionary:
+	return _enemy_results.duplicate()
+
+
+func show_result_actions(action_entries: Array) -> void:
+	for entry_variant in action_entries:
+		var entry: Dictionary = entry_variant
+		var key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
+		var die: RigidBody3D = _die_by_key.get(key, null) as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		var label: Label3D = die.get_node_or_null("OwnerLabel") as Label3D
+		if label == null:
+			continue
+		label.text = "%s %d\n%s" % [
+			str(entry.get("name", "")).left(8),
+			int(entry.get("roll", 0)),
+			str(entry.get("ability", "")).left(12),
+		]
+
+
+func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
+	if _is_rolling:
+		return
+	_is_rolling = true
+	visible = true
+	_hero_results.clear()
+	_enemy_results.clear()
+	_clear_dice()
+
+	var dice: Array = []
+	var all_entries: Array = []
+	for entry_variant in enemy_entries:
+		var entry: Dictionary = entry_variant
+		entry["side"] = "enemy"
+		all_entries.append(entry)
+	for entry_variant in hero_entries:
+		var entry: Dictionary = entry_variant
+		entry["side"] = "hero"
+		all_entries.append(entry)
+
+	if all_entries.is_empty():
+		await _finish_roll(dice)
+		return
+
+	for i in range(all_entries.size()):
+		dice.append(_spawn_die(all_entries[i], i, all_entries.size()))
+
+	await _wait_for_dice_to_settle(dice)
+	await _finish_roll(dice)
+
+
+func _finish_roll(dice: Array) -> void:
+	var result_entries: Array = []
+	for die_variant in dice:
+		var die: RigidBody3D = die_variant as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		var result: int = _get_upward_face_value(die)
+		var entry: Dictionary = die.get_meta("entry", {})
+		var side: String = str(entry.get("side", ""))
+		var unit_id: String = str(entry.get("id", ""))
+		if side == "hero":
+			_hero_results[unit_id] = result
+		elif side == "enemy":
+			_enemy_results[unit_id] = result
+		_show_die_result_label(die, result, str(entry.get("name", "")))
+		die.freeze = true
+		die.linear_velocity = Vector3.ZERO
+		die.angular_velocity = Vector3.ZERO
+		result_entries.append({
+			"die": die,
+			"result": result,
+			"side": side,
+		})
+
+	var target_origins: Dictionary = _get_non_overlapping_result_origins(result_entries)
+	for result_entry_variant in result_entries:
+		var result_entry: Dictionary = result_entry_variant
+		var die: RigidBody3D = result_entry.get("die", null) as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		var result: int = int(result_entry.get("result", 1))
+		var side: String = str(result_entry.get("side", ""))
+		var target_origin: Vector3 = target_origins.get(die.get_instance_id(), die.global_transform.origin)
+		await _present_result_face(die, result, target_origin)
+		_highlight_top_face(die, result, side)
+
+	_is_rolling = false
+	# Stay visible so the player can read the results; reset() hides later
+	roll_finished.emit()
+
+
+func _present_result_face(die: RigidBody3D, result: int, target_origin: Vector3) -> void:
+	var face_index: int = _get_face_index_for_result(result)
+	if face_index < 0:
+		return
+	var from_transform: Transform3D = die.global_transform
+	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_method(
+		func(weight: float) -> void:
+			if is_instance_valid(die):
+				die.global_transform = from_transform.interpolate_with(to_transform, weight)
+	, 0.0, 1.0, RESULT_PRESENTATION_TIME)
+	await tween.finished
+
+
+func _get_non_overlapping_result_origins(result_entries: Array) -> Dictionary:
+	var origins: Dictionary = {}
+	var valid_entries: Array = []
+	for result_entry_variant in result_entries:
+		var result_entry: Dictionary = result_entry_variant
+		var die: RigidBody3D = result_entry.get("die", null) as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		valid_entries.append(result_entry)
+		origins[die.get_instance_id()] = _clamp_result_origin(die.global_transform.origin)
+
+	for _iteration in range(RESULT_LAYOUT_ITERATIONS):
+		for i in range(valid_entries.size()):
+			var die_a: RigidBody3D = (valid_entries[i] as Dictionary).get("die", null) as RigidBody3D
+			if die_a == null or not is_instance_valid(die_a):
+				continue
+			var id_a: int = die_a.get_instance_id()
+			for j in range(i + 1, valid_entries.size()):
+				var die_b: RigidBody3D = (valid_entries[j] as Dictionary).get("die", null) as RigidBody3D
+				if die_b == null or not is_instance_valid(die_b):
+					continue
+				var id_b: int = die_b.get_instance_id()
+				var origin_a: Vector3 = origins[id_a]
+				var origin_b: Vector3 = origins[id_b]
+				var delta: Vector3 = Vector3(origin_b.x - origin_a.x, 0.0, origin_b.z - origin_a.z)
+				var distance: float = delta.length()
+				if distance >= RESULT_MIN_SEPARATION:
+					continue
+				var direction: Vector3
+				if distance < 0.001:
+					var angle: float = (TAU / float(maxi(valid_entries.size(), 1))) * float(j)
+					direction = Vector3(cos(angle), 0.0, sin(angle)).normalized()
+				else:
+					direction = delta / distance
+				var push: Vector3 = direction * ((RESULT_MIN_SEPARATION - distance) * 0.5)
+				origins[id_a] = _clamp_result_origin(origin_a - push)
+				origins[id_b] = _clamp_result_origin(origin_b + push)
+	return origins
+
+
+func _clamp_result_origin(origin: Vector3) -> Vector3:
+	origin.x = clampf(origin.x, -TRAY_HALF_WIDTH + DIE_RADIUS, TRAY_HALF_WIDTH - DIE_RADIUS)
+	origin.z = clampf(origin.z, -TRAY_HALF_DEPTH + DIE_RADIUS, TRAY_HALF_DEPTH - DIE_RADIUS)
+	return origin
+
+
+func _get_face_index_for_result(result: int) -> int:
+	for i in range(_face_values.size()):
+		if int(_face_values[i]) == result:
+			return i
+	return -1
+
+
+func _get_face_forward_result_basis(face_index: int) -> Basis:
+	var local_face_basis: Basis = _basis_for_face_surface(_face_normals[face_index])
+	var target_normal: Vector3 = RESULT_FACE_NORMAL.normalized()
+	var target_text_up: Vector3 = RESULT_FACE_TEXT_UP - target_normal * RESULT_FACE_TEXT_UP.dot(target_normal)
+	if target_text_up.length_squared() < 0.00001:
+		target_text_up = Vector3.FORWARD - target_normal * Vector3.FORWARD.dot(target_normal)
+	target_text_up = target_text_up.normalized()
+	var target_text_right: Vector3 = target_text_up.cross(target_normal).normalized()
+	var target_face_basis: Basis = Basis(target_text_right, target_text_up, target_normal).orthonormalized()
+	return (target_face_basis * local_face_basis.inverse()).orthonormalized()
+
+
+func _highlight_top_face(die: RigidBody3D, result: int, side: String) -> void:
+	var panel_name: String = "FacePanel%d" % result
+	var panel: MeshInstance3D = die.get_node_or_null(panel_name) as MeshInstance3D
+	if panel == null:
+		return
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	mat.render_priority = 1
+	if side == "hero":
+		mat.albedo_color = Color(0.06, 0.14, 0.32, 1.0)
+		mat.emission = Color(0.04, 0.10, 0.25, 1.0)
+	else:
+		mat.albedo_color = Color(0.30, 0.06, 0.05, 1.0)
+		mat.emission = Color(0.20, 0.04, 0.03, 1.0)
+	mat.emission_enabled = true
+	mat.emission_energy_multiplier = 0.8
+	mat.roughness = 0.80
+	panel.material_override = mat
+
+
+func _wait_for_dice_to_settle(dice: Array) -> void:
+	var elapsed: float = 0.0
+	var settled_time: float = 0.0
+	while elapsed < MAX_ROLL_TIME:
+		await get_tree().physics_frame
+		var delta: float = get_physics_process_delta_time()
+		elapsed += delta
+		var all_settled: bool = elapsed >= MIN_ROLL_TIME
+		for die_variant in dice:
+			var die: RigidBody3D = die_variant as RigidBody3D
+			if die == null or not is_instance_valid(die):
+				continue
+			if die.sleeping:
+				continue
+			if die.linear_velocity.length() > SETTLE_LINEAR_SPEED or die.angular_velocity.length() > SETTLE_ANGULAR_SPEED:
+				all_settled = false
+				break
+		if all_settled:
+			settled_time += delta
+			if settled_time >= SETTLE_REQUIRED_TIME:
+				return
+		else:
+			settled_time = 0.0
+
+
+# ── UI CONSTRUCTION ──────────────────────────────────────────────────────────
+
+func _build_ui() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	z_index = 0
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var viewport_container: SubViewportContainer = SubViewportContainer.new()
+	viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	viewport_container.stretch = true
+	viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	viewport_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	viewport_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(viewport_container)
+
+	_viewport = SubViewport.new()
+	# Transparent so the game UI shows through around/behind the dice
+	_viewport.transparent_bg = true
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.gui_disable_input = true
+	_viewport.world_3d = World3D.new()
+	viewport_container.add_child(_viewport)
+
+
+func _build_world() -> void:
+	_world_root = Node3D.new()
+	_viewport.add_child(_world_root)
+
+	var camera: Camera3D = Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 6.5
+	camera.position = Vector3(0, 6.0, 4.5)
+	camera.rotation_degrees = Vector3(-55, 0, 0)
+	camera.near = 0.05
+	camera.far = 20.0
+	_world_root.add_child(camera)
+	_viewport.world_3d.environment = _build_environment()
+
+	var key_light: DirectionalLight3D = DirectionalLight3D.new()
+	key_light.rotation_degrees = Vector3(-52, 38, 0)
+	key_light.light_energy = 3.0
+	_world_root.add_child(key_light)
+
+	var fill_light: OmniLight3D = OmniLight3D.new()
+	fill_light.position = Vector3(-2.5, 3.5, 2.0)
+	fill_light.light_color = Color(0.45, 0.72, 1.0, 1.0)
+	fill_light.light_energy = 2.0
+	fill_light.omni_range = 12.0
+	_world_root.add_child(fill_light)
+
+	_build_tray_body()
+	_dice_root = Node3D.new()
+	_world_root.add_child(_dice_root)
+
+
+func _build_environment() -> Environment:
+	var environment: Environment = Environment.new()
+	environment.background_mode = Environment.BG_COLOR
+	# Transparent background — only the floor plane and dice are visible
+	environment.background_color = Color(0, 0, 0, 0)
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.20, 0.34, 0.52, 1.0)
+	environment.ambient_light_energy = 1.0
+	return environment
+
+
+func _build_visible_floor() -> void:
+	var floor_mesh: PlaneMesh = PlaneMesh.new()
+	floor_mesh.size = Vector2(COLLISION_FLOOR_HALF_WIDTH * 2.4, COLLISION_FLOOR_HALF_DEPTH * 2.4)
+	var floor_mat: StandardMaterial3D = StandardMaterial3D.new()
+	floor_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	floor_mat.albedo_color = Color(0.02, 0.03, 0.05, 1.0)
+	floor_mat.roughness = 0.95
+	var floor_inst: MeshInstance3D = MeshInstance3D.new()
+	floor_inst.mesh = floor_mesh
+	floor_inst.material_override = floor_mat
+	floor_inst.position = Vector3(0, -0.01, 0)
+	_world_root.add_child(floor_inst)
+
+
+func _build_tray_body() -> void:
+	_add_static_box("InvisibleFloor", Vector3(0, -0.08, 0), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, 0.16, COLLISION_FLOOR_HALF_DEPTH * 2.0))
+	_add_static_box("InvisibleBackWall", Vector3(0, COLLISION_WALL_HEIGHT * 0.5, -TRAY_HALF_DEPTH), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, COLLISION_WALL_HEIGHT, 0.16))
+	_add_static_box("InvisibleFrontWall", Vector3(0, COLLISION_WALL_HEIGHT * 0.5, TRAY_HALF_DEPTH), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, COLLISION_WALL_HEIGHT, 0.16))
+	_add_static_box("InvisibleLeftWall", Vector3(-TRAY_HALF_WIDTH, COLLISION_WALL_HEIGHT * 0.5, 0), Vector3(0.16, COLLISION_WALL_HEIGHT, COLLISION_FLOOR_HALF_DEPTH * 2.0))
+	_add_static_box("InvisibleRightWall", Vector3(TRAY_HALF_WIDTH, COLLISION_WALL_HEIGHT * 0.5, 0), Vector3(0.16, COLLISION_WALL_HEIGHT, COLLISION_FLOOR_HALF_DEPTH * 2.0))
+	_add_static_box("InvisibleCeiling", Vector3(0, COLLISION_WALL_HEIGHT + 0.08, 0), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, 0.16, COLLISION_FLOOR_HALF_DEPTH * 2.0))
+
+
+func _add_static_box(node_name: String, pos: Vector3, size: Vector3) -> void:
+	var body: StaticBody3D = StaticBody3D.new()
+	body.name = node_name
+	body.position = pos
+	body.collision_layer = DIE_COLLISION_LAYER
+	body.collision_mask = DIE_COLLISION_MASK
+	body.physics_material_override = _make_tray_physics_material()
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var box: BoxShape3D = BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	body.add_child(shape)
+	_world_root.add_child(body)
+
+
+# ── DICE SPAWNING & PHYSICS ──────────────────────────────────────────────────
+
+func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
+	var die: RigidBody3D = RigidBody3D.new()
+	die.set_meta("entry", entry)
+	_die_by_key[_entry_key(str(entry.get("side", "")), str(entry.get("id", "")))] = die
+	# Heavier mass + strong gravity = weighty, impactful feel
+	die.mass = 4.2
+	die.gravity_scale = 4.2
+	# Very low damping at start — dice carry momentum and bounce freely
+	die.linear_damp = 0.12
+	die.angular_damp = 0.16
+	die.can_sleep = true
+	die.continuous_cd = true
+	die.contact_monitor = true
+	die.max_contacts_reported = 8
+	die.collision_layer = DIE_COLLISION_LAYER
+	die.collision_mask = DIE_COLLISION_MASK
+	die.physics_material_override = _make_die_physics_material()
+	die.position = _get_spawn_position(index, total_count)
+	die.rotation_degrees = Vector3(randf_range(0, 360), randf_range(0, 360), randf_range(0, 360))
+
+	var collision: CollisionShape3D = CollisionShape3D.new()
+	var convex: ConvexPolygonShape3D = ConvexPolygonShape3D.new()
+	convex.points = _get_d20_convex_points()
+	collision.shape = convex
+	die.add_child(collision)
+
+	var mesh_instance: MeshInstance3D = MeshInstance3D.new()
+	mesh_instance.mesh = _build_d20_mesh()
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.render_priority = -2
+	mat.albedo_color = Color(0.12, 0.42, 0.88, 1.0) if str(entry.get("side", "")) == "hero" else Color(0.72, 0.20, 0.18, 1.0)
+	mat.emission_enabled = true
+	mat.emission = mat.albedo_color.darkened(0.50)
+	mat.emission_energy_multiplier = 0.5
+	mat.roughness = 0.35
+	mat.metallic = 0.10
+	mesh_instance.material_override = mat
+	die.add_child(mesh_instance)
+
+	# Inner shell — solid blocker so no back-face geometry shows through
+	var inner_mesh_instance: MeshInstance3D = MeshInstance3D.new()
+	inner_mesh_instance.mesh = _build_inner_shell_mesh()
+	var inner_mat: StandardMaterial3D = StandardMaterial3D.new()
+	inner_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	inner_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	inner_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	inner_mat.render_priority = -3
+	inner_mat.albedo_color = mat.albedo_color.darkened(0.3)
+	inner_mat.roughness = 1.0
+	inner_mesh_instance.material_override = inner_mat
+	die.add_child(inner_mesh_instance)
+
+	_add_face_panels(die)
+	_add_edge_lines(die)
+	_add_face_labels(die)
+	_add_owner_label(die, str(entry.get("name", "")), str(entry.get("side", "")))
+
+	_dice_root.add_child(die)
+
+	# --- THROW PHYSICS ---
+	# Strong lateral throw + high loft = dice arc up and slam down with bounce
+	var throw_dir: Vector3 = _get_throw_direction(die.position, index, total_count)
+	var throw_strength: float = randf_range(24.0, 32.0)
+	var slam: float = randf_range(9.0, 13.0)
+	die.apply_impulse(
+		throw_dir * throw_strength + Vector3.DOWN * slam,
+		Vector3(randf_range(-1.1, 1.1), randf_range(-0.35, 0.35), randf_range(-1.1, 1.1))
+	)
+	die.angular_velocity = Vector3(
+		randf_range(-12.0, 12.0),
+		randf_range(-16.0, 16.0),
+		randf_range(-12.0, 12.0)
+	)
+	# Heavy torque for vigorous tumbling
+	die.apply_torque_impulse(Vector3(
+		randf_range(-180.0, 180.0),
+		randf_range(-220.0, 220.0),
+		randf_range(-180.0, 180.0)
+	))
+	return die
+
+
+func _build_inner_shell_mesh() -> ArrayMesh:
+	var inner_radius: float = DIE_RADIUS * 0.92
+	var phi: float = (1.0 + sqrt(5.0)) * 0.5
+	var base_verts: Array[Vector3] = [
+		Vector3(-1, phi, 0), Vector3(1, phi, 0), Vector3(-1, -phi, 0), Vector3(1, -phi, 0),
+		Vector3(0, -1, phi), Vector3(0, 1, phi), Vector3(0, -1, -phi), Vector3(0, 1, -phi),
+		Vector3(phi, 0, -1), Vector3(phi, 0, 1), Vector3(-phi, 0, -1), Vector3(-phi, 0, 1),
+	]
+	for i in range(base_verts.size()):
+		base_verts[i] = base_verts[i].normalized() * inner_radius
+	var vertices: PackedVector3Array = PackedVector3Array()
+	var normals_arr: PackedVector3Array = PackedVector3Array()
+	for face in _get_d20_faces():
+		var a: Vector3 = base_verts[int(face[0])]
+		var b: Vector3 = base_verts[int(face[1])]
+		var c: Vector3 = base_verts[int(face[2])]
+		var center: Vector3 = (a + b + c) / 3.0
+		var normal: Vector3 = (b - a).cross(c - a).normalized()
+		if normal.dot(center) < 0:
+			normal = -normal
+			vertices.push_back(a)
+			vertices.push_back(c)
+			vertices.push_back(b)
+		else:
+			vertices.push_back(a)
+			vertices.push_back(b)
+			vertices.push_back(c)
+		normals_arr.push_back(normal)
+		normals_arr.push_back(normal)
+		normals_arr.push_back(normal)
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals_arr
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+func _make_die_physics_material() -> PhysicsMaterial:
+	var material: PhysicsMaterial = PhysicsMaterial.new()
+	# High bounce for energetic impacts and visible bouncing
+	material.bounce = 0.34
+	material.friction = 0.92
+	return material
+
+
+func _make_tray_physics_material() -> PhysicsMaterial:
+	var material: PhysicsMaterial = PhysicsMaterial.new()
+	# Floor/walls bouncy enough to keep dice lively
+	material.bounce = 0.20
+	material.friction = 0.94
+	return material
+
+
+func _get_spawn_position(index: int, total_count: int) -> Vector3:
+	# Spawn high above the tray so dice fall with force
+	var spawn_height: float = randf_range(3.6, 4.7)
+	var angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + randf_range(-0.3, 0.3)
+	var edge_x: float = cos(angle) * TRAY_HALF_WIDTH * 0.85
+	var edge_z: float = sin(angle) * TRAY_HALF_DEPTH * 0.80
+	edge_x += randf_range(-0.6, 0.6)
+	edge_z += randf_range(-0.5, 0.5)
+	return Vector3(edge_x, spawn_height, edge_z)
+
+
+func _get_throw_direction(spawn_pos: Vector3, index: int, total_count: int) -> Vector3:
+	var landing_angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + PI + randf_range(-0.8, 0.8)
+	var landing_radius_x: float = TRAY_HALF_WIDTH * randf_range(0.30, 0.85)
+	var landing_radius_z: float = TRAY_HALF_DEPTH * randf_range(0.30, 0.85)
+	var target: Vector3 = Vector3(
+		cos(landing_angle) * landing_radius_x + randf_range(-1.2, 1.2),
+		0.0,
+		sin(landing_angle) * landing_radius_z + randf_range(-1.0, 1.0)
+	)
+	var direction: Vector3 = (target - Vector3(spawn_pos.x, 0.0, spawn_pos.z)).normalized()
+	if direction.length_squared() < 0.001:
+		return Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+	return direction
+
+
+# ── FACE DATA ─────────────────────────────────────────────────────────────────
+
+func _build_d20_face_data() -> void:
+	_face_normals.clear()
+	_face_centers.clear()
+	_face_values.clear()
+	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
+	var faces: Array = _get_d20_faces()
+	for i in range(faces.size()):
+		var face: Array = faces[i]
+		var a: Vector3 = raw_vertices[int(face[0])]
+		var b: Vector3 = raw_vertices[int(face[1])]
+		var c: Vector3 = raw_vertices[int(face[2])]
+		var center: Vector3 = (a + b + c) / 3.0
+		var normal: Vector3 = (b - a).cross(c - a).normalized()
+		if normal.dot(center) < 0:
+			normal = -normal
+		_face_normals.append(normal)
+		_face_centers.append(center)
+		_face_values.append(i + 1)
+
+
+func _get_upward_face_value(die: RigidBody3D) -> int:
+	var best_dot: float = -999.0
+	var best_value: int = 1
+	for i in range(_face_normals.size()):
+		var world_normal: Vector3 = die.global_transform.basis * _face_normals[i]
+		var dot: float = world_normal.normalized().dot(Vector3.UP)
+		if dot > best_dot:
+			best_dot = dot
+			best_value = int(_face_values[i])
+	return best_value
+
+
+# ── MESH CONSTRUCTION ─────────────────────────────────────────────────────────
+
+func _build_d20_mesh() -> ArrayMesh:
+	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
+	var vertices: PackedVector3Array = PackedVector3Array()
+	var normals_arr: PackedVector3Array = PackedVector3Array()
+	for face in _get_d20_faces():
+		var a: Vector3 = raw_vertices[int(face[0])]
+		var b: Vector3 = raw_vertices[int(face[1])]
+		var c: Vector3 = raw_vertices[int(face[2])]
+		var center: Vector3 = (a + b + c) / 3.0
+		var normal: Vector3 = (b - a).cross(c - a).normalized()
+		if normal.dot(center) < 0:
+			normal = -normal
+			vertices.push_back(a)
+			vertices.push_back(c)
+			vertices.push_back(b)
+		else:
+			vertices.push_back(a)
+			vertices.push_back(b)
+			vertices.push_back(c)
+		normals_arr.push_back(normal)
+		normals_arr.push_back(normal)
+		normals_arr.push_back(normal)
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals_arr
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+func _get_d20_convex_points() -> PackedVector3Array:
+	var points: PackedVector3Array = PackedVector3Array()
+	for vertex in _get_raw_d20_vertices():
+		points.push_back(vertex)
+	return points
+
+
+func _get_raw_d20_vertices() -> Array[Vector3]:
+	var phi: float = (1.0 + sqrt(5.0)) * 0.5
+	var vertices: Array[Vector3] = [
+		Vector3(-1, phi, 0), Vector3(1, phi, 0), Vector3(-1, -phi, 0), Vector3(1, -phi, 0),
+		Vector3(0, -1, phi), Vector3(0, 1, phi), Vector3(0, -1, -phi), Vector3(0, 1, -phi),
+		Vector3(phi, 0, -1), Vector3(phi, 0, 1), Vector3(-phi, 0, -1), Vector3(-phi, 0, 1),
+	]
+	for i in range(vertices.size()):
+		vertices[i] = vertices[i].normalized() * DIE_RADIUS
+	return vertices
+
+
+func _get_d20_faces() -> Array:
+	return [
+		[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+		[1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+		[3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+		[4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+	]
+
+
+# ── FACE VISUALS ──────────────────────────────────────────────────────────────
+
+func _add_face_panels(die: RigidBody3D) -> void:
+	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
+	var faces: Array = _get_d20_faces()
+	for face_index in range(faces.size()):
+		var face: Array = faces[face_index]
+		var a: Vector3 = raw_vertices[int(face[0])]
+		var b: Vector3 = raw_vertices[int(face[1])]
+		var c: Vector3 = raw_vertices[int(face[2])]
+		var center: Vector3 = (a + b + c) / 3.0
+		var normal: Vector3 = (b - a).cross(c - a).normalized()
+		if normal.dot(center) < 0:
+			normal = -normal
+		var inset: float = 0.96
+		var offset: float = 0.014
+		var va: Vector3 = center + (a - center) * inset + normal * offset
+		var vb: Vector3 = center + (b - center) * inset + normal * offset
+		var vc: Vector3 = center + (c - center) * inset + normal * offset
+		var panel_normal: Vector3 = (vb - va).cross(vc - va).normalized()
+		var verts: PackedVector3Array
+		if panel_normal.dot(normal) < 0:
+			verts = PackedVector3Array([va, vc, vb])
+		else:
+			verts = PackedVector3Array([va, vb, vc])
+		var face_normals: PackedVector3Array = PackedVector3Array([normal, normal, normal])
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = face_normals
+		var mesh: ArrayMesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var panel_inst: MeshInstance3D = MeshInstance3D.new()
+		panel_inst.name = "FacePanel%d" % (face_index + 1)
+		panel_inst.mesh = mesh
+		panel_inst.material_override = _get_face_panel_material()
+		die.add_child(panel_inst)
+
+
+func _add_edge_lines(die: RigidBody3D) -> void:
+	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
+	var edge_keys: Dictionary = {}
+	for face_variant in _get_d20_faces():
+		var face: Array = face_variant
+		_add_edge_line_if_needed(die, raw_vertices, int(face[0]), int(face[1]), edge_keys)
+		_add_edge_line_if_needed(die, raw_vertices, int(face[1]), int(face[2]), edge_keys)
+		_add_edge_line_if_needed(die, raw_vertices, int(face[2]), int(face[0]), edge_keys)
+
+
+func _add_edge_line_if_needed(die: RigidBody3D, raw_vertices: Array[Vector3], a_idx: int, b_idx: int, edge_keys: Dictionary) -> void:
+	var min_idx: int = mini(a_idx, b_idx)
+	var max_idx: int = maxi(a_idx, b_idx)
+	var key: String = "%d:%d" % [min_idx, max_idx]
+	if edge_keys.has(key):
+		return
+	edge_keys[key] = true
+	var a: Vector3 = raw_vertices[a_idx]
+	var b: Vector3 = raw_vertices[b_idx]
+	var direction: Vector3 = b - a
+	var edge_length: float = direction.length()
+	if edge_length <= 0.001:
+		return
+	var edge_mesh: BoxMesh = BoxMesh.new()
+	edge_mesh.size = Vector3(0.04, edge_length, 0.04)
+	var edge: MeshInstance3D = MeshInstance3D.new()
+	edge.mesh = edge_mesh
+	edge.material_override = _get_edge_line_material()
+	edge.position = (a + b) * 0.5
+	edge.basis = _basis_for_edge(direction.normalized())
+	die.add_child(edge)
+
+
+func _basis_for_edge(y_axis: Vector3) -> Basis:
+	var x_axis: Vector3 = Vector3.UP.cross(y_axis)
+	if x_axis.length() < 0.01:
+		x_axis = Vector3.RIGHT.cross(y_axis)
+	x_axis = x_axis.normalized()
+	var z_axis: Vector3 = x_axis.cross(y_axis).normalized()
+	return Basis(x_axis, y_axis, z_axis)
+
+
+func _get_face_panel_material() -> StandardMaterial3D:
+	if _face_panel_material == null:
+		_face_panel_material = StandardMaterial3D.new()
+		_face_panel_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		_face_panel_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		_face_panel_material.cull_mode = BaseMaterial3D.CULL_BACK
+		_face_panel_material.render_priority = 0
+		_face_panel_material.albedo_color = Color(0.025, 0.04, 0.065, 1.0)
+		_face_panel_material.emission_enabled = true
+		_face_panel_material.emission = Color(0.010, 0.020, 0.035, 1.0)
+		_face_panel_material.roughness = 0.90
+	return _face_panel_material
+
+
+func _get_edge_line_material() -> StandardMaterial3D:
+	if _edge_line_material == null:
+		_edge_line_material = StandardMaterial3D.new()
+		_edge_line_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		_edge_line_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		_edge_line_material.cull_mode = BaseMaterial3D.CULL_BACK
+		_edge_line_material.render_priority = 0
+		_edge_line_material.albedo_color = Color(0.40, 0.48, 0.58, 1.0)
+		_edge_line_material.emission_enabled = true
+		_edge_line_material.emission = Color(0.12, 0.16, 0.22, 1.0)
+		_edge_line_material.roughness = 0.55
+		_edge_line_material.metallic = 0.20
+	return _edge_line_material
+
+
+# ── FACE NUMBERS ──────────────────────────────────────────────────────────────
+
+func _get_face_inscribed_radius() -> float:
+	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
+	var face: Array = _get_d20_faces()[0]
+	var a: Vector3 = raw_vertices[int(face[0])]
+	var b: Vector3 = raw_vertices[int(face[1])]
+	var c: Vector3 = raw_vertices[int(face[2])]
+	var ab: float = (b - a).length()
+	var bc: float = (c - b).length()
+	var ca: float = (a - c).length()
+	var s: float = (ab + bc + ca) * 0.5
+	var area: float = sqrt(s * (s - ab) * (s - bc) * (s - ca))
+	return area / s
+
+
+func _add_face_labels(die: RigidBody3D) -> void:
+	var inradius: float = _get_face_inscribed_radius()
+	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
+	var faces: Array = _get_d20_faces()
+	for i in range(_face_centers.size()):
+		var value_text: String = "%d" % int(_face_values[i])
+		var face: Array = faces[i]
+		var face_basis: Basis = _basis_for_triangle_face(
+			raw_vertices[int(face[0])],
+			raw_vertices[int(face[1])],
+			raw_vertices[int(face[2])],
+			_face_normals[i]
+		)
+		var label: Label3D = Label3D.new()
+		label.name = "FaceNumber%d" % int(_face_values[i])
+		label.text = value_text
+		label.font = _get_dice_number_font()
+		label.font_size = 90 if value_text.length() == 1 else 76
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.modulate = Color(1.0, 1.0, 0.95, 1.0)
+		label.outline_size = 10
+		label.outline_modulate = Color(0.015, 0.020, 0.035, 1.0)
+		label.pixel_size = 0.0066
+		label.no_depth_test = false
+		label.position = _face_centers[i] + face_basis.y * (inradius * 0.12) + _face_normals[i] * 0.055
+		label.basis = face_basis
+		die.add_child(label)
+
+
+func _add_pixel_number_blocks(root: Node3D, value_text: String, inradius: float) -> void:
+	var usable_radius: float = inradius * 0.85
+	var digit_count: int = value_text.length()
+	var total_pixel_width: float = 3.0 * float(digit_count) + 0.6 * float(maxi(digit_count - 1, 0))
+	var total_pixel_height: float = 5.0
+	var scale_by_width: float = (usable_radius * 2.0) / total_pixel_width
+	var scale_by_height: float = (usable_radius * 2.0) / total_pixel_height
+	var pixel_size: float = minf(scale_by_width, scale_by_height)
+	var pixel_gap: float = pixel_size * 0.12
+	var actual_pixel_step: float = pixel_size + pixel_gap
+
+	var digit_width: float = 3.0 * actual_pixel_step - pixel_gap
+	var digit_height: float = 5.0 * actual_pixel_step - pixel_gap
+	var digit_gap: float = pixel_size * 0.6
+	var full_width: float = digit_width * float(digit_count) + digit_gap * float(maxi(digit_count - 1, 0))
+
+	var block_mesh: BoxMesh = BoxMesh.new()
+	block_mesh.size = Vector3(pixel_size, pixel_size, 0.018)
+
+	for digit_index in range(value_text.length()):
+		var digit: String = value_text.substr(digit_index, 1)
+		var pattern: Array = _get_digit_pattern(digit)
+		var digit_origin_x: float = -full_width * 0.5 + digit_width * 0.5 + float(digit_index) * (digit_width + digit_gap)
+		for row in range(pattern.size()):
+			var row_text: String = str(pattern[row])
+			for col in range(row_text.length()):
+				if row_text.substr(col, 1) != "1":
+					continue
+				var block: MeshInstance3D = MeshInstance3D.new()
+				block.mesh = block_mesh
+				block.material_override = _get_number_block_material()
+				block.position = Vector3(
+					digit_origin_x + (float(col) - 1.0) * actual_pixel_step,
+					digit_height * 0.5 - pixel_size * 0.5 - float(row) * actual_pixel_step,
+					0.0
+				)
+				root.add_child(block)
+
+
+func _get_digit_pattern(digit: String) -> Array:
+	match digit:
+		"0":
+			return ["111", "101", "101", "101", "111"]
+		"1":
+			return ["010", "110", "010", "010", "111"]
+		"2":
+			return ["111", "001", "111", "100", "111"]
+		"3":
+			return ["111", "001", "111", "001", "111"]
+		"4":
+			return ["101", "101", "111", "001", "001"]
+		"5":
+			return ["111", "100", "111", "001", "111"]
+		"6":
+			return ["111", "100", "111", "101", "111"]
+		"7":
+			return ["111", "001", "010", "010", "010"]
+		"8":
+			return ["111", "101", "111", "101", "111"]
+		"9":
+			return ["111", "101", "111", "001", "111"]
+	return ["111", "001", "111", "100", "111"]
+
+
+func _get_number_block_material() -> StandardMaterial3D:
+	if _number_block_material == null:
+		_number_block_material = StandardMaterial3D.new()
+		_number_block_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		_number_block_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		_number_block_material.cull_mode = BaseMaterial3D.CULL_BACK
+		_number_block_material.render_priority = 1
+		_number_block_material.albedo_color = Color(1.0, 1.0, 0.95, 1.0)
+		_number_block_material.emission_enabled = true
+		_number_block_material.emission = Color(0.85, 0.92, 0.80, 1.0)
+		_number_block_material.emission_energy_multiplier = 1.2
+		_number_block_material.roughness = 0.70
+	return _number_block_material
+
+
+# ── ORIENTATION HELPERS ───────────────────────────────────────────────────────
+
+func _get_dice_number_font() -> Font:
+	if _dice_number_font == null:
+		var font: SystemFont = SystemFont.new()
+		font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "Courier New", "monospace"])
+		font.font_weight = 700
+		_dice_number_font = font
+	return _dice_number_font
+
+
+func _basis_for_triangle_face(a: Vector3, b: Vector3, c: Vector3, normal: Vector3) -> Basis:
+	var face_basis: Basis = _basis_for_face_surface(normal)
+	var apex: Vector3 = a
+	var base_a: Vector3 = b
+	var base_b: Vector3 = c
+	var best_height: float = a.dot(face_basis.y)
+	if b.dot(face_basis.y) > best_height:
+		apex = b
+		base_a = a
+		base_b = c
+		best_height = b.dot(face_basis.y)
+	if c.dot(face_basis.y) > best_height:
+		apex = c
+		base_a = a
+		base_b = b
+	var x_axis: Vector3 = (base_b - base_a).normalized()
+	var y_axis: Vector3 = (apex - (base_a + base_b) * 0.5).normalized()
+	var z_axis: Vector3 = normal.normalized()
+	if x_axis.cross(y_axis).dot(z_axis) < 0.0:
+		x_axis = -x_axis
+	return Basis(x_axis, y_axis, z_axis).orthonormalized()
+
+
+func _basis_for_face_surface(normal: Vector3) -> Basis:
+	var z_axis: Vector3 = normal.normalized()
+	var x_axis: Vector3 = Vector3.UP.cross(z_axis)
+	if x_axis.length() < 0.01:
+		x_axis = Vector3.RIGHT.cross(z_axis)
+	x_axis = x_axis.normalized()
+	var y_axis: Vector3 = z_axis.cross(x_axis).normalized()
+	return Basis(x_axis, y_axis, z_axis)
+
+
+# ── LABELS ────────────────────────────────────────────────────────────────────
+
+func _add_owner_label(die: RigidBody3D, unit_name: String, side: String) -> void:
+	var label: Label3D = Label3D.new()
+	label.name = "OwnerLabel"
+	label.text = unit_name.left(10)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 52
+	label.modulate = Color(0.72, 1.0, 0.82, 0.95) if side == "hero" else Color(1.0, 0.66, 0.60, 0.95)
+	label.outline_size = 12
+	label.outline_modulate = Color(0.02, 0.03, 0.05, 1.0)
+	label.position = Vector3(0, DIE_RADIUS * 1.8, 0)
+	label.scale = Vector3(0.028, 0.028, 0.028)
+	die.add_child(label)
+
+
+func _show_die_result_label(die: RigidBody3D, _result: int, unit_name: String) -> void:
+	var label: Label3D = die.get_node_or_null("OwnerLabel") as Label3D
+	if label != null:
+		label.text = unit_name.left(8)
+
+
+func _clear_dice() -> void:
+	if _dice_root == null:
+		return
+	for child in _dice_root.get_children():
+		child.queue_free()
+	_die_by_key.clear()
+
+
+func _entry_key(side: String, unit_id: String) -> String:
+	return "%s:%s" % [side, unit_id]

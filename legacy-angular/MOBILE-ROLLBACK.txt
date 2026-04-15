@@ -1,0 +1,9 @@
+Snapshot before mobile layout changes (2026-04-04):
+
+  Archive: rollback-pre-mobile-2026-04-04-src.zip
+
+To restore: close the dev server, delete the current `src` folder, then extract
+the zip so `src` is again at the project root (overload-protocol/src/...).
+
+Git was not available in PATH when this snapshot was created; use the zip or
+your own version control for rollbacks.

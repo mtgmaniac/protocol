@@ -1,0 +1,328 @@
+{
+  "items": [
+    {
+      "id": "patch_kit",
+      "name": "Patch Kit",
+      "desc": "Heal a living ally for 5 HP.",
+      "rarity": "common",
+      "icon": "heart",
+      "target": "ally",
+      "effect": { "type": "heal", "amount": 5 }
+    },
+    {
+      "id": "biofoam",
+      "name": "Biofoam",
+      "desc": "Heal a living ally for 4 HP.",
+      "rarity": "common",
+      "icon": "heart",
+      "target": "ally",
+      "effect": { "type": "heal", "amount": 4 }
+    },
+    {
+      "id": "field_meds",
+      "name": "Field Meds",
+      "desc": "Heal a living ally for 8 HP.",
+      "rarity": "uncommon",
+      "icon": "heart",
+      "target": "ally",
+      "effect": { "type": "heal", "amount": 8 }
+    },
+    {
+      "id": "nanite_salve",
+      "name": "Nanite Salve",
+      "desc": "Heal a living ally for 10 HP.",
+      "rarity": "rare",
+      "icon": "heart",
+      "target": "ally",
+      "effect": { "type": "heal", "amount": 10 }
+    },
+    {
+      "id": "scrap_plate",
+      "name": "Scrap Plate",
+      "desc": "Grant +5 shield for 1 turn.",
+      "rarity": "common",
+      "icon": "shield",
+      "target": "ally",
+      "effect": { "type": "shield", "amount": 5, "shT": 1 }
+    },
+    {
+      "id": "reactive_weave",
+      "name": "Reactive Weave",
+      "desc": "Grant +8 shield for 1 turn.",
+      "rarity": "uncommon",
+      "icon": "shield",
+      "target": "ally",
+      "effect": { "type": "shield", "amount": 8, "shT": 1 }
+    },
+    {
+      "id": "aegis_foil",
+      "name": "Aegis Foil",
+      "desc": "Grant +12 shield for 3 turns.",
+      "rarity": "rare",
+      "icon": "shield",
+      "target": "ally",
+      "effect": { "type": "shield", "amount": 12, "shT": 3 }
+    },
+    {
+      "id": "calibration_chip",
+      "name": "Calibration Chip",
+      "desc": "+1 to rolls for 1 turn.",
+      "rarity": "common",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 1, "turns": 1 }
+    },
+    {
+      "id": "momentum_core",
+      "name": "Momentum Core",
+      "desc": "+2 to rolls for 1 turn.",
+      "rarity": "uncommon",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 2, "turns": 1 }
+    },
+    {
+      "id": "oracle_lens",
+      "name": "Oracle Lens",
+      "desc": "+3 to rolls for 3 turns.",
+      "rarity": "rare",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 3, "turns": 3 }
+    },
+    {
+      "id": "defib_spark",
+      "name": "Defib Spark",
+      "desc": "Revive a fallen ally at 50% max HP.",
+      "rarity": "uncommon",
+      "icon": "bolt",
+      "target": "allyDead",
+      "effect": { "type": "revive", "pct": 50 }
+    },
+    {
+      "id": "full_restore",
+      "name": "Full Restore",
+      "desc": "Revive a fallen ally at 75% max HP.",
+      "rarity": "rare",
+      "icon": "bolt",
+      "target": "allyDead",
+      "effect": { "type": "revive", "pct": 75 }
+    },
+    {
+      "id": "ghost_veil",
+      "name": "Ghost Veil",
+      "desc": "Cloak a living ally.",
+      "rarity": "uncommon",
+      "icon": "cloak",
+      "target": "ally",
+      "effect": { "type": "cloak" }
+    },
+    {
+      "id": "rust_patch",
+      "name": "Rust Patch",
+      "desc": "Enemy takes −1 to rolls for 1 turn.",
+      "rarity": "common",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyRfe", "amount": 1, "rfT": 1 }
+    },
+    {
+      "id": "corrosion_bomb",
+      "name": "Corrosion Bomb",
+      "desc": "Enemy takes −2 to rolls for 1 turn.",
+      "rarity": "uncommon",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyRfe", "amount": 2, "rfT": 1 }
+    },
+    {
+      "id": "entropy_seed",
+      "name": "Entropy Seed",
+      "desc": "Enemy takes −3 to rolls for 3 turns.",
+      "rarity": "rare",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyRfe", "amount": 3, "rfT": 3 }
+    },
+    {
+      "id": "shock_charge",
+      "name": "Shock Charge",
+      "desc": "Deal 10 damage to one enemy.",
+      "rarity": "common",
+      "icon": "bolt",
+      "target": "enemy",
+      "effect": { "type": "enemyDmg", "amount": 10 }
+    },
+    {
+      "id": "grounding_clip",
+      "name": "Grounding Clip",
+      "desc": "Enemy takes −1 to rolls for 2 turns.",
+      "rarity": "common",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyRfe", "amount": 1, "rfT": 2 }
+    },
+    {
+      "id": "arc_capacitor",
+      "name": "Arc Capacitor",
+      "desc": "Deal 20 damage to one enemy.",
+      "rarity": "uncommon",
+      "icon": "bolt",
+      "target": "enemy",
+      "effect": { "type": "enemyDmg", "amount": 20 }
+    },
+    {
+      "id": "aegis_saturation",
+      "name": "Aegis Saturation",
+      "desc": "Grant +18 shield for 3 turns.",
+      "rarity": "rare",
+      "icon": "shield",
+      "target": "ally",
+      "effect": { "type": "shield", "amount": 18, "shT": 3 }
+    },
+    {
+      "id": "harmonic_injector",
+      "name": "Harmonic Injector",
+      "desc": "+4 to rolls for 2 turns.",
+      "rarity": "rare",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 4, "turns": 2 }
+    },
+    {
+      "id": "scatter_veil_array",
+      "name": "Scatter Veil Array",
+      "desc": "Cloak all living allies.",
+      "rarity": "rare",
+      "icon": "cloak",
+      "target": "none",
+      "effect": { "type": "cloakAll" }
+    },
+    {
+      "id": "archive_cascade",
+      "name": "Archive Cascade",
+      "desc": "+5 to rolls for 3 turns.",
+      "rarity": "legendary",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 5, "turns": 3 }
+    },
+    {
+      "id": "citadel_kernel",
+      "name": "Citadel Kernel",
+      "desc": "Grant +25 shield for 3 turns.",
+      "rarity": "legendary",
+      "icon": "shield",
+      "target": "ally",
+      "effect": { "type": "shield", "amount": 25, "shT": 3 }
+    },
+    {
+      "id": "terminal_spike",
+      "name": "Terminal Spike",
+      "desc": "Deal 40 damage to one enemy.",
+      "rarity": "legendary",
+      "icon": "bolt",
+      "target": "enemy",
+      "effect": { "type": "enemyDmg", "amount": 40 }
+    },
+    {
+      "id": "acid_vial",
+      "name": "Acid Vial",
+      "desc": "Apply 3 poison to one enemy for 3 turns.",
+      "rarity": "common",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyDot", "amount": 3, "dT": 3 }
+    },
+    {
+      "id": "nanite_burn",
+      "name": "Nanite Burn",
+      "desc": "Apply 5 poison to one enemy for 3 turns.",
+      "rarity": "uncommon",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyDot", "amount": 5, "dT": 3 }
+    },
+    {
+      "id": "thermite_canister",
+      "name": "Thermite Canister",
+      "desc": "Apply 8 poison to one enemy for 4 turns.",
+      "rarity": "rare",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyDot", "amount": 8, "dT": 4 }
+    },
+    {
+      "id": "null_vector",
+      "name": "Null Vector",
+      "desc": "Apply 14 poison to one enemy for 4 turns.",
+      "rarity": "legendary",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyDot", "amount": 14, "dT": 4 }
+    },
+    {
+      "id": "training_datachip",
+      "name": "Training Datachip",
+      "desc": "All living tier-1 heroes gain +3 XP.",
+      "rarity": "common",
+      "icon": "star",
+      "target": "none",
+      "effect": { "type": "xpBoost", "amount": 3 }
+    },
+    {
+      "id": "field_manual",
+      "name": "Field Manual",
+      "desc": "All living tier-1 heroes gain +5 XP.",
+      "rarity": "uncommon",
+      "icon": "star",
+      "target": "none",
+      "effect": { "type": "xpBoost", "amount": 5 }
+    },
+    {
+      "id": "mnemonic_core",
+      "name": "Mnemonic Core",
+      "desc": "All living tier-1 heroes gain +8 XP.",
+      "rarity": "rare",
+      "icon": "star",
+      "target": "none",
+      "effect": { "type": "xpBoost", "amount": 8 }
+    },
+    {
+      "id": "gyro_motor",
+      "name": "Gyro Motor",
+      "desc": "Reroll one enemy's die (face updates immediately).",
+      "rarity": "uncommon",
+      "icon": "die",
+      "target": "enemy",
+      "effect": { "type": "enemyRerollDie" }
+    },
+    {
+      "id": "cascade_jammer",
+      "name": "Cascade Jammer",
+      "desc": "Reroll every living enemy's die.",
+      "rarity": "rare",
+      "icon": "die",
+      "target": "none",
+      "effect": { "type": "enemyRerollAll" }
+    },
+    {
+      "id": "cryo_gel",
+      "name": "Cryo Gel",
+      "desc": "Freeze one enemy's die — it won't reroll on the next tray reveal.",
+      "rarity": "uncommon",
+      "icon": "bolt",
+      "target": "enemy",
+      "effect": { "type": "enemyDieFreeze", "skips": 1 }
+    },
+    {
+      "id": "cryo_web",
+      "name": "Cryo Web",
+      "desc": "Freeze one enemy's die — it skips the next two tray reveals.",
+      "rarity": "rare",
+      "icon": "bolt",
+      "target": "enemy",
+      "effect": { "type": "enemyDieFreeze", "skips": 2 }
+    }
+  ]
+}

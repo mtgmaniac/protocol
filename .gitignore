@@ -1,0 +1,8 @@
+# Godot-specific ignores
+.godot/
+*.tmp
+export_presets.cfg
+
+# Build artifacts
+build/
+dist/
