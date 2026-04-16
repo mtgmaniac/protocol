@@ -30,6 +30,7 @@ var pending_evolution_unit_id: String = ""
 
 const XP_PER_BATTLE := 50
 const XP_TO_EVOLVE := 100
+const SQUAD_UNIT_LIMIT := 3
 
 var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -37,6 +38,7 @@ var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	_reward_rng.randomize()
 	selected_units = unit_ids.duplicate()
+	enforce_squad_limit()
 	selected_operation_id = operation_id
 	current_battle = 0
 	var operation: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
@@ -61,6 +63,12 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	if selected_operation_id != "":
 		operation_selected.emit(selected_operation_id)
 	run_started.emit(selected_units)
+
+
+func enforce_squad_limit() -> void:
+	if selected_units.size() <= SQUAD_UNIT_LIMIT:
+		return
+	selected_units = selected_units.slice(0, SQUAD_UNIT_LIMIT)
 
 
 func advance_to_next_battle() -> void:

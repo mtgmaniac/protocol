@@ -26,6 +26,7 @@ extends Control
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
 const UNIT_CARD_SCENE := preload("res://scenes/shared/UnitCard.tscn")
+const USE_COMPACT_BATTLE_CARDS := true
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 const PHASE_AWAIT_ROLL := "await_roll"
@@ -198,7 +199,7 @@ func _populate_hero_cards() -> void:
 		if unit == null:
 			continue
 
-		var card: UnitCard = UNIT_CARD_SCENE.instantiate() as UnitCard
+		var card: Control = _create_battle_card()
 		var slot: Control = _build_card_slot()
 		hero_cards.add_child(slot)
 		slot.add_child(card)
@@ -218,7 +219,7 @@ func _populate_enemy_cards() -> void:
 		if enemy == null:
 			continue
 
-		var card: UnitCard = UNIT_CARD_SCENE.instantiate() as UnitCard
+		var card: Control = _create_battle_card()
 		var slot: Control = _build_card_slot()
 		enemy_cards.add_child(slot)
 		slot.add_child(card)
@@ -234,13 +235,20 @@ func _clear_container(container: Container) -> void:
 		child.queue_free()
 
 
-func _prepare_battle_card_layout(card: UnitCard) -> void:
+func _create_battle_card() -> Control:
+	if USE_COMPACT_BATTLE_CARDS:
+		return CompactUnitCard.new()
+	return UNIT_CARD_SCENE.instantiate() as UnitCard
+
+
+func _prepare_battle_card_layout(card: Control) -> void:
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card.custom_minimum_size = Vector2(0, 0)
 	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var card_frame: Panel = card.get_node("CardFrame")
-	card_frame.custom_minimum_size = Vector2(0, 0)
+	if card is UnitCard:
+		var card_frame: Panel = card.get_node("CardFrame")
+		card_frame.custom_minimum_size = Vector2(0, 0)
 
 
 func _build_card_slot() -> Control:
@@ -250,7 +258,7 @@ func _build_card_slot() -> Control:
 	return slot
 
 
-func _update_card_view(card: UnitCard, state: Dictionary, roll_value: Variant, accent_color: Color) -> void:
+func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color) -> void:
 	var unit: Resource = state["unit"]
 	var default_entry: Dictionary = unit.dice_ranges[0] if unit.dice_ranges.size() > 0 else {}
 	var chosen_entry: Dictionary = default_entry
@@ -317,7 +325,40 @@ func _update_card_view(card: UnitCard, state: Dictionary, roll_value: Variant, a
 	if bool(state["dead"]):
 		status_list.append("DOWN")
 
-	card.setup_card(
+	var state_id: String = str(state["id"])
+	var is_selected: bool = state_id == active_targeting_hero_id
+	var is_targetable: bool = _is_target_highlight_phase() and legal_target_ids.has(state_id)
+	if card is CompactUnitCard:
+		var compact_card: CompactUnitCard = card as CompactUnitCard
+		var action_label: String = "DOWN" if bool(state["dead"]) else "AWAIT ROLL"
+		if roll_value != null:
+			action_label = str(chosen_entry.get("ability_name", "NO ACTION"))
+		compact_card.configure({
+			"side": "hero" if accent_color == HERO_ACCENT else "enemy",
+			"name": unit.display_name,
+			"current_hp": int(state["current_hp"]),
+			"max_hp": int(state["max_hp"]),
+			"action": action_label,
+			"pips": _build_compact_action_pips(chosen_entry),
+			"portrait": unit.portrait,
+			"statuses": _build_compact_status_tokens(state),
+			"selected": is_selected,
+			"targetable": is_targetable,
+			"interaction_enabled": _is_card_clickable(state, accent_color),
+			"dead": bool(state["dead"]),
+		})
+		var compact_preview: Dictionary = _compute_preview_for_unit(state, accent_color == HERO_ACCENT)
+		if compact_preview.is_empty():
+			compact_card.clear_combat_preview()
+		else:
+			compact_card.show_combat_preview(compact_preview)
+		return
+
+	var unit_card: UnitCard = card as UnitCard
+	if unit_card == null:
+		return
+
+	unit_card.setup_card(
 		unit.display_name,
 		int(state["current_hp"]),
 		int(state["max_hp"]),
@@ -335,20 +376,123 @@ func _update_card_view(card: UnitCard, state: Dictionary, roll_value: Variant, a
 		_build_ability_chart_rows(unit),
 		active_zone
 	)
-	var state_id: String = str(state["id"])
-	var is_selected: bool = state_id == active_targeting_hero_id
-	var is_targetable: bool = _is_target_highlight_phase() and legal_target_ids.has(state_id)
-	card.set_selected(is_selected)
-	card.set_targetable(is_targetable)
-	card.set_interaction_enabled(_is_card_clickable(state, accent_color))
+	unit_card.set_selected(is_selected)
+	unit_card.set_targetable(is_targetable)
+	unit_card.set_interaction_enabled(_is_card_clickable(state, accent_color))
 
 	# Combat preview: show incoming/outgoing effect overlays on HP bars.
 	var is_hero_unit: bool = (accent_color == HERO_ACCENT)
 	var preview: Dictionary = _compute_preview_for_unit(state, is_hero_unit)
 	if preview.is_empty():
-		card.clear_combat_preview()
+		unit_card.clear_combat_preview()
 	else:
-		card.show_combat_preview(preview)
+		unit_card.show_combat_preview(preview)
+
+
+func _build_compact_status_tokens(state: Dictionary) -> Array:
+	var tokens: Array = []
+	if bool(state.get("dead", false)):
+		tokens.append("DOWN")
+		return tokens
+
+	if int(state.get("poison", 0)) > 0 and int(state.get("poison_turns", 0)) > 0:
+		tokens.append("POI")
+	if bool(state.get("cloaked", false)):
+		tokens.append("CL")
+	if int(state.get("cower_turns", 0)) > 0:
+		tokens.append("COW")
+	if int(state.get("rampage_charges", 0)) > 0:
+		tokens.append("RMP")
+	if int(state.get("die_freeze_turns", 0)) > 0:
+		tokens.append("FR")
+	if bool(state.get("taunting", false)):
+		tokens.append("TA")
+	if bool(state.get("cursed", false)):
+		tokens.append("CUR")
+
+	var total_rfe: int = 0
+	for stack_variant in state.get("rfe_stacks", []):
+		var stack: Dictionary = stack_variant
+		total_rfe += int(stack.get("amt", 0))
+	if total_rfe > 0:
+		tokens.append("-%d" % total_rfe)
+
+	var roll_buff: int = int(state.get("roll_buff", 0))
+	if roll_buff > 0:
+		tokens.append("+%d" % roll_buff)
+
+	var total_shield: int = int(state.get("shield", 0))
+	if total_shield > 0:
+		tokens.append("SH")
+
+	return tokens
+
+
+func _build_compact_action_pips(entry: Dictionary) -> Array:
+	var raw: Dictionary = entry.get("raw", {}) as Dictionary
+	if raw.is_empty():
+		raw = entry
+
+	var pips: Array = []
+	var damage: int = int(raw.get("dmg", 0))
+	var damage_min: int = int(raw.get("dMin", 0))
+	var damage_max: int = int(raw.get("dMax", 0))
+	if damage > 0:
+		pips.append({"kind": "dmg", "text": "%d" % damage})
+	elif damage_min > 0 or damage_max > 0:
+		pips.append({"kind": "dmg", "text": "%d-%d" % [damage_min, damage_max]})
+
+	var dot: int = int(raw.get("dot", 0))
+	if dot > 0:
+		pips.append({"kind": "dot", "text": "%d" % dot})
+
+	var shield: int = int(raw.get("shield", 0))
+	if shield > 0:
+		pips.append({"kind": "shield", "text": "%d" % shield})
+	var shield_ally: int = int(raw.get("shieldAlly", 0))
+	if shield_ally > 0:
+		pips.append({"kind": "shield", "text": "%d" % shield_ally})
+	if bool(raw.get("shieldAll", false)):
+		pips.append({"kind": "shield", "text": "ALL"})
+
+	var heal: int = int(raw.get("heal", 0))
+	if heal > 0:
+		pips.append({"kind": "heal", "text": "%d" % heal})
+	if bool(raw.get("healAll", false)):
+		pips.append({"kind": "heal", "text": "ALL"})
+	if bool(raw.get("healLowest", false)):
+		pips.append({"kind": "heal", "text": "LOW"})
+
+	var rfe: int = int(raw.get("rfe", 0))
+	if rfe > 0:
+		pips.append({"kind": "roll", "text": "-%d" % rfe})
+	if bool(raw.get("rfeAll", false)):
+		pips.append({"kind": "roll", "text": "ALL"})
+
+	var rfm: int = int(raw.get("rfm", 0))
+	if rfm > 0:
+		pips.append({"kind": "roll", "text": "+%d" % rfm})
+
+	if bool(raw.get("blastAll", false)):
+		pips.append({"kind": "blast", "text": "ALL"})
+	if bool(raw.get("ignSh", false)):
+		pips.append({"kind": "pierce", "text": ""})
+	if bool(raw.get("cloak", false)):
+		pips.append({"kind": "cloak", "text": ""})
+
+	var freeze_turns: int = maxi(
+		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
+		int(raw.get("freezeAllEnemyDice", 0))
+	)
+	if freeze_turns > 0:
+		pips.append({"kind": "freeze", "text": "%d" % freeze_turns})
+
+	if bool(raw.get("taunt", false)):
+		pips.append({"kind": "taunt", "text": ""})
+	if bool(raw.get("revive", false)):
+		pips.append({"kind": "revive", "text": "50"})
+
+	return pips
 
 
 func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictionary:
@@ -1023,8 +1167,11 @@ func _refresh_all_cards() -> void:
 func _build_runtime_units() -> void:
 	hero_units.clear()
 	enemy_units.clear()
+	_game_state().enforce_squad_limit()
 
 	for unit_id in _game_state().selected_units:
+		if hero_units.size() >= GameState.SQUAD_UNIT_LIMIT:
+			break
 		var unit: UnitData = _game_state().get_run_unit_data(str(unit_id))
 		if unit != null:
 			hero_units.append(unit)
@@ -1040,6 +1187,8 @@ func _build_runtime_units() -> void:
 	var battle_entry: Dictionary = operation.battles[battle_index]
 	var enemy_names: Array = battle_entry.get("enemy_names", [])
 	for enemy_name in enemy_names:
+		if enemy_units.size() >= GameState.SQUAD_UNIT_LIMIT:
+			break
 		var enemy: EnemyData = _data_manager().get_enemy_by_display_name(str(enemy_name)) as EnemyData
 		if enemy != null:
 			enemy_units.append(_build_scaled_enemy(enemy, battle_index, operation.track_hp_scale))
@@ -1736,7 +1885,7 @@ func _build_help_overlay() -> void:
 	])
 	_add_help_section(content, "READING A UNIT CARD", [
 		"The top dice chart shows what each roll range does.",
-		"The star on the crit band means 20 fires the overload version.",
+		"Rolling 20 fires the overload version of the crit ability.",
 		"The HP bar shows current / max health.",
 		"The thin bar below HP tracks XP toward evolution.",
 		"Status icons appear when active. Long press any icon for intel.",
@@ -2064,21 +2213,22 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var action: Dictionary = group.get("action", {}) as Dictionary
 	var effects: Array = group.get("effects", []) as Array
 	var action_kind: String = _get_action_feedback_kind(effects)
-	var actor_card: UnitCard = null
+	var actor_card: Control = null
 	if not action.is_empty():
 		actor_card = _find_card_by_state_id(str(action.get("side", "")), str(action.get("actor_id", "")))
-	if actor_card != null:
-		actor_card.play_action_feedback(action_kind)
+	if actor_card != null and actor_card.has_method("play_action_feedback"):
+		actor_card.call("play_action_feedback", action_kind)
 
 	await get_tree().create_timer(ACTION_EFFECT_LEAD_TIME).timeout
 
 	for event_variant in effects:
 		var event: Dictionary = event_variant
 		var event_type: String = str(event.get("type", ""))
-		var target_card: UnitCard = _find_card_for_event(event)
+		var target_card: Control = _find_card_for_event(event)
 		if target_card == null:
 			continue
-		target_card.play_impact_feedback(_get_impact_feedback_kind(event_type))
+		if target_card.has_method("play_impact_feedback"):
+			target_card.call("play_impact_feedback", _get_impact_feedback_kind(event_type))
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
 		_apply_live_event_visual_state(event)
@@ -2111,7 +2261,7 @@ func _get_impact_feedback_kind(event_type: String) -> String:
 			return "damage"
 
 
-func _find_card_for_event(event: Dictionary) -> UnitCard:
+func _find_card_for_event(event: Dictionary) -> Control:
 	var side: String = str(event.get("side", ""))
 	var target_id: String = str(event.get("target_id", ""))
 	if target_id != "":
@@ -2123,7 +2273,7 @@ func _find_card_for_event(event: Dictionary) -> UnitCard:
 		var state: Dictionary = view["state"]
 		var unit: Resource = state["unit"]
 		if unit != null and str(unit.display_name) == target_name:
-			return view["card"] as UnitCard
+			return view["card"] as Control
 	return null
 
 
@@ -2151,17 +2301,17 @@ func _refresh_card_for_event(event: Dictionary) -> void:
 		return
 
 
-func _find_card_by_state_id(side: String, state_id: String) -> UnitCard:
+func _find_card_by_state_id(side: String, state_id: String) -> Control:
 	var views: Array = hero_card_views if side == "hero" else enemy_card_views
 	for view_variant in views:
 		var view: Dictionary = view_variant
 		var state: Dictionary = view["state"]
 		if str(state.get("id", "")) == state_id:
-			return view["card"] as UnitCard
+			return view["card"] as Control
 	return null
 
 
-func _flash_card(card: UnitCard, event_type: String) -> void:
+func _flash_card(card: Control, event_type: String) -> void:
 	var tween: Tween = create_tween()
 	var base_modulate: Color = card.modulate
 	var flash_color: Color = Color(1, 1, 1, 1)
@@ -2180,7 +2330,7 @@ func _flash_card(card: UnitCard, event_type: String) -> void:
 	tween.tween_property(card, "modulate", base_modulate, 0.22)
 
 
-func _spawn_floating_text(card: UnitCard, event_type: String, amount: int) -> void:
+func _spawn_floating_text(card: Control, event_type: String, amount: int) -> void:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = _build_floating_text(event_type, amount)
@@ -2201,7 +2351,7 @@ func _spawn_floating_text(card: UnitCard, event_type: String, amount: int) -> vo
 	tween.tween_callback(label.queue_free)
 
 
-func _get_card_float_origin(card: UnitCard) -> Vector2:
+func _get_card_float_origin(card: Control) -> Vector2:
 	var card_rect: Rect2 = card.get_global_rect()
 	var layer_origin: Vector2 = float_layer.get_global_position()
 	return Vector2(
@@ -2568,6 +2718,37 @@ func _refresh_board_layout() -> void:
 	if hero_scroll == null or enemy_scroll == null:
 		return
 
+	if USE_COMPACT_BATTLE_CARDS:
+		hero_cards.columns = GameState.SQUAD_UNIT_LIMIT
+		enemy_cards.columns = GameState.SQUAD_UNIT_LIMIT
+		hero_cards.add_theme_constant_override("h_separation", 10)
+		hero_cards.add_theme_constant_override("v_separation", 0)
+		enemy_cards.add_theme_constant_override("h_separation", 10)
+		enemy_cards.add_theme_constant_override("v_separation", 0)
+		hero_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		enemy_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		hero_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		enemy_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+		var compact_gap: float = float(hero_cards.get_theme_constant("h_separation"))
+		var compact_padding: float = 12.0
+		var compact_usable_width: float = maxf(minf(hero_scroll.size.x, enemy_scroll.size.x), 300.0)
+		var compact_columns: float = float(GameState.SQUAD_UNIT_LIMIT)
+		var compact_width: float = clampf(floor((compact_usable_width - (compact_gap * (compact_columns - 1.0)) - compact_padding) / compact_columns), 280.0, 360.0)
+		var compact_height: float = clampf(floor(compact_width * 1.90), 620.0, 740.0)
+
+		_apply_card_slots(hero_cards, Vector2(compact_width, compact_height))
+		_apply_card_slots(enemy_cards, Vector2(compact_width, compact_height))
+
+		var rail_height: float = compact_height + 34.0
+		hero_panel.custom_minimum_size = Vector2(0, rail_height)
+		enemy_panel.custom_minimum_size = Vector2(0, rail_height)
+		hero_panel.size_flags_stretch_ratio = 1.0
+		enemy_panel.size_flags_stretch_ratio = 1.0
+		center_panel.custom_minimum_size = Vector2(0, 740)
+		center_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		return
+
 	hero_cards.columns = 2
 	enemy_cards.columns = 2
 	hero_cards.add_theme_constant_override("h_separation", 4)
@@ -2609,7 +2790,7 @@ func _apply_card_slots(container: GridContainer, slot_size: Vector2) -> void:
 		var slot: Control = child_variant as Control
 		if slot == null:
 			continue
-		slot.custom_minimum_size = Vector2(0, slot_size.y)
+		slot.custom_minimum_size = slot_size
 		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
@@ -2667,12 +2848,18 @@ func _make_effect_chip(icon: String, text: String, bg: Color, border: Color, too
 
 func _apply_battle_theme() -> void:
 	background.color = Color(0.030, 0.050, 0.080, 1.0)
-	PixelUI.style_label(summary_label, 30, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_panel(hero_panel, Color(0.028, 0.050, 0.074, 0.46), Color(0.17, 0.54, 0.44, 0.70), 4, 0)
+	PixelUI.style_label(summary_label, 34, PixelUI.TEXT_PRIMARY, 2)
+	if USE_COMPACT_BATTLE_CARDS:
+		PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
+		PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
+	else:
+		PixelUI.style_panel(hero_panel, Color(0.028, 0.050, 0.074, 0.46), Color(0.17, 0.54, 0.44, 0.70), 4, 0)
+		PixelUI.style_panel(enemy_panel, Color(0.028, 0.050, 0.074, 0.46), Color(0.58, 0.26, 0.26, 0.70), 4, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-	PixelUI.style_panel(enemy_panel, Color(0.028, 0.050, 0.074, 0.46), Color(0.58, 0.26, 0.26, 0.70), 4, 0)
 	PixelUI.style_panel(protocol_panel, Color(0.028, 0.050, 0.074, 0.50), Color(0.18, 0.32, 0.48, 0.70), 4, 0)
 	PixelUI.style_panel(battle_log_panel, Color(0.028, 0.050, 0.074, 0.58), Color(0.18, 0.32, 0.48, 0.76), 4, 0)
+	PixelUI.style_label(protocol_label, 24, PixelUI.TEXT_PRIMARY, 2)
+	PixelUI.style_label(protocol_value_label, 22, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_button(toggle_log_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
 	PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 34)
 	PixelUI.style_button(protocol_spend_button, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, 38)
@@ -3058,7 +3245,7 @@ func _process_summon_events(events: Array) -> void:
 		if str(event.get("type", "")) != "summon":
 			continue
 		# Cap total enemies to prevent runaway summon chains
-		if combat_manager.get_enemy_states().size() >= 6:
+		if combat_manager.get_enemy_states().size() >= GameState.SQUAD_UNIT_LIMIT:
 			_append_log("Enemy cap reached — summon blocked.")
 			continue
 		var summon_name: String = str(event.get("summon_name", ""))

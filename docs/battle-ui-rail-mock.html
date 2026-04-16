@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Battle UI Rail Mock</title>
+  <style>
+    @font-face {
+      font-family: "M5x7";
+      src: url("../assets/fonts/m5x7.ttf") format("truetype");
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #050912;
+      --grid: rgba(75, 121, 160, 0.17);
+      --panel: rgba(8, 17, 28, 0.94);
+      --panel-2: rgba(12, 24, 38, 0.94);
+      --line: #31516f;
+      --line-hot: #73b5df;
+      --hero: #2fd090;
+      --enemy: #d84d45;
+      --gold: #d59a3e;
+      --text: #e3ecea;
+      --muted: #7890a5;
+      --black: #020407;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(230, 205, 150, 0.22), transparent 22%),
+        radial-gradient(circle at 92% 28%, rgba(80, 130, 180, 0.16), transparent 26%),
+        #10131a;
+      font-family: "M5x7", Consolas, monospace;
+      color: var(--text);
+    }
+
+    .phone {
+      width: 450px;
+      height: 1000px;
+      overflow: hidden;
+      background:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+        var(--bg);
+      background-size: 8px 8px;
+      border: 2px solid #16263a;
+      box-shadow: 0 0 0 4px var(--black), 0 18px 60px rgba(0, 0, 0, 0.55);
+      padding: 6px;
+      display: grid;
+      grid-template-rows: 36px 166px 1fr 88px 190px 74px;
+      gap: 6px;
+    }
+
+    .header,
+    .rail,
+    .field,
+    .inspector,
+    .command {
+      border: 2px solid var(--line);
+      background: rgba(4, 10, 18, 0.82);
+      box-shadow: inset 0 0 0 1px rgba(127, 190, 230, 0.18);
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .header .label {
+      color: var(--muted);
+    }
+
+    .header .battle {
+      color: var(--text);
+    }
+
+    .icon-button {
+      min-width: 30px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--line);
+      background: rgba(13, 25, 40, 0.95);
+      color: var(--text);
+    }
+
+    .icon-button.hot {
+      border-color: #e1762f;
+      color: #ffd1a1;
+    }
+
+    .rail {
+      padding: 5px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .unit-card {
+      min-width: 0;
+      border: 2px solid var(--line);
+      background: linear-gradient(180deg, rgba(15, 27, 42, 0.98), rgba(5, 10, 17, 0.96));
+      display: grid;
+      grid-template-rows: 24px 1fr 30px 25px 24px;
+      gap: 3px;
+      padding: 4px;
+      box-shadow: inset 0 0 0 1px rgba(120, 184, 225, 0.18);
+    }
+
+    .unit-card.enemy {
+      border-color: #3f5f7c;
+    }
+
+    .unit-card.hero {
+      border-color: #308b79;
+    }
+
+    .unit-card.selected {
+      border-color: var(--gold);
+      box-shadow: inset 0 0 0 1px rgba(255, 194, 92, 0.45), 0 0 0 1px rgba(255, 194, 92, 0.2);
+    }
+
+    .name {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      text-align: center;
+      font-size: 17px;
+      color: var(--text);
+      border-bottom: 1px solid rgba(95, 145, 180, 0.45);
+    }
+
+    .portrait {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 2px solid rgba(110, 160, 195, 0.7);
+      background: rgba(3, 8, 14, 0.8);
+      overflow: hidden;
+    }
+
+    .portrait img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+
+    .hp {
+      display: grid;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .hp-text {
+      text-align: center;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .hp-bar {
+      height: 6px;
+      border: 1px solid #0c141c;
+      background: #08101a;
+    }
+
+    .hp-fill {
+      height: 100%;
+      background: var(--hero);
+    }
+
+    .enemy .hp-fill {
+      background: var(--enemy);
+    }
+
+    .action {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      border: 1px solid rgba(80, 120, 154, 0.55);
+      background: rgba(6, 13, 22, 0.86);
+      padding: 0 4px;
+    }
+
+    .play {
+      color: var(--gold);
+      font-size: 16px;
+    }
+
+    .action-name {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 17px;
+    }
+
+    .statuses {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .status {
+      min-width: 20px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: rgba(7, 15, 25, 0.95);
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .status.bad {
+      border-color: #a84843;
+      color: #ffaaa3;
+    }
+
+    .status.good {
+      border-color: #39a875;
+      color: #9dffd0;
+    }
+
+    .field {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+
+    .dice-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      padding: 0 34px;
+      gap: 34px;
+    }
+
+    .dice-side {
+      display: grid;
+      grid-template-columns: repeat(2, 56px);
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .die {
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      color: #eef8ff;
+      font-size: 22px;
+      background: #123f9a;
+      border: 2px solid #8fc0ff;
+      clip-path: polygon(50% 0, 92% 24%, 92% 76%, 50% 100%, 8% 76%, 8% 24%);
+    }
+
+    .die.enemy-die {
+      background: #62222d;
+      border-color: #e0a1aa;
+    }
+
+    .field-label {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .target-line {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      color: var(--gold);
+      font-size: 16px;
+    }
+
+    .inspector {
+      display: grid;
+      grid-template-columns: 110px 1fr 108px;
+      gap: 6px;
+      padding: 6px;
+      align-items: stretch;
+    }
+
+    .roll-box,
+    .ability-box,
+    .target-box {
+      border: 2px solid var(--line);
+      background: rgba(8, 16, 27, 0.94);
+      padding: 5px;
+      min-width: 0;
+    }
+
+    .mini-title {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .big {
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .ability-name {
+      color: #bfe9ff;
+      font-size: 22px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chips {
+      display: flex;
+      gap: 4px;
+      margin-top: 5px;
+      overflow: hidden;
+    }
+
+    .chip {
+      min-width: 34px;
+      height: 24px;
+      border: 2px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .chip.red {
+      border-color: #c44844;
+    }
+
+    .chip.green {
+      border-color: #37b878;
+    }
+
+    .chip.gold {
+      border-color: var(--gold);
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 126px repeat(3, 48px) 1fr;
+      gap: 5px;
+      padding: 6px;
+      align-items: center;
+    }
+
+    .protocol {
+      height: 100%;
+      border: 2px solid #253c54;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      padding: 4px;
+      background: rgba(4, 9, 16, 0.92);
+    }
+
+    .protocol-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      font-size: 17px;
+    }
+
+    .pips {
+      display: flex;
+      gap: 2px;
+    }
+
+    .pip {
+      width: 8px;
+      height: 16px;
+      background: var(--gold);
+    }
+
+    .cmd {
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--line);
+      background: rgba(8, 17, 28, 0.96);
+      color: var(--text);
+      font-size: 15px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .cmd.end {
+      border-color: #d0832f;
+      color: #ffd58f;
+      font-size: 18px;
+      background: rgba(55, 31, 8, 0.96);
+    }
+  </style>
+</head>
+<body>
+  <main class="phone" aria-label="Battle UI rail mock at 450 by 1000 pixels">
+    <header class="header">
+      <div><span class="label">Facility Sweep</span> <span class="battle">Battle 1/10</span></div>
+      <div class="icon-button">?</div>
+      <div class="icon-button hot">&gt;</div>
+      <div class="icon-button">&lt;</div>
+    </header>
+
+    <section class="rail enemy-rail" aria-label="Enemies">
+      <article class="unit-card enemy">
+        <div class="name">Scrap Drone</div>
+        <div class="portrait"><img src="../legacy-angular/public/enemies/scrap-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">40 / 40</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">SHOOT</span></div>
+        <div class="statuses"><span class="status bad">-2</span><span class="status">FR</span></div>
+      </article>
+      <article class="unit-card enemy selected">
+        <div class="name">Rust Drone</div>
+        <div class="portrait"><img src="../legacy-angular/public/enemies/rust-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">35 / 35</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">RUST</span></div>
+        <div class="statuses"><span class="status bad">POI</span></div>
+      </article>
+      <article class="unit-card enemy">
+        <div class="name">Signal Breaker</div>
+        <div class="portrait"><img src="../legacy-angular/public/enemies/eclipse-lynx-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">45 / 45</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">JAM</span></div>
+        <div class="statuses"><span class="status">TA</span></div>
+      </article>
+      <article class="unit-card enemy">
+        <div class="name">Spite Guard</div>
+        <div class="portrait"><img src="../legacy-angular/public/enemies/guard-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">60 / 60</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">DEFEND</span></div>
+        <div class="statuses"><span class="status good">SH</span><span class="status">TN</span></div>
+      </article>
+    </section>
+
+    <section class="field" aria-label="Battlefield and dice">
+      <div class="field-label">Dice resolve zone</div>
+      <div class="dice-row">
+        <div class="dice-side">
+          <div class="die">6</div>
+          <div class="die">20</div>
+          <div class="die">12</div>
+          <div class="die">3</div>
+        </div>
+        <div class="dice-side">
+          <div class="die enemy-die">18</div>
+          <div class="die enemy-die">15</div>
+        </div>
+      </div>
+      <div class="target-line">Target: Rust Drone</div>
+    </section>
+
+    <section class="inspector" aria-label="Selected unit action inspector">
+      <div class="roll-box">
+        <div class="mini-title">SELECTED</div>
+        <div class="big">20</div>
+        <div class="mini-title">Pulse Tech</div>
+      </div>
+      <div class="ability-box">
+        <div class="mini-title">ACTION</div>
+        <div class="ability-name">OVERLOAD</div>
+        <div class="chips"><span class="chip red">14</span><span class="chip gold">PI</span><span class="chip green">+2</span></div>
+      </div>
+      <div class="target-box">
+        <div class="mini-title">TARGET</div>
+        <div class="big">ENEMY</div>
+      </div>
+    </section>
+
+    <section class="rail hero-rail" aria-label="Heroes">
+      <article class="unit-card hero">
+        <div class="name">Strike Unit</div>
+        <div class="portrait"><img src="../legacy-angular/public/heroes/combat-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">55 / 55</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">SLASH</span></div>
+        <div class="statuses"><span class="status good">SH</span></div>
+      </article>
+      <article class="unit-card hero">
+        <div class="name">Field Engineer</div>
+        <div class="portrait"><img src="../legacy-angular/public/heroes/engineer-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">50 / 50</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">REPAIR</span></div>
+        <div class="statuses"><span class="status good">UP</span></div>
+      </article>
+      <article class="unit-card hero">
+        <div class="name">Systems Medic</div>
+        <div class="portrait"><img src="../legacy-angular/public/heroes/medic-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">45 / 45</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">INFUSE</span></div>
+        <div class="statuses"><span class="status bad">POI</span><span class="status">+1</span></div>
+      </article>
+      <article class="unit-card hero selected">
+        <div class="name">Pulse Tech</div>
+        <div class="portrait"><img src="../legacy-angular/public/heroes/pulse-portrait.png" alt=""></div>
+        <div class="hp"><div class="hp-text">40 / 40</div><div class="hp-bar"><div class="hp-fill" style="width:100%"></div></div></div>
+        <div class="action"><span class="play">&gt;</span><span class="action-name">OVERLOAD</span></div>
+        <div class="statuses"><span class="status bad">RMP</span><span class="status good">CL</span></div>
+      </article>
+    </section>
+
+    <section class="command" aria-label="Protocol command bar">
+      <div class="protocol">
+        <div class="protocol-row"><span>Protocol</span><span>3 / 10</span></div>
+        <div class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+      </div>
+      <div class="cmd">REROLL</div>
+      <div class="cmd">NUDGE</div>
+      <div class="cmd">SET</div>
+      <div class="cmd end">END TURN &gt;</div>
+    </section>
+  </main>
+</body>
+</html>

@@ -85,7 +85,6 @@ border_width_bottom = 3
 border_color = Color(0.005, 0.006, 0.01, 1)
 
 [node name="UnitCard" type="PanelContainer" unique_id=446725718]
-clip_contents = true
 custom_minimum_size = Vector2(176, 276)
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -98,7 +97,6 @@ flat = true
 
 [node name="CardFrame" type="Panel" parent="." unique_id=533692558]
 unique_name_in_owner = true
-clip_contents = true
 custom_minimum_size = Vector2(176, 276)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -125,18 +123,19 @@ theme_override_constants/separation = 4
 
 [node name="DiceChartPanel" type="PanelContainer" parent="CardFrame/Margin/VBox" unique_id=307746145]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 86)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 0
 mouse_filter = 1
-clip_contents = true
 theme_override_styles/panel = SubResource("StyleBoxFlat_4st8w")
 
 [node name="DiceChartMargin" type="MarginContainer" parent="CardFrame/Margin/VBox/DiceChartPanel" unique_id=51719729]
 layout_mode = 2
-theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 5
 
 [node name="DiceChart" type="VBoxContainer" parent="CardFrame/Margin/VBox/DiceChartPanel/DiceChartMargin" unique_id=326020977]
 unique_name_in_owner = true
@@ -263,8 +262,10 @@ custom_minimum_size = Vector2(202, 0)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 3
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_bottom = 0
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 3
 
 [node name="PortraitAspect" type="AspectRatioContainer" parent="CardFrame/Margin/VBox/BodyRow/PortraitMargin" unique_id=1077983557]
 unique_name_in_owner = true
@@ -275,7 +276,6 @@ alignment_vertical = 2
 
 [node name="PortraitFrame" type="PanelContainer" parent="CardFrame/Margin/VBox/BodyRow/PortraitMargin/PortraitAspect" unique_id=864525574]
 unique_name_in_owner = true
-clip_contents = true
 custom_minimum_size = Vector2(202, 266.792)
 layout_mode = 2
 mouse_filter = 1

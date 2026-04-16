@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://d0xw6m31c4ur8"]
+
+[ext_resource type="Script" path="res://scripts/ui/compact_unit_card.gd" id="1_6x7cx"]
+
+[node name="CompactUnitCard" type="PanelContainer"]
+custom_minimum_size = Vector2(102, 184)
+script = ExtResource("1_6x7cx")

@@ -1,8 +1,8 @@
-# Launch roster picker that lets the player choose four heroes.
+# Launch roster picker that lets the player choose a three-unit squad.
 extends Control
 
 const DEFAULT_OPERATION_ID := "facility"
-const MAX_SELECTED_UNITS := 4
+const MAX_SELECTED_UNITS := 3
 
 @onready var summary_label: Label = %SummaryLabel
 @onready var hero_list: VBoxContainer = %HeroList
@@ -156,7 +156,7 @@ func _build_operation_enemy_preview(operation: OperationData) -> String:
 			var enemy_name: String = str(enemy_name_variant)
 			if not preview_names.has(enemy_name):
 				preview_names.append(enemy_name)
-			if preview_names.size() >= 4:
+			if preview_names.size() >= GameState.SQUAD_UNIT_LIMIT:
 				return ", ".join(preview_names)
 	return ", ".join(preview_names)
 

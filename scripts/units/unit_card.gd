@@ -20,9 +20,11 @@ const STATUS_ICON_SIZE := Vector2(18, 18)
 const STATUS_TEXT_SIZE := 16
 const ABILITY_DETAIL_HEIGHT := 60
 const ABILITY_NAME_SIZE := 28
-const ABILITY_CHIP_HEIGHT := 46
-const ABILITY_CHIP_ICON_SIZE := Vector2(34, 34)
-const ABILITY_CHIP_TEXT_SIZE := 22
+const DICE_CHART_MIN_HEIGHT := 86.0
+const ABILITY_RANGE_HEIGHT := 30.0
+const ABILITY_CHIP_HEIGHT := 34
+const ABILITY_CHIP_ICON_SIZE := Vector2(18, 18)
+const ABILITY_CHIP_TEXT_SIZE := 16
 const TOOLTIP_MIN_WIDTH := 640
 const TOOLTIP_TEXT_WIDTH := 560
 const ICON_MAP = {
@@ -599,6 +601,9 @@ func setup_card(display_name: String, current_hp: int, max_hp: int, dice_result:
 	_detail_accent_color = accent_color
 
 	_configure_fixed_card_lanes(name_label, target_label, status_title, hp_bar, portrait_frame, portrait_aspect)
+	if dice_chart_panel != null:
+		dice_chart_panel.custom_minimum_size = Vector2(0, DICE_CHART_MIN_HEIGHT)
+		dice_chart_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	name_label.text = display_name
 	_fit_name_label(name_label, display_name)
 	if hp_bar != null and hp_label != null:
@@ -667,13 +672,15 @@ func _configure_fixed_card_lanes(name_label: Label, target_label: Label, status_
 	if info_column != null:
 		info_column.custom_minimum_size.x = 0.0
 		info_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info_column.clip_contents = true
+		info_column.clip_contents = false
 
 	var status_effects: Control = get_node_or_null("%StatusEffects") as Control
 	if status_effects != null:
 		status_effects.custom_minimum_size.x = 0.0
 		status_effects.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		status_effects.clip_contents = true
+		status_effects.clip_contents = false
+		status_effects.add_theme_constant_override("h_separation", 8)
+		status_effects.add_theme_constant_override("v_separation", 8)
 
 	var hp_row: Control = hp_bar.get_parent() as Control if hp_bar != null else null
 	if hp_row != null:
@@ -688,6 +695,12 @@ func _configure_fixed_card_lanes(name_label: Label, target_label: Label, status_
 		portrait_margin.custom_minimum_size = Vector2(BATTLE_PORTRAIT_WIDTH, 0)
 		portrait_margin.size_flags_horizontal = Control.SIZE_SHRINK_END
 		portrait_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		if portrait_margin is MarginContainer:
+			var margin_container: MarginContainer = portrait_margin as MarginContainer
+			margin_container.add_theme_constant_override("margin_left", 3)
+			margin_container.add_theme_constant_override("margin_top", 3)
+			margin_container.add_theme_constant_override("margin_right", 3)
+			margin_container.add_theme_constant_override("margin_bottom", 3)
 	if portrait_aspect != null:
 		portrait_aspect.ratio = HERO_PORTRAIT_RATIO
 	if portrait_frame != null:
@@ -900,7 +913,7 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 	for child in container.get_children():
 		child.queue_free()
 
-	container.add_theme_constant_override("separation", 4)
+	container.add_theme_constant_override("separation", 5)
 	var has_merged_overload_marker: bool = false
 	for row_variant in rows:
 		var marker_row: Dictionary = row_variant
@@ -927,7 +940,9 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 	# Range strip — one tab per ability column, equal widths
 	var range_strip: HBoxContainer = HBoxContainer.new()
 	range_strip.mouse_filter = Control.MOUSE_FILTER_PASS
+	range_strip.custom_minimum_size = Vector2(0, ABILITY_RANGE_HEIGHT)
 	range_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	range_strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	range_strip.add_theme_constant_override("separation", 4)
 	container.add_child(range_strip)
 
@@ -937,39 +952,26 @@ func _populate_dice_chart(container: VBoxContainer, rows: Array, active_zone: St
 		var range_tab: Control = _make_range_tab(row_data, is_active_row)
 		range_strip.add_child(range_tab)
 
-	# Chip strip — one column per ability, widths match range_strip columns
-	var chip_strip: HBoxContainer = HBoxContainer.new()
+	# Chip strip — active ability badges span the chart width so mobile columns
+	# do not crop icon/text borders.
+	var chip_strip: HFlowContainer = HFlowContainer.new()
 	chip_strip.mouse_filter = Control.MOUSE_FILTER_PASS
+	chip_strip.custom_minimum_size = Vector2(0, ABILITY_CHIP_HEIGHT)
 	chip_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_strip.add_theme_constant_override("separation", 4)
+	chip_strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	chip_strip.alignment = FlowContainer.ALIGNMENT_CENTER
+	chip_strip.add_theme_constant_override("h_separation", 4)
+	chip_strip.add_theme_constant_override("v_separation", 2)
 	container.add_child(chip_strip)
 
-	for row_variant in display_rows:
-		var row_data: Dictionary = row_variant
-		var chip_col: VBoxContainer = VBoxContainer.new()
-		chip_col.mouse_filter = Control.MOUSE_FILTER_PASS
-		chip_col.custom_minimum_size = Vector2(0, 52)
-		chip_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		chip_col.alignment = BoxContainer.ALIGNMENT_CENTER
-		chip_strip.add_child(chip_col)
-		if active_row.is_empty() or str(row_data.get("zone", "")) != visual_active_zone:
-			continue
-
-		var active_display_row: Dictionary = _get_active_chart_row(row_data, is_overload_active)
-
-		var chip_box: BoxContainer = HBoxContainer.new()
-		chip_box.mouse_filter = Control.MOUSE_FILTER_PASS
-		chip_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		chip_box.alignment = BoxContainer.ALIGNMENT_CENTER
-		chip_box.add_theme_constant_override("separation", 4)
-		chip_col.add_child(chip_box)
-
+	if not active_row.is_empty():
+		var active_display_row: Dictionary = _get_active_chart_row(active_row, is_overload_active)
 		if bool(active_display_row.get("is_overload_active", false)):
-			chip_box.add_child(_make_crit_badge())
-		var chip_size: Vector2 = Vector2(0, ABILITY_CHIP_HEIGHT)
+			chip_strip.add_child(_make_crit_badge())
+		var chip_size: Vector2 = Vector2(40, ABILITY_CHIP_HEIGHT)
 		var icon_size: Vector2 = ABILITY_CHIP_ICON_SIZE
 		var font_size: int = ABILITY_CHIP_TEXT_SIZE
-		_add_effect_chips_to_box(chip_box, active_display_row.get("chips", []), chip_size, icon_size, font_size)
+		_add_effect_chips_to_box(chip_strip, active_display_row.get("chips", []), chip_size, icon_size, font_size)
 
 
 func _get_active_chart_row(row_data: Dictionary, is_overload_active: bool) -> Dictionary:
@@ -990,8 +992,9 @@ func _make_range_tab(row_data: Dictionary, is_active_row: bool) -> PanelContaine
 	range_panel.mouse_entered.connect(_on_element_mouse_entered.bind(tooltip_text, range_panel))
 	range_panel.mouse_exited.connect(_on_element_mouse_exited)
 	_connect_passthrough_click(range_panel)
-	range_panel.custom_minimum_size = Vector2(0, 38)
+	range_panel.custom_minimum_size = Vector2(0, ABILITY_RANGE_HEIGHT)
 	range_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	range_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	range_panel.add_theme_stylebox_override("panel", _make_range_tab_style(is_active_row))
 
 	var range_row: HBoxContainer = HBoxContainer.new()
@@ -1003,30 +1006,19 @@ func _make_range_tab(row_data: Dictionary, is_active_row: bool) -> PanelContaine
 	var range_label: Label = Label.new()
 	range_label.text = str(row_data.get("range_text", ""))
 	range_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	range_label.custom_minimum_size = Vector2(0, 38)
-	range_label.clip_text = true
-	range_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	range_label.custom_minimum_size = Vector2(0, ABILITY_RANGE_HEIGHT)
+	range_label.clip_text = false
+	range_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	range_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	range_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	PixelUI.apply_pixel_font(range_label)
-	range_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(24))
+	range_label.add_theme_font_size_override("font_size", 16)
 	range_label.add_theme_color_override("font_color", Color(0.90, 0.94, 1.0, 1.0) if is_active_row else PixelUI.TEXT_MUTED)
 	range_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
-	range_label.add_theme_constant_override("outline_size", 3)
+	range_label.add_theme_constant_override("outline_size", 1)
 	range_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	range_row.add_child(range_label)
 
-	if bool(row_data.get("has_overload_marker", false)):
-		var star_label: Label = Label.new()
-		star_label.text = "★"
-		star_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		star_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		PixelUI.apply_pixel_font(star_label)
-		star_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(24))
-		star_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.28, 1.0))
-		star_label.add_theme_color_override("font_outline_color", Color(0.10, 0.05, 0.00, 0.95))
-		star_label.add_theme_constant_override("outline_size", 3)
-		range_row.add_child(star_label)
 	return range_panel
 
 
@@ -1160,6 +1152,10 @@ func _make_range_tab_style(is_active_row: bool) -> StyleBoxFlat:
 	range_style.bg_color = Color(0.08, 0.13, 0.18, 0.46)
 	range_style.border_color = Color(0.18, 0.34, 0.50, 0.72)
 	range_style.set_border_width_all(2)
+	range_style.set_content_margin(SIDE_LEFT, 2.0)
+	range_style.set_content_margin(SIDE_TOP, 2.0)
+	range_style.set_content_margin(SIDE_RIGHT, 2.0)
+	range_style.set_content_margin(SIDE_BOTTOM, 2.0)
 	range_style.corner_radius_top_left = 0
 	range_style.corner_radius_top_right = 0
 	range_style.corner_radius_bottom_left = 0
@@ -1234,7 +1230,7 @@ func _make_crit_badge() -> PanelContainer:
 	return panel
 
 
-func _add_effect_chips_to_box(chip_box: BoxContainer, chips: Array, chip_size: Vector2, icon_size: Vector2, font_size: int) -> void:
+func _add_effect_chips_to_box(chip_box: Container, chips: Array, chip_size: Vector2, icon_size: Vector2, font_size: int) -> void:
 	if chips.is_empty():
 		var empty_label: Label = Label.new()
 		empty_label.text = "-"
@@ -1255,14 +1251,14 @@ func _add_effect_chips_to_box(chip_box: BoxContainer, chips: Array, chip_size: V
 		chip_style.corner_radius_top_right = 0
 		chip_style.corner_radius_bottom_left = 0
 		chip_style.corner_radius_bottom_right = 0
-		chip_style.set_content_margin(SIDE_LEFT, 6.0)
-		chip_style.set_content_margin(SIDE_TOP, 3.0)
-		chip_style.set_content_margin(SIDE_RIGHT, 6.0)
-		chip_style.set_content_margin(SIDE_BOTTOM, 3.0)
+		chip_style.set_content_margin(SIDE_LEFT, 3.0)
+		chip_style.set_content_margin(SIDE_TOP, 2.0)
+		chip_style.set_content_margin(SIDE_RIGHT, 3.0)
+		chip_style.set_content_margin(SIDE_BOTTOM, 2.0)
 
 		var chip_panel: PanelContainer = PanelContainer.new()
 		chip_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		chip_panel.custom_minimum_size = Vector2(0, chip_size.y)
+		chip_panel.custom_minimum_size = chip_size
 		chip_panel.add_theme_stylebox_override("panel", chip_style)
 		chip_box.add_child(chip_panel)
 		
@@ -1276,7 +1272,7 @@ func _add_effect_chips_to_box(chip_box: BoxContainer, chips: Array, chip_size: V
 		var chip_row: HBoxContainer = HBoxContainer.new()
 		chip_row.mouse_filter = Control.MOUSE_FILTER_PASS
 		chip_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		chip_row.add_theme_constant_override("separation", 4)
+		chip_row.add_theme_constant_override("separation", 1)
 		chip_panel.add_child(chip_row)
 
 		var icon_kind: String = _get_chip_icon_kind(chip)
@@ -1298,10 +1294,10 @@ func _add_effect_chips_to_box(chip_box: BoxContainer, chips: Array, chip_size: V
 		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		PixelUI.apply_pixel_font(value_label)
-		value_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(font_size))
+		value_label.add_theme_font_size_override("font_size", font_size)
 		value_label.add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
 		value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
-		value_label.add_theme_constant_override("outline_size", 3)
+		value_label.add_theme_constant_override("outline_size", 1)
 		chip_row.add_child(value_label)
 
 		var duration: int = int(chip.get("duration", 0))
@@ -1362,6 +1358,10 @@ func _apply_visual_state(card_frame: Panel, portrait_frame: PanelContainer, port
 	portrait_style.bg_color = Color(0.018, 0.030, 0.050, 0.62)
 	portrait_style.border_color = accent_color.lightened(0.12)
 	portrait_style.set_border_width_all(2)
+	portrait_style.set_content_margin(SIDE_LEFT, 2.0)
+	portrait_style.set_content_margin(SIDE_TOP, 2.0)
+	portrait_style.set_content_margin(SIDE_RIGHT, 2.0)
+	portrait_style.set_content_margin(SIDE_BOTTOM, 2.0)
 	portrait_style.corner_radius_top_left = 0
 	portrait_style.corner_radius_top_right = 0
 	portrait_style.corner_radius_bottom_left = 0
@@ -1370,7 +1370,7 @@ func _apply_visual_state(card_frame: Panel, portrait_frame: PanelContainer, port
 
 	portrait.modulate = Color(1, 1, 1, 1) if portrait.texture != null else accent_color.darkened(0.18)
 	modulate = Color(1, 1, 1, 1)
-	var hp_fill: Color = Color(0.20, 0.62, 0.40, 1)
+	var hp_fill: Color = Color(0.10, 0.46, 0.32, 1.0)
 	var xp_bar: ProgressBar = get_node("%XPBar")
 	PixelUI.style_progress_bar(xp_bar, Color(0.35, 0.68, 1.0, 1), Color(0.015, 0.020, 0.035, 1.0), Color(0.18, 0.28, 0.42, 1.0))
 

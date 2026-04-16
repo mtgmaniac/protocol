@@ -3,13 +3,13 @@ extends Control
 
 signal roll_finished
 
-const DIE_RADIUS := 1.26
+const DIE_RADIUS := 1.00
 const DIE_COLLISION_LAYER := 1
 const DIE_COLLISION_MASK := 1
-const TRAY_HALF_WIDTH := 5.5
-const TRAY_HALF_DEPTH := 3.5
-const COLLISION_FLOOR_HALF_WIDTH := 6.0
-const COLLISION_FLOOR_HALF_DEPTH := 4.0
+const TRAY_HALF_WIDTH := 3.25
+const TRAY_HALF_DEPTH := 3.95
+const COLLISION_FLOOR_HALF_WIDTH := 3.55
+const COLLISION_FLOOR_HALF_DEPTH := 4.20
 const COLLISION_WALL_HEIGHT := 7.0
 const SETTLE_LINEAR_SPEED := 0.018
 const SETTLE_ANGULAR_SPEED := 0.026
@@ -26,16 +26,15 @@ const RESULT_FACE_NORMAL := Vector3(0.0, 0.82, 0.57)
 const RESULT_FACE_TEXT_UP := Vector3.UP
 const RESULT_MIN_SEPARATION := DIE_RADIUS * 2.22
 const RESULT_LAYOUT_ITERATIONS := 24
-const RESULT_GRID_COLUMNS := 2
-const RESULT_SLOT_X_GAP := DIE_RADIUS * 1.45
-const RESULT_SLOT_Z_GAP := DIE_RADIUS * 2.70
-const RESULT_PROTECTED_CENTER_HALF_WIDTH := DIE_RADIUS * 1.95
-const RESULT_OUTER_MARGIN := DIE_RADIUS * 0.10
-const RESULT_TOP_CLEARANCE := DIE_RADIUS * 0.55
+const RESULT_SLOT_X_GAP := DIE_RADIUS * 2.30
+const RESULT_ENEMY_ROW_Z := 2.35
+const RESULT_HERO_ROW_Z := 3.55
+const RESULT_OUTER_MARGIN := DIE_RADIUS * 0.28
+const RESULT_TOP_CLEARANCE := DIE_RADIUS * 0.42
 const RESULT_HERO_SIDE_NUDGE := 0.0
 const RESULT_ENEMY_SIDE_NUDGE := 0.0
-const RESULT_HERO_DOWN_NUDGE := DIE_RADIUS * 0.76
-const RESULT_ENEMY_DOWN_NUDGE := DIE_RADIUS * 0.76
+const RESULT_HERO_DOWN_NUDGE := 0.0
+const RESULT_ENEMY_DOWN_NUDGE := 0.0
 
 var _viewport: SubViewport
 var _world_root: Node3D
@@ -346,12 +345,7 @@ func _get_non_overlapping_result_origins(result_entries: Array) -> Dictionary:
 func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
 	var outer_min_x: float = -TRAY_HALF_WIDTH + RESULT_OUTER_MARGIN
 	var outer_max_x: float = TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN
-	if side == "hero":
-		origin.x = clampf(origin.x, outer_min_x, -RESULT_PROTECTED_CENTER_HALF_WIDTH)
-	elif side == "enemy":
-		origin.x = clampf(origin.x, RESULT_PROTECTED_CENTER_HALF_WIDTH, outer_max_x)
-	else:
-		origin.x = clampf(origin.x, outer_min_x, outer_max_x)
+	origin.x = clampf(origin.x, outer_min_x, outer_max_x)
 	origin.z = clampf(origin.z, -TRAY_HALF_DEPTH + RESULT_TOP_CLEARANCE, TRAY_HALF_DEPTH - RESULT_OUTER_MARGIN)
 	return origin
 
@@ -361,27 +355,14 @@ func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -
 	var side: String = _get_result_entry_side(result_entry)
 	var slot_index: int = int(entry.get("slot_index", 0))
 	var side_count: int = maxi(int(entry.get("side_count", 1)), 1)
-	var columns: int = mini(RESULT_GRID_COLUMNS, side_count)
-	var rows: int = int(ceil(float(side_count) / float(columns)))
-	var row: int = int(floor(float(slot_index) / float(columns)))
-	var col: int = slot_index % columns
-	var row_count: int = columns
-	if row == rows - 1:
-		row_count = side_count - row * columns
-	if row_count <= 0:
-		row_count = columns
-	var outer_x: float = -TRAY_HALF_WIDTH + RESULT_OUTER_MARGIN if side == "hero" else TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN
-	var inner_x: float = -RESULT_PROTECTED_CENTER_HALF_WIDTH if side == "hero" else RESULT_PROTECTED_CENTER_HALF_WIDTH
-	var available_width: float = abs(inner_x - outer_x)
-	var x_gap: float = RESULT_SLOT_X_GAP
-	if columns > 1:
-		x_gap = maxf(RESULT_SLOT_X_GAP, available_width / float(columns - 1))
-	var side_center_x: float = outer_x + (float(row_count) - 1.0) * x_gap * 0.5 if side == "hero" else outer_x - (float(row_count) - 1.0) * x_gap * 0.5
-	var col_offset: float = (float(col) - (float(row_count) - 1.0) * 0.5) * x_gap
-	var row_offset: float = (float(row) - (float(rows) - 1.0) * 0.5) * RESULT_SLOT_Z_GAP
+	var usable_width: float = (TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN) * 2.0
+	var x_gap: float = 0.0
+	if side_count > 1:
+		x_gap = minf(RESULT_SLOT_X_GAP, usable_width / float(side_count - 1))
+	var col_offset: float = (float(slot_index) - (float(side_count) - 1.0) * 0.5) * x_gap
 	var side_nudge: float = -RESULT_HERO_SIDE_NUDGE if side == "hero" else RESULT_ENEMY_SIDE_NUDGE
-	var down_nudge: float = RESULT_HERO_DOWN_NUDGE if side == "hero" else RESULT_ENEMY_DOWN_NUDGE
-	return _clamp_result_origin(Vector3(side_center_x + col_offset + side_nudge, fallback_origin.y, row_offset + down_nudge), side)
+	var row_z: float = RESULT_HERO_ROW_Z + RESULT_HERO_DOWN_NUDGE if side == "hero" else -RESULT_ENEMY_ROW_Z - RESULT_ENEMY_DOWN_NUDGE
+	return _clamp_result_origin(Vector3(col_offset + side_nudge, fallback_origin.y, row_z), side)
 
 
 func _get_result_entry_side(result_entry: Dictionary) -> String:
@@ -585,8 +566,8 @@ func _build_world() -> void:
 
 	var camera: Camera3D = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 6.5
-	camera.position = Vector3(0, 6.0, 4.5)
+	camera.size = 8.2
+	camera.position = Vector3(0, 6.8, 5.4)
 	camera.rotation_degrees = Vector3(-55, 0, 0)
 	camera.near = 0.05
 	camera.far = 20.0
@@ -726,22 +707,22 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	# --- THROW PHYSICS ---
 	# Strong lateral throw with less downward slam = slower fall, heavier roll.
 	var throw_dir: Vector3 = _get_throw_direction(die.position, index, total_count)
-	var throw_strength: float = randf_range(30.0, 40.0)
-	var slam: float = randf_range(5.0, 8.0)
+	var throw_strength: float = randf_range(18.0, 26.0)
+	var slam: float = randf_range(4.0, 6.0)
 	die.apply_impulse(
 		throw_dir * throw_strength + Vector3.DOWN * slam,
 		Vector3(randf_range(-1.1, 1.1), randf_range(-0.35, 0.35), randf_range(-1.1, 1.1))
 	)
 	die.angular_velocity = Vector3(
-		randf_range(-7.8, 7.8),
-		randf_range(-10.0, 10.0),
-		randf_range(-7.8, 7.8)
+		randf_range(-6.4, 6.4),
+		randf_range(-8.2, 8.2),
+		randf_range(-6.4, 6.4)
 	)
 	# Heavy torque for vigorous tumbling
 	die.apply_torque_impulse(Vector3(
-		randf_range(-118.0, 118.0),
-		randf_range(-150.0, 150.0),
-		randf_range(-118.0, 118.0)
+		randf_range(-72.0, 72.0),
+		randf_range(-96.0, 96.0),
+		randf_range(-72.0, 72.0)
 	))
 	return die
 
@@ -831,23 +812,23 @@ func _make_tray_physics_material() -> PhysicsMaterial:
 
 func _get_spawn_position(index: int, total_count: int) -> Vector3:
 	# Spawn with modest loft so the fall reads slower before the heavy roll.
-	var spawn_height: float = randf_range(4.0, 5.0)
+	var spawn_height: float = randf_range(3.3, 4.2)
 	var angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + randf_range(-0.3, 0.3)
-	var edge_x: float = cos(angle) * TRAY_HALF_WIDTH * 0.85
-	var edge_z: float = sin(angle) * TRAY_HALF_DEPTH * 0.80
-	edge_x += randf_range(-0.6, 0.6)
-	edge_z += randf_range(-0.5, 0.5)
+	var edge_x: float = cos(angle) * TRAY_HALF_WIDTH * 0.54
+	var edge_z: float = sin(angle) * TRAY_HALF_DEPTH * 0.56
+	edge_x += randf_range(-0.28, 0.28)
+	edge_z += randf_range(-0.28, 0.28)
 	return Vector3(edge_x, spawn_height, edge_z)
 
 
 func _get_throw_direction(spawn_pos: Vector3, index: int, total_count: int) -> Vector3:
-	var landing_angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + PI + randf_range(-0.8, 0.8)
-	var landing_radius_x: float = TRAY_HALF_WIDTH * randf_range(0.30, 0.85)
-	var landing_radius_z: float = TRAY_HALF_DEPTH * randf_range(0.30, 0.85)
+	var landing_angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + PI + randf_range(-0.65, 0.65)
+	var landing_radius_x: float = TRAY_HALF_WIDTH * randf_range(0.16, 0.58)
+	var landing_radius_z: float = TRAY_HALF_DEPTH * randf_range(0.18, 0.62)
 	var target: Vector3 = Vector3(
-		cos(landing_angle) * landing_radius_x + randf_range(-1.2, 1.2),
+		cos(landing_angle) * landing_radius_x + randf_range(-0.55, 0.55),
 		0.0,
-		sin(landing_angle) * landing_radius_z + randf_range(-1.0, 1.0)
+		sin(landing_angle) * landing_radius_z + randf_range(-0.55, 0.55)
 	)
 	var direction: Vector3 = (target - Vector3(spawn_pos.x, 0.0, spawn_pos.z)).normalized()
 	if direction.length_squared() < 0.001:
