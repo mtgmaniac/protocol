@@ -26,6 +26,7 @@ extends Control
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
 const UNIT_CARD_SCENE := preload("res://scenes/shared/UnitCard.tscn")
+const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn")
 const USE_COMPACT_BATTLE_CARDS := true
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
@@ -40,6 +41,7 @@ const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
+const DICE_SNAP_EDGE_OFFSET_PX := 86.0
 const HELP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
@@ -69,6 +71,7 @@ var active_targeting_hero_id: String = ""
 var legal_target_ids: Array = []
 var legal_target_side: String = ""
 var pending_manual_target_ids: Array = []
+var has_player_target_assignment: bool = false
 var battle_over: bool = false
 var hero_roll_nudges: Dictionary = {}
 var _battle_consumables: Array = []
@@ -200,13 +203,18 @@ func _populate_hero_cards() -> void:
 			continue
 
 		var card: Control = _create_battle_card()
-		var slot: Control = _build_card_slot()
+		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
+		var dice_anchor: Control = _build_dice_anchor()
+		var slot: VBoxContainer = _build_hero_card_column()
 		hero_cards.add_child(slot)
+		slot.add_child(dice_anchor)
+		slot.add_child(readout)
 		slot.add_child(card)
+		_prepare_ability_readout_layout(readout)
 		_prepare_battle_card_layout(card)
-		hero_card_views.append({"card": card, "state": hero_state})
+		hero_card_views.append({"card": card, "readout": readout, "dice_anchor": dice_anchor, "state": hero_state})
 		card.card_pressed.connect(_on_hero_card_pressed.bind(hero_state["id"]))
-		_update_card_view(card, hero_state, hero_rolls.get(str(hero_state["id"]), null), HERO_ACCENT)
+		_update_card_view(card, hero_state, hero_rolls.get(str(hero_state["id"]), null), HERO_ACCENT, readout)
 	_queue_board_layout_refresh()
 
 
@@ -220,13 +228,18 @@ func _populate_enemy_cards() -> void:
 			continue
 
 		var card: Control = _create_battle_card()
-		var slot: Control = _build_card_slot()
+		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
+		var dice_anchor: Control = _build_dice_anchor()
+		var slot: VBoxContainer = _build_enemy_card_column()
 		enemy_cards.add_child(slot)
 		slot.add_child(card)
+		slot.add_child(readout)
+		slot.add_child(dice_anchor)
 		_prepare_battle_card_layout(card)
-		enemy_card_views.append({"card": card, "state": enemy_state})
+		_prepare_ability_readout_layout(readout)
+		enemy_card_views.append({"card": card, "readout": readout, "dice_anchor": dice_anchor, "state": enemy_state})
 		card.card_pressed.connect(_on_enemy_card_pressed.bind(enemy_state["id"]))
-		_update_card_view(card, enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT)
+		_update_card_view(card, enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT, readout)
 	_queue_board_layout_refresh()
 
 
@@ -258,7 +271,39 @@ func _build_card_slot() -> Control:
 	return slot
 
 
-func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color) -> void:
+func _build_hero_card_column() -> VBoxContainer:
+	var column: VBoxContainer = VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	column.add_theme_constant_override("separation", 6)
+	return column
+
+
+func _build_enemy_card_column() -> VBoxContainer:
+	var column: VBoxContainer = VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	column.add_theme_constant_override("separation", 6)
+	return column
+
+
+func _build_dice_anchor() -> Control:
+	var anchor: Control = Control.new()
+	anchor.name = "DiceAnchor"
+	anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	anchor.custom_minimum_size = Vector2(0, 112)
+	anchor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	return anchor
+
+
+func _prepare_ability_readout_layout(readout: Control) -> void:
+	readout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	readout.custom_minimum_size = Vector2(0, 88)
+
+
+func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color, readout: Control = null) -> void:
 	var unit: Resource = state["unit"]
 	var default_entry: Dictionary = unit.dice_ranges[0] if unit.dice_ranges.size() > 0 else {}
 	var chosen_entry: Dictionary = default_entry
@@ -330,22 +375,28 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 	var is_targetable: bool = _is_target_highlight_phase() and legal_target_ids.has(state_id)
 	if card is CompactUnitCard:
 		var compact_card: CompactUnitCard = card as CompactUnitCard
+		var has_revealed_roll: bool = roll_value != null
 		var action_label: String = "DOWN" if bool(state["dead"]) else "AWAIT ROLL"
-		if roll_value != null:
+		var action_pips: Array = []
+		if has_revealed_roll:
 			action_label = str(chosen_entry.get("ability_name", "NO ACTION"))
+			action_pips = _build_compact_action_pips(chosen_entry)
+		if readout != null and readout.has_method("configure"):
+			readout.configure(action_pips)
 		compact_card.configure({
 			"side": "hero" if accent_color == HERO_ACCENT else "enemy",
 			"name": unit.display_name,
 			"current_hp": int(state["current_hp"]),
 			"max_hp": int(state["max_hp"]),
 			"action": action_label,
-			"pips": _build_compact_action_pips(chosen_entry),
+			"pips": [] if readout != null else action_pips,
 			"portrait": unit.portrait,
 			"statuses": _build_compact_status_tokens(state),
 			"selected": is_selected,
 			"targetable": is_targetable,
 			"interaction_enabled": _is_card_clickable(state, accent_color),
 			"dead": bool(state["dead"]),
+			"show_action_pips": readout == null,
 		})
 		var compact_preview: Dictionary = _compute_preview_for_unit(state, accent_color == HERO_ACCENT)
 		if compact_preview.is_empty():
@@ -499,6 +550,7 @@ func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dicti
 	# Only meaningful during targeting phases when rolls and targets are assigned.
 	if turn_phase != PHASE_TARGETING and turn_phase != PHASE_READY_TO_END:
 		return {}
+	var include_hero_ability_previews: bool = turn_phase == PHASE_READY_TO_END or has_player_target_assignment
 
 	var target_id: String = str(target_state["id"])
 	var total_dmg: int    = 0
@@ -508,6 +560,8 @@ func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dicti
 
 	# ── Hero abilities ────────────────────────────────────────────────────────
 	for hero_state in combat_manager.get_hero_states():
+		if not include_hero_ability_previews:
+			continue
 		if bool(hero_state.get("dead", false)):
 			continue
 		var hero_id: String = str(hero_state["id"])
@@ -630,12 +684,15 @@ func _begin_targeting_phase() -> void:
 	legal_target_ids.clear()
 	legal_target_side = ""
 	pending_manual_target_ids.clear()
+	has_player_target_assignment = false
 	_clear_target_assignments()
 
 	if dice_tray_3d != null:
+		_refresh_board_layout()
+		await get_tree().process_frame
 		dice_tray_3d.play_rolls(
-			_build_dice_tray_entries(combat_manager.get_hero_states()),
-			_build_dice_tray_entries(combat_manager.get_enemy_states())
+			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
 		)
 		await dice_tray_3d.roll_finished
 		hero_rolls = dice_tray_3d.get_hero_rolls()
@@ -717,7 +774,7 @@ func _get_auto_debug_target_side(target_id: String) -> String:
 	return legal_target_side
 
 
-func _build_dice_tray_entries(states: Array) -> Array:
+func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 	var entries: Array = []
 	for state_variant in states:
 		var state: Dictionary = state_variant
@@ -729,11 +786,36 @@ func _build_dice_tray_entries(states: Array) -> Array:
 			"id": str(state["id"]),
 			"name": str(unit.display_name),
 		}
+		var anchor_point: Vector2 = _get_dice_anchor_point(side, str(state["id"]))
+		if anchor_point != Vector2.INF:
+			entry["result_anchor"] = anchor_point
 		if is_frozen:
 			entry["frozen"] = true
 			entry["frozen_roll"] = int(state.get("frozen_die_value", 0))
 		entries.append(entry)
 	return entries
+
+
+func _get_dice_anchor_point(side: String, state_id: String) -> Vector2:
+	if dice_tray_3d == null:
+		return Vector2.INF
+	var views: Array = hero_card_views if side == "hero" else enemy_card_views
+	var tray_rect: Rect2 = dice_tray_3d.get_global_rect()
+	if tray_rect.size.x <= 2.0 or tray_rect.size.y <= 2.0:
+		return Vector2.INF
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var state: Dictionary = view.get("state", {})
+		if str(state.get("id", "")) != state_id:
+			continue
+		var card: Control = view.get("card", null) as Control
+		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
+			return Vector2.INF
+		var card_rect: Rect2 = card.get_global_rect()
+		var x: float = clampf(card_rect.get_center().x - tray_rect.position.x, DICE_SNAP_EDGE_OFFSET_PX, tray_rect.size.x - DICE_SNAP_EDGE_OFFSET_PX)
+		var y: float = DICE_SNAP_EDGE_OFFSET_PX if side == "enemy" else tray_rect.size.y - DICE_SNAP_EDGE_OFFSET_PX
+		return Vector2(x, y)
+	return Vector2.INF
 
 
 func _apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:
@@ -827,6 +909,7 @@ func _resolve_current_turn() -> void:
 	legal_target_ids.clear()
 	legal_target_side = ""
 	pending_manual_target_ids.clear()
+	has_player_target_assignment = false
 	_clear_target_assignments()
 	roll_button.disabled = true
 	_append_round_log(result.get("log", []))
@@ -1157,11 +1240,13 @@ func _update_protocol_bar() -> void:
 func _refresh_all_cards() -> void:
 	for hero_view in hero_card_views:
 		var hero_state: Dictionary = hero_view["state"]
-		_update_card_view(hero_view["card"], hero_state, hero_rolls.get(str(hero_state["id"]), null), HERO_ACCENT)
+		var readout: Control = hero_view.get("readout", null) as Control
+		_update_card_view(hero_view["card"], hero_state, hero_rolls.get(str(hero_state["id"]), null), HERO_ACCENT, readout)
 
 	for enemy_view in enemy_card_views:
 		var enemy_state: Dictionary = enemy_view["state"]
-		_update_card_view(enemy_view["card"], enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT)
+		var readout: Control = enemy_view.get("readout", null) as Control
+		_update_card_view(enemy_view["card"], enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT, readout)
 
 
 func _build_runtime_units() -> void:
@@ -1291,6 +1376,7 @@ func _is_target_highlight_phase() -> bool:
 
 
 func _clear_target_assignments() -> void:
+	has_player_target_assignment = false
 	for hero_view_variant in hero_card_views:
 		var hero_view: Dictionary = hero_view_variant
 		var hero_state: Dictionary = hero_view["state"]
@@ -1497,6 +1583,22 @@ func _select_targeting_hero(hero_id: String) -> void:
 	_refresh_summary("Choose a target for %s." % str(hero_state["unit"].display_name))
 
 
+func _can_retarget_hero(hero_id: String) -> bool:
+	if _get_taunt_enemy_id() != "":
+		return false
+	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
+	if hero_state.is_empty() or bool(hero_state.get("dead", false)):
+		return false
+	if not _has_roll_for_state(hero_rolls, hero_state):
+		return false
+	var eff_roll: int = _get_effective_roll_for_state(hero_state, hero_id)
+	var ability_entry: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], eff_roll)
+	if ability_entry.is_empty():
+		return false
+	var manual_side: String = _get_manual_target_side(ability_entry)
+	return manual_side != "" and not _get_legal_target_ids(manual_side).is_empty()
+
+
 func _assign_target_to_active_hero(target_id: String, target_side: String) -> void:
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), active_targeting_hero_id)
 	if hero_state.is_empty():
@@ -1505,6 +1607,7 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	if target_state.is_empty():
 		return
 	_set_state_target(hero_state, target_id, str(target_state["unit"].display_name))
+	has_player_target_assignment = true
 	pending_manual_target_ids.erase(active_targeting_hero_id)
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
@@ -1667,14 +1770,17 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 	if turn_phase == PHASE_ITEM_PICK_ENEMY:
 		return accent_color == ENEMY_ACCENT and not bool(state["dead"])
 
-	if turn_phase != PHASE_TARGETING:
+	if turn_phase != PHASE_TARGETING and turn_phase != PHASE_READY_TO_END:
 		return false
 
 	var state_id: String = str(state["id"])
+	if turn_phase == PHASE_READY_TO_END:
+		return accent_color == HERO_ACCENT and _can_retarget_hero(state_id)
+
 	if active_targeting_hero_id == "":
 		if accent_color != HERO_ACCENT:
 			return false
-		return pending_manual_target_ids.has(state_id)
+		return pending_manual_target_ids.has(state_id) or _can_retarget_hero(state_id)
 
 	if legal_target_side == "enemy" and accent_color == ENEMY_ACCENT:
 		return legal_target_ids.has(state_id)
@@ -1745,10 +1851,16 @@ func _on_hero_card_pressed(target_id: String) -> void:
 				_apply_item_effect(_pending_item, target_state)
 		return
 
+	if turn_phase == PHASE_READY_TO_END:
+		if _can_retarget_hero(target_id):
+			_set_turn_phase(PHASE_TARGETING)
+			_select_targeting_hero(target_id)
+		return
+
 	if turn_phase != PHASE_TARGETING:
 		return
 	if active_targeting_hero_id == "":
-		if pending_manual_target_ids.has(target_id):
+		if pending_manual_target_ids.has(target_id) or _can_retarget_hero(target_id):
 			_select_targeting_hero(target_id)
 		return
 	if legal_target_side == "hero" and legal_target_ids.has(target_id):
@@ -2297,7 +2409,8 @@ func _refresh_card_for_event(event: Dictionary) -> void:
 		var state: Dictionary = view["state"]
 		if str(state.get("id", "")) != target_id:
 			continue
-		_update_card_view(view["card"], state, rolls.get(target_id, null), accent)
+		var readout: Control = view.get("readout", null) as Control
+		_update_card_view(view["card"], state, rolls.get(target_id, null), accent, readout)
 		return
 
 

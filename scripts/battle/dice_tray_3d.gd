@@ -26,10 +26,10 @@ const RESULT_FACE_NORMAL := Vector3(0.0, 0.82, 0.57)
 const RESULT_FACE_TEXT_UP := Vector3.UP
 const RESULT_MIN_SEPARATION := DIE_RADIUS * 2.22
 const RESULT_LAYOUT_ITERATIONS := 24
-const RESULT_SLOT_X_GAP := DIE_RADIUS * 2.30
-const RESULT_ENEMY_ROW_Z := 2.35
-const RESULT_HERO_ROW_Z := 3.55
-const RESULT_OUTER_MARGIN := DIE_RADIUS * 0.28
+const RESULT_SLOT_X_GAP := DIE_RADIUS * 2.85
+const RESULT_ENEMY_ROW_Z := 2.62
+const RESULT_HERO_ROW_Z := 3.66
+const RESULT_OUTER_MARGIN := DIE_RADIUS * 0.12
 const RESULT_TOP_CLEARANCE := DIE_RADIUS * 0.42
 const RESULT_HERO_SIDE_NUDGE := 0.0
 const RESULT_ENEMY_SIDE_NUDGE := 0.0
@@ -37,8 +37,10 @@ const RESULT_HERO_DOWN_NUDGE := 0.0
 const RESULT_ENEMY_DOWN_NUDGE := 0.0
 
 var _viewport: SubViewport
+var _viewport_container: SubViewportContainer
 var _world_root: Node3D
 var _dice_root: Node3D
+var _camera: Camera3D
 var _hero_results: Dictionary = {}
 var _enemy_results: Dictionary = {}
 var _die_by_key: Dictionary = {}
@@ -58,7 +60,20 @@ func _ready() -> void:
 	_build_ui()
 	_build_world()
 	_build_d20_face_data()
+	_sync_viewport_size()
 	reset()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_sync_viewport_size()
+
+
+func _sync_viewport_size() -> void:
+	if _viewport == null:
+		return
+	var viewport_size := Vector2i(maxi(int(size.x), 2), maxi(int(size.y), 2))
+	_viewport.size = viewport_size
 
 
 func reset() -> void:
@@ -353,6 +368,10 @@ func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
 func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -> Vector3:
 	var entry: Dictionary = result_entry.get("entry", {}) as Dictionary
 	var side: String = _get_result_entry_side(result_entry)
+	if entry.has("result_anchor"):
+		var anchor_variant: Variant = entry.get("result_anchor")
+		if anchor_variant is Vector2:
+			return _clamp_result_origin(_anchor_to_world_origin(anchor_variant, fallback_origin), side)
 	var slot_index: int = int(entry.get("slot_index", 0))
 	var side_count: int = maxi(int(entry.get("side_count", 1)), 1)
 	var usable_width: float = (TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN) * 2.0
@@ -363,6 +382,18 @@ func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -
 	var side_nudge: float = -RESULT_HERO_SIDE_NUDGE if side == "hero" else RESULT_ENEMY_SIDE_NUDGE
 	var row_z: float = RESULT_HERO_ROW_Z + RESULT_HERO_DOWN_NUDGE if side == "hero" else -RESULT_ENEMY_ROW_Z - RESULT_ENEMY_DOWN_NUDGE
 	return _clamp_result_origin(Vector3(col_offset + side_nudge, fallback_origin.y, row_z), side)
+
+
+func _anchor_to_world_origin(anchor_point: Vector2, fallback_origin: Vector3) -> Vector3:
+	if _camera == null or not is_instance_valid(_camera):
+		return fallback_origin
+	var ray_origin: Vector3 = _camera.project_ray_origin(anchor_point)
+	var ray_dir: Vector3 = _camera.project_ray_normal(anchor_point)
+	if absf(ray_dir.y) < 0.0001:
+		return fallback_origin
+	var t: float = (0.0 - ray_origin.y) / ray_dir.y
+	var world_point: Vector3 = ray_origin + ray_dir * t
+	return Vector3(world_point.x, fallback_origin.y, world_point.z)
 
 
 func _get_result_entry_side(result_entry: Dictionary) -> String:
@@ -543,13 +574,13 @@ func _build_ui() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-	var viewport_container: SubViewportContainer = SubViewportContainer.new()
-	viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	viewport_container.stretch = true
-	viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	viewport_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	viewport_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(viewport_container)
+	_viewport_container = SubViewportContainer.new()
+	_viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_viewport_container.stretch = false
+	_viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_viewport_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_viewport_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(_viewport_container)
 
 	_viewport = SubViewport.new()
 	# Transparent so the game UI shows through around/behind the dice
@@ -557,7 +588,7 @@ func _build_ui() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_viewport.gui_disable_input = true
 	_viewport.world_3d = World3D.new()
-	viewport_container.add_child(_viewport)
+	_viewport_container.add_child(_viewport)
 
 
 func _build_world() -> void:
@@ -572,6 +603,7 @@ func _build_world() -> void:
 	camera.near = 0.05
 	camera.far = 20.0
 	_world_root.add_child(camera)
+	_camera = camera
 	_viewport.world_3d.environment = _build_environment()
 
 	var key_light: DirectionalLight3D = DirectionalLight3D.new()

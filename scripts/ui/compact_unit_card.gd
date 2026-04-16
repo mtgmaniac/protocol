@@ -35,11 +35,12 @@ var selected: bool = false
 var targetable: bool = false
 var interaction_enabled: bool = true
 var dead: bool = false
+var show_action_pips: bool = true
 
 var _name_label: Label = null
 var _portrait_frame: PanelContainer = null
 var _portrait_rect: TextureRect = null
-var _hp_back: PanelContainer = null
+var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
 var _action_panel: PanelContainer = null
@@ -77,6 +78,7 @@ func configure(data: Dictionary) -> void:
 	targetable = bool(data.get("targetable", targetable))
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
+	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
 	_refresh()
 
 
@@ -161,7 +163,7 @@ func _build() -> void:
 	_portrait_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_portrait_frame.add_child(_portrait_rect)
 
-	_hp_back = PanelContainer.new()
+	_hp_back = Panel.new()
 	_hp_back.custom_minimum_size = Vector2(0, 74)
 	_hp_back.clip_contents = true
 	_hp_back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -219,6 +221,7 @@ func _refresh() -> void:
 	add_theme_stylebox_override("panel", _style(Color(0.020, 0.032, 0.048, 0.96), line_color, 3, 3))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.78), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color(0.010, 0.020, 0.032, 0.58), Color.TRANSPARENT, 0, 0))
+	_action_panel.visible = show_action_pips
 
 	_name_label.text = unit_name.to_upper()
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
@@ -231,7 +234,8 @@ func _refresh() -> void:
 
 	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color.WHITE
 	modulate = Color(0.55, 0.56, 0.62, 0.72) if dead else Color.WHITE
-	_populate_action_pips()
+	if show_action_pips:
+		_populate_action_pips()
 	_populate_statuses()
 	_layout_preview_overlays()
 
@@ -405,6 +409,10 @@ func _make_preview_rect(rect_name: String) -> ColorRect:
 	rect.z_index = 2
 	rect.visible = false
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.anchor_left = 0.0
+	rect.anchor_top = 0.0
+	rect.anchor_right = 0.0
+	rect.anchor_bottom = 0.0
 	_hp_back.add_child(rect)
 	return rect
 
@@ -414,6 +422,8 @@ func _hide_preview_rects() -> void:
 		var rect: ColorRect = rect_variant
 		if rect != null and is_instance_valid(rect):
 			rect.visible = false
+			rect.position = Vector2.ZERO
+			rect.size = Vector2.ZERO
 
 
 func _place_preview_rect(rect: ColorRect, x_hp: float, width_hp: float, hp_max: float, bar_w: float, bar_h: float, color: Color) -> void:
@@ -421,6 +431,8 @@ func _place_preview_rect(rect: ColorRect, x_hp: float, width_hp: float, hp_max: 
 		return
 	if width_hp <= 0.0:
 		rect.visible = false
+		rect.position = Vector2.ZERO
+		rect.size = Vector2.ZERO
 		return
 	rect.visible = true
 	rect.color = color
