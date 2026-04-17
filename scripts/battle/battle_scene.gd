@@ -41,7 +41,16 @@ const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
-const DICE_SNAP_EDGE_OFFSET_PX := 86.0
+const DICE_SNAP_HORIZONTAL_MARGIN_PX := 58.0
+const DICE_THREE_UNIT_SIDE_OFFSET_PX := 0.0
+const DICE_ENEMY_SNAP_TOP_PX := 274.0
+const DICE_HERO_SNAP_BOTTOM_PX := -158.0
+const COMBAT_ZONE_READOUT_GAP_PX := 18.0
+const COMPACT_PORTRAIT_EXTRA_HEIGHT_PX := 52.0
+const COMPACT_DICE_ANCHOR_HEIGHT_PX := 12.0
+const COMPACT_READOUT_HEIGHT_PX := 120.0
+const COMPACT_RAIL_CHROME_PX := 24.0
+const COMPACT_CENTER_TARGET_RATIO := 0.24
 const HELP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
@@ -141,6 +150,16 @@ func _ready() -> void:
 	board.move_child(enemy_panel, 0)
 	board.move_child(center_panel, 1)
 	board.move_child(hero_panel, 2)
+	call_deferred("_stabilize_board_layout")
+
+
+func _stabilize_board_layout() -> void:
+	for i in range(4):
+		if not is_inside_tree():
+			return
+		_refresh_board_layout()
+		_layout_dice_from_combat_zone()
+		await get_tree().process_frame
 
 
 func _on_open_reward_button_pressed() -> void:
@@ -256,7 +275,7 @@ func _create_battle_card() -> Control:
 
 func _prepare_battle_card_layout(card: Control) -> void:
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	card.custom_minimum_size = Vector2(0, 0)
 	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if card is UnitCard:
@@ -291,7 +310,7 @@ func _build_dice_anchor() -> Control:
 	var anchor: Control = Control.new()
 	anchor.name = "DiceAnchor"
 	anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	anchor.custom_minimum_size = Vector2(0, 112)
+	anchor.custom_minimum_size = Vector2(0, COMPACT_DICE_ANCHOR_HEIGHT_PX)
 	anchor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	return anchor
@@ -300,7 +319,7 @@ func _build_dice_anchor() -> Control:
 func _prepare_ability_readout_layout(readout: Control) -> void:
 	readout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	readout.custom_minimum_size = Vector2(0, 88)
+	readout.custom_minimum_size = Vector2(0, COMPACT_READOUT_HEIGHT_PX)
 
 
 func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color, readout: Control = null) -> void:
@@ -377,19 +396,22 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 		var compact_card: CompactUnitCard = card as CompactUnitCard
 		var has_revealed_roll: bool = roll_value != null
 		var action_label: String = "DOWN" if bool(state["dead"]) else "AWAIT ROLL"
-		var action_pips: Array = []
+		var action_pips: Variant = []
 		if has_revealed_roll:
 			action_label = str(chosen_entry.get("ability_name", "NO ACTION"))
 			action_pips = _build_compact_action_pips(chosen_entry)
 		if readout != null and readout.has_method("configure"):
-			readout.configure(action_pips)
+			readout.configure(action_pips, "hero" if accent_color == HERO_ACCENT else "enemy")
+		var card_pips: Array = []
+		if readout == null and action_pips is Dictionary:
+			card_pips = action_pips.get("effects", [])
 		compact_card.configure({
 			"side": "hero" if accent_color == HERO_ACCENT else "enemy",
 			"name": unit.display_name,
 			"current_hp": int(state["current_hp"]),
 			"max_hp": int(state["max_hp"]),
 			"action": action_label,
-			"pips": [] if readout != null else action_pips,
+			"pips": card_pips,
 			"portrait": unit.portrait,
 			"statuses": _build_compact_status_tokens(state),
 			"selected": is_selected,
@@ -441,109 +463,147 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 
 
 func _build_compact_status_tokens(state: Dictionary) -> Array:
-	var tokens: Array = []
+	var statuses: Array = []
 	if bool(state.get("dead", false)):
-		tokens.append("DOWN")
-		return tokens
+		statuses.append(_make_compact_named_status("DOWN", "", 99))
+		return statuses
 
 	if int(state.get("poison", 0)) > 0 and int(state.get("poison_turns", 0)) > 0:
-		tokens.append("POI")
-	if bool(state.get("cloaked", false)):
-		tokens.append("CL")
-	if int(state.get("cower_turns", 0)) > 0:
-		tokens.append("COW")
-	if int(state.get("rampage_charges", 0)) > 0:
-		tokens.append("RMP")
-	if int(state.get("die_freeze_turns", 0)) > 0:
-		tokens.append("FR")
-	if bool(state.get("taunting", false)):
-		tokens.append("TA")
-	if bool(state.get("cursed", false)):
-		tokens.append("CUR")
+		statuses.append({
+			"type": "poison",
+			"mode": "numeric",
+			"icon": "☠",
+			"value": int(state.get("poison", 0)),
+			"priority": 0,
+		})
+
+	var total_shield: int = int(state.get("shield", 0))
+	if total_shield > 0:
+		statuses.append({
+			"type": "shield",
+			"mode": "numeric",
+			"icon": "🛡",
+			"value": total_shield,
+			"priority": 1,
+		})
 
 	var total_rfe: int = 0
 	for stack_variant in state.get("rfe_stacks", []):
 		var stack: Dictionary = stack_variant
 		total_rfe += int(stack.get("amt", 0))
-	if total_rfe > 0:
-		tokens.append("-%d" % total_rfe)
-
 	var roll_buff: int = int(state.get("roll_buff", 0))
-	if roll_buff > 0:
-		tokens.append("+%d" % roll_buff)
+	var roll_delta: int = roll_buff - total_rfe
+	if roll_delta != 0:
+		statuses.append({
+			"type": "roll",
+			"mode": "numeric",
+			"icon": "🎲",
+			"value": "%+d" % roll_delta,
+			"priority": 2,
+		})
 
-	var total_shield: int = int(state.get("shield", 0))
-	if total_shield > 0:
-		tokens.append("SH")
+	if bool(state.get("cloaked", false)):
+		statuses.append(_make_compact_named_status("CLOAK", "", 3))
+	if int(state.get("cower_turns", 0)) > 0:
+		statuses.append(_make_compact_named_status("COWER", "", 3))
+	if int(state.get("rampage_charges", 0)) > 0:
+		statuses.append(_make_compact_named_status("RAMPAGE", "%d" % int(state.get("rampage_charges", 0)), 3))
 
-	return tokens
+	return statuses
 
 
-func _build_compact_action_pips(entry: Dictionary) -> Array:
+func _make_compact_named_status(display_name: String, value: String = "", priority: int = 3) -> Dictionary:
+	return {
+		"type": "named",
+		"mode": "named",
+		"name": display_name,
+		"value": value,
+		"priority": priority,
+	}
+
+
+func _build_compact_action_pips(entry: Dictionary) -> Dictionary:
 	var raw: Dictionary = entry.get("raw", {}) as Dictionary
 	if raw.is_empty():
 		raw = entry
 
-	var pips: Array = []
+	var effects: Array = []
+	var target: String = ""
 	var damage: int = int(raw.get("dmg", 0))
 	var damage_min: int = int(raw.get("dMin", 0))
 	var damage_max: int = int(raw.get("dMax", 0))
 	if damage > 0:
-		pips.append({"kind": "dmg", "text": "%d" % damage})
+		_append_compact_result_effect(effects, "dmg", "%d" % damage)
 	elif damage_min > 0 or damage_max > 0:
-		pips.append({"kind": "dmg", "text": "%d-%d" % [damage_min, damage_max]})
+		_append_compact_result_effect(effects, "dmg", "%d-%d" % [damage_min, damage_max])
 
 	var dot: int = int(raw.get("dot", 0))
 	if dot > 0:
-		pips.append({"kind": "dot", "text": "%d" % dot})
+		_append_compact_result_effect(effects, "dot", "%d" % dot, int(raw.get("dT", 0)))
 
 	var shield: int = int(raw.get("shield", 0))
 	if shield > 0:
-		pips.append({"kind": "shield", "text": "%d" % shield})
+		_append_compact_result_effect(effects, "shield", "%d" % shield, int(raw.get("shT", 0)))
+		if not bool(raw.get("shTgt", false)):
+			target = "SELF"
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if shield_ally > 0:
-		pips.append({"kind": "shield", "text": "%d" % shield_ally})
+		_append_compact_result_effect(effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
 	if bool(raw.get("shieldAll", false)):
-		pips.append({"kind": "shield", "text": "ALL"})
+		target = "ALL"
 
 	var heal: int = int(raw.get("heal", 0))
 	if heal > 0:
-		pips.append({"kind": "heal", "text": "%d" % heal})
+		_append_compact_result_effect(effects, "heal", "%d" % heal)
 	if bool(raw.get("healAll", false)):
-		pips.append({"kind": "heal", "text": "ALL"})
+		target = "ALL"
 	if bool(raw.get("healLowest", false)):
-		pips.append({"kind": "heal", "text": "LOW"})
+		_append_compact_result_effect(effects, "heal", "LOW")
 
 	var rfe: int = int(raw.get("rfe", 0))
 	if rfe > 0:
-		pips.append({"kind": "roll", "text": "-%d" % rfe})
+		_append_compact_result_effect(effects, "roll", "-%d" % rfe, int(raw.get("rfT", 0)))
 	if bool(raw.get("rfeAll", false)):
-		pips.append({"kind": "roll", "text": "ALL"})
+		target = "ALL"
 
 	var rfm: int = int(raw.get("rfm", 0))
 	if rfm > 0:
-		pips.append({"kind": "roll", "text": "+%d" % rfm})
+		_append_compact_result_effect(effects, "roll", "+%d" % rfm, int(raw.get("rfmT", 0)))
 
 	if bool(raw.get("blastAll", false)):
-		pips.append({"kind": "blast", "text": "ALL"})
+		target = "ALL"
 	if bool(raw.get("ignSh", false)):
-		pips.append({"kind": "pierce", "text": ""})
+		_append_compact_result_effect(effects, "pierce", "P")
 	if bool(raw.get("cloak", false)):
-		pips.append({"kind": "cloak", "text": ""})
+		_append_compact_result_effect(effects, "shield", "CL")
+		target = "SELF"
 
 	var freeze_turns: int = maxi(
 		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
 		int(raw.get("freezeAllEnemyDice", 0))
 	)
 	if freeze_turns > 0:
-		pips.append({"kind": "freeze", "text": "%d" % freeze_turns})
+		_append_compact_result_effect(effects, "roll", "FR", freeze_turns)
+		if int(raw.get("freezeAllEnemyDice", 0)) > 0:
+			target = "ALL"
 
 	if bool(raw.get("taunt", false)):
-		pips.append({"kind": "taunt", "text": ""})
+		_append_compact_result_effect(effects, "shield", "TA")
+		target = "SELF"
 	if bool(raw.get("revive", false)):
-		pips.append({"kind": "revive", "text": "50"})
+		_append_compact_result_effect(effects, "heal", "50")
 
-	return pips
+	return {"effects": effects.slice(0, 3), "target": target}
+
+
+func _append_compact_result_effect(effects: Array, kind: String, value: String, duration: int = 0) -> void:
+	if effects.size() >= 3:
+		return
+	effects.append({
+		"kind": kind,
+		"value": value,
+		"duration": maxi(duration, 0),
+	})
 
 
 func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictionary:
@@ -690,6 +750,8 @@ func _begin_targeting_phase() -> void:
 	if dice_tray_3d != null:
 		_refresh_board_layout()
 		await get_tree().process_frame
+		_layout_dice_from_combat_zone()
+		await get_tree().process_frame
 		dice_tray_3d.play_rolls(
 			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
 			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
@@ -789,6 +851,9 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		var anchor_point: Vector2 = _get_dice_anchor_point(side, str(state["id"]))
 		if anchor_point != Vector2.INF:
 			entry["result_anchor"] = anchor_point
+		var side_offset: float = _get_dice_anchor_side_offset(side, str(state["id"]))
+		if not is_zero_approx(side_offset):
+			entry["result_anchor_side_offset_px"] = side_offset
 		if is_frozen:
 			entry["frozen"] = true
 			entry["frozen_roll"] = int(state.get("frozen_die_value", 0))
@@ -812,10 +877,130 @@ func _get_dice_anchor_point(side: String, state_id: String) -> Vector2:
 		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
 			return Vector2.INF
 		var card_rect: Rect2 = card.get_global_rect()
-		var x: float = clampf(card_rect.get_center().x - tray_rect.position.x, DICE_SNAP_EDGE_OFFSET_PX, tray_rect.size.x - DICE_SNAP_EDGE_OFFSET_PX)
-		var y: float = DICE_SNAP_EDGE_OFFSET_PX if side == "enemy" else tray_rect.size.y - DICE_SNAP_EDGE_OFFSET_PX
+		var edge_x: float = minf(DICE_SNAP_HORIZONTAL_MARGIN_PX, maxf(24.0, tray_rect.size.x * 0.18))
+		var enemy_y: float = minf(DICE_ENEMY_SNAP_TOP_PX, maxf(58.0, tray_rect.size.y * 0.42))
+		var hero_bottom: float = minf(DICE_HERO_SNAP_BOTTOM_PX, maxf(44.0, tray_rect.size.y * 0.28))
+		var x: float = card_rect.get_center().x - tray_rect.position.x
+		x = clampf(x, edge_x, tray_rect.size.x - edge_x)
+		var y: float = enemy_y if side == "enemy" else tray_rect.size.y - hero_bottom
 		return Vector2(x, y)
 	return Vector2.INF
+
+
+func _get_dice_anchor_side_offset(side: String, state_id: String) -> float:
+	var views: Array = hero_card_views if side == "hero" else enemy_card_views
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var state: Dictionary = view.get("state", {})
+		if str(state.get("id", "")) == state_id:
+			return _get_three_unit_dice_side_offset(views, view)
+	return 0.0
+
+
+func _get_three_unit_dice_side_offset(views: Array, target_view: Dictionary) -> float:
+	if views.size() != 3:
+		return 0.0
+	var target_card: Control = target_view.get("card", null) as Control
+	if target_card == null:
+		return 0.0
+	var ordered_views: Array = views.duplicate()
+	ordered_views.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var card_a: Control = a.get("card", null) as Control
+		var card_b: Control = b.get("card", null) as Control
+		if card_a == null or card_b == null:
+			return false
+		return card_a.get_global_rect().get_center().x < card_b.get_global_rect().get_center().x
+	)
+	for i in range(ordered_views.size()):
+		var view: Dictionary = ordered_views[i]
+		if view.get("card", null) != target_card:
+			continue
+		if i == 0:
+			return -DICE_THREE_UNIT_SIDE_OFFSET_PX
+		if i == 2:
+			return DICE_THREE_UNIT_SIDE_OFFSET_PX
+		return 0.0
+	return 0.0
+
+
+func _get_enemy_result_row_rect() -> Rect2:
+	return _get_result_row_rect(enemy_card_views)
+
+
+func _get_friendly_result_row_rect() -> Rect2:
+	return _get_result_row_rect(hero_card_views)
+
+
+func _get_result_row_rect(views: Array) -> Rect2:
+	var rect := Rect2()
+	var has_rect := false
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var readout: Control = view.get("readout", null) as Control
+		if readout == null or not is_instance_valid(readout) or not readout.is_inside_tree():
+			continue
+		var readout_rect: Rect2 = readout.get_global_rect()
+		if readout_rect.size.x <= 2.0 or readout_rect.size.y <= 2.0:
+			continue
+		if has_rect:
+			rect = rect.merge(readout_rect)
+		else:
+			rect = readout_rect
+			has_rect = true
+	return rect if has_rect else Rect2()
+
+
+func _get_combat_zone_rect() -> Rect2:
+	if dice_tray_3d == null:
+		return Rect2()
+	var enemy_readout_rect: Rect2 = _get_enemy_result_row_rect()
+	var enemy_card_rect: Rect2 = _get_card_group_rect(enemy_card_views)
+	var friendly_readout_rect: Rect2 = _get_friendly_result_row_rect()
+	if enemy_readout_rect.size == Vector2.ZERO or friendly_readout_rect.size == Vector2.ZERO:
+		return center_panel.get_global_rect()
+
+	var board_rect: Rect2 = board.get_global_rect()
+	var center_rect: Rect2 = center_panel.get_global_rect()
+	var enemy_bottom_y: float = enemy_card_rect.end.y if enemy_card_rect.size != Vector2.ZERO else enemy_readout_rect.end.y
+	var top_y: float = enemy_bottom_y + COMBAT_ZONE_READOUT_GAP_PX
+	var bottom_y: float = friendly_readout_rect.position.y - COMBAT_ZONE_READOUT_GAP_PX
+	if bottom_y <= top_y + 120.0:
+		return center_rect
+
+	var x: float = center_rect.position.x
+	var width: float = center_rect.size.x
+	if width <= 2.0:
+		x = board_rect.position.x
+		width = board_rect.size.x
+	return Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y))
+
+
+func _layout_dice_from_combat_zone() -> void:
+	if dice_tray_3d == null:
+		return
+	var combat_zone: Rect2 = _get_combat_zone_rect()
+	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
+		return
+	dice_tray_3d.set_combat_zone_rect(combat_zone)
+
+
+func _get_card_group_rect(views: Array) -> Rect2:
+	var rect := Rect2()
+	var has_rect := false
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var card: Control = view.get("card", null) as Control
+		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
+			continue
+		var card_rect: Rect2 = card.get_global_rect()
+		if card_rect.size.x <= 2.0 or card_rect.size.y <= 2.0:
+			continue
+		if has_rect:
+			rect = rect.merge(card_rect)
+		else:
+			rect = card_rect
+			has_rect = true
+	return rect if has_rect else Rect2()
 
 
 func _apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:
@@ -2823,6 +3008,7 @@ func _get_roll_num_color(roll: int) -> Color:
 
 func _queue_board_layout_refresh() -> void:
 	call_deferred("_refresh_board_layout")
+	call_deferred("_layout_dice_from_combat_zone")
 
 
 func _refresh_board_layout() -> void:
@@ -2848,18 +3034,33 @@ func _refresh_board_layout() -> void:
 		var compact_usable_width: float = maxf(minf(hero_scroll.size.x, enemy_scroll.size.x), 300.0)
 		var compact_columns: float = float(GameState.SQUAD_UNIT_LIMIT)
 		var compact_width: float = clampf(floor((compact_usable_width - (compact_gap * (compact_columns - 1.0)) - compact_padding) / compact_columns), 280.0, 360.0)
-		var compact_height: float = clampf(floor(compact_width * 1.90), 620.0, 740.0)
+		var minimum_column_height: float = _get_compact_column_min_height(compact_width)
+		var desired_column_height: float = maxf(
+			minimum_column_height,
+			clampf(floor(compact_width * 1.90) + COMPACT_PORTRAIT_EXTRA_HEIGHT_PX, 672.0, 792.0)
+		)
+		var available_board_height: float = _get_available_board_height()
+		var board_gap: float = float(board.get_theme_constant("separation")) * 2.0
+		var target_center_height: float = maxf(240.0, floor(available_board_height * COMPACT_CENTER_TARGET_RATIO))
+		var max_rail_height: float = floor((available_board_height - board_gap - target_center_height) / 2.0)
+		if max_rail_height > COMPACT_RAIL_CHROME_PX and desired_column_height + COMPACT_RAIL_CHROME_PX > max_rail_height:
+			desired_column_height = maxf(0.0, max_rail_height - COMPACT_RAIL_CHROME_PX)
+			compact_width = minf(compact_width, _get_compact_width_for_column_height(desired_column_height))
+		var rail_height: float = desired_column_height + COMPACT_RAIL_CHROME_PX
+		var compact_height: float = maxf(0.0, rail_height - COMPACT_RAIL_CHROME_PX)
+		var center_height: float = maxf(0.0, available_board_height - (rail_height * 2.0) - board_gap)
 
 		_apply_card_slots(hero_cards, Vector2(compact_width, compact_height))
 		_apply_card_slots(enemy_cards, Vector2(compact_width, compact_height))
+		_apply_dice_anchor_height(COMPACT_DICE_ANCHOR_HEIGHT_PX)
 
-		var rail_height: float = compact_height + 34.0
 		hero_panel.custom_minimum_size = Vector2(0, rail_height)
 		enemy_panel.custom_minimum_size = Vector2(0, rail_height)
 		hero_panel.size_flags_stretch_ratio = 1.0
 		enemy_panel.size_flags_stretch_ratio = 1.0
-		center_panel.custom_minimum_size = Vector2(0, 740)
+		center_panel.custom_minimum_size = Vector2(0, center_height)
 		center_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		call_deferred("_layout_dice_from_combat_zone")
 		return
 
 	hero_cards.columns = 2
@@ -2896,6 +3097,7 @@ func _refresh_board_layout() -> void:
 	enemy_panel.size_flags_stretch_ratio = 2.0
 	center_panel.custom_minimum_size = Vector2(0, 420)
 	center_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	call_deferred("_layout_dice_from_combat_zone")
 
 
 func _apply_card_slots(container: GridContainer, slot_size: Vector2) -> void:
@@ -2906,6 +3108,93 @@ func _apply_card_slots(container: GridContainer, slot_size: Vector2) -> void:
 		slot.custom_minimum_size = slot_size
 		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		_apply_column_child_sizes(slot, slot_size)
+
+
+func _apply_column_child_sizes(slot: Control, slot_size: Vector2) -> void:
+	var column: VBoxContainer = slot as VBoxContainer
+	if column == null:
+		return
+	var separation: float = float(column.get_theme_constant("separation"))
+	var card: Control = null
+	var readout: Control = null
+	var anchor: Control = null
+	for child_variant in column.get_children():
+		var child: Control = child_variant as Control
+		if child == null:
+			continue
+		if child.name == "DiceAnchor":
+			anchor = child
+		elif child is AbilityReadout:
+			readout = child
+		else:
+			card = child
+	if readout != null:
+		readout.custom_minimum_size = Vector2(0, COMPACT_READOUT_HEIGHT_PX)
+		readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if anchor != null:
+		anchor.custom_minimum_size = Vector2(0, COMPACT_DICE_ANCHOR_HEIGHT_PX)
+		anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if card != null:
+		var fixed_card_height: float = maxf(0.0, slot_size.y - COMPACT_READOUT_HEIGHT_PX - COMPACT_DICE_ANCHOR_HEIGHT_PX - (separation * 2.0))
+		var card_size := Vector2(slot_size.x, fixed_card_height)
+		card.custom_minimum_size = card_size
+		card.size = card_size
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		if card is CompactUnitCard:
+			(card as CompactUnitCard).apply_battle_layout(card_size)
+
+
+func _get_available_board_height() -> float:
+	var content_vbox: VBoxContainer = board.get_parent() as VBoxContainer
+	if content_vbox == null:
+		return maxf(get_viewport().get_visible_rect().size.y, 0.0)
+	var content_frame: Control = content_vbox.get_parent() as Control
+
+	var visible_children: int = 0
+	var fixed_height: float = 0.0
+	for child_variant in content_vbox.get_children():
+		var child: Control = child_variant as Control
+		if child == null or not child.visible:
+			continue
+		visible_children += 1
+		if child == board:
+			continue
+		var min_size: Vector2 = child.get_combined_minimum_size()
+		fixed_height += maxf(min_size.y, child.custom_minimum_size.y)
+
+	var separation_total: float = float(content_vbox.get_theme_constant("separation")) * float(maxi(visible_children - 1, 0))
+	var viewport_rect: Rect2 = get_viewport().get_visible_rect()
+	var frame_height: float = maxf(viewport_rect.size.y - 12.0, 0.0)
+	if content_frame != null and content_frame.is_inside_tree():
+		var content_rect: Rect2 = content_frame.get_global_rect()
+		var top_inset: float = maxf(content_rect.position.y - viewport_rect.position.y, 0.0)
+		var bottom_inset: float = maxf(viewport_rect.end.y - content_rect.end.y, 0.0)
+		frame_height = maxf(viewport_rect.size.y - top_inset - bottom_inset, 0.0)
+	return maxf(0.0, frame_height - fixed_height - separation_total)
+
+
+func _get_compact_column_min_height(card_width: float) -> float:
+	var content_width: float = maxf(card_width - 24.0, 1.0)
+	var portrait_height: float = maxf(96.0, floor(content_width * 1.20))
+	var card_height: float = 24.0 + 62.0 + portrait_height + 74.0 + 46.0 + (7.0 * 4.0)
+	return card_height + COMPACT_READOUT_HEIGHT_PX + COMPACT_DICE_ANCHOR_HEIGHT_PX + (6.0 * 2.0)
+
+
+func _get_compact_width_for_column_height(column_height: float) -> float:
+	var non_portrait_height: float = 24.0 + 62.0 + 74.0 + 46.0 + (7.0 * 4.0) + COMPACT_READOUT_HEIGHT_PX + COMPACT_DICE_ANCHOR_HEIGHT_PX + (6.0 * 2.0)
+	var portrait_height: float = maxf(96.0, column_height - non_portrait_height)
+	return floor((portrait_height / 1.20) + 24.0)
+
+
+func _apply_dice_anchor_height(anchor_height: float) -> void:
+	for view_variant in hero_card_views + enemy_card_views:
+		var view: Dictionary = view_variant
+		var anchor: Control = view.get("dice_anchor", null) as Control
+		if anchor == null or not is_instance_valid(anchor):
+			continue
+		anchor.custom_minimum_size = Vector2(0, anchor_height)
 
 
 func _build_effect_chips(raw: Dictionary) -> Array:

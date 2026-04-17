@@ -60,17 +60,20 @@ grow_vertical = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
 [node name="HeaderRow" type="HBoxContainer" parent="Content/VBox"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 92)
 size_flags_horizontal = 3
+size_flags_vertical = 4
 theme_override_constants/separation = 8
 
 [node name="SummaryLabel" type="Label" parent="Content/VBox/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 theme_override_font_sizes/font_size = 28
 custom_minimum_size = Vector2(0, 60)
 vertical_alignment = 1
@@ -80,29 +83,33 @@ text = "Veil Concord  Battle 1/10"
 [node name="ButtonRow" type="HBoxContainer" parent="Content/VBox/HeaderRow"]
 layout_mode = 2
 size_flags_horizontal = 8
+size_flags_vertical = 4
 alignment = 2
 theme_override_constants/separation = 6
 
 [node name="ToggleLogButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(78, 72)
 size_flags_horizontal = 0
+size_flags_vertical = 4
 theme_override_font_sizes/font_size = 28
 text = "?"
 
 [node name="AutoTurnButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(78, 72)
 size_flags_horizontal = 0
+size_flags_vertical = 4
 theme_override_font_sizes/font_size = 28
 text = "▶"
 
 [node name="ReturnToMenuButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(78, 72)
 size_flags_horizontal = 0
+size_flags_vertical = 4
 theme_override_font_sizes/font_size = 28
 text = "←"
 
@@ -111,7 +118,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 
 [node name="HeroPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
@@ -270,7 +277,7 @@ text = ""
 
 [node name="ProtocolPanel" type="PanelContainer" parent="Content/VBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 104)
+custom_minimum_size = Vector2(0, 92)
 
 [node name="ProtocolMargin" type="MarginContainer" parent="Content/VBox/ProtocolPanel"]
 layout_mode = 2

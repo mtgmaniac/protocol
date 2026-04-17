@@ -12,6 +12,11 @@ const HERO_ACCENT := Color(0.20, 0.66, 0.50, 1.0)
 const ENEMY_ACCENT := Color(0.74, 0.28, 0.23, 1.0)
 const GOLD_ACCENT := Color(0.82, 0.58, 0.24, 1.0)
 const BLACK_EDGE := Color(0.005, 0.006, 0.010, 1.0)
+const COLOR_DAMAGE := Color(0.96, 0.22, 0.18, 1.0)
+const COLOR_HEAL := Color(0.28, 0.90, 0.46, 1.0)
+const COLOR_SHIELD := Color(0.34, 0.66, 1.0, 1.0)
+const COLOR_DEBUFF := Color(0.72, 0.34, 0.95, 1.0)
+const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
 const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
 const UI_FONT_SCALE := 1.35
 const UI_FONT_MIN_SIZE := 20
@@ -62,6 +67,40 @@ static func scale_font_size(font_size: int) -> int:
 		if scaled_size <= int(stepped_size):
 			return int(stepped_size)
 	return scaled_size
+
+
+static func effect_color(kind: String) -> Color:
+	match kind.to_lower():
+		"dmg", "damage", "blast", "pierce":
+			return COLOR_DAMAGE
+		"heal", "revive":
+			return COLOR_HEAL
+		"shield", "taunt":
+			return COLOR_SHIELD
+		"dot", "poison", "debuff":
+			return COLOR_DEBUFF
+		"roll", "rfe", "rfm", "freeze":
+			return COLOR_ROLL
+	return TEXT_PRIMARY
+
+
+static func effect_value_color(kind: String) -> Color:
+	return effect_color(kind).lerp(TEXT_PRIMARY, 0.32)
+
+
+static func status_color(token: String) -> Color:
+	var upper: String = token.to_upper()
+	if upper.begins_with("POI") or upper.begins_with("POT") or upper == "DOT" or upper == "COW" or upper == "DOWN" or upper == "P":
+		return COLOR_DEBUFF
+	if upper == "RMP":
+		return COLOR_DAMAGE
+	if upper.begins_with("+") or upper.begins_with("-") or upper == "FR":
+		return COLOR_ROLL
+	if upper.begins_with("SH") or upper == "TA" or upper == "CL":
+		return COLOR_SHIELD
+	if upper.begins_with("HP"):
+		return COLOR_HEAL
+	return TEXT_MUTED
 
 
 static func style_panel(panel: Control, bg: Color = BG_PANEL, border: Color = LINE_DIM, border_width: int = 2, corner: int = 4) -> void:

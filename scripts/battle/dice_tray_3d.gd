@@ -31,6 +31,9 @@ const RESULT_ENEMY_ROW_Z := 2.62
 const RESULT_HERO_ROW_Z := 3.66
 const RESULT_OUTER_MARGIN := DIE_RADIUS * 0.12
 const RESULT_TOP_CLEARANCE := DIE_RADIUS * 0.42
+const RESULT_SIDE_OVERFLOW := DIE_RADIUS * 1.65
+const RESULT_HERO_BOTTOM_OVERFLOW := DIE_RADIUS * 1.25
+const RESULT_ENEMY_BOTTOM_OVERFLOW := DIE_RADIUS * 0.45
 const RESULT_HERO_SIDE_NUDGE := 0.0
 const RESULT_ENEMY_SIDE_NUDGE := 0.0
 const RESULT_HERO_DOWN_NUDGE := 0.0
@@ -74,6 +77,20 @@ func _sync_viewport_size() -> void:
 		return
 	var viewport_size := Vector2i(maxi(int(size.x), 2), maxi(int(size.y), 2))
 	_viewport.size = viewport_size
+
+
+func set_combat_zone_rect(rect: Rect2) -> void:
+	if rect.size.x <= 2.0 or rect.size.y <= 2.0:
+		return
+	set_as_top_level(true)
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_right = 0.0
+	anchor_bottom = 0.0
+	global_position = rect.position
+	size = rect.size
+	custom_minimum_size = Vector2.ZERO
+	_sync_viewport_size()
 
 
 func reset() -> void:
@@ -358,10 +375,11 @@ func _get_non_overlapping_result_origins(result_entries: Array) -> Dictionary:
 
 
 func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
-	var outer_min_x: float = -TRAY_HALF_WIDTH + RESULT_OUTER_MARGIN
-	var outer_max_x: float = TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN
+	var outer_min_x: float = -TRAY_HALF_WIDTH + RESULT_OUTER_MARGIN - RESULT_SIDE_OVERFLOW
+	var outer_max_x: float = TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN + RESULT_SIDE_OVERFLOW
+	var front_overflow: float = RESULT_HERO_BOTTOM_OVERFLOW if side == "hero" else RESULT_ENEMY_BOTTOM_OVERFLOW
 	origin.x = clampf(origin.x, outer_min_x, outer_max_x)
-	origin.z = clampf(origin.z, -TRAY_HALF_DEPTH + RESULT_TOP_CLEARANCE, TRAY_HALF_DEPTH - RESULT_OUTER_MARGIN)
+	origin.z = clampf(origin.z, -TRAY_HALF_DEPTH + RESULT_TOP_CLEARANCE, TRAY_HALF_DEPTH - RESULT_OUTER_MARGIN + front_overflow)
 	return origin
 
 
@@ -371,7 +389,13 @@ func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -
 	if entry.has("result_anchor"):
 		var anchor_variant: Variant = entry.get("result_anchor")
 		if anchor_variant is Vector2:
-			return _clamp_result_origin(_anchor_to_world_origin(anchor_variant, fallback_origin), side)
+			var anchor_point: Vector2 = anchor_variant
+			var origin: Vector3 = _anchor_to_world_origin(anchor_point, fallback_origin)
+			var side_offset_px: float = float(entry.get("result_anchor_side_offset_px", 0.0))
+			if not is_zero_approx(side_offset_px):
+				var offset_origin: Vector3 = _anchor_to_world_origin(anchor_point + Vector2(side_offset_px, 0.0), fallback_origin)
+				origin.x += offset_origin.x - origin.x
+			return _clamp_result_origin(origin, side)
 	var slot_index: int = int(entry.get("slot_index", 0))
 	var side_count: int = maxi(int(entry.get("side_count", 1)), 1)
 	var usable_width: float = (TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN) * 2.0

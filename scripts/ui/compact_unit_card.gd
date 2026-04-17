@@ -3,12 +3,21 @@ extends PanelContainer
 
 signal card_pressed
 
-const CARD_SIZE := Vector2(246, 610)
+const CARD_SIZE := Vector2(246, 660)
+const PORTRAIT_HEIGHT_RATIO := 1.20
+const PORTRAIT_MIN_HEIGHT := 96.0
 const HERO_LINE := Color(0.18, 0.90, 0.64, 1.0)
 const ENEMY_LINE := Color(0.82, 0.36, 0.34, 1.0)
 const SELECT_LINE := Color(0.95, 0.66, 0.22, 1.0)
 const TARGET_LINE := Color(0.42, 0.70, 0.95, 1.0)
 const HP_FILL := Color(0.10, 0.46, 0.32, 1.0)
+const STATUS_MAX_VISIBLE := 3
+const STATUS_ICON_FONT_SIZE := 34
+const STATUS_VALUE_FONT_SIZE := 34
+const STATUS_NAME_FONT_SIZE := 30
+const STATUS_ICON_MIN_WIDTH := 34.0
+const STATUS_VALUE_MIN_WIDTH := 34.0
+const STATUS_NUMERIC_MIN_WIDTH := 74.0
 const PIP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"blast": preload("res://assets/generated/icon_damage_1776027930.png"),
@@ -45,6 +54,7 @@ var _hp_label: Label = null
 var _hp_fill: ColorRect = null
 var _action_panel: PanelContainer = null
 var _action_grid: HFlowContainer = null
+var _status_slot: Control = null
 var _status_row: HBoxContainer = null
 var _preview_effects: Dictionary = {}
 var _preview_rect_red: ColorRect = null
@@ -52,6 +62,9 @@ var _preview_rect_blue: ColorRect = null
 var _preview_rect_purple: ColorRect = null
 var _preview_rect_teal: ColorRect = null
 var _preview_rect_heal: ColorRect = null
+var _locked_layout_size: Vector2 = Vector2.ZERO
+var _locked_portrait_width: float = 0.0
+var _locked_portrait_size: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -63,6 +76,13 @@ func _ready() -> void:
 	_set_descendants_mouse_filter(self, Control.MOUSE_FILTER_IGNORE)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_refresh()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		if _locked_portrait_size == Vector2.ZERO:
+			_update_portrait_size()
+		call_deferred("_layout_preview_overlays")
 
 
 func configure(data: Dictionary) -> void:
@@ -80,6 +100,19 @@ func configure(data: Dictionary) -> void:
 	dead = bool(data.get("dead", dead))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
 	_refresh()
+
+
+func apply_battle_layout(layout_size: Vector2) -> void:
+	if layout_size.x <= 2.0 or layout_size.y <= 2.0:
+		return
+	var layout_changed: bool = not layout_size.is_equal_approx(_locked_layout_size)
+	_locked_layout_size = layout_size
+	_locked_portrait_width = maxf(layout_size.x - 24.0, 1.0)
+	custom_minimum_size = layout_size
+	size = layout_size
+	if layout_changed or _locked_portrait_size == Vector2.ZERO:
+		_update_portrait_size()
+	call_deferred("_layout_preview_overlays")
 
 
 func set_selected(value: bool) -> void:
@@ -149,18 +182,21 @@ func _build() -> void:
 	root.add_child(_name_label)
 
 	_portrait_frame = PanelContainer.new()
-	_portrait_frame.custom_minimum_size = Vector2(0, 242)
+	_portrait_frame.custom_minimum_size = Vector2(0, PORTRAIT_MIN_HEIGHT)
+	_portrait_frame.clip_contents = true
 	_portrait_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_portrait_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	root.add_child(_portrait_frame)
 
 	_portrait_rect = TextureRect.new()
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_rect.clip_contents = true
 	_portrait_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_portrait_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	_portrait_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_portrait_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_portrait_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_portrait_frame.add_child(_portrait_rect)
 
 	_hp_back = Panel.new()
@@ -206,11 +242,23 @@ func _build() -> void:
 	_action_grid.add_theme_constant_override("v_separation", 8)
 	action_margin.add_child(_action_grid)
 
+	_status_slot = Control.new()
+	_status_slot.custom_minimum_size = Vector2(0, 46)
+	_status_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_status_slot.clip_contents = true
+	root.add_child(_status_slot)
+
 	_status_row = HBoxContainer.new()
-	_status_row.custom_minimum_size = Vector2(0, 46)
+	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_status_row.custom_minimum_size = Vector2.ZERO
+	_status_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_status_row.add_theme_constant_override("separation", 7)
-	root.add_child(_status_row)
+	_status_row.clip_contents = true
+	_status_row.add_theme_constant_override("separation", 9)
+	_status_slot.add_child(_status_row)
 
 
 func _refresh() -> void:
@@ -222,6 +270,8 @@ func _refresh() -> void:
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.78), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color(0.010, 0.020, 0.032, 0.58), Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
+	if _locked_portrait_size == Vector2.ZERO:
+		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
@@ -238,6 +288,25 @@ func _refresh() -> void:
 		_populate_action_pips()
 	_populate_statuses()
 	_layout_preview_overlays()
+
+
+func _update_portrait_size() -> void:
+	if _portrait_frame == null:
+		return
+	var target_width: float = _locked_portrait_width
+	if target_width <= 2.0:
+		target_width = _portrait_frame.size.x
+	if target_width <= 2.0:
+		target_width = maxf(size.x - 24.0, CARD_SIZE.x - 24.0)
+	var max_portrait_height: float = INF
+	if _locked_layout_size.y > 2.0:
+		var reserved_height := 24.0 + 62.0 + 74.0 + 46.0 + (7.0 * 3.0)
+		max_portrait_height = maxf(PORTRAIT_MIN_HEIGHT, _locked_layout_size.y - reserved_height)
+	var target_height: float = clampf(floor(target_width * PORTRAIT_HEIGHT_RATIO), PORTRAIT_MIN_HEIGHT, max_portrait_height)
+	_locked_portrait_size = Vector2(target_width, target_height)
+	_portrait_frame.custom_minimum_size = Vector2(0, target_height)
+	_portrait_frame.size = Vector2(maxf(_portrait_frame.size.x, target_width), target_height)
+	_portrait_rect.size = _portrait_frame.size
 
 
 func _populate_action_pips() -> void:
@@ -312,29 +381,172 @@ func _populate_statuses() -> void:
 	for child in _status_row.get_children():
 		child.queue_free()
 
-	var max_visible: int = mini(status_tokens.size(), 4)
+	var statuses: Array = get_display_statuses(status_tokens)
+	var max_visible: int = mini(statuses.size(), STATUS_MAX_VISIBLE)
 	for i in range(max_visible):
-		_status_row.add_child(_make_status_badge(str(status_tokens[i])))
-	if status_tokens.size() > max_visible:
-		_status_row.add_child(_make_status_badge("+%d" % (status_tokens.size() - max_visible)))
+		_status_row.add_child(build_status_chip(statuses[i]))
+	if statuses.size() > max_visible:
+		_status_row.add_child(_make_status_overflow(statuses.size() - max_visible))
 
 
-func _make_status_badge(token: String) -> PanelContainer:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.custom_minimum_size = Vector2(58, 46)
-	panel.add_theme_stylebox_override("panel", _style(Color(0.010, 0.020, 0.032, 0.96), _status_color(token), 2, 1))
+func get_display_statuses(raw_statuses: Array) -> Array:
+	var statuses: Array = []
+	for raw_status in raw_statuses:
+		var status: Dictionary = _normalize_status(raw_status)
+		if not status.is_empty():
+			statuses.append(status)
+	statuses.sort_custom(Callable(self, "_sort_statuses_by_priority"))
+	return statuses
 
+
+func build_status_chip(status: Dictionary) -> Control:
+	var chip: HBoxContainer = HBoxContainer.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chip.alignment = BoxContainer.ALIGNMENT_CENTER
+	chip.add_theme_constant_override("separation", 3)
+
+	if str(status.get("mode", "named")) == "numeric":
+		chip.custom_minimum_size = Vector2(STATUS_NUMERIC_MIN_WIDTH, 46)
+		chip.add_child(_make_status_icon_label(status))
+		chip.add_child(_make_status_value_label(status))
+	else:
+		chip.custom_minimum_size = Vector2(0, 46)
+		chip.add_child(_make_status_name_label(status))
+		if str(status.get("value", "")) != "":
+			chip.add_child(_make_status_value_label(status))
+	return chip
+
+
+func _make_status_icon_label(status: Dictionary) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = token.to_upper()
+	label.text = str(status.get("icon", _status_icon_for_type(str(status.get("type", "")))))
+	label.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, 0)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", STATUS_ICON_FONT_SIZE)
+	label.add_theme_color_override("font_color", _status_content_color(status, true))
+	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
+	label.add_theme_constant_override("outline_size", 2)
+	return label
+
+
+func _make_status_value_label(status: Dictionary) -> Label:
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = str(status.get("value", "")).to_upper()
+	label.custom_minimum_size = Vector2(STATUS_VALUE_MIN_WIDTH, 0)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.clip_text = false
+	_apply_label(label, STATUS_VALUE_FONT_SIZE, _status_content_color(status, false), 2)
+	return label
+
+
+func _make_status_name_label(status: Dictionary) -> Label:
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = str(status.get("name", "")).to_upper()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(label, 30, PixelUI.TEXT_PRIMARY, 2)
-	panel.add_child(label)
-	return panel
+	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
+	return label
+
+
+func _make_status_overflow(hidden_count: int) -> Label:
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = "+%d" % hidden_count
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
+	return label
+
+
+func _normalize_status(raw_status: Variant) -> Dictionary:
+	if raw_status is Dictionary:
+		var status: Dictionary = (raw_status as Dictionary).duplicate(true)
+		if not status.has("mode"):
+			status["mode"] = "named" if status.has("name") else "numeric"
+		if not status.has("priority"):
+			status["priority"] = _status_priority(str(status.get("type", "")))
+		return status
+	return _normalize_legacy_status(str(raw_status))
+
+
+func _normalize_legacy_status(token: String) -> Dictionary:
+	var upper: String = token.strip_edges().to_upper()
+	if upper == "":
+		return {}
+	var parts: PackedStringArray = upper.split(" ", false)
+	var first: String = parts[0] if parts.size() > 0 else upper
+	var value: String = parts[1] if parts.size() > 1 else ""
+
+	if first.begins_with("POI") or first.begins_with("POT") or first == "DOT":
+		return {"type": "poison", "mode": "numeric", "icon": "☠", "value": value, "priority": 0}
+	if first.begins_with("SH"):
+		return {"type": "shield", "mode": "numeric", "icon": "🛡", "value": value, "priority": 1}
+	if first.begins_with("+") or first.begins_with("-") or first == "RFE":
+		var roll_value: String = first if first != "RFE" else value
+		return {"type": "roll", "mode": "numeric", "icon": "🎲", "value": roll_value, "priority": 2}
+	if first == "CL" or first == "CLOAK":
+		return {"type": "named", "mode": "named", "name": "CLOAK", "priority": 3}
+	if first == "COW" or first == "COWER":
+		return {"type": "named", "mode": "named", "name": "COWER", "priority": 3}
+	if first == "RMP" or first == "RAGE" or first == "RAMPAGE":
+		return {"type": "named", "mode": "named", "name": "RAMPAGE", "value": value, "priority": 3}
+	return {"type": "named", "mode": "named", "name": first, "priority": 9}
+
+
+func _sort_statuses_by_priority(a: Dictionary, b: Dictionary) -> bool:
+	return int(a.get("priority", 99)) < int(b.get("priority", 99))
+
+
+func _status_priority(status_type: String) -> int:
+	match status_type.to_lower():
+		"poison", "dot":
+			return 0
+		"shield":
+			return 1
+		"roll", "rfe", "rfm":
+			return 2
+		"named":
+			return 3
+	return 9
+
+
+func _status_icon_for_type(status_type: String) -> String:
+	match status_type.to_lower():
+		"poison", "dot":
+			return "☠"
+		"shield":
+			return "🛡"
+		"roll", "rfe", "rfm":
+			return "🎲"
+	return ""
+
+
+func _status_content_color(status: Dictionary, strong: bool) -> Color:
+	var status_type: String = str(status.get("type", "")).to_lower()
+	var effect_kind: String = ""
+	match status_type:
+		"poison", "dot":
+			effect_kind = "dot"
+		"shield":
+			effect_kind = "shield"
+		"roll", "rfe", "rfm":
+			effect_kind = "roll"
+		_:
+			return PixelUI.TEXT_MUTED
+	if strong:
+		return PixelUI.effect_color(effect_kind)
+	return PixelUI.effect_value_color(effect_kind)
 
 
 func _line_color() -> Color:
@@ -348,14 +560,7 @@ func _line_color() -> Color:
 
 
 func _status_color(token: String) -> Color:
-	var upper: String = token.to_upper()
-	if upper.begins_with("POI") or upper.begins_with("-") or upper == "COW" or upper == "RMP":
-		return Color(0.84, 0.32, 0.28, 1.0)
-	if upper.begins_with("SH") or upper.begins_with("+") or upper == "CL":
-		return Color(0.25, 0.72, 0.48, 1.0)
-	if upper == "FR" or upper == "TA" or upper == "DOWN":
-		return Color(0.45, 0.70, 0.95, 1.0)
-	return Color(0.30, 0.48, 0.64, 1.0)
+	return PixelUI.status_color(token)
 
 
 func _pip_border(kind: String) -> Color:
