@@ -52,7 +52,6 @@ func _ready() -> void:
 		GameState.prepare_battle_rewards()
 	_update_battle_header()
 	_refresh_inventory_summary()
-	_refresh_summary("")
 	_build_reward_cards()
 
 
@@ -597,10 +596,6 @@ func _on_claim_reward_pressed(item_id: String, target_root: Node) -> void:
 		return
 	GameState.advance_to_next_battle()
 	SceneManager.go_to_battle()
-
-
-func _refresh_summary(_extra_text: String) -> void:
-	summary_label.text = ""
 
 
 func _update_battle_header() -> void:

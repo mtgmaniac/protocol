@@ -1,16 +1,6 @@
 # Stores run-level state that persists while the player moves between scenes.
 extends Node
 
-signal run_started(selected_unit_ids: Array)
-signal battle_advanced(current_battle: int)
-signal run_reset()
-signal operation_selected(operation_id: String)
-signal rewards_prepared(reward_item_ids: Array)
-signal reward_claimed(item_id: String, item_type: String)
-signal run_finished(result: String)
-signal xp_awarded(unit_id: String, total_xp: int, level: int)
-signal evolution_ready(unit_id: String)
-signal evolution_applied(unit_id: String, path_name: String)
 
 var selected_units: Array = []
 var current_battle: int = 0
@@ -60,9 +50,6 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
-	if selected_operation_id != "":
-		operation_selected.emit(selected_operation_id)
-	run_started.emit(selected_units)
 
 
 func enforce_squad_limit() -> void:
@@ -73,7 +60,6 @@ func enforce_squad_limit() -> void:
 
 func advance_to_next_battle() -> void:
 	current_battle += 1
-	battle_advanced.emit(current_battle)
 
 
 func reset_run() -> void:
@@ -91,13 +77,11 @@ func reset_run() -> void:
 	unit_levels.clear()
 	unit_evolutions.clear()
 	pending_evolution_unit_id = ""
-	run_reset.emit()
 
 
 func prepare_battle_rewards() -> void:
 	pending_reward_item_ids = _roll_reward_item_ids()
 	claimed_reward_item_id = ""
-	rewards_prepared.emit(pending_reward_item_ids.duplicate())
 
 
 func get_pending_reward_items() -> Array:
@@ -135,7 +119,6 @@ func claim_reward(item_id: String, target_unit_id: String = "") -> bool:
 
 	claimed_reward_item_id = item_id
 	pending_reward_item_ids.clear()
-	reward_claimed.emit(item_id, item.item_type)
 	return true
 
 
@@ -168,7 +151,6 @@ func is_final_battle() -> bool:
 func finish_run(result: String) -> void:
 	last_run_result = result
 	pending_reward_item_ids.clear()
-	run_finished.emit(result)
 
 
 func get_unit_xp(unit_id: String) -> int:
@@ -195,10 +177,8 @@ func award_battle_xp() -> void:
 		unit_xp[unit_id] = new_total
 		var new_level: int = 1 + int(floor(float(new_total) / float(XP_TO_EVOLVE)))
 		unit_levels[unit_id] = max(new_level, 1)
-		xp_awarded.emit(unit_id, new_total, int(unit_levels[unit_id]))
 		if pending_evolution_unit_id == "" and get_unit_evolution_name(unit_id) == "" and new_total >= XP_TO_EVOLVE:
 			pending_evolution_unit_id = unit_id
-			evolution_ready.emit(unit_id)
 
 
 func has_pending_evolution() -> bool:
@@ -223,7 +203,6 @@ func apply_pending_evolution(path_name: String) -> bool:
 		return false
 
 	unit_evolutions[pending_evolution_unit_id] = path_name
-	evolution_applied.emit(pending_evolution_unit_id, path_name)
 	pending_evolution_unit_id = ""
 	return true
 

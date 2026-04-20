@@ -554,7 +554,6 @@ func _run_text_alignment_audits() -> void:
 		"res://scripts/battle/battle_scene.gd",
 		"res://scripts/ui/ability_readout.gd",
 		"res://scripts/ui/compact_unit_card.gd",
-		"res://scripts/units/unit_card.gd",
 		"res://data/raw/heroes.data.json",
 		"res://data/raw/enemies.data.json",
 	]

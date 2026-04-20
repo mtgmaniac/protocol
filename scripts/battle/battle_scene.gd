@@ -26,10 +26,8 @@ extends Control
 @onready var float_layer: Control = %FloatLayer
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
-const UNIT_CARD_SCENE := preload("res://scenes/shared/UnitCard.tscn")
 const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn")
 const UNIT_DETAIL_PANEL_SCENE := preload("res://scenes/shared/UnitDetailPanel.tscn")
-const USE_COMPACT_BATTLE_CARDS := true
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 const PHASE_AWAIT_ROLL := "await_roll"
@@ -359,9 +357,7 @@ func _clear_container(container: Container) -> void:
 
 
 func _create_battle_card() -> Control:
-	if USE_COMPACT_BATTLE_CARDS:
-		return CompactUnitCard.new()
-	return UNIT_CARD_SCENE.instantiate() as UnitCard
+	return CompactUnitCard.new()
 
 
 func _build_unit_detail_panel() -> void:
@@ -407,9 +403,6 @@ func _prepare_battle_card_layout(card: Control) -> void:
 	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	card.custom_minimum_size = Vector2(0, 0)
 	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	if card is UnitCard:
-		var card_frame: Panel = card.get_node("CardFrame")
-		card_frame.custom_minimum_size = Vector2(0, 0)
 
 
 func _build_card_slot() -> Control:
@@ -574,41 +567,6 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 			compact_card.clear_combat_preview()
 		else:
 			compact_card.show_combat_preview(compact_preview)
-		return
-
-	var unit_card: UnitCard = card as UnitCard
-	if unit_card == null:
-		return
-
-	unit_card.setup_card(
-		unit.display_name,
-		int(state["current_hp"]),
-		int(state["max_hp"]),
-		dice_text,
-		str(chosen_entry.get("ability_name", "No ability data")),
-		target_text,
-		_get_target_display_side(state),
-		status_list,
-		_get_gear_detail_rows(str(unit.id)),
-		_game_state().get_unit_xp_ratio(str(unit.id)),
-		bool(state["dead"]),
-		accent_color,
-		unit.portrait,
-		_build_ability_tooltip(unit),
-		_build_ability_chart_rows(unit),
-		active_zone
-	)
-	unit_card.set_selected(is_selected)
-	unit_card.set_targetable(is_targetable)
-	unit_card.set_interaction_enabled(_is_card_clickable(state, accent_color))
-
-	# Combat preview: show incoming/outgoing effect overlays on HP bars.
-	var is_hero_unit: bool = (accent_color == HERO_ACCENT)
-	var preview: Dictionary = _compute_preview_for_unit(state, is_hero_unit)
-	if preview.is_empty():
-		unit_card.clear_combat_preview()
-	else:
-		unit_card.show_combat_preview(preview)
 
 
 func _build_compact_status_tokens(state: Dictionary) -> Array:
@@ -3371,86 +3329,48 @@ func _refresh_board_layout() -> void:
 	if hero_scroll == null or enemy_scroll == null:
 		return
 
-	if USE_COMPACT_BATTLE_CARDS:
-		hero_cards.columns = GameState.SQUAD_UNIT_LIMIT
-		enemy_cards.columns = GameState.SQUAD_UNIT_LIMIT
-		hero_cards.add_theme_constant_override("h_separation", 10)
-		hero_cards.add_theme_constant_override("v_separation", 0)
-		enemy_cards.add_theme_constant_override("h_separation", 10)
-		enemy_cards.add_theme_constant_override("v_separation", 0)
-		hero_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		enemy_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		hero_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		enemy_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-
-		var compact_gap: float = float(hero_cards.get_theme_constant("h_separation"))
-		var compact_padding: float = 12.0
-		var compact_usable_width: float = maxf(minf(hero_scroll.size.x, enemy_scroll.size.x), 300.0)
-		var compact_columns: float = float(GameState.SQUAD_UNIT_LIMIT)
-		var compact_width: float = clampf(floor((compact_usable_width - (compact_gap * (compact_columns - 1.0)) - compact_padding) / compact_columns), 280.0, 360.0)
-		var minimum_column_height: float = _get_compact_column_min_height(compact_width)
-		var desired_column_height: float = maxf(
-			minimum_column_height,
-			clampf(floor(compact_width * 1.90) + COMPACT_PORTRAIT_EXTRA_HEIGHT_PX, 672.0, 792.0)
-		)
-		var available_board_height: float = _get_available_board_height()
-		var board_gap: float = float(board.get_theme_constant("separation")) * 2.0
-		var target_center_height: float = maxf(240.0, floor(available_board_height * COMPACT_CENTER_TARGET_RATIO))
-		var max_rail_height: float = floor((available_board_height - board_gap - target_center_height) / 2.0)
-		if max_rail_height > COMPACT_RAIL_CHROME_PX and desired_column_height + COMPACT_RAIL_CHROME_PX > max_rail_height:
-			desired_column_height = maxf(0.0, max_rail_height - COMPACT_RAIL_CHROME_PX)
-			compact_width = minf(compact_width, _get_compact_width_for_column_height(desired_column_height))
-		var rail_height: float = desired_column_height + COMPACT_RAIL_CHROME_PX
-		var compact_height: float = maxf(0.0, rail_height - COMPACT_RAIL_CHROME_PX)
-		var center_height: float = maxf(0.0, available_board_height - (rail_height * 2.0) - board_gap)
-
-		_apply_card_slots(hero_cards, Vector2(compact_width, compact_height))
-		_apply_card_slots(enemy_cards, Vector2(compact_width, compact_height))
-		_apply_dice_anchor_height(COMPACT_DICE_ANCHOR_HEIGHT_PX)
-
-		hero_panel.custom_minimum_size = Vector2(0, rail_height)
-		enemy_panel.custom_minimum_size = Vector2(0, rail_height)
-		hero_panel.size_flags_stretch_ratio = 1.0
-		enemy_panel.size_flags_stretch_ratio = 1.0
-		center_panel.custom_minimum_size = Vector2(0, center_height)
-		center_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		call_deferred("_layout_dice_from_combat_zone")
-		return
-
-	hero_cards.columns = 2
-	enemy_cards.columns = 2
-	hero_cards.add_theme_constant_override("h_separation", 4)
-	hero_cards.add_theme_constant_override("v_separation", 4)
-	enemy_cards.add_theme_constant_override("h_separation", 4)
-	enemy_cards.add_theme_constant_override("v_separation", 4)
-	hero_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	enemy_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hero_cards.columns = GameState.SQUAD_UNIT_LIMIT
+	enemy_cards.columns = GameState.SQUAD_UNIT_LIMIT
+	hero_cards.add_theme_constant_override("h_separation", 10)
+	hero_cards.add_theme_constant_override("v_separation", 0)
+	enemy_cards.add_theme_constant_override("h_separation", 10)
+	enemy_cards.add_theme_constant_override("v_separation", 0)
+	hero_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	enemy_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	hero_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	enemy_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
-	var horizontal_gap: float = maxf(
-		float(hero_cards.get_theme_constant("h_separation")),
-		float(enemy_cards.get_theme_constant("h_separation"))
+	var compact_gap: float = float(hero_cards.get_theme_constant("h_separation"))
+	var compact_padding: float = 12.0
+	var compact_usable_width: float = maxf(minf(hero_scroll.size.x, enemy_scroll.size.x), 300.0)
+	var compact_columns: float = float(GameState.SQUAD_UNIT_LIMIT)
+	var compact_width: float = clampf(floor((compact_usable_width - (compact_gap * (compact_columns - 1.0)) - compact_padding) / compact_columns), 280.0, 360.0)
+	var minimum_column_height: float = _get_compact_column_min_height(compact_width)
+	var desired_column_height: float = maxf(
+		minimum_column_height,
+		clampf(floor(compact_width * 1.90) + COMPACT_PORTRAIT_EXTRA_HEIGHT_PX, 672.0, 792.0)
 	)
-	var vertical_gap: float = maxf(
-		float(hero_cards.get_theme_constant("v_separation")),
-		float(enemy_cards.get_theme_constant("v_separation"))
-	)
-	var panel_padding: float = 6.0
-	var usable_width: float = maxf(minf(hero_scroll.size.x, enemy_scroll.size.x), 300.0)
-	var card_width: float = clampf(floor((usable_width - horizontal_gap - panel_padding) / 2.0), 120.0, 720.0)
-	var card_height: float = clampf(floor(card_width * 0.82), 116.0, 620.0)
+	var available_board_height: float = _get_available_board_height()
+	var board_gap: float = float(board.get_theme_constant("separation")) * 2.0
+	var target_center_height: float = maxf(240.0, floor(available_board_height * COMPACT_CENTER_TARGET_RATIO))
+	var max_rail_height: float = floor((available_board_height - board_gap - target_center_height) / 2.0)
+	if max_rail_height > COMPACT_RAIL_CHROME_PX and desired_column_height + COMPACT_RAIL_CHROME_PX > max_rail_height:
+		desired_column_height = maxf(0.0, max_rail_height - COMPACT_RAIL_CHROME_PX)
+		compact_width = minf(compact_width, _get_compact_width_for_column_height(desired_column_height))
+	var rail_height: float = desired_column_height + COMPACT_RAIL_CHROME_PX
+	var compact_height: float = maxf(0.0, rail_height - COMPACT_RAIL_CHROME_PX)
+	var center_height: float = maxf(0.0, available_board_height - (rail_height * 2.0) - board_gap)
 
-	_apply_card_slots(hero_cards, Vector2(card_width, card_height))
-	_apply_card_slots(enemy_cards, Vector2(card_width, card_height))
+	_apply_card_slots(hero_cards, Vector2(compact_width, compact_height))
+	_apply_card_slots(enemy_cards, Vector2(compact_width, compact_height))
+	_apply_dice_anchor_height(COMPACT_DICE_ANCHOR_HEIGHT_PX)
 
-	var two_row_height: float = (card_height * 2.0) + vertical_gap + panel_padding
-	hero_panel.custom_minimum_size = Vector2(0, two_row_height)
-	enemy_panel.custom_minimum_size = Vector2(0, two_row_height)
-	hero_panel.size_flags_stretch_ratio = 2.0
-	enemy_panel.size_flags_stretch_ratio = 2.0
-	center_panel.custom_minimum_size = Vector2(0, 420)
-	center_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hero_panel.custom_minimum_size = Vector2(0, rail_height)
+	enemy_panel.custom_minimum_size = Vector2(0, rail_height)
+	hero_panel.size_flags_stretch_ratio = 1.0
+	enemy_panel.size_flags_stretch_ratio = 1.0
+	center_panel.custom_minimum_size = Vector2(0, center_height)
+	center_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	call_deferred("_layout_dice_from_combat_zone")
 
 
@@ -3625,12 +3545,8 @@ func _apply_battle_theme() -> void:
 	background.color = Color(0.030, 0.050, 0.080, 1.0)
 	PixelUI.style_label(summary_label, 56, PixelUI.TEXT_PRIMARY, 2)
 	summary_label.custom_minimum_size.y = 78
-	if USE_COMPACT_BATTLE_CARDS:
-		PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-		PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-	else:
-		PixelUI.style_panel(hero_panel, Color(0.028, 0.050, 0.074, 0.46), Color(0.17, 0.54, 0.44, 0.70), 4, 0)
-		PixelUI.style_panel(enemy_panel, Color(0.028, 0.050, 0.074, 0.46), Color(0.58, 0.26, 0.26, 0.70), 4, 0)
+	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
+	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
 	PixelUI.style_panel(protocol_panel, Color(0.028, 0.050, 0.074, 0.50), Color(0.18, 0.32, 0.48, 0.70), 4, 0)
 	PixelUI.style_panel(battle_log_panel, Color(0.028, 0.050, 0.074, 0.58), Color(0.18, 0.32, 0.48, 0.76), 4, 0)
