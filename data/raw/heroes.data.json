@@ -1306,7 +1306,7 @@
             19
           ],
           "name": "Crevasse Mend",
-          "eff": "lowest 10 heal",
+          "eff": "heal all 10",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1314,7 +1314,7 @@
           "dT": 0,
           "rfe": 0,
           "heal": 10,
-          "healLowest": true
+          "healAll": true
         },
         {
           "zone": "overload",

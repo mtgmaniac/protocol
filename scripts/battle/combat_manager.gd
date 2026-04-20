@@ -304,11 +304,13 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"rfe_stacks": [],
 		"roll_buff": 0,
 		"roll_buff_turns": 0,
+		"roll_buff_skip_next_tick": false,
 		"dmg_scale": 1.0,
 		"selected_target_id": "",
 		"target_display": "--",
 		"cloaked": false,
 		"cower_turns": 0,
+		"cower_skip_next_tick": false,
 		"die_freeze_turns": 0,
 		"rampage_charges": 0,
 		"counter_pct": 0,
@@ -340,7 +342,7 @@ func _get_total_shield(state: Dictionary) -> int:
 
 
 func _add_shield_stack(state: Dictionary, amount: int, turns: int) -> void:
-	state["shield_stacks"].append({"amt": amount, "turns_left": turns})
+	state["shield_stacks"].append({"amt": amount, "turns_left": turns, "skip_next_tick": true})
 	state["shield"] = _get_total_shield(state)
 	_log("%s gains %d shield (%dt)." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "shield", amount, _resolve_side_for_state(state))
@@ -365,6 +367,7 @@ func _add_roll_buff(state: Dictionary, amount: int, turns: int) -> void:
 		return
 	state["roll_buff"] = int(state.get("roll_buff", 0)) + amount
 	state["roll_buff_turns"] = maxi(int(state.get("roll_buff_turns", 0)), turns)
+	state["roll_buff_skip_next_tick"] = true
 	_log("%s gains +%d roll buff (%dt)." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "roll_buff", amount, _resolve_side_for_state(state))
 
@@ -534,7 +537,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 	var shield: int = int(raw.get("shield", 0))
 	var sh_turns: int = int(raw.get("shT", 1))
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
-	var shield_ally_turns: int = int(raw.get("shAllyT", 1))
+	var shield_ally_turns: int = int(raw.get("shAllyT", raw.get("shT", 1)))
 	var poison_amount: int = int(raw.get("dot", 0))
 	var poison_turns: int = int(raw.get("dT", 0))
 
@@ -542,9 +545,11 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 		_add_shield_stack(enemy_state, shield, sh_turns)
 
 	if shield_ally > 0:
-		var enemy_ally: Dictionary = _find_target_by_id(_enemy_states, str(enemy_state.get("selected_target_id", "")))
+		var enemy_ally: Dictionary = _find_living_enemy_ally_by_id(enemy_state, str(enemy_state.get("selected_target_id", "")))
 		if enemy_ally.is_empty():
-			enemy_ally = _first_living_state(_enemy_states)
+			enemy_ally = _first_living_enemy_ally(enemy_state)
+		if enemy_ally.is_empty():
+			enemy_ally = enemy_state
 		if not enemy_ally.is_empty():
 			_add_shield_stack(enemy_ally, shield_ally, shield_ally_turns)
 
@@ -622,13 +627,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 		if erb_all:
 			for es in _enemy_states:
 				if not es["dead"]:
-					es["roll_buff"] = int(es.get("roll_buff", 0)) + erb_amount
-					es["roll_buff_turns"] = maxi(int(es.get("roll_buff_turns", 0)), erb_turns)
-					_log("%s gains +%d roll buff (%dt)." % [es["unit"].display_name, erb_amount, erb_turns])
+					_add_roll_buff(es, erb_amount, erb_turns)
 		else:
-			enemy_state["roll_buff"] = int(enemy_state.get("roll_buff", 0)) + erb_amount
-			enemy_state["roll_buff_turns"] = maxi(int(enemy_state.get("roll_buff_turns", 0)), erb_turns)
-			_log("%s gains +%d roll buff (%dt)." % [enemy_state["unit"].display_name, erb_amount, erb_turns])
+			_add_roll_buff(enemy_state, erb_amount, erb_turns)
 
 	# Cower: apply to targeted hero or all heroes
 	var cower_t: int = int(raw.get("cowerT", 0))
@@ -638,14 +639,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 		if cower_all:
 			for hero_state in _hero_states:
 				if not hero_state["dead"]:
-					hero_state["cower_turns"] = maxi(int(hero_state.get("cower_turns", 0)), cower_amount)
+					_apply_cower(hero_state, cower_amount)
 					_log("%s is cowered for %d turn(s)." % [hero_state["unit"].display_name, cower_amount])
 		else:
 			var cower_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 			if cower_target.is_empty():
 				cower_target = _first_living_state(_hero_states)
 			if not cower_target.is_empty():
-				cower_target["cower_turns"] = maxi(int(cower_target.get("cower_turns", 0)), cower_amount)
+				_apply_cower(cower_target, cower_amount)
 				_log("%s is cowered for %d turn(s)." % [cower_target["unit"].display_name, cower_amount])
 
 	# Rampage grants (self or all enemies)
@@ -662,11 +663,11 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 			enemy_state["rampage_charges"] = int(enemy_state.get("rampage_charges", 0)) + charges
 			_log("%s gains %d rampage charge(s)." % [enemy_state["unit"].display_name, charges])
 
-	# Counterspell: prime enemy to reflect next hero attack
+	# Counterspell: chance to reflect the next targeted hero attack.
 	var counter_pct: int = int(raw.get("counterspellPct", 0))
 	if counter_pct > 0:
 		enemy_state["counter_pct"] = counter_pct
-		_log("%s is primed to counter (%d%%)." % [enemy_state["unit"].display_name, counter_pct])
+		_log("%s is primed to counter the next targeted attack (%d%%)." % [enemy_state["unit"].display_name, counter_pct])
 
 	# Curse dice: targeted hero rolls twice and keeps lower next round
 	if bool(raw.get("curseDice", false)):
@@ -777,11 +778,14 @@ func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) 
 
 
 func _freeze_die_state(state: Dictionary, freeze_amount: int) -> void:
-	state["die_freeze_turns"] = maxi(int(state.get("die_freeze_turns", 0)), freeze_amount)
-	var last_die_value: int = int(state.get("last_die_value", state.get("frozen_die_value", 0)))
-	if last_die_value > 0:
-		state["frozen_die_value"] = last_die_value
-	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), freeze_amount])
+	var existing_turns: int = int(state.get("die_freeze_turns", 0))
+	state["die_freeze_turns"] = existing_turns + freeze_amount
+	var frozen_value: int = int(state.get("frozen_die_value", 0))
+	if frozen_value <= 0:
+		frozen_value = int(state.get("last_die_value", 0))
+	if frozen_value > 0:
+		state["frozen_die_value"] = frozen_value
+	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
 
 
@@ -791,12 +795,14 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	state["dead"] = false
 	state["current_hp"] = maxi(1, int(state["max_hp"]) * hp_pct / 100)
 	state["cower_turns"] = 0
+	state["cower_skip_next_tick"] = false
 	state["poison"] = 0
 	state["poison_turns"] = 0
 	state["poison_skip_next_tick"] = false
 	state["rfe_stacks"] = []
 	state["roll_buff"] = 0
 	state["roll_buff_turns"] = 0
+	state["roll_buff_skip_next_tick"] = false
 	state["shield"] = 0
 	state["shield_stacks"] = []
 	state["die_freeze_turns"] = 0
@@ -839,9 +845,11 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["rfe_stacks"] = []
 	state["roll_buff"] = 0
 	state["roll_buff_turns"] = 0
+	state["roll_buff_skip_next_tick"] = false
 	state["dmg_scale"] = 1.0
 	state["cloaked"] = false
 	state["cower_turns"] = 0
+	state["cower_skip_next_tick"] = false
 	state["die_freeze_turns"] = 0
 	state["rampage_charges"] = 0
 	state["counter_pct"] = 0
@@ -890,9 +898,27 @@ func _apply_poison(state: Dictionary, amount: int, turns: int) -> void:
 	_emit_event(state, "poison", amount, _resolve_side_for_state(state))
 
 
+func _apply_cower(state: Dictionary, turns: int) -> void:
+	if state.is_empty() or bool(state.get("dead", false)) or turns <= 0:
+		return
+	var existing_turns: int = int(state.get("cower_turns", 0))
+	state["cower_turns"] = maxi(existing_turns, turns)
+	if turns >= existing_turns:
+		state["cower_skip_next_tick"] = true
+
+
 func _first_living_state(states: Array) -> Dictionary:
 	for state in states:
 		if not state["dead"]:
+			return state
+	return {}
+
+
+func _first_living_enemy_ally(enemy_state: Dictionary) -> Dictionary:
+	for state in _enemy_states:
+		if state == enemy_state:
+			continue
+		if not bool(state["dead"]):
 			return state
 	return {}
 
@@ -936,6 +962,19 @@ func _find_target_by_id(states: Array, target_id: String) -> Dictionary:
 	return {}
 
 
+func _find_living_enemy_ally_by_id(enemy_state: Dictionary, target_id: String) -> Dictionary:
+	if target_id == "":
+		return {}
+	for state in _enemy_states:
+		if state == enemy_state:
+			continue
+		if bool(state["dead"]):
+			continue
+		if str(state["id"]) == target_id:
+			return state
+	return {}
+
+
 func _find_target_by_id_including_dead(states: Array, target_id: String) -> Dictionary:
 	if target_id == "":
 		return {}
@@ -962,6 +1001,9 @@ func _tick_end_of_round_states() -> void:
 	# Decrement cower turns for all living heroes
 	for hero_state in _hero_states:
 		if not hero_state["dead"] and int(hero_state.get("cower_turns", 0)) > 0:
+			if bool(hero_state.get("cower_skip_next_tick", false)):
+				hero_state["cower_skip_next_tick"] = false
+				continue
 			hero_state["cower_turns"] = int(hero_state["cower_turns"]) - 1
 
 	# Clear taunt on all enemies at end of round (re-applied each round if enemy rolls it again)
@@ -991,6 +1033,10 @@ func _tick_state(state: Dictionary) -> void:
 	if not state["dead"]:
 		var new_shield_stacks: Array = []
 		for stack in state.get("shield_stacks", []):
+			if bool(stack.get("skip_next_tick", false)):
+				stack["skip_next_tick"] = false
+				new_shield_stacks.append(stack)
+				continue
 			var tl: int = int(stack["turns_left"]) - 1
 			if tl > 0:
 				new_shield_stacks.append({"amt": stack["amt"], "turns_left": tl})
@@ -1012,10 +1058,14 @@ func _tick_state(state: Dictionary) -> void:
 
 	# Tick roll buff
 	if int(state.get("roll_buff_turns", 0)) > 0:
+		if bool(state.get("roll_buff_skip_next_tick", false)):
+			state["roll_buff_skip_next_tick"] = false
+			return
 		state["roll_buff_turns"] = int(state["roll_buff_turns"]) - 1
 		if int(state["roll_buff_turns"]) <= 0:
 			state["roll_buff"] = 0
 			state["roll_buff_turns"] = 0
+			state["roll_buff_skip_next_tick"] = false
 
 
 # --- Phase 2 threshold ---

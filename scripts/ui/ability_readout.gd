@@ -14,14 +14,15 @@ const ICONS := {
 	"dmg": "⚡",
 	"damage": "⚡",
 	"blast": "⚡",
-	"pierce": "⚡",
+	"pierce": "",
 	"roll": "🎲",
 	"rfe": "🎲",
 	"rfm": "🎲",
+	"freeze": "❄",
 	"shield": "🛡",
 	"taunt": "🛡",
 	"heal": "➕",
-	"revive": "➕",
+	"revive": "",
 	"dot": "☠",
 	"poison": "☠",
 }
@@ -31,6 +32,7 @@ var side: String = "hero"
 var _row_layer: Control = null
 var _upper_row: HBoxContainer = null
 var _lower_row: HBoxContainer = null
+var _tooltip_callback: Callable = Callable()
 
 
 func _ready() -> void:
@@ -48,6 +50,12 @@ func configure(result_data: Variant, side_hint: String = "") -> void:
 		side = side_hint
 	action_result = _normalize_result(result_data)
 	_refresh()
+
+
+func set_tooltip_callback(callback: Callable) -> void:
+	_tooltip_callback = callback
+	if _upper_row != null:
+		_refresh()
 
 
 func clear() -> void:
@@ -164,11 +172,24 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 	var value_color: Color = PixelUI.effect_value_color(effect_kind)
 
 	var group := HBoxContainer.new()
-	group.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	group.mouse_filter = Control.MOUSE_FILTER_STOP
 	group.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	group.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	group.alignment = BoxContainer.ALIGNMENT_CENTER
 	group.add_theme_constant_override("separation", 3)
+	group.gui_input.connect(_on_effect_group_gui_input.bind(group))
+
+	if effect_kind in ["cloak", "revive", "pierce", "counter", "rampage"]:
+		var plain_label := Label.new()
+		plain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		plain_label.text = effect_kind.to_upper()
+		plain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		plain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_apply_pixel_label(plain_label, VALUE_FONT_SIZE, PixelUI.effect_color(effect_kind), 3)
+		group.add_child(plain_label)
+		if _tooltip_callback.is_valid():
+			_tooltip_callback.call(group, _build_effect_tooltip(effect))
+		return group
 
 	var icon_label := Label.new()
 	icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -181,14 +202,15 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 	icon_label.add_theme_constant_override("outline_size", 2)
 	group.add_child(icon_label)
 
-	var value_label := Label.new()
-	value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	value_label.text = str(effect.get("value", "")).to_upper()
-	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	value_label.clip_text = false
-	_apply_pixel_label(value_label, VALUE_FONT_SIZE, value_color, 3)
-	group.add_child(value_label)
+	if effect_kind != "freeze":
+		var value_label := Label.new()
+		value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		value_label.text = str(effect.get("value", "")).to_upper()
+		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		value_label.clip_text = false
+		_apply_pixel_label(value_label, VALUE_FONT_SIZE, value_color, 3)
+		group.add_child(value_label)
 
 	var duration: int = int(effect.get("duration", 0))
 	if duration > 1:
@@ -201,7 +223,60 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 		_apply_pixel_label(duration_label, DURATION_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
 		group.add_child(duration_label)
 
+	if _tooltip_callback.is_valid():
+		_tooltip_callback.call(group, _build_effect_tooltip(effect))
+
 	return group
+
+
+func _on_effect_group_gui_input(event: InputEvent, group: Control) -> void:
+	var parent_control: Control = group.get_parent() as Control
+	if parent_control != null:
+		parent_control.gui_input.emit(event)
+
+
+func _build_effect_tooltip(effect: Dictionary) -> String:
+	var kind: String = str(effect.get("kind", "")).to_lower()
+	var value: String = str(effect.get("value", "")).to_upper()
+	var duration: int = int(effect.get("duration", 0))
+	if kind == "shield" and value == "CL":
+		return "CLOAK\n80% chance to evade the next incoming damage attempt."
+	if kind == "cloak":
+		return "CLOAK\n80% chance to evade the next incoming damage attempt."
+	if kind == "revive":
+		return "REVIVE\nRevive a fallen ally with a percentage of their max HP."
+	if kind == "shield" and value == "TA":
+		return "TAUNT\nApply taunt to target."
+	if kind == "freeze" and value == "FR":
+		return "FROZEN\nApply frozen to target."
+	match kind:
+		"dmg", "damage":
+			return "DEAL DAMAGE\nDeal %s damage to the target." % value
+		"dot", "poison":
+			var turns_text: String = "for %d turns" % duration if duration > 0 else "each turn"
+			return "DAMAGE OVER TIME\nDeal %s damage per turn %s." % [value, turns_text]
+		"shield":
+			return "GAIN SHIELD\nBlock %s incoming damage." % value
+		"heal":
+			return "HEAL\nRestore %s HP." % value
+		"roll":
+			return _build_roll_shift_tooltip(value, duration)
+		"rfe":
+			return _build_roll_shift_tooltip(value, duration)
+		"rfm":
+			return _build_roll_shift_tooltip(value, duration)
+		"pierce":
+			return "PIERCE\nIgnores enemy shield. Damage hits HP directly."
+		"blast":
+			return "BLAST\nDeal damage to all enemies."
+		_:
+			return "%s\n%s: %s" % [kind.to_upper(), kind, value]
+
+
+func _build_roll_shift_tooltip(value: String, duration: int) -> String:
+	if duration > 1:
+		return "Shift die roll by %s for %d turns." % [value, duration]
+	return "Shift die roll by %s." % value
 
 
 func _make_separator() -> Label:

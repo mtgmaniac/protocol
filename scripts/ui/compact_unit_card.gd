@@ -2,6 +2,7 @@ class_name CompactUnitCard
 extends PanelContainer
 
 signal card_pressed
+signal unit_detail_requested(card)
 
 const CARD_SIZE := Vector2(246, 660)
 const PORTRAIT_HEIGHT_RATIO := 1.20
@@ -13,21 +14,37 @@ const TARGET_LINE := Color(0.42, 0.70, 0.95, 1.0)
 const HP_FILL := Color(0.10, 0.46, 0.32, 1.0)
 const STATUS_MAX_VISIBLE := 3
 const STATUS_ICON_FONT_SIZE := 34
-const STATUS_VALUE_FONT_SIZE := 34
+const STATUS_VALUE_FONT_SIZE := 48
 const STATUS_NAME_FONT_SIZE := 30
 const STATUS_ICON_MIN_WIDTH := 34.0
-const STATUS_VALUE_MIN_WIDTH := 34.0
-const STATUS_NUMERIC_MIN_WIDTH := 74.0
+const STATUS_VALUE_MIN_WIDTH := 50.0
+const STATUS_NUMERIC_MIN_WIDTH := 92.0
+const STATUS_CHIP_HEIGHT := 58.0
+const STATUS_DESCRIPTIONS := {
+	"shield": "Absorbs {value} incoming damage.",
+	"poison": "Takes {value} damage at the start of next turn.",
+	"frozen": "Die result is locked and cannot be changed this turn.",
+	"cloak": "80% chance to evade the next incoming damage attempt.",
+	"cower": "Cannot deal damage this turn.",
+	"taunt": "Enemies must target this unit.",
+	"rampage": "Deals double damage this turn.",
+	"counter": "{value}% chance to reflect the next targeted hero attack.",
+	"cursed": "Abilities trigger at reduced effectiveness.",
+	"down": "Knocked out. Cannot act until revived.",
+	"roll": "Shift die roll by {value}.",
+	"rfe": "Shift die roll by {value}.",
+	"rfm": "Shift die roll by {value}.",
+}
 const PIP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"blast": preload("res://assets/generated/icon_damage_1776027930.png"),
-	"pierce": preload("res://assets/generated/icon_damage_v2_1776040040.png"),
 	"heal": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
-	"revive": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
 	"shield": preload("res://assets/generated/icon_shield_1776027929.png"),
 	"taunt": preload("res://assets/generated/icon_shield_1776027929.png"),
 	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
 	"roll": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
+	"rfe": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
+	"rfm": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
 	"freeze": preload("res://assets/generated/icon_frost_snowflake_frame_0_1776027966.png"),
 	"cloak": preload("res://assets/generated/icon_dice_v2_1776040041.png"),
 }
@@ -45,6 +62,8 @@ var targetable: bool = false
 var interaction_enabled: bool = true
 var dead: bool = false
 var show_action_pips: bool = true
+var unit_data: Resource = null
+var gear_detail_rows: Array = []
 
 var _name_label: Label = null
 var _portrait_frame: PanelContainer = null
@@ -65,6 +84,11 @@ var _preview_rect_heal: ColorRect = null
 var _locked_layout_size: Vector2 = Vector2.ZERO
 var _locked_portrait_width: float = 0.0
 var _locked_portrait_size: Vector2 = Vector2.ZERO
+var _tooltip_cb: Callable = Callable()
+var _hp_tooltip_text: String = "HEALTH PREVIEW\nNo incoming effects this turn."
+var _portrait_hold_timer: Timer = null
+var _portrait_hold_pressed: bool = false
+var _portrait_hold_triggered: bool = false
 
 
 func _ready() -> void:
@@ -75,6 +99,7 @@ func _ready() -> void:
 	_build()
 	_set_descendants_mouse_filter(self, Control.MOUSE_FILTER_IGNORE)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_wire_portrait_detail_input()
 	_refresh()
 
 
@@ -99,6 +124,8 @@ func configure(data: Dictionary) -> void:
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
+	unit_data = data.get("unit_data", unit_data) as Resource
+	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
 	_refresh()
 
 
@@ -130,15 +157,24 @@ func set_interaction_enabled(value: bool) -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if value else Control.CURSOR_ARROW
 
 
+func set_tooltip_callback(callback: Callable) -> void:
+	_tooltip_cb = callback
+	_wire_hp_tooltip()
+
+
 func show_combat_preview(effects: Dictionary) -> void:
 	_preview_effects = effects.duplicate(true)
 	_ensure_preview_rects()
+	_hp_tooltip_text = _build_preview_tooltip(_preview_effects)
+	_wire_hp_tooltip()
 	call_deferred("_layout_preview_overlays")
 
 
 func clear_combat_preview() -> void:
 	_preview_effects.clear()
 	_hide_preview_rects()
+	_hp_tooltip_text = "HEALTH PREVIEW\nNo incoming effects this turn."
+	_wire_hp_tooltip()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -401,37 +437,51 @@ func get_display_statuses(raw_statuses: Array) -> Array:
 
 func build_status_chip(status: Dictionary) -> Control:
 	var chip: HBoxContainer = HBoxContainer.new()
-	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.alignment = BoxContainer.ALIGNMENT_CENTER
 	chip.add_theme_constant_override("separation", 3)
+	_connect_passthrough_input(chip)
 
-	if str(status.get("mode", "named")) == "numeric":
-		chip.custom_minimum_size = Vector2(STATUS_NUMERIC_MIN_WIDTH, 46)
+	if _is_frozen_status(status):
+		chip.custom_minimum_size = Vector2(46, STATUS_CHIP_HEIGHT)
+		chip.add_child(_make_status_icon_label(status))
+	elif str(status.get("mode", "named")) == "numeric":
+		chip.custom_minimum_size = Vector2(STATUS_NUMERIC_MIN_WIDTH, STATUS_CHIP_HEIGHT)
 		chip.add_child(_make_status_icon_label(status))
 		chip.add_child(_make_status_value_label(status))
 	else:
-		chip.custom_minimum_size = Vector2(0, 46)
+		chip.custom_minimum_size = Vector2(0, STATUS_CHIP_HEIGHT)
 		chip.add_child(_make_status_name_label(status))
 		if str(status.get("value", "")) != "":
 			chip.add_child(_make_status_value_label(status))
+	if _tooltip_cb.is_valid():
+		_tooltip_cb.call(chip, _build_status_tooltip(status))
 	return chip
 
 
 func _make_status_icon_label(status: Dictionary) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = str(status.get("icon", _status_icon_for_type(str(status.get("type", "")))))
+	if _is_frozen_status(status):
+		label.text = "❄"
+	else:
+		label.text = str(status.get("icon", _status_icon_for_type(str(status.get("type", "")))))
 	label.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, 0)
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", STATUS_ICON_FONT_SIZE)
-	label.add_theme_color_override("font_color", _status_content_color(status, true))
+	label.add_theme_font_size_override("font_size", 12 if _is_frozen_status(status) else STATUS_ICON_FONT_SIZE)
+	label.add_theme_color_override("font_color", Color("#88ccff") if _is_frozen_status(status) else _status_content_color(status, true))
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", 2)
 	return label
+
+
+func _is_frozen_status(status: Dictionary) -> bool:
+	var status_type: String = str(status.get("type", "")).to_lower()
+	return status_type == "frozen" or status_type == "freeze" or status_type == "die_freeze"
 
 
 func _make_status_value_label(status: Dictionary) -> Label:
@@ -492,6 +542,8 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 		return {"type": "poison", "mode": "numeric", "icon": "☠", "value": value, "priority": 0}
 	if first.begins_with("SH"):
 		return {"type": "shield", "mode": "numeric", "icon": "🛡", "value": value, "priority": 1}
+	if first == "FROZEN" or first == "FREEZE" or first == "FR" or first == "DIE_FREEZE":
+		return {"type": "frozen", "mode": "icon", "icon": "❄", "priority": 2}
 	if first.begins_with("+") or first.begins_with("-") or first == "RFE":
 		var roll_value: String = first if first != "RFE" else value
 		return {"type": "roll", "mode": "numeric", "icon": "🎲", "value": roll_value, "priority": 2}
@@ -502,6 +554,40 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 	if first == "RMP" or first == "RAGE" or first == "RAMPAGE":
 		return {"type": "named", "mode": "named", "name": "RAMPAGE", "value": value, "priority": 3}
 	return {"type": "named", "mode": "named", "name": first, "priority": 9}
+
+
+func _build_status_tooltip(status: Dictionary) -> String:
+	var key: String = _get_status_description_key(status)
+	var title: String = _get_status_title(status)
+	if key == "roll" or key == "rfe" or key == "rfm":
+		var value: String = str(status.get("value", "")).strip_edges()
+		if value != "":
+			return "%s\nShift die roll by %s." % [title, value]
+	if key == "shield" or key == "poison" or key == "counter":
+		var status_value: String = str(status.get("value", "0")).strip_edges()
+		if status_value == "":
+			status_value = "0"
+		var valued_description: String = str(STATUS_DESCRIPTIONS.get(key, "")).replace("{value}", status_value)
+		return "%s\n%s" % [title, valued_description]
+	var description: String = str(STATUS_DESCRIPTIONS.get(key, "Status effect: %s" % title.to_lower()))
+	return "%s\n%s" % [title, description]
+
+
+func _get_status_description_key(status: Dictionary) -> String:
+	var status_type: String = str(status.get("type", "")).to_lower()
+	if status_type == "named":
+		return str(status.get("name", "")).to_lower().replace(" ", "_")
+	if status_type == "dot":
+		return "poison"
+	if status_type == "phase2":
+		return "phase_two"
+	return status_type
+
+
+func _get_status_title(status: Dictionary) -> String:
+	if str(status.get("mode", "named")) == "named":
+		return str(status.get("name", status.get("type", "status"))).to_upper()
+	return str(status.get("type", "status")).replace("_", " ").to_upper()
 
 
 func _sort_statuses_by_priority(a: Dictionary, b: Dictionary) -> bool:
@@ -529,6 +615,8 @@ func _status_icon_for_type(status_type: String) -> String:
 			return "🛡"
 		"roll", "rfe", "rfm":
 			return "🎲"
+		"frozen", "freeze", "die_freeze":
+			return "❄"
 	return ""
 
 
@@ -542,6 +630,8 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 			effect_kind = "shield"
 		"roll", "rfe", "rfm":
 			effect_kind = "roll"
+		"frozen", "freeze", "die_freeze":
+			effect_kind = "freeze"
 		_:
 			return PixelUI.TEXT_MUTED
 	if strong:
@@ -573,9 +663,9 @@ func _pip_border(kind: String) -> Color:
 			return Color(0.42, 0.66, 0.88, 0.92)
 		"dot":
 			return Color(0.82, 0.40, 0.58, 0.92)
-		"roll":
+		"roll", "rfe", "rfm":
 			return Color(0.86, 0.66, 0.26, 0.92)
-		"freeze", "cloak":
+		"frozen", "freeze", "die_freeze", "cloak":
 			return Color(0.48, 0.78, 0.88, 0.92)
 	return Color(0.34, 0.52, 0.70, 0.86)
 
@@ -692,6 +782,147 @@ func _layout_preview_overlays() -> void:
 
 	var heal_eff: float = minf(inc_heal, hp_max - cur_hp)
 	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, bar_h, Color(0.28, 0.94, 0.50, 0.85))
+
+
+func _wire_hp_tooltip() -> void:
+	if _hp_back == null:
+		return
+	_hp_back.mouse_filter = Control.MOUSE_FILTER_STOP
+	_connect_passthrough_input(_hp_back)
+	if _tooltip_cb.is_valid():
+		_tooltip_cb.call(_hp_back, _hp_tooltip_text)
+
+
+func _build_preview_tooltip(effects: Dictionary) -> String:
+	var lines: Array = ["HEALTH PREVIEW"]
+	var inc_dmg: int = int(effects.get("damage", 0))
+	var inc_heal: int = int(effects.get("heal", 0))
+	var inc_shield: int = int(effects.get("shield", 0))
+	var dot_tick: int = int(effects.get("dot", 0))
+	var cur_shield: int = int(effects.get("current_shield", 0))
+	var lethal: bool = bool(effects.get("lethal", false))
+
+	if lethal:
+		lines.append("Lethal: this unit will not survive the turn.")
+		return "\n".join(lines)
+
+	var total_shield: int = cur_shield + inc_shield
+	if inc_dmg > 0:
+		var absorbed: int = mini(total_shield, inc_dmg)
+		var hp_lost: int = inc_dmg - absorbed
+		if absorbed > 0 and hp_lost > 0:
+			lines.append("%d damage: %d blocked by shield, %d to HP." % [inc_dmg, absorbed, hp_lost])
+		elif absorbed > 0:
+			lines.append("%d damage: fully blocked by shield." % inc_dmg)
+		else:
+			lines.append("%d damage to HP." % inc_dmg)
+
+	if inc_shield > 0:
+		if cur_shield > 0:
+			lines.append("+%d shield, stacking with existing %d." % [inc_shield, cur_shield])
+		else:
+			lines.append("+%d incoming shield." % inc_shield)
+
+	if dot_tick > 0:
+		var shield_after_dmg: int = maxi(0, total_shield - mini(total_shield, inc_dmg))
+		var dot_absorbed: int = mini(shield_after_dmg, dot_tick)
+		var dot_hp_lost: int = dot_tick - dot_absorbed
+		if dot_absorbed > 0 and dot_hp_lost > 0:
+			lines.append("Poison tick: %d (%d blocked, %d to HP)." % [dot_tick, dot_absorbed, dot_hp_lost])
+		elif dot_absorbed > 0:
+			lines.append("Poison tick: %d, fully blocked by shield." % dot_tick)
+		else:
+			lines.append("Poison tick: %d to HP." % dot_tick)
+
+	if inc_heal > 0:
+		lines.append("+%d healing." % inc_heal)
+
+	if lines.size() == 1:
+		lines.append("No incoming effects this turn.")
+	return "\n".join(lines)
+
+
+func _connect_passthrough_input(control: Control) -> void:
+	if control == null or bool(control.get_meta("compact_passthrough_connected", false)):
+		return
+	control.set_meta("compact_passthrough_connected", true)
+	control.gui_input.connect(_on_tooltip_target_gui_input)
+
+
+func _on_tooltip_target_gui_input(event: InputEvent) -> void:
+	_gui_input(event)
+
+
+func _wire_portrait_detail_input() -> void:
+	if _portrait_rect == null:
+		return
+	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	if _portrait_hold_timer == null:
+		_portrait_hold_timer = Timer.new()
+		_portrait_hold_timer.one_shot = true
+		_portrait_hold_timer.wait_time = 0.5
+		add_child(_portrait_hold_timer)
+		_portrait_hold_timer.timeout.connect(_on_portrait_hold_timeout)
+	if bool(_portrait_rect.get_meta("portrait_detail_input_connected", false)):
+		return
+	_portrait_rect.set_meta("portrait_detail_input_connected", true)
+	_portrait_rect.gui_input.connect(_on_portrait_gui_input)
+	_portrait_rect.mouse_exited.connect(_on_portrait_mouse_exited)
+
+
+func _on_portrait_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse_event.pressed:
+			_start_portrait_hold()
+		else:
+			_finish_portrait_press()
+		accept_event()
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_start_portrait_hold()
+		else:
+			_finish_portrait_press()
+		accept_event()
+
+
+func _start_portrait_hold() -> void:
+	_portrait_hold_pressed = true
+	_portrait_hold_triggered = false
+	if _portrait_hold_timer != null:
+		_portrait_hold_timer.start()
+
+
+func _finish_portrait_press() -> void:
+	if not _portrait_hold_pressed:
+		return
+	_portrait_hold_pressed = false
+	if _portrait_hold_timer != null:
+		_portrait_hold_timer.stop()
+	if _portrait_hold_triggered:
+		_portrait_hold_triggered = false
+		return
+	if interaction_enabled:
+		card_pressed.emit()
+
+
+func _on_portrait_mouse_exited() -> void:
+	if not _portrait_hold_pressed:
+		return
+	_portrait_hold_pressed = false
+	if _portrait_hold_timer != null:
+		_portrait_hold_timer.stop()
+	_portrait_hold_triggered = false
+
+
+func _on_portrait_hold_timeout() -> void:
+	if not _portrait_hold_pressed:
+		return
+	_portrait_hold_triggered = true
+	unit_detail_requested.emit(self)
 
 
 func _set_descendants_mouse_filter(node: Node, filter: Control.MouseFilter) -> void:

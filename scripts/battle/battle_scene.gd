@@ -27,6 +27,7 @@ extends Control
 
 const UNIT_CARD_SCENE := preload("res://scenes/shared/UnitCard.tscn")
 const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn")
+const UNIT_DETAIL_PANEL_SCENE := preload("res://scenes/shared/UnitDetailPanel.tscn")
 const USE_COMPACT_BATTLE_CARDS := true
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
@@ -51,6 +52,13 @@ const COMPACT_DICE_ANCHOR_HEIGHT_PX := 12.0
 const COMPACT_READOUT_HEIGHT_PX := 120.0
 const COMPACT_RAIL_CHROME_PX := 24.0
 const COMPACT_CENTER_TARGET_RATIO := 0.24
+const CENTER_ACTION_BUTTON_SIZE := Vector2(360, 104)
+const CENTER_ACTION_BUTTON_FONT_SIZE := 38
+const HUD_TOOLTIP_MIN_WIDTH := 80.0
+const HUD_TOOLTIP_MAX_WIDTH := 220.0
+const HUD_TOOLTIP_PAD_X := 8.0
+const HUD_TOOLTIP_FONT_SIZE := 20
+const HUD_TOOLTIP_BORDER_WIDTH := 3.0
 const HELP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
@@ -89,6 +97,10 @@ var _relic_slot: Control = null
 var _hud_tooltip_panel: PanelContainer = null
 var _hud_tooltip_label: Label = null
 var _hud_tooltip_node: Control = null
+var _hud_tooltip_hold_timer: Timer = null
+var _pending_tooltip_node: Control = null
+var _pending_tooltip_text: String = ""
+var _die_tooltip_overlays: Array = []
 var _pending_item: ItemData = null
 var _was_in_ready_phase: bool = false
 var _phase_before_item: String = ""
@@ -98,6 +110,8 @@ var _auto_turn_running: bool = false
 var _help_overlay: Control = null
 var _help_panel: PanelContainer = null
 var _help_close_button: Button = null
+var _unit_detail_panel: Control = null
+var _is_resolving_turn: bool = false
 
 
 func _game_state() -> Variant:
@@ -139,6 +153,7 @@ func _ready() -> void:
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
 	protocol_spend_button.text = "↺"
 	_build_hud_tooltip()
+	_build_unit_detail_panel()
 	PixelUI.style_button(auto_turn_button, Color(0.16, 0.08, 0.035, 1.0), Color(0.96, 0.48, 0.16, 1.0), 22)
 	_set_hud_tooltip(auto_turn_button, "Debug: automatically play out this turn.")
 	_set_hud_tooltip(protocol_spend_button, "Reroll\nSpend 2 Protocol to reroll a hero's die.")
@@ -205,6 +220,11 @@ func _on_auto_turn_button_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _unit_detail_panel != null and is_instance_valid(_unit_detail_panel) and _unit_detail_panel.visible:
+		if _event_closes_unit_detail_panel(event):
+			_unit_detail_panel.call("hide_panel")
+			get_viewport().set_input_as_handled()
+			return
 	if _help_overlay == null or not is_instance_valid(_help_overlay) or not _help_overlay.visible:
 		return
 	if _event_closes_help_overlay(event):
@@ -222,17 +242,30 @@ func _populate_hero_cards() -> void:
 			continue
 
 		var card: Control = _create_battle_card()
+		if card.has_method("set_tooltip_callback"):
+			card.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
+		if readout.has_method("set_tooltip_callback"):
+			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var dice_anchor: Control = _build_dice_anchor()
 		var slot: VBoxContainer = _build_hero_card_column()
 		hero_cards.add_child(slot)
 		slot.add_child(dice_anchor)
-		slot.add_child(readout)
-		slot.add_child(card)
+		var unit_panel: PanelContainer = _build_hero_unit_panel()
+		unit_panel.name = "UnitPanel"
+		var unit_vbox: VBoxContainer = VBoxContainer.new()
+		unit_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		unit_vbox.add_theme_constant_override("separation", 6)
+		unit_panel.add_child(unit_vbox)
+		slot.add_child(unit_panel)
+		unit_vbox.add_child(readout)
+		unit_vbox.add_child(card)
 		_prepare_ability_readout_layout(readout)
 		_prepare_battle_card_layout(card)
 		hero_card_views.append({"card": card, "readout": readout, "dice_anchor": dice_anchor, "state": hero_state})
 		card.card_pressed.connect(_on_hero_card_pressed.bind(hero_state["id"]))
+		if card.has_signal("unit_detail_requested"):
+			card.connect("unit_detail_requested", Callable(self, "_on_unit_detail_requested"))
 		_update_card_view(card, hero_state, hero_rolls.get(str(hero_state["id"]), null), HERO_ACCENT, readout)
 	_queue_board_layout_refresh()
 
@@ -247,7 +280,11 @@ func _populate_enemy_cards() -> void:
 			continue
 
 		var card: Control = _create_battle_card()
+		if card.has_method("set_tooltip_callback"):
+			card.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
+		if readout.has_method("set_tooltip_callback"):
+			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var dice_anchor: Control = _build_dice_anchor()
 		var slot: VBoxContainer = _build_enemy_card_column()
 		enemy_cards.add_child(slot)
@@ -258,6 +295,8 @@ func _populate_enemy_cards() -> void:
 		_prepare_ability_readout_layout(readout)
 		enemy_card_views.append({"card": card, "readout": readout, "dice_anchor": dice_anchor, "state": enemy_state})
 		card.card_pressed.connect(_on_enemy_card_pressed.bind(enemy_state["id"]))
+		if card.has_signal("unit_detail_requested"):
+			card.connect("unit_detail_requested", Callable(self, "_on_unit_detail_requested"))
 		_update_card_view(card, enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT, readout)
 	_queue_board_layout_refresh()
 
@@ -271,6 +310,44 @@ func _create_battle_card() -> Control:
 	if USE_COMPACT_BATTLE_CARDS:
 		return CompactUnitCard.new()
 	return UNIT_CARD_SCENE.instantiate() as UnitCard
+
+
+func _build_unit_detail_panel() -> void:
+	if _unit_detail_panel != null:
+		return
+	_unit_detail_panel = UNIT_DETAIL_PANEL_SCENE.instantiate() as Control
+	var host: Control = dice_tray_3d.get_parent() as Control
+	if host == null:
+		host = center_panel
+	host.add_child(_unit_detail_panel)
+	_unit_detail_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_unit_detail_panel.visible = false
+	if _unit_detail_panel.has_method("set_tooltip_callback"):
+		_unit_detail_panel.call("set_tooltip_callback", func(node: Control, text: String) -> void: _set_hud_tooltip(node, text, true))
+
+
+func _on_unit_detail_requested(card: Control) -> void:
+	if _is_resolving_turn:
+		return
+	var compact_card: CompactUnitCard = card as CompactUnitCard
+	if compact_card == null or compact_card.unit_data == null:
+		return
+	if _unit_detail_panel == null:
+		_build_unit_detail_panel()
+	_unit_detail_panel.call("show_for_unit", compact_card.unit_data, compact_card.gear_detail_rows)
+
+
+func _event_closes_unit_detail_panel(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		return key_event.pressed and key_event.keycode == KEY_ESCAPE
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		return touch_event.pressed
+	return false
 
 
 func _prepare_battle_card_layout(card: Control) -> void:
@@ -304,6 +381,24 @@ func _build_enemy_card_column() -> VBoxContainer:
 	column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	column.add_theme_constant_override("separation", 6)
 	return column
+
+
+func _build_hero_unit_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.clip_contents = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.04, 0.07, 0.12, 0.22)
+	style.border_color = Color(0.20, 0.38, 0.50, 0.28)
+	style.set_border_width_all(1)
+	style.set_content_margin_all(0)
+	style.corner_radius_top_left = 0
+	style.corner_radius_top_right = 0
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
+	panel.add_theme_stylebox_override("panel", style)
+	return panel
 
 
 func _build_dice_anchor() -> Control:
@@ -419,6 +514,8 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 			"interaction_enabled": _is_card_clickable(state, accent_color),
 			"dead": bool(state["dead"]),
 			"show_action_pips": readout == null,
+			"unit_data": unit,
+			"gear_rows": _get_gear_detail_rows(str(unit.id)) if unit is UnitData else [],
 		})
 		var compact_preview: Dictionary = _compute_preview_for_unit(state, accent_color == HERO_ACCENT)
 		if compact_preview.is_empty():
@@ -568,22 +665,21 @@ func _build_compact_action_pips(entry: Dictionary) -> Dictionary:
 
 	var rfm: int = int(raw.get("rfm", 0))
 	if rfm > 0:
-		_append_compact_result_effect(effects, "roll", "+%d" % rfm, int(raw.get("rfmT", 0)))
+		_append_compact_result_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)))
 
 	if bool(raw.get("blastAll", false)):
 		target = "ALL"
 	if bool(raw.get("ignSh", false)):
 		_append_compact_result_effect(effects, "pierce", "P")
 	if bool(raw.get("cloak", false)):
-		_append_compact_result_effect(effects, "shield", "CL")
-		target = "SELF"
+		_append_compact_result_effect(effects, "cloak", "CLOAK")
 
 	var freeze_turns: int = maxi(
 		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
 		int(raw.get("freezeAllEnemyDice", 0))
 	)
 	if freeze_turns > 0:
-		_append_compact_result_effect(effects, "roll", "FR", freeze_turns)
+		_append_compact_result_effect(effects, "freeze", "FR", freeze_turns)
 		if int(raw.get("freezeAllEnemyDice", 0)) > 0:
 			target = "ALL"
 
@@ -591,7 +687,7 @@ func _build_compact_action_pips(entry: Dictionary) -> Dictionary:
 		_append_compact_result_effect(effects, "shield", "TA")
 		target = "SELF"
 	if bool(raw.get("revive", false)):
-		_append_compact_result_effect(effects, "heal", "50")
+		_append_compact_result_effect(effects, "revive", "REVIVE")
 
 	return {"effects": effects.slice(0, 3), "target": target}
 
@@ -740,6 +836,7 @@ func _begin_targeting_phase() -> void:
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
+	_clear_die_tooltip_overlays()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
 	legal_target_side = ""
@@ -776,6 +873,7 @@ func _begin_targeting_phase() -> void:
 	if dice_tray_3d != null:
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_hero_states(), hero_rolls, true))
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_enemy_states(), enemy_rolls, false))
+		_build_die_tooltip_overlays()
 	_set_turn_phase(PHASE_TARGETING)
 	_append_log("Dice rolled for all units.")
 
@@ -1075,12 +1173,92 @@ func _build_dice_action_entries(states: Array, rolls: Dictionary, is_hero: bool)
 	return entries
 
 
+func _build_die_tooltip_overlays() -> void:
+	_clear_die_tooltip_overlays()
+	if dice_tray_3d == null or float_layer == null:
+		return
+	_build_die_tooltip_overlays_for_states(combat_manager.get_hero_states(), hero_rolls, "hero", false)
+	_build_die_tooltip_overlays_for_states(combat_manager.get_enemy_states(), enemy_rolls, "enemy", true)
+
+
+func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, side: String, is_enemy: bool) -> void:
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if bool(state.get("dead", false)):
+			continue
+		if not _has_roll_for_state(rolls, state):
+			continue
+		var unit_id: String = str(state.get("id", ""))
+		if unit_id == "":
+			continue
+		var raw_roll: int = _get_roll_value_for_state(rolls, state)
+		if raw_roll <= 0:
+			continue
+		var result: int = _get_effective_enemy_roll(state, unit_id) if is_enemy else _get_effective_roll_for_state(state, unit_id)
+		var unit: Resource = state.get("unit") as Resource
+		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(unit, result)
+		var tooltip_text: String = _build_die_tooltip_text(ability_entry, result, is_enemy)
+		var screen_position: Vector2 = dice_tray_3d.get_die_screen_position(side, unit_id)
+		if is_inf(screen_position.x) or is_inf(screen_position.y):
+			continue
+		var overlay_size := Vector2(80.0, 80.0)
+		var overlay := ColorRect.new()
+		overlay.name = "DieTooltip_%s_%s" % [side, unit_id]
+		overlay.color = Color(1.0, 1.0, 1.0, 0.0)
+		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+		overlay.custom_minimum_size = overlay_size
+		overlay.size = overlay_size
+		overlay.z_index = 90
+		overlay.set_as_top_level(true)
+		float_layer.add_child(overlay)
+		overlay.global_position = screen_position - (overlay_size * 0.5)
+		_set_hud_tooltip(overlay, tooltip_text, true)
+		_die_tooltip_overlays.append(overlay)
+
+
+func _clear_die_tooltip_overlays() -> void:
+	var should_hide_tooltip := false
+	for overlay_variant in _die_tooltip_overlays:
+		var overlay: Control = overlay_variant as Control
+		if overlay != null and is_instance_valid(overlay):
+			if overlay == _hud_tooltip_node:
+				should_hide_tooltip = true
+			overlay.queue_free()
+	_die_tooltip_overlays.clear()
+	if should_hide_tooltip:
+		_hide_hud_tooltip_safe()
+
+
+func _build_die_tooltip_text(ability_entry: Dictionary, result: int, is_enemy: bool = false) -> String:
+	var title: String = str(ability_entry.get("ability_name", "Unknown Ability")).strip_edges()
+	if title == "":
+		title = "Unknown Ability"
+	title = title.to_upper()
+	var min_roll: int = int(ability_entry.get("min", result))
+	var max_roll: int = int(ability_entry.get("max", result))
+	var range_text: String = "%d–%d" % [min_roll, max_roll]
+	var zone: String = str(ability_entry.get("zone", "")).strip_edges()
+	if zone == "":
+		zone = "range"
+	var description: String = str(ability_entry.get("description", "")).strip_edges()
+	if description == "":
+		if is_enemy:
+			description = "%s - standard attack roll." % zone.replace("_", " ").capitalize()
+		else:
+			description = "No description available."
+	return "%s\nRolled: %d\nRange: %s (%s)\n\n%s" % [title, result, range_text, zone, description]
+
+
 func _resolve_current_turn() -> void:
 	if battle_over:
 		return
 	if hero_rolls.is_empty() or enemy_rolls.is_empty():
 		_refresh_summary("Roll dice to begin.")
 		return
+
+	_is_resolving_turn = true
+	if _unit_detail_panel != null and _unit_detail_panel.visible:
+		_unit_detail_panel.call("hide_panel")
 
 	# Build effective roll dicts so RFE/buff/nudge are reflected in combat resolution
 	var eff_hero_rolls: Dictionary = _build_effective_rolls(hero_rolls, combat_manager.get_hero_states(), true)
@@ -1090,6 +1268,7 @@ func _resolve_current_turn() -> void:
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
+	_clear_die_tooltip_overlays()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
 	legal_target_side = ""
@@ -1102,6 +1281,7 @@ func _resolve_current_turn() -> void:
 	_process_summon_events(result.get("events", []))
 	_consume_revealed_frozen_dice()
 	_refresh_all_cards()
+	_is_resolving_turn = false
 
 	var outcome: String = str(result.get("result", "ongoing"))
 	if outcome == "victory":
@@ -1180,6 +1360,7 @@ func _disable_combat_actions() -> void:
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
+	_clear_die_tooltip_overlays()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
 	legal_target_side = ""
@@ -1363,6 +1544,7 @@ func _refresh_dice_result_actions() -> void:
 		return
 	dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_hero_states(), hero_rolls, true))
 	dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_enemy_states(), enemy_rolls, false))
+	_build_die_tooltip_overlays()
 
 
 func _finish_roll_modifier_pick() -> void:
@@ -1482,12 +1664,12 @@ func _set_turn_phase(next_phase: String) -> void:
 		PHASE_AWAIT_ROLL:
 			roll_button.visible = true
 			roll_button.disabled = false
-			roll_button.text = "Roll All"
+			roll_button.text = "Roll"
 			_refresh_summary("")
 		PHASE_TARGETING:
-			roll_button.visible = false
+			roll_button.visible = true
 			roll_button.disabled = true
-			roll_button.text = ""
+			roll_button.text = "Select Targets"
 		PHASE_READY_TO_END:
 			roll_button.visible = true
 			roll_button.disabled = false
@@ -1526,13 +1708,18 @@ func _set_turn_phase(next_phase: String) -> void:
 
 
 func _style_roll_button_for_phase() -> void:
+	roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			PixelUI.style_button(roll_button, Color(0.045, 0.160, 0.105, 1.0), Color(0.20, 0.66, 0.50, 1.0), 34)
+			PixelUI.style_button(roll_button, Color(0.045, 0.160, 0.105, 1.0), Color(0.20, 0.66, 0.50, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
+		PHASE_TARGETING:
+			PixelUI.style_button(roll_button, Color(0.18, 0.19, 0.21, 1.0), Color(0.48, 0.52, 0.58, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
+			roll_button.add_theme_color_override("font_disabled_color", PixelUI.TEXT_PRIMARY)
+			roll_button.add_theme_stylebox_override("disabled", PixelUI.make_panel_style(Color(0.18, 0.19, 0.21, 1.0), Color(0.48, 0.52, 0.58, 1.0), 4, 0))
 		PHASE_READY_TO_END:
-			PixelUI.style_button(roll_button, Color(0.34, 0.250, 0.070, 1.0), Color(0.98, 0.78, 0.22, 1.0), 34)
+			PixelUI.style_button(roll_button, Color(0.34, 0.250, 0.070, 1.0), Color(0.98, 0.78, 0.22, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
 		_:
-			PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 34)
+			PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, CENTER_ACTION_BUTTON_FONT_SIZE)
 
 
 func _update_phase_target_sets() -> void:
@@ -1634,14 +1821,16 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return "hero"
 	if bool(raw.get("revive", false)):
 		return "dead_hero"
+	var has_single_enemy_effect: bool = (
+		(int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)))
+		or int(raw.get("dot", 0)) > 0
+		or (int(raw.get("rfe", 0)) > 0 and not bool(raw.get("rfeAll", false)))
+		or bool(raw.get("rfeOnly", false))
+	)
+	if has_single_enemy_effect:
+		return "enemy"
 	if bool(raw.get("blastAll", false)) or bool(raw.get("healAll", false)) or bool(raw.get("shieldAll", false)):
 		return ""
-	if int(raw.get("dmg", 0)) > 0:
-		return "enemy"
-	if int(raw.get("dot", 0)) > 0:
-		return "enemy"
-	if int(raw.get("rfe", 0)) > 0 or bool(raw.get("rfeOnly", false)):
-		return "enemy"
 	return ""
 
 
@@ -1716,13 +1905,15 @@ func _auto_assign_enemy_target(enemy_state: Dictionary, ability_entry: Dictionar
 	var ai_type: String = str(unit.ai_type) if unit != null else "dumb"
 
 	# Self-targeted: shield or heal self
-	if int(raw.get("shield", 0)) > 0 or int(raw.get("heal", 0)) > 0:
+	if (int(raw.get("shield", 0)) > 0 or int(raw.get("heal", 0)) > 0) and int(raw.get("shieldAlly", 0)) <= 0:
 		_set_state_target(enemy_state, str(enemy_state["id"]), "Self")
 		return
 
 	# Ally-targeted: shield a living ally
 	if int(raw.get("shieldAlly", 0)) > 0:
-		var ally_target: Dictionary = _first_living_enemy_state()
+		var ally_target: Dictionary = _first_living_enemy_ally_state(enemy_state)
+		if ally_target.is_empty():
+			ally_target = enemy_state
 		if ally_target.is_empty():
 			_set_state_target(enemy_state, "", "--")
 			return
@@ -1868,6 +2059,16 @@ func _first_living_hero_state() -> Dictionary:
 
 func _first_living_enemy_state() -> Dictionary:
 	return _first_living_from_states(combat_manager.get_enemy_states())
+
+
+func _first_living_enemy_ally_state(enemy_state: Dictionary) -> Dictionary:
+	for state_variant in combat_manager.get_enemy_states():
+		var state: Dictionary = state_variant
+		if state == enemy_state:
+			continue
+		if not bool(state["dead"]):
+			return state
+	return {}
 
 
 func _first_living_from_states(states: Array) -> Dictionary:
@@ -2318,13 +2519,13 @@ func _add_icon_reference_section(parent: VBoxContainer) -> void:
 	var entries: Array = [
 		["dmg", "DMG", "Deals direct damage to the target."],
 		["dot", "DOT", "Deals damage over multiple turns."],
-		["shield", "SHIELD", "Applies a temporary shield to a unit."],
+		["shield", "SHIELD", "Absorbs incoming damage before HP is affected."],
 		["heal", "HEAL", "Restores HP to a unit."],
-		["rfe", "ROLL DOWN", "Reduces a unit's next roll result."],
-		["rfm", "ROLL UP", "Increases a unit's next roll result."],
+		["rfe", "ROLL SHIFT", "Shift die roll by {value}."],
+		["rfm", "ROLL SHIFT", "Shift die roll by {value}."],
 		["pierce", "PIERCE", "Ignores the target's shield."],
 		["blastAll", "BLAST", "Hits all enemies simultaneously."],
-		["cloak", "CLOAK", "Unit becomes untargetable for one turn."],
+		["cloak", "CLOAK", "80% chance to evade the next incoming damage attempt."],
 		["freeze", "FREEZE", "Locks a die result for set reveals."],
 		["taunt", "TAUNT", "Forces all enemies to target this unit."],
 		["revive", "REVIVE", "Revives a fallen unit at partial HP."],
@@ -2379,16 +2580,24 @@ func _add_icon_reference_row(parent: VBoxContainer, icon_key: String, label_text
 func _build_hud_tooltip() -> void:
 	if _hud_tooltip_panel != null:
 		return
+	_hud_tooltip_hold_timer = Timer.new()
+	_hud_tooltip_hold_timer.name = "HudTooltipHoldTimer"
+	_hud_tooltip_hold_timer.wait_time = 0.5
+	_hud_tooltip_hold_timer.one_shot = true
+	_hud_tooltip_hold_timer.timeout.connect(_on_hud_tooltip_hold_timeout)
+	add_child(_hud_tooltip_hold_timer)
+
 	_hud_tooltip_panel = PanelContainer.new()
 	_hud_tooltip_panel.visible = false
 	_hud_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_tooltip_panel.z_as_relative = false
 	_hud_tooltip_panel.z_index = 100
-	_hud_tooltip_panel.custom_minimum_size = Vector2(640, 72)
+	_hud_tooltip_panel.custom_minimum_size = Vector2(HUD_TOOLTIP_MIN_WIDTH, 0)
+	_hud_tooltip_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var tooltip_style: StyleBoxFlat = StyleBoxFlat.new()
 	tooltip_style.bg_color = Color(0.018, 0.026, 0.044, 0.96)
 	tooltip_style.border_color = Color(0.36, 0.55, 0.78, 0.92)
-	tooltip_style.set_border_width_all(3)
+	tooltip_style.set_border_width_all(int(HUD_TOOLTIP_BORDER_WIDTH))
 	tooltip_style.corner_radius_top_left = 0
 	tooltip_style.corner_radius_top_right = 0
 	tooltip_style.corner_radius_bottom_left = 0
@@ -2398,55 +2607,114 @@ func _build_hud_tooltip() -> void:
 
 	var tooltip_margin: MarginContainer = MarginContainer.new()
 	tooltip_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tooltip_margin.add_theme_constant_override("margin_left", 16)
+	tooltip_margin.add_theme_constant_override("margin_left", int(HUD_TOOLTIP_PAD_X))
 	tooltip_margin.add_theme_constant_override("margin_top", 12)
-	tooltip_margin.add_theme_constant_override("margin_right", 16)
+	tooltip_margin.add_theme_constant_override("margin_right", int(HUD_TOOLTIP_PAD_X))
 	tooltip_margin.add_theme_constant_override("margin_bottom", 12)
 	_hud_tooltip_panel.add_child(tooltip_margin)
 
 	_hud_tooltip_label = Label.new()
 	_hud_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_hud_tooltip_label.custom_minimum_size.x = 560
+	_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_hud_tooltip_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_hud_tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	PixelUI.apply_pixel_font(_hud_tooltip_label)
-	_hud_tooltip_label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(26))
+	_hud_tooltip_label.add_theme_font_size_override("font_size", 20)
 	_hud_tooltip_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	_hud_tooltip_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
 	_hud_tooltip_label.add_theme_constant_override("outline_size", 3)
 	tooltip_margin.add_child(_hud_tooltip_label)
 
 
-func _set_hud_tooltip(node: Control, text: String) -> void:
+func _set_hud_tooltip(node: Control, text: String, wrap_text: bool = false) -> void:
 	if node == null:
 		return
 	_build_hud_tooltip()
 	node.tooltip_text = ""
 	node.set_meta("hud_tooltip", text)
+	node.set_meta("hud_tooltip_wrap", wrap_text)
 	if bool(node.get_meta("hud_tooltip_connected", false)):
 		return
 	node.set_meta("hud_tooltip_connected", true)
-	if not node.mouse_entered.is_connected(_on_hud_tooltip_entered):
-		node.mouse_entered.connect(_on_hud_tooltip_entered.bind(node))
-	if not node.mouse_exited.is_connected(_on_hud_tooltip_exited):
-		node.mouse_exited.connect(_on_hud_tooltip_exited)
+	if OS.has_feature("mobile"):
+		if not node.gui_input.is_connected(_on_hud_tooltip_gui_input):
+			node.gui_input.connect(_on_hud_tooltip_gui_input.bind(node))
+	else:
+		if not node.mouse_entered.is_connected(_on_hud_tooltip_entered):
+			node.mouse_entered.connect(_on_hud_tooltip_entered.bind(node))
+		if not node.mouse_exited.is_connected(_on_hud_tooltip_exited):
+			node.mouse_exited.connect(_on_hud_tooltip_exited)
 
 
 func _on_hud_tooltip_entered(node: Control) -> void:
 	if node == null or _hud_tooltip_panel == null or _hud_tooltip_label == null:
 		return
 	var text: String = str(node.get_meta("hud_tooltip", "")).strip_edges()
-	if text == "":
-		_hide_hud_tooltip()
-		return
-	_hud_tooltip_node = node
-	_hud_tooltip_label.text = text
-	_hud_tooltip_panel.reset_size()
-	_update_hud_tooltip_position()
-	_hud_tooltip_panel.visible = true
+	_show_hud_tooltip(text, node)
 
 
 func _on_hud_tooltip_exited() -> void:
+	_hide_hud_tooltip_safe()
+
+
+func _on_hud_tooltip_gui_input(event: InputEvent, node: Control) -> void:
+	if not OS.has_feature("mobile"):
+		return
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event
+		if touch_event.pressed:
+			var text: String = str(node.get_meta("hud_tooltip", "")).strip_edges()
+			if text == "":
+				return
+			_pending_tooltip_node = node
+			_pending_tooltip_text = text
+			if _hud_tooltip_hold_timer != null:
+				_hud_tooltip_hold_timer.start()
+		else:
+			_hide_hud_tooltip_safe()
+
+
+func _on_hud_tooltip_hold_timeout() -> void:
+	if _pending_tooltip_text == "" or _pending_tooltip_node == null:
+		return
+	_show_hud_tooltip(_pending_tooltip_text, _pending_tooltip_node)
+
+
+func _show_hud_tooltip(text: String, anchor_node: Control) -> void:
+	if _hud_tooltip_panel == null or _hud_tooltip_label == null:
+		return
+	var final_text: String = text.strip_edges()
+	if final_text == "":
+		_hide_hud_tooltip_safe()
+		return
+	_hud_tooltip_node = anchor_node
+	_hud_tooltip_label.text = final_text
+	_configure_hud_tooltip_wrap(bool(anchor_node.get_meta("hud_tooltip_wrap", false)) if anchor_node != null else false)
+	_hud_tooltip_panel.reset_size()
+	_update_hud_tooltip_position()
+	_hud_tooltip_panel.visible = true
+	await get_tree().process_frame
+	if _hud_tooltip_panel == null or not is_instance_valid(_hud_tooltip_panel) or not _hud_tooltip_panel.visible:
+		return
+	_update_hud_tooltip_position()
+
+
+func _configure_hud_tooltip_wrap(wrap_text: bool) -> void:
+	if _hud_tooltip_label == null:
+		return
+	if wrap_text:
+		_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		_hud_tooltip_label.custom_minimum_size.x = HUD_TOOLTIP_MAX_WIDTH - (HUD_TOOLTIP_PAD_X * 2.0) - (HUD_TOOLTIP_BORDER_WIDTH * 2.0)
+	else:
+		_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_hud_tooltip_label.custom_minimum_size.x = 0.0
+	_hud_tooltip_label.size = Vector2.ZERO
+
+
+func _hide_hud_tooltip_safe() -> void:
+	if _hud_tooltip_hold_timer != null:
+		_hud_tooltip_hold_timer.stop()
+	_pending_tooltip_node = null
+	_pending_tooltip_text = ""
 	_hide_hud_tooltip()
 
 
@@ -2459,7 +2727,9 @@ func _hide_hud_tooltip() -> void:
 func _update_hud_tooltip_position() -> void:
 	if _hud_tooltip_panel == null:
 		return
-	var tooltip_size: Vector2 = _hud_tooltip_panel.get_combined_minimum_size()
+	var tooltip_size: Vector2 = _hud_tooltip_panel.size
+	if tooltip_size == Vector2.ZERO:
+		tooltip_size = _hud_tooltip_panel.get_combined_minimum_size()
 	var target_pos: Vector2 = get_global_mouse_position() + Vector2(15, 15)
 	if _hud_tooltip_node != null and _hud_tooltip_node.is_inside_tree():
 		var node_rect: Rect2 = _hud_tooltip_node.get_global_rect()
@@ -2467,11 +2737,13 @@ func _update_hud_tooltip_position() -> void:
 			node_rect.position.x + (node_rect.size.x - tooltip_size.x) / 2.0,
 			node_rect.position.y - tooltip_size.y - 12.0
 		)
-	var screen_rect: Rect2 = get_viewport_rect()
-	target_pos.x = clampf(target_pos.x, 12.0, screen_rect.size.x - tooltip_size.x - 12.0)
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
 	if target_pos.y < 12.0 and _hud_tooltip_node != null and _hud_tooltip_node.is_inside_tree():
 		target_pos.y = _hud_tooltip_node.get_global_rect().end.y + 12.0
-	target_pos.y = clampf(target_pos.y, 12.0, screen_rect.size.y - tooltip_size.y - 12.0)
+	target_pos.x = minf(target_pos.x, viewport_size.x - tooltip_size.x - 8.0)
+	target_pos.x = maxf(target_pos.x, 8.0)
+	target_pos.y = minf(target_pos.y, viewport_size.y - tooltip_size.y - 8.0)
+	target_pos.y = maxf(target_pos.y, 8.0)
 	_hud_tooltip_panel.global_position = target_pos
 
 
@@ -3119,6 +3391,7 @@ func _apply_column_child_sizes(slot: Control, slot_size: Vector2) -> void:
 	var card: Control = null
 	var readout: Control = null
 	var anchor: Control = null
+	var unit_panel: Control = null
 	for child_variant in column.get_children():
 		var child: Control = child_variant as Control
 		if child == null:
@@ -3127,16 +3400,34 @@ func _apply_column_child_sizes(slot: Control, slot_size: Vector2) -> void:
 			anchor = child
 		elif child is AbilityReadout:
 			readout = child
+		elif child.name == "UnitPanel":
+			unit_panel = child
+			for panel_child_variant in child.get_children():
+				var panel_child: Control = panel_child_variant as Control
+				if panel_child == null:
+					continue
+				for vbox_child_variant in panel_child.get_children():
+					var vbox_child: Control = vbox_child_variant as Control
+					if vbox_child == null:
+						continue
+					if vbox_child is AbilityReadout:
+						readout = vbox_child
+					else:
+						card = vbox_child
 		else:
 			card = child
+	var fixed_card_height: float = maxf(0.0, slot_size.y - COMPACT_READOUT_HEIGHT_PX - COMPACT_DICE_ANCHOR_HEIGHT_PX - (separation * 2.0))
 	if readout != null:
 		readout.custom_minimum_size = Vector2(0, COMPACT_READOUT_HEIGHT_PX)
 		readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	if anchor != null:
 		anchor.custom_minimum_size = Vector2(0, COMPACT_DICE_ANCHOR_HEIGHT_PX)
 		anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if unit_panel != null:
+		var panel_height: float = COMPACT_READOUT_HEIGHT_PX + fixed_card_height + 6.0
+		unit_panel.custom_minimum_size = Vector2(slot_size.x, panel_height)
+		unit_panel.size = Vector2(slot_size.x, panel_height)
 	if card != null:
-		var fixed_card_height: float = maxf(0.0, slot_size.y - COMPACT_READOUT_HEIGHT_PX - COMPACT_DICE_ANCHOR_HEIGHT_PX - (separation * 2.0))
 		var card_size := Vector2(slot_size.x, fixed_card_height)
 		card.custom_minimum_size = card_size
 		card.size = card_size
@@ -3225,7 +3516,7 @@ func _build_effect_chips(raw: Dictionary) -> Array:
 	if dot > 0:
 		chips.append(_make_effect_chip("◌", "%d" % dot, Color(0.43, 0.19, 0.22, 0.98), Color(1.0, 0.60, 0.64, 0.95), "inflicts %d poison for %d turn%s" % [dot, dot_turns, "" if dot_turns == 1 else "s"], dot_turns))
 	if roll_mod > 0:
-		chips.append(_make_effect_chip("◫", "-%d" % roll_mod, Color(0.46, 0.34, 0.14, 0.98), Color(0.96, 0.78, 0.42, 0.95), "modifies roll by -%d for %d turn%s" % [roll_mod, roll_mod_turns, "" if roll_mod_turns == 1 else "s"], roll_mod_turns))
+		chips.append(_make_effect_chip("◫", "-%d" % roll_mod, Color(0.46, 0.34, 0.14, 0.98), Color(0.96, 0.78, 0.42, 0.95), "Shift die roll by -%d." % roll_mod, roll_mod_turns))
 	if bool(raw.get("blastAll", false)):
 		chips.append(_make_effect_chip("◎", "A", Color(0.52, 0.20, 0.18, 0.98), Color(1.0, 0.56, 0.44, 0.95), "affects all valid targets"))
 	if bool(raw.get("healAll", false)):
@@ -3250,7 +3541,8 @@ func _make_effect_chip(icon: String, text: String, bg: Color, border: Color, too
 
 func _apply_battle_theme() -> void:
 	background.color = Color(0.030, 0.050, 0.080, 1.0)
-	PixelUI.style_label(summary_label, 34, PixelUI.TEXT_PRIMARY, 2)
+	PixelUI.style_label(summary_label, 56, PixelUI.TEXT_PRIMARY, 2)
+	summary_label.custom_minimum_size.y = 78
 	if USE_COMPACT_BATTLE_CARDS:
 		PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
 		PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
@@ -3263,7 +3555,8 @@ func _apply_battle_theme() -> void:
 	PixelUI.style_label(protocol_label, 24, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_label(protocol_value_label, 22, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_button(toggle_log_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
-	PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 34)
+	roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
+	PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, CENTER_ACTION_BUTTON_FONT_SIZE)
 	PixelUI.style_button(protocol_spend_button, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, 38)
 	PixelUI.style_button(return_to_menu_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.015, 0.020, 0.035, 1.0), PixelUI.LINE_DIM)

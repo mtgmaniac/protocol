@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/reward_screen.gd" id="1_wv6sk"]
 [ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="2_pp5yt"]
+[ext_resource type="PackedScene" path="res://scenes/shared/BattleHeader.tscn" id="3_klb4s"]
 
 [node name="RewardScreen" type="Control"]
 layout_mode = 3
@@ -49,10 +50,13 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
+[node name="HeaderRow" parent="Content/VBox" instance=ExtResource("3_klb4s")]
+layout_mode = 2
+
 [node name="Title" type="Label" parent="Content/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 37
-text = "Choose Items"
+text = "Choose Reward"
 
 [node name="SummaryLabel" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true
@@ -68,14 +72,36 @@ theme_override_font_sizes/font_size = 20
 autowrap_mode = 3
 text = "Inventory summary"
 
-[node name="RewardCards" type="GridContainer" parent="Content/VBox"]
+[node name="RewardScroll" type="ScrollContainer" parent="Content/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RewardListMargin" type="MarginContainer" parent="Content/VBox/RewardScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-columns = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
+
+[node name="RewardContent" type="VBoxContainer" parent="Content/VBox/RewardScroll/RewardListMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_constants/separation = 18
+
+[node name="RewardTitle" type="Label" parent="Content/VBox/RewardScroll/RewardListMargin/RewardContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Choose Reward"
+
+[node name="RewardCards" type="VBoxContainer" parent="Content/VBox/RewardScroll/RewardListMargin/RewardContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_constants/separation = 14
 
 [node name="FooterLabel" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true
@@ -83,15 +109,3 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 autowrap_mode = 3
 text = "Pick one reward to continue."
-
-[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox"]
-layout_mode = 2
-alignment = 2
-theme_override_constants/separation = 10
-
-[node name="ReturnToMenuButton" type="Button" parent="Content/VBox/ButtonRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(240, 58)
-text = "New Squad"
-
-[connection signal="pressed" from="Content/VBox/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]

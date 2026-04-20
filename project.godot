@@ -27,9 +27,8 @@ window/size/viewport_width=1080
 window/size/viewport_height=2400
 window/size/window_width_override=450
 window/size/window_height_override=1000
-window/handheld/orientation="portrait"
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
+window/handheld/orientation="portrait"
 
 [physics]
 

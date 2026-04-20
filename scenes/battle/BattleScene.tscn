@@ -202,8 +202,8 @@ size_flags_horizontal = 3
 [node name="RollButton" type="Button" parent="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(280, 76)
-text = "Roll All"
+custom_minimum_size = Vector2(360, 104)
+text = "Roll"
 
 [node name="EnemyPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true

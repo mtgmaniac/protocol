@@ -37,22 +37,22 @@ const ICON_MAP = {
 }
 
 const TOOLTIP_MAP = {
-	"SH": "Shield: Provides temporary damage absorption. Absorbs incoming damage before HP.",
-	"POI": "Poison: Deals damage at the end of every turn. Format shows damage × remaining turns.",
-	"RFE": "Reflect: Deals a portion of damage back to the attacker.",
+	"SH": "Absorbs {value} incoming damage.",
+	"POI": "Takes {value} damage at the start of next turn.",
+	"RFE": "Shift die roll by {value}.",
 	"STU": "Stun: Target skips their next turn.",
 	"REG": "Regen: Restores HP at the start of every turn.",
 	"VMP": "Vampire: Heals the attacker for a portion of damage dealt.",
 	"PRO": "Protection: Reduces incoming damage by a flat amount.",
-	"CLOAK": "Cloak: Greatly increases evasion, making the unit hard to hit.",
-	"COWER": "Cower: Unit is stunned and cannot take actions this turn.",
-	"FROZEN": "Frozen: Die is locked to a specific value until thawed.",
-	"RAGE": "Rage: Increases damage dealt for each stack. Decays after use.",
-	"CURSED": "Cursed: Unit must roll twice and take the lower result.",
-	"TAUNT": "Taunt: Forces enemies to target this unit above others.",
-	"CNTR": "Counter: Chance to strike back immediately when attacked.",
+	"CLOAK": "80% chance to evade the next incoming damage attempt.",
+	"COWER": "Cannot deal damage this turn.",
+	"FROZEN": "Die result is locked and cannot be changed this turn.",
+	"RAGE": "Deals double damage this turn.",
+	"CURSED": "Abilities trigger at reduced effectiveness.",
+	"TAUNT": "Enemies must target this unit.",
+	"CNTR": "{value}% chance to reflect the next targeted hero attack.",
 	"PHASE 2": "Enraged: Boss has entered phase 2 with improved stats.",
-	"DOWN": "Eliminated: This unit is no longer active in combat.",
+	"DOWN": "Knocked out. Cannot act until revived.",
 	"DMG": "Damage: Deals direct damage to the target's health.",
 	"HEAL": "Heal: Restores HP to the target or self.",
 	"DOT": "Poison: Inflicts damage over time to the target.",
@@ -836,7 +836,7 @@ func _get_tooltip_for_chip(chip: Dictionary, icon_kind: String) -> String:
 	if icon_kind == "dot":
 		return "Inflicts %s poison." % value
 	if icon_kind == "dice":
-		return "Modifies the roll by %s." % value
+		return "Shift die roll by %s." % value
 	if icon_kind == "frost":
 		return "Freezes a die for %s reveal." % value
 	
@@ -847,6 +847,17 @@ func _get_tooltip_for_chip(chip: Dictionary, icon_kind: String) -> String:
 func _get_tooltip_for_status_badge(value_text: String, empty_text: String) -> String:
 	if empty_text == "GEAR":
 		return "Item: %s." % value_text
+	var status_value: String = _extract_status_value(value_text)
+	if value_text.begins_with("SH"):
+		return TOOLTIP_MAP.SH.replace("{value}", status_value)
+	if value_text.begins_with("POI"):
+		return TOOLTIP_MAP.POI.replace("{value}", status_value)
+	if value_text.begins_with("RFE"):
+		return TOOLTIP_MAP.RFE.replace("{value}", status_value)
+	if value_text.begins_with("CNTR"):
+		return TOOLTIP_MAP.CNTR.replace("{value}", status_value)
+	if value_text.begins_with("+") or value_text.begins_with("-") or value_text.contains("ROLL"):
+		return "Shift die roll by %s." % status_value
 		
 	for key in TOOLTIP_MAP.keys():
 		if value_text.begins_with(key):
@@ -856,6 +867,15 @@ func _get_tooltip_for_status_badge(value_text: String, empty_text: String) -> St
 		return TOOLTIP_MAP[value_text]
 		
 	return _professionalize_tooltip_text(value_text)
+
+
+func _extract_status_value(value_text: String) -> String:
+	var parts: PackedStringArray = value_text.strip_edges().split(" ", false)
+	for part in parts:
+		var clean_part: String = String(part).strip_edges()
+		if clean_part.is_valid_int() or (clean_part.begins_with("-") and clean_part.substr(1).is_valid_int()) or (clean_part.begins_with("+") and clean_part.substr(1).is_valid_int()):
+			return clean_part
+	return "0"
 
 
 func _professionalize_tooltip_text(text: String) -> String:

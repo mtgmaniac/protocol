@@ -57,9 +57,11 @@ var _face_panel_material: StandardMaterial3D
 var _edge_line_material: StandardMaterial3D
 var _frozen_filter_material: StandardMaterial3D
 var _dice_number_font: Font
+var _is_exiting_tree: bool = false
 
 
 func _ready() -> void:
+	_is_exiting_tree = false
 	_build_ui()
 	_build_world()
 	_build_d20_face_data()
@@ -70,6 +72,9 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_sync_viewport_size()
+	elif what == NOTIFICATION_EXIT_TREE:
+		_is_exiting_tree = true
+		_is_rolling = false
 
 
 func _sync_viewport_size() -> void:
@@ -109,6 +114,20 @@ func get_hero_rolls() -> Dictionary:
 
 func get_enemy_rolls() -> Dictionary:
 	return _enemy_results.duplicate()
+
+
+func get_die_screen_position(side: String, unit_id: String) -> Vector2:
+	var die: RigidBody3D = _die_by_key.get(_entry_key(side, unit_id), null) as RigidBody3D
+	if die == null or not is_instance_valid(die):
+		return Vector2.INF
+	if _camera == null or not is_instance_valid(_camera):
+		return Vector2.INF
+	if _viewport_container == null or not is_instance_valid(_viewport_container):
+		return Vector2.INF
+	var die_origin: Vector3 = die.global_transform.origin
+	if _camera.is_position_behind(die_origin):
+		return Vector2.INF
+	return _viewport_container.get_global_rect().position + _camera.unproject_position(die_origin)
 
 
 func show_result_actions(action_entries: Array) -> void:
@@ -173,7 +192,12 @@ func reroll_die_to_result(side: String, unit_id: String, result: int) -> void:
 	var spin_axis: Vector3 = Vector3(randf_range(-0.4, 0.4), 1.0, randf_range(-0.4, 0.4)).normalized()
 	var elapsed: float = 0.0
 	while elapsed < SELECTED_REROLL_TIME:
-		await get_tree().process_frame
+		var tree: SceneTree = get_tree()
+		if _is_exiting_tree or tree == null:
+			return
+		await tree.process_frame
+		if _is_exiting_tree or not is_inside_tree():
+			return
 		var delta: float = get_process_delta_time()
 		elapsed += delta
 		var t: float = clampf(elapsed / SELECTED_REROLL_TIME, 0.0, 1.0)
@@ -243,6 +267,9 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
 	_assign_frozen_die_origins(dice, target_origins)
 	await _wait_for_dice_to_settle(rolling_dice, target_origins)
+	if _is_exiting_tree or not is_inside_tree():
+		_is_rolling = false
+		return
 	await _finish_roll(dice)
 
 
@@ -280,7 +307,14 @@ func _finish_roll(dice: Array) -> void:
 			continue
 		_highlight_top_face(die, int(result_entry.get("result", 1)), str(result_entry.get("side", "")))
 
-	await get_tree().create_timer(RESULT_PRESENTATION_TIME).timeout
+	var tree: SceneTree = get_tree()
+	if _is_exiting_tree or tree == null:
+		_is_rolling = false
+		return
+	await tree.create_timer(RESULT_PRESENTATION_TIME).timeout
+	if _is_exiting_tree or not is_inside_tree():
+		_is_rolling = false
+		return
 	_enforce_assigned_result_origins(result_entries)
 
 	_is_rolling = false
@@ -289,6 +323,8 @@ func _finish_roll(dice: Array) -> void:
 
 
 func _start_result_face_present(die: RigidBody3D, result: int, target_origin: Vector3) -> void:
+	if _is_exiting_tree or not is_inside_tree():
+		return
 	var face_index: int = _get_face_index_for_result(result)
 	if face_index < 0:
 		return
@@ -531,7 +567,12 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 	var settled_times: Dictionary = {}
 	var resolved_die_ids: Dictionary = {}
 	while elapsed < MAX_ROLL_TIME:
-		await get_tree().physics_frame
+		var tree: SceneTree = get_tree()
+		if _is_exiting_tree or tree == null:
+			return
+		await tree.physics_frame
+		if _is_exiting_tree or not is_inside_tree():
+			return
 		var delta: float = get_physics_process_delta_time()
 		elapsed += delta
 		var all_resolved: bool = true
@@ -756,7 +797,6 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	_add_face_panels(die)
 	_add_edge_lines(die)
 	_add_face_labels(die)
-	_add_owner_label(die, str(entry.get("name", "")), str(entry.get("side", "")))
 
 	_dice_root.add_child(die)
 

@@ -3,6 +3,8 @@ class_name AbilityAudit
 extends RefCounted
 
 const HEROES_DATA_PATH := "res://data/raw/heroes.data.json"
+const ENEMIES_DATA_PATH := "res://data/raw/enemies.data.json"
+const BATTLE_SCENE_SCRIPT := preload("res://scripts/battle/battle_scene.gd")
 const AUDIT_ROLL := 10
 
 const EFFECT_FIELDS := [
@@ -38,6 +40,7 @@ const EFFECT_FIELDS := [
 var _passed: int = 0
 var _failed: int = 0
 var _failures: Array[String] = []
+var _notes: Array[String] = []
 var _started_msec: int = 0
 var _timeout_msec: int = 10000
 
@@ -46,6 +49,7 @@ func run(timeout_msec: int = 10000) -> Dictionary:
 	_passed = 0
 	_failed = 0
 	_failures.clear()
+	_notes.clear()
 	_started_msec = Time.get_ticks_msec()
 	_timeout_msec = maxi(timeout_msec, 1000)
 
@@ -66,6 +70,10 @@ func run(timeout_msec: int = 10000) -> Dictionary:
 			continue
 		_run_effect_audit(effect_field, ability)
 
+	_run_targeting_audits()
+	_run_regression_audits()
+	_run_text_alignment_audits()
+
 	_print_summary()
 	return _result()
 
@@ -79,6 +87,7 @@ func _result() -> Dictionary:
 		"passed": _passed,
 		"failed": _failed,
 		"failures": _failures.duplicate(),
+		"notes": _notes.duplicate(),
 	}
 
 
@@ -118,6 +127,28 @@ func _parse_json_file(path: String) -> Variant:
 	if parsed == null:
 		push_warning("Ability audit failed to parse JSON file: %s" % path)
 	return parsed
+
+
+func _load_enemy_abilities() -> Array[Dictionary]:
+	var parsed: Variant = _parse_json_file(ENEMIES_DATA_PATH)
+	if not (parsed is Dictionary):
+		return []
+
+	var abilities: Array[Dictionary] = []
+	var enemy_abilities: Dictionary = (parsed as Dictionary).get("enemyAbilities", {})
+	for enemy_type in enemy_abilities.keys():
+		var ability_set: Dictionary = enemy_abilities[enemy_type]
+		for zone in ["recharge", "strike", "surge", "crit", "overload"]:
+			var raw: Dictionary = ability_set.get(zone, {})
+			if raw.is_empty():
+				continue
+			abilities.append({
+				"enemy_type": str(enemy_type),
+				"source_name": str(zone),
+				"ability_name": str(raw.get("name", "Unnamed Ability")),
+				"raw": raw.duplicate(true),
+			})
+	return abilities
 
 
 func _find_ability_for_field(abilities: Array[Dictionary], effect_field: String) -> Dictionary:
@@ -200,6 +231,346 @@ func _run_effect_audit(effect_field: String, ability: Dictionary) -> void:
 		)
 
 
+func _run_targeting_audits() -> void:
+	var battle_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if battle_scene == null:
+		_record_failure("Targeting", "battle_scene", "BattleScene script instantiates", "new() returned null")
+		return
+
+	var cases: Array[Dictionary] = [
+		{"name": "single damage requires enemy", "raw": {"dmg": 5}, "manual": "enemy"},
+		{"name": "single poison requires enemy", "raw": {"dot": 2, "dT": 2}, "manual": "enemy"},
+		{"name": "single roll debuff requires enemy", "raw": {"rfe": 2, "rfT": 1}, "manual": "enemy"},
+		{"name": "blast all requires no manual target", "raw": {"dmg": 5, "blastAll": true}, "manual": ""},
+		{"name": "heal all requires no manual target", "raw": {"heal": 5, "healAll": true}, "manual": ""},
+		{"name": "shield all requires no manual target", "raw": {"shield": 5, "shT": 2, "shieldAll": true}, "manual": ""},
+		{"name": "mixed healAll plus single damage requires enemy", "raw": {"dmg": 6, "heal": 7, "healAll": true}, "manual": "enemy"},
+		{"name": "mixed shieldAll plus single rfe requires enemy", "raw": {"rfe": 2, "rfT": 2, "shield": 8, "shT": 2, "shieldAll": true}, "manual": "enemy"},
+		{"name": "targeted heal requires hero", "raw": {"heal": 6, "healTgt": true}, "manual": "hero"},
+		{"name": "targeted shield requires hero", "raw": {"shield": 6, "shT": 2, "shTgt": true}, "manual": "hero"},
+		{"name": "revive requires dead hero", "raw": {"revive": true}, "manual": "dead_hero"},
+		{"name": "freeze any requires any", "raw": {"freezeAnyDice": 1}, "manual": "any"},
+	]
+
+	for case in cases:
+		var actual: String = str(battle_scene.call("_get_manual_target_side", {"raw": case["raw"]}))
+		_expect_and_record(
+			"Targeting / %s" % str(case["name"]),
+			"manual_side",
+			str(case["manual"]),
+			actual
+		)
+
+	var self_state: Dictionary = {"id": "self", "selected_target_id": "", "target_display": "--"}
+	battle_scene.call("_auto_assign_hero_target", self_state, {"raw": {"shield": 5, "shT": 1}})
+	_expect_and_record("Targeting / self shield auto target", "auto_target", "self:Self", "%s:%s" % [str(self_state.get("selected_target_id", "")), str(self_state.get("target_display", ""))])
+
+	var all_state: Dictionary = {"id": "hero", "selected_target_id": "", "target_display": "--"}
+	battle_scene.call("_auto_assign_hero_target", all_state, {"raw": {"heal": 5, "healAll": true}})
+	_expect_and_record("Targeting / healAll auto target", "auto_target", ":All Squad", "%s:%s" % [str(all_state.get("selected_target_id", "")), str(all_state.get("target_display", ""))])
+	battle_scene.free()
+
+
+func _run_regression_audits() -> void:
+	_run_enemy_shield_ally_regression()
+	_run_cower_duration_regression()
+	_run_poison_timing_regression()
+	_run_roll_modifier_timing_regressions()
+	_run_shield_timing_regression()
+	_run_cloak_regression()
+	_run_counter_regressions()
+	_run_rampage_regression()
+	_run_freeze_regression()
+	_run_down_cleanup_regression()
+
+
+func _run_enemy_shield_ally_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var actor_unit: EnemyData = _make_enemy("audit_enemy_actor", "Audit Enemy Actor", "Ally Shield Regression", {
+		"shield": 5,
+		"shT": 2,
+		"shieldAlly": 7,
+	})
+	var ally_unit: EnemyData = _make_enemy("audit_enemy_ally", "Audit Enemy Ally")
+	manager.setup_battle([hero_unit], [actor_unit, ally_unit])
+
+	var enemies: Array = manager.get_enemy_states()
+	var actor: Dictionary = enemies[0]
+	var ally: Dictionary = enemies[1]
+	actor["selected_target_id"] = str(actor["id"])
+
+	manager.resolve_round({}, {str(actor["id"]): AUDIT_ROLL}, DiceManager.new())
+
+	var ally_remaining_turns: int = _max_stack_turns(ally.get("shield_stacks", []))
+	var ok: bool = int(actor.get("shield", 0)) == 5 and int(ally.get("shield", 0)) == 7 and ally_remaining_turns == 2
+	if ok:
+		_record_pass("Regression / enemy shieldAlly", "shieldAlly")
+	else:
+		_record_failure(
+			"Regression / enemy shieldAlly",
+			"shieldAlly",
+			"self shield 5, ally shield 7, ally remaining turns 2 after first end tick",
+			"self shield %d, ally shield %d, ally remaining turns %d" % [int(actor.get("shield", 0)), int(ally.get("shield", 0)), ally_remaining_turns]
+		)
+
+
+func _run_cower_duration_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_cower_enemy", "Audit Cower Enemy", "Cower Regression", {
+		"cowerT": 1,
+	})
+	manager.setup_battle([hero_unit], [enemy_unit])
+
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["selected_target_id"] = str(hero["id"])
+
+	manager.resolve_round({}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+
+	var ok: bool = int(hero.get("cower_turns", 0)) == 1 and not bool(hero.get("cower_skip_next_tick", false))
+	if ok:
+		_record_pass("Regression / cower next hero turn", "cowerT")
+	else:
+		_record_failure(
+			"Regression / cower next hero turn",
+			"cowerT",
+			"1 cower turn remains after the applying enemy round ends",
+			"cower_turns=%d skip=%s" % [int(hero.get("cower_turns", 0)), str(hero.get("cower_skip_next_tick", false))]
+		)
+
+
+func _run_poison_timing_regression() -> void:
+	var context: Dictionary = _build_context({"dot": 3, "dT": 2}, "Poison Timing Regression")
+	var manager: CombatManager = context["manager"]
+	var actor: Dictionary = context["actor"]
+	var enemy: Dictionary = context["enemy_a"]
+	actor["selected_target_id"] = str(enemy["id"])
+
+	var before_hp: int = int(enemy["current_hp"])
+	manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var after_first_hp: int = int(enemy["current_hp"])
+	var after_first_turns: int = int(enemy["poison_turns"])
+	var after_first_poison: int = int(enemy["poison"])
+	manager.resolve_round({}, {}, DiceManager.new())
+
+	var ok: bool = (
+		after_first_hp == before_hp
+		and after_first_poison == 3
+		and after_first_turns == 2
+		and int(enemy["current_hp"]) == before_hp - 3
+		and int(enemy["poison_turns"]) == 1
+	)
+	if ok:
+		_record_pass("Regression / poison skip-next-tick", "dot")
+	else:
+		_record_failure(
+			"Regression / poison skip-next-tick",
+			"dot",
+			"first round no tick, second round ticks once",
+			"hp before=%d after_first=%d after_second=%d poison=%d turns_after_first=%d turns_after_second=%d" % [before_hp, after_first_hp, int(enemy["current_hp"]), after_first_poison, after_first_turns, int(enemy["poison_turns"])]
+		)
+
+
+func _run_roll_modifier_timing_regressions() -> void:
+	var debuff_context: Dictionary = _build_context({"rfe": 2, "rfT": 1}, "RFE Timing Regression")
+	var debuff_manager: CombatManager = debuff_context["manager"]
+	var debuff_actor: Dictionary = debuff_context["actor"]
+	var debuff_enemy: Dictionary = debuff_context["enemy_a"]
+	debuff_actor["selected_target_id"] = str(debuff_enemy["id"])
+	debuff_manager.resolve_round({str(debuff_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var debuffed_roll: int = debuff_manager.get_effective_roll(debuff_enemy, 10)
+	debuff_manager.resolve_round({}, {}, DiceManager.new())
+	var cleared_debuff_roll: int = debuff_manager.get_effective_roll(debuff_enemy, 10)
+	_expect_and_record("Regression / RFE timing", "rfe", "8 then 10", "%d then %d" % [debuffed_roll, cleared_debuff_roll])
+
+	var buff_context: Dictionary = _build_context({"rfm": 3, "rfmT": 1}, "Roll Buff Timing Regression")
+	var buff_manager: CombatManager = buff_context["manager"]
+	var buff_actor: Dictionary = buff_context["actor"]
+	buff_manager.resolve_round({str(buff_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var buffed_roll: int = buff_manager.get_effective_roll(buff_actor, 10)
+	buff_manager.resolve_round({}, {}, DiceManager.new())
+	var cleared_buff_roll: int = buff_manager.get_effective_roll(buff_actor, 10)
+	_expect_and_record("Regression / roll buff timing", "rfm", "13 then 10", "%d then %d" % [buffed_roll, cleared_buff_roll])
+
+
+func _run_shield_timing_regression() -> void:
+	var context: Dictionary = _build_context({"shield": 5, "shT": 1}, "Shield Timing Regression")
+	var manager: CombatManager = context["manager"]
+	var actor: Dictionary = context["actor"]
+	manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var shield_after_apply: int = int(actor.get("shield", 0))
+	var turns_after_apply: int = _max_stack_turns(actor.get("shield_stacks", []))
+	manager.resolve_round({}, {}, DiceManager.new())
+	var shield_after_second_tick: int = int(actor.get("shield", 0))
+	var ok: bool = shield_after_apply == 5 and turns_after_apply == 1 and shield_after_second_tick == 0
+	if ok:
+		_record_pass("Regression / shield skip-next-tick", "shield")
+	else:
+		_record_failure(
+			"Regression / shield skip-next-tick",
+			"shield",
+			"shield survives first end tick and expires on next",
+			"shield_after_apply=%d turns_after_apply=%d shield_after_second_tick=%d" % [shield_after_apply, turns_after_apply, shield_after_second_tick]
+		)
+
+
+func _run_cloak_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	hero["cloaked"] = true
+	var before_hp: int = int(hero["current_hp"])
+	manager.call("_damage_state", hero, 7)
+	var after_hp: int = int(hero["current_hp"])
+	var ok: bool = not bool(hero.get("cloaked", false)) and (after_hp == before_hp or after_hp == before_hp - 7)
+	if ok:
+		_record_pass("Regression / cloak consumed by damage attempt", "cloak")
+	else:
+		_record_failure("Regression / cloak consumed by damage attempt", "cloak", "cloak consumed; HP unchanged or loses incoming damage", "cloaked=%s hp_delta=%d" % [str(hero.get("cloaked", false)), before_hp - after_hp])
+
+
+func _run_counter_regressions() -> void:
+	var targeted_context: Dictionary = _build_context({"dmg": 9}, "Counter Targeted Regression")
+	var targeted_manager: CombatManager = targeted_context["manager"]
+	var targeted_actor: Dictionary = targeted_context["actor"]
+	var targeted_enemy: Dictionary = targeted_context["enemy_a"]
+	targeted_actor["selected_target_id"] = str(targeted_enemy["id"])
+	targeted_enemy["counter_pct"] = 100
+	var actor_hp_before: int = int(targeted_actor["current_hp"])
+	var enemy_hp_before: int = int(targeted_enemy["current_hp"])
+	targeted_manager.resolve_round({str(targeted_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var targeted_ok: bool = int(targeted_actor["current_hp"]) == actor_hp_before - 9 and int(targeted_enemy["current_hp"]) == enemy_hp_before and int(targeted_enemy["counter_pct"]) == 0
+	if targeted_ok:
+		_record_pass("Regression / counter reflects targeted attack", "counter")
+	else:
+		_record_failure("Regression / counter reflects targeted attack", "counter", "100% counter reflects full targeted damage and clears", "actor_hp=%d enemy_hp=%d counter=%d" % [int(targeted_actor["current_hp"]), int(targeted_enemy["current_hp"]), int(targeted_enemy["counter_pct"])])
+
+	var blast_context: Dictionary = _build_context({"dmg": 9, "blastAll": true}, "Counter Blast Regression")
+	var blast_manager: CombatManager = blast_context["manager"]
+	var blast_actor: Dictionary = blast_context["actor"]
+	var blast_enemy_a: Dictionary = blast_context["enemy_a"]
+	var blast_enemy_b: Dictionary = blast_context["enemy_b"]
+	blast_enemy_a["counter_pct"] = 100
+	var blast_actor_hp_before: int = int(blast_actor["current_hp"])
+	var blast_enemy_a_hp_before: int = int(blast_enemy_a["current_hp"])
+	var blast_enemy_b_hp_before: int = int(blast_enemy_b["current_hp"])
+	blast_manager.resolve_round({str(blast_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var blast_ok: bool = (
+		int(blast_actor["current_hp"]) == blast_actor_hp_before
+		and int(blast_enemy_a["current_hp"]) == blast_enemy_a_hp_before - 9
+		and int(blast_enemy_b["current_hp"]) == blast_enemy_b_hp_before - 9
+		and int(blast_enemy_a["counter_pct"]) == 100
+	)
+	if blast_ok:
+		_record_pass("Regression / counter bypassed by blastAll", "counter")
+	else:
+		_record_failure("Regression / counter bypassed by blastAll", "counter", "blastAll damages enemies without reflecting or clearing counter", "actor_hp=%d enemy_a_delta=%d enemy_b_delta=%d counter=%d" % [int(blast_actor["current_hp"]), blast_enemy_a_hp_before - int(blast_enemy_a["current_hp"]), blast_enemy_b_hp_before - int(blast_enemy_b["current_hp"]), int(blast_enemy_a["counter_pct"])])
+
+
+func _run_rampage_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Rampage Hit", {"dmg": 6})
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["selected_target_id"] = str(hero["id"])
+	enemy["rampage_charges"] = 1
+	var before_hp: int = int(hero["current_hp"])
+	manager.resolve_round({}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var ok: bool = int(hero["current_hp"]) == before_hp - 12 and int(enemy["rampage_charges"]) == 0
+	if ok:
+		_record_pass("Regression / rampage consumes charge", "rampage")
+	else:
+		_record_failure("Regression / rampage consumes charge", "rampage", "one charge doubles next damage and is consumed", "hero_delta=%d charges=%d" % [before_hp - int(hero["current_hp"]), int(enemy["rampage_charges"])])
+
+
+func _run_freeze_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["last_die_value"] = 12
+	manager.call("_freeze_die_state", enemy, 1)
+	manager.call("_freeze_die_state", enemy, 1)
+	var ok: bool = int(enemy.get("die_freeze_turns", 0)) == 2 and int(enemy.get("frozen_die_value", 0)) == 12
+	if ok:
+		_record_pass("Regression / freeze stacks reveal skips", "freeze")
+	else:
+		_record_failure("Regression / freeze stacks reveal skips", "freeze", "freeze turns add and frozen value is preserved", "turns=%d value=%d" % [int(enemy.get("die_freeze_turns", 0)), int(enemy.get("frozen_die_value", 0))])
+
+
+func _run_down_cleanup_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	hero["shield"] = 5
+	hero["shield_stacks"] = [{"amt": 5, "turns_left": 1, "skip_next_tick": false}]
+	hero["poison"] = 3
+	hero["poison_turns"] = 2
+	hero["rfe_stacks"] = [{"amt": 2, "turns_left": 1, "skip_next_tick": false}]
+	hero["roll_buff"] = 2
+	hero["roll_buff_turns"] = 1
+	hero["cloaked"] = true
+	hero["cower_turns"] = 1
+	hero["die_freeze_turns"] = 1
+	hero["rampage_charges"] = 1
+	hero["counter_pct"] = 50
+	hero["cursed"] = true
+	hero["taunting"] = true
+	manager.call("_clear_active_statuses_for_down_state", hero)
+	var ok: bool = (
+		int(hero["shield"]) == 0
+		and int(hero["poison"]) == 0
+		and int(hero["roll_buff"]) == 0
+		and not bool(hero["cloaked"])
+		and int(hero["cower_turns"]) == 0
+		and int(hero["die_freeze_turns"]) == 0
+		and int(hero["rampage_charges"]) == 0
+		and int(hero["counter_pct"]) == 0
+		and not bool(hero["cursed"])
+		and not bool(hero["taunting"])
+	)
+	if ok:
+		_record_pass("Regression / down clears active statuses", "cleanup")
+	else:
+		_record_failure("Regression / down clears active statuses", "cleanup", "all active statuses cleared", "state=%s" % str(_snapshot_state(hero)))
+
+
+func _run_text_alignment_audits() -> void:
+	var stale_patterns: Array[String] = [
+		"Untargetable by enemies this turn",
+		"Unit becomes untargetable",
+		"Reflects a portion of damage taken",
+	]
+	var text_paths: Array[String] = [
+		"res://scripts/battle/battle_scene.gd",
+		"res://scripts/ui/ability_readout.gd",
+		"res://scripts/ui/compact_unit_card.gd",
+		"res://scripts/units/unit_card.gd",
+		"res://data/raw/heroes.data.json",
+		"res://data/raw/enemies.data.json",
+	]
+	for path in text_paths:
+		var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+		for pattern in stale_patterns:
+			if text.contains(pattern):
+				_record_failure("Text alignment / stale phrase", path, "no stale phrase: %s" % pattern, "found")
+			else:
+				_record_pass("Text alignment / %s" % path.get_file(), "no stale %s" % pattern)
+
+	var compact_text: String = FileAccess.get_file_as_string("res://scripts/ui/compact_unit_card.gd")
+	_expect_and_record("Text alignment / compact cloak text", "text", "contains 80% cloak text", "contains 80% cloak text" if compact_text.contains("80% chance to evade the next incoming damage attempt.") else "missing")
+	_expect_and_record("Text alignment / compact counter text", "text", "contains targeted hero attack text", "contains targeted hero attack text" if compact_text.contains("next targeted hero attack") else "missing")
+
+
 func _build_context(raw: Dictionary, ability_name: String) -> Dictionary:
 	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", ability_name, raw)
 	var ally_a_unit: UnitData = _make_unit("audit_ally_a", "Audit Ally A", "Noop", {})
@@ -231,12 +602,12 @@ func _make_unit(id: String, display_name: String, ability_name: String, raw: Dic
 	return unit
 
 
-func _make_enemy(id: String, display_name: String) -> EnemyData:
+func _make_enemy(id: String, display_name: String, ability_name: String = "Noop", raw: Dictionary = {}) -> EnemyData:
 	var enemy: EnemyData = EnemyData.new()
 	enemy.id = id
 	enemy.display_name = display_name
 	enemy.max_hp = 100
-	enemy.dice_ranges = [_make_ability_entry("Noop", {})]
+	enemy.dice_ranges = [_make_ability_entry(ability_name, raw)]
 	return enemy
 
 
@@ -436,6 +807,13 @@ func _expect_min_int(effect_field: String, expected_min: int, actual: int, label
 
 func _expect_event_amount(effect_field: String, events: Array, event_type: String, amount: int, side: String) -> Dictionary:
 	return _expect_bool(effect_field, _has_event(events, event_type, amount, side), "%s event amount %d side %s" % [event_type, amount, side], "events=%s" % str(events))
+
+
+func _expect_and_record(ability_name: String, effect_field: String, expected: String, actual: String) -> void:
+	if actual == expected:
+		_record_pass(ability_name, effect_field)
+	else:
+		_record_failure(ability_name, effect_field, expected, actual)
 
 
 func _expect_bool(_effect_field: String, ok: bool, expected: String, actual: String) -> Dictionary:
