@@ -36,27 +36,38 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = -12.0
+offset_left = 14.0
+offset_top = 16.0
+offset_right = -14.0
+offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="Content"]
 layout_mode = 2
-theme_override_constants/separation = 12
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Content/VBox"]
+[node name="LogoPanel" type="PanelContainer" parent="Content/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 37
-text = "Select Squad"
+custom_minimum_size = Vector2(0, 202)
+size_flags_horizontal = 3
 
-[node name="SummaryLabel" type="Label" parent="Content/VBox"]
+[node name="LogoMargin" type="MarginContainer" parent="Content/VBox/LogoPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 2
+
+[node name="LogoImage" type="TextureRect" parent="Content/VBox/LogoPanel/LogoMargin"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "Pick 4 heroes."
+custom_minimum_size = Vector2(324, 194)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 0
 
 [node name="OperationPanel" type="PanelContainer" parent="Content/VBox"]
 layout_mode = 2
@@ -64,55 +75,83 @@ size_flags_horizontal = 3
 
 [node name="OperationMargin" type="MarginContainer" parent="Content/VBox/OperationPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
 
 [node name="OperationVBox" type="VBoxContainer" parent="Content/VBox/OperationPanel/OperationMargin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
-[node name="OperationSelect" type="OptionButton" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+[node name="OperationTitle" type="Label" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 54)
+horizontal_alignment = 1
+text = "CHOOSE OPERATION"
+
+[node name="OperationDivider" type="ColorRect" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+color = Color(0.164706, 0.227451, 0.321569, 1)
+
+[node name="OperationSectionLabel" type="Label" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "OPERATION"
+
+[node name="OperationButtons" type="GridContainer" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 3
 
 [node name="OperationBlurbLabel" type="Label" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 3
+clip_text = true
+text_overrun_behavior = 3
 text = "Select an operation track."
 
-[node name="HeroScroll" type="ScrollContainer" parent="Content/VBox"]
-custom_minimum_size = Vector2(0, 0)
+[node name="SummaryLabel" type="Label" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 3
+text = "SQUAD 0/3"
 
-[node name="HeroList" type="VBoxContainer" parent="Content/VBox/HeroScroll"]
+[node name="HeroList" type="GridContainer" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 12
+columns = 2
 
-[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox"]
+[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
 layout_mode = 2
 alignment = 2
 theme_override_constants/separation = 10
 
-[node name="RandomButton" type="Button" parent="Content/VBox/ButtonRow"]
+[node name="RandomButton" type="Button" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(240, 58)
-text = "Random Squad"
+custom_minimum_size = Vector2(0, 104)
+size_flags_horizontal = 3
+text = "RANDOM"
 
-[node name="ContinueButton" type="Button" parent="Content/VBox/ButtonRow"]
+[node name="ContinueButton" type="Button" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(240, 58)
+custom_minimum_size = Vector2(0, 104)
+size_flags_horizontal = 3
 disabled = true
-text = "Enter Battle"
+text = "BEGIN RUN"
 
-[connection signal="pressed" from="Content/VBox/ButtonRow/RandomButton" to="." method="_on_random_button_pressed"]
-[connection signal="pressed" from="Content/VBox/ButtonRow/ContinueButton" to="." method="_on_continue_button_pressed"]
-[connection signal="item_selected" from="Content/VBox/OperationPanel/OperationMargin/OperationVBox/OperationSelect" to="." method="_on_operation_selected"]
+[node name="Title" type="Label" parent="Content/VBox"]
+visible = false
+layout_mode = 2
+text = "Select Squad"
+
+[connection signal="pressed" from="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow/RandomButton" to="." method="_on_random_button_pressed"]
+[connection signal="pressed" from="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow/ContinueButton" to="." method="_on_continue_button_pressed"]

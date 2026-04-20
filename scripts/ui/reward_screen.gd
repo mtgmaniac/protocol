@@ -1,20 +1,20 @@
 # Phase 6 reward screen that rolls three item choices and applies the selected reward into GameState.
 extends Control
 
-const CARD_WIDTH_RATIO := 0.75
-const CARD_MIN_SIZE := 310.0
-const CARD_MAX_SIZE := 390.0
-const CARD_LIST_MIN_TOP_MARGIN := 28
-const CARD_IMAGE_RATIO := 0.22
+const CARD_WIDTH_FRACTION := 0.75
+const CARD_MIN_WIDTH := 310.0
+const CARD_MAX_WIDTH := 390.0
+const CARD_TOP_SPACER_HEIGHT := 40.0
+const CARD_IMAGE_HEIGHT := 104.0
 const EFFECT_ICON_SIZE := 62
 const EFFECT_VALUE_SIZE := 52
 const EFFECT_TAG_SIZE := 34
 const BODY_FONT_SIZE := 30
 const SMALL_FONT_SIZE := 22
+const GEAR_TARGET_BUTTON_FONT_SIZE := 26
+const GEAR_TARGET_BUTTON_HEIGHT := 58
 const CARD_BG := Color(0.024, 0.040, 0.060, 0.78)
 const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.88)
-const COMPARE_BG := Color(0.008, 0.014, 0.024, 0.36)
-const GAIN_COLOR := Color(0.50, 0.86, 0.62, 1.0)
 const RARITY_COLORS := {
 	"common": Color(0.62, 0.68, 0.74, 1.0),
 	"uncommon": Color(0.34, 0.82, 0.50, 1.0),
@@ -35,6 +35,7 @@ const RARITY_COLORS := {
 @onready var reward_scroll: ScrollContainer = $Content/VBox/RewardScroll
 @onready var reward_list_margin: MarginContainer = %RewardListMargin
 @onready var reward_content: VBoxContainer = %RewardContent
+@onready var reward_top_spacer: Control = %RewardTopSpacer
 @onready var reward_title_label: Label = %RewardTitle
 @onready var reward_cards: VBoxContainer = %RewardCards
 @onready var footer_label: Label = %FooterLabel
@@ -141,7 +142,7 @@ func _build_reward_cards() -> void:
 		var item: ItemData = item_variant as ItemData
 		if item == null:
 			continue
-		var card: Control = _create_reward_card(item)
+		var card: PanelContainer = _create_reward_card(item)
 		reward_cards.add_child(card)
 	call_deferred("_update_reward_layout")
 
@@ -149,52 +150,46 @@ func _build_reward_cards() -> void:
 func _update_reward_layout() -> void:
 	if reward_cards == null:
 		return
-	var card_size: float = _get_card_square_size()
-	reward_content.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	reward_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var card_width: float = _get_card_width()
+	reward_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	reward_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	reward_content.add_theme_constant_override("separation", 18)
 	reward_cards.add_theme_constant_override("separation", 18)
 	reward_list_margin.add_theme_constant_override("margin_left", 0)
 	reward_list_margin.add_theme_constant_override("margin_right", 0)
+	reward_list_margin.add_theme_constant_override("margin_top", 0)
+	reward_list_margin.add_theme_constant_override("margin_bottom", 24)
+	if reward_top_spacer != null:
+		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	for child in reward_cards.get_children():
-		var control: Control = child as Control
-		if control != null:
-			control.custom_minimum_size = Vector2(card_size, card_size)
-			control.size = Vector2(card_size, card_size)
-			var card_panel: Control = control.get_node_or_null("CardPanel") as Control
-			if card_panel != null:
-				_place_square_card_panel(card_panel, card_size)
-	var reward_title_height: float = maxf(reward_title_label.get_combined_minimum_size().y, 72.0)
-	var total_cards_height: float = reward_title_height + 18.0 + (card_size * float(reward_cards.get_child_count())) + (18.0 * float(maxi(reward_cards.get_child_count() - 1, 0)))
-	var available_height: float = reward_scroll.size.y
-	var top_margin: int = maxi(CARD_LIST_MIN_TOP_MARGIN, int(floor((available_height - total_cards_height) * 0.5)))
-	reward_list_margin.add_theme_constant_override("margin_top", top_margin)
-	reward_list_margin.add_theme_constant_override("margin_bottom", top_margin)
+		var panel: PanelContainer = child as PanelContainer
+		if panel != null:
+			panel.custom_minimum_size = Vector2(card_width, 0)
+			panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
-func _get_card_square_size() -> float:
-	var available_width: float = maxf(size.x - 24.0, 1.0)
-	return clampf(available_width * CARD_WIDTH_RATIO, CARD_MIN_SIZE, CARD_MAX_SIZE)
+func _get_card_width() -> float:
+	var available_width: float = reward_scroll.size.x if reward_scroll != null else size.x
+	if available_width <= 1.0:
+		available_width = get_viewport().get_visible_rect().size.x
+	available_width = maxf(available_width - 24.0, 1.0)
+	return clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH)
 
 
-func _create_reward_card(item: ItemData) -> Control:
-	var card_size: float = _get_card_square_size()
-	var square := Control.new()
-	square.custom_minimum_size = Vector2(card_size, card_size)
-	square.size = Vector2(card_size, card_size)
-	square.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	square.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	square.clip_contents = false
-
+func _create_reward_card(item: ItemData) -> PanelContainer:
+	var card_width: float = _get_card_width()
 	var panel := PanelContainer.new()
-	panel.name = "CardPanel"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.clip_contents = true
+	panel.custom_minimum_size = Vector2(card_width, 0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.clip_contents = false
 	_style_reward_panel(panel, item, false)
 	panel.mouse_entered.connect(_style_reward_panel.bind(panel, item, true))
 	panel.mouse_exited.connect(_style_reward_panel.bind(panel, item, false))
-	square.add_child(panel)
-	_place_square_card_panel(panel, card_size)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 14)
@@ -205,11 +200,11 @@ func _create_reward_card(item: ItemData) -> Control:
 
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	vbox.add_theme_constant_override("separation", 10)
 	margin.add_child(vbox)
 
-	vbox.add_child(_create_item_image_area(item, card_size))
+	vbox.add_child(_create_item_image_area(item))
 	vbox.add_child(_create_card_header(item))
 	vbox.add_child(_create_type_rarity_row(item))
 	vbox.add_child(_create_effect_row(_build_effect_parts_for_item(item), true))
@@ -217,26 +212,14 @@ func _create_reward_card(item: ItemData) -> Control:
 	if item.item_type == "gear":
 		_add_gear_selector(vbox, item)
 
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(spacer)
-
 	var action_button := Button.new()
 	action_button.custom_minimum_size = Vector2(0, 72)
 	action_button.text = _build_claim_button_text(item)
 	PixelUI.style_button(action_button, Color(0.022, 0.034, 0.050, 0.95), _get_item_accent(item), 26)
-	action_button.pressed.connect(_on_claim_reward_pressed.bind(item.id, _find_target_selector(vbox)))
+	action_button.pressed.connect(_on_claim_reward_pressed.bind(item.id, vbox))
 	vbox.add_child(action_button)
 
-	return square
-
-
-func _place_square_card_panel(panel: Control, card_size: float) -> void:
-	var inner_size := maxf(card_size - 4.0, 1.0)
-	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	panel.position = Vector2(2.0, 2.0)
-	panel.custom_minimum_size = Vector2(inner_size, inner_size)
-	panel.size = Vector2(inner_size, inner_size)
+	return panel
 
 
 func _style_reward_panel(panel: PanelContainer, item: ItemData, hovered: bool) -> void:
@@ -259,10 +242,11 @@ func _create_card_header(item: ItemData) -> HBoxContainer:
 	return header
 
 
-func _create_item_image_area(item: ItemData, card_size: float) -> PanelContainer:
+func _create_item_image_area(item: ItemData) -> PanelContainer:
 	var image_area := PanelContainer.new()
-	image_area.custom_minimum_size = Vector2(0, maxf(card_size * CARD_IMAGE_RATIO, 76.0))
+	image_area.custom_minimum_size = Vector2(0, CARD_IMAGE_HEIGHT)
 	image_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	image_area.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	image_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.style_panel(image_area, Color(0.012, 0.020, 0.034, 0.70), _get_item_accent(item).darkened(0.20), 1, 0)
 
@@ -313,101 +297,60 @@ func _create_type_badge(item: ItemData) -> PanelContainer:
 	return badge
 
 
-func _create_target_line(item: ItemData) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 8)
-
-	var target := _make_label(_format_target_tag(item), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	target.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(target)
-
-	var strength := _make_label(_format_strength_tag(item), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	strength.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(strength)
-	return row
-
-
 func _add_gear_selector(vbox: VBoxContainer, item: ItemData) -> void:
-	var target_row := HBoxContainer.new()
-	target_row.add_theme_constant_override("separation", 8)
-	target_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(target_row)
+	var picker := VBoxContainer.new()
+	picker.name = "GearTargetPicker"
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.add_theme_constant_override("separation", 8)
+	vbox.add_child(picker)
 
 	var label := _make_label("EQUIP TO", SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	target_row.add_child(label)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.add_child(label)
 
-	var target_selector := OptionButton.new()
-	target_selector.name = "TargetSelector"
-	target_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var button_group := ButtonGroup.new()
+	var selected_unit_id := ""
 	for unit_id_variant in GameState.selected_units:
 		var unit_id: String = str(unit_id_variant)
 		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
 		if unit == null:
 			continue
-		target_selector.add_item(unit.display_name)
-		var item_index: int = target_selector.item_count - 1
-		target_selector.set_item_metadata(item_index, unit_id)
-	PixelUI.style_option_button(target_selector, Color(0.018, 0.028, 0.044, 0.95), PixelUI.LINE_DIM, SMALL_FONT_SIZE)
-	target_row.add_child(target_selector)
+		if selected_unit_id == "":
+			selected_unit_id = unit_id
+		var target_button := Button.new()
+		target_button.name = "GearTargetButton"
+		target_button.text = unit.display_name
+		target_button.toggle_mode = true
+		target_button.button_group = button_group
+		target_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
+		target_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		target_button.set_meta("unit_id", unit_id)
+		var captured_unit_id := unit_id
+		target_button.pressed.connect(func() -> void:
+			_set_gear_target_selection(picker, captured_unit_id)
+		)
+		picker.add_child(target_button)
+
+	if selected_unit_id != "":
+		_set_gear_target_selection(picker, selected_unit_id)
 
 
-func _on_gear_target_selected(_index: int, item: ItemData, comparison_box: VBoxContainer, target_selector: OptionButton) -> void:
-	_refresh_gear_comparison(item, comparison_box, target_selector)
+func _set_gear_target_selection(picker: VBoxContainer, unit_id: String) -> void:
+	picker.set_meta("selected_unit_id", unit_id)
+	for child in picker.get_children():
+		var button := child as Button
+		if button == null:
+			continue
+		var is_selected: bool = str(button.get_meta("unit_id", "")) == unit_id
+		button.button_pressed = is_selected
+		_style_gear_target_button(button, is_selected)
 
 
-func _refresh_gear_comparison(item: ItemData, comparison_box: VBoxContainer, target_selector: OptionButton) -> void:
-	_clear_children(comparison_box)
-	if target_selector.item_count == 0:
-		comparison_box.add_child(_make_label("No valid unit target.", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
-		return
-
-	var unit_id: String = str(target_selector.get_item_metadata(target_selector.selected))
-	var current_gear_ids: Array = GameState.gear_by_unit.get(unit_id, [])
-	var current_parts: Array = _build_aggregate_gear_parts(current_gear_ids)
-	var after_parts: Array = _build_aggregate_gear_parts(current_gear_ids, item)
-
-	comparison_box.add_child(_create_compare_line("EQUIPPED", current_parts, PixelUI.TEXT_MUTED))
-	comparison_box.add_child(_create_compare_line("AFTER", after_parts, GAIN_COLOR))
-	comparison_box.add_child(_create_gain_line(item))
-
-
-func _create_compare_line(title: String, parts: Array, color: Color) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_panel(panel, COMPARE_BG, Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 6)
-	margin.add_theme_constant_override("margin_top", 3)
-	margin.add_theme_constant_override("margin_right", 6)
-	margin.add_theme_constant_override("margin_bottom", 3)
-	panel.add_child(margin)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_child(row)
-
-	var label := _make_label(title, SMALL_FONT_SIZE, color, 1)
-	label.custom_minimum_size = Vector2(104, 0)
-	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(label)
-
-	row.add_child(_create_effect_row(parts, false))
-	return panel
-
-
-func _create_gain_line(item: ItemData) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 8)
-	var label := _make_label("GAIN", SMALL_FONT_SIZE, GAIN_COLOR, 1)
-	label.custom_minimum_size = Vector2(104, 0)
-	row.add_child(label)
-	row.add_child(_create_effect_row(_build_effect_parts_for_item(item), false))
-	return row
+func _style_gear_target_button(button: Button, selected: bool) -> void:
+	if selected:
+		PixelUI.style_button(button, Color(0.045, 0.150, 0.100, 0.96), PixelUI.HERO_ACCENT, GEAR_TARGET_BUTTON_FONT_SIZE)
+	else:
+		PixelUI.style_button(button, Color(0.018, 0.028, 0.044, 0.95), PixelUI.LINE_DIM, GEAR_TARGET_BUTTON_FONT_SIZE)
 
 
 func _create_effect_row(parts: Array, primary: bool) -> HBoxContainer:
@@ -540,68 +483,6 @@ func _build_effect_parts_from_effect(effect: Dictionary, target_kind: String = "
 	return []
 
 
-func _build_aggregate_gear_parts(gear_ids: Array, extra_item: ItemData = null) -> Array:
-	var totals: Dictionary = {}
-	var flags: Dictionary = {}
-	for gear_id_variant in gear_ids:
-		var gear_item: ItemData = DataManager.get_item(str(gear_id_variant)) as ItemData
-		if gear_item != null:
-			_accumulate_gear_effect(totals, flags, gear_item.effect)
-	if extra_item != null:
-		_accumulate_gear_effect(totals, flags, extra_item.effect)
-
-	var parts: Array = []
-	_append_total_part(parts, totals, "roll", "roll", "+%d")
-	_append_total_part(parts, totals, "shield_start", "shield", "%d")
-	_append_total_part(parts, totals, "max_hp", "heal", "+%d MAX HP")
-	_append_total_part(parts, totals, "dot_bonus", "dot", "+%d DOT")
-	_append_total_part(parts, totals, "heal_on_kill", "heal", "+%d KILL")
-	_append_total_part(parts, totals, "protocol_start", "protocol", "+%d START", "⚡")
-	_append_total_part(parts, totals, "first_dmg", "dmg", "+%d FIRST")
-	_append_total_part(parts, totals, "dmg_reduction", "shield", "-%d DMG")
-	if bool(flags.get("cloak_start", false)):
-		parts.append(_part("cloak", "CLOAK START", 0, ""))
-	if bool(flags.get("survive_once", false)):
-		parts.append(_part("survive", "SURVIVE", 0, ""))
-	return parts
-
-
-func _accumulate_gear_effect(totals: Dictionary, flags: Dictionary, effect: Dictionary) -> void:
-	var effect_type: String = str(effect.get("type", ""))
-	match effect_type:
-		"rollBonus":
-			_add_total(totals, "roll", int(effect.get("amount", 0)))
-		"battleStartShield":
-			_add_total(totals, "shield_start", int(effect.get("amount", 0)))
-		"maxHpBonus":
-			_add_total(totals, "max_hp", int(effect.get("amount", 0)))
-		"dotDmgBonus":
-			_add_total(totals, "dot_bonus", int(effect.get("amount", 0)))
-		"healOnKill":
-			_add_total(totals, "heal_on_kill", int(effect.get("amount", 0)))
-		"protocolOnBattleStart":
-			_add_total(totals, "protocol_start", int(effect.get("amount", 0)))
-		"firstAbilityDmgBonus":
-			_add_total(totals, "first_dmg", int(effect.get("amount", 0)))
-		"dmgReduction":
-			_add_total(totals, "dmg_reduction", int(effect.get("amount", 0)))
-		"battleStartCloak":
-			flags["cloak_start"] = true
-		"surviveOnce":
-			flags["survive_once"] = true
-
-
-func _add_total(totals: Dictionary, key: String, value: int) -> void:
-	totals[key] = int(totals.get(key, 0)) + value
-
-
-func _append_total_part(parts: Array, totals: Dictionary, key: String, kind: String, format_string: String, icon: String = "") -> void:
-	var value: int = int(totals.get(key, 0))
-	if value == 0:
-		return
-	parts.append(_part(kind, format_string % value, 0, icon))
-
-
 func _part(kind: String, text: String, duration: int = 0, icon: String = "") -> Dictionary:
 	var part_icon: String = icon if icon != "" else _icon_for_kind(kind)
 	return {
@@ -641,7 +522,8 @@ func _color_for_kind(kind: String) -> Color:
 func _create_description_label(text: String) -> Label:
 	var label := _make_label(text, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	return label
 
 
@@ -672,14 +554,11 @@ func _get_item_icon_char(icon_key: String) -> String:
 	return "●"
 
 
-func _find_target_selector(root: Node) -> OptionButton:
-	return root.find_child("TargetSelector", true, false) as OptionButton
-
-
-func _clear_children(node: Node) -> void:
-	for child in node.get_children():
-		node.remove_child(child)
-		child.queue_free()
+func _find_selected_gear_target_id(root: Node) -> String:
+	var picker := root.find_child("GearTargetPicker", true, false)
+	if picker == null:
+		return ""
+	return str(picker.get_meta("selected_unit_id", ""))
 
 
 func _build_claim_button_text(item: ItemData) -> String:
@@ -690,18 +569,20 @@ func _build_claim_button_text(item: ItemData) -> String:
 	return "Take Item"
 
 
-func _on_claim_reward_pressed(item_id: String, target_selector: OptionButton) -> void:
+func _on_claim_reward_pressed(item_id: String, target_root: Node) -> void:
 	var item: ItemData = DataManager.get_item(item_id) as ItemData
 	if item == null:
 		return
 
 	var target_unit_id := ""
 	if item.item_type == "gear":
-		if target_selector == null or target_selector.item_count == 0:
+		if target_root == null:
 			footer_label.text = "No valid unit target available for this gear."
 			return
-		var selected_index: int = target_selector.selected
-		target_unit_id = str(target_selector.get_item_metadata(selected_index))
+		target_unit_id = _find_selected_gear_target_id(target_root)
+		if target_unit_id == "":
+			footer_label.text = "Choose a unit for this gear."
+			return
 
 	var claimed: bool = GameState.claim_reward(item_id, target_unit_id)
 	if not claimed:
@@ -744,9 +625,19 @@ func _build_reward_result_text(item: ItemData, target_unit_id: String) -> String
 
 func _apply_visual_theme() -> void:
 	background.color = PixelUI.BG_DARK
+	content_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	content_vbox.add_theme_constant_override("separation", 8)
+	reward_list_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward_cards.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	reward_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if reward_top_spacer != null:
+		reward_top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_auto_button.visible = false
 	PixelUI.style_label(battle_summary_label, 56, PixelUI.TEXT_PRIMARY, 2)
@@ -769,6 +660,7 @@ func _apply_visual_theme() -> void:
 	PixelUI.style_label(summary_label, 24, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_label(inventory_label, 20, PixelUI.TEXT_MUTED, 1)
 	PixelUI.style_label(footer_label, 20, PixelUI.TEXT_MUTED, 1)
+	reward_content.add_theme_constant_override("separation", 18)
 	reward_cards.add_theme_constant_override("separation", 18)
 
 
@@ -798,40 +690,3 @@ func _format_item_type_label(item: ItemData) -> String:
 		"relic":
 			return "RELIC"
 	return item.item_type.to_upper()
-
-
-func _format_target_tag(item: ItemData) -> String:
-	if item.item_type == "gear":
-		return "TARGET: UNIT"
-	match item.target_kind:
-		"ally":
-			return "TARGET: ALLY"
-		"allyDead":
-			return "TARGET: FALLEN ALLY"
-		"enemy":
-			return "TARGET: ENEMY"
-		"none":
-			if str(item.effect.get("type", "")).ends_with("All") or str(item.effect.get("type", "")).contains("All"):
-				return "TARGET: ALL"
-			return "TARGET: NONE"
-	return "TARGET: %s" % item.target_kind.to_upper()
-
-
-func _format_strength_tag(item: ItemData) -> String:
-	var effect_type: String = str(item.effect.get("type", ""))
-	match effect_type:
-		"shield", "battleStartShield":
-			return "SHIELD"
-		"heal", "heroHealPerTurn", "healOnKill":
-			return "HEAL"
-		"enemyDmg", "firstAbilityDmgBonus", "auraEnemyDmg":
-			return "DAMAGE"
-		"enemyDot", "dotDmgBonus", "dotAmplified":
-			return "POISON"
-		"rollBuff", "rollBonus", "enemyRfe", "enemyStartRfe", "heroStartRollBuff":
-			return "DICE"
-		"revive":
-			return "REVIVE"
-		"cloak", "cloakAll", "battleStartCloak":
-			return "CLOAK"
-	return effect_type.to_upper()

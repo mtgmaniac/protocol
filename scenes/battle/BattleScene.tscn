@@ -105,6 +105,15 @@ size_flags_vertical = 4
 theme_override_font_sizes/font_size = 28
 text = "▶"
 
+[node name="AutoBattleButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(78, 72)
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 28
+text = ">>"
+
 [node name="ReturnToMenuButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(78, 72)
@@ -328,5 +337,6 @@ text = "↺"
 
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ToggleLogButton" to="." method="_on_toggle_log_button_pressed"]
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoTurnButton" to="." method="_on_auto_turn_button_pressed"]
+[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoBattleButton" to="." method="_on_auto_battle_button_pressed"]
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]
 [connection signal="pressed" from="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap/RollButton" to="." method="_on_roll_button_pressed"]

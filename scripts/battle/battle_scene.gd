@@ -21,6 +21,7 @@ extends Control
 @onready var protocol_spend_button: Button = $Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow/ProtocolSpendButton
 @onready var return_to_menu_button: Button = $Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton
 @onready var auto_turn_button: Button = %AutoTurnButton
+@onready var auto_battle_button: Button = %AutoBattleButton
 @onready var toggle_log_button: Button = %ToggleLogButton
 @onready var float_layer: Control = %FloatLayer
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
@@ -107,6 +108,7 @@ var _phase_before_item: String = ""
 var _round_complete_modal: Control = null
 var _round_complete_next_button: Button = null
 var _auto_turn_running: bool = false
+var _auto_battle_running: bool = false
 var _help_overlay: Control = null
 var _help_panel: PanelContainer = null
 var _help_close_button: Button = null
@@ -155,7 +157,9 @@ func _ready() -> void:
 	_build_hud_tooltip()
 	_build_unit_detail_panel()
 	PixelUI.style_button(auto_turn_button, Color(0.16, 0.08, 0.035, 1.0), Color(0.96, 0.48, 0.16, 1.0), 22)
+	PixelUI.style_button(auto_battle_button, Color(0.12, 0.055, 0.035, 1.0), Color(1.00, 0.66, 0.18, 1.0), 22)
 	_set_hud_tooltip(auto_turn_button, "Debug: automatically play out this turn.")
+	_set_hud_tooltip(auto_battle_button, "Debug: automatically finish this battle.")
 	_set_hud_tooltip(protocol_spend_button, "Reroll\nSpend 2 Protocol to reroll a hero's die.")
 	protocol_spend_button.pressed.connect(_on_reroll_button_pressed)
 	_add_nudge_button()
@@ -200,7 +204,7 @@ func _on_toggle_log_button_pressed() -> void:
 
 
 func _on_auto_turn_button_pressed() -> void:
-	if _auto_turn_running or battle_over:
+	if _auto_turn_running or _auto_battle_running or battle_over:
 		return
 	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
@@ -215,6 +219,54 @@ func _on_auto_turn_button_pressed() -> void:
 	if turn_phase == PHASE_READY_TO_END:
 		await _resolve_current_turn()
 	_auto_turn_running = false
+	if is_instance_valid(auto_turn_button):
+		auto_turn_button.disabled = false
+
+
+func _on_auto_battle_button_pressed() -> void:
+	if _auto_turn_running or _auto_battle_running:
+		return
+	if battle_over:
+		_on_open_reward_button_pressed()
+		return
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase.begins_with("item_pick"):
+		_refresh_summary("Finish the current picker before auto-completing the battle.")
+		return
+
+	_auto_battle_running = true
+	auto_battle_button.disabled = true
+	auto_turn_button.disabled = true
+	_append_log("AUTO: completing the current battle.")
+
+	var safety_rounds := 60
+	while is_inside_tree() and not battle_over and safety_rounds > 0:
+		safety_rounds -= 1
+		if turn_phase == PHASE_AWAIT_ROLL:
+			await _begin_targeting_phase(true)
+		if not is_inside_tree() or battle_over:
+			break
+		if turn_phase == PHASE_TARGETING:
+			await _auto_assign_pending_targets(false)
+		if not is_inside_tree() or battle_over:
+			break
+		if turn_phase == PHASE_READY_TO_END:
+			await _resolve_current_turn(true)
+		else:
+			break
+		if not is_inside_tree() or get_tree() == null:
+			break
+		await get_tree().process_frame
+
+	if not is_inside_tree():
+		return
+
+	if safety_rounds <= 0 and is_inside_tree() and not battle_over:
+		_append_log("AUTO: battle completion stopped after safety limit.")
+		_refresh_summary("Auto battle stopped after safety limit.")
+
+	_auto_battle_running = false
+	if is_instance_valid(auto_battle_button):
+		auto_battle_button.disabled = false
 	if is_instance_valid(auto_turn_button):
 		auto_turn_button.disabled = false
 
@@ -829,7 +881,7 @@ func _on_roll_button_pressed() -> void:
 		_resolve_current_turn()
 
 
-func _begin_targeting_phase() -> void:
+func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	roll_button.visible = false
 	roll_button.disabled = true
 	roll_button.text = ""
@@ -844,7 +896,7 @@ func _begin_targeting_phase() -> void:
 	has_player_target_assignment = false
 	_clear_target_assignments()
 
-	if dice_tray_3d != null:
+	if dice_tray_3d != null and not skip_dice_visuals:
 		_refresh_board_layout()
 		await get_tree().process_frame
 		_layout_dice_from_combat_zone()
@@ -870,23 +922,26 @@ func _begin_targeting_phase() -> void:
 
 	_assign_enemy_targets()
 	_prepare_hero_targets()
-	if dice_tray_3d != null:
+	if dice_tray_3d != null and not skip_dice_visuals:
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_hero_states(), hero_rolls, true))
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_enemy_states(), enemy_rolls, false))
 		_build_die_tooltip_overlays()
 	_set_turn_phase(PHASE_TARGETING)
 	_append_log("Dice rolled for all units.")
+	if skip_dice_visuals and is_inside_tree() and get_tree() != null:
+		await get_tree().process_frame
 
 	if pending_manual_target_ids.is_empty():
 		_set_turn_phase(PHASE_READY_TO_END)
 		return
 
 
-func _auto_assign_pending_targets() -> void:
+func _auto_assign_pending_targets(use_pauses: bool = true) -> void:
 	while turn_phase == PHASE_TARGETING and not pending_manual_target_ids.is_empty():
 		var hero_id: String = str(pending_manual_target_ids[0])
 		_select_targeting_hero(hero_id)
-		await get_tree().create_timer(AUTO_TURN_TARGET_PAUSE).timeout
+		if use_pauses:
+			await get_tree().create_timer(AUTO_TURN_TARGET_PAUSE).timeout
 		if active_targeting_hero_id == "":
 			continue
 		var target_id: String = _get_auto_debug_target_id(legal_target_side, legal_target_ids)
@@ -897,9 +952,12 @@ func _auto_assign_pending_targets() -> void:
 			legal_target_side = ""
 			continue
 		_assign_target_to_active_hero(target_id, _get_auto_debug_target_side(target_id))
-		await get_tree().create_timer(AUTO_TURN_TARGET_PAUSE).timeout
+		if use_pauses:
+			await get_tree().create_timer(AUTO_TURN_TARGET_PAUSE).timeout
 	if turn_phase == PHASE_TARGETING and pending_manual_target_ids.is_empty():
 		_set_turn_phase(PHASE_READY_TO_END)
+	if not use_pauses and is_inside_tree() and get_tree() != null:
+		await get_tree().process_frame
 
 
 func _roll_for_states(states: Array) -> Dictionary:
@@ -1249,7 +1307,7 @@ func _build_die_tooltip_text(ability_entry: Dictionary, result: int, is_enemy: b
 	return "%s\nRolled: %d\nRange: %s (%s)\n\n%s" % [title, result, range_text, zone, description]
 
 
-func _resolve_current_turn() -> void:
+func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	if battle_over:
 		return
 	if hero_rolls.is_empty() or enemy_rolls.is_empty():
@@ -1277,17 +1335,27 @@ func _resolve_current_turn() -> void:
 	_clear_target_assignments()
 	roll_button.disabled = true
 	_append_round_log(result.get("log", []))
-	await _play_round_feedback(result.get("events", []))
+	if skip_feedback:
+		for event_variant in result.get("events", []):
+			var event: Dictionary = event_variant
+			_apply_live_event_visual_state(event)
+			_refresh_card_for_event(event)
+	else:
+		await _play_round_feedback(result.get("events", []))
 	_process_summon_events(result.get("events", []))
 	_consume_revealed_frozen_dice()
 	_refresh_all_cards()
+	if skip_feedback and is_inside_tree() and get_tree() != null:
+		await get_tree().process_frame
 	_is_resolving_turn = false
 
 	var outcome: String = str(result.get("result", "ongoing"))
 	if outcome == "victory":
 		battle_over = true
 		roll_button.disabled = true
-		if _game_state().is_final_battle():
+		if _auto_battle_running:
+			_debug_advance_after_auto_battle_victory()
+		elif _game_state().is_final_battle():
 			_refresh_summary("Boss defeated. Run complete.")
 			_game_state().finish_run("victory")
 			_scene_manager().go_to_run_end()
@@ -1340,7 +1408,9 @@ func _are_all_combatants_down(states: Array) -> bool:
 func _finish_battle_victory() -> void:
 	battle_over = true
 	_disable_combat_actions()
-	if _game_state().is_final_battle():
+	if _auto_battle_running:
+		_debug_advance_after_auto_battle_victory()
+	elif _game_state().is_final_battle():
 		_refresh_summary("Boss defeated. Run complete.")
 		_game_state().finish_run("victory")
 		_scene_manager().go_to_run_end()
@@ -1455,6 +1525,18 @@ func _show_round_complete_modal() -> void:
 func _on_round_complete_next_pressed() -> void:
 	if not battle_over:
 		return
+	_game_state().prepare_battle_rewards()
+	_scene_manager().go_to_reward_screen()
+
+
+func _debug_advance_after_auto_battle_victory() -> void:
+	if _game_state().is_final_battle():
+		_refresh_summary("Boss defeated. Run complete.")
+		_game_state().finish_run("victory")
+		_scene_manager().go_to_run_end()
+		return
+
+	_refresh_summary("Victory. Routing to rewards.")
 	_game_state().prepare_battle_rewards()
 	_scene_manager().go_to_reward_screen()
 

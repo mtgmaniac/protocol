@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/evolution_screen.gd" id="1_6of8m"]
+[ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="2_ek5tj"]
+[ext_resource type="PackedScene" path="res://scenes/shared/BattleHeader.tscn" id="3_wpxj8"]
 
 [node name="EvolutionScreen" type="Control"]
 layout_mode = 3
@@ -18,17 +20,27 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0470588, 0.0470588, 0.0823529, 1)
+color = Color(0.0509804, 0.054902, 0.0862745, 1)
+
+[node name="BackgroundPattern" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_ek5tj")
 
 [node name="Content" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 36.0
-offset_top = 28.0
-offset_right = -36.0
-offset_bottom = -28.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -36,43 +48,47 @@ grow_vertical = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 18
+theme_override_constants/separation = 12
+
+[node name="HeaderRow" parent="Content/VBox" instance=ExtResource("3_wpxj8")]
+layout_mode = 2
 
 [node name="Title" type="Label" parent="Content/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 37
-text = "Evolution Ready"
+text = "Choose Evolution"
 
 [node name="SummaryLabel" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
 autowrap_mode = 3
 text = "Choose a branch."
 
-[node name="ChoiceCards" type="GridContainer" parent="Content/VBox"]
-unique_name_in_owner = true
+[node name="ChoiceArea" type="MarginContainer" parent="Content/VBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-columns = 2
-theme_override_constants/h_separation = 18
-theme_override_constants/v_separation = 18
+
+[node name="ChoiceContent" type="VBoxContainer" parent="Content/VBox/ChoiceArea"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_constants/separation = 18
+
+[node name="TopSpacer" type="Control" parent="Content/VBox/ChoiceArea/ChoiceContent"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ChoiceCards" type="VBoxContainer" parent="Content/VBox/ChoiceArea/ChoiceContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_constants/separation = 18
 
 [node name="FooterLabel" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
 autowrap_mode = 3
 text = "Pick one evolution path."
-
-[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="ReturnToMenuButton" type="Button" parent="Content/VBox/ButtonRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(200, 52)
-text = "New Squad"
-
-[connection signal="pressed" from="Content/VBox/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]
