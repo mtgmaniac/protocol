@@ -49,12 +49,12 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 4
 
 [node name="VBox" type="VBoxContainer" parent="Content"]
 layout_mode = 2
@@ -72,13 +72,13 @@ theme_override_constants/separation = 4
 [node name="SummaryLabel" type="Label" parent="Content/VBox/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 60)
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_font_sizes/font_size = 22
+custom_minimum_size = Vector2(0, 60)
 vertical_alignment = 1
 autowrap_mode = 0
-text = "Operation  Battle 1/10"
+text = "Veil Concord  Battle 1/10"
 
 [node name="ButtonRow" type="HBoxContainer" parent="Content/VBox/HeaderRow"]
 layout_mode = 2
@@ -87,30 +87,30 @@ size_flags_vertical = 4
 alignment = 2
 theme_override_constants/separation = 4
 
-[node name="ToggleLogButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+[node name="ToggleLogButton" type="TextureButton" parent="Content/VBox/HeaderRow/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 size_flags_horizontal = 0
 size_flags_vertical = 4
 
-[node name="AutoTurnButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+[node name="AutoTurnButton" type="TextureButton" parent="Content/VBox/HeaderRow/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 size_flags_horizontal = 0
 size_flags_vertical = 4
 
-[node name="AutoBattleButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+[node name="AutoBattleButton" type="TextureButton" parent="Content/VBox/HeaderRow/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 size_flags_horizontal = 0
 size_flags_vertical = 4
 
-[node name="ReturnToMenuButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
+[node name="ReturnToMenuButton" type="TextureButton" parent="Content/VBox/HeaderRow/ButtonRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 size_flags_horizontal = 0
 size_flags_vertical = 4
 
@@ -121,32 +121,40 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 2
 
-[node name="EnemyPanel" type="PanelContainer" parent="Content/VBox/Board"]
+[node name="HeroPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 3.0
 
-[node name="EnemyMargin" type="MarginContainer" parent="Content/VBox/Board/EnemyPanel"]
+[node name="HeroMargin" type="MarginContainer" parent="Content/VBox/Board/HeroPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 2
 
-[node name="EnemyScroll" type="MarginContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin"]
+[node name="HeroVBox" type="VBoxContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+
+[node name="HeroScroll" type="MarginContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_bottom = 2
 
-[node name="EnemyCards" type="GridContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyScroll"]
+[node name="HeroCards" type="GridContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroVBox/HeroScroll"]
 unique_name_in_owner = true
 layout_mode = 2
+columns = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-columns = 3
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
 
@@ -160,10 +168,10 @@ size_flags_stretch_ratio = 1.5
 
 [node name="CenterMargin" type="MarginContainer" parent="Content/VBox/Board/CenterPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 2
 
 [node name="CenterVBox" type="Control" parent="Content/VBox/Board/CenterPanel/CenterMargin"]
 layout_mode = 2
@@ -178,6 +186,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="ActionButtonWrap" type="CenterContainer" parent="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox"]
 layout_mode = 1
@@ -188,39 +198,48 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 z_index = 10
+size_flags_horizontal = 3
 
 [node name="RollButton" type="Button" parent="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(300, 80)
+custom_minimum_size = Vector2(248, 52)
 text = "Roll"
 
-[node name="HeroPanel" type="PanelContainer" parent="Content/VBox/Board"]
+[node name="EnemyPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 3.0
 
-[node name="HeroMargin" type="MarginContainer" parent="Content/VBox/Board/HeroPanel"]
+[node name="EnemyMargin" type="MarginContainer" parent="Content/VBox/Board/EnemyPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 2
 
-[node name="HeroScroll" type="MarginContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin"]
+[node name="EnemyVBox" type="VBoxContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+
+[node name="EnemyScroll" type="MarginContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_bottom = 2
 
-[node name="HeroCards" type="GridContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroScroll"]
+[node name="EnemyCards" type="GridContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyVBox/EnemyScroll"]
 unique_name_in_owner = true
 layout_mode = 2
+columns = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-columns = 3
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
 
@@ -228,14 +247,14 @@ theme_override_constants/v_separation = 2
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 92)
 
 [node name="BattleLogMargin" type="MarginContainer" parent="Content/VBox/BattleLogPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
+theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
+theme_override_constants/margin_bottom = 8
 
 [node name="BattleLogVBox" type="VBoxContainer" parent="Content/VBox/BattleLogPanel/BattleLogMargin"]
 layout_mode = 2
@@ -243,13 +262,13 @@ theme_override_constants/separation = 6
 
 [node name="BattleLogTitle" type="Label" parent="Content/VBox/BattleLogPanel/BattleLogMargin/BattleLogVBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 24
 text = "Battle Log"
 
 [node name="BattleLogLabel" type="RichTextLabel" parent="Content/VBox/BattleLogPanel/BattleLogMargin/BattleLogVBox"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 40)
 size_flags_vertical = 3
 bbcode_enabled = false
 fit_content = false
@@ -263,29 +282,26 @@ custom_minimum_size = Vector2(0, 60)
 
 [node name="ProtocolMargin" type="MarginContainer" parent="Content/VBox/ProtocolPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 6
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 2
 
 [node name="ProtocolRow" type="HBoxContainer" parent="Content/VBox/ProtocolPanel/ProtocolMargin"]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
+theme_override_constants/separation = 8
 alignment = 1
-theme_override_constants/separation = 6
 
 [node name="ProtocolLabel" type="Label" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 16
 text = "Protocol"
 
 [node name="ProtocolBar" type="ProgressBar" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 36)
 size_flags_horizontal = 3
 size_flags_vertical = 4
 max_value = 10.0
@@ -303,27 +319,17 @@ grow_vertical = 2
 mouse_filter = 2
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 text = "3 / 10"
 
 [node name="ProtocolSpendButton" type="Button" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
-size_flags_vertical = 4
+custom_minimum_size = Vector2(44, 44)
 text = "↺"
-
-[node name="RerollButton" type="Button" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
-size_flags_vertical = 4
-
-[node name="NudgeButton" type="Button" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(48, 48)
-size_flags_vertical = 4
 
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ToggleLogButton" to="." method="_on_toggle_log_button_pressed"]
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoTurnButton" to="." method="_on_auto_turn_button_pressed"]
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoBattleButton" to="." method="_on_auto_battle_button_pressed"]
 [connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]
 [connection signal="pressed" from="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap/RollButton" to="." method="_on_roll_button_pressed"]
+
