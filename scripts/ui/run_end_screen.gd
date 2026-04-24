@@ -48,7 +48,7 @@ func _on_return_to_menu_button_pressed() -> void:
 
 func _apply_visual_theme() -> void:
 	background.color = PixelUI.BG_DARK
-	PixelUI.style_panel(summary_panel, PixelUI.BG_PANEL, PixelUI.LINE_DIM, 2, 3)
+	PixelUI.style_ninepatch_panel(summary_panel, PixelUI.FRAME_SIMPLE)
 	PixelUI.style_label(title_label, 42, PixelUI.GOLD_ACCENT, 2)
 	PixelUI.style_label(summary_label, 24, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_button(new_run_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 20)

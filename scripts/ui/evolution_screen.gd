@@ -85,7 +85,7 @@ func _build_help_overlay() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(820, 0)
-	PixelUI.style_panel(panel, Color(0.018, 0.026, 0.044, 0.98), PixelUI.LINE_BRIGHT, 4, 0)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE)
 	center.add_child(panel)
 
 	var margin: MarginContainer = MarginContainer.new()
@@ -259,12 +259,8 @@ func _create_divider() -> ColorRect:
 
 
 func _style_evolution_panel(panel: PanelContainer, hovered: bool) -> void:
-	var bg: Color = CARD_BG_HOVER if hovered else CARD_BG
-	var lighten_amount: float = 0.0
-	if hovered:
-		lighten_amount = 0.10
-	var border: Color = PixelUI.HERO_ACCENT.lightened(lighten_amount)
-	PixelUI.style_panel(panel, bg, border, 4 if hovered else 3, 0)
+	var tint: Color = PixelUI.HERO_ACCENT.lightened(0.06 if hovered else 0.0).lerp(Color.WHITE, 0.28)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_CORNER_DOTS, 18, tint)
 
 
 func _build_merged_ranges(path: Dictionary, base_unit: UnitData) -> Array:

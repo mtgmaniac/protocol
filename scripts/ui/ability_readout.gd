@@ -1,14 +1,16 @@
 class_name AbilityReadout
 extends PanelContainer
 
-const READOUT_SIZE := Vector2(0, 120)
-const ROW_HEIGHT := 52.0
-const ROW_GAP := 6.0
-const OUTER_PAD_X := 4.0
-const ICON_FONT_SIZE := 48
-const VALUE_FONT_SIZE := 46
-const DURATION_FONT_SIZE := 34
-const TARGET_FONT_SIZE := 38
+const READOUT_SIZE := Vector2(0, 72)
+const ROW_HEIGHT := 60.0
+const ROW_GAP := 8.0
+const OUTER_PAD_X := 10.0
+const HERO_TOP_PAD := 6.0
+const EFFECT_GROUP_MIN_WIDTH := 52.0
+const ICON_FONT_SIZE := 56
+const VALUE_FONT_SIZE := 56
+const DURATION_FONT_SIZE := 36
+const TARGET_FONT_SIZE := 36
 const EMPTY_ALPHA := 0.18
 const ICONS := {
 	"dmg": "⚡",
@@ -26,6 +28,22 @@ const ICONS := {
 	"dot": "☠",
 	"poison": "☠",
 }
+const PIP_ICON_ATLAS_PATH := "res://assets/ui/icons/pip_icons.png"
+const PIP_ICON_CELL_SIZE := Vector2(256, 256)
+const PIP_ICON_COLUMNS := {
+	"dmg": 0,
+	"damage": 0,
+	"blast": 0,
+	"shield": 1,
+	"taunt": 1,
+	"heal": 2,
+	"dot": 3,
+	"poison": 3,
+	"roll": 4,
+	"rfe": 4,
+	"rfm": 4,
+	"freeze": 5,
+}
 
 var action_result: Dictionary = {}
 var side: String = "hero"
@@ -33,6 +51,7 @@ var _row_layer: Control = null
 var _upper_row: HBoxContainer = null
 var _lower_row: HBoxContainer = null
 var _tooltip_callback: Callable = Callable()
+var _pip_icon_atlas: Texture2D = null
 
 
 func _ready() -> void:
@@ -86,7 +105,7 @@ func _make_row() -> HBoxContainer:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 7)
+	row.add_theme_constant_override("separation", 6)
 	return row
 
 
@@ -123,8 +142,10 @@ func _notification(what: int) -> void:
 func _layout_rows() -> void:
 	if _upper_row == null or _lower_row == null:
 		return
-	var total_height: float = (ROW_HEIGHT * 2.0) + ROW_GAP
-	var start_y: float = floor((size.y - total_height) * 0.5)
+	var start_y: float = 0.0
+	if side == "hero":
+		var hero_row_y: float = maxf(0.0, size.y - ROW_HEIGHT - HERO_TOP_PAD)
+		start_y = hero_row_y - ROW_HEIGHT - ROW_GAP
 	var row_size := Vector2(size.x, ROW_HEIGHT)
 	_upper_row.position = Vector2(0.0, start_y)
 	_upper_row.size = row_size
@@ -166,6 +187,28 @@ func _add_parts_to_row(row: HBoxContainer, effects: Array, target: String) -> vo
 		row.add_child(_make_target_label(target))
 
 
+func _get_pip_icon_texture(kind: String) -> Texture2D:
+	if not PIP_ICON_COLUMNS.has(kind):
+		return null
+	var atlas := _get_pip_icon_atlas()
+	if atlas == null:
+		return null
+	var texture := AtlasTexture.new()
+	texture.atlas = atlas
+	texture.region = Rect2(Vector2(float(int(PIP_ICON_COLUMNS[kind])) * PIP_ICON_CELL_SIZE.x, 0.0), PIP_ICON_CELL_SIZE)
+	return texture
+
+
+func _get_pip_icon_atlas() -> Texture2D:
+	if _pip_icon_atlas != null:
+		return _pip_icon_atlas
+	var image: Image = Image.load_from_file(PIP_ICON_ATLAS_PATH)
+	if image == null or image.is_empty():
+		return null
+	_pip_icon_atlas = ImageTexture.create_from_image(image)
+	return _pip_icon_atlas
+
+
 func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 	var effect_kind: String = str(effect.get("kind", ""))
 	var icon_color: Color = PixelUI.effect_color(effect_kind)
@@ -175,14 +218,16 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 	group.mouse_filter = Control.MOUSE_FILTER_STOP
 	group.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	group.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	group.custom_minimum_size = Vector2(EFFECT_GROUP_MIN_WIDTH, 0)
 	group.alignment = BoxContainer.ALIGNMENT_CENTER
-	group.add_theme_constant_override("separation", 3)
+	group.add_theme_constant_override("separation", 1)
 	group.gui_input.connect(_on_effect_group_gui_input.bind(group))
 
 	if effect_kind in ["cloak", "revive", "pierce", "counter", "rampage"]:
 		var plain_label := Label.new()
 		plain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		plain_label.text = effect_kind.to_upper()
+		plain_label.custom_minimum_size = Vector2(EFFECT_GROUP_MIN_WIDTH, 0)
 		plain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		plain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_apply_pixel_label(plain_label, VALUE_FONT_SIZE, PixelUI.effect_color(effect_kind), 3)
@@ -191,21 +236,34 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 			_tooltip_callback.call(group, _build_effect_tooltip(effect))
 		return group
 
-	var icon_label := Label.new()
-	icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon_label.text = str(ICONS.get(str(effect.get("kind", "")), "⚡"))
-	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	icon_label.add_theme_font_size_override("font_size", ICON_FONT_SIZE)
-	icon_label.add_theme_color_override("font_color", icon_color)
-	icon_label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
-	icon_label.add_theme_constant_override("outline_size", 2)
-	group.add_child(icon_label)
+	var icon_texture := _get_pip_icon_texture(effect_kind)
+	if icon_texture != null:
+		var icon_rect := TextureRect.new()
+		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_rect.custom_minimum_size = Vector2(36, 36)
+		icon_rect.texture = icon_texture
+		icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		group.add_child(icon_rect)
+	else:
+		var icon_label := Label.new()
+		icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_label.text = str(ICONS.get(str(effect.get("kind", "")), "⚡"))
+		icon_label.custom_minimum_size = Vector2(0, 0)
+		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon_label.add_theme_font_size_override("font_size", ICON_FONT_SIZE)
+		icon_label.add_theme_color_override("font_color", icon_color)
+		icon_label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
+		icon_label.add_theme_constant_override("outline_size", 2)
+		group.add_child(icon_label)
 
 	if effect_kind != "freeze":
 		var value_label := Label.new()
 		value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		value_label.text = str(effect.get("value", "")).to_upper()
+		value_label.custom_minimum_size = Vector2(0, 0)
 		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		value_label.clip_text = false
@@ -283,7 +341,7 @@ func _make_separator() -> Label:
 	var label := Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = ""
-	label.custom_minimum_size = Vector2(12, 0)
+	label.custom_minimum_size = Vector2(10, 0)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.modulate = Color(0.84, 0.90, 0.96, 0.78)
@@ -323,15 +381,16 @@ func _estimate_row_width(effects: Array, target: String) -> float:
 	var width := 0.0
 	for i in range(effects.size()):
 		if i > 0:
-			width += 28.0
+			width += 30.0
 		var effect: Dictionary = effects[i]
-		width += 34.0
-		width += maxf(18.0, float(str(effect.get("value", "")).length()) * 18.0)
+		var effect_width := 42.0
+		effect_width += maxf(34.0, float(str(effect.get("value", "")).length()) * 22.0)
 		var duration: int = int(effect.get("duration", 0))
 		if duration > 1:
-			width += 12.0 + float(("(%dT)" % duration).length()) * 12.0
+			effect_width += 18.0 + float(("(%dT)" % duration).length()) * 18.0
+		width += maxf(EFFECT_GROUP_MIN_WIDTH, effect_width)
 	if target != "":
-		width += 10.0 + float(target.length()) * 16.0
+		width += 2.0 + float(target.length()) * 22.0
 	return width
 
 

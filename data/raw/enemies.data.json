@@ -2120,7 +2120,7 @@
         "rfe": 0,
         "shield": 0,
         "summonChance": 50,
-        "summonName": "Pack Wolf"
+          "summonName": "Pack Hound"
       }
     },
     "beastBadger": {
@@ -2625,35 +2625,35 @@
       "type": "beastMonkey",
       "ai": "dumb"
     },
-    "Void Wolf": {
+    "Void Hound": {
       "hp": 42,
       "dMin": 6,
       "dMax": 10,
       "type": "beastWolf",
       "ai": "dumb"
     },
-    "Pack Wolf": {
+    "Pack Hound": {
       "hp": 34,
       "dMin": 5,
       "dMax": 9,
       "type": "beastWolf",
       "ai": "dumb"
     },
-    "Eclipse Lynx": {
+    "Eclipse Panther": {
       "hp": 74,
       "dMin": 12,
       "dMax": 17,
       "type": "beastLynx",
       "ai": "smart"
     },
-    "Thunder Bison": {
+    "Thunder Ape": {
       "hp": 112,
       "dMin": 16,
       "dMax": 22,
       "type": "beastBison",
       "ai": "smart"
     },
-    "Eclipse Hyena": {
+    "Eclipse Raptor": {
       "hp": 86,
       "dMin": 13,
       "dMax": 18,
@@ -2661,7 +2661,7 @@
       "ai": "smart",
       "summonElite": true
     },
-    "Ridge Badger": {
+    "Ridge Drake": {
       "hp": 98,
       "dMin": 15,
       "dMax": 21,

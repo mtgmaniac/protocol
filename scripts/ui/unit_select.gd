@@ -7,6 +7,9 @@ const LOGO_WIDTH_RATIO := 0.72
 const LOGO_ASPECT := 425.0 / 711.0
 const UNIT_CARD_HEIGHT := 196
 const UNIT_PORTRAIT_SIZE := Vector2(132, 160)
+const UNIT_PORTRAIT_X_OFFSET := -8.0
+const UNIT_PORTRAIT_Y_OFFSET := -5.0
+const UNIT_PORTRAIT_ASPECT_FALLBACK := 2.0
 const HOLD_TO_DETAILS_SECONDS := 0.5
 const SUMMARY_FONT_SIZE := 34
 const OPERATION_TITLE_FONT_SIZE := 52
@@ -87,7 +90,7 @@ func _build_unit_detail_overlay() -> void:
 	panel.custom_minimum_size = Vector2(960, 0)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_panel(panel, Color(0.020, 0.034, 0.052, 0.98), PixelUI.LINE_BRIGHT, 3, 0)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE)
 	center.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -353,14 +356,26 @@ func _create_unit_card(unit: UnitData) -> PanelContainer:
 	PixelUI.style_panel(portrait_frame, Color(0.010, 0.018, 0.030, 0.96), PixelUI.LINE_BRIGHT, 2, 2)
 	row.add_child(portrait_frame)
 
+	var portrait_crop := Control.new()
+	portrait_crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_crop.clip_contents = true
+	portrait_crop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	portrait_frame.add_child(portrait_crop)
+
 	var portrait: TextureRect = TextureRect.new()
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.texture = unit.portrait
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	portrait_frame.add_child(portrait)
+	portrait.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var portrait_aspect: float = UNIT_PORTRAIT_ASPECT_FALLBACK
+	if unit.portrait != null and unit.portrait.get_width() > 0:
+		portrait_aspect = float(unit.portrait.get_height()) / float(unit.portrait.get_width())
+	var portrait_height: float = maxf(UNIT_PORTRAIT_SIZE.y, UNIT_PORTRAIT_SIZE.x * portrait_aspect)
+	portrait.position = Vector2(UNIT_PORTRAIT_X_OFFSET, UNIT_PORTRAIT_Y_OFFSET)
+	portrait.size = Vector2(UNIT_PORTRAIT_SIZE.x, portrait_height)
+	portrait_crop.add_child(portrait)
 
 	var info: VBoxContainer = VBoxContainer.new()
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -569,7 +584,7 @@ func _apply_visual_theme() -> void:
 	logo_image.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	logo_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo_image.stretch_mode = TextureRect.STRETCH_SCALE
-	PixelUI.style_panel(logo_panel, Color(0.010, 0.018, 0.030, 0.60), Color.TRANSPARENT, 0, 0)
+	PixelUI.style_ninepatch_panel(logo_panel, PixelUI.FRAME_SIMPLE)
 	title_label.visible = false
 	summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hero_list.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -584,7 +599,7 @@ func _apply_visual_theme() -> void:
 	random_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	continue_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	PixelUI.style_label(summary_label, SUMMARY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_panel(operation_panel, Color(0.020, 0.034, 0.052, 0.92), PixelUI.LINE_BRIGHT, 3, 0)
+	PixelUI.style_ninepatch_panel(operation_panel, PixelUI.FRAME_SIMPLE)
 	PixelUI.style_label(operation_title, OPERATION_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 2)
 	PixelUI.style_label(operation_section_label, OPERATION_SECTION_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
 	PixelUI.style_label(operation_blurb_label, OPERATION_BLURB_FONT_SIZE, PixelUI.TEXT_MUTED, 1)

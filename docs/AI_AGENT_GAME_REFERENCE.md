@@ -619,7 +619,7 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
     return panel
 ```
 
-Do not enforce square cards unless explicitly re-requested. Vertical cards are better for readability here.
+Square cards are preferred for the reward screen. Set custom_minimum_size to Vector2(card_width, card_width).
 
 ## Consumable Item Use In Battle
 

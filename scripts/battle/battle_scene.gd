@@ -5,12 +5,16 @@ extends Control
 @onready var board: VBoxContainer = %Board
 @onready var background: ColorRect = $Background
 @onready var hero_panel: PanelContainer = %HeroPanel
-@onready var hero_scroll: MarginContainer = %HeroScroll
-@onready var hero_cards: GridContainer = %HeroCards
+@onready var hero_scroll: VBoxContainer = %HeroScroll
+@onready var hero_dice_row: HBoxContainer = %HeroDiceRow
+@onready var hero_readouts: HBoxContainer = %HeroReadouts
+@onready var hero_cards: HBoxContainer = %HeroCards
 @onready var center_panel: PanelContainer = %CenterPanel
 @onready var enemy_panel: PanelContainer = %EnemyPanel
-@onready var enemy_scroll: MarginContainer = %EnemyScroll
-@onready var enemy_cards: GridContainer = %EnemyCards
+@onready var enemy_scroll: VBoxContainer = %EnemyScroll
+@onready var enemy_cards: HBoxContainer = %EnemyCards
+@onready var enemy_readouts: HBoxContainer = %EnemyReadouts
+@onready var enemy_dice_row: HBoxContainer = %EnemyDiceRow
 @onready var protocol_bar: ProgressBar = %ProtocolBar
 @onready var protocol_label: Label = %ProtocolLabel
 @onready var protocol_value_label: Label = %ProtocolValueLabel
@@ -19,10 +23,10 @@ extends Control
 @onready var protocol_panel: PanelContainer = $Content/VBox/ProtocolPanel
 @onready var roll_button: Button = %RollButton
 @onready var protocol_spend_button: Button = $Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow/ProtocolSpendButton
-@onready var return_to_menu_button: Button = $Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton
-@onready var auto_turn_button: Button = %AutoTurnButton
-@onready var auto_battle_button: Button = %AutoBattleButton
-@onready var toggle_log_button: Button = %ToggleLogButton
+@onready var return_to_menu_button: BaseButton = $Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton
+@onready var auto_turn_button: BaseButton = %AutoTurnButton
+@onready var auto_battle_button: BaseButton = %AutoBattleButton
+@onready var toggle_log_button: BaseButton = %ToggleLogButton
 @onready var float_layer: Control = %FloatLayer
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
@@ -41,18 +45,36 @@ const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
-const DICE_SNAP_HORIZONTAL_MARGIN_PX := 58.0
+const DICE_SNAP_HORIZONTAL_MARGIN_PX := 88.0
 const DICE_THREE_UNIT_SIDE_OFFSET_PX := 0.0
-const DICE_ENEMY_SNAP_TOP_PX := 274.0
-const DICE_HERO_SNAP_BOTTOM_PX := -158.0
+const DICE_ENEMY_SNAP_TOP_PX := 220.0
+const DICE_HERO_SNAP_BOTTOM_PX := 56.0
+const DICE_BUTTON_CLEARANCE_PX := 132.0
+const DICE_CARD_CLEARANCE_PX := 96.0
+const DICE_VISUAL_HALF_HEIGHT_PX := 84.0
+const DICE_BUTTON_GAP_PX := 28.0
+const DICE_LANE_HEIGHT_PX := 168.0
 const COMBAT_ZONE_READOUT_GAP_PX := 18.0
 const COMPACT_PORTRAIT_EXTRA_HEIGHT_PX := 52.0
-const COMPACT_DICE_ANCHOR_HEIGHT_PX := 12.0
+const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
 const COMPACT_READOUT_HEIGHT_PX := 120.0
+const COMPACT_CARD_WIDTH_PX := 344.0
+const COMPACT_CARD_HEIGHT_PX := 580.0
 const COMPACT_RAIL_CHROME_PX := 24.0
-const COMPACT_CENTER_TARGET_RATIO := 0.24
-const CENTER_ACTION_BUTTON_SIZE := Vector2(360, 104)
-const CENTER_ACTION_BUTTON_FONT_SIZE := 38
+const BAR_HEIGHT := 144.0
+const CARD_ZONE_HEIGHT := 768.0
+const CENTER_ZONE_HEIGHT := 620.0
+const RAIL_ROW_GAP_PX := 6.0
+const RAIL_SLOT_GAP_PX := 2.0
+const HEADER_BUTTON_SIZE := Vector2(112, 112)
+const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
+const ITEM_SLOT_SIZE := Vector2(112, 112)
+const ITEM_ICON_SIZE := Vector2(76, 76)
+const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
+const CENTER_ACTION_BUTTON_FONT_SIZE := 64
+const HEADER_SUMMARY_FONT_SIZE := 56
+const PROTOCOL_LABEL_FONT_SIZE := 56
+const PROTOCOL_VALUE_FONT_SIZE := 48
 const HUD_TOOLTIP_MIN_WIDTH := 80.0
 const HUD_TOOLTIP_MAX_WIDTH := 220.0
 const HUD_TOOLTIP_PAD_X := 8.0
@@ -91,7 +113,9 @@ var has_player_target_assignment: bool = false
 var battle_over: bool = false
 var hero_roll_nudges: Dictionary = {}
 var _battle_consumables: Array = []
-var _item_panel: HBoxContainer = null
+var _item_button: Button = null
+var _item_menu: PopupMenu = null
+var _item_menu_items: Array = []
 var _relic_slot: Control = null
 var _hud_tooltip_panel: PanelContainer = null
 var _hud_tooltip_label: Label = null
@@ -100,6 +124,11 @@ var _hud_tooltip_hold_timer: Timer = null
 var _pending_tooltip_node: Control = null
 var _pending_tooltip_text: String = ""
 var _die_tooltip_overlays: Array = []
+var _combat_zone_frame: PanelContainer = null
+var _combat_zone_enemy_lane: HBoxContainer = null
+var _combat_zone_hero_lane: HBoxContainer = null
+var _combat_zone_enemy_slots: Array = []
+var _combat_zone_hero_slots: Array = []
 var _pending_item: ItemData = null
 var _was_in_ready_phase: bool = false
 var _phase_before_item: String = ""
@@ -154,15 +183,12 @@ func _ready() -> void:
 	protocol_spend_button.text = "↺"
 	_build_hud_tooltip()
 	_build_unit_detail_panel()
-	PixelUI.style_button(auto_turn_button, Color(0.16, 0.08, 0.035, 1.0), Color(0.96, 0.48, 0.16, 1.0), 22)
-	PixelUI.style_button(auto_battle_button, Color(0.12, 0.055, 0.035, 1.0), Color(1.00, 0.66, 0.18, 1.0), 22)
 	_set_hud_tooltip(auto_turn_button, "Debug: automatically play out this turn.")
 	_set_hud_tooltip(auto_battle_button, "Debug: automatically finish this battle.")
 	_set_hud_tooltip(protocol_spend_button, "Reroll\nSpend 2 Protocol to reroll a hero's die.")
 	protocol_spend_button.pressed.connect(_on_reroll_button_pressed)
 	_add_nudge_button()
 	_build_item_panel()
-	_build_relic_slot()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
 	board.move_child(enemy_panel, 0)
 	board.move_child(center_panel, 1)
@@ -284,9 +310,15 @@ func _input(event: InputEvent) -> void:
 
 func _populate_hero_cards() -> void:
 	_clear_container(hero_cards)
+	_clear_container(hero_readouts)
+	_clear_container(hero_dice_row)
 	hero_card_views.clear()
 	var hero_states: Array = combat_manager.get_hero_states()
-	for hero_state in hero_states:
+	var card_slots: Array = _build_row_slots(hero_cards, hero_states.size())
+	var readout_slots: Array = _build_row_slots(hero_readouts, hero_states.size())
+	var dice_slots: Array = _build_row_slots(hero_dice_row, hero_states.size())
+	for i in range(hero_states.size()):
+		var hero_state: Dictionary = hero_states[i]
 		var unit: UnitData = hero_state["unit"] as UnitData
 		if unit == null:
 			continue
@@ -298,21 +330,19 @@ func _populate_hero_cards() -> void:
 		if readout.has_method("set_tooltip_callback"):
 			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var dice_anchor: Control = _build_dice_anchor()
-		var slot: VBoxContainer = _build_hero_card_column()
-		hero_cards.add_child(slot)
-		slot.add_child(dice_anchor)
-		var unit_panel: PanelContainer = _build_hero_unit_panel()
-		unit_panel.name = "UnitPanel"
-		var unit_vbox: VBoxContainer = VBoxContainer.new()
-		unit_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		unit_vbox.add_theme_constant_override("separation", 6)
-		unit_panel.add_child(unit_vbox)
-		slot.add_child(unit_panel)
-		unit_vbox.add_child(readout)
-		unit_vbox.add_child(card)
-		_prepare_ability_readout_layout(readout)
+		var slot_index: int = i
+		(card_slots[slot_index] as Control).add_child(card)
+		(readout_slots[slot_index] as Control).add_child(readout)
+		(dice_slots[slot_index] as Control).add_child(dice_anchor)
 		_prepare_battle_card_layout(card)
-		hero_card_views.append({"card": card, "readout": readout, "dice_anchor": dice_anchor, "state": hero_state})
+		_prepare_ability_readout_layout(readout)
+		hero_card_views.append({
+			"card": card,
+			"readout": readout,
+			"dice_anchor": dice_anchor,
+			"state": hero_state,
+			"slot_index": slot_index,
+		})
 		card.card_pressed.connect(_on_hero_card_pressed.bind(hero_state["id"]))
 		if card.has_signal("unit_detail_requested"):
 			card.connect("unit_detail_requested", Callable(self, "_on_unit_detail_requested"))
@@ -322,9 +352,15 @@ func _populate_hero_cards() -> void:
 
 func _populate_enemy_cards() -> void:
 	_clear_container(enemy_cards)
+	_clear_container(enemy_readouts)
+	_clear_container(enemy_dice_row)
 	enemy_card_views.clear()
 	var enemy_states: Array = combat_manager.get_enemy_states()
-	for enemy_state in enemy_states:
+	var card_slots: Array = _build_row_slots(enemy_cards, enemy_states.size())
+	var readout_slots: Array = _build_row_slots(enemy_readouts, enemy_states.size())
+	var dice_slots: Array = _build_row_slots(enemy_dice_row, enemy_states.size())
+	for i in range(enemy_states.size()):
+		var enemy_state: Dictionary = enemy_states[i]
 		var enemy: EnemyData = enemy_state["unit"] as EnemyData
 		if enemy == null:
 			continue
@@ -336,14 +372,19 @@ func _populate_enemy_cards() -> void:
 		if readout.has_method("set_tooltip_callback"):
 			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var dice_anchor: Control = _build_dice_anchor()
-		var slot: VBoxContainer = _build_enemy_card_column()
-		enemy_cards.add_child(slot)
-		slot.add_child(card)
-		slot.add_child(readout)
-		slot.add_child(dice_anchor)
+		var slot_index: int = i
+		(card_slots[slot_index] as Control).add_child(card)
+		(readout_slots[slot_index] as Control).add_child(readout)
+		(dice_slots[slot_index] as Control).add_child(dice_anchor)
 		_prepare_battle_card_layout(card)
 		_prepare_ability_readout_layout(readout)
-		enemy_card_views.append({"card": card, "readout": readout, "dice_anchor": dice_anchor, "state": enemy_state})
+		enemy_card_views.append({
+			"card": card,
+			"readout": readout,
+			"dice_anchor": dice_anchor,
+			"state": enemy_state,
+			"slot_index": slot_index,
+		})
 		card.card_pressed.connect(_on_enemy_card_pressed.bind(enemy_state["id"]))
 		if card.has_signal("unit_detail_requested"):
 			card.connect("unit_detail_requested", Callable(self, "_on_unit_detail_requested"))
@@ -402,48 +443,20 @@ func _prepare_battle_card_layout(card: Control) -> void:
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	card.custom_minimum_size = Vector2(0, 0)
-	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-func _build_card_slot() -> Control:
-	var slot: Control = Control.new()
-	slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	return slot
-
-
-func _build_hero_card_column() -> VBoxContainer:
-	var column: VBoxContainer = VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	column.add_theme_constant_override("separation", 6)
-	return column
-
-
-func _build_enemy_card_column() -> VBoxContainer:
-	var column: VBoxContainer = VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	column.add_theme_constant_override("separation", 6)
-	return column
-
-
-func _build_hero_unit_panel() -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.clip_contents = false
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.04, 0.07, 0.12, 0.22)
-	style.border_color = Color(0.20, 0.38, 0.50, 0.28)
-	style.set_border_width_all(1)
-	style.set_content_margin_all(0)
-	style.corner_radius_top_left = 0
-	style.corner_radius_top_right = 0
-	style.corner_radius_bottom_left = 0
-	style.corner_radius_bottom_right = 0
-	panel.add_theme_stylebox_override("panel", style)
-	return panel
+func _build_row_slots(row: HBoxContainer, count: int) -> Array:
+	var slots: Array = []
+	row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	var slot_count: int = maxi(count, 1)
+	for index in range(slot_count):
+		var slot := CenterContainer.new()
+		slot.name = "Slot%d" % index
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		row.add_child(slot)
+		slots.append(slot)
+	return slots
 
 
 func _build_dice_anchor() -> Control:
@@ -979,11 +992,17 @@ func _get_dice_anchor_point(side: String, state_id: String) -> Vector2:
 	if dice_tray_3d == null:
 		return Vector2.INF
 	var views: Array = hero_card_views if side == "hero" else enemy_card_views
-	var tray_rect: Rect2 = dice_tray_3d.get_global_rect()
-	if tray_rect.size.x <= 2.0 or tray_rect.size.y <= 2.0:
+	var combat_zone: Rect2 = _get_combat_zone_rect()
+	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		return Vector2.INF
-	for view_variant in views:
-		var view: Dictionary = view_variant
+	var lane: HBoxContainer = _combat_zone_hero_lane if side == "hero" else _combat_zone_enemy_lane
+	if lane == null or not is_instance_valid(lane) or not lane.is_inside_tree():
+		return Vector2.INF
+	var lane_rect: Rect2 = lane.get_global_rect()
+	if lane_rect.size.x <= 2.0 or lane_rect.size.y <= 2.0:
+		return Vector2.INF
+	for index in range(views.size()):
+		var view: Dictionary = views[index]
 		var state: Dictionary = view.get("state", {})
 		if str(state.get("id", "")) != state_id:
 			continue
@@ -991,49 +1010,13 @@ func _get_dice_anchor_point(side: String, state_id: String) -> Vector2:
 		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
 			return Vector2.INF
 		var card_rect: Rect2 = card.get_global_rect()
-		var edge_x: float = minf(DICE_SNAP_HORIZONTAL_MARGIN_PX, maxf(24.0, tray_rect.size.x * 0.18))
-		var enemy_y: float = minf(DICE_ENEMY_SNAP_TOP_PX, maxf(58.0, tray_rect.size.y * 0.42))
-		var hero_bottom: float = minf(DICE_HERO_SNAP_BOTTOM_PX, maxf(44.0, tray_rect.size.y * 0.28))
-		var x: float = card_rect.get_center().x - tray_rect.position.x
-		x = clampf(x, edge_x, tray_rect.size.x - edge_x)
-		var y: float = enemy_y if side == "enemy" else tray_rect.size.y - hero_bottom
-		return Vector2(x, y)
+		var x: float = clampf(card_rect.get_center().x, combat_zone.position.x + DICE_SNAP_HORIZONTAL_MARGIN_PX, combat_zone.end.x - DICE_SNAP_HORIZONTAL_MARGIN_PX)
+		var y: float = lane_rect.get_center().y
+		return Vector2(x, y) - combat_zone.position
 	return Vector2.INF
 
 
 func _get_dice_anchor_side_offset(side: String, state_id: String) -> float:
-	var views: Array = hero_card_views if side == "hero" else enemy_card_views
-	for view_variant in views:
-		var view: Dictionary = view_variant
-		var state: Dictionary = view.get("state", {})
-		if str(state.get("id", "")) == state_id:
-			return _get_three_unit_dice_side_offset(views, view)
-	return 0.0
-
-
-func _get_three_unit_dice_side_offset(views: Array, target_view: Dictionary) -> float:
-	if views.size() != 3:
-		return 0.0
-	var target_card: Control = target_view.get("card", null) as Control
-	if target_card == null:
-		return 0.0
-	var ordered_views: Array = views.duplicate()
-	ordered_views.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var card_a: Control = a.get("card", null) as Control
-		var card_b: Control = b.get("card", null) as Control
-		if card_a == null or card_b == null:
-			return false
-		return card_a.get_global_rect().get_center().x < card_b.get_global_rect().get_center().x
-	)
-	for i in range(ordered_views.size()):
-		var view: Dictionary = ordered_views[i]
-		if view.get("card", null) != target_card:
-			continue
-		if i == 0:
-			return -DICE_THREE_UNIT_SIDE_OFFSET_PX
-		if i == 2:
-			return DICE_THREE_UNIT_SIDE_OFFSET_PX
-		return 0.0
 	return 0.0
 
 
@@ -1070,14 +1053,16 @@ func _get_combat_zone_rect() -> Rect2:
 	var enemy_readout_rect: Rect2 = _get_enemy_result_row_rect()
 	var enemy_card_rect: Rect2 = _get_card_group_rect(enemy_card_views)
 	var friendly_readout_rect: Rect2 = _get_friendly_result_row_rect()
+	var friendly_card_rect: Rect2 = _get_card_group_rect(hero_card_views)
 	if enemy_readout_rect.size == Vector2.ZERO or friendly_readout_rect.size == Vector2.ZERO:
 		return center_panel.get_global_rect()
 
 	var board_rect: Rect2 = board.get_global_rect()
 	var center_rect: Rect2 = center_panel.get_global_rect()
 	var enemy_bottom_y: float = enemy_card_rect.end.y if enemy_card_rect.size != Vector2.ZERO else enemy_readout_rect.end.y
-	var top_y: float = enemy_bottom_y + COMBAT_ZONE_READOUT_GAP_PX
-	var bottom_y: float = friendly_readout_rect.position.y - COMBAT_ZONE_READOUT_GAP_PX
+	var friendly_top_y: float = friendly_card_rect.position.y if friendly_card_rect.size != Vector2.ZERO else friendly_readout_rect.position.y
+	var top_y: float = enemy_readout_rect.position.y if enemy_readout_rect.size != Vector2.ZERO else enemy_bottom_y
+	var bottom_y: float = friendly_readout_rect.end.y if friendly_readout_rect.size != Vector2.ZERO else friendly_top_y
 	if bottom_y <= top_y + 120.0:
 		return center_rect
 
@@ -1093,6 +1078,7 @@ func _layout_dice_from_combat_zone() -> void:
 	if dice_tray_3d == null:
 		return
 	var combat_zone: Rect2 = _get_combat_zone_rect()
+	_sync_combat_zone_frame(combat_zone)
 	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		return
 	dice_tray_3d.set_combat_zone_rect(combat_zone)
@@ -1185,6 +1171,7 @@ func _build_dice_action_entries(states: Array, rolls: Dictionary, is_hero: bool)
 			"name": str(unit.display_name),
 			"ability": str(ability_entry.get("ability_name", "")),
 			"roll": effective_roll,
+			"zone": str(ability_entry.get("zone", "")),
 		})
 	return entries
 
@@ -1529,10 +1516,10 @@ func _on_nudge_button_pressed() -> void:
 func _add_nudge_button() -> void:
 	var btn: Button = Button.new()
 	btn.text = "▲"
-	btn.custom_minimum_size = Vector2(82, 72)
+	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +5 to a hero's effective roll.")
 	btn.pressed.connect(_on_nudge_button_pressed)
-	PixelUI.style_button(btn, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, 38)
+	PixelUI.style_button(btn, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, PROTOCOL_VALUE_FONT_SIZE)
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, protocol_spend_button.get_index() + 1)
 
@@ -1748,7 +1735,6 @@ func _set_turn_phase(next_phase: String) -> void:
 
 
 func _style_roll_button_for_phase() -> void:
-	roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
 			PixelUI.style_button(roll_button, Color(0.045, 0.160, 0.105, 1.0), Color(0.20, 0.66, 0.50, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
@@ -2311,7 +2297,6 @@ func _append_log(message: String) -> void:
 
 func _set_battle_log_visible(is_visible: bool) -> void:
 	battle_log_panel.visible = is_visible
-	toggle_log_button.text = "?"
 
 
 func _show_help_overlay() -> void:
@@ -3328,157 +3313,57 @@ func _refresh_board_layout() -> void:
 		return
 	if hero_scroll == null or enemy_scroll == null:
 		return
+	center_panel.custom_minimum_size = Vector2(0, CENTER_ZONE_HEIGHT)
+	hero_panel.custom_minimum_size = Vector2(0, CARD_ZONE_HEIGHT)
+	enemy_panel.custom_minimum_size = Vector2(0, CARD_ZONE_HEIGHT)
+	hero_scroll.add_theme_constant_override("separation", RAIL_ROW_GAP_PX)
+	enemy_scroll.add_theme_constant_override("separation", RAIL_ROW_GAP_PX)
+	hero_cards.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	hero_readouts.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	hero_dice_row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	enemy_cards.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	enemy_readouts.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	enemy_dice_row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
 
-	hero_cards.columns = GameState.SQUAD_UNIT_LIMIT
-	enemy_cards.columns = GameState.SQUAD_UNIT_LIMIT
-	hero_cards.add_theme_constant_override("h_separation", 10)
-	hero_cards.add_theme_constant_override("v_separation", 0)
-	enemy_cards.add_theme_constant_override("h_separation", 10)
-	enemy_cards.add_theme_constant_override("v_separation", 0)
-	hero_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	enemy_cards.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	hero_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	enemy_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-
-	var compact_gap: float = float(hero_cards.get_theme_constant("h_separation"))
-	var compact_padding: float = 12.0
-	var compact_usable_width: float = maxf(minf(hero_scroll.size.x, enemy_scroll.size.x), 300.0)
-	var compact_columns: float = float(GameState.SQUAD_UNIT_LIMIT)
-	var compact_width: float = clampf(floor((compact_usable_width - (compact_gap * (compact_columns - 1.0)) - compact_padding) / compact_columns), 280.0, 360.0)
-	var minimum_column_height: float = _get_compact_column_min_height(compact_width)
-	var desired_column_height: float = maxf(
-		minimum_column_height,
-		clampf(floor(compact_width * 1.90) + COMPACT_PORTRAIT_EXTRA_HEIGHT_PX, 672.0, 792.0)
-	)
-	var available_board_height: float = _get_available_board_height()
-	var board_gap: float = float(board.get_theme_constant("separation")) * 2.0
-	var target_center_height: float = maxf(240.0, floor(available_board_height * COMPACT_CENTER_TARGET_RATIO))
-	var max_rail_height: float = floor((available_board_height - board_gap - target_center_height) / 2.0)
-	if max_rail_height > COMPACT_RAIL_CHROME_PX and desired_column_height + COMPACT_RAIL_CHROME_PX > max_rail_height:
-		desired_column_height = maxf(0.0, max_rail_height - COMPACT_RAIL_CHROME_PX)
-		compact_width = minf(compact_width, _get_compact_width_for_column_height(desired_column_height))
-	var rail_height: float = desired_column_height + COMPACT_RAIL_CHROME_PX
-	var compact_height: float = maxf(0.0, rail_height - COMPACT_RAIL_CHROME_PX)
-	var center_height: float = maxf(0.0, available_board_height - (rail_height * 2.0) - board_gap)
-
-	_apply_card_slots(hero_cards, Vector2(compact_width, compact_height))
-	_apply_card_slots(enemy_cards, Vector2(compact_width, compact_height))
+	_apply_rail_layout(hero_card_views, hero_cards, hero_readouts, hero_dice_row)
+	_apply_rail_layout(enemy_card_views, enemy_cards, enemy_readouts, enemy_dice_row)
 	_apply_dice_anchor_height(COMPACT_DICE_ANCHOR_HEIGHT_PX)
-
-	hero_panel.custom_minimum_size = Vector2(0, rail_height)
-	enemy_panel.custom_minimum_size = Vector2(0, rail_height)
-	hero_panel.size_flags_stretch_ratio = 1.0
-	enemy_panel.size_flags_stretch_ratio = 1.0
-	center_panel.custom_minimum_size = Vector2(0, center_height)
-	center_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	call_deferred("_layout_dice_from_combat_zone")
 
 
-func _apply_card_slots(container: GridContainer, slot_size: Vector2) -> void:
-	for child_variant in container.get_children():
-		var slot: Control = child_variant as Control
-		if slot == null:
-			continue
-		slot.custom_minimum_size = slot_size
-		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		_apply_column_child_sizes(slot, slot_size)
+func _apply_rail_layout(views: Array, cards_row: HBoxContainer, readouts_row: HBoxContainer, dice_row: HBoxContainer) -> void:
+	var slot_width: float = _get_logical_slot_width(cards_row)
+	var card_size := Vector2(minf(slot_width, COMPACT_CARD_WIDTH_PX), COMPACT_CARD_HEIGHT_PX)
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var card: Control = view.get("card", null) as Control
+		var readout: Control = view.get("readout", null) as Control
+		var anchor: Control = view.get("dice_anchor", null) as Control
+		if card != null:
+			card.custom_minimum_size = card_size
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			if card is CompactUnitCard:
+				(card as CompactUnitCard).apply_battle_layout(card_size)
+		if readout != null:
+			readout.custom_minimum_size = Vector2(slot_width, COMPACT_READOUT_HEIGHT_PX)
+			readout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		if anchor != null:
+			anchor.custom_minimum_size = Vector2(slot_width, COMPACT_DICE_ANCHOR_HEIGHT_PX)
+			anchor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
-func _apply_column_child_sizes(slot: Control, slot_size: Vector2) -> void:
-	var column: VBoxContainer = slot as VBoxContainer
-	if column == null:
-		return
-	var separation: float = float(column.get_theme_constant("separation"))
-	var card: Control = null
-	var readout: Control = null
-	var anchor: Control = null
-	var unit_panel: Control = null
-	for child_variant in column.get_children():
-		var child: Control = child_variant as Control
-		if child == null:
-			continue
-		if child.name == "DiceAnchor":
-			anchor = child
-		elif child is AbilityReadout:
-			readout = child
-		elif child.name == "UnitPanel":
-			unit_panel = child
-			for panel_child_variant in child.get_children():
-				var panel_child: Control = panel_child_variant as Control
-				if panel_child == null:
-					continue
-				for vbox_child_variant in panel_child.get_children():
-					var vbox_child: Control = vbox_child_variant as Control
-					if vbox_child == null:
-						continue
-					if vbox_child is AbilityReadout:
-						readout = vbox_child
-					else:
-						card = vbox_child
-		else:
-			card = child
-	var fixed_card_height: float = maxf(0.0, slot_size.y - COMPACT_READOUT_HEIGHT_PX - COMPACT_DICE_ANCHOR_HEIGHT_PX - (separation * 2.0))
-	if readout != null:
-		readout.custom_minimum_size = Vector2(0, COMPACT_READOUT_HEIGHT_PX)
-		readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	if anchor != null:
-		anchor.custom_minimum_size = Vector2(0, COMPACT_DICE_ANCHOR_HEIGHT_PX)
-		anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	if unit_panel != null:
-		var panel_height: float = COMPACT_READOUT_HEIGHT_PX + fixed_card_height + 6.0
-		unit_panel.custom_minimum_size = Vector2(slot_size.x, panel_height)
-		unit_panel.size = Vector2(slot_size.x, panel_height)
-	if card != null:
-		var card_size := Vector2(slot_size.x, fixed_card_height)
-		card.custom_minimum_size = card_size
-		card.size = card_size
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		if card is CompactUnitCard:
-			(card as CompactUnitCard).apply_battle_layout(card_size)
-
-
-func _get_available_board_height() -> float:
-	var content_vbox: VBoxContainer = board.get_parent() as VBoxContainer
-	if content_vbox == null:
-		return maxf(get_viewport().get_visible_rect().size.y, 0.0)
-	var content_frame: Control = content_vbox.get_parent() as Control
-
-	var visible_children: int = 0
-	var fixed_height: float = 0.0
-	for child_variant in content_vbox.get_children():
-		var child: Control = child_variant as Control
-		if child == null or not child.visible:
-			continue
-		visible_children += 1
-		if child == board:
-			continue
-		var min_size: Vector2 = child.get_combined_minimum_size()
-		fixed_height += maxf(min_size.y, child.custom_minimum_size.y)
-
-	var separation_total: float = float(content_vbox.get_theme_constant("separation")) * float(maxi(visible_children - 1, 0))
-	var viewport_rect: Rect2 = get_viewport().get_visible_rect()
-	var frame_height: float = maxf(viewport_rect.size.y - 12.0, 0.0)
-	if content_frame != null and content_frame.is_inside_tree():
-		var content_rect: Rect2 = content_frame.get_global_rect()
-		var top_inset: float = maxf(content_rect.position.y - viewport_rect.position.y, 0.0)
-		var bottom_inset: float = maxf(viewport_rect.end.y - content_rect.end.y, 0.0)
-		frame_height = maxf(viewport_rect.size.y - top_inset - bottom_inset, 0.0)
-	return maxf(0.0, frame_height - fixed_height - separation_total)
-
-
-func _get_compact_column_min_height(card_width: float) -> float:
-	var content_width: float = maxf(card_width - 24.0, 1.0)
-	var portrait_height: float = maxf(96.0, floor(content_width * 1.20))
-	var card_height: float = 24.0 + 62.0 + portrait_height + 74.0 + 46.0 + (7.0 * 4.0)
-	return card_height + COMPACT_READOUT_HEIGHT_PX + COMPACT_DICE_ANCHOR_HEIGHT_PX + (6.0 * 2.0)
-
-
-func _get_compact_width_for_column_height(column_height: float) -> float:
-	var non_portrait_height: float = 24.0 + 62.0 + 74.0 + 46.0 + (7.0 * 4.0) + COMPACT_READOUT_HEIGHT_PX + COMPACT_DICE_ANCHOR_HEIGHT_PX + (6.0 * 2.0)
-	var portrait_height: float = maxf(96.0, column_height - non_portrait_height)
-	return floor((portrait_height / 1.20) + 24.0)
+func _get_logical_slot_width(row: HBoxContainer) -> float:
+	var gap: float = float(row.get_theme_constant("separation"))
+	var available_width: float = maxf(row.size.x, 320.0)
+	var slot_count: int = maxi(row.get_child_count(), 1)
+	return clampf(
+		floor((available_width - (gap * float(slot_count - 1))) / float(slot_count)),
+		96.0,
+		COMPACT_CARD_WIDTH_PX
+	)
 
 
 func _apply_dice_anchor_height(anchor_height: float) -> void:
@@ -3543,21 +3428,137 @@ func _make_effect_chip(icon: String, text: String, bg: Color, border: Color, too
 
 func _apply_battle_theme() -> void:
 	background.color = Color(0.030, 0.050, 0.080, 1.0)
-	PixelUI.style_label(summary_label, 56, PixelUI.TEXT_PRIMARY, 2)
-	summary_label.custom_minimum_size.y = 78
-	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0, 0)
-	PixelUI.style_panel(protocol_panel, Color(0.028, 0.050, 0.074, 0.50), Color(0.18, 0.32, 0.48, 0.70), 4, 0)
-	PixelUI.style_panel(battle_log_panel, Color(0.028, 0.050, 0.074, 0.58), Color(0.18, 0.32, 0.48, 0.76), 4, 0)
-	PixelUI.style_label(protocol_label, 24, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_label(protocol_value_label, 22, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_button(toggle_log_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
-	roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
+	PixelUI.apply_pixel_font(summary_label)
+	summary_label.add_theme_font_size_override("font_size", HEADER_SUMMARY_FONT_SIZE)
+	summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	summary_label.add_theme_constant_override("outline_size", 2)
+	summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	summary_label.clip_text = true
+	summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	PixelUI.style_panel(hero_panel, Color("#0D1117"), Color.TRANSPARENT, 0, 0)
+	PixelUI.style_panel(enemy_panel, Color("#0D1117"), Color.TRANSPARENT, 0, 0)
+	PixelUI.style_panel(center_panel, Color("#0D1117"), Color.TRANSPARENT, 0, 0)
+	PixelUI.style_ninepatch_panel(protocol_panel, PixelUI.FRAME_SMALL_LANDSCAPE)
+	PixelUI.style_ninepatch_panel(battle_log_panel, PixelUI.FRAME_SIMPLE)
+	_ensure_panel_background(hero_panel)
+	_ensure_panel_background(enemy_panel)
+	_ensure_panel_background(center_panel)
+	_ensure_combat_zone_frame()
+	PixelUI.apply_pixel_font(protocol_label)
+	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_LABEL_FONT_SIZE)
+	protocol_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	protocol_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	protocol_label.add_theme_constant_override("outline_size", 2)
+	PixelUI.apply_pixel_font(protocol_value_label)
+	protocol_value_label.add_theme_font_size_override("font_size", PROTOCOL_VALUE_FONT_SIZE)
+	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	protocol_value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	protocol_value_label.add_theme_constant_override("outline_size", 2)
+	PixelUI.style_icon_button(toggle_log_button, PixelUI.BUTTON_QUESTION)
 	PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, CENTER_ACTION_BUTTON_FONT_SIZE)
-	PixelUI.style_button(protocol_spend_button, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, 38)
-	PixelUI.style_button(return_to_menu_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
+	PixelUI.style_button(protocol_spend_button, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, 20)
+	PixelUI.style_icon_button(auto_turn_button, PixelUI.BUTTON_UP_ARROW)
+	PixelUI.style_icon_button(auto_battle_button, PixelUI.BUTTON_GRID_123)
+	PixelUI.style_icon_button(return_to_menu_button, PixelUI.BUTTON_BACK_ARROW)
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.015, 0.020, 0.035, 1.0), PixelUI.LINE_DIM)
+
+
+func _ensure_panel_background(panel: PanelContainer) -> void:
+	if panel == null:
+		return
+	var background_fill := panel.get_node_or_null("OpaqueBackground") as ColorRect
+	if background_fill == null:
+		background_fill = ColorRect.new()
+		background_fill.name = "OpaqueBackground"
+		background_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		background_fill.color = Color("#0D1117")
+		background_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		panel.add_child(background_fill)
+		panel.move_child(background_fill, 0)
+	else:
+		background_fill.color = Color("#0D1117")
+		background_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+func _ensure_combat_zone_frame() -> void:
+	if float_layer == null:
+		return
+	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
+		_combat_zone_frame = PanelContainer.new()
+		_combat_zone_frame.name = "CombatZoneFrame"
+		_combat_zone_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_combat_zone_frame.set_as_top_level(true)
+		_combat_zone_frame.z_as_relative = false
+		_combat_zone_frame.z_index = 4
+		float_layer.add_child(_combat_zone_frame)
+	if _combat_zone_enemy_lane == null or not is_instance_valid(_combat_zone_enemy_lane):
+		_combat_zone_enemy_lane = _build_combat_zone_lane("EnemyDiceLane")
+		_combat_zone_frame.add_child(_combat_zone_enemy_lane)
+		_combat_zone_enemy_slots = _build_combat_zone_lane_slots(_combat_zone_enemy_lane)
+	if _combat_zone_hero_lane == null or not is_instance_valid(_combat_zone_hero_lane):
+		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
+		_combat_zone_frame.add_child(_combat_zone_hero_lane)
+		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
+	PixelUI.style_panel(_combat_zone_frame, Color(0.0, 0.0, 0.0, 0.0), PixelUI.LINE_BRIGHT, 2, 0)
+
+
+func _build_combat_zone_lane(name: String) -> HBoxContainer:
+	var lane := HBoxContainer.new()
+	lane.name = name
+	lane.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lane.alignment = BoxContainer.ALIGNMENT_CENTER
+	lane.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
+	return lane
+
+
+func _build_combat_zone_lane_slots(lane: HBoxContainer) -> Array:
+	var slots: Array = []
+	for index in range(3):
+		var slot := CenterContainer.new()
+		slot.name = "LaneSlot%d" % index
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		lane.add_child(slot)
+		slots.append(slot)
+	return slots
+
+
+func _sync_combat_zone_frame(combat_zone: Rect2) -> void:
+	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
+		return
+	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
+		_combat_zone_frame.visible = false
+		return
+	_combat_zone_frame.visible = true
+	_combat_zone_frame.global_position = combat_zone.position
+	_combat_zone_frame.size = combat_zone.size
+	var enemy_readout_rect: Rect2 = _get_enemy_result_row_rect()
+	var hero_readout_rect: Rect2 = _get_friendly_result_row_rect()
+	var button_rect: Rect2 = roll_button.get_global_rect() if roll_button != null and is_instance_valid(roll_button) else Rect2()
+	var lane_gap: float = 10.0
+	var button_center_local: float = button_rect.get_center().y - combat_zone.position.y if button_rect.size.y > 2.0 else combat_zone.size.y * 0.5
+	var enemy_readout_bottom: float = enemy_readout_rect.end.y - combat_zone.position.y if enemy_readout_rect.size.y > 2.0 else 0.0
+	var hero_readout_top: float = hero_readout_rect.position.y - combat_zone.position.y if hero_readout_rect.size.y > 2.0 else combat_zone.size.y
+	var top_bound: float = enemy_readout_bottom + lane_gap
+	var bottom_bound: float = hero_readout_top - lane_gap
+	var lane_height: float = DICE_LANE_HEIGHT_PX
+	var max_symmetric_offset: float = maxf(0.0, minf(button_center_local - top_bound - DICE_VISUAL_HALF_HEIGHT_PX, bottom_bound - button_center_local - DICE_VISUAL_HALF_HEIGHT_PX))
+	var required_center_offset: float = (button_rect.size.y * 0.5 if button_rect.size.y > 2.0 else CENTER_ACTION_BUTTON_SIZE.y * 0.5) + DICE_VISUAL_HALF_HEIGHT_PX + DICE_BUTTON_GAP_PX
+	var center_offset: float = minf(required_center_offset, max_symmetric_offset)
+	var enemy_lane_y: float = button_center_local - center_offset - lane_height * 0.5
+	var hero_lane_y: float = button_center_local + center_offset - lane_height * 0.5
+	var enemy_lane_height: float = lane_height if max_symmetric_offset > 0.0 else 0.0
+	var hero_lane_height: float = lane_height if max_symmetric_offset > 0.0 else 0.0
+	if _combat_zone_enemy_lane != null and is_instance_valid(_combat_zone_enemy_lane):
+		_combat_zone_enemy_lane.position = Vector2.ZERO if enemy_lane_height <= 0.0 else Vector2(0.0, enemy_lane_y)
+		_combat_zone_enemy_lane.size = Vector2(combat_zone.size.x, enemy_lane_height)
+		_combat_zone_enemy_lane.visible = enemy_lane_height > 0.0
+	if _combat_zone_hero_lane != null and is_instance_valid(_combat_zone_hero_lane):
+		_combat_zone_hero_lane.position = Vector2.ZERO if hero_lane_height <= 0.0 else Vector2(0.0, hero_lane_y)
+		_combat_zone_hero_lane.size = Vector2(combat_zone.size.x, hero_lane_height)
+		_combat_zone_hero_lane.visible = hero_lane_height > 0.0
 
 
 func _build_scaled_enemy(base_enemy: EnemyData, battle_index: int, track_scale: float) -> EnemyData:
@@ -3599,13 +3600,17 @@ func _get_item_protocol_cost(item: ItemData) -> int:
 
 
 func _build_item_panel() -> void:
-	_item_panel = HBoxContainer.new()
-	_item_panel.add_theme_constant_override("separation", 10)
-	_item_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_item_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-
 	var protocol_row: HBoxContainer = protocol_panel.get_node("ProtocolMargin/ProtocolRow") as HBoxContainer
-	protocol_row.add_child(_item_panel)
+	_item_button = Button.new()
+	_item_button.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
+	_item_button.text = "Item"
+	_item_button.pressed.connect(_on_item_button_pressed_menu)
+	PixelUI.style_button(_item_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, PROTOCOL_VALUE_FONT_SIZE)
+	protocol_row.add_child(_item_button)
+	_item_menu = PopupMenu.new()
+	_item_menu.name = "ItemMenu"
+	_item_menu.id_pressed.connect(_on_item_menu_id_pressed)
+	float_layer.add_child(_item_menu)
 	_update_item_panel()
 
 
@@ -3613,9 +3618,25 @@ func _build_relic_slot() -> void:
 	var protocol_row: HBoxContainer = protocol_panel.get_node("ProtocolMargin/ProtocolRow") as HBoxContainer
 	var slot: PanelContainer = PanelContainer.new()
 	_relic_slot = slot
-	slot.custom_minimum_size = Vector2(78, 72)
+	slot.custom_minimum_size = ITEM_SLOT_SIZE
 	_set_hud_tooltip(slot, "Relic\nNo relic equipped.")
 	PixelUI.style_panel(slot, Color(0.06, 0.08, 0.13, 0.85), PixelUI.GOLD_ACCENT, 2, 0)
+
+	var icon_center: CenterContainer = CenterContainer.new()
+	icon_center.name = "RelicIconCenter"
+	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	slot.add_child(icon_center)
+
+	var icon: TextureRect = TextureRect.new()
+	icon.name = "RelicIcon"
+	icon.custom_minimum_size = ITEM_ICON_SIZE
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.visible = false
+	icon_center.add_child(icon)
 
 	var label: Label = Label.new()
 	label.name = "RelicLabel"
@@ -3623,7 +3644,7 @@ func _build_relic_slot() -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(38))
+	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", PixelUI.GOLD_ACCENT)
 	slot.add_child(label)
 
@@ -3635,74 +3656,95 @@ func _update_relic_slot() -> void:
 	if _relic_slot == null:
 		return
 	var label: Label = _relic_slot.get_node_or_null("RelicLabel") as Label
+	var icon: TextureRect = _relic_slot.find_child("RelicIcon", true, false) as TextureRect
 	var relic_ids: Array = _game_state().relics
 	if relic_ids.is_empty():
 		_set_hud_tooltip(_relic_slot, "Relic\nNo relic equipped.")
+		if icon != null:
+			icon.texture = null
+			icon.visible = false
 		if label != null:
 			label.text = "◇"
+			label.visible = true
 		return
 
 	var relic: ItemData = _data_manager().get_item(str(relic_ids[0])) as ItemData
 	if relic == null:
 		_set_hud_tooltip(_relic_slot, "Relic\nUnknown relic.")
+		if icon != null:
+			icon.texture = null
+			icon.visible = false
 		if label != null:
 			label.text = "?"
+			label.visible = true
 		return
 
 	_set_hud_tooltip(_relic_slot, _build_relic_tooltip(relic))
+	if icon != null:
+		icon.texture = relic.icon
+		icon.visible = relic.icon != null
 	if label != null:
 		label.text = _get_item_icon_char(relic.icon_key)
+		label.visible = relic.icon == null
 
 
 func _update_item_panel() -> void:
-	if _item_panel == null:
+	if _item_button == null:
 		return
-	for child in _item_panel.get_children():
-		child.queue_free()
-
+	_item_menu_items.clear()
 	var item_ids: Array = _game_state().consumables
-	for slot_index in range(3):
-		if slot_index < item_ids.size():
-			var item: ItemData = _data_manager().get_item(str(item_ids[slot_index])) as ItemData
-			if item != null:
-				_add_item_slot_filled(item)
+	for item_id_variant in item_ids:
+		var item: ItemData = _data_manager().get_item(str(item_id_variant)) as ItemData
+		if item != null:
+			_item_menu_items.append(item)
+	if _item_menu != null:
+		_item_menu.clear()
+		for i in range(_item_menu_items.size()):
+			var menu_item: ItemData = _item_menu_items[i] as ItemData
+			if menu_item == null:
 				continue
-		_add_item_slot_empty()
+			var cost: int = _get_item_protocol_cost(menu_item)
+			_item_menu.add_item("%s (%d)" % [menu_item.display_name, cost], i)
+	if _item_menu_items.is_empty():
+		_item_button.disabled = true
+		_item_button.text = "Item"
+		_set_hud_tooltip(_item_button, "Items\nNo consumables available.")
+	else:
+		_item_button.disabled = false
+		_item_button.text = "Item"
+		var tooltip_lines: Array = ["Items"]
+		for item_variant in _item_menu_items:
+			var item: ItemData = item_variant as ItemData
+			if item == null:
+				continue
+			tooltip_lines.append("- %s" % item.display_name)
+		_set_hud_tooltip(_item_button, "\n".join(tooltip_lines))
 
 
-func _add_item_slot_empty() -> void:
-	var slot: PanelContainer = PanelContainer.new()
-	slot.custom_minimum_size = Vector2(78, 72)
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.08, 0.13, 0.85)
-	style.border_color = PixelUI.BLACK_EDGE
-	style.set_border_width_all(2)
-	style.corner_radius_top_left = 0
-	style.corner_radius_top_right = 0
-	style.corner_radius_bottom_left = 0
-	style.corner_radius_bottom_right = 0
-	slot.add_theme_stylebox_override("panel", style)
-	var lbl: Label = Label.new()
-	lbl.text = "○"
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lbl.add_theme_font_size_override("font_size", PixelUI.scale_font_size(38))
-	lbl.add_theme_color_override("font_color", Color(0.28, 0.32, 0.42, 0.55))
-	slot.add_child(lbl)
-	_item_panel.add_child(slot)
+func _on_item_button_pressed_menu() -> void:
+	if _item_button == null or _item_menu == null or _item_menu_items.is_empty():
+		return
+	var button_rect: Rect2 = _item_button.get_global_rect()
+	var popup_size := Vector2(420, float(88 * maxi(_item_menu_items.size(), 1)))
+	var popup_position := Vector2(
+		button_rect.end.x - popup_size.x,
+		button_rect.position.y - popup_size.y - 12.0
+	)
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	popup_position.x = clampf(popup_position.x, 8.0, viewport_size.x - popup_size.x - 8.0)
+	popup_position.y = maxf(8.0, popup_position.y)
+	_item_menu.position = popup_position
+	_item_menu.reset_size()
+	_item_menu.popup(Rect2i(popup_position, popup_size))
 
 
-func _add_item_slot_filled(item: ItemData) -> void:
-	var rarity_color: Color = _get_item_rarity_color(item.rarity)
-	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(78, 72)
-	btn.text = _get_item_icon_char(item.icon_key)
-	_set_hud_tooltip(btn, _build_item_tooltip(item))
-	PixelUI.style_button(btn, rarity_color.darkened(0.52), rarity_color, 38)
-	btn.pressed.connect(_on_item_button_pressed.bind(item))
-	_item_panel.add_child(btn)
+func _on_item_menu_id_pressed(id: int) -> void:
+	if id < 0 or id >= _item_menu_items.size():
+		return
+	var item: ItemData = _item_menu_items[id] as ItemData
+	if item == null:
+		return
+	_on_item_button_pressed(item)
 
 
 func _build_item_tooltip(item: ItemData) -> String:

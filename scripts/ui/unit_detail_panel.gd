@@ -17,7 +17,10 @@ const GEAR_FONT_SIZE := 24
 const TIER_FONT_SIZE := 30
 const DESCRIPTION_FONT_SIZE := 24
 const HINT_FONT_SIZE := 20
+const DETAIL_PORTRAIT_SIZE := Vector2(70, 70)
+const MENAGERIE_PORTRAIT_Y_OFFSET := -6.0
 
+var _portrait_frame: Control = null
 var _portrait_rect: TextureRect = null
 var _name_label: Label = null
 var _role_label: Label = null
@@ -25,6 +28,7 @@ var _gear_items: HBoxContainer = null
 var _tiers_box: VBoxContainer = null
 var _slide_tween: Tween = null
 var _tooltip_cb: Callable = Callable()
+var _current_data: Resource = null
 
 
 func _ready() -> void:
@@ -43,11 +47,13 @@ func _ready() -> void:
 func show_for_unit(data: Resource, gear_rows: Array = []) -> void:
 	if data == null:
 		return
+	_current_data = data
 	_populate(data, gear_rows)
 	if _slide_tween != null:
 		_slide_tween.kill()
 	visible = true
 	await get_tree().process_frame
+	_layout_portrait()
 	var target_rect: Rect2 = _apply_panel_rect()
 	position = Vector2(target_rect.position.x, target_rect.position.y + target_rect.size.y + PANEL_MARGIN)
 	_slide_tween = create_tween()
@@ -120,13 +126,20 @@ func _build() -> void:
 	header.add_theme_constant_override("separation", 10)
 	root.add_child(header)
 
+	_portrait_frame = Control.new()
+	_portrait_frame.custom_minimum_size = DETAIL_PORTRAIT_SIZE
+	_portrait_frame.clip_contents = true
+	_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(_portrait_frame)
+
 	_portrait_rect = TextureRect.new()
-	_portrait_rect.custom_minimum_size = Vector2(70, 70)
+	_portrait_rect.custom_minimum_size = DETAIL_PORTRAIT_SIZE
 	_portrait_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_portrait_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_portrait_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.add_child(_portrait_rect)
+	_portrait_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_portrait_frame.add_child(_portrait_rect)
 
 	var title_box := VBoxContainer.new()
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -176,6 +189,27 @@ func _populate(data: Resource, gear_rows: Array) -> void:
 	_role_label.text = _role_text(data)
 	_populate_gear(gear_rows)
 	_populate_tiers(data)
+	_layout_portrait()
+
+
+func _layout_portrait() -> void:
+	if _portrait_rect == null or _portrait_frame == null:
+		return
+	var frame_size: Vector2 = _portrait_frame.size
+	if frame_size.x <= 0.0 or frame_size.y <= 0.0:
+		frame_size = DETAIL_PORTRAIT_SIZE
+	var aspect_ratio := 1.0
+	if _portrait_rect.texture != null and _portrait_rect.texture.get_width() > 0:
+		aspect_ratio = float(_portrait_rect.texture.get_height()) / float(_portrait_rect.texture.get_width())
+	var display_height: float = maxf(frame_size.y, frame_size.x * aspect_ratio)
+	_portrait_rect.position = Vector2(0.0, _portrait_y_offset())
+	_portrait_rect.size = Vector2(frame_size.x, display_height)
+
+
+func _portrait_y_offset() -> float:
+	if _current_data is EnemyData and str((_current_data as EnemyData).faction) == "stellarMenagerie":
+		return MENAGERIE_PORTRAIT_Y_OFFSET
+	return 0.0
 
 
 func _populate_gear(gear_rows: Array) -> void:

@@ -7,9 +7,74 @@ const ITEMS_DATA_PATH := "res://data/raw/items.data.json"
 const GEAR_DATA_PATH := "res://data/raw/gear.data.json"
 const RELICS_DATA_PATH := "res://data/raw/relics.data.json"
 const BATTLE_MODES_DATA_PATH := "res://data/raw/battle-modes.json"
-const LEGACY_HERO_PORTRAIT_ROOT := "res://legacy-angular/public/heroes/"
-const LEGACY_ENEMY_PORTRAIT_ROOT := "res://legacy-angular/public/enemies/"
+const HERO_PORTRAIT_ROOT := "res://assets/portraits/"
+const ENEMY_PORTRAIT_ROOT := "res://assets/portraits/enemies/"
 const LEGACY_UI_ROOT := "res://legacy-angular/public/ui/"
+
+const ITEM_ICON_BY_ID := {
+	"patch_kit": "res://assets/icons/items/item_003.png",
+	"biofoam": "res://assets/icons/items/item_004.png",
+	"field_meds": "res://assets/icons/items/item_010.png",
+	"nanite_salve": "res://assets/icons/items/item_028.png",
+	"scrap_plate": "res://assets/icons/items/item_007.png",
+	"reactive_weave": "res://assets/icons/items/item_006.png",
+	"aegis_foil": "res://assets/icons/items/item_024.png",
+	"calibration_chip": "res://assets/icons/items/item_008.png",
+	"momentum_core": "res://assets/icons/items/item_032.png",
+	"oracle_lens": "res://assets/icons/items/item_016.png",
+	"defib_spark": "res://assets/icons/items/item_017.png",
+	"full_restore": "res://assets/icons/items/item_042.png",
+	"ghost_veil": "res://assets/icons/items/item_011.png",
+	"rust_patch": "res://assets/icons/items/item_012.png",
+	"corrosion_bomb": "res://assets/icons/items/item_013.png",
+	"entropy_seed": "res://assets/icons/items/item_014.png",
+	"shock_charge": "res://assets/icons/items/item_002.png",
+	"grounding_clip": "res://assets/icons/items/item_026.png",
+	"arc_capacitor": "res://assets/icons/items/item_025.png",
+	"aegis_saturation": "res://assets/icons/items/item_020.png",
+	"harmonic_injector": "res://assets/icons/items/item_030.png",
+	"scatter_veil_array": "res://assets/icons/items/item_038.png",
+	"archive_cascade": "res://assets/icons/items/item_033.png",
+	"citadel_kernel": "res://assets/icons/items/item_037.png",
+	"terminal_spike": "res://assets/icons/items/item_059.png",
+	"acid_vial": "res://assets/icons/items/item_031.png",
+	"nanite_burn": "res://assets/icons/items/item_029.png",
+	"thermite_canister": "res://assets/icons/items/item_034.png",
+	"null_vector": "res://assets/icons/items/item_035.png",
+	"training_datachip": "res://assets/icons/items/item_063.png",
+	"field_manual": "res://assets/icons/items/item_033.png",
+	"mnemonic_core": "res://assets/icons/items/item_034.png",
+	"gyro_motor": "res://assets/icons/items/item_008.png",
+	"cascade_jammer": "res://assets/icons/items/item_036.png",
+	"cryo_gel": "res://assets/icons/items/item_015.png",
+	"cryo_web": "res://assets/icons/items/item_045.png",
+	"neural_splice": "res://assets/icons/items/item_034.png",
+	"combat_plating": "res://assets/icons/items/item_057.png",
+	"stim_injector": "res://assets/icons/items/item_004.png",
+	"void_shard": "res://assets/icons/items/item_035.png",
+	"phase_weave": "res://assets/icons/items/item_011.png",
+	"scavenger_rig": "res://assets/icons/items/item_019.png",
+	"protocol_tap": "res://assets/icons/items/item_017.png",
+	"dead_mans_chip": "res://assets/icons/items/item_063.png",
+	"exile_blade_core": "res://assets/icons/items/item_059.png",
+	"signal_jammer_mk2": "res://assets/icons/items/item_024.png",
+}
+
+const RELIC_ICON_BY_ID := {
+	"ironCurtain": "res://assets/icons/items/item_055.png",
+	"openingGambit": "res://assets/icons/items/item_036.png",
+	"bulwarkAura": "res://assets/icons/items/item_020.png",
+	"naniteField": "res://assets/icons/items/item_047.png",
+	"plagueProtocol": "res://assets/icons/items/item_013.png",
+	"overcharge": "res://assets/icons/items/item_042.png",
+	"signalJam": "res://assets/icons/items/item_036.png",
+	"coordinatedStrike": "res://assets/icons/items/item_043.png",
+	"resonanceCascade": "res://assets/icons/items/item_052.png",
+	"gravityWell": "res://assets/icons/items/item_053.png",
+	"protocolOverride": "res://assets/icons/items/item_032.png",
+	"entropyLeak": "res://assets/icons/items/item_046.png",
+	"chainReaction": "res://assets/icons/items/item_048.png",
+}
 
 const ENEMY_ZONE_RANGES := {
 	"recharge": Vector2i(1, 4),
@@ -31,14 +96,14 @@ const HERO_ROLE_BY_ID := {
 }
 
 const HERO_PORTRAIT_BY_ID := {
-	"pulse": "pulse-portrait.png",
-	"combat": "combat-portrait.png",
-	"shield": "shield-portrait.png",
-	"avalanche": "avalanche-portrait.png",
-	"medic": "medic-portrait.png",
-	"engineer": "engineer-portrait.png",
-	"ghost": "ghost-portrait.png",
-	"breaker": "breaker-portrait.png",
+	"pulse": "pulse.png",
+	"combat": "combat.png",
+	"shield": "shield.png",
+	"avalanche": "avalanche.png",
+	"medic": "medic.png",
+	"engineer": "engineer.png",
+	"ghost": "ghost.png",
+	"breaker": "breaker.png",
 }
 
 const ENEMY_FACTION_BY_TYPE := {
@@ -82,43 +147,31 @@ const ENEMY_FACTION_BY_TYPE := {
 	"beastTyrant": "stellarMenagerie",
 }
 
-const ENEMY_PORTRAIT_BY_TYPE := {
-	"scrap": "scrap-portrait.png",
-	"rust": "rust-portrait.png",
-	"patrol": "patrol-portrait.png",
-	"guard": "guard-portrait.png",
-	"warden": "warden-portrait.png",
-	"volt": "volt-portrait.png",
-	"boss": "boss-portrait.png",
-	"skitter": "skitter-portrait.png",
-	"mite": "mite-portrait.png",
-	"stalker": "stalker-portrait.png",
-	"carapace": "carapace-portrait.png",
-	"brood": "brood-portrait.png",
-	"spewer": "spewer-portrait.png",
-	"hiveBoss": "hive-boss-portrait.png",
-	"veilShard": "veil-shard-portrait.png",
-	"veilPrism": "veil-prism-portrait.png",
-	"veilAegis": "veil-aegis-portrait.png",
-	"veilResonance": "veil-resonance-portrait.png",
-	"veilNull": "veil-null-portrait.png",
-	"veilStorm": "veil-storm-portrait.png",
-	"veilSynapse": "veil-synapse-portrait.png",
-	"veilBoss": "veil-boss-portrait.png",
-	"voidWisp": "void-wisp-portrait.png",
-	"voidAcolyte": "void-acolyte-portrait.png",
-	"voidScribe": "void-scribe-portrait.png",
-	"voidBinder": "void-binder-portrait.png",
-	"voidGlimmer": "void-glimmer-portrait.png",
-	"voidChanneler": "void-channeler-portrait.png",
-	"voidCircletBoss": "void-circlet-boss-portrait.png",
-	"beastMonkey": "rift-macaque-portrait.png",
-	"beastWolf": "void-wolf-portrait.png",
-	"beastLynx": "eclipse-lynx-portrait.png",
-	"beastBison": "thunder-bison-portrait.png",
-	"beastHyena": "eclipse-hyena-portrait.png",
-	"beastBadger": "ridge-badger-portrait.png",
-	"beastTyrant": "void-reaver-portrait.png",
+const ENEMY_PORTRAIT_BY_NAME := {
+	"Scrap Drone": "scrap_drone.png",
+	"Rust Drone": "rust_drone.png",
+	"Whitenoise Skimmer": "whitenoise_skimmer.png",
+	"Patrol Elite": "patrol_elite.png",
+	"Guard Elite": "guard_elite.png",
+	"Heavy Warden": "heavy_warden.png",
+	"Volt Elite": "volt_elite.png",
+	"Harmonic Hexnode": "harmonic_hexnode.png",
+	"SCRAPMASTER": "scrapmaster.png",
+	"Skitterling": "skitterling.png",
+	"Bloodmite": "bloodmite.png",
+	"Spine Stalker": "spine_stalker.png",
+	"Carapace Beetle": "carapace_beetle.png",
+	"Broodwarden": "broodwarden.png",
+	"Caustic Spewer": "caustic_spewer.png",
+	"Hive Matriarch": "hive_matriarch.png",
+	"Rift Macaque": "res://assets/portraits/enemies/rift_macaque.png",
+	"Void Hound": "res://assets/portraits/enemies/void_hound.png",
+	"Pack Hound": "res://assets/portraits/enemies/void_hound.png",
+	"Eclipse Panther": "res://assets/portraits/enemies/eclipse_panther.png",
+	"Ridge Drake": "res://assets/portraits/enemies/ridge_drake.png",
+	"Eclipse Raptor": "res://assets/portraits/enemies/eclipse_raptor.png",
+	"Thunder Ape": "res://assets/portraits/enemies/thunder_ape.png",
+	"VOID REAVER": "res://assets/portraits/enemies/void_reaver.png",
 }
 
 var units: Dictionary = {}
@@ -228,7 +281,7 @@ func _load_enemies() -> void:
 		enemy.phase_two_damage_preview_max = int(enemy_def.get("p2dMax", 0))
 		enemy.phase_two_threshold = int(enemy_def.get("pThr", 0))
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
-		enemy.portrait = _load_enemy_portrait(enemy.enemy_type)
+		enemy.portrait = _load_enemy_portrait(enemy.display_name)
 		enemy.dice_ranges = _build_enemy_dice_ranges(enemy_abilities.get(enemy_type, {}))
 		enemies[enemy.id] = enemy
 
@@ -333,6 +386,13 @@ func _build_item_resource(item_entry: Dictionary, item_type: String) -> ItemData
 	item.target_kind = str(item_entry.get("target", "none"))
 	item.description = str(item_entry.get("desc", ""))
 	item.effect = item_entry.get("effect", {}).duplicate(true)
+	var icon_path: String = ""
+	if item.item_type == "relic":
+		icon_path = str(RELIC_ICON_BY_ID.get(item.id, ""))
+	else:
+		icon_path = str(ITEM_ICON_BY_ID.get(item.id, ""))
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		item.icon = load(icon_path) as Texture2D
 	return item
 
 
@@ -369,14 +429,16 @@ func _load_hero_portrait(unit_id: String) -> Texture2D:
 	var file_name: String = str(HERO_PORTRAIT_BY_ID.get(unit_id, ""))
 	if file_name == "":
 		return null
-	return _load_texture_if_exists("%s%s" % [LEGACY_HERO_PORTRAIT_ROOT, file_name])
+	return _load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name])
 
 
-func _load_enemy_portrait(enemy_type: String) -> Texture2D:
-	var file_name: String = str(ENEMY_PORTRAIT_BY_TYPE.get(enemy_type, ""))
-	if file_name == "":
-		return null
-	return _load_texture_if_exists("%s%s" % [LEGACY_ENEMY_PORTRAIT_ROOT, file_name])
+func _load_enemy_portrait(enemy_name: String) -> Texture2D:
+	var mapped_path: String = str(ENEMY_PORTRAIT_BY_NAME.get(enemy_name, ""))
+	if mapped_path != "":
+		if mapped_path.begins_with("res://"):
+			return _load_texture_if_exists(mapped_path)
+		return _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, mapped_path])
+	return null
 
 
 func _load_texture_if_exists(texture_path: String) -> Texture2D:

@@ -1,18 +1,20 @@
 # Phase 6 reward screen that rolls three item choices and applies the selected reward into GameState.
 extends Control
 
-const CARD_WIDTH_FRACTION := 0.75
-const CARD_MIN_WIDTH := 310.0
-const CARD_MAX_WIDTH := 390.0
-const CARD_TOP_SPACER_HEIGHT := 40.0
-const CARD_IMAGE_HEIGHT := 104.0
-const EFFECT_ICON_SIZE := 62
-const EFFECT_VALUE_SIZE := 52
-const EFFECT_TAG_SIZE := 34
-const BODY_FONT_SIZE := 30
-const SMALL_FONT_SIZE := 22
+const CARD_WIDTH_FRACTION := 0.74
+const CARD_MIN_WIDTH := 300.0
+const CARD_MAX_WIDTH := 370.0
+const CARD_TOP_SPACER_HEIGHT := 24.0
+const CARD_IMAGE_HEIGHT := 78.0
+const EFFECT_ICON_SIZE := 46
+const EFFECT_VALUE_SIZE := 42
+const EFFECT_TAG_SIZE := 28
+const BODY_FONT_SIZE := 24
+const SMALL_FONT_SIZE := 18
+const CARD_ACTION_BUTTON_FONT_SIZE := 24
+const CARD_ACTION_BUTTON_HEIGHT := 54
 const GEAR_TARGET_BUTTON_FONT_SIZE := 26
-const GEAR_TARGET_BUTTON_HEIGHT := 58
+const GEAR_TARGET_BUTTON_HEIGHT := 64
 const CARD_BG := Color(0.024, 0.040, 0.060, 0.78)
 const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.88)
 const RARITY_COLORS := {
@@ -41,6 +43,7 @@ const RARITY_COLORS := {
 @onready var footer_label: Label = %FooterLabel
 
 var _help_overlay: Control = null
+var _gear_target_overlay: Control = null
 
 
 func _ready() -> void:
@@ -105,7 +108,7 @@ func _build_help_overlay() -> void:
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_panel(panel, Color(0.018, 0.026, 0.044, 0.98), Color(0.36, 0.55, 0.78, 0.95), 4, 0)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE)
 	outer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -150,6 +153,10 @@ func _update_reward_layout() -> void:
 	if reward_cards == null:
 		return
 	var card_width: float = _get_card_width()
+	reward_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	reward_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	reward_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	reward_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	reward_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -165,7 +172,7 @@ func _update_reward_layout() -> void:
 	for child in reward_cards.get_children():
 		var panel: PanelContainer = child as PanelContainer
 		if panel != null:
-			panel.custom_minimum_size = Vector2(card_width, 0)
+			panel.custom_minimum_size = Vector2(card_width, card_width)
 			panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
@@ -182,25 +189,25 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 	var card_width: float = _get_card_width()
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.custom_minimum_size = Vector2(card_width, 0)
+	panel.custom_minimum_size = Vector2(card_width, card_width)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.clip_contents = false
+	panel.clip_contents = true
 	_style_reward_panel(panel, item, false)
 	panel.mouse_entered.connect(_style_reward_panel.bind(panel, item, true))
 	panel.mouse_exited.connect(_style_reward_panel.bind(panel, item, false))
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	vbox.add_theme_constant_override("separation", 10)
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 7)
 	margin.add_child(vbox)
 
 	vbox.add_child(_create_item_image_area(item))
@@ -208,23 +215,25 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 	vbox.add_child(_create_type_rarity_row(item))
 	vbox.add_child(_create_effect_row(_build_effect_parts_for_item(item), true))
 	vbox.add_child(_create_description_label(item.description))
-	if item.item_type == "gear":
-		_add_gear_selector(vbox, item)
+
+	var button_spacer := Control.new()
+	button_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(button_spacer)
 
 	var action_button := Button.new()
-	action_button.custom_minimum_size = Vector2(0, 72)
+	action_button.custom_minimum_size = Vector2(0, CARD_ACTION_BUTTON_HEIGHT)
 	action_button.text = _build_claim_button_text(item)
-	PixelUI.style_button(action_button, Color(0.022, 0.034, 0.050, 0.95), _get_item_accent(item), 26)
-	action_button.pressed.connect(_on_claim_reward_pressed.bind(item.id, vbox))
+	PixelUI.style_button(action_button, Color(0.022, 0.034, 0.050, 0.95), _get_item_accent(item), CARD_ACTION_BUTTON_FONT_SIZE)
+	action_button.pressed.connect(_on_claim_reward_pressed.bind(item.id))
 	vbox.add_child(action_button)
 
 	return panel
 
 
 func _style_reward_panel(panel: PanelContainer, item: ItemData, hovered: bool) -> void:
-	var bg: Color = CARD_BG_HOVER if hovered else CARD_BG
-	var border: Color = _get_item_accent(item).lightened(0.12 if hovered else 0.0)
-	PixelUI.style_panel(panel, bg, border, 4 if hovered else 3, 0)
+	var tint: Color = _get_item_accent(item).lightened(0.06 if hovered else 0.0).lerp(Color.WHITE, 0.30)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_CORNER_DOTS, 18, tint)
 
 
 func _create_card_header(item: ItemData) -> HBoxContainer:
@@ -233,7 +242,7 @@ func _create_card_header(item: ItemData) -> HBoxContainer:
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
 	header.add_theme_constant_override("separation", 8)
 
-	var title := _make_label(item.display_name, 38, _get_item_accent(item), 3)
+	var title := _make_label(item.display_name, 32, _get_item_accent(item), 3)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -255,15 +264,15 @@ func _create_item_image_area(item: ItemData) -> PanelContainer:
 
 	if item.icon != null:
 		var texture_rect := TextureRect.new()
-		texture_rect.custom_minimum_size = Vector2(70, 70)
+		texture_rect.custom_minimum_size = Vector2(58, 58)
 		texture_rect.texture = item.icon
 		texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		center.add_child(texture_rect)
 	else:
-		var icon_label := _make_label(_get_item_icon_char(item.icon_key), 52, _get_item_accent(item), 2)
+		var icon_label := _make_label(_get_item_icon_char(item.icon_key), 44, _get_item_accent(item), 2)
 		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		center.add_child(icon_label)
@@ -286,7 +295,7 @@ func _create_type_rarity_row(item: ItemData) -> HBoxContainer:
 func _create_type_badge(item: ItemData) -> PanelContainer:
 	var badge := PanelContainer.new()
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge.custom_minimum_size = Vector2(180, 38)
+	badge.custom_minimum_size = Vector2(142, 30)
 	PixelUI.style_panel(badge, _get_item_type_color(item).darkened(0.45), _get_item_type_color(item), 2, 0)
 
 	var label := _make_label(_format_item_type_label(item), SMALL_FONT_SIZE, PixelUI.TEXT_PRIMARY, 1)
@@ -521,6 +530,7 @@ func _color_for_kind(kind: String) -> Color:
 func _create_description_label(text: String) -> Label:
 	var label := _make_label(text, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.max_lines_visible = 2
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	return label
@@ -568,22 +578,93 @@ func _build_claim_button_text(item: ItemData) -> String:
 	return "Take Item"
 
 
-func _on_claim_reward_pressed(item_id: String, target_root: Node) -> void:
+func _on_claim_reward_pressed(item_id: String) -> void:
 	var item: ItemData = DataManager.get_item(item_id) as ItemData
 	if item == null:
 		return
 
-	var target_unit_id := ""
 	if item.item_type == "gear":
-		if target_root == null:
-			footer_label.text = "No valid unit target available for this gear."
-			return
-		target_unit_id = _find_selected_gear_target_id(target_root)
-		if target_unit_id == "":
-			footer_label.text = "Choose a unit for this gear."
-			return
+		_show_gear_target_overlay(item)
+		return
 
-	var claimed: bool = GameState.claim_reward(item_id, target_unit_id)
+	_claim_reward(item, "")
+
+
+func _show_gear_target_overlay(item: ItemData) -> void:
+	if _gear_target_overlay != null and is_instance_valid(_gear_target_overlay):
+		_gear_target_overlay.queue_free()
+
+	_gear_target_overlay = Control.new()
+	_gear_target_overlay.name = "GearTargetOverlay"
+	_gear_target_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_gear_target_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_gear_target_overlay.z_as_relative = false
+	_gear_target_overlay.z_index = 220
+	add_child(_gear_target_overlay)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0.005, 0.007, 0.012, 0.76)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+			_hide_gear_target_overlay()
+		elif event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+			_hide_gear_target_overlay()
+	)
+	_gear_target_overlay.add_child(dim)
+
+	var outer := CenterContainer.new()
+	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_gear_target_overlay.add_child(outer)
+
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.custom_minimum_size = Vector2(clampf(get_viewport().get_visible_rect().size.x * 0.78, 320.0, 430.0), 0)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE, 18, _get_item_accent(item).lerp(Color.WHITE, 0.28))
+	outer.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	panel.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	margin.add_child(vbox)
+
+	var title := _make_label("EQUIP %s TO" % item.display_name.to_upper(), 30, _get_item_accent(item), 2)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	for unit_id_variant in GameState.selected_units:
+		var unit_id: String = str(unit_id_variant)
+		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
+		if unit == null:
+			continue
+		var target_button := Button.new()
+		target_button.text = unit.display_name
+		target_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
+		target_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_button(target_button, Color(0.018, 0.028, 0.044, 0.95), PixelUI.HERO_ACCENT, GEAR_TARGET_BUTTON_FONT_SIZE)
+		target_button.pressed.connect(func() -> void:
+			_hide_gear_target_overlay()
+			_claim_reward(item, unit_id)
+		)
+		vbox.add_child(target_button)
+
+
+func _hide_gear_target_overlay() -> void:
+	if _gear_target_overlay != null and is_instance_valid(_gear_target_overlay):
+		_gear_target_overlay.queue_free()
+	_gear_target_overlay = null
+
+
+func _claim_reward(item: ItemData, target_unit_id: String) -> void:
+	var claimed: bool = GameState.claim_reward(item.id, target_unit_id)
 	if not claimed:
 		footer_label.text = "That reward could not be claimed. Try again."
 		return
@@ -657,6 +738,7 @@ func _apply_visual_theme() -> void:
 	PixelUI.style_label(footer_label, 20, PixelUI.TEXT_MUTED, 1)
 	reward_content.add_theme_constant_override("separation", 18)
 	reward_cards.add_theme_constant_override("separation", 18)
+	PixelUI.style_ninepatch_panel(reward_scroll, PixelUI.FRAME_SIMPLE)
 
 
 func _get_item_accent(item: ItemData) -> Color:

@@ -425,54 +425,31 @@
               "name": "Rift Macaque"
             },
             {
-              "name": "Void Wolf"
+              "name": "Void Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Void Wolf"
+              "name": "Void Hound"
             },
             {
-              "name": "Void Wolf"
+              "name": "Void Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Eclipse Lynx"
+              "name": "Eclipse Panther"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Thunder Bison"
-            },
-            {
-              "name": "Rift Macaque"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Eclipse Lynx"
-            },
-            {
-              "name": "Rift Macaque"
-            },
-            {
-              "name": "Void Wolf"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Ridge Badger"
+              "name": "Thunder Ape"
             },
             {
               "name": "Rift Macaque"
@@ -482,20 +459,43 @@
         {
           "enemies": [
             {
-              "name": "Eclipse Hyena"
+              "name": "Eclipse Panther"
             },
             {
-              "name": "Void Wolf"
+              "name": "Rift Macaque"
+            },
+            {
+              "name": "Void Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Thunder Bison"
+              "name": "Ridge Drake"
             },
             {
-              "name": "Ridge Badger"
+              "name": "Rift Macaque"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Eclipse Raptor"
+            },
+            {
+              "name": "Void Hound"
+            }
+          ]
+        },
+        {
+          "enemies": [
+            {
+              "name": "Thunder Ape"
+            },
+            {
+              "name": "Ridge Drake"
             },
             {
               "name": "Rift Macaque"
@@ -508,7 +508,7 @@
               "name": "VOID REAVER"
             },
             {
-              "name": "Eclipse Lynx"
+              "name": "Eclipse Panther"
             }
           ]
         }

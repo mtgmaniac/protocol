@@ -21,6 +21,27 @@ const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
 const UI_FONT_SCALE := 1.35
 const UI_FONT_MIN_SIZE := 20
 const UI_FONT_STEPS := [20, 24, 28, 32, 36, 42, 48, 56, 64, 72]
+const FRAME_SIMPLE := "res://assets/ui/frame_simple.png"
+const FRAME_GLOW := "res://assets/ui/frame_glow.png"
+const FRAME_CORNER_DOTS := "res://assets/ui/frame_corner_dots.png"
+const FRAME_CROSSHATCH := "res://assets/ui/frame_crosshatch.png"
+const FRAME_SCANLINE := "res://assets/ui/frame_scanline.png"
+const FRAME_SMALL_LANDSCAPE := "res://assets/ui/frame_small_landscape.png"
+const BUTTON_EMPTY := "res://assets/ui/btn_empty.png"
+const BUTTON_QUESTION := "res://assets/ui/btn_question.png"
+const BUTTON_UP_ARROW := "res://assets/ui/btn_up_arrow.png"
+const BUTTON_GRID_123 := "res://assets/ui/btn_grid_123.png"
+const BUTTON_BACK_ARROW := "res://assets/ui/btn_back_arrow.png"
+const BUTTON_DICE := "res://assets/ui/btn_dice.png"
+
+const FRAME_MARGIN_BY_PATH := {
+	FRAME_SIMPLE: 18,
+	FRAME_GLOW: 20,
+	FRAME_CORNER_DOTS: 18,
+	FRAME_CROSSHATCH: 18,
+	FRAME_SCANLINE: 18,
+	FRAME_SMALL_LANDSCAPE: 18,
+}
 
 static var _pixel_font: Font = null
 
@@ -59,6 +80,62 @@ static func get_pixel_font() -> Font:
 
 static func apply_pixel_font(control: Control) -> void:
 	control.add_theme_font_override("font", get_pixel_font())
+
+
+static func _load_texture(path: String) -> Texture2D:
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
+
+static func _frame_margin_for(texture_path: String, fallback_margin: int) -> int:
+	return int(FRAME_MARGIN_BY_PATH.get(texture_path, fallback_margin))
+
+
+static func make_ninepatch_stylebox(texture_path: String, margin_px: int = 18, modulate_color: Color = Color.WHITE) -> StyleBoxTexture:
+	var texture: Texture2D = _load_texture(texture_path)
+	var stylebox := StyleBoxTexture.new()
+	stylebox.texture = texture
+	stylebox.modulate_color = modulate_color
+	var margin_value: int = _frame_margin_for(texture_path, margin_px)
+	stylebox.texture_margin_left = margin_value
+	stylebox.texture_margin_right = margin_value
+	stylebox.texture_margin_top = margin_value
+	stylebox.texture_margin_bottom = margin_value
+	stylebox.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	stylebox.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	stylebox.draw_center = true
+	return stylebox
+
+
+static func style_ninepatch_panel(panel: Control, texture_path: String, margin_px: int = 18, modulate_color: Color = Color.WHITE) -> void:
+	panel.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	panel.add_theme_stylebox_override("panel", make_ninepatch_stylebox(texture_path, margin_px, modulate_color))
+
+
+static func style_icon_button(button: BaseButton, texture_path: String, pressed_texture_path: String = BUTTON_EMPTY) -> void:
+	if button == null:
+		return
+	var normal_texture: Texture2D = _load_texture(texture_path)
+	var pressed_texture: Texture2D = _load_texture(pressed_texture_path)
+	if button is TextureButton:
+		var texture_button := button as TextureButton
+		texture_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		texture_button.ignore_texture_size = true
+		texture_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		texture_button.texture_normal = normal_texture
+		texture_button.texture_pressed = pressed_texture
+		texture_button.texture_hover = normal_texture
+		texture_button.texture_disabled = pressed_texture
+		texture_button.texture_focused = normal_texture
+	elif button is Button:
+		var text_button := button as Button
+		text_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		text_button.icon = normal_texture
+		text_button.flat = true
+		text_button.text = ""
+		text_button.expand_icon = true
+		text_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 static func scale_font_size(font_size: int) -> int:

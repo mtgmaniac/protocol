@@ -145,6 +145,8 @@ func show_result_actions(action_entries: Array) -> void:
 			int(entry.get("roll", 0)),
 			str(entry.get("ability", "")).left(12),
 		]
+		var display_face_value: int = int(die.get_meta("display_face_value", entry.get("roll", 0)))
+		_highlight_top_face(die, display_face_value, str(entry.get("side", "")), str(entry.get("zone", "")))
 
 
 func update_die_result_in_place(side: String, unit_id: String, result: int) -> void:
@@ -497,7 +499,7 @@ func _get_face_forward_result_basis(face_index: int) -> Basis:
 	return (target_face_basis * local_face_basis.inverse()).orthonormalized()
 
 
-func _highlight_top_face(die: RigidBody3D, result: int, side: String) -> void:
+func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: String = "") -> void:
 	var panel_name: String = "FacePanel%d" % result
 	var panel: MeshInstance3D = die.get_node_or_null(panel_name) as MeshInstance3D
 	if panel == null:
@@ -506,19 +508,78 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String) -> void:
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 	mat.render_priority = 1
-	if side == "hero" and result == 20:
+	var zone_key: String = zone.strip_edges().to_lower()
+	if zone_key != "":
+		var zone_style: Dictionary = _get_zone_face_style(zone_key)
+		mat.albedo_color = zone_style["face"]
+		mat.emission = zone_style["emission"]
+		mat.emission_energy_multiplier = float(zone_style["energy"])
+	elif side == "hero" and result == 20:
 		mat.albedo_color = Color(0.46, 0.26, 0.03, 1.0)
 		mat.emission = Color(1.0, 0.58, 0.10, 1.0)
+		mat.emission_energy_multiplier = 1.2
 	elif side == "hero":
 		mat.albedo_color = Color(0.06, 0.14, 0.32, 1.0)
 		mat.emission = Color(0.04, 0.10, 0.25, 1.0)
+		mat.emission_energy_multiplier = 0.8
 	else:
 		mat.albedo_color = Color(0.30, 0.06, 0.05, 1.0)
 		mat.emission = Color(0.20, 0.04, 0.03, 1.0)
+		mat.emission_energy_multiplier = 0.8
 	mat.emission_enabled = true
-	mat.emission_energy_multiplier = 1.2 if side == "hero" and result == 20 else 0.8
 	mat.roughness = 0.80
 	panel.material_override = mat
+	for face_value in _face_values:
+		var label: Label3D = die.get_node_or_null("FaceNumber%d" % int(face_value)) as Label3D
+		if label == null:
+			continue
+		if int(face_value) == result:
+			label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			label.outline_size = 24
+		else:
+			var faded_color: Color = label.modulate
+			faded_color.a = 0.4
+			label.modulate = faded_color
+			label.outline_size = 20
+
+
+func _get_zone_face_style(zone_key: String) -> Dictionary:
+	match zone_key:
+		"recharge":
+			return {
+				"face": Color(0.06, 0.06, 0.08, 1.0),
+				"emission": Color(0.03, 0.03, 0.04, 1.0),
+				"energy": 0.3,
+			}
+		"strike":
+			return {
+				"face": Color(0.15, 0.15, 0.18, 1.0),
+				"emission": Color(0.08, 0.08, 0.10, 1.0),
+				"energy": 0.5,
+			}
+		"surge":
+			return {
+				"face": Color(0.25, 0.18, 0.04, 1.0),
+				"emission": Color(0.6, 0.4, 0.05, 1.0),
+				"energy": 0.8,
+			}
+		"crit", "critical":
+			return {
+				"face": Color(0.3, 0.12, 0.02, 1.0),
+				"emission": Color(0.8, 0.35, 0.05, 1.0),
+				"energy": 1.2,
+			}
+		"overload":
+			return {
+				"face": Color(0.15, 0.3, 0.35, 1.0),
+				"emission": Color(0.1, 0.8, 0.9, 1.0),
+				"energy": 2.0,
+			}
+	return {
+		"face": Color(0.06, 0.14, 0.32, 1.0),
+		"emission": Color(0.04, 0.10, 0.25, 1.0),
+		"energy": 0.8,
+	}
 
 
 func _reset_face_highlights(die: RigidBody3D) -> void:
@@ -548,6 +609,10 @@ func _apply_die_face_label_text(label: Label3D, result: int) -> void:
 	var value_text: String = "%d" % clampi(result, 1, 20)
 	label.text = value_text
 	label.font_size = 128 if value_text.length() == 1 else 108
+	label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	label.outline_size = 20
+	label.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+	label.pixel_size = 0.0060
 
 
 func _get_die_for_entry(side: String, unit_id: String) -> RigidBody3D:
@@ -662,7 +727,7 @@ func _build_world() -> void:
 
 	var camera: Camera3D = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 8.2
+	camera.size = 6.8
 	camera.position = Vector3(0, 6.8, 5.4)
 	camera.rotation_degrees = Vector3(-55, 0, 0)
 	camera.near = 0.05
@@ -1130,9 +1195,9 @@ func _get_face_panel_material() -> StandardMaterial3D:
 		_face_panel_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 		_face_panel_material.cull_mode = BaseMaterial3D.CULL_BACK
 		_face_panel_material.render_priority = 0
-		_face_panel_material.albedo_color = Color(0.025, 0.04, 0.065, 1.0)
+		_face_panel_material.albedo_color = Color(0.015, 0.02, 0.035, 1.0)
 		_face_panel_material.emission_enabled = true
-		_face_panel_material.emission = Color(0.010, 0.020, 0.035, 1.0)
+		_face_panel_material.emission = Color(0.005, 0.01, 0.02, 1.0)
 		_face_panel_material.roughness = 0.90
 	return _face_panel_material
 
@@ -1144,9 +1209,10 @@ func _get_edge_line_material() -> StandardMaterial3D:
 		_edge_line_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 		_edge_line_material.cull_mode = BaseMaterial3D.CULL_BACK
 		_edge_line_material.render_priority = 0
-		_edge_line_material.albedo_color = Color(0.40, 0.48, 0.58, 1.0)
+		_edge_line_material.albedo_color = Color(0.04, 0.05, 0.07, 1.0)
 		_edge_line_material.emission_enabled = true
-		_edge_line_material.emission = Color(0.12, 0.16, 0.22, 1.0)
+		_edge_line_material.emission = Color(0.02, 0.03, 0.04, 1.0)
+		_edge_line_material.emission_energy_multiplier = 0.2
 		_edge_line_material.roughness = 0.55
 		_edge_line_material.metallic = 0.20
 	return _edge_line_material
@@ -1188,10 +1254,10 @@ func _add_face_labels(die: RigidBody3D) -> void:
 		label.font_size = 128 if value_text.length() == 1 else 108
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.modulate = Color(1.0, 1.0, 0.95, 1.0)
-		label.outline_size = 14
-		label.outline_modulate = Color(0.015, 0.020, 0.035, 1.0)
-		label.pixel_size = 0.0072
+		label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		label.outline_size = 20
+		label.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		label.pixel_size = 0.0060
 		label.no_depth_test = false
 		label.position = _face_centers[i] + face_basis.y * (inradius * 0.12) + _face_normals[i] * 0.055
 		label.basis = face_basis

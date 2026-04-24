@@ -298,7 +298,7 @@
             20,
             20
           ],
-          "name": "Ion Storm+",
+          "name": "Singularity Burst",
           "eff": "14 dmg, 3 DoT, 3t",
           "dmg": 14,
           "dMin": 14,
@@ -554,7 +554,7 @@
       "name": "Strike Unit",
       "cls": "STRIKE OPS",
       "pickerCategory": "damage",
-      "pickerBlurb": "Frontline DPS. Mark targets, stack cuts and bleeds, then spike with overload-tier finishers.",
+      "pickerBlurb": "Frontline DPS. Raw damage on every roll — no gimmicks, just pressure. Evolve into Bladecore (AoE burst) or Ravager (DoT stacking).",
       "hp": 55,
       "sk": "combat",
       "abilities": [
@@ -565,10 +565,10 @@
             4
           ],
           "name": "Test Shot",
-          "eff": "2 dmg",
-          "dmg": 2,
-          "dMin": 2,
-          "dMax": 2,
+          "eff": "5 dmg",
+          "dmg": 5,
+          "dMin": 5,
+          "dMax": 5,
           "dot": 0,
           "dT": 0,
           "rfe": 0,
@@ -581,14 +581,13 @@
             10
           ],
           "name": "Suppression Fire",
-          "eff": "2 dmg, -2 roll",
-          "dmg": 2,
-          "dMin": 2,
-          "dMax": 2,
+          "eff": "8 dmg",
+          "dmg": 8,
+          "dMin": 8,
+          "dMax": 8,
           "dot": 0,
           "dT": 0,
-          "rfe": 2,
-          "rfT": 1,
+          "rfe": 0,
           "heal": 0
         },
         {
@@ -598,15 +597,15 @@
             15
           ],
           "name": "Rail Strike",
-          "eff": "5 dmg, -2 roll",
-          "dmg": 5,
-          "dMin": 5,
-          "dMax": 5,
+          "eff": "10 dmg, pierce",
+          "dmg": 10,
+          "dMin": 10,
+          "dMax": 10,
           "dot": 0,
           "dT": 0,
-          "rfe": 2,
-          "rfT": 1,
-          "heal": 0
+          "rfe": 0,
+          "heal": 0,
+          "ignSh": true
         },
         {
           "zone": "crit",
@@ -615,10 +614,10 @@
             19
           ],
           "name": "Overdrive",
-          "eff": "11 dmg",
-          "dmg": 11,
-          "dMin": 11,
-          "dMax": 11,
+          "eff": "14 dmg",
+          "dmg": 14,
+          "dMin": 14,
+          "dMax": 14,
           "dot": 0,
           "dT": 0,
           "rfe": 0,
@@ -630,11 +629,11 @@
             20,
             20
           ],
-          "name": "Overdrive+",
-          "eff": "15 dmg",
-          "dmg": 15,
-          "dMin": 15,
-          "dMax": 15,
+          "name": "Terminal Velocity",
+          "eff": "18 dmg",
+          "dmg": 18,
+          "dMin": 18,
+          "dMax": 18,
           "dot": 0,
           "dT": 0,
           "rfe": 0,
@@ -971,7 +970,7 @@
             20,
             20
           ],
-          "name": "Demolish+",
+          "name": "Total Suppression",
           "eff": "11 dmg, -4 roll, 2t",
           "dmg": 11,
           "dMin": 11,
@@ -1322,7 +1321,7 @@
             20,
             20
           ],
-          "name": "Crevasse Mend+",
+          "name": "Avalanche Protocol",
           "eff": "all 14 heal",
           "dmg": 0,
           "dMin": 0,
@@ -1419,7 +1418,7 @@
                 17,
                 19
               ],
-              "name": "Bastion Protocol",
+              "name": "Permafrost Aegis",
               "eff": "6 dmg, all enemy dice freeze 1 reveal skip, all allies 8 shield, 2t, -2 roll, 2t",
               "dmg": 6,
               "dMin": 6,
@@ -1447,7 +1446,7 @@
                 20,
                 20
               ],
-              "name": "Invincible",
+              "name": "Absolute Zero",
               "eff": "9 dmg, all enemy dice freeze 1 reveal skip, all 14 shield, 2t, -3 roll, 2t",
               "dmg": 9,
               "dMin": 9,
@@ -1498,7 +1497,7 @@
                 7,
                 12
               ],
-              "name": "Retaliate",
+              "name": "Icebound Reprisal",
               "eff": "8 dmg",
               "dmg": 8,
               "dMin": 8,
@@ -1521,7 +1520,7 @@
                 13,
                 16
               ],
-              "name": "Counter Protocol",
+              "name": "Glacial Counterstrike",
               "eff": "9 dmg, -2 roll, 2t",
               "dmg": 9,
               "dMin": 9,
@@ -1545,7 +1544,7 @@
                 16,
                 19
               ],
-              "name": "Repulsion Field",
+              "name": "Frostwave Pulse",
               "eff": "11 dmg, -3 roll, 2t",
               "dmg": 11,
               "dMin": 11,
@@ -1569,7 +1568,7 @@
                 20,
                 20
               ],
-              "name": "Repulsion Field+",
+              "name": "Frostwave Cascade",
               "eff": "15 dmg, -4 roll, 2t",
               "dmg": 15,
               "dMin": 15,
@@ -1586,8 +1585,8 @@
     },
     {
       "id": "medic",
-      "name": "Systems Medic",
-      "cls": "FIELD SUPPORT",
+      "name": "Splice Medic",
+      "cls": "COMBAT AUGMENTOR",
       "pickerCategory": "support",
       "pickerBlurb": "Sustain core. Targeted and party heals, DoT cleanup, and clutch revives to keep the run alive.",
       "hp": 45,
@@ -1668,7 +1667,7 @@
             20,
             20
           ],
-          "name": "Neural Override+",
+          "name": "Synaptic Overload",
           "eff": "12 dmg, heal self 10",
           "dmg": 12,
           "dMin": 12,
@@ -1804,7 +1803,7 @@
           ]
         },
         {
-          "name": "Techno Shaman",
+          "name": "Synth Warden",
           "focus": "Team-wide buffs and revival",
           "hp": 75,
           "abilities": [
@@ -1829,7 +1828,7 @@
           ]
         },
         {
-          "name": "Techno Shaman",
+          "name": "Synth Warden",
           "focus": "",
           "hp": 0,
           "abilities": [
@@ -1856,7 +1855,7 @@
           ]
         },
         {
-          "name": "Techno Shaman",
+          "name": "Synth Warden",
           "focus": "",
           "hp": 0,
           "abilities": [
@@ -1880,7 +1879,7 @@
           ]
         },
         {
-          "name": "Techno Shaman",
+          "name": "Synth Warden",
           "focus": "",
           "hp": 0,
           "abilities": [
@@ -1904,7 +1903,7 @@
           ]
         },
         {
-          "name": "Techno Shaman",
+          "name": "Synth Warden",
           "focus": "",
           "hp": 0,
           "abilities": [
@@ -2013,7 +2012,7 @@
             20,
             20
           ],
-          "name": "Missile Volley+",
+          "name": "Scorched Earth",
           "eff": "12 dmg (all enemies)",
           "dmg": 12,
           "dMin": 12,
@@ -2353,7 +2352,7 @@
             20,
             20
           ],
-          "name": "Phase Blade+",
+          "name": "Execution Protocol",
           "eff": "15 dmg, pierce",
           "dmg": 15,
           "dMin": 15,
