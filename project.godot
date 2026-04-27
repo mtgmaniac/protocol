@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 GameState="*res://scripts/autoloads/GameState.gd"
 DataManager="*res://scripts/autoloads/DataManager.gd"
 SceneManager="*res://scripts/autoloads/SceneManager.gd"
+DebugBattleLauncher="*res://scripts/debug/DebugBattleLauncher.gd"
 
 [display]
 

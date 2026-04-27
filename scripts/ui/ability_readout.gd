@@ -1,16 +1,16 @@
 class_name AbilityReadout
 extends PanelContainer
 
-const READOUT_SIZE := Vector2(0, 72)
-const ROW_HEIGHT := 60.0
+const READOUT_SIZE := Vector2(0, 84)
+const ROW_HEIGHT := 80.0
 const ROW_GAP := 8.0
 const OUTER_PAD_X := 10.0
 const HERO_TOP_PAD := 6.0
-const EFFECT_GROUP_MIN_WIDTH := 52.0
-const ICON_FONT_SIZE := 56
-const VALUE_FONT_SIZE := 56
-const DURATION_FONT_SIZE := 36
-const TARGET_FONT_SIZE := 36
+const EFFECT_GROUP_MIN_WIDTH := 72.0
+const ICON_FONT_SIZE := 64
+const VALUE_FONT_SIZE := 64
+const DURATION_FONT_SIZE := 40
+const TARGET_FONT_SIZE := 40
 const EMPTY_ALPHA := 0.18
 const ICONS := {
 	"dmg": "⚡",
@@ -105,7 +105,7 @@ func _make_row() -> HBoxContainer:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 4)
 	return row
 
 
@@ -227,7 +227,7 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 		var plain_label := Label.new()
 		plain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		plain_label.text = effect_kind.to_upper()
-		plain_label.custom_minimum_size = Vector2(EFFECT_GROUP_MIN_WIDTH, 0)
+		plain_label.custom_minimum_size = Vector2(0, 0)
 		plain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		plain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_apply_pixel_label(plain_label, VALUE_FONT_SIZE, PixelUI.effect_color(effect_kind), 3)
@@ -240,7 +240,7 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 	if icon_texture != null:
 		var icon_rect := TextureRect.new()
 		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_rect.custom_minimum_size = Vector2(36, 36)
+		icon_rect.custom_minimum_size = Vector2(44, 44)
 		icon_rect.texture = icon_texture
 		icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -381,16 +381,16 @@ func _estimate_row_width(effects: Array, target: String) -> float:
 	var width := 0.0
 	for i in range(effects.size()):
 		if i > 0:
-			width += 30.0
+			width += 16.0
 		var effect: Dictionary = effects[i]
-		var effect_width := 42.0
-		effect_width += maxf(34.0, float(str(effect.get("value", "")).length()) * 22.0)
+		var effect_width := 48.0
+		effect_width += maxf(28.0, float(str(effect.get("value", "")).length()) * 24.0)
 		var duration: int = int(effect.get("duration", 0))
 		if duration > 1:
-			effect_width += 18.0 + float(("(%dT)" % duration).length()) * 18.0
+			effect_width += 12.0 + float(("(%dT)" % duration).length()) * 20.0
 		width += maxf(EFFECT_GROUP_MIN_WIDTH, effect_width)
 	if target != "":
-		width += 2.0 + float(target.length()) * 22.0
+		width += 2.0 + float(target.length()) * 24.0
 	return width
 
 

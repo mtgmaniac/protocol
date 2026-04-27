@@ -7,10 +7,11 @@ signal unit_detail_requested(card)
 const CARD_SIZE := Vector2(260, 0)
 const PORTRAIT_HEIGHT_RATIO := 1.20
 const PORTRAIT_MIN_HEIGHT := 100.0
+const PORTRAIT_TOP_INSET_PX := 4.0
 const NAME_ROW_HEIGHT := 104.0
 const HP_BAR_HEIGHT := 116.0
-const STATUS_ROW_HEIGHT := 84.0
-const ACTION_PANEL_HEIGHT := 64.0
+const STATUS_ROW_HEIGHT := 96.0
+const ACTION_PANEL_HEIGHT := 88.0
 const PORTRAIT_ASPECT_FALLBACK := 2.0
 const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
@@ -20,14 +21,18 @@ const ENEMY_LINE := Color(0.82, 0.36, 0.34, 1.0)
 const SELECT_LINE := Color(0.95, 0.66, 0.22, 1.0)
 const TARGET_LINE := Color(0.42, 0.70, 0.95, 1.0)
 const HP_FILL := Color(0.10, 0.46, 0.32, 1.0)
+const CARD_NAME_FONT_SIZE := 64
+const CARD_HP_FONT_SIZE := 64
 const STATUS_MAX_VISIBLE := 3
-const STATUS_ICON_FONT_SIZE := 24
-const STATUS_VALUE_FONT_SIZE := 26
-const STATUS_NAME_FONT_SIZE := 22
-const STATUS_ICON_MIN_WIDTH := 30.0
-const STATUS_VALUE_MIN_WIDTH := 36.0
-const STATUS_NUMERIC_MIN_WIDTH := 72.0
-const STATUS_CHIP_HEIGHT := 30.0
+const STATUS_ICON_FONT_SIZE := 36
+const STATUS_VALUE_FONT_SIZE := 44
+const STATUS_NAME_FONT_SIZE := 36
+const STATUS_ICON_TEXTURE_SIZE := 40.0
+const STATUS_ICON_MIN_WIDTH := 42.0
+const STATUS_VALUE_MIN_WIDTH := 48.0
+const STATUS_NUMERIC_MIN_WIDTH := 96.0
+const STATUS_CHIP_HEIGHT := 52.0
+const ACTION_PIP_VALUE_FONT_SIZE := 48
 const STATUS_DESCRIPTIONS := {
 	"shield": "Absorbs {value} incoming damage.",
 	"poison": "Takes {value} damage at the start of next turn.",
@@ -133,6 +138,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		if _locked_portrait_size == Vector2.ZERO:
 			_update_portrait_size()
+		call_deferred("_update_portrait_rect_transform")
 		call_deferred("_layout_preview_overlays")
 
 
@@ -242,7 +248,7 @@ func _build() -> void:
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(_name_label, 36, PixelUI.TEXT_PRIMARY, 2)
+	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	root.add_child(_name_label)
 
 	_portrait_frame = PanelContainer.new()
@@ -260,13 +266,10 @@ func _build() -> void:
 
 	_portrait_rect = TextureRect.new()
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_portrait_rect.clip_contents = true
 	_portrait_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_portrait_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_portrait_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_portrait_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_portrait_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	# Position and size are set manually by _update_portrait_rect_transform
 	_portrait_crop.add_child(_portrait_rect)
 
 	_hp_back = Panel.new()
@@ -289,7 +292,7 @@ func _build() -> void:
 	_hp_label.z_index = 3
 	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_label(_hp_label, 36, PixelUI.TEXT_PRIMARY, 2)
+	_apply_label(_hp_label, CARD_HP_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	_hp_back.add_child(_hp_label)
 
 	_action_panel = PanelContainer.new()
@@ -346,6 +349,7 @@ func _refresh() -> void:
 	_name_label.text = unit_name.to_upper()
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 	_portrait_rect.texture = portrait
+	call_deferred("_update_portrait_rect_transform")
 
 	var hp_ratio: float = clampf(float(current_hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
 	_hp_fill.anchor_right = hp_ratio
@@ -376,6 +380,35 @@ func _update_portrait_size() -> void:
 	var target_height: float = clampf(floor(target_width * PORTRAIT_HEIGHT_RATIO), PORTRAIT_MIN_HEIGHT, max_portrait_height)
 	_locked_portrait_size = Vector2(target_width, target_height)
 	_portrait_frame.custom_minimum_size = Vector2(0, target_height)
+	call_deferred("_update_portrait_rect_transform")
+
+
+func _update_portrait_rect_transform() -> void:
+	if _portrait_rect == null or _portrait_crop == null:
+		return
+	var fw: float = _portrait_crop.size.x
+	var fh: float = _portrait_crop.size.y
+	if fw < 2.0 or fh < 2.0:
+		return
+	var tex: Texture2D = _portrait_rect.texture
+	if tex == null:
+		_portrait_rect.position = Vector2.ZERO
+		_portrait_rect.size = Vector2(fw, fh)
+		return
+	var tw: float = float(tex.get_width())
+	var th: float = float(tex.get_height())
+	if tw < 1.0 or th < 1.0:
+		_portrait_rect.position = Vector2.ZERO
+		_portrait_rect.size = Vector2(fw, fh)
+		return
+	# Cover-scale: enlarge to fill both dimensions (crop excess)
+	var scale: float = maxf(fw / tw, fh / th)
+	var nw: float = tw * scale
+	var nh: float = th * scale
+	# Center horizontally, top-align with a small inset so the head sits
+	# just inside the top edge of the frame regardless of portrait aspect ratio
+	_portrait_rect.position = Vector2((fw - nw) * 0.5, PORTRAIT_TOP_INSET_PX)
+	_portrait_rect.size = Vector2(nw, nh)
 
 
 func _populate_action_pips() -> void:
@@ -434,7 +467,7 @@ func _get_pip_icon_atlas() -> Texture2D:
 func _make_action_pip(kind: String, text: String) -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.custom_minimum_size = Vector2(84, 54)
+	panel.custom_minimum_size = Vector2(96, 74)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.72), _pip_border(kind), 3, 5))
 
@@ -448,7 +481,7 @@ func _make_action_pip(kind: String, text: String) -> PanelContainer:
 
 	var icon: TextureRect = TextureRect.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.custom_minimum_size = Vector2(34, 34)
+	icon.custom_minimum_size = Vector2(40, 40)
 	icon.texture = _get_pip_icon_texture(kind)
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -458,12 +491,12 @@ func _make_action_pip(kind: String, text: String) -> PanelContainer:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = _format_pip_text(kind, text)
-	label.custom_minimum_size = Vector2(32, 0)
+	label.custom_minimum_size = Vector2(36, 0)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(label, 28, PixelUI.TEXT_PRIMARY, 2)
+	_apply_label(label, ACTION_PIP_VALUE_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	row.add_child(label)
 	return panel
 
@@ -500,11 +533,11 @@ func build_status_chip(status: Dictionary) -> Control:
 	_connect_passthrough_input(chip)
 
 	if _is_frozen_status(status):
-		chip.custom_minimum_size = Vector2(46, STATUS_CHIP_HEIGHT)
-		chip.add_child(_make_status_icon_label(status))
+		chip.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
+		chip.add_child(_make_status_icon_control(status))
 	elif str(status.get("mode", "named")) == "numeric":
 		chip.custom_minimum_size = Vector2(STATUS_NUMERIC_MIN_WIDTH, STATUS_CHIP_HEIGHT)
-		chip.add_child(_make_status_icon_label(status))
+		chip.add_child(_make_status_icon_control(status))
 		chip.add_child(_make_status_value_label(status))
 	else:
 		chip.custom_minimum_size = Vector2(0, STATUS_CHIP_HEIGHT)
@@ -514,6 +547,27 @@ func build_status_chip(status: Dictionary) -> Control:
 	if _tooltip_cb.is_valid():
 		_tooltip_cb.call(chip, _build_status_tooltip(status))
 	return chip
+
+
+func _make_status_icon_control(status: Dictionary) -> Control:
+	var icon_kind: String = _status_effect_kind(status)
+	var icon_texture: Texture2D = _get_pip_icon_texture(icon_kind) if icon_kind != "" else null
+	if icon_texture != null:
+		var wrap := CenterContainer.new()
+		wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrap.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
+		wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var icon := TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.custom_minimum_size = Vector2(STATUS_ICON_TEXTURE_SIZE, STATUS_ICON_TEXTURE_SIZE)
+		icon.texture = icon_texture
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		wrap.add_child(icon)
+		return wrap
+
+	return _make_status_icon_label(status)
 
 
 func _make_status_icon_label(status: Dictionary) -> Label:
@@ -527,8 +581,8 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 12 if _is_frozen_status(status) else STATUS_ICON_FONT_SIZE)
-	label.add_theme_color_override("font_color", Color("#88ccff") if _is_frozen_status(status) else _status_content_color(status, true))
+	label.add_theme_font_size_override("font_size", STATUS_ICON_FONT_SIZE)
+	label.add_theme_color_override("font_color", _status_content_color(status, true))
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", 2)
 	return label
@@ -537,6 +591,20 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 func _is_frozen_status(status: Dictionary) -> bool:
 	var status_type: String = str(status.get("type", "")).to_lower()
 	return status_type == "frozen" or status_type == "freeze" or status_type == "die_freeze"
+
+
+func _status_effect_kind(status: Dictionary) -> String:
+	var status_type: String = str(status.get("type", "")).to_lower()
+	match status_type:
+		"poison", "dot":
+			return "dot"
+		"shield":
+			return "shield"
+		"roll", "rfe", "rfm":
+			return "roll"
+		"frozen", "freeze", "die_freeze":
+			return "freeze"
+	return ""
 
 
 func _make_status_value_label(status: Dictionary) -> Label:
@@ -990,8 +1058,7 @@ func _set_descendants_mouse_filter(node: Node, filter: Control.MouseFilter) -> v
 
 func _apply_label(label: Label, font_size: int, color: Color, outline: int = 1) -> void:
 	PixelUI.apply_pixel_font(label)
-	var scaled: int = maxi(20, PixelUI.scale_font_size(font_size))
-	label.add_theme_font_size_override("font_size", scaled)
+	label.add_theme_font_size_override("font_size", maxi(20, font_size))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)

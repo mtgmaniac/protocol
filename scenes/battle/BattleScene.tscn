@@ -49,72 +49,22 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
+offset_left = 4.0
+offset_top = 144.0
+offset_right = -4.0
+offset_bottom = -144.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
 
 [node name="VBox" type="VBoxContainer" parent="Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
-
-[node name="HeaderRow" type="HBoxContainer" parent="Content/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 144)
-size_flags_horizontal = 3
-size_flags_vertical = 0
-theme_override_constants/separation = 4
-
-[node name="SummaryLabel" type="Label" parent="Content/VBox/HeaderRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 5
-theme_override_font_sizes/font_size = 48
-vertical_alignment = 1
-text = ""
-
-[node name="ButtonRow" type="HBoxContainer" parent="Content/VBox/HeaderRow"]
-layout_mode = 2
-size_flags_horizontal = 8
-size_flags_vertical = 4
-alignment = 2
-theme_override_constants/separation = 4
-
-[node name="ToggleLogButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = "?"
-
-[node name="AutoTurnButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = "▶"
-
-[node name="AutoBattleButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = ">>"
-
-[node name="ReturnToMenuButton" type="Button" parent="Content/VBox/HeaderRow/ButtonRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = "←"
 
 [node name="Board" type="VBoxContainer" parent="Content/VBox"]
 unique_name_in_owner = true
@@ -126,7 +76,7 @@ theme_override_constants/separation = 0
 [node name="EnemyPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 768)
+custom_minimum_size = Vector2(0, 700)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
@@ -157,7 +107,7 @@ theme_override_constants/h_separation = 2
 [node name="EnemyReadouts" type="HBoxContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyScroll"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 148)
 size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 2
@@ -173,7 +123,7 @@ theme_override_constants/separation = 2
 [node name="CenterPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 432)
+custom_minimum_size = Vector2(0, 540)
 size_flags_horizontal = 3
 size_flags_vertical = 0
 
@@ -220,7 +170,7 @@ text = "Roll"
 [node name="HeroPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 768)
+custom_minimum_size = Vector2(0, 700)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
@@ -251,7 +201,7 @@ theme_override_constants/separation = 2
 [node name="HeroReadouts" type="HBoxContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroScroll"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 148)
 size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 2
@@ -297,32 +247,93 @@ scroll_active = true
 scroll_following = true
 text = ""
 
-[node name="ProtocolPanel" type="PanelContainer" parent="Content/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 144)
-size_flags_vertical = 8
+[node name="HeaderRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchor_right = 1.0
+offset_bottom = 144.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
 
-[node name="ProtocolMargin" type="MarginContainer" parent="Content/VBox/ProtocolPanel"]
+[node name="SummaryLabel" type="Label" parent="HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 5
+theme_override_font_sizes/font_size = 48
+vertical_alignment = 1
+text = ""
+
+[node name="ButtonRow" type="HBoxContainer" parent="HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+alignment = 2
+theme_override_constants/separation = 4
+
+[node name="ToggleLogButton" type="Button" parent="HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(112, 112)
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 48
+text = "?"
+
+[node name="AutoTurnButton" type="Button" parent="HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(112, 112)
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 48
+text = "▶"
+
+[node name="AutoBattleButton" type="Button" parent="HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(112, 112)
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 48
+text = ">>"
+
+[node name="ReturnToMenuButton" type="Button" parent="HeaderRow/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(112, 112)
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 48
+text = "←"
+
+[node name="ProtocolPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -144.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ProtocolMargin" type="MarginContainer" parent="ProtocolPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 4
 theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 4
 theme_override_constants/margin_bottom = 4
 
-[node name="ProtocolRow" type="HBoxContainer" parent="Content/VBox/ProtocolPanel/ProtocolMargin"]
+[node name="ProtocolRow" type="HBoxContainer" parent="ProtocolPanel/ProtocolMargin"]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_constants/separation = 6
 alignment = 1
 
-[node name="ProtocolLabel" type="Label" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
+[node name="ProtocolLabel" type="Label" parent="ProtocolPanel/ProtocolMargin/ProtocolRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_font_sizes/font_size = 48
 text = "Protocol"
 
-[node name="ProtocolBar" type="ProgressBar" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
+[node name="ProtocolBar" type="ProgressBar" parent="ProtocolPanel/ProtocolMargin/ProtocolRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
@@ -332,7 +343,7 @@ max_value = 10.0
 value = 3.0
 show_percentage = false
 
-[node name="ProtocolValueLabel" type="Label" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow/ProtocolBar"]
+[node name="ProtocolValueLabel" type="Label" parent="ProtocolPanel/ProtocolMargin/ProtocolRow/ProtocolBar"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -346,14 +357,15 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 40
 text = "3 / 10"
 
-[node name="ProtocolSpendButton" type="Button" parent="Content/VBox/ProtocolPanel/ProtocolMargin/ProtocolRow"]
+[node name="ProtocolSpendButton" type="Button" parent="ProtocolPanel/ProtocolMargin/ProtocolRow"]
+unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(112, 112)
 size_flags_vertical = 4
 text = "↺"
 
-[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ToggleLogButton" to="." method="_on_toggle_log_button_pressed"]
-[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoTurnButton" to="." method="_on_auto_turn_button_pressed"]
-[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/AutoBattleButton" to="." method="_on_auto_battle_button_pressed"]
-[connection signal="pressed" from="Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]
+[connection signal="pressed" from="HeaderRow/ButtonRow/ToggleLogButton" to="." method="_on_toggle_log_button_pressed"]
+[connection signal="pressed" from="HeaderRow/ButtonRow/AutoTurnButton" to="." method="_on_auto_turn_button_pressed"]
+[connection signal="pressed" from="HeaderRow/ButtonRow/AutoBattleButton" to="." method="_on_auto_battle_button_pressed"]
+[connection signal="pressed" from="HeaderRow/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]
 [connection signal="pressed" from="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap/RollButton" to="." method="_on_roll_button_pressed"]
