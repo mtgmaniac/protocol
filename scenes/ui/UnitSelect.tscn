@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/unit_select.gd" id="1_fh7rk"]
-[ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="2_e7chx"]
+[ext_resource type="Texture2D" path="res://assets/ui/protocol_home_panel_background_450x1000.png" id="2_e7chx"]
 
 [node name="UnitSelect" type="Control"]
 layout_mode = 3
@@ -12,16 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_fh7rk")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.0470588, 0.0627451, 0.0980392, 1)
-
-[node name="BackgroundPattern" type="Control" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -29,7 +20,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("2_e7chx")
+texture = ExtResource("2_e7chx")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="Content" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -37,7 +30,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 14.0
-offset_top = 16.0
+offset_top = 30.0
 offset_right = -14.0
 offset_bottom = -14.0
 grow_horizontal = 2
@@ -76,7 +69,7 @@ size_flags_horizontal = 3
 [node name="OperationMargin" type="MarginContainer" parent="Content/VBox/OperationPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 16
+theme_override_constants/margin_top = 22
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 14
 
@@ -115,6 +108,10 @@ clip_text = true
 text_overrun_behavior = 3
 text = "Select an operation track."
 
+[node name="OperationToSquadSpacer" type="Control" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 28)
+
 [node name="SummaryLabel" type="Label" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -128,23 +125,19 @@ theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 12
 columns = 2
 
+[node name="SquadToBeginSpacer" type="Control" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 24)
+
 [node name="ButtonRow" type="HBoxContainer" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox"]
 layout_mode = 2
-alignment = 2
-theme_override_constants/separation = 10
-
-[node name="RandomButton" type="Button" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(0, 104)
-size_flags_horizontal = 3
-text = "RANDOM"
+alignment = 1
+theme_override_constants/separation = 0
 
 [node name="ContinueButton" type="Button" parent="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 104)
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(520, 156)
 disabled = true
 text = "BEGIN RUN"
 
@@ -153,5 +146,4 @@ visible = false
 layout_mode = 2
 text = "Select Squad"
 
-[connection signal="pressed" from="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow/RandomButton" to="." method="_on_random_button_pressed"]
 [connection signal="pressed" from="Content/VBox/OperationPanel/OperationMargin/OperationVBox/ButtonRow/ContinueButton" to="." method="_on_continue_button_pressed"]

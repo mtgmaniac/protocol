@@ -10,6 +10,7 @@
   "modes": {
     "facility": {
       "trackHpScale": 1.05,
+      "callsign": "FACILITY",
       "label": "Facility sweep",
       "blurb": "Corporate drones, ECM skimmers, harmonic hexnodes, and the Scrapmaster.",
       "victoryTitle": "VICTORY",
@@ -25,7 +26,7 @@
           "enemies": [
             { "name": "Scrap Drone" },
             { "name": "Rust Drone" },
-            { "name": "Whitenoise Skimmer" }
+            { "name": "Static Skimmer" }
           ]
         },
         {
@@ -38,7 +39,7 @@
         {
           "enemies": [
             { "name": "Patrol Elite" },
-            { "name": "Whitenoise Skimmer" },
+            { "name": "Static Skimmer" },
             { "name": "Rust Drone" }
           ]
         },
@@ -51,8 +52,8 @@
         {
           "enemies": [
             { "name": "Guard Elite" },
-            { "name": "Whitenoise Skimmer" },
-            { "name": "Whitenoise Skimmer" }
+            { "name": "Static Skimmer" },
+            { "name": "Static Skimmer" }
           ]
         },
         {
@@ -86,6 +87,7 @@
     },
     "hive": {
       "trackHpScale": 1,
+      "callsign": "HIVE",
       "label": "Hive incursion",
       "blurb": "Skitterlings, bloodmites, chitin elites, and the Hive Matriarch.",
       "victoryTitle": "VICTORY",
@@ -189,6 +191,7 @@
     },
     "veil": {
       "trackHpScale": 0.94,
+      "callsign": "VEIL",
       "label": "Veil Concord",
       "blurb": "Lattice elites, phase grunts, harmonic shields — and the Overseer.",
       "victoryTitle": "VICTORY",
@@ -298,6 +301,7 @@
     },
     "voidCirclet": {
       "trackHpScale": 0.94,
+      "callsign": "CIRCLET",
       "label": "Void Circlet",
       "blurb": "Arcane binders, countermagic, warp summons — face the Hierophant.",
       "victoryTitle": "VICTORY",
@@ -407,6 +411,7 @@
     },
     "stellarMenagerie": {
       "trackHpScale": 0.94,
+      "callsign": "MENAGERIE",
       "label": "Stellar Menagerie",
       "blurb": "Escaped specimens: ticks, hunters, and things that should not herd. Silence the Void Reaver.",
       "victoryTitle": "VICTORY",

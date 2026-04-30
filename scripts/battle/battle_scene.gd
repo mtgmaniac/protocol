@@ -1,9 +1,10 @@
 # Phase 5 battle scene shell that renders cards, rolls dice, and resolves a basic combat loop.
 extends Control
 
-@onready var summary_label: Label = %SummaryLabel
+@onready var summary_label: Label = $HeaderRow/InfoStack/SummaryLabel
+@onready var counter_label: Label = $HeaderRow/InfoStack/CounterLabel
 @onready var board: VBoxContainer = %Board
-@onready var background: ColorRect = $Background
+@onready var background: TextureRect = $Background
 @onready var hero_panel: PanelContainer = %HeroPanel
 @onready var hero_scroll: VBoxContainer = %HeroScroll
 @onready var hero_dice_row: HBoxContainer = %HeroDiceRow
@@ -23,10 +24,10 @@ extends Control
 @onready var protocol_panel: PanelContainer = %ProtocolPanel
 @onready var roll_button: Button = %RollButton
 @onready var protocol_spend_button: Button = %ProtocolSpendButton
-@onready var return_to_menu_button: BaseButton = %ReturnToMenuButton
-@onready var auto_turn_button: BaseButton = %AutoTurnButton
-@onready var auto_battle_button: BaseButton = %AutoBattleButton
-@onready var toggle_log_button: BaseButton = %ToggleLogButton
+@onready var return_to_menu_button: BaseButton = $HeaderRow/ButtonRow/ReturnToMenuButton
+@onready var auto_turn_button: BaseButton = $HeaderRow/ButtonRow/AutoTurnButton
+@onready var auto_battle_button: BaseButton = $HeaderRow/ButtonRow/AutoBattleButton
+@onready var toggle_log_button: BaseButton = $HeaderRow/ButtonRow/ToggleLogButton
 @onready var float_layer: Control = %FloatLayer
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
@@ -50,21 +51,36 @@ const DICE_THREE_UNIT_SIDE_OFFSET_PX := 0.0
 const DICE_ENEMY_SNAP_TOP_PX := 220.0
 const DICE_HERO_SNAP_BOTTOM_PX := 56.0
 const DICE_BUTTON_CLEARANCE_PX := 132.0
+const MAX_PROTOCOL := 7
+const PROTOCOL_FOOTER_BAR_TEXTURE := "res://assets/ui/protocol_footer_bar_scifi.png"
+const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
+const PROTOCOL_LIGHT_RECTS := [
+	Rect2(126, 125, 61, 61),
+	Rect2(239, 125, 61, 61),
+	Rect2(352, 125, 61, 61),
+	Rect2(465, 125, 61, 61),
+	Rect2(578, 125, 61, 61),
+	Rect2(691, 125, 61, 61),
+	Rect2(804, 125, 61, 61),
+	Rect2(917, 125, 61, 61),
+	Rect2(1030, 125, 61, 61),
+	Rect2(1143, 125, 61, 61),
+]
 const DICE_CARD_CLEARANCE_PX := 96.0
-const DICE_VISUAL_HALF_HEIGHT_PX := 84.0
-const DICE_BUTTON_GAP_PX := 90.0
+const DICE_VISUAL_HALF_HEIGHT_PX := 63.0
+const DICE_BUTTON_GAP_PX := 54.0
 const DICE_LANE_HEIGHT_PX := 168.0
 const COMBAT_ZONE_READOUT_GAP_PX := 18.0
 const COMPACT_PORTRAIT_EXTRA_HEIGHT_PX := 52.0
 const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
-const COMPACT_READOUT_HEIGHT_PX := 128.0
+const COMPACT_READOUT_HEIGHT_PX := 148.0
 const COMPACT_CARD_WIDTH_PX := 344.0
-const COMPACT_CARD_HEIGHT_PX := 580.0
+const COMPACT_CARD_HEIGHT_PX := 542.0
 const COMPACT_RAIL_CHROME_PX := 24.0
 const BAR_HEIGHT := 144.0
 const CARD_ZONE_HEIGHT := 700.0
 const CENTER_ZONE_HEIGHT := 540.0
-const RAIL_ROW_GAP_PX := 6.0
+const RAIL_ROW_GAP_PX := 1.0
 const RAIL_SLOT_GAP_PX := 2.0
 const HEADER_BUTTON_SIZE := Vector2(112, 112)
 const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
@@ -72,14 +88,15 @@ const ITEM_SLOT_SIZE := Vector2(112, 112)
 const ITEM_ICON_SIZE := Vector2(76, 76)
 const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 64
-const HEADER_SUMMARY_FONT_SIZE := 56
+const HEADER_SUMMARY_FONT_SIZE := 112
+const HEADER_COUNTER_FONT_SIZE := 56
 const PROTOCOL_LABEL_FONT_SIZE := 56
 const PROTOCOL_VALUE_FONT_SIZE := 48
-const HUD_TOOLTIP_MIN_WIDTH := 80.0
-const HUD_TOOLTIP_MAX_WIDTH := 220.0
-const HUD_TOOLTIP_PAD_X := 8.0
-const HUD_TOOLTIP_FONT_SIZE := 20
-const HUD_TOOLTIP_BORDER_WIDTH := 3.0
+const HUD_TOOLTIP_MIN_WIDTH := 180.0
+const HUD_TOOLTIP_MAX_WIDTH := 380.0
+const HUD_TOOLTIP_PAD_X := 14.0
+const HUD_TOOLTIP_FONT_SIZE := 34
+const HUD_TOOLTIP_BORDER_WIDTH := 4.0
 const HELP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
@@ -114,9 +131,15 @@ var battle_over: bool = false
 var hero_roll_nudges: Dictionary = {}
 var _battle_consumables: Array = []
 var _item_button: Button = null
+var _nudge_button: Button = null
 var _item_menu: PopupMenu = null
 var _item_menu_items: Array = []
 var _relic_slot: Control = null
+var _protocol_footer_display: Control = null
+var _protocol_footer_lights: Array = []
+var _protocol_footer_spacer: Control = null
+var _header_frame: PanelContainer = null
+var _footer_frame: PanelContainer = null
 var _hud_tooltip_panel: PanelContainer = null
 var _hud_tooltip_label: Label = null
 var _hud_tooltip_node: Control = null
@@ -170,7 +193,7 @@ func _ready() -> void:
 	# Protocol Tap gear: sum gear_protocol_on_start from hero states
 	for _hs in combat_manager.get_hero_states():
 		protocol_points += int(_hs.get("gear_protocol_on_start", 0))
-	protocol_points = mini(protocol_points, 10)
+	protocol_points = mini(protocol_points, MAX_PROTOCOL)
 	_update_protocol_bar()
 	_populate_hero_cards()
 	_populate_enemy_cards()
@@ -203,6 +226,7 @@ func _stabilize_board_layout() -> void:
 		_refresh_board_layout()
 		_layout_dice_from_combat_zone()
 		await get_tree().process_frame
+	_refresh_all_cards()
 
 
 func _on_open_reward_button_pressed() -> void:
@@ -560,7 +584,7 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 			card_pips = action_pips.get("effects", [])
 		compact_card.configure({
 			"side": "hero" if accent_color == HERO_ACCENT else "enemy",
-			"name": unit.display_name,
+			"name": unit.battle_name(),
 			"current_hp": int(state["current_hp"]),
 			"max_hp": int(state["max_hp"]),
 			"action": action_label,
@@ -860,6 +884,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
 	_clear_die_tooltip_overlays()
+	_hide_all_ability_readouts()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
 	legal_target_side = ""
@@ -893,6 +918,8 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 
 	_assign_enemy_targets()
 	_prepare_hero_targets()
+	_refresh_all_cards()
+	_show_all_ability_readouts()
 	if dice_tray_3d != null and not skip_dice_visuals:
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_hero_states(), hero_rolls, true))
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_enemy_states(), enemy_rolls, false))
@@ -973,7 +1000,7 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		var is_frozen: bool = int(state.get("die_freeze_turns", 0)) > 0 and int(state.get("frozen_die_value", 0)) > 0
 		var entry: Dictionary = {
 			"id": str(state["id"]),
-			"name": str(unit.display_name),
+			"name": str(unit.battle_name()),
 		}
 		var anchor_point: Vector2 = _get_dice_anchor_point(side, str(state["id"]))
 		if anchor_point != Vector2.INF:
@@ -1168,7 +1195,7 @@ func _build_dice_action_entries(states: Array, rolls: Dictionary, is_hero: bool)
 		entries.append({
 			"side": "hero" if is_hero else "enemy",
 			"id": str(state["id"]),
-			"name": str(unit.display_name),
+			"name": str(unit.battle_name()),
 			"ability": str(ability_entry.get("ability_name", "")),
 			"roll": effective_roll,
 			"zone": str(ability_entry.get("zone", "")),
@@ -1215,8 +1242,22 @@ func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, si
 		overlay.set_as_top_level(true)
 		float_layer.add_child(overlay)
 		overlay.global_position = screen_position - (overlay_size * 0.5)
+		overlay.gui_input.connect(_on_die_overlay_gui_input.bind(side, unit_id))
 		_set_hud_tooltip(overlay, tooltip_text, true)
 		_die_tooltip_overlays.append(overlay)
+
+
+func _on_die_overlay_gui_input(event: InputEvent, side: String, unit_id: String) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event == null:
+		return
+	if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed or mouse_event.is_echo():
+		return
+	get_viewport().set_input_as_handled()
+	if side == "hero":
+		_on_hero_card_pressed(unit_id)
+	elif side == "enemy":
+		_on_enemy_card_pressed(unit_id)
 
 
 func _clear_die_tooltip_overlays() -> void:
@@ -1318,7 +1359,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		if _try_finish_battle_from_current_state():
 			return
 		# Gain +1 PP at end of each resolved round (ongoing only)
-		protocol_points = mini(protocol_points + 1, 10)
+		protocol_points = mini(protocol_points + 1, MAX_PROTOCOL)
 		_update_protocol_bar()
 		_append_log("Protocol +1 → %d" % protocol_points)
 		_set_turn_phase(PHASE_AWAIT_ROLL)
@@ -1453,7 +1494,7 @@ func _build_round_complete_modal() -> void:
 	_round_complete_next_button = Button.new()
 	_round_complete_next_button.text = "Next"
 	_round_complete_next_button.custom_minimum_size = Vector2(170, 58)
-	PixelUI.style_button(_round_complete_next_button, Color(0.34, 0.250, 0.070, 1.0), Color(0.98, 0.78, 0.22, 1.0), 28)
+	PixelUI.style_labeled_texture_button(_round_complete_next_button, PixelUI.BUTTON_LARGE_YELLOW_SCIFI, 28)
 	_round_complete_next_button.pressed.connect(_on_round_complete_next_pressed)
 	vbox.add_child(_round_complete_next_button)
 
@@ -1515,14 +1556,13 @@ func _on_nudge_button_pressed() -> void:
 
 func _add_nudge_button() -> void:
 	var btn: Button = Button.new()
-	btn.text = "▲"
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +5 to a hero's effective roll.")
 	btn.pressed.connect(_on_nudge_button_pressed)
-	PixelUI.style_button(btn, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, PROTOCOL_VALUE_FONT_SIZE)
+	PixelUI.style_texture_button(btn, PixelUI.BUTTON_INCREASE_SCIFI)
+	_nudge_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, protocol_spend_button.get_index() + 1)
-
 
 func _apply_reroll(hero_id: String) -> void:
 	protocol_points -= 2
@@ -1626,9 +1666,102 @@ func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool)
 
 
 func _update_protocol_bar() -> void:
-	protocol_bar.max_value = 10
+	protocol_bar.max_value = MAX_PROTOCOL
 	protocol_bar.value = protocol_points
-	protocol_value_label.text = "%d / 10" % protocol_points
+	protocol_value_label.text = "%d / %d" % [protocol_points, MAX_PROTOCOL]
+	_update_protocol_footer_display()
+
+
+func _ensure_protocol_footer_display() -> void:
+	if protocol_bar == null:
+		return
+	var protocol_row := protocol_panel.get_node_or_null("ProtocolMargin/ProtocolRow") as HBoxContainer
+	if protocol_row != null:
+		protocol_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		if _protocol_footer_spacer == null or not is_instance_valid(_protocol_footer_spacer):
+			_protocol_footer_spacer = Control.new()
+			_protocol_footer_spacer.name = "ProtocolFooterSpacer"
+			_protocol_footer_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_protocol_footer_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			protocol_row.add_child(_protocol_footer_spacer)
+		if is_instance_valid(protocol_spend_button):
+			protocol_row.move_child(_protocol_footer_spacer, protocol_spend_button.get_index())
+	protocol_bar.visible = true
+	protocol_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	protocol_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y
+	var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
+	protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
+	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
+		_protocol_footer_display = Control.new()
+		_protocol_footer_display.name = "ProtocolFooterDisplay"
+		_protocol_footer_display.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_protocol_footer_display.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		protocol_bar.add_child(_protocol_footer_display)
+		protocol_bar.move_child(_protocol_footer_display, 0)
+
+		var texture: TextureRect = TextureRect.new()
+		texture.name = "ProtocolFooterTexture"
+		texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		texture.texture = load(PROTOCOL_FOOTER_BAR_TEXTURE) as Texture2D
+		_protocol_footer_display.add_child(texture)
+		_protocol_footer_display.move_child(texture, 0)
+		_protocol_footer_display.resized.connect(_layout_protocol_footer_lights)
+
+		_protocol_footer_lights.clear()
+		for light_rect in PROTOCOL_LIGHT_RECTS:
+			var light: Panel = Panel.new()
+			light.name = "ProtocolLight%d" % _protocol_footer_lights.size()
+			light.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var style: StyleBoxFlat = StyleBoxFlat.new()
+			style.bg_color = Color(0.20, 0.58, 0.98, 0.92)
+			style.border_color = Color(0.74, 0.94, 1.0, 0.78)
+			style.set_border_width_all(1)
+			style.corner_radius_top_left = 2
+			style.corner_radius_top_right = 2
+			style.corner_radius_bottom_right = 2
+			style.corner_radius_bottom_left = 2
+			light.add_theme_stylebox_override("panel", style)
+			light.visible = false
+			_protocol_footer_display.add_child(light)
+			_protocol_footer_lights.append(light)
+	_layout_protocol_footer_lights()
+	_update_protocol_footer_display()
+
+
+func _layout_protocol_footer_lights() -> void:
+	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
+		return
+	if _protocol_footer_lights.is_empty():
+		return
+	var scale_x: float = 1.0
+	var scale_y: float = 1.0
+	if PROTOCOL_FOOTER_SOURCE_SIZE.x > 0.0:
+		scale_x = _protocol_footer_display.size.x / PROTOCOL_FOOTER_SOURCE_SIZE.x
+	if PROTOCOL_FOOTER_SOURCE_SIZE.y > 0.0:
+		scale_y = _protocol_footer_display.size.y / PROTOCOL_FOOTER_SOURCE_SIZE.y
+	for i in range(mini(_protocol_footer_lights.size(), PROTOCOL_LIGHT_RECTS.size())):
+		var light: Panel = _protocol_footer_lights[i] as Panel
+		if light == null or not is_instance_valid(light):
+			continue
+		var source_rect: Rect2 = PROTOCOL_LIGHT_RECTS[i]
+		light.position = Vector2(source_rect.position.x * scale_x, source_rect.position.y * scale_y)
+		light.size = Vector2(source_rect.size.x * scale_x, source_rect.size.y * scale_y)
+
+
+func _update_protocol_footer_display() -> void:
+	if _protocol_footer_lights.is_empty():
+		return
+	var active_count: int = clampi(protocol_points, 0, MAX_PROTOCOL)
+	for i in range(_protocol_footer_lights.size()):
+		var light: Panel = _protocol_footer_lights[i] as Panel
+		if light == null or not is_instance_valid(light):
+			continue
+		light.visible = i < active_count
 
 
 func _refresh_all_cards() -> void:
@@ -1641,6 +1774,22 @@ func _refresh_all_cards() -> void:
 		var enemy_state: Dictionary = enemy_view["state"]
 		var readout: Control = enemy_view.get("readout", null) as Control
 		_update_card_view(enemy_view["card"], enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT, readout)
+
+
+func _show_all_ability_readouts() -> void:
+	for view_variant in hero_card_views + enemy_card_views:
+		var view: Dictionary = view_variant
+		var readout: Control = view.get("readout", null) as Control
+		if readout != null and is_instance_valid(readout) and readout.has_method("show_pips"):
+			readout.call("show_pips")
+
+
+func _hide_all_ability_readouts() -> void:
+	for view_variant in hero_card_views + enemy_card_views:
+		var view: Dictionary = view_variant
+		var readout: Control = view.get("readout", null) as Control
+		if readout != null and is_instance_valid(readout) and readout.has_method("hide_pips"):
+			readout.call("hide_pips")
 
 
 func _build_runtime_units() -> void:
@@ -1679,9 +1828,12 @@ func _refresh_summary(_extra_text: String) -> void:
 
 func _update_battle_header() -> void:
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
-	var series_name: String = operation.display_name if operation != null and operation.display_name != "" else "Operation"
+	var op_name: String = operation.battle_name() if operation != null else "OP"
 	var battle_text: String = _game_state().get_battle_progress_text()
-	summary_label.text = "%s  %s" % [series_name, battle_text]
+	if battle_text.begins_with("Battle "):
+		battle_text = battle_text.trim_prefix("Battle ")
+	summary_label.text = "%s  %s" % [op_name, battle_text]
+	counter_label.text = ""
 
 
 func _set_turn_phase(next_phase: String) -> void:
@@ -1689,6 +1841,7 @@ func _set_turn_phase(next_phase: String) -> void:
 	_update_phase_target_sets()
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
+			_hide_all_ability_readouts()
 			roll_button.visible = true
 			roll_button.disabled = false
 			roll_button.text = "Roll"
@@ -1737,15 +1890,14 @@ func _set_turn_phase(next_phase: String) -> void:
 func _style_roll_button_for_phase() -> void:
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			PixelUI.style_button(roll_button, Color(0.045, 0.160, 0.105, 1.0), Color(0.20, 0.66, 0.50, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
+			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GREEN_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
 		PHASE_TARGETING:
-			PixelUI.style_button(roll_button, Color(0.18, 0.19, 0.21, 1.0), Color(0.48, 0.52, 0.58, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
+			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
 			roll_button.add_theme_color_override("font_disabled_color", PixelUI.TEXT_PRIMARY)
-			roll_button.add_theme_stylebox_override("disabled", PixelUI.make_panel_style(Color(0.18, 0.19, 0.21, 1.0), Color(0.48, 0.52, 0.58, 1.0), 4, 0))
 		PHASE_READY_TO_END:
-			PixelUI.style_button(roll_button, Color(0.34, 0.250, 0.070, 1.0), Color(0.98, 0.78, 0.22, 1.0), CENTER_ACTION_BUTTON_FONT_SIZE)
+			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_YELLOW_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
 		_:
-			PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, CENTER_ACTION_BUTTON_FONT_SIZE)
+			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
 
 
 func _update_phase_target_sets() -> void:
@@ -2633,9 +2785,9 @@ func _build_hud_tooltip() -> void:
 	var tooltip_margin: MarginContainer = MarginContainer.new()
 	tooltip_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tooltip_margin.add_theme_constant_override("margin_left", int(HUD_TOOLTIP_PAD_X))
-	tooltip_margin.add_theme_constant_override("margin_top", 12)
+	tooltip_margin.add_theme_constant_override("margin_top", 14)
 	tooltip_margin.add_theme_constant_override("margin_right", int(HUD_TOOLTIP_PAD_X))
-	tooltip_margin.add_theme_constant_override("margin_bottom", 12)
+	tooltip_margin.add_theme_constant_override("margin_bottom", 14)
 	_hud_tooltip_panel.add_child(tooltip_margin)
 
 	_hud_tooltip_label = Label.new()
@@ -2643,10 +2795,10 @@ func _build_hud_tooltip() -> void:
 	_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_hud_tooltip_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_hud_tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hud_tooltip_label.add_theme_font_size_override("font_size", 20)
+	_hud_tooltip_label.add_theme_font_size_override("font_size", HUD_TOOLTIP_FONT_SIZE)
 	_hud_tooltip_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	_hud_tooltip_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
-	_hud_tooltip_label.add_theme_constant_override("outline_size", 3)
+	_hud_tooltip_label.add_theme_constant_override("outline_size", 4)
 	tooltip_margin.add_child(_hud_tooltip_label)
 
 
@@ -3427,19 +3579,28 @@ func _make_effect_chip(icon: String, text: String, bg: Color, border: Color, too
 
 
 func _apply_battle_theme() -> void:
-	background.color = Color(0.030, 0.050, 0.080, 1.0)
 	PixelUI.apply_pixel_font(summary_label)
 	summary_label.add_theme_font_size_override("font_size", HEADER_SUMMARY_FONT_SIZE)
-	summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
 	summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	summary_label.add_theme_constant_override("outline_size", 2)
 	summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	summary_label.clip_text = true
+	summary_label.clip_text = false
 	summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	PixelUI.style_panel(hero_panel, Color("#0D1117"), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_panel(enemy_panel, Color("#0D1117"), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_panel(center_panel, Color("#0D1117"), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_ninepatch_panel(protocol_panel, PixelUI.FRAME_SMALL_LANDSCAPE)
+	PixelUI.apply_pixel_font(counter_label)
+	counter_label.add_theme_font_size_override("font_size", HEADER_COUNTER_FONT_SIZE)
+	counter_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	counter_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	counter_label.add_theme_constant_override("outline_size", 3)
+	counter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	counter_label.clip_text = false
+	counter_label.visible = false
+	var header_row := get_node_or_null("HeaderRow") as Control
+	if header_row != null:
+		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
+	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
+	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_ninepatch_panel(battle_log_panel, PixelUI.FRAME_SIMPLE)
 	_ensure_panel_background(hero_panel)
 	_ensure_panel_background(enemy_panel)
@@ -3455,30 +3616,37 @@ func _apply_battle_theme() -> void:
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	protocol_value_label.add_theme_constant_override("outline_size", 2)
-	PixelUI.style_icon_button(toggle_log_button, PixelUI.BUTTON_QUESTION)
-	PixelUI.style_button(roll_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, CENTER_ACTION_BUTTON_FONT_SIZE)
-	PixelUI.style_button(protocol_spend_button, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, 20)
-	PixelUI.style_icon_button(auto_turn_button, PixelUI.BUTTON_UP_ARROW)
-	PixelUI.style_icon_button(auto_battle_button, PixelUI.BUTTON_GRID_123)
-	PixelUI.style_icon_button(return_to_menu_button, PixelUI.BUTTON_BACK_ARROW)
-	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.015, 0.020, 0.035, 1.0), PixelUI.LINE_DIM)
+	PixelUI.style_texture_button(toggle_log_button, PixelUI.BUTTON_HELP_SCIFI)
+	PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
+	PixelUI.style_texture_button(protocol_spend_button, PixelUI.BUTTON_REROLL_SCIFI)
+	if _nudge_button != null and is_instance_valid(_nudge_button):
+		PixelUI.style_texture_button(_nudge_button, PixelUI.BUTTON_INCREASE_SCIFI)
+	if _item_button != null and is_instance_valid(_item_button):
+		PixelUI.style_texture_button(_item_button, PixelUI.BUTTON_ITEM_SCIFI)
+	PixelUI.style_texture_button(auto_turn_button, PixelUI.BUTTON_DEBUG_SCIFI)
+	PixelUI.style_texture_button(auto_battle_button, PixelUI.BUTTON_DEBUG2_SCIFI)
+	PixelUI.style_texture_button(return_to_menu_button, PixelUI.BUTTON_BACK_SCIFI)
+	_ensure_protocol_footer_display()
+	protocol_label.visible = false
+	protocol_value_label.visible = false
+	if protocol_panel != null:
+		protocol_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	PixelUI.style_progress_bar(protocol_bar, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0))
+	_update_protocol_bar()
+	if _header_frame != null and is_instance_valid(_header_frame):
+		_header_frame.queue_free()
+		_header_frame = null
+	if _footer_frame != null and is_instance_valid(_footer_frame):
+		_footer_frame.queue_free()
+		_footer_frame = null
 
 
 func _ensure_panel_background(panel: PanelContainer) -> void:
 	if panel == null:
 		return
 	var background_fill := panel.get_node_or_null("OpaqueBackground") as ColorRect
-	if background_fill == null:
-		background_fill = ColorRect.new()
-		background_fill.name = "OpaqueBackground"
-		background_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		background_fill.color = Color("#0D1117")
-		background_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		panel.add_child(background_fill)
-		panel.move_child(background_fill, 0)
-	else:
-		background_fill.color = Color("#0D1117")
-		background_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if background_fill != null:
+		background_fill.queue_free()
 
 
 func _ensure_combat_zone_frame() -> void:
@@ -3500,7 +3668,7 @@ func _ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
 		_combat_zone_frame.add_child(_combat_zone_hero_lane)
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
-	PixelUI.style_panel(_combat_zone_frame, Color(0.0, 0.0, 0.0, 0.0), PixelUI.LINE_BRIGHT, 2, 0)
+	PixelUI.style_ninepatch_frame(_combat_zone_frame, PixelUI.FRAME_DICE_TRAY_SCIFI)
 
 
 func _build_combat_zone_lane(name: String) -> HBoxContainer:
@@ -3603,9 +3771,8 @@ func _build_item_panel() -> void:
 	var protocol_row: HBoxContainer = protocol_panel.get_node("ProtocolMargin/ProtocolRow") as HBoxContainer
 	_item_button = Button.new()
 	_item_button.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	_item_button.text = "Item"
 	_item_button.pressed.connect(_on_item_button_pressed_menu)
-	PixelUI.style_button(_item_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, PROTOCOL_VALUE_FONT_SIZE)
+	PixelUI.style_texture_button(_item_button, PixelUI.BUTTON_ITEM_SCIFI)
 	protocol_row.add_child(_item_button)
 	_item_menu = PopupMenu.new()
 	_item_menu.name = "ItemMenu"
@@ -3620,7 +3787,7 @@ func _build_relic_slot() -> void:
 	_relic_slot = slot
 	slot.custom_minimum_size = ITEM_SLOT_SIZE
 	_set_hud_tooltip(slot, "Relic\nNo relic equipped.")
-	PixelUI.style_panel(slot, Color(0.06, 0.08, 0.13, 0.85), PixelUI.GOLD_ACCENT, 2, 0)
+	PixelUI.style_ninepatch_panel(slot, PixelUI.FRAME_ITEM_SCIFI)
 
 	var icon_center: CenterContainer = CenterContainer.new()
 	icon_center.name = "RelicIconCenter"
@@ -3707,11 +3874,9 @@ func _update_item_panel() -> void:
 			_item_menu.add_item("%s (%d)" % [menu_item.display_name, cost], i)
 	if _item_menu_items.is_empty():
 		_item_button.disabled = true
-		_item_button.text = "Item"
 		_set_hud_tooltip(_item_button, "Items\nNo consumables available.")
 	else:
 		_item_button.disabled = false
-		_item_button.text = "Item"
 		var tooltip_lines: Array = ["Items"]
 		for item_variant in _item_menu_items:
 			var item: ItemData = item_variant as ItemData

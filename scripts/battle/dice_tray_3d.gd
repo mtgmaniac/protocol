@@ -20,6 +20,7 @@ const FACE_RESOLVE_ANGULAR_SPEED := 0.24
 const MIN_ROLL_TIME := 2.40
 const MAX_ROLL_TIME := 7.5
 const RESULT_PRESENTATION_TIME := 0.42
+const RESULT_SCALE := 0.75
 const SELECTED_REROLL_TIME := 0.82
 const SELECTED_REROLL_LIFT := DIE_RADIUS * 0.70
 const RESULT_FACE_NORMAL := Vector3(0.0, 1.0, 0.0)
@@ -106,6 +107,19 @@ func reset() -> void:
 	_clear_dice()
 	# Hide when not rolling so the Roll button underneath is visible
 	visible = false
+
+
+func _set_die_result_scale(die: RigidBody3D, animate: bool) -> void:
+	if die == null or not is_instance_valid(die):
+		return
+	var target_scale := Vector3.ONE * RESULT_SCALE
+	if not animate:
+		die.scale = target_scale
+		return
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(die, "scale", target_scale, RESULT_PRESENTATION_TIME)
 
 
 func get_hero_rolls() -> Dictionary:
@@ -214,6 +228,7 @@ func reroll_die_to_result(side: String, unit_id: String, result: int) -> void:
 	if not is_instance_valid(die):
 		return
 	die.global_transform = to_transform
+	_set_die_result_scale(die, true)
 	die.set_meta("resolved_result", clamped_result)
 	die.set_meta("display_face_value", clamped_result)
 	die.set_meta("assigned_result_origin", target_origin)
@@ -295,6 +310,7 @@ func _finish_roll(dice: Array) -> void:
 		die.freeze = true
 		die.linear_velocity = Vector3.ZERO
 		die.angular_velocity = Vector3.ZERO
+		_set_die_result_scale(die, true)
 		result_entries.append({
 			"die": die,
 			"result": result,
@@ -806,6 +822,7 @@ func _add_static_box(node_name: String, pos: Vector3, size: Vector3) -> void:
 
 func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	var die: RigidBody3D = RigidBody3D.new()
+	die.scale = Vector3.ONE
 	die.set_meta("entry", entry)
 	_die_by_key[_entry_key(str(entry.get("side", "")), str(entry.get("id", "")))] = die
 	# Dense mass with moderated gravity: slower fall, weighty roll after impact.
@@ -908,6 +925,7 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	var face_index: int = _get_face_index_for_result(result)
 	if face_index >= 0:
 		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), die.global_transform.origin)
+	_set_die_result_scale(die, false)
 	_reset_face_labels(die)
 	_reset_face_highlights(die)
 	_highlight_top_face(die, result, side)

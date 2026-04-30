@@ -9,11 +9,11 @@ const CARD_IMAGE_HEIGHT := 78.0
 const EFFECT_ICON_SIZE := 46
 const EFFECT_VALUE_SIZE := 42
 const EFFECT_TAG_SIZE := 28
-const BODY_FONT_SIZE := 24
-const SMALL_FONT_SIZE := 18
-const CARD_ACTION_BUTTON_FONT_SIZE := 24
+const BODY_FONT_SIZE := 34
+const SMALL_FONT_SIZE := 28
+const CARD_ACTION_BUTTON_FONT_SIZE := 34
 const CARD_ACTION_BUTTON_HEIGHT := 54
-const GEAR_TARGET_BUTTON_FONT_SIZE := 26
+const GEAR_TARGET_BUTTON_FONT_SIZE := 34
 const GEAR_TARGET_BUTTON_HEIGHT := 64
 const CARD_BG := Color(0.024, 0.040, 0.060, 0.78)
 const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.88)
@@ -27,10 +27,12 @@ const RARITY_COLORS := {
 
 @onready var background: ColorRect = $Background
 @onready var content_vbox: VBoxContainer = $Content/VBox
-@onready var battle_summary_label: Label = $Content/VBox/HeaderRow/SummaryLabel
-@onready var header_help_button: Button = $Content/VBox/HeaderRow/ButtonRow/ToggleLogButton
-@onready var header_auto_button: Button = $Content/VBox/HeaderRow/ButtonRow/AutoTurnButton
-@onready var header_back_button: Button = $Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton
+@onready var battle_summary_label: Label = $HeaderRow/InfoStack/SummaryLabel
+@onready var battle_counter_label: Label = $HeaderRow/InfoStack/CounterLabel
+@onready var header_help_button: Button = $HeaderRow/ButtonRow/ToggleLogButton
+@onready var header_auto_button: Button = $HeaderRow/ButtonRow/AutoTurnButton
+@onready var header_auto_battle_button: Button = $HeaderRow/ButtonRow/AutoBattleButton
+@onready var header_back_button: Button = $HeaderRow/ButtonRow/ReturnToMenuButton
 @onready var title_label: Label = $Content/VBox/Title
 @onready var summary_label: Label = %SummaryLabel
 @onready var inventory_label: Label = %InventoryLabel
@@ -50,6 +52,8 @@ func _ready() -> void:
 	_apply_visual_theme()
 	resized.connect(_update_reward_layout)
 	header_help_button.pressed.connect(_on_help_button_pressed)
+	header_auto_button.pressed.connect(_on_header_unavailable_pressed.bind("Auto turn is unavailable while choosing a reward."))
+	header_auto_battle_button.pressed.connect(_on_header_unavailable_pressed.bind("Auto battle is unavailable while choosing a reward."))
 	header_back_button.pressed.connect(_on_return_to_menu_button_pressed)
 	if GameState.pending_reward_item_ids.is_empty():
 		GameState.prepare_battle_rewards()
@@ -68,6 +72,11 @@ func _on_help_button_pressed() -> void:
 		_build_help_overlay()
 	_help_overlay.visible = true
 	_help_overlay.move_to_front()
+
+
+func _on_header_unavailable_pressed(message: String) -> void:
+	footer_label.text = message
+	footer_label.visible = true
 
 
 func _hide_help_overlay() -> void:
@@ -108,7 +117,7 @@ func _build_help_overlay() -> void:
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
 	outer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -122,7 +131,7 @@ func _build_help_overlay() -> void:
 	content.add_theme_constant_override("separation", 14)
 	margin.add_child(content)
 
-	var title := _make_label("REWARD HELP", 32, PixelUI.TEXT_PRIMARY, 3)
+	var title := _make_label("REWARD HELP", 42, PixelUI.TEXT_PRIMARY, 3)
 	content.add_child(title)
 	for line in [
 		"Choose one reward to continue the run.",
@@ -233,7 +242,7 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 
 func _style_reward_panel(panel: PanelContainer, item: ItemData, hovered: bool) -> void:
 	var tint: Color = _get_item_accent(item).lightened(0.06 if hovered else 0.0).lerp(Color.WHITE, 0.30)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_CORNER_DOTS, 18, tint)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_PORTRAIT_SCIFI, 24, tint)
 
 
 func _create_card_header(item: ItemData) -> HBoxContainer:
@@ -242,7 +251,7 @@ func _create_card_header(item: ItemData) -> HBoxContainer:
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
 	header.add_theme_constant_override("separation", 8)
 
-	var title := _make_label(item.display_name, 32, _get_item_accent(item), 3)
+	var title := _make_label(item.display_name, 42, _get_item_accent(item), 3)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -256,7 +265,7 @@ func _create_item_image_area(item: ItemData) -> PanelContainer:
 	image_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	image_area.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	image_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_panel(image_area, Color(0.012, 0.020, 0.034, 0.70), _get_item_accent(item).darkened(0.20), 1, 0)
+	image_area.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 	var center := CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -622,7 +631,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.custom_minimum_size = Vector2(clampf(get_viewport().get_visible_rect().size.x * 0.78, 320.0, 430.0), 0)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE, 18, _get_item_accent(item).lerp(Color.WHITE, 0.28))
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI, 20, _get_item_accent(item).lerp(Color.WHITE, 0.28))
 	outer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -636,7 +645,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 	vbox.add_theme_constant_override("separation", 12)
 	margin.add_child(vbox)
 
-	var title := _make_label("EQUIP %s TO" % item.display_name.to_upper(), 30, _get_item_accent(item), 2)
+	var title := _make_label("EQUIP %s TO" % item.display_name.to_upper(), 42, _get_item_accent(item), 2)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
@@ -681,8 +690,12 @@ func _claim_reward(item: ItemData, target_unit_id: String) -> void:
 
 func _update_battle_header() -> void:
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
-	var series_name: String = operation.display_name if operation != null and operation.display_name != "" else "Operation"
-	battle_summary_label.text = "%s  %s" % [series_name, GameState.get_battle_progress_text()]
+	var op_name: String = operation.battle_name() if operation != null else "OP"
+	var battle_text: String = GameState.get_battle_progress_text()
+	if battle_text.begins_with("Battle "):
+		battle_text = battle_text.trim_prefix("Battle ")
+	battle_summary_label.text = "%s  %s" % [op_name, battle_text]
+	battle_counter_label.text = ""
 
 
 func _refresh_inventory_summary() -> void:
@@ -715,11 +728,28 @@ func _apply_visual_theme() -> void:
 		reward_top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header_auto_button.visible = false
-	PixelUI.style_label(battle_summary_label, 56, PixelUI.TEXT_PRIMARY, 2)
-	battle_summary_label.custom_minimum_size.y = 78
-	PixelUI.style_button(header_help_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
-	PixelUI.style_button(header_back_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
+	PixelUI.apply_pixel_font(battle_summary_label)
+	battle_summary_label.add_theme_font_size_override("font_size", 112)
+	battle_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
+	battle_summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	battle_summary_label.add_theme_constant_override("outline_size", 2)
+	battle_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	battle_summary_label.clip_text = false
+	battle_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	PixelUI.apply_pixel_font(battle_counter_label)
+	battle_counter_label.add_theme_font_size_override("font_size", 112)
+	battle_counter_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	battle_counter_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	battle_counter_label.add_theme_constant_override("outline_size", 3)
+	battle_counter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	battle_counter_label.clip_text = false
+	battle_counter_label.visible = false
+	var header_row: Control = $HeaderRow
+	header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	PixelUI.style_texture_button(header_help_button, PixelUI.BUTTON_HELP_SCIFI)
+	PixelUI.style_texture_button(header_auto_button, PixelUI.BUTTON_DEBUG_SCIFI)
+	PixelUI.style_texture_button(header_auto_battle_button, PixelUI.BUTTON_DEBUG2_SCIFI)
+	PixelUI.style_texture_button(header_back_button, PixelUI.BUTTON_BACK_SCIFI)
 	title_label.text = "Choose Reward"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.visible = false
@@ -733,12 +763,12 @@ func _apply_visual_theme() -> void:
 	footer_label.visible = false
 	PixelUI.style_label(title_label, 44, PixelUI.GOLD_ACCENT, 2)
 	PixelUI.style_label(reward_title_label, 62, PixelUI.GOLD_ACCENT, 3)
-	PixelUI.style_label(summary_label, 24, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_label(inventory_label, 20, PixelUI.TEXT_MUTED, 1)
-	PixelUI.style_label(footer_label, 20, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(summary_label, 32, PixelUI.TEXT_PRIMARY, 2)
+	PixelUI.style_label(inventory_label, 28, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(footer_label, 28, PixelUI.TEXT_MUTED, 1)
 	reward_content.add_theme_constant_override("separation", 18)
 	reward_cards.add_theme_constant_override("separation", 18)
-	PixelUI.style_ninepatch_panel(reward_scroll, PixelUI.FRAME_SIMPLE)
+	reward_scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 
 func _get_item_accent(item: ItemData) -> Color:

@@ -547,7 +547,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "PULSE"
     },
     {
       "id": "combat",
@@ -878,7 +879,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "STRIKE"
     },
     {
       "id": "shield",
@@ -1234,7 +1236,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "SPITE"
     },
     {
       "id": "avalanche",
@@ -1581,7 +1584,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "AVALANCHE"
     },
     {
       "id": "medic",
@@ -1926,7 +1930,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "SPLICE"
     },
     {
       "id": "engineer",
@@ -2268,7 +2273,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "ENGINEER"
     },
     {
       "id": "ghost",
@@ -2606,7 +2612,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "GHOST"
     },
     {
       "id": "breaker",
@@ -2957,7 +2964,8 @@
             }
           ]
         }
-      ]
+      ],
+      "callsign": "BREAKER"
     }
   ]
 }

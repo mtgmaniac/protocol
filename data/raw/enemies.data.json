@@ -2120,7 +2120,7 @@
         "rfe": 0,
         "shield": 0,
         "summonChance": 50,
-          "summonName": "Pack Hound"
+        "summonName": "Pack Hound"
       }
     },
     "beastBadger": {
@@ -2382,56 +2382,64 @@
       "dMin": 5,
       "dMax": 9,
       "type": "scrap",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "SCRAP"
     },
     "Rust Drone": {
       "hp": 35,
       "dMin": 5,
       "dMax": 8,
       "type": "rust",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "RUST"
     },
-    "Whitenoise Skimmer": {
+    "Static Skimmer": {
       "hp": 34,
       "dMin": 5,
       "dMax": 8,
       "type": "signalSkimmer",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "STATIC"
     },
     "Harmonic Hexnode": {
       "hp": 72,
       "dMin": 12,
       "dMax": 17,
       "type": "commsHex",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "HEX"
     },
     "Patrol Elite": {
       "hp": 65,
       "dMin": 12,
       "dMax": 16,
       "type": "patrol",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "PATROL"
     },
     "Guard Elite": {
       "hp": 80,
       "dMin": 14,
       "dMax": 18,
       "type": "guard",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "GUARD"
     },
     "Heavy Warden": {
       "hp": 115,
       "dMin": 17,
       "dMax": 23,
       "type": "warden",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "WARDEN"
     },
     "Volt Elite": {
       "hp": 90,
       "dMin": 15,
       "dMax": 21,
       "type": "volt",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "VOLT"
     },
     "SCRAPMASTER": {
       "hp": 180,
@@ -2441,49 +2449,56 @@
       "ai": "smart",
       "p2dMin": 27,
       "p2dMax": 35,
-      "pThr": 86
+      "pThr": 86,
+      "callsign": "SCRAPLORD"
     },
     "Skitterling": {
       "hp": 40,
       "dMin": 5,
       "dMax": 9,
       "type": "skitter",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "SKITTER"
     },
     "Bloodmite": {
       "hp": 35,
       "dMin": 5,
       "dMax": 8,
       "type": "mite",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "MITE"
     },
     "Spine Stalker": {
       "hp": 65,
       "dMin": 12,
       "dMax": 16,
       "type": "stalker",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "STALKER"
     },
     "Carapace Beetle": {
       "hp": 80,
       "dMin": 14,
       "dMax": 18,
       "type": "carapace",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "CARAPACE"
     },
     "Broodwarden": {
       "hp": 115,
       "dMin": 17,
       "dMax": 23,
       "type": "brood",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "BROOD"
     },
     "Caustic Spewer": {
       "hp": 90,
       "dMin": 15,
       "dMax": 21,
       "type": "spewer",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "SPEWER"
     },
     "Hive Matriarch": {
       "hp": 180,
@@ -2493,21 +2508,24 @@
       "ai": "smart",
       "p2dMin": 23,
       "p2dMax": 31,
-      "pThr": 86
+      "pThr": 86,
+      "callsign": "MATRIARCH"
     },
     "Shardmite": {
       "hp": 40,
       "dMin": 5,
       "dMax": 9,
       "type": "veilShard",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "SHARD"
     },
     "Prism Charger": {
       "hp": 38,
       "dMin": 6,
       "dMax": 10,
       "type": "veilPrism",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "PRISM"
     },
     "Aegis Anchor": {
       "hp": 68,
@@ -2515,7 +2533,8 @@
       "dMax": 16,
       "type": "veilAegis",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "AEGIS"
     },
     "Resonance Warden": {
       "hp": 118,
@@ -2523,7 +2542,8 @@
       "dMax": 23,
       "type": "veilResonance",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "RESONANCE"
     },
     "Nullblade": {
       "hp": 70,
@@ -2531,7 +2551,8 @@
       "dMax": 17,
       "type": "veilNull",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "NULL"
     },
     "Stormweaver": {
       "hp": 92,
@@ -2539,7 +2560,8 @@
       "dMax": 21,
       "type": "veilStorm",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "STORM"
     },
     "Synapse Herald": {
       "hp": 76,
@@ -2547,7 +2569,8 @@
       "dMax": 16,
       "type": "veilSynapse",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "SYNAPSE"
     },
     "CONCLAVE OVERSEER": {
       "hp": 180,
@@ -2558,14 +2581,16 @@
       "summonElite": true,
       "p2dMin": 27,
       "p2dMax": 35,
-      "pThr": 86
+      "pThr": 86,
+      "callsign": "OVERSEER"
     },
     "Sparksprite": {
       "hp": 38,
       "dMin": 5,
       "dMax": 9,
       "type": "voidWisp",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "SPARK"
     },
     "Levyn Acolyte": {
       "hp": 62,
@@ -2573,7 +2598,8 @@
       "dMax": 16,
       "type": "voidAcolyte",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "ACOLYTE"
     },
     "Chronicle Scribe": {
       "hp": 74,
@@ -2581,7 +2607,8 @@
       "dMax": 16,
       "type": "voidScribe",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "SCRIBE"
     },
     "Geas Binder": {
       "hp": 112,
@@ -2589,7 +2616,8 @@
       "dMax": 23,
       "type": "voidBinder",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "BINDER"
     },
     "Glimmer Double": {
       "hp": 68,
@@ -2597,7 +2625,8 @@
       "dMax": 17,
       "type": "voidGlimmer",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "GLIMMER"
     },
     "Arc-Titan Channeler": {
       "hp": 94,
@@ -2605,7 +2634,8 @@
       "dMax": 21,
       "type": "voidChanneler",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "ARC-TITAN"
     },
     "CIRCLET HIEROPHANT": {
       "hp": 180,
@@ -2616,42 +2646,48 @@
       "summonElite": true,
       "p2dMin": 27,
       "p2dMax": 35,
-      "pThr": 86
+      "pThr": 86,
+      "callsign": "HIEROPHANT"
     },
     "Rift Macaque": {
       "hp": 38,
       "dMin": 5,
       "dMax": 9,
       "type": "beastMonkey",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "RIFT"
     },
     "Void Hound": {
       "hp": 42,
       "dMin": 6,
       "dMax": 10,
       "type": "beastWolf",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "VOID"
     },
     "Pack Hound": {
       "hp": 34,
       "dMin": 5,
       "dMax": 9,
       "type": "beastWolf",
-      "ai": "dumb"
+      "ai": "dumb",
+      "callsign": "PACK"
     },
     "Eclipse Panther": {
       "hp": 74,
       "dMin": 12,
       "dMax": 17,
       "type": "beastLynx",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "ECLIPSE"
     },
     "Thunder Ape": {
       "hp": 112,
       "dMin": 16,
       "dMax": 22,
       "type": "beastBison",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "THUNDER"
     },
     "Eclipse Raptor": {
       "hp": 86,
@@ -2659,14 +2695,16 @@
       "dMax": 18,
       "type": "beastHyena",
       "ai": "smart",
-      "summonElite": true
+      "summonElite": true,
+      "callsign": "RAPTOR"
     },
     "Ridge Drake": {
       "hp": 98,
       "dMin": 15,
       "dMax": 21,
       "type": "beastBadger",
-      "ai": "smart"
+      "ai": "smart",
+      "callsign": "DRAKE"
     },
     "VOID REAVER": {
       "hp": 180,
@@ -2676,7 +2714,8 @@
       "ai": "smart",
       "p2dMin": 27,
       "p2dMax": 35,
-      "pThr": 86
+      "pThr": 86,
+      "callsign": "REAVER"
     }
   },
   "battleEnemyScale": [

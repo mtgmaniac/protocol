@@ -4,6 +4,7 @@ extends Resource
 
 @export var id: String = ""
 @export var display_name: String = ""
+@export var callsign: String = ""
 @export var faction: String = ""
 @export var enemy_type: String = ""
 @export var ai_type: String = ""
@@ -17,3 +18,6 @@ extends Resource
 @export var portrait: Texture2D
 @export var dice_ranges: Array[Dictionary] = []
 @export var traits: Array[Dictionary] = []
+
+func battle_name() -> String:
+	return callsign if callsign != "" else display_name

@@ -1,32 +1,34 @@
-class_name AbilityReadout
+﻿class_name AbilityReadout
 extends PanelContainer
 
 const READOUT_SIZE := Vector2(0, 84)
-const ROW_HEIGHT := 80.0
-const ROW_GAP := 8.0
+const ROW_HEIGHT := 64.0
+const ROW_GAP := 2.0
 const OUTER_PAD_X := 10.0
-const HERO_TOP_PAD := 6.0
+const HERO_TOP_PAD := 4.0
+const READOUT_CENTER_PULL_PX := 18.0
 const EFFECT_GROUP_MIN_WIDTH := 72.0
 const ICON_FONT_SIZE := 64
 const VALUE_FONT_SIZE := 64
 const DURATION_FONT_SIZE := 40
 const TARGET_FONT_SIZE := 40
 const EMPTY_ALPHA := 0.18
+const PIP_REVEAL_TIME := 0.12
 const ICONS := {
-	"dmg": "⚡",
-	"damage": "⚡",
-	"blast": "⚡",
+	"dmg": "âš¡",
+	"damage": "âš¡",
+	"blast": "âš¡",
 	"pierce": "",
-	"roll": "🎲",
-	"rfe": "🎲",
-	"rfm": "🎲",
-	"freeze": "❄",
-	"shield": "🛡",
-	"taunt": "🛡",
-	"heal": "➕",
+	"roll": "ðŸŽ²",
+	"rfe": "ðŸŽ²",
+	"rfm": "ðŸŽ²",
+	"freeze": "â„",
+	"shield": "ðŸ›¡",
+	"taunt": "ðŸ›¡",
+	"heal": "âž•",
 	"revive": "",
-	"dot": "☠",
-	"poison": "☠",
+	"dot": "â˜ ",
+	"poison": "â˜ ",
 }
 const PIP_ICON_ATLAS_PATH := "res://assets/ui/icons/pip_icons.png"
 const PIP_ICON_CELL_SIZE := Vector2(256, 256)
@@ -48,10 +50,16 @@ const PIP_ICON_COLUMNS := {
 var action_result: Dictionary = {}
 var side: String = "hero"
 var _row_layer: Control = null
+var _upper_frame: Control = null
+var _lower_frame: Control = null
+var _upper_underline: ColorRect = null
+var _lower_underline: ColorRect = null
 var _upper_row: HBoxContainer = null
 var _lower_row: HBoxContainer = null
 var _tooltip_callback: Callable = Callable()
 var _pip_icon_atlas: Texture2D = null
+var _pips_revealed: bool = false
+var _pips_tween: Tween = null
 
 
 func _ready() -> void:
@@ -83,19 +91,45 @@ func clear() -> void:
 
 
 func _build() -> void:
-	add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.22), Color.TRANSPARENT, 0, 0))
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 	_row_layer = Control.new()
 	_row_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_row_layer.custom_minimum_size = Vector2.ZERO
 	_row_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_row_layer.visible = false
+	_row_layer.modulate = Color(1, 1, 1, 0)
 	add_child(_row_layer)
 
+	_upper_frame = _make_row_frame()
+	_lower_frame = _make_row_frame()
 	_upper_row = _make_row()
 	_lower_row = _make_row()
-	_row_layer.add_child(_upper_row)
-	_row_layer.add_child(_lower_row)
+	_upper_frame.add_child(_upper_row)
+	_lower_frame.add_child(_lower_row)
+	_upper_underline = _make_row_underline()
+	_lower_underline = _make_row_underline()
+	_row_layer.add_child(_upper_frame)
+	_row_layer.add_child(_lower_frame)
+	_row_layer.add_child(_upper_underline)
+	_row_layer.add_child(_lower_underline)
 	_layout_rows()
+	_sync_pip_visibility()
+
+
+func _make_row_frame() -> Control:
+	var frame := Control.new()
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.visible = false
+	return frame
+
+
+func _make_row_underline() -> ColorRect:
+	var underline := ColorRect.new()
+	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	underline.visible = false
+	underline.color = Color(0, 0, 0, 0)
+	return underline
 
 
 func _make_row() -> HBoxContainer:
@@ -106,6 +140,10 @@ func _make_row() -> HBoxContainer:
 	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("margin_left", 8)
+	row.add_theme_constant_override("margin_top", 4)
+	row.add_theme_constant_override("margin_right", 8)
+	row.add_theme_constant_override("margin_bottom", 4)
 	return row
 
 
@@ -115,22 +153,77 @@ func _refresh() -> void:
 	_layout_rows()
 	_clear_row(_upper_row)
 	_clear_row(_lower_row)
+	_set_row_frame_visible(_upper_row, false)
+	_set_row_frame_visible(_lower_row, false)
 
 	var effects: Array = action_result.get("effects", [])
 	if effects.is_empty():
 		_add_empty_state(_closest_row())
+		_sync_pip_visibility()
 		return
 
 	var target: String = str(action_result.get("target", "")).to_upper()
 	var split_index: int = _find_split_index(effects, target)
 	if split_index >= effects.size():
 		_add_parts_to_row(_closest_row(), effects, target)
+		_sync_pip_visibility()
 		return
 
 	var first_row_effects: Array = effects.slice(0, split_index)
 	var overflow_effects: Array = effects.slice(split_index)
 	_add_parts_to_row(_closest_row(), first_row_effects, "")
 	_add_parts_to_row(_overflow_row(), overflow_effects, target)
+	call_deferred("_update_all_underlines")
+	_sync_pip_visibility()
+
+
+func show_pips() -> void:
+	_pips_revealed = true
+	if _row_layer == null:
+		return
+	if _pips_tween != null and is_instance_valid(_pips_tween):
+		_pips_tween.kill()
+	_pips_tween = null
+	if _upper_underline != null and _upper_frame != null:
+		_upper_underline.visible = _upper_frame.visible
+	if _lower_underline != null and _lower_frame != null:
+		_lower_underline.visible = _lower_frame.visible
+	_row_layer.visible = true
+	_row_layer.modulate = Color(1, 1, 1, 0)
+	_pips_tween = create_tween()
+	_pips_tween.tween_property(_row_layer, "modulate", Color(1, 1, 1, 1), PIP_REVEAL_TIME)
+
+
+func hide_pips() -> void:
+	_pips_revealed = false
+	if _pips_tween != null and is_instance_valid(_pips_tween):
+		_pips_tween.kill()
+	_pips_tween = null
+	if _row_layer == null:
+		return
+	_row_layer.modulate = Color(1, 1, 1, 0)
+	_row_layer.visible = false
+	if _upper_underline != null:
+		_upper_underline.visible = false
+		_upper_underline.size = Vector2.ZERO
+	if _lower_underline != null:
+		_lower_underline.visible = false
+		_lower_underline.size = Vector2.ZERO
+
+
+func _sync_pip_visibility() -> void:
+	if _row_layer == null:
+		return
+	if _pips_revealed:
+		if _upper_underline != null and _upper_frame != null:
+			_upper_underline.visible = _upper_frame.visible
+		if _lower_underline != null and _lower_frame != null:
+			_lower_underline.visible = _lower_frame.visible
+		_row_layer.visible = true
+		_row_layer.modulate = Color(1, 1, 1, 1)
+	else:
+		_row_layer.visible = false
+		_row_layer.modulate = Color(1, 1, 1, 0)
 
 
 func _notification(what: int) -> void:
@@ -140,25 +233,31 @@ func _notification(what: int) -> void:
 
 
 func _layout_rows() -> void:
-	if _upper_row == null or _lower_row == null:
+	if _upper_row == null or _lower_row == null or _upper_frame == null or _lower_frame == null:
 		return
+	var total_rows_height: float = (ROW_HEIGHT * 2.0) + ROW_GAP
 	var start_y: float = 0.0
-	if side == "hero":
-		var hero_row_y: float = maxf(0.0, size.y - ROW_HEIGHT - HERO_TOP_PAD)
-		start_y = hero_row_y - ROW_HEIGHT - ROW_GAP
+	if side == "enemy":
+		start_y = size.y - total_rows_height + READOUT_CENTER_PULL_PX
+	else:
+		start_y = -READOUT_CENTER_PULL_PX
 	var row_size := Vector2(size.x, ROW_HEIGHT)
-	_upper_row.position = Vector2(0.0, start_y)
-	_upper_row.size = row_size
-	_lower_row.position = Vector2(0.0, start_y + ROW_HEIGHT + ROW_GAP)
-	_lower_row.size = row_size
+	_upper_frame.position = Vector2(0.0, start_y)
+	_upper_frame.size = row_size
+	_upper_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_lower_frame.position = Vector2(0.0, start_y + ROW_HEIGHT + ROW_GAP)
+	_lower_frame.size = row_size
+	_lower_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_update_row_underline(_upper_row)
+	_update_row_underline(_lower_row)
 
 
 func _closest_row() -> HBoxContainer:
-	return _upper_row if side == "enemy" else _lower_row
+	return _lower_row if side == "enemy" else _upper_row
 
 
 func _overflow_row() -> HBoxContainer:
-	return _lower_row if side == "enemy" else _upper_row
+	return _upper_row if side == "enemy" else _lower_row
 
 
 func _clear_row(row: HBoxContainer) -> void:
@@ -170,12 +269,14 @@ func _clear_row(row: HBoxContainer) -> void:
 func _add_empty_state(row: HBoxContainer) -> void:
 	var label := Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = "—"
+	label.text = "â€”"
 	label.modulate = Color(0.70, 0.80, 0.90, EMPTY_ALPHA)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_apply_pixel_label(label, 34, PixelUI.TEXT_MUTED, 2)
 	row.add_child(label)
+	_set_row_frame_visible(row, true)
+	call_deferred("_update_all_underlines")
 
 
 func _add_parts_to_row(row: HBoxContainer, effects: Array, target: String) -> void:
@@ -185,34 +286,24 @@ func _add_parts_to_row(row: HBoxContainer, effects: Array, target: String) -> vo
 		row.add_child(_make_effect_group(effects[i]))
 	if target != "":
 		row.add_child(_make_target_label(target))
+	_set_row_frame_visible(row, true)
+	call_deferred("_update_all_underlines")
 
 
 func _get_pip_icon_texture(kind: String) -> Texture2D:
-	if not PIP_ICON_COLUMNS.has(kind):
-		return null
-	var atlas := _get_pip_icon_atlas()
-	if atlas == null:
-		return null
-	var texture := AtlasTexture.new()
-	texture.atlas = atlas
-	texture.region = Rect2(Vector2(float(int(PIP_ICON_COLUMNS[kind])) * PIP_ICON_CELL_SIZE.x, 0.0), PIP_ICON_CELL_SIZE)
-	return texture
+	return PixelUI.pip_texture_for_key(kind)
 
 
 func _get_pip_icon_atlas() -> Texture2D:
-	if _pip_icon_atlas != null:
-		return _pip_icon_atlas
-	var image: Image = Image.load_from_file(PIP_ICON_ATLAS_PATH)
-	if image == null or image.is_empty():
-		return null
-	_pip_icon_atlas = ImageTexture.create_from_image(image)
-	return _pip_icon_atlas
+	return null
 
 
-func _make_effect_group(effect: Dictionary) -> HBoxContainer:
+func _make_effect_group(effect: Dictionary) -> Control:
 	var effect_kind: String = str(effect.get("kind", ""))
-	var icon_color: Color = PixelUI.effect_color(effect_kind)
-	var value_color: Color = PixelUI.effect_value_color(effect_kind)
+	var display_value: String = _display_value_for_effect(effect)
+	var pip_key: String = _pip_key_for_effect(effect)
+	var color_key: String = pip_key if pip_key != "" else effect_kind
+	var value_color: Color = PixelUI.effect_value_color(color_key)
 
 	var group := HBoxContainer.new()
 	group.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -236,7 +327,7 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 			_tooltip_callback.call(group, _build_effect_tooltip(effect))
 		return group
 
-	var icon_texture := _get_pip_icon_texture(effect_kind)
+	var icon_texture := _get_pip_icon_texture(pip_key)
 	if icon_texture != null:
 		var icon_rect := TextureRect.new()
 		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -246,23 +337,11 @@ func _make_effect_group(effect: Dictionary) -> HBoxContainer:
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		group.add_child(icon_rect)
-	else:
-		var icon_label := Label.new()
-		icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_label.text = str(ICONS.get(str(effect.get("kind", "")), "⚡"))
-		icon_label.custom_minimum_size = Vector2(0, 0)
-		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		icon_label.add_theme_font_size_override("font_size", ICON_FONT_SIZE)
-		icon_label.add_theme_color_override("font_color", icon_color)
-		icon_label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
-		icon_label.add_theme_constant_override("outline_size", 2)
-		group.add_child(icon_label)
 
 	if effect_kind != "freeze":
 		var value_label := Label.new()
 		value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		value_label.text = str(effect.get("value", "")).to_upper()
+		value_label.text = display_value
 		value_label.custom_minimum_size = Vector2(0, 0)
 		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -291,6 +370,49 @@ func _on_effect_group_gui_input(event: InputEvent, group: Control) -> void:
 	var parent_control: Control = group.get_parent() as Control
 	if parent_control != null:
 		parent_control.gui_input.emit(event)
+
+
+func _set_row_frame_visible(row: HBoxContainer, visible: bool) -> void:
+	if row == _upper_row and _upper_frame != null:
+		_upper_frame.visible = visible
+		if _upper_underline != null:
+			_upper_underline.visible = visible and _pips_revealed
+		_update_row_underline(_upper_row)
+	elif row == _lower_row and _lower_frame != null:
+		_lower_frame.visible = visible
+		if _lower_underline != null:
+			_lower_underline.visible = visible and _pips_revealed
+		_update_row_underline(_lower_row)
+
+
+func _update_row_underline(row: HBoxContainer) -> void:
+	var underline: ColorRect = null
+	var frame: Control = null
+	if row == _upper_row:
+		underline = _upper_underline
+		frame = _upper_frame
+	elif row == _lower_row:
+		underline = _lower_underline
+		frame = _lower_frame
+	if underline == null or frame == null or row == null:
+		return
+	if not _pips_revealed:
+		underline.visible = false
+		underline.size = Vector2.ZERO
+		return
+	if not underline.visible:
+		return
+	var content_width: float = clampf(row.get_combined_minimum_size().x, 0.0, frame.size.x - (OUTER_PAD_X * 2.0))
+	if content_width <= 0.0:
+		underline.size = Vector2.ZERO
+		return
+	underline.position = Vector2(floor(frame.position.x + (frame.size.x - content_width) * 0.5), frame.position.y + ROW_HEIGHT - 2.0)
+	underline.size = Vector2(content_width, 2.0)
+
+
+func _update_all_underlines() -> void:
+	_update_row_underline(_upper_row)
+	_update_row_underline(_lower_row)
 
 
 func _build_effect_tooltip(effect: Dictionary) -> String:
@@ -332,9 +454,12 @@ func _build_effect_tooltip(effect: Dictionary) -> String:
 
 
 func _build_roll_shift_tooltip(value: String, duration: int) -> String:
+	var amount: int = PixelUI.parse_signed_amount(value)
+	var amount_text: String = str(abs(amount))
+	var verb: String = "Reduce die roll by %s" % amount_text if amount < 0 else "Increase die roll by %s" % amount_text
 	if duration > 1:
-		return "Shift die roll by %s for %d turns." % [value, duration]
-	return "Shift die roll by %s." % value
+		return "%s for %d turns." % [verb, duration]
+	return "%s." % verb
 
 
 func _make_separator() -> Label:
@@ -384,7 +509,7 @@ func _estimate_row_width(effects: Array, target: String) -> float:
 			width += 16.0
 		var effect: Dictionary = effects[i]
 		var effect_width := 48.0
-		effect_width += maxf(28.0, float(str(effect.get("value", "")).length()) * 24.0)
+		effect_width += maxf(28.0, float(_display_value_for_effect(effect).length()) * 24.0)
 		var duration: int = int(effect.get("duration", 0))
 		if duration > 1:
 			effect_width += 12.0 + float(("(%dT)" % duration).length()) * 20.0
@@ -423,6 +548,18 @@ func _apply_pixel_label(label: Label, font_size: int, color: Color, outline: int
 	label.add_theme_constant_override("outline_size", outline)
 
 
+func _pip_key_for_effect(effect: Dictionary) -> String:
+	return PixelUI.pip_key_for_effect(str(effect.get("kind", "")), str(effect.get("value", "")))
+
+
+func _display_value_for_effect(effect: Dictionary) -> String:
+	var kind: String = str(effect.get("kind", ""))
+	var raw_value: String = str(effect.get("value", "")).strip_edges().to_upper()
+	if kind.to_lower() in ["roll", "rfe", "rfm"]:
+		return PixelUI.format_amount_no_sign(raw_value)
+	return raw_value
+
+
 func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = bg
@@ -437,3 +574,6 @@ func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBo
 	style.set_content_margin(SIDE_RIGHT, margin)
 	style.set_content_margin(SIDE_BOTTOM, margin)
 	return style
+
+
+

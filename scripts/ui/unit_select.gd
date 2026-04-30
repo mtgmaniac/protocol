@@ -3,29 +3,30 @@ extends Control
 
 const DEFAULT_OPERATION_ID := "facility"
 const MAX_SELECTED_UNITS := 3
-const LOGO_WIDTH_RATIO := 0.72
-const LOGO_ASPECT := 425.0 / 711.0
-const UNIT_CARD_HEIGHT := 196
-const UNIT_PORTRAIT_SIZE := Vector2(132, 160)
+const LOGO_WIDTH_RATIO := 0.95
+const LOGO_ASPECT := 290.0 / 1280.0
+const SELECTION_CARD_HEIGHT := 168
+const SELECTION_PORTRAIT_SIZE := Vector2(132, 144)
 const UNIT_PORTRAIT_X_OFFSET := -8.0
-const UNIT_PORTRAIT_Y_OFFSET := -5.0
+const UNIT_PORTRAIT_Y_OFFSET := -2.0
 const UNIT_PORTRAIT_ASPECT_FALLBACK := 2.0
 const HOLD_TO_DETAILS_SECONDS := 0.5
 const SUMMARY_FONT_SIZE := 34
-const OPERATION_TITLE_FONT_SIZE := 52
+const OPERATION_TITLE_FONT_SIZE := 68
 const OPERATION_SECTION_FONT_SIZE := 30
 const OPERATION_BUTTON_FONT_SIZE := 32
-const OPERATION_BLURB_FONT_SIZE := 30
-const UNIT_NAME_FONT_SIZE := 34
-const UNIT_META_FONT_SIZE := 25
+const OPERATION_BLURB_FONT_SIZE := 28
+const UNIT_NAME_FONT_SIZE := 42
+const UNIT_META_FONT_SIZE := 32
 const UNIT_BLURB_FONT_SIZE := 24
 const UNIT_PICK_FONT_SIZE := 22
-const FOOTER_BUTTON_FONT_SIZE := 38
+const FOOTER_BUTTON_FONT_SIZE := 46
+const OPERATION_DESC_FONT_SIZE := 22
 
 @onready var summary_label: Label = %SummaryLabel
 @onready var hero_list: GridContainer = %HeroList
 @onready var continue_button: Button = %ContinueButton
-@onready var background: ColorRect = $Background
+@onready var background: TextureRect = $Background
 @onready var logo_panel: PanelContainer = $Content/VBox/LogoPanel
 @onready var logo_image: TextureRect = %LogoImage
 @onready var title_label: Label = $Content/VBox/Title
@@ -34,8 +35,6 @@ const FOOTER_BUTTON_FONT_SIZE := 38
 @onready var operation_section_label: Label = %OperationSectionLabel
 @onready var operation_buttons: GridContainer = %OperationButtons
 @onready var operation_blurb_label: Label = %OperationBlurbLabel
-@onready var random_button: Button = %RandomButton
-
 var selected_unit_ids: Array = []
 var selection_controls: Dictionary = {}
 var operation_button_by_id: Dictionary = {}
@@ -90,7 +89,7 @@ func _build_unit_detail_overlay() -> void:
 	panel.custom_minimum_size = Vector2(960, 0)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
 	center.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -248,15 +247,11 @@ func _populate_operation_buttons() -> void:
 	for operation_id_variant in operation_ids:
 		var operation_id: String = str(operation_id_variant)
 		var operation: OperationData = DataManager.get_operation(operation_id) as OperationData
-		var label: String = operation.display_name if operation != null and operation.display_name != "" else operation_id
-		var button := Button.new()
-		button.text = _compact_operation_label(label)
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(0, 90)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(_on_operation_button_pressed.bind(operation_id))
-		operation_buttons.add_child(button)
-		operation_button_by_id[operation_id] = button
+		if operation == null:
+			continue
+		var card := _create_operation_card(operation)
+		operation_buttons.add_child(card)
+		operation_button_by_id[operation_id] = card
 	selected_operation_id = DEFAULT_OPERATION_ID if operation_ids.has(DEFAULT_OPERATION_ID) else str(operation_ids[0])
 	_select_operation(selected_operation_id)
 
@@ -265,24 +260,33 @@ func _on_operation_button_pressed(operation_id: String) -> void:
 	_select_operation(operation_id)
 
 
+func _on_operation_card_gui_input(event: InputEvent, operation_id: String) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_select_operation(operation_id)
+			accept_event()
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_select_operation(operation_id)
+			accept_event()
+
+
 func _select_operation(operation_id: String) -> void:
 	selected_operation_id = operation_id
 	for id_variant in operation_button_by_id.keys():
 		var id := str(id_variant)
-		var button: Button = operation_button_by_id[id] as Button
-		if button == null:
+		var card: PanelContainer = operation_button_by_id[id] as PanelContainer
+		if card == null:
 			continue
 		var is_selected := id == selected_operation_id
-		button.set_pressed_no_signal(is_selected)
-		_style_operation_button(button, is_selected)
+		_style_operation_card(card, is_selected)
 	var operation: OperationData = DataManager.get_operation(operation_id) as OperationData
 	if operation == null:
 		operation_blurb_label.text = "Select an operation track."
 		return
-	operation_blurb_label.text = "%d battles // %s" % [
-		operation.battles.size(),
-		_build_operation_enemy_preview(operation),
-	]
+	operation_blurb_label.text = ""
 
 
 func _compact_operation_label(label: String) -> String:
@@ -296,11 +300,11 @@ func _compact_operation_label(label: String) -> String:
 	return label
 
 
-func _style_operation_button(button: Button, selected: bool) -> void:
+func _style_operation_card(card: PanelContainer, selected: bool) -> void:
 	if selected:
-		PixelUI.style_button(button, Color(0.10, 0.18, 0.18, 0.98), PixelUI.HERO_ACCENT, OPERATION_BUTTON_FONT_SIZE)
+		PixelUI.style_ninepatch_panel(card, PixelUI.FRAME_BOTTOM_BAR_SCIFI, 20, PixelUI.HERO_ACCENT.lerp(Color.WHITE, 0.32))
 	else:
-		PixelUI.style_button(button, Color(0.018, 0.028, 0.044, 0.94), PixelUI.LINE_DIM, OPERATION_BUTTON_FONT_SIZE)
+		PixelUI.style_ninepatch_panel(card, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
 
 
 func _start_selected_run() -> void:
@@ -325,14 +329,13 @@ func _build_operation_enemy_preview(operation: OperationData) -> String:
 	return ", ".join(preview_names)
 
 
-func _create_unit_card(unit: UnitData) -> PanelContainer:
+func _create_selection_card_shell(portrait_texture: Texture2D, primary_text: String, mouse_filter: Control.MouseFilter) -> Dictionary:
 	var card: PanelContainer = PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, UNIT_CARD_HEIGHT)
+	card.custom_minimum_size = Vector2(0, SELECTION_CARD_HEIGHT)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_panel(card, Color(0.020, 0.034, 0.052, 0.90), PixelUI.LINE_DIM, 3, 0)
-	card.gui_input.connect(_on_unit_card_gui_input.bind(unit.id))
+	card.mouse_filter = mouse_filter
+	PixelUI.style_ninepatch_panel(card, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
 
 	var margin: MarginContainer = MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -350,10 +353,10 @@ func _create_unit_card(unit: UnitData) -> PanelContainer:
 	margin.add_child(row)
 
 	var portrait_frame: PanelContainer = PanelContainer.new()
-	portrait_frame.custom_minimum_size = UNIT_PORTRAIT_SIZE
-	portrait_frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	portrait_frame.custom_minimum_size = SELECTION_PORTRAIT_SIZE
+	portrait_frame.mouse_filter = mouse_filter
 	portrait_frame.clip_contents = true
-	PixelUI.style_panel(portrait_frame, Color(0.010, 0.018, 0.030, 0.96), PixelUI.LINE_BRIGHT, 2, 2)
+	portrait_frame.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	row.add_child(portrait_frame)
 
 	var portrait_crop := Control.new()
@@ -364,53 +367,105 @@ func _create_unit_card(unit: UnitData) -> PanelContainer:
 
 	var portrait: TextureRect = TextureRect.new()
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.texture = unit.portrait
+	portrait.texture = portrait_texture
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	portrait.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	var portrait_aspect: float = UNIT_PORTRAIT_ASPECT_FALLBACK
-	if unit.portrait != null and unit.portrait.get_width() > 0:
-		portrait_aspect = float(unit.portrait.get_height()) / float(unit.portrait.get_width())
-	var portrait_height: float = maxf(UNIT_PORTRAIT_SIZE.y, UNIT_PORTRAIT_SIZE.x * portrait_aspect)
+	if portrait.texture != null and portrait.texture.get_width() > 0:
+		portrait_aspect = float(portrait.texture.get_height()) / float(portrait.texture.get_width())
+	var portrait_height: float = maxf(SELECTION_PORTRAIT_SIZE.y, SELECTION_PORTRAIT_SIZE.x * portrait_aspect)
 	portrait.position = Vector2(UNIT_PORTRAIT_X_OFFSET, UNIT_PORTRAIT_Y_OFFSET)
-	portrait.size = Vector2(UNIT_PORTRAIT_SIZE.x, portrait_height)
+	portrait.size = Vector2(SELECTION_PORTRAIT_SIZE.x, portrait_height)
 	portrait_crop.add_child(portrait)
 
 	var info: VBoxContainer = VBoxContainer.new()
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	info.add_theme_constant_override("separation", 3)
+	info.add_theme_constant_override("separation", 0)
 	row.add_child(info)
 
 	var name_label: Label = Label.new()
-	name_label.text = unit.display_name
-	name_label.clip_text = true
-	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.text = primary_text
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.max_lines_visible = 2
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	PixelUI.style_label(name_label, UNIT_NAME_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	info.add_child(name_label)
 
-	var meta_label: Label = Label.new()
-	meta_label.text = "%d HP // %s" % [unit.max_hp, unit.class_name_text]
-	meta_label.clip_text = true
-	meta_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	PixelUI.style_label(meta_label, UNIT_META_FONT_SIZE, PixelUI.HERO_ACCENT, 1)
-	info.add_child(meta_label)
+	return {
+		"card": card,
+		"portrait_frame": portrait_frame,
+	}
 
-	var spacer := Control.new()
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	info.add_child(spacer)
 
-	var pick_label: Label = Label.new()
-	pick_label.text = "TAP TO SELECT"
-	pick_label.clip_text = true
-	pick_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	PixelUI.style_label(pick_label, UNIT_PICK_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	info.add_child(pick_label)
+func _create_operation_card(operation: OperationData) -> PanelContainer:
+	var shell: Dictionary = _create_selection_card_shell(
+		_get_operation_boss_portrait(operation),
+		operation.display_name if operation.display_name != "" else operation.id,
+		Control.MOUSE_FILTER_STOP
+	)
+	var card: PanelContainer = shell.get("card") as PanelContainer
+	card.gui_input.connect(_on_operation_card_gui_input.bind(operation.id))
+	return card
 
-	selection_controls[unit.id] = {"button": null, "card": card, "pick_label": pick_label}
+
+func _get_operation_short_description(operation: OperationData) -> String:
+	var text := operation.blurb.strip_edges()
+	if text == "":
+		return "%d battles" % operation.battles.size()
+	var pieces: PackedStringArray = text.split(".", false)
+	if not pieces.is_empty():
+		text = pieces[0].strip_edges()
+	if text.ends_with(","):
+		text = text.left(text.length() - 1)
+	return text
+
+
+func _get_operation_boss_name(operation: OperationData) -> String:
+	var boss: EnemyData = _get_operation_boss_enemy(operation)
+	if boss != null and boss.display_name != "":
+		return boss.display_name
+	return "%d battles" % operation.battles.size()
+
+
+func _get_operation_boss_portrait(operation: OperationData) -> Texture2D:
+	var boss: EnemyData = _get_operation_boss_enemy(operation)
+	if boss != null:
+		return boss.portrait
+	return null
+
+
+func _get_operation_boss_enemy(operation: OperationData) -> EnemyData:
+	if operation == null or operation.battles.is_empty():
+		return null
+	var final_battle: Dictionary = operation.battles[operation.battles.size() - 1]
+	var enemy_names: Array = final_battle.get("enemy_names", [])
+	var best_enemy: EnemyData = null
+	var best_hp: int = -1
+	for enemy_name_variant in enemy_names:
+		var enemy: EnemyData = DataManager.get_enemy_by_display_name(str(enemy_name_variant)) as EnemyData
+		if enemy == null:
+			continue
+		if enemy.max_hp > best_hp:
+			best_hp = enemy.max_hp
+			best_enemy = enemy
+	return best_enemy
+
+
+func _create_unit_card(unit: UnitData) -> PanelContainer:
+	var shell: Dictionary = _create_selection_card_shell(
+		unit.portrait,
+		unit.display_name,
+		Control.MOUSE_FILTER_STOP
+	)
+	var card: PanelContainer = shell.get("card") as PanelContainer
+	var portrait_frame: Control = shell.get("portrait_frame") as Control
+	card.gui_input.connect(_on_unit_card_gui_input.bind(unit.id))
+	selection_controls[unit.id] = {"button": null, "card": card}
 	call_deferred("_wire_portrait_details_input", portrait_frame, unit)
 
 	return card
@@ -433,20 +488,20 @@ func _apply_selection_state(card: PanelContainer, button: Button, is_selected: b
 	if card == null:
 		return
 	if is_selected:
-		PixelUI.style_panel(card, Color(0.040, 0.105, 0.105, 0.96), PixelUI.HERO_ACCENT, 4, 0)
+		PixelUI.style_ninepatch_panel(card, PixelUI.FRAME_BOTTOM_BAR_SCIFI, 20, PixelUI.HERO_ACCENT.lerp(Color.WHITE, 0.32))
 		if button != null:
 			button.text = "Selected"
-			PixelUI.style_button(button, Color(0.10, 0.24, 0.19, 0.98), PixelUI.HERO_ACCENT, UNIT_PICK_FONT_SIZE)
+			PixelUI.style_labeled_texture_button(button, PixelUI.BUTTON_LARGE_GREEN_SCIFI, UNIT_PICK_FONT_SIZE)
 		if pick_label != null:
-			pick_label.text = "SELECTED"
+			pick_label.text = ""
 			PixelUI.style_label(pick_label, UNIT_PICK_FONT_SIZE, PixelUI.HERO_ACCENT, 1)
 		return
-	PixelUI.style_panel(card, Color(0.020, 0.034, 0.052, 0.90), PixelUI.LINE_DIM, 3, 0)
+	PixelUI.style_ninepatch_panel(card, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
 	if button != null:
 		button.text = "Select"
-		PixelUI.style_button(button, PixelUI.BG_PANEL_ALT, PixelUI.HERO_ACCENT, UNIT_PICK_FONT_SIZE)
+		PixelUI.style_labeled_texture_button(button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, UNIT_PICK_FONT_SIZE)
 	if pick_label != null:
-		pick_label.text = "TAP TO SELECT"
+		pick_label.text = ""
 		PixelUI.style_label(pick_label, UNIT_PICK_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
 
 
@@ -577,34 +632,33 @@ func _sort_range_min(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _apply_visual_theme() -> void:
-	background.color = PixelUI.BG_DARK
 	logo_image.texture = DataManager.get_logo_texture()
 	logo_image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	logo_image.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	logo_image.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	logo_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo_image.stretch_mode = TextureRect.STRETCH_SCALE
-	PixelUI.style_ninepatch_panel(logo_panel, PixelUI.FRAME_SIMPLE)
+	logo_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	title_label.visible = false
 	summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hero_list.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	hero_list.columns = 2
 	hero_list.add_theme_constant_override("h_separation", 14)
 	hero_list.add_theme_constant_override("v_separation", 12)
-	operation_buttons.columns = 3
+	operation_buttons.columns = 2
 	operation_buttons.add_theme_constant_override("h_separation", 10)
 	operation_buttons.add_theme_constant_override("v_separation", 10)
-	random_button.custom_minimum_size = Vector2(0, 104)
-	continue_button.custom_minimum_size = Vector2(0, 104)
-	random_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	continue_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	continue_button.custom_minimum_size = Vector2(520, 156)
+	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	PixelUI.style_label(summary_label, SUMMARY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_ninepatch_panel(operation_panel, PixelUI.FRAME_SIMPLE)
+	operation_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	PixelUI.style_label(operation_title, OPERATION_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 2)
-	PixelUI.style_label(operation_section_label, OPERATION_SECTION_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
+	operation_section_label.visible = false
 	PixelUI.style_label(operation_blurb_label, OPERATION_BLURB_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	PixelUI.style_button(random_button, PixelUI.BG_PANEL_ALT, PixelUI.GOLD_ACCENT, FOOTER_BUTTON_FONT_SIZE)
-	PixelUI.style_button(continue_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, FOOTER_BUTTON_FONT_SIZE)
+	operation_blurb_label.visible = false
+	PixelUI.style_label(summary_label, OPERATION_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 2)
+	summary_label.custom_minimum_size = Vector2(0, 76)
+	PixelUI.style_labeled_texture_button(continue_button, PixelUI.BUTTON_LARGE_GREEN_SCIFI, FOOTER_BUTTON_FONT_SIZE)
 	_update_logo_size()
 
 
@@ -615,4 +669,4 @@ func _update_logo_size() -> void:
 	var logo_width: float = maxf(300.0, floor(viewport_width * LOGO_WIDTH_RATIO))
 	var logo_height: float = floor(logo_width * LOGO_ASPECT)
 	logo_image.custom_minimum_size = Vector2(logo_width, logo_height)
-	logo_panel.custom_minimum_size = Vector2(0, logo_height + 8.0)
+	logo_panel.custom_minimum_size = Vector2(0, logo_height + 10.0)

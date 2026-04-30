@@ -1,6 +1,7 @@
-[gd_scene format=3 uid="uid://ds4otxmn6jdms"]
+[gd_scene load_steps=2 format=3 uid="uid://ds4otxmn6jdms"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_hs7fj"]
+[ext_resource type="Texture2D" path="res://assets/ui/protocol_home_panel_background_450x1000.png" id="2_f7v5w"]
 
 [node name="MainMenu" type="Control" unique_id=109728186]
 layout_mode = 3
@@ -11,14 +12,17 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_hs7fj")
 
-[node name="Background" type="ColorRect" parent="." unique_id=417100028]
+[node name="Background" type="TextureRect" parent="." unique_id=417100028]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0313726, 0.0392157, 0.0666667, 1)
+mouse_filter = 2
+texture = ExtResource("2_f7v5w")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="Content" type="MarginContainer" parent="." unique_id=1495048945]
 layout_mode = 1

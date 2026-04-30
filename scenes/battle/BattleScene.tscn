@@ -2,7 +2,8 @@
 
 [ext_resource type="Script" path="res://scripts/battle/battle_scene.gd" id="1_c4j2v"]
 [ext_resource type="PackedScene" path="res://scenes/battle/DiceTray3D.tscn" id="2_vc1ae"]
-[ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="3_1epkk"]
+[ext_resource type="Texture2D" path="res://assets/ui/starfield_background.png" id="3_1epkk"]
+[ext_resource type="PackedScene" path="res://scenes/shared/BattleHeader.tscn" id="4_bhdr"]
 
 [node name="BattleScene" type="Control"]
 layout_mode = 3
@@ -13,16 +14,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_c4j2v")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.0352941, 0.0431373, 0.0705882, 1)
-
-[node name="BackgroundPattern" type="Control" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -30,7 +22,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("3_1epkk")
+texture = ExtResource("3_1epkk")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="FloatLayer" type="Control" parent="."]
 unique_name_in_owner = true
@@ -247,61 +241,12 @@ scroll_active = true
 scroll_following = true
 text = ""
 
-[node name="HeaderRow" type="HBoxContainer" parent="."]
+[node name="HeaderRow" parent="." instance=ExtResource("4_bhdr")]
 layout_mode = 1
 anchor_right = 1.0
 offset_bottom = 144.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 4
-
-[node name="SummaryLabel" type="Label" parent="HeaderRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 5
-theme_override_font_sizes/font_size = 48
-vertical_alignment = 1
-text = ""
-
-[node name="ButtonRow" type="HBoxContainer" parent="HeaderRow"]
-layout_mode = 2
-size_flags_horizontal = 8
-size_flags_vertical = 4
-alignment = 2
-theme_override_constants/separation = 4
-
-[node name="ToggleLogButton" type="Button" parent="HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = "?"
-
-[node name="AutoTurnButton" type="Button" parent="HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = "▶"
-
-[node name="AutoBattleButton" type="Button" parent="HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = ">>"
-
-[node name="ReturnToMenuButton" type="Button" parent="HeaderRow/ButtonRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(112, 112)
-size_flags_vertical = 4
-theme_override_font_sizes/font_size = 48
-text = "←"
 
 [node name="ProtocolPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true

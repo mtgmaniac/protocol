@@ -150,7 +150,7 @@ const ENEMY_FACTION_BY_TYPE := {
 const ENEMY_PORTRAIT_BY_NAME := {
 	"Scrap Drone": "scrap_drone.png",
 	"Rust Drone": "rust_drone.png",
-	"Whitenoise Skimmer": "whitenoise_skimmer.png",
+	"Static Skimmer": "whitenoise_skimmer.png",
 	"Patrol Elite": "patrol_elite.png",
 	"Guard Elite": "guard_elite.png",
 	"Heavy Warden": "heavy_warden.png",
@@ -211,6 +211,9 @@ func get_operation_order() -> Array:
 
 
 func get_logo_texture() -> Texture2D:
+	var modern_logo: Texture2D = _load_texture_if_exists("res://assets/ui/logo_scifi_overload_protocol.png")
+	if modern_logo != null:
+		return modern_logo
 	return _load_texture_if_exists("%soverload-protocol-logo.png" % LEGACY_UI_ROOT)
 
 
@@ -248,6 +251,7 @@ func _load_units() -> void:
 		var unit: UnitData = UnitData.new()
 		unit.id = str(hero_entry.get("id", ""))
 		unit.display_name = str(hero_entry.get("name", ""))
+		unit.callsign = str(hero_entry.get("callsign", ""))
 		unit.class_name_text = str(hero_entry.get("cls", ""))
 		unit.role = str(HERO_ROLE_BY_ID.get(unit.id, ""))
 		unit.picker_category = str(hero_entry.get("pickerCategory", ""))
@@ -271,6 +275,7 @@ func _load_enemies() -> void:
 		var enemy_type: String = str(enemy_def.get("type", ""))
 		enemy.id = _slugify(enemy_name)
 		enemy.display_name = str(enemy_name)
+		enemy.callsign = str(enemy_def.get("callsign", ""))
 		enemy.enemy_type = enemy_type
 		enemy.faction = str(ENEMY_FACTION_BY_TYPE.get(enemy_type, ""))
 		enemy.ai_type = str(enemy_def.get("ai", ""))
@@ -322,6 +327,7 @@ func _load_operation_from_entry(operation_id: String, mode_entry: Dictionary) ->
 	var operation: OperationData = OperationData.new()
 	operation.id = operation_id
 	operation.display_name = str(mode_entry.get("label", ""))
+	operation.callsign = str(mode_entry.get("callsign", ""))
 	operation.blurb = str(mode_entry.get("blurb", ""))
 	operation.victory_title = str(mode_entry.get("victoryTitle", ""))
 	operation.victory_subtitle = str(mode_entry.get("victorySub", ""))

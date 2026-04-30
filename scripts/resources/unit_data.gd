@@ -4,6 +4,7 @@ extends Resource
 
 @export var id: String = ""
 @export var display_name: String = ""
+@export var callsign: String = ""
 @export var class_name_text: String = ""
 @export var role: String = ""
 @export var picker_category: String = ""
@@ -14,3 +15,6 @@ extends Resource
 @export var dice_ranges: Array[Dictionary] = []
 @export var passives: Array[Dictionary] = []
 @export var evolution_paths: Array[Dictionary] = []
+
+func battle_name() -> String:
+	return callsign if callsign != "" else display_name

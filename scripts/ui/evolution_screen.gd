@@ -9,20 +9,22 @@ const CARD_BG := Color(0.024, 0.040, 0.060, 0.82)
 const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.92)
 const PORTRAIT_SIZE := Vector2(170, 210)
 const TITLE_FONT_SIZE := 58
-const SUMMARY_FONT_SIZE := 30
+const SUMMARY_FONT_SIZE := 36
 const CARD_TITLE_FONT_SIZE := 44
-const BODY_FONT_SIZE := 30
-const SMALL_FONT_SIZE := 24
-const ABILITY_NAME_FONT_SIZE := 28
-const ABILITY_DESC_FONT_SIZE := 24
-const BUTTON_FONT_SIZE := 30
+const BODY_FONT_SIZE := 36
+const SMALL_FONT_SIZE := 30
+const ABILITY_NAME_FONT_SIZE := 34
+const ABILITY_DESC_FONT_SIZE := 30
+const BUTTON_FONT_SIZE := 36
 
 @onready var background: ColorRect = $Background
 @onready var content_vbox: VBoxContainer = $Content/VBox
-@onready var battle_summary_label: Label = $Content/VBox/HeaderRow/SummaryLabel
-@onready var header_help_button: Button = $Content/VBox/HeaderRow/ButtonRow/ToggleLogButton
-@onready var header_auto_button: Button = $Content/VBox/HeaderRow/ButtonRow/AutoTurnButton
-@onready var header_back_button: Button = $Content/VBox/HeaderRow/ButtonRow/ReturnToMenuButton
+@onready var battle_summary_label: Label = $HeaderRow/InfoStack/SummaryLabel
+@onready var battle_counter_label: Label = $HeaderRow/InfoStack/CounterLabel
+@onready var header_help_button: Button = $HeaderRow/ButtonRow/ToggleLogButton
+@onready var header_auto_button: Button = $HeaderRow/ButtonRow/AutoTurnButton
+@onready var header_auto_battle_button: Button = $HeaderRow/ButtonRow/AutoBattleButton
+@onready var header_back_button: Button = $HeaderRow/ButtonRow/ReturnToMenuButton
 @onready var title_label: Label = $Content/VBox/Title
 @onready var summary_label: Label = %SummaryLabel
 @onready var choice_area: MarginContainer = $Content/VBox/ChoiceArea
@@ -38,6 +40,8 @@ func _ready() -> void:
 	_apply_visual_theme()
 	resized.connect(_update_choice_layout)
 	header_help_button.pressed.connect(_on_help_button_pressed)
+	header_auto_button.pressed.connect(_on_header_unavailable_pressed.bind("Auto turn is unavailable while choosing an evolution."))
+	header_auto_battle_button.pressed.connect(_on_header_unavailable_pressed.bind("Auto battle is unavailable while choosing an evolution."))
 	header_back_button.pressed.connect(_on_return_to_menu_button_pressed)
 	_update_battle_header()
 	_refresh_summary()
@@ -54,6 +58,11 @@ func _on_help_button_pressed() -> void:
 		_build_help_overlay()
 	_help_overlay.visible = true
 	_help_overlay.move_to_front()
+
+
+func _on_header_unavailable_pressed(message: String) -> void:
+	footer_label.text = message
+	footer_label.visible = true
 
 
 func _hide_help_overlay() -> void:
@@ -85,7 +94,7 @@ func _build_help_overlay() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(820, 0)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_SIMPLE)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
 	center.add_child(panel)
 
 	var margin: MarginContainer = MarginContainer.new()
@@ -185,7 +194,7 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	var portrait_frame: PanelContainer = PanelContainer.new()
 	portrait_frame.custom_minimum_size = PORTRAIT_SIZE
 	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_panel(portrait_frame, Color(0.012, 0.020, 0.034, 0.82), PixelUI.LINE_BRIGHT, 2, 0)
+	PixelUI.style_ninepatch_panel(portrait_frame, PixelUI.FRAME_PORTRAIT_SCIFI)
 	header.add_child(portrait_frame)
 
 	var portrait: TextureRect = TextureRect.new()
@@ -260,7 +269,7 @@ func _create_divider() -> ColorRect:
 
 func _style_evolution_panel(panel: PanelContainer, hovered: bool) -> void:
 	var tint: Color = PixelUI.HERO_ACCENT.lightened(0.06 if hovered else 0.0).lerp(Color.WHITE, 0.28)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_CORNER_DOTS, 18, tint)
+	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_PORTRAIT_SCIFI, 24, tint)
 
 
 func _build_merged_ranges(path: Dictionary, base_unit: UnitData) -> Array:
@@ -327,8 +336,12 @@ func _on_choose_path_pressed(path_name: String) -> void:
 
 func _update_battle_header() -> void:
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
-	var series_name: String = operation.display_name if operation != null and operation.display_name != "" else "Operation"
-	battle_summary_label.text = "%s  %s" % [series_name, GameState.get_battle_progress_text()]
+	var op_name: String = operation.battle_name() if operation != null else "OP"
+	var battle_text: String = GameState.get_battle_progress_text()
+	if battle_text.begins_with("Battle "):
+		battle_text = battle_text.trim_prefix("Battle ")
+	battle_summary_label.text = "%s  %s" % [op_name, battle_text]
+	battle_counter_label.text = ""
 
 
 func _update_choice_layout() -> void:
@@ -366,18 +379,35 @@ func _apply_visual_theme() -> void:
 	content_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	content_vbox.add_theme_constant_override("separation", 8)
-	header_auto_button.visible = false
 	footer_label.visible = false
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(battle_summary_label, 56, PixelUI.TEXT_PRIMARY, 2)
-	battle_summary_label.custom_minimum_size.y = 78
-	PixelUI.style_button(header_help_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
-	PixelUI.style_button(header_back_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 28)
+	PixelUI.apply_pixel_font(battle_summary_label)
+	battle_summary_label.add_theme_font_size_override("font_size", 112)
+	battle_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
+	battle_summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	battle_summary_label.add_theme_constant_override("outline_size", 2)
+	battle_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	battle_summary_label.clip_text = false
+	battle_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	PixelUI.apply_pixel_font(battle_counter_label)
+	battle_counter_label.add_theme_font_size_override("font_size", 112)
+	battle_counter_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	battle_counter_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	battle_counter_label.add_theme_constant_override("outline_size", 3)
+	battle_counter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	battle_counter_label.clip_text = false
+	battle_counter_label.visible = false
+	var header_row: Control = $HeaderRow
+	header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	PixelUI.style_texture_button(header_help_button, PixelUI.BUTTON_HELP_SCIFI)
+	PixelUI.style_texture_button(header_auto_button, PixelUI.BUTTON_DEBUG_SCIFI)
+	PixelUI.style_texture_button(header_auto_battle_button, PixelUI.BUTTON_DEBUG2_SCIFI)
+	PixelUI.style_texture_button(header_back_button, PixelUI.BUTTON_BACK_SCIFI)
 	PixelUI.style_label(title_label, TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3)
 	PixelUI.style_label(summary_label, SUMMARY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_label(footer_label, 24, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(footer_label, 30, PixelUI.TEXT_MUTED, 1)
 	_update_choice_layout()
 
 

@@ -1,4 +1,4 @@
-class_name CompactUnitCard
+﻿class_name CompactUnitCard
 extends PanelContainer
 
 signal card_pressed
@@ -8,30 +8,31 @@ const CARD_SIZE := Vector2(260, 0)
 const PORTRAIT_HEIGHT_RATIO := 1.20
 const PORTRAIT_MIN_HEIGHT := 100.0
 const PORTRAIT_TOP_INSET_PX := 4.0
-const NAME_ROW_HEIGHT := 104.0
-const HP_BAR_HEIGHT := 116.0
-const STATUS_ROW_HEIGHT := 96.0
+const NAME_ROW_HEIGHT := 96.0
+const HP_BAR_HEIGHT := 67.0
+const STATUS_ROW_HEIGHT := 112.0
 const ACTION_PANEL_HEIGHT := 88.0
 const PORTRAIT_ASPECT_FALLBACK := 2.0
 const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
+const HERO_PORTRAIT_WIDTH_SCALE := 0.90
 const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
 const HERO_LINE := Color(0.18, 0.90, 0.64, 1.0)
 const ENEMY_LINE := Color(0.82, 0.36, 0.34, 1.0)
 const SELECT_LINE := Color(0.95, 0.66, 0.22, 1.0)
 const TARGET_LINE := Color(0.42, 0.70, 0.95, 1.0)
 const HP_FILL := Color(0.10, 0.46, 0.32, 1.0)
-const CARD_NAME_FONT_SIZE := 64
+const CARD_NAME_FONT_SIZE := 72
 const CARD_HP_FONT_SIZE := 64
 const STATUS_MAX_VISIBLE := 3
-const STATUS_ICON_FONT_SIZE := 36
-const STATUS_VALUE_FONT_SIZE := 44
-const STATUS_NAME_FONT_SIZE := 36
-const STATUS_ICON_TEXTURE_SIZE := 40.0
-const STATUS_ICON_MIN_WIDTH := 42.0
+const STATUS_ICON_FONT_SIZE := 44
+const STATUS_VALUE_FONT_SIZE := 52
+const STATUS_NAME_FONT_SIZE := 42
+const STATUS_ICON_TEXTURE_SIZE := 48.0
+const STATUS_ICON_MIN_WIDTH := 48.0
 const STATUS_VALUE_MIN_WIDTH := 48.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
-const STATUS_CHIP_HEIGHT := 52.0
+const STATUS_CHIP_HEIGHT := 60.0
 const ACTION_PIP_VALUE_FONT_SIZE := 48
 const STATUS_DESCRIPTIONS := {
 	"shield": "Absorbs {value} incoming damage.",
@@ -339,8 +340,8 @@ func _refresh() -> void:
 		return
 
 	var line_color: Color = _line_color()
-	PixelUI.style_ninepatch_panel(self, PixelUI.FRAME_GLOW, 10, line_color.lerp(Color.WHITE, 0.35))
-	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.78), Color.TRANSPARENT, 0, 0))
+	PixelUI.style_ninepatch_frame(self, PixelUI.FRAME_PORTRAIT_SCIFI, 18, line_color)
+	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color(0.010, 0.020, 0.032, 0.58), Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
 	if _locked_portrait_size == Vector2.ZERO:
@@ -405,6 +406,9 @@ func _update_portrait_rect_transform() -> void:
 	var scale: float = maxf(fw / tw, fh / th)
 	var nw: float = tw * scale
 	var nh: float = th * scale
+	if side == "hero":
+		nw = maxf(fw, nw * HERO_PORTRAIT_WIDTH_SCALE)
+		nh = nw * (th / tw)
 	# Center horizontally, top-align with a small inset so the head sits
 	# just inside the top edge of the frame regardless of portrait aspect ratio
 	_portrait_rect.position = Vector2((fw - nw) * 0.5, PORTRAIT_TOP_INSET_PX)
@@ -443,25 +447,14 @@ func _make_action_fallback(text: String) -> Label:
 
 
 func _get_pip_icon_texture(kind: String) -> Texture2D:
-	if PIP_ICON_COLUMNS.has(kind):
-		var atlas := _get_pip_icon_atlas()
-		if atlas == null:
-			return null
-		var texture := AtlasTexture.new()
-		texture.atlas = atlas
-		texture.region = Rect2(Vector2(float(int(PIP_ICON_COLUMNS[kind])) * PIP_ICON_CELL_SIZE.x, 0.0), PIP_ICON_CELL_SIZE)
-		return texture
+	var shared_texture: Texture2D = PixelUI.pip_texture_for_key(kind)
+	if shared_texture != null:
+		return shared_texture
 	return PIP_ICON_MAP.get(kind)
 
 
 func _get_pip_icon_atlas() -> Texture2D:
-	if _pip_icon_atlas != null:
-		return _pip_icon_atlas
-	var image: Image = Image.load_from_file(PIP_ICON_ATLAS_PATH)
-	if image == null or image.is_empty():
-		return null
-	_pip_icon_atlas = ImageTexture.create_from_image(image)
-	return _pip_icon_atlas
+	return null
 
 
 func _make_action_pip(kind: String, text: String) -> PanelContainer:
@@ -469,7 +462,8 @@ func _make_action_pip(kind: String, text: String) -> PanelContainer:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.custom_minimum_size = Vector2(96, 74)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	panel.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.72), _pip_border(kind), 3, 5))
+	var pip_key: String = _action_pip_key(kind, text)
+	panel.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.72), _pip_border(pip_key if pip_key != "" else kind), 3, 5))
 
 	var row: HBoxContainer = HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -482,7 +476,7 @@ func _make_action_pip(kind: String, text: String) -> PanelContainer:
 	var icon: TextureRect = TextureRect.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.custom_minimum_size = Vector2(40, 40)
-	icon.texture = _get_pip_icon_texture(kind)
+	icon.texture = _get_pip_icon_texture(pip_key if pip_key != "" else kind)
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -490,7 +484,7 @@ func _make_action_pip(kind: String, text: String) -> PanelContainer:
 
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = _format_pip_text(kind, text)
+	label.text = _format_pip_text(pip_key if pip_key != "" else kind, text)
 	label.custom_minimum_size = Vector2(36, 0)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -529,7 +523,7 @@ func build_status_chip(status: Dictionary) -> Control:
 	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.alignment = BoxContainer.ALIGNMENT_CENTER
-	chip.add_theme_constant_override("separation", 3)
+	chip.add_theme_constant_override("separation", 1)
 	_connect_passthrough_input(chip)
 
 	if _is_frozen_status(status):
@@ -574,7 +568,7 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _is_frozen_status(status):
-		label.text = "❄"
+		label.text = "â„"
 	else:
 		label.text = str(status.get("icon", _status_icon_for_type(str(status.get("type", "")))))
 	label.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, 0)
@@ -597,11 +591,11 @@ func _status_effect_kind(status: Dictionary) -> String:
 	var status_type: String = str(status.get("type", "")).to_lower()
 	match status_type:
 		"poison", "dot":
-			return "dot"
+			return "poison"
 		"shield":
 			return "shield"
 		"roll", "rfe", "rfm":
-			return "roll"
+			return PixelUI.pip_key_for_effect(status_type, str(status.get("value", "")))
 		"frozen", "freeze", "die_freeze":
 			return "freeze"
 	return ""
@@ -610,7 +604,7 @@ func _status_effect_kind(status: Dictionary) -> String:
 func _make_status_value_label(status: Dictionary) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = str(status.get("value", "")).to_upper()
+	label.text = _display_status_value(status)
 	label.custom_minimum_size = Vector2(STATUS_VALUE_MIN_WIDTH, 0)
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -662,14 +656,14 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 	var value: String = parts[1] if parts.size() > 1 else ""
 
 	if first.begins_with("POI") or first.begins_with("POT") or first == "DOT":
-		return {"type": "poison", "mode": "numeric", "icon": "☠", "value": value, "priority": 0}
+		return {"type": "poison", "mode": "numeric", "icon": "â˜ ", "value": value, "priority": 0}
 	if first.begins_with("SH"):
-		return {"type": "shield", "mode": "numeric", "icon": "🛡", "value": value, "priority": 1}
+		return {"type": "shield", "mode": "numeric", "icon": "ðŸ›¡", "value": value, "priority": 1}
 	if first == "FROZEN" or first == "FREEZE" or first == "FR" or first == "DIE_FREEZE":
-		return {"type": "frozen", "mode": "icon", "icon": "❄", "priority": 2}
-	if first.begins_with("+") or first.begins_with("-") or first == "RFE":
-		var roll_value: String = first if first != "RFE" else value
-		return {"type": "roll", "mode": "numeric", "icon": "🎲", "value": roll_value, "priority": 2}
+		return {"type": "frozen", "mode": "icon", "icon": "â„", "priority": 2}
+	if first.begins_with("+") or first.begins_with("-") or first == "RFE" or first == "RFM":
+		var roll_value: String = first if first != "RFE" and first != "RFM" else value
+		return {"type": "roll", "mode": "numeric", "icon": "", "value": roll_value, "priority": 2}
 	if first == "CL" or first == "CLOAK":
 		return {"type": "named", "mode": "named", "name": "CLOAK", "priority": 3}
 	if first == "COW" or first == "COWER":
@@ -683,9 +677,10 @@ func _build_status_tooltip(status: Dictionary) -> String:
 	var key: String = _get_status_description_key(status)
 	var title: String = _get_status_title(status)
 	if key == "roll" or key == "rfe" or key == "rfm":
-		var value: String = str(status.get("value", "")).strip_edges()
-		if value != "":
-			return "%s\nShift die roll by %s." % [title, value]
+		var signed_amount: int = PixelUI.parse_signed_amount(str(status.get("value", "")).strip_edges())
+		var verb: String = "Reduce die roll by %d." % abs(signed_amount) if signed_amount < 0 else "Increase die roll by %d." % abs(signed_amount)
+		if signed_amount != 0:
+			return "%s\n%s" % [title, verb]
 	if key == "shield" or key == "poison" or key == "counter":
 		var status_value: String = str(status.get("value", "0")).strip_edges()
 		if status_value == "":
@@ -733,13 +728,13 @@ func _status_priority(status_type: String) -> int:
 func _status_icon_for_type(status_type: String) -> String:
 	match status_type.to_lower():
 		"poison", "dot":
-			return "☠"
+			return "â˜ "
 		"shield":
-			return "🛡"
+			return "ðŸ›¡"
 		"roll", "rfe", "rfm":
-			return "🎲"
+			return "ðŸŽ²"
 		"frozen", "freeze", "die_freeze":
-			return "❄"
+			return "â„"
 	return ""
 
 
@@ -748,11 +743,11 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 	var effect_kind: String = ""
 	match status_type:
 		"poison", "dot":
-			effect_kind = "dot"
+			effect_kind = "poison"
 		"shield":
 			effect_kind = "shield"
 		"roll", "rfe", "rfm":
-			effect_kind = "roll"
+			effect_kind = PixelUI.pip_key_for_effect(status_type, str(status.get("value", "")))
 		"frozen", "freeze", "die_freeze":
 			effect_kind = "freeze"
 		_:
@@ -763,13 +758,9 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 
 
 func _line_color() -> Color:
-	if selected:
-		return SELECT_LINE
 	if targetable:
 		return TARGET_LINE
-	if side == "enemy":
-		return ENEMY_LINE
-	return HERO_LINE
+	return Color.WHITE
 
 
 func _status_color(token: String) -> Color:
@@ -784,10 +775,12 @@ func _pip_border(kind: String) -> Color:
 			return Color(0.38, 0.82, 0.55, 0.92)
 		"shield", "taunt":
 			return Color(0.42, 0.66, 0.88, 0.92)
-		"dot":
+		"dot", "poison":
 			return Color(0.82, 0.40, 0.58, 0.92)
-		"roll", "rfe", "rfm":
+		"roll", "rfe", "rfm", "roll_down":
 			return Color(0.86, 0.66, 0.26, 0.92)
+		"roll_up":
+			return Color(0.38, 0.82, 0.55, 0.92)
 		"frozen", "freeze", "die_freeze", "cloak":
 			return Color(0.48, 0.78, 0.88, 0.92)
 	return Color(0.34, 0.52, 0.70, 0.86)
@@ -795,6 +788,8 @@ func _pip_border(kind: String) -> Color:
 
 func _format_pip_text(kind: String, text: String) -> String:
 	var value: String = text.strip_edges().to_upper()
+	if kind in ["roll", "rfe", "rfm", "roll_down", "roll_up"]:
+		return PixelUI.format_amount_no_sign(value)
 	if value == "" and kind == "pierce":
 		return "P"
 	if value == "" and kind == "cloak":
@@ -802,6 +797,18 @@ func _format_pip_text(kind: String, text: String) -> String:
 	if value == "" and kind == "taunt":
 		return "TA"
 	return value
+
+
+func _action_pip_key(kind: String, text: String) -> String:
+	return PixelUI.pip_key_for_effect(kind, text)
+
+
+func _display_status_value(status: Dictionary) -> String:
+	var status_type: String = str(status.get("type", "")).to_lower()
+	var raw_value: String = str(status.get("value", "")).strip_edges().to_upper()
+	if status_type in ["roll", "rfe", "rfm"]:
+		return PixelUI.format_amount_no_sign(raw_value)
+	return raw_value
 
 
 func _ensure_preview_rects() -> void:
@@ -1078,3 +1085,4 @@ func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBo
 	style.set_content_margin(SIDE_RIGHT, margin)
 	style.set_content_margin(SIDE_BOTTOM, margin)
 	return style
+
