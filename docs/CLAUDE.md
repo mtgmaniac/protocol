@@ -1,180 +1,150 @@
-# CLAUDE.md — AI Assistant Context for Overload Protocol
+# CLAUDE.md
 
-This file tells AI assistants (Claude, Cursor, etc.) everything they need to know about this project to be maximally helpful. Read this before doing any work in this repo.
+This file is the practical AI-assistant context for the current Overload
+Protocol Godot project. It is intentionally grounded in the live repo, not the
+original migration fantasy.
 
----
+Last refreshed on 2026-05-08.
 
-## What This Game Is
+## What the Project Is Right Now
 
-**Overload Protocol** is a dark sci-fi tactical dice roguelike built in Godot 4, targeting mobile in landscape orientation. The player commands a squad of 4 specialist units against 10 increasingly difficult battles of enemies, with a boss on Battle 10.
+Overload Protocol is a portrait-phone-first, tactical dice battler in Godot 4.
 
-Full design details are in `docs/GDD.md`. Full implementation plan is in `docs/ROADMAP.md`.
+Current active target:
 
----
+- `1080x2400` internal layout
+- `450x1000` desktop preview
+- `canvas_items` stretch
+- portrait orientation
 
-## Engine and Language
+The current game is built around:
 
-- **Engine:** Godot 4.x
-- **Language:** GDScript (not C#)
-- **Platform target:** Mobile first (Android + iOS), landscape orientation
-- **Secondary target:** HTML5 export for browser sharing
+- 3-unit squad battles
+- a battle scene with manual targeting, protocol, consumables, and readouts
+- post-battle rewards
+- unit evolution flow
 
-When writing code, always use GDScript unless specifically asked otherwise.
-
----
+It is **not** landscape anymore, and it is **not** still in an empty-shell
+migration phase.
 
 ## Developer Context
 
-- Solo developer, learning to code with AI assistance
-- No prior Godot experience
-- Prefers explanations alongside code (explain what a node does, why a pattern is used)
-- AI is the primary interface for building this game
+- solo developer
+- AI-assisted workflow
+- prefers direct execution and concrete fixes
+- values visual iteration through screenshots
+- wants honesty about what is and is not visibly changed
 
-**Always explain what your code does and why in plain language. Treat the developer as a smart beginner.**
+Important working rule:
 
----
+- do not say something improved unless the screenshot plainly shows it
 
-## Project Architecture
+## Core Runtime Owners
 
-### Autoloads (Global Singletons)
-These are always available from any script:
+### Autoloads
 
-| Autoload | File | Purpose |
-|---|---|---|
-| `GameState` | `scripts/autoloads/GameState.gd` | Holds all run-persistent data (units, gear, relics, battle number) |
-| `DataManager` | `scripts/autoloads/DataManager.gd` | Loads and serves all game data (units, items, enemies) |
-| `SceneManager` | `scripts/autoloads/SceneManager.gd` | Handles scene transitions |
+- `GameState`
+- `DataManager`
+- `SceneManager`
+- `Theme`
+- `DebugBattleLauncher`
 
-### Key Scenes
+### Primary battle systems
 
-| Scene | File | Purpose |
-|---|---|---|
-| Main Menu | `scenes/ui/MainMenu.tscn` | Start screen |
-| Unit Select | `scenes/ui/UnitSelect.tscn` | Pick 4 heroes before a run |
-| Battle | `scenes/battle/BattleScene.tscn` | Core gameplay screen |
-| Reward Screen | `scenes/ui/RewardScreen.tscn` | Post-battle item selection |
-| Evolution Screen | `scenes/ui/EvolutionScreen.tscn` | Unit level-up branching choice |
+- [battle_scene.gd](C:/Users/Kev/Documents/protocol/scripts/battle/battle_scene.gd)
+- [combat_manager.gd](C:/Users/Kev/Documents/protocol/scripts/battle/combat_manager.gd)
+- [dice_manager.gd](C:/Users/Kev/Documents/protocol/scripts/battle/dice_manager.gd)
+- [dice_tray_3d.gd](C:/Users/Kev/Documents/protocol/scripts/battle/dice_tray_3d.gd)
 
-### Key Scripts
+### Active battle card
 
-| Script | Purpose |
-|---|---|
-| `scripts/battle/DiceManager.gd` | Rolls dice, maps results to abilities, handles manipulation |
-| `scripts/battle/CombatManager.gd` | Resolves abilities, applies damage/healing/status effects |
-| `scripts/battle/ProtocolBar.gd` | Manages the in-battle protocol resource |
-| `scripts/units/UnitCard.gd` | Controls a unit portrait card node |
+- [compact_unit_card.gd](C:/Users/Kev/Documents/protocol/scripts/ui/compact_unit_card.gd)
 
----
+Important correction:
 
-## Core Game Data Structures
+- the older `UnitCard.tscn` and `scripts/units/unit_card.gd` are not the primary
+  live battle card path right now
 
-### UnitData (Resource)
-```gdscript
-var id: String            # e.g. "strike_unit"
-var display_name: String  # e.g. "Strike Unit"
-var max_hp: int
-var portrait: Texture2D
-var dice_ranges: Array    # Array of {min, max, ability_name, ability_type, value, target}
-var passives: Array       # Passive abilities (not dice-triggered)
-var evolution_paths: Array # Two evolution options per level-up
+### Ability readouts
+
+- [ability_readout.gd](C:/Users/Kev/Documents/protocol/scripts/ui/ability_readout.gd)
+
+### Shared visual language
+
+- [Theme.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/Theme.gd)
+
+## Current UI Reality
+
+Battle UI has been heavily rebuilt and iterated already.
+
+Current truths:
+
+- battle cards are now flatter and less ornate than earlier passes
+- starfield battle background is active
+- home/unit-select uses imported texture backgrounds, not procedural ones
+- reward/evolution share the battle header structure
+- protocol lives on the footer left
+
+UI work should assume:
+
+- structure is mostly there
+- proportions and readability are still under active tuning
+- screenshots are the source of truth
+
+## Known Architectural Lessons
+
+These are worth repeating because they cost time:
+
+1. The live owner matters more than the old scene file.
+2. A compile-clean change can still be visually irrelevant.
+3. The `450x1000` preview scale makes logical sizes shrink much more than they
+   look in code.
+4. `HPBack` height and visible `HPFill` height are different things.
+5. `_locked_layout_size` can mislead portrait sizing if used blindly.
+6. Godot container structure can be correct while proportions still look wrong.
+
+## Current Debug Workflow
+
+Primary battle screenshot flow:
+
+- [battle_ui_capture.gd](C:/Users/Kev/Documents/protocol/scripts/debug/battle_ui_capture.gd)
+
+Output:
+
+- [latest.png](C:/Users/Kev/Documents/protocol/debug_artifacts/battle_ui/latest.png)
+
+Primary compile check:
+
+```powershell
+& 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --headless --path 'C:\Users\Kev\Documents\protocol' 'res://scenes/battle/BattleScene.tscn' --quit
 ```
 
-### DiceRange entry
-```gdscript
-{
-  "min": 16,
-  "max": 19,
-  "ability_name": "Heavy Strike",
-  "ability_type": "damage",  # damage | shield | heal | aoe_damage | aoe_heal | special
-  "value": 18,               # damage dealt, shield amount, heal amount, etc.
-  "target": "single_enemy"   # single_enemy | all_enemies | single_ally | all_allies | self
-}
-```
+If a change is visual, the assistant should prefer:
 
-### GameState run data
-```gdscript
-selected_units: Array     # Array of unit IDs chosen at start
-current_battle: int       # 1–10
-relics: Array             # Active relic IDs
-consumables: Array        # Held consumable item IDs
-gear_by_unit: Dictionary  # { unit_id: [item_id, item_id] }
-```
+1. edit
+2. compile-check
+3. regenerate screenshot
+4. describe only what the screenshot plainly shows
 
----
+## Current Areas Still Worth Care
 
-## The 8 Player Units
+- compact battle card readability
+- HP band / HP text clarity
+- battle card name readability at phone scale
+- final status strip balance
+- dice feel and resolved presentation
+- reward/evolution visual consistency
 
-| ID | Name | Role |
-|---|---|---|
-| `pulse_tech` | Pulse Tech | Protocol/utility — manipulates dice and protocol bar |
-| `strike_unit` | Strike Unit | DPS — high single-target damage, pierce shields |
-| `spite_guard` | Spite Guard | Tank/counter — heavy shields, counterattack |
-| `avalanche_suit` | Avalanche Suit | AoE DPS — area attacks, rampage ability |
-| `systems_medic` | Systems Medic | Healer — team heals, resurrection support |
-| `field_engineer` | Field Engineer | Buffer — gear synergies, team passive buffs |
-| `ghost_operative` | Ghost Operative | Burst — cloak, high-risk burst damage |
-| `signal_breaker` | Signal Breaker | Debuffer — poison, counterspell, disruption |
+## Guidance for Future Assistants
 
----
-
-## Combat Rules (Important for Logic)
-
-1. All dice (player and enemy) are rolled simultaneously at the start of each turn
-2. Player resolves their abilities first (in any order they choose)
-3. Then surviving enemies resolve their abilities
-4. End of turn: status effects tick, dice reset
-5. A unit that dies mid-turn does NOT get to act (if it dies in player phase, it doesn't act in enemy phase either)
-6. Shields are per-turn (expire at end of turn unless a specific ability says otherwise)
-7. The Protocol Bar is a battle-only resource — it does NOT carry between battles
-8. Frozen units must use the same dice result next turn (the die does not re-roll)
-
----
-
-## Status Effects
-
-| Effect | ID | Behaviour |
-|---|---|---|
-| Frozen | `frozen` | Die locked to same value next turn |
-| Poisoned | `poisoned` | Takes X damage at end of each turn |
-| Cloaked | `cloaked` | Cannot be targeted by single-target abilities |
-| Rampaging | `rampaging` | Damage doubled, cannot use defensive abilities |
-| Counterspell | `counterspell` | Next hostile ability targeting this unit is negated |
-
----
-
-## UI / UX Rules
-
-- **Mobile first always.** Touch targets minimum 44x44px.
-- **Landscape orientation.** Do not build portrait layouts.
-- **Player units on left half, enemies on right half** of battle screen (or bottom/top — confirm with Kev).
-- **Everything readable at arm's length** on a phone screen.
-- **Dark palette.** Background blacks/deep greys. Accent colours: biopunk green, warning red, metallic silver.
-- **No cluttered menus.** The battlefield is the primary screen. Keep it clean.
-
----
-
-## What's Out of Scope (Do Not Build Yet)
-
-- Persistent player-level XP system across runs
-- Overworld or node map between battles (Slay the Spire style)
-- Full 5 operations (build 1 fully first)
-- Multiplayer
-- Story/narrative content
-- Full audio mix
-
----
-
-## Current Phase
-
-Check `docs/ROADMAP.md` for the current phase checkpoint. Always work within the current phase unless explicitly asked to jump ahead.
-
----
-
-## Coding Conventions
-
-- Use `snake_case` for variables and functions (GDScript standard)
-- Use `PascalCase` for class names and node names
-- Every script file should have a comment at the top explaining what it does
-- Emit signals for cross-node communication rather than direct references where possible
-- Keep scenes self-contained — a UnitCard should work with any UnitData resource passed to it
-- Prefer composition over inheritance where practical in Godot
+- use `Theme.gd` for new shared color language
+- prefer updating active runtime owners instead of stale authored scenes
+- for battle card work, start with:
+  - [compact_unit_card.gd](C:/Users/Kev/Documents/protocol/scripts/ui/compact_unit_card.gd)
+  - [battle_scene.gd](C:/Users/Kev/Documents/protocol/scripts/battle/battle_scene.gd)
+- for dice/readout work, start with:
+  - [dice_tray_3d.gd](C:/Users/Kev/Documents/protocol/scripts/battle/dice_tray_3d.gd)
+  - [ability_readout.gd](C:/Users/Kev/Documents/protocol/scripts/ui/ability_readout.gd)
+- do not assume probe scripts are safe: ad hoc Godot probe launches have hit a
+  recurring `user://logs` crash path on this machine
+- prefer existing battle capture/debug runners where possible

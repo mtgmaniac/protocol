@@ -1,38 +1,43 @@
 ﻿class_name CompactUnitCard
 extends PanelContainer
 
+const UiTheme = preload("res://scripts/autoloads/Theme.gd")
+
 signal card_pressed
 signal unit_detail_requested(card)
 
 const CARD_SIZE := Vector2(260, 0)
 const PORTRAIT_HEIGHT_RATIO := 1.20
 const PORTRAIT_MIN_HEIGHT := 100.0
-const PORTRAIT_TOP_INSET_PX := 4.0
-const NAME_ROW_HEIGHT := 96.0
-const HP_BAR_HEIGHT := 67.0
-const STATUS_ROW_HEIGHT := 112.0
+const PORTRAIT_TOP_INSET_PX := 0.0
+const NAME_ROW_HEIGHT := 80.0
+const HP_BAR_HEIGHT := 48.0
+const HP_FILL_HEIGHT := 40.0
+const STATUS_ROW_HEIGHT := 48.0
 const ACTION_PANEL_HEIGHT := 88.0
 const PORTRAIT_ASPECT_FALLBACK := 2.0
 const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
 const HERO_PORTRAIT_WIDTH_SCALE := 0.90
 const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
-const HERO_LINE := Color(0.18, 0.90, 0.64, 1.0)
-const ENEMY_LINE := Color(0.82, 0.36, 0.34, 1.0)
-const SELECT_LINE := Color(0.95, 0.66, 0.22, 1.0)
-const TARGET_LINE := Color(0.42, 0.70, 0.95, 1.0)
-const HP_FILL := Color(0.10, 0.46, 0.32, 1.0)
+const ENEMY_PANEL := Color("#120808")
+const HERO_LINE := UiTheme.BORDER_PLAYER
+const ENEMY_LINE := UiTheme.BORDER_ENEMY
+const SELECT_LINE := UiTheme.GOLD
+const TARGET_LINE := UiTheme.CYAN
+const HP_FILL := UiTheme.HP_GREEN
+const HP_BACK := UiTheme.VOID
 const CARD_NAME_FONT_SIZE := 72
-const CARD_HP_FONT_SIZE := 64
+const CARD_HP_FONT_SIZE := 48
 const STATUS_MAX_VISIBLE := 3
-const STATUS_ICON_FONT_SIZE := 44
-const STATUS_VALUE_FONT_SIZE := 52
-const STATUS_NAME_FONT_SIZE := 42
-const STATUS_ICON_TEXTURE_SIZE := 48.0
-const STATUS_ICON_MIN_WIDTH := 48.0
-const STATUS_VALUE_MIN_WIDTH := 48.0
-const STATUS_NUMERIC_MIN_WIDTH := 96.0
-const STATUS_CHIP_HEIGHT := 60.0
+const STATUS_ICON_FONT_SIZE := 16
+const STATUS_VALUE_FONT_SIZE := 16
+const STATUS_NAME_FONT_SIZE := 16
+const STATUS_ICON_TEXTURE_SIZE := 10.0
+const STATUS_ICON_MIN_WIDTH := 10.0
+const STATUS_VALUE_MIN_WIDTH := 10.0
+const STATUS_NUMERIC_MIN_WIDTH := 24.0
+const STATUS_CHIP_HEIGHT := 12.0
 const ACTION_PIP_VALUE_FONT_SIZE := 48
 const STATUS_DESCRIPTIONS := {
 	"shield": "Absorbs {value} incoming damage.",
@@ -106,6 +111,8 @@ var _action_panel: PanelContainer = null
 var _action_grid: HFlowContainer = null
 var _status_slot: Control = null
 var _status_row: HBoxContainer = null
+var _status_tint: ColorRect = null
+var _status_divider: ColorRect = null
 var _preview_effects: Dictionary = {}
 var _preview_rect_red: ColorRect = null
 var _preview_rect_blue: ColorRect = null
@@ -232,28 +239,29 @@ func _build() -> void:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 2)
-	margin.add_theme_constant_override("margin_top", 2)
+	margin.add_theme_constant_override("margin_top", 1)
 	margin.add_theme_constant_override("margin_right", 2)
-	margin.add_theme_constant_override("margin_bottom", 2)
+	margin.add_theme_constant_override("margin_bottom", 1)
 	add_child(margin)
 
 	var root: VBoxContainer = VBoxContainer.new()
-	root.add_theme_constant_override("separation", 2)
+	root.add_theme_constant_override("separation", 0)
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(root)
 
 	_name_label = Label.new()
 	_name_label.custom_minimum_size = Vector2(0, NAME_ROW_HEIGHT)
+	_name_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
+	_apply_label(_name_label, CARD_NAME_FONT_SIZE, UiTheme.CYAN, 0)
 	root.add_child(_name_label)
 
 	_portrait_frame = PanelContainer.new()
-	_portrait_frame.custom_minimum_size = Vector2(0, PORTRAIT_MIN_HEIGHT)
+	_portrait_frame.custom_minimum_size = Vector2.ZERO
 	_portrait_frame.clip_contents = true
 	_portrait_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_portrait_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -277,13 +285,21 @@ func _build() -> void:
 	_hp_back.custom_minimum_size = Vector2(0, HP_BAR_HEIGHT)
 	_hp_back.clip_contents = true
 	_hp_back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hp_back.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 1.0), Color.TRANSPARENT, 0, 0))
+	_hp_back.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_hp_back.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	root.add_child(_hp_back)
 
 	_hp_fill = ColorRect.new()
 	_hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_fill.color = HP_FILL
-	_hp_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hp_fill.anchor_left = 0.0
+	_hp_fill.anchor_top = 0.0
+	_hp_fill.anchor_right = 1.0
+	_hp_fill.anchor_bottom = 0.0
+	_hp_fill.offset_left = 0.0
+	_hp_fill.offset_top = 0.0
+	_hp_fill.offset_right = 0.0
+	_hp_fill.offset_bottom = HP_FILL_HEIGHT
 	_hp_fill.z_index = 0
 	_hp_back.add_child(_hp_fill)
 
@@ -291,9 +307,10 @@ func _build() -> void:
 	_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hp_label.z_index = 3
+	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_label(_hp_label, CARD_HP_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
+	_apply_label(_hp_label, CARD_HP_FONT_SIZE, Color(0.98, 0.99, 1.0, 1.0), 2)
 	_hp_back.add_child(_hp_label)
 
 	_action_panel = PanelContainer.new()
@@ -323,6 +340,32 @@ func _build() -> void:
 	_status_slot.clip_contents = true
 	root.add_child(_status_slot)
 
+	_status_tint = ColorRect.new()
+	_status_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_tint.color = Color.TRANSPARENT
+	_status_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_status_slot.add_child(_status_tint)
+
+	_status_divider = ColorRect.new()
+	_status_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_divider.color = Color.TRANSPARENT
+	_status_divider.anchor_right = 1.0
+	_status_divider.anchor_bottom = 0.0
+	_status_divider.offset_left = 0.0
+	_status_divider.offset_top = 0.0
+	_status_divider.offset_right = 0.0
+	_status_divider.offset_bottom = 1.0
+	_status_slot.add_child(_status_divider)
+
+	var status_margin := MarginContainer.new()
+	status_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	status_margin.add_theme_constant_override("margin_left", 2)
+	status_margin.add_theme_constant_override("margin_top", 0)
+	status_margin.add_theme_constant_override("margin_right", 2)
+	status_margin.add_theme_constant_override("margin_bottom", 0)
+	_status_slot.add_child(status_margin)
+
 	_status_row = HBoxContainer.new()
 	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_status_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -331,8 +374,8 @@ func _build() -> void:
 	_status_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_status_row.clip_contents = true
-	_status_row.add_theme_constant_override("separation", 6)
-	_status_slot.add_child(_status_row)
+	_status_row.add_theme_constant_override("separation", 2)
+	status_margin.add_child(_status_row)
 
 
 func _refresh() -> void:
@@ -340,14 +383,16 @@ func _refresh() -> void:
 		return
 
 	var line_color: Color = _line_color()
-	PixelUI.style_ninepatch_frame(self, PixelUI.FRAME_PORTRAIT_SCIFI, 18, line_color)
+	var panel_bg: Color = UiTheme.PANEL if side == "hero" else ENEMY_PANEL
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 1, 0))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
-	_action_panel.add_theme_stylebox_override("panel", _style(Color(0.010, 0.020, 0.032, 0.58), Color.TRANSPARENT, 0, 0))
+	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
 	if _locked_portrait_size == Vector2.ZERO:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
+	_name_label.add_theme_color_override("font_color", UiTheme.CYAN if side == "hero" else UiTheme.RED)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
@@ -373,14 +418,12 @@ func _update_portrait_size() -> void:
 		target_width = _portrait_frame.size.x
 	if target_width <= 2.0:
 		target_width = maxf(size.x - 24.0, CARD_SIZE.x - 24.0)
-	var max_portrait_height: float = INF
-	if _locked_layout_size.y > 2.0:
-		var action_height: float = 0.0 if not show_action_pips else ACTION_PANEL_HEIGHT
-		var reserved_height := NAME_ROW_HEIGHT + HP_BAR_HEIGHT + STATUS_ROW_HEIGHT + action_height + 24.0
-		max_portrait_height = maxf(PORTRAIT_MIN_HEIGHT, _locked_layout_size.y - reserved_height)
-	var target_height: float = clampf(floor(target_width * PORTRAIT_HEIGHT_RATIO), PORTRAIT_MIN_HEIGHT, max_portrait_height)
+	var reserved := 84.0
+	var layout_h := _locked_layout_size.y if _locked_layout_size.y > 0.0 else size.y
+	var actual_h := size.y if size.y > 10.0 else layout_h
+	var target_height := maxf(0.0, actual_h - reserved)
 	_locked_portrait_size = Vector2(target_width, target_height)
-	_portrait_frame.custom_minimum_size = Vector2(0, target_height)
+	_portrait_frame.custom_minimum_size = Vector2.ZERO
 	call_deferred("_update_portrait_rect_transform")
 
 
@@ -576,9 +619,9 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", STATUS_ICON_FONT_SIZE)
-	label.add_theme_color_override("font_color", _status_content_color(status, true))
-	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
-	label.add_theme_constant_override("outline_size", 2)
+	label.add_theme_color_override("font_color", UiTheme.GOLD)
+	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
+	label.add_theme_constant_override("outline_size", 0)
 	return label
 
 
@@ -610,7 +653,7 @@ func _make_status_value_label(status: Dictionary) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = false
-	_apply_label(label, STATUS_VALUE_FONT_SIZE, _status_content_color(status, false), 2)
+	_apply_label(label, STATUS_VALUE_FONT_SIZE, UiTheme.GOLD, 0)
 	return label
 
 
@@ -622,7 +665,7 @@ func _make_status_name_label(status: Dictionary) -> Label:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
+	_apply_label(label, STATUS_NAME_FONT_SIZE, UiTheme.GOLD, 0)
 	return label
 
 
@@ -632,7 +675,7 @@ func _make_status_overflow(hidden_count: int) -> Label:
 	label.text = "+%d" % hidden_count
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
+	_apply_label(label, STATUS_NAME_FONT_SIZE, UiTheme.GOLD, 0)
 	return label
 
 
@@ -760,7 +803,7 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 func _line_color() -> Color:
 	if targetable:
 		return TARGET_LINE
-	return Color.WHITE
+	return HERO_LINE if side == "hero" else ENEMY_LINE
 
 
 func _status_color(token: String) -> Color:
@@ -886,7 +929,7 @@ func _layout_preview_overlays() -> void:
 	var lethal: bool = bool(_preview_effects.get("lethal", false))
 
 	if lethal:
-		_place_preview_rect(_preview_rect_red, 0.0, cur_hp, hp_max, bar_w, bar_h, Color(0.88, 0.18, 0.14, 0.92))
+		_place_preview_rect(_preview_rect_red, 0.0, cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, UiTheme.DMG_RED)
 		for rect_variant in [_preview_rect_blue, _preview_rect_purple, _preview_rect_teal, _preview_rect_heal]:
 			var rect: ColorRect = rect_variant
 			if rect != null and is_instance_valid(rect):
@@ -905,13 +948,13 @@ func _layout_preview_overlays() -> void:
 	var purple_x: float = maxf(0.0, blue_x - purple_w)
 	var teal_x: float = maxf(0.0, purple_x - teal_w)
 
-	_place_preview_rect(_preview_rect_red, red_x, red_w, hp_max, bar_w, bar_h, Color(0.88, 0.18, 0.14, 0.88))
-	_place_preview_rect(_preview_rect_blue, blue_x, blue_w, hp_max, bar_w, bar_h, Color(0.22, 0.55, 0.95, 0.80))
-	_place_preview_rect(_preview_rect_purple, purple_x, purple_w, hp_max, bar_w, bar_h, Color(0.62, 0.18, 0.82, 0.85))
-	_place_preview_rect(_preview_rect_teal, teal_x, teal_w, hp_max, bar_w, bar_h, Color(0.18, 0.72, 0.68, 0.75))
+	_place_preview_rect(_preview_rect_red, red_x, red_w, hp_max, bar_w, HP_FILL_HEIGHT, UiTheme.DMG_RED)
+	_place_preview_rect(_preview_rect_blue, blue_x, blue_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.22, 0.55, 0.95, 0.80))
+	_place_preview_rect(_preview_rect_purple, purple_x, purple_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
+	_place_preview_rect(_preview_rect_teal, teal_x, teal_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.18, 0.72, 0.68, 0.75))
 
 	var heal_eff: float = minf(inc_heal, hp_max - cur_hp)
-	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, bar_h, Color(0.28, 0.94, 0.50, 0.85))
+	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, HP_FILL_HEIGHT, UiTheme.HP_GREEN)
 
 
 func _wire_hp_tooltip() -> void:
@@ -1065,9 +1108,9 @@ func _set_descendants_mouse_filter(node: Node, filter: Control.MouseFilter) -> v
 
 func _apply_label(label: Label, font_size: int, color: Color, outline: int = 1) -> void:
 	PixelUI.apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", maxi(20, font_size))
+	label.add_theme_font_size_override("font_size", maxi(1, font_size))
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
+	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT if outline <= 0 else Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)
 
 
@@ -1076,13 +1119,12 @@ func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBo
 	style.bg_color = bg
 	style.border_color = border
 	style.set_border_width_all(border_width)
-	style.corner_radius_top_left = 0
-	style.corner_radius_top_right = 0
-	style.corner_radius_bottom_left = 0
-	style.corner_radius_bottom_right = 0
+	style.corner_radius_top_left = 2
+	style.corner_radius_top_right = 2
+	style.corner_radius_bottom_left = 2
+	style.corner_radius_bottom_right = 2
 	style.set_content_margin(SIDE_LEFT, margin)
 	style.set_content_margin(SIDE_TOP, margin)
 	style.set_content_margin(SIDE_RIGHT, margin)
 	style.set_content_margin(SIDE_BOTTOM, margin)
 	return style
-

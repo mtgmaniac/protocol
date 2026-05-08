@@ -19,6 +19,7 @@ const FACE_RESOLVE_LINEAR_SPEED := 0.16
 const FACE_RESOLVE_ANGULAR_SPEED := 0.24
 const MIN_ROLL_TIME := 2.40
 const MAX_ROLL_TIME := 7.5
+const RESULT_SNAP_DELAY := 0.20
 const RESULT_PRESENTATION_TIME := 0.42
 const RESULT_SCALE := 0.75
 const SELECTED_REROLL_TIME := 0.82
@@ -198,8 +199,7 @@ func reroll_die_to_result(side: String, unit_id: String, result: int) -> void:
 	die.freeze = true
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
-	die.collision_layer = 0
-	die.collision_mask = 0
+	_set_die_collision_enabled(die, false)
 	_reset_face_labels(die)
 	_reset_face_highlights(die)
 
@@ -310,6 +310,7 @@ func _finish_roll(dice: Array) -> void:
 		die.freeze = true
 		die.linear_velocity = Vector3.ZERO
 		die.angular_velocity = Vector3.ZERO
+		_set_die_collision_enabled(die, false)
 		_set_die_result_scale(die, true)
 		result_entries.append({
 			"die": die,
@@ -646,7 +647,7 @@ func _ease_out_cubic(t: float) -> float:
 func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 	var elapsed: float = 0.0
 	var settled_times: Dictionary = {}
-	var resolved_die_ids: Dictionary = {}
+	var all_ready: bool = false
 	while elapsed < MAX_ROLL_TIME:
 		var tree: SceneTree = get_tree()
 		if _is_exiting_tree or tree == null:
@@ -656,37 +657,53 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 			return
 		var delta: float = get_physics_process_delta_time()
 		elapsed += delta
-		var all_resolved: bool = true
+		for die_variant in dice:
+			var active_die: RigidBody3D = die_variant as RigidBody3D
+			if active_die == null or not is_instance_valid(active_die):
+				continue
+			if bool(active_die.freeze):
+				continue
+			_apply_screen_bounds_bounce(active_die)
+		all_ready = true
 		for die_variant in dice:
 			var die: RigidBody3D = die_variant as RigidBody3D
 			if die == null or not is_instance_valid(die):
 				continue
-			var die_id: int = die.get_instance_id()
-			if resolved_die_ids.has(die_id):
-				continue
-			all_resolved = false
 			if elapsed < FACE_RESOLVE_MIN_TIME:
+				all_ready = false
 				continue
+			var die_id: int = die.get_instance_id()
 			if die.sleeping:
-				_resolve_landed_die_face(die, target_origins.get(die_id, die.global_transform.origin))
-				resolved_die_ids[die_id] = true
+				settled_times[die_id] = SETTLE_REQUIRED_TIME
 			elif _is_die_ready_for_face_resolve(die):
 				settled_times[die_id] = float(settled_times.get(die_id, 0.0)) + delta
-				if float(settled_times[die_id]) >= SETTLE_REQUIRED_TIME:
-					_resolve_landed_die_face(die, target_origins.get(die_id, die.global_transform.origin))
-					resolved_die_ids[die_id] = true
 			else:
 				settled_times[die_id] = 0.0
-		if all_resolved:
-			return
+			if float(settled_times.get(die_id, 0.0)) < SETTLE_REQUIRED_TIME:
+				all_ready = false
+		if all_ready:
+			break
 
 	for die_variant in dice:
 		var die: RigidBody3D = die_variant as RigidBody3D
 		if die == null or not is_instance_valid(die):
 			continue
-		var die_id: int = die.get_instance_id()
-		if resolved_die_ids.has(die_id):
+		die.sleeping = true
+		die.freeze = true
+		die.linear_velocity = Vector3.ZERO
+		die.angular_velocity = Vector3.ZERO
+
+	var settle_tree: SceneTree = get_tree()
+	if _is_exiting_tree or settle_tree == null:
+		return
+	await settle_tree.create_timer(RESULT_SNAP_DELAY).timeout
+	if _is_exiting_tree or not is_inside_tree():
+		return
+	for die_variant in dice:
+		var die: RigidBody3D = die_variant as RigidBody3D
+		if die == null or not is_instance_valid(die):
 			continue
+		var die_id: int = die.get_instance_id()
 		_resolve_landed_die_face(die, target_origins.get(die_id, die.global_transform.origin))
 
 
@@ -702,14 +719,61 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	die.freeze = true
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
-	die.collision_layer = 0
-	die.collision_mask = 0
+	_set_die_collision_enabled(die, false)
 	var result: int = _get_most_visible_face_value(die)
 	die.set_meta("resolved_result", result)
 	die.set_meta("display_face_value", result)
 	target_origin.y = die.global_transform.origin.y
 	die.set_meta("assigned_result_origin", target_origin)
 	_start_result_face_present(die, result, target_origin)
+
+
+func _apply_screen_bounds_bounce(die: RigidBody3D) -> void:
+	if die == null or not is_instance_valid(die):
+		return
+	if _camera == null or not is_instance_valid(_camera):
+		return
+	if size.x <= 2.0 or size.y <= 2.0:
+		return
+	var origin: Vector3 = die.global_transform.origin
+	var center: Vector2 = _camera.unproject_position(origin)
+	var x_step: Vector2 = _camera.unproject_position(origin + Vector3.RIGHT)
+	var z_step: Vector2 = _camera.unproject_position(origin + Vector3.FORWARD)
+	var px_per_world_x: float = absf(x_step.x - center.x)
+	var px_per_world_z: float = absf(z_step.y - center.y)
+	if px_per_world_x <= 0.001 or px_per_world_z <= 0.001:
+		return
+	var die_x_radius_px: float = absf(_camera.unproject_position(origin + Vector3(DIE_RADIUS, 0.0, 0.0)).x - center.x)
+	var die_z_radius_px: float = absf(_camera.unproject_position(origin + Vector3(0.0, 0.0, DIE_RADIUS)).y - center.y)
+	var min_x: float = die_x_radius_px
+	var max_x: float = size.x - die_x_radius_px
+	var min_y: float = die_z_radius_px
+	var max_y: float = size.y - die_z_radius_px
+	var velocity: Vector3 = die.linear_velocity
+	var bounced: bool = false
+
+	if center.x < min_x:
+		origin.x += (min_x - center.x) / px_per_world_x
+		velocity.x = absf(velocity.x)
+		bounced = true
+	elif center.x > max_x:
+		origin.x -= (center.x - max_x) / px_per_world_x
+		velocity.x = -absf(velocity.x)
+		bounced = true
+
+	if center.y < min_y:
+		origin.z += (min_y - center.y) / px_per_world_z
+		velocity.z = absf(velocity.z)
+		bounced = true
+	elif center.y > max_y:
+		origin.z -= (center.y - max_y) / px_per_world_z
+		velocity.z = -absf(velocity.z)
+		bounced = true
+
+	if not bounced:
+		return
+	die.global_transform = Transform3D(die.global_transform.basis, origin)
+	die.linear_velocity = velocity
 
 
 # ── UI CONSTRUCTION ──────────────────────────────────────────────────────────
@@ -825,12 +889,11 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	die.scale = Vector3.ONE
 	die.set_meta("entry", entry)
 	_die_by_key[_entry_key(str(entry.get("side", "")), str(entry.get("id", "")))] = die
-	# Dense mass with moderated gravity: slower fall, weighty roll after impact.
+	# Dense mass with stronger damping: heavier motion and less frantic spin.
 	die.mass = 5.2
 	die.gravity_scale = 3.0
-	# Low damping lets the heavier die carry momentum without feeling floaty.
-	die.linear_damp = 0.10
-	die.angular_damp = 0.14
+	die.linear_damp = 0.24
+	die.angular_damp = 0.38
 	die.can_sleep = true
 	die.continuous_cd = true
 	die.contact_monitor = true
@@ -892,15 +955,15 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 		Vector3(randf_range(-1.1, 1.1), randf_range(-0.35, 0.35), randf_range(-1.1, 1.1))
 	)
 	die.angular_velocity = Vector3(
-		randf_range(-6.4, 6.4),
-		randf_range(-8.2, 8.2),
-		randf_range(-6.4, 6.4)
+		randf_range(-2.4, 2.4),
+		randf_range(-3.4, 3.4),
+		randf_range(-2.4, 2.4)
 	)
-	# Heavy torque for vigorous tumbling
+	# Keep some tumble, but make it feel deliberate instead of hyperactive.
 	die.apply_torque_impulse(Vector3(
-		randf_range(-72.0, 72.0),
-		randf_range(-96.0, 96.0),
-		randf_range(-72.0, 72.0)
+		randf_range(-24.0, 24.0),
+		randf_range(-34.0, 34.0),
+		randf_range(-24.0, 24.0)
 	))
 	return die
 
@@ -916,10 +979,10 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 		die.set_meta("entry", entry)
 		_die_by_key[_entry_key(side, unit_id)] = die
 	die.freeze = true
+	die.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
-	die.collision_layer = 0
-	die.collision_mask = 0
+	_set_die_collision_enabled(die, true)
 	die.set_meta("resolved_result", result)
 	die.set_meta("display_face_value", result)
 	var face_index: int = _get_face_index_for_result(result)
@@ -975,18 +1038,29 @@ func _build_inner_shell_mesh() -> ArrayMesh:
 
 func _make_die_physics_material() -> PhysicsMaterial:
 	var material: PhysicsMaterial = PhysicsMaterial.new()
-	# Lower bounce and high grip make impacts read dense rather than toy-like.
-	material.bounce = 0.32
-	material.friction = 1.05
+	# Heavier contact: still rebounds, but not like a rubber shell.
+	material.bounce = 0.30
+	material.friction = 0.94
 	return material
 
 
 func _make_tray_physics_material() -> PhysicsMaterial:
 	var material: PhysicsMaterial = PhysicsMaterial.new()
-	# Hard tray with enough grip for heavy rolling.
-	material.bounce = 0.22
-	material.friction = 1.00
+	# Hard tray with restrained rebound so wall hits feel dense.
+	material.bounce = 0.24
+	material.friction = 0.92
 	return material
+
+
+func _set_die_collision_enabled(die: RigidBody3D, enabled: bool) -> void:
+	if die == null or not is_instance_valid(die):
+		return
+	if enabled:
+		die.collision_layer = DIE_COLLISION_LAYER
+		die.collision_mask = DIE_COLLISION_MASK
+	else:
+		die.collision_layer = 0
+		die.collision_mask = 0
 
 
 func _get_spawn_position(index: int, total_count: int) -> Vector3:

@@ -1,86 +1,74 @@
 # Angular to Godot Mapping
 
-This project now has both the legacy Angular prototype and the new Godot shell in one workspace. The goal of this document is to keep the migration honest by mapping the existing Angular systems to their Godot replacements.
+This document now exists mostly as migration context, not as the primary source
+of truth for the live game. The Godot project is already well past the
+"placeholder shell" stage, but Angular is still useful when checking original
+mechanics or older design intent.
 
-## Recommended migration strategy
+Last refreshed on 2026-05-08.
 
-Port the game in this order:
+## Status of the Migration
 
-1. Data first
-2. Run state second
-3. Battlefield UI shell
-4. Dice resolution
-5. Combat rules
-6. Reward and evolution overlays
+What is already real in Godot:
 
-That order matches your roadmap and reduces the chance of rebuilding logic twice.
+- portrait-oriented home / unit-select flow
+- battle scene with hero and enemy cards
+- 3D dice tray and resolved readouts
+- protocol system in battle
+- consumable/reward flow
+- evolution flow
+- themed UI assets and shared header
 
-## Angular to Godot system map
+What Angular is still good for:
 
-| Angular source | Responsibility today | Godot target |
+- original mechanic reference
+- older effect semantics
+- ability and item wording comparisons
+- checking whether a rule was intentionally changed during the port
+
+## High-Value System Map
+
+| Angular source | Historical responsibility | Current Godot owner |
 |---|---|---|
-| `src/app/services/game-state.service.ts` | Run state, battle phase, overlays, inventory, relics, protocol | `scripts/autoloads/GameState.gd` plus smaller battle managers |
-| `src/app/services/combat.service.ts` | Turn flow, damage, healing, deaths, win/loss, post-battle sequence | `scripts/battle/CombatManager.gd` |
-| `src/app/services/dice.service.ts` | D20 rolls, effective rolls, ability lookup, hero/enemy brackets | `scripts/battle/DiceManager.gd` |
-| `src/app/services/hero-state.service.ts` | Per-hero mutable combat state | Runtime unit model owned by `CombatManager` |
-| `src/app/services/enemy-state.service.ts` | Per-enemy mutable combat state | Runtime enemy model owned by `CombatManager` |
-| `src/app/services/protocol.service.ts` | Protocol gain and spend rules | `scripts/battle/ProtocolBar.gd` |
-| `src/app/services/targeting.service.ts` | Valid targets and auto-targeting | `scripts/battle/TargetingManager.gd` |
-| `src/app/services/evolution.service.ts` | XP and branching upgrades | `scripts/battle/EvolutionManager.gd` or a UI controller plus `GameState` data |
-| `src/app/services/item.service.ts` | Reward draft and inventory actions | `scripts/ui/RewardScreen.gd` plus item helpers |
-| `src/app/components/game/game.component.ts` | Battlefield composition | `scenes/battle/BattleScene.tscn` |
-| `src/app/components/hero-zone/*` | Player card presentation | `scenes/battle/PlayerZone.tscn` and `scripts/units/UnitCard.gd` |
-| `src/app/components/enemy-zone/*` | Enemy card presentation | `scenes/battle/EnemyZone.tscn` and `scripts/units/EnemyCard.gd` |
-| `src/app/components/dice-tray/*` | Dice display and roll interaction | `scenes/shared/DiceTray.tscn` |
-| `src/app/components/overlays/*` | Evolution, relic, item, result overlays | Individual Godot popup scenes |
-| `src/app/data/json/*` | Source-of-truth content tables | `.tres` resources in `data/` or an import pipeline |
+| `game-state.service.ts` | Run state, inventory, progression, overlays | `GameState.gd` plus scene-local controllers |
+| `combat.service.ts` | Combat resolution, damage, healing, deaths | `combat_manager.gd` |
+| `dice.service.ts` | D20 rolls, effective rolls, ability lookup | `dice_manager.gd` and `dice_tray_3d.gd` |
+| `hero-state.service.ts` | Mutable hero runtime state | hero runtime dictionaries in `combat_manager.gd` |
+| `enemy-state.service.ts` | Mutable enemy runtime state | enemy runtime dictionaries in `combat_manager.gd` |
+| `protocol.service.ts` | Protocol rules | battle logic in `battle_scene.gd` and supporting combat logic |
+| `targeting.service.ts` | Target selection rules | targeting flow in `battle_scene.gd` |
+| `evolution.service.ts` | XP and branching upgrades | `GameState.gd` plus `evolution_screen.gd` |
+| `item.service.ts` | Reward generation and item effects | `GameState.gd`, `reward_screen.gd`, and combat item helpers |
+| battle component tree | Battlefield UI shell | `BattleScene.tscn` + `battle_scene.gd` |
 
-## Important migration observations
+## Important Current Differences
 
-### 1. The Angular prototype already contains the real game design
+These older assumptions are no longer true:
 
-The docs are helpful, but the Angular services are more specific than the design docs. They already define:
+- Angular landscape assumptions do not apply to the live Godot UI
+- the live Godot battle uses compact runtime-built cards, not the old card scene
+- the Godot project is no longer just "data first, shell later"
 
-- the actual battle loop
-- status effect timing
-- relic hooks
-- gear hooks
-- post-battle reward sequencing
+## When to Use Angular
 
-That means we should treat Angular as the logic reference and the docs as the architectural target.
+Use Angular only when you need one of these:
 
-### 2. `GameStateService` is currently too large for a direct 1:1 port
+1. confirm a mechanic’s original intended timing
+2. check whether a raw effect key existed in the prototype
+3. compare item/ability semantics after a Godot refactor
 
-In Angular it holds:
+Do **not** use Angular as the visual source of truth for:
 
-- run state
-- battle state
-- overlay state
-- animation flags
-- tutorial state
-- inventory state
+- current layout
+- current phone sizing
+- current header/footer structure
+- current battle card ownership
 
-In Godot, that should be split:
+## Current Best Migration Advice
 
-- `GameState.gd` for run-persistent data
-- scene-local battle managers for temporary combat state
-- UI scenes controlling their own visibility where possible
+If a future assistant needs to compare systems:
 
-### 3. `CombatService` is the highest-value file to port carefully
-
-`src/app/services/combat.service.ts` is effectively the executable ruleset for the game. When we start gameplay migration, this file should be translated system by system rather than rewritten from memory.
-
-### 4. Data should move out of code before deep gameplay porting
-
-Angular currently mixes content and runtime logic. Godot will be much easier to maintain if unit, enemy, gear, and relic definitions become `Resource` files early.
-
-## Suggested next implementation slice
-
-The best next slice is:
-
-1. Create resource classes for units, enemies, and items
-2. Import the first four heroes and one enemy faction into `data/`
-3. Build a reusable `UnitCard` scene
-4. Build a `BattleScene` that displays four heroes and enemy cards with placeholder values
-
-Once that shell exists, we can start porting `DiceService` and then `CombatService` into Godot without guessing at the UI shape.
+- trust the Godot repo first for what is live
+- use Angular only to resolve historical ambiguity
+- if Angular and Godot disagree, document the difference instead of silently
+  "correcting" Godot back to Angular

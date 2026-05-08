@@ -75,7 +75,7 @@ const COMPACT_PORTRAIT_EXTRA_HEIGHT_PX := 52.0
 const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
 const COMPACT_READOUT_HEIGHT_PX := 148.0
 const COMPACT_CARD_WIDTH_PX := 344.0
-const COMPACT_CARD_HEIGHT_PX := 542.0
+const COMPACT_CARD_HEIGHT_PX := 420.0
 const COMPACT_RAIL_CHROME_PX := 24.0
 const BAR_HEIGHT := 144.0
 const CARD_ZONE_HEIGHT := 700.0
@@ -1559,7 +1559,7 @@ func _add_nudge_button() -> void:
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +5 to a hero's effective roll.")
 	btn.pressed.connect(_on_nudge_button_pressed)
-	PixelUI.style_texture_button(btn, PixelUI.BUTTON_INCREASE_SCIFI)
+	_style_minimal_action_button(btn, "+", BOTTOM_BAR_BUTTON_SIZE, 32, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT)
 	_nudge_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, protocol_spend_button.get_index() + 1)
@@ -1890,14 +1890,25 @@ func _set_turn_phase(next_phase: String) -> void:
 func _style_roll_button_for_phase() -> void:
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GREEN_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
+			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.10, 0.18, 0.12, 0.94), PixelUI.HERO_ACCENT)
 		PHASE_TARGETING:
-			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
+			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.10, 0.12, 0.16, 0.94), PixelUI.LINE_BRIGHT)
 			roll_button.add_theme_color_override("font_disabled_color", PixelUI.TEXT_PRIMARY)
 		PHASE_READY_TO_END:
-			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_YELLOW_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
+			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.18, 0.16, 0.08, 0.94), PixelUI.GOLD_ACCENT)
 		_:
-			PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
+			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.10, 0.12, 0.16, 0.94), PixelUI.LINE_DIM)
+
+
+func _style_minimal_action_button(button: Button, label: String, min_size: Vector2, font_size: int, fill: Color = Color(0.014, 0.020, 0.032, 0.92), border: Color = PixelUI.LINE_DIM) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	button.icon = null
+	button.expand_icon = false
+	button.flat = false
+	button.text = label
+	button.custom_minimum_size = min_size
+	PixelUI.style_button(button, fill, border, font_size)
 
 
 func _update_phase_target_sets() -> void:
@@ -3601,7 +3612,7 @@ func _apply_battle_theme() -> void:
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_ninepatch_panel(battle_log_panel, PixelUI.FRAME_SIMPLE)
+	PixelUI.style_panel(battle_log_panel, Color(0.015, 0.022, 0.035, 0.82), PixelUI.LINE_DIM, 2, 2)
 	_ensure_panel_background(hero_panel)
 	_ensure_panel_background(enemy_panel)
 	_ensure_panel_background(center_panel)
@@ -3616,22 +3627,24 @@ func _apply_battle_theme() -> void:
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	protocol_value_label.add_theme_constant_override("outline_size", 2)
-	PixelUI.style_texture_button(toggle_log_button, PixelUI.BUTTON_HELP_SCIFI)
-	PixelUI.style_labeled_texture_button(roll_button, PixelUI.BUTTON_LARGE_GRAY_SCIFI, CENTER_ACTION_BUTTON_FONT_SIZE)
-	PixelUI.style_texture_button(protocol_spend_button, PixelUI.BUTTON_REROLL_SCIFI)
+	_style_minimal_action_button(toggle_log_button as Button, "?", HEADER_BUTTON_SIZE, 24)
+	_style_minimal_action_button(auto_turn_button as Button, "TURN", HEADER_BUTTON_SIZE, 18)
+	_style_minimal_action_button(auto_battle_button as Button, "SIM", HEADER_BUTTON_SIZE, 20)
+	_style_minimal_action_button(return_to_menu_button as Button, "BACK", HEADER_BUTTON_SIZE, 18)
+	_style_roll_button_for_phase()
+	_style_minimal_action_button(protocol_spend_button, "R", BOTTOM_BAR_BUTTON_SIZE, 28, PixelUI.BG_PANEL_ALT, PixelUI.GOLD_ACCENT)
 	if _nudge_button != null and is_instance_valid(_nudge_button):
-		PixelUI.style_texture_button(_nudge_button, PixelUI.BUTTON_INCREASE_SCIFI)
+		_style_minimal_action_button(_nudge_button, "+", BOTTOM_BAR_BUTTON_SIZE, 32, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT)
 	if _item_button != null and is_instance_valid(_item_button):
-		PixelUI.style_texture_button(_item_button, PixelUI.BUTTON_ITEM_SCIFI)
-	PixelUI.style_texture_button(auto_turn_button, PixelUI.BUTTON_DEBUG_SCIFI)
-	PixelUI.style_texture_button(auto_battle_button, PixelUI.BUTTON_DEBUG2_SCIFI)
-	PixelUI.style_texture_button(return_to_menu_button, PixelUI.BUTTON_BACK_SCIFI)
+		_style_minimal_action_button(_item_button, "ITEM", BOTTOM_BAR_BUTTON_SIZE, 18)
 	_ensure_protocol_footer_display()
-	protocol_label.visible = false
-	protocol_value_label.visible = false
+	protocol_label.visible = true
+	protocol_value_label.visible = true
 	if protocol_panel != null:
-		protocol_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	PixelUI.style_progress_bar(protocol_bar, Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0))
+		PixelUI.style_panel(protocol_panel, Color(0.012, 0.018, 0.028, 0.35), PixelUI.LINE_DIM, 1, 2)
+	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
+	if _protocol_footer_display != null and is_instance_valid(_protocol_footer_display):
+		_protocol_footer_display.visible = false
 	_update_protocol_bar()
 	if _header_frame != null and is_instance_valid(_header_frame):
 		_header_frame.queue_free()
@@ -3668,7 +3681,7 @@ func _ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
 		_combat_zone_frame.add_child(_combat_zone_hero_lane)
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
-	PixelUI.style_ninepatch_frame(_combat_zone_frame, PixelUI.FRAME_DICE_TRAY_SCIFI)
+	PixelUI.style_panel(_combat_zone_frame, Color(0.010, 0.014, 0.022, 0.18), PixelUI.LINE_DIM, 2, 2)
 
 
 func _build_combat_zone_lane(name: String) -> HBoxContainer:
@@ -3772,7 +3785,7 @@ func _build_item_panel() -> void:
 	_item_button = Button.new()
 	_item_button.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_item_button.pressed.connect(_on_item_button_pressed_menu)
-	PixelUI.style_texture_button(_item_button, PixelUI.BUTTON_ITEM_SCIFI)
+	_style_minimal_action_button(_item_button, "ITEM", BOTTOM_BAR_BUTTON_SIZE, 18)
 	protocol_row.add_child(_item_button)
 	_item_menu = PopupMenu.new()
 	_item_menu.name = "ItemMenu"
@@ -3787,7 +3800,7 @@ func _build_relic_slot() -> void:
 	_relic_slot = slot
 	slot.custom_minimum_size = ITEM_SLOT_SIZE
 	_set_hud_tooltip(slot, "Relic\nNo relic equipped.")
-	PixelUI.style_ninepatch_panel(slot, PixelUI.FRAME_ITEM_SCIFI)
+	PixelUI.style_panel(slot, Color(0.012, 0.018, 0.028, 0.35), PixelUI.LINE_DIM, 1, 2)
 
 	var icon_center: CenterContainer = CenterContainer.new()
 	icon_center.name = "RelicIconCenter"
