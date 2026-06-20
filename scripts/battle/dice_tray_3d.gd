@@ -160,8 +160,58 @@ func show_result_actions(action_entries: Array) -> void:
 			int(entry.get("roll", 0)),
 			str(entry.get("ability", "")).left(12),
 		]
-		var display_face_value: int = int(die.get_meta("display_face_value", entry.get("roll", 0)))
+		var effective_roll: int = int(entry.get("roll", 0))
+		var display_face_value: int = int(die.get_meta("display_face_value", effective_roll))
 		_highlight_top_face(die, display_face_value, str(entry.get("side", "")), str(entry.get("zone", "")))
+
+
+## Rotates a settled die to present `effective_result` on top (RFE/buff adjustment).
+## Does not change tray roll dictionaries — battle_scene keeps raw values separately.
+func snap_die_to_effective_face(side: String, unit_id: String, effective_result: int) -> void:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	if die == null:
+		return
+	var clamped_result: int = clampi(effective_result, 1, 20)
+	var shown_face: int = int(die.get_meta("display_face_value", die.get_meta("resolved_result", clamped_result)))
+	if shown_face == clamped_result:
+		_highlight_top_face(die, clamped_result, side)
+		return
+
+	var face_index: int = _get_face_index_for_result(clamped_result)
+	if face_index < 0:
+		update_die_result_in_place(side, unit_id, clamped_result)
+		die.set_meta("display_face_value", clamped_result)
+		return
+
+	die.freeze = true
+	die.linear_velocity = Vector3.ZERO
+	die.angular_velocity = Vector3.ZERO
+	_set_die_collision_enabled(die, false)
+	_reset_face_labels(die)
+	_reset_face_highlights(die)
+
+	var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
+	var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
+	target_origin.y = die.global_transform.origin.y
+
+	var from_transform: Transform3D = die.global_transform
+	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_method(
+		func(weight: float) -> void:
+			if is_instance_valid(die):
+				die.global_transform = from_transform.interpolate_with(to_transform, weight)
+	, 0.0, 1.0, RESULT_PRESENTATION_TIME)
+	await tween.finished
+
+	if not is_instance_valid(die):
+		return
+	die.global_transform = to_transform
+	die.set_meta("display_face_value", clamped_result)
+	_set_die_result_scale(die, true)
+	_highlight_top_face(die, clamped_result, side)
 
 
 func update_die_result_in_place(side: String, unit_id: String, result: int) -> void:

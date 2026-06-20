@@ -509,6 +509,8 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 
 	_assign_enemy_targets()
 	_prepare_hero_targets()
+	if dice_tray_3d != null and not skip_dice_visuals:
+		await _snap_dice_to_effective_results()
 	_card_view.refresh_all_cards()
 	_card_view.show_all_ability_readouts()
 	if dice_tray_3d != null and not skip_dice_visuals:
@@ -1196,6 +1198,29 @@ func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
 	if bool(state.get("die_freeze_consumed_this_round", false)):
 		return clampi(raw_roll, 1, 20)
 	return combat_manager.get_effective_roll(state, raw_roll)
+
+
+func _snap_dice_to_effective_results() -> void:
+	for hero_state in combat_manager.get_hero_states():
+		if bool(hero_state.get("dead", false)):
+			continue
+		var uid: String = str(hero_state["id"])
+		var raw_roll: int = int(hero_rolls.get(uid, 0))
+		if raw_roll <= 0:
+			continue
+		var effective_roll: int = _get_effective_roll_for_state(hero_state, uid)
+		if effective_roll != raw_roll:
+			await dice_tray_3d.snap_die_to_effective_face("hero", uid, effective_roll)
+	for enemy_state in combat_manager.get_enemy_states():
+		if bool(enemy_state.get("dead", false)):
+			continue
+		var uid: String = str(enemy_state["id"])
+		var raw_roll: int = int(enemy_rolls.get(uid, 0))
+		if raw_roll <= 0:
+			continue
+		var effective_roll: int = _get_effective_enemy_roll(enemy_state, uid)
+		if effective_roll != raw_roll:
+			await dice_tray_3d.snap_die_to_effective_face("enemy", uid, effective_roll)
 
 
 # Builds a dict of effective rolls for all living units in the given states array.
