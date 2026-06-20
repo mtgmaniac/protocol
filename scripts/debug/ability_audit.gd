@@ -7,6 +7,83 @@ const ENEMIES_DATA_PATH := "res://data/raw/enemies.data.json"
 const BATTLE_SCENE_SCRIPT := preload("res://scripts/battle/battle_scene.gd")
 const AUDIT_ROLL := 10
 
+const META_FIELDS := [
+	"zone",
+	"range",
+	"name",
+	"eff",
+	"callsign",
+	"focus",
+	"hp",
+]
+
+const PREVIEW_ONLY_FIELDS := [
+	"dMin",
+	"dMax",
+]
+
+const TARGETING_ONLY_FIELDS := [
+	"rfeOnly",
+]
+
+const HERO_HANDLED_FIELDS := [
+	"dmg",
+	"heal",
+	"shield",
+	"shT",
+	"blastAll",
+	"healAll",
+	"shieldAll",
+	"healLowest",
+	"shTgt",
+	"healTgt",
+	"dot",
+	"dT",
+	"rfm",
+	"rfmT",
+	"rfmTgt",
+	"ignSh",
+	"rfe",
+	"rfT",
+	"rfeAll",
+	"taunt",
+	"revive",
+	"cloak",
+	"cloakAll",
+	"freezeEnemyDice",
+	"freezeAllEnemyDice",
+	"freezeAnyDice",
+]
+
+const ENEMY_HANDLED_FIELDS := [
+	"dmg",
+	"dmgP2",
+	"heal",
+	"shield",
+	"shT",
+	"shieldAlly",
+	"shAllyT",
+	"dot",
+	"dT",
+	"packBonus",
+	"lifestealPct",
+	"wipeShields",
+	"rfm",
+	"rfmT",
+	"erb",
+	"erbT",
+	"erbAll",
+	"cowerT",
+	"cowerAll",
+	"grantRampage",
+	"grantRampageAll",
+	"counterspellPct",
+	"curseDice",
+	"enemySelfTaunt",
+	"summonChance",
+	"summonName",
+]
+
 const EFFECT_FIELDS := [
 	"dmg",
 	"dMin",
@@ -71,6 +148,7 @@ func run(timeout_msec: int = 10000) -> Dictionary:
 		_run_effect_audit(effect_field, ability)
 
 	_run_targeting_audits()
+	_run_keyword_gap_audit()
 	_run_regression_audits()
 	_run_text_alignment_audits()
 
@@ -231,6 +309,58 @@ func _run_effect_audit(effect_field: String, ability: Dictionary) -> void:
 		)
 
 
+func _run_keyword_gap_audit() -> void:
+	var hero_abilities: Array[Dictionary] = _load_hero_abilities()
+	var enemy_abilities: Array[Dictionary] = _load_enemy_abilities()
+	var gaps: Dictionary = {}
+
+	for ability in hero_abilities:
+		_collect_keyword_gaps(ability, "hero", gaps)
+	for ability in enemy_abilities:
+		_collect_keyword_gaps(ability, "enemy", gaps)
+
+	if gaps.is_empty():
+		_record_pass("Keyword gap audit", "all keys handled or classified")
+		return
+
+	for field in gaps.keys():
+		var labels: Array = gaps[field]
+		_record_failure(
+			"Keyword gap audit",
+			str(field),
+			"handled in combat_manager or classified as preview/targeting metadata",
+			"%d abilities: %s" % [labels.size(), ", ".join(labels.slice(0, 3))]
+		)
+
+
+func _collect_keyword_gaps(ability: Dictionary, side: String, gaps: Dictionary) -> void:
+	var raw: Dictionary = ability.get("raw", {})
+	var label: String = _ability_label(ability) if side == "hero" else _enemy_ability_label(ability)
+	var handled: Array = HERO_HANDLED_FIELDS if side == "hero" else ENEMY_HANDLED_FIELDS
+
+	for field in raw.keys():
+		var field_name: String = str(field)
+		if field_name in META_FIELDS:
+			continue
+		if field_name in PREVIEW_ONLY_FIELDS or field_name in TARGETING_ONLY_FIELDS:
+			continue
+		if field_name in handled:
+			continue
+		if not _field_is_meaningful(raw, field_name):
+			continue
+		if not gaps.has(field_name):
+			gaps[field_name] = []
+		(gaps[field_name] as Array).append(label)
+
+
+func _enemy_ability_label(ability: Dictionary) -> String:
+	return "%s / %s / %s" % [
+		str(ability.get("enemy_type", "Unknown Enemy")),
+		str(ability.get("source_name", "zone")),
+		str(ability.get("ability_name", "Unnamed Ability")),
+	]
+
+
 func _run_targeting_audits() -> void:
 	var battle_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
 	if battle_scene == null:
@@ -241,6 +371,7 @@ func _run_targeting_audits() -> void:
 		{"name": "single damage requires enemy", "raw": {"dmg": 5}, "manual": "enemy"},
 		{"name": "single poison requires enemy", "raw": {"dot": 2, "dT": 2}, "manual": "enemy"},
 		{"name": "single roll debuff requires enemy", "raw": {"rfe": 2, "rfT": 1}, "manual": "enemy"},
+		{"name": "rfeOnly debuff requires enemy", "raw": {"rfe": 2, "rfT": 1, "rfeOnly": true}, "manual": "enemy"},
 		{"name": "blast all requires no manual target", "raw": {"dmg": 5, "blastAll": true}, "manual": ""},
 		{"name": "heal all requires no manual target", "raw": {"heal": 5, "healAll": true}, "manual": ""},
 		{"name": "shield all requires no manual target", "raw": {"shield": 5, "shT": 2, "shieldAll": true}, "manual": ""},
