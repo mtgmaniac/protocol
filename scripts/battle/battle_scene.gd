@@ -46,7 +46,6 @@ const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
-const DICE_SNAP_HORIZONTAL_MARGIN_PX := 88.0
 const DICE_THREE_UNIT_SIDE_OFFSET_PX := 0.0
 const DICE_ENEMY_SNAP_TOP_PX := 220.0
 const DICE_HERO_SNAP_BOTTOM_PX := 56.0
@@ -67,27 +66,17 @@ const PROTOCOL_LIGHT_RECTS := [
 	Rect2(1143, 125, 61, 61),
 ]
 const DICE_CARD_CLEARANCE_PX := 96.0
-const DICE_VISUAL_HALF_HEIGHT_PX := 63.0
-const DICE_BUTTON_GAP_PX := 54.0
-const DICE_LANE_HEIGHT_PX := 168.0
 const COMBAT_ZONE_READOUT_GAP_PX := 18.0
 const COMPACT_PORTRAIT_EXTRA_HEIGHT_PX := 52.0
-const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
-const COMPACT_READOUT_HEIGHT_PX := 148.0
-const COMPACT_CARD_WIDTH_PX := 344.0
-const COMPACT_CARD_HEIGHT_PX := 420.0
 const COMPACT_RAIL_CHROME_PX := 24.0
 const BAR_HEIGHT := 144.0
-const CARD_ZONE_HEIGHT := 700.0
-const CENTER_ZONE_HEIGHT := 540.0
-const RAIL_ROW_GAP_PX := 1.0
-const RAIL_SLOT_GAP_PX := 2.0
 const HEADER_BUTTON_SIZE := Vector2(112, 112)
 const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
 const ITEM_SLOT_SIZE := Vector2(112, 112)
 const ITEM_ICON_SIZE := Vector2(76, 76)
 const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
-const CENTER_ACTION_BUTTON_FONT_SIZE := 64
+const CENTER_ACTION_BUTTON_FONT_SIZE := 48
+const CENTER_PROMPT_FONT_SIZE := 32
 const HEADER_SUMMARY_FONT_SIZE := 112
 const HEADER_COUNTER_FONT_SIZE := 56
 const PROTOCOL_LABEL_FONT_SIZE := 56
@@ -147,11 +136,7 @@ var _hud_tooltip_hold_timer: Timer = null
 var _pending_tooltip_node: Control = null
 var _pending_tooltip_text: String = ""
 var _die_tooltip_overlays: Array = []
-var _combat_zone_frame: PanelContainer = null
-var _combat_zone_enemy_lane: HBoxContainer = null
-var _combat_zone_hero_lane: HBoxContainer = null
-var _combat_zone_enemy_slots: Array = []
-var _combat_zone_hero_slots: Array = []
+var _layout: BattleLayout = null
 var _pending_item: ItemData = null
 var _was_in_ready_phase: bool = false
 var _phase_before_item: String = ""
@@ -179,7 +164,9 @@ func _scene_manager() -> Variant:
 
 
 func _ready() -> void:
-	resized.connect(_queue_board_layout_refresh)
+	_layout = BattleLayout.new()
+	add_child(_layout)
+	_layout.setup(self)
 	_apply_battle_theme()
 	_build_round_complete_modal()
 	_update_battle_header()
@@ -201,7 +188,7 @@ func _ready() -> void:
 	_set_battle_log_visible(false)
 	_append_log("Battle initialized.")
 	_set_turn_phase(PHASE_AWAIT_ROLL)
-	_queue_board_layout_refresh()
+	_layout.queue_board_layout_refresh()
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
 	protocol_spend_button.text = "↺"
 	_build_hud_tooltip()
@@ -216,17 +203,7 @@ func _ready() -> void:
 	board.move_child(enemy_panel, 0)
 	board.move_child(center_panel, 1)
 	board.move_child(hero_panel, 2)
-	call_deferred("_stabilize_board_layout")
-
-
-func _stabilize_board_layout() -> void:
-	for i in range(4):
-		if not is_inside_tree():
-			return
-		_refresh_board_layout()
-		_layout_dice_from_combat_zone()
-		await get_tree().process_frame
-	_refresh_all_cards()
+	Callable(_layout, "stabilize_board_layout").call_deferred()
 
 
 func _on_open_reward_button_pressed() -> void:
@@ -338,9 +315,9 @@ func _populate_hero_cards() -> void:
 	_clear_container(hero_dice_row)
 	hero_card_views.clear()
 	var hero_states: Array = combat_manager.get_hero_states()
-	var card_slots: Array = _build_row_slots(hero_cards, hero_states.size())
-	var readout_slots: Array = _build_row_slots(hero_readouts, hero_states.size())
-	var dice_slots: Array = _build_row_slots(hero_dice_row, hero_states.size())
+	var card_slots: Array = _layout.build_row_slots(hero_cards, hero_states.size())
+	var readout_slots: Array = _layout.build_row_slots(hero_readouts, hero_states.size())
+	var dice_slots: Array = _layout.build_row_slots(hero_dice_row, hero_states.size())
 	for i in range(hero_states.size()):
 		var hero_state: Dictionary = hero_states[i]
 		var unit: UnitData = hero_state["unit"] as UnitData
@@ -353,13 +330,13 @@ func _populate_hero_cards() -> void:
 		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
 		if readout.has_method("set_tooltip_callback"):
 			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
-		var dice_anchor: Control = _build_dice_anchor()
+		var dice_anchor: Control = _layout.build_dice_anchor()
 		var slot_index: int = i
 		(card_slots[slot_index] as Control).add_child(card)
 		(readout_slots[slot_index] as Control).add_child(readout)
 		(dice_slots[slot_index] as Control).add_child(dice_anchor)
-		_prepare_battle_card_layout(card)
-		_prepare_ability_readout_layout(readout)
+		_layout.prepare_battle_card_layout(card)
+		_layout.prepare_ability_readout_layout(readout)
 		hero_card_views.append({
 			"card": card,
 			"readout": readout,
@@ -371,7 +348,7 @@ func _populate_hero_cards() -> void:
 		if card.has_signal("unit_detail_requested"):
 			card.connect("unit_detail_requested", Callable(self, "_on_unit_detail_requested"))
 		_update_card_view(card, hero_state, hero_rolls.get(str(hero_state["id"]), null), HERO_ACCENT, readout)
-	_queue_board_layout_refresh()
+	_layout.queue_board_layout_refresh()
 
 
 func _populate_enemy_cards() -> void:
@@ -380,9 +357,9 @@ func _populate_enemy_cards() -> void:
 	_clear_container(enemy_dice_row)
 	enemy_card_views.clear()
 	var enemy_states: Array = combat_manager.get_enemy_states()
-	var card_slots: Array = _build_row_slots(enemy_cards, enemy_states.size())
-	var readout_slots: Array = _build_row_slots(enemy_readouts, enemy_states.size())
-	var dice_slots: Array = _build_row_slots(enemy_dice_row, enemy_states.size())
+	var card_slots: Array = _layout.build_row_slots(enemy_cards, enemy_states.size())
+	var readout_slots: Array = _layout.build_row_slots(enemy_readouts, enemy_states.size())
+	var dice_slots: Array = _layout.build_row_slots(enemy_dice_row, enemy_states.size())
 	for i in range(enemy_states.size()):
 		var enemy_state: Dictionary = enemy_states[i]
 		var enemy: EnemyData = enemy_state["unit"] as EnemyData
@@ -395,13 +372,13 @@ func _populate_enemy_cards() -> void:
 		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
 		if readout.has_method("set_tooltip_callback"):
 			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
-		var dice_anchor: Control = _build_dice_anchor()
+		var dice_anchor: Control = _layout.build_dice_anchor()
 		var slot_index: int = i
 		(card_slots[slot_index] as Control).add_child(card)
 		(readout_slots[slot_index] as Control).add_child(readout)
 		(dice_slots[slot_index] as Control).add_child(dice_anchor)
-		_prepare_battle_card_layout(card)
-		_prepare_ability_readout_layout(readout)
+		_layout.prepare_battle_card_layout(card)
+		_layout.prepare_ability_readout_layout(readout)
 		enemy_card_views.append({
 			"card": card,
 			"readout": readout,
@@ -413,7 +390,7 @@ func _populate_enemy_cards() -> void:
 		if card.has_signal("unit_detail_requested"):
 			card.connect("unit_detail_requested", Callable(self, "_on_unit_detail_requested"))
 		_update_card_view(card, enemy_state, enemy_rolls.get(str(enemy_state["id"]), null), ENEMY_ACCENT, readout)
-	_queue_board_layout_refresh()
+	_layout.queue_board_layout_refresh()
 
 
 func _clear_container(container: Container) -> void:
@@ -461,42 +438,6 @@ func _event_closes_unit_detail_panel(event: InputEvent) -> bool:
 		var touch_event := event as InputEventScreenTouch
 		return touch_event.pressed
 	return false
-
-
-func _prepare_battle_card_layout(card: Control) -> void:
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	card.custom_minimum_size = Vector2(0, 0)
-
-
-func _build_row_slots(row: HBoxContainer, count: int) -> Array:
-	var slots: Array = []
-	row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	var slot_count: int = maxi(count, 1)
-	for index in range(slot_count):
-		var slot := CenterContainer.new()
-		slot.name = "Slot%d" % index
-		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		row.add_child(slot)
-		slots.append(slot)
-	return slots
-
-
-func _build_dice_anchor() -> Control:
-	var anchor: Control = Control.new()
-	anchor.name = "DiceAnchor"
-	anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	anchor.custom_minimum_size = Vector2(0, COMPACT_DICE_ANCHOR_HEIGHT_PX)
-	anchor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	return anchor
-
-
-func _prepare_ability_readout_layout(readout: Control) -> void:
-	readout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	readout.custom_minimum_size = Vector2(0, COMPACT_READOUT_HEIGHT_PX)
 
 
 func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color, readout: Control = null) -> void:
@@ -569,6 +510,11 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 	var state_id: String = str(state["id"])
 	var is_selected: bool = state_id == active_targeting_hero_id
 	var is_targetable: bool = _is_target_highlight_phase() and legal_target_ids.has(state_id)
+	var is_target_locked: bool = false
+	if accent_color == HERO_ACCENT and not bool(state["dead"]) and roll_value != null:
+		if turn_phase == PHASE_TARGETING or turn_phase == PHASE_READY_TO_END:
+			if state_id != active_targeting_hero_id:
+				is_target_locked = not pending_manual_target_ids.has(state_id)
 	if card is CompactUnitCard:
 		var compact_card: CompactUnitCard = card as CompactUnitCard
 		var has_revealed_roll: bool = roll_value != null
@@ -595,6 +541,7 @@ func _update_card_view(card: Control, state: Dictionary, roll_value: Variant, ac
 			"targetable": is_targetable,
 			"interaction_enabled": _is_card_clickable(state, accent_color),
 			"dead": bool(state["dead"]),
+			"target_locked": is_target_locked,
 			"show_action_pips": readout == null,
 			"unit_data": unit,
 			"gear_rows": _get_gear_detail_rows(str(unit.id)) if unit is UnitData else [],
@@ -750,10 +697,27 @@ func _append_compact_result_effect(effects: Array, kind: String, value: String, 
 
 
 func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictionary:
-	# Only meaningful during targeting phases when rolls and targets are assigned.
-	if turn_phase != PHASE_TARGETING and turn_phase != PHASE_READY_TO_END:
-		return {}
-	var include_hero_ability_previews: bool = turn_phase == PHASE_READY_TO_END or has_player_target_assignment
+	# Preview only makes sense once rolls/targets exist. Targeting and the
+	# pre-end-turn ready state are the obvious cases; the *_pick phases
+	# (reroll/nudge/item) are sub-modes layered on top of those, where the
+	# underlying rolls and target assignments are unchanged — opening the
+	# picker shouldn't visually erase damage red. The preview will naturally
+	# recompute once a pick actually mutates state (new roll, nudged tier,
+	# item-applied HP/shield).
+	match turn_phase:
+		PHASE_TARGETING, PHASE_READY_TO_END, \
+		PHASE_REROLL_PICK, PHASE_NUDGE_PICK, \
+		PHASE_ITEM_PICK_ALLY, PHASE_ITEM_PICK_DEAD, PHASE_ITEM_PICK_ENEMY:
+			pass
+		_:
+			return {}
+	# Hero ability previews require *some* committed targeting context: either
+	# we're past targeting (READY_TO_END), or the player has assigned at least
+	# one target this turn. Pick sub-modes inherit that context from the phase
+	# they were opened from, so this check still works without a special case.
+	var include_hero_ability_previews: bool = \
+		turn_phase == PHASE_READY_TO_END \
+		or has_player_target_assignment
 
 	var target_id: String = str(target_state["id"])
 	var total_dmg: int    = 0
@@ -823,12 +787,14 @@ func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dicti
 				total_dmg += int(raw.get("dmg", 0))
 
 		if not is_hero and e_target == target_id:
-			var self_heal: int   = int(raw.get("heal", 0))
-			var self_shield: int = int(raw.get("shield", 0)) + int(raw.get("shieldAlly", 0))
-			if self_heal > 0 or self_shield > 0:
+			# Heal previews fine (informational about end-of-turn HP). Shield
+			# previews are intentionally omitted: enemies act AFTER heroes,
+			# so a shield the enemy is about to cast cannot absorb hero damage
+			# this turn — it only becomes an active status next turn.
+			var self_heal: int = int(raw.get("heal", 0))
+			if self_heal > 0:
 				found = true
-				total_heal   += self_heal
-				total_shield += self_shield
+				total_heal += self_heal
 
 	# ── DoT: show only when BOTH poison > 0 AND poison_turns > 0 ─────────────
 	# This mirrors combat_manager._tick_state exactly — both must be nonzero
@@ -842,18 +808,23 @@ func _compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dicti
 		return {}
 
 	# ── Shield availability ───────────────────────────────────────────────────
-	# Enemies cannot use their shield to block player damage — player attacks
-	# resolve first. Pass current_shield = 0 for enemies so the bar shows full
-	# red rather than falsely implying their shield will protect them.
-	# For hero cards, include current shield + any incoming shield this turn.
-	var effective_shield: int = int(target_state.get("shield", 0)) if is_hero else 0
+	# Both heroes and enemies have their existing shield stacks applied BEFORE
+	# damage resolves (combat_manager._damage_state absorbs from shield_stacks).
+	# For enemies the catch is that any shield they're about to cast THIS turn
+	# is not yet active when heroes attack, so we only count pre-existing stacks
+	# (their current shield total). Heroes likewise use their current shield
+	# plus any incoming shield from this turn's hero rolls (already aggregated
+	# above into total_shield), so the existing-shield contribution comes from
+	# state["shield"] for both sides.
+	var effective_shield: int = int(target_state.get("shield", 0))
 
 	# ── Lethal check (enemy units only) ──────────────────────────────────────
 	# If total player damage is enough to kill the enemy, flag it so the card
-	# can render the entire HP fill as red.
+	# can render the entire HP fill as red. Account for the enemy's existing
+	# shield stacks since those absorb damage before HP is reduced.
 	var lethal: bool = false
 	if not is_hero:
-		lethal = total_dmg >= int(target_state.get("current_hp", 0))
+		lethal = total_dmg >= int(target_state.get("current_hp", 0)) + effective_shield
 
 	return {
 		"damage":          total_dmg,
@@ -893,9 +864,9 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	_clear_target_assignments()
 
 	if dice_tray_3d != null and not skip_dice_visuals:
-		_refresh_board_layout()
+		_layout.refresh_board_layout()
 		await get_tree().process_frame
-		_layout_dice_from_combat_zone()
+		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
 		dice_tray_3d.play_rolls(
 			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
@@ -1002,10 +973,10 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 			"id": str(state["id"]),
 			"name": str(unit.battle_name()),
 		}
-		var anchor_point: Vector2 = _get_dice_anchor_point(side, str(state["id"]))
+		var anchor_point: Vector2 = _layout.get_dice_anchor_point(side, str(state["id"]))
 		if anchor_point != Vector2.INF:
 			entry["result_anchor"] = anchor_point
-		var side_offset: float = _get_dice_anchor_side_offset(side, str(state["id"]))
+		var side_offset: float = _layout.get_dice_anchor_side_offset(side, str(state["id"]))
 		if not is_zero_approx(side_offset):
 			entry["result_anchor_side_offset_px"] = side_offset
 		if is_frozen:
@@ -1013,121 +984,6 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 			entry["frozen_roll"] = int(state.get("frozen_die_value", 0))
 		entries.append(entry)
 	return entries
-
-
-func _get_dice_anchor_point(side: String, state_id: String) -> Vector2:
-	if dice_tray_3d == null:
-		return Vector2.INF
-	var views: Array = hero_card_views if side == "hero" else enemy_card_views
-	var combat_zone: Rect2 = _get_combat_zone_rect()
-	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
-		return Vector2.INF
-	var lane: HBoxContainer = _combat_zone_hero_lane if side == "hero" else _combat_zone_enemy_lane
-	if lane == null or not is_instance_valid(lane) or not lane.is_inside_tree():
-		return Vector2.INF
-	var lane_rect: Rect2 = lane.get_global_rect()
-	if lane_rect.size.x <= 2.0 or lane_rect.size.y <= 2.0:
-		return Vector2.INF
-	for index in range(views.size()):
-		var view: Dictionary = views[index]
-		var state: Dictionary = view.get("state", {})
-		if str(state.get("id", "")) != state_id:
-			continue
-		var card: Control = view.get("card", null) as Control
-		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
-			return Vector2.INF
-		var card_rect: Rect2 = card.get_global_rect()
-		var x: float = clampf(card_rect.get_center().x, combat_zone.position.x + DICE_SNAP_HORIZONTAL_MARGIN_PX, combat_zone.end.x - DICE_SNAP_HORIZONTAL_MARGIN_PX)
-		var y: float = lane_rect.get_center().y
-		return Vector2(x, y) - combat_zone.position
-	return Vector2.INF
-
-
-func _get_dice_anchor_side_offset(side: String, state_id: String) -> float:
-	return 0.0
-
-
-func _get_enemy_result_row_rect() -> Rect2:
-	return _get_result_row_rect(enemy_card_views)
-
-
-func _get_friendly_result_row_rect() -> Rect2:
-	return _get_result_row_rect(hero_card_views)
-
-
-func _get_result_row_rect(views: Array) -> Rect2:
-	var rect := Rect2()
-	var has_rect := false
-	for view_variant in views:
-		var view: Dictionary = view_variant
-		var readout: Control = view.get("readout", null) as Control
-		if readout == null or not is_instance_valid(readout) or not readout.is_inside_tree():
-			continue
-		var readout_rect: Rect2 = readout.get_global_rect()
-		if readout_rect.size.x <= 2.0 or readout_rect.size.y <= 2.0:
-			continue
-		if has_rect:
-			rect = rect.merge(readout_rect)
-		else:
-			rect = readout_rect
-			has_rect = true
-	return rect if has_rect else Rect2()
-
-
-func _get_combat_zone_rect() -> Rect2:
-	if dice_tray_3d == null:
-		return Rect2()
-	var enemy_readout_rect: Rect2 = _get_enemy_result_row_rect()
-	var enemy_card_rect: Rect2 = _get_card_group_rect(enemy_card_views)
-	var friendly_readout_rect: Rect2 = _get_friendly_result_row_rect()
-	var friendly_card_rect: Rect2 = _get_card_group_rect(hero_card_views)
-	if enemy_readout_rect.size == Vector2.ZERO or friendly_readout_rect.size == Vector2.ZERO:
-		return center_panel.get_global_rect()
-
-	var board_rect: Rect2 = board.get_global_rect()
-	var center_rect: Rect2 = center_panel.get_global_rect()
-	var enemy_bottom_y: float = enemy_card_rect.end.y if enemy_card_rect.size != Vector2.ZERO else enemy_readout_rect.end.y
-	var friendly_top_y: float = friendly_card_rect.position.y if friendly_card_rect.size != Vector2.ZERO else friendly_readout_rect.position.y
-	var top_y: float = enemy_readout_rect.position.y if enemy_readout_rect.size != Vector2.ZERO else enemy_bottom_y
-	var bottom_y: float = friendly_readout_rect.end.y if friendly_readout_rect.size != Vector2.ZERO else friendly_top_y
-	if bottom_y <= top_y + 120.0:
-		return center_rect
-
-	var x: float = center_rect.position.x
-	var width: float = center_rect.size.x
-	if width <= 2.0:
-		x = board_rect.position.x
-		width = board_rect.size.x
-	return Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y))
-
-
-func _layout_dice_from_combat_zone() -> void:
-	if dice_tray_3d == null:
-		return
-	var combat_zone: Rect2 = _get_combat_zone_rect()
-	_sync_combat_zone_frame(combat_zone)
-	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
-		return
-	dice_tray_3d.set_combat_zone_rect(combat_zone)
-
-
-func _get_card_group_rect(views: Array) -> Rect2:
-	var rect := Rect2()
-	var has_rect := false
-	for view_variant in views:
-		var view: Dictionary = view_variant
-		var card: Control = view.get("card", null) as Control
-		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
-			continue
-		var card_rect: Rect2 = card.get_global_rect()
-		if card_rect.size.x <= 2.0 or card_rect.size.y <= 2.0:
-			continue
-		if has_rect:
-			rect = rect.merge(card_rect)
-		else:
-			rect = card_rect
-			has_rect = true
-	return rect if has_rect else Rect2()
 
 
 func _apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:
@@ -1559,7 +1415,7 @@ func _add_nudge_button() -> void:
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +5 to a hero's effective roll.")
 	btn.pressed.connect(_on_nudge_button_pressed)
-	_style_minimal_action_button(btn, "+", BOTTOM_BAR_BUTTON_SIZE, 32, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT)
+	_style_frame_icon_action_button(btn, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
 	_nudge_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, protocol_spend_button.get_index() + 1)
@@ -1847,9 +1703,10 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.text = "Roll"
 			_refresh_summary("")
 		PHASE_TARGETING:
-			roll_button.visible = true
+			roll_button.visible = false
 			roll_button.disabled = true
-			roll_button.text = "Select Targets"
+			roll_button.text = ""
+			_refresh_summary("")
 		PHASE_READY_TO_END:
 			roll_button.visible = true
 			roll_button.disabled = false
@@ -1866,23 +1723,20 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.text = ""
 			_refresh_summary("")
 		PHASE_ITEM_PICK_ALLY:
-			roll_button.visible = true
+			roll_button.visible = false
 			roll_button.disabled = true
-			roll_button.text = "Pick ally for item"
-			var item_name_ally: String = _pending_item.display_name if _pending_item != null else "item"
-			_refresh_summary("Select a living ally to use %s." % item_name_ally)
+			roll_button.text = ""
+			_refresh_summary("")
 		PHASE_ITEM_PICK_DEAD:
-			roll_button.visible = true
+			roll_button.visible = false
 			roll_button.disabled = true
-			roll_button.text = "Pick fallen ally"
-			var item_name_dead: String = _pending_item.display_name if _pending_item != null else "item"
-			_refresh_summary("Select a fallen ally for %s." % item_name_dead)
+			roll_button.text = ""
+			_refresh_summary("")
 		PHASE_ITEM_PICK_ENEMY:
-			roll_button.visible = true
+			roll_button.visible = false
 			roll_button.disabled = true
-			roll_button.text = "Pick enemy for item"
-			var item_name_enemy: String = _pending_item.display_name if _pending_item != null else "item"
-			_refresh_summary("Select an enemy for %s." % item_name_enemy)
+			roll_button.text = ""
+			_refresh_summary("")
 	_style_roll_button_for_phase()
 	_refresh_all_cards()
 
@@ -1890,14 +1744,27 @@ func _set_turn_phase(next_phase: String) -> void:
 func _style_roll_button_for_phase() -> void:
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.10, 0.18, 0.12, 0.94), PixelUI.HERO_ACCENT)
+			# Active primary action: ready to roll
+			_style_minimal_action_button(
+				roll_button, roll_button.text,
+				CENTER_ACTION_BUTTON_SIZE, CENTER_ACTION_BUTTON_FONT_SIZE,
+				Color(0.06, 0.20, 0.10, 0.96), PixelUI.HERO_ACCENT
+			)
 		PHASE_TARGETING:
-			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.10, 0.12, 0.16, 0.94), PixelUI.LINE_BRIGHT)
-			roll_button.add_theme_color_override("font_disabled_color", PixelUI.TEXT_PRIMARY)
+			# Hidden: targetable cards highlight cyan to communicate the
+			# affordance. The center zone is reclaimed for dice/readouts.
+			pass
 		PHASE_READY_TO_END:
-			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.18, 0.16, 0.08, 0.94), PixelUI.GOLD_ACCENT)
+			# Active primary action: close out the turn
+			_style_minimal_action_button(
+				roll_button, roll_button.text,
+				CENTER_ACTION_BUTTON_SIZE, CENTER_ACTION_BUTTON_FONT_SIZE,
+				Color(0.20, 0.14, 0.04, 0.96), PixelUI.GOLD_ACCENT
+			)
 		_:
-			_style_minimal_action_button(roll_button, roll_button.text, CENTER_ACTION_BUTTON_SIZE, 28, Color(0.10, 0.12, 0.16, 0.94), PixelUI.LINE_DIM)
+			# Item-pick / fallback states are also hidden; the affordance
+			# is the highlighted card the player must tap.
+			pass
 
 
 func _style_minimal_action_button(button: Button, label: String, min_size: Vector2, font_size: int, fill: Color = Color(0.014, 0.020, 0.032, 0.92), border: Color = PixelUI.LINE_DIM) -> void:
@@ -1909,6 +1776,34 @@ func _style_minimal_action_button(button: Button, label: String, min_size: Vecto
 	button.text = label
 	button.custom_minimum_size = min_size
 	PixelUI.style_button(button, fill, border, font_size)
+
+
+# Wrap PixelUI.style_frame_icon_button while preserving the min-size we want
+# for the row layouts. Used for both the header and bottom-bar icon buttons.
+func _style_frame_icon_action_button(
+	button: BaseButton,
+	icon_path: String,
+	min_size: Vector2,
+	frame_modulate: Color = Color.WHITE,
+	icon_modulate: Color = Color.WHITE,
+) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	button.custom_minimum_size = min_size
+	PixelUI.style_frame_icon_button(button, PixelUI.FRAME_SIMPLE, icon_path, -1, frame_modulate, icon_modulate)
+
+
+func _style_prompt_button(button: Button, label: String, min_size: Vector2, font_size: int, border: Color = PixelUI.LINE_DIM) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	button.icon = null
+	button.expand_icon = false
+	button.flat = false
+	button.text = label
+	button.custom_minimum_size = min_size
+	# Mostly transparent fill so this reads as a status hint, not an
+	# action waiting to be unlocked.
+	PixelUI.style_button(button, Color(0.05, 0.07, 0.10, 0.45), border, font_size)
 
 
 func _update_phase_target_sets() -> void:
@@ -3466,78 +3361,6 @@ func _get_roll_num_color(roll: int) -> Color:
 	return Color(1.0, 0.66, 0.66, 1.0)        # Red
 
 
-func _queue_board_layout_refresh() -> void:
-	call_deferred("_refresh_board_layout")
-	call_deferred("_layout_dice_from_combat_zone")
-
-
-func _refresh_board_layout() -> void:
-	if not is_inside_tree():
-		return
-	if hero_scroll == null or enemy_scroll == null:
-		return
-	center_panel.custom_minimum_size = Vector2(0, CENTER_ZONE_HEIGHT)
-	hero_panel.custom_minimum_size = Vector2(0, CARD_ZONE_HEIGHT)
-	enemy_panel.custom_minimum_size = Vector2(0, CARD_ZONE_HEIGHT)
-	hero_scroll.add_theme_constant_override("separation", RAIL_ROW_GAP_PX)
-	enemy_scroll.add_theme_constant_override("separation", RAIL_ROW_GAP_PX)
-	hero_cards.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	hero_readouts.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	hero_dice_row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	enemy_cards.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	enemy_readouts.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	enemy_dice_row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-
-	_apply_rail_layout(hero_card_views, hero_cards, hero_readouts, hero_dice_row)
-	_apply_rail_layout(enemy_card_views, enemy_cards, enemy_readouts, enemy_dice_row)
-	_apply_dice_anchor_height(COMPACT_DICE_ANCHOR_HEIGHT_PX)
-	call_deferred("_layout_dice_from_combat_zone")
-
-
-func _apply_rail_layout(views: Array, cards_row: HBoxContainer, readouts_row: HBoxContainer, dice_row: HBoxContainer) -> void:
-	var slot_width: float = _get_logical_slot_width(cards_row)
-	var card_size := Vector2(minf(slot_width, COMPACT_CARD_WIDTH_PX), COMPACT_CARD_HEIGHT_PX)
-	for view_variant in views:
-		var view: Dictionary = view_variant
-		var card: Control = view.get("card", null) as Control
-		var readout: Control = view.get("readout", null) as Control
-		var anchor: Control = view.get("dice_anchor", null) as Control
-		if card != null:
-			card.custom_minimum_size = card_size
-			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-			if card is CompactUnitCard:
-				(card as CompactUnitCard).apply_battle_layout(card_size)
-		if readout != null:
-			readout.custom_minimum_size = Vector2(slot_width, COMPACT_READOUT_HEIGHT_PX)
-			readout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			readout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		if anchor != null:
-			anchor.custom_minimum_size = Vector2(slot_width, COMPACT_DICE_ANCHOR_HEIGHT_PX)
-			anchor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-
-
-func _get_logical_slot_width(row: HBoxContainer) -> float:
-	var gap: float = float(row.get_theme_constant("separation"))
-	var available_width: float = maxf(row.size.x, 320.0)
-	var slot_count: int = maxi(row.get_child_count(), 1)
-	return clampf(
-		floor((available_width - (gap * float(slot_count - 1))) / float(slot_count)),
-		96.0,
-		COMPACT_CARD_WIDTH_PX
-	)
-
-
-func _apply_dice_anchor_height(anchor_height: float) -> void:
-	for view_variant in hero_card_views + enemy_card_views:
-		var view: Dictionary = view_variant
-		var anchor: Control = view.get("dice_anchor", null) as Control
-		if anchor == null or not is_instance_valid(anchor):
-			continue
-		anchor.custom_minimum_size = Vector2(0, anchor_height)
-
-
 func _build_effect_chips(raw: Dictionary) -> Array:
 	var chips: Array = []
 	var damage: int = int(raw.get("dmg", 0))
@@ -3616,7 +3439,7 @@ func _apply_battle_theme() -> void:
 	_ensure_panel_background(hero_panel)
 	_ensure_panel_background(enemy_panel)
 	_ensure_panel_background(center_panel)
-	_ensure_combat_zone_frame()
+	_layout.ensure_combat_zone_frame()
 	PixelUI.apply_pixel_font(protocol_label)
 	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_LABEL_FONT_SIZE)
 	protocol_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
@@ -3627,16 +3450,16 @@ func _apply_battle_theme() -> void:
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	protocol_value_label.add_theme_constant_override("outline_size", 2)
-	_style_minimal_action_button(toggle_log_button as Button, "?", HEADER_BUTTON_SIZE, 24)
-	_style_minimal_action_button(auto_turn_button as Button, "TURN", HEADER_BUTTON_SIZE, 18)
-	_style_minimal_action_button(auto_battle_button as Button, "SIM", HEADER_BUTTON_SIZE, 20)
-	_style_minimal_action_button(return_to_menu_button as Button, "BACK", HEADER_BUTTON_SIZE, 18)
+	_style_frame_icon_action_button(toggle_log_button, PixelUI.ICON_HELP, HEADER_BUTTON_SIZE)
+	_style_frame_icon_action_button(auto_turn_button, PixelUI.ICON_DEBUG, HEADER_BUTTON_SIZE)
+	_style_frame_icon_action_button(auto_battle_button, PixelUI.ICON_DEBUG2, HEADER_BUTTON_SIZE)
+	_style_frame_icon_action_button(return_to_menu_button, PixelUI.ICON_BACK, HEADER_BUTTON_SIZE)
 	_style_roll_button_for_phase()
-	_style_minimal_action_button(protocol_spend_button, "R", BOTTOM_BAR_BUTTON_SIZE, 28, PixelUI.BG_PANEL_ALT, PixelUI.GOLD_ACCENT)
+	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE, PixelUI.GOLD_ACCENT)
 	if _nudge_button != null and is_instance_valid(_nudge_button):
-		_style_minimal_action_button(_nudge_button, "+", BOTTOM_BAR_BUTTON_SIZE, 32, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT)
+		_style_frame_icon_action_button(_nudge_button, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
 	if _item_button != null and is_instance_valid(_item_button):
-		_style_minimal_action_button(_item_button, "ITEM", BOTTOM_BAR_BUTTON_SIZE, 18)
+		_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
 	protocol_value_label.visible = true
@@ -3660,86 +3483,6 @@ func _ensure_panel_background(panel: PanelContainer) -> void:
 	var background_fill := panel.get_node_or_null("OpaqueBackground") as ColorRect
 	if background_fill != null:
 		background_fill.queue_free()
-
-
-func _ensure_combat_zone_frame() -> void:
-	if float_layer == null:
-		return
-	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
-		_combat_zone_frame = PanelContainer.new()
-		_combat_zone_frame.name = "CombatZoneFrame"
-		_combat_zone_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_combat_zone_frame.set_as_top_level(true)
-		_combat_zone_frame.z_as_relative = false
-		_combat_zone_frame.z_index = 4
-		float_layer.add_child(_combat_zone_frame)
-	if _combat_zone_enemy_lane == null or not is_instance_valid(_combat_zone_enemy_lane):
-		_combat_zone_enemy_lane = _build_combat_zone_lane("EnemyDiceLane")
-		_combat_zone_frame.add_child(_combat_zone_enemy_lane)
-		_combat_zone_enemy_slots = _build_combat_zone_lane_slots(_combat_zone_enemy_lane)
-	if _combat_zone_hero_lane == null or not is_instance_valid(_combat_zone_hero_lane):
-		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
-		_combat_zone_frame.add_child(_combat_zone_hero_lane)
-		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
-	PixelUI.style_panel(_combat_zone_frame, Color(0.010, 0.014, 0.022, 0.18), PixelUI.LINE_DIM, 2, 2)
-
-
-func _build_combat_zone_lane(name: String) -> HBoxContainer:
-	var lane := HBoxContainer.new()
-	lane.name = name
-	lane.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lane.alignment = BoxContainer.ALIGNMENT_CENTER
-	lane.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
-	return lane
-
-
-func _build_combat_zone_lane_slots(lane: HBoxContainer) -> Array:
-	var slots: Array = []
-	for index in range(3):
-		var slot := CenterContainer.new()
-		slot.name = "LaneSlot%d" % index
-		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		lane.add_child(slot)
-		slots.append(slot)
-	return slots
-
-
-func _sync_combat_zone_frame(combat_zone: Rect2) -> void:
-	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
-		return
-	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
-		_combat_zone_frame.visible = false
-		return
-	_combat_zone_frame.visible = true
-	_combat_zone_frame.global_position = combat_zone.position
-	_combat_zone_frame.size = combat_zone.size
-	var enemy_readout_rect: Rect2 = _get_enemy_result_row_rect()
-	var hero_readout_rect: Rect2 = _get_friendly_result_row_rect()
-	var button_rect: Rect2 = roll_button.get_global_rect() if roll_button != null and is_instance_valid(roll_button) else Rect2()
-	var lane_gap: float = 10.0
-	var button_center_local: float = button_rect.get_center().y - combat_zone.position.y if button_rect.size.y > 2.0 else combat_zone.size.y * 0.5
-	var enemy_readout_bottom: float = enemy_readout_rect.end.y - combat_zone.position.y if enemy_readout_rect.size.y > 2.0 else 0.0
-	var hero_readout_top: float = hero_readout_rect.position.y - combat_zone.position.y if hero_readout_rect.size.y > 2.0 else combat_zone.size.y
-	var top_bound: float = enemy_readout_bottom + lane_gap
-	var bottom_bound: float = hero_readout_top - lane_gap
-	var lane_height: float = DICE_LANE_HEIGHT_PX
-	var max_symmetric_offset: float = maxf(0.0, minf(button_center_local - top_bound - DICE_VISUAL_HALF_HEIGHT_PX, bottom_bound - button_center_local - DICE_VISUAL_HALF_HEIGHT_PX))
-	var required_center_offset: float = (button_rect.size.y * 0.5 if button_rect.size.y > 2.0 else CENTER_ACTION_BUTTON_SIZE.y * 0.5) + DICE_VISUAL_HALF_HEIGHT_PX + DICE_BUTTON_GAP_PX
-	var center_offset: float = minf(required_center_offset, max_symmetric_offset)
-	var enemy_lane_y: float = button_center_local - center_offset - lane_height * 0.5
-	var hero_lane_y: float = button_center_local + center_offset - lane_height * 0.5
-	var enemy_lane_height: float = lane_height if max_symmetric_offset > 0.0 else 0.0
-	var hero_lane_height: float = lane_height if max_symmetric_offset > 0.0 else 0.0
-	if _combat_zone_enemy_lane != null and is_instance_valid(_combat_zone_enemy_lane):
-		_combat_zone_enemy_lane.position = Vector2.ZERO if enemy_lane_height <= 0.0 else Vector2(0.0, enemy_lane_y)
-		_combat_zone_enemy_lane.size = Vector2(combat_zone.size.x, enemy_lane_height)
-		_combat_zone_enemy_lane.visible = enemy_lane_height > 0.0
-	if _combat_zone_hero_lane != null and is_instance_valid(_combat_zone_hero_lane):
-		_combat_zone_hero_lane.position = Vector2.ZERO if hero_lane_height <= 0.0 else Vector2(0.0, hero_lane_y)
-		_combat_zone_hero_lane.size = Vector2(combat_zone.size.x, hero_lane_height)
-		_combat_zone_hero_lane.visible = hero_lane_height > 0.0
 
 
 func _build_scaled_enemy(base_enemy: EnemyData, battle_index: int, track_scale: float) -> EnemyData:
@@ -3785,7 +3528,7 @@ func _build_item_panel() -> void:
 	_item_button = Button.new()
 	_item_button.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_item_button.pressed.connect(_on_item_button_pressed_menu)
-	_style_minimal_action_button(_item_button, "ITEM", BOTTOM_BAR_BUTTON_SIZE, 18)
+	_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
 	protocol_row.add_child(_item_button)
 	_item_menu = PopupMenu.new()
 	_item_menu.name = "ItemMenu"
