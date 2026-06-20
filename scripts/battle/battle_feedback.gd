@@ -57,11 +57,17 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var actor_card: Control = null
 	if not action.is_empty():
 		actor_card = _find_card_by_state_id(str(action.get("side", "")), str(action.get("actor_id", "")))
-	if actor_card != null and actor_card.has_method("play_action_feedback"):
-		actor_card.call("play_action_feedback", action_kind)
+	if actor_card != null:
+		if actor_card.has_method("play_action_feedback"):
+			actor_card.call("play_action_feedback", action_kind)
+		# Tier 1: attacker leans toward the enemy rail and recoils — the wind-up tell.
+		# Heroes sit on the bottom rail (lunge up), enemies on top (lunge down).
+		if action_kind == "attack":
+			_lunge(actor_card, str(action.get("side", "")))
 
 	await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
 
+	var peak_damage: int = 0
 	for event_variant in effects:
 		var event: Dictionary = event_variant
 		var event_type: String = str(event.get("type", ""))
@@ -77,6 +83,13 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		_scene._card_view.refresh_card_for_event(event)
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
+		if event_type == "damage":
+			peak_damage = maxi(peak_damage, int(event.get("amount", 0)))
+
+	# Tier 1: ONE impact freeze for the whole beat, scaled by the biggest hit, so a
+	# blastAll volley lands as a single weighty pause rather than a stutter.
+	if peak_damage > 0:
+		await _hit_pause(peak_damage)
 
 	await get_tree().create_timer(_scene.ACTION_FEEDBACK_PAUSE).timeout
 
@@ -220,6 +233,50 @@ func _get_floating_color(event_type: String) -> Color:
 			return Color(1.0, 0.80, 0.20, 1.0)
 		_:
 			return Color(1, 1, 1, 1)
+
+
+# ── Tier 1 primitives ─────────────────────────────────────────────────────────
+
+# Brief impact freeze (the genre "hit pause"). Bigger hits hold a touch longer so
+# heavy damage reads with more weight. Engine.time_scale = 0 freezes the whole
+# scene; we restore via an ignore_time_scale timer so the scaled feedback timers
+# downstream keep ticking. Guard against re-entrancy so overlapping hits can't
+# strand time_scale at 0.
+const HIT_PAUSE_MIN := 0.04
+const HIT_PAUSE_MAX := 0.09
+var _hit_pause_active: bool = false
+
+func _hit_pause(amount: int) -> void:
+	if _hit_pause_active:
+		return
+	if not is_inside_tree() or get_tree() == null:
+		return
+	_hit_pause_active = true
+	var dur: float = clampf(HIT_PAUSE_MIN + float(amount) * 0.0018, HIT_PAUSE_MIN, HIT_PAUSE_MAX)
+	Engine.time_scale = 0.0
+	await get_tree().create_timer(dur, true, false, true).timeout
+	Engine.time_scale = 1.0
+	_hit_pause_active = false
+
+
+# Attacker step-in + recoil. Direction is decided by side (heroes on the bottom
+# rail lunge up toward the enemy rail; enemies lunge down). The card is a
+# container child, so we tween position transiently and return to base — the beat
+# is layout-quiet, so the container doesn't fight it. Fire-and-forget tween.
+const LUNGE_DIST := 26.0
+const LUNGE_OUT := 0.08
+const LUNGE_BACK := 0.16
+
+func _lunge(card: Control, side: String) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	var dir_y: float = -1.0 if side == "hero" else 1.0
+	var base: Vector2 = card.position
+	var tween: Tween = create_tween()
+	tween.tween_property(card, "position", base + Vector2(0.0, dir_y * LUNGE_DIST), LUNGE_OUT) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "position", base, LUNGE_BACK) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 # ── 2D dice widgets ───────────────────────────────────────────────────────────

@@ -1130,12 +1130,17 @@ func _log(message: String) -> void:
 
 
 func _emit_event(state: Dictionary, event_type: String, amount: int, side: String) -> void:
+	# hp_after captures the target's running HP at the moment this event fires, so
+	# feedback can step the HP bar per-hit instead of jumping to the fully-resolved
+	# total (combat resolves the whole round before feedback replays it).
 	_round_events.append({
 		"type": event_type,
 		"amount": amount,
 		"side": side,
 		"target_id": str(state["id"]),
 		"target_name": str(state["unit"].display_name),
+		"hp_after": int(state.get("current_hp", 0)),
+		"hp_max": int(state.get("max_hp", 1)),
 	})
 
 

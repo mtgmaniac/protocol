@@ -10,34 +10,36 @@ const CARD_SIZE := Vector2(260, 0)
 const PORTRAIT_HEIGHT_RATIO := 1.20
 const PORTRAIT_MIN_HEIGHT := 100.0
 const PORTRAIT_TOP_INSET_PX := 0.0
+const PORTRAIT_HP_GAP_PX := 10.0
 const NAME_ROW_HEIGHT := 80.0
-const HP_BAR_HEIGHT := 48.0
-const HP_FILL_HEIGHT := 40.0
-const STATUS_ROW_HEIGHT := 48.0
+const HP_BAR_HEIGHT := 86.0
+const HP_FILL_HEIGHT := 86.0
+const STATUS_ROW_HEIGHT := 72.0
 const ACTION_PANEL_HEIGHT := 88.0
 const PORTRAIT_ASPECT_FALLBACK := 2.0
 const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
 const HERO_PORTRAIT_WIDTH_SCALE := 0.90
 const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
-const ENEMY_PANEL := Color("#120808")
+const ENEMY_PANEL := Color("#231010")
 const HERO_LINE := UiTheme.BORDER_PLAYER
 const ENEMY_LINE := UiTheme.BORDER_ENEMY
 const SELECT_LINE := UiTheme.GOLD
 const TARGET_LINE := UiTheme.CYAN
 const HP_FILL := UiTheme.HP_GREEN
+const HP_CHIP := UiTheme.DMG_RED  # "doomed HP" forecast overlay — pending damage, drains per hit
 const HP_BACK := UiTheme.VOID
 const CARD_NAME_FONT_SIZE := 72
-const CARD_HP_FONT_SIZE := 48
+const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
-const STATUS_ICON_FONT_SIZE := 16
-const STATUS_VALUE_FONT_SIZE := 16
-const STATUS_NAME_FONT_SIZE := 16
-const STATUS_ICON_TEXTURE_SIZE := 10.0
-const STATUS_ICON_MIN_WIDTH := 10.0
-const STATUS_VALUE_MIN_WIDTH := 10.0
-const STATUS_NUMERIC_MIN_WIDTH := 24.0
-const STATUS_CHIP_HEIGHT := 12.0
+const STATUS_ICON_FONT_SIZE := 48
+const STATUS_VALUE_FONT_SIZE := 48
+const STATUS_NAME_FONT_SIZE := 48
+const STATUS_ICON_TEXTURE_SIZE := 48.0
+const STATUS_ICON_MIN_WIDTH := 48.0
+const STATUS_VALUE_MIN_WIDTH := 32.0
+const STATUS_NUMERIC_MIN_WIDTH := 96.0
+const STATUS_CHIP_HEIGHT := 56.0
 const ACTION_PIP_VALUE_FONT_SIZE := 48
 const STATUS_DESCRIPTIONS := {
 	"shield": "Absorbs {value} incoming damage.",
@@ -88,6 +90,7 @@ var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
 var current_hp: int = 45
 var max_hp: int = 45
+var forecast_hp: int = 45  # where HP settles this round (drives the pending-damage red zone)
 var action_text: String = "READY"
 var action_pips: Array = []
 var portrait: Texture2D = null
@@ -96,6 +99,7 @@ var selected: bool = false
 var targetable: bool = false
 var interaction_enabled: bool = true
 var dead: bool = false
+var target_locked: bool = false
 var show_action_pips: bool = true
 var unit_data: Resource = null
 var gear_detail_rows: Array = []
@@ -107,6 +111,9 @@ var _portrait_rect: TextureRect = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
+var _hp_chip: ColorRect = null
+var _hp_ratio_shown: float = -1.0
+var _hp_drain_tween: Tween = null
 var _action_panel: PanelContainer = null
 var _action_grid: HFlowContainer = null
 var _status_slot: Control = null
@@ -155,6 +162,7 @@ func configure(data: Dictionary) -> void:
 	unit_name = str(data.get("name", unit_name))
 	current_hp = int(data.get("current_hp", current_hp))
 	max_hp = int(data.get("max_hp", max_hp))
+	forecast_hp = int(data.get("forecast_hp", current_hp))
 	action_text = str(data.get("action", action_text))
 	action_pips = data.get("pips", action_pips)
 	portrait = data.get("portrait", portrait) as Texture2D
@@ -163,6 +171,7 @@ func configure(data: Dictionary) -> void:
 	targetable = bool(data.get("targetable", targetable))
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
+	target_locked = bool(data.get("target_locked", target_locked))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
 	unit_data = data.get("unit_data", unit_data) as Resource
 	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
@@ -281,6 +290,15 @@ func _build() -> void:
 	# Position and size are set manually by _update_portrait_rect_transform
 	_portrait_crop.add_child(_portrait_rect)
 
+	# Uniform thin gap between portrait and HP bar so the card panel color
+	# shows through as a subtle separator on every card.
+	var portrait_hp_spacer: Control = Control.new()
+	portrait_hp_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_hp_spacer.custom_minimum_size = Vector2(0, PORTRAIT_HP_GAP_PX)
+	portrait_hp_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	portrait_hp_spacer.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	root.add_child(portrait_hp_spacer)
+
 	_hp_back = Panel.new()
 	_hp_back.custom_minimum_size = Vector2(0, HP_BAR_HEIGHT)
 	_hp_back.clip_contents = true
@@ -300,8 +318,26 @@ func _build() -> void:
 	_hp_fill.offset_top = 0.0
 	_hp_fill.offset_right = 0.0
 	_hp_fill.offset_bottom = HP_FILL_HEIGHT
-	_hp_fill.z_index = 0
+	_hp_fill.z_index = 1
 	_hp_back.add_child(_hp_fill)
+
+	# "Doomed HP" overlay — drawn ON TOP of the green, spanning [final, displayed].
+	# Its left edge pins at the forecast final HP while the right edge chips down
+	# one hit at a time, so multi-attack damage reads as "here's where it ends up,
+	# now watch it get there."
+	_hp_chip = ColorRect.new()
+	_hp_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hp_chip.color = HP_CHIP
+	_hp_chip.anchor_left = 1.0
+	_hp_chip.anchor_top = 0.0
+	_hp_chip.anchor_right = 1.0
+	_hp_chip.anchor_bottom = 0.0
+	_hp_chip.offset_left = 0.0
+	_hp_chip.offset_top = 0.0
+	_hp_chip.offset_right = 0.0
+	_hp_chip.offset_bottom = HP_FILL_HEIGHT
+	_hp_chip.z_index = 2
+	_hp_back.add_child(_hp_chip)
 
 	_hp_label = Label.new()
 	_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -384,7 +420,7 @@ func _refresh() -> void:
 
 	var line_color: Color = _line_color()
 	var panel_bg: Color = UiTheme.PANEL if side == "hero" else ENEMY_PANEL
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 1, 0))
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 2, 0))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
@@ -397,17 +433,87 @@ func _refresh() -> void:
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
 
-	var hp_ratio: float = clampf(float(current_hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
-	_hp_fill.anchor_right = hp_ratio
-	_hp_fill.offset_right = 0
-	_hp_fill.color = HP_FILL
+	_set_hp_display(
+		clampf(float(current_hp) / float(maxi(max_hp, 1)), 0.0, 1.0),
+		clampf(float(forecast_hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
+	)
 
 	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color.WHITE
-	modulate = Color(0.55, 0.56, 0.62, 0.72) if dead else Color.WHITE
+	if dead:
+		modulate = Color(0.55, 0.56, 0.62, 0.72)
+	elif target_locked:
+		modulate = Color(0.8, 0.8, 0.8, 1.0)
+	else:
+		modulate = Color.WHITE
 	if show_action_pips:
 		_populate_action_pips()
 	_populate_statuses()
 	_layout_preview_overlays()
+
+
+# Animated HP bar. `displayed` is the HP shown right now (steps down one hit at a
+# time during feedback); `forecast` is where HP will finally settle this round.
+# Green fills [0, displayed]; the red overlay fills [forecast, displayed] = the
+# damage still pending, with its LEFT edge pinned at the final HP. Each hit chips
+# the right edge of both down to the new displayed value, so a multi-unit gang-up
+# reads as "this is where it ends up — now watch the green get chipped to it."
+# First paint / no-change snaps without animating (and never stomps an in-flight
+# animation, since a no-op refresh fires right after the feedback loop).
+func _set_hp_display(displayed: float, forecast: float) -> void:
+	if _hp_fill == null:
+		return
+	displayed = clampf(displayed, 0.0, 1.0)
+	forecast = clampf(forecast, 0.0, 1.0)
+	_hp_fill.color = HP_FILL
+	var old_displayed: float = _hp_ratio_shown
+	var animating: bool = _hp_drain_tween != null and _hp_drain_tween.is_valid()
+	if old_displayed < 0.0 or is_equal_approx(old_displayed, displayed):
+		if not animating:
+			_set_bar_right(_hp_fill, displayed)
+			_set_chip_span(forecast, displayed)
+		_hp_ratio_shown = displayed
+		return
+	if animating:
+		_hp_drain_tween.kill()
+	_hp_drain_tween = create_tween()
+	_hp_drain_tween.set_parallel(true)
+	if displayed < old_displayed:
+		# Damage: pin the red zone's left edge at the forecast and start its right
+		# edge at the previous displayed value, so the full pending slice flashes
+		# before the green + red right edges chip down together to the new value.
+		_hp_chip.anchor_left = minf(forecast, displayed)
+		_hp_chip.offset_left = 0.0
+		_hp_chip.anchor_right = old_displayed
+		_hp_chip.offset_right = 0.0
+		_hp_drain_tween.tween_property(_hp_chip, "anchor_right", displayed, 0.30) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_hp_drain_tween.tween_property(_hp_fill, "anchor_right", displayed, 0.30) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	else:
+		# Heal/grow: no pending-damage red — just grow the green up.
+		_set_chip_span(displayed, displayed)
+		_hp_drain_tween.tween_property(_hp_fill, "anchor_right", displayed, 0.26) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_hp_ratio_shown = displayed
+
+
+func _set_bar_right(bar: ColorRect, ratio: float) -> void:
+	if bar == null:
+		return
+	bar.anchor_right = ratio
+	bar.offset_right = 0.0
+
+
+# Red overlay spans [forecast, displayed]; collapses to nothing when no damage is
+# pending (forecast >= displayed).
+func _set_chip_span(forecast: float, displayed: float) -> void:
+	if _hp_chip == null:
+		return
+	var left: float = minf(forecast, displayed)
+	_hp_chip.anchor_left = left
+	_hp_chip.offset_left = 0.0
+	_hp_chip.anchor_right = displayed
+	_hp_chip.offset_right = 0.0
 
 
 func _update_portrait_size() -> void:

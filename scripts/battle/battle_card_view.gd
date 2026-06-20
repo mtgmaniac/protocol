@@ -18,8 +18,11 @@ func setup(scene: Control) -> void:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-func update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color, readout: Control = null) -> void:
+func update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color, readout: Control = null, hp_override: int = -1) -> void:
 	var unit: Resource = state["unit"]
+	# During feedback the combat state already holds the fully-resolved HP, so a
+	# per-event refresh passes hp_override to step the bar one hit at a time.
+	var shown_hp: int = hp_override if hp_override >= 0 else int(state["current_hp"])
 	var default_entry: Dictionary = unit.dice_ranges[0] if unit.dice_ranges.size() > 0 else {}
 	var chosen_entry: Dictionary = default_entry
 	var dice_text: String = "D20: --"
@@ -109,7 +112,8 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		compact_card.configure({
 			"side": "hero" if accent_color == _scene.HERO_ACCENT else "enemy",
 			"name": unit.battle_name(),
-			"current_hp": int(state["current_hp"]),
+			"current_hp": shown_hp,
+			"forecast_hp": int(state["current_hp"]),
 			"max_hp": int(state["max_hp"]),
 			"action": action_label,
 			"pips": card_pips,
@@ -173,7 +177,7 @@ func refresh_card_for_event(event: Dictionary) -> void:
 		if str(state.get("id", "")) != target_id:
 			continue
 		var readout: Control = view.get("readout", null) as Control
-		update_card_view(view["card"], state, rolls.get(target_id, null), accent, readout)
+		update_card_view(view["card"], state, rolls.get(target_id, null), accent, readout, int(event.get("hp_after", -1)))
 		return
 
 
