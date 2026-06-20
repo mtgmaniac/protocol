@@ -677,7 +677,7 @@
                 10
               ],
               "name": "Rapid Strike",
-              "eff": "5 dmg (all enemies)",
+              "eff": "5 dmg (all)",
               "dmg": 5,
               "dMin": 5,
               "dMax": 5,
@@ -701,7 +701,7 @@
                 15
               ],
               "name": "Blade Rush",
-              "eff": "8 dmg (all enemies), all -1 roll",
+              "eff": "8 dmg (all), all -1 roll",
               "dmg": 8,
               "dMin": 8,
               "dMax": 8,
@@ -751,7 +751,7 @@
                 20
               ],
               "name": "Decimator",
-              "eff": "18 dmg (all enemies), pierce",
+              "eff": "18 dmg (all), pierce",
               "dmg": 18,
               "dMin": 18,
               "dMax": 18,
@@ -1022,7 +1022,7 @@
                 12
               ],
               "name": "Cover Fire",
-              "eff": "4 dmg all enemies, ally 6 shield, 2t",
+              "eff": "4 dmg (all), ally 6 shield, 2t",
               "dmg": 4,
               "dMin": 4,
               "dMax": 4,
@@ -1075,7 +1075,7 @@
                 19
               ],
               "name": "Bastion Protocol",
-              "eff": "6 dmg, all allies 10 shield, 2t, -2 roll, 2t",
+              "eff": "6 dmg, all 10 shield, 2t, -2 roll, 2t",
               "dmg": 6,
               "dMin": 6,
               "dMax": 6,
@@ -1129,7 +1129,7 @@
                 5
               ],
               "name": "Taunt",
-              "eff": "taunt (enemies target you)",
+              "eff": "taunt (picked enemy targets you)",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -1255,7 +1255,7 @@
             6
           ],
           "name": "Glacial Lattice",
-          "eff": "freeze any one die 1 reveal (ally or enemy)",
+          "eff": "freeze (1 reveal skip)",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1272,7 +1272,7 @@
             12
           ],
           "name": "Glacial Shove",
-          "eff": "5 dmg, freeze target enemy die 1 reveal",
+          "eff": "5 dmg, freeze (1 reveal skip)",
           "dmg": 5,
           "dMin": 5,
           "dMax": 5,
@@ -1308,7 +1308,7 @@
             19
           ],
           "name": "Crevasse Mend",
-          "eff": "heal all 10",
+          "eff": "all 10 heal",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1349,7 +1349,7 @@
                 6
               ],
               "name": "Permafrost Weave",
-              "eff": "freeze any one die 1 reveal (ally or enemy)",
+              "eff": "freeze (1 reveal skip)",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -1373,7 +1373,7 @@
                 12
               ],
               "name": "Whiteout Salvo",
-              "eff": "4 dmg all enemies, all enemy dice freeze 1 reveal skip",
+              "eff": "4 dmg (all), freeze (1 reveal skip)",
               "dmg": 4,
               "dMin": 4,
               "dMax": 4,
@@ -1398,7 +1398,7 @@
                 16
               ],
               "name": "Bitter Front",
-              "eff": "all enemy dice freeze 2 reveal skips",
+              "eff": "freeze (2 reveal skips)",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -1422,7 +1422,7 @@
                 19
               ],
               "name": "Permafrost Aegis",
-              "eff": "6 dmg, all enemy dice freeze 1 reveal skip, all allies 8 shield, 2t, -2 roll, 2t",
+              "eff": "6 dmg, all 8 shield, 2t, -2 roll, 2t, freeze (1 reveal skip)",
               "dmg": 6,
               "dMin": 6,
               "dMax": 6,
@@ -1450,7 +1450,7 @@
                 20
               ],
               "name": "Absolute Zero",
-              "eff": "9 dmg, all enemy dice freeze 1 reveal skip, all 14 shield, 2t, -3 roll, 2t",
+              "eff": "9 dmg, all 14 shield, 2t, -3 roll, 2t, freeze (1 reveal skip)",
               "dmg": 9,
               "dMin": 9,
               "dMax": 9,
@@ -1478,7 +1478,7 @@
                 6
               ],
               "name": "Stabilize",
-              "eff": "8 heal",
+              "eff": "self 8 heal",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -1743,7 +1743,7 @@
                 15
               ],
               "name": "Trauma Protocol",
-              "eff": "8 dmg all enemies, 7 heal (ally)",
+              "eff": "8 dmg (all), 7 heal (ally)",
               "dmg": 8,
               "dMin": 8,
               "dMax": 8,
@@ -1768,7 +1768,7 @@
                 19
               ],
               "name": "Surge Heal",
-              "eff": "10 dmg all enemies, 10 heal all allies",
+              "eff": "10 dmg (all), all 10 heal",
               "dmg": 10,
               "dMin": 10,
               "dMax": 10,
@@ -1793,7 +1793,7 @@
                 20
               ],
               "name": "Mass Revival",
-              "eff": "13 dmg all enemies, 13 heal all allies",
+              "eff": "13 dmg (all), all 13 heal",
               "dmg": 13,
               "dMin": 13,
               "dMax": 13,
@@ -2001,7 +2001,7 @@
             19
           ],
           "name": "Missile Volley",
-          "eff": "9 dmg (all enemies)",
+          "eff": "9 dmg (all)",
           "dmg": 9,
           "dMin": 9,
           "dMax": 9,
@@ -2018,7 +2018,7 @@
             20
           ],
           "name": "Scorched Earth",
-          "eff": "12 dmg (all enemies)",
+          "eff": "12 dmg (all)",
           "dmg": 12,
           "dMin": 12,
           "dMax": 12,
@@ -2113,7 +2113,7 @@
                 19
               ],
               "name": "Cascade",
-              "eff": "11 dmg (all enemies)",
+              "eff": "11 dmg (all)",
               "dmg": 11,
               "dMin": 11,
               "dMax": 11,
@@ -2234,7 +2234,7 @@
                 19
               ],
               "name": "Ghost Volley",
-              "eff": "16 dmg (all enemies), pierce",
+              "eff": "16 dmg (all), pierce",
               "dmg": 16,
               "dMin": 16,
               "dMax": 16,
@@ -2259,7 +2259,7 @@
                 20
               ],
               "name": "Total Blackout",
-              "eff": "16 dmg (all enemies), all -4 roll, 2t",
+              "eff": "16 dmg (all), all -4 roll, 2t",
               "dmg": 16,
               "dMin": 16,
               "dMax": 16,
@@ -2702,7 +2702,7 @@
             20
           ],
           "name": "Total Bandkill",
-          "eff": "11 dmg (all enemies), all -3 roll, 2t",
+          "eff": "11 dmg (all), all -3 roll, 2t",
           "dmg": 11,
           "dMin": 11,
           "dMax": 11,
@@ -2828,7 +2828,7 @@
                 20
               ],
               "name": "White Noise Core",
-              "eff": "12 dmg (all enemies), all -4 roll, 2t",
+              "eff": "12 dmg (all), all -4 roll, 2t",
               "dmg": 12,
               "dMin": 12,
               "dMax": 12,

@@ -120,7 +120,7 @@
     "patrol": {
       "recharge": {
         "name": "Regroup",
-        "eff": "6 shield, 2t, +1 enemy roll, 2t",
+        "eff": "6 shield, 2t, +1 roll, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -133,7 +133,7 @@
       },
       "strike": {
         "name": "Assault",
-        "eff": "15 dmg, +1 enemy roll",
+        "eff": "15 dmg, +1 roll",
         "dmg": 15,
         "dot": 0,
         "dT": 0,
@@ -205,7 +205,7 @@
       },
       "surge": {
         "name": "Cover Field",
-        "eff": "11 dmg, ally 9 shield, 2t, all +1 enemy roll",
+        "eff": "11 dmg, ally 9 shield, 2t, +1 roll to allies",
         "dmg": 11,
         "dot": 0,
         "dT": 0,
@@ -277,7 +277,7 @@
       },
       "crit": {
         "name": "Punisher",
-        "eff": "24 dmg, +2 enemy roll, 2t",
+        "eff": "24 dmg, +2 roll, 2t",
         "dmg": 24,
         "dot": 0,
         "dT": 0,
@@ -331,7 +331,7 @@
       },
       "crit": {
         "name": "Conduction",
-        "eff": "13 dmg, 3 DoT, 2t, all +1 enemy roll, 2t",
+        "eff": "13 dmg, 3 DoT, 2t, +1 roll to allies, 2t",
         "dmg": 13,
         "dot": 3,
         "dT": 2,
@@ -534,7 +534,7 @@
     "stalker": {
       "recharge": {
         "name": "Chitin Regroup",
-        "eff": "6 shield, 2t, +1 enemy roll, 2t",
+        "eff": "6 shield, 2t, +1 roll, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -547,7 +547,7 @@
       },
       "strike": {
         "name": "Spine Lunge",
-        "eff": "14 dmg, lifesteal 45%, +1 enemy roll",
+        "eff": "14 dmg, lifesteal 45%, +1 roll",
         "dmg": 14,
         "dot": 0,
         "dT": 0,
@@ -621,7 +621,7 @@
       },
       "surge": {
         "name": "Living Bulwark",
-        "eff": "10 dmg, 2 DoT, 4t, ally 9 shield, 2t, all +1 enemy roll",
+        "eff": "10 dmg, 2 DoT, 4t, ally 9 shield, 2t, +1 roll to allies",
         "dmg": 10,
         "dot": 2,
         "dT": 4,
@@ -694,7 +694,7 @@
       },
       "crit": {
         "name": "Matriarch Crush",
-        "eff": "18 dmg, 4 DoT, 5t, +2 enemy roll, 2t",
+        "eff": "18 dmg, 4 DoT, 5t, +2 roll, 2t",
         "dmg": 18,
         "dot": 4,
         "dT": 5,
@@ -750,7 +750,7 @@
       },
       "crit": {
         "name": "Corrosive Hose",
-        "eff": "10 dmg, 4 DoT, 5t, +1 enemy roll, 2t",
+        "eff": "10 dmg, 4 DoT, 5t, +1 roll, 2t",
         "dmg": 10,
         "dot": 4,
         "dT": 5,
@@ -900,7 +900,7 @@
     "veilPrism": {
       "recharge": {
         "name": "Lattice Guard",
-        "eff": "—",
+        "eff": "taunt (all heroes must target this enemy)",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -954,7 +954,7 @@
     "veilAegis": {
       "recharge": {
         "name": "Lattice Link",
-        "eff": "6 shield, ally 6 shield, all +1 enemy roll, 2t",
+        "eff": "6 shield, ally 6 shield, +1 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -969,7 +969,7 @@
       },
       "strike": {
         "name": "Aegis Bash",
-        "eff": "12 dmg, ally 6 shield, all +1 enemy roll",
+        "eff": "12 dmg, ally 6 shield, +1 roll to allies",
         "dmg": 12,
         "dot": 0,
         "dT": 0,
@@ -984,7 +984,7 @@
       },
       "surge": {
         "name": "Bulwark Pulse",
-        "eff": "14 dmg, ally 8 shield, all +1 enemy roll, 2t",
+        "eff": "14 dmg, ally 8 shield, +1 roll to allies, 2t",
         "dmg": 14,
         "dot": 0,
         "dT": 0,
@@ -999,7 +999,7 @@
       },
       "crit": {
         "name": "Fortress Lash",
-        "eff": "18 dmg, ally 9 shield, all +2 enemy roll, 2t",
+        "eff": "18 dmg, ally 9 shield, +2 roll to allies, 2t",
         "dmg": 18,
         "dot": 0,
         "dT": 0,
@@ -1014,7 +1014,7 @@
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, ally 12 shield, all +2 enemy roll, 3t, summon ~42% nat20",
+        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20",
         "dmg": 20,
         "dot": 0,
         "dT": 0,
@@ -1033,7 +1033,7 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 heal, 7 shield, 2t, all +1 enemy roll, 2t",
+        "eff": "7 heal, 7 shield, 2t, +1 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1057,7 +1057,7 @@
       },
       "surge": {
         "name": "Pulse Burn",
-        "eff": "12 dmg, 3 DoT, 3t, all +1 enemy roll, 2t",
+        "eff": "12 dmg, 3 DoT, 3t, +1 roll to allies, 2t",
         "dmg": 12,
         "dot": 3,
         "dT": 3,
@@ -1070,7 +1070,7 @@
       },
       "crit": {
         "name": "Catastrophic Wave",
-        "eff": "22 dmg, all +2 enemy roll, 2t",
+        "eff": "22 dmg, +2 roll to allies, 2t",
         "dmg": 22,
         "dot": 0,
         "dT": 0,
@@ -1083,7 +1083,7 @@
       },
       "overload": {
         "name": "Veil Collapse",
-        "eff": "28 dmg, 6 heal, all +2 enemy roll, 3t, summon ~40% nat20",
+        "eff": "28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% nat20",
         "dmg": 28,
         "dot": 0,
         "dT": 0,
@@ -1100,7 +1100,7 @@
     "veilNull": {
       "recharge": {
         "name": "Void Stillness",
-        "eff": "5 shield, 2t, all +1 enemy roll, 2t",
+        "eff": "5 shield, 2t, +1 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1166,7 +1166,7 @@
     "veilStorm": {
       "recharge": {
         "name": "Capacitor Hum",
-        "eff": "all +1 enemy roll, 2t",
+        "eff": "+1 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1189,7 +1189,7 @@
       },
       "surge": {
         "name": "Storm Weave",
-        "eff": "12 dmg, 2 DoT, 2t, all +1 enemy roll, 2t",
+        "eff": "12 dmg, 2 DoT, 2t, +1 roll to allies, 2t",
         "dmg": 12,
         "dot": 2,
         "dT": 2,
@@ -1202,7 +1202,7 @@
       },
       "crit": {
         "name": "Psi Tempest",
-        "eff": "14 dmg, 3 DoT, 3t, all +1 enemy roll, 2t",
+        "eff": "14 dmg, 3 DoT, 3t, +1 roll to allies, 2t",
         "dmg": 14,
         "dot": 3,
         "dT": 3,
@@ -1215,7 +1215,7 @@
       },
       "overload": {
         "name": "Lattice Storm",
-        "eff": "16 dmg, 5 DoT, 4t, all +2 enemy roll, 3t, summon ~42% nat20",
+        "eff": "16 dmg, 5 DoT, 4t, +2 roll to allies, 3t, summon ~42% nat20",
         "dmg": 16,
         "dot": 5,
         "dT": 4,
@@ -1232,7 +1232,7 @@
     "veilSynapse": {
       "recharge": {
         "name": "Synaptic Tune",
-        "eff": "all +2 enemy roll, 2t",
+        "eff": "+2 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1257,7 +1257,7 @@
       },
       "surge": {
         "name": "Weave Shield",
-        "eff": "10 dmg, ally 7 shield, all +1 enemy roll, 2t",
+        "eff": "10 dmg, ally 7 shield, +1 roll to allies, 2t",
         "dmg": 10,
         "dot": 0,
         "dT": 0,
@@ -1272,7 +1272,7 @@
       },
       "crit": {
         "name": "Conduit Spike",
-        "eff": "15 dmg, ally 8 shield, all +1 enemy roll, 3t",
+        "eff": "15 dmg, ally 8 shield, +1 roll to allies, 3t",
         "dmg": 15,
         "dot": 0,
         "dT": 0,
@@ -1287,7 +1287,7 @@
       },
       "overload": {
         "name": "Broodlink Surge",
-        "eff": "17 dmg, 8 heal, all +2 enemy roll, 3t, summon ~40% nat20",
+        "eff": "17 dmg, 8 heal, +2 roll to allies, 3t, summon ~40% nat20",
         "dmg": 17,
         "dot": 0,
         "dT": 0,
@@ -1304,7 +1304,7 @@
     "veilBoss": {
       "recharge": {
         "name": "Overseer Mantle",
-        "eff": "22 shield, 2t, ally 8 shield, 2t, all +2 enemy roll, 2t",
+        "eff": "22 shield, 2t, ally 8 shield, 2t, +2 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1332,7 +1332,7 @@
       },
       "surge": {
         "name": "Judgment Arc",
-        "eff": "22 dmg (P2 28), 2 DoT, 2t, all +1 enemy roll, 2t",
+        "eff": "22 dmg (P2 28), 2 DoT, 2t, +1 roll to allies, 2t",
         "dmg": 22,
         "dmgP2": 28,
         "dot": 2,
@@ -1346,7 +1346,7 @@
       },
       "crit": {
         "name": "Absolute Vector",
-        "eff": "26 dmg (P2 32), -3 roll, 2t, all +1 enemy roll, 2t",
+        "eff": "26 dmg (P2 32), -3 roll, 2t, +1 roll to allies, 2t",
         "dmg": 26,
         "dmgP2": 32,
         "dot": 0,
@@ -1362,7 +1362,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "30 dmg (P2 38), wipe shields, all +2 enemy roll, 3t, summon ~30% nat20",
+        "eff": "30 dmg (P2 38), wipe shields, +2 roll to allies, 3t, summon ~30% nat20",
         "dmg": 30,
         "dmgP2": 38,
         "dot": 0,
@@ -1503,7 +1503,7 @@
     "voidScribe": {
       "recharge": {
         "name": "Annotate Fate",
-        "eff": "all +1 enemy roll, 2t",
+        "eff": "+1 roll to allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1528,7 +1528,7 @@
       },
       "surge": {
         "name": "Codex Weave",
-        "eff": "10 dmg, ally 7 shield, all +1 enemy roll, 2t",
+        "eff": "10 dmg, ally 7 shield, +1 roll to allies, 2t",
         "dmg": 10,
         "dot": 0,
         "dT": 0,
@@ -1543,7 +1543,7 @@
       },
       "crit": {
         "name": "Prophecy Spike",
-        "eff": "15 dmg, all +2 enemy roll, 2t",
+        "eff": "15 dmg, +2 roll to allies, 2t",
         "dmg": 15,
         "dot": 0,
         "dT": 0,
@@ -1556,7 +1556,7 @@
       },
       "overload": {
         "name": "Summon Verse",
-        "eff": "16 dmg, all +2 enemy roll, 3t, summon ~45% nat20",
+        "eff": "16 dmg, +2 roll to allies, 3t, summon ~45% nat20",
         "dmg": 16,
         "dot": 0,
         "dT": 0,
@@ -1699,7 +1699,7 @@
     "voidChanneler": {
       "recharge": {
         "name": "Channel Focus",
-        "eff": "+2 enemy roll, 2t",
+        "eff": "+2 roll, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1756,7 +1756,7 @@
     "voidCircletBoss": {
       "recharge": {
         "name": "Hierophant Mantle",
-        "eff": "20 shield, 2t, ally 8 shield, 2t, all +2 enemy roll, 2t, counter C 52%",
+        "eff": "20 shield, 2t, ally 8 shield, 2t, +2 roll to allies, 2t, counter C 52%",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1786,7 +1786,7 @@
       },
       "surge": {
         "name": "Circlet Cataclysm",
-        "eff": "22 dmg (P2 28), 2 DoT, 2t, all +1 enemy roll, 2t, counter C 40%",
+        "eff": "22 dmg (P2 28), 2 DoT, 2t, +1 roll to allies, 2t, counter C 40%",
         "dmg": 22,
         "dmgP2": 28,
         "dot": 2,
@@ -1815,7 +1815,7 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "30 dmg (P2 38), wipe shields, all +2 enemy roll, 3t, summon ~32% nat20",
+        "eff": "30 dmg (P2 38), wipe shields, +2 roll to allies, 3t, summon ~32% nat20",
         "dmg": 30,
         "dmgP2": 38,
         "dot": 0,
@@ -2041,7 +2041,7 @@
       },
       "crit": {
         "name": "Bonebreaker Line",
-        "eff": "17 dmg, +1 enemy roll, 2t",
+        "eff": "17 dmg, +1 roll, 2t",
         "dmg": 17,
         "dot": 0,
         "dT": 0,
