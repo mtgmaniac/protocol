@@ -325,6 +325,7 @@ func _on_choose_path_pressed(path_name: String) -> void:
 	if not GameState.apply_pending_evolution(path_name):
 		footer_label.text = "That evolution could not be applied."
 		return
+	AudioManager.play_sfx("evolve")
 	var unit: UnitData = DataManager.get_unit(pending_unit_id) as UnitData
 	var unit_name: String = pending_unit_id
 	if unit != null:

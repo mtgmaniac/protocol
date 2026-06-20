@@ -89,6 +89,7 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		_scene._card_view.refresh_card_for_event(event)
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
+		_play_event_sfx(event_type, event)
 		if event_type == "damage":
 			var amount: int = int(event.get("amount", 0))
 			peak_damage = maxi(peak_damage, amount)
@@ -118,6 +119,21 @@ func _get_action_feedback_kind(effects: Array) -> String:
 		if event_type == "shield" or event_type == "heal" or event_type == "cloak" or event_type == "roll_buff" or event_type == "freeze":
 			return "support"
 	return "neutral"
+
+
+# Maps a combat event to its SFX. Damage that drops a unit to 0 also fires the
+# death sound. AudioManager debounces identical keys, so a multi-target ability
+# resolves as one sound, not one per target.
+func _play_event_sfx(event_type: String, event: Dictionary) -> void:
+	match event_type:
+		"damage":
+			AudioManager.play_sfx("damage")
+			if int(event.get("hp_after", 1)) <= 0:
+				AudioManager.play_sfx("death")
+		"heal":
+			AudioManager.play_sfx("heal")
+		"shield":
+			AudioManager.play_sfx("shield")
 
 
 func _get_impact_feedback_kind(event_type: String) -> String:
@@ -296,6 +312,7 @@ func _hit_pause(amount: int, extra: float = 0.0) -> void:
 # board-wide shake, framing the payoff beat. Flat, no glow — just a flash. Fires
 # on any effective-20 ability, natural or nudged into the overload zone.
 func _celebrate_overload() -> void:
+	AudioManager.play_sfx("overload")
 	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):
 		var wash: ColorRect = ColorRect.new()
 		wash.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -451,6 +451,7 @@ func _on_roll_button_pressed() -> void:
 	if battle_over:
 		_on_open_reward_button_pressed()
 		return
+	AudioManager.play_sfx("select")
 	if turn_phase == PHASE_AWAIT_ROLL:
 		_begin_targeting_phase()
 		return
@@ -2805,6 +2806,7 @@ func _restore_phase_after_item() -> void:
 func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	if item == null:
 		return
+	AudioManager.play_sfx("item")
 	var cost: int = _get_item_protocol_cost(item)
 	protocol_points = maxi(protocol_points - cost, 0)
 

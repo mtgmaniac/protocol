@@ -1,0 +1,73 @@
+extends Node
+## Global SFX player. play_sfx(key) with pitch/volume randomization and voice
+## limiting (a small round-robin pool caps simultaneous voices). Routed through a
+## dedicated SFX bus (created at runtime) so volume/mute can hang off it later.
+##
+## Clips live at res://assets/audio/sfx/<key>.wav. New sound = drop a file + add
+## the key to SFX_KEYS + name it on the event hook. shield.wav is the reversed
+## shield sound (pre-reversed at asset prep time).
+
+const SFX_DIR := "res://assets/audio/sfx/"
+const SFX_KEYS := ["damage", "death", "evolve", "heal", "item", "overload", "select", "shield"]
+const POOL_SIZE := 12            # max simultaneous voices
+const PITCH_VARIATION := 0.07    # ±7% pitch so repeats never feel machine-gun
+const VOLUME_VARIATION_DB := 1.5 # ±1.5 dB
+const DEBOUNCE_MS := 40          # collapse identical key within a frame (multi-target abilities → one sound)
+
+var _streams: Dictionary = {}
+var _pool: Array[AudioStreamPlayer] = []
+var _next: int = 0
+var _recent: Dictionary = {}
+
+
+func _ready() -> void:
+	_ensure_sfx_bus()
+	for key in SFX_KEYS:
+		var path: String = SFX_DIR + key + ".wav"
+		var stream: AudioStream = load(path) as AudioStream
+		if stream != null:
+			_streams[key] = stream
+		else:
+			push_warning("[AudioManager] missing sfx clip: " + path)
+	for _i in range(POOL_SIZE):
+		var player := AudioStreamPlayer.new()
+		player.bus = "SFX"
+		add_child(player)
+		_pool.append(player)
+
+
+func _ensure_sfx_bus() -> void:
+	if AudioServer.get_bus_index("SFX") != -1:
+		return
+	AudioServer.add_bus()
+	var idx: int = AudioServer.bus_count - 1
+	AudioServer.set_bus_name(idx, "SFX")
+	AudioServer.set_bus_send(idx, "Master")
+
+
+func play_sfx(key: String, volume_db: float = 0.0) -> void:
+	var stream: AudioStream = _streams.get(key, null)
+	if stream == null:
+		return
+	var now: int = Time.get_ticks_msec()
+	if int(_recent.get(key, -10000)) + DEBOUNCE_MS > now:
+		return
+	_recent[key] = now
+	var player: AudioStreamPlayer = _pool[_next]
+	_next = (_next + 1) % _pool.size()
+	player.stream = stream
+	player.pitch_scale = 1.0 + randf_range(-PITCH_VARIATION, PITCH_VARIATION)
+	player.volume_db = volume_db + randf_range(-VOLUME_VARIATION_DB, VOLUME_VARIATION_DB)
+	player.play()
+
+
+func set_sfx_volume_db(db: float) -> void:
+	var idx: int = AudioServer.get_bus_index("SFX")
+	if idx != -1:
+		AudioServer.set_bus_volume_db(idx, db)
+
+
+func set_sfx_muted(muted: bool) -> void:
+	var idx: int = AudioServer.get_bus_index("SFX")
+	if idx != -1:
+		AudioServer.set_bus_mute(idx, muted)
