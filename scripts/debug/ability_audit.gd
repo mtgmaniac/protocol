@@ -414,6 +414,9 @@ func _run_regression_audits() -> void:
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
+	_run_gear_lifesteal_regression()
+	_run_gear_shield_pierce_regression()
+	_run_relic_ally_death_heal_regression()
 
 
 func _run_enemy_shield_ally_regression() -> void:
@@ -710,6 +713,81 @@ func _run_summon_slot_regression() -> void:
 		_record_pass("Regression / summon blocked at living cap", "summon")
 	else:
 		_record_failure("Regression / summon blocked at living cap", "summon", "blocked with 3 living", "inject succeeded")
+
+
+func _run_gear_lifesteal_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 20})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	manager.setup_gear({"audit_hero": ["blood_siphon"]})
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["current_hp"] = 20
+	enemy["max_hp"] = 20
+	hero["selected_target_id"] = str(enemy["id"])
+	var hero_hp_before: int = int(hero["current_hp"])
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
+	var expected_heal: int = 5
+	var ok: bool = int(hero["current_hp"]) == hero_hp_before + expected_heal and bool(enemy["dead"])
+	if ok:
+		_record_pass("Regression / gear lifesteal", "lifesteal")
+	else:
+		_record_failure(
+			"Regression / gear lifesteal",
+			"lifesteal",
+			"20 damage kill heals 25%% (5 HP)",
+			"hero_hp=%d enemy_dead=%s" % [int(hero["current_hp"]), str(enemy["dead"])]
+		)
+
+
+func _run_gear_shield_pierce_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	manager.setup_gear({"audit_hero": ["breach_tip"]})
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["shield_stacks"] = [{"amt": 8, "turns_left": 2, "skip_next_tick": false}]
+	enemy["shield"] = 8
+	hero["selected_target_id"] = str(enemy["id"])
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
+	var ok: bool = int(enemy["current_hp"]) == 98 and int(enemy["shield"]) == 0
+	if ok:
+		_record_pass("Regression / gear shieldPierce", "shieldPierce")
+	else:
+		_record_failure(
+			"Regression / gear shieldPierce",
+			"shieldPierce",
+			"10 dmg pierces 5 of 8 shield and deals 2 HP",
+			"enemy_hp=%d shield=%d" % [int(enemy["current_hp"]), int(enemy["shield"])]
+		)
+
+
+func _run_relic_ally_death_heal_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_a: UnitData = _make_unit("audit_hero_a", "Audit Hero A", "Noop", {})
+	var hero_b: UnitData = _make_unit("audit_hero_b", "Audit Hero B", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Strike", {"dmg": 100})
+	manager.setup_battle([hero_a, hero_b], [enemy_unit])
+	manager.setup_relics(["martyrdomProtocol"])
+	var victim: Dictionary = manager.get_hero_states()[0]
+	var survivor: Dictionary = manager.get_hero_states()[1]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["selected_target_id"] = str(victim["id"])
+	var survivor_hp_before: int = int(survivor["current_hp"])
+	manager.resolve_round({}, {"audit_enemy#1": AUDIT_ROLL}, DiceManager.new(), {"audit_enemy#1": AUDIT_ROLL})
+	var ok: bool = bool(victim["dead"]) and int(survivor["current_hp"]) == survivor_hp_before + 5
+	if ok:
+		_record_pass("Regression / relic allyDeathHealAll", "allyDeathHealAll")
+	else:
+		_record_failure(
+			"Regression / relic allyDeathHealAll",
+			"allyDeathHealAll",
+			"survivor heals 5 when ally dies",
+			"victim_dead=%s survivor_hp=%d" % [str(victim["dead"]), int(survivor["current_hp"])]
+		)
 
 
 func _run_text_alignment_audits() -> void:

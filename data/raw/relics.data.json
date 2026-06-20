@@ -89,5 +89,61 @@
     "desc": "When an enemy dies, all other living enemies take 4 damage.",
     "icon": "bolt",
     "effect": { "type": "chainReaction", "amount": 4 }
+  },
+  {
+    "id": "martyrdomProtocol",
+    "name": "Martyrdom Protocol",
+    "desc": "When an ally falls, all other allies heal 5 HP.",
+    "icon": "heart",
+    "effect": { "type": "allyDeathHealAll", "amount": 5 }
+  },
+  {
+    "id": "overloadLoop",
+    "name": "Overload Loop",
+    "desc": "Natural 20s resolve their effects twice.",
+    "icon": "die",
+    "effect": { "type": "critResolveTwice" }
+  },
+  {
+    "id": "curatedCache",
+    "name": "Curated Cache",
+    "desc": "Rewards never include common items.",
+    "icon": "star",
+    "effect": { "type": "rewardsNoCommon" }
+  },
+  {
+    "id": "overflowBuffer",
+    "name": "Overflow Buffer",
+    "desc": "Carry 50% unspent Protocol into the next battle.",
+    "icon": "die",
+    "effect": { "type": "protocolCarryover", "amount": 50 }
+  },
+  {
+    "id": "fieldCache",
+    "name": "Field Cache",
+    "desc": "Start each battle with 1 random consumable.",
+    "icon": "heart",
+    "effect": { "type": "battleStartConsumable", "amount": 1 }
+  },
+  {
+    "id": "mercyProtocol",
+    "name": "Mercy Protocol",
+    "desc": "Revives restore full HP instead of the usual penalty.",
+    "icon": "heart",
+    "effect": { "type": "reviveNoPenalty" }
+  },
+  {
+    "id": "emergencySignal",
+    "name": "Emergency Signal",
+    "desc": "First time an ally drops below 50% HP, squad gains +2 roll.",
+    "icon": "die",
+    "effect": { "type": "lowHpSquadRollBuff", "amount": 2 }
+  },
+  {
+    "id": "aegisField",
+    "name": "Aegis Field",
+    "desc": "Any heal grants all allies 3 shield.",
+    "icon": "shield",
+    "effect": { "type": "healGrantsShieldAll", "amount": 3 }
   }
 ]

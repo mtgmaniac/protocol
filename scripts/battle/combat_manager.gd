@@ -9,11 +9,15 @@ var _round_events: Array = []
 
 var _active_relic_effects: Array = []  # Array of effect Dictionaries from DataManager
 var _chain_reaction_active: bool = false
+var _pending_protocol_grants: int = 0
+var _low_hp_squad_buff_used: bool = false
 
 
 func setup_battle(hero_units: Array, enemy_units: Array) -> void:
 	_hero_states.clear()
 	_enemy_states.clear()
+	_pending_protocol_grants = 0
+	_low_hp_squad_buff_used = false
 
 	for hero in hero_units:
 		_hero_states.append(_create_runtime_state(hero))
@@ -54,6 +58,10 @@ func _get_relic_value(effect_type: String, key: String, default_val) -> Variant:
 	return default_val
 
 
+func get_relic_value(effect_type: String, key: String, default_val) -> Variant:
+	return _get_relic_value(effect_type, key, default_val)
+
+
 # --- Gear setup ---
 
 func setup_gear(gear_by_unit: Dictionary) -> void:
@@ -87,6 +95,19 @@ func _apply_gear_passive(hero_state: Dictionary, effect: Dictionary) -> void:
 			hero_state["gear_heal_on_kill"] = int(hero_state.get("gear_heal_on_kill", 0)) + int(effect.get("amount", 0))
 		"protocolOnBattleStart":
 			hero_state["gear_protocol_on_start"] = int(hero_state.get("gear_protocol_on_start", 0)) + int(effect.get("amount", 0))
+		"lifesteal":
+			hero_state["gear_lifesteal_pct"] = int(hero_state.get("gear_lifesteal_pct", 0)) + int(effect.get("amount", 0))
+		"firstAbilityEcho":
+			hero_state["gear_first_ability_echo"] = true
+			hero_state["gear_first_ability_echo_used"] = false
+		"shieldPierce":
+			hero_state["gear_shield_pierce"] = int(hero_state.get("gear_shield_pierce", 0)) + int(effect.get("amount", 0))
+		"healShieldBonus":
+			hero_state["gear_heal_shield_bonus"] = int(hero_state.get("gear_heal_shield_bonus", 0)) + int(effect.get("amount", 0))
+		"protocolOnKill":
+			hero_state["gear_protocol_on_kill"] = int(hero_state.get("gear_protocol_on_kill", 0)) + int(effect.get("amount", 0))
+		"protocolOnKillAny":
+			hero_state["gear_protocol_on_kill_any"] = int(hero_state.get("gear_protocol_on_kill_any", 0)) + int(effect.get("amount", 0))
 
 
 # --- Battle-start relic effects ---
@@ -222,7 +243,19 @@ func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
 	return clampi(raw_roll + buff - rfe, 1, 20)
 
 
-func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager: DiceManager, raw_enemy_rolls: Dictionary = {}) -> Dictionary:
+func take_pending_protocol_grants() -> int:
+	var granted: int = _pending_protocol_grants
+	_pending_protocol_grants = 0
+	return granted
+
+
+func resolve_round(
+	hero_rolls: Dictionary,
+	enemy_rolls: Dictionary,
+	dice_manager: DiceManager,
+	raw_enemy_rolls: Dictionary = {},
+	raw_hero_rolls: Dictionary = {}
+) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
 	for hero_state in _hero_states:
@@ -238,6 +271,10 @@ func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager
 		_log("%s uses %s." % [hero_state["unit"].display_name, str(ability_entry.get("ability_name", "Unknown"))])
 		_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")), str(ability_entry.get("zone", "")))
 		_apply_hero_ability(hero_state, ability_entry)
+		var raw_roll: int = int(raw_hero_rolls.get(hero_state["id"], roll_value))
+		if has_relic("critResolveTwice") and raw_roll == 20:
+			_log("Natural 20 echoes for %s!" % hero_state["unit"].display_name)
+			_apply_hero_ability(hero_state, ability_entry)
 
 	# Check phase 2 transitions after hero abilities land (boss may cross threshold mid-round)
 	_check_phase_two_transitions()
@@ -329,6 +366,13 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"gear_first_dmg_fired": false,
 		"gear_heal_on_kill": 0,
 		"gear_protocol_on_start": 0,
+		"gear_lifesteal_pct": 0,
+		"gear_first_ability_echo": false,
+		"gear_first_ability_echo_used": false,
+		"gear_shield_pierce": 0,
+		"gear_heal_shield_bonus": 0,
+		"gear_protocol_on_kill": 0,
+		"gear_protocol_on_kill_any": 0,
 		"in_phase_two": false,
 	}
 
@@ -393,31 +437,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var ignores_shield: bool = bool(raw.get("ignSh", false))
 
 	if damage > 0:
-		# First-ability damage bonus from gear
-		var first_bonus: int = 0
-		if not bool(hero_state.get("gear_first_dmg_fired", false)) and int(hero_state.get("gear_first_dmg_bonus", 0)) > 0:
-			first_bonus = int(hero_state["gear_first_dmg_bonus"])
-			hero_state["gear_first_dmg_fired"] = true
-		var final_dmg: int = int(ceil(float(damage + first_bonus) * _get_hero_dmg_mult()))
-
-		if hits_all:
-			for enemy_state in _enemy_states:
-				_damage_state(enemy_state, final_dmg, ignores_shield)
-		else:
-			var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-			if target_enemy.is_empty():
-				target_enemy = _first_living_state(_enemy_states)
-			if not target_enemy.is_empty():
-				var counter: int = int(target_enemy.get("counter_pct", 0))
-				if counter > 0 and randi_range(1, 100) <= counter:
-					_log("%s COUNTERS %s's attack! Damage reflected!" % [target_enemy["unit"].display_name, hero_state["unit"].display_name])
-					_emit_event(hero_state, "damage", final_dmg, "hero")
-					_damage_state(hero_state, final_dmg)
-					target_enemy["counter_pct"] = 0
-				else:
-					target_enemy["counter_pct"] = 0
-					_damage_state(target_enemy, final_dmg, ignores_shield)
-					_apply_poison(target_enemy, poison_amount, poison_turns)
+		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, poison_amount, poison_turns)
 
 	if shield > 0:
 		if shield_all:
@@ -436,15 +456,15 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if heal > 0:
 		if heal_all:
 			for ally_state in _hero_states:
-				_heal_state(ally_state, heal)
+				_heal_state(ally_state, heal, hero_state)
 		elif heal_lowest or heal_targeted:
 			var heal_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
 			if heal_target.is_empty():
 				heal_target = _lowest_hp_state(_hero_states)
 			if not heal_target.is_empty():
-				_heal_state(heal_target, heal)
+				_heal_state(heal_target, heal, hero_state)
 		else:
-			_heal_state(hero_state, heal)
+			_heal_state(hero_state, heal, hero_state)
 
 	if roll_buff_amount > 0:
 		if roll_buff_targeted:
@@ -526,6 +546,47 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				freeze_target = _first_living_state(_enemy_states)
 			if not freeze_target.is_empty():
 				_freeze_die_state(freeze_target, freeze_amount)
+
+	if damage > 0 and bool(hero_state.get("gear_first_ability_echo", false)) and not bool(hero_state.get("gear_first_ability_echo_used", false)):
+		hero_state["gear_first_ability_echo_used"] = true
+		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, 0, 0)
+
+
+func _apply_hero_ability_damage(
+	hero_state: Dictionary,
+	ability_entry: Dictionary,
+	damage: int,
+	hits_all: bool,
+	ignores_shield: bool,
+	poison_amount: int,
+	poison_turns: int
+) -> void:
+	var first_bonus: int = 0
+	if not bool(hero_state.get("gear_first_dmg_fired", false)) and int(hero_state.get("gear_first_dmg_bonus", 0)) > 0:
+		first_bonus = int(hero_state["gear_first_dmg_bonus"])
+		hero_state["gear_first_dmg_fired"] = true
+	var final_dmg: int = int(ceil(float(damage + first_bonus) * _get_hero_dmg_mult()))
+	var shield_pierce: int = int(hero_state.get("gear_shield_pierce", 0))
+
+	if hits_all:
+		for enemy_state in _enemy_states:
+			_damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
+	else:
+		var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		if target_enemy.is_empty():
+			target_enemy = _first_living_state(_enemy_states)
+		if not target_enemy.is_empty():
+			var counter: int = int(target_enemy.get("counter_pct", 0))
+			if counter > 0 and randi_range(1, 100) <= counter:
+				_log("%s COUNTERS %s's attack! Damage reflected!" % [target_enemy["unit"].display_name, hero_state["unit"].display_name])
+				_emit_event(hero_state, "damage", final_dmg, "hero")
+				_damage_state(hero_state, final_dmg, false, {}, 0)
+				target_enemy["counter_pct"] = 0
+			else:
+				target_enemy["counter_pct"] = 0
+				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
+				if poison_amount > 0 and poison_turns > 0:
+					_apply_poison(target_enemy, poison_amount, poison_turns)
 
 
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
@@ -694,9 +755,17 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
 
 
-func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) -> void:
+func _damage_state(
+	state: Dictionary,
+	amount: int,
+	ignore_shield: bool = false,
+	attacker_state: Dictionary = {},
+	shield_pierce: int = 0
+) -> void:
 	if state.is_empty() or state["dead"] or amount <= 0:
 		return
+
+	var hp_before: int = int(state["current_hp"])
 
 	# Cloak: 80% dodge chance — all-or-nothing, consumed on any attempt
 	if bool(state.get("cloaked", false)):
@@ -718,30 +787,34 @@ func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) 
 				return
 
 	var remaining_damage: int = amount
+	var pierce_budget: int = shield_pierce
 
 	var total_absorbed: int = 0
-	if not ignore_shield:
-		# Absorb damage from shield stacks in FIFO order
+	if ignore_shield:
+		if int(state.get("shield", 0)) > 0:
+			_log("%s's shield is pierced." % state["unit"].display_name)
+	elif int(state.get("shield", 0)) > 0 or not state.get("shield_stacks", []).is_empty():
 		var stacks: Array = state.get("shield_stacks", [])
 		var i: int = 0
 		while i < stacks.size() and remaining_damage > 0:
 			var stack: Dictionary = stacks[i]
 			var available: int = int(stack["amt"])
+			if pierce_budget > 0:
+				var pierced: int = mini(available, pierce_budget)
+				pierce_budget -= pierced
+				available -= pierced
 			var absorbed: int = mini(available, remaining_damage)
 			stack["amt"] = available - absorbed
 			remaining_damage -= absorbed
 			total_absorbed += absorbed
 			i += 1
 
-		# Remove depleted stacks
 		var surviving_stacks: Array = []
 		for stack in stacks:
 			if int(stack["amt"]) > 0:
 				surviving_stacks.append(stack)
 		state["shield_stacks"] = surviving_stacks
 		state["shield"] = _get_total_shield(state)
-	elif int(state.get("shield", 0)) > 0:
-		_log("%s's shield is pierced." % state["unit"].display_name)
 
 	if total_absorbed > 0:
 		_log("%s absorbs %d damage with shields." % [state["unit"].display_name, total_absorbed])
@@ -753,6 +826,19 @@ func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) 
 	state["current_hp"] = maxi(0, int(state["current_hp"]) - remaining_damage)
 	_log("%s takes %d damage." % [state["unit"].display_name, remaining_damage])
 	_emit_event(state, "damage", remaining_damage, _resolve_side_for_state(state))
+
+	if remaining_damage > 0 and not attacker_state.is_empty() and _is_hero_state(attacker_state):
+		var lifesteal_pct: int = int(attacker_state.get("gear_lifesteal_pct", 0))
+		if lifesteal_pct > 0:
+			var heal_amount: int = int(floor(float(remaining_damage) * float(lifesteal_pct) / 100.0))
+			if heal_amount > 0:
+				_heal_state(attacker_state, heal_amount, attacker_state)
+				_log("%s lifesteals %d HP." % [attacker_state["unit"].display_name, heal_amount])
+
+	if _is_hero_state(state) and not _low_hp_squad_buff_used:
+		var max_hp: int = int(state["max_hp"])
+		if hp_before > max_hp / 2 and int(state["current_hp"]) <= max_hp / 2:
+			_trigger_low_hp_squad_roll_buff()
 
 	if int(state["current_hp"]) <= 0:
 		# Gear: surviveOnce check
@@ -767,7 +853,28 @@ func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) 
 			_clear_active_statuses_for_down_state(state)
 			_cancel_targets_involving_down_state(state)
 			_log("%s is down." % state["unit"].display_name)
-			_on_unit_killed(state)
+			_on_unit_killed(state, attacker_state)
+
+
+func _trigger_low_hp_squad_roll_buff() -> void:
+	if _low_hp_squad_buff_used or not has_relic("lowHpSquadRollBuff"):
+		return
+	_low_hp_squad_buff_used = true
+	var buff_amount: int = int(_get_relic_value("lowHpSquadRollBuff", "amount", 0))
+	if buff_amount <= 0:
+		return
+	for hero_state in _hero_states:
+		if not hero_state["dead"]:
+			_add_roll_buff(hero_state, buff_amount, 1)
+	_log("Emergency signal: squad gains +%d roll this turn." % buff_amount)
+
+
+func _is_basic_enemy(enemy_state: Dictionary) -> bool:
+	var unit: EnemyData = enemy_state.get("unit") as EnemyData
+	if unit == null:
+		return true
+	var enemy_type: String = str(unit.enemy_type).to_lower()
+	return enemy_type != "boss" and not enemy_type.ends_with("boss")
 
 
 func _freeze_die_state(state: Dictionary, freeze_amount: int) -> void:
@@ -804,10 +911,18 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	_emit_event(state, "heal", int(state["current_hp"]), _resolve_side_for_state(state))
 
 
-func _on_unit_killed(dead_state: Dictionary) -> void:
+func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> void:
 	if _chain_reaction_active:
 		return
 	_chain_reaction_active = true
+
+	if has_relic("allyDeathHealAll") and _is_hero_state(dead_state):
+		var heal_amount: int = int(_get_relic_value("allyDeathHealAll", "amount", 0))
+		if heal_amount > 0:
+			for hero_state in _hero_states:
+				if hero_state != dead_state and not hero_state["dead"]:
+					_heal_state(hero_state, heal_amount, {})
+			_log("Martyrdom Protocol heals the squad for %d." % heal_amount)
 
 	# Chain Reaction relic: other living enemies take damage when an enemy dies
 	if has_relic("chainReaction") and not _is_hero_state(dead_state):
@@ -823,8 +938,18 @@ func _on_unit_killed(dead_state: Dictionary) -> void:
 			if not hero_state["dead"]:
 				var heal_on_kill: int = int(hero_state.get("gear_heal_on_kill", 0))
 				if heal_on_kill > 0:
-					_heal_state(hero_state, heal_on_kill)
+					_heal_state(hero_state, heal_on_kill, hero_state)
 					_log("%s Scavenger Rig heals %d on kill." % [hero_state["unit"].display_name, heal_on_kill])
+
+		if not killer_state.is_empty() and _is_hero_state(killer_state):
+			var protocol_basic: int = int(killer_state.get("gear_protocol_on_kill", 0))
+			var protocol_any: int = int(killer_state.get("gear_protocol_on_kill_any", 0))
+			if protocol_basic > 0 and _is_basic_enemy(dead_state):
+				_pending_protocol_grants += protocol_basic
+				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_basic])
+			if protocol_any > 0:
+				_pending_protocol_grants += protocol_any
+				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_any])
 
 	_chain_reaction_active = false
 
@@ -870,7 +995,7 @@ func _is_hero_state(state: Dictionary) -> bool:
 	return false
 
 
-func _heal_state(state: Dictionary, amount: int) -> void:
+func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) -> void:
 	if state.is_empty() or state["dead"] or amount <= 0:
 		return
 	var before_hp: int = int(state["current_hp"])
@@ -879,6 +1004,18 @@ func _heal_state(state: Dictionary, amount: int) -> void:
 	if healed_amount > 0:
 		_log("%s heals %d HP." % [state["unit"].display_name, healed_amount])
 		_emit_event(state, "heal", healed_amount, _resolve_side_for_state(state))
+		if not healer_state.is_empty() and _is_hero_state(healer_state) and state != healer_state:
+			var shield_bonus: int = int(healer_state.get("gear_heal_shield_bonus", 0))
+			if shield_bonus > 0:
+				_add_shield_stack(state, shield_bonus, 1)
+				_log("%s grants %d shield from the heal." % [healer_state["unit"].display_name, shield_bonus])
+		if has_relic("healGrantsShieldAll"):
+			var squad_shield: int = int(_get_relic_value("healGrantsShieldAll", "amount", 0))
+			if squad_shield > 0:
+				for ally_state in _hero_states:
+					if not ally_state["dead"]:
+						_add_shield_stack(ally_state, squad_shield, 1)
+				_log("Aegis Field grants %d shield to all allies." % squad_shield)
 
 
 func _apply_poison(state: Dictionary, amount: int, turns: int) -> void:

@@ -17,6 +17,7 @@ var unit_xp: Dictionary = {}
 var unit_levels: Dictionary = {}
 var unit_evolutions: Dictionary = {}
 var pending_evolution_unit_id: String = ""
+var carried_protocol: int = 0
 
 const XP_PER_BATTLE := 50
 const XP_TO_EVOLVE := 100
@@ -47,6 +48,7 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	unit_levels.clear()
 	unit_evolutions.clear()
 	pending_evolution_unit_id = ""
+	carried_protocol = 0
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
@@ -56,6 +58,44 @@ func enforce_squad_limit() -> void:
 	if selected_units.size() <= SQUAD_UNIT_LIMIT:
 		return
 	selected_units = selected_units.slice(0, SQUAD_UNIT_LIMIT)
+
+
+func has_relic_effect(effect_type: String) -> bool:
+	for relic_id in relics:
+		var item: ItemData = DataManager.get_item(str(relic_id)) as ItemData
+		if item == null or item.effect == null:
+			continue
+		if str(item.effect.get("type", "")) == effect_type:
+			return true
+	return false
+
+
+func save_protocol_carryover(unspent_protocol: int, carry_pct: int) -> void:
+	if carry_pct <= 0 or unspent_protocol <= 0:
+		carried_protocol = 0
+		return
+	carried_protocol = int(floor(float(unspent_protocol) * float(carry_pct) / 100.0))
+
+
+func take_carried_protocol() -> int:
+	var amount: int = carried_protocol
+	carried_protocol = 0
+	return amount
+
+
+func grant_battle_start_consumables(count: int) -> void:
+	var granted: int = maxi(count, 0)
+	for _i in range(granted):
+		var item_id: String = _pick_random_item_id("consumable", consumables)
+		if item_id == "":
+			break
+		consumables.append(item_id)
+
+
+func get_revive_hp_pct(default_pct: int) -> int:
+	if has_relic_effect("reviveNoPenalty"):
+		return 100
+	return default_pct
 
 
 func advance_to_next_battle() -> void:
@@ -77,6 +117,7 @@ func reset_run() -> void:
 	unit_levels.clear()
 	unit_evolutions.clear()
 	pending_evolution_unit_id = ""
+	carried_protocol = 0
 
 
 func prepare_battle_rewards() -> void:
@@ -294,6 +335,8 @@ func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
 		if item.item_type != item_type:
 			continue
 		if excluded_ids.has(item.id):
+			continue
+		if has_relic_effect("rewardsNoCommon") and str(item.rarity) == "common":
 			continue
 		pool.append(item.id)
 

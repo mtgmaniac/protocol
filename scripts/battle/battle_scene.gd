@@ -187,6 +187,10 @@ func _ready() -> void:
 	combat_manager.setup_battle(hero_units, enemy_units)
 	combat_manager.setup_relics(_game_state().relics)
 	combat_manager.setup_gear(_game_state().gear_by_unit)
+	protocol_points = _game_state().take_carried_protocol()
+	if combat_manager.has_relic("battleStartConsumable"):
+		var consumable_count: int = int(combat_manager.get_relic_value("battleStartConsumable", "amount", 1))
+		_game_state().grant_battle_start_consumables(consumable_count)
 	var battle_index: int = maxi(_game_state().current_battle - 1, 0)
 	combat_manager.apply_battle_start_relic_effects(battle_index)
 	combat_manager.apply_battle_start_gear_effects()
@@ -787,7 +791,14 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	var eff_enemy_rolls: Dictionary = _build_effective_rolls(enemy_rolls, combat_manager.get_enemy_states(), false)
 
 	var raw_enemy_rolls: Dictionary = enemy_rolls.duplicate()
-	var result: Dictionary = combat_manager.resolve_round(eff_hero_rolls, eff_enemy_rolls, dice_manager, raw_enemy_rolls)
+	var raw_hero_rolls: Dictionary = hero_rolls.duplicate()
+	var result: Dictionary = combat_manager.resolve_round(
+		eff_hero_rolls,
+		eff_enemy_rolls,
+		dice_manager,
+		raw_enemy_rolls,
+		raw_hero_rolls
+	)
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
@@ -801,6 +812,11 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	_clear_target_assignments()
 	roll_button.disabled = true
 	_append_round_log(result.get("log", []))
+	var protocol_grant: int = combat_manager.take_pending_protocol_grants()
+	if protocol_grant > 0:
+		protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
+		_update_protocol_bar()
+		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
 	if skip_feedback:
 		for event_variant in result.get("events", []):
 			var event: Dictionary = event_variant
@@ -819,6 +835,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	if outcome == "victory":
 		battle_over = true
 		roll_button.disabled = true
+		_persist_protocol_carryover()
 		if _auto_battle_running:
 			_debug_advance_after_auto_battle_victory()
 		elif _game_state().is_final_battle():
@@ -871,9 +888,17 @@ func _are_all_combatants_down(states: Array) -> bool:
 	return true
 
 
+func _persist_protocol_carryover() -> void:
+	if not combat_manager.has_relic("protocolCarryover"):
+		return
+	var carry_pct: int = int(combat_manager.get_relic_value("protocolCarryover", "amount", 50))
+	_game_state().save_protocol_carryover(protocol_points, carry_pct)
+
+
 func _finish_battle_victory() -> void:
 	battle_over = true
 	_disable_combat_actions()
+	_persist_protocol_carryover()
 	if _auto_battle_running:
 		_debug_advance_after_auto_battle_victory()
 	elif _game_state().is_final_battle():
@@ -2952,7 +2977,7 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			combat_manager.apply_item_roll_buff(target_state, amount, turns)
 			_append_log("Item: %s gives %s +%d roll for %d turns." % [item.display_name, tname, amount, turns])
 		"revive":
-			var pct: int = int(effect.get("pct", 50))
+			var pct: int = _game_state().get_revive_hp_pct(int(effect.get("pct", 50)))
 			combat_manager.apply_item_revive(target_state, pct)
 			_append_log("Item: %s revives %s at %d%% HP." % [item.display_name, tname, pct])
 		"cloak":
