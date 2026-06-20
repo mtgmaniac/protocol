@@ -222,7 +222,7 @@ func stabilize_board_layout() -> void:
 		refresh_board_layout()
 		layout_dice_from_combat_zone()
 		await get_tree().process_frame
-	_scene._refresh_all_cards()
+	_scene._card_view.refresh_all_cards()
 
 
 func ensure_combat_zone_frame() -> void:
