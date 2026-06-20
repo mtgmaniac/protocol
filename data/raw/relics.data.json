@@ -72,9 +72,9 @@
   {
     "id": "protocolOverride",
     "name": "Protocol Override",
-    "desc": "All items cost 0 Protocol for the remainder of the run.",
+    "desc": "Items cost 0 Protocol and grant +1 Protocol when used.",
     "icon": "die",
-    "effect": { "type": "protocolFree" }
+    "effect": { "type": "protocolOnItemUse" }
   },
   {
     "id": "entropyLeak",

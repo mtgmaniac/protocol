@@ -2630,8 +2630,9 @@ func _build_scaled_enemy(base_enemy: EnemyData, battle_index: int, track_scale: 
 
 func _get_item_protocol_cost(_item: ItemData) -> int:
 	# Flat cost 1 for all rarities (replaces the old common0/unc1/rare2/leg3 scale).
-	# protocolFree relic branch handled in the Protocol Override redesign.
-	if combat_manager.has_relic("protocolFree"):
+	# Protocol Override (protocolOnItemUse) makes items free; it also grants +1 on
+	# use — see _apply_item_effect for the grant.
+	if combat_manager.has_relic("protocolOnItemUse"):
 		return 0
 	return 1
 
@@ -2898,6 +2899,10 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	AudioManager.play_sfx("item")
 	var cost: int = _get_item_protocol_cost(item)
 	protocol_points = maxi(protocol_points - cost, 0)
+	# Protocol Override: using an item refunds +1 Protocol (net +1, since cost is 0).
+	if combat_manager.has_relic("protocolOnItemUse"):
+		protocol_points = mini(protocol_points + 1, MAX_PROTOCOL)
+		_append_log("Protocol Override: +1 Protocol → %d" % protocol_points)
 
 	var effect: Dictionary = item.effect
 	var effect_type: String = str(effect.get("type", ""))

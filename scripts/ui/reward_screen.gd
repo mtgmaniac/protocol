@@ -489,8 +489,8 @@ func _build_effect_parts_from_effect(effect: Dictionary, target_kind: String = "
 			return [_part("dot", "+%d DOT" % int(effect.get("bonus", 0)))]
 		"auraEnemyDmg":
 			return [_part("dmg", "%d TURN" % int(effect.get("amount", 0)))]
-		"protocolFree":
-			return [_part("protocol", "0 COST", 0, "⚡")]
+		"protocolOnItemUse":
+			return [_part("protocol", "FREE +1", 0, "⚡")]
 		"enemyHpEscalation":
 			return [_part("dot", "-%d MAX" % int(effect.get("reductionPerBattle", 0)))]
 		"chainReaction":
