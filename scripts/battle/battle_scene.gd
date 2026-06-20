@@ -40,6 +40,8 @@ const PHASE_TARGETING := "targeting"
 const PHASE_READY_TO_END := "ready_to_end"
 const PHASE_REROLL_PICK := "reroll_pick"
 const PHASE_NUDGE_PICK := "nudge_pick"
+const PHASE_SET_PICK := "set_pick"
+const SET_DIE_COST := 3
 const PHASE_ITEM_PICK_ALLY := "item_pick_ally"
 const PHASE_ITEM_PICK_DEAD := "item_pick_dead"
 const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
@@ -117,9 +119,13 @@ var pending_manual_target_ids: Array = []
 var has_player_target_assignment: bool = false
 var battle_over: bool = false
 var hero_roll_nudges: Dictionary = {}
+var hero_roll_sets: Dictionary = {}  # hero_id -> absolute effective roll set via the Set action
 var _battle_consumables: Array = []
 var _item_button: Button = null
 var _nudge_button: Button = null
+var _set_button: Button = null
+var _set_value_menu: PopupMenu = null
+var _pending_set_hero_id: String = ""
 var _item_menu: PopupMenu = null
 var _item_menu_items: Array = []
 var _relic_slot: Control = null
@@ -205,6 +211,7 @@ func _ready() -> void:
 	_set_hud_tooltip(protocol_spend_button, "Reroll\nSpend 2 Protocol to reroll a hero's die.")
 	protocol_spend_button.pressed.connect(_on_reroll_button_pressed)
 	_add_nudge_button()
+	_add_set_button()
 	_build_item_panel()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
 	board.move_child(enemy_panel, 0)
@@ -238,7 +245,7 @@ func _on_toggle_log_button_pressed() -> void:
 func _on_auto_turn_button_pressed() -> void:
 	if _auto_turn_running or _auto_battle_running or battle_over:
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
@@ -261,7 +268,7 @@ func _on_auto_battle_button_pressed() -> void:
 	if battle_over:
 		_on_open_reward_button_pressed()
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the battle.")
 		return
 
@@ -466,6 +473,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
+	hero_roll_sets.clear()
 	_clear_die_tooltip_overlays()
 	_card_view.hide_all_ability_readouts()
 	active_targeting_hero_id = ""
@@ -780,6 +788,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
+	hero_roll_sets.clear()
 	_clear_die_tooltip_overlays()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
@@ -884,6 +893,7 @@ func _disable_combat_actions() -> void:
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
+	hero_roll_sets.clear()
 	_clear_die_tooltip_overlays()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
@@ -1036,8 +1046,9 @@ func _apply_reroll(hero_id: String) -> void:
 	protocol_points -= 2
 	var new_roll: int = dice_manager.roll_d20()
 	hero_rolls[hero_id] = new_roll
-	# Clear nudge for this hero since their roll is fresh
+	# Clear nudge/set for this hero since their roll is fresh
 	hero_roll_nudges.erase(hero_id)
+	hero_roll_sets.erase(hero_id)
 	_update_protocol_bar()
 	_append_log("Reroll: %s draws %d." % [hero_id, new_roll])
 	if dice_tray_3d != null:
@@ -1052,6 +1063,74 @@ func _apply_nudge(hero_id: String) -> void:
 	hero_roll_nudges[hero_id] = int(hero_roll_nudges.get(hero_id, 0)) + 3
 	_update_protocol_bar()
 	_append_log("Nudge: %s +3 to effective roll." % hero_id)
+	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
+	if dice_tray_3d != null and not hero_state.is_empty():
+		dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
+	_re_assign_hero_target(hero_id)
+	_refresh_dice_result_actions()
+	_finish_roll_modifier_pick()
+
+
+func _on_set_button_pressed() -> void:
+	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
+		if hero_rolls.is_empty():
+			_refresh_summary("Roll dice before using Set.")
+		return
+	if protocol_points < SET_DIE_COST:
+		_refresh_summary("Need %d Protocol to Set." % SET_DIE_COST)
+		return
+	_set_turn_phase(PHASE_SET_PICK)
+
+
+func _add_set_button() -> void:
+	var btn: Button = Button.new()
+	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
+	_set_hud_tooltip(btn, "Set\nSpend %d Protocol to set a hero's die to any value." % SET_DIE_COST)
+	btn.pressed.connect(_on_set_button_pressed)
+	_style_minimal_action_button(btn, "=", BOTTOM_BAR_BUTTON_SIZE, 56)
+	_set_button = btn
+	protocol_spend_button.get_parent().add_child(btn)
+	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
+
+
+# Set-pick: the player tapped a hero die; pop a 1-20 value menu for it.
+func _begin_set_value_pick(hero_id: String) -> void:
+	_pending_set_hero_id = hero_id
+	_ensure_set_value_menu()
+	_set_value_menu.reset_size()
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var menu_size: Vector2 = _set_value_menu.size
+	var pos: Vector2 = get_viewport().get_mouse_position()
+	pos.x = clampf(pos.x, 8.0, maxf(8.0, vp.x - menu_size.x - 8.0))
+	pos.y = clampf(pos.y, 8.0, maxf(8.0, vp.y - menu_size.y - 8.0))
+	_set_value_menu.position = Vector2i(pos)
+	_set_value_menu.popup()
+
+
+func _ensure_set_value_menu() -> void:
+	if _set_value_menu != null and is_instance_valid(_set_value_menu):
+		return
+	_set_value_menu = PopupMenu.new()
+	for value in range(1, 21):
+		_set_value_menu.add_item(str(value), value)  # id == the value
+	_set_value_menu.id_pressed.connect(_on_set_value_picked)
+	add_child(_set_value_menu)
+
+
+func _on_set_value_picked(value: int) -> void:
+	if _pending_set_hero_id == "":
+		return
+	var hero_id: String = _pending_set_hero_id
+	_pending_set_hero_id = ""
+	_apply_set(hero_id, clampi(value, 1, 20))
+
+
+func _apply_set(hero_id: String, value: int) -> void:
+	protocol_points -= SET_DIE_COST
+	hero_roll_sets[hero_id] = value
+	hero_roll_nudges.erase(hero_id)  # an explicit set overrides any prior nudge
+	_update_protocol_bar()
+	_append_log("Set: %s die set to %d." % [hero_id, value])
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
 	if dice_tray_3d != null and not hero_state.is_empty():
 		dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
@@ -1099,6 +1178,9 @@ func _get_effective_roll_for_state(state: Dictionary, unit_id: String) -> int:
 	var raw_roll: int = int(hero_rolls.get(unit_id, hero_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
+	# Set action forces an absolute effective roll, overriding freeze/nudge/buffs.
+	if hero_roll_sets.has(unit_id) or hero_roll_sets.has(str(unit_id)):
+		return clampi(int(hero_roll_sets.get(unit_id, hero_roll_sets.get(str(unit_id), raw_roll))), 1, 20)
 	if bool(state.get("die_freeze_consumed_this_round", false)):
 		return clampi(raw_roll, 1, 20)
 	var nudge: int = int(hero_roll_nudges.get(unit_id, hero_roll_nudges.get(str(unit_id), 0)))
@@ -1157,7 +1239,10 @@ func _ensure_protocol_footer_display() -> void:
 	protocol_bar.visible = true
 	protocol_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	protocol_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y
+	# Scaled down to make footer room for the third protocol action (Set) button.
+	# Width/height scale together so the art aspect holds and the lights stay aligned.
+	# (Provisional — the upcoming UI refactor will redo the footer layout properly.)
+	var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y * 0.74
 	var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
 	protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
 	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
@@ -1306,6 +1391,11 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.disabled = true
 			roll_button.text = ""
 			_refresh_summary("")
+		PHASE_SET_PICK:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("Tap a hero die to set its value.")
 		PHASE_ITEM_PICK_ALLY:
 			roll_button.visible = false
 			roll_button.disabled = true
@@ -1813,7 +1903,7 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return false
 
 	# Reroll/Nudge pick phases: only living hero cards that have rolled
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK:
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
 
 	# Item pick phases
@@ -1894,6 +1984,12 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		if nudge_state.is_empty() or bool(nudge_state["dead"]) or not _has_roll_for_state(hero_rolls, nudge_state):
 			return
 		_apply_nudge(target_id)
+		return
+	if turn_phase == PHASE_SET_PICK:
+		var set_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
+		if set_state.is_empty() or bool(set_state["dead"]) or not _has_roll_for_state(hero_rolls, set_state):
+			return
+		_begin_set_value_pick(target_id)
 		return
 
 	if turn_phase == PHASE_ITEM_PICK_ALLY or turn_phase == PHASE_ITEM_PICK_DEAD:

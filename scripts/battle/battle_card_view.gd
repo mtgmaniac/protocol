@@ -191,7 +191,7 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 	# item-applied HP/shield).
 	match _scene.turn_phase:
 		_scene.PHASE_TARGETING, _scene.PHASE_READY_TO_END, \
-		_scene.PHASE_REROLL_PICK, _scene.PHASE_NUDGE_PICK, \
+		_scene.PHASE_REROLL_PICK, _scene.PHASE_NUDGE_PICK, _scene.PHASE_SET_PICK, \
 		_scene.PHASE_ITEM_PICK_ALLY, _scene.PHASE_ITEM_PICK_DEAD, _scene.PHASE_ITEM_PICK_ENEMY:
 			pass
 		_:
