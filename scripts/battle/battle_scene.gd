@@ -1464,7 +1464,9 @@ func _style_frame_icon_action_button(
 	if button == null or not is_instance_valid(button):
 		return
 	button.custom_minimum_size = min_size
-	PixelUI.style_frame_icon_button(button, PixelUI.FRAME_SIMPLE, icon_path, -1, frame_modulate, icon_modulate)
+	# expand_icon=true so the 32px pixel-art glyphs scale up to fill the button
+	# (NEAREST filter keeps them crisp) instead of sitting tiny at native size.
+	PixelUI.style_frame_icon_button(button, PixelUI.FRAME_SIMPLE, icon_path, -1, frame_modulate, icon_modulate, -1, true)
 
 
 func _style_prompt_button(button: Button, label: String, min_size: Vector2, font_size: int, border: Color = PixelUI.LINE_DIM) -> void:
