@@ -1,10 +1,14 @@
 # CLAUDE.md
 
+> **Agents: read these files as your current source of truth before doing anything else:**
+> `docs/AI_AGENT_GAME_REFERENCE.md`, `docs/BATTLE_UI_V2_SPEC.md`, `offline-bundle/GROUND_TRUTH.md`, `offline-bundle/CODEBASE_MAP.md`.
+> When any doc below conflicts with GROUND_TRUTH.md, GROUND_TRUTH.md wins.
+
 This file is the practical AI-assistant context for the current Overload
 Protocol Godot project. It is intentionally grounded in the live repo, not the
 original migration fantasy.
 
-Last refreshed on 2026-05-08.
+Last refreshed on 2026-06-19.
 
 ## What the Project Is Right Now
 

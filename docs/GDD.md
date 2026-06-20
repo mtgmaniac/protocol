@@ -1,15 +1,15 @@
 # Overload Protocol — Game Design Document
-**Version:** 0.1 (Pre-Production)
-**Platform:** Mobile First (iOS/Android), potential PC
-**Engine:** Godot 4
+**Version:** 0.2 (Active Development)
+**Platform:** Mobile First (Android), portrait 1080×2400
+**Engine:** Godot 4.6
 **Developer:** Solo (Kev)
-**Status:** Migrating from Angular prototype → Godot
+**Status:** Battle loop running; ongoing combat/UI/content work
 
 ---
 
 ## 1. Vision Statement
 
-Overload Protocol is a dark sci-fi tactical dice roguelike where you command a squad of four specialists against increasingly dangerous alien threats. Every run is a 15–30 minute puzzle of dice manipulation, squad synergy, and risk management. Inspired by the pure mechanical tension of Slice & Dice, the run structure of Slay the Spire, and the dark unit identity of Starcraft.
+Overload Protocol is a dark sci-fi tactical dice roguelike where you command a squad of three specialists against increasingly dangerous alien threats. Every run is a 15–30 minute puzzle of dice manipulation, squad synergy, and risk management. Inspired by the pure mechanical tension of Slice & Dice, the run structure of Slay the Spire, and the dark unit identity of Starcraft.
 
 **Core feeling:** Tense, satisfying, and skilful. The player should feel like they earned every win and understand every loss.
 
@@ -20,7 +20,7 @@ Overload Protocol is a dark sci-fi tactical dice roguelike where you command a s
 | Pillar | What it means |
 |---|---|
 | **Tactical tension** | Every dice roll matters. Every decision has consequences. |
-| **Squad identity** | Your 4 units feel distinct and synergize in meaningful ways. |
+| **Squad identity** | Your 3 units feel distinct and synergize in meaningful ways. |
 | **Run variety** | Who you pick, what you fight, and what items you find create different runs. |
 | **Readable chaos** | Dice are random but manipulable. The player always has agency. |
 
@@ -40,7 +40,7 @@ Overload Protocol is a dark sci-fi tactical dice roguelike where you command a s
 
 ### The Run
 ```
-Select 4 Heroes (from 8)
+Select 3 Heroes (from 8)
         ↓
 Select Operation (1 of 5)
         ↓
@@ -75,7 +75,7 @@ Battle ends when one side is fully eliminated
 
 ## 5. Units
 
-### Roster (8 Total, Player Picks 4)
+### Roster (8 Total, Player Picks 3)
 
 | Unit | Role | Playstyle |
 |---|---|---|
@@ -83,7 +83,7 @@ Battle ends when one side is fully eliminated
 | **Strike Unit** | DPS | High single-target damage, pierce |
 | **Spite Guard** | Tank/Counter | Shields, counterattack, punishment |
 | **Avalanche Suit** | AoE DPS | Heavy area attacks, rampage |
-| **Systems Medic** | Healer | Team heals, resurrection support |
+| **Splice Medic** | Healer | Team heals, resurrection support |
 | **Field Engineer** | Utility/Buffer | Gear synergies, team buffs |
 | **Ghost Operative** | Stealth/Burst | Cloak, high-risk high-reward burst |
 | **Signal Breaker** | Debuffer | Poison, disruption, counterspell |
@@ -236,7 +236,7 @@ Operation details to be designed per faction.
 
 ## 11. UI / UX Design Goals
 
-- **Mobile first:** All interactions thumb-friendly. Large touch targets. Landscape (horizontal) orientation.
+- **Mobile first:** All interactions thumb-friendly. Large touch targets. Portrait (vertical) orientation, 1080×2400 internal, 450×1000 preview.
 - **At-a-glance clarity:** Player should always know exactly what every die result will do.
 - **Minimal menus:** Fewer screens, more battlefield.
 - **Tactile feedback:** Dice roll animations, damage numbers floating, satisfying hit feedback.
@@ -248,7 +248,6 @@ Operation details to be designed per faction.
 
 - Player-level persistent XP and unlock system
 - Overworld / node map between battles
-- Full 5 operations (start with 1–2)
 - Multiplayer
 - Story / narrative content
 - Full audio implementation
@@ -258,7 +257,7 @@ Operation details to be designed per faction.
 ## 13. Demo Success Criteria
 
 A successful demo means:
-- 1–2 fully playable operations (10 battles each)
+- All 5 operations fully playable (10 battles each)
 - All 8 units selectable with distinct mechanics
 - Dice system fully functional with Protocol Bar
 - Gear, consumable, and Relic reward loop working

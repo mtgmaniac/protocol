@@ -1,5 +1,7 @@
 # Phase 0 Status
 
+> ⛔ **OBSOLETE — do not use for orientation.** This file describes setup work that is long complete. Read `offline-bundle/GROUND_TRUTH.md` instead.
+
 This file is now historical context only.
 
 Overload Protocol is well beyond Phase 0. The project has moved from initial
