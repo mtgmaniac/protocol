@@ -84,7 +84,10 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
 		if event_type == "damage":
-			peak_damage = maxi(peak_damage, int(event.get("amount", 0)))
+			var amount: int = int(event.get("amount", 0))
+			peak_damage = maxi(peak_damage, amount)
+			# Tier 2: struck unit recoils — jitter scales with the hit.
+			_shake(target_card, clampf(2.0 + float(amount) * 0.16, 2.0, 11.0), 0.22)
 
 	# Tier 1: ONE impact freeze for the whole beat, scaled by the biggest hit, so a
 	# blastAll volley lands as a single weighty pause rather than a stutter.
@@ -298,6 +301,25 @@ func _lunge(card: Control, side: String) -> void:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card, "position", base, LUNGE_BACK) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# Decaying positional jitter — a struck unit's recoil. Steps to shrinking random
+# offsets and lands back on base. Transient (the beat is layout-quiet), so the
+# container doesn't fight the tween.
+const SHAKE_STEPS := 7
+
+func _shake(node: Control, amplitude: float, duration: float) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var base: Vector2 = node.position
+	var step_time: float = duration / float(SHAKE_STEPS + 1)
+	var tween: Tween = create_tween()
+	for i in range(SHAKE_STEPS):
+		var decay: float = 1.0 - float(i) / float(SHAKE_STEPS)
+		var off := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * amplitude * decay
+		tween.tween_property(node, "position", base + off, step_time) \
+			.set_trans(Tween.TRANS_SINE)
+	tween.tween_property(node, "position", base, step_time).set_trans(Tween.TRANS_SINE)
 
 
 # ── 2D dice widgets ───────────────────────────────────────────────────────────
