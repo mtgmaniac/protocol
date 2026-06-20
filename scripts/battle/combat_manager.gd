@@ -236,7 +236,7 @@ func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager
 			continue
 		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], int(roll_value))
 		_log("%s uses %s." % [hero_state["unit"].display_name, str(ability_entry.get("ability_name", "Unknown"))])
-		_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")))
+		_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")), str(ability_entry.get("zone", "")))
 		_apply_hero_ability(hero_state, ability_entry)
 
 	# Check phase 2 transitions after hero abilities land (boss may cross threshold mid-round)
@@ -259,7 +259,7 @@ func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager
 			continue
 		var enemy_ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(enemy_roll_value))
 		_log("%s uses %s." % [enemy_state["unit"].display_name, str(enemy_ability_entry.get("ability_name", "Unknown"))])
-		_emit_action_event(enemy_state, "enemy", str(enemy_ability_entry.get("ability_name", "Unknown")))
+		_emit_action_event(enemy_state, "enemy", str(enemy_ability_entry.get("ability_name", "Unknown")), str(enemy_ability_entry.get("zone", "")))
 		_apply_enemy_ability(enemy_state, enemy_ability_entry)
 
 	_tick_end_of_round_states()
@@ -1144,7 +1144,7 @@ func _emit_event(state: Dictionary, event_type: String, amount: int, side: Strin
 	})
 
 
-func _emit_action_event(state: Dictionary, side: String, ability_name: String) -> void:
+func _emit_action_event(state: Dictionary, side: String, ability_name: String, zone: String = "") -> void:
 	_round_events.append({
 		"type": "action_start",
 		"amount": 0,
@@ -1152,6 +1152,9 @@ func _emit_action_event(state: Dictionary, side: String, ability_name: String) -
 		"actor_id": str(state["id"]),
 		"actor_name": str(state["unit"].display_name),
 		"ability": ability_name,
+		"zone": zone,  # "overload" drives the signature celebration. NOTE: zone comes
+		# from the EFFECTIVE roll, so a die nudged/buffed up to 20 counts as overload
+		# and celebrates the same as a natural 20 (intended).
 	})
 
 

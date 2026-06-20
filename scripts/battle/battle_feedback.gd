@@ -54,6 +54,7 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var action: Dictionary = group.get("action", {}) as Dictionary
 	var effects: Array = group.get("effects", []) as Array
 	var action_kind: String = _get_action_feedback_kind(effects)
+	var is_overload: bool = str(action.get("zone", "")) == "overload"
 	var actor_card: Control = null
 	if not action.is_empty():
 		actor_card = _find_card_by_state_id(str(action.get("side", "")), str(action.get("actor_id", "")))
@@ -64,6 +65,11 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		# Heroes sit on the bottom rail (lunge up), enemies on top (lunge down).
 		if action_kind == "attack":
 			_lunge(actor_card, str(action.get("side", "")))
+	# Tier 2: the overload signature — gold screen wash + screen shake framing the
+	# whole beat, with a longer impact freeze below. Fires on any EFFECTIVE 20
+	# (rolled natural OR nudged/buffed into the overload zone) — intentional.
+	if is_overload:
+		_celebrate_overload()
 
 	await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
 
@@ -90,8 +96,11 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 			_shake(target_card, clampf(2.0 + float(amount) * 0.16, 2.0, 11.0), 0.22)
 
 	# Tier 1: ONE impact freeze for the whole beat, scaled by the biggest hit, so a
-	# blastAll volley lands as a single weighty pause rather than a stutter.
-	if peak_damage > 0:
+	# blastAll volley lands as a single weighty pause rather than a stutter. Overload
+	# beats hold longer (and freeze even when the ability deals no damage).
+	if is_overload:
+		await _hit_pause(peak_damage, 0.06)
+	elif peak_damage > 0:
 		await _hit_pause(peak_damage)
 
 	await get_tree().create_timer(_scene.ACTION_FEEDBACK_PAUSE).timeout
@@ -270,17 +279,37 @@ const HIT_PAUSE_MIN := 0.04
 const HIT_PAUSE_MAX := 0.09
 var _hit_pause_active: bool = false
 
-func _hit_pause(amount: int) -> void:
+func _hit_pause(amount: int, extra: float = 0.0) -> void:
 	if _hit_pause_active:
 		return
 	if not is_inside_tree() or get_tree() == null:
 		return
 	_hit_pause_active = true
-	var dur: float = clampf(HIT_PAUSE_MIN + float(amount) * 0.0018, HIT_PAUSE_MIN, HIT_PAUSE_MAX)
+	var dur: float = clampf(HIT_PAUSE_MIN + float(amount) * 0.0018, HIT_PAUSE_MIN, HIT_PAUSE_MAX) + extra
 	Engine.time_scale = 0.0
 	await get_tree().create_timer(dur, true, false, true).timeout
 	Engine.time_scale = 1.0
 	_hit_pause_active = false
+
+
+# The overload signature: a brief, subtle gold screen wash (commit color) plus a
+# board-wide shake, framing the payoff beat. Flat, no glow — just a flash. Fires
+# on any effective-20 ability, natural or nudged into the overload zone.
+func _celebrate_overload() -> void:
+	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):
+		var wash: ColorRect = ColorRect.new()
+		wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wash.color = Color(1.0, 0.82, 0.20, 0.0)
+		wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		wash.z_as_relative = false
+		wash.z_index = 200
+		_scene.float_layer.add_child(wash)
+		var tween: Tween = create_tween()
+		tween.tween_property(wash, "color:a", 0.16, 0.05)
+		tween.tween_property(wash, "color:a", 0.0, 0.26)
+		tween.tween_callback(wash.queue_free)
+	if _scene.board != null and is_instance_valid(_scene.board):
+		_shake(_scene.board, 9.0, 0.34)
 
 
 # Attacker step-in + recoil. Direction is decided by side (heroes on the bottom
