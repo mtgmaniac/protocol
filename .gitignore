@@ -6,3 +6,13 @@ export_presets.cfg
 # Build artifacts
 build/
 dist/
+
+# Raw art/audio source packs (icons extracted into assets/icons/items + assets/ui)
+/assets/icons/new icons/
+/audio files/
+
+# Debug captures / transient logs
+/debug_artifacts/
+*.log
+debug_readout_*.txt
+tmp_*.py

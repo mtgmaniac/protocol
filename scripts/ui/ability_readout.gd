@@ -1,17 +1,17 @@
 ﻿class_name AbilityReadout
 extends PanelContainer
 
-const READOUT_SIZE := Vector2(0, 84)
-const ROW_HEIGHT := 64.0
+const READOUT_SIZE := Vector2(0, 104)
+const ROW_HEIGHT := 80.0
 const ROW_GAP := 2.0
 const OUTER_PAD_X := 10.0
 const HERO_TOP_PAD := 4.0
 const READOUT_CENTER_PULL_PX := 18.0
-const EFFECT_GROUP_MIN_WIDTH := 72.0
-const ICON_FONT_SIZE := 64
-const VALUE_FONT_SIZE := 64
-const DURATION_FONT_SIZE := 40
-const TARGET_FONT_SIZE := 40
+const EFFECT_GROUP_MIN_WIDTH := 90.0
+const ICON_FONT_SIZE := 80
+const VALUE_FONT_SIZE := 80
+const DURATION_FONT_SIZE := 48
+const TARGET_FONT_SIZE := 48
 const EMPTY_ALPHA := 0.18
 const PIP_REVEAL_TIME := 0.12
 const ICONS := {
@@ -331,7 +331,7 @@ func _make_effect_group(effect: Dictionary) -> Control:
 	if icon_texture != null:
 		var icon_rect := TextureRect.new()
 		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_rect.custom_minimum_size = Vector2(44, 44)
+		icon_rect.custom_minimum_size = Vector2(56, 56)
 		icon_rect.texture = icon_texture
 		icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

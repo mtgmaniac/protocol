@@ -51,6 +51,13 @@ const BUTTON_DEBUG2_SCIFI := "res://assets/ui/btn_debug2_scifi.png"
 const BUTTON_LARGE_GRAY_SCIFI := "res://assets/ui/btn_large_gray_scifi.png"
 const BUTTON_LARGE_GREEN_SCIFI := "res://assets/ui/btn_large_green_scifi.png"
 const BUTTON_LARGE_YELLOW_SCIFI := "res://assets/ui/btn_large_yellow_scifi.png"
+const ICON_HELP := "res://assets/ui/icons/icon_help.png"
+const ICON_BACK := "res://assets/ui/icons/icon_back.png"
+const ICON_REROLL := "res://assets/ui/icons/icon_reroll.png"
+const ICON_INCREASE := "res://assets/ui/icons/icon_increase.png"
+const ICON_ITEM := "res://assets/ui/icons/icon_item.png"
+const ICON_DEBUG := "res://assets/ui/icons/icon_debug.png"
+const ICON_DEBUG2 := "res://assets/ui/icons/icon_debug2.png"
 const PIP_DAMAGE_SCIFI := "res://assets/ui/pip_damage_scifi.png"
 const PIP_HEAL_SCIFI := "res://assets/ui/pip_heal_scifi.png"
 const PIP_SHIELD_SCIFI := "res://assets/ui/pip_shield_scifi.png"
@@ -287,6 +294,90 @@ static func style_texture_button(button: BaseButton, texture_path: String) -> vo
 		text_button.add_theme_stylebox_override("hover", _make_full_texture_stylebox(texture_path, Color(1.06, 1.06, 1.06, 1.0)))
 		text_button.add_theme_stylebox_override("pressed", _make_full_texture_stylebox(texture_path, Color(0.88, 0.88, 0.88, 1.0)))
 		text_button.add_theme_stylebox_override("disabled", _make_full_texture_stylebox(texture_path, Color(0.58, 0.58, 0.62, 0.92)))
+
+
+## Renders `button` as a frameless icon glyph centered on a 9-patch sci-fi frame.
+##
+## - `frame_path`: 9-patchable frame texture (e.g. PixelUI.FRAME_SIMPLE).
+## - `icon_path`:  frameless glyph PNG (e.g. PixelUI.ICON_HELP). Drawn at native
+##                 pixel size by default so pixel-art lines stay crisp; pass
+##                 `expand_icon = true` only if you have a larger source glyph.
+## - `frame_margin`: 9-patch margin override; -1 uses FRAME_MARGIN_BY_PATH.
+## - `frame_modulate`: tints the frame texture (useful for emphasis on the
+##                     reroll/spend button — pass PixelUI.GOLD_ACCENT etc.).
+## - `icon_modulate`: tints the glyph independently of the frame.
+## - `icon_padding`:  inner content margin on each side, in pixels. Defaults
+##                    to the frame's own margin so the glyph never overlaps
+##                    the frame edge.
+static func style_frame_icon_button(
+	button: BaseButton,
+	frame_path: String,
+	icon_path: String,
+	frame_margin: int = -1,
+	frame_modulate: Color = Color.WHITE,
+	icon_modulate: Color = Color.WHITE,
+	icon_padding: int = -1,
+	expand_icon: bool = false,
+) -> void:
+	if button == null:
+		return
+	var frame_margin_value: int = _frame_margin_for(frame_path, 18) if frame_margin < 0 else frame_margin
+	var padding_value: int = frame_margin_value if icon_padding < 0 else icon_padding
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+	# Build the four frame styleboxes with content margins large enough to
+	# keep the glyph inside the inner panel.
+	var styles := {
+		"normal":   make_ninepatch_stylebox(frame_path, frame_margin_value, frame_modulate),
+		"hover":    make_ninepatch_stylebox(frame_path, frame_margin_value, frame_modulate.lightened(0.08)),
+		"pressed":  make_ninepatch_stylebox(frame_path, frame_margin_value, frame_modulate.darkened(0.18)),
+		"disabled": make_ninepatch_stylebox(frame_path, frame_margin_value, Color(0.58, 0.58, 0.62, 0.78)),
+		"focus":    make_ninepatch_stylebox(frame_path, frame_margin_value, frame_modulate.lightened(0.04)),
+	}
+	for stylebox_variant in styles.values():
+		var stylebox: StyleBoxTexture = stylebox_variant
+		stylebox.set_content_margin(SIDE_LEFT, padding_value)
+		stylebox.set_content_margin(SIDE_RIGHT, padding_value)
+		stylebox.set_content_margin(SIDE_TOP, padding_value)
+		stylebox.set_content_margin(SIDE_BOTTOM, padding_value)
+
+	if button is TextureButton:
+		var tb := button as TextureButton
+		tb.ignore_texture_size = true
+		tb.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		var icon_texture: Texture2D = _load_texture(icon_path)
+		tb.texture_normal = icon_texture
+		tb.texture_hover = icon_texture
+		tb.texture_pressed = icon_texture
+		tb.texture_focused = icon_texture
+		tb.texture_disabled = icon_texture
+		tb.modulate = icon_modulate
+		return
+
+	if button is Button:
+		var b := button as Button
+		b.text = ""
+		b.flat = false
+		b.icon = _load_texture(icon_path)
+		b.expand_icon = expand_icon
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+		# Drop any inherited text-button theme overrides so the icon owns the cell.
+		b.remove_theme_font_override("font")
+		b.remove_theme_font_size_override("font_size")
+		b.remove_theme_color_override("font_color")
+		b.remove_theme_color_override("font_hover_color")
+		b.remove_theme_color_override("font_pressed_color")
+		b.remove_theme_color_override("font_focus_color")
+		b.remove_theme_color_override("font_outline_color")
+		b.remove_theme_constant_override("outline_size")
+		b.add_theme_color_override("icon_normal_color", icon_modulate)
+		b.add_theme_color_override("icon_hover_color", icon_modulate)
+		b.add_theme_color_override("icon_pressed_color", icon_modulate.darkened(0.10))
+		b.add_theme_color_override("icon_focus_color", icon_modulate)
+		b.add_theme_color_override("icon_disabled_color", Color(icon_modulate.r, icon_modulate.g, icon_modulate.b, 0.55))
+		for state_name in styles.keys():
+			b.add_theme_stylebox_override(state_name, styles[state_name])
 
 
 static func style_labeled_texture_button(button: Button, texture_path: String, font_size: int, font_color: Color = TEXT_PRIMARY) -> void:

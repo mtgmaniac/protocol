@@ -14,6 +14,7 @@
     "import-stylematch-heroes": "node scripts/import-stylematch-hero-portraits.mjs",
     "slice-hero-sheet": "node scripts/slice-hero-sheet.mjs",
     "optimize-assets": "node scripts/optimize-public-assets.mjs",
+    "extract-button-icons": "node scripts/extract-button-icons.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "vitest run",
     "test:watch": "vitest",
