@@ -50,7 +50,7 @@ const DICE_THREE_UNIT_SIDE_OFFSET_PX := 0.0
 const DICE_ENEMY_SNAP_TOP_PX := 220.0
 const DICE_HERO_SNAP_BOTTOM_PX := 56.0
 const DICE_BUTTON_CLEARANCE_PX := 132.0
-const MAX_PROTOCOL := 7
+const MAX_PROTOCOL := 10
 const PROTOCOL_FOOTER_BAR_TEXTURE := "res://assets/ui/protocol_footer_bar_scifi.png"
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
 const PROTOCOL_LIGHT_RECTS := [
@@ -102,7 +102,7 @@ const HELP_ICON_MAP := {
 
 var dice_manager: DiceManager = DiceManager.new()
 var combat_manager: CombatManager = CombatManager.new()
-var protocol_points: int = 3
+var protocol_points: int = 0  # battles start at 0; +1 income at end of each turn
 var hero_card_views: Array = []
 var enemy_card_views: Array = []
 var hero_rolls: Dictionary = {}
@@ -1025,7 +1025,7 @@ func _on_nudge_button_pressed() -> void:
 func _add_nudge_button() -> void:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +5 to a hero's effective roll.")
+	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +3 to a hero's effective roll.")
 	btn.pressed.connect(_on_nudge_button_pressed)
 	_style_frame_icon_action_button(btn, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
 	_nudge_button = btn
@@ -1049,9 +1049,9 @@ func _apply_reroll(hero_id: String) -> void:
 
 func _apply_nudge(hero_id: String) -> void:
 	protocol_points -= 1
-	hero_roll_nudges[hero_id] = int(hero_roll_nudges.get(hero_id, 0)) + 5
+	hero_roll_nudges[hero_id] = int(hero_roll_nudges.get(hero_id, 0)) + 3
 	_update_protocol_bar()
-	_append_log("Nudge: %s +5 to effective roll." % hero_id)
+	_append_log("Nudge: %s +3 to effective roll." % hero_id)
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
 	if dice_tray_3d != null and not hero_state.is_empty():
 		dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
@@ -2059,10 +2059,10 @@ func _build_help_overlay() -> void:
 	_add_help_section(content, "PROTOCOL", [
 		"Protocol is a shared squad resource.",
 		"Spend it to manipulate dice before confirming the turn.",
-		"Nudge: shift a die result up or down by 1.",
-		"Reroll: reroll a single die.",
-		"Set: set a die to any value.",
-		"Protocol resets to 0 between battles and refills during the run.",
+		"Nudge (1): add +3 to a die's effective roll.",
+		"Reroll (2): reroll a single die.",
+		"Set (3): set a die to any value 1-20.",
+		"Start each battle at 0; gain +1 at the end of every turn (cap 10).",
 	])
 	_add_help_section(content, "EVOLUTION", [
 		"Units earn XP each battle by dealing damage, healing, or applying effects.",
@@ -2532,18 +2532,11 @@ func _build_scaled_enemy(base_enemy: EnemyData, battle_index: int, track_scale: 
 
 # --- Item System (Phase 3) ---
 
-func _get_item_protocol_cost(item: ItemData) -> int:
+func _get_item_protocol_cost(_item: ItemData) -> int:
+	# Flat cost 1 for all rarities (replaces the old common0/unc1/rare2/leg3 scale).
+	# protocolFree relic branch handled in the Protocol Override redesign.
 	if combat_manager.has_relic("protocolFree"):
 		return 0
-	match item.rarity:
-		"common":
-			return 0
-		"uncommon":
-			return 1
-		"rare":
-			return 2
-		"legendary":
-			return 3
 	return 1
 
 
