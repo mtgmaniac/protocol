@@ -182,10 +182,31 @@ func _spawn_floating_text(card: Control, event_type: String, amount: int) -> voi
 	_scene.float_layer.add_child(label)
 	label.move_to_front()
 
+	# punch_number: scale in from small with an overshoot, then settle, so the
+	# number "pops" on arrival. Bigger hits punch larger. Scale is centered on the
+	# label so it grows from its middle.
+	var mult: float = _float_size_mult(event_type, amount)
+	label.pivot_offset = label.get_minimum_size() * 0.5
+	label.scale = Vector2(0.5, 0.5)
+	var punch: Tween = create_tween()
+	punch.tween_property(label, "scale", Vector2.ONE * (mult * 1.25), 0.10) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	punch.tween_property(label, "scale", Vector2.ONE * mult, 0.13) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	# Rise + fade over the lifetime, then free.
 	var tween: Tween = create_tween()
 	tween.tween_property(label, "position", label.position + Vector2(0, -52), 0.9)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.9)
 	tween.tween_callback(label.queue_free)
+
+
+# Floating-number punch scale: damage scales up with the hit (heavy hits read
+# bigger), everything else stays at its base size.
+func _float_size_mult(event_type: String, amount: int) -> float:
+	if event_type == "damage" or event_type == "poison":
+		return clampf(0.95 + float(amount) * 0.012, 0.95, 1.55)
+	return 1.0
 
 
 func _get_card_float_origin(card: Control) -> Vector2:
