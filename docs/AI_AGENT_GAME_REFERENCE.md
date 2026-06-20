@@ -304,6 +304,12 @@ Main-scene smoke test:
 & 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' 'res://scenes/ui/UnitSelect.tscn' --quit-after 3
 ```
 
+Full scene-flow smoke test (home → battle → reward → home → evolution → run-end):
+
+```powershell
+& 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' --script 'res://scripts/debug/flow_smoke_test.gd'
+```
+
 Most useful visual verification:
 
 ```powershell

@@ -3,6 +3,18 @@
 *.tmp
 export_presets.cfg
 
+# Editor tool snapshots (Ziva)
+/.ziva/
+
+# Legacy Angular reference — local tool/config noise
+legacy-angular/.claude/
+legacy-angular/.deploy_marker
+legacy-angular/node_modules/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
 # Build artifacts
 build/
 dist/
