@@ -9,7 +9,14 @@ const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
 const COMPACT_READOUT_HEIGHT_PX := 148.0
 const COMPACT_CARD_WIDTH_PX := 344.0
 const COMPACT_CARD_HEIGHT_PX := 570.0
-const CARD_ZONE_HEIGHT := 780.0
+# V2 band geometry (portrait). Header/footer are a fixed 144 each (touch targets,
+# owned by the .tscn anchors). Center is fixed; the two rails are the FLEX bands:
+# they share all leftover height equally via EXPAND, which is what lets the same
+# code adapt across phone aspect ratios (stretch aspect = expand).
+# CARD_ZONE_HEIGHT is only a floor — actual rail height grows to fill the device.
+# NOTE: center is 540, not the spec's 432 — 432 shrinks the 3D dice tray enough
+# to clip the readout pips into the dice. 540 is the readable value.
+const CARD_ZONE_HEIGHT := 768.0
 const CENTER_ZONE_HEIGHT := 540.0
 const RAIL_ROW_GAP_PX := 1.0
 const RAIL_SLOT_GAP_PX := 2.0
