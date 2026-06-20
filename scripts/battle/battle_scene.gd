@@ -784,7 +784,8 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	var eff_hero_rolls: Dictionary = _build_effective_rolls(hero_rolls, combat_manager.get_hero_states(), true)
 	var eff_enemy_rolls: Dictionary = _build_effective_rolls(enemy_rolls, combat_manager.get_enemy_states(), false)
 
-	var result: Dictionary = combat_manager.resolve_round(eff_hero_rolls, eff_enemy_rolls, dice_manager)
+	var raw_enemy_rolls: Dictionary = enemy_rolls.duplicate()
+	var result: Dictionary = combat_manager.resolve_round(eff_hero_rolls, eff_enemy_rolls, dice_manager, raw_enemy_rolls)
 	hero_rolls.clear()
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
@@ -3021,10 +3022,6 @@ func _process_summon_events(events: Array) -> void:
 	for event in events:
 		if str(event.get("type", "")) != "summon":
 			continue
-		# Cap total enemies to prevent runaway summon chains
-		if combat_manager.get_enemy_states().size() >= GameState.SQUAD_UNIT_LIMIT:
-			_append_log("Enemy cap reached — summon blocked.")
-			continue
 		var summon_name: String = str(event.get("summon_name", ""))
 		if summon_name == "":
 			continue
@@ -3032,12 +3029,20 @@ func _process_summon_events(events: Array) -> void:
 		if base_enemy == null:
 			_append_log("Summon failed: '%s' not found in data." % summon_name)
 			continue
+		if base_enemy.ai_type != "dumb":
+			_append_log("Summon blocked: '%s' must be a dumb unit." % summon_name)
+			continue
 		var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
 		var track_scale: float = operation.track_hp_scale if operation != null else 1.0
 		var battle_index: int = maxi(_game_state().current_battle - 1, 0)
 		var scaled: EnemyData = _build_scaled_enemy(base_enemy, battle_index, track_scale)
-		# Inject runtime state into CombatManager and rebuild the enemy card list
-		combat_manager.inject_enemy(scaled)
-		enemy_units.append(scaled)
+		var inject_result: Dictionary = combat_manager.inject_enemy(scaled)
+		if inject_result.is_empty():
+			continue
+		var slot_index: int = int(inject_result.get("slot_index", -1))
+		if slot_index >= 0 and slot_index < enemy_units.size():
+			enemy_units[slot_index] = scaled
+		else:
+			enemy_units.append(scaled)
 		_populate_enemy_cards()
 		_append_log("%s joins the battle!" % scaled.display_name)

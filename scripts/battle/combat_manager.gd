@@ -222,7 +222,7 @@ func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
 	return clampi(raw_roll + buff - rfe, 1, 20)
 
 
-func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager: DiceManager) -> Dictionary:
+func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager: DiceManager, raw_enemy_rolls: Dictionary = {}) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
 	for hero_state in _hero_states:
@@ -260,7 +260,8 @@ func resolve_round(hero_rolls: Dictionary, enemy_rolls: Dictionary, dice_manager
 		var enemy_ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(enemy_roll_value))
 		_log("%s uses %s." % [enemy_state["unit"].display_name, str(enemy_ability_entry.get("ability_name", "Unknown"))])
 		_emit_action_event(enemy_state, "enemy", str(enemy_ability_entry.get("ability_name", "Unknown")), str(enemy_ability_entry.get("zone", "")))
-		_apply_enemy_ability(enemy_state, enemy_ability_entry)
+		var enemy_raw_roll: int = int(raw_enemy_rolls.get(enemy_state["id"], enemy_roll_value))
+		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
 
 	_tick_end_of_round_states()
 	# Re-check after DoT ticks (poison might push enemy across phase 2 threshold)
@@ -527,7 +528,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				_freeze_die_state(freeze_target, freeze_amount)
 
 
-func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) -> void:
+func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
 	var raw: Dictionary = ability_entry.get("raw", {})
 	# Phase 2: substitute enhanced damage value when boss has crossed its HP threshold
 	var damage: int = int(raw.get("dmg", 0))
@@ -686,19 +687,11 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary) ->
 		enemy_state["taunting"] = true
 		_log("%s is taunting — all heroes must target it!" % enemy_state["unit"].display_name)
 
-	# Summon: probabilistic reinforcement on qualifying ability rolls
+	# Summon: Veil Concord overload natural 20 only (matches reference rules)
 	var summon_chance: int = int(raw.get("summonChance", 0))
 	var summon_name: String = str(raw.get("summonName", ""))
 	if summon_chance > 0 and summon_name != "":
-		if randi_range(1, 100) <= summon_chance:
-			_log("%s calls for reinforcements — %s incoming!" % [enemy_state["unit"].display_name, summon_name])
-			_round_events.append({
-				"type": "summon",
-				"amount": 0,
-				"side": "enemy",
-				"target_name": str(enemy_state["unit"].display_name),
-				"summon_name": summon_name,
-			})
+		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
 
 
 func _damage_state(state: Dictionary, amount: int, ignore_shield: bool = false) -> void:
@@ -1116,11 +1109,60 @@ func apply_item_dot(target_state: Dictionary, amount: int, turns: int) -> void:
 
 # --- Summon injection ---
 
+func _count_living_enemies() -> int:
+	var count: int = 0
+	for state in _enemy_states:
+		if not bool(state.get("dead", false)):
+			count += 1
+	return count
+
+
+func _first_dead_enemy_index() -> int:
+	for i in range(_enemy_states.size()):
+		if bool(_enemy_states[i].get("dead", false)):
+			return i
+	return -1
+
+
+func _try_emit_enemy_summon(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int, summon_chance: int, summon_name: String) -> void:
+	if _count_living_enemies() >= GameState.SQUAD_UNIT_LIMIT:
+		return
+	var enemy_unit: EnemyData = enemy_state.get("unit") as EnemyData
+	if enemy_unit == null:
+		return
+	if str(ability_entry.get("zone", "")) != "overload":
+		return
+	if enemy_unit.ai_type != "smart" or not enemy_unit.can_summon_elite:
+		return
+	if raw_roll != 20:
+		return
+	if randi_range(1, 100) > summon_chance:
+		return
+	_log("%s calls for reinforcements — %s incoming!" % [enemy_state["unit"].display_name, summon_name])
+	_round_events.append({
+		"type": "summon",
+		"amount": 0,
+		"side": "enemy",
+		"target_name": str(enemy_state["unit"].display_name),
+		"summon_name": summon_name,
+	})
+
+
 func inject_enemy(enemy_data: EnemyData) -> Dictionary:
+	if _count_living_enemies() >= GameState.SQUAD_UNIT_LIMIT:
+		_log("Summon blocked — enemy field is full.")
+		return {}
+
 	var new_state: Dictionary = _create_runtime_state(enemy_data, _next_enemy_instance_id(enemy_data))
-	_enemy_states.append(new_state)
-	_log("%s has been summoned to the field!" % enemy_data.display_name)
-	return new_state
+	var slot_index: int = _first_dead_enemy_index()
+	if slot_index >= 0:
+		_enemy_states[slot_index] = new_state
+		_log("%s has been summoned, replacing a fallen unit!" % enemy_data.display_name)
+	else:
+		slot_index = _enemy_states.size()
+		_enemy_states.append(new_state)
+		_log("%s has been summoned to the field!" % enemy_data.display_name)
+	return {"state": new_state, "slot_index": slot_index}
 
 
 # --- Log / event helpers ---

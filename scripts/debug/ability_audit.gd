@@ -282,6 +282,7 @@ func _run_regression_audits() -> void:
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
+	_run_summon_slot_regression()
 
 
 func _run_enemy_shield_ally_regression() -> void:
@@ -542,6 +543,42 @@ func _run_down_cleanup_regression() -> void:
 		_record_pass("Regression / down clears active statuses", "cleanup")
 	else:
 		_record_failure("Regression / down clears active statuses", "cleanup", "all active statuses cleared", "state=%s" % str(_snapshot_state(hero)))
+
+
+func _run_summon_slot_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var squad: Array = []
+	for i in range(3):
+		squad.append(_make_enemy("audit_enemy_%d" % i, "Audit Enemy %d" % i))
+	manager.setup_battle([], squad)
+	var states: Array = manager.get_enemy_states()
+	states[1]["dead"] = true
+	states[1]["current_hp"] = 0
+
+	var summon_unit: EnemyData = _make_enemy("audit_summon", "Audit Summon")
+	var inject_result: Dictionary = manager.inject_enemy(summon_unit)
+	var replaced_ok: bool = (
+		not inject_result.is_empty()
+		and int(inject_result.get("slot_index", -1)) == 1
+		and manager.get_enemy_states().size() == 3
+		and not bool(manager.get_enemy_states()[1].get("dead", false))
+	)
+	if replaced_ok:
+		_record_pass("Regression / summon replaces dead slot", "summon")
+	else:
+		_record_failure(
+			"Regression / summon replaces dead slot",
+			"summon",
+			"inject at dead index 1 without growing array",
+			"slot=%s size=%d dead=%s" % [str(inject_result.get("slot_index", -1)), manager.get_enemy_states().size(), str(manager.get_enemy_states()[1].get("dead", true))]
+		)
+
+	var full_manager: CombatManager = CombatManager.new()
+	full_manager.setup_battle([], squad)
+	if full_manager.inject_enemy(summon_unit).is_empty():
+		_record_pass("Regression / summon blocked at living cap", "summon")
+	else:
+		_record_failure("Regression / summon blocked at living cap", "summon", "blocked with 3 living", "inject succeeded")
 
 
 func _run_text_alignment_audits() -> void:
