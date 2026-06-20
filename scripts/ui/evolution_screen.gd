@@ -211,6 +211,10 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	text_stack.add_theme_constant_override("separation", 6)
 	header.add_child(text_stack)
 
+	var path_callsign: String = str(path.get("callsign", ""))
+	if path_callsign != "":
+		text_stack.add_child(_make_label(path_callsign, CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
+
 	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.HERO_ACCENT, 3)
 	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_stack.add_child(path_name)

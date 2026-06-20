@@ -359,6 +359,7 @@ func _build_evolution_paths(evolutions: Array) -> Array[Dictionary]:
 	for evolution_entry in evolutions:
 		paths.append({
 			"name": str(evolution_entry.get("name", "")),
+			"callsign": str(evolution_entry.get("callsign", "")),
 			"focus": str(evolution_entry.get("focus", "")),
 			"hp": int(evolution_entry.get("hp", 0)),
 			"abilities": _build_hero_dice_ranges(evolution_entry.get("abilities", [])),

@@ -226,6 +226,9 @@ func get_run_unit_data(unit_id: String) -> UnitData:
 		if str(path.get("name", "")) != evolved_name:
 			continue
 		built_unit.display_name = evolved_name
+		var path_callsign: String = str(path.get("callsign", ""))
+		if path_callsign != "":
+			built_unit.callsign = path_callsign
 		var hp_bonus: int = int(path.get("hp", 0))
 		if hp_bonus > 0:
 			built_unit.max_hp = hp_bonus
@@ -328,12 +331,15 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 		if not grouped.has(path_name):
 			grouped[path_name] = {
 				"name": path_name,
+				"callsign": str(entry.get("callsign", "")),
 				"focus": str(entry.get("focus", "")),
 				"hp": int(entry.get("hp", 0)),
 				"abilities_by_zone": {},
 			}
 
 		var grouped_entry: Dictionary = grouped[path_name]
+		if str(grouped_entry.get("callsign", "")) == "" and str(entry.get("callsign", "")) != "":
+			grouped_entry["callsign"] = str(entry.get("callsign", ""))
 		if str(grouped_entry.get("focus", "")) == "" and str(entry.get("focus", "")) != "":
 			grouped_entry["focus"] = str(entry.get("focus", ""))
 		if int(grouped_entry.get("hp", 0)) <= 0 and int(entry.get("hp", 0)) > 0:
