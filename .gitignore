@@ -13,6 +13,7 @@ dist/
 
 # Debug captures / transient logs
 /debug_artifacts/
+debug_screenshot.png
 *.log
 debug_readout_*.txt
 tmp_*.py

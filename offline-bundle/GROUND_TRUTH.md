@@ -38,12 +38,12 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 7. Frozen dice keep their value and skip the next N reveals (`freezeAnyDice` / `freezeEnemyDice` / `freezeAllEnemyDice`).
 8. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20).
 
-## Protocol economy (baseline — decided; implementation is Task 10)
+## Protocol economy (implemented in battle_scene.gd / combat_manager.gd)
 Battle-only resource for dice manipulation; resets each battle (unless the Overflow relic carries 50%).
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
-- **Costs:** Nudge **1** (now **+3** to effective roll, reduced from +5) · Reroll **2** · Set-a-die ("pick a number") **3** (new action — not yet built) · Item **1 flat** (all rarities; replaces the old common0/unc1/rare2/leg3 scaling).
-- **Model:** 1 income ≈ one protocol action per turn; bank turns for bigger plays. Deliberately scarce so +protocol sources matter. Tune income to battle length in balance (Task 5) — bump to 2/turn only if protocol feels negligible.
-- **+protocol sources:** gear `protocolOnBattleStart` (Protocol Tap, +1 at start), `protocolOnKill` (Recycler, +1 on basic kill), `protocolOnKillAny` (Ultra Recycler, +2 any kill); relics `protocolCarryover` (Overflow, carry 50%), `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1, net +1). Field Engineer is slated to become the hero protocol-anchor (see Task 10 note).
+- **Costs:** Nudge **1** (+**3** to effective roll) · Reroll **2** · Set-a-die **3** · Item **1 flat** (all rarities).
+- **Model:** 1 income ≈ one protocol action per turn; bank turns for bigger plays.
+- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnKillAny`; relics `protocolCarryover`, `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1).
 
 ---
 

@@ -1,15 +1,22 @@
 # Overload Protocol AI Context
 
-The project reference instructions live in [docs/CLAUDE.md](C:/Users/Kev/Documents/protocol/docs/CLAUDE.md).
+The project reference instructions live in [docs/CLAUDE.md](docs/CLAUDE.md).
 
-This root file exists because the roadmap expects a `CLAUDE.md` in the project root during Phase 0.
+This root file exists so agents and tools that look for `CLAUDE.md` at the repo root
+find a pointer to the live docs.
 
-## Phase 0 clarification
+## Source of truth
 
-There is one orientation conflict in the docs:
+Read these before doing anything:
 
-- the top summary in `docs/CLAUDE.md` says portrait orientation
-- the UI rules in `docs/CLAUDE.md` say landscape orientation
-- `docs/ROADMAP.md` Phase 0 also says landscape orientation
+- [docs/AI_AGENT_GAME_REFERENCE.md](docs/AI_AGENT_GAME_REFERENCE.md)
+- [docs/BATTLE_UI_V2_SPEC.md](docs/BATTLE_UI_V2_SPEC.md)
+- [offline-bundle/GROUND_TRUTH.md](offline-bundle/GROUND_TRUTH.md)
+- [offline-bundle/CODEBASE_MAP.md](offline-bundle/CODEBASE_MAP.md)
 
-For setup and implementation, treat **landscape** as the source of truth unless you decide otherwise later.
+When any doc conflicts, **GROUND_TRUTH.md wins**.
+
+## Orientation
+
+**Portrait** — internal viewport `1080×2400`, desktop preview `450×1000`. The old
+landscape / Phase 0 docs are obsolete; see [docs/PHASE_0_STATUS.md](docs/PHASE_0_STATUS.md).

@@ -3,7 +3,7 @@ extends Node
 ## Starts a battle with the first available units/operation, waits for layout
 ## to settle, saves a screenshot to the project root, then quits.
 
-const SCREENSHOT_PATH := "C:/Users/Kev/Documents/protocol/debug_screenshot.png"
+const SCREENSHOT_PATH := "res://debug_artifacts/debug_screenshot.png"
 const SCREENSHOT_DELAY_SECS := 3.5
 
 

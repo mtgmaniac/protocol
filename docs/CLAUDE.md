@@ -66,8 +66,8 @@ Important working rule:
 
 Important correction:
 
-- the older `UnitCard.tscn` and `scripts/units/unit_card.gd` are not the primary
-  live battle card path right now
+- the older `UnitCard.tscn` and `scripts/units/unit_card.gd` were removed; the live
+  battle card is [compact_unit_card.gd](C:/Users/Kev/Documents/protocol/scripts/ui/compact_unit_card.gd)
 
 ### Ability readouts
 

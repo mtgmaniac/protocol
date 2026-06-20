@@ -5,7 +5,7 @@ version of Overload Protocol. It describes the live project structure, the real
 runtime owners, and the traps that have already cost time so future work can
 start with the right assumptions.
 
-Last refreshed from local source on 2026-05-08.
+Last refreshed from local source on 2026-06-20.
 
 ## 1. Project Basics
 
@@ -39,6 +39,8 @@ These are live global singletons:
   - [SceneManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/SceneManager.gd)
 - `Theme`
   - [Theme.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/Theme.gd)
+- `AudioManager`
+  - [AudioManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/AudioManager.gd)
 - `DebugBattleLauncher`
   - [DebugBattleLauncher.gd](C:/Users/Kev/Documents/protocol/scripts/debug/DebugBattleLauncher.gd)
 
@@ -52,7 +54,7 @@ Important note:
 
 Current high-level loop:
 
-1. player enters [UnitSelect.tscn](C:/Users/Kev/Documents/protocol/scenes/ui/UnitSelect.tscn)
+1. player enters [UnitSelect.tscn](C:/Users/Kev/Documents/protocol/scenes/ui/UnitSelect.tscn) (script: [home_screen.gd](C:/Users/Kev/Documents/protocol/scripts/ui/home_screen.gd))
 2. player chooses up to 3 heroes
 3. `GameState.start_run(unit_ids, operation_id)` stores squad and operation
 4. `SceneManager.go_to_battle()` loads [BattleScene.tscn](C:/Users/Kev/Documents/protocol/scenes/battle/BattleScene.tscn)
@@ -101,7 +103,7 @@ The battle screen is driven primarily by:
 
 ### Important truth
 
-The live battle card is **not** the old authored `UnitCard.tscn`.
+The live battle card is **not** the old `UnitCard.tscn` (removed — referenced a deleted script).
 
 The active battle card owner is:
 
@@ -114,12 +116,6 @@ Battle creates cards directly with:
 in:
 
 - [battle_scene.gd](C:/Users/Kev/Documents/protocol/scripts/battle/battle_scene.gd)
-
-The older:
-
-- [UnitCard.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/UnitCard.tscn)
-
-is legacy / non-primary for the current battle layout.
 
 ## 6. Current Battle Visual Language
 
@@ -260,7 +256,8 @@ Footer rules:
 
 - protocol display on the left
 - action buttons on the right
-- protocol currently capped at `7`
+- protocol capped at `10`; battles start at `0`, gain `+1` at end of each turn
+- footer actions: Reroll (2), Nudge (1, +3 roll), Set-a-die (3), Item (1 flat)
 
 ## 13. Data Source Files
 
@@ -289,10 +286,22 @@ Primary screenshot output:
 
 - [latest.png](C:/Users/Kev/Documents/protocol/debug_artifacts/battle_ui/latest.png)
 
-Most useful compile check:
+Ability audit (must load autoloads — run as a scene, **not** `--script`):
 
 ```powershell
-& 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --headless --path 'C:\Users\Kev\Documents\protocol' 'res://scenes/battle/BattleScene.tscn' --quit
+& 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' 'res://scenes/debug/AbilityAuditRunner.tscn'
+```
+
+Quick battle smoke test (skips unit select):
+
+```powershell
+& 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' -- --debug-battle
+```
+
+Main-scene smoke test:
+
+```powershell
+& 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' 'res://scenes/ui/UnitSelect.tscn' --quit-after 3
 ```
 
 Most useful visual verification:
@@ -300,6 +309,13 @@ Most useful visual verification:
 ```powershell
 & 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' --script 'res://scripts/debug/battle_ui_capture.gd'
 ```
+
+Verification gotcha:
+
+- Godot `--check-only` / headless scene quit **misses parser errors in scripts
+  outside the launched scene's dependency chain** (e.g. a broken legacy `.tscn`).
+- Do not rely on compile checks alone. Launch the game (or the audit / debug-battle
+  runners above) and watch the console for errors.
 
 Core rule:
 

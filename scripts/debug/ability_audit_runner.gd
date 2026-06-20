@@ -1,4 +1,7 @@
 extends Node
+## Ability audit entry point.
+## Run as a scene (loads autoloads): res://scenes/debug/AbilityAuditRunner.tscn
+## Do NOT use --script here — scripts outside the main scene chain won't get autoloads.
 
 
 func _ready() -> void:
