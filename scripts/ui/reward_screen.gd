@@ -425,8 +425,12 @@ func _build_effect_parts_from_effect(effect: Dictionary, target_kind: String = "
 	match effect_type:
 		"heal":
 			return [_part("heal", "+%d HP" % int(effect.get("amount", 0)))]
+		"healAll":
+			return [_part("heal", "ALL +%d" % int(effect.get("amount", 0)))]
 		"shield":
 			return [_part("shield", "%d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)))]
+		"shieldAll":
+			return [_part("shield", "ALL %d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)))]
 		"rollBuff":
 			return [_part("roll", "+%d" % int(effect.get("amount", 0)), int(effect.get("turns", 0)))]
 		"revive":
@@ -449,6 +453,10 @@ func _build_effect_parts_from_effect(effect: Dictionary, target_kind: String = "
 			return [_part("roll", "REROLL ALL", 0)]
 		"enemyDieFreeze":
 			return [_part("freeze", "FREEZE", int(effect.get("skips", 0)), "❄")]
+		"enemyDieFreezeAll":
+			return [_part("freeze", "FREEZE ALL", int(effect.get("skips", 0)), "❄")]
+		"gainProtocol":
+			return [_part("protocol", "+%d PP" % int(effect.get("amount", 0)), 0, "⚡")]
 		"rollBonus":
 			return [_part("roll", "+%d" % int(effect.get("amount", 0)))]
 		"battleStartShield":
@@ -459,6 +467,12 @@ func _build_effect_parts_from_effect(effect: Dictionary, target_kind: String = "
 			return [_part("dot", "+%d DOT" % int(effect.get("amount", 0)))]
 		"battleStartCloak":
 			return [_part("cloak", "CLOAK START", 0, "")]
+		"battleStartCloakRoll":
+			var parts: Array = [_part("cloak", "CLOAK START", 0, "")]
+			var roll_amt: int = int(effect.get("rollAmount", 0))
+			if roll_amt > 0:
+				parts.append(_part("roll", "+%d START" % roll_amt))
+			return parts
 		"healOnKill":
 			return [_part("heal", "+%d KILL" % int(effect.get("amount", 0)))]
 		"protocolOnBattleStart":

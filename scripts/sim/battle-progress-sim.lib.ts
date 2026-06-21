@@ -14,6 +14,21 @@ import {
   tickUnitShield,
   type ShieldStack,
 } from './utils/shield-stack.util';
+import {
+  type GearEntry,
+  emptyGearBattleFlags,
+  emptyGearTotals,
+  gearTotalsFromIds,
+  isBasicEnemyType,
+  applyLifesteal,
+  consumeFirstAbilityDmgBonus,
+} from './gear-sim.lib';
+import {
+  type ItemEntry,
+  BATTLE_START_CONSUMABLE_TYPES,
+  ITEM_PROTOCOL_COST,
+  SKIPPED_CONSUMABLE_TYPES,
+} from './consumable-sim.lib';
 
 const ENEMY_ZONES: [number, number, Zone][] = [
   [1, 4, 'recharge'],
@@ -62,6 +77,18 @@ export interface BattleProgressSimInput {
   startAsEvoPath?: string;
   /** All squad members begin fight 1 on a random evolution (tier 2). */
   startAllAsEvo?: boolean;
+  /**
+   * Tier-1 gear audit: every squad member equips this gear id for the whole track.
+   * Requires `gearCatalog` loaded from gear.data.json.
+   */
+  squadGearId?: string;
+  gearCatalog?: Record<string, GearEntry>;
+  /**
+   * Tier-2 consumable audit: squad receives one copy at the start of each battle and
+   * uses it once via sim heuristics (optimal-ish timing). Requires `itemCatalog`.
+   */
+  trackConsumableId?: string;
+  itemCatalog?: Record<string, ItemEntry>;
 }
 
 /** Battles 1..N “reach” ladder (here N=10). */
@@ -174,6 +201,8 @@ interface SimHero {
   baseHeroName: string;
   /** Evolution path name when tier 2; null while tier 1 */
   evoPath: string | null;
+  /** Max HP from hero kit (excludes gear bonus). */
+  rosterMaxHp: number;
   maxHp: number;
   hp: number;
   shield: number;
@@ -193,6 +222,8 @@ interface SimHero {
   rollBuff: number;
   rollBuffTurns: number;
   rollBuffSkipNextTick: boolean;
+  gear: ReturnType<typeof emptyGearTotals>;
+  gearBattle: ReturnType<typeof emptyGearBattleFlags>;
 }
 
 interface SimEnemy {
@@ -209,6 +240,9 @@ interface SimEnemy {
   dmgScale: number;
   dot: number;
   dT: number;
+  rfeStacks: RfeStack[];
+  /** Frozen d20 value while dieFreezeRollsRemaining > 0. */
+  frozenRoll: number | null;
   dieFreezeRollsRemaining: number;
   rollBuff: number;
   rollBuffTurns: number;
@@ -274,6 +308,29 @@ function tickHeroRollModifiers(h: SimHero): void {
     h.rollBuffTurns = 0;
     h.rollBuffSkipNextTick = false;
   }
+}
+
+function tickEnemyRfe(e: SimEnemy): void {
+  if (e.hp <= 0) return;
+  const nextRfe: RfeStack[] = [];
+  for (const stack of e.rfeStacks) {
+    if (stack.skipNextTick) {
+      nextRfe.push({ ...stack, skipNextTick: false });
+      continue;
+    }
+    const tl = stack.turnsLeft - 1;
+    if (tl > 0) nextRfe.push({ amt: stack.amt, turnsLeft: tl, skipNextTick: false });
+  }
+  e.rfeStacks = nextRfe;
+}
+
+function getTotalEnemyRfe(e: SimEnemy): number {
+  return e.rfeStacks.reduce((sum, s) => sum + s.amt, 0);
+}
+
+function addEnemyRfeStack(e: SimEnemy, amount: number, turns: number): void {
+  if (amount <= 0 || turns <= 0 || e.hp <= 0) return;
+  e.rfeStacks.push({ amt: amount, turnsLeft: turns, skipNextTick: true });
 }
 
 function tickEnemyRollBuff(e: SimEnemy): void {
@@ -361,8 +418,9 @@ function applyEvoPathToHero(h: SimHero, pathName: string): boolean {
   h.name = path.name;
   h.evoPath = path.name;
   if (path.hp > 0) {
-    h.maxHp = path.hp;
-    h.hp = Math.max(1, Math.round(path.hp * ratio));
+    h.rosterMaxHp = path.hp;
+    syncHeroMaxHp(h);
+    h.hp = Math.max(1, Math.round(h.maxHp * ratio));
   }
   h.tier = 2;
   h.xp = 0;
@@ -456,6 +514,8 @@ function scaleEnemyDef(
     dmgScale: dmgM,
     dot: 0,
     dT: 0,
+    rfeStacks: [],
+    frozenRoll: null,
     dieFreezeRollsRemaining: 0,
     rollBuff: 0,
     rollBuffTurns: 0,
@@ -466,12 +526,20 @@ function scaleEnemyDef(
 
 function applyEnemyDieFreeze(e: SimEnemy, skips: number): void {
   if (skips <= 0 || e.hp <= 0) return;
+  if (e.frozenRoll == null) e.frozenRoll = d20();
   e.dieFreezeRollsRemaining += skips;
 }
 
 function getEnemyPlan(enemy: SimEnemy, suites: Record<string, EnemyAbilitySuite>): EnemyAbility {
-  const rawRoll = d20();
-  const effectiveRoll = clampEffectiveRoll(rawRoll, 0, enemy.rollBuff);
+  let rawRoll: number;
+  if (enemy.dieFreezeRollsRemaining > 0 && enemy.frozenRoll != null) {
+    rawRoll = enemy.frozenRoll;
+    enemy.dieFreezeRollsRemaining -= 1;
+  } else {
+    rawRoll = d20();
+    enemy.frozenRoll = rawRoll;
+  }
+  const effectiveRoll = clampEffectiveRoll(rawRoll, getTotalEnemyRfe(enemy), enemy.rollBuff);
   const z = enemyZoneFromRoll(effectiveRoll);
   const suite = suites[enemy.type];
   const base = suite?.[z] ? { ...suite[z]! } : { ...EMPTY_ENEMY_AB };
@@ -515,12 +583,52 @@ function pick3Heroes(all: HeroDefinition[], anchorHeroId?: string): HeroDefiniti
   return out;
 }
 
+function syncHeroMaxHp(h: SimHero): void {
+  h.maxHp = h.rosterMaxHp + h.gear.maxHpBonus;
+}
+
+function applySquadGear(heroes: SimHero[], gearId: string | undefined, catalog: Record<string, GearEntry> | undefined): void {
+  if (!gearId || !catalog?.[gearId]) return;
+  const totals = gearTotalsFromIds([gearId], catalog);
+  for (const h of heroes) {
+    h.gear = totals;
+    syncHeroMaxHp(h);
+    h.hp = h.maxHp;
+  }
+}
+
+function resetGearBattleFlags(heroes: SimHero[]): void {
+  for (const h of heroes) {
+    h.gearBattle = emptyGearBattleFlags();
+  }
+}
+
+function applyBattleStartGear(
+  heroes: SimHero[],
+  protocolBudget: { charges: number },
+): void {
+  resetGearBattleFlags(heroes);
+  for (const h of heroes) {
+    if (h.hp <= 0) continue;
+    if (h.gear.battleStartShield > 0) {
+      Object.assign(h, addShieldToUnit(h, h.gear.battleStartShield, 1));
+    }
+    if (h.gear.battleStartRoll > 0) {
+      addRollBuff(h, h.gear.battleStartRoll, 999);
+    }
+    if (h.gear.protocolOnBattleStart > 0) {
+      protocolBudget.charges += h.gear.protocolOnBattleStart;
+    }
+  }
+}
+
 function freshSquadFromDefs(defs: HeroDefinition[]): SimHero[] {
   return defs.map(d => ({
     id: d.id,
     name: d.name,
     baseHeroName: d.name,
     evoPath: null,
+    rosterMaxHp: d.hp,
     maxHp: d.hp,
     hp: d.hp,
     shield: 0,
@@ -537,6 +645,8 @@ function freshSquadFromDefs(defs: HeroDefinition[]): SimHero[] {
     rollBuff: 0,
     rollBuffTurns: 0,
     rollBuffSkipNextTick: false,
+    gear: emptyGearTotals(),
+    gearBattle: emptyGearBattleFlags(),
   }));
 }
 
@@ -582,39 +692,134 @@ function applyP2Revives(enemies: SimEnemy[], reviveNames: string[]): void {
   }
 }
 
-function damageEnemy(e: SimEnemy, dmg: number, ignSh: boolean, allEnemies?: SimEnemy[]): void {
-  if (dmg <= 0) return;
+function squadMaxDotBonus(heroes: SimHero[]): number {
+  let max = 0;
+  for (const h of heroes) {
+    if (h.hp > 0) max = Math.max(max, h.gear.dotDmgBonus);
+  }
+  return max;
+}
+
+function dealHeroAbilityDamage(
+  h: SimHero,
+  heroes: SimHero[],
+  enemies: SimEnemy[],
+  dmgVal: number,
+  ignSh: boolean,
+  blastAll: boolean,
+  protocolBudget: { charges: number },
+  applyFirstBonus: boolean,
+): void {
+  if (dmgVal <= 0) return;
+  let dmg = dmgVal;
+  if (applyFirstBonus) {
+    dmg += consumeFirstAbilityDmgBonus(h.gearBattle, h.gear, true);
+  }
+  const opts = {
+    shieldPierce: h.gear.shieldPierce,
+    killer: h,
+    heroes,
+    protocolBudget,
+  };
+  if (blastAll) {
+    for (const e of enemies) {
+      if (e.hp > 0) {
+        const dealt = damageEnemy(e, dmg, ignSh, enemies, opts);
+        applyLifesteal(h, dealt);
+      }
+    }
+  } else {
+    const ei = lowestHpEnemyIndex(enemies);
+    if (ei >= 0) {
+      const dealt = damageEnemy(enemies[ei]!, dmg, ignSh, enemies, opts);
+      applyLifesteal(h, dealt);
+    }
+  }
+}
+
+function notifyEnemyKill(
+  dead: SimEnemy,
+  killer: SimHero,
+  heroes: SimHero[],
+  protocolBudget: { charges: number },
+): void {
+  for (const h of heroes) {
+    if (h.hp <= 0 || h.gear.healOnKill <= 0) continue;
+    h.hp = Math.min(h.maxHp, h.hp + h.gear.healOnKill);
+  }
+  if (killer.hp <= 0) return;
+  if (killer.gear.protocolOnKillAny > 0) {
+    protocolBudget.charges += killer.gear.protocolOnKillAny;
+  }
+  if (killer.gear.protocolOnKill > 0 && isBasicEnemyType(dead.type)) {
+    protocolBudget.charges += killer.gear.protocolOnKill;
+  }
+}
+
+function damageEnemy(
+  e: SimEnemy,
+  dmg: number,
+  ignSh: boolean,
+  allEnemies?: SimEnemy[],
+  opts?: { shieldPierce?: number; killer?: SimHero; heroes?: SimHero[]; protocolBudget?: { charges: number } },
+): number {
+  if (dmg <= 0) return 0;
   let d = dmg;
+  const pierce = opts?.shieldPierce ?? 0;
   if (!ignSh && coalesceShieldStacks(e).length > 0) {
-    const { absorbed, ...sh } = absorbDamageThroughShield(e, d);
+    let absorbBudget = d;
+    if (pierce > 0) {
+      const stacks = coalesceShieldStacks(e);
+      let pierceLeft = pierce;
+      let piercedThrough = 0;
+      for (const stack of stacks) {
+        if (pierceLeft <= 0) break;
+        const cut = Math.min(stack.amount, pierceLeft);
+        pierceLeft -= cut;
+        piercedThrough += cut;
+      }
+      absorbBudget = Math.max(0, d - piercedThrough);
+    }
+    const { absorbed, ...sh } = absorbDamageThroughShield(e, absorbBudget);
     Object.assign(e, sh);
     d = Math.max(0, d - absorbed);
   }
+  const hpBefore = e.hp;
   e.hp -= d;
+  const hpDamage = hpBefore > 0 ? Math.min(hpBefore, d) : 0;
+  if (hpBefore > 0 && e.hp <= 0 && opts?.killer && opts.heroes && opts.protocolBudget) {
+    notifyEnemyKill(e, opts.killer, opts.heroes, opts.protocolBudget);
+  }
   if (e.pThr != null && !e.p2 && e.hp <= e.pThr) {
     e.p2 = true;
     if (allEnemies && e.p2ReviveNames.length > 0) {
       applyP2Revives(allEnemies, e.p2ReviveNames);
     }
   }
+  return hpDamage;
 }
 
 function damageHero(h: SimHero, dmg: number): void {
   if (dmg <= 0 || h.hp <= 0) return;
-  let d = dmg;
+  let d = Math.max(0, dmg - h.gear.dmgReduction);
   if (coalesceShieldStacks(h).length > 0) {
     const { absorbed, ...sh } = absorbDamageThroughShield(h, d);
     Object.assign(h, sh);
     d = Math.max(0, d - absorbed);
   }
   h.hp -= d;
+  if (h.hp <= 0 && h.gear.surviveOnce && !h.gearBattle.surviveOnceUsed) {
+    h.hp = 1;
+    h.gearBattle.surviveOnceUsed = true;
+  }
 }
 
 /** Player-phase start: tick DoT on enemies (matches game END TURN before hero resolves). */
-function tickEnemyDots(enemies: SimEnemy[]): void {
+function tickEnemyDots(enemies: SimEnemy[], heroes: SimHero[]): void {
+  const dotBonus = squadMaxDotBonus(heroes);
   for (const e of enemies) {
     if (e.hp <= 0 || e.dot <= 0 || e.dT <= 0) continue;
-    damageEnemy(e, e.dot, false, enemies);
+    damageEnemy(e, e.dot + dotBonus, false, enemies);
     e.dT -= 1;
     if (e.dT <= 0) e.dot = 0;
   }
@@ -669,7 +874,7 @@ function resolveHeroAbility(
     if (reroll > roll) roll = reroll;
     protocolBudget.charges--;
   }
-  roll = clampEffectiveRoll(roll, getTotalRfe(h), h.rollBuff);
+  roll = clampEffectiveRoll(roll, getTotalRfe(h), h.rollBuff + h.gear.permRollBonus);
   const ab = pickAbilityForRoll(h.activeAbilities, roll);
   if (!ab) return;
   if (h.tier === 1) h.bRolls.push(roll);
@@ -727,17 +932,19 @@ function resolveHeroAbility(
   const dmgVal = sampleHeroDamage(ab);
   const dotAmt = ab.dot || 0;
   const dotTurns = Math.max(ab.dT || 0, dotAmt > 0 ? DEFAULT_DOT_TURNS : 0);
+  const blastAll = !!(ab.blastAll || ab.multiHit);
+  const hasDirectDamage = dmgVal > 0;
 
   let singleDmgTargetIdx = -1;
-  if ((ab.blastAll || ab.multiHit) && dmgVal > 0) {
-    for (const e of enemies) {
-      if (e.hp > 0) damageEnemy(e, dmgVal, ignSh, enemies);
-    }
-  } else if ((ab.dmg || 0) > 0 || dmgVal > 0) {
-    const ei = lowestHpEnemyIndex(enemies);
-    if (ei >= 0) {
-      singleDmgTargetIdx = ei;
-      damageEnemy(enemies[ei]!, dmgVal, ignSh, enemies);
+  if (hasDirectDamage) {
+    if (blastAll) {
+      dealHeroAbilityDamage(h, heroes, enemies, dmgVal, ignSh, true, protocolBudget, true);
+    } else {
+      const ei = lowestHpEnemyIndex(enemies);
+      if (ei >= 0) {
+        singleDmgTargetIdx = ei;
+        dealHeroAbilityDamage(h, heroes, enemies, dmgVal, ignSh, false, protocolBudget, true);
+      }
     }
   }
 
@@ -777,6 +984,11 @@ function resolveHeroAbility(
   const gainProto = ab.gainProtocol || 0;
   if (gainProto > 0) {
     protocolBudget.charges += gainProto;
+  }
+
+  if (hasDirectDamage && h.gear.firstAbilityEcho && !h.gearBattle.firstAbilityEchoUsed) {
+    h.gearBattle.firstAbilityEchoUsed = true;
+    dealHeroAbilityDamage(h, heroes, enemies, dmgVal, ignSh, blastAll, protocolBudget, false);
   }
 }
 
@@ -865,18 +1077,180 @@ function resolveEnemyTurn(
   }
 }
 
+function lowestHpPctHero(heroes: SimHero[]): SimHero | null {
+  const alive = livingHeroes(heroes);
+  if (!alive.length) return null;
+  return alive.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b));
+}
+
+function firstDeadHero(heroes: SimHero[]): SimHero | null {
+  return heroes.find(h => h.hp <= 0) ?? null;
+}
+
+function squadAvgHpPct(heroes: SimHero[]): number {
+  const alive = livingHeroes(heroes);
+  if (!alive.length) return 1;
+  return alive.reduce((sum, h) => sum + h.hp / h.maxHp, 0) / alive.length;
+}
+
+function payItemProtocolCost(protocolBudget: { charges: number }): boolean {
+  if (protocolBudget.charges < ITEM_PROTOCOL_COST) return false;
+  protocolBudget.charges -= ITEM_PROTOCOL_COST;
+  return true;
+}
+
+function applyConsumableEffect(
+  item: ItemEntry,
+  heroes: SimHero[],
+  enemies: SimEnemy[],
+  protocolBudget: { charges: number },
+  targetHero?: SimHero,
+  targetEnemy?: SimEnemy,
+): void {
+  const e = item.effect;
+  const t = e.type;
+  switch (t) {
+    case 'heal':
+      if (targetHero && targetHero.hp > 0) {
+        targetHero.hp = Math.min(targetHero.maxHp, targetHero.hp + (e.amount ?? 0));
+      }
+      break;
+    case 'healAll':
+      for (const h of heroes) {
+        if (h.hp > 0) h.hp = Math.min(h.maxHp, h.hp + (e.amount ?? 0));
+      }
+      break;
+    case 'shield':
+      if (targetHero && targetHero.hp > 0) {
+        Object.assign(targetHero, addShieldToUnit(targetHero, e.amount ?? 0, e.shT ?? 1));
+      }
+      break;
+    case 'shieldAll':
+      for (const h of heroes) {
+        if (h.hp > 0) Object.assign(h, addShieldToUnit(h, e.amount ?? 0, e.shT ?? 1));
+      }
+      break;
+    case 'rollBuff':
+      if (targetHero && targetHero.hp > 0) addRollBuff(targetHero, e.amount ?? 0, e.turns ?? 1);
+      break;
+    case 'revive':
+      if (targetHero && targetHero.hp <= 0) {
+        targetHero.hp = Math.max(1, Math.round(targetHero.maxHp * (e.pct ?? 50) / 100));
+      }
+      break;
+    case 'enemyRfe':
+      if (targetEnemy && targetEnemy.hp > 0) addEnemyRfeStack(targetEnemy, e.amount ?? 0, e.rfT ?? 1);
+      break;
+    case 'enemyDmg':
+      if (targetEnemy && targetEnemy.hp > 0) damageEnemy(targetEnemy, e.amount ?? 0, false, enemies);
+      break;
+    case 'enemyDot':
+      if (targetEnemy && targetEnemy.hp > 0) {
+        applyDotToEnemy(targetEnemy, e.amount ?? 0, Math.max(e.dT ?? 0, DEFAULT_DOT_TURNS));
+      }
+      break;
+    case 'gainProtocol':
+      protocolBudget.charges += e.amount ?? 0;
+      break;
+    case 'enemyDieFreeze':
+      if (targetEnemy && targetEnemy.hp > 0) applyEnemyDieFreeze(targetEnemy, e.skips ?? 1);
+      break;
+    case 'enemyDieFreezeAll':
+      for (const en of enemies) {
+        if (en.hp > 0) applyEnemyDieFreeze(en, e.skips ?? 1);
+      }
+      break;
+    case 'xpBoost':
+      for (const h of heroes) {
+        if (h.hp > 0 && h.tier === 1) h.xp += e.amount ?? 0;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+function tryUseTrackConsumable(
+  item: ItemEntry | undefined,
+  heroes: SimHero[],
+  enemies: SimEnemy[],
+  protocolBudget: { charges: number },
+  phase: 'battleStart' | 'roundStart',
+  roundIndex: number,
+  usedRef: { used: boolean },
+): void {
+  if (!item || usedRef.used || SKIPPED_CONSUMABLE_TYPES.has(item.effect.type)) return;
+
+  const t = item.effect.type;
+  const tryApply = (hero?: SimHero, enemy?: SimEnemy): boolean => {
+    if (!payItemProtocolCost(protocolBudget)) return false;
+    applyConsumableEffect(item, heroes, enemies, protocolBudget, hero, enemy);
+    usedRef.used = true;
+    return true;
+  };
+
+  if (phase === 'battleStart') {
+    if (!BATTLE_START_CONSUMABLE_TYPES.has(t)) return;
+    tryApply();
+    return;
+  }
+
+  if (t === 'revive') {
+    const dead = firstDeadHero(heroes);
+    if (dead) tryApply(dead);
+    else if (roundIndex >= 2) tryApply();
+    return;
+  }
+  if (t === 'heal') {
+    const tgt = lowestHpPctHero(heroes);
+    if (tgt && tgt.hp / tgt.maxHp < 0.55) tryApply(tgt);
+    else if (roundIndex >= 2 && tgt) tryApply(tgt);
+    return;
+  }
+  if (t === 'healAll') {
+    if (squadAvgHpPct(heroes) < 0.75) tryApply();
+    else if (roundIndex >= 2) tryApply();
+    return;
+  }
+  if (t === 'enemyDmg' || t === 'enemyDot' || t === 'enemyRfe' || t === 'enemyDieFreeze') {
+    const ei = lowestHpEnemyIndex(enemies);
+    if (ei >= 0 && roundIndex === 0) tryApply(undefined, enemies[ei]!);
+    else if (ei >= 0 && roundIndex >= 2) tryApply(undefined, enemies[ei]!);
+    return;
+  }
+  if (t === 'shield' || t === 'rollBuff') {
+    const tgt = lowestHpPctHero(heroes);
+    if (tgt && roundIndex <= 1) tryApply(tgt);
+    else if (roundIndex >= 2 && tgt) tryApply(tgt);
+  }
+}
+
 function simulateBattle(
   heroes: SimHero[],
   enemies: SimEnemy[],
   suites: Record<string, EnemyAbilitySuite>,
   protocolBudget: { charges: number },
+  trackConsumable?: ItemEntry,
 ): boolean {
+  applyBattleStartGear(heroes, protocolBudget);
+  const consumableUsed = { used: false };
+  tryUseTrackConsumable(trackConsumable, heroes, enemies, protocolBudget, 'battleStart', 0, consumableUsed);
   const maxRounds = 400;
   for (let round = 0; round < maxRounds; round++) {
     if (!livingEnemies(enemies).length) return true;
     if (!livingHeroes(heroes).length) return false;
 
-    tickEnemyDots(enemies);
+    tryUseTrackConsumable(
+      trackConsumable,
+      heroes,
+      enemies,
+      protocolBudget,
+      'roundStart',
+      round,
+      consumableUsed,
+    );
+
+    tickEnemyDots(enemies, heroes);
     if (!livingEnemies(enemies).length) return true;
     if (!livingHeroes(heroes).length) return false;
 
@@ -906,6 +1280,7 @@ function simulateBattle(
       if (e.hp <= 0) continue;
       if (coalesceShieldStacks(e).length > 0) Object.assign(e, tickUnitShield(e));
       tickEnemyRollBuff(e);
+      tickEnemyRfe(e);
     }
   }
   return false;
@@ -913,6 +1288,7 @@ function simulateBattle(
 
 function interBattleReset(heroes: SimHero[]): void {
   for (const h of heroes) {
+    syncHeroMaxHp(h);
     if (h.hp > 0) h.hp = h.maxHp;
     else h.hp = Math.max(1, Math.round(h.maxHp * 0.8));
     h.shield = 0;
@@ -946,6 +1322,7 @@ function battlesWonBeforeWipeWithSquad(
   if (defs.length === 0) return { wins: 0, squadIds: [], hpPctPerWin: [], heroes: [] };
   const squadIds = defs.map(d => d.id);
   const heroes = freshSquadFromDefs(defs);
+  applySquadGear(heroes, input.squadGearId, input.gearCatalog);
   startSquadEvolutionState(heroes, input);
   let wins = 0;
   const hpPctPerWin: number[] = [];
@@ -953,9 +1330,14 @@ function battlesWonBeforeWipeWithSquad(
   // Protocol budget is shared across the whole track
   const protocolBudget = { charges: Math.max(0, input.protocolRerolls | 0) };
 
+  const trackConsumable =
+    input.trackConsumableId && input.itemCatalog
+      ? input.itemCatalog[input.trackConsumableId]
+      : undefined;
+
   for (let b = 0; b < battles.length; b++) {
     const enemies = spawnEnemies(battles[b]!.enemies, b, input.unitDefs, input.battleScale, trackHp);
-    const win = simulateBattle(heroes, enemies, input.suites, protocolBudget);
+    const win = simulateBattle(heroes, enemies, input.suites, protocolBudget, trackConsumable);
     if (!win) return { wins, squadIds, hpPctPerWin, heroes };
     wins += 1;
     hpPctPerWin.push(survivorHpPct(heroes));

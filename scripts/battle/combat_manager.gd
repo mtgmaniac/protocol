@@ -182,7 +182,13 @@ func apply_battle_start_gear_effects() -> void:
 					_log("%s: Combat Plating grants %d shield." % [hero_state["unit"].display_name, int(item.effect.get("amount", 0))])
 				"battleStartCloak":
 					hero_state["cloaked"] = true
-					_log("%s starts battle cloaked (Phase Weave)." % hero_state["unit"].display_name)
+					_log("%s starts battle cloaked." % hero_state["unit"].display_name)
+				"battleStartCloakRoll":
+					hero_state["cloaked"] = true
+					var cloak_roll: int = int(item.effect.get("rollAmount", 0))
+					if cloak_roll > 0:
+						hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + cloak_roll
+					_log("%s starts battle cloaked with +%d roll." % [hero_state["unit"].display_name, cloak_roll])
 				"maxHpBonus":
 					var bonus: int = int(item.effect.get("amount", 0))
 					hero_state["max_hp"] = int(hero_state["max_hp"]) + bonus
@@ -968,7 +974,7 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 				var heal_on_kill: int = int(hero_state.get("gear_heal_on_kill", 0))
 				if heal_on_kill > 0:
 					_heal_state(hero_state, heal_on_kill, hero_state)
-					_log("%s Scavenger Rig heals %d on kill." % [hero_state["unit"].display_name, heal_on_kill])
+					_log("%s heals %d HP on enemy death." % [hero_state["unit"].display_name, heal_on_kill])
 
 		if not killer_state.is_empty() and _is_hero_state(killer_state):
 			var protocol_basic: int = int(killer_state.get("gear_protocol_on_kill", 0))
@@ -1267,8 +1273,20 @@ func apply_item_heal(target_state: Dictionary, amount: int) -> void:
 	_heal_state(target_state, amount)
 
 
+func apply_item_heal_all(amount: int) -> void:
+	for hero_state in _hero_states:
+		if not bool(hero_state.get("dead", true)):
+			_heal_state(hero_state, amount)
+
+
 func apply_item_shield(target_state: Dictionary, amount: int, turns: int) -> void:
 	_add_shield_stack(target_state, amount, turns)
+
+
+func apply_item_shield_all(amount: int, turns: int) -> void:
+	for hero_state in _hero_states:
+		if not bool(hero_state.get("dead", true)):
+			_add_shield_stack(hero_state, amount, turns)
 
 
 func apply_item_roll_buff(target_state: Dictionary, amount: int, turns: int) -> void:

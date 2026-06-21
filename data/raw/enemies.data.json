@@ -301,7 +301,7 @@
     "volt": {
       "recharge": {
         "name": "Grounding",
-        "eff": "5 shield, 2t, all allies",
+        "eff": "all allies 5 shield, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -358,7 +358,7 @@
     "boss": {
       "recharge": {
         "name": "Shield Matrix",
-        "eff": "12 shield (P2 18), 1t",
+        "eff": "12 shield (P2 18)",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -406,7 +406,7 @@
       },
       "overload": {
         "name": "Annihilate",
-        "eff": "26 dmg (P2 33) to all heroes",
+        "eff": "26 dmg (P2 33) (all)",
         "dmg": 26,
         "dmgP2": 33,
         "dot": 0,
@@ -2382,7 +2382,9 @@
       "p2dMax": 30,
       "pThr": 70,
       "callsign": "SCRAPLORD",
-      "p2ReviveNames": ["Scrap Drone"]
+      "p2ReviveNames": [
+        "Scrap Drone"
+      ]
     },
     "Skitterling": {
       "hp": 40,

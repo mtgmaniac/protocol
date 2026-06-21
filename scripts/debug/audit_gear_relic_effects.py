@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GEAR_HANDLED = {
     "rollBonus", "dotDmgBonus", "dmgReduction", "surviveOnce", "firstAbilityDmgBonus",
     "healOnKill", "protocolOnBattleStart", "battleStartShield", "battleStartCloak",
+    "battleStartCloakRoll",
     "maxHpBonus", "lifesteal", "firstAbilityEcho", "shieldPierce", "healShieldBonus",
     "protocolOnKill", "protocolOnKillAny",
 }

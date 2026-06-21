@@ -88,11 +88,18 @@ def hero_expected(raw: dict) -> str:
     if raw.get("taunt"):
         parts.append("taunt (picked enemy targets you)")
 
+    gp = raw.get("gainProtocol") or 0
+    if gp > 0:
+        parts.append(f"+{gp} protocol")
+
     for key in ("freezeAllEnemyDice", "freezeEnemyDice", "freezeAnyDice"):
         v = raw.get(key) or 0
         if v > 0:
             sk = "s" if v > 1 else ""
-            parts.append(f"freeze ({v} reveal skip{sk})")
+            if key == "freezeAllEnemyDice":
+                parts.append(f"freeze all ({v} reveal skip{sk})")
+            else:
+                parts.append(f"freeze ({v} reveal skip{sk})")
 
     return ", ".join(parts) if parts else "—"
 
@@ -102,10 +109,12 @@ def enemy_expected(raw: dict) -> str:
     dmg = raw.get("dmg") or 0
     if dmg > 0:
         p2 = raw.get("dmgP2")
+        s = f"{dmg} dmg"
         if p2 and p2 != dmg:
-            parts.append(f"{dmg} dmg (P2 {p2})")
-        else:
-            parts.append(f"{dmg} dmg")
+            s += f" (P2 {p2})"
+        if raw.get("blastAll"):
+            s += " (all)"
+        parts.append(s)
 
     dot = raw.get("dot") or 0
     if dot > 0:
@@ -121,12 +130,21 @@ def enemy_expected(raw: dict) -> str:
 
     shield = raw.get("shield") or 0
     if shield > 0:
-        parts.append(f"{shield} shield{turn_suffix(raw.get('shT') or 0)}")
+        p2 = raw.get("shieldP2")
+        s = f"{shield} shield"
+        if p2 and p2 != shield:
+            s += f" (P2 {p2})"
+        s += turn_suffix(raw.get("shT") or 0)
+        parts.append(s)
 
     sa = raw.get("shieldAlly") or 0
     if sa > 0:
         ally_t = raw.get("shAllyT") or raw.get("shT") or 1
-        parts.append(f"ally {sa} shield{turn_suffix(ally_t)}")
+        t = turn_suffix(ally_t)
+        if raw.get("shieldAllyAll"):
+            parts.append(f"all allies {sa} shield{t}")
+        else:
+            parts.append(f"ally {sa} shield{t}")
 
     if raw.get("enemySelfTaunt"):
         parts.append("taunt (all heroes must target this enemy)")

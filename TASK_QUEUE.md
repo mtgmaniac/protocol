@@ -16,31 +16,26 @@ Active threads — already in motion; continue when you pick them up, don't rest
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| **Task 5 — Facility balance pass** | `fix/cleanup` | Sim-driven tuning loop. Run `balance_sim_facility.ts`, report cliffs, propose `data/raw/` JSON diffs. Target full-clear band TBD (~3–7% in recent sims). **In progress — don't restart.** |
+| **Task 5 — Facility balance & content** | `fix/cleanup` | Sim loop (`balance_sim_facility.ts`) → JSON diffs for `enemies.data.json`, `battle-modes.json`. 10 fights defined; enemy HP/dmg, roster, boss tuning still moving. Target full-clear band TBD (~3–7%). **In progress — don't restart.** |
 | **Parallel UI polish** | `codex/compact-battle-ui-three-unit-pips`, `codex/ui-compact-card-prototype` | Battle/reward/evolution/unit-select readability. Separate from backend pass. |
+
+**Task 5 prompt (when continuing):**
+> Use `scripts/sim/` + `balance_sim_facility.ts` on the facility operation. Report win rate, fight cliffs, mean depth. Propose data-only JSON diffs — don't apply until reviewed.
 
 ---
 
 ## Data
 
-JSON / workbook / balance content. After edits: `npm run validate-data` + `AbilityAuditRunner.tscn`.
+Static JSON / schema content (not sim-driven tuning). After edits: `npm run validate-data` + `AbilityAuditRunner.tscn`.
 
 | Item | Status | Scope |
 |------|--------|-------|
-| **Task 5 outputs** | Ongoing | Enemy HP/dmg, roster composition, boss tuning in `enemies.data.json` / `battle-modes.json` from sim reports |
-| **Task 12 — Normalize `eff` text** | Open | Regenerate `heroes.data.json` + `enemies.data.json` from workbook; canonical `[value type] [target] [duration]` syntax |
-| **Task 13 — Picker blurbs** | Open | Update hero blurbs in `heroes.data.json` from workbook; verify UnitSelect display |
-| **Task 11 — Evolution callsigns** | Done | In data + DataManager |
-| **Facility operation content** | Mostly done | 10 fights defined; balance numbers still move with Task 5 |
+| **Task 13 — Picker blurbs** | **Done** | All 8 heroes have `pickerBlurb` + `pickerCategory` in JSON; DataManager loads them |
+| **Task 11 — Evolution callsigns** | **Done** | 8 base + 16 evo callsigns in data; applied on evolve in `GameState.gd` |
+| **Task 12 — Normalize `eff` text** | **Done** | `audit_eff_text.py --apply` → 0 mismatches |
 
-**Task 5 prompt (when continuing):**
-> Use `scripts/sim/` + `balance_sim_facility.ts` on the facility operation. Report win rate, fight cliffs, mean depth. Propose data-only JSON diffs — don't apply until reviewed.
-
-**Task 12 prompt:**
-> Regenerate `data/raw/heroes.data.json` and `enemies.data.json` with normalized `eff` fields from the workbook. Confirm tooltips read `eff` from data.
-
-**Task 13 prompt:**
-> Update picker blurbs in `heroes.data.json` from workbook `picker_blurb` column. Verify on UnitSelect.
+**Task 13 prompt (if revisiting copy from workbook):**
+> Update picker blurbs in `heroes.data.json` from workbook `picker_blurb` column.
 
 ---
 
@@ -50,14 +45,19 @@ Scenes, layout, cards, feedback, audio, themes. **`codex/*` branches only** — 
 
 | Item | Status | Scope |
 |------|--------|-------|
+| **Task 13 — Show picker blurbs on UnitSelect** | Open | Wire `UnitData.picker_blurb` into `home_screen.gd` detail panel |
 | **Task 8 — Battle feedback / game feel** | Partial | `battle_feedback.gd` extracted; Tier 1–3 primitives per `offline-bundle/ANIMATION.md` still to build |
 | **Task 9 — Audio system** | Open | `AudioManager` exists; wire SFX tiers per `offline-bundle/AUDIO.md`, hook to Task 8 events |
 | **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
+| **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
 | **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
 | **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |
 | **V2 band geometry audit** | Dropped | Center uses **540px** not 432 by design (`battle_layout.gd`); no Task 3 pass needed |
 
-**Optional UI follow-ups (not queued):** protocol footer chrome extract, help overlay extract, targeting UI helper.
+**Optional UI follow-ups (not queued):** protocol footer chrome extract, help overlay extract.
+
+**Incoming target indicators prompt:**
+> During hero targeting, show low-key who each living enemy (and taunting/spite interactions) is aimed at — e.g. small target pip on cards, dim connector, or card subtitle. Must stay readable at 450×1000 without cluttering the pick phase.
 
 **Task 8 start prompt:**
 > Implement Tier 1 from `ANIMATION.md` one primitive at a time — hit_pause, then attacker lunge. Test in auto-battle between each.
@@ -68,23 +68,7 @@ Scenes, layout, cards, feedback, audio, themes. **`codex/*` branches only** — 
 
 Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON, not visual chrome.
 
-| Item | Status | Scope |
-|------|--------|-------|
-| **Task 7 — `dot` → `burn` rename** | Open | Lockstep code + data + status labels. One session; see rename map below |
-| **Mark / vulnerable mechanic** | Open | `markNext` keyword in `combat_manager.gd` + schema + sample abilities |
-| **Wraith Engineer protocol efficiency** | Design | Manipulation discounts; Overclocked generator (`gainProtocol`) done |
-| **Sim — full protocol economy** | Open | Per-turn +1, nudge/set/item costs in `battle-progress-sim.lib.ts` ( `gainProtocol` charge pool done) |
-| **Task 6 — Gear & relic effects** | **Done** (verified 2026-06-21) | Static audit 16/16 gear + 21/21 relic types OK; 3 runtime regressions in ability audit; 11 effects code-only verified — see below |
-| **Task 10 — Protocol economy** | Mostly done | Cap 10, +1/turn, nudge +3 once/die, Set 3, flat item cost — **verify Protocol Override relic** |
-| **Hygiene — `project.godot*.tmp`** | Open | `git rm --cached` tracked Godot temp files |
-| **ARC electric status** | Design | Option A (force roll 1) vs B (zone bump) — decide before implementing |
-
-**Task 7 rename map (abbreviated):** data `dot`/`dT` → `burn`/`burnT`; items `enemyDot` → `enemyBurn`; gear/relic dot* → burn*; code `combat_manager.gd`, `DataManager.gd`, sim; UI status token "Burning". Ability flavor names unchanged.
-
-**Task 7 prompt:**
-> Pure rename, no behavior change. Grep all sites, code first then regenerate data from workbook in same pass. One battle to verify ticks.
-
-### Task 6 verification detail (2026-06-21)
+**All queued combat items done.** Optional follow-up below (not blocking).
 
 **Static:** `python scripts/debug/audit_gear_relic_effects.py` — all gear/relic `effect.type` values in data have handlers.
 
@@ -105,8 +89,9 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 | `reviveNoPenalty` | mercyProtocol | `GameState.get_revive_hp_pct` → 100% |
 | `lowHpSquadRollBuff` | emergencySignal | `_trigger_low_hp_squad_roll_buff` at 50% HP |
 | `healGrantsShieldAll` | aegisField | `_heal_state` shields all allies |
+| `protocolOnItemUse` | protocolOverride | `battle_scene._get_item_protocol_cost` + `_apply_item_effect` |
 
-Optional follow-up: add ability-audit regressions for the 11 above (not blocking — handlers exist and data maps cleanly).
+Optional follow-up: add ability-audit regressions for the 12 above (not blocking — handlers exist and data maps cleanly).
 
 ---
 
@@ -120,22 +105,42 @@ Optional follow-up: add ability-audit regressions for the 11 above (not blocking
 | **Task 4 — Ability audit** | 78 passed Godot; 0 Python keyword gaps |
 | Sim `gainProtocol` | Charge pool in `battle-progress-sim.lib.ts` |
 | **Task 6 — Gear & relic effects** | All 14 Task-6 types wired; `audit_gear_relic_effects.py` clean; ability audit regressions pass for lifesteal, shieldPierce, allyDeathHealAll |
+| **Task 10 — Protocol economy** | Cap 10, +1/turn, nudge 1 (+3), reroll 2, set 3, item 1; Protocol Override cost 0 + grant +1 — verified vs `GROUND_TRUTH.md` |
+| **Task 12 — Normalize `eff` text** | `audit_eff_text.py` → 0 mismatches |
+| **Task 13 — Picker blurbs (data)** | All 8 heroes in JSON + DataManager |
+| **Hygiene — `project.godot*.tmp`** | Untracked 2 Godot editor temp files from git index |
 | Facility backend merge | Validation, Scrapmaster P2, boss P2 rules |
 
 ---
 
-## Design parking lot
+## Parking lot
 
-Decide before coding; jot answers anywhere convenient.
+Ideas saved for later — **not prioritized, not in progress.** Pick up only when explicitly chosen.
 
-| Topic | State |
+### Task 7 — Rename `dot` → `burn` (lockstep code + data)
+
+Pure rename, no mechanic change. Workbook/GROUND_TRUTH already use burn naming; game still uses `dot`/`poison` in code and data.
+
+**Why parked:** large touch surface (combat_manager, DataManager, sim, audits, status UI); must be one session with no partial loads.
+
+**Rename map (abbreviated):** data `dot`/`dT` → `burn`/`burnT`; items `enemyDot` → `enemyBurn`; gear/relic `dot*` → `burn*`; code `combat_manager.gd`, `DataManager.gd`, sim; UI status token → "Burning". Ability flavor names (Venom Nip, etc.) unchanged.
+
+**Future prompt:**
+> Pure rename, no behavior change. Grep all sites, code first then regenerate data from workbook in same pass. One battle to verify ticks.
+
+### Design decisions (unpinned)
+
+| Topic | Notes |
 |-------|-------|
-| **DoT identity** | Decided → rename to **burn** (Task 7) |
-| **ARC mechanic** | A vs B — see Combat & systems |
+| **Mark / vulnerable** | `markNext` keyword — combat_manager + schema + sample abilities; not scheduled |
+| **Sim — full protocol economy** | Per-turn +1, nudge/set/item costs in sim — **dropped**; `gainProtocol` charge pool sufficient for balance sims |
+| **ARC electric status** | Option A (force roll 1) vs B (zone bump) — not scheduled |
+| **DoT naming** | Leaning **burn** keyword (Task 7) — not scheduled |
 | **Difficulty target (facility)** | Sets Task 5 goal when pinned |
 | **Evolution timing** | 50 XP/battle, evolve at 100 (~fight 2) — intended? |
 | **Demo scope** | All 5 ops vs facility-first |
-| **Third evolution / stats** | Parked far future |
+| **Third evolution / stats (STR/DEX/INT)** | Far future |
+| **Wraith Engineer protocol efficiency** | Manipulation discounts; Overclocked generator done |
 
 ---
 

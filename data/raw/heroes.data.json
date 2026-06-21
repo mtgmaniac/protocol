@@ -809,7 +809,7 @@
                 10
               ],
               "name": "Lacerate",
-              "eff": "5 dmg, 3 DoT, 1t",
+              "eff": "5 dmg, 3 DoT",
               "dmg": 5,
               "dMin": 5,
               "dMax": 5,
@@ -1058,7 +1058,7 @@
                 16
               ],
               "name": "Iron Wall",
-              "eff": "all 7 shield, 1t",
+              "eff": "all 7 shield",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -1386,7 +1386,7 @@
                 12
               ],
               "name": "Whiteout Salvo",
-              "eff": "4 dmg (all), freeze (1 reveal skip)",
+              "eff": "4 dmg (all), freeze all (1 reveal skip)",
               "dmg": 4,
               "dMin": 4,
               "dMax": 4,
@@ -1437,7 +1437,7 @@
                 19
               ],
               "name": "Permafrost Aegis",
-              "eff": "9 dmg, all 8 shield, 2t, -2 roll, 2t, freeze (1 reveal skip)",
+              "eff": "9 dmg, all 8 shield, 2t, -2 roll, 2t, freeze all (1 reveal skip)",
               "dmg": 9,
               "dMin": 9,
               "dMax": 9,
@@ -1465,7 +1465,7 @@
                 20
               ],
               "name": "Absolute Zero",
-              "eff": "15 dmg, all 14 shield, 2t, -3 roll, 2t, freeze (1 reveal skip)",
+              "eff": "15 dmg, all 14 shield, 2t, -3 roll, 2t, freeze all (1 reveal skip)",
               "dmg": 15,
               "dMin": 15,
               "dMax": 15,
@@ -1964,7 +1964,7 @@
             4
           ],
           "name": "Field Patch",
-          "eff": "8 heal ally + 1 protocol",
+          "eff": "8 heal (ally), +1 protocol",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -2034,7 +2034,7 @@
             20
           ],
           "name": "Scorched Earth",
-          "eff": "12 dmg all + 2 protocol",
+          "eff": "12 dmg (all), +2 protocol",
           "dmg": 12,
           "dMin": 12,
           "dMax": 12,
@@ -2059,7 +2059,7 @@
                 5
               ],
               "name": "Bias Charge",
-              "eff": "+1 protocol + +1 roll all",
+              "eff": "+1 squad roll, +1 protocol",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -2156,7 +2156,7 @@
                 20
               ],
               "name": "Meltdown Protocol",
-              "eff": "21 dmg + 4 dot 2t + 2 protocol",
+              "eff": "21 dmg, 4 DoT, 2t, +2 protocol",
               "dmg": 21,
               "dMin": 21,
               "dMax": 21,
@@ -2855,7 +2855,7 @@
                 20
               ],
               "name": "White Noise Core",
-              "eff": "20 dmg, all -4 roll, 2t",
+              "eff": "20 dmg (all), all -4 roll, 2t",
               "dmg": 20,
               "dMin": 20,
               "dMax": 20,

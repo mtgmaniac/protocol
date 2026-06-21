@@ -2978,11 +2978,20 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			var amount: int = int(effect.get("amount", 0))
 			combat_manager.apply_item_heal(target_state, amount)
 			_append_log("Item: %s heals %s for %d." % [item.display_name, tname, amount])
+		"healAll":
+			var heal_all_amount: int = int(effect.get("amount", 0))
+			combat_manager.apply_item_heal_all(heal_all_amount)
+			_append_log("Item: %s heals all living allies for %d." % [item.display_name, heal_all_amount])
 		"shield":
 			var amount: int = int(effect.get("amount", 0))
 			var turns: int = int(effect.get("shT", 1))
 			combat_manager.apply_item_shield(target_state, amount, turns)
 			_append_log("Item: %s grants %d shield (%d turns) to %s." % [item.display_name, amount, turns, tname])
+		"shieldAll":
+			var shield_all_amount: int = int(effect.get("amount", 0))
+			var shield_all_turns: int = int(effect.get("shT", 1))
+			combat_manager.apply_item_shield_all(shield_all_amount, shield_all_turns)
+			_append_log("Item: %s grants all living allies %d shield (%d turns)." % [item.display_name, shield_all_amount, shield_all_turns])
 		"rollBuff":
 			var amount: int = int(effect.get("amount", 0))
 			var turns: int = int(effect.get("turns", 1))
@@ -3023,6 +3032,11 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 					if unit != null and _game_state().has_method("add_unit_xp"):
 						_game_state().add_unit_xp(str(unit.id), amount)
 			_append_log("Item: %s — all living allies +%d XP." % [item.display_name, amount])
+		"gainProtocol":
+			var protocol_grant: int = int(effect.get("amount", 0))
+			protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
+			_update_protocol_bar()
+			_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
 		"enemyRerollDie":
 			if not target_state.is_empty():
 				var uid: String = str(target_state["id"])
@@ -3046,6 +3060,18 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 				if frozen_value > 0:
 					target_state["frozen_die_value"] = frozen_value
 				_append_log("Item: %s freezes %s's die for %d turns." % [item.display_name, tname, skips])
+		"enemyDieFreezeAll":
+			var freeze_skips: int = int(effect.get("skips", 1))
+			for enemy_state in combat_manager.get_enemy_states():
+				if bool(enemy_state.get("dead", true)):
+					continue
+				enemy_state["die_freeze_turns"] = int(enemy_state.get("die_freeze_turns", 0)) + freeze_skips
+				var fv: int = _get_roll_value_for_state(enemy_rolls, enemy_state)
+				if fv <= 0:
+					fv = int(enemy_state.get("last_die_value", enemy_state.get("frozen_die_value", 0)))
+				if fv > 0:
+					enemy_state["frozen_die_value"] = fv
+			_append_log("Item: %s — all enemy dice frozen for %d reveal(s)." % [item.display_name, freeze_skips])
 
 	_consume_item(item.id)
 	_pending_item = null
