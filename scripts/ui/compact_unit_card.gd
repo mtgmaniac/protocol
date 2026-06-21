@@ -105,9 +105,11 @@ var unit_data: Resource = null
 var gear_detail_rows: Array = []
 
 var _name_label: Label = null
+var _name_strip: PanelContainer = null
 var _portrait_frame: PanelContainer = null
 var _portrait_crop: Control = null
 var _portrait_rect: TextureRect = null
+var _portrait_dither: TextureRect = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
@@ -259,6 +261,11 @@ func _build() -> void:
 	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(root)
 
+	_name_strip = PanelContainer.new()
+	_name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	root.add_child(_name_strip)
+
 	_name_label = Label.new()
 	_name_label.custom_minimum_size = Vector2(0, NAME_ROW_HEIGHT)
 	_name_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -267,7 +274,7 @@ func _build() -> void:
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_apply_label(_name_label, CARD_NAME_FONT_SIZE, UiTheme.CYAN, 0)
-	root.add_child(_name_label)
+	_name_strip.add_child(_name_label)
 
 	_portrait_frame = PanelContainer.new()
 	_portrait_frame.custom_minimum_size = Vector2.ZERO
@@ -289,6 +296,11 @@ func _build() -> void:
 	_portrait_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	# Position and size are set manually by _update_portrait_rect_transform
 	_portrait_crop.add_child(_portrait_rect)
+
+	# Direction-05 signature: 2x2 dither over the portrait (approximates the
+	# multiply darken overlay from the design). Alpha set per side in _refresh.
+	_portrait_dither = PixelUI.make_dither_overlay(Color.BLACK, 0.17)
+	_portrait_crop.add_child(_portrait_dither)
 
 	# Uniform thin gap between portrait and HP bar so the card panel color
 	# shows through as a subtle separator on every card.
@@ -418,17 +430,31 @@ func _refresh() -> void:
 	if _name_label == null:
 		return
 
+	var is_hero: bool = side == "hero"
 	var line_color: Color = _line_color()
-	var panel_bg: Color = UiTheme.PANEL if side == "hero" else ENEMY_PANEL
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 2, 0))
+	var panel_bg: Color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 3, 0))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
+	# Direction-05 card: header strip + HP track use darker team tints, divided by a
+	# 2px hard border in the card's line color (no rounded corners).
+	if _name_strip != null:
+		var header_bg: Color = PixelUI.DT_HERO_HEADER if is_hero else PixelUI.DT_ENEMY_HEADER
+		var header_style: StyleBoxFlat = _style(header_bg, line_color, 0, 0)
+		header_style.border_width_bottom = 2
+		_name_strip.add_theme_stylebox_override("panel", header_style)
+	var track_bg: Color = PixelUI.DT_HERO_TRACK if is_hero else PixelUI.DT_ENEMY_TRACK
+	var track_style: StyleBoxFlat = _style(track_bg, line_color, 0, 0)
+	track_style.border_width_top = 2
+	_hp_back.add_theme_stylebox_override("panel", track_style)
+	if _portrait_dither != null:
+		_portrait_dither.modulate = Color(0.0, 0.0, 0.0, 0.16 if is_hero else 0.18)
 	if _locked_portrait_size == Vector2.ZERO:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
-	_name_label.add_theme_color_override("font_color", UiTheme.CYAN if side == "hero" else UiTheme.RED)
+	_name_label.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME if is_hero else PixelUI.DT_ENEMY_NAME)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
@@ -909,7 +935,7 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 func _line_color() -> Color:
 	if targetable:
 		return TARGET_LINE
-	return HERO_LINE if side == "hero" else ENEMY_LINE
+	return PixelUI.DT_HERO_BORDER if side == "hero" else PixelUI.DT_ENEMY_BORDER
 
 
 func _status_color(token: String) -> Color:
