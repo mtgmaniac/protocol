@@ -106,7 +106,7 @@ var gear_detail_rows: Array = []
 
 var _name_label: Label = null
 var _name_strip: PanelContainer = null
-var _portrait_frame: PanelContainer = null
+var _portrait_frame: Control = null
 var _portrait_crop: Control = null
 var _portrait_rect: TextureRect = null
 var _portrait_dither: TextureRect = null
@@ -276,7 +276,9 @@ func _build() -> void:
 	_apply_label(_name_label, CARD_NAME_FONT_SIZE, UiTheme.CYAN, 0)
 	_name_strip.add_child(_name_label)
 
-	_portrait_frame = PanelContainer.new()
+	# Plain Control (NOT a Container) so the crop + status overlay can be positioned
+	# by anchors; a PanelContainer would force-lay-out both children.
+	_portrait_frame = Control.new()
 	_portrait_frame.custom_minimum_size = Vector2.ZERO
 	# Frame does NOT clip (so status badges overlaid at the bottom aren't cut off);
 	# the inner _portrait_crop still clips the portrait image itself.
@@ -588,13 +590,8 @@ func _update_portrait_rect_transform() -> void:
 	var scale: float = maxf(fw / tw, fh / th)
 	var nw: float = tw * scale
 	var nh: float = th * scale
-	if side == "hero":
-		nw = maxf(fw, nw * HERO_PORTRAIT_WIDTH_SCALE)
-		nh = nw * (th / tw)
-		# Guarantee the portrait still covers the full frame height (no bottom gap).
-		if nh < fh:
-			nh = fh
-			nw = nh * (tw / th)
+	# Heroes and enemies both use the plain cover-scale above so the portrait always
+	# fills the whole frame (the inner crop clips the overflow).
 	# Center horizontally, top-align with a small inset so the head sits
 	# just inside the top edge of the frame regardless of portrait aspect ratio
 	_portrait_rect.position = Vector2((fw - nw) * 0.5, PORTRAIT_TOP_INSET_PX)

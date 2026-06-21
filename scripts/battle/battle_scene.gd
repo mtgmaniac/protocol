@@ -2674,8 +2674,8 @@ func _apply_battle_theme() -> void:
 	if board_container != null and board_container.get_node_or_null("HeaderDivider") == null:
 		var divider: ColorRect = ColorRect.new()
 		divider.name = "HeaderDivider"
-		divider.color = Color(0.28, 0.36, 0.46, 1.0)
-		divider.custom_minimum_size = Vector2(0, 6)
+		divider.color = PixelUI.LINE_DIM
+		divider.custom_minimum_size = Vector2(0, 3)
 		divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		board_container.add_child(divider)
@@ -2730,7 +2730,7 @@ func _apply_battle_theme() -> void:
 	if protocol_panel != null:
 		# Footer plate with a top divider line separating it from the board.
 		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0)
-		footer_style.border_width_top = 4
+		footer_style.border_width_top = 3
 		footer_style.set_content_margin_all(4.0)
 		protocol_panel.add_theme_stylebox_override("panel", footer_style)
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
