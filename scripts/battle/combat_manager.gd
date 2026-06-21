@@ -676,7 +676,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					var heal_amount: int = int(floor(float(final_damage) * float(lifesteal_pct) / 100.0))
 					if heal_amount > 0:
 						_heal_state(enemy_state, heal_amount)
-						_log("%s lifesteals %d HP." % enemy_state["unit"].display_name, heal_amount)
+						_log("%s lifesteals %d HP." % [enemy_state["unit"].display_name, heal_amount])
 
 	if damage <= 0 and bool(raw.get("wipeShields", false)):
 		_wipe_all_hero_shields(enemy_state)

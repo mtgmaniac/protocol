@@ -1057,13 +1057,16 @@ func _on_nudge_button_pressed() -> void:
 	if protocol_points < 1:
 		_refresh_summary("Need 1 Protocol to Nudge.")
 		return
+	if not _has_nudgeable_hero():
+		_refresh_summary("Every die was already nudged this turn.")
+		return
 	_set_turn_phase(PHASE_NUDGE_PICK)
 
 
 func _add_nudge_button() -> void:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +3 to a hero's effective roll.")
+	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +3 to a hero's effective roll (once per die per turn).")
 	btn.pressed.connect(_on_nudge_button_pressed)
 	_style_frame_icon_action_button(btn, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
 	_nudge_button = btn
@@ -1087,8 +1090,11 @@ func _apply_reroll(hero_id: String) -> void:
 
 
 func _apply_nudge(hero_id: String) -> void:
+	if _was_hero_nudged_this_turn(hero_id):
+		_refresh_summary("That die was already nudged this turn.")
+		return
 	protocol_points -= 1
-	hero_roll_nudges[hero_id] = int(hero_roll_nudges.get(hero_id, 0)) + 3
+	hero_roll_nudges[hero_id] = 3
 	_update_protocol_bar()
 	_append_log("Nudge: %s +3 to effective roll." % hero_id)
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
@@ -1097,6 +1103,25 @@ func _apply_nudge(hero_id: String) -> void:
 	_re_assign_hero_target(hero_id)
 	_refresh_dice_result_actions()
 	_finish_roll_modifier_pick()
+
+
+func _was_hero_nudged_this_turn(hero_id: String) -> bool:
+	return hero_roll_nudges.has(hero_id)
+
+
+func _can_nudge_hero(state: Dictionary) -> bool:
+	if bool(state.get("dead", false)):
+		return false
+	if not _has_roll_for_state(hero_rolls, state):
+		return false
+	return not _was_hero_nudged_this_turn(str(state["id"]))
+
+
+func _has_nudgeable_hero() -> bool:
+	for hero_state_variant in combat_manager.get_hero_states():
+		if _can_nudge_hero(hero_state_variant):
+			return true
+	return false
 
 
 func _on_set_button_pressed() -> void:
@@ -1441,7 +1466,7 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.visible = false
 			roll_button.disabled = true
 			roll_button.text = ""
-			_refresh_summary("")
+			_refresh_summary("Tap a hero die to nudge (+3, once per die).")
 		PHASE_SET_PICK:
 			roll_button.visible = false
 			roll_button.disabled = true
@@ -1955,9 +1980,11 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 	if battle_over:
 		return false
 
-	# Reroll/Nudge pick phases: only living hero cards that have rolled
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK:
+	# Reroll/Set pick phases: only living hero cards that have rolled
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_SET_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
+	if turn_phase == PHASE_NUDGE_PICK:
+		return accent_color == HERO_ACCENT and _can_nudge_hero(state)
 
 	# Item pick phases
 	if turn_phase == PHASE_ITEM_PICK_ALLY:
@@ -2034,7 +2061,7 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		return
 	if turn_phase == PHASE_NUDGE_PICK:
 		var nudge_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-		if nudge_state.is_empty() or bool(nudge_state["dead"]) or not _has_roll_for_state(hero_rolls, nudge_state):
+		if not _can_nudge_hero(nudge_state):
 			return
 		_apply_nudge(target_id)
 		return
@@ -2208,7 +2235,7 @@ func _build_help_overlay() -> void:
 	_add_help_section(content, "PROTOCOL", [
 		"Protocol is a shared squad resource.",
 		"Spend it to manipulate dice before confirming the turn.",
-		"Nudge (1): add +3 to a die's effective roll.",
+		"Nudge (1): add +3 to a die's effective roll (once per die per turn).",
 		"Reroll (2): reroll a single die.",
 		"Set (3): set a die to any value 1-20.",
 		"Start each battle at 0; gain +1 at the end of every turn (cap 10).",
