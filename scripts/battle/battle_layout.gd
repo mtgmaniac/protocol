@@ -251,7 +251,9 @@ func ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
 		_combat_zone_frame.add_child(_combat_zone_hero_lane)
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
-	PixelUI.style_panel(_combat_zone_frame, Color(0.010, 0.014, 0.022, 0.18), PixelUI.LINE_DIM, 2, 2)
+	# Direction-05 tray: faint dark plate tint + hard-cornered DT line border (overlay
+	# kept low-alpha so the 3D dice read through it).
+	PixelUI.style_panel(_combat_zone_frame, Color(PixelUI.DT_TRAY_BG.r, PixelUI.DT_TRAY_BG.g, PixelUI.DT_TRAY_BG.b, 0.35), PixelUI.DT_LINE, 2, 0)
 
 
 func _build_combat_zone_lane(lane_name: String) -> HBoxContainer:

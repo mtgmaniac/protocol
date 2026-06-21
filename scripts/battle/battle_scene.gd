@@ -2636,6 +2636,16 @@ func _apply_battle_theme() -> void:
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(battle_log_panel, Color(0.015, 0.022, 0.035, 0.82), PixelUI.LINE_DIM, 2, 2)
+	# Direction-05: flat dark field instead of the starfield texture.
+	if background != null:
+		background.texture = null
+		if background.get_node_or_null("FieldFill") == null:
+			var field_fill: ColorRect = ColorRect.new()
+			field_fill.name = "FieldFill"
+			field_fill.color = PixelUI.DT_FIELD_BG
+			field_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			field_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+			background.add_child(field_fill)
 	_ensure_panel_background(hero_panel)
 	_ensure_panel_background(enemy_panel)
 	_ensure_panel_background(center_panel)
