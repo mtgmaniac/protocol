@@ -1,269 +1,147 @@
-# Overload Protocol — CLAUDE CODE TASK QUEUE
-*Copy-paste prompts for when you reconnect. Ordered so each task leaves the project in a stable, testable state. Do them in order; don't batch. Paste one prompt, review the diff, test, commit, move on.*
+# Overload Protocol — Task Queue
+
+Pick **one item**, implement, test, commit. Don't batch unrelated work.
+
+**Repo:** `C:\Users\Kev\Documents\protocol` · **Baseline:** `docs/BASELINE.md`, tag `baseline-fable-restart`
+
+**Branches:** `fix/cleanup` = backend/data/combat (no UI) · `codex/*` = UI polish · `main` = stable
+
+**Start here:** `AGENTS.md`, `docs/AI_AGENT_GAME_REFERENCE.md`, this file.
 
 ---
 
-## CURRENT STATE (2026-06-21) — read before the numbered tasks
+## Ongoing
 
-**Repo:** `C:\Users\Kev\Documents\protocol` · Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol)
+Active threads — already in motion; continue when you pick them up, don't restart from scratch.
 
-**Active backend branch:** `fix/cleanup` (backend/data only, **no UI**).
-
-**UI branches (parallel):** `codex/compact-battle-ui-three-unit-pips`, `codex/ui-compact-card-prototype`.
-
-**Baseline:** `docs/BASELINE.md` and git tag `baseline-fable-restart`.
-
-**Likely already done (skip or verify, don't redo):** Task 2 battle_scene decomposition, Task 4 ability keyword audit (**verified 2026-06-21** — 78/78 Godot audit, 0 Python gaps), Task 6 gear/relic wiring (mostly done), Task 10 protocol economy (cap 10, +1/turn, nudge +3 once/die, Set action, flat item cost — verify Protocol Override relic), Task 11 evolution callsigns (in data), facility balance pass on Facility operation, sim `gainProtocol` charge pool.
-
-**Still open / deferred:** Task 7 burn rename, sim full protocol economy parity, mark/vulnerable mechanic, remove `project.godot*.tmp` from git.
-
-**UI-only (codex/* branches, not fix/cleanup):** V2 band geometry / layout spec audit — dropped from queue; center uses 540px not 432 by design.
+| Item | Branch | Notes |
+|------|--------|-------|
+| **Task 5 — Facility balance pass** | `fix/cleanup` | Sim-driven tuning loop. Run `balance_sim_facility.ts`, report cliffs, propose `data/raw/` JSON diffs. Target full-clear band TBD (~3–7% in recent sims). **In progress — don't restart.** |
+| **Parallel UI polish** | `codex/compact-battle-ui-three-unit-pips`, `codex/ui-compact-card-prototype` | Battle/reward/evolution/unit-select readability. Separate from backend pass. |
 
 ---
 
-**Before anything:** open the repo at `C:\Users\Kev\Documents\protocol`. Read `AGENTS.md` + `docs/AI_AGENT_GAME_REFERENCE.md`. For UI tasks use a `codex/*` branch; for backend use `fix/cleanup`.
+## Data
+
+JSON / workbook / balance content. After edits: `npm run validate-data` + `AbilityAuditRunner.tscn`.
+
+| Item | Status | Scope |
+|------|--------|-------|
+| **Task 5 outputs** | Ongoing | Enemy HP/dmg, roster composition, boss tuning in `enemies.data.json` / `battle-modes.json` from sim reports |
+| **Task 12 — Normalize `eff` text** | Open | Regenerate `heroes.data.json` + `enemies.data.json` from workbook; canonical `[value type] [target] [duration]` syntax |
+| **Task 13 — Picker blurbs** | Open | Update hero blurbs in `heroes.data.json` from workbook; verify UnitSelect display |
+| **Task 11 — Evolution callsigns** | Done | In data + DataManager |
+| **Facility operation content** | Mostly done | 10 fights defined; balance numbers still move with Task 5 |
+
+**Task 5 prompt (when continuing):**
+> Use `scripts/sim/` + `balance_sim_facility.ts` on the facility operation. Report win rate, fight cliffs, mean depth. Propose data-only JSON diffs — don't apply until reviewed.
+
+**Task 12 prompt:**
+> Regenerate `data/raw/heroes.data.json` and `enemies.data.json` with normalized `eff` fields from the workbook. Confirm tooltips read `eff` from data.
+
+**Task 13 prompt:**
+> Update picker blurbs in `heroes.data.json` from workbook `picker_blurb` column. Verify on UnitSelect.
 
 ---
 
-## TASK 2 — Decompose battle_scene.gd
+## UI
 
-**Status: DONE (core split).** Original 3-way plan landed:
+Scenes, layout, cards, feedback, audio, themes. **`codex/*` branches only** — not `fix/cleanup`.
 
-| Script | Lines | Owns |
-|--------|------:|------|
-| `battle_layout.gd` | ~299 | Band geometry, combat zone, dice anchors, rail layout |
-| `battle_card_view.gd` | ~518 | Card/readout refresh, status tokens, ability tooltips, previews |
-| `battle_feedback.gd` | ~492 | Round feedback, float text, flash, hit pause, dice section widgets |
-| `battle_scene.gd` | ~2,693 | Turn phases, targeting, protocol/items, help overlay, auto-battle |
+| Item | Status | Scope |
+|------|--------|-------|
+| **Task 8 — Battle feedback / game feel** | Partial | `battle_feedback.gd` extracted; Tier 1–3 primitives per `offline-bundle/ANIMATION.md` still to build |
+| **Task 9 — Audio system** | Open | `AudioManager` exists; wire SFX tiers per `offline-bundle/AUDIO.md`, hook to Task 8 events |
+| **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
+| **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
+| **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |
+| **V2 band geometry audit** | Dropped | Center uses **540px** not 432 by design (`battle_layout.gd`); no Task 3 pass needed |
 
-Wired in `_ready()` via `_layout`, `_card_view`, `_feedback` child nodes. **No further split planned** unless a new pain point appears (optional future extractions: targeting helper, protocol footer chrome, help overlay — not required for Task 2).
+**Optional UI follow-ups (not queued):** protocol footer chrome extract, help overlay extract, targeting UI helper.
 
-**Test:** flow smoke + one manual battle. Tag `baseline-fable-restart` if resetting.
-
----
-
-## TASK 4 — Verify ability-data integrity end to end
-
-**Status: DONE (verified 2026-06-21).** No keyword gaps.
-
-| Check | Result |
-|-------|--------|
-| Godot `AbilityAuditRunner.tscn` | **78 passed, 0 failed** |
-| Python `audit_ability_keywords.py` | **0 gaps** (all data keys handled or classified) |
-
-Coverage includes hero + enemy abilities, targeting rules, gear/relic regressions (lifesteal, shieldPierce, allyDeathHealAll), phase 2 revives, summons, freeze, text alignment.
-
-Unused handled keys (not gaps): hero `cloakAll`, enemy `shAllyT` — wired in combat but no data uses them yet.
-
-**Re-verify after data edits:** run scene `res://scenes/debug/AbilityAuditRunner.tscn` or see `docs/BASELINE.md`.
+**Task 8 start prompt:**
+> Implement Tier 1 from `ANIMATION.md` one primitive at a time — hit_pause, then attacker lunge. Test in auto-battle between each.
 
 ---
 
-## TASK 5 — First playable-balance pass
-**Why:** now the foundation is clean, balance is a data-only loop — exactly the safe, satisfying offline-friendly work.
+## Combat & systems
 
-> Prompt: "Use the battle-progress sim in `scripts/sim/` and `scripts/debug/balance_sim_*.ts` to simulate the `facility` operation (10 battles) with several 3-hero squads. Report win rate, average battle length, and any battle that's a difficulty cliff. Suggest data-only tweaks to battleEnemyScale and specific enemy HP/dmg — show me proposed JSON diffs, don't apply."
+Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON, not visual chrome.
 
----
+| Item | Status | Scope |
+|------|--------|-------|
+| **Task 7 — `dot` → `burn` rename** | Open | Lockstep code + data + status labels. One session; see rename map below |
+| **Mark / vulnerable mechanic** | Open | `markNext` keyword in `combat_manager.gd` + schema + sample abilities |
+| **Wraith Engineer protocol efficiency** | Design | Manipulation discounts; Overclocked generator (`gainProtocol`) done |
+| **Sim — full protocol economy** | Open | Per-turn +1, nudge/set/item costs in `battle-progress-sim.lib.ts` ( `gainProtocol` charge pool done) |
+| **Task 6 — Gear & relic effects** | **Done** (verified 2026-06-21) | Static audit 16/16 gear + 21/21 relic types OK; 3 runtime regressions in ability audit; 11 effects code-only verified — see below |
+| **Task 10 — Protocol economy** | Mostly done | Cap 10, +1/turn, nudge +3 once/die, Set 3, flat item cost — **verify Protocol Override relic** |
+| **Hygiene — `project.godot*.tmp`** | Open | `git rm --cached` tracked Godot temp files |
+| **ARC electric status** | Design | Option A (force roll 1) vs B (zone bump) — decide before implementing |
 
-## TASK 6 — Implement the new gear & relic effect types from the workbook
-**Why:** the expanded Gear (19) and Relics (21) in overload_protocol_data.xlsx introduce new `effect_type` values that DataManager loads but combat_manager/GameState don't yet act on. The data is the spec; the behavior needs wiring. Do them one at a time with a test between each.
+**Task 7 rename map (abbreviated):** data `dot`/`dT` → `burn`/`burnT`; items `enemyDot` → `enemyBurn`; gear/relic dot* → burn*; code `combat_manager.gd`, `DataManager.gd`, sim; UI status token "Burning". Ability flavor names unchanged.
 
-**New GEAR effect types (hook in combat_manager):**
-- `lifesteal` (amount = %) — heal the equipped unit for that % of damage it deals. Hook: the hero damage path in `_apply_hero_ability` / `_damage_state` resolution.
-- `firstAbilityEcho` — first ability each battle resolves a 2nd time vs same target, DAMAGE ONLY. Hook: track a per-unit "first ability used" flag in the runtime state; re-run damage portion.
-- `shieldPierce` (amount) — this unit's attacks ignore up to N shield. Hook: `_damage_state` shield subtraction.
-- `healShieldBonus` (amount) — when this unit heals an ally, also add N shield. Hook: `_heal_state` / the hero heal path.
-- `protocolOnKill` (amount) — refund N protocol when this unit kills a BASIC enemy. Hook: `_on_unit_killed` + enemy-tier check.
-- `protocolOnKillAny` (amount) — refund N protocol on ANY kill by this unit. Hook: `_on_unit_killed`.
+**Task 7 prompt:**
+> Pure rename, no behavior change. Grep all sites, code first then regenerate data from workbook in same pass. One battle to verify ticks.
 
-**New RELIC effect types:**
-- `allyDeathHealAll` (amount) — ally dies → all other allies heal N. Hook: `_on_unit_killed` (mirror of existing chainReaction infra). [combat_manager]
-- `critResolveTwice` (mult) — every natural 20 resolves its effect twice. Hook: round resolution where overload/20 abilities apply. [combat_manager]
-- `rewardsNoCommon` — reward roller never offers common items. Hook: `GameState._pick_random_item_id` / `_roll_reward_item_ids` rarity filter. [GameState]
-- `protocolCarryover` (amount = %) — carry N% unspent protocol between battles (overrides the per-battle reset). Hook: battle setup / protocol init. [combat_manager + battle_scene]
-- `battleStartConsumable` (amount) — start each battle with N random consumable(s). Hook: battle start / GameState.consumables. [GameState + combat_manager]
-- `reviveNoPenalty` — between-battle revives have no HP penalty. Hook: the revive-between-battles logic. [GameState]
-- `lowHpSquadRollBuff` (amount) — first time each battle an ally drops below 50% HP, whole squad gets +N roll that turn. Hook: `_damage_state` threshold check + a once-per-battle flag + roll-buff application. [combat_manager]
-- `healGrantsShieldAll` (amount) — any ally healed → all allies gain N shield. Hook: `_heal_state`. [combat_manager]
+### Task 6 verification detail (2026-06-21)
 
-> Prompt to start: "From overload_protocol_data.xlsx Gear and Relics sheets, here are the new effect_type values that aren't yet handled. Confirm which are unhandled by grepping combat_manager.gd and GameState.gd, then implement them ONE at a time — start with `lifesteal`. For each: show me where it hooks in, the diff, and how to test it via the debug auto-battle. Don't batch."
+**Static:** `python scripts/debug/audit_gear_relic_effects.py` — all gear/relic `effect.type` values in data have handlers.
 
-**Test:** for each effect, equip/grant it and confirm via auto-battle + the combat log. **Commit each separately.**
+**Runtime regressions** (`AbilityAuditRunner.tscn`): `lifesteal`, `shieldPierce`, `allyDeathHealAll` — pass.
 
----
+**Code-verified (no dedicated regression test yet):**
 
-## TASK 7 — Rename the DoT keyword to `burn` across code + data (lockstep)
-**Why:** decision made — one unified damage-over-time keyword, called **burn** (drops the inconsistent `dot`/`poison` naming). Mechanic is UNCHANGED; this is a pure rename. The workbook and GROUND_TRUTH already use burn naming, so the code and regenerated data must follow to match.
+| Effect | Item ID | Hook |
+|--------|---------|------|
+| `firstAbilityEcho` | echo_matrix | `_apply_hero_ability` re-runs damage once |
+| `healShieldBonus` | triage_gel | `_heal_state` when healer ≠ target |
+| `protocolOnKill` | bounty_chip | `_on_unit_killed` + basic tier check |
+| `protocolOnKillAny` | apex_collector | `_on_unit_killed` any kill |
+| `critResolveTwice` | overloadLoop | `resolve_round` re-runs hero ability on raw 20 |
+| `rewardsNoCommon` | curatedCache | `GameState._pick_random_item_id` |
+| `protocolCarryover` | overflowBuffer | `battle_scene._persist_protocol_carryover` |
+| `battleStartConsumable` | fieldCache | battle start → `grant_battle_start_consumables` |
+| `reviveNoPenalty` | mercyProtocol | `GameState.get_revive_hp_pct` → 100% |
+| `lowHpSquadRollBuff` | emergencySignal | `_trigger_low_hp_squad_roll_buff` at 50% HP |
+| `healGrantsShieldAll` | aegisField | `_heal_state` shields all allies |
 
-**⚠ Ordering — do all of this in ONE session and don't run the game in between:** the data keys and the code that reads them must change together. Never load burn-keyed data with dot-reading code, or vice versa. Sequence: (1) rename in code, (2) regenerate `data/raw/*.json` from the burn-named workbook via the converter (the Task-0-adjacent converter — build it first if it doesn't exist), (3) run a full battle to verify.
-
-**Complete rename map:**
-
-Data keys (in `data/raw/*.json`, produced by the workbook converter):
-- ability entries: `dot` → `burn`, `dT` → `burnT` (heroes abilities + evolutions; enemies `enemyAbilities`)
-- items: effect `type` `enemyDot` → `enemyBurn`; its `dT` → `burnT`
-- gear: effect `type` `dotDmgBonus` → `burnDmgBonus`
-- relics: `enemyDotPermanent` → `enemyBurnPermanent`; `dotAmplified` → `burnAmplified`
-
-Code — `scripts/autoloads/DataManager.gd`:
-- `_build_hero_dice_ranges` / `_build_enemy_dice_ranges`: reads of `dot`/`dT` → `burn`/`burnT`
-- gear handling: `dotDmgBonus` → `burnDmgBonus`; state var `gear_dot_bonus` → `gear_burn_bonus`
-- relic `enemyDotPermanent` → `enemyBurnPermanent`
-- `_get_total_dot_bonus` → `_get_total_burn_bonus`
-- item `enemyDot` → `enemyBurn`
-
-Code — `scripts/battle/combat_manager.gd`:
-- `_apply_poison` → `_apply_burn`
-- runtime state keys `poison` / `poison_turns` / `poison_skip_next_tick` → `burn` / `burn_turns` / `burn_skip_next_tick`
-- ability reads `raw.get("dot")` / `raw.get("dT")` → `"burn"` / `"burnT"`
-- effect-type strings `enemyDotPermanent`, `dotDmgBonus`, `dotAmplified` → burn equivalents
-- log strings "is poisoned for" → "is burning for"; `_emit_event(state, "poison", …)` → `"burn"`
-
-UI / docs:
-- `battle_scene.gd` `_build_compact_status_tokens` (and any status-icon map): the "poison" status token → "burn" / display "Burning"; new icon if you want a flame vs the old toxin glyph
-- `docs/GDD.md` and `docs/CLAUDE.md`: status "Poisoned" → "Burning"
-- ability *names* stay as flavor (Venom Nip, Acid Saliva, Corrosive Hose, etc. — unchanged); only the mechanic word changes
-
-> Prompt: "Pure rename, no behavior change: rename the damage-over-time keyword from dot/poison to `burn` everywhere. Use the map in TASK_QUEUE.md Task 7. Grep first to confirm every site (combat_manager.gd, DataManager.gd, the resources, battle_scene status tokens, docs), show me the full list before editing, then do code first. The workbook already uses burn naming, so regenerate data/raw from it via the converter in the same pass and run one full battle to confirm burn ticks behave identically to before."
-
-**Test:** a battle where burn is applied — confirm the tick damage, stacking, and "permanent" (9999-turn) burn all behave exactly as poison did. **Commit:** `refactor: rename DoT keyword to burn (no behavior change)`.
+Optional follow-up: add ability-audit regressions for the 11 above (not blocking — handlers exist and data maps cleanly).
 
 ---
 
-## TASK 8 — Build the battle feedback / "game feel" system
-**Why:** make battle feel alive. Full spec is in `offline-bundle/ANIMATION.md` (beat model, primitive library, event→primitive table, tiers). You already have the right backbone — an event-driven feedback pipeline (`combat_manager._emit_event` → `battle_scene._play_round_feedback`) — so this is enriching the presentation layer, not building from zero. Aesthetic guardrails: flat / no glow / pixel, meaning-based color, snappy timing, weight + readability over spectacle.
+## Completed (reference only)
 
-**Step 1 — extract the component (do alongside Task 2):**
-> Prompt: "Read offline-bundle/ANIMATION.md. Extract a `BattleFeedback` node out of battle_scene.gd: move `_play_round_feedback`, `_build_action_feedback_groups`, `_play_action_feedback_group`, `_flash_card`, `_spawn_floating_text` into it, subscribed to the combat event stream, with no behavior change yet. Show me the plan (what moves, what signals rewire) before editing."
-
-**Step 2 — primitive library:** implement `lunge`, `shake`, `hit_pause`, `tracer`, `spawn_particles`, `drain_hp` (+chip bar), `punch_number`, `die_settle`, generalized `flash` — each tiny and generic. Test each in isolation via auto-battle.
-
-**Step 3 — data-driven event→primitive table:** wire the mapping table from ANIMATION.md so each event fires its primitives (and names an optional SFX key for later). New effects become new rows, not new branches.
-
-**Step 4 — build in tiers, testing between each:**
-- Tier 1: hit_pause · attacker lunge · drain_hp + chip bar · punch_number · idle bob.
-- Tier 2: card/screen shake · ranged tracers · natural-20 celebration · shield-shatter.
-- Tier 3: pixel-particle system · death animations · camera flourishes · per-faction flavor.
-
-> Prompt to start Tier 1: "Implement Tier 1 from ANIMATION.md one primitive at a time — start with hit_pause, then the attacker lunge on the existing play_action_feedback hook. Show the diff for each and let me see it in an auto-battle before the next."
-
-**Test:** run auto-battle and watch a full fight — every hit should read as cause→effect with weight; the natural-20 should feel like an event. **Commit each primitive/tier separately.**
-
-**Note:** keep `BattleFeedback` sound-aware (each table row can name an SFX key) even though audio clips are out of scope for the demo — wiring the hook now is free; the clips slot in later.
+| Item | Notes |
+|------|-------|
+| Doc drift (Task 0) | `CLAUDE.md`, `GDD.md`, `ROADMAP.md` reconciled |
+| Baseline (Task 1) | `docs/BASELINE.md`, tag `baseline-fable-restart`, 78/78 ability audit |
+| **Task 2 — battle_scene split** | `battle_layout.gd`, `battle_card_view.gd`, `battle_feedback.gd` |
+| **Task 4 — Ability audit** | 78 passed Godot; 0 Python keyword gaps |
+| Sim `gainProtocol` | Charge pool in `battle-progress-sim.lib.ts` |
+| **Task 6 — Gear & relic effects** | All 14 Task-6 types wired; `audit_gear_relic_effects.py` clean; ability audit regressions pass for lifesteal, shieldPierce, allyDeathHealAll |
+| Facility backend merge | Validation, Scrapmaster P2, boss P2 rules |
 
 ---
 
-## TASK 9 — Basic audio system
-**Why:** sound is half of "alive," and it rides the same event hooks as Task 8. Full spec in `offline-bundle/AUDIO.md`. Aesthetic: chiptune/synthetic/mechanical, dice as the star. Layered model — base sound per action *category* (not per ability), pitch/sample variation for polish, one bespoke `overload` stinger, faction toppers deferred.
+## Design parking lot
 
-**You provide the clips; Claude Code builds the system.** Generate the SFX set yourself with ChipTone / Bfxr / jsfxr (royalty-free, on-aesthetic, ~an afternoon), supplement richer ones from Sonniss / Freesound (filter CC0). Claude Code stubs each key with a placeholder so the wiring is testable before real files land.
+Decide before coding; jot answers anywhere convenient.
 
-**Step 1 — system:**
-> Prompt: "Read offline-bundle/AUDIO.md. Build an `AudioManager` autoload: `play_sfx(key)` with pitch/volume randomization and voice limiting, routed through a SFX bus (Master → SFX, Music). Stub every sfx key from the AUDIO.md table with a silent placeholder under assets/audio/sfx/ so it's testable now. Show me the bus setup and the autoload."
-
-**Step 2 — wire to events:** add an `sfx` column to the BattleFeedback event table (Task 8) and call `AudioManager.play_sfx(key)` on the same hook as each visual primitive.
-
-**Step 3 — tiers:** Tier 1 = dice_roll, dice_lock, hit, ui_click (+ pitch variation). Tier 2 = heal, shield_up, shield_break, buff, freeze, burn_tick, death, and the bespoke overload stinger. Tier 3 = faction toppers, music, ambience, volume sliders.
-
-**Test:** auto-battle with audio on — hits vary in pitch (no machine-gun sameness), the natural-20 stinger lands, nothing clips when several effects fire at once. **Commit per tier.**
-
----
-
-## TASK 10 — Protocol economy (implement the decided baseline)
-**Why:** the protocol numbers are decided (see GROUND_TRUTH "Protocol economy") but only half-implemented, and parts of the current code conflict with the decisions. Pure tuning + one new action.
-
-**Current state in code:** `MAX_PROTOCOL = 7`; reroll costs 2 and nudge costs 1 (nudge adds **+5** to effective roll); **no per-turn income** (protocol only comes from Protocol Tap at battle start); **no set-a-die action exists**; items cost by rarity (`_get_item_protocol_cost`: common 0 / uncommon 1 / rare 2 / legendary 3).
-
-**Changes:**
-1. `MAX_PROTOCOL` 7 → **10**.
-2. Add **per-turn income**: start battle at 0, **+1 at end of every turn** (this is the missing core mechanic — find the end-of-turn hook in `battle_scene.gd` round resolution and add it, clamped to MAX_PROTOCOL).
-3. Nudge effect **+5 → +3** (cost stays 1).
-4. **Items flat cost 1**: rewrite `_get_item_protocol_cost` to return 1 for all rarities (keep the `protocolFree`/override branch — see #6).
-5. **Build the Set-a-die action** (cost 3) — prompt below.
-6. **Redesign Protocol Override relic** (`protocolFree` → `protocolOnItemUse`): instead of making items cost 0, using an item now **costs 0 AND grants +1 Protocol** (net +1 per item). Verify net feel; dial to net 0 (cost 1, gain 1) if +1 proves too strong.
-
-> Prompt for the Set-a-die action: "Add a third protocol manipulation action, 'Set' (a.k.a. pick-a-number), alongside the existing Reroll and Nudge in battle_scene.gd. Cost: 3 Protocol. Behavior: the player taps one of their dice, then chooses any value 1–20, and that die's effective roll becomes that value for this turn (respects the same targeting/availability rules as Reroll). Mirror how `_on_reroll_button_pressed` / `_on_nudge_button_pressed` are wired (button creation, tooltip 'Set\\nSpend 3 Protocol to set a hero's die to any value.', cost check, `protocol_points -= 3`, refresh). Show me the diff and how to trigger it in an auto-battle."
-
-**Field Engineer protocol anchor (design note for a follow-up content task):** Field Engineer's blurb promises protocol plays + roll-spikes but his kit delivers neither. Plan: base unit generates protocol on its low/utility zones and adds the promised ally roll-spike; **Overclocked** = protocol *generator* (battery), **Wraith Engineer** = protocol *efficiency* (discounts/free manipulations). Requires a new `gainProtocol N` ability keyword (and a manipulation-discount modifier for Wraith). Scope detailed separately.
-
-**Test:** a battle confirming income ticks +1/turn to a cap of 10, nudge is +3, set-a-die works at cost 3, every item costs 1, and Protocol Override nets +1 per item. **Commit per change.**
+| Topic | State |
+|-------|-------|
+| **DoT identity** | Decided → rename to **burn** (Task 7) |
+| **ARC mechanic** | A vs B — see Combat & systems |
+| **Difficulty target (facility)** | Sets Task 5 goal when pinned |
+| **Evolution timing** | 50 XP/battle, evolve at 100 (~fight 2) — intended? |
+| **Demo scope** | All 5 ops vs facility-first |
+| **Third evolution / stats** | Parked far future |
 
 ---
 
-## TASK 11 — Evolution callsigns + data cleanup
-**Why:** evolved units currently repeat the base callsign; the workbook now has correct callsigns for all 16 paths. Also cleans the data structure so evolutions don't redundantly repeat per ability slot.
+## Working rhythm
 
-> Prompt: "Evolution units are missing their own callsigns. The workbook at design/overload_protocol_data.xlsx Hero_Evolutions sheet now has a 'callsign' column with the correct values (CRYO, PYRO, BLADE, RAVAGER, BULWARK, SENTINEL, GLACIER, TRENCH, MEDIC, SYNTH, OVERCLOCKED, PHANTOM, SHADOW, WRAITH, NOISE, NULLWIRE — note Wraith Engineer is PHANTOM to avoid collision with Ghost's WRAITH). Update data/raw/heroes.data.json so each evolution has a single top-level callsign field, and DataManager serves it correctly so battle_scene uses the evolved callsign once a unit evolves. Show me the data diff and the DataManager change before touching anything else."
-
-**Test:** evolve a unit in-game and confirm the callsign on the battle card updates to the evolution callsign. **Commit:** `data: add evolution callsigns`.
-
----
-
-## TASK 12 — Normalize eff text across all abilities
-**Why:** the workbook now contains normalized eff fields for all 8 heroes (base + evolutions) and all enemy ability sets, using the canonical syntax: `[value type] [modifier] [target] [duration]`, effects joined by ` + `. This is the source of truth for all tooltip text.
-
-> Prompt: "The workbook at design/overload_protocol_data.xlsx (Heroes_Abilities, Hero_Evolutions, Enemy_Abilities sheets) now has normalized 'eff' text for every ability using a consistent syntax. Use the workbook→JSON converter to regenerate data/raw/heroes.data.json and data/raw/enemies.data.json with the updated eff fields. Then confirm the ability tooltip display in battle_scene.gd reads the eff field directly (not hardcoded strings). Show me two sample tooltips in-game after the change — one hero, one enemy."
-
-**Test:** check tooltips for a variety of abilities in battle. **Commit:** `data: normalize all eff tooltip text`.
-
----
-
-## TASK 13 — Picker blurbs update
-**Why:** main unit blurbs are now in the short mechanical format matching evolution focus descriptions. Updated in workbook.
-
-> Prompt: "Update the picker blurb for each hero in data/raw/heroes.data.json to match the workbook Heroes_Abilities 'picker_blurb' column. The new blurbs are short and mechanical (e.g. 'Elemental damage / evolve-dependent'). Confirm they display correctly on the unit select screen. Show me the UnitSelect screen with the new blurbs — a screenshot or description of how they render."
-
-**Test:** run UnitSelect, read all 8 blurbs. **Commit:** `data: update picker blurbs to mechanical short form`.
-
----
-
-## TASK 14 — Enemy half-card layout for larger squads
-**Why:** some battles may have 4–5 enemies. The current layout assumes 3 max. Need a compact half-card that shows HP + die + ability name, with tap-to-expand for the full card.
-
-> Prompt: "Design a 'compact enemy half-card' mode for the enemy zone in battle_scene.gd. When 4 or more enemies are present, enemy cards should shrink to approximately half height, showing only: portrait thumbnail, HP bar, current die value, current ability name. Tapping a half-card expands it to full size (or opens a modal overlay). When 3 or fewer enemies are present, use the existing full card layout. Propose the layout math against the BATTLE_UI_V2_SPEC.md enemy rail height (768px at 1080×2400) before writing any code — show me how 4 and 5 cards fit."
-
-**Test:** use DebugBattleLauncher to load a battle with 4 enemies and confirm layout. **Commit:** `battle: half-card layout for 4+ enemies`.
-
----
-
-## NEAR-FUTURE DESIGN QUESTIONS (finalize before implementing)
-
-### A — Arc / electric mechanic
-Agreed to add an electric status keyword called **ARC**. Two mechanical options to decide:
-- **Option A (control):** ARC forces the target to roll a 1 next turn (opposite of freeze — freeze locks a good result, arc forces a bad one). Clean, legible, earns its slot.
-- **Option B (buff/energize):** ARC energizes a die — the unit's next roll is treated as the next zone up regardless of actual value. More interesting, pairs well with a buff-support unit. Potential RFM replacement.
-Don't add zap counters yet (stacking adds balance complexity). Don't replace protocol actions with arc theming (breaks color meaning). Decide option A or B, then scope which units/enemies use it and what the status icon looks like (flat pixel electric bolt, cyan or gold).
-
-### B — DoT naming / flavor
-Currently: generic `dot` keyword in data/code; the word "burn" appears in some item names as flavor only. Two paths:
-- **Simple:** keep `dot` as the single keyword everywhere, add a `dot_flavor` field (cosmetic only — controls status icon label: BURN / VENOM / DECAY etc.) with no change to mechanics. The Hive shows "VENOM", Pyro shows "BURN", all tick identically.
-- **Split:** two distinct mechanics (burn = short/intense, poison = long/stacking). Only worth it if fire/thermal becomes a full pillar.
-Recommendation is the simple path (`dot` + `dot_flavor`). Decide before Task 7 is run so the rename target is clear.
-
-### C — Third evolution / hybrid evolutions
-Parked for far future. Revisit after the base game is complete and tested. Near-future alternative to consider: a small **mid-run specialization** around battle 3–4 that modifies one ability (not a full path fork). Simpler, adds a decision point, doesn't require doubling content.
-
-### D — Stats system (STR/DEX/INT + rock-paper-scissors damage modifiers)
-Parked for far future. Only revisit after core loop is proven fun. If units feel undifferentiated, sharpen ability identities first before adding a stat layer.
-
----
-
-## OFFLINE PARKING LOT (things to think through on the plane — no code needed)
-Decide these so the prompts above go faster when you land. Jot answers in a notes file:
-
-1. **battle_scene.gd split:** do you agree with the 3-way split (Layout / CardView / Orchestration)? Any other natural seam you'd prefer?
-2. **Operation scope for the demo:** ship all 5 operations, or polish `facility` to perfection first and gate the rest? (GROUND_TRUTH says all 5 exist in data; demo doesn't have to expose all.)
-3. **Difficulty target:** what win rate do you want a competent first-time player to have on `facility`? (sets the Task 5 balance goal)
-4. **Protocol economy:** how much Protocol per turn, and Reroll/Nudge/Item costs? (not fully pinned in data I saw — worth deciding)
-5. **Evolution timing:** XP_TO_EVOLVE=100 with 50/battle means evolve ~battle 2. Is evolving that early intended, or do you want it later (battle 4–5)?
-6. **What "done" looks like for this session's return:** pick ONE — clean refactor, or first balanced operation. Don't try for both at once.
-7. **DoT identity:** DECIDED — single damage-over-time keyword renamed to **burn** (no poison/burn split; mechanic unchanged). Workbook + GROUND_TRUTH already use burn naming. The code/data key rename is Task 7. (If fire/thermal ever becomes a pillar, fire simply becomes another source of burn — consistent.)
-
----
-
-## Working rhythm (this is what prevents the old frustration)
-- One prompt → review diff → test in Godot → commit → next. Never let the agent make 5 changes before you run it.
-- After any data edit, run the ability audit.
-- Keep `baseline-fable-restart` tag as your safety net; if a refactor goes sideways, reset to it.
-- Design decisions stay in Claude chat (this UI); implementation in Claude Code. You already know this split works for you.
+1. One prompt → diff → test in Godot (or sim for balance) → commit → next.
+2. After any `data/raw/` edit: `npm run validate-data` + ability audit.
+3. Reset to tag `baseline-fable-restart` if a refactor goes sideways.
+4. Design in chat; implementation in agent sessions on the right branch.
