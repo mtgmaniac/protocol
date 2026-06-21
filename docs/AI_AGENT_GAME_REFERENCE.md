@@ -7,7 +7,7 @@ start with the right assumptions.
 
 Last refreshed from local source on 2026-06-21.
 
-**Session handoff (branch state, completed work, starter prompt):** [SESSION_HANDOFF.md](SESSION_HANDOFF.md)
+**Also read:** [BASELINE.md](BASELINE.md) (verify runners + tag), [AGENTS.md](../AGENTS.md) (branch split).
 
 ## 1. Project Basics
 
@@ -346,9 +346,7 @@ Parallel workstreams:
 - **`fix/cleanup`** — backend/data/combat (`combat_manager.gd`, `data/raw/`, sim). **No UI edits.**
 - **`codex/compact-battle-ui-three-unit-pips`**, **`codex/ui-compact-card-prototype`** — UI only.
 
-`main` @ `b0c83c8` matches GitHub. Includes facility backend merge, Field Engineer `gainProtocol`, Scrapmaster P2 drone restore, nudge once-per-die-per-turn.
-
-Details: [SESSION_HANDOFF.md](SESSION_HANDOFF.md).
+On `fix/cleanup`, avoid scenes, `compact_unit_card.gd`, `Theme.gd`, and visual battle chrome unless the user overrides.
 
 ## 17. Guidance for Future Agents
 

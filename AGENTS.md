@@ -2,7 +2,7 @@
 
 **Read this first.** The live game is Godot 4.6 + GDScript under `scripts/`, `scenes/`, `assets/`, and `data/raw/`.
 
-**Resuming work?** Read **`docs/SESSION_HANDOFF.md`** (branch workflow, what's on `main`, what's next). Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol).
+**Resuming work?** Read **`docs/AI_AGENT_GAME_REFERENCE.md`**, **`docs/BASELINE.md`**, and **`TASK_QUEUE.md`**. Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol).
 
 ## Branch split (backend vs UI)
 
@@ -64,7 +64,8 @@ python scripts/debug/audit_gear_relic_effects.py
 
 ## Docs
 
-- **`docs/SESSION_HANDOFF.md`** — current branch state, completed work, next-task prompt (**start here after a break**)
-- `docs/AI_AGENT_GAME_REFERENCE.md` — runtime map for assistants
+- **`docs/AI_AGENT_GAME_REFERENCE.md`** — runtime map for assistants (**start here**)
+- **`docs/BASELINE.md`** — verify commands and tag `baseline-fable-restart`
+- `docs/BATTLE_UI_V2_SPEC.md` — battle layout contract (UI work)
 - `offline-bundle/GROUND_TRUTH.md` — offline rules reference (may lag code; prefer `combat_manager.gd` for behavior)
-- `TASK_QUEUE.md` — longer ordered task list (some items already done; see SESSION_HANDOFF)
+- `TASK_QUEUE.md` — ordered task list (some items already done)

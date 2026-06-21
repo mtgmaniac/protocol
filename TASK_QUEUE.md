@@ -5,79 +5,61 @@
 
 ## CURRENT STATE (2026-06-21) — read before the numbered tasks
 
-**Handoff doc:** `docs/SESSION_HANDOFF.md` (branch workflow, GitHub sync, starter prompt).
+**Repo:** `C:\Users\Kev\Documents\protocol` · Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol)
 
-**`main` / GitHub:** `b0c83c8` — facility backend, `gainProtocol`, Scrapmaster P2, nudge once/die/turn.
-
-**Active backend branch:** `fix/cleanup` (recreated from `main`; backend/data only, **no UI**).
+**Active backend branch:** `fix/cleanup` (backend/data only, **no UI**).
 
 **UI branches (parallel):** `codex/compact-battle-ui-three-unit-pips`, `codex/ui-compact-card-prototype`.
 
-**Likely already done (skip or verify, don't redo):** Task 4 keyword audit (passing), Task 6 gear/relic wiring (mostly done), Task 10 protocol economy (cap 10, +1/turn, nudge +3 once/die, Set action, flat item cost — verify Protocol Override relic), Task 11 evolution callsigns (in data), facility balance pass on Facility operation.
+**Baseline:** `docs/BASELINE.md` and git tag `baseline-fable-restart`.
+
+**Likely already done (skip or verify, don't redo):** Task 2 battle_scene decomposition, Task 4 ability keyword audit (**verified 2026-06-21** — 78/78 Godot audit, 0 Python gaps), Task 6 gear/relic wiring (mostly done), Task 10 protocol economy (cap 10, +1/turn, nudge +3 once/die, Set action, flat item cost — verify Protocol Override relic), Task 11 evolution callsigns (in data), facility balance pass on Facility operation, sim `gainProtocol` charge pool.
 
 **Still open / deferred:** Task 7 burn rename, sim full protocol economy parity, mark/vulnerable mechanic, remove `project.godot*.tmp` from git.
 
-**Done:** Task 0 doc drift (2026-06-21). Task 1 baseline (`docs/BASELINE.md`, tag `baseline-fable-restart`). Sim `gainProtocol` charge pool (local on `fix/cleanup`, uncommitted).
+**UI-only (codex/* branches, not fix/cleanup):** V2 band geometry / layout spec audit — dropped from queue; center uses 540px not 432 by design.
 
 ---
 
-**Before anything:** open the repo at `C:\Users\Kev\Documents\protocol`. Read `AGENTS.md` + `docs/SESSION_HANDOFF.md`. For UI tasks use a `codex/*` branch; for backend use `fix/cleanup`.
+**Before anything:** open the repo at `C:\Users\Kev\Documents\protocol`. Read `AGENTS.md` + `docs/AI_AGENT_GAME_REFERENCE.md`. For UI tasks use a `codex/*` branch; for backend use `fix/cleanup`.
 
 ---
 
-## TASK 0 — Kill the doc drift (do this first; it's the root cause of past pain)
-**Why:** three docs contradict the code. Any agent reading them will reintroduce landscape/4-unit/Systems-Medic mistakes.
+## TASK 2 — Decompose battle_scene.gd
 
-> Prompt: "The docs are inconsistent with the actual code/data. Using offline-bundle/GROUND_TRUTH.md as the source of truth: (1) rewrite docs/CLAUDE.md, docs/GDD.md, and docs/ROADMAP.md so orientation=portrait 1080×2400, squad=3, healer=Splice Medic, operations=5, and remove all Phase-0/landscape/4-unit language; (2) delete or clearly mark docs/PHASE_0_STATUS.md as OBSOLETE at the top; (3) add a one-line pointer at the top of docs/CLAUDE.md telling agents to read AI_AGENT_GAME_REFERENCE.md and BATTLE_UI_V2_SPEC.md as current. Show me the diffs, change nothing in scripts/ or data/."
+**Status: DONE (core split).** Original 3-way plan landed:
 
-**Test:** read the diffs. **Commit:** `docs: reconcile to ground truth (portrait/3-unit/5-op)`.
+| Script | Lines | Owns |
+|--------|------:|------|
+| `battle_layout.gd` | ~299 | Band geometry, combat zone, dice anchors, rail layout |
+| `battle_card_view.gd` | ~518 | Card/readout refresh, status tokens, ability tooltips, previews |
+| `battle_feedback.gd` | ~492 | Round feedback, float text, flash, hit pause, dice section widgets |
+| `battle_scene.gd` | ~2,693 | Turn phases, targeting, protocol/items, help overlay, auto-battle |
 
----
+Wired in `_ready()` via `_layout`, `_card_view`, `_feedback` child nodes. **No further split planned** unless a new pain point appears (optional future extractions: targeting helper, protocol footer chrome, help overlay — not required for Task 2).
 
-## TASK 1 — Establish a known-good baseline you can return to
-
-**Status: DONE (2026-06-21)** — see `docs/BASELINE.md` and tag `baseline-fable-restart`.
-
-**Why:** before any refactor, prove the game runs and capture the current state.
-
-> Prompt: "Walk me through running the project in Godot 4.6 from this repo on my machine, including the `-- --debug-battle` launch path in DebugBattleLauncher.gd. Then run the ability audit (scripts/debug/ability_audit_runner.gd) and report any warnings. Don't change code — I want a baseline of what currently works and what errors print on a full run from UnitSelect through one full battle to the reward screen."
-
-**Test:** you play one full battle. Note anything broken in a scratch list. **Commit a tag:** `git tag baseline-fable-restart`.
-
----
-
-## TASK 2 — Decompose battle_scene.gd (the #1 source of iteration hell)
-**Why:** 4,166 lines in one file is why visual changes cascaded into breakage before. This is the highest-leverage maintainability win. Do it in SMALL steps, testing between each.
-
-> Prompt: "battle_scene.gd is 4,166 lines and too big to iterate on safely. I want to extract it into focused scripts WITHOUT changing behavior — pure refactor. Propose a decomposition plan first (likely: a BattleLayout helper for the dice-anchor/band-rect math, a BattleCardView helper for _update_card_view + compact status/pip building, and keep orchestration/turn-flow in battle_scene.gd). List exactly which functions move where, what signals/refs need rewiring, and the risks. Don't write code yet — show me the plan."
-
-Then, after you approve the plan, one extraction at a time:
-
-> Prompt: "Do extraction step 1 only (the layout math). Move those functions into the new helper, rewire references, keep behavior identical. Show the diff. I'll test before we do step 2."
-
-**Test after each step:** run a full battle, confirm layout + dice + cards look identical to baseline. **Commit each step separately.**
-
----
-
-## TASK 3 — Pin the V2 band geometry to spec
-**Why:** layout was a top pain point; BATTLE_UI_V2_SPEC.md gives exact pixel targets that may not be enforced in code yet.
-
-> Prompt: "Audit battle_scene.gd's layout helpers (_get_combat_zone_rect, _get_*_result_row_rect, _layout_dice_from_combat_zone, band sizing) against the exact baseline heights in BATTLE_UI_V2_SPEC.md (header 144, enemy 768, center 432, hero 768, footer 144 at 1080×2400; header==footer; cards identical size; center button exactly centered). Report every place the code deviates from the spec. Propose fixes but show me the list before changing anything."
-
-**Test:** preview at 450×1000, eyeball against the spec bands. **Commit:** `battle: enforce V2 band geometry`.
+**Test:** flow smoke + one manual battle. Tag `baseline-fable-restart` if resetting.
 
 ---
 
 ## TASK 4 — Verify ability-data integrity end to end
-**Why:** the data is complete but you want confidence the JSON→resource→combat path is faithful before balancing.
 
-> Prompt: "Using scripts/debug/ability_audit.gd, verify every hero ability (base + both evolution paths) and every enemy ability in data/raw/ maps to a handled keyword in combat_manager._apply_hero_ability / _apply_enemy_ability. Produce a table of any ability whose keywords aren't actually implemented (e.g. a flag in JSON that combat_manager ignores). Don't fix yet — I want the gap list."
+**Status: DONE (verified 2026-06-21).** No keyword gaps.
 
-**Test:** review the gap list; decide which to implement vs. cut. **This likely seeds several follow-up tasks.**
+| Check | Result |
+|-------|--------|
+| Godot `AbilityAuditRunner.tscn` | **78 passed, 0 failed** |
+| Python `audit_ability_keywords.py` | **0 gaps** (all data keys handled or classified) |
+
+Coverage includes hero + enemy abilities, targeting rules, gear/relic regressions (lifesteal, shieldPierce, allyDeathHealAll), phase 2 revives, summons, freeze, text alignment.
+
+Unused handled keys (not gaps): hero `cloakAll`, enemy `shAllyT` — wired in combat but no data uses them yet.
+
+**Re-verify after data edits:** run scene `res://scenes/debug/AbilityAuditRunner.tscn` or see `docs/BASELINE.md`.
 
 ---
 
-## TASK 5 — First playable-balance pass (only after 0–4 are stable)
+## TASK 5 — First playable-balance pass
 **Why:** now the foundation is clean, balance is a data-only loop — exactly the safe, satisfying offline-friendly work.
 
 > Prompt: "Use the battle-progress sim in `scripts/sim/` and `scripts/debug/balance_sim_*.ts` to simulate the `facility` operation (10 battles) with several 3-hero squads. Report win rate, average battle length, and any battle that's a difficulty cliff. Suggest data-only tweaks to battleEnemyScale and specific enemy HP/dmg — show me proposed JSON diffs, don't apply."

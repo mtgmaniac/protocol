@@ -103,8 +103,8 @@ Rules:
 
 **Done (2026-06-21):** `docs/CLAUDE.md`, `docs/GDD.md`, and this file reconciled to
 `offline-bundle/GROUND_TRUTH.md` (portrait, 3-unit, Splice Medic, 5 ops).
-`docs/PHASE_0_STATUS.md` marked obsolete. Ongoing: keep `docs/SESSION_HANDOFF.md`
-and `docs/AI_AGENT_GAME_REFERENCE.md` current after each merge.
+`docs/PHASE_0_STATUS.md` marked obsolete. Ongoing: keep `docs/AI_AGENT_GAME_REFERENCE.md`
+and `docs/BASELINE.md` current after each merge.
 
 ## 4. Medium-Term Goals
 
