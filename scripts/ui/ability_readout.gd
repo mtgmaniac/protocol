@@ -432,6 +432,11 @@ func _build_effect_tooltip(effect: Dictionary) -> String:
 		if value.ends_with("%"):
 			return "REVIVE\nRevive at %s max HP." % value
 		return "REVIVE\nRevive a fallen ally with a percentage of their max HP."
+	if kind == "shield" and value.contains("ALL"):
+		var amount_text: String = value.replace("·ALL", "").replace("ALL", "").strip_edges()
+		if amount_text.is_valid_int():
+			return "GAIN SHIELD\nGrant %s shield to all allies." % amount_text
+		return "GAIN SHIELD\nGrant shield to all allies."
 	if kind == "shield" and value == "TA":
 		return "TAUNT\nApply taunt to target."
 	if kind == "freeze" and value == "FR":

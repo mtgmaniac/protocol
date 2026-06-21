@@ -76,8 +76,9 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 
 | Item | Status | Scope |
 |------|--------|-------|
-| **Task 13 — Show picker blurbs on UnitSelect** | Open | Wire `UnitData.picker_blurb` into `home_screen.gd` detail panel |
-| **Gear equip target — evolved name** | Open | Reward screen “EQUIP TO” picker shows **base** `display_name` (`DataManager.get_unit`) instead of evolved kit name. Use **`GameState.get_run_unit_data(unit_id)`** for button labels + “equipped to …” result text. **`reward_screen.gd`** (~lines 332, 668, 723). |
+| **Task 13 — Show picker blurbs on UnitSelect** | **After UI finalization** | Wire `UnitData.picker_blurb` into `home_screen.gd` detail panel — **blocked** until UnitSelect/detail chrome is locked |
+| **Gear equip target — evolved name** | **Done** | Reward gear picker uses `GameState.get_run_unit_data()` + `battle_name()` |
+| **Enemy `shieldAllyAll` display** | **Done** | Single `6·ALL` chip + ally tooltip in `battle_card_view.gd` / `ability_readout.gd` |
 | **Ally roll buff visuals (green dice)** | Open | Hero abilities that **buff an ally’s roll** (`rfm` + `rfmTgt`, positive) → **green dice pip + green text** on ability readouts / status pips. Today `PixelUI.semantic_key_for_effect` maps all `rfm` → `roll_down` (yellow debuff). Split ally-buff vs enemy-strip styling in `pixel_ui.gd`, `compact_unit_card.gd`, ability readout scene. |
 | **Capped die for RFE (Option A)** | Open | One physics landing on **effective** roll; remove post-roll snap. **`dice_tray_3d.gd` + `battle_scene.gd`**. See prompt below. |
 | **Task 8 — Battle feedback / game feel** | Partial | `battle_feedback.gd` extracted; Tier 1–3 primitives per `offline-bundle/ANIMATION.md` still to build |
@@ -86,7 +87,6 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 | **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
 | **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
 | **HP preview — heal before damage (net damage)** | Open | When a unit already shows **incoming damage** and the player queues an **incoming heal** on that same unit, preview must respect **resolve order** (heal lands first, then damage). Show **one net HP outcome** — e.g. reduced red slice / “X to HP after heal” — not separate green-then-red-then-green flashes on the bar. **`battle_card_view.gd`** (`compute_preview_for_unit`), **`compact_unit_card.gd`** (`show_combat_preview` / `_layout_preview_overlays`). |
-| **Enemy `shieldAllyAll` display** | Open | Abilities like `shieldAllyAll` (e.g. Volt Grounding, future Bulwark Link) should show **one** shield chip: “6 shield all allies” — not separate self + ally icons. Today `build_effect_chips` only knows `shield` + `shieldAlly` separately. **`battle_card_view.gd`**. |
 | **Ability target scope clarity (ALL vs ally vs self)** | Open | Three labels only: **SELF**, **ALLY**, **ALL** (caster + whole friendly squad). No separate foe/others scopes — multi-target damage reads from dmg chips. See prompt below. |
 | **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
 | **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |

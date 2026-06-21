@@ -331,14 +331,13 @@ func _add_gear_selector(vbox: VBoxContainer, item: ItemData) -> void:
 	var selected_unit_id := ""
 	for unit_id_variant in GameState.selected_units:
 		var unit_id: String = str(unit_id_variant)
-		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
-		if unit == null:
+		if GameState.get_run_unit_data(unit_id) == null:
 			continue
 		if selected_unit_id == "":
 			selected_unit_id = unit_id
 		var target_button := Button.new()
 		target_button.name = "GearTargetButton"
-		target_button.text = unit.display_name
+		target_button.text = _run_unit_label(unit_id)
 		target_button.toggle_mode = true
 		target_button.button_group = button_group
 		target_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
@@ -667,11 +666,10 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 
 	for unit_id_variant in GameState.selected_units:
 		var unit_id: String = str(unit_id_variant)
-		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
-		if unit == null:
+		if GameState.get_run_unit_data(unit_id) == null:
 			continue
 		var target_button := Button.new()
-		target_button.text = unit.display_name
+		target_button.text = _run_unit_label(unit_id)
 		target_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
 		target_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		PixelUI.style_button(target_button, Color(0.018, 0.028, 0.044, 0.95), PixelUI.HERO_ACCENT, GEAR_TARGET_BUTTON_FONT_SIZE)
@@ -707,7 +705,6 @@ func _claim_reward(item: ItemData, target_unit_id: String) -> void:
 func _update_battle_header() -> void:
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
-	# Run is still active while choosing a reward — keep the progress label showing.
 	PersistentHeader.set_run_active(true)
 	PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, op_name)
 
@@ -720,10 +717,17 @@ func _build_reward_result_text(item: ItemData, target_unit_id: String) -> String
 	if item.item_type != "gear":
 		return "%s added to the run." % item.display_name
 
-	var unit: UnitData = DataManager.get_unit(target_unit_id) as UnitData
-	if unit == null:
+	var label: String = _run_unit_label(target_unit_id)
+	if label == target_unit_id:
 		return "%s equipped." % item.display_name
-	return "%s equipped to %s." % [item.display_name, unit.display_name]
+	return "%s equipped to %s." % [item.display_name, label]
+
+
+func _run_unit_label(unit_id: String) -> String:
+	var unit: UnitData = GameState.get_run_unit_data(unit_id) as UnitData
+	if unit == null:
+		return unit_id
+	return unit.battle_name()
 
 
 func _apply_visual_theme() -> void:
