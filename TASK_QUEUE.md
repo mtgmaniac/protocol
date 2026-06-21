@@ -144,7 +144,7 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 |------|--------|-------|
 | **Evolution XP (D2)** | **Done** | Avg-roll + survival bonus model in `GameState.gd`; **one evolution per battle win** (extras deferred FIFO) |
 | **Revive pct + revive all (medic evos)** | **Done** | `revivePct`, `reviveAll` in schema + `combat_manager.gd`; ability audit 82/82 |
-| **Gear/relic ability audit regressions** | Open | 12 handlers code-verified but no `AbilityAuditRunner` cases yet (see table below). |
+| **Gear/relic ability audit regressions** | **Done** | 12 gear/relic handlers covered in `AbilityAuditRunner.tscn` |
 | **Task 5 — Facility balance** | **Paused** | Sim tuning deferred until finalize pass. |
 
 **Evolution XP (D2) — pinned design:**
@@ -164,26 +164,25 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 
 **Static:** `python scripts/debug/audit_gear_relic_effects.py` — all gear/relic `effect.type` values in data have handlers.
 
-**Runtime regressions** (`AbilityAuditRunner.tscn`): `lifesteal`, `shieldPierce`, `allyDeathHealAll` — pass.
-
-**Code-verified (no dedicated regression test yet):**
+**Runtime regressions** (`AbilityAuditRunner.tscn`): gear/relic handlers below — all pass.
 
 | Effect | Item ID | Hook |
 |--------|---------|------|
+| `lifesteal` | blood_siphon | `_damage_state` gear lifesteal |
+| `shieldPierce` | breach_tip | shield pierce on hero attacks |
+| `allyDeathHealAll` | martyrdomProtocol | `_on_unit_killed` ally death |
 | `firstAbilityEcho` | echo_matrix | `_apply_hero_ability` re-runs damage once |
 | `healShieldBonus` | triage_gel | `_heal_state` when healer ≠ target |
 | `protocolOnKill` | bounty_chip | `_on_unit_killed` + basic tier check |
 | `protocolOnKillAny` | apex_collector | `_on_unit_killed` any kill |
 | `critResolveTwice` | overloadLoop | `resolve_round` re-runs hero ability on raw 20 |
 | `rewardsNoCommon` | curatedCache | `GameState._pick_random_item_id` |
-| `protocolCarryover` | overflowBuffer | `battle_scene._persist_protocol_carryover` |
-| `battleStartConsumable` | fieldCache | battle start → `grant_battle_start_consumables` |
+| `protocolCarryover` | overflowBuffer | `GameState.save_protocol_carryover` |
+| `battleStartConsumable` | fieldCache | `grant_battle_start_consumables` |
 | `reviveNoPenalty` | mercyProtocol | `GameState.get_revive_hp_pct` → 100% |
 | `lowHpSquadRollBuff` | emergencySignal | `_trigger_low_hp_squad_roll_buff` at 50% HP |
 | `healGrantsShieldAll` | aegisField | `_heal_state` shields all allies |
-| `protocolOnItemUse` | protocolOverride | `battle_scene._get_item_protocol_cost` + `_apply_item_effect` |
-
-Optional follow-up: add ability-audit regressions for the 12 above (not blocking — handlers exist and data maps cleanly).
+| `protocolOnItemUse` | protocolOverride | `battle_scene._get_item_protocol_cost` → 0 |
 
 ---
 
@@ -206,6 +205,7 @@ Optional follow-up: add ability-audit regressions for the 12 above (not blocking
 | **Evolution XP (D2)** | `GameState.gd` avg-roll grants; one evo per win + deferred queue |
 | **Revive pct + reviveAll** | `combat_manager.gd`, targeting order, card/readout chips |
 | **Death SFX timing** | `battle_feedback.gd` fatal moment + poison tick groups; `skip_feedback` path |
+| **Gear/relic audit regressions** | 12 gear/relic handlers in `ability_audit.gd` |
 
 ---
 

@@ -428,6 +428,18 @@ func _run_regression_audits() -> void:
 	_run_relic_ally_death_heal_regression()
 	_run_revive_pct_regression()
 	_run_revive_all_regression()
+	_run_gear_first_ability_echo_regression()
+	_run_gear_heal_shield_bonus_regression()
+	_run_gear_protocol_on_kill_regression()
+	_run_gear_protocol_on_kill_any_regression()
+	_run_relic_crit_resolve_twice_regression()
+	_run_relic_rewards_no_common_regression()
+	_run_relic_protocol_carryover_regression()
+	_run_relic_battle_start_consumable_regression()
+	_run_relic_revive_no_penalty_regression()
+	_run_relic_low_hp_squad_roll_buff_regression()
+	_run_relic_heal_grants_shield_all_regression()
+	_run_relic_protocol_on_item_use_regression()
 
 
 func _run_enemy_shield_ally_regression() -> void:
@@ -906,6 +918,280 @@ func _run_revive_all_regression() -> void:
 				expected_hp,
 			]
 		)
+
+
+func _run_gear_first_ability_echo_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 12})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	manager.setup_gear({"audit_hero": ["echo_matrix"]})
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	var enemy_hp_before: int = int(enemy["current_hp"])
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
+	var ok: bool = int(enemy["current_hp"]) == enemy_hp_before - 24 and bool(hero.get("gear_first_ability_echo_used", false))
+	if ok:
+		_record_pass("Regression / gear firstAbilityEcho", "firstAbilityEcho")
+	else:
+		_record_failure(
+			"Regression / gear firstAbilityEcho",
+			"firstAbilityEcho",
+			"12 dmg ability echoes once for 24 total HP loss",
+			"enemy_hp=%d echo_used=%s" % [int(enemy["current_hp"]), str(hero.get("gear_first_ability_echo_used", false))]
+		)
+
+
+func _run_gear_heal_shield_bonus_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var healer_unit: UnitData = _make_unit("audit_healer", "Audit Healer", "Ally Heal", {"heal": 6, "healTgt": true})
+	var ally_unit: UnitData = _make_unit("audit_ally", "Audit Ally", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([healer_unit, ally_unit], [enemy_unit])
+	manager.setup_gear({"audit_healer": ["triage_gel"]})
+	var healer: Dictionary = manager.get_hero_states()[0]
+	var ally: Dictionary = manager.get_hero_states()[1]
+	ally["current_hp"] = 40
+	healer["selected_target_id"] = str(ally["id"])
+	manager.resolve_round({"audit_healer": AUDIT_ROLL}, {}, DiceManager.new())
+	var ok: bool = int(ally["current_hp"]) == 46 and int(ally.get("shield", 0)) == 3
+	if ok:
+		_record_pass("Regression / gear healShieldBonus", "healShieldBonus")
+	else:
+		_record_failure(
+			"Regression / gear healShieldBonus",
+			"healShieldBonus",
+			"ally-targeted heal also grants 3 shield",
+			"ally_hp=%d shield=%d" % [int(ally["current_hp"]), int(ally.get("shield", 0))]
+		)
+
+
+func _run_gear_protocol_on_kill_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})
+	var basic_enemy: EnemyData = _make_enemy("audit_basic", "Audit Basic")
+	basic_enemy.enemy_type = "drone"
+	var boss_enemy: EnemyData = _make_enemy("audit_boss", "Audit Boss")
+	boss_enemy.enemy_type = "boss"
+	manager.setup_battle([hero_unit], [basic_enemy])
+	manager.setup_gear({"audit_hero": ["bounty_chip"]})
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var basic: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(basic["id"])
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
+	var basic_grant: int = manager.take_pending_protocol_grants()
+
+	manager = CombatManager.new()
+	manager.setup_battle([hero_unit], [boss_enemy])
+	manager.setup_gear({"audit_hero": ["bounty_chip"]})
+	hero = manager.get_hero_states()[0]
+	var boss: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(boss["id"])
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
+	var boss_grant: int = manager.take_pending_protocol_grants()
+
+	var ok: bool = basic_grant == 1 and boss_grant == 0
+	if ok:
+		_record_pass("Regression / gear protocolOnKill", "protocolOnKill")
+	else:
+		_record_failure(
+			"Regression / gear protocolOnKill",
+			"protocolOnKill",
+			"+1 Protocol on basic kill only",
+			"basic_grant=%d boss_grant=%d" % [basic_grant, boss_grant]
+		)
+
+
+func _run_gear_protocol_on_kill_any_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})
+	var boss_enemy: EnemyData = _make_enemy("audit_boss", "Audit Boss")
+	boss_enemy.enemy_type = "boss"
+	manager.setup_battle([hero_unit], [boss_enemy])
+	manager.setup_gear({"audit_hero": ["apex_collector"]})
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var boss: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(boss["id"])
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
+	var grant: int = manager.take_pending_protocol_grants()
+	var ok: bool = grant == 1 and bool(boss["dead"])
+	if ok:
+		_record_pass("Regression / gear protocolOnKillAny", "protocolOnKillAny")
+	else:
+		_record_failure(
+			"Regression / gear protocolOnKillAny",
+			"protocolOnKillAny",
+			"+1 Protocol when killing a boss",
+			"grant=%d boss_dead=%s" % [grant, str(boss["dead"])]
+		)
+
+
+func _run_relic_crit_resolve_twice_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Overload Strike", {"dmg": 9})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	manager.setup_relics(["overloadLoop"])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	var enemy_hp_before: int = int(enemy["current_hp"])
+	manager.resolve_round({"audit_hero": 20}, {}, DiceManager.new(), {}, {"audit_hero": 20})
+	var ok: bool = int(enemy["current_hp"]) == enemy_hp_before - 18
+	if ok:
+		_record_pass("Regression / relic critResolveTwice", "critResolveTwice")
+	else:
+		_record_failure(
+			"Regression / relic critResolveTwice",
+			"critResolveTwice",
+			"natural 20 resolves 9 dmg ability twice (18 total)",
+			"enemy_hp=%d delta=%d" % [int(enemy["current_hp"]), enemy_hp_before - int(enemy["current_hp"])]
+		)
+
+
+func _run_relic_rewards_no_common_regression() -> void:
+	var snapshot: Dictionary = _snapshot_game_state()
+	GameState.relics = ["curatedCache"]
+	var found_common: bool = false
+	for _attempt in range(40):
+		var item_id: String = str(GameState.call("_pick_random_item_id", "consumable", []))
+		if item_id == "":
+			continue
+		var item: ItemData = DataManager.get_item(item_id) as ItemData
+		if item != null and str(item.rarity) == "common":
+			found_common = true
+			break
+	_restore_game_state_snapshot(snapshot)
+	if not found_common:
+		_record_pass("Regression / relic rewardsNoCommon", "rewardsNoCommon")
+	else:
+		_record_failure(
+			"Regression / relic rewardsNoCommon",
+			"rewardsNoCommon",
+			"reward picks exclude common consumables",
+			"found common item in 40 rolls"
+		)
+
+
+func _run_relic_protocol_carryover_regression() -> void:
+	var snapshot: Dictionary = _snapshot_game_state()
+	GameState.save_protocol_carryover(7, 50)
+	var carried: int = GameState.take_carried_protocol()
+	_restore_game_state_snapshot(snapshot)
+	var ok: bool = carried == 3
+	if ok:
+		_record_pass("Regression / relic protocolCarryover", "protocolCarryover")
+	else:
+		_record_failure(
+			"Regression / relic protocolCarryover",
+			"protocolCarryover",
+			"50%% of 7 unspent Protocol carries over (3)",
+			"carried=%d" % carried
+		)
+
+
+func _run_relic_battle_start_consumable_regression() -> void:
+	var snapshot: Dictionary = _snapshot_game_state()
+	GameState.consumables.clear()
+	GameState.grant_battle_start_consumables(1)
+	var granted: int = GameState.consumables.size()
+	_restore_game_state_snapshot(snapshot)
+	if granted == 1:
+		_record_pass("Regression / relic battleStartConsumable", "battleStartConsumable")
+	else:
+		_record_failure(
+			"Regression / relic battleStartConsumable",
+			"battleStartConsumable",
+			"grant_battle_start_consumables adds one consumable",
+			"consumables=%d" % granted
+		)
+
+
+func _run_relic_revive_no_penalty_regression() -> void:
+	var snapshot: Dictionary = _snapshot_game_state()
+	GameState.relics = ["mercyProtocol"]
+	var pct: int = GameState.get_revive_hp_pct(50)
+	_restore_game_state_snapshot(snapshot)
+	_expect_and_record("Regression / relic reviveNoPenalty", "reviveNoPenalty", "100", str(pct))
+
+
+func _run_relic_low_hp_squad_roll_buff_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_a_unit: UnitData = _make_unit("audit_hero_a", "Audit Hero A", "Noop", {})
+	var hero_b_unit: UnitData = _make_unit("audit_hero_b", "Audit Hero B", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_a_unit, hero_b_unit], [enemy_unit])
+	manager.setup_relics(["emergencySignal"])
+	var hero_a: Dictionary = manager.get_hero_states()[0]
+	var hero_b: Dictionary = manager.get_hero_states()[1]
+	manager.call("_damage_state", hero_a, 51)
+	var ok: bool = (
+		int(hero_a.get("roll_buff", 0)) == 2
+		and int(hero_b.get("roll_buff", 0)) == 2
+		and int(hero_a.get("roll_buff_turns", 0)) == 1
+	)
+	if ok:
+		_record_pass("Regression / relic lowHpSquadRollBuff", "lowHpSquadRollBuff")
+	else:
+		_record_failure(
+			"Regression / relic lowHpSquadRollBuff",
+			"lowHpSquadRollBuff",
+			"first ally below 50%% HP grants +2 roll to squad",
+			"hero_a buff=%d turns=%d hero_b buff=%d" % [
+				int(hero_a.get("roll_buff", 0)),
+				int(hero_a.get("roll_buff_turns", 0)),
+				int(hero_b.get("roll_buff", 0)),
+			]
+		)
+
+
+func _run_relic_heal_grants_shield_all_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_a_unit: UnitData = _make_unit("audit_hero_a", "Audit Hero A", "Self Heal", {"heal": 5})
+	var hero_b_unit: UnitData = _make_unit("audit_hero_b", "Audit Hero B", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_a_unit, hero_b_unit], [enemy_unit])
+	manager.setup_relics(["aegisField"])
+	var hero_a: Dictionary = manager.get_hero_states()[0]
+	var hero_b: Dictionary = manager.get_hero_states()[1]
+	hero_a["current_hp"] = 50
+	manager.resolve_round({"audit_hero_a": AUDIT_ROLL}, {}, DiceManager.new())
+	var ok: bool = int(hero_a.get("shield", 0)) == 3 and int(hero_b.get("shield", 0)) == 3
+	if ok:
+		_record_pass("Regression / relic healGrantsShieldAll", "healGrantsShieldAll")
+	else:
+		_record_failure(
+			"Regression / relic healGrantsShieldAll",
+			"healGrantsShieldAll",
+			"any heal grants 3 shield to all living allies",
+			"hero_a shield=%d hero_b shield=%d" % [int(hero_a.get("shield", 0)), int(hero_b.get("shield", 0))]
+		)
+
+
+func _run_relic_protocol_on_item_use_regression() -> void:
+	var battle_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if battle_scene == null:
+		_record_failure("Regression / relic protocolOnItemUse", "protocolOnItemUse", "BattleScene script instantiates", "new() returned null")
+		return
+	battle_scene.combat_manager.setup_relics(["protocolOverride"])
+	var cost: int = int(battle_scene.call("_get_item_protocol_cost", null))
+	battle_scene.free()
+	_expect_and_record("Regression / relic protocolOnItemUse", "protocolOnItemUse", "0", str(cost))
+
+
+func _snapshot_game_state() -> Dictionary:
+	return {
+		"relics": GameState.relics.duplicate(),
+		"consumables": GameState.consumables.duplicate(),
+		"carried_protocol": GameState.carried_protocol,
+	}
+
+
+func _restore_game_state_snapshot(snapshot: Dictionary) -> void:
+	GameState.relics = (snapshot.get("relics", []) as Array).duplicate()
+	GameState.consumables = (snapshot.get("consumables", []) as Array).duplicate()
+	GameState.carried_protocol = int(snapshot.get("carried_protocol", 0))
 
 
 func _run_text_alignment_audits() -> void:
