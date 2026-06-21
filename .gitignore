@@ -7,9 +7,10 @@ export_presets.cfg
 /.ziva/
 
 # Legacy Angular reference — local tool/config noise
+legacy-angular/node_modules/
 legacy-angular/.claude/
 legacy-angular/.deploy_marker
-legacy-angular/node_modules/
+# legacy-angular/public/ — kept for Godot portrait paths; see legacy-angular/README.md
 
 # OS cruft
 .DS_Store

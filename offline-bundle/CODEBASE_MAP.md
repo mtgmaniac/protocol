@@ -85,7 +85,7 @@ Visual dice rolling/animation in the center rail. Presentation, not rules. **If 
 `DebugBattleLauncher.gd` (launch straight into a battle with `-- --debug-battle`), `ability_audit.gd` + `ability_audit_runner.gd` (validates ability data — **run via `scenes/debug/AbilityAuditRunner.tscn`**, not `--script`, so autoloads load), `battle_ui_capture.gd` (screenshot; extends `SceneTree`), `home_screen_capture.gd`, `compact_unit_card_preview.gd`.
 
 ## Not live code (do not treat as game source)
-`legacy-angular/` (the old TS/Angular prototype — reference only; the `.data.ts` and `/json/` mirrors are the *origin* of `data/raw/`). `.ziva/` snapshots. `addons/ziva_agent/` (the in-editor agent tool).
+`legacy-angular/public/` — portrait/UI rasters only (Angular app **removed**). `scripts/sim/` — headless balance sim. `.ziva/` snapshots. `addons/ziva_agent/` (the in-editor agent tool).
 
 ---
 

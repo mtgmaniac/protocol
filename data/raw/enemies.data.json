@@ -394,7 +394,7 @@
       },
       "crit": {
         "name": "System Purge",
-        "eff": "25 dmg (P2 30), wipe shields",
+        "eff": "wipe shields, then 25 dmg (P2 30)",
         "dmg": 25,
         "dmgP2": 30,
         "dot": 0,
@@ -825,7 +825,7 @@
       },
       "overload": {
         "name": "Acid Cataclysm",
-        "eff": "28 dmg (P2 36), wipe shields, lifesteal 40%",
+        "eff": "wipe shields, then 28 dmg (P2 36), lifesteal 40%",
         "dmg": 28,
         "dmgP2": 36,
         "dot": 0,
@@ -1364,7 +1364,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "30 dmg (P2 38), wipe shields, +2 roll to allies, 3t, summon ~30% nat20",
+        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~30% nat20",
         "dmg": 30,
         "dmgP2": 38,
         "dot": 0,
@@ -1663,7 +1663,7 @@
       },
       "surge": {
         "name": "Mirror Break",
-        "eff": "12 dmg, wipe shields",
+        "eff": "wipe shields, then 12 dmg",
         "dmg": 12,
         "dot": 0,
         "dT": 0,
@@ -1685,7 +1685,7 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "19 dmg, wipe shields, summon ~38% nat20, counter C 40%",
+        "eff": "wipe shields, then 19 dmg, summon ~38% nat20, counter C 40%",
         "dmg": 19,
         "dot": 0,
         "dT": 0,
@@ -1817,7 +1817,7 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "30 dmg (P2 38), wipe shields, +2 roll to allies, 3t, summon ~32% nat20",
+        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~32% nat20",
         "dmg": 30,
         "dmgP2": 38,
         "dot": 0,
@@ -2055,7 +2055,7 @@
       },
       "overload": {
         "name": "Void Stampede",
-        "eff": "16 dmg, -1 roll, 2t, wipe shields, rampage all +1",
+        "eff": "wipe shields, then 16 dmg, -1 roll, 2t, rampage all +1",
         "dmg": 16,
         "dot": 0,
         "dT": 0,
@@ -2237,7 +2237,7 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "26 dmg (P2 34), wipe shields, rampage all +1, cower all 1r",
+        "eff": "wipe shields, then 26 dmg (P2 34), rampage all +1, cower all 1r",
         "dmg": 26,
         "dmgP2": 34,
         "dot": 0,

@@ -625,6 +625,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 
 	if damage > 0:
 		var hits_all_heroes: bool = bool(raw.get("blastAll", false))
+		var should_wipe_shields: bool = bool(raw.get("wipeShields", false))
 		var scaled_damage: int = int(round(float(damage) * float(enemy_state.get("dmg_scale", 1.0))))
 		var final_damage: int = scaled_damage
 		if final_damage > 0 and int(enemy_state.get("rampage_charges", 0)) > 0:
@@ -642,6 +643,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				final_damage += pack_count
 				_log("%s pack bonus +%d (pack size: %d)." % [enemy_state["unit"].display_name, pack_count, pack_count])
 		final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
+		if should_wipe_shields:
+			_wipe_all_hero_shields(enemy_state)
 		if hits_all_heroes:
 			for hero_state in _hero_states:
 				if bool(hero_state["dead"]):
@@ -669,13 +672,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					if heal_amount > 0:
 						_heal_state(enemy_state, heal_amount)
 						_log("%s lifesteals %d HP." % enemy_state["unit"].display_name, heal_amount)
-				if bool(raw.get("wipeShields", false)):
-					for hero_state in _hero_states:
-						if not bool(hero_state["dead"]):
-							hero_state["shield_stacks"].clear()
-							hero_state["shield"] = 0
-					_log("%s wipes all hero shields!" % enemy_state["unit"].display_name)
-					_emit_event(enemy_state, "wipe_shields", 0, "enemy")
+
+	if damage <= 0 and bool(raw.get("wipeShields", false)):
+		_wipe_all_hero_shields(enemy_state)
 
 	if damage <= 0 and poison_amount > 0:
 		var poison_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
@@ -888,6 +887,18 @@ func _is_basic_enemy(enemy_state: Dictionary) -> bool:
 		return true
 	var enemy_type: String = str(unit.enemy_type).to_lower()
 	return enemy_type != "boss" and not enemy_type.ends_with("boss")
+
+
+func _wipe_all_hero_shields(source_state: Dictionary = {}) -> void:
+	for hero_state in _hero_states:
+		if bool(hero_state["dead"]):
+			continue
+		hero_state["shield_stacks"].clear()
+		hero_state["shield"] = 0
+	var source_name: String = str(source_state["unit"].display_name) if not source_state.is_empty() else "An ability"
+	_log("%s wipes all hero shields!" % source_name)
+	if not source_state.is_empty():
+		_emit_event(source_state, "wipe_shields", 0, "enemy")
 
 
 func _freeze_die_state(state: Dictionary, freeze_amount: int) -> void:
@@ -1163,7 +1174,9 @@ func _tick_state(state: Dictionary) -> void:
 		if bool(state.get("poison_skip_next_tick", false)):
 			state["poison_skip_next_tick"] = false
 		else:
-			var dot_bonus: int = int(_get_relic_value("dotAmplified", "bonus", 0)) + _get_total_dot_bonus()
+			var dot_bonus: int = 0
+			if not _is_hero_state(state):
+				dot_bonus = int(_get_relic_value("dotAmplified", "bonus", 0)) + _get_total_dot_bonus()
 			var tick_dmg: int = int(state["poison"]) + dot_bonus
 			_log("%s takes %d poison damage." % [state["unit"].display_name, tick_dmg])
 			_damage_state(state, tick_dmg)

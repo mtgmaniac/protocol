@@ -115,9 +115,6 @@ def enemy_expected(raw: dict) -> str:
     if rfm > 0:
         parts.append(f"-{rfm} roll{turn_suffix(raw.get('rfmT') or 0)}")
 
-    if raw.get("wipeShields"):
-        parts.append("wipe shields")
-
     heal = raw.get("heal") or 0
     if heal > 0:
         parts.append(f"{heal} heal")
@@ -170,7 +167,10 @@ def enemy_expected(raw: dict) -> str:
     if ct > 0:
         parts.append(f"cower all {ct}r" if raw.get("cowerAll") else f"cower {ct}r")
 
-    return ", ".join(parts) if parts else "—"
+    tail = ", ".join(parts) if parts else "—"
+    if raw.get("wipeShields"):
+        return "wipe shields" if tail == "—" else f"wipe shields, then {tail}"
+    return tail
 
 
 def ability_fields(ab: dict) -> dict:

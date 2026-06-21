@@ -6,13 +6,13 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { BattleModeId } from '../../legacy-angular/src/app/models/types';
-import type { HeroDefinition } from '../../legacy-angular/src/app/models/hero.interface';
+import type { BattleModeId } from '../sim/models/types';
+import type { HeroDefinition } from '../sim/models/hero.interface';
 import {
   type AnchoredFacilitySimResult,
   type BattleProgressSimInput,
   runAnchoredFacilitySim,
-} from '../../legacy-angular/src/app/sim/battle-progress-sim.lib';
+} from '../sim/battle-progress-sim.lib';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '../..');

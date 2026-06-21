@@ -2,9 +2,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { BattleModeId } from '../../legacy-angular/src/app/models/types';
-import type { HeroDefinition } from '../../legacy-angular/src/app/models/hero.interface';
-import { type BattleProgressSimInput, runAnchoredFacilitySim } from '../../legacy-angular/src/app/sim/battle-progress-sim.lib';
+import type { BattleModeId } from '../sim/models/types';
+import type { HeroDefinition } from '../sim/models/hero.interface';
+import { type BattleProgressSimInput, runAnchoredFacilitySim } from '../sim/battle-progress-sim.lib';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const readJson = (rel: string) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));

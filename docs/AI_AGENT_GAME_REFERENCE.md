@@ -22,8 +22,9 @@ Last refreshed from local source on 2026-06-20.
 Important workspace rules:
 
 - Live game code is under `scripts/`, `scenes/`, `assets/`, and `data/raw/`
-- `legacy-angular/` is historical reference only
-- do not treat `legacy-angular/` as the live game
+- **`legacy-angular/` is assets-only (portraits/UI rasters). The Angular app was removed — never edit or restore it.**
+- Headless balance sims live in `scripts/sim/` + `scripts/debug/balance_sim_*.ts`
+- See root **`AGENTS.md`** for the hard rule assistants must follow
 - `debug_artifacts/` contains generated screenshots and scratch output
 - `docs/` is the active local documentation set
 

@@ -5,9 +5,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { BattleModeId } from '../../legacy-angular/src/app/models/types';
-import type { HeroAbility } from '../../legacy-angular/src/app/models/ability.interface';
-import { normalizeHeroAbility } from '../../legacy-angular/src/app/data/hero-ability-normalize';
+import type { BattleModeId } from '../sim/models/types';
+import type { HeroAbility } from '../sim/models/ability.interface';
+import { normalizeHeroAbility } from '../sim/hero-ability-normalize';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '../..');
@@ -101,7 +101,7 @@ console.log('');
 import {
   type BattleProgressSimInput,
   runBattleProgressSim,
-} from '../../legacy-angular/src/app/sim/battle-progress-sim.lib';
+} from '../sim/battle-progress-sim.lib';
 
 const battleModes = readJson('data/raw/battle-modes.json') as {
   modes: Record<string, { label: string; battles: { enemies: { name: string }[] }[] }>;

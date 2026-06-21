@@ -57,7 +57,7 @@ Then, after you approve the plan, one extraction at a time:
 ## TASK 5 — First playable-balance pass (only after 0–4 are stable)
 **Why:** now the foundation is clean, balance is a data-only loop — exactly the safe, satisfying offline-friendly work.
 
-> Prompt: "Use the battle-progress sim approach from the legacy-angular/src/app/sim and scripts/debug auto-battle to simulate the `facility` operation (10 battles) with several 3-hero squads. Report win rate, average battle length, and any battle that's a difficulty cliff. Suggest data-only tweaks to battleEnemyScale and specific enemy HP/dmg — show me proposed JSON diffs, don't apply."
+> Prompt: "Use the battle-progress sim in `scripts/sim/` and `scripts/debug/balance_sim_*.ts` to simulate the `facility` operation (10 battles) with several 3-hero squads. Report win rate, average battle length, and any battle that's a difficulty cliff. Suggest data-only tweaks to battleEnemyScale and specific enemy HP/dmg — show me proposed JSON diffs, don't apply."
 
 ---
 
