@@ -2668,16 +2668,18 @@ func _apply_battle_theme() -> void:
 	if header_row != null:
 		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	# Header/board divider line: HeaderRow is an HBoxContainer (no panel stylebox), so
-	# add a full-width line at the top of the board instead.
-	if board != null and board.get_node_or_null("HeaderDivider") == null:
+	# add a full-width line at the top of the board's container (board's own children
+	# get reordered, so use the parent VBox which is stable).
+	var board_container := board.get_parent() as BoxContainer if board != null else null
+	if board_container != null and board_container.get_node_or_null("HeaderDivider") == null:
 		var divider: ColorRect = ColorRect.new()
 		divider.name = "HeaderDivider"
-		divider.color = PixelUI.LINE_DIM
-		divider.custom_minimum_size = Vector2(0, 4)
+		divider.color = Color(0.28, 0.36, 0.46, 1.0)
+		divider.custom_minimum_size = Vector2(0, 6)
 		divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		board.add_child(divider)
-		board.move_child(divider, 0)
+		board_container.add_child(divider)
+		board_container.move_child(divider, 0)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
@@ -2722,15 +2724,9 @@ func _apply_battle_theme() -> void:
 		_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
-	protocol_value_label.visible = true
-	# Move the value label out from on top of the bar (it was showing through the
-	# segments) to sit to the right of the bar in the row.
-	if protocol_value_label.get_parent() == protocol_bar:
-		protocol_bar.remove_child(protocol_value_label)
-		protocol_bar.get_parent().add_child(protocol_value_label)
-		protocol_value_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-		protocol_value_label.size_flags_horizontal = Control.SIZE_SHRINK_END
-		protocol_value_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The numeric value is redundant with the 10 segments and kept landing in awkward
+	# spots (over the bar / among buttons) — hide it; the segments convey the count.
+	protocol_value_label.visible = false
 	if protocol_panel != null:
 		# Footer plate with a top divider line separating it from the board.
 		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0)

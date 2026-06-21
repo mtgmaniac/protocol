@@ -94,6 +94,22 @@ func get_result_row_rect(views: Array) -> Rect2:
 	return rect if has_rect else Rect2()
 
 
+# Direction-05: a small gutter on every side so the dice tray never touches the
+# card rows. Applied to EVERY return path (some are degenerate-case fallbacks that
+# previously returned full width, which reset the gap).
+const TRAY_GUTTER_H := 12.0
+const TRAY_GUTTER_V := 14.0
+
+
+func _inset_tray_rect(r: Rect2) -> Rect2:
+	if r.size.x <= 2.0 or r.size.y <= 2.0:
+		return r
+	return Rect2(
+		r.position + Vector2(TRAY_GUTTER_H, TRAY_GUTTER_V),
+		Vector2(maxf(r.size.x - TRAY_GUTTER_H * 2.0, 2.0), maxf(r.size.y - TRAY_GUTTER_V * 2.0, 2.0))
+	)
+
+
 func get_combat_zone_rect() -> Rect2:
 	if _scene.dice_tray_3d == null:
 		return Rect2()
@@ -102,7 +118,7 @@ func get_combat_zone_rect() -> Rect2:
 	var friendly_readout_rect: Rect2 = get_friendly_result_row_rect()
 	var friendly_card_rect: Rect2 = get_card_group_rect(_scene.hero_card_views)
 	if enemy_readout_rect.size == Vector2.ZERO or friendly_readout_rect.size == Vector2.ZERO:
-		return _scene.center_panel.get_global_rect()
+		return _inset_tray_rect(_scene.center_panel.get_global_rect())
 
 	var board_rect: Rect2 = _scene.board.get_global_rect()
 	var center_rect: Rect2 = _scene.center_panel.get_global_rect()
@@ -111,16 +127,14 @@ func get_combat_zone_rect() -> Rect2:
 	var top_y: float = enemy_readout_rect.position.y if enemy_readout_rect.size != Vector2.ZERO else enemy_bottom_y
 	var bottom_y: float = friendly_readout_rect.end.y if friendly_readout_rect.size != Vector2.ZERO else friendly_top_y
 	if bottom_y <= top_y + 120.0:
-		return center_rect
+		return _inset_tray_rect(center_rect)
 
 	var x: float = center_rect.position.x
 	var width: float = center_rect.size.x
 	if width <= 2.0:
 		x = board_rect.position.x
 		width = board_rect.size.x
-	# Direction-05: small gutter between the dice tray and the card columns.
-	var side_inset: float = 26.0
-	return Rect2(Vector2(x + side_inset, top_y), Vector2(maxf(width - side_inset * 2.0, 2.0), bottom_y - top_y))
+	return _inset_tray_rect(Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y)))
 
 
 func layout_dice_from_combat_zone() -> void:

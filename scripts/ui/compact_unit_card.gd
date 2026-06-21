@@ -278,7 +278,9 @@ func _build() -> void:
 
 	_portrait_frame = PanelContainer.new()
 	_portrait_frame.custom_minimum_size = Vector2.ZERO
-	_portrait_frame.clip_contents = true
+	# Frame does NOT clip (so status badges overlaid at the bottom aren't cut off);
+	# the inner _portrait_crop still clips the portrait image itself.
+	_portrait_frame.clip_contents = false
 	_portrait_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_portrait_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_portrait_frame)
@@ -385,8 +387,8 @@ func _build() -> void:
 	_status_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_status_slot.clip_contents = false
 	# Direction-05: status badges overlay the bottom edge of the portrait (a row of
-	# pixel "stickers"), rather than sitting in their own strip below the art.
-	_portrait_crop.add_child(_status_slot)
+	# pixel "stickers"). Parented to the non-clipping frame so borders/shadows show.
+	_portrait_frame.add_child(_status_slot)
 	_status_slot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_status_slot.offset_left = 8
 	_status_slot.offset_right = -8
