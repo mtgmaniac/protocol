@@ -1526,12 +1526,13 @@ func _set_turn_phase(next_phase: String) -> void:
 func _style_roll_button_for_phase() -> void:
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			# Active primary action: ready to roll
+			# Active primary action: ready to roll — Direction-05 green commit button.
 			_style_minimal_action_button(
 				roll_button, roll_button.text,
 				CENTER_ACTION_BUTTON_SIZE, CENTER_ACTION_BUTTON_FONT_SIZE,
-				Color(0.06, 0.20, 0.10, 0.96), PixelUI.HERO_ACCENT
+				PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT
 			)
+			roll_button.add_theme_color_override("font_color", PixelUI.DT_ROLL_TEXT)
 		PHASE_TARGETING:
 			# Hidden: targetable cards highlight cyan to communicate the
 			# affordance. The center zone is reclaimed for dice/readouts.

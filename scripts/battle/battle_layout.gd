@@ -254,6 +254,54 @@ func ensure_combat_zone_frame() -> void:
 	# Direction-05 tray: faint dark plate tint + hard-cornered DT line border (overlay
 	# kept low-alpha so the 3D dice read through it).
 	PixelUI.style_panel(_combat_zone_frame, Color(PixelUI.DT_TRAY_BG.r, PixelUI.DT_TRAY_BG.g, PixelUI.DT_TRAY_BG.b, 0.35), PixelUI.DT_LINE, 2, 0)
+	_ensure_tray_corner_ticks()
+
+
+# Direction-05 tray detail: four L-shaped corner ticks (hard, no blur) pinned to
+# the combat-zone frame corners.
+func _ensure_tray_corner_ticks() -> void:
+	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
+		return
+	if _combat_zone_frame.get_node_or_null("CornerTicks") != null:
+		return
+	var ticks: Control = Control.new()
+	ticks.name = "CornerTicks"
+	ticks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ticks.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_combat_zone_frame.add_child(ticks)
+	var tick_color: Color = Color("2a333a")
+	var arm: float = 20.0
+	var thick: float = 4.0
+	var inset: float = 6.0
+	for corner in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+		var cx: float = corner.x
+		var cy: float = corner.y
+		# horizontal arm
+		var h: ColorRect = ColorRect.new()
+		h.color = tick_color
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.anchor_left = cx
+		h.anchor_right = cx
+		h.anchor_top = cy
+		h.anchor_bottom = cy
+		h.offset_left = inset if cx == 0 else -(inset + arm)
+		h.offset_right = (inset + arm) if cx == 0 else -inset
+		h.offset_top = inset if cy == 0 else -(inset + thick)
+		h.offset_bottom = (inset + thick) if cy == 0 else -inset
+		ticks.add_child(h)
+		# vertical arm
+		var v: ColorRect = ColorRect.new()
+		v.color = tick_color
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.anchor_left = cx
+		v.anchor_right = cx
+		v.anchor_top = cy
+		v.anchor_bottom = cy
+		v.offset_left = inset if cx == 0 else -(inset + thick)
+		v.offset_right = (inset + thick) if cx == 0 else -inset
+		v.offset_top = inset if cy == 0 else -(inset + arm)
+		v.offset_bottom = (inset + arm) if cy == 0 else -inset
+		ticks.add_child(v)
 
 
 func _build_combat_zone_lane(lane_name: String) -> HBoxContainer:
