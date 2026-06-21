@@ -119,7 +119,7 @@ func get_combat_zone_rect() -> Rect2:
 		x = board_rect.position.x
 		width = board_rect.size.x
 	# Direction-05: small gutter between the dice tray and the card columns.
-	var side_inset: float = 14.0
+	var side_inset: float = 26.0
 	return Rect2(Vector2(x + side_inset, top_y), Vector2(maxf(width - side_inset * 2.0, 2.0), bottom_y - top_y))
 
 
@@ -253,9 +253,9 @@ func ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
 		_combat_zone_frame.add_child(_combat_zone_hero_lane)
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
-	# Direction-05 tray: faint dark plate tint + hard-cornered DT line border (overlay
-	# kept low-alpha so the 3D dice read through it).
-	PixelUI.style_panel(_combat_zone_frame, Color(PixelUI.DT_TRAY_BG.r, PixelUI.DT_TRAY_BG.g, PixelUI.DT_TRAY_BG.b, 0.35), PixelUI.LINE_DIM, 3, 0)
+	# Direction-05 tray: the frame is an OVERLAY above the dice viewport, so its fill
+	# must be fully transparent (any tint darkens the dice). Border + corner ticks only.
+	PixelUI.style_panel(_combat_zone_frame, Color(0, 0, 0, 0), PixelUI.LINE_DIM, 3, 0)
 	_ensure_tray_corner_ticks()
 
 

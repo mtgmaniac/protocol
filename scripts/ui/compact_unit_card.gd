@@ -706,16 +706,31 @@ func get_display_statuses(raw_statuses: Array) -> Array:
 # violet / burn amber), with our prepared pip icons embedded.
 func _status_badge_palette(status: Dictionary) -> Dictionary:
 	var kind: String = _status_effect_kind(status).to_lower()
-	# Outline always matches the infliction's own color. Known design types reuse the
-	# exact DT_STATUS tokens; everything else derives border/text from status_color.
+	# Border, number font, and icon ALL share the infliction's color.
+	var border: Color
 	if kind in ["shield", "taunt", "block", "barrier"]:
-		return PixelUI.DT_STATUS["shield"]
-	if kind in ["poison", "venom"]:
-		return PixelUI.DT_STATUS["poison"]
-	if kind in ["burn", "dot", "fire", "bleed"]:
-		return PixelUI.DT_STATUS["burn"]
-	var border: Color = _status_color(kind)
-	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border.lightened(0.45)}
+		border = PixelUI.DT_STATUS["shield"]["border"]
+	elif kind in ["poison", "venom"]:
+		border = PixelUI.DT_STATUS["poison"]["border"]
+	elif kind in ["burn", "dot", "fire", "bleed"]:
+		border = PixelUI.DT_STATUS["burn"]["border"]
+	elif kind in ["roll", "rfe", "rfm", "roll_down", "roll_up", "buff", "debuff"]:
+		border = PixelUI.COLOR_ROLL
+	else:
+		border = _status_color(kind)
+	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border}
+
+
+# Tint every label (font) and icon (modulate) inside a status badge to the status
+# color, so border + number + icon all read as one color.
+func _tint_status_content(node: Node, color: Color) -> void:
+	for child in node.get_children():
+		if child is Label:
+			(child as Label).add_theme_color_override("font_color", color)
+		elif child is TextureRect:
+			(child as TextureRect).modulate = color
+		if child.get_child_count() > 0:
+			_tint_status_content(child, color)
 
 
 func build_status_chip(status: Dictionary) -> Control:
@@ -752,6 +767,7 @@ func build_status_chip(status: Dictionary) -> Control:
 		chip.add_child(_make_status_name_label(status))
 		if str(status.get("value", "")) != "":
 			chip.add_child(_make_status_value_label(status))
+	_tint_status_content(chip, pal["border"])
 	if _tooltip_cb.is_valid():
 		_tooltip_cb.call(badge, _build_status_tooltip(status))
 	return badge

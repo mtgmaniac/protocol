@@ -2666,12 +2666,18 @@ func _apply_battle_theme() -> void:
 	counter_label.visible = false
 	var header_row := get_node_or_null("HeaderRow") as Control
 	if header_row != null:
-		# Header plate with a bottom divider line separating it from the board.
-		var header_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_LINE, 0)
-		header_style.border_width_bottom = 4
-		header_style.border_color = PixelUI.LINE_DIM
-		header_style.set_content_margin_all(4.0)
-		header_row.add_theme_stylebox_override("panel", header_style)
+		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	# Header/board divider line: HeaderRow is an HBoxContainer (no panel stylebox), so
+	# add a full-width line at the top of the board instead.
+	if board != null and board.get_node_or_null("HeaderDivider") == null:
+		var divider: ColorRect = ColorRect.new()
+		divider.name = "HeaderDivider"
+		divider.color = PixelUI.LINE_DIM
+		divider.custom_minimum_size = Vector2(0, 4)
+		divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		board.add_child(divider)
+		board.move_child(divider, 0)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
@@ -2682,7 +2688,9 @@ func _apply_battle_theme() -> void:
 		if background.get_node_or_null("FieldFill") == null:
 			var field_fill: ColorRect = ColorRect.new()
 			field_fill.name = "FieldFill"
-			field_fill.color = PixelUI.DT_FIELD_BG
+			# Slightly lifted off pure-black so the whole screen reads less dull than
+			# the raw design token (which felt too dark in-engine).
+			field_fill.color = Color(0.055, 0.070, 0.095, 1.0)
 			field_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			field_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
 			background.add_child(field_fill)
@@ -2715,6 +2723,14 @@ func _apply_battle_theme() -> void:
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
 	protocol_value_label.visible = true
+	# Move the value label out from on top of the bar (it was showing through the
+	# segments) to sit to the right of the bar in the row.
+	if protocol_value_label.get_parent() == protocol_bar:
+		protocol_bar.remove_child(protocol_value_label)
+		protocol_bar.get_parent().add_child(protocol_value_label)
+		protocol_value_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		protocol_value_label.size_flags_horizontal = Control.SIZE_SHRINK_END
+		protocol_value_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if protocol_panel != null:
 		# Footer plate with a top divider line separating it from the board.
 		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0)
