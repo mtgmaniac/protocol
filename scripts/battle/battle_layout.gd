@@ -145,6 +145,26 @@ func layout_dice_from_combat_zone() -> void:
 	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		return
 	_scene.dice_tray_3d.set_combat_zone_rect(combat_zone)
+	_position_zone_dividers(combat_zone)
+
+
+# Pin the header/footer divider lines exactly DIVIDER_GAP px from the card rows, so
+# the gap divider<->card equals the card<->tray gap (which the combat zone produces).
+func _position_zone_dividers(combat_zone: Rect2) -> void:
+	var enemy_card: Rect2 = get_card_group_rect(_scene.enemy_card_views)
+	var hero_card: Rect2 = get_card_group_rect(_scene.hero_card_views)
+	var gap: float = (combat_zone.position.y - enemy_card.end.y) if enemy_card.size.y > 2.0 else 15.0
+	var origin_y: float = _scene.global_position.y
+	var header_divider: Control = _scene.get_node_or_null("HeaderDivider")
+	if header_divider != null and enemy_card.size.y > 2.0:
+		var top: float = enemy_card.position.y - origin_y - gap - 3.0
+		header_divider.offset_top = top
+		header_divider.offset_bottom = top + 3.0
+	var footer_divider: Control = _scene.get_node_or_null("FooterDivider")
+	if footer_divider != null and hero_card.size.y > 2.0:
+		var ftop: float = hero_card.end.y - origin_y + gap
+		footer_divider.offset_top = ftop
+		footer_divider.offset_bottom = ftop + 3.0
 
 
 func get_card_group_rect(views: Array) -> Rect2:

@@ -1306,20 +1306,16 @@ func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
 	divider.name = node_name
 	divider.color = PixelUI.LINE_DIM
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Full-width, top-relative anchors; exact Y is set each layout pass by
+	# BattleLayout._position_zone_dividers so the gap to the cards stays consistent.
 	divider.anchor_left = 0.0
 	divider.anchor_right = 1.0
+	divider.anchor_top = 0.0
+	divider.anchor_bottom = 0.0
 	divider.offset_left = TRAY_EDGE_INSET
 	divider.offset_right = -TRAY_EDGE_INSET
-	if at_footer:
-		divider.anchor_top = 1.0
-		divider.anchor_bottom = 1.0
-		divider.offset_top = -147.0
-		divider.offset_bottom = -144.0
-	else:
-		divider.anchor_top = 0.0
-		divider.anchor_bottom = 0.0
-		divider.offset_top = 144.0
-		divider.offset_bottom = 147.0
+	divider.offset_top = (960.0 if at_footer else 144.0)
+	divider.offset_bottom = divider.offset_top + 3.0
 	add_child(divider)
 
 
@@ -1328,6 +1324,8 @@ func _ensure_protocol_stack_layout() -> void:
 	var row := protocol_bar.get_parent() as HBoxContainer
 	if row == null or row.get_node_or_null("ProtocolStack") != null:
 		return
+	# Let the stack expand across the whole row up to the action buttons.
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	var stack := VBoxContainer.new()
 	stack.name = "ProtocolStack"
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1339,10 +1337,13 @@ func _ensure_protocol_stack_layout() -> void:
 	stack.add_child(protocol_bar)
 	row.add_child(stack)
 	row.move_child(stack, 0)
+	# Wide segment bar (fills the stack); "Protocol" centered above all the blips.
 	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	protocol_bar.custom_minimum_size = Vector2(160, 36)
+	protocol_bar.custom_minimum_size = Vector2(0, 36)
+	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 # Inset the header content so "FACILITY" and the rightmost button align with the tray.
