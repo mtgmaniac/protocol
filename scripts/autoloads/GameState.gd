@@ -23,6 +23,23 @@ const XP_PER_BATTLE := 50
 const XP_TO_EVOLVE := 100
 const SQUAD_UNIT_LIMIT := 3
 
+## Post-win rarity ladder (round = current_battle when rewards roll). Round 5 = relic only.
+const RELIC_ONLY_ROUND := 5
+const FIRST_RELIC_ROUND := 5
+const RELIC_CHOICE_COUNT := 2
+
+const DRAFT_RARITY_BY_ROUND: Dictionary = {
+	1: {"common": 85, "uncommon": 10, "rare": 4, "legendary": 1},
+	2: {"common": 70, "uncommon": 20, "rare": 8, "legendary": 2},
+	3: {"common": 55, "uncommon": 28, "rare": 14, "legendary": 3},
+	4: {"common": 40, "uncommon": 35, "rare": 20, "legendary": 5},
+	6: {"common": 35, "uncommon": 35, "rare": 22, "legendary": 8},
+	7: {"common": 28, "uncommon": 38, "rare": 26, "legendary": 8},
+	8: {"common": 20, "uncommon": 40, "rare": 30, "legendary": 10},
+	9: {"common": 15, "uncommon": 38, "rare": 32, "legendary": 15},
+	10: {"common": 10, "uncommon": 35, "rare": 35, "legendary": 20},
+}
+
 var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
@@ -292,36 +309,66 @@ func get_pending_evolution_unit_id() -> String:
 
 
 func _roll_reward_item_ids() -> Array:
+	var round: int = current_battle
+	if round == RELIC_ONLY_ROUND:
+		if relics.is_empty():
+			return _roll_relic_choice_ids(RELIC_CHOICE_COUNT)
+		return []
+
 	var chosen_ids: Array = []
-	var can_offer_relic: bool = relics.is_empty()
-	var forced_relic_battle: bool = current_battle == 5 and can_offer_relic
-
-	if forced_relic_battle:
-		var relic_id: String = _pick_random_item_id("relic", chosen_ids)
-		if relic_id != "":
-			chosen_ids.append(relic_id)
-
 	while chosen_ids.size() < 3:
-		var reward_type: String = _roll_reward_type(forced_relic_battle)
-		if reward_type == "relic" and not can_offer_relic:
-			reward_type = "gear"
-		var item_id: String = _pick_random_item_id(reward_type, chosen_ids)
+		var rarity: String = _pick_draft_rarity_for_round(round)
+		var item_id: String = _pick_random_reward_by_rarity(rarity, chosen_ids)
 		if item_id == "":
 			item_id = _pick_any_available_reward(chosen_ids)
 		if item_id == "":
 			break
 		chosen_ids.append(item_id)
-
 	return chosen_ids
 
 
-func _roll_reward_type(force_no_extra_relic: bool) -> String:
+func _roll_relic_choice_ids(count: int) -> Array:
+	var chosen: Array = []
+	while chosen.size() < count:
+		var relic_id: String = _pick_random_item_id("relic", chosen)
+		if relic_id == "":
+			break
+		chosen.append(relic_id)
+	return chosen
+
+
+func _pick_draft_rarity_for_round(round: int) -> String:
+	var weights: Dictionary = DRAFT_RARITY_BY_ROUND.get(round, DRAFT_RARITY_BY_ROUND.get(10, {}))
+	if weights.is_empty():
+		weights = DRAFT_RARITY_BY_ROUND[1]
 	var roll: int = _reward_rng.randi_range(1, 100)
-	if not force_no_extra_relic and roll >= 96:
-		return "relic"
-	if roll >= 73:
-		return "gear"
-	return "consumable"
+	var cumulative: int = 0
+	for tier in ["common", "uncommon", "rare", "legendary"]:
+		cumulative += int(weights.get(tier, 0))
+		if roll <= cumulative:
+			return tier
+	return "common"
+
+
+func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array) -> String:
+	var pool: Array = []
+	for item_key in DataManager.items.keys():
+		var item: ItemData = DataManager.items[item_key] as ItemData
+		if item == null:
+			continue
+		if item.item_type != "consumable" and item.item_type != "gear":
+			continue
+		if str(item.rarity) != rarity:
+			continue
+		if excluded_ids.has(item.id):
+			continue
+		if has_relic_effect("rewardsNoCommon") and str(item.rarity) == "common":
+			continue
+		pool.append(item.id)
+	if pool.is_empty():
+		return ""
+	var index: int = _reward_rng.randi_range(0, pool.size() - 1)
+	return str(pool[index])
 
 
 func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
@@ -348,9 +395,7 @@ func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
 
 
 func _pick_any_available_reward(excluded_ids: Array) -> String:
-	for reward_type in ["consumable", "gear", "relic"]:
-		if reward_type == "relic" and not relics.is_empty():
-			continue
+	for reward_type in ["consumable", "gear"]:
 		var item_id: String = _pick_random_item_id(reward_type, excluded_ids)
 		if item_id != "":
 			return item_id
