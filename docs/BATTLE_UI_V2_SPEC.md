@@ -58,31 +58,32 @@ structure unless battle is explicitly rewired to use it again.
 
 ## 3. Global Theme Source
 
-Battle styling should now reference the global theme autoload:
+Battle styling references the single source of truth, `PixelUI`:
 
-- [Theme.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/Theme.gd)
+- [pixel_ui.gd](C:/Users/Kev/Documents/protocol/scripts/ui/pixel_ui.gd) — the Direction-05
+  "Dithered Terminal" `DT_*` palette + programmatic styling helpers.
+- [assets/ui/theme_overload.tres](C:/Users/Kev/Documents/protocol/assets/ui/theme_overload.tres)
+  — project default `Theme` that mirrors `PixelUI` for default inheritance only.
 
-Available shared color constants:
+Available shared color constants (old `Theme`/`UiTheme` name → new):
 
-- `Theme.VOID`
-- `Theme.PANEL`
-- `Theme.RAISED`
-- `Theme.CYAN`
-- `Theme.RED`
-- `Theme.PROTOCOL_GREEN`
-- `Theme.GOLD`
-- `Theme.HP_GREEN`
-- `Theme.DMG_RED`
-- `Theme.MUTED`
-- `Theme.BORDER_PLAYER`
-- `Theme.BORDER_ENEMY`
-- `Theme.BORDER_PROTOCOL`
+- `PixelUI.DT_FIELD_BG` (was `VOID`)
+- `PixelUI.DT_HERO_BG` (was `PANEL`)
+- `PixelUI.DT_TRAY_BG` (was `RAISED`)
+- `PixelUI.DT_CYAN` (was `CYAN`)
+- `PixelUI.DT_RUST` (was `RED`)
+- `PixelUI.DT_AMBER` (was `PROTOCOL_GREEN`) — protocol bar is amber now
+- `PixelUI.GOLD_ACCENT` (was `GOLD`)
+- `PixelUI.DT_HP_GREEN` (was `HP_GREEN`)
+- `PixelUI.COLOR_DAMAGE` (was `DMG_RED`)
+- `PixelUI.TEXT_MUTED` (was `MUTED`)
+- `PixelUI.DT_HERO_BORDER` (was `BORDER_PLAYER`)
+- `PixelUI.DT_ENEMY_BORDER` (was `BORDER_ENEMY`)
 
 Important note:
 
-- In scripts, `Theme` can collide with Godot's built-in `Theme` type
-- when a script needs theme constants at compile time, prefer:
-  - `const UiTheme = preload("res://scripts/autoloads/Theme.gd")`
+- The old `Theme` autoload has been removed (its name collided with Godot's built-in
+  `Theme` type). `PixelUI` is a `class_name`, so reference it directly — no preload needed.
 
 ## 4. Shared Battle Header
 
@@ -194,15 +195,15 @@ Current intended battle card language:
 
 Player card styling:
 
-- surface: `Theme.PANEL`
-- border: `Theme.BORDER_PLAYER`
-- unit name: `Theme.CYAN`
+- surface: `PixelUI.DT_HERO_BG`
+- border: `PixelUI.DT_HERO_BORDER`
+- unit name: `PixelUI.DT_CYAN`
 
 Enemy card styling:
 
-- surface: `#120808`
-- border: `Theme.BORDER_ENEMY`
-- unit name: `Theme.RED`
+- surface: `PixelUI.DT_ENEMY_BG`
+- border: `PixelUI.DT_ENEMY_BORDER`
+- unit name: `PixelUI.DT_RUST`
 
 Targeting state:
 

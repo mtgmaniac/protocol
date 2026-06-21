@@ -87,7 +87,10 @@ Important correction:
 
 ### Shared visual language
 
-- [Theme.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/Theme.gd)
+- [pixel_ui.gd](C:/Users/Kev/Documents/protocol/scripts/ui/pixel_ui.gd) — `PixelUI`, single
+  source of truth (Direction-05 `DT_*` palette). The old `Theme` autoload is removed.
+- [assets/ui/theme_overload.tres](C:/Users/Kev/Documents/protocol/assets/ui/theme_overload.tres)
+  — project default `Theme` mirroring `PixelUI` for default inheritance.
 
 ## Current UI Reality
 
@@ -153,7 +156,7 @@ If a change is visual, the assistant should prefer:
 
 ## Guidance for Future Assistants
 
-- use `Theme.gd` for new shared color language
+- use `PixelUI` (`scripts/ui/pixel_ui.gd`) for new shared color language — never hardcode hex
 - prefer updating active runtime owners instead of stale authored scenes
 - for battle card work, start with:
   - [compact_unit_card.gd](C:/Users/Kev/Documents/protocol/scripts/ui/compact_unit_card.gd)

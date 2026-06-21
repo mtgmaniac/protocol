@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=7 format=3 uid="uid://b8ov1theme0ovl"]
+[gd_resource type="Theme" format=3 uid="uid://byx8sircsks0l"]
 
 ; Overload Protocol default Theme — MIRRORS the canonical PixelUI DT_* palette
 ; (scripts/ui/pixel_ui.gd). This only provides default font + per-Control-type

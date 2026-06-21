@@ -40,8 +40,6 @@ These are live global singletons:
   - [DataManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/DataManager.gd)
 - `SceneManager`
   - [SceneManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/SceneManager.gd)
-- `Theme`
-  - [Theme.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/Theme.gd)
 - `AudioManager`
   - [AudioManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/AudioManager.gd)
 - `DebugBattleLauncher`
@@ -49,9 +47,10 @@ These are live global singletons:
 
 Important note:
 
-- the autoload is named `Theme`, but `Theme` is also a built-in Godot type
-- for compile-time constants in scripts, prefer:
-  - `const UiTheme = preload("res://scripts/autoloads/Theme.gd")`
+- The old `Theme` autoload (`Theme.gd`) has been **removed**. Visual constants now live
+  in `PixelUI` ([pixel_ui.gd](C:/Users/Kev/Documents/protocol/scripts/ui/pixel_ui.gd)),
+  the single source of truth.
+- `PixelUI` is a `class_name`, so reference it directly (`PixelUI.DT_CYAN`) — no preload needed.
 
 ## 3. Current Run Loop
 
@@ -135,23 +134,25 @@ Current direction:
 
 Theme source:
 
-- [Theme.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/Theme.gd)
+- [pixel_ui.gd](C:/Users/Kev/Documents/protocol/scripts/ui/pixel_ui.gd) — `PixelUI`, the
+  single source of truth (Direction-05 "Dithered Terminal" `DT_*` palette).
+- [assets/ui/theme_overload.tres](C:/Users/Kev/Documents/protocol/assets/ui/theme_overload.tres)
+  — project default `Theme` that mirrors `PixelUI` for default-inheritance only.
 
-Current core colors:
+Current core colors (canonical `PixelUI` tokens; old `UiTheme` names → new in parentheses):
 
-- `Theme.VOID`
-- `Theme.PANEL`
-- `Theme.RAISED`
-- `Theme.CYAN`
-- `Theme.RED`
-- `Theme.PROTOCOL_GREEN`
-- `Theme.GOLD`
-- `Theme.HP_GREEN`
-- `Theme.DMG_RED`
-- `Theme.MUTED`
-- `Theme.BORDER_PLAYER`
-- `Theme.BORDER_ENEMY`
-- `Theme.BORDER_PROTOCOL`
+- `PixelUI.DT_FIELD_BG` (was `VOID`) — base background
+- `PixelUI.DT_HERO_BG` (was `PANEL`) — hero card surface
+- `PixelUI.DT_TRAY_BG` (was `RAISED`) — dice tray surface
+- `PixelUI.DT_CYAN` (was `CYAN`) — hero accent
+- `PixelUI.DT_RUST` (was `RED`) — enemy accent
+- `PixelUI.DT_AMBER` (was `PROTOCOL_GREEN`) — protocol bar is **amber** now, not green
+- `PixelUI.GOLD_ACCENT` (was `GOLD`) — callouts
+- `PixelUI.DT_HP_GREEN` (was `HP_GREEN`) — HP fill (green reserved for HP + ROLL only)
+- `PixelUI.COLOR_DAMAGE` (was `DMG_RED`) — incoming-damage forecast
+- `PixelUI.TEXT_MUTED` (was `MUTED`) — secondary text
+- `PixelUI.DT_HERO_BORDER` (was `BORDER_PLAYER`) — hero card border
+- `PixelUI.DT_ENEMY_BORDER` (was `BORDER_ENEMY`) — enemy card border
 
 ## 7. Card Structure and Current Constraints
 
@@ -346,7 +347,7 @@ Parallel workstreams:
 - **`fix/cleanup`** — backend/data/combat (`combat_manager.gd`, `data/raw/`, sim). **No UI edits.**
 - **`codex/compact-battle-ui-three-unit-pips`**, **`codex/ui-compact-card-prototype`** — UI only.
 
-On `fix/cleanup`, avoid scenes, `compact_unit_card.gd`, `Theme.gd`, and visual battle chrome unless the user overrides.
+On `fix/cleanup`, avoid scenes, `compact_unit_card.gd`, `pixel_ui.gd`, and visual battle chrome unless the user overrides.
 
 ## 17. Guidance for Future Agents
 
@@ -357,4 +358,4 @@ On `fix/cleanup`, avoid scenes, `compact_unit_card.gd`, `Theme.gd`, and visual b
 - keep dice logic in `dice_tray_3d.gd`
 - keep card internals in `compact_unit_card.gd`
 - use screenshot verification for UI claims
-- use `Theme.gd` for new shared visual language values
+- use `PixelUI` (`scripts/ui/pixel_ui.gd`) for all shared visual language values — never hardcode hex
