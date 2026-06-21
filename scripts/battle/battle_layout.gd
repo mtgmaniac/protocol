@@ -94,6 +94,22 @@ func get_result_row_rect(views: Array) -> Rect2:
 	return rect if has_rect else Rect2()
 
 
+# Direction-05: a small gutter on every side so the dice tray never touches the
+# card rows. Applied to EVERY return path (some are degenerate-case fallbacks that
+# previously returned full width, which reset the gap).
+const TRAY_GUTTER_H := 12.0
+const TRAY_GUTTER_V := 14.0
+
+
+func _inset_tray_rect(r: Rect2) -> Rect2:
+	if r.size.x <= 2.0 or r.size.y <= 2.0:
+		return r
+	return Rect2(
+		r.position + Vector2(TRAY_GUTTER_H, TRAY_GUTTER_V),
+		Vector2(maxf(r.size.x - TRAY_GUTTER_H * 2.0, 2.0), maxf(r.size.y - TRAY_GUTTER_V * 2.0, 2.0))
+	)
+
+
 func get_combat_zone_rect() -> Rect2:
 	if _scene.dice_tray_3d == null:
 		return Rect2()
@@ -102,7 +118,7 @@ func get_combat_zone_rect() -> Rect2:
 	var friendly_readout_rect: Rect2 = get_friendly_result_row_rect()
 	var friendly_card_rect: Rect2 = get_card_group_rect(_scene.hero_card_views)
 	if enemy_readout_rect.size == Vector2.ZERO or friendly_readout_rect.size == Vector2.ZERO:
-		return _scene.center_panel.get_global_rect()
+		return _inset_tray_rect(_scene.center_panel.get_global_rect())
 
 	var board_rect: Rect2 = _scene.board.get_global_rect()
 	var center_rect: Rect2 = _scene.center_panel.get_global_rect()
@@ -111,14 +127,14 @@ func get_combat_zone_rect() -> Rect2:
 	var top_y: float = enemy_readout_rect.position.y if enemy_readout_rect.size != Vector2.ZERO else enemy_bottom_y
 	var bottom_y: float = friendly_readout_rect.end.y if friendly_readout_rect.size != Vector2.ZERO else friendly_top_y
 	if bottom_y <= top_y + 120.0:
-		return center_rect
+		return _inset_tray_rect(center_rect)
 
 	var x: float = center_rect.position.x
 	var width: float = center_rect.size.x
 	if width <= 2.0:
 		x = board_rect.position.x
 		width = board_rect.size.x
-	return Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y))
+	return _inset_tray_rect(Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y)))
 
 
 func layout_dice_from_combat_zone() -> void:
@@ -129,6 +145,35 @@ func layout_dice_from_combat_zone() -> void:
 	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		return
 	_scene.dice_tray_3d.set_combat_zone_rect(combat_zone)
+	_position_zone_dividers(combat_zone)
+
+
+# Pin the header/footer divider lines exactly DIVIDER_GAP px from the card rows, so
+# the gap divider<->card equals the card<->tray gap (which the combat zone produces).
+func _position_zone_dividers(combat_zone: Rect2) -> void:
+	var enemy_card: Rect2 = get_card_group_rect(_scene.enemy_card_views)
+	var hero_card: Rect2 = get_card_group_rect(_scene.hero_card_views)
+	var gap: float = (combat_zone.position.y - enemy_card.end.y) if enemy_card.size.y > 2.0 else 15.0
+	var origin_y: float = _scene.global_position.y
+	var header_divider: Control = _scene.get_node_or_null("HeaderDivider")
+	if header_divider != null and enemy_card.size.y > 2.0:
+		var top: float = enemy_card.position.y - origin_y - gap - 3.0
+		header_divider.offset_top = top
+		header_divider.offset_bottom = top + 3.0
+		# Header content occupies [screen top, divider] so it centers equidistant
+		# from the screen edge and the divider (instead of abutting the divider).
+		var header_row: Control = _scene.get_node_or_null("HeaderRow")
+		if header_row != null:
+			header_row.offset_top = 0.0
+			header_row.offset_bottom = top
+	var footer_divider: Control = _scene.get_node_or_null("FooterDivider")
+	if footer_divider != null and hero_card.size.y > 2.0:
+		var ftop: float = hero_card.end.y - origin_y + gap
+		footer_divider.offset_top = ftop
+		footer_divider.offset_bottom = ftop + 3.0
+		# Footer panel occupies [divider, screen bottom] so its content centers there.
+		if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
+			_scene.protocol_panel.offset_top = (ftop + 3.0) - _scene.size.y
 
 
 func get_card_group_rect(views: Array) -> Rect2:
@@ -251,7 +296,57 @@ func ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_lane = _build_combat_zone_lane("HeroDiceLane")
 		_combat_zone_frame.add_child(_combat_zone_hero_lane)
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
-	PixelUI.style_panel(_combat_zone_frame, Color(0.010, 0.014, 0.022, 0.18), PixelUI.LINE_DIM, 2, 2)
+	# Direction-05 tray: the frame is an OVERLAY above the dice viewport, so its fill
+	# must be fully transparent (any tint darkens the dice). Border + corner ticks only.
+	PixelUI.style_panel(_combat_zone_frame, Color(0, 0, 0, 0), PixelUI.LINE_DIM, 3, 0)
+	_ensure_tray_corner_ticks()
+
+
+# Direction-05 tray detail: four L-shaped corner ticks (hard, no blur) pinned to
+# the combat-zone frame corners.
+func _ensure_tray_corner_ticks() -> void:
+	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
+		return
+	if _combat_zone_frame.get_node_or_null("CornerTicks") != null:
+		return
+	var ticks: Control = Control.new()
+	ticks.name = "CornerTicks"
+	ticks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ticks.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_combat_zone_frame.add_child(ticks)
+	var tick_color: Color = Color("2a333a")
+	var arm: float = 20.0
+	var thick: float = 4.0
+	var inset: float = 6.0
+	for corner in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+		var cx: float = corner.x
+		var cy: float = corner.y
+		# horizontal arm
+		var h: ColorRect = ColorRect.new()
+		h.color = tick_color
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.anchor_left = cx
+		h.anchor_right = cx
+		h.anchor_top = cy
+		h.anchor_bottom = cy
+		h.offset_left = inset if cx == 0 else -(inset + arm)
+		h.offset_right = (inset + arm) if cx == 0 else -inset
+		h.offset_top = inset if cy == 0 else -(inset + thick)
+		h.offset_bottom = (inset + thick) if cy == 0 else -inset
+		ticks.add_child(h)
+		# vertical arm
+		var v: ColorRect = ColorRect.new()
+		v.color = tick_color
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.anchor_left = cx
+		v.anchor_right = cx
+		v.anchor_top = cy
+		v.anchor_bottom = cy
+		v.offset_left = inset if cx == 0 else -(inset + thick)
+		v.offset_right = (inset + thick) if cx == 0 else -inset
+		v.offset_top = inset if cy == 0 else -(inset + arm)
+		v.offset_bottom = (inset + arm) if cy == 0 else -inset
+		ticks.add_child(v)
 
 
 func _build_combat_zone_lane(lane_name: String) -> HBoxContainer:

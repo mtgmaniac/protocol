@@ -4,9 +4,14 @@ extends PanelContainer
 const READOUT_SIZE := Vector2(0, 104)
 const ROW_HEIGHT := 80.0
 const ROW_GAP := 2.0
+# Distance between the two pip rows' top edges. Less than ROW_HEIGHT so the 2nd row
+# sits closer to the 1st (the row boxes overlap, but the centered pips don't), which
+# keeps a two-row ability from spilling past the dice-tray edge.
+const ROW_PITCH := 58.0
 const OUTER_PAD_X := 10.0
 const HERO_TOP_PAD := 4.0
-const READOUT_CENTER_PULL_PX := 18.0
+# Pull both rows toward the dice (center of the tray) so the closest row hugs the dice.
+const READOUT_CENTER_PULL_PX := 30.0
 const EFFECT_GROUP_MIN_WIDTH := 90.0
 const ICON_FONT_SIZE := 80
 const VALUE_FONT_SIZE := 80
@@ -235,7 +240,7 @@ func _notification(what: int) -> void:
 func _layout_rows() -> void:
 	if _upper_row == null or _lower_row == null or _upper_frame == null or _lower_frame == null:
 		return
-	var total_rows_height: float = (ROW_HEIGHT * 2.0) + ROW_GAP
+	var total_rows_height: float = ROW_PITCH + ROW_HEIGHT
 	var start_y: float = 0.0
 	if side == "enemy":
 		start_y = size.y - total_rows_height + READOUT_CENTER_PULL_PX
@@ -245,7 +250,7 @@ func _layout_rows() -> void:
 	_upper_frame.position = Vector2(0.0, start_y)
 	_upper_frame.size = row_size
 	_upper_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_lower_frame.position = Vector2(0.0, start_y + ROW_HEIGHT + ROW_GAP)
+	_lower_frame.position = Vector2(0.0, start_y + ROW_PITCH)
 	_lower_frame.size = row_size
 	_lower_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_update_row_underline(_upper_row)

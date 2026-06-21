@@ -105,9 +105,11 @@ var unit_data: Resource = null
 var gear_detail_rows: Array = []
 
 var _name_label: Label = null
-var _portrait_frame: PanelContainer = null
+var _name_strip: PanelContainer = null
+var _portrait_frame: Control = null
 var _portrait_crop: Control = null
 var _portrait_rect: TextureRect = null
+var _portrait_dither: TextureRect = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
@@ -259,6 +261,11 @@ func _build() -> void:
 	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(root)
 
+	_name_strip = PanelContainer.new()
+	_name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	root.add_child(_name_strip)
+
 	_name_label = Label.new()
 	_name_label.custom_minimum_size = Vector2(0, NAME_ROW_HEIGHT)
 	_name_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -267,11 +274,15 @@ func _build() -> void:
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_apply_label(_name_label, CARD_NAME_FONT_SIZE, UiTheme.CYAN, 0)
-	root.add_child(_name_label)
+	_name_strip.add_child(_name_label)
 
-	_portrait_frame = PanelContainer.new()
+	# Plain Control (NOT a Container) so the crop + status overlay can be positioned
+	# by anchors; a PanelContainer would force-lay-out both children.
+	_portrait_frame = Control.new()
 	_portrait_frame.custom_minimum_size = Vector2.ZERO
-	_portrait_frame.clip_contents = true
+	# Frame does NOT clip (so status badges overlaid at the bottom aren't cut off);
+	# the inner _portrait_crop still clips the portrait image itself.
+	_portrait_frame.clip_contents = false
 	_portrait_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_portrait_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_portrait_frame)
@@ -289,6 +300,11 @@ func _build() -> void:
 	_portrait_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	# Position and size are set manually by _update_portrait_rect_transform
 	_portrait_crop.add_child(_portrait_rect)
+
+	# Direction-05 signature: 2x2 dither over the portrait (approximates the
+	# multiply darken overlay from the design). Alpha set per side in _refresh.
+	_portrait_dither = PixelUI.make_dither_overlay(Color.BLACK, 0.17)
+	_portrait_crop.add_child(_portrait_dither)
 
 	# Uniform thin gap between portrait and HP bar so the card panel color
 	# shows through as a subtle separator on every card.
@@ -370,11 +386,16 @@ func _build() -> void:
 	action_margin.add_child(_action_grid)
 
 	_status_slot = Control.new()
-	_status_slot.custom_minimum_size = Vector2(0, STATUS_ROW_HEIGHT)
-	_status_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_status_slot.clip_contents = true
-	root.add_child(_status_slot)
+	_status_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_slot.clip_contents = false
+	# Direction-05: status badges overlay the bottom edge of the portrait (a row of
+	# pixel "stickers"). Parented to the non-clipping frame so borders/shadows show.
+	_portrait_frame.add_child(_status_slot)
+	_status_slot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_status_slot.offset_left = 8
+	_status_slot.offset_right = -8
+	_status_slot.offset_top = -76
+	_status_slot.offset_bottom = -8
 
 	_status_tint = ColorRect.new()
 	_status_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -408,7 +429,7 @@ func _build() -> void:
 	_status_row.custom_minimum_size = Vector2.ZERO
 	_status_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_status_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_status_row.clip_contents = true
 	_status_row.add_theme_constant_override("separation", 2)
 	status_margin.add_child(_status_row)
@@ -418,17 +439,31 @@ func _refresh() -> void:
 	if _name_label == null:
 		return
 
+	var is_hero: bool = side == "hero"
 	var line_color: Color = _line_color()
-	var panel_bg: Color = UiTheme.PANEL if side == "hero" else ENEMY_PANEL
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 2, 0))
+	var panel_bg: Color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 6, 0))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
+	# Direction-05 card: header strip + HP track use darker team tints, divided by a
+	# 2px hard border in the card's line color (no rounded corners).
+	if _name_strip != null:
+		var header_bg: Color = PixelUI.DT_HERO_HEADER if is_hero else PixelUI.DT_ENEMY_HEADER
+		var header_style: StyleBoxFlat = _style(header_bg, line_color, 0, 0)
+		header_style.border_width_bottom = 2
+		_name_strip.add_theme_stylebox_override("panel", header_style)
+	var track_bg: Color = PixelUI.DT_HERO_TRACK if is_hero else PixelUI.DT_ENEMY_TRACK
+	var track_style: StyleBoxFlat = _style(track_bg, line_color, 0, 0)
+	track_style.border_width_top = 2
+	_hp_back.add_theme_stylebox_override("panel", track_style)
+	if _portrait_dither != null:
+		_portrait_dither.modulate = Color(0.0, 0.0, 0.0, 0.10 if is_hero else 0.12)
 	if _locked_portrait_size == Vector2.ZERO:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
-	_name_label.add_theme_color_override("font_color", UiTheme.CYAN if side == "hero" else UiTheme.RED)
+	_name_label.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME if is_hero else PixelUI.DT_ENEMY_NAME)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
@@ -438,7 +473,7 @@ func _refresh() -> void:
 		clampf(float(forecast_hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
 	)
 
-	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color.WHITE
+	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color(1.12, 1.12, 1.12, 1.0)
 	if dead:
 		modulate = Color(0.55, 0.56, 0.62, 0.72)
 	elif target_locked:
@@ -555,9 +590,8 @@ func _update_portrait_rect_transform() -> void:
 	var scale: float = maxf(fw / tw, fh / th)
 	var nw: float = tw * scale
 	var nh: float = th * scale
-	if side == "hero":
-		nw = maxf(fw, nw * HERO_PORTRAIT_WIDTH_SCALE)
-		nh = nw * (th / tw)
+	# Heroes and enemies both use the plain cover-scale above so the portrait always
+	# fills the whole frame (the inner crop clips the overflow).
 	# Center horizontally, top-align with a small inset so the head sits
 	# just inside the top edge of the frame regardless of portrait aspect ratio
 	_portrait_rect.position = Vector2((fw - nw) * 0.5, PORTRAIT_TOP_INSET_PX)
@@ -666,14 +700,59 @@ func get_display_statuses(raw_statuses: Array) -> Array:
 	return statuses
 
 
+# Direction-05 status "sticker": type-color border, dark dithered fill, hard offset
+# drop shadow, pip icon + stack number inside. Type = color (shield cyan / poison
+# violet / burn amber), with our prepared pip icons embedded.
+func _status_badge_palette(status: Dictionary) -> Dictionary:
+	var kind: String = _status_effect_kind(status).to_lower()
+	# Border, number font, and icon ALL share the infliction's color.
+	var border: Color
+	if kind in ["shield", "taunt", "block", "barrier"]:
+		border = PixelUI.DT_STATUS["shield"]["border"]
+	elif kind in ["poison", "venom"]:
+		border = PixelUI.DT_STATUS["poison"]["border"]
+	elif kind in ["burn", "dot", "fire", "bleed"]:
+		border = PixelUI.DT_STATUS["burn"]["border"]
+	elif kind in ["roll", "rfe", "rfm", "roll_down", "roll_up", "buff", "debuff"]:
+		border = PixelUI.COLOR_ROLL
+	else:
+		border = _status_color(kind)
+	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border}
+
+
+# Tint every label (font) and icon (modulate) inside a status badge to the status
+# color, so border + number + icon all read as one color.
+func _tint_status_content(node: Node, color: Color) -> void:
+	for child in node.get_children():
+		if child is Label:
+			(child as Label).add_theme_color_override("font_color", color)
+		elif child is TextureRect:
+			(child as TextureRect).modulate = color
+		if child.get_child_count() > 0:
+			_tint_status_content(child, color)
+
+
 func build_status_chip(status: Dictionary) -> Control:
+	var pal: Dictionary = _status_badge_palette(status)
+	var badge: PanelContainer = PanelContainer.new()
+	badge.mouse_filter = Control.MOUSE_FILTER_STOP
+	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var style: StyleBoxFlat = PixelUI.make_hard_style(pal["fill"], pal["border"], 2)
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(5, 5)
+	style.set_content_margin_all(3.0)
+	badge.add_theme_stylebox_override("panel", style)
+	_connect_passthrough_input(badge)
+
 	var chip: HBoxContainer = HBoxContainer.new()
-	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.alignment = BoxContainer.ALIGNMENT_CENTER
 	chip.add_theme_constant_override("separation", 1)
-	_connect_passthrough_input(chip)
+	badge.add_child(chip)
 
 	if _is_frozen_status(status):
 		chip.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
@@ -687,9 +766,10 @@ func build_status_chip(status: Dictionary) -> Control:
 		chip.add_child(_make_status_name_label(status))
 		if str(status.get("value", "")) != "":
 			chip.add_child(_make_status_value_label(status))
+	_tint_status_content(chip, pal["border"])
 	if _tooltip_cb.is_valid():
-		_tooltip_cb.call(chip, _build_status_tooltip(status))
-	return chip
+		_tooltip_cb.call(badge, _build_status_tooltip(status))
+	return badge
 
 
 func _make_status_icon_control(status: Dictionary) -> Control:
@@ -909,7 +989,7 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 func _line_color() -> Color:
 	if targetable:
 		return TARGET_LINE
-	return HERO_LINE if side == "hero" else ENEMY_LINE
+	return PixelUI.DT_HERO_BORDER if side == "hero" else PixelUI.DT_ENEMY_BORDER
 
 
 func _status_color(token: String) -> Color:

@@ -79,8 +79,8 @@ const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const CENTER_PROMPT_FONT_SIZE := 32
 const HEADER_SUMMARY_FONT_SIZE := 112
-const HEADER_COUNTER_FONT_SIZE := 56
-const PROTOCOL_LABEL_FONT_SIZE := 56
+const HEADER_COUNTER_FONT_SIZE := 36
+const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
 const HUD_TOOLTIP_MIN_WIDTH := 180.0
 const HUD_TOOLTIP_MAX_WIDTH := 380.0
@@ -1140,7 +1140,7 @@ func _add_set_button() -> void:
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_set_hud_tooltip(btn, "Set\nSpend %d Protocol to set a hero's die to any value." % SET_DIE_COST)
 	btn.pressed.connect(_on_set_button_pressed)
-	_style_minimal_action_button(btn, "=", BOTTOM_BAR_BUTTON_SIZE, 56)
+	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
 	_set_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
@@ -1291,9 +1291,116 @@ func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool)
 	return eff
 
 
+var _protocol_segments: Array = []
+# Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
+# header/footer content lines up with the tray instead of running to the screen edge.
+const TRAY_EDGE_INSET := 16
+
+
+# A fixed 3px divider line at the header (top) or footer (bottom) boundary, inset to
+# match the tray edges. Placed on the root so layout/reordering can't move it.
+func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
+	if get_node_or_null(node_name) != null:
+		return
+	var divider: ColorRect = ColorRect.new()
+	divider.name = node_name
+	divider.color = PixelUI.LINE_DIM
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Full-width, top-relative anchors; exact Y is set each layout pass by
+	# BattleLayout._position_zone_dividers so the gap to the cards stays consistent.
+	divider.anchor_left = 0.0
+	divider.anchor_right = 1.0
+	divider.anchor_top = 0.0
+	divider.anchor_bottom = 0.0
+	divider.offset_left = TRAY_EDGE_INSET
+	divider.offset_right = -TRAY_EDGE_INSET
+	divider.offset_top = (960.0 if at_footer else 144.0)
+	divider.offset_bottom = divider.offset_top + 3.0
+	add_child(divider)
+
+
+# Stack "PROTOCOL" above a short segment bar (more readable, frees horizontal room).
+func _ensure_protocol_stack_layout() -> void:
+	var row := protocol_bar.get_parent() as HBoxContainer
+	if row == null or row.get_node_or_null("ProtocolStack") != null:
+		return
+	# Let the stack expand across the whole row up to the action buttons.
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	var stack := VBoxContainer.new()
+	stack.name = "ProtocolStack"
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stack.add_theme_constant_override("separation", 2)
+	row.remove_child(protocol_label)
+	row.remove_child(protocol_bar)
+	stack.add_child(protocol_label)
+	stack.add_child(protocol_bar)
+	row.add_child(stack)
+	row.move_child(stack, 0)
+	# Buttons take only their fixed size; the stack absorbs ALL remaining width.
+	for sibling in row.get_children():
+		if sibling is Button:
+			(sibling as Button).size_flags_horizontal = Control.SIZE_SHRINK_END
+	# Neutralize the old-layout expanding spacer (it was splitting the width 50/50).
+	var spacer: Control = row.get_node_or_null("ProtocolFooterSpacer") as Control
+	if spacer != null:
+		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		spacer.custom_minimum_size = Vector2.ZERO
+	# Wide segment bar (fills the stack); "Protocol" centered above all the blips.
+	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	protocol_bar.custom_minimum_size = Vector2(0, 36)
+	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
+# Inset the header content so "FACILITY" and the rightmost button align with the tray.
+func _align_header_to_tray() -> void:
+	var header_row := get_node_or_null("HeaderRow") as Control
+	if header_row == null:
+		return
+	header_row.anchor_left = 0.0
+	header_row.anchor_right = 1.0
+	header_row.offset_left = TRAY_EDGE_INSET
+	header_row.offset_right = -TRAY_EDGE_INSET
+
+
+func _ensure_protocol_segments() -> void:
+	if not _protocol_segments.is_empty():
+		return
+	if protocol_bar == null or not is_instance_valid(protocol_bar):
+		return
+	# Direction-05: 10 discrete segments. Hide the native ProgressBar fill and draw
+	# our own segmented row over it (filled amber / empty dark).
+	protocol_bar.show_percentage = false
+	protocol_bar.add_theme_stylebox_override("background", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
+	protocol_bar.add_theme_stylebox_override("fill", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
+	var row: HBoxContainer = HBoxContainer.new()
+	row.name = "ProtocolSegments"
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 3)
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	protocol_bar.add_child(row)
+	for _i in range(MAX_PROTOCOL):
+		var seg: Panel = Panel.new()
+		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		seg.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		row.add_child(seg)
+		_protocol_segments.append(seg)
+
+
 func _update_protocol_bar() -> void:
 	protocol_bar.max_value = MAX_PROTOCOL
 	protocol_bar.value = protocol_points
+	_ensure_protocol_segments()
+	for i in range(_protocol_segments.size()):
+		var seg: Panel = _protocol_segments[i]
+		if i < protocol_points:
+			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0))
+		else:
+			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
 	protocol_value_label.text = "%d / %d" % [protocol_points, MAX_PROTOCOL]
 	_update_protocol_footer_display()
 
@@ -1494,12 +1601,13 @@ func _set_turn_phase(next_phase: String) -> void:
 func _style_roll_button_for_phase() -> void:
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			# Active primary action: ready to roll
+			# Active primary action: ready to roll — Direction-05 green commit button.
 			_style_minimal_action_button(
 				roll_button, roll_button.text,
 				CENTER_ACTION_BUTTON_SIZE, CENTER_ACTION_BUTTON_FONT_SIZE,
-				Color(0.06, 0.20, 0.10, 0.96), PixelUI.HERO_ACCENT
+				PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT
 			)
+			roll_button.add_theme_color_override("font_color", PixelUI.DT_ROLL_TEXT)
 		PHASE_TARGETING:
 			# Hidden: targetable cards highlight cyan to communicate the
 			# affordance. The center zone is reclaimed for dice/readouts.
@@ -1540,9 +1648,10 @@ func _style_frame_icon_action_button(
 	if button == null or not is_instance_valid(button):
 		return
 	button.custom_minimum_size = min_size
-	# expand_icon=true so the 32px pixel-art glyphs scale up to fill the button
-	# (NEAREST filter keeps them crisp) instead of sitting tiny at native size.
-	PixelUI.style_frame_icon_button(button, PixelUI.FRAME_SIMPLE, icon_path, -1, frame_modulate, icon_modulate, -1, true)
+	# Direction-05 flat dark square. frame_modulate carries the border accent (e.g.
+	# gold for the protocol spend button); default uses the neutral DT button border.
+	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
+	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate)
 
 
 func _style_prompt_button(button: Button, label: String, min_size: Vector2, font_size: int, border: Color = PixelUI.LINE_DIM) -> void:
@@ -2632,10 +2741,27 @@ func _apply_battle_theme() -> void:
 	var header_row := get_node_or_null("HeaderRow") as Control
 	if header_row != null:
 		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	# Header/board divider: a fixed 3px line at the header boundary (y = 144), inset to
+	# match the footer divider + tray edges. Placed on the root so board reordering and
+	# the board's top margin don't move it.
+	_ensure_zone_divider("HeaderDivider", false)
+	_ensure_zone_divider("FooterDivider", true)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(battle_log_panel, Color(0.015, 0.022, 0.035, 0.82), PixelUI.LINE_DIM, 2, 2)
+	# Direction-05: flat dark field instead of the starfield texture.
+	if background != null:
+		background.texture = null
+		if background.get_node_or_null("FieldFill") == null:
+			var field_fill: ColorRect = ColorRect.new()
+			field_fill.name = "FieldFill"
+			# Slightly lifted off pure-black so the whole screen reads less dull than
+			# the raw design token (which felt too dark in-engine).
+			field_fill.color = Color(0.055, 0.070, 0.095, 1.0)
+			field_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			field_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+			background.add_child(field_fill)
 	_ensure_panel_background(hero_panel)
 	_ensure_panel_background(enemy_panel)
 	_ensure_panel_background(center_panel)
@@ -2655,16 +2781,30 @@ func _apply_battle_theme() -> void:
 	_style_frame_icon_action_button(auto_battle_button, PixelUI.ICON_DEBUG2, HEADER_BUTTON_SIZE)
 	_style_frame_icon_action_button(return_to_menu_button, PixelUI.ICON_BACK, HEADER_BUTTON_SIZE)
 	_style_roll_button_for_phase()
-	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE, PixelUI.GOLD_ACCENT)
+	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE)
 	if _nudge_button != null and is_instance_valid(_nudge_button):
 		_style_frame_icon_action_button(_nudge_button, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
+	if _set_button != null and is_instance_valid(_set_button):
+		_style_frame_icon_action_button(_set_button, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
 	if _item_button != null and is_instance_valid(_item_button):
 		_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
-	protocol_value_label.visible = true
+	# The numeric value is redundant with the 10 segments and kept landing in awkward
+	# spots (over the bar / among buttons) — hide it; the segments convey the count.
+	protocol_value_label.visible = false
 	if protocol_panel != null:
-		PixelUI.style_panel(protocol_panel, Color(0.012, 0.018, 0.028, 0.35), PixelUI.LINE_DIM, 1, 2)
+		# Footer plate (no top border — the FooterDivider ColorRect is the divider line).
+		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_PANEL_BG, 0)
+		footer_style.set_content_margin_all(4.0)
+		protocol_panel.add_theme_stylebox_override("panel", footer_style)
+		# Align footer content with the dice-tray edges (room before the screen edge).
+		var pm := protocol_panel.get_node_or_null("ProtocolMargin") as MarginContainer
+		if pm != null:
+			pm.add_theme_constant_override("margin_left", TRAY_EDGE_INSET)
+			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
+	_ensure_protocol_stack_layout()
+	_align_header_to_tray()
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
 	if _protocol_footer_display != null and is_instance_valid(_protocol_footer_display):
 		_protocol_footer_display.visible = false

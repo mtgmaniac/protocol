@@ -17,6 +17,55 @@ const COLOR_HEAL := Color(0.28, 0.90, 0.46, 1.0)
 const COLOR_SHIELD := Color(0.34, 0.66, 1.0, 1.0)
 const COLOR_DEBUFF := Color(0.72, 0.34, 0.95, 1.0)
 const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
+
+# ── Direction 05 "Dithered Terminal" palette (battle HUD redesign) ──
+# Green is reserved for HP + the ROLL commit only; heroes read cyan, enemies rust.
+static var DT_FIELD_BG := Color("07090b")
+static var DT_FIELD_BORDER := Color("232a2e")
+static var DT_PANEL_BG := Color("090c0e")
+static var DT_TRAY_BG := Color("06080a")
+static var DT_LINE := Color("1b2226")
+static var DT_HP_GREEN := Color("4aa84e")
+static var DT_HP_TEXT := Color("eafce9")
+static var DT_AMBER := Color("cf9a36")
+static var DT_AMBER_TEXT := Color("b08a3a")
+static var DT_PROTO_EMPTY := Color("1a1c12")
+static var DT_PROTO_EMPTY_BORDER := Color("2a2c1c")
+# Flat icon buttons (header/footer): dark square, 2px border; active uses DT_CYAN.
+static var DT_BTN_BG := Color("11161a")
+static var DT_BTN_BORDER := Color("28323a")
+# Enemy (rust) card tokens
+static var DT_ENEMY_BG := Color("130c0a")
+static var DT_ENEMY_BORDER := Color("5e3022")
+static var DT_ENEMY_HEADER := Color("1e110c")
+static var DT_ENEMY_NAME := Color("c9755a")
+static var DT_ENEMY_TRACK := Color("0e0908")
+static var DT_ENEMY_DITHER := Color("dc785a")
+# Hero (navy/cyan) card tokens
+static var DT_HERO_BG := Color("0a141c")
+static var DT_HERO_BORDER := Color("235461")
+static var DT_HERO_HEADER := Color("0d2029")
+static var DT_HERO_NAME := Color("56c7d9")
+static var DT_HERO_TRACK := Color("0a1218")
+static var DT_HERO_DITHER := Color("5ac8dc")
+static var DT_CYAN := Color("3fd0e2")
+static var DT_CYAN_BRIGHT := Color("6fe0ef")
+static var DT_RUST := Color("c25d3f")
+static var DT_RUST_BRIGHT := Color("f0a585")
+# Commit (ROLL) green bevel
+static var DT_ROLL_BASE := Color("3f8a47")
+static var DT_ROLL_LIGHT := Color("5fc266")
+static var DT_ROLL_DARK := Color("235c2a")
+static var DT_ROLL_BG := Color("1c5a26")
+static var DT_ROLL_TEXT := Color("e3ffe4")
+# Status badge tokens {border, fill, text}
+static var DT_STATUS := {
+	"shield": {"border": Color("3fd0e2"), "fill": Color("0a1620"), "text": Color("bff7ff")},
+	"poison": {"border": Color("9a6ad0"), "fill": Color("160e1f"), "text": Color("d8c4f0")},
+	"burn": {"border": Color("d98a3e"), "fill": Color("1f140a"), "text": Color("f4cd9a")},
+}
+const DITHER_TILE := "res://assets/ui/dither_2x2.png"
+
 const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
 const UI_FONT_SCALE := 1.35
 const UI_FONT_MIN_SIZE := 20
@@ -104,6 +153,66 @@ static func make_panel_style(bg: Color = BG_PANEL, border: Color = LINE_DIM, bor
 	style.set_content_margin(SIDE_RIGHT, 4.0)
 	style.set_content_margin(SIDE_BOTTOM, 4.0)
 	return style
+
+
+## Hard-cornered, single-tone bordered plate (Direction-05 pixel-frame language).
+static func make_hard_style(bg: Color, border: Color, width: int = 2) -> StyleBoxFlat:
+	var s: StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(width)
+	s.corner_radius_top_left = 0
+	s.corner_radius_top_right = 0
+	s.corner_radius_bottom_left = 0
+	s.corner_radius_bottom_right = 0
+	s.set_content_margin_all(0.0)
+	return s
+
+
+## A tiling 2x2 dither overlay (the signature of Direction 05). tint+alpha via modulate.
+## Anchored full-rect, ignores mouse. Parent must clip if needed.
+static func make_dither_overlay(tint: Color, alpha: float) -> TextureRect:
+	var tr: TextureRect = TextureRect.new()
+	tr.name = "Dither"
+	tr.texture = _load_texture(DITHER_TILE)
+	tr.stretch_mode = TextureRect.STRETCH_TILE
+	tr.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.modulate = Color(tint.r, tint.g, tint.b, alpha)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	return tr
+
+
+## Two-tone hard pixel bevel drawn as 4 edge ColorRects over a base fill, added as
+## children of `host` (top/left = light, bottom/right = dark). Faithful to the mock's
+## chunky bevels without a ninepatch texture. Edges ignore mouse and pin to host rect.
+static func add_bevel(host: Control, base: Color, light: Color, dark: Color, width: float = 3.0) -> void:
+	var fill: ColorRect = ColorRect.new()
+	fill.name = "BevelFill"
+	fill.color = base
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fill.show_behind_parent = true
+	host.add_child(fill)
+	for edge in [
+		{"n": "Top", "c": light, "preset": Control.PRESET_TOP_WIDE, "v": Vector2(0, width)},
+		{"n": "Left", "c": light, "preset": Control.PRESET_LEFT_WIDE, "v": Vector2(width, 0)},
+		{"n": "Bottom", "c": dark, "preset": Control.PRESET_BOTTOM_WIDE, "v": Vector2(0, width)},
+		{"n": "Right", "c": dark, "preset": Control.PRESET_RIGHT_WIDE, "v": Vector2(width, 0)},
+	]:
+		var bar: ColorRect = ColorRect.new()
+		bar.name = "Bevel" + str(edge["n"])
+		bar.color = edge["c"]
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.set_anchors_preset(edge["preset"])
+		bar.custom_minimum_size = edge["v"]
+		if edge["v"].x > 0:
+			bar.size.x = edge["v"].x
+		if edge["v"].y > 0:
+			bar.size.y = edge["v"].y
+		bar.show_behind_parent = true
+		host.add_child(bar)
 
 
 static func get_pixel_font() -> Font:
@@ -378,6 +487,41 @@ static func style_frame_icon_button(
 		b.add_theme_color_override("icon_disabled_color", Color(icon_modulate.r, icon_modulate.g, icon_modulate.b, 0.55))
 		for state_name in styles.keys():
 			b.add_theme_stylebox_override(state_name, styles[state_name])
+
+
+## Direction-05 flat icon button: dark square (DT_BTN_BG) + 2px hard border, our
+## pixel icon centered & expanded. Pass border_color = DT_CYAN for the active state.
+static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE) -> void:
+	if button == null or not (button is Button):
+		return
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var styles := {
+		"normal": make_hard_style(DT_BTN_BG, border_color, 2),
+		"hover": make_hard_style(DT_BTN_BG.lightened(0.05), border_color.lightened(0.10), 2),
+		"pressed": make_hard_style(DT_BTN_BG.darkened(0.12), border_color, 2),
+		"disabled": make_hard_style(DT_BTN_BG, Color(0.35, 0.38, 0.42, 0.6), 2),
+		"focus": make_hard_style(DT_BTN_BG, border_color, 2),
+	}
+	for stylebox_variant in styles.values():
+		(stylebox_variant as StyleBoxFlat).set_content_margin_all(14.0)
+	var b := button as Button
+	b.text = ""
+	b.flat = false
+	# No focus ring — keeps every button visually identical (a focused button was
+	# rendering with a different edge/outline).
+	b.focus_mode = Control.FOCUS_NONE
+	b.icon = _load_texture(icon_path)
+	b.expand_icon = true
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.remove_theme_font_override("font")
+	b.add_theme_color_override("icon_normal_color", icon_modulate)
+	b.add_theme_color_override("icon_hover_color", icon_modulate)
+	b.add_theme_color_override("icon_pressed_color", icon_modulate.darkened(0.10))
+	b.add_theme_color_override("icon_focus_color", icon_modulate)
+	b.add_theme_color_override("icon_disabled_color", Color(icon_modulate.r, icon_modulate.g, icon_modulate.b, 0.55))
+	for state_name in styles.keys():
+		b.add_theme_stylebox_override(state_name, styles[state_name])
 
 
 static func style_labeled_texture_button(button: Button, texture_path: String, font_size: int, font_color: Color = TEXT_PRIMARY) -> void:

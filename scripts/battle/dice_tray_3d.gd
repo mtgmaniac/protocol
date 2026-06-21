@@ -586,13 +586,13 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 		mat.emission = Color(1.0, 0.58, 0.10, 1.0)
 		mat.emission_energy_multiplier = 1.2
 	elif side == "hero":
-		mat.albedo_color = Color(0.06, 0.14, 0.32, 1.0)
-		mat.emission = Color(0.04, 0.10, 0.25, 1.0)
-		mat.emission_energy_multiplier = 0.8
+		mat.albedo_color = Color(0.11, 0.26, 0.46, 1.0)
+		mat.emission = Color(0.12, 0.34, 0.46, 1.0)
+		mat.emission_energy_multiplier = 1.25
 	else:
-		mat.albedo_color = Color(0.30, 0.06, 0.05, 1.0)
-		mat.emission = Color(0.20, 0.04, 0.03, 1.0)
-		mat.emission_energy_multiplier = 0.8
+		mat.albedo_color = Color(0.50, 0.16, 0.10, 1.0)
+		mat.emission = Color(0.44, 0.14, 0.08, 1.0)
+		mat.emission_energy_multiplier = 1.25
 	mat.emission_enabled = true
 	mat.roughness = 0.80
 	panel.material_override = mat
