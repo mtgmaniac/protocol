@@ -11,6 +11,10 @@ extends Control
 
 func _ready() -> void:
 	_apply_visual_theme()
+	# Run is over here — blank the persistent header's run label and make its
+	# buttons inert (this screen binds none of them).
+	PersistentHeader.set_run_active(false)
+	PersistentHeader.clear_battle_actions()
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
 	var operation_name: String = GameState.selected_operation_id
 	if operation != null:

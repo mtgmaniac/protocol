@@ -27,12 +27,6 @@ const RARITY_COLORS := {
 
 @onready var background: ColorRect = $Background
 @onready var content_vbox: VBoxContainer = $Content/VBox
-@onready var battle_summary_label: Label = $HeaderRow/InfoStack/SummaryLabel
-@onready var battle_counter_label: Label = $HeaderRow/InfoStack/CounterLabel
-@onready var header_help_button: Button = $HeaderRow/ButtonRow/ToggleLogButton
-@onready var header_auto_button: Button = $HeaderRow/ButtonRow/AutoTurnButton
-@onready var header_auto_battle_button: Button = $HeaderRow/ButtonRow/AutoBattleButton
-@onready var header_back_button: Button = $HeaderRow/ButtonRow/ReturnToMenuButton
 @onready var title_label: Label = $Content/VBox/Title
 @onready var summary_label: Label = %SummaryLabel
 @onready var inventory_label: Label = %InventoryLabel
@@ -51,15 +45,23 @@ var _gear_target_overlay: Control = null
 func _ready() -> void:
 	_apply_visual_theme()
 	resized.connect(_update_reward_layout)
-	header_help_button.pressed.connect(_on_help_button_pressed)
-	header_auto_button.pressed.connect(_on_header_unavailable_pressed.bind("Auto turn is unavailable while choosing a reward."))
-	header_auto_battle_button.pressed.connect(_on_header_unavailable_pressed.bind("Auto battle is unavailable while choosing a reward."))
-	header_back_button.pressed.connect(_on_return_to_menu_button_pressed)
+	# Header bar lives in the PersistentHeader autoload; bind this screen's handlers.
+	PersistentHeader.bind_battle_actions(
+		_on_help_button_pressed,
+		_on_header_unavailable_pressed.bind("Auto turn is unavailable while choosing a reward."),
+		_on_header_unavailable_pressed.bind("Auto battle is unavailable while choosing a reward."),
+		_on_return_to_menu_button_pressed,
+	)
 	if GameState.pending_reward_item_ids.is_empty():
 		GameState.prepare_battle_rewards()
 	_update_battle_header()
 	_refresh_inventory_summary()
 	_build_reward_cards()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(PersistentHeader):
+		PersistentHeader.clear_battle_actions()
 
 
 func _on_return_to_menu_button_pressed() -> void:
@@ -705,11 +707,9 @@ func _claim_reward(item: ItemData, target_unit_id: String) -> void:
 func _update_battle_header() -> void:
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
-	var battle_text: String = GameState.get_battle_progress_text()
-	if battle_text.begins_with("Battle "):
-		battle_text = battle_text.trim_prefix("Battle ")
-	battle_summary_label.text = "%s  %s" % [op_name, battle_text]
-	battle_counter_label.text = ""
+	# Run is still active while choosing a reward — keep the progress label showing.
+	PersistentHeader.set_run_active(true)
+	PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, op_name)
 
 
 func _refresh_inventory_summary() -> void:
@@ -742,28 +742,7 @@ func _apply_visual_theme() -> void:
 		reward_top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.apply_pixel_font(battle_summary_label)
-	battle_summary_label.add_theme_font_size_override("font_size", 112)
-	battle_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
-	battle_summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	battle_summary_label.add_theme_constant_override("outline_size", 2)
-	battle_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	battle_summary_label.clip_text = false
-	battle_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	PixelUI.apply_pixel_font(battle_counter_label)
-	battle_counter_label.add_theme_font_size_override("font_size", 112)
-	battle_counter_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-	battle_counter_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	battle_counter_label.add_theme_constant_override("outline_size", 3)
-	battle_counter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	battle_counter_label.clip_text = false
-	battle_counter_label.visible = false
-	var header_row: Control = $HeaderRow
-	header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	PixelUI.style_texture_button(header_help_button, PixelUI.BUTTON_HELP_SCIFI)
-	PixelUI.style_texture_button(header_auto_button, PixelUI.BUTTON_DEBUG_SCIFI)
-	PixelUI.style_texture_button(header_auto_battle_button, PixelUI.BUTTON_DEBUG2_SCIFI)
-	PixelUI.style_texture_button(header_back_button, PixelUI.BUTTON_BACK_SCIFI)
+	# Header bar (label + buttons) is owned + styled by the PersistentHeader autoload.
 	title_label.text = "Choose Reward"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.visible = false

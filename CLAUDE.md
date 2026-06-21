@@ -34,3 +34,19 @@ landscape / Phase 0 docs are obsolete; see [docs/PHASE_0_STATUS.md](docs/PHASE_0
   overlays, per-side card tints, dynamic dividers, bevels) stays programmatic in `PixelUI`,
   not in the `.tres`.
 - The old `UiTheme` (`scripts/autoloads/Theme.gd`) is **deleted** — do not re-add it.
+
+## Persistent header — one global header bar
+
+- **`PersistentHeader`** is a global autoload (`scenes/ui/PersistentHeader.tscn` +
+  `scripts/autoloads/PersistentHeader.gd`) — a `CanvasLayer` that is **always alive on every
+  screen** and never rebuilt on scene transitions. **No individual scene contains its own
+  header bar** (the old `scenes/shared/BattleHeader.tscn` is deleted).
+- It overlays the top 144px (`HEADER_HEIGHT`) of every screen, so each non-battle screen
+  reserves that space at the top of its layout (BattleScene already does via its 144 offset).
+- Public API:
+  - `update_progress(battle_number, total_battles, operation_name)` — sets the run label.
+  - `set_run_active(active)` — blanks the label when no run is active (home / run-end).
+  - `bind_battle_actions(help, debug, debug2, back)` / `clear_battle_actions()` — the active
+    screen binds its button handlers on `_ready` and clears them on `_exit_tree`. Unbound
+    buttons are inert (no-op). This is how the same buttons do different things per screen.
+  - `set_debug_enabled(bool)` / `set_debug2_enabled(bool)` — toggle the debug buttons.

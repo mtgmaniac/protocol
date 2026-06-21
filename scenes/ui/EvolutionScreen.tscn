@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/ui/evolution_screen.gd" id="1_6of8m"]
 [ext_resource type="Script" path="res://scripts/ui/pattern_background.gd" id="2_ek5tj"]
-[ext_resource type="PackedScene" path="res://scenes/shared/BattleHeader.tscn" id="3_wpxj8"]
 
 [node name="EvolutionScreen" type="Control"]
 layout_mode = 3
@@ -31,13 +30,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_ek5tj")
-
-[node name="HeaderRow" parent="." instance=ExtResource("3_wpxj8")]
-layout_mode = 1
-anchor_right = 1.0
-offset_bottom = 144.0
-grow_horizontal = 2
-grow_vertical = 2
 
 [node name="Content" type="MarginContainer" parent="."]
 layout_mode = 1

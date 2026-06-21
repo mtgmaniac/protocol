@@ -142,6 +142,10 @@ var _snap_timer: Timer
 
 # ─── Lifecycle ────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# No run is active on the squad-select screen — blank the persistent header's
+	# run label and leave its buttons inert (this screen binds none of them).
+	PersistentHeader.set_run_active(false)
+	PersistentHeader.clear_battle_actions()
 	_apply_background()
 	_build_layout()
 	_populate_operations()
@@ -163,7 +167,9 @@ func _build_layout() -> void:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", ROOT_MARGIN_X)
 	margin.add_theme_constant_override("margin_right", ROOT_MARGIN_X)
-	margin.add_theme_constant_override("margin_top", ROOT_MARGIN_TOP)
+	# Reserve room for the always-on PersistentHeader band (it overlays the top of
+	# every screen), then add this screen's own top margin below it.
+	margin.add_theme_constant_override("margin_top", ROOT_MARGIN_TOP + int(PersistentHeader.HEADER_HEIGHT))
 	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM)
 	add_child(margin)
 
