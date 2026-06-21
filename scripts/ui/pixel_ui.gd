@@ -507,6 +507,9 @@ static func style_dt_icon_button(button: BaseButton, icon_path: String, border_c
 	var b := button as Button
 	b.text = ""
 	b.flat = false
+	# No focus ring — keeps every button visually identical (a focused button was
+	# rendering with a different edge/outline).
+	b.focus_mode = Control.FOCUS_NONE
 	b.icon = _load_texture(icon_path)
 	b.expand_icon = true
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER

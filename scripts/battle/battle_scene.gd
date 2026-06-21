@@ -80,7 +80,7 @@ const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const CENTER_PROMPT_FONT_SIZE := 32
 const HEADER_SUMMARY_FONT_SIZE := 112
 const HEADER_COUNTER_FONT_SIZE := 36
-const PROTOCOL_LABEL_FONT_SIZE := 56
+const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
 const HUD_TOOLTIP_MIN_WIDTH := 180.0
 const HUD_TOOLTIP_MAX_WIDTH := 380.0
@@ -1337,6 +1337,15 @@ func _ensure_protocol_stack_layout() -> void:
 	stack.add_child(protocol_bar)
 	row.add_child(stack)
 	row.move_child(stack, 0)
+	# Buttons take only their fixed size; the stack absorbs ALL remaining width.
+	for sibling in row.get_children():
+		if sibling is Button:
+			(sibling as Button).size_flags_horizontal = Control.SIZE_SHRINK_END
+	# Neutralize the old-layout expanding spacer (it was splitting the width 50/50).
+	var spacer: Control = row.get_node_or_null("ProtocolFooterSpacer") as Control
+	if spacer != null:
+		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		spacer.custom_minimum_size = Vector2.ZERO
 	# Wide segment bar (fills the stack); "Protocol" centered above all the blips.
 	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
