@@ -382,11 +382,16 @@ func _build() -> void:
 	action_margin.add_child(_action_grid)
 
 	_status_slot = Control.new()
-	_status_slot.custom_minimum_size = Vector2(0, STATUS_ROW_HEIGHT)
-	_status_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_status_slot.clip_contents = true
-	root.add_child(_status_slot)
+	_status_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_slot.clip_contents = false
+	# Direction-05: status badges overlay the bottom edge of the portrait (a row of
+	# pixel "stickers"), rather than sitting in their own strip below the art.
+	_portrait_crop.add_child(_status_slot)
+	_status_slot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_status_slot.offset_left = 8
+	_status_slot.offset_right = -8
+	_status_slot.offset_top = -76
+	_status_slot.offset_bottom = -8
 
 	_status_tint = ColorRect.new()
 	_status_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -420,7 +425,7 @@ func _build() -> void:
 	_status_row.custom_minimum_size = Vector2.ZERO
 	_status_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_status_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_status_row.clip_contents = true
 	_status_row.add_theme_constant_override("separation", 2)
 	status_margin.add_child(_status_row)
@@ -692,14 +697,47 @@ func get_display_statuses(raw_statuses: Array) -> Array:
 	return statuses
 
 
+# Direction-05 status "sticker": type-color border, dark dithered fill, hard offset
+# drop shadow, pip icon + stack number inside. Type = color (shield cyan / poison
+# violet / burn amber), with our prepared pip icons embedded.
+func _status_badge_palette(status: Dictionary) -> Dictionary:
+	var kind: String = _status_effect_kind(status).to_lower()
+	var key: String = ""
+	if kind in ["shield", "taunt", "block", "barrier"]:
+		key = "shield"
+	elif kind in ["poison", "venom"]:
+		key = "poison"
+	elif kind in ["burn", "dot", "fire", "bleed"]:
+		key = "burn"
+	elif kind in ["freeze", "frozen", "cloak", "chill"]:
+		key = "shield"
+	if key != "" and PixelUI.DT_STATUS.has(key):
+		return PixelUI.DT_STATUS[key]
+	var border: Color = _status_color(kind)
+	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": Color(0.88, 0.91, 0.94)}
+
+
 func build_status_chip(status: Dictionary) -> Control:
+	var pal: Dictionary = _status_badge_palette(status)
+	var badge: PanelContainer = PanelContainer.new()
+	badge.mouse_filter = Control.MOUSE_FILTER_STOP
+	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var style: StyleBoxFlat = PixelUI.make_hard_style(pal["fill"], pal["border"], 2)
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(5, 5)
+	style.set_content_margin_all(3.0)
+	badge.add_theme_stylebox_override("panel", style)
+	_connect_passthrough_input(badge)
+
 	var chip: HBoxContainer = HBoxContainer.new()
-	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.alignment = BoxContainer.ALIGNMENT_CENTER
 	chip.add_theme_constant_override("separation", 1)
-	_connect_passthrough_input(chip)
+	badge.add_child(chip)
 
 	if _is_frozen_status(status):
 		chip.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
@@ -714,8 +752,8 @@ func build_status_chip(status: Dictionary) -> Control:
 		if str(status.get("value", "")) != "":
 			chip.add_child(_make_status_value_label(status))
 	if _tooltip_cb.is_valid():
-		_tooltip_cb.call(chip, _build_status_tooltip(status))
-	return chip
+		_tooltip_cb.call(badge, _build_status_tooltip(status))
+	return badge
 
 
 func _make_status_icon_control(status: Dictionary) -> Control:
