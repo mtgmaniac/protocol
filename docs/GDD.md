@@ -1,6 +1,9 @@
 # Overload Protocol — Game Design Document
-**Version:** 0.2 (Active Development)
-**Platform:** Mobile First (Android), portrait 1080×2400
+
+> **Agents:** Prefer `docs/AI_AGENT_GAME_REFERENCE.md`, `docs/BATTLE_UI_V2_SPEC.md`, and `offline-bundle/GROUND_TRUTH.md` for runtime truth. This GDD is design context; when it conflicts with code/data, ground truth wins.
+
+**Version:** 0.3 (Active Development)
+**Platform:** Mobile First (Android), portrait 1080×2400 (preview 450×1000)
 **Engine:** Godot 4.6
 **Developer:** Solo (Kev)
 **Status:** Battle loop running; ongoing combat/UI/content work
@@ -77,16 +80,16 @@ Battle ends when one side is fully eliminated
 
 ### Roster (8 Total, Player Picks 3)
 
-| Unit | Role | Playstyle |
+| Unit | Category | Playstyle |
 |---|---|---|
-| **Pulse Tech** | Support/Utility | Protocol and dice manipulation |
-| **Strike Unit** | DPS | High single-target damage, pierce |
-| **Spite Guard** | Tank/Counter | Shields, counterattack, punishment |
-| **Avalanche Suit** | AoE DPS | Heavy area attacks, rampage |
-| **Splice Medic** | Healer | Team heals, resurrection support |
-| **Field Engineer** | Utility/Buffer | Gear synergies, team buffs |
-| **Ghost Operative** | Stealth/Burst | Cloak, high-risk high-reward burst |
-| **Signal Breaker** | Debuffer | Poison, disruption, counterspell |
+| **Pulse Tech** | damage | Elemental single-target and AoE |
+| **Strike Unit** | damage | High single-target damage, pierce |
+| **Spite Guard** | defense | Shields, counterattack, punishment |
+| **Avalanche Suit** | defense | Heavy area attacks, rampage |
+| **Splice Medic** | support | Team heals, resurrection support |
+| **Field Engineer** | support | Protocol generation, shields, squad buffs |
+| **Ghost Operative** | control | Cloak, high-risk high-reward burst |
+| **Signal Breaker** | control | DoT, disruption, counterspell |
 
 ### Unit Card (What Appears on the Battlefield)
 Each unit is represented as a permanent portrait card. It displays:
@@ -94,7 +97,7 @@ Each unit is represented as a permanent portrait card. It displays:
 - HP bar
 - Current dice result
 - Current ability (mapped to dice roll)
-- Status effects (frozen, poisoned, cloaked, etc.)
+- Status effects (frozen, DoT, cloaked, etc.)
 - Gear slots
 - XP bar
 - Level / Evolution indicator
@@ -113,9 +116,8 @@ Each unit maps dice roll ranges to 5 abilities. Ranges vary per unit. Example st
 Exact ranges are defined per-unit in unit metadata files.
 
 ### Evolution
-- Units gain XP through battles
-- At level threshold, unit evolves — choosing one of two branching paths
-- Each path changes one or more ability ranges or adds a new passive
+- Units gain **50 XP per battle won**; evolve at **100 XP** (~fight 2 for survivors)
+- Player chooses one of **two branching paths** (each path = full 5-zone kit + callsign)
 - Evolution persists for the run; resets on run end
 
 ---
@@ -138,10 +140,10 @@ Exact ranges are defined per-unit in unit metadata files.
 | **Modify** | Abilities | Increase or decrease die value |
 
 ### Protocol Bar
-- A battle-only resource (resets each battle, does not carry over)
-- Fills passively each turn and through certain abilities
-- Three spend tiers: Nudge (small) / Reroll (medium) / Set (large)
-- Encourages tension between saving protocol and reacting to bad rolls
+- Battle-only resource; **resets to 0 each battle** (unless a relic carries a % over)
+- **+1 at end of every turn**, cap **10**
+- Spend actions: **Nudge 1** (+3 to a die, once per die per turn) · **Reroll 2** · **Set 3** (pick 1–20) · **Item 1** (flat, all rarities)
+- Additional income from abilities (`gainProtocol`), gear, and relics
 
 ---
 
@@ -156,14 +158,14 @@ Exact ranges are defined per-unit in unit metadata files.
 ### Damage Model
 - Units have HP bars
 - Shields absorb damage before HP (shields don't carry between turns unless specified)
-- Poison ticks at end of enemy phase
+- DoT (data key `dot`) ticks at end of enemy phase
 - Dead units are removed from the field; their dice no longer roll
 
 ### Status Effects
 | Effect | Behaviour |
 |---|---|
 | Frozen | Dice locked to same value next turn |
-| Poisoned | Takes X damage at end of each turn |
+| DoT (burning/poison flavor) | Takes X damage at end of each turn |
 | Cloaked | Untargetable by single-target abilities |
 | Rampaging | Deals double damage, cannot use defensive abilities |
 | Counterspell | Next hostile ability targeting this unit is negated |
@@ -206,13 +208,17 @@ Everything resets on: full wipe OR completion of Battle 10.
 
 ## 9. Operations
 
-5 operations available at run start. Each operation:
-- Defines which enemy faction you face (10 battles)
-- Has a themed aesthetic
-- Has a themed Boss on Battle 10
-- May have minor mechanical modifiers (e.g. enemy faction specialties)
+**5 operations** are defined in `data/raw/battle-modes.json`. Player picks one at run start. Each operation is **10 battles** (boss on fight 10), themed enemy faction, and a unique boss unit.
 
-Operation details to be designed per faction.
+| ID | Theme | Boss (fight 10) |
+|---|---|---|
+| `facility` | Corporate drones, ECM, scrap | SCRAPMASTER |
+| `hive` | Insectoid swarm | Hive Matriarch |
+| `veil` | Harmonic / resonance | Conclave Overseer |
+| `voidCirclet` | Cult casters | Circlet Hierophant |
+| `stellarMenagerie` | Beasts | Void Reaver |
+
+Enemy stats in Godot use flat `enemyUnitDefs` per fight. Balance-sim scaling keys are lab-only.
 
 ---
 

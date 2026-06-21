@@ -768,6 +768,7 @@ func _run_gear_lifesteal_regression() -> void:
 	var enemy: Dictionary = manager.get_enemy_states()[0]
 	enemy["current_hp"] = 20
 	enemy["max_hp"] = 20
+	hero["current_hp"] = 90
 	hero["selected_target_id"] = str(enemy["id"])
 	var hero_hp_before: int = int(hero["current_hp"])
 	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
@@ -796,14 +797,15 @@ func _run_gear_shield_pierce_regression() -> void:
 	enemy["shield"] = 8
 	hero["selected_target_id"] = str(enemy["id"])
 	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
-	var ok: bool = int(enemy["current_hp"]) == 98 and int(enemy["shield"]) == 0
+	# 10 dmg vs 8 shield with pierce 5: 5 pierced, 3 absorbed, 7 HP lost → 93 HP
+	var ok: bool = int(enemy["current_hp"]) == 93 and int(enemy["shield"]) == 0
 	if ok:
 		_record_pass("Regression / gear shieldPierce", "shieldPierce")
 	else:
 		_record_failure(
 			"Regression / gear shieldPierce",
 			"shieldPierce",
-			"10 dmg pierces 5 of 8 shield and deals 2 HP",
+			"10 dmg pierces 5 of 8 shield and deals 7 HP (93 remaining)",
 			"enemy_hp=%d shield=%d" % [int(enemy["current_hp"]), int(enemy["shield"])]
 		)
 
@@ -818,6 +820,7 @@ func _run_relic_ally_death_heal_regression() -> void:
 	var victim: Dictionary = manager.get_hero_states()[0]
 	var survivor: Dictionary = manager.get_hero_states()[1]
 	var enemy: Dictionary = manager.get_enemy_states()[0]
+	survivor["current_hp"] = 90
 	enemy["selected_target_id"] = str(victim["id"])
 	var survivor_hp_before: int = int(survivor["current_hp"])
 	manager.resolve_round({}, {"audit_enemy#1": AUDIT_ROLL}, DiceManager.new(), {"audit_enemy#1": AUDIT_ROLL})

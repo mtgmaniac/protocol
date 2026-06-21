@@ -1,10 +1,11 @@
 # Overload Protocol Roadmap
 
-This roadmap is no longer a speculative "from zero" build plan. It is the
-current practical roadmap for the Godot project that already exists in this
-repo.
+> **Agents:** Read `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md` first. Portrait **1080×2400**, **3-unit** squads, **5 operations**, healer **Splice Medic** — not landscape, not 4-unit, not Phase 0.
 
-Last refreshed on 2026-05-08.
+This roadmap is the practical plan for the Godot project that already exists in
+this repo — not a greenfield build spec.
+
+Last refreshed on 2026-06-21.
 
 ## 1. Current Project State
 
@@ -100,14 +101,10 @@ Rules:
 
 ### Goal 3 — Consolidate documentation and context
 
-The repo now has enough history that stale docs can send agents down the wrong
-path. Documentation should reflect:
-
-- portrait orientation
-- 3-unit squads
-- active battle card owner
-- current theme system
-- current screenshot/debug workflow
+**Done (2026-06-21):** `docs/CLAUDE.md`, `docs/GDD.md`, and this file reconciled to
+`offline-bundle/GROUND_TRUTH.md` (portrait, 3-unit, Splice Medic, 5 ops).
+`docs/PHASE_0_STATUS.md` marked obsolete. Ongoing: keep `docs/SESSION_HANDOFF.md`
+and `docs/AI_AGENT_GAME_REFERENCE.md` current after each merge.
 
 ## 4. Medium-Term Goals
 

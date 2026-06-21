@@ -50,6 +50,7 @@ export interface BattleProgressSimInput {
   /**
    * Protocol reroll budget for the entire track (shared across all heroes and all battles).
    * When a hero rolls ≤4 (recharge zone) and budget remains, they reroll once and keep the higher result.
+   * Starts at this value; `gainProtocol` on resolved abilities adds to the same pool.
    * 0 = no Protocol modeled (default).
    */
   protocolRerolls: number;
@@ -772,6 +773,11 @@ function resolveHeroAbility(
     const te = enemies[singleDmgTargetIdx]!;
     if (te.hp > 0) applyEnemyDieFreeze(te, freezeTgt);
   }
+
+  const gainProto = ab.gainProtocol || 0;
+  if (gainProto > 0) {
+    protocolBudget.charges += gainProto;
+  }
 }
 
 function resolveEnemyTurn(
@@ -1310,12 +1316,12 @@ export function runBattleProgressSim(input: BattleProgressSimInput, iterations: 
 
 export function formatBattleProgressSimResult(r: BattleProgressSimResult): string {
   const protoNote = r.protocolRerolls > 0
-    ? `Protocol: ${r.protocolRerolls} reroll(s)/track (spend on ≤4 roll, keep higher).`
+    ? `Protocol: ${r.protocolRerolls} reroll(s)/track start (spend on ≤4 roll, keep higher; gainProtocol adds charges).`
     : 'Protocol: none modeled.';
   const lines: string[] = [
     `Battle progress sim — ${r.iterations} runs/track × ${r.tracks.length} operations, random 3-hero squads`,
     `Reach% = cumulative (attempted that fight). Cond% = win rate given you reached that fight. HP% = avg survivor HP after a win.`,
-    `Evolution included. DoT + shield + enemy rfm/erb/wipeShields modeled. ${protoNote} No items or summons.`,
+    `Evolution included. DoT + shield + enemy rfm/erb/wipeShields + hero gainProtocol modeled. ${protoNote} No items or summons.`,
     '',
   ];
   for (const t of r.tracks) {

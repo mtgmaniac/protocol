@@ -15,7 +15,9 @@
 
 **Likely already done (skip or verify, don't redo):** Task 4 keyword audit (passing), Task 6 gear/relic wiring (mostly done), Task 10 protocol economy (cap 10, +1/turn, nudge +3 once/die, Set action, flat item cost — verify Protocol Override relic), Task 11 evolution callsigns (in data), facility balance pass on Facility operation.
 
-**Still open / deferred:** Task 0 doc drift, Task 7 burn rename, sim `gainProtocol` parity, mark/vulnerable mechanic, remove `project.godot*.tmp` from git.
+**Still open / deferred:** Task 7 burn rename, sim full protocol economy parity, mark/vulnerable mechanic, remove `project.godot*.tmp` from git.
+
+**Done:** Task 0 doc drift (2026-06-21). Task 1 baseline (`docs/BASELINE.md`, tag `baseline-fable-restart`). Sim `gainProtocol` charge pool (local on `fix/cleanup`, uncommitted).
 
 ---
 
@@ -33,6 +35,9 @@
 ---
 
 ## TASK 1 — Establish a known-good baseline you can return to
+
+**Status: DONE (2026-06-21)** — see `docs/BASELINE.md` and tag `baseline-fable-restart`.
+
 **Why:** before any refactor, prove the game runs and capture the current state.
 
 > Prompt: "Walk me through running the project in Godot 4.6 from this repo on my machine, including the `-- --debug-battle` launch path in DebugBattleLauncher.gd. Then run the ability audit (scripts/debug/ability_audit_runner.gd) and report any warnings. Don't change code — I want a baseline of what currently works and what errors print on a full run from UnitSelect through one full battle to the reward screen."

@@ -70,9 +70,10 @@ Godot: open `C:\Users\Kev\Documents\protocol\project.godot`, F5 from UnitSelect 
 
 | Item | Status |
 |------|--------|
-| Sim models `gainProtocol` | **Not in sim** — Godot only |
+| Sim models `gainProtocol` | **Done locally** on `fix/cleanup` (uncommitted); full protocol economy still simplified in sim |
 | Task 7: rename `dot` → `burn` | Deferred — lockstep code+data |
-| Task 0: doc drift (GDD/ROADMAP vs ground truth) | Deferred |
+| Task 0: doc drift (GDD/ROADMAP vs ground truth) | **Done** (2026-06-21) |
+| Task 1: known-good baseline | **Done** (2026-06-21) — `docs/BASELINE.md`, tag `baseline-fable-restart` |
 | Wraith Engineer protocol *efficiency* (discounts) | Design only; Overclocked = generator done |
 | Mark / vulnerable damage mechanic | Discussed, **not implemented** |
 | `project.godot*.tmp` on GitHub | Should `git rm --cached` (noise) |

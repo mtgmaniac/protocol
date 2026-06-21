@@ -1,14 +1,26 @@
 # CLAUDE.md
 
-> **Agents: read these files as your current source of truth before doing anything else:**
-> `docs/AI_AGENT_GAME_REFERENCE.md`, `docs/BATTLE_UI_V2_SPEC.md`, `offline-bundle/GROUND_TRUTH.md`, `offline-bundle/CODEBASE_MAP.md`.
-> When any doc below conflicts with GROUND_TRUTH.md, GROUND_TRUTH.md wins.
+> **Agents: read `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md` first** — they match the live Godot project. Also see `offline-bundle/GROUND_TRUTH.md` and `offline-bundle/CODEBASE_MAP.md`. When any doc conflicts with GROUND_TRUTH.md, GROUND_TRUTH.md wins.
 
 This file is the practical AI-assistant context for the current Overload
 Protocol Godot project. It is intentionally grounded in the live repo, not the
 original migration fantasy.
 
-Last refreshed on 2026-06-19.
+Last refreshed on 2026-06-21.
+
+## Canonical facts (do not contradict)
+
+| Fact | Value |
+|------|--------|
+| Orientation | Portrait **1080×2400** internal; **450×1000** desktop preview |
+| Squad | **3** heroes chosen from **8** (`GameState.SQUAD_UNIT_LIMIT`) |
+| Healer | **Splice Medic** (callsign SPLICE) — not "Systems Medic" |
+| Operations | **5** fully defined in `data/raw/battle-modes.json` |
+| Main scene | `res://scenes/ui/UnitSelect.tscn` |
+| Combat authority | `scripts/battle/combat_manager.gd` |
+| Phase | Well past Phase 0 — battle, reward, and evolution loops run |
+
+**Ignore stale claims:** landscape layout, 4-unit squads, empty-shell / Phase-0 setup language, and `docs/PHASE_0_STATUS.md` (obsolete).
 
 ## What the Project Is Right Now
 
