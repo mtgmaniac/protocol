@@ -79,7 +79,7 @@ const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const CENTER_PROMPT_FONT_SIZE := 32
 const HEADER_SUMMARY_FONT_SIZE := 112
-const HEADER_COUNTER_FONT_SIZE := 56
+const HEADER_COUNTER_FONT_SIZE := 36
 const PROTOCOL_LABEL_FONT_SIZE := 56
 const PROTOCOL_VALUE_FONT_SIZE := 48
 const HUD_TOOLTIP_MIN_WIDTH := 180.0
@@ -1292,6 +1292,40 @@ func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool)
 
 
 var _protocol_segments: Array = []
+# Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
+# header/footer content lines up with the tray instead of running to the screen edge.
+const TRAY_EDGE_INSET := 16
+
+
+# Stack "PROTOCOL" above a short segment bar (more readable, frees horizontal room).
+func _ensure_protocol_stack_layout() -> void:
+	var row := protocol_bar.get_parent() as HBoxContainer
+	if row == null or row.get_node_or_null("ProtocolStack") != null:
+		return
+	var stack := VBoxContainer.new()
+	stack.name = "ProtocolStack"
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stack.add_theme_constant_override("separation", 2)
+	row.remove_child(protocol_label)
+	row.remove_child(protocol_bar)
+	stack.add_child(protocol_label)
+	stack.add_child(protocol_bar)
+	row.add_child(stack)
+	row.move_child(stack, 0)
+	protocol_bar.custom_minimum_size = Vector2(0, 40)
+	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+# Inset the header content so "FACILITY" and the rightmost button align with the tray.
+func _align_header_to_tray() -> void:
+	var header_row := get_node_or_null("HeaderRow") as Control
+	if header_row == null:
+		return
+	header_row.anchor_left = 0.0
+	header_row.anchor_right = 1.0
+	header_row.offset_left = TRAY_EDGE_INSET
+	header_row.offset_right = -TRAY_EDGE_INSET
 
 
 func _ensure_protocol_segments() -> void:
@@ -2667,19 +2701,23 @@ func _apply_battle_theme() -> void:
 	var header_row := get_node_or_null("HeaderRow") as Control
 	if header_row != null:
 		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	# Header/board divider line: HeaderRow is an HBoxContainer (no panel stylebox), so
-	# add a full-width line at the top of the board's container (board's own children
-	# get reordered, so use the parent VBox which is stable).
-	var board_container := board.get_parent() as BoxContainer if board != null else null
-	if board_container != null and board_container.get_node_or_null("HeaderDivider") == null:
+	# Header/board divider: a fixed 3px line at the header boundary (y = 144), inset to
+	# match the footer divider + tray edges. Placed on the root so board reordering and
+	# the board's top margin don't move it.
+	if get_node_or_null("HeaderDivider") == null:
 		var divider: ColorRect = ColorRect.new()
 		divider.name = "HeaderDivider"
 		divider.color = PixelUI.LINE_DIM
-		divider.custom_minimum_size = Vector2(0, 3)
-		divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		board_container.add_child(divider)
-		board_container.move_child(divider, 0)
+		divider.anchor_left = 0.0
+		divider.anchor_right = 1.0
+		divider.anchor_top = 0.0
+		divider.anchor_bottom = 0.0
+		divider.offset_left = TRAY_EDGE_INSET
+		divider.offset_right = -TRAY_EDGE_INSET
+		divider.offset_top = 144.0
+		divider.offset_bottom = 147.0
+		add_child(divider)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
@@ -2733,6 +2771,13 @@ func _apply_battle_theme() -> void:
 		footer_style.border_width_top = 3
 		footer_style.set_content_margin_all(4.0)
 		protocol_panel.add_theme_stylebox_override("panel", footer_style)
+		# Align footer content with the dice-tray edges (room before the screen edge).
+		var pm := protocol_panel.get_node_or_null("ProtocolMargin") as MarginContainer
+		if pm != null:
+			pm.add_theme_constant_override("margin_left", TRAY_EDGE_INSET)
+			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
+	_ensure_protocol_stack_layout()
+	_align_header_to_tray()
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
 	if _protocol_footer_display != null and is_instance_valid(_protocol_footer_display):
 		_protocol_footer_display.visible = false
