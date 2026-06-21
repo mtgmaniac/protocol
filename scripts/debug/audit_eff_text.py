@@ -75,14 +75,23 @@ def hero_expected(raw: dict) -> str:
     if rfm > 0:
         t = turn_suffix(raw.get("rfmT") or 0)
         if raw.get("rfmTgt"):
-            parts.append(f"+{rfm} roll ally{t}")
+            roll_label = f"+{rfm} roll"
+            if not (raw.get("healTgt") and heal > 0):
+                roll_label += " ally"
+            parts.append(f"{roll_label}{t}")
         elif raw.get("shTgt") and shield > 0:
             parts.append(f"+{rfm} roll any ally{t}")
         else:
             parts.append(f"+{rfm} squad roll{t}")
 
-    if raw.get("revive"):
-        parts.append("revive 50%")
+    if raw.get("reviveAll"):
+        parts.append(f"revive all {raw.get('revivePct', 50)}%")
+    elif raw.get("revive"):
+        pct = raw.get("revivePct", 50)
+        if raw.get("healTgt"):
+            parts.append(f"revive ally {pct}%")
+        else:
+            parts.append(f"revive {pct}%")
     if raw.get("cloak"):
         parts.append("Cloak")
     if raw.get("taunt"):
@@ -140,10 +149,11 @@ def enemy_expected(raw: dict) -> str:
     sa = raw.get("shieldAlly") or 0
     if sa > 0:
         ally_t = raw.get("shAllyT") or raw.get("shT") or 1
-        t = turn_suffix(ally_t)
         if raw.get("shieldAllyAll"):
-            parts.append(f"all allies {sa} shield{t}")
+            t = f", {ally_t}t" if ally_t > 1 else ""
+            parts.append(f"{sa} shield all allies{t}")
         else:
+            t = turn_suffix(ally_t)
             parts.append(f"ally {sa} shield{t}")
 
     if raw.get("enemySelfTaunt"):

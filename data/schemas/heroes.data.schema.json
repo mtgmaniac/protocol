@@ -82,6 +82,8 @@
         "healAll": { "type": "boolean" },
         "healLowest": { "type": "boolean" },
         "revive": { "type": "boolean" },
+        "reviveAll": { "type": "boolean" },
+        "revivePct": { "type": "integer", "minimum": 1, "maximum": 100 },
         "rfm": { "type": "integer" },
         "rfmT": { "type": "integer" },
         "rfmTgt": { "type": "boolean" },

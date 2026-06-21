@@ -429,6 +429,8 @@ func _build_effect_tooltip(effect: Dictionary) -> String:
 	if kind == "cloak":
 		return "CLOAK\n80% chance to evade the next incoming damage attempt."
 	if kind == "revive":
+		if value.ends_with("%"):
+			return "REVIVE\nRevive at %s max HP." % value
 		return "REVIVE\nRevive a fallen ally with a percentage of their max HP."
 	if kind == "shield" and value == "TA":
 		return "TAUNT\nApply taunt to target."

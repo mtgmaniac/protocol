@@ -35,14 +35,14 @@ Static JSON / schema content (not sim-driven tuning). After edits: `npm run vali
 | **Task 13 — Picker blurbs** | **Done** | All 8 heroes have `pickerBlurb` + `pickerCategory` in JSON; DataManager loads them |
 | **Task 11 — Evolution callsigns** | **Done** | 8 base + 16 evo callsigns in data; applied on evolve in `GameState.gd` |
 | **Task 12 — Normalize `eff` text** | **Done** | `audit_eff_text.py --apply` → 0 mismatches |
-| **Facility fight 7 roster** | Open | `data/raw/battle-modes.json` fight 7 order → **Rust Drone → Heavy Warden → Rust Drone** (Warden middle). |
-| **Trench Rig — Stabilize** | Open | `heroes.data.json`: Stabilize → ally-targeted **10 heal** (`healTgt: true`, `eff`: `"10 heal (ally)"`). Update Avalanche `pickerBlurb` to mention targeted ally heal (not self-sustain). |
-| **Splice Medic — tier-1 kit** | Open | Reshuffle tier-1 abilities in `heroes.data.json` — see prompt below. |
-| **Splice Medic — Combat Medic evo tune** | Open | Triage, Suppression Heal, Surge Revive — see prompt below. |
-| **Splice Medic — Synth Warden evo tune** | Open | Overclock, Emergency Protocol, Adrenaline Surge, Mass Revival — see prompt below. |
-| **Guard — Bulwark Link (all allies shield)** | Open | `enemies.data.json` `guard` recharge: one **6 shield all allies, 2t** — not self + ally double icons. See prompt below. |
-| **Resonance Cascade — relic copy** | Open | `relics.data.json`: clearer `desc` — e.g. **“DoTs on enemies tick for +2 damage.”** (today: “Enemy DoT ticks deal +2 extra damage each tick.”) |
-| **Reward ladder reference doc** | Open | Add `docs/reward-draft-rarity.md` in Godot repo (table matches `GameState.gd` ladder; copy from Angular `overload-protocol/docs/reward-draft-rarity.md`). |
+| **Facility fight 7 roster** | **Done** | Fight 7 order: Rust Drone → Heavy Warden → Rust Drone |
+| **Trench Rig — Stabilize** | **Done** | Stabilize: ally-targeted 10 heal; Avalanche `pickerBlurb` updated |
+| **Splice Medic — tier-1 kit** | **Done** | Zone reshuffle + Diagnostic/Infusion heals+rolls; Shock Therapy 20 dmg overload |
+| **Splice Medic — Combat Medic evo tune** | **Done** | Triage, Suppression Heal, Surge Revive (70%) |
+| **Splice Medic — Synth Warden evo tune** | **Done** | Overclock, Emergency Protocol, Adrenaline Surge, Mass Revival (30%) |
+| **Guard — Bulwark Link (all allies shield)** | **Done** | `shieldAllyAll: true`, single squad-wide shield |
+| **Resonance Cascade — relic copy** | **Done** | Clearer player-facing `desc` |
+| **Reward ladder reference doc** | **Done** | `docs/reward-draft-rarity.md` |
 
 **Facility fight 7 prompt:**
 > In `battle-modes.json`, facility operation fight 7 enemies array: `[Rust Drone, Heavy Warden, Rust Drone]`. Validate with `npm run validate-data`.
@@ -81,7 +81,7 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 | **Ally roll buff visuals (green dice)** | Open | Hero abilities that **buff an ally’s roll** (`rfm` + `rfmTgt`, positive) → **green dice pip + green text** on ability readouts / status pips. Today `PixelUI.semantic_key_for_effect` maps all `rfm` → `roll_down` (yellow debuff). Split ally-buff vs enemy-strip styling in `pixel_ui.gd`, `compact_unit_card.gd`, ability readout scene. |
 | **Capped die for RFE (Option A)** | Open | One physics landing on **effective** roll; remove post-roll snap. **`dice_tray_3d.gd` + `battle_scene.gd`**. See prompt below. |
 | **Task 8 — Battle feedback / game feel** | Partial | `battle_feedback.gd` extracted; Tier 1–3 primitives per `offline-bundle/ANIMATION.md` still to build |
-| **Death SFX timing** | Open | Death sound at **fatal hit moment**, not after hit-pause / end-of-beat (poison/DoT kills feel end-of-turn today). **`battle_feedback.gd`** (+ `skip_feedback` in `battle_scene.gd`). See prompt below. |
+| **Death SFX timing** | **Done** | Fatal `death` SFX at hit moment; skip lead/pause on kills; poison ticks own feedback group; `skip_feedback` wired |
 | **Task 9 — Audio system** | Open | `AudioManager` exists; wire SFX tiers per `offline-bundle/AUDIO.md`, hook to Task 8 events |
 | **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
 | **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
@@ -142,8 +142,8 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 
 | Item | Status | Scope |
 |------|--------|-------|
-| **Evolution XP (D2)** | Open | Replace flat +50/battle. See formula below. `GameState.gd` + per-battle roll tracking; evolution screen **multi-pick** (evolve all eligible at once — UI coord). |
-| **Revive pct + revive all (medic evos)** | Open | **Blocked by data tasks** above. Today `_revive_state` is called at **hardcoded 50%** and single-target only (`combat_manager.gd`). Add **`revivePct`** on ability JSON; add **`reviveAll`** (all dead heroes) for Synth Warden Mass Revival. Schema + sim if needed. |
+| **Evolution XP (D2)** | **Done** | Avg-roll + survival bonus model in `GameState.gd`; **one evolution per battle win** (extras deferred FIFO) |
+| **Revive pct + revive all (medic evos)** | **Done** | `revivePct`, `reviveAll` in schema + `combat_manager.gd`; ability audit 82/82 |
 | **Gear/relic ability audit regressions** | Open | 12 handlers code-verified but no `AbilityAuditRunner` cases yet (see table below). |
 | **Task 5 — Facility balance** | **Paused** | Sim tuning deferred until finalize pass. |
 
@@ -157,10 +157,10 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 | **avg_roll** | Mean of **effective** d20 rolls that battle only (nudge/set/reroll applied); rounds where hero actually rolled |
 | **Gate** | **100 XP** to evolve |
 | **Timing** | First evo ~fight 3 for hot rollers, ~fight 4 for slower kits (emergent) |
-| **Flow** | Evolve **all eligible** heroes in one stop (replace single `pending_evolution_unit_id`) |
+| **Flow** | **One evolution per battle win** — if multiple heroes cross 100 XP on the same win, first evolves now; rest queue in `deferred_evolution_unit_ids` (FIFO over newly eligible) |
 
-**Evolution XP prompt:**
-> Track effective rolls per hero per battle in combat/battle flow. On win, `award_battle_xp()` uses D2 formula. Queue all units at ≥100 XP for evolution pick. Update evolution screen for multi-hero selection. Today: `XP_PER_BATTLE := 50`, evolve ~fight 2.
+**Evolution XP prompt (implemented):**
+> Track effective rolls per hero per battle in combat/battle flow. On win, `award_battle_xp()` uses D2 formula (`20 + round(avg_roll)` alive, `round(avg_roll)` dead). Queue one unit at ≥100 XP per win via `pending_evolution_unit_id`; defer extras to `deferred_evolution_unit_ids`.
 
 **Static:** `python scripts/debug/audit_gear_relic_effects.py` — all gear/relic `effect.type` values in data have handlers.
 
@@ -202,6 +202,10 @@ Optional follow-up: add ability-audit regressions for the 12 above (not blocking
 | **Task 13 — Picker blurbs (data)** | All 8 heroes in JSON + DataManager |
 | **Hygiene — `project.godot*.tmp`** | Untracked 2 Godot editor temp files from git index |
 | Facility backend merge | Validation, Scrapmaster P2, boss P2 rules |
+| **Data batch (Jun 2026)** | Facility fight 7, medic/trench/guard/relic JSON; `revivePct`/`reviveAll` schema |
+| **Evolution XP (D2)** | `GameState.gd` avg-roll grants; one evo per win + deferred queue |
+| **Revive pct + reviveAll** | `combat_manager.gd`, targeting order, card/readout chips |
+| **Death SFX timing** | `battle_feedback.gd` fatal moment + poison tick groups; `skip_feedback` path |
 
 ---
 
@@ -225,7 +229,7 @@ Pure rename, no mechanic change. Workbook/GROUND_TRUTH already use burn naming; 
 | Topic | Status | Notes |
 |-------|--------|-------|
 | **Facility full-clear target (D1)** | **Pinned** | 25–40% skilled full-clear in real play; flat sim ~1.7% is reference only |
-| **Evolution XP (D2)** | **Pinned** | See Combat section — avg-roll model, 100 XP gate, multi-evo stop |
+| **Evolution XP (D2)** | **Done** | Avg-roll model, 100 XP gate, one evo per win + deferred queue |
 | **Shield hero viability (D3)** | **Deferred** | Leave kit as-is until finalize + richer sim |
 | **Synth Warden vs Combat Medic** | **In tune queue** | See Data → Synth Warden / Combat Medic evo tune (Jun 2026 playtest feedback) |
 | **Sim expansion (items/protocol/relic)** | **Deferred** | No new sim tasks until later finalize pass |

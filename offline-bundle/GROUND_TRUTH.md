@@ -103,7 +103,7 @@ AI types seen: `dumb` (and others per unit). Enemies don't use Protocol. Some ha
 - **Gear** (`gear.data.json`): 10 passives (rollBonus, battleStartShield, maxHpBonus, burnDmgBonus, battleStartCloak, healOnKill, protocolOnBattleStart, surviveOnce, firstAbilityDmgBonus, dmgReduction).
 - **Relics** (`relics.data.json`): 13 run-modifiers (Iron Curtain, Opening Gambit, Bulwark Aura, Nanite Field, Plague Protocol, Overcharge, Signal Jam, Coordinated Strike, Resonance Cascade, Gravity Well, Protocol Override, Entropy Leak, Chain Reaction).
 
-XP: `XP_PER_BATTLE = 50`, `XP_TO_EVOLVE = 100` (so evolution triggers ~battle 2–3 for survivors).
+XP: **`XP_TO_EVOLVE = 100`**. Per win: alive → **`20 + round(avg effective roll)`**; dead → **`round(avg effective roll)`** only. One evolution stop per win (extras deferred). First evo typically ~fight 3–4.
 
 ---
 

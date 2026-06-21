@@ -116,7 +116,9 @@ Each unit maps dice roll ranges to 5 abilities. Ranges vary per unit. Example st
 Exact ranges are defined per-unit in unit metadata files.
 
 ### Evolution
-- Units gain **50 XP per battle won**; evolve at **100 XP** (~fight 2 for survivors)
+- On battle win: alive heroes earn **`20 + round(avg effective roll)`** XP; dead heroes earn **`round(avg effective roll)`** only
+- Evolve at **100 XP** (typically ~fight 3–4 for hot rollers)
+- **One evolution per battle win** — extras deferred to the next win(s)
 - Player chooses one of **two branching paths** (each path = full 5-zone kit + callsign)
 - Evolution persists for the run; resets on run end
 

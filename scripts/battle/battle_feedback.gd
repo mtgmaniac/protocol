@@ -2,6 +2,7 @@ class_name BattleFeedback
 extends Node
 
 var _scene: Control
+var _death_sfx_played_ids: Dictionary = {}
 
 
 func setup(scene: Control) -> void:
@@ -11,10 +12,19 @@ func setup(scene: Control) -> void:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 func play_round_feedback(events: Array) -> void:
+	reset_death_sfx_tracking()
 	var action_groups: Array = _build_action_feedback_groups(events)
 	for group_variant in action_groups:
 		var group: Dictionary = group_variant
 		await _play_action_feedback_group(group)
+
+
+func play_death_sfx_for_event(event: Dictionary) -> void:
+	_try_play_death_sfx(event)
+
+
+func reset_death_sfx_tracking() -> void:
+	_death_sfx_played_ids.clear()
 
 
 func apply_live_event_visual_state(event: Dictionary) -> void:
@@ -55,15 +65,14 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var effects: Array = group.get("effects", []) as Array
 	var action_kind: String = _get_action_feedback_kind(effects)
 	var is_overload: bool = str(action.get("zone", "")) == "overload"
+	var is_tick: bool = str(action.get("zone", "")) == "tick"
 	var actor_card: Control = null
 	if not action.is_empty():
 		actor_card = _find_card_by_state_id(str(action.get("side", "")), str(action.get("actor_id", "")))
 	if actor_card != null:
 		if actor_card.has_method("play_action_feedback"):
-			actor_card.call("play_action_feedback", action_kind)
-		# Tier 1: attacker leans toward the enemy rail and recoils — the wind-up tell.
-		# Heroes sit on the bottom rail (lunge up), enemies on top (lunge down).
-		if action_kind == "attack":
+			actor_card.call("play_action_feedback", action_kind if not is_tick else "neutral")
+		if action_kind == "attack" and not is_tick:
 			_lunge(actor_card, str(action.get("side", "")))
 	# Tier 2: the overload signature — gold screen wash + screen shake framing the
 	# whole beat, with a longer impact freeze below. Fires on any EFFECTIVE 20
@@ -71,12 +80,17 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	if is_overload:
 		_celebrate_overload()
 
-	await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
+	if not _group_has_fatal_hit(effects):
+		await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
 
 	var peak_damage: int = 0
+	var had_fatal_hit: bool = false
 	for event_variant in effects:
 		var event: Dictionary = event_variant
 		var event_type: String = str(event.get("type", ""))
+		if _is_fatal_hit_event(event):
+			_try_play_death_sfx(event)
+			had_fatal_hit = true
 		var target_card: Control = _find_card_for_event(event)
 		if target_card == null:
 			continue
@@ -96,15 +110,14 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 			# Tier 2: struck unit recoils — jitter scales with the hit.
 			_shake(target_card, clampf(2.0 + float(amount) * 0.16, 2.0, 11.0), 0.22)
 
-	# Tier 1: ONE impact freeze for the whole beat, scaled by the biggest hit, so a
-	# blastAll volley lands as a single weighty pause rather than a stutter. Overload
-	# beats hold longer (and freeze even when the ability deals no damage).
+	# Tier 1: impact freeze — skip after a kill so death reads immediately, not after pause.
 	if is_overload:
 		await _hit_pause(peak_damage, 0.06)
-	elif peak_damage > 0:
+	elif peak_damage > 0 and not had_fatal_hit:
 		await _hit_pause(peak_damage)
 
-	await get_tree().create_timer(_scene.ACTION_FEEDBACK_PAUSE).timeout
+	if not had_fatal_hit:
+		await get_tree().create_timer(_scene.ACTION_FEEDBACK_PAUSE).timeout
 
 
 func _get_action_feedback_kind(effects: Array) -> String:
@@ -121,19 +134,40 @@ func _get_action_feedback_kind(effects: Array) -> String:
 	return "neutral"
 
 
-# Maps a combat event to its SFX. Damage that drops a unit to 0 also fires the
-# death sound. AudioManager debounces identical keys, so a multi-target ability
-# resolves as one sound, not one per target.
-func _play_event_sfx(event_type: String, event: Dictionary) -> void:
+# Maps a combat event to its SFX. Death is handled separately at the fatal hit moment.
+func _play_event_sfx(event_type: String, _event: Dictionary) -> void:
 	match event_type:
 		"damage":
 			AudioManager.play_sfx("damage")
-			if int(event.get("hp_after", 1)) <= 0:
-				AudioManager.play_sfx("death")
 		"heal":
 			AudioManager.play_sfx("heal")
 		"shield":
 			AudioManager.play_sfx("shield")
+
+
+func _is_fatal_hit_event(event: Dictionary) -> bool:
+	var event_type: String = str(event.get("type", ""))
+	if event_type != "damage" and event_type != "poison":
+		return false
+	return int(event.get("hp_after", 1)) <= 0
+
+
+func _group_has_fatal_hit(effects: Array) -> bool:
+	for event_variant in effects:
+		if _is_fatal_hit_event(event_variant):
+			return true
+	return false
+
+
+func _try_play_death_sfx(event: Dictionary) -> void:
+	if not _is_fatal_hit_event(event):
+		return
+	var target_id: String = str(event.get("target_id", ""))
+	if target_id != "" and _death_sfx_played_ids.has(target_id):
+		return
+	if target_id != "":
+		_death_sfx_played_ids[target_id] = true
+	AudioManager.play_sfx("death")
 
 
 func _get_impact_feedback_kind(event_type: String) -> String:

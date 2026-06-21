@@ -411,9 +411,11 @@ func build_effect_chips(raw: Dictionary) -> Array:
 
 	if damage > 0:
 		chips.append(_make_effect_chip("✦", "%d" % damage, Color(0.53, 0.20, 0.18, 0.98), Color(1.0, 0.50, 0.42, 0.95), "deals %d damage" % damage))
-	if shield > 0:
+	if shield > 0 and not bool(raw.get("shieldAllyAll", false)):
 		chips.append(_make_effect_chip("⬢", "%d" % shield, Color(0.15, 0.32, 0.50, 0.98), Color(0.58, 0.82, 1.0, 0.95), "grants %d shield for %d turn%s" % [shield, shield_turns, "" if shield_turns == 1 else "s"], shield_turns))
-	if shield_ally > 0:
+	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
+		chips.append(_make_effect_chip("⬢", "%d·ALL" % shield_ally, Color(0.15, 0.32, 0.50, 0.98), Color(0.58, 0.82, 1.0, 0.95), "grants %d shield to all allies for %d turn%s" % [shield_ally, ally_shield_turns, "" if ally_shield_turns == 1 else "s"], ally_shield_turns))
+	elif shield_ally > 0:
 		chips.append(_make_effect_chip("⬢", "%dA" % shield_ally, Color(0.15, 0.32, 0.50, 0.98), Color(0.58, 0.82, 1.0, 0.95), "grants %d shield to an ally for %d turn%s" % [shield_ally, ally_shield_turns, "" if ally_shield_turns == 1 else "s"], ally_shield_turns))
 	if heal > 0:
 		chips.append(_make_effect_chip("✚", "%d" % heal, Color(0.12, 0.38, 0.23, 0.98), Color(0.52, 1.0, 0.68, 0.95), "restores %d health" % heal))
@@ -429,8 +431,12 @@ func build_effect_chips(raw: Dictionary) -> Array:
 		chips.append(_make_effect_chip("◎", "A", Color(0.12, 0.38, 0.23, 0.98), Color(0.52, 1.0, 0.68, 0.95), "affects all valid targets"))
 	if freeze_turns > 0:
 		chips.append(_make_effect_chip("*", "%d" % freeze_turns, Color(0.12, 0.34, 0.48, 0.98), Color(0.62, 0.92, 1.0, 0.95), "freezes a die for %d reveal%s" % [freeze_turns, "" if freeze_turns == 1 else "s"], freeze_turns))
-	if bool(raw.get("revive", false)):
-		chips.append(_make_effect_chip("✚", "50%", Color(0.10, 0.34, 0.24, 0.98), Color(0.58, 1.0, 0.72, 0.95), "revives a fallen ally at 50% health"))
+	if bool(raw.get("reviveAll", false)):
+		var revive_all_pct: int = _revive_hp_pct_from_raw(raw)
+		chips.append(_make_effect_chip("✚", "%d%%·ALL" % revive_all_pct, Color(0.10, 0.34, 0.24, 0.98), Color(0.58, 1.0, 0.72, 0.95), _revive_tooltip(raw, true)))
+	elif bool(raw.get("revive", false)):
+		var revive_pct: int = _revive_hp_pct_from_raw(raw)
+		chips.append(_make_effect_chip("✚", "%d%%" % revive_pct, Color(0.10, 0.34, 0.24, 0.98), Color(0.58, 1.0, 0.72, 0.95), _revive_tooltip(raw, false)))
 	return chips
 
 
@@ -516,12 +522,15 @@ func _build_compact_action_pips(entry: Dictionary) -> Dictionary:
 		_append_compact_result_effect(effects, "dot", "%d" % dot, int(raw.get("dT", 0)))
 
 	var shield: int = int(raw.get("shield", 0))
-	if shield > 0:
+	if shield > 0 and not bool(raw.get("shieldAllyAll", false)):
 		_append_compact_result_effect(effects, "shield", "%d" % shield, int(raw.get("shT", 0)))
 		if not bool(raw.get("shTgt", false)):
 			target = "SELF"
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
-	if shield_ally > 0:
+	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
+		_append_compact_result_effect(effects, "shield", "%d·ALL" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
+		target = "ALL"
+	elif shield_ally > 0:
 		_append_compact_result_effect(effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
 	if bool(raw.get("shieldAll", false)):
 		target = "ALL"
@@ -563,10 +572,34 @@ func _build_compact_action_pips(entry: Dictionary) -> Dictionary:
 	if bool(raw.get("taunt", false)):
 		_append_compact_result_effect(effects, "shield", "TA")
 		target = "SELF"
-	if bool(raw.get("revive", false)):
-		_append_compact_result_effect(effects, "revive", "REVIVE")
+	if bool(raw.get("reviveAll", false)):
+		_append_compact_result_effect(effects, "revive", "%d%%" % _revive_hp_pct_from_raw(raw))
+		target = "ALL"
+	elif bool(raw.get("revive", false)):
+		_append_compact_result_effect(effects, "revive", "%d%%" % _revive_hp_pct_from_raw(raw))
+		if bool(raw.get("healTgt", false)):
+			target = "ALLY"
 
 	return {"effects": effects.slice(0, 3), "target": target}
+
+
+func _revive_hp_pct_from_raw(raw: Dictionary) -> int:
+	return int(raw.get("revivePct", 50))
+
+
+func _revive_tooltip(raw: Dictionary, all_allies: bool) -> String:
+	var pct: int = _revive_hp_pct_from_raw(raw)
+	if all_allies:
+		return "revives all fallen allies at %d%% health" % pct
+	return "revives a fallen ally at %d%% health" % pct
+
+
+func _revive_description(raw: Dictionary) -> String:
+	if bool(raw.get("reviveAll", false)):
+		return "Revives all fallen allies at %d%% health." % _revive_hp_pct_from_raw(raw)
+	if bool(raw.get("revive", false)):
+		return "Revives a fallen ally at %d%% health." % _revive_hp_pct_from_raw(raw)
+	return ""
 
 
 func _append_compact_result_effect(effects: Array, kind: String, value: String, duration: int = 0) -> void:
@@ -581,8 +614,9 @@ func _append_compact_result_effect(effects: Array, kind: String, value: String, 
 
 func _build_ability_row_description(entry: Dictionary) -> String:
 	var raw: Dictionary = entry.get("raw", {})
-	if bool(raw.get("revive", false)):
-		return "Revives a fallen ally at 50% health."
+	var revive_desc: String = _revive_description(raw)
+	if revive_desc != "":
+		return revive_desc
 	return str(entry.get("description", ""))
 
 

@@ -181,15 +181,15 @@
     "guard": {
       "recharge": {
         "name": "Bulwark Link",
-        "eff": "6 shield, 2t, ally 6 shield, 2t",
+        "eff": "6 shield all allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 6,
         "shT": 2,
-        "shieldAlly": 6
+        "shieldAlly": 6,
+        "shieldAllyAll": true
       },
       "strike": {
         "name": "Suppressing Fire",
@@ -301,7 +301,7 @@
     "volt": {
       "recharge": {
         "name": "Grounding",
-        "eff": "all allies 5 shield, 2t",
+        "eff": "5 shield all allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -598,15 +598,15 @@
     "carapace": {
       "recharge": {
         "name": "Chitin Link",
-        "eff": "6 shield, 2t, ally 6 shield, 2t",
+        "eff": "6 shield all allies, 2t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 6,
         "shT": 2,
-        "shieldAlly": 6
+        "shieldAlly": 6,
+        "shieldAllyAll": true
       },
       "strike": {
         "name": "Ramming Plate",

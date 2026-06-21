@@ -17,7 +17,7 @@ META_KEYS = frozenset({"zone", "range", "name", "eff", "callsign", "focus", "hp"
 HERO_HANDLED = frozenset({
     "dmg", "dMin", "dMax", "heal", "shield", "shT", "blastAll", "healAll", "shieldAll",
     "healLowest", "shTgt", "healTgt", "dot", "dT", "rfm", "rfmT", "rfmTgt", "ignSh",
-    "rfe", "rfT", "rfeAll", "taunt", "revive", "cloak", "cloakAll",
+    "rfe", "rfT", "rfeAll", "taunt", "revive", "reviveAll", "revivePct", "cloak", "cloakAll",
     "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol",
 })
 

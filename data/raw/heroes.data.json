@@ -1258,7 +1258,7 @@
       "name": "Avalanche Suit",
       "cls": "SQUAD SHELL",
       "pickerCategory": "defense",
-      "pickerBlurb": "Squad shell. Blanket team shields and triage HP before spikes—coverage-first, no taunt. Evolve into Glacier Mantle (shields + mass freeze on enemy dice) or Trench Rig (self-sustain + enemy roll strip).",
+      "pickerBlurb": "Squad shell. Blanket team shields and triage HP before spikes—coverage-first, no taunt. Evolve into Glacier Mantle (shields + mass freeze on enemy dice) or Trench Rig (targeted ally heal + enemy roll strip).",
       "hp": 55,
       "sk": "avalanche",
       "abilities": [
@@ -1493,14 +1493,15 @@
                 6
               ],
               "name": "Stabilize",
-              "eff": "self 10 heal",
+              "eff": "10 heal (ally)",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 10
+              "heal": 10,
+              "healTgt": true
             }
           ],
           "callsign": "TRENCH"
@@ -1619,15 +1620,16 @@
             4
           ],
           "name": "Diagnostic Pulse",
-          "eff": "+2 roll ally",
+          "eff": "3 heal (ally), +1 roll",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
           "dot": 0,
           "dT": 0,
           "rfe": 0,
-          "heal": 0,
-          "rfm": 2,
+          "heal": 3,
+          "healTgt": true,
+          "rfm": 1,
           "rfmT": 1,
           "rfmTgt": true
         },
@@ -1638,7 +1640,7 @@
             11
           ],
           "name": "Infusion",
-          "eff": "7 heal (ally)",
+          "eff": "7 heal (ally), +2 roll",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1646,30 +1648,16 @@
           "dT": 0,
           "rfe": 0,
           "heal": 7,
-          "healTgt": true
+          "healTgt": true,
+          "rfm": 2,
+          "rfmT": 1,
+          "rfmTgt": true
         },
         {
           "zone": "surge",
           "range": [
             12,
             16
-          ],
-          "name": "Shock Therapy",
-          "eff": "revive 50%",
-          "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
-          "dot": 0,
-          "dT": 0,
-          "rfe": 0,
-          "heal": 0,
-          "revive": true
-        },
-        {
-          "zone": "crit",
-          "range": [
-            17,
-            19
           ],
           "name": "Neural Override",
           "eff": "7 dmg, heal self 6",
@@ -1682,10 +1670,10 @@
           "heal": 6
         },
         {
-          "zone": "overload",
+          "zone": "crit",
           "range": [
-            20,
-            20
+            17,
+            19
           ],
           "name": "Synaptic Overload",
           "eff": "11 dmg, heal self 8",
@@ -1696,6 +1684,22 @@
           "dT": 0,
           "rfe": 0,
           "heal": 8
+        },
+        {
+          "zone": "overload",
+          "range": [
+            20,
+            20
+          ],
+          "name": "Shock Therapy",
+          "eff": "20 dmg",
+          "dmg": 20,
+          "dMin": 20,
+          "dMax": 20,
+          "dot": 0,
+          "dT": 0,
+          "rfe": 0,
+          "heal": 0
         }
       ],
       "evolutions": [
@@ -1711,14 +1715,14 @@
                 5
               ],
               "name": "Triage",
-              "eff": "6 heal (ally)",
+              "eff": "5 heal (ally)",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 6,
+              "heal": 5,
               "healTgt": true
             }
           ],
@@ -1782,15 +1786,15 @@
                 16,
                 19
               ],
-              "name": "Surge Heal",
-              "eff": "10 dmg, all 10 heal",
+              "name": "Suppression Heal",
+              "eff": "10 dmg, all 8 heal",
               "dmg": 10,
               "dMin": 10,
               "dMax": 10,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 10,
+              "heal": 8,
               "healAll": true
             }
           ]
@@ -1806,17 +1810,18 @@
                 20,
                 20
               ],
-              "name": "Mass Revival",
-              "eff": "14 dmg (all), all 14 heal",
-              "dmg": 14,
-              "dMin": 14,
-              "dMax": 14,
+              "name": "Surge Revive",
+              "eff": "revive ally 70%",
+              "dmg": 0,
+              "dMin": 0,
+              "dMax": 0,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 14,
-              "healAll": true,
-              "blastAll": true
+              "heal": 0,
+              "revive": true,
+              "healTgt": true,
+              "revivePct": 70
             }
           ]
         },
@@ -1858,17 +1863,16 @@
                 10
               ],
               "name": "Overclock",
-              "eff": "all 5 heal, all 4 shield, 2t",
+              "eff": "all 4 shield",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 5,
-              "healAll": true,
+              "heal": 0,
               "shield": 4,
-              "shT": 2,
+              "shT": 1,
               "shieldAll": true
             }
           ]
@@ -1885,14 +1889,14 @@
                 15
               ],
               "name": "Emergency Protocol",
-              "eff": "lowest 9 heal",
+              "eff": "lowest 10 heal",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 9,
+              "heal": 10,
               "healLowest": true
             }
           ]
@@ -1909,7 +1913,7 @@
                 19
               ],
               "name": "Adrenaline Surge",
-              "eff": "6 dmg, all 6 heal",
+              "eff": "6 dmg (all), all 6 heal",
               "dmg": 6,
               "dMin": 6,
               "dMax": 6,
@@ -1917,7 +1921,8 @@
               "dT": 0,
               "rfe": 0,
               "heal": 6,
-              "healAll": true
+              "healAll": true,
+              "blastAll": true
             }
           ]
         },
@@ -1932,16 +1937,17 @@
                 20,
                 20
               ],
-              "name": "Adrenaline Surge+",
-              "eff": "7 dmg, all 8 heal",
-              "dmg": 7,
-              "dMin": 7,
-              "dMax": 7,
+              "name": "Mass Revival",
+              "eff": "revive all 30%",
+              "dmg": 0,
+              "dMin": 0,
+              "dMax": 0,
               "dot": 0,
               "dT": 0,
               "rfe": 0,
-              "heal": 8,
-              "healAll": true
+              "heal": 0,
+              "reviveAll": true,
+              "revivePct": 30
             }
           ]
         }

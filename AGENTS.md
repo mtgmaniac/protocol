@@ -59,7 +59,7 @@ python scripts/debug/audit_gear_relic_effects.py
 - **Enemy HP** in `enemyUnitDefs` must be a **multiple of 5**.
 - **Boss phase 2:** ability `dmgP2` / `shieldP2` must be **strictly higher** than phase-1 `dmg` / `shield`. Tune winability via boss HP and `pThr`, not by weakening P2.
 - **Godot combat** uses **flat** `enemyUnitDefs` stats every fight. `battleEnemyScale` and `trackHpScale` are **balance-sim lab only** (`--scaled`); not applied at spawn in Godot.
-- **Evolution (current):** flat +50 XP per battle, evolve at 100 XP → pending evolution after **fight 2** (one hero per milestone).
+- **Evolution (current):** **100 XP** to evolve. Per battle win: alive heroes get **`20 + round(avg_effective_roll)`**; dead heroes get **`round(avg_effective_roll)`** only. First evo typically ~fight 3–4. **One evolution stop per win** — if multiple heroes cross 100 XP, one evolves now; others wait in `deferred_evolution_unit_ids` until a later win.
 - **Facility sim** models `rfm`/`erb`/`wipeShields` and Scrapmaster `p2ReviveNames`; not items, summons, taunt, or cloak.
 
 ## Docs

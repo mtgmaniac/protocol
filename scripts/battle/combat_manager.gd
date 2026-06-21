@@ -518,12 +518,18 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		_log("%s is taunting — enemies will target them!" % hero_state["unit"].display_name)
 		_emit_event(hero_state, "taunt", 0, "hero")
 
-	if bool(raw.get("revive", false)):
+	if bool(raw.get("reviveAll", false)):
+		var revive_all_pct: int = _resolve_revive_hp_pct(raw)
+		for ally_state in _hero_states:
+			if bool(ally_state.get("dead", false)):
+				_revive_state(ally_state, revive_all_pct)
+	elif bool(raw.get("revive", false)):
+		var revive_pct: int = _resolve_revive_hp_pct(raw)
 		var revive_target: Dictionary = _find_target_by_id_including_dead(_hero_states, str(hero_state.get("selected_target_id", "")))
 		if revive_target.is_empty():
 			revive_target = _first_dead_state(_hero_states)
 		if not revive_target.is_empty():
-			_revive_state(revive_target, 50)
+			_revive_state(revive_target, revive_pct)
 
 	# Cloak application
 	if bool(raw.get("cloak", false)):
@@ -924,6 +930,11 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int) -> void:
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
 
 
+func _resolve_revive_hp_pct(raw: Dictionary) -> int:
+	var default_pct: int = int(raw.get("revivePct", 50))
+	return GameState.get_revive_hp_pct(default_pct)
+
+
 func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	if state.is_empty() or not bool(state.get("dead", false)):
 		return
@@ -1189,6 +1200,7 @@ func _tick_state(state: Dictionary) -> void:
 			if not _is_hero_state(state):
 				dot_bonus = int(_get_relic_value("dotAmplified", "bonus", 0)) + _get_total_dot_bonus()
 			var tick_dmg: int = int(state["poison"]) + dot_bonus
+			_emit_action_event(state, _resolve_side_for_state(state), "Poison", "tick")
 			_log("%s takes %d poison damage." % [state["unit"].display_name, tick_dmg])
 			_damage_state(state, tick_dmg)
 			state["poison_turns"] = int(state["poison_turns"]) - 1

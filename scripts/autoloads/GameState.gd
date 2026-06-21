@@ -17,11 +17,15 @@ var unit_xp: Dictionary = {}
 var unit_levels: Dictionary = {}
 var unit_evolutions: Dictionary = {}
 var pending_evolution_unit_id: String = ""
+var deferred_evolution_unit_ids: Array = []
 var carried_protocol: int = 0
 
-const XP_PER_BATTLE := 50
+const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
 const SQUAD_UNIT_LIMIT := 3
+
+var _battle_effective_rolls: Dictionary = {}
+var _battle_end_alive: Dictionary = {}
 
 ## Post-win rarity ladder (round = current_battle when rewards roll). Round 5 = relic only.
 const RELIC_ONLY_ROUND := 5
@@ -65,7 +69,10 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	unit_levels.clear()
 	unit_evolutions.clear()
 	pending_evolution_unit_id = ""
+	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
+	_battle_effective_rolls.clear()
+	_battle_end_alive.clear()
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
@@ -134,7 +141,10 @@ func reset_run() -> void:
 	unit_levels.clear()
 	unit_evolutions.clear()
 	pending_evolution_unit_id = ""
+	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
+	_battle_effective_rolls.clear()
+	_battle_end_alive.clear()
 
 
 func prepare_battle_rewards() -> void:
@@ -228,15 +238,111 @@ func get_unit_evolution_name(unit_id: String) -> String:
 	return str(unit_evolutions.get(unit_id, ""))
 
 
+func begin_battle_xp_tracking() -> void:
+	_battle_effective_rolls.clear()
+	_battle_end_alive.clear()
+
+
+func record_hero_effective_roll(unit_id: String, effective_roll: int) -> void:
+	if effective_roll <= 0:
+		return
+	var key: String = str(unit_id)
+	if not _battle_effective_rolls.has(key):
+		_battle_effective_rolls[key] = []
+	(_battle_effective_rolls[key] as Array).append(effective_roll)
+
+
+func capture_battle_end_survival(hero_states: Array) -> void:
+	_battle_end_alive.clear()
+	for state_variant in hero_states:
+		var state: Dictionary = state_variant
+		var unit_id: String = _squad_unit_id_from_state(state)
+		if unit_id == "":
+			continue
+		_battle_end_alive[unit_id] = not bool(state.get("dead", false))
+
+
 func award_battle_xp() -> void:
+	var newly_crossed_threshold: Array = []
 	for unit_id_variant in selected_units:
 		var unit_id: String = str(unit_id_variant)
-		var new_total: int = get_unit_xp(unit_id) + XP_PER_BATTLE
+		if get_unit_evolution_name(unit_id) != "":
+			continue
+		var xp_before: int = get_unit_xp(unit_id)
+		var gain: int = _compute_battle_xp_gain(unit_id)
+		var new_total: int = xp_before + gain
 		unit_xp[unit_id] = new_total
 		var new_level: int = 1 + int(floor(float(new_total) / float(XP_TO_EVOLVE)))
-		unit_levels[unit_id] = max(new_level, 1)
-		if pending_evolution_unit_id == "" and get_unit_evolution_name(unit_id) == "" and new_total >= XP_TO_EVOLVE:
-			pending_evolution_unit_id = unit_id
+		unit_levels[unit_id] = maxi(new_level, 1)
+		if xp_before < XP_TO_EVOLVE and new_total >= XP_TO_EVOLVE:
+			newly_crossed_threshold.append(unit_id)
+
+	_queue_evolution_after_win(newly_crossed_threshold)
+	_battle_effective_rolls.clear()
+	_battle_end_alive.clear()
+
+
+func _compute_battle_xp_gain(unit_id: String) -> int:
+	var rolls: Array = _battle_effective_rolls.get(unit_id, [])
+	var avg_roll: int = 0
+	if not rolls.is_empty():
+		var total: int = 0
+		for roll_variant in rolls:
+			total += int(roll_variant)
+		avg_roll = roundi(float(total) / float(rolls.size()))
+	if bool(_battle_end_alive.get(unit_id, false)):
+		return XP_SURVIVAL_BONUS + avg_roll
+	return avg_roll
+
+
+func _queue_evolution_after_win(newly_crossed_threshold: Array) -> void:
+	if pending_evolution_unit_id != "":
+		return
+
+	var ready: Array = []
+	for unit_id_variant in deferred_evolution_unit_ids:
+		var unit_id: String = str(unit_id_variant)
+		if _is_evolution_eligible(unit_id) and not ready.has(unit_id):
+			ready.append(unit_id)
+	for unit_id_variant in newly_crossed_threshold:
+		var unit_id: String = str(unit_id_variant)
+		if _is_evolution_eligible(unit_id) and not ready.has(unit_id):
+			ready.append(unit_id)
+
+	if ready.is_empty():
+		return
+
+	var ordered: Array = []
+	for unit_id_variant in deferred_evolution_unit_ids:
+		var unit_id: String = str(unit_id_variant)
+		if ready.has(unit_id):
+			ordered.append(unit_id)
+	for unit_id_variant in newly_crossed_threshold:
+		var unit_id: String = str(unit_id_variant)
+		if ready.has(unit_id) and not ordered.has(unit_id):
+			ordered.append(unit_id)
+	for unit_id_variant in selected_units:
+		var unit_id: String = str(unit_id_variant)
+		if ready.has(unit_id) and not ordered.has(unit_id):
+			ordered.append(unit_id)
+
+	pending_evolution_unit_id = str(ordered[0])
+	deferred_evolution_unit_ids.clear()
+	for i in range(1, ordered.size()):
+		deferred_evolution_unit_ids.append(str(ordered[i]))
+
+
+func _is_evolution_eligible(unit_id: String) -> bool:
+	return get_unit_evolution_name(unit_id) == "" and get_unit_xp(unit_id) >= XP_TO_EVOLVE
+
+
+func _squad_unit_id_from_state(state: Dictionary) -> String:
+	var unit: Variant = state.get("unit")
+	if unit is UnitData:
+		return str((unit as UnitData).id)
+	if unit != null:
+		return str(unit.get("id"))
+	return str(state.get("id", ""))
 
 
 func has_pending_evolution() -> bool:

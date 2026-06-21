@@ -27,7 +27,7 @@ Three autoloads are always available: `GameState`, `DataManager`, `SceneManager`
 Thin wrapper over `change_scene_to_file`. Constants for all 5 scene paths + `go_to_*()` helpers. **Lowest-risk file.** If you add a screen, add its path + helper here.
 
 ### `scripts/autoloads/GameState.gd` (~366 lines)
-Owns ALL run-persistent state. Key vars: `selected_units`, `current_battle`, `selected_operation_id`, `relics`, `consumables`, `gear_by_unit`, `equipped_gear`, `unit_xp/levels/evolutions`, `pending_evolution_unit_id`. Constants: `SQUAD_UNIT_LIMIT=3`, `XP_PER_BATTLE=50`, `XP_TO_EVOLVE=100`, `total_battles=10`.
+Owns ALL run-persistent state. Key vars: `selected_units`, `current_battle`, `selected_operation_id`, `relics`, `consumables`, `gear_by_unit`, `equipped_gear`, `unit_xp/levels/evolutions`, `pending_evolution_unit_id`, `deferred_evolution_unit_ids`. Constants: `SQUAD_UNIT_LIMIT=3`, `XP_SURVIVAL_BONUS=20`, `XP_TO_EVOLVE=100`, `total_battles=10`.
 Key API: `start_run`, `enforce_squad_limit`, `advance_to_next_battle`, `reset_run`, `prepare_battle_rewards`, `get_pending_reward_items`, `claim_reward`, `award_battle_xp`, `has_pending_evolution`, `apply_pending_evolution`, `get_run_unit_data` (returns evolution-modified UnitData), reward RNG helpers `_roll_reward_*`.
 **This is where run/economy/progression bugs live.**
 

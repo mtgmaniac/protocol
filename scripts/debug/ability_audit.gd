@@ -48,6 +48,8 @@ const HERO_HANDLED_FIELDS := [
 	"rfeAll",
 	"taunt",
 	"revive",
+	"reviveAll",
+	"revivePct",
 	"cloak",
 	"cloakAll",
 	"freezeEnemyDice",
@@ -384,6 +386,8 @@ func _run_targeting_audits() -> void:
 		{"name": "targeted heal requires hero", "raw": {"heal": 6, "healTgt": true}, "manual": "hero"},
 		{"name": "targeted shield requires hero", "raw": {"shield": 6, "shT": 2, "shTgt": true}, "manual": "hero"},
 		{"name": "revive requires dead hero", "raw": {"revive": true}, "manual": "dead_hero"},
+		{"name": "revive all requires no manual target", "raw": {"reviveAll": true, "revivePct": 30}, "manual": ""},
+		{"name": "revive with healTgt still requires dead hero", "raw": {"revive": true, "healTgt": true, "revivePct": 70}, "manual": "dead_hero"},
 		{"name": "freeze any requires any", "raw": {"freezeAnyDice": 1}, "manual": "any"},
 	]
 
@@ -422,6 +426,8 @@ func _run_regression_audits() -> void:
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
+	_run_revive_pct_regression()
+	_run_revive_all_regression()
 
 
 func _run_enemy_shield_ally_regression() -> void:
@@ -836,6 +842,72 @@ func _run_relic_ally_death_heal_regression() -> void:
 		)
 
 
+func _run_revive_pct_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Surge Revive", {
+		"revive": true,
+		"healTgt": true,
+		"revivePct": 70,
+	})
+	var ally_unit: UnitData = _make_unit("audit_ally_a", "Audit Ally A", "Noop", {})
+	manager.setup_battle([actor_unit, ally_unit], [])
+	var actor: Dictionary = manager.get_hero_states()[0]
+	var ally: Dictionary = manager.get_hero_states()[1]
+	ally["dead"] = true
+	ally["current_hp"] = 0
+	actor["selected_target_id"] = str(ally["id"])
+	manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var expected_hp: int = int(ally["max_hp"]) * 70 / 100
+	var ok: bool = not bool(ally["dead"]) and int(ally["current_hp"]) == expected_hp
+	if ok:
+		_record_pass("Regression / revivePct", "revivePct")
+	else:
+		_record_failure(
+			"Regression / revivePct",
+			"revivePct",
+			"selected fallen ally revived at 70%% HP",
+			"dead=%s hp=%d expected=%d" % [str(ally["dead"]), int(ally["current_hp"]), expected_hp]
+		)
+
+
+func _run_revive_all_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Mass Revival", {
+		"reviveAll": true,
+		"revivePct": 30,
+	})
+	var ally_a_unit: UnitData = _make_unit("audit_ally_a", "Audit Ally A", "Noop", {})
+	var ally_b_unit: UnitData = _make_unit("audit_ally_b", "Audit Ally B", "Noop", {})
+	manager.setup_battle([actor_unit, ally_a_unit, ally_b_unit], [])
+	var ally_a: Dictionary = manager.get_hero_states()[1]
+	var ally_b: Dictionary = manager.get_hero_states()[2]
+	ally_a["dead"] = true
+	ally_a["current_hp"] = 0
+	ally_b["dead"] = true
+	ally_b["current_hp"] = 0
+	manager.resolve_round({"audit_actor": AUDIT_ROLL}, {}, DiceManager.new())
+	var expected_hp: int = int(ally_a["max_hp"]) * 30 / 100
+	var ok: bool = (
+		not bool(ally_a["dead"])
+		and not bool(ally_b["dead"])
+		and int(ally_a["current_hp"]) == expected_hp
+		and int(ally_b["current_hp"]) == expected_hp
+	)
+	if ok:
+		_record_pass("Regression / reviveAll", "reviveAll")
+	else:
+		_record_failure(
+			"Regression / reviveAll",
+			"reviveAll",
+			"all fallen allies revived at 30%% HP",
+			"ally_a dead=%s hp=%d ally_b dead=%s hp=%d expected=%d" % [
+				str(ally_a["dead"]), int(ally_a["current_hp"]),
+				str(ally_b["dead"]), int(ally_b["current_hp"]),
+				expected_hp,
+			]
+		)
+
+
 func _run_text_alignment_audits() -> void:
 	var stale_patterns: Array[String] = [
 		"Untargetable by enemies this turn",
@@ -1075,7 +1147,9 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 		"taunt":
 			return _expect_bool(effect_field, after.actor.taunting, "actor taunting after hero taunt ability", "taunting=%s" % str(after.actor.taunting))
 		"revive":
-			return _expect_bool(effect_field, not after.ally_a.dead and after.ally_a.hp == int(after.ally_a.max_hp * 0.5), "selected fallen ally revived at 50%% HP", "dead=%s hp=%d" % [str(after.ally_a.dead), after.ally_a.hp])
+			var revive_pct: int = int(raw.get("revivePct", 50))
+			var expected_hp: int = maxi(1, int(after.ally_a.max_hp) * revive_pct / 100)
+			return _expect_bool(effect_field, not after.ally_a.dead and after.ally_a.hp == expected_hp, "selected fallen ally revived at %d%% HP" % revive_pct, "dead=%s hp=%d" % [str(after.ally_a.dead), after.ally_a.hp])
 
 	return {"ok": false, "expected": "known assertion for %s" % effect_field, "actual": "no assertion implemented"}
 

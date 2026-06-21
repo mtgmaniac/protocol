@@ -179,6 +179,7 @@ func _ready() -> void:
 	_update_battle_header()
 	_build_runtime_units()
 	combat_manager.setup_battle(hero_units, enemy_units)
+	_game_state().begin_battle_xp_tracking()
 	combat_manager.setup_relics(_game_state().relics)
 	combat_manager.setup_gear(_game_state().gear_by_unit)
 	protocol_points = _game_state().take_carried_protocol()
@@ -795,6 +796,8 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	# Build effective roll dicts so RFE/buff/nudge are reflected in combat resolution
 	var eff_hero_rolls: Dictionary = _build_effective_rolls(hero_rolls, combat_manager.get_hero_states(), true)
 	var eff_enemy_rolls: Dictionary = _build_effective_rolls(enemy_rolls, combat_manager.get_enemy_states(), false)
+	for unit_id_variant in eff_hero_rolls.keys():
+		_game_state().record_hero_effective_roll(str(unit_id_variant), int(eff_hero_rolls[unit_id_variant]))
 
 	var raw_enemy_rolls: Dictionary = enemy_rolls.duplicate()
 	var raw_hero_rolls: Dictionary = hero_rolls.duplicate()
@@ -824,8 +827,10 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		_update_protocol_bar()
 		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
 	if skip_feedback:
+		_feedback.reset_death_sfx_tracking()
 		for event_variant in result.get("events", []):
 			var event: Dictionary = event_variant
+			_feedback.play_death_sfx_for_event(event)
 			_feedback.apply_live_event_visual_state(event)
 			_card_view.refresh_card_for_event(event)
 	else:
@@ -842,6 +847,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		battle_over = true
 		roll_button.disabled = true
 		_persist_protocol_carryover()
+		_capture_battle_victory_for_xp()
 		if _auto_battle_running:
 			_debug_advance_after_auto_battle_victory()
 		elif _game_state().is_final_battle():
@@ -901,10 +907,15 @@ func _persist_protocol_carryover() -> void:
 	_game_state().save_protocol_carryover(protocol_points, carry_pct)
 
 
+func _capture_battle_victory_for_xp() -> void:
+	_game_state().capture_battle_end_survival(combat_manager.get_hero_states())
+
+
 func _finish_battle_victory() -> void:
 	battle_over = true
 	_disable_combat_actions()
 	_persist_protocol_carryover()
+	_capture_battle_victory_for_xp()
 	if _auto_battle_running:
 		_debug_advance_after_auto_battle_victory()
 	elif _game_state().is_final_battle():
@@ -1752,12 +1763,14 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return "any"
 	if int(raw.get("freezeEnemyDice", 0)) > 0:
 		return "enemy"
+	if bool(raw.get("reviveAll", false)):
+		return ""
+	if bool(raw.get("revive", false)):
+		return "dead_hero"
 	if bool(raw.get("healTgt", false)) or bool(raw.get("shTgt", false)):
 		return "hero"
 	if bool(raw.get("rfmTgt", false)):
 		return "hero"
-	if bool(raw.get("revive", false)):
-		return "dead_hero"
 	var has_single_enemy_effect: bool = (
 		(int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)))
 		or int(raw.get("dot", 0)) > 0

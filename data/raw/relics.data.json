@@ -58,7 +58,7 @@
   {
     "id": "resonanceCascade",
     "name": "Resonance Cascade",
-    "desc": "Enemy DoT ticks deal +2 extra damage each tick.",
+    "desc": "DoTs on enemies tick for +2 damage.",
     "icon": "skull",
     "effect": { "type": "dotAmplified", "bonus": 2 }
   },
