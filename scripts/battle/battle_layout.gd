@@ -160,11 +160,20 @@ func _position_zone_dividers(combat_zone: Rect2) -> void:
 		var top: float = enemy_card.position.y - origin_y - gap - 3.0
 		header_divider.offset_top = top
 		header_divider.offset_bottom = top + 3.0
+		# Header content occupies [screen top, divider] so it centers equidistant
+		# from the screen edge and the divider (instead of abutting the divider).
+		var header_row: Control = _scene.get_node_or_null("HeaderRow")
+		if header_row != null:
+			header_row.offset_top = 0.0
+			header_row.offset_bottom = top
 	var footer_divider: Control = _scene.get_node_or_null("FooterDivider")
 	if footer_divider != null and hero_card.size.y > 2.0:
 		var ftop: float = hero_card.end.y - origin_y + gap
 		footer_divider.offset_top = ftop
 		footer_divider.offset_bottom = ftop + 3.0
+		# Footer panel occupies [divider, screen bottom] so its content centers there.
+		if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
+			_scene.protocol_panel.offset_top = (ftop + 3.0) - _scene.size.y
 
 
 func get_card_group_rect(views: Array) -> Rect2:

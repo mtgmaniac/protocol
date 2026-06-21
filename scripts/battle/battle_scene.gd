@@ -2785,9 +2785,8 @@ func _apply_battle_theme() -> void:
 	# spots (over the bar / among buttons) — hide it; the segments convey the count.
 	protocol_value_label.visible = false
 	if protocol_panel != null:
-		# Footer plate with a top divider line separating it from the board.
-		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0)
-		footer_style.border_width_top = 3
+		# Footer plate (no top border — the FooterDivider ColorRect is the divider line).
+		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_PANEL_BG, 0)
 		footer_style.set_content_margin_all(4.0)
 		protocol_panel.add_theme_stylebox_override("panel", footer_style)
 		# Align footer content with the dice-tray edges (room before the screen edge).
