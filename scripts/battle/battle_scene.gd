@@ -1297,6 +1297,32 @@ var _protocol_segments: Array = []
 const TRAY_EDGE_INSET := 16
 
 
+# A fixed 3px divider line at the header (top) or footer (bottom) boundary, inset to
+# match the tray edges. Placed on the root so layout/reordering can't move it.
+func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
+	if get_node_or_null(node_name) != null:
+		return
+	var divider: ColorRect = ColorRect.new()
+	divider.name = node_name
+	divider.color = PixelUI.LINE_DIM
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	divider.anchor_left = 0.0
+	divider.anchor_right = 1.0
+	divider.offset_left = TRAY_EDGE_INSET
+	divider.offset_right = -TRAY_EDGE_INSET
+	if at_footer:
+		divider.anchor_top = 1.0
+		divider.anchor_bottom = 1.0
+		divider.offset_top = -147.0
+		divider.offset_bottom = -144.0
+	else:
+		divider.anchor_top = 0.0
+		divider.anchor_bottom = 0.0
+		divider.offset_top = 144.0
+		divider.offset_bottom = 147.0
+	add_child(divider)
+
+
 # Stack "PROTOCOL" above a short segment bar (more readable, frees horizontal room).
 func _ensure_protocol_stack_layout() -> void:
 	var row := protocol_bar.get_parent() as HBoxContainer
@@ -1313,7 +1339,9 @@ func _ensure_protocol_stack_layout() -> void:
 	stack.add_child(protocol_bar)
 	row.add_child(stack)
 	row.move_child(stack, 0)
-	protocol_bar.custom_minimum_size = Vector2(0, 40)
+	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	protocol_bar.custom_minimum_size = Vector2(160, 36)
 	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
@@ -1345,11 +1373,10 @@ func _ensure_protocol_segments() -> void:
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	protocol_bar.add_child(row)
 	for _i in range(MAX_PROTOCOL):
-		var seg: ColorRect = ColorRect.new()
+		var seg: Panel = Panel.new()
 		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		seg.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		seg.color = PixelUI.DT_PROTO_EMPTY
 		row.add_child(seg)
 		_protocol_segments.append(seg)
 
@@ -1359,8 +1386,11 @@ func _update_protocol_bar() -> void:
 	protocol_bar.value = protocol_points
 	_ensure_protocol_segments()
 	for i in range(_protocol_segments.size()):
-		var seg: ColorRect = _protocol_segments[i]
-		seg.color = PixelUI.DT_AMBER if i < protocol_points else PixelUI.DT_PROTO_EMPTY
+		var seg: Panel = _protocol_segments[i]
+		if i < protocol_points:
+			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0))
+		else:
+			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
 	protocol_value_label.text = "%d / %d" % [protocol_points, MAX_PROTOCOL]
 	_update_protocol_footer_display()
 
@@ -2704,20 +2734,8 @@ func _apply_battle_theme() -> void:
 	# Header/board divider: a fixed 3px line at the header boundary (y = 144), inset to
 	# match the footer divider + tray edges. Placed on the root so board reordering and
 	# the board's top margin don't move it.
-	if get_node_or_null("HeaderDivider") == null:
-		var divider: ColorRect = ColorRect.new()
-		divider.name = "HeaderDivider"
-		divider.color = PixelUI.LINE_DIM
-		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		divider.anchor_left = 0.0
-		divider.anchor_right = 1.0
-		divider.anchor_top = 0.0
-		divider.anchor_bottom = 0.0
-		divider.offset_left = TRAY_EDGE_INSET
-		divider.offset_right = -TRAY_EDGE_INSET
-		divider.offset_top = 144.0
-		divider.offset_bottom = 147.0
-		add_child(divider)
+	_ensure_zone_divider("HeaderDivider", false)
+	_ensure_zone_divider("FooterDivider", true)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
