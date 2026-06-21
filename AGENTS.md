@@ -2,6 +2,18 @@
 
 **Read this first.** The live game is Godot 4.6 + GDScript under `scripts/`, `scenes/`, `assets/`, and `data/raw/`.
 
+**Resuming work?** Read **`docs/SESSION_HANDOFF.md`** (branch workflow, what's on `main`, what's next). Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol).
+
+## Branch split (backend vs UI)
+
+| Branch | Use for |
+|--------|---------|
+| **`fix/cleanup`** | Data, `combat_manager.gd`, sim, audits — **no UI** |
+| **`main`** | Stable; merge `fix/cleanup` here when backend pass is done |
+| **`codex/*`** | Battle/unit-select UI polish (parallel; do not mix blindly) |
+
+On **`fix/cleanup`**, do not edit scenes, card layout, `Theme.gd`, `compact_unit_card.gd`, or visual battle chrome unless the user explicitly asks.
+
 ## DO NOT touch `legacy-angular/`
 
 `legacy-angular/` is **not part of the game**. It only holds **raster portraits and UI PNGs** that Godot still loads from `res://legacy-angular/public/`.
@@ -52,5 +64,7 @@ python scripts/debug/audit_gear_relic_effects.py
 
 ## Docs
 
+- **`docs/SESSION_HANDOFF.md`** — current branch state, completed work, next-task prompt (**start here after a break**)
 - `docs/AI_AGENT_GAME_REFERENCE.md` — runtime map for assistants
 - `offline-bundle/GROUND_TRUTH.md` — offline rules reference (may lag code; prefer `combat_manager.gd` for behavior)
+- `TASK_QUEUE.md` — longer ordered task list (some items already done; see SESSION_HANDOFF)

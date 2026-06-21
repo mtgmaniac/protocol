@@ -1,7 +1,25 @@
 # Overload Protocol — CLAUDE CODE TASK QUEUE
 *Copy-paste prompts for when you reconnect. Ordered so each task leaves the project in a stable, testable state. Do them in order; don't batch. Paste one prompt, review the diff, test, commit, move on.*
 
-**Before anything:** open Claude Code in the repo root and confirm it's on Fable 5. First message to it should be: *"Read docs/AI_AGENT_GAME_REFERENCE.md, BATTLE_UI_V2_SPEC.md, and the offline-bundle/GROUND_TRUTH.md and CODEBASE_MAP.md I added. Treat GROUND_TRUTH.md as authoritative over the older GDD/ROADMAP/PHASE_0 docs. Don't write code yet — just confirm you understand the current state."*
+---
+
+## CURRENT STATE (2026-06-21) — read before the numbered tasks
+
+**Handoff doc:** `docs/SESSION_HANDOFF.md` (branch workflow, GitHub sync, starter prompt).
+
+**`main` / GitHub:** `b0c83c8` — facility backend, `gainProtocol`, Scrapmaster P2, nudge once/die/turn.
+
+**Active backend branch:** `fix/cleanup` (recreated from `main`; backend/data only, **no UI**).
+
+**UI branches (parallel):** `codex/compact-battle-ui-three-unit-pips`, `codex/ui-compact-card-prototype`.
+
+**Likely already done (skip or verify, don't redo):** Task 4 keyword audit (passing), Task 6 gear/relic wiring (mostly done), Task 10 protocol economy (cap 10, +1/turn, nudge +3 once/die, Set action, flat item cost — verify Protocol Override relic), Task 11 evolution callsigns (in data), facility balance pass on Facility operation.
+
+**Still open / deferred:** Task 0 doc drift, Task 7 burn rename, sim `gainProtocol` parity, mark/vulnerable mechanic, remove `project.godot*.tmp` from git.
+
+---
+
+**Before anything:** open the repo at `C:\Users\Kev\Documents\protocol`. Read `AGENTS.md` + `docs/SESSION_HANDOFF.md`. For UI tasks use a `codex/*` branch; for backend use `fix/cleanup`.
 
 ---
 

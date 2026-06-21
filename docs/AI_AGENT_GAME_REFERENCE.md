@@ -5,7 +5,9 @@ version of Overload Protocol. It describes the live project structure, the real
 runtime owners, and the traps that have already cost time so future work can
 start with the right assumptions.
 
-Last refreshed from local source on 2026-06-20.
+Last refreshed from local source on 2026-06-21.
+
+**Session handoff (branch state, completed work, starter prompt):** [SESSION_HANDOFF.md](SESSION_HANDOFF.md)
 
 ## 1. Project Basics
 
@@ -337,7 +339,18 @@ Core rule:
 - custom one-off probe scripts can trigger a Godot `user://logs` crash path on
   this machine, so prefer existing debug runners when possible
 
-## 16. Guidance for Future Agents
+## 16. Backend vs UI (2026-06-21)
+
+Parallel workstreams:
+
+- **`fix/cleanup`** — backend/data/combat (`combat_manager.gd`, `data/raw/`, sim). **No UI edits.**
+- **`codex/compact-battle-ui-three-unit-pips`**, **`codex/ui-compact-card-prototype`** — UI only.
+
+`main` @ `b0c83c8` matches GitHub. Includes facility backend merge, Field Engineer `gainProtocol`, Scrapmaster P2 drone restore, nudge once-per-die-per-turn.
+
+Details: [SESSION_HANDOFF.md](SESSION_HANDOFF.md).
+
+## 17. Guidance for Future Agents
 
 - find the real runtime owner before editing
 - do not assume an authored scene is the active implementation
