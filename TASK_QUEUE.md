@@ -4,9 +4,11 @@ Pick **one item**, implement, test, commit. Don't batch unrelated work.
 
 **Repo:** `C:\Users\Kev\Documents\protocol` · **Baseline:** `docs/BASELINE.md`, tag `baseline-fable-restart`
 
-**Branches:** `fix/cleanup` = backend/data/combat (no UI) · `codex/*` = UI polish · `main` = stable
+**Branches:** `fix/cleanup` = backend/data/combat (no UI) · `codex/*` / `feat/ui-redesign` = UI · `main` = stable
 
 **Start here:** `AGENTS.md`, `docs/AI_AGENT_GAME_REFERENCE.md`, this file.
+
+**During UI redo (`feat/ui-redesign`):** add tasks and design notes here only — **do not edit game code** until UI merges to `main`. Claude owns UI scenes/layout; Cursor picks up data/backend/combat after merge (mostly on `fix/cleanup`).
 
 ---
 
@@ -16,8 +18,8 @@ Active threads — already in motion; continue when you pick them up, don't rest
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| **Task 5 — Facility balance & content** | `fix/cleanup` | Sim loop (`balance_sim_facility.ts`) → JSON diffs for `enemies.data.json`, `battle-modes.json`. 10 fights defined; enemy HP/dmg, roster, boss tuning still moving. Target full-clear band TBD (~3–7%). **In progress — don't restart.** |
-| **Parallel UI polish** | `codex/compact-battle-ui-three-unit-pips`, `codex/ui-compact-card-prototype` | Battle/reward/evolution/unit-select readability. Separate from backend pass. |
+| **Task 5 — Facility balance & content** | `fix/cleanup` | **Paused** — no sim runs until post-UI finalize pass. D1 target: **25–40%** skilled full-clear in real play (items/protocol/relic); flat sim ~1.7% is reference only, not tuning target. |
+| **Parallel UI polish** | `feat/ui-redesign`, `codex/*` | Direction-05 UI, battle/reward/evolution/unit-select readability. Separate from backend pass. |
 
 **Task 5 prompt (when continuing):**
 > Use `scripts/sim/` + `balance_sim_facility.ts` on the facility operation. Report win rate, fight cliffs, mean depth. Propose data-only JSON diffs — don't apply until reviewed.
@@ -26,13 +28,42 @@ Active threads — already in motion; continue when you pick them up, don't rest
 
 ## Data
 
-Static JSON / schema content (not sim-driven tuning). After edits: `npm run validate-data` + `AbilityAuditRunner.tscn`.
+Static JSON / schema content (not sim-driven tuning). After edits: `npm run validate-data` + `AbilityAuditRunner.tscn`. **Lane:** `fix/cleanup` (or post-UI merge).
 
 | Item | Status | Scope |
 |------|--------|-------|
 | **Task 13 — Picker blurbs** | **Done** | All 8 heroes have `pickerBlurb` + `pickerCategory` in JSON; DataManager loads them |
 | **Task 11 — Evolution callsigns** | **Done** | 8 base + 16 evo callsigns in data; applied on evolve in `GameState.gd` |
 | **Task 12 — Normalize `eff` text** | **Done** | `audit_eff_text.py --apply` → 0 mismatches |
+| **Facility fight 7 roster** | Open | `data/raw/battle-modes.json` fight 7 order → **Rust Drone → Heavy Warden → Rust Drone** (Warden middle). |
+| **Trench Rig — Stabilize** | Open | `heroes.data.json`: Stabilize → ally-targeted **10 heal** (`healTgt: true`, `eff`: `"10 heal (ally)"`). Update Avalanche `pickerBlurb` to mention targeted ally heal (not self-sustain). |
+| **Splice Medic — tier-1 kit** | Open | Reshuffle tier-1 abilities in `heroes.data.json` — see prompt below. |
+| **Splice Medic — Combat Medic evo tune** | Open | Triage, Suppression Heal, Surge Revive — see prompt below. |
+| **Splice Medic — Synth Warden evo tune** | Open | Overclock, Emergency Protocol, Adrenaline Surge, Mass Revival — see prompt below. |
+| **Guard — Bulwark Link (all allies shield)** | Open | `enemies.data.json` `guard` recharge: one **6 shield all allies, 2t** — not self + ally double icons. See prompt below. |
+| **Resonance Cascade — relic copy** | Open | `relics.data.json`: clearer `desc` — e.g. **“DoTs on enemies tick for +2 damage.”** (today: “Enemy DoT ticks deal +2 extra damage each tick.”) |
+| **Reward ladder reference doc** | Open | Add `docs/reward-draft-rarity.md` in Godot repo (table matches `GameState.gd` ladder; copy from Angular `overload-protocol/docs/reward-draft-rarity.md`). |
+
+**Facility fight 7 prompt:**
+> In `battle-modes.json`, facility operation fight 7 enemies array: `[Rust Drone, Heavy Warden, Rust Drone]`. Validate with `npm run validate-data`.
+
+**Trench Rig — Stabilize prompt:**
+> Stabilize: `heal: 10`, `healTgt: true`, `eff: "10 heal (ally)"`. Avalanche evo `pickerBlurb`: replace “self-sustain” with “targeted ally heal” where Stabilize is referenced.
+
+**Splice Medic tier-1 prompt:**
+> Shock Therapy → **overload zone, 20 dmg** (or equivalent overload-tier entry). Neural Override → **surge** tier. Synaptic Overload → **crit** tier. Diagnostic Pulse → **3 heal (ally) + 1 roll** (`healTgt`, `rfmTgt`, positive `rfm`). Infusion → **7 heal (ally) + 2 roll** (same flags). Run `npm run validate-data` + ability audit.
+
+**Splice Medic — Combat Medic evo tune prompt:**
+> In `heroes.data.json`, `medic` → Combat Medic evolution entries only. **Triage** (recharge): **5 heal (ally)** only — `heal: 5`, `healTgt: true`, `eff: "5 heal (ally)"`. **Suppression Heal** (crit, rename from Surge Heal): **10 dmg + 8 heal all** — `name: "Suppression Heal"`, `dmg: 10`, `heal: 8`, `healAll: true`, `eff: "10 dmg, all 8 heal"`. **Surge Revive** (overload, rename from Mass Revival): **revive one friendly at 70% HP** — `name: "Surge Revive"`, remove dmg/healAll/blastAll; `revive: true`, `healTgt: true` (or target pick), **`revivePct: 70`** (new field — today combat hardcodes 50% in `combat_manager.gd`). Update `eff` text. Run `npm run validate-data` + ability audit.
+
+**Splice Medic — Synth Warden evo tune prompt:**
+> In `heroes.data.json`, `medic` → Synth Warden evolution entries only. **Overclock** (strike): **shield 4 only, 1 turn** — remove `heal`/`healAll`; `shield: 4`, `shT: 1`, `shieldAll: true`, `eff: "all 4 shield, 1t"`. **Emergency Protocol** (surge): **10 heal lowest** — `heal: 10`, `healLowest: true`, `eff: "lowest 10 heal"`. **Adrenaline Surge** (crit): **6 dmg all enemies + 6 heal all allies** — `dmg: 6`, `heal: 6`, `healAll: true`, `blastAll: true`, `eff: "6 dmg (all), all 6 heal"`. **Mass Revival** (overload, rename from Adrenaline Surge+): **revive all friendlies at 30% HP** — `name: "Mass Revival"`, remove dmg/healAll; **`reviveAll: true`**, **`revivePct: 30`** (new fields — backend follow-up in Combat section). `eff: "revive all 30%"`. Run `npm run validate-data` + ability audit.
+
+**Guard — Bulwark Link prompt:**
+> Guard Elite uses `guard` type. **Bulwark Link** today: `shield: 6` + `shieldAlly: 6` → combat shields **self + one other enemy**; UI shows **two** shield chips (6 + 6A). Change to **all living enemies** (includes caster): remove `shield`; keep `shieldAlly: 6`, `shT: 2`, add **`shieldAllyAll: true`**; `eff: "6 shield all allies, 2t"`. Model: `volt` **Grounding** recharge. UI: one chip / one icon row — see UI task **Enemy `shieldAllyAll` display**. Optional: same cleanup for `carapace` **Chitin Link** if intended identical. Validate + ability audit.
+
+**Resonance Cascade — relic copy prompt:**
+> `relics.data.json` → `resonanceCascade.desc`: replace with player-facing line like **“DoTs on enemies tick for +2 damage.”** Effect unchanged (`dotAmplified`, `bonus: 2`). Optional: align reward-screen chip tooltip if it still says generic “+2 DOT”. Run `npm run validate-data`.
 
 **Task 13 prompt (if revisiting copy from workbook):**
 > Update picker blurbs in `heroes.data.json` from workbook `picker_blurb` column.
@@ -41,23 +72,64 @@ Static JSON / schema content (not sim-driven tuning). After edits: `npm run vali
 
 ## UI
 
-Scenes, layout, cards, feedback, audio, themes. **`codex/*` branches only** — not `fix/cleanup`.
+Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*` only** — not `fix/cleanup`.
 
 | Item | Status | Scope |
 |------|--------|-------|
 | **Task 13 — Show picker blurbs on UnitSelect** | Open | Wire `UnitData.picker_blurb` into `home_screen.gd` detail panel |
+| **Gear equip target — evolved name** | Open | Reward screen “EQUIP TO” picker shows **base** `display_name` (`DataManager.get_unit`) instead of evolved kit name. Use **`GameState.get_run_unit_data(unit_id)`** for button labels + “equipped to …” result text. **`reward_screen.gd`** (~lines 332, 668, 723). |
+| **Ally roll buff visuals (green dice)** | Open | Hero abilities that **buff an ally’s roll** (`rfm` + `rfmTgt`, positive) → **green dice pip + green text** on ability readouts / status pips. Today `PixelUI.semantic_key_for_effect` maps all `rfm` → `roll_down` (yellow debuff). Split ally-buff vs enemy-strip styling in `pixel_ui.gd`, `compact_unit_card.gd`, ability readout scene. |
+| **Capped die for RFE (Option A)** | Open | One physics landing on **effective** roll; remove post-roll snap. **`dice_tray_3d.gd` + `battle_scene.gd`**. See prompt below. |
 | **Task 8 — Battle feedback / game feel** | Partial | `battle_feedback.gd` extracted; Tier 1–3 primitives per `offline-bundle/ANIMATION.md` still to build |
+| **Death SFX timing** | Open | Death sound at **fatal hit moment**, not after hit-pause / end-of-beat (poison/DoT kills feel end-of-turn today). **`battle_feedback.gd`** (+ `skip_feedback` in `battle_scene.gd`). See prompt below. |
 | **Task 9 — Audio system** | Open | `AudioManager` exists; wire SFX tiers per `offline-bundle/AUDIO.md`, hook to Task 8 events |
 | **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
 | **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
+| **HP preview — heal before damage (net damage)** | Open | When a unit already shows **incoming damage** and the player queues an **incoming heal** on that same unit, preview must respect **resolve order** (heal lands first, then damage). Show **one net HP outcome** — e.g. reduced red slice / “X to HP after heal” — not separate green-then-red-then-green flashes on the bar. **`battle_card_view.gd`** (`compute_preview_for_unit`), **`compact_unit_card.gd`** (`show_combat_preview` / `_layout_preview_overlays`). |
+| **Enemy `shieldAllyAll` display** | Open | Abilities like `shieldAllyAll` (e.g. Volt Grounding, future Bulwark Link) should show **one** shield chip: “6 shield all allies” — not separate self + ally icons. Today `build_effect_chips` only knows `shield` + `shieldAlly` separately. **`battle_card_view.gd`**. |
+| **Ability target scope clarity (ALL vs ally vs self)** | Open | Three labels only: **SELF**, **ALLY**, **ALL** (caster + whole friendly squad). No separate foe/others scopes — multi-target damage reads from dmg chips. See prompt below. |
 | **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
 | **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |
 | **V2 band geometry audit** | Dropped | Center uses **540px** not 432 by design (`battle_layout.gd`); no Task 3 pass needed |
 
 **Optional UI follow-ups (not queued):** protocol footer chrome extract, help overlay extract.
 
+**Ally roll buff visuals prompt:**
+> On ability readouts and status pips: if the effect is a **positive ally-targeted roll shift** (`rfm` > 0 + `rfmTgt`, or combined heal+roll on same ally target), use **green** dice art and **green** label color (`roll_up` / protocol green). Reserve yellow/`roll_down` for enemy roll strip and negative RFE on heroes.
+
+**Gear equip target — evolved name prompt:**
+> When claiming **gear** on the reward screen (`EQUIP … TO` overlay + inline gear picker), unit buttons use `DataManager.get_unit()` → always **base** name (e.g. Splice Medic). Battle already uses `GameState.get_run_unit_data()` in `_build_runtime_units()`. Replace with `get_run_unit_data(unit_id)` for labels; use `display_name` (evolved kit name, e.g. Combat Medic) or `battle_name()` (callsign) — match battle card convention. Also fix `_build_reward_result_text` “equipped to %s”. Audit `home_screen.gd` squad display if same bug appears outside rewards.
+
+**Enemy `shieldAllyAll` display prompt:**
+> When `shieldAllyAll: true`, show one shield pip + label like **“6 · ALL”** or **“all allies”** in tooltip — not `6` + `6A`. Match Volt Grounding pattern after Bulwark Link data fix.
+
+**Ability target scope clarity prompt:**
+> **Problem:** Same-looking chips hide scope — e.g. `healAll` vs `healTgt`, or enemy `shield` + `shieldAlly` showing two icons when intent is squad-wide **ALL**.
+>
+> **Pinned display vocabulary** (compact card + ability readout + `eff` text):
+> | Label | Meaning |
+> |-------|---------|
+> | **SELF** | Caster only |
+> | **ALLY** | One targeted ally (player pick, lowest, etc.) |
+> | **ALL** | Caster **and** every living friendly on their side (`healAll`, `shieldAll`, `shieldAllyAll`, `erbAll`, squad roll buff without `rfmTgt`) |
+>
+> **Do not add:** `OTHERS`, `ALL·FOE`, or extra enemy-specific scope names. Abilities that hit **all enemies** are already obvious from **damage** / debuff chips — no separate target badge needed for foe-wide hits.
+>
+> **UI work:** One target badge per ability row when scope is SELF / ALLY / ALL (`battle_card_view.gd`, `ability_readout.gd`, chip tooltips). Drop bare **A** suffix — use **ally** vs **all** in copy. **`eff` strings:** `8 heal ally` · `13 heal all` · `6 shield all 2t` per `GROUND_TRUTH.md`.
+>
+> **Data pass:** Fix abilities that should be **ALL** but use split keywords (e.g. Bulwark Link → `shieldAllyAll`; see Guard task). No “others only” keyword unless combat gains one later.
+
+**Capped die (Option A) prompt:**
+> Today: tray rolls raw face, then `snap_die_to_effective_face` in feedback — feels like a double roll. **Option A:** at spawn/resolve, pick effective result once: `randi_range(1, min(20, 20 - rfe + buff))`, land die on that face, store **raw** separately for crit/overload rules. Remove `_snap_dice_to_effective_results()` / snap pass. Coordinate with dice tray physics so one landing reads as the real roll.
+
+**Death SFX timing prompt:**
+> In `battle_feedback.gd`: play `death` at the **start** of fatal effect processing (`hp_after <= 0` on damage/poison), not in `_play_event_sfx` after visuals. Skip `ACTION_EFFECT_LEAD_TIME` for fatal groups; skip trailing hit-pause and `ACTION_FEEDBACK_PAUSE` after a kill. Track per-`target_id` so multi-hit kills don’t stack. Wire `skip_feedback` path in `battle_scene.gd` so auto-resolve still plays death.
+
 **Incoming target indicators prompt:**
 > During hero targeting, show low-key who each living enemy (and taunting/spite interactions) is aimed at — e.g. small target pip on cards, dim connector, or card subtitle. Must stay readable at 450×1000 without cluttering the pick phase.
+
+**HP preview — heal before damage prompt:**
+> Scenario: enemy ability already previewed **incoming damage** on hero A; player then selects a hero heal targeting A (same round). Combat resolves hero effects before enemy damage on that target — preview should mirror that. **Apply heal to projected HP first**, then subtract incoming damage (and shield absorption) from that post-heal total. HP bar: single coherent end state (green delta + net red loss), not overlapping segments from raw current HP. Tooltip: e.g. “+7 heal, then 12 damage → 5 to HP” instead of listing heal and damage as if independent. Match `combat_manager` action/effect ordering when aggregating `compute_preview_for_unit`.
 
 **Task 8 start prompt:**
 > Implement Tier 1 from `ANIMATION.md` one primitive at a time — hit_pause, then attacker lunge. Test in auto-battle between each.
@@ -66,9 +138,29 @@ Scenes, layout, cards, feedback, audio, themes. **`codex/*` branches only** — 
 
 ## Combat & systems
 
-Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON, not visual chrome.
+Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON, not visual chrome. **Pick up after UI merge.**
 
-**All queued combat items done.** Optional follow-up below (not blocking).
+| Item | Status | Scope |
+|------|--------|-------|
+| **Evolution XP (D2)** | Open | Replace flat +50/battle. See formula below. `GameState.gd` + per-battle roll tracking; evolution screen **multi-pick** (evolve all eligible at once — UI coord). |
+| **Revive pct + revive all (medic evos)** | Open | **Blocked by data tasks** above. Today `_revive_state` is called at **hardcoded 50%** and single-target only (`combat_manager.gd`). Add **`revivePct`** on ability JSON; add **`reviveAll`** (all dead heroes) for Synth Warden Mass Revival. Schema + sim if needed. |
+| **Gear/relic ability audit regressions** | Open | 12 handlers code-verified but no `AbilityAuditRunner` cases yet (see table below). |
+| **Task 5 — Facility balance** | **Paused** | Sim tuning deferred until finalize pass. |
+
+**Evolution XP (D2) — pinned design:**
+
+| Rule | Detail |
+|------|--------|
+| **When** | One grant per hero per **battle win** |
+| **Alive at win** | `battle_xp = 20 + round(avg_roll)` |
+| **Dead at win** | `battle_xp = round(avg_roll)` only (no survival bonus) |
+| **avg_roll** | Mean of **effective** d20 rolls that battle only (nudge/set/reroll applied); rounds where hero actually rolled |
+| **Gate** | **100 XP** to evolve |
+| **Timing** | First evo ~fight 3 for hot rollers, ~fight 4 for slower kits (emergent) |
+| **Flow** | Evolve **all eligible** heroes in one stop (replace single `pending_evolution_unit_id`) |
+
+**Evolution XP prompt:**
+> Track effective rolls per hero per battle in combat/battle flow. On win, `award_battle_xp()` uses D2 formula. Queue all units at ≥100 XP for evolution pick. Update evolution screen for multi-hero selection. Today: `XP_PER_BATTLE := 50`, evolve ~fight 2.
 
 **Static:** `python scripts/debug/audit_gear_relic_effects.py` — all gear/relic `effect.type` values in data have handlers.
 
@@ -128,19 +220,24 @@ Pure rename, no mechanic change. Workbook/GROUND_TRUTH already use burn naming; 
 **Future prompt:**
 > Pure rename, no behavior change. Grep all sites, code first then regenerate data from workbook in same pass. One battle to verify ticks.
 
-### Design decisions (unpinned)
+### Design decisions
 
-| Topic | Notes |
-|-------|-------|
-| **Mark / vulnerable** | `markNext` keyword — combat_manager + schema + sample abilities; not scheduled |
-| **Sim — full protocol economy** | Per-turn +1, nudge/set/item costs in sim — **dropped**; `gainProtocol` charge pool sufficient for balance sims |
-| **ARC electric status** | Option A (force roll 1) vs B (zone bump) — not scheduled |
-| **DoT naming** | Leaning **burn** keyword (Task 7) — not scheduled |
-| **Difficulty target (facility)** | Sets Task 5 goal when pinned |
-| **Evolution timing** | 50 XP/battle, evolve at 100 (~fight 2) — intended? |
-| **Demo scope** | All 5 ops vs facility-first |
-| **Third evolution / stats (STR/DEX/INT)** | Far future |
-| **Wraith Engineer protocol efficiency** | Manipulation discounts; Overclocked generator done |
+| Topic | Status | Notes |
+|-------|--------|-------|
+| **Facility full-clear target (D1)** | **Pinned** | 25–40% skilled full-clear in real play; flat sim ~1.7% is reference only |
+| **Evolution XP (D2)** | **Pinned** | See Combat section — avg-roll model, 100 XP gate, multi-evo stop |
+| **Shield hero viability (D3)** | **Deferred** | Leave kit as-is until finalize + richer sim |
+| **Synth Warden vs Combat Medic** | **In tune queue** | See Data → Synth Warden / Combat Medic evo tune (Jun 2026 playtest feedback) |
+| **Sim expansion (items/protocol/relic)** | **Deferred** | No new sim tasks until later finalize pass |
+| **Round 5 relic duplicate** | **Not an issue** | Relics only drop after fight 5; one relic per run |
+| **Ability target scope (ALL vs ally vs self)** | **Pinned** | **SELF / ALLY / ALL** only — see UI task; no OTHERS or ALL·FOE labels |
+| **Mark / vulnerable** | Not scheduled | `markNext` keyword — combat_manager + schema + sample abilities |
+| **Sim — full protocol economy** | Dropped | `gainProtocol` charge pool sufficient for balance sims |
+| **ARC electric status** | Not scheduled | Option A (force roll 1) vs B (zone bump) |
+| **DoT naming** | Leaning burn | Task 7 — not scheduled |
+| **Demo scope** | Open | All 5 ops vs facility-first |
+| **Third evolution / stats (STR/DEX/INT)** | Far future | |
+| **Wraith Engineer protocol efficiency** | Partial | Manipulation discounts; Overclocked generator done |
 
 ---
 
@@ -149,4 +246,5 @@ Pure rename, no mechanic change. Workbook/GROUND_TRUTH already use burn naming; 
 1. One prompt → diff → test in Godot (or sim for balance) → commit → next.
 2. After any `data/raw/` edit: `npm run validate-data` + ability audit.
 3. Reset to tag `baseline-fable-restart` if a refactor goes sideways.
-4. Design in chat; implementation in agent sessions on the right branch.
+4. **During UI redo:** design in chat + update this file; implementation waits for merge unless explicitly green-lit.
+5. Backend/data → `fix/cleanup`. UI → `feat/ui-redesign` / `codex/*`.
