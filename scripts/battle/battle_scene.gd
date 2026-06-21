@@ -1140,7 +1140,7 @@ func _add_set_button() -> void:
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
 	_set_hud_tooltip(btn, "Set\nSpend %d Protocol to set a hero's die to any value." % SET_DIE_COST)
 	btn.pressed.connect(_on_set_button_pressed)
-	_style_minimal_action_button(btn, "=", BOTTOM_BAR_BUTTON_SIZE, 56)
+	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
 	_set_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
@@ -1301,6 +1301,7 @@ func _ensure_protocol_segments() -> void:
 		return
 	# Direction-05: 10 discrete segments. Hide the native ProgressBar fill and draw
 	# our own segmented row over it (filled amber / empty dark).
+	protocol_bar.show_percentage = false
 	protocol_bar.add_theme_stylebox_override("background", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
 	protocol_bar.add_theme_stylebox_override("fill", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
 	var row: HBoxContainer = HBoxContainer.new()
@@ -2665,7 +2666,12 @@ func _apply_battle_theme() -> void:
 	counter_label.visible = false
 	var header_row := get_node_or_null("HeaderRow") as Control
 	if header_row != null:
-		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		# Header plate with a bottom divider line separating it from the board.
+		var header_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_LINE, 0)
+		header_style.border_width_bottom = 4
+		header_style.border_color = PixelUI.LINE_DIM
+		header_style.set_content_margin_all(4.0)
+		header_row.add_theme_stylebox_override("panel", header_style)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
@@ -2699,16 +2705,22 @@ func _apply_battle_theme() -> void:
 	_style_frame_icon_action_button(auto_battle_button, PixelUI.ICON_DEBUG2, HEADER_BUTTON_SIZE)
 	_style_frame_icon_action_button(return_to_menu_button, PixelUI.ICON_BACK, HEADER_BUTTON_SIZE)
 	_style_roll_button_for_phase()
-	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE, PixelUI.GOLD_ACCENT)
+	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE)
 	if _nudge_button != null and is_instance_valid(_nudge_button):
 		_style_frame_icon_action_button(_nudge_button, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
+	if _set_button != null and is_instance_valid(_set_button):
+		_style_frame_icon_action_button(_set_button, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
 	if _item_button != null and is_instance_valid(_item_button):
 		_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
 	protocol_value_label.visible = true
 	if protocol_panel != null:
-		PixelUI.style_panel(protocol_panel, Color(0.012, 0.018, 0.028, 0.35), PixelUI.LINE_DIM, 1, 2)
+		# Footer plate with a top divider line separating it from the board.
+		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0)
+		footer_style.border_width_top = 4
+		footer_style.set_content_margin_all(4.0)
+		protocol_panel.add_theme_stylebox_override("panel", footer_style)
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
 	if _protocol_footer_display != null and is_instance_valid(_protocol_footer_display):
 		_protocol_footer_display.visible = false

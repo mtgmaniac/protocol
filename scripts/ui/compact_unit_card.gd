@@ -438,7 +438,7 @@ func _refresh() -> void:
 	var is_hero: bool = side == "hero"
 	var line_color: Color = _line_color()
 	var panel_bg: Color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 3, 0))
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 6, 0))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
@@ -454,7 +454,7 @@ func _refresh() -> void:
 	track_style.border_width_top = 2
 	_hp_back.add_theme_stylebox_override("panel", track_style)
 	if _portrait_dither != null:
-		_portrait_dither.modulate = Color(0.0, 0.0, 0.0, 0.16 if is_hero else 0.18)
+		_portrait_dither.modulate = Color(0.0, 0.0, 0.0, 0.10 if is_hero else 0.12)
 	if _locked_portrait_size == Vector2.ZERO:
 		_update_portrait_size()
 
@@ -469,7 +469,7 @@ func _refresh() -> void:
 		clampf(float(forecast_hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
 	)
 
-	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color.WHITE
+	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color(1.12, 1.12, 1.12, 1.0)
 	if dead:
 		modulate = Color(0.55, 0.56, 0.62, 0.72)
 	elif target_locked:
@@ -589,6 +589,10 @@ func _update_portrait_rect_transform() -> void:
 	if side == "hero":
 		nw = maxf(fw, nw * HERO_PORTRAIT_WIDTH_SCALE)
 		nh = nw * (th / tw)
+		# Guarantee the portrait still covers the full frame height (no bottom gap).
+		if nh < fh:
+			nh = fh
+			nw = nh * (tw / th)
 	# Center horizontally, top-align with a small inset so the head sits
 	# just inside the top edge of the frame regardless of portrait aspect ratio
 	_portrait_rect.position = Vector2((fw - nw) * 0.5, PORTRAIT_TOP_INSET_PX)
@@ -702,19 +706,16 @@ func get_display_statuses(raw_statuses: Array) -> Array:
 # violet / burn amber), with our prepared pip icons embedded.
 func _status_badge_palette(status: Dictionary) -> Dictionary:
 	var kind: String = _status_effect_kind(status).to_lower()
-	var key: String = ""
+	# Outline always matches the infliction's own color. Known design types reuse the
+	# exact DT_STATUS tokens; everything else derives border/text from status_color.
 	if kind in ["shield", "taunt", "block", "barrier"]:
-		key = "shield"
-	elif kind in ["poison", "venom"]:
-		key = "poison"
-	elif kind in ["burn", "dot", "fire", "bleed"]:
-		key = "burn"
-	elif kind in ["freeze", "frozen", "cloak", "chill"]:
-		key = "shield"
-	if key != "" and PixelUI.DT_STATUS.has(key):
-		return PixelUI.DT_STATUS[key]
+		return PixelUI.DT_STATUS["shield"]
+	if kind in ["poison", "venom"]:
+		return PixelUI.DT_STATUS["poison"]
+	if kind in ["burn", "dot", "fire", "bleed"]:
+		return PixelUI.DT_STATUS["burn"]
 	var border: Color = _status_color(kind)
-	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": Color(0.88, 0.91, 0.94)}
+	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border.lightened(0.45)}
 
 
 func build_status_chip(status: Dictionary) -> Control:
