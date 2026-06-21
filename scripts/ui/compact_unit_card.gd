@@ -1,8 +1,6 @@
 ﻿class_name CompactUnitCard
 extends PanelContainer
 
-const UiTheme = preload("res://scripts/autoloads/Theme.gd")
-
 signal card_pressed
 signal unit_detail_requested(card)
 
@@ -21,14 +19,16 @@ const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
 const HERO_PORTRAIT_WIDTH_SCALE := 0.90
 const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
-const ENEMY_PANEL := Color("#231010")
-const HERO_LINE := UiTheme.BORDER_PLAYER
-const ENEMY_LINE := UiTheme.BORDER_ENEMY
-const SELECT_LINE := UiTheme.GOLD
-const TARGET_LINE := UiTheme.CYAN
-const HP_FILL := UiTheme.HP_GREEN
-const HP_CHIP := UiTheme.DMG_RED  # "doomed HP" forecast overlay — pending damage, drains per hit
-const HP_BACK := UiTheme.VOID
+# Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
+# static var (not const) because PixelUI's DT_* tokens are themselves static var
+# and a const can't be initialized from a non-const value.
+static var HERO_LINE := PixelUI.DT_HERO_BORDER
+static var ENEMY_LINE := PixelUI.DT_ENEMY_BORDER
+static var SELECT_LINE := PixelUI.GOLD_ACCENT
+static var TARGET_LINE := PixelUI.DT_CYAN
+static var HP_FILL := PixelUI.DT_HP_GREEN
+static var HP_CHIP := PixelUI.COLOR_DAMAGE  # "doomed HP" forecast overlay — pending damage, drains per hit
+static var HP_BACK := PixelUI.DT_FIELD_BG
 const CARD_NAME_FONT_SIZE := 72
 const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
@@ -273,7 +273,7 @@ func _build() -> void:
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(_name_label, CARD_NAME_FONT_SIZE, UiTheme.CYAN, 0)
+	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.DT_CYAN, 0)
 	_name_strip.add_child(_name_label)
 
 	# Plain Control (NOT a Container) so the crop + status overlay can be positioned
@@ -805,7 +805,7 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", STATUS_ICON_FONT_SIZE)
-	label.add_theme_color_override("font_color", UiTheme.GOLD)
+	label.add_theme_color_override("font_color", PixelUI.GOLD_ACCENT)
 	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
 	label.add_theme_constant_override("outline_size", 0)
 	return label
@@ -839,7 +839,7 @@ func _make_status_value_label(status: Dictionary) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = false
-	_apply_label(label, STATUS_VALUE_FONT_SIZE, UiTheme.GOLD, 0)
+	_apply_label(label, STATUS_VALUE_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
 	return label
 
 
@@ -851,7 +851,7 @@ func _make_status_name_label(status: Dictionary) -> Label:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(label, STATUS_NAME_FONT_SIZE, UiTheme.GOLD, 0)
+	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
 	return label
 
 
@@ -861,7 +861,7 @@ func _make_status_overflow(hidden_count: int) -> Label:
 	label.text = "+%d" % hidden_count
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_label(label, STATUS_NAME_FONT_SIZE, UiTheme.GOLD, 0)
+	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
 	return label
 
 
@@ -1115,7 +1115,7 @@ func _layout_preview_overlays() -> void:
 	var lethal: bool = bool(_preview_effects.get("lethal", false))
 
 	if lethal:
-		_place_preview_rect(_preview_rect_red, 0.0, cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, UiTheme.DMG_RED)
+		_place_preview_rect(_preview_rect_red, 0.0, cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
 		for rect_variant in [_preview_rect_blue, _preview_rect_purple, _preview_rect_teal, _preview_rect_heal]:
 			var rect: ColorRect = rect_variant
 			if rect != null and is_instance_valid(rect):
@@ -1134,13 +1134,13 @@ func _layout_preview_overlays() -> void:
 	var purple_x: float = maxf(0.0, blue_x - purple_w)
 	var teal_x: float = maxf(0.0, purple_x - teal_w)
 
-	_place_preview_rect(_preview_rect_red, red_x, red_w, hp_max, bar_w, HP_FILL_HEIGHT, UiTheme.DMG_RED)
+	_place_preview_rect(_preview_rect_red, red_x, red_w, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
 	_place_preview_rect(_preview_rect_blue, blue_x, blue_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.22, 0.55, 0.95, 0.80))
 	_place_preview_rect(_preview_rect_purple, purple_x, purple_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
 	_place_preview_rect(_preview_rect_teal, teal_x, teal_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.18, 0.72, 0.68, 0.75))
 
 	var heal_eff: float = minf(inc_heal, hp_max - cur_hp)
-	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, HP_FILL_HEIGHT, UiTheme.HP_GREEN)
+	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.DT_HP_GREEN)
 
 
 func _wire_hp_tooltip() -> void:

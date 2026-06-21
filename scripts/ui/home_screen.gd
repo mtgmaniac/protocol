@@ -13,12 +13,6 @@
 #   global palette isn't polluted by single-screen variants.
 extends Control
 
-# Godot's built-in `Theme` class shadows our `Theme` autoload at parse time, so
-# we preload the singleton's script under a different name to access its color
-# constants. Same workaround used by compact_unit_card.gd.
-const UiTheme = preload("res://scripts/autoloads/Theme.gd")
-
-
 # ─── Sizing constants (all in LOGICAL units, on-screen px × 2.4) ──────────────
 const DESIGN_SCALE := 2.4
 
@@ -157,7 +151,7 @@ func _ready() -> void:
 
 func _apply_background() -> void:
 	var bg := ColorRect.new()
-	bg.color = UiTheme.VOID
+	bg.color = PixelUI.DT_FIELD_BG
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -211,7 +205,7 @@ func _build_operation_section() -> Control:
 	section.add_theme_constant_override("separation", HEADER_TO_CONTENT_GAP)
 	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	section.add_child(_make_header_label("CHOOSE OPERATION", UiTheme.GOLD))
+	section.add_child(_make_header_label("CHOOSE OPERATION", PixelUI.GOLD_ACCENT))
 
 	_operation_carousel = ScrollContainer.new()
 	_operation_carousel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -263,9 +257,9 @@ func _build_squad_section() -> Control:
 	section.add_theme_constant_override("separation", HEADER_TO_CONTENT_GAP)
 	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	section.add_child(_make_header_label("SELECT SQUAD", UiTheme.CYAN))
+	section.add_child(_make_header_label("SELECT SQUAD", PixelUI.DT_CYAN))
 
-	var counter := _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT_SIZE, UiTheme.MUTED)
+	var counter := _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT_SIZE, PixelUI.TEXT_MUTED)
 	counter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	counter.name = "SquadCounter"
 	section.add_child(counter)
@@ -304,7 +298,7 @@ func _build_squad_section() -> Control:
 
 func _build_detail_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _make_panel_style(UiTheme.RAISED, UiTheme.BORDER_PLAYER))
+	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_TRAY_BG, PixelUI.DT_HERO_BORDER))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", DETAIL_PADDING_X)
@@ -331,10 +325,10 @@ func _build_detail_panel() -> PanelContainer:
 	text_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(text_col)
 
-	_detail_name = _make_pixel_label("", DETAIL_NAME_FONT, UiTheme.CYAN)
+	_detail_name = _make_pixel_label("", DETAIL_NAME_FONT, PixelUI.DT_CYAN)
 	text_col.add_child(_detail_name)
 
-	_detail_role = _make_pixel_label("", DETAIL_ROLE_FONT, UiTheme.MUTED)
+	_detail_role = _make_pixel_label("", DETAIL_ROLE_FONT, PixelUI.TEXT_MUTED)
 	text_col.add_child(_detail_role)
 
 	_detail_hp = RichTextLabel.new()
@@ -344,7 +338,7 @@ func _build_detail_panel() -> PanelContainer:
 	_detail_hp.scroll_active = false
 	_detail_hp.add_theme_font_override("normal_font", PixelUI.get_pixel_font())
 	_detail_hp.add_theme_font_size_override("normal_font_size", DETAIL_STAT_FONT)
-	_detail_hp.add_theme_color_override("default_color", UiTheme.MUTED)
+	_detail_hp.add_theme_color_override("default_color", PixelUI.TEXT_MUTED)
 	_detail_hp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_col.add_child(_detail_hp)
 
@@ -434,7 +428,7 @@ func _create_operation_card(op_id: String, op: OperationData) -> Control:
 	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var border_style := _make_panel_style(UiTheme.PANEL, UiTheme.BORDER_PLAYER)
+	var border_style := _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
 	card.add_theme_stylebox_override("panel", border_style)
 
 	var margin := MarginContainer.new()
@@ -463,7 +457,7 @@ func _create_operation_card(op_id: String, op: OperationData) -> Control:
 	icon_frame.add_theme_stylebox_override("panel", _make_panel_style(Color("#0a1828"), Color("#0a1828"), 0))
 	icon_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(icon_frame)
-	var icon_glyph := _make_pixel_label("◆", CARD_NAME_FONT, UiTheme.MUTED)
+	var icon_glyph := _make_pixel_label("◆", CARD_NAME_FONT, PixelUI.TEXT_MUTED)
 	icon_glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	icon_glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon_glyph.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -487,14 +481,14 @@ func _create_operation_card(op_id: String, op: OperationData) -> Control:
 	name_col.add_child(_make_difficulty_chip(difficulty))
 
 	# Description.
-	var desc_label := _make_pixel_label(op.blurb, CARD_DESC_FONT, UiTheme.MUTED)
+	var desc_label := _make_pixel_label(op.blurb, CARD_DESC_FONT, PixelUI.TEXT_MUTED)
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(desc_label)
 
 	# Metadata row: "N encounters  ·  Tier X enemies".
 	var meta_text := "%d encounters · %s" % [op.battles.size(), _operation_tier_label(op_id)]
-	var meta_label := _make_pixel_label(meta_text, CARD_META_FONT, UiTheme.MUTED)
+	var meta_label := _make_pixel_label(meta_text, CARD_META_FONT, PixelUI.TEXT_MUTED)
 	col.add_child(meta_label)
 
 	# Click handling — locked cards ignore input.
@@ -534,12 +528,12 @@ func _refresh_operation_selection() -> void:
 		if locked:
 			continue
 		var is_selected := str(op_id) == _selected_operation_id
-		var bg: Color = UiTheme.RAISED if is_selected else UiTheme.PANEL
-		var border: Color = UiTheme.CYAN if is_selected else UiTheme.BORDER_PLAYER
+		var bg: Color = PixelUI.DT_TRAY_BG if is_selected else PixelUI.DT_HERO_BG
+		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
 		card.add_theme_stylebox_override("panel", _make_panel_style(bg, border))
 	for i in _dot_nodes.size():
 		var op_id: String = _operation_ids[i]
-		_dot_nodes[i].color = UiTheme.CYAN if op_id == _selected_operation_id else DOT_INACTIVE
+		_dot_nodes[i].color = PixelUI.DT_CYAN if op_id == _selected_operation_id else DOT_INACTIVE
 
 
 func _on_operation_card_gui_input(event: InputEvent, op_id: String) -> void:
@@ -677,7 +671,7 @@ func _create_unit_thumb(unit_id: String, unit: UnitData) -> Control:
 
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size = Vector2(UNIT_THUMB_WIDTH, UNIT_THUMB_FRAME_H)
-	frame.add_theme_stylebox_override("panel", _make_panel_style(UiTheme.PANEL, UiTheme.BORDER_PLAYER))
+	frame.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER))
 	frame.clip_contents = true
 	# PanelContainer defaults to MOUSE_FILTER_STOP, which silently consumes
 	# clicks on the portrait area and blocks the parent VBox from ever seeing
@@ -704,7 +698,7 @@ func _create_unit_thumb(unit_id: String, unit: UnitData) -> Control:
 		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		portrait_wrap.add_child(portrait)
 	else:
-		var placeholder := _make_pixel_label("◆", CARD_NAME_FONT, UiTheme.MUTED)
+		var placeholder := _make_pixel_label("◆", CARD_NAME_FONT, PixelUI.TEXT_MUTED)
 		placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -716,7 +710,7 @@ func _create_unit_thumb(unit_id: String, unit: UnitData) -> Control:
 	# directly) so it can be a fixed-size badge in the top-right corner instead
 	# of being stretched to fill by container layout.
 	var check := ColorRect.new()
-	check.color = UiTheme.CYAN
+	check.color = PixelUI.DT_CYAN
 	check.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	check.offset_left = -CHECK_SIZE - CHECK_INSET
 	check.offset_top = CHECK_INSET
@@ -726,7 +720,7 @@ func _create_unit_thumb(unit_id: String, unit: UnitData) -> Control:
 	check.visible = false
 	portrait_wrap.add_child(check)
 
-	var name_label := _make_pixel_label(unit.display_name.to_upper(), UNIT_NAME_FONT, UiTheme.MUTED)
+	var name_label := _make_pixel_label(unit.display_name.to_upper(), UNIT_NAME_FONT, PixelUI.TEXT_MUTED)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(name_label)
 
@@ -815,10 +809,10 @@ func _refresh_unit_thumbs() -> void:
 		var name_label: Label = thumb["name"]
 		var check: ColorRect = thumb["check"]
 		var is_selected := _selected_unit_ids.has(unit_id)
-		var bg: Color = UiTheme.RAISED if is_selected else UiTheme.PANEL
-		var border: Color = UiTheme.CYAN if is_selected else UiTheme.BORDER_PLAYER
+		var bg: Color = PixelUI.DT_TRAY_BG if is_selected else PixelUI.DT_HERO_BG
+		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
 		frame.add_theme_stylebox_override("panel", _make_panel_style(bg, border))
-		name_label.add_theme_color_override("font_color", UiTheme.CYAN if is_selected else UiTheme.MUTED)
+		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN if is_selected else PixelUI.TEXT_MUTED)
 		check.visible = is_selected
 
 
