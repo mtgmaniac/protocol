@@ -33,6 +33,10 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation="portrait"
 
+[gui]
+
+theme/custom="res://assets/ui/theme_overload.tres"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

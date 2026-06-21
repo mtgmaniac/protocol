@@ -1,0 +1,108 @@
+[gd_resource type="Theme" load_steps=7 format=3 uid="uid://b8ov1theme0ovl"]
+
+; Overload Protocol default Theme — MIRRORS the canonical PixelUI DT_* palette
+; (scripts/ui/pixel_ui.gd). This only provides default font + per-Control-type
+; default styles so NEW Control nodes inherit the Dithered-Terminal baseline
+; without per-node code. The battle screen's signature look (dither overlays,
+; per-side card tints, dynamic dividers, bevels) stays programmatic in PixelUI.
+; Do NOT hand-edit colors here independently — keep them equal to PixelUI.
+
+[ext_resource type="FontFile" uid="uid://cp7ja8pelvxgs" path="res://assets/fonts/m5x7.ttf" id="1_font"]
+
+[sub_resource type="StyleBoxFlat" id="SB_panel"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.035294, 0.047059, 0.054902, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.105882, 0.133333, 0.14902, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_btn_normal"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.066667, 0.086275, 0.101961, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.156863, 0.196078, 0.227451, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_btn_hover"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.113333, 0.131961, 0.146863, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.241176, 0.276471, 0.304706, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_btn_pressed"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.058667, 0.075922, 0.089725, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.156863, 0.196078, 0.227451, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_btn_disabled"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.066667, 0.086275, 0.101961, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.38, 0.42, 0.6)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[resource]
+default_font = ExtResource("1_font")
+default_font_size = 32
+Button/colors/font_color = Color(0.88, 0.91, 0.88, 1)
+Button/colors/font_focus_color = Color(0.88, 0.91, 0.88, 1)
+Button/colors/font_hover_color = Color(0.88, 0.91, 0.88, 1)
+Button/colors/font_pressed_color = Color(0.88, 0.91, 0.88, 1)
+Button/styles/normal = SubResource("SB_btn_normal")
+Button/styles/hover = SubResource("SB_btn_hover")
+Button/styles/pressed = SubResource("SB_btn_pressed")
+Button/styles/disabled = SubResource("SB_btn_disabled")
+Button/styles/focus = SubResource("SB_btn_normal")
+Label/colors/font_color = Color(0.88, 0.91, 0.88, 1)
+LabelMuted/base_type = "Label"
+LabelMuted/colors/font_color = Color(0.52, 0.6, 0.7, 1)
+Panel/styles/panel = SubResource("SB_panel")
+PanelContainer/styles/panel = SubResource("SB_panel")
