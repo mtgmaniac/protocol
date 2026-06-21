@@ -6,6 +6,9 @@ export_presets.cfg
 # Editor tool snapshots (Ziva)
 /.ziva/
 
+# Node (validate-data, balance sim tooling)
+node_modules/
+
 # Legacy Angular reference — local tool/config noise
 legacy-angular/node_modules/
 legacy-angular/.claude/

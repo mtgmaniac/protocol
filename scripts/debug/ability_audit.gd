@@ -53,6 +53,7 @@ const HERO_HANDLED_FIELDS := [
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
+	"gainProtocol",
 ]
 
 const ENEMY_HANDLED_FIELDS := [
@@ -60,9 +61,12 @@ const ENEMY_HANDLED_FIELDS := [
 	"dmgP2",
 	"heal",
 	"shield",
+	"shieldP2",
 	"shT",
 	"shieldAlly",
 	"shAllyT",
+	"shieldAllyAll",
+	"blastAll",
 	"dot",
 	"dT",
 	"packBonus",
@@ -414,6 +418,7 @@ func _run_regression_audits() -> void:
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
+	_run_phase_two_revive_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -713,6 +718,44 @@ func _run_summon_slot_regression() -> void:
 		_record_pass("Regression / summon blocked at living cap", "summon")
 	else:
 		_record_failure("Regression / summon blocked at living cap", "summon", "blocked with 3 living", "inject succeeded")
+
+
+func _run_phase_two_revive_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var scrap_unit: EnemyData = _make_enemy("scrap_drone", "Scrap Drone")
+	scrap_unit.max_hp = 35
+	var boss_unit: EnemyData = _make_enemy("scrapmaster", "SCRAPMASTER")
+	boss_unit.max_hp = 180
+	boss_unit.phase_two_threshold = 86
+	boss_unit.phase_two_revive_names = ["Scrap Drone"]
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	manager.setup_battle([hero_unit], [scrap_unit, boss_unit, scrap_unit])
+	var states: Array = manager.get_enemy_states()
+	states[0]["dead"] = true
+	states[0]["current_hp"] = 0
+	states[2]["current_hp"] = 12
+	states[1]["current_hp"] = 70
+
+	manager.resolve_round({}, {}, DiceManager.new())
+
+	var left_revived: bool = not bool(states[0].get("dead", true)) and int(states[0].get("current_hp", 0)) == 35
+	var right_healed: bool = not bool(states[2].get("dead", true)) and int(states[2].get("current_hp", 0)) == 35
+	var boss_p2: bool = bool(states[1].get("in_phase_two", false))
+	if left_revived and right_healed and boss_p2:
+		_record_pass("Regression / phase 2 restores scrap drones", "phase2")
+	else:
+		_record_failure(
+			"Regression / phase 2 restores scrap drones",
+			"phase2",
+			"dead scrap revived and damaged living scrap at full HP",
+			"left=%s/%d right=%s/%d boss_p2=%s" % [
+				str(not bool(states[0].get("dead", true))),
+				int(states[0].get("current_hp", 0)),
+				str(not bool(states[2].get("dead", true))),
+				int(states[2].get("current_hp", 0)),
+				str(boss_p2),
+			]
+		)
 
 
 func _run_gear_lifesteal_regression() -> void:

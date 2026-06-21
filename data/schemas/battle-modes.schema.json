@@ -23,6 +23,10 @@
           "blurb": { "type": "string" },
           "victoryTitle": { "type": "string" },
           "victorySub": { "type": "string" },
+          "callsign": {
+            "type": "string",
+            "description": "Short operation callsign shown in UI (e.g. FACILITY)."
+          },
           "trackHpScale": {
             "type": "number",
             "minimum": 0.5,

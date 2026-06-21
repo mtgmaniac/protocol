@@ -95,7 +95,8 @@
         "rfeOnly": { "type": "boolean" },
         "freezeAllEnemyDice": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 0 },
-        "freezeAnyDice": { "type": "integer", "minimum": 0 }
+        "freezeAnyDice": { "type": "integer", "minimum": 0 },
+        "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },
     "evolutionTier": {
@@ -105,6 +106,10 @@
       "properties": {
         "name": { "type": "string" },
         "focus": { "type": "string" },
+        "callsign": {
+          "type": "string",
+          "description": "Evolved unit callsign (e.g. CRYO, PYRO)."
+        },
         "hp": { "type": "integer", "minimum": 0 },
         "abilities": {
           "type": "array",
@@ -121,6 +126,10 @@
         "id": { "$ref": "#/$defs/heroId" },
         "name": { "type": "string" },
         "cls": { "type": "string" },
+        "callsign": {
+          "type": "string",
+          "description": "Base unit callsign (e.g. PULSE, STRIKE)."
+        },
         "pickerCategory": { "$ref": "#/$defs/heroPickerCategory" },
         "pickerBlurb": { "type": "string", "minLength": 1 },
         "hp": { "type": "integer", "minimum": 1 },

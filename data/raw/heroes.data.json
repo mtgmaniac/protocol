@@ -1964,7 +1964,7 @@
             4
           ],
           "name": "Field Patch",
-          "eff": "8 heal (ally)",
+          "eff": "8 heal ally + 1 protocol",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1972,7 +1972,8 @@
           "dT": 0,
           "rfe": 0,
           "heal": 8,
-          "healTgt": true
+          "healTgt": true,
+          "gainProtocol": 1
         },
         {
           "zone": "strike",
@@ -2033,7 +2034,7 @@
             20
           ],
           "name": "Scorched Earth",
-          "eff": "12 dmg (all)",
+          "eff": "12 dmg all + 2 protocol",
           "dmg": 12,
           "dMin": 12,
           "dMax": 12,
@@ -2041,13 +2042,14 @@
           "dT": 0,
           "rfe": 0,
           "heal": 0,
-          "blastAll": true
+          "blastAll": true,
+          "gainProtocol": 2
         }
       ],
       "evolutions": [
         {
           "name": "Overclocked",
-          "focus": "Burst damage / AoE",
+          "focus": "Protocol battery / squad spikes",
           "hp": 65,
           "abilities": [
             {
@@ -2057,7 +2059,7 @@
                 5
               ],
               "name": "Bias Charge",
-              "eff": "+1 squad roll",
+              "eff": "+1 protocol + +1 roll all",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -2066,7 +2068,8 @@
               "rfe": 0,
               "heal": 0,
               "rfm": 1,
-              "rfmT": 1
+              "rfmT": 1,
+              "gainProtocol": 1
             }
           ],
           "callsign": "OVERCLOCK"
@@ -2153,14 +2156,15 @@
                 20
               ],
               "name": "Meltdown Protocol",
-              "eff": "21 dmg, 4 DoT, 2t",
+              "eff": "21 dmg + 4 dot 2t + 2 protocol",
               "dmg": 21,
               "dMin": 21,
               "dMax": 21,
               "dot": 4,
               "dT": 2,
               "rfe": 0,
-              "heal": 0
+              "heal": 0,
+              "gainProtocol": 2
             }
           ]
         },

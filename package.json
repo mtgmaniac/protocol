@@ -1,0 +1,12 @@
+{
+  "name": "overload-protocol",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate-data": "node scripts/assets/validate-game-data.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

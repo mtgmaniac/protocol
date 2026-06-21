@@ -477,6 +477,11 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				if not ally_state["dead"]:
 					_add_roll_buff(ally_state, roll_buff_amount, roll_buff_turns)
 
+	var gain_protocol: int = int(raw.get("gainProtocol", 0))
+	if gain_protocol > 0:
+		_pending_protocol_grants += gain_protocol
+		_log("%s generates %d Protocol." % [hero_state["unit"].display_name, gain_protocol])
+
 	if damage <= 0 and poison_amount > 0:
 		var poison_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if poison_target.is_empty():
@@ -1237,6 +1242,23 @@ func _check_phase_two_transitions() -> void:
 			enemy_state["in_phase_two"] = true
 			_log("%s ENTERS PHASE 2!" % unit.display_name)
 			_emit_event(enemy_state, "phase2", 0, "enemy")
+			_apply_phase_two_revives(unit)
+
+
+func _apply_phase_two_revives(boss_unit: EnemyData) -> void:
+	if boss_unit == null or boss_unit.phase_two_revive_names.is_empty():
+		return
+	for enemy_state in _enemy_states:
+		var unit: EnemyData = enemy_state.get("unit") as EnemyData
+		if unit == null:
+			continue
+		if unit.display_name not in boss_unit.phase_two_revive_names:
+			continue
+		if bool(enemy_state.get("dead", false)):
+			_revive_state(enemy_state, 100)
+		elif int(enemy_state.get("current_hp", 0)) < int(enemy_state.get("max_hp", 0)):
+			var missing: int = int(enemy_state["max_hp"]) - int(enemy_state["current_hp"])
+			_heal_state(enemy_state, missing)
 
 
 # --- Public item application methods ---

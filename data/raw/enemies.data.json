@@ -358,21 +358,21 @@
     "boss": {
       "recharge": {
         "name": "Shield Matrix",
-        "eff": "15 shield (P2 20), 1t",
+        "eff": "12 shield (P2 18), 1t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 15,
-        "shieldP2": 20,
+        "shield": 12,
+        "shieldP2": 18,
         "shT": 1
       },
       "strike": {
         "name": "Suppressor",
-        "eff": "15 dmg (P2 20), -2 roll, 2t",
-        "dmg": 15,
-        "dmgP2": 20,
+        "eff": "12 dmg (P2 19), -2 roll, 2t",
+        "dmg": 12,
+        "dmgP2": 19,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -383,9 +383,9 @@
       },
       "surge": {
         "name": "Core Blast",
-        "eff": "20 dmg (P2 25)",
-        "dmg": 20,
-        "dmgP2": 25,
+        "eff": "17 dmg (P2 23)",
+        "dmg": 17,
+        "dmgP2": 23,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -394,9 +394,9 @@
       },
       "crit": {
         "name": "System Purge",
-        "eff": "wipe shields, then 25 dmg (P2 30)",
-        "dmg": 25,
-        "dmgP2": 30,
+        "eff": "wipe shields, then 21 dmg (P2 28)",
+        "dmg": 21,
+        "dmgP2": 28,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -406,9 +406,9 @@
       },
       "overload": {
         "name": "Annihilate",
-        "eff": "30 dmg (P2 35) to all heroes",
-        "dmg": 30,
-        "dmgP2": 35,
+        "eff": "26 dmg (P2 33) to all heroes",
+        "dmg": 26,
+        "dmgP2": 33,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -2317,7 +2317,7 @@
   },
   "enemyUnitDefs": {
     "Scrap Drone": {
-      "hp": 45,
+      "hp": 35,
       "dMin": 5,
       "dMax": 9,
       "type": "scrap",
@@ -2333,7 +2333,7 @@
       "callsign": "RUST"
     },
     "Static Skimmer": {
-      "hp": 34,
+      "hp": 35,
       "dMin": 5,
       "dMax": 8,
       "type": "signalSkimmer",
@@ -2349,7 +2349,7 @@
       "callsign": "PATROL"
     },
     "Guard Elite": {
-      "hp": 70,
+      "hp": 65,
       "dMin": 14,
       "dMax": 18,
       "type": "guard",
@@ -2357,7 +2357,7 @@
       "callsign": "GUARD"
     },
     "Heavy Warden": {
-      "hp": 115,
+      "hp": 105,
       "dMin": 17,
       "dMax": 23,
       "type": "warden",
@@ -2365,7 +2365,7 @@
       "callsign": "WARDEN"
     },
     "Volt Elite": {
-      "hp": 80,
+      "hp": 70,
       "dMin": 15,
       "dMax": 21,
       "type": "volt",
@@ -2373,15 +2373,16 @@
       "callsign": "VOLT"
     },
     "SCRAPMASTER": {
-      "hp": 180,
-      "dMin": 15,
-      "dMax": 30,
+      "hp": 140,
+      "dMin": 12,
+      "dMax": 22,
       "type": "boss",
       "ai": "smart",
-      "p2dMin": 20,
-      "p2dMax": 35,
-      "pThr": 86,
-      "callsign": "SCRAPLORD"
+      "p2dMin": 18,
+      "p2dMax": 30,
+      "pThr": 70,
+      "callsign": "SCRAPLORD",
+      "p2ReviveNames": ["Scrap Drone"]
     },
     "Skitterling": {
       "hp": 40,

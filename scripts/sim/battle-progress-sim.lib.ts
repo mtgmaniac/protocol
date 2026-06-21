@@ -160,6 +160,12 @@ export interface EvoFullClearAuditResult {
   evoPickReachFight4: { heroId: string; evoPath: string; count: number }[];
 }
 
+interface RfeStack {
+  amt: number;
+  turnsLeft: number;
+  skipNextTick: boolean;
+}
+
 interface SimHero {
   id: string;
   name: string;
@@ -181,6 +187,11 @@ interface SimHero {
   activeAbilities: HeroAbility[];
   dot: number;
   dT: number;
+  /** Roll debuff stacks (enemy `rfm` → hero RFE). */
+  rfeStacks: RfeStack[];
+  rollBuff: number;
+  rollBuffTurns: number;
+  rollBuffSkipNextTick: boolean;
 }
 
 interface SimEnemy {
@@ -198,6 +209,84 @@ interface SimEnemy {
   dot: number;
   dT: number;
   dieFreezeRollsRemaining: number;
+  rollBuff: number;
+  rollBuffTurns: number;
+  rollBuffSkipNextTick: boolean;
+  p2ReviveNames: string[];
+}
+
+function clampEffectiveRoll(raw: number, rfe: number, rollBuff: number): number {
+  return Math.min(20, Math.max(1, raw + rollBuff - rfe));
+}
+
+function getTotalRfe(h: SimHero): number {
+  return h.rfeStacks.reduce((sum, s) => sum + s.amt, 0);
+}
+
+function addRfeStack(h: SimHero, amount: number, turns: number): void {
+  if (amount <= 0 || turns <= 0 || h.hp <= 0) return;
+  h.rfeStacks.push({ amt: amount, turnsLeft: turns, skipNextTick: true });
+}
+
+function addRollBuff(
+  unit: { rollBuff: number; rollBuffTurns: number; rollBuffSkipNextTick: boolean; hp?: number },
+  amount: number,
+  turns: number,
+): void {
+  if (amount <= 0 || turns <= 0) return;
+  if ('hp' in unit && (unit.hp ?? 0) <= 0) return;
+  unit.rollBuff += amount;
+  unit.rollBuffTurns = Math.max(unit.rollBuffTurns, turns);
+  unit.rollBuffSkipNextTick = true;
+}
+
+function wipeAllHeroShields(heroes: SimHero[]): void {
+  for (const h of heroes) {
+    if (h.hp <= 0) continue;
+    h.shield = 0;
+    h.shT = 0;
+    h.shieldStacks = [];
+  }
+}
+
+function tickHeroRollModifiers(h: SimHero): void {
+  if (h.hp <= 0) return;
+  const nextRfe: RfeStack[] = [];
+  for (const stack of h.rfeStacks) {
+    if (stack.skipNextTick) {
+      nextRfe.push({ ...stack, skipNextTick: false });
+      continue;
+    }
+    const tl = stack.turnsLeft - 1;
+    if (tl > 0) nextRfe.push({ amt: stack.amt, turnsLeft: tl, skipNextTick: false });
+  }
+  h.rfeStacks = nextRfe;
+
+  if (h.rollBuffTurns <= 0) return;
+  if (h.rollBuffSkipNextTick) {
+    h.rollBuffSkipNextTick = false;
+    return;
+  }
+  h.rollBuffTurns -= 1;
+  if (h.rollBuffTurns <= 0) {
+    h.rollBuff = 0;
+    h.rollBuffTurns = 0;
+    h.rollBuffSkipNextTick = false;
+  }
+}
+
+function tickEnemyRollBuff(e: SimEnemy): void {
+  if (e.hp <= 0 || e.rollBuffTurns <= 0) return;
+  if (e.rollBuffSkipNextTick) {
+    e.rollBuffSkipNextTick = false;
+    return;
+  }
+  e.rollBuffTurns -= 1;
+  if (e.rollBuffTurns <= 0) {
+    e.rollBuff = 0;
+    e.rollBuffTurns = 0;
+    e.rollBuffSkipNextTick = false;
+  }
 }
 
 function d20(): number {
@@ -367,6 +456,10 @@ function scaleEnemyDef(
     dot: 0,
     dT: 0,
     dieFreezeRollsRemaining: 0,
+    rollBuff: 0,
+    rollBuffTurns: 0,
+    rollBuffSkipNextTick: false,
+    p2ReviveNames: [...(raw.p2ReviveNames ?? [])],
   };
 }
 
@@ -376,7 +469,9 @@ function applyEnemyDieFreeze(e: SimEnemy, skips: number): void {
 }
 
 function getEnemyPlan(enemy: SimEnemy, suites: Record<string, EnemyAbilitySuite>): EnemyAbility {
-  const z = enemyZoneFromRoll(d20());
+  const rawRoll = d20();
+  const effectiveRoll = clampEffectiveRoll(rawRoll, 0, enemy.rollBuff);
+  const z = enemyZoneFromRoll(effectiveRoll);
   const suite = suites[enemy.type];
   const base = suite?.[z] ? { ...suite[z]! } : { ...EMPTY_ENEMY_AB };
   const scale = enemy.dmgScale || 1;
@@ -387,9 +482,7 @@ function getEnemyPlan(enemy: SimEnemy, suites: Record<string, EnemyAbilitySuite>
   if ((base.shieldAlly || 0) > 0) base.shieldAlly = Math.round((base.shieldAlly || 0) * scale);
   if (base.dot > 0) base.dot = Math.round(base.dot * scale);
   if (enemy.p2 && base.dmgP2) base.dmg = base.dmgP2;
-  if (enemy.p2 && (base as { shieldP2?: number }).shieldP2) {
-    base.shield = (base as { shieldP2?: number }).shieldP2!;
-  }
+  if (enemy.p2 && base.shieldP2) base.shield = base.shieldP2;
   return base;
 }
 
@@ -439,6 +532,10 @@ function freshSquadFromDefs(defs: HeroDefinition[]): SimHero[] {
     activeAbilities: d.abilities.map(normalizeHeroAbility),
     dot: 0,
     dT: 0,
+    rfeStacks: [],
+    rollBuff: 0,
+    rollBuffTurns: 0,
+    rollBuffSkipNextTick: false,
   }));
 }
 
@@ -464,7 +561,27 @@ function lowestHpEnemyIndex(enemies: SimEnemy[]): number {
   return best;
 }
 
-function damageEnemy(e: SimEnemy, dmg: number, ignSh: boolean): void {
+function applyP2Revives(enemies: SimEnemy[], reviveNames: string[]): void {
+  if (!reviveNames.length) return;
+  for (const e of enemies) {
+    if (!reviveNames.includes(e.name)) continue;
+    if (e.hp <= 0) {
+      e.hp = e.maxHp;
+      e.shield = 0;
+      e.shT = 0;
+      e.shieldStacks = [];
+      e.dot = 0;
+      e.dT = 0;
+      e.rollBuff = 0;
+      e.rollBuffTurns = 0;
+      e.rollBuffSkipNextTick = false;
+    } else if (e.hp < e.maxHp) {
+      e.hp = e.maxHp;
+    }
+  }
+}
+
+function damageEnemy(e: SimEnemy, dmg: number, ignSh: boolean, allEnemies?: SimEnemy[]): void {
   if (dmg <= 0) return;
   let d = dmg;
   if (!ignSh && coalesceShieldStacks(e).length > 0) {
@@ -473,7 +590,12 @@ function damageEnemy(e: SimEnemy, dmg: number, ignSh: boolean): void {
     d = Math.max(0, d - absorbed);
   }
   e.hp -= d;
-  if (e.pThr != null && !e.p2 && e.hp <= e.pThr) e.p2 = true;
+  if (e.pThr != null && !e.p2 && e.hp <= e.pThr) {
+    e.p2 = true;
+    if (allEnemies && e.p2ReviveNames.length > 0) {
+      applyP2Revives(allEnemies, e.p2ReviveNames);
+    }
+  }
 }
 
 function damageHero(h: SimHero, dmg: number): void {
@@ -491,7 +613,7 @@ function damageHero(h: SimHero, dmg: number): void {
 function tickEnemyDots(enemies: SimEnemy[]): void {
   for (const e of enemies) {
     if (e.hp <= 0 || e.dot <= 0 || e.dT <= 0) continue;
-    damageEnemy(e, e.dot, false);
+    damageEnemy(e, e.dot, false, enemies);
     e.dT -= 1;
     if (e.dT <= 0) e.dot = 0;
   }
@@ -546,6 +668,7 @@ function resolveHeroAbility(
     if (reroll > roll) roll = reroll;
     protocolBudget.charges--;
   }
+  roll = clampEffectiveRoll(roll, getTotalRfe(h), h.rollBuff);
   const ab = pickAbilityForRoll(h.activeAbilities, roll);
   if (!ab) return;
   if (h.tier === 1) h.bRolls.push(roll);
@@ -607,13 +730,13 @@ function resolveHeroAbility(
   let singleDmgTargetIdx = -1;
   if ((ab.blastAll || ab.multiHit) && dmgVal > 0) {
     for (const e of enemies) {
-      if (e.hp > 0) damageEnemy(e, dmgVal, ignSh);
+      if (e.hp > 0) damageEnemy(e, dmgVal, ignSh, enemies);
     }
   } else if ((ab.dmg || 0) > 0 || dmgVal > 0) {
     const ei = lowestHpEnemyIndex(enemies);
     if (ei >= 0) {
       singleDmgTargetIdx = ei;
-      damageEnemy(enemies[ei]!, dmgVal, ignSh);
+      damageEnemy(enemies[ei]!, dmgVal, ignSh, enemies);
     }
   }
 
@@ -692,6 +815,11 @@ function resolveEnemyTurn(
         : pickDumbHeroIndex(heroes)
       : -1;
 
+  const shouldWipe = !!act.wipeShields;
+  if (shouldWipe && (act.dmg || 0) > 0) {
+    wipeAllHeroShields(heroes);
+  }
+
   if ((act.dmg || 0) > 0) {
     if (act.blastAll) {
       for (const h of heroes) {
@@ -702,9 +830,32 @@ function resolveEnemyTurn(
     }
   }
 
+  if (shouldWipe && (act.dmg || 0) <= 0) {
+    wipeAllHeroShields(heroes);
+  }
+
   if ((act.dot || 0) > 0 && !act.blastAll && hi >= 0) {
     const turns = Math.max(act.dT || 0, DEFAULT_DOT_TURNS);
     applyDotToHero(heroes[hi]!, act.dot, turns);
+  }
+
+  if ((act.rfm || 0) > 0) {
+    let rfmIdx = hi;
+    if (rfmIdx < 0 || heroes[rfmIdx]!.hp <= 0) {
+      rfmIdx = heroes.findIndex(h => h.hp > 0);
+    }
+    if (rfmIdx >= 0) addRfeStack(heroes[rfmIdx]!, act.rfm!, act.rfmT || 1);
+  }
+
+  if ((act.erb || 0) > 0) {
+    const erbT = act.erbT || 1;
+    if (act.erbAll) {
+      for (const e of enemies) {
+        if (e.hp > 0) addRollBuff(e, act.erb!, erbT);
+      }
+    } else {
+      addRollBuff(enemy, act.erb!, erbT);
+    }
   }
 }
 
@@ -743,10 +894,12 @@ function simulateBattle(
     for (const h of heroes) {
       if (h.hp <= 0) continue;
       if (coalesceShieldStacks(h).length > 0) Object.assign(h, tickUnitShield(h));
+      tickHeroRollModifiers(h);
     }
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (coalesceShieldStacks(e).length > 0) Object.assign(e, tickUnitShield(e));
+      tickEnemyRollBuff(e);
     }
   }
   return false;
@@ -761,6 +914,10 @@ function interBattleReset(heroes: SimHero[]): void {
     h.shieldStacks = [];
     h.dot = 0;
     h.dT = 0;
+    h.rfeStacks = [];
+    h.rollBuff = 0;
+    h.rollBuffTurns = 0;
+    h.rollBuffSkipNextTick = false;
   }
 }
 
@@ -1158,7 +1315,7 @@ export function formatBattleProgressSimResult(r: BattleProgressSimResult): strin
   const lines: string[] = [
     `Battle progress sim — ${r.iterations} runs/track × ${r.tracks.length} operations, random 3-hero squads`,
     `Reach% = cumulative (attempted that fight). Cond% = win rate given you reached that fight. HP% = avg survivor HP after a win.`,
-    `Evolution included. DoT + shield modeled. ${protoNote} No items or summons.`,
+    `Evolution included. DoT + shield + enemy rfm/erb/wipeShields modeled. ${protoNote} No items or summons.`,
     '',
   ];
   for (const t of r.tracks) {

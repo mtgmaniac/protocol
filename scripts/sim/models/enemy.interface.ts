@@ -11,4 +11,6 @@ export interface EnemyDefinition {
   p2dMax?: number;
   pThr?: number;
   summonElite?: boolean;
+  /** Fallen allies (display names) restored on phase 2: dead revived, living healed to full. */
+  p2ReviveNames?: string[];
 }

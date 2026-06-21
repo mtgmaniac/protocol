@@ -15,6 +15,8 @@ extends Resource
 @export var phase_two_damage_preview_max: int = 0
 @export var phase_two_threshold: int = 0
 @export var can_summon_elite: bool = false
+## Display names of allies to restore when this unit enters phase 2 (revive dead at full HP; heal living to full).
+@export var phase_two_revive_names: Array[String] = []
 @export var portrait: Texture2D
 @export var dice_ranges: Array[Dictionary] = []
 @export var traits: Array[Dictionary] = []

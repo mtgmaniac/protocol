@@ -1,6 +1,9 @@
 /**
- * Validates json/heroes.data.json and json/enemies.data.json against JSON Schemas.
- * Run from repo root: npm run validate-data
+ * Validates data/raw/*.json against data/schemas/*.json.
+ *
+ * Run from repo root:
+ *   npm run validate-data
+ *   node scripts/assets/validate-game-data.mjs
  */
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
@@ -9,7 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '../..');
 
 const ajv = new Ajv({ allErrors: true, strict: false, validateSchema: false });
 addFormats(ajv);
@@ -18,17 +21,17 @@ function readJson(rel) {
   return JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
 }
 
-const heroesSchema = readJson('src/app/data/schemas/heroes.data.schema.json');
-const enemiesSchema = readJson('src/app/data/schemas/enemies.data.schema.json');
-const battleModesSchema = readJson('src/app/data/schemas/battle-modes.schema.json');
+const heroesSchema = readJson('data/schemas/heroes.data.schema.json');
+const enemiesSchema = readJson('data/schemas/enemies.data.schema.json');
+const battleModesSchema = readJson('data/schemas/battle-modes.schema.json');
 
 const vHeroes = ajv.compile(heroesSchema);
 const vEnemies = ajv.compile(enemiesSchema);
 const vBattleModes = ajv.compile(battleModesSchema);
 
-const heroes = readJson('src/app/data/json/heroes.data.json');
-const enemies = readJson('src/app/data/json/enemies.data.json');
-const battleModes = readJson('src/app/data/json/battle-modes.json');
+const heroes = readJson('data/raw/heroes.data.json');
+const enemies = readJson('data/raw/enemies.data.json');
+const battleModes = readJson('data/raw/battle-modes.json');
 
 let ok = true;
 if (!vBattleModes(battleModes)) {
@@ -82,7 +85,9 @@ function validateBattleSpawnNames(bm, unitDefs) {
       }
     }
   }
-  if (missing.size) return `Unknown enemy unit name(s) in battle-modes.json: ${[...missing].sort().join(', ')}`;
+  if (missing.size) {
+    return `Unknown enemy unit name(s) in battle-modes.json: ${[...missing].sort().join(', ')}`;
+  }
   return null;
 }
 

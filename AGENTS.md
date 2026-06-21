@@ -18,10 +18,19 @@
 # Godot project — open in editor or:
 # Main scene: scenes/ui/UnitSelect.tscn
 
+# Data validation (after editing data/raw/*.json)
+npm install   # once, for ajv
+npm run validate-data
+
 # Balance sims (from repo root; requires Node + npx)
+npx tsx scripts/debug/balance_sim_facility.ts 8000
 npx tsx scripts/debug/balance_sim_roster_audit.ts 8000
 npx tsx scripts/debug/balance_sim_evo_only.ts 8000
 npx tsx scripts/debug/balance_sim_full_evo_team.ts 15000
+
+# Static audits (ability keywords, gear/relic effect types)
+python scripts/debug/audit_ability_keywords.py
+python scripts/debug/audit_gear_relic_effects.py
 ```
 
 ## Data
@@ -32,6 +41,14 @@ npx tsx scripts/debug/balance_sim_full_evo_team.ts 15000
 | `data/schemas/` | JSON Schema for validation |
 | `scripts/sim/` | Headless battle sim library (CLI tuning only) |
 | `scripts/battle/combat_manager.gd` | **Authoritative** ability/combat keyword implementation |
+
+## Balance & data conventions
+
+- **Enemy HP** in `enemyUnitDefs` must be a **multiple of 5**.
+- **Boss phase 2:** ability `dmgP2` / `shieldP2` must be **strictly higher** than phase-1 `dmg` / `shield`. Tune winability via boss HP and `pThr`, not by weakening P2.
+- **Godot combat** uses **flat** `enemyUnitDefs` stats every fight. `battleEnemyScale` and `trackHpScale` are **balance-sim lab only** (`--scaled`); not applied at spawn in Godot.
+- **Evolution (current):** flat +50 XP per battle, evolve at 100 XP → pending evolution after **fight 2** (one hero per milestone).
+- **Facility sim** models `rfm`/`erb`/`wipeShields` and Scrapmaster `p2ReviveNames`; not items, summons, taunt, or cloak.
 
 ## Docs
 

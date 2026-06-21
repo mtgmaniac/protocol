@@ -39,6 +39,8 @@ export interface HeroAbility {
   freezeEnemyDice?: number;
   /** Freeze one squad/enemy die for N reveal skips — pick any hero or enemy (separate from damage target). */
   freezeAnyDice?: number;
+  /** Grant N protocol when this ability resolves (applied end of round via battle_scene). */
+  gainProtocol?: number;
   /** Grant N rampage charges to this hero: next N direct ability attacks deal double damage. */
   grantRampage?: number;
 }
@@ -86,6 +88,9 @@ export interface EnemyAbility {
   curseDice?: boolean;
   /** Menagerie grunt: damage bonus based on number of living allies of the same enemy type. */
   packBonus?: boolean;
+  shieldP2?: number;
+  shieldAllyAll?: boolean;
+  blastAll?: boolean;
 }
 
 export type EnemyAbilitySuite = Record<Zone, EnemyAbility>;

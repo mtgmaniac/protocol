@@ -80,7 +80,7 @@
     },
     "enemyAbility": {
       "type": "object",
-      "required": ["name", "eff", "dmg", "dot", "dT", "heal", "rfe", "shield"],
+      "required": ["name", "eff", "dmg", "dot", "dT", "heal", "rfe"],
       "additionalProperties": true,
       "properties": {
         "name": { "type": "string" },
@@ -92,8 +92,12 @@
         "heal": { "type": "integer" },
         "rfe": { "type": "integer" },
         "shield": { "type": "integer" },
+        "shieldP2": { "type": "integer" },
         "shT": { "type": "integer" },
         "shieldAlly": { "type": "integer" },
+        "shAllyT": { "type": "integer" },
+        "shieldAllyAll": { "type": "boolean" },
+        "blastAll": { "type": "boolean" },
         "rfm": { "type": "integer" },
         "rfmT": { "type": "integer" },
         "wipeShields": { "type": "boolean" },
@@ -136,10 +140,19 @@
         "dMax": { "type": "integer", "minimum": 1 },
         "type": { "$ref": "#/$defs/enemyType" },
         "ai": { "$ref": "#/$defs/aiType" },
+        "callsign": {
+          "type": "string",
+          "description": "Short enemy callsign for UI (e.g. SCRAPLORD)."
+        },
         "p2dMin": { "type": "integer", "minimum": 1 },
         "p2dMax": { "type": "integer", "minimum": 1 },
         "pThr": { "type": "integer", "minimum": 1 },
-        "summonElite": { "type": "boolean" }
+        "summonElite": { "type": "boolean" },
+        "p2ReviveNames": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allies (by display name) restored on phase 2: dead revived at full HP, living healed to full HP."
+        }
       }
     }
   }
