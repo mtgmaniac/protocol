@@ -605,17 +605,20 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var poison_amount: int = int(raw.get("dot", 0))
 	var poison_turns: int = int(raw.get("dT", 0))
 
-	if shield > 0:
+	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
+		for es in _enemy_states:
+			if not bool(es["dead"]):
+				_add_shield_stack(es, shield_ally, shield_ally_turns)
+	elif shield > 0:
 		_add_shield_stack(enemy_state, shield, sh_turns)
-
-	if shield_ally > 0:
-		var enemy_ally: Dictionary = _find_living_enemy_ally_by_id(enemy_state, str(enemy_state.get("selected_target_id", "")))
-		if enemy_ally.is_empty():
-			enemy_ally = _first_living_enemy_ally(enemy_state)
-		if enemy_ally.is_empty():
-			enemy_ally = enemy_state
-		if not enemy_ally.is_empty():
-			_add_shield_stack(enemy_ally, shield_ally, shield_ally_turns)
+		if shield_ally > 0:
+			var enemy_ally: Dictionary = _find_living_enemy_ally_by_id(enemy_state, str(enemy_state.get("selected_target_id", "")))
+			if enemy_ally.is_empty():
+				enemy_ally = _first_living_enemy_ally(enemy_state)
+			if enemy_ally.is_empty():
+				enemy_ally = enemy_state
+			if not enemy_ally.is_empty():
+				_add_shield_stack(enemy_ally, shield_ally, shield_ally_turns)
 
 	if heal > 0:
 		_heal_state(enemy_state, heal)

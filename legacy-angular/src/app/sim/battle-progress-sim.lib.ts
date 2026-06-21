@@ -53,6 +53,14 @@ export interface BattleProgressSimInput {
    * 0 = no Protocol modeled (default).
    */
   protocolRerolls: number;
+  /** If set, every squad includes this hero; the other two are random from the remaining roster. */
+  anchorHeroId?: string;
+  /** With anchorHeroId: at fight-3 evolution, use this path instead of random. */
+  forceEvoPath?: string;
+  /** With anchorHeroId: begin fight 1 on this evo path (tier 2 kit + HP). */
+  startAsEvoPath?: string;
+  /** All squad members begin fight 1 on a random evolution (tier 2). */
+  startAllAsEvo?: boolean;
 }
 
 /** Battles 1..N “reach” ladder (here N=10). */
@@ -128,9 +136,37 @@ export interface BattleProgressSimResult {
   };
 }
 
+/** One hero slot on a full-cleared facility run (post-evolution state). */
+export interface EvoFullClearRow {
+  heroId: string;
+  baseHeroName: string;
+  evoPath: string;
+  fullClearCount: number;
+  /** % of all full-clear runs that included this hero on this evo path */
+  pctOfFullClearRuns: number;
+  /** Among full clears where this base hero was in the squad: % on this evo */
+  pctOfHeroFcRuns: number;
+}
+
+export interface EvoFullClearAuditResult {
+  iterations: number;
+  fullClears: number;
+  fullClearPct: number;
+  /** Sorted by fullClearCount descending */
+  rows: EvoFullClearRow[];
+  /** Grouped by base hero id */
+  byHero: Record<string, EvoFullClearRow[]>;
+  /** Evo path pick counts on any run that reached fight 4+ (won fight 3) */
+  evoPickReachFight4: { heroId: string; evoPath: string; count: number }[];
+}
+
 interface SimHero {
   id: string;
   name: string;
+  /** Original roster name (e.g. Pulse Tech) — unchanged after evolution */
+  baseHeroName: string;
+  /** Evolution path name when tier 2; null while tier 1 */
+  evoPath: string | null;
   maxHp: number;
   hp: number;
   shield: number;
@@ -226,25 +262,75 @@ function awardXpAfterWin(heroes: SimHero[]): void {
   }
 }
 
+function applyEvoPathToHero(h: SimHero, pathName: string): boolean {
+  const paths = groupEvoPaths(h.def.evolutions ?? []);
+  const path = paths.find(p => p.name === pathName);
+  if (!path) return false;
+  const ratio = h.hp / Math.max(1, h.maxHp);
+  h.activeAbilities = path.abilities.map(normalizeHeroAbility);
+  h.name = path.name;
+  h.evoPath = path.name;
+  if (path.hp > 0) {
+    h.maxHp = path.hp;
+    h.hp = Math.max(1, Math.round(path.hp * ratio));
+  }
+  h.tier = 2;
+  h.xp = 0;
+  h.bRolls = [];
+  return true;
+}
+
+function startHeroAsRandomEvo(h: SimHero): boolean {
+  const paths = groupEvoPaths(h.def.evolutions ?? []);
+  if (paths.length === 0) return false;
+  const path = paths[Math.floor(Math.random() * paths.length)]!;
+  applyEvoPathToHero(h, path.name);
+  h.hp = h.maxHp;
+  return true;
+}
+
+function startSquadEvolutionState(heroes: SimHero[], input: BattleProgressSimInput): void {
+  if (input.startAllAsEvo) {
+    for (const h of heroes) {
+      if (input.startAsEvoPath && input.anchorHeroId === h.id) {
+        if (applyEvoPathToHero(h, input.startAsEvoPath)) h.hp = h.maxHp;
+      } else {
+        startHeroAsRandomEvo(h);
+      }
+    }
+    return;
+  }
+  if (input.startAsEvoPath && input.anchorHeroId) {
+    const anchor = heroes.find(h => h.id === input.anchorHeroId);
+    if (anchor && applyEvoPathToHero(anchor, input.startAsEvoPath)) {
+      anchor.hp = anchor.maxHp;
+    }
+  }
+}
+
 /**
  * After winning battle index `completedBattleIndex` (0-based), eligible tier-1 heroes with xp≥18 evolve.
  * Matches game: evolution offered once `battle >= 2` (third fight won).
  */
-function tryEvolveSquad(heroes: SimHero[], completedBattleIndex: number): void {
+function tryEvolveSquad(
+  heroes: SimHero[],
+  completedBattleIndex: number,
+  evoOpts?: { anchorHeroId?: string; forceEvoPath?: string },
+): void {
   if (completedBattleIndex < 2) return;
   const evos = heroes.filter(h => h.hp > 0 && h.tier === 1 && h.xp >= 18);
   for (const h of evos) {
     const paths = groupEvoPaths(h.def.evolutions ?? []);
     if (paths.length === 0) continue;
-    const path = paths[Math.floor(Math.random() * paths.length)]!;
-    const ratio = h.hp / Math.max(1, h.maxHp);
-    h.activeAbilities = path.abilities.map(normalizeHeroAbility);
-    h.name = path.name;
-    h.maxHp = path.hp;
-    h.hp = Math.max(1, Math.round(path.hp * ratio));
-    h.tier = 2;
-    h.xp = 0;
-    h.bRolls = [];
+    let path = paths[Math.floor(Math.random() * paths.length)]!;
+    if (
+      evoOpts?.forceEvoPath &&
+      evoOpts.anchorHeroId === h.id
+    ) {
+      const forced = paths.find(p => p.name === evoOpts.forceEvoPath);
+      if (forced) path = forced;
+    }
+    applyEvoPathToHero(h, path.name);
   }
 }
 
@@ -321,9 +407,13 @@ function spawnEnemies(
   });
 }
 
-function pick3Heroes(all: HeroDefinition[]): HeroDefinition[] {
+function pick3Heroes(all: HeroDefinition[], anchorHeroId?: string): HeroDefinition[] {
   const pool = [...all];
   const out: HeroDefinition[] = [];
+  if (anchorHeroId) {
+    const idx = pool.findIndex(h => h.id === anchorHeroId);
+    if (idx >= 0) out.push(pool.splice(idx, 1)[0]!);
+  }
   while (out.length < 3 && pool.length) {
     const i = Math.floor(Math.random() * pool.length);
     out.push(pool.splice(i, 1)[0]!);
@@ -335,6 +425,8 @@ function freshSquadFromDefs(defs: HeroDefinition[]): SimHero[] {
   return defs.map(d => ({
     id: d.id,
     name: d.name,
+    baseHeroName: d.name,
+    evoPath: null,
     maxHp: d.hp,
     hp: d.hp,
     shield: 0,
@@ -568,15 +660,20 @@ function resolveEnemyTurn(
   const act = getEnemyPlan(enemy, suites);
 
   const eshT = act.shT || 2;
-  if ((act.shield || 0) > 0) {
-    Object.assign(enemy, addShieldToUnit(enemy, act.shield!, eshT));
-  }
-
-  if ((act.shieldAlly || 0) > 0) {
-    const others = enemies.filter(x => x.hp > 0 && x !== enemy);
-    if (others.length) {
-      const tgt = others.reduce((a, b) => (a.hp < b.hp ? a : b));
-      Object.assign(tgt, addShieldToUnit(tgt, act.shieldAlly!, eshT));
+  if (act.shieldAllyAll && (act.shieldAlly || 0) > 0) {
+    for (const e of enemies) {
+      if (e.hp > 0) Object.assign(e, addShieldToUnit(e, act.shieldAlly!, eshT));
+    }
+  } else {
+    if ((act.shield || 0) > 0) {
+      Object.assign(enemy, addShieldToUnit(enemy, act.shield!, eshT));
+    }
+    if ((act.shieldAlly || 0) > 0) {
+      const others = enemies.filter(x => x.hp > 0 && x !== enemy);
+      if (others.length) {
+        const tgt = others.reduce((a, b) => (a.hp < b.hp ? a : b));
+        Object.assign(tgt, addShieldToUnit(tgt, act.shieldAlly!, eshT));
+      }
     }
   }
 
@@ -681,11 +778,12 @@ function battlesWonBeforeWipeWithSquad(
   battles: { enemies: { name: string }[] }[],
   input: BattleProgressSimInput,
   modeId: BattleModeId,
-): { wins: number; squadIds: string[]; hpPctPerWin: number[] } {
-  const defs = pick3Heroes(input.heroes);
-  if (defs.length === 0) return { wins: 0, squadIds: [], hpPctPerWin: [] };
+): { wins: number; squadIds: string[]; hpPctPerWin: number[]; heroes: SimHero[] } {
+  const defs = pick3Heroes(input.heroes, input.anchorHeroId);
+  if (defs.length === 0) return { wins: 0, squadIds: [], hpPctPerWin: [], heroes: [] };
   const squadIds = defs.map(d => d.id);
   const heroes = freshSquadFromDefs(defs);
+  startSquadEvolutionState(heroes, input);
   let wins = 0;
   const hpPctPerWin: number[] = [];
   const trackHp = input.trackHpScaleByMode[modeId] ?? 1;
@@ -695,14 +793,206 @@ function battlesWonBeforeWipeWithSquad(
   for (let b = 0; b < battles.length; b++) {
     const enemies = spawnEnemies(battles[b]!.enemies, b, input.unitDefs, input.battleScale, trackHp);
     const win = simulateBattle(heroes, enemies, input.suites, protocolBudget);
-    if (!win) return { wins, squadIds, hpPctPerWin };
+    if (!win) return { wins, squadIds, hpPctPerWin, heroes };
     wins += 1;
     hpPctPerWin.push(survivorHpPct(heroes));
     interBattleReset(heroes);
     awardXpAfterWin(heroes);
-    tryEvolveSquad(heroes, b);
+    tryEvolveSquad(heroes, b, {
+      anchorHeroId: input.anchorHeroId,
+      forceEvoPath: input.forceEvoPath,
+    });
   }
-  return { wins, squadIds, hpPctPerWin };
+  return { wins, squadIds, hpPctPerWin, heroes };
+}
+
+export interface AnchoredFacilitySimResult {
+  label: string;
+  heroId: string;
+  kind: 'base' | 'evo';
+  evoPath: string | null;
+  iterations: number;
+  fullClearPct: number;
+  meanWins: number;
+}
+
+/** Facility track: anchored hero + 2 random partners; optional day-1 evo via startAsEvoPath. */
+export function runAnchoredFacilitySim(
+  input: BattleProgressSimInput,
+  iterations: number,
+  label: string,
+  kind: 'base' | 'evo',
+  evoPath: string | null = null,
+): AnchoredFacilitySimResult {
+  const modeId = input.modeOrder[0]!;
+  const battles = input.battlesByMode[modeId]!;
+  const n = Math.max(200, Math.min(50000, Math.floor(iterations) || 3000));
+  let fullClears = 0;
+  const reachCounts = new Array(battles.length).fill(0);
+  const winCounts = new Array(battles.length).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    const { wins } = battlesWonBeforeWipeWithSquad(battles, input, modeId);
+    if (wins === battles.length) fullClears += 1;
+    for (let k = 0; k < battles.length; k++) {
+      if (wins >= k) reachCounts[k] += 1;
+      if (wins >= k + 1) winCounts[k] += 1;
+    }
+  }
+
+  const reachBattlePct = reachCounts.map((c: number) => (100 * c) / n);
+  const conditionalWinPct = reachCounts.map((reached: number, k: number) =>
+    reached > 0 ? (100 * winCounts[k]!) / reached : 0,
+  );
+  const meanWins = reachBattlePct.reduce(
+    (sum, reach, i) => sum + (reach / 100) * ((conditionalWinPct[i] ?? 0) / 100),
+    0,
+  );
+
+  return {
+    label,
+    heroId: input.anchorHeroId ?? '?',
+    kind,
+    evoPath,
+    iterations: n,
+    fullClearPct: (100 * fullClears) / n,
+    meanWins,
+  };
+}
+
+export interface FullEvoTeamEvoRow {
+  heroId: string;
+  baseHeroName: string;
+  evoPath: string;
+  runsWith: number;
+  fullClearsWith: number;
+  fullClearPct: number;
+}
+
+export interface FullEvoTeamHeroGroup {
+  heroId: string;
+  baseHeroName: string;
+  runsWith: number;
+  fullClearsWith: number;
+  fullClearPct: number;
+  evos: FullEvoTeamEvoRow[];
+}
+
+export interface FullEvoTeamSimResult {
+  iterations: number;
+  overallFullClearPct: number;
+  meanWins: number;
+  byHero: FullEvoTeamHeroGroup[];
+}
+
+/**
+ * Random 3-hero squads; every member starts fight 1 on a random evolution path.
+ * Reports conditional full-clear % grouped by base hero and by hero+evo.
+ */
+export function runFullEvoTeamSim(
+  input: BattleProgressSimInput,
+  iterations: number,
+): FullEvoTeamSimResult {
+  const modeId = input.modeOrder[0]!;
+  const battles = input.battlesByMode[modeId]!;
+  const n = Math.max(200, Math.min(100000, Math.floor(iterations) || 5000));
+  const simInput: BattleProgressSimInput = { ...input, startAllAsEvo: true };
+
+  const heroAgg = new Map<
+    string,
+    { baseHeroName: string; runs: number; clears: number; evos: Map<string, { runs: number; clears: number }> }
+  >();
+  for (const h of input.heroes) {
+    heroAgg.set(h.id, { baseHeroName: h.name, runs: 0, clears: 0, evos: new Map() });
+  }
+
+  let fullClears = 0;
+  const reachCounts = new Array(battles.length).fill(0);
+  const winCounts = new Array(battles.length).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    const { wins, heroes } = battlesWonBeforeWipeWithSquad(battles, simInput, modeId);
+    const cleared = wins === battles.length;
+    if (cleared) fullClears += 1;
+    for (let k = 0; k < battles.length; k++) {
+      if (wins >= k) reachCounts[k] += 1;
+      if (wins >= k + 1) winCounts[k] += 1;
+    }
+    for (const h of heroes) {
+      if (h.tier !== 2 || !h.evoPath) continue;
+      const row = heroAgg.get(h.id);
+      if (!row) continue;
+      row.runs += 1;
+      if (cleared) row.clears += 1;
+      let evoRow = row.evos.get(h.evoPath);
+      if (!evoRow) {
+        evoRow = { runs: 0, clears: 0 };
+        row.evos.set(h.evoPath, evoRow);
+      }
+      evoRow.runs += 1;
+      if (cleared) evoRow.clears += 1;
+    }
+  }
+
+  const reachBattlePct = reachCounts.map((c: number) => (100 * c) / n);
+  const conditionalWinPct = reachCounts.map((reached: number, k: number) =>
+    reached > 0 ? (100 * winCounts[k]!) / reached : 0,
+  );
+  const meanWins = reachBattlePct.reduce(
+    (sum, reach, i) => sum + (reach / 100) * ((conditionalWinPct[i] ?? 0) / 100),
+    0,
+  );
+
+  const byHero: FullEvoTeamHeroGroup[] = [...heroAgg.entries()]
+    .map(([heroId, row]) => ({
+      heroId,
+      baseHeroName: row.baseHeroName,
+      runsWith: row.runs,
+      fullClearsWith: row.clears,
+      fullClearPct: row.runs > 0 ? (100 * row.clears) / row.runs : 0,
+      evos: [...row.evos.entries()]
+        .map(([evoPath, evo]) => ({
+          heroId,
+          baseHeroName: row.baseHeroName,
+          evoPath,
+          runsWith: evo.runs,
+          fullClearsWith: evo.clears,
+          fullClearPct: evo.runs > 0 ? (100 * evo.clears) / evo.runs : 0,
+        }))
+        .sort((a, b) => b.fullClearPct - a.fullClearPct || b.runsWith - a.runsWith),
+    }))
+    .sort((a, b) => b.fullClearPct - a.fullClearPct);
+
+  return {
+    iterations: n,
+    overallFullClearPct: (100 * fullClears) / n,
+    meanWins,
+    byHero,
+  };
+}
+
+export function formatFullEvoTeamSimResult(r: FullEvoTeamSimResult): string {
+  const lines = [
+    `Full-evo team sim — ${r.iterations} runs, random 3-hero squads`,
+    'Every member starts fight 1 on a random evolution (tier 2 HP + kit).',
+    `Overall full clear: ${r.overallFullClearPct.toFixed(1)}% · mean wins ${r.meanWins.toFixed(2)}`,
+    '',
+    'Conditional FC% = full clears / runs where that hero (or evo) appeared in the squad.',
+    'Not causal — correlation under random fully-evo trios.',
+    '',
+  ];
+  for (const hero of r.byHero) {
+    lines.push(
+      `${hero.baseHeroName} (${hero.heroId}) — ${hero.fullClearPct.toFixed(1)}% FC when in squad (${hero.fullClearsWith}/${hero.runsWith} runs)`,
+    );
+    for (const evo of hero.evos) {
+      lines.push(
+        `  ${evo.evoPath.padEnd(22)} ${evo.fullClearPct.toFixed(1).padStart(5)}% FC (${evo.fullClearsWith}/${evo.runsWith})`,
+      );
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 export function runBattleProgressSim(input: BattleProgressSimInput, iterations: number): BattleProgressSimResult {
@@ -947,5 +1237,130 @@ export function formatBattleProgressSimResult(r: BattleProgressSimResult): strin
     }
   }
   lines.push('');
+  return lines.join('\n');
+}
+
+/** Monte Carlo: which evolution paths appear on facility full clears (random 3-hero squads). */
+export function runEvoFullClearAudit(
+  input: BattleProgressSimInput,
+  iterations: number,
+): EvoFullClearAuditResult {
+  const n = Math.max(200, Math.min(50000, Math.floor(iterations) || 3000));
+  const modeId = input.modeOrder[0];
+  const battles = modeId ? input.battlesByMode[modeId] : undefined;
+  if (!battles?.length) {
+    return { iterations: n, fullClears: 0, fullClearPct: 0, rows: [], byHero: {}, evoPickReachFight4: [] };
+  }
+  const nBattles = battles.length;
+
+  const fcKey = (heroId: string, evoPath: string) => `${heroId}|${evoPath}`;
+  const fcCounts = new Map<string, { heroId: string; baseHeroName: string; evoPath: string; count: number }>();
+  const heroFcRuns = new Map<string, number>();
+  const pickCounts = new Map<string, { heroId: string; evoPath: string; count: number }>();
+  let fullClears = 0;
+
+  for (let i = 0; i < n; i++) {
+    const { wins, heroes } = battlesWonBeforeWipeWithSquad(battles, input, modeId!);
+    if (wins >= 3) {
+      for (const h of heroes) {
+        if (h.hp <= 0 || h.tier !== 2 || !h.evoPath) continue;
+        const pk = `${h.id}|${h.evoPath}`;
+        const row = pickCounts.get(pk);
+        if (row) row.count += 1;
+        else pickCounts.set(pk, { heroId: h.id, evoPath: h.evoPath, count: 1 });
+      }
+    }
+    if (wins === nBattles && nBattles > 0) {
+      fullClears += 1;
+      for (const h of heroes) {
+        if (h.hp <= 0) continue;
+        const evoPath = h.tier === 2 && h.evoPath ? h.evoPath : '(no evo)';
+        heroFcRuns.set(h.id, (heroFcRuns.get(h.id) ?? 0) + 1);
+        const k = fcKey(h.id, evoPath);
+        const row = fcCounts.get(k);
+        if (row) row.count += 1;
+        else {
+          fcCounts.set(k, {
+            heroId: h.id,
+            baseHeroName: h.baseHeroName,
+            evoPath,
+            count: 1,
+          });
+        }
+      }
+    }
+  }
+
+  const rows: EvoFullClearRow[] = [...fcCounts.values()]
+    .map(row => ({
+      heroId: row.heroId,
+      baseHeroName: row.baseHeroName,
+      evoPath: row.evoPath,
+      fullClearCount: row.count,
+      pctOfFullClearRuns: fullClears > 0 ? (100 * row.count) / fullClears : 0,
+      pctOfHeroFcRuns:
+        (heroFcRuns.get(row.heroId) ?? 0) > 0
+          ? (100 * row.count) / (heroFcRuns.get(row.heroId) ?? 1)
+          : 0,
+    }))
+    .sort((a, b) => b.fullClearCount - a.fullClearCount || a.heroId.localeCompare(b.heroId));
+
+  const byHero: Record<string, EvoFullClearRow[]> = {};
+  for (const row of rows) {
+    (byHero[row.heroId] ??= []).push(row);
+  }
+
+  const evoPickReachFight4 = [...pickCounts.values()].sort(
+    (a, b) => b.count - a.count || a.heroId.localeCompare(b.heroId),
+  );
+
+  return {
+    iterations: n,
+    fullClears,
+    fullClearPct: (100 * fullClears) / n,
+    rows,
+    byHero,
+    evoPickReachFight4,
+  };
+}
+
+export function formatEvoFullClearAudit(r: EvoFullClearAuditResult): string {
+  const lines: string[] = [
+    `Evolution full-clear audit — ${r.iterations} facility runs, random 3-hero squads`,
+    `Full clear: ${r.fullClearPct.toFixed(1)}% (${r.fullClears} runs)`,
+    'Counts = how often a hero ended fight 10 on that evo path. Multiple heroes evolve per run.',
+    '',
+    '── All evo paths on full clears (sorted by count) ──',
+  ];
+  if (r.rows.length === 0) {
+    lines.push('  (no full clears in sample)');
+  } else {
+    for (const row of r.rows) {
+      lines.push(
+        `  ${row.baseHeroName.padEnd(18)} → ${row.evoPath.padEnd(22)} FC ${String(row.fullClearCount).padStart(4)} · ${row.pctOfFullClearRuns.toFixed(1)}% of FC runs · ${row.pctOfHeroFcRuns.toFixed(0)}% when hero on FC squad`,
+      );
+    }
+  }
+  lines.push('');
+  lines.push('── Per base hero (evo split on full clears) ──');
+  for (const [heroId, heroRows] of Object.entries(r.byHero).sort((a, b) => {
+    const sumA = a[1].reduce((s, x) => s + x.fullClearCount, 0);
+    const sumB = b[1].reduce((s, x) => s + x.fullClearCount, 0);
+    return sumB - sumA;
+  })) {
+    const total = heroRows.reduce((s, x) => s + x.fullClearCount, 0);
+    lines.push(`  ${heroId} (${heroRows[0]?.baseHeroName}) — ${total} FC appearances`);
+    for (const row of heroRows) {
+      lines.push(`    ${row.evoPath}: ${row.fullClearCount} (${row.pctOfHeroFcRuns.toFixed(0)}%)`);
+    }
+  }
+  lines.push('');
+  lines.push('── Evo picks on runs that won fight 3+ (reached post-evo) — pick rate context ──');
+  const pickTotal = r.evoPickReachFight4.reduce((s, x) => s + x.count, 0);
+  for (const row of r.evoPickReachFight4) {
+    lines.push(
+      `  ${row.heroId.padEnd(10)} ${row.evoPath.padEnd(22)} picks ${String(row.count).padStart(5)} (${pickTotal > 0 ? ((100 * row.count) / pickTotal).toFixed(1) : '0'}% of post-evo slots)`,
+    );
+  }
   return lines.join('\n');
 }

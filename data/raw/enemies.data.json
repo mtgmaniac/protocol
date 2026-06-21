@@ -166,7 +166,7 @@
         "rfmT": 2
       },
       "overload": {
-        "name": "Annihilate",
+        "name": "Final Sweep",
         "eff": "23 dmg, -2 roll, 3t",
         "dmg": 23,
         "dot": 0,
@@ -301,13 +301,15 @@
     "volt": {
       "recharge": {
         "name": "Grounding",
-        "eff": "—",
+        "eff": "5 shield, 2t, all allies",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shieldAlly": 5,
+        "shT": 2,
+        "shieldAllyAll": true
       },
       "strike": {
         "name": "Arc Jab",
