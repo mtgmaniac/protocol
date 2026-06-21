@@ -1,0 +1,100 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/autoloads/PersistentHeader.gd" id="1_phdr"]
+
+[node name="PersistentHeader" type="CanvasLayer"]
+layer = 8
+script = ExtResource("1_phdr")
+
+[node name="HeaderBand" type="Control" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 144.0
+grow_horizontal = 2
+mouse_filter = 1
+
+[node name="Background" type="ColorRect" parent="HeaderBand"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.035294, 0.047059, 0.054902, 1)
+
+[node name="Bar" type="HBoxContainer" parent="HeaderBand"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_right = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_constants/separation = 4
+
+[node name="InfoStack" type="HBoxContainer" parent="HeaderBand/Bar"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 12
+
+[node name="SummaryLabel" type="Label" parent="HeaderBand/Bar/InfoStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+vertical_alignment = 1
+text = "FACILITY"
+
+[node name="ButtonRow" type="HBoxContainer" parent="HeaderBand/Bar"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+alignment = 2
+theme_override_constants/separation = 4
+
+[node name="HelpButton" type="Button" parent="HeaderBand/Bar/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+
+[node name="DebugButton" type="Button" parent="HeaderBand/Bar/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+
+[node name="Debug2Button" type="Button" parent="HeaderBand/Bar/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+
+[node name="BackButton" type="Button" parent="HeaderBand/Bar/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+
+[node name="Divider" type="ColorRect" parent="HeaderBand"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -3.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.105882, 0.133333, 0.14902, 1)

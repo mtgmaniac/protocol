@@ -155,17 +155,8 @@ func _position_zone_dividers(combat_zone: Rect2) -> void:
 	var hero_card: Rect2 = get_card_group_rect(_scene.hero_card_views)
 	var gap: float = (combat_zone.position.y - enemy_card.end.y) if enemy_card.size.y > 2.0 else 15.0
 	var origin_y: float = _scene.global_position.y
-	var header_divider: Control = _scene.get_node_or_null("HeaderDivider")
-	if header_divider != null and enemy_card.size.y > 2.0:
-		var top: float = enemy_card.position.y - origin_y - gap - 3.0
-		header_divider.offset_top = top
-		header_divider.offset_bottom = top + 3.0
-		# Header content occupies [screen top, divider] so it centers equidistant
-		# from the screen edge and the divider (instead of abutting the divider).
-		var header_row: Control = _scene.get_node_or_null("HeaderRow")
-		if header_row != null:
-			header_row.offset_top = 0.0
-			header_row.offset_bottom = top
+	# The header divider now lives in the PersistentHeader autoload (fixed, full-width).
+	# Only the footer divider is positioned dynamically here.
 	var footer_divider: Control = _scene.get_node_or_null("FooterDivider")
 	if footer_divider != null and hero_card.size.y > 2.0:
 		var ftop: float = hero_card.end.y - origin_y + gap

@@ -1,0 +1,114 @@
+extends CanvasLayer
+
+## Always-living global header bar (registered as the `PersistentHeader` autoload).
+##
+## It is identical on every screen and is NEVER rebuilt on scene transitions — the
+## node survives all scene loads. No individual scene contains its own header bar.
+##
+## The header's buttons act on the battle screen when one is active: `BattleScene`
+## binds Callables on `_ready` (and clears them on `_exit_tree`). On every other
+## screen no Callables are bound, so the buttons are present but inert (no-op).
+##
+## Visual language pulls entirely from PixelUI (the single source of truth) — see
+## scripts/ui/pixel_ui.gd. The fixed bottom divider here REPLACES the battle scene's
+## old dynamic HeaderDivider.
+
+const HEADER_HEIGHT := 144.0
+const SUMMARY_FONT_SIZE := 112
+const BUTTON_SIZE := Vector2(112, 112)
+
+@onready var _background: ColorRect = %Background
+@onready var _summary_label: Label = %SummaryLabel
+@onready var _help_button: Button = %HelpButton
+@onready var _debug_button: Button = %DebugButton
+@onready var _debug2_button: Button = %Debug2Button
+@onready var _back_button: Button = %BackButton
+@onready var _divider: ColorRect = %Divider
+
+# Bound by the active battle screen; empty (inert) on every other screen.
+var _help_action := Callable()
+var _debug_action := Callable()
+var _debug2_action := Callable()
+var _back_action := Callable()
+
+
+func _ready() -> void:
+	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
+	layer = 8
+	_style()
+	_help_button.pressed.connect(func() -> void: _dispatch(_help_action))
+	_debug_button.pressed.connect(func() -> void: _dispatch(_debug_action))
+	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action))
+	_back_button.pressed.connect(func() -> void: _dispatch(_back_action))
+	set_run_active(false)
+
+
+func _dispatch(action: Callable) -> void:
+	if action.is_valid():
+		action.call()
+
+
+# Styling mirrors the old battle header exactly (was in battle_scene._apply_battle_theme)
+# so the bar looks identical now that it lives here.
+func _style() -> void:
+	_background.color = PixelUI.DT_PANEL_BG
+	_divider.color = PixelUI.DT_LINE
+	PixelUI.apply_pixel_font(_summary_label)
+	_summary_label.add_theme_font_size_override("font_size", SUMMARY_FONT_SIZE)
+	_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
+	_summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	_summary_label.add_theme_constant_override("outline_size", 2)
+	_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_summary_label.clip_text = false
+	_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP)
+	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG)
+	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2)
+	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK)
+	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
+		b.custom_minimum_size = BUTTON_SIZE
+
+
+# ─────────────────────────── Public API ───────────────────────────
+
+## Sets the left run-progress label ("OP  N / total"). GameState/BattleScene call
+## this whenever the battle number or run changes.
+func update_progress(battle_number: int, total_battles: int, operation_name: String) -> void:
+	if _summary_label == null:
+		return
+	_summary_label.text = "%s  %d/%d" % [operation_name, battle_number, total_battles]
+
+
+## Blanks the run label when no run is active (e.g. on the main menu / home screen).
+func set_run_active(active: bool) -> void:
+	if _summary_label == null:
+		return
+	if not active:
+		_summary_label.text = ""
+
+
+## The active battle screen binds its button handlers here. Re-binding replaces any
+## previous binding, so re-entering battle never stacks duplicate handlers.
+func bind_battle_actions(help: Callable, debug: Callable, debug2: Callable, back: Callable) -> void:
+	_help_action = help
+	_debug_action = debug
+	_debug2_action = debug2
+	_back_action = back
+
+
+## Called by BattleScene._exit_tree so the buttons go inert off-battle.
+func clear_battle_actions() -> void:
+	_help_action = Callable()
+	_debug_action = Callable()
+	_debug2_action = Callable()
+	_back_action = Callable()
+
+
+func set_debug_enabled(enabled: bool) -> void:
+	if is_instance_valid(_debug_button):
+		_debug_button.disabled = not enabled
+
+
+func set_debug2_enabled(enabled: bool) -> void:
+	if is_instance_valid(_debug2_button):
+		_debug2_button.disabled = not enabled

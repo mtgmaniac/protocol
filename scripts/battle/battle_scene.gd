@@ -1,8 +1,6 @@
 # Phase 5 battle scene shell that renders cards, rolls dice, and resolves a basic combat loop.
 extends Control
 
-@onready var summary_label: Label = $HeaderRow/InfoStack/SummaryLabel
-@onready var counter_label: Label = $HeaderRow/InfoStack/CounterLabel
 @onready var board: VBoxContainer = %Board
 @onready var background: TextureRect = $Background
 @onready var hero_panel: PanelContainer = %HeroPanel
@@ -24,10 +22,6 @@ extends Control
 @onready var protocol_panel: PanelContainer = %ProtocolPanel
 @onready var roll_button: Button = %RollButton
 @onready var protocol_spend_button: Button = %ProtocolSpendButton
-@onready var return_to_menu_button: BaseButton = $HeaderRow/ButtonRow/ReturnToMenuButton
-@onready var auto_turn_button: BaseButton = $HeaderRow/ButtonRow/AutoTurnButton
-@onready var auto_battle_button: BaseButton = $HeaderRow/ButtonRow/AutoBattleButton
-@onready var toggle_log_button: BaseButton = $HeaderRow/ButtonRow/ToggleLogButton
 @onready var float_layer: Control = %FloatLayer
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
@@ -210,8 +204,14 @@ func _ready() -> void:
 	protocol_spend_button.text = "↺"
 	_build_hud_tooltip()
 	_build_unit_detail_panel()
-	_set_hud_tooltip(auto_turn_button, "Debug: automatically play out this turn.")
-	_set_hud_tooltip(auto_battle_button, "Debug: automatically finish this battle.")
+	# The header bar lives in the PersistentHeader autoload now — bind its buttons to
+	# this battle's handlers. They go inert again when this scene exits the tree.
+	PersistentHeader.bind_battle_actions(
+		_on_toggle_log_button_pressed,
+		_on_auto_turn_button_pressed,
+		_on_auto_battle_button_pressed,
+		_on_return_to_menu_button_pressed,
+	)
 	_set_hud_tooltip(protocol_spend_button, "Reroll\nSpend 2 Protocol to reroll a hero's die.")
 	protocol_spend_button.pressed.connect(_on_reroll_button_pressed)
 	_add_nudge_button()
@@ -253,7 +253,7 @@ func _on_auto_turn_button_pressed() -> void:
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
-	auto_turn_button.disabled = true
+	PersistentHeader.set_debug_enabled(false)
 	_append_log("AUTO: completing the current turn.")
 	if turn_phase == PHASE_AWAIT_ROLL:
 		await _begin_targeting_phase()
@@ -262,8 +262,7 @@ func _on_auto_turn_button_pressed() -> void:
 	if turn_phase == PHASE_READY_TO_END:
 		await _resolve_current_turn()
 	_auto_turn_running = false
-	if is_instance_valid(auto_turn_button):
-		auto_turn_button.disabled = false
+	PersistentHeader.set_debug_enabled(true)
 
 
 func _on_auto_battle_button_pressed() -> void:
@@ -277,8 +276,8 @@ func _on_auto_battle_button_pressed() -> void:
 		return
 
 	_auto_battle_running = true
-	auto_battle_button.disabled = true
-	auto_turn_button.disabled = true
+	PersistentHeader.set_debug2_enabled(false)
+	PersistentHeader.set_debug_enabled(false)
 	_append_log("AUTO: completing the current battle.")
 
 	var safety_rounds := 60
@@ -308,10 +307,17 @@ func _on_auto_battle_button_pressed() -> void:
 		_refresh_summary("Auto battle stopped after safety limit.")
 
 	_auto_battle_running = false
-	if is_instance_valid(auto_battle_button):
-		auto_battle_button.disabled = false
-	if is_instance_valid(auto_turn_button):
-		auto_turn_button.disabled = false
+	PersistentHeader.set_debug2_enabled(true)
+	PersistentHeader.set_debug_enabled(true)
+
+
+func _exit_tree() -> void:
+	# Header survives scene changes; release this battle's button bindings so its
+	# buttons go inert on the screens that follow (reward / evolution / home).
+	if is_instance_valid(PersistentHeader):
+		PersistentHeader.clear_battle_actions()
+		PersistentHeader.set_debug_enabled(true)
+		PersistentHeader.set_debug2_enabled(true)
 
 
 func _input(event: InputEvent) -> void:
@@ -1355,17 +1361,6 @@ func _ensure_protocol_stack_layout() -> void:
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
-# Inset the header content so "FACILITY" and the rightmost button align with the tray.
-func _align_header_to_tray() -> void:
-	var header_row := get_node_or_null("HeaderRow") as Control
-	if header_row == null:
-		return
-	header_row.anchor_left = 0.0
-	header_row.anchor_right = 1.0
-	header_row.offset_left = TRAY_EDGE_INSET
-	header_row.offset_right = -TRAY_EDGE_INSET
-
-
 func _ensure_protocol_segments() -> void:
 	if not _protocol_segments.is_empty():
 		return
@@ -1537,11 +1532,8 @@ func _refresh_summary(_extra_text: String) -> void:
 func _update_battle_header() -> void:
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
-	var battle_text: String = _game_state().get_battle_progress_text()
-	if battle_text.begins_with("Battle "):
-		battle_text = battle_text.trim_prefix("Battle ")
-	summary_label.text = "%s  %s" % [op_name, battle_text]
-	counter_label.text = ""
+	PersistentHeader.set_run_active(true)
+	PersistentHeader.update_progress(_game_state().current_battle, _game_state().total_battles, op_name)
 
 
 func _set_turn_phase(next_phase: String) -> void:
@@ -2722,29 +2714,8 @@ func _get_representative_roll() -> int:
 
 
 func _apply_battle_theme() -> void:
-	PixelUI.apply_pixel_font(summary_label)
-	summary_label.add_theme_font_size_override("font_size", HEADER_SUMMARY_FONT_SIZE)
-	summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
-	summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	summary_label.add_theme_constant_override("outline_size", 2)
-	summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	summary_label.clip_text = false
-	summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	PixelUI.apply_pixel_font(counter_label)
-	counter_label.add_theme_font_size_override("font_size", HEADER_COUNTER_FONT_SIZE)
-	counter_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-	counter_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	counter_label.add_theme_constant_override("outline_size", 3)
-	counter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	counter_label.clip_text = false
-	counter_label.visible = false
-	var header_row := get_node_or_null("HeaderRow") as Control
-	if header_row != null:
-		header_row.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	# Header/board divider: a fixed 3px line at the header boundary (y = 144), inset to
-	# match the footer divider + tray edges. Placed on the root so board reordering and
-	# the board's top margin don't move it.
-	_ensure_zone_divider("HeaderDivider", false)
+	# The header bar (FACILITY label + buttons) and its divider now live in the
+	# PersistentHeader autoload, not this scene. Only the footer divider stays here.
 	_ensure_zone_divider("FooterDivider", true)
 	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
 	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
@@ -2776,10 +2747,7 @@ func _apply_battle_theme() -> void:
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	protocol_value_label.add_theme_constant_override("outline_size", 2)
-	_style_frame_icon_action_button(toggle_log_button, PixelUI.ICON_HELP, HEADER_BUTTON_SIZE)
-	_style_frame_icon_action_button(auto_turn_button, PixelUI.ICON_DEBUG, HEADER_BUTTON_SIZE)
-	_style_frame_icon_action_button(auto_battle_button, PixelUI.ICON_DEBUG2, HEADER_BUTTON_SIZE)
-	_style_frame_icon_action_button(return_to_menu_button, PixelUI.ICON_BACK, HEADER_BUTTON_SIZE)
+	# Header buttons are styled by the PersistentHeader autoload itself.
 	_style_roll_button_for_phase()
 	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE)
 	if _nudge_button != null and is_instance_valid(_nudge_button):
@@ -2804,7 +2772,6 @@ func _apply_battle_theme() -> void:
 			pm.add_theme_constant_override("margin_left", TRAY_EDGE_INSET)
 			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
 	_ensure_protocol_stack_layout()
-	_align_header_to_tray()
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
 	if _protocol_footer_display != null and is_instance_valid(_protocol_footer_display):
 		_protocol_footer_display.visible = false
