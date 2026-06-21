@@ -597,6 +597,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		damage = int(raw.get("dmgP2", damage))
 	var heal: int = int(raw.get("heal", 0))
 	var shield: int = int(raw.get("shield", 0))
+	if bool(enemy_state.get("in_phase_two", false)) and raw.has("shieldP2"):
+		shield = int(raw.get("shieldP2", shield))
 	var sh_turns: int = int(raw.get("shT", 1))
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	var shield_ally_turns: int = int(raw.get("shAllyT", raw.get("shT", 1)))
@@ -619,50 +621,58 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_heal_state(enemy_state, heal)
 
 	if damage > 0:
-		var target_hero: Dictionary = _get_taunting_hero_state()
-		if target_hero.is_empty():
-			target_hero = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if target_hero.is_empty():
-			target_hero = _first_living_state(_hero_states)
-		if not target_hero.is_empty():
-			# Apply damage scaling from battle index
-			var scaled_damage: int = int(round(float(damage) * float(enemy_state.get("dmg_scale", 1.0))))
-			# Rampage: double damage and consume one charge
-			var final_damage: int = scaled_damage
-			if final_damage > 0 and int(enemy_state.get("rampage_charges", 0)) > 0:
-				final_damage = scaled_damage * 2
-				enemy_state["rampage_charges"] = int(enemy_state["rampage_charges"]) - 1
-				_log("%s triggers Rampage! (2× damage)" % enemy_state["unit"].display_name)
-			# Pack bonus: +1 per living same-id ally (excluding self)
-			if bool(raw.get("packBonus", false)) and final_damage > 0:
-				var pack_count: int = 0
-				for es in _enemy_states:
-					if es == enemy_state:
-						continue
-					if not es["dead"] and str(es["id"]) == str(enemy_state["id"]):
-						pack_count += 1
-				if pack_count > 0:
-					final_damage += pack_count
-					_log("%s pack bonus +%d (pack size: %d)." % [enemy_state["unit"].display_name, pack_count, pack_count])
-			# Apply enemy damage multiplier relic
-			final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
-			_damage_state(target_hero, final_damage)
-			_apply_poison(target_hero, poison_amount, poison_turns)
-			# Lifesteal: heal self for % of damage dealt
+		var hits_all_heroes: bool = bool(raw.get("blastAll", false))
+		var scaled_damage: int = int(round(float(damage) * float(enemy_state.get("dmg_scale", 1.0))))
+		var final_damage: int = scaled_damage
+		if final_damage > 0 and int(enemy_state.get("rampage_charges", 0)) > 0:
+			final_damage = scaled_damage * 2
+			enemy_state["rampage_charges"] = int(enemy_state["rampage_charges"]) - 1
+			_log("%s triggers Rampage! (2× damage)" % enemy_state["unit"].display_name)
+		if bool(raw.get("packBonus", false)) and final_damage > 0:
+			var pack_count: int = 0
+			for es in _enemy_states:
+				if es == enemy_state:
+					continue
+				if not es["dead"] and str(es["id"]) == str(enemy_state["id"]):
+					pack_count += 1
+			if pack_count > 0:
+				final_damage += pack_count
+				_log("%s pack bonus +%d (pack size: %d)." % [enemy_state["unit"].display_name, pack_count, pack_count])
+		final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
+		if hits_all_heroes:
+			for hero_state in _hero_states:
+				if bool(hero_state["dead"]):
+					continue
+				_damage_state(hero_state, final_damage)
+				_apply_poison(hero_state, poison_amount, poison_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 			if lifesteal_pct > 0 and final_damage > 0:
 				var heal_amount: int = int(floor(float(final_damage) * float(lifesteal_pct) / 100.0))
 				if heal_amount > 0:
 					_heal_state(enemy_state, heal_amount)
 					_log("%s lifesteals %d HP." % [enemy_state["unit"].display_name, heal_amount])
-			# wipeShields: boss overload strips all hero shield stacks after the hit lands
-			if bool(raw.get("wipeShields", false)):
-				for hero_state in _hero_states:
-					if not bool(hero_state["dead"]):
-						hero_state["shield_stacks"].clear()
-						hero_state["shield"] = 0
-				_log("%s wipes all hero shields!" % enemy_state["unit"].display_name)
-				_emit_event(enemy_state, "wipe_shields", 0, "enemy")
+		else:
+			var target_hero: Dictionary = _get_taunting_hero_state()
+			if target_hero.is_empty():
+				target_hero = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+			if target_hero.is_empty():
+				target_hero = _first_living_state(_hero_states)
+			if not target_hero.is_empty():
+				_damage_state(target_hero, final_damage)
+				_apply_poison(target_hero, poison_amount, poison_turns)
+				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
+				if lifesteal_pct > 0 and final_damage > 0:
+					var heal_amount: int = int(floor(float(final_damage) * float(lifesteal_pct) / 100.0))
+					if heal_amount > 0:
+						_heal_state(enemy_state, heal_amount)
+						_log("%s lifesteals %d HP." % enemy_state["unit"].display_name, heal_amount)
+				if bool(raw.get("wipeShields", false)):
+					for hero_state in _hero_states:
+						if not bool(hero_state["dead"]):
+							hero_state["shield_stacks"].clear()
+							hero_state["shield"] = 0
+					_log("%s wipes all hero shields!" % enemy_state["unit"].display_name)
+					_emit_event(enemy_state, "wipe_shields", 0, "enemy")
 
 	if damage <= 0 and poison_amount > 0:
 		var poison_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))

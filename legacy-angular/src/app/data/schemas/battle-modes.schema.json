@@ -27,7 +27,7 @@
             "type": "number",
             "minimum": 0.5,
             "maximum": 1.5,
-            "description": "Multiplies enemy max HP (after battle index scale). Use 1 for baseline; below 1 softens the operation."
+            "description": "Balance sim only: multiplies enemy HP in Monte Carlo runs. Godot uses flat enemyUnitDefs stats."
           },
           "battles": {
             "type": "array",

@@ -1395,7 +1395,7 @@ func _build_runtime_units() -> void:
 			break
 		var enemy: EnemyData = _data_manager().get_enemy_by_display_name(str(enemy_name)) as EnemyData
 		if enemy != null:
-			enemy_units.append(_build_scaled_enemy(enemy, battle_index, operation.track_hp_scale))
+			enemy_units.append(_duplicate_enemy(enemy))
 
 
 func _refresh_summary(_extra_text: String) -> void:
@@ -2658,25 +2658,10 @@ func _ensure_panel_background(panel: PanelContainer) -> void:
 		background_fill.queue_free()
 
 
-func _build_scaled_enemy(base_enemy: EnemyData, battle_index: int, track_scale: float) -> EnemyData:
-	var scaled_enemy: EnemyData = base_enemy.duplicate(true) as EnemyData
-	if scaled_enemy == null:
-		return base_enemy
-
-	var battle_number: int = battle_index + 1
-	var multiplier: float = 1.0 + (float(maxi(battle_number - 1, 0)) * 0.10 * maxf(track_scale, 0.5))
-	if battle_number >= _game_state().total_battles:
-		multiplier += 0.2
-
-	scaled_enemy.max_hp = maxi(1, int(round(float(base_enemy.max_hp) * multiplier)))
-	scaled_enemy.damage_preview_min = maxi(0, int(round(float(base_enemy.damage_preview_min) * multiplier)))
-	scaled_enemy.damage_preview_max = maxi(0, int(round(float(base_enemy.damage_preview_max) * multiplier)))
-	scaled_enemy.phase_two_damage_preview_min = maxi(0, int(round(float(base_enemy.phase_two_damage_preview_min) * multiplier)))
-	scaled_enemy.phase_two_damage_preview_max = maxi(0, int(round(float(base_enemy.phase_two_damage_preview_max) * multiplier)))
-	# Scale phase 2 threshold proportionally so it stays at ~50% of scaled max HP
-	if int(base_enemy.phase_two_threshold) > 0:
-		scaled_enemy.phase_two_threshold = maxi(0, int(round(float(base_enemy.phase_two_threshold) * multiplier)))
-	return scaled_enemy
+## Per-battle instance copy — stats always match `enemyUnitDefs` (no fight-index scaling).
+func _duplicate_enemy(base_enemy: EnemyData) -> EnemyData:
+	var copy: EnemyData = base_enemy.duplicate(true) as EnemyData
+	return copy if copy != null else base_enemy
 
 
 # --- Item System (Phase 3) ---
@@ -3082,17 +3067,14 @@ func _process_summon_events(events: Array) -> void:
 		if base_enemy.ai_type != "dumb":
 			_append_log("Summon blocked: '%s' must be a dumb unit." % summon_name)
 			continue
-		var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
-		var track_scale: float = operation.track_hp_scale if operation != null else 1.0
-		var battle_index: int = maxi(_game_state().current_battle - 1, 0)
-		var scaled: EnemyData = _build_scaled_enemy(base_enemy, battle_index, track_scale)
-		var inject_result: Dictionary = combat_manager.inject_enemy(scaled)
+		var summon_copy: EnemyData = _duplicate_enemy(base_enemy)
+		var inject_result: Dictionary = combat_manager.inject_enemy(summon_copy)
 		if inject_result.is_empty():
 			continue
 		var slot_index: int = int(inject_result.get("slot_index", -1))
 		if slot_index >= 0 and slot_index < enemy_units.size():
-			enemy_units[slot_index] = scaled
+			enemy_units[slot_index] = summon_copy
 		else:
-			enemy_units.append(scaled)
+			enemy_units.append(summon_copy)
 		_populate_enemy_cards()
-		_append_log("%s joins the battle!" % scaled.display_name)
+		_append_log("%s joins the battle!" % summon_copy.display_name)

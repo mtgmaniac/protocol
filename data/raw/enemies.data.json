@@ -356,20 +356,21 @@
     "boss": {
       "recharge": {
         "name": "Shield Matrix",
-        "eff": "22 shield, 2t",
+        "eff": "15 shield (P2 20), 1t",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 22,
-        "shT": 2
+        "shield": 15,
+        "shieldP2": 20,
+        "shT": 1
       },
       "strike": {
         "name": "Suppressor",
-        "eff": "19 dmg (P2 26), -2 roll, 2t",
-        "dmg": 19,
-        "dmgP2": 26,
+        "eff": "15 dmg (P2 20), -2 roll, 2t",
+        "dmg": 15,
+        "dmgP2": 20,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -380,39 +381,38 @@
       },
       "surge": {
         "name": "Core Blast",
-        "eff": "23 dmg (P2 29), 2 DoT, 2t",
-        "dmg": 23,
-        "dmgP2": 29,
-        "dot": 2,
-        "dT": 2,
+        "eff": "20 dmg (P2 25)",
+        "dmg": 20,
+        "dmgP2": 25,
+        "dot": 0,
+        "dT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0
       },
       "crit": {
         "name": "System Purge",
-        "eff": "28 dmg (P2 34), -3 roll, 2t",
-        "dmg": 28,
-        "dmgP2": 34,
-        "dot": 0,
-        "dT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0,
-        "rfm": 3,
-        "rfmT": 2
-      },
-      "overload": {
-        "name": "Annihilate",
-        "eff": "30 dmg (P2 38), wipe shields",
-        "dmg": 30,
-        "dmgP2": 38,
+        "eff": "25 dmg (P2 30), wipe shields",
+        "dmg": 25,
+        "dmgP2": 30,
         "dot": 0,
         "dT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
         "wipeShields": true
+      },
+      "overload": {
+        "name": "Annihilate",
+        "eff": "30 dmg (P2 35) to all heroes",
+        "dmg": 30,
+        "dmgP2": 35,
+        "dot": 0,
+        "dT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "blastAll": true
       }
     },
     "skitter": {
@@ -2311,74 +2311,11 @@
         "rfm": 2,
         "rfmT": 2
       }
-    },
-    "commsHex": {
-      "recharge": {
-        "name": "Lattice Lock",
-        "eff": "-1 roll, 6 shield, 2t",
-        "dmg": 0,
-        "dot": 0,
-        "dT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 6,
-        "shT": 2,
-        "rfm": 1,
-        "rfmT": 1
-      },
-      "strike": {
-        "name": "Phase Snare",
-        "eff": "13 dmg, -1 roll, 2t",
-        "dmg": 13,
-        "dot": 0,
-        "dT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 2
-      },
-      "surge": {
-        "name": "Harmonic Clamp",
-        "eff": "16 dmg, -1 roll, 2t",
-        "dmg": 16,
-        "dot": 0,
-        "dT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 2
-      },
-      "crit": {
-        "name": "Hexfield Collapse",
-        "eff": "19 dmg, -2 roll, 2t",
-        "dmg": 19,
-        "dot": 0,
-        "dT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 2
-      },
-      "overload": {
-        "name": "Sector Bandkill",
-        "eff": "22 dmg, -2 roll, 3t",
-        "dmg": 22,
-        "dot": 0,
-        "dT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 3
-      }
     }
   },
   "enemyUnitDefs": {
     "Scrap Drone": {
-      "hp": 40,
+      "hp": 45,
       "dMin": 5,
       "dMax": 9,
       "type": "scrap",
@@ -2386,7 +2323,7 @@
       "callsign": "SCRAP"
     },
     "Rust Drone": {
-      "hp": 35,
+      "hp": 40,
       "dMin": 5,
       "dMax": 8,
       "type": "rust",
@@ -2401,16 +2338,8 @@
       "ai": "dumb",
       "callsign": "STATIC"
     },
-    "Harmonic Hexnode": {
-      "hp": 72,
-      "dMin": 12,
-      "dMax": 17,
-      "type": "commsHex",
-      "ai": "smart",
-      "callsign": "HEX"
-    },
     "Patrol Elite": {
-      "hp": 65,
+      "hp": 55,
       "dMin": 12,
       "dMax": 16,
       "type": "patrol",
@@ -2418,7 +2347,7 @@
       "callsign": "PATROL"
     },
     "Guard Elite": {
-      "hp": 80,
+      "hp": 70,
       "dMin": 14,
       "dMax": 18,
       "type": "guard",
@@ -2434,7 +2363,7 @@
       "callsign": "WARDEN"
     },
     "Volt Elite": {
-      "hp": 90,
+      "hp": 80,
       "dMin": 15,
       "dMax": 21,
       "type": "volt",
@@ -2443,11 +2372,11 @@
     },
     "SCRAPMASTER": {
       "hp": 180,
-      "dMin": 19,
-      "dMax": 25,
+      "dMin": 15,
+      "dMax": 30,
       "type": "boss",
       "ai": "smart",
-      "p2dMin": 27,
+      "p2dMin": 20,
       "p2dMax": 35,
       "pThr": 86,
       "callsign": "SCRAPLORD"

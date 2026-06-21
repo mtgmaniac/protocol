@@ -45,7 +45,7 @@ export interface BattleProgressSimInput {
   /** encounter tables per mode */
   battlesByMode: Record<BattleModeId, { enemies: { name: string }[] }[]>;
   modeLabels: Record<BattleModeId, string>;
-  /** Per-operation enemy max HP multiplier after battle index scale (matches game `trackHpScale`). */
+  /** Per-operation enemy max HP multiplier (balance sim only — Godot uses flat enemyUnitDefs). */
   trackHpScaleByMode: Record<BattleModeId, number>;
   /**
    * Protocol reroll budget for the entire track (shared across all heroes and all battles).
@@ -301,6 +301,9 @@ function getEnemyPlan(enemy: SimEnemy, suites: Record<string, EnemyAbilitySuite>
   if ((base.shieldAlly || 0) > 0) base.shieldAlly = Math.round((base.shieldAlly || 0) * scale);
   if (base.dot > 0) base.dot = Math.round(base.dot * scale);
   if (enemy.p2 && base.dmgP2) base.dmg = base.dmgP2;
+  if (enemy.p2 && (base as { shieldP2?: number }).shieldP2) {
+    base.shield = (base as { shieldP2?: number }).shieldP2!;
+  }
   return base;
 }
 
@@ -592,11 +595,17 @@ function resolveEnemyTurn(
         : pickDumbHeroIndex(heroes)
       : -1;
 
-  if ((act.dmg || 0) > 0 && hi >= 0) {
-    damageHero(heroes[hi]!, act.dmg);
+  if ((act.dmg || 0) > 0) {
+    if (act.blastAll) {
+      for (const h of heroes) {
+        if (h.hp > 0) damageHero(h, act.dmg!);
+      }
+    } else if (hi >= 0) {
+      damageHero(heroes[hi]!, act.dmg!);
+    }
   }
 
-  if ((act.dot || 0) > 0 && hi >= 0) {
+  if ((act.dot || 0) > 0 && !act.blastAll && hi >= 0) {
     const turns = Math.max(act.dT || 0, DEFAULT_DOT_TURNS);
     applyDotToHero(heroes[hi]!, act.dot, turns);
   }

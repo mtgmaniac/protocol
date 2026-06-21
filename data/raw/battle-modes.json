@@ -12,7 +12,7 @@
       "trackHpScale": 1.05,
       "callsign": "FACILITY",
       "label": "Facility sweep",
-      "blurb": "Corporate drones, ECM skimmers, harmonic hexnodes, and the Scrapmaster.",
+      "blurb": "Corporate drones, ECM skimmers, and the Scrapmaster.",
       "victoryTitle": "VICTORY",
       "victorySub": "Scrapmaster destroyed. Scrapfields clear.",
       "battles": [
@@ -31,8 +31,7 @@
         },
         {
           "enemies": [
-            { "name": "Patrol Elite" },
-            { "name": "Scrap Drone" },
+            { "name": "Guard Elite" },
             { "name": "Rust Drone" }
           ]
         },
@@ -51,7 +50,7 @@
         },
         {
           "enemies": [
-            { "name": "Guard Elite" },
+            { "name": "Patrol Elite" },
             { "name": "Static Skimmer" },
             { "name": "Static Skimmer" }
           ]
@@ -72,15 +71,15 @@
         {
           "enemies": [
             { "name": "Volt Elite" },
-            { "name": "Harmonic Hexnode" },
-            { "name": "Patrol Elite" }
+            { "name": "Volt Elite" },
+            { "name": "Static Skimmer" }
           ]
         },
         {
           "enemies": [
+            { "name": "Scrap Drone" },
             { "name": "SCRAPMASTER" },
-            { "name": "Guard Elite" },
-            { "name": "Patrol Elite" }
+            { "name": "Scrap Drone" }
           ]
         }
       ]
