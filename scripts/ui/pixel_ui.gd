@@ -31,6 +31,9 @@ static var DT_AMBER := Color("cf9a36")
 static var DT_AMBER_TEXT := Color("b08a3a")
 static var DT_PROTO_EMPTY := Color("1a1c12")
 static var DT_PROTO_EMPTY_BORDER := Color("2a2c1c")
+# Flat icon buttons (header/footer): dark square, 2px border; active uses DT_CYAN.
+static var DT_BTN_BG := Color("11161a")
+static var DT_BTN_BORDER := Color("28323a")
 # Enemy (rust) card tokens
 static var DT_ENEMY_BG := Color("130c0a")
 static var DT_ENEMY_BORDER := Color("5e3022")
@@ -484,6 +487,38 @@ static func style_frame_icon_button(
 		b.add_theme_color_override("icon_disabled_color", Color(icon_modulate.r, icon_modulate.g, icon_modulate.b, 0.55))
 		for state_name in styles.keys():
 			b.add_theme_stylebox_override(state_name, styles[state_name])
+
+
+## Direction-05 flat icon button: dark square (DT_BTN_BG) + 2px hard border, our
+## pixel icon centered & expanded. Pass border_color = DT_CYAN for the active state.
+static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE) -> void:
+	if button == null or not (button is Button):
+		return
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var styles := {
+		"normal": make_hard_style(DT_BTN_BG, border_color, 2),
+		"hover": make_hard_style(DT_BTN_BG.lightened(0.05), border_color.lightened(0.10), 2),
+		"pressed": make_hard_style(DT_BTN_BG.darkened(0.12), border_color, 2),
+		"disabled": make_hard_style(DT_BTN_BG, Color(0.35, 0.38, 0.42, 0.6), 2),
+		"focus": make_hard_style(DT_BTN_BG, border_color, 2),
+	}
+	for stylebox_variant in styles.values():
+		(stylebox_variant as StyleBoxFlat).set_content_margin_all(14.0)
+	var b := button as Button
+	b.text = ""
+	b.flat = false
+	b.icon = _load_texture(icon_path)
+	b.expand_icon = true
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.remove_theme_font_override("font")
+	b.add_theme_color_override("icon_normal_color", icon_modulate)
+	b.add_theme_color_override("icon_hover_color", icon_modulate)
+	b.add_theme_color_override("icon_pressed_color", icon_modulate.darkened(0.10))
+	b.add_theme_color_override("icon_focus_color", icon_modulate)
+	b.add_theme_color_override("icon_disabled_color", Color(icon_modulate.r, icon_modulate.g, icon_modulate.b, 0.55))
+	for state_name in styles.keys():
+		b.add_theme_stylebox_override(state_name, styles[state_name])
 
 
 static func style_labeled_texture_button(button: Button, texture_path: String, font_size: int, font_color: Color = TEXT_PRIMARY) -> void:
