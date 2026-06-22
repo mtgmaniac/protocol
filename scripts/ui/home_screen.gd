@@ -25,18 +25,19 @@ const ROOT_MARGIN_BOTTOM := 48
 const SECTION_GAP := 30
 const HEADER_GAP := 16
 
-# Fonts (logical units) — matched to the battle screen's scale (card names ~72,
-# labels ~48-70) so the picker reads at the same weight as the rest of the game.
-const HEADER_FONT := 48
-const COUNTER_FONT := 56
-const ENC_NAME_FONT := 88
-const ENC_META_FONT := 44
-const ENC_DESC_FONT := 40
-const TILE_NAME_FONT := 44
-const DETAIL_NAME_FONT := 72
-const DETAIL_DESC_FONT := 40
-const FOCUS_CHIP_FONT := 36
-const DEPLOY_FONT := 72
+# Fonts (logical units) — matched to the battle screen's scale (card names 72,
+# protocol/summary labels 70-112) so the picker reads at the same weight.
+const HEADER_FONT := 56
+const COUNTER_FONT := 64
+const ENC_NAME_FONT := 96
+const ENC_META_FONT := 48
+const ENC_DESC_FONT := 44
+const TILE_NAME_FONT := 56
+const DETAIL_NAME_FONT := 76
+const DETAIL_DESC_FONT := 44
+const FOCUS_CHIP_FONT := 40
+const DEPLOY_FONT := 84
+const TILE_NAME_STRIP_H := 128
 
 const PANEL_BORDER := 2
 const PANEL_RADIUS := 0
@@ -54,7 +55,7 @@ const ROLE_BADGE_SIZE := 34
 const SLOT_BADGE_SIZE := 60
 const CHECK_INSET := 8
 
-const DETAIL_BAR_HEIGHT := 300      # fixed so swapping units never reflows the page
+const DETAIL_BAR_HEIGHT := 340      # fixed so swapping units never reflows the page
 
 const DOT_SIZE := 18
 const DOT_GAP := 18
@@ -444,7 +445,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var tile_name: String = unit.callsign if unit.callsign != "" else unit.display_name
 	var name_strip := PanelContainer.new()
 	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_strip.custom_minimum_size = Vector2(0, 92)
+	name_strip.custom_minimum_size = Vector2(0, TILE_NAME_STRIP_H)
 	name_strip.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_HEADER, PixelUI.DT_HERO_BORDER))
 	var name_pad := MarginContainer.new()
 	name_pad.add_theme_constant_override("margin_left", 6)
@@ -675,7 +676,9 @@ func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
 	frame.add_child(crop)
 	var tex := TextureRect.new()
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	# KEEP_ASPECT (contain) so the whole portrait fits inside the box — COVERED was
+	# zooming in and clipping the heads off the top.
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
 	tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
