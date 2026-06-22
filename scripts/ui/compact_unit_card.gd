@@ -17,10 +17,10 @@ const ACTION_PANEL_HEIGHT := 88.0
 const PORTRAIT_ASPECT_FALLBACK := 2.0
 const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
-# Fill-zoom + top-crop so portraits fill the frame edge-to-edge despite the
-# transparent padding baked into the source PNGs (head stays top-aligned).
-const PORTRAIT_FILL_ZOOM := 1.12
-const PORTRAIT_TOP_CROP_FRAC := 0.16
+# Portraits are cropped to their opaque bounds at load (DataManager._crop_to_content),
+# so a plain cover-scale (no extra zoom, head top-aligned) already fills the frame.
+const PORTRAIT_FILL_ZOOM := 1.0
+const PORTRAIT_TOP_CROP_FRAC := 0.0
 const HERO_PORTRAIT_WIDTH_SCALE := 0.90
 const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as

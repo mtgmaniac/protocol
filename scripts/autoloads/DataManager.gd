@@ -438,18 +438,43 @@ func _load_hero_portrait(unit_id: String) -> Texture2D:
 	var file_name: String = str(HERO_PORTRAIT_BY_ID.get(unit_id, ""))
 	if file_name == "":
 		return null
-	return _load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name])
+	return _crop_to_content(_load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name]))
 
 
 func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 	var mapped_path: String = str(ENEMY_PORTRAIT_BY_NAME.get(enemy_name, ""))
+	var tex: Texture2D = null
 	if mapped_path != "":
 		if mapped_path.begins_with("res://"):
-			return _load_texture_if_exists(mapped_path)
-		return _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, mapped_path])
-	# Fallback: a file named after the slugified enemy name (covers enemies/bosses
-	# not in the explicit map, e.g. conclave_overseer.png, aegis_anchor.png).
-	return _load_texture_if_exists("%s%s.png" % [ENEMY_PORTRAIT_ROOT, _slugify(enemy_name)])
+			tex = _load_texture_if_exists(mapped_path)
+		else:
+			tex = _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, mapped_path])
+	else:
+		# Fallback: a file named after the slugified enemy name (covers enemies/bosses
+		# not in the explicit map, e.g. conclave_overseer.png, aegis_anchor.png).
+		tex = _load_texture_if_exists("%s%s.png" % [ENEMY_PORTRAIT_ROOT, _slugify(enemy_name)])
+	return _crop_to_content(tex)
+
+
+# Portrait PNGs are 256x460 with the subject in the top ~half and a big transparent
+# bottom margin. Crop to the opaque bounding box so cover-fill fills the box with the
+# actual character instead of the empty padding. Returns an AtlasTexture (no copy).
+func _crop_to_content(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	var img: Image = tex.get_image()
+	if img == null:
+		return tex
+	var used: Rect2i = img.get_used_rect()
+	if used.size.x <= 0 or used.size.y <= 0:
+		return tex
+	if used.position == Vector2i.ZERO and used.size == img.get_size():
+		return tex
+	var atlas := AtlasTexture.new()
+	atlas.atlas = tex
+	atlas.region = Rect2(used)
+	atlas.filter_clip = true
+	return atlas
 
 
 func _load_texture_if_exists(texture_path: String) -> Texture2D:

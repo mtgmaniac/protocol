@@ -74,6 +74,18 @@ func _launch_screen(screen_id: String) -> void:
 		_audit_bosses()
 		get_tree().quit()
 		return
+	if screen_id == "portrait-audit":
+		for uid in DataManager.units.keys():
+			var u = DataManager.get_unit(uid)
+			if u == null or u.portrait == null:
+				continue
+			var img = u.portrait.get_image()
+			if img == null:
+				print("  %s: get_image() NULL" % uid)
+				continue
+			print("  %s: tex=%s used_rect=%s" % [uid, img.get_size(), img.get_used_rect()])
+		get_tree().quit()
+		return
 
 	var ops: Array = DataManager.get_operation_order()
 	var op_id: String = ops[0] if not ops.is_empty() else ""
