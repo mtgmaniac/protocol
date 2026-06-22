@@ -70,6 +70,11 @@ func _launch() -> void:
 # Boots a single menu screen with enough GameState context to render, then shoots it.
 func _launch_screen(screen_id: String) -> void:
 	var unit_ids: Array = DataManager.units.keys().slice(0, 3)
+	if screen_id == "boss-audit":
+		_audit_bosses()
+		get_tree().quit()
+		return
+
 	var ops: Array = DataManager.get_operation_order()
 	var op_id: String = ops[0] if not ops.is_empty() else ""
 	GameState.start_run(unit_ids, op_id)
@@ -100,6 +105,26 @@ func _launch_screen(screen_id: String) -> void:
 
 	await get_tree().create_timer(SCREEN_SETTLE_SECS).timeout
 	_capture("res://debug_artifacts/debug_screen_%s.png" % screen_id)
+
+
+func _audit_bosses() -> void:
+	print("[BOSS-AUDIT] chosen boss portrait per operation (highest-HP enemy w/ art):")
+	for op_id in DataManager.get_operation_order():
+		var op = DataManager.get_operation(op_id)
+		if op == null or op.battles.is_empty():
+			print("  ", op_id, " — NO BATTLES")
+			continue
+		var boss_name := ""
+		var best_hp := -1
+		for b in op.battles:
+			for n in b.get("enemy_names", []):
+				var e = DataManager.get_enemy_by_display_name(n)
+				if e == null or e.portrait == null:
+					continue
+				if e.max_hp > best_hp:
+					best_hp = e.max_hp
+					boss_name = n
+		print("  OP %-16s -> %s" % [op_id, ("'%s' (hp %d)" % [boss_name, best_hp]) if boss_name != "" else "*** NO ART FOR ANY ENEMY ***"])
 
 
 func _capture(path: String) -> void:

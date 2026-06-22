@@ -86,6 +86,7 @@ var _focused_unit_id: String = ""
 
 # Built nodes
 var _enc_portrait: TextureRect
+var _enc_portrait_placeholder: Label
 var _enc_name_label: Label
 var _enc_desc_label: Label
 var _enc_level_label: Label
@@ -223,6 +224,12 @@ func _build_encounter_section() -> Control:
 	portrait_frame.custom_minimum_size = Vector2(ENC_PORTRAIT, ENC_PORTRAIT)
 	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_portrait = portrait_box["tex"]
+	# Placeholder glyph shown when an encounter has no boss art yet.
+	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
+	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_enc_portrait_placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	(portrait_box["crop"] as Control).add_child(_enc_portrait_placeholder)
 	row.add_child(portrait_frame)
 
 	# Info column: name / threat / description.
@@ -327,7 +334,9 @@ func _refresh_encounter() -> void:
 		return
 	_enc_name_label.text = op.display_name.to_upper()
 	_enc_desc_label.text = op.blurb
-	_enc_portrait.texture = _get_boss_portrait(op)
+	var boss_tex: Texture2D = _get_boss_portrait(op)
+	_enc_portrait.texture = boss_tex
+	_enc_portrait_placeholder.visible = boss_tex == null
 
 	var level: int = _threat_level(_operation_index)
 	_enc_level_label.text = "LV %d" % level
@@ -343,16 +352,24 @@ func _threat_level(index: int) -> int:
 	return clampi(index + 1, 1, THREAT_PIP_COUNT)
 
 
-# Boss = the final battle's last enemy; its portrait stands in for the encounter art.
+# Boss = the highest-HP enemy in the operation (bosses are 140-180 HP vs ~35-74 for
+# minions). Picks that enemy's portrait; if the boss itself has no art, falls back to
+# the next-highest enemy that does, so the box is never blank when any art exists.
 func _get_boss_portrait(op: OperationData) -> Texture2D:
-	if op == null or op.battles.is_empty():
+	if op == null:
 		return null
-	var last_battle: Dictionary = op.battles[op.battles.size() - 1]
-	var names: Array = last_battle.get("enemy_names", [])
-	if names.is_empty():
-		return null
-	var enemy: EnemyData = DataManager.get_enemy_by_display_name(str(names[names.size() - 1])) as EnemyData
-	return enemy.portrait if enemy != null else null
+	var boss_tex: Texture2D = null
+	var best_hp: int = -1
+	for battle_variant in op.battles:
+		var battle: Dictionary = battle_variant
+		for name_variant in battle.get("enemy_names", []):
+			var enemy: EnemyData = DataManager.get_enemy_by_display_name(str(name_variant)) as EnemyData
+			if enemy == null or enemy.portrait == null:
+				continue
+			if enemy.max_hp > best_hp:
+				best_hp = enemy.max_hp
+				boss_tex = enemy.portrait
+	return boss_tex
 
 
 # ─── Divider ──────────────────────────────────────────────────────────────────

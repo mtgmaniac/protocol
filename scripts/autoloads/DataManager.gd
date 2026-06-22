@@ -447,7 +447,9 @@ func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 		if mapped_path.begins_with("res://"):
 			return _load_texture_if_exists(mapped_path)
 		return _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, mapped_path])
-	return null
+	# Fallback: a file named after the slugified enemy name (covers enemies/bosses
+	# not in the explicit map, e.g. conclave_overseer.png, aegis_anchor.png).
+	return _load_texture_if_exists("%s%s.png" % [ENEMY_PORTRAIT_ROOT, _slugify(enemy_name)])
 
 
 func _load_texture_if_exists(texture_path: String) -> Texture2D:
