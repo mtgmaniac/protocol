@@ -224,7 +224,7 @@
       "name": "Pulse Tech",
       "cls": "ENERGY WIELDER",
       "pickerCategory": "damage",
-      "pickerBlurb": "Adaptive elemental striker. Branch into cryo control or pyro burst—flexible damage with strong evolve payoffs.",
+      "pickerBlurb": "Flat damage that builds into DoT on high rolls. Low HP, high damage ceiling.",
       "hp": 45,
       "sk": "pulse",
       "abilities": [
@@ -312,7 +312,7 @@
       "evolutions": [
         {
           "name": "Cryo Specialist",
-          "focus": "Cold control / -roll",
+          "focus": "Freeze + debuff control",
           "hp": 70,
           "abilities": [
             {
@@ -436,7 +436,7 @@
         },
         {
           "name": "Pyro Specialist",
-          "focus": "Raw damage / DoT burst",
+          "focus": "Burst damage + DoT",
           "hp": 60,
           "abilities": [
             {
@@ -558,7 +558,7 @@
       "name": "Strike Unit",
       "cls": "STRIKE OPS",
       "pickerCategory": "damage",
-      "pickerBlurb": "Frontline DPS. Raw damage on every roll — no gimmicks, just pressure. Evolve into Bladecore (AoE burst) or Ravager (DoT stacking).",
+      "pickerBlurb": "Pure DPS. Damage on every roll, the highest sustained output in the squad. No utility.",
       "hp": 55,
       "sk": "combat",
       "abilities": [
@@ -652,7 +652,7 @@
       "evolutions": [
         {
           "name": "Bladecore",
-          "focus": "Multi-hit / rapid attacks",
+          "focus": "Multi-hit AoE",
           "hp": 70,
           "abilities": [
             {
@@ -772,7 +772,7 @@
         },
         {
           "name": "Ravager",
-          "focus": "Bleed / damage-over-time",
+          "focus": "Stacking DoT",
           "hp": 65,
           "abilities": [
             {
@@ -897,7 +897,7 @@
       "name": "Spite Guard",
       "cls": "ANTAGONIST PLATE",
       "pickerCategory": "defense",
-      "pickerBlurb": "Taunt and spite. Draw fire, stack shields on allies, strip enemy shields, and hammer with roll pressure.",
+      "pickerBlurb": "Taunts fire onto itself, shields allies, and strips enemy shields. Tanks and pressures at once.",
       "hp": 55,
       "sk": "shield",
       "abilities": [
@@ -995,7 +995,7 @@
       "evolutions": [
         {
           "name": "Bulwark",
-          "focus": "Fortress shields / team cover",
+          "focus": "Heavy team shields",
           "hp": 80,
           "abilities": [
             {
@@ -1126,7 +1126,7 @@
         },
         {
           "name": "Sentinel",
-          "focus": "Counter-attacks and taunt",
+          "focus": "Taunt + counters",
           "hp": 70,
           "abilities": [
             {
@@ -1258,7 +1258,7 @@
       "name": "Avalanche Suit",
       "cls": "SQUAD SHELL",
       "pickerCategory": "defense",
-      "pickerBlurb": "Squad shell. Blanket team shields and triage HP before spikes—coverage-first, no taunt. Evolve into Glacier Mantle (shields + mass freeze on enemy dice) or Trench Rig (targeted ally heal + enemy roll strip).",
+      "pickerBlurb": "Freezes enemy dice to skip incoming hits and heals the whole squad. Control plus sustain.",
       "hp": 55,
       "sk": "avalanche",
       "abilities": [
@@ -1351,7 +1351,7 @@
       "evolutions": [
         {
           "name": "Glacier Mantle",
-          "focus": "Barriers + cryo control",
+          "focus": "Shields + enemy freeze",
           "hp": 80,
           "abilities": [
             {
@@ -1483,7 +1483,7 @@
         },
         {
           "name": "Trench Rig",
-          "focus": "Trench sustain / counterweight",
+          "focus": "Targeted heal + debuff",
           "hp": 85,
           "abilities": [
             {
@@ -1609,7 +1609,7 @@
       "name": "Splice Medic",
       "cls": "COMBAT AUGMENTOR",
       "pickerCategory": "support",
-      "pickerBlurb": "Sustain core. Targeted and party heals, DoT cleanup, and clutch revives to keep the run alive.",
+      "pickerBlurb": "Single-target and party heals, DoT cleanse, and revives.",
       "hp": 50,
       "sk": "medic",
       "abilities": [
@@ -1705,7 +1705,7 @@
       "evolutions": [
         {
           "name": "Combat Medic",
-          "focus": "Heal while dealing damage",
+          "focus": "Heal + damage",
           "hp": 65,
           "abilities": [
             {
@@ -1827,7 +1827,7 @@
         },
         {
           "name": "Synth Warden",
-          "focus": "Team-wide buffs and revival",
+          "focus": "Team buffs + revive",
           "hp": 70,
           "abilities": [
             {
@@ -1959,7 +1959,7 @@
       "name": "Field Engineer",
       "cls": "SUPPORT TECH",
       "pickerCategory": "support",
-      "pickerBlurb": "Force multiplier. Patch the squad, spike ally rolls, and grease greedy Protocol plays.",
+      "pickerBlurb": "A Protocol battery that shields and heals low, then turns to AoE damage on high rolls.",
       "hp": 50,
       "sk": "engineer",
       "abilities": [
@@ -2055,7 +2055,7 @@
       "evolutions": [
         {
           "name": "Overclocked",
-          "focus": "Protocol battery / squad spikes",
+          "focus": "Protocol engine + roll spikes",
           "hp": 65,
           "abilities": [
             {
@@ -2176,7 +2176,7 @@
         },
         {
           "name": "Phantom",
-          "focus": "Stealth deployments",
+          "focus": "Cloaked deploys",
           "hp": 60,
           "abilities": [
             {
@@ -2308,7 +2308,7 @@
       "name": "Ghost Operative",
       "cls": "INFILTRATOR",
       "pickerCategory": "control",
-      "pickerBlurb": "Stealth and sabotage. Cloak through heavy swings, debuff enemy rolls, and pick off isolated targets.",
+      "pickerBlurb": "A single-target assassin: cloaks past big hits, weakens one enemy, then bursts it down.",
       "hp": 45,
       "sk": "ghost",
       "abilities": [
@@ -2400,7 +2400,7 @@
       "evolutions": [
         {
           "name": "Shadow Operative",
-          "focus": "Stealth, burst, evasion",
+          "focus": "Cloak burst + evasion",
           "hp": 65,
           "abilities": [
             {
@@ -2521,7 +2521,7 @@
         },
         {
           "name": "Wraith",
-          "focus": "Debuffs and elimination",
+          "focus": "Debuff + execute",
           "hp": 60,
           "abilities": [
             {
@@ -2649,7 +2649,7 @@
       "name": "Signal Breaker",
       "cls": "COMMS INTERDICTOR",
       "pickerCategory": "control",
-      "pickerBlurb": "Tray-wide jamming. Stack −enemy roll on many targets at once—pair with Ghost when you need spread collapse, not a single pick.",
+      "pickerBlurb": "Spreads debuffs across the whole enemy tray, softening every incoming hit at once.",
       "hp": 45,
       "sk": "breaker",
       "abilities": [
@@ -2747,7 +2747,7 @@
       "evolutions": [
         {
           "name": "Noise Floor",
-          "focus": "Ambient jam / tray-wide rfe",
+          "focus": "Tray-wide debuff",
           "hp": 65,
           "abilities": [
             {
@@ -2877,7 +2877,7 @@
         },
         {
           "name": "Nullwire",
-          "focus": "Focused strip / single-target rfe",
+          "focus": "Single-target debuff",
           "hp": 60,
           "abilities": [
             {

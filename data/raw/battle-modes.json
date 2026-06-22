@@ -12,9 +12,9 @@
       "trackHpScale": 1.05,
       "callsign": "FACILITY",
       "label": "Facility sweep",
-      "blurb": "Corporate drones, ECM skimmers, and the Scrapmaster.",
+      "blurb": "Drones wall up behind ECM shields and chip your rolls down. Strip shields and out-damage the attrition.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Scrapmaster destroyed. Scrapfields clear.",
+      "victorySub": "Scrapmaster down. Facility clear.",
       "battles": [
         {
           "enemies": [
@@ -88,9 +88,9 @@
       "trackHpScale": 1,
       "callsign": "HIVE",
       "label": "Hive incursion",
-      "blurb": "Skitterlings, bloodmites, chitin elites, and the Hive Matriarch.",
+      "blurb": "Swarms stack heavy DoT and heal off you with lifesteal. Burst them fast and cleanse the bleed.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Hive Matriarch slain. The brood splinters.",
+      "victorySub": "Matriarch down. Brood scattered.",
       "battles": [
         {
           "enemies": [
@@ -192,9 +192,9 @@
       "trackHpScale": 0.94,
       "callsign": "VEIL",
       "label": "Veil Concord",
-      "blurb": "Lattice elites, phase grunts, harmonic shields — and the Overseer.",
+      "blurb": "A lattice that shields and buffs its own rolls, calling in more on high rolls. Kill the support and strip the shields.",
       "victoryTitle": "VICTORY",
-      "victorySub": "The Overseer falls. The Concord withdraws.",
+      "victorySub": "Overseer down. Concord gone.",
       "battles": [
         {
           "enemies": [
@@ -302,9 +302,9 @@
       "trackHpScale": 0.94,
       "callsign": "CIRCLET",
       "label": "Void Circlet",
-      "blurb": "Arcane binders, countermagic, warp summons — face the Hierophant.",
+      "blurb": "Casters counter your hits and debuff your dice while summoning reinforcements. Punishes careless swings.",
       "victoryTitle": "VICTORY",
-      "victorySub": "The Circlet breaks. The void gate seals.",
+      "victorySub": "Hierophant down. Gate sealed.",
       "battles": [
         {
           "enemies": [
@@ -412,9 +412,9 @@
       "trackHpScale": 0.94,
       "callsign": "MENAGERIE",
       "label": "Stellar Menagerie",
-      "blurb": "Escaped specimens: ticks, hunters, and things that should not herd. Silence the Void Reaver.",
+      "blurb": "Feral beasts ramp their damage and pin your dice with cower. Cut them down before they snowball.",
       "victoryTitle": "VICTORY",
-      "victorySub": "The Reaver falls. The menagerie goes quiet.",
+      "victorySub": "Reaver down. Menagerie silent.",
       "battles": [
         {
           "enemies": [
