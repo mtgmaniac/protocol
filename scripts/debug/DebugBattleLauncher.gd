@@ -83,8 +83,13 @@ func _launch_screen(screen_id: String) -> void:
 			if not unit_ids.is_empty():
 				GameState.pending_evolution_unit_id = str(unit_ids[0])
 			SceneManager.go_to_evolution()
-		"run-end", "run_end":
+		"run-end", "run_end", "victory":
+			GameState.current_battle = GameState.total_battles
 			GameState.last_run_result = "victory"
+			SceneManager.go_to_run_end()
+		"run-end-defeat", "defeat", "run_end_defeat":
+			GameState.current_battle = maxi(GameState.total_battles / 2, 1)
+			GameState.last_run_result = "defeat"
 			SceneManager.go_to_run_end()
 		"home", "unit-select", "unit_select":
 			SceneManager.go_to_unit_select()
