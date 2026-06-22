@@ -45,6 +45,8 @@ const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
 const ENC_PANEL_HEIGHT := 320
+const ENC_NAME_H := 196            # reserve 2 rows for the title — short names don't shrink the panel
+const ENC_DESC_H := 168            # reserve a fixed block for the blurb so the panel never resizes
 const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
 const NAV_BUTTON_W := 96
 const THREAT_PIP_COUNT := 5
@@ -231,15 +233,24 @@ func _build_encounter_section() -> Control:
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(info)
 
+	# Fixed 2-row title block so a long name never grows the panel; short names just
+	# leave the second row empty (top-aligned).
 	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
 	_enc_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_enc_name_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_enc_name_label.clip_text = true
+	_enc_name_label.custom_minimum_size = Vector2(0, ENC_NAME_H)
 	info.add_child(_enc_name_label)
 
 	info.add_child(_build_threat_row())
 
+	# Fixed blurb block (clipped) so a long description doesn't resize the panel either.
 	_enc_desc_label = _make_pixel_label("", ENC_DESC_FONT, PixelUI.TEXT_MUTED)
 	_enc_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_enc_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_enc_desc_label.clip_text = true
 	_enc_desc_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_enc_desc_label.custom_minimum_size = Vector2(0, ENC_DESC_H)
 	info.add_child(_enc_desc_label)
 
 	row.add_child(_make_nav_button("▶", 1))    # ▶
