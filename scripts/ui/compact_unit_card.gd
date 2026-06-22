@@ -29,7 +29,6 @@ const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
 static var HERO_LINE := PixelUI.DT_HERO_BORDER
 static var ENEMY_LINE := PixelUI.DT_ENEMY_BORDER
 static var SELECT_LINE := PixelUI.GOLD_ACCENT
-static var TARGET_LINE := PixelUI.DT_CYAN
 static var HP_FILL := PixelUI.DT_HP_GREEN
 static var HP_CHIP := PixelUI.COLOR_DAMAGE  # "doomed HP" forecast overlay — pending damage, drains per hit
 static var HP_BACK := PixelUI.DT_FIELD_BG
@@ -45,6 +44,7 @@ const STATUS_VALUE_MIN_WIDTH := 32.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
 const STATUS_CHIP_HEIGHT := 56.0
 const ACTION_PIP_VALUE_FONT_SIZE := 48
+const CARD_BORDER_WIDTH := 6
 const STATUS_DESCRIPTIONS := {
 	"shield": "Absorbs {value} incoming damage.",
 	"poison": "Takes {value} damage at the start of next turn.",
@@ -104,6 +104,7 @@ var targetable: bool = false
 var interaction_enabled: bool = true
 var dead: bool = false
 var target_locked: bool = false
+var needs_manual_target: bool = false
 var show_action_pips: bool = true
 var unit_data: Resource = null
 var gear_detail_rows: Array = []
@@ -178,6 +179,7 @@ func configure(data: Dictionary) -> void:
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
 	target_locked = bool(data.get("target_locked", target_locked))
+	needs_manual_target = bool(data.get("needs_manual_target", needs_manual_target))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
 	unit_data = data.get("unit_data", unit_data) as Resource
 	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
@@ -448,7 +450,7 @@ func _refresh() -> void:
 	var panel_bg: Color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
 	# margin == border width so the card's children (portrait included) sit INSIDE the
 	# border instead of drawing over it — the frame always stays on top of the portrait.
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 6, 6))
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, CARD_BORDER_WIDTH, CARD_BORDER_WIDTH))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
@@ -469,7 +471,7 @@ func _refresh() -> void:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
-	_name_label.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME if is_hero else PixelUI.DT_ENEMY_NAME)
+	_name_label.add_theme_color_override("font_color", _name_font_color(is_hero))
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
@@ -482,8 +484,6 @@ func _refresh() -> void:
 	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color(1.12, 1.12, 1.12, 1.0)
 	if dead:
 		modulate = Color(0.55, 0.56, 0.62, 0.72)
-	elif target_locked:
-		modulate = Color(0.8, 0.8, 0.8, 1.0)
 	else:
 		modulate = Color.WHITE
 	if show_action_pips:
@@ -989,10 +989,27 @@ func _status_content_color(status: Dictionary, strong: bool) -> Color:
 	return PixelUI.effect_value_color(effect_kind)
 
 
+func _team_border_color() -> Color:
+	return HERO_LINE if side == "hero" else ENEMY_LINE
+
+
 func _line_color() -> Color:
+	if selected:
+		return SELECT_LINE
 	if targetable:
-		return TARGET_LINE
-	return PixelUI.DT_HERO_BORDER if side == "hero" else PixelUI.DT_ENEMY_BORDER
+		if side == "enemy":
+			return PixelUI.DT_ENEMY_DITHER
+		return PixelUI.DT_HERO_DITHER
+	return _team_border_color()
+
+
+func _name_font_color(is_hero: bool) -> Color:
+	var base: Color = PixelUI.DT_HERO_NAME if is_hero else PixelUI.DT_ENEMY_NAME
+	if dead:
+		return base.darkened(0.4).lerp(PixelUI.TEXT_MUTED, 0.55)
+	if needs_manual_target and not selected and is_hero:
+		return PixelUI.DT_CYAN_BRIGHT.lerp(Color.WHITE, 0.38)
+	return base
 
 
 func _status_color(token: String) -> Color:

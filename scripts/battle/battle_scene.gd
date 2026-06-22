@@ -1605,8 +1605,7 @@ func _style_roll_button_for_phase() -> void:
 			)
 			roll_button.add_theme_color_override("font_color", PixelUI.DT_ROLL_TEXT)
 		PHASE_TARGETING:
-			# Hidden: targetable cards highlight cyan to communicate the
-			# affordance. The center zone is reclaimed for dice/readouts.
+			# Hidden: targetable cards use team border color (see CompactUnitCard).
 			pass
 		PHASE_READY_TO_END:
 			# Active primary action: close out the turn

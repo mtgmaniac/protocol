@@ -95,10 +95,12 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	var is_selected: bool = state_id == _scene.active_targeting_hero_id
 	var is_targetable: bool = _scene._is_target_highlight_phase() and _scene.legal_target_ids.has(state_id)
 	var is_target_locked: bool = false
+	var needs_manual_target: bool = false
 	if accent_color == _scene.HERO_ACCENT and not show_dead and roll_value != null:
 		if _scene.turn_phase == _scene.PHASE_TARGETING or _scene.turn_phase == _scene.PHASE_READY_TO_END:
+			needs_manual_target = _scene.pending_manual_target_ids.has(state_id)
 			if state_id != _scene.active_targeting_hero_id:
-				is_target_locked = not _scene.pending_manual_target_ids.has(state_id)
+				is_target_locked = not needs_manual_target
 	if card is CompactUnitCard:
 		var compact_card: CompactUnitCard = card as CompactUnitCard
 		var has_revealed_roll: bool = roll_value != null
@@ -130,6 +132,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
 			"dead": show_dead,
 			"target_locked": is_target_locked,
+			"needs_manual_target": needs_manual_target,
 			"show_action_pips": readout == null,
 			"unit_data": unit,
 			"gear_rows": get_gear_detail_rows(str(unit.id)) if unit is UnitData else [],

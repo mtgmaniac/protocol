@@ -44,14 +44,16 @@ of truth, 4px borders, hard corners, portraits inset inside frames).
 
 ## 5. Battle screen — targeting & feedback
 
-- [ ] **Target highlight uses the card's border color.** When choosing an enemy target,
-  the card currently highlights blue; highlight it in the unit's border color (rust/red
-  for enemies) — tie it directly to the border color, not a hardcoded value.
-- [ ] **Don't gray out portraits for no-target units.** When an action is up, units that
-  don't need targeting are dimmed. Instead, keep the portrait bright and **dull only the
-  name**; and **highlight the names** of units that still need targets set.
+- [x] **Target highlight uses the card's border color.** Legal targets brighten in team
+  accent (`DT_ENEMY_DITHER` rust / `DT_HERO_DITHER` cyan); active hero picker gets gold
+  border. Border width unchanged so frames do not shift.
+- [x] **Don't gray out portraits for no-target units.** Heroes still needing a manual
+  target get a very bright name after roll; the active picker keeps a normal name with a
+  gold border; everyone else stays default.
 - [ ] **Better showcase for ability scope/keywords.** Rework how "All", "Self", "2t" and
-  keywords like "Cloak", "Pierce", etc. are displayed so they read clearly.
+  keywords like "Cloak", "Pierce", etc. are displayed so they read clearly. *(Mostly done
+  via `EffectPip` — `)value(` / `(value)` scope + superscript duration; revisit status
+  chips / tooltips if still unclear at 450×1000.)*
 
 ## 6. Tooltips / rollovers
 
