@@ -106,7 +106,10 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		var action_pips: Variant = []
 		if has_revealed_roll:
 			action_label = str(chosen_entry.get("ability_name", "NO ACTION"))
-			action_pips = _build_compact_action_pips(chosen_entry)
+			action_pips = EffectPip.ability_readout_payload(
+				chosen_entry.get("raw", chosen_entry) as Dictionary,
+				"hero" if accent_color == _scene.HERO_ACCENT else "enemy"
+			)
 		if readout != null and readout.has_method("configure"):
 			readout.configure(action_pips, "hero" if accent_color == _scene.HERO_ACCENT else "enemy")
 		var card_pips: Array = []
@@ -545,70 +548,6 @@ func resolve_ability_target_scope(raw: Dictionary) -> String:
 	return ""
 
 
-func _build_compact_action_pips(entry: Dictionary) -> Dictionary:
-	var raw: Dictionary = entry.get("raw", {}) as Dictionary
-	if raw.is_empty():
-		raw = entry
-
-	var effects: Array = []
-	var damage: int = int(raw.get("dmg", 0))
-	var damage_min: int = int(raw.get("dMin", 0))
-	var damage_max: int = int(raw.get("dMax", 0))
-	if damage > 0:
-		_append_compact_result_effect(effects, "dmg", "%d" % damage)
-	elif damage_min > 0 or damage_max > 0:
-		_append_compact_result_effect(effects, "dmg", "%d-%d" % [damage_min, damage_max])
-
-	var dot: int = int(raw.get("dot", 0))
-	if dot > 0:
-		_append_compact_result_effect(effects, "dot", "%d" % dot, int(raw.get("dT", 0)))
-
-	var shield: int = int(raw.get("shield", 0))
-	if shield > 0 and not bool(raw.get("shieldAllyAll", false)):
-		_append_compact_result_effect(effects, "shield", "%d" % shield, int(raw.get("shT", 0)))
-	var shield_ally: int = int(raw.get("shieldAlly", 0))
-	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
-		_append_compact_result_effect(effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
-	elif shield_ally > 0:
-		_append_compact_result_effect(effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
-
-	var heal: int = int(raw.get("heal", 0))
-	if heal > 0:
-		_append_compact_result_effect(effects, "heal", "%d" % heal)
-	if bool(raw.get("healLowest", false)):
-		_append_compact_result_effect(effects, "heal", "LOW")
-
-	var rfe: int = int(raw.get("rfe", 0))
-	if rfe > 0:
-		_append_compact_result_effect(effects, "roll", "-%d" % rfe, int(raw.get("rfT", 0)))
-
-	var rfm: int = int(raw.get("rfm", 0))
-	if rfm > 0:
-		_append_compact_result_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)))
-
-	if bool(raw.get("ignSh", false)):
-		_append_compact_result_effect(effects, "pierce", "P")
-	if bool(raw.get("cloak", false)):
-		_append_compact_result_effect(effects, "cloak", "CLOAK")
-
-	var freeze_turns: int = maxi(
-		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
-		int(raw.get("freezeAllEnemyDice", 0))
-	)
-	if freeze_turns > 0:
-		_append_compact_result_effect(effects, "freeze", "FR", freeze_turns)
-
-	if bool(raw.get("taunt", false)):
-		_append_compact_result_effect(effects, "shield", "TA")
-	if bool(raw.get("reviveAll", false)):
-		_append_compact_result_effect(effects, "revive", "%d%%" % _revive_hp_pct_from_raw(raw))
-	elif bool(raw.get("revive", false)):
-		_append_compact_result_effect(effects, "revive", "%d%%" % _revive_hp_pct_from_raw(raw))
-
-	var target: String = resolve_ability_target_scope(raw)
-	return {"effects": effects.slice(0, 3), "target": target}
-
-
 func _revive_hp_pct_from_raw(raw: Dictionary) -> int:
 	return int(raw.get("revivePct", 50))
 
@@ -626,16 +565,6 @@ func _revive_description(raw: Dictionary) -> String:
 	if bool(raw.get("revive", false)):
 		return "Revives a fallen ally at %d%% health." % _revive_hp_pct_from_raw(raw)
 	return ""
-
-
-func _append_compact_result_effect(effects: Array, kind: String, value: String, duration: int = 0) -> void:
-	if effects.size() >= 3:
-		return
-	effects.append({
-		"kind": kind,
-		"value": value,
-		"duration": maxi(duration, 0),
-	})
 
 
 func _build_ability_row_description(entry: Dictionary) -> String:

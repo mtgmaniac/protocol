@@ -614,10 +614,10 @@ func _populate_action_pips() -> void:
 
 	var max_visible: int = mini(action_pips.size(), 5)
 	for i in range(max_visible):
-		var pip: Dictionary = action_pips[i]
-		_action_grid.add_child(_make_action_pip(str(pip.get("kind", "")), str(pip.get("text", ""))))
+		var pip: Dictionary = _normalize_action_pip(action_pips[i])
+		_action_grid.add_child(_make_action_pip(pip))
 	if action_pips.size() > max_visible:
-		_action_grid.add_child(_make_action_pip("more", "+%d" % (action_pips.size() - max_visible)))
+		_action_grid.add_child(_make_action_pip({"kind": "tag", "value": "+%d" % (action_pips.size() - max_visible)}))
 
 
 func _make_action_fallback(text: String) -> Label:
@@ -646,41 +646,33 @@ func _get_pip_icon_atlas() -> Texture2D:
 	return null
 
 
-func _make_action_pip(kind: String, text: String) -> PanelContainer:
+func _normalize_action_pip(pip: Dictionary) -> Dictionary:
+	if pip.has("value"):
+		return pip
+	return {
+		"kind": str(pip.get("kind", "")),
+		"value": str(pip.get("value", pip.get("text", ""))),
+		"duration": int(pip.get("duration", 0)),
+		"scope": str(pip.get("scope", "")),
+	}
+
+
+func _make_action_pip(effect: Dictionary) -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.custom_minimum_size = Vector2(96, 74)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var pip_key: String = _action_pip_key(kind, text)
-	panel.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.72), _pip_border(pip_key if pip_key != "" else kind), 3, 5))
+	var pip_key: String = EffectPip.pip_key_for_effect(effect, side)
+	panel.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.72), _pip_border(pip_key if pip_key != "" else str(effect.get("kind", ""))), 3, 5))
 
 	var row: HBoxContainer = HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 2)
+	row.add_theme_constant_override("separation", int(EffectPip.PROFILE_CARD.get("icon_value_gap", 4)))
 	panel.add_child(row)
-
-	var icon: TextureRect = TextureRect.new()
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.custom_minimum_size = Vector2(40, 40)
-	icon.texture = _get_pip_icon_texture(pip_key if pip_key != "" else kind)
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	row.add_child(icon)
-
-	var label: Label = Label.new()
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = _format_pip_text(pip_key if pip_key != "" else kind, text)
-	label.custom_minimum_size = Vector2(36, 0)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(label, ACTION_PIP_VALUE_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-	row.add_child(label)
+	row.add_child(EffectPip.build_group(effect, EffectPip.PROFILE_CARD, side))
 	return panel
 
 
@@ -1024,23 +1016,6 @@ func _pip_border(kind: String) -> Color:
 		"frozen", "freeze", "die_freeze", "cloak":
 			return Color(0.48, 0.78, 0.88, 0.92)
 	return Color(0.34, 0.52, 0.70, 0.86)
-
-
-func _format_pip_text(kind: String, text: String) -> String:
-	var value: String = text.strip_edges().to_upper()
-	if kind in ["roll", "rfe", "rfm", "roll_down", "roll_up"]:
-		return PixelUI.format_amount_no_sign(value)
-	if value == "" and kind == "pierce":
-		return "P"
-	if value == "" and kind == "cloak":
-		return "CL"
-	if value == "" and kind == "taunt":
-		return "TA"
-	return value
-
-
-func _action_pip_key(kind: String, text: String) -> String:
-	return PixelUI.pip_key_for_effect(kind, text)
 
 
 func _display_status_value(status: Dictionary) -> String:

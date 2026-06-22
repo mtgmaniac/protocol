@@ -176,6 +176,12 @@ When changing card layout:
 - check the screenshot, not just the constants
 - compile success does not prove visual success
 
+## Effect pips (abilities, gear, relics, items)
+
+**Single source of truth:** `scripts/ui/effect_pip.gd` (`EffectPip`). See **`docs/EFFECT_PIP_GUIDE.md`**.
+
+All pip UI must call `EffectPip.build_group()` with the correct profile (`PROFILE_READOUT`, `PROFILE_CARD`, `PROFILE_REWARD`, etc.). Do not add local icon maps or custom value formatting in scene scripts.
+
 ## 8. Portrait Sizing Trap
 
 Portrait sizing is currently handled in:

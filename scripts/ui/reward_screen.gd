@@ -6,9 +6,6 @@ const CARD_MIN_WIDTH := 300.0
 const CARD_MAX_WIDTH := 370.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
 const CARD_IMAGE_HEIGHT := 78.0
-const EFFECT_ICON_SIZE := 46
-const EFFECT_VALUE_SIZE := 42
-const EFFECT_TAG_SIZE := 28
 const BODY_FONT_SIZE := 34
 const SMALL_FONT_SIZE := 28
 const CARD_ACTION_BUTTON_FONT_SIZE := 34
@@ -381,184 +378,26 @@ func _style_gear_target_button(button: Button, selected: bool) -> void:
 		PixelUI.style_button(button, Color(0.018, 0.028, 0.044, 0.95), PixelUI.LINE_DIM, GEAR_TARGET_BUTTON_FONT_SIZE)
 
 
-func _create_effect_row(parts: Array, primary: bool) -> HBoxContainer:
+func _create_effect_row(parts: Array, _primary: bool = true) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	row.add_theme_constant_override("separation", 7 if primary else 5)
+	row.add_theme_constant_override("separation", 10)
 	if parts.is_empty():
 		row.add_child(_make_label("None", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
 		return row
 	for part_variant in parts:
 		var part: Dictionary = part_variant
-		row.add_child(_create_effect_group(part, primary))
+		row.add_child(EffectPip.build_group(part, EffectPip.PROFILE_CARD))
 	return row
 
 
-func _create_effect_group(part: Dictionary, primary: bool) -> HBoxContainer:
-	var kind: String = str(part.get("kind", ""))
-	var icon: String = str(part.get("icon", _icon_for_kind(kind)))
-	var text: String = str(part.get("text", ""))
-	var duration: int = int(part.get("duration", 0))
-	var color: Color = _color_for_kind(kind)
-
-	var group := HBoxContainer.new()
-	group.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	group.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	group.alignment = BoxContainer.ALIGNMENT_CENTER
-	group.add_theme_constant_override("separation", 3)
-
-	if icon != "":
-		var icon_label := Label.new()
-		icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_label.text = icon
-		icon_label.add_theme_font_size_override("font_size", EFFECT_ICON_SIZE if primary else EFFECT_TAG_SIZE)
-		icon_label.add_theme_color_override("font_color", color)
-		icon_label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
-		icon_label.add_theme_constant_override("outline_size", 2)
-		group.add_child(icon_label)
-
-	var value_label := _make_label(text, EFFECT_VALUE_SIZE if primary else EFFECT_TAG_SIZE, color.lerp(PixelUI.TEXT_PRIMARY, 0.25), 2)
-	group.add_child(value_label)
-
-	if duration > 1:
-		var duration_label := _make_label("(%dT)" % duration, EFFECT_TAG_SIZE, PixelUI.TEXT_MUTED, 1)
-		group.add_child(duration_label)
-	return group
-
-
 func _build_effect_parts_for_item(item: ItemData) -> Array:
-	return _build_effect_parts_from_effect(item.effect, item.target_kind)
+	return EffectPip.effects_from_passive(item.effect, item.target_kind)
 
 
 func _build_effect_parts_from_effect(effect: Dictionary, target_kind: String = "") -> Array:
-	var effect_type: String = str(effect.get("type", ""))
-	match effect_type:
-		"heal":
-			return [_part("heal", "+%d HP" % int(effect.get("amount", 0)))]
-		"healAll":
-			return [_part("heal", "ALL +%d" % int(effect.get("amount", 0)))]
-		"shield":
-			return [_part("shield", "%d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)))]
-		"shieldAll":
-			return [_part("shield", "ALL %d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)))]
-		"rollBuff":
-			return [_part("roll", "+%d" % int(effect.get("amount", 0)), int(effect.get("turns", 0)))]
-		"revive":
-			return [_part("revive", "REVIVE %d%%" % int(effect.get("pct", 0)), 0, "")]
-		"cloak":
-			return [_part("cloak", "CLOAK", 0, "")]
-		"cloakAll":
-			return [_part("cloak", "CLOAK ALL", 0, "")]
-		"enemyRfe":
-			return [_part("rfm", "-%d" % int(effect.get("amount", 0)), int(effect.get("rfT", 0)))]
-		"enemyDmg":
-			return [_part("dmg", "%d" % int(effect.get("amount", 0)))]
-		"enemyDot":
-			return [_part("dot", "%d" % int(effect.get("amount", 0)), int(effect.get("dT", 0)))]
-		"xpBoost":
-			return [_part("xp", "+%d XP" % int(effect.get("amount", 0)), 0, "★")]
-		"enemyRerollDie":
-			return [_part("roll", "REROLL", 0)]
-		"enemyRerollAll":
-			return [_part("roll", "REROLL ALL", 0)]
-		"enemyDieFreeze":
-			return [_part("freeze", "FREEZE", int(effect.get("skips", 0)), "❄")]
-		"enemyDieFreezeAll":
-			return [_part("freeze", "FREEZE ALL", int(effect.get("skips", 0)), "❄")]
-		"gainProtocol":
-			return [_part("protocol", "+%d PP" % int(effect.get("amount", 0)), 0, "⚡")]
-		"rollBonus":
-			return [_part("roll", "+%d" % int(effect.get("amount", 0)))]
-		"battleStartShield":
-			return [_part("shield", "%d" % int(effect.get("amount", 0)))]
-		"maxHpBonus":
-			return [_part("heal", "+%d MAX HP" % int(effect.get("amount", 0)))]
-		"dotDmgBonus":
-			return [_part("dot", "+%d DOT" % int(effect.get("amount", 0)))]
-		"battleStartCloak":
-			return [_part("cloak", "CLOAK START", 0, "")]
-		"battleStartCloakRoll":
-			var parts: Array = [_part("cloak", "CLOAK START", 0, "")]
-			var roll_amt: int = int(effect.get("rollAmount", 0))
-			if roll_amt > 0:
-				parts.append(_part("roll", "+%d START" % roll_amt))
-			return parts
-		"healOnKill":
-			return [_part("heal", "+%d KILL" % int(effect.get("amount", 0)))]
-		"protocolOnBattleStart":
-			return [_part("protocol", "+%d START" % int(effect.get("amount", 0)), 0, "⚡")]
-		"surviveOnce":
-			return [_part("survive", "SURVIVE", 0, "")]
-		"firstAbilityDmgBonus":
-			return [_part("dmg", "+%d FIRST" % int(effect.get("amount", 0)))]
-		"dmgReduction":
-			return [_part("shield", "-%d DMG" % int(effect.get("amount", 0)))]
-		"enemyDmgMult":
-			return [_part("shield", "ENEMY %d%%" % int(round(float(effect.get("mult", 1.0)) * 100.0)))]
-		"battleStartHalfHp":
-			return [_part("dmg", "50% START")]
-		"heroShieldPerTurn":
-			return [_part("shield", "+%d TURN" % int(effect.get("amount", 0)))]
-		"heroHealPerTurn":
-			return [_part("heal", "+%d TURN" % int(effect.get("amount", 0)))]
-		"enemyDotPermanent":
-			return [_part("dot", "%d START" % int(effect.get("amount", 0)))]
-		"heroDmgMult":
-			return [_part("dmg", "%d%%" % int(round(float(effect.get("mult", 1.0)) * 100.0)))]
-		"enemyStartRfe":
-			return [_part("rfm", "-%d START" % int(effect.get("amount", 0)))]
-		"heroStartRollBuff":
-			return [_part("roll", "+%d START" % int(effect.get("amount", 0)))]
-		"dotAmplified":
-			return [_part("dot", "+%d DOT" % int(effect.get("bonus", 0)))]
-		"auraEnemyDmg":
-			return [_part("dmg", "%d TURN" % int(effect.get("amount", 0)))]
-		"protocolOnItemUse":
-			return [_part("protocol", "FREE +1", 0, "⚡")]
-		"enemyHpEscalation":
-			return [_part("dot", "-%d MAX" % int(effect.get("reductionPerBattle", 0)))]
-		"chainReaction":
-			return [_part("dmg", "%d CHAIN" % int(effect.get("amount", 0)))]
-	if target_kind != "":
-		return [_part("tag", target_kind.to_upper(), 0, "")]
-	return []
-
-
-func _part(kind: String, text: String, duration: int = 0, icon: String = "") -> Dictionary:
-	var part_icon: String = icon if icon != "" else _icon_for_kind(kind)
-	return {
-		"kind": kind,
-		"text": text,
-		"duration": duration,
-		"icon": part_icon,
-	}
-
-
-func _icon_for_kind(kind: String) -> String:
-	match kind.to_lower():
-		"dmg", "damage", "blast", "protocol":
-			return "⚡"
-		"shield":
-			return "🛡"
-		"heal":
-			return "✚"
-		"dot", "poison":
-			return "☠"
-		"roll", "rfe", "rfm":
-			return "🎲"
-		"freeze":
-			return "❄"
-	return ""
-
-
-func _color_for_kind(kind: String) -> Color:
-	match kind.to_lower():
-		"protocol", "xp":
-			return PixelUI.GOLD_ACCENT
-		"survive", "tag":
-			return PixelUI.TEXT_PRIMARY
-	return PixelUI.effect_color(kind)
+	return EffectPip.effects_from_passive(effect, target_kind)
 
 
 func _create_description_label(text: String) -> Label:

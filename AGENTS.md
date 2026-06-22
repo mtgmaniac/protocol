@@ -65,6 +65,7 @@ python scripts/debug/audit_gear_relic_effects.py
 ## Docs
 
 - **`docs/AI_AGENT_GAME_REFERENCE.md`** — runtime map for assistants (**start here**)
+- **`docs/EFFECT_PIP_GUIDE.md`** — effect pip notation, profiles, and `EffectPip` API (abilities, gear, relics, items)
 - **`docs/BASELINE.md`** — verify commands and tag `baseline-fable-restart`
 - `docs/BATTLE_UI_V2_SPEC.md` — battle layout contract (UI work)
 - `offline-bundle/GROUND_TRUTH.md` — offline rules reference (may lag code; prefer `combat_manager.gd` for behavior)

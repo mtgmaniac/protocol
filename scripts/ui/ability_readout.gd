@@ -7,50 +7,14 @@ const ROW_GAP := 2.0
 # Distance between the two pip rows' top edges. Less than ROW_HEIGHT so the 2nd row
 # sits closer to the 1st (the row boxes overlap, but the centered pips don't), which
 # keeps a two-row ability from spilling past the dice-tray edge.
-const ROW_PITCH := 58.0
+const ROW_PITCH := 64.0
 const OUTER_PAD_X := 10.0
 const HERO_TOP_PAD := 4.0
 # Pull both rows toward the dice (center of the tray) so the closest row hugs the dice.
 const READOUT_CENTER_PULL_PX := 30.0
-const EFFECT_GROUP_MIN_WIDTH := 90.0
-const ICON_FONT_SIZE := 80
-const VALUE_FONT_SIZE := 80
-const DURATION_FONT_SIZE := 48
 const TARGET_FONT_SIZE := 48
 const EMPTY_ALPHA := 0.18
 const PIP_REVEAL_TIME := 0.12
-const ICONS := {
-	"dmg": "âš¡",
-	"damage": "âš¡",
-	"blast": "âš¡",
-	"pierce": "",
-	"roll": "ðŸŽ²",
-	"rfe": "ðŸŽ²",
-	"rfm": "ðŸŽ²",
-	"freeze": "â„",
-	"shield": "ðŸ›¡",
-	"taunt": "ðŸ›¡",
-	"heal": "âž•",
-	"revive": "",
-	"dot": "â˜ ",
-	"poison": "â˜ ",
-}
-const PIP_ICON_ATLAS_PATH := "res://assets/ui/icons/pip_icons.png"
-const PIP_ICON_CELL_SIZE := Vector2(256, 256)
-const PIP_ICON_COLUMNS := {
-	"dmg": 0,
-	"damage": 0,
-	"blast": 0,
-	"shield": 1,
-	"taunt": 1,
-	"heal": 2,
-	"dot": 3,
-	"poison": 3,
-	"roll": 4,
-	"rfe": 4,
-	"rfm": 4,
-	"freeze": 5,
-}
 
 var action_result: Dictionary = {}
 var side: String = "hero"
@@ -62,7 +26,6 @@ var _lower_underline: ColorRect = null
 var _upper_row: HBoxContainer = null
 var _lower_row: HBoxContainer = null
 var _tooltip_callback: Callable = Callable()
-var _pip_icon_atlas: Texture2D = null
 var _pips_revealed: bool = false
 var _pips_tween: Tween = null
 
@@ -295,79 +258,12 @@ func _add_parts_to_row(row: HBoxContainer, effects: Array, target: String) -> vo
 	call_deferred("_update_all_underlines")
 
 
-func _get_pip_icon_texture(kind: String) -> Texture2D:
-	return PixelUI.pip_texture_for_key(kind)
-
-
-func _get_pip_icon_atlas() -> Texture2D:
-	return null
-
-
 func _make_effect_group(effect: Dictionary) -> Control:
-	var effect_kind: String = str(effect.get("kind", ""))
-	var display_value: String = _display_value_for_effect(effect)
-	var pip_key: String = _pip_key_for_effect(effect)
-	var color_key: String = pip_key if pip_key != "" else effect_kind
-	var value_color: Color = PixelUI.effect_value_color(color_key)
-
-	var group := HBoxContainer.new()
-	group.mouse_filter = Control.MOUSE_FILTER_STOP
-	group.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	group.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	group.custom_minimum_size = Vector2(EFFECT_GROUP_MIN_WIDTH, 0)
-	group.alignment = BoxContainer.ALIGNMENT_CENTER
-	group.add_theme_constant_override("separation", 1)
-	group.gui_input.connect(_on_effect_group_gui_input.bind(group))
-
-	if effect_kind in ["cloak", "revive", "pierce", "counter", "rampage"]:
-		var plain_label := Label.new()
-		plain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		plain_label.text = effect_kind.to_upper()
-		plain_label.custom_minimum_size = Vector2(0, 0)
-		plain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		plain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_apply_pixel_label(plain_label, VALUE_FONT_SIZE, PixelUI.effect_color(effect_kind), 3)
-		group.add_child(plain_label)
-		if _tooltip_callback.is_valid():
-			_tooltip_callback.call(group, _build_effect_tooltip(effect))
-		return group
-
-	var icon_texture := _get_pip_icon_texture(pip_key)
-	if icon_texture != null:
-		var icon_rect := TextureRect.new()
-		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_rect.custom_minimum_size = Vector2(56, 56)
-		icon_rect.texture = icon_texture
-		icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		group.add_child(icon_rect)
-
-	if effect_kind != "freeze":
-		var value_label := Label.new()
-		value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		value_label.text = display_value
-		value_label.custom_minimum_size = Vector2(0, 0)
-		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		value_label.clip_text = false
-		_apply_pixel_label(value_label, VALUE_FONT_SIZE, value_color, 3)
-		group.add_child(value_label)
-
-	var duration: int = int(effect.get("duration", 0))
-	if duration > 1:
-		var duration_label := Label.new()
-		duration_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		duration_label.text = "(%dT)" % duration
-		duration_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		duration_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		duration_label.modulate = Color(0.78, 0.86, 0.92, 0.82)
-		_apply_pixel_label(duration_label, DURATION_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
-		group.add_child(duration_label)
-
+	var group: Control = EffectPip.build_group(effect, EffectPip.PROFILE_READOUT, side)
 	if _tooltip_callback.is_valid():
 		_tooltip_callback.call(group, _build_effect_tooltip(effect))
-
+	if group is HBoxContainer:
+		group.gui_input.connect(_on_effect_group_gui_input.bind(group))
 	return group
 
 
@@ -429,9 +325,16 @@ func _build_effect_tooltip(effect: Dictionary) -> String:
 	if kind == "cloak":
 		return "CLOAK\n80% chance to evade the next incoming damage attempt."
 	if kind == "revive":
-		if value.ends_with("%"):
-			return "REVIVE\nRevive at %s max HP." % value
+		var pct_text: String = value.trim_suffix("%")
+		if pct_text.is_valid_int():
+			return "REVIVE\nRevive at %s%% max HP." % pct_text
 		return "REVIVE\nRevive a fallen ally with a percentage of their max HP."
+	if kind == "taunt":
+		return "TAUNT\nForces enemies to target this unit."
+	if kind == "counter":
+		return "COUNTER\nPrime to counter the next targeted attack."
+	if kind == "rampage":
+		return "RAMPAGE\nNext attack gains bonus damage."
 	if kind == "shield" and value.contains("ALL"):
 		var amount_text: String = value.replace("·ALL", "").replace("ALL", "").strip_edges()
 		if amount_text.is_valid_int():
@@ -439,8 +342,10 @@ func _build_effect_tooltip(effect: Dictionary) -> String:
 		return "GAIN SHIELD\nGrant shield to all allies."
 	if kind == "shield" and value == "TA":
 		return "TAUNT\nApply taunt to target."
-	if kind == "freeze" and value == "FR":
-		return "FROZEN\nApply frozen to target."
+	if kind == "freeze":
+		return "FROZEN\nLocks a die result for %d reveal%s." % [
+			maxi(duration, 1), "" if duration == 1 else "s"
+		]
 	match kind:
 		"dmg", "damage":
 			return "DEAL DAMAGE\nDeal %s damage to the target." % value
@@ -520,12 +425,8 @@ func _estimate_row_width(effects: Array, target: String) -> float:
 		if i > 0:
 			width += 16.0
 		var effect: Dictionary = effects[i]
-		var effect_width := 48.0
-		effect_width += maxf(28.0, float(_display_value_for_effect(effect).length()) * 24.0)
-		var duration: int = int(effect.get("duration", 0))
-		if duration > 1:
-			effect_width += 12.0 + float(("(%dT)" % duration).length()) * 20.0
-		width += maxf(EFFECT_GROUP_MIN_WIDTH, effect_width)
+		var effect_width := EffectPip.estimate_display_width(effect, EffectPip.PROFILE_READOUT)
+		width += effect_width
 	if target != "":
 		width += 2.0 + float(target.length()) * 24.0
 	return width
@@ -547,6 +448,7 @@ func _normalize_result(result_data: Variant) -> Dictionary:
 				"kind": str(pip.get("kind", "")),
 				"value": str(pip.get("value", pip.get("text", ""))),
 				"duration": int(pip.get("duration", 0)),
+				"scope": str(pip.get("scope", "")),
 			})
 		return {"effects": converted_effects, "target": ""}
 	return {"effects": [], "target": ""}
@@ -558,22 +460,6 @@ func _apply_pixel_label(label: Label, font_size: int, color: Color, outline: int
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)
-
-
-func _pip_key_for_effect(effect: Dictionary) -> String:
-	var kind: String = str(effect.get("kind", ""))
-	var value: String = str(effect.get("value", ""))
-	if kind.to_lower() == "rfm" and side == "enemy" and PixelUI.parse_signed_amount(value) > 0:
-		return "roll_down"
-	return PixelUI.pip_key_for_effect(kind, value)
-
-
-func _display_value_for_effect(effect: Dictionary) -> String:
-	var kind: String = str(effect.get("kind", ""))
-	var raw_value: String = str(effect.get("value", "")).strip_edges().to_upper()
-	if kind.to_lower() in ["roll", "rfe", "rfm"]:
-		return PixelUI.format_amount_no_sign(raw_value)
-	return raw_value
 
 
 func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBoxFlat:
