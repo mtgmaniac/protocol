@@ -138,9 +138,7 @@ var _locked_portrait_width: float = 0.0
 var _locked_portrait_size: Vector2 = Vector2.ZERO
 var _tooltip_cb: Callable = Callable()
 var _hp_tooltip_text: String = "HEALTH PREVIEW\nNo incoming effects this turn."
-var _portrait_hold_timer: Timer = null
-var _portrait_hold_pressed: bool = false
-var _portrait_hold_triggered: bool = false
+var _portrait_long_press: LongPressInput = null
 var _pip_icon_atlas: Texture2D = null
 
 
@@ -1219,71 +1217,22 @@ func _wire_portrait_detail_input() -> void:
 	if _portrait_rect == null:
 		return
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_STOP
-	if _portrait_hold_timer == null:
-		_portrait_hold_timer = Timer.new()
-		_portrait_hold_timer.one_shot = true
-		_portrait_hold_timer.wait_time = 0.5
-		add_child(_portrait_hold_timer)
-		_portrait_hold_timer.timeout.connect(_on_portrait_hold_timeout)
-	if bool(_portrait_rect.get_meta("portrait_detail_input_connected", false)):
+	if _portrait_long_press != null and is_instance_valid(_portrait_long_press):
 		return
-	_portrait_rect.set_meta("portrait_detail_input_connected", true)
-	_portrait_rect.gui_input.connect(_on_portrait_gui_input)
-	_portrait_rect.mouse_exited.connect(_on_portrait_mouse_exited)
+	# The ONE shared long-press handler (duration = PixelUI.INSPECT_HOLD_SEC). Quick tap
+	# selects the unit; long-press opens the unified inspect breakout.
+	_portrait_long_press = LongPressInput.new()
+	_portrait_rect.add_child(_portrait_long_press)
+	_portrait_long_press.tapped.connect(_on_portrait_tapped)
+	_portrait_long_press.long_pressed.connect(_on_portrait_long_pressed)
 
 
-func _on_portrait_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-			return
-		if mouse_event.pressed:
-			_start_portrait_hold()
-		else:
-			_finish_portrait_press()
-		accept_event()
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		if touch_event.pressed:
-			_start_portrait_hold()
-		else:
-			_finish_portrait_press()
-		accept_event()
-
-
-func _start_portrait_hold() -> void:
-	_portrait_hold_pressed = true
-	_portrait_hold_triggered = false
-	if _portrait_hold_timer != null:
-		_portrait_hold_timer.start()
-
-
-func _finish_portrait_press() -> void:
-	if not _portrait_hold_pressed:
-		return
-	_portrait_hold_pressed = false
-	if _portrait_hold_timer != null:
-		_portrait_hold_timer.stop()
-	if _portrait_hold_triggered:
-		_portrait_hold_triggered = false
-		return
+func _on_portrait_tapped() -> void:
 	if interaction_enabled:
 		card_pressed.emit()
 
 
-func _on_portrait_mouse_exited() -> void:
-	if not _portrait_hold_pressed:
-		return
-	_portrait_hold_pressed = false
-	if _portrait_hold_timer != null:
-		_portrait_hold_timer.stop()
-	_portrait_hold_triggered = false
-
-
-func _on_portrait_hold_timeout() -> void:
-	if not _portrait_hold_pressed:
-		return
-	_portrait_hold_triggered = true
+func _on_portrait_long_pressed(_global_position: Vector2) -> void:
 	unit_detail_requested.emit(self)
 
 

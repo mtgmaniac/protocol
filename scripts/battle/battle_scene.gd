@@ -26,7 +26,6 @@ extends Control
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
 const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn")
-const UNIT_DETAIL_PANEL_SCENE := preload("res://scenes/shared/UnitDetailPanel.tscn")
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 const PHASE_AWAIT_ROLL := "await_roll"
@@ -148,7 +147,6 @@ var _auto_battle_running: bool = false
 var _help_overlay: Control = null
 var _help_panel: PanelContainer = null
 var _help_close_button: Button = null
-var _unit_detail_panel: Control = null
 var _is_resolving_turn: bool = false
 
 
@@ -204,7 +202,6 @@ func _ready() -> void:
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
 	protocol_spend_button.text = "↺"
 	_build_hud_tooltip()
-	_build_unit_detail_panel()
 	# The header bar lives in the PersistentHeader autoload now — bind its buttons to
 	# this battle's handlers. They go inert again when this scene exits the tree.
 	PersistentHeader.bind_battle_actions(
@@ -329,11 +326,6 @@ func _exit_tree() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if _unit_detail_panel != null and is_instance_valid(_unit_detail_panel) and _unit_detail_panel.visible:
-		if _event_closes_unit_detail_panel(event):
-			_unit_detail_panel.call("hide_panel")
-			get_viewport().set_input_as_handled()
-			return
 	if _help_overlay == null or not is_instance_valid(_help_overlay) or not _help_overlay.visible:
 		return
 	if _event_closes_help_overlay(event):
@@ -434,20 +426,6 @@ func _create_battle_card() -> Control:
 	return CompactUnitCard.new()
 
 
-func _build_unit_detail_panel() -> void:
-	if _unit_detail_panel != null:
-		return
-	_unit_detail_panel = UNIT_DETAIL_PANEL_SCENE.instantiate() as Control
-	var host: Control = dice_tray_3d.get_parent() as Control
-	if host == null:
-		host = center_panel
-	host.add_child(_unit_detail_panel)
-	_unit_detail_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_unit_detail_panel.visible = false
-	if _unit_detail_panel.has_method("set_tooltip_callback"):
-		_unit_detail_panel.call("set_tooltip_callback", func(node: Control, text: String) -> void: _set_hud_tooltip(node, text, true))
-
-
 func _on_unit_detail_requested(card: Control) -> void:
 	if _is_resolving_turn:
 		return
@@ -455,22 +433,14 @@ func _on_unit_detail_requested(card: Control) -> void:
 	if compact_card == null or compact_card.unit_data == null:
 		return
 	AudioManager.play_select()
-	if _unit_detail_panel == null:
-		_build_unit_detail_panel()
-	_unit_detail_panel.call("show_for_unit", compact_card.unit_data, compact_card.gear_detail_rows)
-
-
-func _event_closes_unit_detail_panel(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		return key_event.pressed and key_event.keycode == KEY_ESCAPE
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		return mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
-	if event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		return touch_event.pressed
-	return false
+	# Unified long-press inspect (replaces the old UnitDetailPanel popup). The popup
+	# self-dismisses on outside press, so no close-on-event handling is needed here.
+	InspectPopup.open(
+		self,
+		InspectResolver.resolve_unit(compact_card.unit_data),
+		compact_card.get_global_rect(),
+		compact_card.get_instance_id(),
+	)
 
 
 func _on_roll_button_pressed() -> void:
@@ -800,8 +770,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		return
 
 	_is_resolving_turn = true
-	if _unit_detail_panel != null and _unit_detail_panel.visible:
-		_unit_detail_panel.call("hide_panel")
+	InspectPopup.dismiss()
 
 	# Build effective roll dicts so RFE/buff/nudge are reflected in combat resolution
 	var eff_hero_rolls: Dictionary = _build_effective_rolls(hero_rolls, combat_manager.get_hero_states(), true)

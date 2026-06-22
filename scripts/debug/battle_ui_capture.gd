@@ -76,6 +76,10 @@ func _parse_args() -> Dictionary:
 			# or item button so the scene enters the matching *_pick sub-phase.
 			# Used to verify that damage preview persists across these picks.
 			config["pick_mode"] = arg.get_slice("=", 1)
+		elif arg == "--capture-inspect-hero":
+			config["inspect"] = "hero"
+		elif arg == "--capture-inspect-enemy":
+			config["inspect"] = "enemy"
 	return config
 
 
@@ -111,10 +115,29 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 	var pick_mode: String = str(config.get("pick_mode", ""))
 	if pick_mode != "":
 		await _force_pick_mode(pick_mode)
+	var inspect_side: String = str(config.get("inspect", ""))
+	if inspect_side != "":
+		_open_inspect(inspect_side)
+		await process_frame
+		await process_frame
 	await process_frame
 	await RenderingServer.frame_post_draw
 	if debug_log_enabled:
 		_print_target_state("final")
+
+
+# Opens the unified InspectPopup on the first hero/enemy card, exercising the live
+# _on_unit_detail_requested path (Stage-2 migration verification).
+func _open_inspect(side: String) -> void:
+	if current_scene == null:
+		return
+	var key: String = "hero_card_views" if side == "hero" else "enemy_card_views"
+	var views: Variant = current_scene.get(key)
+	if not (views is Array) or (views as Array).is_empty():
+		return
+	var card: Node = ((views as Array)[0] as Dictionary).get("card")
+	if card != null and current_scene.has_method("_on_unit_detail_requested"):
+		current_scene.call("_on_unit_detail_requested", card)
 
 
 func _force_pick_mode(mode: String) -> void:

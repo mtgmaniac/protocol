@@ -64,6 +64,31 @@ static var DT_STATUS := {
 	"poison": {"border": Color("9a6ad0"), "fill": Color("160e1f"), "text": Color("d8c4f0")},
 	"burn": {"border": Color("d98a3e"), "fill": Color("1f140a"), "text": Color("f4cd9a")},
 }
+# ── Reward rarity border tokens ──
+# The card's outer border color = its rarity. These are intentionally OFFSET from the
+# semantic gameplay palette so a rarity border never reads as a gameplay signal
+# (rare-indigo must not look like player cyan DT_CYAN; legendary-orange must not look
+# like commit gold GOLD_ACCENT / enemy red). Relics carry no rarity and reuse the
+# legendary token (see reward_screen._rarity_name). Tunable starting values.
+static var RARITY_COMMON := Color("7a8290")
+static var RARITY_UNCOMMON := Color("5cb85c")
+static var RARITY_RARE := Color("5b7fe8")
+static var RARITY_EPIC := Color("9d52d8")
+static var RARITY_LEGENDARY := Color("ff8230")
+
+# ── Inspect popup tokens (the unified long-press reveal) ──
+# Neutral Dithered-Terminal surface; side/rarity accents are layered on by the caller
+# (DT_HERO_BORDER / DT_ENEMY_BORDER / rarity_color). Border/divider use the DT line tones.
+static var INSPECT_BG := Color("0b0f13")
+static var INSPECT_BORDER := Color("2a3540")
+static var INSPECT_DIVIDER := Color("1b2226")
+static var INSPECT_TEXT := Color("dfe9ec")
+static var INSPECT_TEXT_MUTED := Color("8a99a6")
+static var INSPECT_TEXT_DIM := Color("57646e")
+# Single shared long-press hold duration (seconds), tuned for Android touch. Defined once
+# here so no surface re-declares it.
+const INSPECT_HOLD_SEC := 0.42
+
 const DITHER_TILE := "res://assets/ui/dither_2x2.png"
 
 const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
@@ -576,6 +601,21 @@ static func effect_color(kind: String) -> Color:
 
 static func effect_value_color(kind: String) -> Color:
 	return effect_color(kind).lerp(TEXT_PRIMARY, 0.32)
+
+
+static func rarity_color(rarity: String) -> Color:
+	match rarity.to_lower():
+		"common":
+			return RARITY_COMMON
+		"uncommon":
+			return RARITY_UNCOMMON
+		"rare":
+			return RARITY_RARE
+		"epic":
+			return RARITY_EPIC
+		"legendary":
+			return RARITY_LEGENDARY
+	return RARITY_COMMON
 
 
 static func status_color(token: String) -> Color:
