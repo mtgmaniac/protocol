@@ -45,7 +45,7 @@ const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
 const ENC_PANEL_HEIGHT := 320
-const ENC_NAME_H := 196            # reserve 2 rows for the title — short names don't shrink the panel
+const ENC_NAME_H := 124            # centered title row at the top
 const ENC_DESC_H := 168            # reserve a fixed block for the blurb so the panel never resizes
 const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
 const NAV_BUTTON_W := 96
@@ -214,58 +214,60 @@ func _build_encounter_section() -> Control:
 	pad.add_theme_constant_override("margin_bottom", 20)
 	panel.add_child(pad)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 22)
-	pad.add_child(row)
+	# Layout: name centered on top, threat centered on the bottom, and the
+	# flippers + descriptor + boss portrait in the middle row.
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 14)
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_child(content)
 
-	row.add_child(_make_nav_button("◀", -1))   # ◀
+	# Name — centered, top.
+	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
+	_enc_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_enc_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_enc_name_label.clip_text = true
+	_enc_name_label.custom_minimum_size = Vector2(0, ENC_NAME_H)
+	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(_enc_name_label)
 
-	# Boss portrait — fixed square, ~a hero tile's size, vertically centered.
+	# Middle — [◀] [descriptor] [boss portrait] [▶].
+	var middle := HBoxContainer.new()
+	middle.add_theme_constant_override("separation", 22)
+	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(middle)
+
+	middle.add_child(_make_nav_button("◀", -1))   # ◀
+
+	_enc_desc_label = _make_pixel_label("", ENC_DESC_FONT, PixelUI.TEXT_MUTED)
+	_enc_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_enc_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_enc_desc_label.clip_text = true
+	_enc_desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enc_desc_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_enc_desc_label.custom_minimum_size = Vector2(0, ENC_DESC_H)
+	middle.add_child(_enc_desc_label)
+
+	# Boss portrait (right of the descriptor) — red enemy frame.
 	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER)
 	var portrait_frame: PanelContainer = portrait_box["frame"]
 	portrait_frame.custom_minimum_size = Vector2(ENC_PORTRAIT, ENC_PORTRAIT)
 	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_portrait = portrait_box["tex"]
 	_enc_portrait_crop = portrait_box["crop"]
-	# Placeholder glyph shown when an encounter has no boss art yet.
 	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
 	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	(portrait_box["crop"] as Control).add_child(_enc_portrait_placeholder)
-	# NOTE: portrait is added to the row AFTER the info column (boss image on the right).
+	middle.add_child(portrait_frame)
 
-	# Info column: name / threat / description.
-	var info := VBoxContainer.new()
-	info.add_theme_constant_override("separation", 16)
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(info)
+	middle.add_child(_make_nav_button("▶", 1))    # ▶
 
-	# Fixed 2-row title block so a long name never grows the panel; short names just
-	# leave the second row empty (top-aligned).
-	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
-	_enc_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_enc_name_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_enc_name_label.clip_text = true
-	_enc_name_label.custom_minimum_size = Vector2(0, ENC_NAME_H)
-	info.add_child(_enc_name_label)
-
-	info.add_child(_build_threat_row())
-
-	# Fixed blurb block (clipped) so a long description doesn't resize the panel either.
-	_enc_desc_label = _make_pixel_label("", ENC_DESC_FONT, PixelUI.TEXT_MUTED)
-	_enc_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_enc_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_enc_desc_label.clip_text = true
-	_enc_desc_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_enc_desc_label.custom_minimum_size = Vector2(0, ENC_DESC_H)
-	info.add_child(_enc_desc_label)
-
-	# Boss image sits to the RIGHT of the data.
-	row.add_child(portrait_frame)
-	row.add_child(_make_nav_button("▶", 1))    # ▶
+	# Threat — centered, bottom.
+	content.add_child(_build_threat_row())
 
 	# Dots.
 	_dot_row = HBoxContainer.new()
@@ -286,6 +288,8 @@ func _build_encounter_section() -> Control:
 func _build_threat_row() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	row.add_child(_make_pixel_label("THREAT", ENC_META_FONT, PixelUI.TEXT_MUTED))
@@ -313,10 +317,11 @@ func _make_nav_button(glyph: String, direction: int) -> Button:
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.text = glyph
-	_apply_button_font(button, 44, PixelUI.DT_RUST)
+	# Flippers match the panel OUTLINE (hero border / cyan), not the red enemy frame.
+	_apply_button_font(button, 44, PixelUI.DT_CYAN)
 	for state in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER, PANEL_BORDER))
-	button.add_theme_stylebox_override("hover", PixelUI.make_hard_style(PixelUI.DT_ENEMY_BG, PixelUI.DT_RUST, PANEL_BORDER))
+		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, PANEL_BORDER))
+	button.add_theme_stylebox_override("hover", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, PANEL_BORDER))
 	button.pressed.connect(_on_nav_pressed.bind(direction))
 	return button
 
