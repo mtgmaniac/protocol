@@ -86,6 +86,7 @@ var _focused_unit_id: String = ""
 
 # Built nodes
 var _enc_portrait: TextureRect
+var _enc_portrait_crop: Control
 var _enc_portrait_placeholder: Label
 var _enc_name_label: Label
 var _enc_desc_label: Label
@@ -224,6 +225,7 @@ func _build_encounter_section() -> Control:
 	portrait_frame.custom_minimum_size = Vector2(ENC_PORTRAIT, ENC_PORTRAIT)
 	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_portrait = portrait_box["tex"]
+	_enc_portrait_crop = portrait_box["crop"]
 	# Placeholder glyph shown when an encounter has no boss art yet.
 	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
 	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -336,6 +338,7 @@ func _refresh_encounter() -> void:
 	_enc_desc_label.text = op.blurb
 	var boss_tex: Texture2D = _get_boss_portrait(op)
 	_enc_portrait.texture = boss_tex
+	_cover_fit_portrait(_enc_portrait_crop, _enc_portrait)
 	_enc_portrait_placeholder.visible = boss_tex == null
 
 	var level: int = _threat_level(_operation_index)
@@ -498,6 +501,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.add_child(frame)
 	(portrait_box["tex"] as TextureRect).texture = unit.portrait
+	call_deferred("_cover_fit_portrait", portrait_box["crop"], portrait_box["tex"])
 
 	# Role-color corner badge (top-right), always shown.
 	var role_badge := ColorRect.new()
@@ -692,9 +696,9 @@ func _on_begin_run_pressed() -> void:
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
-# A hard-square DT portrait frame with a clipped, cover-fit texture. Returns the
-# frame, the inner crop Control (for absolute-positioned badges), and the texture.
-# Two clip layers (frame + crop) guarantee the portrait never bleeds past the box.
+# A hard-square DT portrait frame whose texture COVER-fills the box (top-aligned, so
+# the head stays and the bottom is cropped) — same technique as the battle cards.
+# Returns the frame, the inner crop Control (for badges), and the texture.
 func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
 	var frame := PanelContainer.new()
 	frame.clip_contents = true
@@ -706,14 +710,38 @@ func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
 	frame.add_child(crop)
 	var tex := TextureRect.new()
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# KEEP_ASPECT (contain) so the whole portrait fits inside the box — COVERED was
-	# zooming in and clipping the heads off the top.
-	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	tex.stretch_mode = TextureRect.STRETCH_SCALE   # position/size set manually by cover-fit
 	tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	crop.add_child(tex)
+	# Re-fit whenever the box is (re)laid out.
+	crop.resized.connect(_cover_fit_portrait.bind(crop, tex))
 	return {"frame": frame, "crop": crop, "tex": tex}
+
+
+# Cover-scale the texture to fill `crop`, centered horizontally and top-aligned so the
+# subject's head stays visible while the box is fully filled (overflow clipped).
+func _cover_fit_portrait(crop: Control, tex: TextureRect) -> void:
+	if crop == null or tex == null:
+		return
+	var fw: float = crop.size.x
+	var fh: float = crop.size.y
+	if fw < 2.0 or fh < 2.0:
+		return
+	var t: Texture2D = tex.texture
+	if t == null:
+		tex.position = Vector2.ZERO
+		tex.size = Vector2(fw, fh)
+		return
+	var tw: float = float(t.get_width())
+	var th: float = float(t.get_height())
+	if tw < 1.0 or th < 1.0:
+		return
+	var s: float = maxf(fw / tw, fh / th)
+	var nw: float = tw * s
+	var nh: float = th * s
+	tex.position = Vector2((fw - nw) * 0.5, 0.0)
+	tex.size = Vector2(nw, nh)
 
 
 func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:

@@ -17,6 +17,10 @@ const ACTION_PANEL_HEIGHT := 88.0
 const PORTRAIT_ASPECT_FALLBACK := 2.0
 const PORTRAIT_X_OFFSET := -10.0
 const PORTRAIT_Y_OFFSET := -10.0
+# Fill-zoom + top-crop so portraits fill the frame edge-to-edge despite the
+# transparent padding baked into the source PNGs (head stays top-aligned).
+const PORTRAIT_FILL_ZOOM := 1.12
+const PORTRAIT_TOP_CROP_FRAC := 0.16
 const HERO_PORTRAIT_WIDTH_SCALE := 0.90
 const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
@@ -586,15 +590,15 @@ func _update_portrait_rect_transform() -> void:
 		_portrait_rect.position = Vector2.ZERO
 		_portrait_rect.size = Vector2(fw, fh)
 		return
-	# Cover-scale: enlarge to fill both dimensions (crop excess)
-	var scale: float = maxf(fw / tw, fh / th)
+	# Cover-scale + a slight fill-zoom so the figure fills the frame edge-to-edge
+	# (the portrait PNGs carry transparent padding that otherwise leaves a gap).
+	var scale: float = maxf(fw / tw, fh / th) * PORTRAIT_FILL_ZOOM
 	var nw: float = tw * scale
 	var nh: float = th * scale
-	# Heroes and enemies both use the plain cover-scale above so the portrait always
-	# fills the whole frame (the inner crop clips the overflow).
-	# Center horizontally, top-align with a small inset so the head sits
-	# just inside the top edge of the frame regardless of portrait aspect ratio
-	_portrait_rect.position = Vector2((fw - nw) * 0.5, PORTRAIT_TOP_INSET_PX)
+	# Center horizontally; shift up a fraction of the overflow to crop the transparent
+	# top padding, so the head sits right at the top edge (never cropped off).
+	var top_y: float = PORTRAIT_TOP_INSET_PX - (nh - fh) * PORTRAIT_TOP_CROP_FRAC
+	_portrait_rect.position = Vector2((fw - nw) * 0.5, top_y)
 	_portrait_rect.size = Vector2(nw, nh)
 
 
