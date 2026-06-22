@@ -37,7 +37,7 @@ const DETAIL_NAME_FONT := 76
 const DETAIL_DESC_FONT := 44
 const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
-const TILE_NAME_STRIP_H := 128
+const TILE_NAME_STRIP_H := 76      # one line (callsigns are single words) + a little padding
 
 # 4px (not 2) so borders survive the canvas_items downscale to the preview window —
 # at 2px they render sub-pixel and drop edges, worst on bright accent borders.
