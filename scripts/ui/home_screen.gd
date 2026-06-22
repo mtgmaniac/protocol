@@ -581,7 +581,11 @@ func _refresh_unit_tiles() -> void:
 		var slot_index: int = _selected_unit_ids.find(unit_id)
 		var is_selected := slot_index >= 0
 		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
-		frame.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, border))
+		# Keep the border-width content margin so the portrait stays INSIDE the frame
+		# (matches _make_portrait_box; otherwise the portrait would cover the border).
+		var frame_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_HERO_BG, border)
+		frame_style.set_content_margin_all(float(PANEL_BORDER))
+		frame.add_theme_stylebox_override("panel", frame_style)
 		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
 		slot_panel.visible = is_selected
 		if is_selected:
