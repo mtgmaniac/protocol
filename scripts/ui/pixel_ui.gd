@@ -495,12 +495,14 @@ static func style_dt_icon_button(button: BaseButton, icon_path: String, border_c
 	if button == null or not (button is Button):
 		return
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# 4px border (not 2) so every edge stays visible through the canvas_items preview
+	# downscale — at 2px the buttons dropped edges, same as the panels.
 	var styles := {
-		"normal": make_hard_style(DT_BTN_BG, border_color, 2),
-		"hover": make_hard_style(DT_BTN_BG.lightened(0.05), border_color.lightened(0.10), 2),
-		"pressed": make_hard_style(DT_BTN_BG.darkened(0.12), border_color, 2),
-		"disabled": make_hard_style(DT_BTN_BG, Color(0.35, 0.38, 0.42, 0.6), 2),
-		"focus": make_hard_style(DT_BTN_BG, border_color, 2),
+		"normal": make_hard_style(DT_BTN_BG, border_color, 4),
+		"hover": make_hard_style(DT_BTN_BG.lightened(0.05), border_color.lightened(0.10), 4),
+		"pressed": make_hard_style(DT_BTN_BG.darkened(0.12), border_color, 4),
+		"disabled": make_hard_style(DT_BTN_BG, Color(0.35, 0.38, 0.42, 0.6), 4),
+		"focus": make_hard_style(DT_BTN_BG, border_color, 4),
 	}
 	for stylebox_variant in styles.values():
 		(stylebox_variant as StyleBoxFlat).set_content_margin_all(14.0)
