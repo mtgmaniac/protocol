@@ -25,35 +25,38 @@ const ROOT_MARGIN_BOTTOM := 48
 const SECTION_GAP := 30
 const HEADER_GAP := 16
 
-const HEADER_FONT := 24
-const COUNTER_FONT := 30
-const ENC_NAME_FONT := 52
-const ENC_META_FONT := 24
-const ENC_DESC_FONT := 26
-const TILE_NAME_FONT := 22
-const DETAIL_NAME_FONT := 34
-const DETAIL_DESC_FONT := 26
-const FOCUS_CHIP_FONT := 22
-const DEPLOY_FONT := 38
+# Fonts (logical units; ~×0.42 on-screen). Sized for legibility at the 450px preview.
+const HEADER_FONT := 40
+const COUNTER_FONT := 48
+const ENC_NAME_FONT := 76
+const ENC_META_FONT := 36
+const ENC_DESC_FONT := 36
+const TILE_NAME_FONT := 36
+const DETAIL_NAME_FONT := 56
+const DETAIL_DESC_FONT := 36
+const FOCUS_CHIP_FONT := 32
+const DEPLOY_FONT := 60
 
 const PANEL_BORDER := 2
 const PANEL_RADIUS := 0
 
-const ENC_PANEL_HEIGHT := 470
-const ENC_PORTRAIT_W := 250
+const ENC_PANEL_HEIGHT := 320
+const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
 const NAV_BUTTON_W := 96
 const THREAT_PIP_COUNT := 5
-const THREAT_PIP_SIZE := Vector2(34, 22)
+const THREAT_PIP_SIZE := Vector2(42, 30)
 
-const TILE_PORTRAIT_H := 196
-const TILE_GAP := 16
-const GRID_COLUMNS := 4
-const ROLE_BADGE_SIZE := 26
-const SLOT_BADGE_SIZE := 44
-const CHECK_INSET := 8
+const TILE_PORTRAIT_H := 236
+const TILE_GAP := 18
+const GRID_COLUMNS := 2             # 2 per row, rows grouped by unit type
+const ROLE_BADGE_SIZE := 38
+const SLOT_BADGE_SIZE := 64
+const CHECK_INSET := 10
 
-const DOT_SIZE := 14
-const DOT_GAP := 16
+const DETAIL_BAR_HEIGHT := 232      # fixed so swapping units never reflows the page
+
+const DOT_SIZE := 18
+const DOT_GAP := 18
 
 const DIVIDER_THICK := 2
 
@@ -127,11 +130,22 @@ func _gather_data() -> void:
 		_operation_index = 0
 		_selected_operation_id = _operation_ids[0]
 
+	# Order units by type so each 2-wide grid row pairs the same-type specialists.
 	_unit_ids.clear()
-	var keys: Array = DataManager.units.keys()
-	keys.sort()
-	for k in keys:
-		_unit_ids.append(str(k))
+	var ids: Array = []
+	for k in DataManager.units.keys():
+		ids.append(str(k))
+	ids.sort_custom(func(a: String, b: String) -> bool:
+		var ua := DataManager.get_unit(a) as UnitData
+		var ub := DataManager.get_unit(b) as UnitData
+		var ra := _type_rank(ua)
+		var rb := _type_rank(ub)
+		if ra != rb:
+			return ra < rb
+		return str(ua.display_name) < str(ub.display_name)
+	)
+	for id in ids:
+		_unit_ids.append(str(id))
 
 
 # ─── Layout ───────────────────────────────────────────────────────────────────
@@ -188,22 +202,13 @@ func _build_encounter_section() -> Control:
 
 	row.add_child(_make_nav_button("◀", -1))   # ◀
 
-	# Boss portrait (enemy tokens, hard-square DT frame).
-	var portrait_frame := PanelContainer.new()
-	portrait_frame.custom_minimum_size = Vector2(ENC_PORTRAIT_W, 0)
-	portrait_frame.size_flags_vertical = Control.SIZE_FILL
-	portrait_frame.clip_contents = true
-	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait_frame.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER))
+	# Boss portrait — fixed square, ~a hero tile's size, vertically centered.
+	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER)
+	var portrait_frame: PanelContainer = portrait_box["frame"]
+	portrait_frame.custom_minimum_size = Vector2(ENC_PORTRAIT, ENC_PORTRAIT)
+	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_enc_portrait = portrait_box["tex"]
 	row.add_child(portrait_frame)
-
-	_enc_portrait = TextureRect.new()
-	_enc_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_enc_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_enc_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_enc_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_enc_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	portrait_frame.add_child(_enc_portrait)
 
 	# Info column: name / threat / description.
 	var info := VBoxContainer.new()
@@ -371,6 +376,10 @@ func _build_squad_section() -> Control:
 
 func _build_detail_bar() -> PanelContainer:
 	var panel := PanelContainer.new()
+	# Fixed height + clip so swapping units never reflows the grid below it.
+	panel.custom_minimum_size = Vector2(0, DETAIL_BAR_HEIGHT)
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.clip_contents = true
 	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_TRAY_BG, PixelUI.DT_HERO_BORDER))
 
 	var pad := MarginContainer.new()
@@ -404,6 +413,7 @@ func _build_detail_bar() -> PanelContainer:
 	_detail_focus_chip.add_child(chip_pad)
 	_detail_focus = _make_pixel_label("", FOCUS_CHIP_FONT, PixelUI.TEXT_PRIMARY)
 	chip_pad.add_child(_detail_focus)
+	_detail_focus_chip.visible = false   # shown once a unit is tapped
 	name_row.add_child(_detail_focus_chip)
 
 	_detail_desc = _make_pixel_label("Tap a specialist to inspect their focus and kit.", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
@@ -420,28 +430,13 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	cell.mouse_filter = Control.MOUSE_FILTER_STOP
 	cell.gui_input.connect(_on_tile_input.bind(unit_id))
 
-	var frame := PanelContainer.new()
+	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
+	var frame: PanelContainer = portrait_box["frame"]
+	var crop: Control = portrait_box["crop"]
 	frame.custom_minimum_size = Vector2(0, TILE_PORTRAIT_H)
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.clip_contents = true
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER))
 	cell.add_child(frame)
-
-	var wrap := Control.new()
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	frame.add_child(wrap)
-
-	if unit.portrait != null:
-		var portrait := TextureRect.new()
-		portrait.texture = unit.portrait
-		portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		wrap.add_child(portrait)
+	(portrait_box["tex"] as TextureRect).texture = unit.portrait
 
 	# Role-color corner badge (top-right), always shown.
 	var role_badge := ColorRect.new()
@@ -452,7 +447,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.offset_right = -CHECK_INSET
 	role_badge.offset_bottom = CHECK_INSET + ROLE_BADGE_SIZE
 	role_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(role_badge)
+	crop.add_child(role_badge)
 
 	# Slot-number badge (top-left), shown only when the unit is selected.
 	var slot_panel := PanelContainer.new()
@@ -468,7 +463,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	slot_panel.add_child(slot_label)
-	wrap.add_child(slot_panel)
+	crop.add_child(slot_panel)
 
 	var name_label := _make_pixel_label(unit.display_name.to_upper(), TILE_NAME_FONT, PixelUI.TEXT_MUTED)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -553,6 +548,7 @@ func _refresh_detail() -> void:
 	if unit == null:
 		return
 	_detail_name.text = unit.display_name.to_upper()
+	_detail_focus_chip.visible = true
 	var focus_text: String = unit.picker_category if unit.picker_category != "" else (unit.role if unit.role != "" else unit.class_name_text)
 	_detail_focus.text = focus_text.to_upper()
 	var accent: Color = _role_color(unit)
@@ -562,17 +558,35 @@ func _refresh_detail() -> void:
 	_detail_desc.text = blurb
 
 
-# Maps a unit's focus/role to a DT accent color for its badge + detail chip.
+# Type ordering for the squad grid; matches the badge color buckets so each row
+# pairs same-type units.
+func _type_rank(unit: UnitData) -> int:
+	if unit == null:
+		return 99
+	var c: Color = _role_color(unit)
+	if c == PixelUI.DT_RUST:
+		return 0
+	if c == PixelUI.DT_CYAN:
+		return 1
+	if c == Color("9a6ad0"):
+		return 2
+	if c == PixelUI.DT_AMBER:
+		return 3
+	return 4
+
+
+# Maps a unit's focus to a DT accent color for its badge + detail chip. Driven by
+# the clean pickerCategory values (damage / defense / support / control).
 func _role_color(unit: UnitData) -> Color:
-	var key: String = (unit.picker_category + " " + unit.role + " " + unit.class_name_text).to_lower()
-	if key.contains("off") or key.contains("attack") or key.contains("strike") or key.contains("damage"):
-		return PixelUI.DT_RUST
-	if key.contains("def") or key.contains("tank") or key.contains("guard") or key.contains("warden"):
-		return PixelUI.DT_CYAN
-	if key.contains("sup") or key.contains("med") or key.contains("heal"):
-		return Color("9a6ad0")     # violet
-	if key.contains("control") or key.contains("tech") or key.contains("util"):
-		return PixelUI.DT_AMBER
+	match unit.picker_category.to_lower():
+		"damage", "offense", "offence":
+			return PixelUI.DT_RUST
+		"defense", "defence":
+			return PixelUI.DT_CYAN
+		"support":
+			return Color("9a6ad0")     # violet
+		"control":
+			return PixelUI.DT_AMBER
 	return PixelUI.TEXT_MUTED
 
 
@@ -621,6 +635,28 @@ func _on_begin_run_pressed() -> void:
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+# A hard-square DT portrait frame with a clipped, cover-fit texture. Returns the
+# frame, the inner crop Control (for absolute-positioned badges), and the texture.
+# Two clip layers (frame + crop) guarantee the portrait never bleeds past the box.
+func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
+	var frame := PanelContainer.new()
+	frame.clip_contents = true
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_theme_stylebox_override("panel", _make_panel_style(bg, border))
+	var crop := Control.new()
+	crop.clip_contents = true
+	crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(crop)
+	var tex := TextureRect.new()
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	crop.add_child(tex)
+	return {"frame": frame, "crop": crop, "tex": tex}
+
+
 func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
