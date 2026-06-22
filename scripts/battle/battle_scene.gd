@@ -1313,7 +1313,8 @@ func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
 		return
 	var divider: ColorRect = ColorRect.new()
 	divider.name = node_name
-	divider.color = PixelUI.LINE_DIM
+	# Match the PersistentHeader's bottom divider exactly: DT_LINE, full-width, 3px.
+	divider.color = PixelUI.DT_LINE
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Full-width, top-relative anchors; exact Y is set each layout pass by
 	# BattleLayout._position_zone_dividers so the gap to the cards stays consistent.
@@ -1321,8 +1322,8 @@ func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
 	divider.anchor_right = 1.0
 	divider.anchor_top = 0.0
 	divider.anchor_bottom = 0.0
-	divider.offset_left = TRAY_EDGE_INSET
-	divider.offset_right = -TRAY_EDGE_INSET
+	divider.offset_left = 0.0
+	divider.offset_right = 0.0
 	divider.offset_top = (960.0 if at_footer else 144.0)
 	divider.offset_bottom = divider.offset_top + 3.0
 	add_child(divider)
