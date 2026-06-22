@@ -446,7 +446,9 @@ func _refresh() -> void:
 	var is_hero: bool = side == "hero"
 	var line_color: Color = _line_color()
 	var panel_bg: Color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 6, 0))
+	# margin == border width so the card's children (portrait included) sit INSIDE the
+	# border instead of drawing over it — the frame always stays on top of the portrait.
+	add_theme_stylebox_override("panel", _style(panel_bg, line_color, 6, 6))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips

@@ -703,7 +703,11 @@ func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
 	var frame := PanelContainer.new()
 	frame.clip_contents = true
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_theme_stylebox_override("panel", _make_panel_style(bg, border))
+	# Inset the content by the border width so the portrait sits INSIDE the frame
+	# instead of covering it — the border always stays on top of the image.
+	var frame_style: StyleBoxFlat = _make_panel_style(bg, border)
+	frame_style.set_content_margin_all(float(PANEL_BORDER))
+	frame.add_theme_stylebox_override("panel", frame_style)
 	var crop := Control.new()
 	crop.clip_contents = true
 	crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
