@@ -80,6 +80,8 @@ func _launch_screen(screen_id: String) -> void:
 			GameState.prepare_battle_rewards()
 			SceneManager.go_to_reward_screen()
 		"evolution":
+			if not unit_ids.is_empty():
+				GameState.pending_evolution_unit_id = str(unit_ids[0])
 			SceneManager.go_to_evolution()
 		"run-end", "run_end":
 			GameState.last_run_result = "victory"

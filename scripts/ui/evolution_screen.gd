@@ -184,7 +184,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	var choose_button: Button = Button.new()
 	choose_button.custom_minimum_size = Vector2(0, 78)
 	choose_button.text = "CHOOSE %s" % str(path.get("name", "EVOLUTION")).to_upper()
-	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.HERO_ACCENT, BUTTON_FONT_SIZE)
+	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
 	choose_button.pressed.connect(_on_choose_path_pressed.bind(str(path.get("name", ""))))
 	vbox.add_child(choose_button)
 	return panel
@@ -198,7 +198,10 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	var portrait_frame: PanelContainer = PanelContainer.new()
 	portrait_frame.custom_minimum_size = PORTRAIT_SIZE
 	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_ninepatch_panel(portrait_frame, PixelUI.FRAME_PORTRAIT_SCIFI)
+	# DT hard-square portrait frame (hero tokens), matching the battle card portraits.
+	var portrait_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2)
+	portrait_style.set_content_margin_all(0.0)
+	portrait_frame.add_theme_stylebox_override("panel", portrait_style)
 	header.add_child(portrait_frame)
 
 	var portrait: TextureRect = TextureRect.new()
@@ -276,8 +279,13 @@ func _create_divider() -> ColorRect:
 
 
 func _style_evolution_panel(panel: PanelContainer, hovered: bool) -> void:
-	var tint: Color = PixelUI.HERO_ACCENT.lightened(0.06 if hovered else 0.0).lerp(Color.WHITE, 0.28)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_PORTRAIT_SCIFI, 24, tint)
+	# Direction-05: flat hard-square card matching the battle hero cards. Muted hero
+	# border at rest, brightens to DT_CYAN on hover. No rounded sci-fi ninepatch.
+	var border: Color = PixelUI.DT_CYAN if hovered else PixelUI.DT_HERO_BORDER
+	var fill: Color = CARD_BG_HOVER if hovered else CARD_BG
+	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 2)
+	style.set_content_margin_all(0.0)
+	panel.add_theme_stylebox_override("panel", style)
 
 
 func _build_merged_ranges(path: Dictionary, base_unit: UnitData) -> Array:
@@ -381,7 +389,11 @@ func _get_card_width() -> float:
 
 
 func _apply_visual_theme() -> void:
-	background.color = PixelUI.BG_DARK
+	# Direction-05: flat dark DT field (matches the battle screen), no bright grid.
+	background.color = Color(0.055, 0.070, 0.095, 1.0)
+	var pattern: Control = get_node_or_null("BackgroundPattern")
+	if pattern != null:
+		pattern.visible = false
 	content_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	content_vbox.add_theme_constant_override("separation", 8)
