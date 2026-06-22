@@ -74,7 +74,7 @@ func _apply_visual_theme(victory: bool) -> void:
 	button_row.add_theme_constant_override("separation", 28)
 
 	# Hard-square DT panel, border tinted by the result.
-	var panel_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_TRAY_BG, accent, 2)
+	var panel_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_TRAY_BG, accent, 4)
 	summary_panel.add_theme_stylebox_override("panel", panel_style)
 
 	_style_label(title_label, TITLE_FONT, accent)

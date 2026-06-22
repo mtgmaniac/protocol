@@ -199,7 +199,7 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	portrait_frame.custom_minimum_size = PORTRAIT_SIZE
 	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# DT hard-square portrait frame (hero tokens), matching the battle card portraits.
-	var portrait_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2)
+	var portrait_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 4)
 	portrait_style.set_content_margin_all(0.0)
 	portrait_frame.add_theme_stylebox_override("panel", portrait_style)
 	header.add_child(portrait_frame)
@@ -283,7 +283,8 @@ func _style_evolution_panel(panel: PanelContainer, hovered: bool) -> void:
 	# border at rest, brightens to DT_CYAN on hover. No rounded sci-fi ninepatch.
 	var border: Color = PixelUI.DT_CYAN if hovered else PixelUI.DT_HERO_BORDER
 	var fill: Color = CARD_BG_HOVER if hovered else CARD_BG
-	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 2)
+	# 4px so the border survives the preview downscale (2px renders sub-pixel).
+	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 4)
 	style.set_content_margin_all(0.0)
 	panel.add_theme_stylebox_override("panel", style)
 

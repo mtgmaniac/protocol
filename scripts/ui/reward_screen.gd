@@ -251,7 +251,8 @@ func _style_reward_panel(panel: PanelContainer, item: ItemData, hovered: bool) -
 	if hovered:
 		border = border.lightened(0.18)
 	var fill: Color = CARD_BG_HOVER if hovered else CARD_BG
-	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 2)
+	# 4px so the border survives the preview downscale (2px renders sub-pixel).
+	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 4)
 	style.set_content_margin_all(0.0)
 	panel.add_theme_stylebox_override("panel", style)
 
@@ -656,7 +657,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.custom_minimum_size = Vector2(clampf(get_viewport().get_visible_rect().size.x * 0.78, 320.0, 430.0), 0)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI, 20, _get_item_accent(item).lerp(Color.WHITE, 0.28))
+	_style_reward_panel(panel, item, false)
 	outer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -682,7 +683,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 		target_button.text = _run_unit_label(unit_id)
 		target_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
 		target_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		PixelUI.style_button(target_button, Color(0.018, 0.028, 0.044, 0.95), PixelUI.HERO_ACCENT, GEAR_TARGET_BUTTON_FONT_SIZE)
+		PixelUI.style_button(target_button, Color(0.022, 0.034, 0.050, 0.95), _get_item_accent(item), GEAR_TARGET_BUTTON_FONT_SIZE)
 		target_button.pressed.connect(func() -> void:
 			AudioManager.play_select()
 			_hide_gear_target_overlay()

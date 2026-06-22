@@ -39,7 +39,9 @@ const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
 const TILE_NAME_STRIP_H := 128
 
-const PANEL_BORDER := 2
+# 4px (not 2) so borders survive the canvas_items downscale to the preview window —
+# at 2px they render sub-pixel and drop edges, worst on bright accent borders.
+const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
 const ENC_PANEL_HEIGHT := 320
