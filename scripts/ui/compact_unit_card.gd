@@ -714,7 +714,12 @@ func _status_badge_palette(status: Dictionary) -> Dictionary:
 	elif kind in ["burn", "dot", "fire", "bleed"]:
 		border = PixelUI.DT_STATUS["burn"]["border"]
 	elif kind in ["roll", "rfe", "rfm", "roll_down", "roll_up", "buff", "debuff"]:
-		border = PixelUI.COLOR_ROLL
+		if kind == "roll_up":
+			border = PixelUI.COLOR_HEAL
+		elif kind == "roll_down":
+			border = PixelUI.COLOR_ROLL
+		else:
+			border = PixelUI.COLOR_ROLL
 	else:
 		border = _status_color(kind)
 	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border}

@@ -561,7 +561,11 @@ func _apply_pixel_label(label: Label, font_size: int, color: Color, outline: int
 
 
 func _pip_key_for_effect(effect: Dictionary) -> String:
-	return PixelUI.pip_key_for_effect(str(effect.get("kind", "")), str(effect.get("value", "")))
+	var kind: String = str(effect.get("kind", ""))
+	var value: String = str(effect.get("value", ""))
+	if kind.to_lower() == "rfm" and side == "enemy" and PixelUI.parse_signed_amount(value) > 0:
+		return "roll_down"
+	return PixelUI.pip_key_for_effect(kind, value)
 
 
 func _display_value_for_effect(effect: Dictionary) -> String:

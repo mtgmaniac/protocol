@@ -278,7 +278,7 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 		"rfe":
 			return "roll_down"
 		"rfm":
-			return "roll_down"
+			return "roll_up" if parse_signed_amount(value) > 0 else "roll_down"
 		"roll":
 			return "roll_down" if parse_signed_amount(value) < 0 else "roll_up"
 	return ""

@@ -79,15 +79,15 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 | **Task 13 — Show picker blurbs on UnitSelect** | **After UI finalization** | Wire `UnitData.picker_blurb` into `home_screen.gd` detail panel — **blocked** until UnitSelect/detail chrome is locked |
 | **Gear equip target — evolved name** | **Done** | Reward gear picker uses `GameState.get_run_unit_data()` + `battle_name()` |
 | **Enemy `shieldAllyAll` display** | **Done** | Single `6·ALL` chip + ally tooltip in `battle_card_view.gd` / `ability_readout.gd` |
-| **Ally roll buff visuals (green dice)** | Open | Hero abilities that **buff an ally’s roll** (`rfm` + `rfmTgt`, positive) → **green dice pip + green text** on ability readouts / status pips. Today `PixelUI.semantic_key_for_effect` maps all `rfm` → `roll_down` (yellow debuff). Split ally-buff vs enemy-strip styling in `pixel_ui.gd`, `compact_unit_card.gd`, ability readout scene. |
+| **Ally roll buff visuals (green dice)** | **Done** | Positive `rfm` → green `roll_up` pip/text; enemy strip keeps yellow `roll_down` (`pixel_ui.gd`, `ability_readout.gd`, `compact_unit_card.gd`) |
 | **Capped die for RFE (Option A)** | Open | One physics landing on **effective** roll; remove post-roll snap. **`dice_tray_3d.gd` + `battle_scene.gd`**. See prompt below. |
 | **Task 8 — Battle feedback / game feel** | Partial | `battle_feedback.gd` extracted; Tier 1–3 primitives per `offline-bundle/ANIMATION.md` still to build |
 | **Death SFX timing** | **Done** | Fatal `death` SFX at hit moment; skip lead/pause on kills; poison ticks own feedback group; `skip_feedback` wired |
 | **Task 9 — Audio system** | Open | `AudioManager` exists; wire SFX tiers per `offline-bundle/AUDIO.md`, hook to Task 8 events |
 | **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
 | **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
-| **HP preview — heal before damage (net damage)** | Open | When a unit already shows **incoming damage** and the player queues an **incoming heal** on that same unit, preview must respect **resolve order** (heal lands first, then damage). Show **one net HP outcome** — e.g. reduced red slice / “X to HP after heal” — not separate green-then-red-then-green flashes on the bar. **`battle_card_view.gd`** (`compute_preview_for_unit`), **`compact_unit_card.gd`** (`show_combat_preview` / `_layout_preview_overlays`). |
-| **Ability target scope clarity (ALL vs ally vs self)** | Open | Three labels only: **SELF**, **ALLY**, **ALL** (caster + whole friendly squad). No separate foe/others scopes — multi-target damage reads from dmg chips. See prompt below. |
+| **HP preview — heal before damage (net damage)** | **Tabbed — Claude** | Heal + DoT + enemy damage preview on HP bar is broken — see handoff below. **Reverted** Jun 2025 overlay/label experiments; pre-change `compact_unit_card.gd` + original `compute_preview_for_unit`. |
+| **Ability target scope clarity (ALL vs ally vs self)** | **Done** | `resolve_ability_target_scope()` → **SELF** / **ALL** only (no **ALLY** badge — ally-targeted heals assumed); `blastAll` dmg shows **ALL** (Scorched Earth) |
 | **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
 | **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |
 | **V2 band geometry audit** | Dropped | Center uses **540px** not 432 by design (`battle_layout.gd`); no Task 3 pass needed |
@@ -127,6 +127,19 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 
 **Incoming target indicators prompt:**
 > During hero targeting, show low-key who each living enemy (and taunting/spite interactions) is aimed at — e.g. small target pip on cards, dim connector, or card subtitle. Must stay readable at 450×1000 without cluttering the pick phase.
+
+**HP preview — heal before damage (Claude handoff):**
+> **Status:** Tabbed after multiple failed passes. Overlay experiments **reverted** to last committed `compact_unit_card.gd` (228fe4b baseline).
+>
+> **Symptoms (repro):** Splice Medic **Infusion** (+7 heal) or **Diagnostic Pulse** (+3 heal) on self or ally during targeting / ready-to-end. HP bar shows DoT/poison tick (purple) **left of** heal segment, or red `_hp_chip` slab over current HP; label may read wrong net (e.g. `26 → 24 / 50` when heal should win). Mint heal extension rarely visible.
+>
+> **Root cause (suspected):** Two competing HP bar systems — (1) `_hp_fill` + `_hp_chip` forecast animation for hit feedback uses `forecast_hp` vs `current_hp`; (2) `_preview_rect_*` combat preview overlays in `_layout_preview_overlays()`. They fight for the same bar. Setting `forecast_hp` from net preview painted red over green; hiding chip in preview layout raced with `configure()` → `_refresh()` → `_set_hp_display()`.
+>
+> **Combat order to mirror:** Heroes resolve first — **heal lands, then enemy damage, then poison tick** (`combat_manager.gd`). `compute_preview_for_unit()` in `battle_card_view.gd` aggregates heal/dmg/dot separately but overlay placement doesn't reliably show one net outcome.
+>
+> **Suggested approach for Claude:** Pick **one** preview model — either extend overlays only (never touch `forecast_hp` during preview) **or** unify into a single “projected HP” fill. Hide `_hp_chip` whenever `_preview_effects` non-empty. Heal segment: distinct mint color **right of** current fill. When heal + DoT + dmg combine, single label `cur → net / max`. Test: self-heal, ally-heal (`healTgt`), heal + poison tick + incoming enemy dmg on same unit.
+>
+> **Files:** `scripts/ui/compact_unit_card.gd` (`_layout_preview_overlays`, `_set_hp_display`, `_hp_chip`), `scripts/battle/battle_card_view.gd` (`compute_preview_for_unit`, `update_card_view`).
 
 **HP preview — heal before damage prompt:**
 > Scenario: enemy ability already previewed **incoming damage** on hero A; player then selects a hero heal targeting A (same round). Combat resolves hero effects before enemy damage on that target — preview should mirror that. **Apply heal to projected HP first**, then subtract incoming damage (and shield absorption) from that post-heal total. HP bar: single coherent end state (green delta + net red loss), not overlapping segments from raw current HP. Tooltip: e.g. “+7 heal, then 12 damage → 5 to HP” instead of listing heal and damage as if independent. Match `combat_manager` action/effect ordering when aggregating `compute_preview_for_unit`.
