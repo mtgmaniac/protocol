@@ -6,24 +6,18 @@ of truth, 4px borders, hard corners, portraits inset inside frames).
 
 ---
 
-## 1. Encounter carousel (picker top)
+## 1. Encounter carousel (picker top) — DONE (855c60c)
 
-- [ ] **Boss image to the right of the data.** Swap the carousel layout so the text
-  block (name / threat / blurb) is on the left and the boss portrait sits on the right.
-- [ ] **Carousel nav buttons half as tall.** The ◀ ▶ buttons are full-panel height now;
-  cut their height ~50%.
+- [x] **Boss image to the right of the data.**
+- [x] **Carousel nav buttons half as tall.**
 
-## 2. Squad picker — layout & typography
+## 2. Squad picker — layout & typography — DONE (855c60c)
 
-- [ ] **Larger "SELECT ENCOUNTER" / "SELECT SQUAD" headers.** Bump the section header
-  font size.
-- [ ] **Larger description font.** The detail-bar blurb (and encounter blurb) font is
-  too small — increase it.
-- [ ] **Remove "· 3 OF 8"** from the "SELECT SQUAD" header line.
-- [ ] **Move the focus tag (Control / Offense / Defense) to the top-right** of the
-  detail ("SELECT A UNIT") box, instead of inline next to the name.
-- [ ] **Remove the 1 / 2 / 3 slot-number badges** that appear on selected unit
-  portraits — the cyan highlight border is enough.
+- [x] **Larger "SELECT ENCOUNTER" / "SELECT SQUAD" headers.**
+- [x] **Larger description font** (encounter + detail blurbs).
+- [x] **Remove "· 3 OF 8"** from the "SELECT SQUAD" header line.
+- [x] **Move the focus tag (Control / Offense / Defense) to the top-right** of the box.
+- [x] **Remove the 1 / 2 / 3 slot-number badges** (cyan highlight is enough).
 
 ## 3. Content / copy rewrites (data — REVIEW BEFORE APPLYING)
 
