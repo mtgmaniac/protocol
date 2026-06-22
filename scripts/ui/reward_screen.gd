@@ -245,8 +245,15 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 
 
 func _style_reward_panel(panel: PanelContainer, item: ItemData, hovered: bool) -> void:
-	var tint: Color = _get_item_accent(item).lightened(0.06 if hovered else 0.0).lerp(Color.WHITE, 0.30)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_PORTRAIT_SCIFI, 24, tint)
+	# Direction-05: flat hard-square card. Rarity drives the 2px border (brightened on
+	# hover); fill is the DT card surface. No rounded sci-fi ninepatch frame.
+	var border: Color = _get_item_accent(item)
+	if hovered:
+		border = border.lightened(0.18)
+	var fill: Color = CARD_BG_HOVER if hovered else CARD_BG
+	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 2)
+	style.set_content_margin_all(0.0)
+	panel.add_theme_stylebox_override("panel", style)
 
 
 func _create_card_header(item: ItemData) -> HBoxContainer:
@@ -735,7 +742,11 @@ func _run_unit_label(unit_id: String) -> String:
 
 
 func _apply_visual_theme() -> void:
-	background.color = PixelUI.BG_DARK
+	# Direction-05: flat dark DT field (matches the battle screen), no bright grid.
+	background.color = Color(0.055, 0.070, 0.095, 1.0)
+	var pattern: Control = get_node_or_null("BackgroundPattern")
+	if pattern != null:
+		pattern.visible = false
 	content_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	content_vbox.add_theme_constant_override("separation", 8)
