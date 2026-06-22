@@ -423,6 +423,7 @@ func _run_regression_audits() -> void:
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
 	_run_phase_two_revive_regression()
+	_run_phase_two_end_of_turn_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -773,6 +774,35 @@ func _run_phase_two_revive_regression() -> void:
 				int(states[2].get("current_hp", 0)),
 				str(boss_p2),
 			]
+		)
+
+
+func _run_phase_two_end_of_turn_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 30})
+	var boss_unit: EnemyData = _make_enemy("scrapmaster", "SCRAPMASTER", "Boss Strike", {"dmg": 19, "dmgP2": 26})
+	boss_unit.max_hp = 180
+	boss_unit.phase_two_threshold = 86
+	manager.setup_battle([hero_unit], [boss_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var boss: Dictionary = manager.get_enemy_states()[0]
+	hero["current_hp"] = 100
+	boss["current_hp"] = 100
+
+	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {"scrapmaster#1": AUDIT_ROLL}, DiceManager.new())
+
+	var hero_hp: int = int(hero.get("current_hp", 0))
+	var boss_p2: bool = bool(boss.get("in_phase_two", false))
+	var boss_hp: int = int(boss.get("current_hp", 0))
+	# Hero dealt 30 (boss 70 HP, below threshold) but boss still used phase-1 19 dmg this turn.
+	if hero_hp == 81 and boss_hp == 70 and boss_p2:
+		_record_pass("Regression / phase 2 waits until end of turn", "phase2")
+	else:
+		_record_failure(
+			"Regression / phase 2 waits until end of turn",
+			"phase2",
+			"hero takes 19 not 26; boss enters P2 after round",
+			"hero_hp=%d boss_hp=%d boss_p2=%s" % [hero_hp, boss_hp, str(boss_p2)],
 		)
 
 

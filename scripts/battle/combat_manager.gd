@@ -244,9 +244,16 @@ func _get_total_dot_bonus() -> int:
 # PUBLIC: Returns the effective roll for a state factoring in RFE stacks and roll buff.
 # battle_scene passes nudge on top of this, so nudge is NOT included here.
 func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
-	var rfe: int = _get_total_rfe(state) + int(state.get("perm_rfe", 0))
-	var buff: int = int(state.get("roll_buff", 0)) + int(state.get("perm_roll_buff", 0))
-	return clampi(raw_roll + buff - rfe, 1, 20)
+	var mods: Dictionary = get_roll_modifier_totals(state)
+	return clampi(raw_roll + int(mods["roll_buff"]) - int(mods["roll_rfe"]), 1, 20)
+
+
+# PUBLIC: RFE/buff totals for dice-tray display (raw roll stored separately for crit rules).
+func get_roll_modifier_totals(state: Dictionary) -> Dictionary:
+	return {
+		"roll_rfe": _get_total_rfe(state) + int(state.get("perm_rfe", 0)),
+		"roll_buff": int(state.get("roll_buff", 0)) + int(state.get("perm_roll_buff", 0)),
+	}
 
 
 func take_pending_protocol_grants() -> int:
@@ -282,9 +289,6 @@ func resolve_round(
 			_log("Natural 20 echoes for %s!" % hero_state["unit"].display_name)
 			_apply_hero_ability(hero_state, ability_entry)
 
-	# Check phase 2 transitions after hero abilities land (boss may cross threshold mid-round)
-	_check_phase_two_transitions()
-
 	if _all_states_dead(_enemy_states):
 		_log("All enemies are down.")
 		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
@@ -307,7 +311,8 @@ func resolve_round(
 		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
 
 	_tick_end_of_round_states()
-	# Re-check after DoT ticks (poison might push enemy across phase 2 threshold)
+	# Phase 2 triggers at end of round only — boss keeps phase-1 kit for the
+	# enemy phase even if heroes crossed the HP threshold earlier this turn.
 	_check_phase_two_transitions()
 
 	if _all_states_dead(_enemy_states):

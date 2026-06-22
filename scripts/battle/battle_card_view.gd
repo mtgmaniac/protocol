@@ -20,9 +20,12 @@ func setup(scene: Control) -> void:
 
 func update_card_view(card: Control, state: Dictionary, roll_value: Variant, accent_color: Color, readout: Control = null, hp_override: int = -1) -> void:
 	var unit: Resource = state["unit"]
-	# During feedback the combat state already holds the fully-resolved HP, so a
-	# per-event refresh passes hp_override to step the bar one hit at a time.
-	var shown_hp: int = hp_override if hp_override >= 0 else int(state["current_hp"])
+	# During feedback the combat state already holds the fully-resolved HP/dead flags,
+	# so a per-event refresh passes hp_override to step the bar one hit at a time.
+	var in_feedback_step: bool = hp_override >= 0
+	var shown_hp: int = hp_override if in_feedback_step else int(state["current_hp"])
+	var forecast_hp: int = shown_hp if in_feedback_step else int(state["current_hp"])
+	var show_dead: bool = (hp_override <= 0) if in_feedback_step else bool(state["dead"])
 	var default_entry: Dictionary = unit.dice_ranges[0] if unit.dice_ranges.size() > 0 else {}
 	var chosen_entry: Dictionary = default_entry
 	var dice_text: String = "D20: --"
@@ -85,21 +88,21 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	if bool(state.get("in_phase_two", false)):
 		status_list.append("PHASE 2")
 
-	if bool(state["dead"]):
+	if bool(show_dead):
 		status_list.append("DOWN")
 
 	var state_id: String = str(state["id"])
 	var is_selected: bool = state_id == _scene.active_targeting_hero_id
 	var is_targetable: bool = _scene._is_target_highlight_phase() and _scene.legal_target_ids.has(state_id)
 	var is_target_locked: bool = false
-	if accent_color == _scene.HERO_ACCENT and not bool(state["dead"]) and roll_value != null:
+	if accent_color == _scene.HERO_ACCENT and not show_dead and roll_value != null:
 		if _scene.turn_phase == _scene.PHASE_TARGETING or _scene.turn_phase == _scene.PHASE_READY_TO_END:
 			if state_id != _scene.active_targeting_hero_id:
 				is_target_locked = not _scene.pending_manual_target_ids.has(state_id)
 	if card is CompactUnitCard:
 		var compact_card: CompactUnitCard = card as CompactUnitCard
 		var has_revealed_roll: bool = roll_value != null
-		var action_label: String = "DOWN" if bool(state["dead"]) else "AWAIT ROLL"
+		var action_label: String = "DOWN" if show_dead else "AWAIT ROLL"
 		var action_pips: Variant = []
 		if has_revealed_roll:
 			action_label = str(chosen_entry.get("ability_name", "NO ACTION"))
@@ -113,7 +116,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"side": "hero" if accent_color == _scene.HERO_ACCENT else "enemy",
 			"name": unit.battle_name(),
 			"current_hp": shown_hp,
-			"forecast_hp": int(state["current_hp"]),
+			"forecast_hp": forecast_hp,
 			"max_hp": int(state["max_hp"]),
 			"action": action_label,
 			"pips": card_pips,
@@ -122,7 +125,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"selected": is_selected,
 			"targetable": is_targetable,
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
-			"dead": bool(state["dead"]),
+			"dead": show_dead,
 			"target_locked": is_target_locked,
 			"show_action_pips": readout == null,
 			"unit_data": unit,

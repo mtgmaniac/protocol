@@ -558,6 +558,7 @@ func _on_operation_card_gui_input(event: InputEvent, op_id: String) -> void:
 func _select_operation(op_id: String) -> void:
 	if _is_operation_locked(op_id):
 		return
+	AudioManager.play_select()
 	_selected_operation_id = op_id
 	_refresh_operation_selection()
 	_refresh_begin_button()
@@ -797,6 +798,7 @@ func _redirect_wheel_to_horizontal(event: InputEvent, sc: ScrollContainer) -> vo
 
 func _toggle_unit_selection(unit_id: String) -> void:
 	if _selected_unit_ids.has(unit_id):
+		AudioManager.play_select()
 		_selected_unit_ids.erase(unit_id)
 		return
 	if _selected_unit_ids.size() >= MAX_SELECTED_UNITS:
@@ -804,6 +806,7 @@ func _toggle_unit_selection(unit_id: String) -> void:
 		# The detail panel still updates to show what the user tapped, so the
 		# action is "view-without-select" rather than silent failure.
 		return
+	AudioManager.play_select()
 	_selected_unit_ids.append(unit_id)
 
 
@@ -871,6 +874,7 @@ func _on_begin_run_pressed() -> void:
 		return
 	if _selected_operation_id == "":
 		return
+	AudioManager.play_select()
 	GameState.start_run(_selected_unit_ids, _selected_operation_id)
 	GameState.advance_to_next_battle()
 	SceneManager.go_to_battle()

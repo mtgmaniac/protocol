@@ -6,4 +6,5 @@ func _ready() -> void:
 
 
 func _on_start_run_pressed() -> void:
+	AudioManager.play_select()
 	SceneManager.go_to_unit_select()

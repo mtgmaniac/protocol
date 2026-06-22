@@ -91,19 +91,20 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		if _is_fatal_hit_event(event):
 			_try_play_death_sfx(event)
 			had_fatal_hit = true
+		# Die-tray hooks and SFX are not tied to card lookup (freeze targets a die, not always a card flash).
+		apply_live_event_visual_state(event)
+		_play_event_sfx(event_type, event)
 		var target_card: Control = _find_card_for_event(event)
 		if target_card == null:
 			continue
 		if target_card.has_method("play_impact_feedback"):
 			target_card.call("play_impact_feedback", _get_impact_feedback_kind(event_type))
-		apply_live_event_visual_state(event)
 		# Refresh the card to its steady state FIRST, then start the flash tween
 		# from there — otherwise configure() resets modulate to white and erases
 		# the flash before it can be seen.
 		_scene._card_view.refresh_card_for_event(event)
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
-		_play_event_sfx(event_type, event)
 		if event_type == "damage":
 			var amount: int = int(event.get("amount", 0))
 			peak_damage = maxi(peak_damage, amount)
@@ -139,10 +140,16 @@ func _play_event_sfx(event_type: String, _event: Dictionary) -> void:
 	match event_type:
 		"damage":
 			AudioManager.play_sfx("damage")
+		"poison":
+			AudioManager.play_sfx("poison")
 		"heal":
 			AudioManager.play_sfx("heal")
 		"shield":
 			AudioManager.play_sfx("shield")
+		"freeze":
+			AudioManager.play_sfx("freeze")
+		"phase2":
+			AudioManager.play_sfx("phase2")
 
 
 func _is_fatal_hit_event(event: Dictionary) -> bool:

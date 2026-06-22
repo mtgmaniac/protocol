@@ -165,65 +165,23 @@ func show_result_actions(action_entries: Array) -> void:
 		_highlight_top_face(die, display_face_value, str(entry.get("side", "")), str(entry.get("zone", "")))
 
 
-## Rotates a settled die to present `effective_result` on top (RFE/buff adjustment).
-## Does not change tray roll dictionaries — battle_scene keeps raw values separately.
-func snap_die_to_effective_face(side: String, unit_id: String, effective_result: int) -> void:
+func update_die_result_in_place(side: String, unit_id: String, display_effective: int) -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		return
-	var clamped_result: int = clampi(effective_result, 1, 20)
-	var shown_face: int = int(die.get_meta("display_face_value", die.get_meta("resolved_result", clamped_result)))
-	if shown_face == clamped_result:
-		_highlight_top_face(die, clamped_result, side)
-		return
-
-	var face_index: int = _get_face_index_for_result(clamped_result)
-	if face_index < 0:
-		update_die_result_in_place(side, unit_id, clamped_result)
-		die.set_meta("display_face_value", clamped_result)
-		return
-
-	die.freeze = true
-	die.linear_velocity = Vector3.ZERO
-	die.angular_velocity = Vector3.ZERO
-	_set_die_collision_enabled(die, false)
+	var target: int = clampi(display_effective, 1, 20)
+	die.set_meta("display_face_value", target)
+	var face_index: int = _get_face_index_for_result(target)
+	if face_index >= 0:
+		var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
+		var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
+		target_origin.y = die.global_transform.origin.y
+		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
 	_reset_face_labels(die)
 	_reset_face_highlights(die)
-
-	var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
-	var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
-	target_origin.y = die.global_transform.origin.y
-
-	var from_transform: Transform3D = die.global_transform
-	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
-	var tween: Tween = create_tween()
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_method(
-		func(weight: float) -> void:
-			if is_instance_valid(die):
-				die.global_transform = from_transform.interpolate_with(to_transform, weight)
-	, 0.0, 1.0, RESULT_PRESENTATION_TIME)
-	await tween.finished
-
-	if not is_instance_valid(die):
-		return
-	die.global_transform = to_transform
-	die.set_meta("display_face_value", clamped_result)
-	_set_die_result_scale(die, true)
-	_highlight_top_face(die, clamped_result, side)
-
-
-func update_die_result_in_place(side: String, unit_id: String, result: int) -> void:
-	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
-	if die == null:
-		return
-	var clamped_result: int = clampi(result, 1, 20)
-	var display_face_value: int = int(die.get_meta("display_face_value", die.get_meta("resolved_result", clamped_result)))
-	die.set_meta("resolved_result", clamped_result)
-	_set_displayed_face_number(die, display_face_value, clamped_result)
-	_reset_face_highlights(die)
-	_highlight_top_face(die, display_face_value, side)
+	_highlight_top_face(die, target, side)
+	var entry: Dictionary = die.get_meta("entry", {})
+	_show_die_result_label(die, target, str(entry.get("name", "")))
 
 
 func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool) -> void:
@@ -233,14 +191,22 @@ func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool) -> vo
 	_set_die_frozen_visual(die, is_frozen)
 
 
-func reroll_die_to_result(side: String, unit_id: String, result: int) -> void:
+func reroll_die_to_result(side: String, unit_id: String, raw_result: int) -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		return
-	var clamped_result: int = clampi(result, 1, 20)
-	var face_index: int = _get_face_index_for_result(clamped_result)
+	var entry: Dictionary = die.get_meta("entry", {})
+	var raw: int = clampi(raw_result, 1, 20)
+	var display: int = _display_face_for_entry(raw, entry)
+	var face_index: int = _get_face_index_for_result(display)
 	if face_index < 0:
-		update_die_result_in_place(side, unit_id, clamped_result)
+		update_die_result_in_place(side, unit_id, display)
+		die.set_meta("raw_result", raw)
+		die.set_meta("resolved_result", raw)
+		if side == "hero":
+			_hero_results[unit_id] = raw
+		elif side == "enemy":
+			_enemy_results[unit_id] = raw
 		return
 
 	var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
@@ -279,11 +245,16 @@ func reroll_die_to_result(side: String, unit_id: String, result: int) -> void:
 		return
 	die.global_transform = to_transform
 	_set_die_result_scale(die, true)
-	die.set_meta("resolved_result", clamped_result)
-	die.set_meta("display_face_value", clamped_result)
+	die.set_meta("raw_result", raw)
+	die.set_meta("resolved_result", raw)
+	die.set_meta("display_face_value", display)
 	die.set_meta("assigned_result_origin", target_origin)
-	_show_die_result_label(die, clamped_result, str((die.get_meta("entry", {}) as Dictionary).get("name", "")))
-	_highlight_top_face(die, clamped_result, side)
+	_show_die_result_label(die, display, str(entry.get("name", "")))
+	_highlight_top_face(die, display, side)
+	if side == "hero":
+		_hero_results[unit_id] = raw
+	elif side == "enemy":
+		_enemy_results[unit_id] = raw
 
 
 func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
@@ -346,16 +317,16 @@ func _finish_roll(dice: Array) -> void:
 		var die: RigidBody3D = die_variant as RigidBody3D
 		if die == null or not is_instance_valid(die):
 			continue
-		var result: int = int(die.get_meta("resolved_result", _get_most_visible_face_value(die)))
+		var raw: int = int(die.get_meta("raw_result", die.get_meta("resolved_result", _get_most_visible_face_value(die))))
+		var display: int = int(die.get_meta("display_face_value", raw))
 		var entry: Dictionary = die.get_meta("entry", {})
 		var side: String = str(entry.get("side", ""))
 		var unit_id: String = str(entry.get("id", ""))
-		die.set_meta("display_face_value", result)
 		if side == "hero":
-			_hero_results[unit_id] = result
+			_hero_results[unit_id] = raw
 		elif side == "enemy":
-			_enemy_results[unit_id] = result
-		_show_die_result_label(die, result, str(entry.get("name", "")))
+			_enemy_results[unit_id] = raw
+		_show_die_result_label(die, display, str(entry.get("name", "")))
 		_set_die_frozen_visual(die, bool(entry.get("frozen", false)))
 		die.freeze = true
 		die.linear_velocity = Vector3.ZERO
@@ -364,7 +335,7 @@ func _finish_roll(dice: Array) -> void:
 		_set_die_result_scale(die, true)
 		result_entries.append({
 			"die": die,
-			"result": result,
+			"result": display,
 			"side": side,
 			"entry": entry,
 		})
@@ -586,13 +557,13 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 		mat.emission = Color(1.0, 0.58, 0.10, 1.0)
 		mat.emission_energy_multiplier = 1.2
 	elif side == "hero":
-		mat.albedo_color = Color(0.11, 0.26, 0.46, 1.0)
-		mat.emission = Color(0.12, 0.34, 0.46, 1.0)
-		mat.emission_energy_multiplier = 1.25
+		mat.albedo_color = Color(0.06, 0.14, 0.32, 1.0)
+		mat.emission = Color(0.04, 0.10, 0.25, 1.0)
+		mat.emission_energy_multiplier = 0.8
 	else:
-		mat.albedo_color = Color(0.50, 0.16, 0.10, 1.0)
-		mat.emission = Color(0.44, 0.14, 0.08, 1.0)
-		mat.emission_energy_multiplier = 1.25
+		mat.albedo_color = Color(0.30, 0.06, 0.05, 1.0)
+		mat.emission = Color(0.20, 0.04, 0.03, 1.0)
+		mat.emission_energy_multiplier = 0.8
 	mat.emission_enabled = true
 	mat.roughness = 0.80
 	panel.material_override = mat
@@ -770,12 +741,24 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, false)
-	var result: int = _get_most_visible_face_value(die)
-	die.set_meta("resolved_result", result)
-	die.set_meta("display_face_value", result)
+	var entry: Dictionary = die.get_meta("entry", {})
+	var raw: int = _get_most_visible_face_value(die)
+	var display: int = _display_face_for_entry(raw, entry)
+	die.set_meta("raw_result", raw)
+	die.set_meta("resolved_result", raw)
+	die.set_meta("display_face_value", display)
 	target_origin.y = die.global_transform.origin.y
 	die.set_meta("assigned_result_origin", target_origin)
-	_start_result_face_present(die, result, target_origin)
+	_start_result_face_present(die, display, target_origin)
+
+
+func _display_face_for_entry(raw: int, entry: Dictionary) -> int:
+	var clamped_raw: int = clampi(raw, 1, 20)
+	if bool(entry.get("frozen", false)):
+		return clamped_raw
+	var rfe: int = int(entry.get("roll_rfe", 0))
+	var buff: int = int(entry.get("roll_buff", 0))
+	return clampi(clamped_raw + buff - rfe, 1, 20)
 
 
 func _apply_screen_bounds_bounce(die: RigidBody3D) -> void:
@@ -1021,7 +1004,8 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	var side: String = str(entry.get("side", ""))
 	var unit_id: String = str(entry.get("id", ""))
-	var result: int = clampi(int(entry.get("frozen_roll", 1)), 1, 20)
+	var raw: int = clampi(int(entry.get("frozen_roll", 1)), 1, 20)
+	var display: int = _display_face_for_entry(raw, entry)
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		die = _spawn_die(entry, index, total_count)
@@ -1033,17 +1017,18 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, true)
-	die.set_meta("resolved_result", result)
-	die.set_meta("display_face_value", result)
-	var face_index: int = _get_face_index_for_result(result)
+	die.set_meta("raw_result", raw)
+	die.set_meta("resolved_result", raw)
+	die.set_meta("display_face_value", display)
+	var face_index: int = _get_face_index_for_result(display)
 	if face_index >= 0:
 		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), die.global_transform.origin)
 	_set_die_result_scale(die, false)
 	_reset_face_labels(die)
 	_reset_face_highlights(die)
-	_highlight_top_face(die, result, side)
+	_highlight_top_face(die, display, side)
 	_set_die_frozen_visual(die, true)
-	_show_die_result_label(die, result, str(entry.get("name", "")))
+	_show_die_result_label(die, display, str(entry.get("name", "")))
 	return die
 
 

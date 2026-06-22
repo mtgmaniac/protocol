@@ -8,16 +8,24 @@ extends Node
 ## shield sound (pre-reversed at asset prep time).
 
 const SFX_DIR := "res://assets/audio/sfx/"
-const SFX_KEYS := ["damage", "death", "evolve", "heal", "item", "overload", "select", "shield"]
+const SFX_KEYS := [
+	"damage", "death", "evolve", "freeze", "heal", "item", "overload", "phase2",
+	"poison", "select", "shield",
+]
 const POOL_SIZE := 12            # max simultaneous voices
 const PITCH_VARIATION := 0.07    # ±7% pitch so repeats never feel machine-gun
 const VOLUME_VARIATION_DB := 1.5 # ±1.5 dB
 const DEBOUNCE_MS := 40          # collapse identical key within a frame (multi-target abilities → one sound)
+const VOLUME_OVERRIDES := {
+	"poison": -5.0,
+	"select": -6.0,  # ~50% amplitude vs default UI click
+}
 
 var _streams: Dictionary = {}
 var _pool: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _recent: Dictionary = {}
+var _suppressed: bool = false
 
 
 func _ready() -> void:
@@ -34,6 +42,8 @@ func _ready() -> void:
 		player.bus = "SFX"
 		add_child(player)
 		_pool.append(player)
+	if "--debug-battle" in OS.get_cmdline_user_args():
+		_suppressed = true
 
 
 func _ensure_sfx_bus() -> void:
@@ -45,7 +55,22 @@ func _ensure_sfx_bus() -> void:
 	AudioServer.set_bus_send(idx, "Master")
 
 
+## Default UI click — select.wav for any button without a dedicated action sound.
+func play_select() -> void:
+	play_sfx("select")
+
+
+func set_suppressed(suppressed: bool) -> void:
+	_suppressed = suppressed
+
+
+func is_suppressed() -> bool:
+	return _suppressed
+
+
 func play_sfx(key: String, volume_db: float = 0.0) -> void:
+	if _suppressed:
+		return
 	var stream: AudioStream = _streams.get(key, null)
 	if stream == null:
 		return
@@ -57,7 +82,8 @@ func play_sfx(key: String, volume_db: float = 0.0) -> void:
 	_next = (_next + 1) % _pool.size()
 	player.stream = stream
 	player.pitch_scale = 1.0 + randf_range(-PITCH_VARIATION, PITCH_VARIATION)
-	player.volume_db = volume_db + randf_range(-VOLUME_VARIATION_DB, VOLUME_VARIATION_DB)
+	var base_db: float = volume_db + float(VOLUME_OVERRIDES.get(key, 0.0))
+	player.volume_db = base_db + randf_range(-VOLUME_VARIATION_DB, VOLUME_VARIATION_DB)
 	player.play()
 
 

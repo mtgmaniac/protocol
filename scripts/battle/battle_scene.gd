@@ -239,11 +239,13 @@ func _on_open_reward_button_pressed() -> void:
 
 
 func _on_return_to_menu_button_pressed() -> void:
+	AudioManager.play_select()
 	_game_state().reset_run()
 	_scene_manager().go_to_unit_select()
 
 
 func _on_toggle_log_button_pressed() -> void:
+	AudioManager.play_select()
 	_show_help_overlay()
 
 
@@ -254,6 +256,7 @@ func _on_auto_turn_button_pressed() -> void:
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
+	AudioManager.set_suppressed(true)
 	PersistentHeader.set_debug_enabled(false)
 	_append_log("AUTO: completing the current turn.")
 	if turn_phase == PHASE_AWAIT_ROLL:
@@ -263,6 +266,7 @@ func _on_auto_turn_button_pressed() -> void:
 	if turn_phase == PHASE_READY_TO_END:
 		await _resolve_current_turn()
 	_auto_turn_running = false
+	AudioManager.set_suppressed(false)
 	PersistentHeader.set_debug_enabled(true)
 
 
@@ -277,6 +281,7 @@ func _on_auto_battle_button_pressed() -> void:
 		return
 
 	_auto_battle_running = true
+	AudioManager.set_suppressed(true)
 	PersistentHeader.set_debug2_enabled(false)
 	PersistentHeader.set_debug_enabled(false)
 	_append_log("AUTO: completing the current battle.")
@@ -308,11 +313,13 @@ func _on_auto_battle_button_pressed() -> void:
 		_refresh_summary("Auto battle stopped after safety limit.")
 
 	_auto_battle_running = false
+	AudioManager.set_suppressed(false)
 	PersistentHeader.set_debug2_enabled(true)
 	PersistentHeader.set_debug_enabled(true)
 
 
 func _exit_tree() -> void:
+	AudioManager.set_suppressed(false)
 	# Header survives scene changes; release this battle's button bindings so its
 	# buttons go inert on the screens that follow (reward / evolution / home).
 	if is_instance_valid(PersistentHeader):
@@ -447,6 +454,7 @@ func _on_unit_detail_requested(card: Control) -> void:
 	var compact_card: CompactUnitCard = card as CompactUnitCard
 	if compact_card == null or compact_card.unit_data == null:
 		return
+	AudioManager.play_select()
 	if _unit_detail_panel == null:
 		_build_unit_detail_panel()
 	_unit_detail_panel.call("show_for_unit", compact_card.unit_data, compact_card.gear_detail_rows)
@@ -467,9 +475,10 @@ func _event_closes_unit_detail_panel(event: InputEvent) -> bool:
 
 func _on_roll_button_pressed() -> void:
 	if battle_over:
+		AudioManager.play_select()
 		_on_open_reward_button_pressed()
 		return
-	AudioManager.play_sfx("select")
+	AudioManager.play_select()
 	if turn_phase == PHASE_AWAIT_ROLL:
 		_begin_targeting_phase()
 		return
@@ -520,8 +529,6 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 
 	_assign_enemy_targets()
 	_prepare_hero_targets()
-	if dice_tray_3d != null and not skip_dice_visuals:
-		await _snap_dice_to_effective_results()
 	_card_view.refresh_all_cards()
 	_card_view.show_all_ability_readouts()
 	if dice_tray_3d != null and not skip_dice_visuals:
@@ -615,6 +622,9 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		if is_frozen:
 			entry["frozen"] = true
 			entry["frozen_roll"] = int(state.get("frozen_die_value", 0))
+		var roll_mods: Dictionary = combat_manager.get_roll_modifier_totals(state)
+		entry["roll_rfe"] = int(roll_mods["roll_rfe"])
+		entry["roll_buff"] = int(roll_mods["roll_buff"])
 		entries.append(entry)
 	return entries
 
@@ -1034,6 +1044,7 @@ func _show_round_complete_modal() -> void:
 func _on_round_complete_next_pressed() -> void:
 	if not battle_over:
 		return
+	AudioManager.play_select()
 	_game_state().prepare_battle_rewards()
 	_scene_manager().go_to_reward_screen()
 
@@ -1063,6 +1074,7 @@ func _on_reroll_button_pressed() -> void:
 	if protocol_points < 2:
 		_refresh_summary("Need 2 Protocol to Reroll.")
 		return
+	AudioManager.play_select()
 	_set_turn_phase(PHASE_REROLL_PICK)
 
 
@@ -1077,6 +1089,7 @@ func _on_nudge_button_pressed() -> void:
 	if not _has_nudgeable_hero():
 		_refresh_summary("Every die was already nudged this turn.")
 		return
+	AudioManager.play_select()
 	_set_turn_phase(PHASE_NUDGE_PICK)
 
 
@@ -1149,6 +1162,7 @@ func _on_set_button_pressed() -> void:
 	if protocol_points < SET_DIE_COST:
 		_refresh_summary("Need %d Protocol to Set." % SET_DIE_COST)
 		return
+	AudioManager.play_select()
 	_set_turn_phase(PHASE_SET_PICK)
 
 
@@ -1190,6 +1204,7 @@ func _ensure_set_value_menu() -> void:
 func _on_set_value_picked(value: int) -> void:
 	if _pending_set_hero_id == "":
 		return
+	AudioManager.play_select()
 	var hero_id: String = _pending_set_hero_id
 	_pending_set_hero_id = ""
 	_apply_set(hero_id, clampi(value, 1, 20))
@@ -1265,29 +1280,6 @@ func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
 	if bool(state.get("die_freeze_consumed_this_round", false)):
 		return clampi(raw_roll, 1, 20)
 	return combat_manager.get_effective_roll(state, raw_roll)
-
-
-func _snap_dice_to_effective_results() -> void:
-	for hero_state in combat_manager.get_hero_states():
-		if bool(hero_state.get("dead", false)):
-			continue
-		var uid: String = str(hero_state["id"])
-		var raw_roll: int = int(hero_rolls.get(uid, 0))
-		if raw_roll <= 0:
-			continue
-		var effective_roll: int = _get_effective_roll_for_state(hero_state, uid)
-		if effective_roll != raw_roll:
-			await dice_tray_3d.snap_die_to_effective_face("hero", uid, effective_roll)
-	for enemy_state in combat_manager.get_enemy_states():
-		if bool(enemy_state.get("dead", false)):
-			continue
-		var uid: String = str(enemy_state["id"])
-		var raw_roll: int = int(enemy_rolls.get(uid, 0))
-		if raw_roll <= 0:
-			continue
-		var effective_roll: int = _get_effective_enemy_roll(enemy_state, uid)
-		if effective_roll != raw_roll:
-			await dice_tray_3d.snap_die_to_effective_face("enemy", uid, effective_roll)
 
 
 # Builds a dict of effective rolls for all living units in the given states array.
@@ -2151,6 +2143,7 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 		if _pending_item != null:
 			var target_state: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), target_id)
 			if not target_state.is_empty():
+				AudioManager.play_select()
 				_apply_item_effect(_pending_item, target_state)
 		return
 	if turn_phase != PHASE_TARGETING:
@@ -2159,6 +2152,7 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 		return
 	if not legal_target_ids.has(target_id):
 		return
+	AudioManager.play_select()
 	_assign_target_to_active_hero(target_id, "enemy")
 
 
@@ -2171,18 +2165,21 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		var reroll_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 		if reroll_state.is_empty() or bool(reroll_state["dead"]) or not _has_roll_for_state(hero_rolls, reroll_state):
 			return
+		AudioManager.play_select()
 		await _apply_reroll(target_id)
 		return
 	if turn_phase == PHASE_NUDGE_PICK:
 		var nudge_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 		if not _can_nudge_hero(nudge_state):
 			return
+		AudioManager.play_select()
 		_apply_nudge(target_id)
 		return
 	if turn_phase == PHASE_SET_PICK:
 		var set_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 		if set_state.is_empty() or bool(set_state["dead"]) or not _has_roll_for_state(hero_rolls, set_state):
 			return
+		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
 		return
 
@@ -2192,11 +2189,13 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		if _pending_item != null:
 			var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 			if not target_state.is_empty():
+				AudioManager.play_select()
 				_apply_item_effect(_pending_item, target_state)
 		return
 
 	if turn_phase == PHASE_READY_TO_END:
 		if _can_retarget_hero(target_id):
+			AudioManager.play_select()
 			_set_turn_phase(PHASE_TARGETING)
 			_select_targeting_hero(target_id)
 		return
@@ -2205,13 +2204,17 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		return
 	if active_targeting_hero_id == "":
 		if pending_manual_target_ids.has(target_id) or _can_retarget_hero(target_id):
+			AudioManager.play_select()
 			_select_targeting_hero(target_id)
 		return
 	if legal_target_side == "hero" and legal_target_ids.has(target_id):
+		AudioManager.play_select()
 		_assign_target_to_active_hero(target_id, "hero")
 	elif legal_target_side == "dead_hero" and legal_target_ids.has(target_id):
+		AudioManager.play_select()
 		_assign_target_to_active_hero(target_id, "dead_hero")
 	elif legal_target_side == "any" and legal_target_ids.has(target_id):
+		AudioManager.play_select()
 		_assign_target_to_active_hero(target_id, "hero")
 
 
@@ -2944,6 +2947,7 @@ func _update_item_panel() -> void:
 func _on_item_button_pressed_menu() -> void:
 	if _item_button == null or _item_menu == null or _item_menu_items.is_empty():
 		return
+	AudioManager.play_select()
 	var button_rect: Rect2 = _item_button.get_global_rect()
 	var popup_size := Vector2(420, float(88 * maxi(_item_menu_items.size(), 1)))
 	var popup_position := Vector2(
@@ -2961,6 +2965,7 @@ func _on_item_button_pressed_menu() -> void:
 func _on_item_menu_id_pressed(id: int) -> void:
 	if id < 0 or id >= _item_menu_items.size():
 		return
+	AudioManager.play_select()
 	var item: ItemData = _item_menu_items[id] as ItemData
 	if item == null:
 		return

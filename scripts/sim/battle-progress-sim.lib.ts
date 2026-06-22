@@ -790,13 +790,19 @@ function damageEnemy(
   if (hpBefore > 0 && e.hp <= 0 && opts?.killer && opts.heroes && opts.protocolBudget) {
     notifyEnemyKill(e, opts.killer, opts.heroes, opts.protocolBudget);
   }
-  if (e.pThr != null && !e.p2 && e.hp <= e.pThr) {
-    e.p2 = true;
-    if (allEnemies && e.p2ReviveNames.length > 0) {
-      applyP2Revives(allEnemies, e.p2ReviveNames);
+  return hpDamage;
+}
+
+function checkPhaseTwoTransitions(enemies: SimEnemy[]): void {
+  for (const e of enemies) {
+    if (e.hp <= 0 || e.p2 || e.pThr == null) continue;
+    if (e.hp <= e.pThr) {
+      e.p2 = true;
+      if (e.p2ReviveNames.length > 0) {
+        applyP2Revives(enemies, e.p2ReviveNames);
+      }
     }
   }
-  return hpDamage;
 }
 
 function damageHero(h: SimHero, dmg: number): void {
@@ -1282,6 +1288,7 @@ function simulateBattle(
       tickEnemyRollBuff(e);
       tickEnemyRfe(e);
     }
+    checkPhaseTwoTransitions(enemies);
   }
   return false;
 }

@@ -65,11 +65,13 @@ func _exit_tree() -> void:
 
 
 func _on_return_to_menu_button_pressed() -> void:
+	AudioManager.play_select()
 	GameState.reset_run()
 	SceneManager.go_to_unit_select()
 
 
 func _on_help_button_pressed() -> void:
+	AudioManager.play_select()
 	if _help_overlay == null or not is_instance_valid(_help_overlay):
 		_build_help_overlay()
 	_help_overlay.visible = true
@@ -606,6 +608,7 @@ func _on_claim_reward_pressed(item_id: String) -> void:
 	var item: ItemData = DataManager.get_item(item_id) as ItemData
 	if item == null:
 		return
+	AudioManager.play_select()
 
 	if item.item_type == "gear":
 		_show_gear_target_overlay(item)
@@ -674,6 +677,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 		target_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		PixelUI.style_button(target_button, Color(0.018, 0.028, 0.044, 0.95), PixelUI.HERO_ACCENT, GEAR_TARGET_BUTTON_FONT_SIZE)
 		target_button.pressed.connect(func() -> void:
+			AudioManager.play_select()
 			_hide_gear_target_overlay()
 			_claim_reward(item, unit_id)
 		)

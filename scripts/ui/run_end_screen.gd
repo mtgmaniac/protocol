@@ -41,11 +41,13 @@ func _ready() -> void:
 
 
 func _on_new_run_button_pressed() -> void:
+	AudioManager.play_select()
 	GameState.reset_run()
 	SceneManager.go_to_unit_select()
 
 
 func _on_return_to_menu_button_pressed() -> void:
+	AudioManager.play_select()
 	GameState.reset_run()
 	SceneManager.go_to_unit_select()
 

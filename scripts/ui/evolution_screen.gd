@@ -51,11 +51,13 @@ func _exit_tree() -> void:
 
 
 func _on_return_to_menu_button_pressed() -> void:
+	AudioManager.play_select()
 	GameState.reset_run()
 	SceneManager.go_to_unit_select()
 
 
 func _on_help_button_pressed() -> void:
+	AudioManager.play_select()
 	if _help_overlay == null or not is_instance_valid(_help_overlay):
 		_build_help_overlay()
 	_help_overlay.visible = true
@@ -344,7 +346,6 @@ func _on_choose_path_pressed(path_name: String) -> void:
 func _update_battle_header() -> void:
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
-	# Run is still active during evolution — keep the progress label showing.
 	PersistentHeader.set_run_active(true)
 	PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, op_name)
 
@@ -388,7 +389,6 @@ func _apply_visual_theme() -> void:
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Header bar (label + buttons) is owned + styled by the PersistentHeader autoload.
 	PixelUI.style_label(title_label, TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3)
 	PixelUI.style_label(summary_label, SUMMARY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_label(footer_label, 30, PixelUI.TEXT_MUTED, 1)

@@ -36,16 +36,19 @@ func _ready() -> void:
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_style()
-	_help_button.pressed.connect(func() -> void: _dispatch(_help_action))
-	_debug_button.pressed.connect(func() -> void: _dispatch(_debug_action))
-	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action))
-	_back_button.pressed.connect(func() -> void: _dispatch(_back_action))
+	_help_button.pressed.connect(func() -> void: _dispatch(_help_action, true))
+	_debug_button.pressed.connect(func() -> void: _dispatch(_debug_action, false))
+	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action, false))
+	_back_button.pressed.connect(func() -> void: _dispatch(_back_action, true))
 	set_run_active(false)
 
 
-func _dispatch(action: Callable) -> void:
-	if action.is_valid():
-		action.call()
+func _dispatch(action: Callable, play_click: bool = true) -> void:
+	if not action.is_valid():
+		return
+	if play_click:
+		AudioManager.play_select()
+	action.call()
 
 
 # Styling mirrors the old battle header exactly (was in battle_scene._apply_battle_theme)
