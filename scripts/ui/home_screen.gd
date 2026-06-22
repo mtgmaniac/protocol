@@ -45,7 +45,7 @@ const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
 const ENC_PANEL_HEIGHT := 320
-const ENC_NAME_H := 124            # centered title row at the top
+const ENC_MID_GAP := 34            # gap between the threat row and the portrait/description
 const ENC_DESC_H := 168            # reserve a fixed block for the blurb so the panel never resizes
 const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
 const NAV_BUTTON_W := 96
@@ -214,29 +214,35 @@ func _build_encounter_section() -> Control:
 	pad.add_theme_constant_override("margin_bottom", 20)
 	panel.add_child(pad)
 
-	# Layout: name centered on top, threat centered on the bottom, and the
-	# flippers + descriptor + boss portrait in the middle row.
+	# Layout: name on top, threat directly under it, then a gap, then the flippers +
+	# descriptor + boss portrait. Content is natural-height and the pad margins are
+	# equal (20/20), so the blank above the name == the blank below the portrait/desc.
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 14)
+	content.add_theme_constant_override("separation", 10)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_child(content)
 
 	# Name — centered, top.
 	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
 	_enc_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_enc_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_name_label.clip_text = true
-	_enc_name_label.custom_minimum_size = Vector2(0, ENC_NAME_H)
 	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_child(_enc_name_label)
+
+	# Threat — centered, directly under the name.
+	content.add_child(_build_threat_row())
+
+	# Gap so the portrait + description sit lower in the panel.
+	var mid_gap := Control.new()
+	mid_gap.custom_minimum_size = Vector2(0, ENC_MID_GAP)
+	mid_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(mid_gap)
 
 	# Middle — [◀] [descriptor] [boss portrait] [▶].
 	var middle := HBoxContainer.new()
 	middle.add_theme_constant_override("separation", 22)
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(middle)
 
 	middle.add_child(_make_nav_button("◀", -1))   # ◀
@@ -265,9 +271,6 @@ func _build_encounter_section() -> Control:
 	middle.add_child(portrait_frame)
 
 	middle.add_child(_make_nav_button("▶", 1))    # ▶
-
-	# Threat — centered, bottom.
-	content.add_child(_build_threat_row())
 
 	# Dots.
 	_dot_row = HBoxContainer.new()
