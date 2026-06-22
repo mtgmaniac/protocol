@@ -25,17 +25,18 @@ const ROOT_MARGIN_BOTTOM := 48
 const SECTION_GAP := 30
 const HEADER_GAP := 16
 
-# Fonts (logical units; ~×0.42 on-screen). Sized for legibility at the 450px preview.
-const HEADER_FONT := 40
-const COUNTER_FONT := 48
-const ENC_NAME_FONT := 76
-const ENC_META_FONT := 36
-const ENC_DESC_FONT := 36
-const TILE_NAME_FONT := 36
-const DETAIL_NAME_FONT := 56
-const DETAIL_DESC_FONT := 36
-const FOCUS_CHIP_FONT := 32
-const DEPLOY_FONT := 60
+# Fonts (logical units) — matched to the battle screen's scale (card names ~72,
+# labels ~48-70) so the picker reads at the same weight as the rest of the game.
+const HEADER_FONT := 48
+const COUNTER_FONT := 56
+const ENC_NAME_FONT := 88
+const ENC_META_FONT := 44
+const ENC_DESC_FONT := 40
+const TILE_NAME_FONT := 44
+const DETAIL_NAME_FONT := 72
+const DETAIL_DESC_FONT := 40
+const FOCUS_CHIP_FONT := 36
+const DEPLOY_FONT := 72
 
 const PANEL_BORDER := 2
 const PANEL_RADIUS := 0
@@ -46,14 +47,14 @@ const NAV_BUTTON_W := 96
 const THREAT_PIP_COUNT := 5
 const THREAT_PIP_SIZE := Vector2(42, 30)
 
-const TILE_PORTRAIT_H := 236
+const TILE_PORTRAIT_H := 248
 const TILE_GAP := 18
-const GRID_COLUMNS := 2             # 2 per row, rows grouped by unit type
-const ROLE_BADGE_SIZE := 38
-const SLOT_BADGE_SIZE := 64
-const CHECK_INSET := 10
+const GRID_COLUMNS := 4             # 4 per row; each COLUMN is a same-type pair (stacked)
+const ROLE_BADGE_SIZE := 34
+const SLOT_BADGE_SIZE := 60
+const CHECK_INSET := 8
 
-const DETAIL_BAR_HEIGHT := 232      # fixed so swapping units never reflows the page
+const DETAIL_BAR_HEIGHT := 300      # fixed so swapping units never reflows the page
 
 const DOT_SIZE := 18
 const DOT_GAP := 18
@@ -130,22 +131,31 @@ func _gather_data() -> void:
 		_operation_index = 0
 		_selected_operation_id = _operation_ids[0]
 
-	# Order units by type so each 2-wide grid row pairs the same-type specialists.
+	# Order units so each grid COLUMN is a same-type pair, stacked top/bottom: with a
+	# 4-wide grid, row 1 holds the first unit of each type and row 2 the second.
 	_unit_ids.clear()
-	var ids: Array = []
+	var groups: Dictionary = {}   # type rank -> [unit_id], name-sorted
 	for k in DataManager.units.keys():
-		ids.append(str(k))
-	ids.sort_custom(func(a: String, b: String) -> bool:
-		var ua := DataManager.get_unit(a) as UnitData
-		var ub := DataManager.get_unit(b) as UnitData
-		var ra := _type_rank(ua)
-		var rb := _type_rank(ub)
-		if ra != rb:
-			return ra < rb
-		return str(ua.display_name) < str(ub.display_name)
-	)
-	for id in ids:
-		_unit_ids.append(str(id))
+		var unit := DataManager.get_unit(str(k)) as UnitData
+		var rank: int = _type_rank(unit)
+		if not groups.has(rank):
+			groups[rank] = []
+		groups[rank].append(str(k))
+	var ranks: Array = groups.keys()
+	ranks.sort()
+	for rank in ranks:
+		(groups[rank] as Array).sort_custom(func(a: String, b: String) -> bool:
+			return str((DataManager.get_unit(a) as UnitData).display_name) < str((DataManager.get_unit(b) as UnitData).display_name)
+		)
+	# First pass: one per type (top row). Second pass: the rest (bottom row[s]).
+	var max_in_group: int = 0
+	for rank in ranks:
+		max_in_group = maxi(max_in_group, (groups[rank] as Array).size())
+	for slot in range(max_in_group):
+		for rank in ranks:
+			var g: Array = groups[rank]
+			if slot < g.size():
+				_unit_ids.append(str(g[slot]))
 
 
 # ─── Layout ───────────────────────────────────────────────────────────────────
@@ -430,6 +440,26 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	cell.mouse_filter = Control.MOUSE_FILTER_STOP
 	cell.gui_input.connect(_on_tile_input.bind(unit_id))
 
+	# Name strip on top of the tile (battle-card style), above the portrait.
+	var tile_name: String = unit.callsign if unit.callsign != "" else unit.display_name
+	var name_strip := PanelContainer.new()
+	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_strip.custom_minimum_size = Vector2(0, 92)
+	name_strip.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_HEADER, PixelUI.DT_HERO_BORDER))
+	var name_pad := MarginContainer.new()
+	name_pad.add_theme_constant_override("margin_left", 6)
+	name_pad.add_theme_constant_override("margin_right", 6)
+	name_pad.add_theme_constant_override("margin_top", 4)
+	name_pad.add_theme_constant_override("margin_bottom", 4)
+	name_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_strip.add_child(name_pad)
+	var name_label := _make_pixel_label(tile_name.to_upper(), TILE_NAME_FONT, PixelUI.DT_HERO_NAME)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_pad.add_child(name_label)
+	cell.add_child(name_strip)
+
 	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
@@ -464,10 +494,6 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	slot_panel.add_child(slot_label)
 	crop.add_child(slot_panel)
-
-	var name_label := _make_pixel_label(unit.display_name.to_upper(), TILE_NAME_FONT, PixelUI.TEXT_MUTED)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cell.add_child(name_label)
 
 	_unit_tiles[unit_id] = {
 		"frame": frame,
@@ -521,7 +547,7 @@ func _refresh_unit_tiles() -> void:
 		var is_selected := slot_index >= 0
 		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
 		frame.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, border))
-		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN if is_selected else PixelUI.TEXT_MUTED)
+		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
 		slot_panel.visible = is_selected
 		if is_selected:
 			slot_label.text = str(slot_index + 1)
