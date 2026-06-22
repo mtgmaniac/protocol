@@ -27,14 +27,14 @@ const HEADER_GAP := 16
 
 # Fonts (logical units) — matched to the battle screen's scale (card names 72,
 # protocol/summary labels 70-112) so the picker reads at the same weight.
-const HEADER_FONT := 56
+const HEADER_FONT := 72
 const COUNTER_FONT := 64
 const ENC_NAME_FONT := 96
 const ENC_META_FONT := 48
-const ENC_DESC_FONT := 44
+const ENC_DESC_FONT := 52
 const TILE_NAME_FONT := 56
 const DETAIL_NAME_FONT := 76
-const DETAIL_DESC_FONT := 44
+const DETAIL_DESC_FONT := 52
 const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
 const TILE_NAME_STRIP_H := 76      # one line (callsigns are single words) + a little padding
@@ -49,6 +49,7 @@ const ENC_NAME_H := 196            # reserve 2 rows for the title — short name
 const ENC_DESC_H := 168            # reserve a fixed block for the blurb so the panel never resizes
 const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
 const NAV_BUTTON_W := 96
+const NAV_BUTTON_H := 220           # ~half the panel height (was full-height)
 const THREAT_PIP_COUNT := 5
 const THREAT_PIP_SIZE := Vector2(42, 30)
 
@@ -232,7 +233,7 @@ func _build_encounter_section() -> Control:
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	(portrait_box["crop"] as Control).add_child(_enc_portrait_placeholder)
-	row.add_child(portrait_frame)
+	# NOTE: portrait is added to the row AFTER the info column (boss image on the right).
 
 	# Info column: name / threat / description.
 	var info := VBoxContainer.new()
@@ -262,6 +263,8 @@ func _build_encounter_section() -> Control:
 	_enc_desc_label.custom_minimum_size = Vector2(0, ENC_DESC_H)
 	info.add_child(_enc_desc_label)
 
+	# Boss image sits to the RIGHT of the data.
+	row.add_child(portrait_frame)
 	row.add_child(_make_nav_button("▶", 1))    # ▶
 
 	# Dots.
@@ -306,8 +309,8 @@ func _build_threat_row() -> Control:
 
 func _make_nav_button(glyph: String, direction: int) -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(NAV_BUTTON_W, 0)
-	button.size_flags_vertical = Control.SIZE_FILL
+	button.custom_minimum_size = Vector2(NAV_BUTTON_W, NAV_BUTTON_H)
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.text = glyph
 	_apply_button_font(button, 44, PixelUI.DT_RUST)
@@ -393,7 +396,7 @@ func _build_squad_section() -> Control:
 
 	var header := HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title := _make_pixel_label("SELECT SQUAD · %d OF %d" % [MAX_SELECTED_UNITS, _unit_ids.size()], HEADER_FONT, PixelUI.DT_CYAN)
+	var title := _make_pixel_label("SELECT SQUAD", HEADER_FONT, PixelUI.DT_CYAN)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	_counter_label = _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT, PixelUI.DT_CYAN)
@@ -442,6 +445,9 @@ func _build_detail_bar() -> PanelContainer:
 	col.add_child(name_row)
 
 	_detail_name = _make_pixel_label("SELECT A UNIT", DETAIL_NAME_FONT, PixelUI.TEXT_PRIMARY)
+	# Name takes the row; the focus tag is pushed to the top-right of the box.
+	_detail_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_row.add_child(_detail_name)
 
 	_detail_focus_chip = PanelContainer.new()
@@ -514,27 +520,11 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crop.add_child(role_badge)
 
-	# Slot-number badge (top-left), shown only when the unit is selected.
-	var slot_panel := PanelContainer.new()
-	slot_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	slot_panel.offset_left = CHECK_INSET
-	slot_panel.offset_top = CHECK_INSET
-	slot_panel.offset_right = CHECK_INSET + SLOT_BADGE_SIZE
-	slot_panel.offset_bottom = CHECK_INSET + SLOT_BADGE_SIZE
-	slot_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	slot_panel.visible = false
-	slot_panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_CYAN, PixelUI.DT_CYAN_BRIGHT, 2))
-	var slot_label := _make_pixel_label("", TILE_NAME_FONT + 6, PixelUI.DT_FIELD_BG)
-	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	slot_panel.add_child(slot_label)
-	crop.add_child(slot_panel)
+	# No slot-number badge — the cyan highlight border is enough to show selection.
 
 	_unit_tiles[unit_id] = {
 		"frame": frame,
 		"role_badge": role_badge,
-		"slot_panel": slot_panel,
-		"slot_label": slot_label,
 		"name": name_label,
 	}
 	return cell
@@ -576,10 +566,7 @@ func _refresh_unit_tiles() -> void:
 		var tile: Dictionary = _unit_tiles[unit_id]
 		var frame: PanelContainer = tile["frame"]
 		var name_label: Label = tile["name"]
-		var slot_panel: PanelContainer = tile["slot_panel"]
-		var slot_label: Label = tile["slot_label"]
-		var slot_index: int = _selected_unit_ids.find(unit_id)
-		var is_selected := slot_index >= 0
+		var is_selected := _selected_unit_ids.has(unit_id)
 		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
 		# (matches _make_portrait_box; otherwise the portrait would cover the border).
@@ -587,9 +574,6 @@ func _refresh_unit_tiles() -> void:
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
 		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
-		slot_panel.visible = is_selected
-		if is_selected:
-			slot_label.text = str(slot_index + 1)
 
 
 func _refresh_squad_counter() -> void:
