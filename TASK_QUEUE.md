@@ -83,12 +83,11 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 | **Capped die for RFE (Option A)** | **Done** | Tray lands **effective** face once at settle; **raw** kept in roll dicts for crit/overload. Removed post-roll snap. |
 | **Task 8 — Battle feedback / game feel** | **Tabbed** | Core primitives done (hit pause, lunge, shake, overload, death SFX). Remaining Tier 1–3 touches card layout — resume after UI chrome locks. |
 | **Death SFX timing** | **Done** | Fatal `death` SFX at hit moment; skip lead/pause on kills; poison ticks own feedback group; `skip_feedback` wired |
-| **Task 9 — Audio system** | Open | `AudioManager` exists; wire SFX tiers per `offline-bundle/AUDIO.md`, hook to Task 8 events |
-| **Task 14 — Enemy half-cards (4–5 enemies)** | Open | Compact enemy card mode in battle layout |
+| **Task 9 — Audio system** | **Done** | `AudioManager` wired; SFX tiers per `offline-bundle/AUDIO.md`, hooked to Task 8 events |
 | **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
 | **HP preview — heal before damage (net damage)** | **Tabbed — Claude** | Multiple preview bugs from playtest — see handoff below. **Reverted** Jun 2025 overlay/label experiments; baseline `compact_unit_card.gd` + `compute_preview_for_unit`. |
 | **Ability target scope clarity (ALL vs ally vs self)** | **Done** | `resolve_ability_target_scope()` → **SELF** / **ALL** only (no **ALLY** badge — ally-targeted heals assumed); `blastAll` dmg shows **ALL** (Scorched Earth) |
-| **Ability readout — bracket scope + superscript turns** | Open | Replace trailing **ALL** pill and muted `(2T)` with **`[value]`** for squad-wide + superscript turn count in effect color — see prompt below |
+| **Ability readout — bracket scope + superscript turns** | **Done** | `)value(` / `(value)` scope + superscript duration via `EffectPip` (`ability_readout.gd`, reward/card pips) |
 | **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
 | **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |
 | **V2 band geometry audit** | Dropped | Center uses **540px** not 432 by design (`battle_layout.gd`); no Task 3 pass needed |
@@ -120,16 +119,8 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 >
 > **Data pass:** Fix abilities that should be **ALL** but use split keywords (e.g. Bulwark Link → `shieldAllyAll`; see Guard task). No “others only” keyword unless combat gains one later.
 
-**Ability readout — bracket scope + superscript turns prompt:**
-> **Goal:** Denser dice-tray readout — scope and duration live on the effect chip, not as trailing muted tokens.
->
-> **Scope (replace trailing ALL / SELF pill):** Bracket the **broadcast** part only. Squad-wide heal/shield → heal/shield icon + **`[6]`**; single-target/self → plain **`6`** (no brackets). `blastAll` damage → **`[12]`** on dmg chip only (no separate foe-wide badge). Ally-targeted (`healTgt`) stays unbracketed. Optional fallback if brackets too subtle at 450×1000: tiny 3-pip spread icon on value, same effect color (not a new gray **ALL** word).
->
-> **Duration (replace muted `(2T)`):** Superscript digit in **same color** as the effect value — e.g. shield `6` with small superscript `2` = 6 for 2 turns. Tooltip stays explicit (“6 shield for 2 turns”). Implement via paired labels or `RichTextLabel` BBCode; target ~55–65% of value font size, baseline-aligned.
->
-> **Examples:** `healAll` 7 → heal icon · **`[7]`** · `shieldAll` 6 2t → shield · **`[6]`** + superscript **`2`** · self shield 6 2t → **`6`** + superscript **`2`** · `blastAll` 12 dmg → dmg · **`[12]`**.
->
-> **Files:** `ability_readout.gd` (`_make_effect_group`, `_make_target_label`, `_estimate_row_width`), `battle_card_view.gd` (`_build_compact_action_pips`, `resolve_ability_target_scope` — stop appending separate `target` when brackets carry scope), status chips in `compact_unit_card.gd` if aligned. Resume after UI chrome locks.
+**Ability readout — bracket scope + superscript turns prompt (done):**
+> Implemented in `scripts/ui/effect_pip.gd` — `)value(` all, `(value)` self, plain single-target; duration as colored superscript. See `docs/EFFECT_PIP_GUIDE.md`.
 
 **Capped die (Option A) prompt:**
 > Today: tray rolls raw face, then `snap_die_to_effective_face` in feedback — feels like a double roll. **Option A:** at spawn/resolve, pick effective result once: `randi_range(1, min(20, 20 - rfe + buff))`, land die on that face, store **raw** separately for crit/overload rules. Remove `_snap_dice_to_effective_results()` / snap pass. Coordinate with dice tray physics so one landing reads as the real roll.
@@ -239,12 +230,23 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 | **Revive pct + reviveAll** | `combat_manager.gd`, targeting order, card/readout chips |
 | **Death SFX timing** | `battle_feedback.gd` fatal moment + poison tick groups; `skip_feedback` path |
 | **Gear/relic audit regressions** | 12 gear/relic handlers in `ability_audit.gd` |
+| **Task 9 — Audio system** | `AudioManager` + SFX tiers per `AUDIO.md`, Task 8 hooks |
+| **Ability readout — bracket scope + superscript** | `EffectPip` notation + superscript duration; `docs/EFFECT_PIP_GUIDE.md` |
 
 ---
 
 ## Parking lot
 
 Ideas saved for later — **not prioritized, not in progress.** Pick up only when explicitly chosen.
+
+### Task 14 — Enemy half-cards (4–5 enemies)
+
+Compact enemy card mode when battle layout has 4–5 enemies — smaller/half-height enemy cards so the field fits at 450×1000.
+
+**Why parked:** current 3-enemy layout is the priority; revisit when multi-enemy fights need dedicated layout work.
+
+**Future prompt:**
+> In `battle_layout.gd` + `compact_unit_card.gd`, add a half-card variant for enemy strip when `enemy_count >= 4`. Preserve readable HP, status, and portrait at preview scale.
 
 ### Task 7 — Rename `dot` → `burn` (lockstep code + data)
 
