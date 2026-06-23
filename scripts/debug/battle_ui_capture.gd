@@ -88,6 +88,8 @@ func _parse_args() -> Dictionary:
 			config["loadout"] = true
 		elif arg.begins_with("--capture-item-target="):
 			config["item_target"] = arg.get_slice("=", 1)
+		elif arg.begins_with("--capture-item-confirm-action="):
+			config["item_confirm_action"] = arg.get_slice("=", 1)
 		elif arg == "--capture-loadout-tap":
 			config["loadout_tap"] = true
 		elif arg == "--capture-loadout-tap-poor":
@@ -151,6 +153,26 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 		await process_frame
+		# Optionally drive the no-target confirm card's follow-up tap directly (synthetic
+		# viewport input won't reach the card's gui_input). "activate" = tap card again,
+		# "cancel" = tap off the card.
+		var confirm_action: String = str(config.get("item_confirm_action", ""))
+		if confirm_action != "" and current_scene != null:
+			current_scene.set("_item_targeting_armed", true)
+			var has_card_before: bool = current_scene.get("_item_targeting_card") != null
+			var phase_before: String = str(current_scene.get("turn_phase"))
+			if confirm_action == "activate":
+				current_scene.call("_confirm_pending_item")
+			elif confirm_action == "cancel":
+				current_scene.call("_cancel_item_to_loadout")
+			await process_frame
+			await process_frame
+			var has_card_after: bool = current_scene.get("_item_targeting_card") != null
+			var phase_after: String = str(current_scene.get("turn_phase"))
+			print("[ITEMDBG] confirm_action=", confirm_action,
+				" card before=", has_card_before, " after=", has_card_after,
+				" phase ", phase_before, " -> ", phase_after,
+				" pending=", current_scene.get("_pending_item") != null)
 	if bool(config.get("loadout_tap", false)):
 		_open_loadout()
 		await process_frame

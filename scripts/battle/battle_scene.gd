@@ -38,6 +38,9 @@ const SET_DIE_COST := 3
 const PHASE_ITEM_PICK_ALLY := "item_pick_ally"
 const PHASE_ITEM_PICK_DEAD := "item_pick_dead"
 const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
+# No-target items: show the card centered and wait for a confirm tap (tap card = activate,
+# tap off = cancel) instead of applying immediately.
+const PHASE_ITEM_CONFIRM := "item_confirm"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
@@ -1597,6 +1600,11 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.disabled = true
 			roll_button.text = ""
 			_refresh_summary("")
+		PHASE_ITEM_CONFIRM:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("")
 	_style_roll_button_for_phase()
 	_card_view.refresh_all_cards()
 
@@ -3036,13 +3044,15 @@ func _on_item_button_pressed(item: ItemData) -> bool:
 				return true
 			_set_turn_phase(PHASE_ITEM_PICK_ENEMY)
 		"none":
-			# No target needed — apply immediately
-			_apply_item_effect(item, {})
+			# No target needed — show the card centered and wait for a confirm tap.
+			_set_turn_phase(PHASE_ITEM_CONFIRM)
 		_:
 			_cancel_item_targeting("%s cannot find a valid target type." % item.display_name)
 
 	if turn_phase.begins_with("item_pick"):
 		_show_item_targeting_card(item)
+	elif turn_phase == PHASE_ITEM_CONFIRM:
+		_show_item_targeting_card(item, true)
 	return true
 
 
@@ -3073,11 +3083,13 @@ func _restore_phase_after_item() -> void:
 		_set_turn_phase(PHASE_AWAIT_ROLL)
 
 
-# ── Item-targeting overlay (the centered picker card shown while choosing a unit) ──
+# ── Item-targeting overlay (the centered picker card shown while choosing a unit, or as a
+# confirm prompt for no-target items) ──
 # Lives on its own high CanvasLayer (on top of everything) and is centered explicitly so
 # it never depends on another control's layout. Armed after a short delay so the same tap
-# that opened it can't immediately cancel it.
-func _show_item_targeting_card(item: ItemData) -> void:
+# that opened it can't immediately resolve it. In confirm_mode, tapping the card activates
+# the item; otherwise it cancels back to the loadout. Tapping off the card cancels in both.
+func _show_item_targeting_card(item: ItemData, confirm_mode: bool = false) -> void:
 	_hide_item_targeting_card()
 	if item == null:
 		return
@@ -3099,8 +3111,9 @@ func _show_item_targeting_card(item: ItemData) -> void:
 
 	var card: PanelContainer = ItemCard.build(item, 420.0)
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Tapping the card cancels back to the loadout (STOP marks the press handled so it does
-	# not also reach _unhandled_input).
+	# Tapping the card activates (confirm_mode) or cancels back to the loadout. STOP marks the
+	# press handled so it does not also reach _unhandled_input (which treats off-card taps as
+	# cancel).
 	card.gui_input.connect(func(event: InputEvent) -> void:
 		var pressed := false
 		if event is InputEventMouseButton:
@@ -3108,7 +3121,10 @@ func _show_item_targeting_card(item: ItemData) -> void:
 		elif event is InputEventScreenTouch:
 			pressed = (event as InputEventScreenTouch).pressed
 		if pressed:
-			_cancel_item_to_loadout()
+			if confirm_mode:
+				_confirm_pending_item()
+			else:
+				_cancel_item_to_loadout()
 	)
 	center.add_child(card)
 	# Hide the entire layer for the first frame so the card is never drawn at the wrong
@@ -3143,10 +3159,21 @@ func _cancel_item_to_loadout() -> void:
 	call_deferred("_on_item_button_pressed_menu")
 
 
-# While choosing an item target, a press that no unit handled (empty space) cancels back
-# to the loadout.
+# Confirm tap on a no-target item's centered card: activate it.
+func _confirm_pending_item() -> void:
+	# Ignore until armed, so the tap that opened the card doesn't immediately activate it.
+	if not _item_targeting_armed:
+		return
+	if _pending_item == null:
+		return
+	# _apply_item_effect hides the card, applies, consumes, and restores the prior phase.
+	_apply_item_effect(_pending_item, {})
+
+
+# While choosing an item target (or confirming a no-target item), a press that no unit
+# handled (empty space) cancels back to the loadout.
 func _unhandled_input(event: InputEvent) -> void:
-	if not turn_phase.begins_with("item_pick"):
+	if not turn_phase.begins_with("item_pick") and turn_phase != PHASE_ITEM_CONFIRM:
 		return
 	var pressed := false
 	if event is InputEventMouseButton:
