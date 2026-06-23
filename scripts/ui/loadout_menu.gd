@@ -144,7 +144,7 @@ func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
 
 	if filled and usable:
 		row.name = "LoadoutItemRow"
-		row.gui_input.connect(_on_item_row_input.bind(item))
+		row.gui_input.connect(_on_item_row_input.bind(row, item))
 	return row
 
 
@@ -221,7 +221,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 
 
 # ── Input ─────────────────────────────────────────────────────────────────────
-func _on_item_row_input(event: InputEvent, item: ItemData) -> void:
+func _on_item_row_input(event: InputEvent, row: Control, item: ItemData) -> void:
 	var pressed := false
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
@@ -230,10 +230,27 @@ func _on_item_row_input(event: InputEvent, item: ItemData) -> void:
 		pressed = (event as InputEventScreenTouch).pressed
 	if not pressed:
 		return
-	var callback := _on_use
-	LoadoutMenu.dismiss()
-	if callback.is_valid():
-		callback.call(item)
+	if not _on_use.is_valid():
+		LoadoutMenu.dismiss()
+		return
+	# Call the use-callback while the menu is still open. It returns true if the item was
+	# accepted (close the menu) or false if it was rejected for insufficient Protocol (keep
+	# the menu open and flash the tapped row red).
+	var accepted: bool = bool(_on_use.call(item))
+	if accepted:
+		LoadoutMenu.dismiss()
+	else:
+		_flash_row_rejected(row)
+
+
+# Pulse the row red to signal "can't use this" (insufficient Protocol) without closing the menu.
+func _flash_row_rejected(row: Control) -> void:
+	if row == null or not is_instance_valid(row):
+		return
+	row.modulate = Color(1.0, 0.30, 0.30, 1.0)
+	var tween := create_tween()
+	tween.tween_property(row, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.35) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 func _on_catcher_input(event: InputEvent) -> void:

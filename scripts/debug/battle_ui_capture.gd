@@ -90,6 +90,9 @@ func _parse_args() -> Dictionary:
 			config["item_target"] = arg.get_slice("=", 1)
 		elif arg == "--capture-loadout-tap":
 			config["loadout_tap"] = true
+		elif arg == "--capture-loadout-tap-poor":
+			config["loadout_tap"] = true
+			config["loadout_poor"] = true
 	return config
 
 
@@ -153,6 +156,10 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 		await process_frame
+		if bool(config.get("loadout_poor", false)) and current_scene != null and "protocol_points" in current_scene:
+			# Drain Protocol so the tapped item is unaffordable — exercises the red-flash /
+			# stay-open rejection path instead of the normal use-and-close.
+			current_scene.set("protocol_points", 0)
 		_tap_loadout_first_item()
 		await process_frame
 		await process_frame
@@ -201,27 +208,33 @@ func _open_loadout() -> void:
 
 
 func _tap_loadout_first_item() -> void:
-	var row: Node = root.find_child("LoadoutItemRow", true, false)
-	if row == null or not (row is Control):
+	# Synthetic push_input does NOT route to the row's gui_input (CanvasLayer GUI picking
+	# needs real OS input), so drive the menu's row handler directly — this still exercises
+	# the real _on_use callback wiring and the accept/reject branching.
+	var menus: Array = root.find_children("*", "LoadoutMenu", true, false)
+	if menus.is_empty():
+		print("[ITEMDBG] no LoadoutMenu open")
+		return
+	var menu: Node = menus[0]
+	var row: Node = menu.find_child("LoadoutItemRow", true, false)
+	if row == null:
 		print("[ITEMDBG] no LoadoutItemRow found")
 		return
-	var control: Control = row
-	var r: Rect2 = control.get_global_rect()
-	var pos: Vector2 = r.position + r.size * 0.5
-	print("[ITEMDBG] tapping loadout row at ", pos)
+	var gs: Node = root.get_node_or_null("/root/GameState")
+	var dm: Node = root.get_node_or_null("/root/DataManager")
+	var item: Resource = null
+	if gs != null and dm != null:
+		var cons: Array = gs.get("consumables")
+		if cons != null and not cons.is_empty():
+			item = dm.call("get_item", str(cons[0]))
+	if item == null:
+		print("[ITEMDBG] no item resolved for loadout tap")
+		return
+	print("[ITEMDBG] driving row handler for ", item.display_name)
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true
-	press.button_mask = MOUSE_BUTTON_MASK_LEFT
-	press.position = pos
-	press.global_position = pos
-	root.push_input(press)
-	var release := InputEventMouseButton.new()
-	release.button_index = MOUSE_BUTTON_LEFT
-	release.pressed = false
-	release.position = pos
-	release.global_position = pos
-	root.push_input(release)
+	menu.call("_on_item_row_input", press, row, item)
 
 
 # Drive a real long-press (press + hold past the threshold) on a protocol control to

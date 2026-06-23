@@ -3004,16 +3004,18 @@ func _get_item_rarity_color(rarity: String) -> Color:
 	return Color(0.55, 0.60, 0.66, 1.0)
 
 
-func _on_item_button_pressed(item: ItemData) -> void:
+# Returns true if the item tap was accepted (the loadout menu should close), false if it was
+# rejected for insufficient Protocol (the menu stays open and flashes the tapped row red).
+func _on_item_button_pressed(item: ItemData) -> bool:
 	if battle_over:
-		return
+		return true
 	if not _can_use_item_in_current_phase():
 		_refresh_summary("Items can only be used before rolling, during targeting, or before ending the turn.")
-		return
+		return true
 	var cost: int = _get_item_protocol_cost(item)
 	if protocol_points < cost:
 		_refresh_summary("Need %d Protocol to use %s." % [cost, item.display_name])
-		return
+		return false
 
 	_was_in_ready_phase = (turn_phase == PHASE_READY_TO_END)
 	_phase_before_item = turn_phase
@@ -3023,15 +3025,15 @@ func _on_item_button_pressed(item: ItemData) -> void:
 		"ally":
 			if _get_legal_target_ids("hero").is_empty():
 				_cancel_item_targeting("No living ally can use %s." % item.display_name)
-				return
+				return true
 			_set_turn_phase(PHASE_ITEM_PICK_ALLY)
 		"allyDead":
 			_cancel_item_targeting("Downed units cannot be targeted by %s." % item.display_name)
-			return
+			return true
 		"enemy":
 			if _get_legal_target_ids("enemy").is_empty():
 				_cancel_item_targeting("No living enemy can be targeted by %s." % item.display_name)
-				return
+				return true
 			_set_turn_phase(PHASE_ITEM_PICK_ENEMY)
 		"none":
 			# No target needed — apply immediately
@@ -3041,6 +3043,7 @@ func _on_item_button_pressed(item: ItemData) -> void:
 
 	if turn_phase.begins_with("item_pick"):
 		_show_item_targeting_card(item)
+	return true
 
 
 func _cancel_item_targeting(message: String) -> void:
