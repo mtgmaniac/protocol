@@ -86,6 +86,10 @@ func _parse_args() -> Dictionary:
 			config["inspect_protocol"] = arg.get_slice("=", 1)
 		elif arg == "--capture-loadout":
 			config["loadout"] = true
+		elif arg.begins_with("--capture-item-target="):
+			config["item_target"] = arg.get_slice("=", 1)
+		elif arg == "--capture-loadout-tap":
+			config["loadout_tap"] = true
 	return config
 
 
@@ -138,6 +142,21 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 		await process_frame
+	var item_target: String = str(config.get("item_target", ""))
+	if item_target != "":
+		_use_item_target(item_target)
+		await process_frame
+		await process_frame
+		await process_frame
+	if bool(config.get("loadout_tap", false)):
+		_open_loadout()
+		await process_frame
+		await process_frame
+		await process_frame
+		_tap_loadout_first_item()
+		await process_frame
+		await process_frame
+		await process_frame
 	await process_frame
 	await RenderingServer.frame_post_draw
 	if debug_log_enabled:
@@ -146,6 +165,25 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 
 # Opens the unified InspectPopup on the first hero/enemy card, exercising the live
 # _on_unit_detail_requested path (Stage-2 migration verification).
+# Grant protocol + a consumable, then begin using it (enters item-target phase, showing
+# the centered item card).
+func _use_item_target(item_id: String) -> void:
+	if current_scene == null:
+		return
+	var gs: Node = root.get_node_or_null("/root/GameState")
+	if gs != null:
+		gs.set("consumables", [item_id])
+		gs.set("relics", ["ironCurtain"])
+	if current_scene.has_method("_update_item_panel"):
+		current_scene.call("_update_item_panel")
+	if "protocol_points" in current_scene:
+		current_scene.set("protocol_points", 10)
+	var dm: Node = root.get_node_or_null("/root/DataManager")
+	var item: Resource = dm.call("get_item", item_id) if dm != null else null
+	if item != null and current_scene.has_method("_on_item_button_pressed"):
+		current_scene.call("_on_item_button_pressed", item)
+
+
 # Seed a couple of consumables + a relic, then open the themed LOADOUT menu.
 func _open_loadout() -> void:
 	if current_scene == null:
@@ -154,10 +192,36 @@ func _open_loadout() -> void:
 	if gs != null:
 		gs.set("consumables", ["grounding_clip", "scrap_plate"])
 		gs.set("relics", ["ironCurtain"])
+	if "protocol_points" in current_scene:
+		current_scene.set("protocol_points", 10)
 	if current_scene.has_method("_update_item_panel"):
 		current_scene.call("_update_item_panel")
 	if current_scene.has_method("_on_item_button_pressed_menu"):
 		current_scene.call("_on_item_button_pressed_menu")
+
+
+func _tap_loadout_first_item() -> void:
+	var row: Node = root.find_child("LoadoutItemRow", true, false)
+	if row == null or not (row is Control):
+		print("[ITEMDBG] no LoadoutItemRow found")
+		return
+	var control: Control = row
+	var r: Rect2 = control.get_global_rect()
+	var pos: Vector2 = r.position + r.size * 0.5
+	print("[ITEMDBG] tapping loadout row at ", pos)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	press.position = pos
+	press.global_position = pos
+	root.push_input(press)
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = pos
+	release.global_position = pos
+	root.push_input(release)
 
 
 # Drive a real long-press (press + hold past the threshold) on a protocol control to

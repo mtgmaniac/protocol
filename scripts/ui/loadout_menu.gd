@@ -74,6 +74,8 @@ func _build(items: Array, relic: Resource, anchor_rect: Rect2) -> void:
 	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, PANEL_BORDER)
 	style.set_content_margin_all(0.0)
 	_panel.add_theme_stylebox_override("panel", style)
+	# Hidden until _relayout positions it, so it never flashes at the top-left first frame.
+	_panel.visible = false
 	add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -139,6 +141,7 @@ func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
 	hbox.add_child(name_label)
 
 	if filled and usable:
+		row.name = "LoadoutItemRow"
 		row.gui_input.connect(_on_item_row_input.bind(item))
 	return row
 
@@ -212,6 +215,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - PANEL_WIDTH - SCREEN_MARGIN))
 	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
 	_panel.position = pos
+	_panel.visible = true
 
 
 # ── Input ─────────────────────────────────────────────────────────────────────

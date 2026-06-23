@@ -92,6 +92,9 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel.add_theme_stylebox_override("panel", _panel_style())
 	_panel.gui_input.connect(_on_dismiss_input)
+	# Hidden until _relayout has positioned it, so it never flashes at the top-left corner
+	# for the frame before layout resolves.
+	_panel.visible = false
 	add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -342,6 +345,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - width - SCREEN_MARGIN))
 	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
 	_panel.position = pos
+	_panel.visible = true
 
 
 func _header_band_height(header: Node) -> float:

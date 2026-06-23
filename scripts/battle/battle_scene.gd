@@ -139,6 +139,8 @@ var _layout: BattleLayout = null
 var _card_view: BattleCardView = null
 var _feedback: BattleFeedback = null
 var _pending_item: ItemData = null
+var _item_targeting_card: Node = null
+var _item_targeting_armed: bool = false
 var _was_in_ready_phase: bool = false
 var _phase_before_item: String = ""
 var _round_complete_modal: Control = null
@@ -3037,8 +3039,12 @@ func _on_item_button_pressed(item: ItemData) -> void:
 		_:
 			_cancel_item_targeting("%s cannot find a valid target type." % item.display_name)
 
+	if turn_phase.begins_with("item_pick"):
+		_show_item_targeting_card(item)
+
 
 func _cancel_item_targeting(message: String) -> void:
+	_hide_item_targeting_card()
 	_pending_item = null
 	legal_target_ids.clear()
 	legal_target_side = ""
@@ -3064,9 +3070,96 @@ func _restore_phase_after_item() -> void:
 		_set_turn_phase(PHASE_AWAIT_ROLL)
 
 
+# ── Item-targeting overlay (the centered picker card shown while choosing a unit) ──
+# Lives on its own high CanvasLayer (on top of everything) and is centered explicitly so
+# it never depends on another control's layout. Armed after a short delay so the same tap
+# that opened it can't immediately cancel it.
+func _show_item_targeting_card(item: ItemData) -> void:
+	_hide_item_targeting_card()
+	if item == null:
+		return
+	var layer := CanvasLayer.new()
+	layer.name = "ItemTargetingCard"
+	layer.layer = 120
+	add_child(layer)
+
+	# Viewport-sized root + CenterContainer so the card sits at its own 420² size, centered,
+	# without depending on any other control's layout.
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.size = get_viewport().get_visible_rect().size
+	layer.add_child(root)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+
+	var card: PanelContainer = ItemCard.build(item, 420.0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Tapping the card cancels back to the loadout (STOP marks the press handled so it does
+	# not also reach _unhandled_input).
+	card.gui_input.connect(func(event: InputEvent) -> void:
+		var pressed := false
+		if event is InputEventMouseButton:
+			pressed = (event as InputEventMouseButton).pressed
+		elif event is InputEventScreenTouch:
+			pressed = (event as InputEventScreenTouch).pressed
+		if pressed:
+			_cancel_item_to_loadout()
+	)
+	center.add_child(card)
+	# Hidden for the first frame so it doesn't flash at the top-left before the
+	# CenterContainer lays it out.
+	card.visible = false
+	get_tree().create_timer(0.0).timeout.connect(func() -> void:
+		if is_instance_valid(card):
+			card.visible = true
+	)
+	_item_targeting_card = layer
+
+	_item_targeting_armed = false
+	get_tree().create_timer(0.18).timeout.connect(func() -> void: _item_targeting_armed = true)
+
+
+func _hide_item_targeting_card() -> void:
+	_item_targeting_armed = false
+	if _item_targeting_card != null and is_instance_valid(_item_targeting_card):
+		_item_targeting_card.queue_free()
+	_item_targeting_card = null
+
+
+func _cancel_item_to_loadout() -> void:
+	# Ignore cancels until armed, so the tap that opened the card doesn't close it.
+	if not _item_targeting_armed:
+		return
+	if _pending_item == null and _item_targeting_card == null:
+		return
+	_hide_item_targeting_card()
+	_cancel_item_targeting("")
+	# Tapping the card or empty space drops back to the loadout menu.
+	call_deferred("_on_item_button_pressed_menu")
+
+
+# While choosing an item target, a press that no unit handled (empty space) cancels back
+# to the loadout.
+func _unhandled_input(event: InputEvent) -> void:
+	if not turn_phase.begins_with("item_pick"):
+		return
+	var pressed := false
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event
+		pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
+	elif event is InputEventScreenTouch:
+		pressed = (event as InputEventScreenTouch).pressed
+	if pressed:
+		get_viewport().set_input_as_handled()
+		_cancel_item_to_loadout()
+
+
 func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	if item == null:
 		return
+	_hide_item_targeting_card()
 	AudioManager.play_sfx("item")
 	var cost: int = _get_item_protocol_cost(item)
 	protocol_points = maxi(protocol_points - cost, 0)
