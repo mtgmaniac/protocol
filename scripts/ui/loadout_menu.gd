@@ -1,0 +1,259 @@
+# The themed LOADOUT menu opened from the battle item button. Shows the player's consumable
+# slots (3) and relic (1) in the shared Dithered-Terminal / inspect styling, using the
+# ItemTypeFrame silhouettes (square = item, hexagon = relic). Tapping a filled item invokes
+# the supplied use-callback and closes; tapping outside dismisses. One menu at a time.
+#
+# All colors via PixelUI tokens (INSPECT_* / rarity_color); blocky corners, m5x7 font, no
+# gradients/glows/shadows.
+class_name LoadoutMenu
+extends CanvasLayer
+
+const TypeFrameScript := preload("res://scripts/ui/item_type_frame.gd")
+const HEADER_BAND_HEIGHT := 144.0
+
+const MENU_LAYER := 128
+const SCREEN_MARGIN := 18.0
+const PANEL_WIDTH := 540.0
+const CONTENT_PAD := 22
+const SECTION_SEP := 12
+const ROW_SEP := 10
+const ITEM_SLOTS := 3
+const ICON_SIZE := 78.0
+const ICON_TEXTURE := 46.0
+const ICON_LINE := 4.0
+const PANEL_BORDER := 3
+const HEADER_DIVIDER := 6
+const SECTION_DIVIDER := 2
+
+const HEADER_FONT := 46
+const SECTION_FONT := 28
+const NAME_FONT := 34
+
+static var _active: LoadoutMenu = null
+
+var _on_use: Callable = Callable()
+var _catcher: Control = null
+var _panel: PanelContainer = null
+
+
+static func dismiss() -> void:
+	if _active != null and is_instance_valid(_active):
+		_active.queue_free()
+	_active = null
+
+
+static func is_open() -> bool:
+	return _active != null and is_instance_valid(_active)
+
+
+# `items` = Array[ItemData] consumables; `relic` = ItemData or null; `on_use` is called with
+# the tapped ItemData. `anchor_rect` = the item button's global rect (menu floats above it);
+# empty Rect2 centers.
+static func open(host: Node, items: Array, relic: Resource, on_use: Callable, anchor_rect: Rect2 = Rect2()) -> void:
+	if host == null or not host.is_inside_tree():
+		return
+	dismiss()
+	var menu := LoadoutMenu.new()
+	host.get_tree().root.add_child(menu)
+	menu._on_use = on_use
+	menu._build(items, relic, anchor_rect)
+	_active = menu
+
+
+func _build(items: Array, relic: Resource, anchor_rect: Rect2) -> void:
+	layer = MENU_LAYER
+
+	_catcher = Control.new()
+	_catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_catcher.gui_input.connect(_on_catcher_input)
+	add_child(_catcher)
+
+	_panel = PanelContainer.new()
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, PANEL_BORDER)
+	style.set_content_margin_all(0.0)
+	_panel.add_theme_stylebox_override("panel", style)
+	add_child(_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", CONTENT_PAD)
+	margin.add_theme_constant_override("margin_top", CONTENT_PAD)
+	margin.add_theme_constant_override("margin_right", CONTENT_PAD)
+	margin.add_theme_constant_override("margin_bottom", CONTENT_PAD)
+	_panel.add_child(margin)
+
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", SECTION_SEP)
+	margin.add_child(content)
+
+	content.add_child(_make_label("LOADOUT", HEADER_FONT, PixelUI.INSPECT_TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	content.add_child(_divider(HEADER_DIVIDER, PixelUI.INSPECT_BORDER))
+
+	content.add_child(_make_label("ITEMS", SECTION_FONT, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
+	var item_rows := VBoxContainer.new()
+	item_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_rows.add_theme_constant_override("separation", ROW_SEP)
+	content.add_child(item_rows)
+	for i in ITEM_SLOTS:
+		var item: ItemData = items[i] as ItemData if i < items.size() else null
+		item_rows.add_child(_make_slot_row(item, "square", true))
+
+	content.add_child(_divider(SECTION_DIVIDER, PixelUI.INSPECT_DIVIDER))
+	content.add_child(_make_label("RELIC", SECTION_FONT, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
+	content.add_child(_make_slot_row(relic as ItemData, "hexagon", false))
+
+	call_deferred("_relayout", anchor_rect)
+
+
+# A single loadout row: silhouette-framed icon + item name. Filled item slots are tappable
+# (invoke the use-callback); empty slots and the relic row are display-only.
+func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
+	var filled: bool = item != null
+	var accent: Color = _slot_accent(item, shape)
+
+	var row := PanelContainer.new()
+	row.custom_minimum_size = Vector2(0, ICON_SIZE + 8.0)
+	var row_style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0)
+	row_style.set_content_margin_all(2.0)
+	row.add_theme_stylebox_override("panel", row_style)
+	row.mouse_filter = Control.MOUSE_FILTER_STOP if (filled and usable) else Control.MOUSE_FILTER_IGNORE
+
+	var hbox := HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_theme_constant_override("separation", 16)
+	hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(hbox)
+
+	hbox.add_child(_make_icon(item, shape, accent))
+
+	# Name reads bright for legibility; rarity/type is carried by the icon frame's color
+	# and silhouette, not the name.
+	var name_text: String = item.display_name if filled else "—"
+	var name_color: Color = (PixelUI.INSPECT_TEXT if filled else PixelUI.INSPECT_TEXT_DIM)
+	var name_label := _make_label(name_text, NAME_FONT, name_color, HORIZONTAL_ALIGNMENT_LEFT)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(name_label)
+
+	if filled and usable:
+		row.gui_input.connect(_on_item_row_input.bind(item))
+	return row
+
+
+func _make_icon(item: ItemData, shape: String, accent: Color) -> Control:
+	var center := CenterContainer.new()
+	center.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	center.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var frame := TypeFrameScript.new()
+	frame.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.shape = shape
+	frame.line_color = accent
+	frame.line_width = ICON_LINE
+	frame.queue_redraw()
+	center.add_child(frame)
+
+	var icon_center := CenterContainer.new()
+	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(icon_center)
+
+	if item != null and item.icon != null:
+		var tex := TextureRect.new()
+		tex.custom_minimum_size = Vector2(ICON_TEXTURE, ICON_TEXTURE)
+		tex.texture = item.icon
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_center.add_child(tex)
+	return center
+
+
+func _slot_accent(item: ItemData, shape: String) -> Color:
+	if item == null:
+		return PixelUI.INSPECT_TEXT_DIM
+	if shape == "hexagon":
+		return PixelUI.rarity_color("legendary")
+	return PixelUI.rarity_color(item.rarity if item.rarity != "" else "common")
+
+
+# ── Layout / position ─────────────────────────────────────────────────────────
+func _relayout(anchor_rect: Rect2) -> void:
+	if _panel == null:
+		return
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var top_limit: float = SCREEN_MARGIN
+	var header_node := get_node_or_null("/root/PersistentHeader")
+	if header_node != null:
+		var value: Variant = header_node.get("HEADER_HEIGHT")
+		top_limit = (float(value) if value != null else HEADER_BAND_HEIGHT) + SCREEN_MARGIN
+
+	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0)
+	_panel.size = Vector2(PANEL_WIDTH, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var height: float = minf(_panel.get_combined_minimum_size().y, viewport_size.y - top_limit - SCREEN_MARGIN)
+	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, height)
+	_panel.size = Vector2(PANEL_WIDTH, height)
+
+	var pos: Vector2
+	if anchor_rect.size == Vector2.ZERO:
+		pos = (viewport_size - Vector2(PANEL_WIDTH, height)) * 0.5
+	else:
+		# Float above the item button, right-aligned to it.
+		pos = Vector2(anchor_rect.end.x - PANEL_WIDTH, anchor_rect.position.y - height - SCREEN_MARGIN)
+	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - PANEL_WIDTH - SCREEN_MARGIN))
+	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
+	_panel.position = pos
+
+
+# ── Input ─────────────────────────────────────────────────────────────────────
+func _on_item_row_input(event: InputEvent, item: ItemData) -> void:
+	var pressed := false
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event
+		pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
+	elif event is InputEventScreenTouch:
+		pressed = (event as InputEventScreenTouch).pressed
+	if not pressed:
+		return
+	var callback := _on_use
+	LoadoutMenu.dismiss()
+	if callback.is_valid():
+		callback.call(item)
+
+
+func _on_catcher_input(event: InputEvent) -> void:
+	var pressed := false
+	if event is InputEventMouseButton:
+		pressed = (event as InputEventMouseButton).pressed
+	elif event is InputEventScreenTouch:
+		pressed = (event as InputEventScreenTouch).pressed
+	if pressed:
+		LoadoutMenu.dismiss()
+
+
+# ── Style helpers ─────────────────────────────────────────────────────────────
+func _make_label(text: String, font_size: int, color: Color, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = align
+	PixelUI.style_label(label, font_size, color, 2)
+	return label
+
+
+func _divider(thickness: int, color: Color) -> ColorRect:
+	var line := ColorRect.new()
+	line.color = color
+	line.custom_minimum_size = Vector2(0, thickness)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return line

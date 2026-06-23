@@ -117,6 +117,7 @@ var _battle_consumables: Array = []
 var _item_button: Button = null
 var _nudge_button: Button = null
 var _set_button: Button = null
+var _suppress_protocol_press: bool = false
 var _set_value_menu: PopupMenu = null
 var _pending_set_hero_id: String = ""
 var _item_menu: PopupMenu = null
@@ -210,8 +211,8 @@ func _ready() -> void:
 		_on_auto_battle_button_pressed,
 		_on_return_to_menu_button_pressed,
 	)
-	_set_hud_tooltip(protocol_spend_button, "Reroll\nSpend 2 Protocol to reroll a hero's die.")
 	protocol_spend_button.pressed.connect(_on_reroll_button_pressed)
+	_attach_protocol_inspect(protocol_spend_button, "reroll")
 	_add_nudge_button()
 	_add_set_button()
 	_build_item_panel()
@@ -696,37 +697,62 @@ func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, si
 		var result: int = _get_effective_enemy_roll(state, unit_id) if is_enemy else _get_effective_roll_for_state(state, unit_id)
 		var unit: Resource = state.get("unit") as Resource
 		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(unit, result)
-		var tooltip_text: String = _build_die_tooltip_text(ability_entry, result, is_enemy)
 		var screen_position: Vector2 = dice_tray_3d.get_die_screen_position(side, unit_id)
 		if is_inf(screen_position.x) or is_inf(screen_position.y):
 			continue
-		var overlay_size := Vector2(80.0, 80.0)
+		# Hit-area = the die merged with this unit's effect-pip readout (pips sit above the
+		# die for enemies, below for heroes), so a long-press anywhere across the die + its
+		# pip line opens the inspect — one rectangle, no tiny per-pip targets.
+		var die_rect := Rect2(screen_position - Vector2(90.0, 90.0) * 0.5, Vector2(90.0, 90.0))
+		var readout_rect: Rect2 = _get_unit_readout_rect(side, unit_id)
+		var overlay_rect: Rect2 = die_rect.merge(readout_rect) if readout_rect.size != Vector2.ZERO else die_rect
 		var overlay := ColorRect.new()
 		overlay.name = "DieTooltip_%s_%s" % [side, unit_id]
 		overlay.color = Color(1.0, 1.0, 1.0, 0.0)
 		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-		overlay.custom_minimum_size = overlay_size
-		overlay.size = overlay_size
+		overlay.custom_minimum_size = overlay_rect.size
+		overlay.size = overlay_rect.size
 		overlay.z_index = 90
 		overlay.set_as_top_level(true)
 		float_layer.add_child(overlay)
-		overlay.global_position = screen_position - (overlay_size * 0.5)
-		overlay.gui_input.connect(_on_die_overlay_gui_input.bind(side, unit_id))
-		_set_hud_tooltip(overlay, tooltip_text, true)
+		overlay.global_position = overlay_rect.position
+		_attach_die_inspect(overlay, side, unit_id, ability_entry, result)
 		_die_tooltip_overlays.append(overlay)
 
 
-func _on_die_overlay_gui_input(event: InputEvent, side: String, unit_id: String) -> void:
-	var mouse_event := event as InputEventMouseButton
-	if mouse_event == null:
-		return
-	if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed or mouse_event.is_echo():
-		return
-	get_viewport().set_input_as_handled()
-	if side == "hero":
-		_on_hero_card_pressed(unit_id)
-	elif side == "enemy":
-		_on_enemy_card_pressed(unit_id)
+# The screen rect of a unit's effect-pip readout (the AbilityReadout owned by its view),
+# used to size the die hit-area so it spans the pips. Empty Rect2 if not ready.
+func _get_unit_readout_rect(side: String, unit_id: String) -> Rect2:
+	var views: Array = hero_card_views if side == "hero" else enemy_card_views
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		if str((view.get("state", {}) as Dictionary).get("id", "")) != unit_id:
+			continue
+		var readout: Control = view.get("readout", null) as Control
+		if readout != null and is_instance_valid(readout) and readout.is_inside_tree():
+			var rect: Rect2 = readout.get_global_rect()
+			if rect.size.x > 2.0 and rect.size.y > 2.0:
+				return rect
+		return Rect2()
+	return Rect2()
+
+
+# Die overlay: quick tap selects/targets the unit (existing behavior); long-press opens
+# the unified inspect popup for that die's ability.
+func _attach_die_inspect(overlay: Control, side: String, unit_id: String, ability_entry: Dictionary, result: int) -> void:
+	var long_press := LongPressInput.new()
+	overlay.add_child(long_press)
+	long_press.tapped.connect(func() -> void:
+		if side == "hero":
+			_on_hero_card_pressed(unit_id)
+		elif side == "enemy":
+			_on_enemy_card_pressed(unit_id)
+	)
+	long_press.long_pressed.connect(func(_global_position: Vector2) -> void:
+		var meta: String = "Roll: %d - %d" % [int(ability_entry.get("min", result)), int(ability_entry.get("max", result))]
+		var payload: Dictionary = InspectResolver.resolve_ability(ability_entry.get("raw", {}), side, meta)
+		InspectPopup.open(self, payload, overlay.get_global_rect(), overlay.get_instance_id())
+	)
 
 
 func _clear_die_tooltip_overlays() -> void:
@@ -740,26 +766,6 @@ func _clear_die_tooltip_overlays() -> void:
 	_die_tooltip_overlays.clear()
 	if should_hide_tooltip:
 		_hide_hud_tooltip_safe()
-
-
-func _build_die_tooltip_text(ability_entry: Dictionary, result: int, is_enemy: bool = false) -> String:
-	var title: String = str(ability_entry.get("ability_name", "Unknown Ability")).strip_edges()
-	if title == "":
-		title = "Unknown Ability"
-	title = title.to_upper()
-	var min_roll: int = int(ability_entry.get("min", result))
-	var max_roll: int = int(ability_entry.get("max", result))
-	var range_text: String = "%d–%d" % [min_roll, max_roll]
-	var zone: String = str(ability_entry.get("zone", "")).strip_edges()
-	if zone == "":
-		zone = "range"
-	var description: String = str(ability_entry.get("description", "")).strip_edges()
-	if description == "":
-		if is_enemy:
-			description = "%s - standard attack roll." % zone.replace("_", " ").capitalize()
-		else:
-			description = "No description available."
-	return "%s\nRolled: %d\nRange: %s (%s)\n\n%s" % [title, result, range_text, zone, description]
 
 
 func _resolve_current_turn(skip_feedback: bool = false) -> void:
@@ -1036,6 +1042,8 @@ func _on_protocol_spend_button_pressed() -> void:
 
 
 func _on_reroll_button_pressed() -> void:
+	if _consume_protocol_long_press():
+		return
 	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
 		if hero_rolls.is_empty():
 			_refresh_summary("Roll dice before using Reroll.")
@@ -1048,6 +1056,8 @@ func _on_reroll_button_pressed() -> void:
 
 
 func _on_nudge_button_pressed() -> void:
+	if _consume_protocol_long_press():
+		return
 	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
 		if hero_rolls.is_empty():
 			_refresh_summary("Roll dice before using Nudge.")
@@ -1065,8 +1075,8 @@ func _on_nudge_button_pressed() -> void:
 func _add_nudge_button() -> void:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	_set_hud_tooltip(btn, "Nudge\nSpend 1 Protocol to add +3 to a hero's effective roll (once per die per turn).")
 	btn.pressed.connect(_on_nudge_button_pressed)
+	_attach_protocol_inspect(btn, "nudge")
 	_style_frame_icon_action_button(btn, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
 	_nudge_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
@@ -1135,11 +1145,37 @@ func _on_set_button_pressed() -> void:
 	_set_turn_phase(PHASE_SET_PICK)
 
 
+func _attach_protocol_inspect(button: Button, action_key: String) -> void:
+	if button == null:
+		return
+	# A Button doesn't surface gui_input to a child LongPressInput, so detect the hold via
+	# the button's own button_down/button_up signals + a timer. A quick tap still fires the
+	# button action; a held press opens the inspect and sets _suppress_protocol_press so the
+	# release doesn't also run the action.
+	var hold_timer := Timer.new()
+	hold_timer.one_shot = true
+	hold_timer.wait_time = PixelUI.INSPECT_HOLD_SEC
+	button.add_child(hold_timer)
+	hold_timer.timeout.connect(func() -> void:
+		_suppress_protocol_press = true
+		InspectPopup.open(self, InspectResolver.resolve_protocol_action(action_key), button.get_global_rect(), button.get_instance_id())
+	)
+	button.button_down.connect(func() -> void: hold_timer.start())
+	button.button_up.connect(func() -> void: hold_timer.stop())
+
+
+func _consume_protocol_long_press() -> bool:
+	if _suppress_protocol_press:
+		_suppress_protocol_press = false
+		return true
+	return false
+
+
 func _add_set_button() -> void:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	_set_hud_tooltip(btn, "Set\nSpend %d Protocol to set a hero's die to any value." % SET_DIE_COST)
 	btn.pressed.connect(_on_set_button_pressed)
+	_attach_protocol_inspect(btn, "set")
 	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
 	_set_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
@@ -2891,44 +2927,20 @@ func _update_item_panel() -> void:
 		var item: ItemData = _data_manager().get_item(str(item_id_variant)) as ItemData
 		if item != null:
 			_item_menu_items.append(item)
-	if _item_menu != null:
-		_item_menu.clear()
-		for i in range(_item_menu_items.size()):
-			var menu_item: ItemData = _item_menu_items[i] as ItemData
-			if menu_item == null:
-				continue
-			var cost: int = _get_item_protocol_cost(menu_item)
-			_item_menu.add_item("%s (%d)" % [menu_item.display_name, cost], i)
-	if _item_menu_items.is_empty():
-		_item_button.disabled = true
-		_set_hud_tooltip(_item_button, "Items\nNo consumables available.")
-	else:
-		_item_button.disabled = false
-		var tooltip_lines: Array = ["Items"]
-		for item_variant in _item_menu_items:
-			var item: ItemData = item_variant as ItemData
-			if item == null:
-				continue
-			tooltip_lines.append("- %s" % item.display_name)
-		_set_hud_tooltip(_item_button, "\n".join(tooltip_lines))
+	# The item button always opens the themed LOADOUT menu (consumables + relic), so it
+	# stays enabled even with no consumables — the relic is still viewable.
+	_item_button.disabled = false
 
 
 func _on_item_button_pressed_menu() -> void:
-	if _item_button == null or _item_menu == null or _item_menu_items.is_empty():
+	if _item_button == null:
 		return
 	AudioManager.play_select()
-	var button_rect: Rect2 = _item_button.get_global_rect()
-	var popup_size := Vector2(420, float(88 * maxi(_item_menu_items.size(), 1)))
-	var popup_position := Vector2(
-		button_rect.end.x - popup_size.x,
-		button_rect.position.y - popup_size.y - 12.0
-	)
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-	popup_position.x = clampf(popup_position.x, 8.0, viewport_size.x - popup_size.x - 8.0)
-	popup_position.y = maxf(8.0, popup_position.y)
-	_item_menu.position = popup_position
-	_item_menu.reset_size()
-	_item_menu.popup(Rect2i(popup_position, popup_size))
+	var relic_item: ItemData = null
+	var relic_ids: Array = _game_state().relics
+	if not relic_ids.is_empty():
+		relic_item = _data_manager().get_item(str(relic_ids[0])) as ItemData
+	LoadoutMenu.open(self, _item_menu_items, relic_item, _on_item_button_pressed, _item_button.get_global_rect())
 
 
 func _on_item_menu_id_pressed(id: int) -> void:

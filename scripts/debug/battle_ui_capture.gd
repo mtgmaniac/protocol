@@ -80,6 +80,12 @@ func _parse_args() -> Dictionary:
 			config["inspect"] = "hero"
 		elif arg == "--capture-inspect-enemy":
 			config["inspect"] = "enemy"
+		elif arg == "--capture-show-die-hitboxes":
+			config["show_hitboxes"] = true
+		elif arg.begins_with("--capture-inspect-protocol="):
+			config["inspect_protocol"] = arg.get_slice("=", 1)
+		elif arg == "--capture-loadout":
+			config["loadout"] = true
 	return config
 
 
@@ -115,9 +121,21 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 	var pick_mode: String = str(config.get("pick_mode", ""))
 	if pick_mode != "":
 		await _force_pick_mode(pick_mode)
+	if bool(config.get("show_hitboxes", false)):
+		_tint_die_hitboxes()
 	var inspect_side: String = str(config.get("inspect", ""))
 	if inspect_side != "":
 		_open_inspect(inspect_side)
+		await process_frame
+		await process_frame
+	var protocol_key: String = str(config.get("inspect_protocol", ""))
+	if protocol_key != "":
+		_long_press_protocol(protocol_key)
+		await create_timer(0.55).timeout
+		await process_frame
+	if bool(config.get("loadout", false)):
+		_open_loadout()
+		await process_frame
 		await process_frame
 		await process_frame
 	await process_frame
@@ -128,6 +146,62 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 
 # Opens the unified InspectPopup on the first hero/enemy card, exercising the live
 # _on_unit_detail_requested path (Stage-2 migration verification).
+# Seed a couple of consumables + a relic, then open the themed LOADOUT menu.
+func _open_loadout() -> void:
+	if current_scene == null:
+		return
+	var gs: Node = root.get_node_or_null("/root/GameState")
+	if gs != null:
+		gs.set("consumables", ["grounding_clip", "scrap_plate"])
+		gs.set("relics", ["ironCurtain"])
+	if current_scene.has_method("_update_item_panel"):
+		current_scene.call("_update_item_panel")
+	if current_scene.has_method("_on_item_button_pressed_menu"):
+		current_scene.call("_on_item_button_pressed_menu")
+
+
+# Drive a real long-press (press + hold past the threshold) on a protocol control to
+# exercise the LongPressInput->InspectPopup path on a Button.
+func _long_press_protocol(key: String) -> void:
+	if current_scene == null:
+		return
+	var button: Object = null
+	match key:
+		"reroll":
+			button = current_scene.get("protocol_spend_button")
+		"nudge":
+			button = current_scene.get("_nudge_button")
+		"set":
+			button = current_scene.get("_set_button")
+	if button == null or not (button is Control) or not is_instance_valid(button):
+		return
+	var control: Control = button
+	if control is BaseButton:
+		(control as BaseButton).disabled = false
+	if "protocol_points" in current_scene:
+		current_scene.set("protocol_points", 10)
+	var pos: Vector2 = control.global_position + control.size * 0.5
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	press.position = pos
+	press.global_position = pos
+	root.push_input(press)
+	print("[BATTLE_UI_CAPTURE] long-pressing protocol '%s' at %s" % [key, pos])
+
+
+# Debug: tint the (normally invisible) die long-press hit-rects so coverage is visible.
+func _tint_die_hitboxes() -> void:
+	if current_scene == null:
+		return
+	var overlays: Variant = current_scene.get("_die_tooltip_overlays")
+	if overlays is Array:
+		for overlay_variant in overlays:
+			if overlay_variant is ColorRect and is_instance_valid(overlay_variant):
+				(overlay_variant as ColorRect).color = Color(1.0, 0.2, 0.2, 0.30)
+
+
 func _open_inspect(side: String) -> void:
 	if current_scene == null:
 		return

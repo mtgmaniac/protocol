@@ -34,12 +34,12 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 	var effects: Array = EffectPip.effects_from_ability_raw(raw, side)
 	return {
 		"accent": _side_accent(side),
-		"header": {"title": str(raw.get("name", "Ability")), "subtitle": "ABILITY"},
+		"header": {"title": str(raw.get("name", "Ability")), "subtitle": meta if meta != "" else "ABILITY"},
 		"abilities": [{
 			"name": "",
 			"meta": meta,
 			"effects": effects,
-			"text": _ability_text(raw),
+			"text": _ability_text(raw, side),
 		}],
 	}
 
@@ -64,7 +64,7 @@ static func resolve_unit(data: Resource) -> Dictionary:
 			"name": str(entry.get("ability_name", "")),
 			"roll": "%d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))],
 			"effects": EffectPip.effects_from_ability_raw(raw, side) if not raw.is_empty() else [],
-			"text": _ability_text(raw) if not raw.is_empty() else str(entry.get("description", "")),
+			"text": _ability_text(raw, side) if not raw.is_empty() else str(entry.get("description", "")),
 		})
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
 	return {
@@ -156,47 +156,187 @@ static func _unit_subtitle(data: Resource) -> String:
 	return ""
 
 
-# Compose a fuller, human-readable line from the structured ability fields rather than
-# echoing the terse `eff` string. Falls back to `eff` when nothing structured is present.
-static func _ability_text(raw: Dictionary) -> String:
+# Compose full inspect sentences from structured ability fields (hostile effects first).
+static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 	if raw.is_empty():
 		return ""
-	var parts: Array = []
+	var hostile: Array[String] = []
+	var friendly: Array[String] = []
+
+	if bool(raw.get("wipeShields", false)):
+		hostile.append("Remove all hero shields.")
+
 	var dmg: int = int(raw.get("dmg", 0))
+	var dmg_p2: int = int(raw.get("dmgP2", 0))
 	var d_min: int = int(raw.get("dMin", 0))
 	var d_max: int = int(raw.get("dMax", 0))
+	var blast_all: bool = bool(raw.get("blastAll", false))
 	if dmg > 0:
-		parts.append("Deal %d damage%s." % [dmg, " to all enemies" if bool(raw.get("blastAll", false)) else ""])
+		if side == "enemy" and blast_all:
+			hostile.append("Deal %d damage to all heroes." % dmg)
+		elif blast_all:
+			hostile.append("Deal %d damage to all enemies." % dmg)
+		else:
+			hostile.append("Deal %d damage." % dmg)
+		if dmg_p2 > 0:
+			hostile.append("Phase 2: deals %d damage instead." % dmg_p2)
 	elif d_min > 0 or d_max > 0:
-		parts.append("Deal %d-%d damage." % [d_min, d_max])
+		if d_min == d_max:
+			hostile.append("Deal %d damage." % d_min)
+		else:
+			hostile.append("Deal %d-%d damage." % [d_min, d_max])
+
 	var dot: int = int(raw.get("dot", 0))
 	if dot > 0:
 		var dt: int = int(raw.get("dT", 0))
-		parts.append("Deal %d damage per turn%s." % [dot, (" for " + _turns(dt)) if dt > 0 else ""])
+		hostile.append("Deal %d damage per turn%s." % [dot, (" for " + _turns(dt)) if dt > 0 else ""])
+
+	if bool(raw.get("ignSh", false)):
+		hostile.append("Pierces hero shields." if side == "enemy" else "Pierces enemy shields.")
+
+	var lifesteal: int = int(raw.get("lifestealPct", 0))
+	if lifesteal > 0:
+		hostile.append("Heal for %d%% of damage dealt." % lifesteal)
+
+	if side == "hero":
+		var rfe: int = int(raw.get("rfe", 0))
+		if rfe > 0:
+			var rf_t: int = int(raw.get("rfT", 0))
+			var rfe_suffix: String = (" for " + _turns(rf_t)) if rf_t > 0 else ""
+			if bool(raw.get("rfeAll", false)):
+				hostile.append("Reduce all enemy rolls by %d%s." % [rfe, rfe_suffix])
+			else:
+				hostile.append("Reduce an enemy roll by %d%s." % [rfe, rfe_suffix])
+	else:
+		var enemy_rfm: int = int(raw.get("rfm", 0))
+		if enemy_rfm > 0:
+			var enemy_rfm_t: int = int(raw.get("rfmT", 0))
+			var debuff_suffix: String = (" for " + _turns(enemy_rfm_t)) if enemy_rfm_t > 0 else ""
+			hostile.append("Reduce a hero roll by %d%s." % [enemy_rfm, debuff_suffix])
+
+	var freeze_line: String = _freeze_inspect_text(raw)
+	if freeze_line != "":
+		hostile.append(freeze_line)
+
+	if bool(raw.get("curseDice", false)):
+		hostile.append("Target hero rolls twice next turn and keeps the lower result.")
+
+	var cower: int = int(raw.get("cowerT", 0))
+	if cower > 0:
+		if bool(raw.get("cowerAll", false)):
+			hostile.append("All heroes skip their next turn%s (%s)." % ["" if cower == 1 else "s", _turns(cower)])
+		else:
+			hostile.append("Target hero skips their next turn%s (%s)." % ["" if cower == 1 else "s", _turns(cower)])
+
+	if bool(raw.get("packBonus", false)):
+		hostile.append("Damage increases by the number of living allies of the same type.")
+
+	var summon: int = int(raw.get("summonChance", 0))
+	if summon > 0:
+		hostile.append("%d%% chance to summon an elite on natural 20 overload." % summon)
+
 	var heal: int = int(raw.get("heal", 0))
 	if heal > 0:
-		parts.append("Restore %d HP%s." % [heal, " to all allies" if bool(raw.get("healAll", false)) else ""])
+		if bool(raw.get("healAll", false)):
+			friendly.append("Restore %d HP to all allies." % heal)
+		elif bool(raw.get("healLowest", false)):
+			friendly.append("Restore %d HP to the lowest-HP ally." % heal)
+		elif bool(raw.get("healTgt", false)):
+			friendly.append("Restore %d HP to an ally." % heal)
+		elif side == "hero" and dmg > 0:
+			friendly.append("Restore %d HP to self." % heal)
+		elif side == "enemy":
+			friendly.append("Restore %d HP." % heal)
+		else:
+			friendly.append("Restore %d HP." % heal)
+
 	var shield: int = int(raw.get("shield", 0))
+	var shield_p2: int = int(raw.get("shieldP2", 0))
 	if shield > 0:
-		var sht: int = int(raw.get("shT", 0))
-		parts.append("Gain %d shield%s." % [shield, (" for " + _turns(sht)) if sht > 0 else ""])
-	var rfe: int = int(raw.get("rfe", 0))
-	if rfe > 0:
-		parts.append("Reduce an enemy die by %d." % rfe)
-	var rfm: int = int(raw.get("rfm", 0))
-	if rfm > 0:
-		parts.append("Raise a hero die by %d." % rfm)
-	if bool(raw.get("revive", false)) or bool(raw.get("reviveAll", false)):
-		parts.append("Revive a fallen ally at %d%% max HP." % int(raw.get("revivePct", 50)))
+		var sh_t: int = int(raw.get("shT", 0))
+		var sh_suffix: String = (" for " + _turns(sh_t)) if sh_t > 0 else ""
+		if bool(raw.get("shieldAll", false)):
+			friendly.append("Grant %d shield to all allies%s." % [shield, sh_suffix])
+		elif bool(raw.get("shTgt", false)):
+			friendly.append("Grant %d shield to an ally%s." % [shield, sh_suffix])
+		else:
+			friendly.append("Gain %d shield%s." % [shield, sh_suffix])
+		if shield_p2 > 0:
+			friendly.append("Phase 2: gain %d shield instead." % shield_p2)
+
+	var shield_ally: int = int(raw.get("shieldAlly", 0))
+	if shield_ally > 0:
+		var sh_ally_t: int = int(raw.get("shAllyT", raw.get("shT", 1)))
+		var ally_sh_suffix: String = (" for " + _turns(sh_ally_t)) if sh_ally_t > 0 else ""
+		if bool(raw.get("shieldAllyAll", false)):
+			friendly.append("Grant %d shield to all allies%s." % [shield_ally, ally_sh_suffix])
+		else:
+			friendly.append("Grant %d shield to an ally%s." % [shield_ally, ally_sh_suffix])
+
+	if side == "hero":
+		var rfm: int = int(raw.get("rfm", 0))
+		if rfm > 0:
+			var rfm_t: int = int(raw.get("rfmT", 0))
+			var buff_suffix: String = (" for " + _turns(rfm_t)) if rfm_t > 0 else ""
+			if bool(raw.get("rfmTgt", false)):
+				friendly.append("Increase an ally's roll by %d%s." % [rfm, buff_suffix])
+			else:
+				friendly.append("Increase all squad rolls by %d%s." % [rfm, buff_suffix])
+	else:
+		var erb: int = int(raw.get("erb", 0))
+		if erb > 0:
+			var erb_t: int = int(raw.get("erbT", 0))
+			var erb_suffix: String = (" for " + _turns(erb_t)) if erb_t > 0 else ""
+			if bool(raw.get("erbAll", false)):
+				friendly.append("Increase all ally enemies' rolls by %d%s." % [erb, erb_suffix])
+			else:
+				friendly.append("Increase this enemy's roll by %d%s." % [erb, erb_suffix])
+
+	var counter: int = int(raw.get("counterspellPct", 0))
+	if counter > 0:
+		friendly.append("%d%% chance to counter the next attack." % counter)
+
+	if bool(raw.get("grantRampageAll", false)):
+		friendly.append("Grant Rampage to all enemies.")
+	elif int(raw.get("grantRampage", 0)) > 0:
+		friendly.append("Gain Rampage (next hit deals double damage).")
+
+	if bool(raw.get("enemySelfTaunt", false)):
+		friendly.append("Taunt: all heroes must target this enemy.")
+	elif bool(raw.get("taunt", false)):
+		friendly.append("Taunt: enemies must target this unit.")
+
 	if bool(raw.get("cloak", false)):
-		parts.append("Cloak: 80% chance to evade the next incoming hit.")
-	if bool(raw.get("taunt", false)):
-		parts.append("Taunt: enemies must target this unit.")
-	if bool(raw.get("ignSh", false)):
-		parts.append("Pierces enemy shields.")
+		friendly.append("Cloak: 80% chance to evade the next incoming hit.")
+
+	if bool(raw.get("reviveAll", false)):
+		friendly.append("Revive all fallen allies at %d%% max HP." % int(raw.get("revivePct", 50)))
+	elif bool(raw.get("revive", false)):
+		friendly.append("Revive a fallen ally at %d%% max HP." % int(raw.get("revivePct", 50)))
+
+	var protocol: int = int(raw.get("gainProtocol", 0))
+	if protocol > 0:
+		friendly.append("Gain %d Protocol." % protocol)
+
+	var parts: Array[String] = []
+	parts.append_array(hostile)
+	parts.append_array(friendly)
 	if parts.is_empty():
-		return str(raw.get("eff", ""))
+		return "No effect."
 	return " ".join(parts)
+
+
+static func _freeze_inspect_text(raw: Dictionary) -> String:
+	var freeze_any: int = maxi(
+		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
+		int(raw.get("freezeAllEnemyDice", 0))
+	)
+	if freeze_any <= 0:
+		return ""
+	var duration: String = _turns(freeze_any)
+	if int(raw.get("freezeAllEnemyDice", 0)) > 0:
+		return "Freeze all enemy dice for %s." % duration
+	return "Freeze the target's die for %s." % duration
 
 
 static func _turns(count: int) -> String:

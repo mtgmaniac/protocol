@@ -430,8 +430,8 @@
       },
       "strike": {
         "name": "Mandible Rake",
-        "eff": "7 dmg, lifesteal 50%",
-        "dmg": 7,
+        "eff": "8 dmg, lifesteal 50%",
+        "dmg": 8,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -485,7 +485,7 @@
       },
       "strike": {
         "name": "Proboscis Jab",
-        "eff": "6 dmg, -1 roll, lifesteal 40%",
+        "eff": "6 dmg, lifesteal 40%, -1 roll",
         "dmg": 6,
         "dot": 0,
         "dT": 0,
@@ -610,8 +610,8 @@
       },
       "strike": {
         "name": "Ramming Plate",
-        "eff": "11 dmg, ally 6 shield, 2t, lifesteal 50%",
-        "dmg": 11,
+        "eff": "12 dmg, lifesteal 50%, ally 6 shield, 2t",
+        "dmg": 12,
         "dot": 0,
         "dT": 0,
         "heal": 0,
@@ -708,11 +708,11 @@
       },
       "overload": {
         "name": "Culling Feed",
-        "eff": "27 dmg, 6 heal, lifesteal 35%",
+        "eff": "27 dmg, lifesteal 35%",
         "dmg": 27,
         "dot": 0,
         "dT": 0,
-        "heal": 6,
+        "heal": 0,
         "rfe": 0,
         "shield": 0,
         "lifestealPct": 35
@@ -787,7 +787,7 @@
       },
       "strike": {
         "name": "Royal Mandibles",
-        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
+        "eff": "19 dmg (P2 26), lifesteal 35%, -2 roll, 2t",
         "dmg": 19,
         "dmgP2": 26,
         "dot": 0,
@@ -1016,7 +1016,7 @@
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20",
+        "eff": "20 dmg, summon ~42% nat20, ally 12 shield, +2 roll to allies, 3t",
         "dmg": 20,
         "dot": 0,
         "dT": 0,
@@ -1085,7 +1085,7 @@
       },
       "overload": {
         "name": "Veil Collapse",
-        "eff": "28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% nat20",
+        "eff": "28 dmg, summon ~40% nat20, 6 heal, +2 roll to allies, 3t",
         "dmg": 28,
         "dot": 0,
         "dT": 0,
@@ -1217,7 +1217,7 @@
       },
       "overload": {
         "name": "Lattice Storm",
-        "eff": "16 dmg, 5 DoT, 4t, +2 roll to allies, 3t, summon ~42% nat20",
+        "eff": "16 dmg, 5 DoT, 4t, summon ~42% nat20, +2 roll to allies, 3t",
         "dmg": 16,
         "dot": 5,
         "dT": 4,
@@ -1289,7 +1289,7 @@
       },
       "overload": {
         "name": "Broodlink Surge",
-        "eff": "17 dmg, 8 heal, +2 roll to allies, 3t, summon ~40% nat20",
+        "eff": "17 dmg, summon ~40% nat20, 8 heal, +2 roll to allies, 3t",
         "dmg": 17,
         "dot": 0,
         "dT": 0,
@@ -1364,7 +1364,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~30% nat20",
+        "eff": "wipe shields, then 30 dmg (P2 38), summon ~30% nat20, +2 roll to allies, 3t",
         "dmg": 30,
         "dmgP2": 38,
         "dot": 0,
@@ -1383,7 +1383,7 @@
     "voidWisp": {
       "recharge": {
         "name": "Void Hum",
-        "eff": "-1 roll",
+        "eff": "-1 roll, curse dice",
         "dmg": 0,
         "dot": 0,
         "dT": 0,
@@ -1558,7 +1558,7 @@
       },
       "overload": {
         "name": "Summon Verse",
-        "eff": "16 dmg, +2 roll to allies, 3t, summon ~45% nat20",
+        "eff": "16 dmg, summon ~45% nat20, +2 roll to allies, 3t",
         "dmg": 16,
         "dot": 0,
         "dT": 0,
@@ -1817,7 +1817,7 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~32% nat20",
+        "eff": "wipe shields, then 30 dmg (P2 38), summon ~32% nat20, +2 roll to allies, 3t",
         "dmg": 30,
         "dmgP2": 38,
         "dot": 0,
@@ -1848,7 +1848,7 @@
       },
       "strike": {
         "name": "Void Grasp",
-        "eff": "6 dmg, -1 roll",
+        "eff": "6 dmg, -1 roll, pack bonus",
         "dmg": 6,
         "dot": 0,
         "dT": 0,
@@ -1908,7 +1908,7 @@
       },
       "strike": {
         "name": "Rending Fang",
-        "eff": "7 dmg",
+        "eff": "7 dmg, pack bonus",
         "dmg": 7,
         "dot": 0,
         "dT": 0,
@@ -2200,7 +2200,7 @@
       },
       "strike": {
         "name": "Titan Gouge",
-        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
+        "eff": "19 dmg (P2 26), lifesteal 35%, -2 roll, 2t",
         "dmg": 19,
         "dmgP2": 26,
         "dot": 0,
@@ -2237,7 +2237,7 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "wipe shields, then 26 dmg (P2 34), rampage all +1, cower all 1r",
+        "eff": "wipe shields, then 26 dmg (P2 34), cower all 1r, rampage all +1",
         "dmg": 26,
         "dmgP2": 34,
         "dot": 0,
