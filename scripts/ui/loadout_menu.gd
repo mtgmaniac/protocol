@@ -74,8 +74,10 @@ func _build(items: Array, relic: Resource, anchor_rect: Rect2) -> void:
 	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, PANEL_BORDER)
 	style.set_content_margin_all(0.0)
 	_panel.add_theme_stylebox_override("panel", style)
-	# Hidden until _relayout positions it, so it never flashes at the top-left first frame.
-	_panel.visible = false
+	# Transparent (not `visible = false`) until _relayout positions it, so it never flashes at
+	# the top-left first frame. modulate keeps the subtree laid out while _relayout measures it
+	# (a hidden PanelContainer skips child-sorting, which corrupts the height measurement).
+	_panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -215,7 +217,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - PANEL_WIDTH - SCREEN_MARGIN))
 	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
 	_panel.position = pos
-	_panel.visible = true
+	_panel.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 
 # ── Input ─────────────────────────────────────────────────────────────────────

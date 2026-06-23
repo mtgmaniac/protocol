@@ -3083,8 +3083,8 @@ func _show_item_targeting_card(item: ItemData) -> void:
 	layer.layer = 120
 	add_child(layer)
 
-	# Viewport-sized root + CenterContainer so the card sits at its own 420² size, centered,
-	# without depending on any other control's layout.
+	# Viewport-sized root + CenterContainer so the card sits centered at its own 420² minimum
+	# size, without depending on any other control's layout.
 	var root := Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.size = get_viewport().get_visible_rect().size
@@ -3108,12 +3108,12 @@ func _show_item_targeting_card(item: ItemData) -> void:
 			_cancel_item_to_loadout()
 	)
 	center.add_child(card)
-	# Hidden for the first frame so it doesn't flash at the top-left before the
-	# CenterContainer lays it out.
-	card.visible = false
+	# Hide the entire layer for the first frame so the card is never drawn at the wrong
+	# position before CenterContainer has had a chance to lay it out.
+	layer.visible = false
 	get_tree().create_timer(0.0).timeout.connect(func() -> void:
-		if is_instance_valid(card):
-			card.visible = true
+		if is_instance_valid(layer):
+			layer.visible = true
 	)
 	_item_targeting_card = layer
 

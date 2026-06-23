@@ -92,9 +92,12 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel.add_theme_stylebox_override("panel", _panel_style())
 	_panel.gui_input.connect(_on_dismiss_input)
-	# Hidden until _relayout has positioned it, so it never flashes at the top-left corner
-	# for the frame before layout resolves.
-	_panel.visible = false
+	# Transparent until _relayout has positioned it, so it never flashes at the top-left
+	# corner for the frame before layout resolves. We use modulate (not `visible`) because a
+	# hidden PanelContainer won't sort its subtree, so the width never reaches the autowrap
+	# labels during _relayout's measurement — they'd report their unwrapped (huge) height and
+	# the panel would size to the whole screen. modulate keeps layout live but invisible.
+	_panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -345,7 +348,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - width - SCREEN_MARGIN))
 	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
 	_panel.position = pos
-	_panel.visible = true
+	_panel.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 
 func _header_band_height(header: Node) -> float:
