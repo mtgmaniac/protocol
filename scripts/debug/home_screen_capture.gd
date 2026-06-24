@@ -44,6 +44,10 @@ func _parse_args() -> Dictionary:
 			# Simulates a real click on a unit thumbnail (via the parent VBox's
 			# gui_input pipeline) to verify Bug 1's MOUSE_FILTER fix.
 			config["click_thumb"] = arg.get_slice("=", 1).strip_edges()
+		elif arg.begins_with("--capture-long-press-unit="):
+			# Drives a unit tile's long-press handler directly (synthetic viewport input
+			# won't reach LongPressInput's gui_input) to verify the inspect popup opens.
+			config["long_press_unit"] = arg.get_slice("=", 1).strip_edges()
 	return config
 
 
@@ -65,6 +69,12 @@ func _wait_for_scene(config: Dictionary) -> void:
 		_simulate_thumb_click(str(click_thumb))
 		# Give Godot a couple of frames to flush the input + run the gui_input
 		# handler + redraw the selected styling before we grab the framebuffer.
+		await process_frame
+		await process_frame
+		await process_frame
+	var long_press_unit: Variant = config.get("long_press_unit", null)
+	if long_press_unit != null and str(long_press_unit) != "":
+		_drive_tile_long_press(str(long_press_unit))
 		await process_frame
 		await process_frame
 		await process_frame
@@ -107,6 +117,22 @@ func _simulate_thumb_click(unit_id: String) -> void:
 	print("[HOME_UI_CAPTURE] dispatched click on %s at viewport=%s (frame=%s+%s)" % [
 		unit_id, screen_pos, frame.global_position, frame.size
 	])
+
+
+func _drive_tile_long_press(unit_id: String) -> void:
+	if current_scene == null:
+		return
+	var tiles: Variant = current_scene.get("_unit_tiles")
+	if not (tiles is Dictionary) or not (tiles as Dictionary).has(unit_id):
+		print("[HOME_UI_CAPTURE] long-press: unit tile not found: ", unit_id)
+		return
+	var info: Dictionary = (tiles as Dictionary)[unit_id]
+	var anchor: Control = info.get("frame") as Control
+	if anchor == null or not is_instance_valid(anchor):
+		print("[HOME_UI_CAPTURE] long-press: no anchor frame for ", unit_id)
+		return
+	current_scene.call("_on_tile_long_pressed", Vector2.ZERO, unit_id, anchor)
+	print("[HOME_UI_CAPTURE] drove long-press on ", unit_id)
 
 
 func _scroll_thumbs_to_end() -> void:

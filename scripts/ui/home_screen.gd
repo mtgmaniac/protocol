@@ -486,7 +486,12 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	cell.add_theme_constant_override("separation", 10)
 	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.mouse_filter = Control.MOUSE_FILTER_STOP
-	cell.gui_input.connect(_on_tile_input.bind(unit_id))
+	# Quick tap selects the unit; long-press opens the unified inspect popup (same gesture as
+	# the battle unit cards). LongPressInput watches the cell's gui_input and disambiguates.
+	var long_press := LongPressInput.new()
+	cell.add_child(long_press)
+	long_press.tapped.connect(_on_tile_tapped.bind(unit_id))
+	long_press.long_pressed.connect(_on_tile_long_pressed.bind(unit_id, cell))
 
 	# Name strip on top of the tile (battle-card style), above the portrait.
 	var tile_name: String = unit.callsign if unit.callsign != "" else unit.display_name
@@ -538,22 +543,22 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	return cell
 
 
-func _on_tile_input(event: InputEvent, unit_id: String) -> void:
-	var clicked := false
-	if event is InputEventMouseButton:
-		var mb: InputEventMouseButton = event
-		clicked = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
-	elif event is InputEventScreenTouch:
-		clicked = (event as InputEventScreenTouch).pressed
-	if not clicked:
-		return
-	accept_event()
+func _on_tile_tapped(unit_id: String) -> void:
 	_focused_unit_id = unit_id
 	_toggle_unit_selection(unit_id)
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
 	_refresh_detail()
 	_refresh_deploy()
+
+
+func _on_tile_long_pressed(_global_position: Vector2, unit_id: String, anchor: Control) -> void:
+	var unit := DataManager.get_unit(unit_id) as UnitData
+	if unit == null:
+		return
+	AudioManager.play_select()
+	var anchor_rect: Rect2 = anchor.get_global_rect() if is_instance_valid(anchor) else Rect2()
+	InspectPopup.open(self, InspectResolver.resolve_unit(unit), anchor_rect, anchor.get_instance_id())
 
 
 func _toggle_unit_selection(unit_id: String) -> void:
