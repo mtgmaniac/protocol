@@ -226,10 +226,11 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await process_frame
 	var help_tab: String = str(config.get("help_tab", ""))
 	if help_tab != "" and current_scene != null:
-		if current_scene.has_method("_show_help_overlay"):
-			current_scene.call("_show_help_overlay")
-		if current_scene.has_method("_select_help_tab"):
-			current_scene.call("_select_help_tab", help_tab)
+		HelpMenu.open(current_scene)
+		await process_frame
+		var menu: Node = root.find_children("*", "HelpMenu", true, false)[0] if not root.find_children("*", "HelpMenu", true, false).is_empty() else null
+		if menu != null and menu.has_method("_select_tab"):
+			menu.call("_select_tab", help_tab)
 		await process_frame
 		await process_frame
 		await process_frame

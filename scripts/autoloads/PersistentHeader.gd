@@ -36,11 +36,18 @@ func _ready() -> void:
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_style()
-	_help_button.pressed.connect(func() -> void: _dispatch(_help_action, true))
+	# The "?" opens the shared HelpMenu on every screen (battle, squad picker, …). The help
+	# content is screen-agnostic, so it no longer needs a per-screen binding.
+	_help_button.pressed.connect(_on_help_pressed)
 	_debug_button.pressed.connect(func() -> void: _dispatch(_debug_action, false))
 	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action, false))
 	_back_button.pressed.connect(func() -> void: _dispatch(_back_action, true))
 	set_run_active(false)
+
+
+func _on_help_pressed() -> void:
+	AudioManager.play_select()
+	HelpMenu.toggle(self)
 
 
 func _dispatch(action: Callable, play_click: bool = true) -> void:

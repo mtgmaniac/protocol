@@ -48,6 +48,9 @@ func _parse_args() -> Dictionary:
 			# Drives a unit tile's long-press handler directly (synthetic viewport input
 			# won't reach LongPressInput's gui_input) to verify the inspect popup opens.
 			config["long_press_unit"] = arg.get_slice("=", 1).strip_edges()
+		elif arg == "--capture-help":
+			# Opens the shared HelpMenu on the squad picker (verifies it works off-battle).
+			config["help"] = true
 	return config
 
 
@@ -75,6 +78,11 @@ func _wait_for_scene(config: Dictionary) -> void:
 	var long_press_unit: Variant = config.get("long_press_unit", null)
 	if long_press_unit != null and str(long_press_unit) != "":
 		_drive_tile_long_press(str(long_press_unit))
+		await process_frame
+		await process_frame
+		await process_frame
+	if bool(config.get("help", false)) and current_scene != null:
+		HelpMenu.open(current_scene)
 		await process_frame
 		await process_frame
 		await process_frame
