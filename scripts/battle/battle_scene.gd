@@ -149,6 +149,9 @@ var _help_active_tab: String = ""
 var _help_codex_detail: VBoxContainer = null
 var _help_codex_buttons: Dictionary = {}
 var _help_codex_unit: String = ""
+var _help_bestiary_detail: VBoxContainer = null
+var _help_bestiary_buttons: Dictionary = {}
+var _help_bestiary_faction: String = ""
 
 # Help menu mini-tabs. Bestiary (discovery-gated enemy codex) needs an encountered-enemy
 # tracker first — separate follow-up.
@@ -158,7 +161,17 @@ const HELP_TABS := [
 	{"id": "keywords", "label": "KEYWORDS"},
 	{"id": "rewards", "label": "REWARDS"},
 	{"id": "units", "label": "UNITS"},
+	{"id": "bestiary", "label": "BESTIARY"},
 ]
+# Faction display order + labels for the bestiary (only factions with enemies are shown).
+const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
+const BESTIARY_FACTION_LABEL := {
+	"facility": "FACILITY",
+	"hive": "HIVE",
+	"veil": "VEIL",
+	"voidCirclet": "VOID CIRCLET",
+	"stellarMenagerie": "STELLAR MENAGERIE",
+}
 # keyword id -> HELP_ICON_MAP key (protocol_gain has no pixel icon → letter chip fallback).
 const HELP_KEYWORD_ICON := {
 	"dot": "dot", "pierce": "pierce", "shield": "shield", "heal": "heal",
@@ -2357,11 +2370,14 @@ func _build_help_overlay() -> void:
 	_help_close_button.gui_input.connect(_on_help_close_button_gui_input)
 	header_row.add_child(_help_close_button)
 
-	# Mini-tab row: one panel, content swaps per tab (no separate pages).
-	var tab_row: HBoxContainer = HBoxContainer.new()
+	# Mini-tab grid: one panel, content swaps per tab (no separate pages). 3 columns so the
+	# six tabs read on two tidy rows instead of one cramped strip.
+	var tab_row: GridContainer = GridContainer.new()
+	tab_row.columns = 3
 	tab_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	tab_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tab_row.add_theme_constant_override("separation", 8)
+	tab_row.add_theme_constant_override("h_separation", 8)
+	tab_row.add_theme_constant_override("v_separation", 8)
 	root.add_child(tab_row)
 	_help_tab_buttons.clear()
 	for tab_variant in HELP_TABS:
@@ -2413,6 +2429,8 @@ func _select_help_tab(tab_id: String) -> void:
 			_build_help_rewards(_help_content_host)
 		"units":
 			_build_help_codex(_help_content_host)
+		"bestiary":
+			_build_help_bestiary(_help_content_host)
 	if _help_content_scroll != null:
 		_help_content_scroll.scroll_vertical = 0
 
@@ -2642,6 +2660,138 @@ func _add_codex_band_table(host: VBoxContainer, label: String, ability_entries: 
 			eff_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			PixelUI.style_label(eff_label, 19, PixelUI.TEXT_PRIMARY, 1)
 			text_box.add_child(eff_label)
+
+
+# BESTIARY codex — faction picker + the faction's enemies (HP, attack pattern, keywords each
+# applies), read live from enemies.data.json. Everything is unlocked for now; discovery
+# gating / save persistence comes later.
+func _build_help_bestiary(host: VBoxContainer) -> void:
+	var factions: Array = []
+	for enemy_variant in DataManager.enemies.values():
+		var enemy: EnemyData = enemy_variant as EnemyData
+		if enemy == null:
+			continue
+		var fac: String = enemy.faction if enemy.faction != "" else enemy.enemy_type
+		if not factions.has(fac):
+			factions.append(fac)
+	# Stable display order (known factions first, then any extras).
+	var ordered: Array = []
+	for f in BESTIARY_FACTION_ORDER:
+		if factions.has(f):
+			ordered.append(f)
+	for f in factions:
+		if not ordered.has(f):
+			ordered.append(f)
+
+	var picker: GridContainer = GridContainer.new()
+	picker.columns = 3
+	picker.mouse_filter = Control.MOUSE_FILTER_PASS
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.add_theme_constant_override("h_separation", 8)
+	picker.add_theme_constant_override("v_separation", 8)
+	host.add_child(picker)
+
+	_help_bestiary_buttons.clear()
+	for f in ordered:
+		var btn: Button = Button.new()
+		btn.text = str(BESTIARY_FACTION_LABEL.get(f, str(f).to_upper()))
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 54)
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.pressed.connect(_select_bestiary_faction.bind(str(f)))
+		picker.add_child(btn)
+		_help_bestiary_buttons[str(f)] = btn
+
+	_help_bestiary_detail = VBoxContainer.new()
+	_help_bestiary_detail.mouse_filter = Control.MOUSE_FILTER_PASS
+	_help_bestiary_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_help_bestiary_detail.add_theme_constant_override("separation", 14)
+	host.add_child(_help_bestiary_detail)
+
+	var target: String = _help_bestiary_faction if ordered.has(_help_bestiary_faction) else (str(ordered[0]) if not ordered.is_empty() else "")
+	if target != "":
+		_select_bestiary_faction(target)
+
+
+func _select_bestiary_faction(faction: String) -> void:
+	_help_bestiary_faction = faction
+	for known_id in _help_bestiary_buttons.keys():
+		_style_help_tab_button(_help_bestiary_buttons[known_id], str(known_id) == faction)
+	if _help_bestiary_detail == null or not is_instance_valid(_help_bestiary_detail):
+		return
+	for child in _help_bestiary_detail.get_children():
+		child.queue_free()
+	for enemy_variant in DataManager.enemies.values():
+		var enemy: EnemyData = enemy_variant as EnemyData
+		if enemy == null:
+			continue
+		var fac: String = enemy.faction if enemy.faction != "" else enemy.enemy_type
+		if fac == faction:
+			_add_bestiary_entry(_help_bestiary_detail, enemy)
+
+
+func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
+	var entry: VBoxContainer = VBoxContainer.new()
+	entry.mouse_filter = Control.MOUSE_FILTER_PASS
+	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.add_theme_constant_override("separation", 1)
+	host.add_child(entry)
+
+	var name_label: Label = Label.new()
+	name_label.text = enemy.display_name.to_upper()
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(name_label, 21, PixelUI.GOLD_ACCENT, 2)
+	entry.add_child(name_label)
+
+	var stats: String = "HP %d" % enemy.max_hp
+	if enemy.damage_preview_max > 0:
+		stats += " · Attack %d-%d" % [enemy.damage_preview_min, enemy.damage_preview_max]
+	var stats_label: Label = Label.new()
+	stats_label.text = stats
+	stats_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(stats_label, 19, PixelUI.TEXT_PRIMARY, 1)
+	entry.add_child(stats_label)
+
+	var keywords: String = _enemy_keyword_summary(enemy)
+	if keywords != "":
+		var kw_label: Label = Label.new()
+		kw_label.text = "Applies: %s" % keywords
+		kw_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		kw_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_label(kw_label, 18, PixelUI.TEXT_MUTED, 1)
+		entry.add_child(kw_label)
+
+
+# Distinct keywords an enemy applies, derived from its ability raws (in a stable order).
+func _enemy_keyword_summary(enemy: EnemyData) -> String:
+	var found: Array = []
+	for ability_variant in enemy.dice_ranges:
+		var ability: Dictionary = ability_variant
+		var raw: Dictionary = ability.get("raw", {})
+		var tags: Array = []
+		if int(raw.get("dot", 0)) > 0:
+			tags.append("DoT")
+		if int(raw.get("rfe", 0)) > 0:
+			tags.append("Roll Down")
+		if int(raw.get("shield", 0)) > 0 or int(raw.get("shieldAlly", 0)) > 0:
+			tags.append("Shield")
+		if int(raw.get("heal", 0)) > 0 or int(raw.get("lifestealPct", 0)) > 0:
+			tags.append("Heal")
+		if bool(raw.get("blastAll", false)):
+			tags.append("AoE")
+		if int(raw.get("counterspellPct", 0)) > 0:
+			tags.append("Counter")
+		if bool(raw.get("wipeShields", false)):
+			tags.append("Shield Wipe")
+		if int(raw.get("cowerT", 0)) > 0 or bool(raw.get("cowerAll", false)):
+			tags.append("Cower")
+		if int(raw.get("summonChance", 0)) > 0 or str(raw.get("summonName", "")) != "":
+			tags.append("Summon")
+		for tag in tags:
+			if not found.has(tag):
+				found.append(tag)
+	return ", ".join(found)
 
 
 func _on_help_overlay_gui_input(event: InputEvent) -> void:
