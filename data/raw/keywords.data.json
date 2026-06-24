@@ -1,0 +1,95 @@
+{
+  "$comment": "Single source of truth for combat keywords. Help menu + tooltips both read this. Colors intentionally omitted — assign PixelUI tokens per the meaning-first palette (green reserved for Protocol).",
+  "dotFlavors": ["Burn", "Venom", "Decay"],
+  "keywords": [
+    {
+      "id": "dot",
+      "term": "DoT",
+      "category": "offense",
+      "def": "Damage over time. Deals the listed amount each turn for the listed number of turns.",
+      "syntax": "X DoT, Yt = X damage per turn for Y turns",
+      "note": "Mechanically identical across flavors. Burn / Venom / Decay are cosmetic only."
+    },
+    {
+      "id": "pierce",
+      "term": "Pierce",
+      "category": "offense",
+      "def": "Ignores shield. Damage applies straight to HP.",
+      "syntax": "pierce"
+    },
+    {
+      "id": "shield",
+      "term": "Shield",
+      "category": "defense",
+      "def": "Absorbs incoming damage before HP. Removed by Pierce.",
+      "syntax": "N shield, [Yt] = N shield, optionally expiring after Y turns"
+    },
+    {
+      "id": "heal",
+      "term": "Heal",
+      "category": "defense",
+      "def": "Restores HP, up to the target's max.",
+      "syntax": "N heal"
+    },
+    {
+      "id": "revive",
+      "term": "Revive",
+      "category": "defense",
+      "def": "Returns a downed ally to play at a percentage of max HP.",
+      "syntax": "revive X% = revive at X% max HP"
+    },
+    {
+      "id": "roll_down",
+      "term": "Roll Down",
+      "category": "control",
+      "def": "Lowers an enemy's effective roll, dropping its ability to a weaker band.",
+      "syntax": "-N roll, [Yt] = -N to roll, optionally for Y turns"
+    },
+    {
+      "id": "roll_up",
+      "term": "Roll Up",
+      "category": "support",
+      "def": "Raises an ally's effective roll, pushing its ability to a stronger band.",
+      "syntax": "+N roll"
+    },
+    {
+      "id": "freeze",
+      "term": "Freeze",
+      "category": "control",
+      "def": "Disables an enemy die so its reveal is skipped and the hit never lands.",
+      "syntax": "freeze (1 reveal skip)"
+    },
+    {
+      "id": "cloak",
+      "term": "Cloak",
+      "category": "control",
+      "def": "The unit evades the next incoming hit.",
+      "syntax": "Cloak"
+    },
+    {
+      "id": "taunt",
+      "term": "Taunt",
+      "category": "control",
+      "def": "Forces the chosen enemy to target the taunter.",
+      "syntax": "taunt"
+    },
+    {
+      "id": "protocol_gain",
+      "term": "Protocol Gain",
+      "category": "economy",
+      "def": "Adds to the shared Protocol pool immediately (on top of the +1/turn income).",
+      "syntax": "+N protocol"
+    },
+    {
+      "id": "aoe",
+      "term": "All / AoE",
+      "category": "offense",
+      "def": "The effect hits every valid target (all enemies, or the whole squad) rather than one.",
+      "syntax": "(all) on damage; \"all\" / \"squad\" on buffs and heals"
+    }
+  ],
+  "conventions": {
+    "duration": "A trailing number + 't' is duration in turns (e.g. 2t = lasts 2 turns).",
+    "targeting": "self / ally / squad / lowest / enemy / all denote who the effect lands on."
+  }
+}

@@ -7,6 +7,7 @@ const ITEMS_DATA_PATH := "res://data/raw/items.data.json"
 const GEAR_DATA_PATH := "res://data/raw/gear.data.json"
 const RELICS_DATA_PATH := "res://data/raw/relics.data.json"
 const BATTLE_MODES_DATA_PATH := "res://data/raw/battle-modes.json"
+const KEYWORDS_DATA_PATH := "res://data/raw/keywords.data.json"
 const HERO_PORTRAIT_ROOT := "res://assets/portraits/"
 const ENEMY_PORTRAIT_ROOT := "res://assets/portraits/enemies/"
 const LEGACY_UI_ROOT := "res://legacy-angular/public/ui/"
@@ -175,6 +176,7 @@ const ENEMY_PORTRAIT_BY_NAME := {
 var units: Dictionary = {}
 var enemies: Dictionary = {}
 var items: Dictionary = {}
+var _keywords_cache: Dictionary = {}
 var operations: Dictionary = {}
 var operation_order: Array = []
 var hero_zone_ranges: Dictionary = {}
@@ -198,6 +200,16 @@ func get_enemy_by_display_name(enemy_name: String) -> Resource:
 
 func get_item(item_id: String) -> Resource:
 	return items.get(item_id)
+
+
+# Combat keyword glossary (single source of truth for the help menu + tooltips). Lazy-loaded
+# and cached from keywords.data.json; returns the parsed dict ({keywords, conventions, ...}).
+func get_keywords() -> Dictionary:
+	if _keywords_cache.is_empty():
+		var parsed: Variant = _parse_json_file(KEYWORDS_DATA_PATH)
+		if parsed is Dictionary:
+			_keywords_cache = parsed
+	return _keywords_cache
 
 
 func get_operation(operation_id: String) -> Resource:

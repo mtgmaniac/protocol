@@ -142,6 +142,25 @@ var _auto_battle_running: bool = false
 var _help_overlay: Control = null
 var _help_panel: PanelContainer = null
 var _help_close_button: Button = null
+var _help_content_host: VBoxContainer = null
+var _help_content_scroll: ScrollContainer = null
+var _help_tab_buttons: Dictionary = {}
+var _help_active_tab: String = ""
+
+# Help menu mini-tabs. CODEX (live unit/bestiary pages) is a separate follow-up.
+const HELP_TABS := [
+	{"id": "basics", "label": "BASICS"},
+	{"id": "protocol", "label": "PROTOCOL"},
+	{"id": "keywords", "label": "KEYWORDS"},
+	{"id": "rewards", "label": "REWARDS"},
+]
+# keyword id -> HELP_ICON_MAP key (protocol_gain has no pixel icon → letter chip fallback).
+const HELP_KEYWORD_ICON := {
+	"dot": "dot", "pierce": "pierce", "shield": "shield", "heal": "heal",
+	"revive": "revive", "roll_down": "rfe", "roll_up": "rfm",
+	"freeze": "freeze", "cloak": "cloak", "taunt": "taunt", "aoe": "blastAll",
+}
+const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 var _is_resolving_turn: bool = false
 
 
@@ -2277,8 +2296,11 @@ func _build_help_overlay() -> void:
 	margin.name = "HelpOuterMargin"
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Clear the persistent header band so the panel title isn't hidden behind it.
+	var header_node := get_node_or_null("/root/PersistentHeader")
+	var top_margin: int = int(PersistentHeader.HEADER_HEIGHT) + 16 if header_node != null else 46
 	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_top", 46)
+	margin.add_theme_constant_override("margin_top", top_margin)
 	margin.add_theme_constant_override("margin_right", 28)
 	margin.add_theme_constant_override("margin_bottom", 46)
 	_help_overlay.add_child(margin)
@@ -2330,59 +2352,136 @@ func _build_help_overlay() -> void:
 	_help_close_button.gui_input.connect(_on_help_close_button_gui_input)
 	header_row.add_child(_help_close_button)
 
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(scroll)
+	# Mini-tab row: one panel, content swaps per tab (no separate pages).
+	var tab_row: HBoxContainer = HBoxContainer.new()
+	tab_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	tab_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab_row.add_theme_constant_override("separation", 8)
+	root.add_child(tab_row)
+	_help_tab_buttons.clear()
+	for tab_variant in HELP_TABS:
+		var tab: Dictionary = tab_variant
+		var tab_id: String = str(tab["id"])
+		var tab_button := Button.new()
+		tab_button.text = str(tab["label"])
+		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab_button.custom_minimum_size = Vector2(0, 56)
+		tab_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		tab_button.pressed.connect(_select_help_tab.bind(tab_id))
+		tab_row.add_child(tab_button)
+		_help_tab_buttons[tab_id] = tab_button
 
-	var content: VBoxContainer = VBoxContainer.new()
-	content.mouse_filter = Control.MOUSE_FILTER_PASS
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 18)
-	scroll.add_child(content)
+	_help_content_scroll = ScrollContainer.new()
+	_help_content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	_help_content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_help_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_help_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_help_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(_help_content_scroll)
 
-	_add_help_section(content, "HOW A TURN WORKS", [
-		"All units, squad and hostile, roll D20 simultaneously.",
-		"Each roll lands in a range band on that unit's dice chart.",
-		"The ability shown for that range fires this turn.",
-		"Select targets for your units, then confirm to resolve.",
+	_help_content_host = VBoxContainer.new()
+	_help_content_host.mouse_filter = Control.MOUSE_FILTER_PASS
+	_help_content_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_help_content_host.add_theme_constant_override("separation", 18)
+	_help_content_scroll.add_child(_help_content_host)
+
+	_select_help_tab("basics")
+
+
+# Switch the help panel's content to a tab (keeps the one panel, swaps the body).
+func _select_help_tab(tab_id: String) -> void:
+	if _help_content_host == null:
+		return
+	_help_active_tab = tab_id
+	for known_id in _help_tab_buttons.keys():
+		_style_help_tab_button(_help_tab_buttons[known_id], str(known_id) == tab_id)
+	for child in _help_content_host.get_children():
+		child.queue_free()
+	match tab_id:
+		"basics":
+			_build_help_basics(_help_content_host)
+		"protocol":
+			_build_help_protocol(_help_content_host)
+		"keywords":
+			_build_help_keywords(_help_content_host)
+		"rewards":
+			_build_help_rewards(_help_content_host)
+	if _help_content_scroll != null:
+		_help_content_scroll.scroll_vertical = 0
+
+
+func _style_help_tab_button(button: Button, active: bool) -> void:
+	if button == null:
+		return
+	if active:
+		PixelUI.style_button(button, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, 22)
+		button.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
+	else:
+		PixelUI.style_button(button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 22)
+		button.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+
+
+# ── Help tab content ──────────────────────────────────────────────────────────
+func _build_help_basics(host: VBoxContainer) -> void:
+	_add_help_section(host, "HOW A TURN WORKS", [
+		"Every unit — squad and hostile — rolls a D20 at the same time.",
+		"Assign your hero rolls to targets, then enemies act, then you gain +1 Protocol.",
+		"Each die is split into 5 ability bands; the roll's band decides which ability fires.",
+		"Higher roll = stronger ability. Bands run Recharge > Strike > Surge > Crit > Overload.",
+		"Overload is the natural 20 — always that unit's strongest ability.",
 	])
-	_add_help_section(content, "READING A UNIT CARD", [
-		"The top dice chart shows what each roll range does.",
-		"Rolling 20 fires the overload version of the crit ability.",
-		"The HP bar shows current / max health.",
-		"The thin bar below HP tracks XP toward evolution.",
-		"Status icons appear when active. Long press any icon for intel.",
+	_add_help_section(host, "READING A UNIT CARD", [
+		"Bands differ per unit: glass units reach Crit at 14, tanks need 17 — the card shows its own ranges.",
+		"The HP bar is current / max; the thin bar below tracks XP toward evolution.",
+		"Status icons appear when active. Long-press a unit to read its full intel.",
 	])
-	_add_icon_reference_section(content)
-	_add_help_section(content, "PROTOCOL", [
-		"Protocol is a shared squad resource.",
-		"Spend it to manipulate dice before confirming the turn.",
-		"Nudge (1): add +3 to a die's effective roll (once per die per turn).",
-		"Reroll (2): reroll a single die.",
-		"Set (3): set a die to any value 1-20.",
-		"Start each battle at 0; gain +1 at the end of every turn (cap 10).",
-	])
-	_add_help_section(content, "EVOLUTION", [
+	_add_help_section(host, "EVOLUTION", [
 		"Units earn XP each battle by dealing damage, healing, or applying effects.",
 		"When the XP bar fills, the unit evolves at battle end.",
-		"Choose from two evolution paths. Each changes abilities and raises max HP.",
-		"After evolution, continued XP advances toward a MAX tier upgrade.",
+		"Choose one of two paths — each changes abilities and raises max HP.",
+		"After evolving, continued XP advances toward a MAX-tier upgrade.",
 	])
-	_add_help_section(content, "GEAR & ITEMS", [
-		"After each battle, choose one reward: gear or item.",
-		"Gear attaches permanently to a unit and extends capabilities.",
-		"Items are tactical consumables or limited-use assets.",
-		"A unit can hold one gear piece. Progression may unlock a second slot.",
+	_add_help_section(host, "WIN / LOSS", [
+		"Clear every enemy to win the battle.",
+		"A full squad wipe ends the run.",
 	])
-	_add_help_section(content, "RELICS", [
-		"Relics are run-wide effects that alter every battle.",
-		"Relic choices appear at battles 3, 6, and 9.",
-		"Relics are permanent for the run. Choose carefully.",
-		"Each relic carries a benefit and a burden.",
+
+
+func _build_help_protocol(host: VBoxContainer) -> void:
+	_add_help_section(host, "THE PROTOCOL", [
+		"Protocol is a shared squad resource — the signature system.",
+		"Starts at 0 each battle, +1 at the end of every turn, caps at 10.",
+		"Spend it to manipulate dice before you confirm the turn.",
+		"Unspent Protocol can carry between battles (some gear/relics seed a starting pool).",
+	])
+	_add_help_section(host, "SPENDING PROTOCOL", [
+		"Nudge (1): +3 to a die's effective roll (once per die per turn).",
+		"Reroll (2): reroll a single die.",
+		"Set (3): set a hero's die to any value.",
+	])
+
+
+func _build_help_rewards(host: VBoxContainer) -> void:
+	_add_help_section(host, "ITEMS, GEAR & RELICS", [
+		"Items: one-use, spent in battle. The reward picker is single-select + confirm.",
+		"Gear: permanent passive, applies at battle start (+rolls, +max HP, starting shield).",
+		"Relics: run-long global rules that affect every battle.",
+	])
+	_add_help_section(host, "RARITY (BORDER COLOR)", [
+		"Common — gray.",
+		"Uncommon — green.",
+		"Rare — blue.",
+		"Epic — purple.",
+		"Legendary — gold.",
+	])
+	_add_help_section(host, "ICON FRAME = TYPE", [
+		"Heart — heal / support.",
+		"Shield — defense.",
+		"Skull — damage / kill.",
+		"Bolt — energy hit.",
+		"Die — dice manipulation.",
+		"Cloak — stealth.",
+		"Star — buff.",
 	])
 
 
@@ -2471,40 +2570,50 @@ func _add_help_bullet(parent: VBoxContainer, text: String) -> void:
 	row.add_child(label)
 
 
-func _add_icon_reference_section(parent: VBoxContainer) -> void:
-	var section: VBoxContainer = VBoxContainer.new()
-	section.mouse_filter = Control.MOUSE_FILTER_PASS
-	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	section.add_theme_constant_override("separation", 8)
-	parent.add_child(section)
+# KEYWORDS tab — rendered live from keywords.data.json, grouped by category, each keyword a
+# pip icon + term + definition + syntax. Single source of truth shared with tooltips.
+func _build_help_keywords(host: VBoxContainer) -> void:
+	var data: Dictionary = DataManager.get_keywords()
+	var keywords: Array = data.get("keywords", [])
+	var by_cat: Dictionary = {}
+	for kw_variant in keywords:
+		var kw: Dictionary = kw_variant
+		var cat: String = str(kw.get("category", "other"))
+		if not by_cat.has(cat):
+			by_cat[cat] = []
+		(by_cat[cat] as Array).append(kw)
 
-	var header: Label = Label.new()
-	header.text = "ABILITY ICON REFERENCE"
-	header.autowrap_mode = TextServer.AUTOWRAP_WORD
-	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_label(header, 26, Color(0.72, 0.88, 1.0, 1.0), 3)
-	section.add_child(header)
+	var ordered: Array = HELP_CATEGORY_ORDER.duplicate()
+	for cat in by_cat.keys():
+		if not ordered.has(cat):
+			ordered.append(cat)
 
-	var entries: Array = [
-		["dmg", "DMG", "Deals direct damage to the target."],
-		["dot", "DOT", "Deals damage over multiple turns."],
-		["shield", "SHIELD", "Absorbs incoming damage before HP is affected."],
-		["heal", "HEAL", "Restores HP to a unit."],
-		["rfe", "ROLL SHIFT", "Shift die roll by {value}."],
-		["rfm", "ROLL SHIFT", "Shift die roll by {value}."],
-		["pierce", "PIERCE", "Ignores the target's shield."],
-		["blastAll", "BLAST", "Hits all enemies simultaneously."],
-		["cloak", "CLOAK", "80% chance to evade the next incoming damage attempt."],
-		["freeze", "FREEZE", "Locks a die result for set reveals."],
-		["taunt", "TAUNT", "Forces all enemies to target this unit."],
-		["revive", "REVIVE", "Revives a fallen unit at partial HP."],
-	]
-	for entry_variant in entries:
-		var entry: Array = entry_variant
-		_add_icon_reference_row(section, str(entry[0]), str(entry[1]), str(entry[2]))
+	for cat in ordered:
+		if not by_cat.has(cat):
+			continue
+		var cat_header: Label = Label.new()
+		cat_header.text = str(cat).to_upper()
+		cat_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_label(cat_header, 26, Color(0.72, 0.88, 1.0, 1.0), 3)
+		host.add_child(cat_header)
+		for kw_variant in by_cat[cat]:
+			_add_keyword_row(host, kw_variant)
+
+	var dot_flavors: Array = data.get("dotFlavors", [])
+	var conventions: Dictionary = data.get("conventions", {})
+	var convention_lines: Array = []
+	if not conventions.is_empty():
+		if conventions.has("duration"):
+			convention_lines.append(str(conventions["duration"]))
+		if conventions.has("targeting"):
+			convention_lines.append(str(conventions["targeting"]))
+	if not dot_flavors.is_empty():
+		convention_lines.append("DoT flavors (%s) are cosmetic — identical mechanics." % ", ".join(dot_flavors))
+	if not convention_lines.is_empty():
+		_add_help_section(host, "CONVENTIONS", convention_lines)
 
 
-func _add_icon_reference_row(parent: VBoxContainer, icon_key: String, label_text: String, description: String) -> void:
+func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	var row: HBoxContainer = HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2512,19 +2621,32 @@ func _add_icon_reference_row(parent: VBoxContainer, icon_key: String, label_text
 	parent.add_child(row)
 
 	var icon_frame: PanelContainer = PanelContainer.new()
-	icon_frame.custom_minimum_size = Vector2(42, 42)
+	icon_frame.custom_minimum_size = Vector2(46, 46)
+	icon_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	icon_frame.mouse_filter = Control.MOUSE_FILTER_PASS
 	PixelUI.style_panel(icon_frame, Color(0.035, 0.050, 0.078, 0.92), Color(0.22, 0.34, 0.48, 0.95), 2, 0)
 	row.add_child(icon_frame)
 
-	var icon: TextureRect = TextureRect.new()
-	icon.texture = HELP_ICON_MAP.get(icon_key)
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = Vector2(34, 34)
-	icon.mouse_filter = Control.MOUSE_FILTER_PASS
-	icon_frame.add_child(icon)
+	var icon_key: String = str(HELP_KEYWORD_ICON.get(str(kw.get("id", "")), ""))
+	var icon_texture: Texture2D = HELP_ICON_MAP.get(icon_key) as Texture2D if icon_key != "" else null
+	if icon_texture != null:
+		var icon: TextureRect = TextureRect.new()
+		icon.texture = icon_texture
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(36, 36)
+		icon.mouse_filter = Control.MOUSE_FILTER_PASS
+		icon_frame.add_child(icon)
+	else:
+		# No pixel icon (e.g. Protocol Gain) — letter chip in the Protocol-green accent.
+		var letter: Label = Label.new()
+		letter.text = str(kw.get("term", "?")).substr(0, 1).to_upper()
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		PixelUI.style_label(letter, 26, PixelUI.DT_ROLL_LIGHT, 2)
+		icon_frame.add_child(letter)
 
 	var text_box: VBoxContainer = VBoxContainer.new()
 	text_box.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -2533,17 +2655,26 @@ func _add_icon_reference_row(parent: VBoxContainer, icon_key: String, label_text
 	row.add_child(text_box)
 
 	var name_label: Label = Label.new()
-	name_label.text = label_text
+	name_label.text = str(kw.get("term", "")).to_upper()
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_label(name_label, 20, PixelUI.GOLD_ACCENT, 2)
+	PixelUI.style_label(name_label, 21, PixelUI.GOLD_ACCENT, 2)
 	text_box.add_child(name_label)
 
-	var desc_label: Label = Label.new()
-	desc_label.text = description
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_label(desc_label, 20, PixelUI.TEXT_PRIMARY, 2)
-	text_box.add_child(desc_label)
+	var def_label: Label = Label.new()
+	def_label.text = str(kw.get("def", ""))
+	def_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	def_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(def_label, 20, PixelUI.TEXT_PRIMARY, 2)
+	text_box.add_child(def_label)
+
+	var syntax: String = str(kw.get("syntax", "")).strip_edges()
+	if syntax != "":
+		var syntax_label: Label = Label.new()
+		syntax_label.text = syntax
+		syntax_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		syntax_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_label(syntax_label, 18, PixelUI.TEXT_MUTED, 1)
+		text_box.add_child(syntax_label)
 
 
 func _refresh_roll_summaries() -> void:

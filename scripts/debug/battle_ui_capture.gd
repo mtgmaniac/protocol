@@ -103,6 +103,9 @@ func _parse_args() -> Dictionary:
 			# Comma-separated relic ids granted before the battle starts (so battle-start
 			# relic effects like perm_rfe / perm_roll_buff apply).
 			config["relics"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-help="):
+			# Open the tabbed help overlay on a given tab (basics|protocol|keywords|rewards).
+			config["help_tab"] = arg.get_slice("=", 1).strip_edges()
 	return config
 
 
@@ -218,6 +221,15 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 			# stay-open rejection path instead of the normal use-and-close.
 			current_scene.set("protocol_points", 0)
 		_tap_loadout_first_item()
+		await process_frame
+		await process_frame
+		await process_frame
+	var help_tab: String = str(config.get("help_tab", ""))
+	if help_tab != "" and current_scene != null:
+		if current_scene.has_method("_show_help_overlay"):
+			current_scene.call("_show_help_overlay")
+		if current_scene.has_method("_select_help_tab"):
+			current_scene.call("_select_help_tab", help_tab)
 		await process_frame
 		await process_frame
 		await process_frame
