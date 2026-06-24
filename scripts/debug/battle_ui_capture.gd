@@ -99,6 +99,10 @@ func _parse_args() -> Dictionary:
 			config["loadout_poor"] = true
 		elif arg == "--capture-loadout-relic-inspect":
 			config["loadout_relic_inspect"] = true
+		elif arg.begins_with("--capture-relics="):
+			# Comma-separated relic ids granted before the battle starts (so battle-start
+			# relic effects like perm_rfe / perm_roll_buff apply).
+			config["relics"] = arg.get_slice("=", 1).split(",", false)
 	return config
 
 
@@ -108,6 +112,12 @@ func _prepare_run(config: Dictionary) -> void:
 	var battle_number: int = int(config.get("battle_number", DEFAULT_BATTLE_NUMBER))
 	for _i in range(battle_number):
 		_game_state().advance_to_next_battle()
+	var relics: Variant = config.get("relics", null)
+	if relics != null:
+		var relic_ids: Array = []
+		for r in relics:
+			relic_ids.append(str(r).strip_edges())
+		_game_state().relics = relic_ids
 
 
 func _wait_for_battle_scene(config: Dictionary) -> void:

@@ -441,6 +441,8 @@ func _run_regression_audits() -> void:
 	_run_relic_low_hp_squad_roll_buff_regression()
 	_run_relic_heal_grants_shield_all_regression()
 	_run_relic_protocol_on_item_use_regression()
+	_run_relic_battle_start_state_regression()
+	_run_relic_per_turn_aura_regression()
 
 
 func _run_enemy_shield_ally_regression() -> void:
@@ -884,6 +886,52 @@ func _run_relic_ally_death_heal_regression() -> void:
 		)
 
 
+# Battle-start relics that write per-unit state the compact pips + roll math read:
+# signalJam (perm_rfe), coordinatedStrike (perm_roll_buff), plagueProtocol (poison),
+# entropyLeak (max-HP escalation).
+func _run_relic_battle_start_state_regression() -> void:
+	var mgr: CombatManager = CombatManager.new()
+	var hero: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Noop", {})
+	mgr.setup_battle([hero], [enemy])
+	var h: Dictionary = mgr.get_hero_states()[0]
+	var e: Dictionary = mgr.get_enemy_states()[0]
+	var enemy_max_before: int = int(e["max_hp"])
+	mgr.setup_relics(["signalJam", "coordinatedStrike", "plagueProtocol", "entropyLeak"])
+	mgr.apply_battle_start_relic_effects(2)  # battle_index 2 -> entropyLeak removes 10 max HP
+
+	_expect_and_record("Regression / relic signalJam perm_rfe", "enemyStartRfe", "2", str(int(e.get("perm_rfe", 0))))
+	_expect_and_record("Regression / relic coordinatedStrike perm_roll_buff", "heroStartRollBuff", "2", str(int(h.get("perm_roll_buff", 0))))
+	# Those permanent modifiers must flow into the authoritative roll totals that the compact
+	# roll pip mirrors (the bug this guards: pip ignored perm_rfe / perm_roll_buff).
+	var enemy_totals: Dictionary = mgr.get_roll_modifier_totals(e)
+	var hero_totals: Dictionary = mgr.get_roll_modifier_totals(h)
+	_expect_and_record("Regression / relic signalJam roll total", "enemyStartRfe", "2", str(int(enemy_totals.get("roll_rfe", 0))))
+	_expect_and_record("Regression / relic coordinatedStrike roll total", "heroStartRollBuff", "2", str(int(hero_totals.get("roll_buff", 0))))
+	_expect_and_record("Regression / relic plagueProtocol poison", "enemyDotPermanent", "3", str(int(e.get("poison", 0))))
+	_expect_and_record("Regression / relic entropyLeak maxhp", "enemyHpEscalation", str(enemy_max_before - 10), str(int(e["max_hp"])))
+
+
+# Per-enemy-turn aura relics: bulwarkAura (hero shield), naniteField (hero heal),
+# gravityWell (enemy damage).
+func _run_relic_per_turn_aura_regression() -> void:
+	var mgr: CombatManager = CombatManager.new()
+	var hero: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Noop", {})
+	mgr.setup_battle([hero], [enemy])
+	var h: Dictionary = mgr.get_hero_states()[0]
+	var e: Dictionary = mgr.get_enemy_states()[0]
+	h["current_hp"] = int(h["max_hp"]) - 10  # leave headroom for the naniteField heal
+	var hero_hp_before: int = int(h["current_hp"])
+	var enemy_hp_before: int = int(e["current_hp"])
+	mgr.setup_relics(["bulwarkAura", "naniteField", "gravityWell"])
+	mgr.apply_enemy_turn_start_relic_effects()
+
+	_expect_and_record("Regression / relic bulwarkAura shield", "heroShieldPerTurn", "3", str(int(h.get("shield", 0))))
+	_expect_and_record("Regression / relic naniteField heal", "heroHealPerTurn", str(hero_hp_before + 3), str(int(h["current_hp"])))
+	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
+
+
 func _run_revive_pct_regression() -> void:
 	var manager: CombatManager = CombatManager.new()
 	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Surge Revive", {
@@ -1245,9 +1293,11 @@ func _run_text_alignment_audits() -> void:
 			else:
 				_record_pass("Text alignment / %s" % path.get_file(), "no stale %s" % pattern)
 
-	var compact_text: String = FileAccess.get_file_as_string("res://scripts/ui/compact_unit_card.gd")
-	_expect_and_record("Text alignment / compact cloak text", "text", "contains 80% cloak text", "contains 80% cloak text" if compact_text.contains("80% chance to evade the next incoming damage attempt.") else "missing")
-	_expect_and_record("Text alignment / compact counter text", "text", "contains targeted hero attack text", "contains targeted hero attack text" if compact_text.contains("next targeted hero attack") else "missing")
+	# Status descriptions live in InspectResolver now (the long-press InspectPopup replaced the
+	# old hover tooltips that used to carry this text in compact_unit_card).
+	var status_text: String = FileAccess.get_file_as_string("res://scripts/ui/inspect_resolver.gd")
+	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak evade text", "contains cloak evade text" if status_text.contains("80% chance to evade the next incoming damage attempt.") else "missing")
+	_expect_and_record("Text alignment / inspect counter text", "text", "contains counter reflect text", "contains counter reflect text" if status_text.contains("reflect the next targeted attack") else "missing")
 
 
 func _build_context(raw: Dictionary, ability_name: String) -> Dictionary:

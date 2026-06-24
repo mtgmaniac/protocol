@@ -467,11 +467,14 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 			"priority": 1,
 		})
 
-	var total_rfe: int = 0
+	# Mirror combat_manager.get_roll_modifier_totals: temporary rfe_stacks/roll_buff PLUS the
+	# permanent relic/gear modifiers (perm_rfe from signalJam, perm_roll_buff from
+	# coordinatedStrike / battleStartCloakRoll), so those show as a roll pip like everything else.
+	var total_rfe: int = int(state.get("perm_rfe", 0))
 	for stack_variant in state.get("rfe_stacks", []):
 		var stack: Dictionary = stack_variant
 		total_rfe += int(stack.get("amt", 0))
-	var roll_buff: int = int(state.get("roll_buff", 0))
+	var roll_buff: int = int(state.get("roll_buff", 0)) + int(state.get("perm_roll_buff", 0))
 	var roll_delta: int = roll_buff - total_rfe
 	if roll_delta != 0:
 		statuses.append({
