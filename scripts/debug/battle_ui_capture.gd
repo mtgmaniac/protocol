@@ -97,6 +97,8 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-loadout-tap-poor":
 			config["loadout_tap"] = true
 			config["loadout_poor"] = true
+		elif arg == "--capture-loadout-relic-inspect":
+			config["loadout_relic_inspect"] = true
 	return config
 
 
@@ -209,6 +211,15 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 		await process_frame
+	if bool(config.get("loadout_relic_inspect", false)):
+		_open_loadout()
+		await process_frame
+		await process_frame
+		await process_frame
+		_long_press_loadout_relic()
+		await process_frame
+		await process_frame
+		await process_frame
 	await process_frame
 	await RenderingServer.frame_post_draw
 	if debug_log_enabled:
@@ -276,10 +287,35 @@ func _tap_loadout_first_item() -> void:
 		print("[ITEMDBG] no item resolved for loadout tap")
 		return
 	print("[ITEMDBG] driving row handler for ", item.display_name)
-	var press := InputEventMouseButton.new()
-	press.button_index = MOUSE_BUTTON_LEFT
-	press.pressed = true
-	menu.call("_on_item_row_input", press, row, item)
+	menu.call("_on_item_row_tapped", row, item)
+
+
+# Drives a long-press on the loadout's relic row directly (synthetic input can't reach
+# gui_input) to verify it opens the InspectPopup.
+func _long_press_loadout_relic() -> void:
+	var menus: Array = root.find_children("*", "LoadoutMenu", true, false)
+	if menus.is_empty():
+		print("[ITEMDBG] no LoadoutMenu open")
+		return
+	var menu: Node = menus[0]
+	var row: Node = menu.find_child("LoadoutRelicRow", true, false)
+	if row == null:
+		print("[ITEMDBG] no LoadoutRelicRow found")
+		return
+	var gs: Node = root.get_node_or_null("/root/GameState")
+	var dm: Node = root.get_node_or_null("/root/DataManager")
+	var relic: Resource = null
+	if gs != null and dm != null:
+		var relics: Array = gs.get("relics")
+		if relics != null and not relics.is_empty():
+			relic = dm.call("get_item", str(relics[0]))
+	if relic == null:
+		print("[ITEMDBG] no relic resolved for loadout long-press")
+		return
+	print("[ITEMDBG] driving relic long-press for ", relic.display_name)
+	menu.call("_on_row_long_pressed", Vector2.ZERO, relic, row)
+	var popups: Array = root.find_children("*", "InspectPopup", true, false)
+	print("[ITEMDBG] InspectPopup open after relic long-press: ", not popups.is_empty())
 
 
 # Drive a real long-press (press + hold past the threshold) on a protocol control to

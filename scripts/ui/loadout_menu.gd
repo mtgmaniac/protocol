@@ -122,7 +122,8 @@ func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
 	var row_style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0)
 	row_style.set_content_margin_all(2.0)
 	row.add_theme_stylebox_override("panel", row_style)
-	row.mouse_filter = Control.MOUSE_FILTER_STOP if (filled and usable) else Control.MOUSE_FILTER_IGNORE
+	# Any filled row is STOP so it can receive the long-press gesture; empty slots stay IGNORE.
+	row.mouse_filter = Control.MOUSE_FILTER_STOP if filled else Control.MOUSE_FILTER_IGNORE
 
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -142,9 +143,17 @@ func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
 	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(name_label)
 
-	if filled and usable:
-		row.name = "LoadoutItemRow"
-		row.gui_input.connect(_on_item_row_input.bind(row, item))
+	if filled:
+		# Long-press inspects any filled item/relic (same InspectPopup as the battle cards);
+		# a quick tap on a usable item still uses it. LongPressInput disambiguates the two.
+		var long_press := LongPressInput.new()
+		row.add_child(long_press)
+		long_press.long_pressed.connect(_on_row_long_pressed.bind(item, row))
+		if usable:
+			row.name = "LoadoutItemRow"
+			long_press.tapped.connect(_on_item_row_tapped.bind(row, item))
+		else:
+			row.name = "LoadoutRelicRow"
 	return row
 
 
@@ -221,15 +230,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 
 
 # ── Input ─────────────────────────────────────────────────────────────────────
-func _on_item_row_input(event: InputEvent, row: Control, item: ItemData) -> void:
-	var pressed := false
-	if event is InputEventMouseButton:
-		var mb: InputEventMouseButton = event
-		pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
-	elif event is InputEventScreenTouch:
-		pressed = (event as InputEventScreenTouch).pressed
-	if not pressed:
-		return
+func _on_item_row_tapped(row: Control, item: ItemData) -> void:
 	if not _on_use.is_valid():
 		LoadoutMenu.dismiss()
 		return
@@ -241,6 +242,16 @@ func _on_item_row_input(event: InputEvent, row: Control, item: ItemData) -> void
 		LoadoutMenu.dismiss()
 	else:
 		_flash_row_rejected(row)
+
+
+# Long-press on any filled row (item or relic) opens the unified inspect popup, which floats
+# above the loadout (POPUP_LAYER 130 > MENU_LAYER 128) and self-dismisses on outside press.
+func _on_row_long_pressed(_global_position: Vector2, item: ItemData, row: Control) -> void:
+	if item == null:
+		return
+	AudioManager.play_select()
+	var anchor: Rect2 = row.get_global_rect() if is_instance_valid(row) else Rect2()
+	InspectPopup.open(self, InspectResolver.resolve_item(item), anchor, row.get_instance_id())
 
 
 # Pulse the row red to signal "can't use this" (insufficient Protocol) without closing the menu.
