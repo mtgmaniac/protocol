@@ -138,6 +138,14 @@ func _build_sections(content: VBoxContainer, payload: Dictionary) -> void:
 	var prev_exists: bool = has_header
 	var first_content: bool = true
 
+	# Active statuses sit directly under the header (where the role subtitle used to be):
+	# each is a pip beside its description.
+	var statuses: Array = payload.get("statuses", [])
+	if not statuses.is_empty():
+		_add_section(content, prev_exists, first_content and has_header, _build_statuses(statuses), "ACTIVE EFFECTS")
+		prev_exists = true
+		first_content = false
+
 	var roll_table: Array = payload.get("roll_table", [])
 	if not roll_table.is_empty():
 		_add_section(content, prev_exists, first_content and has_header, _build_roll_table(roll_table), "ROLL RANGE")
@@ -285,6 +293,30 @@ func _build_ability(ability: Dictionary) -> Control:
 			text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row2.add_child(text_label)
 		box.add_child(row2)
+	return box
+
+
+# Active-status rows: each is the status pip(s) followed by its text description, the same
+# pip-beside-text layout abilities use.
+func _build_statuses(entries: Array) -> Control:
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", ROW_SEP)
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", 10)
+		for effect_variant in entry.get("effects", []):
+			var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD)
+			group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			row.add_child(group)
+		var text: String = str(entry.get("text", "")).strip_edges()
+		if text != "":
+			var text_label := _make_label(text, BODY_FONT, PixelUI.INSPECT_TEXT_MUTED, true)
+			text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(text_label)
+		box.add_child(row)
 	return box
 
 

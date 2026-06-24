@@ -420,13 +420,23 @@ func _on_unit_detail_requested(card: Control) -> void:
 		return
 	AudioManager.play_select()
 	# Unified long-press inspect (replaces the old UnitDetailPanel popup). The popup
-	# self-dismisses on outside press, so no close-on-event handling is needed here.
+	# self-dismisses on outside press, so no close-on-event handling is needed here. Pass the
+	# unit's live battle state so its active statuses show as pip + description rows.
 	InspectPopup.open(
 		self,
-		InspectResolver.resolve_unit(compact_card.unit_data),
+		InspectResolver.resolve_unit(compact_card.unit_data, _find_state_for_card(compact_card)),
 		compact_card.get_global_rect(),
 		compact_card.get_instance_id(),
 	)
+
+
+# The live battle-state dict backing a unit card (empty if not found).
+func _find_state_for_card(card: Control) -> Dictionary:
+	for view_variant in hero_card_views + enemy_card_views:
+		var view: Dictionary = view_variant
+		if view.get("card") == card:
+			return view.get("state", {})
+	return {}
 
 
 func _on_roll_button_pressed() -> void:

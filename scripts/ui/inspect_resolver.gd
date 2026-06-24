@@ -45,7 +45,10 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 
 
 # ── 2. Unit (long-press a player OR enemy unit card) ────────────────────────────
-static func resolve_unit(data: Resource) -> Dictionary:
+# `state` is the unit's live battle-state dict (empty outside battle, e.g. the home screen).
+# When it carries active statuses they REPLACE the role subtitle, shown as pip + description
+# rows; with no statuses the role subtitle is kept.
+static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 	if data == null:
 		return {}
 	var is_enemy: bool = data is EnemyData
@@ -66,15 +69,66 @@ static func resolve_unit(data: Resource) -> Dictionary:
 			"effects": EffectPip.effects_from_ability_raw(raw, side) if not raw.is_empty() else [],
 			"text": _ability_text(raw, side) if not raw.is_empty() else str(entry.get("description", "")),
 		})
+	var statuses: Array = _unit_status_entries(state)
+	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
+	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
 	return {
 		"accent": _side_accent(side),
 		"header": {
 			"title": str(data.get("display_name")),
-			"subtitle": _unit_subtitle(data),
+			"subtitle": subtitle,
 		},
+		"statuses": statuses,
 		"abilities": abilities,
 	}
+
+
+# Active battle statuses for the unit inspect — each entry { effects:[pip], text } renders as a
+# pip beside its description. Matches the compact card's status set (_build_compact_status_tokens)
+# and reuses _status_text for the wording.
+static func _unit_status_entries(state: Dictionary) -> Array:
+	var entries: Array = []
+	if state.is_empty():
+		return entries
+	if bool(state.get("dead", false)):
+		return [{"effects": [], "text": "Knocked out. Cannot act until revived."}]
+	var poison: int = int(state.get("poison", 0))
+	var poison_turns: int = int(state.get("poison_turns", 0))
+	if poison > 0 and poison_turns > 0:
+		# Treat a very large duration (e.g. plagueProtocol's 9999) as permanent — show no
+		# turn count on the pip or in the text.
+		var poison_dur: int = poison_turns if poison_turns < 999 else 0
+		entries.append(_status_entry("dot", "%d" % poison, poison_dur, _status_text("poison", "%d" % poison, poison_dur)))
+	var shield: int = int(state.get("shield", 0))
+	if shield > 0:
+		entries.append(_status_entry("shield", "%d" % shield, 0, _status_text("shield", "%d" % shield, 0)))
+	# Net roll delta: temporary rfe_stacks/roll_buff PLUS permanent relic/gear modifiers
+	# (mirrors combat_manager.get_roll_modifier_totals).
+	var total_rfe: int = int(state.get("perm_rfe", 0))
+	for stack_variant in state.get("rfe_stacks", []):
+		total_rfe += int((stack_variant as Dictionary).get("amt", 0))
+	var roll_delta: int = int(state.get("roll_buff", 0)) + int(state.get("perm_roll_buff", 0)) - total_rfe
+	if roll_delta != 0:
+		entries.append(_status_entry("rfm" if roll_delta > 0 else "roll", "%+d" % roll_delta, 0, _roll_status_text(roll_delta)))
+	if bool(state.get("cloaked", false)):
+		entries.append(_status_entry("cloak", "C", 0, _status_text("cloak", "", 0)))
+	if int(state.get("cower_turns", 0)) > 0:
+		entries.append({"effects": [], "text": "Cower: cannot deal damage this turn."})
+	if int(state.get("rampage_charges", 0)) > 0:
+		entries.append(_status_entry("rampage", "RA", 0, _status_text("rampage", "", 0)))
+	return entries
+
+
+static func _status_entry(kind: String, value: String, duration: int, text: String) -> Dictionary:
+	return {
+		"effects": [{"kind": kind, "value": value, "duration": maxi(duration, 0), "scope": ""}],
+		"text": text,
+	}
+
+
+static func _roll_status_text(delta: int) -> String:
+	return "%+d to this unit's die rolls." % delta
 
 
 # ── 3. Status / DoT pip (long-press a status icon) ──────────────────────────────
