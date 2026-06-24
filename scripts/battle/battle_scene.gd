@@ -146,13 +146,18 @@ var _help_content_host: VBoxContainer = null
 var _help_content_scroll: ScrollContainer = null
 var _help_tab_buttons: Dictionary = {}
 var _help_active_tab: String = ""
+var _help_codex_detail: VBoxContainer = null
+var _help_codex_buttons: Dictionary = {}
+var _help_codex_unit: String = ""
 
-# Help menu mini-tabs. CODEX (live unit/bestiary pages) is a separate follow-up.
+# Help menu mini-tabs. Bestiary (discovery-gated enemy codex) needs an encountered-enemy
+# tracker first — separate follow-up.
 const HELP_TABS := [
 	{"id": "basics", "label": "BASICS"},
 	{"id": "protocol", "label": "PROTOCOL"},
 	{"id": "keywords", "label": "KEYWORDS"},
 	{"id": "rewards", "label": "REWARDS"},
+	{"id": "units", "label": "UNITS"},
 ]
 # keyword id -> HELP_ICON_MAP key (protocol_gain has no pixel icon → letter chip fallback).
 const HELP_KEYWORD_ICON := {
@@ -2406,6 +2411,8 @@ func _select_help_tab(tab_id: String) -> void:
 			_build_help_keywords(_help_content_host)
 		"rewards":
 			_build_help_rewards(_help_content_host)
+		"units":
+			_build_help_codex(_help_content_host)
 	if _help_content_scroll != null:
 		_help_content_scroll.scroll_vertical = 0
 
@@ -2483,6 +2490,158 @@ func _build_help_rewards(host: VBoxContainer) -> void:
 		"Cloak — stealth.",
 		"Star — buff.",
 	])
+
+
+# UNITS codex — a unit picker + the selected specialist's page (class, HP, blurb, base ability
+# bands, and both evolution paths), read live from heroes.data.json via DataManager.
+func _build_help_codex(host: VBoxContainer) -> void:
+	var selector: GridContainer = GridContainer.new()
+	selector.columns = 2
+	selector.mouse_filter = Control.MOUSE_FILTER_PASS
+	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	selector.add_theme_constant_override("h_separation", 8)
+	selector.add_theme_constant_override("v_separation", 8)
+	host.add_child(selector)
+
+	_help_codex_buttons.clear()
+	var first_id: String = ""
+	for unit_id_variant in DataManager.units.keys():
+		var unit_id: String = str(unit_id_variant)
+		var unit: UnitData = DataManager.units[unit_id_variant] as UnitData
+		if unit == null:
+			continue
+		if first_id == "":
+			first_id = unit_id
+		var btn: Button = Button.new()
+		btn.text = unit.callsign if unit.callsign != "" else unit.display_name
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 54)
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.pressed.connect(_select_codex_unit.bind(unit_id))
+		selector.add_child(btn)
+		_help_codex_buttons[unit_id] = btn
+
+	_help_codex_detail = VBoxContainer.new()
+	_help_codex_detail.mouse_filter = Control.MOUSE_FILTER_PASS
+	_help_codex_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_help_codex_detail.add_theme_constant_override("separation", 14)
+	host.add_child(_help_codex_detail)
+
+	var target: String = _help_codex_unit if DataManager.units.has(_help_codex_unit) else first_id
+	if target != "":
+		_select_codex_unit(target)
+
+
+func _select_codex_unit(unit_id: String) -> void:
+	_help_codex_unit = unit_id
+	for known_id in _help_codex_buttons.keys():
+		_style_help_tab_button(_help_codex_buttons[known_id], str(known_id) == unit_id)
+	if _help_codex_detail == null or not is_instance_valid(_help_codex_detail):
+		return
+	for child in _help_codex_detail.get_children():
+		child.queue_free()
+	var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
+	if unit == null:
+		return
+	_build_codex_unit_detail(_help_codex_detail, unit)
+
+
+func _build_codex_unit_detail(host: VBoxContainer, unit: UnitData) -> void:
+	var title: String = unit.callsign if unit.callsign != "" else unit.display_name
+	var header: Label = Label.new()
+	header.text = "%s · %s · %d HP" % [title.to_upper(), unit.class_name_text.to_upper(), unit.max_hp]
+	header.autowrap_mode = TextServer.AUTOWRAP_WORD
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(header, 28, PixelUI.GOLD_ACCENT, 3)
+	host.add_child(header)
+
+	if unit.picker_blurb.strip_edges() != "":
+		var blurb: Label = Label.new()
+		blurb.text = unit.picker_blurb
+		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
+		blurb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_label(blurb, 20, PixelUI.TEXT_MUTED, 1)
+		host.add_child(blurb)
+
+	_add_codex_band_table(host, "ABILITIES", unit.dice_ranges)
+
+	# evolution_paths is a flat list (one entry per ability); group by path name into the two
+	# evolutions, pulling callsign/focus/HP from whichever entry carries them.
+	var groups: Dictionary = {}
+	var order: Array = []
+	for path_variant in unit.evolution_paths:
+		var path: Dictionary = path_variant
+		var nm: String = str(path.get("name", ""))
+		if not groups.has(nm):
+			groups[nm] = {"callsign": "", "focus": "", "hp": 0, "abilities": []}
+			order.append(nm)
+		var g: Dictionary = groups[nm]
+		if str(path.get("callsign", "")) != "":
+			g["callsign"] = str(path.get("callsign", ""))
+		if str(path.get("focus", "")) != "":
+			g["focus"] = str(path.get("focus", ""))
+		if int(path.get("hp", 0)) > 0:
+			g["hp"] = int(path.get("hp", 0))
+		for ability_variant in path.get("abilities", []):
+			(g["abilities"] as Array).append(ability_variant)
+
+	if not order.is_empty():
+		var evo_header: Label = Label.new()
+		evo_header.text = "EVOLUTIONS"
+		PixelUI.style_label(evo_header, 26, PixelUI.GOLD_ACCENT, 3)
+		host.add_child(evo_header)
+		for nm in order:
+			var g: Dictionary = groups[nm]
+			var evo_title: String = str(g["callsign"]) if str(g["callsign"]) != "" else nm
+			var label: String = "%s · %d HP" % [evo_title.to_upper(), int(g["hp"])]
+			if str(g["focus"]) != "":
+				label = "%s · %s · %d HP" % [evo_title.to_upper(), str(g["focus"]), int(g["hp"])]
+			_add_codex_band_table(host, label, g["abilities"])
+
+
+func _add_codex_band_table(host: VBoxContainer, label: String, ability_entries: Array) -> void:
+	var section_header: Label = Label.new()
+	section_header.text = label
+	section_header.autowrap_mode = TextServer.AUTOWRAP_WORD
+	section_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(section_header, 23, Color(0.72, 0.88, 1.0, 1.0), 2)
+	host.add_child(section_header)
+
+	for ability_variant in ability_entries:
+		var ability: Dictionary = ability_variant
+		var row: HBoxContainer = HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", 10)
+		host.add_child(row)
+
+		var range_label: Label = Label.new()
+		range_label.text = "%d-%d" % [int(ability.get("min", 0)), int(ability.get("max", 0))]
+		range_label.custom_minimum_size = Vector2(86, 0)
+		range_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		PixelUI.style_label(range_label, 20, PixelUI.DT_CYAN, 2)
+		row.add_child(range_label)
+
+		var text_box: VBoxContainer = VBoxContainer.new()
+		text_box.mouse_filter = Control.MOUSE_FILTER_PASS
+		text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text_box.add_theme_constant_override("separation", 1)
+		row.add_child(text_box)
+
+		var name_label: Label = Label.new()
+		name_label.text = str(ability.get("ability_name", ""))
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_label(name_label, 20, PixelUI.GOLD_ACCENT, 2)
+		text_box.add_child(name_label)
+
+		var eff: String = str(ability.get("description", "")).strip_edges()
+		if eff != "":
+			var eff_label: Label = Label.new()
+			eff_label.text = eff
+			eff_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+			eff_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			PixelUI.style_label(eff_label, 19, PixelUI.TEXT_PRIMARY, 1)
+			text_box.add_child(eff_label)
 
 
 func _on_help_overlay_gui_input(event: InputEvent) -> void:
