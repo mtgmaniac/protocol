@@ -106,10 +106,19 @@ func _parse_args() -> Dictionary:
 		elif arg.begins_with("--capture-help="):
 			# Open the tabbed help overlay on a given tab (basics|protocol|keywords|rewards).
 			config["help_tab"] = arg.get_slice("=", 1).strip_edges()
+		elif arg == "--capture-tutorial":
+			# Launch the rigged tutorial battle (forced squad + scripted enemy + rigged dice).
+			config["tutorial"] = true
+		elif arg.begins_with("--capture-tutorial-step="):
+			config["tutorial"] = true
+			config["tutorial_step"] = int(arg.get_slice("=", 1))
 	return config
 
 
 func _prepare_run(config: Dictionary) -> void:
+	if bool(config.get("tutorial", false)):
+		_game_state().start_tutorial_run()
+		return
 	var operation_id: String = str(config.get("operation_id", DEFAULT_OPERATION_ID))
 	_game_state().start_run(DEFAULT_SQUAD, operation_id)
 	var battle_number: int = int(config.get("battle_number", DEFAULT_BATTLE_NUMBER))
@@ -224,6 +233,13 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 		await process_frame
+	if config.has("tutorial_step") and current_scene != null:
+		var controllers: Array = root.find_children("*", "TutorialController", true, false)
+		if not controllers.is_empty():
+			controllers[0].call("_show_step", int(config["tutorial_step"]))
+			await process_frame
+			await process_frame
+			await process_frame
 	var help_tab: String = str(config.get("help_tab", ""))
 	if help_tab != "" and current_scene != null:
 		HelpMenu.open(current_scene)

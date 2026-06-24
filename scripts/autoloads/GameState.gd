@@ -19,6 +19,9 @@ var unit_evolutions: Dictionary = {}
 var pending_evolution_unit_id: String = ""
 var deferred_evolution_unit_ids: Array = []
 var carried_protocol: int = 0
+# True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
+# the tutorial is opt-in from the splash / Help, so it needs no persistence.
+var tutorial_mode: bool = false
 
 const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
@@ -48,6 +51,7 @@ var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func start_run(unit_ids: Array, operation_id: String = "") -> void:
+	tutorial_mode = false
 	_reward_rng.randomize()
 	selected_units = unit_ids.duplicate()
 	enforce_squad_limit()
@@ -76,6 +80,17 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
+
+
+# Launch the rigged onboarding encounter: forced trio (Pulse Tech required for the Nudge
+# demo), first operation, battle 1. battle_scene reads tutorial_mode to rig dice/enemy and
+# spawn the coachmark controller.
+func start_tutorial_run() -> void:
+	var op_ids: Array = DataManager.get_operation_order()
+	var op_id: String = str(op_ids[0]) if not op_ids.is_empty() else ""
+	start_run(["pulse", "combat", "ghost"], op_id)
+	current_battle = 1
+	tutorial_mode = true
 
 
 func enforce_squad_limit() -> void:
@@ -127,6 +142,7 @@ func advance_to_next_battle() -> void:
 
 
 func reset_run() -> void:
+	tutorial_mode = false
 	selected_units.clear()
 	current_battle = 0
 	selected_operation_id = ""

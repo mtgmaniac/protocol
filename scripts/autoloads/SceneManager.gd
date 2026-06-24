@@ -1,6 +1,7 @@
 # Centralizes scene changes so gameplay code does not need to know tree details.
 extends Node
 
+const MAIN_MENU_SCENE := "res://scenes/ui/MainMenu.tscn"
 const UNIT_SELECT_SCENE := "res://scenes/ui/UnitSelect.tscn"
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
@@ -10,6 +11,10 @@ const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 
 func go_to(scene_path: String) -> void:
 	get_tree().change_scene_to_file(scene_path)
+
+
+func go_to_main_menu() -> void:
+	go_to(MAIN_MENU_SCENE)
 
 
 func go_to_unit_select() -> void:

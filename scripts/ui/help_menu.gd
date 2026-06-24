@@ -290,6 +290,26 @@ func _build_basics(host: VBoxContainer) -> void:
 		"A full squad wipe ends the run.",
 	])
 
+	# Replay the rigged onboarding encounter at any time.
+	var replay := Button.new()
+	replay.text = "REPLAY TUTORIAL"
+	replay.custom_minimum_size = Vector2(0, 84)
+	replay.mouse_filter = Control.MOUSE_FILTER_STOP
+	PixelUI.style_button(replay, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, 30)
+	replay.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
+	replay.pressed.connect(_replay_tutorial)
+	host.add_child(replay)
+
+
+func _replay_tutorial() -> void:
+	HelpMenu.dismiss()
+	var gs: Node = get_node_or_null("/root/GameState")
+	var sm: Node = get_node_or_null("/root/SceneManager")
+	if gs != null:
+		gs.call("start_tutorial_run")
+	if sm != null:
+		sm.call("go_to_battle")
+
 
 func _build_protocol(host: VBoxContainer) -> void:
 	_add_section(host, "THE PROTOCOL", [

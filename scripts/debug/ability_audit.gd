@@ -443,6 +443,7 @@ func _run_regression_audits() -> void:
 	_run_relic_protocol_on_item_use_regression()
 	_run_relic_battle_start_state_regression()
 	_run_relic_per_turn_aura_regression()
+	_run_tutorial_kill_math_regression()
 
 
 func _run_enemy_shield_ally_regression() -> void:
@@ -930,6 +931,46 @@ func _run_relic_per_turn_aura_regression() -> void:
 	_expect_and_record("Regression / relic bulwarkAura shield", "heroShieldPerTurn", "3", str(int(h.get("shield", 0))))
 	_expect_and_record("Regression / relic naniteField heal", "heroHealPerTurn", str(hero_hp_before + 3), str(int(h["current_hp"])))
 	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
+
+
+# Tutorial rig must stay unlosable AND land the win exactly on turn 2: the 28-HP Scrap Drone
+# survives turn 1's rigged assignments and dies on turn 2 (nudged Pulse=12 → Plasma Lance).
+func _run_tutorial_kill_math_regression() -> void:
+	var pulse: UnitData = DataManager.get_unit("pulse") as UnitData
+	var combat: UnitData = DataManager.get_unit("combat") as UnitData
+	var ghost: UnitData = DataManager.get_unit("ghost") as UnitData
+	var scrap: EnemyData = DataManager.get_enemy_by_display_name("Scrap Drone") as EnemyData
+	if pulse == null or combat == null or ghost == null or scrap == null:
+		_record_failure("Tutorial / kill math", "tutorial", "real data present", "missing data")
+		return
+	var enemy_unit: EnemyData = scrap.duplicate(true)
+	enemy_unit.max_hp = 28
+	var mgr: CombatManager = CombatManager.new()
+	mgr.setup_battle([pulse, combat, ghost], [enemy_unit])
+	var enemy: Dictionary = mgr.get_enemy_states()[0]
+	var enemy_id: String = str(enemy["id"])
+	_tutorial_resolve_turn(mgr, enemy_id, {"pulse": 5, "combat": 1, "ghost": 3})
+	var hp_after_t1: int = int(enemy["current_hp"])
+	var dead_t1: bool = bool(enemy["dead"])
+	if not dead_t1:
+		_tutorial_resolve_turn(mgr, enemy_id, {"pulse": 12, "combat": 1, "ghost": 3})
+	var dead_t2: bool = bool(enemy["dead"])
+	if (not dead_t1) and hp_after_t1 > 0 and dead_t2:
+		_record_pass("Tutorial / kill math", "tutorial")
+	else:
+		_record_failure("Tutorial / kill math", "tutorial", "survive T1 (>0), die T2",
+			"t1_hp=%d dead_t1=%s dead_t2=%s" % [hp_after_t1, str(dead_t1), str(dead_t2)])
+
+
+func _tutorial_resolve_turn(mgr: CombatManager, enemy_id: String, rolls_by_unit: Dictionary) -> void:
+	var hero_rolls: Dictionary = {}
+	for hero_state in mgr.get_hero_states():
+		var unit: Object = hero_state.get("unit") as Object
+		var uid: String = str(unit.id) if unit != null else ""
+		hero_state["selected_target_id"] = enemy_id
+		if rolls_by_unit.has(uid):
+			hero_rolls[str(hero_state["id"])] = int(rolls_by_unit[uid])
+	mgr.resolve_round(hero_rolls, {enemy_id: 6}, DiceManager.new())
 
 
 func _run_revive_pct_regression() -> void:

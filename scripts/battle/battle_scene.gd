@@ -1,6 +1,10 @@
 # Phase 5 battle scene shell that renders cards, rolls dice, and resolves a basic combat loop.
 extends Control
 
+# Emitted only during the rigged tutorial (GameState.tutorial_mode) at each taught beat, so the
+# TutorialController can gate coachmarks on the player's real actions.
+signal tutorial_event(event: StringName, payload: Dictionary)
+
 @onready var board: VBoxContainer = %Board
 @onready var background: TextureRect = $Background
 @onready var hero_panel: PanelContainer = %HeroPanel
@@ -88,6 +92,27 @@ var hero_rolls: Dictionary = {}
 var enemy_rolls: Dictionary = {}
 var hero_units: Array = []
 var enemy_units: Array = []
+
+# ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
+# Single weak scripted enemy (Scrap Drone @28 HP) that telegraphs a weak Stab (enemy roll 6 =
+# strike band) and dies on turn 2. Hero rolls keyed by unit id, all single-enemy damage:
+#   turn 1: Pulse 5 (Arc Burst 6) + Strike 1 (Test Shot 1) + Ghost 3 (Probe Strike 7) = 14
+#   turn 2: Pulse 9→Nudge→12 (Plasma Lance 8) + 1 + 7 = 16  → 30 total kills the 28-HP enemy.
+# Pulse 9 sits one short of the Surge band (Plasma Lance opens at 10); +3 Nudge → 12 flips
+# flat Arc Burst into Plasma Lance (8 dmg + 2 DoT) — the taught payoff.
+const TUTORIAL_ENEMY_NAME := "Scrap Drone"
+const TUTORIAL_ENEMY_HP := 28
+const TUTORIAL_ENEMY_ROLL := 6
+const TUTORIAL_HERO_ROLLS := [
+	{"pulse": 5, "combat": 1, "ghost": 3},
+	{"pulse": 9, "combat": 1, "ghost": 3},
+]
+var _tutorial_turn: int = 0
+
+
+func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
+	if _game_state().tutorial_mode:
+		tutorial_event.emit(event, payload)
 var turn_phase: String = PHASE_AWAIT_ROLL
 var active_targeting_hero_id: String = ""
 var legal_target_ids: Array = []
@@ -199,6 +224,15 @@ func _ready() -> void:
 	board.move_child(center_panel, 1)
 	board.move_child(hero_panel, 2)
 	Callable(_layout, "stabilize_board_layout").call_deferred()
+	if _game_state().tutorial_mode:
+		_spawn_tutorial_controller.call_deferred()
+
+
+# Coachmark/step controller for the rigged onboarding encounter (lives on its own high layer).
+func _spawn_tutorial_controller() -> void:
+	var controller := TutorialController.new()
+	add_child(controller)
+	controller.start(self)
 
 
 func _on_open_reward_button_pressed() -> void:
@@ -458,6 +492,8 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
 		_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
 		_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
+	if _game_state().tutorial_mode:
+		_apply_tutorial_dice_rig()
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
 
@@ -475,12 +511,36 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		_build_die_tooltip_overlays()
 	_set_turn_phase(PHASE_TARGETING)
 	_append_log("Dice rolled for all units.")
+	_emit_tutorial("rolled", {"turn": _tutorial_turn})
 	if skip_dice_visuals and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
 
 	if pending_manual_target_ids.is_empty():
 		_set_turn_phase(PHASE_READY_TO_END)
 		return
+
+
+# Overwrite the just-rolled dice with the scripted tutorial values and repaint the 3D tray in
+# place (same call Nudge uses), so the animation plays but the result is deterministic.
+func _apply_tutorial_dice_rig() -> void:
+	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
+	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
+	for hero_state in combat_manager.get_hero_states():
+		var unit: Object = hero_state.get("unit") as Object
+		var unit_id: String = str(unit.id) if unit != null else ""
+		if not rig.has(unit_id):
+			continue
+		var sid: String = str(hero_state["id"])
+		var value: int = int(rig[unit_id])
+		hero_rolls[sid] = value
+		if dice_tray_3d != null:
+			dice_tray_3d.update_die_result_in_place("hero", sid, value)
+	for enemy_state in combat_manager.get_enemy_states():
+		var esid: String = str(enemy_state["id"])
+		enemy_rolls[esid] = TUTORIAL_ENEMY_ROLL
+		if dice_tray_3d != null:
+			dice_tray_3d.update_die_result_in_place("enemy", esid, TUTORIAL_ENEMY_ROLL)
+	_tutorial_turn += 1
 
 
 func _auto_assign_pending_targets(use_pauses: bool = true) -> void:
@@ -795,6 +855,9 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		roll_button.disabled = true
 		_persist_protocol_carryover()
 		_capture_battle_victory_for_xp()
+		if _game_state().tutorial_mode:
+			_emit_tutorial("won")
+			return
 		if _auto_battle_running:
 			_debug_advance_after_auto_battle_victory()
 		elif _game_state().is_final_battle():
@@ -819,6 +882,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		_update_protocol_bar()
 		_append_log("Protocol +1 → %d" % protocol_points)
 		_set_turn_phase(PHASE_AWAIT_ROLL)
+		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
 
 
 # --- Protocol / Reroll / Nudge ---
@@ -863,6 +927,9 @@ func _finish_battle_victory() -> void:
 	_disable_combat_actions()
 	_persist_protocol_carryover()
 	_capture_battle_victory_for_xp()
+	if _game_state().tutorial_mode:
+		_emit_tutorial("won")
+		return
 	if _auto_battle_running:
 		_debug_advance_after_auto_battle_victory()
 	elif _game_state().is_final_battle():
@@ -1074,6 +1141,7 @@ func _apply_nudge(hero_id: String) -> void:
 	_re_assign_hero_target(hero_id)
 	_refresh_dice_result_actions()
 	_finish_roll_modifier_pick()
+	_emit_tutorial("nudged", {"hero": hero_id})
 
 
 func _was_hero_nudged_this_turn(hero_id: String) -> bool:
@@ -1369,6 +1437,7 @@ func _update_protocol_bar() -> void:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
 	protocol_value_label.text = "%d / %d" % [protocol_points, MAX_PROTOCOL]
 	_update_protocol_footer_display()
+	_emit_tutorial("protocol_changed", {"value": protocol_points})
 
 
 func _ensure_protocol_footer_display() -> void:
@@ -1478,6 +1547,16 @@ func _build_runtime_units() -> void:
 		if unit != null:
 			hero_units.append(unit)
 
+	# Tutorial: a single weak scripted enemy instead of the operation's battle, HP tuned so the
+	# win lands on turn 2's nudged Plasma Lance.
+	if _game_state().tutorial_mode:
+		var base_enemy: EnemyData = _data_manager().get_enemy_by_display_name(TUTORIAL_ENEMY_NAME) as EnemyData
+		if base_enemy != null:
+			var tutorial_enemy: EnemyData = _duplicate_enemy(base_enemy)
+			tutorial_enemy.max_hp = TUTORIAL_ENEMY_HP
+			enemy_units = [tutorial_enemy]
+			return
+
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
 	if operation == null:
 		return
@@ -1564,6 +1643,7 @@ func _set_turn_phase(next_phase: String) -> void:
 			_refresh_summary("")
 	_style_roll_button_for_phase()
 	_card_view.refresh_all_cards()
+	_emit_tutorial("phase", {"phase": turn_phase})
 
 
 func _style_roll_button_for_phase() -> void:
@@ -1903,6 +1983,7 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	legal_target_ids.clear()
 	legal_target_side = ""
 	_card_view.refresh_all_cards()
+	_emit_tutorial("assigned", {"remaining": pending_manual_target_ids.size()})
 	if pending_manual_target_ids.is_empty():
 		_set_turn_phase(PHASE_READY_TO_END)
 	else:
@@ -2209,6 +2290,7 @@ func _append_log(message: String) -> void:
 		battle_log_label.text = message
 	else:
 		battle_log_label.text = "%s\n%s" % [message, battle_log_label.text]
+	_emit_tutorial("log", {"message": message})
 
 
 func _set_battle_log_visible(is_visible: bool) -> void:
