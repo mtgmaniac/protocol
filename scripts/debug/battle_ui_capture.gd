@@ -90,6 +90,8 @@ func _parse_args() -> Dictionary:
 			config["item_target"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-item-confirm-action="):
 			config["item_confirm_action"] = arg.get_slice("=", 1)
+		elif arg == "--capture-item-offtarget":
+			config["item_offtarget"] = true
 		elif arg == "--capture-loadout-tap":
 			config["loadout_tap"] = true
 		elif arg == "--capture-loadout-tap-poor":
@@ -172,6 +174,27 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 			print("[ITEMDBG] confirm_action=", confirm_action,
 				" card before=", has_card_before, " after=", has_card_after,
 				" phase ", phase_before, " -> ", phase_after,
+				" pending=", current_scene.get("_pending_item") != null)
+		# Optionally simulate tapping a wrong-side unit/die (a non-legal target) during item
+		# targeting — should cancel the item back to the loadout, same as tapping the card.
+		if bool(config.get("item_offtarget", false)) and current_scene != null:
+			current_scene.set("_item_targeting_armed", true)
+			var cm: Object = current_scene.get("combat_manager")
+			var hero_id: String = ""
+			if cm != null:
+				var heroes: Array = cm.call("get_hero_states")
+				if not heroes.is_empty():
+					hero_id = str((heroes[0] as Dictionary).get("id", ""))
+			var phase_before2: String = str(current_scene.get("turn_phase"))
+			var card_before2: bool = current_scene.get("_item_targeting_card") != null
+			print("[ITEMDBG] offtarget: tapping wrong-side hero ", hero_id, " during ", phase_before2)
+			current_scene.call("_on_hero_card_pressed", hero_id)
+			await process_frame
+			await process_frame
+			var phase_after2: String = str(current_scene.get("turn_phase"))
+			var card_after2: bool = current_scene.get("_item_targeting_card") != null
+			print("[ITEMDBG] offtarget result: card ", card_before2, " -> ", card_after2,
+				" phase ", phase_before2, " -> ", phase_after2,
 				" pending=", current_scene.get("_pending_item") != null)
 	if bool(config.get("loadout_tap", false)):
 		_open_loadout()

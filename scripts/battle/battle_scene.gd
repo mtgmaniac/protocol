@@ -2149,17 +2149,24 @@ func _has_roll_for_state(rolls: Dictionary, state: Dictionary) -> bool:
 	return unit_id != null and rolls.has(unit_id)
 
 
+# True while an item is mid-use (choosing a target, or confirming a no-target item).
+func _in_item_phase() -> bool:
+	return turn_phase.begins_with("item_pick") or turn_phase == PHASE_ITEM_CONFIRM
+
+
 func _on_enemy_card_pressed(target_id: String) -> void:
 	if battle_over:
 		return
-	if turn_phase == PHASE_ITEM_PICK_ENEMY:
-		if not legal_target_ids.has(target_id):
-			return
-		if _pending_item != null:
+	if _in_item_phase():
+		# Tapping a legal enemy target applies the item; tapping any other unit/die cancels
+		# it back to the loadout (same as tapping the item card again).
+		if turn_phase == PHASE_ITEM_PICK_ENEMY and legal_target_ids.has(target_id) and _pending_item != null:
 			var target_state: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), target_id)
 			if not target_state.is_empty():
 				AudioManager.play_select()
 				_apply_item_effect(_pending_item, target_state)
+				return
+		_cancel_item_to_loadout()
 		return
 	if turn_phase != PHASE_TARGETING:
 		return
@@ -2198,14 +2205,16 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		_begin_set_value_pick(target_id)
 		return
 
-	if turn_phase == PHASE_ITEM_PICK_ALLY or turn_phase == PHASE_ITEM_PICK_DEAD:
-		if not legal_target_ids.has(target_id):
-			return
-		if _pending_item != null:
+	if _in_item_phase():
+		# Tapping a legal ally target applies the item; tapping any other unit/die cancels it
+		# back to the loadout (same as tapping the item card again).
+		if turn_phase == PHASE_ITEM_PICK_ALLY and legal_target_ids.has(target_id) and _pending_item != null:
 			var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 			if not target_state.is_empty():
 				AudioManager.play_select()
 				_apply_item_effect(_pending_item, target_state)
+				return
+		_cancel_item_to_loadout()
 		return
 
 	if turn_phase == PHASE_READY_TO_END:
@@ -3127,6 +3136,10 @@ func _show_item_targeting_card(item: ItemData, confirm_mode: bool = false) -> vo
 				_cancel_item_to_loadout()
 	)
 	center.add_child(card)
+	# In confirm mode the card itself is the tap target, so highlight it with a pulsing
+	# accent border — the same "this is tappable" cue legal unit targets get when targeting.
+	if confirm_mode:
+		_add_confirm_card_highlight(card)
 	# Hide the entire layer for the first frame so the card is never drawn at the wrong
 	# position before CenterContainer has had a chance to lay it out.
 	layer.visible = false
@@ -3168,6 +3181,25 @@ func _confirm_pending_item() -> void:
 		return
 	# _apply_item_effect hides the card, applies, consumes, and restores the prior phase.
 	_apply_item_effect(_pending_item, {})
+
+
+# Pulsing accent border over a confirm card, echoing the legal-target highlight on units.
+func _add_confirm_card_highlight(card: PanelContainer) -> void:
+	var ring := Panel.new()
+	ring.name = "ConfirmHighlight"
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	style.set_border_width_all(7)
+	style.border_color = PixelUI.DT_HERO_DITHER
+	style.set_corner_radius_all(0)
+	ring.add_theme_stylebox_override("panel", style)
+	card.add_child(ring)
+	# Bound to the card so the loop dies with it; pulses the ring's alpha as the "tap me" cue.
+	var tween := card.create_tween().set_loops()
+	tween.tween_property(ring, "modulate:a", 0.25, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(ring, "modulate:a", 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 # While choosing an item target (or confirming a no-target item), a press that no unit
