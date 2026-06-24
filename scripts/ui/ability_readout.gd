@@ -25,7 +25,6 @@ var _upper_underline: ColorRect = null
 var _lower_underline: ColorRect = null
 var _upper_row: HBoxContainer = null
 var _lower_row: HBoxContainer = null
-var _tooltip_callback: Callable = Callable()
 var _pips_revealed: bool = false
 var _pips_tween: Tween = null
 
@@ -45,12 +44,6 @@ func configure(result_data: Variant, side_hint: String = "") -> void:
 		side = side_hint
 	action_result = _normalize_result(result_data)
 	_refresh()
-
-
-func set_tooltip_callback(callback: Callable) -> void:
-	_tooltip_callback = callback
-	if _upper_row != null:
-		_refresh()
 
 
 func clear() -> void:
@@ -260,8 +253,6 @@ func _add_parts_to_row(row: HBoxContainer, effects: Array, target: String) -> vo
 
 func _make_effect_group(effect: Dictionary) -> Control:
 	var group: Control = EffectPip.build_group(effect, EffectPip.PROFILE_READOUT, side)
-	if _tooltip_callback.is_valid():
-		_tooltip_callback.call(group, _build_effect_tooltip(effect))
 	if group is HBoxContainer:
 		group.gui_input.connect(_on_effect_group_gui_input.bind(group))
 	return group
@@ -314,69 +305,6 @@ func _update_row_underline(row: HBoxContainer) -> void:
 func _update_all_underlines() -> void:
 	_update_row_underline(_upper_row)
 	_update_row_underline(_lower_row)
-
-
-func _build_effect_tooltip(effect: Dictionary) -> String:
-	var kind: String = str(effect.get("kind", "")).to_lower()
-	var value: String = str(effect.get("value", "")).to_upper()
-	var duration: int = int(effect.get("duration", 0))
-	if kind == "shield" and value == "CL":
-		return "CLOAK\n80% chance to evade the next incoming damage attempt."
-	if kind == "cloak":
-		return "CLOAK\n80% chance to evade the next incoming damage attempt."
-	if kind == "revive":
-		var pct_text: String = value.trim_suffix("%")
-		if pct_text.is_valid_int():
-			return "REVIVE\nRevive at %s%% max HP." % pct_text
-		return "REVIVE\nRevive a fallen ally with a percentage of their max HP."
-	if kind == "taunt":
-		return "TAUNT\nForces enemies to target this unit."
-	if kind == "counter":
-		return "COUNTER\nPrime to counter the next targeted attack."
-	if kind == "rampage":
-		return "RAMPAGE\nNext attack gains bonus damage."
-	if kind == "shield" and value.contains("ALL"):
-		var amount_text: String = value.replace("·ALL", "").replace("ALL", "").strip_edges()
-		if amount_text.is_valid_int():
-			return "GAIN SHIELD\nGrant %s shield to all allies." % amount_text
-		return "GAIN SHIELD\nGrant shield to all allies."
-	if kind == "shield" and value == "TA":
-		return "TAUNT\nApply taunt to target."
-	if kind == "freeze":
-		return "FROZEN\nLocks a die result for %d reveal%s." % [
-			maxi(duration, 1), "" if duration == 1 else "s"
-		]
-	match kind:
-		"dmg", "damage":
-			return "DEAL DAMAGE\nDeal %s damage to the target." % value
-		"dot", "poison":
-			var turns_text: String = "for %d turns" % duration if duration > 0 else "each turn"
-			return "DAMAGE OVER TIME\nDeal %s damage per turn %s." % [value, turns_text]
-		"shield":
-			return "GAIN SHIELD\nBlock %s incoming damage." % value
-		"heal":
-			return "HEAL\nRestore %s HP." % value
-		"roll":
-			return _build_roll_shift_tooltip(value, duration)
-		"rfe":
-			return _build_roll_shift_tooltip(value, duration)
-		"rfm":
-			return _build_roll_shift_tooltip(value, duration)
-		"pierce":
-			return "PIERCE\nIgnores enemy shield. Damage hits HP directly."
-		"blast":
-			return "BLAST\nDeal damage to all enemies."
-		_:
-			return "%s\n%s: %s" % [kind.to_upper(), kind, value]
-
-
-func _build_roll_shift_tooltip(value: String, duration: int) -> String:
-	var amount: int = PixelUI.parse_signed_amount(value)
-	var amount_text: String = str(abs(amount))
-	var verb: String = "Reduce die roll by %s" % amount_text if amount < 0 else "Increase die roll by %s" % amount_text
-	if duration > 1:
-		return "%s for %d turns." % [verb, duration]
-	return "%s." % verb
 
 
 func _make_separator() -> Label:

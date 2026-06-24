@@ -78,11 +78,6 @@ const HEADER_SUMMARY_FONT_SIZE := 112
 const HEADER_COUNTER_FONT_SIZE := 36
 const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
-const HUD_TOOLTIP_MIN_WIDTH := 180.0
-const HUD_TOOLTIP_MAX_WIDTH := 380.0
-const HUD_TOOLTIP_PAD_X := 14.0
-const HUD_TOOLTIP_FONT_SIZE := 34
-const HUD_TOOLTIP_BORDER_WIDTH := 4.0
 const HELP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
@@ -131,12 +126,6 @@ var _protocol_footer_lights: Array = []
 var _protocol_footer_spacer: Control = null
 var _header_frame: PanelContainer = null
 var _footer_frame: PanelContainer = null
-var _hud_tooltip_panel: PanelContainer = null
-var _hud_tooltip_label: Label = null
-var _hud_tooltip_node: Control = null
-var _hud_tooltip_hold_timer: Timer = null
-var _pending_tooltip_node: Control = null
-var _pending_tooltip_text: String = ""
 var _die_tooltip_overlays: Array = []
 var _layout: BattleLayout = null
 var _card_view: BattleCardView = null
@@ -207,7 +196,6 @@ func _ready() -> void:
 	_layout.queue_board_layout_refresh()
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
 	protocol_spend_button.text = "↺"
-	_build_hud_tooltip()
 	# The header bar lives in the PersistentHeader autoload now — bind its buttons to
 	# this battle's handlers. They go inert again when this scene exits the tree.
 	PersistentHeader.bind_battle_actions(
@@ -355,11 +343,7 @@ func _populate_hero_cards() -> void:
 			continue
 
 		var card: Control = _create_battle_card()
-		if card.has_method("set_tooltip_callback"):
-			card.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
-		if readout.has_method("set_tooltip_callback"):
-			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var dice_anchor: Control = _layout.build_dice_anchor()
 		var slot_index: int = i
 		(card_slots[slot_index] as Control).add_child(card)
@@ -397,11 +381,7 @@ func _populate_enemy_cards() -> void:
 			continue
 
 		var card: Control = _create_battle_card()
-		if card.has_method("set_tooltip_callback"):
-			card.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var readout: Control = ABILITY_READOUT_SCENE.instantiate() as Control
-		if readout.has_method("set_tooltip_callback"):
-			readout.set_tooltip_callback(func(node: Control, text: String) -> void: _set_hud_tooltip(node, text))
 		var dice_anchor: Control = _layout.build_dice_anchor()
 		var slot_index: int = i
 		(card_slots[slot_index] as Control).add_child(card)
@@ -761,16 +741,11 @@ func _attach_die_inspect(overlay: Control, side: String, unit_id: String, abilit
 
 
 func _clear_die_tooltip_overlays() -> void:
-	var should_hide_tooltip := false
 	for overlay_variant in _die_tooltip_overlays:
 		var overlay: Control = overlay_variant as Control
 		if overlay != null and is_instance_valid(overlay):
-			if overlay == _hud_tooltip_node:
-				should_hide_tooltip = true
 			overlay.queue_free()
 	_die_tooltip_overlays.clear()
-	if should_hide_tooltip:
-		_hide_hud_tooltip_safe()
 
 
 func _resolve_current_turn(skip_feedback: bool = false) -> void:
@@ -2561,176 +2536,6 @@ func _add_icon_reference_row(parent: VBoxContainer, icon_key: String, label_text
 	text_box.add_child(desc_label)
 
 
-func _build_hud_tooltip() -> void:
-	if _hud_tooltip_panel != null:
-		return
-	_hud_tooltip_hold_timer = Timer.new()
-	_hud_tooltip_hold_timer.name = "HudTooltipHoldTimer"
-	_hud_tooltip_hold_timer.wait_time = 0.5
-	_hud_tooltip_hold_timer.one_shot = true
-	_hud_tooltip_hold_timer.timeout.connect(_on_hud_tooltip_hold_timeout)
-	add_child(_hud_tooltip_hold_timer)
-
-	_hud_tooltip_panel = PanelContainer.new()
-	_hud_tooltip_panel.visible = false
-	_hud_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud_tooltip_panel.z_as_relative = false
-	_hud_tooltip_panel.z_index = 100
-	_hud_tooltip_panel.custom_minimum_size = Vector2(HUD_TOOLTIP_MIN_WIDTH, 0)
-	_hud_tooltip_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var tooltip_style: StyleBoxFlat = StyleBoxFlat.new()
-	tooltip_style.bg_color = Color(0.018, 0.026, 0.044, 0.96)
-	tooltip_style.border_color = Color(0.36, 0.55, 0.78, 0.92)
-	tooltip_style.set_border_width_all(int(HUD_TOOLTIP_BORDER_WIDTH))
-	tooltip_style.corner_radius_top_left = 0
-	tooltip_style.corner_radius_top_right = 0
-	tooltip_style.corner_radius_bottom_left = 0
-	tooltip_style.corner_radius_bottom_right = 0
-	_hud_tooltip_panel.add_theme_stylebox_override("panel", tooltip_style)
-	float_layer.add_child(_hud_tooltip_panel)
-
-	var tooltip_margin: MarginContainer = MarginContainer.new()
-	tooltip_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tooltip_margin.add_theme_constant_override("margin_left", int(HUD_TOOLTIP_PAD_X))
-	tooltip_margin.add_theme_constant_override("margin_top", 14)
-	tooltip_margin.add_theme_constant_override("margin_right", int(HUD_TOOLTIP_PAD_X))
-	tooltip_margin.add_theme_constant_override("margin_bottom", 14)
-	_hud_tooltip_panel.add_child(tooltip_margin)
-
-	_hud_tooltip_label = Label.new()
-	_hud_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_hud_tooltip_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_hud_tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hud_tooltip_label.add_theme_font_size_override("font_size", HUD_TOOLTIP_FONT_SIZE)
-	_hud_tooltip_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-	_hud_tooltip_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
-	_hud_tooltip_label.add_theme_constant_override("outline_size", 4)
-	tooltip_margin.add_child(_hud_tooltip_label)
-
-
-func _set_hud_tooltip(node: Control, text: String, wrap_text: bool = false) -> void:
-	if node == null:
-		return
-	_build_hud_tooltip()
-	node.tooltip_text = ""
-	node.set_meta("hud_tooltip", text)
-	node.set_meta("hud_tooltip_wrap", wrap_text)
-	if bool(node.get_meta("hud_tooltip_connected", false)):
-		return
-	node.set_meta("hud_tooltip_connected", true)
-	if OS.has_feature("mobile"):
-		if not node.gui_input.is_connected(_on_hud_tooltip_gui_input):
-			node.gui_input.connect(_on_hud_tooltip_gui_input.bind(node))
-	else:
-		if not node.mouse_entered.is_connected(_on_hud_tooltip_entered):
-			node.mouse_entered.connect(_on_hud_tooltip_entered.bind(node))
-		if not node.mouse_exited.is_connected(_on_hud_tooltip_exited):
-			node.mouse_exited.connect(_on_hud_tooltip_exited)
-
-
-func _on_hud_tooltip_entered(node: Control) -> void:
-	if node == null or _hud_tooltip_panel == null or _hud_tooltip_label == null:
-		return
-	var text: String = str(node.get_meta("hud_tooltip", "")).strip_edges()
-	_show_hud_tooltip(text, node)
-
-
-func _on_hud_tooltip_exited() -> void:
-	_hide_hud_tooltip_safe()
-
-
-func _on_hud_tooltip_gui_input(event: InputEvent, node: Control) -> void:
-	if not OS.has_feature("mobile"):
-		return
-	if event is InputEventScreenTouch:
-		var touch_event: InputEventScreenTouch = event
-		if touch_event.pressed:
-			var text: String = str(node.get_meta("hud_tooltip", "")).strip_edges()
-			if text == "":
-				return
-			_pending_tooltip_node = node
-			_pending_tooltip_text = text
-			if _hud_tooltip_hold_timer != null:
-				_hud_tooltip_hold_timer.start()
-		else:
-			_hide_hud_tooltip_safe()
-
-
-func _on_hud_tooltip_hold_timeout() -> void:
-	if _pending_tooltip_text == "" or _pending_tooltip_node == null:
-		return
-	_show_hud_tooltip(_pending_tooltip_text, _pending_tooltip_node)
-
-
-func _show_hud_tooltip(text: String, anchor_node: Control) -> void:
-	if _hud_tooltip_panel == null or _hud_tooltip_label == null:
-		return
-	var final_text: String = text.strip_edges()
-	if final_text == "":
-		_hide_hud_tooltip_safe()
-		return
-	_hud_tooltip_node = anchor_node
-	_hud_tooltip_label.text = final_text
-	_configure_hud_tooltip_wrap(bool(anchor_node.get_meta("hud_tooltip_wrap", false)) if anchor_node != null else false)
-	_hud_tooltip_panel.reset_size()
-	_update_hud_tooltip_position()
-	_hud_tooltip_panel.visible = true
-	await get_tree().process_frame
-	if _hud_tooltip_panel == null or not is_instance_valid(_hud_tooltip_panel) or not _hud_tooltip_panel.visible:
-		return
-	_update_hud_tooltip_position()
-
-
-func _configure_hud_tooltip_wrap(wrap_text: bool) -> void:
-	if _hud_tooltip_label == null:
-		return
-	if wrap_text:
-		_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-		_hud_tooltip_label.custom_minimum_size.x = HUD_TOOLTIP_MAX_WIDTH - (HUD_TOOLTIP_PAD_X * 2.0) - (HUD_TOOLTIP_BORDER_WIDTH * 2.0)
-	else:
-		_hud_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		_hud_tooltip_label.custom_minimum_size.x = 0.0
-	_hud_tooltip_label.size = Vector2.ZERO
-
-
-func _hide_hud_tooltip_safe() -> void:
-	if _hud_tooltip_hold_timer != null:
-		_hud_tooltip_hold_timer.stop()
-	_pending_tooltip_node = null
-	_pending_tooltip_text = ""
-	_hide_hud_tooltip()
-
-
-func _hide_hud_tooltip() -> void:
-	_hud_tooltip_node = null
-	if _hud_tooltip_panel != null:
-		_hud_tooltip_panel.visible = false
-
-
-func _update_hud_tooltip_position() -> void:
-	if _hud_tooltip_panel == null:
-		return
-	var tooltip_size: Vector2 = _hud_tooltip_panel.size
-	if tooltip_size == Vector2.ZERO:
-		tooltip_size = _hud_tooltip_panel.get_combined_minimum_size()
-	var target_pos: Vector2 = get_global_mouse_position() + Vector2(15, 15)
-	if _hud_tooltip_node != null and _hud_tooltip_node.is_inside_tree():
-		var node_rect: Rect2 = _hud_tooltip_node.get_global_rect()
-		target_pos = Vector2(
-			node_rect.position.x + (node_rect.size.x - tooltip_size.x) / 2.0,
-			node_rect.position.y - tooltip_size.y - 12.0
-		)
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-	if target_pos.y < 12.0 and _hud_tooltip_node != null and _hud_tooltip_node.is_inside_tree():
-		target_pos.y = _hud_tooltip_node.get_global_rect().end.y + 12.0
-	target_pos.x = minf(target_pos.x, viewport_size.x - tooltip_size.x - 8.0)
-	target_pos.x = maxf(target_pos.x, 8.0)
-	target_pos.y = minf(target_pos.y, viewport_size.y - tooltip_size.y - 8.0)
-	target_pos.y = maxf(target_pos.y, 8.0)
-	_hud_tooltip_panel.global_position = target_pos
-
-
 func _refresh_roll_summaries() -> void:
 	pass
 
@@ -2868,7 +2673,6 @@ func _build_relic_slot() -> void:
 	var slot: PanelContainer = PanelContainer.new()
 	_relic_slot = slot
 	slot.custom_minimum_size = ITEM_SLOT_SIZE
-	_set_hud_tooltip(slot, "Relic\nNo relic equipped.")
 	PixelUI.style_panel(slot, Color(0.012, 0.018, 0.028, 0.35), PixelUI.LINE_DIM, 1, 2)
 
 	var icon_center: CenterContainer = CenterContainer.new()
@@ -2908,7 +2712,6 @@ func _update_relic_slot() -> void:
 	var icon: TextureRect = _relic_slot.find_child("RelicIcon", true, false) as TextureRect
 	var relic_ids: Array = _game_state().relics
 	if relic_ids.is_empty():
-		_set_hud_tooltip(_relic_slot, "Relic\nNo relic equipped.")
 		if icon != null:
 			icon.texture = null
 			icon.visible = false
@@ -2919,7 +2722,6 @@ func _update_relic_slot() -> void:
 
 	var relic: ItemData = _data_manager().get_item(str(relic_ids[0])) as ItemData
 	if relic == null:
-		_set_hud_tooltip(_relic_slot, "Relic\nUnknown relic.")
 		if icon != null:
 			icon.texture = null
 			icon.visible = false
@@ -2928,7 +2730,6 @@ func _update_relic_slot() -> void:
 			label.visible = true
 		return
 
-	_set_hud_tooltip(_relic_slot, _build_relic_tooltip(relic))
 	if icon != null:
 		icon.texture = relic.icon
 		icon.visible = relic.icon != null
@@ -2970,34 +2771,6 @@ func _on_item_menu_id_pressed(id: int) -> void:
 	if item == null:
 		return
 	_on_item_button_pressed(item)
-
-
-func _build_item_tooltip(item: ItemData) -> String:
-	var cost: int = _get_item_protocol_cost(item)
-	var target_text: String = _format_item_target_kind(item.target_kind)
-	return "%s\n%s\nTarget: %s\nProtocol cost: %d" % [
-		item.display_name,
-		item.description,
-		target_text,
-		cost,
-	]
-
-
-func _build_relic_tooltip(relic: ItemData) -> String:
-	return "%s\n%s" % [relic.display_name, relic.description]
-
-
-func _format_item_target_kind(target_kind: String) -> String:
-	match target_kind:
-		"ally":
-			return "living ally"
-		"allyDead":
-			return "fallen ally"
-		"enemy":
-			return "living enemy"
-		"none":
-			return "none"
-	return target_kind
 
 
 func _get_item_icon_char(icon_key: String) -> String:

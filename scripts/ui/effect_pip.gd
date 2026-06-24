@@ -105,8 +105,7 @@ static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> f
 static func build_group(
 	effect: Dictionary,
 	profile: Dictionary,
-	side: String = "hero",
-	tooltip_callback: Callable = Callable()
+	side: String = "hero"
 ) -> Control:
 	var effect_kind: String = str(effect.get("kind", ""))
 	var pip_key: String = pip_key_for_effect(effect, side)
@@ -142,12 +141,6 @@ static func build_group(
 	else:
 		group.add_child(_make_value_display(effect, profile, side))
 
-	if tooltip_callback.is_valid():
-		var tip: String = str(effect.get("tooltip", ""))
-		if tip.is_empty():
-			tip = _default_tooltip(effect)
-		tooltip_callback.call(group, tip)
-
 	return group
 
 
@@ -155,17 +148,14 @@ static func build_row(
 	effects: Array,
 	profile: Dictionary,
 	side: String = "hero",
-	separation: int = 16,
-	tooltip_callback: Callable = Callable()
+	separation: int = 16
 ) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", separation)
 	for i in range(effects.size()):
-		if i > 0 and separation > 0:
-			pass
-		row.add_child(build_group(effects[i], profile, side, tooltip_callback))
+		row.add_child(build_group(effects[i], profile, side))
 	return row
 
 
@@ -452,38 +442,3 @@ static func _make_text_label(
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)
 	return label
-
-
-static func _default_tooltip(effect: Dictionary) -> String:
-	var kind: String = str(effect.get("kind", "")).to_lower()
-	var value: String = display_text_for_effect(effect)
-	var duration: int = int(effect.get("duration", 0))
-	match kind:
-		"cloak":
-			return "CLOAK\n80% chance to evade the next incoming damage attempt."
-		"revive":
-			return "REVIVE\nRevive at %s max HP." % value
-		"taunt":
-			return "TAUNT\nForces enemies to target this unit."
-		"counter":
-			return "COUNTER\nPrime to counter the next targeted attack."
-		"rampage":
-			return "RAMPAGE\nNext attack gains bonus damage."
-		"pierce":
-			return "PIERCE\nIgnores enemy shield."
-		"freeze":
-			return "FROZEN\nLocks a die for %d reveal%s." % [maxi(duration, 1), "" if duration == 1 else "s"]
-		"dmg", "damage":
-			return "DEAL DAMAGE\nDeal %s damage." % value
-		"dot", "poison":
-			return "DAMAGE OVER TIME\nDeal %s per turn." % value
-		"shield":
-			return "GAIN SHIELD\nBlock %s damage." % value
-		"heal":
-			return "HEAL\nRestore %s HP." % value
-		"roll", "rfe", "rfm":
-			return "ROLL SHIFT\n%s" % value
-		"protocol":
-			return "PROTOCOL\n%s" % value
-		_:
-			return "%s\n%s" % [kind.to_upper(), value]

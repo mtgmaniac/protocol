@@ -344,18 +344,6 @@ func get_gear_detail_rows(unit_id: String) -> Array:
 	return gear_rows
 
 
-func build_ability_tooltip(unit: Resource) -> String:
-	var lines: Array = [str(unit.display_name)]
-	for entry_variant in unit.dice_ranges:
-		var entry: Dictionary = entry_variant
-		lines.append("%d-%d  %s" % [
-			int(entry.get("min", 0)),
-			int(entry.get("max", 0)),
-			str(entry.get("ability_name", "")),
-		])
-	return "\n".join(lines)
-
-
 func build_ability_chart_rows(unit: Resource) -> Array:
 	var is_hero_unit: bool = unit is UnitData
 	var zone_ranges: Dictionary = {}

@@ -45,21 +45,6 @@ const STATUS_NUMERIC_MIN_WIDTH := 96.0
 const STATUS_CHIP_HEIGHT := 56.0
 const ACTION_PIP_VALUE_FONT_SIZE := 48
 const CARD_BORDER_WIDTH := 6
-const STATUS_DESCRIPTIONS := {
-	"shield": "Absorbs {value} incoming damage.",
-	"poison": "Takes {value} damage at the start of next turn.",
-	"frozen": "Die result is locked and cannot be changed this turn.",
-	"cloak": "80% chance to evade the next incoming damage attempt.",
-	"cower": "Cannot deal damage this turn.",
-	"taunt": "Enemies must target this unit.",
-	"rampage": "Deals double damage this turn.",
-	"counter": "{value}% chance to reflect the next targeted hero attack.",
-	"cursed": "Abilities trigger at reduced effectiveness.",
-	"down": "Knocked out. Cannot act until revived.",
-	"roll": "Shift die roll by {value}.",
-	"rfe": "Shift die roll by {value}.",
-	"rfm": "Shift die roll by {value}.",
-}
 const PIP_ICON_MAP := {
 	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
 	"blast": preload("res://assets/generated/icon_damage_1776027930.png"),
@@ -136,8 +121,6 @@ var _preview_rect_heal: ColorRect = null
 var _locked_layout_size: Vector2 = Vector2.ZERO
 var _locked_portrait_width: float = 0.0
 var _locked_portrait_size: Vector2 = Vector2.ZERO
-var _tooltip_cb: Callable = Callable()
-var _hp_tooltip_text: String = "HEALTH PREVIEW\nNo incoming effects this turn."
 var _portrait_long_press: LongPressInput = null
 var _pip_icon_atlas: Texture2D = null
 
@@ -214,24 +197,17 @@ func set_interaction_enabled(value: bool) -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if value else Control.CURSOR_ARROW
 
 
-func set_tooltip_callback(callback: Callable) -> void:
-	_tooltip_cb = callback
-	_wire_hp_tooltip()
-
-
 func show_combat_preview(effects: Dictionary) -> void:
 	_preview_effects = effects.duplicate(true)
 	_ensure_preview_rects()
-	_hp_tooltip_text = _build_preview_tooltip(_preview_effects)
-	_wire_hp_tooltip()
+	_wire_hp_passthrough()
 	call_deferred("_layout_preview_overlays")
 
 
 func clear_combat_preview() -> void:
 	_preview_effects.clear()
 	_hide_preview_rects()
-	_hp_tooltip_text = "HEALTH PREVIEW\nNo incoming effects this turn."
-	_wire_hp_tooltip()
+	_wire_hp_passthrough()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -768,8 +744,6 @@ func build_status_chip(status: Dictionary) -> Control:
 		if str(status.get("value", "")) != "":
 			chip.add_child(_make_status_value_label(status))
 	_tint_status_content(chip, pal["border"])
-	if _tooltip_cb.is_valid():
-		_tooltip_cb.call(badge, _build_status_tooltip(status))
 	return badge
 
 
@@ -901,41 +875,6 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 	if first == "RMP" or first == "RAGE" or first == "RAMPAGE":
 		return {"type": "named", "mode": "named", "name": "RAMPAGE", "value": value, "priority": 3}
 	return {"type": "named", "mode": "named", "name": first, "priority": 9}
-
-
-func _build_status_tooltip(status: Dictionary) -> String:
-	var key: String = _get_status_description_key(status)
-	var title: String = _get_status_title(status)
-	if key == "roll" or key == "rfe" or key == "rfm":
-		var signed_amount: int = PixelUI.parse_signed_amount(str(status.get("value", "")).strip_edges())
-		var verb: String = "Reduce die roll by %d." % abs(signed_amount) if signed_amount < 0 else "Increase die roll by %d." % abs(signed_amount)
-		if signed_amount != 0:
-			return "%s\n%s" % [title, verb]
-	if key == "shield" or key == "poison" or key == "counter":
-		var status_value: String = str(status.get("value", "0")).strip_edges()
-		if status_value == "":
-			status_value = "0"
-		var valued_description: String = str(STATUS_DESCRIPTIONS.get(key, "")).replace("{value}", status_value)
-		return "%s\n%s" % [title, valued_description]
-	var description: String = str(STATUS_DESCRIPTIONS.get(key, "Status effect: %s" % title.to_lower()))
-	return "%s\n%s" % [title, description]
-
-
-func _get_status_description_key(status: Dictionary) -> String:
-	var status_type: String = str(status.get("type", "")).to_lower()
-	if status_type == "named":
-		return str(status.get("name", "")).to_lower().replace(" ", "_")
-	if status_type == "dot":
-		return "poison"
-	if status_type == "phase2":
-		return "phase_two"
-	return status_type
-
-
-func _get_status_title(status: Dictionary) -> String:
-	if str(status.get("mode", "named")) == "named":
-		return str(status.get("name", status.get("type", "status"))).to_upper()
-	return str(status.get("type", "status")).replace("_", " ").to_upper()
 
 
 func _sort_statuses_by_priority(a: Dictionary, b: Dictionary) -> bool:
@@ -1144,72 +1083,23 @@ func _layout_preview_overlays() -> void:
 	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.DT_HP_GREEN)
 
 
-func _wire_hp_tooltip() -> void:
+func _wire_hp_passthrough() -> void:
 	if _hp_back == null:
 		return
 	_hp_back.mouse_filter = Control.MOUSE_FILTER_STOP
 	_connect_passthrough_input(_hp_back)
-	if _tooltip_cb.is_valid():
-		_tooltip_cb.call(_hp_back, _hp_tooltip_text)
-
-
-func _build_preview_tooltip(effects: Dictionary) -> String:
-	var lines: Array = ["HEALTH PREVIEW"]
-	var inc_dmg: int = int(effects.get("damage", 0))
-	var inc_heal: int = int(effects.get("heal", 0))
-	var inc_shield: int = int(effects.get("shield", 0))
-	var dot_tick: int = int(effects.get("dot", 0))
-	var cur_shield: int = int(effects.get("current_shield", 0))
-	var lethal: bool = bool(effects.get("lethal", false))
-
-	if lethal:
-		lines.append("Lethal: this unit will not survive the turn.")
-		return "\n".join(lines)
-
-	var total_shield: int = cur_shield + inc_shield
-	if inc_dmg > 0:
-		var absorbed: int = mini(total_shield, inc_dmg)
-		var hp_lost: int = inc_dmg - absorbed
-		if absorbed > 0 and hp_lost > 0:
-			lines.append("%d damage: %d blocked by shield, %d to HP." % [inc_dmg, absorbed, hp_lost])
-		elif absorbed > 0:
-			lines.append("%d damage: fully blocked by shield." % inc_dmg)
-		else:
-			lines.append("%d damage to HP." % inc_dmg)
-
-	if inc_shield > 0:
-		if cur_shield > 0:
-			lines.append("+%d shield, stacking with existing %d." % [inc_shield, cur_shield])
-		else:
-			lines.append("+%d incoming shield." % inc_shield)
-
-	if dot_tick > 0:
-		var shield_after_dmg: int = maxi(0, total_shield - mini(total_shield, inc_dmg))
-		var dot_absorbed: int = mini(shield_after_dmg, dot_tick)
-		var dot_hp_lost: int = dot_tick - dot_absorbed
-		if dot_absorbed > 0 and dot_hp_lost > 0:
-			lines.append("Poison tick: %d (%d blocked, %d to HP)." % [dot_tick, dot_absorbed, dot_hp_lost])
-		elif dot_absorbed > 0:
-			lines.append("Poison tick: %d, fully blocked by shield." % dot_tick)
-		else:
-			lines.append("Poison tick: %d to HP." % dot_tick)
-
-	if inc_heal > 0:
-		lines.append("+%d healing." % inc_heal)
-
-	if lines.size() == 1:
-		lines.append("No incoming effects this turn.")
-	return "\n".join(lines)
 
 
 func _connect_passthrough_input(control: Control) -> void:
 	if control == null or bool(control.get_meta("compact_passthrough_connected", false)):
 		return
 	control.set_meta("compact_passthrough_connected", true)
-	control.gui_input.connect(_on_tooltip_target_gui_input)
+	control.gui_input.connect(_on_passthrough_gui_input)
 
 
-func _on_tooltip_target_gui_input(event: InputEvent) -> void:
+# Forwards presses on the STOP'd HP-bar region to the card's own gui_input so a tap/long-press
+# there still selects/inspects the unit instead of being swallowed.
+func _on_passthrough_gui_input(event: InputEvent) -> void:
 	_gui_input(event)
 
 
