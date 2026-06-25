@@ -434,6 +434,7 @@ func _on_unit_detail_requested(card: Control) -> void:
 		compact_card.get_global_rect(),
 		compact_card.get_instance_id(),
 	)
+	_emit_tutorial("inspected", {"side": compact_card.side})
 
 
 # The live battle-state dict backing a unit card (empty if not found).
@@ -452,9 +453,11 @@ func _on_roll_button_pressed() -> void:
 		return
 	AudioManager.play_select()
 	if turn_phase == PHASE_AWAIT_ROLL:
+		_emit_tutorial("roll_pressed")
 		_begin_targeting_phase()
 		return
 	if turn_phase == PHASE_READY_TO_END:
+		_emit_tutorial("end_turn_pressed")
 		_resolve_current_turn()
 
 

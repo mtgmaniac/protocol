@@ -6,7 +6,9 @@
 class_name TutorialController
 extends CanvasLayer
 
-const LAYER := 140
+# Above the battle scene + header (8) but BELOW InspectPopup (130) / HelpMenu (135), so a
+# long-press inspect shows above the coachmarks instead of being dimmed under them.
+const LAYER := 110
 const DIM := Color(0.01, 0.015, 0.02, 0.82)
 const PAD := 14.0
 const COACH_FONT := 32
@@ -49,23 +51,23 @@ func _build_steps() -> Array:
 		{"targets": ["header"], "text": "This bar stays with you all run — squad progress and the Help menu live here. Help holds the full encyclopedia."},
 		{"targets": ["hero_cards"], "text": "Your three specialists. Each has its own HP and abilities."},
 		{"targets": ["enemy_cards"], "text": "Your target. Enemies telegraph their hit — you can see what's coming before it lands."},
-		{"targets": [], "text": "Long-press anything — a unit, a die, an item — to inspect it.", "title": "INSPECT"},
+		{"targets": ["enemy_cards"], "text": "Long-press anything to inspect it. Give it a try on your enemy.", "title": "INSPECT", "advance": "inspected"},
 		# Phase 1 — turn 1: the core loop
-		{"targets": ["roll_button"], "text": "Tap Roll to set your dice.", "advance": "rolled"},
-		{"targets": ["hero_dice"], "text": "Each die slots into a band. Higher rolls fire stronger abilities."},
+		{"targets": ["roll_button"], "text": "Tap Roll to set your dice.", "advance": "roll_pressed"},
+		{"targets": ["center"], "text": "Each die slots into a band. Higher rolls fire stronger abilities."},
 		{"targets": ["hero_cards"], "text": "Every unit's bands differ — long-press a card to see its ranges."},
-		{"targets": ["enemy_cards"], "text": "Tap a die, then tap a target to fire it.", "advance": "assigned"},
+		{"targets": ["hero_area"], "text": "Tap a die (or its hero card), then tap the enemy to fire it.", "advance": "assigned"},
 		{"targets": ["enemy_cards"], "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
 		{"targets": ["enemy_readouts"], "text": "Here's what the enemy will do next turn. Control matters."},
 		{"targets": ["roll_button"], "text": "Lock it in — end the turn and let the enemy act.", "advance": "turn_resolved"},
 		{"targets": ["battle_log"], "text": "Everything that happens is logged here."},
 		{"targets": ["protocol_bar"], "text": "You earned 1 Protocol. It builds +1 every turn, caps at 10. Watch what it does next."},
 		# Phase 2 — turn 2: Protocol & Nudge
-		{"targets": ["roll_button"], "text": "Roll again.", "advance": "rolled"},
-		{"targets": ["hero_dice"], "text": "Pulse Tech's die landed just short of a stronger ability."},
+		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
+		{"targets": ["center"], "text": "Pulse Tech's die landed just short of a stronger ability."},
 		{"targets": ["protocol_value"], "text": "You have 1 Protocol. Time to spend it."},
 		{"targets": ["nudge"], "text": "Nudge costs 1: +3 to a die. Use it to push that die over the line.", "advance": "nudged"},
-		{"targets": ["enemy_cards"], "text": "It jumped into a stronger band — Plasma Lance. Now assign it.", "advance": "assigned"},
+		{"targets": ["hero_area"], "text": "It jumped into a stronger band — Plasma Lance. Tap its die, then the enemy.", "advance": "assigned"},
 		{"targets": ["reroll", "nudge"], "text": "Reroll (2) and Set (3) cost more — they unlock as you bank Protocol."},
 		{"targets": ["roll_button"], "text": "Clear them out — assign the rest and end the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
@@ -83,6 +85,10 @@ func _advance_mode() -> String:
 # ── Event / tap gating ──────────────────────────────────────────────────────────
 func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	var mode: String = _advance_mode()
+	# A press that starts an animation (roll, end turn) but isn't our gate: drop the spotlight so
+	# it doesn't linger on the now-gone/changing control while the animation plays.
+	if (event == &"roll_pressed" or event == &"end_turn_pressed") and String(event) != mode:
+		_hide_spotlight()
 	if mode == "tap" or mode == "tap_finish":
 		return
 	if String(event) != mode:
@@ -91,6 +97,20 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	if _current().has("phase") and str(payload.get("phase", "")) != str(_current()["phase"]):
 		return
 	_next()
+
+
+# Drop the spotlight visuals (full dim, no ring) while keeping the coachmark, e.g. during a
+# resolve animation, until the next step lays out.
+func _hide_spotlight() -> void:
+	var s: Vector2 = get_viewport().get_visible_rect().size
+	_set_rect(_dim_top, Rect2(0, 0, s.x, s.y))
+	_set_rect(_dim_bottom, Rect2())
+	_set_rect(_dim_left, Rect2())
+	_set_rect(_dim_right, Rect2())
+	if _ring != null:
+		_ring.visible = false
+	if _ring_tween != null and _ring_tween.is_valid():
+		_ring_tween.kill()
 
 
 func _on_dim_tapped(event: InputEvent) -> void:
@@ -143,10 +163,25 @@ func _layout_step() -> void:
 	var step: Dictionary = _current()
 	if step.is_empty():
 		return
+	_apply_interactivity()
 	var hole: Rect2 = _targets_rect(step.get("targets", []))
 	_apply_dim(hole)
 	_apply_ring(hole)
 	_apply_coach(step, hole)
+
+
+# Tap-advance steps catch input on the dim (tap anywhere to continue). Gated steps must let the
+# player drive the real controls (roll, select a hero die, target, nudge), so the dim + coachmark
+# pass input straight through — fixes "the overlay won't let me click the dice/cards".
+func _apply_interactivity() -> void:
+	var mode: String = _advance_mode()
+	var gated: bool = not (mode == "tap" or mode == "tap_finish")
+	var mf: int = Control.MOUSE_FILTER_IGNORE if gated else Control.MOUSE_FILTER_STOP
+	for d in [_dim_top, _dim_bottom, _dim_left, _dim_right]:
+		if d != null:
+			d.mouse_filter = mf
+	if _coach != null:
+		_coach.mouse_filter = mf
 
 
 func _targets_rect(keys: Array) -> Rect2:
@@ -177,14 +212,18 @@ func _target_rect(key: String) -> Rect2:
 			return _node_rect(_scene.get("roll_button"))
 		"hero_cards":
 			return _node_rect(_scene.get("hero_cards"))
+		"hero_area":
+			# The hero cards + their dice/readout row — where you tap a die to fire it.
+			return _merge_nonempty(_node_rect(_scene.get("hero_cards")), _node_rect(_scene.get("hero_dice_row")))
+		"center":
+			# The center panel holds the rolled dice + their effect pips together.
+			return _node_rect(_scene.get("center_panel"))
 		"enemy_cards":
-			return _node_rect(_scene.get("enemy_cards")).merge(_node_rect(_scene.get("enemy_dice_row")))
+			return _merge_nonempty(_node_rect(_scene.get("enemy_cards")), _node_rect(_scene.get("enemy_dice_row")))
 		"enemy_readouts":
-			return _node_rect(_scene.get("enemy_readouts")).merge(_node_rect(_scene.get("enemy_dice_row")))
-		"hero_dice":
-			return _node_rect(_scene.get("hero_dice_row")).merge(_node_rect(_scene.get("hero_readouts")))
+			return _merge_nonempty(_node_rect(_scene.get("enemy_readouts")), _node_rect(_scene.get("enemy_dice_row")))
 		"protocol_bar":
-			return _node_rect(_scene.get("protocol_bar")).merge(_node_rect(_scene.get("protocol_panel")))
+			return _merge_nonempty(_node_rect(_scene.get("protocol_bar")), _node_rect(_scene.get("protocol_panel")))
 		"protocol_value":
 			return _node_rect(_scene.get("protocol_value_label"))
 		"nudge":
@@ -194,6 +233,14 @@ func _target_rect(key: String) -> Rect2:
 		"battle_log":
 			return _node_rect(_scene.get("battle_log_panel"))
 	return Rect2()
+
+
+func _merge_nonempty(a: Rect2, b: Rect2) -> Rect2:
+	if a.size == Vector2.ZERO:
+		return b
+	if b.size == Vector2.ZERO:
+		return a
+	return a.merge(b)
 
 
 func _node_rect(node: Variant) -> Rect2:
