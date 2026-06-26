@@ -567,18 +567,21 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 	mat.emission_enabled = true
 	mat.roughness = 0.80
 	panel.material_override = mat
+	# Drop the result face's bevel so its glow reads cleanly.
+	var result_bevel: MeshInstance3D = die.get_node_or_null("FaceBevel%d" % result) as MeshInstance3D
+	if result_bevel != null:
+		result_bevel.visible = false
+	# Fade the non-result numerals; keep each engrave colour, only adjust alpha (all three layers).
 	for face_value in _face_values:
-		var label: Label3D = die.get_node_or_null("FaceNumber%d" % int(face_value)) as Label3D
-		if label == null:
-			continue
-		if int(face_value) == result:
-			label.modulate = Color(1.0, 1.0, 1.0, 1.0)
-			label.outline_size = 24
-		else:
-			var faded_color: Color = label.modulate
-			faded_color.a = 0.4
-			label.modulate = faded_color
-			label.outline_size = 20
+		var fv: int = int(face_value)
+		var alpha: float = 1.0 if fv == result else 0.4
+		for prefix in ["FaceNumber", "FaceNumberShadow", "FaceNumberHighlight"]:
+			var label: Label3D = die.get_node_or_null("%s%d" % [prefix, fv]) as Label3D
+			if label == null:
+				continue
+			var c: Color = label.modulate
+			c.a = alpha
+			label.modulate = c
 
 
 func _get_zone_face_style(zone_key: String) -> Dictionary:
@@ -621,36 +624,43 @@ func _get_zone_face_style(zone_key: String) -> Dictionary:
 
 
 func _reset_face_highlights(die: RigidBody3D) -> void:
+	var face_mat: StandardMaterial3D = _face_panel_material_for(die)
 	for face_value in _face_values:
 		var panel: MeshInstance3D = die.get_node_or_null("FacePanel%d" % int(face_value)) as MeshInstance3D
 		if panel != null:
-			panel.material_override = _get_face_panel_material()
+			panel.material_override = face_mat
+		var bevel: MeshInstance3D = die.get_node_or_null("FaceBevel%d" % int(face_value)) as MeshInstance3D
+		if bevel != null:
+			bevel.visible = true
 
 
 func _reset_face_labels(die: RigidBody3D) -> void:
+	var base: Color = _die_base_color(die)
 	for face_value in _face_values:
-		var value: int = int(face_value)
-		var label: Label3D = die.get_node_or_null("FaceNumber%d" % value) as Label3D
-		if label == null:
-			continue
-		_apply_die_face_label_text(label, value)
+		_apply_face_number(die, int(face_value), int(face_value), base)
 
 
 func _set_displayed_face_number(die: RigidBody3D, face_value: int, result: int) -> void:
 	_reset_face_labels(die)
-	var label: Label3D = die.get_node_or_null("FaceNumber%d" % face_value) as Label3D
-	if label != null:
-		_apply_die_face_label_text(label, result)
+	_apply_face_number(die, face_value, result, _die_base_color(die))
 
 
-func _apply_die_face_label_text(label: Label3D, result: int) -> void:
-	var value_text: String = "%d" % clampi(result, 1, 20)
+# Set the engraved numeral (all three stacked labels) on one face, restoring their engrave colours.
+func _apply_face_number(die: RigidBody3D, face_value: int, display_value: int, base: Color) -> void:
+	var value_text: String = "%d" % clampi(display_value, 1, 20)
+	var font_size: int = 128 if value_text.length() == 1 else 108
+	_set_label(die, "FaceNumberShadow%d" % face_value, value_text, font_size, _number_shadow_color_for(base))
+	_set_label(die, "FaceNumberHighlight%d" % face_value, value_text, font_size, _number_highlight_color_for(base))
+	_set_label(die, "FaceNumber%d" % face_value, value_text, font_size, _number_main_color_for(base))
+
+
+func _set_label(die: RigidBody3D, node_name: String, value_text: String, font_size: int, color: Color) -> void:
+	var label: Label3D = die.get_node_or_null(node_name) as Label3D
+	if label == null:
+		return
 	label.text = value_text
-	label.font_size = 128 if value_text.length() == 1 else 108
-	label.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	label.outline_size = 20
-	label.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
-	label.pixel_size = 0.0060
+	label.font_size = font_size
+	label.modulate = color
 
 
 func _get_die_for_entry(side: String, unit_id: String) -> RigidBody3D:
@@ -951,6 +961,9 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.render_priority = -2
 	mat.albedo_color = Color(0.12, 0.42, 0.88, 1.0) if str(entry.get("side", "")) == "hero" else Color(0.72, 0.20, 0.18, 1.0)
+	# Every accent on this die — face panels, bevel rim, edges, engraved numbers — is derived
+	# deterministically from this one base colour so the look is consistent per die.
+	die.set_meta("base_color", mat.albedo_color)
 	mat.emission_enabled = true
 	mat.emission = mat.albedo_color.darkened(0.50)
 	mat.emission_energy_multiplier = 0.5
@@ -1248,42 +1261,55 @@ func _add_face_panels(die: RigidBody3D) -> void:
 		var normal: Vector3 = (b - a).cross(c - a).normalized()
 		if normal.dot(center) < 0:
 			normal = -normal
-		var inset: float = 0.96
-		var offset: float = 0.014
-		var va: Vector3 = center + (a - center) * inset + normal * offset
-		var vb: Vector3 = center + (b - center) * inset + normal * offset
-		var vc: Vector3 = center + (c - center) * inset + normal * offset
-		var panel_normal: Vector3 = (vb - va).cross(vc - va).normalized()
-		var verts: PackedVector3Array
-		if panel_normal.dot(normal) < 0:
-			verts = PackedVector3Array([va, vc, vb])
-		else:
-			verts = PackedVector3Array([va, vb, vc])
-		var face_normals: PackedVector3Array = PackedVector3Array([normal, normal, normal])
-		var arrays: Array = []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = verts
-		arrays[Mesh.ARRAY_NORMAL] = face_normals
-		var mesh: ArrayMesh = ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		var panel_inst: MeshInstance3D = MeshInstance3D.new()
+		# Main coloured face, then a smaller, slightly-proud darker triangle inside it: the inner
+		# rim reads as a recessed bevel where the faces meet (#2). FacePanel%d stays the highlight
+		# target; FaceBevel%d is purely cosmetic.
+		var panel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.96, 0.014)
 		panel_inst.name = "FacePanel%d" % (face_index + 1)
-		panel_inst.mesh = mesh
-		panel_inst.material_override = _get_face_panel_material()
+		panel_inst.material_override = _face_panel_material_for(die)
 		die.add_child(panel_inst)
+		var bevel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.80, 0.016)
+		bevel_inst.name = "FaceBevel%d" % (face_index + 1)
+		bevel_inst.material_override = _make_bevel_material(_die_base_color(die))
+		die.add_child(bevel_inst)
+
+
+# A flat triangle inset toward its face centre by `inset` and pushed `offset` along the normal.
+func _build_face_triangle(center: Vector3, a: Vector3, b: Vector3, c: Vector3, normal: Vector3, inset: float, offset: float) -> MeshInstance3D:
+	var va: Vector3 = center + (a - center) * inset + normal * offset
+	var vb: Vector3 = center + (b - center) * inset + normal * offset
+	var vc: Vector3 = center + (c - center) * inset + normal * offset
+	var panel_normal: Vector3 = (vb - va).cross(vc - va).normalized()
+	var verts: PackedVector3Array
+	if panel_normal.dot(normal) < 0:
+		verts = PackedVector3Array([va, vc, vb])
+	else:
+		verts = PackedVector3Array([va, vb, vc])
+	var face_normals: PackedVector3Array = PackedVector3Array([normal, normal, normal])
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = face_normals
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var inst: MeshInstance3D = MeshInstance3D.new()
+	inst.mesh = mesh
+	return inst
 
 
 func _add_edge_lines(die: RigidBody3D) -> void:
 	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
 	var edge_keys: Dictionary = {}
+	# One shared unshaded material per die → every edge is the exact same fixed dark tone (#1).
+	var edge_mat: StandardMaterial3D = _make_edge_material(_die_base_color(die))
 	for face_variant in _get_d20_faces():
 		var face: Array = face_variant
-		_add_edge_line_if_needed(die, raw_vertices, int(face[0]), int(face[1]), edge_keys)
-		_add_edge_line_if_needed(die, raw_vertices, int(face[1]), int(face[2]), edge_keys)
-		_add_edge_line_if_needed(die, raw_vertices, int(face[2]), int(face[0]), edge_keys)
+		_add_edge_line_if_needed(die, raw_vertices, int(face[0]), int(face[1]), edge_keys, edge_mat)
+		_add_edge_line_if_needed(die, raw_vertices, int(face[1]), int(face[2]), edge_keys, edge_mat)
+		_add_edge_line_if_needed(die, raw_vertices, int(face[2]), int(face[0]), edge_keys, edge_mat)
 
 
-func _add_edge_line_if_needed(die: RigidBody3D, raw_vertices: Array[Vector3], a_idx: int, b_idx: int, edge_keys: Dictionary) -> void:
+func _add_edge_line_if_needed(die: RigidBody3D, raw_vertices: Array[Vector3], a_idx: int, b_idx: int, edge_keys: Dictionary, edge_mat: StandardMaterial3D) -> void:
 	var min_idx: int = mini(a_idx, b_idx)
 	var max_idx: int = maxi(a_idx, b_idx)
 	var key: String = "%d:%d" % [min_idx, max_idx]
@@ -1300,7 +1326,7 @@ func _add_edge_line_if_needed(die: RigidBody3D, raw_vertices: Array[Vector3], a_
 	edge_mesh.size = Vector3(0.04, edge_length, 0.04)
 	var edge: MeshInstance3D = MeshInstance3D.new()
 	edge.mesh = edge_mesh
-	edge.material_override = _get_edge_line_material()
+	edge.material_override = edge_mat
 	edge.position = (a + b) * 0.5
 	edge.basis = _basis_for_edge(direction.normalized())
 	die.add_child(edge)
@@ -1315,34 +1341,86 @@ func _basis_for_edge(y_axis: Vector3) -> Basis:
 	return Basis(x_axis, y_axis, z_axis)
 
 
-func _get_face_panel_material() -> StandardMaterial3D:
-	if _face_panel_material == null:
-		_face_panel_material = StandardMaterial3D.new()
-		_face_panel_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		_face_panel_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		_face_panel_material.cull_mode = BaseMaterial3D.CULL_BACK
-		_face_panel_material.render_priority = 0
-		_face_panel_material.albedo_color = Color(0.015, 0.02, 0.035, 1.0)
-		_face_panel_material.emission_enabled = true
-		_face_panel_material.emission = Color(0.005, 0.01, 0.02, 1.0)
-		_face_panel_material.roughness = 0.90
-	return _face_panel_material
+# ── Deterministic per-die palette ───────────────────────────────────────────────
+# Every accent on a die is a fixed darkened/lightened version of its base colour, so the look
+# never drifts with lighting or randomness.
+func _die_base_color(die: RigidBody3D) -> Color:
+	if die.has_meta("base_color"):
+		var c: Variant = die.get_meta("base_color")
+		if c is Color:
+			return c
+	return Color(0.12, 0.42, 0.88, 1.0)
+
+func _face_color_for(base: Color) -> Color:
+	return base.darkened(0.38)                  # the lit face surface — clearly coloured
+
+func _bevel_color_for(base: Color) -> Color:
+	return _face_color_for(base).darkened(0.13)  # ~13% darker inset rim → subtle depth
+
+func _edge_color_for(base: Color) -> Color:
+	return base.darkened(0.72)                   # deep, fixed edge tone
+
+func _number_main_color_for(base: Color) -> Color:
+	return base.lightened(0.72)                  # bright readable numeral (light tint of the base)
+
+func _number_outline_color_for(base: Color) -> Color:
+	return base.darkened(0.84)                   # dark outline to crisp the numeral off the face
+
+func _number_shadow_color_for(base: Color) -> Color:
+	return base.darkened(0.86)                   # dark engrave shadow (offset down-right)
+
+func _number_highlight_color_for(base: Color) -> Color:
+	return base.lightened(0.66)                  # pale engrave highlight (offset up-left)
 
 
-func _get_edge_line_material() -> StandardMaterial3D:
-	if _edge_line_material == null:
-		_edge_line_material = StandardMaterial3D.new()
-		_edge_line_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		_edge_line_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		_edge_line_material.cull_mode = BaseMaterial3D.CULL_BACK
-		_edge_line_material.render_priority = 0
-		_edge_line_material.albedo_color = Color(0.04, 0.05, 0.07, 1.0)
-		_edge_line_material.emission_enabled = true
-		_edge_line_material.emission = Color(0.02, 0.03, 0.04, 1.0)
-		_edge_line_material.emission_energy_multiplier = 0.2
-		_edge_line_material.roughness = 0.55
-		_edge_line_material.metallic = 0.20
-	return _edge_line_material
+func _make_face_panel_material(base: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	m.cull_mode = BaseMaterial3D.CULL_BACK
+	m.render_priority = 0
+	m.albedo_color = _face_color_for(base)
+	m.emission_enabled = true
+	m.emission = _face_color_for(base).darkened(0.55)
+	m.emission_energy_multiplier = 0.4
+	m.roughness = 0.90
+	return m
+
+
+func _make_bevel_material(base: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	m.cull_mode = BaseMaterial3D.CULL_BACK
+	m.render_priority = 0
+	m.albedo_color = _bevel_color_for(base)
+	m.emission_enabled = true
+	m.emission = _bevel_color_for(base).darkened(0.55)
+	m.emission_energy_multiplier = 0.35
+	m.roughness = 0.95
+	return m
+
+
+func _face_panel_material_for(die: RigidBody3D) -> StandardMaterial3D:
+	if die.has_meta("face_panel_mat"):
+		var cached: Variant = die.get_meta("face_panel_mat")
+		if cached is StandardMaterial3D:
+			return cached
+	var made := _make_face_panel_material(_die_base_color(die))
+	die.set_meta("face_panel_mat", made)
+	return made
+
+
+# Unshaded so the edge reads its exact albedo from every angle — no grey-vs-black lighting drift.
+func _make_edge_material(base: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	m.cull_mode = BaseMaterial3D.CULL_BACK
+	m.render_priority = 0
+	m.albedo_color = _edge_color_for(base)
+	return m
 
 
 # ── FACE NUMBERS ──────────────────────────────────────────────────────────────
@@ -1361,12 +1439,23 @@ func _get_face_inscribed_radius() -> float:
 	return area / s
 
 
+# Engraved number (#3): three stacked Label3Ds per face — a dark shadow offset down-right, a pale
+# highlight offset up-left, and the numeral itself (a darker tint of the face) on top. The inverse
+# of an emboss → reads as a carved-in numeral. Stacked by render_priority so they layer without
+# z-fighting. FaceNumber%d stays the canonical/highlight node; the two extras shadow it.
+const _ENGRAVE_OFFSET_PX := 1.6   # shadow/highlight spread, in label pixels
+# Sit the numerals just above the bevel (0.016) — nearly flush with the surface so they read as
+# printed on the face instead of floating above it (the old 0.055 visibly parallaxed while rolling).
+const _NUMBER_NORMAL_OFFSET := 0.019
+const _NUMBER_OUTLINE_SIZE := 16  # dark outline on the main numeral for legibility
+
 func _add_face_labels(die: RigidBody3D) -> void:
+	var base: Color = _die_base_color(die)
 	var inradius: float = _get_face_inscribed_radius()
 	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
 	var faces: Array = _get_d20_faces()
 	for i in range(_face_centers.size()):
-		var value_text: String = "%d" % int(_face_values[i])
+		var value: int = int(_face_values[i])
 		var face: Array = faces[i]
 		var face_basis: Basis = _basis_for_triangle_face(
 			raw_vertices[int(face[0])],
@@ -1374,21 +1463,35 @@ func _add_face_labels(die: RigidBody3D) -> void:
 			raw_vertices[int(face[2])],
 			_face_normals[i]
 		)
-		var label: Label3D = Label3D.new()
-		label.name = "FaceNumber%d" % int(_face_values[i])
-		label.text = value_text
-		label.font = _get_dice_number_font()
-		label.font_size = 128 if value_text.length() == 1 else 108
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		label.outline_size = 20
-		label.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
-		label.pixel_size = 0.0060
-		label.no_depth_test = false
-		label.position = _face_centers[i] + face_basis.y * (inradius * 0.12) + _face_normals[i] * 0.055
-		label.basis = face_basis
-		die.add_child(label)
+		var center_pos: Vector3 = _face_centers[i] + face_basis.y * (inradius * 0.12) + _face_normals[i] * _NUMBER_NORMAL_OFFSET
+		var spread: float = _ENGRAVE_OFFSET_PX * 0.0060
+		var down_right: Vector3 = face_basis.x * spread - face_basis.y * spread
+		var up_left: Vector3 = -face_basis.x * spread + face_basis.y * spread
+		_make_face_label(die, "FaceNumberShadow%d" % value, value, face_basis, center_pos + down_right, _number_shadow_color_for(base), 6, 0, base)
+		_make_face_label(die, "FaceNumberHighlight%d" % value, value, face_basis, center_pos + up_left, _number_highlight_color_for(base), 7, 0, base)
+		# Main numeral carries the dark outline that makes it legible against the face.
+		_make_face_label(die, "FaceNumber%d" % value, value, face_basis, center_pos, _number_main_color_for(base), 8, _NUMBER_OUTLINE_SIZE, base)
+
+
+func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basis: Basis, pos: Vector3, color: Color, priority: int, outline_size: int, base: Color) -> void:
+	var value_text: String = "%d" % value
+	var label: Label3D = Label3D.new()
+	label.name = node_name
+	label.text = value_text
+	label.font = _get_dice_number_font()
+	label.font_size = 128 if value_text.length() == 1 else 108
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.modulate = color
+	label.outline_size = outline_size
+	if outline_size > 0:
+		label.outline_modulate = _number_outline_color_for(base)
+	label.pixel_size = 0.0060
+	label.no_depth_test = false
+	label.render_priority = priority
+	label.position = pos
+	label.basis = face_basis
+	die.add_child(label)
 
 
 func _add_pixel_number_blocks(root: Node3D, value_text: String, inradius: float) -> void:
