@@ -1846,6 +1846,12 @@ func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: St
 
 
 func _try_auto_assign_single_manual_target(hero_state: Dictionary, target_side: String, target_ids: Array) -> bool:
+	# The tutorial teaches the explicit tap-a-die → tap-the-enemy flow. It fights a single enemy,
+	# so every shot would otherwise auto-assign here: pending_manual_target_ids would be empty, the
+	# turn would jump straight to READY_TO_END, the "assigned" beat would never fire, and the
+	# coachmark would wait forever. Force manual targeting so the player actually performs it.
+	if _game_state().tutorial_mode:
+		return false
 	if target_ids.size() != 1:
 		return false
 	var target_id: String = str(target_ids[0])
@@ -1954,6 +1960,9 @@ func _select_targeting_hero(hero_id: String) -> void:
 		return
 	_card_view.refresh_all_cards()
 	_refresh_summary("Choose a target for %s." % str(hero_state["unit"].display_name))
+	# Targeting has begun (a die/hero is picked, awaiting its target) — the tutorial opens up to
+	# the whole screen here so the enemy is an easy tap.
+	_emit_tutorial("targeting_started", {"hero": hero_id})
 
 
 func _can_retarget_hero(hero_id: String) -> bool:
