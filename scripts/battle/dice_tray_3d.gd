@@ -944,7 +944,7 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	die.collision_layer = DIE_COLLISION_LAYER
 	die.collision_mask = DIE_COLLISION_MASK
 	die.physics_material_override = _make_die_physics_material()
-	die.position = _get_spawn_position(index, total_count)
+	die.position = _get_spawn_position(index, total_count, str(entry.get("side", "")))
 	die.rotation_degrees = Vector3(randf_range(0, 360), randf_range(0, 360), randf_range(0, 360))
 
 	var collision: CollisionShape3D = CollisionShape3D.new()
@@ -993,7 +993,7 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 
 	# --- THROW PHYSICS ---
 	# Strong lateral throw with less downward slam = slower fall, heavier roll.
-	var throw_dir: Vector3 = _get_throw_direction(die.position, index, total_count)
+	var throw_dir: Vector3 = _get_throw_direction(die.position, index, total_count, str(entry.get("side", "")))
 	var throw_strength: float = randf_range(18.0, 26.0)
 	var slam: float = randf_range(4.0, 6.0)
 	die.apply_impulse(
@@ -1111,29 +1111,30 @@ func _set_die_collision_enabled(die: RigidBody3D, enabled: bool) -> void:
 		die.collision_mask = 0
 
 
-func _get_spawn_position(index: int, total_count: int) -> Vector3:
-	# Spawn with modest loft so the fall reads slower before the heavy roll.
+func _get_spawn_position(index: int, total_count: int, side: String) -> Vector3:
+	# Spawn with modest loft so the fall reads slower before the heavy roll. Each side starts on its
+	# OWN half — enemy toward -Z (top of screen), hero toward +Z (bottom) — so dice roll near their
+	# own units instead of crossing over.
 	var spawn_height: float = randf_range(3.3, 4.2)
+	var z_sign: float = 1.0 if side == "hero" else -1.0
 	var angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + randf_range(-0.3, 0.3)
-	var edge_x: float = cos(angle) * TRAY_HALF_WIDTH * 0.54
-	var edge_z: float = sin(angle) * TRAY_HALF_DEPTH * 0.56
-	edge_x += randf_range(-0.28, 0.28)
-	edge_z += randf_range(-0.28, 0.28)
+	var edge_x: float = cos(angle) * TRAY_HALF_WIDTH * 0.54 + randf_range(-0.28, 0.28)
+	var edge_z: float = z_sign * TRAY_HALF_DEPTH * randf_range(0.42, 0.64) + randf_range(-0.28, 0.28)
 	return Vector3(edge_x, spawn_height, edge_z)
 
 
-func _get_throw_direction(spawn_pos: Vector3, index: int, total_count: int) -> Vector3:
-	var landing_angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + PI + randf_range(-0.65, 0.65)
-	var landing_radius_x: float = TRAY_HALF_WIDTH * randf_range(0.16, 0.58)
-	var landing_radius_z: float = TRAY_HALF_DEPTH * randf_range(0.18, 0.62)
+func _get_throw_direction(spawn_pos: Vector3, _index: int, _total_count: int, side: String) -> Vector3:
+	# Aim at a target on the unit's OWN half so the die rolls/scatters on its side before snapping to
+	# its result row (hero rows sit at +Z, enemy at -Z).
+	var z_sign: float = 1.0 if side == "hero" else -1.0
 	var target: Vector3 = Vector3(
-		cos(landing_angle) * landing_radius_x + randf_range(-0.55, 0.55),
+		randf_range(-TRAY_HALF_WIDTH * 0.5, TRAY_HALF_WIDTH * 0.5),
 		0.0,
-		sin(landing_angle) * landing_radius_z + randf_range(-0.55, 0.55)
+		z_sign * TRAY_HALF_DEPTH * randf_range(0.20, 0.50)
 	)
 	var direction: Vector3 = (target - Vector3(spawn_pos.x, 0.0, spawn_pos.z)).normalized()
 	if direction.length_squared() < 0.001:
-		return Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+		return Vector3(randf_range(-1, 1), 0.0, z_sign).normalized()
 	return direction
 
 
