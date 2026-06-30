@@ -77,10 +77,4 @@ layout_mode = 2
 custom_minimum_size = Vector2(220, 56)
 text = "Start New Run"
 
-[node name="ReturnToMenuButton" type="Button" parent="Content/VBox/ButtonRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(200, 56)
-text = "New Squad"
-
 [connection signal="pressed" from="Content/VBox/ButtonRow/NewRunButton" to="." method="_on_new_run_button_pressed"]
-[connection signal="pressed" from="Content/VBox/ButtonRow/ReturnToMenuButton" to="." method="_on_return_to_menu_button_pressed"]

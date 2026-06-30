@@ -12,7 +12,6 @@ const BUTTON_SIZE := Vector2(360, 120)
 @onready var summary_panel: PanelContainer = $Content/VBox/SummaryPanel
 @onready var button_row: HBoxContainer = $Content/VBox/ButtonRow
 @onready var new_run_button: Button = $Content/VBox/ButtonRow/NewRunButton
-@onready var return_to_menu_button: Button = $Content/VBox/ButtonRow/ReturnToMenuButton
 
 
 func _ready() -> void:
@@ -55,12 +54,6 @@ func _on_new_run_button_pressed() -> void:
 	SceneManager.go_to_unit_select()
 
 
-func _on_return_to_menu_button_pressed() -> void:
-	AudioManager.play_select()
-	GameState.reset_run()
-	SceneManager.go_to_unit_select()
-
-
 func _apply_visual_theme(victory: bool) -> void:
 	# Result accent: green for a win, rust for a loss.
 	var accent: Color = PixelUI.DT_ROLL_LIGHT if victory else PixelUI.DT_RUST
@@ -80,9 +73,8 @@ func _apply_visual_theme(victory: bool) -> void:
 	_style_label(title_label, TITLE_FONT, accent)
 	_style_label(summary_label, SUMMARY_FONT, PixelUI.TEXT_PRIMARY)
 
-	# Primary action (start a fresh run) = green commit button; secondary = neutral.
+	# Single primary action (start a fresh run) = green commit button.
 	_style_button(new_run_button, PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT, PixelUI.DT_ROLL_TEXT)
-	_style_button(return_to_menu_button, PixelUI.DT_BTN_BG, PixelUI.DT_BTN_BORDER, PixelUI.TEXT_PRIMARY)
 
 
 func _style_label(label: Label, font_size: int, color: Color) -> void:
