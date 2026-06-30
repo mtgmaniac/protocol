@@ -183,6 +183,7 @@ static func make_panel_style(bg: Color = BG_PANEL, border: Color = LINE_DIM, bor
 ## Hard-cornered, single-tone bordered plate (Direction-05 pixel-frame language).
 static func make_hard_style(bg: Color, border: Color, width: int = 2) -> StyleBoxFlat:
 	var s: StyleBoxFlat = StyleBoxFlat.new()
+	s.anti_aliasing = false
 	s.bg_color = bg
 	s.border_color = border
 	s.set_border_width_all(width)

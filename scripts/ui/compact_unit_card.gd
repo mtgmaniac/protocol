@@ -1144,6 +1144,7 @@ func _apply_label(label: Label, font_size: int, color: Color, outline: int = 1) 
 
 func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.anti_aliasing = false
 	style.bg_color = bg
 	style.border_color = border
 	style.set_border_width_all(border_width)
