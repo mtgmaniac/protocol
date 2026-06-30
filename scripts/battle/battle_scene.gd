@@ -127,8 +127,15 @@ var _item_button: Button = null
 var _nudge_button: Button = null
 var _set_button: Button = null
 var _suppress_protocol_press: bool = false
-var _set_value_menu: PopupMenu = null
 var _pending_set_hero_id: String = ""
+# Mobile-friendly "Set a die" value picker (thumb-draggable slider popup, replaces the old
+# 1-20 vertical PopupMenu). Built on a high CanvasLayer so it floats above the 3D dice tray.
+var _set_value_overlay: CanvasLayer = null
+var _set_value_current: int = 1
+var _set_value_display: Label = null
+var _set_value_track: Control = null
+var _set_value_fill: ColorRect = null
+var _set_value_thumb: Control = null
 var _item_menu: PopupMenu = null
 var _item_menu_items: Array = []
 var _relic_slot: Control = null
@@ -1215,37 +1222,206 @@ func _add_set_button() -> void:
 	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
 
 
-# Set-pick: the player tapped a hero die; pop a 1-20 value menu for it.
+# Set-pick: the player tapped a hero die; open the thumb-draggable value popup for it,
+# pre-seeded with the die's current effective value.
 func _begin_set_value_pick(hero_id: String) -> void:
 	_pending_set_hero_id = hero_id
-	_ensure_set_value_menu()
-	_set_value_menu.reset_size()
+	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
+	var start_val: int = 10
+	if not hero_state.is_empty():
+		start_val = _get_effective_roll_for_state(hero_state, hero_id)
+	_set_value_current = clampi(start_val, 1, 20)
+	_open_set_value_popup()
+
+
+# A themed modal popup matching the other menus (hard pixel panel + DT colors): a big value
+# readout above a wide horizontal slider you drag with your thumb (1-20), plus CANCEL/CONFIRM.
+func _open_set_value_popup() -> void:
+	_close_set_value_popup()
+	var accent: Color = HERO_ACCENT
+
+	_set_value_overlay = CanvasLayer.new()
+	_set_value_overlay.layer = 60
+	add_child(_set_value_overlay)
+
+	# Full-rect catcher: a press outside the panel cancels. The panel (STOP) blocks presses
+	# on itself from reaching the catcher, so only taps on the dimmed backdrop dismiss.
+	var catcher: Control = Control.new()
+	catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	catcher.gui_input.connect(func(event: InputEvent) -> void:
+		if (event is InputEventScreenTouch and event.pressed) \
+			or (event is InputEventMouseButton and event.pressed):
+			_cancel_set_value_popup())
+	_set_value_overlay.add_child(catcher)
+
+	var dim: ColorRect = ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.0, 0.0, 0.0, 0.62)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	catcher.add_child(dim)
+
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	catcher.add_child(center)
+
+	var panel: PanelContainer = PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, accent, 3))
 	var vp: Vector2 = get_viewport().get_visible_rect().size
-	var menu_size: Vector2 = _set_value_menu.size
-	var pos: Vector2 = get_viewport().get_mouse_position()
-	pos.x = clampf(pos.x, 8.0, maxf(8.0, vp.x - menu_size.x - 8.0))
-	pos.y = clampf(pos.y, 8.0, maxf(8.0, vp.y - menu_size.y - 8.0))
-	_set_value_menu.position = Vector2i(pos)
-	_set_value_menu.popup()
+	panel.custom_minimum_size = Vector2(clampf(vp.x - 40.0, 340.0, 720.0), 0.0)
+	center.add_child(panel)
+
+	var margin: MarginContainer = MarginContainer.new()
+	for side_name in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		margin.add_theme_constant_override(side_name, 34)
+	panel.add_child(margin)
+
+	var vb: VBoxContainer = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 30)
+	margin.add_child(vb)
+
+	var title: Label = Label.new()
+	title.text = "SET DIE VALUE"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(title, 36, PixelUI.INSPECT_TEXT_DIM, 3)
+	vb.add_child(title)
+
+	_set_value_display = Label.new()
+	_set_value_display.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(_set_value_display, 132, accent, 4)
+	vb.add_child(_set_value_display)
+
+	# Slider: a plain Control we paint ourselves (track bg + fill + thumb) so it carries the
+	# pixel aesthetic and handles touch/drag directly — far friendlier for thumbs than a list.
+	_set_value_track = Control.new()
+	_set_value_track.custom_minimum_size = Vector2(0.0, 110.0)
+	_set_value_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_set_value_track.mouse_filter = Control.MOUSE_FILTER_STOP
+	vb.add_child(_set_value_track)
+
+	var track_bg: Panel = Panel.new()
+	track_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	track_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track_bg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_FIELD_BG, PixelUI.DT_FIELD_BORDER, 2))
+	_set_value_track.add_child(track_bg)
+
+	_set_value_fill = ColorRect.new()
+	_set_value_fill.color = Color(accent.r, accent.g, accent.b, 0.30)
+	_set_value_fill.position = Vector2.ZERO
+	_set_value_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_set_value_track.add_child(_set_value_fill)
+
+	_set_value_thumb = Panel.new()
+	_set_value_thumb.size = Vector2(60.0, 110.0)
+	_set_value_thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_set_value_thumb.add_theme_stylebox_override("panel", PixelUI.make_hard_style(accent, accent.lightened(0.35), 3))
+	_set_value_track.add_child(_set_value_thumb)
+
+	_set_value_track.gui_input.connect(_on_set_value_track_input)
+	_set_value_track.resized.connect(_update_set_value_visuals)
+
+	var hint: Label = Label.new()
+	hint.text = "Drag to choose — costs %d Protocol" % SET_DIE_COST
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(hint, 26, PixelUI.INSPECT_TEXT_MUTED, 2)
+	vb.add_child(hint)
+
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(row)
+
+	var cancel_btn: Button = Button.new()
+	cancel_btn.text = "CANCEL"
+	cancel_btn.custom_minimum_size = Vector2(0.0, 100.0)
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_button(cancel_btn, PixelUI.DT_BTN_BG, PixelUI.DT_BTN_BORDER, 38)
+	cancel_btn.pressed.connect(_cancel_set_value_popup)
+	row.add_child(cancel_btn)
+
+	var confirm_btn: Button = Button.new()
+	confirm_btn.text = "CONFIRM"
+	confirm_btn.custom_minimum_size = Vector2(0.0, 100.0)
+	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_button(confirm_btn, PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT, 38)
+	confirm_btn.pressed.connect(_confirm_set_value_popup)
+	row.add_child(confirm_btn)
+
+	call_deferred("_update_set_value_visuals")
 
 
-func _ensure_set_value_menu() -> void:
-	if _set_value_menu != null and is_instance_valid(_set_value_menu):
+# Position the fill + thumb from the current value. Called on value change and whenever the
+# track resizes (so it stays correct once layout resolves the real track width).
+func _update_set_value_visuals() -> void:
+	if _set_value_display != null:
+		_set_value_display.text = str(_set_value_current)
+	if _set_value_track == null or _set_value_thumb == null or _set_value_fill == null:
 		return
-	_set_value_menu = PopupMenu.new()
-	for value in range(1, 21):
-		_set_value_menu.add_item(str(value), value)  # id == the value
-	_set_value_menu.id_pressed.connect(_on_set_value_picked)
-	add_child(_set_value_menu)
+	var track_w: float = _set_value_track.size.x
+	var track_h: float = _set_value_track.size.y
+	var thumb_w: float = _set_value_thumb.size.x
+	var frac: float = float(_set_value_current - 1) / 19.0
+	var x: float = frac * maxf(0.0, track_w - thumb_w)
+	_set_value_thumb.position = Vector2(x, 0.0)
+	_set_value_fill.size = Vector2(x + thumb_w * 0.5, track_h)
 
 
-func _on_set_value_picked(value: int) -> void:
-	if _pending_set_hero_id == "":
+func _on_set_value_track_input(event: InputEvent) -> void:
+	if _set_value_track == null or _set_value_thumb == null:
+		return
+	var local_x: float = -1.0
+	if event is InputEventScreenTouch and event.pressed:
+		local_x = event.position.x
+	elif event is InputEventScreenDrag:
+		local_x = event.position.x
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		local_x = event.position.x
+	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		local_x = event.position.x
+	if local_x < 0.0:
+		return
+	var usable: float = maxf(1.0, _set_value_track.size.x - _set_value_thumb.size.x)
+	var frac: float = clampf((local_x - _set_value_thumb.size.x * 0.5) / usable, 0.0, 1.0)
+	var new_val: int = clampi(int(round(1.0 + frac * 19.0)), 1, 20)
+	if new_val != _set_value_current:
+		_set_value_current = new_val
+		AudioManager.play_select()
+		_update_set_value_visuals()
+
+
+func _confirm_set_value_popup() -> void:
+	var hero_id: String = _pending_set_hero_id
+	var value: int = _set_value_current
+	_close_set_value_popup()
+	if hero_id == "":
+		return
+	_pending_set_hero_id = ""
+	AudioManager.play_select()
+	_apply_set(hero_id, clampi(value, 1, 20))
+
+
+# Cancel just closes the popup; we stay in PHASE_SET_PICK so the player can tap a different die
+# or back out via the Set button. No Protocol is spent until CONFIRM.
+func _cancel_set_value_popup() -> void:
+	if _set_value_overlay == null:
 		return
 	AudioManager.play_select()
-	var hero_id: String = _pending_set_hero_id
 	_pending_set_hero_id = ""
-	_apply_set(hero_id, clampi(value, 1, 20))
+	_close_set_value_popup()
+
+
+func _close_set_value_popup() -> void:
+	if _set_value_overlay != null and is_instance_valid(_set_value_overlay):
+		_set_value_overlay.queue_free()
+	_set_value_overlay = null
+	_set_value_display = null
+	_set_value_track = null
+	_set_value_fill = null
+	_set_value_thumb = null
 
 
 func _apply_set(hero_id: String, value: int) -> void:
@@ -1590,6 +1766,10 @@ func _update_battle_header() -> void:
 
 
 func _set_turn_phase(next_phase: String) -> void:
+	# The Set-value popup only makes sense mid-SET_PICK; tear it down on any phase transition
+	# so it can't linger over a later phase (e.g. after CONFIRM resolves into READY_TO_END).
+	if next_phase != PHASE_SET_PICK:
+		_close_set_value_popup()
 	turn_phase = next_phase
 	_update_phase_target_sets()
 	match turn_phase:
