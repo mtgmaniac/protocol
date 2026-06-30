@@ -39,6 +39,7 @@ const HELP_TABS := [
 	{"id": "rewards", "label": "REWARDS"},
 	{"id": "units", "label": "UNITS"},
 	{"id": "bestiary", "label": "BESTIARY"},
+	{"id": "settings", "label": "SETTINGS"},
 ]
 const HELP_KEYWORD_ICON := {
 	"dot": "dot", "pierce": "pierce", "shield": "shield", "heal": "heal",
@@ -250,6 +251,8 @@ func _select_tab(tab_id: String) -> void:
 			_build_codex(_content_host)
 		"bestiary":
 			_build_bestiary(_content_host)
+		"settings":
+			_build_settings(_content_host)
 	if _content_scroll != null:
 		_content_scroll.scroll_vertical = 0
 
@@ -661,6 +664,67 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 			if not found.has(tag):
 				found.append(tag)
 	return ", ".join(found)
+
+
+# ── SETTINGS ─────────────────────────────────────────────────────────────────────
+func _build_settings(host: VBoxContainer) -> void:
+	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
+	# Room for more settings here later (e.g. volume sliders, haptics, reduced motion).
+
+
+# Live AudioManager node (Variant) so this compiles even when the autoload is absent
+# (e.g. the headless capture harness), mirroring _dm().
+func _audio() -> Variant:
+	return get_node_or_null("/root/AudioManager")
+
+
+func _audio_muted() -> bool:
+	var am: Variant = _audio()
+	return am != null and bool(am.is_muted())
+
+
+func _on_toggle_mute(pressed: bool) -> void:
+	var am: Variant = _audio()
+	if am != null:
+		am.set_muted(pressed)
+
+
+# A label + ON/OFF toggle button row, styled like the active/inactive tab buttons.
+func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, on_toggle: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 12)
+	parent.add_child(row)
+
+	var label := _make_wrap_label(label_text, BODY_FONT, PixelUI.TEXT_PRIMARY, 2)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(label)
+
+	var btn := Button.new()
+	btn.toggle_mode = true
+	btn.button_pressed = initial
+	btn.custom_minimum_size = Vector2(150, 76)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_style_toggle_button(btn)
+	btn.toggled.connect(func(pressed: bool) -> void:
+		on_toggle.call(pressed)
+		_style_toggle_button(btn))
+	row.add_child(btn)
+
+
+func _style_toggle_button(btn: Button) -> void:
+	if btn.button_pressed:
+		PixelUI.style_button(btn, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, TAB_FONT)
+		btn.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
+		btn.text = "ON"
+	else:
+		PixelUI.style_button(btn, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
+		btn.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+		btn.text = "OFF"
 
 
 # ── Shared builders ─────────────────────────────────────────────────────────────

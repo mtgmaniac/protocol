@@ -21,15 +21,20 @@ const VOLUME_OVERRIDES := {
 	"select": -6.0,  # ~50% amplitude vs default UI click
 }
 
+const SETTINGS_PATH := "user://settings.cfg"
+
 var _streams: Dictionary = {}
 var _pool: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _recent: Dictionary = {}
 var _suppressed: bool = false
+var _muted: bool = false
 
 
 func _ready() -> void:
 	_ensure_sfx_bus()
+	_load_settings()
+	_apply_mute()
 	for key in SFX_KEYS:
 		var path: String = SFX_DIR + key + ".wav"
 		var stream: AudioStream = load(path) as AudioStream
@@ -97,3 +102,37 @@ func set_sfx_muted(muted: bool) -> void:
 	var idx: int = AudioServer.get_bus_index("SFX")
 	if idx != -1:
 		AudioServer.set_bus_mute(idx, muted)
+
+
+# ── Master mute (the "mute all audio" setting) ──────────────────────────────────
+# Mutes the Master bus so it covers SFX and any future music in one switch, and persists
+# the choice to user://settings.cfg so it survives across launches.
+func is_muted() -> bool:
+	return _muted
+
+
+func set_muted(muted: bool) -> void:
+	if _muted == muted:
+		return
+	_muted = muted
+	_apply_mute()
+	_save_settings()
+
+
+func _apply_mute() -> void:
+	var idx: int = AudioServer.get_bus_index("Master")
+	if idx != -1:
+		AudioServer.set_bus_mute(idx, _muted)
+
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		_muted = bool(cfg.get_value("audio", "muted", false))
+
+
+func _save_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)  # preserve any other sections; ignore "not found" on first save
+	cfg.set_value("audio", "muted", _muted)
+	cfg.save(SETTINGS_PATH)
