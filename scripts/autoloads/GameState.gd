@@ -1,6 +1,10 @@
 # Stores run-level state that persists while the player moves between scenes.
 extends Node
 
+# Hard cap on carried consumables — matches the in-battle LoadoutMenu's slot count
+# (loadout_menu.gd ITEM_SLOTS). Picking up a consumable while full requires swapping one out.
+const MAX_CONSUMABLES := 3
+
 
 var selected_units: Array = []
 var current_battle: int = 0
@@ -125,10 +129,16 @@ func take_carried_protocol() -> int:
 func grant_battle_start_consumables(count: int) -> void:
 	var granted: int = maxi(count, 0)
 	for _i in range(granted):
+		if consumables.size() >= MAX_CONSUMABLES:
+			break
 		var item_id: String = _pick_random_item_id("consumable", consumables)
 		if item_id == "":
 			break
 		consumables.append(item_id)
+
+
+func is_consumables_full() -> bool:
+	return consumables.size() >= MAX_CONSUMABLES
 
 
 func get_revive_hp_pct(default_pct: int) -> int:
@@ -177,7 +187,9 @@ func get_pending_reward_items() -> Array:
 	return rewards
 
 
-func claim_reward(item_id: String, target_unit_id: String = "") -> bool:
+# `swap_consumable_id`: when consumables are full, the id of the held consumable to discard
+# to make room for the new one (the reward screen prompts for this).
+func claim_reward(item_id: String, target_unit_id: String = "", swap_consumable_id: String = "") -> bool:
 	var item: ItemData = DataManager.get_item(item_id) as ItemData
 	if item == null:
 		return false
@@ -193,6 +205,11 @@ func claim_reward(item_id: String, target_unit_id: String = "") -> bool:
 			gear_by_unit[target_unit_id] = unit_gear
 			equipped_gear[target_unit_id] = unit_gear.duplicate()
 		"consumable":
+			if consumables.size() >= MAX_CONSUMABLES:
+				# Full — a valid swap target is required; the UI guarantees one.
+				if swap_consumable_id == "" or not consumables.has(swap_consumable_id):
+					return false
+				consumables.erase(swap_consumable_id)
 			consumables.append(item_id)
 		"relic":
 			if not relics.is_empty():
