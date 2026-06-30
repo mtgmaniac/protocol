@@ -221,8 +221,6 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 
 	# ── Hero abilities ────────────────────────────────────────────────────────
 	for hero_state in _scene.combat_manager.get_hero_states():
-		if not include_hero_ability_previews:
-			continue
 		if bool(hero_state.get("dead", false)):
 			continue
 		var hero_id: String = str(hero_state["id"])
@@ -237,6 +235,15 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		var blast_all: bool     = bool(raw.get("blastAll", false))
 		var heal_all: bool      = bool(raw.get("healAll", false))
 		var shield_all: bool    = bool(raw.get("shieldAll", false))
+		var is_aoe: bool        = blast_all or heal_all or shield_all
+
+		# AoE abilities need no committed targeting context — they hit every unit
+		# on their side regardless of selection, so preview them the moment the
+		# roll is committed. Single-target previews still require that context
+		# (we're past targeting, or the player has assigned at least one target),
+		# which is gated here and reinforced by the hero_target == target_id check.
+		if not is_aoe and not include_hero_ability_previews:
+			continue
 
 		var hits_this: bool = false
 		if not is_hero:
