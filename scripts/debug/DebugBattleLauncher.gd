@@ -44,6 +44,10 @@ func _launch() -> void:
 
 	var ops: Array = DataManager.get_operation_order()
 	var op_id: String = ops[0] if not ops.is_empty() else ""
+	# Optional: --debug-op <operation_id> to smoke-test a specific operation.
+	var op_arg: String = _arg_value(OS.get_cmdline_user_args(), "--debug-op")
+	if op_arg != "" and ops.has(op_arg):
+		op_id = op_arg
 
 	print("[DebugBattle] units=%s  op=%s" % [unit_ids, op_id])
 	GameState.start_run(unit_ids, op_id)
@@ -89,6 +93,10 @@ func _launch_screen(screen_id: String) -> void:
 
 	var ops: Array = DataManager.get_operation_order()
 	var op_id: String = ops[0] if not ops.is_empty() else ""
+	# Optional: --debug-op <operation_id> to smoke-test a specific operation.
+	var op_arg: String = _arg_value(OS.get_cmdline_user_args(), "--debug-op")
+	if op_arg != "" and ops.has(op_arg):
+		op_id = op_arg
 	GameState.start_run(unit_ids, op_id)
 	print("[DebugScreen] screen=%s units=%s op=%s" % [screen_id, unit_ids, op_id])
 

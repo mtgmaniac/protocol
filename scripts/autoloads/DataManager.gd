@@ -457,15 +457,22 @@ func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 	return _crop_to_content(tex)
 
 
-# Portrait PNGs are 256x460 with the subject in the top ~half and a big transparent
-# bottom margin. Crop to the opaque bounding box so cover-fill fills the box with the
-# actual character instead of the empty padding. Returns an AtlasTexture (no copy).
+# Portrait finalisation. Two art styles coexist:
+#  - cutout: transparent background, subject fills the canvas (heroes, older
+#    facility/hive enemies). Cropped to the opaque bounding box so cover-fill
+#    frames the character, not the padding.
+#  - full-bleed: opaque scenic background with the subject centred (veil /
+#    menagerie / void circlet art). Tagged with a "full_bleed" meta so
+#    PixelUI.cover_fit_portrait() centres the crop instead of top-anchoring.
+# The tag is how every screen frames both styles consistently without
+# per-unit offsets.
 func _crop_to_content(tex: Texture2D) -> Texture2D:
 	if tex == null:
 		return null
 	var img: Image = tex.get_image()
 	if img == null:
 		return tex
+	tex.set_meta("full_bleed", _is_full_bleed(img))
 	var used: Rect2i = img.get_used_rect()
 	if used.size.x <= 0 or used.size.y <= 0:
 		return tex
@@ -475,7 +482,25 @@ func _crop_to_content(tex: Texture2D) -> Texture2D:
 	atlas.atlas = tex
 	atlas.region = Rect2(used)
 	atlas.filter_clip = true
+	atlas.set_meta("full_bleed", tex.get_meta("full_bleed", false))
 	return atlas
+
+
+# Sampled opaque coverage: scenic full-bleed art is ~100% opaque, cutout art
+# leaves large transparent margins (measured range 43-72%).
+func _is_full_bleed(img: Image) -> bool:
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	if w < 8 or h < 8:
+		return false
+	var opaque: int = 0
+	var total: int = 0
+	for y in range(0, h, 4):
+		for x in range(0, w, 4):
+			total += 1
+			if img.get_pixel(x, y).a > 0.8:
+				opaque += 1
+	return total > 0 and float(opaque) / float(total) > 0.9
 
 
 func _load_texture_if_exists(texture_path: String) -> Texture2D:

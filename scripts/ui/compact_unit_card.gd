@@ -5,16 +5,11 @@ signal card_pressed
 signal unit_detail_requested(card)
 
 const CARD_SIZE := Vector2(260, 0)
-const PORTRAIT_TOP_INSET_PX := 0.0
 const PORTRAIT_HP_GAP_PX := 10.0
 const NAME_ROW_HEIGHT := 80.0
 const HP_BAR_HEIGHT := 86.0
 const HP_FILL_HEIGHT := 86.0
 const ACTION_PANEL_HEIGHT := 88.0
-# Portraits are cropped to their opaque bounds at load (DataManager._crop_to_content),
-# so a plain cover-scale (no extra zoom, head top-aligned) already fills the frame.
-const PORTRAIT_FILL_ZOOM := 1.0
-const PORTRAIT_TOP_CROP_FRAC := 0.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
 # static var (not const) because PixelUI's DT_* tokens are themselves static var
 # and a const can't be initialized from a non-const value.
@@ -501,27 +496,7 @@ func _update_portrait_rect_transform() -> void:
 	var fh: float = _portrait_crop.size.y
 	if fw < 2.0 or fh < 2.0:
 		return
-	var tex: Texture2D = _portrait_rect.texture
-	if tex == null:
-		_portrait_rect.position = Vector2.ZERO
-		_portrait_rect.size = Vector2(fw, fh)
-		return
-	var tw: float = float(tex.get_width())
-	var th: float = float(tex.get_height())
-	if tw < 1.0 or th < 1.0:
-		_portrait_rect.position = Vector2.ZERO
-		_portrait_rect.size = Vector2(fw, fh)
-		return
-	# Cover-scale + a slight fill-zoom so the figure fills the frame edge-to-edge
-	# (the portrait PNGs carry transparent padding that otherwise leaves a gap).
-	var scale: float = maxf(fw / tw, fh / th) * PORTRAIT_FILL_ZOOM
-	var nw: float = tw * scale
-	var nh: float = th * scale
-	# Center horizontally; shift up a fraction of the overflow to crop the transparent
-	# top padding, so the head sits right at the top edge (never cropped off).
-	var top_y: float = PORTRAIT_TOP_INSET_PX - (nh - fh) * PORTRAIT_TOP_CROP_FRAC
-	_portrait_rect.position = Vector2((fw - nw) * 0.5, top_y)
-	_portrait_rect.size = Vector2(nw, nh)
+	PixelUI.cover_fit_portrait(_portrait_rect, Vector2(fw, fh))
 
 
 func _populate_action_pips() -> void:

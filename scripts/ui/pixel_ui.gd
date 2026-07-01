@@ -264,6 +264,37 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 	return ""
 
 
+# Cover-fit a portrait TextureRect inside its crop frame. Composition-aware:
+# full-bleed scenic art (tagged by DataManager) centres both axes; cutout art
+# anchors to the top edge so heads are never cropped off. Single framing rule
+# for every screen — no per-unit offsets.
+static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> void:
+	if tex_rect == null:
+		return
+	var fw: float = frame_size.x
+	var fh: float = frame_size.y
+	if fw < 2.0 or fh < 2.0:
+		return
+	var tex: Texture2D = tex_rect.texture
+	if tex == null:
+		tex_rect.position = Vector2.ZERO
+		tex_rect.size = frame_size
+		return
+	var tw: float = float(tex.get_width())
+	var th: float = float(tex.get_height())
+	if tw < 1.0 or th < 1.0:
+		tex_rect.position = Vector2.ZERO
+		tex_rect.size = frame_size
+		return
+	var cover_scale: float = maxf(fw / tw, fh / th)
+	var nw: float = tw * cover_scale
+	var nh: float = th * cover_scale
+	var full_bleed: bool = bool(tex.get_meta("full_bleed", false))
+	var top_y: float = (fh - nh) * 0.5 if full_bleed else 0.0
+	tex_rect.position = Vector2((fw - nw) * 0.5, top_y)
+	tex_rect.size = Vector2(nw, nh)
+
+
 static func pip_texture_for_key(key: String) -> Texture2D:
 	if key == "":
 		return null

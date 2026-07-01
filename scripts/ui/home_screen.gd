@@ -729,24 +729,7 @@ func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
 func _cover_fit_portrait(crop: Control, tex: TextureRect) -> void:
 	if crop == null or tex == null:
 		return
-	var fw: float = crop.size.x
-	var fh: float = crop.size.y
-	if fw < 2.0 or fh < 2.0:
-		return
-	var t: Texture2D = tex.texture
-	if t == null:
-		tex.position = Vector2.ZERO
-		tex.size = Vector2(fw, fh)
-		return
-	var tw: float = float(t.get_width())
-	var th: float = float(t.get_height())
-	if tw < 1.0 or th < 1.0:
-		return
-	var s: float = maxf(fw / tw, fh / th)
-	var nw: float = tw * s
-	var nh: float = th * s
-	tex.position = Vector2((fw - nw) * 0.5, 0.0)
-	tex.size = Vector2(nw, nh)
+	PixelUI.cover_fit_portrait(tex, crop.size)
 
 
 func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:
