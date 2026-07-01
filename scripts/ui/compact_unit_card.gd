@@ -45,36 +45,6 @@ const STATUS_NUMERIC_MIN_WIDTH := 96.0
 const STATUS_CHIP_HEIGHT := 56.0
 const ACTION_PIP_VALUE_FONT_SIZE := 48
 const CARD_BORDER_WIDTH := 6
-const PIP_ICON_MAP := {
-	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
-	"blast": preload("res://assets/generated/icon_damage_1776027930.png"),
-	"heal": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
-	"shield": preload("res://assets/generated/icon_shield_1776027929.png"),
-	"taunt": preload("res://assets/generated/icon_shield_1776027929.png"),
-	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
-	"roll": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
-	"rfe": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
-	"rfm": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
-	"freeze": preload("res://assets/generated/icon_frost_snowflake_frame_0_1776027966.png"),
-	"cloak": preload("res://assets/generated/icon_dice_v2_1776040041.png"),
-}
-const PIP_ICON_ATLAS_PATH := "res://assets/ui/icons/pip_icons.png"
-const PIP_ICON_CELL_SIZE := Vector2(256, 256)
-const PIP_ICON_COLUMNS := {
-	"dmg": 0,
-	"damage": 0,
-	"blast": 0,
-	"shield": 1,
-	"taunt": 1,
-	"heal": 2,
-	"dot": 3,
-	"poison": 3,
-	"roll": 4,
-	"rfe": 4,
-	"rfm": 4,
-	"freeze": 5,
-}
-
 var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
 var current_hp: int = 45
@@ -610,14 +580,7 @@ func _make_action_fallback(text: String) -> Label:
 
 
 func _get_pip_icon_texture(kind: String) -> Texture2D:
-	var shared_texture: Texture2D = PixelUI.pip_texture_for_key(kind)
-	if shared_texture != null:
-		return shared_texture
-	return PIP_ICON_MAP.get(kind)
-
-
-func _get_pip_icon_atlas() -> Texture2D:
-	return null
+	return PixelUI.pip_texture_for_key(kind)
 
 
 func _normalize_action_pip(pip: Dictionary) -> Dictionary:

@@ -18,20 +18,6 @@ const RANGE_FONT := 30
 const PICKER_FONT := 28
 const BLURB_FONT := 28
 
-const HELP_ICON_MAP := {
-	"dmg": preload("res://assets/generated/icon_damage_1776027930.png"),
-	"dot": preload("res://assets/generated/icon_dot_1776027932.png"),
-	"shield": preload("res://assets/generated/icon_shield_1776027929.png"),
-	"heal": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
-	"rfe": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
-	"rfm": preload("res://assets/generated/icon_dice_d6_1776027927.png"),
-	"pierce": preload("res://assets/generated/icon_damage_v2_1776040040.png"),
-	"blastAll": preload("res://assets/generated/icon_damage_1776027930.png"),
-	"cloak": preload("res://assets/generated/icon_dice_v2_1776040041.png"),
-	"freeze": preload("res://assets/generated/icon_frost_snowflake_1776027966.png"),
-	"taunt": preload("res://assets/generated/icon_shield_1776027929.png"),
-	"revive": preload("res://assets/generated/icon_heal_heart_1776027943.png"),
-}
 const HELP_TABS := [
 	{"id": "basics", "label": "BASICS"},
 	{"id": "protocol", "label": "PROTOCOL"},
@@ -42,9 +28,9 @@ const HELP_TABS := [
 	{"id": "settings", "label": "SETTINGS"},
 ]
 const HELP_KEYWORD_ICON := {
-	"dot": "dot", "pierce": "pierce", "shield": "shield", "heal": "heal",
-	"revive": "revive", "roll_down": "rfe", "roll_up": "rfm",
-	"freeze": "freeze", "cloak": "cloak", "taunt": "taunt", "aoe": "blastAll",
+	"dot": "poison", "pierce": "damage", "shield": "shield", "heal": "heal",
+	"revive": "heal", "roll_down": "roll_down", "roll_up": "roll_up",
+	"freeze": "freeze", "taunt": "shield", "aoe": "damage",
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
@@ -403,7 +389,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	row.add_child(icon_frame)
 
 	var icon_key: String = str(HELP_KEYWORD_ICON.get(str(kw.get("id", "")), ""))
-	var icon_texture: Texture2D = HELP_ICON_MAP.get(icon_key) as Texture2D if icon_key != "" else null
+	var icon_texture: Texture2D = PixelUI.pip_texture_for_key(icon_key)
 	if icon_texture != null:
 		var icon := TextureRect.new()
 		icon.texture = icon_texture
