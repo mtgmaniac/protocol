@@ -297,12 +297,11 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 				found = true
 				total_heal += self_heal
 
-	# ── DoT: show only when BOTH poison > 0 AND poison_turns > 0 ─────────────
-	# This mirrors combat_manager._tick_state exactly — both must be nonzero
-	# for the tick to fire this round.
-	var active_dot: int = 0
-	if int(target_state.get("poison", 0)) > 0 and int(target_state.get("poison_turns", 0)) > 0:
-		active_dot = int(target_state.get("poison", 0))
+	# ── DoT: exactly what _tick_state will deal this round (0 when the tick
+	# won't fire — expired, skip-flagged, or no poison), including the enemy-side
+	# relic amplification. Single-sourced from combat_manager.
+	var active_dot: int = _scene.combat_manager.get_expected_dot_tick(target_state)
+	if active_dot > 0:
 		found = true
 
 	if not found:

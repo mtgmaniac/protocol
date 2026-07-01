@@ -1193,6 +1193,23 @@ func _tick_end_of_round_states() -> void:
 			enemy_state["taunting"] = false
 
 
+# The poison damage this state takes at the end of the current round — 0 when
+# the tick won't fire (no poison, expired turns, skip flag). Mirrors _tick_state
+# and is the single source the HP preview uses so the projection can't drift
+# from combat.
+func get_expected_dot_tick(state: Dictionary) -> int:
+	if bool(state.get("dead", false)):
+		return 0
+	if int(state.get("poison_turns", 0)) <= 0 or int(state.get("poison", 0)) <= 0:
+		return 0
+	if bool(state.get("poison_skip_next_tick", false)):
+		return 0
+	var dot_bonus: int = 0
+	if not _is_hero_state(state):
+		dot_bonus = int(_get_relic_value("dotAmplified", "bonus", 0)) + _get_total_dot_bonus()
+	return int(state.get("poison", 0)) + dot_bonus
+
+
 func _tick_state(state: Dictionary) -> void:
 	if state["dead"]:
 		return
@@ -1201,10 +1218,7 @@ func _tick_state(state: Dictionary) -> void:
 		if bool(state.get("poison_skip_next_tick", false)):
 			state["poison_skip_next_tick"] = false
 		else:
-			var dot_bonus: int = 0
-			if not _is_hero_state(state):
-				dot_bonus = int(_get_relic_value("dotAmplified", "bonus", 0)) + _get_total_dot_bonus()
-			var tick_dmg: int = int(state["poison"]) + dot_bonus
+			var tick_dmg: int = get_expected_dot_tick(state)
 			_emit_action_event(state, _resolve_side_for_state(state), "Poison", "tick")
 			_log("%s takes %d poison damage." % [state["unit"].display_name, tick_dmg])
 			_damage_state(state, tick_dmg)

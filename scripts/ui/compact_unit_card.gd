@@ -72,7 +72,6 @@ var _preview_effects: Dictionary = {}
 var _preview_rect_red: ColorRect = null
 var _preview_rect_blue: ColorRect = null
 var _preview_rect_purple: ColorRect = null
-var _preview_rect_teal: ColorRect = null
 var _preview_rect_heal: ColorRect = null
 var _locked_layout_size: Vector2 = Vector2.ZERO
 var _locked_portrait_width: float = 0.0
@@ -884,8 +883,6 @@ func _ensure_preview_rects() -> void:
 		_preview_rect_blue = _make_preview_rect("PreviewBlue")
 	if _preview_rect_purple == null or not is_instance_valid(_preview_rect_purple):
 		_preview_rect_purple = _make_preview_rect("PreviewPurple")
-	if _preview_rect_teal == null or not is_instance_valid(_preview_rect_teal):
-		_preview_rect_teal = _make_preview_rect("PreviewTeal")
 	if _preview_rect_heal == null or not is_instance_valid(_preview_rect_heal):
 		_preview_rect_heal = _make_preview_rect("PreviewHeal")
 	if _hp_label != null:
@@ -907,7 +904,7 @@ func _make_preview_rect(rect_name: String) -> ColorRect:
 
 
 func _hide_preview_rects() -> void:
-	for rect_variant in [_preview_rect_red, _preview_rect_blue, _preview_rect_purple, _preview_rect_teal, _preview_rect_heal]:
+	for rect_variant in [_preview_rect_red, _preview_rect_blue, _preview_rect_purple, _preview_rect_heal]:
 		var rect: ColorRect = rect_variant
 		if rect != null and is_instance_valid(rect):
 			rect.visible = false
@@ -929,12 +926,34 @@ func _place_preview_rect(rect: ColorRect, x_hp: float, width_hp: float, hp_max: 
 	rect.size = Vector2((width_hp / hp_max) * bar_w, bar_h)
 
 
+# ── HP preview: net-outcome projection ───────────────────────────────────────
+# The bar answers the one question the player is actually asking during
+# targeting — "if I lock this in, where does my HP end up?" — by projecting the
+# round in real resolution order (hero heals/shields land first, then enemy
+# damage, then the poison tick; damage and poison both drain shields before
+# HP). Zones painted on the bar:
+#   red    [final, current]              net HP loss (attributed damage-first)
+#   purple leftmost slice of that loss = the poison tick's unshielded share
+#   mint   [current, final]              net HP gain
+#   blue   [no-shield final, final]      loss the shield prevented (counterfactual)
+# Intermediate states are deliberately NOT shown: the resolution order is
+# fixed, so mid-round numbers carry no decision the endpoint doesn't, and the
+# old sequential slabs painted contradictory futures (damage measured from
+# pre-heal HP next to a detached heal strip). Per-source composition stays
+# readable in the ability readout pips.
 func _layout_preview_overlays() -> void:
 	if _hp_back == null or _preview_effects.is_empty():
 		_hide_preview_rects()
+		_update_hp_label_preview(-1)
+		if _hp_chip != null:
+			_hp_chip.visible = true
 		return
 
 	_ensure_preview_rects()
+	# The resolution-feedback chip animates forecast-vs-displayed HP; while a
+	# preview is active it must not fight the projection overlays.
+	if _hp_chip != null:
+		_hp_chip.visible = false
 	var bar_w: float = _hp_back.size.x
 	var bar_h: float = _hp_back.size.y
 	if bar_w <= 2.0 or bar_h <= 2.0:
@@ -949,33 +968,47 @@ func _layout_preview_overlays() -> void:
 	var dot_tick: float = float(int(_preview_effects.get("dot", 0)))
 	var lethal: bool = bool(_preview_effects.get("lethal", false))
 
-	if lethal:
+	# Project the round in resolution order.
+	var post_heal: float = minf(cur_hp + inc_heal, hp_max)
+	var total_shield: float = cur_shield + inc_shield
+	var absorbed: float = minf(inc_dmg, total_shield)
+	var hp_dmg: float = inc_dmg - absorbed
+	var shield_after: float = total_shield - absorbed
+	var hp_dot: float = dot_tick - minf(dot_tick, shield_after)
+	var final_hp: float = clampf(post_heal - hp_dmg - hp_dot, 0.0, hp_max)
+	var no_shield_final: float = clampf(post_heal - inc_dmg - dot_tick, 0.0, hp_max)
+
+	_hide_preview_rects()
+	if lethal or (final_hp <= 0.0 and cur_hp > 0.0):
 		_place_preview_rect(_preview_rect_red, 0.0, cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
-		for rect_variant in [_preview_rect_blue, _preview_rect_purple, _preview_rect_teal, _preview_rect_heal]:
-			var rect: ColorRect = rect_variant
-			if rect != null and is_instance_valid(rect):
-				rect.visible = false
+		_update_hp_label_preview(0)
 		return
 
-	var total_shield: float = cur_shield + inc_shield
-	var blue_w: float = minf(total_shield, inc_dmg)
-	var red_w: float = maxf(0.0, inc_dmg - blue_w)
-	var shield_left: float = total_shield - blue_w
-	var teal_w: float = minf(shield_left, dot_tick)
-	var purple_w: float = maxf(0.0, dot_tick - teal_w)
+	if final_hp < cur_hp:
+		var loss: float = cur_hp - final_hp
+		var dot_slice: float = minf(hp_dot, loss)
+		_place_preview_rect(_preview_rect_purple, final_hp, dot_slice, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
+		_place_preview_rect(_preview_rect_red, final_hp + dot_slice, loss - dot_slice, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
+	elif final_hp > cur_hp:
+		_place_preview_rect(_preview_rect_heal, cur_hp, final_hp - cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.DT_HP_GREEN)
 
-	var red_x: float = maxf(0.0, cur_hp - red_w)
-	var blue_x: float = maxf(0.0, red_x - blue_w)
-	var purple_x: float = maxf(0.0, blue_x - purple_w)
-	var teal_x: float = maxf(0.0, purple_x - teal_w)
+	# The slice the shield eats, shown below the real endpoint: "without your
+	# shield you would end HERE."
+	var protected_to: float = minf(final_hp, cur_hp)
+	if no_shield_final < protected_to:
+		_place_preview_rect(_preview_rect_blue, no_shield_final, protected_to - no_shield_final, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.22, 0.55, 0.95, 0.80))
 
-	_place_preview_rect(_preview_rect_red, red_x, red_w, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
-	_place_preview_rect(_preview_rect_blue, blue_x, blue_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.22, 0.55, 0.95, 0.80))
-	_place_preview_rect(_preview_rect_purple, purple_x, purple_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
-	_place_preview_rect(_preview_rect_teal, teal_x, teal_w, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.18, 0.72, 0.68, 0.75))
+	_update_hp_label_preview(int(roundf(final_hp)))
 
-	var heal_eff: float = minf(inc_heal, hp_max - cur_hp)
-	_place_preview_rect(_preview_rect_heal, cur_hp, heal_eff, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.DT_HP_GREEN)
+
+# "45 → 37 / 55" while a net-changing preview is active; plain "45 / 55" otherwise.
+func _update_hp_label_preview(final_hp_preview: int) -> void:
+	if _hp_label == null:
+		return
+	if final_hp_preview < 0 or final_hp_preview == current_hp:
+		_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
+	else:
+		_hp_label.text = "%d → %d / %d" % [maxi(current_hp, 0), final_hp_preview, maxi(max_hp, 1)]
 
 
 func _wire_hp_passthrough() -> void:
