@@ -85,7 +85,7 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 | **Death SFX timing** | **Done** | Fatal `death` SFX at hit moment; skip lead/pause on kills; poison ticks own feedback group; `skip_feedback` wired |
 | **Task 9 — Audio system** | **Done** | `AudioManager` wired; SFX tiers per `offline-bundle/AUDIO.md`, hooked to Task 8 events |
 | **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
-| **HP preview — heal before damage (net damage)** | **Tabbed — Claude** | Multiple preview bugs from playtest — see handoff below. **Reverted** Jun 2025 overlay/label experiments; baseline `compact_unit_card.gd` + `compute_preview_for_unit`. |
+| **HP preview — heal before damage (net damage)** | **Done (Jul 2026)** | Net-outcome projection model — single projected endpoint in resolution order, shield counterfactual in blue, `cur → net / max` label. All three handoff bugs fixed; DoT tick single-sourced from `combat_manager.get_expected_dot_tick()`. See `docs/AI_AGENT_GAME_REFERENCE.md` §9b. |
 | **Ability target scope clarity (ALL vs ally vs self)** | **Done** | `resolve_ability_target_scope()` → **SELF** / **ALL** only (no **ALLY** badge — ally-targeted heals assumed); `blastAll` dmg shows **ALL** (Scorched Earth) |
 | **Ability readout — bracket scope + superscript turns** | **Done** | `)value(` / `(value)` scope + superscript duration via `EffectPip` (`ability_readout.gd`, reward/card pips) |
 | **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
@@ -214,6 +214,12 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 
 | Item | Notes |
 |------|-------|
+| **Dice physics overhaul (Jul 2026)** | Hand-toss model, low flat launch, camera-matched sloped walls, engraved numerals, frozen-dice blocking verified by `DiceTrayPhysicsProbe.tscn` (regression gate) |
+| **Portrait pipeline (Jul 2026)** | Defringe tool, composition-aware `PixelUI.cover_fit_portrait()`, Void Circlet portraits reconnected |
+| **HP preview net-outcome model (Jul 2026)** | See UI table row; playtest-bug handoff closed |
+| **Tutorial audit (Jul 2026)** | Dead protocol spotlight + wrong Set highlight fixed; `tutorial_smoke_test.gd` drives all 21 steps |
+| **Dead-code purge (Jul 2026)** | ~2,400 lines: 44 dead funcs, 40 consts, 3 dead files, generated-icon folder; icon maps unified through PixelUI |
+| **Architecture review (Jul 2026)** | `docs/ARCHITECTURE_REVIEW_JUL2026.md` — read before large refactors (sim-engine decision gates Task 5) |
 | Doc drift (Task 0) | `CLAUDE.md`, `GDD.md`, `ROADMAP.md` reconciled |
 | Baseline (Task 1) | `docs/BASELINE.md`, tag `baseline-fable-restart`, 78/78 ability audit |
 | **Task 2 — battle_scene split** | `battle_layout.gd`, `battle_card_view.gd`, `battle_feedback.gd` |

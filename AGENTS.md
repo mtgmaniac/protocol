@@ -43,6 +43,16 @@ npx tsx scripts/debug/balance_sim_full_evo_team.ts 15000
 # Static audits (ability keywords, gear/relic effect types)
 python scripts/debug/audit_ability_keywords.py
 python scripts/debug/audit_gear_relic_effects.py
+
+# Godot smoke gates (run all four after non-trivial changes):
+#   AbilityAuditRunner.tscn          — 105 combat/data checks
+#   flow_smoke_test.gd               — 11-step scene-flow playthrough
+#   tutorial_smoke_test.gd           — 21-step tutorial playthrough
+#   DiceTrayPhysicsProbe.tscn        — dice physics regression (0 penetrations/flyovers)
+# See docs/AI_AGENT_GAME_REFERENCE.md §14 for the exact commands.
+
+# Portrait pipeline (rerun when new cutout art lands; --dry-run to audit)
+python scripts/assets/defringe_alpha_edges.py
 ```
 
 ## Data

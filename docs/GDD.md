@@ -131,6 +131,32 @@ Exact ranges are defined per-unit in unit metadata files.
 - All dice rolled simultaneously at turn start
 - Result maps directly to the unit's ability chart
 
+### Physical Dice (3D tray) — July 2026 model
+The roll is a real rigid-body simulation, tuned to read like tabletop dice
+(design decisions pinned after the July 2026 physics overhaul):
+
+- **Hand toss:** each side's dice leave one shared "hand" origin per roll as a
+  cluster with a common direction plus per-die jitter, tumbling end-over-end
+  around the axis perpendicular to travel. Hero hand at the bottom edge,
+  enemy at the top; each side sweeps its own half.
+- **Low and flat:** dice leave the hand barely above the felt (so they roll
+  across the tray instead of flying over it). This is what makes frozen dice
+  read as solid obstacles — verified by the physics probe (0 penetrations,
+  0 flyovers).
+- **Energy model:** no air drag while rolling; energy is lost to bounces and
+  friction (hard-plastic die on a felt-lined tray). A "felt grab" damping ramp
+  ends stragglers after ~3s.
+- **Tray:** invisible walls sit exactly at the visible combat-zone edges and
+  lean inward 8° like a real tray's sloped rim, so dice can never wedge
+  upright in a corner.
+- **Frozen dice** are immovable static bodies at full collision size — new
+  dice bounce off them naturally. (Immovable over pushable: result rows sit
+  near the tray edges and pushable frozen dice would drift out of their slots.)
+- **Engraved faces:** numerals render as recessed engravings (dark numeral,
+  occlusion rim toward the light, lit groove edge away) — not printed decals.
+- The die lands its **effective** face once at settle (Capped-die Option A);
+  raw roll is kept separately for crit/overload rules.
+
 ### Manipulation Methods
 
 | Method | Source | Effect |
@@ -150,6 +176,25 @@ Exact ranges are defined per-unit in unit metadata files.
 ---
 
 ## 7. Combat System
+
+### HP Preview (net outcome) — July 2026 model
+During targeting, every card's HP bar answers exactly one question: *"if I
+lock this in, where does my HP end up?"* The projection runs the round in true
+resolution order (hero heals/shields land first, then enemy damage, then the
+poison tick; damage and poison both drain shields before HP) and paints:
+
+- **red** `[final, current]` — net HP loss (leading **purple** slice = the
+  poison tick's unshielded share)
+- **mint** `[current, final]` — net HP gain
+- **blue** `[no-shield final, final]` — the loss the shield prevents
+  ("without your shield you'd end HERE")
+- HP label reads `45 → 30 / 45` while a net-changing preview is active;
+  lethal projections paint the whole fill red
+
+Intermediate states are deliberately **not** shown — resolution order is
+fixed, so mid-round numbers carry no decision the endpoint doesn't, and
+sequential slabs previously painted contradictory futures. Per-source
+composition (who contributes what) lives in the ability readout pips.
 
 ### Turn Structure
 1. Roll phase — all dice rolled simultaneously

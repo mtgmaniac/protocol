@@ -5,7 +5,7 @@ version of Overload Protocol. It describes the live project structure, the real
 runtime owners, and the traps that have already cost time so future work can
 start with the right assumptions.
 
-Last refreshed from local source on 2026-06-21.
+Last refreshed from local source on 2026-07-01.
 
 **Also read:** [BASELINE.md](BASELINE.md) (verify runners + tag), [AGENTS.md](../AGENTS.md) (branch split).
 
@@ -204,6 +204,32 @@ When debugging portrait/card proportions:
 - prefer the actual resolved card size when available
 - do not assume a base-resolution logical value maps cleanly to the preview
 
+## 8b. Portrait Pipeline Rules (July 2026)
+
+Two portrait art styles coexist and are auto-classified at load:
+
+- **cutout** — transparent background, subject fills the canvas (heroes, older
+  facility/hive enemies)
+- **full-bleed** — opaque scenic background, subject centred (veil / menagerie
+  / void circlet)
+
+`DataManager._crop_to_content()` tags every portrait texture with a
+`full_bleed` meta (sampled opaque coverage > 90%). ALL portrait framing must go
+through **`PixelUI.cover_fit_portrait()`** — full-bleed art centres both axes,
+cutout art top-anchors (heads never crop). Never add per-unit pixel offsets.
+
+White fringe on cutout art (semi-transparent near-white edge pixels baked by a
+white-background cutout) is fixed by the pipeline tool — rerun it whenever new
+cutout art lands:
+
+```bash
+python scripts/assets/defringe_alpha_edges.py   # add --dry-run to audit only
+```
+
+Enemy portrait files live in `assets/portraits/enemies/` named by slugified
+display name (the DataManager fallback loader). Void Circlet art was migrated
+from `legacy-angular/public/enemies/` in July 2026 via centre-square crops.
+
 ## 9. HP Region Rules
 
 Current HP region implementation lives in:
@@ -220,6 +246,22 @@ Current readability rule:
 
 - the visible HP band must be judged from the screenshot
 - HP label contrast on top of the bar matters as much as raw font size
+
+## 9b. HP Preview Contract (July 2026)
+
+Previews are **net-outcome projections**, not sequential event displays. The
+aggregation lives in `battle_card_view.compute_preview_for_unit()`; the
+projection/paint lives in `compact_unit_card._layout_preview_overlays()`:
+
+- projects the round in true resolution order: hero heals/shields → enemy
+  damage → poison tick (damage and poison both drain shields before HP)
+- zones: red = net loss (purple lead slice = unshielded poison), mint = net
+  gain, blue = loss the shield prevents (counterfactual); lethal = whole fill
+- label shows `cur → final / max` while a net-changing preview is active
+- the poison tick amount is single-sourced from
+  `combat_manager.get_expected_dot_tick()` — never re-derive it in UI code
+- the resolution-feedback chip (`_hp_chip` / `forecast_hp`) is hidden while a
+  preview is active; the two systems must not both paint
 
 ## 10. Ability Readout Rules
 
@@ -242,15 +284,35 @@ Current behavior:
 
 - [dice_tray_3d.gd](C:/Users/Kev/Documents/protocol/scripts/battle/dice_tray_3d.gd)
 
-Current important behavior:
+Physics model (July 2026 overhaul — see `docs/GDD.md` §6 for the design):
 
-- all dice wait until the final die settles
-- after a short delay they snap together into result positions
-- resolved dice scale down from their rolling presentation
-- frozen dice should behave as physical blockers
-- visible combat-zone bounds should feel like hard surfaces
+- hand-toss throw: one shared per-side "hand" origin, low flat launch
+  (`THROW_HAND_HEIGHT_*`), forward tumble around the travel-perpendicular axis
+- physical walls are rebuilt from the live camera/viewport
+  (`_update_world_bounds`) so their inner faces sit exactly at the visible
+  combat-zone edges, leaning inward `WALL_LEAN_RADIANS` (sloped tray rim, no
+  corner wedging); there is NO screen-bounds teleport code — do not re-add it
+- zero damping while rolling; energy loss comes from the two PhysicsMaterials
+  (die vs felt tray) plus a late "felt grab" ramp
+- frozen dice are immovable static bodies at full collision size; new dice
+  spawn-sidestep them (`_adjust_spawn_for_occupants`)
+- result presentation scales the die's `Visuals` container, never the
+  RigidBody3D (body scale would also scale the collision shape)
+- all dice wait until the final die settles, then snap to result rows; the
+  landed face shows the effective roll (raw kept in metas for crit/overload)
+- contact shadows and roll SFX were removed on user direction — do not re-add
 
-This area is very sensitive to feel. A screenshot cannot verify motion quality.
+Feel tuning knobs: `THROW_*`, `DIE_GRAVITY_SCALE`, `_make_die_physics_material`,
+`_make_tray_physics_material`.
+
+**Regression gate for ANY dice change** (must stay at 0/0/0):
+
+```powershell
+& $GODOT --headless --path . 'res://scenes/debug/DiceTrayPhysicsProbe.tscn'
+# [PROBE] penetration_events=0 flyover_events=0 ... tilted_rests=0
+```
+
+A screenshot cannot verify motion quality — feel needs a human playtest.
 
 ## 12. Current Battle Header/Footer Model
 
@@ -323,6 +385,22 @@ Full scene-flow smoke test (home → battle → reward → home → evolution �
 ```powershell
 & 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' --script 'res://scripts/debug/flow_smoke_test.gd'
 ```
+
+Tutorial playthrough (drives all 21 coachmark steps with real actions and
+asserts every spotlight resolves):
+
+```powershell
+& $GODOT --headless --path . --script 'res://scripts/debug/tutorial_smoke_test.gd'
+```
+
+Dice physics probe (regression gate for any dice change):
+
+```powershell
+& $GODOT --headless --path . 'res://scenes/debug/DiceTrayPhysicsProbe.tscn'
+```
+
+The battle smoke test also accepts `--debug-op <operation_id>` (facility,
+hive, veil, voidCirclet, stellarMenagerie) to launch a specific operation.
 
 Most useful visual verification:
 
