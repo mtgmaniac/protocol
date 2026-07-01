@@ -6,19 +6,45 @@ signal roll_finished
 const DIE_RADIUS := 1.00
 const DIE_COLLISION_LAYER := 1
 const DIE_COLLISION_MASK := 1
+# Result-row layout extents (visual placement of settled dice). The *physical*
+# tray walls are rebuilt from the live camera/viewport so they sit exactly at
+# the visible combat-zone edges — see _update_world_bounds().
 const TRAY_HALF_WIDTH := 3.25
 const TRAY_HALF_DEPTH := 5.5
-const COLLISION_FLOOR_HALF_WIDTH := 3.55
-const COLLISION_FLOOR_HALF_DEPTH := 5.75
 const COLLISION_WALL_HEIGHT := 7.0
+const COLLISION_WALL_THICKNESS := 0.5
+# A die is 1.0 world-units in radius (~50-90x a real d20), so plain gravity looks
+# like slow motion. Scaling gravity up restores believable fall/bounce pacing
+# while staying readable.
+const DIE_GRAVITY_SCALE := 7.0
+const THROW_SPEED_MIN := 10.5
+const THROW_SPEED_MAX := 13.5
+const THROW_TUMBLE_MIN := 9.0
+const THROW_TUMBLE_MAX := 15.0
+const THROW_WOBBLE_MAX := 4.0
+const THROW_YAW_JITTER := 0.10
+# Per-die offsets within one hand toss: (lateral, up, along-throw). Spread wide
+# enough that no two dice spawn overlapping (centres >= 2 radii apart).
+const THROW_CLUSTER_OFFSETS: Array[Vector3] = [
+	Vector3(0.0, 0.0, 0.0),
+	Vector3(2.1, 0.35, 0.0),
+	Vector3(-2.1, 0.7, 0.0),
+	Vector3(1.05, 1.05, -2.0),
+	Vector3(-1.05, 1.4, -2.0),
+]
+# After this long the felt "grabs" the dice: damping ramps in so stragglers
+# spiralling on a vertex wind down instead of spinning forever.
+const LATE_SETTLE_DAMP_START := 3.0
+const LATE_SETTLE_DAMP_RAMP := 2.0
+const IMPACT_SFX_MIN_DV := 8.0
+const IMPACT_SFX_DEBOUNCE_MS := 90
 const SETTLE_LINEAR_SPEED := 0.018
 const SETTLE_ANGULAR_SPEED := 0.026
 const SETTLE_REQUIRED_TIME := 0.16
 const FACE_RESOLVE_MIN_TIME := 0.75
 const FACE_RESOLVE_LINEAR_SPEED := 0.16
 const FACE_RESOLVE_ANGULAR_SPEED := 0.24
-const MIN_ROLL_TIME := 2.40
-const MAX_ROLL_TIME := 7.5
+const MAX_ROLL_TIME := 6.0
 const RESULT_SNAP_DELAY := 0.20
 const RESULT_PRESENTATION_TIME := 0.42
 const RESULT_SCALE := 0.95
@@ -54,12 +80,15 @@ var _face_centers: Array[Vector3] = []
 var _face_text_bases: Array[Basis] = []
 var _face_values: Array[int] = []
 var _is_rolling: bool = false
-var _number_block_material: StandardMaterial3D
-var _face_panel_material: StandardMaterial3D
-var _edge_line_material: StandardMaterial3D
 var _frozen_filter_material: StandardMaterial3D
 var _dice_number_font: Font
 var _is_exiting_tree: bool = false
+var _bounds_half_width: float = TRAY_HALF_WIDTH
+var _bounds_min_z: float = -TRAY_HALF_DEPTH
+var _bounds_max_z: float = TRAY_HALF_DEPTH
+var _tray_bodies: Dictionary = {}
+var _shadow_gradient_texture: GradientTexture2D
+var _roll_prev_velocities: Dictionary = {}
 
 
 func _ready() -> void:
@@ -84,6 +113,25 @@ func _sync_viewport_size() -> void:
 		return
 	var viewport_size := Vector2i(maxi(int(size.x), 2), maxi(int(size.y), 2))
 	_viewport.size = viewport_size
+	_update_world_bounds()
+
+
+# The camera is orthographic with KEEP_HEIGHT, so the visible world region is a
+# fixed-height rect whose width follows the combat-zone aspect. Rebuild the
+# physical floor/walls so their inner faces sit exactly at the screen edges —
+# every bounce the player sees comes from a real collider, never a teleport.
+func _update_world_bounds() -> void:
+	if _camera == null or _viewport == null:
+		return
+	var vp: Vector2 = Vector2(_viewport.size)
+	if vp.x <= 2.0 or vp.y <= 2.0:
+		return
+	var half_h: float = _camera.size * 0.5
+	var half_w: float = half_h * (vp.x / vp.y)
+	_bounds_half_width = maxf(half_w, DIE_RADIUS * 1.6)
+	_bounds_min_z = _camera.position.z - half_h
+	_bounds_max_z = _camera.position.z + half_h
+	_layout_tray_bodies()
 
 
 func set_combat_zone_rect(rect: Rect2) -> void:
@@ -105,22 +153,41 @@ func reset() -> void:
 	_hero_results.clear()
 	_enemy_results.clear()
 	_die_by_key.clear()
+	_roll_prev_velocities.clear()
 	_clear_dice()
 	# Hide when not rolling so the Roll button underneath is visible
 	visible = false
 
 
+# Scales only the cosmetic container — never the RigidBody3D itself, because
+# body scale also scales the collision shape (frozen dice must keep blocking at
+# their true size, and Jolt dislikes scaled bodies).
 func _set_die_result_scale(die: RigidBody3D, animate: bool) -> void:
 	if die == null or not is_instance_valid(die):
 		return
+	var visuals: Node3D = _die_visuals(die)
+	if visuals == null:
+		return
 	var target_scale := Vector3.ONE * RESULT_SCALE
 	if not animate:
-		die.scale = target_scale
+		visuals.scale = target_scale
 		return
 	var tween: Tween = create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(die, "scale", target_scale, RESULT_PRESENTATION_TIME)
+	tween.tween_property(visuals, "scale", target_scale, RESULT_PRESENTATION_TIME)
+
+
+func _die_visuals(die: RigidBody3D) -> Node3D:
+	return die.get_node_or_null("Visuals") as Node3D
+
+
+# Cosmetic child nodes (face panels, numerals, overlays) live under "Visuals".
+func _die_part(die: RigidBody3D, part_name: String) -> Node:
+	var visuals: Node3D = _die_visuals(die)
+	if visuals != null:
+		return visuals.get_node_or_null(part_name)
+	return die.get_node_or_null(part_name)
 
 
 func get_hero_rolls() -> Dictionary:
@@ -152,14 +219,6 @@ func show_result_actions(action_entries: Array) -> void:
 		var die: RigidBody3D = _die_by_key.get(key, null) as RigidBody3D
 		if die == null or not is_instance_valid(die):
 			continue
-		var label: Label3D = die.get_node_or_null("OwnerLabel") as Label3D
-		if label == null:
-			continue
-		label.text = "%s %d\n%s" % [
-			str(entry.get("name", "")).left(8),
-			int(entry.get("roll", 0)),
-			str(entry.get("ability", "")).left(12),
-		]
 		var effective_roll: int = int(entry.get("roll", 0))
 		var display_face_value: int = int(die.get_meta("display_face_value", effective_roll))
 		_highlight_top_face(die, display_face_value, str(entry.get("side", "")), str(entry.get("zone", "")))
@@ -180,8 +239,6 @@ func update_die_result_in_place(side: String, unit_id: String, display_effective
 	_reset_face_labels(die)
 	_reset_face_highlights(die)
 	_highlight_top_face(die, target, side)
-	var entry: Dictionary = die.get_meta("entry", {})
-	_show_die_result_label(die, target, str(entry.get("name", "")))
 
 
 func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool) -> void:
@@ -249,7 +306,6 @@ func reroll_die_to_result(side: String, unit_id: String, raw_result: int) -> voi
 	die.set_meta("resolved_result", raw)
 	die.set_meta("display_face_value", display)
 	die.set_meta("assigned_result_origin", target_origin)
-	_show_die_result_label(die, display, str(entry.get("name", "")))
 	_highlight_top_face(die, display, side)
 	if side == "hero":
 		_hero_results[unit_id] = raw
@@ -292,13 +348,20 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 		await _finish_roll(dice)
 		return
 
+	var throw_contexts: Dictionary = {
+		"enemy": _make_throw_context("enemy"),
+		"hero": _make_throw_context("hero"),
+	}
 	for i in range(all_entries.size()):
 		var entry: Dictionary = all_entries[i]
+		var side_slot: int = int(entry.get("slot_index", i))
+		_throw_context = throw_contexts.get(str(entry.get("side", "")), {})
 		var die: RigidBody3D
 		if bool(entry.get("frozen", false)) and int(entry.get("frozen_roll", 0)) > 0:
-			die = _prepare_frozen_die(entry, i, all_entries.size())
+			die = _prepare_frozen_die(entry, side_slot, all_entries.size())
 		else:
-			die = _spawn_die(entry, i, all_entries.size())
+			die = _spawn_die(entry, side_slot, all_entries.size())
+			_launch_die(die)
 			rolling_dice.append(die)
 		dice.append(die)
 
@@ -326,7 +389,6 @@ func _finish_roll(dice: Array) -> void:
 			_hero_results[unit_id] = raw
 		elif side == "enemy":
 			_enemy_results[unit_id] = raw
-		_show_die_result_label(die, display, str(entry.get("name", "")))
 		_set_die_frozen_visual(die, bool(entry.get("frozen", false)))
 		die.freeze = true
 		die.linear_velocity = Vector3.ZERO
@@ -538,8 +600,7 @@ func _get_face_forward_result_basis(face_index: int) -> Basis:
 
 
 func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: String = "") -> void:
-	var panel_name: String = "FacePanel%d" % result
-	var panel: MeshInstance3D = die.get_node_or_null(panel_name) as MeshInstance3D
+	var panel: MeshInstance3D = _die_part(die, "FacePanel%d" % result) as MeshInstance3D
 	if panel == null:
 		return
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
@@ -568,7 +629,7 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 	mat.roughness = 0.80
 	panel.material_override = mat
 	# Drop the result face's bevel so its glow reads cleanly.
-	var result_bevel: MeshInstance3D = die.get_node_or_null("FaceBevel%d" % result) as MeshInstance3D
+	var result_bevel: MeshInstance3D = _die_part(die, "FaceBevel%d" % result) as MeshInstance3D
 	if result_bevel != null:
 		result_bevel.visible = false
 	# Fade the non-result numerals; keep each engrave colour, only adjust alpha (all three layers).
@@ -576,7 +637,7 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 		var fv: int = int(face_value)
 		var alpha: float = 1.0 if fv == result else 0.4
 		for prefix in ["FaceNumber", "FaceNumberShadow", "FaceNumberHighlight"]:
-			var label: Label3D = die.get_node_or_null("%s%d" % [prefix, fv]) as Label3D
+			var label: Label3D = _die_part(die, "%s%d" % [prefix, fv]) as Label3D
 			if label == null:
 				continue
 			var c: Color = label.modulate
@@ -626,10 +687,10 @@ func _get_zone_face_style(zone_key: String) -> Dictionary:
 func _reset_face_highlights(die: RigidBody3D) -> void:
 	var face_mat: StandardMaterial3D = _face_panel_material_for(die)
 	for face_value in _face_values:
-		var panel: MeshInstance3D = die.get_node_or_null("FacePanel%d" % int(face_value)) as MeshInstance3D
+		var panel: MeshInstance3D = _die_part(die, "FacePanel%d" % int(face_value)) as MeshInstance3D
 		if panel != null:
 			panel.material_override = face_mat
-		var bevel: MeshInstance3D = die.get_node_or_null("FaceBevel%d" % int(face_value)) as MeshInstance3D
+		var bevel: MeshInstance3D = _die_part(die, "FaceBevel%d" % int(face_value)) as MeshInstance3D
 		if bevel != null:
 			bevel.visible = true
 
@@ -640,12 +701,6 @@ func _reset_face_labels(die: RigidBody3D) -> void:
 		_apply_face_number(die, int(face_value), int(face_value), base)
 
 
-func _set_displayed_face_number(die: RigidBody3D, face_value: int, result: int) -> void:
-	_reset_face_labels(die)
-	_apply_face_number(die, face_value, result, _die_base_color(die))
-
-
-# Set the engraved numeral (all three stacked labels) on one face, restoring their engrave colours.
 func _apply_face_number(die: RigidBody3D, face_value: int, display_value: int, base: Color) -> void:
 	var value_text: String = "%d" % clampi(display_value, 1, 20)
 	var font_size: int = 128 if value_text.length() == 1 else 108
@@ -655,7 +710,7 @@ func _apply_face_number(die: RigidBody3D, face_value: int, display_value: int, b
 
 
 func _set_label(die: RigidBody3D, node_name: String, value_text: String, font_size: int, color: Color) -> void:
-	var label: Label3D = die.get_node_or_null(node_name) as Label3D
+	var label: Label3D = _die_part(die, node_name) as Label3D
 	if label == null:
 		return
 	label.text = value_text
@@ -679,6 +734,7 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 	var elapsed: float = 0.0
 	var settled_times: Dictionary = {}
 	var all_ready: bool = false
+	_roll_prev_velocities.clear()
 	while elapsed < MAX_ROLL_TIME:
 		var tree: SceneTree = get_tree()
 		if _is_exiting_tree or tree == null:
@@ -694,7 +750,8 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 				continue
 			if bool(active_die.freeze):
 				continue
-			_apply_screen_bounds_bounce(active_die)
+			_play_impact_sfx_if_hit(active_die, elapsed)
+			_apply_late_settle_damping(active_die, elapsed)
 		all_ready = true
 		for die_variant in dice:
 			var die: RigidBody3D = die_variant as RigidBody3D
@@ -738,10 +795,6 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 		_resolve_landed_die_face(die, target_origins.get(die_id, die.global_transform.origin))
 
 
-func _is_die_settled(die: RigidBody3D) -> bool:
-	return die.sleeping or (die.linear_velocity.length() <= SETTLE_LINEAR_SPEED and die.angular_velocity.length() <= SETTLE_ANGULAR_SPEED)
-
-
 func _is_die_ready_for_face_resolve(die: RigidBody3D) -> bool:
 	return die.linear_velocity.length() <= FACE_RESOLVE_LINEAR_SPEED and die.angular_velocity.length() <= FACE_RESOLVE_ANGULAR_SPEED
 
@@ -771,52 +824,31 @@ func _display_face_for_entry(raw: int, entry: Dictionary) -> int:
 	return clampi(clamped_raw + buff - rfe, 1, 20)
 
 
-func _apply_screen_bounds_bounce(die: RigidBody3D) -> void:
-	if die == null or not is_instance_valid(die):
+# Impacts are detected from per-tick velocity changes (a sharp Δv means the die
+# just hit the floor, a wall, or another die) — no contact monitoring needed.
+func _play_impact_sfx_if_hit(die: RigidBody3D, elapsed: float) -> void:
+	var die_id: int = die.get_instance_id()
+	var prev: Vector3 = _roll_prev_velocities.get(die_id, die.linear_velocity)
+	var dv: float = (die.linear_velocity - prev).length()
+	_roll_prev_velocities[die_id] = die.linear_velocity
+	if dv < IMPACT_SFX_MIN_DV or elapsed < 0.05:
 		return
-	if _camera == null or not is_instance_valid(_camera):
+	var now: int = Time.get_ticks_msec()
+	if now - int(die.get_meta("last_impact_ms", 0)) < IMPACT_SFX_DEBOUNCE_MS:
 		return
-	if size.x <= 2.0 or size.y <= 2.0:
-		return
-	var origin: Vector3 = die.global_transform.origin
-	var center: Vector2 = _camera.unproject_position(origin)
-	var x_step: Vector2 = _camera.unproject_position(origin + Vector3.RIGHT)
-	var z_step: Vector2 = _camera.unproject_position(origin + Vector3.FORWARD)
-	var px_per_world_x: float = absf(x_step.x - center.x)
-	var px_per_world_z: float = absf(z_step.y - center.y)
-	if px_per_world_x <= 0.001 or px_per_world_z <= 0.001:
-		return
-	var die_x_radius_px: float = absf(_camera.unproject_position(origin + Vector3(DIE_RADIUS, 0.0, 0.0)).x - center.x)
-	var die_z_radius_px: float = absf(_camera.unproject_position(origin + Vector3(0.0, 0.0, DIE_RADIUS)).y - center.y)
-	var min_x: float = die_x_radius_px
-	var max_x: float = size.x - die_x_radius_px
-	var min_y: float = die_z_radius_px
-	var max_y: float = size.y - die_z_radius_px
-	var velocity: Vector3 = die.linear_velocity
-	var bounced: bool = false
+	die.set_meta("last_impact_ms", now)
+	var volume_db: float = clampf(remap(dv, IMPACT_SFX_MIN_DV, 30.0, -14.0, -4.0), -14.0, -4.0)
+	AudioManager.play_sfx("dice", volume_db)
 
-	if center.x < min_x:
-		origin.x += (min_x - center.x) / px_per_world_x
-		velocity.x = absf(velocity.x)
-		bounced = true
-	elif center.x > max_x:
-		origin.x -= (center.x - max_x) / px_per_world_x
-		velocity.x = -absf(velocity.x)
-		bounced = true
 
-	if center.y < min_y:
-		origin.z += (min_y - center.y) / px_per_world_z
-		velocity.z = absf(velocity.z)
-		bounced = true
-	elif center.y > max_y:
-		origin.z -= (center.y - max_y) / px_per_world_z
-		velocity.z = -absf(velocity.z)
-		bounced = true
-
-	if not bounced:
+# Late in the roll the "felt" grabs: damping ramps up so a die spiralling on a
+# vertex winds down naturally instead of spinning until the timeout freeze.
+func _apply_late_settle_damping(die: RigidBody3D, elapsed: float) -> void:
+	if elapsed <= LATE_SETTLE_DAMP_START:
 		return
-	die.global_transform = Transform3D(die.global_transform.basis, origin)
-	die.linear_velocity = velocity
+	var t: float = clampf((elapsed - LATE_SETTLE_DAMP_START) / LATE_SETTLE_DAMP_RAMP, 0.0, 1.0)
+	die.linear_damp = t * 1.6
+	die.angular_damp = 0.12 + t * 2.2
 
 
 # ── UI CONSTRUCTION ──────────────────────────────────────────────────────────
@@ -887,64 +919,72 @@ func _build_environment() -> Environment:
 	return environment
 
 
-func _build_visible_floor() -> void:
-	var floor_mesh: PlaneMesh = PlaneMesh.new()
-	floor_mesh.size = Vector2(COLLISION_FLOOR_HALF_WIDTH * 2.4, COLLISION_FLOOR_HALF_DEPTH * 2.4)
-	var floor_mat: StandardMaterial3D = StandardMaterial3D.new()
-	floor_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	floor_mat.albedo_color = Color(0.02, 0.03, 0.05, 1.0)
-	floor_mat.roughness = 0.95
-	var floor_inst: MeshInstance3D = MeshInstance3D.new()
-	floor_inst.mesh = floor_mesh
-	floor_inst.material_override = floor_mat
-	floor_inst.position = Vector3(0, -0.01, 0)
-	_world_root.add_child(floor_inst)
-
-
 func _build_tray_body() -> void:
-	_add_static_box("InvisibleFloor", Vector3(0, -0.08, 0), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, 0.16, COLLISION_FLOOR_HALF_DEPTH * 2.0))
-	_add_static_box("InvisibleBackWall", Vector3(0, COLLISION_WALL_HEIGHT * 0.5, -TRAY_HALF_DEPTH), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, COLLISION_WALL_HEIGHT, 0.16))
-	_add_static_box("InvisibleFrontWall", Vector3(0, COLLISION_WALL_HEIGHT * 0.5, TRAY_HALF_DEPTH), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, COLLISION_WALL_HEIGHT, 0.16))
-	_add_static_box("InvisibleLeftWall", Vector3(-TRAY_HALF_WIDTH, COLLISION_WALL_HEIGHT * 0.5, 0), Vector3(0.16, COLLISION_WALL_HEIGHT, COLLISION_FLOOR_HALF_DEPTH * 2.0))
-	_add_static_box("InvisibleRightWall", Vector3(TRAY_HALF_WIDTH, COLLISION_WALL_HEIGHT * 0.5, 0), Vector3(0.16, COLLISION_WALL_HEIGHT, COLLISION_FLOOR_HALF_DEPTH * 2.0))
-	_add_static_box("InvisibleCeiling", Vector3(0, COLLISION_WALL_HEIGHT + 0.08, 0), Vector3(COLLISION_FLOOR_HALF_WIDTH * 2.0, 0.16, COLLISION_FLOOR_HALF_DEPTH * 2.0))
+	for wall_name in ["Floor", "BackWall", "FrontWall", "LeftWall", "RightWall", "Ceiling"]:
+		_tray_bodies[wall_name] = _add_static_box(wall_name)
+	_layout_tray_bodies()
 
 
-func _add_static_box(node_name: String, pos: Vector3, size: Vector3) -> void:
+func _layout_tray_bodies() -> void:
+	if _tray_bodies.is_empty():
+		return
+	var center_z: float = (_bounds_min_z + _bounds_max_z) * 0.5
+	var depth: float = _bounds_max_z - _bounds_min_z
+	var width: float = _bounds_half_width * 2.0
+	var t: float = COLLISION_WALL_THICKNESS
+	var wall_y: float = COLLISION_WALL_HEIGHT * 0.5
+	# Walls sit just outside the bounds so their inner faces are flush with the
+	# visible edges; floor/ceiling overhang so nothing escapes through corners.
+	_place_static_box("Floor", Vector3(0, -t * 0.5, center_z), Vector3(width + t * 2.0, t, depth + t * 2.0))
+	_place_static_box("Ceiling", Vector3(0, COLLISION_WALL_HEIGHT + t * 0.5, center_z), Vector3(width + t * 2.0, t, depth + t * 2.0))
+	_place_static_box("BackWall", Vector3(0, wall_y, _bounds_min_z - t * 0.5), Vector3(width + t * 2.0, COLLISION_WALL_HEIGHT, t))
+	_place_static_box("FrontWall", Vector3(0, wall_y, _bounds_max_z + t * 0.5), Vector3(width + t * 2.0, COLLISION_WALL_HEIGHT, t))
+	_place_static_box("LeftWall", Vector3(-_bounds_half_width - t * 0.5, wall_y, center_z), Vector3(t, COLLISION_WALL_HEIGHT, depth + t * 2.0))
+	_place_static_box("RightWall", Vector3(_bounds_half_width + t * 0.5, wall_y, center_z), Vector3(t, COLLISION_WALL_HEIGHT, depth + t * 2.0))
+
+
+func _place_static_box(node_name: String, pos: Vector3, box_size: Vector3) -> void:
+	var body: StaticBody3D = _tray_bodies.get(node_name, null) as StaticBody3D
+	if body == null or not is_instance_valid(body):
+		return
+	body.position = pos
+	var shape: CollisionShape3D = body.get_child(0) as CollisionShape3D
+	if shape != null and shape.shape is BoxShape3D:
+		(shape.shape as BoxShape3D).size = box_size
+
+
+func _add_static_box(node_name: String) -> StaticBody3D:
 	var body: StaticBody3D = StaticBody3D.new()
 	body.name = node_name
-	body.position = pos
 	body.collision_layer = DIE_COLLISION_LAYER
 	body.collision_mask = DIE_COLLISION_MASK
 	body.physics_material_override = _make_tray_physics_material()
 	var shape: CollisionShape3D = CollisionShape3D.new()
-	var box: BoxShape3D = BoxShape3D.new()
-	box.size = size
-	shape.shape = box
+	shape.shape = BoxShape3D.new()
 	body.add_child(shape)
 	_world_root.add_child(body)
+	return body
 
 
 # ── DICE SPAWNING & PHYSICS ──────────────────────────────────────────────────
 
-func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
+func _spawn_die(entry: Dictionary, index: int, _total_count: int) -> RigidBody3D:
 	var die: RigidBody3D = RigidBody3D.new()
-	die.scale = Vector3.ONE
 	die.set_meta("entry", entry)
 	_die_by_key[_entry_key(str(entry.get("side", "")), str(entry.get("id", "")))] = die
-	# Dense mass with stronger damping: heavier motion and less frantic spin.
-	die.mass = 5.2
-	die.gravity_scale = 3.0
-	die.linear_damp = 0.24
-	die.angular_damp = 0.38
+	# Real dice lose energy to bounces and table friction, not to air drag, so
+	# damping stays at ~zero while rolling (a felt-grab ramp kicks in late — see
+	# _wait_for_dice_to_settle). Moderate friction lets dice skid and tumble.
+	die.mass = 4.0
+	die.gravity_scale = DIE_GRAVITY_SCALE
+	die.linear_damp = 0.0
+	die.angular_damp = 0.12
 	die.can_sleep = true
 	die.continuous_cd = true
-	die.contact_monitor = true
-	die.max_contacts_reported = 8
 	die.collision_layer = DIE_COLLISION_LAYER
 	die.collision_mask = DIE_COLLISION_MASK
 	die.physics_material_override = _make_die_physics_material()
-	die.position = _get_spawn_position(index, total_count, str(entry.get("side", "")))
+	die.position = _get_cluster_spawn_position(index)
 	die.rotation_degrees = Vector3(randf_range(0, 360), randf_range(0, 360), randf_range(0, 360))
 
 	var collision: CollisionShape3D = CollisionShape3D.new()
@@ -952,6 +992,13 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	convex.points = _get_d20_convex_points()
 	collision.shape = convex
 	die.add_child(collision)
+
+	# All cosmetics live under one container so result presentation can scale
+	# the visuals without touching the RigidBody3D (scaling a physics body also
+	# scales its collision shape, which breaks frozen-die blocking).
+	var visual_root: Node3D = Node3D.new()
+	visual_root.name = "Visuals"
+	die.add_child(visual_root)
 
 	var mesh_instance: MeshInstance3D = MeshInstance3D.new()
 	mesh_instance.mesh = _build_d20_mesh()
@@ -970,7 +1017,7 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	mat.roughness = 0.35
 	mat.metallic = 0.10
 	mesh_instance.material_override = mat
-	die.add_child(mesh_instance)
+	visual_root.add_child(mesh_instance)
 
 	# Inner shell — solid blocker so no back-face geometry shows through
 	var inner_mesh_instance: MeshInstance3D = MeshInstance3D.new()
@@ -983,35 +1030,77 @@ func _spawn_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	inner_mat.albedo_color = mat.albedo_color.darkened(0.3)
 	inner_mat.roughness = 1.0
 	inner_mesh_instance.material_override = inner_mat
-	die.add_child(inner_mesh_instance)
+	visual_root.add_child(inner_mesh_instance)
 
 	_add_face_panels(die)
 	_add_edge_lines(die)
 	_add_face_labels(die)
 
 	_dice_root.add_child(die)
-
-	# --- THROW PHYSICS ---
-	# Strong lateral throw with less downward slam = slower fall, heavier roll.
-	var throw_dir: Vector3 = _get_throw_direction(die.position, index, total_count, str(entry.get("side", "")))
-	var throw_strength: float = randf_range(18.0, 26.0)
-	var slam: float = randf_range(4.0, 6.0)
-	die.apply_impulse(
-		throw_dir * throw_strength + Vector3.DOWN * slam,
-		Vector3(randf_range(-1.1, 1.1), randf_range(-0.35, 0.35), randf_range(-1.1, 1.1))
-	)
-	die.angular_velocity = Vector3(
-		randf_range(-2.4, 2.4),
-		randf_range(-3.4, 3.4),
-		randf_range(-2.4, 2.4)
-	)
-	# Keep some tumble, but make it feel deliberate instead of hyperactive.
-	die.apply_torque_impulse(Vector3(
-		randf_range(-24.0, 24.0),
-		randf_range(-34.0, 34.0),
-		randf_range(-24.0, 24.0)
-	))
+	_add_shadow_blob(die)
 	return die
+
+
+# ── THROW SYSTEM ─────────────────────────────────────────────────────────────
+# One "hand" per side per roll: all of a side's dice leave the same off-corner
+# origin with a shared throw direction plus per-die jitter, tumbling end-over-end
+# around the axis perpendicular to travel — the way a real handful of dice
+# crosses a tray. Hero throws from the bottom edge, enemy from the top, each
+# sweeping diagonally across its own half so the dice play the side walls.
+var _throw_context: Dictionary = {}
+
+
+func _make_throw_context(side: String) -> Dictionary:
+	var z_sign: float = 1.0 if side == "hero" else -1.0
+	var near_edge_z: float = _bounds_max_z if side == "hero" else _bounds_min_z
+	var hand_x_sign: float = 1.0 if randf() < 0.5 else -1.0
+	var hand: Vector3 = Vector3(
+		hand_x_sign * maxf(_bounds_half_width - 2.4, 0.0),
+		randf_range(2.6, 3.4),
+		near_edge_z - z_sign * 1.35
+	)
+	var target_z_near: float = z_sign * 0.8
+	var target_z_far: float = near_edge_z - z_sign * 2.0
+	var target: Vector3 = Vector3(
+		-hand_x_sign * _bounds_half_width * randf_range(0.30, 0.60),
+		0.0,
+		lerpf(target_z_near, target_z_far, randf())
+	)
+	var dir: Vector3 = Vector3(target.x - hand.x, 0.0, target.z - hand.z)
+	if dir.length_squared() < 0.001:
+		dir = Vector3(-hand_x_sign, 0.0, 0.0)
+	return {
+		"hand": hand,
+		"dir": dir.normalized(),
+	}
+
+
+func _get_cluster_spawn_position(index: int) -> Vector3:
+	var ctx: Dictionary = _throw_context
+	var hand: Vector3 = ctx.get("hand", Vector3(0.0, 3.0, 0.0))
+	var dir: Vector3 = ctx.get("dir", Vector3.FORWARD)
+	var lateral: Vector3 = dir.cross(Vector3.UP).normalized()
+	var offset: Vector3 = THROW_CLUSTER_OFFSETS[index % THROW_CLUSTER_OFFSETS.size()]
+	var extra_lift: float = floorf(float(index) / float(THROW_CLUSTER_OFFSETS.size())) * 2.2
+	var pos: Vector3 = hand + lateral * offset.x + Vector3.UP * (offset.y + extra_lift) + dir * offset.z
+	var margin: float = DIE_RADIUS * 1.05
+	pos.x = clampf(pos.x, -_bounds_half_width + margin, _bounds_half_width - margin)
+	pos.z = clampf(pos.z, _bounds_min_z + margin, _bounds_max_z - margin)
+	return pos
+
+
+func _launch_die(die: RigidBody3D) -> void:
+	var ctx: Dictionary = _throw_context
+	var dir: Vector3 = (ctx.get("dir", Vector3.FORWARD) as Vector3).rotated(Vector3.UP, randf_range(-THROW_YAW_JITTER, THROW_YAW_JITTER))
+	var speed: float = randf_range(THROW_SPEED_MIN, THROW_SPEED_MAX)
+	die.linear_velocity = dir * speed + Vector3.DOWN * randf_range(0.0, 2.0)
+	# End-over-end tumble in the direction of travel (rolling forward), with a
+	# little off-axis wobble so no two dice spin identically.
+	var tumble_axis: Vector3 = Vector3.UP.cross(dir).normalized()
+	var wobble: Vector3 = Vector3(
+		randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)
+	) * randf_range(0.0, THROW_WOBBLE_MAX)
+	die.angular_velocity = tumble_axis * randf_range(THROW_TUMBLE_MIN, THROW_TUMBLE_MAX) + wobble
 
 
 func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
@@ -1022,6 +1111,9 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		die = _spawn_die(entry, index, total_count)
+		# Fresh frozen die (no carry-over from last roll): rest it on the floor
+		# instead of leaving it at throw height.
+		die.position.y = DIE_RADIUS * 0.76
 	else:
 		die.set_meta("entry", entry)
 		_die_by_key[_entry_key(side, unit_id)] = die
@@ -1041,7 +1133,6 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	_reset_face_highlights(die)
 	_highlight_top_face(die, display, side)
 	_set_die_frozen_visual(die, true)
-	_show_die_result_label(die, display, str(entry.get("name", "")))
 	return die
 
 
@@ -1086,17 +1177,19 @@ func _build_inner_shell_mesh() -> ArrayMesh:
 
 func _make_die_physics_material() -> PhysicsMaterial:
 	var material: PhysicsMaterial = PhysicsMaterial.new()
-	# Heavier contact: still rebounds, but not like a rubber shell.
-	material.bounce = 0.30
-	material.friction = 0.94
+	# Hard plastic: lively rebound off walls and other dice, moderate friction
+	# so faces skid a touch before they grip (real dice tumble, they don't glue).
+	material.bounce = 0.38
+	material.friction = 0.42
 	return material
 
 
 func _make_tray_physics_material() -> PhysicsMaterial:
 	var material: PhysicsMaterial = PhysicsMaterial.new()
-	# Hard tray with restrained rebound so wall hits feel dense.
-	material.bounce = 0.24
-	material.friction = 0.92
+	# Felt-lined tray: a bit grippier than the dice, with enough restitution
+	# that wall hits visibly kick back instead of dying on contact.
+	material.bounce = 0.42
+	material.friction = 0.58
 	return material
 
 
@@ -1109,33 +1202,6 @@ func _set_die_collision_enabled(die: RigidBody3D, enabled: bool) -> void:
 	else:
 		die.collision_layer = 0
 		die.collision_mask = 0
-
-
-func _get_spawn_position(index: int, total_count: int, side: String) -> Vector3:
-	# Spawn with modest loft so the fall reads slower before the heavy roll. Each side starts on its
-	# OWN half — enemy toward -Z (top of screen), hero toward +Z (bottom) — so dice roll near their
-	# own units instead of crossing over.
-	var spawn_height: float = randf_range(3.3, 4.2)
-	var z_sign: float = 1.0 if side == "hero" else -1.0
-	var angle: float = (TAU / float(maxi(total_count, 1))) * float(index) + randf_range(-0.3, 0.3)
-	var edge_x: float = cos(angle) * TRAY_HALF_WIDTH * 0.54 + randf_range(-0.28, 0.28)
-	var edge_z: float = z_sign * TRAY_HALF_DEPTH * randf_range(0.42, 0.64) + randf_range(-0.28, 0.28)
-	return Vector3(edge_x, spawn_height, edge_z)
-
-
-func _get_throw_direction(spawn_pos: Vector3, _index: int, _total_count: int, side: String) -> Vector3:
-	# Aim at a target on the unit's OWN half so the die rolls/scatters on its side before snapping to
-	# its result row (hero rows sit at +Z, enemy at -Z).
-	var z_sign: float = 1.0 if side == "hero" else -1.0
-	var target: Vector3 = Vector3(
-		randf_range(-TRAY_HALF_WIDTH * 0.5, TRAY_HALF_WIDTH * 0.5),
-		0.0,
-		z_sign * TRAY_HALF_DEPTH * randf_range(0.20, 0.50)
-	)
-	var direction: Vector3 = (target - Vector3(spawn_pos.x, 0.0, spawn_pos.z)).normalized()
-	if direction.length_squared() < 0.001:
-		return Vector3(randf_range(-1, 1), 0.0, z_sign).normalized()
-	return direction
 
 
 # ── FACE DATA ─────────────────────────────────────────────────────────────────
@@ -1160,18 +1226,6 @@ func _build_d20_face_data() -> void:
 		_face_centers.append(center)
 		_face_text_bases.append(_basis_for_triangle_face(a, b, c, normal))
 		_face_values.append(i + 1)
-
-
-func _get_upward_face_value(die: RigidBody3D) -> int:
-	var best_dot: float = -999.0
-	var best_value: int = 1
-	for i in range(_face_normals.size()):
-		var world_normal: Vector3 = die.global_transform.basis * _face_normals[i]
-		var dot: float = world_normal.normalized().dot(Vector3.UP)
-		if dot > best_dot:
-			best_dot = dot
-			best_value = int(_face_values[i])
-	return best_value
 
 
 func _get_most_visible_face_value(die: RigidBody3D) -> int:
@@ -1268,11 +1322,11 @@ func _add_face_panels(die: RigidBody3D) -> void:
 		var panel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.96, 0.014)
 		panel_inst.name = "FacePanel%d" % (face_index + 1)
 		panel_inst.material_override = _face_panel_material_for(die)
-		die.add_child(panel_inst)
+		_die_visuals(die).add_child(panel_inst)
 		var bevel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.80, 0.016)
 		bevel_inst.name = "FaceBevel%d" % (face_index + 1)
 		bevel_inst.material_override = _make_bevel_material(_die_base_color(die))
-		die.add_child(bevel_inst)
+		_die_visuals(die).add_child(bevel_inst)
 
 
 # A flat triangle inset toward its face centre by `inset` and pushed `offset` along the normal.
@@ -1330,7 +1384,7 @@ func _add_edge_line_if_needed(die: RigidBody3D, raw_vertices: Array[Vector3], a_
 	edge.material_override = edge_mat
 	edge.position = (a + b) * 0.5
 	edge.basis = _basis_for_edge(direction.normalized())
-	die.add_child(edge)
+	_die_visuals(die).add_child(edge)
 
 
 func _basis_for_edge(y_axis: Vector3) -> Basis:
@@ -1492,86 +1546,7 @@ func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basi
 	label.render_priority = priority
 	label.position = pos
 	label.basis = face_basis
-	die.add_child(label)
-
-
-func _add_pixel_number_blocks(root: Node3D, value_text: String, inradius: float) -> void:
-	var usable_radius: float = inradius * 0.85
-	var digit_count: int = value_text.length()
-	var total_pixel_width: float = 3.0 * float(digit_count) + 0.6 * float(maxi(digit_count - 1, 0))
-	var total_pixel_height: float = 5.0
-	var scale_by_width: float = (usable_radius * 2.0) / total_pixel_width
-	var scale_by_height: float = (usable_radius * 2.0) / total_pixel_height
-	var pixel_size: float = minf(scale_by_width, scale_by_height)
-	var pixel_gap: float = pixel_size * 0.12
-	var actual_pixel_step: float = pixel_size + pixel_gap
-
-	var digit_width: float = 3.0 * actual_pixel_step - pixel_gap
-	var digit_height: float = 5.0 * actual_pixel_step - pixel_gap
-	var digit_gap: float = pixel_size * 0.6
-	var full_width: float = digit_width * float(digit_count) + digit_gap * float(maxi(digit_count - 1, 0))
-
-	var block_mesh: BoxMesh = BoxMesh.new()
-	block_mesh.size = Vector3(pixel_size, pixel_size, 0.018)
-
-	for digit_index in range(value_text.length()):
-		var digit: String = value_text.substr(digit_index, 1)
-		var pattern: Array = _get_digit_pattern(digit)
-		var digit_origin_x: float = -full_width * 0.5 + digit_width * 0.5 + float(digit_index) * (digit_width + digit_gap)
-		for row in range(pattern.size()):
-			var row_text: String = str(pattern[row])
-			for col in range(row_text.length()):
-				if row_text.substr(col, 1) != "1":
-					continue
-				var block: MeshInstance3D = MeshInstance3D.new()
-				block.mesh = block_mesh
-				block.material_override = _get_number_block_material()
-				block.position = Vector3(
-					digit_origin_x + (float(col) - 1.0) * actual_pixel_step,
-					digit_height * 0.5 - pixel_size * 0.5 - float(row) * actual_pixel_step,
-					0.0
-				)
-				root.add_child(block)
-
-
-func _get_digit_pattern(digit: String) -> Array:
-	match digit:
-		"0":
-			return ["111", "101", "101", "101", "111"]
-		"1":
-			return ["010", "110", "010", "010", "111"]
-		"2":
-			return ["111", "001", "111", "100", "111"]
-		"3":
-			return ["111", "001", "111", "001", "111"]
-		"4":
-			return ["101", "101", "111", "001", "001"]
-		"5":
-			return ["111", "100", "111", "001", "111"]
-		"6":
-			return ["111", "100", "111", "101", "111"]
-		"7":
-			return ["111", "001", "010", "010", "010"]
-		"8":
-			return ["111", "101", "111", "101", "111"]
-		"9":
-			return ["111", "101", "111", "001", "111"]
-	return ["111", "001", "111", "100", "111"]
-
-
-func _get_number_block_material() -> StandardMaterial3D:
-	if _number_block_material == null:
-		_number_block_material = StandardMaterial3D.new()
-		_number_block_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		_number_block_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		_number_block_material.cull_mode = BaseMaterial3D.CULL_BACK
-		_number_block_material.render_priority = 1
-		_number_block_material.albedo_color = Color(1.0, 1.0, 0.95, 1.0)
-		_number_block_material.emission_enabled = true
-		_number_block_material.emission = Color(0.85, 0.92, 0.80, 1.0)
-		_number_block_material.emission_energy_multiplier = 1.2
-		_number_block_material.roughness = 0.70
-	return _number_block_material
+	_die_visuals(die).add_child(label)
 
 
 # ── ORIENTATION HELPERS ───────────────────────────────────────────────────────
@@ -1623,40 +1598,18 @@ func _basis_for_face_surface(normal: Vector3) -> Basis:
 	return Basis(x_axis, y_axis, z_axis)
 
 
-# ── LABELS ────────────────────────────────────────────────────────────────────
-
-func _add_owner_label(die: RigidBody3D, unit_name: String, side: String) -> void:
-	var label: Label3D = Label3D.new()
-	label.name = "OwnerLabel"
-	label.text = unit_name.left(10)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.font_size = 64
-	label.modulate = Color(0.72, 1.0, 0.82, 0.95) if side == "hero" else Color(1.0, 0.66, 0.60, 0.95)
-	label.outline_size = 12
-	label.outline_modulate = Color(0.02, 0.03, 0.05, 1.0)
-	label.position = Vector3(0, DIE_RADIUS * 1.8, 0)
-	label.scale = Vector3(0.030, 0.030, 0.030)
-	die.add_child(label)
-
-
-func _show_die_result_label(die: RigidBody3D, _result: int, unit_name: String) -> void:
-	var label: Label3D = die.get_node_or_null("OwnerLabel") as Label3D
-	if label != null:
-		label.text = unit_name.left(8)
-
-
 func _set_die_frozen_visual(die: RigidBody3D, is_frozen: bool) -> void:
-	var filter: MeshInstance3D = die.get_node_or_null("FrozenFilter") as MeshInstance3D
+	var filter: MeshInstance3D = _die_part(die, "FrozenFilter") as MeshInstance3D
 	if filter == null:
 		filter = MeshInstance3D.new()
 		filter.name = "FrozenFilter"
 		filter.mesh = _build_d20_mesh()
 		filter.scale = Vector3.ONE * 1.025
 		filter.material_override = _get_frozen_filter_material()
-		die.add_child(filter)
+		_die_visuals(die).add_child(filter)
 	filter.visible = is_frozen
 
-	var label: Label3D = die.get_node_or_null("FrozenOverlay") as Label3D
+	var label: Label3D = _die_part(die, "FrozenOverlay") as Label3D
 	if label == null:
 		label = Label3D.new()
 		label.name = "FrozenOverlay"
@@ -1668,7 +1621,7 @@ func _set_die_frozen_visual(die: RigidBody3D, is_frozen: bool) -> void:
 		label.outline_modulate = Color(0.02, 0.06, 0.10, 1.0)
 		label.position = Vector3(0, DIE_RADIUS * 2.28, 0)
 		label.scale = Vector3(0.030, 0.030, 0.030)
-		die.add_child(label)
+		_die_visuals(die).add_child(label)
 	label.visible = is_frozen
 
 
@@ -1706,7 +1659,9 @@ func _clear_dice_except(keep_keys: Array[String]) -> void:
 	for child_variant in _dice_root.get_children():
 		var die: RigidBody3D = child_variant as RigidBody3D
 		if die == null:
-			child_variant.queue_free()
+			# Shadow blobs are reaped in _physics_process once their die is gone.
+			if not child_variant.has_meta("shadow_blob_owner"):
+				child_variant.queue_free()
 			continue
 		var entry: Dictionary = die.get_meta("entry", {})
 		var key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
@@ -1719,3 +1674,79 @@ func _clear_dice_except(keep_keys: Array[String]) -> void:
 
 func _entry_key(side: String, unit_id: String) -> String:
 	return "%s:%s" % [side, unit_id]
+
+
+# ── SHADOW BLOBS ──────────────────────────────────────────────────────────────
+# The camera looks straight down, so a die's bounce height is invisible from
+# its silhouette alone. Each die gets a soft contact shadow on the floor that
+# shrinks/darkens as the die lands — the classic cue that makes vertical motion
+# readable from above. Blobs live under _dice_root (not the die, which tumbles)
+# and follow their die every physics tick.
+
+func _add_shadow_blob(die: RigidBody3D) -> void:
+	var blob: MeshInstance3D = MeshInstance3D.new()
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(DIE_RADIUS * 2.6, DIE_RADIUS * 2.6)
+	blob.mesh = quad
+	blob.rotation_degrees = Vector3(-90, 0, 0)
+	blob.material_override = _make_shadow_material()
+	blob.position = Vector3(die.position.x, 0.02, die.position.z)
+	blob.set_meta("shadow_blob_owner", die.get_instance_id())
+	_dice_root.add_child(blob)
+
+
+func _physics_process(_delta: float) -> void:
+	if _dice_root == null:
+		return
+	for child in _dice_root.get_children():
+		if not child.has_meta("shadow_blob_owner"):
+			continue
+		var blob: MeshInstance3D = child as MeshInstance3D
+		if blob == null:
+			continue
+		var die: RigidBody3D = instance_from_id(int(blob.get_meta("shadow_blob_owner"))) as RigidBody3D
+		if die == null or not is_instance_valid(die) or die.is_queued_for_deletion():
+			blob.queue_free()
+			continue
+		_update_shadow_blob(blob, die)
+
+
+func _update_shadow_blob(blob: MeshInstance3D, die: RigidBody3D) -> void:
+	var origin: Vector3 = die.global_transform.origin
+	# Height above resting contact (icosahedron rests with centre ~0.76 R up).
+	var height: float = maxf(origin.y - DIE_RADIUS * 0.76, 0.0)
+	blob.position = Vector3(origin.x, 0.02, origin.z)
+	blob.scale = Vector3.ONE * (1.0 + height * 0.12)
+	var mat: StandardMaterial3D = blob.material_override as StandardMaterial3D
+	if mat != null:
+		var c: Color = mat.albedo_color
+		c.a = clampf(0.55 - height * 0.10, 0.10, 0.55)
+		mat.albedo_color = c
+
+
+func _make_shadow_material() -> StandardMaterial3D:
+	var m: StandardMaterial3D = StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.render_priority = -4
+	m.albedo_color = Color(0.0, 0.0, 0.0, 0.55)
+	m.albedo_texture = _get_shadow_gradient_texture()
+	return m
+
+
+func _get_shadow_gradient_texture() -> GradientTexture2D:
+	if _shadow_gradient_texture == null:
+		var gradient: Gradient = Gradient.new()
+		gradient.set_color(0, Color(1, 1, 1, 1))
+		gradient.set_color(1, Color(1, 1, 1, 0))
+		gradient.add_point(0.55, Color(1, 1, 1, 0.85))
+		var tex: GradientTexture2D = GradientTexture2D.new()
+		tex.gradient = gradient
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(0.5, 0.0)
+		tex.width = 128
+		tex.height = 128
+		_shadow_gradient_texture = tex
+	return _shadow_gradient_texture

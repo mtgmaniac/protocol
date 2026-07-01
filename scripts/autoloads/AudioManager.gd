@@ -9,8 +9,8 @@ extends Node
 
 const SFX_DIR := "res://assets/audio/sfx/"
 const SFX_KEYS := [
-	"damage", "death", "evolve", "freeze", "heal", "item", "overload", "phase2",
-	"poison", "select", "shield",
+	"damage", "death", "dice", "evolve", "freeze", "heal", "item", "overload",
+	"phase2", "poison", "select", "shield",
 ]
 const POOL_SIZE := 12            # max simultaneous voices
 const PITCH_VARIATION := 0.07    # ±7% pitch so repeats never feel machine-gun
