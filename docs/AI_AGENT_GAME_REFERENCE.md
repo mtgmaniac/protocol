@@ -13,7 +13,7 @@ Last refreshed from local source on 2026-06-21.
 
 - Engine: Godot 4.6.2
 - Language: GDScript
-- Main scene: [UnitSelect.tscn](C:/Users/Kev/Documents/protocol/scenes/ui/UnitSelect.tscn)
+- Main scene: [MainMenu.tscn](C:/Users/Kev/Documents/protocol/scenes/ui/MainMenu.tscn) (splash; continues into UnitSelect)
 - Orientation: portrait
 - Internal authored viewport: `1080x2400`
 - Desktop preview window: `450x1000`
@@ -90,9 +90,11 @@ Important correction versus older docs:
 
 ### Shared battle-support scenes
 
-- [BattleHeader.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/BattleHeader.tscn)
 - [AbilityReadout.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/AbilityReadout.tscn)
-- [UnitDetailPanel.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/UnitDetailPanel.tscn)
+
+`BattleHeader.tscn` and `UnitDetailPanel.tscn` are deleted — the global
+`PersistentHeader` autoload owns the header on every screen, and the unified
+long-press `InspectPopup` replaced the detail panel.
 
 ## 5. Current Battle UI Architecture
 
@@ -252,9 +254,11 @@ This area is very sensitive to feel. A screenshot cannot verify motion quality.
 
 ## 12. Current Battle Header/Footer Model
 
-Shared in-match header scene:
-
-- [BattleHeader.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/BattleHeader.tscn)
+The header is the global `PersistentHeader` autoload
+([PersistentHeader.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/PersistentHeader.gd) +
+[PersistentHeader.tscn](C:/Users/Kev/Documents/protocol/scenes/ui/PersistentHeader.tscn)) —
+a CanvasLayer alive on every screen; scenes bind their button handlers via
+`bind_battle_actions()` (see root `CLAUDE.md`).
 
 Current header rules:
 

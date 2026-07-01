@@ -870,7 +870,9 @@ func _build_ui() -> void:
 	_viewport = SubViewport.new()
 	# Transparent so the game UI shows through around/behind the dice
 	_viewport.transparent_bg = true
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Only render while the tray is actually on screen — reset() hides the tray
+	# between rolls, and UPDATE_ALWAYS would keep paying a full 3D pass anyway.
+	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_PARENT_VISIBLE
 	_viewport.gui_disable_input = true
 	_viewport.world_3d = World3D.new()
 	_viewport_container.add_child(_viewport)
@@ -1696,7 +1698,7 @@ func _add_shadow_blob(die: RigidBody3D) -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _dice_root == null:
+	if _dice_root == null or not visible:
 		return
 	for child in _dice_root.get_children():
 		if not child.has_meta("shadow_blob_owner"):

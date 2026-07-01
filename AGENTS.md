@@ -28,7 +28,7 @@ On **`fix/cleanup`**, do not edit scenes, card layout, `Theme.gd`, `compact_unit
 
 ```bash
 # Godot project — open in editor or:
-# Main scene: scenes/ui/UnitSelect.tscn
+# Main scene: scenes/ui/MainMenu.tscn (splash -> UnitSelect)
 
 # Data validation (after editing data/raw/*.json)
 npm install   # once, for ajv
