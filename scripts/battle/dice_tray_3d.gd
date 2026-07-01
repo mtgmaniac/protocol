@@ -23,21 +23,29 @@ const THROW_TUMBLE_MIN := 9.0
 const THROW_TUMBLE_MAX := 15.0
 const THROW_WOBBLE_MAX := 4.0
 const THROW_YAW_JITTER := 0.10
+# Low, flat toss: dice leave the hand barely above the felt, so they engage the
+# floor within a fraction of the tray and *roll* across it. This is what makes
+# frozen dice read as solid — a high launch sails over an obstacle die, which
+# from the top-down camera is indistinguishable from clipping through it.
+const THROW_HAND_HEIGHT_MIN := 1.35
+const THROW_HAND_HEIGHT_MAX := 1.75
 # Per-die offsets within one hand toss: (lateral, up, along-throw). Spread wide
 # enough that no two dice spawn overlapping (centres >= 2 radii apart).
 const THROW_CLUSTER_OFFSETS: Array[Vector3] = [
 	Vector3(0.0, 0.0, 0.0),
-	Vector3(2.1, 0.35, 0.0),
-	Vector3(-2.1, 0.7, 0.0),
-	Vector3(1.05, 1.05, -2.0),
-	Vector3(-1.05, 1.4, -2.0),
+	Vector3(2.1, 0.25, 0.0),
+	Vector3(-2.1, 0.5, 0.0),
+	Vector3(1.05, 0.75, -2.0),
+	Vector3(-1.05, 1.0, -2.0),
 ]
+# Walls lean inward like a real dice tray's sloped rim, so a die can never come
+# to rest tilted against a wall or wedged upright in a corner — gravity always
+# rolls it back onto the floor field.
+const WALL_LEAN_RADIANS := 0.14
 # After this long the felt "grabs" the dice: damping ramps in so stragglers
 # spiralling on a vertex wind down instead of spinning forever.
 const LATE_SETTLE_DAMP_START := 3.0
 const LATE_SETTLE_DAMP_RAMP := 2.0
-const IMPACT_SFX_MIN_DV := 8.0
-const IMPACT_SFX_DEBOUNCE_MS := 90
 const SETTLE_LINEAR_SPEED := 0.018
 const SETTLE_ANGULAR_SPEED := 0.026
 const SETTLE_REQUIRED_TIME := 0.16
@@ -87,8 +95,6 @@ var _bounds_half_width: float = TRAY_HALF_WIDTH
 var _bounds_min_z: float = -TRAY_HALF_DEPTH
 var _bounds_max_z: float = TRAY_HALF_DEPTH
 var _tray_bodies: Dictionary = {}
-var _shadow_gradient_texture: GradientTexture2D
-var _roll_prev_velocities: Dictionary = {}
 
 
 func _ready() -> void:
@@ -153,7 +159,6 @@ func reset() -> void:
 	_hero_results.clear()
 	_enemy_results.clear()
 	_die_by_key.clear()
-	_roll_prev_velocities.clear()
 	_clear_dice()
 	# Hide when not rolling so the Roll button underneath is visible
 	visible = false
@@ -636,7 +641,7 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 	for face_value in _face_values:
 		var fv: int = int(face_value)
 		var alpha: float = 1.0 if fv == result else 0.4
-		for prefix in ["FaceNumber", "FaceNumberShadow", "FaceNumberHighlight"]:
+		for prefix in ["FaceNumber", "FaceNumberShadow", "FaceNumberHighlight", "FaceNumberWell"]:
 			var label: Label3D = _die_part(die, "%s%d" % [prefix, fv]) as Label3D
 			if label == null:
 				continue
@@ -701,9 +706,11 @@ func _reset_face_labels(die: RigidBody3D) -> void:
 		_apply_face_number(die, int(face_value), int(face_value), base)
 
 
+# Set the engraved numeral (all four stacked labels) on one face, restoring their engrave colours.
 func _apply_face_number(die: RigidBody3D, face_value: int, display_value: int, base: Color) -> void:
 	var value_text: String = "%d" % clampi(display_value, 1, 20)
 	var font_size: int = 128 if value_text.length() == 1 else 108
+	_set_label(die, "FaceNumberWell%d" % face_value, value_text, font_size + 14, _number_well_color_for(base))
 	_set_label(die, "FaceNumberShadow%d" % face_value, value_text, font_size, _number_shadow_color_for(base))
 	_set_label(die, "FaceNumberHighlight%d" % face_value, value_text, font_size, _number_highlight_color_for(base))
 	_set_label(die, "FaceNumber%d" % face_value, value_text, font_size, _number_main_color_for(base))
@@ -734,7 +741,6 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 	var elapsed: float = 0.0
 	var settled_times: Dictionary = {}
 	var all_ready: bool = false
-	_roll_prev_velocities.clear()
 	while elapsed < MAX_ROLL_TIME:
 		var tree: SceneTree = get_tree()
 		if _is_exiting_tree or tree == null:
@@ -750,7 +756,6 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 				continue
 			if bool(active_die.freeze):
 				continue
-			_play_impact_sfx_if_hit(active_die, elapsed)
 			_apply_late_settle_damping(active_die, elapsed)
 		all_ready = true
 		for die_variant in dice:
@@ -822,23 +827,6 @@ func _display_face_for_entry(raw: int, entry: Dictionary) -> int:
 	var rfe: int = int(entry.get("roll_rfe", 0))
 	var buff: int = int(entry.get("roll_buff", 0))
 	return clampi(clamped_raw + buff - rfe, 1, 20)
-
-
-# Impacts are detected from per-tick velocity changes (a sharp Δv means the die
-# just hit the floor, a wall, or another die) — no contact monitoring needed.
-func _play_impact_sfx_if_hit(die: RigidBody3D, elapsed: float) -> void:
-	var die_id: int = die.get_instance_id()
-	var prev: Vector3 = _roll_prev_velocities.get(die_id, die.linear_velocity)
-	var dv: float = (die.linear_velocity - prev).length()
-	_roll_prev_velocities[die_id] = die.linear_velocity
-	if dv < IMPACT_SFX_MIN_DV or elapsed < 0.05:
-		return
-	var now: int = Time.get_ticks_msec()
-	if now - int(die.get_meta("last_impact_ms", 0)) < IMPACT_SFX_DEBOUNCE_MS:
-		return
-	die.set_meta("last_impact_ms", now)
-	var volume_db: float = clampf(remap(dv, IMPACT_SFX_MIN_DV, 30.0, -14.0, -4.0), -14.0, -4.0)
-	AudioManager.play_sfx("dice", volume_db)
 
 
 # Late in the roll the "felt" grabs: damping ramps up so a die spiralling on a
@@ -934,22 +922,38 @@ func _layout_tray_bodies() -> void:
 	var depth: float = _bounds_max_z - _bounds_min_z
 	var width: float = _bounds_half_width * 2.0
 	var t: float = COLLISION_WALL_THICKNESS
-	var wall_y: float = COLLISION_WALL_HEIGHT * 0.5
-	# Walls sit just outside the bounds so their inner faces are flush with the
-	# visible edges; floor/ceiling overhang so nothing escapes through corners.
-	_place_static_box("Floor", Vector3(0, -t * 0.5, center_z), Vector3(width + t * 2.0, t, depth + t * 2.0))
-	_place_static_box("Ceiling", Vector3(0, COLLISION_WALL_HEIGHT + t * 0.5, center_z), Vector3(width + t * 2.0, t, depth + t * 2.0))
-	_place_static_box("BackWall", Vector3(0, wall_y, _bounds_min_z - t * 0.5), Vector3(width + t * 2.0, COLLISION_WALL_HEIGHT, t))
-	_place_static_box("FrontWall", Vector3(0, wall_y, _bounds_max_z + t * 0.5), Vector3(width + t * 2.0, COLLISION_WALL_HEIGHT, t))
-	_place_static_box("LeftWall", Vector3(-_bounds_half_width - t * 0.5, wall_y, center_z), Vector3(t, COLLISION_WALL_HEIGHT, depth + t * 2.0))
-	_place_static_box("RightWall", Vector3(_bounds_half_width + t * 0.5, wall_y, center_z), Vector3(t, COLLISION_WALL_HEIGHT, depth + t * 2.0))
+	# Floor and ceiling overhang the walls so nothing escapes through corners.
+	_place_static_box("Floor", Vector3(0, -t * 0.5, center_z), Vector3(width + t * 4.0, t, depth + t * 4.0))
+	_place_static_box("Ceiling", Vector3(0, COLLISION_WALL_HEIGHT + t * 0.5, center_z), Vector3(width + t * 4.0, t, depth + t * 4.0))
+	# Each wall's bottom-inner edge sits exactly on the visible bound, with the
+	# top leaning inward (sloped tray rim) so dice can't rest tilted against it.
+	_place_leaning_wall("BackWall", Vector3(0, 0, _bounds_min_z), Vector3(0, 0, 1), Vector3(width + t * 4.0, COLLISION_WALL_HEIGHT, t))
+	_place_leaning_wall("FrontWall", Vector3(0, 0, _bounds_max_z), Vector3(0, 0, -1), Vector3(width + t * 4.0, COLLISION_WALL_HEIGHT, t))
+	_place_leaning_wall("LeftWall", Vector3(-_bounds_half_width, 0, center_z), Vector3(1, 0, 0), Vector3(t, COLLISION_WALL_HEIGHT, depth + t * 4.0))
+	_place_leaning_wall("RightWall", Vector3(_bounds_half_width, 0, center_z), Vector3(-1, 0, 0), Vector3(t, COLLISION_WALL_HEIGHT, depth + t * 4.0))
 
 
 func _place_static_box(node_name: String, pos: Vector3, box_size: Vector3) -> void:
 	var body: StaticBody3D = _tray_bodies.get(node_name, null) as StaticBody3D
 	if body == null or not is_instance_valid(body):
 		return
-	body.position = pos
+	body.transform = Transform3D(Basis.IDENTITY, pos)
+	var shape: CollisionShape3D = body.get_child(0) as CollisionShape3D
+	if shape != null and shape.shape is BoxShape3D:
+		(shape.shape as BoxShape3D).size = box_size
+
+
+# `pivot` is the wall's bottom-inner edge on the floor; `inner_normal` points
+# into the tray. The wall is rotated about that edge by WALL_LEAN_RADIANS so
+# its top edge overhangs the play field slightly.
+func _place_leaning_wall(node_name: String, pivot: Vector3, inner_normal: Vector3, box_size: Vector3) -> void:
+	var body: StaticBody3D = _tray_bodies.get(node_name, null) as StaticBody3D
+	if body == null or not is_instance_valid(body):
+		return
+	var axis: Vector3 = inner_normal.cross(Vector3.UP).normalized()
+	var lean_basis: Basis = Basis(axis, -WALL_LEAN_RADIANS)
+	var local_center: Vector3 = Vector3.UP * (box_size.y * 0.5) - inner_normal * (COLLISION_WALL_THICKNESS * 0.5)
+	body.transform = Transform3D(lean_basis, pivot + lean_basis * local_center)
 	var shape: CollisionShape3D = body.get_child(0) as CollisionShape3D
 	if shape != null and shape.shape is BoxShape3D:
 		(shape.shape as BoxShape3D).size = box_size
@@ -1039,7 +1043,6 @@ func _spawn_die(entry: Dictionary, index: int, _total_count: int) -> RigidBody3D
 	_add_face_labels(die)
 
 	_dice_root.add_child(die)
-	_add_shadow_blob(die)
 	return die
 
 
@@ -1058,7 +1061,7 @@ func _make_throw_context(side: String) -> Dictionary:
 	var hand_x_sign: float = 1.0 if randf() < 0.5 else -1.0
 	var hand: Vector3 = Vector3(
 		hand_x_sign * maxf(_bounds_half_width - 2.4, 0.0),
-		randf_range(2.6, 3.4),
+		randf_range(THROW_HAND_HEIGHT_MIN, THROW_HAND_HEIGHT_MAX),
 		near_edge_z - z_sign * 1.35
 	)
 	var target_z_near: float = z_sign * 0.8
@@ -1088,14 +1091,48 @@ func _get_cluster_spawn_position(index: int) -> Vector3:
 	var margin: float = DIE_RADIUS * 1.05
 	pos.x = clampf(pos.x, -_bounds_half_width + margin, _bounds_half_width - margin)
 	pos.z = clampf(pos.z, _bounds_min_z + margin, _bounds_max_z - margin)
+	return _adjust_spawn_for_occupants(pos, lateral, dir)
+
+
+# Never materialise a die inside (or directly above) a die already on the tray —
+# typically a frozen die parked in a result row near the hand. Sidestep
+# laterally first; only if the row is fully crowded, drop in from above.
+func _adjust_spawn_for_occupants(pos: Vector3, lateral: Vector3, dir: Vector3) -> Vector3:
+	var margin: float = DIE_RADIUS * 1.05
+	for _attempt in range(5):
+		var blocker: RigidBody3D = _find_die_near_spawn(pos)
+		if blocker == null:
+			return pos
+		var away: Vector3 = pos - blocker.global_transform.origin
+		away.y = 0.0
+		var side_sign: float = signf(away.dot(lateral))
+		if side_sign == 0.0:
+			side_sign = 1.0
+		pos += lateral * side_sign * 1.35 - dir * 0.4
+		pos.x = clampf(pos.x, -_bounds_half_width + margin, _bounds_half_width - margin)
+		pos.z = clampf(pos.z, _bounds_min_z + margin, _bounds_max_z - margin)
+	pos.y = maxf(pos.y, DIE_RADIUS * 2.6)
 	return pos
+
+
+func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
+	for die_variant in _die_by_key.values():
+		var die: RigidBody3D = die_variant as RigidBody3D
+		if die == null or not is_instance_valid(die) or not die.is_inside_tree():
+			continue
+		var o: Vector3 = die.global_transform.origin
+		if absf(o.y - pos.y) > DIE_RADIUS * 2.0:
+			continue
+		if Vector2(o.x - pos.x, o.z - pos.z).length() < DIE_RADIUS * 2.25:
+			return die
+	return null
 
 
 func _launch_die(die: RigidBody3D) -> void:
 	var ctx: Dictionary = _throw_context
 	var dir: Vector3 = (ctx.get("dir", Vector3.FORWARD) as Vector3).rotated(Vector3.UP, randf_range(-THROW_YAW_JITTER, THROW_YAW_JITTER))
 	var speed: float = randf_range(THROW_SPEED_MIN, THROW_SPEED_MAX)
-	die.linear_velocity = dir * speed + Vector3.DOWN * randf_range(0.0, 2.0)
+	die.linear_velocity = dir * speed + Vector3.DOWN * randf_range(0.5, 2.5)
 	# End-over-end tumble in the direction of travel (rolling forward), with a
 	# little off-axis wobble so no two dice spin identically.
 	var tumble_axis: Vector3 = Vector3.UP.cross(dir).normalized()
@@ -1418,16 +1455,19 @@ func _edge_color_for(base: Color) -> Color:
 	return base.darkened(0.72)                   # deep, fixed edge tone
 
 func _number_main_color_for(base: Color) -> Color:
-	return base.lightened(0.72)                  # bright readable numeral (light tint of the base)
+	return base.darkened(0.55)                   # recessed groove floor — darker than the face
 
 func _number_outline_color_for(base: Color) -> Color:
 	return base.darkened(0.84)                   # dark outline to crisp the numeral off the face
 
 func _number_shadow_color_for(base: Color) -> Color:
-	return base.darkened(0.86)                   # dark engrave shadow (offset down-right)
+	return base.darkened(0.88)                   # occluded groove rim (offset toward the light)
 
 func _number_highlight_color_for(base: Color) -> Color:
-	return base.lightened(0.66)                  # pale engrave highlight (offset up-left)
+	return base.lightened(0.60)                  # lit groove edge (offset away from the light)
+
+func _number_well_color_for(base: Color) -> Color:
+	return base.darkened(0.78)                   # soft oversize backing that reads as the carved well
 
 
 func _make_face_panel_material(base: Color) -> StandardMaterial3D:
@@ -1496,15 +1536,17 @@ func _get_face_inscribed_radius() -> float:
 	return area / s
 
 
-# Engraved number (#3): three stacked Label3Ds per face — a dark shadow offset down-right, a pale
-# highlight offset up-left, and the numeral itself (a darker tint of the face) on top. The inverse
-# of an emboss → reads as a carved-in numeral. Stacked by render_priority so they layer without
-# z-fighting. FaceNumber%d stays the canonical/highlight node; the two extras shadow it.
-const _ENGRAVE_OFFSET_PX := 1.6   # shadow/highlight spread, in label pixels
+# Engraved number: four stacked Label3Ds per face. A slightly oversized dark
+# "well" underlay suggests the carved recess; a dark rim offset up-left (toward
+# the key light, where the groove edge occludes); a bright rim offset
+# down-right (the lit groove floor edge); and the numeral itself in a darker
+# tint of the face — recessed surfaces sit in shadow, printed ones don't.
+# Stacked by render_priority so they layer without z-fighting.
+const _ENGRAVE_OFFSET_PX := 2.4   # groove rim spread, in label pixels
 # Sit the numerals just above the bevel (0.016) — nearly flush with the surface so they read as
 # printed on the face instead of floating above it (the old 0.055 visibly parallaxed while rolling).
 const _NUMBER_NORMAL_OFFSET := 0.019
-const _NUMBER_OUTLINE_SIZE := 16  # dark outline on the main numeral for legibility
+const _NUMBER_OUTLINE_SIZE := 8   # thin dark outline on the main numeral for legibility
 
 func _add_face_labels(die: RigidBody3D) -> void:
 	var base: Color = _die_base_color(die)
@@ -1524,19 +1566,20 @@ func _add_face_labels(die: RigidBody3D) -> void:
 		var spread: float = _ENGRAVE_OFFSET_PX * 0.0060
 		var down_right: Vector3 = face_basis.x * spread - face_basis.y * spread
 		var up_left: Vector3 = -face_basis.x * spread + face_basis.y * spread
-		_make_face_label(die, "FaceNumberShadow%d" % value, value, face_basis, center_pos + down_right, _number_shadow_color_for(base), 6, 0, base)
-		_make_face_label(die, "FaceNumberHighlight%d" % value, value, face_basis, center_pos + up_left, _number_highlight_color_for(base), 7, 0, base)
-		# Main numeral carries the dark outline that makes it legible against the face.
+		_make_face_label(die, "FaceNumberWell%d" % value, value, face_basis, center_pos, _number_well_color_for(base), 5, 0, base, 14)
+		_make_face_label(die, "FaceNumberShadow%d" % value, value, face_basis, center_pos + up_left, _number_shadow_color_for(base), 6, 0, base)
+		_make_face_label(die, "FaceNumberHighlight%d" % value, value, face_basis, center_pos + down_right, _number_highlight_color_for(base), 7, 0, base)
+		# Main numeral carries a thin dark outline that keeps it legible against the face.
 		_make_face_label(die, "FaceNumber%d" % value, value, face_basis, center_pos, _number_main_color_for(base), 8, _NUMBER_OUTLINE_SIZE, base)
 
 
-func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basis: Basis, pos: Vector3, color: Color, priority: int, outline_size: int, base: Color) -> void:
+func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basis: Basis, pos: Vector3, color: Color, priority: int, outline_size: int, base: Color, font_size_delta: int = 0) -> void:
 	var value_text: String = "%d" % value
 	var label: Label3D = Label3D.new()
 	label.name = node_name
 	label.text = value_text
 	label.font = _get_dice_number_font()
-	label.font_size = 128 if value_text.length() == 1 else 108
+	label.font_size = (128 if value_text.length() == 1 else 108) + font_size_delta
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.modulate = color
@@ -1661,9 +1704,7 @@ func _clear_dice_except(keep_keys: Array[String]) -> void:
 	for child_variant in _dice_root.get_children():
 		var die: RigidBody3D = child_variant as RigidBody3D
 		if die == null:
-			# Shadow blobs are reaped in _physics_process once their die is gone.
-			if not child_variant.has_meta("shadow_blob_owner"):
-				child_variant.queue_free()
+			child_variant.queue_free()
 			continue
 		var entry: Dictionary = die.get_meta("entry", {})
 		var key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
@@ -1676,79 +1717,3 @@ func _clear_dice_except(keep_keys: Array[String]) -> void:
 
 func _entry_key(side: String, unit_id: String) -> String:
 	return "%s:%s" % [side, unit_id]
-
-
-# ── SHADOW BLOBS ──────────────────────────────────────────────────────────────
-# The camera looks straight down, so a die's bounce height is invisible from
-# its silhouette alone. Each die gets a soft contact shadow on the floor that
-# shrinks/darkens as the die lands — the classic cue that makes vertical motion
-# readable from above. Blobs live under _dice_root (not the die, which tumbles)
-# and follow their die every physics tick.
-
-func _add_shadow_blob(die: RigidBody3D) -> void:
-	var blob: MeshInstance3D = MeshInstance3D.new()
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2(DIE_RADIUS * 2.6, DIE_RADIUS * 2.6)
-	blob.mesh = quad
-	blob.rotation_degrees = Vector3(-90, 0, 0)
-	blob.material_override = _make_shadow_material()
-	blob.position = Vector3(die.position.x, 0.02, die.position.z)
-	blob.set_meta("shadow_blob_owner", die.get_instance_id())
-	_dice_root.add_child(blob)
-
-
-func _physics_process(_delta: float) -> void:
-	if _dice_root == null or not visible:
-		return
-	for child in _dice_root.get_children():
-		if not child.has_meta("shadow_blob_owner"):
-			continue
-		var blob: MeshInstance3D = child as MeshInstance3D
-		if blob == null:
-			continue
-		var die: RigidBody3D = instance_from_id(int(blob.get_meta("shadow_blob_owner"))) as RigidBody3D
-		if die == null or not is_instance_valid(die) or die.is_queued_for_deletion():
-			blob.queue_free()
-			continue
-		_update_shadow_blob(blob, die)
-
-
-func _update_shadow_blob(blob: MeshInstance3D, die: RigidBody3D) -> void:
-	var origin: Vector3 = die.global_transform.origin
-	# Height above resting contact (icosahedron rests with centre ~0.76 R up).
-	var height: float = maxf(origin.y - DIE_RADIUS * 0.76, 0.0)
-	blob.position = Vector3(origin.x, 0.02, origin.z)
-	blob.scale = Vector3.ONE * (1.0 + height * 0.12)
-	var mat: StandardMaterial3D = blob.material_override as StandardMaterial3D
-	if mat != null:
-		var c: Color = mat.albedo_color
-		c.a = clampf(0.55 - height * 0.10, 0.10, 0.55)
-		mat.albedo_color = c
-
-
-func _make_shadow_material() -> StandardMaterial3D:
-	var m: StandardMaterial3D = StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.render_priority = -4
-	m.albedo_color = Color(0.0, 0.0, 0.0, 0.55)
-	m.albedo_texture = _get_shadow_gradient_texture()
-	return m
-
-
-func _get_shadow_gradient_texture() -> GradientTexture2D:
-	if _shadow_gradient_texture == null:
-		var gradient: Gradient = Gradient.new()
-		gradient.set_color(0, Color(1, 1, 1, 1))
-		gradient.set_color(1, Color(1, 1, 1, 0))
-		gradient.add_point(0.55, Color(1, 1, 1, 0.85))
-		var tex: GradientTexture2D = GradientTexture2D.new()
-		tex.gradient = gradient
-		tex.fill = GradientTexture2D.FILL_RADIAL
-		tex.fill_from = Vector2(0.5, 0.5)
-		tex.fill_to = Vector2(0.5, 0.0)
-		tex.width = 128
-		tex.height = 128
-		_shadow_gradient_texture = tex
-	return _shadow_gradient_texture
