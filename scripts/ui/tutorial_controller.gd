@@ -130,7 +130,7 @@ func _build_steps() -> Array:
 		{"targets": ["protocol_value"], "text": "You have 1 Protocol. Time to spend it."},
 		{"targets": ["nudge", "pulse"], "separate": true, "text": "Nudge costs 1 Protocol — tap it, then Pulse Tech's die to add +3 and push it over the line.", "advance": "nudged"},
 		{"targets": ["pulse"], "text": "It jumped into a stronger band — Plasma Lance."},
-		{"targets": ["reroll", "nudge"], "text": "Reroll (2) and Set (3) cost more — they unlock as you bank Protocol."},
+		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (3) cost more — they unlock as you bank Protocol."},
 		{"targets": [], "fullscreen": true, "text": "Tap Pulse Tech's die, then the enemy to fire it.", "advance": "assigned"},
 		{"targets": [], "fullscreen": true, "text": "Clear them out — assign the rest and end the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
@@ -332,9 +332,14 @@ func _target_rect(key: String) -> Rect2:
 		"protocol_bar":
 			return _merge_nonempty(_node_rect(_scene.get("protocol_bar")), _node_rect(_scene.get("protocol_panel")))
 		"protocol_value":
-			return _node_rect(_scene.get("protocol_value_label"))
+			# The numeric label is hidden since the footer redesign (the 10 bar
+			# segments convey the count) — spotlight the bar itself, and merge the
+			# label back in automatically if it ever returns.
+			return _merge_nonempty(_node_rect(_scene.get("protocol_value_label")), _target_rect("protocol_bar"))
 		"nudge":
 			return _node_rect(_scene.get("_nudge_button"))
+		"set":
+			return _node_rect(_scene.get("_set_button"))
 		"reroll":
 			return _node_rect(_scene.get("protocol_spend_button"))
 		"battle_log":
