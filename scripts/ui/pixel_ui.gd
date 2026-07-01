@@ -1,7 +1,6 @@
 class_name PixelUI
 extends RefCounted
 
-const BG_DARK := Color(0.030, 0.035, 0.050, 1.0)
 const BG_PANEL := Color(0.050, 0.055, 0.078, 1.0)
 const BG_PANEL_ALT := Color(0.075, 0.085, 0.120, 1.0)
 const LINE_DIM := Color(0.18, 0.23, 0.34, 1.0)
@@ -109,21 +108,7 @@ const FRAME_BOTTOM_BAR_2_SCIFI := "res://assets/ui/frame_bottom_bar_2_scifi.png"
 const FRAME_SIMPLE_BAR_SCIFI := "res://assets/ui/frame_simple_bar_scifi.png"
 const FRAME_BAR_HORIZONTAL_SCIFI := "res://assets/ui/frame_bar_horizontal_scifi.png"
 const FRAME_BAR_SHALLOW_SCIFI := "res://assets/ui/frame_bar_shallow_scifi.png"
-const BUTTON_EMPTY := "res://assets/ui/btn_empty.png"
-const BUTTON_QUESTION := "res://assets/ui/btn_question.png"
-const BUTTON_UP_ARROW := "res://assets/ui/btn_up_arrow.png"
-const BUTTON_GRID_123 := "res://assets/ui/btn_grid_123.png"
-const BUTTON_BACK_ARROW := "res://assets/ui/btn_back_arrow.png"
-const BUTTON_DICE := "res://assets/ui/btn_dice.png"
-const BUTTON_HELP_SCIFI := "res://assets/ui/btn_help_scifi.png"
-const BUTTON_BACK_SCIFI := "res://assets/ui/btn_back_scifi.png"
-const BUTTON_REROLL_SCIFI := "res://assets/ui/btn_reroll_scifi.png"
-const BUTTON_INCREASE_SCIFI := "res://assets/ui/btn_increase_scifi.png"
-const BUTTON_ITEM_SCIFI := "res://assets/ui/btn_item_scifi.png"
-const BUTTON_DEBUG_SCIFI := "res://assets/ui/btn_debug_scifi.png"
-const BUTTON_DEBUG2_SCIFI := "res://assets/ui/btn_debug2_scifi.png"
 const BUTTON_LARGE_GRAY_SCIFI := "res://assets/ui/btn_large_gray_scifi.png"
-const BUTTON_LARGE_GREEN_SCIFI := "res://assets/ui/btn_large_green_scifi.png"
 const BUTTON_LARGE_YELLOW_SCIFI := "res://assets/ui/btn_large_yellow_scifi.png"
 const ICON_HELP := "res://assets/ui/icons/icon_help.png"
 const ICON_BACK := "res://assets/ui/icons/icon_back.png"
@@ -208,37 +193,6 @@ static func make_dither_overlay(tint: Color, alpha: float) -> TextureRect:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
 	return tr
-
-
-## Two-tone hard pixel bevel drawn as 4 edge ColorRects over a base fill, added as
-## children of `host` (top/left = light, bottom/right = dark). Faithful to the mock's
-## chunky bevels without a ninepatch texture. Edges ignore mouse and pin to host rect.
-static func add_bevel(host: Control, base: Color, light: Color, dark: Color, width: float = 3.0) -> void:
-	var fill: ColorRect = ColorRect.new()
-	fill.name = "BevelFill"
-	fill.color = base
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fill.show_behind_parent = true
-	host.add_child(fill)
-	for edge in [
-		{"n": "Top", "c": light, "preset": Control.PRESET_TOP_WIDE, "v": Vector2(0, width)},
-		{"n": "Left", "c": light, "preset": Control.PRESET_LEFT_WIDE, "v": Vector2(width, 0)},
-		{"n": "Bottom", "c": dark, "preset": Control.PRESET_BOTTOM_WIDE, "v": Vector2(0, width)},
-		{"n": "Right", "c": dark, "preset": Control.PRESET_RIGHT_WIDE, "v": Vector2(width, 0)},
-	]:
-		var bar: ColorRect = ColorRect.new()
-		bar.name = "Bevel" + str(edge["n"])
-		bar.color = edge["c"]
-		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bar.set_anchors_preset(edge["preset"])
-		bar.custom_minimum_size = edge["v"]
-		if edge["v"].x > 0:
-			bar.size.x = edge["v"].x
-		if edge["v"].y > 0:
-			bar.size.y = edge["v"].y
-		bar.show_behind_parent = true
-		host.add_child(bar)
 
 
 static func get_pixel_font() -> Font:
@@ -362,38 +316,6 @@ static func style_ninepatch_panel(panel: Control, texture_path: String, margin_p
 	panel.add_theme_stylebox_override("panel", make_ninepatch_stylebox(texture_path, margin_px, modulate_color))
 
 
-static func style_ninepatch_frame(panel: Control, texture_path: String, margin_px: int = 18, modulate_color: Color = Color.WHITE) -> void:
-	panel.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var stylebox := make_ninepatch_stylebox(texture_path, margin_px, modulate_color)
-	stylebox.draw_center = false
-	panel.add_theme_stylebox_override("panel", stylebox)
-
-
-static func style_icon_button(button: BaseButton, texture_path: String, pressed_texture_path: String = BUTTON_EMPTY) -> void:
-	if button == null:
-		return
-	var normal_texture: Texture2D = _load_texture(texture_path)
-	var pressed_texture: Texture2D = _load_texture(pressed_texture_path)
-	if button is TextureButton:
-		var texture_button := button as TextureButton
-		texture_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		texture_button.ignore_texture_size = true
-		texture_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-		texture_button.texture_normal = normal_texture
-		texture_button.texture_pressed = pressed_texture
-		texture_button.texture_hover = normal_texture
-		texture_button.texture_disabled = pressed_texture
-		texture_button.texture_focused = normal_texture
-	elif button is Button:
-		var text_button := button as Button
-		text_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		text_button.icon = normal_texture
-		text_button.flat = true
-		text_button.text = ""
-		text_button.expand_icon = true
-		text_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-
 static func _make_full_texture_stylebox(texture_path: String, modulate_color: Color = Color.WHITE) -> StyleBoxTexture:
 	var texture: Texture2D = _load_texture(texture_path)
 	var stylebox := StyleBoxTexture.new()
@@ -403,32 +325,6 @@ static func _make_full_texture_stylebox(texture_path: String, modulate_color: Co
 	stylebox.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
 	stylebox.draw_center = true
 	return stylebox
-
-
-static func style_texture_button(button: BaseButton, texture_path: String) -> void:
-	if button == null:
-		return
-	if button is TextureButton:
-		var texture_button := button as TextureButton
-		var texture: Texture2D = _load_texture(texture_path)
-		texture_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		texture_button.ignore_texture_size = true
-		texture_button.stretch_mode = TextureButton.STRETCH_SCALE
-		texture_button.texture_normal = texture
-		texture_button.texture_hover = texture
-		texture_button.texture_pressed = texture
-		texture_button.texture_focused = texture
-		texture_button.texture_disabled = texture
-	elif button is Button:
-		var text_button := button as Button
-		text_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		text_button.text = ""
-		text_button.icon = null
-		text_button.flat = false
-		text_button.add_theme_stylebox_override("normal", _make_full_texture_stylebox(texture_path))
-		text_button.add_theme_stylebox_override("hover", _make_full_texture_stylebox(texture_path, Color(1.06, 1.06, 1.06, 1.0)))
-		text_button.add_theme_stylebox_override("pressed", _make_full_texture_stylebox(texture_path, Color(0.88, 0.88, 0.88, 1.0)))
-		text_button.add_theme_stylebox_override("disabled", _make_full_texture_stylebox(texture_path, Color(0.58, 0.58, 0.62, 0.92)))
 
 
 ## Renders `button` as a frameless icon glyph centered on a 9-patch sci-fi frame.
@@ -651,17 +547,6 @@ static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Col
 	button.add_theme_stylebox_override("hover", make_panel_style(fill, border.lightened(0.05), 4, 0))
 	button.add_theme_stylebox_override("pressed", make_panel_style(fill.darkened(0.18), border.darkened(0.12), 4, 0))
 	button.add_theme_stylebox_override("disabled", make_panel_style(fill.darkened(0.25), border.darkened(0.45), 4, 0))
-
-
-static func style_option_button(button: OptionButton, fill: Color = BG_PANEL_ALT, border: Color = LINE_DIM, font_size: int = 18) -> void:
-	apply_pixel_font(button)
-	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
-	button.add_theme_color_override("font_color", TEXT_PRIMARY)
-	button.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	button.add_theme_constant_override("outline_size", 3)
-	button.add_theme_stylebox_override("normal", make_panel_style(fill, border.darkened(0.10), 4, 0))
-	button.add_theme_stylebox_override("hover", make_panel_style(fill, border.lightened(0.05), 4, 0))
-	button.add_theme_stylebox_override("pressed", make_panel_style(fill.darkened(0.12), border.darkened(0.10), 4, 0))
 
 
 static func style_label(label: Label, font_size: int, color: Color = TEXT_PRIMARY, outline_size: int = 2) -> void:

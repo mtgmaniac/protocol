@@ -69,10 +69,6 @@ func set_suppressed(suppressed: bool) -> void:
 	_suppressed = suppressed
 
 
-func is_suppressed() -> bool:
-	return _suppressed
-
-
 func play_sfx(key: String, volume_db: float = 0.0) -> void:
 	if _suppressed:
 		return
@@ -90,18 +86,6 @@ func play_sfx(key: String, volume_db: float = 0.0) -> void:
 	var base_db: float = volume_db + float(VOLUME_OVERRIDES.get(key, 0.0))
 	player.volume_db = base_db + randf_range(-VOLUME_VARIATION_DB, VOLUME_VARIATION_DB)
 	player.play()
-
-
-func set_sfx_volume_db(db: float) -> void:
-	var idx: int = AudioServer.get_bus_index("SFX")
-	if idx != -1:
-		AudioServer.set_bus_volume_db(idx, db)
-
-
-func set_sfx_muted(muted: bool) -> void:
-	var idx: int = AudioServer.get_bus_index("SFX")
-	if idx != -1:
-		AudioServer.set_bus_mute(idx, muted)
 
 
 # ── Master mute (the "mute all audio" setting) ──────────────────────────────────

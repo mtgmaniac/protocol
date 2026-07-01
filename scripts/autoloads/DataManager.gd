@@ -220,17 +220,6 @@ func get_operation_order() -> Array:
 	return operation_order.duplicate()
 
 
-func get_logo_texture() -> Texture2D:
-	var modern_logo: Texture2D = _load_texture_if_exists("res://assets/ui/logo_scifi_overload_protocol.png")
-	if modern_logo != null:
-		return modern_logo
-	return _load_texture_if_exists("%soverload-protocol-logo.png" % LEGACY_UI_ROOT)
-
-
-func get_hero_zone_ranges(hero_key: String) -> Dictionary:
-	return (hero_zone_ranges.get(hero_key, {}) as Dictionary).duplicate(true)
-
-
 func _load_all_data() -> void:
 	units.clear()
 	enemies.clear()

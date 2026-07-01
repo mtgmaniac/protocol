@@ -5,24 +5,16 @@ signal card_pressed
 signal unit_detail_requested(card)
 
 const CARD_SIZE := Vector2(260, 0)
-const PORTRAIT_HEIGHT_RATIO := 1.20
-const PORTRAIT_MIN_HEIGHT := 100.0
 const PORTRAIT_TOP_INSET_PX := 0.0
 const PORTRAIT_HP_GAP_PX := 10.0
 const NAME_ROW_HEIGHT := 80.0
 const HP_BAR_HEIGHT := 86.0
 const HP_FILL_HEIGHT := 86.0
-const STATUS_ROW_HEIGHT := 72.0
 const ACTION_PANEL_HEIGHT := 88.0
-const PORTRAIT_ASPECT_FALLBACK := 2.0
-const PORTRAIT_X_OFFSET := -10.0
-const PORTRAIT_Y_OFFSET := -10.0
 # Portraits are cropped to their opaque bounds at load (DataManager._crop_to_content),
 # so a plain cover-scale (no extra zoom, head top-aligned) already fills the frame.
 const PORTRAIT_FILL_ZOOM := 1.0
 const PORTRAIT_TOP_CROP_FRAC := 0.0
-const HERO_PORTRAIT_WIDTH_SCALE := 0.90
-const MENAGERIE_PORTRAIT_Y_OFFSET_DELTA := -8.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
 # static var (not const) because PixelUI's DT_* tokens are themselves static var
 # and a const can't be initialized from a non-const value.
@@ -43,7 +35,6 @@ const STATUS_ICON_MIN_WIDTH := 48.0
 const STATUS_VALUE_MIN_WIDTH := 32.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
 const STATUS_CHIP_HEIGHT := 56.0
-const ACTION_PIP_VALUE_FONT_SIZE := 48
 const CARD_BORDER_WIDTH := 6
 var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
@@ -150,21 +141,6 @@ func apply_battle_layout(layout_size: Vector2) -> void:
 	if layout_changed or _locked_portrait_size == Vector2.ZERO:
 		_update_portrait_size()
 	call_deferred("_layout_preview_overlays")
-
-
-func set_selected(value: bool) -> void:
-	selected = value
-	_refresh()
-
-
-func set_targetable(value: bool) -> void:
-	targetable = value
-	_refresh()
-
-
-func set_interaction_enabled(value: bool) -> void:
-	interaction_enabled = value
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if value else Control.CURSOR_ARROW
 
 
 func show_combat_preview(effects: Dictionary) -> void:
@@ -868,25 +844,6 @@ func _status_icon_for_type(status_type: String) -> String:
 		"frozen", "freeze", "die_freeze":
 			return "â„"
 	return ""
-
-
-func _status_content_color(status: Dictionary, strong: bool) -> Color:
-	var status_type: String = str(status.get("type", "")).to_lower()
-	var effect_kind: String = ""
-	match status_type:
-		"poison", "dot":
-			effect_kind = "poison"
-		"shield":
-			effect_kind = "shield"
-		"roll", "rfe", "rfm":
-			effect_kind = PixelUI.pip_key_for_effect(status_type, str(status.get("value", "")))
-		"frozen", "freeze", "die_freeze":
-			effect_kind = "freeze"
-		_:
-			return PixelUI.TEXT_MUTED
-	if strong:
-		return PixelUI.effect_color(effect_kind)
-	return PixelUI.effect_value_color(effect_kind)
 
 
 func _team_border_color() -> Color:

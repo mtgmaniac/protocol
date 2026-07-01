@@ -223,16 +223,6 @@ func claim_reward(item_id: String, target_unit_id: String = "", swap_consumable_
 	return true
 
 
-func get_gear_display_names(unit_id: String) -> Array:
-	var gear_names: Array = []
-	var gear_ids: Array = gear_by_unit.get(unit_id, [])
-	for gear_id in gear_ids:
-		var item: ItemData = DataManager.get_item(str(gear_id)) as ItemData
-		if item != null:
-			gear_names.append(item.display_name)
-	return gear_names
-
-
 func get_inventory_summary() -> String:
 	return "Relics: %d | Consumables: %d | Equipped Gear: %d" % [
 		relics.size(),
@@ -260,11 +250,6 @@ func get_unit_xp(unit_id: String) -> int:
 
 func get_unit_level(unit_id: String) -> int:
 	return int(unit_levels.get(unit_id, 1))
-
-
-func get_unit_xp_ratio(unit_id: String) -> float:
-	var current_xp: int = get_unit_xp(unit_id)
-	return clampf(float(current_xp % XP_TO_EVOLVE) / float(XP_TO_EVOLVE), 0.0, 1.0)
 
 
 func get_unit_evolution_name(unit_id: String) -> String:

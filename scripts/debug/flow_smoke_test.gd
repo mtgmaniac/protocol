@@ -30,7 +30,7 @@ func _run_flow() -> void:
 	await _step_reward_claim_and_continue()
 	await _step_evolution_back_to_home()
 	await _step_main_menu_to_home()
-	await _step_run_end_both_buttons()
+	await _step_run_end_new_run_button()
 
 	if _errors.is_empty():
 		print("[FLOW_SMOKE] PASS — all transitions completed with no logged errors")
@@ -197,9 +197,9 @@ func _step_main_menu_to_home() -> void:
 	await _wait_frames(2)
 
 
-func _step_run_end_both_buttons() -> void:
+func _step_run_end_new_run_button() -> void:
 	_step += 1
-	print("[FLOW_SMOKE] Step %d: run-end -> home (new run button)" % _step)
+	print("[FLOW_SMOKE] Step %d: run-end (victory) -> home (new run button)" % _step)
 	var gs := _game_state()
 	var op_id: String = str(_data_manager().call("get_operation_order")[0])
 	gs.call("start_run", DEFAULT_SQUAD, op_id)
@@ -221,15 +221,15 @@ func _step_run_end_both_buttons() -> void:
 	await _wait_frames(2)
 
 	_step += 1
-	print("[FLOW_SMOKE] Step %d: run-end -> home (return button)" % _step)
+	print("[FLOW_SMOKE] Step %d: run-end (defeat) -> home (new run button)" % _step)
 	gs.call("start_run", DEFAULT_SQUAD, op_id)
 	gs.call("finish_run", "defeat")
 	_scene_manager().call("go_to_run_end")
 	await _wait_for_scene(RUN_END_SCENE)
 	await _wait_frames(2)
 	run_end = _current()
-	if run_end != null and run_end.has_method("_on_return_to_menu_button_pressed"):
-		run_end.call("_on_return_to_menu_button_pressed")
+	if run_end != null and run_end.has_method("_on_new_run_button_pressed"):
+		run_end.call("_on_new_run_button_pressed")
 	await _wait_for_scene(HOME_SCENE)
 
 

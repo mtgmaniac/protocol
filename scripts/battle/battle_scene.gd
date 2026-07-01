@@ -48,10 +48,6 @@ const PHASE_ITEM_CONFIRM := "item_confirm"
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
-const DICE_THREE_UNIT_SIDE_OFFSET_PX := 0.0
-const DICE_ENEMY_SNAP_TOP_PX := 220.0
-const DICE_HERO_SNAP_BOTTOM_PX := 56.0
-const DICE_BUTTON_CLEARANCE_PX := 132.0
 const MAX_PROTOCOL := 10
 const PROTOCOL_FOOTER_BAR_TEXTURE := "res://assets/ui/protocol_footer_bar_scifi.png"
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
@@ -67,19 +63,9 @@ const PROTOCOL_LIGHT_RECTS := [
 	Rect2(1030, 125, 61, 61),
 	Rect2(1143, 125, 61, 61),
 ]
-const DICE_CARD_CLEARANCE_PX := 96.0
-const COMBAT_ZONE_READOUT_GAP_PX := 18.0
-const COMPACT_PORTRAIT_EXTRA_HEIGHT_PX := 52.0
-const COMPACT_RAIL_CHROME_PX := 24.0
-const HEADER_BUTTON_SIZE := Vector2(112, 112)
 const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
-const ITEM_SLOT_SIZE := Vector2(112, 112)
-const ITEM_ICON_SIZE := Vector2(76, 76)
 const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
-const CENTER_PROMPT_FONT_SIZE := 32
-const HEADER_SUMMARY_FONT_SIZE := 112
-const HEADER_COUNTER_FONT_SIZE := 36
 const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
 
@@ -1075,11 +1061,6 @@ func _debug_advance_after_auto_battle_victory() -> void:
 	_scene_manager().go_to_reward_screen()
 
 
-func _on_protocol_spend_button_pressed() -> void:
-	# Kept as a no-op stub; actual handler is _on_reroll_button_pressed wired in _ready()
-	pass
-
-
 func _on_reroll_button_pressed() -> void:
 	if _consume_protocol_long_press():
 		return
@@ -1884,19 +1865,6 @@ func _style_frame_icon_action_button(
 	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate)
 
 
-func _style_prompt_button(button: Button, label: String, min_size: Vector2, font_size: int, border: Color = PixelUI.LINE_DIM) -> void:
-	if button == null or not is_instance_valid(button):
-		return
-	button.icon = null
-	button.expand_icon = false
-	button.flat = false
-	button.text = label
-	button.custom_minimum_size = min_size
-	# Mostly transparent fill so this reads as a status hint, not an
-	# action waiting to be unlocked.
-	PixelUI.style_button(button, Color(0.05, 0.07, 0.10, 0.45), border, font_size)
-
-
 func _update_phase_target_sets() -> void:
 	if not turn_phase.begins_with("item_pick"):
 		if turn_phase != PHASE_TARGETING:
@@ -2215,16 +2183,6 @@ func _find_manual_target_state(target_side: String, target_id: String) -> Dictio
 	return _find_state_by_id(combat_manager.get_enemy_states(), target_id)
 
 
-func _get_dead_target_ids(target_side: String) -> Array:
-	var ids: Array = []
-	var states: Array = combat_manager.get_hero_states() if target_side == "hero" else combat_manager.get_enemy_states()
-	for state_variant in states:
-		var state: Dictionary = state_variant
-		if bool(state["dead"]):
-			ids.append(str(state["id"]))
-	return ids
-
-
 func _find_state_by_id(states: Array, target_id: String) -> Dictionary:
 	for state_variant in states:
 		var state: Dictionary = state_variant
@@ -2242,10 +2200,6 @@ func _get_taunt_enemy_id() -> String:
 
 func _first_living_hero_state() -> Dictionary:
 	return _first_living_from_states(combat_manager.get_hero_states())
-
-
-func _first_living_enemy_state() -> Dictionary:
-	return _first_living_from_states(combat_manager.get_enemy_states())
 
 
 func _first_living_enemy_ally_state(enemy_state: Dictionary) -> Dictionary:
@@ -2310,21 +2264,6 @@ func _set_state_target(state: Dictionary, target_id: String, target_display: Str
 
 func _get_target_text(state: Dictionary) -> String:
 	return str(state.get("target_display", "--"))
-
-
-func _get_target_display_side(state: Dictionary) -> String:
-	var target_id: String = str(state.get("selected_target_id", ""))
-	var target_display: String = str(state.get("target_display", ""))
-	if target_display == "Self" or target_display == "All Squad":
-		return "hero"
-	if target_display == "All Hostiles":
-		return "enemy"
-	if target_id != "":
-		if not _find_state_by_id(combat_manager.get_hero_states(), target_id).is_empty():
-			return "hero"
-		if not _find_state_by_id(combat_manager.get_enemy_states(), target_id).is_empty():
-			return "enemy"
-	return ""
 
 
 func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
@@ -2489,28 +2428,6 @@ func _set_battle_log_visible(is_visible: bool) -> void:
 	battle_log_panel.visible = is_visible
 
 
-func _refresh_roll_summaries() -> void:
-	pass
-
-
-func _reveal_roll_summaries_animated() -> void:
-	pass
-
-
-func _get_representative_roll() -> int:
-	for state in combat_manager.get_hero_states():
-		var uid: String = str(state["id"])
-		var roll_value: int = int(hero_rolls.get(uid, 0))
-		if roll_value > 0:
-			return roll_value
-	for state in combat_manager.get_enemy_states():
-		var uid: String = str(state["id"])
-		var roll_value: int = int(enemy_rolls.get(uid, 0))
-		if roll_value > 0:
-			return roll_value
-	return 1
-
-
 func _apply_battle_theme() -> void:
 	# The header bar (FACILITY label + buttons) and its divider now live in the
 	# PersistentHeader autoload, not this scene. Only the footer divider stays here.
@@ -2621,76 +2538,6 @@ func _build_item_panel() -> void:
 	_update_item_panel()
 
 
-func _build_relic_slot() -> void:
-	var protocol_row: HBoxContainer = protocol_panel.get_node("ProtocolMargin/ProtocolRow") as HBoxContainer
-	var slot: PanelContainer = PanelContainer.new()
-	_relic_slot = slot
-	slot.custom_minimum_size = ITEM_SLOT_SIZE
-	PixelUI.style_panel(slot, Color(0.012, 0.018, 0.028, 0.35), PixelUI.LINE_DIM, 1, 2)
-
-	var icon_center: CenterContainer = CenterContainer.new()
-	icon_center.name = "RelicIconCenter"
-	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	slot.add_child(icon_center)
-
-	var icon: TextureRect = TextureRect.new()
-	icon.name = "RelicIcon"
-	icon.custom_minimum_size = ITEM_ICON_SIZE
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.visible = false
-	icon_center.add_child(icon)
-
-	var label: Label = Label.new()
-	label.name = "RelicLabel"
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", PixelUI.GOLD_ACCENT)
-	slot.add_child(label)
-
-	protocol_row.add_child(slot)
-	_update_relic_slot()
-
-
-func _update_relic_slot() -> void:
-	if _relic_slot == null:
-		return
-	var label: Label = _relic_slot.get_node_or_null("RelicLabel") as Label
-	var icon: TextureRect = _relic_slot.find_child("RelicIcon", true, false) as TextureRect
-	var relic_ids: Array = _game_state().relics
-	if relic_ids.is_empty():
-		if icon != null:
-			icon.texture = null
-			icon.visible = false
-		if label != null:
-			label.text = "◇"
-			label.visible = true
-		return
-
-	var relic: ItemData = _data_manager().get_item(str(relic_ids[0])) as ItemData
-	if relic == null:
-		if icon != null:
-			icon.texture = null
-			icon.visible = false
-		if label != null:
-			label.text = "?"
-			label.visible = true
-		return
-
-	if icon != null:
-		icon.texture = relic.icon
-		icon.visible = relic.icon != null
-	if label != null:
-		label.text = _get_item_icon_char(relic.icon_key)
-		label.visible = relic.icon == null
-
-
 func _update_item_panel() -> void:
 	if _item_button == null:
 		return
@@ -2736,15 +2583,6 @@ func _get_item_icon_char(icon_key: String) -> String:
 		"cloak":  return "◉"
 		"star":   return "★"
 	return "●"
-
-
-func _get_item_rarity_color(rarity: String) -> Color:
-	match rarity:
-		"common":    return Color(0.55, 0.60, 0.66, 1.0)
-		"uncommon":  return Color(0.35, 0.82, 0.48, 1.0)
-		"rare":      return Color(0.38, 0.62, 1.00, 1.0)
-		"legendary": return Color(1.00, 0.72, 0.20, 1.0)
-	return Color(0.55, 0.60, 0.66, 1.0)
 
 
 # Returns true if the item tap was accepted (the loadout menu should close), false if it was

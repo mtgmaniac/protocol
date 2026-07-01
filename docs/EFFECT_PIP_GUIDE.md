@@ -22,7 +22,7 @@ Do **not** add local pip icon maps, emoji fallbacks, or custom value formatting 
 | `PROFILE_READOUT` | 56 | 80 | 4 | 90 | 3 |
 | `PROFILE_CARD` | 40 | 48 | 4 | 72 | 2 |
 
-`PROFILE_REWARD` aliases `PROFILE_CARD` (reward items match unit-card action pips).
+Reward-screen pips pass a locally-sized profile dict based on `PROFILE_CARD` (see `reward_screen.gd`).
 
 Duration superscript uses `duration_ratio` (0.6 × value font) and `duration_outline`.
 

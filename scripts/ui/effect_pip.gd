@@ -27,10 +27,7 @@ const PROFILE_CARD := {
 	"duration_outline": 2,
 }
 
-# Reward cards use PROFILE_CARD (same as compact unit action pips).
-const PROFILE_REWARD := PROFILE_CARD
 
-const PROFILE_REWARD_COMPACT := PROFILE_CARD
 
 
 static func format_scoped(text: String, scope: String) -> String:
@@ -142,21 +139,6 @@ static func build_group(
 		group.add_child(_make_value_display(effect, profile, side))
 
 	return group
-
-
-static func build_row(
-	effects: Array,
-	profile: Dictionary,
-	side: String = "hero",
-	separation: int = 16
-) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", separation)
-	for i in range(effects.size()):
-		row.add_child(build_group(effects[i], profile, side))
-	return row
 
 
 static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> Array:

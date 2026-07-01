@@ -7,13 +7,6 @@ func roll_d20() -> int:
 	return randi_range(1, 20)
 
 
-func roll_all(units: Array) -> Dictionary:
-	var results: Dictionary = {}
-	for unit in units:
-		results[unit.id] = roll_d20()
-	return results
-
-
 func get_ability_for_roll(unit_data: Resource, roll: int) -> Dictionary:
 	if unit_data == null:
 		return {}
