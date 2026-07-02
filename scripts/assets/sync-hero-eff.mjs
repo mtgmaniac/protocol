@@ -49,9 +49,9 @@ function buildHeroEffectSummary(a) {
     else parts.push(`self ${a.shield} shield${t}`);
   }
 
-  if ((a.dot || 0) > 0) {
-    const t = (a.dT || 0) > 1 ? `, ${a.dT}t` : '';
-    parts.push(`${a.dot} DoT${t}`);
+  if ((a.burn || 0) > 0) {
+    const t = (a.burnT || 0) > 1 ? `, ${a.burnT}t` : '';
+    parts.push(`${a.burn} burn${t}`);
   }
 
   if ((a.rfe || 0) > 0) {

@@ -8,8 +8,8 @@ export interface HeroAbility {
   dmg: number;
   dMin: number;
   dMax: number;
-  dot: number;
-  dT: number;
+  burn: number;
+  burnT: number;
   rfe: number;
   rfT?: number;
   heal: number;
@@ -50,8 +50,8 @@ export interface EnemyAbility {
   eff: string;
   dmg: number;
   dmgP2?: number;
-  dot: number;
-  dT: number;
+  burn: number;
+  burnT: number;
   heal: number;
   rfe: number;
   rfT?: number;
@@ -61,7 +61,7 @@ export interface EnemyAbility {
   rfm?: number;
   rfmT?: number;
   wipeShields?: boolean;
-  /** Heal this enemy for N% of HP damage dealt (after shield); never combine with `dot` on the same ability. */
+  /** Heal this enemy for N% of HP damage dealt (after shield); never combine with `burn` on the same ability. */
   lifestealPct?: number;
   zone?: Zone;
   /** Veil Concord overload only: % chance (0–100) on natural 20 + overload tier; requires `summonElite` on unit def; max 3 enemies. */

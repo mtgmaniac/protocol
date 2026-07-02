@@ -1,14 +1,12 @@
 {
   "$comment": "Single source of truth for combat keywords. Help menu + tooltips both read this. Colors intentionally omitted — assign PixelUI tokens per the meaning-first palette (green reserved for Protocol).",
-  "dotFlavors": ["Burn", "Venom", "Decay"],
   "keywords": [
     {
-      "id": "dot",
-      "term": "DoT",
+      "id": "burn",
+      "term": "Burn",
       "category": "offense",
       "def": "Damage over time. Deals the listed amount each turn for the listed number of turns.",
-      "syntax": "X DoT, Yt = X damage per turn for Y turns",
-      "note": "Mechanically identical across flavors. Burn / Venom / Decay are cosmetic only."
+      "syntax": "X burn, Yt = X damage per turn for Y turns"
     },
     {
       "id": "pierce",

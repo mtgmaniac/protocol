@@ -5,7 +5,7 @@
     { "id": "stim_injector", "name": "Stim Injector", "desc": "+5 max HP each battle.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 5 } },
     { "id": "vitality_rig", "name": "Vitality Rig", "desc": "+8 max HP each battle.", "rarity": "rare", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 8 } },
     { "id": "warframe_core", "name": "Warframe Core", "desc": "+12 max HP each battle.", "rarity": "legendary", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 12 } },
-    { "id": "void_shard", "name": "Void Shard", "desc": "Enemy DoT ticks deal +2 damage.", "rarity": "uncommon", "icon": "skull", "effect": { "type": "dotDmgBonus", "amount": 2 } },
+    { "id": "void_shard", "name": "Void Shard", "desc": "Enemy Burn ticks deal +2 damage.", "rarity": "uncommon", "icon": "skull", "effect": { "type": "burnDmgBonus", "amount": 2 } },
     { "id": "phase_weave", "name": "Phase Weave", "desc": "Start each battle cloaked.", "rarity": "uncommon", "icon": "star", "effect": { "type": "battleStartCloak" } },
     { "id": "kill_switch", "name": "Kill Switch", "desc": "Restore 5 HP when any enemy dies.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "healOnKill", "amount": 5 } },
     { "id": "scavenger_rig", "name": "Scavenger Rig", "desc": "Restore 10 HP when any enemy dies.", "rarity": "rare", "icon": "heart", "effect": { "type": "healOnKill", "amount": 10 } },

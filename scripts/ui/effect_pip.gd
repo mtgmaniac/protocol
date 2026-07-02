@@ -154,9 +154,9 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 			effects, "dmg", "%d-%d" % [damage_min, damage_max], 0, "all" if blast_all else ""
 		)
 
-	var dot: int = int(raw.get("dot", 0))
-	if dot > 0:
-		_append_effect(effects, "dot", "%d" % dot, int(raw.get("dT", 0)))
+	var burn: int = int(raw.get("burn", 0))
+	if burn > 0:
+		_append_effect(effects, "burn", "%d" % burn, int(raw.get("burnT", 0)))
 
 	var shield_all: bool = bool(raw.get("shieldAll", false))
 	var shield_self: bool = (
@@ -260,16 +260,16 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "roll", "-%d" % int(effect.get("amount", 0)), int(effect.get("rfT", 0)))
 		"enemyDmg":
 			_append_effect(effects, "dmg", "%d" % int(effect.get("amount", 0)))
-		"enemyDot":
-			_append_effect(effects, "dot", "%d" % int(effect.get("amount", 0)), int(effect.get("dT", 0)))
+		"enemyBurn":
+			_append_effect(effects, "burn", "%d" % int(effect.get("amount", 0)), int(effect.get("burnT", 0)))
 		"gainProtocol":
 			_append_effect(effects, "protocol", "+%d" % int(effect.get("amount", 0)))
 		"battleStartShield":
 			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "self")
 		"maxHpBonus":
 			_append_effect(effects, "heal", "+%d" % int(effect.get("amount", 0)))
-		"dotDmgBonus", "dotAmplified":
-			_append_effect(effects, "dot", "+%d" % int(effect.get("amount", effect.get("bonus", 0))))
+		"burnDmgBonus", "burnAmplified":
+			_append_effect(effects, "burn", "+%d" % int(effect.get("amount", effect.get("bonus", 0))))
 		"battleStartCloak":
 			_append_effect(effects, "cloak", "C", 0, "self")
 		"battleStartCloakRoll":
@@ -298,8 +298,8 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "self")
 		"heroHealPerTurn":
 			_append_effect(effects, "heal", "%d" % int(effect.get("amount", 0)), 0, "self")
-		"enemyDotPermanent":
-			_append_effect(effects, "dot", "%d" % int(effect.get("amount", 0)))
+		"enemyBurnPermanent":
+			_append_effect(effects, "burn", "%d" % int(effect.get("amount", 0)))
 		"heroDmgMult":
 			_append_effect(effects, "dmg", "%d%%" % int(round(float(effect.get("mult", 1.0)) * 100.0)), 0, "self")
 		"enemyStartRfe":
@@ -309,7 +309,7 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 		"protocolOnItemUse":
 			_append_effect(effects, "protocol", "FREE", 0, "self")
 		"enemyHpEscalation":
-			_append_effect(effects, "dot", "-%d" % int(effect.get("reductionPerBattle", 0)))
+			_append_effect(effects, "burn", "-%d" % int(effect.get("reductionPerBattle", 0)))
 		"chainReaction":
 			_append_effect(effects, "dmg", "%d" % int(effect.get("amount", 0)))
 		"lifesteal":

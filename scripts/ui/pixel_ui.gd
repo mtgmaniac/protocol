@@ -60,7 +60,6 @@ static var DT_ROLL_TEXT := Color("e3ffe4")
 # Status badge tokens {border, fill, text}
 static var DT_STATUS := {
 	"shield": {"border": Color("3fd0e2"), "fill": Color("0a1620"), "text": Color("bff7ff")},
-	"poison": {"border": Color("9a6ad0"), "fill": Color("160e1f"), "text": Color("d8c4f0")},
 	"burn": {"border": Color("d98a3e"), "fill": Color("1f140a"), "text": Color("f4cd9a")},
 }
 # ── Reward rarity border tokens ──
@@ -121,7 +120,7 @@ const PIP_DAMAGE_SCIFI := "res://assets/ui/pip_damage_scifi.png"
 const PIP_HEAL_SCIFI := "res://assets/ui/pip_heal_scifi.png"
 const PIP_SHIELD_SCIFI := "res://assets/ui/pip_shield_scifi.png"
 const PIP_FREEZE_SCIFI := "res://assets/ui/pip_freeze_scifi.png"
-const PIP_POISON_SCIFI := "res://assets/ui/pip_poison_scifi.png"
+const PIP_BURN_SCIFI := "res://assets/ui/pip_burn_scifi.png"
 const PIP_ROLL_DOWN_SCIFI := "res://assets/ui/pip_roll_down_scifi.png"
 const PIP_ROLL_UP_SCIFI := "res://assets/ui/pip_roll_up_scifi.png"
 
@@ -251,8 +250,8 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 			return "heal"
 		"shield", "taunt":
 			return "shield"
-		"dot", "poison":
-			return "poison"
+		"burn":
+			return "burn"
 		"freeze", "frozen", "die_freeze":
 			return "freeze"
 		"rfe":
@@ -310,8 +309,8 @@ static func pip_texture_for_key(key: String) -> Texture2D:
 			texture_path = PIP_SHIELD_SCIFI
 		"freeze":
 			texture_path = PIP_FREEZE_SCIFI
-		"poison":
-			texture_path = PIP_POISON_SCIFI
+		"burn":
+			texture_path = PIP_BURN_SCIFI
 		"roll_down":
 			texture_path = PIP_ROLL_DOWN_SCIFI
 		"roll_up":
@@ -516,7 +515,7 @@ static func effect_color(kind: String) -> Color:
 			return COLOR_HEAL
 		"shield", "taunt":
 			return COLOR_SHIELD
-		"dot", "poison", "debuff":
+		"burn", "debuff":
 			return COLOR_DEBUFF
 		"roll", "rfe", "rfm", "freeze":
 			return COLOR_ROLL
@@ -548,7 +547,7 @@ static func rarity_color(rarity: String) -> Color:
 
 static func status_color(token: String) -> Color:
 	var upper: String = token.to_upper()
-	if upper.begins_with("POI") or upper.begins_with("POT") or upper == "DOT" or upper == "COW" or upper == "DOWN" or upper == "P":
+	if upper.begins_with("BRN") or upper.begins_with("BURN") or upper == "COW" or upper == "DOWN" or upper == "P":
 		return COLOR_DEBUFF
 	if upper == "RMP":
 		return COLOR_DAMAGE

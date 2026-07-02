@@ -37,8 +37,8 @@ const HERO_HANDLED_FIELDS := [
 	"healLowest",
 	"shTgt",
 	"healTgt",
-	"dot",
-	"dT",
+	"burn",
+	"burnT",
 	"rfm",
 	"rfmT",
 	"rfmTgt",
@@ -69,8 +69,8 @@ const ENEMY_HANDLED_FIELDS := [
 	"shAllyT",
 	"shieldAllyAll",
 	"blastAll",
-	"dot",
-	"dT",
+	"burn",
+	"burnT",
 	"packBonus",
 	"lifestealPct",
 	"wipeShields",
@@ -94,8 +94,8 @@ const EFFECT_FIELDS := [
 	"dmg",
 	"dMin",
 	"dMax",
-	"dot",
-	"dT",
+	"burn",
+	"burnT",
 	"rfe",
 	"rfT",
 	"rfeAll",
@@ -272,9 +272,9 @@ func _score_ability_for_field(raw: Dictionary, effect_field: String) -> int:
 		"rfmT":
 			score += int(raw.get("rfmT", 0)) * 10
 			score += int(raw.get("rfm", 0))
-		"dT":
-			score += int(raw.get("dT", 0)) * 10
-			score += int(raw.get("dot", 0))
+		"burnT":
+			score += int(raw.get("burnT", 0)) * 10
+			score += int(raw.get("burn", 0))
 		_:
 			score += int(raw.get(effect_field, 1)) if not (raw.get(effect_field) is bool) else 1
 	return score
@@ -292,7 +292,7 @@ func _run_effect_audit(effect_field: String, ability: Dictionary) -> void:
 	var enemy_b: Dictionary = context["enemy_b"]
 
 	match effect_field:
-		"dmg", "dMin", "dMax", "dot", "dT", "rfe", "rfT", "freezeEnemyDice", "ignSh":
+		"dmg", "dMin", "dMax", "burn", "burnT", "rfe", "rfT", "freezeEnemyDice", "ignSh":
 			actor["selected_target_id"] = str(enemy_a["id"])
 		"healTgt", "shTgt", "rfmTgt", "freezeAnyDice", "revive":
 			actor["selected_target_id"] = str(ally_a["id"])
@@ -375,7 +375,7 @@ func _run_targeting_audits() -> void:
 
 	var cases: Array[Dictionary] = [
 		{"name": "single damage requires enemy", "raw": {"dmg": 5}, "manual": "enemy"},
-		{"name": "single poison requires enemy", "raw": {"dot": 2, "dT": 2}, "manual": "enemy"},
+		{"name": "single burn requires enemy", "raw": {"burn": 2, "burnT": 2}, "manual": "enemy"},
 		{"name": "single roll debuff requires enemy", "raw": {"rfe": 2, "rfT": 1}, "manual": "enemy"},
 		{"name": "rfeOnly debuff requires enemy", "raw": {"rfe": 2, "rfT": 1, "rfeOnly": true}, "manual": "enemy"},
 		{"name": "blast all requires no manual target", "raw": {"dmg": 5, "blastAll": true}, "manual": ""},
@@ -413,7 +413,7 @@ func _run_targeting_audits() -> void:
 func _run_regression_audits() -> void:
 	_run_enemy_shield_ally_regression()
 	_run_cower_duration_regression()
-	_run_poison_timing_regression()
+	_run_burn_timing_regression()
 	_run_roll_modifier_timing_regressions()
 	_run_shield_timing_regression()
 	_run_cloak_regression()
@@ -503,8 +503,8 @@ func _run_cower_duration_regression() -> void:
 		)
 
 
-func _run_poison_timing_regression() -> void:
-	var context: Dictionary = _build_context({"dot": 3, "dT": 2}, "Poison Timing Regression")
+func _run_burn_timing_regression() -> void:
+	var context: Dictionary = _build_context({"burn": 3, "burnT": 2}, "Burn Timing Regression")
 	var manager: CombatManager = context["manager"]
 	var actor: Dictionary = context["actor"]
 	var enemy: Dictionary = context["enemy_a"]
@@ -513,25 +513,25 @@ func _run_poison_timing_regression() -> void:
 	var before_hp: int = int(enemy["current_hp"])
 	manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	var after_first_hp: int = int(enemy["current_hp"])
-	var after_first_turns: int = int(enemy["poison_turns"])
-	var after_first_poison: int = int(enemy["poison"])
+	var after_first_turns: int = int(enemy["burn_turns"])
+	var after_first_burn: int = int(enemy["burn"])
 	manager.resolve_round({}, {}, DiceManager.new())
 
 	var ok: bool = (
 		after_first_hp == before_hp
-		and after_first_poison == 3
+		and after_first_burn == 3
 		and after_first_turns == 2
 		and int(enemy["current_hp"]) == before_hp - 3
-		and int(enemy["poison_turns"]) == 1
+		and int(enemy["burn_turns"]) == 1
 	)
 	if ok:
-		_record_pass("Regression / poison skip-next-tick", "dot")
+		_record_pass("Regression / burn skip-next-tick", "burn")
 	else:
 		_record_failure(
-			"Regression / poison skip-next-tick",
-			"dot",
+			"Regression / burn skip-next-tick",
+			"burn",
 			"first round no tick, second round ticks once",
-			"hp before=%d after_first=%d after_second=%d poison=%d turns_after_first=%d turns_after_second=%d" % [before_hp, after_first_hp, int(enemy["current_hp"]), after_first_poison, after_first_turns, int(enemy["poison_turns"])]
+			"hp before=%d after_first=%d after_second=%d burn=%d turns_after_first=%d turns_after_second=%d" % [before_hp, after_first_hp, int(enemy["current_hp"]), after_first_burn, after_first_turns, int(enemy["burn_turns"])]
 		)
 
 
@@ -675,8 +675,8 @@ func _run_down_cleanup_regression() -> void:
 	var hero: Dictionary = manager.get_hero_states()[0]
 	hero["shield"] = 5
 	hero["shield_stacks"] = [{"amt": 5, "turns_left": 1, "skip_next_tick": false}]
-	hero["poison"] = 3
-	hero["poison_turns"] = 2
+	hero["burn"] = 3
+	hero["burn_turns"] = 2
 	hero["rfe_stacks"] = [{"amt": 2, "turns_left": 1, "skip_next_tick": false}]
 	hero["roll_buff"] = 2
 	hero["roll_buff_turns"] = 1
@@ -690,7 +690,7 @@ func _run_down_cleanup_regression() -> void:
 	manager.call("_clear_active_statuses_for_down_state", hero)
 	var ok: bool = (
 		int(hero["shield"]) == 0
-		and int(hero["poison"]) == 0
+		and int(hero["burn"]) == 0
 		and int(hero["roll_buff"]) == 0
 		and not bool(hero["cloaked"])
 		and int(hero["cower_turns"]) == 0
@@ -888,7 +888,7 @@ func _run_relic_ally_death_heal_regression() -> void:
 
 
 # Battle-start relics that write per-unit state the compact pips + roll math read:
-# signalJam (perm_rfe), coordinatedStrike (perm_roll_buff), plagueProtocol (poison),
+# signalJam (perm_rfe), coordinatedStrike (perm_roll_buff), plagueProtocol (burn),
 # entropyLeak (max-HP escalation).
 func _run_relic_battle_start_state_regression() -> void:
 	var mgr: CombatManager = CombatManager.new()
@@ -909,7 +909,7 @@ func _run_relic_battle_start_state_regression() -> void:
 	var hero_totals: Dictionary = mgr.get_roll_modifier_totals(h)
 	_expect_and_record("Regression / relic signalJam roll total", "enemyStartRfe", "2", str(int(enemy_totals.get("roll_rfe", 0))))
 	_expect_and_record("Regression / relic coordinatedStrike roll total", "heroStartRollBuff", "2", str(int(hero_totals.get("roll_buff", 0))))
-	_expect_and_record("Regression / relic plagueProtocol poison", "enemyDotPermanent", "3", str(int(e.get("poison", 0))))
+	_expect_and_record("Regression / relic plagueProtocol burn", "enemyBurnPermanent", "3", str(int(e.get("burn", 0))))
 	_expect_and_record("Regression / relic entropyLeak maxhp", "enemyHpEscalation", str(enemy_max_before - 10), str(int(e["max_hp"])))
 
 
@@ -1470,8 +1470,8 @@ func _snapshot_state(state: Dictionary) -> Dictionary:
 		"dead": bool(state.get("dead", false)),
 		"shield": int(state.get("shield", 0)),
 		"shield_stacks": (state.get("shield_stacks", []) as Array).duplicate(true),
-		"poison": int(state.get("poison", 0)),
-		"poison_turns": int(state.get("poison_turns", 0)),
+		"burn": int(state.get("burn", 0)),
+		"burn_turns": int(state.get("burn_turns", 0)),
 		"rfe_total": _sum_stack_amounts(state.get("rfe_stacks", [])),
 		"rfe_stacks": (state.get("rfe_stacks", []) as Array).duplicate(true),
 		"roll_buff": int(state.get("roll_buff", 0)),
@@ -1494,8 +1494,8 @@ func _sum_stack_amounts(stacks: Array) -> int:
 func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, after: Dictionary, result: Dictionary) -> Dictionary:
 	var events: Array = result.get("events", [])
 	var damage_amount: int = int(raw.get("dmg", raw.get("dMin", 0)))
-	var dot_amount: int = int(raw.get("dot", 0))
-	var dot_turns: int = int(raw.get("dT", 0))
+	var burn_amount: int = int(raw.get("burn", 0))
+	var burn_turns: int = int(raw.get("burnT", 0))
 	var rfe_amount: int = int(raw.get("rfe", 0))
 	var rfe_turns: int = int(raw.get("rfT", 1))
 	var roll_buff_amount: int = int(raw.get("rfm", 0))
@@ -1507,10 +1507,10 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 	match effect_field:
 		"dmg", "dMin", "dMax":
 			return _expect_int_delta(effect_field, damage_amount, before.enemy_a.hp - after.enemy_a.hp, "enemy HP loss")
-		"dot":
-			return _expect_int_delta(effect_field, dot_amount, after.enemy_a.poison, "enemy poison amount")
-		"dT":
-			return _expect_int_delta(effect_field, dot_turns, after.enemy_a.poison_turns, "enemy poison turns")
+		"burn":
+			return _expect_int_delta(effect_field, burn_amount, after.enemy_a.burn, "enemy burn amount")
+		"burnT":
+			return _expect_int_delta(effect_field, burn_turns, after.enemy_a.burn_turns, "enemy burn turns")
 		"rfe":
 			return _expect_min_int(effect_field, rfe_amount, after.enemy_a.rfe_total, "target enemy RFE")
 		"rfT":

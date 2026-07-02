@@ -85,7 +85,7 @@ var enemy_units: Array = []
 #   turn 1: Pulse 5 (Arc Burst 6) + Strike 1 (Test Shot 1) + Ghost 3 (Probe Strike 7) = 14
 #   turn 2: Pulse 9→Nudge→12 (Plasma Lance 8) + 1 + 7 = 16  → 30 total kills the 28-HP enemy.
 # Pulse 9 sits one short of the Surge band (Plasma Lance opens at 10); +3 Nudge → 12 flips
-# flat Arc Burst into Plasma Lance (8 dmg + 2 DoT) — the taught payoff.
+# flat Arc Burst into Plasma Lance (8 dmg + 2 burn) — the taught payoff.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_HP := 28
 const TUTORIAL_ENEMY_ROLL := 6
@@ -1968,7 +1968,7 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return "hero"
 	var has_single_enemy_effect: bool = (
 		(int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)))
-		or int(raw.get("dot", 0)) > 0
+		or int(raw.get("burn", 0)) > 0
 		or (int(raw.get("rfe", 0)) > 0 and not bool(raw.get("rfeAll", false)))
 		or bool(raw.get("rfeOnly", false))
 	)
@@ -2071,14 +2071,14 @@ func _auto_assign_enemy_target(enemy_state: Dictionary, ability_entry: Dictionar
 		_set_state_target(enemy_state, str(ally_target["id"]), str(ally_target["unit"].display_name))
 		return
 
-	# Hero-targeted: damage, DoT, or roll debuff
-	var targets_hero: bool = int(raw.get("dmg", 0)) > 0 or int(raw.get("dot", 0)) > 0 or int(raw.get("rfm", 0)) > 0
+	# Hero-targeted: damage, burn, or roll debuff
+	var targets_hero: bool = int(raw.get("dmg", 0)) > 0 or int(raw.get("burn", 0)) > 0 or int(raw.get("rfm", 0)) > 0
 	if targets_hero:
 		var hero_target: Dictionary = {}
 		if ai_type == "smart":
 			# Pure debuff (rfm only): target highest HP to disrupt strongest attacker
-			# Damage/DoT: target lowest HP to maximize kill threat
-			var is_pure_debuff: bool = int(raw.get("dmg", 0)) == 0 and int(raw.get("dot", 0)) == 0
+			# Damage/burn: target lowest HP to maximize kill threat
+			var is_pure_debuff: bool = int(raw.get("dmg", 0)) == 0 and int(raw.get("burn", 0)) == 0
 			hero_target = _smart_target_hero(is_pure_debuff)
 		else:
 			hero_target = _first_living_hero_state()
@@ -2843,11 +2843,11 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			var amount: int = int(effect.get("amount", 0))
 			combat_manager.apply_item_damage(target_state, amount)
 			_append_log("Item: %s deals %d damage to %s." % [item.display_name, amount, tname])
-		"enemyDot":
+		"enemyBurn":
 			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("dT", 1))
-			combat_manager.apply_item_dot(target_state, amount, turns)
-			_append_log("Item: %s applies %d poison to %s for %d turns." % [item.display_name, amount, tname, turns])
+			var turns: int = int(effect.get("burnT", 1))
+			combat_manager.apply_item_burn(target_state, amount, turns)
+			_append_log("Item: %s applies %d burn to %s for %d turns." % [item.display_name, amount, tname, turns])
 		"xpBoost":
 			# Phase 5 wires GameState.add_unit_xp; guarded so it won't crash before then
 			var amount: int = int(effect.get("amount", 0))

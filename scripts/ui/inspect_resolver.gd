@@ -26,7 +26,7 @@ const PROTOCOL_ACTIONS := {
 
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
-# `raw` is the structured ability dict (name, eff, dmg/dot/dT/heal/rfe/shield/shT…) as
+# `raw` is the structured ability dict (name, eff, dmg/burn/burnT/heal/rfe/shield/shT…) as
 # stored in a dice_ranges entry's "raw". `side` drives pip coloring.
 static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String = "") -> Dictionary:
 	if raw.is_empty():
@@ -93,13 +93,13 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		return entries
 	if bool(state.get("dead", false)):
 		return [{"effects": [], "text": "Knocked out. Cannot act until revived."}]
-	var poison: int = int(state.get("poison", 0))
-	var poison_turns: int = int(state.get("poison_turns", 0))
-	if poison > 0 and poison_turns > 0:
+	var burn: int = int(state.get("burn", 0))
+	var burn_turns: int = int(state.get("burn_turns", 0))
+	if burn > 0 and burn_turns > 0:
 		# Treat a very large duration (e.g. plagueProtocol's 9999) as permanent — show no
 		# turn count on the pip or in the text.
-		var poison_dur: int = poison_turns if poison_turns < 999 else 0
-		entries.append(_status_entry("dot", "%d" % poison, poison_dur, _status_text("poison", "%d" % poison, poison_dur)))
+		var burn_dur: int = burn_turns if burn_turns < 999 else 0
+		entries.append(_status_entry("burn", "%d" % burn, burn_dur, _status_text("burn", "%d" % burn, burn_dur)))
 	var shield: int = int(state.get("shield", 0))
 	if shield > 0:
 		entries.append(_status_entry("shield", "%d" % shield, 0, _status_text("shield", "%d" % shield, 0)))
@@ -131,15 +131,15 @@ static func _roll_status_text(delta: int) -> String:
 	return "%+d to this unit's die rolls." % delta
 
 
-# ── 3. Status / DoT pip (long-press a status icon) ──────────────────────────────
+# ── 3. Status / burn pip (long-press a status icon) ──────────────────────────────
 # `status` is a normalized status dict (type, value/stacks, duration, name…). If a
-# cosmetic `dot_flavor` ever exists it is used as the label; today it does NOT exist in
+# cosmetic `burn_flavor` ever exists it is used as the label; today it does NOT exist in
 # the data, so we fall back to the generic keyword.
 static func resolve_status(status: Dictionary) -> Dictionary:
 	if status.is_empty():
 		return {}
 	var kind: String = str(status.get("type", status.get("name", ""))).to_lower()
-	var label: String = str(status.get("dot_flavor", "")).strip_edges()
+	var label: String = str(status.get("burn_flavor", "")).strip_edges()
 	if label == "":
 		label = _status_keyword(kind)
 	var value: String = str(status.get("value", "")).strip_edges()
@@ -240,10 +240,10 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 		else:
 			hostile.append("Deal %d-%d damage." % [d_min, d_max])
 
-	var dot: int = int(raw.get("dot", 0))
-	if dot > 0:
-		var dt: int = int(raw.get("dT", 0))
-		hostile.append("Deal %d damage per turn%s." % [dot, (" for " + _turns(dt)) if dt > 0 else ""])
+	var burn: int = int(raw.get("burn", 0))
+	if burn > 0:
+		var burn_t: int = int(raw.get("burnT", 0))
+		hostile.append("Deal %d damage per turn%s." % [burn, (" for " + _turns(burn_t)) if burn_t > 0 else ""])
 
 	if bool(raw.get("ignSh", false)):
 		hostile.append("Pierces hero shields." if side == "enemy" else "Pierces enemy shields.")
@@ -399,8 +399,8 @@ static func _turns(count: int) -> String:
 
 static func _status_keyword(kind: String) -> String:
 	match kind:
-		"poison", "dot":
-			return "POISON"
+		"burn":
+			return "BURN"
 		"shield":
 			return "SHIELD"
 		"frozen", "freeze", "die_freeze":
@@ -418,7 +418,7 @@ static func _status_keyword(kind: String) -> String:
 
 static func _value_label(kind: String) -> String:
 	match kind:
-		"poison", "dot":
+		"burn":
 			return "DAMAGE / TURN"
 		"shield":
 			return "ABSORB"
@@ -428,7 +428,7 @@ static func _value_label(kind: String) -> String:
 static func _status_text(kind: String, value: String, duration: int) -> String:
 	var turns: String = "%d turn%s" % [duration, "" if duration == 1 else "s"] if duration > 0 else ""
 	match kind:
-		"poison", "dot":
+		"burn":
 			return "Takes %s damage at the start of each turn%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
 		"shield":
 			return "Absorbs %s incoming damage before HP is touched." % (value if value != "" else "")
@@ -447,7 +447,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 
 static func _status_accent(kind: String) -> Color:
 	match kind:
-		"poison", "dot":
+		"burn":
 			return PixelUI.COLOR_DEBUFF
 		"shield":
 			return PixelUI.COLOR_SHIELD

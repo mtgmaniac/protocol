@@ -14,8 +14,8 @@ def fmt(ab: dict) -> str:
         if ab.get("dmgP2"):
             s += f" (P2 {ab['dmgP2']})"
         parts.append(s)
-    if ab.get("dot"):
-        parts.append(f"{ab['dot']} dot {ab.get('dT', 2)}t")
+    if ab.get("burn"):
+        parts.append(f"{ab['burn']} burn {ab.get('burnT', 2)}t")
     if ab.get("heal"):
         parts.append(f"{ab['heal']} heal")
     if ab.get("shield"):

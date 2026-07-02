@@ -59,9 +59,9 @@ def hero_expected(raw: dict) -> str:
         else:
             parts.append(f"self {shield} shield{t}")
 
-    dot = raw.get("dot") or 0
-    if dot > 0:
-        parts.append(f"{dot} DoT{turn_suffix(raw.get('dT') or 0)}")
+    burn = raw.get("burn") or 0
+    if burn > 0:
+        parts.append(f"{burn} burn{turn_suffix(raw.get('burnT') or 0)}")
 
     rfe = raw.get("rfe") or 0
     if rfe > 0:
@@ -125,9 +125,9 @@ def enemy_expected(raw: dict) -> str:
             s += " (all)"
         parts.append(s)
 
-    dot = raw.get("dot") or 0
-    if dot > 0:
-        parts.append(f"{dot} DoT{turn_suffix(raw.get('dT') or 0)}")
+    burn = raw.get("burn") or 0
+    if burn > 0:
+        parts.append(f"{burn} burn{turn_suffix(raw.get('burnT') or 0)}")
 
     rfm = raw.get("rfm") or 0
     if rfm > 0:

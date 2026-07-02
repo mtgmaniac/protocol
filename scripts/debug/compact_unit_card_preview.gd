@@ -121,7 +121,7 @@ func _hero_cards() -> Array:
 			"max_hp": 45,
 			"action": "INFUSE",
 			"portrait": load("res://legacy-angular/public/heroes/medic-portrait.png"),
-			"statuses": ["POI", "-2", "SH", "FR", "+1"],
+			"statuses": ["BRN", "-2", "SH", "FR", "+1"],
 		},
 		{
 			"side": "hero",
@@ -130,7 +130,7 @@ func _hero_cards() -> Array:
 			"max_hp": 40,
 			"action": "OVERLOAD",
 			"portrait": load("res://legacy-angular/public/heroes/pulse-portrait.png"),
-			"statuses": ["POI", "CL"],
+			"statuses": ["BRN", "CL"],
 			"selected": true,
 		},
 	]
@@ -154,7 +154,7 @@ func _enemy_cards() -> Array:
 			"max_hp": 35,
 			"action": "RUST",
 			"portrait": load("res://legacy-angular/public/enemies/rust-portrait.png"),
-			"statuses": ["POI"],
+			"statuses": ["BRN"],
 			"selected": true,
 		},
 		{

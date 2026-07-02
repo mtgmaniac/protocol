@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://dap1ejhp4xo88"
-path="res://.godot/imported/poison.wav-1e155ec48857aacebf740c44aadc82d5.sample"
+path="res://.godot/imported/burn.wav-084fc90fc7507dd0c4de2ef22c909891.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/poison.wav"
-dest_files=["res://.godot/imported/poison.wav-1e155ec48857aacebf740c44aadc82d5.sample"]
+source_file="res://assets/audio/sfx/burn.wav"
+dest_files=["res://.godot/imported/burn.wav-084fc90fc7507dd0c4de2ef22c909891.sample"]
 
 [params]
 

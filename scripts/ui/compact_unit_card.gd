@@ -39,7 +39,7 @@ var forecast_hp: int = 45  # where HP settles this round (drives the pending-dam
 var action_text: String = "READY"
 var action_pips: Array = []
 var portrait: Texture2D = null
-var status_tokens: Array = ["POI", "CL"]
+var status_tokens: Array = ["BRN", "CL"]
 var selected: bool = false
 var targetable: bool = false
 var interaction_enabled: bool = true
@@ -586,17 +586,15 @@ func get_display_statuses(raw_statuses: Array) -> Array:
 
 
 # Direction-05 status "sticker": type-color border, dark dithered fill, hard offset
-# drop shadow, pip icon + stack number inside. Type = color (shield cyan / poison
-# violet / burn amber), with our prepared pip icons embedded.
+# drop shadow, pip icon + stack number inside. Type = color (shield cyan / burn
+# violet), with our prepared pip icons embedded.
 func _status_badge_palette(status: Dictionary) -> Dictionary:
 	var kind: String = _status_effect_kind(status).to_lower()
 	# Border, number font, and icon ALL share the infliction's color.
 	var border: Color
 	if kind in ["shield", "taunt", "block", "barrier"]:
 		border = PixelUI.DT_STATUS["shield"]["border"]
-	elif kind in ["poison", "venom"]:
-		border = PixelUI.DT_STATUS["poison"]["border"]
-	elif kind in ["burn", "dot", "fire", "bleed"]:
+	elif kind in ["burn", "venom", "fire", "bleed"]:
 		border = PixelUI.DT_STATUS["burn"]["border"]
 	elif kind in ["roll", "rfe", "rfm", "roll_down", "roll_up", "buff", "debuff"]:
 		if kind == "roll_up":
@@ -707,8 +705,8 @@ func _is_frozen_status(status: Dictionary) -> bool:
 func _status_effect_kind(status: Dictionary) -> String:
 	var status_type: String = str(status.get("type", "")).to_lower()
 	match status_type:
-		"poison", "dot":
-			return "poison"
+		"burn":
+			return "burn"
 		"shield":
 			return "shield"
 		"roll", "rfe", "rfm":
@@ -772,8 +770,8 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 	var first: String = parts[0] if parts.size() > 0 else upper
 	var value: String = parts[1] if parts.size() > 1 else ""
 
-	if first.begins_with("POI") or first.begins_with("POT") or first == "DOT":
-		return {"type": "poison", "mode": "numeric", "icon": "â˜ ", "value": value, "priority": 0}
+	if first.begins_with("BRN") or first.begins_with("BURN"):
+		return {"type": "burn", "mode": "numeric", "icon": "â˜ ", "value": value, "priority": 0}
 	if first.begins_with("SH"):
 		return {"type": "shield", "mode": "numeric", "icon": "ðŸ›¡", "value": value, "priority": 1}
 	if first == "FROZEN" or first == "FREEZE" or first == "FR" or first == "DIE_FREEZE":
@@ -796,7 +794,7 @@ func _sort_statuses_by_priority(a: Dictionary, b: Dictionary) -> bool:
 
 func _status_priority(status_type: String) -> int:
 	match status_type.to_lower():
-		"poison", "dot":
+		"burn":
 			return 0
 		"shield":
 			return 1
@@ -809,7 +807,7 @@ func _status_priority(status_type: String) -> int:
 
 func _status_icon_for_type(status_type: String) -> String:
 	match status_type.to_lower():
-		"poison", "dot":
+		"burn":
 			return "â˜ "
 		"shield":
 			return "ðŸ›¡"
@@ -855,7 +853,7 @@ func _pip_border(kind: String) -> Color:
 			return Color(0.38, 0.82, 0.55, 0.92)
 		"shield", "taunt":
 			return Color(0.42, 0.66, 0.88, 0.92)
-		"dot", "poison":
+		"burn":
 			return Color(0.82, 0.40, 0.58, 0.92)
 		"roll", "rfe", "rfm", "roll_down":
 			return Color(0.86, 0.66, 0.26, 0.92)
@@ -930,10 +928,10 @@ func _place_preview_rect(rect: ColorRect, x_hp: float, width_hp: float, hp_max: 
 # The bar answers the one question the player is actually asking during
 # targeting — "if I lock this in, where does my HP end up?" — by projecting the
 # round in real resolution order (hero heals/shields land first, then enemy
-# damage, then the poison tick; damage and poison both drain shields before
+# damage, then the burn tick; damage and burn both drain shields before
 # HP). Zones painted on the bar:
 #   red    [final, current]              net HP loss (attributed damage-first)
-#   purple leftmost slice of that loss = the poison tick's unshielded share
+#   purple leftmost slice of that loss = the burn tick's unshielded share
 #   mint   [current, final]              net HP gain
 #   blue   [no-shield final, final]      loss the shield prevented (counterfactual)
 # Intermediate states are deliberately NOT shown: the resolution order is
@@ -965,7 +963,7 @@ func _layout_preview_overlays() -> void:
 	var inc_dmg: float = float(int(_preview_effects.get("damage", 0)))
 	var inc_heal: float = float(int(_preview_effects.get("heal", 0)))
 	var inc_shield: float = float(int(_preview_effects.get("shield", 0)))
-	var dot_tick: float = float(int(_preview_effects.get("dot", 0)))
+	var burn_tick: float = float(int(_preview_effects.get("burn", 0)))
 	var lethal: bool = bool(_preview_effects.get("lethal", false))
 
 	# Project the round in resolution order.
@@ -974,9 +972,9 @@ func _layout_preview_overlays() -> void:
 	var absorbed: float = minf(inc_dmg, total_shield)
 	var hp_dmg: float = inc_dmg - absorbed
 	var shield_after: float = total_shield - absorbed
-	var hp_dot: float = dot_tick - minf(dot_tick, shield_after)
-	var final_hp: float = clampf(post_heal - hp_dmg - hp_dot, 0.0, hp_max)
-	var no_shield_final: float = clampf(post_heal - inc_dmg - dot_tick, 0.0, hp_max)
+	var hp_burn: float = burn_tick - minf(burn_tick, shield_after)
+	var final_hp: float = clampf(post_heal - hp_dmg - hp_burn, 0.0, hp_max)
+	var no_shield_final: float = clampf(post_heal - inc_dmg - burn_tick, 0.0, hp_max)
 
 	_hide_preview_rects()
 	if lethal or (final_hp <= 0.0 and cur_hp > 0.0):
@@ -986,9 +984,9 @@ func _layout_preview_overlays() -> void:
 
 	if final_hp < cur_hp:
 		var loss: float = cur_hp - final_hp
-		var dot_slice: float = minf(hp_dot, loss)
-		_place_preview_rect(_preview_rect_purple, final_hp, dot_slice, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
-		_place_preview_rect(_preview_rect_red, final_hp + dot_slice, loss - dot_slice, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
+		var burn_slice: float = minf(hp_burn, loss)
+		_place_preview_rect(_preview_rect_purple, final_hp, burn_slice, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
+		_place_preview_rect(_preview_rect_red, final_hp + burn_slice, loss - burn_slice, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
 	elif final_hp > cur_hp:
 		_place_preview_rect(_preview_rect_heal, cur_hp, final_hp - cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.DT_HP_GREEN)
 

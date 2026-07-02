@@ -16,14 +16,14 @@ META_KEYS = frozenset({"zone", "range", "name", "eff", "callsign", "focus", "hp"
 # Keys read in combat_manager._apply_hero_ability / _apply_enemy_ability
 HERO_HANDLED = frozenset({
     "dmg", "dMin", "dMax", "heal", "shield", "shT", "blastAll", "healAll", "shieldAll",
-    "healLowest", "shTgt", "healTgt", "dot", "dT", "rfm", "rfmT", "rfmTgt", "ignSh",
+    "healLowest", "shTgt", "healTgt", "burn", "burnT", "rfm", "rfmT", "rfmTgt", "ignSh",
     "rfe", "rfT", "rfeAll", "taunt", "revive", "reviveAll", "revivePct", "cloak", "cloakAll",
     "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol",
 })
 
 ENEMY_HANDLED = frozenset({
     "dmg", "dmgP2", "heal", "shield", "shieldP2", "shT", "shieldAlly", "shAllyT",
-    "shieldAllyAll", "blastAll", "dot", "dT",
+    "shieldAllyAll", "blastAll", "burn", "burnT",
     "packBonus", "lifestealPct", "wipeShields", "rfm", "rfmT", "erb", "erbT", "erbAll",
     "cowerT", "cowerAll", "grantRampage", "grantRampageAll", "counterspellPct",
     "curseDice", "enemySelfTaunt", "summonChance", "summonName",

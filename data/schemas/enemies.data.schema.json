@@ -80,15 +80,15 @@
     },
     "enemyAbility": {
       "type": "object",
-      "required": ["name", "eff", "dmg", "dot", "dT", "heal", "rfe"],
+      "required": ["name", "eff", "dmg", "burn", "burnT", "heal", "rfe"],
       "additionalProperties": true,
       "properties": {
         "name": { "type": "string" },
         "eff": { "type": "string" },
         "dmg": { "type": "integer" },
         "dmgP2": { "type": "integer" },
-        "dot": { "type": "integer" },
-        "dT": { "type": "integer" },
+        "burn": { "type": "integer" },
+        "burnT": { "type": "integer" },
         "heal": { "type": "integer" },
         "rfe": { "type": "integer" },
         "shield": { "type": "integer" },

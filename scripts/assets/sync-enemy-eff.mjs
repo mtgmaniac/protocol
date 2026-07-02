@@ -19,9 +19,9 @@ function buildEnemyEffectSummary(ab) {
       parts.push(`${ab.dmg} dmg`);
     }
   }
-  if ((ab.dot || 0) > 0) {
-    const t = (ab.dT || 0) > 1 ? `, ${ab.dT}t` : '';
-    parts.push(`${ab.dot} DoT${t}`);
+  if ((ab.burn || 0) > 0) {
+    const t = (ab.burnT || 0) > 1 ? `, ${ab.burnT}t` : '';
+    parts.push(`${ab.burn} burn${t}`);
   }
   if ((ab.rfm || 0) > 0) {
     const t = (ab.rfmT || 0) > 1 ? `, ${ab.rfmT}t` : '';

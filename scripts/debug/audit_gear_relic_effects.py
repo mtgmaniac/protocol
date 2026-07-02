@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 GEAR_HANDLED = {
-    "rollBonus", "dotDmgBonus", "dmgReduction", "surviveOnce", "firstAbilityDmgBonus",
+    "rollBonus", "burnDmgBonus", "dmgReduction", "surviveOnce", "firstAbilityDmgBonus",
     "healOnKill", "protocolOnBattleStart", "battleStartShield", "battleStartCloak",
     "battleStartCloakRoll",
     "maxHpBonus", "lifesteal", "firstAbilityEcho", "shieldPierce", "healShieldBonus",
@@ -19,8 +19,8 @@ GEAR_HANDLED = {
 
 RELIC_HANDLED = {
     "enemyDmgMult", "battleStartHalfHp", "heroShieldPerTurn", "heroHealPerTurn",
-    "enemyDotPermanent", "heroDmgMult", "enemyStartRfe", "heroStartRollBuff",
-    "dotAmplified", "auraEnemyDmg", "protocolOnItemUse", "enemyHpEscalation",
+    "enemyBurnPermanent", "heroDmgMult", "enemyStartRfe", "heroStartRollBuff",
+    "burnAmplified", "auraEnemyDmg", "protocolOnItemUse", "enemyHpEscalation",
     "chainReaction", "allyDeathHealAll", "critResolveTwice", "rewardsNoCommon",
     "protocolCarryover", "battleStartConsumable", "reviveNoPenalty",
     "lowHpSquadRollBuff", "healGrantsShieldAll",

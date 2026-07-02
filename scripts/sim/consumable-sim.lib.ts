@@ -10,7 +10,7 @@ export interface ItemEffect {
   turns?: number;
   pct?: number;
   rfT?: number;
-  dT?: number;
+  burnT?: number;
   skips?: number;
 }
 

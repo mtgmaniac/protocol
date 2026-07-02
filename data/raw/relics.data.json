@@ -32,7 +32,7 @@
     "name": "Plague Protocol",
     "desc": "All enemies begin every battle with 3 damage-over-time.",
     "icon": "skull",
-    "effect": { "type": "enemyDotPermanent", "amount": 3 }
+    "effect": { "type": "enemyBurnPermanent", "amount": 3 }
   },
   {
     "id": "overcharge",
@@ -44,7 +44,7 @@
   {
     "id": "signalJam",
     "name": "Signal Jam",
-    "desc": "All enemies begin every battle with a permanent −2 roll penalty.",
+    "desc": "All enemies begin every battle with a permanent âˆ’2 roll penalty.",
     "icon": "die",
     "effect": { "type": "enemyStartRfe", "amount": 2 }
   },
@@ -58,9 +58,9 @@
   {
     "id": "resonanceCascade",
     "name": "Resonance Cascade",
-    "desc": "DoTs on enemies tick for +2 damage.",
+    "desc": "burn on enemies tick for +2 damage.",
     "icon": "skull",
-    "effect": { "type": "dotAmplified", "bonus": 2 }
+    "effect": { "type": "burnAmplified", "bonus": 2 }
   },
   {
     "id": "gravityWell",
@@ -79,7 +79,7 @@
   {
     "id": "entropyLeak",
     "name": "Entropy Leak",
-    "desc": "Enemies lose 5 max HP per battle already cleared when they spawn (−25 to −50 HP for battles 6–10).",
+    "desc": "Enemies lose 5 max HP per battle already cleared when they spawn (âˆ’25 to âˆ’50 HP for battles 6â€“10).",
     "icon": "skull",
     "effect": { "type": "enemyHpEscalation", "reductionPerBattle": 5 }
   },

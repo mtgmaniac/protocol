@@ -264,38 +264,38 @@
     {
       "id": "acid_vial",
       "name": "Acid Vial",
-      "desc": "Apply 3 poison to one enemy for 2 turns.",
+      "desc": "Apply 3 burn to one enemy for 2 turns.",
       "rarity": "common",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyDot", "amount": 3, "dT": 2 }
+      "effect": { "type": "enemyBurn", "amount": 3, "burnT": 2 }
     },
     {
       "id": "nanite_burn",
       "name": "Nanite Burn",
-      "desc": "Apply 5 poison to one enemy for 2 turns.",
+      "desc": "Apply 5 burn to one enemy for 2 turns.",
       "rarity": "uncommon",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyDot", "amount": 5, "dT": 2 }
+      "effect": { "type": "enemyBurn", "amount": 5, "burnT": 2 }
     },
     {
       "id": "thermite_canister",
       "name": "Thermite Canister",
-      "desc": "Apply 8 poison to one enemy for 3 turns.",
+      "desc": "Apply 8 burn to one enemy for 3 turns.",
       "rarity": "rare",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyDot", "amount": 8, "dT": 3 }
+      "effect": { "type": "enemyBurn", "amount": 8, "burnT": 3 }
     },
     {
       "id": "null_vector",
       "name": "Null Vector",
-      "desc": "Apply 14 poison to one enemy for 3 turns.",
+      "desc": "Apply 14 burn to one enemy for 3 turns.",
       "rarity": "legendary",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyDot", "amount": 14, "dT": 3 }
+      "effect": { "type": "enemyBurn", "amount": 14, "burnT": 3 }
     },
     {
       "id": "training_datachip",

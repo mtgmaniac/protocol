@@ -81,8 +81,8 @@ func _apply_gear_passive(hero_state: Dictionary, effect: Dictionary) -> void:
 	match effect_type:
 		"rollBonus":
 			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + int(effect.get("amount", 0))
-		"dotDmgBonus":
-			hero_state["gear_dot_bonus"] = int(hero_state.get("gear_dot_bonus", 0)) + int(effect.get("amount", 0))
+		"burnDmgBonus":
+			hero_state["gear_burn_bonus"] = int(hero_state.get("gear_burn_bonus", 0)) + int(effect.get("amount", 0))
 		"dmgReduction":
 			hero_state["gear_dmg_reduction"] = int(hero_state.get("gear_dmg_reduction", 0)) + int(effect.get("amount", 0))
 		"surviveOnce":
@@ -128,13 +128,13 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			_damage_state(target_hero, dmg)
 			_log("Opening Gambit: %s takes %d damage!" % [target_hero["unit"].display_name, dmg])
 
-	# plagueProtocol: all enemies start with 3 DoT
-	if has_relic("enemyDotPermanent"):
-		var dot_amt = int(_get_relic_value("enemyDotPermanent", "amount", 3))
+	# plagueProtocol: all enemies start with 3 burn
+	if has_relic("enemyBurnPermanent"):
+		var burn_amt = int(_get_relic_value("enemyBurnPermanent", "amount", 3))
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"]:
-				_apply_poison(enemy_state, dot_amt, 9999)
-				_log("Plague Protocol: %s starts with %d DoT." % [enemy_state["unit"].display_name, dot_amt])
+				_apply_burn(enemy_state, burn_amt, 9999)
+				_log("Plague Protocol: %s starts with %d burn." % [enemy_state["unit"].display_name, burn_amt])
 
 	# signalJam: all enemies start with permanent -2 RFE
 	if has_relic("enemyStartRfe"):
@@ -231,13 +231,13 @@ func _get_enemy_dmg_mult() -> float:
 	return float(_get_relic_value("enemyDmgMult", "mult", 1.0))
 
 
-# --- DoT bonus helper ---
+# --- burn bonus helper ---
 
-func _get_total_dot_bonus() -> int:
+func _get_total_burn_bonus() -> int:
 	var max_bonus: int = 0
 	for h in _hero_states:
 		if not h["dead"]:
-			max_bonus = maxi(max_bonus, int(h.get("gear_dot_bonus", 0)))
+			max_bonus = maxi(max_bonus, int(h.get("gear_burn_bonus", 0)))
 	return max_bonus
 
 
@@ -347,9 +347,9 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"shield": 0,
 		"shield_stacks": [],
 		"dead": false,
-		"poison": 0,
-		"poison_turns": 0,
-		"poison_skip_next_tick": false,
+		"burn": 0,
+		"burn_turns": 0,
+		"burn_skip_next_tick": false,
 		"rfe_stacks": [],
 		"roll_buff": 0,
 		"roll_buff_turns": 0,
@@ -369,7 +369,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"die_freeze_consumed_this_round": false,
 		"perm_roll_buff": 0,
 		"perm_rfe": 0,
-		"gear_dot_bonus": 0,
+		"gear_burn_bonus": 0,
 		"gear_dmg_reduction": 0,
 		"gear_survive_once": false,
 		"gear_survive_once_used": false,
@@ -440,15 +440,15 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var heal_lowest: bool = bool(raw.get("healLowest", false))
 	var shield_targeted: bool = bool(raw.get("shTgt", false))
 	var heal_targeted: bool = bool(raw.get("healTgt", false))
-	var poison_amount: int = int(raw.get("dot", 0))
-	var poison_turns: int = int(raw.get("dT", 0))
+	var burn_amount: int = int(raw.get("burn", 0))
+	var burn_turns: int = int(raw.get("burnT", 0))
 	var roll_buff_amount: int = int(raw.get("rfm", 0))
 	var roll_buff_turns: int = int(raw.get("rfmT", 1))
 	var roll_buff_targeted: bool = bool(raw.get("rfmTgt", false)) or shield_targeted or heal_targeted
 	var ignores_shield: bool = bool(raw.get("ignSh", false))
 
 	if damage > 0:
-		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, poison_amount, poison_turns)
+		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, burn_amount, burn_turns)
 
 	if shield > 0:
 		if shield_all:
@@ -493,11 +493,11 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		_pending_protocol_grants += gain_protocol
 		_log("%s generates %d Protocol." % [hero_state["unit"].display_name, gain_protocol])
 
-	if damage <= 0 and poison_amount > 0:
-		var poison_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-		if poison_target.is_empty():
-			poison_target = _first_living_state(_enemy_states)
-		_apply_poison(poison_target, poison_amount, poison_turns)
+	if damage <= 0 and burn_amount > 0:
+		var burn_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		if burn_target.is_empty():
+			burn_target = _first_living_state(_enemy_states)
+		_apply_burn(burn_target, burn_amount, burn_turns)
 
 	# RFE application (roll debuff on enemies)
 	var rfe_amount: int = int(raw.get("rfe", 0))
@@ -580,8 +580,8 @@ func _apply_hero_ability_damage(
 	damage: int,
 	hits_all: bool,
 	ignores_shield: bool,
-	poison_amount: int,
-	poison_turns: int
+	burn_amount: int,
+	burn_turns: int
 ) -> void:
 	var first_bonus: int = 0
 	if not bool(hero_state.get("gear_first_dmg_fired", false)) and int(hero_state.get("gear_first_dmg_bonus", 0)) > 0:
@@ -607,8 +607,8 @@ func _apply_hero_ability_damage(
 			else:
 				target_enemy["counter_pct"] = 0
 				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
-				if poison_amount > 0 and poison_turns > 0:
-					_apply_poison(target_enemy, poison_amount, poison_turns)
+				if burn_amount > 0 and burn_turns > 0:
+					_apply_burn(target_enemy, burn_amount, burn_turns)
 
 
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
@@ -624,8 +624,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var sh_turns: int = int(raw.get("shT", 1))
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	var shield_ally_turns: int = int(raw.get("shAllyT", raw.get("shT", 1)))
-	var poison_amount: int = int(raw.get("dot", 0))
-	var poison_turns: int = int(raw.get("dT", 0))
+	var burn_amount: int = int(raw.get("burn", 0))
+	var burn_turns: int = int(raw.get("burnT", 0))
 
 	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
 		for es in _enemy_states:
@@ -672,7 +672,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				if bool(hero_state["dead"]):
 					continue
 				_damage_state(hero_state, final_damage)
-				_apply_poison(hero_state, poison_amount, poison_turns)
+				_apply_burn(hero_state, burn_amount, burn_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 			if lifesteal_pct > 0 and final_damage > 0:
 				var heal_amount: int = int(floor(float(final_damage) * float(lifesteal_pct) / 100.0))
@@ -687,7 +687,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				target_hero = _first_living_state(_hero_states)
 			if not target_hero.is_empty():
 				_damage_state(target_hero, final_damage)
-				_apply_poison(target_hero, poison_amount, poison_turns)
+				_apply_burn(target_hero, burn_amount, burn_turns)
 				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 				if lifesteal_pct > 0 and final_damage > 0:
 					var heal_amount: int = int(floor(float(final_damage) * float(lifesteal_pct) / 100.0))
@@ -698,12 +698,12 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if damage <= 0 and bool(raw.get("wipeShields", false)):
 		_wipe_all_hero_shields(enemy_state)
 
-	if damage <= 0 and poison_amount > 0:
-		var poison_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if poison_target.is_empty():
-			poison_target = _first_living_state(_hero_states)
-		if not poison_target.is_empty():
-			_apply_poison(poison_target, poison_amount, poison_turns)
+	if damage <= 0 and burn_amount > 0:
+		var burn_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		if burn_target.is_empty():
+			burn_target = _first_living_state(_hero_states)
+		if not burn_target.is_empty():
+			_apply_burn(burn_target, burn_amount, burn_turns)
 
 	# RFE on heroes (roll debuff from enemies using rfm/rfmT keys)
 	var rfm_amount: int = int(raw.get("rfm", 0))
@@ -947,9 +947,9 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	state["current_hp"] = maxi(1, int(state["max_hp"]) * hp_pct / 100)
 	state["cower_turns"] = 0
 	state["cower_skip_next_tick"] = false
-	state["poison"] = 0
-	state["poison_turns"] = 0
-	state["poison_skip_next_tick"] = false
+	state["burn"] = 0
+	state["burn_turns"] = 0
+	state["burn_skip_next_tick"] = false
 	state["rfe_stacks"] = []
 	state["roll_buff"] = 0
 	state["roll_buff_turns"] = 0
@@ -1008,9 +1008,9 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["shield"] = 0
 	state["shield_stacks"] = []
-	state["poison"] = 0
-	state["poison_turns"] = 0
-	state["poison_skip_next_tick"] = false
+	state["burn"] = 0
+	state["burn_turns"] = 0
+	state["burn_skip_next_tick"] = false
 	state["rfe_stacks"] = []
 	state["roll_buff"] = 0
 	state["roll_buff_turns"] = 0
@@ -1069,14 +1069,14 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 				_log("Aegis Field grants %d shield to all allies." % squad_shield)
 
 
-func _apply_poison(state: Dictionary, amount: int, turns: int) -> void:
+func _apply_burn(state: Dictionary, amount: int, turns: int) -> void:
 	if state.is_empty() or state["dead"] or amount <= 0 or turns <= 0:
 		return
-	state["poison"] = int(state["poison"]) + amount
-	state["poison_turns"] = maxi(int(state["poison_turns"]), turns)
-	state["poison_skip_next_tick"] = true
-	_log("%s is poisoned for %d over %d turns." % [state["unit"].display_name, amount, turns])
-	_emit_event(state, "poison", amount, _resolve_side_for_state(state))
+	state["burn"] = int(state["burn"]) + amount
+	state["burn_turns"] = maxi(int(state["burn_turns"]), turns)
+	state["burn_skip_next_tick"] = true
+	_log("%s is burning for %d over %d turns." % [state["unit"].display_name, amount, turns])
+	_emit_event(state, "burn", amount, _resolve_side_for_state(state))
 
 
 func _apply_cower(state: Dictionary, turns: int) -> void:
@@ -1193,39 +1193,39 @@ func _tick_end_of_round_states() -> void:
 			enemy_state["taunting"] = false
 
 
-# The poison damage this state takes at the end of the current round — 0 when
-# the tick won't fire (no poison, expired turns, skip flag). Mirrors _tick_state
+# The burn damage this state takes at the end of the current round — 0 when
+# the tick won't fire (no burn, expired turns, skip flag). Mirrors _tick_state
 # and is the single source the HP preview uses so the projection can't drift
 # from combat.
-func get_expected_dot_tick(state: Dictionary) -> int:
+func get_expected_burn_tick(state: Dictionary) -> int:
 	if bool(state.get("dead", false)):
 		return 0
-	if int(state.get("poison_turns", 0)) <= 0 or int(state.get("poison", 0)) <= 0:
+	if int(state.get("burn_turns", 0)) <= 0 or int(state.get("burn", 0)) <= 0:
 		return 0
-	if bool(state.get("poison_skip_next_tick", false)):
+	if bool(state.get("burn_skip_next_tick", false)):
 		return 0
-	var dot_bonus: int = 0
+	var burn_bonus: int = 0
 	if not _is_hero_state(state):
-		dot_bonus = int(_get_relic_value("dotAmplified", "bonus", 0)) + _get_total_dot_bonus()
-	return int(state.get("poison", 0)) + dot_bonus
+		burn_bonus = int(_get_relic_value("burnAmplified", "bonus", 0)) + _get_total_burn_bonus()
+	return int(state.get("burn", 0)) + burn_bonus
 
 
 func _tick_state(state: Dictionary) -> void:
 	if state["dead"]:
 		return
 
-	if int(state["poison_turns"]) > 0 and int(state["poison"]) > 0:
-		if bool(state.get("poison_skip_next_tick", false)):
-			state["poison_skip_next_tick"] = false
+	if int(state["burn_turns"]) > 0 and int(state["burn"]) > 0:
+		if bool(state.get("burn_skip_next_tick", false)):
+			state["burn_skip_next_tick"] = false
 		else:
-			var tick_dmg: int = get_expected_dot_tick(state)
-			_emit_action_event(state, _resolve_side_for_state(state), "Poison", "tick")
-			_log("%s takes %d poison damage." % [state["unit"].display_name, tick_dmg])
+			var tick_dmg: int = get_expected_burn_tick(state)
+			_emit_action_event(state, _resolve_side_for_state(state), "Burn", "tick")
+			_log("%s takes %d burn damage." % [state["unit"].display_name, tick_dmg])
 			_damage_state(state, tick_dmg)
-			state["poison_turns"] = int(state["poison_turns"]) - 1
-			if int(state["poison_turns"]) <= 0:
-				state["poison"] = 0
-				state["poison_skip_next_tick"] = false
+			state["burn_turns"] = int(state["burn_turns"]) - 1
+			if int(state["burn_turns"]) <= 0:
+				state["burn"] = 0
+				state["burn_skip_next_tick"] = false
 
 	# Tick shield stacks: decrement turns_left, remove expired
 	if not state["dead"]:
@@ -1337,8 +1337,8 @@ func apply_item_damage(target_state: Dictionary, amount: int) -> void:
 	_damage_state(target_state, amount)
 
 
-func apply_item_dot(target_state: Dictionary, amount: int, turns: int) -> void:
-	_apply_poison(target_state, amount, turns)
+func apply_item_burn(target_state: Dictionary, amount: int, turns: int) -> void:
+	_apply_burn(target_state, amount, turns)
 
 
 # --- Summon injection ---
