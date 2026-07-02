@@ -82,6 +82,26 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 
 **Targeting rule (enforced by audit_ability_keywords.py):** max ONE manually-picked component per hero ability; everything else auto-targets self / all / lowest. Components sharing a pick (dmg+burn+freeze on one enemy; healTgt+shTgt+rfmTgt+wardTgt on one ally) count once.
 
+### Keyword engine (pkg2 — combat_manager.gd handlers, keywords.data.json entries, EffectPip codes)
+
+| Keyword | Pip | Field | Rule |
+|---|---|---|---|
+| Chain | CH | `chain: N` | damage also hits the lowest-HP other enemy at 60% (round down); N = extra jumps; `chainExtraJump` relic hook |
+| Detonate | DT | `detonate: true` | consume target's Burn: burn × remaining turns immediate damage, Burn cleared; `gear_detonate_bonus` +50% hook |
+| Execute | EX | `execute: true` | target below 25% max HP after base damage → +8 bonus (`execute_threshold_pct` hook) |
+| Breach | BR | `breach` / `breachAll` | destroy all shield on target (or every enemy) before damage |
+| Leech | LC | `leech: true` | attacker heals 50% of HP damage dealt (after shields) |
+| Mark | MK | `mark: true` | status chip; next real attack on target +50% round up, then consumed (`mark_consumed_this_hit` kill hook) |
+| Spike | SP | `spike: N` (both sides) | this round, any unit damaging the carrier takes N; never persists past the round; readout pip only |
+| Jam | JM | `jam` / `jamAll` (both sides) | target's next roll capped at 12 (`JAM_CAP`); die status, no chip |
+| Rewrite | RW | `rewrite: true` (both sides) | target's next roll SET to 3 (`REWRITE_VALUE`); telegraphed; `apply_rewrite_to_state` boss hook |
+| Hijack | HJ | `hijack: true` (enemy) | enemy's next roll copies the heroes' current highest die |
+| Siphon | SI | `siphon: N` (enemy) | on hit, drain N Protocol (floor 0) via `take_pending_protocol_drain` |
+
+**Cloak (reworked):** untargetable by hostile single-target abilities (manual targeting, AI, and resolve-time retarget all skip cloaked units); breaks when the unit deals damage OR is hit by an AoE; the first attack made from Cloak gains Pierce. `battleStartCloak` gear inherits.
+
+**One keyword per ability** (pierce counts), **two allowed in the overload zone** — enforced by `audit_ability_keywords.py`.
+
 ---
 
 ## Enemies (from enemies.data.json — COMPLETE, 6 factions)
