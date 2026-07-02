@@ -64,6 +64,10 @@ def hero_expected(raw: dict) -> str:
     if burn > 0:
         parts.append(f"{burn} burn{turn_suffix(raw.get('burnT') or 0)}")
 
+    chain = raw.get("chain") or 0
+    if chain > 0:
+        parts.append("chain" if chain == 1 else f"chain ×{chain}")
+
     rfe = raw.get("rfe") or 0
     if rfe > 0:
         t = turn_suffix(raw.get("rfT") or 0)

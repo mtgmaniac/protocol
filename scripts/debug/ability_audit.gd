@@ -54,6 +54,7 @@ const HERO_HANDLED_FIELDS := [
 	"cloakAll",
 	"ward",
 	"wardTgt",
+	"chain",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -423,6 +424,7 @@ func _run_regression_audits() -> void:
 	_run_cloak_regression()
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
+	_run_chain_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -703,6 +705,51 @@ func _run_ward_regressions() -> void:
 		_record_pass("Regression / ward blocks AoE for that unit only", "ward")
 	else:
 		_record_failure("Regression / ward blocks AoE for that unit only", "ward", "warded unit takes 0 from AoE (ward breaks); other unit takes full damage", "enemy_a_delta=%d enemy_b_delta=%d warded=%s" % [blast_enemy_a_hp_before - int(blast_enemy_a["current_hp"]), blast_enemy_b_hp_before - int(blast_enemy_b["current_hp"]), str(blast_enemy_a.get("warded", false))])
+
+
+func _run_chain_regression() -> void:
+	# Chain: primary takes full damage; the lowest-HP OTHER enemy takes 60%
+	# (round down); chain 2 jumps to the next lowest-HP unhit enemy.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Arc Whip", {"dmg": 10, "chain": 1})
+	var enemy_a: EnemyData = _make_enemy("audit_enemy_a", "Audit Enemy A")
+	var enemy_b: EnemyData = _make_enemy("audit_enemy_b", "Audit Enemy B")
+	var enemy_c: EnemyData = _make_enemy("audit_enemy_c", "Audit Enemy C")
+	manager.setup_battle([hero_unit], [enemy_a, enemy_b, enemy_c])
+	var states: Array = manager.get_enemy_states()
+	var a: Dictionary = states[0]
+	var b: Dictionary = states[1]
+	var c: Dictionary = states[2]
+	var hero: Dictionary = manager.get_hero_states()[0]
+	hero["selected_target_id"] = str(a["id"])
+	b["current_hp"] = 60
+	c["current_hp"] = 90
+	var a_before: int = int(a["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var single_ok: bool = int(a["current_hp"]) == a_before - 10 and int(b["current_hp"]) == 54 and int(c["current_hp"]) == 90
+	if single_ok:
+		_record_pass("Regression / chain jumps to lowest other enemy at 60%", "chain")
+	else:
+		_record_failure("Regression / chain jumps to lowest other enemy at 60%", "chain", "primary -10, lowest other -6, third untouched", "a=%d b=%d c=%d" % [int(a["current_hp"]), int(b["current_hp"]), int(c["current_hp"])])
+
+	var double_manager: CombatManager = CombatManager.new()
+	var double_hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Cascade", {"dmg": 10, "chain": 2})
+	double_manager.setup_battle([double_hero_unit], [_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B"), _make_enemy("audit_enemy_c", "Audit Enemy C")])
+	var d_states: Array = double_manager.get_enemy_states()
+	var da: Dictionary = d_states[0]
+	var db: Dictionary = d_states[1]
+	var dc: Dictionary = d_states[2]
+	var double_hero: Dictionary = double_manager.get_hero_states()[0]
+	double_hero["selected_target_id"] = str(da["id"])
+	db["current_hp"] = 60
+	dc["current_hp"] = 90
+	var da_before: int = int(da["current_hp"])
+	double_manager.resolve_round({str(double_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var double_ok: bool = int(da["current_hp"]) == da_before - 10 and int(db["current_hp"]) == 54 and int(dc["current_hp"]) == 84
+	if double_ok:
+		_record_pass("Regression / chain x2 adds a second jump", "chain")
+	else:
+		_record_failure("Regression / chain x2 adds a second jump", "chain", "primary -10, two other enemies -6 each", "a=%d b=%d c=%d" % [int(da["current_hp"]), int(db["current_hp"]), int(dc["current_hp"])])
 
 
 func _run_shield_lowest_regression() -> void:

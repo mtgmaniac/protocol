@@ -101,6 +101,7 @@
         "ward": { "type": "boolean" },
         "wardTgt": { "type": "boolean" },
         "shieldLowest": { "type": "boolean" },
+        "chain": { "type": "integer", "minimum": 1 },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

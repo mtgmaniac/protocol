@@ -9,6 +9,13 @@
       "syntax": "X burn, Yt = X damage per turn for Y turns"
     },
     {
+      "id": "chain",
+      "term": "Chain",
+      "category": "offense",
+      "def": "The damage also hits a second target — the lowest-HP other enemy — at 60% (round down). Chain ×2 adds a second jump.",
+      "syntax": "chain / chain ×2"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",

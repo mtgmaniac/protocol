@@ -637,10 +637,49 @@ func _apply_hero_ability_damage(
 		var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if target_enemy.is_empty():
 			target_enemy = _first_living_state(_enemy_states)
-		if not target_enemy.is_empty() and not _ward_blocks_hostile(target_enemy):
-			_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
-			if burn_amount > 0 and burn_turns > 0:
-				_apply_burn(target_enemy, burn_amount, burn_turns)
+		if not target_enemy.is_empty():
+			if not _ward_blocks_hostile(target_enemy):
+				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
+				if burn_amount > 0 and burn_turns > 0:
+					_apply_burn(target_enemy, burn_amount, burn_turns)
+			# Chain jumps continue even when the primary hit was ward-blocked —
+			# the ward only negates the ability for its own carrier.
+			_apply_chain_jumps(hero_state, ability_entry, target_enemy, final_dmg, ignores_shield, shield_pierce)
+
+
+# Chain: after the primary hit, the attack jumps to the lowest-HP other living
+# enemy at 60% of the base damage (round down); "chain": 2 adds a second jump
+# to the next lowest-HP enemy not yet hit. Chain Doctrine (relic hook
+# chainExtraJump) adds one extra jump.
+func _apply_chain_jumps(
+	hero_state: Dictionary,
+	ability_entry: Dictionary,
+	primary_target: Dictionary,
+	base_damage: int,
+	ignores_shield: bool,
+	shield_pierce: int
+) -> void:
+	var raw: Dictionary = ability_entry.get("raw", {})
+	var jumps: int = int(raw.get("chain", 0))
+	if jumps <= 0 or base_damage <= 0:
+		return
+	if has_relic("chainExtraJump"):
+		jumps += 1
+	# BALANCE-TODO: chain jump damage is 60% of base, round down
+	var chain_damage: int = int(floor(float(base_damage) * 0.6))
+	if chain_damage <= 0:
+		return
+	var hit_ids: Dictionary = {str(primary_target.get("id", "")): true}
+	for _i in range(jumps):
+		var next_target: Dictionary = _lowest_hp_state_excluding(_enemy_states, hit_ids)
+		if next_target.is_empty():
+			return
+		hit_ids[str(next_target["id"])] = true
+		_log("%s's attack chains to %s for %d." % [hero_state["unit"].display_name, next_target["unit"].display_name, chain_damage])
+		_emit_event(next_target, "chain", chain_damage, "enemy")
+		if _ward_blocks_hostile(next_target):
+			continue
+		_damage_state(next_target, chain_damage, ignores_shield, hero_state, shield_pierce)
 
 
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
@@ -1166,6 +1205,20 @@ func _first_dead_state(states: Array) -> Dictionary:
 		if bool(state["dead"]):
 			return state
 	return {}
+
+
+func _lowest_hp_state_excluding(states: Array, exclude_ids: Dictionary) -> Dictionary:
+	var best: Dictionary = {}
+	var best_ratio: float = 2.0
+	for state in states:
+		if state["dead"] or exclude_ids.has(str(state.get("id", ""))):
+			continue
+		var max_hp: int = maxi(int(state["max_hp"]), 1)
+		var ratio: float = float(state["current_hp"]) / float(max_hp)
+		if ratio < best_ratio:
+			best_ratio = ratio
+			best = state
+	return best
 
 
 func _lowest_hp_state(states: Array) -> Dictionary:
