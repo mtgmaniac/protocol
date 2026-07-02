@@ -25,6 +25,10 @@ var deferred_evolution_unit_ids: Array = []
 var carried_protocol: int = 0
 ## Dead Man's Hand relic: the first squad wipe each RUN is survived at 1 HP.
 var dead_mans_hand_used: bool = false
+## Starting Directive (pkg5): an unlocked boss relic picked at run start.
+## It does not consume the battle-5 relic draft — a directive run ends with
+## two relics by design.
+var starting_directive_relic_id: String = ""
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
@@ -82,6 +86,7 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
 	dead_mans_hand_used = false
+	starting_directive_relic_id = ""
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
 	for unit_id in selected_units:
@@ -100,6 +105,16 @@ func start_tutorial_run() -> void:
 	start_run(["pulse", "combat", "ghost"], op_id)
 	current_battle = 1
 	tutorial_mode = true
+
+
+# Starting Directive: adopt an unlocked boss relic as the run's opening relic.
+# Call after start_run (start_run clears relics and the directive id).
+func set_starting_directive(relic_id: String) -> void:
+	if relic_id == "" or not SaveManager.get_unlocked_boss_relics().has(relic_id):
+		return
+	starting_directive_relic_id = relic_id
+	if not relics.has(relic_id):
+		relics.append(relic_id)
 
 
 func enforce_squad_limit() -> void:
@@ -174,6 +189,7 @@ func reset_run() -> void:
 	pending_evolution_unit_id = ""
 	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
+	starting_directive_relic_id = ""
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
 
@@ -217,7 +233,11 @@ func claim_reward(item_id: String, target_unit_id: String = "", swap_consumable_
 				consumables.erase(swap_consumable_id)
 			consumables.append(item_id)
 		"relic":
-			if not relics.is_empty():
+			# The Starting Directive doesn't consume the battle-5 draft slot.
+			var drafted_relics: int = relics.size()
+			if starting_directive_relic_id != "" and relics.has(starting_directive_relic_id):
+				drafted_relics -= 1
+			if drafted_relics > 0:
 				return false
 			relics.append(item_id)
 		_:

@@ -445,6 +445,7 @@ func _run_regression_audits() -> void:
 	_run_boss_standing_rule_regressions()
 	_run_boss_fight_data_regressions()
 	_run_save_manager_regressions()
+	_run_starting_directive_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1598,6 +1599,48 @@ func _run_save_manager_regressions() -> void:
 	_expect_and_record("Regression / save boss-relic op mapping", "saveManager", "true", str(mapping_ok))
 
 	SaveManager.data = saved_data
+
+
+func _run_starting_directive_regressions() -> void:
+	var saved_save: Dictionary = SaveManager.data.duplicate(true)
+	SaveManager.data = SaveManager.default_data()
+	SaveManager.data["unlocks"]["boss_relics"] = ["rootAccess"]
+
+	GameState.start_run(["pulse", "combat", "ghost"], "facility")
+
+	# A locked relic can't be taken as a directive.
+	GameState.set_starting_directive("mantleCore")
+	var locked_refused: bool = GameState.relics.is_empty()
+
+	# An unlocked one opens the run with it.
+	GameState.set_starting_directive("rootAccess")
+	var directive_taken: bool = GameState.relics == ["rootAccess"]
+
+	# The battle-5 draft still happens: a directive run may claim one drafted
+	# relic (ending with two), but never a second draft.
+	GameState.pending_reward_item_ids = ["ironCurtain"]
+	var first_draft: bool = GameState.claim_reward("ironCurtain")
+	GameState.pending_reward_item_ids = ["overcharge"]
+	var second_draft_blocked: bool = not GameState.claim_reward("overcharge")
+	var two_relics: bool = GameState.relics == ["rootAccess", "ironCurtain"]
+	_expect_and_record(
+		"Regression / starting directive run",
+		"startingDirective",
+		"true",
+		str(locked_refused and directive_taken and first_draft and second_draft_blocked and two_relics)
+	)
+
+	# Boss relics never surface in the normal relic draft.
+	var draft_clean: bool = true
+	for _i in 10:
+		for relic_id in GameState._roll_relic_choice_ids(2):
+			var relic_item: ItemData = DataManager.get_item(str(relic_id)) as ItemData
+			if relic_item != null and relic_item.boss_relic:
+				draft_clean = false
+	_expect_and_record("Regression / boss relics excluded from draft", "startingDirective", "true", str(draft_clean))
+
+	GameState.reset_run()
+	SaveManager.data = saved_save
 
 
 func _run_shield_lowest_regression() -> void:

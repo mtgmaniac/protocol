@@ -691,9 +691,94 @@ func _on_begin_run_pressed() -> void:
 	if _selected_unit_ids.size() != MAX_SELECTED_UNITS or _selected_operation_id == "":
 		return
 	AudioManager.play_select()
+	# Starting Directive (pkg5): with unlocked boss relics, offer one as the
+	# run's opening relic before deploying. The battle-5 draft still happens.
+	var unlocked_directives: Array = SaveManager.get_unlocked_boss_relics()
+	if unlocked_directives.is_empty():
+		_launch_run("")
+		return
+	_open_directive_picker(unlocked_directives)
+
+
+func _launch_run(directive_relic_id: String) -> void:
 	GameState.start_run(_selected_unit_ids, _selected_operation_id)
+	if directive_relic_id != "":
+		GameState.set_starting_directive(directive_relic_id)
 	GameState.advance_to_next_battle()
 	SceneManager.go_to_battle()
+
+
+# ─── Starting Directive picker ───────────────────────────────────────────────
+var _directive_layer: Control
+
+
+func _open_directive_picker(relic_ids: Array) -> void:
+	if _directive_layer != null and is_instance_valid(_directive_layer):
+		return
+	_directive_layer = Control.new()
+	_directive_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_directive_layer)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.72)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_directive_layer.add_child(dim)
+
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, 4))
+	panel.custom_minimum_size = Vector2(880, 0)
+	_directive_layer.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(side, 36)
+	panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 28)
+	margin.add_child(col)
+
+	col.add_child(_make_pixel_label("STARTING DIRECTIVE", DETAIL_NAME_FONT, PixelUI.DT_AMBER))
+	var blurb := _make_pixel_label("Open the run with a trophy from a fallen boss.", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(blurb)
+
+	for relic_id_variant in relic_ids:
+		var relic_id: String = str(relic_id_variant)
+		var relic: ItemData = DataManager.get_item(relic_id) as ItemData
+		if relic == null:
+			continue
+		var pick := Button.new()
+		pick.focus_mode = Control.FOCUS_NONE
+		pick.custom_minimum_size = Vector2(0, 120)
+		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pick.text = "%s — %s" % [relic.display_name.to_upper(), relic.description]
+		pick.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		PixelUI.style_button(pick, PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, FOCUS_CHIP_FONT)
+		pick.pressed.connect(_on_directive_picked.bind(relic_id))
+		col.add_child(pick)
+
+	var skip := Button.new()
+	skip.focus_mode = Control.FOCUS_NONE
+	skip.custom_minimum_size = Vector2(0, 96)
+	skip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	skip.text = "NO DIRECTIVE"
+	PixelUI.style_button(skip, DEPLOY_IDLE_BG, DEPLOY_IDLE_BORDER, FOCUS_CHIP_FONT)
+	skip.pressed.connect(_on_directive_picked.bind(""))
+	col.add_child(skip)
+
+	# Center the panel once it has a size.
+	await get_tree().process_frame
+	if is_instance_valid(panel):
+		panel.position = (size - panel.size) * 0.5
+
+
+func _on_directive_picked(relic_id: String) -> void:
+	AudioManager.play_select()
+	if _directive_layer != null and is_instance_valid(_directive_layer):
+		_directive_layer.queue_free()
+		_directive_layer = null
+	_launch_run(relic_id)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
