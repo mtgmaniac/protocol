@@ -1753,7 +1753,7 @@
       },
       "surge": {
         "name": "Circlet Cataclysm",
-        "eff": "22 dmg (P2 28), 2 burn, 2t, +1 roll to allies, 2t, ward",
+        "eff": "22 dmg (P2 28), 2 burn, 2t, +1 roll to allies, 2t",
         "dmg": 22,
         "dmgP2": 28,
         "burn": 2,
@@ -1763,8 +1763,7 @@
         "shield": 0,
         "erb": 1,
         "erbT": 2,
-        "erbAll": true,
-        "ward": true
+        "erbAll": true
       },
       "crit": {
         "name": "Absolute Binding",

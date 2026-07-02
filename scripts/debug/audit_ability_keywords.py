@@ -52,11 +52,11 @@ def collect_abilities() -> list[dict]:
     for hero in heroes.get("heroes", []):
         hid = str(hero.get("id", "?"))
         for raw in hero.get("abilities", []):
-            out.append({"side": "hero", "label": f"{hid}/base/{raw.get('name', '?')}", "raw": raw})
+            out.append({"side": "hero", "label": f"{hid}/base/{raw.get('name', '?')}", "raw": raw, "zone": str(raw.get("zone", ""))})
         for evo in hero.get("evolutions", []):
             en = str(evo.get("name", "evo"))
             for raw in evo.get("abilities", []):
-                out.append({"side": "hero", "label": f"{hid}/{en}/{raw.get('name', '?')}", "raw": raw})
+                out.append({"side": "hero", "label": f"{hid}/{en}/{raw.get('name', '?')}", "raw": raw, "zone": str(raw.get("zone", ""))})
 
     enemies = json.loads(ENEMIES_PATH.read_text(encoding="utf-8"))
     for etype, zones in enemies.get("enemyAbilities", {}).items():
@@ -67,8 +67,59 @@ def collect_abilities() -> list[dict]:
                 "side": "enemy",
                 "label": f"{etype}/{zone}/{raw.get('name', '?')}",
                 "raw": raw,
+                "zone": str(zone),
             })
     return out
+
+
+def count_keywords(raw: dict) -> list[str]:
+    """Keywords carried by an ability under the pinned one-keyword rule.
+
+    Pierce counts. Same-family variants (jam/jamAll, freeze*, cloak/cloakAll,
+    breach/breachAll) count once; wipeShields counts as breach-family;
+    lifestealPct counts as leech-family. Heals, shields, roll effects,
+    protocol, revive, rampage, and summons are not keywords.
+    """
+    found: list[str] = []
+    if is_meaningful(raw.get("burn")):
+        found.append("burn")
+    if is_meaningful(raw.get("chain")):
+        found.append("chain")
+    if is_meaningful(raw.get("detonate")):
+        found.append("detonate")
+    if is_meaningful(raw.get("execute")):
+        found.append("execute")
+    if is_meaningful(raw.get("breach")) or is_meaningful(raw.get("breachAll")) or is_meaningful(raw.get("wipeShields")):
+        found.append("breach")
+    if is_meaningful(raw.get("leech")) or is_meaningful(raw.get("lifestealPct")):
+        found.append("leech")
+    if is_meaningful(raw.get("mark")):
+        found.append("mark")
+    if is_meaningful(raw.get("spike")):
+        found.append("spike")
+    if is_meaningful(raw.get("jam")) or is_meaningful(raw.get("jamAll")):
+        found.append("jam")
+    if is_meaningful(raw.get("rewrite")):
+        found.append("rewrite")
+    if is_meaningful(raw.get("hijack")):
+        found.append("hijack")
+    if is_meaningful(raw.get("siphon")):
+        found.append("siphon")
+    if (
+        is_meaningful(raw.get("freezeAnyDice"))
+        or is_meaningful(raw.get("freezeEnemyDice"))
+        or is_meaningful(raw.get("freezeAllEnemyDice"))
+    ):
+        found.append("freeze")
+    if is_meaningful(raw.get("ignSh")):
+        found.append("pierce")
+    if is_meaningful(raw.get("ward")):
+        found.append("ward")
+    if is_meaningful(raw.get("cloak")) or is_meaningful(raw.get("cloakAll")):
+        found.append("cloak")
+    if is_meaningful(raw.get("taunt")) or is_meaningful(raw.get("enemySelfTaunt")):
+        found.append("taunt")
+    return found
 
 
 def manual_pick_sides(raw: dict) -> set[str]:
@@ -110,6 +161,7 @@ def main() -> int:
     gaps: dict[str, list[str]] = defaultdict(list)
     key_counts: dict[str, dict[str, int]] = defaultdict(lambda: {"hero": 0, "enemy": 0})
     multi_pick_violations: list[str] = []
+    keyword_count_violations: list[str] = []
 
     for entry in abilities:
         side = entry["side"]
@@ -128,6 +180,12 @@ def main() -> int:
             picks = manual_pick_sides(raw)
             if len(picks) > 1:
                 multi_pick_violations.append(f"{label} -> picks {sorted(picks)}")
+        keywords = count_keywords(raw)
+        allowed = 2 if entry.get("zone", "") == "overload" else 1
+        if len(keywords) > allowed:
+            keyword_count_violations.append(
+                f"{label} (zone={entry.get('zone', '?')}) -> {len(keywords)} keywords {keywords} (max {allowed})"
+            )
 
     print("=== Ability keyword usage ===")
     for key in sorted(key_counts):
@@ -169,7 +227,14 @@ def main() -> int:
         for violation in multi_pick_violations:
             print(f"  FAIL {violation}")
 
-    return 1 if (gaps or multi_pick_violations) else 0
+    print("\n=== KEYWORD RULE: max one keyword per ability (two in overload; pierce counts) ===")
+    if not keyword_count_violations:
+        print("  (none)")
+    else:
+        for violation in keyword_count_violations:
+            print(f"  FAIL {violation}")
+
+    return 1 if (gaps or multi_pick_violations or keyword_count_violations) else 0
 
 
 if __name__ == "__main__":

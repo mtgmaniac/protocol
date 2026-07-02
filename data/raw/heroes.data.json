@@ -2466,7 +2466,7 @@
                 19
               ],
               "name": "Phantom Blade",
-              "eff": "15 dmg, pierce, Cloak",
+              "eff": "15 dmg, pierce",
               "dmg": 15,
               "dMin": 15,
               "dMax": 15,
@@ -2474,8 +2474,7 @@
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "ignSh": true,
-              "cloak": true
+              "ignSh": true
             }
           ]
         },
