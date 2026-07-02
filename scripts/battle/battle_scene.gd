@@ -818,6 +818,11 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
 		_update_protocol_bar()
 		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
+	var protocol_drain: int = combat_manager.take_pending_protocol_drain()
+	if protocol_drain > 0:
+		protocol_points = maxi(0, protocol_points - protocol_drain)
+		_update_protocol_bar()
+		_append_log("Protocol SIPHONED -%d → %d" % [protocol_drain, protocol_points])
 	if skip_feedback:
 		_feedback.reset_death_sfx_tracking()
 		for event_variant in result.get("events", []):

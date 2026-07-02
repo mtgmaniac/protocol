@@ -278,6 +278,17 @@ func take_pending_protocol_grants() -> int:
 	return granted
 
 
+# Siphon (enemy-only): drained Protocol accumulated during the enemy phase;
+# battle_scene applies it to the pool (floor 0) after resolution.
+var _pending_protocol_drain: int = 0
+
+
+func take_pending_protocol_drain() -> int:
+	var drained: int = _pending_protocol_drain
+	_pending_protocol_drain = 0
+	return drained
+
+
 func resolve_round(
 	hero_rolls: Dictionary,
 	enemy_rolls: Dictionary,
@@ -927,12 +938,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
 		if should_wipe_shields:
 			_wipe_all_hero_shields(enemy_state)
+		var attack_connected: bool = false
 		if hits_all_heroes:
 			for hero_state in _hero_states:
 				if bool(hero_state["dead"]):
 					continue
 				if _ward_blocks_hostile(hero_state):
 					continue
+				attack_connected = true
 				_damage_state(hero_state, final_damage, false, enemy_state)
 				_apply_burn(hero_state, burn_amount, burn_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
@@ -948,6 +961,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if target_hero.is_empty():
 				target_hero = _first_living_state(_hero_states)
 			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
+				attack_connected = true
 				_damage_state(target_hero, final_damage, false, enemy_state)
 				_apply_burn(target_hero, burn_amount, burn_turns)
 				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
@@ -956,6 +970,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					if heal_amount > 0:
 						_heal_state(enemy_state, heal_amount)
 						_log("%s lifesteals %d HP." % [enemy_state["unit"].display_name, heal_amount])
+
+		# Siphon (enemy-only): on hit, drain N Protocol from the pool (floor 0
+		# applied by battle_scene when the drain lands).
+		var siphon_amount: int = int(raw.get("siphon", 0))
+		if siphon_amount > 0 and attack_connected:
+			_pending_protocol_drain += siphon_amount
+			_log("%s SIPHONS %d Protocol!" % [enemy_state["unit"].display_name, siphon_amount])
+			_emit_event(enemy_state, "siphon", siphon_amount, "enemy")
 
 	if damage <= 0 and bool(raw.get("wipeShields", false)):
 		_wipe_all_hero_shields(enemy_state)

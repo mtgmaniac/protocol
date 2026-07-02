@@ -150,6 +150,13 @@
       "syntax": "taunt"
     },
     {
+      "id": "siphon",
+      "term": "Siphon",
+      "category": "economy",
+      "def": "Enemy-only: on hit, drains N Protocol from your pool (never below 0).",
+      "syntax": "siphon N"
+    },
+    {
       "id": "protocol_gain",
       "term": "Protocol Gain",
       "category": "economy",

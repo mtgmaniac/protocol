@@ -28,7 +28,7 @@ ENEMY_HANDLED = frozenset({
     "shieldAllyAll", "blastAll", "burn", "burnT",
     "packBonus", "lifestealPct", "wipeShields", "rfm", "rfmT", "erb", "erbT", "erbAll",
     "freezeEnemyDice", "freezeAllEnemyDice", "grantRampage", "grantRampageAll", "ward", "spike",
-    "jam", "jamAll", "rewrite", "hijack",
+    "jam", "jamAll", "rewrite", "hijack", "siphon",
     "curseDice", "enemySelfTaunt", "summonChance", "summonName",
 })
 

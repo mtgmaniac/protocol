@@ -102,6 +102,7 @@ const ENEMY_HANDLED_FIELDS := [
 	"jamAll",
 	"rewrite",
 	"hijack",
+	"siphon",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",
@@ -449,6 +450,7 @@ func _run_regression_audits() -> void:
 	_run_jam_regression()
 	_run_rewrite_regression()
 	_run_hijack_regression()
+	_run_siphon_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -1037,6 +1039,24 @@ func _run_hijack_regression() -> void:
 		_record_pass("Regression / hijack copies highest hero die once", "hijack")
 	else:
 		_record_failure("Regression / hijack copies highest hero die once", "hijack", "primed after apply; next roll copied 17; cleared after", "primed=%s roll=%d cleared=%s" % [str(primed), int(next_enemy_rolls.get(str(c_enemy["id"]), 0)), str(cleared)])
+
+
+func _run_siphon_regression() -> void:
+	# Siphon: on hit, the enemy queues a Protocol drain for battle_scene.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Data Drain", {"dmg": 6, "siphon": 2})
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["selected_target_id"] = str(hero["id"])
+	manager.resolve_round({}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var drained: int = manager.take_pending_protocol_drain()
+	var drained_again: int = manager.take_pending_protocol_drain()
+	if drained == 2 and drained_again == 0:
+		_record_pass("Regression / siphon drains protocol on hit", "siphon")
+	else:
+		_record_failure("Regression / siphon drains protocol on hit", "siphon", "2 drained once, then 0", "first=%d second=%d" % [drained, drained_again])
 
 
 func _run_shield_lowest_regression() -> void:

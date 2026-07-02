@@ -111,6 +111,7 @@
         "jamAll": { "type": "boolean" },
         "rewrite": { "type": "boolean" },
         "hijack": { "type": "boolean" },
+        "siphon": { "type": "integer", "minimum": 1 },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 1 },
