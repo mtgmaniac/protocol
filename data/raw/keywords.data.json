@@ -132,8 +132,8 @@
       "id": "cloak",
       "term": "Cloak",
       "category": "control",
-      "def": "The unit evades the next incoming hit.",
-      "syntax": "Cloak"
+      "def": "Untargetable by single-target abilities. Breaks when the unit deals damage or is hit by an AoE; the first attack made from Cloak gains Pierce.",
+      "syntax": "cloak"
     },
     {
       "id": "ward",

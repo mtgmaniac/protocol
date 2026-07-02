@@ -673,20 +673,61 @@ func _run_shield_timing_regression() -> void:
 
 
 func _run_cloak_regression() -> void:
+	# Cloak = untargetable by single-target abilities: the attack retargets to
+	# a visible unit; the cloaked one is untouched and stays cloaked.
 	var manager: CombatManager = CombatManager.new()
-	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
-	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
-	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Rail Strike", {"dmg": 8})
+	var cloaked_enemy: EnemyData = _make_enemy("audit_cloaked", "Audit Cloaked")
+	var visible_enemy: EnemyData = _make_enemy("audit_visible", "Audit Visible")
+	manager.setup_battle([hero_unit], [cloaked_enemy, visible_enemy])
 	var hero: Dictionary = manager.get_hero_states()[0]
-	hero["cloaked"] = true
-	var before_hp: int = int(hero["current_hp"])
-	manager.call("_damage_state", hero, 7)
-	var after_hp: int = int(hero["current_hp"])
-	var ok: bool = not bool(hero.get("cloaked", false)) and (after_hp == before_hp or after_hp == before_hp - 7)
-	if ok:
-		_record_pass("Regression / cloak consumed by damage attempt", "cloak")
+	var cloaked: Dictionary = manager.get_enemy_states()[0]
+	var visible: Dictionary = manager.get_enemy_states()[1]
+	cloaked["cloaked"] = true
+	hero["selected_target_id"] = str(cloaked["id"])
+	var cloaked_before: int = int(cloaked["current_hp"])
+	var visible_before: int = int(visible["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var retargeted: bool = (
+		int(cloaked["current_hp"]) == cloaked_before
+		and int(visible["current_hp"]) == visible_before - 8
+		and bool(cloaked.get("cloaked", false))
+	)
+	if retargeted:
+		_record_pass("Regression / cloak untargetable, attack retargets", "cloak")
 	else:
-		_record_failure("Regression / cloak consumed by damage attempt", "cloak", "cloak consumed; HP unchanged or loses incoming damage", "cloaked=%s hp_delta=%d" % [str(hero.get("cloaked", false)), before_hp - after_hp])
+		_record_failure("Regression / cloak untargetable, attack retargets", "cloak", "cloaked untouched + still cloaked; visible takes 8", "cloaked_delta=%d visible_delta=%d cloaked=%s" % [cloaked_before - int(cloaked["current_hp"]), visible_before - int(visible["current_hp"]), str(cloaked.get("cloaked", false))])
+
+	# An AoE that includes the cloaked unit hits it and breaks the cloak.
+	var aoe_manager: CombatManager = CombatManager.new()
+	aoe_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Ghost Volley", {"dmg": 6, "blastAll": true})], [_make_enemy("audit_cloaked", "Audit Cloaked")])
+	var aoe_hero: Dictionary = aoe_manager.get_hero_states()[0]
+	var aoe_enemy: Dictionary = aoe_manager.get_enemy_states()[0]
+	aoe_enemy["cloaked"] = true
+	var aoe_before: int = int(aoe_enemy["current_hp"])
+	aoe_manager.resolve_round({str(aoe_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if int(aoe_enemy["current_hp"]) == aoe_before - 6 and not bool(aoe_enemy.get("cloaked", false)):
+		_record_pass("Regression / AoE breaks cloak and hits", "cloak")
+	else:
+		_record_failure("Regression / AoE breaks cloak and hits", "cloak", "cloak broken and 6 damage taken", "delta=%d cloaked=%s" % [aoe_before - int(aoe_enemy["current_hp"]), str(aoe_enemy.get("cloaked", false))])
+
+	# The first attack made from Cloak gains Pierce and breaks the cloak.
+	var strike_manager: CombatManager = CombatManager.new()
+	strike_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Phase Blade", {"dmg": 9})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var strike_hero: Dictionary = strike_manager.get_hero_states()[0]
+	var strike_enemy: Dictionary = strike_manager.get_enemy_states()[0]
+	strike_hero["cloaked"] = true
+	strike_hero["selected_target_id"] = str(strike_enemy["id"])
+	strike_enemy["shield_stacks"] = [{"amt": 20, "skip_next_tick": true}]
+	strike_enemy["shield"] = 20
+	var strike_before: int = int(strike_enemy["current_hp"])
+	strike_manager.resolve_round({str(strike_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var pierced: bool = int(strike_enemy["current_hp"]) == strike_before - 9 and int(strike_enemy["shield"]) == 20
+	var decloaked: bool = not bool(strike_hero.get("cloaked", false))
+	if pierced and decloaked:
+		_record_pass("Regression / attack from cloak pierces and decloaks", "cloak")
+	else:
+		_record_failure("Regression / attack from cloak pierces and decloaks", "cloak", "9 HP damage past 20 shield; attacker decloaked", "hp_delta=%d shield=%d cloaked=%s" % [strike_before - int(strike_enemy["current_hp"]), int(strike_enemy["shield"]), str(strike_hero.get("cloaked", false))])
 
 
 func _run_ward_regressions() -> void:
@@ -1785,7 +1826,7 @@ func _run_text_alignment_audits() -> void:
 	# Status descriptions live in InspectResolver now (the long-press InspectPopup replaced the
 	# old hover tooltips that used to carry this text in compact_unit_card).
 	var status_text: String = FileAccess.get_file_as_string("res://scripts/ui/inspect_resolver.gd")
-	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak evade text", "contains cloak evade text" if status_text.contains("80% chance to evade the next incoming damage attempt.") else "missing")
+	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak untargetable text", "contains cloak untargetable text" if status_text.contains("Untargetable by single-target abilities.") else "missing")
 	_expect_and_record("Text alignment / inspect ward text", "text", "contains ward block text", "contains ward block text" if status_text.contains("Blocks the next ability that targets this unit") else "missing")
 
 

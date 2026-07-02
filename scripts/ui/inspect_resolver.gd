@@ -354,7 +354,7 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 		friendly.append("Taunt: enemies must target this unit.")
 
 	if bool(raw.get("cloak", false)):
-		friendly.append("Cloak: 80% chance to evade the next incoming hit.")
+		friendly.append("Cloak: untargetable by single-target abilities; the first attack from Cloak pierces.")
 
 	if bool(raw.get("reviveAll", false)):
 		friendly.append("Revive all fallen allies at %d%% max HP." % int(raw.get("revivePct", 50)))
@@ -430,7 +430,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"frozen", "freeze", "die_freeze":
 			return "Die result is locked and cannot change%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
-			return "80% chance to evade the next incoming damage attempt."
+			return "Untargetable by single-target abilities. Breaks on dealing damage or being hit by an AoE; the first attack from Cloak pierces."
 		"taunt":
 			return "Forces enemies to target this unit."
 		"rampage":

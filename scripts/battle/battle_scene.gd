@@ -2075,6 +2075,10 @@ func _auto_assign_enemy_target(enemy_state: Dictionary, ability_entry: Dictionar
 			hero_target = _smart_target_hero(is_pure_debuff)
 		else:
 			hero_target = _first_living_hero_state()
+			# Cloaked heroes are untargetable by single-target attacks.
+			if not hero_target.is_empty() and bool(hero_target.get("cloaked", false)):
+				var visible: Array = combat_manager.get_hero_states().filter(func(s): return not bool(s["dead"]) and not bool(s.get("cloaked", false)))
+				hero_target = visible[0] if not visible.is_empty() else {}
 		if hero_target.is_empty():
 			_set_state_target(enemy_state, "", "--")
 			return
@@ -2146,13 +2150,14 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 func _get_legal_target_ids(target_side: String) -> Array:
 	var ids: Array = []
 	var states: Array = []
+	var enemy_states: Array = combat_manager.get_enemy_states()
 	if target_side == "any":
 		states.append_array(combat_manager.get_hero_states())
-		states.append_array(combat_manager.get_enemy_states())
+		states.append_array(enemy_states)
 	elif target_side == "dead_hero":
 		states = combat_manager.get_hero_states()
 	else:
-		states = combat_manager.get_hero_states() if target_side == "hero" else combat_manager.get_enemy_states()
+		states = combat_manager.get_hero_states() if target_side == "hero" else enemy_states
 	for state_variant in states:
 		var state: Dictionary = state_variant
 		if target_side == "dead_hero":
@@ -2160,6 +2165,11 @@ func _get_legal_target_ids(target_side: String) -> Array:
 				ids.append(str(state["id"]))
 			continue
 		if bool(state["dead"]):
+			continue
+		# Cloak: cloaked enemies are untargetable by single-target abilities.
+		# (Friendly picks on cloaked allies stay legal — DESIGN-TODO(kev):
+		# confirm hostile-only reading of "untargetable".)
+		if bool(state.get("cloaked", false)) and enemy_states.has(state):
 			continue
 		ids.append(str(state["id"]))
 	return ids
@@ -2236,9 +2246,12 @@ func _smart_target_hero(prefer_high_hp: bool = false) -> Dictionary:
 			living.append(state)
 	if living.is_empty():
 		return {}
-	# Deprioritize cloaked heroes — 80% dodge makes them inefficient targets
+	# Cloaked heroes are untargetable by single-target attacks; if everyone is
+	# cloaked the attack has no target (resolve-time retarget will fizzle too).
 	var uncloaked: Array = living.filter(func(s): return not bool(s.get("cloaked", false)))
-	var pool: Array = uncloaked if not uncloaked.is_empty() else living
+	if uncloaked.is_empty():
+		return {}
+	var pool: Array = uncloaked
 	var best: Dictionary = pool[0]
 	for s in pool:
 		if prefer_high_hp:

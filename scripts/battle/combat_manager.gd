@@ -503,6 +503,14 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var roll_buff_targeted: bool = bool(raw.get("rfmTgt", false)) or shield_targeted or heal_targeted
 	var ignores_shield: bool = bool(raw.get("ignSh", false))
 
+	# The first attack made from Cloak gains Pierce, and dealing damage breaks
+	# the cloak.
+	if damage > 0 and bool(hero_state.get("cloaked", false)):
+		ignores_shield = true
+		hero_state["cloaked"] = false
+		_log("%s strikes from the shadows — the attack PIERCES!" % hero_state["unit"].display_name)
+		_emit_event(hero_state, "decloak", 0, "hero")
+
 	if damage > 0:
 		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, burn_amount, burn_turns)
 
@@ -554,10 +562,8 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		_log("%s generates %d Protocol." % [hero_state["unit"].display_name, gain_protocol])
 
 	if damage <= 0 and burn_amount > 0:
-		var burn_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-		if burn_target.is_empty():
-			burn_target = _first_living_state(_enemy_states)
-		if not _ward_blocks_hostile(burn_target):
+		var burn_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
 			_apply_burn(burn_target, burn_amount, burn_turns)
 
 	# RFE application (roll debuff on enemies)
@@ -570,9 +576,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state):
 					_add_rfe_stack(enemy_state, rfe_amount, rfe_turns)
 		else:
-			var rfe_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-			if rfe_target.is_empty():
-				rfe_target = _first_living_state(_enemy_states)
+			var rfe_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
 			if not rfe_target.is_empty() and not _ward_blocks_hostile(rfe_target):
 				_add_rfe_stack(rfe_target, rfe_amount, rfe_turns)
 
@@ -646,9 +650,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			if not freeze_target.is_empty():
 				_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
 			else:
-				freeze_target = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-				if freeze_target.is_empty():
-					freeze_target = _first_living_state(_enemy_states)
+				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 					_freeze_die_state(freeze_target, freeze_amount, true, freeze_flavor)
 
@@ -659,17 +661,13 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			if not es["dead"] and not _ward_blocks_hostile(es):
 				_apply_jam(es, JAM_CAP, true)
 	elif bool(raw.get("jam", false)):
-		var jam_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-		if jam_target.is_empty():
-			jam_target = _first_living_state(_enemy_states)
+		var jam_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
 			_apply_jam(jam_target, JAM_CAP, true)
 
 	# Rewrite: force the target's next roll to 3.
 	if bool(raw.get("rewrite", false)):
-		var rewrite_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-		if rewrite_target.is_empty():
-			rewrite_target = _first_living_state(_enemy_states)
+		var rewrite_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if not rewrite_target.is_empty() and not _ward_blocks_hostile(rewrite_target):
 			_apply_rewrite(rewrite_target, true)
 
@@ -706,13 +704,14 @@ func _apply_hero_ability_damage(
 				continue
 			if _ward_blocks_hostile(enemy_state):
 				continue
+			_break_cloak_on_aoe(enemy_state)
 			if breach_all or breach:
 				_breach_shields(hero_state, enemy_state)
 			leech_hp_dealt += _damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
 	else:
-		var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		var target_enemy: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if target_enemy.is_empty():
-			target_enemy = _first_living_state(_enemy_states)
+			_log("%s finds no visible target — the attack fizzles." % hero_state["unit"].display_name)
 		# breach all on a single-target ability still strips every enemy's
 		# shields before the hit lands.
 		if breach_all:
@@ -916,6 +915,15 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if heal > 0:
 		_heal_state(enemy_state, heal)
 
+	# The first attack made from Cloak gains Pierce and breaks the cloak
+	# (Geode Panther decloak-strike).
+	var enemy_attack_pierces: bool = false
+	if damage > 0 and bool(enemy_state.get("cloaked", false)):
+		enemy_attack_pierces = true
+		enemy_state["cloaked"] = false
+		_log("%s strikes from the shadows — the attack PIERCES!" % enemy_state["unit"].display_name)
+		_emit_event(enemy_state, "decloak", 0, "enemy")
+
 	if damage > 0:
 		var hits_all_heroes: bool = bool(raw.get("blastAll", false))
 		var should_wipe_shields: bool = bool(raw.get("wipeShields", false))
@@ -946,7 +954,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				if _ward_blocks_hostile(hero_state):
 					continue
 				attack_connected = true
-				_damage_state(hero_state, final_damage, false, enemy_state)
+				_break_cloak_on_aoe(hero_state)
+				_damage_state(hero_state, final_damage, enemy_attack_pierces, enemy_state)
 				_apply_burn(hero_state, burn_amount, burn_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 			if lifesteal_pct > 0 and final_damage > 0:
@@ -955,14 +964,16 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					_heal_state(enemy_state, heal_amount)
 					_log("%s lifesteals %d HP." % [enemy_state["unit"].display_name, heal_amount])
 		else:
+			# Taunt overrides cloak; otherwise cloaked heroes are untargetable
+			# and the attack retargets (or fizzles when everyone is cloaked).
 			var target_hero: Dictionary = _get_taunting_hero_state()
 			if target_hero.is_empty():
-				target_hero = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+				target_hero = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
 			if target_hero.is_empty():
-				target_hero = _first_living_state(_hero_states)
+				_log("%s finds no visible target — the attack fizzles." % enemy_state["unit"].display_name)
 			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
 				attack_connected = true
-				_damage_state(target_hero, final_damage, false, enemy_state)
+				_damage_state(target_hero, final_damage, enemy_attack_pierces, enemy_state)
 				_apply_burn(target_hero, burn_amount, burn_turns)
 				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 				if lifesteal_pct > 0 and final_damage > 0:
@@ -983,9 +994,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_wipe_all_hero_shields(enemy_state)
 
 	if damage <= 0 and burn_amount > 0:
-		var burn_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if burn_target.is_empty():
-			burn_target = _first_living_state(_hero_states)
+		var burn_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
 			_apply_burn(burn_target, burn_amount, burn_turns)
 
@@ -993,9 +1002,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var rfm_amount: int = int(raw.get("rfm", 0))
 	var rfm_turns: int = int(raw.get("rfmT", 1))
 	if rfm_amount > 0:
-		var hero_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if hero_target.is_empty():
-			hero_target = _first_living_state(_hero_states)
+		var hero_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if not hero_target.is_empty() and not _ward_blocks_hostile(hero_target):
 			_add_rfe_stack(hero_target, rfm_amount, rfm_turns)
 
@@ -1021,9 +1028,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
 				_freeze_die_state(hero_state, enemy_freeze_all, false, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
-		var freeze_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if freeze_target.is_empty():
-			freeze_target = _first_living_state(_hero_states)
+		var freeze_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 			_freeze_die_state(freeze_target, enemy_freeze_one, false, enemy_freeze_flavor)
 
@@ -1051,17 +1056,13 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
 				_apply_jam(hero_state, JAM_CAP, true)
 	elif bool(raw.get("jam", false)):
-		var jam_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if jam_target.is_empty():
-			jam_target = _first_living_state(_hero_states)
+		var jam_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
 			_apply_jam(jam_target, JAM_CAP, true)
 
 	# Rewrite hero dice (Synod): force the targeted hero's next roll to 3.
 	if bool(raw.get("rewrite", false)):
-		var enemy_rewrite_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if enemy_rewrite_target.is_empty():
-			enemy_rewrite_target = _first_living_state(_hero_states)
+		var enemy_rewrite_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if not enemy_rewrite_target.is_empty() and not _ward_blocks_hostile(enemy_rewrite_target):
 			_apply_rewrite(enemy_rewrite_target, true)
 
@@ -1107,7 +1108,29 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
 
 
-# Returns the HP damage actually dealt (after cloak / reduction / shields) so
+# Cloak: untargetable by hostile single-target abilities. Resolves the selected
+# target, retargeting to the first living non-cloaked unit when the pick is
+# invalid or cloaked; {} when every candidate is cloaked (the ability fizzles).
+func _hostile_single_target(states: Array, selected_id: String) -> Dictionary:
+	var target: Dictionary = _find_target_by_id(states, selected_id)
+	if not target.is_empty() and not bool(target.get("cloaked", false)):
+		return target
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if not state["dead"] and not bool(state.get("cloaked", false)):
+			return state
+	return {}
+
+
+# AoE contact: the hit lands normally and the cloak breaks.
+func _break_cloak_on_aoe(state: Dictionary) -> void:
+	if bool(state.get("cloaked", false)):
+		state["cloaked"] = false
+		_log("%s's cloak is torn away by the blast!" % state["unit"].display_name)
+		_emit_event(state, "decloak", 0, _resolve_side_for_state(state))
+
+
+# Returns the HP damage actually dealt (after reduction / shields) so
 # callers like Leech can react to it.
 func _damage_state(
 	state: Dictionary,
@@ -1121,16 +1144,9 @@ func _damage_state(
 
 	var hp_before: int = int(state["current_hp"])
 
-	# Cloak: 80% dodge chance — all-or-nothing, consumed on any attempt
-	if bool(state.get("cloaked", false)):
-		if randf() < 0.80:
-			_log("%s evades the attack (cloaked)!" % state["unit"].display_name)
-			_emit_event(state, "evade", 0, _resolve_side_for_state(state))
-			state["cloaked"] = false
-			return 0
-		else:
-			_log("%s's cloak failed to evade!" % state["unit"].display_name)
-			state["cloaked"] = false
+	# Cloak no longer dodges here — cloaked units are untargetable by hostile
+	# single-target abilities (call sites retarget) and AoE hits break the
+	# cloak at the AoE loop before calling in.
 
 	# Gear: dmgReduction for hero states
 	if _is_hero_state(state):
@@ -1491,11 +1507,14 @@ func _first_dead_state(states: Array) -> Dictionary:
 	return {}
 
 
+# Used by Chain jump selection — cloaked units can't be jumped to either.
 func _lowest_hp_state_excluding(states: Array, exclude_ids: Dictionary) -> Dictionary:
 	var best: Dictionary = {}
 	var best_ratio: float = 2.0
 	for state in states:
 		if state["dead"] or exclude_ids.has(str(state.get("id", ""))):
+			continue
+		if bool(state.get("cloaked", false)):
 			continue
 		var max_hp: int = maxi(int(state["max_hp"]), 1)
 		var ratio: float = float(state["current_hp"]) / float(max_hp)
