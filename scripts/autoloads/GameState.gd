@@ -594,21 +594,25 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 		if ability_list.is_empty():
 			grouped[path_name] = grouped_entry
 			continue
-		var ability_entry: Dictionary = ability_list[0]
-		var zone: String = str(ability_entry.get("zone", ""))
-		var range_pair: Array = ability_entry.get("range", [])
-		var min_roll: int = int(ability_entry.get("min", range_pair[0] if range_pair.size() > 0 else 0))
-		var max_roll: int = int(ability_entry.get("max", range_pair[1] if range_pair.size() > 1 else min_roll))
-		var ability_name: String = str(ability_entry.get("ability_name", ability_entry.get("name", "")))
-		var raw_entry: Dictionary = ability_entry.get("raw", ability_entry).duplicate(true)
-		grouped_entry["abilities_by_zone"][zone] = {
-			"min": min_roll,
-			"max": max_roll,
-			"zone": zone,
-			"ability_name": ability_name,
-			"description": str(raw_entry.get("eff", ability_entry.get("description", ""))),
-			"raw": raw_entry,
-		}
+		# Each evolution entry carries its FULL 5-zone kit — register every
+		# ability (a single-entry read here silently kept the base kit for
+		# all zones but the first).
+		for ability_entry_variant in ability_list:
+			var ability_entry: Dictionary = ability_entry_variant
+			var zone: String = str(ability_entry.get("zone", ""))
+			var range_pair: Array = ability_entry.get("range", [])
+			var min_roll: int = int(ability_entry.get("min", range_pair[0] if range_pair.size() > 0 else 0))
+			var max_roll: int = int(ability_entry.get("max", range_pair[1] if range_pair.size() > 1 else min_roll))
+			var ability_name: String = str(ability_entry.get("ability_name", ability_entry.get("name", "")))
+			var raw_entry: Dictionary = ability_entry.get("raw", ability_entry).duplicate(true)
+			grouped_entry["abilities_by_zone"][zone] = {
+				"min": min_roll,
+				"max": max_roll,
+				"zone": zone,
+				"ability_name": ability_name,
+				"description": str(raw_entry.get("eff", ability_entry.get("description", ""))),
+				"raw": raw_entry,
+			}
 		grouped[path_name] = grouped_entry
 
 	var grouped_paths: Array = []

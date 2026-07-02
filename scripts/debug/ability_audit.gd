@@ -446,6 +446,7 @@ func _run_regression_audits() -> void:
 	_run_boss_fight_data_regressions()
 	_run_save_manager_regressions()
 	_run_starting_directive_regressions()
+	_run_evolution_kit_regression()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1641,6 +1642,28 @@ func _run_starting_directive_regressions() -> void:
 
 	GameState.reset_run()
 	SaveManager.data = saved_save
+
+
+func _run_evolution_kit_regression() -> void:
+	# An evolved unit must run its evolution's FULL 5-zone kit, not just the
+	# first zone (regression for the single-ability grouping bug).
+	var saved_evolutions: Dictionary = GameState.unit_evolutions.duplicate(true)
+	GameState.unit_evolutions["pulse"] = "Arc Specialist"
+	var evolved: UnitData = GameState.get_run_unit_data("pulse")
+	GameState.unit_evolutions = saved_evolutions
+	if evolved == null:
+		_record_failure("Regression / evolved kit full swap", "evolutionKit", "evolved unit", "null")
+		return
+	var dm: DiceManager = DiceManager.new()
+	var names: Array = []
+	for roll in [2, 8, 12, 18, 20]:
+		names.append(str(dm.get_ability_for_roll(evolved, roll).get("ability_name", "")))
+	_expect_and_record(
+		"Regression / evolved kit full swap",
+		"evolutionKit",
+		str(["Static Coil", "Arc Whip", "Fork Lightning", "Cascade", "Grid Collapse"]),
+		str(names)
+	)
 
 
 func _run_shield_lowest_regression() -> void:
