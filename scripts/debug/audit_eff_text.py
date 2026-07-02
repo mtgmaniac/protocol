@@ -156,10 +156,7 @@ def enemy_expected(raw: dict) -> str:
     parts: list[str] = []
     dmg = raw.get("dmg") or 0
     if dmg > 0:
-        p2 = raw.get("dmgP2")
         s = f"{dmg} dmg"
-        if p2 and p2 != dmg:
-            s += f" (P2 {p2})"
         if raw.get("blastAll"):
             s += " (all)"
         parts.append(s)
@@ -181,11 +178,7 @@ def enemy_expected(raw: dict) -> str:
 
     shield = raw.get("shield") or 0
     if shield > 0:
-        p2 = raw.get("shieldP2")
-        s = f"{shield} shield"
-        if p2 and p2 != shield:
-            s += f" (P2 {p2})"
-        parts.append(s)
+        parts.append(f"{shield} shield")
 
     sa = raw.get("shieldAlly") or 0
     if sa > 0:

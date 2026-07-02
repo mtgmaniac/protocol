@@ -86,13 +86,11 @@
         "name": { "type": "string" },
         "eff": { "type": "string" },
         "dmg": { "type": "integer" },
-        "dmgP2": { "type": "integer" },
         "burn": { "type": "integer" },
         "burnT": { "type": "integer" },
         "heal": { "type": "integer" },
         "rfe": { "type": "integer" },
         "shield": { "type": "integer" },
-        "shieldP2": { "type": "integer" },
         "shieldAlly": { "type": "integer" },
         "shieldAllyAll": { "type": "boolean" },
         "blastAll": { "type": "boolean" },
@@ -161,15 +159,7 @@
           "type": "boolean",
           "description": "Spawns cloaked (Forked Double); inherits the reworked cloak rules."
         },
-        "p2dMin": { "type": "integer", "minimum": 1 },
-        "p2dMax": { "type": "integer", "minimum": 1 },
-        "pThr": { "type": "integer", "minimum": 1 },
-        "summonElite": { "type": "boolean" },
-        "p2ReviveNames": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Allies (by display name) restored on phase 2: dead revived at full HP, living healed to full HP."
-        }
+        "summonElite": { "type": "boolean" }
       }
     }
   }

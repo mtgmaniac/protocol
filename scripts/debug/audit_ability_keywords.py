@@ -24,7 +24,7 @@ HERO_HANDLED = frozenset({
 })
 
 ENEMY_HANDLED = frozenset({
-    "dmg", "dmgP2", "heal", "shield", "shieldP2", "shieldAlly",
+    "dmg", "heal", "shield", "shieldAlly",
     "shieldAllyAll", "blastAll", "burn", "burnT",
     "packBonus", "lifestealPct", "wipeShields", "rfm", "rfmT", "erb", "erbT", "erbAll",
     "freezeEnemyDice", "freezeAllEnemyDice", "grantRampage", "grantRampageAll", "ward", "spike",

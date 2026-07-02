@@ -277,16 +277,9 @@ func _load_enemies() -> void:
 		enemy.max_hp = int(enemy_def.get("hp", 0))
 		enemy.damage_preview_min = int(enemy_def.get("dMin", 0))
 		enemy.damage_preview_max = int(enemy_def.get("dMax", 0))
-		enemy.phase_two_damage_preview_min = int(enemy_def.get("p2dMin", 0))
-		enemy.phase_two_damage_preview_max = int(enemy_def.get("p2dMax", 0))
-		enemy.phase_two_threshold = int(enemy_def.get("pThr", 0))
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
 		enemy.accrete = int(enemy_def.get("accrete", 0))
 		enemy.starts_cloaked = bool(enemy_def.get("startsCloaked", false))
-		var revive_names: Array = enemy_def.get("p2ReviveNames", [])
-		enemy.phase_two_revive_names = []
-		for revive_name in revive_names:
-			enemy.phase_two_revive_names.append(str(revive_name))
 		enemy.portrait = _load_enemy_portrait(enemy.display_name)
 		enemy.dice_ranges = _build_enemy_dice_ranges(enemy_abilities.get(enemy_type, {}))
 		enemies[enemy.id] = enemy

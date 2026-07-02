@@ -148,8 +148,6 @@ func _play_event_sfx(event_type: String, _event: Dictionary) -> void:
 			AudioManager.play_sfx("shield")
 		"freeze":
 			AudioManager.play_sfx("freeze")
-		"phase2":
-			AudioManager.play_sfx("phase2")
 
 
 func _is_fatal_hit_event(event: Dictionary) -> bool:
@@ -228,8 +226,6 @@ func _flash_card(card: Control, event_type: String) -> void:
 			flash_color = Color(0.45, 1.0, 0.65, 1.0)
 		"shield", "block", "roll_buff", "freeze":
 			flash_color = Color(0.55, 0.82, 1.0, 1.0)
-		"phase2":
-			flash_color = Color(1.0, 0.45, 0.10, 1.0)
 		"wipe_shields":
 			flash_color = Color(1.0, 0.80, 0.20, 1.0)
 	card.modulate = flash_color
@@ -301,8 +297,6 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 			return "FROZEN %d" % amount
 		"block":
 			return "BLOCK %d" % amount
-		"phase2":
-			return "⚡ PHASE 2"
 		"wipe_shields":
 			return "SHIELDS WIPED"
 		_:
@@ -317,8 +311,6 @@ func _get_floating_color(event_type: String) -> Color:
 			return Color(0.5, 1.0, 0.62, 1.0)
 		"shield", "block", "roll_buff", "freeze":
 			return Color(0.55, 0.82, 1.0, 1.0)
-		"phase2":
-			return Color(1.0, 0.45, 0.10, 1.0)
 		"wipe_shields":
 			return Color(1.0, 0.80, 0.20, 1.0)
 		_:

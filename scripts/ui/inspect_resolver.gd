@@ -223,7 +223,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 		hostile.append("Remove all hero shields.")
 
 	var dmg: int = int(raw.get("dmg", 0))
-	var dmg_p2: int = int(raw.get("dmgP2", 0))
 	var d_min: int = int(raw.get("dMin", 0))
 	var d_max: int = int(raw.get("dMax", 0))
 	var blast_all: bool = bool(raw.get("blastAll", false))
@@ -234,8 +233,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			hostile.append("Deal %d damage to all enemies." % dmg)
 		else:
 			hostile.append("Deal %d damage." % dmg)
-		if dmg_p2 > 0:
-			hostile.append("Phase 2: deals %d damage instead." % dmg_p2)
 	elif d_min > 0 or d_max > 0:
 		if d_min == d_max:
 			hostile.append("Deal %d damage." % d_min)
@@ -300,7 +297,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			friendly.append("Restore %d HP." % heal)
 
 	var shield: int = int(raw.get("shield", 0))
-	var shield_p2: int = int(raw.get("shieldP2", 0))
 	if shield > 0:
 		if bool(raw.get("shieldAll", false)):
 			friendly.append("Grant %d shield to all allies this round." % shield)
@@ -308,8 +304,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			friendly.append("Grant %d shield to an ally this round." % shield)
 		else:
 			friendly.append("Gain %d shield this round." % shield)
-		if shield_p2 > 0:
-			friendly.append("Phase 2: gain %d shield instead." % shield_p2)
 
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if shield_ally > 0:

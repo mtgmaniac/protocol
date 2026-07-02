@@ -342,20 +342,18 @@
     "boss": {
       "recharge": {
         "name": "Shield Matrix",
-        "eff": "12 shield (P2 18)",
+        "eff": "12 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 12,
-        "shieldP2": 18
+        "shield": 12
       },
       "strike": {
         "name": "Suppressor",
-        "eff": "12 dmg (P2 19), -2 roll, 2t",
+        "eff": "12 dmg, -2 roll, 2t",
         "dmg": 12,
-        "dmgP2": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -366,9 +364,8 @@
       },
       "surge": {
         "name": "Core Blast",
-        "eff": "17 dmg (P2 23)",
+        "eff": "17 dmg",
         "dmg": 17,
-        "dmgP2": 23,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -377,9 +374,8 @@
       },
       "crit": {
         "name": "System Purge",
-        "eff": "wipe shields, then 21 dmg (P2 28)",
+        "eff": "wipe shields, then 21 dmg",
         "dmg": 21,
-        "dmgP2": 28,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -389,9 +385,8 @@
       },
       "overload": {
         "name": "Annihilate",
-        "eff": "26 dmg (P2 33) (all)",
+        "eff": "26 dmg (all)",
         "dmg": 26,
-        "dmgP2": 33,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -741,9 +736,8 @@
       },
       "strike": {
         "name": "Royal Mandibles",
-        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
+        "eff": "19 dmg, -2 roll, 2t, lifesteal 35%",
         "dmg": 19,
-        "dmgP2": 26,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -755,9 +749,8 @@
       },
       "surge": {
         "name": "Brood Nova",
-        "eff": "20 dmg (P2 27), 3 burn, 5t",
+        "eff": "20 dmg, 3 burn, 5t",
         "dmg": 20,
-        "dmgP2": 27,
         "burn": 3,
         "burnT": 5,
         "heal": 0,
@@ -766,9 +759,8 @@
       },
       "crit": {
         "name": "Biomass Purge",
-        "eff": "25 dmg (P2 31), 2 burn, 4t, -3 roll, 2t",
+        "eff": "25 dmg, 2 burn, 4t, -3 roll, 2t",
         "dmg": 25,
-        "dmgP2": 31,
         "burn": 2,
         "burnT": 4,
         "heal": 0,
@@ -779,9 +771,8 @@
       },
       "overload": {
         "name": "Acid Cataclysm",
-        "eff": "wipe shields, then 28 dmg (P2 36), lifesteal 40%",
+        "eff": "wipe shields, then 28 dmg, lifesteal 40%",
         "dmg": 28,
-        "dmgP2": 36,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1251,9 +1242,8 @@
       },
       "strike": {
         "name": "Decree",
-        "eff": "19 dmg (P2 26), -2 roll, 2t",
+        "eff": "19 dmg, -2 roll, 2t",
         "dmg": 19,
-        "dmgP2": 26,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1264,9 +1254,8 @@
       },
       "surge": {
         "name": "Judgment Arc",
-        "eff": "22 dmg (P2 28), 2 burn, 2t, +1 roll to allies, 2t",
+        "eff": "22 dmg, 2 burn, 2t, +1 roll to allies, 2t",
         "dmg": 22,
-        "dmgP2": 28,
         "burn": 2,
         "burnT": 2,
         "heal": 0,
@@ -1278,9 +1267,8 @@
       },
       "crit": {
         "name": "Absolute Vector",
-        "eff": "26 dmg (P2 32), -3 roll, 2t, +1 roll to allies, 2t",
+        "eff": "26 dmg, -3 roll, 2t, +1 roll to allies, 2t",
         "dmg": 26,
-        "dmgP2": 32,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1294,9 +1282,8 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~30% nat20",
+        "eff": "wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~30% nat20",
         "dmg": 30,
-        "dmgP2": 38,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1687,9 +1674,8 @@
       },
       "strike": {
         "name": "Decree of Stillness",
-        "eff": "19 dmg (P2 26), -2 roll, 2t, ward",
+        "eff": "19 dmg, -2 roll, 2t, ward",
         "dmg": 19,
-        "dmgP2": 26,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1701,9 +1687,8 @@
       },
       "surge": {
         "name": "Circlet Cataclysm",
-        "eff": "22 dmg (P2 28), 2 burn, 2t, +1 roll to allies, 2t",
+        "eff": "22 dmg, 2 burn, 2t, +1 roll to allies, 2t",
         "dmg": 22,
-        "dmgP2": 28,
         "burn": 2,
         "burnT": 2,
         "heal": 0,
@@ -1715,9 +1700,8 @@
       },
       "crit": {
         "name": "Absolute Binding",
-        "eff": "26 dmg (P2 32), -3 roll, 2t, ward",
+        "eff": "26 dmg, -3 roll, 2t, ward",
         "dmg": 26,
-        "dmgP2": 32,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1729,9 +1713,8 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~32% nat20",
+        "eff": "wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~32% nat20",
         "dmg": 30,
-        "dmgP2": 38,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2087,9 +2070,8 @@
       },
       "strike": {
         "name": "Titan Gouge",
-        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
+        "eff": "19 dmg, -2 roll, 2t, lifesteal 35%",
         "dmg": 19,
-        "dmgP2": 26,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2101,9 +2083,8 @@
       },
       "surge": {
         "name": "Gravity Hoof",
-        "eff": "20 dmg (P2 27), 3 burn, 4t",
+        "eff": "20 dmg, 3 burn, 4t",
         "dmg": 20,
-        "dmgP2": 27,
         "burn": 3,
         "burnT": 4,
         "heal": 0,
@@ -2112,9 +2093,8 @@
       },
       "crit": {
         "name": "Annihilation Sweep",
-        "eff": "24 dmg (P2 31), rampage all +1",
+        "eff": "24 dmg, rampage all +1",
         "dmg": 24,
-        "dmgP2": 31,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2124,9 +2104,8 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "wipe shields, then 26 dmg (P2 34), rampage all +1, freeze all (1 reveal skip)",
+        "eff": "wipe shields, then 26 dmg, rampage all +1, freeze all (1 reveal skip)",
         "dmg": 26,
-        "dmgP2": 34,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2260,13 +2239,7 @@
       "dMax": 22,
       "type": "boss",
       "ai": "smart",
-      "p2dMin": 18,
-      "p2dMax": 30,
-      "pThr": 70,
-      "callsign": "MASTER",
-      "p2ReviveNames": [
-        "Scrap Drone"
-      ]
+      "callsign": "MASTER"
     },
     "Skitterling": {
       "hp": 40,
@@ -2322,9 +2295,6 @@
       "dMax": 21,
       "type": "hiveBoss",
       "ai": "smart",
-      "p2dMin": 23,
-      "p2dMax": 31,
-      "pThr": 86,
       "callsign": "MATRON"
     },
     "Shardmite": {
@@ -2395,9 +2365,6 @@
       "type": "veilBoss",
       "ai": "smart",
       "summonElite": true,
-      "p2dMin": 27,
-      "p2dMax": 35,
-      "pThr": 86,
       "callsign": "OVERSEER"
     },
     "Glitch Sprite": {
@@ -2461,9 +2428,6 @@
       "type": "voidCircletBoss",
       "ai": "smart",
       "summonElite": true,
-      "p2dMin": 27,
-      "p2dMax": 35,
-      "pThr": 86,
       "callsign": "ROOT"
     },
     "Pumice Macaque": {
@@ -2531,9 +2495,6 @@
       "dMax": 25,
       "type": "beastTyrant",
       "ai": "smart",
-      "p2dMin": 27,
-      "p2dMax": 35,
-      "pThr": 86,
       "callsign": "MANTLE"
     }
   },

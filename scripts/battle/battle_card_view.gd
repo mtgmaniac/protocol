@@ -85,8 +85,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		status_list.append("WARD")
 	if bool(state.get("marked", false)):
 		status_list.append("MARK")
-	if bool(state.get("in_phase_two", false)):
-		status_list.append("PHASE 2")
 
 	if bool(show_dead):
 		status_list.append("DOWN")

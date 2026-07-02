@@ -399,9 +399,6 @@ func resolve_round(
 		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
 
 	_tick_end_of_round_states()
-	# Phase 2 triggers at end of round only — boss keeps phase-1 kit for the
-	# enemy phase even if heroes crossed the HP threshold earlier this turn.
-	_check_phase_two_transitions()
 
 	if _all_states_dead(_enemy_states):
 		_log("All enemies are down.")
@@ -477,7 +474,6 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"gear_heal_shield_bonus": 0,
 		"gear_protocol_on_kill": 0,
 		"gear_protocol_on_kill_any": 0,
-		"in_phase_two": false,
 		"lured_by_id": "",
 		"accrete": 0,
 	}
@@ -969,14 +965,9 @@ func _apply_chain_jumps(
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
 	_ability_ward_blocked_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
-	# Phase 2: substitute enhanced damage value when boss has crossed its HP threshold
 	var damage: int = int(raw.get("dmg", 0))
-	if bool(enemy_state.get("in_phase_two", false)) and raw.has("dmgP2"):
-		damage = int(raw.get("dmgP2", damage))
 	var heal: int = int(raw.get("heal", 0))
 	var shield: int = int(raw.get("shield", 0))
-	if bool(enemy_state.get("in_phase_two", false)) and raw.has("shieldP2"):
-		shield = int(raw.get("shieldP2", shield))
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	var burn_amount: int = int(raw.get("burn", 0))
 	var burn_turns: int = int(raw.get("burnT", 0))
@@ -1591,7 +1582,6 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["frozen_die_value"] = 0
 	state["die_freeze_consumed_this_round"] = false
 	state["perm_rfe"] = 0
-	state["in_phase_two"] = false
 
 
 func _cancel_targets_involving_down_state(down_state: Dictionary) -> void:
@@ -1885,38 +1875,6 @@ func _tick_state(state: Dictionary) -> void:
 			state["roll_buff"] = 0
 			state["roll_buff_turns"] = 0
 			state["roll_buff_skip_next_tick"] = false
-
-
-# --- Phase 2 threshold ---
-
-func _check_phase_two_transitions() -> void:
-	for enemy_state in _enemy_states:
-		if bool(enemy_state["dead"]) or bool(enemy_state.get("in_phase_two", false)):
-			continue
-		var unit: EnemyData = enemy_state["unit"] as EnemyData
-		if unit == null or int(unit.phase_two_threshold) <= 0:
-			continue
-		if int(enemy_state["current_hp"]) <= int(unit.phase_two_threshold):
-			enemy_state["in_phase_two"] = true
-			_log("%s ENTERS PHASE 2!" % unit.display_name)
-			_emit_event(enemy_state, "phase2", 0, "enemy")
-			_apply_phase_two_revives(unit)
-
-
-func _apply_phase_two_revives(boss_unit: EnemyData) -> void:
-	if boss_unit == null or boss_unit.phase_two_revive_names.is_empty():
-		return
-	for enemy_state in _enemy_states:
-		var unit: EnemyData = enemy_state.get("unit") as EnemyData
-		if unit == null:
-			continue
-		if unit.display_name not in boss_unit.phase_two_revive_names:
-			continue
-		if bool(enemy_state.get("dead", false)):
-			_revive_state(enemy_state, 100)
-		elif int(enemy_state.get("current_hp", 0)) < int(enemy_state.get("max_hp", 0)):
-			var missing: int = int(enemy_state["max_hp"]) - int(enemy_state["current_hp"])
-			_heal_state(enemy_state, missing)
 
 
 # --- Public item application methods ---
