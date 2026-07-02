@@ -33,9 +33,10 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 2. Player resolves first, in any order; then surviving enemies resolve.
 3. End of turn: status effects tick, dice reset.
 4. A unit that dies mid-turn does not act.
-5. Shields are per-turn unless the ability specifies `shT` > 1.
+5. Shields last **one round**: granted this round, absorb through this round's opposing phase, gone at the round-end tick (no `shT` field exists). Enemy-phase grants survive one tick so they cover exactly one hero phase. Exception: `shieldsPersist` (Mantle Core relic / MANTLE TYRANT rule) keeps shields until broken.
 6. Protocol Bar resets each battle (does NOT carry over).
-7. Frozen dice keep their value and skip the next N reveals (`freezeAnyDice` / `freezeEnemyDice` / `freezeAllEnemyDice`).
+7. **Freeze** (one keyword, identical both sides — former Cower merged in): the die locks in the tray (physical blocker) and the unit **skips its next N reveals** (`freezeAnyDice` / `freezeEnemyDice` / `freezeAllEnemyDice`; hero freezes on enemies cancel the imminent action). Cosmetic `freeze_flavor`: ice (default) / petrify.
+7b. **Ward** (`ward: true`, replaces Counterspell): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only.
 8. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20).
 
 ## Protocol economy (implemented in battle_scene.gd / combat_manager.gd)
@@ -67,17 +68,19 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities). Callsig
 ## Ability eff text syntax (canonical — all abilities in workbook now use this)
 Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. Rules: numbers first, type second, target third, duration last. Target omitted when single enemy (default). Duration omitted when instant.
 - Damage: `12 dmg` · `9 dmg all` · `10 dmg + pierce`
-- DoT: `4 dot 3t` (amount, keyword, turns; turns omitted if 1)
+- Burn (the single universal DoT name): `4 burn 3t` (amount, keyword, turns; turns omitted if 1)
 - Heal: `8 heal ally` · `13 heal all` · `11 heal lowest`
-- Shield: `9 shield ally` · `14 shield all 2t`
+- Shield (always one round, no duration suffix): `ally 9 shield` · `all 14 shield` · `lowest 7 shield`
 - Roll effects: `+3 roll ally` · `-2 roll all enemies 2t` · `+1 roll self 2t`
 - Protocol: `+2 protocol`
-- Status: `freeze any die 1 skip` · `cloak` · `taunt` · `counterspell 40%` · `rampage +1`
-- Combo: `8 dmg + 4 dot 2t` · `6 dmg all + -2 roll all enemies`
+- Status: `freeze (1 reveal skip)` · `freeze all (2 reveal skips)` · `cloak` · `self ward` · `ally ward` · `taunt` · `rampage +1`
+- Combo: `8 dmg + 4 burn 2t` · `6 dmg all + -2 roll all enemies`
 - Phase 2 bosses: `19 dmg (P2: 26)` · `wipe shields` · `summon 40%`
 
 ### Ability field glossary (data keys)
-`dmg` direct damage · `dot`+`dT` damage-over-time amount + turns · `heal` (+`healTgt`/`healAll`/`healLowest`) · `shield`+`shT` (+`shieldAll`/`shTgt`) · `rfe`+`rfT` enemy roll reduction + turns (+`rfeAll`) · `rfm`+`rfmT` ally roll buff (+`rfmTgt`) · `ignSh` pierce shields · `blastAll` hit all enemies · `cloak` · `taunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` N reveals.
+`dmg` direct damage · `burn`+`burnT` damage-over-time amount + turns · `heal` (+`healTgt`/`healAll`/`healLowest`) · `shield` (+`shieldAll`/`shTgt`/`shieldLowest`; one round, no duration field) · `rfe`+`rfT` enemy roll reduction + turns (+`rfeAll`) · `rfm`+`rfmT` ally roll buff (+`rfmTgt`) · `ignSh` pierce shields · `blastAll` hit all enemies · `cloak` · `ward` (+`wardTgt`) · `taunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` N reveal skips (+ cosmetic `freeze_flavor`: ice/petrify).
+
+**Targeting rule (enforced by audit_ability_keywords.py):** max ONE manually-picked component per hero ability; everything else auto-targets self / all / lowest. Components sharing a pick (dmg+burn+freeze on one enemy; healTgt+shTgt+rfmTgt+wardTgt on one ally) count once.
 
 ---
 
@@ -99,7 +102,7 @@ AI types seen: `dumb` (and others per unit). Enemies don't use Protocol. Some ha
 
 ## Rewards (all COMPLETE)
 
-- **Consumables** (`items.data.json`): 37 items, rarities common→legendary. Types: `heal`, `shield`, `rollBuff`, `revive`, `cloak`/`cloakAll`, `enemyRfe`, `enemyDmg`, `enemyBurn`, `xpBoost`, `enemyRerollDie`/`enemyRerollAll`, `enemyDieFreeze`.
+- **Consumables** (`items.data.json`): 34 items, rarities common→legendary. Types: `heal`, `shield`, `rollBuff`, `revive`, `cloak`/`cloakAll`, `ward`, `enemyRfe`, `enemyDmg`, `enemyBurn`, `enemyRerollDie`/`enemyRerollAll`, `enemyDieFreeze`. (XP consumables removed in pkg1.5.)
 - **Gear** (`gear.data.json`): 10 passives (rollBonus, battleStartShield, maxHpBonus, burnDmgBonus, battleStartCloak, healOnKill, protocolOnBattleStart, surviveOnce, firstAbilityDmgBonus, dmgReduction).
 - **Relics** (`relics.data.json`): 13 run-modifiers (Iron Curtain, Opening Gambit, Bulwark Aura, Nanite Field, Plague Protocol, Overcharge, Signal Jam, Coordinated Strike, Resonance Cascade, Gravity Well, Protocol Override, Entropy Leak, Chain Reaction).
 

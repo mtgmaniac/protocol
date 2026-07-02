@@ -254,12 +254,12 @@ aggregation lives in `battle_card_view.compute_preview_for_unit()`; the
 projection/paint lives in `compact_unit_card._layout_preview_overlays()`:
 
 - projects the round in true resolution order: hero heals/shields → enemy
-  damage → poison tick (damage and poison both drain shields before HP)
-- zones: red = net loss (purple lead slice = unshielded poison), mint = net
+  damage → burn tick (damage and burn both drain shields before HP)
+- zones: red = net loss (purple lead slice = unshielded burn), mint = net
   gain, blue = loss the shield prevents (counterfactual); lethal = whole fill
 - label shows `cur → final / max` while a net-changing preview is active
-- the poison tick amount is single-sourced from
-  `combat_manager.get_expected_dot_tick()` — never re-derive it in UI code
+- the burn tick amount is single-sourced from
+  `combat_manager.get_expected_burn_tick()` — never re-derive it in UI code
 - the resolution-feedback chip (`_hp_chip` / `forecast_hp`) is hidden while a
   preview is active; the two systems must not both paint
 
