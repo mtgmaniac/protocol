@@ -11,3 +11,6 @@ extends Resource
 @export_multiline var description: String = ""
 @export var icon: Texture2D
 @export var effect: Dictionary = {}
+## Boss relics never appear in the battle-5 relic draft; they unlock via first
+## operation clears (pkg5) and can be taken as a Starting Directive.
+@export var boss_relic: bool = false

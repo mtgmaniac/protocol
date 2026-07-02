@@ -23,6 +23,8 @@ var unit_evolutions: Dictionary = {}
 var pending_evolution_unit_id: String = ""
 var deferred_evolution_unit_ids: Array = []
 var carried_protocol: int = 0
+## Dead Man's Hand relic: the first squad wipe each RUN is survived at 1 HP.
+var dead_mans_hand_used: bool = false
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
@@ -79,6 +81,7 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	pending_evolution_unit_id = ""
 	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
+	dead_mans_hand_used = false
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
 	for unit_id in selected_units:
@@ -453,10 +456,17 @@ func _roll_reward_item_ids() -> Array:
 
 func _roll_relic_choice_ids(count: int) -> Array:
 	var chosen: Array = []
+	var excluded: Array = []
 	while chosen.size() < count:
-		var relic_id: String = _pick_random_item_id("relic", chosen)
+		var relic_id: String = _pick_random_item_id("relic", chosen + excluded)
 		if relic_id == "":
 			break
+		# Boss relics never appear in the battle-5 draft — they unlock via
+		# first operation clears (pkg5 Starting Directive).
+		var relic_item: ItemData = DataManager.get_item(relic_id) as ItemData
+		if relic_item != null and relic_item.boss_relic:
+			excluded.append(relic_id)
+			continue
 		chosen.append(relic_id)
 	return chosen
 

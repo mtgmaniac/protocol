@@ -38,6 +38,8 @@ const PHASE_READY_TO_END := "ready_to_end"
 const PHASE_REROLL_PICK := "reroll_pick"
 const PHASE_NUDGE_PICK := "nudge_pick"
 const PHASE_SET_PICK := "set_pick"
+const PHASE_TWIN_SOURCE_PICK := "twin_source_pick"
+const PHASE_TWIN_TARGET_PICK := "twin_target_pick"
 const SET_DIE_COST := 3
 const PHASE_ITEM_PICK_ALLY := "item_pick_ally"
 const PHASE_ITEM_PICK_DEAD := "item_pick_dead"
@@ -211,6 +213,8 @@ func _ready() -> void:
 	_attach_protocol_inspect(protocol_spend_button, "reroll")
 	_add_nudge_button()
 	_add_set_button()
+	if _game_state().has_relic_effect("twinFates"):
+		_add_twin_fates_button()
 	_build_item_panel()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
 	board.move_child(enemy_panel, 0)
@@ -250,7 +254,7 @@ func _on_return_to_menu_button_pressed() -> void:
 func _on_auto_turn_button_pressed() -> void:
 	if _auto_turn_running or _auto_battle_running or battle_over:
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
@@ -274,7 +278,7 @@ func _on_auto_battle_button_pressed() -> void:
 	if battle_over:
 		_on_open_reward_button_pressed()
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the battle.")
 		return
 
@@ -490,6 +494,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
 	if _game_state().tutorial_mode:
 		_apply_tutorial_dice_rig()
+	_apply_roll_relic_overrides(skip_dice_visuals)
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
 	_apply_post_roll_gear_effects()
@@ -816,8 +821,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	_append_round_log(result.get("log", []))
 	var protocol_grant: int = combat_manager.take_pending_protocol_grants()
 	if protocol_grant > 0:
-		protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
-		_update_protocol_bar()
+		_gain_protocol(protocol_grant)
 		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
 	var protocol_drain: int = combat_manager.take_pending_protocol_drain()
 	if protocol_drain > 0:
@@ -868,9 +872,9 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		if _try_finish_battle_from_current_state():
 			return
 		# Gain +1 PP at end of each resolved round (ongoing only)
-		protocol_points = mini(protocol_points + 1, MAX_PROTOCOL)
-		_update_protocol_bar()
+		_gain_protocol(1)
 		_append_log("Protocol +1 → %d" % protocol_points)
+		_round_number += 1
 		_set_turn_phase(PHASE_AWAIT_ROLL)
 		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
 
@@ -1112,6 +1116,27 @@ func _apply_reroll(hero_id: String) -> void:
 	_finish_roll_modifier_pick()
 
 
+# Central protocol gain: caps at MAX_PROTOCOL; the Overflow Vent relic turns
+# every point past the cap into 2 damage to a random living enemy.
+func _gain_protocol(amount: int) -> void:
+	if amount <= 0:
+		return
+	var overflow: int = maxi(0, protocol_points + amount - MAX_PROTOCOL)
+	protocol_points = mini(protocol_points + amount, MAX_PROTOCOL)
+	_update_protocol_bar()
+	if overflow > 0 and combat_manager.has_relic("protocolOverflowDamage"):
+		var per_point: int = 2
+		for _i in overflow:
+			var living: Array = combat_manager.get_enemy_states().filter(func(s): return not bool(s["dead"]))
+			if living.is_empty():
+				break
+			var vent_target: Dictionary = living[randi() % living.size()]
+			combat_manager.apply_item_damage(vent_target, per_point)
+			_append_log("Overflow Vent: %d damage to %s." % [per_point, vent_target["unit"].display_name])
+		if _card_view != null:
+			_card_view.refresh_all_cards()
+
+
 func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
 	for gear_id in _game_state().gear_by_unit.get(hero_id, []):
 		var item: ItemData = DataManager.get_item(str(gear_id)) as ItemData
@@ -1122,6 +1147,39 @@ func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
 
 # Priming Charge gear: the first Nudge each battle is free (per holder).
 var _free_nudge_used: Dictionary = {}
+
+# Round counter (1-based) for turn-scoped relics (Resonant Chorus).
+var _round_number: int = 1
+
+# Root Access boss relic: once per battle, Set costs 0.
+var _root_access_used: bool = false
+
+# Twin Fates relic: once per battle, copy one hero die's result to another.
+var _twin_fates_used: bool = false
+var _twin_fates_source_id: String = ""
+
+
+# Vengeance Protocol / Dead Man's Hand (forced natural 20s) and Resonant
+# Chorus (turn-1 dice can't land below 8) — raw-roll overrides at roll time.
+func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
+	var chorus_floor: bool = combat_manager.has_relic("turn1RollFloor") and _round_number == 1
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var hero_id: String = str(hero_state["id"])
+		var changed: bool = false
+		if bool(hero_state.get("forced_nat20_pending", false)):
+			hero_state["forced_nat20_pending"] = false
+			hero_rolls[hero_id] = 20
+			changed = true
+			_append_log("%s rolls a forced NATURAL 20!" % hero_id)
+		elif chorus_floor and int(hero_rolls.get(hero_id, 0)) > 0 and int(hero_rolls.get(hero_id, 0)) < 8:
+			hero_rolls[hero_id] = 8
+			changed = true
+			_append_log("Resonant Chorus: %s's die is lifted to 8." % hero_id)
+		if changed and dice_tray_3d != null and not skip_dice_visuals:
+			dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
 
 
 func _get_nudge_cost(hero_id: String) -> int:
@@ -1180,8 +1238,7 @@ func _apply_post_roll_gear_effects() -> void:
 		var hero_id: String = str(hero_state["id"])
 		var raw_roll: int = int(hero_rolls.get(hero_id, 0))
 		if raw_roll == 20 and _hero_has_gear_effect(hero_id, "protocolOnNat20"):
-			protocol_points = mini(protocol_points + 2, MAX_PROTOCOL)
-			_update_protocol_bar()
+			_gain_protocol(2)
 			_append_log("Overload Capacitor: natural 20 → +2 Protocol.")
 	var synced_ids: Dictionary = {}
 	for hero_state_variant in hero_states:
@@ -1238,12 +1295,19 @@ func _has_nudgeable_hero() -> bool:
 	return false
 
 
+# Root Access boss relic: once per battle, Set costs 0.
+func _get_set_cost() -> int:
+	if combat_manager.has_relic("setCostZeroOncePerBattle") and not _root_access_used:
+		return 0
+	return SET_DIE_COST
+
+
 func _on_set_button_pressed() -> void:
 	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
 		if hero_rolls.is_empty():
 			_refresh_summary("Roll dice before using Set.")
 		return
-	if protocol_points < SET_DIE_COST:
+	if protocol_points < _get_set_cost():
 		_refresh_summary("Need %d Protocol to Set." % SET_DIE_COST)
 		return
 	AudioManager.play_select()
@@ -1285,6 +1349,61 @@ func _add_set_button() -> void:
 	_set_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
+
+
+# Twin Fates relic: once per battle, copy one hero die's result to another,
+# free. Two-tap flow: pick the source die, then the target die.
+var _twin_fates_button: Button = null
+
+
+func _add_twin_fates_button() -> void:
+	var btn: Button = Button.new()
+	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
+	btn.pressed.connect(_on_twin_fates_button_pressed)
+	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
+	_twin_fates_button = btn
+	protocol_spend_button.get_parent().add_child(btn)
+	protocol_spend_button.get_parent().move_child(btn, _set_button.get_index() + 1)
+
+
+func _on_twin_fates_button_pressed() -> void:
+	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
+		if hero_rolls.is_empty():
+			_refresh_summary("Roll dice before using Twin Fates.")
+		return
+	if _twin_fates_used:
+		_refresh_summary("Twin Fates was already spent this battle.")
+		return
+	AudioManager.play_select()
+	_twin_fates_source_id = ""
+	_set_turn_phase(PHASE_TWIN_SOURCE_PICK)
+	_refresh_summary("Twin Fates: tap the die to copy FROM.")
+
+
+# Pure state core of Twin Fates: copy the source die's result onto the target
+# die (clearing its pending nudge/set) and burn the once-per-battle use.
+func _twin_fates_copy_roll(source_id: String, target_id: String) -> bool:
+	var source_roll: int = int(hero_rolls.get(source_id, 0))
+	if source_roll <= 0:
+		return false
+	_twin_fates_used = true
+	hero_rolls[target_id] = source_roll
+	hero_roll_nudges.erase(target_id)
+	hero_roll_sets.erase(target_id)
+	return true
+
+
+func _apply_twin_fates(source_id: String, target_id: String) -> void:
+	if not _twin_fates_copy_roll(source_id, target_id):
+		_finish_roll_modifier_pick()
+		return
+	_append_log("Twin Fates: %s's die copies %s's %d." % [target_id, source_id, int(hero_rolls.get(target_id, 0))])
+	var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
+	if dice_tray_3d != null and not target_state.is_empty():
+		dice_tray_3d.update_die_result_in_place("hero", target_id, _get_effective_roll_for_state(target_state, target_id))
+	_re_assign_hero_target(target_id)
+	_refresh_dice_result_actions()
+	_finish_roll_modifier_pick()
 
 
 # Set-pick: the player tapped a hero die; open the thumb-draggable value popup for it,
@@ -1490,7 +1609,11 @@ func _close_set_value_popup() -> void:
 
 
 func _apply_set(hero_id: String, value: int) -> void:
-	protocol_points -= SET_DIE_COST
+	var set_cost: int = _get_set_cost()
+	if set_cost == 0:
+		_root_access_used = true
+		_append_log("Root Access: free Set.")
+	protocol_points -= set_cost
 	hero_roll_sets[hero_id] = value
 	hero_roll_nudges.erase(hero_id)  # an explicit set overrides any prior nudge
 	_update_protocol_bar()
@@ -1670,6 +1793,8 @@ func _ensure_protocol_segments() -> void:
 
 
 func _update_protocol_bar() -> void:
+	if protocol_bar == null:
+		return
 	protocol_bar.max_value = MAX_PROTOCOL
 	protocol_bar.value = protocol_points
 	_ensure_protocol_segments()
@@ -1869,6 +1994,16 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.disabled = true
 			roll_button.text = ""
 			_refresh_summary("Tap a hero die to set its value.")
+		PHASE_TWIN_SOURCE_PICK:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("Twin Fates: tap the die to copy FROM.")
+		PHASE_TWIN_TARGET_PICK:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("Twin Fates: tap the die to copy TO.")
 		PHASE_ITEM_PICK_ALLY:
 			roll_button.visible = false
 			roll_button.disabled = true
@@ -2373,7 +2508,7 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return false
 
 	# Reroll/Set pick phases: only living hero cards that have rolled
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_SET_PICK:
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
 	if turn_phase == PHASE_NUDGE_PICK:
 		return accent_color == HERO_ACCENT and _can_nudge_hero(state)
@@ -2475,6 +2610,18 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
 		return
+	if turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
+		var twin_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
+		if twin_state.is_empty() or bool(twin_state["dead"]) or not _has_roll_for_state(hero_rolls, twin_state):
+			return
+		AudioManager.play_select()
+		if turn_phase == PHASE_TWIN_SOURCE_PICK:
+			_twin_fates_source_id = target_id
+			_set_turn_phase(PHASE_TWIN_TARGET_PICK)
+			_refresh_summary("Twin Fates: tap the die to copy TO.")
+		elif target_id != _twin_fates_source_id:
+			_apply_twin_fates(_twin_fates_source_id, target_id)
+		return
 
 	if _in_item_phase():
 		# Tapping a legal ally target applies the item; tapping any other unit/die cancels it
@@ -2519,6 +2666,8 @@ func _append_round_log(entries: Array) -> void:
 
 
 func _append_log(message: String) -> void:
+	if battle_log_label == null:
+		return
 	if battle_log_label.text == "":
 		battle_log_label.text = message
 	else:
@@ -2893,7 +3042,7 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	protocol_points = maxi(protocol_points - cost, 0)
 	# Protocol Override: using an item refunds +1 Protocol (net +1, since cost is 0).
 	if combat_manager.has_relic("protocolOnItemUse"):
-		protocol_points = mini(protocol_points + 1, MAX_PROTOCOL)
+		_gain_protocol(1)
 		_append_log("Protocol Override: +1 Protocol → %d" % protocol_points)
 
 	var effect: Dictionary = item.effect
@@ -2953,8 +3102,7 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			_append_log("Item: %s applies %d burn to %s for %d turns." % [item.display_name, amount, tname, turns])
 		"gainProtocol":
 			var protocol_grant: int = int(effect.get("amount", 0))
-			protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
-			_update_protocol_bar()
+			_gain_protocol(protocol_grant)
 			_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
 		"enemyRerollDie":
 			if not target_state.is_empty():

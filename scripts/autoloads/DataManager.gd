@@ -407,6 +407,7 @@ func _build_item_resource(item_entry: Dictionary, item_type: String) -> ItemData
 	item.target_kind = str(item_entry.get("target", "none"))
 	item.description = str(item_entry.get("desc", ""))
 	item.effect = item_entry.get("effect", {}).duplicate(true)
+	item.boss_relic = bool(item_entry.get("bossRelic", false))
 	var icon_path: String = ""
 	if item.item_type == "relic":
 		icon_path = str(RELIC_ICON_BY_ID.get(item.id, ""))

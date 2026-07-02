@@ -443,6 +443,7 @@ func _run_regression_audits() -> void:
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
 	_run_new_gear_regressions()
+	_run_new_relic_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1193,6 +1194,176 @@ func _run_new_gear_regressions() -> void:
 	_expect_and_record("Regression / gear targetingOptic marks first enemy", "battleStartMark", "true", str(bool(optic_manager.get_enemy_states()[0].get("marked", false))))
 
 
+func _run_new_relic_regressions() -> void:
+	# Static Field: enemy dice jammed (cap 12) on turn 1.
+	var static_manager: CombatManager = CombatManager.new()
+	static_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	static_manager.setup_relics(["staticField"])
+	static_manager.apply_battle_start_relic_effects(0)
+	var static_enemy: Dictionary = static_manager.get_enemy_states()[0]
+	_expect_and_record("Regression / relic staticField turn-1 jam", "battleStartJamEnemies", "12", str(static_manager.get_effective_roll(static_enemy, 18)))
+
+	# Mantle Core: hero shields persist flag set at battle start.
+	var mantle_manager: CombatManager = CombatManager.new()
+	mantle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	mantle_manager.setup_relics(["mantleCore"])
+	mantle_manager.apply_battle_start_relic_effects(0)
+	_expect_and_record("Regression / relic mantleCore persist flag", "shieldsPersist", "true", str(bool(mantle_manager.get_hero_states()[0].get("shields_persist", false))))
+
+	# Cold Logic: +4 damage against an enemy with a frozen die.
+	var cold_manager: CombatManager = CombatManager.new()
+	cold_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	cold_manager.setup_relics(["coldLogic"])
+	var cold_hero: Dictionary = cold_manager.get_hero_states()[0]
+	var cold_enemy: Dictionary = cold_manager.get_enemy_states()[0]
+	cold_enemy["die_freeze_turns"] = 1
+	cold_enemy["frozen_die_value"] = 5
+	cold_hero["selected_target_id"] = str(cold_enemy["id"])
+	var cold_before: int = int(cold_enemy["current_hp"])
+	cold_manager.resolve_round({str(cold_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic coldLogic +4 vs frozen", "frozenBonusDamage", "14", str(cold_before - int(cold_enemy["current_hp"])))
+
+	# Salvage Rig: +1 Protocol when an enemy shield fully breaks.
+	var rig_manager: CombatManager = CombatManager.new()
+	rig_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	rig_manager.setup_relics(["salvageRig"])
+	var rig_hero: Dictionary = rig_manager.get_hero_states()[0]
+	var rig_enemy: Dictionary = rig_manager.get_enemy_states()[0]
+	rig_enemy["shield_stacks"] = [{"amt": 4, "skip_next_tick": true}]
+	rig_enemy["shield"] = 4
+	rig_hero["selected_target_id"] = str(rig_enemy["id"])
+	rig_manager.resolve_round({str(rig_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic salvageRig shield break", "protocolOnShieldBreak", "1", str(rig_manager.take_pending_protocol_grants()))
+
+	# Chitin Graft: the killer heals 3 on its kill.
+	var graft_manager: CombatManager = CombatManager.new()
+	graft_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	graft_manager.setup_relics(["chitinGraft"])
+	var graft_hero: Dictionary = graft_manager.get_hero_states()[0]
+	var graft_enemy: Dictionary = graft_manager.get_enemy_states()[0]
+	graft_hero["current_hp"] = 30
+	graft_hero["selected_target_id"] = str(graft_enemy["id"])
+	graft_manager.resolve_round({str(graft_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic chitinGraft heal on kill", "heroHealOnOwnKill", "33", str(int(graft_hero["current_hp"])))
+
+	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
+	var directive_manager: CombatManager = CombatManager.new()
+	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	directive_manager.setup_relics(["salvageDirective"])
+	var directive_hero: Dictionary = directive_manager.get_hero_states()[0]
+	var directive_enemy: Dictionary = directive_manager.get_enemy_states()[0]
+	directive_enemy["marked"] = true
+	directive_hero["selected_target_id"] = str(directive_enemy["id"])
+	directive_manager.resolve_round({str(directive_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic salvageDirective marked kill", "protocolOnMarkedKill", "2", str(directive_manager.take_pending_protocol_grants()))
+
+	# Chain Doctrine: Chains jump one extra time.
+	var doctrine_manager: CombatManager = CombatManager.new()
+	doctrine_manager.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Arc Whip", {"dmg": 10, "chain": 1})],
+		[_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B"), _make_enemy("audit_enemy_c", "Audit Enemy C")]
+	)
+	doctrine_manager.setup_relics(["chainDoctrine"])
+	var doctrine_states: Array = doctrine_manager.get_enemy_states()
+	var doc_a: Dictionary = doctrine_states[0]
+	var doc_b: Dictionary = doctrine_states[1]
+	var doc_c: Dictionary = doctrine_states[2]
+	var doctrine_hero: Dictionary = doctrine_manager.get_hero_states()[0]
+	doctrine_hero["selected_target_id"] = str(doc_a["id"])
+	doc_b["current_hp"] = 60
+	doc_c["current_hp"] = 90
+	doctrine_manager.resolve_round({str(doctrine_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var doctrine_ok: bool = int(doc_b["current_hp"]) == 54 and int(doc_c["current_hp"]) == 84
+	_expect_and_record("Regression / relic chainDoctrine extra jump", "chainExtraJump", "true", str(doctrine_ok))
+
+	# Dead Man's Hand: the first squad wipe survives at 1 HP with forced 20s.
+	var hand_manager: CombatManager = CombatManager.new()
+	hand_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "Crush", {"dmg": 500})])
+	hand_manager.setup_relics(["deadMansHand"])
+	var hand_hero: Dictionary = hand_manager.get_hero_states()[0]
+	var hand_enemy: Dictionary = hand_manager.get_enemy_states()[0]
+	hand_enemy["selected_target_id"] = str(hand_hero["id"])
+	var saved_hand_flag: bool = GameState.dead_mans_hand_used
+	GameState.dead_mans_hand_used = false
+	hand_manager.resolve_round({}, {str(hand_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var hand_ok: bool = not bool(hand_hero["dead"]) and int(hand_hero["current_hp"]) == 1 and bool(hand_hero.get("forced_nat20_pending", false)) and GameState.dead_mans_hand_used
+	GameState.dead_mans_hand_used = saved_hand_flag
+	_expect_and_record("Regression / relic deadMansHand survives wipe", "squadWipeSurvive", "true", str(hand_ok))
+
+	# Scavenger Manifest: the first kill each battle drops a consumable.
+	var manifest_manager: CombatManager = CombatManager.new()
+	manifest_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	manifest_manager.setup_relics(["scavengerManifest"])
+	var manifest_hero: Dictionary = manifest_manager.get_hero_states()[0]
+	manifest_hero["selected_target_id"] = str(manifest_manager.get_enemy_states()[0]["id"])
+	var saved_consumables: Array = GameState.consumables.duplicate()
+	GameState.consumables.clear()
+	manifest_manager.resolve_round({str(manifest_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var manifest_count: int = GameState.consumables.size()
+	GameState.consumables = saved_consumables
+	_expect_and_record("Regression / relic scavengerManifest first-kill drop", "firstKillDropsConsumable", "1", str(manifest_count))
+
+	# Standing Order: crit bands extend 1 down (via the DiceManager overrides).
+	var order_dm: DiceManager = DiceManager.new()
+	var order_pulse: UnitData = DataManager.get_unit("pulse") as UnitData
+	if order_pulse != null:
+		var saved_relics: Array = GameState.relics.duplicate()
+		GameState.relics = ["standingOrder"]
+		var order_zone: String = str(order_dm.get_ability_for_roll(order_pulse, 15).get("zone", ""))
+		GameState.relics = saved_relics
+		_expect_and_record("Regression / relic standingOrder crit extends down", "critBandExtend", "crit", order_zone)
+
+	# Root Access: the first Set each battle costs 0 (battle_scene cost path).
+	var root_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if root_scene != null:
+		root_scene.combat_manager.setup_relics(["rootAccess"])
+		var root_cost: int = int(root_scene.call("_get_set_cost"))
+		root_scene.free()
+		_expect_and_record("Regression / relic rootAccess free set", "setCostZeroOncePerBattle", "0", str(root_cost))
+
+	# Twin Fates: the copy core clones the source die and clears pending mods.
+	var twin_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if twin_scene != null:
+		twin_scene.hero_rolls = {"hero_a": 17, "hero_b": 4}
+		twin_scene.hero_roll_nudges = {"hero_b": 1}
+		twin_scene.hero_roll_sets = {"hero_b": 12}
+		var twin_copied: bool = bool(twin_scene.call("_twin_fates_copy_roll", "hero_a", "hero_b"))
+		var twin_ok: bool = (
+			twin_copied
+			and int(twin_scene.hero_rolls.get("hero_b", 0)) == 17
+			and not twin_scene.hero_roll_nudges.has("hero_b")
+			and not twin_scene.hero_roll_sets.has("hero_b")
+			and bool(twin_scene.get("_twin_fates_used"))
+		)
+		twin_scene.free()
+		_expect_and_record("Regression / relic twinFates copy", "twinFates", "true", str(twin_ok))
+
+	# Overflow Vent: protocol past the cap deals 2 damage per point to an enemy.
+	var vent_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if vent_scene != null:
+		var vent_mgr: CombatManager = vent_scene.combat_manager
+		vent_mgr.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+		vent_mgr.setup_relics(["overflowVent"])
+		vent_scene.protocol_points = int(vent_scene.get("MAX_PROTOCOL"))
+		vent_scene.call("_gain_protocol", 2)
+		var vent_hp: int = int(vent_mgr.get_enemy_states()[0]["current_hp"])
+		vent_scene.free()
+		_expect_and_record("Regression / relic overflowVent overflow damage", "protocolOverflowDamage", "96", str(vent_hp))
+
+	# Resonant Chorus: turn-1 dice below 8 are lifted to 8.
+	var chorus_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if chorus_scene != null:
+		var chorus_mgr: CombatManager = chorus_scene.combat_manager
+		chorus_mgr.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+		chorus_mgr.setup_relics(["resonantChorus"])
+		var chorus_id: String = str(chorus_mgr.get_hero_states()[0]["id"])
+		chorus_scene.hero_rolls = {chorus_id: 3}
+		chorus_scene.call("_apply_roll_relic_overrides")
+		var chorus_roll: int = int(chorus_scene.hero_rolls.get(chorus_id, 0))
+		chorus_scene.free()
+		_expect_and_record("Regression / relic resonantChorus turn-1 floor", "turn1RollFloor", "8", str(chorus_roll))
+
+
 func _run_shield_lowest_regression() -> void:
 	# shieldLowest auto-targets the lowest-HP living ally — no manual pick.
 	var context: Dictionary = _build_context({"shield": 7, "shieldLowest": true}, "Shield Lowest Regression")
@@ -1448,17 +1619,17 @@ func _run_relic_ally_death_heal_regression() -> void:
 	var enemy: Dictionary = manager.get_enemy_states()[0]
 	survivor["current_hp"] = 90
 	enemy["selected_target_id"] = str(victim["id"])
-	var survivor_hp_before: int = int(survivor["current_hp"])
 	manager.resolve_round({}, {"audit_enemy#1": AUDIT_ROLL}, DiceManager.new(), {"audit_enemy#1": AUDIT_ROLL})
-	var ok: bool = bool(victim["dead"]) and int(survivor["current_hp"]) == survivor_hp_before + 5
+	# Vengeance Protocol: the survivor's next roll is a forced natural 20.
+	var ok: bool = bool(victim["dead"]) and bool(survivor.get("forced_nat20_pending", false))
 	if ok:
-		_record_pass("Regression / relic allyDeathHealAll", "allyDeathHealAll")
+		_record_pass("Regression / relic vengeanceProtocol", "vengeanceProtocol")
 	else:
 		_record_failure(
-			"Regression / relic allyDeathHealAll",
-			"allyDeathHealAll",
-			"survivor heals 5 when ally dies",
-			"victim_dead=%s survivor_hp=%d" % [str(victim["dead"]), int(survivor["current_hp"])]
+			"Regression / relic vengeanceProtocol",
+			"vengeanceProtocol",
+			"survivor primed for a forced natural 20 when an ally dies",
+			"victim_dead=%s primed=%s" % [str(victim["dead"]), str(survivor.get("forced_nat20_pending", false))]
 		)
 
 
@@ -1472,9 +1643,8 @@ func _run_relic_battle_start_state_regression() -> void:
 	mgr.setup_battle([hero], [enemy])
 	var h: Dictionary = mgr.get_hero_states()[0]
 	var e: Dictionary = mgr.get_enemy_states()[0]
-	var enemy_max_before: int = int(e["max_hp"])
 	mgr.setup_relics(["signalJam", "coordinatedStrike", "plagueProtocol", "entropyLeak"])
-	mgr.apply_battle_start_relic_effects(2)  # battle_index 2 -> entropyLeak removes 10 max HP
+	mgr.apply_battle_start_relic_effects(6)  # battle_index 6 = battle 7 -> entropyLeak: spawn at 85% HP
 
 	_expect_and_record("Regression / relic signalJam perm_rfe", "enemyStartRfe", "2", str(int(e.get("perm_rfe", 0))))
 	_expect_and_record("Regression / relic coordinatedStrike perm_roll_buff", "heroStartRollBuff", "2", str(int(h.get("perm_roll_buff", 0))))
@@ -1485,7 +1655,7 @@ func _run_relic_battle_start_state_regression() -> void:
 	_expect_and_record("Regression / relic signalJam roll total", "enemyStartRfe", "2", str(int(enemy_totals.get("roll_rfe", 0))))
 	_expect_and_record("Regression / relic coordinatedStrike roll total", "heroStartRollBuff", "2", str(int(hero_totals.get("roll_buff", 0))))
 	_expect_and_record("Regression / relic plagueProtocol burn", "enemyBurnPermanent", "3", str(int(e.get("burn", 0))))
-	_expect_and_record("Regression / relic entropyLeak maxhp", "enemyHpEscalation", str(enemy_max_before - 10), str(int(e["max_hp"])))
+	_expect_and_record("Regression / relic entropyLeak spawn hp", "enemyHpEscalation", str(int(e["max_hp"]) * 85 / 100), str(int(e["current_hp"])))
 
 
 # Per-enemy-turn aura relics: bulwarkAura (hero shield), naniteField (hero heal),

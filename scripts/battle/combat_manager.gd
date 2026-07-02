@@ -13,11 +13,20 @@ var _pending_protocol_grants: int = 0
 var _low_hp_squad_buff_used: bool = false
 
 
+# Vengeance Protocol relic: once per battle.
+var _vengeance_used: bool = false
+# Scavenger Manifest relic: the first kill each battle drops a consumable.
+var _scavenger_drop_done: bool = false
+
+
 func setup_battle(hero_units: Array, enemy_units: Array) -> void:
 	_hero_states.clear()
 	_enemy_states.clear()
 	_pending_protocol_grants = 0
 	_low_hp_squad_buff_used = false
+	_vengeance_used = false
+	_scavenger_drop_done = false
+	_pending_protocol_drain = 0
 
 	for hero in hero_units:
 		_hero_states.append(_create_runtime_state(hero))
@@ -123,7 +132,7 @@ func _apply_gear_passive(hero_state: Dictionary, effect: Dictionary) -> void:
 # --- Battle-start relic effects ---
 
 func apply_battle_start_relic_effects(battle_index: int) -> void:
-	# openingGambit: random enemy + random hero take 50% maxHP damage
+	# Opening Salvo: a random enemy loses 50% max HP; a random hero loses 20%.
 	if has_relic("battleStartHalfHp"):
 		var living_enemies = _enemy_states.filter(func(e): return not e["dead"])
 		var living_heroes = _hero_states.filter(func(h): return not h["dead"])
@@ -131,12 +140,25 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			var target_enemy = living_enemies[randi() % living_enemies.size()]
 			var dmg = int(target_enemy["max_hp"]) / 2
 			_damage_state(target_enemy, dmg)
-			_log("Opening Gambit: %s takes %d damage!" % [target_enemy["unit"].display_name, dmg])
+			_log("Opening Salvo: %s takes %d damage!" % [target_enemy["unit"].display_name, dmg])
 		if not living_heroes.is_empty():
 			var target_hero = living_heroes[randi() % living_heroes.size()]
-			var dmg = int(target_hero["max_hp"]) / 2
+			var dmg = int(target_hero["max_hp"]) / 5
 			_damage_state(target_hero, dmg)
-			_log("Opening Gambit: %s takes %d damage!" % [target_hero["unit"].display_name, dmg])
+			_log("Opening Salvo: %s takes %d damage!" % [target_hero["unit"].display_name, dmg])
+
+	# Static Field: enemy dice are Jammed (cap 12) on turn 1 of every battle.
+	if has_relic("battleStartJamEnemies"):
+		for jam_state in _enemy_states:
+			if not jam_state["dead"]:
+				apply_battle_start_jam(jam_state)
+
+	# Mantle Core: your shields persist until broken.
+	if has_relic("shieldsPersist"):
+		for persist_state in _hero_states:
+			persist_state["shields_persist"] = true
+
+	# Resonant Chorus is applied in battle_scene at roll time (turn-1 floor 8).
 
 	# shieldsPersist (Mantle Core): hero shields persist until broken instead of
 	# expiring at round end.
@@ -169,16 +191,15 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 				hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + buff_amt
 				_log("Coordinated Strike: %s permanently at +%d roll." % [hero_state["unit"].display_name, buff_amt])
 
-	# entropyLeak: enemies lose 5 maxHP per battle already cleared
+	# entropyLeak: battles 6+, enemies spawn at 85% HP.
 	if has_relic("enemyHpEscalation"):
-		var reduction_per_battle = int(_get_relic_value("enemyHpEscalation", "reductionPerBattle", 5))
-		var total_reduction = battle_index * reduction_per_battle
-		if total_reduction > 0:
+		var from_battle: int = int(_get_relic_value("enemyHpEscalation", "fromBattle", 6))
+		var hp_pct: int = int(_get_relic_value("enemyHpEscalation", "hpPct", 85))
+		if battle_index + 1 >= from_battle:
 			for enemy_state in _enemy_states:
-				var new_max = maxi(1, int(enemy_state["max_hp"]) - total_reduction)
-				enemy_state["max_hp"] = new_max
-				enemy_state["current_hp"] = mini(int(enemy_state["current_hp"]), new_max)
-				_log("Entropy Leak: %s max HP reduced by %d." % [enemy_state["unit"].display_name, total_reduction])
+				var spawn_hp: int = maxi(1, int(enemy_state["max_hp"]) * hp_pct / 100)
+				enemy_state["current_hp"] = mini(int(enemy_state["current_hp"]), spawn_hp)
+				_log("Entropy Leak: %s spawns at %d%% HP." % [enemy_state["unit"].display_name, hp_pct])
 
 
 # --- Battle-start gear effects ---
@@ -1245,12 +1266,19 @@ func _damage_state(
 	# Mark: the next hit on this target deals +50% (round up), then the Mark is
 	# consumed. Only real attacks (attacker present) consume it — burn ticks and
 	# aura chip damage leave the Mark standing.
+	state["mark_consumed_this_hit"] = false
 	if bool(state.get("marked", false)) and not attacker_state.is_empty():
 		amount = int(ceil(float(amount) * 1.5))
 		state["marked"] = false
 		state["mark_consumed_this_hit"] = true
 		_log("%s's Mark is consumed — the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
 		_emit_event(state, "mark_consumed", amount, _resolve_side_for_state(state))
+
+	# Cold Logic relic: enemies with frozen dice take +4 damage from attacks.
+	if not _is_hero_state(state) and not attacker_state.is_empty() and int(state.get("die_freeze_turns", 0)) > 0 and has_relic("frozenBonusDamage"):
+		var cold_bonus: int = int(_get_relic_value("frozenBonusDamage", "amount", 4))
+		amount += cold_bonus
+		_log("Cold Logic: +%d against the frozen die." % cold_bonus)
 
 	# Spike triggers on any damaging attempt that connects this round; read it
 	# before the hit possibly downs this unit and clears its statuses.
@@ -1283,8 +1311,14 @@ func _damage_state(
 		for stack in stacks:
 			if int(stack["amt"]) > 0:
 				surviving_stacks.append(stack)
+		var shield_before_hit: int = int(state.get("shield", 0))
 		state["shield_stacks"] = surviving_stacks
 		state["shield"] = _get_total_shield(state)
+		# Salvage Rig (boss relic): +1 Protocol when an enemy shield fully breaks.
+		if shield_before_hit > 0 and int(state["shield"]) == 0 and not _is_hero_state(state) and has_relic("protocolOnShieldBreak"):
+			var rig_grant: int = int(_get_relic_value("protocolOnShieldBreak", "amount", 1))
+			_pending_protocol_grants += rig_grant
+			_log("Salvage Rig: +%d Protocol for shattering the shield." % rig_grant)
 
 	if total_absorbed > 0:
 		_log("%s absorbs %d damage with shields." % [state["unit"].display_name, total_absorbed])
@@ -1332,6 +1366,16 @@ func _damage_state(
 			_cancel_targets_involving_down_state(state)
 			_log("%s is down." % state["unit"].display_name)
 			_on_unit_killed(state, attacker_state)
+			# Dead Man's Hand relic: the first squad wipe each run — everyone
+			# survives at 1 HP and the next roll is all natural 20s.
+			if _is_hero_state(state) and _all_states_dead(_hero_states) and has_relic("squadWipeSurvive") and not GameState.dead_mans_hand_used:
+				GameState.dead_mans_hand_used = true
+				_log("DEAD MAN'S HAND — the squad refuses to fall!")
+				for hero_state in _hero_states:
+					hero_state["dead"] = false
+					hero_state["current_hp"] = 1
+					hero_state["forced_nat20_pending"] = true
+					_emit_event(hero_state, "survive", 1, "hero")
 
 	return remaining_damage
 
@@ -1452,13 +1496,14 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 		return
 	_chain_reaction_active = true
 
-	if has_relic("allyDeathHealAll") and _is_hero_state(dead_state):
-		var heal_amount: int = int(_get_relic_value("allyDeathHealAll", "amount", 0))
-		if heal_amount > 0:
-			for hero_state in _hero_states:
-				if hero_state != dead_state and not hero_state["dead"]:
-					_heal_state(hero_state, heal_amount, {})
-			_log("Martyrdom Protocol heals the squad for %d." % heal_amount)
+	# Vengeance Protocol: when an ally falls, the surviving squad's next roll
+	# is all natural 20s (once per battle).
+	if has_relic("vengeanceProtocol") and _is_hero_state(dead_state) and not _vengeance_used:
+		_vengeance_used = true
+		for hero_state in _hero_states:
+			if hero_state != dead_state and not hero_state["dead"]:
+				hero_state["forced_nat20_pending"] = true
+		_log("VENGEANCE PROTOCOL — the squad's next roll is all natural 20s!")
 
 	# Chain Reaction relic: other living enemies take damage when an enemy dies
 	if has_relic("chainReaction") and not _is_hero_state(dead_state):
@@ -1468,7 +1513,13 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 				_damage_state(enemy_state, chain_dmg)
 		_log("Chain Reaction triggers!")
 
-	# Scavenger Rig (gear): heroes with healOnKill heal when any enemy dies
+	# Scavenger Manifest relic: the first kill each battle drops a consumable.
+	if not _is_hero_state(dead_state) and has_relic("firstKillDropsConsumable") and not _scavenger_drop_done:
+		_scavenger_drop_done = true
+		GameState.grant_battle_start_consumables(1)
+		_log("Scavenger Manifest: a consumable drops from the wreck!")
+
+	# Kill Switch (gear): heroes with healOnKill heal when any enemy dies
 	if not _is_hero_state(dead_state):
 		for hero_state in _hero_states:
 			if not hero_state["dead"]:
@@ -1486,6 +1537,16 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 			if protocol_any > 0:
 				_pending_protocol_grants += protocol_any
 				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_any])
+			# Chitin Graft (boss relic): heroes heal 3 on their kills.
+			if has_relic("heroHealOnOwnKill"):
+				var graft_heal: int = int(_get_relic_value("heroHealOnOwnKill", "amount", 3))
+				_heal_state(killer_state, graft_heal, killer_state)
+				_log("Chitin Graft: %s heals %d on the kill." % [killer_state["unit"].display_name, graft_heal])
+			# Salvage Directive: killing a Marked enemy refunds Protocol.
+			if has_relic("protocolOnMarkedKill") and bool(dead_state.get("mark_consumed_this_hit", false)):
+				var refund: int = int(_get_relic_value("protocolOnMarkedKill", "amount", 2))
+				_pending_protocol_grants += refund
+				_log("Salvage Directive: +%d Protocol for downing a Marked target." % refund)
 
 	# Killswitch Relay gear: when this hero dies, deal damage to all enemies.
 	if _is_hero_state(dead_state):
