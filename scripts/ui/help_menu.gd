@@ -635,8 +635,8 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 			tags.append("Heal")
 		if bool(raw.get("blastAll", false)):
 			tags.append("AoE")
-		if int(raw.get("counterspellPct", 0)) > 0:
-			tags.append("Counter")
+		if bool(raw.get("ward", false)):
+			tags.append("Ward")
 		if bool(raw.get("wipeShields", false)):
 			tags.append("Shield Wipe")
 		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0:

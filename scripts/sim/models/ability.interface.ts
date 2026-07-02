@@ -72,7 +72,8 @@ export interface EnemyAbility {
   /** If true, `erb` applies to all living enemies. */
   erbAll?: boolean;
   /** If set and positive, the caster gains a counter buff (% chance to reflect the next hero damage attempt to the attacker). */
-  counterspellPct?: number;
+  /** Ward: blocks the next ability that targets this unit, then breaks. */
+  ward?: boolean;
   /** Add rampage charges to self: next direct hit damage ×2 per charge (consumed one per hit). */
   grantRampage?: number;
   /** Add rampage charges to all living enemies (stampede / pack frenzy). */

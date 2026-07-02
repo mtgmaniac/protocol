@@ -113,6 +113,8 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		entries.append(_status_entry("rfm" if roll_delta > 0 else "roll", "%+d" % roll_delta, 0, _roll_status_text(roll_delta)))
 	if bool(state.get("cloaked", false)):
 		entries.append(_status_entry("cloak", "C", 0, _status_text("cloak", "", 0)))
+	if bool(state.get("warded", false)):
+		entries.append(_status_entry("ward", "W", 0, _status_text("ward", "", 0)))
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", "RA", 0, _status_text("rampage", "", 0)))
 	return entries
@@ -333,9 +335,11 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			else:
 				friendly.append("Increase this enemy's roll by %d%s." % [erb, erb_suffix])
 
-	var counter: int = int(raw.get("counterspellPct", 0))
-	if counter > 0:
-		friendly.append("%d%% chance to counter the next attack." % counter)
+	if bool(raw.get("ward", false)):
+		if bool(raw.get("wardTgt", false)):
+			friendly.append("Ward an ally: blocks the next ability that targets them, then breaks.")
+		else:
+			friendly.append("Gain Ward: blocks the next ability that targets this unit, then breaks.")
 
 	if bool(raw.get("grantRampageAll", false)):
 		friendly.append("Grant Rampage to all enemies.")
@@ -398,8 +402,8 @@ static func _status_keyword(kind: String) -> String:
 			return "TAUNT"
 		"rampage":
 			return "RAMPAGE"
-		"counter":
-			return "COUNTER"
+		"ward":
+			return "WARD"
 	return kind.to_upper()
 
 
@@ -427,8 +431,8 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 			return "Forces enemies to target this unit."
 		"rampage":
 			return "Deals double damage this turn."
-		"counter":
-			return "Primed to reflect the next targeted attack."
+		"ward":
+			return "Blocks the next ability that targets this unit, then breaks."
 	return ""
 
 

@@ -18,14 +18,14 @@ HERO_HANDLED = frozenset({
     "dmg", "dMin", "dMax", "heal", "shield", "blastAll", "healAll", "shieldAll",
     "healLowest", "shTgt", "healTgt", "burn", "burnT", "rfm", "rfmT", "rfmTgt", "ignSh",
     "rfe", "rfT", "rfeAll", "taunt", "revive", "reviveAll", "revivePct", "cloak", "cloakAll",
-    "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol",
+    "ward", "wardTgt", "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol",
 })
 
 ENEMY_HANDLED = frozenset({
     "dmg", "dmgP2", "heal", "shield", "shieldP2", "shieldAlly",
     "shieldAllyAll", "blastAll", "burn", "burnT",
     "packBonus", "lifestealPct", "wipeShields", "rfm", "rfmT", "erb", "erbT", "erbAll",
-    "freezeEnemyDice", "freezeAllEnemyDice", "grantRampage", "grantRampageAll", "counterspellPct",
+    "freezeEnemyDice", "freezeAllEnemyDice", "grantRampage", "grantRampageAll", "ward",
     "curseDice", "enemySelfTaunt", "summonChance", "summonName",
 })
 

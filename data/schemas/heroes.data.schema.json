@@ -98,6 +98,8 @@
         "freezeEnemyDice": { "type": "integer", "minimum": 0 },
         "freezeAnyDice": { "type": "integer", "minimum": 0 },
         "freeze_flavor": { "type": "string", "enum": ["ice", "petrify"] },
+        "ward": { "type": "boolean" },
+        "wardTgt": { "type": "boolean" },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

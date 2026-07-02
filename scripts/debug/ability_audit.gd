@@ -51,9 +51,12 @@ const HERO_HANDLED_FIELDS := [
 	"revivePct",
 	"cloak",
 	"cloakAll",
+	"ward",
+	"wardTgt",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
+	"freeze_flavor",
 	"gainProtocol",
 ]
 
@@ -81,7 +84,7 @@ const ENEMY_HANDLED_FIELDS := [
 	"freeze_flavor",
 	"grantRampage",
 	"grantRampageAll",
-	"counterspellPct",
+	"ward",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",
@@ -411,7 +414,7 @@ func _run_regression_audits() -> void:
 	_run_roll_modifier_timing_regressions()
 	_run_shield_timing_regression()
 	_run_cloak_regression()
-	_run_counter_regressions()
+	_run_ward_regressions()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -650,42 +653,48 @@ func _run_cloak_regression() -> void:
 		_record_failure("Regression / cloak consumed by damage attempt", "cloak", "cloak consumed; HP unchanged or loses incoming damage", "cloaked=%s hp_delta=%d" % [str(hero.get("cloaked", false)), before_hp - after_hp])
 
 
-func _run_counter_regressions() -> void:
-	var targeted_context: Dictionary = _build_context({"dmg": 9}, "Counter Targeted Regression")
+func _run_ward_regressions() -> void:
+	# Ward blocks the next single-target hit entirely, then breaks; the follow-up
+	# hit lands normally.
+	var targeted_context: Dictionary = _build_context({"dmg": 9}, "Ward Targeted Regression")
 	var targeted_manager: CombatManager = targeted_context["manager"]
 	var targeted_actor: Dictionary = targeted_context["actor"]
 	var targeted_enemy: Dictionary = targeted_context["enemy_a"]
 	targeted_actor["selected_target_id"] = str(targeted_enemy["id"])
-	targeted_enemy["counter_pct"] = 100
-	var actor_hp_before: int = int(targeted_actor["current_hp"])
+	targeted_enemy["warded"] = true
 	var enemy_hp_before: int = int(targeted_enemy["current_hp"])
 	targeted_manager.resolve_round({str(targeted_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var targeted_ok: bool = int(targeted_actor["current_hp"]) == actor_hp_before - 9 and int(targeted_enemy["current_hp"]) == enemy_hp_before and int(targeted_enemy["counter_pct"]) == 0
-	if targeted_ok:
-		_record_pass("Regression / counter reflects targeted attack", "counter")
+	var blocked: bool = int(targeted_enemy["current_hp"]) == enemy_hp_before
+	var ward_broken: bool = not bool(targeted_enemy.get("warded", false))
+	targeted_actor["selected_target_id"] = str(targeted_enemy["id"])
+	targeted_manager.resolve_round({str(targeted_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var second_landed: bool = int(targeted_enemy["current_hp"]) == enemy_hp_before - 9
+	if blocked and ward_broken and second_landed:
+		_record_pass("Regression / ward blocks one targeted hit", "ward")
 	else:
-		_record_failure("Regression / counter reflects targeted attack", "counter", "100% counter reflects full targeted damage and clears", "actor_hp=%d enemy_hp=%d counter=%d" % [int(targeted_actor["current_hp"]), int(targeted_enemy["current_hp"]), int(targeted_enemy["counter_pct"])])
+		_record_failure("Regression / ward blocks one targeted hit", "ward", "first hit blocked, ward gone, second hit lands", "blocked=%s broken=%s second=%s hp=%d" % [str(blocked), str(ward_broken), str(second_landed), int(targeted_enemy["current_hp"])])
 
-	var blast_context: Dictionary = _build_context({"dmg": 9, "blastAll": true}, "Counter Blast Regression")
+	# An AoE that includes a warded unit is blocked for that unit only.
+	var blast_context: Dictionary = _build_context({"dmg": 9, "blastAll": true}, "Ward Blast Regression")
 	var blast_manager: CombatManager = blast_context["manager"]
 	var blast_actor: Dictionary = blast_context["actor"]
 	var blast_enemy_a: Dictionary = blast_context["enemy_a"]
 	var blast_enemy_b: Dictionary = blast_context["enemy_b"]
-	blast_enemy_a["counter_pct"] = 100
+	blast_enemy_a["warded"] = true
 	var blast_actor_hp_before: int = int(blast_actor["current_hp"])
 	var blast_enemy_a_hp_before: int = int(blast_enemy_a["current_hp"])
 	var blast_enemy_b_hp_before: int = int(blast_enemy_b["current_hp"])
 	blast_manager.resolve_round({str(blast_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	var blast_ok: bool = (
 		int(blast_actor["current_hp"]) == blast_actor_hp_before
-		and int(blast_enemy_a["current_hp"]) == blast_enemy_a_hp_before - 9
+		and int(blast_enemy_a["current_hp"]) == blast_enemy_a_hp_before
 		and int(blast_enemy_b["current_hp"]) == blast_enemy_b_hp_before - 9
-		and int(blast_enemy_a["counter_pct"]) == 100
+		and not bool(blast_enemy_a.get("warded", false))
 	)
 	if blast_ok:
-		_record_pass("Regression / counter bypassed by blastAll", "counter")
+		_record_pass("Regression / ward blocks AoE for that unit only", "ward")
 	else:
-		_record_failure("Regression / counter bypassed by blastAll", "counter", "blastAll damages enemies without reflecting or clearing counter", "actor_hp=%d enemy_a_delta=%d enemy_b_delta=%d counter=%d" % [int(blast_actor["current_hp"]), blast_enemy_a_hp_before - int(blast_enemy_a["current_hp"]), blast_enemy_b_hp_before - int(blast_enemy_b["current_hp"]), int(blast_enemy_a["counter_pct"])])
+		_record_failure("Regression / ward blocks AoE for that unit only", "ward", "warded unit takes 0 from AoE (ward breaks); other unit takes full damage", "enemy_a_delta=%d enemy_b_delta=%d warded=%s" % [blast_enemy_a_hp_before - int(blast_enemy_a["current_hp"]), blast_enemy_b_hp_before - int(blast_enemy_b["current_hp"]), str(blast_enemy_a.get("warded", false))])
 
 
 func _run_rampage_regression() -> void:
@@ -738,7 +747,7 @@ func _run_down_cleanup_regression() -> void:
 	hero["cloaked"] = true
 	hero["die_freeze_turns"] = 1
 	hero["rampage_charges"] = 1
-	hero["counter_pct"] = 50
+	hero["warded"] = true
 	hero["cursed"] = true
 	hero["taunting"] = true
 	manager.call("_clear_active_statuses_for_down_state", hero)
@@ -749,7 +758,7 @@ func _run_down_cleanup_regression() -> void:
 		and not bool(hero["cloaked"])
 		and int(hero["die_freeze_turns"]) == 0
 		and int(hero["rampage_charges"]) == 0
-		and int(hero["counter_pct"]) == 0
+		and not bool(hero["warded"])
 		and not bool(hero["cursed"])
 		and not bool(hero["taunting"])
 	)
@@ -1398,7 +1407,7 @@ func _run_text_alignment_audits() -> void:
 	# old hover tooltips that used to carry this text in compact_unit_card).
 	var status_text: String = FileAccess.get_file_as_string("res://scripts/ui/inspect_resolver.gd")
 	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak evade text", "contains cloak evade text" if status_text.contains("80% chance to evade the next incoming damage attempt.") else "missing")
-	_expect_and_record("Text alignment / inspect counter text", "text", "contains counter reflect text", "contains counter reflect text" if status_text.contains("reflect the next targeted attack") else "missing")
+	_expect_and_record("Text alignment / inspect ward text", "text", "contains ward block text", "contains ward block text" if status_text.contains("Blocks the next ability that targets this unit") else "missing")
 
 
 func _build_context(raw: Dictionary, ability_name: String) -> Dictionary:

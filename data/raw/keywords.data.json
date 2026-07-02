@@ -66,6 +66,13 @@
       "syntax": "Cloak"
     },
     {
+      "id": "ward",
+      "term": "Ward",
+      "category": "defense",
+      "def": "Blocks the next ability that targets this unit, then breaks. An AoE that includes the unit is blocked for that unit only.",
+      "syntax": "ward"
+    },
+    {
       "id": "taunt",
       "term": "Taunt",
       "category": "control",

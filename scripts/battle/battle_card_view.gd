@@ -81,8 +81,8 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		status_list.append("CURSED")
 	if bool(state.get("taunting", false)):
 		status_list.append("TAUNT")
-	if int(state.get("counter_pct", 0)) > 0:
-		status_list.append("CNTR %d%%" % int(state["counter_pct"]))
+	if bool(state.get("warded", false)):
+		status_list.append("WARD")
 	if bool(state.get("in_phase_two", false)):
 		status_list.append("PHASE 2")
 
@@ -395,6 +395,8 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 
 	if bool(state.get("cloaked", false)):
 		statuses.append(_make_compact_named_status("CLOAK", "", 3))
+	if bool(state.get("warded", false)):
+		statuses.append(_make_compact_named_status("WARD", "", 3))
 	if int(state.get("rampage_charges", 0)) > 0:
 		statuses.append(_make_compact_named_status("RAMPAGE", "%d" % int(state.get("rampage_charges", 0)), 3))
 

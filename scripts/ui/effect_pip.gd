@@ -5,7 +5,7 @@ extends RefCounted
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
 ## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
 
-const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "counter", "rampage", "taunt", "protocol", "tag"]
+const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "ward", "rampage", "taunt", "protocol", "tag"]
 
 const PROFILE_READOUT := {
 	"icon_size": 56,
@@ -67,8 +67,8 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 			text = "C"
 		"taunt":
 			text = "T"
-		"counter":
-			text = "CO"
+		"ward":
+			text = "W"
 		"rampage":
 			text = "RA"
 		"revive":
@@ -220,9 +220,9 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	elif bool(raw.get("revive", false)):
 		_append_effect(effects, "revive", "%d" % revive_pct)
 
-	var counter_pct: int = int(raw.get("counterspellPct", 0))
-	if counter_pct > 0:
-		_append_effect(effects, "counter", "CO", 0, "self")
+	if bool(raw.get("ward", false)):
+		var ward_scope: String = "" if bool(raw.get("wardTgt", false)) else "self"
+		_append_effect(effects, "ward", "W", 0, ward_scope)
 
 	if bool(raw.get("grantRampageAll", false)):
 		_append_effect(effects, "rampage", "RA", 0, "all")

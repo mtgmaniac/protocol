@@ -105,7 +105,7 @@
         "erb": { "type": "integer", "minimum": 0 },
         "erbT": { "type": "integer", "minimum": 1 },
         "erbAll": { "type": "boolean" },
-        "counterspellPct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "ward": { "type": "boolean" },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 1 },

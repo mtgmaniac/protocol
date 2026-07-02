@@ -177,9 +177,8 @@ def enemy_expected(raw: dict) -> str:
     if sc > 0:
         parts.append(f"summon ~{sc}% nat20")
 
-    cp = raw.get("counterspellPct") or 0
-    if cp > 0:
-        parts.append(f"counter C {cp}%")
+    if raw.get("ward"):
+        parts.append("ward")
 
     gr = raw.get("grantRampage") or 0
     if gr > 0:

@@ -372,7 +372,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"die_freeze_turns": 0,
 		"freeze_flavor": "",
 		"rampage_charges": 0,
-		"counter_pct": 0,
+		"warded": false,
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
@@ -447,6 +447,7 @@ func _add_roll_buff(state: Dictionary, amount: int, turns: int) -> void:
 
 
 func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> void:
+	_ability_ward_blocked_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
 	var damage: int = int(raw.get("dmg", 0))
 	var heal: int = int(raw.get("heal", 0))
@@ -514,7 +515,8 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		var burn_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if burn_target.is_empty():
 			burn_target = _first_living_state(_enemy_states)
-		_apply_burn(burn_target, burn_amount, burn_turns)
+		if not _ward_blocks_hostile(burn_target):
+			_apply_burn(burn_target, burn_amount, burn_turns)
 
 	# RFE application (roll debuff on enemies)
 	var rfe_amount: int = int(raw.get("rfe", 0))
@@ -523,13 +525,13 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if rfe_amount > 0:
 		if rfe_all:
 			for enemy_state in _enemy_states:
-				if not enemy_state["dead"]:
+				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state):
 					_add_rfe_stack(enemy_state, rfe_amount, rfe_turns)
 		else:
 			var rfe_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 			if rfe_target.is_empty():
 				rfe_target = _first_living_state(_enemy_states)
-			if not rfe_target.is_empty():
+			if not rfe_target.is_empty() and not _ward_blocks_hostile(rfe_target):
 				_add_rfe_stack(rfe_target, rfe_amount, rfe_turns)
 
 	if bool(raw.get("taunt", false)):
@@ -552,6 +554,16 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			revive_target = _first_dead_state(_hero_states)
 		if not revive_target.is_empty():
 			_revive_state(revive_target, revive_pct)
+
+	# Ward application: self by default, targeted ally with wardTgt.
+	if bool(raw.get("ward", false)):
+		if bool(raw.get("wardTgt", false)):
+			var ward_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
+			if ward_target.is_empty():
+				ward_target = hero_state
+			_apply_ward(ward_target)
+		else:
+			_apply_ward(hero_state)
 
 	# Cloak application
 	if bool(raw.get("cloak", false)):
@@ -576,7 +588,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if freeze_amount > 0:
 		if freeze_all_enemy > 0:
 			for es in _enemy_states:
-				if not es["dead"]:
+				if not es["dead"] and not _ward_blocks_hostile(es):
 					_freeze_die_state(es, freeze_amount, true, freeze_flavor)
 		else:
 			var freeze_target: Dictionary = {}
@@ -588,7 +600,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				freeze_target = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 				if freeze_target.is_empty():
 					freeze_target = _first_living_state(_enemy_states)
-				if not freeze_target.is_empty():
+				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 					_freeze_die_state(freeze_target, freeze_amount, true, freeze_flavor)
 
 	if damage > 0 and bool(hero_state.get("gear_first_ability_echo", false)) and not bool(hero_state.get("gear_first_ability_echo_used", false)):
@@ -614,26 +626,21 @@ func _apply_hero_ability_damage(
 
 	if hits_all:
 		for enemy_state in _enemy_states:
+			if _ward_blocks_hostile(enemy_state):
+				continue
 			_damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
 	else:
 		var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if target_enemy.is_empty():
 			target_enemy = _first_living_state(_enemy_states)
-		if not target_enemy.is_empty():
-			var counter: int = int(target_enemy.get("counter_pct", 0))
-			if counter > 0 and randi_range(1, 100) <= counter:
-				_log("%s COUNTERS %s's attack! Damage reflected!" % [target_enemy["unit"].display_name, hero_state["unit"].display_name])
-				_emit_event(hero_state, "damage", final_dmg, "hero")
-				_damage_state(hero_state, final_dmg, false, {}, 0)
-				target_enemy["counter_pct"] = 0
-			else:
-				target_enemy["counter_pct"] = 0
-				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
-				if burn_amount > 0 and burn_turns > 0:
-					_apply_burn(target_enemy, burn_amount, burn_turns)
+		if not target_enemy.is_empty() and not _ward_blocks_hostile(target_enemy):
+			_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
+			if burn_amount > 0 and burn_turns > 0:
+				_apply_burn(target_enemy, burn_amount, burn_turns)
 
 
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
+	_ability_ward_blocked_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
 	# Phase 2: substitute enhanced damage value when boss has crossed its HP threshold
 	var damage: int = int(raw.get("dmg", 0))
@@ -691,6 +698,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			for hero_state in _hero_states:
 				if bool(hero_state["dead"]):
 					continue
+				if _ward_blocks_hostile(hero_state):
+					continue
 				_damage_state(hero_state, final_damage)
 				_apply_burn(hero_state, burn_amount, burn_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
@@ -705,7 +714,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				target_hero = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 			if target_hero.is_empty():
 				target_hero = _first_living_state(_hero_states)
-			if not target_hero.is_empty():
+			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
 				_damage_state(target_hero, final_damage)
 				_apply_burn(target_hero, burn_amount, burn_turns)
 				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
@@ -722,7 +731,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		var burn_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if burn_target.is_empty():
 			burn_target = _first_living_state(_hero_states)
-		if not burn_target.is_empty():
+		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
 			_apply_burn(burn_target, burn_amount, burn_turns)
 
 	# RFE on heroes (roll debuff from enemies using rfm/rfmT keys)
@@ -732,7 +741,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		var hero_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if hero_target.is_empty():
 			hero_target = _first_living_state(_hero_states)
-		if not hero_target.is_empty():
+		if not hero_target.is_empty() and not _ward_blocks_hostile(hero_target):
 			_add_rfe_stack(hero_target, rfm_amount, rfm_turns)
 
 	# ERB: enemy roll buff
@@ -754,13 +763,13 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var enemy_freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
 	if enemy_freeze_all > 0:
 		for hero_state in _hero_states:
-			if not hero_state["dead"]:
+			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
 				_freeze_die_state(hero_state, enemy_freeze_all, false, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
 		var freeze_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if freeze_target.is_empty():
 			freeze_target = _first_living_state(_hero_states)
-		if not freeze_target.is_empty():
+		if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 			_freeze_die_state(freeze_target, enemy_freeze_one, false, enemy_freeze_flavor)
 
 	# Rampage grants (self or all enemies)
@@ -777,11 +786,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			enemy_state["rampage_charges"] = int(enemy_state.get("rampage_charges", 0)) + charges
 			_log("%s gains %d rampage charge(s)." % [enemy_state["unit"].display_name, charges])
 
-	# Counterspell: chance to reflect the next targeted hero attack.
-	var counter_pct: int = int(raw.get("counterspellPct", 0))
-	if counter_pct > 0:
-		enemy_state["counter_pct"] = counter_pct
-		_log("%s is primed to counter the next targeted attack (%d%%)." % [enemy_state["unit"].display_name, counter_pct])
+	# Ward: block the next ability that targets this enemy, then break.
+	if bool(raw.get("ward", false)):
+		_apply_ward(enemy_state)
 
 	# Curse dice: targeted hero rolls twice and keeps lower next round
 	if bool(raw.get("curseDice", false)):
@@ -941,6 +948,37 @@ func _wipe_all_hero_shields(source_state: Dictionary = {}) -> void:
 		_emit_event(source_state, "wipe_shields", 0, "enemy")
 
 
+# --- Ward ---
+# Ward blocks the next ability that targets this unit, then breaks. It is not
+# damage-based: an AoE that includes the unit is blocked for that unit only.
+# Every hostile component of the SAME ability (damage, burn, debuff, freeze) is
+# negated together via _ability_ward_blocked_ids, which resets per ability.
+var _ability_ward_blocked_ids: Dictionary = {}
+
+
+func _apply_ward(state: Dictionary) -> void:
+	if state.is_empty() or bool(state.get("dead", false)):
+		return
+	state["warded"] = true
+	_log("%s is Warded — the next ability that targets them is blocked." % state["unit"].display_name)
+	_emit_event(state, "ward", 0, _resolve_side_for_state(state))
+
+
+func _ward_blocks_hostile(target_state: Dictionary) -> bool:
+	if target_state.is_empty():
+		return false
+	var target_id: String = str(target_state.get("id", ""))
+	if _ability_ward_blocked_ids.has(target_id):
+		return true
+	if not bool(target_state.get("warded", false)):
+		return false
+	target_state["warded"] = false
+	_ability_ward_blocked_ids[target_id] = true
+	_log("%s's Ward blocks the ability!" % target_state["unit"].display_name)
+	_emit_event(target_state, "block", 0, _resolve_side_for_state(target_state))
+	return true
+
+
 # Freeze: the die locks in the tray (physical blocker) and the unit skips its
 # next N reveals. `immediate` cancels the unit's action THIS round (used when
 # the target has not acted yet — the consumed charge is decremented by the
@@ -1045,7 +1083,7 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["die_freeze_turns"] = 0
 	state["freeze_flavor"] = ""
 	state["rampage_charges"] = 0
-	state["counter_pct"] = 0
+	state["warded"] = false
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -1330,6 +1368,10 @@ func apply_item_heal_all(amount: int) -> void:
 
 func apply_item_shield(target_state: Dictionary, amount: int) -> void:
 	_add_shield_stack(target_state, amount)
+
+
+func apply_item_ward(target_state: Dictionary) -> void:
+	_apply_ward(target_state)
 
 
 func apply_item_shield_all(amount: int) -> void:

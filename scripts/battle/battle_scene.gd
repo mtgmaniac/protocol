@@ -2803,6 +2803,9 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			var shield_all_amount: int = int(effect.get("amount", 0))
 			combat_manager.apply_item_shield_all(shield_all_amount)
 			_append_log("Item: %s grants all living allies %d shield." % [item.display_name, shield_all_amount])
+		"ward":
+			combat_manager.apply_item_ward(target_state)
+			_append_log("Item: %s wards %s — the next ability that targets them is blocked." % [item.display_name, tname])
 		"rollBuff":
 			var amount: int = int(effect.get("amount", 0))
 			var turns: int = int(effect.get("turns", 1))

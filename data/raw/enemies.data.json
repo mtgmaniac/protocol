@@ -1415,58 +1415,58 @@
     "voidAcolyte": {
       "recharge": {
         "name": "Seal Sigil",
-        "eff": "counter C 50%",
+        "eff": "ward",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 50
+        "ward": true
       },
       "strike": {
         "name": "Binding Lash",
-        "eff": "12 dmg, counter C 50%",
+        "eff": "12 dmg, ward",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 50
+        "ward": true
       },
       "surge": {
         "name": "Geas Needle",
-        "eff": "14 dmg, counter C 40%",
+        "eff": "14 dmg, ward",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 40
+        "ward": true
       },
       "crit": {
         "name": "Levyn Collar",
-        "eff": "17 dmg, counter C 40%",
+        "eff": "17 dmg, ward",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 40
+        "ward": true
       },
       "overload": {
         "name": "Ritual Clamp",
-        "eff": "18 dmg, summon ~40% nat20, counter C 40%",
+        "eff": "18 dmg, summon ~40% nat20, ward",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 40,
+        "ward": true,
         "summonChance": 40,
         "summonName": "Sparksprite"
       }
@@ -1578,7 +1578,7 @@
       },
       "crit": {
         "name": "Dominion Mark",
-        "eff": "19 dmg, -2 roll, 2t, counter C 40%",
+        "eff": "19 dmg, -2 roll, 2t, ward",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
@@ -1587,11 +1587,11 @@
         "shield": 0,
         "rfm": 2,
         "rfmT": 2,
-        "counterspellPct": 40
+        "ward": true
       },
       "overload": {
         "name": "Mass Snare",
-        "eff": "21 dmg, -3 roll, 2t, summon ~35% nat20, counter C 50%",
+        "eff": "21 dmg, -3 roll, 2t, summon ~35% nat20, ward",
         "dmg": 21,
         "burn": 0,
         "burnT": 0,
@@ -1600,7 +1600,7 @@
         "shield": 0,
         "rfm": 3,
         "rfmT": 2,
-        "counterspellPct": 50,
+        "ward": true,
         "summonChance": 35,
         "summonName": "Sparksprite"
       }
@@ -1618,14 +1618,14 @@
       },
       "strike": {
         "name": "False Edge",
-        "eff": "13 dmg, counter C 40%",
+        "eff": "13 dmg, ward",
         "dmg": 13,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 40
+        "ward": true
       },
       "surge": {
         "name": "Mirror Break",
@@ -1640,18 +1640,18 @@
       },
       "crit": {
         "name": "Afterimage",
-        "eff": "17 dmg, counter C 50%",
+        "eff": "17 dmg, ward",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 50
+        "ward": true
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "wipe shields, then 19 dmg, summon ~38% nat20, counter C 40%",
+        "eff": "wipe shields, then 19 dmg, summon ~38% nat20, ward",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
@@ -1659,7 +1659,7 @@
         "rfe": 0,
         "shield": 0,
         "wipeShields": true,
-        "counterspellPct": 40,
+        "ward": true,
         "summonChance": 38,
         "summonName": "Sparksprite"
       }
@@ -1709,14 +1709,14 @@
       },
       "overload": {
         "name": "Warp Nova",
-        "eff": "22 dmg, 4 burn, 4t, summon ~42% nat20, counter C 40%",
+        "eff": "22 dmg, 4 burn, 4t, summon ~42% nat20, ward",
         "dmg": 22,
         "burn": 4,
         "burnT": 4,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "counterspellPct": 40,
+        "ward": true,
         "summonChance": 42,
         "summonName": "Sparksprite"
       }
@@ -1724,7 +1724,7 @@
     "voidCircletBoss": {
       "recharge": {
         "name": "Hierophant Mantle",
-        "eff": "20 shield, ally 8 shield, +2 roll to allies, 2t, counter C 52%",
+        "eff": "20 shield, ally 8 shield, +2 roll to allies, 2t, ward",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1735,11 +1735,11 @@
         "erb": 2,
         "erbT": 2,
         "erbAll": true,
-        "counterspellPct": 52
+        "ward": true
       },
       "strike": {
         "name": "Decree of Stillness",
-        "eff": "19 dmg (P2 26), -2 roll, 2t, counter C 50%",
+        "eff": "19 dmg (P2 26), -2 roll, 2t, ward",
         "dmg": 19,
         "dmgP2": 26,
         "burn": 0,
@@ -1749,11 +1749,11 @@
         "shield": 0,
         "rfm": 2,
         "rfmT": 2,
-        "counterspellPct": 50
+        "ward": true
       },
       "surge": {
         "name": "Circlet Cataclysm",
-        "eff": "22 dmg (P2 28), 2 burn, 2t, +1 roll to allies, 2t, counter C 40%",
+        "eff": "22 dmg (P2 28), 2 burn, 2t, +1 roll to allies, 2t, ward",
         "dmg": 22,
         "dmgP2": 28,
         "burn": 2,
@@ -1764,11 +1764,11 @@
         "erb": 1,
         "erbT": 2,
         "erbAll": true,
-        "counterspellPct": 40
+        "ward": true
       },
       "crit": {
         "name": "Absolute Binding",
-        "eff": "26 dmg (P2 32), -3 roll, 2t, counter C 40%",
+        "eff": "26 dmg (P2 32), -3 roll, 2t, ward",
         "dmg": 26,
         "dmgP2": 32,
         "burn": 0,
@@ -1778,7 +1778,7 @@
         "shield": 0,
         "rfm": 3,
         "rfmT": 2,
-        "counterspellPct": 40
+        "ward": true
       },
       "overload": {
         "name": "Void Gate",
