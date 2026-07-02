@@ -621,6 +621,7 @@ func _apply_hero_ability_damage(
 	burn_amount: int,
 	burn_turns: int
 ) -> void:
+	var raw: Dictionary = ability_entry.get("raw", {})
 	var first_bonus: int = 0
 	if not bool(hero_state.get("gear_first_dmg_fired", false)) and int(hero_state.get("gear_first_dmg_bonus", 0)) > 0:
 		first_bonus = int(hero_state["gear_first_dmg_bonus"])
@@ -640,11 +641,35 @@ func _apply_hero_ability_damage(
 		if not target_enemy.is_empty():
 			if not _ward_blocks_hostile(target_enemy):
 				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
+				if bool(raw.get("detonate", false)):
+					_detonate_burn(hero_state, target_enemy)
 				if burn_amount > 0 and burn_turns > 0:
 					_apply_burn(target_enemy, burn_amount, burn_turns)
 			# Chain jumps continue even when the primary hit was ward-blocked —
 			# the ward only negates the ability for its own carrier.
 			_apply_chain_jumps(hero_state, ability_entry, target_enemy, final_dmg, ignores_shield, shield_pierce)
+
+
+# Detonate: consume the target's Burn and deal burn_amount x burn_turns_remaining
+# damage immediately; the Burn is cleared. Payload Fuse (gear hook
+# gear_detonate_bonus) makes the burst deal +50%.
+func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> void:
+	if target_state.is_empty() or bool(target_state.get("dead", false)):
+		return
+	var burn_amount: int = int(target_state.get("burn", 0))
+	var burn_turns: int = int(target_state.get("burn_turns", 0))
+	if burn_amount <= 0 or burn_turns <= 0:
+		_log("%s's Detonate fizzles — no Burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
+		return
+	var burst: int = burn_amount * burn_turns
+	if bool(attacker_state.get("gear_detonate_bonus", false)):
+		burst = int(ceil(float(burst) * 1.5))
+	target_state["burn"] = 0
+	target_state["burn_turns"] = 0
+	target_state["burn_skip_next_tick"] = false
+	_log("%s DETONATES the Burn on %s for %d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, burst])
+	_emit_event(target_state, "detonate", burst, _resolve_side_for_state(target_state))
+	_damage_state(target_state, burst, false, attacker_state)
 
 
 # Chain: after the primary hit, the attack jumps to the lowest-HP other living

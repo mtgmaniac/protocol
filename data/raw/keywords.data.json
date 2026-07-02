@@ -16,6 +16,13 @@
       "syntax": "chain / chain ×2"
     },
     {
+      "id": "detonate",
+      "term": "Detonate",
+      "category": "offense",
+      "def": "Consumes the target's Burn: deals burn amount × remaining turns as immediate damage, then the Burn is cleared.",
+      "syntax": "detonate"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",

@@ -5,7 +5,7 @@ extends RefCounted
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
 ## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
 
-const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "ward", "rampage", "taunt", "protocol", "tag", "chain"]
+const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "ward", "rampage", "taunt", "protocol", "tag", "chain", "detonate"]
 
 const PROFILE_READOUT := {
 	"icon_size": 56,
@@ -204,6 +204,9 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	var chain_jumps: int = int(raw.get("chain", 0))
 	if chain_jumps > 0:
 		_append_effect(effects, "chain", "CH" if chain_jumps == 1 else "CH×%d" % chain_jumps)
+	if bool(raw.get("detonate", false)):
+		# pkg8 upgrades this to show the live computed value when the target is known
+		_append_effect(effects, "detonate", "DT")
 	if bool(raw.get("cloak", false)):
 		_append_effect(effects, "cloak", "C", 0, "self")
 	if bool(raw.get("ward", false)):

@@ -68,6 +68,9 @@ def hero_expected(raw: dict) -> str:
     if chain > 0:
         parts.append("chain" if chain == 1 else f"chain ×{chain}")
 
+    if raw.get("detonate"):
+        parts.append("detonate")
+
     rfe = raw.get("rfe") or 0
     if rfe > 0:
         t = turn_suffix(raw.get("rfT") or 0)

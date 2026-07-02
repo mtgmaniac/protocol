@@ -55,6 +55,7 @@ const HERO_HANDLED_FIELDS := [
 	"ward",
 	"wardTgt",
 	"chain",
+	"detonate",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -425,6 +426,7 @@ func _run_regression_audits() -> void:
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
 	_run_chain_regression()
+	_run_detonate_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -750,6 +752,41 @@ func _run_chain_regression() -> void:
 		_record_pass("Regression / chain x2 adds a second jump", "chain")
 	else:
 		_record_failure("Regression / chain x2 adds a second jump", "chain", "primary -10, two other enemies -6 each", "a=%d b=%d c=%d" % [int(da["current_hp"]), int(db["current_hp"]), int(dc["current_hp"])])
+
+
+func _run_detonate_regression() -> void:
+	# Detonate consumes the target's Burn for burn x remaining-turns damage.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Backdraft", {"dmg": 5, "detonate": true})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	enemy["burn"] = 3
+	enemy["burn_turns"] = 2
+	enemy["burn_skip_next_tick"] = true
+	var before_hp: int = int(enemy["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	# 5 base + (3 burn x 2 turns) = 11; burn cleared so no tick fires
+	var ok: bool = int(enemy["current_hp"]) == before_hp - 11 and int(enemy["burn"]) == 0 and int(enemy["burn_turns"]) == 0
+	if ok:
+		_record_pass("Regression / detonate consumes burn for burst", "detonate")
+	else:
+		_record_failure("Regression / detonate consumes burn for burst", "detonate", "5 dmg + 6 burst, burn cleared", "hp_delta=%d burn=%d turns=%d" % [before_hp - int(enemy["current_hp"]), int(enemy["burn"]), int(enemy["burn_turns"])])
+
+	# No Burn on the target: detonate fizzles, base damage still lands.
+	var fizzle_manager: CombatManager = CombatManager.new()
+	fizzle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Backdraft", {"dmg": 5, "detonate": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var f_hero: Dictionary = fizzle_manager.get_hero_states()[0]
+	var f_enemy: Dictionary = fizzle_manager.get_enemy_states()[0]
+	f_hero["selected_target_id"] = str(f_enemy["id"])
+	var f_before: int = int(f_enemy["current_hp"])
+	fizzle_manager.resolve_round({str(f_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if int(f_enemy["current_hp"]) == f_before - 5:
+		_record_pass("Regression / detonate fizzles without burn", "detonate")
+	else:
+		_record_failure("Regression / detonate fizzles without burn", "detonate", "only base 5 damage", "hp_delta=%d" % (f_before - int(f_enemy["current_hp"])))
 
 
 func _run_shield_lowest_regression() -> void:
