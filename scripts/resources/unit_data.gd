@@ -15,6 +15,8 @@ extends Resource
 @export var dice_ranges: Array[Dictionary] = []
 @export var passives: Array[Dictionary] = []
 @export var evolution_paths: Array[Dictionary] = []
+## Chosen tier-3 Directive (pkg6): {name, desc, effect:{type,...}} — empty until picked.
+@export var directive: Dictionary = {}
 
 func battle_name() -> String:
 	return callsign if callsign != "" else display_name

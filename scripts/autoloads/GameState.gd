@@ -20,6 +20,8 @@ var last_run_result: String = ""
 var unit_xp: Dictionary = {}
 var unit_levels: Dictionary = {}
 var unit_evolutions: Dictionary = {}
+## unit_id -> chosen Directive name (tier-3 passives, pkg6).
+var unit_directives: Dictionary = {}
 var pending_evolution_unit_id: String = ""
 var deferred_evolution_unit_ids: Array = []
 var carried_protocol: int = 0
@@ -35,6 +37,8 @@ var tutorial_mode: bool = false
 
 const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
+## Tier-3 progression (pkg6): evolved units hitting this pick a Directive.
+const XP_TO_DIRECTIVE := 250
 const SQUAD_UNIT_LIMIT := 3
 
 var _battle_effective_rolls: Dictionary = {}
@@ -82,6 +86,7 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	unit_xp.clear()
 	unit_levels.clear()
 	unit_evolutions.clear()
+	unit_directives.clear()
 	pending_evolution_unit_id = ""
 	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
@@ -186,6 +191,7 @@ func reset_run() -> void:
 	unit_xp.clear()
 	unit_levels.clear()
 	unit_evolutions.clear()
+	unit_directives.clear()
 	pending_evolution_unit_id = ""
 	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
@@ -282,6 +288,45 @@ func get_unit_evolution_name(unit_id: String) -> String:
 	return str(unit_evolutions.get(unit_id, ""))
 
 
+func get_unit_directive_name(unit_id: String) -> String:
+	return str(unit_directives.get(unit_id, ""))
+
+
+# True when the pending progression stop is a tier-3 Directive pick
+# (the unit already evolved) rather than an evolution branch pick.
+func is_pending_directive_stage() -> bool:
+	return pending_evolution_unit_id != "" and get_unit_evolution_name(pending_evolution_unit_id) != ""
+
+
+# The 1-of-2 Directive choices scoped to the pending unit's evolution path.
+func get_pending_directive_choices() -> Array:
+	if pending_evolution_unit_id == "":
+		return []
+	var unit: UnitData = DataManager.get_unit(pending_evolution_unit_id) as UnitData
+	if unit == null:
+		return []
+	var evolved_name: String = get_unit_evolution_name(pending_evolution_unit_id)
+	for path_variant in _group_evolution_paths(unit.evolution_paths):
+		var path: Dictionary = path_variant
+		if str(path.get("name", "")) == evolved_name:
+			return (path.get("directives", []) as Array).duplicate(true)
+	return []
+
+
+func apply_pending_directive(directive_name: String) -> bool:
+	if pending_evolution_unit_id == "" or directive_name == "":
+		return false
+	var valid: bool = false
+	for choice_variant in get_pending_directive_choices():
+		if str((choice_variant as Dictionary).get("name", "")) == directive_name:
+			valid = true
+	if not valid:
+		return false
+	unit_directives[pending_evolution_unit_id] = directive_name
+	pending_evolution_unit_id = ""
+	return true
+
+
 func begin_battle_xp_tracking() -> void:
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
@@ -310,7 +355,8 @@ func award_battle_xp() -> void:
 	var newly_crossed_threshold: Array = []
 	for unit_id_variant in selected_units:
 		var unit_id: String = str(unit_id_variant)
-		if get_unit_evolution_name(unit_id) != "":
+		# Fully progressed (evolution + directive) units stop accruing.
+		if get_unit_directive_name(unit_id) != "":
 			continue
 		var xp_before: int = get_unit_xp(unit_id)
 		var gain: int = _compute_battle_xp_gain(unit_id)
@@ -318,7 +364,8 @@ func award_battle_xp() -> void:
 		unit_xp[unit_id] = new_total
 		var new_level: int = 1 + int(floor(float(new_total) / float(XP_TO_EVOLVE)))
 		unit_levels[unit_id] = maxi(new_level, 1)
-		if xp_before < XP_TO_EVOLVE and new_total >= XP_TO_EVOLVE:
+		var threshold: int = XP_TO_DIRECTIVE if get_unit_evolution_name(unit_id) != "" else XP_TO_EVOLVE
+		if xp_before < threshold and new_total >= threshold:
 			newly_crossed_threshold.append(unit_id)
 
 	_queue_evolution_after_win(newly_crossed_threshold)
@@ -352,6 +399,12 @@ func _queue_evolution_after_win(newly_crossed_threshold: Array) -> void:
 		var unit_id: String = str(unit_id_variant)
 		if _is_evolution_eligible(unit_id) and not ready.has(unit_id):
 			ready.append(unit_id)
+	# Catch units already past their next threshold when it opened (e.g. a
+	# unit that banked 250+ XP before its evolution stop resolved).
+	for unit_id_variant in selected_units:
+		var unit_id: String = str(unit_id_variant)
+		if _is_evolution_eligible(unit_id) and not ready.has(unit_id):
+			ready.append(unit_id)
 
 	if ready.is_empty():
 		return
@@ -377,7 +430,9 @@ func _queue_evolution_after_win(newly_crossed_threshold: Array) -> void:
 
 
 func _is_evolution_eligible(unit_id: String) -> bool:
-	return get_unit_evolution_name(unit_id) == "" and get_unit_xp(unit_id) >= XP_TO_EVOLVE
+	if get_unit_evolution_name(unit_id) == "":
+		return get_unit_xp(unit_id) >= XP_TO_EVOLVE
+	return get_unit_directive_name(unit_id) == "" and get_unit_xp(unit_id) >= XP_TO_DIRECTIVE
 
 
 func _squad_unit_id_from_state(state: Dictionary) -> String:
@@ -449,6 +504,12 @@ func get_run_unit_data(unit_id: String) -> UnitData:
 			else:
 				merged_ranges.append(base_range.duplicate(true))
 		built_unit.dice_ranges = merged_ranges
+		# Attach the chosen tier-3 Directive so combat can read its passive.
+		var directive_name: String = get_unit_directive_name(unit_id)
+		if directive_name != "":
+			for directive_variant in path.get("directives", []):
+				if str((directive_variant as Dictionary).get("name", "")) == directive_name:
+					built_unit.directive = (directive_variant as Dictionary).duplicate(true)
 		return built_unit
 
 	return base_unit
@@ -580,6 +641,7 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 				"focus": str(entry.get("focus", "")),
 				"hp": int(entry.get("hp", 0)),
 				"abilities_by_zone": {},
+				"directives": (entry.get("directives", []) as Array).duplicate(true),
 			}
 
 		var grouped_entry: Dictionary = grouped[path_name]

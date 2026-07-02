@@ -132,6 +132,34 @@
           "type": "array",
           "items": { "$ref": "#/$defs/heroAbility" },
           "minItems": 1
+        },
+        "directives": {
+          "type": "array",
+          "description": "Tier-3 passives (pkg6): 1-of-2 offered at 250 XP, scoped to this evolution path.",
+          "items": { "$ref": "#/$defs/directive" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "directive": {
+      "type": "object",
+      "required": ["name", "desc", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "desc": { "type": "string", "minLength": 1 },
+        "effect": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string" },
+            "amount": { "type": "integer" },
+            "pct": { "type": "integer" },
+            "cap": { "type": "integer" },
+            "ability": { "type": "string" }
+          },
+          "additionalProperties": false
         }
       }
     },

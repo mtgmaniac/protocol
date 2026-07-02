@@ -401,6 +401,23 @@
               "dMax": 12,
               "blastAll": true
             }
+          ],
+          "directives": [
+            {
+              "name": "Flashpoint",
+              "desc": "Your Burn ticks once immediately on apply.",
+              "effect": {
+                "type": "burnImmediateTick"
+              }
+            },
+            {
+              "name": "Slow Roast",
+              "desc": "Your Burns last +1 turn.",
+              "effect": {
+                "type": "burnDurationBonus",
+                "amount": 1
+              }
+            }
           ]
         },
         {
@@ -492,6 +509,22 @@
               "dMin": 14,
               "dMax": 14,
               "blastAll": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Conductor",
+              "desc": "Your Chains jump one extra target.",
+              "effect": {
+                "type": "chainExtraJump"
+              }
+            },
+            {
+              "name": "Amplifier",
+              "desc": "Your Chain hits deal 100% damage.",
+              "effect": {
+                "type": "chainFullDamage"
+              }
             }
           ]
         }
@@ -684,6 +717,23 @@
               "blastAll": true,
               "ignSh": true
             }
+          ],
+          "directives": [
+            {
+              "name": "Serrated",
+              "desc": "Your Pierce attacks also Breach.",
+              "effect": {
+                "type": "pierceAlsoBreach"
+              }
+            },
+            {
+              "name": "Momentum",
+              "desc": "Each kill adds +4 to your next ability's damage.",
+              "effect": {
+                "type": "killNextAbilityDamage",
+                "amount": 4
+              }
+            }
           ]
         },
         {
@@ -775,6 +825,23 @@
               "dMin": 20,
               "dMax": 20,
               "leech": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Deep Cuts",
+              "desc": "+3 damage against Burning targets.",
+              "effect": {
+                "type": "bonusVsBurning",
+                "amount": 3
+              }
+            },
+            {
+              "name": "Open Veins",
+              "desc": "Your overload Detonates after its damage.",
+              "effect": {
+                "type": "overloadDetonateAfter"
+              }
             }
           ]
         }
@@ -977,6 +1044,24 @@
               "shieldAll": true,
               "ward": true
             }
+          ],
+          "directives": [
+            {
+              "name": "Rampart",
+              "desc": "Your shields grant +2.",
+              "effect": {
+                "type": "ownShieldBonus",
+                "amount": 2
+              }
+            },
+            {
+              "name": "Bunker Doctrine",
+              "desc": "Allies holding your shields Spike 3.",
+              "effect": {
+                "type": "shieldGrantsSpike",
+                "amount": 3
+              }
+            }
           ]
         },
         {
@@ -1070,6 +1155,24 @@
               "dMin": 14,
               "dMax": 14,
               "execute": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Ironclad",
+              "desc": "While taunting, incoming hits deal -2.",
+              "effect": {
+                "type": "tauntDamageReduction",
+                "amount": 2
+              }
+            },
+            {
+              "name": "Counterweight",
+              "desc": "Your Spike deals +4.",
+              "effect": {
+                "type": "spikeBonus",
+                "amount": 4
+              }
             }
           ]
         }
@@ -1269,6 +1372,24 @@
               "blastAll": true,
               "freezeAllEnemyDice": 1
             }
+          ],
+          "directives": [
+            {
+              "name": "Deep Freeze",
+              "desc": "Your freezes last 2 reveals.",
+              "effect": {
+                "type": "freezeDurationBonus",
+                "amount": 1
+              }
+            },
+            {
+              "name": "Shatterpoint",
+              "desc": "+6 damage against frozen-die enemies.",
+              "effect": {
+                "type": "bonusVsFrozen",
+                "amount": 6
+              }
+            }
           ]
         },
         {
@@ -1365,6 +1486,24 @@
               "healAll": true,
               "shield": 6,
               "shieldAll": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Field Triage",
+              "desc": "Your heals grant 3 shield.",
+              "effect": {
+                "type": "healGrantsShield",
+                "amount": 3
+              }
+            },
+            {
+              "name": "Entrench",
+              "desc": "Start battles with 10 shield.",
+              "effect": {
+                "type": "battleStartShieldSelf",
+                "amount": 10
+              }
             }
           ]
         }
@@ -1559,6 +1698,24 @@
               "healTgt": true,
               "revivePct": 70
             }
+          ],
+          "directives": [
+            {
+              "name": "Combat Sense",
+              "desc": "Your damaging abilities Mark.",
+              "effect": {
+                "type": "damageAppliesMark"
+              }
+            },
+            {
+              "name": "Field Surgeon",
+              "desc": "Surge Revive restores 100% HP.",
+              "effect": {
+                "type": "abilityRevivePctOverride",
+                "ability": "Surge Revive",
+                "pct": 100
+              }
+            }
           ]
         },
         {
@@ -1654,6 +1811,25 @@
               "dMax": 0,
               "reviveAll": true,
               "revivePct": 30
+            }
+          ],
+          "directives": [
+            {
+              "name": "Overcharge Mesh",
+              "desc": "Squad shields grant +2.",
+              "effect": {
+                "type": "squadShieldBonus",
+                "amount": 2
+              }
+            },
+            {
+              "name": "Lazarus Loop",
+              "desc": "Mass Revival restores 50% HP.",
+              "effect": {
+                "type": "abilityRevivePctOverride",
+                "ability": "Mass Revival",
+                "pct": 50
+              }
             }
           ]
         }
@@ -1849,6 +2025,25 @@
               "dMax": 18,
               "gainProtocol": 2
             }
+          ],
+          "directives": [
+            {
+              "name": "Deep Cells",
+              "desc": "Protocol cap +2.",
+              "effect": {
+                "type": "protocolCapBonus",
+                "amount": 2
+              }
+            },
+            {
+              "name": "Surge Wiring",
+              "desc": "Bias Charge grants +2 Protocol.",
+              "effect": {
+                "type": "abilityProtocolBonus",
+                "ability": "Bias Charge",
+                "amount": 2
+              }
+            }
           ]
         },
         {
@@ -1944,6 +2139,23 @@
               "dMax": 12,
               "blastAll": true,
               "jamAll": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Silent Running",
+              "desc": "Your non-damage abilities re-Cloak you.",
+              "effect": {
+                "type": "nonDamageRecloak"
+              }
+            },
+            {
+              "name": "Ambush Wiring",
+              "desc": "Your attacks from Cloak deal +5.",
+              "effect": {
+                "type": "cloakAttackBonus",
+                "amount": 5
+              }
             }
           ]
         }
@@ -2135,6 +2347,23 @@
               "dMax": 20,
               "ignSh": true
             }
+          ],
+          "directives": [
+            {
+              "name": "Ghostblade",
+              "desc": "Your decloak strike also Executes.",
+              "effect": {
+                "type": "decloakExecute"
+              }
+            },
+            {
+              "name": "Vanish",
+              "desc": "Below 50% HP: Cloak, once per battle.",
+              "effect": {
+                "type": "lowHpCloakOnce",
+                "pct": 50
+              }
+            }
           ]
         },
         {
@@ -2228,6 +2457,23 @@
               "dMax": 18,
               "execute": true,
               "ignSh": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Marked for Death",
+              "desc": "Your hits Mark.",
+              "effect": {
+                "type": "damageAppliesMark"
+              }
+            },
+            {
+              "name": "Reaper",
+              "desc": "Your Executes trigger below 35%.",
+              "effect": {
+                "type": "executeThresholdPct",
+                "pct": 35
+              }
             }
           ]
         }
@@ -2431,6 +2677,24 @@
               "blastAll": true,
               "jamAll": true
             }
+          ],
+          "directives": [
+            {
+              "name": "Wall of Static",
+              "desc": "Your tray-wide roll-downs also Jam (cap 15).",
+              "effect": {
+                "type": "rfeAllAlsoJam",
+                "cap": 15
+              }
+            },
+            {
+              "name": "Feedback",
+              "desc": "Enemies under your roll-downs take 2 per round.",
+              "effect": {
+                "type": "rfeDamagePerRound",
+                "amount": 2
+              }
+            }
           ]
         },
         {
@@ -2524,6 +2788,23 @@
               "dMax": 18,
               "ignSh": true,
               "rewrite": true
+            }
+          ],
+          "directives": [
+            {
+              "name": "Hard Lock",
+              "desc": "Your single-target roll-downs also Jam.",
+              "effect": {
+                "type": "rfeAlsoJam"
+              }
+            },
+            {
+              "name": "Signal Theft",
+              "desc": "Your roll-downs grant +1 Protocol each.",
+              "effect": {
+                "type": "rfeGrantsProtocol",
+                "amount": 1
+              }
             }
           ]
         }

@@ -447,6 +447,7 @@ func _run_regression_audits() -> void:
 	_run_save_manager_regressions()
 	_run_starting_directive_regressions()
 	_run_evolution_kit_regression()
+	_run_directive_progression_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1642,6 +1643,63 @@ func _run_starting_directive_regressions() -> void:
 
 	GameState.reset_run()
 	SaveManager.data = saved_save
+
+
+func _run_directive_progression_regressions() -> void:
+	var saved: Dictionary = {
+		"selected_units": GameState.selected_units.duplicate(),
+		"unit_xp": GameState.unit_xp.duplicate(true),
+		"unit_levels": GameState.unit_levels.duplicate(true),
+		"unit_evolutions": GameState.unit_evolutions.duplicate(true),
+		"unit_directives": GameState.unit_directives.duplicate(true),
+		"pending": GameState.pending_evolution_unit_id,
+		"deferred": GameState.deferred_evolution_unit_ids.duplicate(),
+	}
+
+	GameState.selected_units = ["pulse"]
+	GameState.unit_evolutions = {"pulse": "Arc Specialist"}
+	GameState.unit_directives = {}
+	GameState.unit_xp = {"pulse": 260}
+	GameState.pending_evolution_unit_id = ""
+	GameState.deferred_evolution_unit_ids = []
+
+	# An evolved unit past 250 XP queues a Directive stop.
+	GameState._queue_evolution_after_win([])
+	var stage_ok: bool = GameState.pending_evolution_unit_id == "pulse" and GameState.is_pending_directive_stage()
+
+	# The offer is the evolution path's 1-of-2 pair; picking one applies it.
+	var choice_names: Array = []
+	for choice_variant in GameState.get_pending_directive_choices():
+		choice_names.append(str((choice_variant as Dictionary).get("name", "")))
+	var bogus_refused: bool = not GameState.apply_pending_directive("Slow Roast")
+	var applied: bool = GameState.apply_pending_directive("Conductor")
+	var run_unit: UnitData = GameState.get_run_unit_data("pulse")
+	var effect_type: String = str(((run_unit.directive if run_unit != null else {}) as Dictionary).get("effect", {}).get("type", ""))
+	_expect_and_record(
+		"Regression / directive stage at 250 XP",
+		"directiveProgression",
+		"true",
+		str(stage_ok and choice_names == ["Conductor", "Amplifier"] and bogus_refused and applied and effect_type == "chainExtraJump")
+	)
+
+	# An unevolved unit past 100 XP still gets an evolution stop, not a directive.
+	GameState.selected_units = ["combat"]
+	GameState.unit_evolutions = {}
+	GameState.unit_directives = {}
+	GameState.unit_xp = {"combat": 260}
+	GameState.pending_evolution_unit_id = ""
+	GameState.deferred_evolution_unit_ids = []
+	GameState._queue_evolution_after_win([])
+	var evo_stage: bool = GameState.pending_evolution_unit_id == "combat" and not GameState.is_pending_directive_stage()
+	_expect_and_record("Regression / evolution stage before directive", "directiveProgression", "true", str(evo_stage))
+
+	GameState.selected_units = saved["selected_units"]
+	GameState.unit_xp = saved["unit_xp"]
+	GameState.unit_levels = saved["unit_levels"]
+	GameState.unit_evolutions = saved["unit_evolutions"]
+	GameState.unit_directives = saved["unit_directives"]
+	GameState.pending_evolution_unit_id = saved["pending"]
+	GameState.deferred_evolution_unit_ids = saved["deferred"]
 
 
 func _run_evolution_kit_regression() -> void:

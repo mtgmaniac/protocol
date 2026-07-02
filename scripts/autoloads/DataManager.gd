@@ -357,6 +357,7 @@ func _build_evolution_paths(evolutions: Array) -> Array[Dictionary]:
 			"focus": str(evolution_entry.get("focus", "")),
 			"hp": int(evolution_entry.get("hp", 0)),
 			"abilities": _build_hero_dice_ranges(evolution_entry.get("abilities", [])),
+			"directives": (evolution_entry.get("directives", []) as Array).duplicate(true),
 		})
 	return paths
 
