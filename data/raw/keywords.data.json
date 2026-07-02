@@ -143,6 +143,20 @@
       "syntax": "ward"
     },
     {
+      "id": "lure",
+      "term": "Lure",
+      "category": "control",
+      "def": "Enemy-only (Accretion): the lured hero can only target the lurer next turn.",
+      "syntax": "lure"
+    },
+    {
+      "id": "accrete",
+      "term": "Accrete",
+      "category": "defense",
+      "def": "Enemy-only (Accretion): this unit gains N shield at the start of each of its turns.",
+      "syntax": "accrete N"
+    },
+    {
       "id": "taunt",
       "term": "Taunt",
       "category": "control",

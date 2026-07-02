@@ -1975,6 +1975,11 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: String) -> void:
 	var hero_id: String = str(hero_state["id"])
 	var target_ids: Array = _get_legal_target_ids(manual_side)
+	# Lure (Accretion): a lured hero can only aim at the lurer.
+	if manual_side == "enemy":
+		var lured_by: String = str(hero_state.get("lured_by_id", ""))
+		if lured_by != "" and target_ids.has(lured_by):
+			target_ids = [lured_by]
 	pending_manual_target_ids.erase(hero_id)
 	if target_ids.is_empty():
 		_set_state_target(hero_state, "", _get_no_legal_target_display(manual_side))

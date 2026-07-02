@@ -28,7 +28,7 @@ ENEMY_HANDLED = frozenset({
     "shieldAllyAll", "blastAll", "burn", "burnT",
     "packBonus", "lifestealPct", "wipeShields", "rfm", "rfmT", "erb", "erbT", "erbAll",
     "freezeEnemyDice", "freezeAllEnemyDice", "grantRampage", "grantRampageAll", "ward", "spike",
-    "jam", "jamAll", "rewrite", "hijack", "siphon",
+    "jam", "jamAll", "rewrite", "hijack", "siphon", "cloak", "lure",
     "curseDice", "enemySelfTaunt", "summonChance", "summonName",
 })
 
@@ -105,6 +105,8 @@ def count_keywords(raw: dict) -> list[str]:
         found.append("hijack")
     if is_meaningful(raw.get("siphon")):
         found.append("siphon")
+    if is_meaningful(raw.get("lure")):
+        found.append("lure")
     if (
         is_meaningful(raw.get("freezeAnyDice"))
         or is_meaningful(raw.get("freezeEnemyDice"))

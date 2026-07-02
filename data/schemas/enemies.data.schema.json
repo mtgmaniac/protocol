@@ -112,6 +112,8 @@
         "rewrite": { "type": "boolean" },
         "hijack": { "type": "boolean" },
         "siphon": { "type": "integer", "minimum": 1 },
+        "cloak": { "type": "boolean" },
+        "lure": { "type": "boolean" },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 1 },
@@ -147,7 +149,17 @@
         "ai": { "$ref": "#/$defs/aiType" },
         "callsign": {
           "type": "string",
-          "description": "Short enemy callsign for UI (e.g. SCRAPLORD)."
+          "maxLength": 8,
+          "description": "Short enemy callsign for UI — max 8 characters."
+        },
+        "accrete": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Accretion: gain N shield at the start of each of this unit's turns."
+        },
+        "startsCloaked": {
+          "type": "boolean",
+          "description": "Spawns cloaked (Forked Double); inherits the reworked cloak rules."
         },
         "p2dMin": { "type": "integer", "minimum": 1 },
         "p2dMax": { "type": "integer", "minimum": 1 },

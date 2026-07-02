@@ -336,6 +336,13 @@ func resolve_round(
 	# Apply per-enemy-turn relic effects before enemies act
 	apply_enemy_turn_start_relic_effects()
 
+	# Accretion: units with accrete gain N shield at the start of their turn;
+	# the shield survives the imminent tick to cover the next hero phase.
+	for accrete_state in _enemy_states:
+		if not accrete_state["dead"] and int(accrete_state.get("accrete", 0)) > 0:
+			_log("%s accretes armor." % accrete_state["unit"].display_name)
+			_add_shield_stack(accrete_state, int(accrete_state["accrete"]), true)
+
 	var ordered_enemy_states: Array = _enemy_states.duplicate()
 	ordered_enemy_states.reverse()
 	for enemy_state in ordered_enemy_states:
@@ -382,7 +389,7 @@ func _next_enemy_instance_id(enemy: Resource) -> String:
 
 func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionary:
 	var state_id: String = runtime_id if runtime_id != "" else str(unit.id)
-	return {
+	var state: Dictionary = {
 		"id": state_id,
 		"unit": unit,
 		"current_hp": unit.max_hp,
@@ -433,7 +440,14 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"gear_protocol_on_kill": 0,
 		"gear_protocol_on_kill_any": 0,
 		"in_phase_two": false,
+		"lured_by_id": "",
+		"accrete": 0,
 	}
+	if unit is EnemyData:
+		if bool(unit.starts_cloaked):
+			state["cloaked"] = true
+		state["accrete"] = int(unit.accrete)
+	return state
 
 
 # --- Shield stack helpers ---
@@ -562,7 +576,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		_log("%s generates %d Protocol." % [hero_state["unit"].display_name, gain_protocol])
 
 	if damage <= 0 and burn_amount > 0:
-		var burn_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		var burn_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
 			_apply_burn(burn_target, burn_amount, burn_turns)
 
@@ -576,7 +590,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state):
 					_add_rfe_stack(enemy_state, rfe_amount, rfe_turns)
 		else:
-			var rfe_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+			var rfe_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 			if not rfe_target.is_empty() and not _ward_blocks_hostile(rfe_target):
 				_add_rfe_stack(rfe_target, rfe_amount, rfe_turns)
 
@@ -650,7 +664,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			if not freeze_target.is_empty():
 				_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
 			else:
-				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 					_freeze_die_state(freeze_target, freeze_amount, true, freeze_flavor)
 
@@ -661,13 +675,13 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			if not es["dead"] and not _ward_blocks_hostile(es):
 				_apply_jam(es, JAM_CAP, true)
 	elif bool(raw.get("jam", false)):
-		var jam_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		var jam_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
 			_apply_jam(jam_target, JAM_CAP, true)
 
 	# Rewrite: force the target's next roll to 3.
 	if bool(raw.get("rewrite", false)):
-		var rewrite_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		var rewrite_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if not rewrite_target.is_empty() and not _ward_blocks_hostile(rewrite_target):
 			_apply_rewrite(rewrite_target, true)
 
@@ -709,7 +723,7 @@ func _apply_hero_ability_damage(
 				_breach_shields(hero_state, enemy_state)
 			leech_hp_dealt += _damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
 	else:
-		var target_enemy: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		var target_enemy: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if target_enemy.is_empty():
 			_log("%s finds no visible target — the attack fizzles." % hero_state["unit"].display_name)
 		# breach all on a single-target ability still strips every enemy's
@@ -1081,6 +1095,21 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_log("%s locks onto the squad's dice — its next roll will HIJACK the highest." % enemy_state["unit"].display_name)
 		_emit_event(enemy_state, "hijack_primed", 0, "enemy")
 
+	# Cloak (self): Geode Panther re-cloaks on recharge; Forked Double reforks.
+	if bool(raw.get("cloak", false)):
+		enemy_state["cloaked"] = true
+		_log("%s fades from view (cloaked)." % enemy_state["unit"].display_name)
+		_emit_event(enemy_state, "cloak", 0, "enemy")
+
+	# Lure (Accretion): the targeted hero can only target this enemy next turn.
+	if bool(raw.get("lure", false)):
+		var lure_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		if not lure_target.is_empty() and not _ward_blocks_hostile(lure_target):
+			lure_target["lured_by_id"] = str(enemy_state["id"])
+			lure_target["lure_skip_next_tick"] = true
+			_log("%s LURES %s — next turn they can only strike back!" % [enemy_state["unit"].display_name, lure_target["unit"].display_name])
+			_emit_event(lure_target, "lure", 0, "hero")
+
 	# Spike: heroes that damage this enemy next hero phase take N back. Granted
 	# during the enemy phase, so it survives the imminent round-end tick to
 	# cover exactly one hero phase (same asymmetry as shields).
@@ -1118,7 +1147,15 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 # Cloak: untargetable by hostile single-target abilities. Resolves the selected
 # target, retargeting to the first living non-cloaked unit when the pick is
 # invalid or cloaked; {} when every candidate is cloaked (the ability fizzles).
-func _hostile_single_target(states: Array, selected_id: String) -> Dictionary:
+func _hostile_single_target(states: Array, selected_id: String, attacker_state: Dictionary = {}) -> Dictionary:
+	# Lure (Accretion): a lured hero must aim its hostile picks at the lurer
+	# while it lives.
+	if not attacker_state.is_empty():
+		var lured_by: String = str(attacker_state.get("lured_by_id", ""))
+		if lured_by != "":
+			var lurer: Dictionary = _find_target_by_id(states, lured_by)
+			if not lurer.is_empty() and not bool(lurer.get("cloaked", false)):
+				return lurer
 	var target: Dictionary = _find_target_by_id(states, selected_id)
 	if not target.is_empty() and not bool(target.get("cloaked", false)):
 		return target
@@ -1434,6 +1471,8 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["rewrite_skip_next_tick"] = false
 	state["hijack_pending"] = false
 	state["hijack_skip_next_tick"] = false
+	state["lured_by_id"] = ""
+	state["lure_skip_next_tick"] = false
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -1652,6 +1691,14 @@ func _tick_state(state: Dictionary) -> void:
 			if int(state["burn_turns"]) <= 0:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
+
+	# Lure covers exactly one hero phase: applied in the enemy phase, it skips
+	# this tick, restricts the next hero phase, then clears.
+	if str(state.get("lured_by_id", "")) != "":
+		if bool(state.get("lure_skip_next_tick", false)):
+			state["lure_skip_next_tick"] = false
+		else:
+			state["lured_by_id"] = ""
 
 	# Hijack fires at exactly one roll: skips the tick of the applying round,
 	# copies the heroes' highest die at the next reveal, then clears.

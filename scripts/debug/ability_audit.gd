@@ -104,6 +104,8 @@ const ENEMY_HANDLED_FIELDS := [
 	"rewrite",
 	"hijack",
 	"siphon",
+	"cloak",
+	"lure",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",

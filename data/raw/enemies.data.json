@@ -118,27 +118,23 @@
     "patrol": {
       "recharge": {
         "name": "Regroup",
-        "eff": "6 shield, +1 roll, 2t",
+        "eff": "6 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 6,
-        "erb": 1,
-        "erbT": 2
+        "shield": 6
       },
       "strike": {
         "name": "Assault",
-        "eff": "15 dmg, +1 roll",
+        "eff": "15 dmg",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "erb": 1,
-        "erbT": 1
+        "shield": 0
       },
       "surge": {
         "name": "Heavy Barrage",
@@ -268,15 +264,14 @@
       },
       "crit": {
         "name": "Punisher",
-        "eff": "24 dmg, +2 roll, 2t",
+        "eff": "24 dmg, jam",
         "dmg": 24,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "erb": 2,
-        "erbT": 2
+        "jam": true
       },
       "overload": {
         "name": "Execution",
@@ -292,14 +287,16 @@
     "volt": {
       "recharge": {
         "name": "Grounding",
-        "eff": "5 shield all allies",
+        "eff": "5 shield all allies, spike 4",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
+        "shield": 0,
         "shieldAlly": 5,
-        "shieldAllyAll": true
+        "shieldAllyAll": true,
+        "spike": 4
       },
       "strike": {
         "name": "Arc Jab",
@@ -323,16 +320,13 @@
       },
       "crit": {
         "name": "Conduction",
-        "eff": "13 dmg, 3 burn, 2t, +1 roll to allies, 2t",
+        "eff": "13 dmg, 3 burn, 2t",
         "dmg": 13,
         "burn": 3,
         "burnT": 2,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "erb": 1,
-        "erbT": 2,
-        "erbAll": true
+        "shield": 0
       },
       "overload": {
         "name": "Meltdown Arc",
@@ -462,91 +456,78 @@
     "mite": {
       "recharge": {
         "name": "Pheromone Surge",
-        "eff": "-1 roll, 3 heal",
+        "eff": "3 heal",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 3,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "strike": {
         "name": "Proboscis Jab",
-        "eff": "6 dmg, -1 roll, lifesteal 40%",
+        "eff": "6 dmg, lifesteal 40%",
         "dmg": 6,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 1,
-        "rfmT": 1,
         "lifestealPct": 40
       },
       "surge": {
         "name": "Neural Bite",
-        "eff": "8 dmg, 1 burn, -1 roll",
+        "eff": "8 dmg, 1 burn",
         "dmg": 8,
         "burn": 1,
         "burnT": 1,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "crit": {
         "name": "Symbiote Spike",
-        "eff": "10 dmg, 2 burn, -2 roll",
+        "eff": "10 dmg, 2 burn",
         "dmg": 10,
         "burn": 2,
         "burnT": 1,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 1
+        "shield": 0
       },
       "overload": {
         "name": "Hive Latch",
-        "eff": "11 dmg, 3 burn, -3 roll",
+        "eff": "11 dmg, 3 burn, 2t",
         "dmg": 11,
         "burn": 3,
-        "burnT": 1,
+        "burnT": 2,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 3,
-        "rfmT": 1
+        "shield": 0
       }
     },
     "stalker": {
       "recharge": {
         "name": "Chitin Regroup",
-        "eff": "6 shield, +1 roll, 2t",
+        "eff": "6 shield, spike 4",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 6,
-        "erb": 1,
-        "erbT": 2
+        "spike": 4
       },
       "strike": {
         "name": "Spine Lunge",
-        "eff": "14 dmg, lifesteal 45%, +1 roll",
+        "eff": "14 dmg, lifesteal 45%",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "lifestealPct": 45,
-        "erb": 1,
-        "erbT": 1
+        "lifestealPct": 45
       },
       "surge": {
         "name": "Impaler Volley",
@@ -560,40 +541,38 @@
       },
       "crit": {
         "name": "Shredding Spines",
-        "eff": "17 dmg, 3 burn, 4t, -1 roll, 2t",
+        "eff": "17 dmg, 3 burn, 4t",
         "dmg": 17,
         "burn": 3,
         "burnT": 4,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 2
+        "shield": 0
       },
       "overload": {
         "name": "Brood Execution",
-        "eff": "19 dmg, 4 burn, 5t, -2 roll, 3t",
+        "eff": "19 dmg, 4 burn, 5t",
         "dmg": 19,
         "burn": 4,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 3
+        "shield": 0
       }
     },
     "carapace": {
       "recharge": {
         "name": "Chitin Link",
-        "eff": "6 shield all allies",
+        "eff": "6 shield all allies, spike 3",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
+        "shield": 0,
         "shieldAlly": 6,
-        "shieldAllyAll": true
+        "shieldAllyAll": true,
+        "spike": 3
       },
       "strike": {
         "name": "Ramming Plate",
@@ -609,17 +588,14 @@
       },
       "surge": {
         "name": "Living Bulwark",
-        "eff": "10 dmg, 2 burn, 4t, ally 9 shield, +1 roll to allies",
+        "eff": "10 dmg, 2 burn, 4t, ally 9 shield",
         "dmg": 10,
         "burn": 2,
         "burnT": 4,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 9,
-        "erb": 1,
-        "erbT": 1,
-        "erbAll": true
+        "shieldAlly": 9
       },
       "crit": {
         "name": "Carapace Burst",
@@ -678,15 +654,13 @@
       },
       "crit": {
         "name": "Matriarch Crush",
-        "eff": "18 dmg, 4 burn, 5t, +2 roll, 2t",
+        "eff": "18 dmg, 4 burn, 5t",
         "dmg": 18,
         "burn": 4,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "erb": 2,
-        "erbT": 2
+        "shield": 0
       },
       "overload": {
         "name": "Culling Feed",
@@ -702,14 +676,15 @@
     },
     "spewer": {
       "recharge": {
-        "name": "Gland Rest",
-        "eff": "—",
+        "name": "Mimic Gland",
+        "eff": "hijack",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "hijack": true
       },
       "strike": {
         "name": "Acid Spit",
@@ -734,15 +709,13 @@
       },
       "crit": {
         "name": "Corrosive Hose",
-        "eff": "10 dmg, 4 burn, 5t, +1 roll, 2t",
+        "eff": "10 dmg, 4 burn, 5t",
         "dmg": 10,
         "burn": 4,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "erb": 1,
-        "erbT": 2
+        "shield": 0
       },
       "overload": {
         "name": "Melt Torrent",
@@ -820,64 +793,54 @@
     },
     "veilShard": {
       "recharge": {
-        "name": "Phase Jam",
-        "eff": "-1 roll",
+        "name": "Phase Shell",
+        "eff": "4 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 4
       },
       "strike": {
         "name": "Shard Cut",
-        "eff": "7 dmg, -1 roll",
+        "eff": "7 dmg",
         "dmg": 7,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "surge": {
         "name": "Lattice Flicker",
-        "eff": "9 dmg, -1 roll",
+        "eff": "9 dmg",
         "dmg": 9,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "crit": {
         "name": "Crystal Shatter",
-        "eff": "12 dmg, -2 roll",
+        "eff": "12 dmg",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 1
+        "shield": 0
       },
       "overload": {
         "name": "Harmonic Break",
-        "eff": "15 dmg, -3 roll",
+        "eff": "15 dmg, 2 burn, 2t",
         "dmg": 15,
-        "burn": 0,
-        "burnT": 0,
+        "burn": 2,
+        "burnT": 2,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 3,
-        "rfmT": 1
+        "shield": 0
       }
     },
     "veilPrism": {
@@ -936,7 +899,7 @@
     "veilAegis": {
       "recharge": {
         "name": "Lattice Link",
-        "eff": "6 shield, ally 6 shield, +1 roll to allies, 2t",
+        "eff": "6 shield, ally 6 shield, +1 roll to allies, 2t, ward",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -946,7 +909,8 @@
         "shieldAlly": 6,
         "erb": 1,
         "erbT": 2,
-        "erbAll": true
+        "erbAll": true,
+        "ward": true
       },
       "strike": {
         "name": "Aegis Bash",
@@ -978,7 +942,7 @@
       },
       "crit": {
         "name": "Fortress Lash",
-        "eff": "18 dmg, ally 9 shield, +2 roll to allies, 2t",
+        "eff": "18 dmg, ally 9 shield, +2 roll to allies, 2t, ward",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
@@ -988,11 +952,12 @@
         "shieldAlly": 9,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true
+        "erbAll": true,
+        "ward": true
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20",
+        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20, ward",
         "dmg": 20,
         "burn": 0,
         "burnT": 0,
@@ -1003,6 +968,7 @@
         "erb": 2,
         "erbT": 3,
         "erbAll": true,
+        "ward": true,
         "summonChance": 42,
         "summonName": "Shardmite"
       }
@@ -1010,7 +976,7 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 heal, 7 shield, +1 roll to allies, 2t",
+        "eff": "7 heal, 7 shield, +1 roll to allies, 2t, ward",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1019,7 +985,8 @@
         "shield": 7,
         "erb": 1,
         "erbT": 2,
-        "erbAll": true
+        "erbAll": true,
+        "ward": true
       },
       "strike": {
         "name": "Resonant Slam",
@@ -1089,51 +1056,44 @@
       },
       "strike": {
         "name": "Null Slash",
-        "eff": "14 dmg, -1 roll, 2t",
+        "eff": "14 dmg",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 2
+        "shield": 0
       },
       "surge": {
         "name": "Erase Vector",
-        "eff": "16 dmg, -1 roll, 2t",
+        "eff": "16 dmg",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 2
+        "shield": 0
       },
       "crit": {
         "name": "Annulment",
-        "eff": "19 dmg, -2 roll, 2t",
+        "eff": "19 dmg, ward",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 2,
-        "rfmT": 2
+        "ward": true
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "24 dmg, -3 roll, 3t, summon ~40% nat20",
+        "eff": "24 dmg, summon ~40% nat20",
         "dmg": 24,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 3,
-        "rfmT": 3,
         "summonChance": 40,
         "summonName": "Shardmite"
       }
@@ -1207,7 +1167,7 @@
     "veilSynapse": {
       "recharge": {
         "name": "Synaptic Tune",
-        "eff": "+2 roll to allies, 2t",
+        "eff": "+2 roll to allies, 2t, ward",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1216,7 +1176,8 @@
         "shield": 0,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true
+        "erbAll": true,
+        "ward": true
       },
       "strike": {
         "name": "Herald Strike",
@@ -1351,7 +1312,7 @@
     },
     "voidWisp": {
       "recharge": {
-        "name": "Void Hum",
+        "name": "Static Hiss",
         "eff": "-1 roll",
         "dmg": 0,
         "burn": 0,
@@ -1360,8 +1321,7 @@
         "rfe": 0,
         "shield": 0,
         "rfm": 1,
-        "rfmT": 1,
-        "curseDice": true
+        "rfmT": 1
       },
       "strike": {
         "name": "Spark Flick",
@@ -1377,22 +1337,20 @@
       },
       "surge": {
         "name": "Arc Nibble",
-        "eff": "8 dmg, 1 burn, -1 roll",
+        "eff": "8 dmg, 1 burn",
         "dmg": 8,
         "burn": 1,
         "burnT": 1,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "crit": {
-        "name": "Mana Burr",
-        "eff": "10 dmg, 2 burn, -2 roll",
+        "name": "Bit Rot",
+        "eff": "10 dmg, -2 roll",
         "dmg": 10,
-        "burn": 2,
-        "burnT": 1,
+        "burn": 0,
+        "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
@@ -1400,16 +1358,15 @@
         "rfmT": 1
       },
       "overload": {
-        "name": "Circlet Surge",
-        "eff": "11 dmg, 3 burn, -3 roll",
+        "name": "Stack Overflow",
+        "eff": "11 dmg, siphon 2",
         "dmg": 11,
-        "burn": 3,
-        "burnT": 1,
+        "burn": 0,
+        "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 3,
-        "rfmT": 1
+        "siphon": 2
       }
     },
     "voidAcolyte": {
@@ -1426,28 +1383,28 @@
       },
       "strike": {
         "name": "Binding Lash",
-        "eff": "12 dmg, ward",
+        "eff": "12 dmg, siphon 2",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "ward": true
+        "siphon": 2
       },
       "surge": {
         "name": "Geas Needle",
-        "eff": "14 dmg, ward",
+        "eff": "14 dmg, rewrite",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "ward": true
+        "rewrite": true
       },
       "crit": {
-        "name": "Levyn Collar",
+        "name": "Init Collar",
         "eff": "17 dmg, ward",
         "dmg": 17,
         "burn": 0,
@@ -1468,12 +1425,12 @@
         "shield": 0,
         "ward": true,
         "summonChance": 40,
-        "summonName": "Sparksprite"
+        "summonName": "Glitch Sprite"
       }
     },
     "voidScribe": {
       "recharge": {
-        "name": "Annotate Fate",
+        "name": "Checksum Pass",
         "eff": "+1 roll to allies, 2t",
         "dmg": 0,
         "burn": 0,
@@ -1498,7 +1455,7 @@
       },
       "surge": {
         "name": "Codex Weave",
-        "eff": "10 dmg, ally 7 shield, +1 roll to allies, 2t",
+        "eff": "10 dmg, ally 7 shield, siphon 2",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
@@ -1506,22 +1463,18 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 7,
-        "erb": 1,
-        "erbT": 2,
-        "erbAll": true
+        "siphon": 2
       },
       "crit": {
         "name": "Prophecy Spike",
-        "eff": "15 dmg, +2 roll to allies, 2t",
+        "eff": "15 dmg, rewrite",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "erb": 2,
-        "erbT": 2,
-        "erbAll": true
+        "rewrite": true
       },
       "overload": {
         "name": "Summon Verse",
@@ -1536,7 +1489,7 @@
         "erbT": 3,
         "erbAll": true,
         "summonChance": 45,
-        "summonName": "Sparksprite"
+        "summonName": "Glitch Sprite"
       }
     },
     "voidBinder": {
@@ -1566,66 +1519,62 @@
       },
       "surge": {
         "name": "Geas Burst",
-        "eff": "16 dmg, -2 roll, 2t",
+        "eff": "16 dmg, siphon 2",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 2,
-        "rfmT": 2
+        "siphon": 2
       },
       "crit": {
         "name": "Dominion Mark",
-        "eff": "19 dmg, -2 roll, 2t, ward",
+        "eff": "19 dmg, ward",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 2,
-        "rfmT": 2,
         "ward": true
       },
       "overload": {
         "name": "Mass Snare",
-        "eff": "21 dmg, -3 roll, 2t, summon ~35% nat20, ward",
+        "eff": "21 dmg, summon ~35% nat20, ward, rewrite",
         "dmg": 21,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 3,
-        "rfmT": 2,
+        "rewrite": true,
         "ward": true,
         "summonChance": 35,
-        "summonName": "Sparksprite"
+        "summonName": "Glitch Sprite"
       }
     },
     "voidGlimmer": {
       "recharge": {
-        "name": "Shimmer Guard",
-        "eff": "6 shield",
+        "name": "Refork",
+        "eff": "6 shield, cloak",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 6
+        "shield": 6,
+        "cloak": true
       },
       "strike": {
         "name": "False Edge",
-        "eff": "13 dmg, ward",
+        "eff": "13 dmg",
         "dmg": 13,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "ward": true
+        "shield": 0
       },
       "surge": {
         "name": "Mirror Break",
@@ -1650,18 +1599,16 @@
         "ward": true
       },
       "overload": {
-        "name": "Total Eclipse",
-        "eff": "wipe shields, then 19 dmg, summon ~38% nat20, ward",
+        "name": "Fork Collapse",
+        "eff": "19 dmg, ward, rewrite",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "wipeShields": true,
-        "ward": true,
-        "summonChance": 38,
-        "summonName": "Sparksprite"
+        "rewrite": true,
+        "ward": true
       }
     },
     "voidChanneler": {
@@ -1699,13 +1646,14 @@
       },
       "crit": {
         "name": "Starfall",
-        "eff": "20 dmg, 3 burn, 4t",
+        "eff": "20 dmg, siphon 2",
         "dmg": 20,
-        "burn": 3,
-        "burnT": 4,
+        "burn": 0,
+        "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "siphon": 2
       },
       "overload": {
         "name": "Warp Nova",
@@ -1718,7 +1666,7 @@
         "shield": 0,
         "ward": true,
         "summonChance": 42,
-        "summonName": "Sparksprite"
+        "summonName": "Glitch Sprite"
       }
     },
     "voidCircletBoss": {
@@ -1794,33 +1742,29 @@
         "erbT": 3,
         "erbAll": true,
         "summonChance": 32,
-        "summonName": "Sparksprite"
+        "summonName": "Glitch Sprite"
       }
     },
     "beastMonkey": {
       "recharge": {
         "name": "Still Perch",
-        "eff": "-1 roll",
+        "eff": "3 heal",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
-        "heal": 0,
+        "heal": 3,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "strike": {
-        "name": "Void Grasp",
-        "eff": "6 dmg, -1 roll, pack bonus",
+        "name": "Pumice Grasp",
+        "eff": "6 dmg, pack bonus",
         "dmg": 6,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 1,
-        "rfmT": 1,
         "packBonus": true
       },
       "surge": {
@@ -1835,40 +1779,35 @@
       },
       "crit": {
         "name": "Arterial Bite",
-        "eff": "11 dmg, -2 roll",
+        "eff": "11 dmg",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 1
+        "shield": 0
       },
       "overload": {
         "name": "Troop Frenzy",
-        "eff": "13 dmg, 3 burn, -2 roll",
+        "eff": "13 dmg, 3 burn, 2t",
         "dmg": 13,
         "burn": 3,
-        "burnT": 1,
+        "burnT": 2,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 1
+        "shield": 0
       }
     },
     "beastWolf": {
       "recharge": {
-        "name": "Low Tracking",
-        "eff": "rampage +1",
+        "name": "Slag Coat",
+        "eff": "4 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "grantRampage": 1
+        "shield": 4
       },
       "strike": {
         "name": "Rending Fang",
@@ -1903,28 +1842,27 @@
       },
       "overload": {
         "name": "Pack Surge",
-        "eff": "14 dmg, -1 roll, rampage +1",
+        "eff": "14 dmg, pack bonus",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "grantRampage": 1,
-        "rfm": 1,
-        "rfmT": 1
+        "packBonus": true
       }
     },
     "beastLynx": {
       "recharge": {
-        "name": "Eclipse Crouch",
-        "eff": "10 shield",
+        "name": "Geode Veil",
+        "eff": "10 shield, cloak",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 10
+        "shield": 10,
+        "cloak": true
       },
       "strike": {
         "name": "Silent Opening",
@@ -1935,7 +1873,8 @@
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "freezeEnemyDice": 1
+        "freezeEnemyDice": 1,
+        "freeze_flavor": "petrify"
       },
       "surge": {
         "name": "Lunar Rake",
@@ -1948,15 +1887,16 @@
         "shield": 0
       },
       "crit": {
-        "name": "Gut Eclipse",
-        "eff": "16 dmg, freeze (2 reveal skips)",
+        "name": "Decloak Rake",
+        "eff": "16 dmg, freeze (1 reveal skip)",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "freezeEnemyDice": 2
+        "freezeEnemyDice": 1,
+        "freeze_flavor": "petrify"
       },
       "overload": {
         "name": "Black Sky Shriek",
@@ -1967,33 +1907,34 @@
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "freezeAllEnemyDice": 1
+        "freezeAllEnemyDice": 1,
+        "freeze_flavor": "petrify"
       }
     },
     "beastBison": {
       "recharge": {
-        "name": "Iron Grazing",
-        "eff": "14 shield",
+        "name": "Basalt Set",
+        "eff": "14 shield, spike 5",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 14
+        "shield": 14,
+        "spike": 5
       },
       "strike": {
         "name": "Skull Drive",
-        "eff": "11 dmg, rampage +1",
+        "eff": "11 dmg",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "grantRampage": 1
+        "shield": 0
       },
       "surge": {
-        "name": "Hooffall",
+        "name": "Fistfall",
         "eff": "14 dmg",
         "dmg": 14,
         "burn": 0,
@@ -2004,29 +1945,24 @@
       },
       "crit": {
         "name": "Bonebreaker Line",
-        "eff": "17 dmg, +1 roll, 2t",
+        "eff": "17 dmg",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "erb": 1,
-        "erbT": 2
+        "shield": 0
       },
       "overload": {
-        "name": "Void Stampede",
-        "eff": "wipe shields, then 16 dmg, -1 roll, 2t, rampage all +1",
+        "name": "Basalt Stampede",
+        "eff": "wipe shields, then 16 dmg",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "wipeShields": true,
-        "grantRampageAll": 1,
-        "rfm": 1,
-        "rfmT": 2
+        "wipeShields": true
       }
     },
     "beastHyena": {
@@ -2062,15 +1998,15 @@
         "shield": 0
       },
       "crit": {
-        "name": "Rictus Maul",
-        "eff": "15 dmg, freeze (1 reveal skip)",
+        "name": "Lure Screech",
+        "eff": "15 dmg, lure",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "freezeEnemyDice": 1
+        "lure": true
       },
       "overload": {
         "name": "Call Friends",
@@ -2082,36 +2018,32 @@
         "rfe": 0,
         "shield": 0,
         "summonChance": 50,
-        "summonName": "Pack Hound"
+        "summonName": "Slag Hound"
       }
     },
     "beastBadger": {
       "recharge": {
-        "name": "Den Stillness",
-        "eff": "-1 roll",
+        "name": "Magma Coil",
+        "eff": "8 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 8
       },
       "strike": {
-        "name": "Gut Ripper",
-        "eff": "10 dmg, -1 roll",
+        "name": "Magma Bite",
+        "eff": "10 dmg, 2 burn, 2t",
         "dmg": 10,
-        "burn": 0,
-        "burnT": 0,
+        "burn": 2,
+        "burnT": 2,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 1
+        "shield": 0
       },
       "surge": {
-        "name": "Rage Waltz",
+        "name": "Lava Wake",
         "eff": "12 dmg, 2 burn, 4t",
         "dmg": 12,
         "burn": 2,
@@ -2121,28 +2053,24 @@
         "shield": 0
       },
       "crit": {
-        "name": "Viscera Rake",
-        "eff": "16 dmg, -2 roll, 2t",
+        "name": "Molten Rake",
+        "eff": "16 dmg, 3 burn, 3t",
         "dmg": 16,
-        "burn": 0,
-        "burnT": 0,
+        "burn": 3,
+        "burnT": 3,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 2,
-        "rfmT": 2
+        "shield": 0
       },
       "overload": {
-        "name": "Den Requiem",
-        "eff": "20 dmg, -3 roll, 2t",
+        "name": "Eruption",
+        "eff": "20 dmg, 4 burn, 3t",
         "dmg": 20,
-        "burn": 0,
-        "burnT": 0,
+        "burn": 4,
+        "burnT": 3,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 3,
-        "rfmT": 2
+        "shield": 0
       }
     },
     "beastTyrant": {
@@ -2212,15 +2140,14 @@
     "signalSkimmer": {
       "recharge": {
         "name": "ECM Ping",
-        "eff": "-1 roll, 2t, 5 shield",
+        "eff": "5 shield, jam",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 5,
-        "rfm": 1,
-        "rfmT": 2
+        "jam": true
       },
       "strike": {
         "name": "Spike Bleed",
@@ -2248,27 +2175,25 @@
       },
       "crit": {
         "name": "Nullburst",
-        "eff": "11 dmg, -2 roll",
+        "eff": "11 dmg, jam",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 2,
-        "rfmT": 1
+        "jam": true
       },
       "overload": {
         "name": "Whitenoise Collapse",
-        "eff": "13 dmg, -2 roll, 2t",
+        "eff": "13 dmg, jam all",
         "dmg": 13,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rfm": 2,
-        "rfmT": 2
+        "jamAll": true
       }
     }
   },
@@ -2338,7 +2263,7 @@
       "p2dMin": 18,
       "p2dMax": 30,
       "pThr": 70,
-      "callsign": "SCRAPLORD",
+      "callsign": "MASTER",
       "p2ReviveNames": [
         "Scrap Drone"
       ]
@@ -2400,7 +2325,7 @@
       "p2dMin": 23,
       "p2dMax": 31,
       "pThr": 86,
-      "callsign": "MATRIARCH"
+      "callsign": "MATRON"
     },
     "Shardmite": {
       "hp": 40,
@@ -2434,7 +2359,7 @@
       "type": "veilResonance",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "RESONANCE"
+      "callsign": "RESONANT"
     },
     "Nullblade": {
       "hp": 70,
@@ -2475,24 +2400,24 @@
       "pThr": 86,
       "callsign": "OVERSEER"
     },
-    "Sparksprite": {
+    "Glitch Sprite": {
       "hp": 38,
       "dMin": 5,
       "dMax": 9,
       "type": "voidWisp",
       "ai": "dumb",
-      "callsign": "SPARK"
+      "callsign": "GLITCH"
     },
-    "Levyn Acolyte": {
+    "Init Acolyte": {
       "hp": 62,
       "dMin": 12,
       "dMax": 16,
       "type": "voidAcolyte",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "ACOLYTE"
+      "callsign": "INIT"
     },
-    "Chronicle Scribe": {
+    "Checksum Scribe": {
       "hp": 74,
       "dMin": 12,
       "dMax": 16,
@@ -2501,34 +2426,35 @@
       "summonElite": true,
       "callsign": "SCRIBE"
     },
-    "Geas Binder": {
+    "Axiom Binder": {
       "hp": 112,
       "dMin": 17,
       "dMax": 23,
       "type": "voidBinder",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "BINDER"
+      "callsign": "AXIOM"
     },
-    "Glimmer Double": {
+    "Forked Double": {
       "hp": 68,
       "dMin": 13,
       "dMax": 17,
       "type": "voidGlimmer",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "GLIMMER"
+      "callsign": "FORK",
+      "startsCloaked": true
     },
-    "Arc-Titan Channeler": {
+    "Daemon Channeler": {
       "hp": 94,
       "dMin": 15,
       "dMax": 21,
       "type": "voidChanneler",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "ARC-TITAN"
+      "callsign": "DAEMON"
     },
-    "CIRCLET HIEROPHANT": {
+    "ROOT HIEROPHANT": {
       "hp": 180,
       "dMin": 19,
       "dMax": 25,
@@ -2538,49 +2464,50 @@
       "p2dMin": 27,
       "p2dMax": 35,
       "pThr": 86,
-      "callsign": "HIEROPHANT"
+      "callsign": "ROOT"
     },
-    "Rift Macaque": {
+    "Pumice Macaque": {
       "hp": 38,
       "dMin": 5,
       "dMax": 9,
       "type": "beastMonkey",
       "ai": "dumb",
-      "callsign": "RIFT"
+      "callsign": "PUMICE"
     },
-    "Void Hound": {
+    "Obsidian Hound": {
       "hp": 42,
       "dMin": 6,
       "dMax": 10,
       "type": "beastWolf",
       "ai": "dumb",
-      "callsign": "VOID"
+      "callsign": "HOUND"
     },
-    "Pack Hound": {
+    "Slag Hound": {
       "hp": 34,
       "dMin": 5,
       "dMax": 9,
       "type": "beastWolf",
       "ai": "dumb",
-      "callsign": "PACK"
+      "callsign": "SLAG"
     },
-    "Eclipse Panther": {
+    "Geode Panther": {
       "hp": 74,
       "dMin": 12,
       "dMax": 17,
       "type": "beastLynx",
       "ai": "smart",
-      "callsign": "ECLIPSE"
+      "callsign": "GEODE"
     },
-    "Thunder Ape": {
+    "Basalt Ape": {
       "hp": 112,
       "dMin": 16,
       "dMax": 22,
       "type": "beastBison",
       "ai": "smart",
-      "callsign": "THUNDER"
+      "callsign": "BASALT",
+      "accrete": 3
     },
-    "Eclipse Raptor": {
+    "Pyroclast Raptor": {
       "hp": 86,
       "dMin": 13,
       "dMax": 18,
@@ -2589,15 +2516,16 @@
       "summonElite": true,
       "callsign": "RAPTOR"
     },
-    "Ridge Drake": {
+    "Magma Drake": {
       "hp": 98,
       "dMin": 15,
       "dMax": 21,
       "type": "beastBadger",
       "ai": "smart",
-      "callsign": "DRAKE"
+      "callsign": "MAGMA",
+      "accrete": 4
     },
-    "VOID REAVER": {
+    "MANTLE TYRANT": {
       "hp": 180,
       "dMin": 19,
       "dMax": 25,
@@ -2606,7 +2534,7 @@
       "p2dMin": 27,
       "p2dMax": 35,
       "pThr": 86,
-      "callsign": "REAVER"
+      "callsign": "MANTLE"
     }
   },
   "battleEnemyScale": [

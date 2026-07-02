@@ -352,8 +352,8 @@
     },
     "voidCirclet": {
       "trackHpScale": 0.94,
-      "callsign": "CIRCLET",
-      "label": "Void Circlet",
+      "callsign": "SYNOD",
+      "label": "Null Synod",
       "blurb": "Machine cultists who rewrite your dice and drain your Protocol. Guard your best rolls.",
       "victoryTitle": "VICTORY",
       "victorySub": "Hierophant down. Gate sealed.",
@@ -361,100 +361,100 @@
         {
           "enemies": [
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Levyn Acolyte"
+              "name": "Init Acolyte"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Chronicle Scribe"
+              "name": "Checksum Scribe"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Geas Binder"
+              "name": "Axiom Binder"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Chronicle Scribe"
+              "name": "Checksum Scribe"
             },
             {
-              "name": "Chronicle Scribe"
+              "name": "Checksum Scribe"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Geas Binder"
+              "name": "Axiom Binder"
             },
             {
-              "name": "Levyn Acolyte"
+              "name": "Init Acolyte"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Glimmer Double"
+              "name": "Forked Double"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Arc-Titan Channeler"
+              "name": "Daemon Channeler"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Arc-Titan Channeler"
+              "name": "Daemon Channeler"
             },
             {
-              "name": "Chronicle Scribe"
+              "name": "Checksum Scribe"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "CIRCLET HIEROPHANT"
+              "name": "ROOT HIEROPHANT"
             },
             {
-              "name": "Chronicle Scribe"
+              "name": "Checksum Scribe"
             }
           ]
         }
@@ -462,8 +462,8 @@
     },
     "stellarMenagerie": {
       "trackHpScale": 0.94,
-      "callsign": "MENAGERIE",
-      "label": "Stellar Menagerie",
+      "callsign": "ACCRETION",
+      "label": "The Accretion",
       "blurb": "Igneous beasts that armor up every turn. Cut them down before the mass sets.",
       "victoryTitle": "VICTORY",
       "victorySub": "Reaver down. Menagerie silent.",
@@ -471,100 +471,100 @@
         {
           "enemies": [
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             },
             {
-              "name": "Void Hound"
+              "name": "Obsidian Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Void Hound"
+              "name": "Obsidian Hound"
             },
             {
-              "name": "Void Hound"
+              "name": "Obsidian Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Eclipse Panther"
+              "name": "Geode Panther"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Thunder Ape"
+              "name": "Basalt Ape"
             },
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Eclipse Panther"
+              "name": "Geode Panther"
             },
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             },
             {
-              "name": "Void Hound"
+              "name": "Obsidian Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Ridge Drake"
+              "name": "Magma Drake"
             },
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Eclipse Raptor"
+              "name": "Pyroclast Raptor"
             },
             {
-              "name": "Void Hound"
+              "name": "Obsidian Hound"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "Thunder Ape"
+              "name": "Basalt Ape"
             },
             {
-              "name": "Ridge Drake"
+              "name": "Magma Drake"
             },
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             }
           ]
         },
         {
           "enemies": [
             {
-              "name": "VOID REAVER"
+              "name": "MANTLE TYRANT"
             },
             {
-              "name": "Eclipse Panther"
+              "name": "Geode Panther"
             }
           ]
         }

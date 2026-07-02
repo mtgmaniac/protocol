@@ -163,14 +163,23 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"Broodwarden": "broodwarden.png",
 	"Caustic Spewer": "caustic_spewer.png",
 	"Hive Matriarch": "hive_matriarch.png",
-	"Rift Macaque": "res://assets/portraits/enemies/rift_macaque.png",
-	"Void Hound": "res://assets/portraits/enemies/void_hound.png",
-	"Pack Hound": "res://assets/portraits/enemies/void_hound.png",
-	"Eclipse Panther": "res://assets/portraits/enemies/eclipse_panther.png",
-	"Ridge Drake": "res://assets/portraits/enemies/ridge_drake.png",
-	"Eclipse Raptor": "res://assets/portraits/enemies/eclipse_raptor.png",
-	"Thunder Ape": "res://assets/portraits/enemies/thunder_ape.png",
-	"VOID REAVER": "res://assets/portraits/enemies/void_reaver.png",
+	# The Accretion (pkg3.3 renames) — aliases to the existing menagerie art.
+	"Pumice Macaque": "res://assets/portraits/enemies/rift_macaque.png",
+	"Obsidian Hound": "res://assets/portraits/enemies/void_hound.png",
+	"Slag Hound": "res://assets/portraits/enemies/void_hound.png",
+	"Geode Panther": "res://assets/portraits/enemies/eclipse_panther.png",
+	"Magma Drake": "res://assets/portraits/enemies/ridge_drake.png",
+	"Pyroclast Raptor": "res://assets/portraits/enemies/eclipse_raptor.png",
+	"Basalt Ape": "res://assets/portraits/enemies/thunder_ape.png",
+	"MANTLE TYRANT": "res://assets/portraits/enemies/void_reaver.png",
+	# Null Synod (pkg3.3 renames) — aliases to the existing circlet art.
+	"Glitch Sprite": "res://assets/portraits/enemies/sparksprite.png",
+	"Init Acolyte": "res://assets/portraits/enemies/levyn_acolyte.png",
+	"Checksum Scribe": "res://assets/portraits/enemies/chronicle_scribe.png",
+	"Axiom Binder": "res://assets/portraits/enemies/geas_binder.png",
+	"Forked Double": "res://assets/portraits/enemies/glimmer_double.png",
+	"Daemon Channeler": "res://assets/portraits/enemies/arc_titan_channeler.png",
+	"ROOT HIEROPHANT": "res://assets/portraits/enemies/circlet_hierophant.png",
 }
 
 var units: Dictionary = {}
@@ -285,6 +294,8 @@ func _load_enemies() -> void:
 		enemy.phase_two_damage_preview_max = int(enemy_def.get("p2dMax", 0))
 		enemy.phase_two_threshold = int(enemy_def.get("pThr", 0))
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
+		enemy.accrete = int(enemy_def.get("accrete", 0))
+		enemy.starts_cloaked = bool(enemy_def.get("startsCloaked", false))
 		var revive_names: Array = enemy_def.get("p2ReviveNames", [])
 		enemy.phase_two_revive_names = []
 		for revive_name in revive_names:
