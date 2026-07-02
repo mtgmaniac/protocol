@@ -298,33 +298,6 @@
       "effect": { "type": "enemyBurn", "amount": 14, "burnT": 3 }
     },
     {
-      "id": "training_datachip",
-      "name": "Training Datachip",
-      "desc": "All living tier-1 heroes gain +3 XP.",
-      "rarity": "common",
-      "icon": "star",
-      "target": "none",
-      "effect": { "type": "xpBoost", "amount": 3 }
-    },
-    {
-      "id": "field_manual",
-      "name": "Field Manual",
-      "desc": "All living tier-1 heroes gain +5 XP.",
-      "rarity": "uncommon",
-      "icon": "star",
-      "target": "none",
-      "effect": { "type": "xpBoost", "amount": 5 }
-    },
-    {
-      "id": "mnemonic_core",
-      "name": "Mnemonic Core",
-      "desc": "All living tier-1 heroes gain +8 XP.",
-      "rarity": "rare",
-      "icon": "star",
-      "target": "none",
-      "effect": { "type": "xpBoost", "amount": 8 }
-    },
-    {
       "id": "phase_scrambler",
       "name": "Phase Scrambler",
       "desc": "Reroll one enemy's die.",

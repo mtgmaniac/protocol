@@ -338,8 +338,6 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "freeze", "", int(effect.get("skips", 0)))
 		"enemyDieFreezeAll":
 			_append_effect(effects, "freeze", "", int(effect.get("skips", 0)), "all")
-		"xpBoost":
-			_append_effect(effects, "tag", "+%d XP" % int(effect.get("amount", 0)))
 		_:
 			if target_kind != "":
 				_append_effect(effects, "tag", target_kind.to_upper())

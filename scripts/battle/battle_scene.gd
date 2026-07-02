@@ -2837,15 +2837,6 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			var turns: int = int(effect.get("burnT", 1))
 			combat_manager.apply_item_burn(target_state, amount, turns)
 			_append_log("Item: %s applies %d burn to %s for %d turns." % [item.display_name, amount, tname, turns])
-		"xpBoost":
-			# Phase 5 wires GameState.add_unit_xp; guarded so it won't crash before then
-			var amount: int = int(effect.get("amount", 0))
-			for hero_state in combat_manager.get_hero_states():
-				if not bool(hero_state.get("dead", true)):
-					var unit: UnitData = hero_state.get("unit") as UnitData
-					if unit != null and _game_state().has_method("add_unit_xp"):
-						_game_state().add_unit_xp(str(unit.id), amount)
-			_append_log("Item: %s — all living allies +%d XP." % [item.display_name, amount])
 		"gainProtocol":
 			var protocol_grant: int = int(effect.get("amount", 0))
 			protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)

@@ -1170,11 +1170,6 @@ function applyConsumableEffect(
         if (en.hp > 0) applyEnemyDieFreeze(en, e.skips ?? 1);
       }
       break;
-    case 'xpBoost':
-      for (const h of heroes) {
-        if (h.hp > 0 && h.tier === 1) h.xp += e.amount ?? 0;
-      }
-      break;
     default:
       break;
   }

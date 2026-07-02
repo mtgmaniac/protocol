@@ -31,7 +31,6 @@ export const BATTLE_START_CONSUMABLE_TYPES = new Set([
   'shieldAll',
   'gainProtocol',
   'enemyDieFreezeAll',
-  'xpBoost',
 ]);
 
 /** No combat impact under current sim (cloak evasion / die reroll UI). */
