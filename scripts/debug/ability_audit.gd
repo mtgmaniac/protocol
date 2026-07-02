@@ -57,6 +57,8 @@ const HERO_HANDLED_FIELDS := [
 	"chain",
 	"detonate",
 	"execute",
+	"breach",
+	"breachAll",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -429,6 +431,7 @@ func _run_regression_audits() -> void:
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
+	_run_breach_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -820,6 +823,50 @@ func _run_execute_regression() -> void:
 		_record_pass("Regression / execute inert above threshold", "execute")
 	else:
 		_record_failure("Regression / execute inert above threshold", "execute", "80 - 10 = 70, no bonus", "hp=%d" % int(h_enemy["current_hp"]))
+
+
+func _run_breach_regression() -> void:
+	# Breach destroys the target's shields before the hit, so full damage lands.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Breach Slam", {"dmg": 9, "breach": true})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	enemy["shield_stacks"] = [{"amt": 15, "skip_next_tick": true}]
+	enemy["shield"] = 15
+	var before_hp: int = int(enemy["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var ok: bool = int(enemy["current_hp"]) == before_hp - 9 and int(enemy["shield"]) == 0
+	if ok:
+		_record_pass("Regression / breach strips shields before damage", "breach")
+	else:
+		_record_failure("Regression / breach strips shields before damage", "breach", "15 shield destroyed, full 9 damage to HP", "hp_delta=%d shield=%d" % [before_hp - int(enemy["current_hp"]), int(enemy["shield"])])
+
+	# breach all strips every enemy before an AoE hit.
+	var all_manager: CombatManager = CombatManager.new()
+	all_manager.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Total Suppression", {"dmg": 11, "blastAll": true, "breachAll": true})],
+		[_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B")]
+	)
+	var a_hero: Dictionary = all_manager.get_hero_states()[0]
+	var ea: Dictionary = all_manager.get_enemy_states()[0]
+	var eb: Dictionary = all_manager.get_enemy_states()[1]
+	for es in [ea, eb]:
+		es["shield_stacks"] = [{"amt": 10, "skip_next_tick": true}]
+		es["shield"] = 10
+	var ea_before: int = int(ea["current_hp"])
+	var eb_before: int = int(eb["current_hp"])
+	all_manager.resolve_round({str(a_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var all_ok: bool = (
+		int(ea["current_hp"]) == ea_before - 11 and int(eb["current_hp"]) == eb_before - 11
+		and int(ea["shield"]) == 0 and int(eb["shield"]) == 0
+	)
+	if all_ok:
+		_record_pass("Regression / breach all strips every enemy", "breachAll")
+	else:
+		_record_failure("Regression / breach all strips every enemy", "breachAll", "both shields destroyed, full 11 damage each", "a_delta=%d b_delta=%d a_sh=%d b_sh=%d" % [ea_before - int(ea["current_hp"]), eb_before - int(eb["current_hp"]), int(ea["shield"]), int(eb["shield"])])
 
 
 func _run_shield_lowest_regression() -> void:

@@ -629,17 +629,32 @@ func _apply_hero_ability_damage(
 	var final_dmg: int = int(ceil(float(damage + first_bonus) * _get_hero_dmg_mult()))
 	var shield_pierce: int = int(hero_state.get("gear_shield_pierce", 0))
 
+	var breach: bool = bool(raw.get("breach", false))
+	var breach_all: bool = bool(raw.get("breachAll", false))
+
 	if hits_all:
 		for enemy_state in _enemy_states:
+			if enemy_state["dead"]:
+				continue
 			if _ward_blocks_hostile(enemy_state):
 				continue
+			if breach_all or breach:
+				_breach_shields(hero_state, enemy_state)
 			_damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
 	else:
 		var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if target_enemy.is_empty():
 			target_enemy = _first_living_state(_enemy_states)
+		# breach all on a single-target ability still strips every enemy's
+		# shields before the hit lands.
+		if breach_all:
+			for enemy_state in _enemy_states:
+				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state):
+					_breach_shields(hero_state, enemy_state)
 		if not target_enemy.is_empty():
 			if not _ward_blocks_hostile(target_enemy):
+				if breach and not breach_all:
+					_breach_shields(hero_state, target_enemy)
 				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
 				if bool(raw.get("detonate", false)):
 					_detonate_burn(hero_state, target_enemy)
@@ -650,6 +665,19 @@ func _apply_hero_ability_damage(
 			# Chain jumps continue even when the primary hit was ward-blocked —
 			# the ward only negates the ability for its own carrier.
 			_apply_chain_jumps(hero_state, ability_entry, target_enemy, final_dmg, ignores_shield, shield_pierce)
+
+
+# Breach: destroy ALL shield on the target before the damage applies.
+func _breach_shields(attacker_state: Dictionary, target_state: Dictionary) -> void:
+	if target_state.is_empty() or bool(target_state.get("dead", false)):
+		return
+	var destroyed: int = int(target_state.get("shield", 0))
+	if destroyed <= 0:
+		return
+	target_state["shield_stacks"] = []
+	target_state["shield"] = 0
+	_log("%s BREACHES %s's shields (%d destroyed)!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, destroyed])
+	_emit_event(target_state, "breach", destroyed, _resolve_side_for_state(target_state))
 
 
 # Execute: if the target sits below the execute threshold of its max HP AFTER

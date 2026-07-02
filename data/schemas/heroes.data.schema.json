@@ -104,6 +104,8 @@
         "chain": { "type": "integer", "minimum": 1 },
         "detonate": { "type": "boolean" },
         "execute": { "type": "boolean" },
+        "breach": { "type": "boolean" },
+        "breachAll": { "type": "boolean" },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

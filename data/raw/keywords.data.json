@@ -30,6 +30,13 @@
       "syntax": "execute"
     },
     {
+      "id": "breach",
+      "term": "Breach",
+      "category": "offense",
+      "def": "Destroys all shield on the target before the damage applies. Breach all strips every enemy.",
+      "syntax": "breach / breach all"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",
