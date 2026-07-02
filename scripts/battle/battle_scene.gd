@@ -492,6 +492,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		_apply_tutorial_dice_rig()
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
+	_apply_post_roll_gear_effects()
 
 	for hero_state in combat_manager.get_hero_states():
 		if bool(hero_state.get("cursed", false)):
@@ -1075,7 +1076,7 @@ func _on_nudge_button_pressed() -> void:
 		if hero_rolls.is_empty():
 			_refresh_summary("Roll dice before using Nudge.")
 		return
-	if protocol_points < 1:
+	if protocol_points < 1 and not _has_free_nudge_available():
 		_refresh_summary("Need 1 Protocol to Nudge.")
 		return
 	if not _has_nudgeable_hero():
@@ -1111,11 +1112,47 @@ func _apply_reroll(hero_id: String) -> void:
 	_finish_roll_modifier_pick()
 
 
+func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
+	for gear_id in _game_state().gear_by_unit.get(hero_id, []):
+		var item: ItemData = DataManager.get_item(str(gear_id)) as ItemData
+		if item != null and item.effect != null and str(item.effect.get("type", "")) == effect_type:
+			return true
+	return false
+
+
+# Priming Charge gear: the first Nudge each battle is free (per holder).
+var _free_nudge_used: Dictionary = {}
+
+
+func _get_nudge_cost(hero_id: String) -> int:
+	if _hero_has_gear_effect(hero_id, "firstNudgeFree") and not _free_nudge_used.has(hero_id):
+		return 0
+	return 1
+
+
 func _apply_nudge(hero_id: String) -> void:
 	if _was_hero_nudged_this_turn(hero_id):
+		# Reverse Gimbal gear: a second Nudge tap flips the pending nudge's
+		# sign for free instead of stacking.
+		# DESIGN-TODO(kev): confirm the flip interaction (tap again to swap
+		# +3 <-> -3) as the "may subtract" UX.
+		if _hero_has_gear_effect(hero_id, "nudgeMaySubtract"):
+			hero_roll_nudges[hero_id] = -int(hero_roll_nudges.get(hero_id, 3))
+			_append_log("Reverse Gimbal: nudge flipped to %+d." % int(hero_roll_nudges[hero_id]))
+			var flipped_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
+			if dice_tray_3d != null and not flipped_state.is_empty():
+				dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(flipped_state, hero_id))
+			_re_assign_hero_target(hero_id)
+			_refresh_dice_result_actions()
+			_finish_roll_modifier_pick()
+			return
 		_refresh_summary("That die was already nudged this turn.")
 		return
-	protocol_points -= 1
+	var nudge_cost: int = _get_nudge_cost(hero_id)
+	if nudge_cost == 0:
+		_free_nudge_used[hero_id] = true
+		_append_log("Priming Charge: free Nudge.")
+	protocol_points -= nudge_cost
 	hero_roll_nudges[hero_id] = 3
 	_update_protocol_bar()
 	_append_log("Nudge: %s +3 to effective roll." % hero_id)
@@ -1132,12 +1169,66 @@ func _was_hero_nudged_this_turn(hero_id: String) -> bool:
 	return hero_roll_nudges.has(hero_id)
 
 
+# Roll-time gear: Overload Capacitor (natural 20 grants Protocol) and Sync
+# Antenna (holder + an ally rolling the same number both gain +3 to it).
+func _apply_post_roll_gear_effects() -> void:
+	var hero_states: Array = combat_manager.get_hero_states()
+	for hero_state_variant in hero_states:
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var hero_id: String = str(hero_state["id"])
+		var raw_roll: int = int(hero_rolls.get(hero_id, 0))
+		if raw_roll == 20 and _hero_has_gear_effect(hero_id, "protocolOnNat20"):
+			protocol_points = mini(protocol_points + 2, MAX_PROTOCOL)
+			_update_protocol_bar()
+			_append_log("Overload Capacitor: natural 20 → +2 Protocol.")
+	var synced_ids: Dictionary = {}
+	for hero_state_variant in hero_states:
+		var holder: Dictionary = hero_state_variant
+		if bool(holder.get("dead", false)):
+			continue
+		var holder_id: String = str(holder["id"])
+		if not _hero_has_gear_effect(holder_id, "syncRollBonus"):
+			continue
+		var holder_roll: int = int(hero_rolls.get(holder_id, 0))
+		if holder_roll <= 0:
+			continue
+		for other_variant in hero_states:
+			var other: Dictionary = other_variant
+			var other_id: String = str(other["id"])
+			if other_id == holder_id or bool(other.get("dead", false)):
+				continue
+			if int(hero_rolls.get(other_id, 0)) != holder_roll:
+				continue
+			for sync_state in [holder, other]:
+				var sid: String = str(sync_state["id"])
+				if not synced_ids.has(sid):
+					synced_ids[sid] = true
+					# Direct (no skip flag): the bonus covers this round only.
+					sync_state["roll_buff"] = int(sync_state.get("roll_buff", 0)) + 3
+			_append_log("Sync Antenna: matched %d — both dice +3." % holder_roll)
+
+
+func _has_free_nudge_available() -> bool:
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		if _get_nudge_cost(str(hero_state["id"])) == 0:
+			return true
+	return false
+
+
 func _can_nudge_hero(state: Dictionary) -> bool:
 	if bool(state.get("dead", false)):
 		return false
 	if not _has_roll_for_state(hero_rolls, state):
 		return false
-	return not _was_hero_nudged_this_turn(str(state["id"]))
+	if _was_hero_nudged_this_turn(str(state["id"])):
+		# Reverse Gimbal holders may re-tap to flip the nudge's sign.
+		return _hero_has_gear_effect(str(state["id"]), "nudgeMaySubtract")
+	return true
 
 
 func _has_nudgeable_hero() -> bool:

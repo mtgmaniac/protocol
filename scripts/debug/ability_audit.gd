@@ -442,6 +442,7 @@ func _run_regression_audits() -> void:
 	_run_cloak_regression()
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
+	_run_new_gear_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1102,6 +1103,96 @@ func _run_siphon_regression() -> void:
 		_record_failure("Regression / siphon drains protocol on hit", "siphon", "2 drained once, then 0", "first=%d second=%d" % [drained, drained_again])
 
 
+func _run_new_gear_regressions() -> void:
+	# Band Compressor / Wide Aperture: runtime band overrides in DiceManager.
+	var dm: DiceManager = DiceManager.new()
+	var pulse: UnitData = DataManager.get_unit("pulse") as UnitData
+	if pulse != null:
+		var saved_gear: Dictionary = GameState.gear_by_unit
+		GameState.gear_by_unit = {"pulse": ["band_compressor"]}
+		var zone_19: String = str(dm.get_ability_for_roll(pulse, 19).get("zone", ""))
+		GameState.gear_by_unit = {"pulse": ["wide_aperture"]}
+		var zone_8: String = str(dm.get_ability_for_roll(pulse, 8).get("zone", ""))
+		GameState.gear_by_unit = {}
+		var zone_19_plain: String = str(dm.get_ability_for_roll(pulse, 19).get("zone", ""))
+		var zone_8_plain: String = str(dm.get_ability_for_roll(pulse, 8).get("zone", ""))
+		GameState.gear_by_unit = saved_gear
+		_expect_and_record("Regression / gear bandCompressor 19 -> overload", "overloadBandCompress", "overload/crit", "%s/%s" % [zone_19, zone_19_plain])
+		_expect_and_record("Regression / gear wideAperture 8 -> surge", "surgeBandExtend", "surge/strike", "%s/%s" % [zone_8, zone_8_plain])
+
+	# Mirror Plate: enemy jam on the holder grants Protocol.
+	var mirror_manager: CombatManager = CombatManager.new()
+	mirror_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "ECM Ping", {"jam": true})])
+	var mirror_hero: Dictionary = mirror_manager.get_hero_states()[0]
+	var mirror_enemy: Dictionary = mirror_manager.get_enemy_states()[0]
+	mirror_hero["gear_mirror_plate"] = 2
+	mirror_enemy["selected_target_id"] = str(mirror_hero["id"])
+	mirror_manager.resolve_round({}, {str(mirror_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	_expect_and_record("Regression / gear mirrorPlate on jam", "protocolOnDieTamper", "2", str(mirror_manager.take_pending_protocol_grants()))
+
+	# Killswitch Relay: the holder's death detonates for 12 to all enemies.
+	var relay_manager: CombatManager = CombatManager.new()
+	relay_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "Crush", {"dmg": 200})])
+	var relay_hero: Dictionary = relay_manager.get_hero_states()[0]
+	var relay_enemy: Dictionary = relay_manager.get_enemy_states()[0]
+	relay_hero["gear_death_damage_all"] = 12
+	relay_enemy["selected_target_id"] = str(relay_hero["id"])
+	var relay_enemy_before: int = int(relay_enemy["current_hp"])
+	relay_manager.resolve_round({}, {str(relay_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var relay_ok: bool = bool(relay_hero["dead"]) and int(relay_enemy["current_hp"]) == relay_enemy_before - 12
+	_expect_and_record("Regression / gear killswitchRelay", "deathDamageAll", "true", str(relay_ok))
+
+	# Anchor Frame: holder above 50% HP soaks single-target attacks aimed elsewhere.
+	var anchor_manager: CombatManager = CombatManager.new()
+	anchor_manager.setup_battle([_make_unit("audit_hero_a", "Audit Hero A", "Noop", {}), _make_unit("audit_hero_b", "Audit Hero B", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "Claw", {"dmg": 6})])
+	var anchor_a: Dictionary = anchor_manager.get_hero_states()[0]
+	var anchor_b: Dictionary = anchor_manager.get_hero_states()[1]
+	var anchor_enemy: Dictionary = anchor_manager.get_enemy_states()[0]
+	anchor_b["gear_anchor_taunt"] = true
+	anchor_enemy["selected_target_id"] = str(anchor_a["id"])
+	var a_before: int = int(anchor_a["current_hp"])
+	var b_before: int = int(anchor_b["current_hp"])
+	anchor_manager.resolve_round({}, {str(anchor_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var anchor_ok: bool = int(anchor_a["current_hp"]) == a_before and int(anchor_b["current_hp"]) == b_before - 6
+	_expect_and_record("Regression / gear anchorFrame taunts above 50%", "tauntAbove50", "true", str(anchor_ok))
+
+	# Ignition Coil: hero-applied Burn ticks once immediately.
+	var coil_manager: CombatManager = CombatManager.new()
+	coil_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Arc Burst", {"dmg": 0, "burn": 3, "burnT": 2})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var coil_hero: Dictionary = coil_manager.get_hero_states()[0]
+	var coil_enemy: Dictionary = coil_manager.get_enemy_states()[0]
+	coil_hero["gear_burn_immediate"] = true
+	coil_hero["selected_target_id"] = str(coil_enemy["id"])
+	var coil_before: int = int(coil_enemy["current_hp"])
+	coil_manager.resolve_round({str(coil_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var coil_ok: bool = int(coil_enemy["current_hp"]) == coil_before - 3 and int(coil_enemy["burn"]) == 3 and int(coil_enemy["burn_turns"]) == 2
+	_expect_and_record("Regression / gear ignitionCoil instant tick", "burnImmediateTick", "true", str(coil_ok))
+
+	# Payload Fuse: Detonate bursts deal +50% (ceil).
+	var fuse_manager: CombatManager = CombatManager.new()
+	fuse_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Backdraft", {"dmg": 5, "detonate": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var fuse_hero: Dictionary = fuse_manager.get_hero_states()[0]
+	var fuse_enemy: Dictionary = fuse_manager.get_enemy_states()[0]
+	fuse_hero["gear_detonate_bonus"] = true
+	fuse_hero["selected_target_id"] = str(fuse_enemy["id"])
+	fuse_enemy["burn"] = 3
+	fuse_enemy["burn_turns"] = 2
+	fuse_enemy["burn_skip_next_tick"] = true
+	var fuse_before: int = int(fuse_enemy["current_hp"])
+	fuse_manager.resolve_round({str(fuse_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	# 5 base + ceil(6 * 1.5) = 5 + 9 = 14
+	_expect_and_record("Regression / gear payloadFuse detonate +50%", "detonateBonus", "14", str(fuse_before - int(fuse_enemy["current_hp"])))
+
+	# Targeting Optic: battles start with the first enemy Marked.
+	var optic_manager: CombatManager = CombatManager.new()
+	optic_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var saved_gear_optic: Dictionary = GameState.gear_by_unit
+	GameState.gear_by_unit = {"audit_hero": ["targeting_optic"]}
+	optic_manager.apply_battle_start_gear_effects()
+	GameState.gear_by_unit = saved_gear_optic
+	_expect_and_record("Regression / gear targetingOptic marks first enemy", "battleStartMark", "true", str(bool(optic_manager.get_enemy_states()[0].get("marked", false))))
+
+
 func _run_shield_lowest_regression() -> void:
 	# shieldLowest auto-targets the lowest-HP living ally — no manual pick.
 	var context: Dictionary = _build_context({"shield": 7, "shieldLowest": true}, "Shield Lowest Regression")
@@ -1298,7 +1389,7 @@ func _run_gear_lifesteal_regression() -> void:
 	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 20})
 	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
 	manager.setup_battle([hero_unit], [enemy_unit])
-	manager.setup_gear({"audit_hero": ["blood_siphon"]})
+	manager.setup_gear({"audit_hero": ["siphon_loop"]})
 	var hero: Dictionary = manager.get_hero_states()[0]
 	var enemy: Dictionary = manager.get_enemy_states()[0]
 	enemy["current_hp"] = 20
@@ -1307,7 +1398,7 @@ func _run_gear_lifesteal_regression() -> void:
 	hero["selected_target_id"] = str(enemy["id"])
 	var hero_hp_before: int = int(hero["current_hp"])
 	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
-	var expected_heal: int = 5
+	var expected_heal: int = 4
 	var ok: bool = int(hero["current_hp"]) == hero_hp_before + expected_heal and bool(enemy["dead"])
 	if ok:
 		_record_pass("Regression / gear lifesteal", "lifesteal")
@@ -1315,7 +1406,7 @@ func _run_gear_lifesteal_regression() -> void:
 		_record_failure(
 			"Regression / gear lifesteal",
 			"lifesteal",
-			"20 damage kill heals 25%% (5 HP)",
+			"20 damage kill leeches 20%% (4 HP) via Siphon Loop",
 			"hero_hp=%d enemy_dead=%s" % [int(hero["current_hp"]), str(enemy["dead"])]
 		)
 
@@ -1611,13 +1702,15 @@ func _run_gear_protocol_on_kill_regression() -> void:
 
 
 func _run_gear_protocol_on_kill_any_regression() -> void:
+	# The protocolOnKillAny handler survives (no pkg3.4 gear uses it); exercise
+	# it via the state flag directly since Apex Collector was removed.
 	var manager: CombatManager = CombatManager.new()
 	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})
 	var boss_enemy: EnemyData = _make_enemy("audit_boss", "Audit Boss")
 	boss_enemy.enemy_type = "boss"
 	manager.setup_battle([hero_unit], [boss_enemy])
-	manager.setup_gear({"audit_hero": ["apex_collector"]})
 	var hero: Dictionary = manager.get_hero_states()[0]
+	hero["gear_protocol_on_kill_any"] = 1
 	var boss: Dictionary = manager.get_enemy_states()[0]
 	hero["selected_target_id"] = str(boss["id"])
 	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())

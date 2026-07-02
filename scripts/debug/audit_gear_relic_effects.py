@@ -15,6 +15,10 @@ GEAR_HANDLED = {
     "battleStartCloakRoll",
     "maxHpBonus", "lifesteal", "firstAbilityEcho", "shieldPierce", "healShieldBonus",
     "protocolOnKill", "protocolOnKillAny",
+    # pkg3.4 pool
+    "overloadBandCompress", "surgeBandExtend", "nudgeMaySubtract", "firstNudgeFree",
+    "protocolOnNat20", "burnImmediateTick", "detonateBonus", "battleStartMark",
+    "protocolOnDieTamper", "tauntAbove50", "deathDamageAll", "syncRollBonus",
 }
 
 RELIC_HANDLED = {

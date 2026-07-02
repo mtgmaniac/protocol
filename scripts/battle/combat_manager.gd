@@ -108,6 +108,16 @@ func _apply_gear_passive(hero_state: Dictionary, effect: Dictionary) -> void:
 			hero_state["gear_protocol_on_kill"] = int(hero_state.get("gear_protocol_on_kill", 0)) + int(effect.get("amount", 0))
 		"protocolOnKillAny":
 			hero_state["gear_protocol_on_kill_any"] = int(hero_state.get("gear_protocol_on_kill_any", 0)) + int(effect.get("amount", 0))
+		"detonateBonus":
+			hero_state["gear_detonate_bonus"] = true
+		"burnImmediateTick":
+			hero_state["gear_burn_immediate"] = true
+		"protocolOnDieTamper":
+			hero_state["gear_mirror_plate"] = int(hero_state.get("gear_mirror_plate", 0)) + int(effect.get("amount", 2))
+		"tauntAbove50":
+			hero_state["gear_anchor_taunt"] = true
+		"deathDamageAll":
+			hero_state["gear_death_damage_all"] = int(hero_state.get("gear_death_damage_all", 0)) + int(effect.get("amount", 12))
 
 
 # --- Battle-start relic effects ---
@@ -201,6 +211,13 @@ func apply_battle_start_gear_effects() -> void:
 					hero_state["max_hp"] = int(hero_state["max_hp"]) + bonus
 					hero_state["current_hp"] = int(hero_state["current_hp"]) + bonus
 					_log("%s: Stim Injector +%d max HP." % [hero_state["unit"].display_name, bonus])
+				"battleStartMark":
+					# Targeting Optic: battles start with this unit's first
+					# target Marked — mark the first living enemy.
+					var optic_target: Dictionary = _first_living_state(_enemy_states)
+					if not optic_target.is_empty():
+						_apply_mark(optic_target)
+						_log("%s: Targeting Optic paints %s." % [hero_state["unit"].display_name, optic_target["unit"].display_name])
 
 
 # --- Per-enemy-turn relic effects ---
@@ -578,7 +595,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if damage <= 0 and burn_amount > 0:
 		var burn_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
-			_apply_burn(burn_target, burn_amount, burn_turns)
+			_apply_burn_from_hero(hero_state, burn_target, burn_amount, burn_turns)
 
 	# RFE application (roll debuff on enemies)
 	var rfe_amount: int = int(raw.get("rfe", 0))
@@ -722,6 +739,9 @@ func _apply_hero_ability_damage(
 			if breach_all or breach:
 				_breach_shields(hero_state, enemy_state)
 			leech_hp_dealt += _damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
+			# AoE burn (Supernova: "3 burn all").
+			if burn_amount > 0 and burn_turns > 0 and not enemy_state["dead"]:
+				_apply_burn_from_hero(hero_state, enemy_state, burn_amount, burn_turns)
 	else:
 		var target_enemy: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if target_enemy.is_empty():
@@ -749,7 +769,7 @@ func _apply_hero_ability_damage(
 				if bool(raw.get("execute", false)):
 					_apply_execute_bonus(hero_state, target_enemy)
 				if burn_amount > 0 and burn_turns > 0:
-					_apply_burn(target_enemy, burn_amount, burn_turns)
+					_apply_burn_from_hero(hero_state, target_enemy, burn_amount, burn_turns)
 				# Mark applies AFTER this hit — the NEXT hit gets the +50%.
 				if bool(raw.get("mark", false)):
 					_apply_mark(target_enemy)
@@ -778,6 +798,18 @@ func _apply_rewrite(state: Dictionary, survives_current_tick: bool = true) -> vo
 	state["rewrite_skip_next_tick"] = survives_current_tick
 	_log("%s's die is being REWRITTEN — next roll becomes %d." % [state["unit"].display_name, REWRITE_VALUE])
 	_emit_event(state, "rewrite", REWRITE_VALUE, _resolve_side_for_state(state))
+	_grant_mirror_plate_protocol(state)
+
+
+# Mirror Plate gear: when an enemy Jams/Rewrites/Freezes this unit's die,
+# gain Protocol (delivered through the pending-grant pipeline).
+func _grant_mirror_plate_protocol(state: Dictionary) -> void:
+	if not _is_hero_state(state):
+		return
+	var amount: int = int(state.get("gear_mirror_plate", 0))
+	if amount > 0:
+		_pending_protocol_grants += amount
+		_log("Mirror Plate: +%d Protocol." % amount)
 
 
 # Public hook for the ROOT HIEROPHANT boss rule (rewrite the heroes' highest die).
@@ -796,10 +828,20 @@ func _apply_jam(state: Dictionary, cap: int = JAM_CAP, survives_current_tick: bo
 	state["jam_skip_next_tick"] = survives_current_tick
 	_log("%s's die is JAMMED — next roll capped at %d." % [state["unit"].display_name, int(state["jam_cap"])])
 	_emit_event(state, "jam", int(state["jam_cap"]), _resolve_side_for_state(state))
+	_grant_mirror_plate_protocol(state)
 
 
 func apply_battle_start_jam(state: Dictionary, cap: int = JAM_CAP) -> void:
 	_apply_jam(state, cap, false)
+
+
+# Hero-applied Burn: routes through the Ignition Coil gear hook — the Burn
+# also ticks once immediately on apply (extra tick, turns untouched).
+func _apply_burn_from_hero(hero_state: Dictionary, target_state: Dictionary, amount: int, turns: int) -> void:
+	_apply_burn(target_state, amount, turns)
+	if bool(hero_state.get("gear_burn_immediate", false)) and amount > 0 and not bool(target_state.get("dead", false)):
+		_log("Ignition Coil: the Burn ignites instantly for %d!" % amount)
+		_damage_state(target_state, amount)
 
 
 # Mark: persistent status chip — the next hit on this target deals +50%
@@ -1375,6 +1417,7 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, immediate: bool = 
 		state["die_freeze_consumed_this_round"] = true
 	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
+	_grant_mirror_plate_protocol(state)
 
 
 func _resolve_revive_hp_pct(raw: Dictionary) -> int:
@@ -1443,6 +1486,15 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 			if protocol_any > 0:
 				_pending_protocol_grants += protocol_any
 				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_any])
+
+	# Killswitch Relay gear: when this hero dies, deal damage to all enemies.
+	if _is_hero_state(dead_state):
+		var relay_damage: int = int(dead_state.get("gear_death_damage_all", 0))
+		if relay_damage > 0:
+			_log("%s's Killswitch Relay detonates for %d to all enemies!" % [dead_state["unit"].display_name, relay_damage])
+			for enemy_state in _enemy_states:
+				if not enemy_state["dead"]:
+					_damage_state(enemy_state, relay_damage)
 
 	_chain_reaction_active = false
 
@@ -1627,6 +1679,12 @@ func _find_target_by_id_including_dead(states: Array, target_id: String) -> Dict
 func _get_taunting_hero_state() -> Dictionary:
 	for hero_state in _hero_states:
 		if not bool(hero_state["dead"]) and bool(hero_state.get("taunting", false)):
+			return hero_state
+	# Anchor Frame gear: taunts while above 50% HP (explicit taunts win).
+	for hero_state in _hero_states:
+		if bool(hero_state["dead"]) or not bool(hero_state.get("gear_anchor_taunt", false)):
+			continue
+		if int(hero_state["current_hp"]) * 2 > int(hero_state["max_hp"]):
 			return hero_state
 	return {}
 
