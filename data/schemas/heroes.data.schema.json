@@ -107,6 +107,7 @@
         "breach": { "type": "boolean" },
         "breachAll": { "type": "boolean" },
         "leech": { "type": "boolean" },
+        "mark": { "type": "boolean" },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

@@ -44,6 +44,13 @@
       "syntax": "leech"
     },
     {
+      "id": "mark",
+      "term": "Mark",
+      "category": "offense",
+      "def": "The next hit on this target deals +50% (round up), then the Mark is consumed.",
+      "syntax": "mark"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",

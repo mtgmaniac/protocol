@@ -115,6 +115,8 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		entries.append(_status_entry("cloak", "C", 0, _status_text("cloak", "", 0)))
 	if bool(state.get("warded", false)):
 		entries.append(_status_entry("ward", "W", 0, _status_text("ward", "", 0)))
+	if bool(state.get("marked", false)):
+		entries.append(_status_entry("mark", "M", 0, _status_text("mark", "", 0)))
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", "RA", 0, _status_text("rampage", "", 0)))
 	return entries
@@ -404,6 +406,8 @@ static func _status_keyword(kind: String) -> String:
 			return "RAMPAGE"
 		"ward":
 			return "WARD"
+		"mark":
+			return "MARKED"
 	return kind.to_upper()
 
 
@@ -433,6 +437,8 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 			return "Deals double damage this turn."
 		"ward":
 			return "Blocks the next ability that targets this unit, then breaks."
+		"mark":
+			return "The next hit on this unit deals +50%, then the Mark is consumed."
 	return ""
 
 

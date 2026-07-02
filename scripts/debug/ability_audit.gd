@@ -60,6 +60,7 @@ const HERO_HANDLED_FIELDS := [
 	"breach",
 	"breachAll",
 	"leech",
+	"mark",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -434,6 +435,7 @@ func _run_regression_audits() -> void:
 	_run_execute_regression()
 	_run_breach_regression()
 	_run_leech_regression()
+	_run_mark_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -901,6 +903,37 @@ func _run_leech_regression() -> void:
 		_record_pass("Regression / leech gets nothing through shields", "leech")
 	else:
 		_record_failure("Regression / leech gets nothing through shields", "leech", "fully absorbed hit heals 0", "hero_hp=%d" % int(s_hero["current_hp"]))
+
+
+func _run_mark_regression() -> void:
+	# Mark: applied after the marking hit; the NEXT hit deals +50% (round up)
+	# and consumes it; the hit after that is normal again.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Target Lock", {"dmg": 3, "mark": true})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	var before: int = int(enemy["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var after_first: int = int(enemy["current_hp"])
+	var marked_after_first: bool = bool(enemy.get("marked", false))
+	hero["selected_target_id"] = str(enemy["id"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var after_second: int = int(enemy["current_hp"])
+	var marked_after_second: bool = bool(enemy.get("marked", false))
+	# hit 1: 3 dmg (mark applies after) -> hit 2: ceil(3*1.5)=5 consumed, mark re-applied
+	var ok: bool = (
+		after_first == before - 3
+		and marked_after_first
+		and after_second == after_first - 5
+		and marked_after_second
+	)
+	if ok:
+		_record_pass("Regression / mark boosts next hit +50% then re-applies", "mark")
+	else:
+		_record_failure("Regression / mark boosts next hit +50% then re-applies", "mark", "3 then 5 damage; mark active after each marking hit", "d1=%d d2=%d m1=%s m2=%s" % [before - after_first, after_first - after_second, str(marked_after_first), str(marked_after_second)])
 
 
 func _run_shield_lowest_regression() -> void:

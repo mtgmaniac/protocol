@@ -373,6 +373,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"freeze_flavor": "",
 		"rampage_charges": 0,
 		"warded": false,
+		"marked": false,
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
@@ -664,6 +665,9 @@ func _apply_hero_ability_damage(
 					_apply_execute_bonus(hero_state, target_enemy)
 				if burn_amount > 0 and burn_turns > 0:
 					_apply_burn(target_enemy, burn_amount, burn_turns)
+				# Mark applies AFTER this hit — the NEXT hit gets the +50%.
+				if bool(raw.get("mark", false)):
+					_apply_mark(target_enemy)
 			# Chain jumps continue even when the primary hit was ward-blocked —
 			# the ward only negates the ability for its own carrier.
 			_apply_chain_jumps(hero_state, ability_entry, target_enemy, final_dmg, ignores_shield, shield_pierce)
@@ -674,6 +678,20 @@ func _apply_hero_ability_damage(
 		if leech_heal > 0:
 			_log("%s leeches %d HP." % [hero_state["unit"].display_name, leech_heal])
 			_heal_state(hero_state, leech_heal, hero_state)
+
+
+# Mark: persistent status chip — the next hit on this target deals +50%
+# (round up), then the Mark is consumed (see _damage_state).
+func _apply_mark(target_state: Dictionary) -> void:
+	if target_state.is_empty() or bool(target_state.get("dead", false)):
+		return
+	target_state["marked"] = true
+	_log("%s is MARKED — the next hit deals +50%%." % target_state["unit"].display_name)
+	_emit_event(target_state, "mark", 0, _resolve_side_for_state(target_state))
+
+
+func apply_item_mark(target_state: Dictionary) -> void:
+	_apply_mark(target_state)
 
 
 # Breach: destroy ALL shield on the target before the damage applies.
@@ -971,6 +989,16 @@ func _damage_state(
 			if amount == 0:
 				return 0
 
+	# Mark: the next hit on this target deals +50% (round up), then the Mark is
+	# consumed. Only real attacks (attacker present) consume it — burn ticks and
+	# aura chip damage leave the Mark standing.
+	if bool(state.get("marked", false)) and not attacker_state.is_empty():
+		amount = int(ceil(float(amount) * 1.5))
+		state["marked"] = false
+		state["mark_consumed_this_hit"] = true
+		_log("%s's Mark is consumed — the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
+		_emit_event(state, "mark_consumed", amount, _resolve_side_for_state(state))
+
 	var remaining_damage: int = amount
 	var pierce_budget: int = shield_pierce
 
@@ -1212,6 +1240,7 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["freeze_flavor"] = ""
 	state["rampage_charges"] = 0
 	state["warded"] = false
+	state["marked"] = false
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
