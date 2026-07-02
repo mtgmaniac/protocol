@@ -101,6 +101,7 @@ const ENEMY_HANDLED_FIELDS := [
 	"jam",
 	"jamAll",
 	"rewrite",
+	"hijack",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",
@@ -447,6 +448,7 @@ func _run_regression_audits() -> void:
 	_run_spike_regression()
 	_run_jam_regression()
 	_run_rewrite_regression()
+	_run_hijack_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -1005,6 +1007,36 @@ func _run_rewrite_regression() -> void:
 		_record_pass("Regression / rewrite sets next roll to 3 then clears", "rewrite")
 	else:
 		_record_failure("Regression / rewrite sets next roll to 3 then clears", "rewrite", "19 becomes 3 for one round, 19 after", "pending=%s rewritten=%d cleared=%d" % [str(pending), rewritten_roll, cleared_roll])
+
+
+func _run_hijack_regression() -> void:
+	# Hijack: the enemy's next roll copies the heroes' current highest die.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Forked Echo", {"hijack": true})
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["selected_target_id"] = str(hero["id"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var primed: bool = bool(enemy.get("hijack_pending", false)) and bool(enemy.get("hijack_skip_next_tick", false)) == false
+
+	# Consumption path on a noop enemy (the test carrier above re-primes every
+	# round via its only ability, so clear semantics are checked separately).
+	var copy_manager: CombatManager = CombatManager.new()
+	copy_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_noop_enemy", "Audit Noop Enemy")])
+	var c_hero: Dictionary = copy_manager.get_hero_states()[0]
+	var c_enemy: Dictionary = copy_manager.get_enemy_states()[0]
+	c_enemy["hijack_pending"] = true
+	c_enemy["hijack_skip_next_tick"] = false
+	var next_enemy_rolls: Dictionary = {str(c_enemy["id"]): 4}
+	copy_manager.resolve_round({str(c_hero["id"]): 17}, next_enemy_rolls, DiceManager.new())
+	var copied: bool = int(next_enemy_rolls.get(str(c_enemy["id"]), 0)) == 17
+	var cleared: bool = not bool(c_enemy.get("hijack_pending", false))
+	if primed and copied and cleared:
+		_record_pass("Regression / hijack copies highest hero die once", "hijack")
+	else:
+		_record_failure("Regression / hijack copies highest hero die once", "hijack", "primed after apply; next roll copied 17; cleared after", "primed=%s roll=%d cleared=%s" % [str(primed), int(next_enemy_rolls.get(str(c_enemy["id"]), 0)), str(cleared)])
 
 
 func _run_shield_lowest_regression() -> void:

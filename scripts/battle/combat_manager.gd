@@ -287,6 +287,19 @@ func resolve_round(
 ) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
+
+	# Hijack: enemies with a pending hijack copy the heroes' current highest
+	# die for this round's action (effective roll override; raw kept).
+	var highest_hero_roll: int = 0
+	for roll_variant in hero_rolls.values():
+		highest_hero_roll = maxi(highest_hero_roll, int(roll_variant))
+	if highest_hero_roll > 0:
+		for enemy_state in _enemy_states:
+			if not enemy_state["dead"] and bool(enemy_state.get("hijack_pending", false)):
+				enemy_rolls[str(enemy_state["id"])] = highest_hero_roll
+				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
+				_emit_event(enemy_state, "hijack", highest_hero_roll, "enemy")
+
 	for hero_state in _hero_states:
 		if hero_state["dead"]:
 			continue
@@ -386,6 +399,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"spike": 0,
 		"jam_cap": 0,
 		"rewrite_pending": false,
+		"hijack_pending": false,
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
@@ -1029,6 +1043,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		if not enemy_rewrite_target.is_empty() and not _ward_blocks_hostile(enemy_rewrite_target):
 			_apply_rewrite(enemy_rewrite_target, true)
 
+	# Hijack (enemy-only): this enemy's next roll copies the heroes' current
+	# highest die.
+	if bool(raw.get("hijack", false)):
+		enemy_state["hijack_pending"] = true
+		enemy_state["hijack_skip_next_tick"] = true
+		_log("%s locks onto the squad's dice — its next roll will HIJACK the highest." % enemy_state["unit"].display_name)
+		_emit_event(enemy_state, "hijack_primed", 0, "enemy")
+
 	# Spike: heroes that damage this enemy next hero phase take N back. Granted
 	# during the enemy phase, so it survives the imminent round-end tick to
 	# cover exactly one hero phase (same asymmetry as shields).
@@ -1365,6 +1387,8 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["jam_skip_next_tick"] = false
 	state["rewrite_pending"] = false
 	state["rewrite_skip_next_tick"] = false
+	state["hijack_pending"] = false
+	state["hijack_skip_next_tick"] = false
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -1580,6 +1604,14 @@ func _tick_state(state: Dictionary) -> void:
 			if int(state["burn_turns"]) <= 0:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
+
+	# Hijack fires at exactly one roll: skips the tick of the applying round,
+	# copies the heroes' highest die at the next reveal, then clears.
+	if bool(state.get("hijack_pending", false)):
+		if bool(state.get("hijack_skip_next_tick", false)):
+			state["hijack_skip_next_tick"] = false
+		else:
+			state["hijack_pending"] = false
 
 	# Rewrite fires at exactly one roll (telegraphed): applied this turn, it
 	# skips this tick, forces the NEXT reveal to 3, then clears.

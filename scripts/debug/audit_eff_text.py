@@ -229,6 +229,9 @@ def enemy_expected(raw: dict) -> str:
     if raw.get("rewrite"):
         parts.append("rewrite")
 
+    if raw.get("hijack"):
+        parts.append("hijack")
+
     gr = raw.get("grantRampage") or 0
     if gr > 0:
         parts.append(f"rampage +{gr}")

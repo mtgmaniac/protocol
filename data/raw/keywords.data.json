@@ -114,6 +114,13 @@
       "syntax": "rewrite"
     },
     {
+      "id": "hijack",
+      "term": "Hijack",
+      "category": "control",
+      "def": "Enemy-only: this enemy's next roll copies the value of the heroes' current highest die.",
+      "syntax": "hijack"
+    },
+    {
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
