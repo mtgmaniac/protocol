@@ -444,6 +444,7 @@ func _run_regression_audits() -> void:
 	_run_new_relic_regressions()
 	_run_boss_standing_rule_regressions()
 	_run_boss_fight_data_regressions()
+	_run_save_manager_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1528,6 +1529,75 @@ func _run_boss_fight_data_regressions() -> void:
 				var plate_two: int = int(boss_state.get("shield", 0))
 				var stacking: bool = plate_one >= 6 and plate_two == plate_one * 2
 				_expect_and_record("Boss fight / accretion mantle stacks", "bossFight", "true", str(stacking))
+
+
+func _run_save_manager_regressions() -> void:
+	var saved_data: Dictionary = SaveManager.data.duplicate(true)
+	SaveManager.data = SaveManager.default_data()
+
+	# Default shape: version 1 with the pinned structure.
+	var d: Dictionary = SaveManager.data
+	var shape_ok: bool = (
+		int(d.get("save_version", 0)) == 1
+		and d.has("tutorial_done") and d.has("stats") and d.has("unlocks") and d.has("settings")
+		and (d["unlocks"] as Dictionary).has("boss_relics")
+	)
+	_expect_and_record("Regression / save default shape v1", "saveManager", "true", str(shape_ok))
+
+	# Run stats: start + finish (victory) increment and unlock the op's boss relic.
+	SaveManager.record_run_started()
+	SaveManager.record_run_finished("victory", "facility", 10)
+	var stats: Dictionary = SaveManager.get_stats()
+	var wins: Dictionary = stats.get("runs_won_by_op", {})
+	var run_ok: bool = (
+		int(stats.get("runs_started", 0)) == 1
+		and int(wins.get("facility", 0)) == 1
+		and int(stats.get("best_clear", 0)) == 10
+		and SaveManager.get_unlocked_boss_relics() == ["salvageRig"]
+	)
+	_expect_and_record("Regression / save run victory + unlock", "saveManager", "true", str(run_ok))
+
+	# Defeat: best_clear ratchets but never regresses; no unlock.
+	SaveManager.record_run_finished("defeat", "hive", 4)
+	var defeat_ok: bool = (
+		int(SaveManager.get_stats().get("best_clear", 0)) == 10
+		and SaveManager.get_unlocked_boss_relics() == ["salvageRig"]
+	)
+	_expect_and_record("Regression / save defeat ratchet", "saveManager", "true", str(defeat_ok))
+
+	# Counters + tutorial flag.
+	SaveManager.record_nat20()
+	SaveManager.record_nat20()
+	SaveManager.record_hero_death()
+	SaveManager.mark_tutorial_done()
+	var counters_ok: bool = (
+		int(SaveManager.get_stats().get("nat20s", 0)) == 2
+		and int(SaveManager.get_stats().get("deaths", 0)) == 1
+		and SaveManager.is_tutorial_done()
+	)
+	_expect_and_record("Regression / save counters + tutorial", "saveManager", "true", str(counters_ok))
+
+	# Older/partial saves heal onto defaults.
+	SaveManager.data = SaveManager.default_data()
+	SaveManager._merge_loaded({"tutorial_done": true, "stats": {"nat20s": 7}})
+	var healed: Dictionary = SaveManager.data
+	var heal_ok: bool = (
+		bool(healed.get("tutorial_done", false))
+		and int((healed["stats"] as Dictionary).get("nat20s", 0)) == 7
+		and int((healed["stats"] as Dictionary).get("runs_started", -1)) == 0
+		and (healed["unlocks"] as Dictionary).get("boss_relics", null) is Array
+	)
+	_expect_and_record("Regression / save partial-load heal", "saveManager", "true", str(heal_ok))
+
+	# Every operation maps to a boss relic that exists in data.
+	var mapping_ok: bool = true
+	for op_id in DataManager.get_operation_order():
+		var relic_id: String = str(SaveManager.BOSS_RELIC_BY_OP.get(str(op_id), ""))
+		if relic_id == "" or DataManager.get_item(relic_id) == null:
+			mapping_ok = false
+	_expect_and_record("Regression / save boss-relic op mapping", "saveManager", "true", str(mapping_ok))
+
+	SaveManager.data = saved_data
 
 
 func _run_shield_lowest_regression() -> void:

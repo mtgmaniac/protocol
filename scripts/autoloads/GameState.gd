@@ -87,6 +87,8 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
+	# DESIGN-TODO(kev): tutorial runs count toward runs_started too.
+	SaveManager.record_run_started()
 
 
 # Launch the rigged onboarding encounter: forced trio (Pulse Tech required for the Nudge
@@ -245,6 +247,7 @@ func is_final_battle() -> bool:
 func finish_run(result: String) -> void:
 	last_run_result = result
 	pending_reward_item_ids.clear()
+	SaveManager.record_run_finished(result, selected_operation_id, current_battle)
 
 
 func get_unit_xp(unit_id: String) -> int:

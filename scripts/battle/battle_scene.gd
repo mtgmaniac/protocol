@@ -1242,6 +1242,8 @@ func _apply_post_roll_gear_effects() -> void:
 			continue
 		var hero_id: String = str(hero_state["id"])
 		var raw_roll: int = int(hero_rolls.get(hero_id, 0))
+		if raw_roll == 20:
+			SaveManager.record_nat20()
 		if raw_roll == 20 and _hero_has_gear_effect(hero_id, "protocolOnNat20"):
 			_gain_protocol(2)
 			_append_log("Overload Capacitor: natural 20 → +2 Protocol.")

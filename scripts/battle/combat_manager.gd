@@ -1648,6 +1648,7 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 
 	# Killswitch Relay gear: when this hero dies, deal damage to all enemies.
 	if _is_hero_state(dead_state):
+		SaveManager.record_hero_death()
 		var relay_damage: int = int(dead_state.get("gear_death_damage_all", 0))
 		if relay_damage > 0:
 			_log("%s's Killswitch Relay detonates for %d to all enemies!" % [dead_state["unit"].display_name, relay_damage])

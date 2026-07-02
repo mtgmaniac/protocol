@@ -21,6 +21,7 @@ GameState="*res://scripts/autoloads/GameState.gd"
 DataManager="*res://scripts/autoloads/DataManager.gd"
 SceneManager="*res://scripts/autoloads/SceneManager.gd"
 AudioManager="*res://scripts/autoloads/AudioManager.gd"
+SaveManager="*res://scripts/autoloads/SaveManager.gd"
 PersistentHeader="*res://scenes/ui/PersistentHeader.tscn"
 DebugBattleLauncher="*res://scripts/debug/DebugBattleLauncher.gd"
 

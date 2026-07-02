@@ -57,7 +57,10 @@ func _ready() -> void:
 	col.add_child(begin)
 
 	var tutorial := Button.new()
-	tutorial.text = "TUTORIAL"
+	# The tutorial is opt-in, so "skip if done" means it stops presenting as
+	# new once completed; it stays replayable.
+	# DESIGN-TODO(kev): confirm a checkmark is enough (vs hiding the button).
+	tutorial.text = "TUTORIAL ✓" if SaveManager.is_tutorial_done() else "TUTORIAL"
 	tutorial.custom_minimum_size = TUTORIAL_SIZE
 	tutorial.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	PixelUI.style_button(tutorial, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TUTORIAL_FONT)
