@@ -39,8 +39,10 @@ def fmt(ab: dict) -> str:
         parts.append(f"ls {ab['lifestealPct']}%")
     if ab.get("packBonus"):
         parts.append("pack+")
-    if ab.get("cowerAll"):
-        parts.append("cower all")
+    if ab.get("freezeAllEnemyDice"):
+        parts.append("freeze all")
+    elif ab.get("freezeEnemyDice"):
+        parts.append("freeze")
     if ab.get("grantRampageAll"):
         parts.append(f"rampage all +{ab['grantRampageAll']}")
     if ab.get("summon"):

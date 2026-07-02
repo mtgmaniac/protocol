@@ -781,8 +781,6 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 		return {"type": "roll", "mode": "numeric", "icon": "", "value": roll_value, "priority": 2}
 	if first == "CL" or first == "CLOAK":
 		return {"type": "named", "mode": "named", "name": "CLOAK", "priority": 3}
-	if first == "COW" or first == "COWER":
-		return {"type": "named", "mode": "named", "name": "COWER", "priority": 3}
 	if first == "RMP" or first == "RAGE" or first == "RAMPAGE":
 		return {"type": "named", "mode": "named", "name": "RAMPAGE", "value": value, "priority": 3}
 	return {"type": "named", "mode": "named", "name": first, "priority": 9}

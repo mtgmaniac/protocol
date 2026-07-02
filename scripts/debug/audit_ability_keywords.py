@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HEROES_PATH = ROOT / "data" / "raw" / "heroes.data.json"
 ENEMIES_PATH = ROOT / "data" / "raw" / "enemies.data.json"
 
-META_KEYS = frozenset({"zone", "range", "name", "eff", "callsign", "focus", "hp"})
+META_KEYS = frozenset({"zone", "range", "name", "eff", "callsign", "focus", "hp", "freeze_flavor"})
 
 # Keys read in combat_manager._apply_hero_ability / _apply_enemy_ability
 HERO_HANDLED = frozenset({
@@ -25,7 +25,7 @@ ENEMY_HANDLED = frozenset({
     "dmg", "dmgP2", "heal", "shield", "shieldP2", "shieldAlly",
     "shieldAllyAll", "blastAll", "burn", "burnT",
     "packBonus", "lifestealPct", "wipeShields", "rfm", "rfmT", "erb", "erbT", "erbAll",
-    "cowerT", "cowerAll", "grantRampage", "grantRampageAll", "counterspellPct",
+    "freezeEnemyDice", "freezeAllEnemyDice", "grantRampage", "grantRampageAll", "counterspellPct",
     "curseDice", "enemySelfTaunt", "summonChance", "summonName",
 })
 

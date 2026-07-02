@@ -54,8 +54,9 @@
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "Disables an enemy die so its reveal is skipped and the hit never lands.",
-      "syntax": "freeze (1 reveal skip)"
+      "def": "The die is locked and the unit skips its next N reveals. Identical for heroes and enemies; frozen dice stay in the tray as blockers.",
+      "syntax": "freeze (N reveal skips)",
+      "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },
     {
       "id": "cloak",

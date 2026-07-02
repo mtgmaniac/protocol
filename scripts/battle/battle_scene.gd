@@ -649,17 +649,6 @@ func _record_roll_values_for_states(states: Array, rolls: Dictionary) -> void:
 			state["die_freeze_consumed_this_round"] = true
 
 
-func _consume_revealed_frozen_dice() -> void:
-	for state_variant in combat_manager.get_hero_states() + combat_manager.get_enemy_states():
-		var state: Dictionary = state_variant
-		if not bool(state.get("die_freeze_consumed_this_round", false)):
-			continue
-		state["die_freeze_consumed_this_round"] = false
-		state["die_freeze_turns"] = maxi(0, int(state.get("die_freeze_turns", 0)) - 1)
-		if int(state.get("die_freeze_turns", 0)) <= 0:
-			state["frozen_die_value"] = 0
-
-
 func _get_roll_value_for_state(rolls: Dictionary, state: Dictionary) -> int:
 	var state_id: String = str(state.get("id", ""))
 	if rolls.has(state_id):
@@ -839,7 +828,6 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	else:
 		await _feedback.play_round_feedback(result.get("events", []))
 	_process_summon_events(result.get("events", []))
-	_consume_revealed_frozen_dice()
 	_card_view.refresh_all_cards()
 	if skip_feedback and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame

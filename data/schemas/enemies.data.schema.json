@@ -108,8 +108,9 @@
         "counterspellPct": { "type": "integer", "minimum": 0, "maximum": 100 },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
-        "cowerT": { "type": "integer", "minimum": 1 },
-        "cowerAll": { "type": "boolean" },
+        "freezeEnemyDice": { "type": "integer", "minimum": 1 },
+        "freezeAllEnemyDice": { "type": "integer", "minimum": 1 },
+        "freeze_flavor": { "type": "string", "enum": ["ice", "petrify"] },
         "enemySelfTaunt": { "type": "boolean" },
         "curseDice": { "type": "boolean" },
         "packBonus": { "type": "boolean" }

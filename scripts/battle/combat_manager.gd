@@ -281,8 +281,8 @@ func resolve_round(
 	for hero_state in _hero_states:
 		if hero_state["dead"]:
 			continue
-		if int(hero_state.get("cower_turns", 0)) > 0:
-			_log("%s is cowered and cannot act." % hero_state["unit"].display_name)
+		if bool(hero_state.get("die_freeze_consumed_this_round", false)):
+			_log("%s's die is frozen — reveal skipped." % hero_state["unit"].display_name)
 			continue
 		var roll_value: Variant = hero_rolls.get(hero_state["id"], null)
 		if roll_value == null:
@@ -307,6 +307,9 @@ func resolve_round(
 	ordered_enemy_states.reverse()
 	for enemy_state in ordered_enemy_states:
 		if enemy_state["dead"]:
+			continue
+		if bool(enemy_state.get("die_freeze_consumed_this_round", false)):
+			_log("%s's die is frozen — reveal skipped." % enemy_state["unit"].display_name)
 			continue
 		var enemy_roll_value: Variant = enemy_rolls.get(enemy_state["id"], null)
 		if enemy_roll_value == null:
@@ -366,9 +369,8 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"selected_target_id": "",
 		"target_display": "--",
 		"cloaked": false,
-		"cower_turns": 0,
-		"cower_skip_next_tick": false,
 		"die_freeze_turns": 0,
+		"freeze_flavor": "",
 		"rampage_charges": 0,
 		"counter_pct": 0,
 		"cursed": false,
@@ -563,26 +565,31 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				_log("%s is now cloaked." % ally_state["unit"].display_name)
 				_emit_event(ally_state, "cloak", 0, "hero")
 
-	# Freeze die application
+	# Freeze die application. Enemies haven't acted yet this round, so a hero
+	# freeze cancels the target's imminent action (immediate=true). A frozen
+	# ally locks from the NEXT reveal (heroes may already have acted).
 	var freeze_enemy: int = int(raw.get("freezeEnemyDice", 0))
 	var freeze_all_enemy: int = int(raw.get("freezeAllEnemyDice", 0))
 	var freeze_any: int = int(raw.get("freezeAnyDice", 0))
 	var freeze_amount: int = maxi(maxi(freeze_enemy, freeze_all_enemy), freeze_any)
+	var freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
 	if freeze_amount > 0:
 		if freeze_all_enemy > 0:
 			for es in _enemy_states:
 				if not es["dead"]:
-					_freeze_die_state(es, freeze_amount)
+					_freeze_die_state(es, freeze_amount, true, freeze_flavor)
 		else:
 			var freeze_target: Dictionary = {}
 			if freeze_any > 0:
 				freeze_target = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
-			if freeze_target.is_empty():
-				freeze_target = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
-			if freeze_target.is_empty():
-				freeze_target = _first_living_state(_enemy_states)
 			if not freeze_target.is_empty():
-				_freeze_die_state(freeze_target, freeze_amount)
+				_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
+			else:
+				freeze_target = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
+				if freeze_target.is_empty():
+					freeze_target = _first_living_state(_enemy_states)
+				if not freeze_target.is_empty():
+					_freeze_die_state(freeze_target, freeze_amount, true, freeze_flavor)
 
 	if damage > 0 and bool(hero_state.get("gear_first_ability_echo", false)) and not bool(hero_state.get("gear_first_ability_echo_used", false)):
 		hero_state["gear_first_ability_echo_used"] = true
@@ -740,23 +747,21 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		else:
 			_add_roll_buff(enemy_state, erb_amount, erb_turns)
 
-	# Cower: apply to targeted hero or all heroes
-	var cower_t: int = int(raw.get("cowerT", 0))
-	var cower_all: bool = bool(raw.get("cowerAll", false))
-	if cower_t > 0 or cower_all:
-		var cower_amount: int = maxi(cower_t, 1)
-		if cower_all:
-			for hero_state in _hero_states:
-				if not hero_state["dead"]:
-					_apply_cower(hero_state, cower_amount)
-					_log("%s is cowered for %d turn(s)." % [hero_state["unit"].display_name, cower_amount])
-		else:
-			var cower_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-			if cower_target.is_empty():
-				cower_target = _first_living_state(_hero_states)
-			if not cower_target.is_empty():
-				_apply_cower(cower_target, cower_amount)
-				_log("%s is cowered for %d turn(s)." % [cower_target["unit"].display_name, cower_amount])
+	# Freeze hero dice (former cower): heroes already acted this round, so the
+	# lock takes hold at the next reveal and the hero skips it.
+	var enemy_freeze_one: int = int(raw.get("freezeEnemyDice", 0))
+	var enemy_freeze_all: int = int(raw.get("freezeAllEnemyDice", 0))
+	var enemy_freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
+	if enemy_freeze_all > 0:
+		for hero_state in _hero_states:
+			if not hero_state["dead"]:
+				_freeze_die_state(hero_state, enemy_freeze_all, false, enemy_freeze_flavor)
+	elif enemy_freeze_one > 0:
+		var freeze_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		if freeze_target.is_empty():
+			freeze_target = _first_living_state(_hero_states)
+		if not freeze_target.is_empty():
+			_freeze_die_state(freeze_target, enemy_freeze_one, false, enemy_freeze_flavor)
 
 	# Rampage grants (self or all enemies)
 	var grant_rampage: int = int(raw.get("grantRampage", 0))
@@ -936,14 +941,21 @@ func _wipe_all_hero_shields(source_state: Dictionary = {}) -> void:
 		_emit_event(source_state, "wipe_shields", 0, "enemy")
 
 
-func _freeze_die_state(state: Dictionary, freeze_amount: int) -> void:
+# Freeze: the die locks in the tray (physical blocker) and the unit skips its
+# next N reveals. `immediate` cancels the unit's action THIS round (used when
+# the target has not acted yet — the consumed charge is decremented by the
+# normal end-of-turn pass). `flavor` is cosmetic only (ice / petrify tint).
+func _freeze_die_state(state: Dictionary, freeze_amount: int, immediate: bool = false, flavor: String = "ice") -> void:
 	var existing_turns: int = int(state.get("die_freeze_turns", 0))
 	state["die_freeze_turns"] = existing_turns + freeze_amount
+	state["freeze_flavor"] = flavor
 	var frozen_value: int = int(state.get("frozen_die_value", 0))
 	if frozen_value <= 0:
 		frozen_value = int(state.get("last_die_value", 0))
 	if frozen_value > 0:
 		state["frozen_die_value"] = frozen_value
+	if immediate:
+		state["die_freeze_consumed_this_round"] = true
 	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
 
@@ -958,8 +970,6 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 		return
 	state["dead"] = false
 	state["current_hp"] = maxi(1, int(state["max_hp"]) * hp_pct / 100)
-	state["cower_turns"] = 0
-	state["cower_skip_next_tick"] = false
 	state["burn"] = 0
 	state["burn_turns"] = 0
 	state["burn_skip_next_tick"] = false
@@ -971,6 +981,8 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	state["shield_stacks"] = []
 	state["die_freeze_turns"] = 0
 	state["frozen_die_value"] = 0
+	state["die_freeze_consumed_this_round"] = false
+	state["freeze_flavor"] = ""
 	_log("%s is revived at %d HP!" % [state["unit"].display_name, int(state["current_hp"])])
 	_emit_event(state, "heal", int(state["current_hp"]), _resolve_side_for_state(state))
 
@@ -1030,9 +1042,8 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["roll_buff_skip_next_tick"] = false
 	state["dmg_scale"] = 1.0
 	state["cloaked"] = false
-	state["cower_turns"] = 0
-	state["cower_skip_next_tick"] = false
 	state["die_freeze_turns"] = 0
+	state["freeze_flavor"] = ""
 	state["rampage_charges"] = 0
 	state["counter_pct"] = 0
 	state["cursed"] = false
@@ -1090,15 +1101,6 @@ func _apply_burn(state: Dictionary, amount: int, turns: int) -> void:
 	state["burn_skip_next_tick"] = true
 	_log("%s is burning for %d over %d turns." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "burn", amount, _resolve_side_for_state(state))
-
-
-func _apply_cower(state: Dictionary, turns: int) -> void:
-	if state.is_empty() or bool(state.get("dead", false)) or turns <= 0:
-		return
-	var existing_turns: int = int(state.get("cower_turns", 0))
-	state["cower_turns"] = maxi(existing_turns, turns)
-	if turns >= existing_turns:
-		state["cower_skip_next_tick"] = true
 
 
 func _first_living_state(states: Array) -> Dictionary:
@@ -1192,13 +1194,19 @@ func _tick_end_of_round_states() -> void:
 	for enemy_state in _enemy_states:
 		_tick_state(enemy_state)
 
-	# Decrement cower turns for all living heroes
-	for hero_state in _hero_states:
-		if not hero_state["dead"] and int(hero_state.get("cower_turns", 0)) > 0:
-			if bool(hero_state.get("cower_skip_next_tick", false)):
-				hero_state["cower_skip_next_tick"] = false
-				continue
-			hero_state["cower_turns"] = int(hero_state["cower_turns"]) - 1
+	# Consume frozen-die charges: any unit whose frozen die covered this round's
+	# reveal (or whose action was canceled by a fresh immediate freeze) spends
+	# one charge now. Single consumption point for tray and headless flows.
+	for state_variant in _hero_states + _enemy_states:
+		var frozen_state: Dictionary = state_variant
+		if bool(frozen_state["dead"]):
+			continue
+		if bool(frozen_state.get("die_freeze_consumed_this_round", false)):
+			frozen_state["die_freeze_consumed_this_round"] = false
+			frozen_state["die_freeze_turns"] = maxi(0, int(frozen_state.get("die_freeze_turns", 0)) - 1)
+			if int(frozen_state.get("die_freeze_turns", 0)) <= 0:
+				frozen_state["frozen_die_value"] = 0
+				frozen_state["freeze_flavor"] = ""
 
 	# Clear taunt on all enemies at end of round (re-applied each round if enemy rolls it again)
 	for enemy_state in _enemy_states:

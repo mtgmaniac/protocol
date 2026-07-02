@@ -76,8 +76,9 @@ const ENEMY_HANDLED_FIELDS := [
 	"erb",
 	"erbT",
 	"erbAll",
-	"cowerT",
-	"cowerAll",
+	"freezeEnemyDice",
+	"freezeAllEnemyDice",
+	"freeze_flavor",
 	"grantRampage",
 	"grantRampageAll",
 	"counterspellPct",
@@ -405,7 +406,7 @@ func _run_targeting_audits() -> void:
 
 func _run_regression_audits() -> void:
 	_run_enemy_shield_ally_regression()
-	_run_cower_duration_regression()
+	_run_enemy_freeze_regression()
 	_run_burn_timing_regression()
 	_run_roll_modifier_timing_regressions()
 	_run_shield_timing_regression()
@@ -475,29 +476,65 @@ func _run_enemy_shield_ally_regression() -> void:
 		)
 
 
-func _run_cower_duration_regression() -> void:
+func _run_enemy_freeze_regression() -> void:
+	# Enemy freeze (former cower): the hero's die locks after the enemy phase
+	# and the hero skips its next reveal.
 	var manager: CombatManager = CombatManager.new()
-	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
-	var enemy_unit: EnemyData = _make_enemy("audit_cower_enemy", "Audit Cower Enemy", "Cower Regression", {
-		"cowerT": 1,
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 5})
+	var enemy_unit: EnemyData = _make_enemy("audit_freeze_enemy", "Audit Freeze Enemy", "Freeze Regression", {
+		"freezeEnemyDice": 1,
 	})
 	manager.setup_battle([hero_unit], [enemy_unit])
 
 	var hero: Dictionary = manager.get_hero_states()[0]
 	var enemy: Dictionary = manager.get_enemy_states()[0]
 	enemy["selected_target_id"] = str(hero["id"])
+	hero["last_die_value"] = 12
 
 	manager.resolve_round({}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var frozen_after_apply: bool = int(hero.get("die_freeze_turns", 0)) == 1 and not bool(hero.get("die_freeze_consumed_this_round", false))
 
-	var ok: bool = int(hero.get("cower_turns", 0)) == 1 and not bool(hero.get("cower_skip_next_tick", false))
-	if ok:
-		_record_pass("Regression / cower next hero turn", "cowerT")
+	# Next round: the frozen die is revealed (consumed flag set at roll time by
+	# battle_scene; mimic that here) — the hero must skip its action.
+	hero["selected_target_id"] = str(enemy["id"])
+	hero["die_freeze_consumed_this_round"] = true
+	var enemy_hp_before: int = int(enemy["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var hero_skipped: bool = int(enemy["current_hp"]) == enemy_hp_before
+	var freeze_cleared: bool = int(hero.get("die_freeze_turns", 0)) == 0 and not bool(hero.get("die_freeze_consumed_this_round", false))
+
+	if frozen_after_apply and hero_skipped and freeze_cleared:
+		_record_pass("Regression / enemy freeze skips hero reveal", "freezeEnemyDice")
 	else:
 		_record_failure(
-			"Regression / cower next hero turn",
-			"cowerT",
-			"1 cower turn remains after the applying enemy round ends",
-			"cower_turns=%d skip=%s" % [int(hero.get("cower_turns", 0)), str(hero.get("cower_skip_next_tick", false))]
+			"Regression / enemy freeze skips hero reveal",
+			"freezeEnemyDice",
+			"hero frozen after enemy phase, skips next reveal, freeze then clears",
+			"frozen=%s skipped=%s cleared=%s turns=%d" % [str(frozen_after_apply), str(hero_skipped), str(freeze_cleared), int(hero.get("die_freeze_turns", 0))]
+		)
+
+	# Hero-side freeze cancels the target enemy's imminent action this round.
+	var cancel_manager: CombatManager = CombatManager.new()
+	var freezer_unit: UnitData = _make_unit("audit_freezer", "Audit Freezer", "Flash Freeze", {"freezeEnemyDice": 1})
+	var striker_enemy: EnemyData = _make_enemy("audit_striker", "Audit Striker", "Claw", {"dmg": 9})
+	cancel_manager.setup_battle([freezer_unit], [striker_enemy])
+	var freezer: Dictionary = cancel_manager.get_hero_states()[0]
+	var striker: Dictionary = cancel_manager.get_enemy_states()[0]
+	freezer["selected_target_id"] = str(striker["id"])
+	striker["selected_target_id"] = str(freezer["id"])
+	striker["last_die_value"] = 15
+	var hero_hp_before: int = int(freezer["current_hp"])
+	cancel_manager.resolve_round({str(freezer["id"]): AUDIT_ROLL}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
+	var canceled: bool = int(freezer["current_hp"]) == hero_hp_before
+	var charge_spent: bool = int(striker.get("die_freeze_turns", 0)) == 0
+	if canceled and charge_spent:
+		_record_pass("Regression / hero freeze cancels enemy action", "freezeEnemyDice")
+	else:
+		_record_failure(
+			"Regression / hero freeze cancels enemy action",
+			"freezeEnemyDice",
+			"frozen enemy's imminent hit never lands; charge consumed at round end",
+			"hero_hp_delta=%d striker_turns=%d" % [hero_hp_before - int(freezer["current_hp"]), int(striker.get("die_freeze_turns", 0))]
 		)
 
 
@@ -699,7 +736,6 @@ func _run_down_cleanup_regression() -> void:
 	hero["roll_buff"] = 2
 	hero["roll_buff_turns"] = 1
 	hero["cloaked"] = true
-	hero["cower_turns"] = 1
 	hero["die_freeze_turns"] = 1
 	hero["rampage_charges"] = 1
 	hero["counter_pct"] = 50
@@ -711,7 +747,6 @@ func _run_down_cleanup_regression() -> void:
 		and int(hero["burn"]) == 0
 		and int(hero["roll_buff"]) == 0
 		and not bool(hero["cloaked"])
-		and int(hero["cower_turns"]) == 0
 		and int(hero["die_freeze_turns"]) == 0
 		and int(hero["rampage_charges"]) == 0
 		and int(hero["counter_pct"]) == 0
@@ -1572,9 +1607,12 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 		"freezeAnyDice":
 			return _expect_bool(effect_field, after.ally_a.freeze_turns > 0 and after.ally_a.frozen_die_value == 8, "selected ally die frozen", "turns=%d value=%d" % [after.ally_a.freeze_turns, after.ally_a.frozen_die_value])
 		"freezeEnemyDice":
-			return _expect_bool(effect_field, after.enemy_a.freeze_turns > 0 and after.enemy_a.frozen_die_value == 9, "selected enemy die frozen", "turns=%d value=%d" % [after.enemy_a.freeze_turns, after.enemy_a.frozen_die_value])
+			# Hero freezes cancel the target's imminent action; the (single)
+			# charge is consumed by the same round's end tick, so assert the
+			# freeze event rather than lingering post-round turns.
+			return _expect_bool(effect_field, _has_event(events, "freeze", 9, "enemy"), "freeze event on selected enemy die (value 9)", "events=%s" % str(events))
 		"freezeAllEnemyDice":
-			return _expect_bool(effect_field, after.enemy_a.freeze_turns > 0 and after.enemy_b.freeze_turns > 0, "all enemy dice frozen", "enemy_a=%d enemy_b=%d" % [after.enemy_a.freeze_turns, after.enemy_b.freeze_turns])
+			return _expect_bool(effect_field, _count_events(events, "freeze", "enemy") >= 2, "freeze events on all enemy dice", "events=%s" % str(events))
 		"taunt":
 			return _expect_bool(effect_field, after.actor.taunting, "actor taunting after hero taunt ability", "taunting=%s" % str(after.actor.taunting))
 		"revive":

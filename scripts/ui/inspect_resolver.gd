@@ -113,8 +113,6 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		entries.append(_status_entry("rfm" if roll_delta > 0 else "roll", "%+d" % roll_delta, 0, _roll_status_text(roll_delta)))
 	if bool(state.get("cloaked", false)):
 		entries.append(_status_entry("cloak", "C", 0, _status_text("cloak", "", 0)))
-	if int(state.get("cower_turns", 0)) > 0:
-		entries.append({"effects": [], "text": "Cower: cannot deal damage this turn."})
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", "RA", 0, _status_text("rampage", "", 0)))
 	return entries
@@ -274,13 +272,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 
 	if bool(raw.get("curseDice", false)):
 		hostile.append("Target hero rolls twice next turn and keeps the lower result.")
-
-	var cower: int = int(raw.get("cowerT", 0))
-	if cower > 0:
-		if bool(raw.get("cowerAll", false)):
-			hostile.append("All heroes skip their next turn%s (%s)." % ["" if cower == 1 else "s", _turns(cower)])
-		else:
-			hostile.append("Target hero skips their next turn%s (%s)." % ["" if cower == 1 else "s", _turns(cower)])
 
 	if bool(raw.get("packBonus", false)):
 		hostile.append("Damage increases by the number of living allies of the same type.")

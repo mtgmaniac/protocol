@@ -396,7 +396,7 @@
                 19
               ],
               "name": "Cryogenic Lock",
-              "eff": "16 dmg, freeze (1 turn)",
+              "eff": "16 dmg, freeze (1 reveal skip)",
               "dmg": 16,
               "dMin": 16,
               "dMax": 16,
@@ -420,7 +420,7 @@
                 20
               ],
               "name": "Permafrost Burst",
-              "eff": "15 dmg (all), freeze all (1 turn)",
+              "eff": "15 dmg (all), freeze all (1 reveal skip)",
               "dmg": 15,
               "dMin": 15,
               "dMax": 15,
@@ -1258,7 +1258,7 @@
             6
           ],
           "name": "Glacial Lattice",
-          "eff": "freeze (1 turn)",
+          "eff": "freeze (1 reveal skip)",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1275,7 +1275,7 @@
             12
           ],
           "name": "Glacial Shove",
-          "eff": "5 dmg, freeze (1 turn)",
+          "eff": "5 dmg, freeze (1 reveal skip)",
           "dmg": 5,
           "dMin": 5,
           "dMax": 5,
@@ -1350,7 +1350,7 @@
                 6
               ],
               "name": "Permafrost Weave",
-              "eff": "freeze (1 turn)",
+              "eff": "freeze (1 reveal skip)",
               "dmg": 0,
               "dMin": 0,
               "dMax": 0,
@@ -1375,7 +1375,7 @@
                 12
               ],
               "name": "Whiteout Salvo",
-              "eff": "4 dmg (all), freeze all (1 turn)",
+              "eff": "4 dmg (all), freeze all (1 reveal skip)",
               "dmg": 4,
               "dMin": 4,
               "dMax": 4,
@@ -1426,7 +1426,7 @@
                 19
               ],
               "name": "Permafrost Aegis",
-              "eff": "9 dmg, -2 roll, 2t, freeze all (1 turn), all 8 shield",
+              "eff": "9 dmg, all 8 shield, -2 roll, 2t, freeze all (1 reveal skip)",
               "dmg": 9,
               "dMin": 9,
               "dMax": 9,
@@ -1453,7 +1453,7 @@
                 20
               ],
               "name": "Absolute Zero",
-              "eff": "15 dmg, -3 roll, 2t, freeze all (1 turn), all 14 shield",
+              "eff": "15 dmg, all 14 shield, -3 roll, 2t, freeze all (1 reveal skip)",
               "dmg": 15,
               "dMin": 15,
               "dMax": 15,
@@ -1607,7 +1607,7 @@
             4
           ],
           "name": "Diagnostic Pulse",
-          "eff": "3 heal (ally), +1 roll ally",
+          "eff": "3 heal (ally), +1 roll",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,
@@ -1627,7 +1627,7 @@
             11
           ],
           "name": "Infusion",
-          "eff": "7 heal (ally), +2 roll ally",
+          "eff": "7 heal (ally), +2 roll",
           "dmg": 0,
           "dMin": 0,
           "dMax": 0,

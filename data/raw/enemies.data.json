@@ -474,7 +474,7 @@
       },
       "strike": {
         "name": "Proboscis Jab",
-        "eff": "6 dmg, lifesteal 40%, -1 roll",
+        "eff": "6 dmg, -1 roll, lifesteal 40%",
         "dmg": 6,
         "burn": 0,
         "burnT": 0,
@@ -597,7 +597,7 @@
       },
       "strike": {
         "name": "Ramming Plate",
-        "eff": "12 dmg, lifesteal 50%, ally 6 shield",
+        "eff": "12 dmg, ally 6 shield, lifesteal 50%",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
@@ -768,7 +768,7 @@
       },
       "strike": {
         "name": "Royal Mandibles",
-        "eff": "19 dmg (P2 26), lifesteal 35%, -2 roll, 2t",
+        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
         "dmg": 19,
         "dmgP2": 26,
         "burn": 0,
@@ -992,7 +992,7 @@
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, summon ~42% nat20, ally 12 shield, +2 roll to allies, 3t",
+        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20",
         "dmg": 20,
         "burn": 0,
         "burnT": 0,
@@ -1059,7 +1059,7 @@
       },
       "overload": {
         "name": "Veil Collapse",
-        "eff": "28 dmg, summon ~40% nat20, 6 heal, +2 roll to allies, 3t",
+        "eff": "28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% nat20",
         "dmg": 28,
         "burn": 0,
         "burnT": 0,
@@ -1190,7 +1190,7 @@
       },
       "overload": {
         "name": "Lattice Storm",
-        "eff": "16 dmg, 5 burn, 4t, summon ~42% nat20, +2 roll to allies, 3t",
+        "eff": "16 dmg, 5 burn, 4t, +2 roll to allies, 3t, summon ~42% nat20",
         "dmg": 16,
         "burn": 5,
         "burnT": 4,
@@ -1259,7 +1259,7 @@
       },
       "overload": {
         "name": "Broodlink Surge",
-        "eff": "17 dmg, summon ~40% nat20, 8 heal, +2 roll to allies, 3t",
+        "eff": "17 dmg, 8 heal, +2 roll to allies, 3t, summon ~40% nat20",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1333,7 +1333,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "wipe shields, then 30 dmg (P2 38), summon ~30% nat20, +2 roll to allies, 3t",
+        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~30% nat20",
         "dmg": 30,
         "dmgP2": 38,
         "burn": 0,
@@ -1352,7 +1352,7 @@
     "voidWisp": {
       "recharge": {
         "name": "Void Hum",
-        "eff": "-1 roll, curse dice",
+        "eff": "-1 roll",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1525,7 +1525,7 @@
       },
       "overload": {
         "name": "Summon Verse",
-        "eff": "16 dmg, summon ~45% nat20, +2 roll to allies, 3t",
+        "eff": "16 dmg, +2 roll to allies, 3t, summon ~45% nat20",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
@@ -1782,7 +1782,7 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "wipe shields, then 30 dmg (P2 38), summon ~32% nat20, +2 roll to allies, 3t",
+        "eff": "wipe shields, then 30 dmg (P2 38), +2 roll to allies, 3t, summon ~32% nat20",
         "dmg": 30,
         "dmgP2": 38,
         "burn": 0,
@@ -1929,14 +1929,14 @@
       },
       "strike": {
         "name": "Silent Opening",
-        "eff": "10 dmg, cower 1r",
+        "eff": "10 dmg, freeze (1 reveal skip)",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "cowerT": 1
+        "freezeEnemyDice": 1
       },
       "surge": {
         "name": "Lunar Rake",
@@ -1950,26 +1950,25 @@
       },
       "crit": {
         "name": "Gut Eclipse",
-        "eff": "16 dmg, cower 2r",
+        "eff": "16 dmg, freeze (2 reveal skips)",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "cowerT": 2
+        "freezeEnemyDice": 2
       },
       "overload": {
         "name": "Black Sky Shriek",
-        "eff": "18 dmg, cower all 1r",
+        "eff": "18 dmg, freeze all (1 reveal skip)",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "cowerT": 1,
-        "cowerAll": true
+        "freezeAllEnemyDice": 1
       }
     },
     "beastBison": {
@@ -2065,14 +2064,14 @@
       },
       "crit": {
         "name": "Rictus Maul",
-        "eff": "15 dmg, cower 1r",
+        "eff": "15 dmg, freeze (1 reveal skip)",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "cowerT": 1
+        "freezeEnemyDice": 1
       },
       "overload": {
         "name": "Call Friends",
@@ -2161,7 +2160,7 @@
       },
       "strike": {
         "name": "Titan Gouge",
-        "eff": "19 dmg (P2 26), lifesteal 35%, -2 roll, 2t",
+        "eff": "19 dmg (P2 26), -2 roll, 2t, lifesteal 35%",
         "dmg": 19,
         "dmgP2": 26,
         "burn": 0,
@@ -2198,7 +2197,7 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "wipe shields, then 26 dmg (P2 34), cower all 1r, rampage all +1",
+        "eff": "wipe shields, then 26 dmg (P2 34), rampage all +1, freeze all (1 reveal skip)",
         "dmg": 26,
         "dmgP2": 34,
         "burn": 0,
@@ -2208,8 +2207,7 @@
         "shield": 0,
         "wipeShields": true,
         "grantRampageAll": 1,
-        "cowerT": 1,
-        "cowerAll": true
+        "freezeAllEnemyDice": 1
       }
     },
     "signalSkimmer": {

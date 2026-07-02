@@ -77,9 +77,10 @@ export interface EnemyAbility {
   grantRampage?: number;
   /** Add rampage charges to all living enemies (stampede / pack frenzy). */
   grantRampageAll?: number;
-  /** Hero cannot roll next player round(s); loses their turn. */
-  cowerT?: number;
-  cowerAll?: boolean;
+  /** Freeze the targeted hero's die: locked in the tray, hero skips its next N reveals. */
+  freezeEnemyDice?: number;
+  /** Freeze every hero die for N reveal skips. */
+  freezeAllEnemyDice?: number;
   /** Veil grunt: this enemy forces all heroes to target it next player phase (clears when it dies). */
   enemySelfTaunt?: boolean;
   /** Void grunt: targeted hero must roll twice next turn and keep the lower result. */

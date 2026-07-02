@@ -45,15 +45,14 @@ function buildEnemyEffectSummary(ab) {
     parts.push(`${ab.erbAll ? 'all ' : ''}+${ab.erb} enemy roll${t}`);
   }
   if ((ab.summonChance ?? 0) > 0) parts.push(`summon ~${ab.summonChance}% nat20`);
+  if ((ab.freezeAllEnemyDice ?? 0) > 0) parts.push(`freeze all (${ab.freezeAllEnemyDice} reveal skip${ab.freezeAllEnemyDice > 1 ? 's' : ''})`);
+  else if ((ab.freezeEnemyDice ?? 0) > 0) parts.push(`freeze (${ab.freezeEnemyDice} reveal skip${ab.freezeEnemyDice > 1 ? 's' : ''})`);
   if ((ab.counterspellPct ?? 0) > 0) {
     const p = Math.max(0, Math.min(100, ab.counterspellPct));
     parts.push(`counter C ${p}%`);
   }
   if ((ab.grantRampage || 0) > 0) parts.push(`rampage +${ab.grantRampage}`);
   if ((ab.grantRampageAll || 0) > 0) parts.push(`rampage all +${ab.grantRampageAll}`);
-  if ((ab.cowerT || 0) > 0) {
-    parts.push(ab.cowerAll ? `cower all ${ab.cowerT}r` : `cower ${ab.cowerT}r`);
-  }
   return parts.length ? parts.join(', ') : '—';
 }
 

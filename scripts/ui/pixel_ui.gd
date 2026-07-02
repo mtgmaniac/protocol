@@ -547,7 +547,7 @@ static func rarity_color(rarity: String) -> Color:
 
 static func status_color(token: String) -> Color:
 	var upper: String = token.to_upper()
-	if upper.begins_with("BRN") or upper.begins_with("BURN") or upper == "COW" or upper == "DOWN" or upper == "P":
+	if upper.begins_with("BRN") or upper.begins_with("BURN") or upper == "DOWN" or upper == "P":
 		return COLOR_DEBUFF
 	if upper == "RMP":
 		return COLOR_DAMAGE

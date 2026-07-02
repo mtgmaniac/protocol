@@ -132,6 +132,9 @@ def enemy_expected(raw: dict) -> str:
     if rfm > 0:
         parts.append(f"-{rfm} roll{turn_suffix(raw.get('rfmT') or 0)}")
 
+    if raw.get("packBonus"):
+        parts.append("pack bonus")
+
     heal = raw.get("heal") or 0
     if heal > 0:
         parts.append(f"{heal} heal")
@@ -186,9 +189,14 @@ def enemy_expected(raw: dict) -> str:
     if gra > 0:
         parts.append(f"rampage all +{gra}")
 
-    ct = raw.get("cowerT") or 0
-    if ct > 0:
-        parts.append(f"cower all {ct}r" if raw.get("cowerAll") else f"cower {ct}r")
+    for key in ("freezeAllEnemyDice", "freezeEnemyDice"):
+        v = raw.get(key) or 0
+        if v > 0:
+            sk = "s" if v > 1 else ""
+            if key == "freezeAllEnemyDice":
+                parts.append(f"freeze all ({v} reveal skip{sk})")
+            else:
+                parts.append(f"freeze ({v} reveal skip{sk})")
 
     tail = ", ".join(parts) if parts else "—"
     if raw.get("wipeShields"):

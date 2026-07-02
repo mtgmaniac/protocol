@@ -73,8 +73,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 
 	if bool(state.get("cloaked", false)):
 		status_list.append("CLOAK")
-	if int(state.get("cower_turns", 0)) > 0:
-		status_list.append("COWER %d" % int(state["cower_turns"]))
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		status_list.append("FROZEN %d" % int(state["die_freeze_turns"]))
 	if int(state.get("rampage_charges", 0)) > 0:
@@ -397,8 +395,6 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 
 	if bool(state.get("cloaked", false)):
 		statuses.append(_make_compact_named_status("CLOAK", "", 3))
-	if int(state.get("cower_turns", 0)) > 0:
-		statuses.append(_make_compact_named_status("COWER", "", 3))
 	if int(state.get("rampage_charges", 0)) > 0:
 		statuses.append(_make_compact_named_status("RAMPAGE", "%d" % int(state.get("rampage_charges", 0)), 3))
 
