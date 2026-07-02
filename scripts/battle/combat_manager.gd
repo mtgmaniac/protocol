@@ -631,6 +631,8 @@ func _apply_hero_ability_damage(
 
 	var breach: bool = bool(raw.get("breach", false))
 	var breach_all: bool = bool(raw.get("breachAll", false))
+	var leech: bool = bool(raw.get("leech", false))
+	var leech_hp_dealt: int = 0
 
 	if hits_all:
 		for enemy_state in _enemy_states:
@@ -640,7 +642,7 @@ func _apply_hero_ability_damage(
 				continue
 			if breach_all or breach:
 				_breach_shields(hero_state, enemy_state)
-			_damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
+			leech_hp_dealt += _damage_state(enemy_state, final_dmg, ignores_shield, hero_state, shield_pierce)
 	else:
 		var target_enemy: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
 		if target_enemy.is_empty():
@@ -655,7 +657,7 @@ func _apply_hero_ability_damage(
 			if not _ward_blocks_hostile(target_enemy):
 				if breach and not breach_all:
 					_breach_shields(hero_state, target_enemy)
-				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
+				leech_hp_dealt += _damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
 				if bool(raw.get("detonate", false)):
 					_detonate_burn(hero_state, target_enemy)
 				if bool(raw.get("execute", false)):
@@ -665,6 +667,13 @@ func _apply_hero_ability_damage(
 			# Chain jumps continue even when the primary hit was ward-blocked —
 			# the ward only negates the ability for its own carrier.
 			_apply_chain_jumps(hero_state, ability_entry, target_enemy, final_dmg, ignores_shield, shield_pierce)
+
+	# Leech: the attacker heals 50% of the HP damage dealt (after shields).
+	if leech and leech_hp_dealt > 0:
+		var leech_heal: int = int(floor(float(leech_hp_dealt) * 0.5))
+		if leech_heal > 0:
+			_log("%s leeches %d HP." % [hero_state["unit"].display_name, leech_heal])
+			_heal_state(hero_state, leech_heal, hero_state)
 
 
 # Breach: destroy ALL shield on the target before the damage applies.
@@ -929,15 +938,17 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
 
 
+# Returns the HP damage actually dealt (after cloak / reduction / shields) so
+# callers like Leech can react to it.
 func _damage_state(
 	state: Dictionary,
 	amount: int,
 	ignore_shield: bool = false,
 	attacker_state: Dictionary = {},
 	shield_pierce: int = 0
-) -> void:
+) -> int:
 	if state.is_empty() or state["dead"] or amount <= 0:
-		return
+		return 0
 
 	var hp_before: int = int(state["current_hp"])
 
@@ -947,7 +958,7 @@ func _damage_state(
 			_log("%s evades the attack (cloaked)!" % state["unit"].display_name)
 			_emit_event(state, "evade", 0, _resolve_side_for_state(state))
 			state["cloaked"] = false
-			return
+			return 0
 		else:
 			_log("%s's cloak failed to evade!" % state["unit"].display_name)
 			state["cloaked"] = false
@@ -958,7 +969,7 @@ func _damage_state(
 		if reduction > 0:
 			amount = maxi(0, amount - reduction)
 			if amount == 0:
-				return
+				return 0
 
 	var remaining_damage: int = amount
 	var pierce_budget: int = shield_pierce
@@ -995,7 +1006,7 @@ func _damage_state(
 		_emit_event(state, "block", total_absorbed, _resolve_side_for_state(state))
 
 	if remaining_damage <= 0:
-		return
+		return 0
 
 	state["current_hp"] = maxi(0, int(state["current_hp"]) - remaining_damage)
 	_log("%s takes %d damage." % [state["unit"].display_name, remaining_damage])
@@ -1028,6 +1039,8 @@ func _damage_state(
 			_cancel_targets_involving_down_state(state)
 			_log("%s is down." % state["unit"].display_name)
 			_on_unit_killed(state, attacker_state)
+
+	return remaining_damage
 
 
 func _trigger_low_hp_squad_roll_buff() -> void:

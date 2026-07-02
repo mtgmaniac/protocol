@@ -59,6 +59,7 @@ const HERO_HANDLED_FIELDS := [
 	"execute",
 	"breach",
 	"breachAll",
+	"leech",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -432,6 +433,7 @@ func _run_regression_audits() -> void:
 	_run_detonate_regression()
 	_run_execute_regression()
 	_run_breach_regression()
+	_run_leech_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -867,6 +869,38 @@ func _run_breach_regression() -> void:
 		_record_pass("Regression / breach all strips every enemy", "breachAll")
 	else:
 		_record_failure("Regression / breach all strips every enemy", "breachAll", "both shields destroyed, full 11 damage each", "a_delta=%d b_delta=%d a_sh=%d b_sh=%d" % [ea_before - int(ea["current_hp"]), eb_before - int(eb["current_hp"]), int(ea["shield"]), int(eb["shield"])])
+
+
+func _run_leech_regression() -> void:
+	# Leech heals the attacker for 50% of HP damage dealt (after shields).
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Rend", {"dmg": 10, "leech": true})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	hero["current_hp"] = 30
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if int(hero["current_hp"]) == 35:
+		_record_pass("Regression / leech heals 50% of HP damage", "leech")
+	else:
+		_record_failure("Regression / leech heals 50% of HP damage", "leech", "30 + floor(10*0.5) = 35", "hero_hp=%d" % int(hero["current_hp"]))
+
+	# Shields eat the hit -> nothing to leech.
+	var shielded_manager: CombatManager = CombatManager.new()
+	shielded_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Rend", {"dmg": 10, "leech": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var s_hero: Dictionary = shielded_manager.get_hero_states()[0]
+	var s_enemy: Dictionary = shielded_manager.get_enemy_states()[0]
+	s_hero["selected_target_id"] = str(s_enemy["id"])
+	s_hero["current_hp"] = 30
+	s_enemy["shield_stacks"] = [{"amt": 20, "skip_next_tick": true}]
+	s_enemy["shield"] = 20
+	shielded_manager.resolve_round({str(s_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if int(s_hero["current_hp"]) == 30:
+		_record_pass("Regression / leech gets nothing through shields", "leech")
+	else:
+		_record_failure("Regression / leech gets nothing through shields", "leech", "fully absorbed hit heals 0", "hero_hp=%d" % int(s_hero["current_hp"]))
 
 
 func _run_shield_lowest_regression() -> void:

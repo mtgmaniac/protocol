@@ -79,6 +79,9 @@ def hero_expected(raw: dict) -> str:
     elif raw.get("breach"):
         parts.append("breach")
 
+    if raw.get("leech"):
+        parts.append("leech")
+
     rfe = raw.get("rfe") or 0
     if rfe > 0:
         t = turn_suffix(raw.get("rfT") or 0)

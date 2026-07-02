@@ -37,6 +37,13 @@
       "syntax": "breach / breach all"
     },
     {
+      "id": "leech",
+      "term": "Leech",
+      "category": "offense",
+      "def": "The attacker heals HP equal to 50% of the damage dealt to HP (after shields).",
+      "syntax": "leech"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",
