@@ -76,7 +76,6 @@
         "rfT": { "type": "integer" },
         "shTgt": { "type": "boolean" },
         "shield": { "type": "integer" },
-        "shT": { "type": "integer" },
         "shieldAll": { "type": "boolean" },
         "healTgt": { "type": "boolean" },
         "healAll": { "type": "boolean" },

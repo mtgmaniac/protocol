@@ -19,7 +19,7 @@ def fmt(ab: dict) -> str:
     if ab.get("heal"):
         parts.append(f"{ab['heal']} heal")
     if ab.get("shield"):
-        parts.append(f"{ab['shield']} sh {ab.get('shT', 2)}t")
+        parts.append(f"{ab['shield']} sh")
     if ab.get("shieldP2"):
         parts.append(f"P2 sh {ab['shieldP2']}")
     if ab.get("rfm"):

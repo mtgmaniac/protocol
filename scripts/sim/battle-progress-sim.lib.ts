@@ -887,7 +887,9 @@ function resolveHeroAbility(
 
   const ignSh = !!ab.ignSh;
 
-  const shDur = ab.shT || 2;
+  // One-round shields: hero grants live through this round's enemy phase and
+  // expire at the same round's end tick.
+  const shDur = 1;
   if (ab.shieldAll && (ab.shield || 0) > 0) {
     for (const x of heroes) {
       if (x.hp > 0) Object.assign(x, addShieldToUnit(x, ab.shield!, shDur));
@@ -1006,7 +1008,9 @@ function resolveEnemyTurn(
 ): void {
   const act = getEnemyPlan(enemy, suites);
 
-  const eshT = act.shT || 2;
+  // Enemy grants land after the hero phase, so they need 2 ticks of life to
+  // cover exactly one hero phase (mirrors combat_manager survives_current_tick).
+  const eshT = 2;
   if (act.shieldAllyAll && (act.shieldAlly || 0) > 0) {
     for (const e of enemies) {
       if (e.hp > 0) Object.assign(e, addShieldToUnit(e, act.shieldAlly!, eshT));
@@ -1128,12 +1132,12 @@ function applyConsumableEffect(
       break;
     case 'shield':
       if (targetHero && targetHero.hp > 0) {
-        Object.assign(targetHero, addShieldToUnit(targetHero, e.amount ?? 0, e.shT ?? 1));
+        Object.assign(targetHero, addShieldToUnit(targetHero, e.amount ?? 0, 1));
       }
       break;
     case 'shieldAll':
       for (const h of heroes) {
-        if (h.hp > 0) Object.assign(h, addShieldToUnit(h, e.amount ?? 0, e.shT ?? 1));
+        if (h.hp > 0) Object.assign(h, addShieldToUnit(h, e.amount ?? 0, 1));
       }
       break;
     case 'rollBuff':

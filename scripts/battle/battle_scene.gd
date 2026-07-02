@@ -2809,14 +2809,12 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			_append_log("Item: %s heals all living allies for %d." % [item.display_name, heal_all_amount])
 		"shield":
 			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("shT", 1))
-			combat_manager.apply_item_shield(target_state, amount, turns)
-			_append_log("Item: %s grants %d shield (%d turns) to %s." % [item.display_name, amount, turns, tname])
+			combat_manager.apply_item_shield(target_state, amount)
+			_append_log("Item: %s grants %d shield to %s." % [item.display_name, amount, tname])
 		"shieldAll":
 			var shield_all_amount: int = int(effect.get("amount", 0))
-			var shield_all_turns: int = int(effect.get("shT", 1))
-			combat_manager.apply_item_shield_all(shield_all_amount, shield_all_turns)
-			_append_log("Item: %s grants all living allies %d shield (%d turns)." % [item.display_name, shield_all_amount, shield_all_turns])
+			combat_manager.apply_item_shield_all(shield_all_amount)
+			_append_log("Item: %s grants all living allies %d shield." % [item.display_name, shield_all_amount])
 		"rollBuff":
 			var amount: int = int(effect.get("amount", 0))
 			var turns: int = int(effect.get("turns", 1))

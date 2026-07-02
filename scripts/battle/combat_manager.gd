@@ -128,6 +128,13 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			_damage_state(target_hero, dmg)
 			_log("Opening Gambit: %s takes %d damage!" % [target_hero["unit"].display_name, dmg])
 
+	# shieldsPersist (Mantle Core): hero shields persist until broken instead of
+	# expiring at round end.
+	if has_relic("shieldsPersist"):
+		for hero_state in _hero_states:
+			hero_state["shields_persist"] = true
+		_log("Mantle Core: hero shields persist until broken.")
+
 	# plagueProtocol: all enemies start with 3 burn
 	if has_relic("enemyBurnPermanent"):
 		var burn_amt = int(_get_relic_value("enemyBurnPermanent", "amount", 3))
@@ -178,7 +185,7 @@ func apply_battle_start_gear_effects() -> void:
 			var effect_type: String = str(item.effect.get("type", ""))
 			match effect_type:
 				"battleStartShield":
-					_add_shield_stack(hero_state, int(item.effect.get("amount", 0)), 1)
+					_add_shield_stack(hero_state, int(item.effect.get("amount", 0)))
 					_log("%s: Combat Plating grants %d shield." % [hero_state["unit"].display_name, int(item.effect.get("amount", 0))])
 				"battleStartCloak":
 					hero_state["cloaked"] = true
@@ -204,7 +211,7 @@ func apply_enemy_turn_start_relic_effects() -> void:
 		var amt = int(_get_relic_value("heroShieldPerTurn", "amount", 3))
 		for hero_state in _hero_states:
 			if not hero_state["dead"]:
-				_add_shield_stack(hero_state, amt, 1)
+				_add_shield_stack(hero_state, amt)
 
 	# naniteField: all heroes heal 3 HP
 	if has_relic("heroHealPerTurn"):
@@ -346,6 +353,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"max_hp": unit.max_hp,
 		"shield": 0,
 		"shield_stacks": [],
+		"shields_persist": false,
 		"dead": false,
 		"burn": 0,
 		"burn_turns": 0,
@@ -397,10 +405,18 @@ func _get_total_shield(state: Dictionary) -> int:
 	return total
 
 
-func _add_shield_stack(state: Dictionary, amount: int, turns: int) -> void:
-	state["shield_stacks"].append({"amt": amount, "turns_left": turns, "skip_next_tick": true})
+# Shields last one round: granted this round, absorb through this round's
+# opposing phase, gone at the round-end tick. Enemy abilities resolve AFTER the
+# hero phase, so shields they grant pass survives_current_tick=true — they live
+# through the imminent tick and cover exactly one hero phase instead of dying
+# before they could ever absorb. shields_persist (Mantle Core relic / MANTLE
+# TYRANT boss rule) exempts a state from expiry entirely.
+# DESIGN-TODO(kev): "one round" is applied per-side as "one opposing action
+# phase" so enemy shields remain meaningful; confirm this reading.
+func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false) -> void:
+	state["shield_stacks"].append({"amt": amount, "skip_next_tick": survives_current_tick})
 	state["shield"] = _get_total_shield(state)
-	_log("%s gains %d shield (%dt)." % [state["unit"].display_name, amount, turns])
+	_log("%s gains %d shield." % [state["unit"].display_name, amount])
 	_emit_event(state, "shield", amount, _resolve_side_for_state(state))
 
 
@@ -433,7 +449,6 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var damage: int = int(raw.get("dmg", 0))
 	var heal: int = int(raw.get("heal", 0))
 	var shield: int = int(raw.get("shield", 0))
-	var sh_turns: int = int(raw.get("shT", 1))
 	var hits_all: bool = bool(raw.get("blastAll", false))
 	var heal_all: bool = bool(raw.get("healAll", false))
 	var shield_all: bool = bool(raw.get("shieldAll", false))
@@ -454,15 +469,15 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		if shield_all:
 			for ally_state in _hero_states:
 				if not ally_state["dead"]:
-					_add_shield_stack(ally_state, shield, sh_turns)
+					_add_shield_stack(ally_state, shield)
 		elif shield_targeted:
 			var shield_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
 			if shield_target.is_empty():
 				shield_target = _lowest_hp_state(_hero_states)
 			if not shield_target.is_empty():
-				_add_shield_stack(shield_target, shield, sh_turns)
+				_add_shield_stack(shield_target, shield)
 		else:
-			_add_shield_stack(hero_state, shield, sh_turns)
+			_add_shield_stack(hero_state, shield)
 
 	if heal > 0:
 		if heal_all:
@@ -621,18 +636,16 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var shield: int = int(raw.get("shield", 0))
 	if bool(enemy_state.get("in_phase_two", false)) and raw.has("shieldP2"):
 		shield = int(raw.get("shieldP2", shield))
-	var sh_turns: int = int(raw.get("shT", 1))
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
-	var shield_ally_turns: int = int(raw.get("shAllyT", raw.get("shT", 1)))
 	var burn_amount: int = int(raw.get("burn", 0))
 	var burn_turns: int = int(raw.get("burnT", 0))
 
 	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
 		for es in _enemy_states:
 			if not bool(es["dead"]):
-				_add_shield_stack(es, shield_ally, shield_ally_turns)
+				_add_shield_stack(es, shield_ally, true)
 	elif shield > 0:
-		_add_shield_stack(enemy_state, shield, sh_turns)
+		_add_shield_stack(enemy_state, shield, true)
 		if shield_ally > 0:
 			var enemy_ally: Dictionary = _find_living_enemy_ally_by_id(enemy_state, str(enemy_state.get("selected_target_id", "")))
 			if enemy_ally.is_empty():
@@ -640,7 +653,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if enemy_ally.is_empty():
 				enemy_ally = enemy_state
 			if not enemy_ally.is_empty():
-				_add_shield_stack(enemy_ally, shield_ally, shield_ally_turns)
+				_add_shield_stack(enemy_ally, shield_ally, true)
 
 	if heal > 0:
 		_heal_state(enemy_state, heal)
@@ -1058,14 +1071,14 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 		if not healer_state.is_empty() and _is_hero_state(healer_state) and state != healer_state:
 			var shield_bonus: int = int(healer_state.get("gear_heal_shield_bonus", 0))
 			if shield_bonus > 0:
-				_add_shield_stack(state, shield_bonus, 1)
+				_add_shield_stack(state, shield_bonus)
 				_log("%s grants %d shield from the heal." % [healer_state["unit"].display_name, shield_bonus])
 		if has_relic("healGrantsShieldAll"):
 			var squad_shield: int = int(_get_relic_value("healGrantsShieldAll", "amount", 0))
 			if squad_shield > 0:
 				for ally_state in _hero_states:
 					if not ally_state["dead"]:
-						_add_shield_stack(ally_state, squad_shield, 1)
+						_add_shield_stack(ally_state, squad_shield)
 				_log("Aegis Field grants %d shield to all allies." % squad_shield)
 
 
@@ -1227,17 +1240,14 @@ func _tick_state(state: Dictionary) -> void:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
 
-	# Tick shield stacks: decrement turns_left, remove expired
-	if not state["dead"]:
+	# Shields last one round: everything not flagged to survive this tick (or
+	# owned by a shields_persist state) expires now.
+	if not state["dead"] and not bool(state.get("shields_persist", false)):
 		var new_shield_stacks: Array = []
 		for stack in state.get("shield_stacks", []):
 			if bool(stack.get("skip_next_tick", false)):
 				stack["skip_next_tick"] = false
 				new_shield_stacks.append(stack)
-				continue
-			var tl: int = int(stack["turns_left"]) - 1
-			if tl > 0:
-				new_shield_stacks.append({"amt": stack["amt"], "turns_left": tl})
 		state["shield_stacks"] = new_shield_stacks
 		state["shield"] = _get_total_shield(state)
 
@@ -1310,14 +1320,14 @@ func apply_item_heal_all(amount: int) -> void:
 			_heal_state(hero_state, amount)
 
 
-func apply_item_shield(target_state: Dictionary, amount: int, turns: int) -> void:
-	_add_shield_stack(target_state, amount, turns)
+func apply_item_shield(target_state: Dictionary, amount: int) -> void:
+	_add_shield_stack(target_state, amount)
 
 
-func apply_item_shield_all(amount: int, turns: int) -> void:
+func apply_item_shield_all(amount: int) -> void:
 	for hero_state in _hero_states:
 		if not bool(hero_state.get("dead", true)):
-			_add_shield_stack(hero_state, amount, turns)
+			_add_shield_stack(hero_state, amount)
 
 
 func apply_item_roll_buff(target_state: Dictionary, amount: int, turns: int) -> void:

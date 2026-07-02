@@ -6,7 +6,6 @@ const ri = (n: number | undefined | null): number =>
 /** Whole-number stats for combat, badges, and the ability panel (single source of truth). */
 export function normalizeHeroAbility(ab: HeroAbility): HeroAbility {
   const shield = ab.shield != null ? ri(ab.shield) : undefined;
-  const shT = ab.shT != null ? ri(ab.shT) : undefined;
   const rfm = ab.rfm != null ? ri(ab.rfm) : undefined;
   const rfmT = ab.rfmT != null ? ri(ab.rfmT) : undefined;
   const rfT = ab.rfT != null ? ri(ab.rfT) : undefined;
@@ -23,7 +22,6 @@ export function normalizeHeroAbility(ab: HeroAbility): HeroAbility {
     rfT: rfT || undefined,
     heal: ri(ab.heal),
     shield: shield || undefined,
-    shT: shT || undefined,
     rfm: rfm || undefined,
     rfmT: rfmT || undefined,
     freezeAllEnemyDice:

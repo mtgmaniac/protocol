@@ -57,56 +57,56 @@
     {
       "id": "scrap_plate",
       "name": "Scrap Plate",
-      "desc": "Grant +5 shield for 1 turn.",
+      "desc": "Grant +5 shield this round.",
       "rarity": "common",
       "icon": "shield",
       "target": "ally",
-      "effect": { "type": "shield", "amount": 5, "shT": 1 }
+      "effect": { "type": "shield", "amount": 5 }
     },
     {
       "id": "buckler_array",
       "name": "Buckler Array",
-      "desc": "Grant all living allies +4 shield for 1 turn.",
+      "desc": "Grant all living allies +4 shield this round.",
       "rarity": "common",
       "icon": "shield",
       "target": "none",
-      "effect": { "type": "shieldAll", "amount": 4, "shT": 1 }
+      "effect": { "type": "shieldAll", "amount": 4 }
     },
     {
       "id": "reactive_weave",
       "name": "Reactive Weave",
-      "desc": "Grant +8 shield for 1 turn.",
+      "desc": "Grant +8 shield this round.",
       "rarity": "uncommon",
       "icon": "shield",
       "target": "ally",
-      "effect": { "type": "shield", "amount": 8, "shT": 1 }
+      "effect": { "type": "shield", "amount": 8 }
     },
     {
       "id": "aegis_broadcast",
       "name": "Aegis Broadcast",
-      "desc": "Grant all living allies +6 shield for 1 turn.",
+      "desc": "Grant all living allies +6 shield this round.",
       "rarity": "uncommon",
       "icon": "shield",
       "target": "none",
-      "effect": { "type": "shieldAll", "amount": 6, "shT": 1 }
+      "effect": { "type": "shieldAll", "amount": 6 }
     },
     {
       "id": "bastion_seed",
       "name": "Bastion Seed",
-      "desc": "Grant +15 shield for 2 turns.",
+      "desc": "Grant +15 shield this round.",
       "rarity": "rare",
       "icon": "shield",
       "target": "ally",
-      "effect": { "type": "shield", "amount": 15, "shT": 2 }
+      "effect": { "type": "shield", "amount": 15 }
     },
     {
       "id": "citadel_pulse",
       "name": "Citadel Pulse",
-      "desc": "Grant all living allies +10 shield for 2 turns.",
+      "desc": "Grant all living allies +10 shield this round.",
       "rarity": "rare",
       "icon": "shield",
       "target": "none",
-      "effect": { "type": "shieldAll", "amount": 10, "shT": 2 }
+      "effect": { "type": "shieldAll", "amount": 10 }
     },
     {
       "id": "calibration_chip",
@@ -246,11 +246,11 @@
     {
       "id": "citadel_kernel",
       "name": "Citadel Kernel",
-      "desc": "Grant +25 shield for 2 turns.",
+      "desc": "Grant +25 shield this round.",
       "rarity": "legendary",
       "icon": "shield",
       "target": "ally",
-      "effect": { "type": "shield", "amount": 25, "shT": 2 }
+      "effect": { "type": "shield", "amount": 25 }
     },
     {
       "id": "terminal_spike",

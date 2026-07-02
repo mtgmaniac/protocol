@@ -30,7 +30,6 @@ const HERO_HANDLED_FIELDS := [
 	"dmg",
 	"heal",
 	"shield",
-	"shT",
 	"blastAll",
 	"healAll",
 	"shieldAll",
@@ -64,9 +63,7 @@ const ENEMY_HANDLED_FIELDS := [
 	"heal",
 	"shield",
 	"shieldP2",
-	"shT",
 	"shieldAlly",
-	"shAllyT",
 	"shieldAllyAll",
 	"blastAll",
 	"burn",
@@ -107,7 +104,6 @@ const EFFECT_FIELDS := [
 	"healAll",
 	"healLowest",
 	"shield",
-	"shT",
 	"shTgt",
 	"shieldAll",
 	"blastAll",
@@ -266,9 +262,6 @@ func _score_ability_for_field(raw: Dictionary, effect_field: String) -> int:
 		"rfT":
 			score += int(raw.get("rfT", 0)) * 10
 			score += int(raw.get("rfe", 0))
-		"shT":
-			score += int(raw.get("shT", 0)) * 10
-			score += int(raw.get("shield", 0))
 		"rfmT":
 			score += int(raw.get("rfmT", 0)) * 10
 			score += int(raw.get("rfm", 0))
@@ -380,11 +373,11 @@ func _run_targeting_audits() -> void:
 		{"name": "rfeOnly debuff requires enemy", "raw": {"rfe": 2, "rfT": 1, "rfeOnly": true}, "manual": "enemy"},
 		{"name": "blast all requires no manual target", "raw": {"dmg": 5, "blastAll": true}, "manual": ""},
 		{"name": "heal all requires no manual target", "raw": {"heal": 5, "healAll": true}, "manual": ""},
-		{"name": "shield all requires no manual target", "raw": {"shield": 5, "shT": 2, "shieldAll": true}, "manual": ""},
+		{"name": "shield all requires no manual target", "raw": {"shield": 5, "shieldAll": true}, "manual": ""},
 		{"name": "mixed healAll plus single damage requires enemy", "raw": {"dmg": 6, "heal": 7, "healAll": true}, "manual": "enemy"},
-		{"name": "mixed shieldAll plus single rfe requires enemy", "raw": {"rfe": 2, "rfT": 2, "shield": 8, "shT": 2, "shieldAll": true}, "manual": "enemy"},
+		{"name": "mixed shieldAll plus single rfe requires enemy", "raw": {"rfe": 2, "rfT": 2, "shield": 8, "shieldAll": true}, "manual": "enemy"},
 		{"name": "targeted heal requires hero", "raw": {"heal": 6, "healTgt": true}, "manual": "hero"},
-		{"name": "targeted shield requires hero", "raw": {"shield": 6, "shT": 2, "shTgt": true}, "manual": "hero"},
+		{"name": "targeted shield requires hero", "raw": {"shield": 6, "shTgt": true}, "manual": "hero"},
 		{"name": "revive requires dead hero", "raw": {"revive": true}, "manual": "dead_hero"},
 		{"name": "revive all requires no manual target", "raw": {"reviveAll": true, "revivePct": 30}, "manual": ""},
 		{"name": "revive with healTgt still requires dead hero", "raw": {"revive": true, "healTgt": true, "revivePct": 70}, "manual": "dead_hero"},
@@ -401,7 +394,7 @@ func _run_targeting_audits() -> void:
 		)
 
 	var self_state: Dictionary = {"id": "self", "selected_target_id": "", "target_display": "--"}
-	battle_scene.call("_auto_assign_hero_target", self_state, {"raw": {"shield": 5, "shT": 1}})
+	battle_scene.call("_auto_assign_hero_target", self_state, {"raw": {"shield": 5}})
 	_expect_and_record("Targeting / self shield auto target", "auto_target", "self:Self", "%s:%s" % [str(self_state.get("selected_target_id", "")), str(self_state.get("target_display", ""))])
 
 	var all_state: Dictionary = {"id": "hero", "selected_target_id": "", "target_display": "--"}
@@ -451,7 +444,6 @@ func _run_enemy_shield_ally_regression() -> void:
 	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Noop", {})
 	var actor_unit: EnemyData = _make_enemy("audit_enemy_actor", "Audit Enemy Actor", "Ally Shield Regression", {
 		"shield": 5,
-		"shT": 2,
 		"shieldAlly": 7,
 	})
 	var ally_unit: EnemyData = _make_enemy("audit_enemy_ally", "Audit Enemy Ally")
@@ -462,18 +454,24 @@ func _run_enemy_shield_ally_regression() -> void:
 	var ally: Dictionary = enemies[1]
 	actor["selected_target_id"] = str(actor["id"])
 
+	# Enemy shields are granted during the enemy phase (after heroes acted), so
+	# they survive the imminent round-end tick to cover exactly one hero phase,
+	# then expire at the following round's end tick.
 	manager.resolve_round({}, {str(actor["id"]): AUDIT_ROLL}, DiceManager.new())
-
-	var ally_remaining_turns: int = _max_stack_turns(ally.get("shield_stacks", []))
-	var ok: bool = int(actor.get("shield", 0)) == 5 and int(ally.get("shield", 0)) == 7 and ally_remaining_turns == 2
+	var actor_shield_r1: int = int(actor.get("shield", 0))
+	var ally_shield_r1: int = int(ally.get("shield", 0))
+	manager.resolve_round({}, {}, DiceManager.new())
+	var actor_shield_r2: int = int(actor.get("shield", 0))
+	var ally_shield_r2: int = int(ally.get("shield", 0))
+	var ok: bool = actor_shield_r1 == 5 and ally_shield_r1 == 7 and actor_shield_r2 == 0 and ally_shield_r2 == 0
 	if ok:
 		_record_pass("Regression / enemy shieldAlly", "shieldAlly")
 	else:
 		_record_failure(
 			"Regression / enemy shieldAlly",
 			"shieldAlly",
-			"self shield 5, ally shield 7, ally remaining turns 2 after first end tick",
-			"self shield %d, ally shield %d, ally remaining turns %d" % [int(actor.get("shield", 0)), int(ally.get("shield", 0)), ally_remaining_turns]
+			"self 5 / ally 7 after granting round; both 0 after the next round",
+			"r1 self=%d ally=%d, r2 self=%d ally=%d" % [actor_shield_r1, ally_shield_r1, actor_shield_r2, ally_shield_r2]
 		)
 
 
@@ -558,23 +556,43 @@ func _run_roll_modifier_timing_regressions() -> void:
 
 
 func _run_shield_timing_regression() -> void:
-	var context: Dictionary = _build_context({"shield": 5, "shT": 1}, "Shield Timing Regression")
+	# Hero shields last one round: granted in the hero phase, they absorb the
+	# same round's enemy phase and are gone after that round's end tick.
+	var context: Dictionary = _build_context({"shield": 5}, "Shield Timing Regression")
 	var manager: CombatManager = context["manager"]
 	var actor: Dictionary = context["actor"]
-	manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var shield_after_apply: int = int(actor.get("shield", 0))
-	var turns_after_apply: int = _max_stack_turns(actor.get("shield_stacks", []))
-	manager.resolve_round({}, {}, DiceManager.new())
-	var shield_after_second_tick: int = int(actor.get("shield", 0))
-	var ok: bool = shield_after_apply == 5 and turns_after_apply == 1 and shield_after_second_tick == 0
+	var result: Dictionary = manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var events: Array = result.get("events", [])
+	var granted: bool = _has_event(events, "shield", 5, "hero")
+	var shield_after_round: int = int(actor.get("shield", 0))
+	var ok: bool = granted and shield_after_round == 0
 	if ok:
-		_record_pass("Regression / shield skip-next-tick", "shield")
+		_record_pass("Regression / shield one-round expiry", "shield")
 	else:
 		_record_failure(
-			"Regression / shield skip-next-tick",
+			"Regression / shield one-round expiry",
 			"shield",
-			"shield survives first end tick and expires on next",
-			"shield_after_apply=%d turns_after_apply=%d shield_after_second_tick=%d" % [shield_after_apply, turns_after_apply, shield_after_second_tick]
+			"shield granted during the round, expired at the same round's end tick",
+			"granted=%s shield_after_round=%d" % [str(granted), shield_after_round]
+		)
+
+	# shields_persist (Mantle Core / MANTLE TYRANT): shields survive round-end
+	# ticks and are only consumed by damage.
+	var persist_context: Dictionary = _build_context({"shield": 5}, "Shield Persist Regression")
+	var persist_manager: CombatManager = persist_context["manager"]
+	var persist_actor: Dictionary = persist_context["actor"]
+	persist_actor["shields_persist"] = true
+	persist_manager.resolve_round({str(persist_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	persist_manager.resolve_round({}, {}, DiceManager.new())
+	var persist_shield: int = int(persist_actor.get("shield", 0))
+	if persist_shield == 5:
+		_record_pass("Regression / shields_persist survives ticks", "shield")
+	else:
+		_record_failure(
+			"Regression / shields_persist survives ticks",
+			"shield",
+			"persistent shield still 5 after two round-end ticks",
+			"shield=%d" % persist_shield
 		)
 
 
@@ -674,7 +692,7 @@ func _run_down_cleanup_regression() -> void:
 	manager.setup_battle([hero_unit], [enemy_unit])
 	var hero: Dictionary = manager.get_hero_states()[0]
 	hero["shield"] = 5
-	hero["shield_stacks"] = [{"amt": 5, "turns_left": 1, "skip_next_tick": false}]
+	hero["shield_stacks"] = [{"amt": 5, "skip_next_tick": false}]
 	hero["burn"] = 3
 	hero["burn_turns"] = 2
 	hero["rfe_stacks"] = [{"amt": 2, "turns_left": 1, "skip_next_tick": false}]
@@ -844,7 +862,7 @@ func _run_gear_shield_pierce_regression() -> void:
 	manager.setup_gear({"audit_hero": ["breach_tip"]})
 	var hero: Dictionary = manager.get_hero_states()[0]
 	var enemy: Dictionary = manager.get_enemy_states()[0]
-	enemy["shield_stacks"] = [{"amt": 8, "turns_left": 2, "skip_next_tick": false}]
+	enemy["shield_stacks"] = [{"amt": 8, "skip_next_tick": false}]
 	enemy["shield"] = 8
 	hero["selected_target_id"] = str(enemy["id"])
 	manager.resolve_round({"audit_hero": AUDIT_ROLL}, {}, DiceManager.new())
@@ -1073,16 +1091,20 @@ func _run_gear_heal_shield_bonus_regression() -> void:
 	var ally: Dictionary = manager.get_hero_states()[1]
 	ally["current_hp"] = 40
 	healer["selected_target_id"] = str(ally["id"])
-	manager.resolve_round({"audit_healer": AUDIT_ROLL}, {}, DiceManager.new())
-	var ok: bool = int(ally["current_hp"]) == 46 and int(ally.get("shield", 0)) == 3
+	var result: Dictionary = manager.resolve_round({"audit_healer": AUDIT_ROLL}, {}, DiceManager.new())
+	# One-round shields: the bonus shield is granted mid-round (covering this
+	# round's enemy phase) and expires at the round-end tick — assert the grant
+	# event rather than post-round state.
+	var events: Array = result.get("events", [])
+	var ok: bool = int(ally["current_hp"]) == 46 and _has_event(events, "shield", 3, "hero")
 	if ok:
 		_record_pass("Regression / gear healShieldBonus", "healShieldBonus")
 	else:
 		_record_failure(
 			"Regression / gear healShieldBonus",
 			"healShieldBonus",
-			"ally-targeted heal also grants 3 shield",
-			"ally_hp=%d shield=%d" % [int(ally["current_hp"]), int(ally.get("shield", 0))]
+			"ally-targeted heal also grants a 3-shield event this round",
+			"ally_hp=%d events=%s" % [int(ally["current_hp"]), str(events)]
 		)
 
 
@@ -1275,16 +1297,19 @@ func _run_relic_heal_grants_shield_all_regression() -> void:
 	var hero_a: Dictionary = manager.get_hero_states()[0]
 	var hero_b: Dictionary = manager.get_hero_states()[1]
 	hero_a["current_hp"] = 50
-	manager.resolve_round({"audit_hero_a": AUDIT_ROLL}, {}, DiceManager.new())
-	var ok: bool = int(hero_a.get("shield", 0)) == 3 and int(hero_b.get("shield", 0)) == 3
+	var result: Dictionary = manager.resolve_round({"audit_hero_a": AUDIT_ROLL}, {}, DiceManager.new())
+	# One-round shields: assert the squad-wide grant events; the shields
+	# themselves expire at the same round's end tick.
+	var events: Array = result.get("events", [])
+	var ok: bool = _count_events(events, "shield", "hero") >= 2
 	if ok:
 		_record_pass("Regression / relic healGrantsShieldAll", "healGrantsShieldAll")
 	else:
 		_record_failure(
 			"Regression / relic healGrantsShieldAll",
 			"healGrantsShieldAll",
-			"any heal grants 3 shield to all living allies",
-			"hero_a shield=%d hero_b shield=%d" % [int(hero_a.get("shield", 0)), int(hero_b.get("shield", 0))]
+			"any heal grants shield events to all living allies this round",
+			"events=%s" % str(events)
 		)
 
 
@@ -1414,7 +1439,7 @@ func _prepare_state_for_effect(effect_field: String, context: Dictionary) -> voi
 			actor["current_hp"] = 50
 			ally_a["current_hp"] = 40
 			ally_b["current_hp"] = 30
-		"shield", "shT":
+		"shield":
 			actor["shield_stacks"] = []
 			actor["shield"] = 0
 		"shTgt":
@@ -1435,7 +1460,9 @@ func _prepare_state_for_effect(effect_field: String, context: Dictionary) -> voi
 			for state in [enemy_a, enemy_b]:
 				state["rfe_stacks"] = []
 		"ignSh":
-			enemy_a["shield_stacks"] = [{"amt": 25, "turns_left": 3}]
+			# survive the round-end tick so the post-round assert can prove the
+			# pierce didn't consume the shield
+			enemy_a["shield_stacks"] = [{"amt": 25, "skip_next_tick": true}]
 			enemy_a["shield"] = 25
 		"freezeAnyDice":
 			ally_a["die_freeze_turns"] = 0
@@ -1502,7 +1529,6 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 	var roll_buff_turns: int = int(raw.get("rfmT", 1))
 	var heal_amount: int = int(raw.get("heal", 0))
 	var shield_amount: int = int(raw.get("shield", 0))
-	var shield_turns: int = int(raw.get("shT", 1))
 
 	match effect_field:
 		"dmg", "dMin", "dMax":
@@ -1533,8 +1559,6 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 			return _expect_bool(effect_field, _has_target_event(events, "heal", heal_amount, "hero", "audit_ally_a"), "heal on lowest HP ally", "events=%s" % str(events))
 		"shield":
 			return _expect_event_amount(effect_field, events, "shield", shield_amount, "hero")
-		"shT":
-			return _expect_bool(effect_field, _has_event(events, "shield", shield_amount, "hero") and shield_turns > 0, "shield event with shT=%d" % shield_turns, "events=%s" % str(events))
 		"shTgt":
 			return _expect_bool(effect_field, _has_target_event(events, "shield", shield_amount, "hero", "audit_ally_a"), "shield on selected ally", "events=%s" % str(events))
 		"shieldAll":

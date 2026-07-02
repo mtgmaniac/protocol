@@ -19,8 +19,8 @@
       "id": "shield",
       "term": "Shield",
       "category": "defense",
-      "def": "Absorbs incoming damage before HP. Removed by Pierce.",
-      "syntax": "N shield, [Yt] = N shield, optionally expiring after Y turns"
+      "def": "Absorbs incoming damage before HP. Lasts one round: gone at round end. Removed by Pierce.",
+      "syntax": "N shield = N shield this round"
     },
     {
       "id": "heal",

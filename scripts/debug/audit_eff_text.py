@@ -51,13 +51,12 @@ def hero_expected(raw: dict) -> str:
 
     shield = raw.get("shield") or 0
     if shield > 0:
-        t = turn_suffix(raw.get("shT") or 0)
         if raw.get("shieldAll"):
-            parts.append(f"all {shield} shield{t}")
+            parts.append(f"all {shield} shield")
         elif raw.get("shTgt"):
-            parts.append(f"ally {shield} shield{t}")
+            parts.append(f"ally {shield} shield")
         else:
-            parts.append(f"self {shield} shield{t}")
+            parts.append(f"self {shield} shield")
 
     burn = raw.get("burn") or 0
     if burn > 0:
@@ -143,18 +142,14 @@ def enemy_expected(raw: dict) -> str:
         s = f"{shield} shield"
         if p2 and p2 != shield:
             s += f" (P2 {p2})"
-        s += turn_suffix(raw.get("shT") or 0)
         parts.append(s)
 
     sa = raw.get("shieldAlly") or 0
     if sa > 0:
-        ally_t = raw.get("shAllyT") or raw.get("shT") or 1
         if raw.get("shieldAllyAll"):
-            t = f", {ally_t}t" if ally_t > 1 else ""
-            parts.append(f"{sa} shield all allies{t}")
+            parts.append(f"{sa} shield all allies")
         else:
-            t = turn_suffix(ally_t)
-            parts.append(f"ally {sa} shield{t}")
+            parts.append(f"ally {sa} shield")
 
     if raw.get("enemySelfTaunt"):
         parts.append("taunt (all heroes must target this enemy)")

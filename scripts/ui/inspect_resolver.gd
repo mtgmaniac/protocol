@@ -26,7 +26,7 @@ const PROTOCOL_ACTIONS := {
 
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
-# `raw` is the structured ability dict (name, eff, dmg/burn/burnT/heal/rfe/shield/shT…) as
+# `raw` is the structured ability dict (name, eff, dmg/burn/burnT/heal/rfe/shield…) as
 # stored in a dice_ranges entry's "raw". `side` drives pip coloring.
 static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String = "") -> Dictionary:
 	if raw.is_empty():
@@ -307,25 +307,21 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 	var shield: int = int(raw.get("shield", 0))
 	var shield_p2: int = int(raw.get("shieldP2", 0))
 	if shield > 0:
-		var sh_t: int = int(raw.get("shT", 0))
-		var sh_suffix: String = (" for " + _turns(sh_t)) if sh_t > 0 else ""
 		if bool(raw.get("shieldAll", false)):
-			friendly.append("Grant %d shield to all allies%s." % [shield, sh_suffix])
+			friendly.append("Grant %d shield to all allies this round." % shield)
 		elif bool(raw.get("shTgt", false)):
-			friendly.append("Grant %d shield to an ally%s." % [shield, sh_suffix])
+			friendly.append("Grant %d shield to an ally this round." % shield)
 		else:
-			friendly.append("Gain %d shield%s." % [shield, sh_suffix])
+			friendly.append("Gain %d shield this round." % shield)
 		if shield_p2 > 0:
 			friendly.append("Phase 2: gain %d shield instead." % shield_p2)
 
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if shield_ally > 0:
-		var sh_ally_t: int = int(raw.get("shAllyT", raw.get("shT", 1)))
-		var ally_sh_suffix: String = (" for " + _turns(sh_ally_t)) if sh_ally_t > 0 else ""
 		if bool(raw.get("shieldAllyAll", false)):
-			friendly.append("Grant %d shield to all allies%s." % [shield_ally, ally_sh_suffix])
+			friendly.append("Grant %d shield to all allies this round." % shield_ally)
 		else:
-			friendly.append("Grant %d shield to an ally%s." % [shield_ally, ally_sh_suffix])
+			friendly.append("Grant %d shield to an ally this round." % shield_ally)
 
 	if side == "hero":
 		var rfm: int = int(raw.get("rfm", 0))

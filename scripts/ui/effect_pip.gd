@@ -167,14 +167,12 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	var shield: int = int(raw.get("shield", 0))
 	if shield > 0 and not bool(raw.get("shieldAllyAll", false)):
 		var shield_scope: String = "all" if shield_all else ("self" if shield_self else "")
-		_append_effect(effects, "shield", "%d" % shield, int(raw.get("shT", 0)), shield_scope)
+		_append_effect(effects, "shield", "%d" % shield, 0, shield_scope)
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
-		_append_effect(
-			effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))), "all"
-		)
+		_append_effect(effects, "shield", "%d" % shield_ally, 0, "all")
 	elif shield_ally > 0:
-		_append_effect(effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
+		_append_effect(effects, "shield", "%d" % shield_ally, 0)
 
 	var heal_all: bool = bool(raw.get("healAll", false))
 	var heal_self: bool = (
@@ -243,9 +241,9 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 		"healAll":
 			_append_effect(effects, "heal", "%d" % int(effect.get("amount", 0)), 0, "all")
 		"shield":
-			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)), "self")
+			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "self")
 		"shieldAll":
-			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)), "all")
+			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "all")
 		"rollBuff":
 			_append_effect(effects, "rfm", "+%d" % int(effect.get("amount", 0)), int(effect.get("turns", 0)))
 		"rollBonus", "heroStartRollBuff":

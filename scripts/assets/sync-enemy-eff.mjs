@@ -30,12 +30,10 @@ function buildEnemyEffectSummary(ab) {
   if (ab.wipeShields) parts.push('wipe shields');
   if ((ab.heal || 0) > 0) parts.push(`${ab.heal} heal`);
   if ((ab.shield || 0) > 0) {
-    const t = (ab.shT || 0) > 1 ? `, ${ab.shT}t` : '';
-    parts.push(`${ab.shield} shield${t}`);
+    parts.push(`${ab.shield} shield`);
   }
   if ((ab.shieldAlly || 0) > 0) {
-    const t = (ab.shT || 0) > 1 ? `, ${ab.shT}t` : '';
-    parts.push(`ally ${ab.shieldAlly} shield${t}`);
+    parts.push(`ally ${ab.shieldAlly} shield`);
   }
   if ((ab.rfe || 0) > 0) {
     const t = (ab.rfT || 0) > 1 ? `, ${ab.rfT}t` : '';

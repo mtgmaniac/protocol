@@ -6,7 +6,6 @@
 export interface ItemEffect {
   type: string;
   amount?: number;
-  shT?: number;
   turns?: number;
   pct?: number;
   rfT?: number;

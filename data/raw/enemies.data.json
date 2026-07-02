@@ -4,14 +4,13 @@
     "scrap": {
       "recharge": {
         "name": "ECM Shell",
-        "eff": "8 shield, 2t",
+        "eff": "8 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 8,
-        "shT": 2
+        "shield": 8
       },
       "strike": {
         "name": "Stab",
@@ -64,7 +63,6 @@
         "heal": 0,
         "rfe": 0,
         "shield": 5,
-        "shT": 1,
         "rfm": 1,
         "rfmT": 1
       },
@@ -120,14 +118,13 @@
     "patrol": {
       "recharge": {
         "name": "Regroup",
-        "eff": "6 shield, 2t, +1 roll, 2t",
+        "eff": "6 shield, +1 roll, 2t",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 6,
-        "shT": 2,
         "erb": 1,
         "erbT": 2
       },
@@ -181,31 +178,29 @@
     "guard": {
       "recharge": {
         "name": "Bulwark Link",
-        "eff": "6 shield all allies, 2t",
+        "eff": "6 shield all allies",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shT": 2,
         "shieldAlly": 6,
         "shieldAllyAll": true
       },
       "strike": {
         "name": "Suppressing Fire",
-        "eff": "12 dmg, ally 6 shield, 2t",
+        "eff": "12 dmg, ally 6 shield",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 6,
-        "shT": 2
+        "shieldAlly": 6
       },
       "surge": {
         "name": "Cover Field",
-        "eff": "11 dmg, ally 9 shield, 2t, +1 roll to allies",
+        "eff": "11 dmg, ally 9 shield, +1 roll to allies",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
@@ -213,47 +208,43 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 9,
-        "shT": 2,
         "erb": 1,
         "erbT": 1,
         "erbAll": true
       },
       "crit": {
         "name": "Barrier Burst",
-        "eff": "15 dmg, ally 7 shield, 2t",
+        "eff": "15 dmg, ally 7 shield",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 7,
-        "shT": 2
+        "shieldAlly": 7
       },
       "overload": {
         "name": "Fortress Protocol",
-        "eff": "18 dmg, ally 13 shield, 2t",
+        "eff": "18 dmg, ally 13 shield",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 13,
-        "shT": 2
+        "shieldAlly": 13
       }
     },
     "warden": {
       "recharge": {
         "name": "Field Service",
-        "eff": "7 heal, 7 shield, 2t",
+        "eff": "7 heal, 7 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 7,
         "rfe": 0,
-        "shield": 7,
-        "shT": 2
+        "shield": 7
       },
       "strike": {
         "name": "Crushing Blow",
@@ -301,14 +292,13 @@
     "volt": {
       "recharge": {
         "name": "Grounding",
-        "eff": "5 shield all allies, 2t",
+        "eff": "5 shield all allies",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shieldAlly": 5,
-        "shT": 2,
         "shieldAllyAll": true
       },
       "strike": {
@@ -365,8 +355,7 @@
         "heal": 0,
         "rfe": 0,
         "shield": 12,
-        "shieldP2": 18,
-        "shT": 1
+        "shieldP2": 18
       },
       "strike": {
         "name": "Suppressor",
@@ -536,14 +525,13 @@
     "stalker": {
       "recharge": {
         "name": "Chitin Regroup",
-        "eff": "6 shield, 2t, +1 roll, 2t",
+        "eff": "6 shield, +1 roll, 2t",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 6,
-        "shT": 2,
         "erb": 1,
         "erbT": 2
       },
@@ -598,19 +586,18 @@
     "carapace": {
       "recharge": {
         "name": "Chitin Link",
-        "eff": "6 shield all allies, 2t",
+        "eff": "6 shield all allies",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shT": 2,
         "shieldAlly": 6,
         "shieldAllyAll": true
       },
       "strike": {
         "name": "Ramming Plate",
-        "eff": "12 dmg, lifesteal 50%, ally 6 shield, 2t",
+        "eff": "12 dmg, lifesteal 50%, ally 6 shield",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
@@ -618,12 +605,11 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 6,
-        "shT": 2,
         "lifestealPct": 50
       },
       "surge": {
         "name": "Living Bulwark",
-        "eff": "10 dmg, 2 burn, 4t, ally 9 shield, 2t, +1 roll to allies",
+        "eff": "10 dmg, 2 burn, 4t, ally 9 shield, +1 roll to allies",
         "dmg": 10,
         "burn": 2,
         "burnT": 4,
@@ -631,47 +617,43 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 9,
-        "shT": 2,
         "erb": 1,
         "erbT": 1,
         "erbAll": true
       },
       "crit": {
         "name": "Carapace Burst",
-        "eff": "13 dmg, 3 burn, 5t, ally 7 shield, 2t",
+        "eff": "13 dmg, 3 burn, 5t, ally 7 shield",
         "dmg": 13,
         "burn": 3,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 7,
-        "shT": 2
+        "shieldAlly": 7
       },
       "overload": {
         "name": "Fortress Beetle",
-        "eff": "16 dmg, 2 burn, 5t, ally 13 shield, 2t",
+        "eff": "16 dmg, 2 burn, 5t, ally 13 shield",
         "dmg": 16,
         "burn": 2,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 13,
-        "shT": 2
+        "shieldAlly": 13
       }
     },
     "brood": {
       "recharge": {
         "name": "Nutrient Share",
-        "eff": "7 heal, 7 shield, 2t",
+        "eff": "7 heal, 7 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 7,
         "rfe": 0,
-        "shield": 7,
-        "shT": 2
+        "shield": 7
       },
       "strike": {
         "name": "Brood Slam",
@@ -776,14 +758,13 @@
     "hiveBoss": {
       "recharge": {
         "name": "Chitin Bulwark",
-        "eff": "22 shield, 2t",
+        "eff": "22 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 22,
-        "shT": 2
+        "shield": 22
       },
       "strike": {
         "name": "Royal Mandibles",
@@ -929,8 +910,7 @@
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 4,
-        "shT": 1
+        "shield": 4
       },
       "crit": {
         "name": "Focused Beam",
@@ -963,7 +943,6 @@
         "heal": 0,
         "rfe": 0,
         "shield": 6,
-        "shT": 1,
         "shieldAlly": 6,
         "erb": 1,
         "erbT": 2,
@@ -979,7 +958,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 6,
-        "shT": 1,
         "erb": 1,
         "erbT": 1,
         "erbAll": true
@@ -994,7 +972,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 8,
-        "shT": 1,
         "erb": 1,
         "erbT": 2,
         "erbAll": true
@@ -1009,7 +986,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 9,
-        "shT": 1,
         "erb": 2,
         "erbT": 2,
         "erbAll": true
@@ -1024,7 +1000,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 12,
-        "shT": 1,
         "erb": 2,
         "erbT": 3,
         "erbAll": true,
@@ -1035,14 +1010,13 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 heal, 7 shield, 2t, +1 roll to allies, 2t",
+        "eff": "7 heal, 7 shield, +1 roll to allies, 2t",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 7,
         "rfe": 0,
         "shield": 7,
-        "shT": 2,
         "erb": 1,
         "erbT": 2,
         "erbAll": true
@@ -1102,14 +1076,13 @@
     "veilNull": {
       "recharge": {
         "name": "Void Stillness",
-        "eff": "5 shield, 2t, +1 roll to allies, 2t",
+        "eff": "5 shield, +1 roll to allies, 2t",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 5,
-        "shT": 2,
         "erb": 1,
         "erbT": 2,
         "erbAll": true
@@ -1254,8 +1227,7 @@
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 6,
-        "shT": 1
+        "shieldAlly": 6
       },
       "surge": {
         "name": "Weave Shield",
@@ -1267,7 +1239,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 7,
-        "shT": 1,
         "erb": 1,
         "erbT": 2,
         "erbAll": true
@@ -1282,7 +1253,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 8,
-        "shT": 1,
         "erb": 1,
         "erbT": 3,
         "erbAll": true
@@ -1306,14 +1276,13 @@
     "veilBoss": {
       "recharge": {
         "name": "Overseer Mantle",
-        "eff": "22 shield, 2t, ally 8 shield, 2t, +2 roll to allies, 2t",
+        "eff": "22 shield, ally 8 shield, +2 roll to allies, 2t",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 22,
-        "shT": 2,
         "shieldAlly": 8,
         "erb": 2,
         "erbT": 2,
@@ -1525,8 +1494,7 @@
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 6,
-        "shT": 1
+        "shieldAlly": 6
       },
       "surge": {
         "name": "Codex Weave",
@@ -1538,7 +1506,6 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 7,
-        "shT": 1,
         "erb": 1,
         "erbT": 2,
         "erbAll": true
@@ -1641,14 +1608,13 @@
     "voidGlimmer": {
       "recharge": {
         "name": "Shimmer Guard",
-        "eff": "6 shield, 2t",
+        "eff": "6 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 6,
-        "shT": 2
+        "shield": 6
       },
       "strike": {
         "name": "False Edge",
@@ -1758,14 +1724,13 @@
     "voidCircletBoss": {
       "recharge": {
         "name": "Hierophant Mantle",
-        "eff": "20 shield, 2t, ally 8 shield, 2t, +2 roll to allies, 2t, counter C 52%",
+        "eff": "20 shield, ally 8 shield, +2 roll to allies, 2t, counter C 52%",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 20,
-        "shT": 2,
         "shieldAlly": 8,
         "erb": 2,
         "erbT": 2,
@@ -1954,14 +1919,13 @@
     "beastLynx": {
       "recharge": {
         "name": "Eclipse Crouch",
-        "eff": "10 shield, 2t",
+        "eff": "10 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 10,
-        "shT": 2
+        "shield": 10
       },
       "strike": {
         "name": "Silent Opening",
@@ -2011,14 +1975,13 @@
     "beastBison": {
       "recharge": {
         "name": "Iron Grazing",
-        "eff": "14 shield, 2t",
+        "eff": "14 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 14,
-        "shT": 2
+        "shield": 14
       },
       "strike": {
         "name": "Skull Drive",
@@ -2071,14 +2034,13 @@
     "beastHyena": {
       "recharge": {
         "name": "Scavenge Breath",
-        "eff": "4 heal, 8 shield, 2t",
+        "eff": "4 heal, 8 shield",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 4,
         "rfe": 0,
-        "shield": 8,
-        "shT": 2
+        "shield": 8
       },
       "strike": {
         "name": "Crack Jaw",
@@ -2188,14 +2150,13 @@
     "beastTyrant": {
       "recharge": {
         "name": "Reaver Mantle",
-        "eff": "20 shield, 2t, rampage +1",
+        "eff": "20 shield, rampage +1",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 20,
-        "shT": 2,
         "grantRampage": 1
       },
       "strike": {
@@ -2261,7 +2222,6 @@
         "heal": 0,
         "rfe": 0,
         "shield": 5,
-        "shT": 1,
         "rfm": 1,
         "rfmT": 2
       },

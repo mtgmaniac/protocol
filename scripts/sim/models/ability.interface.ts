@@ -15,7 +15,6 @@ export interface HeroAbility {
   heal: number;
   shTgt?: boolean;
   shield?: number;
-  shT?: number;
   shieldAll?: boolean;
   healTgt?: boolean;
   healAll?: boolean;
@@ -56,7 +55,6 @@ export interface EnemyAbility {
   rfe: number;
   rfT?: number;
   shield: number;
-  shT?: number;
   shieldAlly?: number;
   rfm?: number;
   rfmT?: number;
