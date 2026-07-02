@@ -19,42 +19,6 @@
       "effect": { "type": "healAll", "amount": 2 }
     },
     {
-      "id": "field_meds",
-      "name": "Field Meds",
-      "desc": "Heal a living ally for 8 HP.",
-      "rarity": "uncommon",
-      "icon": "heart",
-      "target": "ally",
-      "effect": { "type": "heal", "amount": 8 }
-    },
-    {
-      "id": "squad_suture",
-      "name": "Squad Suture",
-      "desc": "Heal all living allies for 3 HP.",
-      "rarity": "uncommon",
-      "icon": "heart",
-      "target": "none",
-      "effect": { "type": "healAll", "amount": 3 }
-    },
-    {
-      "id": "nanite_salve",
-      "name": "Nanite Salve",
-      "desc": "Heal a living ally for 10 HP.",
-      "rarity": "rare",
-      "icon": "heart",
-      "target": "ally",
-      "effect": { "type": "heal", "amount": 10 }
-    },
-    {
-      "id": "mass_suture",
-      "name": "Mass Suture",
-      "desc": "Heal all living allies for 8 HP.",
-      "rarity": "rare",
-      "icon": "heart",
-      "target": "none",
-      "effect": { "type": "healAll", "amount": 8 }
-    },
-    {
       "id": "scrap_plate",
       "name": "Scrap Plate",
       "desc": "Grant +5 shield this round.",
@@ -71,42 +35,6 @@
       "icon": "shield",
       "target": "none",
       "effect": { "type": "shieldAll", "amount": 4 }
-    },
-    {
-      "id": "reactive_weave",
-      "name": "Reactive Weave",
-      "desc": "Grant +8 shield this round.",
-      "rarity": "uncommon",
-      "icon": "shield",
-      "target": "ally",
-      "effect": { "type": "shield", "amount": 8 }
-    },
-    {
-      "id": "aegis_broadcast",
-      "name": "Aegis Broadcast",
-      "desc": "Grant all living allies +6 shield this round.",
-      "rarity": "uncommon",
-      "icon": "shield",
-      "target": "none",
-      "effect": { "type": "shieldAll", "amount": 6 }
-    },
-    {
-      "id": "bastion_seed",
-      "name": "Bastion Seed",
-      "desc": "Grant +15 shield this round.",
-      "rarity": "rare",
-      "icon": "shield",
-      "target": "ally",
-      "effect": { "type": "shield", "amount": 15 }
-    },
-    {
-      "id": "citadel_pulse",
-      "name": "Citadel Pulse",
-      "desc": "Grant all living allies +10 shield this round.",
-      "rarity": "rare",
-      "icon": "shield",
-      "target": "none",
-      "effect": { "type": "shieldAll", "amount": 10 }
     },
     {
       "id": "calibration_chip",
@@ -127,6 +55,24 @@
       "effect": { "type": "rollBuff", "amount": 2, "turns": 1 }
     },
     {
+      "id": "harmonic_injector",
+      "name": "Harmonic Injector",
+      "desc": "+4 to rolls for 2 turns.",
+      "rarity": "rare",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 4, "turns": 2 }
+    },
+    {
+      "id": "archive_cascade",
+      "name": "Archive Cascade",
+      "desc": "+5 to rolls for 3 turns.",
+      "rarity": "legendary",
+      "icon": "die",
+      "target": "ally",
+      "effect": { "type": "rollBuff", "amount": 5, "turns": 3 }
+    },
+    {
       "id": "defib_spark",
       "name": "Defib Spark",
       "desc": "Revive a fallen ally at 50% max HP.",
@@ -136,24 +82,6 @@
       "effect": { "type": "revive", "pct": 50 }
     },
     {
-      "id": "full_restore",
-      "name": "Full Restore",
-      "desc": "Revive a fallen ally at 75% max HP.",
-      "rarity": "rare",
-      "icon": "bolt",
-      "target": "allyDead",
-      "effect": { "type": "revive", "pct": 75 }
-    },
-    {
-      "id": "soul_anchor",
-      "name": "Soul Anchor",
-      "desc": "Revive a fallen ally at 100% max HP.",
-      "rarity": "legendary",
-      "icon": "bolt",
-      "target": "allyDead",
-      "effect": { "type": "revive", "pct": 100 }
-    },
-    {
       "id": "ghost_veil",
       "name": "Ghost Veil",
       "desc": "Cloak a living ally.",
@@ -161,6 +89,24 @@
       "icon": "cloak",
       "target": "ally",
       "effect": { "type": "cloak" }
+    },
+    {
+      "id": "scatter_veil_array",
+      "name": "Scatter Veil Array",
+      "desc": "Cloak all living allies.",
+      "rarity": "rare",
+      "icon": "cloak",
+      "target": "none",
+      "effect": { "type": "cloakAll" }
+    },
+    {
+      "id": "grounding_clip",
+      "name": "Grounding Clip",
+      "desc": "Enemy takes −1 to rolls for 2 turns.",
+      "rarity": "common",
+      "icon": "skull",
+      "target": "enemy",
+      "effect": { "type": "enemyRfe", "amount": 1, "rfT": 2 }
     },
     {
       "id": "corrosion_bomb",
@@ -190,78 +136,6 @@
       "effect": { "type": "enemyDmg", "amount": 10 }
     },
     {
-      "id": "grounding_clip",
-      "name": "Grounding Clip",
-      "desc": "Enemy takes −1 to rolls for 2 turns.",
-      "rarity": "common",
-      "icon": "skull",
-      "target": "enemy",
-      "effect": { "type": "enemyRfe", "amount": 1, "rfT": 2 }
-    },
-    {
-      "id": "arc_capacitor",
-      "name": "Arc Capacitor",
-      "desc": "Deal 15 damage to one enemy.",
-      "rarity": "uncommon",
-      "icon": "bolt",
-      "target": "enemy",
-      "effect": { "type": "enemyDmg", "amount": 15 }
-    },
-    {
-      "id": "null_bloom",
-      "name": "Null Bloom",
-      "desc": "Deal 20 damage to one enemy.",
-      "rarity": "rare",
-      "icon": "bolt",
-      "target": "enemy",
-      "effect": { "type": "enemyDmg", "amount": 20 }
-    },
-    {
-      "id": "harmonic_injector",
-      "name": "Harmonic Injector",
-      "desc": "+4 to rolls for 2 turns.",
-      "rarity": "rare",
-      "icon": "die",
-      "target": "ally",
-      "effect": { "type": "rollBuff", "amount": 4, "turns": 2 }
-    },
-    {
-      "id": "scatter_veil_array",
-      "name": "Scatter Veil Array",
-      "desc": "Cloak all living allies.",
-      "rarity": "rare",
-      "icon": "cloak",
-      "target": "none",
-      "effect": { "type": "cloakAll" }
-    },
-    {
-      "id": "archive_cascade",
-      "name": "Archive Cascade",
-      "desc": "+5 to rolls for 3 turns.",
-      "rarity": "legendary",
-      "icon": "die",
-      "target": "ally",
-      "effect": { "type": "rollBuff", "amount": 5, "turns": 3 }
-    },
-    {
-      "id": "citadel_kernel",
-      "name": "Citadel Kernel",
-      "desc": "Grant +25 shield this round.",
-      "rarity": "legendary",
-      "icon": "shield",
-      "target": "ally",
-      "effect": { "type": "shield", "amount": 25 }
-    },
-    {
-      "id": "terminal_spike",
-      "name": "Terminal Spike",
-      "desc": "Deal 30 damage to one enemy.",
-      "rarity": "legendary",
-      "icon": "bolt",
-      "target": "enemy",
-      "effect": { "type": "enemyDmg", "amount": 30 }
-    },
-    {
       "id": "acid_vial",
       "name": "Acid Vial",
       "desc": "Apply 3 burn to one enemy for 2 turns.",
@@ -269,33 +143,6 @@
       "icon": "skull",
       "target": "enemy",
       "effect": { "type": "enemyBurn", "amount": 3, "burnT": 2 }
-    },
-    {
-      "id": "nanite_burn",
-      "name": "Nanite Burn",
-      "desc": "Apply 5 burn to one enemy for 2 turns.",
-      "rarity": "uncommon",
-      "icon": "skull",
-      "target": "enemy",
-      "effect": { "type": "enemyBurn", "amount": 5, "burnT": 2 }
-    },
-    {
-      "id": "thermite_canister",
-      "name": "Thermite Canister",
-      "desc": "Apply 8 burn to one enemy for 3 turns.",
-      "rarity": "rare",
-      "icon": "skull",
-      "target": "enemy",
-      "effect": { "type": "enemyBurn", "amount": 8, "burnT": 3 }
-    },
-    {
-      "id": "null_vector",
-      "name": "Null Vector",
-      "desc": "Apply 14 burn to one enemy for 3 turns.",
-      "rarity": "legendary",
-      "icon": "skull",
-      "target": "enemy",
-      "effect": { "type": "enemyBurn", "amount": 14, "burnT": 3 }
     },
     {
       "id": "phase_scrambler",
