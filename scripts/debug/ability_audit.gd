@@ -62,6 +62,8 @@ const HERO_HANDLED_FIELDS := [
 	"leech",
 	"mark",
 	"spike",
+	"jam",
+	"jamAll",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -95,6 +97,8 @@ const ENEMY_HANDLED_FIELDS := [
 	"grantRampageAll",
 	"ward",
 	"spike",
+	"jam",
+	"jamAll",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",
@@ -439,6 +443,7 @@ func _run_regression_audits() -> void:
 	_run_leech_regression()
 	_run_mark_regression()
 	_run_spike_regression()
+	_run_jam_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -957,6 +962,26 @@ func _run_spike_regression() -> void:
 		_record_pass("Regression / spike retaliates then expires", "spike")
 	else:
 		_record_failure("Regression / spike retaliates then expires", "spike", "attacker takes 6; spike 0 after round end", "enemy_delta=%d spike=%d" % [enemy_before - int(enemy["current_hp"]), int(hero.get("spike", 0))])
+
+
+func _run_jam_regression() -> void:
+	# Jam caps the target's NEXT roll at 12, then clears at that round's tick.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "EMP Pulse", {"dmg": 7, "jam": true})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var capped_roll: int = manager.get_effective_roll(enemy, 18)
+	var jam_active: bool = int(enemy.get("jam_cap", 0)) == 12
+	manager.resolve_round({}, {}, DiceManager.new())
+	var cleared_roll: int = manager.get_effective_roll(enemy, 18)
+	if jam_active and capped_roll == 12 and cleared_roll == 18:
+		_record_pass("Regression / jam caps next roll then clears", "jam")
+	else:
+		_record_failure("Regression / jam caps next roll then clears", "jam", "18 capped to 12 for one round, 18 after", "cap=%d capped=%d cleared=%d" % [int(enemy.get("jam_cap", 0)), capped_roll, cleared_roll])
 
 
 func _run_shield_lowest_regression() -> void:

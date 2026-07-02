@@ -109,6 +109,8 @@
         "leech": { "type": "boolean" },
         "mark": { "type": "boolean" },
         "spike": { "type": "integer", "minimum": 1 },
+        "jam": { "type": "boolean" },
+        "jamAll": { "type": "boolean" },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

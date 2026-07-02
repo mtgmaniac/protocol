@@ -252,7 +252,13 @@ func _get_total_burn_bonus() -> int:
 # battle_scene passes nudge on top of this, so nudge is NOT included here.
 func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
 	var mods: Dictionary = get_roll_modifier_totals(state)
-	return clampi(raw_roll + int(mods["roll_buff"]) - int(mods["roll_rfe"]), 1, 20)
+	var effective: int = clampi(raw_roll + int(mods["roll_buff"]) - int(mods["roll_rfe"]), 1, 20)
+	# Jam: the unit's next roll is capped (default 12); cleared at that
+	# round's end tick.
+	var jam_cap: int = int(state.get("jam_cap", 0))
+	if jam_cap > 0:
+		effective = mini(effective, jam_cap)
+	return effective
 
 
 # PUBLIC: RFE/buff totals for dice-tray display (raw roll stored separately for crit rules).
@@ -375,6 +381,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"warded": false,
 		"marked": false,
 		"spike": 0,
+		"jam_cap": 0,
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
@@ -616,6 +623,19 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 					_freeze_die_state(freeze_target, freeze_amount, true, freeze_flavor)
 
+	# Jam: cap the target's next roll at 12 (die status, telegraphed for the
+	# next reveal). jamAll caps every living enemy die.
+	if bool(raw.get("jamAll", false)):
+		for es in _enemy_states:
+			if not es["dead"] and not _ward_blocks_hostile(es):
+				_apply_jam(es, JAM_CAP, true)
+	elif bool(raw.get("jam", false)):
+		var jam_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		if jam_target.is_empty():
+			jam_target = _first_living_state(_enemy_states)
+		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
+			_apply_jam(jam_target, JAM_CAP, true)
+
 	if damage > 0 and bool(hero_state.get("gear_first_ability_echo", false)) and not bool(hero_state.get("gear_first_ability_echo_used", false)):
 		hero_state["gear_first_ability_echo_used"] = true
 		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, 0, 0)
@@ -686,6 +706,26 @@ func _apply_hero_ability_damage(
 		if leech_heal > 0:
 			_log("%s leeches %d HP." % [hero_state["unit"].display_name, leech_heal])
 			_heal_state(hero_state, leech_heal, hero_state)
+
+
+const JAM_CAP := 12
+
+
+# Jam: die status — the target's next roll is capped (default 12). Applied
+# mid-round it survives the imminent tick and caps the NEXT reveal;
+# battle-start applications (Static Field relic) cap the first roll directly.
+func _apply_jam(state: Dictionary, cap: int = JAM_CAP, survives_current_tick: bool = true) -> void:
+	if state.is_empty() or bool(state.get("dead", false)):
+		return
+	var existing: int = int(state.get("jam_cap", 0))
+	state["jam_cap"] = cap if existing <= 0 else mini(existing, cap)
+	state["jam_skip_next_tick"] = survives_current_tick
+	_log("%s's die is JAMMED — next roll capped at %d." % [state["unit"].display_name, int(state["jam_cap"])])
+	_emit_event(state, "jam", int(state["jam_cap"]), _resolve_side_for_state(state))
+
+
+func apply_battle_start_jam(state: Dictionary, cap: int = JAM_CAP) -> void:
+	_apply_jam(state, cap, false)
 
 
 # Mark: persistent status chip — the next hit on this target deals +50%
@@ -939,6 +979,18 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	# Ward: block the next ability that targets this enemy, then break.
 	if bool(raw.get("ward", false)):
 		_apply_ward(enemy_state)
+
+	# Jam hero dice: cap the targeted hero's (or every hero's) next roll at 12.
+	if bool(raw.get("jamAll", false)):
+		for hero_state in _hero_states:
+			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
+				_apply_jam(hero_state, JAM_CAP, true)
+	elif bool(raw.get("jam", false)):
+		var jam_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		if jam_target.is_empty():
+			jam_target = _first_living_state(_hero_states)
+		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
+			_apply_jam(jam_target, JAM_CAP, true)
 
 	# Spike: heroes that damage this enemy next hero phase take N back. Granted
 	# during the enemy phase, so it survives the imminent round-end tick to
@@ -1272,6 +1324,8 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["warded"] = false
 	state["marked"] = false
 	state["spike"] = 0
+	state["jam_cap"] = 0
+	state["jam_skip_next_tick"] = false
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -1487,6 +1541,14 @@ func _tick_state(state: Dictionary) -> void:
 			if int(state["burn_turns"]) <= 0:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
+
+	# Jam caps exactly one roll: applied mid-round (after the target already
+	# rolled) it skips this tick and caps the NEXT reveal, then clears.
+	if int(state.get("jam_cap", 0)) > 0:
+		if bool(state.get("jam_skip_next_tick", false)):
+			state["jam_skip_next_tick"] = false
+		else:
+			state["jam_cap"] = 0
 
 	# Spike never persists past the round; enemy-phase grants skip one tick so
 	# they cover the next hero phase.

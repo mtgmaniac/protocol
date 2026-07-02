@@ -100,6 +100,13 @@
       "syntax": "+N roll"
     },
     {
+      "id": "jam",
+      "term": "Jam",
+      "category": "control",
+      "def": "The target's next roll is capped at 12. Shown on the die, not as a status chip.",
+      "syntax": "jam / jam all"
+    },
+    {
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
