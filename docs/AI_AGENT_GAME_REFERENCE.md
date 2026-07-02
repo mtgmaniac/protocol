@@ -345,6 +345,12 @@ Primary raw data lives in:
 - [gear.data.json](C:/Users/Kev/Documents/protocol/data/raw/gear.data.json)
 - [relics.data.json](C:/Users/Kev/Documents/protocol/data/raw/relics.data.json)
 
+Content state (post Package 3, July 2026): 8 hero kits + 16 evolutions
+rebuilt; 5 factions (Facility / Hive / Veil Concord / Null Synod / The
+Accretion) with 38 enemy defs; 31 gear; 35 relics (5 `bossRelic: true`,
+excluded from drafts until unlocked); 25 consumables (once-per-effect).
+Content ground truth lives in `offline-bundle/GROUND_TRUTH.md`.
+
 Loaded resources include:
 
 - `UnitData`

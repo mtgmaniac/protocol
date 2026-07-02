@@ -44,7 +44,8 @@ Battle-only resource for dice manipulation; resets each battle (unless the Overf
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
 - **Costs:** Nudge **1** (+**3** to effective roll) · Reroll **2** · Set-a-die **3** · Item **1 flat** (all rarities).
 - **Model:** 1 income ≈ one protocol action per turn; bank turns for bigger plays.
-- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnKillAny`; relics `protocolCarryover`, `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1).
+- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor), `protocolOnDieTamper` (Mirror Plate); relics `protocolCarryover`, `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnShieldBreak` (Salvage Rig +1, boss relic); enemy `siphon: N` drains the pool on hit (floor 0).
+- **Discounts/overflow:** Priming Charge gear — first Nudge free; Root Access boss relic — first Set each battle costs 0; Overflow Vent relic — protocol gained past the cap deals 2 damage per point to a random enemy; Twin Fates relic — once per battle copy one hero die to another, free.
 
 ---
 
@@ -54,16 +55,16 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities). Callsig
 
 | ID | Name | Callsign | Class | Category | HP | Evolutions (evo callsign) |
 |---|---|---|---|---|---|---|
-| `pulse` | Pulse Tech | PULSE | Energy Wielder | damage | 40 | Cryo Specialist (CRYO) / Pyro Specialist (PYRO) |
+| `pulse` | Pulse Tech | PULSE | Energy Wielder | damage | 45 | Pyro Specialist (PYRO) / Arc Specialist (ARC) |
 | `combat` | Strike Unit | STRIKE | Strike Ops | damage | 55 | Bladecore (BLADE) / Ravager (RAVAGER) |
-| `shield` | Spite Guard | SPITE | Antagonist Plate | defense | 60 | Bulwark (BULWARK) / Sentinel (SENTINEL) |
+| `shield` | Spike Guard | SPIKE | Antagonist Plate | defense | 55 | Bulwark (BULWARK) / Sentinel (SENTINEL) |
 | `avalanche` | Avalanche Suit | AVALANCHE | Squad Shell | defense | 55 | Glacier Mantle (GLACIER) / Trench Rig (TRENCH) |
-| `medic` | Splice Medic | SPLICE | Combat Augmentor | support | 45 | Combat Medic (MEDIC) / Synth Warden (SYNTH) |
-| `engineer` | Field Engineer | ENGINEER | Support Tech | support | 50 | Overclocked (OVERCLOCKED) / Wraith Engineer (PHANTOM) |
-| `ghost` | Ghost Operative | GHOST | Infiltrator | control | 40 | Shadow Operative (SHADOW) / Wraith (WRAITH) |
+| `medic` | Splice Medic | SPLICE | Combat Augmentor | support | 50 | Combat Medic (MEDIC) / Synth Warden (SYNTH) |
+| `engineer` | Field Engineer | ENGINEER | Support Tech | support | 50 | Overclocked (OVERCLOCKED) / Phantom (PHANTOM) |
+| `ghost` | Ghost Operative | GHOST | Infiltrator | control | 45 | Shadow Operative (SHADOW) / Wraith (WRAITH) |
 | `breaker` | Signal Breaker | BREAKER | Comms Interdictor | control | 45 | Noise Floor (NOISE) / Nullwire (NULLWIRE) |
 
-**Callsign collision resolved:** Wraith Engineer uses PHANTOM (not WRAITH) to avoid collision with Ghost's Wraith. **Note internal IDs are legacy quirks:** Strike Unit=`combat`, Spite Guard=`shield`, Splice Medic=`medic`. Do NOT change existing ids.
+All 24 kits (8 base + 16 evolutions) were replaced wholesale in pkg3.1 per the master tables — Cryo Specialist became Arc Specialist (chain-focused), Spite Guard was renamed Spike Guard (SPIKE, spike-keyword identity). **Note internal IDs are legacy quirks:** Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`. Do NOT change existing ids. Freeze belongs to the Avalanche line only (hero-side); ±Roll chips belong to the Signal Breaker line only.
 
 ## Ability eff text syntax (canonical — all abilities in workbook now use this)
 Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. Rules: numbers first, type second, target third, duration last. Target omitted when single enemy (default). Duration omitted when instant.
@@ -104,27 +105,27 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 
 ---
 
-## Enemies (from enemies.data.json — COMPLETE, 6 factions)
+## Enemies (from enemies.data.json — COMPLETE, 5 factions)
 
-39 enemy defs across 5 operations + comms units. Structure: `enemyAbilities[type]` (5-zone table) + `enemyUnitDefs[Name]` (hp, dMin/dMax, type, ai, callsign) + `battleEnemyScale` (per-battle hp/dmg multipliers).
+38 enemy unit defs / 37 ability kits across 5 operations. Structure: `enemyAbilities[type]` (5-zone table) + `enemyUnitDefs[Name]` (hp, dMin/dMax, type, ai, callsign ≤8 chars, optional `accrete`, `startsCloaked`) + `battleEnemyScale` (per-battle hp/dmg multipliers). All 24 core kits were reworked in pkg3.3 around faction identities.
 
-| Operation (battle-modes order) | Faction flavor | Boss |
-|---|---|---|
-| `facility` | Corporate drones, ECM skimmers, hexnodes | SCRAPMASTER |
-| `hive` | Insectoid swarm | Hive Matriarch |
-| `veil` | Harmonic/resonance | Conclave Overseer |
-| `voidCirclet` | Cult casters | Circlet Hierophant |
-| `stellarMenagerie` | Beasts | Void Reaver |
+| Operation key | Label / callsign | Faction identity | Boss (battle-10 escort) |
+|---|---|---|---|
+| `facility` | Facility sweep / FACILITY | drones: jam, shields, breach bait | SCRAPMASTER (+2 Scrap Drones) |
+| `hive` | Hive incursion / HIVE | swarm: burn, siphon-free drain, summons, spike carriers | Hive Matriarch (+Spine Stalker) |
+| `veil` | Veil Concord / VEIL | lattice: ally shields, wards, buffs | CONCLAVE OVERSEER (+Aegis Anchor) |
+| `voidCirclet` | Null Synod / SYNOD | machine cult: rewrite, hijack, siphon, ±roll | ROOT HIEROPHANT (+Checksum Scribe) |
+| `stellarMenagerie` | The Accretion / ACCRETION | igneous beasts: accrete shields, petrify freezes, spike, cloak | MANTLE TYRANT (+Geode Panther) |
 
-AI types seen: `dumb` (and others per unit). Enemies don't use Protocol. Some have phase-two thresholds (`phase_two_threshold`, `phase_two_damage_preview_*`) and `can_summon_elite`.
+Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; Magma Drake accrete 4; Geode Panther cloak + petrify freeze (`freeze_flavor: petrify`); Pyroclast Raptor lure. Enemies don't use Protocol (Siphon drains the heroes' pool). Phase-two fields (`dmgP2`/`shieldP2`/`pThr`) still exist in data — they get deleted and replaced by per-boss standing rules in pkg4.
 
 ---
 
 ## Rewards (all COMPLETE)
 
-- **Consumables** (`items.data.json`): 34 items, rarities common→legendary. Types: `heal`, `shield`, `rollBuff`, `revive`, `cloak`/`cloakAll`, `ward`, `enemyRfe`, `enemyDmg`, `enemyBurn`, `enemyRerollDie`/`enemyRerollAll`, `enemyDieFreeze`. (XP consumables removed in pkg1.5.)
-- **Gear** (`gear.data.json`): 10 passives (rollBonus, battleStartShield, maxHpBonus, burnDmgBonus, battleStartCloak, healOnKill, protocolOnBattleStart, surviveOnce, firstAbilityDmgBonus, dmgReduction).
-- **Relics** (`relics.data.json`): 13 run-modifiers (Iron Curtain, Opening Gambit, Bulwark Aura, Nanite Field, Plague Protocol, Overcharge, Signal Jam, Coordinated Strike, Resonance Cascade, Gravity Well, Protocol Override, Entropy Leak, Chain Reaction).
+- **Consumables** (`items.data.json`): 25 items after the pkg3.6 once-per-effect cleanup. Dice/freeze/reroll/protocol ladders kept intact (`rollBuff` ×4, `enemyRfe` ×3, `enemyRerollDie`/`enemyRerollAll`, `enemyDieFreeze`/`enemyDieFreezeAll` ×3, `gainProtocol` ×4); one entry per behavior for `heal`/`healAll`, `shield`/`shieldAll`, `enemyDmg`, `enemyBurn`, `revive`, `cloak`/`cloakAll`. (XP consumables removed in pkg1.5.)
+- **Gear** (`gear.data.json`): 31 passives — the pinned pkg3.4 pool. Includes dice-band shapers (`overloadBandCompress` Band Compressor, `surgeBandExtend` Wide Aperture — runtime overrides in DiceManager.get_adjusted_ranges), nudge/set economy (`nudgeMaySubtract` Reverse Gimbal, `firstNudgeFree` Priming Charge), protocol taps (`protocolOnNat20`, `protocolOnDieTamper`), keyword hooks (`burnImmediateTick` Ignition Coil, `detonateBonus` Payload Fuse, `battleStartMark` Targeting Optic), and squad tools (`tauntAbove50` Anchor Frame, `deathDamageAll` Killswitch Relay, `syncRollBonus` Sync Antenna).
+- **Relics** (`relics.data.json`): 35 total — 30 draftable run-modifiers + 5 boss relics flagged `bossRelic: true` (Salvage Rig, Chitin Graft, Resonant Chorus, Root Access, Mantle Core). Boss relics are excluded from normal drafts (GameState `_roll_relic_choice_ids`); they unlock via the pkg5 save system. Every relic effect type has a combat/scene handler and an audit regression (`audit_gear_relic_effects.py` + ability audit).
 
 XP: **`XP_TO_EVOLVE = 100`**. Per win: alive → **`20 + round(avg effective roll)`**; dead → **`round(avg effective roll)`** only. One evolution stop per win (extras deferred). First evo typically ~fight 3–4.
 
