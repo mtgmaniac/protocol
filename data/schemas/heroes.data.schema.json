@@ -112,6 +112,7 @@
         "jam": { "type": "boolean" },
         "jamAll": { "type": "boolean" },
         "rewrite": { "type": "boolean" },
+        "vsFrozenBonus": { "type": "integer", "minimum": 1 },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

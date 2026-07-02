@@ -235,14 +235,15 @@
             3
           ],
           "name": "Static Ping",
-          "eff": "4 dmg",
+          "eff": "4 dmg, chain",
           "dmg": 4,
-          "dMin": 4,
-          "dMax": 4,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 4,
+          "dMax": 4,
+          "chain": 1
         },
         {
           "zone": "strike",
@@ -251,14 +252,14 @@
             9
           ],
           "name": "Arc Burst",
-          "eff": "6 dmg",
+          "eff": "6 dmg, 2 burn, 2t",
           "dmg": 6,
-          "dMin": 6,
-          "dMax": 6,
-          "burn": 0,
-          "burnT": 0,
+          "burn": 2,
+          "burnT": 2,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 6,
+          "dMax": 6
         },
         {
           "zone": "surge",
@@ -267,14 +268,14 @@
             15
           ],
           "name": "Plasma Lance",
-          "eff": "8 dmg, 2 burn, 2t",
-          "dmg": 8,
-          "dMin": 8,
-          "dMax": 8,
-          "burn": 2,
+          "eff": "9 dmg, 3 burn, 2t",
+          "dmg": 9,
+          "burn": 3,
           "burnT": 2,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 9,
+          "dMax": 9
         },
         {
           "zone": "crit",
@@ -283,14 +284,15 @@
             19
           ],
           "name": "Ion Storm",
-          "eff": "11 dmg, 3 burn, 2t",
-          "dmg": 11,
-          "dMin": 11,
-          "dMax": 11,
-          "burn": 3,
-          "burnT": 2,
+          "eff": "12 dmg, detonate",
+          "dmg": 12,
+          "burn": 0,
+          "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 12,
+          "dMax": 12,
+          "detonate": true
         },
         {
           "zone": "overload",
@@ -299,144 +301,23 @@
             20
           ],
           "name": "Singularity Burst",
-          "eff": "14 dmg, 3 burn, 3t",
+          "eff": "14 dmg, 3 burn, 3t, chain",
           "dmg": 14,
-          "dMin": 14,
-          "dMax": 14,
           "burn": 3,
           "burnT": 3,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 14,
+          "dMax": 14,
+          "chain": 1
         }
       ],
       "evolutions": [
         {
-          "name": "Cryo Specialist",
-          "focus": "Freeze + debuff control",
-          "hp": 70,
-          "abilities": [
-            {
-              "zone": "recharge",
-              "range": [
-                1,
-                5
-              ],
-              "name": "Frost Shard",
-              "eff": "8 dmg, -1 roll",
-              "dmg": 8,
-              "dMin": 8,
-              "dMax": 8,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 1,
-              "rfT": 1,
-              "heal": 0
-            }
-          ],
-          "callsign": "CRYO"
-        },
-        {
-          "name": "Cryo Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
-            {
-              "zone": "strike",
-              "range": [
-                6,
-                10
-              ],
-              "name": "Cryo Shell",
-              "eff": "ally 10 shield",
-              "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "shield": 10,
-              "shTgt": true
-            }
-          ]
-        },
-        {
-          "name": "Cryo Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
-            {
-              "zone": "surge",
-              "range": [
-                11,
-                15
-              ],
-              "name": "Ice Lance",
-              "eff": "15 dmg, -3 roll, 2t",
-              "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 3,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Cryo Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
-            {
-              "zone": "crit",
-              "range": [
-                16,
-                19
-              ],
-              "name": "Cryogenic Lock",
-              "eff": "16 dmg, freeze (1 reveal skip)",
-              "dmg": 16,
-              "dMin": 16,
-              "dMax": 16,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "freezeEnemyDice": 1
-            }
-          ]
-        },
-        {
-          "name": "Cryo Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
-            {
-              "zone": "overload",
-              "range": [
-                20,
-                20
-              ],
-              "name": "Permafrost Burst",
-              "eff": "15 dmg (all), freeze all (1 reveal skip)",
-              "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "blastAll": true,
-              "freezeAllEnemyDice": 1
-            }
-          ]
-        },
-        {
           "name": "Pyro Specialist",
-          "focus": "Burst damage + burn",
+          "callsign": "PYRO",
           "hp": 60,
+          "focus": "Heavier burns, bigger detonations",
           "abilities": [
             {
               "zone": "recharge",
@@ -445,46 +326,31 @@
                 5
               ],
               "name": "Ignition Flash",
-              "eff": "6 dmg, 2 burn",
+              "eff": "6 dmg, 2 burn, 2t",
               "dmg": 6,
-              "dMin": 6,
-              "dMax": 6,
               "burn": 2,
-              "burnT": 1,
+              "burnT": 2,
               "rfe": 0,
-              "heal": 0
-            }
-          ],
-          "callsign": "PYRO"
-        },
-        {
-          "name": "Pyro Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 6,
+              "dMax": 6
+            },
             {
               "zone": "strike",
               "range": [
                 6,
                 10
               ],
-              "name": "Plasma Burst",
-              "eff": "10 dmg",
-              "dmg": 10,
-              "dMin": 10,
-              "dMax": 10,
-              "burn": 0,
-              "burnT": 0,
+              "name": "Accelerant",
+              "eff": "8 dmg, 3 burn, 2t",
+              "dmg": 8,
+              "burn": 3,
+              "burnT": 2,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Pyro Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 8,
+              "dMax": 8
+            },
             {
               "zone": "surge",
               "range": [
@@ -492,60 +358,140 @@
                 15
               ],
               "name": "Meltdown",
-              "eff": "4 dmg, 6 burn, 3t",
-              "dmg": 4,
-              "dMin": 4,
-              "dMax": 4,
+              "eff": "5 dmg, 6 burn, 3t",
+              "dmg": 5,
               "burn": 6,
               "burnT": 3,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Pyro Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 5,
+              "dMax": 5
+            },
             {
               "zone": "crit",
               "range": [
                 16,
                 19
               ],
-              "name": "Magma Whip",
-              "eff": "20 dmg",
-              "dmg": 20,
-              "dMin": 20,
-              "dMax": 20,
+              "name": "Backdraft",
+              "eff": "14 dmg, detonate",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Pyro Specialist",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 14,
+              "dMax": 14,
+              "detonate": true
+            },
             {
               "zone": "overload",
               "range": [
                 20,
                 20
               ],
-              "name": "Magma Whip+",
-              "eff": "25 dmg",
-              "dmg": 25,
-              "dMin": 25,
-              "dMax": 25,
+              "name": "Supernova",
+              "eff": "12 dmg (all), 3 burn, 2t",
+              "dmg": 12,
+              "burn": 3,
+              "burnT": 2,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
+              "blastAll": true
+            }
+          ]
+        },
+        {
+          "name": "Arc Specialist",
+          "callsign": "ARC",
+          "hp": 60,
+          "focus": "Damage that jumps between targets",
+          "abilities": [
+            {
+              "zone": "recharge",
+              "range": [
+                1,
+                5
+              ],
+              "name": "Static Coil",
+              "eff": "6 dmg",
+              "dmg": 6,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
+              "heal": 0,
+              "dMin": 6,
+              "dMax": 6
+            },
+            {
+              "zone": "strike",
+              "range": [
+                6,
+                10
+              ],
+              "name": "Arc Whip",
+              "eff": "9 dmg, chain",
+              "dmg": 9,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 9,
+              "dMax": 9,
+              "chain": 1
+            },
+            {
+              "zone": "surge",
+              "range": [
+                11,
+                15
+              ],
+              "name": "Fork Lightning",
+              "eff": "12 dmg, chain",
+              "dmg": 12,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
+              "chain": 1
+            },
+            {
+              "zone": "crit",
+              "range": [
+                16,
+                19
+              ],
+              "name": "Cascade",
+              "eff": "15 dmg, chain",
+              "dmg": 15,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 15,
+              "dMax": 15,
+              "chain": 1
+            },
+            {
+              "zone": "overload",
+              "range": [
+                20,
+                20
+              ],
+              "name": "Grid Collapse",
+              "eff": "14 dmg (all)",
+              "dmg": 14,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 14,
+              "dMax": 14,
+              "blastAll": true
             }
           ]
         }
@@ -567,15 +513,16 @@
             1,
             4
           ],
-          "name": "Test Shot",
-          "eff": "1 dmg",
-          "dmg": 1,
-          "dMin": 1,
-          "dMax": 1,
+          "name": "Target Lock",
+          "eff": "3 dmg, mark",
+          "dmg": 3,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 3,
+          "dMax": 3,
+          "mark": true
         },
         {
           "zone": "strike",
@@ -584,17 +531,14 @@
             10
           ],
           "name": "Suppression Fire",
-          "eff": "3 dmg (all), all 3 shield",
-          "dmg": 3,
-          "dMin": 3,
-          "dMax": 3,
+          "eff": "7 dmg",
+          "dmg": 7,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "shield": 3,
-          "shieldAll": true,
-          "blastAll": true
+          "dMin": 7,
+          "dMax": 7
         },
         {
           "zone": "surge",
@@ -603,14 +547,14 @@
             15
           ],
           "name": "Rail Strike",
-          "eff": "10 dmg",
-          "dmg": 10,
-          "dMin": 10,
-          "dMax": 10,
+          "eff": "11 dmg",
+          "dmg": 11,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 11,
+          "dMax": 11
         },
         {
           "zone": "crit",
@@ -621,12 +565,12 @@
           "name": "Overdrive",
           "eff": "14 dmg, pierce",
           "dmg": 14,
-          "dMin": 14,
-          "dMax": 14,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 14,
+          "dMax": 14,
           "ignSh": true
         },
         {
@@ -636,22 +580,23 @@
             20
           ],
           "name": "Terminal Velocity",
-          "eff": "18 dmg, pierce",
+          "eff": "18 dmg, execute",
           "dmg": 18,
-          "dMin": 18,
-          "dMax": 18,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "ignSh": true
+          "dMin": 18,
+          "dMax": 18,
+          "execute": true
         }
       ],
       "evolutions": [
         {
           "name": "Bladecore",
-          "focus": "Multi-hit AoE",
+          "callsign": "BLADE",
           "hp": 70,
+          "focus": "Wide pierce and shield breaking",
           "abilities": [
             {
               "zone": "recharge",
@@ -660,23 +605,16 @@
                 5
               ],
               "name": "Target Paint",
-              "eff": "5 dmg",
+              "eff": "5 dmg, mark",
               "dmg": 5,
-              "dMin": 5,
-              "dMax": 5,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ],
-          "callsign": "BLADE"
-        },
-        {
-          "name": "Bladecore",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 5,
+              "dMax": 5,
+              "mark": true
+            },
             {
               "zone": "strike",
               "range": [
@@ -684,23 +622,16 @@
                 10
               ],
               "name": "Rapid Strike",
-              "eff": "8 dmg (all)",
-              "dmg": 8,
-              "dMin": 8,
-              "dMax": 8,
+              "eff": "7 dmg (all)",
+              "dmg": 7,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 7,
+              "dMax": 7,
               "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Bladecore",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "surge",
               "range": [
@@ -708,22 +639,16 @@
                 15
               ],
               "name": "Blade Rush",
-              "eff": "5 burn, 3t",
-              "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "burn": 5,
-              "burnT": 3,
+              "eff": "10 dmg, breach",
+              "dmg": 10,
+              "burn": 0,
+              "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Bladecore",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 10,
+              "dMax": 10,
+              "breach": true
+            },
             {
               "zone": "crit",
               "range": [
@@ -733,21 +658,14 @@
               "name": "Shred",
               "eff": "15 dmg, pierce",
               "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 15,
+              "dMax": 15,
               "ignSh": true
-            }
-          ]
-        },
-        {
-          "name": "Bladecore",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "overload",
               "range": [
@@ -755,23 +673,24 @@
                 20
               ],
               "name": "Decimator",
-              "eff": "17 dmg (all), pierce",
-              "dmg": 17,
-              "dMin": 17,
-              "dMax": 17,
+              "eff": "15 dmg (all), pierce",
+              "dmg": 15,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "ignSh": true,
-              "blastAll": true
+              "dMin": 15,
+              "dMax": 15,
+              "blastAll": true,
+              "ignSh": true
             }
           ]
         },
         {
           "name": "Ravager",
-          "focus": "Stacking burn",
+          "callsign": "RAVAGER",
           "hp": 65,
+          "focus": "Leech-fueled brawling",
           "abilities": [
             {
               "zone": "recharge",
@@ -779,50 +698,33 @@
                 1,
                 5
               ],
-              "name": "Friendly Mark",
-              "eff": "+3 roll ally",
-              "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "burn": 0,
-              "burnT": 0,
+              "name": "Lacerate",
+              "eff": "6 dmg, 2 burn, 2t",
+              "dmg": 6,
+              "burn": 2,
+              "burnT": 2,
               "rfe": 0,
               "heal": 0,
-              "rfm": 3,
-              "rfmT": 1,
-              "rfmTgt": true
-            }
-          ],
-          "callsign": "RAVAGER"
-        },
-        {
-          "name": "Ravager",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 6,
+              "dMax": 6
+            },
             {
               "zone": "strike",
               "range": [
                 6,
                 10
               ],
-              "name": "Lacerate",
-              "eff": "5 dmg, 3 burn",
-              "dmg": 5,
-              "dMin": 5,
-              "dMax": 5,
-              "burn": 3,
-              "burnT": 1,
+              "name": "Rend",
+              "eff": "9 dmg, leech",
+              "dmg": 9,
+              "burn": 0,
+              "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Ravager",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 9,
+              "dMax": 9,
+              "leech": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -830,22 +732,16 @@
                 15
               ],
               "name": "Deep Wound",
-              "eff": "9 dmg, 4 burn, 2t",
-              "dmg": 9,
-              "dMin": 9,
-              "dMax": 9,
-              "burn": 4,
-              "burnT": 2,
+              "eff": "12 dmg, leech",
+              "dmg": 12,
+              "burn": 0,
+              "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Ravager",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
+              "leech": true
+            },
             {
               "zone": "crit",
               "range": [
@@ -853,37 +749,32 @@
                 19
               ],
               "name": "Hemorrhage",
-              "eff": "14 dmg, 4 burn, 2t",
+              "eff": "14 dmg, detonate",
               "dmg": 14,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
               "dMin": 14,
               "dMax": 14,
-              "burn": 4,
-              "burnT": 2,
-              "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Ravager",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "detonate": true
+            },
             {
               "zone": "overload",
               "range": [
                 20,
                 20
               ],
-              "name": "Hemorrhage+",
-              "eff": "20 dmg, 5 burn, 3t",
+              "name": "Evisceration",
+              "eff": "20 dmg, leech",
               "dmg": 20,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
               "dMin": 20,
               "dMax": 20,
-              "burn": 5,
-              "burnT": 3,
-              "rfe": 0,
-              "heal": 0
+              "leech": true
             }
           ]
         }
@@ -892,7 +783,7 @@
     },
     {
       "id": "shield",
-      "name": "Spite Guard",
+      "name": "Spike Guard",
       "cls": "ANTAGONIST PLATE",
       "pickerCategory": "defense",
       "pickerBlurb": "Taunts fire onto itself, shields allies, and strips enemy shields. Tanks and pressures at once.",
@@ -905,17 +796,16 @@
             1,
             6
           ],
-          "name": "Threat Protocol",
-          "eff": "-1 roll",
+          "name": "Taunt Protocol",
+          "eff": "taunt (picked enemy targets you)",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
-          "rfe": 1,
-          "rfT": 1,
+          "rfe": 0,
           "heal": 0,
-          "rfeOnly": true
+          "dMin": 0,
+          "dMax": 0,
+          "taunt": true
         },
         {
           "zone": "strike",
@@ -924,15 +814,15 @@
             12
           ],
           "name": "Enforce",
-          "eff": "ally 4 shield",
+          "eff": "ally 6 shield",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "shield": 4,
+          "dMin": 0,
+          "dMax": 0,
+          "shield": 6,
           "shTgt": true
         },
         {
@@ -941,17 +831,17 @@
             13,
             16
           ],
-          "name": "Guardian Boost",
-          "eff": "ally 5 shield",
+          "name": "Spike Stance",
+          "eff": "self 5 shield, spike 5",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
           "shield": 5,
-          "shTgt": true
+          "spike": 5
         },
         {
           "zone": "crit",
@@ -959,16 +849,16 @@
             17,
             19
           ],
-          "name": "Demolish",
-          "eff": "7 dmg, -2 roll, 2t",
-          "dmg": 7,
-          "dMin": 7,
-          "dMax": 7,
+          "name": "Breach Slam",
+          "eff": "9 dmg, breach",
+          "dmg": 9,
           "burn": 0,
           "burnT": 0,
-          "rfe": 2,
-          "rfT": 2,
-          "heal": 0
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 9,
+          "dMax": 9,
+          "breach": true
         },
         {
           "zone": "overload",
@@ -977,22 +867,24 @@
             20
           ],
           "name": "Total Suppression",
-          "eff": "9 dmg, -3 roll, 2t",
-          "dmg": 9,
-          "dMin": 9,
-          "dMax": 9,
+          "eff": "11 dmg (all), breach all",
+          "dmg": 11,
           "burn": 0,
           "burnT": 0,
-          "rfe": 3,
-          "rfT": 2,
-          "heal": 0
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 11,
+          "dMax": 11,
+          "blastAll": true,
+          "breachAll": true
         }
       ],
       "evolutions": [
         {
           "name": "Bulwark",
-          "focus": "Heavy team shields",
+          "callsign": "BULWARK",
           "hp": 80,
+          "focus": "Squad-wide shields",
           "abilities": [
             {
               "zone": "recharge",
@@ -1001,24 +893,17 @@
                 6
               ],
               "name": "Fortify",
-              "eff": "self 6 shield",
+              "eff": "self 7 shield, taunt (picked enemy targets you)",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 6
-            }
-          ],
-          "callsign": "BULWARK"
-        },
-        {
-          "name": "Bulwark",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 7,
+              "taunt": true
+            },
             {
               "zone": "strike",
               "range": [
@@ -1026,25 +911,17 @@
                 12
               ],
               "name": "Cover Fire",
-              "eff": "4 dmg (all), ally 6 shield",
-              "dmg": 4,
-              "dMin": 4,
-              "dMax": 4,
+              "eff": "5 dmg, lowest 7 shield",
+              "dmg": 5,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 6,
-              "shTgt": true,
-              "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Bulwark",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 5,
+              "dMax": 5,
+              "shield": 7,
+              "shieldLowest": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -1052,49 +929,35 @@
                 16
               ],
               "name": "Iron Wall",
-              "eff": "all 7 shield",
+              "eff": "all 6 shield",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 7,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 6,
               "shieldAll": true
-            }
-          ]
-        },
-        {
-          "name": "Bulwark",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "crit",
               "range": [
                 17,
                 19
               ],
-              "name": "Bastion Protocol",
-              "eff": "all 7 shield",
+              "name": "Bastion",
+              "eff": "all 8 shield",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 7,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 8,
               "shieldAll": true
-            }
-          ]
-        },
-        {
-          "name": "Bulwark",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "overload",
               "range": [
@@ -1102,23 +965,25 @@
                 20
               ],
               "name": "Invincible",
-              "eff": "all 9 shield",
+              "eff": "all 10 shield, self ward",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 9,
-              "shieldAll": true
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 10,
+              "shieldAll": true,
+              "ward": true
             }
           ]
         },
         {
           "name": "Sentinel",
-          "focus": "Taunt + counters",
+          "callsign": "SENTINEL",
           "hp": 70,
+          "focus": "Taunt and spike punishment",
           "abilities": [
             {
               "zone": "recharge",
@@ -1126,72 +991,51 @@
                 1,
                 5
               ],
-              "name": "Taunt",
-              "eff": "taunt (picked enemy targets you)",
+              "name": "Challenge",
+              "eff": "self 4 shield, taunt (picked enemy targets you)",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "taunt": true
-            }
-          ],
-          "callsign": "SENTINEL"
-        },
-        {
-          "name": "Sentinel",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 0,
+              "dMax": 0,
+              "taunt": true,
+              "shield": 4
+            },
             {
               "zone": "strike",
               "range": [
                 6,
                 10
               ],
-              "name": "Retaliate",
-              "eff": "7 dmg",
-              "dmg": 7,
-              "dMin": 7,
-              "dMax": 7,
+              "name": "Counter Stance",
+              "eff": "spike 6",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Sentinel",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
+              "spike": 6
+            },
             {
               "zone": "surge",
               "range": [
                 11,
                 15
               ],
-              "name": "Counter Protocol",
-              "eff": "8 dmg, -2 roll, 2t",
-              "dmg": 8,
-              "dMin": 8,
-              "dMax": 8,
+              "name": "Punish",
+              "eff": "10 dmg",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
-              "rfe": 2,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Sentinel",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 10,
+              "dMax": 10
+            },
             {
               "zone": "crit",
               "range": [
@@ -1199,48 +1043,38 @@
                 19
               ],
               "name": "Repulsion Field",
-              "eff": "9 dmg (all), all 4 shield",
-              "dmg": 9,
-              "dMin": 9,
-              "dMax": 9,
+              "eff": "8 dmg (all), self 6 shield",
+              "dmg": 8,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 4,
-              "shieldAll": true,
-              "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Sentinel",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 8,
+              "dMax": 8,
+              "blastAll": true,
+              "shield": 6
+            },
             {
               "zone": "overload",
               "range": [
                 20,
                 20
               ],
-              "name": "Repulsion Field+",
-              "eff": "13 dmg (all), all 8 shield",
-              "dmg": 13,
-              "dMin": 13,
-              "dMax": 13,
+              "name": "Iron Judgment",
+              "eff": "14 dmg, execute",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 8,
-              "shieldAll": true,
-              "blastAll": true
+              "dMin": 14,
+              "dMax": 14,
+              "execute": true
             }
           ]
         }
       ],
-      "callsign": "SPITE"
+      "callsign": "SPIKE"
     },
     {
       "id": "avalanche",
@@ -1260,13 +1094,13 @@
           "name": "Glacial Lattice",
           "eff": "freeze (1 reveal skip)",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "freezeAnyDice": 1
+          "dMin": 0,
+          "dMax": 0,
+          "freezeEnemyDice": 1
         },
         {
           "zone": "strike",
@@ -1275,14 +1109,14 @@
             12
           ],
           "name": "Glacial Shove",
-          "eff": "5 dmg, freeze (1 reveal skip)",
-          "dmg": 5,
-          "dMin": 5,
-          "dMax": 5,
+          "eff": "6 dmg, freeze (1 reveal skip)",
+          "dmg": 6,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 6,
+          "dMax": 6,
           "freezeEnemyDice": 1
         },
         {
@@ -1294,12 +1128,12 @@
           "name": "Whiteout Spray",
           "eff": "9 dmg (all)",
           "dmg": 9,
-          "dMin": 9,
-          "dMax": 9,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 9,
+          "dMax": 9,
           "blastAll": true
         },
         {
@@ -1311,12 +1145,12 @@
           "name": "Crevasse Mend",
           "eff": "all 10 heal",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 10,
+          "dMin": 0,
+          "dMax": 0,
           "healAll": true
         },
         {
@@ -1326,22 +1160,24 @@
             20
           ],
           "name": "Avalanche Protocol",
-          "eff": "all 14 heal",
-          "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
+          "eff": "8 dmg (all), freeze all (1 reveal skip)",
+          "dmg": 8,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 14,
-          "healAll": true
+          "heal": 0,
+          "dMin": 8,
+          "dMax": 8,
+          "blastAll": true,
+          "freezeAllEnemyDice": 1
         }
       ],
       "evolutions": [
         {
           "name": "Glacier Mantle",
-          "focus": "Shields + enemy freeze",
+          "callsign": "GLACIER",
           "hp": 80,
+          "focus": "Freeze everything, then shatter it",
           "abilities": [
             {
               "zone": "recharge",
@@ -1350,24 +1186,17 @@
                 6
               ],
               "name": "Permafrost Weave",
-              "eff": "freeze (1 reveal skip)",
+              "eff": "self 5 shield, freeze (1 reveal skip)",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "freezeAnyDice": 1
-            }
-          ],
-          "callsign": "GLACIER"
-        },
-        {
-          "name": "Glacier Mantle",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 0,
+              "dMax": 0,
+              "freezeEnemyDice": 1,
+              "shield": 5
+            },
             {
               "zone": "strike",
               "range": [
@@ -1375,50 +1204,34 @@
                 12
               ],
               "name": "Whiteout Salvo",
-              "eff": "4 dmg (all), freeze all (1 reveal skip)",
-              "dmg": 4,
-              "dMin": 4,
-              "dMax": 4,
+              "eff": "5 dmg (all), freeze (1 reveal skip)",
+              "dmg": 5,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 5,
+              "dMax": 5,
               "blastAll": true,
-              "freezeAllEnemyDice": 1
-            }
-          ]
-        },
-        {
-          "name": "Glacier Mantle",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "freezeEnemyDice": 1
+            },
             {
               "zone": "surge",
               "range": [
                 13,
                 16
               ],
-              "name": "Bitter Front",
-              "eff": "4 dmg (all), all -2 roll, 2t",
-              "dmg": 4,
-              "dMin": 4,
-              "dMax": 4,
+              "name": "Shatter Lance",
+              "eff": "12 dmg, +6 vs frozen",
+              "dmg": 12,
               "burn": 0,
               "burnT": 0,
-              "rfe": 2,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
-              "blastAll": true,
-              "rfeAll": true
-            }
-          ]
-        },
-        {
-          "name": "Glacier Mantle",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 12,
+              "dMax": 12,
+              "vsFrozenBonus": 6
+            },
             {
               "zone": "crit",
               "range": [
@@ -1426,26 +1239,18 @@
                 19
               ],
               "name": "Permafrost Aegis",
-              "eff": "9 dmg, all 8 shield, -2 roll, 2t, freeze all (1 reveal skip)",
-              "dmg": 9,
-              "dMin": 9,
-              "dMax": 9,
+              "eff": "all 7 shield, freeze (1 reveal skip)",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
-              "rfe": 2,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
-              "shield": 8,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 7,
               "shieldAll": true,
-              "freezeAllEnemyDice": 1
-            }
-          ]
-        },
-        {
-          "name": "Glacier Mantle",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "freezeEnemyDice": 1
+            },
             {
               "zone": "overload",
               "range": [
@@ -1453,25 +1258,24 @@
                 20
               ],
               "name": "Absolute Zero",
-              "eff": "15 dmg, all 14 shield, -3 roll, 2t, freeze all (1 reveal skip)",
-              "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
+              "eff": "10 dmg (all), freeze all (1 reveal skip)",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
-              "rfe": 3,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
-              "shield": 14,
-              "shieldAll": true,
+              "dMin": 10,
+              "dMax": 10,
+              "blastAll": true,
               "freezeAllEnemyDice": 1
             }
           ]
         },
         {
           "name": "Trench Rig",
-          "focus": "Targeted heal + debuff",
+          "callsign": "TRENCH",
           "hp": 85,
+          "focus": "Wards, taunts, and deep sustain",
           "abilities": [
             {
               "zone": "recharge",
@@ -1482,109 +1286,85 @@
               "name": "Stabilize",
               "eff": "10 heal (ally)",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 10,
+              "dMin": 0,
+              "dMax": 0,
               "healTgt": true
-            }
-          ],
-          "callsign": "TRENCH"
-        },
-        {
-          "name": "Trench Rig",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "strike",
               "range": [
                 7,
                 12
               ],
-              "name": "Icebound Reprisal",
-              "eff": "8 dmg",
-              "dmg": 8,
-              "dMin": 8,
-              "dMax": 8,
+              "name": "Dig In",
+              "eff": "self 8 shield, taunt (picked enemy targets you)",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Trench Rig",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 8,
+              "taunt": true
+            },
             {
               "zone": "surge",
               "range": [
                 13,
                 16
               ],
-              "name": "Glacial Counterstrike",
-              "eff": "9 dmg, -2 roll, 2t",
-              "dmg": 9,
-              "dMin": 9,
-              "dMax": 9,
+              "name": "Bunker Ward",
+              "eff": "ally ward",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
-              "rfe": 2,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Trench Rig",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
+              "ward": true,
+              "wardTgt": true
+            },
             {
               "zone": "crit",
               "range": [
-                16,
+                17,
                 19
               ],
-              "name": "Frostwave Pulse",
-              "eff": "11 dmg, -3 roll, 2t",
-              "dmg": 11,
-              "dMin": 11,
-              "dMax": 11,
+              "name": "Trench Breaker",
+              "eff": "12 dmg, breach",
+              "dmg": 12,
               "burn": 0,
               "burnT": 0,
-              "rfe": 3,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Trench Rig",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
+              "breach": true
+            },
             {
               "zone": "overload",
               "range": [
                 20,
                 20
               ],
-              "name": "Frostwave Cascade",
-              "eff": "16 dmg, -4 roll, 2t",
-              "dmg": 16,
-              "dMin": 16,
-              "dMax": 16,
+              "name": "Last Bastion",
+              "eff": "all 8 heal, all 6 shield",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
-              "rfe": 4,
-              "rfT": 2,
-              "heal": 0
+              "rfe": 0,
+              "heal": 8,
+              "dMin": 0,
+              "dMax": 0,
+              "healAll": true,
+              "shield": 6,
+              "shieldAll": true
             }
           ]
         }
@@ -1607,18 +1387,15 @@
             4
           ],
           "name": "Diagnostic Pulse",
-          "eff": "3 heal (ally), +1 roll",
+          "eff": "4 heal (ally)",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 3,
-          "healTgt": true,
-          "rfm": 1,
-          "rfmT": 1,
-          "rfmTgt": true
+          "heal": 4,
+          "dMin": 0,
+          "dMax": 0,
+          "healTgt": true
         },
         {
           "zone": "strike",
@@ -1627,18 +1404,15 @@
             11
           ],
           "name": "Infusion",
-          "eff": "7 heal (ally), +2 roll",
+          "eff": "8 heal (ally)",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 7,
-          "healTgt": true,
-          "rfm": 2,
-          "rfmT": 1,
-          "rfmTgt": true
+          "heal": 8,
+          "dMin": 0,
+          "dMax": 0,
+          "healTgt": true
         },
         {
           "zone": "surge",
@@ -1647,14 +1421,15 @@
             16
           ],
           "name": "Neural Override",
-          "eff": "7 dmg, heal self 6",
-          "dmg": 7,
-          "dMin": 7,
-          "dMax": 7,
+          "eff": "8 dmg, leech",
+          "dmg": 8,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 6
+          "heal": 0,
+          "dMin": 8,
+          "dMax": 8,
+          "leech": true
         },
         {
           "zone": "crit",
@@ -1663,14 +1438,15 @@
             19
           ],
           "name": "Synaptic Overload",
-          "eff": "11 dmg, heal self 8",
-          "dmg": 11,
-          "dMin": 11,
-          "dMax": 11,
+          "eff": "12 dmg, leech",
+          "dmg": 12,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 8
+          "heal": 0,
+          "dMin": 12,
+          "dMax": 12,
+          "leech": true
         },
         {
           "zone": "overload",
@@ -1681,19 +1457,20 @@
           "name": "Shock Therapy",
           "eff": "20 dmg",
           "dmg": 20,
-          "dMin": 20,
-          "dMax": 20,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 20,
+          "dMax": 20
         }
       ],
       "evolutions": [
         {
           "name": "Combat Medic",
-          "focus": "Heal + damage",
+          "callsign": "MEDIC",
           "hp": 65,
+          "focus": "Frontline healing and a strong revive",
           "abilities": [
             {
               "zone": "recharge",
@@ -1702,24 +1479,16 @@
                 5
               ],
               "name": "Triage",
-              "eff": "5 heal (ally)",
+              "eff": "6 heal (ally)",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 5,
+              "heal": 6,
+              "dMin": 0,
+              "dMax": 0,
               "healTgt": true
-            }
-          ],
-          "callsign": "MEDIC"
-        },
-        {
-          "name": "Combat Medic",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "strike",
               "range": [
@@ -1727,22 +1496,16 @@
                 10
               ],
               "name": "Bio-Shock",
-              "eff": "8 dmg",
-              "dmg": 8,
-              "dMin": 8,
-              "dMax": 8,
+              "eff": "9 dmg, leech",
+              "dmg": 9,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Combat Medic",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 9,
+              "dMax": 9,
+              "leech": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -1750,23 +1513,16 @@
                 15
               ],
               "name": "Trauma Protocol",
-              "eff": "10 heal (ally)",
+              "eff": "12 heal (ally)",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 10,
+              "heal": 12,
+              "dMin": 0,
+              "dMax": 0,
               "healTgt": true
-            }
-          ]
-        },
-        {
-          "name": "Combat Medic",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "crit",
               "range": [
@@ -1776,21 +1532,14 @@
               "name": "Suppression Heal",
               "eff": "10 dmg, all 8 heal",
               "dmg": 10,
-              "dMin": 10,
-              "dMax": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 8,
+              "dMin": 10,
+              "dMax": 10,
               "healAll": true
-            }
-          ]
-        },
-        {
-          "name": "Combat Medic",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "overload",
               "range": [
@@ -1800,12 +1549,12 @@
               "name": "Surge Revive",
               "eff": "revive ally 70%",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
               "revive": true,
               "healTgt": true,
               "revivePct": 70
@@ -1814,8 +1563,9 @@
         },
         {
           "name": "Synth Warden",
-          "focus": "Team buffs + revive",
+          "callsign": "SYNTH",
           "hp": 70,
+          "focus": "Squad triage and mass revival",
           "abilities": [
             {
               "zone": "recharge",
@@ -1823,51 +1573,35 @@
                 1,
                 5
               ],
-              "name": "System Boost",
-              "eff": "+2 squad roll",
+              "name": "System Patch",
+              "eff": "lowest 8 heal",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0,
-              "rfm": 2,
-              "rfmT": 1
-            }
-          ],
-          "callsign": "SYNTH"
-        },
-        {
-          "name": "Synth Warden",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 8,
+              "dMin": 0,
+              "dMax": 0,
+              "healLowest": true
+            },
             {
               "zone": "strike",
               "range": [
                 6,
                 10
               ],
-              "name": "Overclock",
-              "eff": "all 4 shield",
+              "name": "Overclock Mesh",
+              "eff": "all 5 shield",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 4,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 5,
               "shieldAll": true
-            }
-          ]
-        },
-        {
-          "name": "Synth Warden",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "surge",
               "range": [
@@ -1875,23 +1609,16 @@
                 15
               ],
               "name": "Emergency Protocol",
-              "eff": "lowest 10 heal",
+              "eff": "lowest 12 heal",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 10,
+              "heal": 12,
+              "dMin": 0,
+              "dMax": 0,
               "healLowest": true
-            }
-          ]
-        },
-        {
-          "name": "Synth Warden",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "crit",
               "range": [
@@ -1901,22 +1628,15 @@
               "name": "Adrenaline Surge",
               "eff": "6 dmg (all), all 6 heal",
               "dmg": 6,
-              "dMin": 6,
-              "dMax": 6,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 6,
-              "healAll": true,
-              "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Synth Warden",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 6,
+              "dMax": 6,
+              "blastAll": true,
+              "healAll": true
+            },
             {
               "zone": "overload",
               "range": [
@@ -1926,12 +1646,12 @@
               "name": "Mass Revival",
               "eff": "revive all 30%",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
               "reviveAll": true,
               "revivePct": 30
             }
@@ -1958,12 +1678,12 @@
           "name": "Field Patch",
           "eff": "8 heal (ally), +1 protocol",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 8,
+          "dMin": 0,
+          "dMax": 0,
           "healTgt": true,
           "gainProtocol": 1
         },
@@ -1976,12 +1696,12 @@
           "name": "Barrier Deploy",
           "eff": "ally 9 shield",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
           "shield": 9,
           "shTgt": true
         },
@@ -1994,12 +1714,12 @@
           "name": "Precision Shot",
           "eff": "11 dmg",
           "dmg": 11,
-          "dMin": 11,
-          "dMax": 11,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 11,
+          "dMax": 11
         },
         {
           "zone": "crit",
@@ -2010,12 +1730,12 @@
           "name": "Missile Volley",
           "eff": "9 dmg (all)",
           "dmg": 9,
-          "dMin": 9,
-          "dMax": 9,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 9,
+          "dMax": 9,
           "blastAll": true
         },
         {
@@ -2027,12 +1747,12 @@
           "name": "Scorched Earth",
           "eff": "12 dmg (all), +2 protocol",
           "dmg": 12,
-          "dMin": 12,
-          "dMax": 12,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 12,
+          "dMax": 12,
           "blastAll": true,
           "gainProtocol": 2
         }
@@ -2040,8 +1760,9 @@
       "evolutions": [
         {
           "name": "Overclocked",
-          "focus": "Protocol engine + roll spikes",
+          "callsign": "OVERCLOCKED",
           "hp": 65,
+          "focus": "A walking Protocol engine",
           "abilities": [
             {
               "zone": "recharge",
@@ -2050,26 +1771,17 @@
                 5
               ],
               "name": "Bias Charge",
-              "eff": "+1 squad roll, +1 protocol",
+              "eff": "self 4 shield, +1 protocol",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "rfm": 1,
-              "rfmT": 1,
-              "gainProtocol": 1
-            }
-          ],
-          "callsign": "OVERCLOCK"
-        },
-        {
-          "name": "Overclocked",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 0,
+              "dMax": 0,
+              "gainProtocol": 1,
+              "shield": 4
+            },
             {
               "zone": "strike",
               "range": [
@@ -2077,22 +1789,16 @@
                 10
               ],
               "name": "Chain Shot",
-              "eff": "10 dmg",
-              "dmg": 10,
-              "dMin": 10,
-              "dMax": 10,
+              "eff": "9 dmg, chain",
+              "dmg": 9,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Overclocked",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 9,
+              "dMax": 9,
+              "chain": 1
+            },
             {
               "zone": "surge",
               "range": [
@@ -2102,44 +1808,30 @@
               "name": "Overclock Burst",
               "eff": "14 dmg",
               "dmg": 14,
-              "dMin": 14,
-              "dMax": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Overclocked",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 14,
+              "dMax": 14
+            },
             {
               "zone": "crit",
               "range": [
                 16,
                 19
               ],
-              "name": "Cascade",
+              "name": "Cascade Array",
               "eff": "11 dmg (all)",
               "dmg": 11,
-              "dMin": 11,
-              "dMax": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 11,
+              "dMax": 11,
               "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Overclocked",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "overload",
               "range": [
@@ -2147,22 +1839,23 @@
                 20
               ],
               "name": "Meltdown Protocol",
-              "eff": "21 dmg, 4 burn, 2t, +2 protocol",
-              "dmg": 21,
-              "dMin": 21,
-              "dMax": 21,
-              "burn": 4,
+              "eff": "18 dmg, 3 burn, 2t, +2 protocol",
+              "dmg": 18,
+              "burn": 3,
               "burnT": 2,
               "rfe": 0,
               "heal": 0,
+              "dMin": 18,
+              "dMax": 18,
               "gainProtocol": 2
             }
           ]
         },
         {
           "name": "Phantom",
-          "focus": "Cloaked deploys",
+          "callsign": "PHANTOM",
           "hp": 60,
+          "focus": "Cloaked strikes that jam dice",
           "abilities": [
             {
               "zone": "recharge",
@@ -2170,25 +1863,17 @@
                 1,
                 5
               ],
-              "name": "Stealth",
+              "name": "Stealth Field",
               "eff": "Cloak",
               "dmg": 0,
-              "dMin": 0,
-              "dMax": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
               "cloak": true
-            }
-          ],
-          "callsign": "PHANTOM"
-        },
-        {
-          "name": "Phantom",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "strike",
               "range": [
@@ -2196,24 +1881,16 @@
                 10
               ],
               "name": "EMP Pulse",
-              "eff": "6 dmg, all -2 roll",
-              "dmg": 6,
-              "dMin": 6,
-              "dMax": 6,
+              "eff": "7 dmg, jam",
+              "dmg": 7,
               "burn": 0,
               "burnT": 0,
-              "rfe": 2,
-              "rfT": 1,
+              "rfe": 0,
               "heal": 0,
-              "rfeAll": true
-            }
-          ]
-        },
-        {
-          "name": "Phantom",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 7,
+              "dMax": 7,
+              "jam": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -2221,23 +1898,17 @@
                 15
               ],
               "name": "Phantom Shield",
-              "eff": "8 dmg, self 11 shield",
-              "dmg": 8,
-              "dMin": 8,
-              "dMax": 8,
+              "eff": "self 10 shield, Cloak",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "shield": 11
-            }
-          ]
-        },
-        {
-          "name": "Phantom",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 10,
+              "cloak": true
+            },
             {
               "zone": "crit",
               "range": [
@@ -2245,24 +1916,17 @@
                 19
               ],
               "name": "Ghost Volley",
-              "eff": "15 dmg (all), pierce",
-              "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
+              "eff": "14 dmg (all), pierce",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "ignSh": true,
-              "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Phantom",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 14,
+              "dMax": 14,
+              "blastAll": true,
+              "ignSh": true
+            },
             {
               "zone": "overload",
               "range": [
@@ -2270,17 +1934,16 @@
                 20
               ],
               "name": "Total Blackout",
-              "eff": "15 dmg (all), all -4 roll, 2t",
-              "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
+              "eff": "12 dmg (all), jam all",
+              "dmg": 12,
               "burn": 0,
               "burnT": 0,
-              "rfe": 4,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
               "blastAll": true,
-              "rfeAll": true
+              "jamAll": true
             }
           ]
         }
@@ -2305,12 +1968,12 @@
           "name": "Cloak Protocol",
           "eff": "Cloak",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
           "cloak": true
         },
         {
@@ -2320,15 +1983,14 @@
             8
           ],
           "name": "Probe Strike",
-          "eff": "7 dmg, Cloak",
+          "eff": "7 dmg",
           "dmg": 7,
-          "dMin": 7,
-          "dMax": 7,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "cloak": true
+          "dMin": 7,
+          "dMax": 7
         },
         {
           "zone": "surge",
@@ -2337,14 +1999,15 @@
             13
           ],
           "name": "System Breach",
-          "eff": "8 dmg, 4 burn",
-          "dmg": 8,
-          "dMin": 8,
-          "dMax": 8,
-          "burn": 4,
-          "burnT": 1,
+          "eff": "9 dmg, breach",
+          "dmg": 9,
+          "burn": 0,
+          "burnT": 0,
           "rfe": 0,
-          "heal": 0
+          "heal": 0,
+          "dMin": 9,
+          "dMax": 9,
+          "breach": true
         },
         {
           "zone": "crit",
@@ -2353,14 +2016,14 @@
             19
           ],
           "name": "Phase Blade",
-          "eff": "12 dmg, pierce",
-          "dmg": 12,
-          "dMin": 12,
-          "dMax": 12,
+          "eff": "13 dmg, pierce",
+          "dmg": 13,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
+          "dMin": 13,
+          "dMax": 13,
           "ignSh": true
         },
         {
@@ -2370,22 +2033,23 @@
             20
           ],
           "name": "Execution Protocol",
-          "eff": "15 dmg, pierce",
-          "dmg": 15,
-          "dMin": 15,
-          "dMax": 15,
+          "eff": "16 dmg, execute",
+          "dmg": 16,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "ignSh": true
+          "dMin": 16,
+          "dMax": 16,
+          "execute": true
         }
       ],
       "evolutions": [
         {
           "name": "Shadow Operative",
-          "focus": "Cloak burst + evasion",
+          "callsign": "SHADOW",
           "hp": 65,
+          "focus": "Hit-and-vanish burst",
           "abilities": [
             {
               "zone": "recharge",
@@ -2396,22 +2060,14 @@
               "name": "Ghost Step",
               "eff": "5 dmg, Cloak",
               "dmg": 5,
-              "dMin": 5,
-              "dMax": 5,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 5,
+              "dMax": 5,
               "cloak": true
-            }
-          ],
-          "callsign": "SHADOW"
-        },
-        {
-          "name": "Shadow Operative",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "strike",
               "range": [
@@ -2419,22 +2075,15 @@
                 10
               ],
               "name": "Shadow Strike",
-              "eff": "13 dmg",
-              "dmg": 13,
-              "dMin": 13,
-              "dMax": 13,
+              "eff": "12 dmg",
+              "dmg": 12,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Shadow Operative",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12
+            },
             {
               "zone": "surge",
               "range": [
@@ -2442,23 +2091,16 @@
                 15
               ],
               "name": "Vanishing Act",
-              "eff": "12 dmg, Cloak",
-              "dmg": 12,
-              "dMin": 12,
-              "dMax": 12,
+              "eff": "10 dmg, Cloak",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 10,
+              "dMax": 10,
               "cloak": true
-            }
-          ]
-        },
-        {
-          "name": "Shadow Operative",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "crit",
               "range": [
@@ -2468,21 +2110,14 @@
               "name": "Phantom Blade",
               "eff": "15 dmg, pierce",
               "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 15,
+              "dMax": 15,
               "ignSh": true
-            }
-          ]
-        },
-        {
-          "name": "Shadow Operative",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+            },
             {
               "zone": "overload",
               "range": [
@@ -2492,20 +2127,21 @@
               "name": "Death from Shadow",
               "eff": "20 dmg, pierce",
               "dmg": 20,
-              "dMin": 20,
-              "dMax": 20,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
+              "dMin": 20,
+              "dMax": 20,
               "ignSh": true
             }
           ]
         },
         {
           "name": "Wraith",
-          "focus": "Debuff + execute",
+          "callsign": "WRAITH",
           "hp": 60,
+          "focus": "Mark them, then execute them",
           "abilities": [
             {
               "zone": "recharge",
@@ -2514,24 +2150,16 @@
                 5
               ],
               "name": "Scan Weakness",
-              "eff": "4 dmg, -1 roll",
+              "eff": "4 dmg, mark",
               "dmg": 4,
-              "dMin": 4,
-              "dMax": 4,
               "burn": 0,
               "burnT": 0,
-              "rfe": 1,
-              "rfT": 1,
-              "heal": 0
-            }
-          ],
-          "callsign": "WRAITH"
-        },
-        {
-          "name": "Wraith",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 4,
+              "dMax": 4,
+              "mark": true
+            },
             {
               "zone": "strike",
               "range": [
@@ -2539,23 +2167,16 @@
                 10
               ],
               "name": "Neural Hack",
-              "eff": "6 dmg, -3 roll",
-              "dmg": 6,
-              "dMin": 6,
-              "dMax": 6,
+              "eff": "8 dmg, mark",
+              "dmg": 8,
               "burn": 0,
               "burnT": 0,
-              "rfe": 3,
-              "rfT": 1,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Wraith",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 8,
+              "dMax": 8,
+              "mark": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -2563,23 +2184,16 @@
                 15
               ],
               "name": "Assassinate",
-              "eff": "19 dmg, pierce",
-              "dmg": 19,
-              "dMin": 19,
-              "dMax": 19,
+              "eff": "14 dmg, execute",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "ignSh": true
-            }
-          ]
-        },
-        {
-          "name": "Wraith",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 14,
+              "dMax": 14,
+              "execute": true
+            },
             {
               "zone": "crit",
               "range": [
@@ -2587,23 +2201,16 @@
                 19
               ],
               "name": "Wraith Blade",
-              "eff": "13 dmg, 4 burn, 2t, -2 roll, 2t",
-              "dmg": 13,
-              "dMin": 13,
-              "dMax": 13,
-              "burn": 4,
-              "burnT": 2,
-              "rfe": 2,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Wraith",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "eff": "15 dmg, pierce",
+              "dmg": 15,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 15,
+              "dMax": 15,
+              "ignSh": true
+            },
             {
               "zone": "overload",
               "range": [
@@ -2611,15 +2218,15 @@
                 20
               ],
               "name": "Execution Protocol",
-              "eff": "21 dmg, pierce, -4 roll, 2t",
-              "dmg": 21,
-              "dMin": 21,
-              "dMax": 21,
+              "eff": "18 dmg, pierce, execute",
+              "dmg": 18,
               "burn": 0,
               "burnT": 0,
-              "rfe": 4,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
+              "dMin": 18,
+              "dMax": 18,
+              "execute": true,
               "ignSh": true
             }
           ]
@@ -2645,14 +2252,13 @@
           "name": "Wideband Hiss",
           "eff": "all -2 roll",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 2,
-          "rfT": 1,
-          "rfeAll": true,
-          "heal": 0
+          "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
+          "rfeAll": true
         },
         {
           "zone": "strike",
@@ -2663,13 +2269,13 @@
           "name": "Spike Coupler",
           "eff": "7 dmg, -2 roll, 2t",
           "dmg": 7,
-          "dMin": 7,
-          "dMax": 7,
           "burn": 0,
           "burnT": 0,
           "rfe": 2,
-          "rfT": 2,
-          "heal": 0
+          "heal": 0,
+          "dMin": 7,
+          "dMax": 7,
+          "rfT": 2
         },
         {
           "zone": "surge",
@@ -2680,14 +2286,14 @@
           "name": "Harmonic Glitch",
           "eff": "all -2 roll, 2t",
           "dmg": 0,
-          "dMin": 0,
-          "dMax": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 2,
+          "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
           "rfT": 2,
-          "rfeAll": true,
-          "heal": 0
+          "rfeAll": true
         },
         {
           "zone": "crit",
@@ -2696,16 +2302,15 @@
             19
           ],
           "name": "Phase Tear",
-          "eff": "14 dmg, all -2 roll",
-          "dmg": 14,
-          "dMin": 14,
-          "dMax": 14,
+          "eff": "12 dmg, jam",
+          "dmg": 12,
           "burn": 0,
           "burnT": 0,
-          "rfe": 2,
-          "rfT": 1,
-          "rfeAll": true,
-          "heal": 0
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 12,
+          "dMax": 12,
+          "jam": true
         },
         {
           "zone": "overload",
@@ -2714,24 +2319,25 @@
             20
           ],
           "name": "Total Bandkill",
-          "eff": "16 dmg (all), all -3 roll, 2t",
-          "dmg": 16,
-          "dMin": 16,
-          "dMax": 16,
+          "eff": "14 dmg (all), all -3 roll, 2t",
+          "dmg": 14,
           "burn": 0,
           "burnT": 0,
           "rfe": 3,
-          "rfT": 2,
           "heal": 0,
+          "dMin": 14,
+          "dMax": 14,
           "blastAll": true,
+          "rfT": 2,
           "rfeAll": true
         }
       ],
       "evolutions": [
         {
           "name": "Noise Floor",
-          "focus": "Tray-wide debuff",
+          "callsign": "NOISE",
           "hp": 65,
+          "focus": "Tray-wide suppression",
           "abilities": [
             {
               "zone": "recharge",
@@ -2742,24 +2348,16 @@
               "name": "Carrier Wash",
               "eff": "3 dmg (all), all -1 roll, 2t",
               "dmg": 3,
-              "dMin": 3,
-              "dMax": 3,
               "burn": 0,
               "burnT": 0,
               "rfe": 1,
-              "rfT": 2,
-              "rfeAll": true,
               "heal": 0,
-              "blastAll": true
-            }
-          ],
-          "callsign": "NOISE"
-        },
-        {
-          "name": "Noise Floor",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 3,
+              "dMax": 3,
+              "blastAll": true,
+              "rfT": 2,
+              "rfeAll": true
+            },
             {
               "zone": "strike",
               "range": [
@@ -2769,23 +2367,16 @@
               "name": "Scatterjam",
               "eff": "7 dmg (all), all -1 roll, 2t",
               "dmg": 7,
-              "dMin": 7,
-              "dMax": 7,
               "burn": 0,
               "burnT": 0,
               "rfe": 1,
-              "rfT": 2,
-              "rfeAll": true,
               "heal": 0,
-              "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Noise Floor",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 7,
+              "dMax": 7,
+              "blastAll": true,
+              "rfT": 2,
+              "rfeAll": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -2793,25 +2384,17 @@
                 14
               ],
               "name": "Resonant Cage",
-              "eff": "7 dmg (all), all -3 roll, 3t",
-              "dmg": 7,
-              "dMin": 7,
-              "dMax": 7,
+              "eff": "all -3 roll, 3t",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 3,
-              "rfT": 3,
-              "rfeAll": true,
               "heal": 0,
-              "blastAll": true
-            }
-          ]
-        },
-        {
-          "name": "Noise Floor",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 0,
+              "dMax": 0,
+              "rfT": 3,
+              "rfeAll": true
+            },
             {
               "zone": "crit",
               "range": [
@@ -2819,24 +2402,17 @@
                 19
               ],
               "name": "Collapse Field",
-              "eff": "14 dmg, all -2 roll, 2t",
-              "dmg": 14,
-              "dMin": 14,
-              "dMax": 14,
+              "eff": "12 dmg, all -2 roll, 2t",
+              "dmg": 12,
               "burn": 0,
               "burnT": 0,
               "rfe": 2,
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
               "rfT": 2,
-              "rfeAll": true,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Noise Floor",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfeAll": true
+            },
             {
               "zone": "overload",
               "range": [
@@ -2844,24 +2420,24 @@
                 20
               ],
               "name": "White Noise Core",
-              "eff": "20 dmg (all), all -4 roll, 2t",
-              "dmg": 20,
-              "dMin": 20,
-              "dMax": 20,
+              "eff": "16 dmg (all), jam all",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
-              "rfe": 4,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
+              "dMin": 16,
+              "dMax": 16,
               "blastAll": true,
-              "rfeAll": true
+              "jamAll": true
             }
           ]
         },
         {
           "name": "Nullwire",
-          "focus": "Single-target debuff",
+          "callsign": "NULLWIRE",
           "hp": 60,
+          "focus": "Locks and rewrites single dice",
           "abilities": [
             {
               "zone": "recharge",
@@ -2872,22 +2448,14 @@
               "name": "Lock Tone",
               "eff": "6 dmg, -2 roll, 2t",
               "dmg": 6,
-              "dMin": 6,
-              "dMax": 6,
               "burn": 0,
               "burnT": 0,
               "rfe": 2,
-              "rfT": 2,
-              "heal": 0
-            }
-          ],
-          "callsign": "NULLWIRE"
-        },
-        {
-          "name": "Nullwire",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "heal": 0,
+              "dMin": 6,
+              "dMax": 6,
+              "rfT": 2
+            },
             {
               "zone": "strike",
               "range": [
@@ -2895,23 +2463,16 @@
                 10
               ],
               "name": "Bit Spike",
-              "eff": "10 dmg, -3 roll, 2t",
-              "dmg": 10,
-              "dMin": 10,
-              "dMax": 10,
+              "eff": "9 dmg, jam",
+              "dmg": 9,
               "burn": 0,
               "burnT": 0,
-              "rfe": 3,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Nullwire",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 9,
+              "dMax": 9,
+              "jam": true
+            },
             {
               "zone": "surge",
               "range": [
@@ -2919,23 +2480,16 @@
                 15
               ],
               "name": "Deep Cut",
-              "eff": "12 dmg, 3 burn, 2t, -2 roll, 2t",
+              "eff": "12 dmg, -2 roll, 2t",
               "dmg": 12,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 2,
+              "heal": 0,
               "dMin": 12,
               "dMax": 12,
-              "burn": 3,
-              "burnT": 2,
-              "rfe": 2,
-              "rfT": 2,
-              "heal": 0
-            }
-          ]
-        },
-        {
-          "name": "Nullwire",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "rfT": 2
+            },
             {
               "zone": "crit",
               "range": [
@@ -2943,24 +2497,16 @@
                 19
               ],
               "name": "Spectral Sever",
-              "eff": "15 dmg, pierce, -3 roll, 2t",
-              "dmg": 15,
-              "dMin": 15,
-              "dMax": 15,
+              "eff": "14 dmg, rewrite",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
-              "rfe": 3,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
-              "ignSh": true
-            }
-          ]
-        },
-        {
-          "name": "Nullwire",
-          "focus": "",
-          "hp": 0,
-          "abilities": [
+              "dMin": 14,
+              "dMax": 14,
+              "rewrite": true
+            },
             {
               "zone": "overload",
               "range": [
@@ -2968,16 +2514,16 @@
                 20
               ],
               "name": "Kill Carrier",
-              "eff": "18 dmg, pierce, -4 roll, 2t",
+              "eff": "18 dmg, pierce, rewrite",
               "dmg": 18,
-              "dMin": 18,
-              "dMax": 18,
               "burn": 0,
               "burnT": 0,
-              "rfe": 4,
-              "rfT": 2,
+              "rfe": 0,
               "heal": 0,
-              "ignSh": true
+              "dMin": 18,
+              "dMax": 18,
+              "ignSh": true,
+              "rewrite": true
             }
           ]
         }

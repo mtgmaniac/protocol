@@ -65,6 +65,7 @@ const HERO_HANDLED_FIELDS := [
 	"jam",
 	"jamAll",
 	"rewrite",
+	"vsFrozenBonus",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -109,6 +110,10 @@ const ENEMY_HANDLED_FIELDS := [
 	"summonName",
 ]
 
+# Data-driven effect audit coverage: every field here must appear on at least
+# one hero ability in data. rfm/rfmT/rfmTgt and freezeAnyDice left the hero
+# kits in pkg3 (roll buffs are item/gear-only now; freeze targets enemies) —
+# their handlers stay covered by targeted regressions instead.
 const EFFECT_FIELDS := [
 	"dmg",
 	"dMin",
@@ -118,9 +123,6 @@ const EFFECT_FIELDS := [
 	"rfe",
 	"rfT",
 	"rfeAll",
-	"rfm",
-	"rfmT",
-	"rfmTgt",
 	"heal",
 	"healTgt",
 	"healAll",
@@ -128,12 +130,10 @@ const EFFECT_FIELDS := [
 	"shield",
 	"shTgt",
 	"shieldAll",
-	# NOTE: shieldLowest is covered by _run_shield_lowest_regression until pkg3
-	# kit data ships an ability that uses it — then add it back here.
+	"shieldLowest",
 	"blastAll",
 	"ignSh",
 	"cloak",
-	"freezeAnyDice",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"taunt",

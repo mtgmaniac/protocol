@@ -722,7 +722,14 @@ func _apply_hero_ability_damage(
 			if not _ward_blocks_hostile(target_enemy):
 				if breach and not breach_all:
 					_breach_shields(hero_state, target_enemy)
-				leech_hp_dealt += _damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
+				# vsFrozenBonus rider (Shatter Lance): bonus damage against a
+				# target whose die is frozen. A rider, not a keyword.
+				var single_target_dmg: int = final_dmg
+				var frozen_bonus: int = int(raw.get("vsFrozenBonus", 0))
+				if frozen_bonus > 0 and int(target_enemy.get("die_freeze_turns", 0)) > 0:
+					single_target_dmg += frozen_bonus
+					_log("%s shatters the frozen die — +%d damage!" % [hero_state["unit"].display_name, frozen_bonus])
+				leech_hp_dealt += _damage_state(target_enemy, single_target_dmg, ignores_shield, hero_state, shield_pierce)
 				if bool(raw.get("detonate", false)):
 					_detonate_burn(hero_state, target_enemy)
 				if bool(raw.get("execute", false)):

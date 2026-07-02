@@ -29,6 +29,9 @@ def hero_expected(raw: dict) -> str:
             s += " (all)"
         if raw.get("ignSh"):
             s += ", pierce"
+        vs_frozen = raw.get("vsFrozenBonus") or 0
+        if vs_frozen > 0:
+            s += f", +{vs_frozen} vs frozen"
         parts.append(s)
     elif dmin > 0 and dmax > 0 and dmin != dmax:
         s = f"{dmin}-{dmax} dmg"
