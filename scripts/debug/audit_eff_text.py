@@ -53,6 +53,8 @@ def hero_expected(raw: dict) -> str:
     if shield > 0:
         if raw.get("shieldAll"):
             parts.append(f"all {shield} shield")
+        elif raw.get("shieldLowest"):
+            parts.append(f"lowest {shield} shield")
         elif raw.get("shTgt"):
             parts.append(f"ally {shield} shield")
         else:
@@ -93,6 +95,8 @@ def hero_expected(raw: dict) -> str:
             parts.append(f"revive {pct}%")
     if raw.get("cloak"):
         parts.append("Cloak")
+    if raw.get("ward"):
+        parts.append("ally ward" if raw.get("wardTgt") else "self ward")
     if raw.get("taunt"):
         parts.append("taunt (picked enemy targets you)")
 

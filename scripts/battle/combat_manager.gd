@@ -473,6 +473,10 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			for ally_state in _hero_states:
 				if not ally_state["dead"]:
 					_add_shield_stack(ally_state, shield)
+		elif bool(raw.get("shieldLowest", false)):
+			var lowest_shield_target: Dictionary = _lowest_hp_state(_hero_states)
+			if not lowest_shield_target.is_empty():
+				_add_shield_stack(lowest_shield_target, shield)
 		elif shield_targeted:
 			var shield_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
 			if shield_target.is_empty():

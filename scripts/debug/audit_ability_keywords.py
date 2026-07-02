@@ -16,7 +16,7 @@ META_KEYS = frozenset({"zone", "range", "name", "eff", "callsign", "focus", "hp"
 # Keys read in combat_manager._apply_hero_ability / _apply_enemy_ability
 HERO_HANDLED = frozenset({
     "dmg", "dMin", "dMax", "heal", "shield", "blastAll", "healAll", "shieldAll",
-    "healLowest", "shTgt", "healTgt", "burn", "burnT", "rfm", "rfmT", "rfmTgt", "ignSh",
+    "healLowest", "shieldLowest", "shTgt", "healTgt", "burn", "burnT", "rfm", "rfmT", "rfmTgt", "ignSh",
     "rfe", "rfT", "rfeAll", "taunt", "revive", "reviveAll", "revivePct", "cloak", "cloakAll",
     "ward", "wardTgt", "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol",
 })
@@ -68,10 +68,45 @@ def collect_abilities() -> list[dict]:
     return out
 
 
+def manual_pick_sides(raw: dict) -> set[str]:
+    """Distinct manual target picks a hero ability demands.
+
+    Components that share the same pick (dmg + burn + freezeEnemyDice on one
+    enemy; healTgt + shTgt + rfmTgt + wardTgt on one ally) count once. Auto
+    targets (self / all / lowest) never count. revive consumes healTgt as its
+    dead-ally pick.
+    """
+    sides: set[str] = set()
+    if is_meaningful(raw.get("freezeAnyDice")):
+        sides.add("any")
+    if is_meaningful(raw.get("reviveAll")):
+        pass
+    elif is_meaningful(raw.get("revive")):
+        sides.add("dead_hero")
+    elif (
+        is_meaningful(raw.get("healTgt"))
+        or is_meaningful(raw.get("shTgt"))
+        or is_meaningful(raw.get("rfmTgt"))
+        or is_meaningful(raw.get("wardTgt"))
+    ):
+        sides.add("ally")
+    single_enemy = (
+        (is_meaningful(raw.get("dmg")) and not is_meaningful(raw.get("blastAll")))
+        or (is_meaningful(raw.get("burn")) and not is_meaningful(raw.get("blastAll")))
+        or (is_meaningful(raw.get("rfe")) and not is_meaningful(raw.get("rfeAll")))
+        or is_meaningful(raw.get("rfeOnly"))
+        or is_meaningful(raw.get("freezeEnemyDice"))
+    )
+    if single_enemy:
+        sides.add("enemy")
+    return sides
+
+
 def main() -> int:
     abilities = collect_abilities()
     gaps: dict[str, list[str]] = defaultdict(list)
     key_counts: dict[str, dict[str, int]] = defaultdict(lambda: {"hero": 0, "enemy": 0})
+    multi_pick_violations: list[str] = []
 
     for entry in abilities:
         side = entry["side"]
@@ -86,6 +121,10 @@ def main() -> int:
                 continue
             if key not in handled:
                 gaps[key].append(label)
+        if side == "hero":
+            picks = manual_pick_sides(raw)
+            if len(picks) > 1:
+                multi_pick_violations.append(f"{label} -> picks {sorted(picks)}")
 
     print("=== Ability keyword usage ===")
     for key in sorted(key_counts):
@@ -120,7 +159,14 @@ def main() -> int:
     for key in sorted(ENEMY_HANDLED - used_enemy):
         print(f"  enemy: {key}")
 
-    return 1 if gaps else 0
+    print("\n=== TARGETING RULE: max one manual pick per hero ability ===")
+    if not multi_pick_violations:
+        print("  (none)")
+    else:
+        for violation in multi_pick_violations:
+            print(f"  FAIL {violation}")
+
+    return 1 if (gaps or multi_pick_violations) else 0
 
 
 if __name__ == "__main__":

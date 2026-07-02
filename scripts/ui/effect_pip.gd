@@ -203,6 +203,8 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		_append_effect(effects, "pierce", "P")
 	if bool(raw.get("cloak", false)):
 		_append_effect(effects, "cloak", "C", 0, "self")
+	if bool(raw.get("ward", false)):
+		_append_effect(effects, "ward", "W", 0, "" if bool(raw.get("wardTgt", false)) else "self")
 
 	var freeze_turns: int = maxi(
 		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),

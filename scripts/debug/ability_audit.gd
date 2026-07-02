@@ -34,6 +34,7 @@ const HERO_HANDLED_FIELDS := [
 	"healAll",
 	"shieldAll",
 	"healLowest",
+	"shieldLowest",
 	"shTgt",
 	"healTgt",
 	"burn",
@@ -110,6 +111,8 @@ const EFFECT_FIELDS := [
 	"shield",
 	"shTgt",
 	"shieldAll",
+	# NOTE: shieldLowest is covered by _run_shield_lowest_regression until pkg3
+	# kit data ships an ability that uses it — then add it back here.
 	"blastAll",
 	"ignSh",
 	"cloak",
@@ -382,6 +385,10 @@ func _run_targeting_audits() -> void:
 		{"name": "mixed shieldAll plus single rfe requires enemy", "raw": {"rfe": 2, "rfT": 2, "shield": 8, "shieldAll": true}, "manual": "enemy"},
 		{"name": "targeted heal requires hero", "raw": {"heal": 6, "healTgt": true}, "manual": "hero"},
 		{"name": "targeted shield requires hero", "raw": {"shield": 6, "shTgt": true}, "manual": "hero"},
+		{"name": "targeted ward requires hero", "raw": {"ward": true, "wardTgt": true}, "manual": "hero"},
+		{"name": "self ward requires no manual target", "raw": {"ward": true}, "manual": ""},
+		{"name": "lowest shield requires no manual target", "raw": {"shield": 7, "shieldLowest": true}, "manual": ""},
+		{"name": "lowest heal requires no manual target", "raw": {"heal": 8, "healLowest": true}, "manual": ""},
 		{"name": "revive requires dead hero", "raw": {"revive": true}, "manual": "dead_hero"},
 		{"name": "revive all requires no manual target", "raw": {"reviveAll": true, "revivePct": 30}, "manual": ""},
 		{"name": "revive with healTgt still requires dead hero", "raw": {"revive": true, "healTgt": true, "revivePct": 70}, "manual": "dead_hero"},
@@ -415,6 +422,7 @@ func _run_regression_audits() -> void:
 	_run_shield_timing_regression()
 	_run_cloak_regression()
 	_run_ward_regressions()
+	_run_shield_lowest_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -695,6 +703,23 @@ func _run_ward_regressions() -> void:
 		_record_pass("Regression / ward blocks AoE for that unit only", "ward")
 	else:
 		_record_failure("Regression / ward blocks AoE for that unit only", "ward", "warded unit takes 0 from AoE (ward breaks); other unit takes full damage", "enemy_a_delta=%d enemy_b_delta=%d warded=%s" % [blast_enemy_a_hp_before - int(blast_enemy_a["current_hp"]), blast_enemy_b_hp_before - int(blast_enemy_b["current_hp"]), str(blast_enemy_a.get("warded", false))])
+
+
+func _run_shield_lowest_regression() -> void:
+	# shieldLowest auto-targets the lowest-HP living ally — no manual pick.
+	var context: Dictionary = _build_context({"shield": 7, "shieldLowest": true}, "Shield Lowest Regression")
+	var manager: CombatManager = context["manager"]
+	var actor: Dictionary = context["actor"]
+	var ally_a: Dictionary = context["ally_a"]
+	var ally_b: Dictionary = context["ally_b"]
+	ally_a["current_hp"] = 25
+	ally_b["current_hp"] = 80
+	var result: Dictionary = manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var events: Array = result.get("events", [])
+	if _has_target_event(events, "shield", 7, "hero", "audit_ally_a"):
+		_record_pass("Regression / shieldLowest targets lowest ally", "shieldLowest")
+	else:
+		_record_failure("Regression / shieldLowest targets lowest ally", "shieldLowest", "shield event on lowest HP ally", "events=%s" % str(events))
 
 
 func _run_rampage_regression() -> void:
@@ -1489,6 +1514,11 @@ func _prepare_state_for_effect(effect_field: String, context: Dictionary) -> voi
 		"shTgt":
 			ally_a["shield_stacks"] = []
 			ally_a["shield"] = 0
+		"shieldLowest":
+			ally_a["current_hp"] = 25
+			ally_b["current_hp"] = 80
+			ally_a["shield_stacks"] = []
+			ally_a["shield"] = 0
 		"shieldAll":
 			for state in [actor, ally_a, ally_b]:
 				state["shield_stacks"] = []
@@ -1605,6 +1635,8 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 			return _expect_event_amount(effect_field, events, "shield", shield_amount, "hero")
 		"shTgt":
 			return _expect_bool(effect_field, _has_target_event(events, "shield", shield_amount, "hero", "audit_ally_a"), "shield on selected ally", "events=%s" % str(events))
+		"shieldLowest":
+			return _expect_bool(effect_field, _has_target_event(events, "shield", shield_amount, "hero", "audit_ally_a"), "shield on lowest HP ally", "events=%s" % str(events))
 		"shieldAll":
 			return _expect_bool(effect_field, _count_events(events, "shield", "hero") >= 3, "shield events for all allies", "events=%s" % str(events))
 		"blastAll":

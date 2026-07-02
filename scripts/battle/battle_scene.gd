@@ -1950,7 +1950,7 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return ""
 	if bool(raw.get("revive", false)):
 		return "dead_hero"
-	if bool(raw.get("healTgt", false)) or bool(raw.get("shTgt", false)):
+	if bool(raw.get("healTgt", false)) or bool(raw.get("shTgt", false)) or bool(raw.get("wardTgt", false)):
 		return "hero"
 	if bool(raw.get("rfmTgt", false)):
 		return "hero"
@@ -2025,7 +2025,7 @@ func _auto_assign_hero_target(hero_state: Dictionary, ability_entry: Dictionary)
 	if bool(raw.get("blastAll", false)):
 		_set_state_target(hero_state, "", "All Hostiles")
 		return
-	if bool(raw.get("healLowest", false)):
+	if bool(raw.get("healLowest", false)) or bool(raw.get("shieldLowest", false)):
 		var lowest_ally: Dictionary = _lowest_living_hero_state()
 		if lowest_ally.is_empty():
 			_set_state_target(hero_state, "", "--")
