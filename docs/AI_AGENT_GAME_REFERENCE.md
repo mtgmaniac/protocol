@@ -42,6 +42,10 @@ These are live global singletons:
   - [SceneManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/SceneManager.gd)
 - `AudioManager`
   - [AudioManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/AudioManager.gd)
+- `SaveManager` (pkg5) — persistent profile at `user://save.json` (save_version 1):
+  tutorial flag, lifetime stats (runs/wins-by-op/best clear/nat 20s/deaths),
+  boss-relic unlocks. Headless runs never touch disk.
+  - [SaveManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/SaveManager.gd)
 - `DebugBattleLauncher`
   - [DebugBattleLauncher.gd](C:/Users/Kev/Documents/protocol/scripts/debug/DebugBattleLauncher.gd)
 

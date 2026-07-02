@@ -141,6 +141,10 @@ Round-start rules (Ward, mantle shield) fire before the hero phase; turn-cadence
 
 XP: **`XP_TO_EVOLVE = 100`**. Per win: alive → **`20 + round(avg effective roll)`**; dead → **`round(avg effective roll)`** only. One evolution stop per win (extras deferred). First evo typically ~fight 3–4.
 
+## Save system (pkg5 — SaveManager autoload)
+
+`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, nat20s, deaths}, unlocks: {boss_relics: []}, settings: {}}`. Headless runs (audits/smokes) keep the profile in memory — no disk writes. Hooks: `GameState.start_run` → runs_started; `GameState.finish_run` → best_clear ratchet + victory increments `runs_won_by_op[op]` and unlocks that op's boss relic (facility→salvageRig · hive→chitinGraft · veil→resonantChorus · voidCirclet→rootAccess · stellarMenagerie→mantleCore); post-roll nat 20s; hero deaths; tutorial completion. **Starting Directive:** at DEPLOY, unlocked boss relics are offered as the run's opening relic (`GameState.starting_directive_relic_id`); the battle-5 relic draft still happens — a directive run ends with two relics by design. The run-end screen shows the SERVICE RECORD stats block. (Audio settings persist separately in `user://settings.cfg` via AudioManager.)
+
 ---
 
 ## Battle UI V2 geometry (the layout contract)
