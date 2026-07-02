@@ -107,6 +107,13 @@
       "syntax": "jam / jam all"
     },
     {
+      "id": "rewrite",
+      "term": "Rewrite",
+      "category": "control",
+      "def": "The target's next roll is set to 3. Telegraphed: applied this turn, it fires at the next roll.",
+      "syntax": "rewrite"
+    },
+    {
       "id": "freeze",
       "term": "Freeze",
       "category": "control",

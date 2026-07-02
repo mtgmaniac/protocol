@@ -251,6 +251,9 @@ func _get_total_burn_bonus() -> int:
 # PUBLIC: Returns the effective roll for a state factoring in RFE stacks and roll buff.
 # battle_scene passes nudge on top of this, so nudge is NOT included here.
 func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
+	# Rewrite: the next roll is SET to 3 — trumps every other modifier.
+	if bool(state.get("rewrite_pending", false)):
+		return REWRITE_VALUE
 	var mods: Dictionary = get_roll_modifier_totals(state)
 	var effective: int = clampi(raw_roll + int(mods["roll_buff"]) - int(mods["roll_rfe"]), 1, 20)
 	# Jam: the unit's next roll is capped (default 12); cleared at that
@@ -382,6 +385,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"marked": false,
 		"spike": 0,
 		"jam_cap": 0,
+		"rewrite_pending": false,
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
@@ -636,6 +640,14 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
 			_apply_jam(jam_target, JAM_CAP, true)
 
+	# Rewrite: force the target's next roll to 3.
+	if bool(raw.get("rewrite", false)):
+		var rewrite_target: Dictionary = _find_target_by_id(_enemy_states, str(hero_state.get("selected_target_id", "")))
+		if rewrite_target.is_empty():
+			rewrite_target = _first_living_state(_enemy_states)
+		if not rewrite_target.is_empty() and not _ward_blocks_hostile(rewrite_target):
+			_apply_rewrite(rewrite_target, true)
+
 	if damage > 0 and bool(hero_state.get("gear_first_ability_echo", false)) and not bool(hero_state.get("gear_first_ability_echo_used", false)):
 		hero_state["gear_first_ability_echo_used"] = true
 		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, 0, 0)
@@ -709,6 +721,23 @@ func _apply_hero_ability_damage(
 
 
 const JAM_CAP := 12
+const REWRITE_VALUE := 3
+
+
+# Rewrite: die status — the target's next roll is SET to 3. Telegraphed:
+# applied this turn, it fires at the next roll.
+func _apply_rewrite(state: Dictionary, survives_current_tick: bool = true) -> void:
+	if state.is_empty() or bool(state.get("dead", false)):
+		return
+	state["rewrite_pending"] = true
+	state["rewrite_skip_next_tick"] = survives_current_tick
+	_log("%s's die is being REWRITTEN — next roll becomes %d." % [state["unit"].display_name, REWRITE_VALUE])
+	_emit_event(state, "rewrite", REWRITE_VALUE, _resolve_side_for_state(state))
+
+
+# Public hook for the ROOT HIEROPHANT boss rule (rewrite the heroes' highest die).
+func apply_rewrite_to_state(state: Dictionary, survives_current_tick: bool = true) -> void:
+	_apply_rewrite(state, survives_current_tick)
 
 
 # Jam: die status — the target's next roll is capped (default 12). Applied
@@ -991,6 +1020,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			jam_target = _first_living_state(_hero_states)
 		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
 			_apply_jam(jam_target, JAM_CAP, true)
+
+	# Rewrite hero dice (Synod): force the targeted hero's next roll to 3.
+	if bool(raw.get("rewrite", false)):
+		var enemy_rewrite_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		if enemy_rewrite_target.is_empty():
+			enemy_rewrite_target = _first_living_state(_hero_states)
+		if not enemy_rewrite_target.is_empty() and not _ward_blocks_hostile(enemy_rewrite_target):
+			_apply_rewrite(enemy_rewrite_target, true)
 
 	# Spike: heroes that damage this enemy next hero phase take N back. Granted
 	# during the enemy phase, so it survives the imminent round-end tick to
@@ -1326,6 +1363,8 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["spike"] = 0
 	state["jam_cap"] = 0
 	state["jam_skip_next_tick"] = false
+	state["rewrite_pending"] = false
+	state["rewrite_skip_next_tick"] = false
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -1541,6 +1580,14 @@ func _tick_state(state: Dictionary) -> void:
 			if int(state["burn_turns"]) <= 0:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
+
+	# Rewrite fires at exactly one roll (telegraphed): applied this turn, it
+	# skips this tick, forces the NEXT reveal to 3, then clears.
+	if bool(state.get("rewrite_pending", false)):
+		if bool(state.get("rewrite_skip_next_tick", false)):
+			state["rewrite_skip_next_tick"] = false
+		else:
+			state["rewrite_pending"] = false
 
 	# Jam caps exactly one roll: applied mid-round (after the target already
 	# rolled) it skips this tick and caps the NEXT reveal, then clears.

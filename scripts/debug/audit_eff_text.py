@@ -94,6 +94,9 @@ def hero_expected(raw: dict) -> str:
     elif raw.get("jam"):
         parts.append("jam")
 
+    if raw.get("rewrite"):
+        parts.append("rewrite")
+
     rfe = raw.get("rfe") or 0
     if rfe > 0:
         t = turn_suffix(raw.get("rfT") or 0)
@@ -222,6 +225,9 @@ def enemy_expected(raw: dict) -> str:
         parts.append("jam all")
     elif raw.get("jam"):
         parts.append("jam")
+
+    if raw.get("rewrite"):
+        parts.append("rewrite")
 
     gr = raw.get("grantRampage") or 0
     if gr > 0:

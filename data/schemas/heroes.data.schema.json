@@ -111,6 +111,7 @@
         "spike": { "type": "integer", "minimum": 1 },
         "jam": { "type": "boolean" },
         "jamAll": { "type": "boolean" },
+        "rewrite": { "type": "boolean" },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },
