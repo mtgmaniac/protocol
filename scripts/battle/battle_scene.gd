@@ -196,6 +196,11 @@ func _ready() -> void:
 	dice_tray_3d.reset()
 	_set_battle_log_visible(false)
 	_append_log("Battle initialized.")
+	# Boss standing rules are stated up front — active from turn 1.
+	for enemy_state_variant in combat_manager.get_enemy_states():
+		var rule_text: String = CombatManager.get_boss_standing_rule(str(enemy_state_variant["unit"].display_name))
+		if rule_text != "":
+			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
 	_set_turn_phase(PHASE_AWAIT_ROLL)
 	_layout.queue_board_layout_refresh()
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it

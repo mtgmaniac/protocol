@@ -442,6 +442,8 @@ func _run_regression_audits() -> void:
 	_run_shield_lowest_regression()
 	_run_new_gear_regressions()
 	_run_new_relic_regressions()
+	_run_boss_standing_rule_regressions()
+	_run_boss_fight_data_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1358,6 +1360,174 @@ func _run_new_relic_regressions() -> void:
 		var chorus_roll: int = int(chorus_scene.hero_rolls.get(chorus_id, 0))
 		chorus_scene.free()
 		_expect_and_record("Regression / relic resonantChorus turn-1 floor", "turn1RollFloor", "8", str(chorus_roll))
+
+
+func _run_boss_standing_rule_regressions() -> void:
+	# SCRAPMASTER — Assembly Line: every other round, rebuilds one destroyed
+	# Scrap Drone at 50% HP.
+	var line_manager: CombatManager = CombatManager.new()
+	line_manager.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
+		[_make_enemy("scrapmaster", "SCRAPMASTER"), _make_enemy("scrap_drone", "Scrap Drone")]
+	)
+	var line_drone: Dictionary = line_manager.get_enemy_states()[1]
+	line_drone["dead"] = true
+	line_drone["current_hp"] = 0
+	line_manager.resolve_round({}, {}, DiceManager.new())
+	var still_down: bool = bool(line_drone["dead"])
+	line_manager.resolve_round({}, {}, DiceManager.new())
+	var rebuilt: bool = not bool(line_drone["dead"]) and int(line_drone["current_hp"]) == 50
+	_expect_and_record("Regression / boss SCRAPMASTER assembly line", "bossStandingRule", "true", str(still_down and rebuilt))
+
+	# Hive Matriarch — The Brood: a Bloodmite summon event every 3 rounds.
+	var brood_manager: CombatManager = CombatManager.new()
+	brood_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("matriarch", "Hive Matriarch")])
+	var early_summons: int = 0
+	for _round in 2:
+		var early_result: Dictionary = brood_manager.resolve_round({}, {}, DiceManager.new())
+		for event_variant in early_result.get("events", []):
+			if str((event_variant as Dictionary).get("type", "")) == "summon":
+				early_summons += 1
+	var third_result: Dictionary = brood_manager.resolve_round({}, {}, DiceManager.new())
+	var brood_spawn: bool = false
+	for event_variant in third_result.get("events", []):
+		var event: Dictionary = event_variant
+		if str(event.get("type", "")) == "summon" and str(event.get("summon_name", "")) == "Bloodmite":
+			brood_spawn = true
+	_expect_and_record("Regression / boss Matriarch brood cadence", "bossStandingRule", "true", str(early_summons == 0 and brood_spawn))
+
+	# CONCLAVE OVERSEER — The Court: warded at round start while an ally lives;
+	# no ward once it stands alone.
+	var court_manager: CombatManager = CombatManager.new()
+	court_manager.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
+		[_make_enemy("overseer", "CONCLAVE OVERSEER"), _make_enemy("anchor", "Aegis Anchor")]
+	)
+	var court_boss: Dictionary = court_manager.get_enemy_states()[0]
+	court_manager.resolve_round({}, {}, DiceManager.new())
+	var court_warded: bool = bool(court_boss.get("warded", false))
+	var alone_manager: CombatManager = CombatManager.new()
+	alone_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("overseer", "CONCLAVE OVERSEER")])
+	var alone_boss: Dictionary = alone_manager.get_enemy_states()[0]
+	alone_manager.resolve_round({}, {}, DiceManager.new())
+	var alone_unwarded: bool = not bool(alone_boss.get("warded", false))
+	_expect_and_record("Regression / boss Overseer court ward", "bossStandingRule", "true", str(court_warded and alone_unwarded))
+
+	# ROOT HIEROPHANT — Root Access: the squad's highest die is Rewritten to 3.
+	var root_manager: CombatManager = CombatManager.new()
+	root_manager.setup_battle(
+		[_make_unit("audit_low", "Audit Low", "Noop", {}), _make_unit("audit_high", "Audit High", "Noop", {})],
+		[_make_enemy("hierophant", "ROOT HIEROPHANT")]
+	)
+	var low_hero: Dictionary = root_manager.get_hero_states()[0]
+	var high_hero: Dictionary = root_manager.get_hero_states()[1]
+	root_manager.resolve_round({str(low_hero["id"]): 5, str(high_hero["id"]): 15}, {}, DiceManager.new())
+	var high_rewritten: bool = root_manager.get_effective_roll(high_hero, 18) == 3
+	var low_untouched: bool = root_manager.get_effective_roll(low_hero, 18) == 18
+	_expect_and_record("Regression / boss Hierophant root access", "bossStandingRule", "true", str(high_rewritten and low_untouched))
+
+	# MANTLE TYRANT — Accretion: +6 shield at every round start; persists and stacks.
+	var mantle_manager: CombatManager = CombatManager.new()
+	mantle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("tyrant", "MANTLE TYRANT")])
+	var tyrant: Dictionary = mantle_manager.get_enemy_states()[0]
+	mantle_manager.resolve_round({}, {}, DiceManager.new())
+	var first_plate: int = int(tyrant.get("shield", 0))
+	mantle_manager.resolve_round({}, {}, DiceManager.new())
+	var second_plate: int = int(tyrant.get("shield", 0))
+	_expect_and_record("Regression / boss Tyrant accretion stacks", "bossStandingRule", "6/12", "%d/%d" % [first_plate, second_plate])
+
+	# Standing rules surface in the inspect popup payload.
+	var inspect_unit: EnemyData = _make_enemy("tyrant", "MANTLE TYRANT")
+	var inspect_payload: Dictionary = InspectResolver.resolve_unit(inspect_unit)
+	var has_rule_text: bool = str(inspect_payload.get("description", "")) != ""
+	_expect_and_record("Regression / boss inspect shows standing rule", "bossStandingRule", "true", str(has_rule_text))
+
+
+# Data-driven boss-fight checks: build each operation's battle-10 comp from
+# real data and verify the pinned escorts plus each boss's standing rule
+# firing with the real unit defs (catches name/handler drift the synthetic
+# regressions can't).
+const PINNED_BOSS_COMPS := {
+	"facility": ["Scrap Drone", "SCRAPMASTER", "Scrap Drone"],
+	"hive": ["Spine Stalker", "Hive Matriarch"],
+	"veil": ["CONCLAVE OVERSEER", "Aegis Anchor"],
+	"voidCirclet": ["ROOT HIEROPHANT", "Checksum Scribe"],
+	"stellarMenagerie": ["MANTLE TYRANT", "Geode Panther"],
+}
+
+
+func _run_boss_fight_data_regressions() -> void:
+	for op_id in PINNED_BOSS_COMPS.keys():
+		var op = DataManager.get_operation(str(op_id))
+		if op == null or op.battles.is_empty():
+			_record_failure("Boss fight / %s" % op_id, "bossFight", "operation with battles", "missing")
+			continue
+		var final_names: Array = (op.battles[op.battles.size() - 1] as Dictionary).get("enemy_names", [])
+		_expect_and_record("Boss fight / %s pinned escorts" % op_id, "bossFight", str(PINNED_BOSS_COMPS[op_id]), str(final_names))
+
+		var enemy_units: Array = []
+		for enemy_name in final_names:
+			var enemy_unit: EnemyData = DataManager.get_enemy_by_display_name(str(enemy_name)) as EnemyData
+			if enemy_unit == null:
+				_record_failure("Boss fight / %s unit '%s'" % [op_id, enemy_name], "bossFight", "enemy def exists", "missing")
+			else:
+				enemy_units.append(enemy_unit)
+		if enemy_units.size() != final_names.size():
+			continue
+
+		var manager: CombatManager = CombatManager.new()
+		manager.setup_battle(
+			[_make_unit("audit_a", "Audit A", "Noop", {}), _make_unit("audit_b", "Audit B", "Noop", {})],
+			enemy_units
+		)
+		var states: Array = manager.get_enemy_states()
+		var boss_state: Dictionary = {}
+		for state_variant in states:
+			if CombatManager.get_boss_standing_rule(str((state_variant as Dictionary)["unit"].display_name)) != "":
+				boss_state = state_variant
+				break
+		if boss_state.is_empty():
+			_record_failure("Boss fight / %s standing rule" % op_id, "bossFight", "boss with standing rule in comp", "none found")
+			continue
+
+		var hero_a: Dictionary = manager.get_hero_states()[0]
+		var hero_b: Dictionary = manager.get_hero_states()[1]
+		match str(op_id):
+			"facility":
+				for state_variant in states:
+					if str((state_variant as Dictionary)["unit"].display_name) == "Scrap Drone":
+						state_variant["dead"] = true
+						state_variant["current_hp"] = 0
+						break
+				manager.resolve_round({}, {}, DiceManager.new())
+				manager.resolve_round({}, {}, DiceManager.new())
+				var any_rebuilt: bool = false
+				for state_variant in states:
+					if str((state_variant as Dictionary)["unit"].display_name) == "Scrap Drone" and not bool(state_variant["dead"]) and int(state_variant["current_hp"]) < int(state_variant["max_hp"]):
+						any_rebuilt = true
+				_expect_and_record("Boss fight / facility assembly line", "bossFight", "true", str(any_rebuilt))
+			"hive":
+				manager.resolve_round({}, {}, DiceManager.new())
+				manager.resolve_round({}, {}, DiceManager.new())
+				var round3: Dictionary = manager.resolve_round({}, {}, DiceManager.new())
+				var spawned: bool = false
+				for event_variant in round3.get("events", []):
+					if str((event_variant as Dictionary).get("summon_name", "")) == "Bloodmite":
+						spawned = true
+				_expect_and_record("Boss fight / hive brood spawn", "bossFight", "true", str(spawned))
+			"veil":
+				manager.resolve_round({}, {}, DiceManager.new())
+				_expect_and_record("Boss fight / veil court ward", "bossFight", "true", str(bool(boss_state.get("warded", false))))
+			"voidCirclet":
+				manager.resolve_round({str(hero_a["id"]): 6, str(hero_b["id"]): 14}, {}, DiceManager.new())
+				_expect_and_record("Boss fight / synod root access", "bossFight", "3", str(manager.get_effective_roll(hero_b, 18)))
+			"stellarMenagerie":
+				manager.resolve_round({}, {}, DiceManager.new())
+				var plate_one: int = int(boss_state.get("shield", 0))
+				manager.resolve_round({}, {}, DiceManager.new())
+				var plate_two: int = int(boss_state.get("shield", 0))
+				var stacking: bool = plate_one >= 6 and plate_two == plate_one * 2
+				_expect_and_record("Boss fight / accretion mantle stacks", "bossFight", "true", str(stacking))
 
 
 func _run_shield_lowest_regression() -> void:

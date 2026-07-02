@@ -73,7 +73,7 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
 	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
-	return {
+	var payload: Dictionary = {
 		"accent": _side_accent(side),
 		"header": {
 			"title": str(data.get("display_name")),
@@ -82,6 +82,12 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 		"statuses": statuses,
 		"abilities": abilities,
 	}
+	# Boss standing rule — always visible in the inspect popup.
+	if is_enemy:
+		var standing_rule: String = CombatManager.get_boss_standing_rule(str(data.get("display_name")))
+		if standing_rule != "":
+			payload["description"] = standing_rule
+	return payload
 
 
 # Active battle statuses for the unit inspect — each entry { effects:[pip], text } renders as a

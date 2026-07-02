@@ -27,12 +27,112 @@ func setup_battle(hero_units: Array, enemy_units: Array) -> void:
 	_vengeance_used = false
 	_scavenger_drop_done = false
 	_pending_protocol_drain = 0
+	_battle_round = 0
 
 	for hero in hero_units:
 		_hero_states.append(_create_runtime_state(hero))
 
 	for enemy in enemy_units:
 		_enemy_states.append(_create_runtime_state(enemy, _next_enemy_instance_id(enemy)))
+
+	# MANTLE TYRANT standing rule: its shields persist until broken and stack.
+	for enemy_state in _enemy_states:
+		if str(enemy_state["unit"].display_name) == BOSS_MANTLE:
+			enemy_state["shields_persist"] = true
+
+
+# --- Boss standing rules (pkg4) ---
+# Every boss has one rule active from turn 1, keyed by unit display name.
+# The text below is the single source for the inspect popup and the
+# battle-start line (battle_scene reads it via get_boss_standing_rule).
+
+const BOSS_SCRAPMASTER := "SCRAPMASTER"
+const BOSS_MATRIARCH := "Hive Matriarch"
+const BOSS_OVERSEER := "CONCLAVE OVERSEER"
+const BOSS_HIEROPHANT := "ROOT HIEROPHANT"
+const BOSS_MANTLE := "MANTLE TYRANT"
+const SCRAP_DRONE_NAME := "Scrap Drone"
+const BROOD_SPAWN_NAME := "Bloodmite"
+
+const BOSS_STANDING_RULES := {
+	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP.",
+	BOSS_MATRIARCH: "THE BROOD — spawns a Bloodmite every 3 rounds.",
+	BOSS_OVERSEER: "THE COURT — while any ally lives, gains Ward at the start of each round.",
+	BOSS_HIEROPHANT: "ROOT ACCESS — every round, Rewrites the squad's highest die to 3.",
+	BOSS_MANTLE: "ACCRETION — gains 6 shield at the start of every round; its shields persist and stack.",
+}
+
+# BALANCE-TODO: rebuild HP 50%, brood cadence 3, mantle shield 6 are provisional.
+const SCRAPMASTER_REBUILD_PCT := 50
+const MANTLE_ROUND_SHIELD := 6
+
+# 1-based round counter driving the turn-cadence rules.
+var _battle_round: int = 0
+
+
+static func get_boss_standing_rule(display_name: String) -> String:
+	return str(BOSS_STANDING_RULES.get(display_name, ""))
+
+
+# Round-start rules (before the hero phase, so they matter this round):
+# Overseer's Ward and the Mantle Tyrant's accreted plate.
+func _apply_boss_round_start_rules() -> void:
+	for enemy_state in _enemy_states:
+		if bool(enemy_state["dead"]):
+			continue
+		match str(enemy_state["unit"].display_name):
+			BOSS_OVERSEER:
+				var court_stands: bool = false
+				for ally_state in _enemy_states:
+					if ally_state != enemy_state and not bool(ally_state["dead"]):
+						court_stands = true
+						break
+				if court_stands and not bool(enemy_state.get("warded", false)):
+					_log("The Court stands — the Overseer is Warded.")
+					_apply_ward(enemy_state)
+			BOSS_MANTLE:
+				_log("The Tyrant accretes its mantle.")
+				_add_shield_stack(enemy_state, MANTLE_ROUND_SHIELD, true)
+
+
+# Enemy-phase rules (turn-cadence actions): Assembly Line rebuild, Brood
+# spawn, and the Hierophant's Root Access rewrite of the squad's highest die.
+func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
+	for enemy_state in _enemy_states:
+		if bool(enemy_state["dead"]):
+			continue
+		match str(enemy_state["unit"].display_name):
+			BOSS_SCRAPMASTER:
+				# DESIGN-TODO(kev): "every other turn" read as even-numbered rounds.
+				if _battle_round % 2 == 0:
+					for drone_state in _enemy_states:
+						if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and bool(drone_state["dead"]):
+							_log("ASSEMBLY LINE — the SCRAPMASTER rebuilds a Scrap Drone!")
+							_revive_state(drone_state, SCRAPMASTER_REBUILD_PCT)
+							break
+			BOSS_MATRIARCH:
+				if _battle_round % 3 == 0 and _count_living_enemies() < GameState.SQUAD_UNIT_LIMIT:
+					_log("THE BROOD — the Matriarch births a Bloodmite!")
+					_round_events.append({
+						"type": "summon",
+						"amount": 0,
+						"side": "enemy",
+						"target_name": str(enemy_state["unit"].display_name),
+						"summon_name": BROOD_SPAWN_NAME,
+					})
+			BOSS_HIEROPHANT:
+				var highest_roll: int = 0
+				var highest_hero: Dictionary = {}
+				for hero_state in _hero_states:
+					if bool(hero_state["dead"]):
+						continue
+					var hero_roll: int = int(hero_rolls.get(hero_state["id"], 0))
+					if hero_roll > highest_roll:
+						highest_roll = hero_roll
+						highest_hero = hero_state
+				if not highest_hero.is_empty():
+					_log("ROOT ACCESS — the Hierophant seizes the squad's highest die.")
+					apply_rewrite_to_state(highest_hero, true)
 
 
 func get_hero_states() -> Array:
@@ -336,6 +436,10 @@ func resolve_round(
 ) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
+	_battle_round += 1
+
+	# Boss standing rules that must be live before the hero phase.
+	_apply_boss_round_start_rules()
 
 	# Hijack: enemies with a pending hijack copy the heroes' current highest
 	# die for this round's action (effective roll override; raw kept).
@@ -380,6 +484,9 @@ func resolve_round(
 		if not accrete_state["dead"] and int(accrete_state.get("accrete", 0)) > 0:
 			_log("%s accretes armor." % accrete_state["unit"].display_name)
 			_add_shield_stack(accrete_state, int(accrete_state["accrete"]), true)
+
+	# Boss turn-cadence standing rules (rebuild / brood / root access).
+	_apply_boss_enemy_phase_rules(hero_rolls)
 
 	var ordered_enemy_states: Array = _enemy_states.duplicate()
 	ordered_enemy_states.reverse()
