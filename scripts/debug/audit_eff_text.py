@@ -85,6 +85,10 @@ def hero_expected(raw: dict) -> str:
     if raw.get("mark"):
         parts.append("mark")
 
+    spike = raw.get("spike") or 0
+    if spike > 0:
+        parts.append(f"spike {spike}")
+
     rfe = raw.get("rfe") or 0
     if rfe > 0:
         t = turn_suffix(raw.get("rfT") or 0)
@@ -204,6 +208,10 @@ def enemy_expected(raw: dict) -> str:
 
     if raw.get("ward"):
         parts.append("ward")
+
+    enemy_spike = raw.get("spike") or 0
+    if enemy_spike > 0:
+        parts.append(f"spike {enemy_spike}")
 
     gr = raw.get("grantRampage") or 0
     if gr > 0:

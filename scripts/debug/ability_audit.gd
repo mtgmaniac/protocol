@@ -61,6 +61,7 @@ const HERO_HANDLED_FIELDS := [
 	"breachAll",
 	"leech",
 	"mark",
+	"spike",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -93,6 +94,7 @@ const ENEMY_HANDLED_FIELDS := [
 	"grantRampage",
 	"grantRampageAll",
 	"ward",
+	"spike",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",
@@ -436,6 +438,7 @@ func _run_regression_audits() -> void:
 	_run_breach_regression()
 	_run_leech_regression()
 	_run_mark_regression()
+	_run_spike_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -934,6 +937,26 @@ func _run_mark_regression() -> void:
 		_record_pass("Regression / mark boosts next hit +50% then re-applies", "mark")
 	else:
 		_record_failure("Regression / mark boosts next hit +50% then re-applies", "mark", "3 then 5 damage; mark active after each marking hit", "d1=%d d2=%d m1=%s m2=%s" % [before - after_first, after_first - after_second, str(marked_after_first), str(marked_after_second)])
+
+
+func _run_spike_regression() -> void:
+	# Spike: an enemy that damages the spiked hero takes N back this round;
+	# spike is gone by the following round.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Counter Stance", {"spike": 6})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy", "Claw", {"dmg": 5})
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["selected_target_id"] = str(hero["id"])
+	var enemy_before: int = int(enemy["current_hp"])
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var spiked: bool = int(enemy["current_hp"]) == enemy_before - 6
+	var cleared: bool = int(hero.get("spike", 0)) == 0
+	if spiked and cleared:
+		_record_pass("Regression / spike retaliates then expires", "spike")
+	else:
+		_record_failure("Regression / spike retaliates then expires", "spike", "attacker takes 6; spike 0 after round end", "enemy_delta=%d spike=%d" % [enemy_before - int(enemy["current_hp"]), int(hero.get("spike", 0))])
 
 
 func _run_shield_lowest_regression() -> void:

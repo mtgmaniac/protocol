@@ -374,6 +374,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"rampage_charges": 0,
 		"warded": false,
 		"marked": false,
+		"spike": 0,
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
@@ -559,6 +560,13 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			revive_target = _first_dead_state(_hero_states)
 		if not revive_target.is_empty():
 			_revive_state(revive_target, revive_pct)
+
+	# Spike: this round, any enemy that damages this unit takes N back.
+	var spike_amount: int = int(raw.get("spike", 0))
+	if spike_amount > 0:
+		hero_state["spike"] = maxi(int(hero_state.get("spike", 0)), spike_amount)
+		_log("%s bristles with Spike %d — attackers take damage this round." % [hero_state["unit"].display_name, spike_amount])
+		_emit_event(hero_state, "spike_up", spike_amount, "hero")
 
 	# Ward application: self by default, targeted ally with wardTgt.
 	if bool(raw.get("ward", false)):
@@ -842,7 +850,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					continue
 				if _ward_blocks_hostile(hero_state):
 					continue
-				_damage_state(hero_state, final_damage)
+				_damage_state(hero_state, final_damage, false, enemy_state)
 				_apply_burn(hero_state, burn_amount, burn_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 			if lifesteal_pct > 0 and final_damage > 0:
@@ -857,7 +865,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if target_hero.is_empty():
 				target_hero = _first_living_state(_hero_states)
 			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
-				_damage_state(target_hero, final_damage)
+				_damage_state(target_hero, final_damage, false, enemy_state)
 				_apply_burn(target_hero, burn_amount, burn_turns)
 				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 				if lifesteal_pct > 0 and final_damage > 0:
@@ -932,6 +940,16 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if bool(raw.get("ward", false)):
 		_apply_ward(enemy_state)
 
+	# Spike: heroes that damage this enemy next hero phase take N back. Granted
+	# during the enemy phase, so it survives the imminent round-end tick to
+	# cover exactly one hero phase (same asymmetry as shields).
+	var enemy_spike: int = int(raw.get("spike", 0))
+	if enemy_spike > 0:
+		enemy_state["spike"] = maxi(int(enemy_state.get("spike", 0)), enemy_spike)
+		enemy_state["spike_skip_next_tick"] = true
+		_log("%s bristles with Spike %d." % [enemy_state["unit"].display_name, enemy_spike])
+		_emit_event(enemy_state, "spike_up", enemy_spike, "enemy")
+
 	# Curse dice: targeted hero rolls twice and keeps lower next round
 	if bool(raw.get("curseDice", false)):
 		var curse_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
@@ -999,6 +1017,10 @@ func _damage_state(
 		_log("%s's Mark is consumed — the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
 		_emit_event(state, "mark_consumed", amount, _resolve_side_for_state(state))
 
+	# Spike triggers on any damaging attempt that connects this round; read it
+	# before the hit possibly downs this unit and clears its statuses.
+	var spike_retaliation: int = int(state.get("spike", 0))
+
 	var remaining_damage: int = amount
 	var pierce_budget: int = shield_pierce
 
@@ -1032,6 +1054,14 @@ func _damage_state(
 	if total_absorbed > 0:
 		_log("%s absorbs %d damage with shields." % [state["unit"].display_name, total_absorbed])
 		_emit_event(state, "block", total_absorbed, _resolve_side_for_state(state))
+
+	# Spike: the attacker takes N for connecting with this unit this round —
+	# even when shields ate the whole hit. Retaliation damage carries no
+	# attacker, so two spiked units can't loop.
+	if spike_retaliation > 0 and not attacker_state.is_empty() and not bool(attacker_state.get("dead", false)):
+		_log("%s's Spike hits %s back for %d!" % [state["unit"].display_name, attacker_state["unit"].display_name, spike_retaliation])
+		_emit_event(attacker_state, "spike", spike_retaliation, _resolve_side_for_state(attacker_state))
+		_damage_state(attacker_state, spike_retaliation)
 
 	if remaining_damage <= 0:
 		return 0
@@ -1241,6 +1271,7 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["rampage_charges"] = 0
 	state["warded"] = false
 	state["marked"] = false
+	state["spike"] = 0
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -1456,6 +1487,14 @@ func _tick_state(state: Dictionary) -> void:
 			if int(state["burn_turns"]) <= 0:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
+
+	# Spike never persists past the round; enemy-phase grants skip one tick so
+	# they cover the next hero phase.
+	if int(state.get("spike", 0)) > 0:
+		if bool(state.get("spike_skip_next_tick", false)):
+			state["spike_skip_next_tick"] = false
+		else:
+			state["spike"] = 0
 
 	# Shields last one round: everything not flagged to survive this tick (or
 	# owned by a shields_persist state) expires now.

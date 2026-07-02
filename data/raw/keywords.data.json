@@ -51,6 +51,13 @@
       "syntax": "mark"
     },
     {
+      "id": "spike",
+      "term": "Spike",
+      "category": "defense",
+      "def": "This round, any enemy that damages this unit takes N back. Never persists past the round.",
+      "syntax": "spike N"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",

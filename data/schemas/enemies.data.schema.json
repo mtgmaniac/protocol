@@ -106,6 +106,7 @@
         "erbT": { "type": "integer", "minimum": 1 },
         "erbAll": { "type": "boolean" },
         "ward": { "type": "boolean" },
+        "spike": { "type": "integer", "minimum": 1 },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 1 },
