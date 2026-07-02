@@ -44,7 +44,7 @@ Builders translate raw JSON → resources: `_build_hero_dice_ranges`, `_build_ev
 `id, display_name, callsign, class_name_text, role, picker_category, picker_blurb, max_hp, source_key, portrait, dice_ranges: Array[Dictionary], passives, evolution_paths`. Helper `battle_name()` → callsign else display_name.
 
 ### `enemy_data.gd` — `class_name EnemyData`
-`id, display_name, callsign, faction, enemy_type, ai_type, max_hp, damage_preview_min/max, phase_two_damage_preview_min/max, phase_two_threshold, can_summon_elite, portrait, dice_ranges, traits`. Same `battle_name()` helper.
+`id, display_name, callsign, faction, enemy_type, ai_type, max_hp, damage_preview_min/max, can_summon_elite, accrete, starts_cloaked, portrait, dice_ranges, traits`. Same `battle_name()` helper. (Phase-2 fields deleted in pkg4 — bosses use standing rules in combat_manager.)
 
 ### `item_data.gd` (~13 lines) / `operation_data.gd` (~15 lines)
 Thin data holders. Low risk.

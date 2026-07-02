@@ -76,7 +76,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 - Protocol: `+2 protocol`
 - Status: `freeze (1 reveal skip)` · `freeze all (2 reveal skips)` · `cloak` · `self ward` · `ally ward` · `taunt` · `rampage +1`
 - Combo: `8 dmg + 4 burn 2t` · `6 dmg all + -2 roll all enemies`
-- Phase 2 bosses: `19 dmg (P2: 26)` · `wipe shields` · `summon 40%`
+- Boss extras: `wipe shields` · `summon 40%` (no phase-2 syntax — bosses run standing rules instead)
 
 ### Ability field glossary (data keys)
 `dmg` direct damage · `burn`+`burnT` damage-over-time amount + turns · `heal` (+`healTgt`/`healAll`/`healLowest`) · `shield` (+`shieldAll`/`shTgt`/`shieldLowest`; one round, no duration field) · `rfe`+`rfT` enemy roll reduction + turns (+`rfeAll`) · `rfm`+`rfmT` ally roll buff (+`rfmTgt`) · `ignSh` pierce shields · `blastAll` hit all enemies · `cloak` · `ward` (+`wardTgt`) · `taunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` N reveal skips (+ cosmetic `freeze_flavor`: ice/petrify).
@@ -117,7 +117,19 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 | `voidCirclet` | Null Synod / SYNOD | machine cult: rewrite, hijack, siphon, ±roll | ROOT HIEROPHANT (+Checksum Scribe) |
 | `stellarMenagerie` | The Accretion / ACCRETION | igneous beasts: accrete shields, petrify freezes, spike, cloak | MANTLE TYRANT (+Geode Panther) |
 
-Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; Magma Drake accrete 4; Geode Panther cloak + petrify freeze (`freeze_flavor: petrify`); Pyroclast Raptor lure. Enemies don't use Protocol (Siphon drains the heroes' pool). Phase-two fields (`dmgP2`/`shieldP2`/`pThr`) still exist in data — they get deleted and replaced by per-boss standing rules in pkg4.
+Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; Magma Drake accrete 4; Geode Panther cloak + petrify freeze (`freeze_flavor: petrify`); Pyroclast Raptor lure. Enemies don't use Protocol (Siphon drains the heroes' pool).
+
+**Boss standing rules (pkg4 — replaces the deleted phase-2 system):** one always-on rule per boss, active from turn 1, keyed by display name in `combat_manager.gd` `BOSS_STANDING_RULES` (single text source for the battle-start log line and the inspect popup):
+
+| Boss | Rule |
+|---|---|
+| SCRAPMASTER | ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP |
+| Hive Matriarch | THE BROOD — spawns a Bloodmite every 3 rounds |
+| CONCLAVE OVERSEER | THE COURT — while any ally lives, gains Ward at the start of each round |
+| ROOT HIEROPHANT | ROOT ACCESS — every round, Rewrites the squad's highest die to 3 |
+| MANTLE TYRANT | ACCRETION — +6 shield at every round start; its shields persist and stack |
+
+Round-start rules (Ward, mantle shield) fire before the hero phase; turn-cadence rules (rebuild, brood, root access) fire at the start of the enemy phase. Battle-10 escorts are pinned per operation: SCRAPMASTER +2 Scrap Drones · Matriarch +Spine Stalker · Overseer +Aegis Anchor · ROOT +Checksum Scribe · MANTLE +Geode Panther.
 
 ---
 
