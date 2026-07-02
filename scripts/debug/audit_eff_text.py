@@ -71,6 +71,9 @@ def hero_expected(raw: dict) -> str:
     if raw.get("detonate"):
         parts.append("detonate")
 
+    if raw.get("execute"):
+        parts.append("execute")
+
     rfe = raw.get("rfe") or 0
     if rfe > 0:
         t = turn_suffix(raw.get("rfT") or 0)

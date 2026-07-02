@@ -23,6 +23,13 @@
       "syntax": "detonate"
     },
     {
+      "id": "execute",
+      "term": "Execute",
+      "category": "offense",
+      "def": "If the target is below 25% max HP after the base damage, deal bonus damage.",
+      "syntax": "execute"
+    },
+    {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",

@@ -643,11 +643,30 @@ func _apply_hero_ability_damage(
 				_damage_state(target_enemy, final_dmg, ignores_shield, hero_state, shield_pierce)
 				if bool(raw.get("detonate", false)):
 					_detonate_burn(hero_state, target_enemy)
+				if bool(raw.get("execute", false)):
+					_apply_execute_bonus(hero_state, target_enemy)
 				if burn_amount > 0 and burn_turns > 0:
 					_apply_burn(target_enemy, burn_amount, burn_turns)
 			# Chain jumps continue even when the primary hit was ward-blocked —
 			# the ward only negates the ability for its own carrier.
 			_apply_chain_jumps(hero_state, ability_entry, target_enemy, final_dmg, ignores_shield, shield_pierce)
+
+
+# Execute: if the target sits below the execute threshold of its max HP AFTER
+# the base damage, deal bonus damage. Reaper directive raises the threshold via
+# the per-state execute_threshold_pct hook.
+func _apply_execute_bonus(attacker_state: Dictionary, target_state: Dictionary) -> void:
+	if target_state.is_empty() or bool(target_state.get("dead", false)):
+		return
+	var threshold_pct: int = int(attacker_state.get("execute_threshold_pct", 25))
+	var max_hp: int = maxi(int(target_state.get("max_hp", 1)), 1)
+	if int(target_state.get("current_hp", 0)) * 100 >= max_hp * threshold_pct:
+		return
+	# BALANCE-TODO: execute bonus damage is a flat +8
+	var bonus: int = 8
+	_log("%s EXECUTES %s for +%d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, bonus])
+	_emit_event(target_state, "execute", bonus, _resolve_side_for_state(target_state))
+	_damage_state(target_state, bonus, false, attacker_state)
 
 
 # Detonate: consume the target's Burn and deal burn_amount x burn_turns_remaining

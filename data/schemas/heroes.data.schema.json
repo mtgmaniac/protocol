@@ -103,6 +103,7 @@
         "shieldLowest": { "type": "boolean" },
         "chain": { "type": "integer", "minimum": 1 },
         "detonate": { "type": "boolean" },
+        "execute": { "type": "boolean" },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },

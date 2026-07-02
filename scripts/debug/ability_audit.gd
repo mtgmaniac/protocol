@@ -56,6 +56,7 @@ const HERO_HANDLED_FIELDS := [
 	"wardTgt",
 	"chain",
 	"detonate",
+	"execute",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
 	"freezeAnyDice",
@@ -427,6 +428,7 @@ func _run_regression_audits() -> void:
 	_run_shield_lowest_regression()
 	_run_chain_regression()
 	_run_detonate_regression()
+	_run_execute_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
@@ -787,6 +789,37 @@ func _run_detonate_regression() -> void:
 		_record_pass("Regression / detonate fizzles without burn", "detonate")
 	else:
 		_record_failure("Regression / detonate fizzles without burn", "detonate", "only base 5 damage", "hp_delta=%d" % (f_before - int(f_enemy["current_hp"])))
+
+
+func _run_execute_regression() -> void:
+	# Execute: +8 bonus only when the target is below 25% max HP after base damage.
+	var manager: CombatManager = CombatManager.new()
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Terminal Velocity", {"dmg": 10, "execute": true})
+	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
+	manager.setup_battle([hero_unit], [enemy_unit])
+	var hero: Dictionary = manager.get_hero_states()[0]
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	hero["selected_target_id"] = str(enemy["id"])
+	enemy["max_hp"] = 100
+	enemy["current_hp"] = 30  # 30 - 10 = 20 < 25% of 100 -> execute fires
+	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if int(enemy["current_hp"]) == 12:
+		_record_pass("Regression / execute bonus below threshold", "execute")
+	else:
+		_record_failure("Regression / execute bonus below threshold", "execute", "30 - 10 base - 8 bonus = 12", "hp=%d" % int(enemy["current_hp"]))
+
+	var high_manager: CombatManager = CombatManager.new()
+	high_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Terminal Velocity", {"dmg": 10, "execute": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var h_hero: Dictionary = high_manager.get_hero_states()[0]
+	var h_enemy: Dictionary = high_manager.get_enemy_states()[0]
+	h_hero["selected_target_id"] = str(h_enemy["id"])
+	h_enemy["max_hp"] = 100
+	h_enemy["current_hp"] = 80  # 80 - 10 = 70, above 25% -> no bonus
+	high_manager.resolve_round({str(h_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if int(h_enemy["current_hp"]) == 70:
+		_record_pass("Regression / execute inert above threshold", "execute")
+	else:
+		_record_failure("Regression / execute inert above threshold", "execute", "80 - 10 = 70, no bonus", "hp=%d" % int(h_enemy["current_hp"]))
 
 
 func _run_shield_lowest_regression() -> void:
