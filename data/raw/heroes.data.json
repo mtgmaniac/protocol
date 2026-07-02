@@ -224,7 +224,7 @@
       "name": "Pulse Tech",
       "cls": "ENERGY WIELDER",
       "pickerCategory": "damage",
-      "pickerBlurb": "Flat damage that builds into burn on high rolls. Low HP, high damage ceiling.",
+      "pickerBlurb": "Plants burn on every hit, then detonates it for burst damage.",
       "hp": 45,
       "sk": "pulse",
       "abilities": [
@@ -503,7 +503,7 @@
       "name": "Strike Unit",
       "cls": "STRIKE OPS",
       "pickerCategory": "damage",
-      "pickerBlurb": "Pure DPS. Damage on every roll, the highest sustained output in the squad. No utility.",
+      "pickerBlurb": "Marks targets low, deletes them high. Pure single-target damage.",
       "hp": 55,
       "sk": "combat",
       "abilities": [
@@ -786,7 +786,7 @@
       "name": "Spike Guard",
       "cls": "ANTAGONIST PLATE",
       "pickerCategory": "defense",
-      "pickerBlurb": "Taunts fire onto itself, shields allies, and strips enemy shields. Tanks and pressures at once.",
+      "pickerBlurb": "Taunts hits onto itself, spikes attackers, and breaks enemy shields.",
       "hp": 55,
       "sk": "shield",
       "abilities": [
@@ -1081,7 +1081,7 @@
       "name": "Avalanche Suit",
       "cls": "SQUAD SHELL",
       "pickerCategory": "defense",
-      "pickerBlurb": "Freezes enemy dice to skip incoming hits and heals the whole squad. Control plus sustain.",
+      "pickerBlurb": "Freezes enemy dice to cancel their hits. Heals the squad high.",
       "hp": 55,
       "sk": "avalanche",
       "abilities": [
@@ -1376,7 +1376,7 @@
       "name": "Splice Medic",
       "cls": "COMBAT AUGMENTOR",
       "pickerCategory": "support",
-      "pickerBlurb": "Single-target and party heals, burn cleanse, and revives.",
+      "pickerBlurb": "Heals allies low, drains enemies mid, hits shockingly hard on 20.",
       "hp": 50,
       "sk": "medic",
       "abilities": [
@@ -1665,7 +1665,7 @@
       "name": "Field Engineer",
       "cls": "SUPPORT TECH",
       "pickerCategory": "support",
-      "pickerBlurb": "A Protocol battery that shields and heals low, then turns to AoE damage on high rolls.",
+      "pickerBlurb": "Generates Protocol and shields low, then turns to squad-wide damage.",
       "hp": 50,
       "sk": "engineer",
       "abilities": [
@@ -1955,7 +1955,7 @@
       "name": "Ghost Operative",
       "cls": "INFILTRATOR",
       "pickerCategory": "control",
-      "pickerBlurb": "A single-target assassin: cloaks past big hits, weakens one enemy, then bursts it down.",
+      "pickerBlurb": "Cloaks past big hits and strikes from stealth with pierce.",
       "hp": 45,
       "sk": "ghost",
       "abilities": [
@@ -2239,7 +2239,7 @@
       "name": "Signal Breaker",
       "cls": "COMMS INTERDICTOR",
       "pickerCategory": "control",
-      "pickerBlurb": "Spreads debuffs across the whole enemy tray, softening every incoming hit at once.",
+      "pickerBlurb": "Drags every enemy roll down and jams their strongest dice.",
       "hp": 45,
       "sk": "breaker",
       "abilities": [
