@@ -40,6 +40,7 @@ func setup_battle(hero_units: Array, enemy_units: Array) -> void:
 		if str(enemy_state["unit"].display_name) == BOSS_MANTLE:
 			enemy_state["shields_persist"] = true
 	_battle_modifier = ""
+	_decoy_round_one = false
 
 
 # --- Route Fork battle modifiers (pkg7.3) ---
@@ -50,6 +51,7 @@ var _battle_modifier: String = ""
 
 func setup_battle_modifier(modifier_id: String, warded_names: Array = []) -> void:
 	_battle_modifier = modifier_id
+	_decoy_round_one = false
 	match modifier_id:
 		"hardened":
 			for enemy_state in _enemy_states:
@@ -67,6 +69,14 @@ func setup_battle_modifier(modifier_id: String, warded_names: Array = []) -> voi
 
 func has_battle_modifier(modifier_id: String) -> bool:
 	return _battle_modifier == modifier_id
+
+
+# Decoy Beacon intercept (pkg7.4): enemies waste turn 1 on a decoy.
+var _decoy_round_one: bool = false
+
+
+func set_decoy_round_one() -> void:
+	_decoy_round_one = true
 
 
 # --- Boss standing rules (pkg4) ---
@@ -499,7 +509,8 @@ func resolve_round(
 		_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")), str(ability_entry.get("zone", "")))
 		_apply_hero_ability(hero_state, ability_entry)
 		var raw_roll: int = int(raw_hero_rolls.get(hero_state["id"], roll_value))
-		if has_relic("critResolveTwice") and raw_roll == 20:
+		# Overload Loop relic / Overload Rites intercept: nat 20s resolve twice.
+		if raw_roll == 20 and (has_relic("critResolveTwice") or bool(hero_state.get("nat20_twice", false))):
 			_log("Natural 20 echoes for %s!" % hero_state["unit"].display_name)
 			_apply_hero_ability(hero_state, ability_entry)
 
@@ -530,6 +541,10 @@ func resolve_round(
 	ordered_enemy_states.reverse()
 	for enemy_state in ordered_enemy_states:
 		if enemy_state["dead"]:
+			continue
+		# Decoy Beacon: the whole enemy line wastes turn 1 on the decoy.
+		if _decoy_round_one and _battle_round == 1:
+			_log("%s wastes its turn on the decoy." % enemy_state["unit"].display_name)
 			continue
 		if bool(enemy_state.get("die_freeze_consumed_this_round", false)):
 			_log("%s's die is frozen — reveal skipped." % enemy_state["unit"].display_name)

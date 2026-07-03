@@ -194,6 +194,7 @@ func _ready() -> void:
 		combat_manager.setup_battle_modifier(route_modifier, comp_warded)
 		var modifier_info: Dictionary = _game_state().BATTLE_MODIFIERS.get(route_modifier, {})
 		_append_log("ROUTE FLAGGED — %s: %s" % [str(modifier_info.get("name", route_modifier)), str(modifier_info.get("desc", ""))])
+	_apply_intercept_battle_effects()
 	# Protocol Tap gear: sum gear_protocol_on_start from hero states
 	for _hs in combat_manager.get_hero_states():
 		protocol_points += int(_hs.get("gear_protocol_on_start", 0))
@@ -886,8 +887,12 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 			return
 		# Gain +1 PP at end of each resolved round (ongoing only).
 		# Blackout route modifier: income starts on turn 3.
+		# Deep Cache income debt swallows income until repaid.
 		if combat_manager.has_battle_modifier("blackout") and _round_number < 3:
 			_append_log("BLACKOUT — no Protocol income yet.")
+		elif _income_debt > 0:
+			_income_debt -= 1
+			_append_log("Income owed — %d turns of debt remain." % _income_debt)
 		else:
 			_gain_protocol(1)
 			_append_log("Protocol +1 → %d" % protocol_points)
@@ -931,6 +936,12 @@ func _persist_protocol_carryover() -> void:
 
 func _capture_battle_victory_for_xp() -> void:
 	_game_state().capture_battle_end_survival(combat_manager.get_hero_states())
+	# Memorial Protocol (pkg7.4) tracks who fell in the last two battles.
+	var dead_ids: Array = []
+	for hero_state_variant in combat_manager.get_hero_states():
+		if bool((hero_state_variant as Dictionary).get("dead", false)):
+			dead_ids.append(str((hero_state_variant as Dictionary).get("id", "")))
+	_game_state().record_battle_hero_deaths(dead_ids)
 
 
 func _finish_battle_victory() -> void:
@@ -1161,6 +1172,83 @@ func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
 		if item != null and item.effect != null and str(item.effect.get("type", "")) == effect_type:
 			return true
 	return false
+
+
+# Intercept battle effects (pkg7.4): one-shot flags consumed at battle start.
+var _battle_effects: Dictionary = {}
+var _income_debt: int = 0
+
+
+func _apply_intercept_battle_effects() -> void:
+	var gs: Variant = _game_state()
+	_battle_effects = (gs.next_battle_effects as Dictionary).duplicate(true)
+	gs.next_battle_effects.clear()
+	# Prisoner Exchange's follow-up arms AFTER this battle's own modifier ran.
+	gs.promote_followup_effects()
+
+	if bool(_battle_effects.get("decoy", false)):
+		combat_manager.set_decoy_round_one()
+		_append_log("DECOY BEACON — enemies will waste turn 1.")
+	_income_debt = int(_battle_effects.get("income_debt", 0))
+	if _income_debt > 0:
+		_append_log("DEEP CACHE — %d turns of Protocol income are owed." % _income_debt)
+	if bool(_battle_effects.get("items_free", false)):
+		_append_log("SUPPLY DRONE — items cost 0 this battle.")
+
+	var hp_pct: int = int(_battle_effects.get("enemy_hp_pct", 100))
+	if hp_pct < 100:
+		for enemy_state_variant in combat_manager.get_enemy_states():
+			var enemy_state: Dictionary = enemy_state_variant
+			enemy_state["current_hp"] = maxi(int(enemy_state["max_hp"]) * hp_pct / 100, 1)
+		_append_log("UNSTABLE REACTOR — enemies spawn at %d%% HP." % hp_pct)
+
+	if bool(_battle_effects.get("marked_highest", false)):
+		var target: Dictionary = {}
+		for enemy_state_variant in combat_manager.get_enemy_states():
+			var candidate: Dictionary = enemy_state_variant
+			if target.is_empty() or int(candidate["max_hp"]) > int(target["max_hp"]):
+				target = candidate
+		if not target.is_empty():
+			target["current_hp"] = maxi(int(target["max_hp"]) * 90 / 100, 1)
+			combat_manager.apply_item_mark(target)
+			_append_log("FIRING SOLUTION — %s starts Marked at 90%% HP." % target["unit"].display_name)
+
+	# Rogue Engineer + intercept protocol grants.
+	var start_protocol: int = int(_battle_effects.get("protocol", 0)) + gs.run_protocol_per_battle
+	if start_protocol > 0:
+		_gain_protocol(start_protocol)
+		_append_log("Battle-start Protocol +%d → %d" % [start_protocol, protocol_points])
+
+	# Per-run hero mods from intercept outcomes.
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		var mods: Dictionary = gs.hero_run_mods.get(_squad_id_for_state(hero_state), {})
+		if mods.is_empty():
+			continue
+		var roll_bonus: int = int(mods.get("roll_bonus", 0))
+		if roll_bonus != 0:
+			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + roll_bonus
+		var hp_delta: int = int(mods.get("max_hp_delta", 0))
+		if hp_delta != 0:
+			hero_state["max_hp"] = maxi(int(hero_state["max_hp"]) + hp_delta, 1)
+			hero_state["current_hp"] = clampi(int(hero_state["current_hp"]) + hp_delta, 1, int(hero_state["max_hp"]))
+		var start_damage: int = int(mods.get("start_hp_damage", 0))
+		if start_damage > 0:
+			hero_state["current_hp"] = maxi(int(hero_state["current_hp"]) - start_damage, 1)
+			mods["start_hp_damage"] = 0
+		if bool(mods.get("start_cloaked", false)):
+			hero_state["cloaked"] = true
+		if bool(mods.get("start_warded", false)):
+			hero_state["warded"] = true
+		if bool(mods.get("nat20_twice", false)):
+			hero_state["nat20_twice"] = true
+
+
+func _squad_id_for_state(hero_state: Dictionary) -> String:
+	var unit: Variant = hero_state.get("unit")
+	if unit is UnitData:
+		return str((unit as UnitData).id)
+	return str(hero_state.get("id", ""))
 
 
 # Priming Charge gear: the first Nudge each battle is free (per holder).
@@ -1788,8 +1876,12 @@ func _ensure_protocol_stack_layout() -> void:
 
 
 # Deep Cells directive: the Protocol cap rises while a living carrier stands.
+# Rogue Engineer intercept: the cap override replaces the base cap.
 func _max_protocol() -> int:
 	var cap: int = MAX_PROTOCOL
+	# Bare instances (headless audits) run outside the tree — no autoloads.
+	if is_inside_tree() and int(_game_state().run_protocol_cap_override) > 0:
+		cap = int(_game_state().run_protocol_cap_override)
 	if combat_manager == null:
 		return cap
 	for hero_state_variant in combat_manager.get_hero_states():
@@ -1986,6 +2078,10 @@ func _build_runtime_units() -> void:
 	if enemy_names.is_empty():
 		enemy_names = battle_entry.get("enemy_names", [])
 		cloaked_names = battle_entry.get("cloaked_names", [])
+	# Prisoner Exchange intercept: this battle fields one fewer enemy.
+	if bool(_game_state().next_battle_effects.get("minus_one_enemy", false)) and enemy_names.size() > 1:
+		enemy_names = enemy_names.duplicate()
+		enemy_names.remove_at(enemy_names.size() - 1)
 	for enemy_name in enemy_names:
 		if enemy_units.size() >= GameState.SQUAD_UNIT_LIMIT:
 			break
@@ -2824,6 +2920,9 @@ func _get_item_protocol_cost(_item: ItemData) -> int:
 	# Protocol Override (protocolOnItemUse) makes items free; it also grants +1 on
 	# use — see _apply_item_effect for the grant.
 	if combat_manager.has_relic("protocolOnItemUse"):
+		return 0
+	# Supply Drone intercept: items cost 0 this battle.
+	if bool(_battle_effects.get("items_free", false)):
 		return 0
 	# Sealed Supplies route modifier: items cost +1 this battle.
 	if combat_manager.has_battle_modifier("sealedSupplies"):

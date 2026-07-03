@@ -46,6 +46,10 @@ func get_adjusted_ranges(unit_data: Resource) -> Array:
 				surge_extend = maxi(surge_extend, int(item.effect.get("amount", 2)))
 	if GameState.has_relic_effect("critBandExtend"):
 		crit_extend = 1
+	# The Splice Deal intercept (pkg7.4): overload 19-20 + recharge widens 2.
+	var splice: bool = bool((GameState.hero_run_mods.get(str(unit_data.id), {}) as Dictionary).get("splice_bands", false))
+	if splice:
+		compress_overload = true
 	if not compress_overload and surge_extend == 0 and crit_extend == 0:
 		return base_ranges
 
@@ -54,6 +58,10 @@ func get_adjusted_ranges(unit_data: Resource) -> Array:
 		adjusted.append(range_entry.duplicate())
 	for i in adjusted.size():
 		var zone: String = str(adjusted[i].get("zone", ""))
+		if splice and zone == "recharge":
+			adjusted[i]["max"] = int(adjusted[i]["max"]) + 2
+			if i + 1 < adjusted.size():
+				adjusted[i + 1]["min"] = maxi(int(adjusted[i + 1]["min"]), int(adjusted[i]["max"]) + 1)
 		if compress_overload and zone == "overload":
 			adjusted[i]["min"] = mini(int(adjusted[i]["min"]), 19)
 			if i > 0:

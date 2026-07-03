@@ -8,6 +8,7 @@ const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
+const INTERCEPT_SCENE := "res://scenes/ui/InterceptScreen.tscn"
 
 
 func go_to(scene_path: String) -> void:
@@ -25,8 +26,8 @@ func go_to_next_battle_or_beat() -> void:
 				go_to(ROUTE_FORK_SCENE)
 				return
 			"intercept":
-				# Intercept screen lands in pkg7.4 — pass through until then.
-				pass
+				go_to(INTERCEPT_SCENE)
+				return
 	GameState.advance_to_next_battle()
 	go_to_battle()
 

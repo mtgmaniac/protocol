@@ -452,6 +452,7 @@ func _run_regression_audits() -> void:
 	_run_battle_slot_regressions()
 	_run_beat_regressions()
 	_run_route_modifier_regressions()
+	_run_intercept_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -2082,6 +2083,84 @@ func _run_route_modifier_regressions() -> void:
 		var sealed_cost: int = int(sealed_scene.call("_get_item_protocol_cost", null))
 		sealed_scene.free()
 		_expect_and_record("Regression / modifier sealed supplies", "routeModifiers", "2", str(sealed_cost))
+
+
+func _run_intercept_regressions() -> void:
+	GameState.start_run(["pulse", "combat", "ghost"], "facility")
+
+	# Decks: 11 cards per tier, drawn without replacement; Memorial Protocol
+	# redraws away while nobody died recently.
+	var deck_ok: bool = GameState.intercept_minor_deck.size() == 11 and GameState.intercept_major_deck.size() == 11
+	var drawn: Array = []
+	for _i in 11:
+		var card_id: String = GameState.draw_intercept_card("major")
+		if card_id != "":
+			drawn.append(card_id)
+	var memorial_held: bool = not drawn.has("memorialProtocol") and drawn.size() == 10
+	GameState.record_battle_hero_deaths(["pulse"])
+	var memorial_after_death: bool = GameState.draw_intercept_card("major") == "memorialProtocol"
+	_expect_and_record("Regression / intercept deck rules", "interceptDeck", "true", str(deck_ok and memorial_held and memorial_after_death))
+
+	# Effects: hero mods, next-battle flags, run-wide protocol, follow-up arm.
+	GameState.apply_intercept_effects([{"type": "heroRollBonus", "amount": 1}, {"type": "heroMaxHp", "amount": -8}], "pulse")
+	var pulse_mods: Dictionary = GameState.hero_run_mods.get("pulse", {})
+	var mods_ok: bool = int(pulse_mods.get("roll_bonus", 0)) == 1 and int(pulse_mods.get("max_hp_delta", 0)) == -8
+	GameState.apply_intercept_effects([{"type": "protocolNextBattle", "amount": 2}, {"type": "nextBattleFlag", "flag": "decoy"}, {"type": "incomeDebt", "amount": 5}])
+	var flags_ok: bool = (
+		int(GameState.next_battle_effects.get("protocol", 0)) == 2
+		and bool(GameState.next_battle_effects.get("decoy", false))
+		and int(GameState.next_battle_effects.get("income_debt", 0)) == 5
+	)
+	GameState.apply_intercept_effects([{"type": "runProtocolPerBattle", "amount": 1, "cap": 8}])
+	var engineer_ok: bool = GameState.run_protocol_per_battle == 1 and GameState.run_protocol_cap_override == 8
+	GameState.apply_intercept_effects([{"type": "followupModifier", "id": "elitePresence"}])
+	GameState.promote_followup_effects()
+	var followup_ok: bool = GameState.next_battle_modifier == "elitePresence" and GameState.followup_battle_effects.is_empty()
+	_expect_and_record("Regression / intercept effects", "interceptEffects", "true", str(mods_ok and flags_ok and engineer_ok and followup_ok))
+
+	# The Foundry: sacrificed gear returns one rarity higher.
+	GameState.gear_by_unit["pulse"] = ["bounty_chip"]
+	var bounty: ItemData = DataManager.get_item("bounty_chip") as ItemData
+	var foundry_info: String = GameState.apply_intercept_effects([{"type": "foundryUpgrade"}], "pulse", {"hero_id": "pulse", "gear_id": "bounty_chip"})
+	var new_gear: Array = GameState.gear_by_unit.get("pulse", [])
+	var foundry_ok: bool = false
+	if new_gear.size() == 1 and bounty != null:
+		var forged: ItemData = DataManager.get_item(str(new_gear[0])) as ItemData
+		var old_tier: int = GameState.RARITY_LADDER.find(bounty.rarity)
+		foundry_ok = forged != null and GameState.RARITY_LADDER.find(forged.rarity) == mini(old_tier + 1, 3) and foundry_info != ""
+	_expect_and_record("Regression / intercept foundry upgrade", "interceptEffects", "true", str(foundry_ok))
+
+	# Splice Deal bands: overload 19-20, recharge widened by 2.
+	GameState.hero_run_mods["pulse"] = {"splice_bands": true}
+	var splice_dm: DiceManager = DiceManager.new()
+	var pulse_unit: UnitData = DataManager.get_unit("pulse") as UnitData
+	var splice_ok: bool = (
+		str(splice_dm.get_ability_for_roll(pulse_unit, 19).get("zone", "")) == "overload"
+		and str(splice_dm.get_ability_for_roll(pulse_unit, 5).get("zone", "")) == "recharge"
+	)
+	_expect_and_record("Regression / intercept splice bands", "interceptEffects", "true", str(splice_ok))
+	GameState.reset_run()
+
+	# Decoy: enemies waste turn 1, act normally on turn 2.
+	var decoy_manager: CombatManager = CombatManager.new()
+	decoy_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "Claw", {"dmg": 5})])
+	decoy_manager.set_decoy_round_one()
+	var decoy_hero: Dictionary = decoy_manager.get_hero_states()[0]
+	var decoy_enemy: Dictionary = decoy_manager.get_enemy_states()[0]
+	decoy_manager.resolve_round({}, {str(decoy_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	var round_one_hp: int = int(decoy_hero["current_hp"])
+	decoy_manager.resolve_round({}, {str(decoy_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	_expect_and_record("Regression / intercept decoy", "interceptEffects", "100/95", "%d/%d" % [round_one_hp, int(decoy_hero["current_hp"])])
+
+	# Overload Rites: this hero's natural 20s resolve twice.
+	var rites_manager: CombatManager = CombatManager.new()
+	rites_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var rites_hero: Dictionary = rites_manager.get_hero_states()[0]
+	var rites_enemy: Dictionary = rites_manager.get_enemy_states()[0]
+	rites_hero["nat20_twice"] = true
+	rites_hero["selected_target_id"] = str(rites_enemy["id"])
+	rites_manager.resolve_round({str(rites_hero["id"]): 20}, {}, DiceManager.new(), {}, {str(rites_hero["id"]): 20})
+	_expect_and_record("Regression / intercept overload rites", "interceptEffects", "80", str(int(rites_enemy["current_hp"])))
 
 
 func _run_evolution_kit_regression() -> void:

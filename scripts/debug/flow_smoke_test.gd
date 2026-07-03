@@ -9,6 +9,7 @@ const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
 const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
+const INTERCEPT_SCENE := "res://scenes/ui/InterceptScreen.tscn"
 const DEFAULT_SQUAD := ["pulse", "combat", "shield"]
 const STEP_TIMEOUT_SECS := 120.0
 
@@ -32,6 +33,7 @@ func _run_flow() -> void:
 	await _step_evolution_back_to_home()
 	await _step_directive_choice()
 	await _step_route_fork()
+	await _step_intercept()
 	await _step_main_menu_to_home()
 	await _step_run_end_new_run_button()
 
@@ -184,6 +186,48 @@ func _step_route_fork() -> void:
 		return
 	if int(gs.get("current_battle")) != 3:
 		_errors.append("Fork did not advance to battle 3")
+		return
+	await _wait_frames(2)
+
+
+# Intercept beat (pkg7.4): a forced intercept after battle 2 draws a card;
+# taking the second (skip/alternative) choice resolves and deploys to battle.
+func _step_intercept() -> void:
+	_step += 1
+	print("[FLOW_SMOKE] Step %d: forced intercept beat -> resolve -> battle" % _step)
+	var gs := _game_state()
+	var op_id: String = str(_data_manager().call("get_operation_order")[0])
+	gs.call("start_run", DEFAULT_SQUAD, op_id)
+	gs.set("current_battle", 2)
+	gs.get("run_beats").clear()
+	gs.get("run_beats")[2] = {"type": "intercept", "tier": "minor"}
+	gs.get("consumed_beats").clear()
+	var deck_before: int = (gs.get("intercept_minor_deck") as Array).size()
+	_scene_manager().call("go_to_next_battle_or_beat")
+	await _wait_for_scene(INTERCEPT_SCENE)
+	var intercept := _current()
+	if intercept == null or not intercept.has_method("_on_choice_pressed"):
+		_errors.append("Intercept screen failed to load")
+		return
+	if (gs.get("intercept_minor_deck") as Array).size() != deck_before - 1:
+		_errors.append("Intercept card was not drawn without replacement")
+		return
+	# Resolve via the card's second (skip/alternative) choice, then continue.
+	var card: Dictionary = (gs.get("INTERCEPT_CARDS") as Dictionary).get(intercept.get("_card_id"), {})
+	var choices: Array = card.get("choices", [])
+	if choices.size() < 2:
+		_errors.append("Intercept card has no skip choice")
+		return
+	var skip_choice: Dictionary = choices[1]
+	if str(skip_choice.get("pick", "")) != "" or not (skip_choice.get("draft", {}) as Dictionary).is_empty():
+		skip_choice = choices[0] if str((choices[0] as Dictionary).get("pick", "")) == "" else {"label": "skip", "effects": []}
+	intercept.call("_on_choice_pressed", skip_choice)
+	await _wait_frames(2)
+	if intercept.has_method("_continue_to_battle"):
+		intercept.call("_continue_to_battle")
+	await _wait_for_scene(BATTLE_SCENE)
+	if int(gs.get("current_battle")) != 3:
+		_errors.append("Intercept did not advance to battle 3")
 		return
 	await _wait_frames(2)
 

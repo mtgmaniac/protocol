@@ -45,6 +45,25 @@ var consumed_beats: Array = []
 var next_battle_modifier: String = ""
 var next_battle_supply_grade: int = 0
 var used_battle_modifiers: Array = []
+## Intercept decks (pkg7.4): shuffled at run start, drawn without replacement.
+var intercept_minor_deck: Array = []
+var intercept_major_deck: Array = []
+## Per-run hero mods from intercept outcomes:
+## unit_id -> {roll_bonus, max_hp_delta, start_cloaked, start_warded,
+##             nat20_twice, splice_bands}.
+var hero_run_mods: Dictionary = {}
+## One-shot effects armed for the NEXT battle (consumed by battle_scene):
+## protocol, enemy_hp_pct, items_free, decoy, marked_highest, income_debt,
+## minus_one_enemy.
+var next_battle_effects: Dictionary = {}
+## Effects armed for the battle AFTER next (Prisoner Exchange).
+var followup_battle_effects: Dictionary = {}
+## Rogue Engineer: +N Protocol at every remaining battle start; cap override.
+var run_protocol_per_battle: int = 0
+var run_protocol_cap_override: int = 0
+## Hero unit ids that died during the last two battles (Memorial Protocol).
+var deaths_last_battle: Array = []
+var deaths_prev_battle: Array = []
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
@@ -96,6 +115,8 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	next_battle_modifier = ""
 	next_battle_supply_grade = 0
 	used_battle_modifiers.clear()
+	_reset_intercept_state()
+	_shuffle_intercept_decks()
 	relics.clear()
 	consumables.clear()
 	gear_by_unit.clear()
@@ -278,6 +299,11 @@ func accept_flagged_route(modifier_id: String) -> void:
 	used_battle_modifiers.append(modifier_id)
 	next_battle_modifier = modifier_id
 	next_battle_supply_grade = 2
+	_apply_comp_shaping_modifier(modifier_id)
+
+
+# Comp-shaping half of a modifier, applied to the NEXT battle's resolved comp.
+func _apply_comp_shaping_modifier(modifier_id: String) -> void:
 	if current_battle < 0 or current_battle >= resolved_battle_comps.size():
 		return
 	var comp: Dictionary = resolved_battle_comps[current_battle]
@@ -298,12 +324,361 @@ func accept_flagged_route(modifier_id: String) -> void:
 	comp["names"] = names
 
 
+# Prisoner Exchange: the effect armed for the battle AFTER next promotes when
+# a battle starts (route-modifier consumption runs first in battle_scene).
+func promote_followup_effects() -> void:
+	var modifier_id: String = str(followup_battle_effects.get("modifier", ""))
+	followup_battle_effects.clear()
+	if modifier_id == "":
+		return
+	next_battle_modifier = modifier_id
+	_apply_comp_shaping_modifier(modifier_id)
+
+
 # The exact comp for the current battle (1-based current_battle).
 func get_current_battle_comp() -> Dictionary:
 	var index: int = current_battle - 1
 	if index < 0 or index >= resolved_battle_comps.size():
 		return {}
 	return resolved_battle_comps[index]
+
+
+# --- Intercept events (pkg7.4) ---
+# One event card per intercept beat; choices are fully deterministic, the
+# skip/alternative is always listed, and cards draw without replacement.
+# `pick`: "hero" = choose a squad hero, "gear" = choose an equipped gear,
+# "consumable" = spend the highest-rarity consumable (choice hidden without
+# one). `draft`: a follow-up pick from rolled items. BALANCE-TODO: numbers.
+const INTERCEPT_CARDS := {
+	# ── Minor deck (beats after b2–b4) ──
+	"overclockChamber": {"tier": "minor", "name": "OVERCLOCK CHAMBER", "desc": "A resonance rig hums, ready to push a frame past spec.", "choices": [
+		{"label": "Overclock a hero: +1 to all rolls this op, -8 max HP.", "pick": "hero", "effects": [{"type": "heroRollBonus", "amount": 1}, {"type": "heroMaxHp", "amount": -8}]},
+		{"label": "Decline.", "effects": []},
+	]},
+	"abandonedArmory": {"tier": "minor", "name": "ABANDONED ARMORY", "desc": "Sealed crates, still warm. Someone left in a hurry.", "choices": [
+		{"label": "Crack the crates: draft 1 of 3 uncommon+ consumables.", "draft": {"kind": "consumable", "min_rarity": "uncommon", "count": 3}, "effects": []},
+		{"label": "Strip the wiring: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
+	]},
+	"trainingSim": {"tier": "minor", "name": "TRAINING SIM", "desc": "A live combat sim, still powered.", "choices": [
+		{"label": "Focused drills: one hero gains +40 XP.", "pick": "hero", "effects": [{"type": "heroXp", "amount": 40}]},
+		{"label": "Squad drills: all heroes gain +15 XP.", "effects": [{"type": "squadXp", "amount": 15}]},
+	]},
+	"salvageCache": {"tier": "minor", "name": "SALVAGE CACHE", "desc": "A rigged cache. The good stuff is under the alarm.", "choices": [
+		{"label": "Spring it: rare gear draft now — next battle is HARDENED.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
+		{"label": "Take the loose crate: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
+	]},
+	"signalDecrypt": {"tier": "minor", "name": "SIGNAL DECRYPT", "desc": "An enemy carrier wave, weakly encrypted.", "choices": [
+		{"label": "Decrypt: reveal the boss kit, +2 Protocol next battle.", "effects": [{"type": "revealBoss"}, {"type": "protocolNextBattle", "amount": 2}]},
+		{"label": "Sell the intercept: 1 uncommon consumable.", "effects": [{"type": "consumable", "rarity": "uncommon", "count": 1}]},
+	]},
+	"decoyBeacon": {"tier": "minor", "name": "DECOY BEACON", "desc": "A beacon rig that can wear a consumable's signature.", "choices": [
+		{"label": "Spend your highest-rarity consumable: enemies waste turn 1 on a decoy.", "pick": "consumable", "effects": [{"type": "nextBattleFlag", "flag": "decoy"}]},
+		{"label": "Keep it.", "effects": []},
+	]},
+	"driftingWreck": {"tier": "minor", "name": "DRIFTING WRECK", "desc": "A dead hull. Its dead crew is still aboard.", "choices": [
+		{"label": "Board it: uncommon gear draft — next battle has DEAD MAN'S CHARGE.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
+		{"label": "Siphon the tanks: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
+	]},
+	"loadoutSwap": {"tier": "minor", "name": "LOADOUT SWAP", "desc": "A calibrated workbench. Time enough to re-rig.", "choices": [
+		{"label": "Re-rig: rotate all gear loadouts one hero over, +1 uncommon consumable.", "effects": [{"type": "rotateGear"}, {"type": "consumable", "rarity": "uncommon", "count": 1}]},
+		{"label": "Skip.", "effects": []},
+	]},
+	"cryoPod": {"tier": "minor", "name": "CRYO POD", "desc": "A working pod. The treatment is slow.", "choices": [
+		{"label": "Treat a hero: +10 max HP this op — next battle is BLACKOUT.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": 10}, {"type": "armModifier", "id": "blackout"}]},
+		{"label": "Strip the coolant: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
+	]},
+	"supplyDrone": {"tier": "minor", "name": "SUPPLY DRONE", "desc": "A lost logistics drone pings for orders.", "choices": [
+		{"label": "Redirect it: items cost 0 next battle.", "effects": [{"type": "nextBattleFlag", "flag": "items_free"}]},
+		{"label": "Scrap it: 2 common consumables.", "effects": [{"type": "consumable", "rarity": "common", "count": 2}]},
+	]},
+	"firingSolution": {"tier": "minor", "name": "FIRING SOLUTION", "desc": "Orbital assets have a brief window.", "choices": [
+		{"label": "Take the shot: the highest-HP enemy next battle starts Marked at 90% HP.", "effects": [{"type": "nextBattleFlag", "flag": "marked_highest"}]},
+		{"label": "Sell the window: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
+	]},
+	# ── Major deck (beats after b6–b8) ──
+	"spliceDeal": {"tier": "major", "name": "THE SPLICE DEAL", "desc": "A back-alley splicer offers to rewire a hero's luck.", "choices": [
+		{"label": "Deal: a hero's overload band becomes 19-20; recharge band widens by 2.", "pick": "hero", "effects": [{"type": "spliceBands"}]},
+		{"label": "Refuse.", "effects": []},
+	]},
+	"blackMarketNode": {"tier": "major", "name": "BLACK MARKET NODE", "desc": "A fence with taste. Payment in hardware only.", "choices": [
+		{"label": "Trade: destroy one equipped gear, draft 1 of 3 rare+ gear.", "pick": "gear", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "destroyPickedGear"}]},
+		{"label": "Leave.", "effects": []},
+	]},
+	"unstableReactor": {"tier": "major", "name": "UNSTABLE REACTOR", "desc": "A cracked core, bleeding radiation into the next sector.", "choices": [
+		{"label": "Vent it forward: next battle enemies spawn at 70% HP — a random hero takes 10 now.", "effects": [{"type": "nextBattleEnemyHpPct", "pct": 70}, {"type": "randomHeroDamage", "amount": 10}]},
+		{"label": "Seal it: +3 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 3}]},
+	]},
+	"rogueEngineer": {"tier": "major", "name": "ROGUE ENGINEER", "desc": "She'll ride along and hot-feed your Protocol lines. Her way.", "choices": [
+		{"label": "Take her on: +1 Protocol at every remaining battle start; Protocol cap becomes 8.", "effects": [{"type": "runProtocolPerBattle", "amount": 1, "cap": 8}]},
+		{"label": "Decline.", "effects": []},
+	]},
+	"memorialProtocol": {"tier": "major", "name": "MEMORIAL PROTOCOL", "desc": "The squad wants to honor the fallen.", "requires": "recent_death", "choices": [
+		{"label": "Honor them: the fallen hero starts every remaining battle with Ward.", "effects": [{"type": "memorialWard"}]},
+		{"label": "Keep moving: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
+	]},
+	"deepCache": {"tier": "major", "name": "DEEP CACHE", "desc": "A vault seal. Cracking it will drink your Protocol lines dry.", "choices": [
+		{"label": "Crack it: legendary draft 1 of 2 — next battle starts at -5 Protocol income debt.", "draft": {"kind": "any", "min_rarity": "legendary", "count": 2}, "effects": [{"type": "incomeDebt", "amount": 5}]},
+		{"label": "Leave it.", "effects": []},
+	]},
+	"theFoundry": {"tier": "major", "name": "THE FOUNDRY", "desc": "A forge line still runs. Feed it and it feeds you.", "choices": [
+		{"label": "Feed it one gear: receive a random gear one rarity higher.", "pick": "gear", "effects": [{"type": "foundryUpgrade"}]},
+		{"label": "Leave.", "effects": []},
+	]},
+	"prisonerExchange": {"tier": "major", "name": "PRISONER EXCHANGE", "desc": "A captured cell offers a trade: safe passage for a name.", "choices": [
+		{"label": "Trade: next battle has one fewer enemy; the battle after gains ELITE PRESENCE.", "effects": [{"type": "nextBattleFlag", "flag": "minus_one_enemy"}, {"type": "followupModifier", "id": "elitePresence"}]},
+		{"label": "Refuse: 1 uncommon consumable.", "effects": [{"type": "consumable", "rarity": "uncommon", "count": 1}]},
+	]},
+	"overloadRites": {"tier": "major", "name": "OVERLOAD RITES", "desc": "A Synod rite, stolen. It burns the body to feed the die.", "choices": [
+		{"label": "Undergo: a hero loses 12 max HP this op; their natural 20s resolve twice.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": -12}, {"type": "heroNat20Twice"}]},
+		{"label": "Decline.", "effects": []},
+	]},
+	"ghostFrequency": {"tier": "major", "name": "GHOST FREQUENCY", "desc": "A carrier wave that unmakes a silhouette. It takes something with it.", "choices": [
+		{"label": "Tune a hero: starts every remaining battle Cloaked, -6 max HP.", "pick": "hero", "effects": [{"type": "heroStartCloaked"}, {"type": "heroMaxHp", "amount": -6}]},
+		{"label": "Sell the wave: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
+	]},
+	"deepScan": {"tier": "major", "name": "DEEP SCAN", "desc": "A survey array with reach across the whole op.", "choices": [
+		{"label": "Scan: reveal every remaining comp and beat this run.", "effects": [{"type": "revealRun"}]},
+		{"label": "Sell the array time: +3 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 3}]},
+	]},
+}
+
+
+func _reset_intercept_state() -> void:
+	intercept_minor_deck.clear()
+	intercept_major_deck.clear()
+	hero_run_mods.clear()
+	next_battle_effects.clear()
+	followup_battle_effects.clear()
+	run_protocol_per_battle = 0
+	run_protocol_cap_override = 0
+	deaths_last_battle.clear()
+	deaths_prev_battle.clear()
+
+
+func _shuffle_intercept_decks() -> void:
+	for card_id in INTERCEPT_CARDS.keys():
+		if str((INTERCEPT_CARDS[card_id] as Dictionary).get("tier", "")) == "minor":
+			intercept_minor_deck.append(card_id)
+		else:
+			intercept_major_deck.append(card_id)
+	# Fisher-Yates with the run rng.
+	for deck in [intercept_minor_deck, intercept_major_deck]:
+		for i in range(deck.size() - 1, 0, -1):
+			var j: int = _reward_rng.randi_range(0, i)
+			var tmp = deck[i]
+			deck[i] = deck[j]
+			deck[j] = tmp
+
+
+# Draw the next card for a beat tier, honoring preconditions (Memorial
+# Protocol redraws unless a hero died in the last two battles).
+func draw_intercept_card(tier: String) -> String:
+	var deck: Array = intercept_major_deck if tier == "major" else intercept_minor_deck
+	var skipped: Array = []
+	while not deck.is_empty():
+		var card_id: String = str(deck.pop_front())
+		var card: Dictionary = INTERCEPT_CARDS.get(card_id, {})
+		if str(card.get("requires", "")) == "recent_death" and _recent_death_hero() == "":
+			skipped.append(card_id)
+			continue
+		for skipped_id in skipped:
+			deck.append(skipped_id)
+		return card_id
+	for skipped_id in skipped:
+		deck.append(skipped_id)
+	return ""
+
+
+func _recent_death_hero() -> String:
+	for unit_id in deaths_last_battle + deaths_prev_battle:
+		if selected_units.has(unit_id):
+			return str(unit_id)
+	return ""
+
+
+# Battle-end bookkeeping for Memorial Protocol.
+func record_battle_hero_deaths(dead_unit_ids: Array) -> void:
+	deaths_prev_battle = deaths_last_battle.duplicate()
+	deaths_last_battle = dead_unit_ids.duplicate()
+
+
+func _hero_mods(unit_id: String) -> Dictionary:
+	if not hero_run_mods.has(unit_id):
+		hero_run_mods[unit_id] = {}
+	return hero_run_mods[unit_id]
+
+
+# Applies one choice's deterministic effects. `hero_id` / `gear` context comes
+# from the intercept screen's pick stages. Returns informational text for
+# reveal-type outcomes ("" otherwise).
+func apply_intercept_effects(effects: Array, hero_id: String = "", gear_context: Dictionary = {}) -> String:
+	var info: String = ""
+	for effect_variant in effects:
+		var effect: Dictionary = effect_variant
+		match str(effect.get("type", "")):
+			"heroRollBonus":
+				var mods: Dictionary = _hero_mods(hero_id)
+				mods["roll_bonus"] = int(mods.get("roll_bonus", 0)) + int(effect.get("amount", 1))
+			"heroMaxHp":
+				var hp_mods: Dictionary = _hero_mods(hero_id)
+				hp_mods["max_hp_delta"] = int(hp_mods.get("max_hp_delta", 0)) + int(effect.get("amount", 0))
+			"heroXp":
+				unit_xp[hero_id] = get_unit_xp(hero_id) + int(effect.get("amount", 0))
+				_queue_evolution_after_win([])
+			"squadXp":
+				for unit_id in selected_units:
+					unit_xp[str(unit_id)] = get_unit_xp(str(unit_id)) + int(effect.get("amount", 0))
+				_queue_evolution_after_win([])
+			"protocolNextBattle":
+				next_battle_effects["protocol"] = int(next_battle_effects.get("protocol", 0)) + int(effect.get("amount", 0))
+			"consumable":
+				for _i in int(effect.get("count", 1)):
+					var item_id: String = _pick_random_reward_by_rarity(str(effect.get("rarity", "common")), consumables)
+					if item_id != "" and consumables.size() < MAX_CONSUMABLES:
+						consumables.append(item_id)
+			"armModifier":
+				next_battle_modifier = str(effect.get("id", ""))
+			"followupModifier":
+				followup_battle_effects["modifier"] = str(effect.get("id", ""))
+			"nextBattleFlag":
+				next_battle_effects[str(effect.get("flag", ""))] = true
+			"nextBattleEnemyHpPct":
+				next_battle_effects["enemy_hp_pct"] = int(effect.get("pct", 100))
+			"randomHeroDamage":
+				var victim: String = str(selected_units[_reward_rng.randi_range(0, selected_units.size() - 1)])
+				var mods_dmg: Dictionary = _hero_mods(victim)
+				mods_dmg["start_hp_damage"] = int(mods_dmg.get("start_hp_damage", 0)) + int(effect.get("amount", 0))
+				info = "%s takes the hit." % victim
+			"incomeDebt":
+				next_battle_effects["income_debt"] = int(effect.get("amount", 0))
+			"runProtocolPerBattle":
+				run_protocol_per_battle = int(effect.get("amount", 1))
+				run_protocol_cap_override = int(effect.get("cap", 0))
+			"memorialWard":
+				var fallen: String = _recent_death_hero()
+				if fallen != "":
+					_hero_mods(fallen)["start_warded"] = true
+					info = "%s will carry the Ward." % fallen
+			"heroNat20Twice":
+				_hero_mods(hero_id)["nat20_twice"] = true
+			"heroStartCloaked":
+				_hero_mods(hero_id)["start_cloaked"] = true
+			"spliceBands":
+				_hero_mods(hero_id)["splice_bands"] = true
+			"rotateGear":
+				_rotate_gear_loadouts()
+			"destroyPickedGear":
+				_destroy_equipped_gear(str(gear_context.get("hero_id", "")), str(gear_context.get("gear_id", "")))
+			"foundryUpgrade":
+				info = _foundry_upgrade(str(gear_context.get("hero_id", "")), str(gear_context.get("gear_id", "")))
+			"revealBoss":
+				info = _build_boss_reveal_text()
+			"revealRun":
+				info = _build_run_reveal_text()
+	return info
+
+
+# DESIGN-TODO(kev): "freely re-equip" is a full UI; the deterministic stand-in
+# rotates every loadout one squad slot over.
+func _rotate_gear_loadouts() -> void:
+	if selected_units.size() < 2:
+		return
+	var rotated: Dictionary = {}
+	for i in selected_units.size():
+		var from_id: String = str(selected_units[i])
+		var to_id: String = str(selected_units[(i + 1) % selected_units.size()])
+		rotated[to_id] = (gear_by_unit.get(from_id, []) as Array).duplicate()
+	gear_by_unit = rotated
+	equipped_gear = rotated.duplicate(true)
+
+
+func _destroy_equipped_gear(hero_id: String, gear_id: String) -> void:
+	var unit_gear: Array = gear_by_unit.get(hero_id, []).duplicate()
+	unit_gear.erase(gear_id)
+	gear_by_unit[hero_id] = unit_gear
+	equipped_gear[hero_id] = unit_gear.duplicate()
+
+
+const RARITY_LADDER := ["common", "uncommon", "rare", "legendary"]
+
+
+func _foundry_upgrade(hero_id: String, gear_id: String) -> String:
+	var old_item: ItemData = DataManager.get_item(gear_id) as ItemData
+	if old_item == null:
+		return ""
+	var tier: int = mini(RARITY_LADDER.find(old_item.rarity) + 1, RARITY_LADDER.size() - 1)
+	_destroy_equipped_gear(hero_id, gear_id)
+	var upgraded_id: String = _pick_random_gear_by_rarity(RARITY_LADDER[tier], [gear_id])
+	if upgraded_id == "":
+		return "The Foundry consumed %s and produced nothing." % old_item.display_name
+	var unit_gear: Array = gear_by_unit.get(hero_id, []).duplicate()
+	unit_gear.append(upgraded_id)
+	gear_by_unit[hero_id] = unit_gear
+	equipped_gear[hero_id] = unit_gear.duplicate()
+	var new_item: ItemData = DataManager.get_item(upgraded_id) as ItemData
+	return "The Foundry forged %s." % (new_item.display_name if new_item != null else upgraded_id)
+
+
+func _pick_random_gear_by_rarity(rarity: String, excluded_ids: Array) -> String:
+	var pool: Array = []
+	for item_key in DataManager.items.keys():
+		var item: ItemData = DataManager.items[item_key] as ItemData
+		if item != null and item.item_type == "gear" and item.rarity == rarity and not excluded_ids.has(item.id):
+			pool.append(item.id)
+	if pool.is_empty():
+		return ""
+	return str(pool[_reward_rng.randi_range(0, pool.size() - 1)])
+
+
+# Items of a kind at or above a rarity, for intercept drafts.
+func roll_intercept_draft(kind: String, min_rarity: String, count: int) -> Array:
+	var floor_index: int = maxi(RARITY_LADDER.find(min_rarity), 0)
+	var pool: Array = []
+	for item_key in DataManager.items.keys():
+		var item: ItemData = DataManager.items[item_key] as ItemData
+		if item == null or item.item_type == "relic":
+			continue
+		if kind != "any" and item.item_type != kind:
+			continue
+		if RARITY_LADDER.find(item.rarity) < floor_index:
+			continue
+		pool.append(item.id)
+	var picks: Array = []
+	while picks.size() < count and not pool.is_empty():
+		var index: int = _reward_rng.randi_range(0, pool.size() - 1)
+		picks.append(pool[index])
+		pool.remove_at(index)
+	return picks
+
+
+func _build_boss_reveal_text() -> String:
+	var operation: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
+	if operation == null or operation.battles.is_empty():
+		return ""
+	var boss_names: Array = (operation.battles[operation.battles.size() - 1] as Dictionary).get("enemy_names", [])
+	var lines: Array = []
+	for boss_name in boss_names:
+		var enemy: EnemyData = DataManager.get_enemy_by_display_name(str(boss_name)) as EnemyData
+		if enemy == null:
+			continue
+		var kit_lines: Array = []
+		for range_entry in enemy.dice_ranges:
+			kit_lines.append("%d-%d %s" % [int(range_entry.get("min", 0)), int(range_entry.get("max", 0)), str(range_entry.get("ability_name", ""))])
+		var standing_rule: String = CombatManager.get_boss_standing_rule(str(boss_name))
+		lines.append("%s%s\n%s" % [str(boss_name), ("\n" + standing_rule) if standing_rule != "" else "", "\n".join(PackedStringArray(kit_lines))])
+	return "\n\n".join(PackedStringArray(lines))
+
+
+func _build_run_reveal_text() -> String:
+	var lines: Array = []
+	for i in range(current_battle, resolved_battle_comps.size()):
+		var names: Array = (resolved_battle_comps[i] as Dictionary).get("names", [])
+		var beat_note: String = ""
+		var beat: Dictionary = get_beat_after_battle(i + 1)
+		if not beat.is_empty() and not consumed_beats.has(i + 1):
+			beat_note = "  → then: %s" % str(beat.get("type", "")).to_upper()
+		lines.append("B%d: %s%s" % [i + 1, ", ".join(PackedStringArray(names)), beat_note])
+	return "\n".join(PackedStringArray(lines))
 
 
 # Starting Directive: adopt an unlocked boss relic as the run's opening relic.
@@ -396,6 +771,7 @@ func reset_run() -> void:
 	next_battle_modifier = ""
 	next_battle_supply_grade = 0
 	used_battle_modifiers.clear()
+	_reset_intercept_state()
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
 
