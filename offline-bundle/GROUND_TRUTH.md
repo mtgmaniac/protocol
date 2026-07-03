@@ -153,6 +153,20 @@ Pyro: Flashpoint (burn ticks on apply) / Slow Roast (burns +1t) · Arc: Conducto
 
 ---
 
+## Run structure (pkg7)
+
+**Templated slots (7.1):** battle-modes battles are fixed comps (b1, b10, one signature per op) or slot patterns rolled ONCE at run start from per-faction role pools (`GameState.resolved_battle_comps` — previews always show exact comps). Classification documented in battle-modes.schema.json.
+
+**Beats (7.2):** battle-5 relic draft renders as INTERCEPT: RELIC CACHE. Exactly 3 random beats per run in distinct gaps from {after b2,b3,b4,b6,b7,b8}, Fork/Intercept 50/50 with ≥1 of each; b6+ beats are major-tier. `SceneManager.go_to_next_battle_or_beat()` routes the post-victory flow.
+
+**Route Fork (7.3):** RouteForkScreen — standard vs flagged (same comp + 1 of 10 modifiers, no repeats per run, preconditions on Overrun/Warded + SUPPLY GRADE +2 = reward ladder two rows deeper, cap row 10). Modifier ids in `GameState.BATTLE_MODIFIERS`; combat hooks in combat_manager (`setup_battle_modifier`), Blackout/Sealed Supplies in battle_scene.
+
+**Intercept (7.4):** InterceptScreen — 11 minor + 11 major cards (`GameState.INTERCEPT_CARDS`), shuffled per run, drawn without replacement; Memorial Protocol redraws without a recent death. Effect engine: hero run-mods (roll bonus / max HP / start cloaked-warded / nat-20 echo / Splice bands), next-battle effects (protocol, 70% spawns, items free, decoy, marked highest, income debt, −1 enemy), follow-up promotion, Rogue Engineer (+1/battle, cap 8), gear rotate/destroy/Foundry.
+
+**Gates:** `run_smoke_test.gd` plays one full run headless; flow smoke covers fork + intercept screens.
+
+---
+
 ## Battle UI V2 geometry (the layout contract)
 
 Five stacked bands, portrait. At 1080×2400 / (450×1000 preview):
