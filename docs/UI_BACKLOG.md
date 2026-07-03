@@ -2,7 +2,9 @@
 
 Captured from playtest feedback. Grouped by area. UI lane (Claude); data-copy items
 need review before they touch JSON. Keep the DT visual language (PixelUI single source
-of truth, 4px borders, hard corners, portraits inset inside frames).
+of truth, 1px borders per PixelUI — screens authored in 1080x2400 logical units draw
+them at 4 logical px so they survive the canvas downscale — hard corners, portraits
+inset inside frames).
 
 ---
 

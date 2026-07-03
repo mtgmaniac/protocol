@@ -1,5 +1,11 @@
 # Overload Protocol — Task Queue
 
+> **CLOSE-OUT (Jul 2026, master implementation prompt):** every item below is
+> **Done or superseded** by the packages 1–9 pass (rules foundation, keyword
+> engine, content data, boss standing rules, save system, directives, run
+> structure, UI & feedback). Open tuning threads live in the **Balance pass**
+> section at the bottom — everything else here is reference.
+
 Pick **one item**, implement, test, commit. Don't batch unrelated work.
 
 **Repo:** `C:\Users\Kev\Documents\protocol` · **Baseline:** `docs/BASELINE.md`, tag `baseline-fable-restart`
@@ -76,20 +82,20 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 
 | Item | Status | Scope |
 |------|--------|-------|
-| **Task 13 — Show picker blurbs on UnitSelect** | **After UI finalization** | Wire `UnitData.picker_blurb` into `home_screen.gd` detail panel — **blocked** until UnitSelect/detail chrome is locked |
+| **Task 13 — Show picker blurbs on UnitSelect** | **Done (pkg8.7)** | `UnitData.picker_blurb` wired into `home_screen.gd` detail panel with the pkg3.1 copy |
 | **Gear equip target — evolved name** | **Done** | Reward gear picker uses `GameState.get_run_unit_data()` + `battle_name()` |
 | **Enemy `shieldAllyAll` display** | **Done** | Single `6·ALL` chip + ally tooltip in `battle_card_view.gd` / `ability_readout.gd` |
 | **Ally roll buff visuals (green dice)** | **Done** | Positive `rfm` → green `roll_up` pip/text; enemy strip keeps yellow `roll_down` (`pixel_ui.gd`, `ability_readout.gd`, `compact_unit_card.gd`) |
 | **Capped die for RFE (Option A)** | **Done** | Tray lands **effective** face once at settle; **raw** kept in roll dicts for crit/overload. Removed post-roll snap. |
-| **Task 8 — Battle feedback / game feel** | **Tabbed** | Core primitives done (hit pause, lunge, shake, overload, death SFX). Remaining Tier 1–3 touches card layout — resume after UI chrome locks. |
+| **Task 8 — Battle feedback / game feel** | **Done (pkg8.3/8.4)** | Full keyword feedback set (tracer/burst/drift primitives, per-keyword wiring), nat-20 name slam — see `offline-bundle/ANIMATION.md` |
 | **Death SFX timing** | **Done** | Fatal `death` SFX at hit moment; skip lead/pause on kills; poison ticks own feedback group; `skip_feedback` wired |
 | **Task 9 — Audio system** | **Done** | `AudioManager` wired; SFX tiers per `offline-bundle/AUDIO.md`, hooked to Task 8 events |
-| **Incoming target indicators** | Open | Subtle readout of who each unit is targeting (enemy → hero intent) during player target pick — informs ally-target choices without heavy chrome |
+| **Incoming target indicators** | **Done (pkg8.1)** | "◎N" / "◎!" intent badges on cards (enemies aiming here / lure), readable at 450×1000 |
 | **HP preview — heal before damage (net damage)** | **Done (Jul 2026)** | Net-outcome projection model — single projected endpoint in resolution order, shield counterfactual in blue, `cur → net / max` label. All three handoff bugs fixed; DoT tick single-sourced from `combat_manager.get_expected_dot_tick()`. See `docs/AI_AGENT_GAME_REFERENCE.md` §9b. |
 | **Ability target scope clarity (ALL vs ally vs self)** | **Done** | `resolve_ability_target_scope()` → **SELF** / **ALL** only (no **ALLY** badge — ally-targeted heals assumed); `blastAll` dmg shows **ALL** (Scorched Earth) |
 | **Ability readout — bracket scope + superscript turns** | **Done** | `)value(` / `(value)` scope + superscript duration via `EffectPip` (`ability_readout.gd`, reward/card pips) |
-| **Card proportion / readability** | Ongoing | Portrait vs HP vs status at 450×1000 — `compact_unit_card.gd`, `BATTLE_UI_V2_SPEC.md` §19 |
-| **Reward / evolution visual consistency** | Ongoing | Shared header; polish pass |
+| **Card proportion / readability** | **Done (pkg8)** | Chip doctrine + summon size floor + numeral pass; further tweaks belong to the Balance pass playtest |
+| **Reward / evolution visual consistency** | **Done (pkg7/8)** | Shared chrome across reward / evolution / fork / intercept screens |
 | **V2 band geometry audit** | Dropped | Center uses **540px** not 432 by design (`battle_layout.gd`); no Task 3 pass needed |
 
 **Optional UI follow-ups (not queued):** protocol footer chrome extract, help overlay extract.
@@ -169,7 +175,7 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 | **Evolution XP (D2)** | **Done** | Avg-roll + survival bonus model in `GameState.gd`; **one evolution per battle win** (extras deferred FIFO) |
 | **Revive pct + revive all (medic evos)** | **Done** | `revivePct`, `reviveAll` in schema + `combat_manager.gd`; ability audit 82/82 |
 | **Gear/relic ability audit regressions** | **Done** | 12 gear/relic handlers covered in `AbilityAuditRunner.tscn` |
-| **Task 5 — Facility balance** | **Paused** | Sim tuning deferred until finalize pass. |
+| **Task 5 — Facility balance** | **Superseded** | Continue as part of the Balance pass below (sim only covers anchor fights since pkg7 templated slots). |
 
 **Evolution XP (D2) — pinned design:**
 
@@ -226,6 +232,38 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 | **Task 4 — Ability audit** | 78 passed Godot; 0 Python keyword gaps |
 | Sim `gainProtocol` | Charge pool in `battle-progress-sim.lib.ts` |
 | **Task 6 — Gear & relic effects** | All 14 Task-6 types wired; `audit_gear_relic_effects.py` clean; ability audit regressions pass for lifesteal, shieldPierce, allyDeathHealAll |
+
+---
+
+## Balance pass (post close-out — the ONLY open lane)
+
+All master-prompt numbers were implemented **as written** and are provisional.
+This section carries every `# BALANCE-TODO` / `# DESIGN-TODO(kev)` in the
+codebase; tune here, don't self-tune elsewhere.
+
+### BALANCE-TODO (numbers to tune)
+
+| Where | Knob |
+|-------|------|
+| `combat_manager.gd` | Execute bonus flat **+8**; chain jump damage **60%** round down |
+| `combat_manager.gd` | Boss standing rules: SCRAPMASTER rebuild **50% HP**, brood cadence **3 rounds**, MANTLE round shield **6** |
+| `GameState.gd` | All 10 route-fork modifier numbers (Hardened 8, Ferocity +2, Dead Man's Charge 4, Regenerative 3, …) |
+| `GameState.gd` | All intercept card numbers (minor + major decks) |
+| heroes/enemies/gear/relics/items JSON | Every kit number from the pkg3 tables |
+| Auto-battle signal | Veil op: greedy auto-battler wiped at b9 on 3/3 attempts (`run_smoke_test.gd`) — ward/buff density may need a look in real play |
+
+### DESIGN-TODO(kev) (interpretations to confirm)
+
+| Where | Question |
+|-------|----------|
+| `combat_manager.gd` | "One round" shields read per-side as "one opposing action phase" — confirm |
+| `combat_manager.gd` | SCRAPMASTER "every other turn" read as even-numbered rounds |
+| `combat_manager.gd` | Directive Marks (Combat Sense / Marked for Death) stay single-target — AoE marking read as too strong |
+| `battle_card_view.gd` | Shield total now reads only via HP preview + inspect (chip doctrine) — enough at 450×1000? |
+| `battle_feedback.gd` | Leech has no target→attacker tracer (event pairing missing) |
+| `battle_scene.gd` | Reverse Gimbal flip interaction (tap again to swap); friendly picks on cloaked allies stay legal |
+| `main_menu.gd` | Tutorial-done shows a checkmark vs hiding the button |
+| `GameState.gd` | Tutorial runs count toward runs_started; Loadout Swap "freely re-equip" is a one-slot rotate until a re-equip UI exists |
 | **Task 10 — Protocol economy** | Cap 10, +1/turn, nudge 1 (+3), reroll 2, set 3, item 1; Protocol Override cost 0 + grant +1 — verified vs `GROUND_TRUTH.md` |
 | **Task 12 — Normalize `eff` text** | `audit_eff_text.py` → 0 mismatches |
 | **Task 13 — Picker blurbs (data)** | All 8 heroes in JSON + DataManager |

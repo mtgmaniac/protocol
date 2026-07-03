@@ -82,14 +82,14 @@ Battle ends when one side is fully eliminated
 
 | Unit | Category | Playstyle |
 |---|---|---|
-| **Pulse Tech** | damage | Elemental single-target and AoE |
-| **Strike Unit** | damage | High single-target damage, pierce |
-| **Spite Guard** | defense | Shields, counterattack, punishment |
-| **Avalanche Suit** | defense | Heavy area attacks, rampage |
-| **Splice Medic** | support | Team heals, resurrection support |
+| **Pulse Tech** | damage | Seeds Burn, cashes it with Detonate; Chain at floor and ceiling |
+| **Strike Unit** | damage | High single-target damage, pierce, Execute |
+| **Spike Guard** | defense | Shields, Spike retaliation, taunt punishment |
+| **Avalanche Suit** | defense | Heavy area attacks, Freeze line |
+| **Splice Medic** | support | Team heals, Mark support, resurrection |
 | **Field Engineer** | support | Protocol generation, shields, squad buffs |
-| **Ghost Operative** | control | Cloak, high-risk high-reward burst |
-| **Signal Breaker** | control | DoT, disruption, counterspell |
+| **Ghost Operative** | control | Cloak, decloak burst, Execute finishers |
+| **Signal Breaker** | control | ±Roll chips, Jam, Ward disruption |
 
 ### Unit Card (What Appears on the Battlefield)
 Each unit is represented as a permanent portrait card. It displays:
@@ -118,9 +118,12 @@ Exact ranges are defined per-unit in unit metadata files.
 ### Evolution
 - On battle win: alive heroes earn **`20 + round(avg effective roll)`** XP; dead heroes earn **`round(avg effective roll)`** only
 - Evolve at **100 XP** (typically ~fight 3–4 for hot rollers)
-- **One evolution per battle win** — extras deferred to the next win(s)
+- **One progression stop per battle win** — extras deferred to the next win(s)
 - Player chooses one of **two branching paths** (each path = full 5-zone kit + callsign)
-- Evolution persists for the run; resets on run end
+- **Directives (tier 3):** evolved units keep earning XP; at **250 XP** the same
+  screen offers **1 of 2 Directives** — permanent passives scoped to the chosen
+  evolution path (e.g. Pyro: Flashpoint / Slow Roast)
+- Evolution and Directive persist for the run; reset on run end
 
 ---
 
@@ -161,11 +164,15 @@ The roll is a real rigid-body simulation, tuned to read like tabletop dice
 
 | Method | Source | Effect |
 |---|---|---|
-| **Nudge** | Protocol Bar (small cost) | +/- small value to a die |
-| **Reroll** | Protocol Bar (medium cost) | Reroll one die completely |
-| **Set** | Protocol Bar (large cost) | Force a die to any value |
-| **Freeze** | Enemy/Hero ability | Die locked, same result next turn |
-| **Modify** | Abilities | Increase or decrease die value |
+| **Nudge** | Protocol Bar (1) | +3 to a die (Reverse Gimbal gear can flip it) |
+| **Reroll** | Protocol Bar (2) | Reroll one die completely |
+| **Set** | Protocol Bar (3) | Force a die to any value (Root Access: first Set free) |
+| **Twin Fates** | Relic (once per battle) | Copy one hero die's result to another, free |
+| **Freeze / Petrify** | Abilities/items | Die locked; the unit skips its next N reveals |
+| **Jam** | Abilities/modifiers | Next roll capped (12 default) — amber tint + cap marker on the die |
+| **Rewrite** | Synod abilities / ROOT boss | Next roll SET to 3 (telegraphed marker) |
+| **Hijack** | Synod enemies | Enemy die copies the squad's highest roll |
+| **±Roll** | Abilities/gear/relics | Increase or decrease effective die value |
 
 ### Protocol Bar
 - Battle-only resource; **resets to 0 each battle** (unless a relic carries a % over)
@@ -204,24 +211,37 @@ composition (who contributes what) lives in the ability readout pips.
 
 ### Damage Model
 - Units have HP bars
-- Shields absorb damage before HP (shields don't carry between turns unless specified)
-- DoT (data key `dot`) ticks at end of enemy phase
-- Dead units are removed from the field; their dice no longer roll
+- Shields absorb damage before HP and last **one round** (granted this round,
+  absorb through the opposing phase, gone at round end) — the Mantle Core relic
+  and the MANTLE TYRANT boss are the only persistence exceptions
+- **Burn** (the single universal DoT, data key `burn`+`burnT`) ticks at end of round
+- Dead units stay on the field as downed cards; their dice no longer roll
 
-### Status Effects
+### Status Effects & Keywords
 | Effect | Behaviour |
 |---|---|
-| Frozen | Dice locked to same value next turn |
-| DoT (burning/poison flavor) | Takes X damage at end of each turn |
-| Cloaked | Untargetable by single-target abilities |
-| Rampaging | Deals double damage, cannot use defensive abilities |
-| Counterspell | Next hostile ability targeting this unit is negated |
+| Burn | X damage at end of each round for N turns (chips can Detonate it) |
+| Frozen / Petrified | Die locked; the unit skips its next N reveals (petrify = Accretion stone flavor) |
+| Cloaked | Untargetable by single-target abilities; breaks on dealing damage or an AoE hit; first attack from Cloak pierces |
+| Ward | Blocks the next ability that targets this unit, then breaks |
+| Mark | Next hit on this unit deals +50%, then consumed |
+| Spike | This round, attackers that connect take N back (readout only) |
+| Jam / Rewrite / Hijack | Die statuses (see §6) |
+| Taunt / Lure | Forces enemy aim / forces a hero's aim — both read via the ◎ intent markers |
+| Siphon | Enemy hits drain the squad's Protocol pool |
+| Rampaging | Deals double damage (enemy erb family) |
+
+One keyword per ability (pierce counts); overload-zone abilities may carry two.
 
 ### Enemies
 - Mirror the player's structure: portrait cards, dice rolls, ability ranges
 - Each enemy has 5 abilities mapped to D20 ranges
 - Enemy dice visible to player (telegraphed intent)
-- Enemy does not use Protocol Bar
+- Enemy does not use Protocol Bar (Siphon attacks drain the player's)
+- **Bosses run standing rules** active from turn 1 (no phase 2): SCRAPMASTER
+  rebuilds Scrap Drones · Matriarch spawns Bloodmites · Overseer stays Warded
+  while allies live · ROOT Rewrites the squad's highest die · MANTLE accretes
+  persistent stacking shields
 
 ---
 
