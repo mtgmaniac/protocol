@@ -1466,7 +1466,10 @@ func _edge_color_for(base: Color) -> Color:
 	return base.darkened(0.72)                   # deep, fixed edge tone
 
 func _number_main_color_for(base: Color) -> Color:
-	return base.darkened(0.55)                   # recessed groove floor — darker than the face
+	# pkg8.5: near-white numeral fill so the number pops at 450x1000 — the
+	# engraved read survives via the dark occlusion rim (toward the light),
+	# the lit groove edge (away), and the dark carved-well backing.
+	return base.lerp(Color(0.96, 0.97, 0.98, 1.0), 0.82)
 
 func _number_outline_color_for(base: Color) -> Color:
 	return base.darkened(0.84)                   # dark outline to crisp the numeral off the face
