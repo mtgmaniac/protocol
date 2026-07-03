@@ -67,7 +67,8 @@ Current high-level loop:
 5. battle plays until win/loss
 6. on victory:
    - reward selection if not run-complete
-   - evolution selection if XP threshold is hit
+   - evolution selection at 100 XP; Directive (tier-3 passive) selection at
+     250 XP for evolved units — both on the evolution screen, one stop per win
    - next battle if no pending evolution/reward
 7. on final victory or loss:
    - run end / reset flow
