@@ -1711,6 +1711,45 @@ func _set_die_jam_visual(die: RigidBody3D, jam_cap: int) -> void:
 	label.visible = jammed
 
 
+# pkg8.4: Jam feedback — the amber tint shell flickers like static before it
+# settles on, and the cap marker stamps in.
+func play_jam_flicker(side: String, unit_id: String, jam_cap: int) -> void:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	if die == null:
+		return
+	_set_die_jam_visual(die, jam_cap if jam_cap > 0 else JAM_FALLBACK_CAP)
+	var filter: MeshInstance3D = _die_part(die, "JamFilter") as MeshInstance3D
+	if filter == null:
+		return
+	var tween: Tween = create_tween()
+	for _i in 3:
+		tween.tween_callback(func(): filter.visible = false)
+		tween.tween_interval(0.05)
+		tween.tween_callback(func(): filter.visible = true)
+		tween.tween_interval(0.06)
+
+
+const JAM_FALLBACK_CAP := 12
+
+
+# pkg8.4: Rewrite feedback — the pending marker scrambles through digits then
+# slams to →3 (the die itself keeps its current engraved result; the marker is
+# the telegraph).
+func play_rewrite_scramble(side: String, unit_id: String) -> void:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	if die == null:
+		return
+	_set_die_pending_marker(die, true, false)
+	var label: Label3D = _die_part(die, "PendingMarker") as Label3D
+	if label == null:
+		return
+	var tween: Tween = create_tween()
+	for _i in 6:
+		tween.tween_callback(func(): label.text = "REWRITE→%d" % (randi() % 20 + 1))
+		tween.tween_interval(0.05)
+	tween.tween_callback(func(): label.text = "REWRITE→3")
+
+
 # Rewrite / Hijack pending (pkg8.1): marker on the threatened die.
 func _set_die_pending_marker(die: RigidBody3D, rewrite_pending: bool, hijack_pending: bool) -> void:
 	var label: Label3D = _die_part(die, "PendingMarker") as Label3D
