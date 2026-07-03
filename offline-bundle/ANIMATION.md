@@ -75,6 +75,28 @@ Drive feedback from a TABLE, not branching code, so new effects = new rows.
 | `survive`→death | — | white flash → shake → death-scatter + long hit_pause | — |
 | natural 20 | bigger lunge | — | die_settle(signature) + gold screen flash + slow-mo |
 
+### Keyword rows (pkg8.4 — implemented in battle_feedback._play_keyword_feedback)
+
+| event_type | feedback |
+|---|---|
+| `chain` | tracer(actor→jumped target, electric cyan) + "-N" on both hits |
+| `detonate` | ember particle burst on the target + "-N" |
+| `execute` | heavier hit_pause + deep-red oversized "EXECUTE -N" |
+| `breach` | gold shield-shatter burst on the target |
+| `spike` | rust spark burst on the ATTACKER at retaliation + "-N" |
+| `siphon` | amber pip drifts protocol bar → enemy card ("-N") |
+| `jam` | static flicker on the die's amber tint shell + "JAM ≤N" cap stamp |
+| `rewrite` | pending marker scrambles digits, slams to "REWRITE→3" |
+| `hijack` | ghost label drifts from the tray to the enemy card |
+| `mark` | gold "◎ MARKED" crosshair stamp punch |
+| `block` (amount 0 = ward) | "✕ NEGATED" tick |
+| `decloak` | portrait resolves sharp + white pierce flash |
+| `freeze` | crust + tint on the die (ice cyan / petrify stone-gray) |
+| nat-20 overload | + ability-name slam across the acting card (pkg8.3) |
+
+Leech shows only its green heal number — the target→attacker tracer needs
+event pairing that doesn't exist yet (DESIGN-TODO in battle_feedback.gd).
+
 ---
 
 ## Architecture (robustness)

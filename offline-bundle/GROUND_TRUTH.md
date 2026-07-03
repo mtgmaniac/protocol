@@ -180,6 +180,12 @@ Rules: header height == footer height; all unit cards identical outer size; hero
 
 ---
 
+## UI & feedback (pkg8)
+
+Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Ward (cap 3, +N overflow badge opens inspect). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤N" marker · Rewrite/Hijack = pending marker on the die + readout entry · Spike = readout pip only · Taunt/Lure = incoming target-intent markers ("◎N" enemies aiming here / "◎!" lured, on both ends). Detonate pip shows the live burst when the target is known. Nat-20 signature = gold wash + shake + overload stinger + heavier hit-pause + ability-name slam. Keyword feedback table lives in offline-bundle/ANIMATION.md. Dice numerals render near-white in the engraved pipeline. Summon layout floor: cards never shrink below the 3-unit slot width (rows scroll instead).
+
+---
+
 ## Visual identity
 
 Deep navy bg; meaning-based color: **cyan = player, red = enemy/damage, green = protocol/heal, gold = commit/reward**. Pixel art, `m5x7` font (`assets/fonts/m5x7.ttf`). Flat — no gradients, no glows. Cold/industrial; explicitly NOT "sci-fi Slice & Dice."

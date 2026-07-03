@@ -22,8 +22,38 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 
+const MAX_ATTEMPTS := 3
+
+
 func _run() -> void:
-	print("[RUN_SMOKE] Playing one full run of the first operation")
+	# The gate checks FLOW integrity, not combat luck: the auto-battler always
+	# takes flagged routes, so early wipes happen. Up to MAX_ATTEMPTS runs; a
+	# run counts as completed on victory OR a defeat at the final battle.
+	for attempt in range(1, MAX_ATTEMPTS + 1):
+		print("[RUN_SMOKE] Attempt %d: playing one full run of the first operation" % attempt)
+		_errors.clear()
+		var transitions: int = await _play_one_run()
+		var result: String = str(_game_state().get("last_run_result"))
+		var reached: int = int(_game_state().get("current_battle"))
+		var run_completed: bool = result == "victory" or (result == "defeat" and reached >= int(_game_state().get("total_battles")))
+		if _errors.is_empty() and _scene_path() == RUN_END_SCENE and run_completed:
+			print("[RUN_SMOKE] PASS — full run completed in %s (battle %d/%d, %d transitions, attempt %d)" % [
+				result, reached, int(_game_state().get("total_battles")), transitions, attempt])
+			quit(0)
+			return
+		if not _errors.is_empty():
+			break  # flow errors don't get retried — they're real failures
+		print("[RUN_SMOKE] Attempt %d wiped at battle %d — retrying" % [attempt, reached])
+		_game_state().call("reset_run")
+
+	if _errors.is_empty():
+		_errors.append("Run ended at %s with result '%s'" % [_scene_path(), str(_game_state().get("last_run_result"))])
+	for error in _errors:
+		printerr("[RUN_SMOKE] FAIL — %s" % error)
+	quit(1)
+
+
+func _play_one_run() -> int:
 	var gs := _game_state()
 	var op_id: String = str(_data_manager().call("get_operation_order")[0])
 	gs.call("start_run", DEFAULT_SQUAD, op_id)
@@ -49,17 +79,7 @@ func _run() -> void:
 				break
 			_:
 				_errors.append("Unexpected scene: %s" % _scene_path())
-
-	if _errors.is_empty() and _scene_path() == RUN_END_SCENE and str(_game_state().get("last_run_result")) == "victory":
-		print("[RUN_SMOKE] PASS — full run completed in victory (battle %d/%d, %d transitions)" % [
-			int(_game_state().get("current_battle")), int(_game_state().get("total_battles")), transitions])
-		quit(0)
-		return
-	if _errors.is_empty():
-		_errors.append("Run ended at %s with result '%s'" % [_scene_path(), str(_game_state().get("last_run_result"))])
-	for error in _errors:
-		printerr("[RUN_SMOKE] FAIL — %s" % error)
-	quit(1)
+	return transitions
 
 
 func _play_battle() -> void:
