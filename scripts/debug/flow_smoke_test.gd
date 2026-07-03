@@ -8,6 +8,7 @@ const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
+const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
 const DEFAULT_SQUAD := ["pulse", "combat", "shield"]
 const STEP_TIMEOUT_SECS := 120.0
 
@@ -30,6 +31,7 @@ func _run_flow() -> void:
 	await _step_reward_claim_and_continue()
 	await _step_evolution_back_to_home()
 	await _step_directive_choice()
+	await _step_route_fork()
 	await _step_main_menu_to_home()
 	await _step_run_end_new_run_button()
 
@@ -155,6 +157,35 @@ func _step_reward_claim_and_continue() -> void:
 	gs.call("advance_to_next_battle")
 	_scene_manager().call("go_to_battle")
 	await _wait_for_scene(BATTLE_SCENE)
+
+
+# Route Fork beat (pkg7.3): a forced fork after battle 2 shows the two route
+# cards; taking the flagged route arms the modifier and deploys to battle.
+func _step_route_fork() -> void:
+	_step += 1
+	print("[FLOW_SMOKE] Step %d: forced fork beat -> flagged route -> battle" % _step)
+	var gs := _game_state()
+	var op_id: String = str(_data_manager().call("get_operation_order")[0])
+	gs.call("start_run", DEFAULT_SQUAD, op_id)
+	gs.set("current_battle", 2)
+	gs.get("run_beats").clear()
+	gs.get("run_beats")[2] = {"type": "fork", "tier": "minor"}
+	gs.get("consumed_beats").clear()
+	_scene_manager().call("go_to_next_battle_or_beat")
+	await _wait_for_scene(ROUTE_FORK_SCENE)
+	var fork := _current()
+	if fork == null or not fork.has_method("_on_route_chosen"):
+		_errors.append("Route fork screen failed to load")
+		return
+	fork.call("_on_route_chosen", true)
+	await _wait_for_scene(BATTLE_SCENE)
+	if (gs.get("used_battle_modifiers") as Array).is_empty():
+		_errors.append("Flagged route did not consume a modifier")
+		return
+	if int(gs.get("current_battle")) != 3:
+		_errors.append("Fork did not advance to battle 3")
+		return
+	await _wait_frames(2)
 
 
 # Forced 250-XP path (pkg6): an evolved unit at the directive threshold gets

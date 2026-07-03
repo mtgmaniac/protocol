@@ -202,8 +202,7 @@ func _on_choose_directive_pressed(directive_name: String) -> void:
 	var unit: UnitData = DataManager.get_unit(pending_unit_id) as UnitData
 	var unit_name: String = unit.display_name if unit != null else pending_unit_id
 	footer_label.text = "%s adopted the %s directive." % [unit_name, directive_name]
-	GameState.advance_to_next_battle()
-	SceneManager.go_to_battle()
+	SceneManager.go_to_next_battle_or_beat()
 
 
 func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelContainer:
@@ -413,8 +412,7 @@ func _on_choose_path_pressed(path_name: String) -> void:
 	if unit != null:
 		unit_name = unit.display_name
 	footer_label.text = "%s evolved into %s." % [unit_name, path_name]
-	GameState.advance_to_next_battle()
-	SceneManager.go_to_battle()
+	SceneManager.go_to_next_battle_or_beat()
 
 
 func _update_battle_header() -> void:

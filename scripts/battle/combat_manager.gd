@@ -39,6 +39,34 @@ func setup_battle(hero_units: Array, enemy_units: Array) -> void:
 	for enemy_state in _enemy_states:
 		if str(enemy_state["unit"].display_name) == BOSS_MANTLE:
 			enemy_state["shields_persist"] = true
+	_battle_modifier = ""
+
+
+# --- Route Fork battle modifiers (pkg7.3) ---
+# One flagged-route modifier can be armed per battle. Spawn-time effects fire
+# here; per-hit / per-round effects read _battle_modifier at their hook.
+var _battle_modifier: String = ""
+
+
+func setup_battle_modifier(modifier_id: String, warded_names: Array = []) -> void:
+	_battle_modifier = modifier_id
+	match modifier_id:
+		"hardened":
+			for enemy_state in _enemy_states:
+				if not bool(enemy_state["dead"]):
+					_add_shield_stack(enemy_state, 8)
+		"jammingField":
+			for hero_state in _hero_states:
+				if not bool(hero_state["dead"]):
+					apply_battle_start_jam(hero_state, 12)
+		"warded":
+			for enemy_state in _enemy_states:
+				if not bool(enemy_state["dead"]) and warded_names.has(str(enemy_state["unit"].display_name)):
+					_apply_ward(enemy_state)
+
+
+func has_battle_modifier(modifier_id: String) -> bool:
+	return _battle_modifier == modifier_id
 
 
 # --- Boss standing rules (pkg4) ---
@@ -491,6 +519,12 @@ func resolve_round(
 
 	# Boss turn-cadence standing rules (rebuild / brood / root access).
 	_apply_boss_enemy_phase_rules(hero_rolls)
+
+	# Regenerative route modifier: enemies heal each round.
+	if _battle_modifier == "regenerative":
+		for regen_state in _enemy_states:
+			if not regen_state["dead"]:
+				_heal_state(regen_state, 3)
 
 	var ordered_enemy_states: Array = _enemy_states.duplicate()
 	ordered_enemy_states.reverse()
@@ -1208,6 +1242,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	_ability_ward_blocked_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
 	var damage: int = int(raw.get("dmg", 0))
+	# Ferocity route modifier: enemy hits deal +2.
+	if damage > 0 and _battle_modifier == "ferocity":
+		damage += 2
 	var heal: int = int(raw.get("heal", 0))
 	var shield: int = int(raw.get("shield", 0))
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
@@ -1770,6 +1807,14 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 			if not enemy_state["dead"] and enemy_state != dead_state:
 				_damage_state(enemy_state, chain_dmg)
 		_log("Chain Reaction triggers!")
+
+	# Dead Man's Charge route modifier: enemies deal 4 to a random hero on death.
+	if not _is_hero_state(dead_state) and _battle_modifier == "deadMansCharge":
+		var charge_targets: Array = _hero_states.filter(func(hs): return not bool(hs["dead"]))
+		if not charge_targets.is_empty():
+			var charge_target: Dictionary = charge_targets[randi() % charge_targets.size()]
+			_log("DEAD MAN'S CHARGE — %s takes 4!" % charge_target["unit"].display_name)
+			_damage_state(charge_target, 4)
 
 	# Scavenger Manifest relic: the first kill each battle drops a consumable.
 	if not _is_hero_state(dead_state) and has_relic("firstKillDropsConsumable") and not _scavenger_drop_done:

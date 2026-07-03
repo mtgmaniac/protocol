@@ -7,10 +7,28 @@ const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
+const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
 
 
 func go_to(scene_path: String) -> void:
 	get_tree().change_scene_to_file(scene_path)
+
+
+# Post-victory routing (pkg7.2): when a beat sits after the battle just won,
+# detour through its screen before the next battle; otherwise advance directly.
+func go_to_next_battle_or_beat() -> void:
+	var beat: Dictionary = GameState.get_beat_after_battle(GameState.current_battle)
+	if not beat.is_empty() and not GameState.consumed_beats.has(GameState.current_battle):
+		GameState.consumed_beats.append(GameState.current_battle)
+		match str(beat.get("type", "")):
+			"fork":
+				go_to(ROUTE_FORK_SCENE)
+				return
+			"intercept":
+				# Intercept screen lands in pkg7.4 — pass through until then.
+				pass
+	GameState.advance_to_next_battle()
+	go_to_battle()
 
 
 func go_to_main_menu() -> void:

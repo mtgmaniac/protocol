@@ -451,6 +451,7 @@ func _run_regression_audits() -> void:
 	_run_directive_combat_regressions()
 	_run_battle_slot_regressions()
 	_run_beat_regressions()
+	_run_route_modifier_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1991,6 +1992,96 @@ func _run_beat_regressions() -> void:
 			break
 	GameState.reset_run()
 	_expect_and_record("Regression / run beats placement", "runBeats", "true", "%s%s" % [str(all_ok), "" if all_ok else " (" + detail + ")"])
+
+
+func _run_route_modifier_regressions() -> void:
+	# Roll rules: no repeats per run; preconditioned modifiers redraw away.
+	GameState.start_run(["pulse", "combat", "ghost"], "facility")
+	GameState.current_battle = 2
+	var no_repeat_ok: bool = true
+	var precondition_ok: bool = true
+	for modifier_id in GameState.BATTLE_MODIFIERS.keys():
+		if str(modifier_id) != "warded":
+			GameState.used_battle_modifiers.append(str(modifier_id))
+	# Only "warded" remains — a comp without a support unit must fail its
+	# precondition and yield no modifier.
+	GameState.resolved_battle_comps[2] = {"names": ["Scrap Drone", "Rust Drone"], "cloaked": []}
+	if GameState.roll_route_modifier() != "":
+		precondition_ok = false
+	# With a support in the comp, warded becomes rollable.
+	GameState.resolved_battle_comps[2] = {"names": ["Guard Elite", "Rust Drone"], "cloaked": []}
+	if GameState.roll_route_modifier() != "warded":
+		precondition_ok = false
+	GameState.used_battle_modifiers.clear()
+	for _i in 5:
+		var rolled: String = GameState.roll_route_modifier()
+		if GameState.used_battle_modifiers.has(rolled):
+			no_repeat_ok = false
+		GameState.used_battle_modifiers.append(rolled)
+	_expect_and_record("Regression / route modifier roll rules", "routeModifiers", "true", str(no_repeat_ok and precondition_ok))
+
+	# Flagged acceptance: comp-shaping modifiers reshape the next comp and the
+	# supply grade arms.
+	GameState.used_battle_modifiers.clear()
+	GameState.resolved_battle_comps[2] = {"names": ["Guard Elite", "Rust Drone"], "cloaked": []}
+	GameState.accept_flagged_route("overrun")
+	var overrun_comp: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("names", [])
+	var fodder_pool: Array = DataManager.get_role_pool("facility", "fodder")
+	var overrun_ok: bool = overrun_comp.size() == 3 and fodder_pool.has(str(overrun_comp[2]))
+	var armed_ok: bool = GameState.next_battle_modifier == "overrun" and GameState.next_battle_supply_grade == 2
+
+	GameState.resolved_battle_comps[2] = {"names": ["Guard Elite", "Rust Drone"], "cloaked": []}
+	GameState.accept_flagged_route("warded")
+	var warded_list: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("warded", [])
+	var warded_ok: bool = warded_list == ["Guard Elite"]
+	_expect_and_record("Regression / flagged route acceptance", "routeModifiers", "true", str(overrun_ok and armed_ok and warded_ok))
+	GameState.reset_run()
+
+	# Combat-side modifiers.
+	var ferocity_manager: CombatManager = CombatManager.new()
+	ferocity_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "Claw", {"dmg": 5})])
+	ferocity_manager.setup_battle_modifier("ferocity")
+	var ferocity_hero: Dictionary = ferocity_manager.get_hero_states()[0]
+	var ferocity_enemy: Dictionary = ferocity_manager.get_enemy_states()[0]
+	ferocity_enemy["selected_target_id"] = str(ferocity_hero["id"])
+	ferocity_manager.resolve_round({}, {str(ferocity_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	_expect_and_record("Regression / modifier ferocity", "routeModifiers", "93", str(int(ferocity_hero["current_hp"])))
+
+	var hardened_manager: CombatManager = CombatManager.new()
+	hardened_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	hardened_manager.setup_battle_modifier("hardened")
+	_expect_and_record("Regression / modifier hardened", "routeModifiers", "8", str(int(hardened_manager.get_enemy_states()[0].get("shield", 0))))
+
+	var jam_field_manager: CombatManager = CombatManager.new()
+	jam_field_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	jam_field_manager.setup_battle_modifier("jammingField")
+	_expect_and_record("Regression / modifier jamming field", "routeModifiers", "12", str(jam_field_manager.get_effective_roll(jam_field_manager.get_hero_states()[0], 18)))
+
+	var charge_manager: CombatManager = CombatManager.new()
+	charge_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 200})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	charge_manager.setup_battle_modifier("deadMansCharge")
+	var charge_hero: Dictionary = charge_manager.get_hero_states()[0]
+	charge_hero["selected_target_id"] = str(charge_manager.get_enemy_states()[0]["id"])
+	charge_manager.resolve_round({str(charge_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / modifier dead man's charge", "routeModifiers", "96", str(int(charge_hero["current_hp"])))
+
+	var regen_manager: CombatManager = CombatManager.new()
+	regen_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	regen_manager.setup_battle_modifier("regenerative")
+	var regen_hero: Dictionary = regen_manager.get_hero_states()[0]
+	var regen_enemy: Dictionary = regen_manager.get_enemy_states()[0]
+	regen_hero["selected_target_id"] = str(regen_enemy["id"])
+	regen_manager.resolve_round({str(regen_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / modifier regenerative", "routeModifiers", "93", str(int(regen_enemy["current_hp"])))
+
+	# Sealed Supplies raises the item cost (battle_scene cost path).
+	var sealed_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if sealed_scene != null:
+		sealed_scene.combat_manager.setup_battle([], [])
+		sealed_scene.combat_manager.setup_battle_modifier("sealedSupplies")
+		var sealed_cost: int = int(sealed_scene.call("_get_item_protocol_cost", null))
+		sealed_scene.free()
+		_expect_and_record("Regression / modifier sealed supplies", "routeModifiers", "2", str(sealed_cost))
 
 
 func _run_evolution_kit_regression() -> void:

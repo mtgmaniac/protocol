@@ -750,8 +750,7 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 	if GameState.has_pending_evolution():
 		SceneManager.go_to_evolution()
 		return
-	GameState.advance_to_next_battle()
-	SceneManager.go_to_battle()
+	SceneManager.go_to_next_battle_or_beat()
 
 
 func _update_battle_header() -> void:

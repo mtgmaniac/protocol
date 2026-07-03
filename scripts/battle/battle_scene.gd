@@ -186,6 +186,14 @@ func _ready() -> void:
 	var battle_index: int = maxi(_game_state().current_battle - 1, 0)
 	combat_manager.apply_battle_start_relic_effects(battle_index)
 	combat_manager.apply_battle_start_gear_effects()
+	# Route Fork modifier (pkg7.3): one-shot — consumed into this battle.
+	var route_modifier: String = str(_game_state().next_battle_modifier)
+	_game_state().next_battle_modifier = ""
+	if route_modifier != "":
+		var comp_warded: Array = _game_state().get_current_battle_comp().get("warded", [])
+		combat_manager.setup_battle_modifier(route_modifier, comp_warded)
+		var modifier_info: Dictionary = _game_state().BATTLE_MODIFIERS.get(route_modifier, {})
+		_append_log("ROUTE FLAGGED — %s: %s" % [str(modifier_info.get("name", route_modifier)), str(modifier_info.get("desc", ""))])
 	# Protocol Tap gear: sum gear_protocol_on_start from hero states
 	for _hs in combat_manager.get_hero_states():
 		protocol_points += int(_hs.get("gear_protocol_on_start", 0))
@@ -876,9 +884,13 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	else:
 		if _try_finish_battle_from_current_state():
 			return
-		# Gain +1 PP at end of each resolved round (ongoing only)
-		_gain_protocol(1)
-		_append_log("Protocol +1 → %d" % protocol_points)
+		# Gain +1 PP at end of each resolved round (ongoing only).
+		# Blackout route modifier: income starts on turn 3.
+		if combat_manager.has_battle_modifier("blackout") and _round_number < 3:
+			_append_log("BLACKOUT — no Protocol income yet.")
+		else:
+			_gain_protocol(1)
+			_append_log("Protocol +1 → %d" % protocol_points)
 		_round_number += 1
 		_set_turn_phase(PHASE_AWAIT_ROLL)
 		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
@@ -2813,6 +2825,9 @@ func _get_item_protocol_cost(_item: ItemData) -> int:
 	# use — see _apply_item_effect for the grant.
 	if combat_manager.has_relic("protocolOnItemUse"):
 		return 0
+	# Sealed Supplies route modifier: items cost +1 this battle.
+	if combat_manager.has_battle_modifier("sealedSupplies"):
+		return 2
 	return 1
 
 

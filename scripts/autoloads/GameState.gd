@@ -39,6 +39,12 @@ var resolved_battle_comps: Array = []
 ## {after b2, b3, b4, b6, b7, b8}; Fork/Intercept 50/50 with >=1 of each.
 ## after_battle -> {"type": "fork"|"intercept", "tier": "minor"|"major"}.
 var run_beats: Dictionary = {}
+## Beats already visited this run (after-battle numbers).
+var consumed_beats: Array = []
+## Route Fork (pkg7.3): one-shot state for the NEXT battle.
+var next_battle_modifier: String = ""
+var next_battle_supply_grade: int = 0
+var used_battle_modifiers: Array = []
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
@@ -86,6 +92,10 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 		total_battles = 10
 	_resolve_battle_comps(operation)
 	_roll_run_beats()
+	consumed_beats.clear()
+	next_battle_modifier = ""
+	next_battle_supply_grade = 0
+	used_battle_modifiers.clear()
 	relics.clear()
 	consumables.clear()
 	gear_by_unit.clear()
@@ -210,6 +220,84 @@ func get_beat_after_battle(battle_number: int) -> Dictionary:
 	return run_beats.get(battle_number, {})
 
 
+# --- Route Fork (pkg7.3) ---
+# Flagged fights: same slot pattern + one modifier chip + "supply grade +2"
+# (the reward rarity ladder rolls two rows deeper, capped at row 10).
+# BALANCE-TODO: all modifier numbers provisional.
+const BATTLE_MODIFIERS := {
+	"hardened": {"name": "HARDENED", "desc": "Enemies spawn with 8 shield.", "amount": 8},
+	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are Jammed (cap 12) on turn 1.", "cap": 12},
+	"overrun": {"name": "OVERRUN", "desc": "One extra fodder unit joins the comp.", "requires": "small_comp"},
+	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy slot upgrades to the elite pool."},
+	"ferocity": {"name": "FEROCITY", "desc": "Enemy hits deal +2.", "amount": 2},
+	"deadMansCharge": {"name": "DEAD MAN'S CHARGE", "desc": "Enemies deal 4 to a random hero on death.", "amount": 4},
+	"blackout": {"name": "BLACKOUT", "desc": "Protocol income starts on turn 3.", "fromTurn": 3},
+	"sealedSupplies": {"name": "SEALED SUPPLIES", "desc": "Items cost +1 Protocol.", "amount": 1},
+	"regenerative": {"name": "REGENERATIVE", "desc": "Enemies heal 3 each round.", "amount": 3},
+	"warded": {"name": "WARDED", "desc": "Support enemies spawn with Ward.", "requires": "has_support"},
+}
+
+
+# Rolls a modifier for the upcoming fork: no repeats per run; preconditioned
+# entries are redrawn when their check fails.
+func roll_route_modifier() -> String:
+	var comp: Dictionary = {}
+	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
+		comp = resolved_battle_comps[current_battle]  # index of the NEXT battle
+	var comp_names: Array = comp.get("names", [])
+	var candidates: Array = []
+	for modifier_id in BATTLE_MODIFIERS.keys():
+		if not used_battle_modifiers.has(modifier_id):
+			candidates.append(modifier_id)
+	while not candidates.is_empty():
+		var pick: String = str(candidates[_reward_rng.randi_range(0, candidates.size() - 1)])
+		match str((BATTLE_MODIFIERS[pick] as Dictionary).get("requires", "")):
+			"small_comp":
+				if comp_names.size() <= 2:
+					return pick
+			"has_support":
+				if not _support_names_in_comp(comp_names).is_empty():
+					return pick
+			_:
+				return pick
+		candidates.erase(pick)
+	return ""
+
+
+func _support_names_in_comp(comp_names: Array) -> Array:
+	var raw_pools: Dictionary = DataManager.enemy_role_pools.get(selected_operation_id, {})
+	var support_pool: Array = raw_pools.get("support", [])
+	return comp_names.filter(func(n): return support_pool.has(str(n)))
+
+
+# Player takes the flagged route: arm the modifier + supply grade and apply
+# any comp-shaping modifiers to the next battle's resolved comp.
+func accept_flagged_route(modifier_id: String) -> void:
+	if modifier_id == "" or not BATTLE_MODIFIERS.has(modifier_id):
+		return
+	used_battle_modifiers.append(modifier_id)
+	next_battle_modifier = modifier_id
+	next_battle_supply_grade = 2
+	if current_battle < 0 or current_battle >= resolved_battle_comps.size():
+		return
+	var comp: Dictionary = resolved_battle_comps[current_battle]
+	var names: Array = comp.get("names", [])
+	match modifier_id:
+		"overrun":
+			var extra_fodder: String = _pick_from_role_pool(selected_operation_id, "fodder", [])
+			if extra_fodder != "" and names.size() < SQUAD_UNIT_LIMIT:
+				names.append(extra_fodder)
+		"elitePresence":
+			var elite_pool: Array = DataManager.get_role_pool(selected_operation_id, "elite")
+			for i in names.size():
+				if not elite_pool.has(str(names[i])):
+					names[i] = _pick_from_role_pool(selected_operation_id, "elite", [])
+					break
+		"warded":
+			comp["warded"] = _support_names_in_comp(names)
+	comp["names"] = names
+
+
 # The exact comp for the current battle (1-based current_battle).
 func get_current_battle_comp() -> Dictionary:
 	var index: int = current_battle - 1
@@ -304,6 +392,10 @@ func reset_run() -> void:
 	starting_directive_relic_id = ""
 	resolved_battle_comps.clear()
 	run_beats.clear()
+	consumed_beats.clear()
+	next_battle_modifier = ""
+	next_battle_supply_grade = 0
+	used_battle_modifiers.clear()
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
 
@@ -629,10 +721,19 @@ func get_pending_evolution_unit_id() -> String:
 
 func _roll_reward_item_ids() -> Array:
 	var round: int = current_battle
+	# Supply grade (pkg7.3 flagged route): the ladder rolls two rows deeper,
+	# capped at row 10. One-shot — consumed by this draft (a flagged battle 5
+	# spends it on the relic cache, which has no rarity ladder).
+	var supply_grade: int = next_battle_supply_grade
+	next_battle_supply_grade = 0
 	if round == RELIC_ONLY_ROUND:
 		if relics.is_empty():
 			return _roll_relic_choice_ids(RELIC_CHOICE_COUNT)
 		return []
+	if supply_grade > 0:
+		round = mini(round + supply_grade, 10)
+		if not DRAFT_RARITY_BY_ROUND.has(round):
+			round = mini(round + 1, 10)  # row 5 is the relic cache — step past it
 
 	var chosen_ids: Array = []
 	while chosen_ids.size() < 3:
