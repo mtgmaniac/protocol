@@ -242,11 +242,13 @@ func get_logical_slot_width(row: HBoxContainer) -> float:
 	var gap: float = float(row.get_theme_constant("separation"))
 	var available_width: float = maxf(row.size.x, 320.0)
 	var slot_count: int = maxi(row.get_child_count(), 1)
-	return clampf(
-		floor((available_width - (gap * float(slot_count - 1))) / float(slot_count)),
-		96.0,
-		COMPACT_CARD_WIDTH_PX
-	)
+	# pkg8.6: cards never shrink below the standard 3-unit slot width. When a
+	# summon lands while a downed card still holds a slot (4 frames in the
+	# row), the row overflows into its scroll container instead of crushing
+	# every card unreadable.
+	var three_unit_width: float = floor((available_width - gap * 2.0) / 3.0)
+	var slot_width: float = floor((available_width - (gap * float(slot_count - 1))) / float(slot_count))
+	return clampf(maxf(slot_width, three_unit_width), 96.0, COMPACT_CARD_WIDTH_PX)
 
 
 func apply_dice_anchor_height(anchor_height: float) -> void:
