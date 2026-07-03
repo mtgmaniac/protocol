@@ -42,14 +42,14 @@ const EMPTY_ENEMY_AB: EnemyAbility = {
   name: '?',
   eff: '—',
   dmg: 0,
-  dot: 0,
-  dT: 0,
+  burn: 0,
+  burnT: 0,
   heal: 0,
   rfe: 0,
   shield: 0,
 };
 
-const DEFAULT_DOT_TURNS = 2;
+const DEFAULT_BURN_TURNS = 2;
 
 export interface BattleProgressSimInput {
   heroes: HeroDefinition[];
@@ -215,8 +215,8 @@ interface SimHero {
   xp: number;
   /** Base or post-evolution kit */
   activeAbilities: HeroAbility[];
-  dot: number;
-  dT: number;
+  burn: number;
+  burnT: number;
   /** Roll debuff stacks (enemy `rfm` → hero RFE). */
   rfeStacks: RfeStack[];
   rollBuff: number;
@@ -238,8 +238,8 @@ interface SimEnemy {
   p2: boolean;
   pThr: number | null;
   dmgScale: number;
-  dot: number;
-  dT: number;
+  burn: number;
+  burnT: number;
   rfeStacks: RfeStack[];
   /** Frozen d20 value while dieFreezeRollsRemaining > 0. */
   frozenRoll: number | null;
@@ -512,8 +512,8 @@ function scaleEnemyDef(
     p2: false,
     pThr: raw.pThr != null ? Math.max(1, Math.round(raw.pThr * hpM)) : null,
     dmgScale: dmgM,
-    dot: 0,
-    dT: 0,
+    burn: 0,
+    burnT: 0,
     rfeStacks: [],
     frozenRoll: null,
     dieFreezeRollsRemaining: 0,
@@ -549,7 +549,7 @@ function getEnemyPlan(enemy: SimEnemy, suites: Record<string, EnemyAbilitySuite>
   if (base.heal > 0) base.heal = Math.round(base.heal * scale);
   if (base.shield > 0) base.shield = Math.round(base.shield * scale);
   if ((base.shieldAlly || 0) > 0) base.shieldAlly = Math.round((base.shieldAlly || 0) * scale);
-  if (base.dot > 0) base.dot = Math.round(base.dot * scale);
+  if (base.burn > 0) base.burn = Math.round(base.burn * scale);
   if (enemy.p2 && base.dmgP2) base.dmg = base.dmgP2;
   if (enemy.p2 && base.shieldP2) base.shield = base.shieldP2;
   return base;
@@ -639,8 +639,8 @@ function freshSquadFromDefs(defs: HeroDefinition[]): SimHero[] {
     xp: 0,
     bRolls: [],
     activeAbilities: d.abilities.map(normalizeHeroAbility),
-    dot: 0,
-    dT: 0,
+    burn: 0,
+    burnT: 0,
     rfeStacks: [],
     rollBuff: 0,
     rollBuffTurns: 0,
@@ -681,8 +681,8 @@ function applyP2Revives(enemies: SimEnemy[], reviveNames: string[]): void {
       e.shield = 0;
       e.shT = 0;
       e.shieldStacks = [];
-      e.dot = 0;
-      e.dT = 0;
+      e.burn = 0;
+      e.burnT = 0;
       e.rollBuff = 0;
       e.rollBuffTurns = 0;
       e.rollBuffSkipNextTick = false;
@@ -692,10 +692,10 @@ function applyP2Revives(enemies: SimEnemy[], reviveNames: string[]): void {
   }
 }
 
-function squadMaxDotBonus(heroes: SimHero[]): number {
+function squadMaxBurnBonus(heroes: SimHero[]): number {
   let max = 0;
   for (const h of heroes) {
-    if (h.hp > 0) max = Math.max(max, h.gear.dotDmgBonus);
+    if (h.hp > 0) max = Math.max(max, h.gear.burnDmgBonus);
   }
   return max;
 }
@@ -820,37 +820,37 @@ function damageHero(h: SimHero, dmg: number): void {
   }
 }
 
-/** Player-phase start: tick DoT on enemies (matches game END TURN before hero resolves). */
-function tickEnemyDots(enemies: SimEnemy[], heroes: SimHero[]): void {
-  const dotBonus = squadMaxDotBonus(heroes);
+/** Player-phase start: tick burn on enemies (matches game END TURN before hero resolves). */
+function tickEnemyBurns(enemies: SimEnemy[], heroes: SimHero[]): void {
+  const burnBonus = squadMaxBurnBonus(heroes);
   for (const e of enemies) {
-    if (e.hp <= 0 || e.dot <= 0 || e.dT <= 0) continue;
-    damageEnemy(e, e.dot + dotBonus, false, enemies);
-    e.dT -= 1;
-    if (e.dT <= 0) e.dot = 0;
+    if (e.hp <= 0 || e.burn <= 0 || e.burnT <= 0) continue;
+    damageEnemy(e, e.burn + burnBonus, false, enemies);
+    e.burnT -= 1;
+    if (e.burnT <= 0) e.burn = 0;
   }
 }
 
-/** Enemy-phase start: tick DoT on heroes. */
-function tickHeroDots(heroes: SimHero[]): void {
+/** Enemy-phase start: tick burn on heroes. */
+function tickHeroBurns(heroes: SimHero[]): void {
   for (const h of heroes) {
-    if (h.hp <= 0 || h.dot <= 0 || h.dT <= 0) continue;
-    damageHero(h, h.dot);
-    h.dT -= 1;
-    if (h.dT <= 0) h.dot = 0;
+    if (h.hp <= 0 || h.burn <= 0 || h.burnT <= 0) continue;
+    damageHero(h, h.burn);
+    h.burnT -= 1;
+    if (h.burnT <= 0) h.burn = 0;
   }
 }
 
-function applyDotToEnemy(e: SimEnemy, amt: number, turns: number): void {
+function applyBurnToEnemy(e: SimEnemy, amt: number, turns: number): void {
   if (amt <= 0 || turns <= 0 || e.hp <= 0) return;
-  e.dot += amt;
-  e.dT = Math.max(e.dT, turns);
+  e.burn += amt;
+  e.burnT = Math.max(e.burnT, turns);
 }
 
-function applyDotToHero(h: SimHero, amt: number, turns: number): void {
+function applyBurnToHero(h: SimHero, amt: number, turns: number): void {
   if (amt <= 0 || turns <= 0 || h.hp <= 0) return;
-  h.dot += amt;
-  h.dT = Math.max(h.dT, turns);
+  h.burn += amt;
+  h.burnT = Math.max(h.burnT, turns);
 }
 
 function pickSmartHeroIndex(heroes: SimHero[]): number {
@@ -887,7 +887,9 @@ function resolveHeroAbility(
 
   const ignSh = !!ab.ignSh;
 
-  const shDur = ab.shT || 2;
+  // One-round shields: hero grants live through this round's enemy phase and
+  // expire at the same round's end tick.
+  const shDur = 1;
   if (ab.shieldAll && (ab.shield || 0) > 0) {
     for (const x of heroes) {
       if (x.hp > 0) Object.assign(x, addShieldToUnit(x, ab.shield!, shDur));
@@ -936,8 +938,8 @@ function resolveHeroAbility(
   }
 
   const dmgVal = sampleHeroDamage(ab);
-  const dotAmt = ab.dot || 0;
-  const dotTurns = Math.max(ab.dT || 0, dotAmt > 0 ? DEFAULT_DOT_TURNS : 0);
+  const burnAmt = ab.burn || 0;
+  const burnTurns = Math.max(ab.burnT || 0, burnAmt > 0 ? DEFAULT_BURN_TURNS : 0);
   const blastAll = !!(ab.blastAll || ab.multiHit);
   const hasDirectDamage = dmgVal > 0;
 
@@ -954,14 +956,14 @@ function resolveHeroAbility(
     }
   }
 
-  if (dotAmt > 0) {
+  if (burnAmt > 0) {
     if (ab.blastAll) {
       for (const e of enemies) {
-        if (e.hp > 0) applyDotToEnemy(e, dotAmt, dotTurns);
+        if (e.hp > 0) applyBurnToEnemy(e, burnAmt, burnTurns);
       }
     } else {
       const ei = lowestHpEnemyIndex(enemies);
-      if (ei >= 0) applyDotToEnemy(enemies[ei]!, dotAmt, dotTurns);
+      if (ei >= 0) applyBurnToEnemy(enemies[ei]!, burnAmt, burnTurns);
     }
   }
 
@@ -1006,7 +1008,9 @@ function resolveEnemyTurn(
 ): void {
   const act = getEnemyPlan(enemy, suites);
 
-  const eshT = act.shT || 2;
+  // Enemy grants land after the hero phase, so they need 2 ticks of life to
+  // cover exactly one hero phase (mirrors combat_manager survives_current_tick).
+  const eshT = 2;
   if (act.shieldAllyAll && (act.shieldAlly || 0) > 0) {
     for (const e of enemies) {
       if (e.hp > 0) Object.assign(e, addShieldToUnit(e, act.shieldAlly!, eshT));
@@ -1033,7 +1037,7 @@ function resolveEnemyTurn(
   }
 
   const hi =
-    (act.dmg || 0) > 0 || (act.dot || 0) > 0
+    (act.dmg || 0) > 0 || (act.burn || 0) > 0
       ? enemy.ai === 'smart'
         ? pickSmartHeroIndex(heroes)
         : pickDumbHeroIndex(heroes)
@@ -1058,9 +1062,9 @@ function resolveEnemyTurn(
     wipeAllHeroShields(heroes);
   }
 
-  if ((act.dot || 0) > 0 && !act.blastAll && hi >= 0) {
-    const turns = Math.max(act.dT || 0, DEFAULT_DOT_TURNS);
-    applyDotToHero(heroes[hi]!, act.dot, turns);
+  if ((act.burn || 0) > 0 && !act.blastAll && hi >= 0) {
+    const turns = Math.max(act.burnT || 0, DEFAULT_BURN_TURNS);
+    applyBurnToHero(heroes[hi]!, act.burn, turns);
   }
 
   if ((act.rfm || 0) > 0) {
@@ -1128,12 +1132,12 @@ function applyConsumableEffect(
       break;
     case 'shield':
       if (targetHero && targetHero.hp > 0) {
-        Object.assign(targetHero, addShieldToUnit(targetHero, e.amount ?? 0, e.shT ?? 1));
+        Object.assign(targetHero, addShieldToUnit(targetHero, e.amount ?? 0, 1));
       }
       break;
     case 'shieldAll':
       for (const h of heroes) {
-        if (h.hp > 0) Object.assign(h, addShieldToUnit(h, e.amount ?? 0, e.shT ?? 1));
+        if (h.hp > 0) Object.assign(h, addShieldToUnit(h, e.amount ?? 0, 1));
       }
       break;
     case 'rollBuff':
@@ -1150,9 +1154,9 @@ function applyConsumableEffect(
     case 'enemyDmg':
       if (targetEnemy && targetEnemy.hp > 0) damageEnemy(targetEnemy, e.amount ?? 0, false, enemies);
       break;
-    case 'enemyDot':
+    case 'enemyBurn':
       if (targetEnemy && targetEnemy.hp > 0) {
-        applyDotToEnemy(targetEnemy, e.amount ?? 0, Math.max(e.dT ?? 0, DEFAULT_DOT_TURNS));
+        applyBurnToEnemy(targetEnemy, e.amount ?? 0, Math.max(e.burnT ?? 0, DEFAULT_BURN_TURNS));
       }
       break;
     case 'gainProtocol':
@@ -1164,11 +1168,6 @@ function applyConsumableEffect(
     case 'enemyDieFreezeAll':
       for (const en of enemies) {
         if (en.hp > 0) applyEnemyDieFreeze(en, e.skips ?? 1);
-      }
-      break;
-    case 'xpBoost':
-      for (const h of heroes) {
-        if (h.hp > 0 && h.tier === 1) h.xp += e.amount ?? 0;
       }
       break;
     default:
@@ -1218,7 +1217,7 @@ function tryUseTrackConsumable(
     else if (roundIndex >= 2) tryApply();
     return;
   }
-  if (t === 'enemyDmg' || t === 'enemyDot' || t === 'enemyRfe' || t === 'enemyDieFreeze') {
+  if (t === 'enemyDmg' || t === 'enemyBurn' || t === 'enemyRfe' || t === 'enemyDieFreeze') {
     const ei = lowestHpEnemyIndex(enemies);
     if (ei >= 0 && roundIndex === 0) tryApply(undefined, enemies[ei]!);
     else if (ei >= 0 && roundIndex >= 2) tryApply(undefined, enemies[ei]!);
@@ -1256,7 +1255,7 @@ function simulateBattle(
       consumableUsed,
     );
 
-    tickEnemyDots(enemies, heroes);
+    tickEnemyBurns(enemies, heroes);
     if (!livingEnemies(enemies).length) return true;
     if (!livingHeroes(heroes).length) return false;
 
@@ -1269,7 +1268,7 @@ function simulateBattle(
 
     if (!livingHeroes(heroes).length) return false;
 
-    tickHeroDots(heroes);
+    tickHeroBurns(heroes);
     if (!livingHeroes(heroes).length) return false;
 
     for (const e of enemies) {
@@ -1301,8 +1300,8 @@ function interBattleReset(heroes: SimHero[]): void {
     h.shield = 0;
     h.shT = 0;
     h.shieldStacks = [];
-    h.dot = 0;
-    h.dT = 0;
+    h.burn = 0;
+    h.burnT = 0;
     h.rfeStacks = [];
     h.rollBuff = 0;
     h.rollBuffTurns = 0;
@@ -1710,7 +1709,7 @@ export function formatBattleProgressSimResult(r: BattleProgressSimResult): strin
   const lines: string[] = [
     `Battle progress sim — ${r.iterations} runs/track × ${r.tracks.length} operations, random 3-hero squads`,
     `Reach% = cumulative (attempted that fight). Cond% = win rate given you reached that fight. HP% = avg survivor HP after a win.`,
-    `Evolution included. DoT + shield + enemy rfm/erb/wipeShields + hero gainProtocol modeled. ${protoNote} No items or summons.`,
+    `Evolution included. burn + shield + enemy rfm/erb/wipeShields + hero gainProtocol modeled. ${protoNote} No items or summons.`,
     '',
   ];
   for (const t of r.tracks) {

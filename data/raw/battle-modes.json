@@ -12,74 +12,84 @@
       "trackHpScale": 1.05,
       "callsign": "FACILITY",
       "label": "Facility sweep",
-      "blurb": "Drones wall up behind ECM shields and chip your rolls down. Strip shields and out-damage the attrition.",
+      "blurb": "Drones jam your dice and wall up behind shields. Bank Protocol and breach through.",
       "victoryTitle": "VICTORY",
       "victorySub": "Scrapmaster down. Facility clear.",
       "battles": [
         {
           "enemies": [
-            { "name": "Scrap Drone" },
-            { "name": "Rust Drone" }
+            {
+              "name": "Scrap Drone"
+            },
+            {
+              "name": "Rust Drone"
+            }
+          ]
+        },
+        {
+          "slots": [
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
           "enemies": [
-            { "name": "Scrap Drone" },
-            { "name": "Rust Drone" },
-            { "name": "Static Skimmer" }
+            {
+              "name": "Guard Elite"
+            },
+            {
+              "name": "Guard Elite"
+            }
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "elite"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
           "enemies": [
-            { "name": "Guard Elite" },
-            { "name": "Rust Drone" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Patrol Elite" },
-            { "name": "Static Skimmer" },
-            { "name": "Rust Drone" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Guard Elite" },
-            { "name": "Guard Elite" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Patrol Elite" },
-            { "name": "Static Skimmer" },
-            { "name": "Static Skimmer" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Heavy Warden" },
-            { "name": "Rust Drone" },
-            { "name": "Rust Drone" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Heavy Warden" },
-            { "name": "Patrol Elite" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Volt Elite" },
-            { "name": "Volt Elite" },
-            { "name": "Static Skimmer" }
-          ]
-        },
-        {
-          "enemies": [
-            { "name": "Scrap Drone" },
-            { "name": "SCRAPMASTER" },
-            { "name": "Scrap Drone" }
+            {
+              "name": "Scrap Drone"
+            },
+            {
+              "name": "SCRAPMASTER"
+            },
+            {
+              "name": "Scrap Drone"
+            }
           ]
         }
       ]
@@ -88,7 +98,7 @@
       "trackHpScale": 1,
       "callsign": "HIVE",
       "label": "Hive incursion",
-      "blurb": "Swarms stack heavy DoT and heal off you with lifesteal. Burst them fast and cleanse the bleed.",
+      "blurb": "The swarm drains you and multiplies. Burst it down before the brood builds.",
       "victoryTitle": "VICTORY",
       "victorySub": "Matriarch down. Brood scattered.",
       "battles": [
@@ -100,50 +110,32 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Skitterling"
-            },
-            {
-              "name": "Bloodmite"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Skitterling"
-            },
-            {
-              "name": "Skitterling"
-            }
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Spine Stalker"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Carapace Beetle"
-            },
-            {
-              "name": "Skitterling"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Spine Stalker"
-            },
-            {
-              "name": "Skitterling"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
@@ -154,26 +146,16 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Bloodmite"
-            },
-            {
-              "name": "Broodwarden"
-            },
-            {
-              "name": "Bloodmite"
-            }
+          "slots": [
+            "heavy",
+            "elite"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Caustic Spewer"
-            },
-            {
-              "name": "Caustic Spewer"
-            }
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
@@ -192,7 +174,7 @@
       "trackHpScale": 0.94,
       "callsign": "VEIL",
       "label": "Veil Concord",
-      "blurb": "A lattice that shields and buffs its own rolls, calling in more on high rolls. Kill the support and strip the shields.",
+      "blurb": "A lattice that shields and buffs its own. Kill the supports or drown in wards.",
       "victoryTitle": "VICTORY",
       "victorySub": "Overseer down. Concord gone.",
       "battles": [
@@ -207,50 +189,32 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Aegis Anchor"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Shardmite"
-            },
-            {
-              "name": "Synapse Herald"
-            }
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Prism Charger"
-            },
-            {
-              "name": "Shardmite"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Resonance Warden"
-            },
-            {
-              "name": "Prism Charger"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Nullblade"
-            },
-            {
-              "name": "Stormweaver"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
@@ -264,26 +228,16 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Stormweaver"
-            },
-            {
-              "name": "Stormweaver"
-            }
+          "slots": [
+            "heavy",
+            "elite"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Synapse Herald"
-            },
-            {
-              "name": "Synapse Herald"
-            },
-            {
-              "name": "Shardmite"
-            }
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
@@ -300,109 +254,82 @@
     },
     "voidCirclet": {
       "trackHpScale": 0.94,
-      "callsign": "CIRCLET",
-      "label": "Void Circlet",
-      "blurb": "Casters counter your hits and debuff your dice while summoning reinforcements. Punishes careless swings.",
+      "callsign": "SYNOD",
+      "label": "Null Synod",
+      "blurb": "Machine cultists who rewrite your dice and drain your Protocol. Guard your best rolls.",
       "victoryTitle": "VICTORY",
       "victorySub": "Hierophant down. Gate sealed.",
       "battles": [
         {
           "enemies": [
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             },
             {
-              "name": "Sparksprite"
+              "name": "Glitch Sprite"
             }
+          ]
+        },
+        {
+          "slots": [
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
           "enemies": [
             {
-              "name": "Levyn Acolyte"
+              "name": "Axiom Binder"
             }
+          ]
+        },
+        {
+          "slots": [
+            "heavyOrElites"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "elite"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
           "enemies": [
             {
-              "name": "Chronicle Scribe"
+              "name": "ROOT HIEROPHANT"
             },
             {
-              "name": "Sparksprite"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Geas Binder"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Chronicle Scribe"
-            },
-            {
-              "name": "Chronicle Scribe"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Geas Binder"
-            },
-            {
-              "name": "Levyn Acolyte"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Glimmer Double"
-            },
-            {
-              "name": "Sparksprite"
-            },
-            {
-              "name": "Sparksprite"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Arc-Titan Channeler"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Arc-Titan Channeler"
-            },
-            {
-              "name": "Chronicle Scribe"
-            },
-            {
-              "name": "Sparksprite"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "CIRCLET HIEROPHANT"
-            },
-            {
-              "name": "Chronicle Scribe"
+              "name": "Checksum Scribe"
             }
           ]
         }
@@ -410,109 +337,77 @@
     },
     "stellarMenagerie": {
       "trackHpScale": 0.94,
-      "callsign": "MENAGERIE",
-      "label": "Stellar Menagerie",
-      "blurb": "Feral beasts ramp their damage and pin your dice with cower. Cut them down before they snowball.",
+      "callsign": "ACCRETION",
+      "label": "The Accretion",
+      "blurb": "Igneous beasts that armor up every turn. Cut them down before the mass sets.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Reaver down. Menagerie silent.",
+      "victorySub": "Tyrant down. Accretion silent.",
       "battles": [
         {
           "enemies": [
             {
-              "name": "Rift Macaque"
+              "name": "Pumice Macaque"
             }
+          ]
+        },
+        {
+          "slots": [
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
           "enemies": [
             {
-              "name": "Rift Macaque"
-            },
-            {
-              "name": "Void Hound"
+              "name": "Geode Panther",
+              "cloaked": true
             }
+          ]
+        },
+        {
+          "slots": [
+            "heavyOrElites"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "elite"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
           "enemies": [
             {
-              "name": "Void Hound"
+              "name": "MANTLE TYRANT"
             },
             {
-              "name": "Void Hound"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Eclipse Panther"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Thunder Ape"
-            },
-            {
-              "name": "Rift Macaque"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Eclipse Panther"
-            },
-            {
-              "name": "Rift Macaque"
-            },
-            {
-              "name": "Void Hound"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Ridge Drake"
-            },
-            {
-              "name": "Rift Macaque"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Eclipse Raptor"
-            },
-            {
-              "name": "Void Hound"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Thunder Ape"
-            },
-            {
-              "name": "Ridge Drake"
-            },
-            {
-              "name": "Rift Macaque"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "VOID REAVER"
-            },
-            {
-              "name": "Eclipse Panther"
+              "name": "Geode Panther"
             }
           ]
         }

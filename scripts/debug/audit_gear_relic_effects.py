@@ -10,23 +10,59 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 GEAR_HANDLED = {
-    "rollBonus", "dotDmgBonus", "dmgReduction", "surviveOnce", "firstAbilityDmgBonus",
+    "rollBonus", "burnDmgBonus", "dmgReduction", "surviveOnce", "firstAbilityDmgBonus",
     "healOnKill", "protocolOnBattleStart", "battleStartShield", "battleStartCloak",
     "battleStartCloakRoll",
     "maxHpBonus", "lifesteal", "firstAbilityEcho", "shieldPierce", "healShieldBonus",
     "protocolOnKill", "protocolOnKillAny",
+    # pkg3.4 pool
+    "overloadBandCompress", "surgeBandExtend", "nudgeMaySubtract", "firstNudgeFree",
+    "protocolOnNat20", "burnImmediateTick", "detonateBonus", "battleStartMark",
+    "protocolOnDieTamper", "tauntAbove50", "deathDamageAll", "syncRollBonus",
 }
 
 RELIC_HANDLED = {
     "enemyDmgMult", "battleStartHalfHp", "heroShieldPerTurn", "heroHealPerTurn",
-    "enemyDotPermanent", "heroDmgMult", "enemyStartRfe", "heroStartRollBuff",
-    "dotAmplified", "auraEnemyDmg", "protocolOnItemUse", "enemyHpEscalation",
-    "chainReaction", "allyDeathHealAll", "critResolveTwice", "rewardsNoCommon",
+    "enemyBurnPermanent", "heroDmgMult", "enemyStartRfe", "heroStartRollBuff",
+    "burnAmplified", "auraEnemyDmg", "protocolOnItemUse", "enemyHpEscalation",
+    "chainReaction", "vengeanceProtocol", "critResolveTwice", "rewardsNoCommon",
     "protocolCarryover", "battleStartConsumable", "reviveNoPenalty",
     "lowHpSquadRollBuff", "healGrantsShieldAll",
+    # pkg3.5 pool
+    "critBandExtend", "battleStartJamEnemies", "twinFates", "protocolOverflowDamage",
+    "protocolOnMarkedKill", "frozenBonusDamage", "chainExtraJump",
+    "firstKillDropsConsumable", "squadWipeSurvive",
+    # boss relics (data now; dropped/unlocked in pkg5)
+    "protocolOnShieldBreak", "heroHealOnOwnKill", "turn1RollFloor",
+    "setCostZeroOncePerBattle", "shieldsPersist",
 }
 
 GAMESTATE_ONLY = {"rewardsNoCommon", "reviveNoPenalty", "battleStartConsumable"}
+
+# pkg6 tier-3 directive passives (combat_manager/battle_scene handlers)
+DIRECTIVE_HANDLED = {
+    "burnImmediateTick", "burnDurationBonus", "chainExtraJump", "chainFullDamage",
+    "pierceAlsoBreach", "killNextAbilityDamage", "bonusVsBurning", "overloadDetonateAfter",
+    "ownShieldBonus", "shieldGrantsSpike", "tauntDamageReduction", "spikeBonus",
+    "freezeDurationBonus", "bonusVsFrozen", "healGrantsShield", "battleStartShieldSelf",
+    "damageAppliesMark", "abilityRevivePctOverride", "squadShieldBonus", "protocolCapBonus",
+    "abilityProtocolBonus", "nonDamageRecloak", "cloakAttackBonus", "decloakExecute",
+    "lowHpCloakOnce", "executeThresholdPct", "rfeAllAlsoJam", "rfeDamagePerRound",
+    "rfeAlsoJam", "rfeGrantsProtocol",
+}
+
+
+def load_directive_types(path: Path) -> dict[str, list[str]]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    heroes = data["heroes"] if isinstance(data, dict) else data
+    usage: dict[str, list[str]] = defaultdict(list)
+    for hero in heroes:
+        for evo in hero.get("evolutions", []):
+            for directive in evo.get("directives", []):
+                et = str((directive.get("effect") or {}).get("type", ""))
+                if et:
+                    usage[et].append(f"{evo.get('name', '?')}/{directive.get('name', '?')}")
+    return usage
 
 
 def load_effect_types(path: Path, key: str | None) -> dict[str, list[str]]:
@@ -60,11 +96,21 @@ def main() -> int:
         if not handled:
             gaps.append(f"relic:{et}")
 
+    directive = load_directive_types(ROOT / "data/raw/heroes.data.json")
+    print("\n=== Directive effect types ===")
+    for et in sorted(directive):
+        handled = et in DIRECTIVE_HANDLED
+        print(f"  {'OK' if handled else 'GAP'} {et}: {directive[et]}")
+        if not handled:
+            gaps.append(f"directive:{et}")
+
     print("\n=== Handlers with no data yet ===")
     for et in sorted(GEAR_HANDLED - set(gear.keys())):
         print(f"  gear handler unused in data: {et}")
     for et in sorted(RELIC_HANDLED - set(relic.keys())):
         print(f"  relic handler unused in data: {et}")
+    for et in sorted(DIRECTIVE_HANDLED - set(directive.keys())):
+        print(f"  directive handler unused in data: {et}")
 
     if gaps:
         print("\nUnhandled effect types:", ", ".join(gaps))

@@ -22,7 +22,7 @@ export interface SimGearTotals {
   maxHpBonus: number;
   permRollBonus: number;
   dmgReduction: number;
-  dotDmgBonus: number;
+  burnDmgBonus: number;
   lifestealPct: number;
   shieldPierce: number;
   healOnKill: number;
@@ -47,7 +47,7 @@ export function emptyGearTotals(): SimGearTotals {
     maxHpBonus: 0,
     permRollBonus: 0,
     dmgReduction: 0,
-    dotDmgBonus: 0,
+    burnDmgBonus: 0,
     lifestealPct: 0,
     shieldPierce: 0,
     healOnKill: 0,
@@ -80,8 +80,8 @@ export function accumulateGearEffect(totals: SimGearTotals, effect: GearEffect):
     case 'maxHpBonus':
       totals.maxHpBonus += amt;
       break;
-    case 'dotDmgBonus':
-      totals.dotDmgBonus += amt;
+    case 'burnDmgBonus':
+      totals.burnDmgBonus += amt;
       break;
     case 'dmgReduction':
       totals.dmgReduction += amt;

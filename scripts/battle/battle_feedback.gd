@@ -125,7 +125,7 @@ func _get_action_feedback_kind(effects: Array) -> String:
 	for event_variant in effects:
 		var event: Dictionary = event_variant
 		var event_type: String = str(event.get("type", ""))
-		if event_type == "damage" or event_type == "poison":
+		if event_type == "damage" or event_type == "burn":
 			return "attack"
 	for event_variant in effects:
 		var event: Dictionary = event_variant
@@ -140,21 +140,19 @@ func _play_event_sfx(event_type: String, _event: Dictionary) -> void:
 	match event_type:
 		"damage":
 			AudioManager.play_sfx("damage")
-		"poison":
-			AudioManager.play_sfx("poison")
+		"burn":
+			AudioManager.play_sfx("burn")
 		"heal":
 			AudioManager.play_sfx("heal")
 		"shield":
 			AudioManager.play_sfx("shield")
 		"freeze":
 			AudioManager.play_sfx("freeze")
-		"phase2":
-			AudioManager.play_sfx("phase2")
 
 
 func _is_fatal_hit_event(event: Dictionary) -> bool:
 	var event_type: String = str(event.get("type", ""))
-	if event_type != "damage" and event_type != "poison":
+	if event_type != "damage" and event_type != "burn":
 		return false
 	return int(event.get("hp_after", 1)) <= 0
 
@@ -222,14 +220,12 @@ func _flash_card(card: Control, event_type: String) -> void:
 	var base_modulate: Color = card.modulate
 	var flash_color: Color = Color(1, 1, 1, 1)
 	match event_type:
-		"damage", "poison":
+		"damage", "burn":
 			flash_color = Color(1.0, 0.45, 0.45, 1.0)
 		"heal":
 			flash_color = Color(0.45, 1.0, 0.65, 1.0)
 		"shield", "block", "roll_buff", "freeze":
 			flash_color = Color(0.55, 0.82, 1.0, 1.0)
-		"phase2":
-			flash_color = Color(1.0, 0.45, 0.10, 1.0)
 		"wipe_shields":
 			flash_color = Color(1.0, 0.80, 0.20, 1.0)
 	card.modulate = flash_color
@@ -273,7 +269,7 @@ func _spawn_floating_text(card: Control, event_type: String, amount: int) -> voi
 # Floating-number punch scale: damage scales up with the hit (heavy hits read
 # bigger), everything else stays at its base size.
 func _float_size_mult(event_type: String, amount: int) -> float:
-	if event_type == "damage" or event_type == "poison":
+	if event_type == "damage" or event_type == "burn":
 		return clampf(0.95 + float(amount) * 0.012, 0.95, 1.55)
 	return 1.0
 
@@ -289,7 +285,7 @@ func _get_card_float_origin(card: Control) -> Vector2:
 
 func _build_floating_text(event_type: String, amount: int) -> String:
 	match event_type:
-		"damage", "poison":
+		"damage", "burn":
 			return "-%d" % amount
 		"heal":
 			return "+%d" % amount
@@ -301,8 +297,6 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 			return "FROZEN %d" % amount
 		"block":
 			return "BLOCK %d" % amount
-		"phase2":
-			return "⚡ PHASE 2"
 		"wipe_shields":
 			return "SHIELDS WIPED"
 		_:
@@ -311,14 +305,12 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 
 func _get_floating_color(event_type: String) -> Color:
 	match event_type:
-		"damage", "poison":
+		"damage", "burn":
 			return Color(1.0, 0.42, 0.42, 1.0)
 		"heal":
 			return Color(0.5, 1.0, 0.62, 1.0)
 		"shield", "block", "roll_buff", "freeze":
 			return Color(0.55, 0.82, 1.0, 1.0)
-		"phase2":
-			return Color(1.0, 0.45, 0.10, 1.0)
 		"wipe_shields":
 			return Color(1.0, 0.80, 0.20, 1.0)
 		_:

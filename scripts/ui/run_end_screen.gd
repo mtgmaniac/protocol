@@ -45,7 +45,26 @@ func _ready() -> void:
 			GameState.get_inventory_summary(),
 		]
 
+	# Lifetime stats block (pkg5 save system).
+	summary_label.text = "%s\n\n%s" % [summary_label.text, _build_stats_block()]
+
 	_apply_visual_theme(victory)
+
+
+# Lifetime record from the save profile, shown under the run summary.
+func _build_stats_block() -> String:
+	var stats: Dictionary = SaveManager.get_stats()
+	var wins: Dictionary = stats.get("runs_won_by_op", {})
+	var total_wins: int = 0
+	for op_wins in wins.values():
+		total_wins += int(op_wins)
+	return "SERVICE RECORD\nRuns: %d  Wins: %d  Best clear: battle %d\nNat 20s: %d  Squad deaths: %d" % [
+		int(stats.get("runs_started", 0)),
+		total_wins,
+		int(stats.get("best_clear", 0)),
+		int(stats.get("nat20s", 0)),
+		int(stats.get("deaths", 0)),
+	]
 
 
 func _on_new_run_button_pressed() -> void:

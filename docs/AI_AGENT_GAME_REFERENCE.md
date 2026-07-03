@@ -42,6 +42,10 @@ These are live global singletons:
   - [SceneManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/SceneManager.gd)
 - `AudioManager`
   - [AudioManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/AudioManager.gd)
+- `SaveManager` (pkg5) — persistent profile at `user://save.json` (save_version 1):
+  tutorial flag, lifetime stats (runs/wins-by-op/best clear/nat 20s/deaths),
+  boss-relic unlocks. Headless runs never touch disk.
+  - [SaveManager.gd](C:/Users/Kev/Documents/protocol/scripts/autoloads/SaveManager.gd)
 - `DebugBattleLauncher`
   - [DebugBattleLauncher.gd](C:/Users/Kev/Documents/protocol/scripts/debug/DebugBattleLauncher.gd)
 
@@ -63,8 +67,11 @@ Current high-level loop:
 5. battle plays until win/loss
 6. on victory:
    - reward selection if not run-complete
-   - evolution selection if XP threshold is hit
-   - next battle if no pending evolution/reward
+   - evolution selection at 100 XP; Directive (tier-3 passive) selection at
+     250 XP for evolved units — both on the evolution screen, one stop per win
+   - beat detour (pkg7): `SceneManager.go_to_next_battle_or_beat()` may route
+     through RouteForkScreen or InterceptScreen before the next battle
+   - next battle if no pending evolution/reward/beat
 7. on final victory or loss:
    - run end / reset flow
 
@@ -254,12 +261,12 @@ aggregation lives in `battle_card_view.compute_preview_for_unit()`; the
 projection/paint lives in `compact_unit_card._layout_preview_overlays()`:
 
 - projects the round in true resolution order: hero heals/shields → enemy
-  damage → poison tick (damage and poison both drain shields before HP)
-- zones: red = net loss (purple lead slice = unshielded poison), mint = net
+  damage → burn tick (damage and burn both drain shields before HP)
+- zones: red = net loss (purple lead slice = unshielded burn), mint = net
   gain, blue = loss the shield prevents (counterfactual); lethal = whole fill
 - label shows `cur → final / max` while a net-changing preview is active
-- the poison tick amount is single-sourced from
-  `combat_manager.get_expected_dot_tick()` — never re-derive it in UI code
+- the burn tick amount is single-sourced from
+  `combat_manager.get_expected_burn_tick()` — never re-derive it in UI code
 - the resolution-feedback chip (`_hp_chip` / `forecast_hp`) is hidden while a
   preview is active; the two systems must not both paint
 
@@ -344,6 +351,12 @@ Primary raw data lives in:
 - [items.data.json](C:/Users/Kev/Documents/protocol/data/raw/items.data.json)
 - [gear.data.json](C:/Users/Kev/Documents/protocol/data/raw/gear.data.json)
 - [relics.data.json](C:/Users/Kev/Documents/protocol/data/raw/relics.data.json)
+
+Content state (post Package 3, July 2026): 8 hero kits + 16 evolutions
+rebuilt; 5 factions (Facility / Hive / Veil Concord / Null Synod / The
+Accretion) with 38 enemy defs; 31 gear; 35 relics (5 `bossRelic: true`,
+excluded from drafts until unlocked); 25 consumables (once-per-effect).
+Content ground truth lives in `offline-bundle/GROUND_TRUTH.md`.
 
 Loaded resources include:
 

@@ -8,8 +8,8 @@
   },
   {
     "id": "openingGambit",
-    "name": "Opening Gambit",
-    "desc": "At the start of each battle, a random enemy and a random hero each take 50% of their max HP as damage.",
+    "name": "Opening Salvo",
+    "desc": "At battle start, a random enemy loses 50% max HP and a random hero loses 20%.",
     "icon": "bolt",
     "effect": { "type": "battleStartHalfHp" }
   },
@@ -30,9 +30,9 @@
   {
     "id": "plagueProtocol",
     "name": "Plague Protocol",
-    "desc": "All enemies begin every battle with 3 damage-over-time.",
+    "desc": "All enemies begin every battle with 3 Burn.",
     "icon": "skull",
-    "effect": { "type": "enemyDotPermanent", "amount": 3 }
+    "effect": { "type": "enemyBurnPermanent", "amount": 3 }
   },
   {
     "id": "overcharge",
@@ -44,7 +44,7 @@
   {
     "id": "signalJam",
     "name": "Signal Jam",
-    "desc": "All enemies begin every battle with a permanent −2 roll penalty.",
+    "desc": "All enemies begin every battle with a permanent -2 roll penalty.",
     "icon": "die",
     "effect": { "type": "enemyStartRfe", "amount": 2 }
   },
@@ -58,9 +58,9 @@
   {
     "id": "resonanceCascade",
     "name": "Resonance Cascade",
-    "desc": "DoTs on enemies tick for +2 damage.",
+    "desc": "Burn on enemies ticks for +2 damage.",
     "icon": "skull",
-    "effect": { "type": "dotAmplified", "bonus": 2 }
+    "effect": { "type": "burnAmplified", "bonus": 2 }
   },
   {
     "id": "gravityWell",
@@ -79,9 +79,9 @@
   {
     "id": "entropyLeak",
     "name": "Entropy Leak",
-    "desc": "Enemies lose 5 max HP per battle already cleared when they spawn (−25 to −50 HP for battles 6–10).",
+    "desc": "Battles 6+: enemies spawn at 85% HP.",
     "icon": "skull",
-    "effect": { "type": "enemyHpEscalation", "reductionPerBattle": 5 }
+    "effect": { "type": "enemyHpEscalation", "fromBattle": 6, "hpPct": 85 }
   },
   {
     "id": "chainReaction",
@@ -92,10 +92,10 @@
   },
   {
     "id": "martyrdomProtocol",
-    "name": "Martyrdom Protocol",
-    "desc": "When an ally falls, all other allies heal 5 HP.",
-    "icon": "heart",
-    "effect": { "type": "allyDeathHealAll", "amount": 5 }
+    "name": "Vengeance Protocol",
+    "desc": "When an ally falls, your surviving squad's next roll is all natural 20s (once per battle).",
+    "icon": "die",
+    "effect": { "type": "vengeanceProtocol" }
   },
   {
     "id": "overloadLoop",
@@ -145,5 +145,108 @@
     "desc": "Any heal grants all allies 3 shield.",
     "icon": "shield",
     "effect": { "type": "healGrantsShieldAll", "amount": 3 }
+  },
+  {
+    "id": "standingOrder",
+    "name": "Standing Order",
+    "desc": "All crit bands extend 1 down.",
+    "icon": "die",
+    "effect": { "type": "critBandExtend", "amount": 1 }
+  },
+  {
+    "id": "staticField",
+    "name": "Static Field",
+    "desc": "Enemy dice are Jammed (cap 12) on turn 1 of every battle.",
+    "icon": "die",
+    "effect": { "type": "battleStartJamEnemies" }
+  },
+  {
+    "id": "twinFates",
+    "name": "Twin Fates",
+    "desc": "Once per battle, copy one hero die's result to another, free.",
+    "icon": "die",
+    "effect": { "type": "twinFates" }
+  },
+  {
+    "id": "overflowVent",
+    "name": "Overflow Vent",
+    "desc": "Protocol past the cap deals 2 damage to a random enemy per point.",
+    "icon": "bolt",
+    "effect": { "type": "protocolOverflowDamage", "amount": 2 }
+  },
+  {
+    "id": "salvageDirective",
+    "name": "Salvage Directive",
+    "desc": "Killing a Marked enemy refunds 2 Protocol.",
+    "icon": "bolt",
+    "effect": { "type": "protocolOnMarkedKill", "amount": 2 }
+  },
+  {
+    "id": "coldLogic",
+    "name": "Cold Logic",
+    "desc": "Enemies with frozen dice take +4 damage.",
+    "icon": "die",
+    "effect": { "type": "frozenBonusDamage", "amount": 4 }
+  },
+  {
+    "id": "chainDoctrine",
+    "name": "Chain Doctrine",
+    "desc": "Your Chains jump one extra time.",
+    "icon": "bolt",
+    "effect": { "type": "chainExtraJump" }
+  },
+  {
+    "id": "scavengerManifest",
+    "name": "Scavenger Manifest",
+    "desc": "The first kill each battle drops a random consumable.",
+    "icon": "star",
+    "effect": { "type": "firstKillDropsConsumable" }
+  },
+  {
+    "id": "deadMansHand",
+    "name": "Dead Man's Hand",
+    "desc": "First squad wipe each run: all heroes survive at 1 HP and roll 20s.",
+    "icon": "heart",
+    "effect": { "type": "squadWipeSurvive" }
+  },
+  {
+    "id": "salvageRig",
+    "name": "Salvage Rig",
+    "desc": "+1 Protocol when an enemy shield fully breaks.",
+    "icon": "bolt",
+    "bossRelic": true,
+    "effect": { "type": "protocolOnShieldBreak", "amount": 1 }
+  },
+  {
+    "id": "chitinGraft",
+    "name": "Chitin Graft",
+    "desc": "Heroes heal 3 on their kills.",
+    "icon": "heart",
+    "bossRelic": true,
+    "effect": { "type": "heroHealOnOwnKill", "amount": 3 }
+  },
+  {
+    "id": "resonantChorus",
+    "name": "Resonant Chorus",
+    "desc": "Turn 1 dice can't land below 8.",
+    "icon": "die",
+    "bossRelic": true,
+    "effect": { "type": "turn1RollFloor", "floor": 8 }
+  },
+  {
+    "id": "rootAccess",
+    "name": "Root Access",
+    "desc": "Once per battle, Set costs 0.",
+    "icon": "die",
+    "bossRelic": true,
+    "effect": { "type": "setCostZeroOncePerBattle" }
+  },
+  {
+    "id": "mantleCore",
+    "name": "Mantle Core",
+    "desc": "Your shields persist until broken.",
+    "icon": "shield",
+    "bossRelic": true,
+    "effect": { "type": "shieldsPersist" }
   }
 ]

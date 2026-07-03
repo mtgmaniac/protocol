@@ -6,11 +6,10 @@
 export interface ItemEffect {
   type: string;
   amount?: number;
-  shT?: number;
   turns?: number;
   pct?: number;
   rfT?: number;
-  dT?: number;
+  burnT?: number;
   skips?: number;
 }
 
@@ -32,7 +31,6 @@ export const BATTLE_START_CONSUMABLE_TYPES = new Set([
   'shieldAll',
   'gainProtocol',
   'enemyDieFreezeAll',
-  'xpBoost',
 ]);
 
 /** No combat impact under current sim (cloak evasion / die reroll UI). */

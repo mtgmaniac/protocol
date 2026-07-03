@@ -38,10 +38,10 @@ function expectedDmgPerRoll(abilities: HeroAbility[], enemyCount: number): numbe
     if (!ab) continue;
     const n = ab.blastAll ? enemyCount : 1;
     let dmg = (ab.dmg || 0) * n;
-    // DoT: approx total = dot * dT per target (ignores overkill / early death)
-    if ((ab.dot || 0) > 0) {
-      const turns = ab.dT || 2;
-      dmg += (ab.dot || 0) * turns * (ab.blastAll ? enemyCount : 1);
+    // burn: approx total = burn * burnT per target (ignores overkill / early death)
+    if ((ab.burn || 0) > 0) {
+      const turns = ab.burnT || 2;
+      dmg += (ab.burn || 0) * turns * (ab.blastAll ? enemyCount : 1);
     }
     total += dmg;
   }
@@ -88,7 +88,7 @@ function printZoneOdds(heroId: string, abilities: HeroAbility[]) {
   console.log(`  ${heroId}:`);
   for (const ab of abilities) {
     const pct = ((ab.range[1] - ab.range[0] + 1) / 20 * 100).toFixed(0);
-    const dmgNote = (ab.dmg || 0) > 0 || (ab.dot || 0) > 0 ? `${ab.dmg || 0} dmg${ab.blastAll ? '×all' : ''}${ab.dot ? `+${ab.dot}dot` : ''}` : ab.eff;
+    const dmgNote = (ab.dmg || 0) > 0 || (ab.burn || 0) > 0 ? `${ab.dmg || 0} dmg${ab.blastAll ? '×all' : ''}${ab.burn ? `+${ab.burn}burn` : ''}` : ab.eff;
     console.log(`    d${ab.range[0]}-${ab.range[1]} (${pct}%): ${ab.name} — ${dmgNote}`);
   }
 }

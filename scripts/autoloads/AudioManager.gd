@@ -10,14 +10,14 @@ extends Node
 const SFX_DIR := "res://assets/audio/sfx/"
 const SFX_KEYS := [
 	"damage", "death", "evolve", "freeze", "heal", "item", "overload", "phase2",
-	"poison", "select", "shield",
+	"burn", "select", "shield",
 ]
 const POOL_SIZE := 12            # max simultaneous voices
 const PITCH_VARIATION := 0.07    # ±7% pitch so repeats never feel machine-gun
 const VOLUME_VARIATION_DB := 1.5 # ±1.5 dB
 const DEBOUNCE_MS := 40          # collapse identical key within a frame (multi-target abilities → one sound)
 const VOLUME_OVERRIDES := {
-	"poison": -5.0,
+	"burn": -5.0,
 	"select": -6.0,  # ~50% amplitude vs default UI click
 }
 

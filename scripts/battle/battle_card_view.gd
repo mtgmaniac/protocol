@@ -56,8 +56,8 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	if total_shield > 0:
 		status_list.append("SH %d" % total_shield)
 
-	if int(state["poison"]) > 0 and int(state.get("poison_turns", 0)) > 0:
-		status_list.append("POI %d ×%dt" % [int(state["poison"]), int(state["poison_turns"])])
+	if int(state["burn"]) > 0 and int(state.get("burn_turns", 0)) > 0:
+		status_list.append("BRN %d ×%dt" % [int(state["burn"]), int(state["burn_turns"])])
 
 	# RFE display
 	var total_rfe: int = 0
@@ -73,8 +73,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 
 	if bool(state.get("cloaked", false)):
 		status_list.append("CLOAK")
-	if int(state.get("cower_turns", 0)) > 0:
-		status_list.append("COWER %d" % int(state["cower_turns"]))
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		status_list.append("FROZEN %d" % int(state["die_freeze_turns"]))
 	if int(state.get("rampage_charges", 0)) > 0:
@@ -83,10 +81,10 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		status_list.append("CURSED")
 	if bool(state.get("taunting", false)):
 		status_list.append("TAUNT")
-	if int(state.get("counter_pct", 0)) > 0:
-		status_list.append("CNTR %d%%" % int(state["counter_pct"]))
-	if bool(state.get("in_phase_two", false)):
-		status_list.append("PHASE 2")
+	if bool(state.get("warded", false)):
+		status_list.append("WARD")
+	if bool(state.get("marked", false)):
+		status_list.append("MARK")
 
 	if bool(show_dead):
 		status_list.append("DOWN")
@@ -297,11 +295,11 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 				found = true
 				total_heal += self_heal
 
-	# ── DoT: exactly what _tick_state will deal this round (0 when the tick
-	# won't fire — expired, skip-flagged, or no poison), including the enemy-side
+	# ── burn: exactly what _tick_state will deal this round (0 when the tick
+	# won't fire — expired, skip-flagged, or no burn), including the enemy-side
 	# relic amplification. Single-sourced from combat_manager.
-	var active_dot: int = _scene.combat_manager.get_expected_dot_tick(target_state)
-	if active_dot > 0:
+	var active_burn: int = _scene.combat_manager.get_expected_burn_tick(target_state)
+	if active_burn > 0:
 		found = true
 
 	if not found:
@@ -330,7 +328,7 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		"damage":          total_dmg,
 		"heal":            total_heal,
 		"shield":          total_shield,
-		"dot":             active_dot,
+		"burn":             active_burn,
 		"current_shield":  effective_shield,
 		"lethal":          lethal,
 	}
@@ -358,12 +356,12 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append(_make_compact_named_status("DOWN", "", 99))
 		return statuses
 
-	if int(state.get("poison", 0)) > 0 and int(state.get("poison_turns", 0)) > 0:
+	if int(state.get("burn", 0)) > 0 and int(state.get("burn_turns", 0)) > 0:
 		statuses.append({
-			"type": "poison",
+			"type": "burn",
 			"mode": "numeric",
 			"icon": "☠",
-			"value": int(state.get("poison", 0)),
+			"value": int(state.get("burn", 0)),
 			"priority": 0,
 		})
 
@@ -397,8 +395,10 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 
 	if bool(state.get("cloaked", false)):
 		statuses.append(_make_compact_named_status("CLOAK", "", 3))
-	if int(state.get("cower_turns", 0)) > 0:
-		statuses.append(_make_compact_named_status("COWER", "", 3))
+	if bool(state.get("warded", false)):
+		statuses.append(_make_compact_named_status("WARD", "", 3))
+	if bool(state.get("marked", false)):
+		statuses.append(_make_compact_named_status("MARK", "", 3))
 	if int(state.get("rampage_charges", 0)) > 0:
 		statuses.append(_make_compact_named_status("RAMPAGE", "%d" % int(state.get("rampage_charges", 0)), 3))
 

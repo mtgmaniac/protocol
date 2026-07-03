@@ -38,6 +38,8 @@ const PHASE_READY_TO_END := "ready_to_end"
 const PHASE_REROLL_PICK := "reroll_pick"
 const PHASE_NUDGE_PICK := "nudge_pick"
 const PHASE_SET_PICK := "set_pick"
+const PHASE_TWIN_SOURCE_PICK := "twin_source_pick"
+const PHASE_TWIN_TARGET_PICK := "twin_target_pick"
 const SET_DIE_COST := 3
 const PHASE_ITEM_PICK_ALLY := "item_pick_ally"
 const PHASE_ITEM_PICK_DEAD := "item_pick_dead"
@@ -85,7 +87,7 @@ var enemy_units: Array = []
 #   turn 1: Pulse 5 (Arc Burst 6) + Strike 1 (Test Shot 1) + Ghost 3 (Probe Strike 7) = 14
 #   turn 2: Pulse 9→Nudge→12 (Plasma Lance 8) + 1 + 7 = 16  → 30 total kills the 28-HP enemy.
 # Pulse 9 sits one short of the Surge band (Plasma Lance opens at 10); +3 Nudge → 12 flips
-# flat Arc Burst into Plasma Lance (8 dmg + 2 DoT) — the taught payoff.
+# flat Arc Burst into Plasma Lance (8 dmg + 2 burn) — the taught payoff.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_HP := 28
 const TUTORIAL_ENEMY_ROLL := 6
@@ -184,16 +186,30 @@ func _ready() -> void:
 	var battle_index: int = maxi(_game_state().current_battle - 1, 0)
 	combat_manager.apply_battle_start_relic_effects(battle_index)
 	combat_manager.apply_battle_start_gear_effects()
+	# Route Fork modifier (pkg7.3): one-shot — consumed into this battle.
+	var route_modifier: String = str(_game_state().next_battle_modifier)
+	_game_state().next_battle_modifier = ""
+	if route_modifier != "":
+		var comp_warded: Array = _game_state().get_current_battle_comp().get("warded", [])
+		combat_manager.setup_battle_modifier(route_modifier, comp_warded)
+		var modifier_info: Dictionary = _game_state().BATTLE_MODIFIERS.get(route_modifier, {})
+		_append_log("ROUTE FLAGGED — %s: %s" % [str(modifier_info.get("name", route_modifier)), str(modifier_info.get("desc", ""))])
+	_apply_intercept_battle_effects()
 	# Protocol Tap gear: sum gear_protocol_on_start from hero states
 	for _hs in combat_manager.get_hero_states():
 		protocol_points += int(_hs.get("gear_protocol_on_start", 0))
-	protocol_points = mini(protocol_points, MAX_PROTOCOL)
+	protocol_points = mini(protocol_points, _max_protocol())
 	_update_protocol_bar()
 	_populate_hero_cards()
 	_populate_enemy_cards()
 	dice_tray_3d.reset()
 	_set_battle_log_visible(false)
 	_append_log("Battle initialized.")
+	# Boss standing rules are stated up front — active from turn 1.
+	for enemy_state_variant in combat_manager.get_enemy_states():
+		var rule_text: String = CombatManager.get_boss_standing_rule(str(enemy_state_variant["unit"].display_name))
+		if rule_text != "":
+			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
 	_set_turn_phase(PHASE_AWAIT_ROLL)
 	_layout.queue_board_layout_refresh()
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
@@ -211,6 +227,8 @@ func _ready() -> void:
 	_attach_protocol_inspect(protocol_spend_button, "reroll")
 	_add_nudge_button()
 	_add_set_button()
+	if _game_state().has_relic_effect("twinFates"):
+		_add_twin_fates_button()
 	_build_item_panel()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
 	board.move_child(enemy_panel, 0)
@@ -250,7 +268,7 @@ func _on_return_to_menu_button_pressed() -> void:
 func _on_auto_turn_button_pressed() -> void:
 	if _auto_turn_running or _auto_battle_running or battle_over:
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
@@ -274,7 +292,7 @@ func _on_auto_battle_button_pressed() -> void:
 	if battle_over:
 		_on_open_reward_button_pressed()
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or turn_phase.begins_with("item_pick"):
 		_refresh_summary("Finish the current picker before auto-completing the battle.")
 		return
 
@@ -490,8 +508,10 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
 	if _game_state().tutorial_mode:
 		_apply_tutorial_dice_rig()
+	_apply_roll_relic_overrides(skip_dice_visuals)
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
+	_apply_post_roll_gear_effects()
 
 	for hero_state in combat_manager.get_hero_states():
 		if bool(hero_state.get("cursed", false)):
@@ -647,17 +667,6 @@ func _record_roll_values_for_states(states: Array, rolls: Dictionary) -> void:
 		state["last_die_value"] = roll_value
 		if int(state.get("die_freeze_turns", 0)) > 0:
 			state["die_freeze_consumed_this_round"] = true
-
-
-func _consume_revealed_frozen_dice() -> void:
-	for state_variant in combat_manager.get_hero_states() + combat_manager.get_enemy_states():
-		var state: Dictionary = state_variant
-		if not bool(state.get("die_freeze_consumed_this_round", false)):
-			continue
-		state["die_freeze_consumed_this_round"] = false
-		state["die_freeze_turns"] = maxi(0, int(state.get("die_freeze_turns", 0)) - 1)
-		if int(state.get("die_freeze_turns", 0)) <= 0:
-			state["frozen_die_value"] = 0
 
 
 func _get_roll_value_for_state(rolls: Dictionary, state: Dictionary) -> int:
@@ -826,9 +835,13 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	_append_round_log(result.get("log", []))
 	var protocol_grant: int = combat_manager.take_pending_protocol_grants()
 	if protocol_grant > 0:
-		protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
-		_update_protocol_bar()
+		_gain_protocol(protocol_grant)
 		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
+	var protocol_drain: int = combat_manager.take_pending_protocol_drain()
+	if protocol_drain > 0:
+		protocol_points = maxi(0, protocol_points - protocol_drain)
+		_update_protocol_bar()
+		_append_log("Protocol SIPHONED -%d → %d" % [protocol_drain, protocol_points])
 	if skip_feedback:
 		_feedback.reset_death_sfx_tracking()
 		for event_variant in result.get("events", []):
@@ -839,7 +852,6 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	else:
 		await _feedback.play_round_feedback(result.get("events", []))
 	_process_summon_events(result.get("events", []))
-	_consume_revealed_frozen_dice()
 	_card_view.refresh_all_cards()
 	if skip_feedback and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
@@ -873,10 +885,18 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	else:
 		if _try_finish_battle_from_current_state():
 			return
-		# Gain +1 PP at end of each resolved round (ongoing only)
-		protocol_points = mini(protocol_points + 1, MAX_PROTOCOL)
-		_update_protocol_bar()
-		_append_log("Protocol +1 → %d" % protocol_points)
+		# Gain +1 PP at end of each resolved round (ongoing only).
+		# Blackout route modifier: income starts on turn 3.
+		# Deep Cache income debt swallows income until repaid.
+		if combat_manager.has_battle_modifier("blackout") and _round_number < 3:
+			_append_log("BLACKOUT — no Protocol income yet.")
+		elif _income_debt > 0:
+			_income_debt -= 1
+			_append_log("Income owed — %d turns of debt remain." % _income_debt)
+		else:
+			_gain_protocol(1)
+			_append_log("Protocol +1 → %d" % protocol_points)
+		_round_number += 1
 		_set_turn_phase(PHASE_AWAIT_ROLL)
 		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
 
@@ -916,6 +936,12 @@ func _persist_protocol_carryover() -> void:
 
 func _capture_battle_victory_for_xp() -> void:
 	_game_state().capture_battle_end_survival(combat_manager.get_hero_states())
+	# Memorial Protocol (pkg7.4) tracks who fell in the last two battles.
+	var dead_ids: Array = []
+	for hero_state_variant in combat_manager.get_hero_states():
+		if bool((hero_state_variant as Dictionary).get("dead", false)):
+			dead_ids.append(str((hero_state_variant as Dictionary).get("id", "")))
+	_game_state().record_battle_hero_deaths(dead_ids)
 
 
 func _finish_battle_victory() -> void:
@@ -1082,7 +1108,7 @@ func _on_nudge_button_pressed() -> void:
 		if hero_rolls.is_empty():
 			_refresh_summary("Roll dice before using Nudge.")
 		return
-	if protocol_points < 1:
+	if protocol_points < 1 and not _has_free_nudge_available():
 		_refresh_summary("Need 1 Protocol to Nudge.")
 		return
 	if not _has_nudgeable_hero():
@@ -1118,11 +1144,179 @@ func _apply_reroll(hero_id: String) -> void:
 	_finish_roll_modifier_pick()
 
 
+# Central protocol gain: caps at MAX_PROTOCOL; the Overflow Vent relic turns
+# every point past the cap into 2 damage to a random living enemy.
+func _gain_protocol(amount: int) -> void:
+	if amount <= 0:
+		return
+	var protocol_cap: int = _max_protocol()
+	var overflow: int = maxi(0, protocol_points + amount - protocol_cap)
+	protocol_points = mini(protocol_points + amount, protocol_cap)
+	_update_protocol_bar()
+	if overflow > 0 and combat_manager.has_relic("protocolOverflowDamage"):
+		var per_point: int = 2
+		for _i in overflow:
+			var living: Array = combat_manager.get_enemy_states().filter(func(s): return not bool(s["dead"]))
+			if living.is_empty():
+				break
+			var vent_target: Dictionary = living[randi() % living.size()]
+			combat_manager.apply_item_damage(vent_target, per_point)
+			_append_log("Overflow Vent: %d damage to %s." % [per_point, vent_target["unit"].display_name])
+		if _card_view != null:
+			_card_view.refresh_all_cards()
+
+
+func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
+	for gear_id in _game_state().gear_by_unit.get(hero_id, []):
+		var item: ItemData = DataManager.get_item(str(gear_id)) as ItemData
+		if item != null and item.effect != null and str(item.effect.get("type", "")) == effect_type:
+			return true
+	return false
+
+
+# Intercept battle effects (pkg7.4): one-shot flags consumed at battle start.
+var _battle_effects: Dictionary = {}
+var _income_debt: int = 0
+
+
+func _apply_intercept_battle_effects() -> void:
+	var gs: Variant = _game_state()
+	_battle_effects = (gs.next_battle_effects as Dictionary).duplicate(true)
+	gs.next_battle_effects.clear()
+	# Prisoner Exchange's follow-up arms AFTER this battle's own modifier ran.
+	gs.promote_followup_effects()
+
+	if bool(_battle_effects.get("decoy", false)):
+		combat_manager.set_decoy_round_one()
+		_append_log("DECOY BEACON — enemies will waste turn 1.")
+	_income_debt = int(_battle_effects.get("income_debt", 0))
+	if _income_debt > 0:
+		_append_log("DEEP CACHE — %d turns of Protocol income are owed." % _income_debt)
+	if bool(_battle_effects.get("items_free", false)):
+		_append_log("SUPPLY DRONE — items cost 0 this battle.")
+
+	var hp_pct: int = int(_battle_effects.get("enemy_hp_pct", 100))
+	if hp_pct < 100:
+		for enemy_state_variant in combat_manager.get_enemy_states():
+			var enemy_state: Dictionary = enemy_state_variant
+			enemy_state["current_hp"] = maxi(int(enemy_state["max_hp"]) * hp_pct / 100, 1)
+		_append_log("UNSTABLE REACTOR — enemies spawn at %d%% HP." % hp_pct)
+
+	if bool(_battle_effects.get("marked_highest", false)):
+		var target: Dictionary = {}
+		for enemy_state_variant in combat_manager.get_enemy_states():
+			var candidate: Dictionary = enemy_state_variant
+			if target.is_empty() or int(candidate["max_hp"]) > int(target["max_hp"]):
+				target = candidate
+		if not target.is_empty():
+			target["current_hp"] = maxi(int(target["max_hp"]) * 90 / 100, 1)
+			combat_manager.apply_item_mark(target)
+			_append_log("FIRING SOLUTION — %s starts Marked at 90%% HP." % target["unit"].display_name)
+
+	# Rogue Engineer + intercept protocol grants.
+	var start_protocol: int = int(_battle_effects.get("protocol", 0)) + gs.run_protocol_per_battle
+	if start_protocol > 0:
+		_gain_protocol(start_protocol)
+		_append_log("Battle-start Protocol +%d → %d" % [start_protocol, protocol_points])
+
+	# Per-run hero mods from intercept outcomes.
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		var mods: Dictionary = gs.hero_run_mods.get(_squad_id_for_state(hero_state), {})
+		if mods.is_empty():
+			continue
+		var roll_bonus: int = int(mods.get("roll_bonus", 0))
+		if roll_bonus != 0:
+			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + roll_bonus
+		var hp_delta: int = int(mods.get("max_hp_delta", 0))
+		if hp_delta != 0:
+			hero_state["max_hp"] = maxi(int(hero_state["max_hp"]) + hp_delta, 1)
+			hero_state["current_hp"] = clampi(int(hero_state["current_hp"]) + hp_delta, 1, int(hero_state["max_hp"]))
+		var start_damage: int = int(mods.get("start_hp_damage", 0))
+		if start_damage > 0:
+			hero_state["current_hp"] = maxi(int(hero_state["current_hp"]) - start_damage, 1)
+			mods["start_hp_damage"] = 0
+		if bool(mods.get("start_cloaked", false)):
+			hero_state["cloaked"] = true
+		if bool(mods.get("start_warded", false)):
+			hero_state["warded"] = true
+		if bool(mods.get("nat20_twice", false)):
+			hero_state["nat20_twice"] = true
+
+
+func _squad_id_for_state(hero_state: Dictionary) -> String:
+	var unit: Variant = hero_state.get("unit")
+	if unit is UnitData:
+		return str((unit as UnitData).id)
+	return str(hero_state.get("id", ""))
+
+
+# Priming Charge gear: the first Nudge each battle is free (per holder).
+var _free_nudge_used: Dictionary = {}
+
+# Round counter (1-based) for turn-scoped relics (Resonant Chorus).
+var _round_number: int = 1
+
+# Root Access boss relic: once per battle, Set costs 0.
+var _root_access_used: bool = false
+
+# Twin Fates relic: once per battle, copy one hero die's result to another.
+var _twin_fates_used: bool = false
+var _twin_fates_source_id: String = ""
+
+
+# Vengeance Protocol / Dead Man's Hand (forced natural 20s) and Resonant
+# Chorus (turn-1 dice can't land below 8) — raw-roll overrides at roll time.
+func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
+	var chorus_floor: bool = combat_manager.has_relic("turn1RollFloor") and _round_number == 1
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var hero_id: String = str(hero_state["id"])
+		var changed: bool = false
+		if bool(hero_state.get("forced_nat20_pending", false)):
+			hero_state["forced_nat20_pending"] = false
+			hero_rolls[hero_id] = 20
+			changed = true
+			_append_log("%s rolls a forced NATURAL 20!" % hero_id)
+		elif chorus_floor and int(hero_rolls.get(hero_id, 0)) > 0 and int(hero_rolls.get(hero_id, 0)) < 8:
+			hero_rolls[hero_id] = 8
+			changed = true
+			_append_log("Resonant Chorus: %s's die is lifted to 8." % hero_id)
+		if changed and dice_tray_3d != null and not skip_dice_visuals:
+			dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
+
+
+func _get_nudge_cost(hero_id: String) -> int:
+	if _hero_has_gear_effect(hero_id, "firstNudgeFree") and not _free_nudge_used.has(hero_id):
+		return 0
+	return 1
+
+
 func _apply_nudge(hero_id: String) -> void:
 	if _was_hero_nudged_this_turn(hero_id):
+		# Reverse Gimbal gear: a second Nudge tap flips the pending nudge's
+		# sign for free instead of stacking.
+		# DESIGN-TODO(kev): confirm the flip interaction (tap again to swap
+		# +3 <-> -3) as the "may subtract" UX.
+		if _hero_has_gear_effect(hero_id, "nudgeMaySubtract"):
+			hero_roll_nudges[hero_id] = -int(hero_roll_nudges.get(hero_id, 3))
+			_append_log("Reverse Gimbal: nudge flipped to %+d." % int(hero_roll_nudges[hero_id]))
+			var flipped_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
+			if dice_tray_3d != null and not flipped_state.is_empty():
+				dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(flipped_state, hero_id))
+			_re_assign_hero_target(hero_id)
+			_refresh_dice_result_actions()
+			_finish_roll_modifier_pick()
+			return
 		_refresh_summary("That die was already nudged this turn.")
 		return
-	protocol_points -= 1
+	var nudge_cost: int = _get_nudge_cost(hero_id)
+	if nudge_cost == 0:
+		_free_nudge_used[hero_id] = true
+		_append_log("Priming Charge: free Nudge.")
+	protocol_points -= nudge_cost
 	hero_roll_nudges[hero_id] = 3
 	_update_protocol_bar()
 	_append_log("Nudge: %s +3 to effective roll." % hero_id)
@@ -1139,12 +1333,67 @@ func _was_hero_nudged_this_turn(hero_id: String) -> bool:
 	return hero_roll_nudges.has(hero_id)
 
 
+# Roll-time gear: Overload Capacitor (natural 20 grants Protocol) and Sync
+# Antenna (holder + an ally rolling the same number both gain +3 to it).
+func _apply_post_roll_gear_effects() -> void:
+	var hero_states: Array = combat_manager.get_hero_states()
+	for hero_state_variant in hero_states:
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var hero_id: String = str(hero_state["id"])
+		var raw_roll: int = int(hero_rolls.get(hero_id, 0))
+		if raw_roll == 20:
+			SaveManager.record_nat20()
+		if raw_roll == 20 and _hero_has_gear_effect(hero_id, "protocolOnNat20"):
+			_gain_protocol(2)
+			_append_log("Overload Capacitor: natural 20 → +2 Protocol.")
+	var synced_ids: Dictionary = {}
+	for hero_state_variant in hero_states:
+		var holder: Dictionary = hero_state_variant
+		if bool(holder.get("dead", false)):
+			continue
+		var holder_id: String = str(holder["id"])
+		if not _hero_has_gear_effect(holder_id, "syncRollBonus"):
+			continue
+		var holder_roll: int = int(hero_rolls.get(holder_id, 0))
+		if holder_roll <= 0:
+			continue
+		for other_variant in hero_states:
+			var other: Dictionary = other_variant
+			var other_id: String = str(other["id"])
+			if other_id == holder_id or bool(other.get("dead", false)):
+				continue
+			if int(hero_rolls.get(other_id, 0)) != holder_roll:
+				continue
+			for sync_state in [holder, other]:
+				var sid: String = str(sync_state["id"])
+				if not synced_ids.has(sid):
+					synced_ids[sid] = true
+					# Direct (no skip flag): the bonus covers this round only.
+					sync_state["roll_buff"] = int(sync_state.get("roll_buff", 0)) + 3
+			_append_log("Sync Antenna: matched %d — both dice +3." % holder_roll)
+
+
+func _has_free_nudge_available() -> bool:
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		if _get_nudge_cost(str(hero_state["id"])) == 0:
+			return true
+	return false
+
+
 func _can_nudge_hero(state: Dictionary) -> bool:
 	if bool(state.get("dead", false)):
 		return false
 	if not _has_roll_for_state(hero_rolls, state):
 		return false
-	return not _was_hero_nudged_this_turn(str(state["id"]))
+	if _was_hero_nudged_this_turn(str(state["id"])):
+		# Reverse Gimbal holders may re-tap to flip the nudge's sign.
+		return _hero_has_gear_effect(str(state["id"]), "nudgeMaySubtract")
+	return true
 
 
 func _has_nudgeable_hero() -> bool:
@@ -1154,12 +1403,19 @@ func _has_nudgeable_hero() -> bool:
 	return false
 
 
+# Root Access boss relic: once per battle, Set costs 0.
+func _get_set_cost() -> int:
+	if combat_manager.has_relic("setCostZeroOncePerBattle") and not _root_access_used:
+		return 0
+	return SET_DIE_COST
+
+
 func _on_set_button_pressed() -> void:
 	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
 		if hero_rolls.is_empty():
 			_refresh_summary("Roll dice before using Set.")
 		return
-	if protocol_points < SET_DIE_COST:
+	if protocol_points < _get_set_cost():
 		_refresh_summary("Need %d Protocol to Set." % SET_DIE_COST)
 		return
 	AudioManager.play_select()
@@ -1201,6 +1457,61 @@ func _add_set_button() -> void:
 	_set_button = btn
 	protocol_spend_button.get_parent().add_child(btn)
 	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
+
+
+# Twin Fates relic: once per battle, copy one hero die's result to another,
+# free. Two-tap flow: pick the source die, then the target die.
+var _twin_fates_button: Button = null
+
+
+func _add_twin_fates_button() -> void:
+	var btn: Button = Button.new()
+	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
+	btn.pressed.connect(_on_twin_fates_button_pressed)
+	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
+	_twin_fates_button = btn
+	protocol_spend_button.get_parent().add_child(btn)
+	protocol_spend_button.get_parent().move_child(btn, _set_button.get_index() + 1)
+
+
+func _on_twin_fates_button_pressed() -> void:
+	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
+		if hero_rolls.is_empty():
+			_refresh_summary("Roll dice before using Twin Fates.")
+		return
+	if _twin_fates_used:
+		_refresh_summary("Twin Fates was already spent this battle.")
+		return
+	AudioManager.play_select()
+	_twin_fates_source_id = ""
+	_set_turn_phase(PHASE_TWIN_SOURCE_PICK)
+	_refresh_summary("Twin Fates: tap the die to copy FROM.")
+
+
+# Pure state core of Twin Fates: copy the source die's result onto the target
+# die (clearing its pending nudge/set) and burn the once-per-battle use.
+func _twin_fates_copy_roll(source_id: String, target_id: String) -> bool:
+	var source_roll: int = int(hero_rolls.get(source_id, 0))
+	if source_roll <= 0:
+		return false
+	_twin_fates_used = true
+	hero_rolls[target_id] = source_roll
+	hero_roll_nudges.erase(target_id)
+	hero_roll_sets.erase(target_id)
+	return true
+
+
+func _apply_twin_fates(source_id: String, target_id: String) -> void:
+	if not _twin_fates_copy_roll(source_id, target_id):
+		_finish_roll_modifier_pick()
+		return
+	_append_log("Twin Fates: %s's die copies %s's %d." % [target_id, source_id, int(hero_rolls.get(target_id, 0))])
+	var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
+	if dice_tray_3d != null and not target_state.is_empty():
+		dice_tray_3d.update_die_result_in_place("hero", target_id, _get_effective_roll_for_state(target_state, target_id))
+	_re_assign_hero_target(target_id)
+	_refresh_dice_result_actions()
+	_finish_roll_modifier_pick()
 
 
 # Set-pick: the player tapped a hero die; open the thumb-draggable value popup for it,
@@ -1406,7 +1717,11 @@ func _close_set_value_popup() -> void:
 
 
 func _apply_set(hero_id: String, value: int) -> void:
-	protocol_points -= SET_DIE_COST
+	var set_cost: int = _get_set_cost()
+	if set_cost == 0:
+		_root_access_used = true
+		_append_log("Root Access: free Set.")
+	protocol_points -= set_cost
 	hero_roll_sets[hero_id] = value
 	hero_roll_nudges.erase(hero_id)  # an explicit set overrides any prior nudge
 	_update_protocol_bar()
@@ -1560,9 +1875,36 @@ func _ensure_protocol_stack_layout() -> void:
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
+# Deep Cells directive: the Protocol cap rises while a living carrier stands.
+# Rogue Engineer intercept: the cap override replaces the base cap.
+func _max_protocol() -> int:
+	var cap: int = MAX_PROTOCOL
+	# Bare instances (headless audits) run outside the tree — no autoloads.
+	if is_inside_tree() and int(_game_state().run_protocol_cap_override) > 0:
+		cap = int(_game_state().run_protocol_cap_override)
+	if combat_manager == null:
+		return cap
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if not bool(hero_state.get("dead", false)) and str(hero_state.get("directive_type", "")) == "protocolCapBonus":
+			cap += int((hero_state.get("directive_effect", {}) as Dictionary).get("amount", 2))
+			break
+	return cap
+
+
 func _ensure_protocol_segments() -> void:
-	if not _protocol_segments.is_empty():
+	if _protocol_segments.size() == _max_protocol():
 		return
+	# Cap changed (Deep Cells) or first build — rebuild the segment row.
+	for seg_variant in _protocol_segments:
+		if is_instance_valid(seg_variant):
+			(seg_variant as Panel).queue_free()
+	_protocol_segments.clear()
+	if protocol_bar != null and is_instance_valid(protocol_bar):
+		var old_row: Node = protocol_bar.get_node_or_null("ProtocolSegments")
+		if old_row != null:
+			old_row.name = "ProtocolSegmentsStale"
+			old_row.queue_free()
 	if protocol_bar == null or not is_instance_valid(protocol_bar):
 		return
 	# Direction-05: 10 discrete segments. Hide the native ProgressBar fill and draw
@@ -1576,7 +1918,7 @@ func _ensure_protocol_segments() -> void:
 	row.add_theme_constant_override("separation", 3)
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	protocol_bar.add_child(row)
-	for _i in range(MAX_PROTOCOL):
+	for _i in range(_max_protocol()):
 		var seg: Panel = Panel.new()
 		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1586,7 +1928,9 @@ func _ensure_protocol_segments() -> void:
 
 
 func _update_protocol_bar() -> void:
-	protocol_bar.max_value = MAX_PROTOCOL
+	if protocol_bar == null:
+		return
+	protocol_bar.max_value = _max_protocol()
 	protocol_bar.value = protocol_points
 	_ensure_protocol_segments()
 	for i in range(_protocol_segments.size()):
@@ -1595,7 +1939,7 @@ func _update_protocol_bar() -> void:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0))
 		else:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
-	protocol_value_label.text = "%d / %d" % [protocol_points, MAX_PROTOCOL]
+	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
 	_update_protocol_footer_display()
 	_emit_tutorial("protocol_changed", {"value": protocol_points})
 
@@ -1687,7 +2031,7 @@ func _layout_protocol_footer_lights() -> void:
 func _update_protocol_footer_display() -> void:
 	if _protocol_footer_lights.is_empty():
 		return
-	var active_count: int = clampi(protocol_points, 0, MAX_PROTOCOL)
+	var active_count: int = clampi(protocol_points, 0, _max_protocol())
 	for i in range(_protocol_footer_lights.size()):
 		var light: Panel = _protocol_footer_lights[i] as Panel
 		if light == null or not is_instance_valid(light):
@@ -1725,14 +2069,28 @@ func _build_runtime_units() -> void:
 	if battle_index >= operation.battles.size():
 		return
 
+	# Templated comps (pkg7.1): the run-start roll is the source of truth;
+	# fall back to the authored comp when no resolved comp exists.
 	var battle_entry: Dictionary = operation.battles[battle_index]
-	var enemy_names: Array = battle_entry.get("enemy_names", [])
+	var comp: Dictionary = _game_state().get_current_battle_comp()
+	var enemy_names: Array = comp.get("names", [])
+	var cloaked_names: Array = comp.get("cloaked", [])
+	if enemy_names.is_empty():
+		enemy_names = battle_entry.get("enemy_names", [])
+		cloaked_names = battle_entry.get("cloaked_names", [])
+	# Prisoner Exchange intercept: this battle fields one fewer enemy.
+	if bool(_game_state().next_battle_effects.get("minus_one_enemy", false)) and enemy_names.size() > 1:
+		enemy_names = enemy_names.duplicate()
+		enemy_names.remove_at(enemy_names.size() - 1)
 	for enemy_name in enemy_names:
 		if enemy_units.size() >= GameState.SQUAD_UNIT_LIMIT:
 			break
 		var enemy: EnemyData = _data_manager().get_enemy_by_display_name(str(enemy_name)) as EnemyData
 		if enemy != null:
-			enemy_units.append(_duplicate_enemy(enemy))
+			var enemy_copy: EnemyData = _duplicate_enemy(enemy)
+			if cloaked_names.has(str(enemy_name)):
+				enemy_copy.starts_cloaked = true
+			enemy_units.append(enemy_copy)
 
 
 func _refresh_summary(_extra_text: String) -> void:
@@ -1785,6 +2143,16 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.disabled = true
 			roll_button.text = ""
 			_refresh_summary("Tap a hero die to set its value.")
+		PHASE_TWIN_SOURCE_PICK:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("Twin Fates: tap the die to copy FROM.")
+		PHASE_TWIN_TARGET_PICK:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("Twin Fates: tap the die to copy TO.")
 		PHASE_ITEM_PICK_ALLY:
 			roll_button.visible = false
 			roll_button.disabled = true
@@ -1962,13 +2330,13 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return ""
 	if bool(raw.get("revive", false)):
 		return "dead_hero"
-	if bool(raw.get("healTgt", false)) or bool(raw.get("shTgt", false)):
+	if bool(raw.get("healTgt", false)) or bool(raw.get("shTgt", false)) or bool(raw.get("wardTgt", false)):
 		return "hero"
 	if bool(raw.get("rfmTgt", false)):
 		return "hero"
 	var has_single_enemy_effect: bool = (
 		(int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)))
-		or int(raw.get("dot", 0)) > 0
+		or int(raw.get("burn", 0)) > 0
 		or (int(raw.get("rfe", 0)) > 0 and not bool(raw.get("rfeAll", false)))
 		or bool(raw.get("rfeOnly", false))
 	)
@@ -1982,6 +2350,11 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: String) -> void:
 	var hero_id: String = str(hero_state["id"])
 	var target_ids: Array = _get_legal_target_ids(manual_side)
+	# Lure (Accretion): a lured hero can only aim at the lurer.
+	if manual_side == "enemy":
+		var lured_by: String = str(hero_state.get("lured_by_id", ""))
+		if lured_by != "" and target_ids.has(lured_by):
+			target_ids = [lured_by]
 	pending_manual_target_ids.erase(hero_id)
 	if target_ids.is_empty():
 		_set_state_target(hero_state, "", _get_no_legal_target_display(manual_side))
@@ -2037,7 +2410,7 @@ func _auto_assign_hero_target(hero_state: Dictionary, ability_entry: Dictionary)
 	if bool(raw.get("blastAll", false)):
 		_set_state_target(hero_state, "", "All Hostiles")
 		return
-	if bool(raw.get("healLowest", false)):
+	if bool(raw.get("healLowest", false)) or bool(raw.get("shieldLowest", false)):
 		var lowest_ally: Dictionary = _lowest_living_hero_state()
 		if lowest_ally.is_empty():
 			_set_state_target(hero_state, "", "--")
@@ -2071,17 +2444,21 @@ func _auto_assign_enemy_target(enemy_state: Dictionary, ability_entry: Dictionar
 		_set_state_target(enemy_state, str(ally_target["id"]), str(ally_target["unit"].display_name))
 		return
 
-	# Hero-targeted: damage, DoT, or roll debuff
-	var targets_hero: bool = int(raw.get("dmg", 0)) > 0 or int(raw.get("dot", 0)) > 0 or int(raw.get("rfm", 0)) > 0
+	# Hero-targeted: damage, burn, or roll debuff
+	var targets_hero: bool = int(raw.get("dmg", 0)) > 0 or int(raw.get("burn", 0)) > 0 or int(raw.get("rfm", 0)) > 0
 	if targets_hero:
 		var hero_target: Dictionary = {}
 		if ai_type == "smart":
 			# Pure debuff (rfm only): target highest HP to disrupt strongest attacker
-			# Damage/DoT: target lowest HP to maximize kill threat
-			var is_pure_debuff: bool = int(raw.get("dmg", 0)) == 0 and int(raw.get("dot", 0)) == 0
+			# Damage/burn: target lowest HP to maximize kill threat
+			var is_pure_debuff: bool = int(raw.get("dmg", 0)) == 0 and int(raw.get("burn", 0)) == 0
 			hero_target = _smart_target_hero(is_pure_debuff)
 		else:
 			hero_target = _first_living_hero_state()
+			# Cloaked heroes are untargetable by single-target attacks.
+			if not hero_target.is_empty() and bool(hero_target.get("cloaked", false)):
+				var visible: Array = combat_manager.get_hero_states().filter(func(s): return not bool(s["dead"]) and not bool(s.get("cloaked", false)))
+				hero_target = visible[0] if not visible.is_empty() else {}
 		if hero_target.is_empty():
 			_set_state_target(enemy_state, "", "--")
 			return
@@ -2153,13 +2530,14 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 func _get_legal_target_ids(target_side: String) -> Array:
 	var ids: Array = []
 	var states: Array = []
+	var enemy_states: Array = combat_manager.get_enemy_states()
 	if target_side == "any":
 		states.append_array(combat_manager.get_hero_states())
-		states.append_array(combat_manager.get_enemy_states())
+		states.append_array(enemy_states)
 	elif target_side == "dead_hero":
 		states = combat_manager.get_hero_states()
 	else:
-		states = combat_manager.get_hero_states() if target_side == "hero" else combat_manager.get_enemy_states()
+		states = combat_manager.get_hero_states() if target_side == "hero" else enemy_states
 	for state_variant in states:
 		var state: Dictionary = state_variant
 		if target_side == "dead_hero":
@@ -2167,6 +2545,11 @@ func _get_legal_target_ids(target_side: String) -> Array:
 				ids.append(str(state["id"]))
 			continue
 		if bool(state["dead"]):
+			continue
+		# Cloak: cloaked enemies are untargetable by single-target abilities.
+		# (Friendly picks on cloaked allies stay legal — DESIGN-TODO(kev):
+		# confirm hostile-only reading of "untargetable".)
+		if bool(state.get("cloaked", false)) and enemy_states.has(state):
 			continue
 		ids.append(str(state["id"]))
 	return ids
@@ -2243,9 +2626,12 @@ func _smart_target_hero(prefer_high_hp: bool = false) -> Dictionary:
 			living.append(state)
 	if living.is_empty():
 		return {}
-	# Deprioritize cloaked heroes — 80% dodge makes them inefficient targets
+	# Cloaked heroes are untargetable by single-target attacks; if everyone is
+	# cloaked the attack has no target (resolve-time retarget will fizzle too).
 	var uncloaked: Array = living.filter(func(s): return not bool(s.get("cloaked", false)))
-	var pool: Array = uncloaked if not uncloaked.is_empty() else living
+	if uncloaked.is_empty():
+		return {}
+	var pool: Array = uncloaked
 	var best: Dictionary = pool[0]
 	for s in pool:
 		if prefer_high_hp:
@@ -2271,7 +2657,7 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return false
 
 	# Reroll/Set pick phases: only living hero cards that have rolled
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_SET_PICK:
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
 	if turn_phase == PHASE_NUDGE_PICK:
 		return accent_color == HERO_ACCENT and _can_nudge_hero(state)
@@ -2373,6 +2759,18 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
 		return
+	if turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
+		var twin_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
+		if twin_state.is_empty() or bool(twin_state["dead"]) or not _has_roll_for_state(hero_rolls, twin_state):
+			return
+		AudioManager.play_select()
+		if turn_phase == PHASE_TWIN_SOURCE_PICK:
+			_twin_fates_source_id = target_id
+			_set_turn_phase(PHASE_TWIN_TARGET_PICK)
+			_refresh_summary("Twin Fates: tap the die to copy TO.")
+		elif target_id != _twin_fates_source_id:
+			_apply_twin_fates(_twin_fates_source_id, target_id)
+		return
 
 	if _in_item_phase():
 		# Tapping a legal ally target applies the item; tapping any other unit/die cancels it
@@ -2417,6 +2815,8 @@ func _append_round_log(entries: Array) -> void:
 
 
 func _append_log(message: String) -> void:
+	if battle_log_label == null:
+		return
 	if battle_log_label.text == "":
 		battle_log_label.text = message
 	else:
@@ -2521,6 +2921,12 @@ func _get_item_protocol_cost(_item: ItemData) -> int:
 	# use — see _apply_item_effect for the grant.
 	if combat_manager.has_relic("protocolOnItemUse"):
 		return 0
+	# Supply Drone intercept: items cost 0 this battle.
+	if bool(_battle_effects.get("items_free", false)):
+		return 0
+	# Sealed Supplies route modifier: items cost +1 this battle.
+	if combat_manager.has_battle_modifier("sealedSupplies"):
+		return 2
 	return 1
 
 
@@ -2791,7 +3197,7 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	protocol_points = maxi(protocol_points - cost, 0)
 	# Protocol Override: using an item refunds +1 Protocol (net +1, since cost is 0).
 	if combat_manager.has_relic("protocolOnItemUse"):
-		protocol_points = mini(protocol_points + 1, MAX_PROTOCOL)
+		_gain_protocol(1)
 		_append_log("Protocol Override: +1 Protocol → %d" % protocol_points)
 
 	var effect: Dictionary = item.effect
@@ -2809,14 +3215,15 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			_append_log("Item: %s heals all living allies for %d." % [item.display_name, heal_all_amount])
 		"shield":
 			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("shT", 1))
-			combat_manager.apply_item_shield(target_state, amount, turns)
-			_append_log("Item: %s grants %d shield (%d turns) to %s." % [item.display_name, amount, turns, tname])
+			combat_manager.apply_item_shield(target_state, amount)
+			_append_log("Item: %s grants %d shield to %s." % [item.display_name, amount, tname])
 		"shieldAll":
 			var shield_all_amount: int = int(effect.get("amount", 0))
-			var shield_all_turns: int = int(effect.get("shT", 1))
-			combat_manager.apply_item_shield_all(shield_all_amount, shield_all_turns)
-			_append_log("Item: %s grants all living allies %d shield (%d turns)." % [item.display_name, shield_all_amount, shield_all_turns])
+			combat_manager.apply_item_shield_all(shield_all_amount)
+			_append_log("Item: %s grants all living allies %d shield." % [item.display_name, shield_all_amount])
+		"ward":
+			combat_manager.apply_item_ward(target_state)
+			_append_log("Item: %s wards %s — the next ability that targets them is blocked." % [item.display_name, tname])
 		"rollBuff":
 			var amount: int = int(effect.get("amount", 0))
 			var turns: int = int(effect.get("turns", 1))
@@ -2843,24 +3250,14 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			var amount: int = int(effect.get("amount", 0))
 			combat_manager.apply_item_damage(target_state, amount)
 			_append_log("Item: %s deals %d damage to %s." % [item.display_name, amount, tname])
-		"enemyDot":
+		"enemyBurn":
 			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("dT", 1))
-			combat_manager.apply_item_dot(target_state, amount, turns)
-			_append_log("Item: %s applies %d poison to %s for %d turns." % [item.display_name, amount, tname, turns])
-		"xpBoost":
-			# Phase 5 wires GameState.add_unit_xp; guarded so it won't crash before then
-			var amount: int = int(effect.get("amount", 0))
-			for hero_state in combat_manager.get_hero_states():
-				if not bool(hero_state.get("dead", true)):
-					var unit: UnitData = hero_state.get("unit") as UnitData
-					if unit != null and _game_state().has_method("add_unit_xp"):
-						_game_state().add_unit_xp(str(unit.id), amount)
-			_append_log("Item: %s — all living allies +%d XP." % [item.display_name, amount])
+			var turns: int = int(effect.get("burnT", 1))
+			combat_manager.apply_item_burn(target_state, amount, turns)
+			_append_log("Item: %s applies %d burn to %s for %d turns." % [item.display_name, amount, tname, turns])
 		"gainProtocol":
 			var protocol_grant: int = int(effect.get("amount", 0))
-			protocol_points = mini(protocol_points + protocol_grant, MAX_PROTOCOL)
-			_update_protocol_bar()
+			_gain_protocol(protocol_grant)
 			_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
 		"enemyRerollDie":
 			if not target_state.is_empty():

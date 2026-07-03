@@ -19,9 +19,9 @@ function buildEnemyEffectSummary(ab) {
       parts.push(`${ab.dmg} dmg`);
     }
   }
-  if ((ab.dot || 0) > 0) {
-    const t = (ab.dT || 0) > 1 ? `, ${ab.dT}t` : '';
-    parts.push(`${ab.dot} DoT${t}`);
+  if ((ab.burn || 0) > 0) {
+    const t = (ab.burnT || 0) > 1 ? `, ${ab.burnT}t` : '';
+    parts.push(`${ab.burn} burn${t}`);
   }
   if ((ab.rfm || 0) > 0) {
     const t = (ab.rfmT || 0) > 1 ? `, ${ab.rfmT}t` : '';
@@ -30,12 +30,10 @@ function buildEnemyEffectSummary(ab) {
   if (ab.wipeShields) parts.push('wipe shields');
   if ((ab.heal || 0) > 0) parts.push(`${ab.heal} heal`);
   if ((ab.shield || 0) > 0) {
-    const t = (ab.shT || 0) > 1 ? `, ${ab.shT}t` : '';
-    parts.push(`${ab.shield} shield${t}`);
+    parts.push(`${ab.shield} shield`);
   }
   if ((ab.shieldAlly || 0) > 0) {
-    const t = (ab.shT || 0) > 1 ? `, ${ab.shT}t` : '';
-    parts.push(`ally ${ab.shieldAlly} shield${t}`);
+    parts.push(`ally ${ab.shieldAlly} shield`);
   }
   if ((ab.rfe || 0) > 0) {
     const t = (ab.rfT || 0) > 1 ? `, ${ab.rfT}t` : '';
@@ -47,15 +45,11 @@ function buildEnemyEffectSummary(ab) {
     parts.push(`${ab.erbAll ? 'all ' : ''}+${ab.erb} enemy roll${t}`);
   }
   if ((ab.summonChance ?? 0) > 0) parts.push(`summon ~${ab.summonChance}% nat20`);
-  if ((ab.counterspellPct ?? 0) > 0) {
-    const p = Math.max(0, Math.min(100, ab.counterspellPct));
-    parts.push(`counter C ${p}%`);
-  }
+  if ((ab.freezeAllEnemyDice ?? 0) > 0) parts.push(`freeze all (${ab.freezeAllEnemyDice} reveal skip${ab.freezeAllEnemyDice > 1 ? 's' : ''})`);
+  else if ((ab.freezeEnemyDice ?? 0) > 0) parts.push(`freeze (${ab.freezeEnemyDice} reveal skip${ab.freezeEnemyDice > 1 ? 's' : ''})`);
+  if (ab.ward) parts.push('ward');
   if ((ab.grantRampage || 0) > 0) parts.push(`rampage +${ab.grantRampage}`);
   if ((ab.grantRampageAll || 0) > 0) parts.push(`rampage all +${ab.grantRampageAll}`);
-  if ((ab.cowerT || 0) > 0) {
-    parts.push(ab.cowerAll ? `cower all ${ab.cowerT}r` : `cower ${ab.cowerT}r`);
-  }
   return parts.length ? parts.join(', ') : '—';
 }
 

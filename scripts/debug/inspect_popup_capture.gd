@@ -92,7 +92,7 @@ func _build_payload(config: Dictionary) -> Dictionary:
 					return InspectResolver.resolve_ability(entry.get("raw", {}), "hero", "STRIKE")
 			return {}
 		"status":
-			return InspectResolver.resolve_status({"type": "poison", "value": "6", "duration": 2})
+			return InspectResolver.resolve_status({"type": "burn", "value": "6", "duration": 2})
 		"protocol":
 			return InspectResolver.resolve_protocol_action(item_id if item_id != "" else "nudge")
 	return {}

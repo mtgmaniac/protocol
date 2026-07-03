@@ -118,6 +118,13 @@ func _launch_screen(screen_id: String) -> void:
 			SceneManager.go_to_run_end()
 		"home", "unit-select", "unit_select":
 			SceneManager.go_to_unit_select()
+		"route-fork", "fork":
+			GameState.current_battle = 2
+			SceneManager.go_to(SceneManager.ROUTE_FORK_SCENE)
+		"intercept":
+			GameState.current_battle = 2
+			GameState.run_beats[2] = {"type": "intercept", "tier": "minor"}
+			SceneManager.go_to(SceneManager.INTERCEPT_SCENE)
 		_:
 			push_error("[DebugScreen] unknown screen id: " + screen_id)
 			get_tree().quit(1)

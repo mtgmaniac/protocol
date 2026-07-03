@@ -80,22 +80,18 @@
     },
     "enemyAbility": {
       "type": "object",
-      "required": ["name", "eff", "dmg", "dot", "dT", "heal", "rfe"],
+      "required": ["name", "eff", "dmg", "burn", "burnT", "heal", "rfe"],
       "additionalProperties": true,
       "properties": {
         "name": { "type": "string" },
         "eff": { "type": "string" },
         "dmg": { "type": "integer" },
-        "dmgP2": { "type": "integer" },
-        "dot": { "type": "integer" },
-        "dT": { "type": "integer" },
+        "burn": { "type": "integer" },
+        "burnT": { "type": "integer" },
         "heal": { "type": "integer" },
         "rfe": { "type": "integer" },
         "shield": { "type": "integer" },
-        "shieldP2": { "type": "integer" },
-        "shT": { "type": "integer" },
         "shieldAlly": { "type": "integer" },
-        "shAllyT": { "type": "integer" },
         "shieldAllyAll": { "type": "boolean" },
         "blastAll": { "type": "boolean" },
         "rfm": { "type": "integer" },
@@ -107,11 +103,20 @@
         "erb": { "type": "integer", "minimum": 0 },
         "erbT": { "type": "integer", "minimum": 1 },
         "erbAll": { "type": "boolean" },
-        "counterspellPct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "ward": { "type": "boolean" },
+        "spike": { "type": "integer", "minimum": 1 },
+        "jam": { "type": "boolean" },
+        "jamAll": { "type": "boolean" },
+        "rewrite": { "type": "boolean" },
+        "hijack": { "type": "boolean" },
+        "siphon": { "type": "integer", "minimum": 1 },
+        "cloak": { "type": "boolean" },
+        "lure": { "type": "boolean" },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
-        "cowerT": { "type": "integer", "minimum": 1 },
-        "cowerAll": { "type": "boolean" },
+        "freezeEnemyDice": { "type": "integer", "minimum": 1 },
+        "freezeAllEnemyDice": { "type": "integer", "minimum": 1 },
+        "freeze_flavor": { "type": "string", "enum": ["ice", "petrify"] },
         "enemySelfTaunt": { "type": "boolean" },
         "curseDice": { "type": "boolean" },
         "packBonus": { "type": "boolean" }
@@ -142,17 +147,19 @@
         "ai": { "$ref": "#/$defs/aiType" },
         "callsign": {
           "type": "string",
-          "description": "Short enemy callsign for UI (e.g. SCRAPLORD)."
+          "maxLength": 8,
+          "description": "Short enemy callsign for UI — max 8 characters."
         },
-        "p2dMin": { "type": "integer", "minimum": 1 },
-        "p2dMax": { "type": "integer", "minimum": 1 },
-        "pThr": { "type": "integer", "minimum": 1 },
-        "summonElite": { "type": "boolean" },
-        "p2ReviveNames": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Allies (by display name) restored on phase 2: dead revived at full HP, living healed to full HP."
-        }
+        "accrete": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Accretion: gain N shield at the start of each of this unit's turns."
+        },
+        "startsCloaked": {
+          "type": "boolean",
+          "description": "Spawns cloaked (Forked Double); inherits the reworked cloak rules."
+        },
+        "summonElite": { "type": "boolean" }
       }
     }
   }

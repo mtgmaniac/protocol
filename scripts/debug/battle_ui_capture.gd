@@ -547,7 +547,7 @@ func _force_enemy_shield_scenario() -> void:
 	if enemy_state.is_empty():
 		return
 	var stacks: Array = enemy_state.get("shield_stacks", [])
-	stacks.append({"amt": 12, "turns_left": 2, "skip_next_tick": false})
+	stacks.append({"amt": 12, "skip_next_tick": false})
 	enemy_state["shield_stacks"] = stacks
 	enemy_state["shield"] = 12
 	var enemy_id: String = str(enemy_state.get("id", ""))

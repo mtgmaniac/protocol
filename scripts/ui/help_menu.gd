@@ -28,7 +28,7 @@ const HELP_TABS := [
 	{"id": "settings", "label": "SETTINGS"},
 ]
 const HELP_KEYWORD_ICON := {
-	"dot": "poison", "pierce": "damage", "shield": "shield", "heal": "heal",
+	"burn": "burn", "pierce": "damage", "shield": "shield", "heal": "heal",
 	"revive": "heal", "roll_down": "roll_down", "roll_up": "roll_up",
 	"freeze": "freeze", "taunt": "shield", "aoe": "damage",
 }
@@ -361,15 +361,12 @@ func _build_keywords(host: VBoxContainer) -> void:
 		for kw_variant in by_cat[cat]:
 			_add_keyword_row(host, kw_variant)
 
-	var dot_flavors: Array = data.get("dotFlavors", [])
 	var conventions: Dictionary = data.get("conventions", {})
 	var convention_lines: Array = []
 	if conventions.has("duration"):
 		convention_lines.append(str(conventions["duration"]))
 	if conventions.has("targeting"):
 		convention_lines.append(str(conventions["targeting"]))
-	if not dot_flavors.is_empty():
-		convention_lines.append("DoT flavors (%s) are cosmetic — identical mechanics." % ", ".join(dot_flavors))
 	if not convention_lines.is_empty():
 		_add_section(host, "CONVENTIONS", convention_lines)
 
@@ -628,8 +625,8 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 		var ability: Dictionary = ability_variant
 		var raw: Dictionary = ability.get("raw", {})
 		var tags: Array = []
-		if int(raw.get("dot", 0)) > 0:
-			tags.append("DoT")
+		if int(raw.get("burn", 0)) > 0:
+			tags.append("Burn")
 		if int(raw.get("rfe", 0)) > 0:
 			tags.append("Roll Down")
 		if int(raw.get("shield", 0)) > 0 or int(raw.get("shieldAlly", 0)) > 0:
@@ -638,12 +635,12 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 			tags.append("Heal")
 		if bool(raw.get("blastAll", false)):
 			tags.append("AoE")
-		if int(raw.get("counterspellPct", 0)) > 0:
-			tags.append("Counter")
+		if bool(raw.get("ward", false)):
+			tags.append("Ward")
 		if bool(raw.get("wipeShields", false)):
 			tags.append("Shield Wipe")
-		if int(raw.get("cowerT", 0)) > 0 or bool(raw.get("cowerAll", false)):
-			tags.append("Cower")
+		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0:
+			tags.append("Freeze")
 		if int(raw.get("summonChance", 0)) > 0 or str(raw.get("summonName", "")) != "":
 			tags.append("Summon")
 		for tag in tags:

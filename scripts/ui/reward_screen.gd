@@ -750,8 +750,7 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 	if GameState.has_pending_evolution():
 		SceneManager.go_to_evolution()
 		return
-	GameState.advance_to_next_battle()
-	SceneManager.go_to_battle()
+	SceneManager.go_to_next_battle_or_beat()
 
 
 func _update_battle_header() -> void:
@@ -808,6 +807,9 @@ func _apply_visual_theme() -> void:
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.visible = false
 	reward_title_label.text = "CHOOSE REWARD"
+	# Fixed beat (pkg7.2): the battle-5 relic draft renders in event chrome.
+	if GameState.current_battle == GameState.RELIC_ONLY_ROUND and GameState.relics.size() == (1 if GameState.starting_directive_relic_id != "" else 0):
+		reward_title_label.text = "INTERCEPT: RELIC CACHE"
 	reward_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_title_label.custom_minimum_size = Vector2(0, 82)

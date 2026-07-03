@@ -10,7 +10,7 @@
 ---
 
 ## What already exists (don't rebuild)
-- **Event-driven feedback pipeline** — `combat_manager._emit_event(state, type, amount, side)` emits semantic events: `damage`, `burn`, `heal`, `shield`, `roll_buff`, `freeze`, `cloak`, `taunt`, `curse`, `evade`, `block`, `survive`, `wipe_shields`, `phase2`. (`burn` is the renamed DoT — see Task 7.)
+- **Event-driven feedback pipeline** — `combat_manager._emit_event(state, type, amount, side)` emits semantic events: `damage`, `burn`, `heal`, `shield`, `roll_buff`, `freeze`, `cloak`, `taunt`, `curse`, `evade`, `block`, `survive`, `wipe_shields`. (`burn` is the renamed DoT — see Task 7. The `phase2` event was deleted with the phase-2 system in pkg4.)
 - **Sequencer** — `battle_scene._play_round_feedback` → `_build_action_feedback_groups` (groups events into actor+effects beats) → `_play_action_feedback_group` (plays them with `ACTION_EFFECT_LEAD_TIME` / `ACTION_FEEDBACK_PAUSE` pacing). This is the timing backbone.
 - **Per-card hooks** — `compact_unit_card.play_action_feedback(attack|support|neutral)` (actor tell) and `play_impact_feedback(damage|heal|shield)` (target reaction).
 - **Card flash** — `_flash_card(card, event_type)` tweens modulate to a per-type color and back (0.22s).
@@ -72,7 +72,6 @@ Drive feedback from a TABLE, not branching code, so new effects = new rows.
 | `roll_buff` | pulse(support) | flash(cyan) | number("+N ROLL", cyan) |
 | `freeze` | — | ice-over die visual (`set_die_frozen_visual`) + cyan flash | number("FROZEN N") |
 | `cloak` / `evade` | pulse(support) | fade-pulse on portrait | number("CLOAK"/"EVADE") |
-| `phase2` | — | screen shake + orange flash + longer hit_pause | number("⚡ PHASE 2") |
 | `survive`→death | — | white flash → shake → death-scatter + long hit_pause | — |
 | natural 20 | bigger lunge | — | die_settle(signature) + gold screen flash + slow-mo |
 

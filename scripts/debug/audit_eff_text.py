@@ -29,6 +29,9 @@ def hero_expected(raw: dict) -> str:
             s += " (all)"
         if raw.get("ignSh"):
             s += ", pierce"
+        vs_frozen = raw.get("vsFrozenBonus") or 0
+        if vs_frozen > 0:
+            s += f", +{vs_frozen} vs frozen"
         parts.append(s)
     elif dmin > 0 and dmax > 0 and dmin != dmax:
         s = f"{dmin}-{dmax} dmg"
@@ -51,17 +54,51 @@ def hero_expected(raw: dict) -> str:
 
     shield = raw.get("shield") or 0
     if shield > 0:
-        t = turn_suffix(raw.get("shT") or 0)
         if raw.get("shieldAll"):
-            parts.append(f"all {shield} shield{t}")
+            parts.append(f"all {shield} shield")
+        elif raw.get("shieldLowest"):
+            parts.append(f"lowest {shield} shield")
         elif raw.get("shTgt"):
-            parts.append(f"ally {shield} shield{t}")
+            parts.append(f"ally {shield} shield")
         else:
-            parts.append(f"self {shield} shield{t}")
+            parts.append(f"self {shield} shield")
 
-    dot = raw.get("dot") or 0
-    if dot > 0:
-        parts.append(f"{dot} DoT{turn_suffix(raw.get('dT') or 0)}")
+    burn = raw.get("burn") or 0
+    if burn > 0:
+        parts.append(f"{burn} burn{turn_suffix(raw.get('burnT') or 0)}")
+
+    chain = raw.get("chain") or 0
+    if chain > 0:
+        parts.append("chain" if chain == 1 else f"chain ×{chain}")
+
+    if raw.get("detonate"):
+        parts.append("detonate")
+
+    if raw.get("execute"):
+        parts.append("execute")
+
+    if raw.get("breachAll"):
+        parts.append("breach all")
+    elif raw.get("breach"):
+        parts.append("breach")
+
+    if raw.get("leech"):
+        parts.append("leech")
+
+    if raw.get("mark"):
+        parts.append("mark")
+
+    spike = raw.get("spike") or 0
+    if spike > 0:
+        parts.append(f"spike {spike}")
+
+    if raw.get("jamAll"):
+        parts.append("jam all")
+    elif raw.get("jam"):
+        parts.append("jam")
+
+    if raw.get("rewrite"):
+        parts.append("rewrite")
 
     rfe = raw.get("rfe") or 0
     if rfe > 0:
@@ -94,6 +131,8 @@ def hero_expected(raw: dict) -> str:
             parts.append(f"revive {pct}%")
     if raw.get("cloak"):
         parts.append("Cloak")
+    if raw.get("ward"):
+        parts.append("ally ward" if raw.get("wardTgt") else "self ward")
     if raw.get("taunt"):
         parts.append("taunt (picked enemy targets you)")
 
@@ -117,21 +156,21 @@ def enemy_expected(raw: dict) -> str:
     parts: list[str] = []
     dmg = raw.get("dmg") or 0
     if dmg > 0:
-        p2 = raw.get("dmgP2")
         s = f"{dmg} dmg"
-        if p2 and p2 != dmg:
-            s += f" (P2 {p2})"
         if raw.get("blastAll"):
             s += " (all)"
         parts.append(s)
 
-    dot = raw.get("dot") or 0
-    if dot > 0:
-        parts.append(f"{dot} DoT{turn_suffix(raw.get('dT') or 0)}")
+    burn = raw.get("burn") or 0
+    if burn > 0:
+        parts.append(f"{burn} burn{turn_suffix(raw.get('burnT') or 0)}")
 
     rfm = raw.get("rfm") or 0
     if rfm > 0:
         parts.append(f"-{rfm} roll{turn_suffix(raw.get('rfmT') or 0)}")
+
+    if raw.get("packBonus"):
+        parts.append("pack bonus")
 
     heal = raw.get("heal") or 0
     if heal > 0:
@@ -139,22 +178,14 @@ def enemy_expected(raw: dict) -> str:
 
     shield = raw.get("shield") or 0
     if shield > 0:
-        p2 = raw.get("shieldP2")
-        s = f"{shield} shield"
-        if p2 and p2 != shield:
-            s += f" (P2 {p2})"
-        s += turn_suffix(raw.get("shT") or 0)
-        parts.append(s)
+        parts.append(f"{shield} shield")
 
     sa = raw.get("shieldAlly") or 0
     if sa > 0:
-        ally_t = raw.get("shAllyT") or raw.get("shT") or 1
         if raw.get("shieldAllyAll"):
-            t = f", {ally_t}t" if ally_t > 1 else ""
-            parts.append(f"{sa} shield all allies{t}")
+            parts.append(f"{sa} shield all allies")
         else:
-            t = turn_suffix(ally_t)
-            parts.append(f"ally {sa} shield{t}")
+            parts.append(f"ally {sa} shield")
 
     if raw.get("enemySelfTaunt"):
         parts.append("taunt (all heroes must target this enemy)")
@@ -179,9 +210,33 @@ def enemy_expected(raw: dict) -> str:
     if sc > 0:
         parts.append(f"summon ~{sc}% nat20")
 
-    cp = raw.get("counterspellPct") or 0
-    if cp > 0:
-        parts.append(f"counter C {cp}%")
+    if raw.get("ward"):
+        parts.append("ward")
+
+    enemy_spike = raw.get("spike") or 0
+    if enemy_spike > 0:
+        parts.append(f"spike {enemy_spike}")
+
+    if raw.get("jamAll"):
+        parts.append("jam all")
+    elif raw.get("jam"):
+        parts.append("jam")
+
+    if raw.get("rewrite"):
+        parts.append("rewrite")
+
+    if raw.get("hijack"):
+        parts.append("hijack")
+
+    siphon = raw.get("siphon") or 0
+    if siphon > 0:
+        parts.append(f"siphon {siphon}")
+
+    if raw.get("cloak"):
+        parts.append("cloak")
+
+    if raw.get("lure"):
+        parts.append("lure")
 
     gr = raw.get("grantRampage") or 0
     if gr > 0:
@@ -191,9 +246,14 @@ def enemy_expected(raw: dict) -> str:
     if gra > 0:
         parts.append(f"rampage all +{gra}")
 
-    ct = raw.get("cowerT") or 0
-    if ct > 0:
-        parts.append(f"cower all {ct}r" if raw.get("cowerAll") else f"cower {ct}r")
+    for key in ("freezeAllEnemyDice", "freezeEnemyDice"):
+        v = raw.get(key) or 0
+        if v > 0:
+            sk = "s" if v > 1 else ""
+            if key == "freezeAllEnemyDice":
+                parts.append(f"freeze all ({v} reveal skip{sk})")
+            else:
+                parts.append(f"freeze ({v} reveal skip{sk})")
 
     tail = ", ".join(parts) if parts else "—"
     if raw.get("wipeShields"):

@@ -11,12 +11,11 @@ extends Resource
 @export var max_hp: int = 0
 @export var damage_preview_min: int = 0
 @export var damage_preview_max: int = 0
-@export var phase_two_damage_preview_min: int = 0
-@export var phase_two_damage_preview_max: int = 0
-@export var phase_two_threshold: int = 0
 @export var can_summon_elite: bool = false
-## Display names of allies to restore when this unit enters phase 2 (revive dead at full HP; heal living to full).
-@export var phase_two_revive_names: Array[String] = []
+## Accretion: gain N shield at the start of each of this unit's turns.
+@export var accrete: int = 0
+## Spawns cloaked (Forked Double); inherits the pkg2 cloak rules.
+@export var starts_cloaked: bool = false
 @export var portrait: Texture2D
 @export var dice_ranges: Array[Dictionary] = []
 @export var traits: Array[Dictionary] = []

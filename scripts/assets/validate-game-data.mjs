@@ -57,10 +57,10 @@ function validateEnemyAbilitySemantics(enemies) {
     if (!suite || typeof suite !== 'object') continue;
     for (const [z, ab] of Object.entries(suite)) {
       if (!ab || typeof ab !== 'object') continue;
-      const dot = (ab.dot || 0) > 0;
+      const burn = (ab.burn || 0) > 0;
       const ls = (ab.lifestealPct || 0) > 0;
-      if (dot && ls) {
-        return `enemyAbilities.${type}.${z}: dot and lifestealPct cannot both be set`;
+      if (burn && ls) {
+        return `enemyAbilities.${type}.${z}: burn and lifestealPct cannot both be set`;
       }
     }
   }

@@ -50,8 +50,8 @@
         "dmg",
         "dMin",
         "dMax",
-        "dot",
-        "dT",
+        "burn",
+        "burnT",
         "rfe",
         "heal"
       ],
@@ -69,14 +69,13 @@
         "dmg": { "type": "integer" },
         "dMin": { "type": "integer" },
         "dMax": { "type": "integer" },
-        "dot": { "type": "integer" },
-        "dT": { "type": "integer" },
+        "burn": { "type": "integer" },
+        "burnT": { "type": "integer" },
         "rfe": { "type": "integer" },
         "heal": { "type": "integer" },
         "rfT": { "type": "integer" },
         "shTgt": { "type": "boolean" },
         "shield": { "type": "integer" },
-        "shT": { "type": "integer" },
         "shieldAll": { "type": "boolean" },
         "healTgt": { "type": "boolean" },
         "healAll": { "type": "boolean" },
@@ -98,6 +97,22 @@
         "freezeAllEnemyDice": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 0 },
         "freezeAnyDice": { "type": "integer", "minimum": 0 },
+        "freeze_flavor": { "type": "string", "enum": ["ice", "petrify"] },
+        "ward": { "type": "boolean" },
+        "wardTgt": { "type": "boolean" },
+        "shieldLowest": { "type": "boolean" },
+        "chain": { "type": "integer", "minimum": 1 },
+        "detonate": { "type": "boolean" },
+        "execute": { "type": "boolean" },
+        "breach": { "type": "boolean" },
+        "breachAll": { "type": "boolean" },
+        "leech": { "type": "boolean" },
+        "mark": { "type": "boolean" },
+        "spike": { "type": "integer", "minimum": 1 },
+        "jam": { "type": "boolean" },
+        "jamAll": { "type": "boolean" },
+        "rewrite": { "type": "boolean" },
+        "vsFrozenBonus": { "type": "integer", "minimum": 1 },
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },
@@ -117,6 +132,34 @@
           "type": "array",
           "items": { "$ref": "#/$defs/heroAbility" },
           "minItems": 1
+        },
+        "directives": {
+          "type": "array",
+          "description": "Tier-3 passives (pkg6): 1-of-2 offered at 250 XP, scoped to this evolution path.",
+          "items": { "$ref": "#/$defs/directive" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "directive": {
+      "type": "object",
+      "required": ["name", "desc", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "desc": { "type": "string", "minLength": 1 },
+        "effect": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string" },
+            "amount": { "type": "integer" },
+            "pct": { "type": "integer" },
+            "cap": { "type": "integer" },
+            "ability": { "type": "string" }
+          },
+          "additionalProperties": false
         }
       }
     },

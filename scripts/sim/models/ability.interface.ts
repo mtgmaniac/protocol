@@ -8,14 +8,13 @@ export interface HeroAbility {
   dmg: number;
   dMin: number;
   dMax: number;
-  dot: number;
-  dT: number;
+  burn: number;
+  burnT: number;
   rfe: number;
   rfT?: number;
   heal: number;
   shTgt?: boolean;
   shield?: number;
-  shT?: number;
   shieldAll?: boolean;
   healTgt?: boolean;
   healAll?: boolean;
@@ -50,18 +49,17 @@ export interface EnemyAbility {
   eff: string;
   dmg: number;
   dmgP2?: number;
-  dot: number;
-  dT: number;
+  burn: number;
+  burnT: number;
   heal: number;
   rfe: number;
   rfT?: number;
   shield: number;
-  shT?: number;
   shieldAlly?: number;
   rfm?: number;
   rfmT?: number;
   wipeShields?: boolean;
-  /** Heal this enemy for N% of HP damage dealt (after shield); never combine with `dot` on the same ability. */
+  /** Heal this enemy for N% of HP damage dealt (after shield); never combine with `burn` on the same ability. */
   lifestealPct?: number;
   zone?: Zone;
   /** Veil Concord overload only: % chance (0–100) on natural 20 + overload tier; requires `summonElite` on unit def; max 3 enemies. */
@@ -74,14 +72,16 @@ export interface EnemyAbility {
   /** If true, `erb` applies to all living enemies. */
   erbAll?: boolean;
   /** If set and positive, the caster gains a counter buff (% chance to reflect the next hero damage attempt to the attacker). */
-  counterspellPct?: number;
+  /** Ward: blocks the next ability that targets this unit, then breaks. */
+  ward?: boolean;
   /** Add rampage charges to self: next direct hit damage ×2 per charge (consumed one per hit). */
   grantRampage?: number;
   /** Add rampage charges to all living enemies (stampede / pack frenzy). */
   grantRampageAll?: number;
-  /** Hero cannot roll next player round(s); loses their turn. */
-  cowerT?: number;
-  cowerAll?: boolean;
+  /** Freeze the targeted hero's die: locked in the tray, hero skips its next N reveals. */
+  freezeEnemyDice?: number;
+  /** Freeze every hero die for N reveal skips. */
+  freezeAllEnemyDice?: number;
   /** Veil grunt: this enemy forces all heroes to target it next player phase (clears when it dies). */
   enemySelfTaunt?: boolean;
   /** Void grunt: targeted hero must roll twice next turn and keep the lower result. */

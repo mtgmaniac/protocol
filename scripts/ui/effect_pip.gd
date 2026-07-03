@@ -5,7 +5,7 @@ extends RefCounted
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
 ## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
 
-const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "counter", "rampage", "taunt", "protocol", "tag"]
+const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "ward", "rampage", "taunt", "protocol", "tag", "chain", "detonate", "execute", "breach", "leech", "mark", "spike", "jam", "rewrite", "hijack", "siphon"]
 
 const PROFILE_READOUT := {
 	"icon_size": 56,
@@ -67,8 +67,8 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 			text = "C"
 		"taunt":
 			text = "T"
-		"counter":
-			text = "CO"
+		"ward":
+			text = "W"
 		"rampage":
 			text = "RA"
 		"revive":
@@ -154,9 +154,9 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 			effects, "dmg", "%d-%d" % [damage_min, damage_max], 0, "all" if blast_all else ""
 		)
 
-	var dot: int = int(raw.get("dot", 0))
-	if dot > 0:
-		_append_effect(effects, "dot", "%d" % dot, int(raw.get("dT", 0)))
+	var burn: int = int(raw.get("burn", 0))
+	if burn > 0:
+		_append_effect(effects, "burn", "%d" % burn, int(raw.get("burnT", 0)))
 
 	var shield_all: bool = bool(raw.get("shieldAll", false))
 	var shield_self: bool = (
@@ -167,14 +167,12 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	var shield: int = int(raw.get("shield", 0))
 	if shield > 0 and not bool(raw.get("shieldAllyAll", false)):
 		var shield_scope: String = "all" if shield_all else ("self" if shield_self else "")
-		_append_effect(effects, "shield", "%d" % shield, int(raw.get("shT", 0)), shield_scope)
+		_append_effect(effects, "shield", "%d" % shield, 0, shield_scope)
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
-		_append_effect(
-			effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))), "all"
-		)
+		_append_effect(effects, "shield", "%d" % shield_ally, 0, "all")
 	elif shield_ally > 0:
-		_append_effect(effects, "shield", "%d" % shield_ally, int(raw.get("shAllyT", raw.get("shT", 0))))
+		_append_effect(effects, "shield", "%d" % shield_ally, 0)
 
 	var heal_all: bool = bool(raw.get("healAll", false))
 	var heal_self: bool = (
@@ -203,8 +201,40 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 
 	if bool(raw.get("ignSh", false)):
 		_append_effect(effects, "pierce", "P")
+	var chain_jumps: int = int(raw.get("chain", 0))
+	if chain_jumps > 0:
+		_append_effect(effects, "chain", "CH" if chain_jumps == 1 else "CH×%d" % chain_jumps)
+	if bool(raw.get("detonate", false)):
+		# pkg8 upgrades this to show the live computed value when the target is known
+		_append_effect(effects, "detonate", "DT")
+	if bool(raw.get("execute", false)):
+		_append_effect(effects, "execute", "EX")
+	if bool(raw.get("breachAll", false)):
+		_append_effect(effects, "breach", "BR", 0, "all")
+	elif bool(raw.get("breach", false)):
+		_append_effect(effects, "breach", "BR")
+	if bool(raw.get("leech", false)):
+		_append_effect(effects, "leech", "LC")
+	if bool(raw.get("mark", false)):
+		_append_effect(effects, "mark", "MK")
+	var spike_value: int = int(raw.get("spike", 0))
+	if spike_value > 0:
+		_append_effect(effects, "spike", "SP%d" % spike_value)
+	if bool(raw.get("jamAll", false)):
+		_append_effect(effects, "jam", "JM", 0, "all")
+	elif bool(raw.get("jam", false)):
+		_append_effect(effects, "jam", "JM")
+	if bool(raw.get("rewrite", false)):
+		_append_effect(effects, "rewrite", "RW")
+	if bool(raw.get("hijack", false)):
+		_append_effect(effects, "hijack", "HJ")
+	var siphon_amount: int = int(raw.get("siphon", 0))
+	if siphon_amount > 0:
+		_append_effect(effects, "siphon", "SI%d" % siphon_amount)
 	if bool(raw.get("cloak", false)):
 		_append_effect(effects, "cloak", "C", 0, "self")
+	if bool(raw.get("ward", false)):
+		_append_effect(effects, "ward", "W", 0, "" if bool(raw.get("wardTgt", false)) else "self")
 
 	var freeze_turns: int = maxi(
 		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
@@ -222,9 +252,9 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	elif bool(raw.get("revive", false)):
 		_append_effect(effects, "revive", "%d" % revive_pct)
 
-	var counter_pct: int = int(raw.get("counterspellPct", 0))
-	if counter_pct > 0:
-		_append_effect(effects, "counter", "CO", 0, "self")
+	if bool(raw.get("ward", false)):
+		var ward_scope: String = "" if bool(raw.get("wardTgt", false)) else "self"
+		_append_effect(effects, "ward", "W", 0, ward_scope)
 
 	if bool(raw.get("grantRampageAll", false)):
 		_append_effect(effects, "rampage", "RA", 0, "all")
@@ -243,9 +273,9 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 		"healAll":
 			_append_effect(effects, "heal", "%d" % int(effect.get("amount", 0)), 0, "all")
 		"shield":
-			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)), "self")
+			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "self")
 		"shieldAll":
-			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), int(effect.get("shT", 0)), "all")
+			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "all")
 		"rollBuff":
 			_append_effect(effects, "rfm", "+%d" % int(effect.get("amount", 0)), int(effect.get("turns", 0)))
 		"rollBonus", "heroStartRollBuff":
@@ -260,16 +290,16 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "roll", "-%d" % int(effect.get("amount", 0)), int(effect.get("rfT", 0)))
 		"enemyDmg":
 			_append_effect(effects, "dmg", "%d" % int(effect.get("amount", 0)))
-		"enemyDot":
-			_append_effect(effects, "dot", "%d" % int(effect.get("amount", 0)), int(effect.get("dT", 0)))
+		"enemyBurn":
+			_append_effect(effects, "burn", "%d" % int(effect.get("amount", 0)), int(effect.get("burnT", 0)))
 		"gainProtocol":
 			_append_effect(effects, "protocol", "+%d" % int(effect.get("amount", 0)))
 		"battleStartShield":
 			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "self")
 		"maxHpBonus":
 			_append_effect(effects, "heal", "+%d" % int(effect.get("amount", 0)))
-		"dotDmgBonus", "dotAmplified":
-			_append_effect(effects, "dot", "+%d" % int(effect.get("amount", effect.get("bonus", 0))))
+		"burnDmgBonus", "burnAmplified":
+			_append_effect(effects, "burn", "+%d" % int(effect.get("amount", effect.get("bonus", 0))))
 		"battleStartCloak":
 			_append_effect(effects, "cloak", "C", 0, "self")
 		"battleStartCloakRoll":
@@ -298,8 +328,8 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "shield", "%d" % int(effect.get("amount", 0)), 0, "self")
 		"heroHealPerTurn":
 			_append_effect(effects, "heal", "%d" % int(effect.get("amount", 0)), 0, "self")
-		"enemyDotPermanent":
-			_append_effect(effects, "dot", "%d" % int(effect.get("amount", 0)))
+		"enemyBurnPermanent":
+			_append_effect(effects, "burn", "%d" % int(effect.get("amount", 0)))
 		"heroDmgMult":
 			_append_effect(effects, "dmg", "%d%%" % int(round(float(effect.get("mult", 1.0)) * 100.0)), 0, "self")
 		"enemyStartRfe":
@@ -309,7 +339,7 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 		"protocolOnItemUse":
 			_append_effect(effects, "protocol", "FREE", 0, "self")
 		"enemyHpEscalation":
-			_append_effect(effects, "dot", "-%d" % int(effect.get("reductionPerBattle", 0)))
+			_append_effect(effects, "burn", "-%d" % int(effect.get("reductionPerBattle", 0)))
 		"chainReaction":
 			_append_effect(effects, "dmg", "%d" % int(effect.get("amount", 0)))
 		"lifesteal":
@@ -340,8 +370,6 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "freeze", "", int(effect.get("skips", 0)))
 		"enemyDieFreezeAll":
 			_append_effect(effects, "freeze", "", int(effect.get("skips", 0)), "all")
-		"xpBoost":
-			_append_effect(effects, "tag", "+%d XP" % int(effect.get("amount", 0)))
 		_:
 			if target_kind != "":
 				_append_effect(effects, "tag", target_kind.to_upper())

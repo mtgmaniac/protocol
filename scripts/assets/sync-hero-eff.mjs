@@ -43,15 +43,14 @@ function buildHeroEffectSummary(a) {
   }
 
   if ((a.shield || 0) > 0) {
-    const t = (a.shT || 0) > 1 ? `, ${a.shT}t` : '';
-    if (a.shieldAll) parts.push(`all ${a.shield} shield${t}`);
-    else if (a.shTgt) parts.push(`ally ${a.shield} shield${t}`);
-    else parts.push(`self ${a.shield} shield${t}`);
+    if (a.shieldAll) parts.push(`all ${a.shield} shield`);
+    else if (a.shTgt) parts.push(`ally ${a.shield} shield`);
+    else parts.push(`self ${a.shield} shield`);
   }
 
-  if ((a.dot || 0) > 0) {
-    const t = (a.dT || 0) > 1 ? `, ${a.dT}t` : '';
-    parts.push(`${a.dot} DoT${t}`);
+  if ((a.burn || 0) > 0) {
+    const t = (a.burnT || 0) > 1 ? `, ${a.burnT}t` : '';
+    parts.push(`${a.burn} burn${t}`);
   }
 
   if ((a.rfe || 0) > 0) {

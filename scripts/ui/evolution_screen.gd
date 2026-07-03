@@ -140,11 +140,69 @@ func _build_choice_cards() -> void:
 
 	var unit_id: String = GameState.get_pending_evolution_unit_id()
 	var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
-	var paths: Array = GameState.get_pending_evolution_paths()
-	for path_variant in paths:
-		var path: Dictionary = path_variant
-		choice_cards.add_child(_create_evolution_card(path, unit))
+	if GameState.is_pending_directive_stage():
+		for choice_variant in GameState.get_pending_directive_choices():
+			choice_cards.add_child(_create_directive_card(choice_variant, unit))
+	else:
+		var paths: Array = GameState.get_pending_evolution_paths()
+		for path_variant in paths:
+			var path: Dictionary = path_variant
+			choice_cards.add_child(_create_evolution_card(path, unit))
 	call_deferred("_update_choice_layout")
+
+
+# Tier-3 Directive pick (pkg6): a compact card — name, passive text, choose.
+func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> PanelContainer:
+	var panel: PanelContainer = PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.custom_minimum_size = Vector2(_get_card_width(), 0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_style_evolution_panel(panel, false)
+	panel.mouse_entered.connect(_style_evolution_panel.bind(panel, true))
+	panel.mouse_exited.connect(_style_evolution_panel.bind(panel, false))
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	panel.add_child(margin)
+
+	var vbox: VBoxContainer = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 14)
+	margin.add_child(vbox)
+
+	var directive_name: String = str(directive.get("name", "Directive"))
+	vbox.add_child(_make_label(directive_name.to_upper(), CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
+	var desc: Label = _make_label(str(directive.get("desc", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(desc)
+	if base_unit != null:
+		var evolved_name: String = GameState.get_unit_evolution_name(base_unit.id)
+		vbox.add_child(_make_label("PERMANENT PASSIVE FOR %s" % evolved_name.to_upper(), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+	vbox.add_child(_create_divider())
+
+	var choose_button: Button = Button.new()
+	choose_button.custom_minimum_size = Vector2(0, 78)
+	choose_button.text = "CHOOSE %s" % directive_name.to_upper()
+	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
+	choose_button.pressed.connect(_on_choose_directive_pressed.bind(directive_name))
+	vbox.add_child(choose_button)
+	return panel
+
+
+func _on_choose_directive_pressed(directive_name: String) -> void:
+	var pending_unit_id: String = GameState.get_pending_evolution_unit_id()
+	if not GameState.apply_pending_directive(directive_name):
+		footer_label.text = "That directive could not be applied."
+		return
+	AudioManager.play_sfx("evolve")
+	var unit: UnitData = DataManager.get_unit(pending_unit_id) as UnitData
+	var unit_name: String = unit.display_name if unit != null else pending_unit_id
+	footer_label.text = "%s adopted the %s directive." % [unit_name, directive_name]
+	SceneManager.go_to_next_battle_or_beat()
 
 
 func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelContainer:
@@ -331,6 +389,12 @@ func _refresh_summary() -> void:
 	if unit == null:
 		summary_label.text = "No evolution is ready."
 		return
+	if GameState.is_pending_directive_stage():
+		summary_label.text = "%s reached %d XP. Choose a permanent Directive." % [
+			GameState.get_unit_evolution_name(unit_id),
+			GameState.XP_TO_DIRECTIVE,
+		]
+		return
 	summary_label.text = "%s reached level %d. Choose a permanent branch." % [
 		unit.display_name,
 		GameState.get_unit_level(unit_id),
@@ -348,8 +412,7 @@ func _on_choose_path_pressed(path_name: String) -> void:
 	if unit != null:
 		unit_name = unit.display_name
 	footer_label.text = "%s evolved into %s." % [unit_name, path_name]
-	GameState.advance_to_next_battle()
-	SceneManager.go_to_battle()
+	SceneManager.go_to_next_battle_or_beat()
 
 
 func _update_battle_header() -> void:

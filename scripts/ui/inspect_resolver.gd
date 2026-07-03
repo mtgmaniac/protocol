@@ -26,7 +26,7 @@ const PROTOCOL_ACTIONS := {
 
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
-# `raw` is the structured ability dict (name, eff, dmg/dot/dT/heal/rfe/shield/shT…) as
+# `raw` is the structured ability dict (name, eff, dmg/burn/burnT/heal/rfe/shield…) as
 # stored in a dice_ranges entry's "raw". `side` drives pip coloring.
 static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String = "") -> Dictionary:
 	if raw.is_empty():
@@ -73,7 +73,7 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
 	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
-	return {
+	var payload: Dictionary = {
 		"accent": _side_accent(side),
 		"header": {
 			"title": str(data.get("display_name")),
@@ -82,6 +82,12 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 		"statuses": statuses,
 		"abilities": abilities,
 	}
+	# Boss standing rule — always visible in the inspect popup.
+	if is_enemy:
+		var standing_rule: String = CombatManager.get_boss_standing_rule(str(data.get("display_name")))
+		if standing_rule != "":
+			payload["description"] = standing_rule
+	return payload
 
 
 # Active battle statuses for the unit inspect — each entry { effects:[pip], text } renders as a
@@ -93,13 +99,13 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		return entries
 	if bool(state.get("dead", false)):
 		return [{"effects": [], "text": "Knocked out. Cannot act until revived."}]
-	var poison: int = int(state.get("poison", 0))
-	var poison_turns: int = int(state.get("poison_turns", 0))
-	if poison > 0 and poison_turns > 0:
+	var burn: int = int(state.get("burn", 0))
+	var burn_turns: int = int(state.get("burn_turns", 0))
+	if burn > 0 and burn_turns > 0:
 		# Treat a very large duration (e.g. plagueProtocol's 9999) as permanent — show no
 		# turn count on the pip or in the text.
-		var poison_dur: int = poison_turns if poison_turns < 999 else 0
-		entries.append(_status_entry("dot", "%d" % poison, poison_dur, _status_text("poison", "%d" % poison, poison_dur)))
+		var burn_dur: int = burn_turns if burn_turns < 999 else 0
+		entries.append(_status_entry("burn", "%d" % burn, burn_dur, _status_text("burn", "%d" % burn, burn_dur)))
 	var shield: int = int(state.get("shield", 0))
 	if shield > 0:
 		entries.append(_status_entry("shield", "%d" % shield, 0, _status_text("shield", "%d" % shield, 0)))
@@ -113,8 +119,10 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		entries.append(_status_entry("rfm" if roll_delta > 0 else "roll", "%+d" % roll_delta, 0, _roll_status_text(roll_delta)))
 	if bool(state.get("cloaked", false)):
 		entries.append(_status_entry("cloak", "C", 0, _status_text("cloak", "", 0)))
-	if int(state.get("cower_turns", 0)) > 0:
-		entries.append({"effects": [], "text": "Cower: cannot deal damage this turn."})
+	if bool(state.get("warded", false)):
+		entries.append(_status_entry("ward", "W", 0, _status_text("ward", "", 0)))
+	if bool(state.get("marked", false)):
+		entries.append(_status_entry("mark", "M", 0, _status_text("mark", "", 0)))
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", "RA", 0, _status_text("rampage", "", 0)))
 	return entries
@@ -131,15 +139,15 @@ static func _roll_status_text(delta: int) -> String:
 	return "%+d to this unit's die rolls." % delta
 
 
-# ── 3. Status / DoT pip (long-press a status icon) ──────────────────────────────
+# ── 3. Status / burn pip (long-press a status icon) ──────────────────────────────
 # `status` is a normalized status dict (type, value/stacks, duration, name…). If a
-# cosmetic `dot_flavor` ever exists it is used as the label; today it does NOT exist in
+# cosmetic `burn_flavor` ever exists it is used as the label; today it does NOT exist in
 # the data, so we fall back to the generic keyword.
 static func resolve_status(status: Dictionary) -> Dictionary:
 	if status.is_empty():
 		return {}
 	var kind: String = str(status.get("type", status.get("name", ""))).to_lower()
-	var label: String = str(status.get("dot_flavor", "")).strip_edges()
+	var label: String = str(status.get("burn_flavor", "")).strip_edges()
 	if label == "":
 		label = _status_keyword(kind)
 	var value: String = str(status.get("value", "")).strip_edges()
@@ -221,7 +229,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 		hostile.append("Remove all hero shields.")
 
 	var dmg: int = int(raw.get("dmg", 0))
-	var dmg_p2: int = int(raw.get("dmgP2", 0))
 	var d_min: int = int(raw.get("dMin", 0))
 	var d_max: int = int(raw.get("dMax", 0))
 	var blast_all: bool = bool(raw.get("blastAll", false))
@@ -232,18 +239,16 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			hostile.append("Deal %d damage to all enemies." % dmg)
 		else:
 			hostile.append("Deal %d damage." % dmg)
-		if dmg_p2 > 0:
-			hostile.append("Phase 2: deals %d damage instead." % dmg_p2)
 	elif d_min > 0 or d_max > 0:
 		if d_min == d_max:
 			hostile.append("Deal %d damage." % d_min)
 		else:
 			hostile.append("Deal %d-%d damage." % [d_min, d_max])
 
-	var dot: int = int(raw.get("dot", 0))
-	if dot > 0:
-		var dt: int = int(raw.get("dT", 0))
-		hostile.append("Deal %d damage per turn%s." % [dot, (" for " + _turns(dt)) if dt > 0 else ""])
+	var burn: int = int(raw.get("burn", 0))
+	if burn > 0:
+		var burn_t: int = int(raw.get("burnT", 0))
+		hostile.append("Deal %d damage per turn%s." % [burn, (" for " + _turns(burn_t)) if burn_t > 0 else ""])
 
 	if bool(raw.get("ignSh", false)):
 		hostile.append("Pierces hero shields." if side == "enemy" else "Pierces enemy shields.")
@@ -275,13 +280,6 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 	if bool(raw.get("curseDice", false)):
 		hostile.append("Target hero rolls twice next turn and keeps the lower result.")
 
-	var cower: int = int(raw.get("cowerT", 0))
-	if cower > 0:
-		if bool(raw.get("cowerAll", false)):
-			hostile.append("All heroes skip their next turn%s (%s)." % ["" if cower == 1 else "s", _turns(cower)])
-		else:
-			hostile.append("Target hero skips their next turn%s (%s)." % ["" if cower == 1 else "s", _turns(cower)])
-
 	if bool(raw.get("packBonus", false)):
 		hostile.append("Damage increases by the number of living allies of the same type.")
 
@@ -305,27 +303,20 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			friendly.append("Restore %d HP." % heal)
 
 	var shield: int = int(raw.get("shield", 0))
-	var shield_p2: int = int(raw.get("shieldP2", 0))
 	if shield > 0:
-		var sh_t: int = int(raw.get("shT", 0))
-		var sh_suffix: String = (" for " + _turns(sh_t)) if sh_t > 0 else ""
 		if bool(raw.get("shieldAll", false)):
-			friendly.append("Grant %d shield to all allies%s." % [shield, sh_suffix])
+			friendly.append("Grant %d shield to all allies this round." % shield)
 		elif bool(raw.get("shTgt", false)):
-			friendly.append("Grant %d shield to an ally%s." % [shield, sh_suffix])
+			friendly.append("Grant %d shield to an ally this round." % shield)
 		else:
-			friendly.append("Gain %d shield%s." % [shield, sh_suffix])
-		if shield_p2 > 0:
-			friendly.append("Phase 2: gain %d shield instead." % shield_p2)
+			friendly.append("Gain %d shield this round." % shield)
 
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if shield_ally > 0:
-		var sh_ally_t: int = int(raw.get("shAllyT", raw.get("shT", 1)))
-		var ally_sh_suffix: String = (" for " + _turns(sh_ally_t)) if sh_ally_t > 0 else ""
 		if bool(raw.get("shieldAllyAll", false)):
-			friendly.append("Grant %d shield to all allies%s." % [shield_ally, ally_sh_suffix])
+			friendly.append("Grant %d shield to all allies this round." % shield_ally)
 		else:
-			friendly.append("Grant %d shield to an ally%s." % [shield_ally, ally_sh_suffix])
+			friendly.append("Grant %d shield to an ally this round." % shield_ally)
 
 	if side == "hero":
 		var rfm: int = int(raw.get("rfm", 0))
@@ -346,9 +337,11 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 			else:
 				friendly.append("Increase this enemy's roll by %d%s." % [erb, erb_suffix])
 
-	var counter: int = int(raw.get("counterspellPct", 0))
-	if counter > 0:
-		friendly.append("%d%% chance to counter the next attack." % counter)
+	if bool(raw.get("ward", false)):
+		if bool(raw.get("wardTgt", false)):
+			friendly.append("Ward an ally: blocks the next ability that targets them, then breaks.")
+		else:
+			friendly.append("Gain Ward: blocks the next ability that targets this unit, then breaks.")
 
 	if bool(raw.get("grantRampageAll", false)):
 		friendly.append("Grant Rampage to all enemies.")
@@ -361,7 +354,7 @@ static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
 		friendly.append("Taunt: enemies must target this unit.")
 
 	if bool(raw.get("cloak", false)):
-		friendly.append("Cloak: 80% chance to evade the next incoming hit.")
+		friendly.append("Cloak: untargetable by single-target abilities; the first attack from Cloak pierces.")
 
 	if bool(raw.get("reviveAll", false)):
 		friendly.append("Revive all fallen allies at %d%% max HP." % int(raw.get("revivePct", 50)))
@@ -399,8 +392,8 @@ static func _turns(count: int) -> String:
 
 static func _status_keyword(kind: String) -> String:
 	match kind:
-		"poison", "dot":
-			return "POISON"
+		"burn":
+			return "BURN"
 		"shield":
 			return "SHIELD"
 		"frozen", "freeze", "die_freeze":
@@ -411,14 +404,16 @@ static func _status_keyword(kind: String) -> String:
 			return "TAUNT"
 		"rampage":
 			return "RAMPAGE"
-		"counter":
-			return "COUNTER"
+		"ward":
+			return "WARD"
+		"mark":
+			return "MARKED"
 	return kind.to_upper()
 
 
 static func _value_label(kind: String) -> String:
 	match kind:
-		"poison", "dot":
+		"burn":
 			return "DAMAGE / TURN"
 		"shield":
 			return "ABSORB"
@@ -428,26 +423,28 @@ static func _value_label(kind: String) -> String:
 static func _status_text(kind: String, value: String, duration: int) -> String:
 	var turns: String = "%d turn%s" % [duration, "" if duration == 1 else "s"] if duration > 0 else ""
 	match kind:
-		"poison", "dot":
+		"burn":
 			return "Takes %s damage at the start of each turn%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
 		"shield":
 			return "Absorbs %s incoming damage before HP is touched." % (value if value != "" else "")
 		"frozen", "freeze", "die_freeze":
 			return "Die result is locked and cannot change%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
-			return "80% chance to evade the next incoming damage attempt."
+			return "Untargetable by single-target abilities. Breaks on dealing damage or being hit by an AoE; the first attack from Cloak pierces."
 		"taunt":
 			return "Forces enemies to target this unit."
 		"rampage":
 			return "Deals double damage this turn."
-		"counter":
-			return "Primed to reflect the next targeted attack."
+		"ward":
+			return "Blocks the next ability that targets this unit, then breaks."
+		"mark":
+			return "The next hit on this unit deals +50%, then the Mark is consumed."
 	return ""
 
 
 static func _status_accent(kind: String) -> Color:
 	match kind:
-		"poison", "dot":
+		"burn":
 			return PixelUI.COLOR_DEBUFF
 		"shield":
 			return PixelUI.COLOR_SHIELD

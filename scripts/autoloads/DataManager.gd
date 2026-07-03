@@ -14,32 +14,19 @@ const LEGACY_UI_ROOT := "res://legacy-angular/public/ui/"
 
 const ITEM_ICON_BY_ID := {
 	"patch_kit": "res://assets/icons/items/patch_kit.png",
-	"field_meds": "res://assets/icons/items/field_meds.png",
-	"nanite_salve": "res://assets/icons/items/nanite_salve.png",
 	"scrap_plate": "res://assets/icons/items/scrap_plate.png",
-	"reactive_weave": "res://assets/icons/items/reactive_weave.png",
 	"calibration_chip": "res://assets/icons/items/calibration_chip.png",
 	"momentum_core": "res://assets/icons/items/momentum_core.png",
 	"defib_spark": "res://assets/icons/items/defib_spark.png",
-	"full_restore": "res://assets/icons/items/full_restore.png",
 	"ghost_veil": "res://assets/icons/items/ghost_veil.png",
 	"corrosion_bomb": "res://assets/icons/items/corrosion_bomb.png",
 	"entropy_seed": "res://assets/icons/items/entropy_seed.png",
 	"shock_charge": "res://assets/icons/items/shock_charge.png",
 	"grounding_clip": "res://assets/icons/items/grounding_clip.png",
-	"arc_capacitor": "res://assets/icons/items/arc_capacitor.png",
 	"harmonic_injector": "res://assets/icons/items/harmonic_injector.png",
 	"scatter_veil_array": "res://assets/icons/items/scatter_veil_array.png",
 	"archive_cascade": "res://assets/icons/items/archive_cascade.png",
-	"citadel_kernel": "res://assets/icons/items/citadel_kernel.png",
-	"terminal_spike": "res://assets/icons/items/terminal_spike.png",
 	"acid_vial": "res://assets/icons/items/acid_vial.png",
-	"nanite_burn": "res://assets/icons/items/nanite_burn.png",
-	"thermite_canister": "res://assets/icons/items/thermite_canister.png",
-	"null_vector": "res://assets/icons/items/null_vector.png",
-	"training_datachip": "res://assets/icons/items/training_datachip.png",
-	"field_manual": "res://assets/icons/items/field_manual.png",
-	"mnemonic_core": "res://assets/icons/items/mnemonic_core.png",
 	"phase_scrambler": "res://assets/icons/items/phase_scrambler.png",
 	"cascade_jammer": "res://assets/icons/items/cascade_jammer.png",
 	"cryo_gel": "res://assets/icons/items/cryo_gel.png",
@@ -163,14 +150,23 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"Broodwarden": "broodwarden.png",
 	"Caustic Spewer": "caustic_spewer.png",
 	"Hive Matriarch": "hive_matriarch.png",
-	"Rift Macaque": "res://assets/portraits/enemies/rift_macaque.png",
-	"Void Hound": "res://assets/portraits/enemies/void_hound.png",
-	"Pack Hound": "res://assets/portraits/enemies/void_hound.png",
-	"Eclipse Panther": "res://assets/portraits/enemies/eclipse_panther.png",
-	"Ridge Drake": "res://assets/portraits/enemies/ridge_drake.png",
-	"Eclipse Raptor": "res://assets/portraits/enemies/eclipse_raptor.png",
-	"Thunder Ape": "res://assets/portraits/enemies/thunder_ape.png",
-	"VOID REAVER": "res://assets/portraits/enemies/void_reaver.png",
+	# The Accretion (pkg3.3 renames) — aliases to the existing menagerie art.
+	"Pumice Macaque": "res://assets/portraits/enemies/rift_macaque.png",
+	"Obsidian Hound": "res://assets/portraits/enemies/void_hound.png",
+	"Slag Hound": "res://assets/portraits/enemies/void_hound.png",
+	"Geode Panther": "res://assets/portraits/enemies/eclipse_panther.png",
+	"Magma Drake": "res://assets/portraits/enemies/ridge_drake.png",
+	"Pyroclast Raptor": "res://assets/portraits/enemies/eclipse_raptor.png",
+	"Basalt Ape": "res://assets/portraits/enemies/thunder_ape.png",
+	"MANTLE TYRANT": "res://assets/portraits/enemies/void_reaver.png",
+	# Null Synod (pkg3.3 renames) — aliases to the existing circlet art.
+	"Glitch Sprite": "res://assets/portraits/enemies/sparksprite.png",
+	"Init Acolyte": "res://assets/portraits/enemies/levyn_acolyte.png",
+	"Checksum Scribe": "res://assets/portraits/enemies/chronicle_scribe.png",
+	"Axiom Binder": "res://assets/portraits/enemies/geas_binder.png",
+	"Forked Double": "res://assets/portraits/enemies/glimmer_double.png",
+	"Daemon Channeler": "res://assets/portraits/enemies/arc_titan_channeler.png",
+	"ROOT HIEROPHANT": "res://assets/portraits/enemies/circlet_hierophant.png",
 }
 
 var units: Dictionary = {}
@@ -230,6 +226,7 @@ func _load_all_data() -> void:
 
 	_load_units()
 	_load_enemies()
+	_build_enemy_role_pools()
 	_load_items()
 	_load_operations()
 
@@ -281,14 +278,9 @@ func _load_enemies() -> void:
 		enemy.max_hp = int(enemy_def.get("hp", 0))
 		enemy.damage_preview_min = int(enemy_def.get("dMin", 0))
 		enemy.damage_preview_max = int(enemy_def.get("dMax", 0))
-		enemy.phase_two_damage_preview_min = int(enemy_def.get("p2dMin", 0))
-		enemy.phase_two_damage_preview_max = int(enemy_def.get("p2dMax", 0))
-		enemy.phase_two_threshold = int(enemy_def.get("pThr", 0))
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
-		var revive_names: Array = enemy_def.get("p2ReviveNames", [])
-		enemy.phase_two_revive_names = []
-		for revive_name in revive_names:
-			enemy.phase_two_revive_names.append(str(revive_name))
+		enemy.accrete = int(enemy_def.get("accrete", 0))
+		enemy.starts_cloaked = bool(enemy_def.get("startsCloaked", false))
 		enemy.portrait = _load_enemy_portrait(enemy.display_name)
 		enemy.dice_ranges = _build_enemy_dice_ranges(enemy_abilities.get(enemy_type, {}))
 		enemies[enemy.id] = enemy
@@ -366,6 +358,7 @@ func _build_evolution_paths(evolutions: Array) -> Array[Dictionary]:
 			"focus": str(evolution_entry.get("focus", "")),
 			"hp": int(evolution_entry.get("hp", 0)),
 			"abilities": _build_hero_dice_ranges(evolution_entry.get("abilities", [])),
+			"directives": (evolution_entry.get("directives", []) as Array).duplicate(true),
 		})
 	return paths
 
@@ -396,6 +389,7 @@ func _build_item_resource(item_entry: Dictionary, item_type: String) -> ItemData
 	item.target_kind = str(item_entry.get("target", "none"))
 	item.description = str(item_entry.get("desc", ""))
 	item.effect = item_entry.get("effect", {}).duplicate(true)
+	item.boss_relic = bool(item_entry.get("bossRelic", false))
 	var icon_path: String = ""
 	if item.item_type == "relic":
 		icon_path = str(RELIC_ICON_BY_ID.get(item.id, ""))
@@ -411,15 +405,72 @@ func _build_operation_battles(battles: Array) -> Array[Dictionary]:
 	var battle_number: int = 1
 	for battle in battles:
 		var enemy_names: Array = []
+		var cloaked_names: Array = []
 		for enemy_entry in battle.get("enemies", []):
 			enemy_names.append(str(enemy_entry.get("name", "")))
+			if bool(enemy_entry.get("cloaked", false)):
+				cloaked_names.append(str(enemy_entry.get("name", "")))
 		built_battles.append({
 			"battle_number": battle_number,
 			"battle_label": "Battle %d" % battle_number,
 			"enemy_names": enemy_names,
+			"cloaked_names": cloaked_names,
+			"slots": (battle.get("slots", []) as Array).duplicate(),
 		})
 		battle_number += 1
 	return built_battles
+
+
+# --- Enemy role pools (pkg7.1 templated battle slots) ---
+# Classification (documented in battle-modes.schema.json): fodder = ai "dumb";
+# boss (standing-rule) units excluded; heavy = smart with hp >= 90; support =
+# remaining smart units with ally-aid fields in >= 2 distinct kit zones;
+# elite = the rest.
+
+const HEAVY_HP_MIN := 90
+const ALLY_AID_FIELDS := ["shieldAlly", "shieldAllyAll", "erb", "erbAll", "grantRampage", "grantRampageAll"]
+
+var enemy_role_pools: Dictionary = {}  # faction -> {role -> [display names]}
+
+
+func _build_enemy_role_pools() -> void:
+	enemy_role_pools.clear()
+	for enemy_variant in enemies.values():
+		var enemy: EnemyData = enemy_variant as EnemyData
+		if enemy == null or enemy.faction == "":
+			continue
+		if CombatManager.get_boss_standing_rule(enemy.display_name) != "":
+			continue
+		var role: String = _classify_enemy_role(enemy)
+		if not enemy_role_pools.has(enemy.faction):
+			enemy_role_pools[enemy.faction] = {"fodder": [], "elite": [], "support": [], "heavy": []}
+		(enemy_role_pools[enemy.faction][role] as Array).append(enemy.display_name)
+
+
+func _classify_enemy_role(enemy: EnemyData) -> String:
+	if enemy.ai_type == "dumb":
+		return "fodder"
+	if enemy.max_hp >= HEAVY_HP_MIN:
+		return "heavy"
+	var aid_zones: Dictionary = {}
+	for range_entry in enemy.dice_ranges:
+		var raw: Dictionary = (range_entry as Dictionary).get("raw", {})
+		for field in ALLY_AID_FIELDS:
+			if raw.get(field):
+				aid_zones[str((range_entry as Dictionary).get("zone", ""))] = true
+	if aid_zones.size() >= 2:
+		return "support"
+	return "elite"
+
+
+# Returns the role pool for a faction; a missing support pool falls back to
+# elite (The Accretion has no support unit — documented in the schema).
+func get_role_pool(faction: String, role: String) -> Array:
+	var pools: Dictionary = enemy_role_pools.get(faction, {})
+	var pool: Array = (pools.get(role, []) as Array).duplicate()
+	if pool.is_empty() and role == "support":
+		pool = (pools.get("elite", []) as Array).duplicate()
+	return pool
 
 
 func _parse_json_file(file_path: String) -> Variant:

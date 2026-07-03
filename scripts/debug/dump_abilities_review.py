@@ -14,12 +14,12 @@ def fmt(ab: dict) -> str:
         if ab.get("dmgP2"):
             s += f" (P2 {ab['dmgP2']})"
         parts.append(s)
-    if ab.get("dot"):
-        parts.append(f"{ab['dot']} dot {ab.get('dT', 2)}t")
+    if ab.get("burn"):
+        parts.append(f"{ab['burn']} burn {ab.get('burnT', 2)}t")
     if ab.get("heal"):
         parts.append(f"{ab['heal']} heal")
     if ab.get("shield"):
-        parts.append(f"{ab['shield']} sh {ab.get('shT', 2)}t")
+        parts.append(f"{ab['shield']} sh")
     if ab.get("shieldP2"):
         parts.append(f"P2 sh {ab['shieldP2']}")
     if ab.get("rfm"):
@@ -39,8 +39,10 @@ def fmt(ab: dict) -> str:
         parts.append(f"ls {ab['lifestealPct']}%")
     if ab.get("packBonus"):
         parts.append("pack+")
-    if ab.get("cowerAll"):
-        parts.append("cower all")
+    if ab.get("freezeAllEnemyDice"):
+        parts.append("freeze all")
+    elif ab.get("freezeEnemyDice"):
+        parts.append("freeze")
     if ab.get("grantRampageAll"):
         parts.append(f"rampage all +{ab['grantRampageAll']}")
     if ab.get("summon"):

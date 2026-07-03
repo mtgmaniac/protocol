@@ -203,6 +203,9 @@ func _finish() -> void:
 	var gs: Node = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.set("tutorial_mode", false)
+	var save_manager: Node = get_node_or_null("/root/SaveManager")
+	if save_manager != null:
+		save_manager.call("mark_tutorial_done")
 	var sm: Node = get_node_or_null("/root/SceneManager")
 	queue_free()
 	if sm != null:
