@@ -87,6 +87,9 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	# (rolled natural OR nudged/buffed into the overload zone) — intentional.
 	if is_overload:
 		_celebrate_overload()
+		# pkg8.3: the ability name slams across the acting card — scale-punch
+		# in, brief hold, out. Flat, palette-driven, no glow.
+		_slam_ability_name(actor_card, str(action.get("ability", "")))
 
 	if not _group_has_fatal_hit(effects):
 		await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
@@ -368,6 +371,46 @@ func _celebrate_overload() -> void:
 		tween.tween_callback(wash.queue_free)
 	if _scene.board != null and is_instance_valid(_scene.board):
 		_shake(_scene.board, 9.0, 0.34)
+
+
+# pkg8.3: overload name slam — the ability name punches in across the acting
+# card (overshoot scale-in), holds a beat, and snaps out. Flat gold on dark.
+func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
+	if actor_card == null or not is_instance_valid(actor_card) or ability_name == "":
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = ability_name.to_upper()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(30))
+	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.20, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0.03, 0.03, 0.05, 1.0))
+	label.add_theme_constant_override("outline_size", 6)
+	label.z_as_relative = false
+	label.z_index = 210
+	_scene.float_layer.add_child(label)
+	label.reset_size()
+	var card_rect: Rect2 = actor_card.get_global_rect()
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	label.position = Vector2(
+		card_rect.position.x - layer_origin.x + (card_rect.size.x - label.size.x) * 0.5,
+		card_rect.position.y - layer_origin.y + card_rect.size.y * 0.36
+	)
+	label.pivot_offset = label.size * 0.5
+	label.scale = Vector2(0.2, 0.2)
+	label.modulate.a = 0.0
+	var slam: Tween = create_tween()
+	slam.tween_property(label, "modulate:a", 1.0, 0.06)
+	slam.parallel().tween_property(label, "scale", Vector2(1.28, 1.28), 0.10) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	slam.tween_property(label, "scale", Vector2.ONE, 0.10) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	slam.tween_interval(0.42)
+	slam.tween_property(label, "modulate:a", 0.0, 0.12)
+	slam.parallel().tween_property(label, "scale", Vector2(0.85, 0.85), 0.12)
+	slam.tween_callback(label.queue_free)
 
 
 # Attacker step-in + recoil. Direction is decided by side (heroes on the bottom
