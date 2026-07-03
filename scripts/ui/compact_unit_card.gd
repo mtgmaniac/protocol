@@ -44,6 +44,11 @@ var selected: bool = false
 var targetable: bool = false
 var interaction_enabled: bool = true
 var dead: bool = false
+## pkg8.1: cloak reads as a ghosted portrait, not a chip.
+var cloaked: bool = false
+## pkg8.1: low-key incoming target-intent marker text ("" = hidden), e.g.
+## "◎2" (two enemies aiming here) or "◎!" (lure — forced target).
+var incoming_intent: String = ""
 var target_locked: bool = false
 var needs_manual_target: bool = false
 var show_action_pips: bool = true
@@ -114,6 +119,8 @@ func configure(data: Dictionary) -> void:
 	targetable = bool(data.get("targetable", targetable))
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
+	cloaked = bool(data.get("cloaked", cloaked))
+	incoming_intent = str(data.get("incoming_intent", incoming_intent))
 	target_locked = bool(data.get("target_locked", target_locked))
 	needs_manual_target = bool(data.get("needs_manual_target", needs_manual_target))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
@@ -395,7 +402,13 @@ func _refresh() -> void:
 		clampf(float(forecast_hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
 	)
 
-	_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55) if dead else Color(1.12, 1.12, 1.12, 1.0)
+	# Cloak (pkg8.1): ghosted, translucent portrait instead of a status chip.
+	if dead:
+		_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55)
+	elif cloaked:
+		_portrait_rect.modulate = Color(0.70, 0.80, 0.95, 0.42)
+	else:
+		_portrait_rect.modulate = Color(1.12, 1.12, 1.12, 1.0)
 	if dead:
 		modulate = Color(0.55, 0.56, 0.62, 0.72)
 	else:
@@ -403,7 +416,38 @@ func _refresh() -> void:
 	if show_action_pips:
 		_populate_action_pips()
 	_populate_statuses()
+	_refresh_intent_marker()
 	_layout_preview_overlays()
+
+
+# pkg8.1: incoming target-intent marker — a small hard badge pinned to the
+# portrait's top-right, readable at 450x1000 without shouting.
+var _intent_badge: Label = null
+
+
+func _refresh_intent_marker() -> void:
+	if _portrait_frame == null:
+		return
+	if incoming_intent == "" or dead:
+		if _intent_badge != null and is_instance_valid(_intent_badge):
+			_intent_badge.visible = false
+		return
+	if _intent_badge == null or not is_instance_valid(_intent_badge):
+		_intent_badge = Label.new()
+		_intent_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_intent_badge.z_index = 6
+		_intent_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_intent_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		var style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.02, 0.03, 0.05, 0.90), PixelUI.DT_RUST, 2)
+		style.set_content_margin_all(3.0)
+		_intent_badge.add_theme_stylebox_override("normal", style)
+		_apply_label(_intent_badge, STATUS_NAME_FONT_SIZE, PixelUI.DT_RUST, 0)
+		_portrait_frame.add_child(_intent_badge)
+	_intent_badge.text = incoming_intent
+	_intent_badge.visible = true
+	_intent_badge.reset_size()
+	_intent_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_intent_badge.position = Vector2(_portrait_frame.size.x - _intent_badge.size.x - 6.0, 6.0)
 
 
 # Animated HP bar. `displayed` is the HP shown right now (steps down one hit at a
@@ -743,12 +787,21 @@ func _make_status_name_label(status: Dictionary) -> Label:
 
 func _make_status_overflow(hidden_count: int) -> Label:
 	var label: Label = Label.new()
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# pkg8.1: the +N overflow badge opens the unit inspect breakout on tap.
+	label.mouse_filter = Control.MOUSE_FILTER_STOP
 	label.text = "+%d" % hidden_count
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
+	label.gui_input.connect(_on_status_overflow_input)
 	return label
+
+
+func _on_status_overflow_input(event: InputEvent) -> void:
+	var pressed: bool = (event is InputEventMouseButton and (event as InputEventMouseButton).pressed) \
+		or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
+	if pressed:
+		unit_detail_requested.emit(self)
 
 
 func _normalize_status(raw_status: Variant) -> Dictionary:

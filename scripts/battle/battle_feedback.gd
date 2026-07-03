@@ -31,7 +31,15 @@ func apply_live_event_visual_state(event: Dictionary) -> void:
 	if _scene.dice_tray_3d == null:
 		return
 	if str(event.get("type", "")) == "freeze":
-		_scene.dice_tray_3d.set_die_frozen_visual(str(event.get("side", "")), str(event.get("target_id", "")), true)
+		var side: String = str(event.get("side", ""))
+		var target_id: String = str(event.get("target_id", ""))
+		# Petrify (Accretion) freezes render stone-gray on the die.
+		var flavor: String = "ice"
+		var states: Array = _scene.combat_manager.get_hero_states() if side == "hero" else _scene.combat_manager.get_enemy_states()
+		for state_variant in states:
+			if str((state_variant as Dictionary).get("id", "")) == target_id:
+				flavor = str((state_variant as Dictionary).get("freeze_flavor", "ice"))
+		_scene.dice_tray_3d.set_die_frozen_visual(side, target_id, true, flavor)
 
 
 # ── Sequencer ─────────────────────────────────────────────────────────────────

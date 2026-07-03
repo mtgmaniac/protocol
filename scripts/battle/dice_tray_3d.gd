@@ -246,11 +246,22 @@ func update_die_result_in_place(side: String, unit_id: String, display_effective
 	_highlight_top_face(die, target, side)
 
 
-func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool) -> void:
+func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool, flavor: String = "ice") -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		return
-	_set_die_frozen_visual(die, is_frozen)
+	_set_die_frozen_visual(die, is_frozen, flavor)
+
+
+# pkg8.1 die-status surface: freeze/petrify crust + tint, jam tint + cap
+# marker, rewrite/hijack pending markers — all on the die itself, no chips.
+func set_die_status(side: String, unit_id: String, status: Dictionary) -> void:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	if die == null:
+		return
+	_set_die_frozen_visual(die, bool(status.get("frozen", false)), str(status.get("flavor", "ice")))
+	_set_die_jam_visual(die, int(status.get("jam_cap", 0)))
+	_set_die_pending_marker(die, bool(status.get("rewrite", false)), bool(status.get("hijack", false)))
 
 
 func reroll_die_to_result(side: String, unit_id: String, raw_result: int) -> void:
@@ -1643,31 +1654,113 @@ func _basis_for_face_surface(normal: Vector3) -> Basis:
 	return Basis(x_axis, y_axis, z_axis)
 
 
-func _set_die_frozen_visual(die: RigidBody3D, is_frozen: bool) -> void:
+func _set_die_frozen_visual(die: RigidBody3D, is_frozen: bool, flavor: String = "ice") -> void:
 	var filter: MeshInstance3D = _die_part(die, "FrozenFilter") as MeshInstance3D
 	if filter == null:
 		filter = MeshInstance3D.new()
 		filter.name = "FrozenFilter"
 		filter.mesh = _build_d20_mesh()
 		filter.scale = Vector3.ONE * 1.025
-		filter.material_override = _get_frozen_filter_material()
 		_die_visuals(die).add_child(filter)
+	# Petrify (Accretion) reads stone-gray; ice keeps the cyan crust.
+	filter.material_override = _get_petrify_filter_material() if flavor == "petrify" else _get_frozen_filter_material()
 	filter.visible = is_frozen
 
 	var label: Label3D = _die_part(die, "FrozenOverlay") as Label3D
 	if label == null:
 		label = Label3D.new()
 		label.name = "FrozenOverlay"
-		label.text = "FROZEN"
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.font_size = 56
-		label.modulate = Color(0.70, 0.94, 1.0, 0.92)
 		label.outline_size = 10
 		label.outline_modulate = Color(0.02, 0.06, 0.10, 1.0)
 		label.position = Vector3(0, DIE_RADIUS * 2.28, 0)
 		label.scale = Vector3(0.030, 0.030, 0.030)
 		_die_visuals(die).add_child(label)
+	label.text = "PETRIFIED" if flavor == "petrify" else "FROZEN"
+	label.modulate = Color(0.72, 0.70, 0.66, 0.94) if flavor == "petrify" else Color(0.70, 0.94, 1.0, 0.92)
 	label.visible = is_frozen
+
+
+# Jam (pkg8.1): amber tint shell + a cap marker under the die.
+func _set_die_jam_visual(die: RigidBody3D, jam_cap: int) -> void:
+	var jammed: bool = jam_cap > 0
+	var filter: MeshInstance3D = _die_part(die, "JamFilter") as MeshInstance3D
+	if filter == null:
+		filter = MeshInstance3D.new()
+		filter.name = "JamFilter"
+		filter.mesh = _build_d20_mesh()
+		filter.scale = Vector3.ONE * 1.02
+		filter.material_override = _get_jam_filter_material()
+		_die_visuals(die).add_child(filter)
+	filter.visible = jammed
+
+	var label: Label3D = _die_part(die, "JamCapMarker") as Label3D
+	if label == null:
+		label = Label3D.new()
+		label.name = "JamCapMarker"
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.font_size = 50
+		label.modulate = Color(0.95, 0.76, 0.28, 0.95)
+		label.outline_size = 10
+		label.outline_modulate = Color(0.06, 0.05, 0.02, 1.0)
+		label.position = Vector3(0, DIE_RADIUS * 1.82, 0)
+		label.scale = Vector3(0.028, 0.028, 0.028)
+		_die_visuals(die).add_child(label)
+	label.text = "JAM ≤%d" % jam_cap
+	label.visible = jammed
+
+
+# Rewrite / Hijack pending (pkg8.1): marker on the threatened die.
+func _set_die_pending_marker(die: RigidBody3D, rewrite_pending: bool, hijack_pending: bool) -> void:
+	var label: Label3D = _die_part(die, "PendingMarker") as Label3D
+	if label == null:
+		label = Label3D.new()
+		label.name = "PendingMarker"
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.font_size = 50
+		label.outline_size = 10
+		label.outline_modulate = Color(0.04, 0.02, 0.06, 1.0)
+		label.position = Vector3(0, DIE_RADIUS * 2.72, 0)
+		label.scale = Vector3(0.028, 0.028, 0.028)
+		_die_visuals(die).add_child(label)
+	if rewrite_pending:
+		label.text = "REWRITE→3"
+		label.modulate = Color(0.82, 0.55, 1.0, 0.95)
+	elif hijack_pending:
+		label.text = "HIJACK"
+		label.modulate = Color(0.95, 0.45, 0.30, 0.95)
+	label.visible = rewrite_pending or hijack_pending
+
+
+var _petrify_filter_material: StandardMaterial3D = null
+var _jam_filter_material: StandardMaterial3D = null
+
+
+func _get_petrify_filter_material() -> StandardMaterial3D:
+	if _petrify_filter_material == null:
+		_petrify_filter_material = StandardMaterial3D.new()
+		_petrify_filter_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_petrify_filter_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		_petrify_filter_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_petrify_filter_material.render_priority = 4
+		_petrify_filter_material.albedo_color = Color(0.55, 0.53, 0.49, 0.38)
+		_petrify_filter_material.roughness = 0.85
+		_petrify_filter_material.metallic = 0.0
+	return _petrify_filter_material
+
+
+func _get_jam_filter_material() -> StandardMaterial3D:
+	if _jam_filter_material == null:
+		_jam_filter_material = StandardMaterial3D.new()
+		_jam_filter_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_jam_filter_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		_jam_filter_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_jam_filter_material.render_priority = 3
+		_jam_filter_material.albedo_color = Color(0.92, 0.68, 0.20, 0.20)
+		_jam_filter_material.roughness = 0.5
+		_jam_filter_material.metallic = 0.0
+	return _jam_filter_material
 
 
 func _get_frozen_filter_material() -> StandardMaterial3D:

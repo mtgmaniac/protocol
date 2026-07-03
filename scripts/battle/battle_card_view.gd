@@ -129,6 +129,8 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"targetable": is_targetable,
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
 			"dead": show_dead,
+			"cloaked": bool(state.get("cloaked", false)),
+			"incoming_intent": _compute_incoming_intent(state, accent_color == _scene.HERO_ACCENT),
 			"target_locked": is_target_locked,
 			"needs_manual_target": needs_manual_target,
 			"show_action_pips": readout == null,
@@ -350,12 +352,40 @@ func get_gear_detail_rows(unit_id: String) -> Array:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+# pkg8.1: incoming target-intent marker — heroes show how many enemies are
+# aiming at them ("◎N") or that they're Lured ("◎!"); the luring enemy shows
+# the forced-target marker too. Taunt reads through the concentration of
+# enemy aim it causes.
+func _compute_incoming_intent(state: Dictionary, is_hero: bool) -> String:
+	if is_hero:
+		if str(state.get("lured_by_id", "")) != "":
+			return "◎!"
+		var incoming: int = 0
+		for enemy_variant in _scene.combat_manager.get_enemy_states():
+			var enemy_state: Dictionary = enemy_variant
+			if not bool(enemy_state.get("dead", false)) and str(enemy_state.get("selected_target_id", "")) == str(state.get("id", "")):
+				incoming += 1
+		return ("◎%d" % incoming) if incoming > 0 else ""
+	for hero_variant in _scene.combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_variant
+		if not bool(hero_state.get("dead", false)) and str(hero_state.get("lured_by_id", "")) == str(state.get("id", "")):
+			return "◎!"
+	return ""
+
+
 func _build_compact_status_tokens(state: Dictionary) -> Array:
 	var statuses: Array = []
 	if bool(state.get("dead", false)):
 		statuses.append(_make_compact_named_status("DOWN", "", 99))
 		return statuses
 
+	# Chip doctrine (pkg8.1): the card chip row renders ONLY Burn, Mark,
+	# ±Roll, and Ward. Everything else surfaces on its own display channel —
+	# shields on the HP preview + inspect, cloak as the ghosted portrait,
+	# freeze/jam/rewrite/hijack on the die, spike in the readout, taunt/lure
+	# as the incoming-intent marker.
+	# DESIGN-TODO(kev): active shield total now reads via HP preview/inspect
+	# only — confirm that's enough at 450x1000.
 	if int(state.get("burn", 0)) > 0 and int(state.get("burn_turns", 0)) > 0:
 		statuses.append({
 			"type": "burn",
@@ -365,15 +395,8 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 			"priority": 0,
 		})
 
-	var total_shield: int = int(state.get("shield", 0))
-	if total_shield > 0:
-		statuses.append({
-			"type": "shield",
-			"mode": "numeric",
-			"icon": "🛡",
-			"value": total_shield,
-			"priority": 1,
-		})
+	if bool(state.get("marked", false)):
+		statuses.append(_make_compact_named_status("MARK", "", 1))
 
 	# Mirror combat_manager.get_roll_modifier_totals: temporary rfe_stacks/roll_buff PLUS the
 	# permanent relic/gear modifiers (perm_rfe from signalJam, perm_roll_buff from
@@ -393,14 +416,8 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 			"priority": 2,
 		})
 
-	if bool(state.get("cloaked", false)):
-		statuses.append(_make_compact_named_status("CLOAK", "", 3))
 	if bool(state.get("warded", false)):
 		statuses.append(_make_compact_named_status("WARD", "", 3))
-	if bool(state.get("marked", false)):
-		statuses.append(_make_compact_named_status("MARK", "", 3))
-	if int(state.get("rampage_charges", 0)) > 0:
-		statuses.append(_make_compact_named_status("RAMPAGE", "%d" % int(state.get("rampage_charges", 0)), 3))
 
 	return statuses
 

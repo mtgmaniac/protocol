@@ -525,6 +525,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_hero_states(), hero_rolls, true))
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_enemy_states(), enemy_rolls, false))
 		_build_die_tooltip_overlays()
+		_sync_die_status_visuals()
 	_set_turn_phase(PHASE_TARGETING)
 	_append_log("Dice rolled for all units.")
 	_emit_tutorial("rolled", {"turn": _tutorial_turn})
@@ -534,6 +535,26 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	if pending_manual_target_ids.is_empty():
 		_set_turn_phase(PHASE_READY_TO_END)
 		return
+
+
+# pkg8.1: every die status renders on the die itself — freeze/petrify crust,
+# jam tint + cap marker, rewrite/hijack pending markers.
+func _sync_die_status_visuals() -> void:
+	if dice_tray_3d == null:
+		return
+	for side_states in [["hero", combat_manager.get_hero_states()], ["enemy", combat_manager.get_enemy_states()]]:
+		var side: String = str(side_states[0])
+		for state_variant in side_states[1]:
+			var state: Dictionary = state_variant
+			if bool(state.get("dead", false)):
+				continue
+			dice_tray_3d.set_die_status(side, str(state["id"]), {
+				"frozen": int(state.get("die_freeze_turns", 0)) > 0,
+				"flavor": str(state.get("freeze_flavor", "ice")),
+				"jam_cap": int(state.get("jam_cap", 0)),
+				"rewrite": bool(state.get("rewrite_pending", false)),
+				"hijack": bool(state.get("hijack_pending", false)),
+			})
 
 
 # Overwrite the just-rolled dice with the scripted tutorial values and repaint the 3D tray in
