@@ -35,6 +35,10 @@ var starting_directive_relic_id: String = ""
 ## so previews always show exact comps. One entry per battle:
 ## {"names": [display names], "cloaked": [display names]}.
 var resolved_battle_comps: Array = []
+## Beat system (pkg7.2): exactly 3 random beats per run in distinct gaps from
+## {after b2, b3, b4, b6, b7, b8}; Fork/Intercept 50/50 with >=1 of each.
+## after_battle -> {"type": "fork"|"intercept", "tier": "minor"|"major"}.
+var run_beats: Dictionary = {}
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
@@ -81,6 +85,7 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 	else:
 		total_battles = 10
 	_resolve_battle_comps(operation)
+	_roll_run_beats()
 	relics.clear()
 	consumables.clear()
 	gear_by_unit.clear()
@@ -165,6 +170,44 @@ func _pick_from_role_pool(faction: String, role: String, used: Array) -> String:
 	if pool.is_empty():
 		return ""
 	return str(pool[_reward_rng.randi_range(0, pool.size() - 1)])
+
+
+# --- Beat system (pkg7.2) ---
+
+const BEAT_GAPS := [2, 3, 4, 6, 7, 8]
+const BEATS_PER_RUN := 3
+## Beats placed after this battle number draw major-tier content.
+const MAJOR_BEAT_FROM := 6
+
+
+func _roll_run_beats() -> void:
+	run_beats.clear()
+	var open_gaps: Array = BEAT_GAPS.duplicate()
+	var chosen_gaps: Array = []
+	while chosen_gaps.size() < BEATS_PER_RUN and not open_gaps.is_empty():
+		var gap: int = int(open_gaps[_reward_rng.randi_range(0, open_gaps.size() - 1)])
+		open_gaps.erase(gap)
+		chosen_gaps.append(gap)
+	var beat_types: Array = []
+	for _i in chosen_gaps.size():
+		beat_types.append("fork" if _reward_rng.randi_range(0, 1) == 0 else "intercept")
+	# >=1 of each type guaranteed: re-roll (flip) the third when uniform.
+	if beat_types.size() == BEATS_PER_RUN:
+		if not beat_types.has("fork"):
+			beat_types[BEATS_PER_RUN - 1] = "fork"
+		elif not beat_types.has("intercept"):
+			beat_types[BEATS_PER_RUN - 1] = "intercept"
+	for i in chosen_gaps.size():
+		var gap: int = int(chosen_gaps[i])
+		run_beats[gap] = {
+			"type": str(beat_types[i]),
+			"tier": "major" if gap >= MAJOR_BEAT_FROM else "minor",
+		}
+
+
+# The beat scheduled after this battle number ({} when none).
+func get_beat_after_battle(battle_number: int) -> Dictionary:
+	return run_beats.get(battle_number, {})
 
 
 # The exact comp for the current battle (1-based current_battle).
@@ -259,6 +302,8 @@ func reset_run() -> void:
 	deferred_evolution_unit_ids.clear()
 	carried_protocol = 0
 	starting_directive_relic_id = ""
+	resolved_battle_comps.clear()
+	run_beats.clear()
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
 

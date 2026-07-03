@@ -450,6 +450,7 @@ func _run_regression_audits() -> void:
 	_run_directive_progression_regressions()
 	_run_directive_combat_regressions()
 	_run_battle_slot_regressions()
+	_run_beat_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1954,6 +1955,42 @@ func _run_battle_slot_regressions() -> void:
 	_expect_and_record("Regression / signature panther cloaked", "battleSlots", str(["Geode Panther"]), str(panther_comp.get("cloaked", [])))
 
 	GameState.reset_run()
+
+
+func _run_beat_regressions() -> void:
+	# Beats: exactly 3, in distinct allowed gaps, >=1 Fork and >=1 Intercept,
+	# minor before b6 / major from b6 — across repeated rolls.
+	var all_ok: bool = true
+	var detail: String = ""
+	for _attempt in 12:
+		GameState.start_run(["pulse", "combat", "ghost"], "facility")
+		var beats: Dictionary = GameState.run_beats
+		if beats.size() != 3:
+			all_ok = false
+			detail = "beat count %d" % beats.size()
+			break
+		var fork_seen: bool = false
+		var intercept_seen: bool = false
+		for gap_variant in beats.keys():
+			var gap: int = int(gap_variant)
+			if not GameState.BEAT_GAPS.has(gap):
+				all_ok = false
+				detail = "illegal gap %d" % gap
+			var beat: Dictionary = beats[gap_variant]
+			var beat_type: String = str(beat.get("type", ""))
+			fork_seen = fork_seen or beat_type == "fork"
+			intercept_seen = intercept_seen or beat_type == "intercept"
+			var expected_tier: String = "major" if gap >= GameState.MAJOR_BEAT_FROM else "minor"
+			if str(beat.get("tier", "")) != expected_tier:
+				all_ok = false
+				detail = "gap %d tier %s" % [gap, str(beat.get("tier", ""))]
+		if not fork_seen or not intercept_seen:
+			all_ok = false
+			detail = "missing type (fork=%s intercept=%s)" % [str(fork_seen), str(intercept_seen)]
+		if not all_ok:
+			break
+	GameState.reset_run()
+	_expect_and_record("Regression / run beats placement", "runBeats", "true", "%s%s" % [str(all_ok), "" if all_ok else " (" + detail + ")"])
 
 
 func _run_evolution_kit_regression() -> void:
