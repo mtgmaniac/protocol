@@ -452,6 +452,14 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 			return "Blocks the next ability that targets this unit, then breaks."
 		"mark":
 			return "The next hit on this unit deals +50%, then the Mark is consumed."
+		"jam":
+			return "Die is Jammed — the next roll is capped%s." % ((" at " + value) if value != "" else "")
+		"rewrite":
+			return "Die is being Rewritten — the next roll becomes 3."
+		"hijack":
+			return "Hijack pending — this die will copy the squad's highest roll."
+		"spike":
+			return "Spike %s — any attacker that connects this round takes that much back." % (value if value != "" else "")
 	return ""
 
 

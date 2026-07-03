@@ -110,6 +110,10 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 				chosen_entry.get("raw", chosen_entry) as Dictionary,
 				"hero" if accent_color == _scene.HERO_ACCENT else "enemy"
 			)
+			# pkg8.2: the Detonate pip shows the live computed burst once the
+			# target is known (burn × remaining turns, Payload Fuse +50%).
+			if accent_color == _scene.HERO_ACCENT and action_pips is Dictionary:
+				_patch_live_detonate_value(action_pips, state, chosen_entry)
 		if readout != null and readout.has_method("configure"):
 			readout.configure(action_pips, "hero" if accent_color == _scene.HERO_ACCENT else "enemy")
 		var card_pips: Array = []
@@ -351,6 +355,29 @@ func get_gear_detail_rows(unit_id: String) -> Array:
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
+# pkg8.2: Detonate pip live value — burn × remaining turns on the currently
+# selected target (Payload Fuse gear +50%, matching _detonate_burn).
+func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary, chosen_entry: Dictionary) -> void:
+	var raw: Dictionary = chosen_entry.get("raw", {})
+	if not bool(raw.get("detonate", false)):
+		return
+	var target_id: String = str(hero_state.get("selected_target_id", ""))
+	if target_id == "":
+		return
+	for enemy_variant in _scene.combat_manager.get_enemy_states():
+		var enemy_state: Dictionary = enemy_variant
+		if str(enemy_state.get("id", "")) != target_id:
+			continue
+		var burst: int = int(enemy_state.get("burn", 0)) * int(enemy_state.get("burn_turns", 0))
+		if burst > 0 and bool(hero_state.get("gear_detonate_bonus", false)):
+			burst = int(ceil(float(burst) * 1.5))
+		for effect_variant in action_pips.get("effects", []):
+			var effect: Dictionary = effect_variant
+			if str(effect.get("kind", "")) == "detonate":
+				effect["value"] = "DT %d" % burst if burst > 0 else "DT"
+		return
+
 
 # pkg8.1: incoming target-intent marker — heroes show how many enemies are
 # aiming at them ("◎N") or that they're Lured ("◎!"); the luring enemy shows
