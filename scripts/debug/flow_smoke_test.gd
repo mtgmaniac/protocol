@@ -29,6 +29,7 @@ func _run_flow() -> void:
 	await _step_battle_auto_win_to_reward()
 	await _step_reward_claim_and_continue()
 	await _step_evolution_back_to_home()
+	await _step_directive_choice()
 	await _step_main_menu_to_home()
 	await _step_run_end_new_run_button()
 
@@ -154,6 +155,43 @@ func _step_reward_claim_and_continue() -> void:
 	gs.call("advance_to_next_battle")
 	_scene_manager().call("go_to_battle")
 	await _wait_for_scene(BATTLE_SCENE)
+
+
+# Forced 250-XP path (pkg6): an evolved unit at the directive threshold gets
+# the 1-of-2 Directive screen; picking one applies it and deploys to battle.
+func _step_directive_choice() -> void:
+	_step += 1
+	print("[FLOW_SMOKE] Step %d: forced 250-XP directive pick -> battle" % _step)
+	var gs := _game_state()
+	var op_id: String = str(_data_manager().call("get_operation_order")[0])
+	gs.call("start_run", DEFAULT_SQUAD, op_id)
+	gs.call("advance_to_next_battle")
+	var unit_id: String = DEFAULT_SQUAD[0]
+	var unit = _data_manager().call("get_unit", unit_id)
+	var evolution_name: String = str((unit.get("evolution_paths")[0] as Dictionary).get("name", ""))
+	gs.get("unit_evolutions")[unit_id] = evolution_name
+	gs.get("unit_xp")[unit_id] = 250
+	gs.set("pending_evolution_unit_id", unit_id)
+	if not bool(gs.call("is_pending_directive_stage")):
+		_errors.append("Directive stage not detected for evolved unit at 250 XP")
+		return
+	_scene_manager().call("go_to_evolution")
+	await _wait_for_scene(EVOLUTION_SCENE)
+	var screen := _current()
+	if screen == null or not screen.has_method("_on_choose_directive_pressed"):
+		_errors.append("Evolution screen missing the directive choose handler")
+		return
+	var choices: Array = gs.call("get_pending_directive_choices")
+	if choices.size() != 2:
+		_errors.append("Expected 2 directive choices, got %d" % choices.size())
+		return
+	var pick_name: String = str((choices[0] as Dictionary).get("name", ""))
+	screen.call("_on_choose_directive_pressed", pick_name)
+	await _wait_for_scene(BATTLE_SCENE)
+	if str(gs.get("unit_directives").get(unit_id, "")) != pick_name:
+		_errors.append("Directive '%s' was not applied to %s" % [pick_name, unit_id])
+		return
+	await _wait_frames(2)
 
 
 func _step_evolution_back_to_home() -> void:

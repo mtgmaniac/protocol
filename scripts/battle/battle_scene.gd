@@ -189,7 +189,7 @@ func _ready() -> void:
 	# Protocol Tap gear: sum gear_protocol_on_start from hero states
 	for _hs in combat_manager.get_hero_states():
 		protocol_points += int(_hs.get("gear_protocol_on_start", 0))
-	protocol_points = mini(protocol_points, MAX_PROTOCOL)
+	protocol_points = mini(protocol_points, _max_protocol())
 	_update_protocol_bar()
 	_populate_hero_cards()
 	_populate_enemy_cards()
@@ -1126,8 +1126,9 @@ func _apply_reroll(hero_id: String) -> void:
 func _gain_protocol(amount: int) -> void:
 	if amount <= 0:
 		return
-	var overflow: int = maxi(0, protocol_points + amount - MAX_PROTOCOL)
-	protocol_points = mini(protocol_points + amount, MAX_PROTOCOL)
+	var protocol_cap: int = _max_protocol()
+	var overflow: int = maxi(0, protocol_points + amount - protocol_cap)
+	protocol_points = mini(protocol_points + amount, protocol_cap)
 	_update_protocol_bar()
 	if overflow > 0 and combat_manager.has_relic("protocolOverflowDamage"):
 		var per_point: int = 2
@@ -1774,9 +1775,32 @@ func _ensure_protocol_stack_layout() -> void:
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
+# Deep Cells directive: the Protocol cap rises while a living carrier stands.
+func _max_protocol() -> int:
+	var cap: int = MAX_PROTOCOL
+	if combat_manager == null:
+		return cap
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if not bool(hero_state.get("dead", false)) and str(hero_state.get("directive_type", "")) == "protocolCapBonus":
+			cap += int((hero_state.get("directive_effect", {}) as Dictionary).get("amount", 2))
+			break
+	return cap
+
+
 func _ensure_protocol_segments() -> void:
-	if not _protocol_segments.is_empty():
+	if _protocol_segments.size() == _max_protocol():
 		return
+	# Cap changed (Deep Cells) or first build — rebuild the segment row.
+	for seg_variant in _protocol_segments:
+		if is_instance_valid(seg_variant):
+			(seg_variant as Panel).queue_free()
+	_protocol_segments.clear()
+	if protocol_bar != null and is_instance_valid(protocol_bar):
+		var old_row: Node = protocol_bar.get_node_or_null("ProtocolSegments")
+		if old_row != null:
+			old_row.name = "ProtocolSegmentsStale"
+			old_row.queue_free()
 	if protocol_bar == null or not is_instance_valid(protocol_bar):
 		return
 	# Direction-05: 10 discrete segments. Hide the native ProgressBar fill and draw
@@ -1790,7 +1814,7 @@ func _ensure_protocol_segments() -> void:
 	row.add_theme_constant_override("separation", 3)
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	protocol_bar.add_child(row)
-	for _i in range(MAX_PROTOCOL):
+	for _i in range(_max_protocol()):
 		var seg: Panel = Panel.new()
 		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1802,7 +1826,7 @@ func _ensure_protocol_segments() -> void:
 func _update_protocol_bar() -> void:
 	if protocol_bar == null:
 		return
-	protocol_bar.max_value = MAX_PROTOCOL
+	protocol_bar.max_value = _max_protocol()
 	protocol_bar.value = protocol_points
 	_ensure_protocol_segments()
 	for i in range(_protocol_segments.size()):
@@ -1811,7 +1835,7 @@ func _update_protocol_bar() -> void:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0))
 		else:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
-	protocol_value_label.text = "%d / %d" % [protocol_points, MAX_PROTOCOL]
+	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
 	_update_protocol_footer_display()
 	_emit_tutorial("protocol_changed", {"value": protocol_points})
 
@@ -1903,7 +1927,7 @@ func _layout_protocol_footer_lights() -> void:
 func _update_protocol_footer_display() -> void:
 	if _protocol_footer_lights.is_empty():
 		return
-	var active_count: int = clampi(protocol_points, 0, MAX_PROTOCOL)
+	var active_count: int = clampi(protocol_points, 0, _max_protocol())
 	for i in range(_protocol_footer_lights.size()):
 		var light: Panel = _protocol_footer_lights[i] as Panel
 		if light == null or not is_instance_valid(light):

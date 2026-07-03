@@ -448,6 +448,7 @@ func _run_regression_audits() -> void:
 	_run_starting_directive_regressions()
 	_run_evolution_kit_regression()
 	_run_directive_progression_regressions()
+	_run_directive_combat_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1700,6 +1701,187 @@ func _run_directive_progression_regressions() -> void:
 	GameState.unit_directives = saved["unit_directives"]
 	GameState.pending_evolution_unit_id = saved["pending"]
 	GameState.deferred_evolution_unit_ids = saved["deferred"]
+
+
+func _make_directive_unit(id: String, display_name: String, ability_name: String, raw: Dictionary, effect: Dictionary) -> UnitData:
+	var unit: UnitData = _make_unit(id, display_name, ability_name, raw)
+	unit.directive = {"name": "Audit Directive", "desc": "", "effect": effect}
+	return unit
+
+
+func _run_directive_combat_regressions() -> void:
+	# Slow Roast: burns last +1 turn (3 base ticks -> 4 with the bonus turn).
+	var roast_manager: CombatManager = CombatManager.new()
+	roast_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Ember", {"burn": 2, "burnT": 2}, {"type": "burnDurationBonus", "amount": 1})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var roast_hero: Dictionary = roast_manager.get_hero_states()[0]
+	var roast_enemy: Dictionary = roast_manager.get_enemy_states()[0]
+	roast_hero["selected_target_id"] = str(roast_enemy["id"])
+	roast_manager.resolve_round({str(roast_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive slowRoast burn turns", "burnDurationBonus", "3", str(int(roast_enemy.get("burn_turns", 0))))
+
+	# Momentum: a kill banks +4 for the next ability's damage.
+	var momentum_manager: CombatManager = CombatManager.new()
+	momentum_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100}, {"type": "killNextAbilityDamage", "amount": 4})],
+		[_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B")]
+	)
+	var momentum_hero: Dictionary = momentum_manager.get_hero_states()[0]
+	var momentum_a: Dictionary = momentum_manager.get_enemy_states()[0]
+	var momentum_b: Dictionary = momentum_manager.get_enemy_states()[1]
+	momentum_hero["selected_target_id"] = str(momentum_a["id"])
+	momentum_manager.resolve_round({str(momentum_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var banked: int = int(momentum_hero.get("momentum_bonus", 0))
+	momentum_hero["selected_target_id"] = str(momentum_b["id"])
+	momentum_b["current_hp"] = 200
+	momentum_b["max_hp"] = 200
+	momentum_manager.resolve_round({str(momentum_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive momentum kill bonus", "killNextAbilityDamage", "4/96", "%d/%d" % [banked, int(momentum_b["current_hp"])])
+
+	# Amplifier: chain hits carry full base damage.
+	var amp_manager: CombatManager = CombatManager.new()
+	amp_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Arc Whip", {"dmg": 10, "chain": 1}, {"type": "chainFullDamage"})],
+		[_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B")]
+	)
+	var amp_hero: Dictionary = amp_manager.get_hero_states()[0]
+	var amp_a: Dictionary = amp_manager.get_enemy_states()[0]
+	var amp_b: Dictionary = amp_manager.get_enemy_states()[1]
+	amp_hero["selected_target_id"] = str(amp_a["id"])
+	amp_b["current_hp"] = 60
+	amp_manager.resolve_round({str(amp_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive amplifier full chain", "chainFullDamage", "50", str(int(amp_b["current_hp"])))
+
+	# Rampart + Bunker Doctrine shape: bigger granted shields; ally holders spike.
+	var rampart_manager: CombatManager = CombatManager.new()
+	rampart_manager.setup_battle(
+		[
+			_make_directive_unit("audit_granter", "Audit Granter", "Aegis", {"shield": 6, "shieldAll": true}, {"type": "ownShieldBonus", "amount": 2}),
+			_make_unit("audit_holder", "Audit Holder", "Noop", {}),
+		],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var rampart_granter: Dictionary = rampart_manager.get_hero_states()[0]
+	var rampart_holder: Dictionary = rampart_manager.get_hero_states()[1]
+	# Apply the ability directly — round-granted shields expire at the tick.
+	rampart_manager._apply_hero_ability(rampart_granter, rampart_granter["unit"].dice_ranges[0])
+	_expect_and_record("Regression / directive rampart shield bonus", "ownShieldBonus", "8", str(int(rampart_holder.get("shield", 0))))
+
+	var bunker_manager: CombatManager = CombatManager.new()
+	bunker_manager.setup_battle(
+		[
+			_make_directive_unit("audit_granter", "Audit Granter", "Aegis", {"shield": 6, "shieldAll": true}, {"type": "shieldGrantsSpike", "amount": 3}),
+			_make_unit("audit_holder", "Audit Holder", "Noop", {}),
+		],
+		[_make_enemy("audit_enemy", "Audit Enemy", "Claw", {"dmg": 5})]
+	)
+	var bunker_granter: Dictionary = bunker_manager.get_hero_states()[0]
+	var bunker_holder: Dictionary = bunker_manager.get_hero_states()[1]
+	bunker_manager._apply_hero_ability(bunker_granter, bunker_granter["unit"].dice_ranges[0])
+	_expect_and_record("Regression / directive bunker doctrine spike", "shieldGrantsSpike", "3/0", "%d/%d" % [int(bunker_holder.get("spike", -1)), int(bunker_granter.get("spike", 0))])
+
+	# Field Triage: heals also plate the target.
+	var triage_manager: CombatManager = CombatManager.new()
+	triage_manager.setup_battle(
+		[
+			_make_directive_unit("audit_medic", "Audit Medic", "Mend", {"heal": 6, "healTgt": true}, {"type": "healGrantsShield", "amount": 3}),
+			_make_unit("audit_patient", "Audit Patient", "Noop", {}),
+		],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var triage_medic: Dictionary = triage_manager.get_hero_states()[0]
+	var triage_patient: Dictionary = triage_manager.get_hero_states()[1]
+	triage_patient["current_hp"] = 50
+	triage_medic["selected_target_id"] = str(triage_patient["id"])
+	triage_manager._apply_hero_ability(triage_medic, triage_medic["unit"].dice_ranges[0])
+	_expect_and_record("Regression / directive field triage", "healGrantsShield", "56/3", "%d/%d" % [int(triage_patient["current_hp"]), int(triage_patient.get("shield", 0))])
+
+	# Reaper: the execute threshold rises to the directive pct.
+	var reaper_manager: CombatManager = CombatManager.new()
+	reaper_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Cull", {"dmg": 10, "execute": true}, {"type": "executeThresholdPct", "pct": 35})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var reaper_hero: Dictionary = reaper_manager.get_hero_states()[0]
+	var reaper_enemy: Dictionary = reaper_manager.get_enemy_states()[0]
+	reaper_enemy["current_hp"] = 42  # 42-10=32 -> below 35% of 100, above the stock 25%
+	reaper_hero["selected_target_id"] = str(reaper_enemy["id"])
+	reaper_manager.resolve_round({str(reaper_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive reaper threshold", "executeThresholdPct", "24", str(int(reaper_enemy["current_hp"])))
+
+	# Ambush Wiring + Ghostblade: cloak strike hits harder and Executes.
+	var ambush_manager: CombatManager = CombatManager.new()
+	ambush_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Shadow Cut", {"dmg": 10}, {"type": "cloakAttackBonus", "amount": 5})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var ambush_hero: Dictionary = ambush_manager.get_hero_states()[0]
+	var ambush_enemy: Dictionary = ambush_manager.get_enemy_states()[0]
+	ambush_hero["cloaked"] = true
+	ambush_hero["selected_target_id"] = str(ambush_enemy["id"])
+	ambush_manager.resolve_round({str(ambush_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive ambush wiring", "cloakAttackBonus", "85", str(int(ambush_enemy["current_hp"])))
+
+	var ghost_manager: CombatManager = CombatManager.new()
+	ghost_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Shadow Cut", {"dmg": 10}, {"type": "decloakExecute"})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var ghost_hero: Dictionary = ghost_manager.get_hero_states()[0]
+	var ghost_enemy: Dictionary = ghost_manager.get_enemy_states()[0]
+	ghost_hero["cloaked"] = true
+	ghost_enemy["current_hp"] = 30  # 30-10=20 -> below 25% -> execute +8
+	ghost_hero["selected_target_id"] = str(ghost_enemy["id"])
+	ghost_manager.resolve_round({str(ghost_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive ghostblade execute", "decloakExecute", "12", str(int(ghost_enemy["current_hp"])))
+
+	# Signal Theft + Hard Lock: single-target roll-downs jam and feed the pool.
+	var theft_manager: CombatManager = CombatManager.new()
+	theft_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, {"type": "rfeGrantsProtocol", "amount": 1})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var theft_hero: Dictionary = theft_manager.get_hero_states()[0]
+	theft_hero["selected_target_id"] = str(theft_manager.get_enemy_states()[0]["id"])
+	theft_manager.resolve_round({str(theft_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive signal theft", "rfeGrantsProtocol", "1", str(theft_manager.take_pending_protocol_grants()))
+
+	var lock_manager: CombatManager = CombatManager.new()
+	lock_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, {"type": "rfeAlsoJam"})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var lock_hero: Dictionary = lock_manager.get_hero_states()[0]
+	var lock_enemy: Dictionary = lock_manager.get_enemy_states()[0]
+	lock_hero["selected_target_id"] = str(lock_enemy["id"])
+	lock_manager.resolve_round({str(lock_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive hard lock jam", "rfeAlsoJam", "12", str(int(lock_enemy.get("jam_cap", 0))))
+
+	# Feedback: enemies under an active roll-down take chip damage each round.
+	var feedback_manager: CombatManager = CombatManager.new()
+	feedback_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, {"type": "rfeDamagePerRound", "amount": 2})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var feedback_hero: Dictionary = feedback_manager.get_hero_states()[0]
+	var feedback_enemy: Dictionary = feedback_manager.get_enemy_states()[0]
+	feedback_hero["selected_target_id"] = str(feedback_enemy["id"])
+	feedback_manager.resolve_round({str(feedback_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / directive feedback chip", "rfeDamagePerRound", "98", str(int(feedback_enemy["current_hp"])))
+
+	# Vanish: dropping below half HP cloaks the hero once per battle.
+	var vanish_manager: CombatManager = CombatManager.new()
+	vanish_manager.setup_battle(
+		[_make_directive_unit("audit_hero", "Audit Hero", "Noop", {}, {"type": "lowHpCloakOnce", "pct": 50})],
+		[_make_enemy("audit_enemy", "Audit Enemy", "Crush", {"dmg": 60})]
+	)
+	var vanish_hero: Dictionary = vanish_manager.get_hero_states()[0]
+	var vanish_enemy: Dictionary = vanish_manager.get_enemy_states()[0]
+	vanish_enemy["selected_target_id"] = str(vanish_hero["id"])
+	vanish_manager.resolve_round({}, {str(vanish_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
+	_expect_and_record("Regression / directive vanish", "lowHpCloakOnce", "true/true", "%s/%s" % [str(bool(vanish_hero.get("cloaked", false))), str(bool(vanish_hero.get("vanish_used", false)))])
 
 
 func _run_evolution_kit_regression() -> void:
