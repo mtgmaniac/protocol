@@ -449,6 +449,7 @@ func _run_regression_audits() -> void:
 	_run_evolution_kit_regression()
 	_run_directive_progression_regressions()
 	_run_directive_combat_regressions()
+	_run_battle_slot_regressions()
 	_run_chain_regression()
 	_run_detonate_regression()
 	_run_execute_regression()
@@ -1882,6 +1883,77 @@ func _run_directive_combat_regressions() -> void:
 	vanish_enemy["selected_target_id"] = str(vanish_hero["id"])
 	vanish_manager.resolve_round({}, {str(vanish_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
 	_expect_and_record("Regression / directive vanish", "lowHpCloakOnce", "true/true", "%s/%s" % [str(bool(vanish_hero.get("cloaked", false))), str(bool(vanish_hero.get("vanish_used", false)))])
+
+
+const SIGNATURE_FIGHTS := {
+	"facility": {"index": 4, "names": ["Guard Elite", "Guard Elite"]},
+	"hive": {"index": 6, "names": ["Broodwarden"]},
+	"veil": {"index": 6, "names": ["Aegis Anchor", "Aegis Anchor"]},
+	"voidCirclet": {"index": 3, "names": ["Axiom Binder"]},
+	"stellarMenagerie": {"index": 3, "names": ["Geode Panther"]},
+}
+
+
+func _run_battle_slot_regressions() -> void:
+	# Role pools: every faction fields fodder/elite/heavy; support falls back
+	# to elite where the faction has none (The Accretion).
+	var pools_ok: bool = true
+	for op_id in DataManager.get_operation_order():
+		for role in ["fodder", "elite", "heavy", "support"]:
+			if DataManager.get_role_pool(str(op_id), str(role)).is_empty():
+				pools_ok = false
+	_expect_and_record("Regression / slot role pools populated", "battleSlots", "true", str(pools_ok))
+
+	# Run-start resolution: anchors stay authored, signatures pinned, slot
+	# battles roll real faction units at the pattern's size.
+	var all_ok: bool = true
+	var detail: String = ""
+	for op_id_variant in DataManager.get_operation_order():
+		var op_id: String = str(op_id_variant)
+		GameState.start_run(["pulse", "combat", "ghost"], op_id)
+		var op = DataManager.get_operation(op_id)
+		var comps: Array = GameState.resolved_battle_comps
+		if comps.size() != op.battles.size():
+			all_ok = false
+			detail = "%s comp count %d" % [op_id, comps.size()]
+			break
+		var faction_pool: Array = []
+		for role in ["fodder", "elite", "heavy", "support"]:
+			faction_pool.append_array(DataManager.get_role_pool(op_id, str(role)))
+		for i in comps.size():
+			var names: Array = (comps[i] as Dictionary).get("names", [])
+			var battle: Dictionary = op.battles[i]
+			var authored: Array = battle.get("enemy_names", [])
+			if not authored.is_empty():
+				if names != authored:
+					all_ok = false
+					detail = "%s b%d fixed comp drifted" % [op_id, i + 1]
+			else:
+				var slots: Array = battle.get("slots", [])
+				var min_size: int = slots.size()
+				var max_size: int = slots.size()
+				if slots.has("heavyOrElites"):
+					max_size += 1
+				if names.is_empty() or names.size() < min_size or names.size() > max_size:
+					all_ok = false
+					detail = "%s b%d rolled %d names for %s" % [op_id, i + 1, names.size(), str(slots)]
+				for name_variant in names:
+					if not faction_pool.has(str(name_variant)):
+						all_ok = false
+						detail = "%s b%d rolled outsider %s" % [op_id, i + 1, str(name_variant)]
+		var signature: Dictionary = SIGNATURE_FIGHTS[op_id]
+		var sig_names: Array = (comps[int(signature["index"])] as Dictionary).get("names", [])
+		if sig_names != signature["names"]:
+			all_ok = false
+			detail = "%s signature comp %s" % [op_id, str(sig_names)]
+	_expect_and_record("Regression / slot comps resolved at run start", "battleSlots", "true", "%s%s" % [str(all_ok), "" if all_ok else " (" + detail + ")"])
+
+	# The Accretion signature panther spawns cloaked.
+	GameState.start_run(["pulse", "combat", "ghost"], "stellarMenagerie")
+	var panther_comp: Dictionary = GameState.resolved_battle_comps[3]
+	_expect_and_record("Regression / signature panther cloaked", "battleSlots", str(["Geode Panther"]), str(panther_comp.get("cloaked", [])))
+
+	GameState.reset_run()
 
 
 func _run_evolution_kit_regression() -> void:

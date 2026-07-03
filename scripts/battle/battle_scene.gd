@@ -1965,14 +1965,24 @@ func _build_runtime_units() -> void:
 	if battle_index >= operation.battles.size():
 		return
 
+	# Templated comps (pkg7.1): the run-start roll is the source of truth;
+	# fall back to the authored comp when no resolved comp exists.
 	var battle_entry: Dictionary = operation.battles[battle_index]
-	var enemy_names: Array = battle_entry.get("enemy_names", [])
+	var comp: Dictionary = _game_state().get_current_battle_comp()
+	var enemy_names: Array = comp.get("names", [])
+	var cloaked_names: Array = comp.get("cloaked", [])
+	if enemy_names.is_empty():
+		enemy_names = battle_entry.get("enemy_names", [])
+		cloaked_names = battle_entry.get("cloaked_names", [])
 	for enemy_name in enemy_names:
 		if enemy_units.size() >= GameState.SQUAD_UNIT_LIMIT:
 			break
 		var enemy: EnemyData = _data_manager().get_enemy_by_display_name(str(enemy_name)) as EnemyData
 		if enemy != null:
-			enemy_units.append(_duplicate_enemy(enemy))
+			var enemy_copy: EnemyData = _duplicate_enemy(enemy)
+			if cloaked_names.has(str(enemy_name)):
+				enemy_copy.starts_cloaked = true
+			enemy_units.append(enemy_copy)
 
 
 func _refresh_summary(_extra_text: String) -> void:

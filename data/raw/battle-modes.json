@@ -27,39 +27,20 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Scrap Drone"
-            },
-            {
-              "name": "Rust Drone"
-            },
-            {
-              "name": "Static Skimmer"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Guard Elite"
-            },
-            {
-              "name": "Rust Drone"
-            }
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Patrol Elite"
-            },
-            {
-              "name": "Static Skimmer"
-            },
-            {
-              "name": "Rust Drone"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
@@ -73,52 +54,29 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Patrol Elite"
-            },
-            {
-              "name": "Static Skimmer"
-            },
-            {
-              "name": "Static Skimmer"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Heavy Warden"
-            },
-            {
-              "name": "Rust Drone"
-            },
-            {
-              "name": "Rust Drone"
-            }
+          "slots": [
+            "heavy",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Heavy Warden"
-            },
-            {
-              "name": "Patrol Elite"
-            }
+          "slots": [
+            "heavy",
+            "elite"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Volt Elite"
-            },
-            {
-              "name": "Volt Elite"
-            },
-            {
-              "name": "Static Skimmer"
-            }
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
@@ -152,50 +110,32 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Skitterling"
-            },
-            {
-              "name": "Bloodmite"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Skitterling"
-            },
-            {
-              "name": "Skitterling"
-            }
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Spine Stalker"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Carapace Beetle"
-            },
-            {
-              "name": "Skitterling"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Spine Stalker"
-            },
-            {
-              "name": "Skitterling"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
@@ -206,26 +146,16 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Bloodmite"
-            },
-            {
-              "name": "Broodwarden"
-            },
-            {
-              "name": "Bloodmite"
-            }
+          "slots": [
+            "heavy",
+            "elite"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Caustic Spewer"
-            },
-            {
-              "name": "Caustic Spewer"
-            }
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
@@ -259,50 +189,32 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Aegis Anchor"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Shardmite"
-            },
-            {
-              "name": "Synapse Herald"
-            }
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Prism Charger"
-            },
-            {
-              "name": "Shardmite"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Resonance Warden"
-            },
-            {
-              "name": "Prism Charger"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Nullblade"
-            },
-            {
-              "name": "Stormweaver"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
@@ -316,26 +228,16 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Stormweaver"
-            },
-            {
-              "name": "Stormweaver"
-            }
+          "slots": [
+            "heavy",
+            "elite"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Synapse Herald"
-            },
-            {
-              "name": "Synapse Herald"
-            },
-            {
-              "name": "Shardmite"
-            }
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
@@ -372,80 +274,53 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Init Acolyte"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Checksum Scribe"
-            },
-            {
-              "name": "Glitch Sprite"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Axiom Binder"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Checksum Scribe"
-            },
-            {
-              "name": "Checksum Scribe"
-            }
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
           "enemies": [
             {
               "name": "Axiom Binder"
-            },
-            {
-              "name": "Init Acolyte"
             }
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Forked Double"
-            },
-            {
-              "name": "Glitch Sprite"
-            },
-            {
-              "name": "Glitch Sprite"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Daemon Channeler"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Daemon Channeler"
-            },
-            {
-              "name": "Checksum Scribe"
-            },
-            {
-              "name": "Glitch Sprite"
-            }
+          "slots": [
+            "heavy",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "elite"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {
@@ -476,86 +351,54 @@
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Pumice Macaque"
-            },
-            {
-              "name": "Obsidian Hound"
-            }
+          "slots": [
+            "fodder",
+            "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "fodder"
           ]
         },
         {
           "enemies": [
             {
-              "name": "Obsidian Hound"
-            },
-            {
-              "name": "Obsidian Hound"
+              "name": "Geode Panther",
+              "cloaked": true
             }
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Geode Panther"
-            }
+          "slots": [
+            "heavyOrElites"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Basalt Ape"
-            },
-            {
-              "name": "Pumice Macaque"
-            }
+          "slots": [
+            "elite",
+            "fodder",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Geode Panther"
-            },
-            {
-              "name": "Pumice Macaque"
-            },
-            {
-              "name": "Obsidian Hound"
-            }
+          "slots": [
+            "heavy",
+            "fodder"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Magma Drake"
-            },
-            {
-              "name": "Pumice Macaque"
-            }
+          "slots": [
+            "heavy",
+            "elite"
           ]
         },
         {
-          "enemies": [
-            {
-              "name": "Pyroclast Raptor"
-            },
-            {
-              "name": "Obsidian Hound"
-            }
-          ]
-        },
-        {
-          "enemies": [
-            {
-              "name": "Basalt Ape"
-            },
-            {
-              "name": "Magma Drake"
-            },
-            {
-              "name": "Pumice Macaque"
-            }
+          "slots": [
+            "elite",
+            "support",
+            "fodder"
           ]
         },
         {

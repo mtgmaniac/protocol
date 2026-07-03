@@ -37,18 +37,35 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["enemies"],
               "additionalProperties": false,
+              "anyOf": [
+                { "required": ["enemies"] },
+                { "required": ["slots"] }
+              ],
               "properties": {
                 "enemies": {
+                  "description": "Fixed comp (anchors: battle 1, battle 10, one signature fight per op).",
                   "type": "array",
                   "items": {
                     "type": "object",
                     "required": ["name"],
                     "additionalProperties": false,
                     "properties": {
-                      "name": { "type": "string" }
+                      "name": { "type": "string" },
+                      "cloaked": {
+                        "type": "boolean",
+                        "description": "This enemy spawns Cloaked (pkg2 cloak rules)."
+                      }
                     }
+                  }
+                },
+                "slots": {
+                  "description": "Templated comp (pkg7.1): rolled once at run start from per-faction role pools so previews always show exact comps. Classification (derived from enemies.data.json at load): fodder = ai 'dumb'; bosses (standing-rule units) are excluded from all pools; heavy = remaining smart units with hp >= 90; support = remaining smart units with ally-aid fields (shieldAlly/shieldAllyAll/erb/erbAll/grantRampage/grantRampageAll) in >= 2 distinct kit zones; elite = the rest. 'heavyOrElites' resolves 50/50 at run start to one heavy or two elites. If a faction has no support unit (The Accretion), a support slot falls back to the elite pool.",
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 3,
+                  "items": {
+                    "enum": ["fodder", "elite", "support", "heavy", "heavyOrElites"]
                   }
                 }
               }

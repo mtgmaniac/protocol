@@ -226,6 +226,7 @@ func _load_all_data() -> void:
 
 	_load_units()
 	_load_enemies()
+	_build_enemy_role_pools()
 	_load_items()
 	_load_operations()
 
@@ -404,15 +405,72 @@ func _build_operation_battles(battles: Array) -> Array[Dictionary]:
 	var battle_number: int = 1
 	for battle in battles:
 		var enemy_names: Array = []
+		var cloaked_names: Array = []
 		for enemy_entry in battle.get("enemies", []):
 			enemy_names.append(str(enemy_entry.get("name", "")))
+			if bool(enemy_entry.get("cloaked", false)):
+				cloaked_names.append(str(enemy_entry.get("name", "")))
 		built_battles.append({
 			"battle_number": battle_number,
 			"battle_label": "Battle %d" % battle_number,
 			"enemy_names": enemy_names,
+			"cloaked_names": cloaked_names,
+			"slots": (battle.get("slots", []) as Array).duplicate(),
 		})
 		battle_number += 1
 	return built_battles
+
+
+# --- Enemy role pools (pkg7.1 templated battle slots) ---
+# Classification (documented in battle-modes.schema.json): fodder = ai "dumb";
+# boss (standing-rule) units excluded; heavy = smart with hp >= 90; support =
+# remaining smart units with ally-aid fields in >= 2 distinct kit zones;
+# elite = the rest.
+
+const HEAVY_HP_MIN := 90
+const ALLY_AID_FIELDS := ["shieldAlly", "shieldAllyAll", "erb", "erbAll", "grantRampage", "grantRampageAll"]
+
+var enemy_role_pools: Dictionary = {}  # faction -> {role -> [display names]}
+
+
+func _build_enemy_role_pools() -> void:
+	enemy_role_pools.clear()
+	for enemy_variant in enemies.values():
+		var enemy: EnemyData = enemy_variant as EnemyData
+		if enemy == null or enemy.faction == "":
+			continue
+		if CombatManager.get_boss_standing_rule(enemy.display_name) != "":
+			continue
+		var role: String = _classify_enemy_role(enemy)
+		if not enemy_role_pools.has(enemy.faction):
+			enemy_role_pools[enemy.faction] = {"fodder": [], "elite": [], "support": [], "heavy": []}
+		(enemy_role_pools[enemy.faction][role] as Array).append(enemy.display_name)
+
+
+func _classify_enemy_role(enemy: EnemyData) -> String:
+	if enemy.ai_type == "dumb":
+		return "fodder"
+	if enemy.max_hp >= HEAVY_HP_MIN:
+		return "heavy"
+	var aid_zones: Dictionary = {}
+	for range_entry in enemy.dice_ranges:
+		var raw: Dictionary = (range_entry as Dictionary).get("raw", {})
+		for field in ALLY_AID_FIELDS:
+			if raw.get(field):
+				aid_zones[str((range_entry as Dictionary).get("zone", ""))] = true
+	if aid_zones.size() >= 2:
+		return "support"
+	return "elite"
+
+
+# Returns the role pool for a faction; a missing support pool falls back to
+# elite (The Accretion has no support unit — documented in the schema).
+func get_role_pool(faction: String, role: String) -> Array:
+	var pools: Dictionary = enemy_role_pools.get(faction, {})
+	var pool: Array = (pools.get(role, []) as Array).duplicate()
+	if pool.is_empty() and role == "support":
+		pool = (pools.get("elite", []) as Array).duplicate()
+	return pool
 
 
 func _parse_json_file(file_path: String) -> Variant:

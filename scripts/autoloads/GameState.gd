@@ -31,6 +31,10 @@ var dead_mans_hand_used: bool = false
 ## It does not consume the battle-5 relic draft — a directive run ends with
 ## two relics by design.
 var starting_directive_relic_id: String = ""
+## Templated battle comps (pkg7.1): slot battles are rolled ONCE at run start
+## so previews always show exact comps. One entry per battle:
+## {"names": [display names], "cloaked": [display names]}.
+var resolved_battle_comps: Array = []
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
@@ -76,6 +80,7 @@ func start_run(unit_ids: Array, operation_id: String = "") -> void:
 		total_battles = operation.battles.size()
 	else:
 		total_battles = 10
+	_resolve_battle_comps(operation)
 	relics.clear()
 	consumables.clear()
 	gear_by_unit.clear()
@@ -110,6 +115,64 @@ func start_tutorial_run() -> void:
 	start_run(["pulse", "combat", "ghost"], op_id)
 	current_battle = 1
 	tutorial_mode = true
+
+
+# --- Templated battle comps (pkg7.1) ---
+# Fixed battles keep their authored comp; slot battles roll from the op
+# faction's role pools once per run.
+func _resolve_battle_comps(operation: OperationData) -> void:
+	resolved_battle_comps.clear()
+	if operation == null:
+		return
+	var faction: String = selected_operation_id
+	for battle_variant in operation.battles:
+		var battle: Dictionary = battle_variant
+		var names: Array = (battle.get("enemy_names", []) as Array).duplicate()
+		var cloaked: Array = (battle.get("cloaked_names", []) as Array).duplicate()
+		if names.is_empty():
+			names = _roll_slot_names(faction, battle.get("slots", []))
+		resolved_battle_comps.append({"names": names, "cloaked": cloaked})
+
+
+func _roll_slot_names(faction: String, slots: Array) -> Array:
+	var names: Array = []
+	for slot_variant in slots:
+		var slot: String = str(slot_variant)
+		if slot == "heavyOrElites":
+			# 50/50: one heavy or two elites.
+			if _reward_rng.randi_range(0, 1) == 0:
+				names.append(_pick_from_role_pool(faction, "heavy", []))
+			else:
+				var first_elite: String = _pick_from_role_pool(faction, "elite", [])
+				names.append(first_elite)
+				names.append(_pick_from_role_pool(faction, "elite", [first_elite]))
+		else:
+			names.append(_pick_from_role_pool(faction, slot, []))
+	# Drop any empty picks (missing pools) and respect the field cap.
+	var cleaned: Array = []
+	for name_variant in names:
+		if str(name_variant) != "" and cleaned.size() < SQUAD_UNIT_LIMIT:
+			cleaned.append(name_variant)
+	return cleaned
+
+
+# Rolls one name from the faction's role pool, avoiding `used` when possible.
+func _pick_from_role_pool(faction: String, role: String, used: Array) -> String:
+	var pool: Array = DataManager.get_role_pool(faction, role)
+	var fresh: Array = pool.filter(func(n): return not used.has(n))
+	if not fresh.is_empty():
+		pool = fresh
+	if pool.is_empty():
+		return ""
+	return str(pool[_reward_rng.randi_range(0, pool.size() - 1)])
+
+
+# The exact comp for the current battle (1-based current_battle).
+func get_current_battle_comp() -> Dictionary:
+	var index: int = current_battle - 1
+	if index < 0 or index >= resolved_battle_comps.size():
+		return {}
+	return resolved_battle_comps[index]
 
 
 # Starting Directive: adopt an unlocked boss relic as the run's opening relic.
