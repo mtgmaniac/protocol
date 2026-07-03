@@ -31,7 +31,15 @@ func apply_live_event_visual_state(event: Dictionary) -> void:
 	if _scene.dice_tray_3d == null:
 		return
 	if str(event.get("type", "")) == "freeze":
-		_scene.dice_tray_3d.set_die_frozen_visual(str(event.get("side", "")), str(event.get("target_id", "")), true)
+		var side: String = str(event.get("side", ""))
+		var target_id: String = str(event.get("target_id", ""))
+		# Petrify (Accretion) freezes render stone-gray on the die.
+		var flavor: String = "ice"
+		var states: Array = _scene.combat_manager.get_hero_states() if side == "hero" else _scene.combat_manager.get_enemy_states()
+		for state_variant in states:
+			if str((state_variant as Dictionary).get("id", "")) == target_id:
+				flavor = str((state_variant as Dictionary).get("freeze_flavor", "ice"))
+		_scene.dice_tray_3d.set_die_frozen_visual(side, target_id, true, flavor)
 
 
 # ── Sequencer ─────────────────────────────────────────────────────────────────
@@ -79,12 +87,16 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	# (rolled natural OR nudged/buffed into the overload zone) — intentional.
 	if is_overload:
 		_celebrate_overload()
+		# pkg8.3: the ability name slams across the acting card — scale-punch
+		# in, brief hold, out. Flat, palette-driven, no glow.
+		_slam_ability_name(actor_card, str(action.get("ability", "")))
 
 	if not _group_has_fatal_hit(effects):
 		await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
 
 	var peak_damage: int = 0
 	var had_fatal_hit: bool = false
+	var had_execute: bool = false
 	for event_variant in effects:
 		var event: Dictionary = event_variant
 		var event_type: String = str(event.get("type", ""))
@@ -105,6 +117,9 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		_scene._card_view.refresh_card_for_event(event)
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
+		_play_keyword_feedback(event_type, event, actor_card, target_card)
+		if event_type == "execute":
+			had_execute = true
 		if event_type == "damage":
 			var amount: int = int(event.get("amount", 0))
 			peak_damage = maxi(peak_damage, amount)
@@ -112,8 +127,11 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 			_shake(target_card, clampf(2.0 + float(amount) * 0.16, 2.0, 11.0), 0.22)
 
 	# Tier 1: impact freeze — skip after a kill so death reads immediately, not after pause.
+	# Execute (pkg8.4) lands with a heavier pause than a plain hit.
 	if is_overload:
 		await _hit_pause(peak_damage, 0.06)
+	elif had_execute and not had_fatal_hit:
+		await _hit_pause(maxi(peak_damage, 8), 0.05)
 	elif peak_damage > 0 and not had_fatal_hit:
 		await _hit_pause(peak_damage)
 
@@ -271,6 +289,9 @@ func _spawn_floating_text(card: Control, event_type: String, amount: int) -> voi
 func _float_size_mult(event_type: String, amount: int) -> float:
 	if event_type == "damage" or event_type == "burn":
 		return clampf(0.95 + float(amount) * 0.012, 0.95, 1.55)
+	# Execute (pkg8.4): the bonus reads oversized when it triggers.
+	if event_type == "execute":
+		return 1.6
 	return 1.0
 
 
@@ -296,21 +317,31 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 		"freeze":
 			return "FROZEN %d" % amount
 		"block":
-			return "BLOCK %d" % amount
+			return "✕ NEGATED" if amount <= 0 else "BLOCK %d" % amount
 		"wipe_shields":
 			return "SHIELDS WIPED"
+		"execute":
+			return "EXECUTE -%d" % amount
+		"mark":
+			return "◎ MARKED"
+		"chain", "detonate", "spike":
+			return "-%d" % amount
 		_:
 			return str(amount)
 
 
 func _get_floating_color(event_type: String) -> Color:
 	match event_type:
-		"damage", "burn":
+		"damage", "burn", "chain", "detonate", "spike":
 			return Color(1.0, 0.42, 0.42, 1.0)
+		"execute":
+			return Color(1.0, 0.30, 0.30, 1.0)
 		"heal":
 			return Color(0.5, 1.0, 0.62, 1.0)
 		"shield", "block", "roll_buff", "freeze":
 			return Color(0.55, 0.82, 1.0, 1.0)
+		"mark":
+			return Color(1.0, 0.82, 0.20, 1.0)
 		"wipe_shields":
 			return Color(1.0, 0.80, 0.20, 1.0)
 		_:
@@ -360,6 +391,169 @@ func _celebrate_overload() -> void:
 		tween.tween_callback(wash.queue_free)
 	if _scene.board != null and is_instance_valid(_scene.board):
 		_shake(_scene.board, 9.0, 0.34)
+
+
+# ── pkg8.4 keyword feedback (composed from the primitive library) ────────────
+# Chain = tracer to the jumped target · Detonate = burst on the target ·
+# Breach = shield-shatter burst · Spike = spark burst on the attacker ·
+# Siphon = amber pip drifts from the protocol bar to the enemy · Hijack =
+# ghost die label drifts from the hero rail to the enemy card · Jam = static
+# flicker on the die · Rewrite = the die's marker scrambles then slams to 3 ·
+# Decloak = the portrait resolves sharp. Mark/Ward/Execute run through the
+# floating-text and pause channels. All flat, palette-driven, no glow.
+# DESIGN-TODO(kev): Leech shows only the green heal number for now — the dim
+# red target→attacker tracer needs damage/heal pairing the events don't carry.
+func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: Control, target_card: Control) -> void:
+	match event_type:
+		"chain":
+			_tracer(actor_card, target_card, Color(0.55, 0.85, 1.0, 0.9))
+		"detonate":
+			_burst_particles(target_card, Color(0.95, 0.55, 0.20, 1.0), 14)
+		"breach":
+			_burst_particles(target_card, Color(1.0, 0.82, 0.20, 1.0), 12)
+		"spike":
+			_burst_particles(target_card, Color(0.86, 0.42, 0.28, 1.0), 8)
+		"siphon":
+			var bar_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y - 60.0)
+			if _scene.protocol_bar != null and is_instance_valid(_scene.protocol_bar):
+				bar_from = _scene.protocol_bar.get_global_rect().get_center()
+			_drift_pip(bar_from, target_card, Color(0.95, 0.76, 0.28, 1.0), "-%d" % int(event.get("amount", 0)))
+		"hijack":
+			var tray_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y * 0.62)
+			_drift_pip(tray_from, target_card, Color(0.95, 0.45, 0.30, 1.0), "HJ")
+		"jam":
+			if _scene.dice_tray_3d != null:
+				_scene.dice_tray_3d.play_jam_flicker(str(event.get("side", "")), str(event.get("target_id", "")), int(event.get("amount", 0)))
+		"rewrite":
+			if _scene.dice_tray_3d != null:
+				_scene.dice_tray_3d.play_rewrite_scramble(str(event.get("side", "")), str(event.get("target_id", "")))
+		"decloak":
+			_resolve_portrait_sharp(target_card)
+
+
+# Primitive: a flat tracer line from one card to another — snaps in bright,
+# fades fast. Used by Chain (and future paired beats).
+func _tracer(from_card: Control, to_card: Control, color: Color) -> void:
+	if from_card == null or to_card == null or not is_instance_valid(from_card) or not is_instance_valid(to_card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var line: Line2D = Line2D.new()
+	line.width = 5.0
+	line.default_color = color
+	line.z_as_relative = false
+	line.z_index = 190
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	line.add_point(from_card.get_global_rect().get_center() - layer_origin)
+	line.add_point(to_card.get_global_rect().get_center() - layer_origin)
+	_scene.float_layer.add_child(line)
+	var tween: Tween = create_tween()
+	tween.tween_property(line, "modulate:a", 0.0, 0.28).set_delay(0.10)
+	tween.tween_callback(line.queue_free)
+
+
+# Primitive: a flat particle burst — small squares scatter from the card's
+# center and fade. Palette color, no glow.
+func _burst_particles(card: Control, color: Color, count: int = 10) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var origin: Vector2 = card.get_global_rect().get_center() - layer_origin
+	for _i in count:
+		var shard: ColorRect = ColorRect.new()
+		shard.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shard.color = color
+		shard.size = Vector2(6, 6)
+		shard.position = origin
+		shard.z_as_relative = false
+		shard.z_index = 195
+		_scene.float_layer.add_child(shard)
+		var direction: Vector2 = Vector2.RIGHT.rotated(randf() * TAU)
+		var distance: float = randf_range(34.0, 86.0)
+		var tween: Tween = create_tween()
+		tween.tween_property(shard, "position", origin + direction * distance, 0.30) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(shard, "modulate:a", 0.0, 0.30)
+		tween.tween_callback(shard.queue_free)
+
+
+# Primitive: a labeled pip that drifts from a point to a card (Siphon drain,
+# Hijack ghost die).
+func _drift_pip(from_position: Vector2, to_card: Control, color: Color, text: String) -> void:
+	if to_card == null or not is_instance_valid(to_card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var pip: Label = Label.new()
+	pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip.text = text
+	pip.add_theme_font_size_override("font_size", PixelUI.scale_font_size(16))
+	pip.add_theme_color_override("font_color", color)
+	pip.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	pip.add_theme_constant_override("outline_size", 4)
+	pip.z_as_relative = false
+	pip.z_index = 195
+	pip.position = from_position - layer_origin
+	_scene.float_layer.add_child(pip)
+	var tween: Tween = create_tween()
+	tween.tween_property(pip, "position", to_card.get_global_rect().get_center() - layer_origin, 0.40) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(pip, "modulate:a", 0.0, 0.14)
+	tween.tween_callback(pip.queue_free)
+
+
+# Decloak (pkg8.4): the ghosted portrait resolves sharp with a brief white
+# pierce flash.
+func _resolve_portrait_sharp(card: Control) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	var base_modulate: Color = card.modulate
+	card.modulate = Color(1.35, 1.35, 1.4, 1.0)
+	var tween: Tween = create_tween()
+	tween.tween_property(card, "modulate", base_modulate, 0.24)
+
+
+# pkg8.3: overload name slam — the ability name punches in across the acting
+# card (overshoot scale-in), holds a beat, and snaps out. Flat gold on dark.
+func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
+	if actor_card == null or not is_instance_valid(actor_card) or ability_name == "":
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = ability_name.to_upper()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(30))
+	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.20, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0.03, 0.03, 0.05, 1.0))
+	label.add_theme_constant_override("outline_size", 6)
+	label.z_as_relative = false
+	label.z_index = 210
+	_scene.float_layer.add_child(label)
+	label.reset_size()
+	var card_rect: Rect2 = actor_card.get_global_rect()
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	label.position = Vector2(
+		card_rect.position.x - layer_origin.x + (card_rect.size.x - label.size.x) * 0.5,
+		card_rect.position.y - layer_origin.y + card_rect.size.y * 0.36
+	)
+	label.pivot_offset = label.size * 0.5
+	label.scale = Vector2(0.2, 0.2)
+	label.modulate.a = 0.0
+	var slam: Tween = create_tween()
+	slam.tween_property(label, "modulate:a", 1.0, 0.06)
+	slam.parallel().tween_property(label, "scale", Vector2(1.28, 1.28), 0.10) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	slam.tween_property(label, "scale", Vector2.ONE, 0.10) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	slam.tween_interval(0.42)
+	slam.tween_property(label, "modulate:a", 0.0, 0.12)
+	slam.parallel().tween_property(label, "scale", Vector2(0.85, 0.85), 0.12)
+	slam.tween_callback(label.queue_free)
 
 
 # Attacker step-in + recoil. Direction is decided by side (heroes on the bottom

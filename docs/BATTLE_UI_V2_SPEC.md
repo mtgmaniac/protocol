@@ -356,7 +356,7 @@ Protocol art:
 
 - uses the newer left-side protocol footer bar artwork
 - protocol lights up as points are gained
-- battle protocol is capped at `7`
+- battle protocol is capped at `10` (`MAX_PROTOCOL` in battle_scene.gd; Deep Cells/Rogue Engineer adjust it at runtime)
 
 ## 16. Interaction Rules
 
