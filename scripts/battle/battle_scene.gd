@@ -73,6 +73,10 @@ const PROTOCOL_VALUE_FONT_SIZE := 48
 
 var dice_manager: DiceManager = DiceManager.new()
 var combat_manager: CombatManager = CombatManager.new()
+# Shared UI-free rules engine (balance-sim A.1). Owns the roll-shaping /
+# protocol-economy rules extracted from this god object so the headless sim and
+# the live screen run one implementation. See scripts/sim/DECOUPLING_NOTES.md.
+var _engine: BattleEngine = BattleEngine.new(combat_manager, PhysicsRollProvider.new(dice_manager))
 var protocol_points: int = 0  # battles start at 0; +1 income at end of each turn
 var hero_card_views: Array = []
 var enemy_card_views: Array = []
@@ -1790,45 +1794,21 @@ func _finish_roll_modifier_pick() -> void:
 
 # --- Effective roll helpers ---
 
+# Rules extracted to BattleEngine (A.1); these delegate, passing this scene's
+# own roll/nudge/set state. The sim owns parallel dicts and calls the same
+# engine methods — one rules engine.
 func _get_effective_roll_for_state(state: Dictionary, unit_id: String) -> int:
-	var raw_roll: int = int(hero_rolls.get(unit_id, hero_rolls.get(str(unit_id), 0)))
-	if raw_roll == 0:
-		return 1
-	# Set action forces an absolute effective roll, overriding freeze/nudge/buffs.
-	if hero_roll_sets.has(unit_id) or hero_roll_sets.has(str(unit_id)):
-		return clampi(int(hero_roll_sets.get(unit_id, hero_roll_sets.get(str(unit_id), raw_roll))), 1, 20)
-	if bool(state.get("die_freeze_consumed_this_round", false)):
-		return clampi(raw_roll, 1, 20)
-	var nudge: int = int(hero_roll_nudges.get(unit_id, hero_roll_nudges.get(str(unit_id), 0)))
-	var base_eff: int = combat_manager.get_effective_roll(state, raw_roll)
-	return clampi(base_eff + nudge, 1, 20)
+	return _engine.effective_hero_roll(state, unit_id, hero_rolls, hero_roll_nudges, hero_roll_sets)
 
 
 func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
-	var raw_roll: int = int(enemy_rolls.get(unit_id, enemy_rolls.get(str(unit_id), 0)))
-	if raw_roll == 0:
-		return 1
-	if bool(state.get("die_freeze_consumed_this_round", false)):
-		return clampi(raw_roll, 1, 20)
-	return combat_manager.get_effective_roll(state, raw_roll)
+	return _engine.effective_enemy_roll(state, unit_id, enemy_rolls)
 
 
 # Builds a dict of effective rolls for all living units in the given states array.
 # Used to pass fully-resolved roll values into combat_manager.resolve_round().
 func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool) -> Dictionary:
-	var eff: Dictionary = {}
-	for state in states:
-		if bool(state["dead"]):
-			continue
-		var uid: String = str(state["id"])
-		var raw: int = int(raw_rolls.get(uid, 0))
-		if raw == 0:
-			continue
-		if is_hero:
-			eff[uid] = _get_effective_roll_for_state(state, uid)
-		else:
-			eff[uid] = combat_manager.get_effective_roll(state, raw)
-	return eff
+	return _engine.build_effective_rolls(raw_rolls, states, is_hero, hero_rolls, hero_roll_nudges, hero_roll_sets)
 
 
 var _protocol_segments: Array = []
