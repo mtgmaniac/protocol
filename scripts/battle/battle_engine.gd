@@ -63,6 +63,96 @@ func resolve_step(bs: BattleState) -> Dictionary:
 	}
 
 
+# ── Battle-start / income rules (extracted from battle_scene, sim-B.2) ───────
+
+# End-of-round income rule: +1 Protocol, except Blackout (no income before
+# round 3) and Deep Cache income debt (each owed turn swallows the +1). Pure
+# decision — the caller applies the gain through its own gain-protocol
+# wrapper. reason: "blackout" | "debt" | "income".
+func end_of_round_income(round_number: int, income_debt: int) -> Dictionary:
+	if combat_manager != null and combat_manager.has_battle_modifier("blackout") and round_number < 3:
+		return {"gain": 0, "debt_left": income_debt, "reason": "blackout"}
+	if income_debt > 0:
+		return {"gain": 0, "debt_left": income_debt - 1, "reason": "debt"}
+	return {"gain": 1, "debt_left": 0, "reason": "income"}
+
+
+# Protocol Tap gear: summed battle-start protocol from hero gear.
+func gear_start_protocol() -> int:
+	var total: int = 0
+	for hero_state_variant in combat_manager.get_hero_states():
+		total += int((hero_state_variant as Dictionary).get("gear_protocol_on_start", 0))
+	return total
+
+
+# Battle-start one-shots (intercept/route effects armed on GameState), applied
+# through combat_manager so the sim and the live screen share one rule set.
+# `effects` = the consumed next_battle_effects dict; `hero_run_mods` =
+# GameState.hero_run_mods. Returns {"logs", "income_debt", "items_free",
+# "start_protocol"} — the caller applies start_protocol through its own
+# gain-protocol wrapper (cap/overflow rules apply there) and keeps the debt.
+func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dictionary, run_protocol_per_battle: int) -> Dictionary:
+	var logs: Array[String] = []
+	if bool(effects.get("decoy", false)):
+		combat_manager.set_decoy_round_one()
+		logs.append("DECOY BEACON — enemies will waste turn 1.")
+	var income_debt: int = int(effects.get("income_debt", 0))
+	if income_debt > 0:
+		logs.append("DEEP CACHE — %d turns of Protocol income are owed." % income_debt)
+	var items_free: bool = bool(effects.get("items_free", false))
+	if items_free:
+		logs.append("SUPPLY DRONE — items cost 0 this battle.")
+
+	var hp_pct: int = int(effects.get("enemy_hp_pct", 100))
+	if hp_pct < 100:
+		for enemy_state_variant in combat_manager.get_enemy_states():
+			var enemy_state: Dictionary = enemy_state_variant
+			enemy_state["current_hp"] = maxi(int(enemy_state["max_hp"]) * hp_pct / 100, 1)
+		logs.append("UNSTABLE REACTOR — enemies spawn at %d%% HP." % hp_pct)
+
+	if bool(effects.get("marked_highest", false)):
+		var mark_target: Dictionary = {}
+		for enemy_state_variant in combat_manager.get_enemy_states():
+			var candidate: Dictionary = enemy_state_variant
+			if mark_target.is_empty() or int(candidate["max_hp"]) > int(mark_target["max_hp"]):
+				mark_target = candidate
+		if not mark_target.is_empty():
+			mark_target["current_hp"] = maxi(int(mark_target["max_hp"]) * 90 / 100, 1)
+			combat_manager.apply_item_mark(mark_target)
+			logs.append("FIRING SOLUTION — %s starts Marked at 90%% HP." % mark_target["unit"].display_name)
+
+	# Rogue Engineer + intercept protocol grants (applied by the caller).
+	var start_protocol: int = int(effects.get("protocol", 0)) + run_protocol_per_battle
+
+	# Per-run hero mods from intercept outcomes.
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		var unit: Variant = hero_state.get("unit")
+		var unit_id: String = str((unit as UnitData).id) if unit is UnitData else str(hero_state.get("id", ""))
+		var mods: Dictionary = hero_run_mods.get(unit_id, {})
+		if mods.is_empty():
+			continue
+		var roll_bonus: int = int(mods.get("roll_bonus", 0))
+		if roll_bonus != 0:
+			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + roll_bonus
+		var hp_delta: int = int(mods.get("max_hp_delta", 0))
+		if hp_delta != 0:
+			hero_state["max_hp"] = maxi(int(hero_state["max_hp"]) + hp_delta, 1)
+			hero_state["current_hp"] = clampi(int(hero_state["current_hp"]) + hp_delta, 1, int(hero_state["max_hp"]))
+		var start_damage: int = int(mods.get("start_hp_damage", 0))
+		if start_damage > 0:
+			hero_state["current_hp"] = maxi(int(hero_state["current_hp"]) - start_damage, 1)
+			mods["start_hp_damage"] = 0
+		if bool(mods.get("start_cloaked", false)):
+			hero_state["cloaked"] = true
+		if bool(mods.get("start_warded", false)):
+			hero_state["warded"] = true
+		if bool(mods.get("nat20_twice", false)):
+			hero_state["nat20_twice"] = true
+
+	return {"logs": logs, "income_debt": income_debt, "items_free": items_free, "start_protocol": start_protocol}
+
+
 # ── Protocol economy (extracted from battle_scene) ────────────────────────────
 # The pool value itself stays with the caller (battle_scene owns protocol_points
 # for its bar; the sim owns its own int). These methods own the RULES: the cap

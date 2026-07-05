@@ -216,10 +216,8 @@ func _ready() -> void:
 		var modifier_info: Dictionary = _game_state().BATTLE_MODIFIERS.get(route_modifier, {})
 		_append_log("ROUTE FLAGGED — %s: %s" % [str(modifier_info.get("name", route_modifier)), str(modifier_info.get("desc", ""))])
 	_apply_intercept_battle_effects()
-	# Protocol Tap gear: sum gear_protocol_on_start from hero states
-	for _hs in combat_manager.get_hero_states():
-		protocol_points += int(_hs.get("gear_protocol_on_start", 0))
-	protocol_points = mini(protocol_points, _max_protocol())
+	# Protocol Tap gear (engine rule, shared with the sim — sim-B.2).
+	protocol_points = mini(protocol_points + _engine.gear_start_protocol(), _max_protocol())
 	_update_protocol_bar()
 	_populate_hero_cards()
 	_populate_enemy_cards()
@@ -914,17 +912,18 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	else:
 		if _try_finish_battle_from_current_state():
 			return
-		# Gain +1 PP at end of each resolved round (ongoing only).
-		# Blackout route modifier: income starts on turn 3.
-		# Deep Cache income debt swallows income until repaid.
-		if combat_manager.has_battle_modifier("blackout") and _round_number < 3:
-			_append_log("BLACKOUT — no Protocol income yet.")
-		elif _income_debt > 0:
-			_income_debt -= 1
-			_append_log("Income owed — %d turns of debt remain." % _income_debt)
-		else:
-			_gain_protocol(1)
-			_append_log("Protocol +1 → %d" % protocol_points)
+		# +1 PP at end of each resolved round (ongoing only). Blackout / Deep
+		# Cache income debt are engine rules shared with the sim (sim-B.2).
+		var income: Dictionary = _engine.end_of_round_income(_round_number, _income_debt)
+		_income_debt = int(income["debt_left"])
+		match str(income["reason"]):
+			"blackout":
+				_append_log("BLACKOUT — no Protocol income yet.")
+			"debt":
+				_append_log("Income owed — %d turns of debt remain." % _income_debt)
+			_:
+				_gain_protocol(1)
+				_append_log("Protocol +1 → %d" % protocol_points)
 		_round_number += 1
 		_set_turn_phase(PHASE_AWAIT_ROLL)
 		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
@@ -1207,62 +1206,18 @@ func _apply_intercept_battle_effects() -> void:
 	# Prisoner Exchange's follow-up arms AFTER this battle's own modifier ran.
 	gs.promote_followup_effects()
 
-	if bool(_battle_effects.get("decoy", false)):
-		combat_manager.set_decoy_round_one()
-		_append_log("DECOY BEACON — enemies will waste turn 1.")
-	_income_debt = int(_battle_effects.get("income_debt", 0))
-	if _income_debt > 0:
-		_append_log("DEEP CACHE — %d turns of Protocol income are owed." % _income_debt)
-	if bool(_battle_effects.get("items_free", false)):
-		_append_log("SUPPLY DRONE — items cost 0 this battle.")
-
-	var hp_pct: int = int(_battle_effects.get("enemy_hp_pct", 100))
-	if hp_pct < 100:
-		for enemy_state_variant in combat_manager.get_enemy_states():
-			var enemy_state: Dictionary = enemy_state_variant
-			enemy_state["current_hp"] = maxi(int(enemy_state["max_hp"]) * hp_pct / 100, 1)
-		_append_log("UNSTABLE REACTOR — enemies spawn at %d%% HP." % hp_pct)
-
-	if bool(_battle_effects.get("marked_highest", false)):
-		var target: Dictionary = {}
-		for enemy_state_variant in combat_manager.get_enemy_states():
-			var candidate: Dictionary = enemy_state_variant
-			if target.is_empty() or int(candidate["max_hp"]) > int(target["max_hp"]):
-				target = candidate
-		if not target.is_empty():
-			target["current_hp"] = maxi(int(target["max_hp"]) * 90 / 100, 1)
-			combat_manager.apply_item_mark(target)
-			_append_log("FIRING SOLUTION — %s starts Marked at 90%% HP." % target["unit"].display_name)
-
-	# Rogue Engineer + intercept protocol grants.
-	var start_protocol: int = int(_battle_effects.get("protocol", 0)) + gs.run_protocol_per_battle
+	# Rule application delegated to BattleEngine (sim-B.2) — one implementation
+	# shared with the headless sim. The scene keeps the bar + logging.
+	var applied: Dictionary = _engine.apply_battle_start_external_effects(
+		_battle_effects, gs.hero_run_mods, int(gs.run_protocol_per_battle)
+	)
+	_income_debt = int(applied["income_debt"])
+	for line_variant in applied["logs"]:
+		_append_log(str(line_variant))
+	var start_protocol: int = int(applied["start_protocol"])
 	if start_protocol > 0:
 		_gain_protocol(start_protocol)
 		_append_log("Battle-start Protocol +%d → %d" % [start_protocol, protocol_points])
-
-	# Per-run hero mods from intercept outcomes.
-	for hero_state_variant in combat_manager.get_hero_states():
-		var hero_state: Dictionary = hero_state_variant
-		var mods: Dictionary = gs.hero_run_mods.get(_squad_id_for_state(hero_state), {})
-		if mods.is_empty():
-			continue
-		var roll_bonus: int = int(mods.get("roll_bonus", 0))
-		if roll_bonus != 0:
-			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + roll_bonus
-		var hp_delta: int = int(mods.get("max_hp_delta", 0))
-		if hp_delta != 0:
-			hero_state["max_hp"] = maxi(int(hero_state["max_hp"]) + hp_delta, 1)
-			hero_state["current_hp"] = clampi(int(hero_state["current_hp"]) + hp_delta, 1, int(hero_state["max_hp"]))
-		var start_damage: int = int(mods.get("start_hp_damage", 0))
-		if start_damage > 0:
-			hero_state["current_hp"] = maxi(int(hero_state["current_hp"]) - start_damage, 1)
-			mods["start_hp_damage"] = 0
-		if bool(mods.get("start_cloaked", false)):
-			hero_state["cloaked"] = true
-		if bool(mods.get("start_warded", false)):
-			hero_state["warded"] = true
-		if bool(mods.get("nat20_twice", false)):
-			hero_state["nat20_twice"] = true
 
 
 func _squad_id_for_state(hero_state: Dictionary) -> String:

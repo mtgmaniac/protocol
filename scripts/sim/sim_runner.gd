@@ -28,12 +28,24 @@ extends Node
 # Preloaded (not class_name-resolved) so a fresh checkout's headless run works
 # before the editor has rebuilt the global class cache.
 const SimTelemetryScript = preload("res://scripts/sim/telemetry.gd")
+const PlayerPolicyScript = preload("res://scripts/sim/policies/player_policy.gd")
+const PolicyL0Script = preload("res://scripts/sim/policies/policy_l0_random.gd")
 
-const SIM_VERSION := "0.2.0"
+const SIM_VERSION := "0.3.0"
 const ROUND_SAFETY_CAP := 500
+# Third seeded stream (after reward-rng and the d20 provider): policy choices.
+const POLICY_SEED_OFFSET := 0x51F15EED
 
 var _tel = SimTelemetryScript.new()
 var _seed: int = 0
+
+
+func _make_policy(policy_name: String, policy_seed: int):
+	match policy_name.to_lower():
+		"l0", "random":
+			return PolicyL0Script.new(policy_seed)
+		_:
+			return PlayerPolicyScript.new(policy_seed)
 
 
 func _ready() -> void:
@@ -72,9 +84,7 @@ func _run(args: Dictionary) -> int:
 		return _bench(gs, dm, args)
 
 	_seed = int(args.get("seed", "0"))
-	# A.3 always runs the stub policy regardless of this value; L0/L1/L2 land in
-	# Packages B/D. The string is recorded in the header for later runs.
-	var policy: String = str(args.get("policy", "stub"))
+	var policy_name: String = str(args.get("policy", "stub"))
 	var op: String = str(args.get("op", ""))
 	if op == "":
 		op = str(dm.call("get_operation_order")[0])
@@ -91,18 +101,19 @@ func _run(args: Dictionary) -> int:
 	gs.call("start_run", squad, op, _seed)
 	gs.call("advance_to_next_battle")  # current_battle 0 -> 1
 
-	# One seeded d20 stream for the whole run (offset from the reward-rng seed so
-	# the two streams are independent but reproducible).
+	# Seeded streams two and three (offset from the reward-rng seed so all
+	# streams are independent but reproducible): d20s and policy choices.
 	var provider := SeededRollProvider.new(_seed ^ 0x9E3779B9)
+	var policy = _make_policy(policy_name, _seed ^ POLICY_SEED_OFFSET)
 
 	_tel.emit({
-		"type": "run_header", "policy": policy, "squad": squad, "op": op,
+		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,
 		"sim_version": SIM_VERSION, "schema_version": SimTelemetryScript.SCHEMA_VERSION,
 		"roll_source": provider.describe(),
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
-	var summary: Dictionary = _play_run(gs, dm, provider, battle_limit)
+	var summary: Dictionary = _play_run(gs, dm, provider, policy, battle_limit)
 
 	_tel.emit({
 		"type": "run_end", "result": summary["result"],
@@ -116,14 +127,14 @@ func _run(args: Dictionary) -> int:
 # battle 1). Returns { result, battles_cleared, battles_played }. Shared by the
 # normal run and the benchmark; telemetry lines emit only when an output file
 # is open (bench opens none, so it does no I/O or JSON work).
-func _play_run(gs: Node, dm: Node, provider: RollProvider, battle_limit: int) -> Dictionary:
+func _play_run(gs: Node, dm: Node, provider: RollProvider, policy, battle_limit: int) -> Dictionary:
 	var total_battles: int = int(gs.get("total_battles"))
 	var battles_cleared: int = 0
 	var battles_played: int = 0
 	var final_result: String = "incomplete"
 	while int(gs.get("current_battle")) <= total_battles:
 		var battle_index: int = int(gs.get("current_battle"))
-		var outcome: Dictionary = _play_battle(gs, dm, provider, battle_index)
+		var outcome: Dictionary = _play_battle(gs, dm, provider, policy, battle_index)
 		battles_played += 1
 		if outcome["result"] == "victory":
 			battles_cleared += 1
@@ -135,13 +146,13 @@ func _play_run(gs: Node, dm: Node, provider: RollProvider, battle_limit: int) ->
 			gs.call("finish_run", "victory")
 			final_result = "victory"
 			break
-		_claim_first_reward(gs, battle_index)
+		_claim_reward(gs, policy, battle_index)
 		gs.call("award_battle_xp")
-		_resolve_progression_stop(gs)
+		_resolve_progression_stop(gs, policy)
 		if battle_index >= battle_limit:
 			final_result = "battles_limit"
 			break
-		_advance(gs)
+		_advance(gs, dm, policy)
 	return {"result": final_result, "battles_cleared": battles_cleared, "battles_played": battles_played}
 
 
@@ -158,12 +169,14 @@ func _bench(gs: Node, dm: Node, args: Dictionary) -> int:
 	var battles: int = 0
 	var run_index: int = 0
 	var t0: int = Time.get_ticks_usec()
+	var bench_policy_name: String = str(args.get("policy", "stub"))
 	while battles < target:
 		var run_seed: int = base_seed + run_index
 		gs.call("start_run", squad, op, run_seed)
 		gs.call("advance_to_next_battle")
 		var provider := SeededRollProvider.new(run_seed ^ 0x9E3779B9)
-		var summary: Dictionary = _play_run(gs, dm, provider, int(gs.get("total_battles")))
+		var bench_policy = _make_policy(bench_policy_name, run_seed ^ POLICY_SEED_OFFSET)
+		var summary: Dictionary = _play_run(gs, dm, provider, bench_policy, int(gs.get("total_battles")))
 		battles += int(summary["battles_played"])
 		run_index += 1
 	var elapsed_s: float = float(Time.get_ticks_usec() - t0) / 1_000_000.0
@@ -181,8 +194,9 @@ func _squad_from_args(args: Dictionary) -> Array:
 
 
 # ── One battle, fully headless via CombatManager + BattleEngine ───────────────
-func _play_battle(gs: Node, dm: Node, provider: RollProvider, battle_index: int) -> Dictionary:
+func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_index: int) -> Dictionary:
 	var hero_units: Array = _build_hero_units(gs)
+	# Built BEFORE the effects dict is consumed (minus_one_enemy reads it).
 	var enemy_units: Array = _build_enemy_units(gs, dm)
 
 	var cm := CombatManager.new()
@@ -190,19 +204,44 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, battle_index: int)
 	gs.call("begin_battle_xp_tracking")
 	cm.setup_relics(gs.get("relics"))
 	cm.setup_gear(gs.get("gear_by_unit"))
+	if cm.has_relic("battleStartConsumable"):
+		gs.call("grant_battle_start_consumables", int(cm.get_relic_value("battleStartConsumable", "amount", 1)))
 	cm.apply_battle_start_relic_effects(maxi(battle_index - 1, 0))
 	cm.apply_battle_start_gear_effects()
 
 	var engine := BattleEngine.new(cm, provider, DiceManager.new())
 	var bs := BattleState.new()
 	bs.protocol_points = int(gs.call("take_carried_protocol"))
+	var cap_override: int = int(gs.get("run_protocol_cap_override"))
+
+	# Route Fork modifier (one-shot, consumed into this battle) — same order as
+	# battle_scene._ready.
+	var route_modifier: String = str(gs.get("next_battle_modifier"))
+	gs.set("next_battle_modifier", "")
+	if route_modifier != "":
+		var comp_warded: Array = (gs.call("get_current_battle_comp") as Dictionary).get("warded", [])
+		cm.setup_battle_modifier(route_modifier, comp_warded)
+
+	# Intercept/route battle-start one-shots — the same engine rule the live
+	# screen delegates to (sim-B.2).
+	var battle_effects: Dictionary = (gs.get("next_battle_effects") as Dictionary).duplicate(true)
+	(gs.get("next_battle_effects") as Dictionary).clear()
+	gs.call("promote_followup_effects")
+	var applied: Dictionary = engine.apply_battle_start_external_effects(
+		battle_effects, gs.get("hero_run_mods"), int(gs.get("run_protocol_per_battle"))
+	)
+	var income_debt: int = int(applied["income_debt"])
+	if int(applied["start_protocol"]) > 0:
+		engine.gain_protocol(bs, int(applied["start_protocol"]), engine.max_protocol(cap_override))
+	# Protocol Tap gear (engine rule; mini like the live screen — no overflow).
+	bs.protocol_points = mini(bs.protocol_points + engine.gear_start_protocol(), engine.max_protocol(cap_override))
 
 	var comp_names: Array = []
 	for es in cm.get_enemy_states():
 		comp_names.append(str((es["unit"] as Object).get("display_name")))
 	_tel.emit({
 		"type": "battle_start", "index": battle_index, "comp": comp_names,
-		"modifier": "", "battle_effects": {},
+		"modifier": route_modifier, "battle_effects": battle_effects,
 		"squad_hp": _hp_snapshot(cm.get_hero_states()), "protocol": bs.protocol_points,
 	})
 
@@ -217,29 +256,32 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, battle_index: int)
 		engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
 		engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
 		engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
-		# Stub policy: no protocol spends; hero abilities auto-target the first
-		# living enemy via combat_manager's selected_target_id fallback.
+		# Policy: hero targets + protocol spends before the round resolves.
+		var spends: Array = policy.decide_round(engine, bs, cm, gs)
 		var raw_hero_rolls: Dictionary = bs.hero_rolls.duplicate()
 		var raw_enemy_rolls: Dictionary = bs.enemy_rolls.duplicate()
 		var step: Dictionary = engine.resolve_step(bs)
 		for uid in (step["eff_hero_rolls"] as Dictionary).keys():
 			gs.call("record_hero_effective_roll", str(uid), int((step["eff_hero_rolls"] as Dictionary)[uid]))
 		if int(step["protocol_grant"]) > 0:
-			engine.gain_protocol(bs, int(step["protocol_grant"]), engine.max_protocol(0))
+			engine.gain_protocol(bs, int(step["protocol_grant"]), engine.max_protocol(cap_override))
 		if int(step["protocol_drain"]) > 0:
 			bs.protocol_points = maxi(0, bs.protocol_points - int(step["protocol_drain"]))
 
 		result = str((step["result"] as Dictionary).get("result", "ongoing"))
 		if result != "victory" and result != "defeat":
 			_process_summons(cm, dm, (step["result"] as Dictionary).get("events", []))
-			# End-of-turn income (+1). SIM-TODO: blackout / income-debt exceptions.
-			engine.gain_protocol(bs, 1, engine.max_protocol(0))
+			# End-of-turn income — engine rule (blackout / income debt honored).
+			var income: Dictionary = engine.end_of_round_income(rounds, income_debt)
+			income_debt = int(income["debt_left"])
+			if int(income["gain"]) > 0:
+				engine.gain_protocol(bs, 1, engine.max_protocol(cap_override))
 
 		_tel.emit({
 			"type": "round", "index": battle_index, "round": rounds,
 			"hero_rolls": raw_hero_rolls, "eff_hero_rolls": step["eff_hero_rolls"],
 			"enemy_rolls": raw_enemy_rolls, "eff_enemy_rolls": step["eff_enemy_rolls"],
-			"spends": [],
+			"spends": spends,
 			"events": (step["result"] as Dictionary).get("events", []),
 			"squad_hp": _hp_snapshot(cm.get_hero_states()),
 			"enemy_hp": _hp_snapshot(cm.get_enemy_states()),
@@ -333,8 +375,8 @@ func _process_summons(cm: CombatManager, dm: Node, events: Array) -> void:
 		cm.inject_enemy(base_enemy.duplicate(true) as EnemyData)
 
 
-# ── Between-battle (stub policy: option 0) ────────────────────────────────────
-func _claim_first_reward(gs: Node, battle_index: int) -> void:
+# ── Between-battle (policy-driven, sim-B.2) ───────────────────────────────────
+func _claim_reward(gs: Node, policy, battle_index: int) -> void:
 	gs.call("prepare_battle_rewards")
 	var items: Array = gs.call("get_pending_reward_items")
 	var options: Array = []
@@ -342,33 +384,25 @@ func _claim_first_reward(gs: Node, battle_index: int) -> void:
 		var opt: ItemData = item_variant as ItemData
 		if opt != null:
 			options.append({"id": opt.id, "type": opt.item_type, "rarity": opt.rarity})
-	var picked: String = ""
-	var target_unit: String = ""
-	for item_variant in items:
-		var item: ItemData = item_variant as ItemData
-		if item == null:
-			continue
-		if item.item_type == "consumable" and (gs.get("consumables") as Array).size() >= int(gs.get("MAX_CONSUMABLES")):
-			continue
-		if item.item_type == "gear":
-			target_unit = str((gs.get("selected_units") as Array)[0])
-		gs.call("claim_reward", item.id, target_unit)
-		picked = item.id
-		break
+	var pick: Dictionary = policy.choose_draft(items, gs)
+	var picked: String = str(pick.get("id", ""))
+	var target_unit: String = str(pick.get("target_unit", ""))
+	if picked != "":
+		gs.call("claim_reward", picked, target_unit)
 	_tel.emit({
 		"type": "draft", "index": battle_index, "options": options,
 		"picked": picked, "target_unit": target_unit,
 	})
 
 
-func _resolve_progression_stop(gs: Node) -> void:
+func _resolve_progression_stop(gs: Node, policy) -> void:
 	if bool(gs.call("is_pending_directive_stage")):
 		var choices: Array = gs.call("get_pending_directive_choices")
 		if not choices.is_empty():
 			var directive_names: Array = []
 			for choice_variant in choices:
 				directive_names.append(str((choice_variant as Dictionary).get("name", "")))
-			var picked_directive: String = str(directive_names[0])
+			var picked_directive: String = str(policy.choose_directive(choices, gs))
 			gs.call("apply_pending_directive", picked_directive)
 			_tel.emit({
 				"type": "progression", "unit": str(gs.get("pending_evolution_unit_id")),
@@ -381,7 +415,7 @@ func _resolve_progression_stop(gs: Node) -> void:
 			var path_names: Array = []
 			for path_variant in paths:
 				path_names.append(str((path_variant as Dictionary).get("name", "")))
-			var picked_path: String = str(path_names[0])
+			var picked_path: String = str(policy.choose_evolution(paths, gs))
 			gs.call("apply_pending_evolution", picked_path)
 			_tel.emit({
 				"type": "progression", "unit": unit_id,
@@ -389,14 +423,82 @@ func _resolve_progression_stop(gs: Node) -> void:
 			})
 
 
-func _advance(gs: Node) -> void:
-	# Mirror SceneManager.go_to_next_battle_or_beat's advance, minus the beat
-	# detour screens. SIM-TODO(kev): apply beat effects via the policy layer.
-	var beat: Dictionary = gs.call("get_beat_after_battle", int(gs.get("current_battle")))
-	if not beat.is_empty() and not (gs.get("consumed_beats") as Array).has(int(gs.get("current_battle"))):
-		(gs.get("consumed_beats") as Array).append(int(gs.get("current_battle")))
-		_tel.emit({
-			"type": "beat", "after_battle": int(gs.get("current_battle")),
-			"beat_type": str(beat.get("type", "")), "tier": str(beat.get("tier", "")),
-		})
+# Beats now APPLY their effects through the same GameState calls the fork /
+# intercept screens make (sim-B.2 — SIM-TODO cleared).
+func _advance(gs: Node, dm: Node, policy) -> void:
+	var after_battle: int = int(gs.get("current_battle"))
+	var beat: Dictionary = gs.call("get_beat_after_battle", after_battle)
+	if not beat.is_empty() and not (gs.get("consumed_beats") as Array).has(after_battle):
+		(gs.get("consumed_beats") as Array).append(after_battle)
+		match str(beat.get("type", "")):
+			"fork":
+				_resolve_fork_beat(gs, policy, beat, after_battle)
+			"intercept":
+				_resolve_intercept_beat(gs, dm, policy, beat, after_battle)
+			_:
+				_tel.emit({
+					"type": "beat", "after_battle": after_battle,
+					"beat_type": str(beat.get("type", "")), "tier": str(beat.get("tier", "")),
+				})
 	gs.call("advance_to_next_battle")
+
+
+func _resolve_fork_beat(gs: Node, policy, beat: Dictionary, after_battle: int) -> void:
+	var modifier_id: String = str(gs.call("roll_route_modifier"))
+	var took_flagged: bool = modifier_id != "" and bool(policy.choose_fork(modifier_id, gs))
+	if took_flagged:
+		gs.call("accept_flagged_route", modifier_id)
+	_tel.emit({
+		"type": "beat", "after_battle": after_battle, "beat_type": "fork",
+		"tier": str(beat.get("tier", "")), "modifier": modifier_id,
+		"took_flagged": took_flagged,
+	})
+
+
+# Mirrors intercept_screen's stages: draw → choice → picks → in-card draft →
+# apply_intercept_effects. Same GameState API, no screen.
+func _resolve_intercept_beat(gs: Node, dm: Node, policy, beat: Dictionary, after_battle: int) -> void:
+	var tier: String = str(beat.get("tier", "minor"))
+	var card_id: String = str(gs.call("draw_intercept_card", tier))
+	if card_id == "":
+		_tel.emit({
+			"type": "beat", "after_battle": after_battle, "beat_type": "intercept",
+			"tier": tier, "card": "", "choice": -1, "hero": "", "drafted": "",
+		})
+		return
+	var card: Dictionary = (gs.get("INTERCEPT_CARDS") as Dictionary).get(card_id, {})
+	var decision: Dictionary = policy.choose_intercept(card_id, card, gs)
+	var choice_index: int = clampi(int(decision.get("choice", 0)), 0, maxi((card.get("choices", []) as Array).size() - 1, 0))
+	var choice: Dictionary = (card.get("choices", []) as Array)[choice_index] if not (card.get("choices", []) as Array).is_empty() else {}
+	var hero_id: String = str(decision.get("hero_id", ""))
+	var gear_context: Dictionary = decision.get("gear", {})
+
+	# In-card draft stage (Black Market Node / Deep Cache): roll, policy picks,
+	# commit exactly as intercept_screen._on_draft_picked does.
+	var drafted_id: String = ""
+	var draft: Dictionary = choice.get("draft", {})
+	if not draft.is_empty():
+		var draft_options: Array = gs.call(
+			"roll_intercept_draft", str(draft.get("kind", "consumable")),
+			str(draft.get("min_rarity", "common")), int(draft.get("count", 3))
+		)
+		drafted_id = str(policy.choose_intercept_draft(draft_options, gs))
+		if drafted_id != "":
+			var drafted_item: ItemData = dm.call("get_item", drafted_id) as ItemData
+			if drafted_item != null and drafted_item.item_type == "gear":
+				var target_id: String = hero_id
+				if target_id == "" and not (gs.get("selected_units") as Array).is_empty():
+					target_id = str((gs.get("selected_units") as Array)[0])
+				var unit_gear: Array = (gs.get("gear_by_unit") as Dictionary).get(target_id, []).duplicate()
+				unit_gear.append(drafted_id)
+				(gs.get("gear_by_unit") as Dictionary)[target_id] = unit_gear
+				(gs.get("equipped_gear") as Dictionary)[target_id] = unit_gear.duplicate()
+			elif drafted_item != null and (gs.get("consumables") as Array).size() < int(gs.get("MAX_CONSUMABLES")):
+				(gs.get("consumables") as Array).append(drafted_id)
+
+	gs.call("apply_intercept_effects", choice.get("effects", []), hero_id, gear_context)
+	_tel.emit({
+		"type": "beat", "after_battle": after_battle, "beat_type": "intercept",
+		"tier": tier, "card": card_id, "choice": choice_index,
+		"hero": hero_id, "drafted": drafted_id,
+	})
