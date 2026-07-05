@@ -65,6 +65,9 @@ func _run(args: Dictionary) -> int:
 	var gs: Node = get_node("/root/GameState")
 	var dm: Node = get_node("/root/DataManager")
 
+	if args.has("bench"):
+		return _bench(gs, dm, args)
+
 	_seed = int(args.get("seed", "0"))
 	# A.3 always runs the stub policy regardless of this value; L0/L1/L2 land in
 	# Packages B/D. The string is recorded in the header for later runs.
@@ -97,17 +100,32 @@ func _run(args: Dictionary) -> int:
 		"sim_version": SIM_VERSION, "roll_source": provider.describe(),
 	})
 
-	var total_battles: int = int(gs.get("total_battles"))
-	var battle_limit: int = int(args.get("battles-only", str(total_battles)))
-	var battles_cleared: int = 0
-	var final_result: String = "incomplete"
+	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
+	var summary: Dictionary = _play_run(gs, dm, provider, battle_limit)
 
+	_emit({
+		"type": "run_end", "result": summary["result"],
+		"battles_cleared": summary["battles_cleared"],
+	})
+	print("[SIM] %s: %s, battles_cleared=%d → %s" % [_run_id, summary["result"], summary["battles_cleared"], out_path])
+	return 0
+
+
+# Plays one full run from the CURRENT GameState (already started + advanced to
+# battle 1). Returns { result, battles_cleared, battles_played }. Shared by the
+# normal run and the benchmark; battle_end/battle_start lines emit only when an
+# output file is open (bench opens none, so it does no I/O or JSON work).
+func _play_run(gs: Node, dm: Node, provider: RollProvider, battle_limit: int) -> Dictionary:
+	var total_battles: int = int(gs.get("total_battles"))
+	var battles_cleared: int = 0
+	var battles_played: int = 0
+	var final_result: String = "incomplete"
 	while int(gs.get("current_battle")) <= total_battles:
 		var battle_index: int = int(gs.get("current_battle"))
 		var outcome: Dictionary = _play_battle(gs, dm, provider, battle_index)
+		battles_played += 1
 		if outcome["result"] == "victory":
 			battles_cleared += 1
-
 		if outcome["result"] == "defeat":
 			gs.call("finish_run", "defeat")
 			final_result = "defeat"
@@ -116,7 +134,6 @@ func _run(args: Dictionary) -> int:
 			gs.call("finish_run", "victory")
 			final_result = "victory"
 			break
-		# Between-battle: rewards + one progression stop, then advance.
 		_claim_first_reward(gs)
 		gs.call("award_battle_xp")
 		_resolve_progression_stop(gs)
@@ -124,13 +141,42 @@ func _run(args: Dictionary) -> int:
 			final_result = "battles_limit"
 			break
 		_advance(gs)
+	return {"result": final_result, "battles_cleared": battles_cleared, "battles_played": battles_played}
 
-	_emit({
-		"type": "run_end", "result": final_result,
-		"battles_cleared": battles_cleared,
-	})
-	print("[SIM] %s: %s, battles_cleared=%d → %s" % [_run_id, final_result, battles_cleared, out_path])
+
+# --bench N: play back-to-back full runs until N battles resolve, report
+# battles/minute (single worker). No JSONL is written, so this measures pure
+# resolution throughput. Uses Time only for the wall clock — never for output.
+func _bench(gs: Node, dm: Node, args: Dictionary) -> int:
+	var target: int = int(args.get("bench", "200"))
+	var op: String = str(args.get("op", ""))
+	if op == "":
+		op = str(dm.call("get_operation_order")[0])
+	var squad: Array = _squad_from_args(args)
+	var base_seed: int = int(args.get("seed", "1"))
+	var battles: int = 0
+	var run_index: int = 0
+	var t0: int = Time.get_ticks_usec()
+	while battles < target:
+		var run_seed: int = base_seed + run_index
+		gs.call("start_run", squad, op, run_seed)
+		gs.call("advance_to_next_battle")
+		var provider := SeededRollProvider.new(run_seed ^ 0x9E3779B9)
+		var summary: Dictionary = _play_run(gs, dm, provider, int(gs.get("total_battles")))
+		battles += int(summary["battles_played"])
+		run_index += 1
+	var elapsed_s: float = float(Time.get_ticks_usec() - t0) / 1_000_000.0
+	var per_min: float = (float(battles) / elapsed_s) * 60.0 if elapsed_s > 0.0 else 0.0
+	print("[SIM] bench: %d battles across %d runs in %.3fs = %.0f battles/min" % [battles, run_index, elapsed_s, per_min])
 	return 0
+
+
+func _squad_from_args(args: Dictionary) -> Array:
+	var squad: Array = []
+	for s in str(args.get("squad", "pulse,combat,shield")).split(","):
+		if str(s).strip_edges() != "":
+			squad.append(str(s).strip_edges())
+	return squad
 
 
 # ── One battle, fully headless via CombatManager + BattleEngine ───────────────
@@ -299,9 +345,10 @@ func _open_out(path: String) -> bool:
 
 
 func _emit(obj: Dictionary) -> void:
+	if _out == null:
+		return
 	obj["run_id"] = _run_id
 	obj["seed"] = _seed
 	obj["t"] = _t
 	_t += 1
-	if _out != null:
-		_out.store_line(JSON.stringify(obj))
+	_out.store_line(JSON.stringify(obj))
