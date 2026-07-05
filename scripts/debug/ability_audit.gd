@@ -469,6 +469,7 @@ func _run_regression_audits() -> void:
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
 	_run_summon_end_to_end_regression()
+	_run_enemy_roll_buff_expiry_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -2374,6 +2375,45 @@ func _run_summon_end_to_end_regression() -> void:
 		_record_pass("Regression / brood spawn name resolves", "summon")
 	else:
 		_record_failure("Regression / brood spawn name resolves", "summon", "dumb unit def for '%s'" % CombatManager.BROOD_SPAWN_NAME, "null or non-dumb")
+
+
+# fix-1.2: enemy roll buffs must expire on schedule and must not stack across
+# re-casts. A 2t erb cast in round 1 is live through round 3's reveal and gone
+# after round 3's end tick; a second cast refreshes to the authored value
+# instead of accumulating.
+func _run_enemy_roll_buff_expiry_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var buffer_unit: EnemyData = _make_enemy("audit_buffer", "Audit Buffer", "Rally", {"erb": 2, "erbT": 2})
+	manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [buffer_unit])
+	var buffer_state: Dictionary = manager.get_enemy_states()[0]
+	var buffer_id: String = str(buffer_state["id"])
+
+	# Round 1: enemy casts the 2t buff (end-of-round tick is skip-flagged).
+	manager.resolve_round({}, {buffer_id: 10}, DiceManager.new())
+	var active_after_cast: bool = int(buffer_state.get("roll_buff", 0)) == 2
+	# Rounds 2-3: no re-cast; the buff ticks down and expires.
+	manager.resolve_round({}, {}, DiceManager.new())
+	var active_mid: bool = int(buffer_state.get("roll_buff", 0)) == 2
+	manager.resolve_round({}, {}, DiceManager.new())
+	var gone_after: bool = int(buffer_state.get("roll_buff", 0)) == 0 and int(buffer_state.get("roll_buff_turns", 0)) == 0
+	_expect_and_record(
+		"Regression / enemy 2t roll buff expires after 2 rounds", "rollBuffExpiry",
+		"cast/mid/expired = true/true/true",
+		"cast/mid/expired = %s/%s/%s" % [str(active_after_cast), str(active_mid), str(gone_after)]
+	)
+
+	# Re-cast cap: two casts in consecutive rounds refresh to the authored +2,
+	# never +4 (the pre-fix runaway that read as a permanent buff).
+	var stack_manager: CombatManager = CombatManager.new()
+	stack_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [buffer_unit])
+	var stack_state: Dictionary = stack_manager.get_enemy_states()[0]
+	var stack_id: String = str(stack_state["id"])
+	stack_manager.resolve_round({}, {stack_id: 10}, DiceManager.new())
+	stack_manager.resolve_round({}, {stack_id: 10}, DiceManager.new())
+	_expect_and_record(
+		"Regression / enemy roll buff re-cast refreshes instead of stacking", "rollBuffExpiry",
+		"2", str(int(stack_state.get("roll_buff", 0)))
+	)
 
 
 func _run_gear_lifesteal_regression() -> void:

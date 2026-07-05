@@ -719,7 +719,17 @@ func _add_rfe_stack(state: Dictionary, amount: int, turns: int) -> void:
 func _add_roll_buff(state: Dictionary, amount: int, turns: int) -> void:
 	if state.is_empty() or bool(state.get("dead", false)) or amount <= 0:
 		return
-	state["roll_buff"] = int(state.get("roll_buff", 0)) + amount
+	if _is_hero_state(state):
+		state["roll_buff"] = int(state.get("roll_buff", 0)) + amount
+	else:
+		# Enemy erb re-casts refresh instead of stacking: Synod kits carry erb on
+		# ~45% of bands, so additive stacking ran away (+2 -> +4 -> +6 ...) and the
+		# refreshed timer made the buff read as permanent. The authored per-cast
+		# value is the visible cap; duration still refreshes on re-cast.
+		# DESIGN-TODO(kev): is enemy erb meant as an aura (active while the caster
+		# keeps rolling it) or a strict N-turn buff that should ignore re-casts?
+		# Current behavior: refresh-to-max, expires N turns after the last cast.
+		state["roll_buff"] = maxi(int(state.get("roll_buff", 0)), amount)
 	state["roll_buff_turns"] = maxi(int(state.get("roll_buff_turns", 0)), turns)
 	state["roll_buff_skip_next_tick"] = true
 	_log("%s gains +%d roll buff (%dt)." % [state["unit"].display_name, amount, turns])
