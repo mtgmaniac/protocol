@@ -2880,18 +2880,10 @@ func _duplicate_enemy(base_enemy: EnemyData) -> EnemyData:
 # --- Item System (Phase 3) ---
 
 func _get_item_protocol_cost(_item: ItemData) -> int:
-	# Flat cost 1 for all rarities (replaces the old common0/unc1/rare2/leg3 scale).
-	# Protocol Override (protocolOnItemUse) makes items free; it also grants +1 on
-	# use — see _apply_item_effect for the grant.
-	if combat_manager.has_relic("protocolOnItemUse"):
-		return 0
-	# Supply Drone intercept: items cost 0 this battle.
-	if bool(_battle_effects.get("items_free", false)):
-		return 0
-	# Sealed Supplies route modifier: items cost +1 this battle.
-	if combat_manager.has_battle_modifier("sealedSupplies"):
-		return 2
-	return 1
+	# Flat cost 1 for all rarities. Rule delegated to BattleEngine (A.1);
+	# Protocol Override / Supply Drone make it 0, Sealed Supplies makes it 2.
+	# Protocol Override also grants +1 on use — see _apply_item_effect.
+	return _engine.item_protocol_cost(bool(_battle_effects.get("items_free", false)))
 
 
 func _build_item_panel() -> void:
@@ -3198,12 +3190,10 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			combat_manager.apply_item_revive(target_state, pct)
 			_append_log("Item: %s revives %s at %d%% HP." % [item.display_name, tname, pct])
 		"cloak":
-			target_state["cloaked"] = true
+			_engine.item_cloak(target_state)
 			_append_log("Item: %s cloaks %s." % [item.display_name, tname])
 		"cloakAll":
-			for hero_state in combat_manager.get_hero_states():
-				if not bool(hero_state.get("dead", true)):
-					hero_state["cloaked"] = true
+			_engine.item_cloak_all()
 			_append_log("Item: %s — all living allies cloaked." % item.display_name)
 		"enemyRfe":
 			var amount: int = int(effect.get("amount", 0))
@@ -3225,38 +3215,19 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 			_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
 		"enemyRerollDie":
 			if not target_state.is_empty():
-				var uid: String = str(target_state["id"])
-				var new_roll: int = dice_manager.roll_d20()
-				enemy_rolls[uid] = new_roll
+				var new_roll: int = _engine.item_enemy_reroll(_state, target_state)
 				_append_log("Item: %s rerolls %s → %d." % [item.display_name, tname, new_roll])
 		"enemyRerollAll":
-			for enemy_state in combat_manager.get_enemy_states():
-				if not bool(enemy_state.get("dead", true)):
-					var uid: String = str(enemy_state["id"])
-					var new_roll: int = dice_manager.roll_d20()
-					enemy_rolls[uid] = new_roll
+			_engine.item_enemy_reroll_all(_state)
 			_append_log("Item: %s — all enemies rerolled." % item.display_name)
 		"enemyDieFreeze":
 			if not target_state.is_empty():
 				var skips: int = int(effect.get("skips", 1))
-				target_state["die_freeze_turns"] = int(target_state.get("die_freeze_turns", 0)) + skips
-				var frozen_value: int = _get_roll_value_for_state(enemy_rolls, target_state)
-				if frozen_value <= 0:
-					frozen_value = int(target_state.get("last_die_value", target_state.get("frozen_die_value", 0)))
-				if frozen_value > 0:
-					target_state["frozen_die_value"] = frozen_value
+				_engine.item_enemy_freeze(_state, target_state, skips)
 				_append_log("Item: %s freezes %s's die for %d turns." % [item.display_name, tname, skips])
 		"enemyDieFreezeAll":
 			var freeze_skips: int = int(effect.get("skips", 1))
-			for enemy_state in combat_manager.get_enemy_states():
-				if bool(enemy_state.get("dead", true)):
-					continue
-				enemy_state["die_freeze_turns"] = int(enemy_state.get("die_freeze_turns", 0)) + freeze_skips
-				var fv: int = _get_roll_value_for_state(enemy_rolls, enemy_state)
-				if fv <= 0:
-					fv = int(enemy_state.get("last_die_value", enemy_state.get("frozen_die_value", 0)))
-				if fv > 0:
-					enemy_state["frozen_die_value"] = fv
+			_engine.item_enemy_freeze_all(_state, freeze_skips)
 			_append_log("Item: %s — all enemy dice frozen for %d reveal(s)." % [item.display_name, freeze_skips])
 
 	_consume_item(item.id)

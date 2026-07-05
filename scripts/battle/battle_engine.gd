@@ -147,6 +147,76 @@ func twin_fates_copy(bs: BattleState, source_id: String, target_id: String) -> b
 	return true
 
 
+# ── Item effects not on combat_manager (extracted from battle_scene) ──────────
+# The item-effect dispatch + logging stay in battle_scene; these own the effect
+# mutations that used to be inline there. Most item types already delegate to
+# combat_manager.apply_item_* (heal/shield/ward/rollBuff/revive/rfe/dmg/burn) —
+# those need nothing here. These are the ones combat_manager can't own: enemy
+# reroll needs the RollProvider; enemy freeze needs the roll dicts in
+# BattleState; cloak is a hero-state flag.
+
+# Flat cost 1; Protocol Override / Supply Drone make items free; Sealed Supplies
+# adds +1. items_free = battle_scene's _battle_effects "items_free" (Supply Drone).
+func item_protocol_cost(items_free: bool) -> int:
+	if combat_manager.has_relic("protocolOnItemUse"):
+		return 0
+	if items_free:
+		return 0
+	if combat_manager.has_battle_modifier("sealedSupplies"):
+		return 2
+	return 1
+
+
+func item_cloak(target_state: Dictionary) -> void:
+	target_state["cloaked"] = true
+
+
+func item_cloak_all() -> void:
+	for hero_state in combat_manager.get_hero_states():
+		if not bool(hero_state.get("dead", true)):
+			hero_state["cloaked"] = true
+
+
+# Rerolls an enemy die via the provider; returns the new roll.
+func item_enemy_reroll(bs: BattleState, target_state: Dictionary) -> int:
+	if target_state.is_empty():
+		return 0
+	var new_roll: int = roll_provider.roll_d20()
+	bs.enemy_rolls[str(target_state["id"])] = new_roll
+	return new_roll
+
+
+func item_enemy_reroll_all(bs: BattleState) -> void:
+	for enemy_state in combat_manager.get_enemy_states():
+		if not bool(enemy_state.get("dead", true)):
+			bs.enemy_rolls[str(enemy_state["id"])] = roll_provider.roll_d20()
+
+
+# Freezes an enemy die: adds reveal-skip turns and captures the current roll as
+# the locked value (falling back to last_die_value / an existing frozen value).
+func item_enemy_freeze(bs: BattleState, target_state: Dictionary, skips: int) -> void:
+	if target_state.is_empty():
+		return
+	target_state["die_freeze_turns"] = int(target_state.get("die_freeze_turns", 0)) + skips
+	var frozen_value: int = roll_value_for_state(bs.enemy_rolls, target_state)
+	if frozen_value <= 0:
+		frozen_value = int(target_state.get("last_die_value", target_state.get("frozen_die_value", 0)))
+	if frozen_value > 0:
+		target_state["frozen_die_value"] = frozen_value
+
+
+func item_enemy_freeze_all(bs: BattleState, skips: int) -> void:
+	for enemy_state in combat_manager.get_enemy_states():
+		if bool(enemy_state.get("dead", true)):
+			continue
+		enemy_state["die_freeze_turns"] = int(enemy_state.get("die_freeze_turns", 0)) + skips
+		var fv: int = roll_value_for_state(bs.enemy_rolls, enemy_state)
+		if fv <= 0:
+			fv = int(enemy_state.get("last_die_value", enemy_state.get("frozen_die_value", 0)))
+		if fv > 0:
+			enemy_state["frozen_die_value"] = fv
+
+
 # ── Effective-roll pipeline (extracted from battle_scene) ─────────────────────
 # The value fed to combat_manager.resolve_round() after Set / freeze / Nudge /
 # roll-buffs. Set forces an absolute effective roll (overrides everything);
