@@ -249,7 +249,7 @@ const BATTLE_MODIFIERS := {
 	"hardened": {"name": "HARDENED", "desc": "Enemies spawn with 8 shield.", "amount": 8},
 	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are Jammed (cap 12) on turn 1.", "cap": 12},
 	"overrun": {"name": "OVERRUN", "desc": "One extra fodder unit joins the comp.", "requires": "small_comp"},
-	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy slot upgrades to the elite pool."},
+	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy slot upgrades to the elite pool.", "requires": "non_elite_slot"},
 	"ferocity": {"name": "FEROCITY", "desc": "Enemy hits deal +2.", "amount": 2},
 	"deadMansCharge": {"name": "DEAD MAN'S CHARGE", "desc": "Enemies deal 4 to a random hero on death.", "amount": 4},
 	"blackout": {"name": "BLACKOUT", "desc": "Protocol income starts on turn 3.", "fromTurn": 3},
@@ -259,9 +259,19 @@ const BATTLE_MODIFIERS := {
 }
 
 
+# fix-1.5: the flagged-route comp is shaped ONCE at roll time and stashed
+# here; the fork screen previews it and acceptance commits it verbatim, so
+# the preview can never drift from the fight.
+var pending_flagged_comp: Dictionary = {}
+var pending_flagged_modifier_id: String = ""
+
+
 # Rolls a modifier for the upcoming fork: no repeats per run; preconditioned
-# entries are redrawn when their check fails.
+# entries are redrawn when their check fails. Invariant (fix-1.5): a modifier
+# is only offered if it produces an observable delta on the offered comp.
 func roll_route_modifier() -> String:
+	pending_flagged_comp = {}
+	pending_flagged_modifier_id = ""
 	var comp: Dictionary = {}
 	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
 		comp = resolved_battle_comps[current_battle]  # index of the NEXT battle
@@ -272,17 +282,33 @@ func roll_route_modifier() -> String:
 			candidates.append(modifier_id)
 	while not candidates.is_empty():
 		var pick: String = str(candidates[_reward_rng.randi_range(0, candidates.size() - 1)])
-		match str((BATTLE_MODIFIERS[pick] as Dictionary).get("requires", "")):
-			"small_comp":
-				if comp_names.size() <= 2:
-					return pick
-			"has_support":
-				if not _support_names_in_comp(comp_names).is_empty():
-					return pick
-			_:
-				return pick
+		if _modifier_precondition_ok(pick, comp_names):
+			pending_flagged_comp = _shape_comp_for_modifier(pick, comp)
+			pending_flagged_modifier_id = pick
+			return pick
 		candidates.erase(pick)
 	return ""
+
+
+func _modifier_precondition_ok(modifier_id: String, comp_names: Array) -> bool:
+	match str((BATTLE_MODIFIERS[modifier_id] as Dictionary).get("requires", "")):
+		"small_comp":
+			# Overrun: room for an extra unit and a fodder pool to draw from.
+			return comp_names.size() <= 2 and not DataManager.get_role_pool(selected_operation_id, "fodder").is_empty()
+		"has_support":
+			return not _support_names_in_comp(comp_names).is_empty()
+		"non_elite_slot":
+			# Elite Presence: at least one non-elite slot to upgrade, and an
+			# elite pool to upgrade it from.
+			var elite_pool: Array = DataManager.get_role_pool(selected_operation_id, "elite")
+			if elite_pool.is_empty():
+				return false
+			for comp_name in comp_names:
+				if not elite_pool.has(str(comp_name)):
+					return true
+			return false
+		_:
+			return true
 
 
 func _support_names_in_comp(comp_names: Array) -> Array:
@@ -291,23 +317,30 @@ func _support_names_in_comp(comp_names: Array) -> Array:
 	return comp_names.filter(func(n): return support_pool.has(str(n)))
 
 
-# Player takes the flagged route: arm the modifier + supply grade and apply
-# any comp-shaping modifiers to the next battle's resolved comp.
+# Player takes the flagged route: arm the modifier + supply grade and commit
+# the comp shaped at roll time (fallback: shape now, for callers that never
+# rolled — tests and legacy paths).
 func accept_flagged_route(modifier_id: String) -> void:
 	if modifier_id == "" or not BATTLE_MODIFIERS.has(modifier_id):
 		return
 	used_battle_modifiers.append(modifier_id)
 	next_battle_modifier = modifier_id
 	next_battle_supply_grade = 2
-	_apply_comp_shaping_modifier(modifier_id)
+	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
+		if pending_flagged_modifier_id == modifier_id and not pending_flagged_comp.is_empty():
+			resolved_battle_comps[current_battle] = pending_flagged_comp
+		else:
+			resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle])
+	pending_flagged_comp = {}
+	pending_flagged_modifier_id = ""
 
 
-# Comp-shaping half of a modifier, applied to the NEXT battle's resolved comp.
-func _apply_comp_shaping_modifier(modifier_id: String) -> void:
-	if current_battle < 0 or current_battle >= resolved_battle_comps.size():
-		return
-	var comp: Dictionary = resolved_battle_comps[current_battle]
-	var names: Array = comp.get("names", [])
+# Pure comp shaper: returns a shaped duplicate, never mutates the input. The
+# roll stage uses it to build the flagged-route preview; acceptance commits
+# that same comp.
+func _shape_comp_for_modifier(modifier_id: String, comp: Dictionary) -> Dictionary:
+	var shaped: Dictionary = comp.duplicate(true)
+	var names: Array = shaped.get("names", [])
 	match modifier_id:
 		"overrun":
 			var extra_fodder: String = _pick_from_role_pool(selected_operation_id, "fodder", [])
@@ -317,11 +350,14 @@ func _apply_comp_shaping_modifier(modifier_id: String) -> void:
 			var elite_pool: Array = DataManager.get_role_pool(selected_operation_id, "elite")
 			for i in names.size():
 				if not elite_pool.has(str(names[i])):
-					names[i] = _pick_from_role_pool(selected_operation_id, "elite", [])
+					var elite_pick: String = _pick_from_role_pool(selected_operation_id, "elite", [])
+					if elite_pick != "":
+						names[i] = elite_pick
 					break
 		"warded":
-			comp["warded"] = _support_names_in_comp(names)
-	comp["names"] = names
+			shaped["warded"] = _support_names_in_comp(names)
+	shaped["names"] = names
+	return shaped
 
 
 # Prisoner Exchange: the effect armed for the battle AFTER next promotes when
@@ -332,7 +368,8 @@ func promote_followup_effects() -> void:
 	if modifier_id == "":
 		return
 	next_battle_modifier = modifier_id
-	_apply_comp_shaping_modifier(modifier_id)
+	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
+		resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle])
 
 
 # The exact comp for the current battle (1-based current_battle).

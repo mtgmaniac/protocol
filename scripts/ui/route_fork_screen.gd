@@ -61,9 +61,12 @@ func _ready() -> void:
 	if next_index >= 0 and next_index < GameState.resolved_battle_comps.size():
 		comp_names = (GameState.resolved_battle_comps[next_index] as Dictionary).get("names", [])
 
+	# Standard card previews the comp as rolled; the flagged card previews the
+	# comp shaped at roll time (fix-1.5) so what you see is what you fight.
 	column.add_child(_build_route_card(false, comp_names))
 	if _modifier_id != "":
-		column.add_child(_build_route_card(true, comp_names))
+		var flagged_names: Array = (GameState.pending_flagged_comp as Dictionary).get("names", comp_names)
+		column.add_child(_build_route_card(true, flagged_names))
 
 
 func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:

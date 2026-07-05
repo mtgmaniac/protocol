@@ -2040,6 +2040,54 @@ func _run_route_modifier_regressions() -> void:
 	var warded_list: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("warded", [])
 	var warded_ok: bool = warded_list == ["Guard Elite"]
 	_expect_and_record("Regression / flagged route acceptance", "routeModifiers", "true", str(overrun_ok and armed_ok and warded_ok))
+
+	# fix-1.5: no-op offers are forbidden — every preconditioned modifier is
+	# checked against an edge comp where it would produce no observable delta
+	# (must redraw to nothing) and a comp where it does (must be offered).
+	var elite_pool: Array = DataManager.get_role_pool("facility", "elite")
+	var support_pool: Array = (DataManager.enemy_role_pools.get("facility", {}) as Dictionary).get("support", [])
+	var no_noop_ok: bool = true
+	if elite_pool.is_empty() or support_pool.is_empty():
+		no_noop_ok = false
+	else:
+		var edge_cases: Array = [
+			["elitePresence", [str(elite_pool[0]), str(elite_pool[0]), str(elite_pool[0])], [str(elite_pool[0]), "Scrap Drone"]],
+			["overrun", ["Scrap Drone", "Scrap Drone", "Scrap Drone"], ["Scrap Drone", "Scrap Drone"]],
+			["warded", ["Scrap Drone", "Rust Drone"], [str(support_pool[0]), "Scrap Drone"]],
+		]
+		for case_variant in edge_cases:
+			var edge_case: Array = case_variant
+			GameState.used_battle_modifiers.clear()
+			for modifier_id in GameState.BATTLE_MODIFIERS.keys():
+				if str(modifier_id) != str(edge_case[0]):
+					GameState.used_battle_modifiers.append(str(modifier_id))
+			GameState.resolved_battle_comps[2] = {"names": (edge_case[1] as Array).duplicate(), "cloaked": []}
+			if GameState.roll_route_modifier() != "":
+				no_noop_ok = false
+			GameState.resolved_battle_comps[2] = {"names": (edge_case[2] as Array).duplicate(), "cloaked": []}
+			if GameState.roll_route_modifier() != str(edge_case[0]):
+				no_noop_ok = false
+	_expect_and_record("Regression / no no-op modifier offers", "routeModifiers", "true", str(no_noop_ok))
+
+	# fix-1.5: preview == fight. Rolling a comp-shaping modifier stashes the
+	# shaped comp without touching the resolved (standard) comp; acceptance
+	# commits the exact stashed names.
+	GameState.used_battle_modifiers.clear()
+	for modifier_id in GameState.BATTLE_MODIFIERS.keys():
+		if str(modifier_id) != "elitePresence":
+			GameState.used_battle_modifiers.append(str(modifier_id))
+	GameState.resolved_battle_comps[2] = {"names": ["Scrap Drone", "Rust Drone"], "cloaked": []}
+	var preview_roll: String = GameState.roll_route_modifier()
+	var standard_names: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("names", [])
+	var preview_names: Array = (GameState.pending_flagged_comp as Dictionary).get("names", [])
+	var standard_untouched: bool = standard_names == ["Scrap Drone", "Rust Drone"]
+	var preview_differs: bool = preview_names != standard_names and preview_names.size() == 2
+	GameState.accept_flagged_route(preview_roll)
+	var committed_names: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("names", [])
+	_expect_and_record(
+		"Regression / flagged preview matches committed comp", "routeModifiers",
+		"true", str(preview_roll == "elitePresence" and standard_untouched and preview_differs and committed_names == preview_names)
+	)
 	GameState.reset_run()
 
 	# Combat-side modifiers.
