@@ -30,6 +30,7 @@ extends Node
 const SimTelemetryScript = preload("res://scripts/sim/telemetry.gd")
 const PlayerPolicyScript = preload("res://scripts/sim/policies/player_policy.gd")
 const PolicyL0Script = preload("res://scripts/sim/policies/policy_l0_random.gd")
+const PolicyL1Script = preload("res://scripts/sim/policies/policy_l1_greedy.gd")
 
 const SIM_VERSION := "0.3.0"
 const ROUND_SAFETY_CAP := 500
@@ -44,6 +45,8 @@ func _make_policy(policy_name: String, policy_seed: int):
 	match policy_name.to_lower():
 		"l0", "random":
 			return PolicyL0Script.new(policy_seed)
+		"l1", "greedy":
+			return PolicyL1Script.new(policy_seed)
 		_:
 			return PlayerPolicyScript.new(policy_seed)
 

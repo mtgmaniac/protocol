@@ -210,11 +210,34 @@ methods that mutate a passed dict mutate the caller's dict directly.
 - ⚠️ The human "play one manual battle, confirm nothing feels different" check is
   the one Package-A item that can't be automated — pending Kev.
 
-**Next: Package B** — telemetry schema (`telemetry_schema.md`), PlayerPolicy
-interface + L0 (random) / L1 (greedy), replay printer (`replay.py`). The stub
-policy + minimal JSONL in `sim_runner.gd` get replaced/extended there; the
-SIM-TODOs (real drafts, beat effects, blackout/income-debt, full battle-start
-setup) are addressed as the policy + schema land.
+**Package B COMPLETE** (built B.1 → B.4 → B.2 → B.3 — L0 random play is the
+cheapest full exercise of the telemetry pipeline, and the replay printer had
+to exist before anyone debugged L1):
+- ✅ **B.1** telemetry schema (`telemetry_schema.md`, schema_version 1) +
+  `SimTelemetry` emitter; `sim_runner` emits run_header / battle_start / round
+  (raw+eff rolls both sides, spends, verbatim event stream, HP + protocol) /
+  battle_end / draft / beat / progression / run_end.
+- ✅ **B.4** replay printer (`replay.py`, stdlib-only): renders a run as
+  readable narration; `--battle N` / `--summary`.
+- ✅ **B.2** PlayerPolicy seam (`policies/player_policy.gd` = the old stub) +
+  `PolicyL0Random`. Third seeded RNG stream (`seed ^ 0x51F15EED`). **All four
+  A.3 SIM-TODOs cleared:** real drafts (policy → claim_reward), beat effects
+  (fork roll+accept / intercept draw→choice→picks→in-card draft→apply), and
+  blackout/income-debt + full battle-start setup extracted into BattleEngine
+  (`end_of_round_income`, `apply_battle_start_external_effects`,
+  `gear_start_protocol`) — battle_scene delegates, one rule set.
+- ✅ **B.3** `PolicyL1Greedy` — focus fire + band-aware protocol spends
+  (reroll ≤4, nudge only when +3 crosses a band, Set-20 when flush), rarity
+  drafts, always-flag forks, scored intercept choices. Sanity baseline holds:
+  L1 beat L0 58 vs 39 battles cleared over 6 facility seeds.
+- Determinism gate (`tests/sim_determinism.sh`) now runs stub/l0/l1 — all
+  byte-identical.
+
+Remaining SIM-TODO: consumable USE during battle (item dispatch port) — the
+spend hook covers nudge/reroll/set only; that port is **Package C** scope.
+
+**Next: Package C / D / E** per the original sim prompt (unchanged), with the
+determinism gate after every package.
 
 `# SIM-TODO(kev)` markers flag any ambiguity taken at the smallest defensible interpretation; grep the sim tree for them.
 

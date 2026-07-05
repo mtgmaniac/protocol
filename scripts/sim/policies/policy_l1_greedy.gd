@@ -1,0 +1,201 @@
+# L1 — greedy-heuristic policy (Package B.3). A deterministic proxy for a
+# competent-but-uncalculating player: focus fire, spend protocol when it
+# visibly upgrades a die, draft by rarity. Every heuristic is documented at
+# its site; none of them read balance numbers beyond what the player sees on
+# screen. L1 is the sanity baseline: it must beat L0 on clear rate, and
+# balance conclusions in Package E are drawn from L1 runs.
+#
+# The seeded rng is kept (interface contract) but L1 is deterministic — it
+# never draws from it.
+class_name PolicyL1Greedy
+# Path-extends so a fresh checkout's headless run parses before the editor
+# rebuilds the global class cache.
+extends "res://scripts/sim/policies/player_policy.gd"
+
+const RARITY_RANK := {"legendary": 4, "epic": 3, "rare": 3, "uncommon": 2, "common": 1, "": 2}
+
+
+func describe() -> String:
+	return "l1"
+
+
+# ── Round: focus fire + band-aware spends ─────────────────────────────────────
+func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs: Node) -> Array:
+	var spends: Array = []
+	# Focus fire: every hero aims at the lowest-HP living, uncloaked enemy —
+	# finishing kills removes enemy actions from the board fastest.
+	var focus: Dictionary = _lowest_hp_enemy(cm)
+	if not focus.is_empty():
+		for hero_state_variant in cm.get_hero_states():
+			var hero_state: Dictionary = hero_state_variant
+			if not bool(hero_state.get("dead", false)):
+				hero_state["selected_target_id"] = str(focus["id"])
+
+	# Spends, in priority order, one pass over the squad. Keep a 1-point buffer
+	# so Siphon/next-round income swings don't zero us out.
+	# 1) Reroll dice <= 4 (a bottom-band die is nearly a wasted turn).
+	for hero_state_variant in cm.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var unit_id: String = str(hero_state["id"])
+		if not bs.hero_rolls.has(unit_id):
+			continue
+		if bs.protocol_points >= 3 and int(bs.hero_rolls[unit_id]) <= 4 and not bool(hero_state.get("die_freeze_consumed_this_round", false)):
+			var new_roll: int = engine.apply_reroll(bs, unit_id)
+			spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
+	# 2) Nudge when +3 lifts the hero's EFFECTIVE roll into a stronger band.
+	for hero_state_variant in cm.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var unit_id: String = str(hero_state["id"])
+		if not bs.hero_rolls.has(unit_id) or bs.hero_roll_nudges.has(unit_id) or bs.hero_roll_sets.has(unit_id):
+			continue
+		if bs.protocol_points < 2 or bool(hero_state.get("die_freeze_consumed_this_round", false)):
+			continue
+		var eff: int = engine.effective_hero_roll(hero_state, unit_id, bs)
+		if _band_improves(engine, hero_state, eff, mini(eff + 3, 20)):
+			var nudged: Dictionary = engine.apply_nudge(bs, unit_id, false, false)
+			if str(nudged.get("kind", "")) == "applied":
+				spends.append({"kind": "nudge", "unit": unit_id, "cost": int(nudged.get("cost", 1)), "detail": "+3"})
+	# 3) Set-a-die 20 when flush (cost + 3 buffer) and a die is still mid-band —
+	#    banked protocol is worthless in a lost run; convert it to an overload.
+	for hero_state_variant in cm.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var unit_id: String = str(hero_state["id"])
+		if not bs.hero_rolls.has(unit_id) or bs.hero_roll_sets.has(unit_id):
+			continue
+		if bool(hero_state.get("die_freeze_consumed_this_round", false)):
+			continue
+		if bs.protocol_points >= engine.set_cost(bs) + 3 and engine.effective_hero_roll(hero_state, unit_id, bs) < 11:
+			var paid: int = engine.apply_set(bs, unit_id, 20)
+			spends.append({"kind": "set", "unit": unit_id, "cost": paid, "detail": "= 20"})
+			break  # at most one Set per round
+	return spends
+
+
+func _lowest_hp_enemy(cm: CombatManager) -> Dictionary:
+	var best: Dictionary = {}
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		if bool(enemy_state.get("dead", false)) or bool(enemy_state.get("cloaked", false)):
+			continue
+		if best.is_empty() or int(enemy_state["current_hp"]) < int(best["current_hp"]):
+			best = enemy_state
+	return best
+
+
+func _band_improves(engine: BattleEngine, hero_state: Dictionary, eff_now: int, eff_then: int) -> bool:
+	if eff_then <= eff_now or engine.dice_manager == null:
+		return false
+	var unit: Resource = hero_state.get("unit")
+	var band_now: String = str(engine.dice_manager.get_ability_for_roll(unit, eff_now).get("zone", ""))
+	var band_then: String = str(engine.dice_manager.get_ability_for_roll(unit, eff_then).get("zone", ""))
+	return band_now != band_then
+
+
+# ── Draft: highest rarity wins; gear goes to the least-geared hero. ───────────
+func choose_draft(items: Array, gs: Node) -> Dictionary:
+	var best: ItemData = null
+	var best_rank: int = -1
+	for item_variant in items:
+		var item: ItemData = item_variant as ItemData
+		if item == null:
+			continue
+		if item.item_type == "consumable" and (gs.get("consumables") as Array).size() >= int(gs.get("MAX_CONSUMABLES")):
+			continue
+		var rank: int = int(RARITY_RANK.get(str(item.rarity).to_lower(), 2))
+		if rank > best_rank:
+			best_rank = rank
+			best = item
+	if best == null:
+		return {"id": "", "target_unit": ""}
+	var target_unit: String = ""
+	if best.item_type == "gear":
+		target_unit = _least_geared_unit(gs)
+	return {"id": best.id, "target_unit": target_unit}
+
+
+func _least_geared_unit(gs: Node) -> String:
+	var gear_by_unit: Dictionary = gs.get("gear_by_unit")
+	var best_unit: String = ""
+	var best_count: int = 1000000000
+	for unit_id in gs.get("selected_units"):
+		var count: int = (gear_by_unit.get(str(unit_id), []) as Array).size()
+		if count < best_count:
+			best_count = count
+			best_unit = str(unit_id)
+	return best_unit
+
+
+# ── Fork: always take the flagged route — supply grade +2 compounds across the
+# run, and heroes reset to full HP each battle, so the modifier's cost is one
+# battle deep while the reward is permanent. (Heuristic, documented.)
+func choose_fork(_modifier_id: String, _gs: Node) -> bool:
+	return true
+
+
+# ── Intercept: score choices — rewards up, permanent costs down. ─────────────
+func choose_intercept(_card_id: String, card: Dictionary, gs: Node) -> Dictionary:
+	var choices: Array = card.get("choices", [])
+	var best_index: int = 0
+	var best_score: int = -1000000000
+	for i in choices.size():
+		var choice: Dictionary = choices[i]
+		# Illegal picks are unselectable, same as the screen greys them out.
+		match str(choice.get("pick", "")):
+			"consumable":
+				if (gs.get("consumables") as Array).is_empty():
+					continue
+			"gear":
+				if _all_equipped_gear_l1(gs).is_empty():
+					continue
+		var score: int = 0
+		if not (choice.get("draft", {}) as Dictionary).is_empty():
+			score += 2
+		for effect_variant in choice.get("effects", []):
+			var effect: Dictionary = effect_variant
+			match str(effect.get("type", "")):
+				"consumable", "protocolNextBattle", "heroXp", "squadXp", "runProtocolPerBattle", "heroRollBonus":
+					score += 1
+				"heroMaxHp":
+					score += 1 if int(effect.get("amount", 0)) > 0 else -1
+				"incomeDebt", "destroyPickedGear", "randomHeroDamage", "nextBattleFlag", "followupModifier":
+					score -= 1
+		if score > best_score:
+			best_score = score
+			best_index = i
+	var choice: Dictionary = choices[best_index] if not choices.is_empty() else {}
+	var hero_id: String = _first_unit(gs)
+	var gear_context: Dictionary = {}
+	if str(choice.get("pick", "")) == "gear":
+		var gear_entries: Array = _all_equipped_gear_l1(gs)
+		if not gear_entries.is_empty():
+			gear_context = gear_entries[0]
+			hero_id = str(gear_context.get("hero_id", hero_id))
+	return {"choice": best_index, "hero_id": hero_id, "gear": gear_context}
+
+
+# In-card draft: highest rarity.
+func choose_intercept_draft(options: Array, _gs: Node) -> String:
+	var best_id: String = ""
+	var best_rank: int = -1
+	for option_variant in options:
+		var item: ItemData = DataManager.get_item(str(option_variant)) as ItemData
+		var rank: int = int(RARITY_RANK.get(str(item.rarity).to_lower(), 2)) if item != null else 0
+		if rank > best_rank:
+			best_rank = rank
+			best_id = str(option_variant)
+	return best_id
+
+
+func _all_equipped_gear_l1(gs: Node) -> Array:
+	var entries: Array = []
+	var gear_by_unit: Dictionary = gs.get("gear_by_unit")
+	for hero_id in gear_by_unit.keys():
+		for gear_id in gear_by_unit[hero_id]:
+			entries.append({"hero_id": str(hero_id), "gear_id": str(gear_id)})
+	return entries
