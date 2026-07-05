@@ -97,5 +97,36 @@ if (bmSem) {
   console.error('battle-modes.json:', bmSem);
 }
 
+// fix-1.1: every summon reference must resolve to a real unit def, and the
+// target must be ai:"dumb" — battle_scene refuses to inject non-dumb summons,
+// so anything else is a silent no-op at runtime.
+function validateSummonRefs(enemies) {
+  const defs = enemies.enemyUnitDefs || {};
+  const errs = [];
+  for (const [type, suite] of Object.entries(enemies.enemyAbilities || {})) {
+    if (!suite || typeof suite !== 'object') continue;
+    for (const [z, ab] of Object.entries(suite)) {
+      if (!ab || typeof ab !== 'object') continue;
+      if (ab.summonName === undefined && ab.summonChance === undefined) continue;
+      if (!ab.summonName || !(ab.summonChance > 0)) {
+        errs.push(`enemyAbilities.${type}.${z}: summonName and summonChance must be set together`);
+        continue;
+      }
+      const def = defs[ab.summonName];
+      if (!def) {
+        errs.push(`enemyAbilities.${type}.${z}: summonName '${ab.summonName}' does not resolve to an enemyUnitDefs entry`);
+      } else if (def.ai !== 'dumb') {
+        errs.push(`enemyAbilities.${type}.${z}: summon target '${ab.summonName}' must be ai:"dumb" (battle blocks non-dumb summons)`);
+      }
+    }
+  }
+  return errs;
+}
+
+for (const err of validateSummonRefs(enemies)) {
+  ok = false;
+  console.error('enemies.data.json:', err);
+}
+
 if (!ok) process.exit(1);
 console.log('Game data JSON validates against schemas.');

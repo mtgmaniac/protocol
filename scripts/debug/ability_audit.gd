@@ -468,6 +468,7 @@ func _run_regression_audits() -> void:
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
+	_run_summon_end_to_end_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -2307,6 +2308,72 @@ func _run_summon_slot_regression() -> void:
 		_record_pass("Regression / summon blocked at living cap", "summon")
 	else:
 		_record_failure("Regression / summon blocked at living cap", "summon", "blocked with 3 living", "inject succeeded")
+
+
+# fix-1.1: execute a real-data summon end to end — a smart summoner's overload
+# on a natural 20 must emit a summon event whose name resolves to an existing
+# dumb unit def, and injecting that unit must add it to the field. This is the
+# full battle_scene._process_summon_events contract minus the card rebuild.
+func _run_summon_end_to_end_regression() -> void:
+	var scribe: EnemyData = DataManager.get_enemy_by_display_name("Checksum Scribe") as EnemyData
+	if scribe == null:
+		_record_failure("Regression / summon end-to-end", "summon", "Checksum Scribe def exists", "missing")
+		return
+	if scribe.ai_type != "smart" or not scribe.can_summon_elite:
+		_record_failure("Regression / summon end-to-end", "summon", "Scribe smart + summonElite", "ai=%s summonElite=%s" % [scribe.ai_type, str(scribe.can_summon_elite)])
+		return
+	var manager: CombatManager = CombatManager.new()
+	manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [scribe])
+	var scribe_state: Dictionary = manager.get_enemy_states()[0]
+	var scribe_id: String = str(scribe_state["id"])
+	var hero_state: Dictionary = manager.get_hero_states()[0]
+	seed(20260705)
+	var summon_event: Dictionary = {}
+	for _attempt in range(200):
+		var result: Dictionary = manager.resolve_round({}, {scribe_id: 20}, DiceManager.new(), {scribe_id: 20})
+		for event_variant in result.get("events", []):
+			if str((event_variant as Dictionary).get("type", "")) == "summon":
+				summon_event = event_variant
+				break
+		if not summon_event.is_empty():
+			break
+		# The forced overloads would otherwise end the fight; keep both sides up.
+		hero_state["dead"] = false
+		hero_state["current_hp"] = int(hero_state["max_hp"])
+		scribe_state["dead"] = false
+		scribe_state["current_hp"] = int(scribe_state["max_hp"])
+	if summon_event.is_empty():
+		_record_failure("Regression / summon end-to-end", "summon", "summon event within 200 forced nat-20 overloads", "none emitted")
+		return
+	var summon_name: String = str(summon_event.get("summon_name", ""))
+	var base_enemy: EnemyData = DataManager.get_enemy_by_display_name(summon_name) as EnemyData
+	if base_enemy == null:
+		_record_failure("Regression / summon end-to-end", "summon", "'%s' resolves to a unit def" % summon_name, "not found")
+		return
+	if base_enemy.ai_type != "dumb":
+		_record_failure("Regression / summon end-to-end", "summon", "'%s' is a dumb unit" % summon_name, "ai=%s" % base_enemy.ai_type)
+		return
+	var living_before: int = 0
+	for state_variant in manager.get_enemy_states():
+		if not bool((state_variant as Dictionary).get("dead", false)):
+			living_before += 1
+	var inject_result: Dictionary = manager.inject_enemy(base_enemy.duplicate(true) as EnemyData)
+	var living_after: int = 0
+	for state_variant in manager.get_enemy_states():
+		if not bool((state_variant as Dictionary).get("dead", false)):
+			living_after += 1
+	if inject_result.is_empty() or living_after != living_before + 1:
+		_record_failure("Regression / summon end-to-end", "summon", "injected unit added to field", "inject=%s living %d->%d" % [str(not inject_result.is_empty()), living_before, living_after])
+		return
+	_record_pass("Regression / summon end-to-end (%s -> %s)" % [scribe.display_name, summon_name], "summon")
+
+	# Code-constant spawn names must resolve too (the Brood spawn goes through
+	# the same display-name lookup as data-driven summons).
+	var brood: EnemyData = DataManager.get_enemy_by_display_name(CombatManager.BROOD_SPAWN_NAME) as EnemyData
+	if brood != null and brood.ai_type == "dumb":
+		_record_pass("Regression / brood spawn name resolves", "summon")
+	else:
+		_record_failure("Regression / brood spawn name resolves", "summon", "dumb unit def for '%s'" % CombatManager.BROOD_SPAWN_NAME, "null or non-dumb")
 
 
 func _run_gear_lifesteal_regression() -> void:
