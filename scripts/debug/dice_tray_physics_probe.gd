@@ -10,12 +10,18 @@ extends Control
 
 const ROLL_COUNT := 8
 const FROZEN_HERO_ID := "hero_a"
+# The tray randomizes every throw via global randf_range/randf. Seeding the
+# global RNG here makes the throws — and therefore the deterministic Jolt
+# physics replay — identical run-to-run, so 0/0/0 is a real gate instead of a
+# best-of-N flake (see scripts/sim/DECOUPLING_NOTES.md §10).
+const PROBE_RNG_SEED := 20260705
 
 var _tray: DiceTray3D
 var _report_lines: Array[String] = []
 
 
 func _ready() -> void:
+	seed(PROBE_RNG_SEED)
 	size = Vector2(1056, 1100)
 	_tray = load("res://scenes/battle/DiceTray3D.tscn").instantiate() as DiceTray3D
 	_tray.custom_minimum_size = size
