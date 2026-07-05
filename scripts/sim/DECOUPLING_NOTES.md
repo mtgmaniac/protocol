@@ -167,14 +167,63 @@ The "second rules engine" (architecture-review §2). All TypeScript, reference-o
 
 ---
 
-## 9. Extraction order (A.1 → A.2)
+## 9. Extraction order + progress (A.1 → A.2)
 
-1. Add `scripts/sim/roll_provider.gd` (A.2 seam) first — smallest, isolated, lets the engine take a provider from day one.
-2. Create `BattleEngine` and move the §2 rules into it **one cluster at a time**, re-pointing `battle_scene` at the engine after each so the gates stay green:
-   a. Effective-roll pipeline (nudge/set/frozen overrides) + RollProvider-backed reroll.
-   b. Protocol pool (income/cap/spend/drain/carryover/overflow).
-   c. Per-round orchestration (`resolve_round` wrapper + pending-protocol plumbing).
-   d. Inline item effects → prefer pushing down into `combat_manager` as `apply_item_*`.
-3. Verify: full gate suite + one manual battle (nothing feels different).
+`BattleEngine` = `scripts/battle/battle_engine.gd` (RefCounted, UI-free). Boundary
+chosen: **rules live once in the engine as methods; each caller owns its own
+battle state (roll/nudge/set dicts, protocol pool int) and passes it in.**
+battle_scene keeps its dicts (no churn to the 43 `hero_rolls` / 28
+`protocol_points` sites) and delegates; the sim owns parallel state and calls the
+same engine methods. Dictionaries pass by reference in GDScript, so engine
+methods that mutate a passed dict mutate the caller's dict directly.
+
+**Done (each: extract → re-point battle_scene → full gate suite → commit):**
+- ✅ **A.2** RollProvider seam (`roll_provider` + seeded + physics; `roll_d20`,
+  `rand_index`). Verified byte-deterministic.
+- ✅ **Cluster 1 — effective-roll pipeline:** `effective_hero_roll`,
+  `effective_enemy_roll`, `build_effective_rolls` (Set/freeze/Nudge shaping).
+- ✅ **Cluster 2 — roll sourcing:** `roll_states` (via provider),
+  `apply_frozen_roll_overrides`, `record_roll_values_for_states`,
+  `roll_value_for_state`.
+- ✅ **Cluster 3 — protocol economy:** `max_protocol` (cap 10 / run override /
+  Deep Cells), `gain_protocol` (income + Overflow Vent via `rand_index`).
+
+**Remaining A.1 clusters:**
+- ⬜ **Cluster 4 — protocol spends:** reroll (cost 2, redraw via provider, clear
+  nudge/set — cleanest), then nudge (+3 / Priming Charge free / Reverse Gimbal
+  flip) and set (absolute / Root Access free) and Twin Fates. These are more
+  UI/gear-entangled (`_hero_has_gear_effect`, `_free_nudge_used`, dice-tray
+  in-place updates, tutorial emits) — extract the rule core, leave UI in
+  battle_scene. `# SIM-TODO(kev)`: pass gear-effect booleans in rather than
+  giving the engine GameState/DataManager gear reads, to keep it pure + bare-
+  instance-safe.
+- ⬜ **Cluster 5 — inline item effects** not on combat_manager (cloak/cloakAll,
+  enemyRerollDie/All via provider, enemyDieFreeze/All, gainProtocol) + item
+  protocol cost. Prefer pushing cloak/freeze/reroll down into `combat_manager`
+  as `apply_item_*` for symmetry.
+- ⬜ **Cluster 6 — per-round orchestration:** re-point battle_scene's
+  `_resolve_current_turn` glue (source rolls → build effective → resolve_round →
+  drain protocol → income) at an engine `resolve_step`, so the round loop the
+  sim runs and the loop battle_scene runs are the same code, not just the same
+  rule calls. (Until then battle_scene keeps its own thin loop glue; every RULE
+  call already routes through the engine / combat_manager, so nothing is
+  duplicated except sequencing.)
+
+Then A.3 sim_runner (a SCENE, per §4a) drives GameState (run flow) + BattleEngine
+(battles) with the policy layer; A.4 fast path; A.5 delete legacy JS sim +
+determinism gate.
 
 `# SIM-TODO(kev)` markers flag any ambiguity taken at the smallest defensible interpretation; grep the sim tree for them.
+
+## 10. Notes for whoever continues
+
+- **Dice physics probe is non-deterministic:** `flyover_events` measured 2, 0, 0
+  across three identical runs on an unchanged tree. It passes 0/0/0 on clean
+  runs but is not a strict gate as-is (unseeded physics RNG). Not caused by the
+  extraction — `DiceTrayPhysicsProbe.tscn` doesn't load battle_scene/battle_engine.
+  Worth seeding the probe's RNG for a real 0/0/0 contract (out of scope here).
+- **Gate note:** the ability audit instantiates `battle_scene` **bare (out of
+  tree)** for regression checks (e.g. Overflow Vent), so anything battle_scene
+  creates at member-init (now including `_engine` + `PhysicsRollProvider`) must
+  be safe outside the tree. It is. `_max_protocol` keeps its `is_inside_tree()`
+  guard in battle_scene and passes the cap override into the pure engine.
