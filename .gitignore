@@ -34,3 +34,6 @@ debug_screenshot.png
 debug_readout_*.txt
 tmp_*.py
 __pycache__
+
+# Balance-sim run outputs (regenerated; not source)
+results/

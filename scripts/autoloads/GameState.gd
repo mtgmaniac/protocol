@@ -97,9 +97,14 @@ const DRAFT_RARITY_BY_ROUND: Dictionary = {
 var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
-func start_run(unit_ids: Array, operation_id: String = "") -> void:
+# rng_seed >= 0 seeds the reward RNG deterministically (used by the balance sim
+# for reproducible runs); the default (-1) randomizes as normal play does.
+func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1) -> void:
 	tutorial_mode = false
-	_reward_rng.randomize()
+	if rng_seed >= 0:
+		_reward_rng.seed = rng_seed
+	else:
+		_reward_rng.randomize()
 	selected_units = unit_ids.duplicate()
 	enforce_squad_limit()
 	selected_operation_id = operation_id
