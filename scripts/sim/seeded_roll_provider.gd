@@ -22,6 +22,12 @@ func roll_d20() -> int:
 	return _rng.randi_range(1, 20)
 
 
+func rand_index(size: int) -> int:
+	if size <= 1:
+		return 0
+	return _rng.randi_range(0, size - 1)
+
+
 # Exposed so the engine can snapshot/restore the stream for the L2 solver's
 # speculative lookahead (Package D) without perturbing the real sequence.
 func get_state() -> int:

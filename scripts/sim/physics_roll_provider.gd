@@ -23,5 +23,13 @@ func roll_d20() -> int:
 	return _dice_manager.roll_d20()
 
 
+# Matches the original battle_scene behavior exactly (`randi() % size`), so the
+# live game's random picks are byte-identical to before the extraction.
+func rand_index(size: int) -> int:
+	if size <= 1:
+		return 0
+	return randi() % size
+
+
 func describe() -> String:
 	return "physics"

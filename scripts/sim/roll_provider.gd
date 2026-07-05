@@ -23,6 +23,14 @@ func roll_d20() -> int:
 	return 1
 
 
+# Returns a uniform index in [0, size-1] from the same stream. Used for
+# non-d20 random picks that must still be deterministic under a seed (e.g. the
+# Overflow Vent relic's random-enemy target). Overridden by each provider.
+func rand_index(size: int) -> int:
+	push_error("RollProvider.rand_index() is abstract — use SeededRollProvider or PhysicsRollProvider")
+	return 0
+
+
 # Human-readable id for telemetry / run headers.
 func describe() -> String:
 	return "abstract"

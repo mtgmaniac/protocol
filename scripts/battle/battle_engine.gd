@@ -14,6 +14,8 @@
 class_name BattleEngine
 extends RefCounted
 
+const MAX_PROTOCOL := 10
+
 var combat_manager: CombatManager
 var roll_provider: RollProvider
 
@@ -21,6 +23,50 @@ var roll_provider: RollProvider
 func _init(cm: CombatManager, provider: RollProvider = null) -> void:
 	combat_manager = cm
 	roll_provider = provider
+
+
+# ── Protocol economy (extracted from battle_scene) ────────────────────────────
+# The pool value itself stays with the caller (battle_scene owns protocol_points
+# for its bar; the sim owns its own int). These methods own the RULES: the cap
+# (base 10, run override, Deep Cells directive) and gain-with-overflow (Overflow
+# Vent relic damage, routed through the RollProvider so it is deterministic).
+
+# cap_override: the caller passes GameState.run_protocol_cap_override (Rogue
+# Engineer) or 0 when there is none / it is running outside the tree.
+func max_protocol(cap_override: int) -> int:
+	var cap: int = MAX_PROTOCOL
+	if cap_override > 0:
+		cap = cap_override
+	if combat_manager == null:
+		return cap
+	# Deep Cells directive: the cap rises while a living carrier stands.
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if not bool(hero_state.get("dead", false)) and str(hero_state.get("directive_type", "")) == "protocolCapBonus":
+			cap += int((hero_state.get("directive_effect", {}) as Dictionary).get("amount", 2))
+			break
+	return cap
+
+
+# Returns { "points": new pool, "vent_hits": [{target, amount}, …] } so the
+# caller can update its bar and log the Overflow Vent hits without re-deriving.
+# The vent DAMAGE is already applied here (via combat_manager) — one rules engine.
+func gain_protocol(current: int, amount: int, cap: int) -> Dictionary:
+	if amount <= 0:
+		return {"points": current, "vent_hits": []}
+	var overflow: int = maxi(0, current + amount - cap)
+	var new_points: int = mini(current + amount, cap)
+	var vent_hits: Array = []
+	if overflow > 0 and combat_manager.has_relic("protocolOverflowDamage"):
+		var per_point: int = 2
+		for _i in overflow:
+			var living: Array = combat_manager.get_enemy_states().filter(func(s): return not bool(s["dead"]))
+			if living.is_empty():
+				break
+			var vent_target: Dictionary = living[roll_provider.rand_index(living.size())]
+			combat_manager.apply_item_damage(vent_target, per_point)
+			vent_hits.append({"target": vent_target, "amount": per_point})
+	return {"points": new_points, "vent_hits": vent_hits}
 
 
 # ── Effective-roll pipeline (extracted from battle_scene) ─────────────────────

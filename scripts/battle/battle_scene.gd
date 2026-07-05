@@ -1143,21 +1143,16 @@ func _apply_reroll(hero_id: String) -> void:
 func _gain_protocol(amount: int) -> void:
 	if amount <= 0:
 		return
-	var protocol_cap: int = _max_protocol()
-	var overflow: int = maxi(0, protocol_points + amount - protocol_cap)
-	protocol_points = mini(protocol_points + amount, protocol_cap)
+	# Rule delegated to BattleEngine (A.1); this scene keeps the pool + UI.
+	var res: Dictionary = _engine.gain_protocol(protocol_points, amount, _max_protocol())
+	protocol_points = int(res["points"])
 	_update_protocol_bar()
-	if overflow > 0 and combat_manager.has_relic("protocolOverflowDamage"):
-		var per_point: int = 2
-		for _i in overflow:
-			var living: Array = combat_manager.get_enemy_states().filter(func(s): return not bool(s["dead"]))
-			if living.is_empty():
-				break
-			var vent_target: Dictionary = living[randi() % living.size()]
-			combat_manager.apply_item_damage(vent_target, per_point)
-			_append_log("Overflow Vent: %d damage to %s." % [per_point, vent_target["unit"].display_name])
-		if _card_view != null:
-			_card_view.refresh_all_cards()
+	var vent_hits: Array = res["vent_hits"]
+	for hit_variant in vent_hits:
+		var hit: Dictionary = hit_variant
+		_append_log("Overflow Vent: %d damage to %s." % [int(hit["amount"]), hit["target"]["unit"].display_name])
+	if not vent_hits.is_empty() and _card_view != null:
+		_card_view.refresh_all_cards()
 
 
 func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
@@ -1848,18 +1843,12 @@ func _ensure_protocol_stack_layout() -> void:
 # Deep Cells directive: the Protocol cap rises while a living carrier stands.
 # Rogue Engineer intercept: the cap override replaces the base cap.
 func _max_protocol() -> int:
-	var cap: int = MAX_PROTOCOL
-	# Bare instances (headless audits) run outside the tree — no autoloads.
+	# Rule delegated to BattleEngine (A.1). The is_inside_tree guard stays here
+	# because bare instances (headless audits) run outside the tree — no autoloads.
+	var cap_override: int = 0
 	if is_inside_tree() and int(_game_state().run_protocol_cap_override) > 0:
-		cap = int(_game_state().run_protocol_cap_override)
-	if combat_manager == null:
-		return cap
-	for hero_state_variant in combat_manager.get_hero_states():
-		var hero_state: Dictionary = hero_state_variant
-		if not bool(hero_state.get("dead", false)) and str(hero_state.get("directive_type", "")) == "protocolCapBonus":
-			cap += int((hero_state.get("directive_effect", {}) as Dictionary).get("amount", 2))
-			break
-	return cap
+		cap_override = int(_game_state().run_protocol_cap_override)
+	return _engine.max_protocol(cap_override)
 
 
 func _ensure_protocol_segments() -> void:
