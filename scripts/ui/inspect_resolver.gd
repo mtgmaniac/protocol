@@ -24,6 +24,78 @@ const PROTOCOL_ACTIONS := {
 	"set": {"name": "SET A DIE", "cost": 3, "effect": "Set a hero's die to any value you choose."},
 }
 
+# fix-2.5: ability raw field -> keyword id in keywords.data.json. Any ability
+# whose eff carries one of these keywords gets the registry's one-line
+# definition appended in the inspect popup. Numeric self-evident effects
+# (dmg / heal / shield / burn / ±roll) are deliberately not listed.
+const KEYWORD_FIELD_MAP := {
+	"chain": "chain",
+	"detonate": "detonate",
+	"execute": "execute",
+	"breach": "breach",
+	"breachAll": "breach",
+	"wipeShields": "breach",
+	"leech": "leech",
+	"lifestealPct": "leech",
+	"mark": "mark",
+	"spike": "spike",
+	"ignSh": "pierce",
+	"jam": "jam",
+	"jamAll": "jam",
+	"rewrite": "rewrite",
+	"hijack": "hijack",
+	"siphon": "siphon",
+	"cloak": "cloak",
+	"ward": "ward",
+	"taunt": "taunt",
+	"enemySelfTaunt": "taunt",
+	"lure": "lure",
+	"freezeAnyDice": "freeze",
+	"freezeEnemyDice": "freeze",
+	"freezeAllEnemyDice": "freeze",
+}
+
+static var _keyword_registry_cache: Dictionary = {}
+
+
+# id -> keyword entry from keywords.data.json (single source, via DataManager).
+static func _keyword_registry() -> Dictionary:
+	if _keyword_registry_cache.is_empty():
+		for kw_variant in (DataManager.get_keywords().get("keywords", []) as Array):
+			var kw: Dictionary = kw_variant
+			_keyword_registry_cache[str(kw.get("id", ""))] = kw
+	return _keyword_registry_cache
+
+
+# "Term — one-line definition." lines for every keyword the ability carries.
+static func _keyword_definitions_for_raw(raw: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var seen: Dictionary = {}
+	for field in KEYWORD_FIELD_MAP.keys():
+		if not raw.has(field):
+			continue
+		var field_value: Variant = raw[field]
+		var active: bool = bool(field_value) if field_value is bool else float(field_value) > 0.0
+		if not active:
+			continue
+		var keyword_id: String = str(KEYWORD_FIELD_MAP[field])
+		if seen.has(keyword_id):
+			continue
+		seen[keyword_id] = true
+		var entry: Dictionary = _keyword_registry().get(keyword_id, {})
+		if entry.is_empty():
+			continue
+		lines.append("%s — %s" % [str(entry.get("term", keyword_id.capitalize())), str(entry.get("def", ""))])
+	return lines
+
+
+# The ability's eff string plus the definitions of every keyword it carries.
+static func _ability_inspect_text(raw: Dictionary, fallback: String = "") -> String:
+	var text: String = str(raw.get("eff", fallback))
+	for line in _keyword_definitions_for_raw(raw):
+		text += "\n" + line
+	return text
+
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
 # `raw` is the structured ability dict (name, eff, dmg/burn/burnT/heal/rfe/shield…) as
@@ -39,7 +111,7 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 			"name": "",
 			"meta": meta,
 			"effects": effects,
-			"text": str(raw.get("eff", "")),
+			"text": _ability_inspect_text(raw),
 		}],
 	}
 
@@ -68,8 +140,8 @@ static func resolve_unit(data: Resource, state: Dictionary = {}, incoming_intent
 			"roll": "%d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))],
 			"effects": EffectPip.effects_from_ability_raw(raw, side) if not raw.is_empty() else [],
 			# fix-2.4: the authored eff string IS the ability text — same live
-			# data battle renders. No hand-composed sentences that can go stale.
-			"text": str(entry.get("description", "")),
+			# data battle renders. fix-2.5: keyword definitions ride along.
+			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),
 		})
 	var statuses: Array = _unit_status_entries(state)
 	# fix-2.2: the ◎ corner badge (pkg8.1 incoming-intent marker) resolves in
