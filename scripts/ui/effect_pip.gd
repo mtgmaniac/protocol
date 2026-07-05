@@ -199,6 +199,12 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 			rfm_scope = "all"
 		_append_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)), rfm_scope)
 
+	# Enemy roll buff (erb): the enemy-side mirror of rfm. fix-1.3 — pure-erb
+	# abilities (Checksum Scribe's Checksum Pass et al.) rendered zero pips.
+	var erb: int = int(raw.get("erb", 0))
+	if erb > 0:
+		_append_effect(effects, "rfm", "+%d" % erb, int(raw.get("erbT", 0)), "all" if bool(raw.get("erbAll", false)) else "self")
+
 	if bool(raw.get("ignSh", false)):
 		_append_effect(effects, "pierce", "P")
 	var chain_jumps: int = int(raw.get("chain", 0))
@@ -213,7 +219,13 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		_append_effect(effects, "breach", "BR", 0, "all")
 	elif bool(raw.get("breach", false)):
 		_append_effect(effects, "breach", "BR")
+	elif bool(raw.get("wipeShields", false)):
+		# Enemy "wipe shields, then N dmg" — Breach semantics against the squad.
+		_append_effect(effects, "breach", "BR", 0, "all")
 	if bool(raw.get("leech", false)):
+		_append_effect(effects, "leech", "LC")
+	elif int(raw.get("lifestealPct", 0)) > 0:
+		# Enemy lifesteal is authored as a percent; same Leech keyword on the card.
 		_append_effect(effects, "leech", "LC")
 	if bool(raw.get("mark", false)):
 		_append_effect(effects, "mark", "MK")
@@ -243,7 +255,7 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	if freeze_turns > 0:
 		_append_effect(effects, "freeze", "", freeze_turns)
 
-	if bool(raw.get("taunt", false)):
+	if bool(raw.get("taunt", false)) or bool(raw.get("enemySelfTaunt", false)):
 		_append_effect(effects, "taunt", "T")
 
 	var revive_pct: int = int(raw.get("revivePct", 50))
@@ -251,10 +263,6 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		_append_effect(effects, "revive", "%d" % revive_pct, 0, "all")
 	elif bool(raw.get("revive", false)):
 		_append_effect(effects, "revive", "%d" % revive_pct)
-
-	if bool(raw.get("ward", false)):
-		var ward_scope: String = "" if bool(raw.get("wardTgt", false)) else "self"
-		_append_effect(effects, "ward", "W", 0, ward_scope)
 
 	if bool(raw.get("grantRampageAll", false)):
 		_append_effect(effects, "rampage", "RA", 0, "all")

@@ -470,6 +470,7 @@ func _run_regression_audits() -> void:
 	_run_summon_slot_regression()
 	_run_summon_end_to_end_regression()
 	_run_enemy_roll_buff_expiry_regression()
+	_run_band_coverage_audit()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -2414,6 +2415,57 @@ func _run_enemy_roll_buff_expiry_regression() -> void:
 		"Regression / enemy roll buff re-cast refreshes instead of stacking", "rollBuffExpiry",
 		"2", str(int(stack_state.get("roll_buff", 0)))
 	)
+
+
+# fix-1.3: structural band + pip coverage. For every unit (hero, evolution,
+# enemy): every roll 1-20 must map to exactly one ability, and every ability's
+# raw must parse to at least one pip through the same renderer battle uses.
+func _run_band_coverage_audit() -> void:
+	var problems: Array[String] = []
+	for unit_id in DataManager.units.keys():
+		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
+		if unit == null:
+			continue
+		_collect_band_coverage_problems("hero %s" % unit_id, unit.dice_ranges, "hero", problems)
+		for path_variant in unit.evolution_paths:
+			var path: Dictionary = path_variant
+			_collect_band_coverage_problems(
+				"evo %s/%s" % [unit_id, str(path.get("name", "?"))],
+				path.get("abilities", []), "hero", problems
+			)
+	for enemy_id in DataManager.enemies.keys():
+		var enemy: EnemyData = DataManager.get_enemy(enemy_id) as EnemyData
+		if enemy == null:
+			continue
+		_collect_band_coverage_problems("enemy %s" % enemy_id, enemy.dice_ranges, "enemy", problems)
+
+	if problems.is_empty():
+		_record_pass("Structural / band + pip coverage (all units, rolls 1-20)", "bandCoverage")
+	else:
+		for problem in problems:
+			_record_failure("Structural / band + pip coverage", "bandCoverage", "1 ability and >=1 pip per roll", problem)
+
+
+func _collect_band_coverage_problems(owner: String, ranges: Array, side: String, problems: Array[String]) -> void:
+	if ranges.is_empty():
+		problems.append("%s: no ability ranges" % owner)
+		return
+	for roll in range(1, 21):
+		var hits: int = 0
+		for range_variant in ranges:
+			var entry: Dictionary = range_variant
+			if roll >= int(entry.get("min", 0)) and roll <= int(entry.get("max", 0)):
+				hits += 1
+		if hits != 1:
+			problems.append("%s: roll %d maps to %d abilities" % [owner, roll, hits])
+	for range_variant in ranges:
+		var entry: Dictionary = range_variant
+		var pips: Array = EffectPip.effects_from_ability_raw(entry.get("raw", {}), side)
+		if pips.is_empty():
+			problems.append("%s: '%s' (%s) parses to zero pips [eff=%s]" % [
+				owner, str(entry.get("ability_name", "?")), str(entry.get("zone", "?")),
+				str(entry.get("description", ""))
+			])
 
 
 func _run_gear_lifesteal_regression() -> void:
