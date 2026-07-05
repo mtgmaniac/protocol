@@ -86,6 +86,14 @@ For byte-identical JSONL, **all** randomness must derive from the run seed. Ther
 
 Seed derivation plan: one master seed → derive `_reward_rng` seed and the RollProvider seed as fixed offsets (e.g. `seed` and `seed ^ 0x9E3779B9`) so the two streams are independent but reproducible. Never call `randomize()` anywhere in the sim path.
 
+### 4a. Autoload-context requirement (discovered during A.2)
+
+A bare `godot --headless --script foo.gd` (SceneTree) does **not** register the autoload *global identifiers* (`GameState`, `DataManager`, …) at script-compile time. Any script that compiles a dependency referencing those globals fails with `Identifier not found: GameState`. `combat_manager.gd` references `GameState.SQUAD_UNIT_LIMIT` and `DataManager`, and `DiceManager` references `GameState.gear_by_unit` — so **the sim harness cannot run as a bare `--script`; it must run in an autoload context.** Options, in order of preference:
+- **Launch `sim_runner` via a tiny scene** (`res://scenes/debug/SimRunner.tscn` with a Node script), the same reason `AbilityAuditRunner.tscn` is a scene not a `--script` (per `AI_AGENT_GAME_REFERENCE.md` §14). CLI args still arrive via `OS.get_cmdline_user_args()`.
+- Or keep a `--script` entry that accesses autoloads only via `/root/GameState` node paths + `.call()` and never statically compiles a GameState-global-referencing script at its own load — brittle; the scene route is cleaner.
+
+`SeededRollProvider`/`RollProvider` are pure (no autoload deps) and verified deterministic under a bare `--script` (A.2 gate passed). `PhysicsRollProvider` pulls in `DiceManager`→`GameState` and is therefore only exercised in the autoload context.
+
 ---
 
 ## 5. Target harness architecture
