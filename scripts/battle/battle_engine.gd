@@ -15,6 +15,7 @@ class_name BattleEngine
 extends RefCounted
 
 const MAX_PROTOCOL := 10
+const SET_DIE_COST := 3
 
 var combat_manager: CombatManager
 var roll_provider: RollProvider
@@ -67,6 +68,83 @@ func gain_protocol(bs: BattleState, amount: int, cap: int) -> Array:
 			combat_manager.apply_item_damage(vent_target, per_point)
 			vent_hits.append({"target": vent_target, "amount": per_point})
 	return vent_hits
+
+
+# ── Protocol spends (extracted from battle_scene) ─────────────────────────────
+# Rule cores only; the UI (dice-tray in-place update, retarget, logs, tutorial
+# emit) stays in battle_scene. Gear-effect lookups (Priming Charge / Reverse
+# Gimbal) are passed in as booleans so the engine stays free of GameState reads
+# and safe on bare instances.
+# SIM-TODO(kev): the sim computes the same gear booleans from its own GameState
+# read; a shared gear-lookup util would remove that small duplication.
+
+# Reroll: spend 2, redraw the die via the provider, clear this hero's Nudge/Set
+# (their roll is fresh). Mutates bs; returns the new raw roll.
+func apply_reroll(bs: BattleState, hero_id: String) -> int:
+	bs.protocol_points -= 2
+	var new_roll: int = roll_provider.roll_d20()
+	bs.hero_rolls[hero_id] = new_roll
+	bs.hero_roll_nudges.erase(hero_id)
+	bs.hero_roll_sets.erase(hero_id)
+	return new_roll
+
+
+# Priming Charge: the first Nudge each battle is free (per holder).
+func nudge_cost(bs: BattleState, hero_id: String, first_nudge_free_gear: bool) -> int:
+	if first_nudge_free_gear and not bs.free_nudge_used.has(hero_id):
+		return 0
+	return 1
+
+
+# Nudge. Returns { "kind": "flip"|"already"|"applied", ... } so the caller can
+# drive UI/logs. Mutates bs.
+#  - already nudged + Reverse Gimbal gear -> flip the pending nudge's sign (free)
+#  - already nudged, no gear -> "already" (caller shows the "already nudged" note)
+#  - otherwise -> deduct cost (0 if Priming Charge), set +3
+func apply_nudge(bs: BattleState, hero_id: String, first_nudge_free_gear: bool, nudge_may_subtract_gear: bool) -> Dictionary:
+	if bs.hero_roll_nudges.has(hero_id):
+		if nudge_may_subtract_gear:
+			bs.hero_roll_nudges[hero_id] = -int(bs.hero_roll_nudges.get(hero_id, 3))
+			return {"kind": "flip", "value": int(bs.hero_roll_nudges[hero_id])}
+		return {"kind": "already"}
+	var cost: int = nudge_cost(bs, hero_id, first_nudge_free_gear)
+	if cost == 0:
+		bs.free_nudge_used[hero_id] = true
+	bs.protocol_points -= cost
+	bs.hero_roll_nudges[hero_id] = 3
+	return {"kind": "applied", "cost": cost}
+
+
+# Root Access boss relic: the first Set each battle costs 0.
+func set_cost(bs: BattleState) -> int:
+	if combat_manager.has_relic("setCostZeroOncePerBattle") and not bs.root_access_used:
+		return 0
+	return SET_DIE_COST
+
+
+# Set-a-die to an absolute effective value; an explicit Set overrides any prior
+# Nudge. Mutates bs; returns the cost paid (0 signals the Root Access freebie).
+func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
+	var cost: int = set_cost(bs)
+	if cost == 0:
+		bs.root_access_used = true
+	bs.protocol_points -= cost
+	bs.hero_roll_sets[hero_id] = value
+	bs.hero_roll_nudges.erase(hero_id)
+	return cost
+
+
+# Twin Fates relic: copy the source hero's raw die onto the target (free, once
+# per battle). Mutates bs; returns false if the source has no roll yet.
+func twin_fates_copy(bs: BattleState, source_id: String, target_id: String) -> bool:
+	var source_roll: int = int(bs.hero_rolls.get(source_id, 0))
+	if source_roll <= 0:
+		return false
+	bs.twin_fates_used = true
+	bs.hero_rolls[target_id] = source_roll
+	bs.hero_roll_nudges.erase(target_id)
+	bs.hero_roll_sets.erase(target_id)
+	return true
 
 
 # ── Effective-roll pipeline (extracted from battle_scene) ─────────────────────

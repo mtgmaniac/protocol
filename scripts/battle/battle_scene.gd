@@ -1140,12 +1140,8 @@ func _add_nudge_button() -> void:
 	protocol_spend_button.get_parent().move_child(btn, protocol_spend_button.get_index() + 1)
 
 func _apply_reroll(hero_id: String) -> void:
-	protocol_points -= 2
-	var new_roll: int = dice_manager.roll_d20()
-	hero_rolls[hero_id] = new_roll
-	# Clear nudge/set for this hero since their roll is fresh
-	hero_roll_nudges.erase(hero_id)
-	hero_roll_sets.erase(hero_id)
+	# Rule delegated to BattleEngine (A.1); this scene keeps the animation + UI.
+	var new_roll: int = _engine.apply_reroll(_state, hero_id)
 	_update_protocol_bar()
 	_append_log("Reroll: %s draws %d." % [hero_id, new_roll])
 	if dice_tray_3d != null:
@@ -1304,44 +1300,39 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 
 
 func _get_nudge_cost(hero_id: String) -> int:
-	if _hero_has_gear_effect(hero_id, "firstNudgeFree") and not _free_nudge_used.has(hero_id):
-		return 0
-	return 1
+	return _engine.nudge_cost(_state, hero_id, _hero_has_gear_effect(hero_id, "firstNudgeFree"))
 
 
 func _apply_nudge(hero_id: String) -> void:
-	if _was_hero_nudged_this_turn(hero_id):
-		# Reverse Gimbal gear: a second Nudge tap flips the pending nudge's
-		# sign for free instead of stacking.
-		# DESIGN-TODO(kev): confirm the flip interaction (tap again to swap
-		# +3 <-> -3) as the "may subtract" UX.
-		if _hero_has_gear_effect(hero_id, "nudgeMaySubtract"):
-			hero_roll_nudges[hero_id] = -int(hero_roll_nudges.get(hero_id, 3))
-			_append_log("Reverse Gimbal: nudge flipped to %+d." % int(hero_roll_nudges[hero_id]))
-			var flipped_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
-			if dice_tray_3d != null and not flipped_state.is_empty():
-				dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(flipped_state, hero_id))
-			_re_assign_hero_target(hero_id)
-			_refresh_dice_result_actions()
-			_finish_roll_modifier_pick()
+	# Rule delegated to BattleEngine (A.1); this scene keeps the dice-tray
+	# update, retargeting, logs, and tutorial emit.
+	# DESIGN-TODO(kev): confirm the Reverse Gimbal flip interaction (tap again to
+	# swap +3 <-> -3) as the "may subtract" UX.
+	var res: Dictionary = _engine.apply_nudge(
+		_state,
+		hero_id,
+		_hero_has_gear_effect(hero_id, "firstNudgeFree"),
+		_hero_has_gear_effect(hero_id, "nudgeMaySubtract")
+	)
+	match str(res["kind"]):
+		"flip":
+			_append_log("Reverse Gimbal: nudge flipped to %+d." % int(res["value"]))
+		"already":
+			_refresh_summary("That die was already nudged this turn.")
 			return
-		_refresh_summary("That die was already nudged this turn.")
-		return
-	var nudge_cost: int = _get_nudge_cost(hero_id)
-	if nudge_cost == 0:
-		_free_nudge_used[hero_id] = true
-		_append_log("Priming Charge: free Nudge.")
-	protocol_points -= nudge_cost
-	hero_roll_nudges[hero_id] = 3
-	_update_protocol_bar()
-	_append_log("Nudge: %s +3 to effective roll." % hero_id)
+		"applied":
+			if int(res["cost"]) == 0:
+				_append_log("Priming Charge: free Nudge.")
+			_update_protocol_bar()
+			_append_log("Nudge: %s +3 to effective roll." % hero_id)
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
 	if dice_tray_3d != null and not hero_state.is_empty():
 		dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
 	_re_assign_hero_target(hero_id)
 	_refresh_dice_result_actions()
 	_finish_roll_modifier_pick()
-	_emit_tutorial("nudged", {"hero": hero_id})
+	if str(res["kind"]) == "applied":
+		_emit_tutorial("nudged", {"hero": hero_id})
 
 
 func _was_hero_nudged_this_turn(hero_id: String) -> bool:
@@ -1420,9 +1411,7 @@ func _has_nudgeable_hero() -> bool:
 
 # Root Access boss relic: once per battle, Set costs 0.
 func _get_set_cost() -> int:
-	if combat_manager.has_relic("setCostZeroOncePerBattle") and not _root_access_used:
-		return 0
-	return SET_DIE_COST
+	return _engine.set_cost(_state)
 
 
 func _on_set_button_pressed() -> void:
@@ -1506,14 +1495,7 @@ func _on_twin_fates_button_pressed() -> void:
 # Pure state core of Twin Fates: copy the source die's result onto the target
 # die (clearing its pending nudge/set) and burn the once-per-battle use.
 func _twin_fates_copy_roll(source_id: String, target_id: String) -> bool:
-	var source_roll: int = int(hero_rolls.get(source_id, 0))
-	if source_roll <= 0:
-		return false
-	_twin_fates_used = true
-	hero_rolls[target_id] = source_roll
-	hero_roll_nudges.erase(target_id)
-	hero_roll_sets.erase(target_id)
-	return true
+	return _engine.twin_fates_copy(_state, source_id, target_id)
 
 
 func _apply_twin_fates(source_id: String, target_id: String) -> void:
@@ -1732,13 +1714,10 @@ func _close_set_value_popup() -> void:
 
 
 func _apply_set(hero_id: String, value: int) -> void:
-	var set_cost: int = _get_set_cost()
+	# Rule delegated to BattleEngine (A.1); this scene keeps the logs + UI.
+	var set_cost: int = _engine.apply_set(_state, hero_id, value)
 	if set_cost == 0:
-		_root_access_used = true
 		_append_log("Root Access: free Set.")
-	protocol_points -= set_cost
-	hero_roll_sets[hero_id] = value
-	hero_roll_nudges.erase(hero_id)  # an explicit set overrides any prior nudge
 	_update_protocol_bar()
 	_append_log("Set: %s die set to %d." % [hero_id, value])
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
