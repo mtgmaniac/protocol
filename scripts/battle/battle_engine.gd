@@ -48,14 +48,14 @@ func max_protocol(cap_override: int) -> int:
 	return cap
 
 
-# Returns { "points": new pool, "vent_hits": [{target, amount}, …] } so the
-# caller can update its bar and log the Overflow Vent hits without re-deriving.
-# The vent DAMAGE is already applied here (via combat_manager) — one rules engine.
-func gain_protocol(current: int, amount: int, cap: int) -> Dictionary:
+# Mutates bs.protocol_points in place and returns the Overflow Vent hits
+# ([{target, amount}, …]) so the caller can update its bar/log without
+# re-deriving. The vent DAMAGE is already applied here (via combat_manager).
+func gain_protocol(bs: BattleState, amount: int, cap: int) -> Array:
 	if amount <= 0:
-		return {"points": current, "vent_hits": []}
-	var overflow: int = maxi(0, current + amount - cap)
-	var new_points: int = mini(current + amount, cap)
+		return []
+	var overflow: int = maxi(0, bs.protocol_points + amount - cap)
+	bs.protocol_points = mini(bs.protocol_points + amount, cap)
 	var vent_hits: Array = []
 	if overflow > 0 and combat_manager.has_relic("protocolOverflowDamage"):
 		var per_point: int = 2
@@ -66,7 +66,7 @@ func gain_protocol(current: int, amount: int, cap: int) -> Dictionary:
 			var vent_target: Dictionary = living[roll_provider.rand_index(living.size())]
 			combat_manager.apply_item_damage(vent_target, per_point)
 			vent_hits.append({"target": vent_target, "amount": per_point})
-	return {"points": new_points, "vent_hits": vent_hits}
+	return vent_hits
 
 
 # ── Effective-roll pipeline (extracted from battle_scene) ─────────────────────
@@ -75,22 +75,22 @@ func gain_protocol(current: int, amount: int, cap: int) -> Dictionary:
 # a frozen-consumed die returns its raw value; otherwise combat_manager's
 # effective roll (buffs/rfe/jam/rewrite) plus the player's Nudge.
 
-func effective_hero_roll(state: Dictionary, unit_id: String, hero_rolls: Dictionary, hero_roll_nudges: Dictionary, hero_roll_sets: Dictionary) -> int:
-	var raw_roll: int = int(hero_rolls.get(unit_id, hero_rolls.get(str(unit_id), 0)))
+func effective_hero_roll(state: Dictionary, unit_id: String, bs: BattleState) -> int:
+	var raw_roll: int = int(bs.hero_rolls.get(unit_id, bs.hero_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
 	# Set action forces an absolute effective roll, overriding freeze/nudge/buffs.
-	if hero_roll_sets.has(unit_id) or hero_roll_sets.has(str(unit_id)):
-		return clampi(int(hero_roll_sets.get(unit_id, hero_roll_sets.get(str(unit_id), raw_roll))), 1, 20)
+	if bs.hero_roll_sets.has(unit_id) or bs.hero_roll_sets.has(str(unit_id)):
+		return clampi(int(bs.hero_roll_sets.get(unit_id, bs.hero_roll_sets.get(str(unit_id), raw_roll))), 1, 20)
 	if bool(state.get("die_freeze_consumed_this_round", false)):
 		return clampi(raw_roll, 1, 20)
-	var nudge: int = int(hero_roll_nudges.get(unit_id, hero_roll_nudges.get(str(unit_id), 0)))
+	var nudge: int = int(bs.hero_roll_nudges.get(unit_id, bs.hero_roll_nudges.get(str(unit_id), 0)))
 	var base_eff: int = combat_manager.get_effective_roll(state, raw_roll)
 	return clampi(base_eff + nudge, 1, 20)
 
 
-func effective_enemy_roll(state: Dictionary, unit_id: String, enemy_rolls: Dictionary) -> int:
-	var raw_roll: int = int(enemy_rolls.get(unit_id, enemy_rolls.get(str(unit_id), 0)))
+func effective_enemy_roll(state: Dictionary, unit_id: String, bs: BattleState) -> int:
+	var raw_roll: int = int(bs.enemy_rolls.get(unit_id, bs.enemy_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
 	if bool(state.get("die_freeze_consumed_this_round", false)):
@@ -101,7 +101,7 @@ func effective_enemy_roll(state: Dictionary, unit_id: String, enemy_rolls: Dicti
 # Builds a dict of effective rolls for all living units in the given states
 # array, for combat_manager.resolve_round(). Mirrors the original exactly: the
 # enemy branch uses combat_manager.get_effective_roll directly (no frozen guard).
-func build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool, hero_rolls: Dictionary, hero_roll_nudges: Dictionary, hero_roll_sets: Dictionary) -> Dictionary:
+func build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool, bs: BattleState) -> Dictionary:
 	var eff: Dictionary = {}
 	for state in states:
 		if bool(state["dead"]):
@@ -111,7 +111,7 @@ func build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool, 
 		if raw == 0:
 			continue
 		if is_hero:
-			eff[uid] = effective_hero_roll(state, uid, hero_rolls, hero_roll_nudges, hero_roll_sets)
+			eff[uid] = effective_hero_roll(state, uid, bs)
 		else:
 			eff[uid] = combat_manager.get_effective_roll(state, raw)
 	return eff

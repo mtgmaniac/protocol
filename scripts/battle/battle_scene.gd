@@ -77,11 +77,23 @@ var combat_manager: CombatManager = CombatManager.new()
 # protocol-economy rules extracted from this god object so the headless sim and
 # the live screen run one implementation. See scripts/sim/DECOUPLING_NOTES.md.
 var _engine: BattleEngine = BattleEngine.new(combat_manager, PhysicsRollProvider.new(dice_manager))
-var protocol_points: int = 0  # battles start at 0; +1 income at end of each turn
+# Caller-owned battle state (rolls / nudge-set maps / protocol pool / per-battle
+# spend flags) lives in one container so Package D's L2 solver can snapshot it
+# with a single duplicate_for_search(). The members below are property
+# forwarders — field names and semantics unchanged, storage relocated here.
+var _state: BattleState = BattleState.new()
+# battles start at 0; +1 income at end of each turn
+var protocol_points: int:
+	get: return _state.protocol_points
+	set(value): _state.protocol_points = value
 var hero_card_views: Array = []
 var enemy_card_views: Array = []
-var hero_rolls: Dictionary = {}
-var enemy_rolls: Dictionary = {}
+var hero_rolls: Dictionary:
+	get: return _state.hero_rolls
+	set(value): _state.hero_rolls = value
+var enemy_rolls: Dictionary:
+	get: return _state.enemy_rolls
+	set(value): _state.enemy_rolls = value
 var hero_units: Array = []
 var enemy_units: Array = []
 
@@ -112,8 +124,13 @@ var legal_target_side: String = ""
 var pending_manual_target_ids: Array = []
 var has_player_target_assignment: bool = false
 var battle_over: bool = false
-var hero_roll_nudges: Dictionary = {}
-var hero_roll_sets: Dictionary = {}  # hero_id -> absolute effective roll set via the Set action
+var hero_roll_nudges: Dictionary:
+	get: return _state.hero_roll_nudges
+	set(value): _state.hero_roll_nudges = value
+# hero_id -> absolute effective roll set via the Set action
+var hero_roll_sets: Dictionary:
+	get: return _state.hero_roll_sets
+	set(value): _state.hero_roll_sets = value
 var _battle_consumables: Array = []
 var _item_button: Button = null
 var _nudge_button: Button = null
@@ -1143,11 +1160,10 @@ func _apply_reroll(hero_id: String) -> void:
 func _gain_protocol(amount: int) -> void:
 	if amount <= 0:
 		return
-	# Rule delegated to BattleEngine (A.1); this scene keeps the pool + UI.
-	var res: Dictionary = _engine.gain_protocol(protocol_points, amount, _max_protocol())
-	protocol_points = int(res["points"])
+	# Rule delegated to BattleEngine (A.1); the engine mutates _state.protocol_points,
+	# this scene keeps the bar + logs.
+	var vent_hits: Array = _engine.gain_protocol(_state, amount, _max_protocol())
 	_update_protocol_bar()
-	var vent_hits: Array = res["vent_hits"]
 	for hit_variant in vent_hits:
 		var hit: Dictionary = hit_variant
 		_append_log("Overflow Vent: %d damage to %s." % [int(hit["amount"]), hit["target"]["unit"].display_name])
@@ -1165,7 +1181,9 @@ func _hero_has_gear_effect(hero_id: String, effect_type: String) -> bool:
 
 # Intercept battle effects (pkg7.4): one-shot flags consumed at battle start.
 var _battle_effects: Dictionary = {}
-var _income_debt: int = 0
+var _income_debt: int:
+	get: return _state.income_debt
+	set(value): _state.income_debt = value
 
 
 func _apply_intercept_battle_effects() -> void:
@@ -1241,17 +1259,25 @@ func _squad_id_for_state(hero_state: Dictionary) -> String:
 
 
 # Priming Charge gear: the first Nudge each battle is free (per holder).
-var _free_nudge_used: Dictionary = {}
+var _free_nudge_used: Dictionary:
+	get: return _state.free_nudge_used
+	set(value): _state.free_nudge_used = value
 
 # Round counter (1-based) for turn-scoped relics (Resonant Chorus).
 var _round_number: int = 1
 
 # Root Access boss relic: once per battle, Set costs 0.
-var _root_access_used: bool = false
+var _root_access_used: bool:
+	get: return _state.root_access_used
+	set(value): _state.root_access_used = value
 
 # Twin Fates relic: once per battle, copy one hero die's result to another.
-var _twin_fates_used: bool = false
-var _twin_fates_source_id: String = ""
+var _twin_fates_used: bool:
+	get: return _state.twin_fates_used
+	set(value): _state.twin_fates_used = value
+var _twin_fates_source_id: String:
+	get: return _state.twin_fates_source_id
+	set(value): _state.twin_fates_source_id = value
 
 
 # Vengeance Protocol / Dead Man's Hand (forced natural 20s) and Resonant
@@ -1762,17 +1788,17 @@ func _finish_roll_modifier_pick() -> void:
 # own roll/nudge/set state. The sim owns parallel dicts and calls the same
 # engine methods — one rules engine.
 func _get_effective_roll_for_state(state: Dictionary, unit_id: String) -> int:
-	return _engine.effective_hero_roll(state, unit_id, hero_rolls, hero_roll_nudges, hero_roll_sets)
+	return _engine.effective_hero_roll(state, unit_id, _state)
 
 
 func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
-	return _engine.effective_enemy_roll(state, unit_id, enemy_rolls)
+	return _engine.effective_enemy_roll(state, unit_id, _state)
 
 
 # Builds a dict of effective rolls for all living units in the given states array.
 # Used to pass fully-resolved roll values into combat_manager.resolve_round().
 func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool) -> Dictionary:
-	return _engine.build_effective_rolls(raw_rolls, states, is_hero, hero_rolls, hero_roll_nudges, hero_roll_sets)
+	return _engine.build_effective_rolls(raw_rolls, states, is_hero, _state)
 
 
 var _protocol_segments: Array = []
