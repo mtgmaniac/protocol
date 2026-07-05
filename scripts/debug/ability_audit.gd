@@ -878,6 +878,27 @@ func _run_detonate_regression() -> void:
 	else:
 		_record_failure("Regression / detonate fizzles without burn", "detonate", "only base 5 damage", "hp_delta=%d" % (f_before - int(f_enemy["current_hp"])))
 
+	# Balance-sim-discovered: a permanent burn (plagueProtocol, 9999-turn
+	# sentinel) must NOT detonate for burn x 9999 (~30k one-shot). The turns
+	# factor is capped at DETONATE_MAX_TURNS (6).
+	var perm_manager: CombatManager = CombatManager.new()
+	perm_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Backdraft", {"dmg": 5, "detonate": true})], [_make_enemy("audit_perm", "Audit Perm", "Noop", {})])
+	var p_hero: Dictionary = perm_manager.get_hero_states()[0]
+	var p_enemy: Dictionary = perm_manager.get_enemy_states()[0]
+	p_enemy["max_hp"] = 100000
+	p_enemy["current_hp"] = 100000
+	p_hero["selected_target_id"] = str(p_enemy["id"])
+	p_enemy["burn"] = 3
+	p_enemy["burn_turns"] = 9999
+	p_enemy["burn_skip_next_tick"] = true
+	var p_before: int = int(p_enemy["current_hp"])
+	perm_manager.resolve_round({str(p_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	# 5 base + (3 burn x min(9999, 6)) = 5 + 18 = 23, NOT 5 + 29997.
+	if int(p_enemy["current_hp"]) == p_before - 23:
+		_record_pass("Regression / detonate caps permanent-burn burst", "detonate")
+	else:
+		_record_failure("Regression / detonate caps permanent-burn burst", "detonate", "5 base + 18 capped burst (23)", "hp_delta=%d" % (p_before - int(p_enemy["current_hp"])))
+
 
 func _run_execute_regression() -> void:
 	# Execute: +8 bonus only when the target is below 25% max HP after base damage.

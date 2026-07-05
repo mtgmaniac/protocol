@@ -91,6 +91,10 @@ const BOSS_HIEROPHANT := "ROOT HIEROPHANT"
 const BOSS_MANTLE := "MANTLE TYRANT"
 const SCRAP_DRONE_NAME := "Scrap Drone"
 const BROOD_SPAWN_NAME := "Bloodmite"
+# Detonate burst = burn × min(turns, DETONATE_MAX_TURNS). The cap bounds the
+# permanent-burn sentinel (plagueProtocol's 9999t); 6 = one past the highest
+# authored burn duration (5), so authored abilities are unaffected.
+const DETONATE_MAX_TURNS := 6
 
 const BOSS_STANDING_RULES := {
 	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP.",
@@ -1275,7 +1279,15 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 	if burn_amount <= 0 or burn_turns <= 0:
 		_log("%s's Detonate fizzles — no Burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
 		return
-	var burst: int = burn_amount * burn_turns
+	# Permanent burns (plagueProtocol) carry a 9999-turn sentinel; multiplying
+	# the burst by it deals ~30k+ (a one-shot kill on anything). Cap the turns
+	# factor at DETONATE_MAX_TURNS — set to one past the highest AUTHORED burn
+	# duration (5), so every real ability is unchanged and only the sentinel is
+	# bounded. Balance-sim-discovered.
+	# DESIGN-TODO(kev): what SHOULD a permanent-burn Detonate deal? The cap of 6
+	# is a data-derived placeholder (max authored +1), not a tuned value.
+	var effective_turns: int = mini(burn_turns, DETONATE_MAX_TURNS)
+	var burst: int = burn_amount * effective_turns
 	if bool(attacker_state.get("gear_detonate_bonus", false)):
 		burst = int(ceil(float(burst) * 1.5))
 	target_state["burn"] = 0
