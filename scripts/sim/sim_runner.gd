@@ -102,6 +102,12 @@ func _run(args: Dictionary) -> int:
 
 	# Seed the run: GameState._reward_rng deterministic, then start.
 	gs.call("start_run", squad, op, _seed)
+	# Forced content (Stage-2 A/B arms): grant items at run start. Deterministic;
+	# mirrors claim_reward's routing but bypasses the pending-draft gate.
+	# `--grant id[@unit],id2,...` — gear defaults to the first squad slot unless
+	# an @unit suffix names one. Documented caveat: granted from battle 1, not
+	# the natural draft point, so the control arm must be matched the same way.
+	var granted: Array = _apply_grants(gs, dm, str(args.get("grant", "")))
 	gs.call("advance_to_next_battle")  # current_battle 0 -> 1
 
 	# Seeded streams two and three (offset from the reward-rng seed so all
@@ -112,7 +118,7 @@ func _run(args: Dictionary) -> int:
 	_tel.emit({
 		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,
 		"sim_version": SIM_VERSION, "schema_version": SimTelemetryScript.SCHEMA_VERSION,
-		"roll_source": provider.describe(),
+		"roll_source": provider.describe(), "granted": granted,
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
@@ -186,6 +192,44 @@ func _bench(gs: Node, dm: Node, args: Dictionary) -> int:
 	var per_min: float = (float(battles) / elapsed_s) * 60.0 if elapsed_s > 0.0 else 0.0
 	print("[SIM] bench: %d battles across %d runs in %.3fs = %.0f battles/min" % [battles, run_index, elapsed_s, per_min])
 	return 0
+
+
+# Grants forced content (Stage-2 arms) at run start. Returns the granted ids
+# for the run header. `spec` = "id[@unit],id2,..."; gear -> named unit or slot 0.
+func _apply_grants(gs: Node, dm: Node, spec: String) -> Array:
+	var granted: Array = []
+	if spec.strip_edges() == "":
+		return granted
+	for token in spec.split(",", false):
+		var entry: String = str(token).strip_edges()
+		if entry == "":
+			continue
+		var item_id: String = entry
+		var target_unit: String = ""
+		if entry.contains("@"):
+			var parts: PackedStringArray = entry.split("@", true, 1)
+			item_id = str(parts[0]).strip_edges()
+			target_unit = str(parts[1]).strip_edges()
+		var item: ItemData = dm.call("get_item", item_id) as ItemData
+		if item == null:
+			push_warning("[SIM] --grant: unknown item '%s'" % item_id)
+			continue
+		match item.item_type:
+			"gear":
+				if target_unit == "" and not (gs.get("selected_units") as Array).is_empty():
+					target_unit = str((gs.get("selected_units") as Array)[0])
+				var unit_gear: Array = (gs.get("gear_by_unit") as Dictionary).get(target_unit, []).duplicate()
+				unit_gear.append(item_id)
+				(gs.get("gear_by_unit") as Dictionary)[target_unit] = unit_gear
+				(gs.get("equipped_gear") as Dictionary)[target_unit] = unit_gear.duplicate()
+			"consumable":
+				if (gs.get("consumables") as Array).size() < int(gs.get("MAX_CONSUMABLES")):
+					(gs.get("consumables") as Array).append(item_id)
+			"relic":
+				if not (gs.get("relics") as Array).has(item_id):
+					(gs.get("relics") as Array).append(item_id)
+		granted.append(entry)
+	return granted
 
 
 func _squad_from_args(args: Dictionary) -> Array:

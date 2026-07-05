@@ -1,0 +1,7 @@
+# Analysis-only deps for the balance sim (Package C). The Godot sim itself and
+# batch.py / replay.py need NONE of these (stdlib only); only analyze.py does.
+#   python -m pip install -r scripts/sim/requirements.txt
+pandas>=2.0
+statsmodels>=0.14
+scipy>=1.11
+numpy>=1.24

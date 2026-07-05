@@ -233,10 +233,39 @@ to exist before anyone debugged L1):
 - Determinism gate (`tests/sim_determinism.sh`) now runs stub/l0/l1 — all
   byte-identical.
 
-Remaining SIM-TODO: consumable USE during battle (item dispatch port) — the
-spend hook covers nudge/reroll/set only; that port is **Package C** scope.
+**Package C COMPLETE** (orchestration + analysis):
+- ✅ `sim_runner --grant id[@unit],...` — forced content at run start for
+  Stage-2 arms (relic/gear/consumable routed like claim_reward, recorded in
+  the run header as `granted`). Documented caveat: granted from battle 1.
+- ✅ `scripts/sim/batch.py` — parallel Godot workers (ThreadPoolExecutor),
+  uniform-random squad/op per run (seeded from seed-base → reproducible),
+  `results/<name>/` + `manifest.json`. ~740 runs/min at 8 workers.
+- ✅ `scripts/sim/analyze.py` (pandas/statsmodels/scipy — `requirements.txt`):
+  per-run aggregation from JSONL; descriptive tables (hero inclusion-adjusted
+  clear rate, op clear rate, protocol spend distribution + win-corr, keyword
+  realized value, enemy damage-per-appearance); Stage-1 **ridge** logistic
+  (`fit_regularized`, α=2) with **bootstrap** CIs over exogenous/acquired
+  content only (evo/dir dropped as survival-confounded → descriptive pick-rate
+  table); Stage-2 `--ab treat ctrl` matched-seed two-proportion z-test.
+- **First outlier (600-run L1 screen):** `hero__avalanche` +2.86 log-odds
+  [+2.38, +3.55] (84% clear vs ~45% squad-wide) — Avalanche squad is the
+  standout. Modest positive gear lifts (echo_matrix, ignition_coil, …).
+- **Sim-discovered combat bug fixed en route:** Detonate vs a permanent
+  (plagueProtocol 9999t) burn dealt burn×9999 ≈ 30k–120k. Capped at
+  `DETONATE_MAX_TURNS` (6 = max authored +1); audit case added; DESIGN-TODO(kev)
+  on the intended permanent-burn burst value.
 
-**Next: Package C / D / E** per the original sim prompt (unchanged), with the
+Ridge-not-MLE + bootstrap CIs matter: plain `Logit.fit()` hit quasi-separation
+on the sparse content one-hots and returned ±2e6 CIs; ridge stabilizes and the
+bootstrap gives honest intervals. Stage-1 is a SCREEN; Stage-2 arms are causal
+(e.g. coldLogic on an Avalanche squad: naive +0.44 lift, matched-arm +4.7%
+n.s. at 150 runs — the confound the prompt names, correctly deflated).
+
+Remaining SIM-TODO: consumable USE during battle (item dispatch port) — the
+spend hook covers nudge/reroll/set only; consumable lift reads ~0 until
+**Package D** adds the item-use policy.
+
+**Next: Package D / E** per the original sim prompt (unchanged), with the
 determinism gate after every package.
 
 `# SIM-TODO(kev)` markers flag any ambiguity taken at the smallest defensible interpretation; grep the sim tree for them.
