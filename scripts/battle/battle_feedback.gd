@@ -240,20 +240,26 @@ func _flash_card(card: Control, event_type: String) -> void:
 	match event_type:
 		"damage", "burn":
 			flash_color = Color(1.0, 0.45, 0.45, 1.0)
-		"heal":
+		"heal", "leech":
 			flash_color = Color(0.45, 1.0, 0.65, 1.0)
 		"shield", "block", "roll_buff", "freeze":
 			flash_color = Color(0.55, 0.82, 1.0, 1.0)
 		"wipe_shields":
 			flash_color = Color(1.0, 0.80, 0.20, 1.0)
+		"execute":
+			# pkg8.4: Execute lands with its own deep-red flash (not default white).
+			flash_color = Color(1.0, 0.30, 0.30, 1.0)
 	card.modulate = flash_color
 	tween.tween_property(card, "modulate", base_modulate, 0.22).from(flash_color)
 
 
 func _spawn_floating_text(card: Control, event_type: String, amount: int) -> void:
+	var float_text: String = _build_floating_text(event_type, amount)
+	if float_text == "":
+		return
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = _build_floating_text(event_type, amount)
+	label.text = float_text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(20))
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
@@ -324,6 +330,10 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 			return "EXECUTE -%d" % amount
 		"mark":
 			return "◎ MARKED"
+		"leech":
+			# The paired heal event carries the green +N; the leech event only
+			# draws the return tracer.
+			return ""
 		"chain", "detonate", "spike":
 			return "-%d" % amount
 		_:
@@ -394,25 +404,34 @@ func _celebrate_overload() -> void:
 
 
 # ── pkg8.4 keyword feedback (composed from the primitive library) ────────────
-# Chain = tracer to the jumped target · Detonate = burst on the target ·
-# Breach = shield-shatter burst · Spike = spark burst on the attacker ·
-# Siphon = amber pip drifts from the protocol bar to the enemy · Hijack =
-# ghost die label drifts from the hero rail to the enemy card · Jam = static
-# flicker on the die · Rewrite = the die's marker scrambles then slams to 3 ·
-# Decloak = the portrait resolves sharp. Mark/Ward/Execute run through the
+# Chain = tracer to the jumped target · Detonate = burn-chip flash then ember
+# burst (the combined number floats via the generic channel) · Breach =
+# shield-shatter burst · Spike = spark burst on the attacker · Siphon = amber
+# pip drifts from the protocol bar to the enemy · Hijack = ghost die label
+# drifts from the hero rail to the enemy card · Jam = static flicker on the
+# die · Rewrite = the die's marker scrambles then slams to 3 · Decloak = the
+# portrait resolves sharp · Leech = dim red return tracer from the drained
+# enemy (paired event; the heal event carries the green number) · Ward
+# consume = hex flash + "✕ NEGATED". Mark/Execute run through the
 # floating-text and pause channels. All flat, palette-driven, no glow.
-# DESIGN-TODO(kev): Leech shows only the green heal number for now — the dim
-# red target→attacker tracer needs damage/heal pairing the events don't carry.
 func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: Control, target_card: Control) -> void:
 	match event_type:
 		"chain":
 			_tracer(actor_card, target_card, Color(0.55, 0.85, 1.0, 0.9))
 		"detonate":
-			_burst_particles(target_card, Color(0.95, 0.55, 0.20, 1.0), 14)
+			_chip_flash_then_burst(target_card, PixelUI.DT_STATUS["burn"]["border"], Color(0.95, 0.55, 0.20, 1.0), 14)
 		"breach":
 			_burst_particles(target_card, Color(1.0, 0.82, 0.20, 1.0), 12)
 		"spike":
 			_burst_particles(target_card, Color(0.86, 0.42, 0.28, 1.0), 8)
+		"leech":
+			# fix-2.7: the return tracer — HP flows back from the drained enemy.
+			var source_card: Control = _find_card_by_state_id(str(event.get("source_side", "")), str(event.get("source_id", "")))
+			_tracer(source_card, target_card, Color(0.85, 0.30, 0.30, 0.75))
+		"block":
+			if int(event.get("amount", 0)) <= 0:
+				# Ward consume — hex flash in the shield channel.
+				_hex_flash(target_card, Color(0.55, 0.82, 1.0, 0.95))
 		"siphon":
 			var bar_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y - 60.0)
 			if _scene.protocol_bar != null and is_instance_valid(_scene.protocol_bar):
@@ -450,6 +469,65 @@ func _tracer(from_card: Control, to_card: Control, color: Color) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(line, "modulate:a", 0.0, 0.28).set_delay(0.10)
 	tween.tween_callback(line.queue_free)
+
+
+# Detonate composition: a chip-sized flash in the burn color pops at the
+# card's status strip (the consumed Burn chip's home), then hands off to the
+# ember burst. Flat rects only.
+func _chip_flash_then_burst(card: Control, chip_color: Color, burst_color: Color, count: int) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		_burst_particles(card, burst_color, count)
+		return
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var card_rect: Rect2 = card.get_global_rect()
+	var chip: ColorRect = ColorRect.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.color = chip_color
+	chip.size = Vector2(30, 30)
+	chip.position = card_rect.position - layer_origin + Vector2(10.0, card_rect.size.y * 0.60)
+	chip.z_as_relative = false
+	chip.z_index = 195
+	chip.pivot_offset = chip.size * 0.5
+	_scene.float_layer.add_child(chip)
+	chip.scale = Vector2(0.4, 0.4)
+	var tween: Tween = create_tween()
+	tween.tween_property(chip, "scale", Vector2(1.3, 1.3), 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(chip, "modulate:a", 0.0, 0.10)
+	tween.tween_callback(func() -> void:
+		chip.queue_free()
+		_burst_particles(card, burst_color, count)
+	)
+
+
+# Ward consume: a flat hexagon outline pops over the card and fades — the
+# "hex flash". Palette shield cyan, no glow.
+func _hex_flash(card: Control, color: Color) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var center: Vector2 = card.get_global_rect().get_center() - layer_origin
+	var hex: Line2D = Line2D.new()
+	hex.width = 5.0
+	hex.default_color = color
+	hex.closed = true
+	hex.z_as_relative = false
+	hex.z_index = 195
+	var radius: float = 46.0
+	for i in 6:
+		hex.add_point(center + Vector2.RIGHT.rotated(TAU * float(i) / 6.0 - TAU / 12.0) * radius)
+	_scene.float_layer.add_child(hex)
+	hex.scale = Vector2(0.5, 0.5)
+	# Line2D points are in layer space, so scale around the hex's center.
+	hex.position = center * 0.5
+	var tween: Tween = create_tween()
+	tween.tween_property(hex, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(hex, "position", Vector2.ZERO, 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(hex, "modulate:a", 0.0, 0.22)
+	tween.tween_callback(hex.queue_free)
 
 
 # Primitive: a flat particle burst — small squares scatter from the card's

@@ -1131,6 +1131,20 @@ func _apply_hero_ability_damage(
 		var leech_heal: int = int(floor(float(leech_hp_dealt) * 0.5))
 		if leech_heal > 0:
 			_log("%s leeches %d HP." % [hero_state["unit"].display_name, leech_heal])
+			# fix-2.7: paired leech event — carries the drained enemy so feedback
+			# can draw the target->attacker return tracer (the heal event that
+			# follows carries the green number).
+			_round_events.append({
+				"type": "leech",
+				"amount": leech_heal,
+				"side": "hero",
+				"target_id": str(hero_state["id"]),
+				"target_name": str(hero_state["unit"].display_name),
+				"hp_after": int(hero_state.get("current_hp", 0)),
+				"hp_max": int(hero_state.get("max_hp", 1)),
+				"source_side": "enemy",
+				"source_id": str(hero_state.get("selected_target_id", "")),
+			})
 			_heal_state(hero_state, leech_heal, hero_state)
 
 
