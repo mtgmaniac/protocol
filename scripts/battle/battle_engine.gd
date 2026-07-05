@@ -69,3 +69,59 @@ func build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool, 
 		else:
 			eff[uid] = combat_manager.get_effective_roll(state, raw)
 	return eff
+
+
+# ── Roll sourcing (extracted from battle_scene) ───────────────────────────────
+# In the live game the roll VALUE comes from the physics tray; roll_states is
+# the headless/fallback source. Both flow through the RollProvider seam, so the
+# game uses PhysicsRollProvider (wraps DiceManager) and the sim uses
+# SeededRollProvider — identical logic, different value stream.
+
+func roll_states(states: Array) -> Dictionary:
+	var rolls: Dictionary = {}
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		rolls[str(state["id"])] = roll_provider.roll_d20()
+	return rolls
+
+
+# Frozen dice ignore the fresh roll and reuse their locked value.
+func apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if bool(state["dead"]):
+			continue
+		if int(state.get("die_freeze_turns", 0)) <= 0:
+			continue
+		var frozen_value: int = int(state.get("frozen_die_value", 0))
+		if frozen_value <= 0:
+			continue
+		rolls[str(state["id"])] = frozen_value
+
+
+# Stamps last_die_value (used by freeze items to capture the current face) and
+# marks a frozen die as consumed this round (so its reveal is skipped).
+func record_roll_values_for_states(states: Array, rolls: Dictionary) -> void:
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if bool(state["dead"]):
+			continue
+		var roll_value: int = roll_value_for_state(rolls, state)
+		if roll_value <= 0:
+			continue
+		state["last_die_value"] = roll_value
+		if int(state.get("die_freeze_turns", 0)) > 0:
+			state["die_freeze_consumed_this_round"] = true
+
+
+func roll_value_for_state(rolls: Dictionary, state: Dictionary) -> int:
+	var state_id: String = str(state.get("id", ""))
+	if rolls.has(state_id):
+		return int(rolls[state_id])
+	var unit: Object = state.get("unit") as Object
+	if unit == null:
+		return 0
+	var unit_id = unit.get("id")
+	if unit_id != null and rolls.has(unit_id):
+		return int(rolls[unit_id])
+	return 0

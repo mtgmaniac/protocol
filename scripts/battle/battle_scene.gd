@@ -609,11 +609,7 @@ func _auto_assign_pending_targets(use_pauses: bool = true) -> void:
 
 
 func _roll_for_states(states: Array) -> Dictionary:
-	var rolls: Dictionary = {}
-	for state_variant in states:
-		var state: Dictionary = state_variant
-		rolls[str(state["id"])] = dice_manager.roll_d20()
-	return rolls
+	return _engine.roll_states(states)
 
 
 func _get_auto_debug_target_id(target_side: String, target_ids: Array) -> String:
@@ -669,42 +665,15 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 
 
 func _apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:
-	for state_variant in states:
-		var state: Dictionary = state_variant
-		if bool(state["dead"]):
-			continue
-		if int(state.get("die_freeze_turns", 0)) <= 0:
-			continue
-		var frozen_value: int = int(state.get("frozen_die_value", 0))
-		if frozen_value <= 0:
-			continue
-		rolls[str(state["id"])] = frozen_value
+	_engine.apply_frozen_roll_overrides(states, rolls)
 
 
 func _record_roll_values_for_states(states: Array, rolls: Dictionary) -> void:
-	for state_variant in states:
-		var state: Dictionary = state_variant
-		if bool(state["dead"]):
-			continue
-		var roll_value: int = _get_roll_value_for_state(rolls, state)
-		if roll_value <= 0:
-			continue
-		state["last_die_value"] = roll_value
-		if int(state.get("die_freeze_turns", 0)) > 0:
-			state["die_freeze_consumed_this_round"] = true
+	_engine.record_roll_values_for_states(states, rolls)
 
 
 func _get_roll_value_for_state(rolls: Dictionary, state: Dictionary) -> int:
-	var state_id: String = str(state.get("id", ""))
-	if rolls.has(state_id):
-		return int(rolls[state_id])
-	var unit: Object = state.get("unit") as Object
-	if unit == null:
-		return 0
-	var unit_id = unit.get("id")
-	if unit_id != null and rolls.has(unit_id):
-		return int(rolls[unit_id])
-	return 0
+	return _engine.roll_value_for_state(rolls, state)
 
 
 func _build_dice_action_entries(states: Array, rolls: Dictionary, is_hero: bool) -> Array:
