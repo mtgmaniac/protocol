@@ -188,30 +188,33 @@ methods that mutate a passed dict mutate the caller's dict directly.
 - ✅ **Cluster 3 — protocol economy:** `max_protocol` (cap 10 / run override /
   Deep Cells), `gain_protocol` (income + Overflow Vent via `rand_index`).
 
-**Remaining A.1 clusters:**
-- ⬜ **Cluster 4 — protocol spends:** reroll (cost 2, redraw via provider, clear
-  nudge/set — cleanest), then nudge (+3 / Priming Charge free / Reverse Gimbal
-  flip) and set (absolute / Root Access free) and Twin Fates. These are more
-  UI/gear-entangled (`_hero_has_gear_effect`, `_free_nudge_used`, dice-tray
-  in-place updates, tutorial emits) — extract the rule core, leave UI in
-  battle_scene. `# SIM-TODO(kev)`: pass gear-effect booleans in rather than
-  giving the engine GameState/DataManager gear reads, to keep it pure + bare-
-  instance-safe.
-- ⬜ **Cluster 5 — inline item effects** not on combat_manager (cloak/cloakAll,
-  enemyRerollDie/All via provider, enemyDieFreeze/All, gainProtocol) + item
-  protocol cost. Prefer pushing cloak/freeze/reroll down into `combat_manager`
-  as `apply_item_*` for symmetry.
-- ⬜ **Cluster 6 — per-round orchestration:** re-point battle_scene's
-  `_resolve_current_turn` glue (source rolls → build effective → resolve_round →
-  drain protocol → income) at an engine `resolve_step`, so the round loop the
-  sim runs and the loop battle_scene runs are the same code, not just the same
-  rule calls. (Until then battle_scene keeps its own thin loop glue; every RULE
-  call already routes through the engine / combat_manager, so nothing is
-  duplicated except sequencing.)
+**Done (cont.):**
+- ✅ **BattleState** — caller-owned roll/nudge/set/pool/spend-flag state in one
+  container (`battle_state.gd`) with `duplicate_for_search()` for the L2 solver;
+  battle_scene members are property forwarders to `_state`.
+- ✅ **Cluster 4 — protocol spends:** `apply_reroll`, `nudge_cost`/`apply_nudge`
+  (Priming Charge / Reverse Gimbal), `set_cost`/`apply_set` (Root Access),
+  `twin_fates_copy`. Gear-effect lookups passed in as booleans.
+- ✅ **Cluster 5 — inline item effects:** `item_protocol_cost`, `item_cloak`/
+  `item_cloak_all`, `item_enemy_reroll`/`_all` (via provider), `item_enemy_freeze`/
+  `_all`. battle_scene keeps the effect dispatch + logging.
+- ✅ **Cluster 6 — per-round resolution:** `BattleEngine.resolve_step(bs)` — the
+  one round loop both the live screen and the sim run.
 
-Then A.3 sim_runner (a SCENE, per §4a) drives GameState (run flow) + BattleEngine
-(battles) with the policy layer; A.4 fast path; A.5 delete legacy JS sim +
-determinism gate.
+**Package A COMPLETE** (A.1–A.5):
+- ✅ **A.3** `scenes/sim/sim_main.tscn` + `scripts/sim/sim_runner.gd` — full run,
+  zero UI, byte-deterministic. Stub policy (auto-target first enemy via
+  combat_manager fallback; drafts option 0; beats consumed w/o effects — SIM-TODOs).
+- ✅ **A.4** `--bench N` → ~40,000 battles/min single-worker (target ≥1,000).
+- ✅ **A.5** `tests/sim_determinism.sh`; legacy JS sim deleted.
+- ⚠️ The human "play one manual battle, confirm nothing feels different" check is
+  the one Package-A item that can't be automated — pending Kev.
+
+**Next: Package B** — telemetry schema (`telemetry_schema.md`), PlayerPolicy
+interface + L0 (random) / L1 (greedy), replay printer (`replay.py`). The stub
+policy + minimal JSONL in `sim_runner.gd` get replaced/extended there; the
+SIM-TODOs (real drafts, beat effects, blackout/income-debt, full battle-start
+setup) are addressed as the policy + schema land.
 
 `# SIM-TODO(kev)` markers flag any ambiguity taken at the smallest defensible interpretation; grep the sim tree for them.
 
