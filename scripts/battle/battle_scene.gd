@@ -441,7 +441,7 @@ func _on_unit_detail_requested(card: Control) -> void:
 	# unit's live battle state so its active statuses show as pip + description rows.
 	InspectPopup.open(
 		self,
-		InspectResolver.resolve_unit(compact_card.unit_data, _find_state_for_card(compact_card)),
+		InspectResolver.resolve_unit(compact_card.unit_data, _find_state_for_card(compact_card), compact_card.incoming_intent),
 		compact_card.get_global_rect(),
 		compact_card.get_instance_id(),
 	)
@@ -821,6 +821,18 @@ func _attach_die_inspect(overlay: Control, side: String, unit_id: String, abilit
 	long_press.long_pressed.connect(func(_global_position: Vector2) -> void:
 		var meta: String = "Roll: %d - %d" % [int(ability_entry.get("min", result)), int(ability_entry.get("max", result))]
 		var payload: Dictionary = InspectResolver.resolve_ability(ability_entry.get("raw", {}), side, meta)
+		# fix-2.2: the ±roll chip on the die resolves too — when this unit's
+		# effective roll is shifted, the chip's definition rides along.
+		var chip_states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
+		for chip_state_variant in chip_states:
+			var chip_state: Dictionary = chip_state_variant
+			if str(chip_state.get("id", "")) != unit_id:
+				continue
+			var chip_mods: Dictionary = combat_manager.get_roll_modifier_totals(chip_state)
+			var chip_delta: int = int(chip_mods["roll_buff"]) - int(chip_mods["roll_rfe"])
+			if chip_delta != 0:
+				payload["statuses"] = [InspectResolver.roll_chip_entry(chip_delta)]
+			break
 		InspectPopup.open(self, payload, overlay.get_global_rect(), overlay.get_instance_id())
 	)
 
