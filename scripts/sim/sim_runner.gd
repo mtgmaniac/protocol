@@ -1,4 +1,4 @@
-# sim_runner — headless balance-sim entry point (Package A.3).
+# sim_runner — headless balance-sim entry point (Package A.3; telemetry B.1).
 #
 # Runs a full run with ZERO scene-tree UI by driving GameState (run flow) and
 # BattleEngine + CombatManager (battles) directly — the same rules engine the
@@ -13,30 +13,33 @@
 # seeded via start_run) and the SeededRollProvider (d20s). Same seed + same
 # config => byte-identical JSONL. Nothing here calls randomize()/Time.
 #
+# Telemetry (B.1): one JSONL line per event; schema + determinism contract in
+# scripts/sim/telemetry_schema.md; replay with scripts/sim/replay.py (B.4).
+#
 # A.3 scope: stub policy (no protocol spends; hero abilities auto-target the
 # first living enemy via combat_manager's fallback; drafts/evolutions/directives
 # take option 0). Beats are consumed without applying their effects.
-# SIM-TODO(kev): real policy layer + telemetry schema land in Package B; beat
-# effects (fork modifiers / intercept cards) and the fuller battle-start setup
+# SIM-TODO(kev): real policy layer lands in Package B.2/B.3; beat effects
+# (fork modifiers / intercept cards) and the fuller battle-start setup
 # (route modifiers, intercept battle effects, battle-start consumables) land
 # with the policy work.
 extends Node
 
-const SIM_VERSION := "0.1.0"
+# Preloaded (not class_name-resolved) so a fresh checkout's headless run works
+# before the editor has rebuilt the global class cache.
+const SimTelemetryScript = preload("res://scripts/sim/telemetry.gd")
+
+const SIM_VERSION := "0.2.0"
 const ROUND_SAFETY_CAP := 500
 
-var _out: FileAccess = null
-var _t: int = 0
-var _run_id: String = ""
+var _tel = SimTelemetryScript.new()
 var _seed: int = 0
 
 
 func _ready() -> void:
 	var args: Dictionary = _parse_args()
 	var code: int = _run(args)
-	if _out != null:
-		_out.flush()
-		_out.close()
+	_tel.close_file()
 	get_tree().quit(code)
 
 
@@ -75,15 +78,12 @@ func _run(args: Dictionary) -> int:
 	var op: String = str(args.get("op", ""))
 	if op == "":
 		op = str(dm.call("get_operation_order")[0])
-	var squad_arg: String = str(args.get("squad", "pulse,combat,shield"))
-	var squad: Array = []
-	for s in squad_arg.split(","):
-		if str(s).strip_edges() != "":
-			squad.append(str(s).strip_edges())
+	var squad: Array = _squad_from_args(args)
 	var out_path: String = str(args.get("out", "results/run_%d.jsonl" % _seed))
-	_run_id = "run_%d" % _seed
+	_tel.run_id = "run_%d" % _seed
+	_tel.run_seed = _seed
 
-	if not _open_out(out_path):
+	if not _tel.open_file(out_path):
 		push_error("[SIM] could not open output: %s" % out_path)
 		return 1
 
@@ -95,26 +95,27 @@ func _run(args: Dictionary) -> int:
 	# the two streams are independent but reproducible).
 	var provider := SeededRollProvider.new(_seed ^ 0x9E3779B9)
 
-	_emit({
+	_tel.emit({
 		"type": "run_header", "policy": policy, "squad": squad, "op": op,
-		"sim_version": SIM_VERSION, "roll_source": provider.describe(),
+		"sim_version": SIM_VERSION, "schema_version": SimTelemetryScript.SCHEMA_VERSION,
+		"roll_source": provider.describe(),
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
 	var summary: Dictionary = _play_run(gs, dm, provider, battle_limit)
 
-	_emit({
+	_tel.emit({
 		"type": "run_end", "result": summary["result"],
 		"battles_cleared": summary["battles_cleared"],
 	})
-	print("[SIM] %s: %s, battles_cleared=%d → %s" % [_run_id, summary["result"], summary["battles_cleared"], out_path])
+	print("[SIM] %s: %s, battles_cleared=%d → %s" % [_tel.run_id, summary["result"], summary["battles_cleared"], out_path])
 	return 0
 
 
 # Plays one full run from the CURRENT GameState (already started + advanced to
 # battle 1). Returns { result, battles_cleared, battles_played }. Shared by the
-# normal run and the benchmark; battle_end/battle_start lines emit only when an
-# output file is open (bench opens none, so it does no I/O or JSON work).
+# normal run and the benchmark; telemetry lines emit only when an output file
+# is open (bench opens none, so it does no I/O or JSON work).
 func _play_run(gs: Node, dm: Node, provider: RollProvider, battle_limit: int) -> Dictionary:
 	var total_battles: int = int(gs.get("total_battles"))
 	var battles_cleared: int = 0
@@ -134,7 +135,7 @@ func _play_run(gs: Node, dm: Node, provider: RollProvider, battle_limit: int) ->
 			gs.call("finish_run", "victory")
 			final_result = "victory"
 			break
-		_claim_first_reward(gs)
+		_claim_first_reward(gs, battle_index)
 		gs.call("award_battle_xp")
 		_resolve_progression_stop(gs)
 		if battle_index >= battle_limit:
@@ -199,7 +200,11 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, battle_index: int)
 	var comp_names: Array = []
 	for es in cm.get_enemy_states():
 		comp_names.append(str((es["unit"] as Object).get("display_name")))
-	_emit({"type": "battle_start", "index": battle_index, "comp": comp_names})
+	_tel.emit({
+		"type": "battle_start", "index": battle_index, "comp": comp_names,
+		"modifier": "", "battle_effects": {},
+		"squad_hp": _hp_snapshot(cm.get_hero_states()), "protocol": bs.protocol_points,
+	})
 
 	var rounds: int = 0
 	var result: String = "ongoing"
@@ -214,6 +219,8 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, battle_index: int)
 		engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
 		# Stub policy: no protocol spends; hero abilities auto-target the first
 		# living enemy via combat_manager's selected_target_id fallback.
+		var raw_hero_rolls: Dictionary = bs.hero_rolls.duplicate()
+		var raw_enemy_rolls: Dictionary = bs.enemy_rolls.duplicate()
 		var step: Dictionary = engine.resolve_step(bs)
 		for uid in (step["eff_hero_rolls"] as Dictionary).keys():
 			gs.call("record_hero_effective_roll", str(uid), int((step["eff_hero_rolls"] as Dictionary)[uid]))
@@ -223,21 +230,49 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, battle_index: int)
 			bs.protocol_points = maxi(0, bs.protocol_points - int(step["protocol_drain"]))
 
 		result = str((step["result"] as Dictionary).get("result", "ongoing"))
+		if result != "victory" and result != "defeat":
+			_process_summons(cm, dm, (step["result"] as Dictionary).get("events", []))
+			# End-of-turn income (+1). SIM-TODO: blackout / income-debt exceptions.
+			engine.gain_protocol(bs, 1, engine.max_protocol(0))
+
+		_tel.emit({
+			"type": "round", "index": battle_index, "round": rounds,
+			"hero_rolls": raw_hero_rolls, "eff_hero_rolls": step["eff_hero_rolls"],
+			"enemy_rolls": raw_enemy_rolls, "eff_enemy_rolls": step["eff_enemy_rolls"],
+			"spends": [],
+			"events": (step["result"] as Dictionary).get("events", []),
+			"squad_hp": _hp_snapshot(cm.get_hero_states()),
+			"enemy_hp": _hp_snapshot(cm.get_enemy_states()),
+			"protocol": bs.protocol_points,
+		})
 		if result == "victory" or result == "defeat":
 			break
-		_process_summons(cm, dm, (step["result"] as Dictionary).get("events", []))
-		# End-of-turn income (+1). SIM-TODO: blackout / income-debt exceptions.
-		engine.gain_protocol(bs, 1, engine.max_protocol(0))
 
 	gs.call("capture_battle_end_survival", cm.get_hero_states())
-	var squad_hp: Array = []
-	for hs in cm.get_hero_states():
-		squad_hp.append(int(hs["current_hp"]))
-	_emit({
+	_tel.emit({
 		"type": "battle_end", "index": battle_index, "result": result,
-		"rounds": rounds, "squad_hp": squad_hp, "protocol_left": bs.protocol_points,
+		"rounds": rounds, "squad_hp": _hp_snapshot(cm.get_hero_states()),
+		"protocol_left": bs.protocol_points, "deaths": _dead_hero_ids(cm.get_hero_states()),
 	})
 	return {"result": result, "rounds": rounds}
+
+
+func _hp_snapshot(states: Array) -> Array:
+	var snapshot: Array = []
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		snapshot.append(0 if bool(state.get("dead", false)) else int(state.get("current_hp", 0)))
+	return snapshot
+
+
+func _dead_hero_ids(hero_states: Array) -> Array:
+	var dead: Array = []
+	for state_variant in hero_states:
+		var state: Dictionary = state_variant
+		if bool(state.get("dead", false)):
+			var unit: Variant = state.get("unit")
+			dead.append(str((unit as UnitData).id) if unit is UnitData else str(state.get("id", "")))
+	return dead
 
 
 # ── Unit construction (mirrors battle_scene._build_runtime_units, UI-free) ────
@@ -299,31 +334,59 @@ func _process_summons(cm: CombatManager, dm: Node, events: Array) -> void:
 
 
 # ── Between-battle (stub policy: option 0) ────────────────────────────────────
-func _claim_first_reward(gs: Node) -> void:
+func _claim_first_reward(gs: Node, battle_index: int) -> void:
 	gs.call("prepare_battle_rewards")
 	var items: Array = gs.call("get_pending_reward_items")
+	var options: Array = []
+	for item_variant in items:
+		var opt: ItemData = item_variant as ItemData
+		if opt != null:
+			options.append({"id": opt.id, "type": opt.item_type, "rarity": opt.rarity})
+	var picked: String = ""
+	var target_unit: String = ""
 	for item_variant in items:
 		var item: ItemData = item_variant as ItemData
 		if item == null:
 			continue
 		if item.item_type == "consumable" and (gs.get("consumables") as Array).size() >= int(gs.get("MAX_CONSUMABLES")):
 			continue
-		var target_unit_id: String = ""
 		if item.item_type == "gear":
-			target_unit_id = str((gs.get("selected_units") as Array)[0])
-		gs.call("claim_reward", item.id, target_unit_id)
-		return
+			target_unit = str((gs.get("selected_units") as Array)[0])
+		gs.call("claim_reward", item.id, target_unit)
+		picked = item.id
+		break
+	_tel.emit({
+		"type": "draft", "index": battle_index, "options": options,
+		"picked": picked, "target_unit": target_unit,
+	})
 
 
 func _resolve_progression_stop(gs: Node) -> void:
 	if bool(gs.call("is_pending_directive_stage")):
 		var choices: Array = gs.call("get_pending_directive_choices")
 		if not choices.is_empty():
-			gs.call("apply_pending_directive", str((choices[0] as Dictionary).get("name", "")))
+			var directive_names: Array = []
+			for choice_variant in choices:
+				directive_names.append(str((choice_variant as Dictionary).get("name", "")))
+			var picked_directive: String = str(directive_names[0])
+			gs.call("apply_pending_directive", picked_directive)
+			_tel.emit({
+				"type": "progression", "unit": str(gs.get("pending_evolution_unit_id")),
+				"kind": "directive", "options": directive_names, "picked": picked_directive,
+			})
 	elif bool(gs.call("has_pending_evolution")):
+		var unit_id: String = str(gs.get("pending_evolution_unit_id"))
 		var paths: Array = gs.call("get_pending_evolution_paths")
 		if not paths.is_empty():
-			gs.call("apply_pending_evolution", str((paths[0] as Dictionary).get("name", "")))
+			var path_names: Array = []
+			for path_variant in paths:
+				path_names.append(str((path_variant as Dictionary).get("name", "")))
+			var picked_path: String = str(path_names[0])
+			gs.call("apply_pending_evolution", picked_path)
+			_tel.emit({
+				"type": "progression", "unit": unit_id,
+				"kind": "evolution", "options": path_names, "picked": picked_path,
+			})
 
 
 func _advance(gs: Node) -> void:
@@ -332,23 +395,8 @@ func _advance(gs: Node) -> void:
 	var beat: Dictionary = gs.call("get_beat_after_battle", int(gs.get("current_battle")))
 	if not beat.is_empty() and not (gs.get("consumed_beats") as Array).has(int(gs.get("current_battle"))):
 		(gs.get("consumed_beats") as Array).append(int(gs.get("current_battle")))
+		_tel.emit({
+			"type": "beat", "after_battle": int(gs.get("current_battle")),
+			"beat_type": str(beat.get("type", "")), "tier": str(beat.get("tier", "")),
+		})
 	gs.call("advance_to_next_battle")
-
-
-# ── JSONL emit ────────────────────────────────────────────────────────────────
-func _open_out(path: String) -> bool:
-	var dir: String = path.get_base_dir()
-	if dir != "":
-		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-	_out = FileAccess.open(path, FileAccess.WRITE)
-	return _out != null
-
-
-func _emit(obj: Dictionary) -> void:
-	if _out == null:
-		return
-	obj["run_id"] = _run_id
-	obj["seed"] = _seed
-	obj["t"] = _t
-	_t += 1
-	_out.store_line(JSON.stringify(obj))

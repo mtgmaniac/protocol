@@ -57,6 +57,7 @@ func resolve_step(bs: BattleState) -> Dictionary:
 	return {
 		"result": result,
 		"eff_hero_rolls": eff_hero_rolls,
+		"eff_enemy_rolls": eff_enemy_rolls,
 		"protocol_grant": combat_manager.take_pending_protocol_grants(),
 		"protocol_drain": combat_manager.take_pending_protocol_drain(),
 	}
