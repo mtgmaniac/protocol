@@ -13,56 +13,72 @@
       "term": "Chain",
       "category": "offense",
       "def": "The damage also hits a second target — the lowest-HP other enemy — at 60% (round down). Chain ×2 adds a second jump.",
-      "syntax": "chain / chain ×2"
+      "syntax": "chain / chain ×2",
+      "code": "CH"
     },
     {
       "id": "detonate",
       "term": "Detonate",
       "category": "offense",
       "def": "Consumes the target's Burn: deals burn amount × remaining turns as immediate damage, then the Burn is cleared.",
-      "syntax": "detonate"
+      "syntax": "detonate",
+      "code": "DT"
     },
     {
       "id": "execute",
       "term": "Execute",
       "category": "offense",
       "def": "If the target is below 25% max HP after the base damage, deal bonus damage.",
-      "syntax": "execute"
+      "syntax": "execute",
+      "code": "EX"
     },
     {
       "id": "breach",
       "term": "Breach",
       "category": "offense",
       "def": "Destroys all shield on the target before the damage applies. Breach all strips every enemy.",
-      "syntax": "breach / breach all"
+      "syntax": "breach / breach all",
+      "code": "BR"
     },
     {
       "id": "leech",
       "term": "Leech",
       "category": "offense",
       "def": "The attacker heals HP equal to 50% of the damage dealt to HP (after shields).",
-      "syntax": "leech"
+      "syntax": "leech",
+      "code": "LC"
     },
     {
       "id": "mark",
       "term": "Mark",
       "category": "offense",
       "def": "The next hit on this target deals +50% (round up), then the Mark is consumed.",
-      "syntax": "mark"
+      "syntax": "mark",
+      "code": "MK"
+    },
+    {
+      "id": "rampage",
+      "term": "Rampage",
+      "category": "offense",
+      "code": "RA",
+      "def": "The unit's next damaging hit deals double damage, then the charge is consumed.",
+      "syntax": "rampage"
     },
     {
       "id": "spike",
       "term": "Spike",
       "category": "defense",
       "def": "This round, any enemy that damages this unit takes N back. Never persists past the round.",
-      "syntax": "spike N"
+      "syntax": "spike N",
+      "code": "SP"
     },
     {
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",
       "def": "Ignores shield. Damage applies straight to HP.",
-      "syntax": "pierce"
+      "syntax": "pierce",
+      "code": "P"
     },
     {
       "id": "shield",
@@ -104,27 +120,30 @@
       "term": "Jam",
       "category": "control",
       "def": "The target's next roll is capped at 12. Shown on the die, not as a status chip.",
-      "syntax": "jam / jam all"
+      "syntax": "jam / jam all",
+      "code": "JM"
     },
     {
       "id": "rewrite",
       "term": "Rewrite",
       "category": "control",
       "def": "The target's next roll is set to 3. Telegraphed: applied this turn, it fires at the next roll.",
-      "syntax": "rewrite"
+      "syntax": "rewrite",
+      "code": "RW"
     },
     {
       "id": "hijack",
       "term": "Hijack",
       "category": "control",
       "def": "Enemy-only: this enemy's next roll copies the value of the heroes' current highest die.",
-      "syntax": "hijack"
+      "syntax": "hijack",
+      "code": "HJ"
     },
     {
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "The die is locked and the unit skips its next N reveals. Identical for heroes and enemies; frozen dice stay in the tray as blockers.",
+      "def": "Frozen dice keep their value and skip their reveals until thawed. When the freeze ends the die reveals the kept value instead of rerolling. Identical for heroes and enemies; frozen dice stay in the tray as blockers.",
       "syntax": "freeze (N reveal skips)",
       "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },
@@ -133,14 +152,16 @@
       "term": "Cloak",
       "category": "control",
       "def": "Untargetable by single-target abilities. Breaks when the unit deals damage or is hit by an AoE; the first attack made from Cloak gains Pierce.",
-      "syntax": "cloak"
+      "syntax": "cloak",
+      "code": "C"
     },
     {
       "id": "ward",
       "term": "Ward",
       "category": "defense",
       "def": "Blocks the next ability that targets this unit, then breaks. An AoE that includes the unit is blocked for that unit only.",
-      "syntax": "ward"
+      "syntax": "ward",
+      "code": "W"
     },
     {
       "id": "lure",
@@ -161,14 +182,16 @@
       "term": "Taunt",
       "category": "control",
       "def": "Forces the chosen enemy to target the taunter.",
-      "syntax": "taunt"
+      "syntax": "taunt",
+      "code": "T"
     },
     {
       "id": "siphon",
       "term": "Siphon",
       "category": "economy",
       "def": "Enemy-only: on hit, drains N Protocol from your pool (never below 0).",
-      "syntax": "siphon N"
+      "syntax": "siphon N",
+      "code": "SI"
     },
     {
       "id": "protocol_gain",

@@ -397,8 +397,12 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 		icon.mouse_filter = Control.MOUSE_FILTER_PASS
 		icon_frame.add_child(icon)
 	else:
-		# No pixel icon (e.g. Protocol Gain) — letter chip in the Protocol-green accent.
-		var letter := _make_label(str(kw.get("term", "?")).substr(0, 1).to_upper(), 36, PixelUI.DT_ROLL_LIGHT, HORIZONTAL_ALIGNMENT_CENTER, 2)
+		# fix-2.6: no pixel icon — show the keyword's canonical pip CODE from the
+		# registry (SI, CH, DT, ...), never a hand-derived first letter. Entries
+		# without a code (e.g. Protocol Gain) fall back to the initial.
+		var chip_text: String = str(kw.get("code", str(kw.get("term", "?")).substr(0, 1).to_upper()))
+		var chip_font: int = 36 if chip_text.length() <= 1 else 28
+		var letter := _make_label(chip_text, chip_font, PixelUI.DT_ROLL_LIGHT, HORIZONTAL_ALIGNMENT_CENTER, 2)
 		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		icon_frame.add_child(letter)
@@ -639,7 +643,7 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 			tags.append("Ward")
 		if bool(raw.get("wipeShields", false)):
 			tags.append("Shield Wipe")
-		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0:
+		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0 or int(raw.get("freezeAnyDice", 0)) > 0:
 			tags.append("Freeze")
 		if int(raw.get("summonChance", 0)) > 0 or str(raw.get("summonName", "")) != "":
 			tags.append("Summon")

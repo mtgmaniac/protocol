@@ -89,13 +89,15 @@ Drive feedback from a TABLE, not branching code, so new effects = new rows.
 | `rewrite` | pending marker scrambles digits, slams to "REWRITE→3" |
 | `hijack` | ghost label drifts from the tray to the enemy card |
 | `mark` | gold "◎ MARKED" crosshair stamp punch |
-| `block` (amount 0 = ward) | "✕ NEGATED" tick |
+| `block` (amount 0 = ward) | hex flash (flat cyan hexagon pop) + "✕ NEGATED" tick |
+| `leech` | dim red return tracer from the drained enemy (paired `leech` event) + the heal event's green number |
 | `decloak` | portrait resolves sharp + white pierce flash |
 | `freeze` | crust + tint on the die (ice cyan / petrify stone-gray) |
 | nat-20 overload | + ability-name slam across the acting card (pkg8.3) |
 
-Leech shows only its green heal number — the target→attacker tracer needs
-event pairing that doesn't exist yet (DESIGN-TODO in battle_feedback.gd).
+Detonate composes chip-flash (burn-color chip pop at the status strip) →
+ember burst → combined number. Execute adds its own deep-red card flash on
+top of the heavier hit-pause and oversized number.
 
 ---
 

@@ -24,6 +24,78 @@ const PROTOCOL_ACTIONS := {
 	"set": {"name": "SET A DIE", "cost": 3, "effect": "Set a hero's die to any value you choose."},
 }
 
+# fix-2.5: ability raw field -> keyword id in keywords.data.json. Any ability
+# whose eff carries one of these keywords gets the registry's one-line
+# definition appended in the inspect popup. Numeric self-evident effects
+# (dmg / heal / shield / burn / ±roll) are deliberately not listed.
+const KEYWORD_FIELD_MAP := {
+	"chain": "chain",
+	"detonate": "detonate",
+	"execute": "execute",
+	"breach": "breach",
+	"breachAll": "breach",
+	"wipeShields": "breach",
+	"leech": "leech",
+	"lifestealPct": "leech",
+	"mark": "mark",
+	"spike": "spike",
+	"ignSh": "pierce",
+	"jam": "jam",
+	"jamAll": "jam",
+	"rewrite": "rewrite",
+	"hijack": "hijack",
+	"siphon": "siphon",
+	"cloak": "cloak",
+	"ward": "ward",
+	"taunt": "taunt",
+	"enemySelfTaunt": "taunt",
+	"lure": "lure",
+	"freezeAnyDice": "freeze",
+	"freezeEnemyDice": "freeze",
+	"freezeAllEnemyDice": "freeze",
+}
+
+static var _keyword_registry_cache: Dictionary = {}
+
+
+# id -> keyword entry from keywords.data.json (single source, via DataManager).
+static func _keyword_registry() -> Dictionary:
+	if _keyword_registry_cache.is_empty():
+		for kw_variant in (DataManager.get_keywords().get("keywords", []) as Array):
+			var kw: Dictionary = kw_variant
+			_keyword_registry_cache[str(kw.get("id", ""))] = kw
+	return _keyword_registry_cache
+
+
+# "Term — one-line definition." lines for every keyword the ability carries.
+static func _keyword_definitions_for_raw(raw: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var seen: Dictionary = {}
+	for field in KEYWORD_FIELD_MAP.keys():
+		if not raw.has(field):
+			continue
+		var field_value: Variant = raw[field]
+		var active: bool = bool(field_value) if field_value is bool else float(field_value) > 0.0
+		if not active:
+			continue
+		var keyword_id: String = str(KEYWORD_FIELD_MAP[field])
+		if seen.has(keyword_id):
+			continue
+		seen[keyword_id] = true
+		var entry: Dictionary = _keyword_registry().get(keyword_id, {})
+		if entry.is_empty():
+			continue
+		lines.append("%s — %s" % [str(entry.get("term", keyword_id.capitalize())), str(entry.get("def", ""))])
+	return lines
+
+
+# The ability's eff string plus the definitions of every keyword it carries.
+static func _ability_inspect_text(raw: Dictionary, fallback: String = "") -> String:
+	var text: String = str(raw.get("eff", fallback))
+	for line in _keyword_definitions_for_raw(raw):
+		text += "\n" + line
+	return text
+
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
 # `raw` is the structured ability dict (name, eff, dmg/burn/burnT/heal/rfe/shield…) as
@@ -39,7 +111,7 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 			"name": "",
 			"meta": meta,
 			"effects": effects,
-			"text": _ability_text(raw, side),
+			"text": _ability_inspect_text(raw),
 		}],
 	}
 
@@ -48,7 +120,7 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 # `state` is the unit's live battle-state dict (empty outside battle, e.g. the home screen).
 # When it carries active statuses they REPLACE the role subtitle, shown as pip + description
 # rows; with no statuses the role subtitle is kept.
-static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
+static func resolve_unit(data: Resource, state: Dictionary = {}, incoming_intent: String = "") -> Dictionary:
 	if data == null:
 		return {}
 	var is_enemy: bool = data is EnemyData
@@ -67,9 +139,15 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 			"name": str(entry.get("ability_name", "")),
 			"roll": "%d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))],
 			"effects": EffectPip.effects_from_ability_raw(raw, side) if not raw.is_empty() else [],
-			"text": _ability_text(raw, side) if not raw.is_empty() else str(entry.get("description", "")),
+			# fix-2.4: the authored eff string IS the ability text — same live
+			# data battle renders. fix-2.5: keyword definitions ride along.
+			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),
 		})
 	var statuses: Array = _unit_status_entries(state)
+	# fix-2.2: the ◎ corner badge (pkg8.1 incoming-intent marker) resolves in
+	# the unit inspect like every other card icon.
+	if incoming_intent != "":
+		statuses.push_front(_intent_entry(incoming_intent, side))
 	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
 	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
@@ -118,24 +196,24 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if roll_delta != 0:
 		entries.append(_status_entry("rfm" if roll_delta > 0 else "roll", "%+d" % roll_delta, 0, _roll_status_text(roll_delta)))
 	if bool(state.get("cloaked", false)):
-		entries.append(_status_entry("cloak", "C", 0, _status_text("cloak", "", 0)))
+		entries.append(_status_entry("cloak", EffectPip.keyword_code("cloak", "C"), 0, _status_text("cloak", "", 0)))
 	if bool(state.get("warded", false)):
-		entries.append(_status_entry("ward", "W", 0, _status_text("ward", "", 0)))
+		entries.append(_status_entry("ward", EffectPip.keyword_code("ward", "W"), 0, _status_text("ward", "", 0)))
 	if bool(state.get("marked", false)):
-		entries.append(_status_entry("mark", "M", 0, _status_text("mark", "", 0)))
+		entries.append(_status_entry("mark", EffectPip.keyword_code("mark", "MK"), 0, _status_text("mark", "", 0)))
 	if int(state.get("rampage_charges", 0)) > 0:
-		entries.append(_status_entry("rampage", "RA", 0, _status_text("rampage", "", 0)))
+		entries.append(_status_entry("rampage", EffectPip.keyword_code("rampage", "RA"), 0, _status_text("rampage", "", 0)))
 	# pkg8.1: die statuses surface in the readout too (they render on the die).
 	if int(state.get("jam_cap", 0)) > 0:
 		entries.append(_status_entry("jam", "≤%d" % int(state["jam_cap"]), 0, "Die is Jammed — next roll capped at %d." % int(state["jam_cap"])))
 	if bool(state.get("rewrite_pending", false)):
 		entries.append(_status_entry("rewrite", "→3", 0, "Die is being Rewritten — next roll becomes 3."))
 	if bool(state.get("hijack_pending", false)):
-		entries.append(_status_entry("hijack", "HJ", 0, "Hijack pending — this die will copy the squad's highest roll."))
+		entries.append(_status_entry("hijack", EffectPip.keyword_code("hijack", "HJ"), 0, "Hijack pending — this die will copy the squad's highest roll."))
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s — the die is locked; the unit skips its next %d reveal(s)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
+			"%s — the die keeps its value and skips its next %d reveal(s); it reveals the kept value when thawed." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
 		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, "Spike %d — attackers take damage this round." % int(state["spike"])))
 	return entries
@@ -150,6 +228,29 @@ static func _status_entry(kind: String, value: String, duration: int, text: Stri
 
 static func _roll_status_text(delta: int) -> String:
 	return "%+d to this unit's die rolls." % delta
+
+
+# fix-2.2: name + one-line definition for the ◎ incoming-intent corner badge.
+static func _intent_entry(intent_text: String, side: String) -> Dictionary:
+	var text: String
+	if intent_text.ends_with("!"):
+		text = (
+			"Lured — this hero can only target the luring enemy next turn."
+			if side == "hero"
+			else "Lure — this enemy is forcing its target to strike back next turn."
+		)
+	else:
+		var count: int = intent_text.trim_prefix("◎").to_int()
+		text = "Targeted — %d %s aiming at this unit this round." % [count, "enemy is" if count == 1 else "enemies are"]
+	return _status_entry("intent", intent_text, 0, text)
+
+
+# fix-2.2: name + one-line definition for the ±roll chip pinned to a die.
+static func roll_chip_entry(delta: int) -> Dictionary:
+	return _status_entry(
+		"rfm" if delta > 0 else "roll", "%+d" % delta, 0,
+		"Roll chip — this die's effective roll is shifted %+d by active buffs and debuffs." % delta
+	)
 
 
 # ── 3. Status / burn pip (long-press a status icon) ──────────────────────────────
@@ -229,178 +330,6 @@ static func _unit_subtitle(data: Resource) -> String:
 			return "%s / %s" % [faction, etype]
 		return etype if etype != "" else faction
 	return ""
-
-
-# Compose full inspect sentences from structured ability fields (hostile effects first).
-static func _ability_text(raw: Dictionary, side: String = "hero") -> String:
-	if raw.is_empty():
-		return ""
-	var hostile: Array[String] = []
-	var friendly: Array[String] = []
-
-	if bool(raw.get("wipeShields", false)):
-		hostile.append("Remove all hero shields.")
-
-	var dmg: int = int(raw.get("dmg", 0))
-	var d_min: int = int(raw.get("dMin", 0))
-	var d_max: int = int(raw.get("dMax", 0))
-	var blast_all: bool = bool(raw.get("blastAll", false))
-	if dmg > 0:
-		if side == "enemy" and blast_all:
-			hostile.append("Deal %d damage to all heroes." % dmg)
-		elif blast_all:
-			hostile.append("Deal %d damage to all enemies." % dmg)
-		else:
-			hostile.append("Deal %d damage." % dmg)
-	elif d_min > 0 or d_max > 0:
-		if d_min == d_max:
-			hostile.append("Deal %d damage." % d_min)
-		else:
-			hostile.append("Deal %d-%d damage." % [d_min, d_max])
-
-	var burn: int = int(raw.get("burn", 0))
-	if burn > 0:
-		var burn_t: int = int(raw.get("burnT", 0))
-		hostile.append("Deal %d damage per turn%s." % [burn, (" for " + _turns(burn_t)) if burn_t > 0 else ""])
-
-	if bool(raw.get("ignSh", false)):
-		hostile.append("Pierces hero shields." if side == "enemy" else "Pierces enemy shields.")
-
-	var lifesteal: int = int(raw.get("lifestealPct", 0))
-	if lifesteal > 0:
-		hostile.append("Heal for %d%% of damage dealt." % lifesteal)
-
-	if side == "hero":
-		var rfe: int = int(raw.get("rfe", 0))
-		if rfe > 0:
-			var rf_t: int = int(raw.get("rfT", 0))
-			var rfe_suffix: String = (" for " + _turns(rf_t)) if rf_t > 0 else ""
-			if bool(raw.get("rfeAll", false)):
-				hostile.append("Reduce all enemy rolls by %d%s." % [rfe, rfe_suffix])
-			else:
-				hostile.append("Reduce an enemy roll by %d%s." % [rfe, rfe_suffix])
-	else:
-		var enemy_rfm: int = int(raw.get("rfm", 0))
-		if enemy_rfm > 0:
-			var enemy_rfm_t: int = int(raw.get("rfmT", 0))
-			var debuff_suffix: String = (" for " + _turns(enemy_rfm_t)) if enemy_rfm_t > 0 else ""
-			hostile.append("Reduce a hero roll by %d%s." % [enemy_rfm, debuff_suffix])
-
-	var freeze_line: String = _freeze_inspect_text(raw)
-	if freeze_line != "":
-		hostile.append(freeze_line)
-
-	if bool(raw.get("curseDice", false)):
-		hostile.append("Target hero rolls twice next turn and keeps the lower result.")
-
-	if bool(raw.get("packBonus", false)):
-		hostile.append("Damage increases by the number of living allies of the same type.")
-
-	var summon: int = int(raw.get("summonChance", 0))
-	if summon > 0:
-		hostile.append("%d%% chance to summon an elite on natural 20 overload." % summon)
-
-	var heal: int = int(raw.get("heal", 0))
-	if heal > 0:
-		if bool(raw.get("healAll", false)):
-			friendly.append("Restore %d HP to all allies." % heal)
-		elif bool(raw.get("healLowest", false)):
-			friendly.append("Restore %d HP to the lowest-HP ally." % heal)
-		elif bool(raw.get("healTgt", false)):
-			friendly.append("Restore %d HP to an ally." % heal)
-		elif side == "hero" and dmg > 0:
-			friendly.append("Restore %d HP to self." % heal)
-		elif side == "enemy":
-			friendly.append("Restore %d HP." % heal)
-		else:
-			friendly.append("Restore %d HP." % heal)
-
-	var shield: int = int(raw.get("shield", 0))
-	if shield > 0:
-		if bool(raw.get("shieldAll", false)):
-			friendly.append("Grant %d shield to all allies this round." % shield)
-		elif bool(raw.get("shTgt", false)):
-			friendly.append("Grant %d shield to an ally this round." % shield)
-		else:
-			friendly.append("Gain %d shield this round." % shield)
-
-	var shield_ally: int = int(raw.get("shieldAlly", 0))
-	if shield_ally > 0:
-		if bool(raw.get("shieldAllyAll", false)):
-			friendly.append("Grant %d shield to all allies this round." % shield_ally)
-		else:
-			friendly.append("Grant %d shield to an ally this round." % shield_ally)
-
-	if side == "hero":
-		var rfm: int = int(raw.get("rfm", 0))
-		if rfm > 0:
-			var rfm_t: int = int(raw.get("rfmT", 0))
-			var buff_suffix: String = (" for " + _turns(rfm_t)) if rfm_t > 0 else ""
-			if bool(raw.get("rfmTgt", false)):
-				friendly.append("Increase an ally's roll by %d%s." % [rfm, buff_suffix])
-			else:
-				friendly.append("Increase all squad rolls by %d%s." % [rfm, buff_suffix])
-	else:
-		var erb: int = int(raw.get("erb", 0))
-		if erb > 0:
-			var erb_t: int = int(raw.get("erbT", 0))
-			var erb_suffix: String = (" for " + _turns(erb_t)) if erb_t > 0 else ""
-			if bool(raw.get("erbAll", false)):
-				friendly.append("Increase all ally enemies' rolls by %d%s." % [erb, erb_suffix])
-			else:
-				friendly.append("Increase this enemy's roll by %d%s." % [erb, erb_suffix])
-
-	if bool(raw.get("ward", false)):
-		if bool(raw.get("wardTgt", false)):
-			friendly.append("Ward an ally: blocks the next ability that targets them, then breaks.")
-		else:
-			friendly.append("Gain Ward: blocks the next ability that targets this unit, then breaks.")
-
-	if bool(raw.get("grantRampageAll", false)):
-		friendly.append("Grant Rampage to all enemies.")
-	elif int(raw.get("grantRampage", 0)) > 0:
-		friendly.append("Gain Rampage (next hit deals double damage).")
-
-	if bool(raw.get("enemySelfTaunt", false)):
-		friendly.append("Taunt: all heroes must target this enemy.")
-	elif bool(raw.get("taunt", false)):
-		friendly.append("Taunt: enemies must target this unit.")
-
-	if bool(raw.get("cloak", false)):
-		friendly.append("Cloak: untargetable by single-target abilities; the first attack from Cloak pierces.")
-
-	if bool(raw.get("reviveAll", false)):
-		friendly.append("Revive all fallen allies at %d%% max HP." % int(raw.get("revivePct", 50)))
-	elif bool(raw.get("revive", false)):
-		friendly.append("Revive a fallen ally at %d%% max HP." % int(raw.get("revivePct", 50)))
-
-	var protocol: int = int(raw.get("gainProtocol", 0))
-	if protocol > 0:
-		friendly.append("Gain %d Protocol." % protocol)
-
-	var parts: Array[String] = []
-	parts.append_array(hostile)
-	parts.append_array(friendly)
-	if parts.is_empty():
-		return "No effect."
-	return " ".join(parts)
-
-
-static func _freeze_inspect_text(raw: Dictionary) -> String:
-	var freeze_any: int = maxi(
-		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
-		int(raw.get("freezeAllEnemyDice", 0))
-	)
-	if freeze_any <= 0:
-		return ""
-	var duration: String = _turns(freeze_any)
-	if int(raw.get("freezeAllEnemyDice", 0)) > 0:
-		return "Freeze all enemy dice for %s." % duration
-	return "Freeze the target's die for %s." % duration
-
-
-static func _turns(count: int) -> String:
-	return "%d turn%s" % [count, "" if count == 1 else "s"]
 
 
 static func _status_keyword(kind: String) -> String:

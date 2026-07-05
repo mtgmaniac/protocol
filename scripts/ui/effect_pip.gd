@@ -7,6 +7,22 @@ extends RefCounted
 
 const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "ward", "rampage", "taunt", "protocol", "tag", "chain", "detonate", "execute", "breach", "leech", "mark", "spike", "jam", "rewrite", "hijack", "siphon"]
 
+# fix-2.6: keyword pip codes are single-sourced from keywords.data.json (the
+# "code" field) — battle pips, inspect rows, and the help menu all read the
+# same registry. Fallbacks only guard a missing registry entry.
+static var _keyword_code_cache: Dictionary = {}
+static var _keyword_codes_loaded: bool = false
+
+
+static func keyword_code(keyword_id: String, fallback: String) -> String:
+	if not _keyword_codes_loaded:
+		_keyword_codes_loaded = true
+		for kw_variant in (DataManager.get_keywords().get("keywords", []) as Array):
+			var kw: Dictionary = kw_variant
+			if str(kw.get("code", "")) != "":
+				_keyword_code_cache[str(kw.get("id", ""))] = str(kw.get("code", ""))
+	return str(_keyword_code_cache.get(keyword_id, fallback))
+
 const PROFILE_READOUT := {
 	"icon_size": 56,
 	"value_font": 80,
@@ -44,13 +60,15 @@ static func is_letter_only_kind(kind: String) -> bool:
 	return kind.to_lower() in LETTER_ONLY_KINDS
 
 
-static func pip_key_for_effect(effect: Dictionary, side: String = "hero") -> String:
+static func pip_key_for_effect(effect: Dictionary, _side: String = "hero") -> String:
 	var kind: String = str(effect.get("kind", ""))
 	if kind == "revive":
 		return "heal"
+	# fix-2.3: the sign alone drives the roll channel — +roll = green (roll_up),
+	# -roll = amber (roll_down) — on both sides. Enemy rfm ("-N to a hero's
+	# roll") is emitted as a signed "roll" reduction below, so the old
+	# enemy-side rfm override is gone.
 	var value: String = str(effect.get("value", ""))
-	if kind.to_lower() == "rfm" and side == "enemy" and PixelUI.parse_signed_amount(value) > 0:
-		return "roll_down"
 	return PixelUI.pip_key_for_effect(kind, value)
 
 
@@ -62,15 +80,15 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 
 	match kind:
 		"pierce":
-			text = "P"
+			text = keyword_code("pierce", "P")
 		"cloak":
-			text = "C"
+			text = keyword_code("cloak", "C")
 		"taunt":
-			text = "T"
+			text = keyword_code("taunt", "T")
 		"ward":
-			text = "W"
+			text = keyword_code("ward", "W")
 		"rampage":
-			text = "RA"
+			text = keyword_code("rampage", "RA")
 		"revive":
 			text = "R%s%%" % raw_value.trim_suffix("%")
 		"heal":
@@ -194,47 +212,65 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 
 	var rfm: int = int(raw.get("rfm", 0))
 	if rfm > 0:
-		var rfm_scope: String = ""
-		if side == "hero" and not bool(raw.get("rfmTgt", false)):
-			rfm_scope = "all"
-		_append_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)), rfm_scope)
+		if side == "enemy":
+			# Enemy rfm is hostile: "-N to a hero's roll". Render it as the
+			# signed reduction it is (amber roll_down channel).
+			_append_effect(effects, "roll", "-%d" % rfm, int(raw.get("rfmT", 0)))
+		else:
+			var rfm_scope: String = ""
+			if not bool(raw.get("rfmTgt", false)):
+				rfm_scope = "all"
+			_append_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)), rfm_scope)
+
+	# Enemy roll buff (erb): the enemy-side mirror of rfm. fix-1.3 — pure-erb
+	# abilities (Checksum Scribe's Checksum Pass et al.) rendered zero pips.
+	var erb: int = int(raw.get("erb", 0))
+	if erb > 0:
+		_append_effect(effects, "rfm", "+%d" % erb, int(raw.get("erbT", 0)), "all" if bool(raw.get("erbAll", false)) else "self")
 
 	if bool(raw.get("ignSh", false)):
-		_append_effect(effects, "pierce", "P")
+		_append_effect(effects, "pierce", keyword_code("pierce", "P"))
 	var chain_jumps: int = int(raw.get("chain", 0))
 	if chain_jumps > 0:
-		_append_effect(effects, "chain", "CH" if chain_jumps == 1 else "CH×%d" % chain_jumps)
+		var chain_code: String = keyword_code("chain", "CH")
+		_append_effect(effects, "chain", chain_code if chain_jumps == 1 else "%s×%d" % [chain_code, chain_jumps])
 	if bool(raw.get("detonate", false)):
 		# pkg8 upgrades this to show the live computed value when the target is known
-		_append_effect(effects, "detonate", "DT")
+		_append_effect(effects, "detonate", keyword_code("detonate", "DT"))
 	if bool(raw.get("execute", false)):
-		_append_effect(effects, "execute", "EX")
+		_append_effect(effects, "execute", keyword_code("execute", "EX"))
 	if bool(raw.get("breachAll", false)):
-		_append_effect(effects, "breach", "BR", 0, "all")
+		_append_effect(effects, "breach", keyword_code("breach", "BR"), 0, "all")
 	elif bool(raw.get("breach", false)):
-		_append_effect(effects, "breach", "BR")
+		_append_effect(effects, "breach", keyword_code("breach", "BR"))
+	elif bool(raw.get("wipeShields", false)):
+		# Enemy "wipe shields, then N dmg" — Breach semantics against the squad.
+		_append_effect(effects, "breach", keyword_code("breach", "BR"), 0, "all")
 	if bool(raw.get("leech", false)):
-		_append_effect(effects, "leech", "LC")
+		_append_effect(effects, "leech", keyword_code("leech", "LC"))
+	elif int(raw.get("lifestealPct", 0)) > 0:
+		# Enemy lifesteal is authored as a percent; same Leech keyword on the card.
+		_append_effect(effects, "leech", keyword_code("leech", "LC"))
 	if bool(raw.get("mark", false)):
-		_append_effect(effects, "mark", "MK")
+		_append_effect(effects, "mark", keyword_code("mark", "MK"))
 	var spike_value: int = int(raw.get("spike", 0))
 	if spike_value > 0:
-		_append_effect(effects, "spike", "SP%d" % spike_value)
+		_append_effect(effects, "spike", "%s%d" % [keyword_code("spike", "SP"), spike_value])
 	if bool(raw.get("jamAll", false)):
-		_append_effect(effects, "jam", "JM", 0, "all")
+		_append_effect(effects, "jam", keyword_code("jam", "JM"), 0, "all")
 	elif bool(raw.get("jam", false)):
-		_append_effect(effects, "jam", "JM")
+		_append_effect(effects, "jam", keyword_code("jam", "JM"))
 	if bool(raw.get("rewrite", false)):
-		_append_effect(effects, "rewrite", "RW")
+		_append_effect(effects, "rewrite", keyword_code("rewrite", "RW"))
 	if bool(raw.get("hijack", false)):
-		_append_effect(effects, "hijack", "HJ")
+		_append_effect(effects, "hijack", keyword_code("hijack", "HJ"))
 	var siphon_amount: int = int(raw.get("siphon", 0))
 	if siphon_amount > 0:
-		_append_effect(effects, "siphon", "SI%d" % siphon_amount)
+		_append_effect(effects, "siphon", "%s%d" % [keyword_code("siphon", "SI"), siphon_amount])
 	if bool(raw.get("cloak", false)):
-		_append_effect(effects, "cloak", "C", 0, "self")
+		_append_effect(effects, "cloak", keyword_code("cloak", "C"), 0, "self")
 	if bool(raw.get("ward", false)):
-		_append_effect(effects, "ward", "W", 0, "" if bool(raw.get("wardTgt", false)) else "self")
+		_append_effect(effects, "ward", keyword_code("ward", "W"), 0, "" if bool(raw.get("wardTgt", false)) else "self")
 
 	var freeze_turns: int = maxi(
 		maxi(int(raw.get("freezeAnyDice", 0)), int(raw.get("freezeEnemyDice", 0))),
@@ -243,8 +279,8 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	if freeze_turns > 0:
 		_append_effect(effects, "freeze", "", freeze_turns)
 
-	if bool(raw.get("taunt", false)):
-		_append_effect(effects, "taunt", "T")
+	if bool(raw.get("taunt", false)) or bool(raw.get("enemySelfTaunt", false)):
+		_append_effect(effects, "taunt", keyword_code("taunt", "T"))
 
 	var revive_pct: int = int(raw.get("revivePct", 50))
 	if bool(raw.get("reviveAll", false)):
@@ -252,14 +288,10 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	elif bool(raw.get("revive", false)):
 		_append_effect(effects, "revive", "%d" % revive_pct)
 
-	if bool(raw.get("ward", false)):
-		var ward_scope: String = "" if bool(raw.get("wardTgt", false)) else "self"
-		_append_effect(effects, "ward", "W", 0, ward_scope)
-
 	if bool(raw.get("grantRampageAll", false)):
-		_append_effect(effects, "rampage", "RA", 0, "all")
+		_append_effect(effects, "rampage", keyword_code("rampage", "RA"), 0, "all")
 	elif int(raw.get("grantRampage", 0)) > 0:
-		_append_effect(effects, "rampage", "RA", 0, "self")
+		_append_effect(effects, "rampage", keyword_code("rampage", "RA"), 0, "self")
 
 	return effects.slice(0, 3)
 

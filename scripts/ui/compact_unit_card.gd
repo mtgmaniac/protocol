@@ -1050,14 +1050,14 @@ func _layout_preview_overlays() -> void:
 	_update_hp_label_preview(int(roundf(final_hp)))
 
 
-# "45 → 37 / 55" while a net-changing preview is active; plain "45 / 55" otherwise.
-func _update_hp_label_preview(final_hp_preview: int) -> void:
+# fix-2.1: the HP label never carries projection text — the arrow-text overlay
+# ("41 → 25 / 55") was never scoped. The projected endpoint lives ONLY in the
+# bar zones painted by _layout_preview_overlays (red loss / purple burn slice /
+# mint gain / blue shield-saved ghost).
+func _update_hp_label_preview(_final_hp_preview: int) -> void:
 	if _hp_label == null:
 		return
-	if final_hp_preview < 0 or final_hp_preview == current_hp:
-		_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
-	else:
-		_hp_label.text = "%d → %d / %d" % [maxi(current_hp, 0), final_hp_preview, maxi(max_hp, 1)]
+	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 
 
 func _wire_hp_passthrough() -> void:

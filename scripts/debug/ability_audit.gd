@@ -468,6 +468,10 @@ func _run_regression_audits() -> void:
 	_run_freeze_regression()
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
+	_run_summon_end_to_end_regression()
+	_run_enemy_roll_buff_expiry_regression()
+	_run_band_coverage_audit()
+	_run_freeze_bank_thaw_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -563,10 +567,11 @@ func _run_enemy_freeze_regression() -> void:
 			"frozen=%s skipped=%s cleared=%s turns=%d" % [str(frozen_after_apply), str(hero_skipped), str(freeze_cleared), int(hero.get("die_freeze_turns", 0))]
 		)
 
-	# Hero-side freeze locks the enemy's NEXT reveal (immediate=false, symmetric
-	# with enemy-side freeze): the enemy still lands its hit this round, then
-	# skips its next turn, with the die frozen across the gap. This reverts the
-	# pkg1.3 "cancel the imminent action" reading — freeze is a next-turn lockout.
+	# fix-1.4 universal rule: enemies act after heroes, so a hero freeze lands
+	# BEFORE the enemy's reveal — the imminent action is skipped, its face is
+	# banked, and the thaw reveals the banked face (delay, not deny+reroll).
+	# (Supersedes the 67d95b6 "next-turn lockout" reading — DESIGN-TODO(kev)
+	# in combat_manager's freeze block.)
 	var cancel_manager: CombatManager = CombatManager.new()
 	var freezer_unit: UnitData = _make_unit("audit_freezer", "Audit Freezer", "Flash Freeze", {"freezeEnemyDice": 1})
 	var striker_enemy: EnemyData = _make_enemy("audit_striker", "Audit Striker", "Claw", {"dmg": 9})
@@ -577,26 +582,23 @@ func _run_enemy_freeze_regression() -> void:
 	striker["selected_target_id"] = str(freezer["id"])
 	striker["last_die_value"] = 15
 	var hero_hp_before: int = int(freezer["current_hp"])
-	# Round 1: freeze cast; the enemy STILL lands its hit and is left frozen
-	# (die locked, not yet consumed) for its next reveal.
+	# Round 1: freeze cast — the enemy's imminent action is skipped and the
+	# charge consumed at the end-of-round tick; the face is banked for the thaw.
 	cancel_manager.resolve_round({str(freezer["id"]): AUDIT_ROLL}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
-	var striker_acted_r1: bool = int(freezer["current_hp"]) < hero_hp_before
-	var striker_frozen_after: bool = int(striker.get("die_freeze_turns", 0)) == 1 and not bool(striker.get("die_freeze_consumed_this_round", false))
-	# Round 2: the frozen die is revealed (consumed flag set at roll time by
-	# battle_scene; mimic that here) — the enemy skips its action, then clears.
-	striker["die_freeze_consumed_this_round"] = true
+	var striker_skipped_r1: bool = int(freezer["current_hp"]) == hero_hp_before
+	var thaw_banked: bool = int(striker.get("thaw_reveal_value", 0)) == 15 and int(striker.get("die_freeze_turns", 0)) == 0
+	# Round 2: the thawed die reveals the banked face — the delayed hit lands.
 	var freezer_hp_after_r1: int = int(freezer["current_hp"])
-	cancel_manager.resolve_round({}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
-	var striker_skipped_r2: bool = int(freezer["current_hp"]) == freezer_hp_after_r1
-	var striker_freeze_cleared: bool = int(striker.get("die_freeze_turns", 0)) == 0
-	if striker_acted_r1 and striker_frozen_after and striker_skipped_r2 and striker_freeze_cleared:
-		_record_pass("Regression / hero freeze locks enemy next reveal", "freezeEnemyDice")
+	cancel_manager.resolve_round({}, {str(striker["id"]): 2}, DiceManager.new())
+	var striker_acted_r2: bool = int(freezer["current_hp"]) < freezer_hp_after_r1
+	if striker_skipped_r1 and thaw_banked and striker_acted_r2:
+		_record_pass("Regression / hero freeze skips enemy action, thaw replays banked face", "freezeEnemyDice")
 	else:
 		_record_failure(
-			"Regression / hero freeze locks enemy next reveal",
+			"Regression / hero freeze skips enemy action, thaw replays banked face",
 			"freezeEnemyDice",
-			"enemy hits this round, is frozen, then skips its next reveal and clears",
-			"acted_r1=%s frozen=%s skipped_r2=%s cleared=%s turns=%d" % [str(striker_acted_r1), str(striker_frozen_after), str(striker_skipped_r2), str(striker_freeze_cleared), int(striker.get("die_freeze_turns", 0))]
+			"enemy skips this round, face banked (15), delayed hit lands next round",
+			"skipped_r1=%s banked=%s acted_r2=%s turns=%d" % [str(striker_skipped_r1), str(thaw_banked), str(striker_acted_r2), int(striker.get("die_freeze_turns", 0))]
 		)
 
 
@@ -2048,6 +2050,54 @@ func _run_route_modifier_regressions() -> void:
 	var warded_list: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("warded", [])
 	var warded_ok: bool = warded_list == ["Guard Elite"]
 	_expect_and_record("Regression / flagged route acceptance", "routeModifiers", "true", str(overrun_ok and armed_ok and warded_ok))
+
+	# fix-1.5: no-op offers are forbidden — every preconditioned modifier is
+	# checked against an edge comp where it would produce no observable delta
+	# (must redraw to nothing) and a comp where it does (must be offered).
+	var elite_pool: Array = DataManager.get_role_pool("facility", "elite")
+	var support_pool: Array = (DataManager.enemy_role_pools.get("facility", {}) as Dictionary).get("support", [])
+	var no_noop_ok: bool = true
+	if elite_pool.is_empty() or support_pool.is_empty():
+		no_noop_ok = false
+	else:
+		var edge_cases: Array = [
+			["elitePresence", [str(elite_pool[0]), str(elite_pool[0]), str(elite_pool[0])], [str(elite_pool[0]), "Scrap Drone"]],
+			["overrun", ["Scrap Drone", "Scrap Drone", "Scrap Drone"], ["Scrap Drone", "Scrap Drone"]],
+			["warded", ["Scrap Drone", "Rust Drone"], [str(support_pool[0]), "Scrap Drone"]],
+		]
+		for case_variant in edge_cases:
+			var edge_case: Array = case_variant
+			GameState.used_battle_modifiers.clear()
+			for modifier_id in GameState.BATTLE_MODIFIERS.keys():
+				if str(modifier_id) != str(edge_case[0]):
+					GameState.used_battle_modifiers.append(str(modifier_id))
+			GameState.resolved_battle_comps[2] = {"names": (edge_case[1] as Array).duplicate(), "cloaked": []}
+			if GameState.roll_route_modifier() != "":
+				no_noop_ok = false
+			GameState.resolved_battle_comps[2] = {"names": (edge_case[2] as Array).duplicate(), "cloaked": []}
+			if GameState.roll_route_modifier() != str(edge_case[0]):
+				no_noop_ok = false
+	_expect_and_record("Regression / no no-op modifier offers", "routeModifiers", "true", str(no_noop_ok))
+
+	# fix-1.5: preview == fight. Rolling a comp-shaping modifier stashes the
+	# shaped comp without touching the resolved (standard) comp; acceptance
+	# commits the exact stashed names.
+	GameState.used_battle_modifiers.clear()
+	for modifier_id in GameState.BATTLE_MODIFIERS.keys():
+		if str(modifier_id) != "elitePresence":
+			GameState.used_battle_modifiers.append(str(modifier_id))
+	GameState.resolved_battle_comps[2] = {"names": ["Scrap Drone", "Rust Drone"], "cloaked": []}
+	var preview_roll: String = GameState.roll_route_modifier()
+	var standard_names: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("names", [])
+	var preview_names: Array = (GameState.pending_flagged_comp as Dictionary).get("names", [])
+	var standard_untouched: bool = standard_names == ["Scrap Drone", "Rust Drone"]
+	var preview_differs: bool = preview_names != standard_names and preview_names.size() == 2
+	GameState.accept_flagged_route(preview_roll)
+	var committed_names: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("names", [])
+	_expect_and_record(
+		"Regression / flagged preview matches committed comp", "routeModifiers",
+		"true", str(preview_roll == "elitePresence" and standard_untouched and preview_differs and committed_names == preview_names)
+	)
 	GameState.reset_run()
 
 	# Combat-side modifiers.
@@ -2319,6 +2369,228 @@ func _run_summon_slot_regression() -> void:
 		_record_pass("Regression / summon blocked at living cap", "summon")
 	else:
 		_record_failure("Regression / summon blocked at living cap", "summon", "blocked with 3 living", "inject succeeded")
+
+
+# fix-1.1: execute a real-data summon end to end — a smart summoner's overload
+# on a natural 20 must emit a summon event whose name resolves to an existing
+# dumb unit def, and injecting that unit must add it to the field. This is the
+# full battle_scene._process_summon_events contract minus the card rebuild.
+func _run_summon_end_to_end_regression() -> void:
+	var scribe: EnemyData = DataManager.get_enemy_by_display_name("Checksum Scribe") as EnemyData
+	if scribe == null:
+		_record_failure("Regression / summon end-to-end", "summon", "Checksum Scribe def exists", "missing")
+		return
+	if scribe.ai_type != "smart" or not scribe.can_summon_elite:
+		_record_failure("Regression / summon end-to-end", "summon", "Scribe smart + summonElite", "ai=%s summonElite=%s" % [scribe.ai_type, str(scribe.can_summon_elite)])
+		return
+	var manager: CombatManager = CombatManager.new()
+	manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [scribe])
+	var scribe_state: Dictionary = manager.get_enemy_states()[0]
+	var scribe_id: String = str(scribe_state["id"])
+	var hero_state: Dictionary = manager.get_hero_states()[0]
+	seed(20260705)
+	var summon_event: Dictionary = {}
+	for _attempt in range(200):
+		var result: Dictionary = manager.resolve_round({}, {scribe_id: 20}, DiceManager.new(), {scribe_id: 20})
+		for event_variant in result.get("events", []):
+			if str((event_variant as Dictionary).get("type", "")) == "summon":
+				summon_event = event_variant
+				break
+		if not summon_event.is_empty():
+			break
+		# The forced overloads would otherwise end the fight; keep both sides up.
+		hero_state["dead"] = false
+		hero_state["current_hp"] = int(hero_state["max_hp"])
+		scribe_state["dead"] = false
+		scribe_state["current_hp"] = int(scribe_state["max_hp"])
+	if summon_event.is_empty():
+		_record_failure("Regression / summon end-to-end", "summon", "summon event within 200 forced nat-20 overloads", "none emitted")
+		return
+	var summon_name: String = str(summon_event.get("summon_name", ""))
+	var base_enemy: EnemyData = DataManager.get_enemy_by_display_name(summon_name) as EnemyData
+	if base_enemy == null:
+		_record_failure("Regression / summon end-to-end", "summon", "'%s' resolves to a unit def" % summon_name, "not found")
+		return
+	if base_enemy.ai_type != "dumb":
+		_record_failure("Regression / summon end-to-end", "summon", "'%s' is a dumb unit" % summon_name, "ai=%s" % base_enemy.ai_type)
+		return
+	var living_before: int = 0
+	for state_variant in manager.get_enemy_states():
+		if not bool((state_variant as Dictionary).get("dead", false)):
+			living_before += 1
+	var inject_result: Dictionary = manager.inject_enemy(base_enemy.duplicate(true) as EnemyData)
+	var living_after: int = 0
+	for state_variant in manager.get_enemy_states():
+		if not bool((state_variant as Dictionary).get("dead", false)):
+			living_after += 1
+	if inject_result.is_empty() or living_after != living_before + 1:
+		_record_failure("Regression / summon end-to-end", "summon", "injected unit added to field", "inject=%s living %d->%d" % [str(not inject_result.is_empty()), living_before, living_after])
+		return
+	_record_pass("Regression / summon end-to-end (%s -> %s)" % [scribe.display_name, summon_name], "summon")
+
+	# Code-constant spawn names must resolve too (the Brood spawn goes through
+	# the same display-name lookup as data-driven summons).
+	var brood: EnemyData = DataManager.get_enemy_by_display_name(CombatManager.BROOD_SPAWN_NAME) as EnemyData
+	if brood != null and brood.ai_type == "dumb":
+		_record_pass("Regression / brood spawn name resolves", "summon")
+	else:
+		_record_failure("Regression / brood spawn name resolves", "summon", "dumb unit def for '%s'" % CombatManager.BROOD_SPAWN_NAME, "null or non-dumb")
+
+
+# fix-1.2: enemy roll buffs must expire on schedule and must not stack across
+# re-casts. A 2t erb cast in round 1 is live through round 3's reveal and gone
+# after round 3's end tick; a second cast refreshes to the authored value
+# instead of accumulating.
+func _run_enemy_roll_buff_expiry_regression() -> void:
+	var manager: CombatManager = CombatManager.new()
+	var buffer_unit: EnemyData = _make_enemy("audit_buffer", "Audit Buffer", "Rally", {"erb": 2, "erbT": 2})
+	manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [buffer_unit])
+	var buffer_state: Dictionary = manager.get_enemy_states()[0]
+	var buffer_id: String = str(buffer_state["id"])
+
+	# Round 1: enemy casts the 2t buff (end-of-round tick is skip-flagged).
+	manager.resolve_round({}, {buffer_id: 10}, DiceManager.new())
+	var active_after_cast: bool = int(buffer_state.get("roll_buff", 0)) == 2
+	# Rounds 2-3: no re-cast; the buff ticks down and expires.
+	manager.resolve_round({}, {}, DiceManager.new())
+	var active_mid: bool = int(buffer_state.get("roll_buff", 0)) == 2
+	manager.resolve_round({}, {}, DiceManager.new())
+	var gone_after: bool = int(buffer_state.get("roll_buff", 0)) == 0 and int(buffer_state.get("roll_buff_turns", 0)) == 0
+	_expect_and_record(
+		"Regression / enemy 2t roll buff expires after 2 rounds", "rollBuffExpiry",
+		"cast/mid/expired = true/true/true",
+		"cast/mid/expired = %s/%s/%s" % [str(active_after_cast), str(active_mid), str(gone_after)]
+	)
+
+	# Re-cast cap: two casts in consecutive rounds refresh to the authored +2,
+	# never +4 (the pre-fix runaway that read as a permanent buff).
+	var stack_manager: CombatManager = CombatManager.new()
+	stack_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [buffer_unit])
+	var stack_state: Dictionary = stack_manager.get_enemy_states()[0]
+	var stack_id: String = str(stack_state["id"])
+	stack_manager.resolve_round({}, {stack_id: 10}, DiceManager.new())
+	stack_manager.resolve_round({}, {stack_id: 10}, DiceManager.new())
+	_expect_and_record(
+		"Regression / enemy roll buff re-cast refreshes instead of stacking", "rollBuffExpiry",
+		"2", str(int(stack_state.get("roll_buff", 0)))
+	)
+
+
+# fix-1.3: structural band + pip coverage. For every unit (hero, evolution,
+# enemy): every roll 1-20 must map to exactly one ability, and every ability's
+# raw must parse to at least one pip through the same renderer battle uses.
+func _run_band_coverage_audit() -> void:
+	var problems: Array[String] = []
+	for unit_id in DataManager.units.keys():
+		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
+		if unit == null:
+			continue
+		_collect_band_coverage_problems("hero %s" % unit_id, unit.dice_ranges, "hero", problems)
+		for path_variant in unit.evolution_paths:
+			var path: Dictionary = path_variant
+			_collect_band_coverage_problems(
+				"evo %s/%s" % [unit_id, str(path.get("name", "?"))],
+				path.get("abilities", []), "hero", problems
+			)
+	for enemy_id in DataManager.enemies.keys():
+		var enemy: EnemyData = DataManager.get_enemy(enemy_id) as EnemyData
+		if enemy == null:
+			continue
+		_collect_band_coverage_problems("enemy %s" % enemy_id, enemy.dice_ranges, "enemy", problems)
+
+	if problems.is_empty():
+		_record_pass("Structural / band + pip coverage (all units, rolls 1-20)", "bandCoverage")
+	else:
+		for problem in problems:
+			_record_failure("Structural / band + pip coverage", "bandCoverage", "1 ability and >=1 pip per roll", problem)
+
+
+# fix-1.4: the universal freeze rule — frozen dice keep their value, skip
+# their reveals, and on thaw reveal the kept value instead of rerolling.
+# Case A (ally bank): freeze a squad die showing 20 — the ally skips this
+# round's reveal even though it precedes the freezer in squad order, and next
+# round it acts on the banked 20.
+# Case B (enemy parity): a frozen enemy skips its reveal, then acts on its
+# banked face the round after the thaw.
+func _run_freeze_bank_thaw_regression() -> void:
+	var banker: UnitData = UnitData.new()
+	banker.id = "audit_banker"
+	banker.display_name = "Audit Banker"
+	banker.max_hp = 100
+	banker.dice_ranges = [
+		_make_ability_entry("Hold", {}),
+		{"min": 20, "max": 20, "zone": "overload", "ability_name": "Payoff", "description": "25 dmg", "raw": {"dmg": 25}},
+	]
+	banker.dice_ranges[0]["max"] = 19
+	var freezer: UnitData = _make_unit("audit_freezer_bank", "Audit Freezer", "Glacial Bank", {"freezeAnyDice": 1})
+	var manager: CombatManager = CombatManager.new()
+	# Banker FIRST in squad order — proves the reveal-skip is order-independent.
+	manager.setup_battle([banker, freezer], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var banker_state: Dictionary = manager.get_hero_states()[0]
+	var freezer_state: Dictionary = manager.get_hero_states()[1]
+	var enemy_state: Dictionary = manager.get_enemy_states()[0]
+	banker_state["last_die_value"] = 20
+	freezer_state["selected_target_id"] = str(banker_state["id"])
+	var hp_start: int = int(enemy_state["current_hp"])
+	manager.resolve_round({str(banker_state["id"]): 20, str(freezer_state["id"]): 10}, {}, DiceManager.new())
+	var banked: bool = int(enemy_state["current_hp"]) == hp_start
+	var thaw_pending: bool = int(banker_state.get("thaw_reveal_value", 0)) == 20 and int(banker_state.get("die_freeze_turns", 0)) == 0
+	# Next round: the fresh roll (7) must be overridden by the banked 20.
+	manager.resolve_round({str(banker_state["id"]): 7}, {}, DiceManager.new())
+	var acted_on_20: bool = int(enemy_state["current_hp"]) == hp_start - 25
+	_expect_and_record(
+		"Regression / ally freeze banks the die (skip, then act on 20)", "freezeAnyDice",
+		"banked/thaw/acted = true/true/true",
+		"banked/thaw/acted = %s/%s/%s" % [str(banked), str(thaw_pending), str(acted_on_20)]
+	)
+
+	var enemy_big: EnemyData = EnemyData.new()
+	enemy_big.id = "audit_thaw_enemy"
+	enemy_big.display_name = "Audit Thaw Enemy"
+	enemy_big.max_hp = 100
+	enemy_big.dice_ranges = [
+		_make_ability_entry("Idle", {}),
+		{"min": 15, "max": 20, "zone": "crit", "ability_name": "Big Hit", "description": "9 dmg", "raw": {"dmg": 9}},
+	]
+	enemy_big.dice_ranges[0]["max"] = 14
+	var ice_hero: UnitData = _make_unit("audit_ice_hero", "Audit Ice Hero", "Flash Freeze", {"freezeEnemyDice": 1})
+	var parity_manager: CombatManager = CombatManager.new()
+	parity_manager.setup_battle([ice_hero], [enemy_big])
+	var ice_state: Dictionary = parity_manager.get_hero_states()[0]
+	var big_state: Dictionary = parity_manager.get_enemy_states()[0]
+	big_state["last_die_value"] = 15
+	var hero_hp_start: int = int(ice_state["current_hp"])
+	parity_manager.resolve_round({str(ice_state["id"]): 10}, {str(big_state["id"]): 15}, DiceManager.new())
+	var enemy_skipped: bool = int(ice_state["current_hp"]) == hero_hp_start
+	parity_manager.resolve_round({}, {str(big_state["id"]): 3}, DiceManager.new())
+	var enemy_acted_on_15: bool = int(ice_state["current_hp"]) == hero_hp_start - 9
+	_expect_and_record(
+		"Regression / enemy freeze thaws to banked face", "freezeEnemyDice",
+		"skipped/acted = true/true",
+		"skipped/acted = %s/%s" % [str(enemy_skipped), str(enemy_acted_on_15)]
+	)
+
+
+func _collect_band_coverage_problems(owner: String, ranges: Array, side: String, problems: Array[String]) -> void:
+	if ranges.is_empty():
+		problems.append("%s: no ability ranges" % owner)
+		return
+	for roll in range(1, 21):
+		var hits: int = 0
+		for range_variant in ranges:
+			var entry: Dictionary = range_variant
+			if roll >= int(entry.get("min", 0)) and roll <= int(entry.get("max", 0)):
+				hits += 1
+		if hits != 1:
+			problems.append("%s: roll %d maps to %d abilities" % [owner, roll, hits])
+	for range_variant in ranges:
+		var entry: Dictionary = range_variant
+		var pips: Array = EffectPip.effects_from_ability_raw(entry.get("raw", {}), side)
+		if pips.is_empty():
+			problems.append("%s: '%s' (%s) parses to zero pips [eff=%s]" % [
+				owner, str(entry.get("ability_name", "?")), str(entry.get("zone", "?")),
+				str(entry.get("description", ""))
+			])
 
 
 func _run_gear_lifesteal_regression() -> void:
