@@ -375,7 +375,8 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 		for effect_variant in action_pips.get("effects", []):
 			var effect: Dictionary = effect_variant
 			if str(effect.get("kind", "")) == "detonate":
-				effect["value"] = "DT %d" % burst if burst > 0 else "DT"
+				var dt_code: String = EffectPip.keyword_code("detonate", "DT")
+				effect["value"] = "%s %d" % [dt_code, burst] if burst > 0 else dt_code
 		return
 
 

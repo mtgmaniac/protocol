@@ -420,7 +420,7 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 			_drift_pip(bar_from, target_card, Color(0.95, 0.76, 0.28, 1.0), "-%d" % int(event.get("amount", 0)))
 		"hijack":
 			var tray_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y * 0.62)
-			_drift_pip(tray_from, target_card, Color(0.95, 0.45, 0.30, 1.0), "HJ")
+			_drift_pip(tray_from, target_card, Color(0.95, 0.45, 0.30, 1.0), EffectPip.keyword_code("hijack", "HJ"))
 		"jam":
 			if _scene.dice_tray_3d != null:
 				_scene.dice_tray_3d.play_jam_flicker(str(event.get("side", "")), str(event.get("target_id", "")), int(event.get("amount", 0)))
