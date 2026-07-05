@@ -44,13 +44,15 @@ static func is_letter_only_kind(kind: String) -> bool:
 	return kind.to_lower() in LETTER_ONLY_KINDS
 
 
-static func pip_key_for_effect(effect: Dictionary, side: String = "hero") -> String:
+static func pip_key_for_effect(effect: Dictionary, _side: String = "hero") -> String:
 	var kind: String = str(effect.get("kind", ""))
 	if kind == "revive":
 		return "heal"
+	# fix-2.3: the sign alone drives the roll channel — +roll = green (roll_up),
+	# -roll = amber (roll_down) — on both sides. Enemy rfm ("-N to a hero's
+	# roll") is emitted as a signed "roll" reduction below, so the old
+	# enemy-side rfm override is gone.
 	var value: String = str(effect.get("value", ""))
-	if kind.to_lower() == "rfm" and side == "enemy" and PixelUI.parse_signed_amount(value) > 0:
-		return "roll_down"
 	return PixelUI.pip_key_for_effect(kind, value)
 
 
@@ -194,10 +196,15 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 
 	var rfm: int = int(raw.get("rfm", 0))
 	if rfm > 0:
-		var rfm_scope: String = ""
-		if side == "hero" and not bool(raw.get("rfmTgt", false)):
-			rfm_scope = "all"
-		_append_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)), rfm_scope)
+		if side == "enemy":
+			# Enemy rfm is hostile: "-N to a hero's roll". Render it as the
+			# signed reduction it is (amber roll_down channel).
+			_append_effect(effects, "roll", "-%d" % rfm, int(raw.get("rfmT", 0)))
+		else:
+			var rfm_scope: String = ""
+			if not bool(raw.get("rfmTgt", false)):
+				rfm_scope = "all"
+			_append_effect(effects, "rfm", "+%d" % rfm, int(raw.get("rfmT", 0)), rfm_scope)
 
 	# Enemy roll buff (erb): the enemy-side mirror of rfm. fix-1.3 — pure-erb
 	# abilities (Checksum Scribe's Checksum Pass et al.) rendered zero pips.
