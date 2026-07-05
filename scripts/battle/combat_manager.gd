@@ -483,6 +483,43 @@ func resolve_round(
 	# Boss standing rules that must be live before the hero phase.
 	_apply_boss_round_start_rules()
 
+	# fix-1.4: thawed dice reveal their banked value instead of rerolling. The
+	# battle scene consumes these at roll time (tray face + previews match);
+	# this pass covers headless flows (audit, sim) that call resolve_round with
+	# hand-built roll dicts.
+	for state_variant in _hero_states + _enemy_states:
+		var thaw_state: Dictionary = state_variant
+		if bool(thaw_state.get("dead", false)):
+			continue
+		var thaw_value: int = consume_thaw_reveal(thaw_state)
+		if thaw_value <= 0:
+			continue
+		if _is_hero_state(thaw_state):
+			hero_rolls[str(thaw_state["id"])] = thaw_value
+		else:
+			enemy_rolls[str(thaw_state["id"])] = thaw_value
+
+	# fix-1.4: ally-freeze banking is order-independent — a hero freezing a
+	# squad die skips that ally's reveal THIS round regardless of squad order,
+	# so the banked face is never spent in the same round it is banked.
+	# (Self-picks are excluded: the caster's own die is being spent on the
+	# freeze itself, so a self-freeze locks from the NEXT reveal instead.)
+	for hero_state in _hero_states:
+		if bool(hero_state.get("dead", false)):
+			continue
+		if bool(hero_state.get("die_freeze_consumed_this_round", false)):
+			continue
+		var pre_roll: Variant = hero_rolls.get(hero_state["id"], null)
+		if pre_roll == null:
+			continue
+		var pre_raw: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], int(pre_roll)).get("raw", {})
+		if int(pre_raw.get("freezeAnyDice", 0)) <= 0:
+			continue
+		var bank_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
+		if bank_target.is_empty() or bank_target == hero_state:
+			continue
+		bank_target["die_freeze_consumed_this_round"] = true
+
 	# Hijack: enemies with a pending hijack copy the heroes' current highest
 	# die for this round's action (effective roll override; raw kept).
 	var highest_hero_roll: int = 0
@@ -925,7 +962,11 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			if freeze_any > 0:
 				freeze_target = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
 			if not freeze_target.is_empty():
-				_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
+				# Ally bank (fix-1.4): the pre-pass in resolve_round already skipped
+				# the ally's reveal this round, so consume that skip now (immediate)
+				# and the rolled face is banked, not spent. Self-freeze locks from
+				# the next reveal — this die is being spent on the cast itself.
+				_freeze_die_state(freeze_target, freeze_amount, freeze_target != hero_state, freeze_flavor)
 			else:
 				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
@@ -1772,6 +1813,7 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, immediate: bool = 
 	var existing_turns: int = int(state.get("die_freeze_turns", 0))
 	state["die_freeze_turns"] = existing_turns + freeze_amount
 	state["freeze_flavor"] = flavor
+	state["thaw_reveal_value"] = 0
 	var frozen_value: int = int(state.get("frozen_die_value", 0))
 	if frozen_value <= 0:
 		frozen_value = int(state.get("last_die_value", 0))
@@ -1782,6 +1824,15 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, immediate: bool = 
 	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
 	_grant_mirror_plate_protocol(state)
+
+
+# fix-1.4: returns and clears the pending thaw reveal — the banked face a die
+# shows on its first reveal after the freeze ends. Single consumption point
+# shared by the battle scene (roll time) and resolve_round (headless flows).
+func consume_thaw_reveal(state: Dictionary) -> int:
+	var thaw_value: int = int(state.get("thaw_reveal_value", 0))
+	state["thaw_reveal_value"] = 0
+	return thaw_value
 
 
 func _resolve_revive_hp_pct(raw: Dictionary) -> int:
@@ -1807,6 +1858,7 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	state["frozen_die_value"] = 0
 	state["die_freeze_consumed_this_round"] = false
 	state["freeze_flavor"] = ""
+	state["thaw_reveal_value"] = 0
 	_log("%s is revived at %d HP!" % [state["unit"].display_name, int(state["current_hp"])])
 	_emit_event(state, "heal", int(state["current_hp"]), _resolve_side_for_state(state))
 
@@ -1924,6 +1976,7 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
 	state["die_freeze_consumed_this_round"] = false
+	state["thaw_reveal_value"] = 0
 	state["perm_rfe"] = 0
 
 
@@ -2106,6 +2159,9 @@ func _tick_end_of_round_states() -> void:
 			frozen_state["die_freeze_consumed_this_round"] = false
 			frozen_state["die_freeze_turns"] = maxi(0, int(frozen_state.get("die_freeze_turns", 0)) - 1)
 			if int(frozen_state.get("die_freeze_turns", 0)) <= 0:
+				# fix-1.4: thaw reveals the banked face instead of rerolling —
+				# stash it for the next roll phase before clearing the freeze.
+				frozen_state["thaw_reveal_value"] = int(frozen_state.get("frozen_die_value", 0))
 				frozen_state["frozen_die_value"] = 0
 				frozen_state["freeze_flavor"] = ""
 

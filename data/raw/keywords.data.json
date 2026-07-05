@@ -124,7 +124,7 @@
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "The die is locked and the unit skips its next N reveals. Identical for heroes and enemies; frozen dice stay in the tray as blockers.",
+      "def": "Frozen dice keep their value and skip their reveals until thawed. When the freeze ends the die reveals the kept value instead of rerolling. Identical for heroes and enemies; frozen dice stay in the tray as blockers.",
       "syntax": "freeze (N reveal skips)",
       "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },

@@ -471,6 +471,7 @@ func _run_regression_audits() -> void:
 	_run_summon_end_to_end_regression()
 	_run_enemy_roll_buff_expiry_regression()
 	_run_band_coverage_audit()
+	_run_freeze_bank_thaw_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -2444,6 +2445,72 @@ func _run_band_coverage_audit() -> void:
 	else:
 		for problem in problems:
 			_record_failure("Structural / band + pip coverage", "bandCoverage", "1 ability and >=1 pip per roll", problem)
+
+
+# fix-1.4: the universal freeze rule — frozen dice keep their value, skip
+# their reveals, and on thaw reveal the kept value instead of rerolling.
+# Case A (ally bank): freeze a squad die showing 20 — the ally skips this
+# round's reveal even though it precedes the freezer in squad order, and next
+# round it acts on the banked 20.
+# Case B (enemy parity): a frozen enemy skips its reveal, then acts on its
+# banked face the round after the thaw.
+func _run_freeze_bank_thaw_regression() -> void:
+	var banker: UnitData = UnitData.new()
+	banker.id = "audit_banker"
+	banker.display_name = "Audit Banker"
+	banker.max_hp = 100
+	banker.dice_ranges = [
+		_make_ability_entry("Hold", {}),
+		{"min": 20, "max": 20, "zone": "overload", "ability_name": "Payoff", "description": "25 dmg", "raw": {"dmg": 25}},
+	]
+	banker.dice_ranges[0]["max"] = 19
+	var freezer: UnitData = _make_unit("audit_freezer_bank", "Audit Freezer", "Glacial Bank", {"freezeAnyDice": 1})
+	var manager: CombatManager = CombatManager.new()
+	# Banker FIRST in squad order — proves the reveal-skip is order-independent.
+	manager.setup_battle([banker, freezer], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var banker_state: Dictionary = manager.get_hero_states()[0]
+	var freezer_state: Dictionary = manager.get_hero_states()[1]
+	var enemy_state: Dictionary = manager.get_enemy_states()[0]
+	banker_state["last_die_value"] = 20
+	freezer_state["selected_target_id"] = str(banker_state["id"])
+	var hp_start: int = int(enemy_state["current_hp"])
+	manager.resolve_round({str(banker_state["id"]): 20, str(freezer_state["id"]): 10}, {}, DiceManager.new())
+	var banked: bool = int(enemy_state["current_hp"]) == hp_start
+	var thaw_pending: bool = int(banker_state.get("thaw_reveal_value", 0)) == 20 and int(banker_state.get("die_freeze_turns", 0)) == 0
+	# Next round: the fresh roll (7) must be overridden by the banked 20.
+	manager.resolve_round({str(banker_state["id"]): 7}, {}, DiceManager.new())
+	var acted_on_20: bool = int(enemy_state["current_hp"]) == hp_start - 25
+	_expect_and_record(
+		"Regression / ally freeze banks the die (skip, then act on 20)", "freezeAnyDice",
+		"banked/thaw/acted = true/true/true",
+		"banked/thaw/acted = %s/%s/%s" % [str(banked), str(thaw_pending), str(acted_on_20)]
+	)
+
+	var enemy_big: EnemyData = EnemyData.new()
+	enemy_big.id = "audit_thaw_enemy"
+	enemy_big.display_name = "Audit Thaw Enemy"
+	enemy_big.max_hp = 100
+	enemy_big.dice_ranges = [
+		_make_ability_entry("Idle", {}),
+		{"min": 15, "max": 20, "zone": "crit", "ability_name": "Big Hit", "description": "9 dmg", "raw": {"dmg": 9}},
+	]
+	enemy_big.dice_ranges[0]["max"] = 14
+	var ice_hero: UnitData = _make_unit("audit_ice_hero", "Audit Ice Hero", "Flash Freeze", {"freezeEnemyDice": 1})
+	var parity_manager: CombatManager = CombatManager.new()
+	parity_manager.setup_battle([ice_hero], [enemy_big])
+	var ice_state: Dictionary = parity_manager.get_hero_states()[0]
+	var big_state: Dictionary = parity_manager.get_enemy_states()[0]
+	big_state["last_die_value"] = 15
+	var hero_hp_start: int = int(ice_state["current_hp"])
+	parity_manager.resolve_round({str(ice_state["id"]): 10}, {str(big_state["id"]): 15}, DiceManager.new())
+	var enemy_skipped: bool = int(ice_state["current_hp"]) == hero_hp_start
+	parity_manager.resolve_round({}, {str(big_state["id"]): 3}, DiceManager.new())
+	var enemy_acted_on_15: bool = int(ice_state["current_hp"]) == hero_hp_start - 9
+	_expect_and_record(
+		"Regression / enemy freeze thaws to banked face", "freezeEnemyDice",
+		"skipped/acted = true/true",
+		"skipped/acted = %s/%s" % [str(enemy_skipped), str(enemy_acted_on_15)]
+	)
 
 
 func _collect_band_coverage_problems(owner: String, ranges: Array, side: String, problems: Array[String]) -> void:

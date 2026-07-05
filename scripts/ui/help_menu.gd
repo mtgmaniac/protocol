@@ -639,7 +639,7 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 			tags.append("Ward")
 		if bool(raw.get("wipeShields", false)):
 			tags.append("Shield Wipe")
-		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0:
+		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0 or int(raw.get("freezeAnyDice", 0)) > 0:
 			tags.append("Freeze")
 		if int(raw.get("summonChance", 0)) > 0 or str(raw.get("summonName", "")) != "":
 			tags.append("Summon")
