@@ -1,13 +1,15 @@
 # Freeze regression guard (rules/engine layer). Drives combat via BattleEngine's
-# real round pipeline (apply_frozen_roll_overrides -> record_roll_values_for_states
-# -> resolve_step) with CONTROLLED rolls, so it exercises exactly the glue the
-# sim extraction touched — unlike the ability audit, which calls resolve_round
-# directly. Scenario: Avalanche rolls into the freeze band (Glacial Lattice,
-# roll 3) and freezes an enemy that would otherwise hit the hero; asserts the
-# freeze event fires, the enemy's imminent hit is cancelled, and the charge is
-# consumed. Added while diagnosing "freeze appears broken on the live screen" —
-# it proves the RULES/ENGINE layer is healthy, isolating that bug to
-# battle_scene display/wiring. Exit 0 = pass, 2 = rules-layer freeze broken.
+# real round pipeline (roll build -> apply_frozen_roll_overrides ->
+# record_roll_values_for_states -> resolve_step) — the exact glue the sim
+# extraction re-pointed and the live screen uses, which the ability audit's
+# direct resolve_round calls bypass.
+#
+# Asserts the INTENDED freeze semantics (reverted from pkg1.3's imminent-cancel):
+# a hero freeze locks the enemy's NEXT reveal. Round 1: Avalanche (roll 3 ->
+# Glacial Lattice) freezes an enemy that STILL lands its hit this round and is
+# left frozen. Round 2: the frozen enemy skips its reveal (crust would persist)
+# and the charge then clears.
+# Exit 0 = pass, 2 = freeze semantics wrong.
 # Run: godot --headless --path . res://scenes/debug/freeze_engine_regression.tscn
 extends Node
 
@@ -26,63 +28,56 @@ func _ready() -> void:
 	cm.setup_battle([avalanche], [enemy.duplicate(true)])
 	var hero: Dictionary = cm.get_hero_states()[0]
 	var en: Dictionary = cm.get_enemy_states()[0]
-
-	# Pick an enemy roll that maps to a damage ability, so "enemy skipped" is
-	# observable as "hero took no damage".
-	var enemy_roll: int = _find_damage_roll(dmgr, enemy)
-	var avalanche_roll: int = 3  # recharge band -> Glacial Lattice (pure freeze)
-
 	hero["selected_target_id"] = str(en["id"])
 	en["selected_target_id"] = str(hero["id"])
 
-	var ability: Dictionary = dmgr.get_ability_for_roll(avalanche, avalanche_roll)
-	var enemy_ability: Dictionary = dmgr.get_ability_for_roll(enemy, enemy_roll)
-	print("[FREEZE] avalanche roll %d -> %s (freezeEnemyDice=%s)" % [
-		avalanche_roll, str(ability.get("ability_name", "?")),
-		str((ability.get("raw", {}) as Dictionary).get("freezeEnemyDice", 0))])
-	print("[FREEZE] enemy roll %d -> %s (dmg=%s)" % [
-		enemy_roll, str(enemy_ability.get("ability_name", "?")),
-		str((enemy_ability.get("raw", {}) as Dictionary).get("dmg", 0))])
-
-	# Engine round pipeline with controlled rolls (bypass roll_states only).
+	var enemy_roll: int = _find_damage_roll(dmgr, enemy)  # a roll that deals damage
 	var engine := BattleEngine.new(cm, null, dmgr)
 	var bs := BattleState.new()
-	bs.hero_rolls = {str(hero["id"]): avalanche_roll}
+
+	# ── Round 1: Avalanche freezes; the enemy STILL hits this round. ──────────
+	var hp_start: int = int(hero["current_hp"])
+	bs.hero_rolls = {str(hero["id"]): 3}          # Glacial Lattice (freeze)
 	bs.enemy_rolls = {str(en["id"]): enemy_roll}
 	engine.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)
 	engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
 	engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
 	engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
+	var step1: Dictionary = engine.resolve_step(bs)
+	var freeze_emitted: bool = _has_freeze_event((step1["result"] as Dictionary).get("events", []))
+	var hp_after_r1: int = int(hero["current_hp"])
+	var enemy_acted_r1: bool = hp_after_r1 < hp_start
+	var frozen_after_r1: bool = int(en.get("die_freeze_turns", 0)) == 1 and not bool(en.get("die_freeze_consumed_this_round", false))
 
-	var hero_hp_before: int = int(hero["current_hp"])
-	var step: Dictionary = engine.resolve_step(bs)
-	var result: Dictionary = step["result"]
+	# ── Round 2: the frozen enemy skips its reveal (Avalanche sits out so it
+	# can't re-freeze). record_roll_values sets the consumed flag from the
+	# carried die_freeze_turns, exactly as the live roll flow does. ───────────
+	bs.hero_rolls = {}
+	bs.enemy_rolls = {str(en["id"]): enemy_roll}
+	engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
+	engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
+	engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
+	engine.resolve_step(bs)
+	var enemy_skipped_r2: bool = int(hero["current_hp"]) == hp_after_r1
+	var charge_cleared: bool = int(en.get("die_freeze_turns", 0)) == 0
 
-	print("[FREEZE] --- round log ---")
-	for line in result.get("log", []):
-		print("   ", str(line))
-	print("[FREEZE] --- events ---")
-	var freeze_emitted: bool = false
-	for ev_variant in result.get("events", []):
-		var ev: Dictionary = ev_variant
-		print("   ", str(ev))
-		if str(ev.get("type", "")) == "freeze":
-			freeze_emitted = true
+	print("[FREEZE] R1: freeze_emitted=%s enemy_acted=%s (hp %d->%d) frozen=%s | R2: enemy_skipped=%s charge_cleared=%s" % [
+		str(freeze_emitted), str(enemy_acted_r1), hp_start, hp_after_r1, str(frozen_after_r1),
+		str(enemy_skipped_r2), str(charge_cleared)])
 
-	var hero_hp_after: int = int(hero["current_hp"])
-	var enemy_skipped: bool = hero_hp_after == hero_hp_before
-	var charge_consumed: bool = int(en.get("die_freeze_turns", 0)) == 0
-
-	print("[FREEZE] freeze_emitted=%s  enemy_skipped=%s (hp %d->%d)  charge_consumed=%s (die_freeze_turns=%d)" % [
-		str(freeze_emitted), str(enemy_skipped), hero_hp_before, hero_hp_after,
-		str(charge_consumed), int(en.get("die_freeze_turns", 0))])
-
-	if freeze_emitted and enemy_skipped and charge_consumed:
-		print("[FREEZE] RESULT: rules/engine layer FREEZE WORKS")
+	if freeze_emitted and enemy_acted_r1 and frozen_after_r1 and enemy_skipped_r2 and charge_cleared:
+		print("[FREEZE] RESULT: freeze locks the enemy's NEXT reveal — PASS")
 		get_tree().quit(0)
 	else:
-		print("[FREEZE] RESULT: rules/engine layer FREEZE BROKEN")
+		print("[FREEZE] RESULT: freeze semantics WRONG (expected act-this-round then skip-next)")
 		get_tree().quit(2)
+
+
+func _has_freeze_event(events: Array) -> bool:
+	for ev in events:
+		if str((ev as Dictionary).get("type", "")) == "freeze":
+			return true
+	return false
 
 
 func _find_damage_roll(dmgr: DiceManager, enemy: EnemyData) -> int:

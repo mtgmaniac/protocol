@@ -563,7 +563,10 @@ func _run_enemy_freeze_regression() -> void:
 			"frozen=%s skipped=%s cleared=%s turns=%d" % [str(frozen_after_apply), str(hero_skipped), str(freeze_cleared), int(hero.get("die_freeze_turns", 0))]
 		)
 
-	# Hero-side freeze cancels the target enemy's imminent action this round.
+	# Hero-side freeze locks the enemy's NEXT reveal (immediate=false, symmetric
+	# with enemy-side freeze): the enemy still lands its hit this round, then
+	# skips its next turn, with the die frozen across the gap. This reverts the
+	# pkg1.3 "cancel the imminent action" reading — freeze is a next-turn lockout.
 	var cancel_manager: CombatManager = CombatManager.new()
 	var freezer_unit: UnitData = _make_unit("audit_freezer", "Audit Freezer", "Flash Freeze", {"freezeEnemyDice": 1})
 	var striker_enemy: EnemyData = _make_enemy("audit_striker", "Audit Striker", "Claw", {"dmg": 9})
@@ -574,17 +577,26 @@ func _run_enemy_freeze_regression() -> void:
 	striker["selected_target_id"] = str(freezer["id"])
 	striker["last_die_value"] = 15
 	var hero_hp_before: int = int(freezer["current_hp"])
+	# Round 1: freeze cast; the enemy STILL lands its hit and is left frozen
+	# (die locked, not yet consumed) for its next reveal.
 	cancel_manager.resolve_round({str(freezer["id"]): AUDIT_ROLL}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
-	var canceled: bool = int(freezer["current_hp"]) == hero_hp_before
-	var charge_spent: bool = int(striker.get("die_freeze_turns", 0)) == 0
-	if canceled and charge_spent:
-		_record_pass("Regression / hero freeze cancels enemy action", "freezeEnemyDice")
+	var striker_acted_r1: bool = int(freezer["current_hp"]) < hero_hp_before
+	var striker_frozen_after: bool = int(striker.get("die_freeze_turns", 0)) == 1 and not bool(striker.get("die_freeze_consumed_this_round", false))
+	# Round 2: the frozen die is revealed (consumed flag set at roll time by
+	# battle_scene; mimic that here) — the enemy skips its action, then clears.
+	striker["die_freeze_consumed_this_round"] = true
+	var freezer_hp_after_r1: int = int(freezer["current_hp"])
+	cancel_manager.resolve_round({}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
+	var striker_skipped_r2: bool = int(freezer["current_hp"]) == freezer_hp_after_r1
+	var striker_freeze_cleared: bool = int(striker.get("die_freeze_turns", 0)) == 0
+	if striker_acted_r1 and striker_frozen_after and striker_skipped_r2 and striker_freeze_cleared:
+		_record_pass("Regression / hero freeze locks enemy next reveal", "freezeEnemyDice")
 	else:
 		_record_failure(
-			"Regression / hero freeze cancels enemy action",
+			"Regression / hero freeze locks enemy next reveal",
 			"freezeEnemyDice",
-			"frozen enemy's imminent hit never lands; charge consumed at round end",
-			"hero_hp_delta=%d striker_turns=%d" % [hero_hp_before - int(freezer["current_hp"]), int(striker.get("die_freeze_turns", 0))]
+			"enemy hits this round, is frozen, then skips its next reveal and clears",
+			"acted_r1=%s frozen=%s skipped_r2=%s cleared=%s turns=%d" % [str(striker_acted_r1), str(striker_frozen_after), str(striker_skipped_r2), str(striker_freeze_cleared), int(striker.get("die_freeze_turns", 0))]
 		)
 
 

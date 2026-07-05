@@ -35,7 +35,7 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 4. A unit that dies mid-turn does not act.
 5. Shields last **one round**: granted this round, absorb through this round's opposing phase, gone at the round-end tick (no `shT` field exists). Enemy-phase grants survive one tick so they cover exactly one hero phase. Exception: `shieldsPersist` (Mantle Core relic / MANTLE TYRANT rule) keeps shields until broken.
 6. Protocol Bar resets each battle (does NOT carry over).
-7. **Freeze** (one keyword, identical both sides — former Cower merged in): the die locks in the tray (physical blocker) and the unit **skips its next N reveals** (`freezeAnyDice` / `freezeEnemyDice` / `freezeAllEnemyDice`; hero freezes on enemies cancel the imminent action). Cosmetic `freeze_flavor`: ice (default) / petrify.
+7. **Freeze** (one keyword, identical both sides — former Cower merged in): the die locks in the tray (physical blocker) and the unit **skips its next N reveals** (`freezeAnyDice` / `freezeEnemyDice` / `freezeAllEnemyDice`). Timing is symmetric for hero-cast and enemy-cast freezes: the target still acts the round it is frozen, then **skips its next turn**, with the die staying frozen (crust persists) across the gap until that skipped reveal. (Reverted from the pkg1.3 "hero freezes cancel the imminent action" reading — freeze is a next-turn lockout, not a same-round cancel.) Cosmetic `freeze_flavor`: ice (default) / petrify.
 7b. **Ward** (`ward: true`, replaces Counterspell): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only.
 8. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20).
 

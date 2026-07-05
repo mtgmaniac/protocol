@@ -894,9 +894,12 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				_log("%s is now cloaked." % ally_state["unit"].display_name)
 				_emit_event(ally_state, "cloak", 0, "hero")
 
-	# Freeze die application. Enemies haven't acted yet this round, so a hero
-	# freeze cancels the target's imminent action (immediate=true). A frozen
-	# ally locks from the NEXT reveal (heroes may already have acted).
+	# Freeze die application. A freeze skips the target's NEXT reveal uniformly
+	# for both sides (immediate=false): the enemy still acts this round, then
+	# skips its next turn — the die stays frozen (crust persists) until that
+	# skipped reveal. (Pre-pkg1.3 behavior; the pkg1.3 "cancel the imminent
+	# action" reading was reverted per design — freeze is a next-turn lockout,
+	# not a same-round cancel.)
 	var freeze_enemy: int = int(raw.get("freezeEnemyDice", 0))
 	var freeze_all_enemy: int = int(raw.get("freezeAllEnemyDice", 0))
 	var freeze_any: int = int(raw.get("freezeAnyDice", 0))
@@ -909,7 +912,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		if freeze_all_enemy > 0:
 			for es in _enemy_states:
 				if not es["dead"] and not _ward_blocks_hostile(es):
-					_freeze_die_state(es, freeze_amount, true, freeze_flavor)
+					_freeze_die_state(es, freeze_amount, false, freeze_flavor)
 		else:
 			var freeze_target: Dictionary = {}
 			if freeze_any > 0:
@@ -919,7 +922,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			else:
 				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
-					_freeze_die_state(freeze_target, freeze_amount, true, freeze_flavor)
+					_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
 
 	# Jam: cap the target's next roll at 12 (die status, telegraphed for the
 	# next reveal). jamAll caps every living enemy die.
