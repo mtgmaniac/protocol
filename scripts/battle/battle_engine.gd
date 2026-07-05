@@ -19,11 +19,47 @@ const SET_DIE_COST := 3
 
 var combat_manager: CombatManager
 var roll_provider: RollProvider
+var dice_manager: DiceManager
 
 
-func _init(cm: CombatManager, provider: RollProvider = null) -> void:
+func _init(cm: CombatManager, provider: RollProvider = null, dm: DiceManager = null) -> void:
 	combat_manager = cm
 	roll_provider = provider
+	dice_manager = dm
+
+
+# ── Per-round resolution (extracted from battle_scene._resolve_current_turn) ──
+# The one round-resolution path both the live screen and the sim run: build
+# effective rolls, resolve_round through combat_manager, clear the spent roll
+# state, and drain the pending protocol counters. Returns the combat result,
+# the effective hero rolls (for XP recording), and the pending protocol grant /
+# drain amounts for the caller to apply (grant via gain_protocol so cap/overflow
+# live in one place; drain is a floor-0 subtract). UI (feedback, logging, scene
+# handoff, income) stays in the caller.
+func resolve_step(bs: BattleState) -> Dictionary:
+	var hero_states: Array = combat_manager.get_hero_states()
+	var enemy_states: Array = combat_manager.get_enemy_states()
+	var eff_hero_rolls: Dictionary = build_effective_rolls(bs.hero_rolls, hero_states, true, bs)
+	var eff_enemy_rolls: Dictionary = build_effective_rolls(bs.enemy_rolls, enemy_states, false, bs)
+	var raw_enemy_rolls: Dictionary = bs.enemy_rolls.duplicate()
+	var raw_hero_rolls: Dictionary = bs.hero_rolls.duplicate()
+	var result: Dictionary = combat_manager.resolve_round(
+		eff_hero_rolls,
+		eff_enemy_rolls,
+		dice_manager,
+		raw_enemy_rolls,
+		raw_hero_rolls
+	)
+	bs.hero_rolls.clear()
+	bs.enemy_rolls.clear()
+	bs.hero_roll_nudges.clear()
+	bs.hero_roll_sets.clear()
+	return {
+		"result": result,
+		"eff_hero_rolls": eff_hero_rolls,
+		"protocol_grant": combat_manager.take_pending_protocol_grants(),
+		"protocol_drain": combat_manager.take_pending_protocol_drain(),
+	}
 
 
 # ── Protocol economy (extracted from battle_scene) ────────────────────────────

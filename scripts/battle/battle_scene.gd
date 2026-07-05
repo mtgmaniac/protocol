@@ -76,7 +76,7 @@ var combat_manager: CombatManager = CombatManager.new()
 # Shared UI-free rules engine (balance-sim A.1). Owns the roll-shaping /
 # protocol-economy rules extracted from this god object so the headless sim and
 # the live screen run one implementation. See scripts/sim/DECOUPLING_NOTES.md.
-var _engine: BattleEngine = BattleEngine.new(combat_manager, PhysicsRollProvider.new(dice_manager))
+var _engine: BattleEngine = BattleEngine.new(combat_manager, PhysicsRollProvider.new(dice_manager), dice_manager)
 # Caller-owned battle state (rolls / nudge-set maps / protocol pool / per-battle
 # spend flags) lives in one container so Package D's L2 solver can snapshot it
 # with a single duplicate_for_search(). The members below are property
@@ -816,25 +816,14 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	_is_resolving_turn = true
 	InspectPopup.dismiss()
 
-	# Build effective roll dicts so RFE/buff/nudge are reflected in combat resolution
-	var eff_hero_rolls: Dictionary = _build_effective_rolls(hero_rolls, combat_manager.get_hero_states(), true)
-	var eff_enemy_rolls: Dictionary = _build_effective_rolls(enemy_rolls, combat_manager.get_enemy_states(), false)
+	# Resolve the round through the shared engine (A.1 cluster 6): build effective
+	# rolls, resolve_round, clear the spent roll state, drain pending protocol.
+	# This scene keeps XP recording, feedback, logging, income, and scene handoff.
+	var step: Dictionary = _engine.resolve_step(_state)
+	var result: Dictionary = step["result"]
+	var eff_hero_rolls: Dictionary = step["eff_hero_rolls"]
 	for unit_id_variant in eff_hero_rolls.keys():
 		_game_state().record_hero_effective_roll(str(unit_id_variant), int(eff_hero_rolls[unit_id_variant]))
-
-	var raw_enemy_rolls: Dictionary = enemy_rolls.duplicate()
-	var raw_hero_rolls: Dictionary = hero_rolls.duplicate()
-	var result: Dictionary = combat_manager.resolve_round(
-		eff_hero_rolls,
-		eff_enemy_rolls,
-		dice_manager,
-		raw_enemy_rolls,
-		raw_hero_rolls
-	)
-	hero_rolls.clear()
-	enemy_rolls.clear()
-	hero_roll_nudges.clear()
-	hero_roll_sets.clear()
 	_clear_die_tooltip_overlays()
 	active_targeting_hero_id = ""
 	legal_target_ids.clear()
@@ -844,11 +833,11 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	_clear_target_assignments()
 	roll_button.disabled = true
 	_append_round_log(result.get("log", []))
-	var protocol_grant: int = combat_manager.take_pending_protocol_grants()
+	var protocol_grant: int = int(step["protocol_grant"])
 	if protocol_grant > 0:
 		_gain_protocol(protocol_grant)
 		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
-	var protocol_drain: int = combat_manager.take_pending_protocol_drain()
+	var protocol_drain: int = int(step["protocol_drain"])
 	if protocol_drain > 0:
 		protocol_points = maxi(0, protocol_points - protocol_drain)
 		_update_protocol_bar()
