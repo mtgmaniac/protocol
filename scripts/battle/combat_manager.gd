@@ -467,6 +467,61 @@ func take_pending_protocol_grants() -> int:
 var _pending_protocol_drain: int = 0
 
 
+# ── L2 speculative lookahead (balance-sim Package D) ──────────────────────────
+# The combat half of the state that BattleState.duplicate_for_search() doesn't
+# cover (unit dicts + per-round bookkeeping). The L2 solver snapshots before a
+# round, resolves candidate lines on the live manager, scores, restores, and
+# applies the best. Dictionary/Array.duplicate(true) deep-copies nested
+# dicts/arrays but keeps the shared "unit" Resource ref — exactly what we want.
+func snapshot_state() -> Dictionary:
+	return {
+		"hero_states": _hero_states.map(func(s): return (s as Dictionary).duplicate(true)),
+		"enemy_states": _enemy_states.map(func(s): return (s as Dictionary).duplicate(true)),
+		"battle_round": _battle_round,
+		"pending_protocol_grants": _pending_protocol_grants,
+		"pending_protocol_drain": _pending_protocol_drain,
+		"chain_reaction_active": _chain_reaction_active,
+		"low_hp_squad_buff_used": _low_hp_squad_buff_used,
+		"vengeance_used": _vengeance_used,
+		"scavenger_drop_done": _scavenger_drop_done,
+		"decoy_round_one": _decoy_round_one,
+		"ward_blocked_ids": _ability_ward_blocked_ids.duplicate(true),
+	}
+
+
+func restore_state(snap: Dictionary) -> void:
+	_hero_states = (snap["hero_states"] as Array).map(func(s): return (s as Dictionary).duplicate(true))
+	_enemy_states = (snap["enemy_states"] as Array).map(func(s): return (s as Dictionary).duplicate(true))
+	_battle_round = int(snap["battle_round"])
+	_pending_protocol_grants = int(snap["pending_protocol_grants"])
+	_pending_protocol_drain = int(snap["pending_protocol_drain"])
+	_chain_reaction_active = bool(snap["chain_reaction_active"])
+	_low_hp_squad_buff_used = bool(snap["low_hp_squad_buff_used"])
+	_vengeance_used = bool(snap["vengeance_used"])
+	_scavenger_drop_done = bool(snap["scavenger_drop_done"])
+	_decoy_round_one = bool(snap["decoy_round_one"])
+	_ability_ward_blocked_ids = (snap["ward_blocked_ids"] as Dictionary).duplicate(true)
+	_round_log.clear()
+	_round_events.clear()
+
+
+# Reorder the hero action order for L2 order-search. `ordered_ids` is a
+# permutation of the current living-hero ids; unknown/dead ids keep their
+# relative position at the end.
+func set_hero_order(ordered_ids: Array) -> void:
+	var by_id: Dictionary = {}
+	for state in _hero_states:
+		by_id[str((state as Dictionary)["id"])] = state
+	var reordered: Array = []
+	for id in ordered_ids:
+		if by_id.has(str(id)):
+			reordered.append(by_id[str(id)])
+			by_id.erase(str(id))
+	for leftover in by_id.values():
+		reordered.append(leftover)
+	_hero_states = reordered
+
+
 func take_pending_protocol_drain() -> int:
 	var drained: int = _pending_protocol_drain
 	_pending_protocol_drain = 0

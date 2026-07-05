@@ -15,7 +15,7 @@ OUT_DIR="results/determinism"
 mkdir -p "${OUT_DIR}"
 
 # Every policy has its own seeded decision stream — cover them all (B.2).
-for POLICY in stub l0 l1; do
+for POLICY in stub l0 l1 l2; do
 	A="${OUT_DIR}/seed_${SEED}_${POLICY}_a.jsonl"
 	B="${OUT_DIR}/seed_${SEED}_${POLICY}_b.jsonl"
 	"${GODOT}" --headless --path . "${SCENE}" -- ${ARGS} --policy "${POLICY}" --out "${A}" >/dev/null 2>&1

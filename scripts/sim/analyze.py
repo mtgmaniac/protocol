@@ -315,6 +315,27 @@ def ab_report(treat: Path, ctrl: Path) -> str:
     ])
 
 
+def skillband_report(low: Path, high: Path) -> str:
+    """L1↔L2 clear-rate gap per config — how much a build rewards skill.
+    A large per-op or per-hero gap flags a solved-game / skill-check outlier."""
+    dl, dh = load_dir(low), load_dir(high)
+    def rate(df):
+        return df["full_clear"].mean()
+    lines = [f"# Skill band — `{low.name}` (low) vs `{high.name}` (high)", "",
+             f"- Overall: **{rate(dl):.1%}** → **{rate(dh):.1%}**  "
+             f"(gap **{rate(dh)-rate(dl):+.1%}**)", "",
+             "## Gap by operation", "| Op | Low | High | Gap |", "|---|--:|--:|--:|"]
+    for op in sorted(set(dl["op"]) | set(dh["op"])):
+        lo = dl[dl["op"] == op]["full_clear"]
+        hi = dh[dh["op"] == op]["full_clear"]
+        if len(lo) and len(hi):
+            lines.append(f"| {op} | {lo.mean():.1%} | {hi.mean():.1%} | {hi.mean()-lo.mean():+.1%} |")
+    lines += ["", "_A large gap = the config rewards skilled play (or is a "
+              "solved-game generator at high skill); a near-zero gap = outcome "
+              "is skill-insensitive (too easy or too swingy)._"]
+    return "\n".join(lines)
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")  # report has ↔ / ⚠️
@@ -324,9 +345,13 @@ def main() -> int:
     ap.add_argument("dir", nargs="?", help="batch results dir")
     ap.add_argument("-o", "--out", help="write markdown here (else stdout)")
     ap.add_argument("--ab", nargs=2, metavar=("TREAT", "CTRL"), help="A/B compare two dirs")
+    ap.add_argument("--skillband", nargs=2, metavar=("LOW", "HIGH"),
+                    help="L1 vs L2 clear-rate gap per config")
     args = ap.parse_args()
     if args.ab:
         report = ab_report(Path(args.ab[0]), Path(args.ab[1]))
+    elif args.skillband:
+        report = skillband_report(Path(args.skillband[0]), Path(args.skillband[1]))
     elif args.dir:
         report = full_report(Path(args.dir))
     else:
