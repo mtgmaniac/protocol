@@ -86,6 +86,8 @@ var _selected_unit_ids: Array[String] = []
 var _focused_unit_id: String = ""
 
 # Built nodes
+var _enc_content: VBoxContainer
+var _current_op_locked: bool = false
 var _enc_portrait: TextureRect
 var _enc_portrait_crop: Control
 var _enc_portrait_placeholder: Label
@@ -165,6 +167,17 @@ func _gather_data() -> void:
 			if slot < g.size():
 				_unit_ids.append(str(g[slot]))
 
+	# Surface the 3 original starting heroes as the top slots; the locked ladder heroes
+	# fill in behind them.
+	var ordered: Array[String] = []
+	for starter in SaveManager.STARTING_HEROES:
+		if _unit_ids.has(starter) and not ordered.has(str(starter)):
+			ordered.append(str(starter))
+	for uid in _unit_ids:
+		if not ordered.has(uid):
+			ordered.append(str(uid))
+	_unit_ids = ordered
+
 
 # ─── Layout ───────────────────────────────────────────────────────────────────
 func _build_layout() -> void:
@@ -222,6 +235,7 @@ func _build_encounter_section() -> Control:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_child(content)
+	_enc_content = content
 
 	# Name — centered, top.
 	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
@@ -360,6 +374,17 @@ func _refresh_encounter() -> void:
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
+	# Locked operations stay browsable but hidden: the boss renders as a black silhouette,
+	# the name reads "[ LOCKED ]", the blurb is blank (no unlock hint — part of the
+	# surprise), and DEPLOY is disabled. The portrait node is reused on scroll, so reset
+	# its tint for unlocked ops.
+	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
+	_enc_portrait.modulate = Color(0.0, 0.0, 0.0, 1.0) if _current_op_locked else Color(1.0, 1.0, 1.0, 1.0)
+	if _current_op_locked:
+		_enc_name_label.text = "[ LOCKED ]"
+		_enc_desc_label.text = ""
+	_refresh_deploy()
+
 
 # Threat level (1..THREAT_PIP_COUNT) derived from encounter order.
 func _threat_level(index: int) -> int:
@@ -411,6 +436,10 @@ func _build_squad_section() -> Control:
 	header.add_child(_counter_label)
 	section.add_child(header)
 
+	# Role legend: decodes the portrait corner chips. Same chip size (ROLE_BADGE_SIZE)
+	# so the association reads at a glance; small dim text so it never fights the grid.
+	section.add_child(_build_role_legend())
+
 	_detail_panel = _build_detail_bar()
 	section.add_child(_detail_panel)
 
@@ -427,6 +456,38 @@ func _build_squad_section() -> Control:
 		grid.add_child(_build_unit_tile(unit_id, unit))
 
 	return section
+
+
+const LEGEND_FONT := 30
+
+
+# One inline row of role key entries (chip + label) using the same color mapping and
+# chip size as the portrait corner badges.
+func _build_role_legend() -> Control:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 22)
+	var entries := [
+		["OFFENSIVE", PixelUI.DT_RUST],
+		["DEFENSIVE", PixelUI.DT_CYAN],
+		["SUPPORT", Color("9a6ad0")],
+		["CONTROL", PixelUI.DT_AMBER],
+	]
+	for entry in entries:
+		var item := HBoxContainer.new()
+		item.add_theme_constant_override("separation", 8)
+		item.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var chip := ColorRect.new()
+		chip.color = entry[1]
+		chip.custom_minimum_size = Vector2(ROLE_BADGE_SIZE, ROLE_BADGE_SIZE)
+		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.add_child(chip)
+		var label := _make_pixel_label(entry[0], LEGEND_FONT, PixelUI.TEXT_MUTED)
+		label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		item.add_child(label)
+		row.add_child(item)
+	return row
 
 
 func _build_detail_bar() -> PanelContainer:
@@ -535,16 +596,56 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 
 	# No slot-number badge — the cyan highlight border is enough to show selection.
 
+	# Locked heroes stay a mystery: identity hidden. The name strip reads "[ LOCKED ]",
+	# the portrait renders as a solid black silhouette (hero art is a cutout, so modulate
+	# to black keeps the shape), and the role chip is hidden so nothing leaks — no unlock
+	# hint either (figuring out how is part of the surprise).
+	# Newly-unlocked heroes: a NEW badge until first added to a squad.
+	var locked: bool = not SaveManager.is_hero_unlocked(unit_id)
+	var new_badge: Control = null
+	if locked:
+		(portrait_box["tex"] as TextureRect).modulate = Color(0.0, 0.0, 0.0, 1.0)
+		role_badge.visible = false
+		name_label.text = "[ LOCKED ]"
+		name_label.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	elif SaveManager.is_hero_new(unit_id):
+		new_badge = _make_new_badge()
+		crop.add_child(new_badge)
+
 	_unit_tiles[unit_id] = {
 		"frame": frame,
 		"role_badge": role_badge,
 		"name": name_label,
+		"locked": locked,
+		"new_badge": new_badge,
 	}
 	return cell
 
 
+# A small amber "NEW" chip pinned to the portrait's top-left corner.
+func _make_new_badge() -> Control:
+	var badge := PanelContainer.new()
+	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	badge.offset_left = CHECK_INSET
+	badge.offset_top = CHECK_INSET
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0)
+	style.set_content_margin(SIDE_LEFT, 8.0)
+	style.set_content_margin(SIDE_RIGHT, 8.0)
+	style.set_content_margin(SIDE_TOP, 2.0)
+	style.set_content_margin(SIDE_BOTTOM, 2.0)
+	badge.add_theme_stylebox_override("panel", style)
+	var label := _make_pixel_label("NEW", 26, PixelUI.BTN_PRIMARY_INK)
+	badge.add_child(label)
+	return badge
+
+
 func _on_tile_tapped(unit_id: String) -> void:
 	_focused_unit_id = unit_id
+	# Locked heroes are not selectable; still focus so the detail bar shows the hint.
+	if not SaveManager.is_hero_unlocked(unit_id):
+		_refresh_detail()
+		return
 	_toggle_unit_selection(unit_id)
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
@@ -553,6 +654,9 @@ func _on_tile_tapped(unit_id: String) -> void:
 
 
 func _on_tile_long_pressed(_global_position: Vector2, unit_id: String, anchor: Control) -> void:
+	# Locked units reveal nothing — no inspect popup.
+	if not SaveManager.is_hero_unlocked(unit_id):
+		return
 	var unit := DataManager.get_unit(unit_id) as UnitData
 	if unit == null:
 		return
@@ -571,6 +675,8 @@ func _toggle_unit_selection(unit_id: String) -> void:
 		return
 	AudioManager.play_select()
 	_selected_unit_ids.append(unit_id)
+	# First squad add clears the hero's NEW badge.
+	SaveManager.acknowledge_hero(unit_id)
 
 
 func _refresh_unit_tiles() -> void:
@@ -579,6 +685,7 @@ func _refresh_unit_tiles() -> void:
 		var tile: Dictionary = _unit_tiles[unit_id]
 		var frame: PanelContainer = tile["frame"]
 		var name_label: Label = tile["name"]
+		var locked: bool = bool(tile.get("locked", false))
 		var is_selected := _selected_unit_ids.has(unit_id)
 		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
@@ -586,7 +693,11 @@ func _refresh_unit_tiles() -> void:
 		var frame_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_HERO_BG, border)
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
-		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
+		if not locked:
+			name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
+		var new_badge: Variant = tile.get("new_badge")
+		if new_badge != null and is_instance_valid(new_badge):
+			(new_badge as Control).visible = SaveManager.is_hero_new(unit_id)
 
 
 func _refresh_squad_counter() -> void:
@@ -608,6 +719,12 @@ func _refresh_detail() -> void:
 		return
 	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData
 	if unit == null:
+		return
+	# Locked unit: keep it a mystery — no name, focus, or dossier.
+	if not SaveManager.is_hero_unlocked(_focused_unit_id):
+		_detail_name.text = "[ LOCKED ]"
+		_detail_focus_chip.visible = false
+		_detail_desc.text = "Locked specialist."
 		return
 	_detail_name.text = unit.display_name.to_upper()
 	_detail_focus_chip.visible = true
@@ -661,26 +778,32 @@ func _build_deploy_button() -> Control:
 	_deploy_button.focus_mode = Control.FOCUS_NONE
 	_deploy_button.custom_minimum_size = Vector2(0, 130)
 	_deploy_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_deploy_button.text = "SELECT %d MORE" % MAX_SELECTED_UNITS
+	_deploy_button.text = "0/%d SELECTED" % MAX_SELECTED_UNITS
 	_deploy_button.pressed.connect(_on_begin_run_pressed)
 	_deploy_panel.add_child(_deploy_button)
 	return _deploy_panel
 
 
 func _refresh_deploy() -> void:
-	var ready := _selected_unit_ids.size() == MAX_SELECTED_UNITS and _selected_operation_id != ""
+	if _deploy_button == null:
+		return
+	var op_unlocked := _selected_operation_id != "" and SaveManager.is_operation_unlocked(_selected_operation_id)
+	var units_ready := _selected_unit_ids.size() == MAX_SELECTED_UNITS
+	var ready := units_ready and op_unlocked
 	if ready:
-		# Same green commit look as the battle Roll button.
-		PixelUI.style_button(_deploy_button, PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT, DEPLOY_FONT)
-		_set_button_text_color(_deploy_button, PixelUI.DT_ROLL_TEXT)
-		_deploy_button.text = "DEPLOY"
+		# Requirement met → actionable teal primary button.
+		_deploy_button.text = "DEPLOY SQUAD"
+		PixelUI.style_primary_button(_deploy_button, DEPLOY_FONT)
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
-		PixelUI.style_button(_deploy_button, DEPLOY_IDLE_BG, DEPLOY_IDLE_BORDER, DEPLOY_FONT)
-		_set_button_text_color(_deploy_button, DEPLOY_IDLE_TEXT)
-		var remaining: int = MAX_SELECTED_UNITS - _selected_unit_ids.size()
-		_deploy_button.text = "SELECT %d MORE" % maxi(remaining, 0)
+		# Requirement unmet → progress-locked button. A locked operation blocks deploy
+		# even with a full squad.
+		if units_ready and not op_unlocked:
+			_deploy_button.text = "OPERATION LOCKED"
+		else:
+			_deploy_button.text = "%d/%d SELECTED" % [_selected_unit_ids.size(), MAX_SELECTED_UNITS]
+		PixelUI.style_locked_button(_deploy_button, DEPLOY_FONT)
 		_deploy_button.disabled = true
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -689,6 +812,8 @@ func _refresh_deploy() -> void:
 # established handler contract — the flow smoke test drives this method by name.
 func _on_begin_run_pressed() -> void:
 	if _selected_unit_ids.size() != MAX_SELECTED_UNITS or _selected_operation_id == "":
+		return
+	if not SaveManager.is_operation_unlocked(_selected_operation_id):
 		return
 	AudioManager.play_select()
 	# Starting Directive (pkg5): with unlocked boss relics, offer one as the

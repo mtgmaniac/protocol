@@ -24,7 +24,7 @@ static var DT_FIELD_BORDER := Color("232a2e")
 static var DT_PANEL_BG := Color("090c0e")
 static var DT_TRAY_BG := Color("06080a")
 static var DT_LINE := Color("1b2226")
-static var DT_HP_GREEN := Color("4aa84e")
+static var DT_HP_GREEN := Color("57854b")   # muted, desaturated military green (terminal palette)
 static var DT_HP_TEXT := Color("eafce9")
 static var DT_AMBER := Color("cf9a36")
 static var DT_AMBER_TEXT := Color("b08a3a")
@@ -51,12 +51,29 @@ static var DT_CYAN := Color("3fd0e2")
 static var DT_CYAN_BRIGHT := Color("6fe0ef")
 static var DT_RUST := Color("c25d3f")
 static var DT_RUST_BRIGHT := Color("f0a585")
-# Commit (ROLL) green bevel
+# Commit (ROLL) green bevel — DEPRECATED for buttons. Green is reserved for HP bars
+# now; primary buttons use the teal BTN_* tokens below. Kept only so any lingering
+# reference still resolves.
 static var DT_ROLL_BASE := Color("3f8a47")
 static var DT_ROLL_LIGHT := Color("5fc266")
 static var DT_ROLL_DARK := Color("235c2a")
 static var DT_ROLL_BG := Color("1c5a26")
 static var DT_ROLL_TEXT := Color("e3ffe4")
+# ── Primary action button (teal "terminal command" look) ──
+# The single primary-button language for the whole UI. Navy fill matches panel
+# backgrounds; 2px teal border + all-caps teal text; hover brightens with a soft
+# outer glow; pressed inverts (teal fill, dark ink); disabled drops its border and
+# fades to 40%. One amber variant flags risk / confirm actions. Green is HP-only.
+static var BTN_PRIMARY_BG := Color("0a141c")        # dark navy (matches DT_HERO_BG panels)
+static var BTN_PRIMARY_BG_HOVER := Color("0f1f2a")
+static var BTN_PRIMARY_INK := Color("07090b")       # near-black inverted (pressed) text
+static var BTN_TEAL_BORDER := Color("3fd0e2")       # = DT_CYAN
+static var BTN_TEAL_TEXT := Color("5fd8ea")
+static var BTN_TEAL_TEXT_BRIGHT := Color("9df0fb")
+static var BTN_AMBER_BORDER := Color("cf9a36")      # = DT_AMBER
+static var BTN_AMBER_TEXT := Color("e6bd68")
+static var BTN_AMBER_TEXT_BRIGHT := Color("f7dc9a")
+static var BTN_DISABLED_TEXT := Color(0.62, 0.68, 0.74, 0.40)  # inert, 40% opacity
 # Status badge tokens {border, fill, text}
 static var DT_STATUS := {
 	"shield": {"border": Color("3fd0e2"), "fill": Color("0a1620"), "text": Color("bff7ff")},
@@ -564,6 +581,85 @@ static func style_panel(panel: Control, bg: Color = BG_PANEL, border: Color = LI
 	panel.add_theme_stylebox_override("panel", make_panel_style(bg, border, border_width, corner))
 
 
+## Public corner-bracket helper: draws accent L-brackets at a Control's four corners
+## (auto-tracks resize). Pass Color.TRANSPARENT to remove.
+static func add_corner_brackets(target: Control, color: Color, arm: float = 16.0, thick: float = 3.0, inset: float = 4.0) -> void:
+	_refresh_corner_brackets(target, color, arm, thick, inset)
+
+
+## Frames a PanelContainer as a "transmission window": very dark fill, 2px teal border,
+## teal corner brackets — the same language as the battle panels. Used by the event /
+## route-fork / run-failed screens so loose text reads as a contained transmission.
+static func style_transmission_panel(panel: PanelContainer, border: Color = Color("2f6b7a")) -> void:
+	panel.add_theme_stylebox_override("panel", make_hard_style(DT_PANEL_BG, border, 2))
+	_refresh_corner_brackets(panel, DT_CYAN, 26.0, 3.0, 8.0)
+
+
+## 5%-of-width side inset (in UI coords) that yields a ~90%-wide content frame.
+static func screen_frame_side_margin() -> int:
+	var w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080))
+	return int(round(w * 0.05))
+
+
+## Full-screen radial vignette (transparent centre → dark edges). Mouse-transparent.
+static func make_vignette(strength: float = 0.5) -> TextureRect:
+	var grad: Gradient = Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, strength)])
+	var tex: GradientTexture2D = GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 1.0)
+	tex.width = 256
+	tex.height = 256
+	var tr: TextureRect = TextureRect.new()
+	tr.name = "Vignette"
+	tr.texture = tex
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return tr
+
+
+## Faint tiling scanline overlay (one dark row every `period` px). Mouse-transparent.
+static func make_scanlines(alpha: float = 0.05, period: int = 3) -> TextureRect:
+	var img: Image = Image.create(1, period, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	img.set_pixel(0, 0, Color(0.0, 0.0, 0.0, alpha))
+	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	var tr: TextureRect = TextureRect.new()
+	tr.name = "Scanlines"
+	tr.texture = tex
+	tr.stretch_mode = TextureRect.STRETCH_TILE
+	tr.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return tr
+
+
+## Adds the shared non-battle backdrop to `root`: faint scanlines + edge vignette.
+## Call right after the base background ColorRect so screen content renders on top.
+static func add_terminal_backdrop(root: Control, vignette_strength: float = 0.5, scan_alpha: float = 0.05) -> void:
+	root.add_child(make_scanlines(scan_alpha))
+	root.add_child(make_vignette(vignette_strength))
+
+
+## Shared modal scrim: a full-screen 60%-black ColorRect that dims (and, when
+## block_input is true, blocks) the layer below a popup. Add it as the FIRST child of
+## the popup's full-rect root/catcher so the popup panel renders on top of it. Every
+## popup/overlay (inspect, equip chooser, reward detail, settings, help) uses this so
+## nothing beneath a popup shows through at full brightness.
+static func make_modal_scrim(alpha: float = 0.6, block_input: bool = false) -> ColorRect:
+	var scrim: ColorRect = ColorRect.new()
+	scrim.name = "ModalScrim"
+	scrim.color = Color(0.0, 0.0, 0.0, alpha)
+	scrim.mouse_filter = Control.MOUSE_FILTER_STOP if block_input else Control.MOUSE_FILTER_IGNORE
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return scrim
+
+
 static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Color = LINE_BRIGHT, font_size: int = 20) -> void:
 	apply_pixel_font(button)
 	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
@@ -577,6 +673,110 @@ static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Col
 	button.add_theme_stylebox_override("hover", make_panel_style(fill, border.lightened(0.05), 4, 0))
 	button.add_theme_stylebox_override("pressed", make_panel_style(fill.darkened(0.18), border.darkened(0.12), 4, 0))
 	button.add_theme_stylebox_override("disabled", make_panel_style(fill.darkened(0.25), border.darkened(0.45), 4, 0))
+
+
+## The canonical PRIMARY action button (BEGIN / ROLL / DEPLOY / CONFIRM / …).
+## navy fill · 2px accent border · all-caps accent text · hover glow · pressed-invert ·
+## border-less faded disabled · auto-tracking corner brackets. Pass amber = true for
+## the risk / confirm variant. Uppercases the button label to match the UI.
+static func style_primary_button(button: Button, font_size: int = 32, amber: bool = false, brackets: bool = true) -> void:
+	if button == null:
+		return
+	apply_pixel_font(button)
+	button.text = button.text.to_upper()
+	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	var border: Color = BTN_AMBER_BORDER if amber else BTN_TEAL_BORDER
+	var text_col: Color = BTN_AMBER_TEXT if amber else BTN_TEAL_TEXT
+	var text_bright: Color = BTN_AMBER_TEXT_BRIGHT if amber else BTN_TEAL_TEXT_BRIGHT
+	button.add_theme_color_override("font_color", text_col)
+	button.add_theme_color_override("font_hover_color", text_bright)
+	button.add_theme_color_override("font_focus_color", text_bright)
+	button.add_theme_color_override("font_pressed_color", BTN_PRIMARY_INK)
+	button.add_theme_color_override("font_disabled_color", BTN_DISABLED_TEXT)
+	button.add_theme_constant_override("outline_size", 0)
+	button.add_theme_stylebox_override("normal", _primary_btn_style(BTN_PRIMARY_BG, border, false))
+	button.add_theme_stylebox_override("hover", _primary_btn_style(BTN_PRIMARY_BG_HOVER, border.lightened(0.22), true))
+	button.add_theme_stylebox_override("focus", _primary_btn_style(BTN_PRIMARY_BG_HOVER, border.lightened(0.22), true))
+	button.add_theme_stylebox_override("pressed", _primary_btn_style(border, border, false))  # inverted: accent fill
+	button.add_theme_stylebox_override("disabled", _primary_btn_disabled_style())
+	_refresh_corner_brackets(button, border if brackets else Color.TRANSPARENT)
+
+
+## Progress-locked button: no border, dimmed all-caps text, clearly inert. Used while a
+## requirement is unmet (e.g. "1/3 SELECTED"); flip to style_primary_button once met.
+static func style_locked_button(button: Button, font_size: int = 32) -> void:
+	if button == null:
+		return
+	apply_pixel_font(button)
+	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	button.add_theme_color_override("font_color", BTN_DISABLED_TEXT)
+	button.add_theme_color_override("font_hover_color", BTN_DISABLED_TEXT)
+	button.add_theme_color_override("font_pressed_color", BTN_DISABLED_TEXT)
+	button.add_theme_color_override("font_focus_color", BTN_DISABLED_TEXT)
+	button.add_theme_color_override("font_disabled_color", BTN_DISABLED_TEXT)
+	button.add_theme_constant_override("outline_size", 0)
+	var locked: StyleBoxFlat = make_hard_style(BTN_PRIMARY_BG.darkened(0.2), Color(0, 0, 0, 0), 0)
+	locked.set_content_margin_all(10.0)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		button.add_theme_stylebox_override(state, locked)
+	_refresh_corner_brackets(button, Color.TRANSPARENT)
+
+
+static func _primary_btn_style(bg: Color, border: Color, glow: bool) -> StyleBoxFlat:
+	# 3px (not 2): a 2px border is ~0.8px at the 1080→preview canvas downscale and, with
+	# anti-aliasing off, its vertical edges drop out entirely at unlucky sub-pixel x
+	# positions (EXPAND_FILL buttons hit this — the "left edge clipping" symptom).
+	var s: StyleBoxFlat = make_hard_style(bg, border, 3)
+	s.set_content_margin_all(10.0)
+	if glow:
+		s.shadow_color = Color(border.r, border.g, border.b, 0.45)
+		s.shadow_size = 6
+		s.shadow_offset = Vector2.ZERO
+	return s
+
+
+static func _primary_btn_disabled_style() -> StyleBoxFlat:
+	# No border, muted fill — reads as clearly inert.
+	var s: StyleBoxFlat = make_hard_style(BTN_PRIMARY_BG.darkened(0.15), Color(0, 0, 0, 0), 0)
+	s.set_content_margin_all(10.0)
+	return s
+
+
+## Draws (or refreshes) eight thin corner-bracket arms as children of `target`, anchored
+## to its four corners so they track any resize — the same accent-bracket motif as the
+## panels. Pass Color.TRANSPARENT to remove existing brackets.
+static func _refresh_corner_brackets(target: Control, color: Color, arm: float = 16.0, thick: float = 3.0, inset: float = 4.0) -> void:
+	var existing: Node = target.get_node_or_null("CornerBrackets")
+	if existing != null:
+		existing.queue_free()
+	if color.a <= 0.0:
+		return
+	var holder: Control = Control.new()
+	holder.name = "CornerBrackets"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	target.add_child(holder)
+	for ax in [0, 1]:
+		for ay in [0, 1]:
+			_bracket_arm(holder, color, ax, ay, inset, inset, arm, thick)   # horizontal arm
+			_bracket_arm(holder, color, ax, ay, inset, inset, thick, arm)   # vertical arm
+
+
+static func _bracket_arm(holder: Control, color: Color, ax: int, ay: int, dx: float, dy: float, w: float, h: float) -> void:
+	var r: ColorRect = ColorRect.new()
+	r.color = color
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.anchor_left = float(ax)
+	r.anchor_right = float(ax)
+	r.anchor_top = float(ay)
+	r.anchor_bottom = float(ay)
+	var ox: float = dx if ax == 0 else -dx - w
+	var oy: float = dy if ay == 0 else -dy - h
+	r.offset_left = ox
+	r.offset_right = ox + w
+	r.offset_top = oy
+	r.offset_bottom = oy + h
+	holder.add_child(r)
 
 
 static func style_label(label: Label, font_size: int, color: Color = TEXT_PRIMARY, outline_size: int = 2) -> void:

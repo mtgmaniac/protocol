@@ -157,11 +157,7 @@ func _build_help_overlay() -> void:
 	)
 	add_child(_help_overlay)
 
-	var dim := ColorRect.new()
-	dim.color = Color(0.005, 0.007, 0.012, 0.82)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_help_overlay.add_child(dim)
+	_help_overlay.add_child(PixelUI.make_modal_scrim())
 
 	var outer := MarginContainer.new()
 	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -506,16 +502,15 @@ func _refresh_confirm() -> void:
 		return
 	var armed := _selected_item_id != ""
 	if armed:
-		# Same green commit look as the battle Roll / squad DEPLOY button.
-		PixelUI.style_button(_confirm_button, PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT, CONFIRM_FONT)
-		_set_button_text_color(_confirm_button, PixelUI.DT_ROLL_TEXT)
+		# Requirement met → actionable teal primary button.
 		_confirm_button.text = "CONFIRM"
+		PixelUI.style_primary_button(_confirm_button, CONFIRM_FONT)
 		_confirm_button.disabled = false
 		_confirm_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
-		PixelUI.style_button(_confirm_button, CONFIRM_IDLE_BG, CONFIRM_IDLE_BORDER, CONFIRM_FONT)
-		_set_button_text_color(_confirm_button, CONFIRM_IDLE_TEXT)
+		# Requirement unmet → explicit progress-locked button (no border, dim text).
 		_confirm_button.text = "SELECT AN ITEM"
+		PixelUI.style_locked_button(_confirm_button, CONFIRM_FONT)
 		_confirm_button.disabled = true
 		_confirm_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 

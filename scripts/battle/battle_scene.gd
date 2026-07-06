@@ -32,6 +32,14 @@ signal tutorial_event(event: StringName, payload: Dictionary)
 const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn")
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
+# Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
+# tag is the SAME size (width = the die's projected diameter, height = a fixed fraction of
+# it), docked flush just outside the die's projected bounds (never overlapping the sprite):
+# below hero dice, above enemy dice. Content is centered and shrinks a step to fit.
+const DIE_TAG_GAP := 2.0            # flush dock: 0-2px gap, never over the die
+const DIE_TAG_HEIGHT_RATIO := 0.52  # tag height as a fraction of the die diameter
+const DIE_TAG_FONT_RATIO := 0.72    # value-font size as a fraction of the tag height
+const DIE_TAG_DIAMETER_FALLBACK := 90.0
 const PHASE_AWAIT_ROLL := "await_roll"
 const PHASE_TARGETING := "targeting"
 const PHASE_READY_TO_END := "ready_to_end"
@@ -133,6 +141,10 @@ var hero_roll_sets: Dictionary:
 	set(value): _state.hero_roll_sets = value
 var _battle_consumables: Array = []
 var _item_button: Button = null
+# Die-docked result tags, keyed "side:unit_id" -> {plate: Panel, sig: String}.
+var _die_tag_layer: Control = null
+var _die_tags: Dictionary = {}
+var _die_tag_diameter: float = DIE_TAG_DIAMETER_FALLBACK   # projected die diameter (uniform)
 var _nudge_button: Button = null
 var _set_button: Button = null
 var _suppress_protocol_press: bool = false
@@ -761,6 +773,181 @@ func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, si
 		_die_tooltip_overlays.append(overlay)
 
 
+# ── Die-docked result tags ──────────────────────────────────────────────────────
+# One filled plate per die that has resolved an effect, drawn from the die's live screen
+# position so it tracks settle / reroll / nudge. Rebuilt only when a die's effects change;
+# repositioned every frame. Empty dice get no plate.
+func _process(_delta: float) -> void:
+	_sync_die_tags()
+
+
+func _ensure_die_tag_layer() -> void:
+	if _die_tag_layer != null and is_instance_valid(_die_tag_layer):
+		return
+	_die_tag_layer = Control.new()
+	_die_tag_layer.name = "DieTagLayer"
+	_die_tag_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_die_tag_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_die_tag_layer.z_index = 80   # above the tray/cards, below inspect popups (CanvasLayers)
+	add_child(_die_tag_layer)
+
+
+func _sync_die_tags() -> void:
+	if dice_tray_3d == null or not is_instance_valid(dice_tray_3d):
+		return
+	if hero_card_views.is_empty() and enemy_card_views.is_empty():
+		return
+	_ensure_die_tag_layer()
+	var live: Dictionary = {}
+	_sync_side_die_tags("hero", hero_card_views, live)
+	_sync_side_die_tags("enemy", enemy_card_views, live)
+	for key in _die_tags.keys():
+		if not live.has(key):
+			var plate_variant: Variant = (_die_tags[key] as Dictionary).get("plate")
+			if plate_variant is Control and is_instance_valid(plate_variant):
+				(plate_variant as Control).queue_free()
+			_die_tags.erase(key)
+
+
+func _sync_side_die_tags(side: String, views: Array, live: Dictionary) -> void:
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var readout: Object = view.get("readout")
+		if readout == null or not is_instance_valid(readout) or not readout.has_method("is_showing"):
+			continue
+		if not bool(readout.call("is_showing")):
+			continue
+		var effects: Array = readout.call("tag_effects")
+		if effects.is_empty():
+			continue
+		var unit_id: String = str((view.get("state", {}) as Dictionary).get("id", ""))
+		if unit_id == "":
+			continue
+		var bounds: Rect2 = dice_tray_3d.get_die_screen_bounds(side, unit_id)
+		if bounds.position == Vector2.INF:
+			continue
+		var diameter: float = dice_tray_3d.get_die_projected_diameter(side, unit_id)
+		if diameter > 2.0:
+			_die_tag_diameter = diameter
+		var target: String = str(readout.call("tag_target"))
+		var sig: String = _die_tag_signature(effects, target)
+		var key: String = "%s:%s" % [side, unit_id]
+		var entry: Dictionary = _die_tags.get(key, {})
+		var plate_variant: Variant = entry.get("plate")
+		if not (plate_variant is Control) or not is_instance_valid(plate_variant) or str(entry.get("sig", "")) != sig:
+			if plate_variant is Control and is_instance_valid(plate_variant):
+				(plate_variant as Control).queue_free()
+			plate_variant = _build_die_tag(side, effects, target)
+			_die_tag_layer.add_child(plate_variant)
+			_die_tags[key] = {"plate": plate_variant, "sig": sig}
+		live[key] = true
+		_position_die_tag(plate_variant as Control, side, bounds)
+
+
+# Signature carries the rounded diameter so tags rebuild + refit on a resize.
+func _die_tag_signature(effects: Array, target: String) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for effect_variant in effects:
+		var effect: Dictionary = effect_variant
+		parts.append("%s=%s@%s" % [str(effect.get("kind", "")), str(effect.get("value", "")), str(effect.get("duration", ""))])
+	return "d%d|%s|%s" % [int(round(_die_tag_diameter)), target, "/".join(parts)]
+
+
+# The uniform tag size: width = projected die diameter, height = a fixed fraction of it.
+# Same for every die, independent of content.
+func _die_tag_size() -> Vector2:
+	var w: float = round(_die_tag_diameter)
+	return Vector2(w, round(w * DIE_TAG_HEIGHT_RATIO))
+
+
+func _tag_pip_profile(value_font: int) -> Dictionary:
+	return {
+		"icon_size": int(round(value_font * 0.9)),
+		"value_font": value_font,
+		"duration_ratio": 0.6,
+		"icon_value_gap": 2,
+		"group_min_width": 0,
+		"outline": 2,
+		"duration_outline": 1,
+	}
+
+
+func _estimate_tag_content_width(effects: Array, target: String, value_font: int, profile: Dictionary) -> float:
+	var total: float = 0.0
+	for i in range(effects.size()):
+		if i > 0:
+			total += 5.0   # row separation
+		total += EffectPip.estimate_display_width(effects[i] as Dictionary, profile)
+	if target != "":
+		total += 5.0 + float(target.length()) * float(value_font) * 0.6
+	return total
+
+
+# A fixed-size filled plate (identical for every die). Content is centered; if it would
+# overflow the plate, the content font shrinks one step — the plate never grows.
+func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
+	var tag_size: Vector2 = _die_tag_size()
+	var plate: Panel = Panel.new()
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.clip_contents = true
+	plate.custom_minimum_size = tag_size
+	plate.size = tag_size
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = PixelUI.DT_PANEL_BG.lightened(0.13)   # ~13% lighter than the tray panel, no border
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(6)
+	plate.add_theme_stylebox_override("panel", style)
+	var center: CenterContainer = CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	plate.add_child(center)
+	var inner_w: float = tag_size.x - 8.0
+	var value_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
+	var profile: Dictionary = _tag_pip_profile(value_font)
+	if _estimate_tag_content_width(effects, target, value_font, profile) > inner_w:
+		value_font = int(round(value_font * 0.72))
+		profile = _tag_pip_profile(value_font)
+	center.add_child(_build_tag_content(side, effects, target, value_font, profile))
+	return plate
+
+
+func _build_tag_content(side: String, effects: Array, target: String, value_font: int, profile: Dictionary) -> Control:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 5)
+	for effect_variant in effects:
+		row.add_child(EffectPip.build_group(effect_variant as Dictionary, profile, side))
+	if target != "":
+		var target_label: Label = Label.new()
+		target_label.text = target
+		target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		target_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		PixelUI.apply_pixel_font(target_label)
+		target_label.add_theme_font_size_override("font_size", value_font)
+		target_label.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+		row.add_child(target_label)
+	return row
+
+
+# One shared derivation for every tag: center x on the die's bounds center, dock flush just
+# OUTSIDE the die's projected bounds (a tiny gap, never overlapping) — below hero dice,
+# above enemy dice.
+func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
+	if plate == null or not is_instance_valid(plate):
+		return
+	var tag_size: Vector2 = _die_tag_size()
+	plate.size = tag_size
+	var center_x: float = die_bounds.position.x + die_bounds.size.x * 0.5
+	var x: float = center_x - tag_size.x * 0.5
+	var y: float
+	if side == "hero":
+		y = die_bounds.end.y + DIE_TAG_GAP                 # flush below the die
+	else:
+		y = die_bounds.position.y - DIE_TAG_GAP - tag_size.y   # flush above the die
+	plate.global_position = Vector2(round(x), round(y))
+
+
 # The screen rect of a unit's effect-pip readout (the AbilityReadout owned by its view),
 # used to size the die hit-area so it spans the pips. Empty Rect2 if not ready.
 func _get_unit_readout_rect(side: String, unit_id: String) -> Rect2:
@@ -1062,7 +1249,7 @@ func _build_round_complete_modal() -> void:
 	vbox.add_child(detail)
 
 	_round_complete_next_button = Button.new()
-	_round_complete_next_button.text = "Next"
+	_round_complete_next_button.text = "NEXT"
 	_round_complete_next_button.custom_minimum_size = Vector2(170, 58)
 	PixelUI.style_labeled_texture_button(_round_complete_next_button, PixelUI.BUTTON_LARGE_YELLOW_SCIFI, 28)
 	_round_complete_next_button.pressed.connect(_on_round_complete_next_pressed)
@@ -1592,7 +1779,7 @@ func _open_set_value_popup() -> void:
 	confirm_btn.text = "CONFIRM"
 	confirm_btn.custom_minimum_size = Vector2(0.0, 100.0)
 	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(confirm_btn, PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT, 38)
+	PixelUI.style_primary_button(confirm_btn, 38, true)
 	confirm_btn.pressed.connect(_confirm_set_value_popup)
 	row.add_child(confirm_btn)
 
@@ -1792,10 +1979,12 @@ func _ensure_protocol_stack_layout() -> void:
 	if spacer != null:
 		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		spacer.custom_minimum_size = Vector2.ZERO
-	# Wide segment bar (fills the stack); "Protocol" centered above all the blips.
+	# Wide segment bar (fills the stack); "Protocol N/M" centered above all the blips.
+	# Tall pips (fill the footer minus the label + small padding) so the core Protocol
+	# economy reads as prominent, not subordinate.
 	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	protocol_bar.custom_minimum_size = Vector2(0, 36)
+	protocol_bar.custom_minimum_size = Vector2(0, 64)
 	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1835,7 +2024,7 @@ func _ensure_protocol_segments() -> void:
 	var row: HBoxContainer = HBoxContainer.new()
 	row.name = "ProtocolSegments"
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 3)
+	row.add_theme_constant_override("separation", 2)
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	protocol_bar.add_child(row)
 	for _i in range(_max_protocol()):
@@ -1859,6 +2048,8 @@ func _update_protocol_bar() -> void:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0))
 		else:
 			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
+	# Numeric readout folded into the label so the count is always legible above the pips.
+	protocol_label.text = "PROTOCOL %d/%d" % [protocol_points, _max_protocol()]
 	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
 	_update_protocol_footer_display()
 	_emit_tutorial("protocol_changed", {"value": protocol_points})
@@ -2101,23 +2292,18 @@ func _set_turn_phase(next_phase: String) -> void:
 func _style_roll_button_for_phase() -> void:
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			# Active primary action: ready to roll — Direction-05 green commit button.
-			_style_minimal_action_button(
-				roll_button, roll_button.text,
-				CENTER_ACTION_BUTTON_SIZE, CENTER_ACTION_BUTTON_FONT_SIZE,
-				PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT
-			)
-			roll_button.add_theme_color_override("font_color", PixelUI.DT_ROLL_TEXT)
+			# Active primary action: ready to roll — teal primary button.
+			roll_button.icon = null
+			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
+			PixelUI.style_primary_button(roll_button, CENTER_ACTION_BUTTON_FONT_SIZE)
 		PHASE_TARGETING:
 			# Hidden: targetable cards use team border color (see CompactUnitCard).
 			pass
 		PHASE_READY_TO_END:
-			# Active primary action: close out the turn
-			_style_minimal_action_button(
-				roll_button, roll_button.text,
-				CENTER_ACTION_BUTTON_SIZE, CENTER_ACTION_BUTTON_FONT_SIZE,
-				Color(0.20, 0.14, 0.04, 0.96), PixelUI.GOLD_ACCENT
-			)
+			# Active primary action: close out the turn — amber (commit) variant.
+			roll_button.icon = null
+			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
+			PixelUI.style_primary_button(roll_button, CENTER_ACTION_BUTTON_FONT_SIZE, true)
 		_:
 			# Item-pick / fallback states are also hidden; the affordance
 			# is the highlighted card the player must tap.

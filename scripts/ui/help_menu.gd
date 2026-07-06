@@ -47,6 +47,8 @@ static var _active: HelpMenu = null
 
 var _content_host: VBoxContainer = null
 var _content_scroll: ScrollContainer = null
+var _reset_armed: bool = false
+var _reset_dev_button: Button = null
 var _tab_buttons: Dictionary = {}
 var _active_tab: String = ""
 var _codex_detail: VBoxContainer = null
@@ -101,11 +103,7 @@ func _build() -> void:
 	catcher.gui_input.connect(_on_catcher_input)
 	add_child(catcher)
 
-	var dim := ColorRect.new()
-	dim.color = Color(0.005, 0.007, 0.012, 0.82)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	catcher.add_child(dim)
+	catcher.add_child(PixelUI.make_modal_scrim())
 
 	# Clear the persistent header band so the title isn't hidden behind it. Read the height off
 	# the live node (not the PersistentHeader global) so this compiles without the autoload too.
@@ -402,7 +400,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 		# without a code (e.g. Protocol Gain) fall back to the initial.
 		var chip_text: String = str(kw.get("code", str(kw.get("term", "?")).substr(0, 1).to_upper()))
 		var chip_font: int = 36 if chip_text.length() <= 1 else 28
-		var letter := _make_label(chip_text, chip_font, PixelUI.DT_ROLL_LIGHT, HORIZONTAL_ALIGNMENT_CENTER, 2)
+		var letter := _make_label(chip_text, chip_font, PixelUI.DT_CYAN, HORIZONTAL_ALIGNMENT_CENTER, 2)
 		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		icon_frame.add_child(letter)
@@ -658,6 +656,56 @@ func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
 	# Room for more settings here later (e.g. volume sliders, haptics, reduced motion).
+
+	# --- Dev tools ---
+	host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
+	unlock_btn.pressed.connect(_on_dev_unlock_all)
+	host.add_child(unlock_btn)
+	_reset_armed = false
+	_reset_dev_button = _make_dev_button("RESET SAVE PROFILE (DEV)", true)
+	_reset_dev_button.pressed.connect(_on_dev_reset_profile)
+	host.add_child(_reset_dev_button)
+
+
+func _make_dev_button(text: String, amber: bool) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.custom_minimum_size = Vector2(0, 90)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	PixelUI.style_primary_button(btn, BODY_FONT, amber)
+	return btn
+
+
+func _on_dev_unlock_all() -> void:
+	SaveManager.dev_unlock_all()
+	# Rebuild the underlying screen so unlock state (locked heroes/ops) refreshes.
+	dismiss()
+	get_tree().reload_current_scene()
+
+
+# Two-step confirm: first tap arms (label + a 3s auto-disarm), second tap resets.
+func _on_dev_reset_profile() -> void:
+	if not _reset_armed:
+		_reset_armed = true
+		_reset_dev_button.text = "TAP AGAIN TO CONFIRM"
+		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
+		_disarm_reset_after_delay()
+		return
+	SaveManager.dev_reset_profile()
+	_reset_armed = false
+	dismiss()
+	SceneManager.go_to_main_menu()
+
+
+func _disarm_reset_after_delay() -> void:
+	await get_tree().create_timer(3.0).timeout
+	if _reset_armed and is_instance_valid(_reset_dev_button):
+		_reset_armed = false
+		_reset_dev_button.text = "RESET SAVE PROFILE (DEV)"
+		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
 
 
 # Live AudioManager node (Variant) so this compiles even when the autoload is absent

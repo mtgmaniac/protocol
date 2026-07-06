@@ -4,6 +4,7 @@
 # rarity ladder rolls two rows deeper, capped at row 10).
 extends Control
 
+const TYPE_FONT := 28
 const TITLE_FONT := 62
 const CARD_TITLE_FONT := 46
 const BODY_FONT := 36
@@ -23,28 +24,54 @@ func _ready() -> void:
 	_modifier_id = GameState.roll_route_modifier()
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.055, 0.070, 0.095, 1.0)
+	bg.color = PixelUI.DT_FIELD_BG
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	PixelUI.add_terminal_backdrop(self)
 
+	# ~90%-wide transmission window, vertically centered.
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["margin_left", "margin_right"]:
-		margin.add_theme_constant_override(side, 70)
-	margin.add_theme_constant_override("margin_top", 170)
-	margin.add_theme_constant_override("margin_bottom", 90)
+	var side: int = PixelUI.screen_frame_side_margin()
+	margin.add_theme_constant_override("margin_left", side)
+	margin.add_theme_constant_override("margin_right", side)
+	margin.add_theme_constant_override("margin_top", 150)
+	margin.add_theme_constant_override("margin_bottom", 80)
 	add_child(margin)
 
+	var center_col := VBoxContainer.new()
+	center_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(center_col)
+
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_transmission_panel(frame)
+	center_col.add_child(frame)
+
+	var pad := MarginContainer.new()
+	for pad_side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(pad_side, 36)
+	frame.add_child(pad)
+
 	var column := VBoxContainer.new()
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override("separation", 34)
-	margin.add_child(column)
+	column.add_theme_constant_override("separation", 16)
+	pad.add_child(column)
+
+	# Rhythm: small amber type label · large title · blank line · body.
+	var type_label := Label.new()
+	type_label.text = "DECISION POINT"
+	type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(type_label, TYPE_FONT, PixelUI.DT_AMBER, 2)
+	column.add_child(type_label)
 
 	var title := Label.new()
 	title.text = "ROUTE FORK"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, TITLE_FONT, PixelUI.GOLD_ACCENT, 3)
+	PixelUI.style_label(title, TITLE_FONT, PixelUI.TEXT_PRIMARY, 3)
 	column.add_child(title)
 
 	var blurb := Label.new()
@@ -53,6 +80,11 @@ func _ready() -> void:
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	PixelUI.style_label(blurb, BODY_FONT, PixelUI.TEXT_MUTED, 1)
 	column.add_child(blurb)
+
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 12)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(gap)
 
 	# The NEXT battle's comp (we haven't advanced yet): 0-based index equals
 	# the 1-based current battle number.
@@ -116,7 +148,8 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	choose.focus_mode = Control.FOCUS_NONE
 	choose.custom_minimum_size = Vector2(0, 96)
 	choose.text = "TAKE THE FLAGGED ROUTE" if flagged else "TAKE THE STANDARD ROUTE"
-	PixelUI.style_button(choose, Color(0.022, 0.034, 0.050, 0.95), accent, BUTTON_FONT)
+	# Standard = teal primary; flagged = amber (risk) variant.
+	PixelUI.style_primary_button(choose, BUTTON_FONT, flagged)
 	choose.pressed.connect(_on_route_chosen.bind(flagged))
 	vbox.add_child(choose)
 	return panel

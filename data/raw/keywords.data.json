@@ -36,7 +36,7 @@
       "id": "breach",
       "term": "Breach",
       "category": "offense",
-      "def": "Destroys all shield on the target before the damage applies. Breach all strips every enemy.",
+      "def": "Destroys all shield on the target before the damage lands, for everyone. Breach all strips every enemy.",
       "syntax": "breach / breach all",
       "code": "BR"
     },
@@ -76,7 +76,7 @@
       "id": "pierce",
       "term": "Pierce",
       "category": "offense",
-      "def": "Ignores shield. Damage applies straight to HP.",
+      "def": "Damage goes straight to HP. The shield is not removed and still blocks other attackers.",
       "syntax": "pierce",
       "code": "P"
     },
@@ -84,7 +84,7 @@
       "id": "shield",
       "term": "Shield",
       "category": "defense",
-      "def": "Absorbs incoming damage before HP. Lasts one round: gone at round end. Removed by Pierce.",
+      "def": "Absorbs incoming damage before HP. Lasts one round: gone at round end. Pierce goes through it; Breach destroys it.",
       "syntax": "N shield = N shield this round"
     },
     {

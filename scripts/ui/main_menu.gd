@@ -51,16 +51,14 @@ func _ready() -> void:
 	begin.text = "BEGIN"
 	begin.custom_minimum_size = BEGIN_SIZE
 	begin.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_button(begin, PixelUI.DT_ROLL_BG, PixelUI.DT_ROLL_LIGHT, BEGIN_FONT)
-	begin.add_theme_color_override("font_color", PixelUI.DT_ROLL_TEXT)
+	PixelUI.style_primary_button(begin, BEGIN_FONT)
 	begin.pressed.connect(_on_begin_pressed)
 	col.add_child(begin)
 
 	var tutorial := Button.new()
-	# The tutorial is opt-in, so "skip if done" means it stops presenting as
-	# new once completed; it stays replayable.
-	# DESIGN-TODO(kev): confirm a checkmark is enough (vs hiding the button).
-	tutorial.text = "TUTORIAL ✓" if SaveManager.is_tutorial_done() else "TUTORIAL"
+	# Plain secondary button — opt-in and always replayable. (No completed-state
+	# checkmark; it stays a neutral TUTORIAL button whether or not it's been run.)
+	tutorial.text = "TUTORIAL"
 	tutorial.custom_minimum_size = TUTORIAL_SIZE
 	tutorial.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	PixelUI.style_button(tutorial, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TUTORIAL_FONT)

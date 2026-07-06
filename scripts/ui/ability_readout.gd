@@ -27,6 +27,7 @@ var _upper_row: HBoxContainer = null
 var _lower_row: HBoxContainer = null
 var _pips_revealed: bool = false
 var _pips_tween: Tween = null
+var _has_content: bool = false
 
 
 func _ready() -> void:
@@ -35,6 +36,9 @@ func _ready() -> void:
 	custom_minimum_size = READOUT_SIZE
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# The readout renders nothing now — the visible result tag is a die-docked overlay
+	# drawn by battle_scene. This node only reserves its combat-zone row + holds the data.
+	modulate = Color(1, 1, 1, 0)
 	_build()
 	_refresh()
 
@@ -118,6 +122,9 @@ func _refresh() -> void:
 	_set_row_frame_visible(_lower_row, false)
 
 	var effects: Array = action_result.get("effects", [])
+	# A die's result tag only exists when it actually resolves an effect.
+	_has_content = not effects.is_empty()
+	_apply_tag_plate()
 	if effects.is_empty():
 		_add_empty_state(_closest_row())
 		_sync_pip_visibility()
@@ -140,6 +147,7 @@ func _refresh() -> void:
 
 func show_pips() -> void:
 	_pips_revealed = true
+	_apply_tag_plate()
 	if _row_layer == null:
 		return
 	if _pips_tween != null and is_instance_valid(_pips_tween):
@@ -157,6 +165,7 @@ func show_pips() -> void:
 
 func hide_pips() -> void:
 	_pips_revealed = false
+	_apply_tag_plate()
 	if _pips_tween != null and is_instance_valid(_pips_tween):
 		_pips_tween.kill()
 	_pips_tween = null
@@ -184,7 +193,29 @@ func _sync_pip_visibility() -> void:
 		_row_layer.modulate = Color(1, 1, 1, 1)
 	else:
 		_row_layer.visible = false
-		_row_layer.modulate = Color(1, 1, 1, 0)
+
+
+# The result tag is now drawn by battle_scene as a die-docked overlay plate (it needs the
+# die's live screen position for the overlap). This readout stays in the rail purely to
+# reserve the combat-zone row and to hold the resolved effect data; it renders nothing
+# itself (see _ready, modulate alpha 0). Kept as a no-op so callers still resolve.
+func _apply_tag_plate() -> void:
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+
+
+# True once the die has resolved an effect and its readout is revealed — battle_scene
+# reads this to decide whether to show the die-docked result tag.
+func is_showing() -> bool:
+	return _pips_revealed and _has_content
+
+
+# The resolved effect list (empty until a roll resolves), consumed by the die tag.
+func tag_effects() -> Array:
+	return action_result.get("effects", [])
+
+
+func tag_target() -> String:
+	return str(action_result.get("target", ""))
 
 
 func _notification(what: int) -> void:

@@ -69,6 +69,9 @@ func _build(items: Array, relic: Resource, anchor_rect: Rect2) -> void:
 	_catcher.gui_input.connect(_on_catcher_input)
 	add_child(_catcher)
 
+	# Shared modal scrim so the header/battle behind the chooser is dimmed, not live.
+	_catcher.add_child(PixelUI.make_modal_scrim())
+
 	_panel = PanelContainer.new()
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, PANEL_BORDER)

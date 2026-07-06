@@ -87,6 +87,10 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 	_catcher.gui_input.connect(_on_dismiss_input)
 	add_child(_catcher)
 
+	# Shared modal scrim so nothing beneath (e.g. the battle Roll button) shows through
+	# at full brightness. The catcher above already blocks input, so the scrim ignores it.
+	_catcher.add_child(PixelUI.make_modal_scrim())
+
 	# The panel itself is a tap-to-close target too (not only the catcher behind it).
 	_panel = PanelContainer.new()
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP

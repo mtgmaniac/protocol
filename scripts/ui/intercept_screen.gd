@@ -3,6 +3,7 @@
 # (hero / gear / consumable) and drafts run as follow-up stages.
 extends Control
 
+const TYPE_FONT := 28
 const TITLE_FONT := 62
 const CARD_TITLE_FONT := 50
 const BODY_FONT := 36
@@ -14,6 +15,7 @@ var _choice: Dictionary = {}
 var _picked_hero_id: String = ""
 var _gear_context: Dictionary = {}
 var _stage_box: VBoxContainer
+var _button_box: VBoxContainer
 
 
 func _ready() -> void:
@@ -31,29 +33,43 @@ func _ready() -> void:
 	_card = GameState.INTERCEPT_CARDS.get(_card_id, {})
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.055, 0.070, 0.095, 1.0)
+	bg.color = PixelUI.DT_FIELD_BG
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	PixelUI.add_terminal_backdrop(self)
 
+	# ~90%-wide transmission window, vertically centered in the free space.
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["margin_left", "margin_right"]:
-		margin.add_theme_constant_override(side, 70)
-	margin.add_theme_constant_override("margin_top", 170)
-	margin.add_theme_constant_override("margin_bottom", 90)
+	var side: int = PixelUI.screen_frame_side_margin()
+	margin.add_theme_constant_override("margin_left", side)
+	margin.add_theme_constant_override("margin_right", side)
+	margin.add_theme_constant_override("margin_top", 150)
+	margin.add_theme_constant_override("margin_bottom", 80)
 	add_child(margin)
 
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(scroll)
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(col)
+
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_transmission_panel(frame)
+	col.add_child(frame)
+
+	var pad := MarginContainer.new()
+	for pad_side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(pad_side, 36)
+	frame.add_child(pad)
 
 	_stage_box = VBoxContainer.new()
 	_stage_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_stage_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_stage_box.add_theme_constant_override("separation", 30)
-	scroll.add_child(_stage_box)
+	_stage_box.add_theme_constant_override("separation", 16)
+	pad.add_child(_stage_box)
 
 	_show_card_stage()
 
@@ -61,6 +77,14 @@ func _ready() -> void:
 func _clear_stage() -> void:
 	for child in _stage_box.get_children():
 		child.queue_free()
+	_button_box = null
+
+
+func _add_gap(height: int) -> void:
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, height)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage_box.add_child(gap)
 
 
 func _add_label(text: String, font_size: int, color: Color, outline: int = 1) -> Label:
@@ -75,6 +99,13 @@ func _add_label(text: String, font_size: int, color: Color, outline: int = 1) ->
 
 
 func _add_choice_button(text: String, callback: Callable, enabled: bool = true) -> void:
+	# Choice buttons live in their own box: 24px padding above the group, 12px between.
+	if _button_box == null:
+		_add_gap(24)
+		_button_box = VBoxContainer.new()
+		_button_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_button_box.add_theme_constant_override("separation", 12)
+		_stage_box.add_child(_button_box)
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(0, 104)
@@ -84,13 +115,15 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true) 
 	button.disabled = not enabled
 	PixelUI.style_button(button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_AMBER if enabled else PixelUI.LINE_DIM, BUTTON_FONT)
 	button.pressed.connect(callback)
-	_stage_box.add_child(button)
+	_button_box.add_child(button)
 
 
 func _show_card_stage() -> void:
 	_clear_stage()
-	_add_label("INTERCEPT", TITLE_FONT, PixelUI.GOLD_ACCENT, 3)
-	_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.DT_AMBER, 3)
+	# Rhythm: small amber event-type label · large title · blank line · body.
+	_add_label("INTERCEPT", TYPE_FONT, PixelUI.DT_AMBER, 2)
+	_add_label(str(_card.get("name", "")), TITLE_FONT, PixelUI.TEXT_PRIMARY, 3)
+	_add_gap(8)
 	_add_label(str(_card.get("desc", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 	for choice_variant in _card.get("choices", []):
 		var choice: Dictionary = choice_variant

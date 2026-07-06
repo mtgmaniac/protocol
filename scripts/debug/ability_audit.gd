@@ -1643,6 +1643,36 @@ func _run_save_manager_regressions() -> void:
 			mapping_ok = false
 	_expect_and_record("Regression / save boss-relic op mapping", "saveManager", "true", str(mapping_ok))
 
+	# Progression: best_clear_by_op records; a facility clear awards ONE ladder rung
+	# (engineer) and unlocks the next op (hive); rung 2 (shield) defers to a later run.
+	# Asserts against the raw unlock lists — is_*_unlocked() is force-true when headless.
+	SaveManager.data = SaveManager.default_data()
+	SaveManager.record_run_started()
+	SaveManager.record_run_finished("victory", "facility", 8)
+	var prog_heroes: Array = SaveManager.data["unlocks"]["heroes"]
+	var prog_ops: Array = SaveManager.data["unlocks"]["operations"]
+	var prog_ok: bool = (
+		int((SaveManager.data["stats"]["best_clear_by_op"] as Dictionary).get("facility", 0)) == 8
+		and prog_heroes.has("engineer")
+		and SaveManager.get_hero_ladder_rung() == 1
+		and prog_ops.has("hive")
+		and not prog_heroes.has("shield")
+		and SaveManager.check_new_unlocks().size() == 2
+	)
+	_expect_and_record("Regression / progression ladder + op chain", "saveManager", "true", str(prog_ok))
+
+	# Grandfather: migrating a played save that predates the unlock schema opens everything.
+	SaveManager.data = SaveManager.default_data()
+	SaveManager._merge_loaded({"tutorial_done": true, "stats": {"runs_started": 5}})
+	var gf_heroes: Array = SaveManager.data["unlocks"]["heroes"]
+	var gf_ops: Array = SaveManager.data["unlocks"]["operations"]
+	var gf_ok: bool = (
+		gf_heroes.has("breaker")
+		and gf_ops.has("stellarMenagerie")
+		and int(SaveManager.get_hero_ladder_rung()) == int(SaveManager.MAX_HERO_LADDER_RUNG)
+	)
+	_expect_and_record("Regression / progression grandfather clause", "saveManager", "true", str(gf_ok))
+
 	SaveManager.data = saved_data
 
 

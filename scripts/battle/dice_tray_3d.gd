@@ -217,6 +217,58 @@ func get_die_screen_position(side: String, unit_id: String) -> Vector2:
 	return _viewport_container.get_global_rect().position + _camera.unproject_position(die_origin)
 
 
+# The die's diameter projected to screen pixels (same coordinate space as
+# get_die_screen_position). Orthographic camera → identical for every die, so result
+# tags can share one uniform width. 0.0 if the die/camera aren't ready.
+func get_die_projected_diameter(side: String, unit_id: String) -> float:
+	var die: RigidBody3D = _die_by_key.get(_entry_key(side, unit_id), null) as RigidBody3D
+	if die == null or not is_instance_valid(die):
+		return 0.0
+	if _camera == null or not is_instance_valid(_camera) or _viewport_container == null or not is_instance_valid(_viewport_container):
+		return 0.0
+	var origin: Vector3 = die.global_transform.origin
+	if _camera.is_position_behind(origin):
+		return 0.0
+	var right: Vector3 = _camera.global_transform.basis.x.normalized()
+	var base: Vector2 = _viewport_container.get_global_rect().position
+	var left_edge: Vector2 = base + _camera.unproject_position(origin - right * DIE_RADIUS)
+	var right_edge: Vector2 = base + _camera.unproject_position(origin + right * DIE_RADIUS)
+	return absf(right_edge.x - left_edge.x)
+
+
+# The die's exact screen-space bounding rect (projects its 12 vertices at the live
+# orientation + settle scale), so result tags can dock flush to the real silhouette
+# instead of a uniform circle. Rect2(Vector2.INF, ZERO) if not projectable.
+func get_die_screen_bounds(side: String, unit_id: String) -> Rect2:
+	var die: RigidBody3D = _die_by_key.get(_entry_key(side, unit_id), null) as RigidBody3D
+	if die == null or not is_instance_valid(die):
+		return Rect2(Vector2.INF, Vector2.ZERO)
+	if _camera == null or not is_instance_valid(_camera) or _viewport_container == null or not is_instance_valid(_viewport_container):
+		return Rect2(Vector2.INF, Vector2.ZERO)
+	var vis_scale: float = 1.0
+	var visuals: Node3D = die.get_node_or_null("Visuals") as Node3D
+	if visuals != null:
+		vis_scale = visuals.scale.x
+	var xform: Transform3D = die.global_transform
+	var base: Vector2 = _viewport_container.get_global_rect().position
+	var min_p: Vector2 = Vector2(INF, INF)
+	var max_p: Vector2 = Vector2(-INF, -INF)
+	var found: bool = false
+	for vertex in _get_raw_d20_vertices():
+		var world_point: Vector3 = xform * (vertex * vis_scale)
+		if _camera.is_position_behind(world_point):
+			continue
+		var screen_point: Vector2 = base + _camera.unproject_position(world_point)
+		min_p.x = minf(min_p.x, screen_point.x)
+		min_p.y = minf(min_p.y, screen_point.y)
+		max_p.x = maxf(max_p.x, screen_point.x)
+		max_p.y = maxf(max_p.y, screen_point.y)
+		found = true
+	if not found:
+		return Rect2(Vector2.INF, Vector2.ZERO)
+	return Rect2(min_p, max_p - min_p)
+
+
 func show_result_actions(action_entries: Array) -> void:
 	for entry_variant in action_entries:
 		var entry: Dictionary = entry_variant
@@ -644,16 +696,42 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 	mat.emission_enabled = true
 	mat.roughness = 0.80
 	panel.material_override = mat
-	# Drop the result face's bevel so its glow reads cleanly.
+	# Result face gets a thin light outline: recolor its bevel rim bright (instead of
+	# hiding it) so a crisp light ring frames the winning face.
 	var result_bevel: MeshInstance3D = _die_part(die, "FaceBevel%d" % result) as MeshInstance3D
 	if result_bevel != null:
-		result_bevel.visible = false
-	# Fade the non-result numerals; keep each engrave colour, only adjust alpha (all three layers).
+		var outline_color: Color = (PixelUI.DT_HERO_DITHER if side == "hero" else PixelUI.DT_ENEMY_DITHER).lightened(0.45)
+		var outline_mat: StandardMaterial3D = StandardMaterial3D.new()
+		outline_mat.albedo_color = outline_color
+		outline_mat.emission_enabled = true
+		outline_mat.emission = outline_color
+		outline_mat.emission_energy_multiplier = 1.5
+		outline_mat.render_priority = 2
+		result_bevel.material_override = outline_mat
+		result_bevel.visible = true
+	# Dim every non-result face (panel + bevel) to ~40% brightness so only the result reads bright.
+	var base_color: Color = _die_base_color(die)
+	var dim_face: Color = _face_color_for(base_color).darkened(0.6)
 	for face_value in _face_values:
 		var fv: int = int(face_value)
-		var alpha: float = 1.0 if fv == result else 0.4
+		if fv == result:
+			continue
+		for part_prefix in ["FacePanel", "FaceBevel"]:
+			var mesh: MeshInstance3D = _die_part(die, "%s%d" % [part_prefix, fv]) as MeshInstance3D
+			if mesh == null:
+				continue
+			var dim_mat: StandardMaterial3D = StandardMaterial3D.new()
+			dim_mat.albedo_color = dim_face
+			dim_mat.emission_enabled = true
+			dim_mat.emission = dim_face.darkened(0.5)
+			dim_mat.emission_energy_multiplier = 0.15
+			mesh.material_override = dim_mat
+	# Fade the non-result numerals; keep each engrave colour, only adjust alpha (all layers).
+	for face_value2 in _face_values:
+		var fv2: int = int(face_value2)
+		var alpha: float = 1.0 if fv2 == result else 0.4
 		for prefix in ["FaceNumber", "FaceNumberShadow", "FaceNumberHighlight", "FaceNumberWell"]:
-			var label: Label3D = _die_part(die, "%s%d" % [prefix, fv]) as Label3D
+			var label: Label3D = _die_part(die, "%s%d" % [prefix, fv2]) as Label3D
 			if label == null:
 				continue
 			var c: Color = label.modulate
