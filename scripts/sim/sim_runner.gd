@@ -37,6 +37,9 @@ const SIM_VERSION := "0.3.0"
 const ROUND_SAFETY_CAP := 500
 # Third seeded stream (after reward-rng and the d20 provider): policy choices.
 const POLICY_SEED_OFFSET := 0x51F15EED
+# Fourth stream: Godot's GLOBAL RNG for combat_manager's summon/vent/charge
+# randi calls (distinct salt so it never aliases the others).
+const COMBAT_SEED_OFFSET := 0x1B873593
 
 var _tel = SimTelemetryScript.new()
 var _seed: int = 0
@@ -107,6 +110,15 @@ func _run(args: Dictionary) -> int:
 	if not _tel.open_file(out_path):
 		push_error("[SIM] could not open output: %s" % out_path)
 		return 1
+
+	# Seed Godot's GLOBAL RNG per run. combat_manager's summon (randi_range),
+	# Overflow Vent / Dead Man's Charge / chain-reaction (randi) draw from the
+	# global stream, NOT the d20 provider — unseeded, they made runs that hit
+	# those branches non-reproducible (the A-package gate only exercised
+	# facility/pulse,combat,shield, which never fires them; the C batch of
+	# random squads/ops caught it). Distinct salt from the provider/policy
+	# streams. L2 reseeds per-decision on top of this (also deterministic).
+	seed(_seed ^ COMBAT_SEED_OFFSET)
 
 	# Seed the run: GameState._reward_rng deterministic, then start.
 	gs.call("start_run", squad, op, _seed)
@@ -189,6 +201,7 @@ func _bench(gs: Node, dm: Node, args: Dictionary) -> int:
 	var bench_policy_name: String = str(args.get("policy", "stub"))
 	while battles < target:
 		var run_seed: int = base_seed + run_index
+		seed(run_seed ^ COMBAT_SEED_OFFSET)  # global RNG per run (see _run)
 		gs.call("start_run", squad, op, run_seed)
 		gs.call("advance_to_next_battle")
 		var provider := SeededRollProvider.new(run_seed ^ 0x9E3779B9)
