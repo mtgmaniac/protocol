@@ -1441,16 +1441,15 @@
         "shieldAlly": 6
       },
       "surge": {
-        "name": "Codex Weave",
-        "eff": "10 dmg, ally 7 shield, siphon 2",
+        "name": "Checksum Copy",
+        "eff": "10 dmg, hijack",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 7,
-        "siphon": 2
+        "hijack": true
       },
       "crit": {
         "name": "Prophecy Spike",
@@ -1576,14 +1575,14 @@
       },
       "crit": {
         "name": "Afterimage",
-        "eff": "17 dmg, ward",
+        "eff": "17 dmg, hijack",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "ward": true
+        "hijack": true
       },
       "overload": {
         "name": "Fork Collapse",
