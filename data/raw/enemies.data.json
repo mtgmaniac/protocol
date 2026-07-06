@@ -1974,15 +1974,15 @@
         "shield": 0
       },
       "crit": {
-        "name": "Lure Screech",
-        "eff": "15 dmg, lure",
+        "name": "Challenge Screech",
+        "eff": "15 dmg, taunt",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "lure": true
+        "taunt": true
       },
       "overload": {
         "name": "Call Friends",

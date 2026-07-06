@@ -49,7 +49,6 @@ const KEYWORD_FIELD_MAP := {
 	"ward": "ward",
 	"taunt": "taunt",
 	"enemySelfTaunt": "taunt",
-	"lure": "lure",
 	"freezeAnyDice": "freeze",
 	"freezeEnemyDice": "freeze",
 	"freezeAllEnemyDice": "freeze",
@@ -156,11 +155,19 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 		"statuses": statuses,
 		"abilities": abilities,
 	}
-	# Boss standing rule — always visible in the inspect popup.
+	# Boss standing rule + targeting personality — always visible in the popup.
 	if is_enemy:
+		var description_lines: Array[String] = []
 		var standing_rule: String = CombatManager.get_boss_standing_rule(str(data.get("display_name")))
 		if standing_rule != "":
-			payload["description"] = standing_rule
+			description_lines.append(standing_rule)
+		# The complete truth of how this enemy picks targets (Task 9).
+		var personality: int = TargetingPersonality.resolve_personality(data)
+		description_lines.append("TARGETING: %s — %s." % [
+			TargetingPersonality.personality_name(personality),
+			TargetingPersonality.personality_blurb(personality),
+		])
+		payload["description"] = "\n".join(description_lines)
 	return payload
 
 
@@ -197,6 +204,10 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 		entries.append(_status_entry("ward", EffectPip.keyword_code("ward", "FW"), 0, _status_text("ward", "", 0)))
 	if bool(state.get("marked", false)):
 		entries.append(_status_entry("mark", EffectPip.keyword_code("mark", "MK"), 0, _status_text("mark", "", 0)))
+	if bool(state.get("taunting", false)):
+		entries.append(_status_entry("taunt", EffectPip.keyword_code("taunt", "T"), 0, _status_text("taunt", "", 0)))
+	if str(state.get("lured_by_id", "")) != "":
+		entries.append(_status_entry("taunt", EffectPip.keyword_code("taunt", "T"), 0, _status_text("taunted", "", 0)))
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", EffectPip.keyword_code("rampage", "RA"), 0, _status_text("rampage", "", 0)))
 	# pkg8.1: die statuses surface in the readout too (they render on the die).
@@ -355,7 +366,9 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"cloak":
 			return "Untargetable by hostile single-target abilities. Breaks when this unit deals damage or is hit by an AoE."
 		"taunt":
-			return "Forces enemies to target this unit."
+			return "Taunting — hostile units can only target this unit."
+		"taunted":
+			return "Taunted — this unit can only target the taunter."
 		"rampage":
 			return "Deals double damage this turn."
 		"ward":

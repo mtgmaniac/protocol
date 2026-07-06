@@ -103,7 +103,7 @@ const ENEMY_HANDLED_FIELDS := [
 	"hijack",
 	"siphon",
 	"cloak",
-	"lure",
+	"taunt",
 	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",

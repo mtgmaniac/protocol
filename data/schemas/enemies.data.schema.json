@@ -111,7 +111,10 @@
         "hijack": { "type": "boolean" },
         "siphon": { "type": "integer", "minimum": 1 },
         "cloak": { "type": "boolean" },
-        "lure": { "type": "boolean" },
+        "taunt": {
+          "type": "boolean",
+          "description": "Enemy-side Taunt (formerly Lure): the targeted hero can only target this enemy next turn."
+        },
         "grantRampage": { "type": "integer", "minimum": 0 },
         "grantRampageAll": { "type": "integer", "minimum": 0 },
         "freezeEnemyDice": { "type": "integer", "minimum": 1 },
@@ -159,7 +162,12 @@
           "type": "boolean",
           "description": "Spawns cloaked (Forked Double); inherits the reworked cloak rules."
         },
-        "summonElite": { "type": "boolean" }
+        "summonElite": { "type": "boolean" },
+        "targeting": {
+          "type": "string",
+          "enum": ["systematic", "wounded", "pack", "spiteful"],
+          "description": "Targeting personality override. Independent of `ai` (which gates elite summons / summon injection). Empty = kit default table in targeting_personality.gd."
+        }
       }
     }
   }

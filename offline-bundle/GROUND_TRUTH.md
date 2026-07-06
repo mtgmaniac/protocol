@@ -98,6 +98,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 | Rewrite | RW | `rewrite: true` (both sides) | target's next roll SET to 3 (`REWRITE_VALUE`); telegraphed; `apply_rewrite_to_state` boss hook |
 | Hijack | HJ | `hijack: true` (enemy) | enemy's next roll copies the heroes' current highest die |
 | Siphon | SI | `siphon: N` (enemy) | on hit, drain N Protocol (floor 0) via `take_pending_protocol_drain` |
+| Taunt | T | `taunt` (both sides) / `enemySelfTaunt` | unified (Lure deleted): "The taunted unit can only target the taunter." Hero-side: the hero taunts, all enemy aim redirects (taunt overrides everything, even cloak). Enemy-side single (`taunt`, formerly `lure`, internal `lured_by_id`): the hit hero can only target that enemy next turn — legal-target highlights restrict to the taunter and the hero's card shows a TAUNT chip. `enemySelfTaunt`: all heroes must target the caster. |
 
 **Cloak (simplified in the keyword batch):** untargetable by hostile single-target abilities (manual targeting, AI, and resolve-time retarget all skip cloaked units); breaks when the unit deals damage OR is hit by an AoE. The former "first attack from Cloak gains Pierce" clause is REMOVED — decloak strikes are plain attacks (Ambush Wiring / Ghostblade add their own effects). `battleStartCloak` gear inherits.
 
@@ -107,7 +108,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 
 ## Enemies (from enemies.data.json — COMPLETE, 5 factions)
 
-38 enemy unit defs / 37 ability kits across 5 operations. Structure: `enemyAbilities[type]` (5-zone table) + `enemyUnitDefs[Name]` (hp, dMin/dMax, type, ai, callsign ≤8 chars, optional `accrete`, `startsCloaked`) + `battleEnemyScale` (per-battle hp/dmg multipliers). All 24 core kits were reworked in pkg3.3 around faction identities.
+38 enemy unit defs / 37 ability kits across 5 operations. Structure: `enemyAbilities[type]` (5-zone table) + `enemyUnitDefs[Name]` (hp, dMin/dMax, type, ai, callsign ≤8 chars, optional `accrete`, `startsCloaked`, `targeting`) + `battleEnemyScale` (per-battle hp/dmg multipliers). All 24 core kits were reworked in pkg3.3 around faction identities.
 
 | Operation key | Label / callsign | Faction identity | Boss (battle-10 escort) |
 |---|---|---|---|
@@ -117,7 +118,9 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 | `voidCirclet` | Null Synod / SYNOD | machine cult: rewrite, hijack, siphon, ±roll | ROOT HIEROPHANT (+Checksum Scribe) |
 | `stellarMenagerie` | The Accretion / ACCRETION | igneous beasts: accrete shields, petrify freezes, spike, cloak | MANTLE TYRANT (+Geode Panther) |
 
-Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; Magma Drake accrete 4; Geode Panther cloak + petrify freeze (`freeze_flavor: petrify`); Pyroclast Raptor lure. Enemies don't use Protocol (Siphon drains the heroes' pool).
+Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; Magma Drake accrete 4; Geode Panther cloak + petrify freeze (`freeze_flavor: petrify`); Pyroclast Raptor enemy-side taunt (formerly lure). Enemies don't use Protocol (Siphon drains the heroes' pool).
+
+**Targeting personalities (Task 9 — `scripts/battle/targeting_personality.gd`):** every enemy resolves its hostile single-hero pick through ONE choke-point, `personality_pick_target(enemy_state, hero_states, assignments_so_far)`, shared by the battle UI (`combat_manager.assign_enemy_intents`, slot order) and the headless sim/audit (same call inside `resolve_round`). No `randi()` anywhere. Personalities: **SYSTEMATIC** (living heroes left→right by slot) · **WOUNDED** (lowest-HP living hero) · **PACK** (joins a hero another living enemy was already assigned this turn; none → WOUNDED) · **SPITEFUL** (the hero who most recently damaged it, per-enemy `last_attacker_id` cleared on that hero's death; none → SYSTEMATIC). Universal rules applied in the choke-point: taunt overrides everything; cloaked heroes are skipped; a dead/illegal preferred target falls to the STATED fallback only (the old "pure debuff → highest HP" special case is REMOVED). Resolution: unit `targeting` field → kit default table in targeting_personality.gd → SYSTEMATIC. Kit defaults: Facility SYSTEMATIC (guard/patrol/volt PACK; warden/boss WOUNDED) · Hive PACK (stalker/hiveBoss WOUNDED) · Veil WOUNDED (veilPrism/veilShard SYSTEMATIC) · Synod SYSTEMATIC (voidBinder/voidChanneler/voidCircletBoss WOUNDED; voidGlimmer SPITEFUL) · Accretion SPITEFUL (beastWolf/beastMonkey PACK; beastLynx WOUNDED). `ai_type` is UNTOUCHED and independent — it still gates nat20 elite summons and the summon-injection guard. The enemy inspect popup shows "TARGETING: <NAME> — <one-line definition>."
 
 **Boss standing rules (pkg4 — replaces the deleted phase-2 system):** one always-on rule per boss, active from turn 1, keyed by display name in `combat_manager.gd` `BOSS_STANDING_RULES` (single text source for the battle-start log line and the inspect popup):
 
@@ -190,7 +193,7 @@ Rules: header height == footer height; all unit cards identical outer size; hero
 
 ## UI & feedback (pkg8)
 
-Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Firewall (cap 3, +N overflow badge opens inspect). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤N" marker · Rewrite/Hijack = pending marker on the die + readout entry · Spike = readout pip only · Taunt/Lure = no dedicated card marker (the ◎N incoming-target-intent corner badge was removed — it wasn't the intended treatment). Detonate pip shows the live burst when the target is known. Nat-20 signature = gold wash + shake + overload stinger + heavier hit-pause + ability-name slam. Keyword feedback table lives in offline-bundle/ANIMATION.md. Dice numerals render near-white in the engraved pipeline. Summon layout floor: cards never shrink below the 3-unit slot width (rows scroll instead).
+Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge opens inspect). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤N" marker · Rewrite/Hijack = pending marker on the die + readout entry · Spike = readout pip only · Taunt = TAUNT chip on the taunted hero (their legal targets restrict to the taunter) — the ◎N incoming-target-intent corner badge stays removed. Detonate pip shows the live burst when the target is known. Nat-20 signature = gold wash + shake + overload stinger + heavier hit-pause + ability-name slam. Keyword feedback table lives in offline-bundle/ANIMATION.md. Dice numerals render near-white in the engraved pipeline. Summon layout floor: cards never shrink below the 3-unit slot width (rows scroll instead).
 
 ---
 

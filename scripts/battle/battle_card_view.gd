@@ -79,7 +79,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		status_list.append("RAGE ×%d" % int(state["rampage_charges"]))
 	if bool(state.get("cursed", false)):
 		status_list.append("CURSED")
-	if bool(state.get("taunting", false)):
+	if bool(state.get("taunting", false)) or str(state.get("lured_by_id", "")) != "":
 		status_list.append("TAUNT")
 	if bool(state.get("warded", false)):
 		status_list.append("FIREWALL")
@@ -385,11 +385,12 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append(_make_compact_named_status("DOWN", "", 99))
 		return statuses
 
-	# Chip doctrine (pkg8.1): the card chip row renders ONLY Burn, Mark,
-	# ±Roll, and Ward. Everything else surfaces on its own display channel —
+	# Chip doctrine (pkg8.1, amended by the taunt unify): the card chip row
+	# renders ONLY Burn, Mark, ±Roll, Firewall, and Taunt (on the taunted
+	# hero — their targeting is restricted to the taunter, so it must be
+	# visible). Everything else surfaces on its own display channel —
 	# shields on the HP preview + inspect, cloak as the ghosted portrait,
-	# freeze/jam/rewrite/hijack on the die, spike in the readout, taunt/lure
-	# as the incoming-intent marker.
+	# freeze/jam/rewrite/hijack on the die, spike in the readout.
 	# DESIGN-TODO(kev): active shield total now reads via HP preview/inspect
 	# only — confirm that's enough at 450x1000.
 	if int(state.get("burn", 0)) > 0 and int(state.get("burn_turns", 0)) > 0:
@@ -424,6 +425,11 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 
 	if bool(state.get("warded", false)):
 		statuses.append(_make_compact_named_status("FIREWALL", "", 3))
+
+	# Taunted hero (enemy-side Taunt, internal lured_by state): targeting is
+	# restricted to the taunter — the chip makes the restriction legible.
+	if str(state.get("lured_by_id", "")) != "":
+		statuses.append(_make_compact_named_status("TAUNT", "", 3))
 
 	return statuses
 

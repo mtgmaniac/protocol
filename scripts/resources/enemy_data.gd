@@ -8,6 +8,9 @@ extends Resource
 @export var faction: String = ""
 @export var enemy_type: String = ""
 @export var ai_type: String = ""
+## Targeting personality override (systematic / wounded / pack / spiteful).
+## Independent of ai_type — empty means "use the kit default table".
+@export var targeting: String = ""
 @export var max_hp: int = 0
 @export var damage_preview_min: int = 0
 @export var damage_preview_max: int = 0

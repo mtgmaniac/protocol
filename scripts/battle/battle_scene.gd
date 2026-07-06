@@ -2380,6 +2380,17 @@ func _clear_target_assignments() -> void:
 
 
 func _assign_enemy_targets() -> void:
+	# Hostile single-target picks go through the shared personality choke-point
+	# in combat_manager (slot order — PACK depends on it); the loop below only
+	# fills in the non-hostile display targets (self / ally / AoE).
+	var effective_enemy_rolls: Dictionary = {}
+	for enemy_view_variant in enemy_card_views:
+		var enemy_view: Dictionary = enemy_view_variant
+		var enemy_state: Dictionary = enemy_view["state"]
+		if bool(enemy_state["dead"]) or enemy_rolls.get(enemy_state["id"], null) == null:
+			continue
+		effective_enemy_rolls[enemy_state["id"]] = _get_effective_enemy_roll(enemy_state, str(enemy_state["id"]))
+	combat_manager.assign_enemy_intents(effective_enemy_rolls, dice_manager)
 	for enemy_view_variant in enemy_card_views:
 		var enemy_view: Dictionary = enemy_view_variant
 		var enemy_state: Dictionary = enemy_view["state"]
@@ -2455,12 +2466,7 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 
 func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: String) -> void:
 	var hero_id: String = str(hero_state["id"])
-	var target_ids: Array = _get_legal_target_ids(manual_side)
-	# Lure (Accretion): a lured hero can only aim at the lurer.
-	if manual_side == "enemy":
-		var lured_by: String = str(hero_state.get("lured_by_id", ""))
-		if lured_by != "" and target_ids.has(lured_by):
-			target_ids = [lured_by]
+	var target_ids: Array = _get_legal_target_ids(manual_side, hero_state)
 	pending_manual_target_ids.erase(hero_id)
 	if target_ids.is_empty():
 		_set_state_target(hero_state, "", _get_no_legal_target_display(manual_side))
@@ -2530,9 +2536,19 @@ func _auto_assign_hero_target(hero_state: Dictionary, ability_entry: Dictionary)
 
 
 func _auto_assign_enemy_target(enemy_state: Dictionary, ability_entry: Dictionary) -> void:
+	# Hostile single-hero picks were already made by the shared personality
+	# choke-point (combat_manager.assign_enemy_intents) — this function only
+	# labels the remaining display targets. The old ai_type smart/dumb branch
+	# (and its pure-debuff-targets-highest-HP special case) is gone; ai_type
+	# itself is untouched and still gates elite summons / summon injection.
 	var raw: Dictionary = ability_entry.get("raw", {})
-	var unit: EnemyData = enemy_state["unit"] as EnemyData
-	var ai_type: String = str(unit.ai_type) if unit != null else "dumb"
+	if str(enemy_state.get("selected_target_id", "")) != "" and str(enemy_state.get("target_display", "--")) != "--":
+		return
+
+	# AoE damage: no single pick — the whole squad is the target.
+	if int(raw.get("dmg", 0)) > 0 and bool(raw.get("blastAll", false)):
+		_set_state_target(enemy_state, "", "All Squad")
+		return
 
 	# Self-targeted: shield or heal self
 	if (int(raw.get("shield", 0)) > 0 or int(raw.get("heal", 0)) > 0) and int(raw.get("shieldAlly", 0)) <= 0:
@@ -2550,27 +2566,6 @@ func _auto_assign_enemy_target(enemy_state: Dictionary, ability_entry: Dictionar
 		_set_state_target(enemy_state, str(ally_target["id"]), str(ally_target["unit"].display_name))
 		return
 
-	# Hero-targeted: damage, burn, or roll debuff
-	var targets_hero: bool = int(raw.get("dmg", 0)) > 0 or int(raw.get("burn", 0)) > 0 or int(raw.get("rfm", 0)) > 0
-	if targets_hero:
-		var hero_target: Dictionary = {}
-		if ai_type == "smart":
-			# Pure debuff (rfm only): target highest HP to disrupt strongest attacker
-			# Damage/burn: target lowest HP to maximize kill threat
-			var is_pure_debuff: bool = int(raw.get("dmg", 0)) == 0 and int(raw.get("burn", 0)) == 0
-			hero_target = _smart_target_hero(is_pure_debuff)
-		else:
-			hero_target = _first_living_hero_state()
-			# Cloaked heroes are untargetable by single-target attacks.
-			if not hero_target.is_empty() and bool(hero_target.get("cloaked", false)):
-				var visible: Array = combat_manager.get_hero_states().filter(func(s): return not bool(s["dead"]) and not bool(s.get("cloaked", false)))
-				hero_target = visible[0] if not visible.is_empty() else {}
-		if hero_target.is_empty():
-			_set_state_target(enemy_state, "", "--")
-			return
-		_set_state_target(enemy_state, str(hero_target["id"]), str(hero_target["unit"].display_name))
-		return
-
 	_set_state_target(enemy_state, "", "--")
 
 
@@ -2586,7 +2581,7 @@ func _select_targeting_hero(hero_id: String) -> void:
 	var eff_roll: int = _get_effective_roll_for_state(hero_state, str(hero_state["id"]))
 	var ability_entry: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], eff_roll)
 	legal_target_side = _get_manual_target_side(ability_entry)
-	legal_target_ids = _get_legal_target_ids(legal_target_side)
+	legal_target_ids = _get_legal_target_ids(legal_target_side, hero_state)
 	if _try_auto_assign_single_manual_target(hero_state, legal_target_side, legal_target_ids):
 		return
 	_card_view.refresh_all_cards()
@@ -2609,7 +2604,7 @@ func _can_retarget_hero(hero_id: String) -> bool:
 	if ability_entry.is_empty():
 		return false
 	var manual_side: String = _get_manual_target_side(ability_entry)
-	return manual_side != "" and not _get_legal_target_ids(manual_side).is_empty()
+	return manual_side != "" and not _get_legal_target_ids(manual_side, hero_state).is_empty()
 
 
 func _assign_target_to_active_hero(target_id: String, target_side: String) -> void:
@@ -2633,7 +2628,15 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 		_refresh_summary("Select the next hero to target.")
 
 
-func _get_legal_target_ids(target_side: String) -> Array:
+func _get_legal_target_ids(target_side: String, for_hero_state: Dictionary = {}) -> Array:
+	# Taunt (enemy-side): a taunted hero's hostile picks are restricted to the
+	# taunter — illegal targets don't highlight, and taps on them do nothing.
+	if target_side == "enemy" and not for_hero_state.is_empty():
+		var taunted_by: String = str(for_hero_state.get("lured_by_id", ""))
+		if taunted_by != "":
+			var taunter: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), taunted_by)
+			if not taunter.is_empty() and not bool(taunter.get("dead", false)):
+				return [taunted_by]
 	var ids: Array = []
 	var states: Array = []
 	var enemy_states: Array = combat_manager.get_enemy_states()
@@ -2687,23 +2690,11 @@ func _get_taunt_enemy_id() -> String:
 	return ""
 
 
-func _first_living_hero_state() -> Dictionary:
-	return _first_living_from_states(combat_manager.get_hero_states())
-
-
 func _first_living_enemy_ally_state(enemy_state: Dictionary) -> Dictionary:
 	for state_variant in combat_manager.get_enemy_states():
 		var state: Dictionary = state_variant
 		if state == enemy_state:
 			continue
-		if not bool(state["dead"]):
-			return state
-	return {}
-
-
-func _first_living_from_states(states: Array) -> Dictionary:
-	for state_variant in states:
-		var state: Dictionary = state_variant
 		if not bool(state["dead"]):
 			return state
 	return {}
@@ -2722,31 +2713,6 @@ func _lowest_living_hero_state() -> Dictionary:
 			best_ratio = hp_ratio
 			best_state = state
 	return best_state
-
-
-func _smart_target_hero(prefer_high_hp: bool = false) -> Dictionary:
-	var living: Array = []
-	for view in hero_card_views:
-		var state: Dictionary = view["state"]
-		if not bool(state["dead"]):
-			living.append(state)
-	if living.is_empty():
-		return {}
-	# Cloaked heroes are untargetable by single-target attacks; if everyone is
-	# cloaked the attack has no target (resolve-time retarget will fizzle too).
-	var uncloaked: Array = living.filter(func(s): return not bool(s.get("cloaked", false)))
-	if uncloaked.is_empty():
-		return {}
-	var pool: Array = uncloaked
-	var best: Dictionary = pool[0]
-	for s in pool:
-		if prefer_high_hp:
-			if int(s["current_hp"]) > int(best["current_hp"]):
-				best = s
-		else:
-			if int(s["current_hp"]) < int(best["current_hp"]):
-				best = s
-	return best
 
 
 func _set_state_target(state: Dictionary, target_id: String, target_display: String) -> void:

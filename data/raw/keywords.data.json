@@ -164,13 +164,6 @@
       "code": "FW"
     },
     {
-      "id": "lure",
-      "term": "Lure",
-      "category": "control",
-      "def": "Enemy-only (Accretion): the lured hero can only target the lurer next turn.",
-      "syntax": "lure"
-    },
-    {
       "id": "accrete",
       "term": "Accrete",
       "category": "defense",
@@ -181,7 +174,7 @@
       "id": "taunt",
       "term": "Taunt",
       "category": "control",
-      "def": "Forces the chosen enemy to target the taunter.",
+      "def": "The taunted unit can only target the taunter.",
       "syntax": "taunt",
       "code": "T"
     },

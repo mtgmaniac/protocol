@@ -48,7 +48,7 @@ def fmt_event(ev: dict) -> str | None:
     if t == "block":
         return f"  {'firewall NEGATES' if int(amt) <= 0 else f'shield blocks {amt}'}: {tgt}"
     if t in ("jam", "rewrite", "hijack", "mark", "siphon", "leech", "breach",
-             "cloak", "decloak", "taunt", "curse", "lure", "wipe_shields",
+             "cloak", "decloak", "taunt", "curse", "wipe_shields",
              "spike_up", "hijack_primed", "mark_consumed", "hijack_roll"):
         return f"  {t}: {tgt}" + (f" ({amt})" if amt else "")
     return None  # skip noise types silently

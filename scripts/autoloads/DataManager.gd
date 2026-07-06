@@ -275,6 +275,7 @@ func _load_enemies() -> void:
 		enemy.enemy_type = enemy_type
 		enemy.faction = str(ENEMY_FACTION_BY_TYPE.get(enemy_type, ""))
 		enemy.ai_type = str(enemy_def.get("ai", ""))
+		enemy.targeting = str(enemy_def.get("targeting", ""))
 		enemy.max_hp = int(enemy_def.get("hp", 0))
 		enemy.damage_preview_min = int(enemy_def.get("dMin", 0))
 		enemy.damage_preview_max = int(enemy_def.get("dMax", 0))

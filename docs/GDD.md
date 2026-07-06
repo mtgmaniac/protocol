@@ -227,7 +227,7 @@ composition (who contributes what) lives in the ability readout pips.
 | Mark | Next hit on this unit deals +50%, then consumed |
 | Spike | This round, attackers that connect take N back (readout only) |
 | Jam / Rewrite / Hijack | Die statuses (see §6) |
-| Taunt / Lure | Forces enemy aim / forces a hero's aim — both read via the ◎ intent markers |
+| Taunt | The taunted unit can only target the taunter — same word both directions (hero taunts force enemy aim; enemy taunts restrict a hero's aim, TAUNT chip on the taunted hero) |
 | Siphon | Enemy hits drain the squad's Protocol pool |
 | Rampaging | Deals double damage (enemy erb family) |
 

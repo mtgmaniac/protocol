@@ -134,7 +134,7 @@ def hero_expected(raw: dict) -> str:
     if raw.get("ward"):
         parts.append("ally firewall" if raw.get("wardTgt") else "self firewall")
     if raw.get("taunt"):
-        parts.append("taunt (picked enemy targets you)")
+        parts.append("taunt (enemies target you)")
 
     gp = raw.get("gainProtocol") or 0
     if gp > 0:
@@ -235,8 +235,8 @@ def enemy_expected(raw: dict) -> str:
     if raw.get("cloak"):
         parts.append("cloak")
 
-    if raw.get("lure"):
-        parts.append("lure")
+    if raw.get("taunt"):
+        parts.append("taunt")
 
     gr = raw.get("grantRampage") or 0
     if gr > 0:

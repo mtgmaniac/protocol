@@ -864,7 +864,7 @@
             6
           ],
           "name": "Taunt Protocol",
-          "eff": "taunt (picked enemy targets you)",
+          "eff": "taunt (enemies target you)",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -960,7 +960,7 @@
                 6
               ],
               "name": "Fortify",
-              "eff": "self 7 shield, taunt (picked enemy targets you)",
+              "eff": "self 7 shield, taunt (enemies target you)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1077,7 +1077,7 @@
                 5
               ],
               "name": "Challenge",
-              "eff": "self 4 shield, taunt (picked enemy targets you)",
+              "eff": "self 4 shield, taunt (enemies target you)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1422,7 +1422,7 @@
                 12
               ],
               "name": "Dig In",
-              "eff": "self 8 shield, taunt (picked enemy targets you)",
+              "eff": "self 8 shield, taunt (enemies target you)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,

@@ -111,6 +111,73 @@ const MANTLE_ROUND_SHIELD := 6
 # 1-based round counter driving the turn-cadence rules.
 var _battle_round: int = 0
 
+# Targeting personalities (Task 9): {enemy_id: hero_id} intent assignments for
+# the current round, written in SLOT ORDER (PACK reads insertion order).
+var _enemy_assignments: Dictionary = {}
+
+
+# THE shared enemy-targeting entry point. Iterates enemies in slot order and,
+# for every living enemy whose rolled ability carries a single-hero hostile
+# component, resolves its target through TargetingPersonality (taunt override,
+# cloak skip, personality + stated fallback). An already-set legal pick (the
+# UI's earlier call with the same inputs) is kept and recorded, so calling
+# this again at resolve time never overwrites a displayed intent.
+# battle_scene calls this for the intent display; resolve_round calls it so
+# the headless sim/audit shares the exact same implementation. No randi().
+func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) -> void:
+	_enemy_assignments.clear()
+	for enemy_state in _enemy_states:
+		if bool(enemy_state["dead"]):
+			continue
+		var roll_value: Variant = enemy_rolls.get(enemy_state["id"], null)
+		if roll_value == null:
+			continue
+		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(roll_value))
+		if not _ability_targets_single_hero(ability_entry.get("raw", {})):
+			continue
+		var current: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+		if not current.is_empty() and not bool(current.get("cloaked", false)):
+			_enemy_assignments[str(enemy_state["id"])] = str(current["id"])
+			continue
+		var pick: Dictionary = TargetingPersonality.personality_pick_target(enemy_state, _hero_states, _enemy_assignments)
+		if pick.is_empty():
+			enemy_state["selected_target_id"] = ""
+			enemy_state["target_display"] = "--"
+			continue
+		enemy_state["selected_target_id"] = str(pick["id"])
+		enemy_state["target_display"] = str(pick["unit"].display_name)
+		_enemy_assignments[str(enemy_state["id"])] = str(pick["id"])
+
+
+# True when the ability needs a single hero pick (AoE and support don't).
+func _ability_targets_single_hero(raw: Dictionary) -> bool:
+	if int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)):
+		return true
+	return (
+		int(raw.get("burn", 0)) > 0
+		or int(raw.get("rfm", 0)) > 0
+		or int(raw.get("freezeEnemyDice", 0)) > 0
+		or bool(raw.get("jam", false))
+		or bool(raw.get("rewrite", false))
+		or bool(raw.get("taunt", false))
+		or bool(raw.get("curseDice", false))
+	)
+
+
+# Resolve-time target for every hostile component of one enemy ability.
+# Taunt overrides everything (even an assigned pick — a hero may start
+# taunting after intents were assigned); a still-legal assigned pick is
+# honored; a dead/cloaked pick falls through to the personality's stated
+# fallback via the same choke-point.
+func _resolve_enemy_hero_target(enemy_state: Dictionary) -> Dictionary:
+	var taunter: Dictionary = _get_taunting_hero_state()
+	if not taunter.is_empty():
+		return taunter
+	var picked: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
+	if not picked.is_empty() and not bool(picked.get("cloaked", false)):
+		return picked
+	return TargetingPersonality.personality_pick_target(enemy_state, _hero_states, _enemy_assignments)
+
 
 static func get_boss_standing_rule(display_name: String) -> String:
 	return str(BOSS_STANDING_RULES.get(display_name, ""))
@@ -554,6 +621,12 @@ func resolve_round(
 				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
 				_emit_event(enemy_state, "hijack", highest_hero_roll, "enemy")
 
+	# Targeting personalities: fill enemy intents (slot order) before the hero
+	# phase. In UI play battle_scene already assigned them with the same
+	# choke-point, so this pass just re-records the picks; headless sim/audit
+	# runs get their assignment here.
+	assign_enemy_intents(enemy_rolls, dice_manager)
+
 	for hero_state in _hero_states:
 		if hero_state["dead"]:
 			continue
@@ -694,6 +767,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"gear_protocol_on_kill": 0,
 		"gear_protocol_on_kill_any": 0,
 		"lured_by_id": "",
+		"last_attacker_id": "",
 		"accrete": 0,
 		"directive_type": "",
 		"directive_effect": {},
@@ -1349,6 +1423,11 @@ func _apply_chain_jumps(
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
 	_ability_ward_blocked_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
+	# One shared hero target for every hostile single-target component of this
+	# ability (taunt override / assigned intent / personality fallback).
+	var hostile_hero_target: Dictionary = {}
+	if _ability_targets_single_hero(raw):
+		hostile_hero_target = _resolve_enemy_hero_target(enemy_state)
 	var damage: int = int(raw.get("dmg", 0))
 	# Ferocity route modifier: enemy hits deal +2.
 	if damage > 0 and _battle_modifier == "ferocity":
@@ -1424,11 +1503,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					_heal_state(enemy_state, heal_amount)
 					_log("%s lifesteals %d HP." % [enemy_state["unit"].display_name, heal_amount])
 		else:
-			# Taunt overrides cloak; otherwise cloaked heroes are untargetable
-			# and the attack retargets (or fizzles when everyone is cloaked).
-			var target_hero: Dictionary = _get_taunting_hero_state()
-			if target_hero.is_empty():
-				target_hero = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
+			var target_hero: Dictionary = hostile_hero_target
 			if target_hero.is_empty():
 				_log("%s finds no visible target — the attack fizzles." % enemy_state["unit"].display_name)
 			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
@@ -1454,17 +1529,15 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_wipe_all_hero_shields(enemy_state)
 
 	if damage <= 0 and burn_amount > 0:
-		var burn_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
-			_apply_burn(burn_target, burn_amount, burn_turns)
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+			_apply_burn(hostile_hero_target, burn_amount, burn_turns)
 
 	# RFE on heroes (roll debuff from enemies using rfm/rfmT keys)
 	var rfm_amount: int = int(raw.get("rfm", 0))
 	var rfm_turns: int = int(raw.get("rfmT", 1))
 	if rfm_amount > 0:
-		var hero_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if not hero_target.is_empty() and not _ward_blocks_hostile(hero_target):
-			_add_rfe_stack(hero_target, rfm_amount, rfm_turns)
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+			_add_rfe_stack(hostile_hero_target, rfm_amount, rfm_turns)
 
 	# ERB: enemy roll buff
 	var erb_amount: int = int(raw.get("erb", 0))
@@ -1488,9 +1561,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
 				_freeze_die_state(hero_state, enemy_freeze_all, false, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
-		var freeze_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
-			_freeze_die_state(freeze_target, enemy_freeze_one, false, enemy_freeze_flavor)
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+			_freeze_die_state(hostile_hero_target, enemy_freeze_one, false, enemy_freeze_flavor)
 
 	# Rampage grants (self or all enemies)
 	var grant_rampage: int = int(raw.get("grantRampage", 0))
@@ -1516,15 +1588,13 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
 				_apply_jam(hero_state, JAM_CAP, true)
 	elif bool(raw.get("jam", false)):
-		var jam_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
-			_apply_jam(jam_target, JAM_CAP, true)
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+			_apply_jam(hostile_hero_target, JAM_CAP, true)
 
 	# Rewrite hero dice (Synod): force the targeted hero's next roll to 3.
 	if bool(raw.get("rewrite", false)):
-		var enemy_rewrite_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if not enemy_rewrite_target.is_empty() and not _ward_blocks_hostile(enemy_rewrite_target):
-			_apply_rewrite(enemy_rewrite_target, true)
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+			_apply_rewrite(hostile_hero_target, true)
 
 	# Hijack (enemy-only): this enemy's next roll copies the heroes' current
 	# highest die.
@@ -1540,14 +1610,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_log("%s fades from view (cloaked)." % enemy_state["unit"].display_name)
 		_emit_event(enemy_state, "cloak", 0, "enemy")
 
-	# Lure (Accretion): the targeted hero can only target this enemy next turn.
-	if bool(raw.get("lure", false)):
-		var lure_target: Dictionary = _hostile_single_target(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if not lure_target.is_empty() and not _ward_blocks_hostile(lure_target):
-			lure_target["lured_by_id"] = str(enemy_state["id"])
-			lure_target["lure_skip_next_tick"] = true
-			_log("%s LURES %s — next turn they can only strike back!" % [enemy_state["unit"].display_name, lure_target["unit"].display_name])
-			_emit_event(lure_target, "lure", 0, "hero")
+	# Enemy-side Taunt (formerly Lure, Accretion): the targeted hero can only
+	# target this enemy next turn. Internal state keeps the lured_by split.
+	if bool(raw.get("taunt", false)):
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+			hostile_hero_target["lured_by_id"] = str(enemy_state["id"])
+			hostile_hero_target["lure_skip_next_tick"] = true
+			_log("%s TAUNTS %s — next turn they can only strike back!" % [enemy_state["unit"].display_name, hostile_hero_target["unit"].display_name])
+			_emit_event(hostile_hero_target, "taunt", 0, "hero")
 
 	# Spike: heroes that damage this enemy next hero phase take N back. Granted
 	# during the enemy phase, so it survives the imminent round-end tick to
@@ -1561,13 +1631,10 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 
 	# Curse dice: targeted hero rolls twice and keeps lower next round
 	if bool(raw.get("curseDice", false)):
-		var curse_target: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
-		if curse_target.is_empty():
-			curse_target = _first_living_state(_hero_states)
-		if not curse_target.is_empty():
-			curse_target["cursed"] = true
-			_log("%s is CURSED — next roll will be the lower of two dice." % curse_target["unit"].display_name)
-			_emit_event(curse_target, "curse", 0, "hero")
+		if not hostile_hero_target.is_empty():
+			hostile_hero_target["cursed"] = true
+			_log("%s is CURSED — next roll will be the lower of two dice." % hostile_hero_target["unit"].display_name)
+			_emit_event(hostile_hero_target, "curse", 0, "hero")
 
 	# Taunt: force all heroes to target this enemy next player phase
 	if bool(raw.get("enemySelfTaunt", false)):
@@ -1587,8 +1654,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 # target, retargeting to the first living non-cloaked unit when the pick is
 # invalid or cloaked; {} when every candidate is cloaked (the ability fizzles).
 func _hostile_single_target(states: Array, selected_id: String, attacker_state: Dictionary = {}) -> Dictionary:
-	# Lure (Accretion): a lured hero must aim its hostile picks at the lurer
-	# while it lives.
+	# Enemy-side Taunt (internal lured_by state): a taunted hero must aim its
+	# hostile picks at the taunter while it lives.
 	if not attacker_state.is_empty():
 		var lured_by: String = str(attacker_state.get("lured_by_id", ""))
 		if lured_by != "":
@@ -1626,6 +1693,12 @@ func _damage_state(
 		return 0
 
 	var hp_before: int = int(state["current_hp"])
+
+	# SPITEFUL targeting: enemies remember the hero who most recently damaged
+	# them (any connecting hero hit, even if fully shield-absorbed); cleared
+	# when that hero dies (_on_unit_killed).
+	if not _is_hero_state(state) and not attacker_state.is_empty() and _is_hero_state(attacker_state):
+		state["last_attacker_id"] = str(attacker_state["id"])
 
 	# Cloak no longer dodges here — cloaked units are untargetable by hostile
 	# single-target abilities (call sites retarget) and AoE hits break the
@@ -1965,6 +2038,11 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 	# Killswitch Relay gear: when this hero dies, deal damage to all enemies.
 	if _is_hero_state(dead_state):
 		SaveManager.record_hero_death()
+		# SPITEFUL grudges die with the hero that earned them.
+		var dead_hero_id: String = str(dead_state.get("id", ""))
+		for enemy_state in _enemy_states:
+			if str(enemy_state.get("last_attacker_id", "")) == dead_hero_id:
+				enemy_state["last_attacker_id"] = ""
 		var relay_damage: int = int(dead_state.get("gear_death_damage_all", 0))
 		if relay_damage > 0:
 			_log("%s's Killswitch Relay detonates for %d to all enemies!" % [dead_state["unit"].display_name, relay_damage])
@@ -2001,6 +2079,7 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["hijack_skip_next_tick"] = false
 	state["lured_by_id"] = ""
 	state["lure_skip_next_tick"] = false
+	state["last_attacker_id"] = ""
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
@@ -2231,8 +2310,9 @@ func _tick_state(state: Dictionary) -> void:
 				state["burn"] = 0
 				state["burn_skip_next_tick"] = false
 
-	# Lure covers exactly one hero phase: applied in the enemy phase, it skips
-	# this tick, restricts the next hero phase, then clears.
+	# Enemy-side Taunt (internal lured_by state) covers exactly one hero phase:
+	# applied in the enemy phase, it skips this tick, restricts the next hero
+	# phase, then clears.
 	if str(state.get("lured_by_id", "")) != "":
 		if bool(state.get("lure_skip_next_tick", false)):
 			state["lure_skip_next_tick"] = false
