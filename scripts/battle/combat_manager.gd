@@ -60,7 +60,7 @@ func setup_battle_modifier(modifier_id: String, warded_names: Array = []) -> voi
 		"jammingField":
 			for hero_state in _hero_states:
 				if not bool(hero_state["dead"]):
-					apply_battle_start_jam(hero_state, 12)
+					apply_battle_start_jam(hero_state, JAM_CAP)
 		"warded":
 			for enemy_state in _enemy_states:
 				if not bool(enemy_state["dead"]) and warded_names.has(str(enemy_state["unit"].display_name)):
@@ -289,7 +289,7 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			_damage_state(target_hero, dmg)
 			_log("Opening Salvo: %s takes %d damage!" % [target_hero["unit"].display_name, dmg])
 
-	# Static Field: enemy dice are Jammed (cap 12) on turn 1 of every battle.
+	# Static Field: enemy dice are Jammed (cap 10) on turn 1 of every battle.
 	if has_relic("battleStartJamEnemies"):
 		for jam_state in _enemy_states:
 			if not jam_state["dead"]:
@@ -440,7 +440,7 @@ func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
 		return REWRITE_VALUE
 	var mods: Dictionary = get_roll_modifier_totals(state)
 	var effective: int = clampi(raw_roll + int(mods["roll_buff"]) - int(mods["roll_rfe"]), 1, 20)
-	# Jam: the unit's next roll is capped (default 12); cleared at that
+	# Jam: the unit's next roll is capped (default 10); cleared at that
 	# round's end tick.
 	var jam_cap: int = int(state.get("jam_cap", 0))
 	if jam_cap > 0:
@@ -993,7 +993,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
 					_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
 
-	# Jam: cap the target's next roll at 12 (die status, telegraphed for the
+	# Jam: cap the target's next roll at 10 (die status, telegraphed for the
 	# next reveal). jamAll caps every living enemy die.
 	if bool(raw.get("jamAll", false)):
 		for es in _enemy_states:
@@ -1169,7 +1169,7 @@ func _apply_hero_ability_damage(
 			_heal_state(hero_state, leech_heal, hero_state)
 
 
-const JAM_CAP := 12
+const JAM_CAP := 10
 const REWRITE_VALUE := 3
 
 
@@ -1201,7 +1201,7 @@ func apply_rewrite_to_state(state: Dictionary, survives_current_tick: bool = tru
 	_apply_rewrite(state, survives_current_tick)
 
 
-# Jam: die status — the target's next roll is capped (default 12). Applied
+# Jam: die status — the target's next roll is capped (default 10). Applied
 # mid-round it survives the imminent tick and caps the NEXT reveal;
 # battle-start applications (Static Field relic) cap the first roll directly.
 func _apply_jam(state: Dictionary, cap: int = JAM_CAP, survives_current_tick: bool = true) -> void:
@@ -1513,7 +1513,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if bool(raw.get("ward", false)):
 		_apply_ward(enemy_state)
 
-	# Jam hero dice: cap the targeted hero's (or every hero's) next roll at 12.
+	# Jam hero dice: cap the targeted hero's (or every hero's) next roll at 10.
 	if bool(raw.get("jamAll", false)):
 		for hero_state in _hero_states:
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):

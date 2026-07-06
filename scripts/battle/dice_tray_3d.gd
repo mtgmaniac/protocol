@@ -1810,7 +1810,7 @@ func play_jam_flicker(side: String, unit_id: String, jam_cap: int) -> void:
 		tween.tween_interval(0.06)
 
 
-const JAM_FALLBACK_CAP := 12
+const JAM_FALLBACK_CAP := 10
 
 
 # pkg8.4: Rewrite feedback — the pending marker scrambles through digits then

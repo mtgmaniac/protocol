@@ -252,7 +252,7 @@ func get_beat_after_battle(battle_number: int) -> Dictionary:
 # BALANCE-TODO: all modifier numbers provisional.
 const BATTLE_MODIFIERS := {
 	"hardened": {"name": "HARDENED", "desc": "Enemies spawn with 8 shield.", "amount": 8},
-	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are Jammed (cap 12) on turn 1.", "cap": 12},
+	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are Jammed (cap 10) on turn 1.", "cap": 10},
 	"overrun": {"name": "OVERRUN", "desc": "One extra fodder unit joins the comp.", "requires": "small_comp"},
 	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy slot upgrades to the elite pool.", "requires": "non_elite_slot"},
 	"ferocity": {"name": "FEROCITY", "desc": "Enemy hits deal +2.", "amount": 2},

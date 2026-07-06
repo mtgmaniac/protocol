@@ -156,7 +156,7 @@
   {
     "id": "staticField",
     "name": "Static Field",
-    "desc": "Enemy dice are Jammed (cap 12) on turn 1 of every battle.",
+    "desc": "Enemy dice are Jammed (cap 10) on turn 1 of every battle.",
     "icon": "die",
     "effect": { "type": "battleStartJamEnemies" }
   },

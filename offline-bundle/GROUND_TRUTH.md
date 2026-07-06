@@ -94,7 +94,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 | Leech | LC | `leech: true` | attacker heals 50% of HP damage dealt (after shields) |
 | Mark | MK | `mark: true` | status chip; next real attack on target +50% round up, then consumed (`mark_consumed_this_hit` kill hook) |
 | Spike | SP | `spike: N` (both sides) | this round, any unit damaging the carrier takes N; never persists past the round; readout pip only |
-| Jam | JM | `jam` / `jamAll` (both sides) | target's next roll capped at 12 (`JAM_CAP`); die status, no chip |
+| Jam | JM | `jam` / `jamAll` (both sides) | target's next roll capped at 10 (`JAM_CAP`); die status, no chip |
 | Rewrite | RW | `rewrite: true` (both sides) | target's next roll SET to 3 (`REWRITE_VALUE`); telegraphed; `apply_rewrite_to_state` boss hook |
 | Hijack | HJ | `hijack: true` (enemy) | enemy's next roll copies the heroes' current highest die |
 | Siphon | SI | `siphon: N` (enemy) | on hit, drain N Protocol (floor 0) via `take_pending_protocol_drain` |

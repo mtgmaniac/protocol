@@ -169,7 +169,7 @@ The roll is a real rigid-body simulation, tuned to read like tabletop dice
 | **Set** | Protocol Bar (3) | Force a die to any value (Root Access: first Set free) |
 | **Twin Fates** | Relic (once per battle) | Copy one hero die's result to another, free |
 | **Freeze / Petrify** | Abilities/items | Die locked; the unit skips its next N reveals |
-| **Jam** | Abilities/modifiers | Next roll capped (12 default) — amber tint + cap marker on the die |
+| **Jam** | Abilities/modifiers | Next roll capped (10 default) — amber tint + cap marker on the die |
 | **Rewrite** | Synod abilities / ROOT boss | Next roll SET to 3 (telegraphed marker) |
 | **Hijack** | Synod enemies | Enemy die copies the squad's highest roll |
 | **±Roll** | Abilities/gear/relics | Increase or decrease effective die value |

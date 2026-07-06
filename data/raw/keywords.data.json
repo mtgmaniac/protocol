@@ -119,7 +119,7 @@
       "id": "jam",
       "term": "Jam",
       "category": "control",
-      "def": "The target's next roll is capped at 12. Shown on the die, not as a status chip.",
+      "def": "The target's next roll is capped at 10. Shown on the die, not as a status chip.",
       "syntax": "jam / jam all",
       "code": "JM"
     },

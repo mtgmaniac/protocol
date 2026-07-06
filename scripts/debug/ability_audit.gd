@@ -1062,7 +1062,7 @@ func _run_spike_regression() -> void:
 
 
 func _run_jam_regression() -> void:
-	# Jam caps the target's NEXT roll at 12, then clears at that round's tick.
+	# Jam caps the target's NEXT roll at 10, then clears at that round's tick.
 	var manager: CombatManager = CombatManager.new()
 	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "EMP Pulse", {"dmg": 7, "jam": true})
 	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
@@ -1072,13 +1072,13 @@ func _run_jam_regression() -> void:
 	hero["selected_target_id"] = str(enemy["id"])
 	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	var capped_roll: int = manager.get_effective_roll(enemy, 18)
-	var jam_active: bool = int(enemy.get("jam_cap", 0)) == 12
+	var jam_active: bool = int(enemy.get("jam_cap", 0)) == 10
 	manager.resolve_round({}, {}, DiceManager.new())
 	var cleared_roll: int = manager.get_effective_roll(enemy, 18)
-	if jam_active and capped_roll == 12 and cleared_roll == 18:
+	if jam_active and capped_roll == 10 and cleared_roll == 18:
 		_record_pass("Regression / jam caps next roll then clears", "jam")
 	else:
-		_record_failure("Regression / jam caps next roll then clears", "jam", "18 capped to 12 for one round, 18 after", "cap=%d capped=%d cleared=%d" % [int(enemy.get("jam_cap", 0)), capped_roll, cleared_roll])
+		_record_failure("Regression / jam caps next roll then clears", "jam", "18 capped to 10 for one round, 18 after", "cap=%d capped=%d cleared=%d" % [int(enemy.get("jam_cap", 0)), capped_roll, cleared_roll])
 
 
 func _run_rewrite_regression() -> void:
@@ -1240,13 +1240,13 @@ func _run_new_gear_regressions() -> void:
 
 
 func _run_new_relic_regressions() -> void:
-	# Static Field: enemy dice jammed (cap 12) on turn 1.
+	# Static Field: enemy dice jammed (cap 10) on turn 1.
 	var static_manager: CombatManager = CombatManager.new()
 	static_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
 	static_manager.setup_relics(["staticField"])
 	static_manager.apply_battle_start_relic_effects(0)
 	var static_enemy: Dictionary = static_manager.get_enemy_states()[0]
-	_expect_and_record("Regression / relic staticField turn-1 jam", "battleStartJamEnemies", "12", str(static_manager.get_effective_roll(static_enemy, 18)))
+	_expect_and_record("Regression / relic staticField turn-1 jam", "battleStartJamEnemies", "10", str(static_manager.get_effective_roll(static_enemy, 18)))
 
 	# Mantle Core: hero shields persist flag set at battle start.
 	var mantle_manager: CombatManager = CombatManager.new()
@@ -1929,7 +1929,7 @@ func _run_directive_combat_regressions() -> void:
 	var lock_enemy: Dictionary = lock_manager.get_enemy_states()[0]
 	lock_hero["selected_target_id"] = str(lock_enemy["id"])
 	lock_manager.resolve_round({str(lock_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / directive hard lock jam", "rfeAlsoJam", "12", str(int(lock_enemy.get("jam_cap", 0))))
+	_expect_and_record("Regression / directive hard lock jam", "rfeAlsoJam", "10", str(int(lock_enemy.get("jam_cap", 0))))
 
 	# Feedback: enemies under an active roll-down take chip damage each round.
 	var feedback_manager: CombatManager = CombatManager.new()
@@ -2172,7 +2172,7 @@ func _run_route_modifier_regressions() -> void:
 	var jam_field_manager: CombatManager = CombatManager.new()
 	jam_field_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
 	jam_field_manager.setup_battle_modifier("jammingField")
-	_expect_and_record("Regression / modifier jamming field", "routeModifiers", "12", str(jam_field_manager.get_effective_roll(jam_field_manager.get_hero_states()[0], 18)))
+	_expect_and_record("Regression / modifier jamming field", "routeModifiers", "10", str(jam_field_manager.get_effective_roll(jam_field_manager.get_hero_states()[0], 18)))
 
 	var charge_manager: CombatManager = CombatManager.new()
 	charge_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 200})], [_make_enemy("audit_enemy", "Audit Enemy")])
