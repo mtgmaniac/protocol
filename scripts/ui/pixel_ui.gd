@@ -523,9 +523,6 @@ static func effect_color(kind: String) -> Color:
 			return COLOR_ROLL
 		"roll_up":
 			return COLOR_HEAL
-		"intent":
-			# fix-2.2: incoming-intent marker — rust, the enemy-threat channel.
-			return DT_RUST
 	return TEXT_PRIMARY
 
 

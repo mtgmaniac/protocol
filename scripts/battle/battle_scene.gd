@@ -460,7 +460,7 @@ func _on_unit_detail_requested(card: Control) -> void:
 	# unit's live battle state so its active statuses show as pip + description rows.
 	InspectPopup.open(
 		self,
-		InspectResolver.resolve_unit(compact_card.unit_data, _find_state_for_card(compact_card), compact_card.incoming_intent),
+		InspectResolver.resolve_unit(compact_card.unit_data, _find_state_for_card(compact_card)),
 		compact_card.get_global_rect(),
 		compact_card.get_instance_id(),
 	)
@@ -525,10 +525,6 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
 		_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
 		_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
-	# fix-1.4: dice thawing this round reveal their banked face instead of the
-	# fresh roll — override the roll and pin the tray die to match.
-	_apply_thaw_reveal_overrides(combat_manager.get_hero_states(), hero_rolls, "hero")
-	_apply_thaw_reveal_overrides(combat_manager.get_enemy_states(), enemy_rolls, "enemy")
 	if _game_state().tutorial_mode:
 		_apply_tutorial_dice_rig()
 	_apply_roll_relic_overrides(skip_dice_visuals)
@@ -681,19 +677,6 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		entry["roll_buff"] = int(roll_mods["roll_buff"])
 		entries.append(entry)
 	return entries
-
-
-func _apply_thaw_reveal_overrides(states: Array, rolls: Dictionary, side: String) -> void:
-	for state_variant in states:
-		var state: Dictionary = state_variant
-		if bool(state["dead"]):
-			continue
-		var thaw_value: int = combat_manager.consume_thaw_reveal(state)
-		if thaw_value <= 0:
-			continue
-		rolls[str(state["id"])] = thaw_value
-		if dice_tray_3d != null:
-			dice_tray_3d.update_die_result_in_place(side, str(state["id"]), thaw_value)
 
 
 func _apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:

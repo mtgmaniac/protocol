@@ -1195,7 +1195,7 @@
             6
           ],
           "name": "Glacial Lattice",
-          "eff": "freeze any unit (1 reveal skip)",
+          "eff": "freeze (1 reveal skip)",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1203,7 +1203,7 @@
           "heal": 0,
           "dMin": 0,
           "dMax": 0,
-          "freezeAnyDice": 1
+          "freezeEnemyDice": 1
         },
         {
           "zone": "strike",

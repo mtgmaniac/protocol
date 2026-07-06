@@ -134,7 +134,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
 			"dead": show_dead,
 			"cloaked": bool(state.get("cloaked", false)),
-			"incoming_intent": _compute_incoming_intent(state, accent_color == _scene.HERO_ACCENT),
 			"target_locked": is_target_locked,
 			"needs_manual_target": needs_manual_target,
 			"show_action_pips": readout == null,
@@ -378,27 +377,6 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 				var dt_code: String = EffectPip.keyword_code("detonate", "DT")
 				effect["value"] = "%s %d" % [dt_code, burst] if burst > 0 else dt_code
 		return
-
-
-# pkg8.1: incoming target-intent marker — heroes show how many enemies are
-# aiming at them ("◎N") or that they're Lured ("◎!"); the luring enemy shows
-# the forced-target marker too. Taunt reads through the concentration of
-# enemy aim it causes.
-func _compute_incoming_intent(state: Dictionary, is_hero: bool) -> String:
-	if is_hero:
-		if str(state.get("lured_by_id", "")) != "":
-			return "◎!"
-		var incoming: int = 0
-		for enemy_variant in _scene.combat_manager.get_enemy_states():
-			var enemy_state: Dictionary = enemy_variant
-			if not bool(enemy_state.get("dead", false)) and str(enemy_state.get("selected_target_id", "")) == str(state.get("id", "")):
-				incoming += 1
-		return ("◎%d" % incoming) if incoming > 0 else ""
-	for hero_variant in _scene.combat_manager.get_hero_states():
-		var hero_state: Dictionary = hero_variant
-		if not bool(hero_state.get("dead", false)) and str(hero_state.get("lured_by_id", "")) == str(state.get("id", "")):
-			return "◎!"
-	return ""
 
 
 func _build_compact_status_tokens(state: Dictionary) -> Array:

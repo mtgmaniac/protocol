@@ -471,7 +471,6 @@ func _run_regression_audits() -> void:
 	_run_summon_end_to_end_regression()
 	_run_enemy_roll_buff_expiry_regression()
 	_run_band_coverage_audit()
-	_run_freeze_bank_thaw_regression()
 	_run_gear_lifesteal_regression()
 	_run_gear_shield_pierce_regression()
 	_run_relic_ally_death_heal_regression()
@@ -567,11 +566,11 @@ func _run_enemy_freeze_regression() -> void:
 			"frozen=%s skipped=%s cleared=%s turns=%d" % [str(frozen_after_apply), str(hero_skipped), str(freeze_cleared), int(hero.get("die_freeze_turns", 0))]
 		)
 
-	# fix-1.4 universal rule: enemies act after heroes, so a hero freeze lands
-	# BEFORE the enemy's reveal — the imminent action is skipped, its face is
-	# banked, and the thaw reveals the banked face (delay, not deny+reroll).
-	# (Supersedes the 67d95b6 "next-turn lockout" reading — DESIGN-TODO(kev)
-	# in combat_manager's freeze block.)
+	# Static-lockout rule (reverted per Kev from fix-1.4's bank/thaw): a hero
+	# freeze locks the enemy's NEXT reveal. The enemy STILL lands its hit the
+	# round it is frozen (freeze is applied during the hero phase, after the
+	# enemy's roll was recorded), then skips its next turn with the die STATIC
+	# at the same frozen value — no re-roll — and the charge clears.
 	var cancel_manager: CombatManager = CombatManager.new()
 	var freezer_unit: UnitData = _make_unit("audit_freezer", "Audit Freezer", "Flash Freeze", {"freezeEnemyDice": 1})
 	var striker_enemy: EnemyData = _make_enemy("audit_striker", "Audit Striker", "Claw", {"dmg": 9})
@@ -582,23 +581,27 @@ func _run_enemy_freeze_regression() -> void:
 	striker["selected_target_id"] = str(freezer["id"])
 	striker["last_die_value"] = 15
 	var hero_hp_before: int = int(freezer["current_hp"])
-	# Round 1: freeze cast — the enemy's imminent action is skipped and the
-	# charge consumed at the end-of-round tick; the face is banked for the thaw.
+	# Round 1: freeze cast — the enemy still lands its hit and is left frozen
+	# (die_freeze_turns=1, not yet consumed) with its die value preserved.
 	cancel_manager.resolve_round({str(freezer["id"]): AUDIT_ROLL}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
-	var striker_skipped_r1: bool = int(freezer["current_hp"]) == hero_hp_before
-	var thaw_banked: bool = int(striker.get("thaw_reveal_value", 0)) == 15 and int(striker.get("die_freeze_turns", 0)) == 0
-	# Round 2: the thawed die reveals the banked face — the delayed hit lands.
+	var striker_acted_r1: bool = int(freezer["current_hp"]) < hero_hp_before
+	var striker_frozen_after: bool = int(striker.get("die_freeze_turns", 0)) == 1 and int(striker.get("frozen_die_value", 0)) == 15
+	# Round 2: the frozen die is revealed (consumed flag set at roll time by the
+	# scene; mimic that) — the enemy skips its action, the die never re-rolls,
+	# then the freeze clears.
+	striker["die_freeze_consumed_this_round"] = true
 	var freezer_hp_after_r1: int = int(freezer["current_hp"])
-	cancel_manager.resolve_round({}, {str(striker["id"]): 2}, DiceManager.new())
-	var striker_acted_r2: bool = int(freezer["current_hp"]) < freezer_hp_after_r1
-	if striker_skipped_r1 and thaw_banked and striker_acted_r2:
-		_record_pass("Regression / hero freeze skips enemy action, thaw replays banked face", "freezeEnemyDice")
+	cancel_manager.resolve_round({}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
+	var striker_skipped_r2: bool = int(freezer["current_hp"]) == freezer_hp_after_r1
+	var striker_cleared: bool = int(striker.get("die_freeze_turns", 0)) == 0
+	if striker_acted_r1 and striker_frozen_after and striker_skipped_r2 and striker_cleared:
+		_record_pass("Regression / hero freeze locks enemy next reveal (static)", "freezeEnemyDice")
 	else:
 		_record_failure(
-			"Regression / hero freeze skips enemy action, thaw replays banked face",
+			"Regression / hero freeze locks enemy next reveal (static)",
 			"freezeEnemyDice",
-			"enemy skips this round, face banked (15), delayed hit lands next round",
-			"skipped_r1=%s banked=%s acted_r2=%s turns=%d" % [str(striker_skipped_r1), str(thaw_banked), str(striker_acted_r2), int(striker.get("die_freeze_turns", 0))]
+			"enemy hits R1, frozen at 15, skips R2, clears",
+			"acted=%s frozen=%s skipped=%s cleared=%s" % [str(striker_acted_r1), str(striker_frozen_after), str(striker_skipped_r2), str(striker_cleared)]
 		)
 
 
@@ -2533,65 +2536,6 @@ func _run_band_coverage_audit() -> void:
 # round it acts on the banked 20.
 # Case B (enemy parity): a frozen enemy skips its reveal, then acts on its
 # banked face the round after the thaw.
-func _run_freeze_bank_thaw_regression() -> void:
-	var banker: UnitData = UnitData.new()
-	banker.id = "audit_banker"
-	banker.display_name = "Audit Banker"
-	banker.max_hp = 100
-	banker.dice_ranges = [
-		_make_ability_entry("Hold", {}),
-		{"min": 20, "max": 20, "zone": "overload", "ability_name": "Payoff", "description": "25 dmg", "raw": {"dmg": 25}},
-	]
-	banker.dice_ranges[0]["max"] = 19
-	var freezer: UnitData = _make_unit("audit_freezer_bank", "Audit Freezer", "Glacial Bank", {"freezeAnyDice": 1})
-	var manager: CombatManager = CombatManager.new()
-	# Banker FIRST in squad order — proves the reveal-skip is order-independent.
-	manager.setup_battle([banker, freezer], [_make_enemy("audit_enemy", "Audit Enemy")])
-	var banker_state: Dictionary = manager.get_hero_states()[0]
-	var freezer_state: Dictionary = manager.get_hero_states()[1]
-	var enemy_state: Dictionary = manager.get_enemy_states()[0]
-	banker_state["last_die_value"] = 20
-	freezer_state["selected_target_id"] = str(banker_state["id"])
-	var hp_start: int = int(enemy_state["current_hp"])
-	manager.resolve_round({str(banker_state["id"]): 20, str(freezer_state["id"]): 10}, {}, DiceManager.new())
-	var banked: bool = int(enemy_state["current_hp"]) == hp_start
-	var thaw_pending: bool = int(banker_state.get("thaw_reveal_value", 0)) == 20 and int(banker_state.get("die_freeze_turns", 0)) == 0
-	# Next round: the fresh roll (7) must be overridden by the banked 20.
-	manager.resolve_round({str(banker_state["id"]): 7}, {}, DiceManager.new())
-	var acted_on_20: bool = int(enemy_state["current_hp"]) == hp_start - 25
-	_expect_and_record(
-		"Regression / ally freeze banks the die (skip, then act on 20)", "freezeAnyDice",
-		"banked/thaw/acted = true/true/true",
-		"banked/thaw/acted = %s/%s/%s" % [str(banked), str(thaw_pending), str(acted_on_20)]
-	)
-
-	var enemy_big: EnemyData = EnemyData.new()
-	enemy_big.id = "audit_thaw_enemy"
-	enemy_big.display_name = "Audit Thaw Enemy"
-	enemy_big.max_hp = 100
-	enemy_big.dice_ranges = [
-		_make_ability_entry("Idle", {}),
-		{"min": 15, "max": 20, "zone": "crit", "ability_name": "Big Hit", "description": "9 dmg", "raw": {"dmg": 9}},
-	]
-	enemy_big.dice_ranges[0]["max"] = 14
-	var ice_hero: UnitData = _make_unit("audit_ice_hero", "Audit Ice Hero", "Flash Freeze", {"freezeEnemyDice": 1})
-	var parity_manager: CombatManager = CombatManager.new()
-	parity_manager.setup_battle([ice_hero], [enemy_big])
-	var ice_state: Dictionary = parity_manager.get_hero_states()[0]
-	var big_state: Dictionary = parity_manager.get_enemy_states()[0]
-	big_state["last_die_value"] = 15
-	var hero_hp_start: int = int(ice_state["current_hp"])
-	parity_manager.resolve_round({str(ice_state["id"]): 10}, {str(big_state["id"]): 15}, DiceManager.new())
-	var enemy_skipped: bool = int(ice_state["current_hp"]) == hero_hp_start
-	parity_manager.resolve_round({}, {str(big_state["id"]): 3}, DiceManager.new())
-	var enemy_acted_on_15: bool = int(ice_state["current_hp"]) == hero_hp_start - 9
-	_expect_and_record(
-		"Regression / enemy freeze thaws to banked face", "freezeEnemyDice",
-		"skipped/acted = true/true",
-		"skipped/acted = %s/%s" % [str(enemy_skipped), str(enemy_acted_on_15)]
-	)
-
-
 func _collect_band_coverage_problems(owner: String, ranges: Array, side: String, problems: Array[String]) -> void:
 	if ranges.is_empty():
 		problems.append("%s: no ability ranges" % owner)

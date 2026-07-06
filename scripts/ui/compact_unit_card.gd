@@ -46,9 +46,6 @@ var interaction_enabled: bool = true
 var dead: bool = false
 ## pkg8.1: cloak reads as a ghosted portrait, not a chip.
 var cloaked: bool = false
-## pkg8.1: low-key incoming target-intent marker text ("" = hidden), e.g.
-## "◎2" (two enemies aiming here) or "◎!" (lure — forced target).
-var incoming_intent: String = ""
 var target_locked: bool = false
 var needs_manual_target: bool = false
 var show_action_pips: bool = true
@@ -120,7 +117,6 @@ func configure(data: Dictionary) -> void:
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
 	cloaked = bool(data.get("cloaked", cloaked))
-	incoming_intent = str(data.get("incoming_intent", incoming_intent))
 	target_locked = bool(data.get("target_locked", target_locked))
 	needs_manual_target = bool(data.get("needs_manual_target", needs_manual_target))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
@@ -357,7 +353,11 @@ func _build() -> void:
 	_status_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_status_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_status_row.clip_contents = true
+	# Match the non-clipping _status_slot: the chip stylebox border + drop shadow
+	# extend past the row rect, so clipping here cut the box on some chips. The
+	# STATUS_MAX_VISIBLE cap (+ overflow badge) already bounds chip count, so no
+	# clip is needed to contain width.
+	_status_row.clip_contents = false
 	_status_row.add_theme_constant_override("separation", 2)
 	status_margin.add_child(_status_row)
 
@@ -416,38 +416,7 @@ func _refresh() -> void:
 	if show_action_pips:
 		_populate_action_pips()
 	_populate_statuses()
-	_refresh_intent_marker()
 	_layout_preview_overlays()
-
-
-# pkg8.1: incoming target-intent marker — a small hard badge pinned to the
-# portrait's top-right, readable at 450x1000 without shouting.
-var _intent_badge: Label = null
-
-
-func _refresh_intent_marker() -> void:
-	if _portrait_frame == null:
-		return
-	if incoming_intent == "" or dead:
-		if _intent_badge != null and is_instance_valid(_intent_badge):
-			_intent_badge.visible = false
-		return
-	if _intent_badge == null or not is_instance_valid(_intent_badge):
-		_intent_badge = Label.new()
-		_intent_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_intent_badge.z_index = 6
-		_intent_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_intent_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		var style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.02, 0.03, 0.05, 0.90), PixelUI.DT_RUST, 2)
-		style.set_content_margin_all(3.0)
-		_intent_badge.add_theme_stylebox_override("normal", style)
-		_apply_label(_intent_badge, STATUS_NAME_FONT_SIZE, PixelUI.DT_RUST, 0)
-		_portrait_frame.add_child(_intent_badge)
-	_intent_badge.text = incoming_intent
-	_intent_badge.visible = true
-	_intent_badge.reset_size()
-	_intent_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_intent_badge.position = Vector2(_portrait_frame.size.x - _intent_badge.size.x - 6.0, 6.0)
 
 
 # Animated HP bar. `displayed` is the HP shown right now (steps down one hit at a

@@ -120,7 +120,7 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 # `state` is the unit's live battle-state dict (empty outside battle, e.g. the home screen).
 # When it carries active statuses they REPLACE the role subtitle, shown as pip + description
 # rows; with no statuses the role subtitle is kept.
-static func resolve_unit(data: Resource, state: Dictionary = {}, incoming_intent: String = "") -> Dictionary:
+static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 	if data == null:
 		return {}
 	var is_enemy: bool = data is EnemyData
@@ -144,10 +144,6 @@ static func resolve_unit(data: Resource, state: Dictionary = {}, incoming_intent
 			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),
 		})
 	var statuses: Array = _unit_status_entries(state)
-	# fix-2.2: the ◎ corner badge (pkg8.1 incoming-intent marker) resolves in
-	# the unit inspect like every other card icon.
-	if incoming_intent != "":
-		statuses.push_front(_intent_entry(incoming_intent, side))
 	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
 	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
@@ -213,7 +209,7 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s — the die keeps its value and skips its next %d reveal(s); it reveals the kept value when thawed." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
+			"%s — the die is locked; the unit skips its next %d reveal(s)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
 		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, "Spike %d — attackers take damage this round." % int(state["spike"])))
 	return entries
@@ -228,21 +224,6 @@ static func _status_entry(kind: String, value: String, duration: int, text: Stri
 
 static func _roll_status_text(delta: int) -> String:
 	return "%+d to this unit's die rolls." % delta
-
-
-# fix-2.2: name + one-line definition for the ◎ incoming-intent corner badge.
-static func _intent_entry(intent_text: String, side: String) -> Dictionary:
-	var text: String
-	if intent_text.ends_with("!"):
-		text = (
-			"Lured — this hero can only target the luring enemy next turn."
-			if side == "hero"
-			else "Lure — this enemy is forcing its target to strike back next turn."
-		)
-	else:
-		var count: int = intent_text.trim_prefix("◎").to_int()
-		text = "Targeted — %d %s aiming at this unit this round." % [count, "enemy is" if count == 1 else "enemies are"]
-	return _status_entry("intent", intent_text, 0, text)
 
 
 # fix-2.2: name + one-line definition for the ±roll chip pinned to a die.
