@@ -42,16 +42,21 @@ var _tel = SimTelemetryScript.new()
 var _seed: int = 0
 
 
-func _make_policy(policy_name: String, policy_seed: int):
+func _make_policy(policy_name: String, policy_seed: int, archetype: String = ""):
+	var policy
 	match policy_name.to_lower():
 		"l0", "random":
-			return PolicyL0Script.new(policy_seed)
+			policy = PolicyL0Script.new(policy_seed)
 		"l1", "greedy":
-			return PolicyL1Script.new(policy_seed)
+			policy = PolicyL1Script.new(policy_seed)
 		"l2", "solver":
-			return PolicyL2Script.new(policy_seed)
+			policy = PolicyL2Script.new(policy_seed)
 		_:
-			return PlayerPolicyScript.new(policy_seed)
+			policy = PlayerPolicyScript.new(policy_seed)
+	# Archetype drafting (D) layers on L1/L2 (which own choose_draft affinity).
+	if archetype != "" and (policy is PolicyL1Script):
+		policy.archetype = archetype
+	return policy
 
 
 func _ready() -> void:
@@ -116,7 +121,7 @@ func _run(args: Dictionary) -> int:
 	# Seeded streams two and three (offset from the reward-rng seed so all
 	# streams are independent but reproducible): d20s and policy choices.
 	var provider := SeededRollProvider.new(_seed ^ 0x9E3779B9)
-	var policy = _make_policy(policy_name, _seed ^ POLICY_SEED_OFFSET)
+	var policy = _make_policy(policy_name, _seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")))
 
 	_tel.emit({
 		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,
@@ -187,7 +192,7 @@ func _bench(gs: Node, dm: Node, args: Dictionary) -> int:
 		gs.call("start_run", squad, op, run_seed)
 		gs.call("advance_to_next_battle")
 		var provider := SeededRollProvider.new(run_seed ^ 0x9E3779B9)
-		var bench_policy = _make_policy(bench_policy_name, run_seed ^ POLICY_SEED_OFFSET)
+		var bench_policy = _make_policy(bench_policy_name, run_seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")))
 		var summary: Dictionary = _play_run(gs, dm, provider, bench_policy, int(gs.get("total_battles")))
 		battles += int(summary["battles_played"])
 		run_index += 1

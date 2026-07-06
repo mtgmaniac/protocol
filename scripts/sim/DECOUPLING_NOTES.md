@@ -261,12 +261,33 @@ bootstrap gives honest intervals. Stage-1 is a SCREEN; Stage-2 arms are causal
 (e.g. coldLogic on an Avalanche squad: naive +0.44 lift, matched-arm +4.7%
 n.s. at 150 runs — the confound the prompt names, correctly deflated).
 
-Remaining SIM-TODO: consumable USE during battle (item dispatch port) — the
-spend hook covers nudge/reroll/set only; consumable lift reads ~0 until
-**Package D** adds the item-use policy.
+**Package D COMPLETE** (L2 solver + archetypes + skill band + consumable use):
+- ✅ **L2 exact round solver** (`policies/policy_l2_solver.gd`): searches
+  (hero order × target assignment × spend plan) by snapshot → resolve → score
+  → restore on the real combat_manager (`snapshot_state`/`restore_state`/
+  `set_hero_order` added). One-round eval = enemy HP removed + kills − hero HP
+  lost − hero deaths ± result. Global RNG reseeded per-decision (only L2) so
+  candidates score consistently and runs reproduce. Reroll excluded (draws the
+  provider). ~1.7s/run.
+- ✅ **Skill band** (`analyze.py --skillband LOW HIGH`): L1↔L2 clear-rate gap
+  per op. 80-seed sample: L1 50% → L2 85%; per-op +18% (facility) to +57%
+  (veil). Both above the GDD 25–40% / 55–70% band — a calibration finding.
+- ✅ **Consumable use** (the last B-deferred SIM-TODO): dispatch extracted to
+  `BattleEngine.apply_consumable_effect` (battle_scene + sim share it);
+  `PlayerPolicy.decide_items` triage hook on L1/L2; runner applies + records
+  `kind:item` spends. Consumable lift is now measurable.
+- ✅ **Archetype drafters** (`--archetype burn|control|protocol|value`):
+  data-driven affinity on item effect.type biases choose_draft /
+  choose_intercept_draft; ties fall back to L1 rarity. Layered on L1/L2
+  (`describe()` → `l1_burn` etc.). Answers "is X OP in the build that wants
+  it." Verified: control drafter picks corrosion_bomb/cascade_jammer the value
+  drafter skips.
 
-**Next: Package D / E** per the original sim prompt (unchanged), with the
-determinism gate after every package.
+**Sim-discovered fix en route:** Detonate vs a permanent burn (see the Package
+C note) — the sim's first real combat bug, caught by L0/L1 telemetry.
+
+**Next: Package E** (CI hook — nightly smoke + balance-report baseline diff),
+with the determinism gate.
 
 `# SIM-TODO(kev)` markers flag any ambiguity taken at the smallest defensible interpretation; grep the sim tree for them.
 

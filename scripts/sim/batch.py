@@ -41,12 +41,14 @@ def godot_bin() -> str:
     return os.environ.get("GODOT", DEFAULT_GODOT)
 
 
-def run_one(seed: int, squad: str, op: str, policy: str, grant: str, out_path: Path) -> dict:
+def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, out_path: Path) -> dict:
     args = [godot_bin(), "--headless", "--path", str(ROOT), SCENE, "--",
             "--seed", str(seed), "--squad", squad, "--op", op,
             "--policy", policy, "--out", str(out_path)]
     if grant:
         args += ["--grant", grant]
+    if archetype:
+        args += ["--archetype", archetype]
     t0 = time.time()
     proc = subprocess.run(args, capture_output=True, text=True)
     return {"seed": seed, "rc": proc.returncode, "secs": round(time.time() - t0, 2),
@@ -63,6 +65,7 @@ def main() -> int:
     ap.add_argument("--squad", default="", help="fixed squad (else uniform 3-of-8 per run)")
     ap.add_argument("--op", default="", help="fixed op (else uniform per run)")
     ap.add_argument("--grant", default="", help="forced content ids for a Stage-2 arm")
+    ap.add_argument("--archetype", default="", help="draft bias: burn|control|protocol|value")
     ap.add_argument("--out-root", default=str(ROOT / "results"))
     args = ap.parse_args()
 
@@ -75,12 +78,13 @@ def main() -> int:
         seed = args.seed_base + i
         squad = args.squad or ",".join(picker.sample(HEROES, 3))
         op = args.op or picker.choice(OPS)
-        jobs.append((seed, squad, op, args.policy, args.grant, out_dir / f"run_{seed}.jsonl"))
+        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, out_dir / f"run_{seed}.jsonl"))
 
     manifest = {
         "name": args.name, "runs": args.runs, "policy": args.policy,
         "seed_base": args.seed_base, "squad": args.squad or "random",
-        "op": args.op or "random", "grant": args.grant, "godot": godot_bin(),
+        "op": args.op or "random", "grant": args.grant,
+        "archetype": args.archetype, "godot": godot_bin(),
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

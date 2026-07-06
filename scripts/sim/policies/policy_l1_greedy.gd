@@ -14,9 +14,23 @@ extends "res://scripts/sim/policies/player_policy.gd"
 
 const RARITY_RANK := {"legendary": 4, "epic": 3, "rare": 3, "uncommon": 2, "common": 1, "": 2}
 
+# Archetype draft bias (Package D). A drafter prefers content whose effect
+# matches its build tag; ties and no-match fall back to L1's rarity pick. This
+# is what makes "is X OP in the build that WANTS it" answerable. Matched on
+# item effect.type substrings (data-driven, no hand-tagging). "value" = the
+# default L1 rarity picker (no bias). Layered on any play policy (L2 inherits).
+const ARCHETYPE_AFFINITY := {
+	"burn": ["burn", "detonate", "ignit"],
+	"control": ["freeze", "rfe", "reroll", "jam", "rewrite", "cloak"],
+	"protocol": ["protocol"],
+	"value": [],
+}
+
+var archetype: String = ""  # "" or "value" = unbiased rarity pick
+
 
 func describe() -> String:
-	return "l1"
+	return "l1" if archetype == "" or archetype == "value" else "l1_%s" % archetype
 
 
 # ── Round: focus fire + band-aware spends ─────────────────────────────────────
@@ -138,19 +152,20 @@ func _band_improves(engine: BattleEngine, hero_state: Dictionary, eff_now: int, 
 	return band_now != band_then
 
 
-# ── Draft: highest rarity wins; gear goes to the least-geared hero. ───────────
+# ── Draft: archetype affinity first (if set), then rarity; gear to the
+# least-geared hero. Score = (affinity, rarity) lexicographically. ────────────
 func choose_draft(items: Array, gs: Node) -> Dictionary:
 	var best: ItemData = null
-	var best_rank: int = -1
+	var best_key: Array = [-1, -1]
 	for item_variant in items:
 		var item: ItemData = item_variant as ItemData
 		if item == null:
 			continue
 		if item.item_type == "consumable" and (gs.get("consumables") as Array).size() >= int(gs.get("MAX_CONSUMABLES")):
 			continue
-		var rank: int = int(RARITY_RANK.get(str(item.rarity).to_lower(), 2))
-		if rank > best_rank:
-			best_rank = rank
+		var key: Array = [_affinity(item), int(RARITY_RANK.get(str(item.rarity).to_lower(), 2))]
+		if key[0] > best_key[0] or (key[0] == best_key[0] and key[1] > best_key[1]):
+			best_key = key
 			best = item
 	if best == null:
 		return {"id": "", "target_unit": ""}
@@ -158,6 +173,19 @@ func choose_draft(items: Array, gs: Node) -> Dictionary:
 	if best.item_type == "gear":
 		target_unit = _least_geared_unit(gs)
 	return {"id": best.id, "target_unit": target_unit}
+
+
+# 1 if the item's effect matches the active archetype, else 0 (always 0 for
+# "value"/unset — the default rarity picker).
+func _affinity(item: ItemData) -> int:
+	var tags: Array = ARCHETYPE_AFFINITY.get(archetype, [])
+	if tags.is_empty():
+		return 0
+	var etype: String = str((item.effect as Dictionary).get("type", "")).to_lower()
+	for tag in tags:
+		if etype.contains(str(tag)):
+			return 1
+	return 0
 
 
 func _least_geared_unit(gs: Node) -> String:
@@ -220,15 +248,17 @@ func choose_intercept(_card_id: String, card: Dictionary, gs: Node) -> Dictionar
 	return {"choice": best_index, "hero_id": hero_id, "gear": gear_context}
 
 
-# In-card draft: highest rarity.
+# In-card draft: archetype affinity first, then rarity.
 func choose_intercept_draft(options: Array, _gs: Node) -> String:
 	var best_id: String = ""
-	var best_rank: int = -1
+	var best_key: Array = [-1, -1]
 	for option_variant in options:
 		var item: ItemData = DataManager.get_item(str(option_variant)) as ItemData
-		var rank: int = int(RARITY_RANK.get(str(item.rarity).to_lower(), 2)) if item != null else 0
-		if rank > best_rank:
-			best_rank = rank
+		if item == null:
+			continue
+		var key: Array = [_affinity(item), int(RARITY_RANK.get(str(item.rarity).to_lower(), 2))]
+		if key[0] > best_key[0] or (key[0] == best_key[0] and key[1] > best_key[1]):
+			best_key = key
 			best_id = str(option_variant)
 	return best_id
 
