@@ -584,7 +584,7 @@ func _drift_pip(from_position: Vector2, to_card: Control, color: Color, text: St
 
 
 # Decloak (pkg8.4): the ghosted portrait resolves sharp with a brief white
-# pierce flash.
+# flash.
 func _resolve_portrait_sharp(card: Control) -> void:
 	if card == null or not is_instance_valid(card):
 		return

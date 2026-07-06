@@ -814,10 +814,9 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var roll_buff_targeted: bool = bool(raw.get("rfmTgt", false)) or shield_targeted or heal_targeted
 	var ignores_shield: bool = bool(raw.get("ignSh", false))
 
-	# The first attack made from Cloak gains Pierce, and dealing damage breaks
-	# the cloak.
+	# Dealing damage breaks the cloak (no pierce — the decloak strike is a
+	# plain attack; Ambush Wiring / Ghostblade add their own effects).
 	if damage > 0 and bool(hero_state.get("cloaked", false)):
-		ignores_shield = true
 		hero_state["cloaked"] = false
 		# Ambush Wiring directive: attacks from Cloak hit harder.
 		if _has_directive(hero_state, "cloakAttackBonus"):
@@ -826,7 +825,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		# the damage pass).
 		if _has_directive(hero_state, "decloakExecute"):
 			hero_state["decloak_execute_pending"] = true
-		_log("%s strikes from the shadows — the attack PIERCES!" % hero_state["unit"].display_name)
+		_log("%s strikes from the shadows!" % hero_state["unit"].display_name)
 		_emit_event(hero_state, "decloak", 0, "hero")
 
 	if damage > 0:
@@ -1378,13 +1377,11 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if heal > 0:
 		_heal_state(enemy_state, heal)
 
-	# The first attack made from Cloak gains Pierce and breaks the cloak
-	# (Geode Panther decloak-strike).
-	var enemy_attack_pierces: bool = false
+	# Dealing damage breaks the cloak (no pierce — Geode Panther's
+	# decloak-strike is a plain attack).
 	if damage > 0 and bool(enemy_state.get("cloaked", false)):
-		enemy_attack_pierces = true
 		enemy_state["cloaked"] = false
-		_log("%s strikes from the shadows — the attack PIERCES!" % enemy_state["unit"].display_name)
+		_log("%s strikes from the shadows!" % enemy_state["unit"].display_name)
 		_emit_event(enemy_state, "decloak", 0, "enemy")
 
 	if damage > 0:
@@ -1418,7 +1415,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 					continue
 				attack_connected = true
 				_break_cloak_on_aoe(hero_state)
-				_damage_state(hero_state, final_damage, enemy_attack_pierces, enemy_state)
+				_damage_state(hero_state, final_damage, false, enemy_state)
 				_apply_burn(hero_state, burn_amount, burn_turns)
 			var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 			if lifesteal_pct > 0 and final_damage > 0:
@@ -1436,7 +1433,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				_log("%s finds no visible target — the attack fizzles." % enemy_state["unit"].display_name)
 			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
 				attack_connected = true
-				_damage_state(target_hero, final_damage, enemy_attack_pierces, enemy_state)
+				_damage_state(target_hero, final_damage, false, enemy_state)
 				_apply_burn(target_hero, burn_amount, burn_turns)
 				var lifesteal_pct: int = int(raw.get("lifestealPct", 0))
 				if lifesteal_pct > 0 and final_damage > 0:

@@ -91,7 +91,7 @@ Drive feedback from a TABLE, not branching code, so new effects = new rows.
 | `mark` | gold "◎ MARKED" crosshair stamp punch |
 | `block` (amount 0 = firewall) | hex flash (flat cyan hexagon pop) + "✕ NEGATED" tick |
 | `leech` | dim red return tracer from the drained enemy (paired `leech` event) + the heal event's green number |
-| `decloak` | portrait resolves sharp + white pierce flash |
+| `decloak` | portrait resolves sharp + white flash |
 | `freeze` | crust + tint on the die (ice cyan / petrify stone-gray) |
 | nat-20 overload | + ability-name slam across the acting card (pkg8.3) |
 

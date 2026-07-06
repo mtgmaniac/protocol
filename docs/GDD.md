@@ -222,7 +222,7 @@ composition (who contributes what) lives in the ability readout pips.
 |---|---|
 | Burn | X damage at end of each round for N turns (chips can Detonate it) |
 | Frozen / Petrified | Die locked; the unit skips its next N reveals (petrify = Accretion stone flavor) |
-| Cloaked | Untargetable by single-target abilities; breaks on dealing damage or an AoE hit; first attack from Cloak pierces |
+| Cloaked | Untargetable by hostile single-target abilities; breaks on dealing damage or an AoE hit |
 | Firewall | Blocks the next ability that targets this unit, then breaks |
 | Mark | Next hit on this unit deals +50%, then consumed |
 | Spike | This round, attackers that connect take N back (readout only) |

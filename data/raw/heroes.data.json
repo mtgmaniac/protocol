@@ -2167,7 +2167,7 @@
       "name": "Ghost Operative",
       "cls": "INFILTRATOR",
       "pickerCategory": "control",
-      "pickerBlurb": "Cloaks past big hits and strikes from stealth with pierce.",
+      "pickerBlurb": "Cloaks past big hits and strikes from stealth.",
       "hp": 45,
       "sk": "ghost",
       "abilities": [

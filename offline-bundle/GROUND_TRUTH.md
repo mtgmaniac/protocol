@@ -99,7 +99,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 | Hijack | HJ | `hijack: true` (enemy) | enemy's next roll copies the heroes' current highest die |
 | Siphon | SI | `siphon: N` (enemy) | on hit, drain N Protocol (floor 0) via `take_pending_protocol_drain` |
 
-**Cloak (reworked):** untargetable by hostile single-target abilities (manual targeting, AI, and resolve-time retarget all skip cloaked units); breaks when the unit deals damage OR is hit by an AoE; the first attack made from Cloak gains Pierce. `battleStartCloak` gear inherits.
+**Cloak (simplified in the keyword batch):** untargetable by hostile single-target abilities (manual targeting, AI, and resolve-time retarget all skip cloaked units); breaks when the unit deals damage OR is hit by an AoE. The former "first attack from Cloak gains Pierce" clause is REMOVED — decloak strikes are plain attacks (Ambush Wiring / Ghostblade add their own effects). `battleStartCloak` gear inherits.
 
 **One keyword per ability** (pierce counts), **two allowed in the overload zone** — enforced by `audit_ability_keywords.py`.
 
