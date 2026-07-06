@@ -1,3 +1,5 @@
+> ARCHIVED 2026-07-06: superseded by docs/TRUTH.md. Do not use for implementation decisions.
+
 # Handoff — Loadout / Item-targeting UX bugs
 
 Branch: `feat/inspect-popup-ui`. The long-press **InspectPopup** + **LoadoutMenu** + item-targeting **ItemCard** work is in place and mostly working. Two UX bugs remain to tackle, plus one still-unresolved item below.

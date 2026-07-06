@@ -7,6 +7,9 @@ shared UI-free `BattleEngine`, not duplicated) and **determinism** (same seed +
 same config → byte-identical JSONL). Full architecture + coupling map:
 [`DECOUPLING_NOTES.md`](DECOUPLING_NOTES.md).
 
+> **Rules reference:** [`docs/TRUTH.md`](../../docs/TRUTH.md) is the canonical game-rules
+> doc (wins every doc conflict) and documents the current `baseline.json` numbers.
+
 ## One run
 
 ```bash

@@ -1,5 +1,8 @@
 # Overload Protocol — GROUND TRUTH (Offline Reference)
-*Generated for offline work. This reconciles every conflicting doc in the repo. When a doc disagrees with this file, this file wins — it was built by reading the actual `data/raw/` content and `scripts/` code, not the stale design docs.*
+
+> **SUPERSEDED 2026-07-06 by `docs/TRUTH.md`** — the verified canonical reference. This file remains only as the offline-bundle snapshot; when it disagrees with `docs/TRUTH.md`, TRUTH.md wins.
+
+*Generated for offline work. This reconciles every conflicting doc in the repo. It was built by reading the actual `data/raw/` content and `scripts/` code, not the stale design docs.*
 
 ---
 

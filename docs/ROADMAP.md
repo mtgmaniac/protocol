@@ -1,6 +1,6 @@
 # Overload Protocol Roadmap
 
-> **Agents:** Read `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md` first. Portrait **1080×2400**, **3-unit** squads, **5 operations**, healer **Splice Medic** — not landscape, not 4-unit, not Phase 0.
+> **Agents:** Read `docs/TRUTH.md` first (canonical — wins every doc conflict), then `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md`. Portrait **1080×2400**, **3-unit** squads, **5 operations**, healer **Splice Medic** — not landscape, not 4-unit, not Phase 0.
 
 This roadmap is the practical plan for the Godot project that already exists in
 this repo — not a greenfield build spec.
@@ -101,10 +101,12 @@ Rules:
 
 ### Goal 3 — Consolidate documentation and context
 
-**Done (2026-06-21):** `docs/CLAUDE.md`, `docs/GDD.md`, and this file reconciled to
-`offline-bundle/GROUND_TRUTH.md` (portrait, 3-unit, Splice Medic, 5 ops).
-`docs/PHASE_0_STATUS.md` marked obsolete. Ongoing: keep `docs/AI_AGENT_GAME_REFERENCE.md`
-and `docs/BASELINE.md` current after each merge.
+**Done (2026-06-21):** `docs/CLAUDE.md`, `docs/GDD.md`, and this file reconciled
+(portrait, 3-unit, Splice Medic, 5 ops).
+**Done (2026-07-06):** full reconciliation into **`docs/TRUTH.md`** — the single
+canonical reference (verified against code; supersedes `offline-bundle/GROUND_TRUTH.md`).
+Superseded docs moved to `docs/archive/`. Ongoing: keep `docs/TRUTH.md` and
+`docs/AI_AGENT_GAME_REFERENCE.md` current after each merge.
 
 ## 4. Medium-Term Goals
 

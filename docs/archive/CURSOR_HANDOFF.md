@@ -1,3 +1,5 @@
+> ARCHIVED 2026-07-06: superseded by docs/TRUTH.md. Do not use for implementation decisions.
+
 # Cursor handoff — read this first (one-shot, Jun 2026)
 
 **Purpose:** Resume work without re-explaining context. Delete or archive after the next session picks up.

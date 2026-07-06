@@ -1,3 +1,5 @@
+> ARCHIVED 2026-07-06: superseded by docs/TRUTH.md. Do not use for implementation decisions.
+
 # Phase 0 Status
 
 > ⛔ **OBSOLETE — do not use for orientation.** This file describes setup work that is long complete. Read `offline-bundle/GROUND_TRUTH.md` instead.

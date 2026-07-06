@@ -9,17 +9,17 @@ find a pointer to the live docs.
 
 Read these before doing anything:
 
+- [docs/TRUTH.md](docs/TRUTH.md) — **canonical; wins every doc conflict**
 - [docs/AI_AGENT_GAME_REFERENCE.md](docs/AI_AGENT_GAME_REFERENCE.md)
 - [docs/BATTLE_UI_V2_SPEC.md](docs/BATTLE_UI_V2_SPEC.md)
-- [offline-bundle/GROUND_TRUTH.md](offline-bundle/GROUND_TRUTH.md)
 - [offline-bundle/CODEBASE_MAP.md](offline-bundle/CODEBASE_MAP.md)
 
-When any doc conflicts, **GROUND_TRUTH.md wins**.
+When any doc conflicts, **docs/TRUTH.md wins** (it supersedes `offline-bundle/GROUND_TRUTH.md`).
 
 ## Orientation
 
 **Portrait** — internal viewport `1080×2400`, desktop preview `450×1000`. The old
-landscape / Phase 0 docs are obsolete; see [docs/PHASE_0_STATUS.md](docs/PHASE_0_STATUS.md).
+landscape / Phase 0 docs are archived under `docs/archive/` — do not use them.
 
 ## Visual theming — single source of truth
 

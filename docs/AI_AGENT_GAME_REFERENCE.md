@@ -7,7 +7,7 @@ start with the right assumptions.
 
 Last refreshed from local source on 2026-07-01.
 
-**Also read:** [BASELINE.md](BASELINE.md) (verify runners + tag), [AGENTS.md](../AGENTS.md) (branch split).
+**Also read:** [TRUTH.md](TRUTH.md) (canonical reference — wins every doc conflict; verify commands + sim baseline), [AGENTS.md](../AGENTS.md) (branch split).
 
 ## 1. Project Basics
 

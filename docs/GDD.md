@@ -1,6 +1,6 @@
 # Overload Protocol — Game Design Document
 
-> **Agents:** Prefer `docs/AI_AGENT_GAME_REFERENCE.md`, `docs/BATTLE_UI_V2_SPEC.md`, and `offline-bundle/GROUND_TRUTH.md` for runtime truth. This GDD is design context; when it conflicts with code/data, ground truth wins.
+> **Agents:** This GDD is **design intent, not runtime truth**. For runtime facts read **`docs/TRUTH.md`** (canonical — wins every doc conflict), plus `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md`. When this GDD conflicts with TRUTH.md or code, they win.
 
 **Version:** 0.3 (Active Development)
 **Platform:** Mobile First (Android), portrait 1080×2400 (preview 450×1000)

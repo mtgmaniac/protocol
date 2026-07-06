@@ -1,3 +1,5 @@
+> ARCHIVED 2026-07-06: superseded by docs/TRUTH.md. Do not use for implementation decisions.
+
 # Angular to Godot Mapping
 
 This document now exists mostly as migration context, not as the primary source

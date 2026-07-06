@@ -8,7 +8,9 @@
 
 Pick **one item**, implement, test, commit. Don't batch unrelated work.
 
-**Repo:** `C:\Users\Kev\Documents\protocol` · **Baseline:** `docs/BASELINE.md`, tag `baseline-fable-restart`
+**Canonical reference:** `docs/TRUTH.md` (read first; wins every doc conflict — includes verify commands and the sim baseline).
+
+**Repo:** `C:\Users\Kev\Documents\protocol` · **Baseline tag:** `baseline-fable-restart` (verify commands now in `docs/TRUTH.md`; old `BASELINE.md` archived)
 
 **Branches:** `fix/cleanup` = backend/data/combat (no UI) · `codex/*` / `feat/ui-redesign` = UI · `main` = stable
 
@@ -24,7 +26,7 @@ Active threads — already in motion; continue when you pick them up, don't rest
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| **Task 5 — Facility balance & content** | `fix/cleanup` | **Paused** — no sim runs until post-UI finalize pass. D1 target: **25–40%** skilled full-clear in real play (items/protocol/relic); flat sim ~1.7% is reference only, not tuning target. |
+| **Task 5 — Facility balance & content** | `fix/cleanup` | **Paused** — no sim runs until post-UI finalize pass. D1 target: **25–40%** skilled full-clear in real play (items/protocol/relic). Current sim baseline (`scripts/sim/baseline.json`, l1 policy, 300 runs): facility **0.77**, overall **0.53** — reference, not tuning target. (The old "flat sim ~1.7%" was the pre-policy L0 figure; do not compare.) |
 | **Parallel UI polish** | `feat/ui-redesign`, `codex/*` | Direction-05 UI, battle/reward/evolution/unit-select readability. Separate from backend pass. |
 
 **Task 5 prompt (when continuing):**
@@ -121,7 +123,7 @@ Scenes, layout, cards, feedback, audio, themes. **`feat/ui-redesign` / `codex/*`
 >
 > **Do not add:** `OTHERS`, `ALL·FOE`, or extra enemy-specific scope names. Abilities that hit **all enemies** are already obvious from **damage** / debuff chips — no separate target badge needed for foe-wide hits.
 >
-> **UI work:** One target badge per ability row when scope is SELF / ALLY / ALL (`battle_card_view.gd`, `ability_readout.gd`, chip tooltips). Drop bare **A** suffix — use **ally** vs **all** in copy. **`eff` strings:** `8 heal ally` · `13 heal all` · `6 shield all 2t` per `GROUND_TRUTH.md`.
+> **UI work:** One target badge per ability row when scope is SELF / ALLY / ALL (`battle_card_view.gd`, `ability_readout.gd`, chip tooltips). Drop bare **A** suffix — use **ally** vs **all** in copy. **`eff` strings:** `8 heal ally` · `13 heal all` · `6 shield all 2t` per `docs/TRUTH.md`.
 >
 > **Data pass:** Fix abilities that should be **ALL** but use split keywords (e.g. Bulwark Link → `shieldAllyAll`; see Guard task). No “others only” keyword unless combat gains one later.
 
@@ -227,7 +229,7 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 | **Dead-code purge (Jul 2026)** | ~2,400 lines: 44 dead funcs, 40 consts, 3 dead files, generated-icon folder; icon maps unified through PixelUI |
 | **Architecture review (Jul 2026)** | `docs/ARCHITECTURE_REVIEW_JUL2026.md` — read before large refactors (sim-engine decision gates Task 5) |
 | Doc drift (Task 0) | `CLAUDE.md`, `GDD.md`, `ROADMAP.md` reconciled |
-| Baseline (Task 1) | `docs/BASELINE.md`, tag `baseline-fable-restart`, 78/78 ability audit |
+| Baseline (Task 1) | `docs/archive/BASELINE.md` (historical), tag `baseline-fable-restart`, 78/78 ability audit (now 214+) |
 | **Task 2 — battle_scene split** | `battle_layout.gd`, `battle_card_view.gd`, `battle_feedback.gd` |
 | **Task 4 — Ability audit** | 78 passed Godot; 0 Python keyword gaps |
 | Sim `gainProtocol` | Charge pool in `battle-progress-sim.lib.ts` |
@@ -264,7 +266,7 @@ codebase; tune here, don't self-tune elsewhere.
 | `battle_scene.gd` | Reverse Gimbal flip interaction (tap again to swap); friendly picks on cloaked allies stay legal |
 | `main_menu.gd` | Tutorial-done shows a checkmark vs hiding the button |
 | `GameState.gd` | Tutorial runs count toward runs_started; Loadout Swap "freely re-equip" is a one-slot rotate until a re-equip UI exists |
-| **Task 10 — Protocol economy** | Cap 10, +1/turn, nudge 1 (+3), reroll 2, set 3, item 1; Protocol Override cost 0 + grant +1 — verified vs `GROUND_TRUTH.md` |
+| **Task 10 — Protocol economy** | Cap 10, +1/turn, nudge 1 (+3), reroll 2, set 3, item 1; Protocol Override cost 0 + grant +1 — verified vs `docs/TRUTH.md` |
 | **Task 12 — Normalize `eff` text** | `audit_eff_text.py` → 0 mismatches |
 | **Task 13 — Picker blurbs (data)** | All 8 heroes in JSON + DataManager |
 | **Hygiene — `project.godot*.tmp`** | Untracked 2 Godot editor temp files from git index |
@@ -294,7 +296,7 @@ Compact enemy card mode when battle layout has 4–5 enemies — smaller/half-he
 
 ### Task 7 — Rename `dot` → `burn` (lockstep code + data)
 
-Pure rename, no mechanic change. Workbook/GROUND_TRUTH already use burn naming; game still uses `dot`/`poison` in code and data.
+Pure rename, no mechanic change. Workbook/TRUTH.md already use burn naming; game still uses `dot`/`poison` in code and data.
 
 **Why parked:** large touch surface (combat_manager, DataManager, sim, audits, status UI); must be one session with no partial loads.
 
@@ -307,7 +309,7 @@ Pure rename, no mechanic change. Workbook/GROUND_TRUTH already use burn naming; 
 
 | Topic | Status | Notes |
 |-------|--------|-------|
-| **Facility full-clear target (D1)** | **Pinned** | 25–40% skilled full-clear in real play; flat sim ~1.7% is reference only |
+| **Facility full-clear target (D1)** | **Pinned** | 25–40% skilled full-clear in real play; sim baseline (l1, `scripts/sim/baseline.json`) facility 0.77 is reference only (old "flat sim ~1.7%" = superseded L0 figure) |
 | **Evolution XP (D2)** | **Done** | Avg-roll model, 100 XP gate, one evo per win + deferred queue |
 | **Shield hero viability (D3)** | **Deferred** | Leave kit as-is until finalize + richer sim |
 | **Synth Warden vs Combat Medic** | **In tune queue** | See Data → Synth Warden / Combat Medic evo tune (Jun 2026 playtest feedback) |

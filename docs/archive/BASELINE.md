@@ -1,3 +1,5 @@
+> ARCHIVED 2026-07-06: superseded by docs/TRUTH.md. Do not use for implementation decisions.
+
 # Known-good baseline (Task 1)
 
 **Established:** 2026-06-21  
