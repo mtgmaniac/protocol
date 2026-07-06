@@ -286,8 +286,33 @@ n.s. at 150 runs — the confound the prompt names, correctly deflated).
 **Sim-discovered fix en route:** Detonate vs a permanent burn (see the Package
 C note) — the sim's first real combat bug, caught by L0/L1 telemetry.
 
-**Next: Package E** (CI hook — nightly smoke + balance-report baseline diff),
-with the determinism gate.
+**Package E COMPLETE** (CI hook — balance regression test):
+- ✅ `analyze.py --metrics` — machine-readable metrics JSON (overall/op/hero
+  clear rates, ridge content lifts). Deterministic (fixed batch + fixed
+  bootstrap seed).
+- ✅ `scripts/sim/ci_smoke.py` — runs a PINNED batch (l1, seed-base 900000,
+  300 runs), computes metrics, diffs vs `scripts/sim/baseline.json` with
+  tolerances; exits non-zero on any balance shift. `--update-baseline` to
+  re-accept, `--runs 2000` for a heavier nightly. Because the sim is
+  byte-deterministic and the config is pinned, an unchanged tree reproduces
+  the baseline exactly — the diff is an exact regression test.
+- Verified end to end: perturbing Scrap Drone HP 35→90 flagged 18 metrics
+  (facility clear 78.9%→19.7%); reverted, CI PASS.
+
+**Determinism hole closed during E:** combat_manager's summon/vent/charge
+global-RNG calls were unseeded — broad batches were non-reproducible. Fixed
+(seed per run) + the determinism gate hardened to a config matrix incl. a
+summon-heavy op. The sim-C batch caught it; the narrow A-gate had missed it.
+
+**BALANCE SIM PROJECT COMPLETE (A–E).** First findings for Kev:
+- Avalanche squad is the standout (+2.86 log-odds; 84% L1 clear vs ~45%).
+- Clear rates run above the GDD band (L1 ~50%, L2 85% vs target 25–40% /
+  55–70%) — the game may be a touch easy at the measured skill tiers.
+- Sim-discovered bug: Detonate vs a permanent burn (fixed).
+- Two DESIGN-TODO(kev) left for balance calls, not code: permanent-burn
+  Detonate value, and the freeze bank/thaw-vs-lockout reading.
+Run a real screen: `python scripts/sim/batch.py --name screen --runs 20000
+--policy l1 && python scripts/sim/analyze.py results/screen -o report.md`.
 
 `# SIM-TODO(kev)` markers flag any ambiguity taken at the smallest defensible interpretation; grep the sim tree for them.
 

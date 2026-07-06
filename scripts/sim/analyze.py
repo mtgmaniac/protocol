@@ -270,6 +270,38 @@ def evolution_pickrate_table(df: pd.DataFrame) -> str:
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
+def metrics_from_dir(d: Path) -> dict:
+    """Machine-readable balance metrics for the CI baseline diff (Package E).
+    Deterministic given a fixed batch (the sim is byte-deterministic and the
+    bootstrap uses a fixed numpy seed), so the baseline diff is an exact
+    regression test — any data/rule change that shifts balance shows up here."""
+    df = load_dir(d)
+    m = {
+        "runs": int(len(df)),
+        "policy": str(df["policy"].iloc[0]),
+        "overall_clear": round(float(df["full_clear"].mean()), 4),
+        "clear_by_op": {op: round(float(sub["full_clear"].mean()), 4)
+                        for op, sub in df.groupby("op")},
+        "clear_by_hero": {c.split("__", 1)[1]: round(float(df[df[c] == 1]["full_clear"].mean()), 4)
+                          for c in sorted(df.columns) if c.startswith("hero__")},
+    }
+    # Flagged content lifts (⚠️): parse from the regression rows we can recompute.
+    lifts = {}
+    content_cols = [c for c in df.columns if c.split("__", 1)[0] in
+                    ("relic", "gear", "consumable", "hero")]
+    op_dummies = pd.get_dummies(df["op"], prefix="op", drop_first=True).astype(int)
+    keep = [c for c in content_cols
+            if df[c].sum() >= 25 and 0 < df[df[c] == 1]["full_clear"].sum() < df[c].sum()]
+    if keep:
+        base = sm.add_constant(pd.concat([df[keep], op_dummies], axis=1).astype(float), has_constant="add")
+        y = df["full_clear"].astype(float)
+        params = _ridge_fit(base, y, 2.0).params
+        for c in keep:
+            lifts[c] = round(float(params.get(c, 0.0)), 3)
+    m["content_lift"] = lifts
+    return m
+
+
 def full_report(d: Path) -> str:
     df = load_dir(d)
     clear = df["full_clear"].mean()
@@ -349,8 +381,14 @@ def main() -> int:
     ap.add_argument("--ab", nargs=2, metavar=("TREAT", "CTRL"), help="A/B compare two dirs")
     ap.add_argument("--skillband", nargs=2, metavar=("LOW", "HIGH"),
                     help="L1 vs L2 clear-rate gap per config")
+    ap.add_argument("--metrics", action="store_true",
+                    help="emit machine-readable metrics JSON (for the CI baseline)")
     args = ap.parse_args()
-    if args.ab:
+    if args.metrics:
+        if not args.dir:
+            ap.error("--metrics needs a batch dir")
+        report = json.dumps(metrics_from_dir(Path(args.dir)), indent=2)
+    elif args.ab:
         report = ab_report(Path(args.ab[0]), Path(args.ab[1]))
     elif args.skillband:
         report = skillband_report(Path(args.skillband[0]), Path(args.skillband[1]))
