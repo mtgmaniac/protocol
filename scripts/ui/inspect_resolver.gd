@@ -194,7 +194,7 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if bool(state.get("cloaked", false)):
 		entries.append(_status_entry("cloak", EffectPip.keyword_code("cloak", "C"), 0, _status_text("cloak", "", 0)))
 	if bool(state.get("warded", false)):
-		entries.append(_status_entry("ward", EffectPip.keyword_code("ward", "W"), 0, _status_text("ward", "", 0)))
+		entries.append(_status_entry("ward", EffectPip.keyword_code("ward", "FW"), 0, _status_text("ward", "", 0)))
 	if bool(state.get("marked", false)):
 		entries.append(_status_entry("mark", EffectPip.keyword_code("mark", "MK"), 0, _status_text("mark", "", 0)))
 	if int(state.get("rampage_charges", 0)) > 0:
@@ -328,7 +328,7 @@ static func _status_keyword(kind: String) -> String:
 		"rampage":
 			return "RAMPAGE"
 		"ward":
-			return "WARD"
+			return "FIREWALL"
 		"mark":
 			return "MARKED"
 	return kind.to_upper()

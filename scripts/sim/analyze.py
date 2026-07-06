@@ -26,7 +26,7 @@ from scipy import stats
 KEYWORD_EVENTS = {
     "chain": "Chain", "detonate": "Detonate", "execute": "Execute",
     "breach": "Breach", "leech": "Leech", "spike": "Spike",
-    "mark_consumed": "Mark", "siphon": "Siphon", "block": "Ward/Block",
+    "mark_consumed": "Mark", "siphon": "Siphon", "block": "Firewall/Block",
     "freeze": "Freeze", "hijack": "Hijack",
 }
 

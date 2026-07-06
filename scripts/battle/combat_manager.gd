@@ -99,7 +99,7 @@ const DETONATE_MAX_TURNS := 6
 const BOSS_STANDING_RULES := {
 	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP.",
 	BOSS_MATRIARCH: "THE BROOD — spawns a Bloodmite every 3 rounds.",
-	BOSS_OVERSEER: "THE COURT — while any ally lives, gains Ward at the start of each round.",
+	BOSS_OVERSEER: "THE COURT — while any ally lives, gains a Firewall at the start of each round.",
 	BOSS_HIEROPHANT: "ROOT ACCESS — every round, Rewrites the squad's highest die to 3.",
 	BOSS_MANTLE: "ACCRETION — gains 6 shield at the start of every round; its shields persist and stack.",
 }
@@ -117,7 +117,7 @@ static func get_boss_standing_rule(display_name: String) -> String:
 
 
 # Round-start rules (before the hero phase, so they matter this round):
-# Overseer's Ward and the Mantle Tyrant's accreted plate.
+# Overseer's Firewall and the Mantle Tyrant's accreted plate.
 func _apply_boss_round_start_rules() -> void:
 	for enemy_state in _enemy_states:
 		if bool(enemy_state["dead"]):
@@ -130,7 +130,7 @@ func _apply_boss_round_start_rules() -> void:
 						court_stands = true
 						break
 				if court_stands and not bool(enemy_state.get("warded", false)):
-					_log("The Court stands — the Overseer is Warded.")
+					_log("The Court stands — the Overseer raises a Firewall.")
 					_apply_ward(enemy_state)
 			BOSS_MANTLE:
 				_log("The Tyrant accretes its mantle.")
@@ -1817,7 +1817,7 @@ func _wipe_all_hero_shields(source_state: Dictionary = {}) -> void:
 		_emit_event(source_state, "wipe_shields", 0, "enemy")
 
 
-# --- Ward ---
+# --- Ward (displayed as "Firewall") ---
 # Ward blocks the next ability that targets this unit, then breaks. It is not
 # damage-based: an AoE that includes the unit is blocked for that unit only.
 # Every hostile component of the SAME ability (damage, burn, debuff, freeze) is
@@ -1829,7 +1829,7 @@ func _apply_ward(state: Dictionary) -> void:
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	state["warded"] = true
-	_log("%s is Warded — the next ability that targets them is blocked." % state["unit"].display_name)
+	_log("%s raises a Firewall — the next ability that targets them is blocked." % state["unit"].display_name)
 	_emit_event(state, "ward", 0, _resolve_side_for_state(state))
 
 
@@ -1843,7 +1843,7 @@ func _ward_blocks_hostile(target_state: Dictionary) -> bool:
 		return false
 	target_state["warded"] = false
 	_ability_ward_blocked_ids[target_id] = true
-	_log("%s's Ward blocks the ability!" % target_state["unit"].display_name)
+	_log("%s's Firewall blocks the ability!" % target_state["unit"].display_name)
 	_emit_event(target_state, "block", 0, _resolve_side_for_state(target_state))
 	return true
 

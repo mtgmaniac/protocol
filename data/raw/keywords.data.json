@@ -157,11 +157,11 @@
     },
     {
       "id": "ward",
-      "term": "Ward",
+      "term": "Firewall",
       "category": "defense",
       "def": "Blocks the next ability that targets this unit, then breaks. An AoE that includes the unit is blocked for that unit only.",
-      "syntax": "ward",
-      "code": "W"
+      "syntax": "firewall",
+      "code": "FW"
     },
     {
       "id": "lure",

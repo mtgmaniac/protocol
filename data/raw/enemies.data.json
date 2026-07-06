@@ -890,7 +890,7 @@
     "veilAegis": {
       "recharge": {
         "name": "Lattice Link",
-        "eff": "6 shield, ally 6 shield, +1 roll to allies, 2t, ward",
+        "eff": "6 shield, ally 6 shield, +1 roll to allies, 2t, firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -933,7 +933,7 @@
       },
       "crit": {
         "name": "Fortress Lash",
-        "eff": "18 dmg, ally 9 shield, +2 roll to allies, 2t, ward",
+        "eff": "18 dmg, ally 9 shield, +2 roll to allies, 2t, firewall",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
@@ -948,7 +948,7 @@
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20, ward",
+        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20, firewall",
         "dmg": 20,
         "burn": 0,
         "burnT": 0,
@@ -967,7 +967,7 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 heal, 7 shield, +1 roll to allies, 2t, ward",
+        "eff": "7 heal, 7 shield, +1 roll to allies, 2t, firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1067,7 +1067,7 @@
       },
       "crit": {
         "name": "Annulment",
-        "eff": "19 dmg, ward",
+        "eff": "19 dmg, firewall",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
@@ -1158,7 +1158,7 @@
     "veilSynapse": {
       "recharge": {
         "name": "Synaptic Tune",
-        "eff": "+2 roll to allies, 2t, ward",
+        "eff": "+2 roll to allies, 2t, firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1359,7 +1359,7 @@
     "voidAcolyte": {
       "recharge": {
         "name": "Seal Sigil",
-        "eff": "ward",
+        "eff": "firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1392,7 +1392,7 @@
       },
       "crit": {
         "name": "Init Collar",
-        "eff": "17 dmg, ward",
+        "eff": "17 dmg, firewall",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1403,14 +1403,13 @@
       },
       "overload": {
         "name": "Ritual Clamp",
-        "eff": "18 dmg, summon ~40% nat20, ward",
+        "eff": "18 dmg, summon ~40% nat20",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "ward": true,
         "summonChance": 40,
         "summonName": "Glitch Sprite"
       }
@@ -1516,18 +1515,17 @@
       },
       "crit": {
         "name": "Dominion Mark",
-        "eff": "19 dmg, ward",
+        "eff": "19 dmg",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "ward": true
+        "shield": 0
       },
       "overload": {
         "name": "Mass Snare",
-        "eff": "21 dmg, summon ~35% nat20, ward, rewrite",
+        "eff": "21 dmg, summon ~35% nat20, firewall, rewrite",
         "dmg": 21,
         "burn": 0,
         "burnT": 0,
@@ -1586,15 +1584,14 @@
       },
       "overload": {
         "name": "Fork Collapse",
-        "eff": "19 dmg, ward, rewrite",
+        "eff": "19 dmg, rewrite",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "rewrite": true,
-        "ward": true
+        "rewrite": true
       }
     },
     "voidChanneler": {
@@ -1643,14 +1640,13 @@
       },
       "overload": {
         "name": "Warp Nova",
-        "eff": "22 dmg, 4 burn, 4t, summon ~42% nat20, ward",
+        "eff": "22 dmg, 4 burn, 4t, summon ~42% nat20",
         "dmg": 22,
         "burn": 4,
         "burnT": 4,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "ward": true,
         "summonChance": 42,
         "summonName": "Glitch Sprite"
       }
@@ -1658,7 +1654,7 @@
     "voidCircletBoss": {
       "recharge": {
         "name": "Hierophant Mantle",
-        "eff": "20 shield, ally 8 shield, +2 roll to allies, 2t, ward",
+        "eff": "20 shield, ally 8 shield, +2 roll to allies, 2t, firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1673,7 +1669,7 @@
       },
       "strike": {
         "name": "Decree of Stillness",
-        "eff": "19 dmg, -2 roll, 2t, ward",
+        "eff": "19 dmg, -2 roll, 2t",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
@@ -1681,8 +1677,7 @@
         "rfe": 0,
         "shield": 0,
         "rfm": 2,
-        "rfmT": 2,
-        "ward": true
+        "rfmT": 2
       },
       "surge": {
         "name": "Circlet Cataclysm",
@@ -1699,7 +1694,7 @@
       },
       "crit": {
         "name": "Absolute Binding",
-        "eff": "26 dmg, -3 roll, 2t, ward",
+        "eff": "26 dmg, -3 roll, 2t",
         "dmg": 26,
         "burn": 0,
         "burnT": 0,
@@ -1707,8 +1702,7 @@
         "rfe": 0,
         "shield": 0,
         "rfm": 3,
-        "rfmT": 2,
-        "ward": true
+        "rfmT": 2
       },
       "overload": {
         "name": "Void Gate",

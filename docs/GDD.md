@@ -89,7 +89,7 @@ Battle ends when one side is fully eliminated
 | **Splice Medic** | support | Team heals, Mark support, resurrection |
 | **Field Engineer** | support | Protocol generation, shields, squad buffs |
 | **Ghost Operative** | control | Cloak, decloak burst, Execute finishers |
-| **Signal Breaker** | control | ±Roll chips, Jam, Ward disruption |
+| **Signal Breaker** | control | ±Roll chips, Jam, Firewall disruption |
 
 ### Unit Card (What Appears on the Battlefield)
 Each unit is represented as a permanent portrait card. It displays:
@@ -223,7 +223,7 @@ composition (who contributes what) lives in the ability readout pips.
 | Burn | X damage at end of each round for N turns (chips can Detonate it) |
 | Frozen / Petrified | Die locked; the unit skips its next N reveals (petrify = Accretion stone flavor) |
 | Cloaked | Untargetable by single-target abilities; breaks on dealing damage or an AoE hit; first attack from Cloak pierces |
-| Ward | Blocks the next ability that targets this unit, then breaks |
+| Firewall | Blocks the next ability that targets this unit, then breaks |
 | Mark | Next hit on this unit deals +50%, then consumed |
 | Spike | This round, attackers that connect take N back (readout only) |
 | Jam / Rewrite / Hijack | Die statuses (see §6) |

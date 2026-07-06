@@ -132,7 +132,7 @@ def hero_expected(raw: dict) -> str:
     if raw.get("cloak"):
         parts.append("Cloak")
     if raw.get("ward"):
-        parts.append("ally ward" if raw.get("wardTgt") else "self ward")
+        parts.append("ally firewall" if raw.get("wardTgt") else "self firewall")
     if raw.get("taunt"):
         parts.append("taunt (picked enemy targets you)")
 
@@ -211,7 +211,7 @@ def enemy_expected(raw: dict) -> str:
         parts.append(f"summon ~{sc}% nat20")
 
     if raw.get("ward"):
-        parts.append("ward")
+        parts.append("firewall")
 
     enemy_spike = raw.get("spike") or 0
     if enemy_spike > 0:

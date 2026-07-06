@@ -47,7 +47,7 @@ function buildEnemyEffectSummary(ab) {
   if ((ab.summonChance ?? 0) > 0) parts.push(`summon ~${ab.summonChance}% nat20`);
   if ((ab.freezeAllEnemyDice ?? 0) > 0) parts.push(`freeze all (${ab.freezeAllEnemyDice} reveal skip${ab.freezeAllEnemyDice > 1 ? 's' : ''})`);
   else if ((ab.freezeEnemyDice ?? 0) > 0) parts.push(`freeze (${ab.freezeEnemyDice} reveal skip${ab.freezeEnemyDice > 1 ? 's' : ''})`);
-  if (ab.ward) parts.push('ward');
+  if (ab.ward) parts.push('firewall');
   if ((ab.grantRampage || 0) > 0) parts.push(`rampage +${ab.grantRampage}`);
   if ((ab.grantRampageAll || 0) > 0) parts.push(`rampage all +${ab.grantRampageAll}`);
   return parts.length ? parts.join(', ') : '—';

@@ -260,7 +260,7 @@ const BATTLE_MODIFIERS := {
 	"blackout": {"name": "BLACKOUT", "desc": "Protocol income starts on turn 3.", "fromTurn": 3},
 	"sealedSupplies": {"name": "SEALED SUPPLIES", "desc": "Items cost +1 Protocol.", "amount": 1},
 	"regenerative": {"name": "REGENERATIVE", "desc": "Enemies heal 3 each round.", "amount": 3},
-	"warded": {"name": "WARDED", "desc": "Support enemies spawn with Ward.", "requires": "has_support"},
+	"warded": {"name": "FIREWALLED", "desc": "Support enemies spawn with a Firewall.", "requires": "has_support"},
 }
 
 
@@ -455,7 +455,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Decline.", "effects": []},
 	]},
 	"memorialProtocol": {"tier": "major", "name": "MEMORIAL PROTOCOL", "desc": "The squad wants to honor the fallen.", "requires": "recent_death", "choices": [
-		{"label": "Honor them: the fallen hero starts every remaining battle with Ward.", "effects": [{"type": "memorialWard"}]},
+		{"label": "Honor them: the fallen hero starts every remaining battle with a Firewall.", "effects": [{"type": "memorialWard"}]},
 		{"label": "Keep moving: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
 	]},
 	"deepCache": {"tier": "major", "name": "DEEP CACHE", "desc": "A vault seal. Cracking it will drink your Protocol lines dry.", "choices": [
@@ -600,7 +600,7 @@ func apply_intercept_effects(effects: Array, hero_id: String = "", gear_context:
 				var fallen: String = _recent_death_hero()
 				if fallen != "":
 					_hero_mods(fallen)["start_warded"] = true
-					info = "%s will carry the Ward." % fallen
+					info = "%s will carry the Firewall." % fallen
 			"heroNat20Twice":
 				_hero_mods(hero_id)["nat20_twice"] = true
 			"heroStartCloaked":

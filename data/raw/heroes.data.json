@@ -1032,7 +1032,7 @@
                 20
               ],
               "name": "Invincible",
-              "eff": "all 10 shield, self ward",
+              "eff": "all 10 shield, self firewall",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1396,7 +1396,7 @@
           "name": "Trench Rig",
           "callsign": "TRENCH",
           "hp": 85,
-          "focus": "Wards, taunts, and deep sustain",
+          "focus": "Firewalls, taunts, and deep sustain",
           "abilities": [
             {
               "zone": "recharge",
@@ -1439,8 +1439,8 @@
                 13,
                 16
               ],
-              "name": "Bunker Ward",
-              "eff": "ally ward",
+              "name": "Bunker Firewall",
+              "eff": "ally firewall",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,

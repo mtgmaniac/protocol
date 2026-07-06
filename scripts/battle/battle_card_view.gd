@@ -82,7 +82,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	if bool(state.get("taunting", false)):
 		status_list.append("TAUNT")
 	if bool(state.get("warded", false)):
-		status_list.append("WARD")
+		status_list.append("FIREWALL")
 	if bool(state.get("marked", false)):
 		status_list.append("MARK")
 
@@ -423,7 +423,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		})
 
 	if bool(state.get("warded", false)):
-		statuses.append(_make_compact_named_status("WARD", "", 3))
+		statuses.append(_make_compact_named_status("FIREWALL", "", 3))
 
 	return statuses
 

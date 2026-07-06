@@ -36,7 +36,7 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 5. Shields last **one round**: granted this round, absorb through this round's opposing phase, gone at the round-end tick (no `shT` field exists). Enemy-phase grants survive one tick so they cover exactly one hero phase. Exception: `shieldsPersist` (Mantle Core relic / MANTLE TYRANT rule) keeps shields until broken.
 6. Protocol Bar resets each battle (does NOT carry over).
 7. **Freeze** (one keyword, identical both sides — former Cower merged in): frozen dice keep their value and skip their reveals until thawed (`freezeAnyDice` / `freezeEnemyDice` / `freezeAllEnemyDice`; the die stays in the tray as a blocker). A freeze that skips an **unspent** reveal banks the face, and the thaw reveals the banked value instead of rerolling — hero→enemy freezes land before the enemy acts, so freeze = a visible **delay** of that action; a hero freezing a squad die **banks** it (skip this round, act on the kept face next round). A die frozen **after** its reveal was spent (self-freeze, enemy→hero) locks from the next reveal and thaws to a fresh roll. `freezeAnyDice` targets any unit with one manual pick. Cosmetic `freeze_flavor`: ice (default) / petrify. *(DESIGN-TODO(kev): supersedes the 67d95b6 "next-turn lockout" revert — re-affirm which reading is final.)*
-7b. **Ward** (`ward: true`, replaces Counterspell): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only.
+7b. **Firewall** (`ward: true` internally, replaces Counterspell; renamed Ward→Firewall in the keyword batch): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only. Enemy-side count is culled to exactly 10 (6 Veil + 4 Synod).
 8. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20).
 
 ## Protocol economy (implemented in battle_scene.gd / combat_manager.gd)
@@ -74,12 +74,12 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 - Shield (always one round, no duration suffix): `ally 9 shield` · `all 14 shield` · `lowest 7 shield`
 - Roll effects: `+3 roll ally` · `-2 roll all enemies 2t` · `+1 roll self 2t`
 - Protocol: `+2 protocol`
-- Status: `freeze (1 reveal skip)` · `freeze all (2 reveal skips)` · `cloak` · `self ward` · `ally ward` · `taunt` · `rampage +1`
+- Status: `freeze (1 reveal skip)` · `freeze all (2 reveal skips)` · `cloak` · `self firewall` · `ally firewall` · `taunt` · `rampage +1`
 - Combo: `8 dmg + 4 burn 2t` · `6 dmg all + -2 roll all enemies`
 - Boss extras: `wipe shields` · `summon 40%` (no phase-2 syntax — bosses run standing rules instead)
 
 ### Ability field glossary (data keys)
-`dmg` direct damage · `burn`+`burnT` damage-over-time amount + turns · `heal` (+`healTgt`/`healAll`/`healLowest`) · `shield` (+`shieldAll`/`shTgt`/`shieldLowest`; one round, no duration field) · `rfe`+`rfT` enemy roll reduction + turns (+`rfeAll`) · `rfm`+`rfmT` ally roll buff (+`rfmTgt`) · `ignSh` pierce shields · `blastAll` hit all enemies · `cloak` · `ward` (+`wardTgt`) · `taunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` N reveal skips (+ cosmetic `freeze_flavor`: ice/petrify).
+`dmg` direct damage · `burn`+`burnT` damage-over-time amount + turns · `heal` (+`healTgt`/`healAll`/`healLowest`) · `shield` (+`shieldAll`/`shTgt`/`shieldLowest`; one round, no duration field) · `rfe`+`rfT` enemy roll reduction + turns (+`rfeAll`) · `rfm`+`rfmT` ally roll buff (+`rfmTgt`) · `ignSh` pierce shields · `blastAll` hit all enemies · `cloak` · `ward` (+`wardTgt`; displayed as Firewall) · `taunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` N reveal skips (+ cosmetic `freeze_flavor`: ice/petrify).
 
 **Targeting rule (enforced by audit_ability_keywords.py):** max ONE manually-picked component per hero ability; everything else auto-targets self / all / lowest. Components sharing a pick (dmg+burn+freeze on one enemy; healTgt+shTgt+rfmTgt+wardTgt on one ally) count once.
 
@@ -113,7 +113,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 |---|---|---|---|
 | `facility` | Facility sweep / FACILITY | drones: jam, shields, breach bait | SCRAPMASTER (+2 Scrap Drones) |
 | `hive` | Hive incursion / HIVE | swarm: burn, siphon-free drain, summons, spike carriers | Hive Matriarch (+Spine Stalker) |
-| `veil` | Veil Concord / VEIL | lattice: ally shields, wards, buffs | CONCLAVE OVERSEER (+Aegis Anchor) |
+| `veil` | Veil Concord / VEIL | lattice: ally shields, firewalls, buffs | CONCLAVE OVERSEER (+Aegis Anchor) |
 | `voidCirclet` | Null Synod / SYNOD | machine cult: rewrite, hijack, siphon, ±roll | ROOT HIEROPHANT (+Checksum Scribe) |
 | `stellarMenagerie` | The Accretion / ACCRETION | igneous beasts: accrete shields, petrify freezes, spike, cloak | MANTLE TYRANT (+Geode Panther) |
 
@@ -125,11 +125,11 @@ Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; 
 |---|---|
 | SCRAPMASTER | ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP |
 | Hive Matriarch | THE BROOD — spawns a Bloodmite every 3 rounds |
-| CONCLAVE OVERSEER | THE COURT — while any ally lives, gains Ward at the start of each round |
+| CONCLAVE OVERSEER | THE COURT — while any ally lives, gains a Firewall at the start of each round |
 | ROOT HIEROPHANT | ROOT ACCESS — every round, Rewrites the squad's highest die to 3 |
 | MANTLE TYRANT | ACCRETION — +6 shield at every round start; its shields persist and stack |
 
-Round-start rules (Ward, mantle shield) fire before the hero phase; turn-cadence rules (rebuild, brood, root access) fire at the start of the enemy phase. Battle-10 escorts are pinned per operation: SCRAPMASTER +2 Scrap Drones · Matriarch +Spine Stalker · Overseer +Aegis Anchor · ROOT +Checksum Scribe · MANTLE +Geode Panther.
+Round-start rules (Firewall, mantle shield) fire before the hero phase; turn-cadence rules (rebuild, brood, root access) fire at the start of the enemy phase. Battle-10 escorts are pinned per operation: SCRAPMASTER +2 Scrap Drones · Matriarch +Spine Stalker · Overseer +Aegis Anchor · ROOT +Checksum Scribe · MANTLE +Geode Panther.
 
 ---
 
@@ -190,7 +190,7 @@ Rules: header height == footer height; all unit cards identical outer size; hero
 
 ## UI & feedback (pkg8)
 
-Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Ward (cap 3, +N overflow badge opens inspect). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤N" marker · Rewrite/Hijack = pending marker on the die + readout entry · Spike = readout pip only · Taunt/Lure = no dedicated card marker (the ◎N incoming-target-intent corner badge was removed — it wasn't the intended treatment). Detonate pip shows the live burst when the target is known. Nat-20 signature = gold wash + shake + overload stinger + heavier hit-pause + ability-name slam. Keyword feedback table lives in offline-bundle/ANIMATION.md. Dice numerals render near-white in the engraved pipeline. Summon layout floor: cards never shrink below the 3-unit slot width (rows scroll instead).
+Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Firewall (cap 3, +N overflow badge opens inspect). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤N" marker · Rewrite/Hijack = pending marker on the die + readout entry · Spike = readout pip only · Taunt/Lure = no dedicated card marker (the ◎N incoming-target-intent corner badge was removed — it wasn't the intended treatment). Detonate pip shows the live burst when the target is known. Nat-20 signature = gold wash + shake + overload stinger + heavier hit-pause + ability-name slam. Keyword feedback table lives in offline-bundle/ANIMATION.md. Dice numerals render near-white in the engraved pipeline. Summon layout floor: cards never shrink below the 3-unit slot width (rows scroll instead).
 
 ---
 

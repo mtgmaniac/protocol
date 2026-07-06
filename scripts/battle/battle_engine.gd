@@ -372,7 +372,7 @@ func apply_consumable_effect(effect: Dictionary, target_state: Dictionary, bs: B
 			return "Item: %s grants all living allies %d shield." % [item_name, a]
 		"ward":
 			combat_manager.apply_item_ward(target_state)
-			return "Item: %s wards %s." % [item_name, tname]
+			return "Item: %s raises a Firewall on %s." % [item_name, tname]
 		"rollBuff":
 			var a: int = int(effect.get("amount", 0))
 			var t: int = int(effect.get("turns", 1))

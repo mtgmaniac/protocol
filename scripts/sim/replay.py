@@ -46,7 +46,7 @@ def fmt_event(ev: dict) -> str | None:
     if t == "freeze":
         return f"  freeze: {tgt} die locked at {amt}"
     if t == "block":
-        return f"  {'ward NEGATES' if int(amt) <= 0 else f'shield blocks {amt}'}: {tgt}"
+        return f"  {'firewall NEGATES' if int(amt) <= 0 else f'shield blocks {amt}'}: {tgt}"
     if t in ("jam", "rewrite", "hijack", "mark", "siphon", "leech", "breach",
              "cloak", "decloak", "taunt", "curse", "lure", "wipe_shields",
              "spike_up", "hijack_primed", "mark_consumed", "hijack_roll"):
