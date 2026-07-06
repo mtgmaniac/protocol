@@ -140,14 +140,16 @@ def hero_expected(raw: dict) -> str:
     if gp > 0:
         parts.append(f"+{gp} protocol")
 
+    # Freeze = repeat (per Kev 2026-07-06): "freeze (repeat N)" wording.
     for key in ("freezeAllEnemyDice", "freezeEnemyDice", "freezeAnyDice"):
         v = raw.get(key) or 0
         if v > 0:
-            sk = "s" if v > 1 else ""
             if key == "freezeAllEnemyDice":
-                parts.append(f"freeze all ({v} reveal skip{sk})")
+                parts.append(f"freeze all (repeat {v})")
+            elif key == "freezeAnyDice":
+                parts.append(f"freeze any (repeat {v})")
             else:
-                parts.append(f"freeze ({v} reveal skip{sk})")
+                parts.append(f"freeze (repeat {v})")
 
     return ", ".join(parts) if parts else "—"
 
@@ -246,14 +248,14 @@ def enemy_expected(raw: dict) -> str:
     if gra > 0:
         parts.append(f"rampage all +{gra}")
 
+    # Freeze = repeat (per Kev 2026-07-06): "freeze (repeat N)" wording.
     for key in ("freezeAllEnemyDice", "freezeEnemyDice"):
         v = raw.get(key) or 0
         if v > 0:
-            sk = "s" if v > 1 else ""
             if key == "freezeAllEnemyDice":
-                parts.append(f"freeze all ({v} reveal skip{sk})")
+                parts.append(f"freeze all (repeat {v})")
             else:
-                parts.append(f"freeze ({v} reveal skip{sk})")
+                parts.append(f"freeze (repeat {v})")
 
     tail = ", ".join(parts) if parts else "—"
     if raw.get("wipeShields"):

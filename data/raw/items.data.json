@@ -165,29 +165,29 @@
     {
       "id": "cryo_gel",
       "name": "Cryo Gel",
-      "desc": "Freeze one enemy's die — it won't reroll on the next tray reveal.",
+      "desc": "Freeze any unit's die — it keeps its face and repeats that result on its next roll.",
       "rarity": "uncommon",
       "icon": "bolt",
-      "target": "enemy",
-      "effect": { "type": "enemyDieFreeze", "skips": 1 }
+      "target": "any",
+      "effect": { "type": "anyDieFreeze", "repeats": 1 }
     },
     {
       "id": "cryo_web",
       "name": "Cryo Web",
-      "desc": "Freeze one enemy's die — it skips the next two tray reveals.",
+      "desc": "Freeze any unit's die — it keeps its face and repeats that result on its next two rolls.",
       "rarity": "rare",
       "icon": "bolt",
-      "target": "enemy",
-      "effect": { "type": "enemyDieFreeze", "skips": 2 }
+      "target": "any",
+      "effect": { "type": "anyDieFreeze", "repeats": 2 }
     },
     {
       "id": "deep_zero_pin",
       "name": "Deep Zero Pin",
-      "desc": "Freeze all enemy dice — each skips the next tray reveal.",
+      "desc": "Freeze all enemy dice — each keeps its face and repeats that result on its next roll.",
       "rarity": "rare",
       "icon": "bolt",
       "target": "none",
-      "effect": { "type": "enemyDieFreezeAll", "skips": 1 }
+      "effect": { "type": "enemyDieFreezeAll", "repeats": 1 }
     },
     {
       "id": "protocol_cell",

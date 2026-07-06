@@ -20,7 +20,7 @@
       "id": "detonate",
       "term": "Detonate",
       "category": "offense",
-      "def": "Consumes the target's Burn: deals burn amount × remaining turns as immediate damage, then the Burn is cleared.",
+      "def": "Consumes the target's finite Burn: deals burn amount × remaining turns as immediate damage, then that Burn is cleared. A permanent Burn adds one tick's damage and is not consumed.",
       "syntax": "detonate",
       "code": "DT"
     },
@@ -143,8 +143,8 @@
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "The die is locked and the unit skips its next N reveals. Identical for heroes and enemies; frozen dice stay in the tray as blockers.",
-      "syntax": "freeze (N reveal skips)",
+      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be Jammed, Rewritten, or Hijacked.",
+      "syntax": "freeze (repeat N)",
       "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },
     {

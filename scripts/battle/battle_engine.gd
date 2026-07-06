@@ -304,9 +304,12 @@ func item_cloak_all() -> void:
 			hero_state["cloaked"] = true
 
 
-# Rerolls an enemy die via the provider; returns the new roll.
+# Rerolls an enemy die via the provider; returns the new roll. A frozen die
+# is crusted static — its face is locked, so the reroll fizzles (returns 0).
 func item_enemy_reroll(bs: BattleState, target_state: Dictionary) -> int:
 	if target_state.is_empty():
+		return 0
+	if int(target_state.get("die_freeze_turns", 0)) > 0:
 		return 0
 	var new_roll: int = roll_provider.roll_d20()
 	bs.enemy_rolls[str(target_state["id"])] = new_roll
@@ -315,33 +318,41 @@ func item_enemy_reroll(bs: BattleState, target_state: Dictionary) -> int:
 
 func item_enemy_reroll_all(bs: BattleState) -> void:
 	for enemy_state in combat_manager.get_enemy_states():
-		if not bool(enemy_state.get("dead", true)):
-			bs.enemy_rolls[str(enemy_state["id"])] = roll_provider.roll_d20()
+		if bool(enemy_state.get("dead", true)):
+			continue
+		if int(enemy_state.get("die_freeze_turns", 0)) > 0:
+			continue
+		bs.enemy_rolls[str(enemy_state["id"])] = roll_provider.roll_d20()
 
 
-# Freezes an enemy die: adds reveal-skip turns and captures the current roll as
-# the locked value (falling back to last_die_value / an existing frozen value).
-func item_enemy_freeze(bs: BattleState, target_state: Dictionary, skips: int) -> void:
+# Freezes a die (either side — freeze = repeat, per Kev 2026-07-06): adds
+# repeat turns and captures the current face as the locked value (falling back
+# to last_die_value / an existing frozen value). The unit acts again on that
+# face for each repeat, then the die thaws.
+func item_freeze_die(bs: BattleState, target_state: Dictionary, repeats: int) -> void:
 	if target_state.is_empty():
 		return
-	target_state["die_freeze_turns"] = int(target_state.get("die_freeze_turns", 0)) + skips
-	var frozen_value: int = roll_value_for_state(bs.enemy_rolls, target_state)
+	var rolls: Dictionary = bs.hero_rolls if _is_hero_side_state(target_state) else bs.enemy_rolls
+	target_state["die_freeze_turns"] = int(target_state.get("die_freeze_turns", 0)) + repeats
+	var frozen_value: int = roll_value_for_state(rolls, target_state)
 	if frozen_value <= 0:
 		frozen_value = int(target_state.get("last_die_value", target_state.get("frozen_die_value", 0)))
 	if frozen_value > 0:
 		target_state["frozen_die_value"] = frozen_value
 
 
-func item_enemy_freeze_all(bs: BattleState, skips: int) -> void:
+func item_enemy_freeze_all(bs: BattleState, repeats: int) -> void:
 	for enemy_state in combat_manager.get_enemy_states():
 		if bool(enemy_state.get("dead", true)):
 			continue
-		enemy_state["die_freeze_turns"] = int(enemy_state.get("die_freeze_turns", 0)) + skips
-		var fv: int = roll_value_for_state(bs.enemy_rolls, enemy_state)
-		if fv <= 0:
-			fv = int(enemy_state.get("last_die_value", enemy_state.get("frozen_die_value", 0)))
-		if fv > 0:
-			enemy_state["frozen_die_value"] = fv
+		item_freeze_die(bs, enemy_state, repeats)
+
+
+func _is_hero_side_state(state: Dictionary) -> bool:
+	for hero_state in combat_manager.get_hero_states():
+		if hero_state == state:
+			return true
+	return false
 
 
 # sim-D: the consumable effect DISPATCH, extracted from
@@ -404,19 +415,21 @@ func apply_consumable_effect(effect: Dictionary, target_state: Dictionary, bs: B
 		"enemyRerollDie":
 			if not target_state.is_empty():
 				var r: int = item_enemy_reroll(bs, target_state)
+				if r <= 0:
+					return "Item: %s fizzles — %s's die is frozen solid." % [item_name, tname]
 				return "Item: %s rerolls %s → %d." % [item_name, tname, r]
 		"enemyRerollAll":
 			item_enemy_reroll_all(bs)
-			return "Item: %s — all enemies rerolled." % item_name
-		"enemyDieFreeze":
+			return "Item: %s — all unfrozen enemy dice rerolled." % item_name
+		"anyDieFreeze":
 			if not target_state.is_empty():
-				var s: int = int(effect.get("skips", 1))
-				item_enemy_freeze(bs, target_state, s)
-				return "Item: %s freezes %s's die for %d turns." % [item_name, tname, s]
+				var s: int = int(effect.get("repeats", 1))
+				item_freeze_die(bs, target_state, s)
+				return "Item: %s freezes %s's die — it repeats its result %d more time(s)." % [item_name, tname, s]
 		"enemyDieFreezeAll":
-			var s: int = int(effect.get("skips", 1))
+			var s: int = int(effect.get("repeats", 1))
 			item_enemy_freeze_all(bs, s)
-			return "Item: %s — all enemy dice frozen for %d reveal(s)." % [item_name, s]
+			return "Item: %s — all enemy dice frozen; each repeats its result." % item_name
 	return ""
 
 
@@ -432,19 +445,21 @@ func _state_display_name(state: Dictionary) -> String:
 
 # ── Effective-roll pipeline (extracted from battle_scene) ─────────────────────
 # The value fed to combat_manager.resolve_round() after Set / freeze / Nudge /
-# roll-buffs. Set forces an absolute effective roll (overrides everything);
-# a frozen-consumed die returns its raw value; otherwise combat_manager's
+# roll-buffs. A repeating frozen die is fully locked — its crusted face IS the
+# result (no Set/Nudge/buffs/jam/rewrite; freeze = repeat, per Kev 2026-07-06).
+# Otherwise Set forces an absolute effective roll, else combat_manager's
 # effective roll (buffs/rfe/jam/rewrite) plus the player's Nudge.
 
 func effective_hero_roll(state: Dictionary, unit_id: String, bs: BattleState) -> int:
 	var raw_roll: int = int(bs.hero_rolls.get(unit_id, bs.hero_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
-	# Set action forces an absolute effective roll, overriding freeze/nudge/buffs.
+	if bool(state.get("die_freeze_repeat_this_round", false)):
+		var frozen: int = int(state.get("frozen_die_value", raw_roll))
+		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
+	# Set action forces an absolute effective roll, overriding nudge/buffs.
 	if bs.hero_roll_sets.has(unit_id) or bs.hero_roll_sets.has(str(unit_id)):
 		return clampi(int(bs.hero_roll_sets.get(unit_id, bs.hero_roll_sets.get(str(unit_id), raw_roll))), 1, 20)
-	if bool(state.get("die_freeze_consumed_this_round", false)):
-		return clampi(raw_roll, 1, 20)
 	var nudge: int = int(bs.hero_roll_nudges.get(unit_id, bs.hero_roll_nudges.get(str(unit_id), 0)))
 	var base_eff: int = combat_manager.get_effective_roll(state, raw_roll)
 	return clampi(base_eff + nudge, 1, 20)
@@ -454,14 +469,16 @@ func effective_enemy_roll(state: Dictionary, unit_id: String, bs: BattleState) -
 	var raw_roll: int = int(bs.enemy_rolls.get(unit_id, bs.enemy_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
-	if bool(state.get("die_freeze_consumed_this_round", false)):
-		return clampi(raw_roll, 1, 20)
+	if bool(state.get("die_freeze_repeat_this_round", false)):
+		var frozen: int = int(state.get("frozen_die_value", raw_roll))
+		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
 	return combat_manager.get_effective_roll(state, raw_roll)
 
 
 # Builds a dict of effective rolls for all living units in the given states
-# array, for combat_manager.resolve_round(). Mirrors the original exactly: the
-# enemy branch uses combat_manager.get_effective_roll directly (no frozen guard).
+# array, for combat_manager.resolve_round(). Both sides route through the
+# frozen-repeat guard — a repeating enemy die must act on its crusted face,
+# not a buffed/jammed variant of it.
 func build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool, bs: BattleState) -> Dictionary:
 	var eff: Dictionary = {}
 	for state in states:
@@ -474,7 +491,7 @@ func build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool, 
 		if is_hero:
 			eff[uid] = effective_hero_roll(state, uid, bs)
 		else:
-			eff[uid] = combat_manager.get_effective_roll(state, raw)
+			eff[uid] = effective_enemy_roll(state, uid, bs)
 	return eff
 
 
@@ -507,7 +524,8 @@ func apply_frozen_roll_overrides(states: Array, rolls: Dictionary) -> void:
 
 
 # Stamps last_die_value (used by freeze items to capture the current face) and
-# marks a frozen die as consumed this round (so its reveal is skipped).
+# marks a frozen die as repeating this round (the unit acts again on the
+# crusted face; the repeat is spent at the round-end tick).
 func record_roll_values_for_states(states: Array, rolls: Dictionary) -> void:
 	for state_variant in states:
 		var state: Dictionary = state_variant
@@ -518,7 +536,7 @@ func record_roll_values_for_states(states: Array, rolls: Dictionary) -> void:
 			continue
 		state["last_die_value"] = roll_value
 		if int(state.get("die_freeze_turns", 0)) > 0:
-			state["die_freeze_consumed_this_round"] = true
+			state["die_freeze_repeat_this_round"] = true
 
 
 func roll_value_for_state(rolls: Dictionary, state: Dictionary) -> int:

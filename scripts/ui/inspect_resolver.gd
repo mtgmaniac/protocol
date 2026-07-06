@@ -220,7 +220,7 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s — the die is locked; the unit skips its next %d reveal(s)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
+			"%s — the die keeps this face and the unit acts again on it %d more time(s)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
 		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, "Spike %d — attackers take damage this round." % int(state["spike"])))
 	return entries

@@ -1842,7 +1842,7 @@
       },
       "strike": {
         "name": "Silent Opening",
-        "eff": "10 dmg, freeze (1 reveal skip)",
+        "eff": "10 dmg, freeze (repeat 1)",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
@@ -1864,7 +1864,7 @@
       },
       "crit": {
         "name": "Decloak Rake",
-        "eff": "16 dmg, freeze (1 reveal skip)",
+        "eff": "16 dmg, freeze (repeat 1)",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
@@ -1876,7 +1876,7 @@
       },
       "overload": {
         "name": "Black Sky Shriek",
-        "eff": "18 dmg, freeze all (1 reveal skip)",
+        "eff": "18 dmg, freeze all (repeat 1)",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
@@ -2097,7 +2097,7 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "wipe shields, then 26 dmg, rampage all +1, freeze all (1 reveal skip)",
+        "eff": "wipe shields, then 26 dmg, rampage all +1, freeze all (repeat 1)",
         "dmg": 26,
         "burn": 0,
         "burnT": 0,

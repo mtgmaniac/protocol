@@ -111,9 +111,10 @@ const ENEMY_HANDLED_FIELDS := [
 ]
 
 # Data-driven effect audit coverage: every field here must appear on at least
-# one hero ability in data. rfm/rfmT/rfmTgt and freezeAnyDice left the hero
-# kits in pkg3 (roll buffs are item/gear-only now; freeze targets enemies) —
-# their handlers stay covered by targeted regressions instead.
+# one hero ability in data. rfm/rfmT/rfmTgt left the hero kits in pkg3 (roll
+# buffs are item/gear-only now) — their handlers stay covered by targeted
+# regressions instead. freezeAnyDice is back in the Avalanche line (freeze =
+# repeat, per Kev 2026-07-06: non-damage freezes target ANY unit).
 const EFFECT_FIELDS := [
 	"dmg",
 	"dMin",
@@ -136,6 +137,7 @@ const EFFECT_FIELDS := [
 	"cloak",
 	"freezeEnemyDice",
 	"freezeAllEnemyDice",
+	"freezeAnyDice",
 	"taunt",
 	"revive",
 ]
@@ -466,6 +468,8 @@ func _run_regression_audits() -> void:
 	_run_siphon_regression()
 	_run_rampage_regression()
 	_run_freeze_regression()
+	_run_freeze_repeat_regressions()
+	_run_instance_timer_regressions()
 	_run_down_cleanup_regression()
 	_run_summon_slot_regression()
 	_run_summon_end_to_end_regression()
@@ -530,8 +534,9 @@ func _run_enemy_shield_ally_regression() -> void:
 
 
 func _run_enemy_freeze_regression() -> void:
-	# Enemy freeze (former cower): the hero's die locks after the enemy phase
-	# and the hero skips its next reveal.
+	# Freeze = repeat (per Kev 2026-07-06): an enemy freeze crusts the hero's
+	# die; on the hero's next roll the die keeps its face and the hero ACTS
+	# AGAIN on that result, then the die thaws.
 	var manager: CombatManager = CombatManager.new()
 	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 5})
 	var enemy_unit: EnemyData = _make_enemy("audit_freeze_enemy", "Audit Freeze Enemy", "Freeze Regression", {
@@ -545,63 +550,62 @@ func _run_enemy_freeze_regression() -> void:
 	hero["last_die_value"] = 12
 
 	manager.resolve_round({}, {str(enemy["id"]): AUDIT_ROLL}, DiceManager.new())
-	var frozen_after_apply: bool = int(hero.get("die_freeze_turns", 0)) == 1 and not bool(hero.get("die_freeze_consumed_this_round", false))
+	var frozen_after_apply: bool = int(hero.get("die_freeze_turns", 0)) == 1 and not bool(hero.get("die_freeze_repeat_this_round", false))
 
-	# Next round: the frozen die is revealed (consumed flag set at roll time by
-	# battle_scene; mimic that here) — the hero must skip its action.
+	# Next round: the crusted die keeps its face (repeat flag set at roll time
+	# by battle_engine.record_roll_values_for_states; mimic that here) — the
+	# hero ACTS on the repeated result, then the freeze clears.
 	hero["selected_target_id"] = str(enemy["id"])
-	hero["die_freeze_consumed_this_round"] = true
+	hero["die_freeze_repeat_this_round"] = true
 	var enemy_hp_before: int = int(enemy["current_hp"])
-	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var hero_skipped: bool = int(enemy["current_hp"]) == enemy_hp_before
-	var freeze_cleared: bool = int(hero.get("die_freeze_turns", 0)) == 0 and not bool(hero.get("die_freeze_consumed_this_round", false))
+	manager.resolve_round({str(hero["id"]): 12}, {}, DiceManager.new())
+	var hero_repeated: bool = int(enemy["current_hp"]) == enemy_hp_before - 5
+	var freeze_cleared: bool = int(hero.get("die_freeze_turns", 0)) == 0 and not bool(hero.get("die_freeze_repeat_this_round", false))
 
-	if frozen_after_apply and hero_skipped and freeze_cleared:
-		_record_pass("Regression / enemy freeze skips hero reveal", "freezeEnemyDice")
+	if frozen_after_apply and hero_repeated and freeze_cleared:
+		_record_pass("Regression / enemy freeze makes hero repeat result", "freezeEnemyDice")
 	else:
 		_record_failure(
-			"Regression / enemy freeze skips hero reveal",
+			"Regression / enemy freeze makes hero repeat result",
 			"freezeEnemyDice",
-			"hero frozen after enemy phase, skips next reveal, freeze then clears",
-			"frozen=%s skipped=%s cleared=%s turns=%d" % [str(frozen_after_apply), str(hero_skipped), str(freeze_cleared), int(hero.get("die_freeze_turns", 0))]
+			"hero frozen after enemy phase, acts again on the frozen face, freeze then clears",
+			"frozen=%s repeated=%s cleared=%s turns=%d" % [str(frozen_after_apply), str(hero_repeated), str(freeze_cleared), int(hero.get("die_freeze_turns", 0))]
 		)
 
-	# Static-lockout rule (reverted per Kev from fix-1.4's bank/thaw): a hero
-	# freeze locks the enemy's NEXT reveal. The enemy STILL lands its hit the
-	# round it is frozen (freeze is applied during the hero phase, after the
-	# enemy's roll was recorded), then skips its next turn with the die STATIC
-	# at the same frozen value — no re-roll — and the charge clears.
-	var cancel_manager: CombatManager = CombatManager.new()
+	# Hero-side parity: a hero freeze crusts the enemy's die. The enemy still
+	# lands its hit the round it is frozen (freeze applies during the hero
+	# phase), then next round its die keeps the frozen face and the enemy acts
+	# AGAIN on that result — same zone, same ability — and the freeze clears.
+	var repeat_manager: CombatManager = CombatManager.new()
 	var freezer_unit: UnitData = _make_unit("audit_freezer", "Audit Freezer", "Flash Freeze", {"freezeEnemyDice": 1})
 	var striker_enemy: EnemyData = _make_enemy("audit_striker", "Audit Striker", "Claw", {"dmg": 9})
-	cancel_manager.setup_battle([freezer_unit], [striker_enemy])
-	var freezer: Dictionary = cancel_manager.get_hero_states()[0]
-	var striker: Dictionary = cancel_manager.get_enemy_states()[0]
+	repeat_manager.setup_battle([freezer_unit], [striker_enemy])
+	var freezer: Dictionary = repeat_manager.get_hero_states()[0]
+	var striker: Dictionary = repeat_manager.get_enemy_states()[0]
 	freezer["selected_target_id"] = str(striker["id"])
 	striker["selected_target_id"] = str(freezer["id"])
 	striker["last_die_value"] = 15
 	var hero_hp_before: int = int(freezer["current_hp"])
 	# Round 1: freeze cast — the enemy still lands its hit and is left frozen
-	# (die_freeze_turns=1, not yet consumed) with its die value preserved.
-	cancel_manager.resolve_round({str(freezer["id"]): AUDIT_ROLL}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
-	var striker_acted_r1: bool = int(freezer["current_hp"]) < hero_hp_before
+	# with its die face preserved.
+	repeat_manager.resolve_round({str(freezer["id"]): AUDIT_ROLL}, {str(striker["id"]): 15}, DiceManager.new())
+	var striker_acted_r1: bool = int(freezer["current_hp"]) == hero_hp_before - 9
 	var striker_frozen_after: bool = int(striker.get("die_freeze_turns", 0)) == 1 and int(striker.get("frozen_die_value", 0)) == 15
-	# Round 2: the frozen die is revealed (consumed flag set at roll time by the
-	# scene; mimic that) — the enemy skips its action, the die never re-rolls,
-	# then the freeze clears.
-	striker["die_freeze_consumed_this_round"] = true
+	# Round 2: the crusted die repeats its 15 — the enemy hits AGAIN for the
+	# same damage (fresh personality pick), then the freeze clears.
+	striker["die_freeze_repeat_this_round"] = true
 	var freezer_hp_after_r1: int = int(freezer["current_hp"])
-	cancel_manager.resolve_round({}, {str(striker["id"]): AUDIT_ROLL}, DiceManager.new())
-	var striker_skipped_r2: bool = int(freezer["current_hp"]) == freezer_hp_after_r1
-	var striker_cleared: bool = int(striker.get("die_freeze_turns", 0)) == 0
-	if striker_acted_r1 and striker_frozen_after and striker_skipped_r2 and striker_cleared:
-		_record_pass("Regression / hero freeze locks enemy next reveal (static)", "freezeEnemyDice")
+	repeat_manager.resolve_round({}, {str(striker["id"]): 15}, DiceManager.new())
+	var striker_repeated_r2: bool = int(freezer["current_hp"]) == freezer_hp_after_r1 - 9
+	var striker_cleared: bool = int(striker.get("die_freeze_turns", 0)) == 0 and int(striker.get("frozen_die_value", 0)) == 0
+	if striker_acted_r1 and striker_frozen_after and striker_repeated_r2 and striker_cleared:
+		_record_pass("Regression / hero freeze makes enemy repeat result", "freezeEnemyDice")
 	else:
 		_record_failure(
-			"Regression / hero freeze locks enemy next reveal (static)",
+			"Regression / hero freeze makes enemy repeat result",
 			"freezeEnemyDice",
-			"enemy hits R1, frozen at 15, skips R2, clears",
-			"acted=%s frozen=%s skipped=%s cleared=%s" % [str(striker_acted_r1), str(striker_frozen_after), str(striker_skipped_r2), str(striker_cleared)]
+			"enemy hits R1, frozen at 15, hits again R2 on the repeat, then thaws",
+			"acted=%s frozen=%s repeated=%s cleared=%s" % [str(striker_acted_r1), str(striker_frozen_after), str(striker_repeated_r2), str(striker_cleared)]
 		)
 
 
@@ -649,7 +653,10 @@ func _run_roll_modifier_timing_regressions() -> void:
 	var cleared_debuff_roll: int = debuff_manager.get_effective_roll(debuff_enemy, 10)
 	_expect_and_record("Regression / RFE timing", "rfe", "8 then 10", "%d then %d" % [debuffed_roll, cleared_debuff_roll])
 
-	var buff_context: Dictionary = _build_context({"rfm": 3, "rfmT": 1}, "Roll Buff Timing Regression")
+	# Instance timers (per Kev 2026-07-06): an Nt buff instance loses a turn at
+	# EVERY round-end tick, including the cast round — a 2t buff cast during
+	# round 1 covers round 2's roll and is gone by round 3.
+	var buff_context: Dictionary = _build_context({"rfm": 3, "rfmT": 2}, "Roll Buff Timing Regression")
 	var buff_manager: CombatManager = buff_context["manager"]
 	var buff_actor: Dictionary = buff_context["actor"]
 	buff_manager.resolve_round({str(buff_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
@@ -857,17 +864,15 @@ func _run_detonate_regression() -> void:
 	var hero: Dictionary = manager.get_hero_states()[0]
 	var enemy: Dictionary = manager.get_enemy_states()[0]
 	hero["selected_target_id"] = str(enemy["id"])
-	enemy["burn"] = 3
-	enemy["burn_turns"] = 2
-	enemy["burn_skip_next_tick"] = true
+	manager.apply_item_burn(enemy, 3, 2)
 	var before_hp: int = int(enemy["current_hp"])
 	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	# 5 base + (3 burn x 2 turns) = 11; burn cleared so no tick fires
+	# 5 base + (3 burn x 2 turns) = 11; the finite burn is consumed so no tick fires
 	var ok: bool = int(enemy["current_hp"]) == before_hp - 11 and int(enemy["burn"]) == 0 and int(enemy["burn_turns"]) == 0
 	if ok:
-		_record_pass("Regression / detonate consumes burn for burst", "detonate")
+		_record_pass("Regression / detonate consumes finite burn for burst", "detonate")
 	else:
-		_record_failure("Regression / detonate consumes burn for burst", "detonate", "5 dmg + 6 burst, burn cleared", "hp_delta=%d burn=%d turns=%d" % [before_hp - int(enemy["current_hp"]), int(enemy["burn"]), int(enemy["burn_turns"])])
+		_record_failure("Regression / detonate consumes finite burn for burst", "detonate", "5 dmg + 6 burst, burn cleared", "hp_delta=%d burn=%d turns=%d" % [before_hp - int(enemy["current_hp"]), int(enemy["burn"]), int(enemy["burn_turns"])])
 
 	# No Burn on the target: detonate fizzles, base damage still lands.
 	var fizzle_manager: CombatManager = CombatManager.new()
@@ -882,9 +887,9 @@ func _run_detonate_regression() -> void:
 	else:
 		_record_failure("Regression / detonate fizzles without burn", "detonate", "only base 5 damage", "hp_delta=%d" % (f_before - int(f_enemy["current_hp"])))
 
-	# Balance-sim-discovered: a permanent burn (plagueProtocol, 9999-turn
-	# sentinel) must NOT detonate for burn x 9999 (~30k one-shot). The turns
-	# factor is capped at DETONATE_MAX_TURNS (6).
+	# Permanent-burn Detonate (per Kev 2026-07-06, resolves old DECISION #4):
+	# a permanent burn (plagueProtocol) adds exactly ONE tick's damage (its
+	# amount) and is NOT consumed — it keeps ticking afterwards.
 	var perm_manager: CombatManager = CombatManager.new()
 	perm_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Backdraft", {"dmg": 5, "detonate": true})], [_make_enemy("audit_perm", "Audit Perm", "Noop", {})])
 	var p_hero: Dictionary = perm_manager.get_hero_states()[0]
@@ -892,16 +897,34 @@ func _run_detonate_regression() -> void:
 	p_enemy["max_hp"] = 100000
 	p_enemy["current_hp"] = 100000
 	p_hero["selected_target_id"] = str(p_enemy["id"])
-	p_enemy["burn"] = 3
-	p_enemy["burn_turns"] = 9999
-	p_enemy["burn_skip_next_tick"] = true
+	perm_manager.apply_item_burn(p_enemy, 3, CombatManager.PERMANENT_BURN_TURNS)
 	var p_before: int = int(p_enemy["current_hp"])
 	perm_manager.resolve_round({str(p_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	# 5 base + (3 burn x min(9999, 6)) = 5 + 18 = 23, NOT 5 + 29997.
-	if int(p_enemy["current_hp"]) == p_before - 23:
-		_record_pass("Regression / detonate caps permanent-burn burst", "detonate")
+	# 5 base + one tick (3) = 8; the permanent burn survives (still 3).
+	var perm_ok: bool = int(p_enemy["current_hp"]) == p_before - 8 and int(p_enemy["burn"]) == 3
+	if perm_ok:
+		_record_pass("Regression / permanent-burn detonate = one tick, not consumed", "detonate")
 	else:
-		_record_failure("Regression / detonate caps permanent-burn burst", "detonate", "5 base + 18 capped burst (23)", "hp_delta=%d" % (p_before - int(p_enemy["current_hp"])))
+		_record_failure("Regression / permanent-burn detonate = one tick, not consumed", "detonate", "5 base + 3 (one tick), burn stays 3", "hp_delta=%d burn=%d" % [p_before - int(p_enemy["current_hp"]), int(p_enemy["burn"])])
+
+	# Mixed stacks: finite 4x2t + permanent 3 → burst = 8 + 3 = 11; only the
+	# finite stack is consumed, the permanent one keeps ticking.
+	var mix_manager: CombatManager = CombatManager.new()
+	mix_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Backdraft", {"dmg": 5, "detonate": true})], [_make_enemy("audit_mix", "Audit Mix", "Noop", {})])
+	var m_hero: Dictionary = mix_manager.get_hero_states()[0]
+	var m_enemy: Dictionary = mix_manager.get_enemy_states()[0]
+	m_enemy["max_hp"] = 100000
+	m_enemy["current_hp"] = 100000
+	m_hero["selected_target_id"] = str(m_enemy["id"])
+	mix_manager.apply_item_burn(m_enemy, 4, 2)
+	mix_manager.apply_item_burn(m_enemy, 3, CombatManager.PERMANENT_BURN_TURNS)
+	var m_before: int = int(m_enemy["current_hp"])
+	mix_manager.resolve_round({str(m_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var mix_ok: bool = int(m_enemy["current_hp"]) == m_before - 16 and int(m_enemy["burn"]) == 3
+	if mix_ok:
+		_record_pass("Regression / detonate mixed finite+permanent stacks", "detonate")
+	else:
+		_record_failure("Regression / detonate mixed finite+permanent stacks", "detonate", "5 base + 8 finite + 3 perm tick = 16, perm burn stays 3", "hp_delta=%d burn=%d" % [m_before - int(m_enemy["current_hp"]), int(m_enemy["burn"])])
 
 
 func _run_execute_regression() -> void:
@@ -1222,9 +1245,7 @@ func _run_new_gear_regressions() -> void:
 	var fuse_enemy: Dictionary = fuse_manager.get_enemy_states()[0]
 	fuse_hero["gear_detonate_bonus"] = true
 	fuse_hero["selected_target_id"] = str(fuse_enemy["id"])
-	fuse_enemy["burn"] = 3
-	fuse_enemy["burn_turns"] = 2
-	fuse_enemy["burn_skip_next_tick"] = true
+	fuse_manager.apply_item_burn(fuse_enemy, 3, 2)
 	var fuse_before: int = int(fuse_enemy["current_hp"])
 	fuse_manager.resolve_round({str(fuse_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	# 5 base + ceil(6 * 1.5) = 5 + 9 = 14
@@ -2348,9 +2369,185 @@ func _run_freeze_regression() -> void:
 	manager.call("_freeze_die_state", enemy, 1)
 	var ok: bool = int(enemy.get("die_freeze_turns", 0)) == 2 and int(enemy.get("frozen_die_value", 0)) == 12
 	if ok:
-		_record_pass("Regression / freeze stacks reveal skips", "freeze")
+		_record_pass("Regression / re-freeze adds repeats", "freeze")
 	else:
-		_record_failure("Regression / freeze stacks reveal skips", "freeze", "freeze turns add and frozen value is preserved", "turns=%d value=%d" % [int(enemy.get("die_freeze_turns", 0)), int(enemy.get("frozen_die_value", 0))])
+		_record_failure("Regression / re-freeze adds repeats", "freeze", "freeze repeats add and the frozen face is preserved", "turns=%d value=%d" % [int(enemy.get("die_freeze_turns", 0)), int(enemy.get("frozen_die_value", 0))])
+
+
+# Freeze = repeat (per Kev 2026-07-06): immunity, chaining, and deterministic
+# enemy-AI targeting cases.
+func _run_freeze_repeat_regressions() -> void:
+	# 1) Frozen HERO die is immune to enemy Jam and Rewrite.
+	var m1: CombatManager = CombatManager.new()
+	m1.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
+		[_make_enemy("audit_jammer", "Audit Jammer", "Scramble", {"jam": true, "rewrite": true})]
+	)
+	var h1: Dictionary = m1.get_hero_states()[0]
+	var e1: Dictionary = m1.get_enemy_states()[0]
+	e1["selected_target_id"] = str(h1["id"])
+	h1["last_die_value"] = 14
+	m1.call("_freeze_die_state", h1, 1)
+	m1.resolve_round({}, {str(e1["id"]): AUDIT_ROLL}, DiceManager.new())
+	var hero_immune: bool = int(h1.get("jam_cap", 0)) == 0 and not bool(h1.get("rewrite_pending", false))
+	_expect_and_record("Regression / frozen hero die immune to Jam+Rewrite", "freeze", "true", str(hero_immune))
+
+	# 2) Frozen ENEMY die is immune to hero Jam and Rewrite (other direction).
+	var m2: CombatManager = CombatManager.new()
+	m2.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Scramble", {"jam": true, "rewrite": true})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var h2: Dictionary = m2.get_hero_states()[0]
+	var e2: Dictionary = m2.get_enemy_states()[0]
+	h2["selected_target_id"] = str(e2["id"])
+	e2["last_die_value"] = 14
+	m2.call("_freeze_die_state", e2, 1)
+	m2.resolve_round({str(h2["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var enemy_immune: bool = int(e2.get("jam_cap", 0)) == 0 and not bool(e2.get("rewrite_pending", false))
+	_expect_and_record("Regression / frozen enemy die immune to Jam+Rewrite", "freeze", "true", str(enemy_immune))
+
+	# 3) Frozen die is immune to Hijack: a frozen hijacker keeps its crusted
+	# face instead of copying the squad's highest die.
+	var m3: CombatManager = CombatManager.new()
+	m3.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
+		[_make_enemy("audit_hijacker", "Audit Hijacker", "Claw", {"dmg": 9})]
+	)
+	var h3: Dictionary = m3.get_hero_states()[0]
+	var e3: Dictionary = m3.get_enemy_states()[0]
+	e3["selected_target_id"] = str(h3["id"])
+	e3["hijack_pending"] = true
+	e3["last_die_value"] = 5
+	m3.call("_freeze_die_state", e3, 1)
+	e3["die_freeze_repeat_this_round"] = true
+	var hijack_rolls: Dictionary = {str(e3["id"]): 5}
+	m3.resolve_round({str(h3["id"]): 20}, hijack_rolls, DiceManager.new())
+	var hijack_blocked: bool = int(hijack_rolls.get(str(e3["id"]), 0)) == 5
+	_expect_and_record("Regression / frozen die immune to Hijack", "freeze", "true", str(hijack_blocked))
+
+	# 4) Chained freeze: an ability that applies freeze can itself be repeated
+	# by a freeze. The frozen freezer repeats its cast (target re-frozen), its
+	# own repeat is spent, and every clock decrements — no infinite loop.
+	var m4: CombatManager = CombatManager.new()
+	m4.setup_battle(
+		[_make_unit("audit_freezer", "Audit Freezer", "Flash Freeze", {"freezeEnemyDice": 1})],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var h4: Dictionary = m4.get_hero_states()[0]
+	var e4: Dictionary = m4.get_enemy_states()[0]
+	h4["selected_target_id"] = str(e4["id"])
+	h4["last_die_value"] = 10
+	e4["last_die_value"] = 7
+	m4.call("_freeze_die_state", h4, 1)
+	h4["die_freeze_repeat_this_round"] = true
+	m4.resolve_round({str(h4["id"]): 10}, {}, DiceManager.new())
+	var chain_round1: bool = int(e4.get("die_freeze_turns", 0)) == 1 and int(h4.get("die_freeze_turns", 0)) == 0
+	e4["die_freeze_repeat_this_round"] = true
+	m4.resolve_round({}, {str(e4["id"]): 7}, DiceManager.new())
+	var chain_round2: bool = int(e4.get("die_freeze_turns", 0)) == 0
+	_expect_and_record(
+		"Regression / chained freeze repeats then unwinds", "freeze",
+		"true/true", "%s/%s" % [str(chain_round1), str(chain_round2)]
+	)
+
+	# 5) Enemy AI freeze targets the hero with the LOWEST revealed die —
+	# deterministic, independent of the damage target.
+	var m5: CombatManager = CombatManager.new()
+	m5.setup_battle(
+		[
+			_make_unit("audit_hero_a", "Audit Hero A", "Noop", {}),
+			_make_unit("audit_hero_b", "Audit Hero B", "Noop", {}),
+		],
+		[_make_enemy("audit_freezer_enemy", "Audit Freezer Enemy", "Cold Snap", {"freezeEnemyDice": 1})]
+	)
+	var ha: Dictionary = m5.get_hero_states()[0]
+	var hb: Dictionary = m5.get_hero_states()[1]
+	var e5: Dictionary = m5.get_enemy_states()[0]
+	e5["selected_target_id"] = str(ha["id"])
+	m5.resolve_round(
+		{str(ha["id"]): 15, str(hb["id"]): 3},
+		{str(e5["id"]): AUDIT_ROLL},
+		DiceManager.new(),
+		{},
+		{str(ha["id"]): 15, str(hb["id"]): 3}
+	)
+	var lowest_frozen: bool = int(hb.get("die_freeze_turns", 0)) == 1 and int(ha.get("die_freeze_turns", 0)) == 0
+	_expect_and_record("Regression / enemy freeze picks lowest revealed hero die", "freezeEnemyDice", "true", str(lowest_frozen))
+
+	# 6) freezeAnyDice on an ALLY: the ally's die crusts at its face and the
+	# ally acts again on that result next round (freezing a good roll on
+	# purpose is the point of the any-target rule).
+	var m6: CombatManager = CombatManager.new()
+	m6.setup_battle(
+		[
+			_make_unit("audit_cryo", "Audit Cryo", "Cryo Lock", {"freezeAnyDice": 1}),
+			_make_unit("audit_striker", "Audit Striker", "Strike", {"dmg": 5}),
+		],
+		[_make_enemy("audit_enemy", "Audit Enemy")]
+	)
+	var cryo: Dictionary = m6.get_hero_states()[0]
+	var ally: Dictionary = m6.get_hero_states()[1]
+	var e6: Dictionary = m6.get_enemy_states()[0]
+	cryo["selected_target_id"] = str(ally["id"])
+	ally["selected_target_id"] = str(e6["id"])
+	ally["last_die_value"] = 12
+	var e6_hp0: int = int(e6["current_hp"])
+	m6.resolve_round({str(cryo["id"]): AUDIT_ROLL, str(ally["id"]): 12}, {}, DiceManager.new())
+	var ally_frozen: bool = int(ally.get("die_freeze_turns", 0)) == 1 and int(ally.get("frozen_die_value", 0)) == 12
+	var hit_once: bool = int(e6["current_hp"]) == e6_hp0 - 5
+	ally["selected_target_id"] = str(e6["id"])
+	ally["die_freeze_repeat_this_round"] = true
+	m6.resolve_round({str(ally["id"]): 12}, {}, DiceManager.new())
+	var repeated: bool = int(e6["current_hp"]) == e6_hp0 - 10 and int(ally.get("die_freeze_turns", 0)) == 0
+	_expect_and_record(
+		"Regression / freezeAnyDice freezes an ally who repeats the result", "freezeAnyDice",
+		"true/true/true", "%s/%s/%s" % [str(ally_frozen), str(hit_once), str(repeated)]
+	)
+
+
+# Instance timers (per Kev 2026-07-06): buff/DoT applications are independent
+# instances — summed value, own clocks, no refresh-to-max.
+func _run_instance_timer_regressions() -> void:
+	# REQUIRED case from the ruling: +3 for 2 turns cast turn 1, +5 for 2 turns
+	# cast turn 2 → turn 2 total +8, turn 3 total +5, turn 4 zero.
+	var m: CombatManager = CombatManager.new()
+	m.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var h: Dictionary = m.get_hero_states()[0]
+	m.apply_item_roll_buff(h, 3, 2)
+	var t1_total: int = int(m.get_roll_modifier_totals(h)["roll_buff"])
+	m.resolve_round({}, {}, DiceManager.new())
+	m.apply_item_roll_buff(h, 5, 2)
+	var t2_total: int = int(m.get_roll_modifier_totals(h)["roll_buff"])
+	m.resolve_round({}, {}, DiceManager.new())
+	var t3_total: int = int(m.get_roll_modifier_totals(h)["roll_buff"])
+	m.resolve_round({}, {}, DiceManager.new())
+	var t4_total: int = int(m.get_roll_modifier_totals(h)["roll_buff"])
+	_expect_and_record(
+		"Regression / roll buff instances (required: 3, 8, 5, 0)", "rollBuffInstances",
+		"3/8/5/0", "%d/%d/%d/%d" % [t1_total, t2_total, t3_total, t4_total]
+	)
+
+	# Burn instances: 4-burn/3t and 2-burn/1t applied the same round tick as
+	# 6 together, then the short one expires while the long one keeps ticking
+	# 4s on its own clock.
+	var bm: CombatManager = CombatManager.new()
+	bm.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_burn", "Audit Burn", "Noop", {})])
+	var be: Dictionary = bm.get_enemy_states()[0]
+	be["max_hp"] = 1000
+	be["current_hp"] = 1000
+	bm.apply_item_burn(be, 4, 3)
+	bm.apply_item_burn(be, 2, 1)
+	var ticks: Array[int] = []
+	var prev_hp: int = int(be["current_hp"])
+	for _round in range(5):
+		bm.resolve_round({}, {}, DiceManager.new())
+		ticks.append(prev_hp - int(be["current_hp"]))
+		prev_hp = int(be["current_hp"])
+	_expect_and_record(
+		"Regression / burn instances tick on independent clocks", "burnInstances",
+		"[0, 6, 4, 4, 0]", str(ticks)
+	)
 
 
 func _run_down_cleanup_regression() -> void:
@@ -2492,10 +2689,10 @@ func _run_summon_end_to_end_regression() -> void:
 		_record_failure("Regression / brood spawn name resolves", "summon", "dumb unit def for '%s'" % CombatManager.BROOD_SPAWN_NAME, "null or non-dumb")
 
 
-# fix-1.2: enemy roll buffs must expire on schedule and must not stack across
-# re-casts. A 2t erb cast in round 1 is live through round 3's reveal and gone
-# after round 3's end tick; a second cast refreshes to the authored value
-# instead of accumulating.
+# Instance timers (per Kev 2026-07-06, supersedes fix-1.2's refresh-to-max):
+# every erb cast is its own instance with its own clock; the effective value is
+# the SUM of live instances; each loses a turn at every round-end tick. A 2t
+# erb cast in round 1 covers round 2's reveal and is gone after round 2's tick.
 func _run_enemy_roll_buff_expiry_regression() -> void:
 	var manager: CombatManager = CombatManager.new()
 	var buffer_unit: EnemyData = _make_enemy("audit_buffer", "Audit Buffer", "Rally", {"erb": 2, "erbT": 2})
@@ -2503,31 +2700,34 @@ func _run_enemy_roll_buff_expiry_regression() -> void:
 	var buffer_state: Dictionary = manager.get_enemy_states()[0]
 	var buffer_id: String = str(buffer_state["id"])
 
-	# Round 1: enemy casts the 2t buff (end-of-round tick is skip-flagged).
+	# Round 1: enemy casts the 2t buff (one tick already spent at round end).
 	manager.resolve_round({}, {buffer_id: 10}, DiceManager.new())
 	var active_after_cast: bool = int(buffer_state.get("roll_buff", 0)) == 2
-	# Rounds 2-3: no re-cast; the buff ticks down and expires.
+	# Round 2: no re-cast; the instance covers this round and expires at its tick.
 	manager.resolve_round({}, {}, DiceManager.new())
-	var active_mid: bool = int(buffer_state.get("roll_buff", 0)) == 2
-	manager.resolve_round({}, {}, DiceManager.new())
-	var gone_after: bool = int(buffer_state.get("roll_buff", 0)) == 0 and int(buffer_state.get("roll_buff_turns", 0)) == 0
+	var gone_after: bool = int(buffer_state.get("roll_buff", 0)) == 0 and (buffer_state.get("roll_buff_stacks", []) as Array).is_empty()
 	_expect_and_record(
-		"Regression / enemy 2t roll buff expires after 2 rounds", "rollBuffExpiry",
-		"cast/mid/expired = true/true/true",
-		"cast/mid/expired = %s/%s/%s" % [str(active_after_cast), str(active_mid), str(gone_after)]
+		"Regression / enemy 2t roll buff expires on its own clock", "rollBuffExpiry",
+		"cast/expired = true/true",
+		"cast/expired = %s/%s" % [str(active_after_cast), str(gone_after)]
 	)
 
-	# Re-cast cap: two casts in consecutive rounds refresh to the authored +2,
-	# never +4 (the pre-fix runaway that read as a permanent buff).
+	# Independent instances, no refresh-to-max: re-casting does NOT extend the
+	# first instance's clock. Cast r1 + re-cast r2: after r2's tick only the
+	# second instance survives (+2 at 1t); after r3's tick it too is gone —
+	# under the old refresh model the buff would still read +2 after r3.
 	var stack_manager: CombatManager = CombatManager.new()
 	stack_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [buffer_unit])
 	var stack_state: Dictionary = stack_manager.get_enemy_states()[0]
 	var stack_id: String = str(stack_state["id"])
 	stack_manager.resolve_round({}, {stack_id: 10}, DiceManager.new())
 	stack_manager.resolve_round({}, {stack_id: 10}, DiceManager.new())
+	var after_recast_round: int = int(stack_state.get("roll_buff", 0))
+	stack_manager.resolve_round({}, {}, DiceManager.new())
+	var after_next_round: int = int(stack_state.get("roll_buff", 0))
 	_expect_and_record(
-		"Regression / enemy roll buff re-cast refreshes instead of stacking", "rollBuffExpiry",
-		"2", str(int(stack_state.get("roll_buff", 0)))
+		"Regression / enemy roll buff re-cast keeps independent clocks", "rollBuffExpiry",
+		"2 then 0", "%d then %d" % [after_recast_round, after_next_round]
 	)
 
 
@@ -2560,13 +2760,6 @@ func _run_band_coverage_audit() -> void:
 			_record_failure("Structural / band + pip coverage", "bandCoverage", "1 ability and >=1 pip per roll", problem)
 
 
-# fix-1.4: the universal freeze rule — frozen dice keep their value, skip
-# their reveals, and on thaw reveal the kept value instead of rerolling.
-# Case A (ally bank): freeze a squad die showing 20 — the ally skips this
-# round's reveal even though it precedes the freezer in squad order, and next
-# round it acts on the banked 20.
-# Case B (enemy parity): a frozen enemy skips its reveal, then acts on its
-# banked face the round after the thaw.
 func _collect_band_coverage_problems(owner: String, ranges: Array, side: String, problems: Array[String]) -> void:
 	if ranges.is_empty():
 		problems.append("%s: no ability ranges" % owner)
@@ -3030,10 +3223,12 @@ func _run_relic_low_hp_squad_roll_buff_regression() -> void:
 	var hero_a: Dictionary = manager.get_hero_states()[0]
 	var hero_b: Dictionary = manager.get_hero_states()[1]
 	manager.call("_damage_state", hero_a, 51)
+	var a_stacks: Array = hero_a.get("roll_buff_stacks", [])
 	var ok: bool = (
 		int(hero_a.get("roll_buff", 0)) == 2
 		and int(hero_b.get("roll_buff", 0)) == 2
-		and int(hero_a.get("roll_buff_turns", 0)) == 1
+		and a_stacks.size() == 1
+		and int((a_stacks[0] as Dictionary).get("turns_left", 0)) == 1
 	)
 	if ok:
 		_record_pass("Regression / relic lowHpSquadRollBuff", "lowHpSquadRollBuff")
@@ -3041,10 +3236,10 @@ func _run_relic_low_hp_squad_roll_buff_regression() -> void:
 		_record_failure(
 			"Regression / relic lowHpSquadRollBuff",
 			"lowHpSquadRollBuff",
-			"first ally below 50%% HP grants +2 roll to squad",
-			"hero_a buff=%d turns=%d hero_b buff=%d" % [
+			"first ally below 50%% HP grants a +2 roll instance to the squad",
+			"hero_a buff=%d stacks=%s hero_b buff=%d" % [
 				int(hero_a.get("roll_buff", 0)),
-				int(hero_a.get("roll_buff_turns", 0)),
+				str(a_stacks),
 				int(hero_b.get("roll_buff", 0)),
 			]
 		)
@@ -3342,9 +3537,9 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 		"freezeAnyDice":
 			return _expect_bool(effect_field, after.ally_a.freeze_turns > 0 and after.ally_a.frozen_die_value == 8, "selected ally die frozen", "turns=%d value=%d" % [after.ally_a.freeze_turns, after.ally_a.frozen_die_value])
 		"freezeEnemyDice":
-			# Hero freezes cancel the target's imminent action; the (single)
-			# charge is consumed by the same round's end tick, so assert the
-			# freeze event rather than lingering post-round turns.
+			# Freeze = repeat: the target's die crusts at its current face and
+			# repeats on its next roll(s). Assert the freeze event carrying the
+			# locked face (the repeat itself is covered by targeted regressions).
 			return _expect_bool(effect_field, _has_event(events, "freeze", 9, "enemy"), "freeze event on selected enemy die (value 9)", "events=%s" % str(events))
 		"freezeAllEnemyDice":
 			return _expect_bool(effect_field, _count_events(events, "freeze", "enemy") >= 2, "freeze events on all enemy dice", "events=%s" % str(events))

@@ -91,10 +91,10 @@ const BOSS_HIEROPHANT := "ROOT HIEROPHANT"
 const BOSS_MANTLE := "MANTLE TYRANT"
 const SCRAP_DRONE_NAME := "Scrap Drone"
 const BROOD_SPAWN_NAME := "Bloodmite"
-# Detonate burst = burn × min(turns, DETONATE_MAX_TURNS). The cap bounds the
-# permanent-burn sentinel (plagueProtocol's 9999t); 6 = one past the highest
-# authored burn duration (5), so authored abilities are unaffected.
-const DETONATE_MAX_TURNS := 6
+# Burns at or past this turn count are PERMANENT (plagueProtocol): they tick
+# forever and Detonate treats them as one tick's worth without consuming them
+# (per Kev 2026-07-06 — resolves the old DETONATE_MAX_TURNS placeholder cap).
+const PERMANENT_BURN_TURNS := 9999
 
 const BOSS_STANDING_RULES := {
 	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP.",
@@ -110,6 +110,10 @@ const MANTLE_ROUND_SHIELD := 6
 
 # 1-based round counter driving the turn-cadence rules.
 var _battle_round: int = 0
+
+# This round's raw hero die faces (stashed by resolve_round) — the enemy
+# freeze pick reads them to find the LOWEST revealed hero die.
+var _current_raw_hero_rolls: Dictionary = {}
 
 # Targeting personalities (Task 9): {enemy_id: hero_id} intent assignments for
 # the current round, written in SLOT ORDER (PACK reads insertion order).
@@ -381,7 +385,7 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 		var burn_amt = int(_get_relic_value("enemyBurnPermanent", "amount", 3))
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"]:
-				_apply_burn(enemy_state, burn_amt, 9999)
+				_apply_burn(enemy_state, burn_amt, PERMANENT_BURN_TURNS)
 				_log("Plague Protocol: %s starts with %d burn." % [enemy_state["unit"].display_name, burn_amt])
 
 	# signalJam: all enemies start with permanent -2 RFE
@@ -519,7 +523,7 @@ func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
 func get_roll_modifier_totals(state: Dictionary) -> Dictionary:
 	return {
 		"roll_rfe": _get_total_rfe(state) + int(state.get("perm_rfe", 0)),
-		"roll_buff": int(state.get("roll_buff", 0)) + int(state.get("perm_roll_buff", 0)),
+		"roll_buff": _get_total_roll_buff(state) + int(state.get("perm_roll_buff", 0)),
 	}
 
 
@@ -606,17 +610,25 @@ func resolve_round(
 	_round_events.clear()
 	_battle_round += 1
 
+	# Raw hero faces for this round — the enemy freeze pick (lowest revealed
+	# die, deterministic) reads these; falls back to last_die_value.
+	_current_raw_hero_rolls = raw_hero_rolls.duplicate()
+
 	# Boss standing rules that must be live before the hero phase.
 	_apply_boss_round_start_rules()
 
 	# Hijack: enemies with a pending hijack copy the heroes' current highest
-	# die for this round's action (effective roll override; raw kept).
+	# die for this round's action (effective roll override; raw kept). A frozen
+	# die is immune to Hijack — its crusted face repeats instead.
 	var highest_hero_roll: int = 0
 	for roll_variant in hero_rolls.values():
 		highest_hero_roll = maxi(highest_hero_roll, int(roll_variant))
 	if highest_hero_roll > 0:
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"] and bool(enemy_state.get("hijack_pending", false)):
+				if int(enemy_state.get("die_freeze_turns", 0)) > 0:
+					_log("%s's die is frozen solid — the Hijack can't take hold." % enemy_state["unit"].display_name)
+					continue
 				enemy_rolls[str(enemy_state["id"])] = highest_hero_roll
 				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
 				_emit_event(enemy_state, "hijack", highest_hero_roll, "enemy")
@@ -630,12 +642,13 @@ func resolve_round(
 	for hero_state in _hero_states:
 		if hero_state["dead"]:
 			continue
-		if bool(hero_state.get("die_freeze_consumed_this_round", false)):
-			_log("%s's die is frozen — reveal skipped." % hero_state["unit"].display_name)
-			continue
 		var roll_value: Variant = hero_rolls.get(hero_state["id"], null)
 		if roll_value == null:
 			continue
+		# Freeze = repeat: a frozen die kept its face, so the unit acts again on
+		# the same result. Targeting was re-picked fresh this round.
+		if bool(hero_state.get("die_freeze_repeat_this_round", false)):
+			_log("%s's frozen die repeats its %d." % [hero_state["unit"].display_name, int(roll_value)])
 		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], int(roll_value))
 		_log("%s uses %s." % [hero_state["unit"].display_name, str(ability_entry.get("ability_name", "Unknown"))])
 		_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")), str(ability_entry.get("zone", "")))
@@ -678,12 +691,13 @@ func resolve_round(
 		if _decoy_round_one and _battle_round == 1:
 			_log("%s wastes its turn on the decoy." % enemy_state["unit"].display_name)
 			continue
-		if bool(enemy_state.get("die_freeze_consumed_this_round", false)):
-			_log("%s's die is frozen — reveal skipped." % enemy_state["unit"].display_name)
-			continue
 		var enemy_roll_value: Variant = enemy_rolls.get(enemy_state["id"], null)
 		if enemy_roll_value == null:
 			continue
+		# Freeze = repeat: the crusted die kept its face; the enemy acts again
+		# on the same result (its target re-picked by personality this round).
+		if bool(enemy_state.get("die_freeze_repeat_this_round", false)):
+			_log("%s's frozen die repeats its %d." % [enemy_state["unit"].display_name, int(enemy_roll_value)])
 		var enemy_ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(enemy_roll_value))
 		_log("%s uses %s." % [enemy_state["unit"].display_name, str(enemy_ability_entry.get("ability_name", "Unknown"))])
 		_emit_action_event(enemy_state, "enemy", str(enemy_ability_entry.get("ability_name", "Unknown")), str(enemy_ability_entry.get("zone", "")))
@@ -725,13 +739,16 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"shield_stacks": [],
 		"shields_persist": false,
 		"dead": false,
+		# Burn / roll-buff instances (per Kev 2026-07-06): each application is
+		# its own stack with its own remaining duration; effective value is the
+		# sum of live stacks. "burn"/"burn_turns"/"roll_buff" are derived caches
+		# for display (summed value, longest remaining clock).
 		"burn": 0,
 		"burn_turns": 0,
-		"burn_skip_next_tick": false,
+		"burn_stacks": [],
 		"rfe_stacks": [],
 		"roll_buff": 0,
-		"roll_buff_turns": 0,
-		"roll_buff_skip_next_tick": false,
+		"roll_buff_stacks": [],
 		"dmg_scale": 1.0,
 		"selected_target_id": "",
 		"target_display": "--",
@@ -748,7 +765,7 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
-		"die_freeze_consumed_this_round": false,
+		"die_freeze_repeat_this_round": false,
 		"perm_roll_buff": 0,
 		"perm_rfe": 0,
 		"gear_burn_bonus": 0,
@@ -849,22 +866,27 @@ func _add_rfe_stack(state: Dictionary, amount: int, turns: int) -> void:
 	_log("%s gets -%d to rolls (%dt)." % [state["unit"].display_name, amount, turns])
 
 
+# Roll buffs are independent instances, identical both sides (per Kev
+# 2026-07-06, resolves the old erb refresh-to-max DESIGN-TODO): each cast is
+# its own stack with its own clock, the effective value is the sum of live
+# stacks, and every stack loses a turn at every end-of-round tick — an Nt
+# instance cast on turn T is live turns T..T+N-1 and gone on turn T+N.
+func _get_total_roll_buff(state: Dictionary) -> int:
+	var total: int = 0
+	for stack in state.get("roll_buff_stacks", []):
+		total += int(stack["amt"])
+	return total
+
+
+func _refresh_roll_buff_total(state: Dictionary) -> void:
+	state["roll_buff"] = _get_total_roll_buff(state)
+
+
 func _add_roll_buff(state: Dictionary, amount: int, turns: int) -> void:
-	if state.is_empty() or bool(state.get("dead", false)) or amount <= 0:
+	if state.is_empty() or bool(state.get("dead", false)) or amount <= 0 or turns <= 0:
 		return
-	if _is_hero_state(state):
-		state["roll_buff"] = int(state.get("roll_buff", 0)) + amount
-	else:
-		# Enemy erb re-casts refresh instead of stacking: Synod kits carry erb on
-		# ~45% of bands, so additive stacking ran away (+2 -> +4 -> +6 ...) and the
-		# refreshed timer made the buff read as permanent. The authored per-cast
-		# value is the visible cap; duration still refreshes on re-cast.
-		# DESIGN-TODO(kev): is enemy erb meant as an aura (active while the caster
-		# keeps rolling it) or a strict N-turn buff that should ignore re-casts?
-		# Current behavior: refresh-to-max, expires N turns after the last cast.
-		state["roll_buff"] = maxi(int(state.get("roll_buff", 0)), amount)
-	state["roll_buff_turns"] = maxi(int(state.get("roll_buff_turns", 0)), turns)
-	state["roll_buff_skip_next_tick"] = true
+	state["roll_buff_stacks"].append({"amt": amount, "turns_left": turns})
+	_refresh_roll_buff_total(state)
 	_log("%s gains +%d roll buff (%dt)." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "roll_buff", amount, _resolve_side_for_state(state))
 
@@ -1036,35 +1058,39 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				_log("%s is now cloaked." % ally_state["unit"].display_name)
 				_emit_event(ally_state, "cloak", 0, "hero")
 
-	# Freeze die application. A freeze locks the target's die STATIC and skips
-	# its NEXT reveal (immediate=false, symmetric for both sides): the target
-	# still acts the round it is frozen, then skips its next turn with the die
-	# unmoved (crust persists), showing the same number, until the freeze
-	# clears. The die never re-rolls while frozen. (Reverted per Kev from the
-	# fix-1.4 bank/thaw reading — freeze is a next-turn static lockout.)
+	# Freeze die application — FREEZE = REPEAT (per Kev 2026-07-06, final;
+	# supersedes both the next-turn static lockout and the fix-1.4 bank/thaw
+	# banked-face model — see docs/DECISIONS_RESOLVED.md #1). The frozen die
+	# crusts static in the tray and does NOT reroll: on each of its next N
+	# rolls it keeps the same face and its unit ACTS AGAIN on that result —
+	# same zone, same ability, targeting re-picked fresh each repeat. Only the
+	# die result is locked. After N repeats it thaws and rolls normally.
+	# Identical both sides; freezing an ally repeats their result on purpose.
 	var freeze_enemy: int = int(raw.get("freezeEnemyDice", 0))
 	var freeze_all_enemy: int = int(raw.get("freezeAllEnemyDice", 0))
 	var freeze_any: int = int(raw.get("freezeAnyDice", 0))
 	var freeze_amount: int = maxi(maxi(freeze_enemy, freeze_all_enemy), freeze_any)
 	var freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
-	# Deep Freeze directive: this hero's freezes last longer.
+	# Deep Freeze directive: this hero's freezes repeat more results.
 	if freeze_amount > 0 and _has_directive(hero_state, "freezeDurationBonus"):
 		freeze_amount += _directive_value(hero_state, "amount", 1)
 	if freeze_amount > 0:
 		if freeze_all_enemy > 0:
 			for es in _enemy_states:
 				if not es["dead"] and not _ward_blocks_hostile(es):
-					_freeze_die_state(es, freeze_amount, false, freeze_flavor)
+					_freeze_die_state(es, freeze_amount, freeze_flavor)
 		else:
 			var freeze_target: Dictionary = {}
 			if freeze_any > 0:
+				# freezeAnyDice: one manual pick, either side (freezing an ally
+				# repeats their good result; a ward only blocks hostile picks).
 				freeze_target = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
 			if not freeze_target.is_empty():
-				_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
+				_freeze_die_state(freeze_target, freeze_amount, freeze_flavor)
 			else:
 				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
-					_freeze_die_state(freeze_target, freeze_amount, false, freeze_flavor)
+					_freeze_die_state(freeze_target, freeze_amount, freeze_flavor)
 
 	# Jam: cap the target's next roll at 10 (die status, telegraphed for the
 	# next reveal). jamAll caps every living enemy die.
@@ -1247,9 +1273,13 @@ const REWRITE_VALUE := 3
 
 
 # Rewrite: die status — the target's next roll is SET to 3. Telegraphed:
-# applied this turn, it fires at the next roll.
+# applied this turn, it fires at the next roll. Frozen dice are immune (per
+# Kev 2026-07-06): the crusted face repeats and cannot be rewritten.
 func _apply_rewrite(state: Dictionary, survives_current_tick: bool = true) -> void:
 	if state.is_empty() or bool(state.get("dead", false)):
+		return
+	if int(state.get("die_freeze_turns", 0)) > 0:
+		_log("%s's die is frozen solid — the Rewrite can't take hold." % state["unit"].display_name)
 		return
 	state["rewrite_pending"] = true
 	state["rewrite_skip_next_tick"] = survives_current_tick
@@ -1277,8 +1307,12 @@ func apply_rewrite_to_state(state: Dictionary, survives_current_tick: bool = tru
 # Jam: die status — the target's next roll is capped (default 10). Applied
 # mid-round it survives the imminent tick and caps the NEXT reveal;
 # battle-start applications (Static Field relic) cap the first roll directly.
+# Frozen dice are immune (per Kev 2026-07-06): the crusted face repeats as-is.
 func _apply_jam(state: Dictionary, cap: int = JAM_CAP, survives_current_tick: bool = true) -> void:
 	if state.is_empty() or bool(state.get("dead", false)):
+		return
+	if int(state.get("die_freeze_turns", 0)) > 0:
+		_log("%s's die is frozen solid — the Jam can't take hold." % state["unit"].display_name)
 		return
 	var existing: int = int(state.get("jam_cap", 0))
 	state["jam_cap"] = cap if existing <= 0 else mini(existing, cap)
@@ -1351,31 +1385,41 @@ func _apply_execute_bonus(attacker_state: Dictionary, target_state: Dictionary) 
 	_damage_state(target_state, bonus, false, attacker_state)
 
 
-# Detonate: consume the target's Burn and deal burn_amount x burn_turns_remaining
-# damage immediately; the Burn is cleared. Payload Fuse (gear hook
-# gear_detonate_bonus) makes the burst deal +50%.
+# Detonate (per Kev 2026-07-06): finite Burn stacks burst for amount ×
+# remaining turns and are consumed; a PERMANENT Burn adds exactly ONE tick's
+# damage (its amount) and is NOT consumed — it keeps ticking. Payload Fuse
+# (gear hook gear_detonate_bonus) makes the whole burst deal +50%.
+# The old DETONATE_MAX_TURNS cap is removed with the sentinel multiply.
+
+# PUBLIC single source for the burst math — the live Detonate pip preview
+# (battle_card_view) reads this so the projection can't drift from combat.
+func get_expected_detonate_burst(attacker_state: Dictionary, target_state: Dictionary) -> int:
+	var burst: int = 0
+	for stack_variant in target_state.get("burn_stacks", []):
+		var stack: Dictionary = stack_variant
+		if bool(stack.get("perm", false)):
+			burst += int(stack["amt"])
+		else:
+			burst += int(stack["amt"]) * int(stack["turns_left"])
+	if burst > 0 and bool(attacker_state.get("gear_detonate_bonus", false)):
+		burst = int(ceil(float(burst) * 1.5))
+	return burst
+
+
 func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> void:
 	if target_state.is_empty() or bool(target_state.get("dead", false)):
 		return
-	var burn_amount: int = int(target_state.get("burn", 0))
-	var burn_turns: int = int(target_state.get("burn_turns", 0))
-	if burn_amount <= 0 or burn_turns <= 0:
+	var burst: int = get_expected_detonate_burst(attacker_state, target_state)
+	if burst <= 0:
 		_log("%s's Detonate fizzles — no Burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
 		return
-	# Permanent burns (plagueProtocol) carry a 9999-turn sentinel; multiplying
-	# the burst by it deals ~30k+ (a one-shot kill on anything). Cap the turns
-	# factor at DETONATE_MAX_TURNS — set to one past the highest AUTHORED burn
-	# duration (5), so every real ability is unchanged and only the sentinel is
-	# bounded. Balance-sim-discovered.
-	# DESIGN-TODO(kev): what SHOULD a permanent-burn Detonate deal? The cap of 6
-	# is a data-derived placeholder (max authored +1), not a tuned value.
-	var effective_turns: int = mini(burn_turns, DETONATE_MAX_TURNS)
-	var burst: int = burn_amount * effective_turns
-	if bool(attacker_state.get("gear_detonate_bonus", false)):
-		burst = int(ceil(float(burst) * 1.5))
-	target_state["burn"] = 0
-	target_state["burn_turns"] = 0
-	target_state["burn_skip_next_tick"] = false
+	# Finite stacks are consumed; permanent stacks stay and keep ticking.
+	var remaining_stacks: Array = []
+	for stack_variant in target_state.get("burn_stacks", []):
+		if bool((stack_variant as Dictionary).get("perm", false)):
+			remaining_stacks.append(stack_variant)
+	target_state["burn_stacks"] = remaining_stacks
+	_refresh_burn_totals(target_state)
 	_log("%s DETONATES the Burn on %s for %d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, burst])
 	_emit_event(target_state, "detonate", burst, _resolve_side_for_state(target_state))
 	_damage_state(target_state, burst, false, attacker_state)
@@ -1551,18 +1595,21 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		else:
 			_add_roll_buff(enemy_state, erb_amount, erb_turns)
 
-	# Freeze hero dice (former cower): heroes already acted this round, so the
-	# lock takes hold at the next reveal and the hero skips it.
+	# Freeze hero dice (freeze = repeat, per Kev 2026-07-06): the crusted die
+	# repeats its face on the hero's next N rolls. Enemy AI freeze always
+	# targets the hero's LOWEST revealed die — deterministic, no randi — so the
+	# squad's weakest result is the one that repeats (taunt still overrides).
 	var enemy_freeze_one: int = int(raw.get("freezeEnemyDice", 0))
 	var enemy_freeze_all: int = int(raw.get("freezeAllEnemyDice", 0))
 	var enemy_freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
 	if enemy_freeze_all > 0:
 		for hero_state in _hero_states:
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
-				_freeze_die_state(hero_state, enemy_freeze_all, false, enemy_freeze_flavor)
+				_freeze_die_state(hero_state, enemy_freeze_all, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
-		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
-			_freeze_die_state(hostile_hero_target, enemy_freeze_one, false, enemy_freeze_flavor)
+		var freeze_rider_target: Dictionary = _freeze_pick_hero_lowest_die()
+		if not freeze_rider_target.is_empty() and not _ward_blocks_hostile(freeze_rider_target):
+			_freeze_die_state(freeze_rider_target, enemy_freeze_one, enemy_freeze_flavor)
 
 	# Rampage grants (self or all enemies)
 	var grant_rampage: int = int(raw.get("grantRampage", 0))
@@ -1918,11 +1965,13 @@ func _ward_blocks_hostile(target_state: Dictionary) -> bool:
 	return true
 
 
-# Freeze: the die locks in the tray (physical blocker) and the unit skips its
-# next N reveals. `immediate` cancels the unit's action THIS round (used when
-# the target has not acted yet — the consumed charge is decremented by the
-# normal end-of-turn pass). `flavor` is cosmetic only (ice / petrify tint).
-func _freeze_die_state(state: Dictionary, freeze_amount: int, immediate: bool = false, flavor: String = "ice") -> void:
+# Freeze = repeat (per Kev 2026-07-06): the die crusts static in the tray
+# (physical blocker other dice bounce off) at its current face; on each of its
+# next `die_freeze_turns` rolls the unit acts again on that face, then the die
+# thaws and rerolls. Re-freezing an already-frozen die adds repeats. While
+# frozen the die is immune to Jam, Rewrite, and Hijack. `flavor` is cosmetic
+# only (ice / petrify tint).
+func _freeze_die_state(state: Dictionary, freeze_amount: int, flavor: String = "ice") -> void:
 	var existing_turns: int = int(state.get("die_freeze_turns", 0))
 	state["die_freeze_turns"] = existing_turns + freeze_amount
 	state["freeze_flavor"] = flavor
@@ -1931,11 +1980,38 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, immediate: bool = 
 		frozen_value = int(state.get("last_die_value", 0))
 	if frozen_value > 0:
 		state["frozen_die_value"] = frozen_value
-	if immediate:
-		state["die_freeze_consumed_this_round"] = true
-	_log("%s's die is frozen at %d for %d reveal(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
+	_log("%s's die is frozen at %d — it repeats that result %d more time(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
 	_grant_mirror_plate_protocol(state)
+
+
+# Enemy AI freeze pick: the living hero with the LOWEST revealed die face this
+# round — deterministic (ties break to slot order, no randi). Taunt overrides
+# everything; cloaked heroes can't be picked by hostile single-target effects.
+func _freeze_pick_hero_lowest_die() -> Dictionary:
+	var taunter: Dictionary = _get_taunting_hero_state()
+	if not taunter.is_empty():
+		return taunter
+	var best: Dictionary = {}
+	var best_value: int = 21
+	for hero_state in _hero_states:
+		if bool(hero_state["dead"]) or bool(hero_state.get("cloaked", false)):
+			continue
+		var face: int = int(_current_raw_hero_rolls.get(str(hero_state["id"]), 0))
+		if face <= 0:
+			face = int(hero_state.get("last_die_value", 0))
+		if face <= 0:
+			face = 21  # unrevealed die: only picked if nothing revealed exists
+		if face < best_value:
+			best_value = face
+			best = hero_state
+	if best.is_empty():
+		# Everything cloaked/unrevealed — fall back to the first living hero so
+		# the rider still resolves deterministically.
+		for hero_state in _hero_states:
+			if not bool(hero_state["dead"]) and not bool(hero_state.get("cloaked", false)):
+				return hero_state
+	return best
 
 
 func _resolve_revive_hp_pct(raw: Dictionary) -> int:
@@ -1950,16 +2026,15 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	state["current_hp"] = maxi(1, int(state["max_hp"]) * hp_pct / 100)
 	state["burn"] = 0
 	state["burn_turns"] = 0
-	state["burn_skip_next_tick"] = false
+	state["burn_stacks"] = []
 	state["rfe_stacks"] = []
 	state["roll_buff"] = 0
-	state["roll_buff_turns"] = 0
-	state["roll_buff_skip_next_tick"] = false
+	state["roll_buff_stacks"] = []
 	state["shield"] = 0
 	state["shield_stacks"] = []
 	state["die_freeze_turns"] = 0
 	state["frozen_die_value"] = 0
-	state["die_freeze_consumed_this_round"] = false
+	state["die_freeze_repeat_this_round"] = false
 	state["freeze_flavor"] = ""
 	_log("%s is revived at %d HP!" % [state["unit"].display_name, int(state["current_hp"])])
 	_emit_event(state, "heal", int(state["current_hp"]), _resolve_side_for_state(state))
@@ -2058,11 +2133,10 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["shield_stacks"] = []
 	state["burn"] = 0
 	state["burn_turns"] = 0
-	state["burn_skip_next_tick"] = false
+	state["burn_stacks"] = []
 	state["rfe_stacks"] = []
 	state["roll_buff"] = 0
-	state["roll_buff_turns"] = 0
-	state["roll_buff_skip_next_tick"] = false
+	state["roll_buff_stacks"] = []
 	state["dmg_scale"] = 1.0
 	state["cloaked"] = false
 	state["die_freeze_turns"] = 0
@@ -2083,7 +2157,7 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
-	state["die_freeze_consumed_this_round"] = false
+	state["die_freeze_repeat_this_round"] = false
 	state["perm_rfe"] = 0
 
 
@@ -2131,14 +2205,40 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 				_log("Aegis Field grants %d shield to all allies." % squad_shield)
 
 
+# Burns are independent instances (per Kev 2026-07-06): each application has
+# its own remaining duration and expires on its own clock; the tick damage is
+# the sum of live stacks. Each stack skips the tick of its application round
+# (unchanged timing: an Nt burn deals N ticks over the N following rounds).
+# turns >= PERMANENT_BURN_TURNS marks a permanent stack (plagueProtocol).
 func _apply_burn(state: Dictionary, amount: int, turns: int) -> void:
 	if state.is_empty() or state["dead"] or amount <= 0 or turns <= 0:
 		return
-	state["burn"] = int(state["burn"]) + amount
-	state["burn_turns"] = maxi(int(state["burn_turns"]), turns)
-	state["burn_skip_next_tick"] = true
-	_log("%s is burning for %d over %d turns." % [state["unit"].display_name, amount, turns])
+	var permanent: bool = turns >= PERMANENT_BURN_TURNS
+	state["burn_stacks"].append({
+		"amt": amount,
+		"turns_left": turns,
+		"skip_next_tick": true,
+		"perm": permanent,
+	})
+	_refresh_burn_totals(state)
+	if permanent:
+		_log("%s is burning for %d — permanently." % [state["unit"].display_name, amount])
+	else:
+		_log("%s is burning for %d over %d turns." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "burn", amount, _resolve_side_for_state(state))
+
+
+# Derived display caches: "burn" = summed live stack value, "burn_turns" =
+# longest remaining clock (one aggregated chip).
+func _refresh_burn_totals(state: Dictionary) -> void:
+	var total: int = 0
+	var longest: int = 0
+	for stack_variant in state.get("burn_stacks", []):
+		var stack: Dictionary = stack_variant
+		total += int(stack["amt"])
+		longest = maxi(longest, int(stack["turns_left"]))
+	state["burn"] = total
+	state["burn_turns"] = longest
 
 
 func _first_living_state(states: Array) -> Dictionary:
@@ -2255,18 +2355,19 @@ func _tick_end_of_round_states() -> void:
 	for enemy_state in _enemy_states:
 		_tick_state(enemy_state)
 
-	# Consume frozen-die charges: any unit whose frozen die covered this round's
-	# reveal (or whose action was canceled by a fresh immediate freeze) spends
-	# one charge now. Single consumption point for tray and headless flows.
+	# Spend frozen-die repeats: any unit whose crusted die repeated its face
+	# this round spends one repeat now. After the last repeat the die thaws and
+	# rolls fresh next round. Single consumption point for tray and headless
+	# flows (freeze = repeat, per Kev 2026-07-06).
 	for state_variant in _hero_states + _enemy_states:
 		var frozen_state: Dictionary = state_variant
 		if bool(frozen_state["dead"]):
 			continue
-		if bool(frozen_state.get("die_freeze_consumed_this_round", false)):
-			frozen_state["die_freeze_consumed_this_round"] = false
+		if bool(frozen_state.get("die_freeze_repeat_this_round", false)):
+			frozen_state["die_freeze_repeat_this_round"] = false
 			frozen_state["die_freeze_turns"] = maxi(0, int(frozen_state.get("die_freeze_turns", 0)) - 1)
 			if int(frozen_state.get("die_freeze_turns", 0)) <= 0:
-				# Freeze fully cleared — the die rolls fresh next round.
+				# Thawed — the die rolls fresh next round.
 				frozen_state["frozen_die_value"] = 0
 				frozen_state["freeze_flavor"] = ""
 
@@ -2283,32 +2384,50 @@ func _tick_end_of_round_states() -> void:
 func get_expected_burn_tick(state: Dictionary) -> int:
 	if bool(state.get("dead", false)):
 		return 0
-	if int(state.get("burn_turns", 0)) <= 0 or int(state.get("burn", 0)) <= 0:
-		return 0
-	if bool(state.get("burn_skip_next_tick", false)):
+	# Sum the stacks that will actually tick this round (skip-flagged stacks
+	# were applied this round and sit the tick out).
+	var ticking: int = 0
+	for stack_variant in state.get("burn_stacks", []):
+		var stack: Dictionary = stack_variant
+		if not bool(stack.get("skip_next_tick", false)):
+			ticking += int(stack["amt"])
+	if ticking <= 0:
 		return 0
 	var burn_bonus: int = 0
 	if not _is_hero_state(state):
 		burn_bonus = int(_get_relic_value("burnAmplified", "bonus", 0)) + _get_total_burn_bonus()
-	return int(state.get("burn", 0)) + burn_bonus
+	return ticking + burn_bonus
 
 
 func _tick_state(state: Dictionary) -> void:
 	if state["dead"]:
 		return
 
-	if int(state["burn_turns"]) > 0 and int(state["burn"]) > 0:
-		if bool(state.get("burn_skip_next_tick", false)):
-			state["burn_skip_next_tick"] = false
-		else:
-			var tick_dmg: int = get_expected_burn_tick(state)
+	# Burn: one tick per round for the summed live stacks; each stack runs its
+	# own clock (skip-flagged stacks were applied this round and start next
+	# round; permanent stacks never expire).
+	if not (state.get("burn_stacks", []) as Array).is_empty():
+		var tick_dmg: int = get_expected_burn_tick(state)
+		if tick_dmg > 0:
 			_emit_action_event(state, _resolve_side_for_state(state), "Burn", "tick")
 			_log("%s takes %d burn damage." % [state["unit"].display_name, tick_dmg])
 			_damage_state(state, tick_dmg)
-			state["burn_turns"] = int(state["burn_turns"]) - 1
-			if int(state["burn_turns"]) <= 0:
-				state["burn"] = 0
-				state["burn_skip_next_tick"] = false
+		var live_burn_stacks: Array = []
+		for stack_variant in state.get("burn_stacks", []):
+			var stack: Dictionary = stack_variant
+			if bool(stack.get("skip_next_tick", false)):
+				stack["skip_next_tick"] = false
+				live_burn_stacks.append(stack)
+				continue
+			if bool(stack.get("perm", false)):
+				live_burn_stacks.append(stack)
+				continue
+			var burn_tl: int = int(stack["turns_left"]) - 1
+			if burn_tl > 0:
+				stack["turns_left"] = burn_tl
+				live_burn_stacks.append(stack)
+		state["burn_stacks"] = live_burn_stacks
+		_refresh_burn_totals(state)
 
 	# Enemy-side Taunt (internal lured_by state) covers exactly one hero phase:
 	# applied in the enemy phase, it skips this tick, restricts the next hero
@@ -2384,16 +2503,19 @@ func _tick_state(state: Dictionary) -> void:
 		if new_rfe_stacks.is_empty():
 			state["feedback_per_round"] = 0
 
-	# Tick roll buff
-	if int(state.get("roll_buff_turns", 0)) > 0:
-		if bool(state.get("roll_buff_skip_next_tick", false)):
-			state["roll_buff_skip_next_tick"] = false
-			return
-		state["roll_buff_turns"] = int(state["roll_buff_turns"]) - 1
-		if int(state["roll_buff_turns"]) <= 0:
-			state["roll_buff"] = 0
-			state["roll_buff_turns"] = 0
-			state["roll_buff_skip_next_tick"] = false
+	# Tick roll-buff stacks: every stack loses a turn at every round-end tick
+	# (an Nt instance cast on turn T is live turns T..T+N-1 — the contract of
+	# the instance-timer ruling, per Kev 2026-07-06).
+	if not (state.get("roll_buff_stacks", []) as Array).is_empty():
+		var live_buff_stacks: Array = []
+		for stack_variant in state.get("roll_buff_stacks", []):
+			var stack: Dictionary = stack_variant
+			var buff_tl: int = int(stack["turns_left"]) - 1
+			if buff_tl > 0:
+				stack["turns_left"] = buff_tl
+				live_buff_stacks.append(stack)
+		state["roll_buff_stacks"] = live_buff_stacks
+		_refresh_roll_buff_total(state)
 
 
 # --- Public item application methods ---
@@ -2423,8 +2545,7 @@ func apply_item_shield_all(amount: int) -> void:
 
 
 func apply_item_roll_buff(target_state: Dictionary, amount: int, turns: int) -> void:
-	target_state["roll_buff"] = int(target_state.get("roll_buff", 0)) + amount
-	target_state["roll_buff_turns"] = maxi(int(target_state.get("roll_buff_turns", 0)), turns)
+	_add_roll_buff(target_state, amount, turns)
 
 
 func apply_item_revive(target_state: Dictionary, hp_pct: int) -> void:

@@ -204,7 +204,8 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 	match _scene.turn_phase:
 		_scene.PHASE_TARGETING, _scene.PHASE_READY_TO_END, \
 		_scene.PHASE_REROLL_PICK, _scene.PHASE_NUDGE_PICK, _scene.PHASE_SET_PICK, \
-		_scene.PHASE_ITEM_PICK_ALLY, _scene.PHASE_ITEM_PICK_DEAD, _scene.PHASE_ITEM_PICK_ENEMY:
+		_scene.PHASE_ITEM_PICK_ALLY, _scene.PHASE_ITEM_PICK_DEAD, _scene.PHASE_ITEM_PICK_ENEMY, \
+		_scene.PHASE_ITEM_PICK_ANY:
 			pass
 		_:
 			return {}
@@ -368,9 +369,10 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 		var enemy_state: Dictionary = enemy_variant
 		if str(enemy_state.get("id", "")) != target_id:
 			continue
-		var burst: int = int(enemy_state.get("burn", 0)) * int(enemy_state.get("burn_turns", 0))
-		if burst > 0 and bool(hero_state.get("gear_detonate_bonus", false)):
-			burst = int(ceil(float(burst) * 1.5))
+		# Single-sourced from combat_manager so the pip can't drift from the
+		# actual burst (finite stacks × remaining turns + one tick per
+		# permanent stack, Payload Fuse +50%).
+		var burst: int = _scene.combat_manager.get_expected_detonate_burst(hero_state, enemy_state)
 		for effect_variant in action_pips.get("effects", []):
 			var effect: Dictionary = effect_variant
 			if str(effect.get("kind", "")) == "detonate":

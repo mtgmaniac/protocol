@@ -52,6 +52,7 @@ const SET_DIE_COST := 3
 const PHASE_ITEM_PICK_ALLY := "item_pick_ally"
 const PHASE_ITEM_PICK_DEAD := "item_pick_dead"
 const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
+const PHASE_ITEM_PICK_ANY := "item_pick_any"
 # No-target items: show the card centered and wait for a confirm tap (tap card = activate,
 # tap off = cancel) instead of applying immediately.
 const PHASE_ITEM_CONFIRM := "item_confirm"
@@ -1427,6 +1428,9 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 		var hero_state: Dictionary = hero_state_variant
 		if bool(hero_state.get("dead", false)):
 			continue
+		# A frozen die is crusted static — roll overrides can't move it.
+		if int(hero_state.get("die_freeze_turns", 0)) > 0:
+			continue
 		var hero_id: String = str(hero_state["id"])
 		var changed: bool = false
 		if bool(hero_state.get("forced_nat20_pending", false)):
@@ -1538,6 +1542,9 @@ func _can_nudge_hero(state: Dictionary) -> bool:
 	if bool(state.get("dead", false)):
 		return false
 	if not _has_roll_for_state(hero_rolls, state):
+		return false
+	# A repeating frozen die is fully locked — its crusted face IS the result.
+	if bool(state.get("die_freeze_repeat_this_round", false)):
 		return false
 	if _was_hero_nudged_this_turn(str(state["id"])):
 		# Reverse Gimbal holders may re-tap to flip the nudge's sign.
@@ -2279,6 +2286,11 @@ func _set_turn_phase(next_phase: String) -> void:
 			roll_button.disabled = true
 			roll_button.text = ""
 			_refresh_summary("")
+		PHASE_ITEM_PICK_ANY:
+			roll_button.visible = false
+			roll_button.disabled = true
+			roll_button.text = ""
+			_refresh_summary("")
 		PHASE_ITEM_CONFIRM:
 			roll_button.visible = false
 			roll_button.disabled = true
@@ -2356,6 +2368,9 @@ func _update_phase_target_sets() -> void:
 		PHASE_ITEM_PICK_ENEMY:
 			legal_target_side = "enemy"
 			legal_target_ids = _get_legal_target_ids("enemy")
+		PHASE_ITEM_PICK_ANY:
+			legal_target_side = "any"
+			legal_target_ids = _get_legal_target_ids("any")
 
 
 func _is_target_highlight_phase() -> bool:
@@ -2728,8 +2743,16 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 	if battle_over:
 		return false
 
-	# Reroll/Set pick phases: only living hero cards that have rolled
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
+	# Reroll/Set pick phases: only living hero cards that have rolled. A frozen
+	# die can't be rerolled (the crust is physical) or copied onto; a repeating
+	# die can't be Set either — its crusted face IS the result.
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
+		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
+			and _has_roll_for_state(hero_rolls, state) and int(state.get("die_freeze_turns", 0)) <= 0
+	if turn_phase == PHASE_SET_PICK:
+		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
+			and _has_roll_for_state(hero_rolls, state) and not bool(state.get("die_freeze_repeat_this_round", false))
+	if turn_phase == PHASE_TWIN_SOURCE_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
 	if turn_phase == PHASE_NUDGE_PICK:
 		return accent_color == HERO_ACCENT and _can_nudge_hero(state)
@@ -2741,6 +2764,8 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return false
 	if turn_phase == PHASE_ITEM_PICK_ENEMY:
 		return accent_color == ENEMY_ACCENT and not bool(state["dead"])
+	if turn_phase == PHASE_ITEM_PICK_ANY:
+		return not bool(state["dead"])
 
 	if turn_phase != PHASE_TARGETING and turn_phase != PHASE_READY_TO_END:
 		return false
@@ -2787,7 +2812,7 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 	if _in_item_phase():
 		# Tapping a legal enemy target applies the item; tapping any other unit/die cancels
 		# it back to the loadout (same as tapping the item card again).
-		if turn_phase == PHASE_ITEM_PICK_ENEMY and legal_target_ids.has(target_id) and _pending_item != null:
+		if (turn_phase == PHASE_ITEM_PICK_ENEMY or turn_phase == PHASE_ITEM_PICK_ANY) and legal_target_ids.has(target_id) and _pending_item != null:
 			var target_state: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), target_id)
 			if not target_state.is_empty():
 				AudioManager.play_select()
@@ -2814,6 +2839,9 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		var reroll_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 		if reroll_state.is_empty() or bool(reroll_state["dead"]) or not _has_roll_for_state(hero_rolls, reroll_state):
 			return
+		if int(reroll_state.get("die_freeze_turns", 0)) > 0:
+			_refresh_summary("That die is frozen solid — it can't be rerolled.")
+			return
 		AudioManager.play_select()
 		await _apply_reroll(target_id)
 		return
@@ -2828,12 +2856,18 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		var set_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 		if set_state.is_empty() or bool(set_state["dead"]) or not _has_roll_for_state(hero_rolls, set_state):
 			return
+		if bool(set_state.get("die_freeze_repeat_this_round", false)):
+			_refresh_summary("That die is repeating its frozen result — it can't be Set.")
+			return
 		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
 		return
 	if turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
 		var twin_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 		if twin_state.is_empty() or bool(twin_state["dead"]) or not _has_roll_for_state(hero_rolls, twin_state):
+			return
+		if turn_phase == PHASE_TWIN_TARGET_PICK and int(twin_state.get("die_freeze_turns", 0)) > 0:
+			_refresh_summary("That die is frozen solid — it can't be overwritten.")
 			return
 		AudioManager.play_select()
 		if turn_phase == PHASE_TWIN_SOURCE_PICK:
@@ -2847,7 +2881,7 @@ func _on_hero_card_pressed(target_id: String) -> void:
 	if _in_item_phase():
 		# Tapping a legal ally target applies the item; tapping any other unit/die cancels it
 		# back to the loadout (same as tapping the item card again).
-		if turn_phase == PHASE_ITEM_PICK_ALLY and legal_target_ids.has(target_id) and _pending_item != null:
+		if (turn_phase == PHASE_ITEM_PICK_ALLY or turn_phase == PHASE_ITEM_PICK_ANY) and legal_target_ids.has(target_id) and _pending_item != null:
 			var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
 			if not target_state.is_empty():
 				AudioManager.play_select()
@@ -3086,6 +3120,11 @@ func _on_item_button_pressed(item: ItemData) -> bool:
 				_cancel_item_targeting("No living enemy can be targeted by %s." % item.display_name)
 				return true
 			_set_turn_phase(PHASE_ITEM_PICK_ENEMY)
+		"any":
+			if _get_legal_target_ids("any").is_empty():
+				_cancel_item_targeting("No unit can be targeted by %s." % item.display_name)
+				return true
+			_set_turn_phase(PHASE_ITEM_PICK_ANY)
 		"none":
 			# No target needed — show the card centered and wait for a confirm tap.
 			_set_turn_phase(PHASE_ITEM_CONFIRM)

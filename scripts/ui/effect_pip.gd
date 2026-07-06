@@ -398,10 +398,10 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "roll", "REROLL")
 		"enemyRerollAll":
 			_append_effect(effects, "roll", "REROLL", 0, "all")
-		"enemyDieFreeze":
-			_append_effect(effects, "freeze", "", int(effect.get("skips", 0)))
+		"anyDieFreeze":
+			_append_effect(effects, "freeze", "", int(effect.get("repeats", 0)))
 		"enemyDieFreezeAll":
-			_append_effect(effects, "freeze", "", int(effect.get("skips", 0)), "all")
+			_append_effect(effects, "freeze", "", int(effect.get("repeats", 0)), "all")
 		_:
 			if target_kind != "":
 				_append_effect(effects, "tag", target_kind.to_upper())

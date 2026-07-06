@@ -38,12 +38,26 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 	var spends: Array = []
 	# Focus fire: every hero aims at the lowest-HP living, uncloaked enemy —
 	# finishing kills removes enemy actions from the board fastest.
+	# Exception (freeze = repeat, per Kev 2026-07-06): a hero whose current
+	# band applies freeze aims at the enemy showing the LOWEST die instead —
+	# pinning the weakest enemy result is the play; never freeze allied dice.
 	var focus: Dictionary = _lowest_hp_enemy(cm)
 	if not focus.is_empty():
 		for hero_state_variant in cm.get_hero_states():
 			var hero_state: Dictionary = hero_state_variant
-			if not bool(hero_state.get("dead", false)):
-				hero_state["selected_target_id"] = str(focus["id"])
+			if bool(hero_state.get("dead", false)):
+				continue
+			hero_state["selected_target_id"] = str(focus["id"])
+			var unit_id: String = str(hero_state["id"])
+			if not bs.hero_rolls.has(unit_id) or engine.dice_manager == null:
+				continue
+			var eff: int = engine.effective_hero_roll(hero_state, unit_id, bs)
+			var band_raw: Dictionary = engine.dice_manager.get_ability_for_roll(hero_state.get("unit"), eff).get("raw", {})
+			var applies_freeze: bool = int(band_raw.get("freezeAnyDice", 0)) > 0 or int(band_raw.get("freezeEnemyDice", 0)) > 0
+			if applies_freeze:
+				var freeze_pick: Dictionary = _lowest_die_unfrozen_enemy(bs, cm)
+				if not freeze_pick.is_empty():
+					hero_state["selected_target_id"] = str(freeze_pick["id"])
 
 	# Spends, in priority order, one pass over the squad. Keep a 1-point buffer
 	# so Siphon/next-round income swings don't zero us out.
@@ -55,7 +69,9 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 		var unit_id: String = str(hero_state["id"])
 		if not bs.hero_rolls.has(unit_id):
 			continue
-		if bs.protocol_points >= 3 and int(bs.hero_rolls[unit_id]) <= 4 and not bool(hero_state.get("die_freeze_consumed_this_round", false)):
+		if bs.protocol_points >= 3 and int(bs.hero_rolls[unit_id]) <= 4 \
+				and not bool(hero_state.get("die_freeze_repeat_this_round", false)) \
+				and int(hero_state.get("die_freeze_turns", 0)) <= 0:
 			var new_roll: int = engine.apply_reroll(bs, unit_id)
 			spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
 	# 2) Nudge when +3 lifts the hero's EFFECTIVE roll into a stronger band.
@@ -66,7 +82,7 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 		var unit_id: String = str(hero_state["id"])
 		if not bs.hero_rolls.has(unit_id) or bs.hero_roll_nudges.has(unit_id) or bs.hero_roll_sets.has(unit_id):
 			continue
-		if bs.protocol_points < 2 or bool(hero_state.get("die_freeze_consumed_this_round", false)):
+		if bs.protocol_points < 2 or bool(hero_state.get("die_freeze_repeat_this_round", false)):
 			continue
 		var eff: int = engine.effective_hero_roll(hero_state, unit_id, bs)
 		if _band_improves(engine, hero_state, eff, mini(eff + 3, 20)):
@@ -82,7 +98,7 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 		var unit_id: String = str(hero_state["id"])
 		if not bs.hero_rolls.has(unit_id) or bs.hero_roll_sets.has(unit_id):
 			continue
-		if bool(hero_state.get("die_freeze_consumed_this_round", false)):
+		if bool(hero_state.get("die_freeze_repeat_this_round", false)):
 			continue
 		if bs.protocol_points >= engine.set_cost(bs) + 3 and engine.effective_hero_roll(hero_state, unit_id, bs) < 11:
 			var paid: int = engine.apply_set(bs, unit_id, 20)
@@ -119,17 +135,45 @@ func decide_items(bs: BattleState, cm: CombatManager, gs: Node) -> Array:
 			if by_type.has(t):
 				return [{"item_id": by_type[t], "target_id": str(hurt["id"]), "side": "hero"}]
 
-	# 2) Offensive item on the focus (lowest-HP) enemy.
+	# 2) Freeze the ENEMY die showing the lowest face (freeze = repeat: pin the
+	#    enemy to its weakest result). Never freeze allied dice — repeating an
+	#    ally is a judgment call the greedy policy doesn't make.
+	if by_type.has("anyDieFreeze"):
+		var freeze_target: Dictionary = _lowest_die_unfrozen_enemy(bs, cm)
+		if not freeze_target.is_empty():
+			return [{"item_id": by_type["anyDieFreeze"], "target_id": str(freeze_target["id"]), "side": "enemy"}]
+
+	# 3) Offensive item on the focus (lowest-HP) enemy.
 	var focus: Dictionary = _lowest_hp_enemy(cm)
 	if not focus.is_empty():
-		for t in ["enemyDmg", "enemyBurn", "enemyRfe", "enemyDieFreeze"]:
+		for t in ["enemyDmg", "enemyBurn", "enemyRfe"]:
 			if by_type.has(t):
 				return [{"item_id": by_type[t], "target_id": str(focus["id"]), "side": "enemy"}]
 
-	# 3) Protocol top-up when nearly empty and a source is held.
+	# 4) Protocol top-up when nearly empty and a source is held.
 	if bs.protocol_points <= 1 and by_type.has("gainProtocol"):
 		return [{"item_id": by_type["gainProtocol"], "target_id": "", "side": ""}]
 	return []
+
+
+# The living, uncloaked, not-yet-frozen enemy whose die shows the lowest face
+# this round. Deterministic: strict less-than keeps slot order on ties.
+func _lowest_die_unfrozen_enemy(bs: BattleState, cm: CombatManager) -> Dictionary:
+	var best: Dictionary = {}
+	var best_face: int = 21
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		if bool(enemy_state.get("dead", false)) or bool(enemy_state.get("cloaked", false)):
+			continue
+		if int(enemy_state.get("die_freeze_turns", 0)) > 0:
+			continue
+		var face: int = int(bs.enemy_rolls.get(str(enemy_state["id"]), 0))
+		if face <= 0:
+			continue
+		if face < best_face:
+			best_face = face
+			best = enemy_state
+	return best
 
 
 func _lowest_hp_enemy(cm: CombatManager) -> Dictionary:
