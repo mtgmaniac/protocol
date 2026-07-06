@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> **Agents: read `docs/TRUTH.md` first** — the canonical reference; when any doc conflicts with it, TRUTH.md wins. Then `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md` (runtime map + layout contract). `offline-bundle/CODEBASE_MAP.md` maps the code.
+> **Agents: read `docs/TRUTH.md` first, then `docs/INVARIANTS.md` immediately after** — TRUTH is the canonical reference (wins every doc conflict); INVARIANTS carries the WHY rules and what violations look like; `docs/DECISIONS_RESOLVED.md` holds closed rulings (never relitigate). Then `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md` (runtime map + layout contract). `offline-bundle/CODEBASE_MAP.md` maps the code. Tasks follow `docs/TASK_TEMPLATE.md`; the gate is `python scripts/verify_gate.py`.
 
 This file is the practical AI-assistant context for the current Overload
 Protocol Godot project. It is intentionally grounded in the live repo, not the

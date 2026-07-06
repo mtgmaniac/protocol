@@ -2,7 +2,11 @@
 
 **Read this first.** The live game is Godot 4.6 + GDScript under `scripts/`, `scenes/`, `assets/`, and `data/raw/`.
 
-**Resuming work?** Read **`docs/TRUTH.md`** first (canonical — when any doc disagrees with it, TRUTH.md wins), then **`docs/AI_AGENT_GAME_REFERENCE.md`** and **`TASK_QUEUE.md`**. Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol).
+**Resuming work?** Read **`docs/TRUTH.md`** first (canonical — when any doc disagrees with it, TRUTH.md wins), then **`docs/INVARIANTS.md` immediately after** (the WHY rules — non-negotiable), then **`docs/DECISIONS_RESOLVED.md`** (closed rulings: do not relitigate; pending rulings must be transcribed there before implementing), then **`docs/AI_AGENT_GAME_REFERENCE.md`** and **`TASK_QUEUE.md`**. Every task follows **`docs/TASK_TEMPLATE.md`**. Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol).
+
+**One-time setup per clone:** `git config core.hooksPath scripts/hooks` — enables the
+baseline ceremony (±10 pts per-op drift needs `BASELINE-APPROVED-BY-KEV` in the commit
+message) and the battle_scene.gd growth warning.
 
 ## Branch split (backend vs UI)
 
@@ -43,6 +47,10 @@ npx tsx scripts/debug/balance_sim_full_evo_team.ts 15000
 # Static audits (ability keywords, gear/relic effect types)
 python scripts/debug/audit_ability_keywords.py
 python scripts/debug/audit_gear_relic_effects.py
+
+# Full gate, one command (validate-data + audit + smokes + freeze regression
+# + sim delta table vs baseline):
+python scripts/verify_gate.py            # --skip-sim for the fast pass
 
 # Godot smoke gates (run all four after non-trivial changes):
 #   AbilityAuditRunner.tscn          — 105 combat/data checks

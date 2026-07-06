@@ -172,3 +172,34 @@ balance calls are Kev's):**
 re-tune (Avalanche/GLACIER kit, freeze rider numbers, op difficulty), then
 `python scripts/sim/ci_smoke.py --update-baseline` — or direct a compensation
 pass first. Until then ci_smoke reports the regression by design.
+
+---
+
+## Successor kit (same session, follow-up commit)
+
+Durable context + enforcement so future sessions inherit this project's judgment:
+- **docs/INVARIANTS.md** — 12 WHY rules with rationale + "violation looks like"
+  (determinism fence, ai_type split, keyword budgets, complexity budget SPENT,
+  legibility precedents, legible enemy AI, UI doctrine, balance-together, baseline
+  ceremony, doc supremacy, frozen legacy ids, one-manual-pick). ~110 lines.
+- **docs/DECISIONS_RESOLVED.md** — expanded to all 17 adjudicated items: #1/#3/#4
+  RESOLVED & IMPLEMENTED (this batch), K1–K5 shipped adjudications (cloak 2
+  clauses, pierce+breach distinct, taunt unified, jam cap 10, ECS rejected), #17
+  (Synod 68% accepted, pass owed), and #2/#5–#16 pre-entered as **RULED —
+  IMPLEMENTATION PENDING with ruling text awaiting transcription** — the
+  implementing session must paste Kev's ruling into the entry BEFORE coding, so
+  rulings live in the repo, not a chat log. (Their text was not in this repo or
+  this session's context; transcription is deliberately step 0 of that batch.)
+- **Enforcement:** `scripts/verify_gate.py` (full gate + per-op delta table;
+  `/verify` command in `.claude/commands/verify.md`); git hooks via
+  `core.hooksPath scripts/hooks` — `commit-msg` aborts baseline.json commits with
+  per-op drift beyond ±10 pts unless the message contains
+  `BASELINE-APPROVED-BY-KEV` (tested both directions); `pre-commit` warns (never
+  blocks) when battle_scene.gd grows past 3378 lines, citing the architecture
+  review.
+- **docs/TASK_TEMPLATE.md** — the task skeleton (read TRUTH→INVARIANTS→
+  DECISIONS_RESOLVED / explicit constraints by invariant number / verify block /
+  report deltas BEFORE baseline update / TRUTH.md in the same commit) + a filled
+  real example (the Detonate ruling).
+- Pointers wired: root CLAUDE.md, docs/CLAUDE.md, AGENTS.md, TRUTH.md living-docs
+  line all direct every session to INVARIANTS.md immediately after TRUTH.md.

@@ -27,7 +27,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE) | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.53**, facility **0.7746** (accepted post-keyword-batch, commit `3901e06`). The ~1.7% was the historical flat L0/random-policy figure — reference only, different measurement, not the current engine's number |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
-**Living docs:** `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
+**Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
 
 ---
 
@@ -188,22 +188,32 @@ Cross-run persistent **XP**; node map between battles; multiplayer; narrative; f
 
 ---
 
-## DECISIONS NEEDED (human calls — do not silently resolve)
+## DECISIONS (all 17 adjudicated — see docs/DECISIONS_RESOLVED.md; do not relitigate)
 
-1. **RESOLVED 2026-07-06 — Freeze = repeat.** Moved to `docs/DECISIONS_RESOLVED.md` #1 (full bank/thaw → lockout → repeat lineage recorded there; number kept so old references stay valid).
-2. **Shield "one round" per-side reading.** `combat_manager.gd:822`. Code applies expiry per-side as "one opposing action phase" so enemy shields stay meaningful. Alternative: strict same-round expiry (enemy shields would often expire before absorbing). Confirm the per-side reading.
-3. **RESOLVED 2026-07-06 — independent instance timers (rfm/erb/burn).** Moved to `docs/DECISIONS_RESOLVED.md` #3. See combat rule 10.
-4. **RESOLVED 2026-07-06 — permanent-burn Detonate = one tick, not consumed.** Moved to `docs/DECISIONS_RESOLVED.md` #4. `DETONATE_MAX_TURNS` removed.
-5. **SCRAPMASTER "every other turn".** `combat_manager.gd:215`. Code reads it as even-numbered rounds. Alternative: every 2nd enemy phase counted from first activation.
-6. **INTERCEPT_CARDS numbers.** `GameState.gd:393` (`BALANCE-TODO: numbers`) — all 22 card payloads are provisional.
-7. **Route modifier numbers.** `GameState.gd:252` — all 10 flagged-route modifier amounts provisional.
-8. **Boss cadence numbers.** `combat_manager.gd:107` — rebuild HP 50%, brood cadence 3, mantle shield 6 all provisional.
-9. **Execute bonus.** `combat_manager.gd:1347` — flat +8; tune or scale?
-10. **Chain jump ratio.** `combat_manager.gd:1405` — 60% round down; tune?
-11. **Reverse Gimbal UX.** `battle_scene.gd:1452` — "may subtract" implemented as tap-again to flip +3 ↔ −3. Confirm.
-12. **Cloak: hostile-only untargetability.** `battle_scene.gd:2659` — friendly picks on cloaked allies stay legal. Confirm reading of "untargetable."
-13. **Tutorial runs count toward `runs_started`.** `GameState.gd:146` — they do today, which also feeds the rung-1 pity unlock (3 runs started → engineer). Intended?
-14. **Directive Marks stay single-target on AoE.** `combat_manager.gd:1215`. Confirm.
-15. **Mid-run re-equip.** `GameState.gd:623` — "freely re-equip" is deferred; deterministic stand-in in place. Full UI wanted?
-16. **Active shield total readout.** `battle_card_view.gd:394` — shield total only visible via HP preview/inspect since the chip was cut. Sufficient?
-17. **voidCirclet difficulty after the keyword batch.** Commit `3901e06`: voidCirclet clear rate jumped **42.1% → 68.4% (+26.3)** — ward cull (boss lost both warded damage abilities) + hijack swap (Scribe lost ally-shield+siphon) + Synod trash on SYSTEMATIC all point the same way. Explicitly flagged for a **compensating Synod pass**; needs a design decision on how much to claw back. *(Ghost post-cloak-nerf was checked and is a non-issue: 43.5 → 50.8, no buff needed.)*
+Every item below has been ruled by Kev (2026-07 decision review). Questions and
+rulings live in `docs/DECISIONS_RESOLVED.md` under the same numbers. Items marked
+*pending* are ruled but not yet implemented — **their ruling text must be
+transcribed into DECISIONS_RESOLVED.md before implementation; never implement a
+ruling from chat memory.**
+
+1. **RESOLVED & IMPLEMENTED — Freeze = repeat** (full bank/thaw → lockout → repeat lineage under #1).
+2. **RULED, pending** — shield per-side expiry reading.
+3. **RESOLVED & IMPLEMENTED — independent instance timers (rfm/erb/burn).** See combat rule 10.
+4. **RESOLVED & IMPLEMENTED — permanent-burn Detonate = one tick, not consumed.**
+5. **RULED, pending** — SCRAPMASTER "every other turn" cadence.
+6. **RULED, pending** — INTERCEPT_CARDS numbers.
+7. **RULED, pending** — route modifier numbers.
+8. **RULED, pending** — boss cadence numbers.
+9. **RULED, pending** — execute bonus.
+10. **RULED, pending** — chain jump ratio.
+11. **RULED, pending** — Reverse Gimbal UX.
+12. **RULED, pending** — cloak hostile-only untargetability.
+13. **RULED, pending** — tutorial runs in `runs_started`.
+14. **RULED, pending** — directive Marks single-target on AoE.
+15. **RULED, pending** — mid-run re-equip.
+16. **RULED, pending** — active shield total readout.
+17. **RESOLVED — voidCirclet 68% accepted; compensating Synod pass owed** (folds into the post-semantics rebalance).
+
+Shipped adjudications without a number (cloak 2 clauses, pierce+breach kept
+distinct, taunt unified, jam cap 10, ECS rejected) are recorded as K1–K5 in
+DECISIONS_RESOLVED.md.

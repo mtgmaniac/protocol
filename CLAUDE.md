@@ -10,9 +10,15 @@ find a pointer to the live docs.
 Read these before doing anything:
 
 - [docs/TRUTH.md](docs/TRUTH.md) — **canonical; wins every doc conflict**
+- [docs/INVARIANTS.md](docs/INVARIANTS.md) — **read immediately after TRUTH.md: the WHY rules + what a violation looks like**
+- [docs/DECISIONS_RESOLVED.md](docs/DECISIONS_RESOLVED.md) — closed rulings; do not relitigate, do not implement pending rulings from chat memory
 - [docs/AI_AGENT_GAME_REFERENCE.md](docs/AI_AGENT_GAME_REFERENCE.md)
 - [docs/BATTLE_UI_V2_SPEC.md](docs/BATTLE_UI_V2_SPEC.md)
 - [offline-bundle/CODEBASE_MAP.md](offline-bundle/CODEBASE_MAP.md)
+
+Every task follows [docs/TASK_TEMPLATE.md](docs/TASK_TEMPLATE.md). The full gate is
+`python scripts/verify_gate.py` (also `/verify`). One-time per clone:
+`git config core.hooksPath scripts/hooks` (baseline ceremony + growth warning).
 
 When any doc conflicts, **docs/TRUTH.md wins** (it supersedes `offline-bundle/GROUND_TRUTH.md`).
 

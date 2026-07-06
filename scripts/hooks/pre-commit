@@ -1,0 +1,4 @@
+#!/bin/sh
+# battle_scene.gd growth warning (never blocks) — see docs/ARCHITECTURE_REVIEW_JUL2026.md.
+python "$(git rev-parse --show-toplevel)/scripts/hooks/battle_scene_growth.py"
+exit 0
