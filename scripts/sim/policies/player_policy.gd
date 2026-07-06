@@ -34,6 +34,14 @@ func decide_round(_engine: BattleEngine, _bs: BattleState, _cm: CombatManager, _
 	return []
 
 
+# ── Consumable use in battle (sim-D). Returns a list of item actions to fire
+# this round: {item_id, target_id, side}. side "hero"/"enemy"/"" (none). The
+# runner resolves cost + effect through the engine and removes the item from
+# GameState.consumables. Base policy uses nothing.
+func decide_items(_bs: BattleState, _cm: CombatManager, _gs: Node) -> Array:
+	return []
+
+
 # ── Post-win draft. items: Array[ItemData]. -> {"id": "" to skip, "target_unit"}
 func choose_draft(items: Array, gs: Node) -> Dictionary:
 	for item_variant in items:

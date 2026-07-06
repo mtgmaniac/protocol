@@ -286,8 +286,10 @@ def full_report(d: Path) -> str:
         "## Enemies (damage per appearance)", enemy_table(df), "",
         "## Stage-1 content lift", stage1_regression(df), "",
         "## Evolution pick rates", evolution_pickrate_table(df), "",
-        "> Consumables are drafted but not yet USED in battle (Package D adds the "
-        "item-use policy), so consumable lift reads near-zero until then.",
+        "> Consumables are drafted AND used in battle (L1/L2 triage policy, "
+        "sim-D); their lift is measurable. Use frequency depends on the policy's "
+        "triage thresholds — archetype/L2 drafting shifts which consumables are "
+        "held.",
     ]
     return "\n".join(parts)
 

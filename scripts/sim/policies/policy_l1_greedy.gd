@@ -77,6 +77,47 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 	return spends
 
 
+# ── Consumable use (sim-D): one item per round, triage-first. ─────────────────
+# Effect-type → intent. Heals/shields when a hero is hurt; offensive items on
+# the focus enemy; Protocol top-up when the pool is low. Deterministic (no rng).
+func decide_items(bs: BattleState, cm: CombatManager, gs: Node) -> Array:
+	var consumables: Array = gs.get("consumables")
+	if consumables.is_empty():
+		return []
+	# Index held consumables by effect type.
+	var by_type: Dictionary = {}
+	for cid in consumables:
+		var item: ItemData = DataManager.get_item(str(cid)) as ItemData
+		if item != null:
+			by_type[str(item.effect.get("type", ""))] = str(cid)
+
+	# 1) Emergency heal/shield if a hero is below 45% HP.
+	var hurt: Dictionary = {}
+	for hs in cm.get_hero_states():
+		var s: Dictionary = hs
+		if bool(s.get("dead", false)):
+			continue
+		if float(s.get("current_hp", 0)) < 0.45 * float(s.get("max_hp", 1)):
+			if hurt.is_empty() or int(s["current_hp"]) < int(hurt["current_hp"]):
+				hurt = s
+	if not hurt.is_empty():
+		for t in ["healAll", "heal", "shieldAll", "shield"]:
+			if by_type.has(t):
+				return [{"item_id": by_type[t], "target_id": str(hurt["id"]), "side": "hero"}]
+
+	# 2) Offensive item on the focus (lowest-HP) enemy.
+	var focus: Dictionary = _lowest_hp_enemy(cm)
+	if not focus.is_empty():
+		for t in ["enemyDmg", "enemyBurn", "enemyRfe", "enemyDieFreeze"]:
+			if by_type.has(t):
+				return [{"item_id": by_type[t], "target_id": str(focus["id"]), "side": "enemy"}]
+
+	# 3) Protocol top-up when nearly empty and a source is held.
+	if bs.protocol_points <= 1 and by_type.has("gainProtocol"):
+		return [{"item_id": by_type["gainProtocol"], "target_id": "", "side": ""}]
+	return []
+
+
 func _lowest_hp_enemy(cm: CombatManager) -> Dictionary:
 	var best: Dictionary = {}
 	for enemy_state_variant in cm.get_enemy_states():

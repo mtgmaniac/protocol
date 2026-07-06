@@ -308,6 +308,12 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
 		# Policy: hero targets + protocol spends before the round resolves.
 		var spends: Array = policy.decide_round(engine, bs, cm, gs)
+		# Policy: in-battle consumable use (sim-D). Applied through the same
+		# engine dispatch the live screen uses; removed from the run inventory.
+		for action_variant in policy.decide_items(bs, cm, gs):
+			var used: Dictionary = _use_consumable(engine, bs, cm, gs, action_variant)
+			if not used.is_empty():
+				spends.append(used)
 		var raw_hero_rolls: Dictionary = bs.hero_rolls.duplicate()
 		var raw_enemy_rolls: Dictionary = bs.enemy_rolls.duplicate()
 		var step: Dictionary = engine.resolve_step(bs)
@@ -347,6 +353,38 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		"protocol_left": bs.protocol_points, "deaths": _dead_hero_ids(cm.get_hero_states()),
 	})
 	return {"result": result, "rounds": rounds}
+
+
+# Fires one consumable action: cost (floor 0), effect via the shared engine
+# dispatch, remove from GameState.consumables. Returns a spend telemetry entry.
+func _use_consumable(engine: BattleEngine, bs: BattleState, cm: CombatManager, gs: Node, action: Dictionary) -> Dictionary:
+	var item_id: String = str(action.get("item_id", ""))
+	var consumables: Array = gs.get("consumables")
+	if item_id == "" or not consumables.has(item_id):
+		return {}
+	var item: ItemData = DataManager.get_item(item_id) as ItemData
+	if item == null:
+		return {}
+	var cost: int = engine.item_protocol_cost(false)
+	bs.protocol_points = maxi(bs.protocol_points - cost, 0)
+	if cm.has_relic("protocolOnItemUse"):
+		engine.gain_protocol(bs, 1, engine.max_protocol(int(gs.get("run_protocol_cap_override"))))
+	var effect: Dictionary = item.effect
+	if str(effect.get("type", "")) == "gainProtocol":
+		engine.gain_protocol(bs, int(effect.get("amount", 0)), engine.max_protocol(int(gs.get("run_protocol_cap_override"))))
+	else:
+		var target_state: Dictionary = {}
+		var side: String = str(action.get("side", ""))
+		var target_id: String = str(action.get("target_id", ""))
+		var states: Array = cm.get_hero_states() if side == "hero" else cm.get_enemy_states()
+		for s in states:
+			if str((s as Dictionary).get("id", "")) == target_id:
+				target_state = s
+				break
+		var revive_pct: int = int(gs.call("get_revive_hp_pct", int(effect.get("pct", 50))))
+		engine.apply_consumable_effect(effect, target_state, bs, revive_pct, item.display_name)
+	consumables.erase(item_id)
+	return {"kind": "item", "unit": str(action.get("target_id", "")), "cost": cost, "detail": item_id}
 
 
 func _hp_snapshot(states: Array) -> Array:

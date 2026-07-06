@@ -344,6 +344,92 @@ func item_enemy_freeze_all(bs: BattleState, skips: int) -> void:
 			enemy_state["frozen_die_value"] = fv
 
 
+# sim-D: the consumable effect DISPATCH, extracted from
+# battle_scene._apply_item_effect so the live screen and the sim share one
+# implementation. Applies the combat-state mutation and returns a log line;
+# the pool half (item cost, gainProtocol, Overflow Vent) stays with the caller
+# since it owns the Protocol pool + its logging. `revive_pct` is the resolved
+# percentage (caller applies its own GameState revive modifier). Returns "" for
+# gainProtocol (caller handles it) and unknown types.
+func apply_consumable_effect(effect: Dictionary, target_state: Dictionary, bs: BattleState, revive_pct: int, item_name: String) -> String:
+	var tname: String = _state_display_name(target_state)
+	match str(effect.get("type", "")):
+		"heal":
+			var a: int = int(effect.get("amount", 0))
+			combat_manager.apply_item_heal(target_state, a)
+			return "Item: %s heals %s for %d." % [item_name, tname, a]
+		"healAll":
+			var a: int = int(effect.get("amount", 0))
+			combat_manager.apply_item_heal_all(a)
+			return "Item: %s heals all living allies for %d." % [item_name, a]
+		"shield":
+			var a: int = int(effect.get("amount", 0))
+			combat_manager.apply_item_shield(target_state, a)
+			return "Item: %s grants %d shield to %s." % [item_name, a, tname]
+		"shieldAll":
+			var a: int = int(effect.get("amount", 0))
+			combat_manager.apply_item_shield_all(a)
+			return "Item: %s grants all living allies %d shield." % [item_name, a]
+		"ward":
+			combat_manager.apply_item_ward(target_state)
+			return "Item: %s wards %s." % [item_name, tname]
+		"rollBuff":
+			var a: int = int(effect.get("amount", 0))
+			var t: int = int(effect.get("turns", 1))
+			combat_manager.apply_item_roll_buff(target_state, a, t)
+			return "Item: %s gives %s +%d roll for %d turns." % [item_name, tname, a, t]
+		"revive":
+			combat_manager.apply_item_revive(target_state, revive_pct)
+			return "Item: %s revives %s at %d%% HP." % [item_name, tname, revive_pct]
+		"cloak":
+			item_cloak(target_state)
+			return "Item: %s cloaks %s." % [item_name, tname]
+		"cloakAll":
+			item_cloak_all()
+			return "Item: %s — all living allies cloaked." % item_name
+		"enemyRfe":
+			var a: int = int(effect.get("amount", 0))
+			var t: int = int(effect.get("rfT", 1))
+			combat_manager.apply_item_rfe(target_state, a, t)
+			return "Item: %s applies -%d RFE to %s for %d turns." % [item_name, a, tname, t]
+		"enemyDmg":
+			var a: int = int(effect.get("amount", 0))
+			combat_manager.apply_item_damage(target_state, a)
+			return "Item: %s deals %d damage to %s." % [item_name, a, tname]
+		"enemyBurn":
+			var a: int = int(effect.get("amount", 0))
+			var t: int = int(effect.get("burnT", 1))
+			combat_manager.apply_item_burn(target_state, a, t)
+			return "Item: %s applies %d burn to %s for %d turns." % [item_name, a, tname, t]
+		"enemyRerollDie":
+			if not target_state.is_empty():
+				var r: int = item_enemy_reroll(bs, target_state)
+				return "Item: %s rerolls %s → %d." % [item_name, tname, r]
+		"enemyRerollAll":
+			item_enemy_reroll_all(bs)
+			return "Item: %s — all enemies rerolled." % item_name
+		"enemyDieFreeze":
+			if not target_state.is_empty():
+				var s: int = int(effect.get("skips", 1))
+				item_enemy_freeze(bs, target_state, s)
+				return "Item: %s freezes %s's die for %d turns." % [item_name, tname, s]
+		"enemyDieFreezeAll":
+			var s: int = int(effect.get("skips", 1))
+			item_enemy_freeze_all(bs, s)
+			return "Item: %s — all enemy dice frozen for %d reveal(s)." % [item_name, s]
+	return ""
+
+
+func _state_display_name(state: Dictionary) -> String:
+	if state.is_empty():
+		return "?"
+	var u: Object = state.get("unit") as Object
+	if u == null:
+		return "?"
+	var name_val = u.get("display_name")
+	return str(name_val) if name_val != null else "?"
+
+
 # ── Effective-roll pipeline (extracted from battle_scene) ─────────────────────
 # The value fed to combat_manager.resolve_round() after Set / freeze / Nudge /
 # roll-buffs. Set forces an absolute effective roll (overrides everything);

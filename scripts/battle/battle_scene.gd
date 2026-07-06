@@ -3131,77 +3131,18 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 
 	var effect: Dictionary = item.effect
 	var effect_type: String = str(effect.get("type", ""))
-	var tname: String = _state_unit_name(target_state)
 
-	match effect_type:
-		"heal":
-			var amount: int = int(effect.get("amount", 0))
-			combat_manager.apply_item_heal(target_state, amount)
-			_append_log("Item: %s heals %s for %d." % [item.display_name, tname, amount])
-		"healAll":
-			var heal_all_amount: int = int(effect.get("amount", 0))
-			combat_manager.apply_item_heal_all(heal_all_amount)
-			_append_log("Item: %s heals all living allies for %d." % [item.display_name, heal_all_amount])
-		"shield":
-			var amount: int = int(effect.get("amount", 0))
-			combat_manager.apply_item_shield(target_state, amount)
-			_append_log("Item: %s grants %d shield to %s." % [item.display_name, amount, tname])
-		"shieldAll":
-			var shield_all_amount: int = int(effect.get("amount", 0))
-			combat_manager.apply_item_shield_all(shield_all_amount)
-			_append_log("Item: %s grants all living allies %d shield." % [item.display_name, shield_all_amount])
-		"ward":
-			combat_manager.apply_item_ward(target_state)
-			_append_log("Item: %s wards %s — the next ability that targets them is blocked." % [item.display_name, tname])
-		"rollBuff":
-			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("turns", 1))
-			combat_manager.apply_item_roll_buff(target_state, amount, turns)
-			_append_log("Item: %s gives %s +%d roll for %d turns." % [item.display_name, tname, amount, turns])
-		"revive":
-			var pct: int = _game_state().get_revive_hp_pct(int(effect.get("pct", 50)))
-			combat_manager.apply_item_revive(target_state, pct)
-			_append_log("Item: %s revives %s at %d%% HP." % [item.display_name, tname, pct])
-		"cloak":
-			_engine.item_cloak(target_state)
-			_append_log("Item: %s cloaks %s." % [item.display_name, tname])
-		"cloakAll":
-			_engine.item_cloak_all()
-			_append_log("Item: %s — all living allies cloaked." % item.display_name)
-		"enemyRfe":
-			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("rfT", 1))
-			combat_manager.apply_item_rfe(target_state, amount, turns)
-			_append_log("Item: %s applies -%d RFE to %s for %d turns." % [item.display_name, amount, tname, turns])
-		"enemyDmg":
-			var amount: int = int(effect.get("amount", 0))
-			combat_manager.apply_item_damage(target_state, amount)
-			_append_log("Item: %s deals %d damage to %s." % [item.display_name, amount, tname])
-		"enemyBurn":
-			var amount: int = int(effect.get("amount", 0))
-			var turns: int = int(effect.get("burnT", 1))
-			combat_manager.apply_item_burn(target_state, amount, turns)
-			_append_log("Item: %s applies %d burn to %s for %d turns." % [item.display_name, amount, tname, turns])
-		"gainProtocol":
-			var protocol_grant: int = int(effect.get("amount", 0))
-			_gain_protocol(protocol_grant)
-			_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
-		"enemyRerollDie":
-			if not target_state.is_empty():
-				var new_roll: int = _engine.item_enemy_reroll(_state, target_state)
-				_append_log("Item: %s rerolls %s → %d." % [item.display_name, tname, new_roll])
-		"enemyRerollAll":
-			_engine.item_enemy_reroll_all(_state)
-			_append_log("Item: %s — all enemies rerolled." % item.display_name)
-		"enemyDieFreeze":
-			if not target_state.is_empty():
-				var skips: int = int(effect.get("skips", 1))
-				_engine.item_enemy_freeze(_state, target_state, skips)
-				_append_log("Item: %s freezes %s's die for %d turns." % [item.display_name, tname, skips])
-		"enemyDieFreezeAll":
-			var freeze_skips: int = int(effect.get("skips", 1))
-			_engine.item_enemy_freeze_all(_state, freeze_skips)
-			_append_log("Item: %s — all enemy dice frozen for %d reveal(s)." % [item.display_name, freeze_skips])
+	if effect_type == "gainProtocol":
+		# Pool op stays here (Overflow Vent + bar + logging live on the scene).
+		var protocol_grant: int = int(effect.get("amount", 0))
+		_gain_protocol(protocol_grant)
+		_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
+	else:
+		# Combat-state mutation is shared with the sim (sim-D).
+		var revive_pct: int = _game_state().get_revive_hp_pct(int(effect.get("pct", 50)))
+		var log_line: String = _engine.apply_consumable_effect(effect, target_state, _state, revive_pct, item.display_name)
+		if log_line != "":
+			_append_log(log_line)
 
 	_consume_item(item.id)
 	_pending_item = null
