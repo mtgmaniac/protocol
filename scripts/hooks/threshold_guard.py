@@ -16,6 +16,7 @@ TOKEN = "BASELINE-APPROVED-BY-KEV"
 # audit pass count). Tightening is always free. Adding a threshold? List it.
 WATCHED = [
     ("scripts/hooks/battle_scene_growth.py", "HIGH_WATER_LINES", "max"),
+    ("scripts/hooks/battle_scene_growth.py", "PROTOCOL_ACTIONS_HIGH_WATER", "max"),
     ("scripts/hooks/baseline_ceremony.py", "CEREMONY_PTS", "max"),
     ("scripts/sim/ci_smoke.py", "TOL_OVERALL", "max"),
     ("scripts/sim/ci_smoke.py", "TOL_OP", "max"),
