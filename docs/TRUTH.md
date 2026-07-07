@@ -183,7 +183,7 @@ Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-c
 
 ## Sim baseline (current)
 
-`scripts/sim/baseline.json` — **post repeat-freeze checkpoint, accepted per Kev 2026-07-06 (BASELINE-APPROVED-BY-KEV), pre repricing**: policy **l1** (greedy), **300 runs**, overall clear **0.2533**; per-op: facility **0.549**, voidCirclet **0.298**, veil **0.231**, hive **0.068**, stellarMenagerie **0.021**. The Avalanche figure (**0.132**) is known biased low: L1 cannot yet play ally crit banking. Deferred balance numbers (DECISIONS_RESOLVED #6–#10, #17) re-anchor to this checkpoint; the old Synod compensation note is void. The pre-repeat baseline (overall 0.53, accepted at `3901e06`) and the "flat sim ~1.7%" figure are historical reference only. Design target stays: 25–40% skilled full-clear of facility in real play.
+`scripts/sim/baseline.json` — **post crit-banking checkpoint, accepted per Kev 2026-07-06 (BASELINE-APPROVED-BY-KEV)**: policy **l1** (greedy), **300 runs**, overall clear **0.2867**; per-op: facility **0.592**, voidCirclet **0.404**, veil **0.215**, hive **0.068**, stellarMenagerie **0.063**. voidCirclet's +10.5 vs the prior checkpoint is mechanically coherent: frozen dice are immune to Rewrite and Hijack, so ally banking directly counters ROOT HIEROPHANT's Root Access standing rule. Avalanche (**0.237**) remains the known repricing target; no ability numbers move until that ruling. Deferred balance numbers (DECISIONS_RESOLVED #6–#10, #17) re-anchor to this checkpoint. Historical reference only: repeat-freeze checkpoint 0.2533, pre-repeat 0.53 (`3901e06`), "flat sim ~1.7%". Design target stays: 25–40% skilled full-clear of facility in real play.
 
 ## Out of scope (don't build)
 

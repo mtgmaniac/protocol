@@ -241,6 +241,19 @@ checkpoint annotation predicted), pulse +5.6, ghost +4.8, shield +4.7, combat
 +3.4, medic +1.9, engineer −0.9, breaker −3.5. Baseline NOT re-accepted per the
 cleanup order — voidCirclet's +10.5 crosses the ceremony line; Kev's call.
 
+**Ceremony closed (crit-banking checkpoint, per Kev):** baseline re-accepted at
+overall 0.2867 with the annotation, verbatim: "Post crit-banking checkpoint.
+voidCirclet +10.5 is mechanically coherent: frozen dice are immune to Rewrite
+and Hijack, so ally banking directly counters ROOT HIEROPHANT's Root Access
+standing rule; the bot found the boss tech. Avalanche at 23.7% remains the known
+repricing target; no ability numbers move until that ruling. All deferred
+balance numbers re anchor to this checkpoint."
+
+**WATCH ITEM (per Kev):** Breaker −3.5 per-hero delta — suspected policy
+reallocation artifact from crit banking (freeze-any turns that used to serve
+Breaker-adjacent control lines now bank ally crits); re-evaluate across the
+next TWO measurements before treating it as a game problem.
+
 ### Cleanup step 7 — hive HP sweep rerun (fixed policy)
 docs/sweeps/2026-07-06_hive_hp_postcleanup.md: hive enters the 25–40% band at
 **enemy_hp_scalar ≈ 0.75–0.78** (30.5% / 28.8%); 0.70/0.72 plateau overshoots

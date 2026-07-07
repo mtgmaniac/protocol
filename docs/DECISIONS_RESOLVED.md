@@ -123,6 +123,8 @@ checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
 ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
 through #10 deferred balance numbers re anchor to this checkpoint." Ruled
 DEFERRED to the global balance pass (see the transcribed batch below).
+Re-anchored 2026-07-06 to the crit-banking checkpoint (overall 0.2867; the
+voidCirclet +10.5 is the Root Access counter — see the batch entry note).
 
 ---
 
@@ -166,11 +168,15 @@ cites; leave every number untouched; remove from DECISIONS NEEDED."
 `GameState.gd:253` · #8 boss cadence `combat_manager.gd:107` (consts + tuning
 seam defaults) · #9 execute bonus `combat_manager.gd:1406` · #10 chain ratio
 `combat_manager.gd:1474` · #17 Synod difficulty (see the superseded entry above).
-**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
-checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
-ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
-through #10 deferred balance numbers re anchor to this checkpoint." All six
-numbers are sweepable via the balance workbench (`scripts/sim/knobs.json`).
+**Checkpoint re-anchor (per Kev 2026-07-06, crit-banking checkpoint — supersedes
+the repeat-freeze checkpoint anchor):** "Post crit-banking checkpoint. voidCirclet
++10.5 is mechanically coherent: frozen dice are immune to Rewrite and Hijack, so
+ally banking directly counters ROOT HIEROPHANT's Root Access standing rule; the
+bot found the boss tech. Avalanche at 23.7% remains the known repricing target;
+no ability numbers move until that ruling. All deferred balance numbers re anchor
+to this checkpoint." (Prior anchor for lineage: the repeat-freeze checkpoint,
+overall 0.2533.) All six numbers are sweepable via the balance workbench
+(`scripts/sim/knobs.json`).
 
 ## 11. Reverse Gimbal UX
 **Question:** "may subtract" implemented as tap-again to flip +3 ↔ −3.
