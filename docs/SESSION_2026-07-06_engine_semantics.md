@@ -203,3 +203,21 @@ Durable context + enforcement so future sessions inherit this project's judgment
   real example (the Detonate ruling).
 - Pointers wired: root CLAUDE.md, docs/CLAUDE.md, AGENTS.md, TRUTH.md living-docs
   line all direct every session to INVARIANTS.md immediately after TRUTH.md.
+
+---
+
+## Baseline ceremony CLOSED (cleanup batch, per Kev — BASELINE-APPROVED-BY-KEV)
+
+`baseline.json` re-accepted against the post-repeat tree (overall 0.2533;
+facility 0.5493 / hive 0.0678 / sM 0.0208 / veil 0.2308 / vC 0.2982). Kev's
+annotation, verbatim: "Post repeat-freeze checkpoint, pre repricing. Avalanche
+figure known biased low: L1 cannot yet play ally crit banking.
+DECISIONS_RESOLVED #17 Synod compensation note is void; #6 through #10 deferred
+balance numbers re anchor to this checkpoint."
+
+### Timer-contract corrections (cleanup step 4 — NOT tuning)
+The two `erbT: 1` enemy abilities and Emergency Signal (`lowHpSquadRollBuff`)
+are corrected to 2t. These are contract repairs: under the instance-timer ruling
+a 1t buff cast mid-round expires at that same round's tick and never shapes a
+roll — the authored intent (buff one subsequent roll) requires 2t under the new
+clock. Values chosen to restore the pre-ruling effective behavior, no more.

@@ -118,6 +118,12 @@ mechanics were correct) and explicitly flagged a **compensating Synod pass** as
 owed — a design decision on how much to claw back, folded into the post-semantics
 rebalance (which now also covers the freeze=repeat regression, see #1).
 
+**SUPERSEDED (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
+checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
+ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
+through #10 deferred balance numbers re anchor to this checkpoint." Ruled
+DEFERRED to the global balance pass (see the transcribed batch below).
+
 ---
 
 # RULED — IMPLEMENTATION PENDING *(adjudicated 2026-07; transcribe ruling text before implementing)*
@@ -139,22 +145,47 @@ every 2nd enemy phase from first activation. **Ruling:** *awaiting transcription
 ## 6. INTERCEPT_CARDS numbers
 **Question:** all 22 card payloads in `GameState.INTERCEPT_CARDS` are provisional
 (`BALANCE-TODO`). **Ruling:** *awaiting transcription.*
+**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
+checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
+ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
+through #10 deferred balance numbers re anchor to this checkpoint."
+
 
 ## 7. Route modifier numbers
 **Question:** all 10 flagged-route modifier amounts (`GameState.BATTLE_MODIFIERS`)
 are provisional. **Ruling:** *awaiting transcription.*
+**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
+checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
+ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
+through #10 deferred balance numbers re anchor to this checkpoint."
+
 
 ## 8. Boss cadence numbers
 **Question:** rebuild HP 50% / brood cadence 3 / mantle shield 6 are provisional
 (`combat_manager.gd` constants). **Ruling:** *awaiting transcription.*
+**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
+checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
+ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
+through #10 deferred balance numbers re anchor to this checkpoint."
+
 
 ## 9. Execute bonus
 **Question:** flat +8 (`_apply_execute_bonus`) — tune or scale? **Ruling:**
 *awaiting transcription.*
+**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
+checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
+ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
+through #10 deferred balance numbers re anchor to this checkpoint."
+
 
 ## 10. Chain jump ratio
 **Question:** 60% round down (`_apply_chain_jumps`) — tune? **Ruling:** *awaiting
 transcription.*
+**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
+checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
+ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
+through #10 deferred balance numbers re anchor to this checkpoint."
+
 
 ## 11. Reverse Gimbal UX
 **Question:** "may subtract" implemented as tap-again to flip +3 ↔ −3. **Ruling:**

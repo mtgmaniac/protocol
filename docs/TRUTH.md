@@ -24,7 +24,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE) | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.53**, facility **0.7746** (accepted post-keyword-batch, commit `3901e06`). The ~1.7% was the historical flat L0/random-policy figure — reference only, different measurement, not the current engine's number |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); overall 0.53 (pre-repeat) | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2533**, facility **0.5493** (post repeat-freeze checkpoint, BASELINE-APPROVED-BY-KEV 2026-07-06, pre repricing). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -183,7 +183,7 @@ Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-c
 
 ## Sim baseline (current)
 
-`scripts/sim/baseline.json` — accepted at commit `3901e06` (post keyword-batch): policy **l1** (greedy), **300 runs**, overall clear **0.53**; per-op: facility **0.77**, voidCirclet **0.68**, veil **0.52**, stellarMenagerie **0.40**, hive **0.20** (hive is the hardest op). The old "flat sim ~1.7%" figure (TASK_QUEUE) was the pre-policy/pre-items L0 random-policy measurement — historical reference only; do not compare it to baseline.json numbers. Design target stays: 25–40% skilled full-clear of facility in real play.
+`scripts/sim/baseline.json` — **post repeat-freeze checkpoint, accepted per Kev 2026-07-06 (BASELINE-APPROVED-BY-KEV), pre repricing**: policy **l1** (greedy), **300 runs**, overall clear **0.2533**; per-op: facility **0.549**, voidCirclet **0.298**, veil **0.231**, hive **0.068**, stellarMenagerie **0.021**. The Avalanche figure (**0.132**) is known biased low: L1 cannot yet play ally crit banking. Deferred balance numbers (DECISIONS_RESOLVED #6–#10, #17) re-anchor to this checkpoint; the old Synod compensation note is void. The pre-repeat baseline (overall 0.53, accepted at `3901e06`) and the "flat sim ~1.7%" figure are historical reference only. Design target stays: 25–40% skilled full-clear of facility in real play.
 
 ## Out of scope (don't build)
 
