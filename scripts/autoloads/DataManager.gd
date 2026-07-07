@@ -518,7 +518,7 @@ func _load_hero_portrait(unit_id: String) -> Texture2D:
 	var file_name: String = str(HERO_PORTRAIT_BY_ID.get(unit_id, ""))
 	if file_name == "":
 		return null
-	return _crop_to_content(_load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name]))
+	return _crop_to_content(_load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name]), true)
 
 
 # Evolved-unit portrait convention: assets/portraits/<hero_id>_<evo_id>.png
@@ -535,7 +535,7 @@ func get_evolution_portrait(hero_id: String, evo_id: String) -> Texture2D:
 	var key: String = "%s_%s" % [hero_id, evo_id]
 	if _evolution_portraits.has(key):
 		return _evolution_portraits[key]
-	var tex: Texture2D = _crop_to_content(_load_texture_if_exists("%s%s.png" % [HERO_PORTRAIT_ROOT, key]))
+	var tex: Texture2D = _crop_to_content(_load_texture_if_exists("%s%s.png" % [HERO_PORTRAIT_ROOT, key]), true)
 	_evolution_portraits[key] = tex
 	return tex
 
@@ -555,23 +555,34 @@ func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 	return _crop_to_content(tex)
 
 
-# Portrait finalisation. Two art styles coexist:
-#  - cutout: transparent background, subject fills the canvas (heroes, older
+# Portrait finalisation. Three art styles coexist:
+#  - cutout: transparent background, subject fills the canvas (older hero art,
 #    facility/hive enemies). Cropped to the opaque bounding box so cover-fill
 #    frames the character, not the padding.
 #  - full-bleed: opaque scenic background with the subject centred (veil /
 #    menagerie / void circlet art). Tagged with a "full_bleed" meta so
 #    PixelUI.cover_fit_portrait() centres the crop instead of top-anchoring.
-# The tag is how every screen frames both styles consistently without
+#  - matted bust (2026-07 hero drop): fully opaque with the subject painted on
+#    a flat near-black mat. The mat is background, not composition — cropped to
+#    the subject's bounding box (vs the mat color) and framed like a cutout
+#    (top-anchored), so heads sit at the frame top with no dead mat below.
+#    Hero-path only (`hero_bust`): heroes never use scenic full-bleed art, so
+#    "hero + fully opaque" IS the matted style — no fragile border heuristics.
+# The tags are how every screen frames all styles consistently without
 # per-unit offsets.
-func _crop_to_content(tex: Texture2D) -> Texture2D:
+func _crop_to_content(tex: Texture2D, hero_bust: bool = false) -> Texture2D:
 	if tex == null:
 		return null
 	var img: Image = tex.get_image()
 	if img == null:
 		return tex
-	tex.set_meta("full_bleed", _is_full_bleed(img))
-	var used: Rect2i = img.get_used_rect()
+	var used: Rect2i
+	if hero_bust and img.detect_alpha() == Image.ALPHA_NONE:
+		tex.set_meta("full_bleed", false)
+		used = _mat_content_rect(img)
+	else:
+		tex.set_meta("full_bleed", _is_full_bleed(img))
+		used = img.get_used_rect()
 	if used.size.x <= 0 or used.size.y <= 0:
 		return tex
 	if used.position == Vector2i.ZERO and used.size == img.get_size():
@@ -582,6 +593,38 @@ func _crop_to_content(tex: Texture2D) -> Texture2D:
 	atlas.filter_clip = true
 	atlas.set_meta("full_bleed", tex.get_meta("full_bleed", false))
 	return atlas
+
+
+# Subject bounding box of a matted bust: everything brighter than the flat
+# near-black mat counts as subject. Sampled on a stride-4 grid (same budget as
+# _is_full_bleed) and widened by the stride plus a little air so the outline
+# never clips and heads keep a few pixels of headroom in the frame.
+const _MAT_MAX_CHANNEL := 6.0 / 255.0
+const _MAT_BBOX_MARGIN := 8
+
+
+func _mat_content_rect(img: Image) -> Rect2i:
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var min_x: int = w
+	var min_y: int = h
+	var max_x: int = -1
+	var max_y: int = -1
+	for y in range(0, h, 4):
+		for x in range(0, w, 4):
+			var c: Color = img.get_pixel(x, y)
+			if c.r > _MAT_MAX_CHANNEL or c.g > _MAT_MAX_CHANNEL or c.b > _MAT_MAX_CHANNEL:
+				min_x = mini(min_x, x)
+				min_y = mini(min_y, y)
+				max_x = maxi(max_x, x)
+				max_y = maxi(max_y, y)
+	if max_x < 0:
+		return Rect2i(0, 0, w, h)  # all-mat image: keep it whole, never blank
+	min_x = maxi(min_x - _MAT_BBOX_MARGIN, 0)
+	min_y = maxi(min_y - _MAT_BBOX_MARGIN, 0)
+	max_x = mini(max_x + _MAT_BBOX_MARGIN, w - 1)
+	max_y = mini(max_y + _MAT_BBOX_MARGIN, h - 1)
+	return Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
 
 
 # Sampled opaque coverage: scenic full-bleed art is ~100% opaque, cutout art
