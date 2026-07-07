@@ -58,7 +58,7 @@ func _service_record_text() -> String:
 	var total_wins: int = 0
 	for op_wins in wins.values():
 		total_wins += int(op_wins)
-	return "Runs: %d  Wins: %d  Best clear: battle %d\nNat 20s: %d  Squad deaths: %d" % [
+	return "Runs: %d  Wins: %d  Best clear: battle %d\n20s rolled: %d  Squad deaths: %d" % [
 		int(stats.get("runs_started", 0)),
 		total_wins,
 		int(stats.get("best_clear", 0)),

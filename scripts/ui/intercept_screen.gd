@@ -142,8 +142,10 @@ func _show_card_stage() -> void:
 		if enabled:
 			_enabled_choice_count += 1
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): a card with
-	# no usable choice (or a failed draw) routes straight to the battle.
-	if not ChoiceScreenGuardScript.ensure_options("intercept", _enabled_choice_count, SceneManager.go_to_battle):
+	# no usable choice (or a failed draw) routes straight to the battle. It MUST
+	# advance first (via _continue_to_battle) — routing to go_to_battle directly
+	# re-entered the just-won battle and paid its rewards/XP twice (audit A-075).
+	if not ChoiceScreenGuardScript.ensure_options("intercept", _enabled_choice_count, _continue_to_battle):
 		return
 
 

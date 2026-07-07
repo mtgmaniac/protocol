@@ -99,8 +99,8 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		var set_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
 		if set_state.is_empty() or bool(set_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, set_state):
 			return true
-		if bool(set_state.get("die_freeze_repeat_this_round", false)):
-			_scene._refresh_summary("That die is repeating its frozen result — it can't be Set.")
+		if int(set_state.get("die_freeze_turns", 0)) > 0:
+			_scene._refresh_summary("That die is frozen solid — it can't be Set.")
 			return true
 		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
@@ -121,7 +121,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 			_apply_twin_fates(_scene._twin_fates_source_id, target_id)
 		return true
 	if _in_item_phase():
-		if (_scene.turn_phase == _scene.PHASE_ITEM_PICK_ALLY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_ANY) and _scene.legal_target_ids.has(target_id) and _pending_item != null:
+		if (_scene.turn_phase == _scene.PHASE_ITEM_PICK_ALLY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_ANY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_DEAD) and _scene.legal_target_ids.has(target_id) and _pending_item != null:
 			var target_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
 			if not target_state.is_empty():
 				AudioManager.play_select()
@@ -329,8 +329,10 @@ func _can_nudge_hero(state: Dictionary) -> bool:
 		return false
 	if not _scene._has_roll_for_state(_scene.hero_rolls, state):
 		return false
-	# A repeating frozen die is fully locked — its crusted face IS the result.
-	if bool(state.get("die_freeze_repeat_this_round", false)):
+	# A frozen die is crusted static and cannot be altered at all — Nudge
+	# included (ruling NK-03: full freeze immunity, one clean rule "frozen dice
+	# can't be altered", matching Reroll / Set / Twin Fates).
+	if int(state.get("die_freeze_turns", 0)) > 0:
 		return false
 	if _was_hero_nudged_this_turn(str(state["id"])):
 		# Reverse Gimbal holders may re-tap to flip the nudge's sign.
@@ -761,8 +763,13 @@ func _on_item_button_pressed(item: ItemData) -> bool:
 				return true
 			_scene.transition(_scene.PHASE_ITEM_PICK_ALLY)
 		"allyDead":
-			_cancel_item_targeting("Downed units cannot be targeted by %s." % item.display_name)
-			return true
+			# Revive items (Defib Spark) target a DOWNED ally — one manual pick,
+			# per INVARIANTS #12. This used to hard-cancel, making the item
+			# unusable (audit A-061).
+			if _scene._get_dead_hero_ids().is_empty():
+				_cancel_item_targeting("No downed ally for %s to revive." % item.display_name)
+				return true
+			_scene.transition(_scene.PHASE_ITEM_PICK_DEAD)
 		"enemy":
 			if _scene._get_legal_target_ids("enemy").is_empty():
 				_cancel_item_targeting("No living enemy can be targeted by %s." % item.display_name)
@@ -930,13 +937,17 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	AudioManager.play_sfx("item")
 	var cost: int = _get_item_protocol_cost(item)
 	_scene.protocol_points = maxi(_scene.protocol_points - cost, 0)
-	# Protocol Override: using an item refunds +1 Protocol (net +1, since cost is 0).
-	if _scene.combat_manager.has_relic("protocolOnItemUse"):
-		_scene._gain_protocol(1)
-		_scene._append_log("Protocol Override: +1 Protocol → %d" % _scene.protocol_points)
 
 	var effect: Dictionary = item.effect
 	var effect_type: String = str(effect.get("type", ""))
+
+	# Protocol Override: using an item refunds +1 Protocol — but NOT for a
+	# protocol-gain item, which (cost 0 + its own grant + a bonus +1) turned into
+	# a free Protocol printer past the cap-10 economy (audit A-063). A gainProtocol
+	# item still grants its own amount below; it just gets no extra +1 on top.
+	if _scene.combat_manager.has_relic("protocolOnItemUse") and effect_type != "gainProtocol":
+		_scene._gain_protocol(1)
+		_scene._append_log("Protocol Override: +1 Protocol → %d" % _scene.protocol_points)
 
 	if effect_type == "gainProtocol":
 		# Pool op stays here (Overflow Vent + bar + logging live on the scene).

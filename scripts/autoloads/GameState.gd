@@ -343,6 +343,22 @@ func accept_flagged_route(modifier_id: String) -> void:
 	pending_flagged_modifier_id = ""
 
 
+# Arm a modifier for the next battle from a non-fork source (intercept armings,
+# Prisoner Exchange promote). Rejects a silent overwrite when a modifier is
+# already armed (audit A-077) and marks the modifier used so the fork
+# no-repeats pool won't re-offer it (ruling NK-16). Returns true if it armed.
+func _arm_next_battle_modifier(modifier_id: String) -> bool:
+	if modifier_id == "" or not BATTLE_MODIFIERS.has(modifier_id):
+		return false
+	if next_battle_modifier != "" and next_battle_modifier != modifier_id:
+		push_warning("Modifier '%s' already armed; not overwriting with '%s'." % [next_battle_modifier, modifier_id])
+		return false
+	next_battle_modifier = modifier_id
+	if not used_battle_modifiers.has(modifier_id):
+		used_battle_modifiers.append(modifier_id)
+	return true
+
+
 # Pure comp shaper: returns a shaped duplicate, never mutates the input. The
 # roll stage uses it to build the flagged-route preview; acceptance commits
 # that same comp.
@@ -375,7 +391,15 @@ func promote_followup_effects() -> void:
 	followup_battle_effects.clear()
 	if modifier_id == "":
 		return
-	next_battle_modifier = modifier_id
+	# Only promote if the modifier will produce an observable delta on the
+	# current comp (audit A-077 — the promote path used to skip this check, so
+	# ELITE PRESENCE could arm on an already-all-elite comp as a no-op).
+	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
+		var comp_names: Array = resolved_battle_comps[current_battle].get("names", [])
+		if not _modifier_precondition_ok(modifier_id, comp_names):
+			return
+	if not _arm_next_battle_modifier(modifier_id):
+		return
 	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
 		resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle])
 
@@ -474,7 +498,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Refuse: 1 uncommon consumable.", "effects": [{"type": "consumable", "rarity": "uncommon", "count": 1}]},
 	]},
 	"overloadRites": {"tier": "major", "name": "OVERLOAD RITES", "desc": "A Synod rite, stolen. It burns the body to feed the die.", "choices": [
-		{"label": "Undergo: a hero loses 12 max HP this op; their natural 20s resolve twice.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": -12}, {"type": "heroNat20Twice"}]},
+		{"label": "Undergo: a hero loses 12 max HP this op; their 20s resolve twice.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": -12}, {"type": "heroNat20Twice"}]},
 		{"label": "Decline.", "effects": []},
 	]},
 	"ghostFrequency": {"tier": "major", "name": "GHOST FREQUENCY", "desc": "A carrier wave that unmakes a silhouette. It takes something with it.", "choices": [
@@ -582,7 +606,9 @@ func apply_intercept_effects(effects: Array, hero_id: String = "", gear_context:
 					if item_id != "" and consumables.size() < MAX_CONSUMABLES:
 						consumables.append(item_id)
 			"armModifier":
-				next_battle_modifier = str(effect.get("id", ""))
+				# Marks the modifier used (NK-16: consumes the fork no-repeats
+				# pool) and won't silently clobber an already-armed one (A-077).
+				_arm_next_battle_modifier(str(effect.get("id", "")))
 			"followupModifier":
 				followup_battle_effects["modifier"] = str(effect.get("id", ""))
 			"nextBattleFlag":
@@ -1158,15 +1184,18 @@ func drafted_relic_count() -> int:
 
 func _roll_reward_item_ids() -> Array:
 	var round: int = current_battle
-	# Supply grade (pkg7.3 flagged route): the ladder rolls two rows deeper,
-	# capped at row 10. One-shot — consumed by this draft (a flagged battle 5
-	# spends it on the relic cache, which has no rarity ladder).
-	var supply_grade: int = next_battle_supply_grade
-	next_battle_supply_grade = 0
+	# The relic cache (battle 5) has no rarity ladder, so a flagged route into it
+	# must NOT spend its SUPPLY GRADE here — the grade rides forward to the next
+	# reward draft (ruling NK-15). Returning before touching next_battle_supply_grade
+	# leaves it armed for battle 6's draft.
 	if round == RELIC_ONLY_ROUND:
 		if drafted_relic_count() == 0:
 			return _roll_relic_choice_ids(RELIC_CHOICE_COUNT)
 		return []  # draft already claimed — re-entry stays empty on purpose
+	# Supply grade (pkg7.3 flagged route): the ladder rolls two rows deeper,
+	# capped at row 10. One-shot — consumed by this (item) draft.
+	var supply_grade: int = next_battle_supply_grade
+	next_battle_supply_grade = 0
 	if supply_grade > 0:
 		round = mini(round + supply_grade, 10)
 		if not DRAFT_RARITY_BY_ROUND.has(round):
@@ -1214,7 +1243,22 @@ func _pick_draft_rarity_for_round(round: int) -> String:
 	return "common"
 
 
+# Every gear id currently equipped on any hero. Gear is unique-per-run (ruling
+# NK-13): an owned gear id is never re-offered, so numeric passives can't stack
+# (2x Predator Lens = +6 rolls was the exploit). Consumables are exempt — they
+# are spent, so duplicates are legitimate.
+func _owned_gear_ids() -> Array:
+	var owned: Array = []
+	for unit_id in gear_by_unit.keys():
+		for gid in gear_by_unit[unit_id]:
+			var gid_s: String = str(gid)
+			if not owned.has(gid_s):
+				owned.append(gid_s)
+	return owned
+
+
 func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array) -> String:
+	var owned_gear: Array = _owned_gear_ids()
 	var pool: Array = []
 	for item_key in DataManager.items.keys():
 		var item: ItemData = DataManager.items[item_key] as ItemData
@@ -1226,6 +1270,8 @@ func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array) -> Strin
 			continue
 		if excluded_ids.has(item.id):
 			continue
+		if item.item_type == "gear" and owned_gear.has(item.id):
+			continue  # NK-13: gear is unique-per-run
 		if has_relic_effect("rewardsNoCommon") and str(item.rarity) == "common":
 			continue
 		pool.append(item.id)
@@ -1240,6 +1286,7 @@ func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
 	# relic doesn't — see drafted_relic_count).
 	if item_type == "relic" and drafted_relic_count() > 0:
 		return ""
+	var owned_gear: Array = _owned_gear_ids() if item_type == "gear" else []
 	var pool: Array = []
 	for item_key in DataManager.items.keys():
 		var item: ItemData = DataManager.items[item_key] as ItemData
@@ -1250,6 +1297,9 @@ func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
 		# Never offer a relic the run already owns (a Starting Directive relic
 		# would otherwise be duplicable in the battle-5 draft).
 		if item_type == "relic" and relics.has(item.id):
+			continue
+		# NK-13: gear is unique-per-run — never re-offer an owned gear id.
+		if item_type == "gear" and owned_gear.has(item.id):
 			continue
 		if excluded_ids.has(item.id):
 			continue

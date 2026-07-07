@@ -192,7 +192,7 @@
     {
       "id": "protocol_cell",
       "name": "Protocol Cell",
-      "desc": "Gain +2 Protocol (net +1 after use cost).",
+      "desc": "Gain +2 Protocol.",
       "rarity": "common",
       "icon": "die",
       "target": "none",
@@ -201,7 +201,7 @@
     {
       "id": "capacitor_dose",
       "name": "Capacitor Dose",
-      "desc": "Gain +3 Protocol (net +2 after use cost).",
+      "desc": "Gain +3 Protocol.",
       "rarity": "uncommon",
       "icon": "die",
       "target": "none",
@@ -210,7 +210,7 @@
     {
       "id": "core_surge",
       "name": "Core Surge",
-      "desc": "Gain +4 Protocol (net +3 after use cost).",
+      "desc": "Gain +4 Protocol.",
       "rarity": "rare",
       "icon": "die",
       "target": "none",
@@ -219,7 +219,7 @@
     {
       "id": "mainline_cache",
       "name": "Mainline Cache",
-      "desc": "Gain +5 Protocol (net +4 after use cost).",
+      "desc": "Gain +5 Protocol.",
       "rarity": "legendary",
       "icon": "die",
       "target": "none",

@@ -17,7 +17,7 @@ nothing). Freeze=repeat passes the fence: the crust is physics *presentation*; t
 face is engine state.
 
 ## 2. ai_type is load-bearing; targeting is a separate field
-`ai_type` gates nat20 elite summons (`ai_type=="smart"`) and the summon-injection guard
+`ai_type` gates 20-face elite summons (`ai_type=="smart"`) and the summon-injection guard
 (rejects non-"dumb"). Targeting personalities live in the independent `targeting` field.
 They were split deliberately (keyword batch Tasks 4+9); merging them breaks summons
 silently because the audit can't see intent. **Violation looks like:** renaming/reusing

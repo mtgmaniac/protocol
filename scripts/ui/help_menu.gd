@@ -259,7 +259,7 @@ func _build_basics(host: VBoxContainer) -> void:
 		"Assign your hero rolls to targets, then enemies act, then you gain +1 Protocol.",
 		"Each die is split into 5 ability bands; the roll's band decides which ability fires.",
 		"Higher roll = stronger ability. Bands run Recharge > Strike > Surge > Crit > Overload.",
-		"Overload is the natural 20 — always that unit's strongest ability.",
+		"Overload is the 20 — always that unit's strongest ability.",
 	])
 	_add_section(host, "READING A UNIT CARD", [
 		"Bands differ per unit: glass units reach Crit at 14, tanks need 17 — the card shows its own ranges.",

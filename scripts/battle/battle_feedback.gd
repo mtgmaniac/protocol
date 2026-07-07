@@ -89,8 +89,9 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		if action_kind == "attack" and not is_tick:
 			_lunge(actor_card, str(action.get("side", "")))
 	# Tier 2: the overload signature — gold screen wash + screen shake framing the
-	# whole beat, with a longer impact freeze below. Fires on any EFFECTIVE 20
-	# (rolled natural OR nudged/buffed into the overload zone) — intentional.
+	# whole beat, with a longer impact freeze below. Fires on any die whose final
+	# face is 20 (rolled, Nudged, Set, or buffed into the overload zone) — there
+	# is no separate "natural 20" (ruling NK-02).
 	if is_overload:
 		_celebrate_overload()
 		# pkg8.3: the ability name slams across the acting card — scale-punch
@@ -399,7 +400,7 @@ func _hit_pause(amount: int, extra: float = 0.0) -> void:
 
 # The overload signature: a brief, subtle gold screen wash (commit color) plus a
 # board-wide shake, framing the payoff beat. Flat, no glow — just a flash. Fires
-# on any effective-20 ability, natural or nudged into the overload zone.
+# on any ability whose die's final face is 20, however it reached 20 (NK-02).
 func _celebrate_overload() -> void:
 	AudioManager.play_sfx("overload")
 	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):

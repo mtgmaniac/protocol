@@ -1355,7 +1355,7 @@ func _run_new_relic_regressions() -> void:
 	var saved_hand_flag: bool = GameState.dead_mans_hand_used
 	GameState.dead_mans_hand_used = false
 	hand_manager.resolve_round({}, {str(hand_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
-	var hand_ok: bool = not bool(hand_hero["dead"]) and int(hand_hero["current_hp"]) == 1 and bool(hand_hero.get("forced_nat20_pending", false)) and GameState.dead_mans_hand_used
+	var hand_ok: bool = not bool(hand_hero["dead"]) and int(hand_hero["current_hp"]) == 1 and bool(hand_hero.get("forced_20_pending", false)) and GameState.dead_mans_hand_used
 	GameState.dead_mans_hand_used = saved_hand_flag
 	_expect_and_record("Regression / relic deadMansHand survives wipe", "squadWipeSurvive", "true", str(hand_ok))
 
@@ -2945,16 +2945,16 @@ func _run_relic_ally_death_heal_regression() -> void:
 	survivor["current_hp"] = 90
 	enemy["selected_target_id"] = str(victim["id"])
 	manager.resolve_round({}, {"audit_enemy#1": AUDIT_ROLL}, DiceManager.new(), {"audit_enemy#1": AUDIT_ROLL})
-	# Vengeance Protocol: the survivor's next roll is a forced natural 20.
-	var ok: bool = bool(victim["dead"]) and bool(survivor.get("forced_nat20_pending", false))
+	# Vengeance Protocol: the survivor's next roll is a forced 20.
+	var ok: bool = bool(victim["dead"]) and bool(survivor.get("forced_20_pending", false))
 	if ok:
 		_record_pass("Regression / relic vengeanceProtocol", "vengeanceProtocol")
 	else:
 		_record_failure(
 			"Regression / relic vengeanceProtocol",
 			"vengeanceProtocol",
-			"survivor primed for a forced natural 20 when an ally dies",
-			"victim_dead=%s primed=%s" % [str(victim["dead"]), str(survivor.get("forced_nat20_pending", false))]
+			"survivor primed for a forced 20 when an ally dies",
+			"victim_dead=%s primed=%s" % [str(victim["dead"]), str(survivor.get("forced_20_pending", false))]
 		)
 
 

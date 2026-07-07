@@ -1407,8 +1407,10 @@ var _twin_fates_source_id: String:
 	set(value): _state.twin_fates_source_id = value
 
 
-# Vengeance Protocol / Dead Man's Hand (forced natural 20s) and Resonant
-# Chorus (turn-1 dice can't land below 8) — raw-roll overrides at roll time.
+# Vengeance Protocol / Dead Man's Hand (forced 20s) and Resonant Chorus (turn-1
+# dice can't land below 8) — roll-time face overrides. There is no "natural 20"
+# concept: forcing a 20 sets the die's face to 20 like any other override
+# (ruling NK-02).
 func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 	var chorus_floor: bool = combat_manager.has_relic("turn1RollFloor") and _round_number == 1
 	for hero_state_variant in combat_manager.get_hero_states():
@@ -1420,11 +1422,11 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 			continue
 		var hero_id: String = str(hero_state["id"])
 		var changed: bool = false
-		if bool(hero_state.get("forced_nat20_pending", false)):
-			hero_state["forced_nat20_pending"] = false
+		if bool(hero_state.get("forced_20_pending", false)):
+			hero_state["forced_20_pending"] = false
 			hero_rolls[hero_id] = 20
 			changed = true
-			_append_log("%s rolls a forced NATURAL 20!" % hero_id)
+			_append_log("%s rolls a forced 20!" % hero_id)
 		elif chorus_floor and int(hero_rolls.get(hero_id, 0)) > 0 and int(hero_rolls.get(hero_id, 0)) < 8:
 			hero_rolls[hero_id] = 8
 			changed = true
@@ -1433,21 +1435,13 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 			dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
 
 
-# Roll-time gear: Overload Capacitor (natural 20 grants Protocol) and Sync
-# Antenna (holder + an ally rolling the same number both gain +3 to it).
+# Roll-time gear: Sync Antenna (holder + an ally rolling the same number both
+# gain +3 to it). The Overload Capacitor Protocol grant and the lifetime 20s
+# stat moved to resolution time in combat_manager, so they key on the die's
+# FINAL face (a die Set/Nudged to 20 now counts — ruling NK-02) and fire once
+# even under freeze=repeat (NK-04).
 func _apply_post_roll_gear_effects() -> void:
 	var hero_states: Array = combat_manager.get_hero_states()
-	for hero_state_variant in hero_states:
-		var hero_state: Dictionary = hero_state_variant
-		if bool(hero_state.get("dead", false)):
-			continue
-		var hero_id: String = str(hero_state["id"])
-		var raw_roll: int = int(hero_rolls.get(hero_id, 0))
-		if raw_roll == 20:
-			SaveManager.record_nat20()
-		if raw_roll == 20 and _hero_has_gear_effect(hero_id, "protocolOnNat20"):
-			_gain_protocol(2)
-			_append_log("Overload Capacitor: natural 20 → +2 Protocol.")
 	var synced_ids: Dictionary = {}
 	for hero_state_variant in hero_states:
 		var holder: Dictionary = hero_state_variant
@@ -1470,8 +1464,10 @@ func _apply_post_roll_gear_effects() -> void:
 				var sid: String = str(sync_state["id"])
 				if not synced_ids.has(sid):
 					synced_ids[sid] = true
-					# Direct (no skip flag): the bonus covers this round only.
-					sync_state["roll_buff"] = int(sync_state.get("roll_buff", 0)) + 3
+					# A real 1-turn roll-buff stack so the +3 actually reaches the
+					# effective roll this round (audit A-041 — the old roll_buff
+					# write was a display-only cache the effective path ignored).
+					combat_manager.apply_item_roll_buff(sync_state, 3, 1)
 			_append_log("Sync Antenna: matched %d — both dice +3." % holder_roll)
 
 
@@ -1959,7 +1955,7 @@ func _update_phase_target_sets() -> void:
 			legal_target_ids = _get_legal_target_ids("hero")
 		PHASE_ITEM_PICK_DEAD:
 			legal_target_side = "hero"
-			legal_target_ids = []
+			legal_target_ids = _get_dead_hero_ids()
 		PHASE_ITEM_PICK_ENEMY:
 			legal_target_side = "enemy"
 			legal_target_ids = _get_legal_target_ids("enemy")
@@ -2238,6 +2234,16 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 		_refresh_summary("Select the next hero to target.")
 
 
+# Downed hero ids — the legal targets for a revive item (Defib Spark, A-061).
+func _get_dead_hero_ids() -> Array:
+	var ids: Array = []
+	for hero_state_variant in combat_manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		if bool(hero_state.get("dead", false)):
+			ids.append(str(hero_state["id"]))
+	return ids
+
+
 func _get_legal_target_ids(target_side: String, for_hero_state: Dictionary = {}) -> Array:
 	# Taunt (enemy-side): a taunted hero's hostile picks are restricted to the
 	# taunter — illegal targets don't highlight, and taps on them do nothing.
@@ -2356,7 +2362,7 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 	if turn_phase == PHASE_ITEM_PICK_ALLY:
 		return accent_color == HERO_ACCENT and not bool(state["dead"])
 	if turn_phase == PHASE_ITEM_PICK_DEAD:
-		return false
+		return accent_color == HERO_ACCENT and bool(state["dead"])
 	if turn_phase == PHASE_ITEM_PICK_ENEMY:
 		return accent_color == ENEMY_ACCENT and not bool(state["dead"])
 	if turn_phase == PHASE_ITEM_PICK_ANY:

@@ -26,6 +26,9 @@ func _init(cm: CombatManager, provider: RollProvider = null, dm: DiceManager = n
 	combat_manager = cm
 	roll_provider = provider
 	dice_manager = dm
+	# Share the seam so combat_manager's non-d20 random picks (Opening Salvo,
+	# Dead Man's Charge, elite-summon) are seeded too (INVARIANTS #1).
+	cm.roll_provider = provider
 
 
 # ── Per-round resolution (extracted from battle_scene._resolve_current_turn) ──
