@@ -788,32 +788,68 @@ static func _refresh_corner_brackets(target: Control, color: Color, arm: float =
 		existing.queue_free()
 	if color.a <= 0.0:
 		return
-	var holder: Control = Control.new()
+	var holder: CornerBracketLayer = CornerBracketLayer.new()
 	holder.name = "CornerBrackets"
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.color = color
+	holder.arm = arm
+	holder.thick = thick
+	holder.inset = inset
 	target.add_child(holder)
-	for ax in [0, 1]:
-		for ay in [0, 1]:
-			_bracket_arm(holder, color, ax, ay, inset, inset, arm, thick)   # horizontal arm
-			_bracket_arm(holder, color, ax, ay, inset, inset, thick, arm)   # vertical arm
 
 
-static func _bracket_arm(holder: Control, color: Color, ax: int, ay: int, dx: float, dy: float, w: float, h: float) -> void:
-	var r: ColorRect = ColorRect.new()
-	r.color = color
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	r.anchor_left = float(ax)
-	r.anchor_right = float(ax)
-	r.anchor_top = float(ay)
-	r.anchor_bottom = float(ay)
-	var ox: float = dx if ax == 0 else -dx - w
-	var oy: float = dy if ay == 0 else -dy - h
-	r.offset_left = ox
-	r.offset_right = ox + w
-	r.offset_top = oy
-	r.offset_bottom = oy + h
-	holder.add_child(r)
+# Corner brackets drawn on the window pixel grid (pixel snap law, INVARIANTS
+# #14). The old ColorRect arms were positioned in design space: a 3px arm is
+# 1.25 window px and a 4px inset is 1.67 window px, so per-corner rounding
+# rendered arms 1px-or-2px and randomly fused a bracket into the adjacent
+# border ("clipped" corners on the choice screens). Drawing in integer window
+# coordinates keeps every arm and every inset identical at all four corners.
+class CornerBracketLayer extends Control:
+	var color: Color = Color.WHITE
+	var arm: float = 16.0
+	var thick: float = 3.0
+	var inset: float = 4.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		set_notify_transform(true)
+		resized.connect(queue_redraw)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_TRANSFORM_CHANGED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if size.x < 2.0 or size.y < 2.0:
+			return
+		var xform: Transform2D = PixelUI.physical_transform(self)
+		var sx: float = maxf(xform.get_scale().x, 0.0001)
+		var sy: float = maxf(xform.get_scale().y, 0.0001)
+		var origin: Vector2 = xform.get_origin()
+		# Whole-window-pixel geometry, identical for all four corners.
+		var left: int = int(round(origin.x))
+		var right: int = int(round(origin.x + size.x * sx))
+		var top: int = int(round(origin.y))
+		var bottom: int = int(round(origin.y + size.y * sy))
+		var inset_px: int = maxi(int(round(inset * sx)), 1)
+		var arm_px: int = maxi(int(round(arm * sx)), 2)
+		var thick_px: int = maxi(int(round(thick * sx)), 1)
+		for ax in [0, 1]:
+			for ay in [0, 1]:
+				var cx: int = (left + inset_px) if ax == 0 else (right - inset_px - thick_px)
+				var cy: int = (top + inset_px) if ay == 0 else (bottom - inset_px - thick_px)
+				var hx: int = (left + inset_px) if ax == 0 else (right - inset_px - arm_px)
+				var vy: int = (top + inset_px) if ay == 0 else (bottom - inset_px - arm_px)
+				_draw_win_rect(Rect2i(hx, cy, arm_px, thick_px), origin, sx, sy)  # horizontal arm
+				_draw_win_rect(Rect2i(cx, vy, thick_px, arm_px), origin, sx, sy)  # vertical arm
+
+	func _draw_win_rect(win_rect: Rect2i, origin: Vector2, sx: float, sy: float) -> void:
+		draw_rect(Rect2(
+			(float(win_rect.position.x) - origin.x) / sx,
+			(float(win_rect.position.y) - origin.y) / sy,
+			float(win_rect.size.x) / sx,
+			float(win_rect.size.y) / sy
+		), color, true)
 
 
 static func style_label(label: Label, font_size: int, color: Color = TEXT_PRIMARY, outline_size: int = 2) -> void:

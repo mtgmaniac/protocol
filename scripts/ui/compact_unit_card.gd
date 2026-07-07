@@ -53,12 +53,19 @@ const CARD_NAME_FONT_SIZE := 72
 const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
 const STATUS_ICON_FONT_SIZE := 48
-const STATUS_VALUE_FONT_SIZE := 48
+# Value numerals read at a glance (Kev 2026-07-07: they were too small) —
+# bigger digits, slightly smaller icon so a 1-digit chip fits its plate at
+# FULL size and only 2+ digits take the one-step downscale.
+const STATUS_VALUE_FONT_SIZE := 60
 const STATUS_NAME_FONT_SIZE := 48
-const STATUS_ICON_TEXTURE_SIZE := 48.0
+const STATUS_ICON_TEXTURE_SIZE := 44.0
 const STATUS_ICON_MIN_WIDTH := 48.0
-const STATUS_VALUE_MIN_WIDTH := 32.0
+const STATUS_VALUE_MIN_WIDTH := 24.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
+# m5x7 digit advance ≈ 0.35 × font size (measured in-shot: 7 glyphs at font 72
+# spanned ~166 design px). Used to estimate chip content width for the
+# one-step rule — the old 0.55 guess forced downscales that made numerals tiny.
+const STATUS_GLYPH_WIDTH_FACTOR := 0.35
 const STATUS_CHIP_HEIGHT := 56.0
 # Result-tag law for chips (UI precision batch): the status row divides into
 # this many equal constant-size plates (STATUS_MAX_VISIBLE chips + the +N
@@ -607,7 +614,9 @@ func _make_action_fallback(text: String) -> Label:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.max_lines_visible = 2
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
-	_apply_label(label, 16, PixelUI.TEXT_PRIMARY, 2)
+	# Raw (unscaled) path: 16 design px was 6.7 window px at the 450 preview —
+	# unreadable on a phone (2026-07-07 font audit, worst offender).
+	_apply_label(label, 32, PixelUI.TEXT_PRIMARY, 2)
 	return label
 
 
@@ -778,10 +787,10 @@ func _status_content_scale(status: Dictionary, plate_w: float) -> float:
 		natural_w = STATUS_ICON_TEXTURE_SIZE
 	elif str(status.get("mode", "named")) == "numeric":
 		var digits: int = _display_status_value(status).length()
-		natural_w = STATUS_ICON_TEXTURE_SIZE + 1.0 + maxf(STATUS_VALUE_MIN_WIDTH, digits * STATUS_VALUE_FONT_SIZE * 0.55)
+		natural_w = STATUS_ICON_TEXTURE_SIZE + 1.0 + maxf(STATUS_VALUE_MIN_WIDTH, digits * STATUS_VALUE_FONT_SIZE * STATUS_GLYPH_WIDTH_FACTOR)
 	else:
 		var text: String = str(status.get("name", ""))
-		natural_w = text.length() * STATUS_NAME_FONT_SIZE * 0.55
+		natural_w = text.length() * STATUS_NAME_FONT_SIZE * STATUS_GLYPH_WIDTH_FACTOR
 	return STATUS_CONTENT_SCALE_STEP if natural_w > inner_w else 1.0
 
 

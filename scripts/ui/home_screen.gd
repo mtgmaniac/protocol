@@ -635,7 +635,7 @@ func _make_new_badge() -> Control:
 	style.set_content_margin(SIDE_TOP, 2.0)
 	style.set_content_margin(SIDE_BOTTOM, 2.0)
 	badge.add_theme_stylebox_override("panel", style)
-	var label := _make_pixel_label("NEW", 26, PixelUI.BTN_PRIMARY_INK)
+	var label := _make_pixel_label("NEW", 32, PixelUI.BTN_PRIMARY_INK)
 	badge.add_child(label)
 	return badge
 

@@ -6,10 +6,11 @@
 # land mid-pixel and gaps render unevenly at window scale. Integer layout
 # instead, all in physical pixels:
 #   pip_width = floor(track * PIP_FRACTION / total)           (fixed, every pip)
-#   gap       = floor((track - total*pip_width) / (total-1))
-#   remainder = track - total*pip_width - (total-1)*gap, one extra pixel to
-#               each of the LEFTMOST `remainder` gaps.
-# Zero overlap by construction; gaps differ by at most 1px.
+#   gap       = floor((track - total*pip_width) / (total-1))  (fixed, every gap)
+#   remainder = track - total*pip_width - (total-1)*gap, split into the row's
+#               side MARGINS (row centred), never into the gaps.
+# Zero overlap and PERFECTLY EVEN spacing by construction (Kev 2026-07-07:
+# gaps must be identical, not merely within 1px).
 class_name ProtocolPips
 extends Control
 
@@ -49,7 +50,9 @@ func _draw() -> void:
 	var top: int = int(round(origin_y))
 	var bottom: int = int(round(origin_y + size.y * scale_y))
 	var border: int = 1  # 1 physical px, on the grid by construction
-	var x: int = int(round(origin_x))
+	# Remainder pixels pad the OUTSIDE of the row (centred), keeping every gap
+	# identical.
+	var x: int = int(round(origin_x)) + remainder / 2
 	for i in total:
 		# Map the integer physical rect back to local space for draw_rect.
 		var rect := Rect2(
@@ -69,5 +72,3 @@ func _draw() -> void:
 			if inset.size.x > 0.0 and inset.size.y > 0.0:
 				draw_rect(inset, PixelUI.DT_PROTO_EMPTY, true)
 		x += pip_w + gap
-		if i < remainder:
-			x += 1
