@@ -187,10 +187,10 @@ const ENEMY_PORTRAIT_BY_NAME := {
 # near-black mat — the 2026-07 art drops), which must be cropped and
 # top-anchored like hero busts instead of framed as scenic full-bleed.
 # EXPLICIT list on purpose: scenic art can be nearly as dark as a mat
-# (checksum_scribe's scenic border is 26% near-black; matted borders start
-# around 40%), so no border heuristic can safely separate the styles. New
-# matted drops add their filename here; anything absent keeps cutout/scenic
-# framing.
+# (mantle_tyrant's scenic border is 19% near-black; matted borders go as low
+# as 25% when the subject bleeds to the edges), so no border heuristic can
+# safely separate the styles. New matted drops add their filename here;
+# anything absent keeps cutout/scenic framing.
 const MATTED_ENEMY_PORTRAITS := {
 	# Hive drop (2026-07-07) + shardmite riding along.
 	"bloodmite.png": true,
@@ -209,6 +209,15 @@ const MATTED_ENEMY_PORTRAITS := {
 	"resonance_warden.png": true,
 	"stormweaver.png": true,
 	"synapse_herald.png": true,
+	# Synod drop (2026-07-07) — art arrived under the legacy filenames,
+	# installed at the current (renamed) paths.
+	"axiom_binder.png": true,
+	"checksum_scribe.png": true,
+	"daemon_channeler.png": true,
+	"forked_double.png": true,
+	"glitch_sprite.png": true,
+	"init_acolyte.png": true,
+	"root_hierophant.png": true,
 }
 
 var units: Dictionary = {}
