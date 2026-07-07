@@ -623,8 +623,10 @@ func apply_intercept_effects(effects: Array, hero_id: String = "", gear_context:
 	return info
 
 
-# DESIGN-TODO(kev): "freely re-equip" is a full UI; the deterministic stand-in
-# rotates every loadout one squad slot over.
+# Mid-run re-equip is REJECTED, not deferred (per Kev 2026-07-06,
+# DECISIONS_RESOLVED #15) — do not build the full re-equip UI. This
+# deterministic stand-in (rotate every loadout one squad slot over) is the
+# permanent behavior.
 func _rotate_gear_loadouts() -> void:
 	if selected_units.size() < 2:
 		return

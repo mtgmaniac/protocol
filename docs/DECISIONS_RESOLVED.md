@@ -225,7 +225,10 @@ they Mark the primary target of single target hits; audit data/raw for any
 ability combining AoE with mark, report any found before rewriting them; replace
 the DESIGN-TODO at combat_manager.gd:1215 with a resolved citation."
 
-## 15. Mid-run re-equip
+## 15. Mid-run re-equip — IMPLEMENTED 2026-07-07 (rejection recorded)
+**Status:** REJECTED, not deferred: the deterministic rotate-one-slot stand-in
+is the permanent behavior; the TODO at the _rotate_gear_loadouts site is now a
+rejection citation. Do not build the full re-equip UI.
 **Question:** "freely re-equip" is deferred; deterministic stand-in in place
 (`GameState.gd`). Full UI wanted?
 **Ruling (verbatim):** "#15: mid run re-equip REJECTED, not deferred. Remove the
