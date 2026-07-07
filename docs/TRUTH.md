@@ -16,7 +16,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Operations | "build 1 faction first" | **5 fully defined** (`battle-modes.json` order) |
 | Boss phases | phase-2 systems | **Standing rules** from turn 1 (`combat_manager.BOSS_STANDING_RULES`) |
 | Main scene | UnitSelect (GROUND_TRUTH §conflicts) | **`res://scenes/ui/MainMenu.tscn`** — splash boot scene; BEGIN → UnitSelect (`project.godot:run/main_scene`) |
-| Footer actions | "Reroll, Nudge, Item" (GROUND_TRUTH §UI geometry) | **Reroll, Nudge, Set, Item** (`battle_scene._add_nudge_button`/`_add_set_button`/`_item_button`) |
+| Footer actions | "Reroll, Nudge, Item" (GROUND_TRUTH §UI geometry) | **Reroll, Nudge, Set, Item** (`scripts/battle/protocol_actions.gd` — the protocol-spend module extracted from battle_scene, architecture review §1 rec 1) |
 | Protocol color | "green = protocol" (GROUND_TRUTH §visual identity) | **Protocol pips are amber** (`PixelUI.DT_AMBER`); green is reserved for **HP bars / heal** |
 | Jam cap | 12 | **10** (`combat_manager.JAM_CAP := 10`, keyword batch Task 5) |
 | Ward | "Ward", 17 enemy instances | **Firewall** (code FW; internal field still `ward`), enemy instances culled to **10** (6 Veil + 4 Synod); hero-side 3 renamed not culled |

@@ -115,9 +115,11 @@ func _run() -> void:
 	if pulse_id == "":
 		_fail("Pulse Tech state not found for nudge step")
 		return
-	scene.call("_on_nudge_button_pressed")
+	# Nudge lives in the ProtocolActions module (architecture review §1 rec 1).
+	var protocol: Node = scene.get("_protocol")
+	protocol.call("_on_nudge_button_pressed")
 	await _wait_frames(2)
-	scene.call("_apply_nudge", pulse_id)
+	protocol.call("_apply_nudge", pulse_id)
 	await _expect_step(controller, 16)
 
 	# Steps 16-17: taps (band jump + reroll/set costs).

@@ -252,9 +252,9 @@ func _target_rect(key: String) -> Rect2:
 			# label back in automatically if it ever returns.
 			return _merge_nonempty(_node_rect(_scene.get("protocol_value_label")), _target_rect("protocol_bar"))
 		"nudge":
-			return _node_rect(_scene.get("_nudge_button"))
+			return _node_rect(_protocol_button("nudge_button"))
 		"set":
-			return _node_rect(_scene.get("_set_button"))
+			return _node_rect(_protocol_button("set_button"))
 		"reroll":
 			return _node_rect(_scene.get("protocol_spend_button"))
 		"battle_log":
@@ -307,6 +307,15 @@ func _hero_die_rect(state_id: String) -> Rect2:
 		return Rect2()
 	var g: Vector2 = pt + cz.position
 	return Rect2(g - Vector2(DIE_HALF_PX, DIE_HALF_PX), Vector2(DIE_HALF_PX * 2.0, DIE_HALF_PX * 2.0))
+
+
+# The spend buttons moved into the ProtocolActions module (architecture review
+# §1 rec 1); resolve through it.
+func _protocol_button(name: String) -> Variant:
+	var protocol: Variant = _scene.get("_protocol")
+	if protocol == null:
+		return null
+	return protocol.get(name)
 
 
 func _merge_nonempty(a: Rect2, b: Rect2) -> Rect2:

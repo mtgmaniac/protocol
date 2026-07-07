@@ -33,6 +33,9 @@ const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn"
 # Keyword primers (one-shot micro-tutorials; docs/PRIMERS.md). Preload, not the
 # global class name, so fresh-checkout headless runs parse (class-cache gotcha).
 const KEYWORD_PRIMER_SCRIPT := preload("res://scripts/ui/keyword_primer.gd")
+# Protocol-spend subsystem (ARCHITECTURE_REVIEW_JUL2026 §1 rec 1) — preload,
+# not the global class name, for fresh-checkout headless parses.
+const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 # Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
@@ -144,25 +147,10 @@ var hero_roll_sets: Dictionary:
 	get: return _state.hero_roll_sets
 	set(value): _state.hero_roll_sets = value
 var _battle_consumables: Array = []
-var _item_button: Button = null
 # Die-docked result tags, keyed "side:unit_id" -> {plate: Panel, sig: String}.
 var _die_tag_layer: Control = null
 var _die_tags: Dictionary = {}
 var _die_tag_diameter: float = DIE_TAG_DIAMETER_FALLBACK   # projected die diameter (uniform)
-var _nudge_button: Button = null
-var _set_button: Button = null
-var _suppress_protocol_press: bool = false
-var _pending_set_hero_id: String = ""
-# Mobile-friendly "Set a die" value picker (thumb-draggable slider popup, replaces the old
-# 1-20 vertical PopupMenu). Built on a high CanvasLayer so it floats above the 3D dice tray.
-var _set_value_overlay: CanvasLayer = null
-var _set_value_current: int = 1
-var _set_value_display: Label = null
-var _set_value_track: Control = null
-var _set_value_fill: ColorRect = null
-var _set_value_thumb: Control = null
-var _item_menu: PopupMenu = null
-var _item_menu_items: Array = []
 var _relic_slot: Control = null
 var _protocol_footer_display: Control = null
 var _protocol_footer_lights: Array = []
@@ -171,13 +159,9 @@ var _header_frame: PanelContainer = null
 var _footer_frame: PanelContainer = null
 var _die_tooltip_overlays: Array = []
 var _layout: BattleLayout = null
+var _protocol = null  # ProtocolActions — the protocol-spend subsystem
 var _card_view: BattleCardView = null
 var _feedback: BattleFeedback = null
-var _pending_item: ItemData = null
-var _item_targeting_card: Node = null
-var _item_targeting_armed: bool = false
-var _was_in_ready_phase: bool = false
-var _phase_before_item: String = ""
 var _round_complete_modal: Control = null
 var _round_complete_next_button: Button = null
 var _auto_turn_running: bool = false
@@ -209,6 +193,9 @@ func _ready() -> void:
 	_feedback = BattleFeedback.new()
 	add_child(_feedback)
 	_feedback.setup(self)
+	_protocol = PROTOCOL_ACTIONS_SCRIPT.new()
+	add_child(_protocol)
+	_protocol.setup(self)
 	_apply_battle_theme()
 	_build_round_complete_modal()
 	_update_battle_header()
@@ -259,13 +246,7 @@ func _ready() -> void:
 		_on_auto_battle_button_pressed,
 		_on_return_to_menu_button_pressed,
 	)
-	protocol_spend_button.pressed.connect(_on_reroll_button_pressed)
-	_attach_protocol_inspect(protocol_spend_button, "reroll")
-	_add_nudge_button()
-	_add_set_button()
-	if _game_state().has_relic_effect("twinFates"):
-		_add_twin_fates_button()
-	_build_item_panel()
+	_protocol.build_footer_buttons()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
 	board.move_child(enemy_panel, 0)
 	board.move_child(center_panel, 1)
@@ -1217,9 +1198,7 @@ func _disable_combat_actions() -> void:
 	legal_target_ids.clear()
 	legal_target_side = ""
 	pending_manual_target_ids.clear()
-	_pending_item = null
-	_was_in_ready_phase = false
-	_phase_before_item = ""
+	_protocol.reset_battle_over_state()
 	_clear_target_assignments()
 	roll_button.visible = false
 	roll_button.disabled = true
@@ -1322,59 +1301,6 @@ func _debug_advance_after_auto_battle_victory() -> void:
 	_refresh_summary("Victory. Routing to rewards.")
 	_game_state().prepare_battle_rewards()
 	_scene_manager().go_to_reward_screen()
-
-
-func _on_reroll_button_pressed() -> void:
-	if _consume_protocol_long_press():
-		return
-	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
-		if hero_rolls.is_empty():
-			_refresh_summary("Roll dice before using Reroll.")
-		return
-	if protocol_points < 2:
-		_refresh_summary("Need 2 Protocol to Reroll.")
-		return
-	AudioManager.play_select()
-	_set_turn_phase(PHASE_REROLL_PICK)
-
-
-func _on_nudge_button_pressed() -> void:
-	if _consume_protocol_long_press():
-		return
-	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
-		if hero_rolls.is_empty():
-			_refresh_summary("Roll dice before using Nudge.")
-		return
-	if protocol_points < 1 and not _has_free_nudge_available():
-		_refresh_summary("Need 1 Protocol to Nudge.")
-		return
-	if not _has_nudgeable_hero():
-		_refresh_summary("Every die was already nudged this turn.")
-		return
-	AudioManager.play_select()
-	_set_turn_phase(PHASE_NUDGE_PICK)
-
-
-func _add_nudge_button() -> void:
-	var btn: Button = Button.new()
-	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	btn.pressed.connect(_on_nudge_button_pressed)
-	_attach_protocol_inspect(btn, "nudge")
-	_style_frame_icon_action_button(btn, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
-	_nudge_button = btn
-	protocol_spend_button.get_parent().add_child(btn)
-	protocol_spend_button.get_parent().move_child(btn, protocol_spend_button.get_index() + 1)
-
-func _apply_reroll(hero_id: String) -> void:
-	# Rule delegated to BattleEngine (A.1); this scene keeps the animation + UI.
-	var new_roll: int = _engine.apply_reroll(_state, hero_id)
-	_update_protocol_bar()
-	_append_log("Reroll: %s draws %d." % [hero_id, new_roll])
-	if dice_tray_3d != null:
-		await dice_tray_3d.reroll_die_to_result("hero", hero_id, new_roll)
-	_re_assign_hero_target(hero_id)
-	_refresh_dice_result_actions()
-	_finish_roll_modifier_pick()
 
 
 # Central protocol gain: caps at MAX_PROTOCOL; the Overflow Vent relic turns
@@ -1484,46 +1410,6 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 			dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
 
 
-func _get_nudge_cost(hero_id: String) -> int:
-	return _engine.nudge_cost(_state, hero_id, _hero_has_gear_effect(hero_id, "firstNudgeFree"))
-
-
-func _apply_nudge(hero_id: String) -> void:
-	# Rule delegated to BattleEngine (A.1); this scene keeps the dice-tray
-	# update, retargeting, logs, and tutorial emit.
-	# DESIGN-TODO(kev): confirm the Reverse Gimbal flip interaction (tap again to
-	# swap +3 <-> -3) as the "may subtract" UX.
-	var res: Dictionary = _engine.apply_nudge(
-		_state,
-		hero_id,
-		_hero_has_gear_effect(hero_id, "firstNudgeFree"),
-		_hero_has_gear_effect(hero_id, "nudgeMaySubtract")
-	)
-	match str(res["kind"]):
-		"flip":
-			_append_log("Reverse Gimbal: nudge flipped to %+d." % int(res["value"]))
-		"already":
-			_refresh_summary("That die was already nudged this turn.")
-			return
-		"applied":
-			if int(res["cost"]) == 0:
-				_append_log("Priming Charge: free Nudge.")
-			_update_protocol_bar()
-			_append_log("Nudge: %s +3 to effective roll." % hero_id)
-	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
-	if dice_tray_3d != null and not hero_state.is_empty():
-		dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
-	_re_assign_hero_target(hero_id)
-	_refresh_dice_result_actions()
-	_finish_roll_modifier_pick()
-	if str(res["kind"]) == "applied":
-		_emit_tutorial("nudged", {"hero": hero_id})
-
-
-func _was_hero_nudged_this_turn(hero_id: String) -> bool:
-	return hero_roll_nudges.has(hero_id)
-
-
 # Roll-time gear: Overload Capacitor (natural 20 grants Protocol) and Sync
 # Antenna (holder + an ally rolling the same number both gain +3 to it).
 func _apply_post_roll_gear_effects() -> void:
@@ -1564,356 +1450,6 @@ func _apply_post_roll_gear_effects() -> void:
 					# Direct (no skip flag): the bonus covers this round only.
 					sync_state["roll_buff"] = int(sync_state.get("roll_buff", 0)) + 3
 			_append_log("Sync Antenna: matched %d — both dice +3." % holder_roll)
-
-
-func _has_free_nudge_available() -> bool:
-	for hero_state_variant in combat_manager.get_hero_states():
-		var hero_state: Dictionary = hero_state_variant
-		if bool(hero_state.get("dead", false)):
-			continue
-		if _get_nudge_cost(str(hero_state["id"])) == 0:
-			return true
-	return false
-
-
-func _can_nudge_hero(state: Dictionary) -> bool:
-	if bool(state.get("dead", false)):
-		return false
-	if not _has_roll_for_state(hero_rolls, state):
-		return false
-	# A repeating frozen die is fully locked — its crusted face IS the result.
-	if bool(state.get("die_freeze_repeat_this_round", false)):
-		return false
-	if _was_hero_nudged_this_turn(str(state["id"])):
-		# Reverse Gimbal holders may re-tap to flip the nudge's sign.
-		return _hero_has_gear_effect(str(state["id"]), "nudgeMaySubtract")
-	return true
-
-
-func _has_nudgeable_hero() -> bool:
-	for hero_state_variant in combat_manager.get_hero_states():
-		if _can_nudge_hero(hero_state_variant):
-			return true
-	return false
-
-
-# Root Access boss relic: once per battle, Set costs 0.
-func _get_set_cost() -> int:
-	return _engine.set_cost(_state)
-
-
-func _on_set_button_pressed() -> void:
-	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
-		if hero_rolls.is_empty():
-			_refresh_summary("Roll dice before using Set.")
-		return
-	if protocol_points < _get_set_cost():
-		_refresh_summary("Need %d Protocol to Set." % SET_DIE_COST)
-		return
-	AudioManager.play_select()
-	_set_turn_phase(PHASE_SET_PICK)
-
-
-func _attach_protocol_inspect(button: Button, action_key: String) -> void:
-	if button == null:
-		return
-	# A Button doesn't surface gui_input to a child LongPressInput, so detect the hold via
-	# the button's own button_down/button_up signals + a timer. A quick tap still fires the
-	# button action; a held press opens the inspect and sets _suppress_protocol_press so the
-	# release doesn't also run the action.
-	var hold_timer := Timer.new()
-	hold_timer.one_shot = true
-	hold_timer.wait_time = PixelUI.INSPECT_HOLD_SEC
-	button.add_child(hold_timer)
-	hold_timer.timeout.connect(func() -> void:
-		_suppress_protocol_press = true
-		InspectPopup.open(self, InspectResolver.resolve_protocol_action(action_key), button.get_global_rect(), button.get_instance_id())
-	)
-	button.button_down.connect(func() -> void: hold_timer.start())
-	button.button_up.connect(func() -> void: hold_timer.stop())
-
-
-func _consume_protocol_long_press() -> bool:
-	if _suppress_protocol_press:
-		_suppress_protocol_press = false
-		return true
-	return false
-
-
-func _add_set_button() -> void:
-	var btn: Button = Button.new()
-	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	btn.pressed.connect(_on_set_button_pressed)
-	_attach_protocol_inspect(btn, "set")
-	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
-	_set_button = btn
-	protocol_spend_button.get_parent().add_child(btn)
-	protocol_spend_button.get_parent().move_child(btn, _nudge_button.get_index() + 1)
-
-
-# Twin Fates relic: once per battle, copy one hero die's result to another,
-# free. Two-tap flow: pick the source die, then the target die.
-var _twin_fates_button: Button = null
-
-
-func _add_twin_fates_button() -> void:
-	var btn: Button = Button.new()
-	btn.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	btn.pressed.connect(_on_twin_fates_button_pressed)
-	_style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
-	_twin_fates_button = btn
-	protocol_spend_button.get_parent().add_child(btn)
-	protocol_spend_button.get_parent().move_child(btn, _set_button.get_index() + 1)
-
-
-func _on_twin_fates_button_pressed() -> void:
-	if turn_phase != PHASE_READY_TO_END and turn_phase != PHASE_TARGETING:
-		if hero_rolls.is_empty():
-			_refresh_summary("Roll dice before using Twin Fates.")
-		return
-	if _twin_fates_used:
-		_refresh_summary("Twin Fates was already spent this battle.")
-		return
-	AudioManager.play_select()
-	_twin_fates_source_id = ""
-	_set_turn_phase(PHASE_TWIN_SOURCE_PICK)
-	_refresh_summary("Twin Fates: tap the die to copy FROM.")
-
-
-# Pure state core of Twin Fates: copy the source die's result onto the target
-# die (clearing its pending nudge/set) and burn the once-per-battle use.
-func _twin_fates_copy_roll(source_id: String, target_id: String) -> bool:
-	return _engine.twin_fates_copy(_state, source_id, target_id)
-
-
-func _apply_twin_fates(source_id: String, target_id: String) -> void:
-	if not _twin_fates_copy_roll(source_id, target_id):
-		_finish_roll_modifier_pick()
-		return
-	_append_log("Twin Fates: %s's die copies %s's %d." % [target_id, source_id, int(hero_rolls.get(target_id, 0))])
-	var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-	if dice_tray_3d != null and not target_state.is_empty():
-		dice_tray_3d.update_die_result_in_place("hero", target_id, _get_effective_roll_for_state(target_state, target_id))
-	_re_assign_hero_target(target_id)
-	_refresh_dice_result_actions()
-	_finish_roll_modifier_pick()
-
-
-# Set-pick: the player tapped a hero die; open the thumb-draggable value popup for it,
-# pre-seeded with the die's current effective value.
-func _begin_set_value_pick(hero_id: String) -> void:
-	_pending_set_hero_id = hero_id
-	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
-	var start_val: int = 10
-	if not hero_state.is_empty():
-		start_val = _get_effective_roll_for_state(hero_state, hero_id)
-	_set_value_current = clampi(start_val, 1, 20)
-	_open_set_value_popup()
-
-
-# A themed modal popup matching the other menus (hard pixel panel + DT colors): a big value
-# readout above a wide horizontal slider you drag with your thumb (1-20), plus CANCEL/CONFIRM.
-func _open_set_value_popup() -> void:
-	_close_set_value_popup()
-	var accent: Color = HERO_ACCENT
-
-	_set_value_overlay = CanvasLayer.new()
-	_set_value_overlay.layer = 60
-	add_child(_set_value_overlay)
-
-	# Full-rect catcher: a press outside the panel cancels. The panel (STOP) blocks presses
-	# on itself from reaching the catcher, so only taps on the dimmed backdrop dismiss.
-	var catcher: Control = Control.new()
-	catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
-	catcher.gui_input.connect(func(event: InputEvent) -> void:
-		if (event is InputEventScreenTouch and event.pressed) \
-			or (event is InputEventMouseButton and event.pressed):
-			_cancel_set_value_popup())
-	_set_value_overlay.add_child(catcher)
-
-	var dim: ColorRect = ColorRect.new()
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.0, 0.0, 0.0, 0.62)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	catcher.add_child(dim)
-
-	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	catcher.add_child(center)
-
-	var panel: PanelContainer = PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, accent, 3))
-	var vp: Vector2 = get_viewport().get_visible_rect().size
-	panel.custom_minimum_size = Vector2(clampf(vp.x - 40.0, 340.0, 720.0), 0.0)
-	center.add_child(panel)
-
-	var margin: MarginContainer = MarginContainer.new()
-	for side_name in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
-		margin.add_theme_constant_override(side_name, 34)
-	panel.add_child(margin)
-
-	var vb: VBoxContainer = VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 30)
-	margin.add_child(vb)
-
-	var title: Label = Label.new()
-	title.text = "SET DIE VALUE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, 36, PixelUI.INSPECT_TEXT_DIM, 3)
-	vb.add_child(title)
-
-	_set_value_display = Label.new()
-	_set_value_display.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(_set_value_display, 132, accent, 4)
-	vb.add_child(_set_value_display)
-
-	# Slider: a plain Control we paint ourselves (track bg + fill + thumb) so it carries the
-	# pixel aesthetic and handles touch/drag directly — far friendlier for thumbs than a list.
-	_set_value_track = Control.new()
-	_set_value_track.custom_minimum_size = Vector2(0.0, 110.0)
-	_set_value_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_set_value_track.mouse_filter = Control.MOUSE_FILTER_STOP
-	vb.add_child(_set_value_track)
-
-	var track_bg: Panel = Panel.new()
-	track_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	track_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	track_bg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_FIELD_BG, PixelUI.DT_FIELD_BORDER, 2))
-	_set_value_track.add_child(track_bg)
-
-	_set_value_fill = ColorRect.new()
-	_set_value_fill.color = Color(accent.r, accent.g, accent.b, 0.30)
-	_set_value_fill.position = Vector2.ZERO
-	_set_value_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_set_value_track.add_child(_set_value_fill)
-
-	_set_value_thumb = Panel.new()
-	_set_value_thumb.size = Vector2(60.0, 110.0)
-	_set_value_thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_set_value_thumb.add_theme_stylebox_override("panel", PixelUI.make_hard_style(accent, accent.lightened(0.35), 3))
-	_set_value_track.add_child(_set_value_thumb)
-
-	_set_value_track.gui_input.connect(_on_set_value_track_input)
-	_set_value_track.resized.connect(_update_set_value_visuals)
-
-	var hint: Label = Label.new()
-	hint.text = "Drag to choose — costs %d Protocol" % SET_DIE_COST
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_label(hint, 26, PixelUI.INSPECT_TEXT_MUTED, 2)
-	vb.add_child(hint)
-
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	vb.add_child(row)
-
-	var cancel_btn: Button = Button.new()
-	cancel_btn.text = "CANCEL"
-	cancel_btn.custom_minimum_size = Vector2(0.0, 100.0)
-	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(cancel_btn, PixelUI.DT_BTN_BG, PixelUI.DT_BTN_BORDER, 38)
-	cancel_btn.pressed.connect(_cancel_set_value_popup)
-	row.add_child(cancel_btn)
-
-	var confirm_btn: Button = Button.new()
-	confirm_btn.text = "CONFIRM"
-	confirm_btn.custom_minimum_size = Vector2(0.0, 100.0)
-	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_primary_button(confirm_btn, 38, true)
-	confirm_btn.pressed.connect(_confirm_set_value_popup)
-	row.add_child(confirm_btn)
-
-	call_deferred("_update_set_value_visuals")
-
-
-# Position the fill + thumb from the current value. Called on value change and whenever the
-# track resizes (so it stays correct once layout resolves the real track width).
-func _update_set_value_visuals() -> void:
-	if _set_value_display != null:
-		_set_value_display.text = str(_set_value_current)
-	if _set_value_track == null or _set_value_thumb == null or _set_value_fill == null:
-		return
-	var track_w: float = _set_value_track.size.x
-	var track_h: float = _set_value_track.size.y
-	var thumb_w: float = _set_value_thumb.size.x
-	var frac: float = float(_set_value_current - 1) / 19.0
-	var x: float = frac * maxf(0.0, track_w - thumb_w)
-	_set_value_thumb.position = Vector2(x, 0.0)
-	_set_value_fill.size = Vector2(x + thumb_w * 0.5, track_h)
-
-
-func _on_set_value_track_input(event: InputEvent) -> void:
-	if _set_value_track == null or _set_value_thumb == null:
-		return
-	var local_x: float = -1.0
-	if event is InputEventScreenTouch and event.pressed:
-		local_x = event.position.x
-	elif event is InputEventScreenDrag:
-		local_x = event.position.x
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		local_x = event.position.x
-	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-		local_x = event.position.x
-	if local_x < 0.0:
-		return
-	var usable: float = maxf(1.0, _set_value_track.size.x - _set_value_thumb.size.x)
-	var frac: float = clampf((local_x - _set_value_thumb.size.x * 0.5) / usable, 0.0, 1.0)
-	var new_val: int = clampi(int(round(1.0 + frac * 19.0)), 1, 20)
-	if new_val != _set_value_current:
-		_set_value_current = new_val
-		AudioManager.play_select()
-		_update_set_value_visuals()
-
-
-func _confirm_set_value_popup() -> void:
-	var hero_id: String = _pending_set_hero_id
-	var value: int = _set_value_current
-	_close_set_value_popup()
-	if hero_id == "":
-		return
-	_pending_set_hero_id = ""
-	AudioManager.play_select()
-	_apply_set(hero_id, clampi(value, 1, 20))
-
-
-# Cancel just closes the popup; we stay in PHASE_SET_PICK so the player can tap a different die
-# or back out via the Set button. No Protocol is spent until CONFIRM.
-func _cancel_set_value_popup() -> void:
-	if _set_value_overlay == null:
-		return
-	AudioManager.play_select()
-	_pending_set_hero_id = ""
-	_close_set_value_popup()
-
-
-func _close_set_value_popup() -> void:
-	if _set_value_overlay != null and is_instance_valid(_set_value_overlay):
-		_set_value_overlay.queue_free()
-	_set_value_overlay = null
-	_set_value_display = null
-	_set_value_track = null
-	_set_value_fill = null
-	_set_value_thumb = null
-
-
-func _apply_set(hero_id: String, value: int) -> void:
-	# Rule delegated to BattleEngine (A.1); this scene keeps the logs + UI.
-	var set_cost: int = _engine.apply_set(_state, hero_id, value)
-	if set_cost == 0:
-		_append_log("Root Access: free Set.")
-	_update_protocol_bar()
-	_append_log("Set: %s die set to %d." % [hero_id, value])
-	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
-	if dice_tray_3d != null and not hero_state.is_empty():
-		dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
-	_re_assign_hero_target(hero_id)
-	_refresh_dice_result_actions()
-	_finish_roll_modifier_pick()
 
 
 func _re_assign_hero_target(hero_id: String) -> void:
@@ -2261,10 +1797,8 @@ func _update_battle_header() -> void:
 
 
 func _set_turn_phase(next_phase: String) -> void:
-	# The Set-value popup only makes sense mid-SET_PICK; tear it down on any phase transition
-	# so it can't linger over a later phase (e.g. after CONFIRM resolves into READY_TO_END).
-	if next_phase != PHASE_SET_PICK:
-		_close_set_value_popup()
+	# Protocol-actions teardown on any transition (Set-value popup etc.).
+	_protocol.on_phase_changed(next_phase)
 	turn_phase = next_phase
 	_update_phase_target_sets()
 	match turn_phase:
@@ -2793,7 +2327,7 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 	if turn_phase == PHASE_TWIN_SOURCE_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
 	if turn_phase == PHASE_NUDGE_PICK:
-		return accent_color == HERO_ACCENT and _can_nudge_hero(state)
+		return accent_color == HERO_ACCENT and _protocol.can_nudge_hero(state)
 
 	# Item pick phases
 	if turn_phase == PHASE_ITEM_PICK_ALLY:
@@ -2839,24 +2373,10 @@ func _has_roll_for_state(rolls: Dictionary, state: Dictionary) -> bool:
 	return unit_id != null and rolls.has(unit_id)
 
 
-# True while an item is mid-use (choosing a target, or confirming a no-target item).
-func _in_item_phase() -> bool:
-	return turn_phase.begins_with("item_pick") or turn_phase == PHASE_ITEM_CONFIRM
-
-
 func _on_enemy_card_pressed(target_id: String) -> void:
 	if battle_over:
 		return
-	if _in_item_phase():
-		# Tapping a legal enemy target applies the item; tapping any other unit/die cancels
-		# it back to the loadout (same as tapping the item card again).
-		if (turn_phase == PHASE_ITEM_PICK_ENEMY or turn_phase == PHASE_ITEM_PICK_ANY) and legal_target_ids.has(target_id) and _pending_item != null:
-			var target_state: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), target_id)
-			if not target_state.is_empty():
-				AudioManager.play_select()
-				_apply_item_effect(_pending_item, target_state)
-				return
-		_cancel_item_to_loadout()
+	if _protocol.handle_enemy_card_pressed(target_id):
 		return
 	if turn_phase != PHASE_TARGETING:
 		return
@@ -2872,60 +2392,9 @@ func _on_hero_card_pressed(target_id: String) -> void:
 	if battle_over:
 		return
 
-	# Handle reroll/nudge pick phases first
-	if turn_phase == PHASE_REROLL_PICK:
-		var reroll_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-		if reroll_state.is_empty() or bool(reroll_state["dead"]) or not _has_roll_for_state(hero_rolls, reroll_state):
-			return
-		if int(reroll_state.get("die_freeze_turns", 0)) > 0:
-			_refresh_summary("That die is frozen solid — it can't be rerolled.")
-			return
-		AudioManager.play_select()
-		await _apply_reroll(target_id)
-		return
-	if turn_phase == PHASE_NUDGE_PICK:
-		var nudge_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-		if not _can_nudge_hero(nudge_state):
-			return
-		AudioManager.play_select()
-		_apply_nudge(target_id)
-		return
-	if turn_phase == PHASE_SET_PICK:
-		var set_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-		if set_state.is_empty() or bool(set_state["dead"]) or not _has_roll_for_state(hero_rolls, set_state):
-			return
-		if bool(set_state.get("die_freeze_repeat_this_round", false)):
-			_refresh_summary("That die is repeating its frozen result — it can't be Set.")
-			return
-		AudioManager.play_select()
-		_begin_set_value_pick(target_id)
-		return
-	if turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
-		var twin_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-		if twin_state.is_empty() or bool(twin_state["dead"]) or not _has_roll_for_state(hero_rolls, twin_state):
-			return
-		if turn_phase == PHASE_TWIN_TARGET_PICK and int(twin_state.get("die_freeze_turns", 0)) > 0:
-			_refresh_summary("That die is frozen solid — it can't be overwritten.")
-			return
-		AudioManager.play_select()
-		if turn_phase == PHASE_TWIN_SOURCE_PICK:
-			_twin_fates_source_id = target_id
-			_set_turn_phase(PHASE_TWIN_TARGET_PICK)
-			_refresh_summary("Twin Fates: tap the die to copy TO.")
-		elif target_id != _twin_fates_source_id:
-			_apply_twin_fates(_twin_fates_source_id, target_id)
-		return
-
-	if _in_item_phase():
-		# Tapping a legal ally target applies the item; tapping any other unit/die cancels it
-		# back to the loadout (same as tapping the item card again).
-		if (turn_phase == PHASE_ITEM_PICK_ALLY or turn_phase == PHASE_ITEM_PICK_ANY) and legal_target_ids.has(target_id) and _pending_item != null:
-			var target_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
-			if not target_state.is_empty():
-				AudioManager.play_select()
-				_apply_item_effect(_pending_item, target_state)
-				return
-		_cancel_item_to_loadout()
+	# Protocol-spend pick sub-phases (reroll/nudge/set/twin/item) live in the
+	# ProtocolActions module; it reports whether it consumed the tap.
+	if _protocol.handle_hero_card_pressed(target_id):
 		return
 
 	if turn_phase == PHASE_READY_TO_END:
@@ -3009,12 +2478,7 @@ func _apply_battle_theme() -> void:
 	# Header buttons are styled by the PersistentHeader autoload itself.
 	_style_roll_button_for_phase()
 	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE)
-	if _nudge_button != null and is_instance_valid(_nudge_button):
-		_style_frame_icon_action_button(_nudge_button, PixelUI.ICON_INCREASE, BOTTOM_BAR_BUTTON_SIZE)
-	if _set_button != null and is_instance_valid(_set_button):
-		_style_frame_icon_action_button(_set_button, PixelUI.ICON_DEBUG2, BOTTOM_BAR_BUTTON_SIZE)
-	if _item_button != null and is_instance_valid(_item_button):
-		_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
+	_protocol.restyle_buttons()
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
 	# The numeric value is redundant with the 10 segments and kept landing in awkward
@@ -3059,322 +2523,11 @@ func _duplicate_enemy(base_enemy: EnemyData) -> EnemyData:
 
 # --- Item System (Phase 3) ---
 
-func _get_item_protocol_cost(_item: ItemData) -> int:
-	# Flat cost 1 for all rarities. Rule delegated to BattleEngine (A.1);
-	# Protocol Override / Supply Drone make it 0, Sealed Supplies makes it 2.
-	# Protocol Override also grants +1 on use — see _apply_item_effect.
-	return _engine.item_protocol_cost(bool(_battle_effects.get("items_free", false)))
-
-
-func _build_item_panel() -> void:
-	var protocol_row: HBoxContainer = protocol_panel.get_node("ProtocolMargin/ProtocolRow") as HBoxContainer
-	_item_button = Button.new()
-	_item_button.custom_minimum_size = BOTTOM_BAR_BUTTON_SIZE
-	_item_button.pressed.connect(_on_item_button_pressed_menu)
-	_style_frame_icon_action_button(_item_button, PixelUI.ICON_ITEM, BOTTOM_BAR_BUTTON_SIZE)
-	protocol_row.add_child(_item_button)
-	_item_menu = PopupMenu.new()
-	_item_menu.name = "ItemMenu"
-	_item_menu.id_pressed.connect(_on_item_menu_id_pressed)
-	float_layer.add_child(_item_menu)
-	_update_item_panel()
-
-
-func _update_item_panel() -> void:
-	if _item_button == null:
-		return
-	_item_menu_items.clear()
-	var item_ids: Array = _game_state().consumables
-	for item_id_variant in item_ids:
-		var item: ItemData = _data_manager().get_item(str(item_id_variant)) as ItemData
-		if item != null:
-			_item_menu_items.append(item)
-	# The item button always opens the themed LOADOUT menu (consumables + relic), so it
-	# stays enabled even with no consumables — the relic is still viewable.
-	_item_button.disabled = false
-
-
-func _on_item_button_pressed_menu() -> void:
-	if _item_button == null:
-		return
-	AudioManager.play_select()
-	var relic_item: ItemData = null
-	var relic_ids: Array = _game_state().relics
-	if not relic_ids.is_empty():
-		relic_item = _data_manager().get_item(str(relic_ids[0])) as ItemData
-	LoadoutMenu.open(self, _item_menu_items, relic_item, _on_item_button_pressed, _item_button.get_global_rect())
-
-
-func _on_item_menu_id_pressed(id: int) -> void:
-	if id < 0 or id >= _item_menu_items.size():
-		return
-	AudioManager.play_select()
-	var item: ItemData = _item_menu_items[id] as ItemData
-	if item == null:
-		return
-	_on_item_button_pressed(item)
-
-
-func _get_item_icon_char(icon_key: String) -> String:
-	match icon_key:
-		"heart":  return "♥"
-		"shield": return "⬡"
-		"die":    return "⚄"
-		"bolt":   return "⚡"
-		"skull":  return "☠"
-		"cloak":  return "◉"
-		"star":   return "★"
-	return "●"
-
-
-# Returns true if the item tap was accepted (the loadout menu should close), false if it was
-# rejected for insufficient Protocol (the menu stays open and flashes the tapped row red).
-func _on_item_button_pressed(item: ItemData) -> bool:
-	if battle_over:
-		return true
-	if not _can_use_item_in_current_phase():
-		_refresh_summary("Items can only be used before rolling, during targeting, or before ending the turn.")
-		return true
-	var cost: int = _get_item_protocol_cost(item)
-	if protocol_points < cost:
-		_refresh_summary("Need %d Protocol to use %s." % [cost, item.display_name])
-		return false
-
-	_was_in_ready_phase = (turn_phase == PHASE_READY_TO_END)
-	_phase_before_item = turn_phase
-	_pending_item = item
-
-	match item.target_kind:
-		"ally":
-			if _get_legal_target_ids("hero").is_empty():
-				_cancel_item_targeting("No living ally can use %s." % item.display_name)
-				return true
-			_set_turn_phase(PHASE_ITEM_PICK_ALLY)
-		"allyDead":
-			_cancel_item_targeting("Downed units cannot be targeted by %s." % item.display_name)
-			return true
-		"enemy":
-			if _get_legal_target_ids("enemy").is_empty():
-				_cancel_item_targeting("No living enemy can be targeted by %s." % item.display_name)
-				return true
-			_set_turn_phase(PHASE_ITEM_PICK_ENEMY)
-		"any":
-			if _get_legal_target_ids("any").is_empty():
-				_cancel_item_targeting("No unit can be targeted by %s." % item.display_name)
-				return true
-			_set_turn_phase(PHASE_ITEM_PICK_ANY)
-		"none":
-			# No target needed — show the card centered and wait for a confirm tap.
-			_set_turn_phase(PHASE_ITEM_CONFIRM)
-		_:
-			_cancel_item_targeting("%s cannot find a valid target type." % item.display_name)
-
-	if turn_phase.begins_with("item_pick"):
-		_show_item_targeting_card(item)
-	elif turn_phase == PHASE_ITEM_CONFIRM:
-		_show_item_targeting_card(item, true)
-	return true
-
-
-func _cancel_item_targeting(message: String) -> void:
-	_hide_item_targeting_card()
-	_pending_item = null
-	legal_target_ids.clear()
-	legal_target_side = ""
-	_restore_phase_after_item()
-	_refresh_summary(message)
-
-
-func _can_use_item_in_current_phase() -> bool:
-	return turn_phase == PHASE_AWAIT_ROLL or turn_phase == PHASE_TARGETING or turn_phase == PHASE_READY_TO_END
-
-
-func _restore_phase_after_item() -> void:
-	var restore_phase: String = _phase_before_item
-	_phase_before_item = ""
-	_was_in_ready_phase = false
-	if restore_phase == PHASE_READY_TO_END:
-		_set_turn_phase(PHASE_READY_TO_END)
-	elif restore_phase == PHASE_TARGETING:
-		_set_turn_phase(PHASE_TARGETING)
-		if active_targeting_hero_id != "":
-			_select_targeting_hero(active_targeting_hero_id)
-	else:
-		_set_turn_phase(PHASE_AWAIT_ROLL)
-
-
-# ── Item-targeting overlay (the centered picker card shown while choosing a unit, or as a
-# confirm prompt for no-target items) ──
-# Lives on its own high CanvasLayer (on top of everything) and is centered explicitly so
-# it never depends on another control's layout. Armed after a short delay so the same tap
-# that opened it can't immediately resolve it. In confirm_mode, tapping the card activates
-# the item; otherwise it cancels back to the loadout. Tapping off the card cancels in both.
-func _show_item_targeting_card(item: ItemData, confirm_mode: bool = false) -> void:
-	_hide_item_targeting_card()
-	if item == null:
-		return
-	var layer := CanvasLayer.new()
-	layer.name = "ItemTargetingCard"
-	layer.layer = 120
-	add_child(layer)
-
-	# Viewport-sized root + CenterContainer so the card sits centered at its own 420² minimum
-	# size, without depending on any other control's layout.
-	var root := Control.new()
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.size = get_viewport().get_visible_rect().size
-	layer.add_child(root)
-	var center := CenterContainer.new()
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_child(center)
-
-	var card: PanelContainer = ItemCard.build(item, 420.0)
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Tapping the card activates (confirm_mode) or cancels back to the loadout. STOP marks the
-	# press handled so it does not also reach _unhandled_input (which treats off-card taps as
-	# cancel).
-	card.gui_input.connect(func(event: InputEvent) -> void:
-		var pressed := false
-		if event is InputEventMouseButton:
-			pressed = (event as InputEventMouseButton).pressed
-		elif event is InputEventScreenTouch:
-			pressed = (event as InputEventScreenTouch).pressed
-		if pressed:
-			if confirm_mode:
-				_confirm_pending_item()
-			else:
-				_cancel_item_to_loadout()
-	)
-	center.add_child(card)
-	# In confirm mode the card itself is the tap target, so highlight it with a pulsing
-	# accent border — the same "this is tappable" cue legal unit targets get when targeting.
-	if confirm_mode:
-		_add_confirm_card_highlight(card)
-	# Hide the entire layer for the first frame so the card is never drawn at the wrong
-	# position before CenterContainer has had a chance to lay it out.
-	layer.visible = false
-	get_tree().create_timer(0.0).timeout.connect(func() -> void:
-		if is_instance_valid(layer):
-			layer.visible = true
-	)
-	_item_targeting_card = layer
-
-	_item_targeting_armed = false
-	get_tree().create_timer(0.18).timeout.connect(func() -> void: _item_targeting_armed = true)
-
-
-func _hide_item_targeting_card() -> void:
-	_item_targeting_armed = false
-	if _item_targeting_card != null and is_instance_valid(_item_targeting_card):
-		_item_targeting_card.queue_free()
-	_item_targeting_card = null
-
-
-func _cancel_item_to_loadout() -> void:
-	# Ignore cancels until armed, so the tap that opened the card doesn't close it.
-	if not _item_targeting_armed:
-		return
-	if _pending_item == null and _item_targeting_card == null:
-		return
-	_hide_item_targeting_card()
-	_cancel_item_targeting("")
-	# Tapping the card or empty space drops back to the loadout menu.
-	call_deferred("_on_item_button_pressed_menu")
-
-
-# Confirm tap on a no-target item's centered card: activate it.
-func _confirm_pending_item() -> void:
-	# Ignore until armed, so the tap that opened the card doesn't immediately activate it.
-	if not _item_targeting_armed:
-		return
-	if _pending_item == null:
-		return
-	# _apply_item_effect hides the card, applies, consumes, and restores the prior phase.
-	_apply_item_effect(_pending_item, {})
-
-
-# Pulsing accent border over a confirm card, echoing the legal-target highlight on units.
-func _add_confirm_card_highlight(card: PanelContainer) -> void:
-	var ring := Panel.new()
-	ring.name = "ConfirmHighlight"
-	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	style.set_border_width_all(7)
-	style.border_color = PixelUI.DT_HERO_DITHER
-	style.set_corner_radius_all(0)
-	ring.add_theme_stylebox_override("panel", style)
-	card.add_child(ring)
-	# Bound to the card so the loop dies with it; pulses the ring's alpha as the "tap me" cue.
-	var tween := card.create_tween().set_loops()
-	tween.tween_property(ring, "modulate:a", 0.25, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(ring, "modulate:a", 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
-
 # While choosing an item target (or confirming a no-target item), a press that no unit
 # handled (empty space) cancels back to the loadout.
 func _unhandled_input(event: InputEvent) -> void:
-	if not turn_phase.begins_with("item_pick") and turn_phase != PHASE_ITEM_CONFIRM:
+	if _protocol.handle_unhandled_input(event):
 		return
-	var pressed := false
-	if event is InputEventMouseButton:
-		var mb: InputEventMouseButton = event
-		pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
-	elif event is InputEventScreenTouch:
-		pressed = (event as InputEventScreenTouch).pressed
-	if pressed:
-		get_viewport().set_input_as_handled()
-		_cancel_item_to_loadout()
-
-
-func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
-	if item == null:
-		return
-	_hide_item_targeting_card()
-	AudioManager.play_sfx("item")
-	var cost: int = _get_item_protocol_cost(item)
-	protocol_points = maxi(protocol_points - cost, 0)
-	# Protocol Override: using an item refunds +1 Protocol (net +1, since cost is 0).
-	if combat_manager.has_relic("protocolOnItemUse"):
-		_gain_protocol(1)
-		_append_log("Protocol Override: +1 Protocol → %d" % protocol_points)
-
-	var effect: Dictionary = item.effect
-	var effect_type: String = str(effect.get("type", ""))
-
-	if effect_type == "gainProtocol":
-		# Pool op stays here (Overflow Vent + bar + logging live on the scene).
-		var protocol_grant: int = int(effect.get("amount", 0))
-		_gain_protocol(protocol_grant)
-		_append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, protocol_points])
-	else:
-		# Combat-state mutation is shared with the sim (sim-D).
-		var revive_pct: int = _game_state().get_revive_hp_pct(int(effect.get("pct", 50)))
-		var log_line: String = _engine.apply_consumable_effect(effect, target_state, _state, revive_pct, item.display_name)
-		if log_line != "":
-			_append_log(log_line)
-
-	_consume_item(item.id)
-	_pending_item = null
-	legal_target_ids.clear()
-	legal_target_side = ""
-	_card_view.refresh_all_cards()
-	_update_protocol_bar()
-	if _try_finish_battle_from_current_state():
-		return
-
-	_restore_phase_after_item()
-
-
-func _consume_item(item_id: String) -> void:
-	var consumables: Array = _game_state().consumables
-	for i in range(consumables.size()):
-		if str(consumables[i]) == item_id:
-			consumables.remove_at(i)
-			break
-	_update_item_panel()
 
 
 func _state_unit_name(state: Dictionary) -> String:

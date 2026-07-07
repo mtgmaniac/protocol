@@ -284,15 +284,18 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 	return Rect2()
 
 
-# The protocol action button (param: nudge / reroll / set).
+# The protocol action button (param: nudge / reroll / set). Nudge/Set live in
+# the ProtocolActions module (architecture review §1 rec 1); Reroll is the
+# scene's %ProtocolSpendButton.
 func _resolve_footer_button_rect(context: Dictionary) -> Rect2:
+	var protocol: Variant = _scene.get("_protocol")
 	match str(context.get("param", "")):
 		"nudge":
-			return _control_rect(_scene.get("_nudge_button"))
+			return _control_rect(protocol.get("nudge_button") if protocol != null else null)
 		"reroll":
 			return _control_rect(_scene.get("protocol_spend_button"))
 		"set":
-			return _control_rect(_scene.get("_set_button"))
+			return _control_rect(protocol.get("set_button") if protocol != null else null)
 	return Rect2()
 
 
