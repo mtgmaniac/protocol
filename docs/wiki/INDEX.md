@@ -17,7 +17,7 @@ Economy & core rules
 - **XP consumable items were removed entirely.** XP flows only from battle wins. → [rewards-and-shop.md](rewards-and-shop.md)
 - **Max ONE manually-picked component per hero ability** (canonical example: Cover Fire = 5 dmg picked + auto 7 shield to lowest-HP ally). → [targeting.md](targeting.md)
 - **One keyword per ability; overload faces may carry two** (pierce counts as a keyword). → [keywords.md](keywords.md)
-- **Nat-20 overload fires the ability-name slam animation.** → [dice-and-rolls.md](dice-and-rolls.md)
+- **A die's final face of 20 fires the ability-name slam** — however it reached 20 (rolled, Nudged, Set, buffed). There is no "natural 20" concept (ruling NK-02, 2026-07-08). → [dice-and-rolls.md](dice-and-rolls.md)
 
 Statuses & keywords
 - **Persistent status chips:** burn, mark, ±roll, firewall (né ward), shield — see [statuses-and-chips.md](statuses-and-chips.md) for the doctrine (the Taunt chip's status is an open ruling — see the [audit](../audit/INTERACTION_AUDIT.md)).

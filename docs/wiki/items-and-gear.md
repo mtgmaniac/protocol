@@ -33,7 +33,7 @@ Two item classes ride the reward system (see [rewards-and-shop.md](rewards-and-s
 | `cascade_jammer` | Cascade Jammer | rare | none | `enemyRerollAll` | reroll every unfrozen enemy die | `battle_engine.gd:421` |
 | `cryo_gel` | Cryo Gel | uncommon | any | `anyDieFreeze 1` | freeze any die, 1 repeat (freeze = repeat) | `battle_engine.gd:424,332` |
 | `cryo_web` | Cryo Web | rare | any | `anyDieFreeze 2` | freeze any die, 2 repeats | `battle_engine.gd:424,332` |
-| `deep_zero_pin` | Deep Zero Pin | rare | none | `enemyDieFreezeAll 1` | freeze ALL enemy dice, 1 repeat each | `battle_engine.gd:429,344` |
+| `deep_zero_pin` | Deep Zero Pin | rare | none | `enemyDieFreezeAll 1` | pin every enemy die to its weakest face (1, recharge) and freeze it — each enemy repeats its recharge result (NK-14 redesign, 2026-07-08; was "keep whatever face showed", A-066) | `battle_engine.gd:347` |
 | `protocol_cell` | Protocol Cell | common | none | `gainProtocol 2` | +2 Protocol (pool op; Overflow Vent applies) | `protocol_actions.gd:941` |
 | `capacitor_dose` | Capacitor Dose | uncommon | none | `gainProtocol 3` | +3 Protocol | `protocol_actions.gd:941` |
 | `core_surge` | Core Surge | rare | none | `gainProtocol 4` | +4 Protocol | `protocol_actions.gd:941` |
@@ -119,12 +119,8 @@ There is **no common-rarity gear** — round-1 reward rolls (85% common) always 
 
 <!-- AUDIT-LINKS:items-and-gear -->
 - [A-020](../audit/INTERACTION_AUDIT.md#a-020) - [dead] four coded protocol/gear handlers with no data
-- [A-041](../audit/INTERACTION_AUDIT.md#a-041) - [broken] Sync Antenna +3 never reaches the effective roll
-- [A-061](../audit/INTERACTION_AUDIT.md#a-061) - [broken] Defib Spark is unusable (allyDead hard-cancels)
-- [A-062](../audit/INTERACTION_AUDIT.md#a-062) - [degenerate] Mirror Plate triggers on friendly freezes
 - [A-064](../audit/INTERACTION_AUDIT.md#a-064) - [needs-Kev] pool tier structure exceeds max-4 pairs
-- [A-065](../audit/INTERACTION_AUDIT.md#a-065) - [needs-Kev] duplicate gear can stack without limit
-- [A-066](../audit/INTERACTION_AUDIT.md#a-066) - [needs-Kev] Deep Zero Pin value inverted under freeze=repeat
 - [A-068](../audit/INTERACTION_AUDIT.md#a-068) - [confusing] item damage carries no attacker (Mark/Cold Logic skip)
 - [A-070](../audit/INTERACTION_AUDIT.md#a-070) - [confusing] Triage Gel grants no shield on self-heals
-- [A-074](../audit/INTERACTION_AUDIT.md#a-074) - [degenerate] Echo Matrix replays the full keyword suite
+
+Resolved (2026-07-08 fix pass): [A-041](../audit/INTERACTION_AUDIT.md#a-041), [A-061](../audit/INTERACTION_AUDIT.md#a-061), [A-062](../audit/INTERACTION_AUDIT.md#a-062), [A-065](../audit/INTERACTION_AUDIT.md#a-065), [A-066](../audit/INTERACTION_AUDIT.md#a-066), [A-074](../audit/INTERACTION_AUDIT.md#a-074)

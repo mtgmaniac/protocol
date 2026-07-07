@@ -70,6 +70,7 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 ### Spike (SP)
 
 - **Rule:** this round, any attacker whose damaging attempt connects with the carrier takes N back; never persists past the round (`combat_manager.gd:1061-1069, 1832-1882, tick :2509`). Highest value wins on re-application (`maxi`), Counterweight +4, Bunker Doctrine gives shield-holders Spike 3.
+- **Once per ability (ruling NK-06, 2026-07-08):** Spike reflects **once per carrier per ability**, not per damage packet — a multi-packet ability (base + execute + detonate + chain) can't stack the reflect. The flat vs-state riders (Cold Logic, Deep Cuts, Shatterpoint) are likewise once-per-ability-per-target. Enforced by the per-ability memos `_ability_spike_carrier_ids` / `_ability_rider_target_ids`, cleared at each ability start.
 - **Timing:** retaliation fires inside the attacker's own `_damage_state` call, after shield absorption is computed — it triggers even when shields ate the whole hit, but NOT when gear damage-reduction zeroed the hit (early return `:1801`). The retaliation carries no attacker: it can't loop two spiked units, can't consume Marks, can't trigger the other unit's Spike.
 - **Per-side expiry:** enemy-phase Spike sets `spike_skip_next_tick` so it covers exactly the next hero phase (`:1702-1710`) — same asymmetry as shields.
 - **Carriers (approved per TRUTH):** Spine Stalker, Carapace Beetle, Basalt Ape, Volt Elite; hero-side via Spike Guard kit + directives.
@@ -103,7 +104,7 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 ### Taunt (T) — unified (Lure deleted, DECISIONS_RESOLVED K3)
 
 - **One sentence:** "The taunted unit can only target the taunter."
-- **Hero-side** (`raw.taunt` on a hero ability): the hero sets `taunting`; every hostile single-target enemy pick is overridden to them — beats assigned intents, personalities, even Cloak (`_get_taunting_hero_state :2382`, `_resolve_enemy_hero_target :198`, `_freeze_pick_hero_lowest_die :2034`). Only one ally taunts at a time (`:1040-1046`). Anchor Frame gear taunts passively above 50% HP; explicit taunts win (`:2386`). **Hero taunt has no round-end expiry** — it lasts until the hero dies or another ally taunts (see findings).
+- **Hero-side** (`raw.taunt` on a hero ability): the hero sets `taunting`; every hostile single-target enemy pick is overridden to them — beats assigned intents, personalities, even Cloak (`_get_taunting_hero_state :2382`, `_resolve_enemy_hero_target :198`, `_freeze_pick_hero_lowest_die :2034`). Only one ally taunts at a time (`:1040-1046`). Anchor Frame gear taunts passively above 50% HP; explicit taunts win (`:2386`). **Hero taunt clears at round end** (ruling NK-08, 2026-07-08 — symmetric with enemy self-taunt; both sides cleared in `_tick_end_of_round_states`). It is not a permanent stance.
 - **Enemy-side single** (`raw.taunt` on an enemy ability, internal `lured_by_id`): the struck hero's hostile picks are restricted to the taunter for exactly one hero phase (`:1693-1700`, `_hostile_single_target :1736`, tick clear `:2479`). Renders the TAUNT chip on the hero card (`battle_card_view.gd:442`).
 - **Enemy self-taunt** (`enemySelfTaunt`): all heroes must target this enemy next player phase; cleared every round end (`:1720-1724`, `:2418-2421`). No chip renders for it.
 - **Audit:** covered inside targeting/personality regressions; taunt-over-cloak via choke-point tests.
@@ -127,7 +128,7 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 
 - **Rule:** the die crusts at its current face and does not reroll; on each of its next N rolls the unit acts AGAIN on that face — same zone, same ability, targeting re-picked fresh. Then it thaws. Identical both sides.
 - **Engine:** `_freeze_die_state` (`combat_manager.gd:2016`) adds repeats (`die_freeze_turns`), locks `frozen_die_value` (falls back to `last_die_value`); `battle_engine.apply_frozen_roll_overrides :513` re-imposes the face; the repeat flag is spent at the round-end tick (`:2402-2416`).
-- **Immunities:** while frozen the die can't be Jammed (`:1347`), Rewritten (`:1314`), Hijacked (`:656`), Rerolled/Set/Twin-Fated or item-rerolled (`battle_engine.gd:309-325`).
+- **Immunities (FULL — ruling NK-03, 2026-07-08):** while frozen the die can't be altered at all — Jammed (`:1347`), Rewritten (`:1314`), Hijacked (`:656`), **Nudged**, Rerolled, Set, Twin-Fated, or item-rerolled. Guards check `die_freeze_turns > 0`. 20-face riders (Capacitor / 20s stat / Overload Loop / enemy summon) fire once on the original resolution, not per repeat (NK-04).
 - **Targeting:** hero `freezeAnyDice` = one manual pick, EITHER side (freezing an ally repeats a good roll on purpose); freeze riders on damaging hero abilities stay enemy-side (`:1101-1125`). Enemy AI freeze always crusts the hero's LOWEST revealed die — deterministic, taunt overrides, cloak hides (`_freeze_pick_hero_lowest_die :2033`).
 - **Extras:** re-freezing adds repeats; chained freezes decrement legally (no loop); Deep Freeze +1 repeat (`:1107`); Cold Logic relic +4 damage vs frozen-die enemies (`:1815`); Shatter Lance's `vsFrozenBonus` rider (`:1252`) and Shatterpoint directive (`:1827`) — the ONLY sanctioned "shatter" carriers, plus Cold Logic.
 - **Cosmetic:** `freeze_flavor` ice / petrify (Accretion) — die crust tint only (`battle_feedback.gd:39-48`).
@@ -176,12 +177,10 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 <!-- AUDIT-LINKS:keywords -->
 - [A-004](../audit/INTERACTION_AUDIT.md#a-004) - [confusing] leech tracer points at the pre-retarget enemy
 - [A-008](../audit/INTERACTION_AUDIT.md#a-008) - [dead] curseDice - wired 5th die-tamper with zero data
-- [A-021](../audit/INTERACTION_AUDIT.md#a-021) - [needs-Kev] reserved mechanic words in flavor ability names
 - [A-022](../audit/INTERACTION_AUDIT.md#a-022) - [confusing] chain targets lowest HP ratio, text says lowest-HP
 - [A-023](../audit/INTERACTION_AUDIT.md#a-023) - [confusing] spike triggers on absorbed but not reduced hits
-- [A-024](../audit/INTERACTION_AUDIT.md#a-024) - [needs-Kev] spike/flat riders pay out per damage packet
 - [A-025](../audit/INTERACTION_AUDIT.md#a-025) - [confusing] leech ignores chain-jump damage (latent)
-- [A-029](../audit/INTERACTION_AUDIT.md#a-029) - [needs-Kev] hero-side Taunt never expires
 - [A-030](../audit/INTERACTION_AUDIT.md#a-030) - [confusing] keywords.json comment says green = protocol
-- [A-031](../audit/INTERACTION_AUDIT.md#a-031) - [needs-Kev] enemy 'lifesteal N%' vs hero 'Leech' naming
 - [A-087](../audit/INTERACTION_AUDIT.md#a-087) - [confusing] GDD still describes the dead freeze lockout
+
+Resolved (2026-07-08 fix pass): [A-021](../audit/INTERACTION_AUDIT.md#a-021), [A-024](../audit/INTERACTION_AUDIT.md#a-024), [A-029](../audit/INTERACTION_AUDIT.md#a-029), [A-031](../audit/INTERACTION_AUDIT.md#a-031)

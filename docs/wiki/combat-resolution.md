@@ -30,7 +30,7 @@ round_start
  ├─ 4. Enemy intents assigned in slot order via TargetingPersonality             :667, 153
  ├─ 5. HERO PHASE — heroes in order, dead units skipped                          :669
  │      frozen die repeats its face · _apply_hero_ability per hero               :926
- │      raw nat-20 + Overload Loop / Overload Rites → the ability resolves twice :685
+ │      final face 20 + Overload Loop / Overload Rites → the ability resolves twice :685
  ├─ 6. victory check (all enemies down → enemy phase never happens)              :689
  ├─ 7. per-enemy-turn relic auras (Bulwark Aura, Nanite Field, Gravity Well)     :694, 490
  ├─ 8. ACCRETE: carriers gain shield that survives the imminent tick             :698
@@ -106,7 +106,7 @@ Every status applied mid-round carries a `skip_next_tick`-style flag so it survi
 - Player-first, enemy-second and the per-side skip-flags implement TRUTH combat rules 1–5 (shields/spike/lure granted in the enemy phase must survive one tick to ever matter).
 - Boss round-start rules fire before the hero phase "so they matter this round"; turn-cadence rules fire at the start of the enemy phase (TRUTH §boss standing rules).
 - Freeze=repeat consumption has a single point at the round-end tick so tray and headless flows can't diverge (DECISIONS_RESOLVED #1).
-- The `zone` on `action_start` events comes from the EFFECTIVE roll, so a die nudged/buffed to 20 celebrates like a natural 20 — commented as intended (`combat_manager.gd:2698`).
+- Every 20-triggered effect keys on the die's FINAL effective face (ruling NK-02, 2026-07-08 — the "natural 20" concept was removed). A die Nudged/Set/buffed to 20 fires the identical suite (Overload Loop, Capacitor, name-slam, elite summons); under freeze=repeat those riders fire once, not per repeat (NK-04).
 - Enemies resolving in REVERSE slot order dates to the initial commit. RATIONALE: unconfirmed (likely so the right-most/boss slot acts last visually).
 
 ## What it replaced
@@ -130,7 +130,8 @@ Every status applied mid-round carries a `skip_next_tick`-style flag so it survi
 ## Known edge cases
 
 - Victory beats defeat when the round-end tick wipes both sides in the same round (`:739-745`).
-- A raw nat-20 on a frozen die repeats — with Overload Loop it echoes on every repeat (`:685`).
+- A 20 on a frozen die repeats the ability, but the 20-face riders (Overload Loop, Capacitor, 20s stat, enemy summon) fire ONCE on the original resolution — not per repeat (ruling NK-04, 2026-07-08; gated on `not die_freeze_repeat_this_round`).
+- A death caused by an on-kill effect (Chain Reaction splash, Dead Man's Charge, Killswitch Relay) is now processed via a work-queue, so its own on-kill hooks/stats fire (audit A-002, fixed 2026-07-08); Chain Reaction still fires only on the top-level kill (no cascade). Summoned/rebuilt units grant no kill economy (NK-10).
 - Decoy Beacon skips enemy *actions* on round 1, but boss standing rules (both kinds) still fire that round (`:645`, `:707` run before the decoy check at `:721`).
 - Root Access rewrites the highest **effective** hero die and bypasses Firewall and Cloak (`apply_rewrite_to_state :1336` has no ward/cloak check — the standing rule is not an "ability").
 - Brood cadence is `_battle_round % 3` (battle rounds), unlike Assembly Line which counts from first activation (DECISIONS #5 ruled SCRAPMASTER only); identical in every shipping case since bosses spawn at battle start.
@@ -140,9 +141,8 @@ Every status applied mid-round carries a `skip_next_tick`-style flag so it survi
 ## ⚠ Open findings
 
 <!-- AUDIT-LINKS:combat-resolution -->
-- [A-001](../audit/INTERACTION_AUDIT.md#a-001) - [needs-Kev] Unseeded randi() in combat outcomes vs the determinism fence
-- [A-002](../audit/INTERACTION_AUDIT.md#a-002) - [degenerate] nested-death guard swallows on-kill stats/hooks
 - [A-003](../audit/INTERACTION_AUDIT.md#a-003) - [confusing] healLowest follows a stale selected pick
 - [A-005](../audit/INTERACTION_AUDIT.md#a-005) - [confusing] enemy resolution runs undocumented reverse slot order
-- [A-006](../audit/INTERACTION_AUDIT.md#a-006) - [needs-Kev] overload slam fires on effective 20, not just nat-20
 - [A-007](../audit/INTERACTION_AUDIT.md#a-007) - [confusing] one-keyword/one-pick rules are not in the gated audit
+
+Resolved (2026-07-08 fix pass): [A-001](../audit/INTERACTION_AUDIT.md#a-001), [A-002](../audit/INTERACTION_AUDIT.md#a-002), [A-006](../audit/INTERACTION_AUDIT.md#a-006)

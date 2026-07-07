@@ -58,6 +58,6 @@ Naming history (old → new, renamed in the master-prompt/keyword era; player-fa
 ## ⚠ Open findings
 
 <!-- AUDIT-LINKS:factions -->
-- [A-043](../audit/INTERACTION_AUDIT.md#a-043) - [broken] bestiary shows old faction names
 - [A-056](../audit/INTERACTION_AUDIT.md#a-056) - [confusing] TRUTH says Hive siphon; it is leech
-- [A-060](../audit/INTERACTION_AUDIT.md#a-060) - [needs-Kev] frozen internal-id exemption inventory
+
+Resolved (2026-07-08 fix pass): [A-043](../audit/INTERACTION_AUDIT.md#a-043), [A-060](../audit/INTERACTION_AUDIT.md#a-060)

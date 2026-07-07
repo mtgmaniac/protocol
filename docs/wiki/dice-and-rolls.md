@@ -38,7 +38,7 @@ All roll values enter combat through the `RollProvider` seam (`scripts/sim/roll_
 - **Headless fallback / rerolls:** `PhysicsRollProvider` (`scripts/sim/physics_roll_provider.gd`) wraps `DiceManager.roll_d20()` = `randi_range(1, 20)` (`scripts/battle/dice_manager.gd:7`).
 - **Balance sim:** `SeededRollProvider` (`scripts/sim/seeded_roll_provider.gd`) — per-run seeded stream, byte-reproducible.
 
-Beyond the settled face, **no gameplay reads tray state**: `DiceTray3D`'s other public getters are screen positions/bounds/diameters for UI docking only. Freeze/Jam/Rewrite/Hijack all operate on roll VALUES in `combat_manager`/`BattleEngine`, never on physics. Verified exception class: `combat_manager.gd` still holds four global-RNG calls (Opening Salvo targets :380/:385, Dead Man's Charge :2113, elite-summon chance :2640) that bypass the provider seam — the sim seeds Godot's global RNG to keep runs reproducible (`scripts/sim/sim_runner.gd:221`). See the open finding below.
+Beyond the settled face, **no gameplay reads tray state**: `DiceTray3D`'s other public getters are screen positions/bounds/diameters for UI docking only. Freeze/Jam/Rewrite/Hijack all operate on roll VALUES in `combat_manager`/`BattleEngine`, never on physics. The four non-d20 random combat picks (Opening Salvo targets, Dead Man's Charge, elite-summon chance) now route through the provider seam via `combat_manager.roll_provider` (ruling NK-01, 2026-07-08), so the sim reproduces them from a seed without the old global-RNG workaround.
 
 ### The effective-roll pipeline
 
@@ -55,7 +55,7 @@ Beyond the settled face, **no gameplay reads tray state**: `DiceTray3D`'s other 
 
 Nudge is deliberately NOT inside `get_effective_roll` — the scene/engine adds it on top, so Nudge can lift a jammed die's displayed result past the cap (jam caps the buffed raw, then +3 lands after). Enemies use the same pipeline minus Set/Nudge (`effective_enemy_roll`, `battle_engine.gd:468`).
 
-Crit/nat-20 rules key off the RAW face, which is kept separately (`resolve_round` receives both raw and effective dicts, `battle_engine.gd:44-52`).
+**20-triggered effects key off the die's FINAL effective face** (ruling NK-02, 2026-07-08 — the "natural 20" concept was removed game-wide). A die Set, Nudged, or buffed to 20 fires the identical suite (Overload Loop double-resolve, Overload Capacitor Protocol, the 20s stat, elite summons, name-slam) as a rolled 20. There is no longer a raw-vs-shown split for these; `resolve_round` still carries a raw dict, but only the enemy-freeze "lowest revealed die" pick reads it — no 20-check does.
 
 ### Protocol dice actions (see [protocol-economy.md](protocol-economy.md) for costs)
 
@@ -72,7 +72,7 @@ All three are **die statuses, not chips** — they render on the die itself (tin
 - **Rewrite** (`_apply_rewrite`, :1311): next roll SET to 3, telegraphed one round ahead (`rewrite_skip_next_tick`). ROOT HIEROPHANT's standing rule rewrites the squad's highest die every round via `apply_rewrite_to_state` (:1336).
 - **Hijack** (enemy-only): the enemy's next roll copies the heroes' current highest die (`hijack_pending` set at :1682, consumed at resolve start :650-662). Skips one tick, fires at exactly one reveal.
 
-**Mirror Plate** gear: when an enemy Jams, Rewrites, or Freezes a hero die, the holder gains +2 Protocol (`_grant_mirror_plate_protocol`, :1327).
+**Mirror Plate** gear: when an **enemy** Jams, Rewrites, or Freezes a hero die, the holder gains +2 Protocol (`_grant_mirror_plate_protocol`). A friendly `freezeAnyDice` on an ally does NOT pay out (audit A-062, fixed 2026-07-08 — the freeze source is threaded so only enemy tampers grant).
 
 ### Freeze = repeat (DECISIONS_RESOLVED #1, final)
 
@@ -81,8 +81,8 @@ A frozen die crusts static in the tray at its current face — a real physics bl
 - `_freeze_die_state` (`combat_manager.gd:2016`): adds `die_freeze_turns` (re-freezing stacks repeats), captures the current face into `frozen_die_value` (falls back to `last_die_value`).
 - At each subsequent roll, `apply_frozen_roll_overrides` (`battle_engine.gd:513`) replaces the fresh roll with the locked face and `record_roll_values_for_states` (:529) stamps `die_freeze_repeat_this_round` — the unit **acts again on that same result: same zone, same ability**. Targeting is re-picked fresh each repeat.
 - The repeat is spent at the round-end tick; at 0 the die thaws (`frozen_die_value` cleared, `combat_manager.gd:2406-2416`).
-- **Immunities while frozen:** Jam (:1347), Rewrite (:1314), Hijack (:656) all fizzle with a log line; Reroll, Twin Fates overwrite, item enemy-rerolls all fizzle too (`protocol_actions.gd:85,112`; `battle_engine.gd:312,323`); roll-relic overrides (forced nat-20s, Resonant Chorus floor) skip frozen dice (`battle_scene.gd:1419`).
-- **The freeze round itself:** the target still acts normally the round it is frozen — Nudge/Set are legal that round (guards check `die_freeze_repeat_this_round`, not `die_freeze_turns`: `protocol_actions.gd:102,333`) because they shape only that round's effective roll; the captured raw face is what repeats.
+- **Immunities while frozen (FULL — ruling NK-03, 2026-07-08):** a frozen die can't be altered at all — Jam (:1347), Rewrite (:1314), Hijack (:656), **Nudge**, Reroll, Set, Twin-Fates, and item-rerolls all fizzle. The UI guards now check `die_freeze_turns > 0` (`protocol_actions.gd`), so the block holds from the moment of freezing, including the freeze round itself. Roll-relic overrides (forced 20s, Resonant Chorus floor) still skip frozen dice (`battle_scene.gd:1419`).
+- **20-face riders under repeat (ruling NK-04):** a frozen 20 fires its riders (Overload Capacitor, the 20s stat, Overload Loop, the enemy elite-summon roll) **once, on the original resolution — not on each repeat**. The riders are gated on `not die_freeze_repeat_this_round`.
 - **Enemy AI freeze** targets the hero's LOWEST revealed die — deterministic (`_freeze_pick_hero_lowest_die`, `combat_manager.gd:2033`): taunt overrides, cloaked heroes skipped, unrevealed dice count as 21, ties break to slot order.
 - **Hero-side:** `freezeAnyDice` = one manual pick, EITHER side (freezing an ally repeats their good roll on purpose); freeze riders on damaging abilities stay enemy-side (`combat_manager.gd:1101-1125`). Deep Freeze directive adds +1 repeat. Firewall blocks hostile freeze picks; it never blocks a friendly `freezeAnyDice` pick.
 - Cosmetic `freeze_flavor`: ice (cyan crust) / petrify (stone gray) — `dice_tray_3d.gd:1738`.
@@ -115,8 +115,8 @@ A frozen die crusts static in the tray at its current face — a real physics bl
 
 ## Known edge cases
 
-- A frozen natural 20 re-triggers nat-20 hooks on every repeat: Overload Capacitor +2 PP, `SaveManager.record_nat20()`, and Overload Loop's double-resolve all fire each round the 20 repeats (`battle_scene.gd:1446-1450`, `combat_manager.gd:685-688`).
-- Nudge/Set ARE legal on a die the round it is frozen (before repeats start); Reroll/Twin Fates are not — they would mutate the raw face already captured for the repeats.
+- A frozen 20's riders (Overload Capacitor, the 20s stat, Overload Loop, enemy elite-summon) fire **once, on the original resolution — not per repeat** (ruling NK-04, 2026-07-08). The riders are gated on `not die_freeze_repeat_this_round` in the resolve loop (`combat_manager.gd` hero loop) and the enemy summon path.
+- A frozen die is **fully immune** — Nudge, Set, Reroll, Twin-Fates, Jam, Rewrite, and Hijack all bounce off from the moment it freezes (ruling NK-03, 2026-07-08). One clean rule: "a frozen die can't be altered."
 - Reroll clears Nudge and Set; Set clears Nudge; Twin Fates clears the target's Nudge and Set.
 - A jammed die that also gets Rewritten resolves as 3 (rewrite trumps jam).
 - Hijack copies the heroes' current highest RAW die, including a frozen hero face.
@@ -129,9 +129,7 @@ A frozen die crusts static in the tray at its current face — a real physics bl
 <!-- AUDIT-LINKS:dice-and-rolls -->
 - [A-008](../audit/INTERACTION_AUDIT.md#a-008) - [dead] curseDice - wired 5th die-tamper with zero data
 - [A-009](../audit/INTERACTION_AUDIT.md#a-009) - [confusing] engine reroll/Set/Twin-Fates lack freeze guards (UI-only)
-- [A-010](../audit/INTERACTION_AUDIT.md#a-010) - [needs-Kev] Nudge/Set allowed on a freshly-frozen die vs TRUTH
-- [A-011](../audit/INTERACTION_AUDIT.md#a-011) - [needs-Kev] which raw-20/summon riders re-fire per freeze repeat
-- [A-012](../audit/INTERACTION_AUDIT.md#a-012) - [degenerate] raw-20 riders fire on rewritten/jammed dice; forced-20 eaten by Rewrite
-- [A-013](../audit/INTERACTION_AUDIT.md#a-013) - [confusing] Twin Fates copy-20 inconsistent nat-20 semantics
 - [A-014](../audit/INTERACTION_AUDIT.md#a-014) - [confusing] Nudge prompt omits the Reverse Gimbal flip
 - [A-015](../audit/INTERACTION_AUDIT.md#a-015) - [confusing] stale sim_runner comment on Overflow Vent RNG
+
+Resolved (2026-07-08 fix pass): [A-010](../audit/INTERACTION_AUDIT.md#a-010), [A-011](../audit/INTERACTION_AUDIT.md#a-011), [A-012](../audit/INTERACTION_AUDIT.md#a-012), [A-013](../audit/INTERACTION_AUDIT.md#a-013)

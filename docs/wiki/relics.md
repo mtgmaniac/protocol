@@ -95,9 +95,10 @@ At battle setup `CombatManager.setup_relics` copies each owned relic's effect di
 <!-- AUDIT-LINKS:relics -->
 - [A-035](../audit/INTERACTION_AUDIT.md#a-035) - [confusing] Salvage Rig never fires on breach-destroyed shields
 - [A-058](../audit/INTERACTION_AUDIT.md#a-058) - [confusing] battle-start relic effects skip summons/rebuilds
-- [A-063](../audit/INTERACTION_AUDIT.md#a-063) - [degenerate] Protocol Override makes gainProtocol items free printers
 - [A-067](../audit/INTERACTION_AUDIT.md#a-067) - [confusing] Resonant Chorus floors only hero dice
 - [A-069](../audit/INTERACTION_AUDIT.md#a-069) - [confusing] Plague Protocol permanent burn read as normal
 - [A-072](../audit/INTERACTION_AUDIT.md#a-072) - [confusing] Overload Loop doubles only raw hero 20s (desc)
 - [A-073](../audit/INTERACTION_AUDIT.md#a-073) - [confusing] Salvage Directive misses packet-finished mark-kills
 - [A-095](../audit/INTERACTION_AUDIT.md#a-095) - [confusing] GDD 'one relic per run' contradicts Starting Directive
+
+Resolved (2026-07-08 fix pass): [A-063](../audit/INTERACTION_AUDIT.md#a-063)

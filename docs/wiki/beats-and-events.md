@@ -85,7 +85,7 @@ Armed outcomes land in: `next_battle_effects` (one-shot flags), `hero_run_mods` 
 | `deepCache` | DEEP CACHE | Legendary draft 1 of 2; next battle starts at −5 Protocol income debt | Leave it | `incomeDebt` → `battle_engine.end_of_round_income` (`battle_engine.gd:75-77`, each owed turn swallows the +1) |
 | `theFoundry` | THE FOUNDRY | Feed one gear: receive a random gear one rarity higher | Leave | `foundryUpgrade` (`GameState.gd:652-666`; legendary→legendary re-roll, "produced nothing" when pool empty) |
 | `prisonerExchange` | PRISONER EXCHANGE | Next battle −1 enemy; the battle after gains ELITE PRESENCE | 1 uncommon consumable | `minus_one_enemy` (`battle_scene.gd:1779-1781`); `followupModifier` → `promote_followup_effects` (`GameState.gd:373-380`) |
-| `overloadRites` | OVERLOAD RITES | Pick hero: −12 max HP this op; natural 20s resolve twice | Decline | `heroNat20Twice` → `combat_manager.gd:685` |
+| `overloadRites` | OVERLOAD RITES | Pick hero: −12 max HP this op; that hero's 20s resolve twice (final face, NK-02) | Decline | `heroNat20Twice` → `combat_manager.gd:685` |
 | `ghostFrequency` | GHOST FREQUENCY | Pick hero: starts every remaining battle Cloaked, −6 max HP | 1 rare consumable | `heroStartCloaked` → `battle_engine.gd:146-147` |
 | `deepScan` | DEEP SCAN | Reveal every remaining comp and beat this run | +3 Protocol next battle | `revealRun` → `_build_run_reveal_text` (`GameState.gd:719-728`) |
 
@@ -136,13 +136,11 @@ Card numbers are `BALANCE-TODO` (`GameState.gd:396`), **DEFERRED per [DECISIONS_
 
 <!-- AUDIT-LINKS:beats-and-events -->
 - [A-059](../audit/INTERACTION_AUDIT.md#a-059) - [confusing] Decoy Beacon skips actions but not standing rules
-- [A-075](../audit/INTERACTION_AUDIT.md#a-075) - [broken] intercept zero-options guard replays the battle
-- [A-076](../audit/INTERACTION_AUDIT.md#a-076) - [needs-Kev] flagged b5 pays SUPPLY GRADE for nothing
-- [A-077](../audit/INTERACTION_AUDIT.md#a-077) - [degenerate] single-slot modifier overwrite + precondition bypass
 - [A-078](../audit/INTERACTION_AUDIT.md#a-078) - [confusing] intercept item lost at cap but 'Acquired' printed
 - [A-079](../audit/INTERACTION_AUDIT.md#a-079) - [confusing] BATTLE_MODIFIERS numeric fields are display-only
 - [A-080](../audit/INTERACTION_AUDIT.md#a-080) - [confusing] route-fork guard counts children, never sees 0
 - [A-081](../audit/INTERACTION_AUDIT.md#a-081) - [confusing] LoadoutMenu shows only relics[0]
 - [A-082](../audit/INTERACTION_AUDIT.md#a-082) - [confusing] enemy field cap reuses the hero SQUAD_UNIT_LIMIT
-- [A-083](../audit/INTERACTION_AUDIT.md#a-083) - [needs-Kev] modifier 'no repeats' only binds accepted forks
 - [A-084](../audit/INTERACTION_AUDIT.md#a-084) - [confusing] DECOY BEACON comment/behavior drift
+
+Resolved (2026-07-08 fix pass): [A-075](../audit/INTERACTION_AUDIT.md#a-075), [A-076](../audit/INTERACTION_AUDIT.md#a-076), [A-077](../audit/INTERACTION_AUDIT.md#a-077), [A-083](../audit/INTERACTION_AUDIT.md#a-083)

@@ -70,9 +70,9 @@ Standing rules replaced phase-2 stat jumps so a boss's threat is a **single alwa
 ## ⚠ Open findings
 
 <!-- AUDIT-LINKS:bosses -->
-- [A-044](../audit/INTERACTION_AUDIT.md#a-044) - [broken] 'Circlet Cataclysm' - dead faction name in a boss ability
 - [A-045](../audit/INTERACTION_AUDIT.md#a-045) - [confusing] 'Reaver Mantle' legacy name + duplicated Total Eclipse
 - [A-051](../audit/INTERACTION_AUDIT.md#a-051) - [dead] phase-2 sfx leftover
 - [A-052](../audit/INTERACTION_AUDIT.md#a-052) - [confusing] THE BROOD hidden field-cap condition
 - [A-053](../audit/INTERACTION_AUDIT.md#a-053) - [confusing] MANTLE TYRANT freeze renders ice, not petrify
-- [A-057](../audit/INTERACTION_AUDIT.md#a-057) - [needs-Kev] boss reinforcement x on-kill economy stall farm
+
+Resolved (2026-07-08 fix pass): [A-044](../audit/INTERACTION_AUDIT.md#a-044), [A-057](../audit/INTERACTION_AUDIT.md#a-057)

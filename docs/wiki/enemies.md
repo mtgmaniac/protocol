@@ -166,7 +166,6 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 ## ⚠ Open findings
 
 <!-- AUDIT-LINKS:enemies -->
-- [A-021](../audit/INTERACTION_AUDIT.md#a-021) - [needs-Kev] reserved mechanic words in flavor ability names
 - [A-046](../audit/INTERACTION_AUDIT.md#a-046) - [dead] packBonus never fires (compares unique ids)
 - [A-047](../audit/INTERACTION_AUDIT.md#a-047) - [dead] battleEnemyScale schema-required dead data
 - [A-049](../audit/INTERACTION_AUDIT.md#a-049) - [dead] Forked Double summonElite inert
@@ -174,3 +173,5 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 - [A-054](../audit/INTERACTION_AUDIT.md#a-054) - [confusing] stale 'Veil-only' summon comment
 - [A-055](../audit/INTERACTION_AUDIT.md#a-055) - [confusing] grantRampageAll integer read as boolean
 - [A-058](../audit/INTERACTION_AUDIT.md#a-058) - [confusing] battle-start relic effects skip summons/rebuilds
+
+Resolved (2026-07-08 fix pass): [A-021](../audit/INTERACTION_AUDIT.md#a-021)

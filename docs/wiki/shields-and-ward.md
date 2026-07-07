@@ -14,7 +14,7 @@ A shield is a stack `{amt, skip_next_tick}` appended by `_add_shield_stack` (`sc
 
 No shield duration field exists in data — the 2026-07-07 audit found zero `shT` offenders (TRUTH rule 5).
 
-**The single named exception — `shieldsPersist`:** the Mantle Core relic sets `shields_persist` on every hero (`:397-408` — note the block is duplicated, see findings) and `setup_battle` sets it on MANTLE TYRANT (`:38-41`). Persistent shields skip expiry entirely and stack round over round; only damage (or Breach/wipeShields) removes them. Audit-pinned: `_run_shield_timing_regression` (`ability_audit.gd:671`), boss Tyrant 6/12 stacking (`:1546`).
+**The single named exception — `shieldsPersist`:** the Mantle Core relic sets `shields_persist` on every hero and `setup_battle` sets it on MANTLE TYRANT (`:38-41`). Persistent shields skip expiry entirely and stack round over round; only damage (or Breach/wipeShields) removes them. **A unit's total shield is now capped at its max HP** (`_cap_shield_at_max_hp`, A-034 fix 2026-07-08) so persistent shields can't accumulate without bound from per-round drips (Bulwark Aura, Aegis Field). Audit-pinned: `_run_shield_timing_regression` (`ability_audit.gd:671`), boss Tyrant 6/12 stacking (`:1546`).
 
 ### Absorption (`_damage_state`, `combat_manager.gd:1843-1874`)
 
@@ -38,7 +38,7 @@ Breach against a `shields_persist` target destroys the accumulated plate — Bre
 - Overcharge Mesh directive: +2 on every shield any squad member gains while the carrier lives (`:876`).
 - Rampart: +2 on shields THIS hero grants (`:963`).
 - Bunker Doctrine: allies receiving this hero's shields also gain Spike 3 (`:1156`).
-- Field Triage / heal-shield gear / Aegis Field: heals also plate the target (`:2233-2249`).
+- Field Triage / heal-shield gear / Aegis Field: heals also plate the target (`:2233-2249`). Aegis Field (`healGrantsShieldAll`) fires only on **friendly** heals — an enemy heal no longer shields the squad (A-033 fix 2026-07-08).
 - Entrench directive / Combat Plating gear: battle-start shields (`:451-464`).
 
 ### Ward — displayed "Firewall" (internal field `ward`)
@@ -86,6 +86,6 @@ Feedback: ward consume = hex flash + "✕ NEGATED" (`battle_feedback.gd:447, 521
 
 <!-- AUDIT-LINKS:shields-and-ward -->
 - [A-032](../audit/INTERACTION_AUDIT.md#a-032) - [dead] duplicated shieldsPersist battle-start block
-- [A-033](../audit/INTERACTION_AUDIT.md#a-033) - [degenerate] Aegis Field triggers on enemy heals
-- [A-034](../audit/INTERACTION_AUDIT.md#a-034) - [degenerate] Mantle Core makes per-round shields unbounded
 - [A-035](../audit/INTERACTION_AUDIT.md#a-035) - [confusing] Salvage Rig never fires on breach-destroyed shields
+
+Resolved (2026-07-08 fix pass): [A-033](../audit/INTERACTION_AUDIT.md#a-033), [A-034](../audit/INTERACTION_AUDIT.md#a-034)

@@ -100,9 +100,9 @@ Kill/siphon grants made during resolution accumulate in `combat_manager._pending
 ## ⚠ Open findings
 
 <!-- AUDIT-LINKS:protocol-economy -->
-- [A-016](../audit/INTERACTION_AUDIT.md#a-016) - [confusing] Overload Capacitor +2 hardcoded, ignores gear data
 - [A-017](../audit/INTERACTION_AUDIT.md#a-017) - [confusing] Overflow Vent 2 dmg/pt hardcoded, ignores relic data
 - [A-018](../audit/INTERACTION_AUDIT.md#a-018) - [confusing] battle-start protocol overflow differs by source
 - [A-019](../audit/INTERACTION_AUDIT.md#a-019) - [confusing] duplicate MAX_PROTOCOL/SET_DIE_COST constants
 - [A-020](../audit/INTERACTION_AUDIT.md#a-020) - [dead] four coded protocol/gear handlers with no data
-- [A-057](../audit/INTERACTION_AUDIT.md#a-057) - [needs-Kev] boss reinforcement x on-kill economy stall farm
+
+Resolved (2026-07-08 fix pass): [A-016](../audit/INTERACTION_AUDIT.md#a-016), [A-057](../audit/INTERACTION_AUDIT.md#a-057)

@@ -394,4 +394,5 @@ Directives: **Hard Lock** / **Signal Theft**.
 - [A-038](../audit/INTERACTION_AUDIT.md#a-038) - [confusing] evo-screen help says portraits are not evolved
 - [A-039](../audit/INTERACTION_AUDIT.md#a-039) - [confusing] Wideband Hiss eff text omits its 1t duration
 - [A-040](../audit/INTERACTION_AUDIT.md#a-040) - [confusing] heroAbility schema additionalProperties:true
-- [A-041](../audit/INTERACTION_AUDIT.md#a-041) - [broken] Sync Antenna +3 never reaches the effective roll
+
+Resolved (2026-07-08 fix pass): [A-041](../audit/INTERACTION_AUDIT.md#a-041)

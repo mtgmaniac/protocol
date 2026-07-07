@@ -290,7 +290,6 @@ the original spec value; the runtime constant wins.
 
 ## ⚠ Open findings
 <!-- AUDIT-LINKS:conventions -->
-- [A-086](../audit/INTERACTION_AUDIT.md#a-086) - [needs-Kev] TRUTH eff-grammar separator matches no data file
 - [A-089](../audit/INTERACTION_AUDIT.md#a-089) - [confusing] 450x1000 preview size stale in four docs
 - [A-090](../audit/INTERACTION_AUDIT.md#a-090) - [confusing] CLAUDE.md 'do not contradict' table contradicts code
 - [A-091](../audit/INTERACTION_AUDIT.md#a-091) - [dead] AI_AGENT_GAME_REFERENCE points to the deleted TS sim
@@ -298,3 +297,5 @@ the original spec value; the runtime constant wins.
 - [A-093](../audit/INTERACTION_AUDIT.md#a-093) - [confusing] ANIMATION.md guardrail says green = protocol
 - [A-094](../audit/INTERACTION_AUDIT.md#a-094) - [confusing] CODEBASE_MAP.md materially stale
 - [A-097](../audit/INTERACTION_AUDIT.md#a-097) - [confusing] GDD battle-card lists gear slots/XP bar not on cards
+
+Resolved (2026-07-08 fix pass): [A-086](../audit/INTERACTION_AUDIT.md#a-086)

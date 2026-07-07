@@ -20,7 +20,7 @@ The card chip row (`BattleCardView._build_compact_status_tokens`, `scripts/battl
 
 Everything else keeps its own display channel (TRUTH §UI & feedback): Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤10" · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. A self-taunting hero or enemy (`taunting`) renders **no** chip — only lured heroes get the TAUNT chip.
 
-The persistent-chip doctrine in the locked design list says exactly five chips (burn, mark, ±roll, firewall, shield); the repo TRUTH.md and the code carry a sixth Taunt chip — recorded as a needs-Kev-ruling tension in the audit findings.
+The persistent-chip doctrine is **six** chips (burn, mark, ±roll, firewall, shield, **Taunt**) — Kev ruled the Taunt chip canon (ruling NK-07, 2026-07-08), so TRUTH.md and the code are correct; the fix-brief's "five-chip" ground truth was the stale side. Audit finding A-028 is closed as a doc-sync artifact.
 
 ### Instance-timer model (DECISIONS_RESOLVED #3, per Kev 2026-07-06)
 
@@ -41,7 +41,7 @@ Roll buffs (`rfm` hero / `erb` enemy — identical), roll-downs (`rfe`) and Burn
 | `marked`, `mark_consumed_this_hit` | Mark; consumption flag read by Salvage Directive | until consumed |
 | `warded` | Firewall | until it blocks one ability |
 | `cloaked` | Cloak | until damage dealt / AoE hit |
-| `taunting` | self-taunt (hero: no expiry — see findings; enemy: cleared each round end `:2418`) | see left |
+| `taunting` | self-taunt — **both sides cleared each round end** (ruling NK-08, 2026-07-08; hero taunt is no longer a permanent stance) | round-end tick |
 | `lured_by_id`, `lure_skip_next_tick` | enemy-side taunt on a hero | exactly one hero phase |
 | `spike`, `spike_skip_next_tick` | Spike (max, not sum) | end of round (per-side) |
 | `jam_cap`, `jam_skip_next_tick` | Jam (lowest cap wins) | one reveal |
@@ -101,4 +101,5 @@ Every status granted during the enemy phase (shields, spike, lure, jam, rewrite,
 <!-- AUDIT-LINKS:statuses-and-chips -->
 - [A-026](../audit/INTERACTION_AUDIT.md#a-026) - [dead] venom/fire/bleed chip kinds no producer emits
 - [A-027](../audit/INTERACTION_AUDIT.md#a-027) - [dead] write-only legacy status strings (CURSED/RAGE)
-- [A-028](../audit/INTERACTION_AUDIT.md#a-028) - [needs-Kev] TAUNT chip vs the five-chip doctrine
+
+Resolved (2026-07-08 fix pass): [A-028](../audit/INTERACTION_AUDIT.md#a-028)
