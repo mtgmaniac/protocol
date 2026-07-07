@@ -252,7 +252,26 @@ balance numbers re anchor to this checkpoint."
 **WATCH ITEM (per Kev):** Breaker −3.5 per-hero delta — suspected policy
 reallocation artifact from crit banking (freeze-any turns that used to serve
 Breaker-adjacent control lines now bank ally crits); re-evaluate across the
-next TWO measurements before treating it as a game problem.
+next TWO measurements before treating it as a game problem. *(Measurement 1 of
+2: the extraction gates re-ran the pinned sim twice at +0.0 drift — Breaker
+unchanged at 0.2522, artifact hypothesis neither confirmed nor refuted; next
+real balance measurement is the tiebreaker.)*
+
+---
+
+## battle_scene extraction (architecture review §1 recs 1+2 — behavior-preserving)
+
+Two commits, full gate + tutorial 21/21 + primer smoke green after EACH, sim
+drift +0.0 both times:
+- **ProtocolActions** (`scripts/battle/protocol_actions.gd`, 971 lines): footer
+  spend buttons, costs/legality, all pick-a-die sub-phases (reroll/nudge/set/
+  twin picks, item overlay, Set-value popup) behind a narrow interface;
+  battle_scene 3416 → 2569. Spotlight/primer footer resolvers + tutorial smoke
+  re-pointed at the module.
+- **Phase enum**: 13-state `Phase` enum, `PHASE_NAMES` preserving the pre-enum
+  strings for tutorial payloads/tests, and ONE `transition()` choke point (the
+  only assignment to `turn_phase` in the game). battle_scene lands at 2610;
+  watermark LOWERED 3416 → 2610, no headroom (free per INVARIANTS #13).
 
 ### Cleanup step 7 — hive HP sweep rerun (fixed policy)
 docs/sweeps/2026-07-06_hive_hp_postcleanup.md: hive enters the 25–40% band at

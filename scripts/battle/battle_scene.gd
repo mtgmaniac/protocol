@@ -46,22 +46,45 @@ const DIE_TAG_GAP := 2.0            # flush dock: 0-2px gap, never over the die
 const DIE_TAG_HEIGHT_RATIO := 0.52  # tag height as a fraction of the die diameter
 const DIE_TAG_FONT_RATIO := 0.72    # value-font size as a fraction of the tag height
 const DIE_TAG_DIAMETER_FALLBACK := 90.0
-const PHASE_AWAIT_ROLL := "await_roll"
-const PHASE_TARGETING := "targeting"
-const PHASE_READY_TO_END := "ready_to_end"
-const PHASE_REROLL_PICK := "reroll_pick"
-const PHASE_NUDGE_PICK := "nudge_pick"
-const PHASE_SET_PICK := "set_pick"
-const PHASE_TWIN_SOURCE_PICK := "twin_source_pick"
-const PHASE_TWIN_TARGET_PICK := "twin_target_pick"
+# The turn/phase machine (architecture review §1 rec 2): a real enum with ONE
+# transition() choke point routing every phase change. The PHASE_* aliases keep
+# every pre-enum call site (this file, ProtocolActions, BattleCardView, capture
+# tools) compiling against typed values; PHASE_NAMES preserves the pre-enum
+# strings verbatim for tutorial payloads/tests.
+enum Phase {
+	AWAIT_ROLL, TARGETING, READY_TO_END, REROLL_PICK, NUDGE_PICK, SET_PICK, TWIN_SOURCE_PICK, TWIN_TARGET_PICK, ITEM_PICK_ALLY, ITEM_PICK_DEAD, ITEM_PICK_ENEMY, ITEM_PICK_ANY, ITEM_CONFIRM,
+}
+const PHASE_NAMES := {
+	Phase.AWAIT_ROLL: "await_roll",
+	Phase.TARGETING: "targeting",
+	Phase.READY_TO_END: "ready_to_end",
+	Phase.REROLL_PICK: "reroll_pick",
+	Phase.NUDGE_PICK: "nudge_pick",
+	Phase.SET_PICK: "set_pick",
+	Phase.TWIN_SOURCE_PICK: "twin_source_pick",
+	Phase.TWIN_TARGET_PICK: "twin_target_pick",
+	Phase.ITEM_PICK_ALLY: "item_pick_ally",
+	Phase.ITEM_PICK_DEAD: "item_pick_dead",
+	Phase.ITEM_PICK_ENEMY: "item_pick_enemy",
+	Phase.ITEM_PICK_ANY: "item_pick_any",
+	Phase.ITEM_CONFIRM: "item_confirm",
+}
+const PHASE_AWAIT_ROLL := Phase.AWAIT_ROLL
+const PHASE_TARGETING := Phase.TARGETING
+const PHASE_READY_TO_END := Phase.READY_TO_END
+const PHASE_REROLL_PICK := Phase.REROLL_PICK
+const PHASE_NUDGE_PICK := Phase.NUDGE_PICK
+const PHASE_SET_PICK := Phase.SET_PICK
+const PHASE_TWIN_SOURCE_PICK := Phase.TWIN_SOURCE_PICK
+const PHASE_TWIN_TARGET_PICK := Phase.TWIN_TARGET_PICK
 const SET_DIE_COST := 3
-const PHASE_ITEM_PICK_ALLY := "item_pick_ally"
-const PHASE_ITEM_PICK_DEAD := "item_pick_dead"
-const PHASE_ITEM_PICK_ENEMY := "item_pick_enemy"
-const PHASE_ITEM_PICK_ANY := "item_pick_any"
+const PHASE_ITEM_PICK_ALLY := Phase.ITEM_PICK_ALLY
+const PHASE_ITEM_PICK_DEAD := Phase.ITEM_PICK_DEAD
+const PHASE_ITEM_PICK_ENEMY := Phase.ITEM_PICK_ENEMY
+const PHASE_ITEM_PICK_ANY := Phase.ITEM_PICK_ANY
 # No-target items: show the card centered and wait for a confirm tap (tap card = activate,
 # tap off = cancel) instead of applying immediately.
-const PHASE_ITEM_CONFIRM := "item_confirm"
+const PHASE_ITEM_CONFIRM := Phase.ITEM_CONFIRM
 const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
@@ -132,7 +155,7 @@ var _tutorial_turn: int = 0
 func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
 	if _game_state().tutorial_mode:
 		tutorial_event.emit(event, payload)
-var turn_phase: String = PHASE_AWAIT_ROLL
+var turn_phase: int = Phase.AWAIT_ROLL
 var active_targeting_hero_id: String = ""
 var legal_target_ids: Array = []
 var legal_target_side: String = ""
@@ -233,7 +256,7 @@ func _ready() -> void:
 		var rule_text: String = CombatManager.get_boss_standing_rule(str(enemy_state_variant["unit"].display_name))
 		if rule_text != "":
 			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
-	_set_turn_phase(PHASE_AWAIT_ROLL)
+	transition(PHASE_AWAIT_ROLL)
 	_layout.queue_board_layout_refresh()
 	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
 	protocol_spend_button.text = "↺"
@@ -291,7 +314,7 @@ func _on_return_to_menu_button_pressed() -> void:
 func _on_auto_turn_button_pressed() -> void:
 	if _auto_turn_running or _auto_battle_running or battle_over:
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or is_item_pick_phase(turn_phase):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
@@ -315,7 +338,7 @@ func _on_auto_battle_button_pressed() -> void:
 	if battle_over:
 		_on_open_reward_button_pressed()
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or turn_phase.begins_with("item_pick"):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or is_item_pick_phase(turn_phase):
 		_refresh_summary("Finish the current picker before auto-completing the battle.")
 		return
 
@@ -549,7 +572,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		dice_tray_3d.show_result_actions(_build_dice_action_entries(combat_manager.get_enemy_states(), enemy_rolls, false))
 		_build_die_tooltip_overlays()
 		_sync_die_status_visuals()
-	_set_turn_phase(PHASE_TARGETING)
+	transition(PHASE_TARGETING)
 	_append_log("Dice rolled for all units.")
 	_emit_tutorial("rolled", {"turn": _tutorial_turn})
 	if skip_dice_visuals and is_inside_tree() and get_tree() != null:
@@ -565,7 +588,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		await _primer.flush_player_phase()
 
 	if pending_manual_target_ids.is_empty():
-		_set_turn_phase(PHASE_READY_TO_END)
+		transition(PHASE_READY_TO_END)
 		return
 
 
@@ -631,7 +654,7 @@ func _auto_assign_pending_targets(use_pauses: bool = true) -> void:
 		if use_pauses:
 			await get_tree().create_timer(AUTO_TURN_TARGET_PAUSE).timeout
 	if turn_phase == PHASE_TARGETING and pending_manual_target_ids.is_empty():
-		_set_turn_phase(PHASE_READY_TO_END)
+		transition(PHASE_READY_TO_END)
 	if not use_pauses and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
 
@@ -1115,7 +1138,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 				_gain_protocol(1)
 				_append_log("Protocol +1 → %d" % protocol_points)
 		_round_number += 1
-		_set_turn_phase(PHASE_AWAIT_ROLL)
+		transition(PHASE_AWAIT_ROLL)
 		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
 
 
@@ -1479,9 +1502,9 @@ func _finish_roll_modifier_pick() -> void:
 	legal_target_ids.clear()
 	legal_target_side = ""
 	if pending_manual_target_ids.is_empty():
-		_set_turn_phase(PHASE_READY_TO_END)
+		transition(PHASE_READY_TO_END)
 	else:
-		_set_turn_phase(PHASE_TARGETING)
+		transition(PHASE_TARGETING)
 		_refresh_summary("Select hero targets.")
 
 
@@ -1796,7 +1819,25 @@ func _update_battle_header() -> void:
 	PersistentHeader.update_progress(_game_state().current_battle, _game_state().total_battles, op_name)
 
 
-func _set_turn_phase(next_phase: String) -> void:
+# Pre-enum string name for a phase (tutorial payloads, tests, debug logs).
+func phase_name(p: int) -> String:
+	return str(PHASE_NAMES.get(p, "unknown"))
+
+
+func phase_from_name(name: String) -> int:
+	for p in PHASE_NAMES:
+		if str(PHASE_NAMES[p]) == name:
+			return p
+	return Phase.AWAIT_ROLL
+
+
+func is_item_pick_phase(p: int) -> bool:
+	return p == Phase.ITEM_PICK_ALLY or p == Phase.ITEM_PICK_DEAD 		or p == Phase.ITEM_PICK_ENEMY or p == Phase.ITEM_PICK_ANY
+
+
+# THE phase choke point — every phase change in the game routes through here
+# (architecture review §1 rec 2). No other code assigns turn_phase.
+func transition(next_phase: int) -> void:
 	# Protocol-actions teardown on any transition (Set-value popup etc.).
 	_protocol.on_phase_changed(next_phase)
 	turn_phase = next_phase
@@ -1870,7 +1911,7 @@ func _set_turn_phase(next_phase: String) -> void:
 			_refresh_summary("")
 	_style_roll_button_for_phase()
 	_card_view.refresh_all_cards()
-	_emit_tutorial("phase", {"phase": turn_phase})
+	_emit_tutorial("phase", {"phase": phase_name(turn_phase)})
 
 
 func _style_roll_button_for_phase() -> void:
@@ -1924,7 +1965,7 @@ func _style_frame_icon_action_button(
 
 
 func _update_phase_target_sets() -> void:
-	if not turn_phase.begins_with("item_pick"):
+	if not is_item_pick_phase(turn_phase):
 		if turn_phase != PHASE_TARGETING:
 			legal_target_ids.clear()
 			legal_target_side = ""
@@ -1946,7 +1987,7 @@ func _update_phase_target_sets() -> void:
 
 
 func _is_target_highlight_phase() -> bool:
-	if turn_phase.begins_with("item_pick"):
+	if is_item_pick_phase(turn_phase):
 		return true
 	return turn_phase == PHASE_TARGETING and active_targeting_hero_id != ""
 
@@ -2086,7 +2127,7 @@ func _try_auto_assign_single_manual_target(hero_state: Dictionary, target_side: 
 		legal_target_side = ""
 		_card_view.refresh_all_cards()
 		if pending_manual_target_ids.is_empty():
-			_set_turn_phase(PHASE_READY_TO_END)
+			transition(PHASE_READY_TO_END)
 		else:
 			_refresh_summary("Select the next hero to target.")
 	return true
@@ -2210,7 +2251,7 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	_card_view.refresh_all_cards()
 	_emit_tutorial("assigned", {"remaining": pending_manual_target_ids.size()})
 	if pending_manual_target_ids.is_empty():
-		_set_turn_phase(PHASE_READY_TO_END)
+		transition(PHASE_READY_TO_END)
 	else:
 		_refresh_summary("Select the next hero to target.")
 
@@ -2400,7 +2441,7 @@ func _on_hero_card_pressed(target_id: String) -> void:
 	if turn_phase == PHASE_READY_TO_END:
 		if _can_retarget_hero(target_id):
 			AudioManager.play_select()
-			_set_turn_phase(PHASE_TARGETING)
+			transition(PHASE_TARGETING)
 			_select_targeting_hero(target_id)
 		return
 

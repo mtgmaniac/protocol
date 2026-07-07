@@ -26,7 +26,11 @@ summon handling, and the construction of nearly every footer control.
 helpers reach back with `_scene.` **95 times** — they're extensions of the god
 object, not modules with boundaries.
 
-**Recommendation (in priority order):**
+**Recommendation (in priority order):** *(1 and 2 IMPLEMENTED 2026-07-06 —
+`scripts/battle/protocol_actions.gd` behind a narrow interface, and the `Phase`
+enum with the single `transition()` choke point in battle_scene; behavior-
+preserving, zero sim drift, watermark lowered 3416→2610. §3 fencing and the
+TargetingController remain open.)*
 1. **Extract the protocol-spend subsystem** (reroll/nudge/set/item buttons,
    the four `*_PICK` phases, `_apply_nudge`/`_apply_set`/reroll flows) into a
    `protocol_actions.gd` owning its own buttons and sub-phase logic. This is

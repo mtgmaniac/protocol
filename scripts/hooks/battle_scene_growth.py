@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 TARGET = "scripts/battle/battle_scene.gd"
-HIGH_WATER_LINES = 3416  # 2026-07-06: +38 for keyword-primer wiring (spawn + notice hooks) — deliberate glue, not creep
+HIGH_WATER_LINES = 2610  # 2026-07-06: LOWERED post-extraction (protocol actions module + phase enum) — lowering is always free (INVARIANTS #13)
 
 
 def main() -> int:

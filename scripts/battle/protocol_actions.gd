@@ -40,7 +40,7 @@ func build_footer_buttons() -> void:
 
 # ── Public entry points (delegated from battle_scene) ─────────────────────────
 
-func on_phase_changed(next_phase: String) -> void:
+func on_phase_changed(next_phase: int) -> void:
 	if next_phase != _scene.PHASE_SET_PICK:
 		_close_set_value_popup()
 
@@ -48,7 +48,7 @@ func on_phase_changed(next_phase: String) -> void:
 func reset_battle_over_state() -> void:
 	_pending_item = null
 	_was_in_ready_phase = false
-	_phase_before_item = ""
+	_phase_before_item = -1
 
 
 func restyle_buttons() -> void:
@@ -115,7 +115,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		AudioManager.play_select()
 		if _scene.turn_phase == _scene.PHASE_TWIN_SOURCE_PICK:
 			_scene._twin_fates_source_id = target_id
-			_scene._set_turn_phase(_scene.PHASE_TWIN_TARGET_PICK)
+			_scene.transition(_scene.PHASE_TWIN_TARGET_PICK)
 			_scene._refresh_summary("Twin Fates: tap the die to copy TO.")
 		elif target_id != _scene._twin_fates_source_id:
 			_apply_twin_fates(_scene._twin_fates_source_id, target_id)
@@ -217,7 +217,7 @@ var _item_targeting_armed: bool = false
 var _was_in_ready_phase: bool = false
 
 
-var _phase_before_item: String = ""
+var _phase_before_item: int = -1
 
 
 func _on_reroll_button_pressed() -> void:
@@ -231,7 +231,7 @@ func _on_reroll_button_pressed() -> void:
 		_scene._refresh_summary("Need 2 Protocol to Reroll.")
 		return
 	AudioManager.play_select()
-	_scene._set_turn_phase(_scene.PHASE_REROLL_PICK)
+	_scene.transition(_scene.PHASE_REROLL_PICK)
 
 
 func _on_nudge_button_pressed() -> void:
@@ -248,7 +248,7 @@ func _on_nudge_button_pressed() -> void:
 		_scene._refresh_summary("Every die was already nudged this turn.")
 		return
 	AudioManager.play_select()
-	_scene._set_turn_phase(_scene.PHASE_NUDGE_PICK)
+	_scene.transition(_scene.PHASE_NUDGE_PICK)
 
 
 func _add_nudge_button() -> void:
@@ -359,7 +359,7 @@ func _on_set_button_pressed() -> void:
 		_scene._refresh_summary("Need %d Protocol to Set." % _scene.SET_DIE_COST)
 		return
 	AudioManager.play_select()
-	_scene._set_turn_phase(_scene.PHASE_SET_PICK)
+	_scene.transition(_scene.PHASE_SET_PICK)
 
 
 func _attach_protocol_inspect(button: Button, action_key: String) -> void:
@@ -424,7 +424,7 @@ func _on_twin_fates_button_pressed() -> void:
 		return
 	AudioManager.play_select()
 	_scene._twin_fates_source_id = ""
-	_scene._set_turn_phase(_scene.PHASE_TWIN_SOURCE_PICK)
+	_scene.transition(_scene.PHASE_TWIN_SOURCE_PICK)
 	_scene._refresh_summary("Twin Fates: tap the die to copy FROM.")
 
 
@@ -666,7 +666,7 @@ func _apply_set(hero_id: String, value: int) -> void:
 
 # True while an item is mid-use (choosing a target, or confirming a no-target item).
 func _in_item_phase() -> bool:
-	return _scene.turn_phase.begins_with("item_pick") or _scene.turn_phase == _scene.PHASE_ITEM_CONFIRM
+	return _scene.is_item_pick_phase(_scene.turn_phase) or _scene.turn_phase == _scene.PHASE_ITEM_CONFIRM
 
 
 func _get_item_protocol_cost(_item: ItemData) -> int:
@@ -759,7 +759,7 @@ func _on_item_button_pressed(item: ItemData) -> bool:
 			if _scene._get_legal_target_ids("hero").is_empty():
 				_cancel_item_targeting("No living ally can use %s." % item.display_name)
 				return true
-			_scene._set_turn_phase(_scene.PHASE_ITEM_PICK_ALLY)
+			_scene.transition(_scene.PHASE_ITEM_PICK_ALLY)
 		"allyDead":
 			_cancel_item_targeting("Downed units cannot be targeted by %s." % item.display_name)
 			return true
@@ -767,19 +767,19 @@ func _on_item_button_pressed(item: ItemData) -> bool:
 			if _scene._get_legal_target_ids("enemy").is_empty():
 				_cancel_item_targeting("No living enemy can be targeted by %s." % item.display_name)
 				return true
-			_scene._set_turn_phase(_scene.PHASE_ITEM_PICK_ENEMY)
+			_scene.transition(_scene.PHASE_ITEM_PICK_ENEMY)
 		"any":
 			if _scene._get_legal_target_ids("any").is_empty():
 				_cancel_item_targeting("No unit can be targeted by %s." % item.display_name)
 				return true
-			_scene._set_turn_phase(_scene.PHASE_ITEM_PICK_ANY)
+			_scene.transition(_scene.PHASE_ITEM_PICK_ANY)
 		"none":
 			# No target needed — show the card centered and wait for a confirm tap.
-			_scene._set_turn_phase(_scene.PHASE_ITEM_CONFIRM)
+			_scene.transition(_scene.PHASE_ITEM_CONFIRM)
 		_:
 			_cancel_item_targeting("%s cannot find a valid target type." % item.display_name)
 
-	if _scene.turn_phase.begins_with("item_pick"):
+	if _scene.is_item_pick_phase(_scene.turn_phase):
 		_show_item_targeting_card(item)
 	elif _scene.turn_phase == _scene.PHASE_ITEM_CONFIRM:
 		_show_item_targeting_card(item, true)
@@ -800,17 +800,17 @@ func _can_use_item_in_current_phase() -> bool:
 
 
 func _restore_phase_after_item() -> void:
-	var restore_phase: String = _phase_before_item
-	_phase_before_item = ""
+	var restore_phase: int = _phase_before_item
+	_phase_before_item = -1
 	_was_in_ready_phase = false
 	if restore_phase == _scene.PHASE_READY_TO_END:
-		_scene._set_turn_phase(_scene.PHASE_READY_TO_END)
+		_scene.transition(_scene.PHASE_READY_TO_END)
 	elif restore_phase == _scene.PHASE_TARGETING:
-		_scene._set_turn_phase(_scene.PHASE_TARGETING)
+		_scene.transition(_scene.PHASE_TARGETING)
 		if _scene.active_targeting_hero_id != "":
 			_scene._select_targeting_hero(_scene.active_targeting_hero_id)
 	else:
-		_scene._set_turn_phase(_scene.PHASE_AWAIT_ROLL)
+		_scene.transition(_scene.PHASE_AWAIT_ROLL)
 
 
 # ── Item-targeting overlay (the centered picker card shown while choosing a unit, or as a

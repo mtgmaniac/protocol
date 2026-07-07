@@ -191,7 +191,7 @@ func _wait_for_phase(scene: Node, phase: String) -> void:
 	while frames > 0:
 		frames -= 1
 		await process_frame
-		if str(scene.get("turn_phase")) == phase:
+		if str(scene.call("phase_name", scene.get("turn_phase"))) == phase:
 			return
 	_errors.append("Timed out waiting for phase %s" % phase)
 

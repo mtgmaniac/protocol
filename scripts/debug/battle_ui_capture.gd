@@ -185,20 +185,20 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		var confirm_action: String = str(config.get("item_confirm_action", ""))
 		if confirm_action != "" and current_scene != null:
 			current_scene.set("_item_targeting_armed", true)
-			var has_card_before: bool = current_scene.get("_item_targeting_card") != null
+			var has_card_before: bool = current_scene.get("_protocol").get("_item_targeting_card") != null
 			var phase_before: String = str(current_scene.get("turn_phase"))
 			if confirm_action == "activate":
-				current_scene.call("_confirm_pending_item")
+				current_scene.get("_protocol").call("_confirm_pending_item")
 			elif confirm_action == "cancel":
-				current_scene.call("_cancel_item_to_loadout")
+				current_scene.get("_protocol").call("_cancel_item_to_loadout")
 			await process_frame
 			await process_frame
-			var has_card_after: bool = current_scene.get("_item_targeting_card") != null
+			var has_card_after: bool = current_scene.get("_protocol").get("_item_targeting_card") != null
 			var phase_after: String = str(current_scene.get("turn_phase"))
 			print("[ITEMDBG] confirm_action=", confirm_action,
 				" card before=", has_card_before, " after=", has_card_after,
 				" phase ", phase_before, " -> ", phase_after,
-				" pending=", current_scene.get("_pending_item") != null)
+				" pending=", current_scene.get("_protocol").get("_pending_item") != null)
 		# Optionally simulate tapping a wrong-side unit/die (a non-legal target) during item
 		# targeting — should cancel the item back to the loadout, same as tapping the card.
 		if bool(config.get("item_offtarget", false)) and current_scene != null:
@@ -210,16 +210,16 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 				if not heroes.is_empty():
 					hero_id = str((heroes[0] as Dictionary).get("id", ""))
 			var phase_before2: String = str(current_scene.get("turn_phase"))
-			var card_before2: bool = current_scene.get("_item_targeting_card") != null
+			var card_before2: bool = current_scene.get("_protocol").get("_item_targeting_card") != null
 			print("[ITEMDBG] offtarget: tapping wrong-side hero ", hero_id, " during ", phase_before2)
 			current_scene.call("_on_hero_card_pressed", hero_id)
 			await process_frame
 			await process_frame
 			var phase_after2: String = str(current_scene.get("turn_phase"))
-			var card_after2: bool = current_scene.get("_item_targeting_card") != null
+			var card_after2: bool = current_scene.get("_protocol").get("_item_targeting_card") != null
 			print("[ITEMDBG] offtarget result: card ", card_before2, " -> ", card_after2,
 				" phase ", phase_before2, " -> ", phase_after2,
-				" pending=", current_scene.get("_pending_item") != null)
+				" pending=", current_scene.get("_protocol").get("_pending_item") != null)
 	if bool(config.get("loadout_tap", false)):
 		_open_loadout()
 		await process_frame
@@ -282,8 +282,8 @@ func _use_item_target(item_id: String) -> void:
 		current_scene.set("protocol_points", 10)
 	var dm: Node = root.get_node_or_null("/root/DataManager")
 	var item: Resource = dm.call("get_item", item_id) if dm != null else null
-	if item != null and current_scene.has_method("_on_item_button_pressed"):
-		current_scene.call("_on_item_button_pressed", item)
+	if item != null and current_scene.get("_protocol") != null:
+		current_scene.get("_protocol").call("_on_item_button_pressed", item)
 
 
 # Seed a couple of consumables + a relic, then open the themed LOADOUT menu.
@@ -298,8 +298,8 @@ func _open_loadout() -> void:
 		current_scene.set("protocol_points", 10)
 	if current_scene.has_method("_update_item_panel"):
 		current_scene.call("_update_item_panel")
-	if current_scene.has_method("_on_item_button_pressed_menu"):
-		current_scene.call("_on_item_button_pressed_menu")
+	if current_scene.get("_protocol") != null:
+		current_scene.get("_protocol").call("_on_item_button_pressed_menu")
 
 
 func _tap_loadout_first_item() -> void:
@@ -428,8 +428,8 @@ func _force_pick_mode(mode: String) -> void:
 		"item":
 			# Items need a real ItemData; just set the phase directly to
 			# PHASE_ITEM_PICK_ENEMY to mimic an enemy-target item being chosen.
-			if battle.has_method("_set_turn_phase"):
-				battle.call("_set_turn_phase", "item_pick_enemy")
+			if battle.has_method("transition"):
+				battle.call("transition", battle.call("phase_from_name", "item_pick_enemy"))
 			await process_frame
 			return
 	if method_name != "" and battle.has_method(method_name):
