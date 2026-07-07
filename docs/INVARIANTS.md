@@ -95,3 +95,12 @@ asset warehouse only (never revive app code there). **Violation looks like:** an
 Touch flow: one die tap → at most one target tap. Components sharing a pick (dmg+burn on
 one enemy) count once; `freezeAnyDice` counts as the pick. **Violation looks like:** an
 ability needing two different targets ("heal an ally AND jam an enemy").
+
+## 13. Enforcement thresholds only ratchet DOWN for free
+Raising the battle_scene.gd line watermark — or ANY enforcement threshold (ceremony ±10,
+ci_smoke tolerances) — requires `BASELINE-APPROVED-BY-KEV` in the commit message; lowering
+a threshold is always free. Enforcement that the enforced party can loosen isn't
+enforcement — precedent: the 3378→3416 watermark self-raise for primer wiring, reasonable
+in the moment but decided by the same agent it constrained. The commit-msg threshold guard
+(`scripts/hooks/threshold_guard.py`) enforces this. **Violation looks like:** bumping
+`HIGH_WATER_LINES` in the same commit as the growth it excuses, without the token.

@@ -1,4 +1,8 @@
 #!/bin/sh
 # Baseline ceremony (docs/INVARIANTS.md #9): abort baseline.json commits with
 # per-op drift beyond +-10 pts unless the message contains BASELINE-APPROVED-BY-KEV.
-python "$(git rev-parse --show-toplevel)/scripts/hooks/baseline_ceremony.py" "$1"
+TOP="$(git rev-parse --show-toplevel)"
+python "$TOP/scripts/hooks/baseline_ceremony.py" "$1" || exit 1
+# Threshold ratchet (docs/INVARIANTS.md #13): raising any enforcement threshold
+# needs the same token; lowering is always free.
+python "$TOP/scripts/hooks/threshold_guard.py" "$1" || exit 1
