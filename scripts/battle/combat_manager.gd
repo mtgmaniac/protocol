@@ -97,7 +97,7 @@ const BROOD_SPAWN_NAME := "Bloodmite"
 const PERMANENT_BURN_TURNS := 9999
 
 const BOSS_STANDING_RULES := {
-	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP.",
+	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every 2nd enemy phase from its first activation, rebuilds one destroyed Scrap Drone at 50% HP.",
 	BOSS_MATRIARCH: "THE BROOD — spawns a Bloodmite every 3 rounds.",
 	BOSS_OVERSEER: "THE COURT — while any ally lives, gains a Firewall at the start of each round.",
 	BOSS_HIEROPHANT: "ROOT ACCESS — every round, Rewrites the squad's highest die to 3.",
@@ -238,8 +238,13 @@ func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 			continue
 		match str(enemy_state["unit"].display_name):
 			BOSS_SCRAPMASTER:
-				# DESIGN-TODO(kev): "every other turn" read as even-numbered rounds.
-				if _battle_round % 2 == 0:
+				# ASSEMBLY LINE fires every 2nd enemy phase COUNTED FROM FIRST
+				# ACTIVATION (per Kev 2026-07-06, DECISIONS_RESOLVED #5 —
+				# supersedes the even-numbered-rounds reading). The boss's first
+				# live enemy phase is phase 1; rebuilds land on phases 2, 4, 6…
+				if not enemy_state.has("assembly_line_first_round"):
+					enemy_state["assembly_line_first_round"] = _battle_round
+				if (_battle_round - int(enemy_state["assembly_line_first_round"])) % 2 == 1:
 					for drone_state in _enemy_states:
 						if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and bool(drone_state["dead"]):
 							_log("ASSEMBLY LINE — the SCRAPMASTER rebuilds a Scrap Drone!")

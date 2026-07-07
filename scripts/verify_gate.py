@@ -32,7 +32,7 @@ CEREMONY_PTS = 10.0  # per-op clear-rate points
 # (precedent: the Job-2a extraction cost 6 recordings unnoticed until a manual
 # count check). Raise when adding tests; LOWERING needs BASELINE-APPROVED-BY-KEV
 # (threshold_guard, inverted polarity — floors loosen downward).
-AUDIT_MIN_PASSED = 227
+AUDIT_MIN_PASSED = 228
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),

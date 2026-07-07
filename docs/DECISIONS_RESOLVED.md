@@ -158,7 +158,12 @@ descriptions, and pip descriptions. SINGLE NAMED EXCEPTION: shieldsPersist
 (Mantle Core relic, MANTLE TYRANT standing rule) is untouched, and TRUTH.md rule
 5 must name it as the only exception."
 
-## 5. SCRAPMASTER "every other turn"
+## 5. SCRAPMASTER "every other turn" — IMPLEMENTED 2026-07-07
+**Status:** cadence now counts from FIRST ACTIVATION (per-boss
+`assembly_line_first_round` stamp; phase 1 = first live enemy phase, rebuilds
+on phases 2/4/6). Identical to the old even-round reading when the boss is live
+from round 1 (the only shipping case → zero drift); the offset case is
+regression-pinned. Player-visible rule text updated in BOSS_STANDING_RULES.
 **Question:** code reads ASSEMBLY LINE as even-numbered rounds; alternative is
 every 2nd enemy phase from first activation.
 **Ruling (verbatim):** "#5: SCRAPMASTER's ASSEMBLY LINE fires every 2nd enemy

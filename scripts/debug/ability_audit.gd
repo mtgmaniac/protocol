@@ -1456,7 +1456,37 @@ func _run_boss_standing_rule_regressions() -> void:
 	var still_down: bool = bool(line_drone["dead"])
 	line_manager.resolve_round({}, {}, DiceManager.new())
 	var rebuilt: bool = not bool(line_drone["dead"]) and int(line_drone["current_hp"]) == 50
-	_expect_and_record("Regression / boss SCRAPMASTER assembly line", "bossStandingRule", "true", str(still_down and rebuilt))
+	# Round 3 (phase 3 from activation): no rebuild; round 4: rebuild again.
+	line_drone["dead"] = true
+	line_drone["current_hp"] = 0
+	line_manager.resolve_round({}, {}, DiceManager.new())
+	var down_phase3: bool = bool(line_drone["dead"])
+	line_manager.resolve_round({}, {}, DiceManager.new())
+	var rebuilt_phase4: bool = not bool(line_drone["dead"])
+	_expect_and_record("Regression / boss SCRAPMASTER assembly line cadence", "bossStandingRule",
+		"true/true/true/true", "%s/%s/%s/%s" % [str(still_down), str(rebuilt), str(down_phase3), str(rebuilt_phase4)])
+
+	# Cadence counts from FIRST ACTIVATION, not global even rounds (DECISIONS
+	# #5): with activation stamped at round 3, rebuilds land on rounds 4 and 6.
+	var offset_manager: CombatManager = CombatManager.new()
+	offset_manager.setup_battle(
+		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
+		[_make_enemy("scrapmaster", "SCRAPMASTER"), _make_enemy("scrap_drone", "Scrap Drone")]
+	)
+	var offset_boss: Dictionary = offset_manager.get_enemy_states()[0]
+	var offset_drone: Dictionary = offset_manager.get_enemy_states()[1]
+	offset_boss["assembly_line_first_round"] = 3
+	offset_drone["dead"] = true
+	offset_drone["current_hp"] = 0
+	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 1
+	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 2 (even — old model would fire)
+	var offset_down_r2: bool = bool(offset_drone["dead"])
+	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 3 (phase 1)
+	var offset_down_r3: bool = bool(offset_drone["dead"])
+	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 4 (phase 2 — fires)
+	var offset_rebuilt_r4: bool = not bool(offset_drone["dead"])
+	_expect_and_record("Regression / assembly line counts from first activation", "bossStandingRule",
+		"true/true/true", "%s/%s/%s" % [str(offset_down_r2), str(offset_down_r3), str(offset_rebuilt_r4)])
 
 	# Hive Matriarch — The Brood: a Bloodmite summon event every 3 rounds.
 	var brood_manager: CombatManager = CombatManager.new()
