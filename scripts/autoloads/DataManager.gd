@@ -226,6 +226,16 @@ const MATTED_ENEMY_PORTRAITS := {
 	"pumice_macaque.png": true,
 	"pyroclast_raptor.png": true,
 	"slag_hound.png": true,
+	# Facility drop (2026-07-07) — the last cutout-era enemy files replaced;
+	# every enemy portrait is now matted-bust style.
+	"guard_elite.png": true,
+	"heavy_warden.png": true,
+	"patrol_elite.png": true,
+	"rust_drone.png": true,
+	"scrap_drone.png": true,
+	"scrapmaster.png": true,
+	"static_skimmer.png": true,
+	"volt_elite.png": true,
 }
 
 var units: Dictionary = {}
