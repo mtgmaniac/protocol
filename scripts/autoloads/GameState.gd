@@ -1112,6 +1112,11 @@ func get_run_unit_data(unit_id: String) -> UnitData:
 		var path_callsign: String = str(path.get("callsign", ""))
 		if path_callsign != "":
 			built_unit.callsign = path_callsign
+		# Evolved portrait when the file exists; the duplicate already carries
+		# the base portrait, so a missing file silently keeps it.
+		var evolved_portrait: Texture2D = DataManager.get_evolution_portrait(unit_id, str(path.get("id", "")))
+		if evolved_portrait != null:
+			built_unit.portrait = evolved_portrait
 		var hp_bonus: int = int(path.get("hp", 0))
 		if hp_bonus > 0:
 			built_unit.max_hp = hp_bonus
@@ -1283,6 +1288,7 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 			continue
 		if not grouped.has(path_name):
 			grouped[path_name] = {
+				"id": str(entry.get("id", "")),
 				"name": path_name,
 				"callsign": str(entry.get("callsign", "")),
 				"focus": str(entry.get("focus", "")),

@@ -163,6 +163,16 @@ Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Tau
 
 Deep navy bg; pixel art; `m5x7` font; hard edges, no gradients. Meaning-based color (current, post terminal-UI pass): **cyan/teal = player + primary actions** (teal primary buttons, corner brackets) · **red/rust = enemy/damage** · **green = HP bars and heals ONLY** · **amber = protocol pips, risk/confirm actions, unlock accents** · **gold = commit/reward moments**. `PixelUI` (`scripts/ui/pixel_ui.gd`) is the single source of truth for visual constants; `theme_overload.tres` mirrors it.
 
+## Assets — portraits (2026-07-07 wiring pass)
+
+**Hero portraits:** base art `assets/portraits/<hero_id>.png` (`DataManager.HERO_PORTRAIT_BY_ID`). **Evolved art convention: `assets/portraits/<hero_id>_<evo_id>.png`**, where `evo_id` is the evolution entry's `id` field in `heroes.data.json` — the lowercased callsign, schema-enforced (pyro, arc, blade, ravager, bulwark, sentinel, glacier, trench, medic, synth, overclocked, phantom, shadow, wraith, noise, nullwire). `DataManager.get_evolution_portrait()` resolves it; a missing file silently falls back to the base portrait (never errors, never blanks). The swap rides `GameState.get_run_unit_data()`, so every run-unit surface (battle cards, equip labels, sim) inherits it; the evolution screen previews each branch's own portrait. All 24 files (8 base overwrites + 16 evolutions) installed 2026-07-07. Both art styles pass through the crop-to-content contract (`_crop_to_content`, cutout vs full-bleed tag).
+
+**Enemy portraits:** `assets/portraits/enemies/` via `ENEMY_PORTRAIT_BY_NAME` (bare filenames only — no `res://` long forms), fallback `_slugify(display_name).png`. As of 2026-07-07 all 38 unit defs have explicit map entries and every one resolves. Legacy-era files renamed to current unit names (git history preserves the lineage): rift_macaque→pumice_macaque, eclipse_panther→geode_panther, ridge_drake→magma_drake, eclipse_raptor→pyroclast_raptor, thunder_ape→basalt_ape, void_reaver→mantle_tyrant, sparksprite→glitch_sprite, levyn_acolyte→init_acolyte, chronicle_scribe→checksum_scribe, geas_binder→axiom_binder, glimmer_double→forked_double, arc_titan_channeler→daemon_channeler, circlet_hierophant→root_hierophant, whitenoise_skimmer→static_skimmer, void_hound→obsidian_hound.
+
+**Known art gap (flagged, not fixed):** Obsidian Hound and Slag Hound share one art file — both map to `obsidian_hound.png`; Slag Hound needs its own portrait when art lands.
+
+**Quarantine:** unreferenced files live in `assets/portraits/enemies/unused/` (cyber_phoenix, harmonic_hexnode, veil_spare) — kept, not deleted.
+
 ---
 
 ## Verify commands (supersedes docs/archive/BASELINE.md)
@@ -201,20 +211,20 @@ transcribed into DECISIONS_RESOLVED.md before implementation; never implement a
 ruling from chat memory.**
 
 1. **RESOLVED & IMPLEMENTED — Freeze = repeat** (full bank/thaw → lockout → repeat lineage under #1).
-2. **RULED, pending** — shield per-side expiry reading.
+2. **RESOLVED & IMPLEMENTED — shield per-side expiry** (2026-07-07, zero data offenders). See combat rule 5.
 3. **RESOLVED & IMPLEMENTED — independent instance timers (rfm/erb/burn).** See combat rule 10.
 4. **RESOLVED & IMPLEMENTED — permanent-burn Detonate = one tick, not consumed.**
-5. **RULED, pending** — SCRAPMASTER "every other turn" cadence.
+5. **RESOLVED & IMPLEMENTED — ASSEMBLY LINE cadence from first activation** (2026-07-07).
 6. **RULED, pending** — INTERCEPT_CARDS numbers.
 7. **RULED, pending** — route modifier numbers.
 8. **RULED, pending** — boss cadence numbers.
 9. **RULED, pending** — execute bonus.
 10. **RULED, pending** — chain jump ratio.
 11. **RULED, pending** — Reverse Gimbal UX.
-12. **RULED, pending** — cloak hostile-only untargetability.
-13. **RULED, pending** — tutorial runs in `runs_started`.
-14. **RULED, pending** — directive Marks single-target on AoE.
-15. **RULED, pending** — mid-run re-equip.
+12. **RESOLVED & IMPLEMENTED — cloak hostile-only untargetability** (2026-07-07).
+13. **RESOLVED & IMPLEMENTED — tutorial runs excluded from `runs_started`** (2026-07-07, grandfathered).
+14. **RESOLVED & IMPLEMENTED — directive Marks single-target on AoE** (2026-07-07).
+15. **RESOLVED & IMPLEMENTED — mid-run re-equip REJECTED** (2026-07-07, stand-in permanent).
 16. **RESOLVED & IMPLEMENTED — shield chip restored** (2026-07-07).
 17. **RESOLVED — voidCirclet 68% accepted; compensating Synod pass owed** (folds into the post-semantics rebalance).
 

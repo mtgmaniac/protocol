@@ -138,7 +138,7 @@ const ENEMY_FACTION_BY_TYPE := {
 const ENEMY_PORTRAIT_BY_NAME := {
 	"Scrap Drone": "scrap_drone.png",
 	"Rust Drone": "rust_drone.png",
-	"Static Skimmer": "whitenoise_skimmer.png",
+	"Static Skimmer": "static_skimmer.png",
 	"Patrol Elite": "patrol_elite.png",
 	"Guard Elite": "guard_elite.png",
 	"Heavy Warden": "heavy_warden.png",
@@ -151,23 +151,36 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"Broodwarden": "broodwarden.png",
 	"Caustic Spewer": "caustic_spewer.png",
 	"Hive Matriarch": "hive_matriarch.png",
-	# The Accretion (pkg3.3 renames) — aliases to the existing menagerie art.
-	"Pumice Macaque": "res://assets/portraits/enemies/rift_macaque.png",
-	"Obsidian Hound": "res://assets/portraits/enemies/void_hound.png",
-	"Slag Hound": "res://assets/portraits/enemies/void_hound.png",
-	"Geode Panther": "res://assets/portraits/enemies/eclipse_panther.png",
-	"Magma Drake": "res://assets/portraits/enemies/ridge_drake.png",
-	"Pyroclast Raptor": "res://assets/portraits/enemies/eclipse_raptor.png",
-	"Basalt Ape": "res://assets/portraits/enemies/thunder_ape.png",
-	"MANTLE TYRANT": "res://assets/portraits/enemies/void_reaver.png",
-	# Null Synod (pkg3.3 renames) — aliases to the existing circlet art.
-	"Glitch Sprite": "res://assets/portraits/enemies/sparksprite.png",
-	"Init Acolyte": "res://assets/portraits/enemies/levyn_acolyte.png",
-	"Checksum Scribe": "res://assets/portraits/enemies/chronicle_scribe.png",
-	"Axiom Binder": "res://assets/portraits/enemies/geas_binder.png",
-	"Forked Double": "res://assets/portraits/enemies/glimmer_double.png",
-	"Daemon Channeler": "res://assets/portraits/enemies/arc_titan_channeler.png",
-	"ROOT HIEROPHANT": "res://assets/portraits/enemies/circlet_hierophant.png",
+	# The Accretion (files renamed to current unit names, 2026-07-07).
+	"Pumice Macaque": "pumice_macaque.png",
+	# TODO(art): Obsidian Hound and Slag Hound share one art file — Slag Hound
+	# has no portrait of its own (missing art; see TRUTH.md asset section).
+	"Obsidian Hound": "obsidian_hound.png",
+	"Slag Hound": "obsidian_hound.png",
+	"Geode Panther": "geode_panther.png",
+	"Magma Drake": "magma_drake.png",
+	"Pyroclast Raptor": "pyroclast_raptor.png",
+	"Basalt Ape": "basalt_ape.png",
+	"MANTLE TYRANT": "mantle_tyrant.png",
+	# Null Synod (files renamed to current unit names, 2026-07-07).
+	"Glitch Sprite": "glitch_sprite.png",
+	"Init Acolyte": "init_acolyte.png",
+	"Checksum Scribe": "checksum_scribe.png",
+	"Axiom Binder": "axiom_binder.png",
+	"Forked Double": "forked_double.png",
+	"Daemon Channeler": "daemon_channeler.png",
+	"ROOT HIEROPHANT": "root_hierophant.png",
+	# Veil Concord — previously resolved only through the _slugify fallback
+	# (audited 2026-07-07: every unit landed on its own file; veil_spare.png
+	# and harmonic_hexnode.png were referenced by nothing → moved to unused/).
+	"Prism Charger": "prism_charger.png",
+	"Shardmite": "shardmite.png",
+	"Aegis Anchor": "aegis_anchor.png",
+	"Resonance Warden": "resonance_warden.png",
+	"Nullblade": "nullblade.png",
+	"Synapse Herald": "synapse_herald.png",
+	"Stormweaver": "stormweaver.png",
+	"CONCLAVE OVERSEER": "conclave_overseer.png",
 }
 
 var units: Dictionary = {}
@@ -367,6 +380,7 @@ func _build_evolution_paths(evolutions: Array) -> Array[Dictionary]:
 	var paths: Array[Dictionary] = []
 	for evolution_entry in evolutions:
 		paths.append({
+			"id": str(evolution_entry.get("id", "")),
 			"name": str(evolution_entry.get("name", "")),
 			"callsign": str(evolution_entry.get("callsign", "")),
 			"focus": str(evolution_entry.get("focus", "")),
@@ -505,6 +519,25 @@ func _load_hero_portrait(unit_id: String) -> Texture2D:
 	if file_name == "":
 		return null
 	return _crop_to_content(_load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name]))
+
+
+# Evolved-unit portrait convention: assets/portraits/<hero_id>_<evo_id>.png
+# (evo_id = the evolution entry's "id", the lowercased callsign). A missing
+# file is never an error and never blanks a card — callers keep the base
+# portrait when this returns null. Cached including the null result so the
+# existence check runs once per key.
+var _evolution_portraits: Dictionary = {}
+
+
+func get_evolution_portrait(hero_id: String, evo_id: String) -> Texture2D:
+	if hero_id == "" or evo_id == "":
+		return null
+	var key: String = "%s_%s" % [hero_id, evo_id]
+	if _evolution_portraits.has(key):
+		return _evolution_portraits[key]
+	var tex: Texture2D = _crop_to_content(_load_texture_if_exists("%s%s.png" % [HERO_PORTRAIT_ROOT, key]))
+	_evolution_portraits[key] = tex
+	return tex
 
 
 func _load_enemy_portrait(enemy_name: String) -> Texture2D:

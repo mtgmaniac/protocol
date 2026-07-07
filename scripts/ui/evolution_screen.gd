@@ -380,14 +380,14 @@ func _sort_range_min(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _get_path_portrait(path: Dictionary, base_unit: UnitData) -> Texture2D:
-	# Future evolved portraits can be added to the path data without changing this screen.
-	var portrait_variant: Variant = path.get("portrait", null)
-	var portrait: Texture2D = portrait_variant as Texture2D
-	if portrait != null:
-		return portrait
-	if base_unit != null:
-		return base_unit.portrait
-	return null
+	# Each branch card previews its own evolved portrait when the file exists
+	# (assets/portraits/<hero_id>_<evo_id>.png), else the base portrait.
+	if base_unit == null:
+		return null
+	var evolved_portrait: Texture2D = DataManager.get_evolution_portrait(base_unit.id, str(path.get("id", "")))
+	if evolved_portrait != null:
+		return evolved_portrait
+	return base_unit.portrait
 
 
 func _refresh_summary() -> void:
