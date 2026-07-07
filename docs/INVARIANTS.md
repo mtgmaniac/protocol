@@ -125,3 +125,15 @@ at preview scale they rendered as alternating 1px/2px ticks, some faint, some dr
 `HBoxContainer` distributing fractional widths. **Violation looks like:** `frac * width`
 drawn without physical rounding, a container distributing ratio widths across pip rows,
 or a "1px" line whose measured width varies along the bar in a screenshot zoom.
+
+Two corollaries (2026-07-07, after the route-fork border round):
+- **Godot-drawn strokes can't be per-instance snapped** (StyleBoxFlat borders), so the
+  SCALE must be integer-friendly instead: the dev preview window is **540×1200 —
+  exactly half** the 1080×2400 design space — and **stroke widths must be EVEN design
+  pixels** (2/4/6 → crisp 1/2/3 window px; a 3px stroke is 1.5 and shimmers). A
+  1080-native device renders at scale 1.0 and is always exact. Measured precedent: at
+  the old 450×1000 (5/12) preview, ONE panel's 2px border rendered 2px left, 1px
+  right, 0px along parts of the top.
+- **Window resizes change the final transform without resizing controls** — every
+  snapped draw layer must `queue_redraw` on `viewport.size_changed` or it keeps the
+  stale scale (HPTickLayer / ProtocolPips / CornerBracketLayer do).

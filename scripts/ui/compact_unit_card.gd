@@ -35,6 +35,12 @@ class HPTickLayer extends Control:
 	var tick_color: Color = Color(0.07, 0.11, 0.06, 1.0)
 	const END_FRAC := 0.12      # each mark covers the top ~12% / bottom ~12% of the bar height
 
+	func _ready() -> void:
+		# Window resizes change the FINAL transform without resizing controls —
+		# re-snap or the ticks keep the previous window scale (INVARIANTS #14).
+		get_viewport().size_changed.connect(queue_redraw)
+
+
 	# Pixel snap law (INVARIANTS #14): each notch x = round(i*10/max_hp * bar
 	# width) IN PHYSICAL PIXELS (the bar sits at a sub-pixel global x, so local
 	# rounding still smears), drawn exactly ONE physical pixel wide — filled and

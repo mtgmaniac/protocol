@@ -760,10 +760,11 @@ static func style_locked_button(button: Button, font_size: int = 32) -> void:
 
 
 static func _primary_btn_style(bg: Color, border: Color, glow: bool) -> StyleBoxFlat:
-	# 3px (not 2): a 2px border is ~0.8px at the 1080→preview canvas downscale and, with
-	# anti-aliasing off, its vertical edges drop out entirely at unlucky sub-pixel x
-	# positions (EXPAND_FILL buttons hit this — the "left edge clipping" symptom).
-	var s: StyleBoxFlat = make_hard_style(bg, border, 3)
+	# EVEN width (INVARIANTS #14): the preview window is exactly half the
+	# 1080x2400 design space, so even-numbered strokes land on whole window
+	# pixels (2 -> 1px crisp on every edge). The old 3px was a workaround for
+	# the fractional 450x1000 scale, where 2px vertical edges dropped out.
+	var s: StyleBoxFlat = make_hard_style(bg, border, 2)
 	s.set_content_margin_all(10.0)
 	if glow:
 		s.shadow_color = Color(border.r, border.g, border.b, 0.45)
@@ -814,6 +815,8 @@ class CornerBracketLayer extends Control:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		set_notify_transform(true)
 		resized.connect(queue_redraw)
+		# Window resizes change the FINAL transform without resizing controls.
+		get_viewport().size_changed.connect(queue_redraw)
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_TRANSFORM_CHANGED:

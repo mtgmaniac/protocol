@@ -493,7 +493,7 @@ func _open_set_value_popup() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, accent, 3))
+	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, accent, 4))
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	panel.custom_minimum_size = Vector2(clampf(vp.x - 40.0, 340.0, 720.0), 0.0)
 	center.add_child(panel)
@@ -541,7 +541,7 @@ func _open_set_value_popup() -> void:
 	_set_value_thumb = Panel.new()
 	_set_value_thumb.size = Vector2(60.0, 110.0)
 	_set_value_thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_set_value_thumb.add_theme_stylebox_override("panel", PixelUI.make_hard_style(accent, accent.lightened(0.35), 3))
+	_set_value_thumb.add_theme_stylebox_override("panel", PixelUI.make_hard_style(accent, accent.lightened(0.35), 4))
 	_set_value_track.add_child(_set_value_thumb)
 
 	_set_value_track.gui_input.connect(_on_set_value_track_input)

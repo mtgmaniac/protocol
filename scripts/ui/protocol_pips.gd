@@ -29,6 +29,9 @@ var filled: int = 0:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(queue_redraw)
+	# Window resizes change the FINAL transform without resizing controls —
+	# re-snap or the layout keeps the previous window scale.
+	get_viewport().size_changed.connect(queue_redraw)
 
 
 func _draw() -> void:
