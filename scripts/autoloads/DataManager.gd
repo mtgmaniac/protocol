@@ -183,6 +183,24 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"CONCLAVE OVERSEER": "conclave_overseer.png",
 }
 
+# Enemy files painted in the MATTED-BUST style (fully opaque subject on a flat
+# near-black mat — the 2026-07 art drops), which must be cropped and
+# top-anchored like hero busts instead of framed as scenic full-bleed.
+# EXPLICIT list on purpose: scenic art can be nearly as dark as a mat
+# (conclave_overseer's border is 39% near-black, same as caustic_spewer's),
+# so no border heuristic can separate the styles. New matted drops add their
+# filename here; anything absent keeps cutout/scenic framing.
+const MATTED_ENEMY_PORTRAITS := {
+	"bloodmite.png": true,
+	"broodwarden.png": true,
+	"carapace_beetle.png": true,
+	"caustic_spewer.png": true,
+	"hive_matriarch.png": true,
+	"shardmite.png": true,
+	"skitterling.png": true,
+	"spine_stalker.png": true,
+}
+
 var units: Dictionary = {}
 var enemies: Dictionary = {}
 var items: Dictionary = {}
@@ -542,17 +560,17 @@ func get_evolution_portrait(hero_id: String, evo_id: String) -> Texture2D:
 
 func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 	var mapped_path: String = str(ENEMY_PORTRAIT_BY_NAME.get(enemy_name, ""))
-	var tex: Texture2D = null
-	if mapped_path != "":
-		if mapped_path.begins_with("res://"):
-			tex = _load_texture_if_exists(mapped_path)
-		else:
-			tex = _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, mapped_path])
-	else:
+	var file_name: String = mapped_path
+	if mapped_path == "":
 		# Fallback: a file named after the slugified enemy name (covers enemies/bosses
 		# not in the explicit map, e.g. conclave_overseer.png, aegis_anchor.png).
-		tex = _load_texture_if_exists("%s%s.png" % [ENEMY_PORTRAIT_ROOT, _slugify(enemy_name)])
-	return _crop_to_content(tex)
+		file_name = "%s.png" % _slugify(enemy_name)
+	var tex: Texture2D
+	if mapped_path.begins_with("res://"):
+		tex = _load_texture_if_exists(mapped_path)
+	else:
+		tex = _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, file_name])
+	return _crop_to_content(tex, MATTED_ENEMY_PORTRAITS.has(file_name.get_file()))
 
 
 # Portrait finalisation. Three art styles coexist:
@@ -562,22 +580,24 @@ func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 #  - full-bleed: opaque scenic background with the subject centred (veil /
 #    menagerie / void circlet art). Tagged with a "full_bleed" meta so
 #    PixelUI.cover_fit_portrait() centres the crop instead of top-anchoring.
-#  - matted bust (2026-07 hero drop): fully opaque with the subject painted on
+#  - matted bust (2026-07 art drops): fully opaque with the subject painted on
 #    a flat near-black mat. The mat is background, not composition — cropped to
 #    the subject's bounding box (vs the mat color) and framed like a cutout
 #    (top-anchored), so heads sit at the frame top with no dead mat below.
-#    Hero-path only (`hero_bust`): heroes never use scenic full-bleed art, so
-#    "hero + fully opaque" IS the matted style — no fragile border heuristics.
+#    Opt-in via `matted_bust`: ALL hero art (heroes never use scenic
+#    full-bleed, so "hero + fully opaque" IS the matted style) and the enemy
+#    files named in MATTED_ENEMY_PORTRAITS (explicit — scenic borders can be
+#    as dark as a mat, so no heuristic can separate the styles).
 # The tags are how every screen frames all styles consistently without
 # per-unit offsets.
-func _crop_to_content(tex: Texture2D, hero_bust: bool = false) -> Texture2D:
+func _crop_to_content(tex: Texture2D, matted_bust: bool = false) -> Texture2D:
 	if tex == null:
 		return null
 	var img: Image = tex.get_image()
 	if img == null:
 		return tex
 	var used: Rect2i
-	if hero_bust and img.detect_alpha() == Image.ALPHA_NONE:
+	if matted_bust and img.detect_alpha() == Image.ALPHA_NONE:
 		tex.set_meta("full_bleed", false)
 		used = _mat_content_rect(img)
 	else:
