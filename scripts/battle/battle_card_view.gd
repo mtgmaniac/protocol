@@ -387,14 +387,14 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append(_make_compact_named_status("DOWN", "", 99))
 		return statuses
 
-	# Chip doctrine (pkg8.1, amended by the taunt unify): the card chip row
-	# renders ONLY Burn, Mark, ±Roll, Firewall, and Taunt (on the taunted
-	# hero — their targeting is restricted to the taunter, so it must be
-	# visible). Everything else surfaces on its own display channel —
-	# shields on the HP preview + inspect, cloak as the ghosted portrait,
-	# freeze/jam/rewrite/hijack on the die, spike in the readout.
-	# DESIGN-TODO(kev): active shield total now reads via HP preview/inspect
-	# only — confirm that's enough at 450x1000.
+	# Chip doctrine (pkg8.1, amended): the card chip row renders Burn, SHIELD,
+	# Mark, ±Roll, Firewall, and Taunt. The Shield chip is RESTORED per Kev
+	# 2026-07-06 (DECISIONS_RESOLVED #16 — reverses the pkg8.1 cut): the active
+	# shield total is a visible primary chip on BOTH sides, live on grant /
+	# break / expiry (state-driven: event refreshes + the per-side expiry tick
+	# mutate state["shield"], cards re-read it). Everything else keeps its own
+	# display channel — cloak as the ghosted portrait, freeze/jam/rewrite/
+	# hijack on the die, spike in the readout. HP preview behavior unchanged.
 	if int(state.get("burn", 0)) > 0 and int(state.get("burn_turns", 0)) > 0:
 		statuses.append({
 			"type": "burn",
@@ -402,6 +402,15 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 			"icon": "☠",
 			"value": int(state.get("burn", 0)),
 			"priority": 0,
+		})
+
+	if int(state.get("shield", 0)) > 0:
+		statuses.append({
+			"type": "shield",
+			"mode": "numeric",
+			"icon": "⬡",
+			"value": int(state.get("shield", 0)),
+			"priority": 1,
 		})
 
 	if bool(state.get("marked", false)):

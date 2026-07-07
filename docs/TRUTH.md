@@ -157,7 +157,7 @@ Five stacked bands, portrait, 1080×2400 (preview 450×1000): Header 144 — Ene
 ## UI & feedback
 
 **Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; max one per turn; suppressed in tutorial/headless/auto battle; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
-Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤10" marker · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. Nat-20 = gold wash + shake + stinger. Keyword feedback table: `offline-bundle/ANIMATION.md`.
+Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤10" marker · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. Nat-20 = gold wash + shake + stinger. Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
 
@@ -215,7 +215,7 @@ ruling from chat memory.**
 13. **RULED, pending** — tutorial runs in `runs_started`.
 14. **RULED, pending** — directive Marks single-target on AoE.
 15. **RULED, pending** — mid-run re-equip.
-16. **RULED, pending** — active shield total readout.
+16. **RESOLVED & IMPLEMENTED — shield chip restored** (2026-07-07).
 17. **RESOLVED — voidCirclet 68% accepted; compensating Synod pass owed** (folds into the post-semantics rebalance).
 
 Shipped adjudications without a number (cloak 2 clauses, pierce+breach kept

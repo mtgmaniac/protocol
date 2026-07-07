@@ -234,7 +234,15 @@ rejection citation. Do not build the full re-equip UI.
 **Ruling (verbatim):** "#15: mid run re-equip REJECTED, not deferred. Remove the
 TODO at GameState.gd:623, keep the deterministic stand in, record the rejection."
 
-## 16. Active shield total readout
+## 16. Active shield total readout — IMPLEMENTED 2026-07-07 (cut REVERSED, chip is canon)
+**Status:** the shield chip is restored as a visible primary numeric chip
+(⬡ + total) on unit cards, BOTH sides — the pkg8.1 cut is reversed per Kev and
+the chip is canon. State-driven, so it updates live on grant/break/expiry and
+drops at the correct per-side phase tick (#2); the renderer's shield palette
+and numeric mapping had survived the cut, only the token source was restored.
+HP preview unchanged. Pixel-level collision verification at 450×1000 lands in
+the same-day UI precision batch (its chip-clamp acceptance covers 4-chip
+zero-clip, superseding a one-off check here).
 **Question:** shield total only visible via HP preview/inspect since the chip was
 cut — sufficient at 450×1000?
 **Ruling (verbatim):** "#16 RESTORE the active shield total as a visible primary
