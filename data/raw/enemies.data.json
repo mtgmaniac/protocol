@@ -55,7 +55,7 @@
     },
     "rust": {
       "recharge": {
-        "name": "ECM Jam",
+        "name": "ECM Hiss",
         "eff": "-1 roll, 5 shield",
         "dmg": 0,
         "burn": 0,
@@ -309,7 +309,7 @@
         "shield": 0
       },
       "surge": {
-        "name": "Chain Strike",
+        "name": "Arc Strike",
         "eff": "11 dmg, 2 burn, 2t",
         "dmg": 11,
         "burn": 2,
@@ -418,7 +418,7 @@
         "lifestealPct": 50
       },
       "surge": {
-        "name": "Venom Nip",
+        "name": "Searing Nip",
         "eff": "9 dmg, 2 burn",
         "dmg": 9,
         "burn": 2,
@@ -814,7 +814,7 @@
         "shield": 0
       },
       "crit": {
-        "name": "Crystal Shatter",
+        "name": "Crystal Break",
         "eff": "12 dmg",
         "dmg": 12,
         "burn": 0,

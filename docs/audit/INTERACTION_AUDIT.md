@@ -6,9 +6,26 @@ This audit hunts two things: (1) effects that **function correctly but no longer
 
 **Ground-truth basis:** the locked design intent in [`docs/TRUTH.md`](../TRUTH.md), [`docs/INVARIANTS.md`](../INVARIANTS.md), and [`docs/DECISIONS_RESOLVED.md`](../DECISIONS_RESOLVED.md). Where code disagrees with those, **code is "what is," the ground-truth list is "what should be," and the gap is a finding** — a behavior that matches a closed ruling is *not* a finding.
 
+## Resolution status — post-audit fix pass (2026-07-08)
+
+Kev ruled all 17 needs-Kev items and issued one global directive (remove the "natural 20" concept). The fix pass landed on branch `fix/post-audit-pass` (commits `3435250`, `ae4f65f`). Status of each finding named in the fix brief:
+
+**FIXED (code + TRUTH in same commit):**
+- Broken: [A-041](#a-041) Sync Antenna (real roll-buff stack), [A-043](#a-043)/[A-044](#a-044) faction-name display strings, [A-061](#a-061) Defib Spark revive flow, [A-075](#a-075) intercept double-XP guard.
+- Degenerate: [A-002](#a-002) nested-death work-queue, [A-033](#a-033) Aegis friendly-heals-only, [A-034](#a-034) shield capped at max HP, [A-062](#a-062) Mirror Plate enemy-tamper-only, [A-063](#a-063) Protocol Override no free-print, [A-074](#a-074) Echo Matrix damage-only, [A-077](#a-077) modifier-arm overwrite/precondition.
+- Rulings applied: **NK-01** (4 `randi()` → RollProvider), **NK-02** global nat-20 removal (dissolves [A-012](#a-012) — verified no stored pre-mutation reads remain), **NK-03** full freeze immunity incl. Nudge, **NK-04** 20/summon riders fire once, **NK-06** spike/riders once per ability, **NK-08** hero taunt clears at round end, **NK-10** summoned units grant no kill economy, **NK-13** gear unique-per-run, **NK-15** SUPPLY GRADE carries past b5, **NK-16** intercept armings consume the no-repeats pool. Plus [A-016](#a-016) (Capacitor reads gear amount).
+- **NK-14** [A-066 Deep Zero Pin](#a-066) redesigned (pin-to-weakest-face). **BASELINE-SENSITIVE — flagged for `BASELINE-APPROVED-BY-KEV`, not self-approved.**
+
+**RULED — CLOSED as working-as-designed (doc-sync, no game bug):**
+- **NK-07** → [A-028](#a-028): the chip doctrine is **six** chips (Burn/Shield/Mark/±Roll/Firewall/Taunt), TRUTH is correct; the fix brief's "five-chip" ground truth was the stale side. A-028 is a doc-sync artifact, **closed**.
+- **NK-11** → [A-060](#a-060): internal ids `voidCirclet`/`stellarMenagerie` are **frozen** (INVARIANTS #11); only player-visible strings change ([A-043](#a-043)/[A-044](#a-044), fixed). A-060 **closed** as WAD.
+- **NK-09** → [A-031](#a-031), **NK-17** → [A-086](#a-086): accepted with TRUTH wording corrections (applied).
+
+**STILL OPEN (not in the fix-brief scope — dead-code cleanups, doc rot, latent traps):** the 15 `dead` findings, the doc-rot findings ([A-087](#a-087)–[A-097](#a-097)), and the remaining `confusing` findings were not part of this ruled pass and remain catalogued below for a future cleanup.
+
 ## Statistics
 
-**97 findings** after dedupe: **5 broken · 8 degenerate · 15 dead · 52 confusing · 0 strictly-inverted · 17 needs-Kev-ruling.**
+**97 findings** after dedupe: **5 broken · 8 degenerate · 15 dead · 52 confusing · 0 strictly-inverted · 17 needs-Kev-ruling.** As of the 2026-07-08 fix pass, all 17 needs-Kev items are **ruled**, ~30 findings are **fixed/closed**; the remainder (dead-code + doc-rot + latent) stay open for a follow-up.
 
 > On the "inverted" class specifically: the codebase has **no literal `setMaxProtocol`/old-cap item** — the hypothetical from the brief does not exist here (verified: no `setMaxProtocol` handler; Rogue Engineer's cap-8 is an *authored per-run override*, not a stale constant). The nearest live instances of "value divorced from the current rule" are the **data-knob-disconnected** family ([A-016](#a-016), [A-017](#a-017), [A-079](#a-079)) and **[A-066 Deep Zero Pin](#a-066)**, whose upside inverted from "always strong" to "situational" when freeze changed from lockout to repeat. All are catalogued below.
 
@@ -761,6 +778,8 @@ Sorted broken → degenerate → dead → confusing. **NEEDS-KEV-RULING items ar
 ---
 
 ## Needs Kev ruling {#needs-kev-ruling}
+
+> **ALL 17 RULED (2026-07-08)** — see the [Resolution status](#resolution-status--post-audit-fix-pass-2026-07-08) at the top. NK-01/03/04/06/08/10/13/15/16 + the NK-02 global nat-20 removal are implemented; NK-14 is implemented and baseline-flagged; NK-05 (flavor-name renames), NK-07/09/11/17 (doc-sync/closures) applied. Kept below for the original open questions.
 
 Ambiguous items — each might be intentional. Listed, not guess-fixed.
 
