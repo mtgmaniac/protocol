@@ -196,7 +196,7 @@
       },
       "surge": {
         "name": "Cover Field",
-        "eff": "11 dmg, ally 9 shield, +1 roll to allies",
+        "eff": "11 dmg, ally 9 shield, +1 roll to allies, 2t",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
@@ -205,7 +205,7 @@
         "shield": 0,
         "shieldAlly": 9,
         "erb": 1,
-        "erbT": 1,
+        "erbT": 2,
         "erbAll": true
       },
       "crit": {
@@ -905,7 +905,7 @@
       },
       "strike": {
         "name": "Aegis Bash",
-        "eff": "12 dmg, ally 6 shield, +1 roll to allies",
+        "eff": "12 dmg, ally 6 shield, +1 roll to allies, 2t",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
@@ -914,7 +914,7 @@
         "shield": 0,
         "shieldAlly": 6,
         "erb": 1,
-        "erbT": 1,
+        "erbT": 2,
         "erbAll": true
       },
       "surge": {

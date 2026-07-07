@@ -135,9 +135,9 @@
   {
     "id": "emergencySignal",
     "name": "Emergency Signal",
-    "desc": "First time an ally drops below 50% HP, squad gains +2 roll.",
+    "desc": "First time an ally drops below 50% HP, squad gains +2 roll for 2 turns.",
     "icon": "die",
-    "effect": { "type": "lowHpSquadRollBuff", "amount": 2 }
+    "effect": { "type": "lowHpSquadRollBuff", "amount": 2, "turns": 2 }
   },
   {
     "id": "aegisField",

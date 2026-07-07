@@ -108,7 +108,11 @@ def main() -> int:
     if args.skip_sim:
         print("\nAll hard gates PASS (sim skipped).")
         return 0
-    rc = sim_deltas(args.runs)
+    try:
+        rc = sim_deltas(args.runs)
+    except Exception as exc:  # noqa: BLE001 — a crashed sim leg must FAIL loudly
+        print(f"\nGATE FAILED: balance sim crashed ({exc})")
+        return 1
     print("\nAll hard gates PASS." + ("" if rc == 0 else " Balance drift needs the ceremony — see above."))
     return rc
 

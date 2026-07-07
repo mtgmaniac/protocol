@@ -1938,10 +1938,14 @@ func _trigger_low_hp_squad_roll_buff() -> void:
 	var buff_amount: int = int(_get_relic_value("lowHpSquadRollBuff", "amount", 0))
 	if buff_amount <= 0:
 		return
+	# 2t (timer-contract correction, 2026-07-06 cleanup): under instance timers
+	# a 1t buff cast mid-round expired at that round's tick without shaping a
+	# roll — 2t restores the authored intent (buff the NEXT roll).
+	var buff_turns: int = int(_get_relic_value("lowHpSquadRollBuff", "turns", 2))
 	for hero_state in _hero_states:
 		if not hero_state["dead"]:
-			_add_roll_buff(hero_state, buff_amount, 1)
-	_log("Emergency signal: squad gains +%d roll this turn." % buff_amount)
+			_add_roll_buff(hero_state, buff_amount, buff_turns)
+	_log("Emergency signal: squad gains +%d roll (%dt)." % [buff_amount, buff_turns])
 
 
 func _is_basic_enemy(enemy_state: Dictionary) -> bool:

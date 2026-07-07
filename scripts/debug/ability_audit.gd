@@ -3224,11 +3224,13 @@ func _run_relic_low_hp_squad_roll_buff_regression() -> void:
 	var hero_b: Dictionary = manager.get_hero_states()[1]
 	manager.call("_damage_state", hero_a, 51)
 	var a_stacks: Array = hero_a.get("roll_buff_stacks", [])
+	# 2t (timer-contract correction): survives the cast round's tick and shapes
+	# the NEXT roll.
 	var ok: bool = (
 		int(hero_a.get("roll_buff", 0)) == 2
 		and int(hero_b.get("roll_buff", 0)) == 2
 		and a_stacks.size() == 1
-		and int((a_stacks[0] as Dictionary).get("turns_left", 0)) == 1
+		and int((a_stacks[0] as Dictionary).get("turns_left", 0)) == 2
 	)
 	if ok:
 		_record_pass("Regression / relic lowHpSquadRollBuff", "lowHpSquadRollBuff")
