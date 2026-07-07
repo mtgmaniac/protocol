@@ -38,9 +38,12 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 	var spends: Array = []
 	# Focus fire: every hero aims at the lowest-HP living, uncloaked enemy —
 	# finishing kills removes enemy actions from the board fastest.
-	# Exception (freeze = repeat, per Kev 2026-07-06): a hero whose current
-	# band applies freeze aims at the enemy showing the LOWEST die instead —
-	# pinning the weakest enemy result is the play; never freeze allied dice.
+	# Exceptions (freeze = repeat, per Kev 2026-07-06):
+	#  - freeze-ANY bands play CRIT BANKING first: freeze an allied die whose
+	#    revealed result sits in its crit/overload band, so the ally replays
+	#    its best result next round. Deterministic, no randi.
+	#  - otherwise a freeze band aims at the enemy showing the LOWEST die —
+	#    pinning the weakest enemy result.
 	var focus: Dictionary = _lowest_hp_enemy(cm)
 	if not focus.is_empty():
 		for hero_state_variant in cm.get_hero_states():
@@ -53,8 +56,12 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 				continue
 			var eff: int = engine.effective_hero_roll(hero_state, unit_id, bs)
 			var band_raw: Dictionary = engine.dice_manager.get_ability_for_roll(hero_state.get("unit"), eff).get("raw", {})
-			var applies_freeze: bool = int(band_raw.get("freezeAnyDice", 0)) > 0 or int(band_raw.get("freezeEnemyDice", 0)) > 0
-			if applies_freeze:
+			if int(band_raw.get("freezeAnyDice", 0)) > 0:
+				var bank: Dictionary = _ally_bank_target(bs, cm)
+				if not bank.is_empty():
+					hero_state["selected_target_id"] = str(bank["id"])
+					continue
+			if int(band_raw.get("freezeAnyDice", 0)) > 0 or int(band_raw.get("freezeEnemyDice", 0)) > 0:
 				var freeze_pick: Dictionary = _lowest_die_unfrozen_enemy(bs, cm)
 				if not freeze_pick.is_empty():
 					hero_state["selected_target_id"] = str(freeze_pick["id"])
@@ -135,10 +142,13 @@ func decide_items(bs: BattleState, cm: CombatManager, gs: Node) -> Array:
 			if by_type.has(t):
 				return [{"item_id": by_type[t], "target_id": str(hurt["id"]), "side": "hero"}]
 
-	# 2) Freeze the ENEMY die showing the lowest face (freeze = repeat: pin the
-	#    enemy to its weakest result). Never freeze allied dice — repeating an
-	#    ally is a judgment call the greedy policy doesn't make.
+	# 2) Freeze-any items (freeze = repeat): CRIT BANKING first — freeze an
+	#    allied die showing a crit/overload result so it replays; otherwise pin
+	#    the enemy die showing the lowest face to its weakest result.
 	if by_type.has("anyDieFreeze"):
+		var bank: Dictionary = _ally_bank_target(bs, cm)
+		if not bank.is_empty():
+			return [{"item_id": by_type["anyDieFreeze"], "target_id": str(bank["id"]), "side": "hero"}]
 		var freeze_target: Dictionary = _lowest_die_unfrozen_enemy(bs, cm)
 		if not freeze_target.is_empty():
 			return [{"item_id": by_type["anyDieFreeze"], "target_id": str(freeze_target["id"]), "side": "enemy"}]
@@ -154,6 +164,30 @@ func decide_items(bs: BattleState, cm: CombatManager, gs: Node) -> Array:
 	if bs.protocol_points <= 1 and by_type.has("gainProtocol"):
 		return [{"item_id": by_type["gainProtocol"], "target_id": "", "side": ""}]
 	return []
+
+
+# CRIT BANKING (freeze = repeat, per Kev 2026-07-06): the ally whose revealed
+# RAW die face lands in its own crit/overload band — freezing it replays the
+# result next round. Two deterministic passes (overload first, then crit),
+# slot order within a pass, no randi. Skips dead, already-frozen, and
+# currently-repeating dice. The RAW face is what the crust locks, so bands are
+# classified on the raw roll, not the buffed effective value.
+func _ally_bank_target(bs: BattleState, cm: CombatManager) -> Dictionary:
+	var dm := DiceManager.new()
+	for wanted_zone in ["overload", "crit"]:
+		for hero_state_variant in cm.get_hero_states():
+			var hero_state: Dictionary = hero_state_variant
+			if bool(hero_state.get("dead", false)):
+				continue
+			if int(hero_state.get("die_freeze_turns", 0)) > 0 or bool(hero_state.get("die_freeze_repeat_this_round", false)):
+				continue
+			var raw: int = int(bs.hero_rolls.get(str(hero_state["id"]), 0))
+			if raw <= 0:
+				continue
+			var zone: String = str(dm.get_ability_for_roll(hero_state.get("unit"), raw).get("zone", ""))
+			if zone == wanted_zone:
+				return hero_state
+	return {}
 
 
 # The living, uncloaked, not-yet-frozen enemy whose die shows the lowest face
