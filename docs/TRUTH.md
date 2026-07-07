@@ -10,7 +10,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 
 | Question | Stale claim (where) | **TRUTH (verified in code)** |
 |---|---|---|
-| Orientation | landscape (old GDD/ROADMAP) | **Portrait 1080×2400**, preview 450×1000 (`project.godot`) |
+| Orientation | landscape (old GDD/ROADMAP) | **Portrait 1080×2400**, preview 540×1200 = exactly half (`project.godot`, INVARIANTS #14) |
 | Squad size | 4 units | **3** (`GameState.SQUAD_UNIT_LIMIT := 3`) |
 | Healer name | Systems Medic | **Splice Medic**, callsign SPLICE |
 | Operations | "build 1 faction first" | **5 fully defined** (`battle-modes.json` order) |
@@ -152,7 +152,7 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Battle UI geometry (layout contract)
 
-Five stacked bands, portrait, 1080×2400 (preview 450×1000): Header 144 — Enemy rail 768 — Center rail 432 (dice + centered action button) — Hero rail 768 — Footer 144 (**Reroll, Nudge, Set, Item** + PROTOCOL n/m pips). Header height == footer height; all unit cards identical outer size; dice align to card slots; result tags are uniform die-docked plates (below hero dice, above enemy dice, never occluding the sprite). No scrolling. Touch-first.
+Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Enemy rail 768 — Center rail 432 (dice + centered action button) — Hero rail 768 — Footer 144 (**Reroll, Nudge, Set, Item** + PROTOCOL n/m pips). Header height == footer height; all unit cards identical outer size; dice align to card slots; result tags are uniform die-docked plates (below hero dice, above enemy dice, never occluding the sprite). No scrolling. Touch-first.
 
 ## UI & feedback
 
