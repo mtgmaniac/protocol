@@ -102,7 +102,7 @@ Format: `[value type] [modifier] [target] [duration]`, joined by ` + `. Numbers 
 | Siphon | SI | enemy-only: on hit drain N Protocol (floor 0) |
 | Taunt | T | unified (Lure deleted): "The taunted unit can only target the taunter." Hero-side redirects all enemy aim (overrides everything, even cloak); enemy-side (`lured_by_id` internal) restricts the hit hero's legal targets to the taunter + TAUNT chip on the hero's card |
 
-**Cloak (2 clauses):** untargetable by hostile single-target abilities; breaks when the unit deals damage OR is hit by an AoE. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal.
+**Cloak (2 clauses):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal.
 **One keyword per ability** (pierce counts), **two allowed in overload** — audit-enforced.
 
 ---

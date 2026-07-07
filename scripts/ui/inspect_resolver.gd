@@ -364,7 +364,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"frozen", "freeze", "die_freeze":
 			return "Die result is locked and cannot change%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
-			return "Untargetable by hostile single-target abilities. Breaks when this unit deals damage or is hit by an AoE."
+			return "Untargetable by hostile single-target abilities; friendly picks stay legal. Breaks when this unit deals damage or is hit by an AoE."
 		"taunt":
 			return "Taunting — hostile units can only target this unit."
 		"taunted":

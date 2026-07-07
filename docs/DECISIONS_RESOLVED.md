@@ -193,7 +193,11 @@ overall 0.2533.) All six numbers are sweepable via the balance workbench
 **Ruling (verbatim):** "#11 CONFIRMED: Reverse Gimbal tap again to flip +3/−3
 ships as is."
 
-## 12. Cloak: hostile-only untargetability
+## 12. Cloak: hostile-only untargetability — IMPLEMENTED 2026-07-07
+**Status:** code path verified (the legality filter skips cloaked units only on
+hostile enemy-side picks; "hero" and friendly "any" picks include cloaked
+allies); keyword def + inspect tooltip + TRUTH now state the friendly-picks
+legality explicitly; battle_scene DESIGN-TODO replaced with the citation.
 **Question:** friendly picks on cloaked allies stay legal (`_get_legal_target_ids`).
 **Ruling (verbatim):** "#12 CONFIRMED: cloak blocks hostile single target picks
 only; friendly picks on cloaked allies are always legal. Ensure the cloak def

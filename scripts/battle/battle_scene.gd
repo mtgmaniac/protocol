@@ -2283,9 +2283,9 @@ func _get_legal_target_ids(target_side: String, for_hero_state: Dictionary = {})
 			continue
 		if bool(state["dead"]):
 			continue
-		# Cloak: cloaked enemies are untargetable by single-target abilities.
-		# (Friendly picks on cloaked allies stay legal — DESIGN-TODO(kev):
-		# confirm hostile-only reading of "untargetable".)
+		# Cloak blocks HOSTILE single-target picks only; friendly picks on
+		# cloaked allies are always legal (CONFIRMED per Kev 2026-07-06,
+		# DECISIONS_RESOLVED #12).
 		if bool(state.get("cloaked", false)) and enemy_states.has(state):
 			continue
 		ids.append(str(state["id"]))

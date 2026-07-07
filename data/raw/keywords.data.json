@@ -151,7 +151,7 @@
       "id": "cloak",
       "term": "Cloak",
       "category": "control",
-      "def": "Untargetable by hostile single-target abilities. Breaks when this unit deals damage or is hit by an AoE.",
+      "def": "Untargetable by hostile single-target abilities; friendly picks stay legal. Breaks when this unit deals damage or is hit by an AoE.",
       "syntax": "cloak",
       "code": "C"
     },
