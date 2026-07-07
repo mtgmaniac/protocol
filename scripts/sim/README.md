@@ -68,10 +68,24 @@ rate inside the 25–40% target band, and a band summary for the swept op),
 
 Knob kinds: `state_scalar` (`enemy_hp_scalar`, `enemy_dmg_scalar` — applied to
 enemy states at spawn and to summons; qualify per op with `@op`, e.g.
-`enemy_hp_scalar@hive`, or leave global) and `engine_tuning` (boss cadence
+`enemy_hp_scalar@hive`, or leave global), `engine_tuning` (boss cadence
 `scrapmaster_rebuild_pct` / `brood_cadence` / `mantle_round_shield`, plus
 `execute_bonus`, `chain_ratio` — routed to `combat_manager.set_tuning()`,
-whose getters default to the shipped constants).
+whose getters default to the shipped constants), and `ability_field` (a path
+into heroes.data.json — tuning key `ability:heroId/PathName|base/AbilityName/field`
+— resolved IN MEMORY against DataManager's loaded hero data at sim spawn,
+never written to disk; the registry entry carries a `tuning_key` and sweep.py
+translates the knob id automatically). Shipped ability_field knobs cover the
+Glacier line's rider values (`glacier_weave_shield`, `glacier_salvo_dmg`,
+`glacier_lance_dmg`, `glacier_lance_frozen_bonus`, `glacier_aegis_shield`,
+`glacier_zero_dmg`) — measurement prep for the flagged GLACIER repricing;
+sweeps inform that ruling, they do not ship numbers.
+
+```bash
+# ability_field example: how much does Shatter Lance's frozen bonus matter?
+python scripts/sim/sweep.py --name lance_bonus --knob glacier_lance_frozen_bonus \
+    --values 2,6,10,14 --runs 300
+```
 
 Guarantees (verify after touching the seam):
 - **Zero drift when idle:** an empty tuning dict is byte-identical to the

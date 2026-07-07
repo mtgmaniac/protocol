@@ -109,9 +109,16 @@ def main() -> int:
     base_ops = baseline.get("clear_by_op", {})
 
     # Grid points (1 or 2 axes).
-    points = [[(axes[0][0], v)] for v in axes[0][1]]
+    # Knob ids translate to their tuning keys (ability_field knobs carry a
+    # long "ability:..." path in the registry; others key by id).
+    def tuning_key(knob: str) -> str:
+        base, _, qual = knob.partition("@")
+        key = registry[base].get("tuning_key", base)
+        return f"{key}@{qual}" if qual else key
+
+    points = [[(tuning_key(axes[0][0]), v)] for v in axes[0][1]]
     if len(axes) == 2:
-        points = [p + [(axes[1][0], v2)] for p in points for v2 in axes[1][1]]
+        points = [p + [(tuning_key(axes[1][0]), v2)] for p in points for v2 in axes[1][1]]
 
     sweep_dir = ROOT / "results" / "sweeps" / args.name
     sweep_dir.mkdir(parents=True, exist_ok=True)

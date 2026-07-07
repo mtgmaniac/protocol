@@ -53,12 +53,17 @@ var _seed: int = 0
 var _tuning_engine: Dictionary = {}
 var _tuning_hp_scalar: float = 1.0
 var _tuning_dmg_scalar: float = 1.0
+# ability_field knobs: "ability:heroId/PathName|base/AbilityName/field=value",
+# resolved IN MEMORY against DataManager's loaded hero data at run start —
+# never written to disk (measurement only; registry: scripts/sim/knobs.json).
+var _tuning_ability_fields: Array = []
 
 
 func _resolve_tuning(spec: String, op: String) -> void:
 	_tuning_engine = {}
 	_tuning_hp_scalar = 1.0
 	_tuning_dmg_scalar = 1.0
+	_tuning_ability_fields = []
 	for token in spec.split(",", false):
 		var entry: String = str(token).strip_edges()
 		if entry == "" or not entry.contains("="):
@@ -71,6 +76,9 @@ func _resolve_tuning(spec: String, op: String) -> void:
 			if str(qualified[1]).strip_edges() != op:
 				continue  # other op's knob: this run is its own control
 			key = str(qualified[0]).strip_edges()
+		if key.begins_with("ability:"):
+			_tuning_ability_fields.append({"path": key.substr(8), "value": value})
+			continue
 		match key:
 			"enemy_hp_scalar":
 				_tuning_hp_scalar = value
@@ -78,6 +86,45 @@ func _resolve_tuning(spec: String, op: String) -> void:
 				_tuning_dmg_scalar = value
 			_:
 				_tuning_engine[key] = value
+
+
+# Applies ability_field tunings to the loaded hero data (memory only). Numeric
+# data fields are ints; whole values stay ints so band math is unchanged.
+func _apply_ability_field_tuning(dm: Node) -> void:
+	for entry_variant in _tuning_ability_fields:
+		var entry: Dictionary = entry_variant
+		var parts: PackedStringArray = str(entry["path"]).split("/", false)
+		if parts.size() != 4:
+			push_warning("[SIM] ability tuning path needs heroId/Path/Ability/field: %s" % str(entry["path"]))
+			continue
+		var unit: UnitData = dm.call("get_unit", str(parts[0])) as UnitData
+		if unit == null:
+			push_warning("[SIM] ability tuning: unknown hero '%s'" % str(parts[0]))
+			continue
+		var raw_value: float = float(entry["value"])
+		var value: Variant = int(raw_value) if raw_value == floor(raw_value) else raw_value
+		if str(parts[1]) == "base":
+			for range_variant in unit.dice_ranges:
+				var range_entry: Dictionary = range_variant
+				if str(range_entry.get("ability_name", "")) == str(parts[2]):
+					(range_entry.get("raw", {}) as Dictionary)[str(parts[3])] = value
+			continue
+		var applied: bool = false
+		for path_variant in unit.evolution_paths:
+			var path: Dictionary = path_variant
+			if str(path.get("name", "")) != str(parts[1]):
+				continue
+			# Evolution abilities are built dice-range entries, same shape as the
+			# base kit: the name key is `ability_name` and the ENGINE reads fields
+			# from the `raw` sub-dict — writing anywhere else is a silent no-op
+			# (caught by the sanity-inverse proof, 2026-07-07).
+			for ability_variant in path.get("abilities", []):
+				var ability: Dictionary = ability_variant
+				if str(ability.get("ability_name", "")) == str(parts[2]):
+					(ability.get("raw", {}) as Dictionary)[str(parts[3])] = value
+					applied = true
+		if not applied and str(parts[1]) != "base":
+			push_warning("[SIM] ability tuning matched nothing: %s" % str(entry["path"]))
 
 
 # Applied to a fresh CombatManager right after setup_battle (and to injected
@@ -193,6 +240,7 @@ func _run(args: Dictionary) -> int:
 	# swept run is reproducible from its JSONL alone).
 	var tuning_spec: String = str(args.get("tuning", ""))
 	_resolve_tuning(tuning_spec, op)
+	_apply_ability_field_tuning(dm)
 
 	_tel.emit({
 		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,

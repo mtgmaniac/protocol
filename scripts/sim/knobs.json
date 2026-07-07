@@ -1,13 +1,16 @@
 {
-  "$comment": "Balance-workbench parameter registry (sweep.py validates knobs and ranges against this file). MEASUREMENT ONLY: sweeps inject values at sim runtime and never touch data files or shipped constants — a winning value gets committed as the real constant/data afterwards, at which point the baseline ceremony (INVARIANTS #9) applies. ADDING A KNOB (the pattern): (1) if the value lives on enemy STATES, teach sim_runner._resolve_tuning/_apply_state_scalars a new key (state_scalar kind); (2) if it lives in the ENGINE, replace the constant/inline read in combat_manager with _tuned_int/_tuned_float(\"your_key\", SHIPPED_VALUE) — defaults MUST be the shipped value so an empty tuning dict is byte-identical (ci_smoke proves it); (3) declare it here with id, kind, scope, path, default, range; (4) run ci_smoke (zero drift) and tests/sim_determinism.sh.",
+  "$comment": "Balance-workbench parameter registry (sweep.py validates knobs and ranges against this file). MEASUREMENT ONLY: sweeps inject values at sim runtime and never touch data files or shipped constants \u2014 a winning value gets committed as the real constant/data afterwards, at which point the baseline ceremony (INVARIANTS #9) applies. ADDING A KNOB (the pattern): (1) if the value lives on enemy STATES, teach sim_runner._resolve_tuning/_apply_state_scalars a new key (state_scalar kind); (2) if it lives in the ENGINE, replace the constant/inline read in combat_manager with _tuned_int/_tuned_float(\"your_key\", SHIPPED_VALUE) \u2014 defaults MUST be the shipped value so an empty tuning dict is byte-identical (ci_smoke proves it); (3) declare it here with id, kind, scope, path, default, range; (4) run ci_smoke (zero drift) and tests/sim_determinism.sh. THIRD KIND \u2014 ability_field: a path into heroes.data.json (tuning key 'ability:heroId/PathName|base/AbilityName/field'), resolved IN MEMORY against DataManager's loaded hero data at sim spawn (sim_runner._apply_ability_field_tuning) and NEVER written to disk; declare the knob here with a 'tuning_key' and sweep.py translates the knob id automatically. Adding one costs a knobs.json entry only \u2014 no engine or data change.",
   "knobs": [
     {
       "id": "enemy_hp_scalar",
       "kind": "state_scalar",
       "scope": "per_op (use key@op, e.g. enemy_hp_scalar@hive) or global",
-      "path": "sim_runner._apply_state_scalars — enemy max_hp/current_hp at spawn and on summons (round, min 1)",
+      "path": "sim_runner._apply_state_scalars \u2014 enemy max_hp/current_hp at spawn and on summons (round, min 1)",
       "default": 1.0,
-      "range": [0.5, 1.5],
+      "range": [
+        0.5,
+        1.5
+      ],
       "step": 0.05,
       "notes": "Multiplies every enemy HP pool in runs on the qualified op. Data law (enemy HP multiple of 5) applies only to AUTHORED values; swept pools may land off-grid."
     },
@@ -15,9 +18,12 @@
       "id": "enemy_dmg_scalar",
       "kind": "state_scalar",
       "scope": "per_op (key@op) or global",
-      "path": "sim_runner._apply_state_scalars — enemy state dmg_scale at spawn and on summons",
+      "path": "sim_runner._apply_state_scalars \u2014 enemy state dmg_scale at spawn and on summons",
       "default": 1.0,
-      "range": [0.5, 1.5],
+      "range": [
+        0.5,
+        1.5
+      ],
       "step": 0.05,
       "notes": "Multiplies enemy ability damage via the existing dmg_scale state field (rounded per hit by the engine)."
     },
@@ -27,7 +33,10 @@
       "scope": "global (only SCRAPMASTER uses it)",
       "path": "combat_manager _tuned_int('scrapmaster_rebuild_pct', SCRAPMASTER_REBUILD_PCT=50)",
       "default": 50,
-      "range": [25, 100],
+      "range": [
+        25,
+        100
+      ],
       "step": 5,
       "notes": "ASSEMBLY LINE rebuilt-drone HP percent."
     },
@@ -37,7 +46,10 @@
       "scope": "global (only Hive Matriarch uses it)",
       "path": "combat_manager _tuned_int('brood_cadence', BROOD_CADENCE=3)",
       "default": 3,
-      "range": [2, 5],
+      "range": [
+        2,
+        5
+      ],
       "step": 1,
       "notes": "THE BROOD spawns a Bloodmite every N rounds (integer; runner clamps >=1)."
     },
@@ -47,7 +59,10 @@
       "scope": "global (only MANTLE TYRANT uses it)",
       "path": "combat_manager _tuned_int('mantle_round_shield', MANTLE_ROUND_SHIELD=6)",
       "default": 6,
-      "range": [2, 12],
+      "range": [
+        2,
+        12
+      ],
       "step": 1,
       "notes": "ACCRETION per-round persistent shield."
     },
@@ -57,9 +72,12 @@
       "scope": "global",
       "path": "combat_manager._apply_execute_bonus _tuned_int('execute_bonus', 8)",
       "default": 8,
-      "range": [4, 16],
+      "range": [
+        4,
+        16
+      ],
       "step": 1,
-      "notes": "Flat Execute bonus damage below the threshold. DECISIONS_RESOLVED #9 is ruled-pending — sweep to inform, do not ship without the transcribed ruling."
+      "notes": "Flat Execute bonus damage below the threshold. DECISIONS_RESOLVED #9 is ruled-pending \u2014 sweep to inform, do not ship without the transcribed ruling."
     },
     {
       "id": "chain_ratio",
@@ -67,9 +85,96 @@
       "scope": "global",
       "path": "combat_manager._apply_chain_jumps _tuned_float('chain_ratio', 0.6)",
       "default": 0.6,
-      "range": [0.3, 1.0],
+      "range": [
+        0.3,
+        1.0
+      ],
       "step": 0.05,
       "notes": "Chain jump damage as a fraction of base (floor). Amplifier directive still overrides to 100%. DECISIONS_RESOLVED #10 is ruled-pending."
+    },
+    {
+      "id": "glacier_weave_shield",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Weave/shield",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Weave \u2192 shield (memory-only at sim spawn)",
+      "default": 5,
+      "range": [
+        2,
+        12
+      ],
+      "step": 1,
+      "notes": "Glacier recharge-band self shield (rides the freezeAnyDice band). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "glacier_salvo_dmg",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Whiteout Salvo/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Whiteout Salvo \u2192 dmg (memory-only at sim spawn)",
+      "default": 5,
+      "range": [
+        2,
+        10
+      ],
+      "step": 1,
+      "notes": "Glacier strike-band AoE damage (freeze rider unchanged). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "glacier_lance_dmg",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Shatter Lance/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Shatter Lance \u2192 dmg (memory-only at sim spawn)",
+      "default": 12,
+      "range": [
+        6,
+        20
+      ],
+      "step": 1,
+      "notes": "Glacier surge-band single-target damage. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "glacier_lance_frozen_bonus",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Shatter Lance/vsFrozenBonus",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Shatter Lance \u2192 vsFrozenBonus (memory-only at sim spawn)",
+      "default": 6,
+      "range": [
+        2,
+        14
+      ],
+      "step": 1,
+      "notes": "Shatter Lance's +dmg vs frozen-die targets. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "glacier_aegis_shield",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Aegis/shield",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Aegis \u2192 shield (memory-only at sim spawn)",
+      "default": 7,
+      "range": [
+        3,
+        14
+      ],
+      "step": 1,
+      "notes": "Glacier crit-band squad shield (rides the freezeAnyDice band). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "glacier_zero_dmg",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Absolute Zero/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Absolute Zero \u2192 dmg (memory-only at sim spawn)",
+      "default": 10,
+      "range": [
+        5,
+        18
+      ],
+      "step": 1,
+      "notes": "Glacier overload AoE damage (freeze-all rider unchanged). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
     }
   ]
 }
