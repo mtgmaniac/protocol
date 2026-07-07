@@ -212,7 +212,11 @@ save adjustment — already-banked tutorial runs are grandfathered (TRUTH notes 
 runs_started; the rung 1 pity unlock therefore counts real runs only. No
 retroactive save adjustment; note grandfather behavior in TRUTH.md."
 
-## 14. Directive Marks stay single-target on AoE
+## 14. Directive Marks stay single-target on AoE — IMPLEMENTED 2026-07-07
+**Status:** CONFIRMED, never AoE Mark. Data audit found ZERO abilities combining
+AoE with mark (reported before any rewrite; none needed). Combat Sense and
+Marked for Death descs now read "Your single-target hits Mark their primary
+target."; the combat_manager DESIGN-TODO is a resolved citation.
 **Question:** Combat Sense / Marked for Death mark only the single-target hit;
 AoE marking everything read too strong.
 **Ruling (verbatim):** "#14 CONFIRMED, never AoE Mark: keep single target

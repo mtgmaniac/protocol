@@ -1702,7 +1702,7 @@
           "directives": [
             {
               "name": "Combat Sense",
-              "desc": "Your damaging abilities Mark.",
+              "desc": "Your single-target hits Mark their primary target.",
               "effect": {
                 "type": "damageAppliesMark"
               }
@@ -2462,7 +2462,7 @@
           "directives": [
             {
               "name": "Marked for Death",
-              "desc": "Your hits Mark.",
+              "desc": "Your single-target hits Mark their primary target.",
               "effect": {
                 "type": "damageAppliesMark"
               }

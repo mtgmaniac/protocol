@@ -1270,8 +1270,9 @@ func _apply_hero_ability_damage(
 				# Mark applies AFTER this hit — the NEXT hit gets the +50%.
 				# Combat Sense / Marked for Death directives Mark on any
 				# damaging single-target hit.
-				# DESIGN-TODO(kev): directive Marks stay single-target — AoE
-				# marking everything read as too strong.
+				# CONFIRMED, never AoE Mark (per Kev 2026-07-06,
+				# DECISIONS_RESOLVED #14): directive Marks land on the primary
+				# target of single-target hits only.
 				if bool(raw.get("mark", false)) or _has_directive(hero_state, "damageAppliesMark"):
 					_apply_mark(target_enemy)
 			# Chain jumps continue even when the primary hit was ward-blocked —
