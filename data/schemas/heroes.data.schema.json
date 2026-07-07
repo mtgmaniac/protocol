@@ -116,11 +116,22 @@
         "gainProtocol": { "type": "integer", "minimum": 0 }
       }
     },
+    "evolutionId": {
+      "type": "string",
+      "enum": [
+        "pyro", "arc", "blade", "ravager", "bulwark", "sentinel", "glacier", "trench",
+        "medic", "synth", "overclocked", "phantom", "shadow", "wraith", "noise", "nullwire"
+      ]
+    },
     "evolutionTier": {
       "type": "object",
-      "required": ["name", "focus", "hp", "abilities"],
+      "required": ["id", "name", "focus", "hp", "abilities"],
       "additionalProperties": false,
       "properties": {
+        "id": {
+          "$ref": "#/$defs/evolutionId",
+          "description": "Stable evolution id = lowercased callsign. Portrait convention: assets/portraits/<hero_id>_<evo_id>.png."
+        },
         "name": { "type": "string" },
         "focus": { "type": "string" },
         "callsign": {
