@@ -203,7 +203,10 @@ legality explicitly; battle_scene DESIGN-TODO replaced with the citation.
 only; friendly picks on cloaked allies are always legal. Ensure the cloak def
 and tooltip state it."
 
-## 13. Tutorial runs count toward `runs_started`
+## 13. Tutorial runs count toward `runs_started` — IMPLEMENTED 2026-07-07
+**Status:** start_run skips record_run_started when tutorial_mode is set; the
+rung-1 pity unlock (3 runs → engineer) counts real runs only. No retroactive
+save adjustment — already-banked tutorial runs are grandfathered (TRUTH notes it).
 **Question:** they do today, feeding the rung-1 pity unlock (3 runs → engineer).
 **Ruling (verbatim):** "#13: tutorial completion no longer increments
 runs_started; the rung 1 pity unlock therefore counts real runs only. No

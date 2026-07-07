@@ -99,8 +99,8 @@ var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # rng_seed >= 0 seeds the reward RNG deterministically (used by the balance sim
 # for reproducible runs); the default (-1) randomizes as normal play does.
-func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1) -> void:
-	tutorial_mode = false
+func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, tutorial: bool = false) -> void:
+	tutorial_mode = tutorial
 	if rng_seed >= 0:
 		_reward_rng.seed = rng_seed
 	else:
@@ -143,8 +143,12 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1) -
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
-	# DESIGN-TODO(kev): tutorial runs count toward runs_started too.
-	SaveManager.record_run_started()
+	# Tutorial runs do NOT count toward runs_started (per Kev 2026-07-06,
+	# DECISIONS_RESOLVED #13) — the rung-1 pity unlock counts real runs only.
+	# No retroactive save adjustment: profiles that already banked tutorial
+	# runs keep their count (grandfathered).
+	if not tutorial_mode:
+		SaveManager.record_run_started()
 
 
 # Launch the rigged onboarding encounter: forced trio (Pulse Tech required for the Nudge
@@ -153,9 +157,8 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1) -
 func start_tutorial_run() -> void:
 	var op_ids: Array = DataManager.get_operation_order()
 	var op_id: String = str(op_ids[0]) if not op_ids.is_empty() else ""
-	start_run(["pulse", "combat", "ghost"], op_id)
+	start_run(["pulse", "combat", "ghost"], op_id, -1, true)
 	current_battle = 1
-	tutorial_mode = true
 
 
 # --- Templated battle comps (pkg7.1) ---
