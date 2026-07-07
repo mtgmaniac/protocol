@@ -51,6 +51,15 @@ func _parse_args() -> Dictionary:
 			# Comma-separated unitId:Path Name pairs, e.g.
 			# --capture-evolve=engineer:Phantom,avalanche:Trench Rig
 			config["evolve"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-hero-hp="):
+			# Set the first hero's current HP (UI precision acceptance: notches at 48/55).
+			config["hero_hp"] = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--capture-protocol="):
+			# Set the protocol pool (pip acceptance at 1/10 and 10/10).
+			config["protocol"] = int(arg.get_slice("=", 1))
+		elif arg == "--capture-hero-chips":
+			# Grant the first hero burn+shield+roll+mark: 4 statuses -> 3 chips + "+1".
+			config["hero_chips"] = true
 		elif arg.begins_with("--capture-battle="):
 			config["battle_number"] = maxi(int(arg.get_slice("=", 1)), 1)
 		elif arg.begins_with("--capture-delay-ms="):
@@ -167,6 +176,12 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await _force_enemy_shield_scenario()
 	if bool(config.get("enemy_rolls_shield", false)):
 		await _force_enemy_rolls_shield_scenario()
+	if config.has("hero_hp") or bool(config.get("hero_chips", false)):
+		await _force_hero_card_state(config)
+	if config.has("protocol"):
+		current_scene.set("protocol_points", clampi(int(config["protocol"]), 0, 10))
+		current_scene.call("_update_protocol_bar")
+		await process_frame
 	var pick_mode: String = str(config.get("pick_mode", ""))
 	if pick_mode != "":
 		await _force_pick_mode(pick_mode)
@@ -546,6 +561,34 @@ func _force_enemy_rolls_shield_scenario() -> void:
 				break
 	if battle.has_method("_refresh_all_cards"):
 		battle.call("_refresh_all_cards")
+	await process_frame
+
+
+# UI precision acceptance rig: pin the first hero's HP (notch check) and/or
+# grant 4 simultaneous statuses (burn + shield + dice+1 + mark -> 3 chips and
+# the "+1" overflow badge, the documented chip cap).
+func _force_hero_card_state(config: Dictionary) -> void:
+	if current_scene == null:
+		return
+	var hero_views: Array = current_scene.get("hero_card_views")
+	if hero_views == null or hero_views.is_empty():
+		return
+	var state: Dictionary = (hero_views[0] as Dictionary).get("state", {})
+	if state.is_empty():
+		return
+	if config.has("hero_hp"):
+		state["current_hp"] = clampi(int(config["hero_hp"]), 1, int(state.get("max_hp", 55)))
+	if bool(config.get("hero_chips", false)):
+		state["burn"] = 4
+		state["burn_turns"] = 2
+		state["shield_stacks"] = [{"amt": 8, "skip_next_tick": false}]
+		state["shield"] = 8
+		state["roll_buff"] = 1
+		state["marked"] = true
+	if current_scene.has_method("_refresh_all_cards"):
+		current_scene.call("_refresh_all_cards")
+	elif current_scene.get("_card_view") != null:
+		current_scene.get("_card_view").call("refresh_all_cards")
 	await process_frame
 
 

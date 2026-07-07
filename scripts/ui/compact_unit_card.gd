@@ -34,27 +34,21 @@ class HPTickLayer extends Control:
 	var fracs: PackedFloat32Array = PackedFloat32Array()
 	var tick_color: Color = Color(0.07, 0.11, 0.06, 1.0)
 	const END_FRAC := 0.12      # each mark covers the top ~12% / bottom ~12% of the bar height
-	const PHYS_WIDTH := 3.0     # mark width in physical pixels (uniform via the pixel-snap in _draw)
 
+	# Pixel snap law (INVARIANTS #14): each notch x = round(i*10/max_hp * bar
+	# width) IN PHYSICAL PIXELS (the bar sits at a sub-pixel global x, so local
+	# rounding still smears), drawn exactly ONE physical pixel wide — filled and
+	# empty regions alike. Tick heights snap to whole physical pixels too.
 	func _draw() -> void:
 		if fracs.is_empty() or size.x < 2.0 or size.y < 2.0:
 			return
-		var xform: Transform2D = get_global_transform_with_canvas()
-		var scale_x: float = xform.get_scale().x
-		if scale_x <= 0.0:
-			scale_x = 1.0
-		# The bar itself sits at a sub-pixel global x, so snapping a tick to a whole
-		# LOCAL pixel still leaves it mid-pixel on screen (faint / dropped). Snap to a
-		# whole PHYSICAL pixel by folding in the layer's global origin — then every mark
-		# lands on an exact pixel and renders identical width, edge ticks included.
-		var origin_x: float = xform.get_origin().x
-		var w: float = PHYS_WIDTH / scale_x
-		var seg: float = size.y * END_FRAC
+		var w: float = PixelUI.physical_px_width(self, 1.0)
+		var seg_top: float = PixelUI.snap_to_physical_px(self, size.y * END_FRAC, 1)
+		var seg_bottom_y: float = PixelUI.snap_to_physical_px(self, size.y * (1.0 - END_FRAC), 1)
 		for frac in fracs:
-			var target_phys: float = round(origin_x + frac * size.x * scale_x)
-			var x: float = (target_phys - origin_x) / scale_x
-			draw_rect(Rect2(x, 0.0, w, seg), tick_color, true)
-			draw_rect(Rect2(x, size.y - seg, w, seg), tick_color, true)
+			var x: float = PixelUI.snap_to_physical_px(self, frac * size.x, 0)
+			draw_rect(Rect2(x, 0.0, w, seg_top), tick_color, true)
+			draw_rect(Rect2(x, seg_bottom_y, w, size.y - seg_bottom_y), tick_color, true)
 const CARD_NAME_FONT_SIZE := 72
 const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
@@ -66,6 +60,12 @@ const STATUS_ICON_MIN_WIDTH := 48.0
 const STATUS_VALUE_MIN_WIDTH := 32.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
 const STATUS_CHIP_HEIGHT := 56.0
+# Result-tag law for chips (UI precision batch): the status row divides into
+# this many equal constant-size plates (STATUS_MAX_VISIBLE chips + the +N
+# badge); content downscales ONE step when it would exceed the plate.
+const STATUS_PLATE_SLOTS := STATUS_MAX_VISIBLE + 1
+const STATUS_PLATE_SEP := 2.0
+const STATUS_CONTENT_SCALE_STEP := 0.78
 const CARD_BORDER_WIDTH := 6
 var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
@@ -399,11 +399,12 @@ func _build() -> void:
 	_status_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_status_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	# Match the non-clipping _status_slot: the chip stylebox border + drop shadow
-	# extend past the row rect, so clipping here cut the box on some chips. The
-	# STATUS_MAX_VISIBLE cap (+ overflow badge) already bounds chip count, so no
-	# clip is needed to contain width.
+	# extend past the row rect, so clipping here cut the box on some chips.
+	# Containment is BY CONSTRUCTION instead (result-tag law): the row divides
+	# into STATUS_PLATE_SLOTS constant integer-width plates that always sum to
+	# the row width, so no chip can cross the card boundary (INVARIANTS #14).
 	_status_row.clip_contents = false
-	_status_row.add_theme_constant_override("separation", 2)
+	_status_row.add_theme_constant_override("separation", int(STATUS_PLATE_SEP))
 	status_margin.add_child(_status_row)
 
 
@@ -644,16 +645,32 @@ func _make_action_pip(effect: Dictionary) -> PanelContainer:
 	return panel
 
 
+# Result-tag law applied to status chips (UI precision batch, 2026-07-07):
+# CONSTANT plate size per chip slot — the row divides into STATUS_PLATE_SLOTS
+# equal integer-width plates (3 chips + the +N overflow badge, TRUTH.md chip
+# doctrine), so the full row fits the card rect BY CONSTRUCTION and no chip
+# can cross the card boundary. Content scales down ONE step when its natural
+# width exceeds the plate; name text ellipsizes rather than pixel-clipping.
+func _status_plate_width() -> float:
+	var card_w: float = _locked_layout_size.x if _locked_layout_size.x > 0.0 else size.x
+	if card_w <= 2.0:
+		card_w = CARD_SIZE.x
+	# Card border inset (x2) + status-slot insets (8+8) + row margins (2+2).
+	var row_w: float = card_w - 2.0 * CARD_BORDER_WIDTH - 16.0 - 4.0
+	return floorf((row_w - float(STATUS_PLATE_SLOTS - 1) * STATUS_PLATE_SEP) / float(STATUS_PLATE_SLOTS))
+
+
 func _populate_statuses() -> void:
 	for child in _status_row.get_children():
 		child.queue_free()
 
+	var plate_w: float = _status_plate_width()
 	var statuses: Array = get_display_statuses(status_tokens)
 	var max_visible: int = mini(statuses.size(), STATUS_MAX_VISIBLE)
 	for i in range(max_visible):
-		_status_row.add_child(build_status_chip(statuses[i]))
+		_status_row.add_child(build_status_chip(statuses[i], plate_w))
 	if statuses.size() > max_visible:
-		_status_row.add_child(_make_status_overflow(statuses.size() - max_visible))
+		_status_row.add_child(_make_status_overflow(statuses.size() - max_visible, plate_w))
 
 
 func get_display_statuses(raw_statuses: Array) -> Array:
@@ -701,7 +718,7 @@ func _tint_status_content(node: Node, color: Color) -> void:
 			_tint_status_content(child, color)
 
 
-func build_status_chip(status: Dictionary) -> Control:
+func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 	var pal: Dictionary = _status_badge_palette(status)
 	var badge: PanelContainer = PanelContainer.new()
 	badge.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -723,33 +740,63 @@ func build_status_chip(status: Dictionary) -> Control:
 	chip.add_theme_constant_override("separation", 1)
 	badge.add_child(chip)
 
+	var scale_step: float = 1.0
+	if plate_w > 0.0:
+		scale_step = _status_content_scale(status, plate_w)
 	if _is_frozen_status(status):
-		chip.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
-		chip.add_child(_make_status_icon_control(status))
+		chip.add_child(_make_status_icon_control(status, scale_step))
 	elif str(status.get("mode", "named")) == "numeric":
-		chip.custom_minimum_size = Vector2(STATUS_NUMERIC_MIN_WIDTH, STATUS_CHIP_HEIGHT)
-		chip.add_child(_make_status_icon_control(status))
-		chip.add_child(_make_status_value_label(status))
+		chip.add_child(_make_status_icon_control(status, scale_step))
+		chip.add_child(_make_status_value_label(status, scale_step))
 	else:
 		chip.custom_minimum_size = Vector2(0, STATUS_CHIP_HEIGHT)
-		chip.add_child(_make_status_name_label(status))
+		chip.add_child(_make_status_name_label(status, scale_step, plate_w))
 		if str(status.get("value", "")) != "":
-			chip.add_child(_make_status_value_label(status))
+			chip.add_child(_make_status_value_label(status, scale_step))
 	_tint_status_content(chip, pal["border"])
+	if plate_w > 0.0:
+		# Constant plate: same width and height for every slot. The content row
+		# spans the plate's inner width so named text can centre + ellipsize
+		# (a zero-min HBox collapses EXPAND_FILL labels to nothing).
+		badge.custom_minimum_size = Vector2(plate_w, 0.0)
+		chip.custom_minimum_size = Vector2(plate_w - 10.0, STATUS_CHIP_HEIGHT)
+	else:
+		# Legacy free-width path (no plate given).
+		var free_min: float = STATUS_NUMERIC_MIN_WIDTH if str(status.get("mode", "named")) == "numeric" else STATUS_ICON_MIN_WIDTH
+		chip.custom_minimum_size = Vector2(free_min if not _is_frozen_status(status) else STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
 	return badge
 
 
-func _make_status_icon_control(status: Dictionary) -> Control:
+# ONE-step content downscale (result-tag law): if the chip's natural content
+# (icon + value at full size) would exceed the constant plate's inner width,
+# every piece renders at STATUS_CONTENT_SCALE_STEP; it never scales further
+# and never pixel-clips (name text ellipsizes instead).
+func _status_content_scale(status: Dictionary, plate_w: float) -> float:
+	var inner_w: float = plate_w - 10.0  # 2px border + 3px content margin per side
+	var natural_w: float = 0.0
+	if _is_frozen_status(status):
+		natural_w = STATUS_ICON_TEXTURE_SIZE
+	elif str(status.get("mode", "named")) == "numeric":
+		var digits: int = _display_status_value(status).length()
+		natural_w = STATUS_ICON_TEXTURE_SIZE + 1.0 + maxf(STATUS_VALUE_MIN_WIDTH, digits * STATUS_VALUE_FONT_SIZE * 0.55)
+	else:
+		var text: String = str(status.get("name", ""))
+		natural_w = text.length() * STATUS_NAME_FONT_SIZE * 0.55
+	return STATUS_CONTENT_SCALE_STEP if natural_w > inner_w else 1.0
+
+
+func _make_status_icon_control(status: Dictionary, scale_step: float = 1.0) -> Control:
 	var icon_kind: String = _status_effect_kind(status)
 	var icon_texture: Texture2D = _get_pip_icon_texture(icon_kind) if icon_kind != "" else null
 	if icon_texture != null:
+		var icon_size: float = roundf(STATUS_ICON_TEXTURE_SIZE * scale_step)
 		var wrap := CenterContainer.new()
 		wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		wrap.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
+		wrap.custom_minimum_size = Vector2(icon_size, STATUS_CHIP_HEIGHT)
 		wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var icon := TextureRect.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.custom_minimum_size = Vector2(STATUS_ICON_TEXTURE_SIZE, STATUS_ICON_TEXTURE_SIZE)
+		icon.custom_minimum_size = Vector2(icon_size, icon_size)
 		icon.texture = icon_texture
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -797,20 +844,20 @@ func _status_effect_kind(status: Dictionary) -> String:
 	return ""
 
 
-func _make_status_value_label(status: Dictionary) -> Label:
+func _make_status_value_label(status: Dictionary, scale_step: float = 1.0) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = _display_status_value(status)
-	label.custom_minimum_size = Vector2(STATUS_VALUE_MIN_WIDTH, 0)
+	label.custom_minimum_size = Vector2(roundf(STATUS_VALUE_MIN_WIDTH * scale_step), 0)
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = false
-	_apply_label(label, STATUS_VALUE_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
+	_apply_label(label, int(roundf(STATUS_VALUE_FONT_SIZE * scale_step)), PixelUI.GOLD_ACCENT, 0)
 	return label
 
 
-func _make_status_name_label(status: Dictionary) -> Label:
+func _make_status_name_label(status: Dictionary, scale_step: float = 1.0, plate_w: float = 0.0) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = str(status.get("name", "")).to_upper()
@@ -818,17 +865,26 @@ func _make_status_name_label(status: Dictionary) -> Label:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
+	if plate_w > 0.0:
+		# Never wider than the plate's inner width — ellipsis over pixel clip.
+		label.custom_minimum_size.x = 0.0
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_label(label, int(roundf(STATUS_NAME_FONT_SIZE * scale_step)), PixelUI.GOLD_ACCENT, 0)
 	return label
 
 
-func _make_status_overflow(hidden_count: int) -> Label:
+func _make_status_overflow(hidden_count: int, plate_w: float = 0.0) -> Label:
 	var label: Label = Label.new()
 	# pkg8.1: the +N overflow badge opens the unit inspect breakout on tap.
+	# This IS the documented overflow rule (TRUTH.md chip doctrine): chips cap
+	# at STATUS_MAX_VISIBLE, everything further folds into +N — chips never
+	# wrap and never escape the card.
 	label.mouse_filter = Control.MOUSE_FILTER_STOP
 	label.text = "+%d" % hidden_count
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if plate_w > 0.0:
+		label.custom_minimum_size = Vector2(plate_w, 0)
 	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
 	label.gui_input.connect(_on_status_overflow_input)
 	return label

@@ -109,3 +109,19 @@ lost 6 audit recordings because the gate only checked "0 failed", not the count.
 commit-msg threshold guard (`scripts/hooks/threshold_guard.py`) enforces both polarities.
 **Violation looks like:** bumping `HIGH_WATER_LINES` in the same commit as the growth it
 excuses, or dropping the audit floor to make a green run, without the token.
+
+## 14. Pixel snap law (UI)
+Every UI position or size computed from a RATIO (HP-notch x, protocol-pip spacing, chip
+offsets) must round to whole PHYSICAL pixels before drawing, and 1px elements must land
+on the physical pixel grid. Local-space rounding is NOT enough: the game renders
+1080×2400 scaled into the window (450×1000 preview ≈ 0.42×), so a whole local pixel is a
+fraction of a screen pixel — and the scale lives in the viewport's FINAL transform
+(stretch mode canvas_items), which `get_global_transform_with_canvas()` does NOT
+include. Use `PixelUI.snap_to_physical_px` / `physical_px_width` (they compose it)
+like `HPTickLayer` and `ProtocolPips` do. Precedent:
+the HP-bar notches were computed by accumulated float ratios and drawn 3 local px wide —
+at preview scale they rendered as alternating 1px/2px ticks, some faint, some dropped
+(the 2026-07-07 notch defect). Same failure class: protocol pips laid out by an
+`HBoxContainer` distributing fractional widths. **Violation looks like:** `frac * width`
+drawn without physical rounding, a container distributing ratio widths across pip rows,
+or a "1px" line whose measured width varies along the bar in a screenshot zoom.

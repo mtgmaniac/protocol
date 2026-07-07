@@ -311,6 +311,43 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 	tex_rect.size = Vector2(nw, nh)
 
 
+# ── Pixel snap law (INVARIANTS #14) ──────────────────────────────────────────
+# Ratio-derived UI coordinates must land on whole PHYSICAL pixels: the game
+# renders 1080x2400 scaled into the window, so a whole LOCAL pixel is a
+# fraction of a screen pixel and "1px" lines smear across two. Fold the
+# canvas transform's scale + origin in, round in physical space, map back.
+
+# Local -> window-pixel transform. The stretch mode is canvas_items: the
+# 1080x2400 design space scales to the window via the viewport's FINAL
+# transform, which get_global_transform_with_canvas() does NOT include —
+# canvas-space rounding alone leaves a "1px" line covering a fraction of a
+# window pixel (kept or dropped by the scaler per position: the notch defect).
+static func physical_transform(item: CanvasItem) -> Transform2D:
+	var xform: Transform2D = item.get_global_transform_with_canvas()
+	var viewport: Viewport = item.get_viewport()
+	if viewport != null:
+		xform = viewport.get_final_transform() * xform
+	return xform
+
+
+# Snap a local x/y coordinate so it lands on a whole window pixel.
+static func snap_to_physical_px(item: CanvasItem, local_coord: float, axis: int = 0) -> float:
+	var xform: Transform2D = physical_transform(item)
+	var scale: float = xform.get_scale().x if axis == 0 else xform.get_scale().y
+	if scale <= 0.0:
+		return roundf(local_coord)
+	var origin: float = xform.get_origin().x if axis == 0 else xform.get_origin().y
+	return (roundf(origin + local_coord * scale) - origin) / scale
+
+
+# The local-space length of N whole window pixels (min 1 window px).
+static func physical_px_width(item: CanvasItem, physical_px: float = 1.0) -> float:
+	var scale: float = physical_transform(item).get_scale().x
+	if scale <= 0.0:
+		return physical_px
+	return maxf(physical_px, 1.0) / scale
+
+
 static func pip_texture_for_key(key: String) -> Texture2D:
 	if key == "":
 		return null

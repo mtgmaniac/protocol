@@ -1527,7 +1527,11 @@ func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool)
 	return _engine.build_effective_rolls(raw_rolls, states, is_hero, _state)
 
 
-var _protocol_segments: Array = []
+# Footer pip row (pixel snap law, INVARIANTS #14) — integer physical-pixel
+# layout in scripts/ui/protocol_pips.gd. Preloaded: class_name cache may not
+# exist on a fresh headless run.
+const ProtocolPipsScript = preload("res://scripts/ui/protocol_pips.gd")
+var _protocol_pips: Control = null
 # Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
 # header/footer content lines up with the tray instead of running to the screen edge.
 const TRAY_EDGE_INSET := 16
@@ -1606,38 +1610,19 @@ func _max_protocol() -> int:
 
 
 func _ensure_protocol_segments() -> void:
-	if _protocol_segments.size() == _max_protocol():
-		return
-	# Cap changed (Deep Cells) or first build — rebuild the segment row.
-	for seg_variant in _protocol_segments:
-		if is_instance_valid(seg_variant):
-			(seg_variant as Panel).queue_free()
-	_protocol_segments.clear()
-	if protocol_bar != null and is_instance_valid(protocol_bar):
-		var old_row: Node = protocol_bar.get_node_or_null("ProtocolSegments")
-		if old_row != null:
-			old_row.name = "ProtocolSegmentsStale"
-			old_row.queue_free()
 	if protocol_bar == null or not is_instance_valid(protocol_bar):
 		return
-	# Direction-05: 10 discrete segments. Hide the native ProgressBar fill and draw
-	# our own segmented row over it (filled amber / empty dark).
+	if _protocol_pips != null and is_instance_valid(_protocol_pips):
+		return
+	# Direction-05: 10 discrete segments over the hidden native ProgressBar fill.
+	# Integer physical-pixel layout (pixel snap law) lives in ProtocolPips.
 	protocol_bar.show_percentage = false
 	protocol_bar.add_theme_stylebox_override("background", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
 	protocol_bar.add_theme_stylebox_override("fill", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
-	var row: HBoxContainer = HBoxContainer.new()
-	row.name = "ProtocolSegments"
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 2)
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	protocol_bar.add_child(row)
-	for _i in range(_max_protocol()):
-		var seg: Panel = Panel.new()
-		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		seg.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		row.add_child(seg)
-		_protocol_segments.append(seg)
+	_protocol_pips = ProtocolPipsScript.new()
+	_protocol_pips.name = "ProtocolSegments"
+	_protocol_pips.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	protocol_bar.add_child(_protocol_pips)
 
 
 func _update_protocol_bar() -> void:
@@ -1646,12 +1631,9 @@ func _update_protocol_bar() -> void:
 	protocol_bar.max_value = _max_protocol()
 	protocol_bar.value = protocol_points
 	_ensure_protocol_segments()
-	for i in range(_protocol_segments.size()):
-		var seg: Panel = _protocol_segments[i]
-		if i < protocol_points:
-			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0))
-		else:
-			seg.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PROTO_EMPTY, PixelUI.DT_PROTO_EMPTY_BORDER, 1))
+	if _protocol_pips != null and is_instance_valid(_protocol_pips):
+		_protocol_pips.total = _max_protocol()
+		_protocol_pips.filled = protocol_points
 	# Numeric readout folded into the label so the count is always legible above the pips.
 	protocol_label.text = "PROTOCOL %d/%d" % [protocol_points, _max_protocol()]
 	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
