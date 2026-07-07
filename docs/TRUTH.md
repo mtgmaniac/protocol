@@ -177,6 +177,7 @@ npm run validate-data                                          # JSON schema gat
 <godot> --headless <proj> -s scripts/debug/run_smoke_test.gd   # one full headless run
 <godot> <proj> -- --debug-battle                                # windowed battle + screenshot
 python scripts/sim/ci_smoke.py                                 # balance diff vs baseline.json
+python scripts/sim/sweep.py --name X --knob K --values ...     # balance workbench (measurement only; scripts/sim/README.md)
 ```
 Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-check by `load()` from a headless SceneTree or just run the audit.
 

@@ -107,6 +107,28 @@ const BOSS_STANDING_RULES := {
 # BALANCE-TODO: rebuild HP 50%, brood cadence 3, mantle shield 6 are provisional.
 const SCRAPMASTER_REBUILD_PCT := 50
 const MANTLE_ROUND_SHIELD := 6
+const BROOD_CADENCE := 3
+
+# ── Balance-workbench tuning seam (scripts/sim/sweep.py — MEASUREMENT ONLY) ──
+# Empty in every real game and in every un-swept sim run: each getter returns
+# the shipped constant unless a sweep injected an override via set_tuning().
+# The registry of sweepable keys + ranges lives in scripts/sim/knobs.json;
+# ci_smoke proves the empty-dict path is byte-identical to the pre-seam engine.
+# Do NOT use this to ship balance changes — tuned values that win a sweep get
+# committed as the real constants/data, then the baseline ceremony applies.
+var tuning: Dictionary = {}
+
+
+func set_tuning(overrides: Dictionary) -> void:
+	tuning = overrides.duplicate(true)
+
+
+func _tuned_int(key: String, default_value: int) -> int:
+	return int(tuning.get(key, default_value)) if not tuning.is_empty() else default_value
+
+
+func _tuned_float(key: String, default_value: float) -> float:
+	return float(tuning.get(key, default_value)) if not tuning.is_empty() else default_value
 
 # 1-based round counter driving the turn-cadence rules.
 var _battle_round: int = 0
@@ -205,7 +227,7 @@ func _apply_boss_round_start_rules() -> void:
 					_apply_ward(enemy_state)
 			BOSS_MANTLE:
 				_log("The Tyrant accretes its mantle.")
-				_add_shield_stack(enemy_state, MANTLE_ROUND_SHIELD, true)
+				_add_shield_stack(enemy_state, _tuned_int("mantle_round_shield", MANTLE_ROUND_SHIELD), true)
 
 
 # Enemy-phase rules (turn-cadence actions): Assembly Line rebuild, Brood
@@ -221,10 +243,10 @@ func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 					for drone_state in _enemy_states:
 						if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and bool(drone_state["dead"]):
 							_log("ASSEMBLY LINE — the SCRAPMASTER rebuilds a Scrap Drone!")
-							_revive_state(drone_state, SCRAPMASTER_REBUILD_PCT)
+							_revive_state(drone_state, _tuned_int("scrapmaster_rebuild_pct", SCRAPMASTER_REBUILD_PCT))
 							break
 			BOSS_MATRIARCH:
-				if _battle_round % 3 == 0 and _count_living_enemies() < GameState.SQUAD_UNIT_LIMIT:
+				if _battle_round % maxi(_tuned_int("brood_cadence", BROOD_CADENCE), 1) == 0 and _count_living_enemies() < GameState.SQUAD_UNIT_LIMIT:
 					_log("THE BROOD — the Matriarch births a Bloodmite!")
 					_round_events.append({
 						"type": "summon",
@@ -1382,7 +1404,7 @@ func _apply_execute_bonus(attacker_state: Dictionary, target_state: Dictionary) 
 	if int(target_state.get("current_hp", 0)) * 100 >= max_hp * threshold_pct:
 		return
 	# BALANCE-TODO: execute bonus damage is a flat +8
-	var bonus: int = 8
+	var bonus: int = _tuned_int("execute_bonus", 8)
 	_log("%s EXECUTES %s for +%d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, bonus])
 	_emit_event(target_state, "execute", bonus, _resolve_side_for_state(target_state))
 	_damage_state(target_state, bonus, false, attacker_state)
@@ -1451,7 +1473,7 @@ func _apply_chain_jumps(
 		jumps += 1
 	# BALANCE-TODO: chain jump damage is 60% of base, round down.
 	# Amplifier directive: chain hits carry the full base damage.
-	var chain_damage: int = base_damage if _has_directive(hero_state, "chainFullDamage") else int(floor(float(base_damage) * 0.6))
+	var chain_damage: int = base_damage if _has_directive(hero_state, "chainFullDamage") else int(floor(float(base_damage) * _tuned_float("chain_ratio", 0.6)))
 	if chain_damage <= 0:
 		return
 	var hit_ids: Dictionary = {str(primary_target.get("id", "")): true}

@@ -42,6 +42,56 @@ distribution, keyword realized value, enemy damage-per-appearance, and the
 **Stage-1** ridge-logistic content-lift screen (bootstrap CIs). `--ab` is the
 **Stage-2** matched-seed causal test; `--skillband` is the L1↔L2 gap.
 
+## Balance workbench (knob sweeps — measurement only)
+
+Sweeps a tunable knob (or a 2-knob grid) across a value range at fixed policy,
+**without changing any data file, constant, or combat rule**: values are
+injected per run through the `--tuning` seam and vanish with the process. The
+knob registry (ids, kinds, ranges, and THE PATTERN FOR ADDING KNOBS) is
+[`knobs.json`](knobs.json); sweep.py refuses unknown knobs and out-of-range
+values.
+
+```bash
+# One knob: where does hive enter the 25-40% skilled-clear band?
+python scripts/sim/sweep.py --name hive_hp --knob enemy_hp_scalar@hive \
+    --values 0.7,0.8,0.9,1.0 --runs 300
+
+# Small grid (max 2 knobs, cartesian):
+python scripts/sim/sweep.py --name exec_chain --knob execute_bonus --values 8,12 \
+    --knob chain_ratio --values 0.6,0.8 --runs 300 --policy l2
+```
+
+Output → `results/sweeps/<name>/`: `report.md` (per-op and per-hero clear
+rates at every point, **deltas vs `baseline.json`**, `✦` flags on any per-op
+rate inside the 25–40% target band, and a band summary for the swept op),
+`report.csv` (same, flat), `point_*.json` (raw metrics per point).
+
+Knob kinds: `state_scalar` (`enemy_hp_scalar`, `enemy_dmg_scalar` — applied to
+enemy states at spawn and to summons; qualify per op with `@op`, e.g.
+`enemy_hp_scalar@hive`, or leave global) and `engine_tuning` (boss cadence
+`scrapmaster_rebuild_pct` / `brood_cadence` / `mantle_round_shield`, plus
+`execute_bonus`, `chain_ratio` — routed to `combat_manager.set_tuning()`,
+whose getters default to the shipped constants).
+
+Guarantees (verify after touching the seam):
+- **Zero drift when idle:** an empty tuning dict is byte-identical to the
+  pre-seam engine — `python scripts/sim/ci_smoke.py` must PASS unchanged.
+- **Determinism:** same seed + same `--tuning` → byte-identical JSONL (points
+  are seed-matched, so two points differ ONLY by the knob value). Re-check
+  with `tests/sim_determinism.sh` after seam changes.
+- **Shipping a value:** a sweep result is evidence, not a change. Commit the
+  winner as the real constant/data, run the full gate, and the ±10 baseline
+  ceremony applies (docs/INVARIANTS.md #9). Knobs behind ruled-pending
+  decisions (execute_bonus #9, chain_ratio #10) need their ruling transcribed
+  into docs/DECISIONS_RESOLVED.md first.
+
+Worked example (committed): [`docs/sweeps/2026-07-06_hive_hp_example.md`](../../docs/sweeps/2026-07-06_hive_hp_example.md)
+— hive enemy-HP scalar 0.7→1.0 plus a 0.72–0.78 refinement, 300 runs/point:
+hive enters the 25–40% band at **≈0.75–0.78**, with a breakpoint cliff below
+(0.70/0.72 both overshoot to 45.8%). Live sweep outputs land in
+`results/sweeps/<name>/` (gitignored); copy reports worth keeping into
+`docs/sweeps/`.
+
 ## CI regression test
 
 ```bash

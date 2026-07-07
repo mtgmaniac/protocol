@@ -44,6 +44,60 @@ const COMBAT_SEED_OFFSET := 0x1B873593
 var _tel = SimTelemetryScript.new()
 var _seed: int = 0
 
+# ── Balance-workbench tuning (sweep.py — MEASUREMENT ONLY) ────────────────────
+# `--tuning key[@op]=value,...`: op-qualified keys apply only when this run's
+# op matches; resolved once per run. enemy_hp_scalar / enemy_dmg_scalar are
+# applied to enemy STATES at spawn (and to summons); everything else goes to
+# combat_manager.set_tuning() (registry: scripts/sim/knobs.json). Empty = the
+# shipped game, byte-identical (ci_smoke guards it).
+var _tuning_engine: Dictionary = {}
+var _tuning_hp_scalar: float = 1.0
+var _tuning_dmg_scalar: float = 1.0
+
+
+func _resolve_tuning(spec: String, op: String) -> void:
+	_tuning_engine = {}
+	_tuning_hp_scalar = 1.0
+	_tuning_dmg_scalar = 1.0
+	for token in spec.split(",", false):
+		var entry: String = str(token).strip_edges()
+		if entry == "" or not entry.contains("="):
+			continue
+		var kv: PackedStringArray = entry.split("=", true, 1)
+		var key: String = str(kv[0]).strip_edges()
+		var value: float = float(str(kv[1]).strip_edges())
+		if key.contains("@"):
+			var qualified: PackedStringArray = key.split("@", true, 1)
+			if str(qualified[1]).strip_edges() != op:
+				continue  # other op's knob: this run is its own control
+			key = str(qualified[0]).strip_edges()
+		match key:
+			"enemy_hp_scalar":
+				_tuning_hp_scalar = value
+			"enemy_dmg_scalar":
+				_tuning_dmg_scalar = value
+			_:
+				_tuning_engine[key] = value
+
+
+# Applied to a fresh CombatManager right after setup_battle (and to injected
+# summons): scale enemy pools/damage, hand engine keys to the tuning seam.
+func _apply_tuning(cm: CombatManager) -> void:
+	if not _tuning_engine.is_empty():
+		cm.set_tuning(_tuning_engine)
+	if _tuning_hp_scalar == 1.0 and _tuning_dmg_scalar == 1.0:
+		return
+	for enemy_state_variant in cm.get_enemy_states():
+		_apply_state_scalars(enemy_state_variant)
+
+
+func _apply_state_scalars(enemy_state: Dictionary) -> void:
+	if _tuning_hp_scalar != 1.0:
+		enemy_state["max_hp"] = maxi(int(round(float(enemy_state["max_hp"]) * _tuning_hp_scalar)), 1)
+		enemy_state["current_hp"] = maxi(int(round(float(enemy_state["current_hp"]) * _tuning_hp_scalar)), 1)
+	if _tuning_dmg_scalar != 1.0:
+		enemy_state["dmg_scale"] = float(enemy_state.get("dmg_scale", 1.0)) * _tuning_dmg_scalar
+
 
 func _make_policy(policy_name: String, policy_seed: int, archetype: String = ""):
 	var policy
@@ -135,10 +189,16 @@ func _run(args: Dictionary) -> int:
 	var provider := SeededRollProvider.new(_seed ^ 0x9E3779B9)
 	var policy = _make_policy(policy_name, _seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")))
 
+	# Balance-workbench tuning (measurement only; recorded in the header so a
+	# swept run is reproducible from its JSONL alone).
+	var tuning_spec: String = str(args.get("tuning", ""))
+	_resolve_tuning(tuning_spec, op)
+
 	_tel.emit({
 		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,
 		"sim_version": SIM_VERSION, "schema_version": SimTelemetryScript.SCHEMA_VERSION,
 		"roll_source": provider.describe(), "granted": granted,
+		"tuning": tuning_spec,
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
@@ -269,6 +329,7 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 
 	var cm := CombatManager.new()
 	cm.setup_battle(hero_units, enemy_units)
+	_apply_tuning(cm)
 	gs.call("begin_battle_xp_tracking")
 	cm.setup_relics(gs.get("relics"))
 	cm.setup_gear(gs.get("gear_by_unit"))
@@ -478,7 +539,12 @@ func _process_summons(cm: CombatManager, dm: Node, events: Array) -> void:
 		var base_enemy: EnemyData = dm.call("get_enemy_by_display_name", summon_name) as EnemyData
 		if base_enemy == null or base_enemy.ai_type != "dumb":
 			continue
-		cm.inject_enemy(base_enemy.duplicate(true) as EnemyData)
+		var injected: Dictionary = cm.inject_enemy(base_enemy.duplicate(true) as EnemyData)
+		# Workbench scalars cover summons too (same measurement as spawns).
+		if not injected.is_empty() and (_tuning_hp_scalar != 1.0 or _tuning_dmg_scalar != 1.0):
+			var slot: int = int(injected.get("slot_index", -1))
+			if slot >= 0 and slot < cm.get_enemy_states().size():
+				_apply_state_scalars(cm.get_enemy_states()[slot])
 
 
 # ── Between-battle (policy-driven, sim-B.2) ───────────────────────────────────
