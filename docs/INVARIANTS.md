@@ -101,6 +101,11 @@ Raising the battle_scene.gd line watermark — or ANY enforcement threshold (cer
 ci_smoke tolerances) — requires `BASELINE-APPROVED-BY-KEV` in the commit message; lowering
 a threshold is always free. Enforcement that the enforced party can loosen isn't
 enforcement — precedent: the 3378→3416 watermark self-raise for primer wiring, reasonable
-in the moment but decided by the same agent it constrained. The commit-msg threshold guard
-(`scripts/hooks/threshold_guard.py`) enforces this. **Violation looks like:** bumping
-`HIGH_WATER_LINES` in the same commit as the growth it excuses, without the token.
+in the moment but decided by the same agent it constrained. For FLOOR-type thresholds
+(minimums, e.g. the required audit pass count `AUDIT_MIN_PASSED`) the polarity inverts:
+LOWERING loosens and needs the token, raising is free — the principle is always "you
+can't loosen enforcement on yourself." Second precedent: the Job-2a extraction silently
+lost 6 audit recordings because the gate only checked "0 failed", not the count. The
+commit-msg threshold guard (`scripts/hooks/threshold_guard.py`) enforces both polarities.
+**Violation looks like:** bumping `HIGH_WATER_LINES` in the same commit as the growth it
+excuses, or dropping the audit floor to make a green run, without the token.

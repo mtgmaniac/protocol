@@ -4,6 +4,9 @@
 # rarity ladder rolls two rows deeper, capped at row 10).
 extends Control
 
+const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
+
+
 const TYPE_FONT := 28
 const TITLE_FONT := 62
 const CARD_TITLE_FONT := 46
@@ -99,6 +102,10 @@ func _ready() -> void:
 	if _modifier_id != "":
 		var flagged_names: Array = (GameState.pending_flagged_comp as Dictionary).get("names", comp_names)
 		column.add_child(_build_route_card(true, flagged_names))
+	# Zero-options guard (permanent fixture, TRUTH §Run structure): with no
+	# route cards, take the standard route.
+	if not ChoiceScreenGuardScript.ensure_options("route_fork", column.get_child_count(), _on_route_chosen.bind(false)):
+		return
 
 
 func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:

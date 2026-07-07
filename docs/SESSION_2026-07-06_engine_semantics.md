@@ -273,6 +273,31 @@ drift +0.0 both times:
   only assignment to `turn_phase` in the game). battle_scene lands at 2610;
   watermark LOWERED 3416 → 2610, no headroom (free per INVARIANTS #13).
 
+---
+
+## Battle-5 "INTERCEPT: RELIC CACHE" soft lock (diagnosed + fixed)
+
+Root cause **(c) empty payload**: two `relics.is_empty()` guards
+(`_roll_reward_item_ids`, `_pick_random_item_id`) predate the pkg5 Starting
+Directive — a run opening with a boss relic rolled ZERO relic options at battle
+5 while the title and claim paths (which had the correct accounting) rendered a
+dead picker. (a) collision disproved: BEAT_GAPS excludes 5; 1000-seed sweep, 0
+hits. (b) disproved: "RELIC CACHE" is reward_screen's own event chrome, not a
+card lookup. Fix: `GameState.drafted_relic_count()` unifies roll/pick/claim/
+title (Starting Directive never consumes the slot; owned relics excluded from
+the offer). Universal guard: `ChoiceScreenGuard` in reward / intercept /
+route-fork / evolution — zero built options asserts in debug and auto-resolves
+a logged default in release (permanent fixture, TRUTH §Run structure). Three
+relic-cache regressions pin the repro (seed 424242 + salvageRig) and the
+beat-gap exclusion.
+
+**Collateral find:** the Job-2a extraction had silently cost 6 audit recordings
+(bare-scene audit tests calling moved cost/copy methods → runtime error →
+function abort). Repaired (tests build ProtocolActions directly; audit back to
+227/0) and made structurally impossible to miss again: verify_gate enforces
+`AUDIT_MIN_PASSED = 227` (a FLOOR — lowering needs the KEV token; the threshold
+guard is now polarity-aware). INVARIANTS #13 records the second precedent.
+
 ### Cleanup step 7 — hive HP sweep rerun (fixed policy)
 docs/sweeps/2026-07-06_hive_hp_postcleanup.md: hive enters the 25–40% band at
 **enemy_hp_scalar ≈ 0.75–0.78** (30.5% / 28.8%); 0.70/0.72 plateau overshoots

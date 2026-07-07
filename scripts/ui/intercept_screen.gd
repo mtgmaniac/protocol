@@ -3,6 +3,11 @@
 # (hero / gear / consumable) and drafts run as follow-up stages.
 extends Control
 
+const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
+
+var _enabled_choice_count: int = 0
+
+
 const TYPE_FONT := 28
 const TITLE_FONT := 62
 const CARD_TITLE_FONT := 50
@@ -125,6 +130,7 @@ func _show_card_stage() -> void:
 	_add_label(str(_card.get("name", "")), TITLE_FONT, PixelUI.TEXT_PRIMARY, 3)
 	_add_gap(8)
 	_add_label(str(_card.get("desc", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
+	_enabled_choice_count = 0
 	for choice_variant in _card.get("choices", []):
 		var choice: Dictionary = choice_variant
 		var enabled: bool = true
@@ -133,6 +139,12 @@ func _show_card_stage() -> void:
 		if str(choice.get("pick", "")) == "gear" and _all_equipped_gear().is_empty():
 			enabled = false
 		_add_choice_button(str(choice.get("label", "")), _on_choice_pressed.bind(choice), enabled)
+		if enabled:
+			_enabled_choice_count += 1
+	# Zero-options guard (permanent fixture, TRUTH §Run structure): a card with
+	# no usable choice (or a failed draw) routes straight to the battle.
+	if not ChoiceScreenGuardScript.ensure_options("intercept", _enabled_choice_count, SceneManager.go_to_battle):
+		return
 
 
 func _on_choice_pressed(choice: Dictionary) -> void:

@@ -1,6 +1,9 @@
 # Evolution branch picker shown when a unit reaches a run-long upgrade.
 extends Control
 
+const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
+
+
 const CARD_WIDTH_FRACTION := 0.78
 const CARD_MIN_WIDTH := 620.0
 const CARD_MAX_WIDTH := 920.0
@@ -148,6 +151,10 @@ func _build_choice_cards() -> void:
 		for path_variant in paths:
 			var path: Dictionary = path_variant
 			choice_cards.add_child(_create_evolution_card(path, unit))
+	# Zero-options guard (permanent fixture, TRUTH §Run structure): a stop with
+	# no choices routes on rather than stranding the run.
+	if not ChoiceScreenGuardScript.ensure_options("evolution", choice_cards.get_child_count(), SceneManager.go_to_next_battle_or_beat):
+		return
 	call_deferred("_update_choice_layout")
 
 

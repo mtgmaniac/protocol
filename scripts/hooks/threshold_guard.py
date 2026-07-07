@@ -11,14 +11,17 @@ import sys
 
 TOKEN = "BASELINE-APPROVED-BY-KEV"
 
-# (file, constant) pairs guarded. Adding a new enforcement threshold? List it.
+# (file, constant, direction) triplets guarded. direction "max": RAISING
+# loosens (needs the token); "min": LOWERING loosens (floors, e.g. required
+# audit pass count). Tightening is always free. Adding a threshold? List it.
 WATCHED = [
-    ("scripts/hooks/battle_scene_growth.py", "HIGH_WATER_LINES"),
-    ("scripts/hooks/baseline_ceremony.py", "CEREMONY_PTS"),
-    ("scripts/sim/ci_smoke.py", "TOL_OVERALL"),
-    ("scripts/sim/ci_smoke.py", "TOL_OP"),
-    ("scripts/sim/ci_smoke.py", "TOL_HERO"),
-    ("scripts/sim/ci_smoke.py", "TOL_LIFT"),
+    ("scripts/hooks/battle_scene_growth.py", "HIGH_WATER_LINES", "max"),
+    ("scripts/hooks/baseline_ceremony.py", "CEREMONY_PTS", "max"),
+    ("scripts/sim/ci_smoke.py", "TOL_OVERALL", "max"),
+    ("scripts/sim/ci_smoke.py", "TOL_OP", "max"),
+    ("scripts/sim/ci_smoke.py", "TOL_HERO", "max"),
+    ("scripts/sim/ci_smoke.py", "TOL_LIFT", "max"),
+    ("scripts/verify_gate.py", "AUDIT_MIN_PASSED", "min"),
 ]
 
 
@@ -37,15 +40,16 @@ def main() -> int:
                                   capture_output=True, text=True,
                                   encoding="utf-8", errors="replace").stdout.split()
     raises = []
-    for path, const in WATCHED:
+    for path, const, direction in WATCHED:
         if path not in staged_files:
             continue
         old = read_const(git_show(f"HEAD:{path}"), const)
         new = read_const(git_show(f":{path}"), const)
         if old is None or new is None:
             continue  # constant renamed/added — the invariant text is the backstop
-        if new > old:
-            raises.append(f"{path}::{const} {old:g} -> {new:g}")
+        loosened = new > old if direction == "max" else new < old
+        if loosened:
+            raises.append(f"{path}::{const} {old:g} -> {new:g} ({direction} threshold loosened)")
     if not raises:
         return 0
     msg = open(sys.argv[1], encoding="utf-8", errors="replace").read()

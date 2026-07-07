@@ -14,6 +14,7 @@ Kev's sign-off: commit message must contain BASELINE-APPROVED-BY-KEV — see
 docs/INVARIANTS.md #9).
 """
 import argparse
+import re
 import json
 import os
 import subprocess
@@ -27,6 +28,11 @@ GODOT = os.environ.get(
 )
 BASELINE = ROOT / "scripts" / "sim" / "baseline.json"
 CEREMONY_PTS = 10.0  # per-op clear-rate points
+# Audit pass-count FLOOR: "0 failed" alone can't see tests silently vanishing
+# (precedent: the Job-2a extraction cost 6 recordings unnoticed until a manual
+# count check). Raise when adding tests; LOWERING needs BASELINE-APPROVED-BY-KEV
+# (threshold_guard, inverted polarity — floors loosen downward).
+AUDIT_MIN_PASSED = 227
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),
@@ -52,6 +58,10 @@ def run_gate(name: str, cmd: list, needle: str, use_shell: bool) -> bool:
     ok = needle in out
     if name == "ability audit":
         ok = ok and "FAIL" not in out.replace("0 failed", "")
+        m = re.search(r"Ability Audit Complete: (\d+) passed", out)
+        if m and int(m.group(1)) < AUDIT_MIN_PASSED:
+            print(f"   FAIL — audit recorded {m.group(1)} passes, floor is {AUDIT_MIN_PASSED}: tests are silently vanishing")
+            ok = False
     print(f"   {'PASS' if ok else 'FAIL'}")
     if not ok:
         tail = "\n".join(out.strip().splitlines()[-12:])

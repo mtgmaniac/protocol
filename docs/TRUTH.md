@@ -143,7 +143,8 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 ## Run structure
 
 - **Templated slots:** fixed comps (b1, b10, one signature per op) or slot patterns rolled ONCE at run start (`GameState.resolved_battle_comps`); previews always show exact comps.
-- **Beats:** battle-5 relic draft = INTERCEPT: RELIC CACHE. Exactly 3 random beats per run in distinct gaps from {after b2,b3,b4,b6,b7,b8}, Fork/Intercept 50/50 with ≥1 of each; b6+ = major tier.
+- **Beats:** battle-5 relic draft = INTERCEPT: RELIC CACHE (renders through the reward picker in event chrome). The draft fires on `GameState.drafted_relic_count() == 0` — a pkg5 Starting Directive boss relic never consumes the slot and is excluded from the offer (the 2026-07-06 battle-5 soft-lock fix; regression-pinned). Exactly 3 random beats per run in distinct gaps from {after b2,b3,b4,b6,b7,b8} — the relic battle's gap is structurally excluded; Fork/Intercept 50/50 with ≥1 of each; b6+ = major tier.
+- **Zero-options guard (permanent fixture):** any between-battle choice screen (reward, relic cache, intercept, route fork, evolution/directive) that builds ZERO interactive options asserts loudly in debug and auto-resolves a logged default in release (`scripts/ui/choice_screen_guard.gd`, `[CHOICE_GUARD]` log tag + telemetry stub) so a playtest build can never soft-lock on a dead screen. A guard firing is always a bug in the offer roll — fix the offer, never widen the guard.
 - **Route Fork:** standard vs flagged (same comp + 1 of 10 modifiers from `GameState.BATTLE_MODIFIERS`, no repeats; SUPPLY GRADE +2 = reward ladder two rows deeper, cap row 10).
 - **Intercept:** 11 minor + 11 major cards (`GameState.INTERCEPT_CARDS`), drawn without replacement; Memorial Protocol redraws without a recent death.
 

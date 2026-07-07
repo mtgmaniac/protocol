@@ -17,6 +17,8 @@ extends Control
 # Preloaded (not referenced by global class_name) so the screen builds even before the
 # editor regenerates its global-class cache for the new ItemTypeFrame script.
 const TypeFrameScript := preload("res://scripts/ui/item_type_frame.gd")
+const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
+
 
 # Card geometry (logical px). The card is a PERFECT SQUARE (width == height) with content
 # vertically centered inside it.
@@ -210,6 +212,10 @@ func _build_reward_cards() -> void:
 		if item == null:
 			continue
 		reward_cards.add_child(_create_reward_card(item))
+	# Zero-options guard (permanent fixture, TRUTH §Run structure): an empty
+	# offer must never strand the run on a dead picker.
+	if not ChoiceScreenGuardScript.ensure_options("reward", reward_cards.get_child_count(), _auto_resolve_empty_offer):
+		return
 	_refresh_selection()
 	call_deferred("_update_reward_layout")
 
@@ -803,7 +809,9 @@ func _apply_visual_theme() -> void:
 	title_label.visible = false
 	reward_title_label.text = "CHOOSE REWARD"
 	# Fixed beat (pkg7.2): the battle-5 relic draft renders in event chrome.
-	if GameState.current_battle == GameState.RELIC_ONLY_ROUND and GameState.relics.size() == (1 if GameState.starting_directive_relic_id != "" else 0):
+	# Same drafted-relic accounting as the roll + claim paths (a Starting
+	# Directive relic never counts against the draft slot).
+	if GameState.current_battle == GameState.RELIC_ONLY_ROUND and GameState.drafted_relic_count() == 0:
 		reward_title_label.text = "INTERCEPT: RELIC CACHE"
 	reward_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -871,3 +879,13 @@ func _make_label(text: String, font_size: int, color: Color, outline: int = 1) -
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.style_label(label, font_size, color, outline)
 	return label
+
+
+# ChoiceScreenGuard fallback: no options were built — award the battle XP the
+# claim path would have awarded and route on (evolution stop still honored).
+func _auto_resolve_empty_offer() -> void:
+	GameState.award_battle_xp()
+	if GameState.has_pending_evolution():
+		SceneManager.go_to_evolution()
+		return
+	SceneManager.go_to_next_battle_or_beat()

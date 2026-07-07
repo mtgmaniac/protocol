@@ -5,6 +5,7 @@ extends RefCounted
 const HEROES_DATA_PATH := "res://data/raw/heroes.data.json"
 const ENEMIES_DATA_PATH := "res://data/raw/enemies.data.json"
 const BATTLE_SCENE_SCRIPT := preload("res://scripts/battle/battle_scene.gd")
+const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
 const AUDIT_ROLL := 10
 
 const META_FIELDS := [
@@ -453,6 +454,7 @@ func _run_regression_audits() -> void:
 	_run_directive_combat_regressions()
 	_run_battle_slot_regressions()
 	_run_beat_regressions()
+	_run_relic_cache_regression()
 	_run_route_modifier_regressions()
 	_run_intercept_regressions()
 	_run_chain_regression()
@@ -1384,7 +1386,12 @@ func _run_new_relic_regressions() -> void:
 	var root_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
 	if root_scene != null:
 		root_scene.combat_manager.setup_relics(["rootAccess"])
-		var root_cost: int = int(root_scene.call("_get_set_cost"))
+		# Cost path lives in ProtocolActions (extraction, 2026-07-06); a bare
+		# scene never runs _ready, so build the module by hand.
+		var root_pa = PROTOCOL_ACTIONS_SCRIPT.new()
+		root_pa.setup(root_scene)
+		var root_cost: int = int(root_pa.call("_get_set_cost"))
+		root_pa.free()
 		root_scene.free()
 		_expect_and_record("Regression / relic rootAccess free set", "setCostZeroOncePerBattle", "0", str(root_cost))
 
@@ -1394,7 +1401,10 @@ func _run_new_relic_regressions() -> void:
 		twin_scene.hero_rolls = {"hero_a": 17, "hero_b": 4}
 		twin_scene.hero_roll_nudges = {"hero_b": 1}
 		twin_scene.hero_roll_sets = {"hero_b": 12}
-		var twin_copied: bool = bool(twin_scene.call("_twin_fates_copy_roll", "hero_a", "hero_b"))
+		var twin_pa = PROTOCOL_ACTIONS_SCRIPT.new()
+		twin_pa.setup(twin_scene)
+		var twin_copied: bool = bool(twin_pa.call("_twin_fates_copy_roll", "hero_a", "hero_b"))
+		twin_pa.free()
 		var twin_ok: bool = (
 			twin_copied
 			and int(twin_scene.hero_rolls.get("hero_b", 0)) == 17
@@ -2049,6 +2059,61 @@ func _run_battle_slot_regressions() -> void:
 	GameState.reset_run()
 
 
+# Battle-5 "INTERCEPT: RELIC CACHE" soft lock (fixed 2026-07-06): a run that
+# opens with a pkg5 Starting Directive boss relic must STILL get its battle-5
+# relic draft — the old relics.is_empty() guards rolled ZERO options and dead-
+# ended the run. Pins the reproducing config (seed 424242 + salvageRig) through
+# the fixed flow, plus the draft invariants and the beat-gap exclusion.
+func _run_relic_cache_regression() -> void:
+	var gs: Node = GameState
+	var sm: Node = SaveManager
+	sm.call("unlock_boss_relic_for_op", "facility")
+
+	gs.call("start_run", ["combat", "avalanche", "medic"], "facility", 424242)
+	gs.call("set_starting_directive", "salvageRig")
+	gs.set("current_battle", 5)
+	gs.call("prepare_battle_rewards")
+	var options: Array = gs.call("get_pending_reward_items")
+	var count_ok: bool = options.size() == int(gs.get("RELIC_CHOICE_COUNT"))
+	var all_relics: bool = true
+	var no_boss: bool = true
+	var no_owned_dup: bool = true
+	for option_variant in options:
+		var option: ItemData = option_variant as ItemData
+		if option == null or option.item_type != "relic":
+			all_relics = false
+		elif option.boss_relic:
+			no_boss = false
+		elif option.id == "salvageRig":
+			no_owned_dup = false
+	_expect_and_record(
+		"Regression / relic cache drafts with a Starting Directive relic", "relicCache",
+		"count/relics/noboss/nodup = true/true/true/true",
+		"count/relics/noboss/nodup = %s/%s/%s/%s" % [str(count_ok), str(all_relics), str(no_boss), str(no_owned_dup)]
+	)
+
+	# Claiming one relic closes the draft: a re-entry rolls empty on purpose.
+	if not options.is_empty():
+		gs.call("claim_reward", str((options[0] as ItemData).id), "")
+	var claimed_ok: bool = int(gs.call("drafted_relic_count")) == 1 and (gs.get("relics") as Array).size() == 2
+	gs.call("prepare_battle_rewards")
+	var reentry_empty: bool = (gs.call("get_pending_reward_items") as Array).is_empty()
+	_expect_and_record(
+		"Regression / relic cache claim closes the draft", "relicCache",
+		"claimed/reentry_empty = true/true",
+		"claimed/reentry_empty = %s/%s" % [str(claimed_ok), str(reentry_empty)]
+	)
+
+	# Beat scheduler exclusion: no seed may place an event beat after battle 5
+	# (the relic slot) — the gap list simply doesn't contain it; keep it that way.
+	var beat5_hits: int = 0
+	for seed_value in range(200):
+		gs.call("start_run", ["combat", "avalanche", "medic"], "facility", 800000 + seed_value)
+		if not (gs.call("get_beat_after_battle", 5) as Dictionary).is_empty():
+			beat5_hits += 1
+	_expect_and_record("Regression / no event beat on the relic battle (200-seed sweep)", "relicCache", "0", str(beat5_hits))
+
+
 func _run_beat_regressions() -> void:
 	# Beats: exactly 3, in distinct allowed gaps, >=1 Fork and >=1 Intercept,
 	# minor before b6 / major from b6 — across repeated rolls.
@@ -2218,7 +2283,10 @@ func _run_route_modifier_regressions() -> void:
 	if sealed_scene != null:
 		sealed_scene.combat_manager.setup_battle([], [])
 		sealed_scene.combat_manager.setup_battle_modifier("sealedSupplies")
-		var sealed_cost: int = int(sealed_scene.call("_get_item_protocol_cost", null))
+		var sealed_pa = PROTOCOL_ACTIONS_SCRIPT.new()
+		sealed_pa.setup(sealed_scene)
+		var sealed_cost: int = int(sealed_pa.call("_get_item_protocol_cost", null))
+		sealed_pa.free()
 		sealed_scene.free()
 		_expect_and_record("Regression / modifier sealed supplies", "routeModifiers", "2", str(sealed_cost))
 
@@ -3279,7 +3347,10 @@ func _run_relic_protocol_on_item_use_regression() -> void:
 		_record_failure("Regression / relic protocolOnItemUse", "protocolOnItemUse", "BattleScene script instantiates", "new() returned null")
 		return
 	battle_scene.combat_manager.setup_relics(["protocolOverride"])
-	var cost: int = int(battle_scene.call("_get_item_protocol_cost", null))
+	var override_pa = PROTOCOL_ACTIONS_SCRIPT.new()
+	override_pa.setup(battle_scene)
+	var cost: int = int(override_pa.call("_get_item_protocol_cost", null))
+	override_pa.free()
 	battle_scene.free()
 	_expect_and_record("Regression / relic protocolOnItemUse", "protocolOnItemUse", "0", str(cost))
 

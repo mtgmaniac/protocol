@@ -858,10 +858,7 @@ func claim_reward(item_id: String, target_unit_id: String = "", swap_consumable_
 			consumables.append(item_id)
 		"relic":
 			# The Starting Directive doesn't consume the battle-5 draft slot.
-			var drafted_relics: int = relics.size()
-			if starting_directive_relic_id != "" and relics.has(starting_directive_relic_id):
-				drafted_relics -= 1
-			if drafted_relics > 0:
+			if drafted_relic_count() > 0:
 				return false
 			relics.append(item_id)
 		_:
@@ -1137,6 +1134,18 @@ func get_pending_evolution_unit_id() -> String:
 	return pending_evolution_unit_id
 
 
+# Relics DRAFTED this run. The Starting Directive boss relic (pkg5) never
+# consumes the battle-5 draft slot, so it doesn't count — a run that opened
+# with a boss relic still gets its RELIC CACHE draft. (Fixes the battle-5
+# soft lock: the old `relics.is_empty()` guards predated Starting Directives
+# and rolled ZERO options for any run that owned one.)
+func drafted_relic_count() -> int:
+	var drafted: int = relics.size()
+	if starting_directive_relic_id != "" and relics.has(starting_directive_relic_id):
+		drafted -= 1
+	return drafted
+
+
 func _roll_reward_item_ids() -> Array:
 	var round: int = current_battle
 	# Supply grade (pkg7.3 flagged route): the ladder rolls two rows deeper,
@@ -1145,9 +1154,9 @@ func _roll_reward_item_ids() -> Array:
 	var supply_grade: int = next_battle_supply_grade
 	next_battle_supply_grade = 0
 	if round == RELIC_ONLY_ROUND:
-		if relics.is_empty():
+		if drafted_relic_count() == 0:
 			return _roll_relic_choice_ids(RELIC_CHOICE_COUNT)
-		return []
+		return []  # draft already claimed — re-entry stays empty on purpose
 	if supply_grade > 0:
 		round = mini(round + supply_grade, 10)
 		if not DRAFT_RARITY_BY_ROUND.has(round):
@@ -1217,7 +1226,9 @@ func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array) -> Strin
 
 
 func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
-	if item_type == "relic" and not relics.is_empty():
+	# Only a DRAFTED relic closes the relic pool (the Starting Directive boss
+	# relic doesn't — see drafted_relic_count).
+	if item_type == "relic" and drafted_relic_count() > 0:
 		return ""
 	var pool: Array = []
 	for item_key in DataManager.items.keys():
@@ -1225,6 +1236,10 @@ func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
 		if item == null:
 			continue
 		if item.item_type != item_type:
+			continue
+		# Never offer a relic the run already owns (a Starting Directive relic
+		# would otherwise be duplicable in the battle-5 draft).
+		if item_type == "relic" and relics.has(item.id):
 			continue
 		if excluded_ids.has(item.id):
 			continue
