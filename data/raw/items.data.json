@@ -183,7 +183,7 @@
     {
       "id": "deep_zero_pin",
       "name": "Deep Zero Pin",
-      "desc": "Freeze all enemy dice — each keeps its face and repeats that result on its next roll.",
+      "desc": "Pin every enemy die to its weakest face and freeze it — each enemy repeats its recharge result next roll.",
       "rarity": "rare",
       "icon": "bolt",
       "target": "none",
