@@ -216,8 +216,34 @@ DECISIONS_RESOLVED #17 Synod compensation note is void; #6 through #10 deferred
 balance numbers re anchor to this checkpoint."
 
 ### Timer-contract corrections (cleanup step 4 — NOT tuning)
-The two `erbT: 1` enemy abilities and Emergency Signal (`lowHpSquadRollBuff`)
-are corrected to 2t. These are contract repairs: under the instance-timer ruling
-a 1t buff cast mid-round expires at that same round's tick and never shapes a
-roll — the authored intent (buff one subsequent roll) requires 2t under the new
-clock. Values chosen to restore the pre-ruling effective behavior, no more.
+The two `erbT: 1` enemy abilities (Cover Field, Aegis Bash) and Emergency Signal
+(`lowHpSquadRollBuff`) are corrected to 2t. These are contract repairs: under
+the instance-timer ruling a 1t buff cast mid-round expires at that same round's
+tick and never shapes a roll — the authored intent (buff one subsequent roll)
+requires 2t under the new clock. Values chosen to restore the pre-ruling
+effective behavior, no more. Measured effect: overall −0.7 (facility +1.4,
+veil −4.6), within ci tolerance.
+
+### Cleanup step 6 — re-measure vs the accepted checkpoint (NOT re-accepted)
+Pinned config (l1/900000/300), after timer corrections + L1 crit banking:
+
+| | checkpoint | now | delta |
+|---|---|---|---|
+| overall | 0.2533 | 0.2867 | **+3.3** |
+| facility | 0.5493 | 0.5915 | +4.2 |
+| hive | 0.0678 | 0.0678 | +0.0 |
+| stellarMenagerie | 0.0208 | 0.0625 | +4.2 |
+| veil | 0.2308 | 0.2154 | −1.5 |
+| voidCirclet | 0.2982 | 0.4035 | **+10.5 ⚠ beyond ±10** |
+
+Per-hero: avalanche 0.132→0.237 (**+10.5** — the crit-banking recovery the
+checkpoint annotation predicted), pulse +5.6, ghost +4.8, shield +4.7, combat
++3.4, medic +1.9, engineer −0.9, breaker −3.5. Baseline NOT re-accepted per the
+cleanup order — voidCirclet's +10.5 crosses the ceremony line; Kev's call.
+
+### Cleanup step 7 — hive HP sweep rerun (fixed policy)
+docs/sweeps/2026-07-06_hive_hp_postcleanup.md: hive enters the 25–40% band at
+**enemy_hp_scalar ≈ 0.75–0.78** (30.5% / 28.8%); 0.70/0.72 plateau overshoots
+at 52.5%, 0.8 undershoots at 18.6%. One non-reproducing worker flake in the
+first refinement attempt (identical seeds re-ran 300/300 clean twice;
+determinism matrix byte-identical) — environmental, logged here for the record.
