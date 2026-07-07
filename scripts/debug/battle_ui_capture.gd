@@ -44,6 +44,13 @@ func _parse_args() -> Dictionary:
 			config["output"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-operation="):
 			config["operation_id"] = arg.get_slice("=", 1)
+		elif arg.begins_with("--capture-squad="):
+			# Comma-separated hero ids, e.g. --capture-squad=engineer,avalanche,combat
+			config["squad"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-evolve="):
+			# Comma-separated unitId:Path Name pairs, e.g.
+			# --capture-evolve=engineer:Phantom,avalanche:Trench Rig
+			config["evolve"] = arg.get_slice("=", 1).split(",", false)
 		elif arg.begins_with("--capture-battle="):
 			config["battle_number"] = maxi(int(arg.get_slice("=", 1)), 1)
 		elif arg.begins_with("--capture-delay-ms="):
@@ -120,7 +127,14 @@ func _prepare_run(config: Dictionary) -> void:
 		_game_state().start_tutorial_run()
 		return
 	var operation_id: String = str(config.get("operation_id", DEFAULT_OPERATION_ID))
-	_game_state().start_run(DEFAULT_SQUAD, operation_id)
+	var squad: Array = config.get("squad", DEFAULT_SQUAD)
+	_game_state().start_run(squad, operation_id)
+	# Evolved-unit captures: apply unitId:Path Name pairs before the battle
+	# builds its runtime units (portraits/kits come from get_run_unit_data).
+	for pair_variant in config.get("evolve", []):
+		var pair: String = str(pair_variant)
+		if pair.contains(":"):
+			_game_state().unit_evolutions[pair.get_slice(":", 0)] = pair.get_slice(":", 1)
 	var battle_number: int = int(config.get("battle_number", DEFAULT_BATTLE_NUMBER))
 	for _i in range(battle_number):
 		_game_state().advance_to_next_battle()

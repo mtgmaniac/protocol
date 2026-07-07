@@ -596,35 +596,60 @@ func _crop_to_content(tex: Texture2D, hero_bust: bool = false) -> Texture2D:
 
 
 # Subject bounding box of a matted bust: everything brighter than the flat
-# near-black mat counts as subject. Sampled on a stride-4 grid (same budget as
-# _is_full_bleed) and widened by the stride plus a little air so the outline
-# never clips and heads keep a few pixels of headroom in the frame.
+# near-black mat counts as subject — but by ROW/COLUMN DENSITY, not any lone
+# pixel. This art fades into the mat with sparse dither/noise (PHANTOM's
+# static aura, BLADE's torso fade): a plain min/max bbox chases those stray
+# pixels 100+px past the silhouette and puts dead mat back under the bust.
+# A row/column is content only when enough of its samples are non-mat.
+# Framing contract (Kev 2026-07-07): head a few pixels from the frame top
+# (small top margin), NO mat below the bust (zero bottom margin — the crop
+# bottom IS the last dense row); shoulders may overflow the sides.
+# Sampled on a stride-4 grid, same budget as _is_full_bleed.
 const _MAT_MAX_CHANNEL := 6.0 / 255.0
-const _MAT_BBOX_MARGIN := 8
+const _MAT_ROW_DENSITY := 0.06
+const _MAT_COL_DENSITY := 0.04
+const _MAT_TOP_MARGIN := 4
+const _MAT_SIDE_MARGIN := 4
 
 
 func _mat_content_rect(img: Image) -> Rect2i:
 	var w: int = img.get_width()
 	var h: int = img.get_height()
-	var min_x: int = w
-	var min_y: int = h
-	var max_x: int = -1
-	var max_y: int = -1
-	for y in range(0, h, 4):
-		for x in range(0, w, 4):
-			var c: Color = img.get_pixel(x, y)
+	var xs: int = int(ceil(w / 4.0))
+	var ys: int = int(ceil(h / 4.0))
+	var row_hits: PackedInt32Array = PackedInt32Array()
+	row_hits.resize(ys)
+	var col_hits: PackedInt32Array = PackedInt32Array()
+	col_hits.resize(xs)
+	for yi in ys:
+		for xi in xs:
+			var c: Color = img.get_pixel(xi * 4, yi * 4)
 			if c.r > _MAT_MAX_CHANNEL or c.g > _MAT_MAX_CHANNEL or c.b > _MAT_MAX_CHANNEL:
-				min_x = mini(min_x, x)
-				min_y = mini(min_y, y)
-				max_x = maxi(max_x, x)
-				max_y = maxi(max_y, y)
-	if max_x < 0:
-		return Rect2i(0, 0, w, h)  # all-mat image: keep it whole, never blank
-	min_x = maxi(min_x - _MAT_BBOX_MARGIN, 0)
-	min_y = maxi(min_y - _MAT_BBOX_MARGIN, 0)
-	max_x = mini(max_x + _MAT_BBOX_MARGIN, w - 1)
-	max_y = mini(max_y + _MAT_BBOX_MARGIN, h - 1)
-	return Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
+				row_hits[yi] += 1
+				col_hits[xi] += 1
+	var row_min: int = maxi(2, int(xs * _MAT_ROW_DENSITY))
+	var col_min: int = maxi(2, int(ys * _MAT_COL_DENSITY))
+	var top: int = -1
+	var bottom: int = -1
+	for yi in ys:
+		if row_hits[yi] >= row_min:
+			if top < 0:
+				top = yi * 4
+			bottom = yi * 4
+	var left: int = -1
+	var right: int = -1
+	for xi in xs:
+		if col_hits[xi] >= col_min:
+			if left < 0:
+				left = xi * 4
+			right = xi * 4
+	if top < 0 or left < 0:
+		return Rect2i(0, 0, w, h)  # no dense content: keep it whole, never blank
+	top = maxi(top - _MAT_TOP_MARGIN, 0)
+	left = maxi(left - _MAT_SIDE_MARGIN, 0)
+	right = mini(right + _MAT_SIDE_MARGIN, w - 1)
+	bottom = mini(bottom, h - 1)
+	return Rect2i(left, top, right - left + 1, bottom - top + 1)
 
 
 # Sampled opaque coverage: scenic full-bleed art is ~100% opaque, cutout art
