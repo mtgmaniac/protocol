@@ -126,87 +126,91 @@ DEFERRED to the global balance pass (see the transcribed batch below).
 
 ---
 
-# RULED — IMPLEMENTATION PENDING *(adjudicated 2026-07; transcribe ruling text before implementing)*
+# RULED — TRANSCRIBED 2026-07-06 *(implementation pending unless marked deferred)*
 
-> ⚠ For every entry below marked *awaiting transcription*: the ruling exists in
-> Kev's adjudication list, NOT yet in this repo. Paste it into the entry (ruling +
-> one-line rationale + date), commit that, THEN implement. Never implement from
-> memory of the chat.
+> Ruling text below is Kev's adjudication batch, transcribed VERBATIM (no
+> paraphrase) per the cleanup order of 2026-07-06 — implement against THIS text.
+> Batch preamble, verbatim: "Decision batch closeout, human adjudicated. Read
+> docs/TRUTH.md and docs/INVARIANTS.md first. For every item: implement, update
+> TRUTH.md in the same commit, move the entry from DECISIONS NEEDED into
+> docs/DECISIONS_RESOLVED.md with date and rationale. Do NOT touch the freeze,
+> buff timer, or detonate paths; those landed in a separate adjudicated session."
+> Batch verify clause, verbatim: "VERIFY: validate-data, ability audit, flow
+> smoke, tutorial smoke, ci_smoke. Expected drift: zero, except possibly #2's
+> normalization sweep if any multi turn shields exist in data; report any delta
+> before touching the baseline."
 
 ## 2. Shield "one round" per-side reading
 **Question:** code applies expiry per-side as "one opposing action phase" so
 enemy-phase shields survive one tick (`combat_manager.gd` `_add_shield_stack`);
-alternative was strict same-round expiry. **Ruling:** *awaiting transcription.*
+alternative was strict same-round expiry.
+**Ruling (verbatim):** "#2 CONFIRMED plus sweep: shields last one opposing action
+phase, per side expiry as coded. Audit data/raw for ANY ability, gear, or enemy
+kit granting multi turn shields; normalize to one phase and fix eff text, long
+descriptions, and pip descriptions. SINGLE NAMED EXCEPTION: shieldsPersist
+(Mantle Core relic, MANTLE TYRANT standing rule) is untouched, and TRUTH.md rule
+5 must name it as the only exception."
 
 ## 5. SCRAPMASTER "every other turn"
 **Question:** code reads ASSEMBLY LINE as even-numbered rounds; alternative is
-every 2nd enemy phase from first activation. **Ruling:** *awaiting transcription.*
+every 2nd enemy phase from first activation.
+**Ruling (verbatim):** "#5: SCRAPMASTER's ASSEMBLY LINE fires every 2nd enemy
+phase counted from first activation, not even numbered rounds. Adjust, update
+player visible rule text, test the cadence."
 
-## 6. INTERCEPT_CARDS numbers
-**Question:** all 22 card payloads in `GameState.INTERCEPT_CARDS` are provisional
-(`BALANCE-TODO`). **Ruling:** *awaiting transcription.*
+## 6.–10. + 17. Balance numbers — DEFERRED to the global balance pass *(resolved as deferred)*
+**Ruling (verbatim):** "#6, #7, #8, #9, #10, #17: record all six in
+DECISIONS_RESOLVED as 'DEFERRED to the global balance pass' with file:line
+cites; leave every number untouched; remove from DECISIONS NEEDED."
+**Cites (current):** #6 INTERCEPT_CARDS `GameState.gd:394` · #7 route modifiers
+`GameState.gd:253` · #8 boss cadence `combat_manager.gd:107` (consts + tuning
+seam defaults) · #9 execute bonus `combat_manager.gd:1406` · #10 chain ratio
+`combat_manager.gd:1474` · #17 Synod difficulty (see the superseded entry above).
 **Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
 checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
 ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
-through #10 deferred balance numbers re anchor to this checkpoint."
-
-
-## 7. Route modifier numbers
-**Question:** all 10 flagged-route modifier amounts (`GameState.BATTLE_MODIFIERS`)
-are provisional. **Ruling:** *awaiting transcription.*
-**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
-checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
-ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
-through #10 deferred balance numbers re anchor to this checkpoint."
-
-
-## 8. Boss cadence numbers
-**Question:** rebuild HP 50% / brood cadence 3 / mantle shield 6 are provisional
-(`combat_manager.gd` constants). **Ruling:** *awaiting transcription.*
-**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
-checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
-ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
-through #10 deferred balance numbers re anchor to this checkpoint."
-
-
-## 9. Execute bonus
-**Question:** flat +8 (`_apply_execute_bonus`) — tune or scale? **Ruling:**
-*awaiting transcription.*
-**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
-checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
-ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
-through #10 deferred balance numbers re anchor to this checkpoint."
-
-
-## 10. Chain jump ratio
-**Question:** 60% round down (`_apply_chain_jumps`) — tune? **Ruling:** *awaiting
-transcription.*
-**Checkpoint re-anchor (per Kev 2026-07-06, baseline accept):** "Post repeat-freeze
-checkpoint, pre repricing. Avalanche figure known biased low: L1 cannot yet play
-ally crit banking. DECISIONS_RESOLVED #17 Synod compensation note is void; #6
-through #10 deferred balance numbers re anchor to this checkpoint."
-
+through #10 deferred balance numbers re anchor to this checkpoint." All six
+numbers are sweepable via the balance workbench (`scripts/sim/knobs.json`).
 
 ## 11. Reverse Gimbal UX
-**Question:** "may subtract" implemented as tap-again to flip +3 ↔ −3. **Ruling:**
-*awaiting transcription.*
+**Question:** "may subtract" implemented as tap-again to flip +3 ↔ −3.
+**Ruling (verbatim):** "#11 CONFIRMED: Reverse Gimbal tap again to flip +3/−3
+ships as is."
 
 ## 12. Cloak: hostile-only untargetability
 **Question:** friendly picks on cloaked allies stay legal (`_get_legal_target_ids`).
-**Ruling:** *awaiting transcription.*
+**Ruling (verbatim):** "#12 CONFIRMED: cloak blocks hostile single target picks
+only; friendly picks on cloaked allies are always legal. Ensure the cloak def
+and tooltip state it."
 
 ## 13. Tutorial runs count toward `runs_started`
 **Question:** they do today, feeding the rung-1 pity unlock (3 runs → engineer).
-**Ruling:** *awaiting transcription.*
+**Ruling (verbatim):** "#13: tutorial completion no longer increments
+runs_started; the rung 1 pity unlock therefore counts real runs only. No
+retroactive save adjustment; note grandfather behavior in TRUTH.md."
 
 ## 14. Directive Marks stay single-target on AoE
 **Question:** Combat Sense / Marked for Death mark only the single-target hit;
-AoE marking everything read too strong. **Ruling:** *awaiting transcription.*
+AoE marking everything read too strong.
+**Ruling (verbatim):** "#14 CONFIRMED, never AoE Mark: keep single target
+directive behavior; update Combat Sense and Marked for Death descriptions to say
+they Mark the primary target of single target hits; audit data/raw for any
+ability combining AoE with mark, report any found before rewriting them; replace
+the DESIGN-TODO at combat_manager.gd:1215 with a resolved citation."
 
 ## 15. Mid-run re-equip
 **Question:** "freely re-equip" is deferred; deterministic stand-in in place
-(`GameState.gd`). Full UI wanted? **Ruling:** *awaiting transcription.*
+(`GameState.gd`). Full UI wanted?
+**Ruling (verbatim):** "#15: mid run re-equip REJECTED, not deferred. Remove the
+TODO at GameState.gd:623, keep the deterministic stand in, record the rejection."
 
 ## 16. Active shield total readout
 **Question:** shield total only visible via HP preview/inspect since the chip was
-cut — sufficient at 450×1000? **Ruling:** *awaiting transcription.*
+cut — sufficient at 450×1000?
+**Ruling (verbatim):** "#16 RESTORE the active shield total as a visible primary
+status chip on unit cards (battle_card_view), both sides, updating live as
+shields are granted, broken, and expired, styled consistently with existing
+chips. Record in DECISIONS_RESOLVED that the chip's absence is reversed per Kev
+and the chip is canon; HP preview behavior unchanged. Note: with per side expiry
+confirmed in #2, the chip must visibly drop at the correct phase tick, not at
+round end."
