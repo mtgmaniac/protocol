@@ -169,7 +169,7 @@ Deep navy bg; pixel art; `m5x7` font; hard edges, no gradients. Meaning-based co
 
 **Enemy portraits:** `assets/portraits/enemies/` via `ENEMY_PORTRAIT_BY_NAME` (bare filenames only — no `res://` long forms), fallback `_slugify(display_name).png`. As of 2026-07-07 all 38 unit defs have explicit map entries and every one resolves. Legacy-era files renamed to current unit names (git history preserves the lineage): rift_macaque→pumice_macaque, eclipse_panther→geode_panther, ridge_drake→magma_drake, eclipse_raptor→pyroclast_raptor, thunder_ape→basalt_ape, void_reaver→mantle_tyrant, sparksprite→glitch_sprite, levyn_acolyte→init_acolyte, chronicle_scribe→checksum_scribe, geas_binder→axiom_binder, glimmer_double→forked_double, arc_titan_channeler→daemon_channeler, circlet_hierophant→root_hierophant, whitenoise_skimmer→static_skimmer, void_hound→obsidian_hound.
 
-**Known art gap (flagged, not fixed):** Obsidian Hound and Slag Hound share one art file — both map to `obsidian_hound.png`; Slag Hound needs its own portrait when art lands.
+**Hound art gap CLOSED (2026-07-07 Accretion drop):** Slag Hound has its own `slag_hound.png`; Obsidian Hound keeps `obsidian_hound.png`. No shared enemy art files remain.
 
 **Quarantine:** unreferenced files live in `assets/portraits/enemies/unused/` (cyber_phoenix, harmonic_hexnode, veil_spare) — kept, not deleted.
 

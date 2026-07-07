@@ -153,10 +153,9 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"Hive Matriarch": "hive_matriarch.png",
 	# The Accretion (files renamed to current unit names, 2026-07-07).
 	"Pumice Macaque": "pumice_macaque.png",
-	# TODO(art): Obsidian Hound and Slag Hound share one art file — Slag Hound
-	# has no portrait of its own (missing art; see TRUTH.md asset section).
 	"Obsidian Hound": "obsidian_hound.png",
-	"Slag Hound": "obsidian_hound.png",
+	# Hound art gap CLOSED 2026-07-07: Slag Hound has its own file now.
+	"Slag Hound": "slag_hound.png",
 	"Geode Panther": "geode_panther.png",
 	"Magma Drake": "magma_drake.png",
 	"Pyroclast Raptor": "pyroclast_raptor.png",
@@ -218,6 +217,15 @@ const MATTED_ENEMY_PORTRAITS := {
 	"glitch_sprite.png": true,
 	"init_acolyte.png": true,
 	"root_hierophant.png": true,
+	# Accretion drop (2026-07-07) — incl. slag_hound.png, the hound split.
+	"basalt_ape.png": true,
+	"geode_panther.png": true,
+	"magma_drake.png": true,
+	"mantle_tyrant.png": true,
+	"obsidian_hound.png": true,
+	"pumice_macaque.png": true,
+	"pyroclast_raptor.png": true,
+	"slag_hound.png": true,
 }
 
 var units: Dictionary = {}
