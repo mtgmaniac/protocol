@@ -17,6 +17,12 @@ func play_round_feedback(events: Array) -> void:
 	for group_variant in action_groups:
 		var group: Dictionary = group_variant
 		await _play_action_feedback_group(group)
+		# Keyword primers pause the sequence at GROUP BOUNDARIES only: any
+		# first sighting queued during this group shows now (one per turn),
+		# then the sequence resumes on dismiss.
+		var primer: Variant = _scene.get("_primer")
+		if primer != null and is_instance_valid(primer):
+			await primer.flush_at_group_boundary()
 
 
 func play_death_sfx_for_event(event: Dictionary) -> void:
@@ -105,6 +111,11 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 			had_fatal_hit = true
 		# Die-tray hooks and SFX are not tied to card lookup (freeze targets a die, not always a card flash).
 		apply_live_event_visual_state(event)
+		# Keyword primers observe (queue only — display waits for the group
+		# boundary so the beat is never interrupted mid-swing).
+		var primer: Variant = _scene.get("_primer")
+		if primer != null and is_instance_valid(primer):
+			primer.notice_event(event)
 		_play_event_sfx(event_type, event)
 		var target_card: Control = _find_card_for_event(event)
 		if target_card == null:
@@ -195,9 +206,9 @@ func _try_play_death_sfx(event: Dictionary) -> void:
 
 func _get_impact_feedback_kind(event_type: String) -> String:
 	match event_type:
-		"shield", "block", "roll_buff", "freeze":
+		"shield", "block", "roll_buff", "freeze", "accrete":
 			return "shield"
-		"heal", "cloak":
+		"heal", "cloak", "revive":
 			return "heal"
 		_:
 			return "damage"
@@ -240,9 +251,9 @@ func _flash_card(card: Control, event_type: String) -> void:
 	match event_type:
 		"damage", "burn":
 			flash_color = Color(1.0, 0.45, 0.45, 1.0)
-		"heal", "leech":
+		"heal", "leech", "revive":
 			flash_color = Color(0.45, 1.0, 0.65, 1.0)
-		"shield", "block", "roll_buff", "freeze":
+		"shield", "block", "roll_buff", "freeze", "accrete":
 			flash_color = Color(0.55, 0.82, 1.0, 1.0)
 		"wipe_shields":
 			flash_color = Color(1.0, 0.80, 0.20, 1.0)
@@ -333,6 +344,10 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 		"leech":
 			# The paired heal event carries the green +N; the leech event only
 			# draws the return tracer.
+			return ""
+		"pierce", "accrete", "revive":
+			# Primer/feedback markers — the paired damage/shield/heal events
+			# carry the numbers; these float nothing.
 			return ""
 		"chain", "detonate", "spike":
 			return "-%d" % amount

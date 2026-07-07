@@ -74,6 +74,11 @@ func default_data() -> Dictionary:
 			# Heroes unlocked but not yet added to a squad — drive the "NEW" badge.
 			"heroes_new": [],
 		},
+		# Keyword primers (one-shot micro-tutorials, docs/PRIMERS.md): ids that
+		# have successfully displayed and been dismissed.
+		"onboarding": {
+			"primers_seen": [],
+		},
 		"settings": {},
 	}
 
@@ -118,6 +123,10 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	data["unlocks"]["heroes_new"] = _string_array(loaded_unlocks.get("heroes_new", []))
 	if loaded.get("settings") is Dictionary:
 		data["settings"] = loaded["settings"]
+	# Onboarding block heals to defaults when absent (older saves).
+	var had_onboarding: bool = loaded.get("onboarding") is Dictionary
+	if had_onboarding:
+		data["onboarding"]["primers_seen"] = _string_array((loaded["onboarding"] as Dictionary).get("primers_seen", []))
 	# Grandfather clause: a pre-existing profile (played a run, or finished the
 	# tutorial) that predates the unlock system keeps full access — every hero and
 	# operation, ladder maxed — so no current player loses what they already had.
@@ -128,6 +137,11 @@ func _merge_loaded(loaded: Dictionary) -> void:
 		data["unlocks"]["operations"] = OPERATION_CHAIN.duplicate()
 		data["unlocks"]["hero_ladder_rung"] = MAX_HERO_LADDER_RUNG
 		data["unlocks"]["heroes_new"] = []
+	# Primer grandfather (same clause shape): a veteran profile that predates the
+	# primer system starts with every CURRENT primer marked seen — they've met
+	# the mechanics; primers are for genuinely first sightings.
+	if is_existing_profile and not had_onboarding:
+		data["onboarding"]["primers_seen"] = _all_primer_ids()
 
 
 func _string_array(value: Variant) -> Array:
@@ -147,6 +161,46 @@ func save() -> void:
 		return
 	file.store_string(JSON.stringify(data, "  "))
 	file.close()
+
+
+# --- Keyword primers (onboarding) ---
+
+# Reads primer ids straight from the data file — SaveManager loads during
+# autoload init, before DataManager is guaranteed ready, so no cross-autoload
+# dependency here.
+func _all_primer_ids() -> Array:
+	var ids: Array = []
+	var file: FileAccess = FileAccess.open("res://data/raw/primers.data.json", FileAccess.READ)
+	if file == null:
+		return ids
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if parsed is Dictionary:
+		for entry in (parsed as Dictionary).get("primers", []):
+			ids.append(str((entry as Dictionary).get("id", "")))
+	return ids
+
+
+func is_primer_seen(primer_id: String) -> bool:
+	var onboarding: Dictionary = data.get("onboarding", {})
+	return (onboarding.get("primers_seen", []) as Array).has(primer_id)
+
+
+# Called ONLY after a primer successfully displayed and was dismissed.
+func mark_primer_seen(primer_id: String) -> void:
+	if not (data.get("onboarding") is Dictionary):
+		data["onboarding"] = {"primers_seen": []}
+	var seen: Array = data["onboarding"].get("primers_seen", [])
+	if not seen.has(primer_id):
+		seen.append(primer_id)
+		data["onboarding"]["primers_seen"] = seen
+		save()
+
+
+# Dev tool: clear only primers_seen (RESET PRIMERS (DEV) in settings).
+func dev_reset_primers() -> void:
+	data["onboarding"] = {"primers_seen": []}
+	save()
 
 
 # --- Tutorial ---

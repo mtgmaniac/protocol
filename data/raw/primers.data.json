@@ -1,0 +1,240 @@
+{
+  "$comment": "Keyword primers — one-shot micro-tutorials shown the FIRST time a mechanic is sighted (docs/PRIMERS.md is the authoring guide). Text rules: ONE sentence, ~12 words max, states the RULE not flavor, sourced/compressed from keywords.data.json defs — a primer must never contradict the glossary. '$signal_hook_examples' entries are documentation only (not loaded): they show the future signal_hook trigger shape.",
+  "primers": [
+    {
+      "id": "primer_jam",
+      "trigger": { "type": "die_status_applied", "param": "jam" },
+      "target": "die",
+      "text": "JAM: this die's next roll is capped at 10.",
+      "priority": 50,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_freeze",
+      "trigger": { "type": "die_status_applied", "param": "freeze" },
+      "target": "die",
+      "text": "FREEZE: the die keeps its face — that unit acts again.",
+      "priority": 55,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_rewrite",
+      "trigger": { "type": "die_status_applied", "param": "rewrite" },
+      "target": "die",
+      "text": "REWRITE: this die's next roll becomes 3.",
+      "priority": 50,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_hijack",
+      "trigger": { "type": "die_status_applied", "param": "hijack" },
+      "target": "die",
+      "text": "HIJACK: this enemy's next roll copies your highest die.",
+      "priority": 50,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_mark",
+      "trigger": { "type": "status_applied", "param": "mark" },
+      "target": "unit_card",
+      "text": "MARK: the next hit on this unit deals +50%.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_firewall",
+      "trigger": { "type": "status_applied", "param": "firewall" },
+      "target": "unit_card",
+      "text": "FIREWALL: blocks the next ability aimed at this unit, then breaks.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_cloak",
+      "trigger": { "type": "status_applied", "param": "cloak" },
+      "target": "unit_card",
+      "text": "CLOAK: can't be targeted directly; breaks when it deals damage.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_taunt",
+      "trigger": { "type": "status_applied", "param": "taunt" },
+      "target": "unit_card",
+      "text": "TAUNT: the taunted unit can only target the taunter.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_burn",
+      "trigger": { "type": "status_applied", "param": "burn" },
+      "target": "unit_card",
+      "text": "BURN: takes damage at the end of each round.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_spike",
+      "trigger": { "type": "status_applied", "param": "spike" },
+      "target": "unit_card",
+      "text": "SPIKE: attackers take damage back this round.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_accrete",
+      "trigger": { "type": "status_applied", "param": "accrete" },
+      "target": "unit_card",
+      "text": "ACCRETE: gains shield at the start of each of its turns.",
+      "priority": 40,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_chain",
+      "trigger": { "type": "attack_keyword_resolved", "param": "chain" },
+      "target": "unit_card",
+      "text": "CHAIN: the hit also jumps to the lowest-HP other enemy.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_detonate",
+      "trigger": { "type": "attack_keyword_resolved", "param": "detonate" },
+      "target": "unit_card",
+      "text": "DETONATE: consumes the Burn for its remaining damage, instantly.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_execute",
+      "trigger": { "type": "attack_keyword_resolved", "param": "execute" },
+      "target": "unit_card",
+      "text": "EXECUTE: bonus damage when the target is below 25% HP.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_breach",
+      "trigger": { "type": "attack_keyword_resolved", "param": "breach" },
+      "target": "unit_card",
+      "text": "BREACH: destroys all shield on the target before the damage.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_pierce",
+      "trigger": { "type": "attack_keyword_resolved", "param": "pierce" },
+      "target": "unit_card",
+      "text": "PIERCE: the damage ignores shields — they stay up.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_leech",
+      "trigger": { "type": "attack_keyword_resolved", "param": "leech" },
+      "target": "unit_card",
+      "text": "LEECH: the attacker heals half the damage dealt.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_siphon",
+      "trigger": { "type": "attack_keyword_resolved", "param": "siphon" },
+      "target": "unit_card",
+      "text": "SIPHON: that hit drained your Protocol.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_revive",
+      "trigger": { "type": "attack_keyword_resolved", "param": "revive" },
+      "target": "unit_card",
+      "text": "REVIVE: a fallen unit returns to the fight.",
+      "priority": 30,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_nudge",
+      "trigger": { "type": "protocol_action_affordable", "param": "nudge" },
+      "target": "footer_button",
+      "text": "NUDGE (1 Protocol): add +3 to one die.",
+      "priority": 60,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_reroll",
+      "trigger": { "type": "protocol_action_affordable", "param": "reroll" },
+      "target": "footer_button",
+      "text": "REROLL (2 Protocol): reroll one of your dice.",
+      "priority": 60,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_set",
+      "trigger": { "type": "protocol_action_affordable", "param": "set" },
+      "target": "footer_button",
+      "text": "SET (3 Protocol): set one die to any value.",
+      "priority": 60,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_personality_systematic",
+      "trigger": { "type": "personality_assigned", "param": "SYSTEMATIC" },
+      "target": "unit_card",
+      "text": "SYSTEMATIC: attacks the squad left to right.",
+      "priority": 20,
+      "requires_feature": "targeting_personalities"
+    },
+    {
+      "id": "primer_personality_wounded",
+      "trigger": { "type": "personality_assigned", "param": "WOUNDED" },
+      "target": "unit_card",
+      "text": "WOUNDED: hunts the lowest-HP hero.",
+      "priority": 20,
+      "requires_feature": "targeting_personalities"
+    },
+    {
+      "id": "primer_personality_pack",
+      "trigger": { "type": "personality_assigned", "param": "PACK" },
+      "target": "unit_card",
+      "text": "PACK: joins another attacker's target.",
+      "priority": 20,
+      "requires_feature": "targeting_personalities"
+    },
+    {
+      "id": "primer_personality_spiteful",
+      "trigger": { "type": "personality_assigned", "param": "SPITEFUL" },
+      "target": "unit_card",
+      "text": "SPITEFUL: strikes back at whoever hurt it last.",
+      "priority": 20,
+      "requires_feature": "targeting_personalities"
+    }
+  ],
+  "$signal_hook_examples": [
+    {
+      "$comment": "NOT LOADED — documentation for the future signal_hook trigger type: one entry here + one emitted signal is a whole new primer (docs/PRIMERS.md).",
+      "id": "primer_haunt",
+      "trigger": { "type": "signal_hook", "param": "haunt_applied" },
+      "target": "unit_card",
+      "text": "HAUNT: (rule sentence when the mechanic ships).",
+      "priority": 30,
+      "requires_feature": "haunt"
+    },
+    {
+      "id": "primer_pilfer",
+      "trigger": { "type": "signal_hook", "param": "pilfer_resolved" },
+      "target": "unit_card",
+      "text": "PILFER: (rule sentence when the mechanic ships).",
+      "priority": 30,
+      "requires_feature": "pilfer"
+    },
+    {
+      "id": "primer_counter_protocol",
+      "trigger": { "type": "signal_hook", "param": "counter_protocol_armed" },
+      "target": "footer_button",
+      "text": "COUNTER-PROTOCOL: (rule sentence when the mechanic ships).",
+      "priority": 30,
+      "requires_feature": "counter_protocol"
+    }
+  ]
+}

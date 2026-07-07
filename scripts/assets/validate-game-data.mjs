@@ -24,14 +24,17 @@ function readJson(rel) {
 const heroesSchema = readJson('data/schemas/heroes.data.schema.json');
 const enemiesSchema = readJson('data/schemas/enemies.data.schema.json');
 const battleModesSchema = readJson('data/schemas/battle-modes.schema.json');
+const primersSchema = readJson('data/schemas/primers.data.schema.json');
 
 const vHeroes = ajv.compile(heroesSchema);
 const vEnemies = ajv.compile(enemiesSchema);
 const vBattleModes = ajv.compile(battleModesSchema);
+const vPrimers = ajv.compile(primersSchema);
 
 const heroes = readJson('data/raw/heroes.data.json');
 const enemies = readJson('data/raw/enemies.data.json');
 const battleModes = readJson('data/raw/battle-modes.json');
+const primers = readJson('data/raw/primers.data.json');
 
 let ok = true;
 if (!vBattleModes(battleModes)) {
@@ -48,6 +51,30 @@ if (!vEnemies(enemies)) {
   ok = false;
   console.error('enemies.data.json:', ajv.errorsText(vEnemies.errors, { separator: '\n' }));
   console.error(vEnemies.errors);
+}
+if (!vPrimers(primers)) {
+  ok = false;
+  console.error('primers.data.json:', ajv.errorsText(vPrimers.errors, { separator: '\n' }));
+  console.error(vPrimers.errors);
+}
+
+// Primers: ids must be unique, and LOADED entries (not the $signal_hook_examples
+// docs block) may not use the signal_hook type until a mechanic ships one.
+function validatePrimerSemantics(primers) {
+  const errs = [];
+  const seen = new Set();
+  for (const p of primers.primers || []) {
+    if (seen.has(p.id)) errs.push(`primers.data.json: duplicate id '${p.id}'`);
+    seen.add(p.id);
+    if (p.trigger?.type === 'signal_hook') {
+      errs.push(`primers.data.json: '${p.id}' uses signal_hook in the LOADED list — keep unshipped hooks in $signal_hook_examples`);
+    }
+  }
+  return errs;
+}
+for (const err of validatePrimerSemantics(primers)) {
+  ok = false;
+  console.error(err);
 }
 
 function validateEnemyAbilitySemantics(enemies) {

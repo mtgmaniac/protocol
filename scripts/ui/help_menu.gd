@@ -666,6 +666,14 @@ func _build_settings(host: VBoxContainer) -> void:
 	_reset_dev_button = _make_dev_button("RESET SAVE PROFILE (DEV)", true)
 	_reset_dev_button.pressed.connect(_on_dev_reset_profile)
 	host.add_child(_reset_dev_button)
+	# Clears only onboarding.primers_seen — every keyword primer fires fresh again.
+	var reset_primers_btn := _make_dev_button("RESET PRIMERS (DEV)", false)
+	reset_primers_btn.pressed.connect(_on_dev_reset_primers)
+	host.add_child(reset_primers_btn)
+
+
+func _on_dev_reset_primers() -> void:
+	SaveManager.dev_reset_primers()
 
 
 func _make_dev_button(text: String, amber: bool) -> Button:

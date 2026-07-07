@@ -30,6 +30,9 @@ signal tutorial_event(event: StringName, payload: Dictionary)
 @onready var dice_tray_3d: DiceTray3D = %DiceTray3D
 
 const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn")
+# Keyword primers (one-shot micro-tutorials; docs/PRIMERS.md). Preload, not the
+# global class name, so fresh-checkout headless runs parse (class-cache gotcha).
+const KEYWORD_PRIMER_SCRIPT := preload("res://scripts/ui/keyword_primer.gd")
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 # Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
@@ -179,6 +182,7 @@ var _round_complete_modal: Control = null
 var _round_complete_next_button: Button = null
 var _auto_turn_running: bool = false
 var _auto_battle_running: bool = false
+var _primer = null  # KeywordPrimer — null in tutorial battles
 
 var _is_resolving_turn: bool = false
 
@@ -269,6 +273,12 @@ func _ready() -> void:
 	Callable(_layout, "stabilize_board_layout").call_deferred()
 	if _game_state().tutorial_mode:
 		_spawn_tutorial_controller.call_deferred()
+	else:
+		# Keyword primers observe every non-tutorial battle; their own
+		# suppression covers headless + auto battle at fire time.
+		_primer = KEYWORD_PRIMER_SCRIPT.new()
+		add_child(_primer)
+		_primer.setup(self)
 
 
 # Coachmark/step controller for the rigged onboarding encounter (lives on its own high layer).
@@ -564,6 +574,15 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	if skip_dice_visuals and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
 
+	# Keyword primers: a new player turn begins — reset the one-per-turn gate,
+	# then report the idle-phase sightings (personalities that picked a target,
+	# protocol actions now affordable) and show at most one.
+	if _primer != null and is_instance_valid(_primer):
+		_primer.on_turn_started()
+		_notice_personality_primers()
+		_primer.notice_protocol_affordability(protocol_points)
+		await _primer.flush_player_phase()
+
 	if pending_manual_target_ids.is_empty():
 		_set_turn_phase(PHASE_READY_TO_END)
 		return
@@ -634,6 +653,25 @@ func _auto_assign_pending_targets(use_pauses: bool = true) -> void:
 		_set_turn_phase(PHASE_READY_TO_END)
 	if not use_pauses and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
+
+
+# Report each living enemy whose personality picked a HERO target this turn
+# (the primer manager decides whether any personality is a first sighting).
+func _notice_personality_primers() -> void:
+	if _primer == null or not is_instance_valid(_primer):
+		return
+	for enemy_state_variant in combat_manager.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		if bool(enemy_state.get("dead", false)):
+			continue
+		var picked_hero: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), str(enemy_state.get("selected_target_id", "")))
+		if picked_hero.is_empty():
+			continue
+		var unit: Object = enemy_state.get("unit", null) as Object
+		if unit == null:
+			continue
+		var personality: int = TargetingPersonality.resolve_personality(unit)
+		_primer.notice_personality_assigned(TargetingPersonality.personality_name(personality), str(enemy_state["id"]))
 
 
 func _roll_for_states(states: Array) -> Dictionary:

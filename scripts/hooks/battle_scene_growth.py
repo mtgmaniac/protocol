@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 TARGET = "scripts/battle/battle_scene.gd"
-HIGH_WATER_LINES = 3378  # as of 52e2fa5 (2026-07-06)
+HIGH_WATER_LINES = 3416  # 2026-07-06: +38 for keyword-primer wiring (spawn + notice hooks) — deliberate glue, not creep
 
 
 def main() -> int:

@@ -8,6 +8,7 @@ const GEAR_DATA_PATH := "res://data/raw/gear.data.json"
 const RELICS_DATA_PATH := "res://data/raw/relics.data.json"
 const BATTLE_MODES_DATA_PATH := "res://data/raw/battle-modes.json"
 const KEYWORDS_DATA_PATH := "res://data/raw/keywords.data.json"
+const PRIMERS_DATA_PATH := "res://data/raw/primers.data.json"
 const HERO_PORTRAIT_ROOT := "res://assets/portraits/"
 const ENEMY_PORTRAIT_ROOT := "res://assets/portraits/enemies/"
 const LEGACY_UI_ROOT := "res://legacy-angular/public/ui/"
@@ -206,6 +207,18 @@ func get_keywords() -> Dictionary:
 		if parsed is Dictionary:
 			_keywords_cache = parsed
 	return _keywords_cache
+
+
+# Keyword primers (one-shot micro-tutorials; docs/PRIMERS.md). Lazy-loaded and
+# cached; returns the LOADED entries only ($signal_hook_examples is docs-only).
+var _primers_cache: Array = []
+
+func get_primers() -> Array:
+	if _primers_cache.is_empty():
+		var parsed: Variant = _parse_json_file(PRIMERS_DATA_PATH)
+		if parsed is Dictionary:
+			_primers_cache = (parsed as Dictionary).get("primers", [])
+	return _primers_cache
 
 
 func get_operation(operation_id: String) -> Resource:

@@ -133,12 +133,12 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Save system + progression (SaveManager autoload)
 
-`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths}, unlocks: {boss_relics, heroes: ["combat","avalanche","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op.
+`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths}, unlocks: {boss_relics, heroes: ["combat","avalanche","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, onboarding: {primers_seen: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
 
 - **Hero ladder** (ONE rung max per run end; overshoot defers): (1) facility best_clear ≥ 6 OR runs_started ≥ 3 → **engineer** · (2) facility won → **shield** · (3) hive best_clear ≥ 6 → **pulse** · (4) hive won → **ghost** · (5) veil best_clear ≥ 6 → **breaker**.
 - **Operation chain** (uncapped): boss clear unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie.
 - **Grandfather clause:** pre-unlock-schema profiles that have played unlock everything, ladder maxed.
-- `check_new_unlocks()` feeds the run-end UNLOCKED panel; `heroes_new` drives the NEW badge (cleared on first squad add). Locked heroes/ops render as black silhouettes + `[ LOCKED ]`, no hints. Dev tools (help menu SETTINGS): UNLOCK ALL, RESET SAVE PROFILE (two-step).
+- `check_new_unlocks()` feeds the run-end UNLOCKED panel; `heroes_new` drives the NEW badge (cleared on first squad add). Locked heroes/ops render as black silhouettes + `[ LOCKED ]`, no hints. Dev tools (help menu SETTINGS): UNLOCK ALL, RESET SAVE PROFILE (two-step), RESET PRIMERS.
 
 ## Run structure
 
@@ -155,6 +155,7 @@ Five stacked bands, portrait, 1080×2400 (preview 450×1000): Header 144 — Ene
 
 ## UI & feedback
 
+**Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; max one per turn; suppressed in tutorial/headless/auto battle; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
 Chip doctrine: card chips are ONLY Burn / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤10" marker · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. Nat-20 = gold wash + shake + stinger. Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
@@ -172,6 +173,7 @@ npm run validate-data                                          # JSON schema gat
 <godot> --headless <proj> scenes/debug/AbilityAuditRunner.tscn # ability audit (214+ regressions, expect 0 failed)
 <godot> --headless <proj> -s scripts/debug/flow_smoke_test.gd  # full scene-flow smoke
 <godot> --headless <proj> -s scripts/debug/tutorial_smoke_test.gd
+<godot> --headless <proj> -s scripts/debug/primer_smoke_test.gd    # keyword primers
 <godot> --headless <proj> -s scripts/debug/run_smoke_test.gd   # one full headless run
 <godot> <proj> -- --debug-battle                                # windowed battle + screenshot
 python scripts/sim/ci_smoke.py                                 # balance diff vs baseline.json

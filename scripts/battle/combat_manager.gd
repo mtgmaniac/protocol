@@ -671,6 +671,9 @@ func resolve_round(
 	for accrete_state in _enemy_states:
 		if not accrete_state["dead"] and int(accrete_state.get("accrete", 0)) > 0:
 			_log("%s accretes armor." % accrete_state["unit"].display_name)
+			# Accrete marker for feedback/primers (the shield event carries the
+			# number; this one's float text is empty).
+			_emit_event(accrete_state, "accrete", int(accrete_state["accrete"]), "enemy")
 			_add_shield_stack(accrete_state, int(accrete_state["accrete"]), true)
 
 	# Boss turn-cadence standing rules (rebuild / brood / root access).
@@ -1739,6 +1742,11 @@ func _damage_state(
 	if state.is_empty() or state["dead"] or amount <= 0:
 		return 0
 
+	# Pierce visibly resolving: shielded target, damage ignores the shield.
+	# Feedback/primer marker only — no combat effect (float text is empty).
+	if ignore_shield and _get_total_shield(state) > 0:
+		_emit_event(state, "pierce", 0, _resolve_side_for_state(state))
+
 	var hp_before: int = int(state["current_hp"])
 
 	# SPITEFUL targeting: enemies remember the hero who most recently damaged
@@ -2037,6 +2045,8 @@ func _revive_state(state: Dictionary, hp_pct: int) -> void:
 	state["die_freeze_repeat_this_round"] = false
 	state["freeze_flavor"] = ""
 	_log("%s is revived at %d HP!" % [state["unit"].display_name, int(state["current_hp"])])
+	# Revive marker for feedback/primers (the heal event carries the number).
+	_emit_event(state, "revive", 0, _resolve_side_for_state(state))
 	_emit_event(state, "heal", int(state["current_hp"]), _resolve_side_for_state(state))
 
 

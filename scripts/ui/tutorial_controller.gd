@@ -1,95 +1,29 @@
 # Drives the rigged onboarding encounter: dims the screen, cuts a spotlight hole around one
 # real UI element at a time, attaches a coachmark, and gates each beat on the player's actual
-# action (via battle_scene's tutorial_event signal) or a tap. A persistent Skip ends it. Built
-# in code over its own high CanvasLayer; the spotlight hole leaves the highlighted element
-# fully interactive so gated steps work on the real control.
+# action (via battle_scene's tutorial_event signal) or a tap. A persistent Skip ends it. The
+# dim/ring/coachmark visuals live in the shared SpotlightLayer (also used by the keyword
+# primers); this controller owns the step script, the event gating, and target resolution.
+# The spotlight hole leaves the highlighted element fully interactive so gated steps work on
+# the real control.
 class_name TutorialController
-extends CanvasLayer
+extends Node
 
 # Above the battle scene + header (8) but BELOW InspectPopup (130) / HelpMenu (135), so a
 # long-press inspect shows above the coachmarks instead of being dimmed under them.
 const LAYER := 110
-const DIM := Color(0.01, 0.015, 0.02, 0.82)
 const PAD := 14.0
-const FULLSCREEN_INSET := 12.0  # "highlight the whole screen" frame: ring this far in from the edges
 const DIE_HALF_PX := 84.0       # half-size of a rendered die, for spotlighting a single unit's die
-const COACH_FONT := 32
-const HINT_FONT := 24
 const SKIP_FONT := 26
-const TITLE_FONT := 38
-const SCREEN_MARGIN := 40.0
-const ACCENT := Color("6fe0ef")  # PixelUI.DT_CYAN_BRIGHT
+
+# Preload (not the global class name) so a fresh checkout's headless run parses
+# before the editor rebuilds the class cache — same gotcha as the sim policies.
+const SpotlightLayerScript := preload("res://scripts/ui/spotlight_layer.gd")
 
 var _scene: Node = null
 var _step: int = 0
 var _steps: Array = []
 
-var _dim_canvas: _DimCanvas = null  # one custom-drawn layer: dims everything but the hole(s) + rings
-var _tap_catcher: Control = null    # full-screen invisible tap target on tap steps (advance anywhere)
-var _coach: PanelContainer = null
-var _coach_label: Label = null
-var _hint_label: Label = null
-var _ring_tween: Tween = null
-
-
-# One full-screen visual layer that dims everything EXCEPT a set of hole rects, and draws a pulsing
-# accent border around each hole. Supports any number of holes (e.g. Nudge + Pulse as two separate
-# zones). Purely visual — MOUSE_FILTER_IGNORE — so input is handled by the catcher / real controls.
-class _DimCanvas extends Control:
-	var holes: Array = []          # Array[Rect2] in this control's local (== screen) space
-	var dim_color: Color = Color(0.01, 0.015, 0.02, 0.82)
-	var ring_color: Color = Color("6fe0ef")
-	var ring_thickness: float = 6.0
-	var ring_alpha: float = 1.0: set = _set_ring_alpha
-
-	func _set_ring_alpha(v: float) -> void:
-		ring_alpha = v
-		queue_redraw()
-
-	func set_holes(new_holes: Array) -> void:
-		holes = new_holes
-		queue_redraw()
-
-	func _draw() -> void:
-		var s: Vector2 = size
-		if holes.is_empty():
-			draw_rect(Rect2(Vector2.ZERO, s), dim_color)
-			return
-		# Tile the dimmed region (screen minus the holes) with rectangles, band by band: split on
-		# every hole top/bottom edge, then within each horizontal band fill the x-gaps left by the
-		# holes that span it. Exact for any number of (possibly disjoint) holes.
-		var ys: Array = [0.0, s.y]
-		for h in holes:
-			ys.append(clampf(h.position.y, 0.0, s.y))
-			ys.append(clampf(h.end.y, 0.0, s.y))
-		ys.sort()
-		for i in range(ys.size() - 1):
-			var y0: float = ys[i]
-			var y1: float = ys[i + 1]
-			if y1 - y0 <= 0.5:
-				continue
-			var mid: float = (y0 + y1) * 0.5
-			var spans: Array = []
-			for h in holes:
-				if h.position.y <= mid and h.end.y >= mid:
-					spans.append([maxf(h.position.x, 0.0), minf(h.end.x, s.x)])
-			spans.sort_custom(func(a, b): return a[0] < b[0])
-			var x: float = 0.0
-			for span in spans:
-				if span[0] > x:
-					draw_rect(Rect2(x, y0, span[0] - x, y1 - y0), dim_color)
-				x = maxf(x, span[1])
-			if x < s.x:
-				draw_rect(Rect2(x, y0, s.x - x, y1 - y0), dim_color)
-		# Pulsing accent border around each hole.
-		var col: Color = ring_color
-		col.a *= ring_alpha
-		var t: float = ring_thickness
-		for h in holes:
-			draw_rect(Rect2(h.position, Vector2(h.size.x, t)), col)
-			draw_rect(Rect2(Vector2(h.position.x, h.end.y - t), Vector2(h.size.x, t)), col)
-			draw_rect(Rect2(h.position, Vector2(t, h.size.y)), col)
-			draw_rect(Rect2(Vector2(h.end.x - t, h.position.y), Vector2(t, h.size.y)), col)
+var _spot = null  # SpotlightLayer — the shared dim + ring + coachmark machine
 
 
 func start(scene: Node) -> void:
@@ -166,19 +100,13 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 # Drop the dim to the whole-screen frame (no dimming, just the edge border), keeping the coachmark —
 # used while a roll / turn resolution animates so the player can watch the board play out.
 func _reveal_whole_screen() -> void:
-	if _dim_canvas != null:
-		_dim_canvas.set_holes([_fullscreen_hole()])
+	if _spot != null:
+		_spot.set_holes([_spot.fullscreen_hole()])
 
 
-func _on_dim_tapped(event: InputEvent) -> void:
-	var pressed := false
-	if event is InputEventMouseButton:
-		var mb: InputEventMouseButton = event
-		pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
-	elif event is InputEventScreenTouch:
-		pressed = (event as InputEventScreenTouch).pressed
-	if not pressed:
-		return
+# Taps only arrive from the SpotlightLayer when the step is interactive
+# (advance-on-tap); gated steps set the layer to pass input through.
+func _on_spot_tapped() -> void:
 	var mode: String = _advance_mode()
 	if mode == "tap":
 		_next()
@@ -223,11 +151,20 @@ func _layout_step() -> void:
 	var step: Dictionary = _current()
 	if step.is_empty():
 		return
-	_apply_interactivity()
+	var mode: String = _advance_mode()
+	var tap_step: bool = mode == "tap" or mode == "tap_finish"
 	var holes: Array = _compute_holes(step)
-	if _dim_canvas != null:
-		_dim_canvas.set_holes(holes)
-	_apply_coach(step, _bounds_of(holes))
+	# Whole-screen steps pin the coach to the bottom so it never covers the
+	# centre Roll/End-Turn button; no-hole steps center it.
+	var anchor: int = SpotlightLayerScript.CoachAnchor.AUTO
+	if bool(step.get("fullscreen", false)):
+		anchor = SpotlightLayerScript.CoachAnchor.BOTTOM
+	if _spot != null:
+		_spot.spotlight(holes, str(step.get("text", "")), anchor, {
+			"title": str(step.get("title", "")),
+			"hint": "tap to continue ▸" if tap_step else "",
+			"interactive": tap_step,
+		})
 
 
 # Holes to spotlight this step, in screen space:
@@ -250,32 +187,7 @@ func _compute_holes(step: Dictionary) -> Array:
 
 
 func _fullscreen_hole() -> Rect2:
-	var s: Vector2 = get_viewport().get_visible_rect().size
-	return Rect2(FULLSCREEN_INSET, FULLSCREEN_INSET, s.x - FULLSCREEN_INSET * 2.0, s.y - FULLSCREEN_INSET * 2.0)
-
-
-func _bounds_of(holes: Array) -> Rect2:
-	var bounds: Rect2 = Rect2()
-	var has_any := false
-	for h in holes:
-		bounds = h if not has_any else bounds.merge(h)
-		has_any = true
-	return bounds if has_any else Rect2()
-
-
-# Tap-advance steps catch input on a full-screen catcher (tap anywhere — including the spotlit
-# element — to continue). Gated steps must let the player drive the real controls (roll, select a
-# hero die, target, nudge), so the catcher + coachmark pass input straight through — fixes both
-# "the overlay won't let me click the dice/cards" and "I can only advance by tapping the box".
-# (The dim canvas is always IGNORE — purely visual.)
-func _apply_interactivity() -> void:
-	var mode: String = _advance_mode()
-	var gated: bool = not (mode == "tap" or mode == "tap_finish")
-	var mf: int = Control.MOUSE_FILTER_IGNORE if gated else Control.MOUSE_FILTER_STOP
-	if _coach != null:
-		_coach.mouse_filter = mf
-	if _tap_catcher != null:
-		_tap_catcher.mouse_filter = mf
+	return _spot.fullscreen_hole() if _spot != null else Rect2()
 
 
 func _targets_rect(keys: Array) -> Rect2:
@@ -415,80 +327,13 @@ func _node_rect(node: Variant) -> Rect2:
 	return r
 
 
-func _apply_coach(step: Dictionary, hole: Rect2) -> void:
-	var s: Vector2 = get_viewport().get_visible_rect().size
-	var title: String = str(step.get("title", ""))
-	_coach_label.text = ("[ %s ]\n%s" % [title, str(step.get("text", ""))]) if title != "" else str(step.get("text", ""))
-	var mode: String = _advance_mode()
-	_hint_label.visible = (mode == "tap" or mode == "tap_finish")
-	_hint_label.text = "tap to continue ▸"
-
-	var width: float = s.x - SCREEN_MARGIN * 2.0
-	_coach.custom_minimum_size = Vector2(width, 0)
-	_coach.size = Vector2(width, 0)
-	await get_tree().process_frame
-	var ch: float = _coach.get_combined_minimum_size().y
-	var y: float
-	if bool(step.get("fullscreen", false)):
-		# Whole-screen step: pin the coach to the bottom so it never covers the centre
-		# Roll/End-Turn button (and leaves the enemy row visible up top for assign steps).
-		y = s.y - ch - SCREEN_MARGIN
-	elif hole.size == Vector2.ZERO:
-		y = (s.y - ch) * 0.5
-	elif hole.get_center().y < s.y * 0.5:
-		y = minf(hole.end.y + 28.0, s.y - ch - SCREEN_MARGIN)  # hole in top half → coach below
-	else:
-		y = maxf(hole.position.y - ch - 28.0, SCREEN_MARGIN)    # hole in bottom half → coach above
-	_coach.position = Vector2(SCREEN_MARGIN, y)
-	_coach.size = Vector2(width, ch)
-
-
 # ── Build the overlay UI ──────────────────────────────────────────────────────────
 func _build_ui() -> void:
-	layer = LAYER
-	_dim_canvas = _DimCanvas.new()
-	_dim_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dim_canvas.dim_color = DIM
-	_dim_canvas.ring_color = ACCENT
-	_dim_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(_dim_canvas)
-	# Looping ring pulse — drives ring_alpha on the canvas (its setter triggers a redraw).
-	_ring_tween = create_tween().set_loops()
-	_ring_tween.tween_property(_dim_canvas, "ring_alpha", 0.35, 0.55).set_trans(Tween.TRANS_SINE)
-	_ring_tween.tween_property(_dim_canvas, "ring_alpha", 1.0, 0.55).set_trans(Tween.TRANS_SINE)
-
-	_coach = PanelContainer.new()
-	_coach.mouse_filter = Control.MOUSE_FILTER_STOP
-	_coach.gui_input.connect(_on_dim_tapped)
-	var coach_style: StyleBoxFlat = PixelUI.make_hard_style(Color("0b1117"), ACCENT, 4)
-	coach_style.set_content_margin_all(22.0)
-	_coach.add_theme_stylebox_override("panel", coach_style)
-	add_child(_coach)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	_coach.add_child(col)
-
-	_coach_label = Label.new()
-	_coach_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_coach_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_label(_coach_label, COACH_FONT, PixelUI.TEXT_PRIMARY, 2)
-	col.add_child(_coach_label)
-
-	_hint_label = Label.new()
-	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_label(_hint_label, HINT_FONT, ACCENT, 1)
-	col.add_child(_hint_label)
-
-	# Full-screen invisible tap target, above the spotlight but below Skip. On tap steps it makes
-	# "tap anywhere to continue" work even over the bright spotlight hole; on gated steps it's set
-	# to IGNORE so the real controls underneath stay live.
-	_tap_catcher = Control.new()
-	_tap_catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tap_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_tap_catcher.gui_input.connect(_on_dim_tapped)
-	add_child(_tap_catcher)
+	# All dim/ring/coachmark visuals live in the shared SpotlightLayer; the
+	# tutorial only adds its persistent Skip button on top.
+	_spot = SpotlightLayerScript.new(LAYER)
+	_spot.tapped.connect(_on_spot_tapped)
+	add_child(_spot)
 
 	# Persistent Skip — always available. Sits at the very top-left, over the FACILITY header label.
 	var skip := Button.new()
@@ -501,7 +346,8 @@ func _build_ui() -> void:
 	var skip_wrap := Control.new()
 	skip_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	skip_wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(skip_wrap)
+	# On the spotlight's canvas layer so Skip renders above the dim.
+	_spot.add_overlay_control(skip_wrap)
 	# Vertically centred within the header band, pinned to the left over the FACILITY label.
 	var header_band: float = _target_rect("header").size.y
 	var skip_h: float = 84.0

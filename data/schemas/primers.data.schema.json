@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "primers.data.json",
+  "type": "object",
+  "required": ["primers"],
+  "properties": {
+    "$comment": { "type": "string" },
+    "primers": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/primer" }
+    },
+    "$signal_hook_examples": {
+      "$comment": "Documentation-only entries (never loaded); same shape, signal_hook trigger.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/primer" }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "primer": {
+      "type": "object",
+      "required": ["id", "trigger", "target", "text", "priority", "requires_feature"],
+      "properties": {
+        "$comment": { "type": "string" },
+        "id": { "type": "string", "pattern": "^primer_[a-z0-9_]+$" },
+        "trigger": {
+          "type": "object",
+          "required": ["type", "param"],
+          "properties": {
+            "type": {
+              "enum": [
+                "die_status_applied",
+                "status_applied",
+                "attack_keyword_resolved",
+                "protocol_action_affordable",
+                "personality_assigned",
+                "signal_hook"
+              ]
+            },
+            "param": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "target": {
+          "enum": ["die", "unit_card", "ability_pip", "footer_button", "popup_line"]
+        },
+        "text": {
+          "$comment": "One sentence, ~12 words, the RULE not flavor; never contradicts keywords.data.json.",
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 90
+        },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "requires_feature": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}
