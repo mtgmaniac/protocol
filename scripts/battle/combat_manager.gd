@@ -861,8 +861,10 @@ func _get_total_shield(state: Dictionary) -> int:
 # through the imminent tick and cover exactly one hero phase instead of dying
 # before they could ever absorb. shields_persist (Mantle Core relic / MANTLE
 # TYRANT boss rule) exempts a state from expiry entirely.
-# DESIGN-TODO(kev): "one round" is applied per-side as "one opposing action
-# phase" so enemy shields remain meaningful; confirm this reading.
+# CONFIRMED (per Kev 2026-07-06, DECISIONS_RESOLVED #2): "one round" IS the
+# per-side "one opposing action phase" reading; shieldsPersist (Mantle Core /
+# MANTLE TYRANT) is the single named exception. Data audited 2026-07-07: no
+# multi-phase shield exists anywhere in data/raw.
 func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false) -> void:
 	# Overcharge Mesh directive: shields gained by any squad member +2 while
 	# a living carrier stands.

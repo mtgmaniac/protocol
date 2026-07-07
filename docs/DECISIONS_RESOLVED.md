@@ -142,7 +142,12 @@ voidCirclet +10.5 is the Root Access counter — see the batch entry note).
 > normalization sweep if any multi turn shields exist in data; report any delta
 > before touching the baseline."
 
-## 2. Shield "one round" per-side reading
+## 2. Shield "one round" per-side reading — IMPLEMENTED 2026-07-07
+**Status:** CONFIRMED as coded; data audit found ZERO offenders (no shield
+duration field exists; eff-text "Nt" suffixes near shields bind to the roll-buff
+clause per the canonical grammar; only shieldsPersist persists). TRUTH rule 5
+names the single exception; the combat_manager DESIGN-TODO is a resolved
+citation. Doc-only — zero drift.
 **Question:** code applies expiry per-side as "one opposing action phase" so
 enemy-phase shields survive one tick (`combat_manager.gd` `_add_shield_stack`);
 alternative was strict same-round expiry.
