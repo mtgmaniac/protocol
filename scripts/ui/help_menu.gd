@@ -635,6 +635,8 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 			tags.append("Shield")
 		if int(raw.get("heal", 0)) > 0 or int(raw.get("lifestealPct", 0)) > 0:
 			tags.append("Heal")
+		if bool(raw.get("packBonus", false)):
+			tags.append("Pack Bonus")
 		if bool(raw.get("blastAll", false)):
 			tags.append("AoE")
 		if bool(raw.get("ward", false)):

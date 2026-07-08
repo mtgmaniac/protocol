@@ -46,8 +46,8 @@ Two independent unit fields (INVARIANTS #2):
 | Forked Double | voidGlimmer | voidCirclet | 68 | 13–17 | smart | SPITEFUL | `startsCloaked`; **hijack** (Afterimage); inert summonElite |
 | Daemon Channeler | voidChanneler | voidCirclet | 94 | 15–21 | smart | WOUNDED | siphon on crit |
 | ROOT HIEROPHANT | voidCircletBoss | voidCirclet | 180 | 19–25 | smart | WOUNDED | boss |
-| Pumice Macaque | beastMonkey | stellarMenagerie (The Accretion) | 38 | 5–9 | dumb | PACK | packBonus (dead — see findings) |
-| Obsidian Hound | beastWolf | stellarMenagerie | 42 | 6–10 | dumb | PACK | packBonus (dead) |
+| Pumice Macaque | beastMonkey | stellarMenagerie (The Accretion) | 38 | 5–9 | dumb | PACK | packBonus (+1 dmg per other same-kind pack member; fixed 2026-07-08) |
+| Obsidian Hound | beastWolf | stellarMenagerie | 42 | 6–10 | dumb | PACK | packBonus (+1 per other beastWolf; packs with Slag Hound) |
 | Slag Hound | beastWolf | stellarMenagerie | 34 | 5–9 | dumb | PACK | Raptor's summon species; shares kit |
 | Geode Panther | beastLynx | stellarMenagerie | 74 | 12–17 | smart | WOUNDED | cloak + petrify freeze |
 | Basalt Ape | beastBison | stellarMenagerie | 112 | 16–22 | smart | SPITEFUL | **spike** carrier, `accrete: 3` |

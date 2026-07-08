@@ -65,6 +65,13 @@
       "syntax": "rampage"
     },
     {
+      "id": "pack_bonus",
+      "term": "Pack Bonus",
+      "category": "offense",
+      "def": "Enemy-only: this attack deals +1 for each other living pack member of the same kind.",
+      "syntax": "pack bonus"
+    },
+    {
       "id": "spike",
       "term": "Spike",
       "category": "defense",
