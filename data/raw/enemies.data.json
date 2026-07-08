@@ -948,7 +948,7 @@
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20, firewall",
+        "eff": "20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% on 20, firewall",
         "dmg": 20,
         "burn": 0,
         "burnT": 0,
@@ -1017,7 +1017,7 @@
       },
       "overload": {
         "name": "Veil Collapse",
-        "eff": "28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% nat20",
+        "eff": "28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% on 20",
         "dmg": 28,
         "burn": 0,
         "burnT": 0,
@@ -1078,7 +1078,7 @@
       },
       "overload": {
         "name": "Total Eclipse",
-        "eff": "24 dmg, summon ~40% nat20",
+        "eff": "24 dmg, summon ~40% on 20",
         "dmg": 24,
         "burn": 0,
         "burnT": 0,
@@ -1141,7 +1141,7 @@
       },
       "overload": {
         "name": "Lattice Storm",
-        "eff": "16 dmg, 5 burn, 4t, +2 roll to allies, 3t, summon ~42% nat20",
+        "eff": "16 dmg, 5 burn, 4t, +2 roll to allies, 3t, summon ~42% on 20",
         "dmg": 16,
         "burn": 5,
         "burnT": 4,
@@ -1211,7 +1211,7 @@
       },
       "overload": {
         "name": "Broodlink Surge",
-        "eff": "17 dmg, 8 heal, +2 roll to allies, 3t, summon ~40% nat20",
+        "eff": "17 dmg, 8 heal, +2 roll to allies, 3t, summon ~40% on 20",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1282,7 +1282,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~30% nat20",
+        "eff": "wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~30% on 20",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -1403,7 +1403,7 @@
       },
       "overload": {
         "name": "Ritual Clamp",
-        "eff": "18 dmg, summon ~40% nat20",
+        "eff": "18 dmg, summon ~40% on 20",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
@@ -1463,7 +1463,7 @@
       },
       "overload": {
         "name": "Summon Verse",
-        "eff": "16 dmg, +2 roll to allies, 3t, summon ~45% nat20",
+        "eff": "16 dmg, +2 roll to allies, 3t, summon ~45% on 20",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
@@ -1525,7 +1525,7 @@
       },
       "overload": {
         "name": "Mass Snare",
-        "eff": "21 dmg, summon ~35% nat20, firewall, rewrite",
+        "eff": "21 dmg, summon ~35% on 20, firewall, rewrite",
         "dmg": 21,
         "burn": 0,
         "burnT": 0,
@@ -1640,7 +1640,7 @@
       },
       "overload": {
         "name": "Warp Nova",
-        "eff": "22 dmg, 4 burn, 4t, summon ~42% nat20",
+        "eff": "22 dmg, 4 burn, 4t, summon ~42% on 20",
         "dmg": 22,
         "burn": 4,
         "burnT": 4,
@@ -1706,7 +1706,7 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~32% nat20",
+        "eff": "wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~32% on 20",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -1986,7 +1986,7 @@
       },
       "overload": {
         "name": "Call Friends",
-        "eff": "13 dmg, 2 burn, 3t, summon ~50% nat20",
+        "eff": "13 dmg, 2 burn, 3t, summon ~50% on 20",
         "dmg": 13,
         "burn": 2,
         "burnT": 3,

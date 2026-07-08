@@ -23,7 +23,7 @@
     { "id": "wide_aperture", "name": "Wide Aperture", "desc": "This unit's surge band extends 2 lower.", "rarity": "rare", "icon": "die", "effect": { "type": "surgeBandExtend", "amount": 2 } },
     { "id": "reverse_gimbal", "name": "Reverse Gimbal", "desc": "Nudges on this unit may subtract (tap Nudge again to flip).", "rarity": "uncommon", "icon": "die", "effect": { "type": "nudgeMaySubtract" } },
     { "id": "priming_charge", "name": "Priming Charge", "desc": "This unit's first Nudge each battle is free.", "rarity": "uncommon", "icon": "bolt", "effect": { "type": "firstNudgeFree" } },
-    { "id": "overload_capacitor", "name": "Overload Capacitor", "desc": "A natural 20 grants +2 Protocol.", "rarity": "rare", "icon": "bolt", "effect": { "type": "protocolOnNat20", "amount": 2 } },
+    { "id": "overload_capacitor", "name": "Overload Capacitor", "desc": "A 20 grants +2 Protocol.", "rarity": "rare", "icon": "bolt", "effect": { "type": "protocolOnNat20", "amount": 2 } },
     { "id": "ignition_coil", "name": "Ignition Coil", "desc": "Burn this unit applies ticks once immediately.", "rarity": "rare", "icon": "bolt", "effect": { "type": "burnImmediateTick" } },
     { "id": "payload_fuse", "name": "Payload Fuse", "desc": "This unit's Detonates deal +50%.", "rarity": "rare", "icon": "bolt", "effect": { "type": "detonateBonus", "amount": 50 } },
     { "id": "targeting_optic", "name": "Targeting Optic", "desc": "Battles start with this unit's first target Marked.", "rarity": "uncommon", "icon": "die", "effect": { "type": "battleStartMark" } },
