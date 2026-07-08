@@ -31,7 +31,7 @@
             "type": "number",
             "minimum": 0.5,
             "maximum": 1.5,
-            "description": "Balance sim only: multiplies enemy HP in Monte Carlo runs. Godot uses flat enemyUnitDefs stats."
+            "description": "UNWIRED — parked, not cut (INVARIANTS #6/#8). Authored for per-battle HP scaling; no reader wires it (not even the sim). Godot uses flat enemyUnitDefs stats — do not re-flag as dead data."
           },
           "battles": {
             "type": "array",

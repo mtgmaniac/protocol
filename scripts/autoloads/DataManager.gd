@@ -36,17 +36,12 @@ const ITEM_ICON_BY_ID := {
 	"capacitor_dose": "res://assets/icons/items/capacitor_dose.png",
 	"core_surge": "res://assets/icons/items/core_surge.png",
 	"mainline_cache": "res://assets/icons/items/mainline_cache.png",
-	"double_tap_chip": "res://assets/icons/items/double_tap_chip.png",
 	"neural_splice": "res://assets/icons/items/neural_splice.png",
 	"combat_plating": "res://assets/icons/items/combat_plating.png",
 	"stim_injector": "res://assets/icons/items/stim_injector.png",
-	"void_shard": "res://assets/icons/items/void_shard.png",
 	"phase_weave": "res://assets/icons/items/phase_weave.png",
-	"scavenger_rig": "res://assets/icons/items/scavenger_rig.png",
 	"protocol_tap": "res://assets/icons/items/protocol_tap.png",
 	"dead_mans_chip": "res://assets/icons/items/dead_mans_chip.png",
-	"exile_blade_core": "res://assets/icons/items/exile_blade_core.png",
-	"fortress_mesh": "res://assets/icons/items/fortress_mesh.png",
 }
 
 const RELIC_ICON_BY_ID := {
@@ -244,7 +239,6 @@ var items: Dictionary = {}
 var _keywords_cache: Dictionary = {}
 var operations: Dictionary = {}
 var operation_order: Array = []
-var hero_zone_ranges: Dictionary = {}
 
 
 func _ready() -> void:
@@ -303,7 +297,6 @@ func _load_all_data() -> void:
 	items.clear()
 	operations.clear()
 	operation_order.clear()
-	hero_zone_ranges.clear()
 
 	_load_units()
 	_load_enemies()
@@ -314,15 +307,6 @@ func _load_all_data() -> void:
 
 func _load_units() -> void:
 	var heroes_payload: Dictionary = _parse_json_file(HEROES_DATA_PATH)
-	var zone_payload: Dictionary = heroes_payload.get("heroZones", {})
-	for hero_key in zone_payload.keys():
-		var zone_map: Dictionary = {}
-		for zone_entry_variant in zone_payload[hero_key]:
-			var zone_entry: Array = zone_entry_variant
-			if zone_entry.size() < 3:
-				continue
-			zone_map[str(zone_entry[2])] = Vector2i(int(zone_entry[0]), int(zone_entry[1]))
-		hero_zone_ranges[str(hero_key)] = zone_map
 	var heroes: Array = heroes_payload.get("heroes", [])
 	for hero_entry in heroes:
 		var unit: UnitData = UnitData.new()
