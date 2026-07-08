@@ -34,7 +34,7 @@ const KEYWORD_FIELD_MAP := {
 	"execute": "execute",
 	"breach": "breach",
 	"breachAll": "breach",
-	"wipeShields": "breach",
+	"wipeShields": "wipe_shields",
 	"leech": "leech",
 	"lifestealPct": "leech",
 	"mark": "mark",
