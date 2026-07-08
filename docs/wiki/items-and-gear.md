@@ -112,15 +112,14 @@ There is **no common-rarity gear** — round-1 reward rolls (85% common) always 
 - Sync Antenna writes a direct `roll_buff` (no stack instance); it lasts exactly this round and is not shown as a timed instance.
 - Anchor Frame: with multiple holders above half HP, the first in slot order is the taunter; an explicit Taunt always wins.
 - Targeting Optic marks the first living enemy in slot order, not literally "this unit's first target."
-- Duplicate gear can be drafted in later battles and stacks additively on the same unit (no uniqueness guard).
-- Rarity tier chains: rollBuff ×4, gainProtocol ×4, enemyRfe ×3, anyDieFreeze ×2 (items); five two-tier pairs (gear) — vs the "max 4 two-tier pairs" design rule, pending ruling.
+- Gear is **unique per run** — an owned gear id is never re-offered, so numeric passives can't stack (NK-13, fixed 2026-07-08). Consumables are exempt (they're spent).
+- Rarity tier chains: rollBuff ×4, gainProtocol ×4, enemyRfe ×3, anyDieFreeze ×2 (items); five two-tier pairs (gear). Effect families may span **any number of rarity tiers** — the old "max 4 two-tier pairs" cap was **removed** per Kev (NK-12); no content was cut.
 
 ## ⚠ Open findings
 
 <!-- AUDIT-LINKS:items-and-gear -->
 - [A-020](../audit/INTERACTION_AUDIT.md#a-020) - [dead] four coded protocol/gear handlers with no data
-- [A-064](../audit/INTERACTION_AUDIT.md#a-064) - [needs-Kev] pool tier structure exceeds max-4 pairs
 - [A-068](../audit/INTERACTION_AUDIT.md#a-068) - [confusing] item damage carries no attacker (Mark/Cold Logic skip)
 - [A-070](../audit/INTERACTION_AUDIT.md#a-070) - [confusing] Triage Gel grants no shield on self-heals
 
-Resolved (2026-07-08 fix pass): [A-041](../audit/INTERACTION_AUDIT.md#a-041), [A-061](../audit/INTERACTION_AUDIT.md#a-061), [A-062](../audit/INTERACTION_AUDIT.md#a-062), [A-065](../audit/INTERACTION_AUDIT.md#a-065), [A-066](../audit/INTERACTION_AUDIT.md#a-066), [A-074](../audit/INTERACTION_AUDIT.md#a-074)
+Resolved (2026-07-08 fix pass): [A-041](../audit/INTERACTION_AUDIT.md#a-041), [A-061](../audit/INTERACTION_AUDIT.md#a-061), [A-062](../audit/INTERACTION_AUDIT.md#a-062), [A-064](../audit/INTERACTION_AUDIT.md#a-064) (NK-12: rule removed), [A-065](../audit/INTERACTION_AUDIT.md#a-065), [A-066](../audit/INTERACTION_AUDIT.md#a-066), [A-074](../audit/INTERACTION_AUDIT.md#a-074)

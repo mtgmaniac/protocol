@@ -129,6 +129,7 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 ## Rewards
 
 - **Consumables:** 25 (`items.data.json`). **Gear:** 31 passives (`gear.data.json`) — **unique per run**: an owned gear id is never re-offered, so numeric passives can't stack (per Kev NK-13). Consumables are exempt (they're spent). **Relics:** 35 = 30 draftable + 5 boss relics (`bossRelic: true`: Salvage Rig, Chitin Graft, Resonant Chorus, Root Access, Mantle Core); boss relics excluded from normal drafts, unlocked by first op clear, offered as Starting Directives at DEPLOY.
+- **Rarity ladders:** an effect family may span **any number of rarity tiers** — 2-, 3-, and 4-tier chains are all permitted (roll-buff and gainProtocol run four tiers; enemyRfe three). The old "single-entry + max 4 two-tier pairs" cap is **removed** (per Kev NK-12); no pool content was cut.
 - **XP:** `XP_TO_EVOLVE = 100`, `XP_TO_DIRECTIVE = 250`. Per win: alive → `20 + round(avg effective roll)`; dead → `round(avg effective roll)`. One progression stop per win (extras deferred).
 - **Directives (tier-3 passives):** at 250 XP an evolved unit picks 1 of 2 path-scoped directives (`directives` block per evolution). Full list in `heroes.data.json`; handlers in combat_manager (+battle_scene for Deep Cells).
 

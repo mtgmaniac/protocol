@@ -1,6 +1,8 @@
-# NK-12 — Draftable Pool Tier-Budget: Trim Proposal (awaiting Kev sign-off)
+# NK-12 — Draftable Pool Tier-Budget: Trim Proposal ⟪SUPERSEDED — DO NOT ACT ON⟫
 
-**Status: PROPOSAL ONLY. No content deleted.** Per the fix-pass STOP gate, the NK-12 pool trim is a balance-sensitive content cut (INVARIANTS #8/#9) — this file presents the inventory, the over-cap math, and a proposed plan for Kev to approve or adjust. Nothing here is implemented.
+> **⛔ SUPERSEDED 2026-07-08.** Kev ruled the two-tier cap **REMOVED** — effect families may span any number of rarity tiers, and **no content is cut**. This proposal's trim plan no longer applies; nothing in it should be implemented. Kept for provenance only. The canonical statement lives in [TRUTH.md §Rewards](../TRUTH.md) and [items-and-gear.md](../wiki/items-and-gear.md); the finding is closed at [INTERACTION_AUDIT.md A-064 / NK-12](INTERACTION_AUDIT.md#a-064).
+
+**Status (historical): PROPOSAL ONLY. No content deleted.** Per the fix-pass STOP gate, the NK-12 pool trim was a balance-sensitive content cut (INVARIANTS #8/#9) — this file presented the inventory, the over-cap math, and a proposed plan for Kev to approve or adjust. Nothing here was implemented, and the rule it enforced has since been removed.
 
 ## The rule (NK-12 ruling)
 

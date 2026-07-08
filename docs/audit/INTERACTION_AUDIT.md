@@ -475,8 +475,8 @@ See [items-and-gear.md](../wiki/items-and-gear.md), [relics.md](../wiki/relics.m
 ### A-064 — Tier structure exceeds "single-entry effects + max 4 two-tier pairs" {#a-064}
 - **Where:** `items.data.json` (rollBuff ×4, gainProtocol ×4, enemyRfe ×3, anyDieFreeze ×2), `gear.data.json` (five pairs: rollBonus, maxHpBonus, protocolOnBattleStart, lifesteal, firstAbilityDmgBonus). (items-relics-05)
 - **Now:** 6 two-tier pairs + two 4-tier chains + one 3-tier chain across the pool vs the ground-truth "max 4 two-tier pairs."
-- **Severity:** NEEDS-KEV-RULING ([NK](#nk-12)) — does the rule cover consumable rarity chains, and is the count per-file or pool-wide?
-- **Fix:** ruling first; if enforced pool-wide, collapse the 3/4-tier chains and drop one gear pair. → [items-and-gear](../wiki/items-and-gear.md)
+- **Severity:** ~~NEEDS-KEV-RULING~~ **CLOSED (2026-07-08).** Ruling NK-12: the two-tier cap is **removed** — effect families may span any number of rarity tiers. **No content cut.** Not a defect.
+- **Fix:** none — rule removed; docs (TRUTH §Rewards, items-and-gear.md) corrected. → [items-and-gear](../wiki/items-and-gear.md)
 
 ### A-065 — Duplicate gear can be drafted and stacked without limit {#a-065}
 - **Where:** `GameState.gd:1217-1235` (`excluded_ids` covers only the current 3-card roll), `claim_reward:853-856` (appends unconditionally), `_apply_gear_passive` (`+=`). (items-relics-13)
@@ -794,7 +794,7 @@ Ambiguous items — each might be intentional. Listed, not guess-fixed.
 - **NK-09 — "lifesteal N%" vs "Leech".** ([A-031](#a-031)) {#nk-09} 11 enemy abilities say "lifesteal 45%" but render the Leech pip; TRUTH defines Leech as fixed 50%. **Question:** unify the eff wording to "leech N%," or accept the split and document the enemy percent-variant in TRUTH?
 - **NK-10 — Stall-farming boss reinforcements.** ([A-057](#a-057)) {#nk-10} SCRAPMASTER/MATRIARCH re-supply basic enemies on a clock; kill-triggered economy (Bounty/Chitin/Kill Switch/momentum) pays out on each, unbounded. **Question:** acceptable (bosses still deal damage), or exclude summoned/rebuilt units from kill payouts?
 - **NK-11 — Frozen internal-id exemption.** ([A-060](#a-060)) {#nk-11} `voidCirclet`/`stellarMenagerie` persist as internal ids per INVARIANTS #11 while the brief calls "old faction names anywhere" findings. **Question:** confirm the standing exemption (no action expected; only player-visible strings are fixed).
-- **NK-12 — Pool tier budget.** ([A-064](#a-064)) {#nk-12} The item/gear pool has 6 two-tier pairs + two 4-tier + one 3-tier chain vs "max 4 two-tier pairs." **Question:** does the rule cover consumable rarity chains, and is the count per-file or pool-wide?
+- **NK-12 — Pool tier budget. RULED & CLOSED (2026-07-08).** ([A-064](#a-064)) {#nk-12} The two-tier cap is **removed** per Kev — effect families may span any number of rarity tiers (2-, 3-, and 4-tier chains all permitted). **No content was cut.** Docs corrected; the trim proposal is superseded.
 - **NK-13 — Duplicate gear.** ([A-065](#a-065)) {#nk-13} The same gear id can be re-drafted and stacked (2× Predator Lens = +6 rolls). **Question:** is gear unique-per-run?
 - **NK-14 — Deep Zero Pin repricing.** ([A-066](#a-066)) {#nk-14} A rare item tuned for freeze-as-lockout (mass denial) now *replays* every enemy die under freeze=repeat — upside inverted. **Question:** reprice/redesign in the balance pass (e.g. only freeze low-band dice)?
 - **NK-15 — SUPPLY GRADE +2 on a flagged battle 5.** ([A-076](#a-076)) {#nk-15} A flagged route into b5 promises "+2 supply grade" but the relic cache has no rarity ladder, so it buys nothing. **Question:** carry the grade to the b6 draft, or accept "spent on the cache"?
