@@ -64,19 +64,19 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 | Kit | recharge (1–4) | strike (5–10) | surge (11–16) | crit (17–19) | overload (20) |
 |---|---|---|---|---|---|
 | scrap | ECM Shell — 8 shield | Stab — 7 dmg | Overcharge — 10 dmg, 1 burn | Overcharge+ — 15 dmg, 2 burn | Detonator — 20 dmg, 3 burn |
-| rust | ECM Jam — -1 roll, 5 shield | Sparking Cut — 6 dmg, -1 roll | Disrupt Pulse — 9 dmg, -1 roll | EMP Spike — 12 dmg, -2 roll | Total Jam — 14 dmg, -3 roll |
+| rust | ECM Hiss — -1 roll, 5 shield | Sparking Cut — 6 dmg, -1 roll | Disrupt Pulse — 9 dmg, -1 roll | EMP Spike — 12 dmg, -2 roll | Total Jam — 14 dmg, -3 roll |
 | signalSkimmer | ECM Ping — 5 shield, jam | Spike Bleed — 5 dmg, -1 roll | Sideband Scrap — 8 dmg, -1 roll, 2t | Nullburst — 11 dmg, jam | Whitenoise Collapse — 13 dmg, jam all |
 | patrol | Regroup — 6 shield | Assault — 15 dmg | Heavy Barrage — 18 dmg | Devastate — 21 dmg, -1 roll, 2t | Final Sweep — 23 dmg, -2 roll, 3t |
 | guard | Bulwark Link — 6 shield all allies | Suppressing Fire — 12 dmg, ally 6 shield | Cover Field — 11 dmg, ally 9 shield, +1 roll to allies, 2t | Barrier Burst — 15 dmg, ally 7 shield | Fortress Protocol — 18 dmg, ally 13 shield |
 | warden | Field Service — 7 heal, 7 shield | Crushing Blow — 11 dmg | Sustained Fire — 11 dmg, 3 burn, 3t | Punisher — 24 dmg, jam | Execution — 29 dmg, 6 heal |
-| volt | Grounding — 5 shield all allies, spike 4 | Arc Jab — 9 dmg, 1 burn, 2t | Chain Strike — 11 dmg, 2 burn, 2t | Conduction — 13 dmg, 3 burn, 2t | Meltdown Arc — 15 dmg, 4 burn, 3t |
+| volt | Grounding — 5 shield all allies, spike 4 | Arc Jab — 9 dmg, 1 burn, 2t | Arc Strike — 11 dmg, 2 burn, 2t | Conduction — 13 dmg, 3 burn, 2t | Meltdown Arc — 15 dmg, 4 burn, 3t |
 | boss | Shield Matrix — 12 shield | Suppressor — 12 dmg, -2 roll, 2t | Core Blast — 17 dmg | System Purge — wipe shields, then 21 dmg | Annihilate — 26 dmg (all) |
 
 **Hive**
 
 | Kit | recharge | strike | surge | crit | overload |
 |---|---|---|---|---|---|
-| skitter | Burrow Regen — 5 heal | Mandible Rake — 8 dmg, lifesteal 50% | Venom Nip — 9 dmg, 2 burn | Blood Frenzy — 12 dmg, 3 burn | Splatter Gland — 17 dmg, 4 burn |
+| skitter | Burrow Regen — 5 heal | Mandible Rake — 8 dmg, lifesteal 50% | Searing Nip — 9 dmg, 2 burn | Blood Frenzy — 12 dmg, 3 burn | Splatter Gland — 17 dmg, 4 burn |
 | mite | Pheromone Surge — 3 heal | Proboscis Jab — 6 dmg, lifesteal 40% | Neural Bite — 8 dmg, 1 burn | Symbiote Spike — 10 dmg, 2 burn | Hive Latch — 11 dmg, 3 burn, 2t |
 | stalker | Chitin Regroup — 6 shield, spike 4 | Spine Lunge — 14 dmg, lifesteal 45% | Impaler Volley — 15 dmg, 2 burn, 3t | Shredding Spines — 17 dmg, 3 burn, 4t | Brood Execution — 19 dmg, 4 burn, 5t |
 | carapace | Chitin Link — 6 shield all allies, spike 3 | Ramming Plate — 12 dmg, ally 6 shield, lifesteal 50% | Living Bulwark — 10 dmg, 2 burn, 4t, ally 9 shield | Carapace Burst — 13 dmg, 3 burn, 5t, ally 7 shield | Fortress Beetle — 16 dmg, 2 burn, 5t, ally 13 shield |
@@ -88,7 +88,7 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 
 | Kit | recharge | strike | surge | crit | overload |
 |---|---|---|---|---|---|
-| veilShard | Phase Shell — 4 shield | Shard Cut — 7 dmg | Lattice Flicker — 9 dmg | Crystal Shatter — 12 dmg | Harmonic Break — 15 dmg, 2 burn, 2t |
+| veilShard | Phase Shell — 4 shield | Shard Cut — 7 dmg | Lattice Flicker — 9 dmg | Crystal Break — 12 dmg | Harmonic Break — 15 dmg, 2 burn, 2t |
 | veilPrism | Lattice Guard — taunt (all heroes must target this enemy) | Ram — 8 dmg | Prism Surge — 11 dmg, 4 shield | Focused Beam — 14 dmg | Overcharge Drive — 18 dmg |
 | veilAegis | Lattice Link — 6 shield, ally 6 shield, +1 roll to allies, 2t, **firewall** | Aegis Bash — 12 dmg, ally 6 shield, +1 roll to allies, 2t | Bulwark Pulse — 14 dmg, ally 8 shield, +1 roll to allies, 2t | Fortress Lash — 18 dmg, ally 9 shield, +2 roll to allies, 2t, **firewall** | Conclave Bulwark — 20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20, **firewall** |
 | veilResonance | Harmonic Mend — 7 heal, 7 shield, +1 roll to allies, 2t, **firewall** | Resonant Slam — 12 dmg | Pulse Burn — 12 dmg, 3 burn, 3t, +1 roll to allies, 2t | Catastrophic Wave — 22 dmg, +2 roll to allies, 2t | Veil Collapse — 28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% nat20 |
@@ -142,7 +142,7 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 ## What it replaced
 
 - **Phase-2 stat jumps** → per-boss standing rules (pkg4; see [bosses.md](bosses.md)). Leftovers: `phase2.wav` + AudioManager registration (finding F-enemies-16), stale `docs/ABILITY_DESCRIPTIONS_FULL.md` P2 numbers (F-enemies-17).
-- **Cower** → freeze (repeat) with `freeze_flavor: petrify` on beastLynx. **Venom/Decay** → Burn (flavor names like "Venom Nip" deliberately kept, TASK_QUEUE.md:303). **Counterspell-%** → Firewall. **Retaliate** → spike. **Lure** → enemy-side Taunt (`lured_by_id` internal).
+- **Cower** → freeze (repeat) with `freeze_flavor: petrify` on beastLynx. **Venom/Decay** → Burn (the old DoT flavors; the reserved-word ability names — Venom Nip, ECM Jam, Chain Strike, Crystal Shatter — were later renamed for keyword legibility, NK-05). **Counterspell-%** → Firewall. **Retaliate** → spike. **Lure** → enemy-side Taunt (`lured_by_id` internal).
 - Old unit names live on only in git history and renamed portrait files (rift_macaque→pumice_macaque, void_reaver→mantle_tyrant, whitenoise_skimmer→static_skimmer, etc. — TRUTH §Assets).
 
 ## File locations

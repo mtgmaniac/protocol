@@ -112,7 +112,7 @@ label/style helpers. ~-150 lines and one place to change screen chrome.
 - **`legacy-angular/`** is a 100+ MB asset closet for a dead app the docs
   must repeatedly warn agents away from. Migrate the ~30 PNGs Godot actually
   loads (`res://legacy-angular/public/...`) into `assets/`, delete the rest,
-  and the warning paragraphs in three docs disappear. (Void Circlet portraits
+  and the warning paragraphs in three docs disappear. (Null Synod portraits
   were migrated this way in July 2026 — the pattern works.)
 - **`addons/ziva_agent`** is not enabled in project.godot. Delete or enable.
 - **`hero_zone_ranges`** in DataManager: loaded but its accessor was dead
