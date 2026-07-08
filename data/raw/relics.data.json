@@ -93,14 +93,14 @@
   {
     "id": "martyrdomProtocol",
     "name": "Vengeance Protocol",
-    "desc": "When an ally falls, your surviving squad's next roll is all natural 20s (once per battle).",
+    "desc": "When an ally falls, your surviving squad's next roll is all 20s (once per battle).",
     "icon": "die",
     "effect": { "type": "vengeanceProtocol" }
   },
   {
     "id": "overloadLoop",
     "name": "Overload Loop",
-    "desc": "Natural 20s resolve their effects twice.",
+    "desc": "20s resolve their effects twice.",
     "icon": "die",
     "effect": { "type": "critResolveTwice" }
   },

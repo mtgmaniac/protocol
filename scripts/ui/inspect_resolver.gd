@@ -358,11 +358,11 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 	var turns: String = "%d turn%s" % [duration, "" if duration == 1 else "s"] if duration > 0 else ""
 	match kind:
 		"burn":
-			return "Takes %s damage at the start of each turn%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
+			return "Takes %s damage at the end of each round%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
 		"shield":
 			return "Absorbs %s incoming damage before HP is touched." % (value if value != "" else "")
 		"frozen", "freeze", "die_freeze":
-			return "Die result is locked and cannot change%s." % ((" for " + turns) if turns != "" else "")
+			return "Die result is locked — it keeps this face and the unit acts again on it%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
 			return "Untargetable by hostile single-target abilities; friendly picks stay legal. Breaks when this unit deals damage or is hit by an AoE."
 		"taunt":
