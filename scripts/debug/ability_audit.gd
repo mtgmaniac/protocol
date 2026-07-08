@@ -3647,7 +3647,11 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 		"freezeAllEnemyDice":
 			return _expect_bool(effect_field, _count_events(events, "freeze", "enemy") >= 2, "freeze events on all enemy dice", "events=%s" % str(events))
 		"taunt":
-			return _expect_bool(effect_field, after.actor.taunting, "actor taunting after hero taunt ability", "taunting=%s" % str(after.actor.taunting))
+			# Hero taunt clears at the round-end tick (NK-08, symmetric with enemy
+			# self-taunt) — it redirects enemy aim during its round, then expires.
+			# The harness snapshots AFTER a full resolve_round, so the persistent
+			# flag is (correctly) false by then; assert the taunt EVENT fired.
+			return _expect_bool(effect_field, _has_event(events, "taunt", 0, "hero"), "taunt event emitted by the hero taunt ability", "events=%s" % str(events))
 		"revive":
 			var revive_pct: int = int(raw.get("revivePct", 50))
 			var expected_hp: int = maxi(1, int(after.ally_a.max_hp) * revive_pct / 100)
