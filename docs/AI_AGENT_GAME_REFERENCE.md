@@ -234,7 +234,7 @@ python scripts/assets/defringe_alpha_edges.py   # add --dry-run to audit only
 ```
 
 Enemy portrait files live in `assets/portraits/enemies/` named by slugified
-display name (the DataManager fallback loader). Void Circlet art was migrated
+display name (the DataManager fallback loader). Null Synod art was migrated
 from `legacy-angular/public/enemies/` in July 2026 via centre-square crops.
 
 ## 9. HP Region Rules
