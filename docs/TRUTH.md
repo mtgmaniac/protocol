@@ -102,6 +102,7 @@ Format: `[value type] [modifier] [target] [duration]`, clauses joined by `, ` (c
 | Hijack | HJ | enemy-only: next roll copies heroes' current highest die (voidScribe Checksum Copy, voidGlimmer Afterimage, spewer Mimic Gland) |
 | Siphon | SI | enemy-only: on hit drain N Protocol (floor 0) |
 | Taunt | T | unified (Lure deleted): "The taunted unit can only target the taunter." Hero-side redirects all enemy aim (overrides everything, even cloak); enemy-side (`lured_by_id` internal) restricts the hit hero's legal targets to the taunter + TAUNT chip on the hero's card. **Both sides clear at round end** — hero taunt is not a permanent stance (per Kev NK-08, symmetric with enemy self-taunt) |
+| Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
 
 **Cloak (2 clauses):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal.
 **One keyword per ability** (pierce counts), **two allowed in overload** — audit-enforced.

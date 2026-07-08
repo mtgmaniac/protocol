@@ -1644,15 +1644,21 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			enemy_state["rampage_charges"] = int(enemy_state["rampage_charges"]) - 1
 			_log("%s triggers Rampage! (2× damage)" % enemy_state["unit"].display_name)
 		if bool(raw.get("packBonus", false)) and final_damage > 0:
+			# Pack Bonus: +1 per OTHER living pack member of the SAME KIND. "Kind"
+			# is the enemy_type (kit) — Obsidian and Slag hounds both count as
+			# beastWolf pack. Compare enemy_type, not the per-instance id: instance
+			# ids are unique (`beastWolf#1` vs `beastWolf#2`) so the old id compare
+			# was never true and the bonus never fired (fix 2026-07-08).
+			var pack_kind: String = str(enemy_state["unit"].enemy_type)
 			var pack_count: int = 0
 			for es in _enemy_states:
 				if es == enemy_state:
 					continue
-				if not es["dead"] and str(es["id"]) == str(enemy_state["id"]):
+				if not es["dead"] and str(es["unit"].enemy_type) == pack_kind:
 					pack_count += 1
 			if pack_count > 0:
 				final_damage += pack_count
-				_log("%s pack bonus +%d (pack size: %d)." % [enemy_state["unit"].display_name, pack_count, pack_count])
+				_log("%s pack bonus +%d (%d fellow pack member(s))." % [enemy_state["unit"].display_name, pack_count, pack_count])
 		final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
 		if should_wipe_shields:
 			_wipe_all_hero_shields(enemy_state)

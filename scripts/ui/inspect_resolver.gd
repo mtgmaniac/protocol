@@ -39,6 +39,7 @@ const KEYWORD_FIELD_MAP := {
 	"lifestealPct": "leech",
 	"mark": "mark",
 	"spike": "spike",
+	"packBonus": "pack_bonus",
 	"ignSh": "pierce",
 	"jam": "jam",
 	"jamAll": "jam",
