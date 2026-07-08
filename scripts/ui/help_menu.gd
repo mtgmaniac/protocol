@@ -30,7 +30,7 @@ const HELP_TABS := [
 const HELP_KEYWORD_ICON := {
 	"burn": "burn", "pierce": "damage", "shield": "shield", "heal": "heal",
 	"revive": "heal", "roll_down": "roll_down", "roll_up": "roll_up",
-	"freeze": "freeze", "taunt": "shield", "aoe": "damage",
+	"freeze": "freeze", "taunt": "shield", "aoe": "damage", "accrete": "shield",
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
@@ -38,8 +38,8 @@ const BESTIARY_FACTION_LABEL := {
 	"facility": "FACILITY",
 	"hive": "HIVE",
 	"veil": "VEIL",
-	"voidCirclet": "VOID CIRCLET",
-	"stellarMenagerie": "STELLAR MENAGERIE",
+	"voidCirclet": "NULL SYNOD",
+	"stellarMenagerie": "THE ACCRETION",
 }
 const SECTION_HEADER_COLOR := Color(0.72, 0.88, 1.0, 1.0)
 
@@ -322,7 +322,6 @@ func _build_rewards(host: VBoxContainer) -> void:
 		"Common — gray.",
 		"Uncommon — green.",
 		"Rare — blue.",
-		"Epic — purple.",
 		"Legendary — gold.",
 	])
 	_add_section(host, "ICON FRAME = TYPE", [

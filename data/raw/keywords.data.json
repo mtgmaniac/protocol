@@ -44,7 +44,7 @@
       "id": "leech",
       "term": "Leech",
       "category": "offense",
-      "def": "The attacker heals HP equal to 50% of the damage dealt to HP (after shields).",
+      "def": "The attacker heals HP equal to a share of the damage dealt to HP, after shields — 50% for heroes; each enemy shows its own rate as 'lifesteal N%'.",
       "syntax": "leech",
       "code": "LC"
     },
@@ -143,7 +143,7 @@
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be Jammed, Rewritten, or Hijacked.",
+      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be altered at all — not by Jam, Rewrite, Hijack, Nudge, Reroll, or Set.",
       "syntax": "freeze (repeat N)",
       "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },
@@ -174,7 +174,7 @@
       "id": "taunt",
       "term": "Taunt",
       "category": "control",
-      "def": "The taunted unit can only target the taunter.",
+      "def": "The taunted unit can only target the taunter, until the end of the round.",
       "syntax": "taunt",
       "code": "T"
     },
@@ -192,6 +192,20 @@
       "category": "economy",
       "def": "Adds to the shared Protocol pool immediately (on top of the +1/turn income).",
       "syntax": "+N protocol"
+    },
+    {
+      "id": "wipe_shields",
+      "term": "Shield Wipe",
+      "category": "offense",
+      "def": "Enemy-only: destroys every shield on your whole squad before the attack's damage lands.",
+      "syntax": "wipe shields"
+    },
+    {
+      "id": "summon",
+      "term": "Summon",
+      "category": "offense",
+      "def": "Enemy-only: on its Overload (a 20), this enemy may call one reinforcement into an open slot.",
+      "syntax": "summon ~N% on 20"
     },
     {
       "id": "aoe",
