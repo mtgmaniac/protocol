@@ -219,7 +219,6 @@ func _ability_targets_single_hero(raw: Dictionary) -> bool:
 		or bool(raw.get("jam", false))
 		or bool(raw.get("rewrite", false))
 		or bool(raw.get("taunt", false))
-		or bool(raw.get("curseDice", false))
 	)
 
 
@@ -847,7 +846,6 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"jam_cap": 0,
 		"rewrite_pending": false,
 		"hijack_pending": false,
-		"cursed": false,
 		"taunting": false,
 		"frozen_die_value": 0,
 		"die_freeze_repeat_this_round": false,
@@ -1809,13 +1807,6 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_log("%s bristles with Spike %d." % [enemy_state["unit"].display_name, enemy_spike])
 		_emit_event(enemy_state, "spike_up", enemy_spike, "enemy")
 
-	# Curse dice: targeted hero rolls twice and keeps lower next round
-	if bool(raw.get("curseDice", false)):
-		if not hostile_hero_target.is_empty():
-			hostile_hero_target["cursed"] = true
-			_log("%s is CURSED — next roll will be the lower of two dice." % hostile_hero_target["unit"].display_name)
-			_emit_event(hostile_hero_target, "curse", 0, "hero")
-
 	# Taunt: force all heroes to target this enemy next player phase
 	if bool(raw.get("enemySelfTaunt", false)):
 		for es in _enemy_states:
@@ -2337,7 +2328,6 @@ func _clear_active_statuses_for_down_state(state: Dictionary) -> void:
 	state["lured_by_id"] = ""
 	state["lure_skip_next_tick"] = false
 	state["last_attacker_id"] = ""
-	state["cursed"] = false
 	state["taunting"] = false
 	state["frozen_die_value"] = 0
 	state["die_freeze_repeat_this_round"] = false

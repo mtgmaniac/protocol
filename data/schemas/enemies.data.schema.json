@@ -121,7 +121,6 @@
         "freezeAllEnemyDice": { "type": "integer", "minimum": 1 },
         "freeze_flavor": { "type": "string", "enum": ["ice", "petrify"] },
         "enemySelfTaunt": { "type": "boolean" },
-        "curseDice": { "type": "boolean" },
         "packBonus": { "type": "boolean" }
       }
     },

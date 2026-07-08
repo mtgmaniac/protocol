@@ -77,8 +77,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		status_list.append("FROZEN %d" % int(state["die_freeze_turns"]))
 	if int(state.get("rampage_charges", 0)) > 0:
 		status_list.append("RAGE ×%d" % int(state["rampage_charges"]))
-	if bool(state.get("cursed", false)):
-		status_list.append("CURSED")
 	if bool(state.get("taunting", false)) or str(state.get("lured_by_id", "")) != "":
 		status_list.append("TAUNT")
 	if bool(state.get("warded", false)):

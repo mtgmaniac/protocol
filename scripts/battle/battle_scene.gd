@@ -559,10 +559,6 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
 	_apply_post_roll_gear_effects()
 
-	for hero_state in combat_manager.get_hero_states():
-		if bool(hero_state.get("cursed", false)):
-			hero_state["cursed"] = false
-
 	_assign_enemy_targets()
 	_prepare_hero_targets()
 	_card_view.refresh_all_cards()
