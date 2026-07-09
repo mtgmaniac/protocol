@@ -34,6 +34,7 @@ const ITEM_ICON_BY_ID := {
 	"cascade_jammer": "res://assets/icons/items/cascade_jammer.png",
 	"cryo_gel": "res://assets/icons/items/cryo_gel.png",
 	"cryo_web": "res://assets/icons/items/cryo_web.png",
+	"deep_zero_pin": "res://assets/icons/items/deep_zero_pin.png",
 	"protocol_cell": "res://assets/icons/items/protocol_cell.png",
 	"capacitor_dose": "res://assets/icons/items/capacitor_dose.png",
 	"core_surge": "res://assets/icons/items/core_surge.png",
