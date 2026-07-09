@@ -15,7 +15,9 @@ const LEGACY_UI_ROOT := "res://legacy-angular/public/ui/"
 
 const ITEM_ICON_BY_ID := {
 	"patch_kit": "res://assets/icons/items/patch_kit.png",
+	"triage_broadcast": "res://assets/icons/items/triage_broadcast.png",
 	"scrap_plate": "res://assets/icons/items/scrap_plate.png",
+	"buckler_array": "res://assets/icons/items/buckler_array.png",
 	"calibration_chip": "res://assets/icons/items/calibration_chip.png",
 	"momentum_core": "res://assets/icons/items/momentum_core.png",
 	"defib_spark": "res://assets/icons/items/defib_spark.png",
