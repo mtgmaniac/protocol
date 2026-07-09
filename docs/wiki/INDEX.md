@@ -53,6 +53,7 @@ Content & structure
 | [directives.md](directives.md) | All 32 tier-3 passives: handlers, coded effects, text |
 | [bosses.md](bosses.md) | Per-boss standing rules with cadence + code cites, escorts, phase-2 history |
 | [factions.md](factions.md) | 5 factions: identity, mechanical theme, naming history, frozen internal ids |
+| [feedback-catalog.md](feedback-catalog.md) | Code-verified feedback catalog: every shake / flash / float / die-effect / chip / sound → exact trigger + `file:line`. Reference for the icon (P6), UI (P7), and audio (P8) work |
 
 ### Content catalogs
 | Page | Covers |
