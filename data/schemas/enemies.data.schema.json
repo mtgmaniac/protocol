@@ -16,6 +16,7 @@
       "additionalProperties": { "$ref": "#/$defs/enemyUnitDef" }
     },
     "battleEnemyScale": {
+      "description": "UNWIRED — flat-stats is current design (INVARIANTS #6/#8); per-battle scaling parked, not cut. No runtime reader — do not re-flag as dead data.",
       "type": "array",
       "minItems": 10,
       "maxItems": 10,
@@ -70,8 +71,7 @@
         "beastHyena",
         "beastBadger",
         "beastTyrant",
-        "signalSkimmer",
-        "commsHex"
+        "signalSkimmer"
       ]
     },
     "zone": {
@@ -121,7 +121,6 @@
         "freezeAllEnemyDice": { "type": "integer", "minimum": 1 },
         "freeze_flavor": { "type": "string", "enum": ["ice", "petrify"] },
         "enemySelfTaunt": { "type": "boolean" },
-        "curseDice": { "type": "boolean" },
         "packBonus": { "type": "boolean" }
       }
     },

@@ -5,7 +5,7 @@ version of Overload Protocol. It describes the live project structure, the real
 runtime owners, and the traps that have already cost time so future work can
 start with the right assumptions.
 
-Last refreshed from local source on 2026-07-01.
+Last refreshed from local source on 2026-07-08.
 
 **Also read:** [TRUTH.md](TRUTH.md) (canonical reference — wins every doc conflict; verify commands + sim baseline), [AGENTS.md](../AGENTS.md) (branch split).
 
@@ -25,7 +25,9 @@ Important workspace rules:
 
 - Live game code is under `scripts/`, `scenes/`, `assets/`, and `data/raw/`
 - **`legacy-angular/` is assets-only (portraits/UI rasters). The Angular app was removed — never edit or restore it.**
-- Headless balance sims live in `scripts/sim/` + `scripts/debug/balance_sim_*.ts`
+- Headless balance sims live in `scripts/sim/` — **GDScript**, running the real
+  `combat_manager` headless via `res://scenes/sim/sim_main.tscn`, driven by
+  `scripts/sim/batch.py` / `ci_smoke.py` (the old TypeScript sim was removed — no `.ts` remain)
 - See root **`AGENTS.md`** for the hard rule assistants must follow
 - `debug_artifacts/` contains generated screenshots and scratch output
 - `docs/` is the active local documentation set
@@ -356,7 +358,8 @@ Content state (post Package 3, July 2026): 8 hero kits + 16 evolutions
 rebuilt; 5 factions (Facility / Hive / Veil Concord / Null Synod / The
 Accretion) with 38 enemy defs; 31 gear; 35 relics (5 `bossRelic: true`,
 excluded from drafts until unlocked); 25 consumables (once-per-effect).
-Content ground truth lives in `offline-bundle/GROUND_TRUTH.md`.
+Content ground truth lives in `docs/TRUTH.md` (canonical — it supersedes the older
+`offline-bundle/GROUND_TRUTH.md`).
 
 Loaded resources include:
 

@@ -105,7 +105,6 @@ const ENEMY_HANDLED_FIELDS := [
 	"siphon",
 	"cloak",
 	"taunt",
-	"curseDice",
 	"enemySelfTaunt",
 	"summonChance",
 	"summonName",
@@ -2665,7 +2664,6 @@ func _run_down_cleanup_regression() -> void:
 	hero["die_freeze_turns"] = 1
 	hero["rampage_charges"] = 1
 	hero["warded"] = true
-	hero["cursed"] = true
 	hero["taunting"] = true
 	manager.call("_clear_active_statuses_for_down_state", hero)
 	var ok: bool = (
@@ -2676,7 +2674,6 @@ func _run_down_cleanup_regression() -> void:
 		and int(hero["die_freeze_turns"]) == 0
 		and int(hero["rampage_charges"]) == 0
 		and not bool(hero["warded"])
-		and not bool(hero["cursed"])
 		and not bool(hero["taunting"])
 	)
 	if ok:

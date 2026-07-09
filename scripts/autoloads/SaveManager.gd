@@ -34,14 +34,6 @@ const HERO_LADDER := ["engineer", "shield", "pulse", "ghost", "breaker"]
 const MAX_HERO_LADDER_RUNG := 5
 # One-line unlock hints (all-caps, UI-facing), keyed by hero id and tied to each
 # ladder rung's condition.
-const HERO_UNLOCK_HINT := {
-	"engineer": "REACH BATTLE 6",
-	"shield": "CLEAR FACILITY SWEEP",
-	"pulse": "REACH BATTLE 6 IN THE HIVE",
-	"ghost": "CLEAR THE HIVE",
-	"breaker": "REACH BATTLE 6 IN THE VEIL",
-}
-
 var data: Dictionary = {}
 var _disk_enabled: bool = true
 # Entries awarded by the most recent record_run_finished(), consumed by the
@@ -342,19 +334,6 @@ func get_hero_ladder_rung() -> int:
 # The (0-based) ladder index a still-locked hero occupies, or -1 if not a ladder hero.
 func hero_ladder_index(hero_id: String) -> int:
 	return HERO_LADDER.find(hero_id)
-
-
-# One-line, all-caps hint for how to unlock a locked hero.
-func hero_unlock_hint(hero_id: String) -> String:
-	return str(HERO_UNLOCK_HINT.get(hero_id, "LOCKED"))
-
-
-# One-line hint for a locked operation: clear the previous link in the chain.
-func operation_unlock_hint(op_id: String) -> String:
-	var idx: int = OPERATION_CHAIN.find(op_id)
-	if idx > 0:
-		return "CLEAR %s" % _operation_display_name(OPERATION_CHAIN[idx - 1]).to_upper()
-	return "LOCKED"
 
 
 # Clears a hero's NEW flag once it's been added to a squad.
