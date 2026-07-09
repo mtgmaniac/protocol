@@ -44,11 +44,11 @@ Hijack/Nudge/Reroll/Set never reach a frozen die, so no die-surface conflict can
 | Actor action tell (support) | `compact_unit_card.play_action_feedback(kind)` | `:87-88`; `kind` from `_get_action_feedback_kind` — attack (dmg/burn) vs support (shield/heal/cloak/roll_buff/freeze) vs neutral |
 | **Frame shake (ONLY caller)** | `_shake:678-689` | fires **only** on a `damage` effect event (`:135-139`); amplitude `clampf(2.0 + amt*0.16, 2, 11)`, 0.22s, 7 decaying steps. **No shake on death, burn, or crit** |
 | Portrait ghosted (cloak) | `compact_unit_card.gd:468-469` | `cloaked` state → portrait modulate `(0.70,0.80,0.95,0.42)`. State-driven, not a chip (pkg8.1) |
-| Portrait grayed (dead) | `compact_unit_card.gd:467` | `dead` → modulate `(0.48,0.50,0.58,0.55)`. No scatter/debris (spec-missing) |
+| Portrait grayed (dead) | `compact_unit_card.gd:467` | `dead` → modulate `(0.48,0.50,0.58,0.55)`, **plus `_death_scatter`** debris fired at the fatal-hit event (F-08) |
 | Decloak flash | `_resolve_portrait_sharp:604-610` | `decloak` event → modulate `(1.35,1.35,1.4)` → base over 0.24s |
 | Floating words | `_spawn_floating_text:268-302` | any effect event with non-empty `_build_floating_text`; rises 52px + fades over 0.9s, punch-scale-in. **Text (`:325`):** damage/burn `-N` · heal `+N` · shield `SH +N` · roll_buff `+N ROLL` · freeze `FROZEN N` · block `✕ NEGATED`(amt≤0)/`BLOCK N` · wipe_shields `SHIELDS WIPED` · execute `EXECUTE -N` · mark `◎ MARKED` · chain/detonate/spike `-N` · **leech/pierce/accrete/revive → "" (float nothing)**. Color `_get_floating_color:359`; damage size scales `0.95–1.55` w/ amount, execute ×1.6 |
 | HP bar (green fill) | `compact_unit_card.gd:302` (`HP_FILL = DT_HP_GREEN`) | green reserved for HP only (INVARIANTS #7) |
-| HP "doomed" forecast chip | `compact_unit_card.gd:318-330` (`HP_CHIP = COLOR_DAMAGE`) | red overlay whose left edge pins at `forecast_hp`; **static preview, not an animated drain** — bars snap on `refresh_card_for_event` (`battle_feedback:129`) |
+| HP drain + chip-ghost | `compact_unit_card.gd:512` (`_set_hp_display`) | on `refresh_card_for_event` the green `_hp_fill.anchor_right` tweens down over 0.30s while the red `_hp_chip` (`HP_CHIP = COLOR_DAMAGE`) pins its left at the new HP and trails its right from the old value — the chip-ghost over the lost slice (F-06). Heal grows the green upward |
 | **Six-chip row** | `_build_compact_status_tokens:382-443` | Burn `☠`(p0) · Shield `⬡`(p1) · Mark(p1) · ±Roll `🎲`(p2) · Firewall(p3) · Taunt(p3). Cap `STATUS_MAX_VISIBLE` + `+N` overflow badge. All state-driven |
 | TAUNT chip (clears round-end, NK-08) | `:440-441` | chip on `lured_by_id != ""` (enemy-side taunt on a hero). Auto-expires because `lured_by_id` is cleared at the round-end tick in `combat_manager` — no persistent marker |
 | Summon enters frame | `battle_scene.gd:2576` (`type == "summon"`) | injected unit builds a new card (min card size enforced). **Handled in battle_scene, not the feedback event table** |
@@ -61,7 +61,7 @@ Hijack/Nudge/Reroll/Set never reach a frozen die, so no die-surface conflict can
 | Chain (per hop) | `:435-436` | one cyan `(0.55,0.85,1.0)` tracer **per `chain` event** emitted (combat_manager emits one per jump) |
 | Detonate | `_chip_flash_then_burst:493-517` (`:437-438`) | burn-color chip pops at the status strip (0.08s) → hands off to a 14-shard ember burst `(0.95,0.55,0.20)` |
 | Execute | `:133-134,145-146,261-263,311` | `execute` event → heavier `_hit_pause(maxi(peak,8), 0.05)` + deep-red card flash `(1.0,0.30,0.30)` + oversized `EXECUTE -N` (float ×1.6) |
-| Breach | `:439-440` | `breach` event → gold `(1.0,0.82,0.20)` 12-shard shield-shatter burst on target |
+| Breach | `_shield_shatter` | `breach` event → gold `(1.0,0.82,0.20)` `_shield_shatter` (expanding ring + angular glass slivers) on target — distinct from the square-confetti burst (F-10). `wipe_shields` also fires `_shield_shatter` |
 | Leech | `:443-446` | `leech` event → dim-red `(0.85,0.30,0.30)` return tracer source→target; the paired `heal` event carries the green `+N` |
 | Siphon | `_drift_pip:578-599` (`:451-455`) | `siphon` event → amber `(0.95,0.76,0.28)` pip drifts protocol-bar-center → enemy card, label `-N` |
 | Hijack | `:456-458` | `hijack` event → `HJ` pip drifts tray-center → enemy card (+ the die pending marker, Table 1) |
@@ -74,9 +74,9 @@ Hijack/Nudge/Reroll/Set never reach a frozen die, so no die-surface conflict can
 
 | Feedback | Site | Exact condition |
 |---|---|---|
-| **Overload celebration** (gold wash + board shake) | `_celebrate_overload:404-419` | `action.zone == "overload"` (`:95`) → `overload` sfx + full-rect gold `ColorRect` α 0→0.16→0 (~0.31s) + board `_shake(9, 0.34)`. **Effective-face-20, no nat check** (`:403`) |
+| **Overload celebration** (gold wash + board shake + slow-mo) | `_celebrate_overload` + `_slow_mo` | `action.zone == "overload"` (`:95`) → `overload` sfx + full-rect gold `ColorRect` α 0→0.16→0 (~0.31s) + board `_shake(9, 0.34)`, then a brief `_slow_mo` time beat at the end of the group (F-09). **Effective-face-20, no nat check** |
 | Ability-name slam | `_slam_ability_name:615-650` | on overload (`:99`) → gold ability-name label punches across the actor card, holds 0.42s, snaps out |
-| Hit-pause (global freeze) | `_hit_pause:388-398` | `Engine.time_scale = 0` for `clampf(0.04 + amt*0.0018, 0.04, 0.09) + extra`. Fires: overload (`:144`, +0.06), execute (`:145-146`, +0.05), plain damage (`:147-148`). **Skipped after a fatal hit** so death reads immediately |
+| Global-effect arbiter (`_global_fx_active`) | `_hit_pause` + `_slow_mo` | ONE owner of `Engine.time_scale`; time effects never compound. `_hit_pause` = `time_scale 0` for `clampf(0.04 + amt*0.0018, 0.04, 0.09) + extra` (execute +0.05, plain damage); overload uses `_slow_mo` (dilate to `SLOWMO_SCALE` for `SLOWMO_REAL_DUR` wall-clock) instead. Hit-pause **skipped after a fatal hit** so death reads immediately. **Audio pass hooks this gate for global SFX** |
 | Screen shake vs frame shake | board: `_celebrate_overload:419` · card: `_shake:139` | **global** board shake only on overload; **frame-local** card shake only on `damage` |
 | Round tick / turn transition | `combat_manager._tick_end_of_round_states` | burn ticks, shields + roll buffs expire per-side here. **No dedicated banner** — component events (shield-expiry, burn tick) drive card refresh |
 | Protocol pip fill / spend | `protocol_pips.gd:_draw:37-77`; updated `battle_scene.gd:~1607-1626` | filled = `DT_AMBER`, empty = border + dark inset, physical-pixel grid. `+1`/turn, Nudge 1 / Reroll 2 / Set 3, cap 10 (economy in `battle_engine`/`protocol_actions`) |
@@ -124,19 +124,26 @@ Cross-referenced to [INTERACTION_AUDIT.md](../audit/INTERACTION_AUDIT.md) where 
   (unwired) — image/audio-file deletion deferred to a later sweep. `ANIMATION.md:13` already notes the
   `phase2` *event* was deleted in pkg4 (accurate).
 
-### Unimplemented spec (in ANIMATION.md, no firing site)
-The spec's own "What's missing" list (`ANIMATION.md:20-21`) is accurate. Confirmed absent in code:
-- **F-04 — Anticipation lean** (`:31`) — no wind-up before an attack; `_lunge` is Action-phase only.
-- **F-05 — Travel tracer for melee / ranged arrival** (`:33`) — only Chain/Leech draw tracers; normal
-  attacks have no projectile.
-- **F-06 — Animated `drain_hp` + chip ghost bar** (`:35`) — HP bars snap; the `HP_CHIP` forecast overlay
-  (`compact_unit_card.gd:318`) is a **static pending-damage preview**, not the trailing-drain animation.
-- **F-07 — Idle bob / ambient life** (`:39`) — the board is static between beats.
-- **F-08 — Death scatter / debris + longer hit-pause** (`:41`) — units only `modulate` gray-out; no
-  particle death, and hit-pause is *skipped* on the fatal hit.
-- **F-09 — Slow-mo on the 20-celebration** (`:44`) — gold wash + shake + shake exist; no time-dilation.
-- **F-10 — Shield-break shatter** as a distinct primitive (`:35`) — Breach reuses the generic
-  `_burst_particles` (gold), and shield-*expiry* has no shatter at all.
+### Unimplemented spec — RESOLVED (basic-animation pass `feat/basic-animations`)
+The former unimplemented list is now zero: four items built, three retired from the spec.
+- **F-04 — Anticipation lean** — **RETIRED.** Removed from `ANIMATION.md`; the `_lunge` step-in is the
+  whole Action tell by design. Was spec-only (zero code) — nothing to rip out.
+- **F-05 — Travel tracer for melee** — **RETIRED.** Removed from `ANIMATION.md`; a melee hit IS the lunge,
+  and Chain/Leech tracers stay as deliberate keyword accents. Was spec-only (zero code).
+- **F-06 — Animated `drain_hp` + chip ghost bar** — **IMPLEMENTED** (in fact already present:
+  `compact_unit_card._set_hp_display:512` tweens `_hp_fill.anchor_right` down over 0.30s while the red
+  `_hp_chip` pins its left edge at the new HP and its right edge trails from the old value → the chip-ghost
+  over the lost slice. The prior "bars snap" note was **stale** — `refresh_card_for_event` steps
+  `hp_after` per hit and `_set_hp_display` animates each step. Verified this pass.)
+- **F-07 — Idle bob / ambient life** — **RETIRED.** Removed from `ANIMATION.md`; the board is quiet between
+  beats by design. Was spec-only (zero code).
+- **F-08 — Death scatter / debris** — **IMPLEMENTED.** `battle_feedback._death_scatter:` team-tinted + ash
+  debris arc-and-fall, fired at the fatal-hit event after the card grays out; multi-death micro-stagger
+  (`death_ordinal * 0.05`). Fire-and-forget so it never stalls the turn.
+- **F-09 — Slow-mo on the 20-celebration** — **IMPLEMENTED.** `battle_feedback._slow_mo` (brief wall-clock
+  dilation) replaces the overload hit-pause, gated by the global-effect arbiter so it can't stack.
+- **F-10 — Shield-break shatter** — **IMPLEMENTED.** `battle_feedback._shield_shatter` (expanding ring +
+  angular glass slivers), wired to `breach` and `wipe_shields`; distinct from the square-confetti hit burst.
 
 ### Undocumented firing sites (in code, not in the ANIMATION table)
 - **F-11 — Frame shake fires ONLY on `damage`** (`battle_feedback.gd:139`), not on burn, death, or a

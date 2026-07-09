@@ -104,6 +104,9 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var peak_damage: int = 0
 	var had_fatal_hit: bool = false
 	var had_execute: bool = false
+	# Collision rule 3: batch simultaneous deaths, but micro-stagger them a few
+	# frames each so a chain that kills two doesn't scatter both on one frame.
+	var death_ordinal: int = 0
 	for event_variant in effects:
 		var event: Dictionary = event_variant
 		var event_type: String = str(event.get("type", ""))
@@ -130,6 +133,13 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
 		_play_keyword_feedback(event_type, event, actor_card, target_card)
+		# Death scatter: the card has just refreshed to its dead (grayed) state, so
+		# the debris bursting off it reads as "this unit broke apart." Frame-local
+		# and fire-and-forget, so it never stalls the turn (the fatal-hit path
+		# already skips the lead-in wait and the hit-pause below).
+		if _is_fatal_hit_event(event):
+			_death_scatter(target_card, str(event.get("side", "")), float(death_ordinal) * 0.05)
+			death_ordinal += 1
 		if event_type == "execute":
 			had_execute = true
 		if event_type == "damage":
@@ -140,8 +150,11 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 
 	# Tier 1: impact freeze — skip after a kill so death reads immediately, not after pause.
 	# Execute (pkg8.4) lands with a heavier pause than a plain hit.
+	# The overload (effective-face-20) gets the celebration slow-mo beat instead of a
+	# plain freeze — routed through the same arbiter as _hit_pause so the two never
+	# stack (collision rule 2). Fires on effective face == 20, no nat/raw check (NK-02).
 	if is_overload:
-		await _hit_pause(peak_damage, 0.06)
+		await _slow_mo()
 	elif had_execute and not had_fatal_hit:
 		await _hit_pause(maxi(peak_damage, 8), 0.05)
 	elif peak_damage > 0 and not had_fatal_hit:
@@ -376,26 +389,54 @@ func _get_floating_color(event_type: String) -> Color:
 
 # ── Tier 1 primitives ─────────────────────────────────────────────────────────
 
-# Brief impact freeze (the genre "hit pause"). Bigger hits hold a touch longer so
-# heavy damage reads with more weight. Engine.time_scale = 0 freezes the whole
-# scene; we restore via an ignore_time_scale timer so the scaled feedback timers
-# downstream keep ticking. Guard against re-entrancy so overlapping hits can't
-# strand time_scale at 0.
+# ── Global-effect arbiter — the SINGLE owner of Engine.time_scale ─────────────
+# All screen-wide TIME effects (the hit-pause freeze and the 20-celebration
+# slow-mo) route through here so they can never COMPOUND: a double hit-pause
+# reads as a frame drop and stacked slow-mo reads as broken. Rule: one global
+# time effect at a time — while one runs, a new request is dropped (the safe
+# "never compound" approximation of strongest/most-recent-wins for this basic
+# pass). Frame-local effects are EXEMPT and may run simultaneously — per-unit
+# card shakes, per-unit death scatters, and HP drains on different units are all
+# separate objects with no collision. The board shake (a positional effect, not
+# a time effect) is likewise a separate channel and may overlap these.
+# AUDIO PASS (Prompt 8): this `_global_fx_active` gate is the one choke point for
+# global screen-effect timing — hook screen-effect SFX to the same arbiter.
 const HIT_PAUSE_MIN := 0.04
 const HIT_PAUSE_MAX := 0.09
-var _hit_pause_active: bool = false
+# 20-celebration slow-mo: a BRIEF dilation (not a full freeze) that punctuates
+# the overload without interrupting flow. Capped short so a run where 20s come
+# up often never feels laggy (collision rule 4: the celebration must not stall).
+const SLOWMO_SCALE := 0.35
+const SLOWMO_REAL_DUR := 0.12
+var _global_fx_active: bool = false
 
 func _hit_pause(amount: int, extra: float = 0.0) -> void:
-	if _hit_pause_active:
+	if _global_fx_active:
 		return
 	if not is_inside_tree() or get_tree() == null:
 		return
-	_hit_pause_active = true
+	_global_fx_active = true
 	var dur: float = clampf(HIT_PAUSE_MIN + float(amount) * 0.0018, HIT_PAUSE_MIN, HIT_PAUSE_MAX) + extra
 	Engine.time_scale = 0.0
 	await get_tree().create_timer(dur, true, false, true).timeout
 	Engine.time_scale = 1.0
-	_hit_pause_active = false
+	_global_fx_active = false
+
+
+# The 20-celebration's time beat. Dilates the scene clock briefly, then restores.
+# The timer is real-time (ignore_time_scale = true), so the beat lasts a fixed
+# wall-clock duration regardless of the slowed scene clock. Shares the arbiter
+# gate with _hit_pause, so a slow-mo and a hit-pause can never stack.
+func _slow_mo() -> void:
+	if _global_fx_active:
+		return
+	if not is_inside_tree() or get_tree() == null:
+		return
+	_global_fx_active = true
+	Engine.time_scale = SLOWMO_SCALE
+	await get_tree().create_timer(SLOWMO_REAL_DUR, true, false, true).timeout
+	Engine.time_scale = 1.0
+	_global_fx_active = false
 
 
 # The overload signature: a brief, subtle gold screen wash (commit color) plus a
@@ -437,7 +478,9 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 		"detonate":
 			_chip_flash_then_burst(target_card, PixelUI.DT_STATUS["burn"]["border"], Color(0.95, 0.55, 0.20, 1.0), 14)
 		"breach":
-			_burst_particles(target_card, Color(1.0, 0.82, 0.20, 1.0), 12)
+			_shield_shatter(target_card, Color(1.0, 0.82, 0.20, 1.0))
+		"wipe_shields":
+			_shield_shatter(target_card, Color(1.0, 0.80, 0.20, 1.0))
 		"spike":
 			_burst_particles(target_card, Color(0.86, 0.42, 0.28, 1.0), 8)
 		"leech":
@@ -571,6 +614,111 @@ func _burst_particles(card: Control, color: Color, count: int = 10) -> void:
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tween.parallel().tween_property(shard, "modulate:a", 0.0, 0.30)
 		tween.tween_callback(shard.queue_free)
+
+
+# Primitive: death scatter — the unit breaks apart on a fatal hit. Cheap flat-
+# pixel debris: a handful of team-tinted + ash shards burst from across the card
+# and arc-fall as they fade, reading as "this unit died" without a bespoke
+# particle system. Frame-local (per-unit), so several deaths on one frame may run
+# together; callers pass a small STAGGER (a few frames) per extra death so a
+# chain that kills two doesn't scatter both on the exact same frame.
+const DEATH_DEBRIS_COUNT := 12
+
+func _death_scatter(card: Control, side: String, stagger: float = 0.0) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var card_rect: Rect2 = card.get_global_rect()
+	var origin: Vector2 = card_rect.get_center() - layer_origin
+	# Meaning-based color: the dying unit's own team line, flecked with ash — not
+	# damage-red (that reads as a hit, not a death).
+	var team: Color = PixelUI.DT_HERO_BORDER if side == "hero" else PixelUI.DT_ENEMY_BORDER
+	var ash: Color = Color(0.42, 0.44, 0.50, 1.0)
+	for i in DEATH_DEBRIS_COUNT:
+		var shard: ColorRect = ColorRect.new()
+		shard.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shard.color = ash if i % 3 == 0 else team
+		var side_len: float = randf_range(6.0, 12.0)
+		shard.size = Vector2(side_len, side_len)
+		# Spread the origin across the card so the WHOLE frame reads as breaking,
+		# not a single point-source burst.
+		var start: Vector2 = origin + Vector2(
+			randf_range(-card_rect.size.x * 0.30, card_rect.size.x * 0.30),
+			randf_range(-card_rect.size.y * 0.30, card_rect.size.y * 0.30)
+		)
+		shard.position = start
+		shard.z_as_relative = false
+		shard.z_index = 205
+		shard.modulate.a = 0.0
+		_scene.float_layer.add_child(shard)
+		# Up-and-out to an apex, then fall past it — a cheap gravity arc.
+		var horiz: float = randf_range(-70.0, 70.0)
+		var apex: Vector2 = start + Vector2(horiz, randf_range(-90.0, -40.0))
+		var landing: Vector2 = apex + Vector2(horiz * 0.4, randf_range(90.0, 150.0))
+		var tween: Tween = create_tween()
+		tween.tween_interval(stagger)
+		tween.tween_callback(func() -> void: shard.modulate.a = 1.0)
+		tween.tween_property(shard, "position", apex, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(shard, "position", landing, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.parallel().tween_property(shard, "modulate:a", 0.0, 0.34)
+		tween.tween_callback(shard.queue_free)
+
+
+# Primitive: shield-shatter — a broken shield reads as breaking glass, distinct
+# from the generic square-confetti hit burst: an expanding flat ring (the shield
+# surface popping) plus thin angular slivers fanning outward. Palette-driven, no
+# glow. Used by Breach and by wipe_shields.
+func _shield_shatter(card: Control, color: Color) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var center: Vector2 = card.get_global_rect().get_center() - layer_origin
+	# 1) expanding ring — the shield surface popping outward. Line2D points live in
+	# layer space, so we scale about `center` by compensating position (same trick
+	# as _hex_flash): a point renders at position + p*scale, so position =
+	# center*(1-scale) keeps the ring centred as it grows.
+	var ring: Line2D = Line2D.new()
+	ring.width = 4.0
+	ring.default_color = color
+	ring.closed = true
+	ring.z_as_relative = false
+	ring.z_index = 196
+	var segments: int = 12
+	for i in segments:
+		ring.add_point(center + Vector2.RIGHT.rotated(TAU * float(i) / float(segments)) * 26.0)
+	_scene.float_layer.add_child(ring)
+	ring.scale = Vector2(0.6, 0.6)
+	ring.position = center * 0.4
+	var ring_tween: Tween = create_tween()
+	ring_tween.tween_property(ring, "scale", Vector2(1.5, 1.5), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ring_tween.parallel().tween_property(ring, "position", -center * 0.5, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ring_tween.parallel().tween_property(ring, "modulate:a", 0.0, 0.22)
+	ring_tween.tween_callback(ring.queue_free)
+	# 2) angular glass slivers — thin flat rectangles (not confetti squares) rotated
+	# to their fly-out direction, radiating in an even fan.
+	var sliver_count: int = 10
+	for i in sliver_count:
+		var sliver: ColorRect = ColorRect.new()
+		sliver.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sliver.color = color
+		sliver.size = Vector2(randf_range(4.0, 7.0), randf_range(12.0, 20.0))
+		sliver.pivot_offset = sliver.size * 0.5
+		var angle: float = TAU * float(i) / float(sliver_count) + randf_range(-0.2, 0.2)
+		sliver.rotation = angle
+		sliver.position = center
+		sliver.z_as_relative = false
+		sliver.z_index = 197
+		_scene.float_layer.add_child(sliver)
+		var direction: Vector2 = Vector2.RIGHT.rotated(angle)
+		var distance: float = randf_range(40.0, 90.0)
+		var tween: Tween = create_tween()
+		tween.tween_property(sliver, "position", center + direction * distance, 0.26).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(sliver, "modulate:a", 0.0, 0.26)
+		tween.tween_callback(sliver.queue_free)
 
 
 # Primitive: a labeled pip that drifts from a point to a card (Siphon drain,
