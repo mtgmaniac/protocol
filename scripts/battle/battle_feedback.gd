@@ -3,6 +3,10 @@ extends Node
 
 var _scene: Control
 var _death_sfx_played_ids: Dictionary = {}
+# Same-card floats in flight: card instance id -> Array[Label]. New floats on a
+# card stack ABOVE the lowest still-alive float so simultaneous numbers never
+# overlap (float-text redesign stacking rule).
+var _live_floats_by_card: Dictionary = {}
 
 
 func setup(scene: Control) -> void:
@@ -13,6 +17,9 @@ func setup(scene: Control) -> void:
 
 func play_round_feedback(events: Array) -> void:
 	reset_death_sfx_tracking()
+	# Drop stale float-stacking entries (freed labels / last battle's cards) so
+	# the registry never grows across a run.
+	_live_floats_by_card.clear()
 	var action_groups: Array = _build_action_feedback_groups(events)
 	for group_variant in action_groups:
 		var group: Dictionary = group_variant
@@ -104,6 +111,16 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var peak_damage: int = 0
 	var had_fatal_hit: bool = false
 	var had_execute: bool = false
+	# Roll-buff floats live at the DIE, not the unit card (Kev's ruling: the buff
+	# affects the die — relocating it frees blue-at-a-unit to mean shield only).
+	# A squad-wide buff (several roll_buff events on one side in this group)
+	# floats ONCE centered over the tray instead of once per die.
+	var roll_buff_counts: Dictionary = {}
+	for event_variant in effects:
+		if str((event_variant as Dictionary).get("type", "")) == "roll_buff":
+			var buff_side: String = str((event_variant as Dictionary).get("side", ""))
+			roll_buff_counts[buff_side] = int(roll_buff_counts.get(buff_side, 0)) + 1
+	var roll_buff_floated_sides: Dictionary = {}
 	# Collision rule 3: batch simultaneous deaths, but micro-stagger them a few
 	# frames each so a chain that kills two doesn't scatter both on one frame.
 	var death_ordinal: int = 0
@@ -121,6 +138,8 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		if primer != null and is_instance_valid(primer):
 			primer.notice_event(event)
 		_play_event_sfx(event_type, event)
+		if event_type == "roll_buff":
+			_spawn_roll_buff_float(event, int(roll_buff_counts.get(str(event.get("side", "")), 0)) >= 2, roll_buff_floated_sides)
 		var target_card: Control = _find_card_for_event(event)
 		if target_card == null:
 			continue
@@ -278,28 +297,102 @@ func _flash_card(card: Control, event_type: String) -> void:
 	tween.tween_property(card, "modulate", base_modulate, 0.22).from(flash_color)
 
 
+# Floating-number presentation (float-text redesign): big signed numbers, no
+# words — the ward-negate ✕ is the single glyph exception (nothing happening IS
+# that event). Font is RAW px like the rest of the battle card text (name/HP are
+# raw 72, not scale_font_size-scaled): floats sit ABOVE the card's own text so
+# the number is the loudest thing on the card while it's alive.
+const FLOAT_FONT_SIZE := 96
+const FLOAT_OUTLINE_SIZE := 12
+const FLOAT_RISE := 64.0
+const FLOAT_LIFETIME := 0.9
+# Hold full alpha for a beat, then fade over the remainder — a linear whole-life
+# fade left the number half-gone by the time the punch-in settled.
+const FLOAT_FADE_HOLD := 0.3
+const FLOAT_STACK_GAP := 6.0
+
 func _spawn_floating_text(card: Control, event_type: String, amount: int) -> void:
 	var float_text: String = _build_floating_text(event_type, amount)
 	if float_text == "":
 		return
+	var origin: Vector2 = _get_card_float_origin(card)
+	var mult: float = _float_size_mult(event_type, amount)
+	_spawn_float_label(float_text, _get_floating_color(event_type), origin, mult, card.get_instance_id())
+
+
+# Roll-buff float at the DIE (relocated from the unit card): the buff changes
+# the die's roll, so the number rises off the die surface. Squad-wide buffs
+# float once centered over the tray instead of once per die.
+func _spawn_roll_buff_float(event: Dictionary, squad_wide: bool, floated_sides: Dictionary) -> void:
+	var side: String = str(event.get("side", ""))
+	if squad_wide:
+		if floated_sides.has(side):
+			return
+		floated_sides[side] = true
+	var tray: Control = _scene.dice_tray_3d
+	if tray == null or not is_instance_valid(tray):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var origin_global: Vector2 = Vector2.INF
+	if not squad_wide:
+		origin_global = tray.get_die_screen_position(side, str(event.get("target_id", "")))
+		if origin_global != Vector2.INF:
+			# Spawn just above the die so the number never covers the face.
+			origin_global.y -= 90.0
+	if origin_global == Vector2.INF:
+		origin_global = tray.get_global_rect().get_center()
+	var origin: Vector2 = origin_global - _scene.float_layer.get_global_position()
+	_spawn_float_label("+%d" % int(event.get("amount", 0)), _get_floating_color("roll_buff"), origin, 1.0, 0)
+
+
+# Shared float-label builder: punch-scale in, rise + fade, free. `origin` is the
+# float-layer-space point the label centers on horizontally (its top edge).
+# `stack_key` (a card instance id, 0 = no stacking) stacks simultaneous floats
+# on one card upward so they never overlap.
+func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float, stack_key: int) -> void:
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = float_text
+	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(20))
+	label.add_theme_font_size_override("font_size", FLOAT_FONT_SIZE)
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
-	label.add_theme_constant_override("outline_size", 4)
+	label.add_theme_constant_override("outline_size", FLOAT_OUTLINE_SIZE)
 	label.z_as_relative = false
 	label.z_index = 100
-	label.position = _get_card_float_origin(card)
-	label.modulate = _get_floating_color(event_type)
+	label.modulate = color
 	_scene.float_layer.add_child(label)
 	label.move_to_front()
+	label.reset_size()
+	label.position = Vector2(origin.x - label.size.x * 0.5, origin.y)
+
+	# Stacking rule: a new float on a card with floats still in flight spawns
+	# ABOVE the highest-stacked live one (they all rise at the same speed, so
+	# they never cross).
+	if stack_key != 0:
+		var live: Array = _live_floats_by_card.get(stack_key, [])
+		var pruned: Array = []
+		var min_y: float = INF
+		for entry_variant in live:
+			# Validity check BEFORE the cast — casting a freed instance errors.
+			if entry_variant != null and is_instance_valid(entry_variant):
+				var entry: Label = entry_variant
+				pruned.append(entry)
+				min_y = minf(min_y, entry.position.y)
+		if min_y != INF:
+			label.position.y = minf(label.position.y, min_y - label.size.y * mult - FLOAT_STACK_GAP)
+		pruned.append(label)
+		_live_floats_by_card[stack_key] = pruned
+
+	# Pixel snap law (INVARIANTS #14): land the spawn position on whole window px.
+	label.position.x = PixelUI.snap_to_physical_px(_scene.float_layer, label.position.x, 0)
+	label.position.y = PixelUI.snap_to_physical_px(_scene.float_layer, label.position.y, 1)
 
 	# punch_number: scale in from small with an overshoot, then settle, so the
 	# number "pops" on arrival. Bigger hits punch larger. Scale is centered on the
 	# label so it grows from its middle.
-	var mult: float = _float_size_mult(event_type, amount)
 	label.pivot_offset = label.get_minimum_size() * 0.5
 	label.scale = Vector2(0.5, 0.5)
 	var punch: Tween = create_tween()
@@ -308,18 +401,20 @@ func _spawn_floating_text(card: Control, event_type: String, amount: int) -> voi
 	punch.tween_property(label, "scale", Vector2.ONE * mult, 0.13) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
-	# Rise + fade over the lifetime, then free.
+	# Rise over the whole lifetime; hold full alpha for a beat, then fade out.
 	var tween: Tween = create_tween()
-	tween.tween_property(label, "position", label.position + Vector2(0, -52), 0.9)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.9)
+	tween.tween_property(label, "position", label.position + Vector2(0, -FLOAT_RISE), FLOAT_LIFETIME)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, FLOAT_LIFETIME - FLOAT_FADE_HOLD) \
+		.set_delay(FLOAT_FADE_HOLD)
 	tween.tween_callback(label.queue_free)
 
 
 # Floating-number punch scale: damage scales up with the hit (heavy hits read
-# bigger), everything else stays at its base size.
+# bigger), everything else stays at its base size. Clamp re-tuned for the 36px
+# base so a max-size hit stays under ~60% of a card's width.
 func _float_size_mult(event_type: String, amount: int) -> float:
 	if event_type == "damage" or event_type == "burn":
-		return clampf(0.95 + float(amount) * 0.012, 0.95, 1.55)
+		return clampf(0.95 + float(amount) * 0.010, 0.95, 1.35)
 	# Execute (pkg8.4): the bonus reads oversized when it triggers.
 	if event_type == "execute":
 		return 1.6
@@ -329,44 +424,32 @@ func _float_size_mult(event_type: String, amount: int) -> float:
 func _get_card_float_origin(card: Control) -> Vector2:
 	var card_rect: Rect2 = card.get_global_rect()
 	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	# Spawn over the portrait (30% down the card), not the nameplate — the big
+	# number needs the dark art behind it, not name text fighting it.
 	return Vector2(
-		card_rect.position.x - layer_origin.x + (card_rect.size.x * 0.5) - 40.0,
-		card_rect.position.y - layer_origin.y + 18.0
+		card_rect.position.x - layer_origin.x + card_rect.size.x * 0.5,
+		card_rect.position.y - layer_origin.y + card_rect.size.y * 0.30
 	)
 
 
+# The float vocabulary: colored signed numbers only. Words are cut — statuses
+# already read through chips + keyword visuals (freeze crust, mark flash,
+# shield chips vanishing). The ward-negate ✕ is THE glyph exception: negation
+# is otherwise invisible. roll_buff floats at the die via
+# _spawn_roll_buff_float, never here.
 func _build_floating_text(event_type: String, amount: int) -> String:
 	match event_type:
-		"damage", "burn":
+		"damage", "burn", "chain", "detonate", "spike", "execute":
 			return "-%d" % amount
-		"heal":
+		"heal", "shield":
 			return "+%d" % amount
-		"shield":
-			return "SH +%d" % amount
-		"roll_buff":
-			return "+%d ROLL" % amount
-		"freeze":
-			return "FROZEN %d" % amount
 		"block":
-			return "✕ NEGATED" if amount <= 0 else "BLOCK %d" % amount
-		"wipe_shields":
-			return "SHIELDS WIPED"
-		"execute":
-			return "EXECUTE -%d" % amount
-		"mark":
-			return "◎ MARKED"
-		"leech":
-			# The paired heal event carries the green +N; the leech event only
-			# draws the return tracer.
-			return ""
-		"pierce", "accrete", "revive":
-			# Primer/feedback markers — the paired damage/shield/heal events
-			# carry the numbers; these float nothing.
-			return ""
-		"chain", "detonate", "spike":
-			return "-%d" % amount
+			return "✕" if amount <= 0 else "✕ %d" % amount
 		_:
-			return str(amount)
+			# freeze / mark / wipe_shields: cut (redundant with chip + keyword
+			# visual). leech / pierce / accrete / revive: the paired damage /
+			# shield / heal events carry the numbers. Everything else is silent.
+			return ""
 
 
 func _get_floating_color(event_type: String) -> Color:
@@ -377,12 +460,8 @@ func _get_floating_color(event_type: String) -> Color:
 			return Color(1.0, 0.30, 0.30, 1.0)
 		"heal":
 			return Color(0.5, 1.0, 0.62, 1.0)
-		"shield", "block", "roll_buff", "freeze":
+		"shield", "block", "roll_buff":
 			return Color(0.55, 0.82, 1.0, 1.0)
-		"mark":
-			return Color(1.0, 0.82, 0.20, 1.0)
-		"wipe_shields":
-			return Color(1.0, 0.80, 0.20, 1.0)
 		_:
 			return Color(1, 1, 1, 1)
 
