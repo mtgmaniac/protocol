@@ -211,7 +211,8 @@ func _build_two_section_stats(accent: Color) -> void:
 	record.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	record.text = _service_record_text()
-	_style_label(record, SUMMARY_FONT - 6, PixelUI.TEXT_MUTED)
+	# Lifetime stats are the retention hook here — keep them on the info floor.
+	_style_label(record, maxi(SUMMARY_FONT - 6, PixelUI.FONT_INFO_MIN), PixelUI.TEXT_MUTED)
 	col.add_child(record)
 
 

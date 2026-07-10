@@ -19,13 +19,26 @@ On a ~6.5" 1080×2400 phone (~16 px/mm): 20 design px ≈ 1.3 mm cap height — 
 
 ## DEMO-BLOCKERS (fix these five before the phone leaves your hand)
 
-| # | Screen | Issue | Fix |
-|---|--------|-------|-----|
-| DB-1 | ALL (PersistentHeader) | Debug chevrons `^` `^^` visible + tappable on every screen, including title | Hide unless a debug flag is on |
-| DB-2 | Battle | Rightmost hero's readout icons clip off-screen | Clamp readout row to combat-zone bounds |
-| DB-3 | Battle | Floating combat words ("BLOCK 7", "SH +8") illegible: ~18px, low contrast, overlap the name row | ≥30px + outline + spawn above card |
-| DB-4 | Unit select | Encounter blurb truncated mid-sentence ("…Bank Protocol") | Autowrap/height fix; it's a 2-line string |
-| DB-5 | Unit select | Role legend (OFFENSIVE/DEFENSIVE/SUPPORT/CONTROL) ~14–16px — the only place roles are taught, and it's illegible | ≥24px, or teach roles in the unit info panel instead |
+> **Status 2026-07-10 (fix pass, branch `feat/ui-readability`):** DB-1/2/4/5 FIXED,
+> screenshot-verified. DB-3 (floating text) deliberately deferred — Kev is scoping the
+> redesign separately (keep-but-redesign: numbers big, words rare, concurrency cap).
+
+| # | Screen | Issue | Fix | Status |
+|---|--------|-------|-----|--------|
+| DB-1 | ALL (PersistentHeader) | Debug chevrons `^` `^^` visible + tappable on every screen, including title | Hide unless a debug flag is on | **FIXED** — hidden by default; SETTINGS > DEV "Developer mode" toggle (persisted) restores them |
+| DB-2 | Battle | Rightmost hero's readout icons clip off-screen | Clamp readout row to combat-zone bounds | **FIXED** — root cause was `EffectPip.estimate_display_width` hardcoding a 48px icon and ignoring the AoE marker, so the existing two-row split never triggered; estimator now mirrors build_group |
+| DB-3 | Battle | Floating combat words ("BLOCK 7", "SH +8") illegible: ~18px, low contrast, overlap the name row | ≥30px + outline + spawn above card | deferred — separate design pass (Kev + Claude AI) |
+| DB-4 | Unit select | Encounter blurb truncated mid-sentence ("…Bank Protocol") | Autowrap/height fix; it's a 2-line string | **FIXED** — clip_text removed, desc block 168→232 (matches portrait), panel grows on min-size semantics |
+| DB-5 | Unit select | Role legend (OFFENSIVE/DEFENSIVE/SUPPORT/CONTROL) ~14–16px — the only place roles are taught, and it's illegible | ≥24px, or teach roles in the unit info panel instead | **FIXED** — LEGEND_FONT → `PixelUI.FONT_INFO_MIN` |
+
+**Also landed in the same pass:**
+- **S-1** — `PixelUI.FONT_INFO_MIN := 36` / `FONT_ACCENT_MIN := 28`; migrated: role legend,
+  reward rarity line, SET-dialog cost hint, run-end service record, help body,
+  evolution ability name/effect rows (screenshot-verified: battle, home; others compile-verified).
+- **S-2** — rarity recolor per Kev ruling (DECISIONS_RESOLVED #18): uncommon `#5b7fe8`,
+  rare `#9d52d8`, green exits; evolution branch names → DT_CYAN.
+- **S-4** — PP cost badges (1/2/3/1 corner plates) on Nudge/Reroll/Set/Item + whole-button
+  dim while unaffordable, refreshed on every pool change (screenshot-verified).
 
 Details per screen below.
 

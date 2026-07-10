@@ -1638,6 +1638,9 @@ func _update_protocol_bar() -> void:
 	protocol_label.text = "PROTOCOL %d/%d" % [protocol_points, _max_protocol()]
 	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
 	_update_protocol_footer_display()
+	# Cost badges + affordability dim track every pool change (UI review S-4).
+	if _protocol != null:
+		_protocol.refresh_action_affordability()
 	_emit_tutorial("protocol_changed", {"value": protocol_points})
 
 

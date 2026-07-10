@@ -10,7 +10,7 @@ const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8
 const TITLE_FONT := 48
 const TAB_FONT := 30
 const SECTION_FONT := 36
-const BODY_FONT := 30
+const BODY_FONT := PixelUI.FONT_INFO_MIN  # help body is read under duress — floor it (UI review S-1)
 const TERM_FONT := 33
 const SYNTAX_FONT := 27
 const HEADER_FONT := 42
@@ -666,6 +666,11 @@ func _build_settings(host: VBoxContainer) -> void:
 
 	# --- Dev tools ---
 	host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	# Developer mode: shows the header debug buttons (hidden by default for
+	# non-dev hands — UI review DB-1). Persisted in the save profile.
+	var sm: Variant = _save_manager()
+	var dev_mode_on: bool = sm != null and bool(sm.get_setting("dev_mode", false))
+	_add_toggle_row(host, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
 	var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
 	unlock_btn.pressed.connect(_on_dev_unlock_all)
 	host.add_child(unlock_btn)
@@ -680,7 +685,24 @@ func _build_settings(host: VBoxContainer) -> void:
 
 
 func _on_dev_reset_primers() -> void:
-	SaveManager.dev_reset_primers()
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.dev_reset_primers()
+
+
+# Variant lookups (mirroring _audio()) so this compiles even when the autoloads
+# are absent (e.g. the headless capture harness).
+func _save_manager() -> Variant:
+	return get_node_or_null("/root/SaveManager")
+
+
+func _on_toggle_dev_mode(pressed: bool) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting("dev_mode", pressed)
+	var header: Variant = get_node_or_null("/root/PersistentHeader")
+	if header != null:
+		header.set_dev_mode(pressed)
 
 
 func _make_dev_button(text: String, amber: bool) -> Button:
@@ -695,7 +717,9 @@ func _make_dev_button(text: String, amber: bool) -> Button:
 
 
 func _on_dev_unlock_all() -> void:
-	SaveManager.dev_unlock_all()
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.dev_unlock_all()
 	# Rebuild the underlying screen so unlock state (locked heroes/ops) refreshes.
 	dismiss()
 	get_tree().reload_current_scene()
@@ -709,10 +733,14 @@ func _on_dev_reset_profile() -> void:
 		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
 		_disarm_reset_after_delay()
 		return
-	SaveManager.dev_reset_profile()
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.dev_reset_profile()
 	_reset_armed = false
 	dismiss()
-	SceneManager.go_to_main_menu()
+	var scene_mgr: Variant = get_node_or_null("/root/SceneManager")
+	if scene_mgr != null:
+		scene_mgr.go_to_main_menu()
 
 
 func _disarm_reset_after_delay() -> void:

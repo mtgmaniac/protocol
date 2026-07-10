@@ -42,8 +42,8 @@ const BRACKET_INSET := 8.0
 
 # Fonts.
 const NAME_FONT_SIZE := 46
-const LABEL_FONT_SIZE := 32
-const BODY_FONT_SIZE := 34
+const LABEL_FONT_SIZE := PixelUI.FONT_INFO_MIN  # rarity+type line — a pick signal (UI review S-1)
+const BODY_FONT_SIZE := 36
 
 # Gear "equip to" chooser — sized large for mobile tap targets.
 const GEAR_TARGET_TITLE_FONT := 50

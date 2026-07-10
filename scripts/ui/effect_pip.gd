@@ -119,14 +119,27 @@ static func _numeric_suffix(value: String) -> String:
 	return value.substr(i)
 
 
+# Must mirror build_group's actual children (leading keyword icon · value ·
+# duration superscript · trailing AoE marker). The pre-icon version hardcoded a
+# 48px base and ignored the AoE marker entirely, so icon-bearing rows
+# under-measured and edge readouts clipped off-screen (UI review DB-2).
 static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> float:
 	var value_font: int = int(profile.get("value_font", 48))
-	var width := 48.0
+	var icon_size: float = float(profile.get("icon_size", 40))
+	var gap: float = float(profile.get("icon_value_gap", 4))
+	var effect_kind: String = str(effect.get("kind", ""))
+	var width := 0.0
+	# Leading keyword icon (letter-only kinds render text instead of an icon).
+	if not is_letter_only_kind(effect_kind) and PixelUI.pip_texture_for_key(pip_key_for_effect(effect)) != null:
+		width += icon_size + gap
 	width += maxf(28.0, float(display_text_for_effect(effect).length()) * float(value_font) * 0.3)
 	var duration: int = int(effect.get("duration", 0))
 	if duration > 1:
 		var sup_size: int = maxi(28, int(round(float(value_font) * float(profile.get("duration_ratio", 0.6)))))
 		width += float(sup_size) * 0.75
+	# The "hits all" marker sits AFTER the value (batch 161).
+	if str(effect.get("scope", "")) == "all":
+		width += gap + icon_size * 0.95
 	return maxf(float(profile.get("group_min_width", 64)), width)
 
 

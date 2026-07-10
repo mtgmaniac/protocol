@@ -252,3 +252,16 @@ chips. Record in DECISIONS_RESOLVED that the chip's absence is reversed per Kev
 and the chip is canon; HP preview behavior unchanged. Note: with per side expiry
 confirmed in #2, the chip must visibly drop at the correct phase tick, not at
 round end."
+
+## 18. Rarity palette — GREEN EXITS *(ruled by Kev, 2026-07-10; UI review S-2)*
+**Question:** `RARITY_UNCOMMON` green (#5cb85c) surfaced on reward-card borders,
+the equip overlay, and item text — in tension with INVARIANTS #7 ("green is
+reserved for HP bars and heals — nothing else is ever green"). Sanctioned
+exception, or recolor?
+**Ruling:** recolor. Rarity ladder is gray → blue → purple → orange:
+common `#7a8290` (keep) · uncommon `#5b7fe8` (was rare's blue) · rare `#9d52d8`
+(was epic's purple) · legendary `#ff8230` (keep). "epic" is unused in data; its
+token stays aligned with rare. Green now has zero non-HP/heal surfaces. The
+evolution branch-name green (`PixelUI.HERO_ACCENT` at its single call site) is a
+selection, not a rarity — recolored to `DT_CYAN` in the same pass.
+**Where it lives:** `pixel_ui.gd` RARITY_* tokens, `evolution_screen.gd:300`.

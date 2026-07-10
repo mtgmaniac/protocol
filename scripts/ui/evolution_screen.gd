@@ -15,9 +15,11 @@ const TITLE_FONT_SIZE := 58
 const SUMMARY_FONT_SIZE := 36
 const CARD_TITLE_FONT_SIZE := 44
 const BODY_FONT_SIZE := 36
-const SMALL_FONT_SIZE := 30
-const ABILITY_NAME_FONT_SIZE := 34
-const ABILITY_DESC_FONT_SIZE := 30
+const SMALL_FONT_SIZE := 32
+# Band effect rows are the substance of a PERMANENT choice — floor them
+# (UI review S-1: the densest decision screen had the smallest text).
+const ABILITY_NAME_FONT_SIZE := PixelUI.FONT_INFO_MIN
+const ABILITY_DESC_FONT_SIZE := PixelUI.FONT_INFO_MIN
 const BUTTON_FONT_SIZE := 36
 
 @onready var background: ColorRect = $Background
@@ -297,7 +299,8 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	if path_callsign != "":
 		text_stack.add_child(_make_label(path_callsign, CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
 
-	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.HERO_ACCENT, 3)
+	# Branch name is a selection, not a rarity — cyan, not green (UI review S-2).
+	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.DT_CYAN, 3)
 	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_stack.add_child(path_name)
 

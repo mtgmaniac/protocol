@@ -17,6 +17,14 @@ const COLOR_SHIELD := Color(0.34, 0.66, 1.0, 1.0)
 const COLOR_DEBUFF := Color(0.72, 0.34, 0.95, 1.0)
 const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
 
+# ── Font-size floors (UI review S-1, Kev-approved 2026-07-10) ──
+# Nominal m5x7 sizes in the 1080×2400 design space. INFO = text a player needs to
+# read to play correctly (legends, costs, rarity lines, ability effect rows,
+# stats, help body). ACCENT = decorative/eyebrow labels that may stay smaller.
+# New screens should not hand-roll label sizes below these.
+const FONT_INFO_MIN := 36
+const FONT_ACCENT_MIN := 28
+
 # ── Direction 05 "Dithered Terminal" palette (battle HUD redesign) ──
 # Green is reserved for HP + the ROLL commit only; heroes read cyan, enemies rust.
 static var DT_FIELD_BG := Color("07090b")
@@ -85,9 +93,12 @@ static var DT_STATUS := {
 # (rare-indigo must not look like player cyan DT_CYAN; legendary-orange must not look
 # like commit gold GOLD_ACCENT / enemy red). Relics carry no rarity and reuse the
 # legendary token (see reward_screen._rarity_name). Tunable starting values.
+# Rarity ladder (Kev ruling 2026-07-10, UI review S-2): green exits the rarity
+# palette entirely — green stays reserved for HP/heals (INVARIANTS #7).
+# gray -> blue -> purple -> orange. "epic" is unused in data (kept aligned).
 static var RARITY_COMMON := Color("7a8290")
-static var RARITY_UNCOMMON := Color("5cb85c")
-static var RARITY_RARE := Color("5b7fe8")
+static var RARITY_UNCOMMON := Color("5b7fe8")
+static var RARITY_RARE := Color("9d52d8")
 static var RARITY_EPIC := Color("9d52d8")
 static var RARITY_LEGENDARY := Color("ff8230")
 

@@ -36,6 +36,14 @@ func build_footer_buttons() -> void:
 	if _scene._game_state().has_relic_effect("twinFates"):
 		_add_twin_fates_button()
 	_build_item_panel()
+	# Cost badges (UI review S-4): the PP price sits on each button; Twin Fates is
+	# free so it carries none. Values that can change mid-battle (Set with Root
+	# Access, item cost under modifiers) refresh in refresh_action_affordability.
+	_attach_cost_badge(nudge_button, "1")
+	_attach_cost_badge(_scene.protocol_spend_button, "2")
+	_attach_cost_badge(set_button, str(_get_set_cost()))
+	_attach_cost_badge(item_button, str(_get_item_protocol_cost(null)))
+	refresh_action_affordability()
 
 
 # ── Public entry points (delegated from battle_scene) ─────────────────────────
@@ -58,6 +66,68 @@ func restyle_buttons() -> void:
 		_scene._style_frame_icon_action_button(set_button, PixelUI.ICON_SET, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	if item_button != null and is_instance_valid(item_button):
 		_scene._style_frame_icon_action_button(item_button, PixelUI.ICON_ITEM, _scene.BOTTOM_BAR_BUTTON_SIZE)
+
+
+# ── Cost badges + affordability dim (UI review S-4) ────────────────────────────
+# Each spend button carries its PP price as a small amber corner plate, and the
+# whole button dims while the pool can't cover it. Called from
+# battle_scene._update_protocol_bar so it tracks every pool change.
+
+const _UNAFFORDABLE_DIM := Color(1.0, 1.0, 1.0, 0.45)
+var _cost_badges: Dictionary = {}   # Button -> Label
+
+
+func _attach_cost_badge(button: Button, text: String) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	var badge := Label.new()
+	badge.name = "CostBadge"
+	badge.text = text
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	PixelUI.apply_pixel_font(badge)
+	badge.add_theme_font_size_override("font_size", PixelUI.FONT_ACCENT_MIN)
+	badge.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	# Filled plate (never a bare outline — INVARIANTS #7), 2px border for the
+	# even-stroke pixel-snap rule.
+	var plate: StyleBoxFlat = PixelUI.make_hard_style(Color(0.03, 0.045, 0.065, 0.96), PixelUI.DT_AMBER, 2)
+	plate.set_content_margin_all(4.0)
+	badge.add_theme_stylebox_override("normal", plate)
+	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	badge.offset_left = -46.0
+	badge.offset_top = 4.0
+	badge.offset_right = -4.0
+	badge.offset_bottom = 42.0
+	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	button.add_child(badge)
+	_cost_badges[button] = badge
+
+
+func _set_badge_text(button: Button, text: String) -> void:
+	var badge: Label = _cost_badges.get(button)
+	if badge != null and is_instance_valid(badge):
+		badge.text = text
+
+
+func _set_action_affordable(button: Button, affordable: bool) -> void:
+	if button != null and is_instance_valid(button):
+		button.modulate = Color.WHITE if affordable else _UNAFFORDABLE_DIM
+
+
+func refresh_action_affordability() -> void:
+	var pp: int = _scene.protocol_points
+	# Nudge is 1 PP unless a Priming Charge free nudge is still banked.
+	_set_action_affordable(nudge_button, pp >= 1 or _has_free_nudge_available())
+	_set_action_affordable(_scene.protocol_spend_button, pp >= 2)
+	if set_button != null and is_instance_valid(set_button):
+		var set_cost: int = _get_set_cost()
+		_set_badge_text(set_button, str(set_cost))
+		_set_action_affordable(set_button, pp >= set_cost)
+	if item_button != null and is_instance_valid(item_button):
+		var item_cost: int = _get_item_protocol_cost(null)
+		_set_badge_text(item_button, str(item_cost))
+		_set_action_affordable(item_button, pp >= item_cost)
 
 
 func can_nudge_hero(state: Dictionary) -> bool:
@@ -558,7 +628,8 @@ func _open_set_value_popup() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_label(hint, 26, PixelUI.INSPECT_TEXT_MUTED, 2)
+	# Cost disclosure is info-carrying — floor it (UI review S-1).
+	PixelUI.style_label(hint, PixelUI.FONT_INFO_MIN, PixelUI.INSPECT_TEXT_MUTED, 2)
 	vb.add_child(hint)
 
 	var row: HBoxContainer = HBoxContainer.new()

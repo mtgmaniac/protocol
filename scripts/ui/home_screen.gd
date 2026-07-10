@@ -46,7 +46,9 @@ const PANEL_RADIUS := 0
 
 const ENC_PANEL_HEIGHT := 320
 const ENC_MID_GAP := 34            # gap between the threat row and the portrait/description
-const ENC_DESC_H := 168            # reserve a fixed block for the blurb so the panel never resizes
+const ENC_DESC_H := 232            # blurb block matches the portrait height; the label no
+                                   # longer clips — a longer blurb grows the panel (min-size
+                                   # semantics) instead of losing its tail (UI review DB-4)
 const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
 const NAV_BUTTON_W := 96
 const NAV_BUTTON_H := 220           # ~half the panel height (was full-height)
@@ -265,7 +267,6 @@ func _build_encounter_section() -> Control:
 	_enc_desc_label = _make_pixel_label("", ENC_DESC_FONT, PixelUI.TEXT_MUTED)
 	_enc_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_enc_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_enc_desc_label.clip_text = true
 	_enc_desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_enc_desc_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_desc_label.custom_minimum_size = Vector2(0, ENC_DESC_H)
@@ -466,7 +467,9 @@ func _build_squad_section() -> Control:
 	return section
 
 
-const LEGEND_FONT := 30
+# The legend decodes the role chips — info-carrying, so it sits on the floor
+# (UI review DB-5: at 30 it was the least legible text in the game).
+const LEGEND_FONT := PixelUI.FONT_INFO_MIN
 
 
 # One inline row of role key entries (chip + label) using the same color mapping and
