@@ -220,19 +220,24 @@ func _build_layout() -> void:
 	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(column)
 
-	# Refinement pass §1 — ONE anchoring rule at every roster size:
-	# top-pinned encounter banner; bottom-anchored interactive cluster (squad
-	# header → grid → locked strip → detail panel → DEPLOY) in the thumb zone.
-	# The single flex gap lives HERE, between banner and squad header — empty
-	# space after a header reads intentional; before an action button it reads
-	# broken. At 8 unlocked the gap is near zero; at 4 the cluster slides down.
+	# Final pass §1 — centered cluster: the top bar (PersistentHeader) and DEPLOY
+	# are the stationary chrome; everything between (banner → divider → squad
+	# grid → locked strip → detail panel) moves as ONE block with fixed internal
+	# rhythm, vertically centered by the two equal spacers. At 8 heroes the
+	# cluster nearly fills the space; at 3–4 the whole block (banner included —
+	# it's interactive: swipe + long-press) sits lower and thumb-reachable, with
+	# symmetric space above and below.
+	var spacer_top := Control.new()
+	spacer_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spacer_top.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(spacer_top)
 	column.add_child(_build_encounter_section())
-	var spacer := Control.new()
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(spacer)
 	column.add_child(_build_divider())
 	column.add_child(_build_squad_section())
+	var spacer_bottom := Control.new()
+	spacer_bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spacer_bottom.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(spacer_bottom)
 	column.add_child(_build_deploy_button())
 
 
@@ -486,14 +491,18 @@ func _build_squad_section() -> Control:
 	# No role legend (redesign): role reads from the portrait corner pip + the named
 	# tag in the detail panel — nothing else teaches the color code.
 
-	# Grid holds UNLOCKED heroes only; locked heroes collapse into one slim strip below.
-	var grid := GridContainer.new()
-	grid.columns = GRID_COLUMNS
-	grid.add_theme_constant_override("h_separation", TILE_GAP)
-	grid.add_theme_constant_override("v_separation", TILE_GAP)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	section.add_child(grid)
+	# Grid holds UNLOCKED heroes only; locked heroes collapse into one slim strip
+	# below. Rows are hand-chunked HBoxes (not a GridContainer) so a PARTIAL last
+	# row centers its cells instead of left-aligning against a dead column (final
+	# pass §2). Cells are fixed-width, so a full row spans the content width
+	# exactly (4×238 + 3×16 = 1000) and partial rows keep identical cell sizes.
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", TILE_GAP)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	section.add_child(rows)
 	var locked_count: int = 0
+	var row: HBoxContainer = null
+	var row_count: int = 0
 	for unit_id in _unit_ids:
 		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
 		if unit == null:
@@ -501,7 +510,15 @@ func _build_squad_section() -> Control:
 		if not SaveManager.is_hero_unlocked(unit_id):
 			locked_count += 1
 			continue
-		grid.add_child(_build_unit_tile(unit_id, unit))
+		if row == null or row_count == GRID_COLUMNS:
+			row = HBoxContainer.new()
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.add_theme_constant_override("separation", TILE_GAP)
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rows.add_child(row)
+			row_count = 0
+		row.add_child(_build_unit_tile(unit_id, unit))
+		row_count += 1
 
 	section.add_child(_build_locked_strip(locked_count))
 
@@ -601,9 +618,12 @@ func _build_detail_bar() -> PanelContainer:
 # toggles selection; long-press opens the unit inspect popup. Only unlocked heroes
 # get tiles — locked heroes collapse into the strip.
 func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
+	# Fixed-width cell (final pass §2): identical in full and partial rows; the
+	# row container centers partial rows, so cells must not stretch.
 	var cell := VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 8)
-	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.custom_minimum_size = Vector2(PORTRAIT_CELL, 0)
+	cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cell.mouse_filter = Control.MOUSE_FILTER_STOP
 	var long_press := LongPressInput.new()
 	cell.add_child(long_press)
@@ -617,8 +637,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	# frame height = region height + the 4px border insets on both edges.
 	var inner_w: float = float(PORTRAIT_CELL - 2 * PANEL_BORDER)
 	var inner_h: float = roundf(inner_w * BATTLE_PORTRAIT_REGION.y / BATTLE_PORTRAIT_REGION.x)
-	frame.custom_minimum_size = Vector2(0, inner_h + 2.0 * float(PANEL_BORDER))
-	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.custom_minimum_size = Vector2(PORTRAIT_CELL, inner_h + 2.0 * float(PANEL_BORDER))
 	cell.add_child(frame)
 	(portrait_box["tex"] as TextureRect).texture = unit.portrait
 	call_deferred("_cover_fit_portrait", portrait_box["crop"], portrait_box["tex"])

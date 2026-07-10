@@ -24,12 +24,14 @@ func _run_capture() -> void:
 			sm.data["unlocks"]["heroes_new"] = []
 			sm.data["unlocks"]["operations"] = (sm.OPERATION_CHAIN as Array).duplicate()
 			print("[HOME_UI_CAPTURE] in-memory unlock-all")
-	if bool(config.get("lock_base_mem", false)):
+	var lock_n: int = int(config.get("lock_base_mem", 0))
+	if lock_n > 0:
 		var sm2: Variant = root.get_node_or_null("/root/SaveManager")
 		if sm2 != null:
-			sm2.data["unlocks"]["heroes"] = ["combat", "avalanche", "medic", "engineer"]
+			var subset: Array = (sm2.ALL_HEROES as Array).slice(0, lock_n)
+			sm2.data["unlocks"]["heroes"] = subset
 			sm2.data["unlocks"]["heroes_new"] = []
-			print("[HOME_UI_CAPTURE] in-memory lock-to-base-4")
+			print("[HOME_UI_CAPTURE] in-memory lock-to-first-%d" % lock_n)
 	change_scene_to_file("res://scenes/ui/UnitSelect.tscn")
 	await _wait_for_scene(config)
 	var output_path: String = str(config.get("output", DEFAULT_OUTPUT))
@@ -79,10 +81,14 @@ func _parse_args() -> Dictionary:
 		elif arg.begins_with("--capture-encounter-page="):
 			# Advance the encounter carousel N pages after load.
 			config["encounter_page"] = int(arg.get_slice("=", 1))
-		elif arg == "--capture-lock-base-mem":
-			# IN-MEMORY-ONLY roster reduction to the 4 early heroes (locked-strip
-			# verify at small roster sizes). Disk disabled first; nothing persists.
-			config["lock_base_mem"] = true
+		elif arg.begins_with("--capture-lock-base-mem"):
+			# IN-MEMORY-ONLY roster reduction to the first N heroes (default 4) —
+			# partial-row / locked-strip verification at sparse roster sizes.
+			# Callers back up user://save.json around the invocation.
+			var n: int = 4
+			if "=" in arg:
+				n = maxi(int(arg.get_slice("=", 1)), 1)
+			config["lock_base_mem"] = n
 	return config
 
 
