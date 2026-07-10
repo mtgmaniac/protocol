@@ -95,6 +95,7 @@ func _apply_visual_theme(victory: bool) -> void:
 	var title_font: int = VICTORY_TITLE_FONT if victory else DEFEAT_TITLE_FONT
 	_style_label(title_label, title_font, accent)
 
+	_add_result_banner(victory, accent)
 	_build_two_section_stats(accent)
 	_build_unlocked_section()
 
@@ -107,6 +108,24 @@ func _apply_visual_theme(victory: bool) -> void:
 	new_run_button.add_theme_constant_override("icon_max_width", 56)
 	new_run_button.add_theme_color_override("icon_normal_color", PixelUI.BTN_PRIMARY_INK)
 	new_run_button.add_theme_constant_override("h_separation", 16)
+
+
+# Result illustration (victory / defeat) pinned above the title. Cover-cropped
+# to a fixed banner height so the centered emblem reads at any source aspect.
+func _add_result_banner(victory: bool, accent: Color) -> void:
+	var path: String = "res://assets/ui/events/%s.png" % ("victory" if victory else "defeat")
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path) as Texture2D
+	if tex == null:
+		return
+	# Show the whole illustration at its own aspect (no crop), fit inside the
+	# content width x a bounded height so the emblem and full scene both read.
+	var max_w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080)) - 2.0 * 60.0
+	var frame := PixelUI.make_scene_banner(tex, max_w, 980.0, accent)
+	var vbox := $Content/VBox as VBoxContainer
+	vbox.add_child(frame)
+	vbox.move_child(frame, 0)
 
 
 # Shows an "UNLOCKED" panel (heroes / operations awarded this run) above Start New Run.

@@ -14,6 +14,12 @@ const CARD_TITLE_FONT := 50
 const BODY_FONT := 36
 const BUTTON_FONT := 36
 
+# Per-card scene art (banner above the title). File name == card id; a missing
+# file just skips the banner so an un-arted card still renders cleanly. The banner
+# shows the whole image at its own aspect, its height floating up to BANNER_MAX_H.
+const EVENT_ART_DIR := "res://assets/ui/events/"
+const BANNER_MAX_H := 660
+
 var _card_id: String = ""
 var _card: Dictionary = {}
 var _choice: Dictionary = {}
@@ -103,6 +109,23 @@ func _add_label(text: String, font_size: int, color: Color, outline: int = 1) ->
 	return label
 
 
+# Framed scene illustration for this intercept, keyed on the card id. Pixel-art
+# is nearest-filtered and cover-cropped to a fixed banner height.
+func _add_event_banner(card_id: String) -> void:
+	var path: String = "%s%s.png" % [EVENT_ART_DIR, card_id]
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path) as Texture2D
+	if tex == null:
+		return
+	# Fit the whole image inside the transmission panel's inner width x BANNER_MAX_H.
+	var side: int = PixelUI.screen_frame_side_margin()
+	var max_w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080)) - 2.0 * side - 2.0 * 36.0
+	var frame := PixelUI.make_scene_banner(tex, max_w, float(BANNER_MAX_H), PixelUI.DT_AMBER)
+	_stage_box.add_child(frame)
+	_add_gap(12)
+
+
 func _add_choice_button(text: String, callback: Callable, enabled: bool = true) -> void:
 	# Choice buttons live in their own box: 24px padding above the group, 12px between.
 	if _button_box == null:
@@ -125,7 +148,8 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true) 
 
 func _show_card_stage() -> void:
 	_clear_stage()
-	# Rhythm: small amber event-type label · large title · blank line · body.
+	# Rhythm: scene art banner · small amber event-type label · large title · blank line · body.
+	_add_event_banner(_card_id)
 	_add_label("INTERCEPT", TYPE_FONT, PixelUI.DT_AMBER, 2)
 	_add_label(str(_card.get("name", "")), TITLE_FONT, PixelUI.TEXT_PRIMARY, 3)
 	_add_gap(8)

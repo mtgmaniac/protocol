@@ -667,6 +667,32 @@ static func add_corner_brackets(target: Control, color: Color, arm: float = 16.0
 	_refresh_corner_brackets(target, color, arm, thick, inset)
 
 
+## A framed scene-illustration banner sized to the image's OWN aspect ratio so the
+## whole picture shows (no cover-crop / zoom). The frame is scaled to fit inside a
+## max_w x max_h box and hugs the resulting size, so its height floats per-image
+## within that range and it centers horizontally in its parent. Pixel art stays
+## nearest-filtered. Returns the frame (already carries border + corner brackets).
+static func make_scene_banner(tex: Texture2D, max_w: float, max_h: float, border: Color) -> PanelContainer:
+	var iw: float = maxf(1.0, float(tex.get_width()))
+	var ih: float = maxf(1.0, float(tex.get_height()))
+	var scale: float = minf(max_w / iw, max_h / ih)
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(round(iw * scale), round(ih * scale))
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.clip_contents = true
+	frame.add_theme_stylebox_override("panel", make_hard_style(DT_PANEL_BG, border, 2))
+	var art := TextureRect.new()
+	art.texture = tex
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED  # frame == image aspect, so no crop
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(art)
+	add_corner_brackets(frame, border, 24.0, 3.0, 8.0)
+	return frame
+
+
 ## Frames a PanelContainer as a "transmission window": very dark fill, 2px teal border,
 ## teal corner brackets — the same language as the battle panels. Used by the event /
 ## route-fork / run-failed screens so loose text reads as a contained transmission.

@@ -14,6 +14,12 @@ const BODY_FONT := 36
 const CHIP_FONT := 30
 const BUTTON_FONT := 38
 
+# Establishing-shot corridor above the decision. One of N hallway banners, picked
+# deterministically by battle number so successive forks show different corridors.
+const HALLWAY_ART := "res://assets/ui/events/hallway_%d.png"
+const HALLWAY_COUNT := 5
+const HALLWAY_BANNER_H := 260
+
 var _modifier_id: String = ""
 
 
@@ -64,6 +70,8 @@ func _ready() -> void:
 	column.add_theme_constant_override("separation", 16)
 	pad.add_child(column)
 
+	_add_hallway_banner(column)
+
 	# Rhythm: small amber type label · large title · blank line · body.
 	var type_label := Label.new()
 	type_label.text = "DECISION POINT"
@@ -106,6 +114,33 @@ func _ready() -> void:
 	# route cards, take the standard route.
 	if not ChoiceScreenGuardScript.ensure_options("route_fork", column.get_child_count(), _on_route_chosen.bind(false)):
 		return
+
+
+# Full-width corridor strip framed as a transmission window. Cover-cropped to a
+# short cinematic height (the source is already landscape, so little is lost).
+func _add_hallway_banner(column: VBoxContainer) -> void:
+	var index: int = (maxi(GameState.current_battle, 0) % HALLWAY_COUNT) + 1
+	var path: String = HALLWAY_ART % index
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path) as Texture2D
+	if tex == null:
+		return
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.custom_minimum_size = Vector2(0, HALLWAY_BANNER_H)
+	frame.clip_contents = true
+	frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_CYAN, 2))
+	var art := TextureRect.new()
+	art.texture = tex
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(art)
+	PixelUI.add_corner_brackets(frame, PixelUI.DT_CYAN, 24.0, 3.0, 8.0)
+	column.add_child(frame)
 
 
 func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
