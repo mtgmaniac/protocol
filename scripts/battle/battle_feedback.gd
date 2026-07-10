@@ -304,11 +304,12 @@ func _flash_card(card: Control, event_type: String) -> void:
 # the number is the loudest thing on the card while it's alive.
 const FLOAT_FONT_SIZE := 96
 const FLOAT_OUTLINE_SIZE := 12
-const FLOAT_RISE := 64.0
-const FLOAT_LIFETIME := 0.9
+const FLOAT_RISE := 72.0
+# Kev 2026-07-10: floats read too short-lived at 0.9s — hold longer, live longer.
+const FLOAT_LIFETIME := 1.5
 # Hold full alpha for a beat, then fade over the remainder — a linear whole-life
 # fade left the number half-gone by the time the punch-in settled.
-const FLOAT_FADE_HOLD := 0.3
+const FLOAT_FADE_HOLD := 0.6
 const FLOAT_STACK_GAP := 6.0
 
 func _spawn_floating_text(card: Control, event_type: String, amount: int) -> void:
