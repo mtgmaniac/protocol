@@ -254,12 +254,14 @@ func _on_nudge_button_pressed() -> void:
 func _add_nudge_button() -> void:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = _scene.BOTTOM_BAR_BUTTON_SIZE
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER  # match the scene reroll button; else it fills the row and clips off the bottom
 	btn.pressed.connect(_on_nudge_button_pressed)
 	_attach_protocol_inspect(btn, "nudge")
 	_scene._style_frame_icon_action_button(btn, PixelUI.ICON_INCREASE, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	nudge_button = btn
 	_scene.protocol_spend_button.get_parent().add_child(btn)
-	_scene.protocol_spend_button.get_parent().move_child(btn, _scene.protocol_spend_button.get_index() + 1)
+	# Order: nudge, reroll, set, item — nudge sits just BEFORE the reroll button.
+	_scene.protocol_spend_button.get_parent().move_child(btn, _scene.protocol_spend_button.get_index())
 
 
 func _apply_reroll(hero_id: String) -> void:
@@ -393,12 +395,14 @@ func _consume_protocol_long_press() -> bool:
 func _add_set_button() -> void:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = _scene.BOTTOM_BAR_BUTTON_SIZE
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(_on_set_button_pressed)
 	_attach_protocol_inspect(btn, "set")
 	_scene._style_frame_icon_action_button(btn, PixelUI.ICON_SET, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	set_button = btn
 	_scene.protocol_spend_button.get_parent().add_child(btn)
-	_scene.protocol_spend_button.get_parent().move_child(btn, nudge_button.get_index() + 1)
+	# Set sits just AFTER the reroll button (order: nudge, reroll, set, item).
+	_scene.protocol_spend_button.get_parent().move_child(btn, _scene.protocol_spend_button.get_index() + 1)
 
 
 # Twin Fates relic: once per battle, copy one hero die's result to another,
@@ -682,9 +686,13 @@ func _build_item_panel() -> void:
 	var protocol_row: HBoxContainer = _scene.protocol_panel.get_node("ProtocolMargin/ProtocolRow") as HBoxContainer
 	item_button = Button.new()
 	item_button.custom_minimum_size = _scene.BOTTOM_BAR_BUTTON_SIZE
+	item_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	item_button.pressed.connect(_on_item_button_pressed_menu)
 	_scene._style_frame_icon_action_button(item_button, PixelUI.ICON_ITEM, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	protocol_row.add_child(item_button)
+	# Item is the last protocol action (order: nudge, reroll, set, item).
+	if set_button != null and is_instance_valid(set_button):
+		protocol_row.move_child(item_button, set_button.get_index() + 1)
 	_item_menu = PopupMenu.new()
 	_item_menu.name = "ItemMenu"
 	_item_menu.id_pressed.connect(_on_item_menu_id_pressed)

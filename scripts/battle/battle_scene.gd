@@ -258,8 +258,9 @@ func _ready() -> void:
 			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
 	transition(PHASE_AWAIT_ROLL)
 	_layout.queue_board_layout_refresh()
-	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it
-	protocol_spend_button.text = "↺"
+	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it.
+	# No "↺" text — the swap icon is the whole button (else it double-draws an arrow).
+	protocol_spend_button.text = ""
 	# The header bar lives in the PersistentHeader autoload now — bind its buttons to
 	# this battle's handlers. They go inert again when this scene exits the tree.
 	# Help ("?") is handled globally by PersistentHeader → HelpMenu, so no help binding here.
