@@ -50,13 +50,22 @@ const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller t
 const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
-# ONE portrait cell width shared by the hero grid and the (square) banner boss
-# thumb. Pixel-snapped: content width 1080 − 2×40 margins = 1000; 4 columns with
-# 3×16 gaps → (1000 − 48) / 4 = 238 exactly (even → crisp halves at 540 preview).
+# Grid portrait cell width. Pixel-snapped: content width 1080 − 2×40 margins =
+# 1000; 4 columns with 3×16 gaps → (1000 − 48) / 4 = 238 exactly (even → crisp
+# halves at 540 preview). Width is DERIVED from the usable width, not a target.
 const PORTRAIT_CELL := 238
-# Grid portraits are TALL cells (composition pass): the vertical space reclaimed
-# from the name-button row / legend / mid-page detail panel goes to the portraits.
-const PORTRAIT_H := 400
+# Battle-scene portrait framing (refinement pass §2): the compact battle card is
+# 344×570 with a 320×486 portrait region (width−24, height−84 reserved bands).
+# Select-screen tiles reuse that region aspect + the same cover-fit function
+# (PixelUI.cover_fit_portrait, center-x / top-aligned), scaled to cell width —
+# the hero you pick is framed identically to the hero in battle, smaller.
+const BATTLE_PORTRAIT_REGION := Vector2(320.0, 486.0)
+# Banner boss thumb (refinement pass §4): rectangular at the DOMINANT art aspect
+# (hero + boss portraits are 592×880 ≈ 0.673 w:h; the five operations' boss arts
+# all sit within ±2% of it). 188×280 ≈ 0.671 — dominant art sits flush; the few
+# wider bestiary outliers (never banner subjects) would letterbox, not stretch.
+const ENC_THUMB_W := 188
+const ENC_THUMB_H := 280
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
@@ -70,8 +79,6 @@ const THREAT_PIP_SIZE := Vector2(48, 36)   # sized up from (42,30) — near-ille
 
 const LOCKED_STRIP_H := 72
 const LOCKED_ICON := 48
-
-const DETAIL_BAR_HEIGHT := 340      # fixed so swapping units never reflows the page
 
 const DOT_SIZE := 18
 const DOT_GAP := 18
@@ -213,16 +220,19 @@ func _build_layout() -> void:
 	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(column)
 
+	# Refinement pass §1 — ONE anchoring rule at every roster size:
+	# top-pinned encounter banner; bottom-anchored interactive cluster (squad
+	# header → grid → locked strip → detail panel → DEPLOY) in the thumb zone.
+	# The single flex gap lives HERE, between banner and squad header — empty
+	# space after a header reads intentional; before an action button it reads
+	# broken. At 8 unlocked the gap is near zero; at 4 the cluster slides down.
 	column.add_child(_build_encounter_section())
-	column.add_child(_build_divider())
-	column.add_child(_build_squad_section())
-	# Composition pass: content flows top-down (banner → grid → locked strip →
-	# detail panel); the ONE flex gap sits here, between the detail panel and
-	# DEPLOY — breathing room before the action button, never a mid-page void.
 	var spacer := Control.new()
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(spacer)
+	column.add_child(_build_divider())
+	column.add_child(_build_squad_section())
 	column.add_child(_build_deploy_button())
 
 
@@ -274,13 +284,13 @@ func _build_encounter_section() -> Control:
 	text_col.add_child(_enc_name_label)
 	text_col.add_child(_build_threat_row())
 
-	# Boss thumb — SQUARE, same cell size as the hero grid portraits, letterboxed
-	# (KEEP_ASPECT_CENTERED). The old box cover-cropped the art (fill + top-align +
-	# clip): non-square boss scenes rendered zoomed with their edges cut off.
+	# Boss thumb — rectangular at the dominant art aspect (ENC_THUMB_W/H ≈ the
+	# 592×880 portrait art), letterboxed KEEP_ASPECT_CENTERED so nothing ever
+	# stretches; dominant-aspect art sits flush, outliers letterbox.
 	var thumb_frame := PanelContainer.new()
 	thumb_frame.clip_contents = true
 	thumb_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	thumb_frame.custom_minimum_size = Vector2(PORTRAIT_CELL, PORTRAIT_CELL)
+	thumb_frame.custom_minimum_size = Vector2(ENC_THUMB_W, ENC_THUMB_H)
 	thumb_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER)
 	thumb_style.set_content_margin_all(float(PANEL_BORDER))
@@ -354,8 +364,8 @@ func _build_threat_row() -> Control:
 
 func _make_nav_button(glyph: String, direction: int) -> Button:
 	var button := Button.new()
-	# Full banner height (= the boss thumb cell) so the swipe targets are easy thumbs.
-	button.custom_minimum_size = Vector2(NAV_BUTTON_W, PORTRAIT_CELL)
+	# Full banner height (= the boss thumb) so the swipe targets are easy thumbs.
+	button.custom_minimum_size = Vector2(NAV_BUTTON_W, ENC_THUMB_H)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.text = glyph
@@ -530,10 +540,11 @@ func _build_locked_strip(locked_count: int) -> Control:
 
 func _build_detail_bar() -> PanelContainer:
 	var panel := PanelContainer.new()
-	# Fixed height + clip so swapping units never reflows the grid below it.
-	panel.custom_minimum_size = Vector2(0, DETAIL_BAR_HEIGHT)
+	# Snug to content (refinement pass §3): header row + exactly two blurb lines
+	# + padding. The desc label reserves a fixed 2-line block (no picker blurb
+	# exceeds 2 lines at this width — verified against data), so swapping between
+	# 1- and 2-line heroes never reflows the layout.
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.clip_contents = true
 	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_TRAY_BG, PixelUI.DT_HERO_BORDER))
 
 	var pad := MarginContainer.new()
@@ -577,6 +588,10 @@ func _build_detail_bar() -> PanelContainer:
 
 	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Reserve exactly two blurb lines so the panel height is constant.
+	var desc_font: Font = PixelUI.get_pixel_font()
+	_detail_desc.custom_minimum_size = Vector2(0, ceilf(desc_font.get_height(DETAIL_DESC_FONT) * 2.0))
+	_detail_desc.max_lines_visible = 2
 	col.add_child(_detail_desc)
 
 	return panel
@@ -598,7 +613,11 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
-	frame.custom_minimum_size = Vector2(0, PORTRAIT_H)
+	# Crop region carries the battle card's exact portrait aspect (320:486);
+	# frame height = region height + the 4px border insets on both edges.
+	var inner_w: float = float(PORTRAIT_CELL - 2 * PANEL_BORDER)
+	var inner_h: float = roundf(inner_w * BATTLE_PORTRAIT_REGION.y / BATTLE_PORTRAIT_REGION.x)
+	frame.custom_minimum_size = Vector2(0, inner_h + 2.0 * float(PANEL_BORDER))
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.add_child(frame)
 	(portrait_box["tex"] as TextureRect).texture = unit.portrait

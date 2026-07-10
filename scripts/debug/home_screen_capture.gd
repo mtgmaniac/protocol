@@ -13,13 +13,23 @@ func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
 	if bool(config.get("native", false)):
 		DisplayServer.window_set_size(Vector2i(1080, 2400))
+	# Roster-state overrides mutate SaveManager.data in memory. NOTE: do NOT set
+	# _disk_enabled=false here — that flips _fully_unlocked_override() and forces
+	# everything unlocked regardless of the arrays. Callers who care about the
+	# on-disk profile back up user://save.json around the invocation instead.
 	if bool(config.get("unlock_all_mem", false)):
 		var sm: Variant = root.get_node_or_null("/root/SaveManager")
 		if sm != null:
-			sm._disk_enabled = false   # nothing below can reach the save file
 			sm.data["unlocks"]["heroes"] = (sm.ALL_HEROES as Array).duplicate()
 			sm.data["unlocks"]["heroes_new"] = []
-			print("[HOME_UI_CAPTURE] in-memory unlock-all (disk disabled)")
+			sm.data["unlocks"]["operations"] = (sm.OPERATION_CHAIN as Array).duplicate()
+			print("[HOME_UI_CAPTURE] in-memory unlock-all")
+	if bool(config.get("lock_base_mem", false)):
+		var sm2: Variant = root.get_node_or_null("/root/SaveManager")
+		if sm2 != null:
+			sm2.data["unlocks"]["heroes"] = ["combat", "avalanche", "medic", "engineer"]
+			sm2.data["unlocks"]["heroes_new"] = []
+			print("[HOME_UI_CAPTURE] in-memory lock-to-base-4")
 	change_scene_to_file("res://scenes/ui/UnitSelect.tscn")
 	await _wait_for_scene(config)
 	var output_path: String = str(config.get("output", DEFAULT_OUTPUT))
@@ -63,9 +73,16 @@ func _parse_args() -> Dictionary:
 			# encounter blurb lives in the InspectPopup, not on the screen).
 			config["encounter_inspect"] = true
 		elif arg == "--capture-unlock-all-mem":
-			# IN-MEMORY-ONLY full roster unlock (grid wrap test): disables the
-			# SaveManager disk path first, so nothing about the unlock persists.
+			# IN-MEMORY-ONLY full roster + operations unlock (wrap / paging tests):
+			# disables the SaveManager disk path first, so nothing persists.
 			config["unlock_all_mem"] = true
+		elif arg.begins_with("--capture-encounter-page="):
+			# Advance the encounter carousel N pages after load.
+			config["encounter_page"] = int(arg.get_slice("=", 1))
+		elif arg == "--capture-lock-base-mem":
+			# IN-MEMORY-ONLY roster reduction to the 4 early heroes (locked-strip
+			# verify at small roster sizes). Disk disabled first; nothing persists.
+			config["lock_base_mem"] = true
 	return config
 
 
@@ -99,6 +116,12 @@ func _wait_for_scene(config: Dictionary) -> void:
 	if bool(config.get("help", false)) and current_scene != null:
 		HelpMenu.open(current_scene)
 		await process_frame
+		await process_frame
+		await process_frame
+	var pages: int = int(config.get("encounter_page", 0))
+	if pages > 0 and current_scene != null and current_scene.has_method("_on_nav_pressed"):
+		for i in pages:
+			current_scene.call("_on_nav_pressed", 1)
 		await process_frame
 		await process_frame
 	if bool(config.get("encounter_inspect", false)) and current_scene != null:
