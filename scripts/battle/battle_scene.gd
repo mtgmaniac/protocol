@@ -1588,10 +1588,14 @@ func _ensure_protocol_stack_layout() -> void:
 	# economy reads as prominent, not subordinate.
 	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	protocol_bar.custom_minimum_size = Vector2(0, 64)
+	# Label + pip bar must total <= the action-button height (112) so the stack
+	# centres LEVEL with the buttons instead of spilling below. The "Protocol N/M"
+	# label at font 48 was ~76px tall on its own; trimmed to keep the tall pips.
+	protocol_bar.custom_minimum_size = Vector2(0, 58)
 	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	protocol_label.add_theme_font_size_override("font_size", 34)
 
 
 # Deep Cells directive: the Protocol cap rises while a living carrier stands.
