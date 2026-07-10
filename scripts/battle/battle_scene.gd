@@ -928,7 +928,10 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	var tag_size: Vector2 = _die_tag_size()
 	var plate: Panel = Panel.new()
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plate.clip_contents = true
+	# No background box now, so don't clip: let the centered content extend past
+	# the nominal plate rect instead of cutting off a duration superscript / AoE
+	# marker when the pips are wider than the die (Kev 2026-07-09).
+	plate.clip_contents = false
 	plate.custom_minimum_size = tag_size
 	plate.size = tag_size
 	# Transparent plate: the pip icons + numbers read directly over the tray, with

@@ -58,19 +58,32 @@ def _exterior_bg_mask(value: np.ndarray, thresh: int) -> np.ndarray:
     return ext
 
 
-def _cut_cell(rgb: np.ndarray, thresh: int) -> Image.Image | None:
-    """Return an RGBA cut-out for one cell, or None if the cell is empty."""
+def _cut_cell(rgb: np.ndarray, thresh: int, floor: int = 0) -> Image.Image | None:
+    """Return an RGBA cut-out for one cell, or None if the cell is empty.
+
+    floor > 0 also removes faint INTERIOR panels (islands the border flood-fill
+    can't reach): alpha ramps 0->255 over [floor, floor+RAMP] of max-channel
+    value, so a dim chip-frame behind a glyph is keyed out while the bright glyph
+    (and its glow) survive. floor == 0 keeps the original binary-alpha behavior.
+    """
     value = rgb.max(axis=2)
     ext_bg = _exterior_bg_mask(value, thresh)
-    opaque = ~ext_bg
+    if floor > 0:
+        ramp = 30.0
+        alpha = np.clip((value.astype(np.float64) - float(floor)) / ramp, 0.0, 1.0)
+        alpha[ext_bg] = 0.0
+        content = alpha > 0.15
+    else:
+        alpha = np.where(ext_bg, 0.0, 1.0)
+        content = ~ext_bg
     # Drop specks: require a meaningful content area to treat the cell as filled.
-    if opaque.sum() < 200:
+    if content.sum() < 150:
         return None
-    ys, xs = np.where(opaque)
+    ys, xs = np.where(content)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-    crop_rgb = rgb[y0:y1, x0:x1]
-    crop_a = np.where(ext_bg[y0:y1, x0:x1], 0, 255).astype(np.uint8)
-    rgba = np.dstack([crop_rgb.astype(np.uint8), crop_a])
+    crop_rgb = rgb[y0:y1, x0:x1].astype(np.uint8)
+    crop_a = (alpha[y0:y1, x0:x1] * 255.0).round().astype(np.uint8)
+    rgba = np.dstack([crop_rgb, crop_a])
     return Image.fromarray(rgba, "RGBA")
 
 
@@ -102,7 +115,7 @@ def _resize_premult(im: Image.Image, size: int) -> Image.Image:
     return Image.fromarray(out, "RGBA")
 
 
-def slice_sheet(sheet_path, cols, rows, ids, out_dir, size, thresh, margin):
+def slice_sheet(sheet_path, cols, rows, ids, out_dir, size, thresh, margin, floor=0):
     sheet = Image.open(sheet_path).convert("RGB")
     arr = np.asarray(sheet).astype(int)
     H, W, _ = arr.shape
@@ -117,7 +130,7 @@ def slice_sheet(sheet_path, cols, rows, ids, out_dir, size, thresh, margin):
             x0, x1 = int(round(W * c / cols)), int(round(W * (c + 1) / cols))
             y0, y1 = int(round(H * r / rows)), int(round(H * (r + 1) / rows))
             cell = arr[y0:y1, x0:x1]
-            cut = _cut_cell(cell, thresh)
+            cut = _cut_cell(cell, thresh, floor)
             if cut is None:
                 print(f"  cell r{r}c{c} [{entity_id or '-'}]: EMPTY, skipped")
                 continue
@@ -174,11 +187,12 @@ def main():
     ap.add_argument("--size", type=int, default=32)
     ap.add_argument("--thresh", type=int, default=24, help="bg darkness ceiling (max channel)")
     ap.add_argument("--margin", type=float, default=0.06, help="square breathing room per edge")
+    ap.add_argument("--floor", type=int, default=0, help="value floor: also keys out faint INTERIOR panels behind glyphs (0 = off)")
     ap.add_argument("--contact", default="")
     args = ap.parse_args()
     ids = args.ids.split(",")
-    print(f"Slicing {args.sheet}  {args.cols}x{args.rows}  size={args.size} thresh={args.thresh}")
-    written = slice_sheet(args.sheet, args.cols, args.rows, ids, args.out, args.size, args.thresh, args.margin)
+    print(f"Slicing {args.sheet}  {args.cols}x{args.rows}  size={args.size} thresh={args.thresh} floor={args.floor}")
+    written = slice_sheet(args.sheet, args.cols, args.rows, ids, args.out, args.size, args.thresh, args.margin, args.floor)
     print(f"{len(written)} sprite(s) written to {args.out}")
     if args.contact:
         make_contact_sheet(written, args.contact, cols=args.cols)
