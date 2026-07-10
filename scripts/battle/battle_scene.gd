@@ -2505,7 +2505,7 @@ func _apply_battle_theme() -> void:
 	protocol_value_label.add_theme_constant_override("outline_size", 2)
 	# Header buttons are styled by the PersistentHeader autoload itself.
 	_style_roll_button_for_phase()
-	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_REROLL, BOTTOM_BAR_BUTTON_SIZE)
+	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_SWAP, BOTTOM_BAR_BUTTON_SIZE)
 	_protocol.restyle_buttons()
 	_ensure_protocol_footer_display()
 	protocol_label.visible = true
