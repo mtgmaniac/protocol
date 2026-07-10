@@ -133,13 +133,8 @@ const ICON_INCREASE := "res://assets/ui/icons/icon_increase.png"
 const ICON_ITEM := "res://assets/ui/icons/icon_item.png"
 const ICON_DEBUG := "res://assets/ui/icons/icon_debug.png"
 const ICON_DEBUG2 := "res://assets/ui/icons/icon_debug2.png"
-const PIP_DAMAGE_SCIFI := "res://assets/ui/pip_damage_scifi.png"
-const PIP_HEAL_SCIFI := "res://assets/ui/pip_heal_scifi.png"
-const PIP_SHIELD_SCIFI := "res://assets/ui/pip_shield_scifi.png"
-const PIP_FREEZE_SCIFI := "res://assets/ui/pip_freeze_scifi.png"
-const PIP_BURN_SCIFI := "res://assets/ui/pip_burn_scifi.png"
-const PIP_ROLL_DOWN_SCIFI := "res://assets/ui/pip_roll_down_scifi.png"
-const PIP_ROLL_UP_SCIFI := "res://assets/ui/pip_roll_up_scifi.png"
+# Pip icons moved to per-key files under assets/ui/pips/ (batch 155-179); see
+# PIP_ICON_BY_KEY + pip_texture_for_key below. The old pip_*_scifi.png are orphaned.
 
 const FRAME_MARGIN_BY_PATH := {
 	FRAME_SIMPLE: 18,
@@ -258,19 +253,57 @@ static func format_amount_no_sign(value: Variant) -> String:
 	return text.trim_prefix("+").trim_prefix("-")
 
 
+# Every keyword now has its own pip icon (batch 155-179). Roll is the single gold
+# d20 asset resolved as roll_up/roll_down so the caller can tint +roll green.
+# Only `rampage` and `tag` remain iconless (return "" → rendered as text).
 static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
-	var normalized_kind: String = kind.to_lower()
-	match normalized_kind:
-		"dmg", "damage", "blast", "pierce":
+	match kind.to_lower():
+		"dmg", "damage", "blast":
 			return "damage"
-		"heal", "revive":
+		"pierce":
+			return "pierce"
+		"heal":
 			return "heal"
-		"shield", "taunt":
+		"revive":
+			return "revive"
+		"shield":
 			return "shield"
+		"taunt":
+			return "taunt"
 		"burn":
 			return "burn"
 		"freeze", "frozen", "die_freeze":
 			return "freeze"
+		"protocol":
+			return "protocol"
+		"cloak":
+			return "cloak"
+		"ward", "firewall":
+			return "firewall"
+		"mark":
+			return "mark"
+		"leech":
+			return "leech"
+		"spike":
+			return "spike"
+		"jam":
+			return "jam"
+		"rewrite":
+			return "rewrite"
+		"hijack":
+			return "hijack"
+		"siphon":
+			return "siphon"
+		"chain":
+			return "chain"
+		"detonate":
+			return "detonate"
+		"execute":
+			return "execute"
+		"breach":
+			return "breach"
+		"accrete":
+			return "accrete"
 		"rfe":
 			return "roll_down"
 		"rfm":
@@ -348,28 +381,29 @@ static func physical_px_width(item: CanvasItem, physical_px: float = 1.0) -> flo
 	return maxf(physical_px, 1.0) / scale
 
 
+# Keyword pip icons (batch 155-179) live one-per-key under assets/ui/pips/.
+# roll_up / roll_down both resolve to the single gold d20 (roll.png); the +roll
+# green tint is applied by the caller (EffectPip.build_group).
+const PIP_ICON_DIR := "res://assets/ui/pips/"
+const PIP_ICON_BY_KEY := {
+	"damage": "damage", "heal": "heal", "shield": "shield", "protocol": "protocol",
+	"roll": "roll", "roll_up": "roll", "roll_down": "roll", "freeze": "freeze",
+	"aoe": "aoe", "burn": "burn", "leech": "leech", "mark": "mark", "taunt": "taunt",
+	"cloak": "cloak", "firewall": "firewall", "spike": "spike", "jam": "jam",
+	"rewrite": "rewrite", "hijack": "hijack", "siphon": "siphon", "chain": "chain",
+	"detonate": "detonate", "execute": "execute", "breach": "breach",
+	"pierce": "pierce", "revive": "revive", "accrete": "accrete",
+}
+
 static func pip_texture_for_key(key: String) -> Texture2D:
 	if key == "":
 		return null
 	if _pip_texture_cache.has(key):
 		return _pip_texture_cache.get(key)
-	var texture_path := ""
-	match key:
-		"damage":
-			texture_path = PIP_DAMAGE_SCIFI
-		"heal":
-			texture_path = PIP_HEAL_SCIFI
-		"shield":
-			texture_path = PIP_SHIELD_SCIFI
-		"freeze":
-			texture_path = PIP_FREEZE_SCIFI
-		"burn":
-			texture_path = PIP_BURN_SCIFI
-		"roll_down":
-			texture_path = PIP_ROLL_DOWN_SCIFI
-		"roll_up":
-			texture_path = PIP_ROLL_UP_SCIFI
-	var texture: Texture2D = _load_texture(texture_path)
+	var file_name: String = str(PIP_ICON_BY_KEY.get(key, ""))
+	if file_name == "":
+		return null
+	var texture: Texture2D = _load_texture(PIP_ICON_DIR + file_name + ".png")
 	if texture != null:
 		_pip_texture_cache[key] = texture
 	return texture

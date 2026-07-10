@@ -412,7 +412,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		})
 
 	if bool(state.get("marked", false)):
-		statuses.append(_make_compact_named_status("MARK", "", 1))
+		statuses.append(_make_compact_icon_status("mark", 1))
 
 	# Mirror combat_manager.get_roll_modifier_totals: temporary rfe_stacks/roll_buff PLUS the
 	# permanent relic/gear modifiers (perm_rfe from signalJam, perm_roll_buff from
@@ -433,12 +433,12 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		})
 
 	if bool(state.get("warded", false)):
-		statuses.append(_make_compact_named_status("FIREWALL", "", 3))
+		statuses.append(_make_compact_icon_status("firewall", 3))
 
 	# Taunted hero (enemy-side Taunt, internal lured_by state): targeting is
 	# restricted to the taunter — the chip makes the restriction legible.
 	if str(state.get("lured_by_id", "")) != "":
-		statuses.append(_make_compact_named_status("TAUNT", "", 3))
+		statuses.append(_make_compact_icon_status("taunt", 3))
 
 	return statuses
 
@@ -449,6 +449,16 @@ func _make_compact_named_status(display_name: String, value: String = "", priori
 		"mode": "named",
 		"name": display_name,
 		"value": value,
+		"priority": priority,
+	}
+
+
+# Keyword status shown as its pip icon (batch 155-179): mark / firewall / taunt.
+# mode "icon" → compact_unit_card.build_status_chip draws the icon only.
+func _make_compact_icon_status(status_type: String, priority: int = 3) -> Dictionary:
+	return {
+		"type": status_type,
+		"mode": "icon",
 		"priority": priority,
 	}
 

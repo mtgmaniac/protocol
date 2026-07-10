@@ -721,14 +721,13 @@ func _status_badge_palette(status: Dictionary) -> Dictionary:
 	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border}
 
 
-# Tint every label (font) and icon (modulate) inside a status badge to the status
-# color, so border + number + icon all read as one color.
+# Tint every value LABEL inside a status badge to the status color so the border
+# and number read as one color. Icons are NOT tinted: the pip icons (batch
+# 155-179) are full-color art and carry their own intent color.
 func _tint_status_content(node: Node, color: Color) -> void:
 	for child in node.get_children():
 		if child is Label:
 			(child as Label).add_theme_color_override("font_color", color)
-		elif child is TextureRect:
-			(child as TextureRect).modulate = color
 		if child.get_child_count() > 0:
 			_tint_status_content(child, color)
 
@@ -759,6 +758,9 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 	if plate_w > 0.0:
 		scale_step = _status_content_scale(status, plate_w)
 	if _is_frozen_status(status):
+		chip.add_child(_make_status_icon_control(status, scale_step))
+	elif str(status.get("mode", "named")) == "icon":
+		# Keyword status now shown as its pip icon (cloak / mark / taunt / firewall).
 		chip.add_child(_make_status_icon_control(status, scale_step))
 	elif str(status.get("mode", "named")) == "numeric":
 		chip.add_child(_make_status_icon_control(status, scale_step))
@@ -856,6 +858,10 @@ func _status_effect_kind(status: Dictionary) -> String:
 			return PixelUI.pip_key_for_effect(status_type, str(status.get("value", "")))
 		"frozen", "freeze", "die_freeze":
 			return "freeze"
+		"cloak", "mark", "taunt":
+			return status_type
+		"firewall", "ward":
+			return "firewall"
 	return ""
 
 
@@ -940,8 +946,16 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 	if first.begins_with("+") or first.begins_with("-") or first == "RFE" or first == "RFM":
 		var roll_value: String = first if first != "RFE" and first != "RFM" else value
 		return {"type": "roll", "mode": "numeric", "icon": "", "value": roll_value, "priority": 2}
+	# Keyword statuses now render as their pip icon (batch 155-179) instead of a
+	# text name. mode "icon" → build_status_chip draws the icon only.
 	if first == "CL" or first == "CLOAK":
-		return {"type": "named", "mode": "named", "name": "CLOAK", "priority": 3}
+		return {"type": "cloak", "mode": "icon", "priority": 3}
+	if first == "MK" or first == "MARK":
+		return {"type": "mark", "mode": "icon", "priority": 1}
+	if first == "T" or first == "TAUNT":
+		return {"type": "taunt", "mode": "icon", "priority": 3}
+	if first == "FW" or first == "FIREWALL" or first == "WARD":
+		return {"type": "firewall", "mode": "icon", "priority": 3}
 	if first == "RMP" or first == "RAGE" or first == "RAMPAGE":
 		return {"type": "named", "mode": "named", "name": "RAMPAGE", "value": value, "priority": 3}
 	return {"type": "named", "mode": "named", "name": first, "priority": 9}

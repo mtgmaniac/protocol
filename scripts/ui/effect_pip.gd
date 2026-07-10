@@ -5,7 +5,9 @@ extends RefCounted
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
 ## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
 
-const LETTER_ONLY_KINDS: Array[String] = ["pierce", "cloak", "ward", "rampage", "taunt", "protocol", "tag", "chain", "detonate", "execute", "breach", "leech", "mark", "spike", "jam", "rewrite", "hijack", "siphon"]
+# Batch 155-179 gave every keyword its own pip icon. Only `rampage` and `tag`
+# remain iconless (rendered as their letter/text). Everything else draws its icon.
+const LETTER_ONLY_KINDS: Array[String] = ["rampage", "tag"]
 
 # fix-2.6: keyword pip codes are single-sourced from keywords.data.json (the
 # "code" field) — battle pips, inspect rows, and the help menu all read the
@@ -46,10 +48,10 @@ const PROFILE_CARD := {
 
 
 
+# Self stays parenthesized; "all" no longer uses )..( — the AoE marker icon is
+# appended after the value by build_group instead (batch 161).
 static func format_scoped(text: String, scope: String) -> String:
 	match scope:
-		"all":
-			return ")%s(" % text
 		"self":
 			return "(%s)" % text
 		_:
@@ -62,14 +64,17 @@ static func is_letter_only_kind(kind: String) -> bool:
 
 static func pip_key_for_effect(effect: Dictionary, _side: String = "hero") -> String:
 	var kind: String = str(effect.get("kind", ""))
-	if kind == "revive":
-		return "heal"
-	# fix-2.3: the sign alone drives the roll channel — +roll = green (roll_up),
-	# -roll = amber (roll_down) — on both sides. Enemy rfm ("-N to a hero's
-	# roll") is emitted as a signed "roll" reduction below, so the old
-	# enemy-side rfm override is gone.
+	# The sign alone drives the roll channel — +roll = green (roll_up), -roll =
+	# gold (roll_down) — on both sides. revive/pierce/taunt/etc. now resolve to
+	# their own icon key (batch 155-179), so no per-kind overrides here.
 	var value: String = str(effect.get("value", ""))
 	return PixelUI.pip_key_for_effect(kind, value)
+
+
+# Kinds that now carry an icon AND were authored with a leading keyword code in
+# their value (e.g. "SP3", "CH×2", "BR", "MK"). The icon carries the keyword, so
+# we drop the letters and keep only the numeric/×N/% remainder.
+const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete"]
 
 
 static func display_text_for_effect(effect: Dictionary) -> String:
@@ -79,18 +84,10 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 	var text: String
 
 	match kind:
-		"pierce":
-			text = keyword_code("pierce", "P")
-		"cloak":
-			text = keyword_code("cloak", "C")
-		"taunt":
-			text = keyword_code("taunt", "T")
-		"ward":
-			text = keyword_code("ward", "FW")
 		"rampage":
-			text = keyword_code("rampage", "RA")
+			text = keyword_code("rampage", "RA")  # no icon → keep the letters
 		"revive":
-			text = "R%s%%" % raw_value.trim_suffix("%")
+			text = "%s%%" % raw_value.trim_suffix("%")  # icon + "50%"
 		"heal":
 			if raw_value in ["LOW", "↓"]:
 				text = "↓"
@@ -101,9 +98,25 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 		"protocol", "tag":
 			text = raw_value.to_upper()
 		_:
-			text = raw_value.to_upper()
+			if kind in CODE_ICON_KINDS:
+				text = _numeric_suffix(raw_value)
+			else:
+				text = raw_value.to_upper()
 
 	return format_scoped(text, scope)
+
+
+# Drop a leading run of letters (the keyword code) from a pip value, keeping any
+# numeric / ×N / % remainder. "SP3" -> "3", "CH×2" -> "×2", "BR" -> "".
+static func _numeric_suffix(value: String) -> String:
+	var i: int = 0
+	while i < value.length():
+		var ch: String = value[i]
+		var is_alpha: bool = (ch >= "A" and ch <= "Z") or (ch >= "a" and ch <= "z")
+		if not is_alpha:
+			break
+		i += 1
+	return value.substr(i)
 
 
 static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> float:
@@ -148,6 +161,9 @@ static func build_group(
 			icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			# Roll is one gold d20; a +roll (roll_up) tints green, −roll stays gold.
+			if pip_key == "roll_up":
+				icon_rect.modulate = PixelUI.COLOR_HEAL
 			group.add_child(icon_rect)
 
 	if effect_kind == "freeze":
@@ -155,6 +171,21 @@ static func build_group(
 			group.add_child(_make_duration_superscript(duration, value_color, profile))
 	else:
 		group.add_child(_make_value_display(effect, profile, side))
+
+	# AoE marker (batch 161): replaces the old )value( notation — a small
+	# "hits all" icon that sits AFTER the value.
+	if str(effect.get("scope", "")) == "all":
+		var aoe_texture: Texture2D = PixelUI.pip_texture_for_key("aoe")
+		if aoe_texture != null:
+			var aoe_size: int = int(round(float(profile.get("icon_size", 40)) * 0.62))
+			var aoe_rect := TextureRect.new()
+			aoe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			aoe_rect.custom_minimum_size = Vector2(aoe_size, aoe_size)
+			aoe_rect.texture = aoe_texture
+			aoe_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			aoe_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			aoe_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			group.add_child(aoe_rect)
 
 	return group
 

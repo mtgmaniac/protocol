@@ -27,10 +27,16 @@ const HELP_TABS := [
 	{"id": "bestiary", "label": "BESTIARY"},
 	{"id": "settings", "label": "SETTINGS"},
 ]
+# Each keyword now has its own pip icon (batch 155-179). Keyword id -> pip key.
+# rampage / pack_bonus / summon have no icon and fall back to their code letter.
 const HELP_KEYWORD_ICON := {
-	"burn": "burn", "pierce": "damage", "shield": "shield", "heal": "heal",
-	"revive": "heal", "roll_down": "roll_down", "roll_up": "roll_up",
-	"freeze": "freeze", "taunt": "shield", "aoe": "damage", "accrete": "shield",
+	"burn": "burn", "chain": "chain", "detonate": "detonate", "execute": "execute",
+	"breach": "breach", "leech": "leech", "mark": "mark", "spike": "spike",
+	"pierce": "pierce", "shield": "shield", "heal": "heal", "revive": "revive",
+	"roll_down": "roll_down", "roll_up": "roll_up", "jam": "jam", "rewrite": "rewrite",
+	"hijack": "hijack", "freeze": "freeze", "cloak": "cloak", "ward": "firewall",
+	"accrete": "accrete", "taunt": "taunt", "siphon": "siphon", "aoe": "aoe",
+	"protocol_gain": "protocol", "wipe_shields": "breach",
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
