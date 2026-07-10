@@ -91,6 +91,7 @@ var _current_op_locked: bool = false
 var _enc_portrait: TextureRect
 var _enc_portrait_crop: Control
 var _enc_portrait_placeholder: Label
+var _enc_lock_overlay: Control
 var _enc_name_label: Label
 var _enc_desc_label: Label
 var _enc_level_label: Label
@@ -282,6 +283,11 @@ func _build_encounter_section() -> Control:
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	(portrait_box["crop"] as Control).add_child(_enc_portrait_placeholder)
+	# Padlock overlay for locked operations — sibling of the (black-modulated)
+	# portrait so it isn't tinted out. Toggled in _refresh_encounter.
+	_enc_lock_overlay = _make_lock_overlay()
+	_enc_lock_overlay.visible = false
+	(portrait_box["crop"] as Control).add_child(_enc_lock_overlay)
 	middle.add_child(portrait_frame)
 
 	middle.add_child(_make_nav_button("▶", 1))    # ▶
@@ -380,6 +386,8 @@ func _refresh_encounter() -> void:
 	# its tint for unlocked ops.
 	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
 	_enc_portrait.modulate = Color(0.0, 0.0, 0.0, 1.0) if _current_op_locked else Color(1.0, 1.0, 1.0, 1.0)
+	if _enc_lock_overlay != null:
+		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
 		_enc_name_label.text = "[ LOCKED ]"
 		_enc_desc_label.text = ""
@@ -608,6 +616,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 		role_badge.visible = false
 		name_label.text = "[ LOCKED ]"
 		name_label.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+		crop.add_child(_make_lock_overlay())
 	elif SaveManager.is_hero_new(unit_id):
 		new_badge = _make_new_badge()
 		crop.add_child(new_badge)
@@ -622,7 +631,25 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	return cell
 
 
-# A small amber "NEW" chip pinned to the portrait's top-left corner.
+# The padlock glyph (batch 188) centered over a locked hero's black silhouette.
+func _make_lock_overlay() -> Control:
+	var wrap := CenterContainer.new()
+	wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon := TextureRect.new()
+	icon.texture = load(PixelUI.ICON_LOCK) as Texture2D
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(72, 72)
+	icon.modulate = PixelUI.TEXT_MUTED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(icon)
+	return wrap
+
+
+# A small amber NEW badge (the icon_new "!" glyph, batch 189) pinned to the
+# portrait's top-left corner.
 func _make_new_badge() -> Control:
 	var badge := PanelContainer.new()
 	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -630,13 +657,20 @@ func _make_new_badge() -> Control:
 	badge.offset_top = CHECK_INSET
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_AMBER, PixelUI.DT_AMBER, 0)
-	style.set_content_margin(SIDE_LEFT, 8.0)
-	style.set_content_margin(SIDE_RIGHT, 8.0)
-	style.set_content_margin(SIDE_TOP, 2.0)
-	style.set_content_margin(SIDE_BOTTOM, 2.0)
+	style.set_content_margin(SIDE_LEFT, 6.0)
+	style.set_content_margin(SIDE_RIGHT, 6.0)
+	style.set_content_margin(SIDE_TOP, 4.0)
+	style.set_content_margin(SIDE_BOTTOM, 4.0)
 	badge.add_theme_stylebox_override("panel", style)
-	var label := _make_pixel_label("NEW", 32, PixelUI.BTN_PRIMARY_INK)
-	badge.add_child(label)
+	var icon := TextureRect.new()
+	icon.texture = load(PixelUI.ICON_NEW) as Texture2D
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(28, 40)
+	icon.modulate = PixelUI.BTN_PRIMARY_INK  # dark "!" on the amber tag
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(icon)
 	return badge
 
 

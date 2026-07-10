@@ -195,6 +195,11 @@ func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> Panel
 	choose_button.custom_minimum_size = Vector2(0, 78)
 	choose_button.text = "CHOOSE %s" % directive_name.to_upper()
 	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
+	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
+	choose_button.expand_icon = true
+	choose_button.add_theme_constant_override("icon_max_width", 44)
+	choose_button.add_theme_color_override("icon_normal_color", PixelUI.DT_CYAN)
+	choose_button.add_theme_constant_override("h_separation", 14)
 	choose_button.pressed.connect(_on_choose_directive_pressed.bind(directive_name))
 	vbox.add_child(choose_button)
 	return panel
@@ -250,6 +255,11 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	choose_button.custom_minimum_size = Vector2(0, 78)
 	choose_button.text = "CHOOSE %s" % str(path.get("name", "EVOLUTION")).to_upper()
 	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
+	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
+	choose_button.expand_icon = true
+	choose_button.add_theme_constant_override("icon_max_width", 44)
+	choose_button.add_theme_color_override("icon_normal_color", PixelUI.DT_CYAN)
+	choose_button.add_theme_constant_override("h_separation", 14)
 	choose_button.pressed.connect(_on_choose_path_pressed.bind(str(path.get("name", ""))))
 	vbox.add_child(choose_button)
 	return panel

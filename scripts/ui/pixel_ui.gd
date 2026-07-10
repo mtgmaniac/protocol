@@ -133,6 +133,13 @@ const ICON_INCREASE := "res://assets/ui/icons/icon_increase.png"
 const ICON_ITEM := "res://assets/ui/icons/icon_item.png"
 const ICON_DEBUG := "res://assets/ui/icons/icon_debug.png"
 const ICON_DEBUG2 := "res://assets/ui/icons/icon_debug2.png"
+# System/UI glyph set (batch 181-189), muted teal.
+const ICON_SWAP := "res://assets/ui/icons/icon_swap.png"
+const ICON_EVOLVE := "res://assets/ui/icons/icon_evolve.png"
+const ICON_FLEE := "res://assets/ui/icons/icon_flee.png"
+const ICON_SETTINGS := "res://assets/ui/icons/icon_settings.png"
+const ICON_LOCK := "res://assets/ui/icons/icon_lock.png"
+const ICON_NEW := "res://assets/ui/icons/icon_new.png"
 # Pip icons moved to per-key files under assets/ui/pips/ (batch 155-179); see
 # PIP_ICON_BY_KEY + pip_texture_for_key below. The old pip_*_scifi.png are orphaned.
 

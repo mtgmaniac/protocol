@@ -98,9 +98,15 @@ func _apply_visual_theme(victory: bool) -> void:
 	_build_two_section_stats(accent)
 	_build_unlocked_section()
 
-	# Single primary action (start a fresh run) = teal primary button.
+	# Single primary action (start a fresh run) = teal primary button, prefixed
+	# with the swap/restart glyph (batch 181).
 	new_run_button.custom_minimum_size = BUTTON_SIZE
 	PixelUI.style_primary_button(new_run_button, BUTTON_FONT)
+	new_run_button.icon = load(PixelUI.ICON_SWAP) as Texture2D
+	new_run_button.expand_icon = true
+	new_run_button.add_theme_constant_override("icon_max_width", 56)
+	new_run_button.add_theme_color_override("icon_normal_color", PixelUI.BTN_PRIMARY_INK)
+	new_run_button.add_theme_constant_override("h_separation", 16)
 
 
 # Shows an "UNLOCKED" panel (heroes / operations awarded this run) above Start New Run.
