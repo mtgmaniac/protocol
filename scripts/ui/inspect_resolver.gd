@@ -304,6 +304,20 @@ static func resolve_protocol_action(action: String) -> Dictionary:
 	}
 
 
+# ── 7. Encounter (long-press the squad-select banner) ───────────────────────────
+# The operation blurb lives HERE (squad-select redesign): the banner shows only
+# name + threat; long-press surfaces the full flavor copy, verbatim from data.
+static func resolve_encounter(op: OperationData, threat_level: int, threat_max: int) -> Dictionary:
+	if op == null:
+		return {}
+	return {
+		"accent": _side_accent("enemy"),
+		"header": {"title": op.display_name.to_upper(), "subtitle": "ENCOUNTER"},
+		"stats": [{"label": "THREAT", "value": "LV %d / %d" % [threat_level, threat_max]}],
+		"description": op.blurb,
+	}
+
+
 # ── helpers ─────────────────────────────────────────────────────────────────────
 static func _side_accent(side: String) -> Color:
 	return PixelUI.DT_ENEMY_BORDER if side == "enemy" else PixelUI.DT_HERO_BORDER

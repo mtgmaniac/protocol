@@ -51,6 +51,10 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-help":
 			# Opens the shared HelpMenu on the squad picker (verifies it works off-battle).
 			config["help"] = true
+		elif arg == "--capture-encounter-inspect":
+			# Drives the banner's long-press handler (squad-select redesign: the
+			# encounter blurb lives in the InspectPopup, not on the screen).
+			config["encounter_inspect"] = true
 	return config
 
 
@@ -83,6 +87,13 @@ func _wait_for_scene(config: Dictionary) -> void:
 		await process_frame
 	if bool(config.get("help", false)) and current_scene != null:
 		HelpMenu.open(current_scene)
+		await process_frame
+		await process_frame
+		await process_frame
+	if bool(config.get("encounter_inspect", false)) and current_scene != null:
+		if current_scene.has_method("_on_banner_long_pressed"):
+			current_scene.call("_on_banner_long_pressed", Vector2.ZERO)
+			print("[HOME_UI_CAPTURE] drove encounter banner long-press")
 		await process_frame
 		await process_frame
 		await process_frame

@@ -5,15 +5,21 @@
 # m5x7 at clean multiples via _make_pixel_label (bypasses PixelUI.scale_font_size so
 # small labels stay pixel-crisp). Colors pull from PixelUI DT_* tokens.
 #
-# - Encounter carousel: one encounter at a time (name + threat pips/level + blurb +
-#   final-boss portrait), cycled by ◀ ▶ arrows; dots show position. Threat level is
-#   derived from encounter order (no data field). Boss portrait = the last battle's
-#   last enemy's portrait.
-# - Squad: 4x2 wall of portrait tiles with a role-color corner badge; selecting a unit
-#   adds a slot-number badge (1/2/3) + cyan highlight. A detail bar shows the
-#   last-tapped unit's name / focus / blurb.
-# - DEPLOY uses the battle Roll button's green commit style; inert ("SELECT N MORE")
-#   until 3 are picked. The global PersistentHeader stays as-is (blank label here).
+# Squad-select redesign (2026-07-10, Kev-approved mockup):
+# - Encounter = ONE compact banner row: [◀] name + threat [boss thumb] [▶], dots
+#   under. The flavor blurb is NOT on screen — long-press the banner opens the
+#   InspectPopup (InspectResolver.resolve_encounter) with the verbatim copy.
+#   The boss thumb is a SQUARE cell at the same size as the hero portrait cells,
+#   letterboxed KEEP_ASPECT_CENTERED (never cover-cropped like hero busts).
+# - Squad: the portrait IS the button (no name-button row); hero name is a label
+#   UNDER each portrait. Tap toggles selection (slot badge + cyan border); the
+#   detail panel follows the last-tapped hero. No role legend — role reads from
+#   the portrait corner pip + the named role tag in the detail panel.
+# - Locked heroes: no full-size cells — one slim "lock: N LOCKED" strip under the grid.
+# - Detail panel is anchored ABOVE the deploy button.
+# - DEPLOY shows its own gate: "DEPLOY SQUAD (N MORE)" ghosted until full.
+#   Threat level derives from encounter order (no data field); boss thumb = the
+#   operation's highest-HP enemy with art.
 extends Control
 
 const MAX_SELECTED_UNITS := 3
@@ -29,38 +35,38 @@ const HEADER_GAP := 16
 # protocol/summary labels 70-112) so the picker reads at the same weight.
 const HEADER_FONT := 72
 const COUNTER_FONT := 64
-const ENC_NAME_FONT := 96
-const ENC_META_FONT := 48
-const ENC_DESC_FONT := 52
+const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
+                                   # (STELLAR MENAGERIE) wrap to two lines instead of clipping
+const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
 const TILE_NAME_FONT := 56
 const DETAIL_NAME_FONT := 76
-const DETAIL_DESC_FONT := 52
+const DETAIL_DESC_FONT := 56       # kit blurb — sized up from 52 (redesign sizing rule)
 const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
-const TILE_NAME_STRIP_H := 76      # one line (callsigns are single words) + a little padding
+const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller than DEPLOY
 
 # 4px (not 2) so borders survive the canvas_items downscale to the preview window —
 # at 2px they render sub-pixel and drop edges, worst on bright accent borders.
 const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
-const ENC_PANEL_HEIGHT := 320
-const ENC_MID_GAP := 34            # gap between the threat row and the portrait/description
-const ENC_DESC_H := 232            # blurb block matches the portrait height; the label no
-                                   # longer clips — a longer blurb grows the panel (min-size
-                                   # semantics) instead of losing its tail (UI review DB-4)
-const ENC_PORTRAIT := 232          # boss portrait, square — about a hero tile's size
-const NAV_BUTTON_W := 96
-const NAV_BUTTON_H := 220           # ~half the panel height (was full-height)
-const THREAT_PIP_COUNT := 5
-const THREAT_PIP_SIZE := Vector2(42, 30)
-
-const TILE_PORTRAIT_H := 248
-const TILE_GAP := 18
-const GRID_COLUMNS := 4             # 4 per row; each COLUMN is a same-type pair (stacked)
+# ONE square portrait cell size shared by the hero grid and the banner boss thumb.
+# Pixel-snapped: content width 1080 − 2×60 margins = 960; 4 columns with 3×16 gaps
+# → (960 − 48) / 4 = 228 exactly (even, so 114 crisp px in the 540 preview).
+const PORTRAIT_CELL := 228
+const TILE_GAP := 16
+const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
 const SLOT_BADGE_SIZE := 60
 const CHECK_INSET := 8
+
+const BANNER_PAD := 16
+const NAV_BUTTON_W := 96
+const THREAT_PIP_COUNT := 5
+const THREAT_PIP_SIZE := Vector2(48, 36)   # sized up from (42,30) — near-illegible strip
+
+const LOCKED_STRIP_H := 72
+const LOCKED_ICON := 48
 
 const DETAIL_BAR_HEIGHT := 340      # fixed so swapping units never reflows the page
 
@@ -88,15 +94,14 @@ var _selected_unit_ids: Array[String] = []
 var _focused_unit_id: String = ""
 
 # Built nodes
-var _enc_content: VBoxContainer
 var _current_op_locked: bool = false
+var _enc_banner: PanelContainer
 var _enc_portrait: TextureRect
-var _enc_portrait_crop: Control
 var _enc_portrait_placeholder: Label
 var _enc_lock_overlay: Control
 var _enc_name_label: Label
-var _enc_desc_label: Label
 var _enc_level_label: Label
+var _locked_strip_label: Label
 var _threat_pips: Array[ColorRect] = []
 var _dot_row: HBoxContainer
 var _dot_nodes: Array[ColorRect] = []
@@ -202,11 +207,14 @@ func _build_layout() -> void:
 	column.add_child(_build_encounter_section())
 	column.add_child(_build_divider())
 	column.add_child(_build_squad_section())
-	# Spacer pushes DEPLOY to the bottom.
+	# Spacer pushes the detail panel + DEPLOY to the bottom.
 	var spacer := Control.new()
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(spacer)
+	# Detail panel anchors directly ABOVE the deploy button (redesign §4).
+	_detail_panel = _build_detail_bar()
+	column.add_child(_detail_panel)
 	column.add_child(_build_deploy_button())
 
 
@@ -218,80 +226,80 @@ func _build_encounter_section() -> Control:
 
 	section.add_child(_make_header_label("SELECT ENCOUNTER", PixelUI.TEXT_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
 
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, ENC_PANEL_HEIGHT)
-	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER))
-	section.add_child(panel)
+	# Compact single-row banner: [◀] [name + threat] [boss thumb] [▶].
+	# Long-press anywhere on it opens the encounter InspectPopup (the flavor blurb
+	# lives there now, not on the screen). No taught hint — long-press is the
+	# game-wide inspect convention.
+	_enc_banner = PanelContainer.new()
+	_enc_banner.mouse_filter = Control.MOUSE_FILTER_STOP
+	_enc_banner.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER))
+	section.add_child(_enc_banner)
+	var banner_press := LongPressInput.new()
+	_enc_banner.add_child(banner_press)
+	banner_press.long_pressed.connect(_on_banner_long_pressed)
 
 	var pad := MarginContainer.new()
-	pad.add_theme_constant_override("margin_left", 20)
-	pad.add_theme_constant_override("margin_right", 20)
-	pad.add_theme_constant_override("margin_top", 20)
-	pad.add_theme_constant_override("margin_bottom", 20)
-	panel.add_child(pad)
+	for side_key in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side_key, BANNER_PAD)
+	_enc_banner.add_child(pad)
 
-	# Layout: name on top, threat directly under it, then a gap, then the flippers +
-	# descriptor + boss portrait. Content is natural-height and the pad margins are
-	# equal (20/20), so the blank above the name == the blank below the portrait/desc.
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 10)
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pad.add_child(content)
-	_enc_content = content
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 22)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_child(row)
 
-	# Name — centered, top.
+	row.add_child(_make_nav_button("◀", -1))   # ◀
+
+	# Name + threat, stacked, centered in the leftover width.
+	var text_col := VBoxContainer.new()
+	text_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	text_col.add_theme_constant_override("separation", 14)
+	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(text_col)
+
 	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
 	_enc_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_enc_name_label.clip_text = true
+	_enc_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_child(_enc_name_label)
+	text_col.add_child(_enc_name_label)
+	text_col.add_child(_build_threat_row())
 
-	# Threat — centered, directly under the name.
-	content.add_child(_build_threat_row())
-
-	# Gap so the portrait + description sit lower in the panel.
-	var mid_gap := Control.new()
-	mid_gap.custom_minimum_size = Vector2(0, ENC_MID_GAP)
-	mid_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(mid_gap)
-
-	# Middle — [◀] [descriptor] [boss portrait] [▶].
-	var middle := HBoxContainer.new()
-	middle.add_theme_constant_override("separation", 22)
-	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_child(middle)
-
-	middle.add_child(_make_nav_button("◀", -1))   # ◀
-
-	_enc_desc_label = _make_pixel_label("", ENC_DESC_FONT, PixelUI.TEXT_MUTED)
-	_enc_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_enc_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_enc_desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_enc_desc_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_enc_desc_label.custom_minimum_size = Vector2(0, ENC_DESC_H)
-	middle.add_child(_enc_desc_label)
-
-	# Boss portrait (right of the descriptor) — red enemy frame.
-	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER)
-	var portrait_frame: PanelContainer = portrait_box["frame"]
-	portrait_frame.custom_minimum_size = Vector2(ENC_PORTRAIT, ENC_PORTRAIT)
-	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_enc_portrait = portrait_box["tex"]
-	_enc_portrait_crop = portrait_box["crop"]
+	# Boss thumb — SQUARE, same cell size as the hero grid portraits, letterboxed
+	# (KEEP_ASPECT_CENTERED). The old box cover-cropped the art (fill + top-align +
+	# clip): non-square boss scenes rendered zoomed with their edges cut off.
+	var thumb_frame := PanelContainer.new()
+	thumb_frame.clip_contents = true
+	thumb_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	thumb_frame.custom_minimum_size = Vector2(PORTRAIT_CELL, PORTRAIT_CELL)
+	thumb_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var thumb_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER)
+	thumb_style.set_content_margin_all(float(PANEL_BORDER))
+	thumb_frame.add_theme_stylebox_override("panel", thumb_style)
+	var thumb_holder := Control.new()
+	thumb_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	thumb_frame.add_child(thumb_holder)
+	_enc_portrait = TextureRect.new()
+	_enc_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_enc_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_enc_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_enc_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enc_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	thumb_holder.add_child(_enc_portrait)
 	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
 	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	(portrait_box["crop"] as Control).add_child(_enc_portrait_placeholder)
+	thumb_holder.add_child(_enc_portrait_placeholder)
 	# Padlock overlay for locked operations — sibling of the (black-modulated)
 	# portrait so it isn't tinted out. Toggled in _refresh_encounter.
 	_enc_lock_overlay = _make_lock_overlay()
 	_enc_lock_overlay.visible = false
-	(portrait_box["crop"] as Control).add_child(_enc_lock_overlay)
-	middle.add_child(portrait_frame)
+	thumb_holder.add_child(_enc_lock_overlay)
+	row.add_child(thumb_frame)
 
-	middle.add_child(_make_nav_button("▶", 1))    # ▶
+	row.add_child(_make_nav_button("▶", 1))    # ▶
 
 	# Dots.
 	_dot_row = HBoxContainer.new()
@@ -337,7 +345,8 @@ func _build_threat_row() -> Control:
 
 func _make_nav_button(glyph: String, direction: int) -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(NAV_BUTTON_W, NAV_BUTTON_H)
+	# Full banner height (= the boss thumb cell) so the swipe targets are easy thumbs.
+	button.custom_minimum_size = Vector2(NAV_BUTTON_W, PORTRAIT_CELL)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.text = glyph
@@ -367,10 +376,8 @@ func _refresh_encounter() -> void:
 	if op == null:
 		return
 	_enc_name_label.text = op.display_name.to_upper()
-	_enc_desc_label.text = op.blurb
 	var boss_tex: Texture2D = _get_boss_portrait(op)
 	_enc_portrait.texture = boss_tex
-	_cover_fit_portrait(_enc_portrait_crop, _enc_portrait)
 	_enc_portrait_placeholder.visible = boss_tex == null
 
 	var level: int = _threat_level(_operation_index)
@@ -382,17 +389,29 @@ func _refresh_encounter() -> void:
 		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
 	# Locked operations stay browsable but hidden: the boss renders as a black silhouette,
-	# the name reads "[ LOCKED ]", the blurb is blank (no unlock hint — part of the
-	# surprise), and DEPLOY is disabled. The portrait node is reused on scroll, so reset
-	# its tint for unlocked ops.
+	# the name reads "[ LOCKED ]" (no unlock hint — part of the surprise), and DEPLOY is
+	# disabled. The portrait node is reused on scroll, so reset its tint for unlocked ops.
 	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
 	_enc_portrait.modulate = Color(0.0, 0.0, 0.0, 1.0) if _current_op_locked else Color(1.0, 1.0, 1.0, 1.0)
 	if _enc_lock_overlay != null:
 		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
 		_enc_name_label.text = "[ LOCKED ]"
-		_enc_desc_label.text = ""
 	_refresh_deploy()
+
+
+# Long-press on the banner → encounter InspectPopup (name, threat, and the full
+# flavor blurb — relocated off the visible screen by the squad-select redesign).
+# Locked operations reveal nothing.
+func _on_banner_long_pressed(_global_position: Vector2) -> void:
+	if _current_op_locked or _operation_ids.is_empty():
+		return
+	var op: OperationData = DataManager.get_operation(_selected_operation_id) as OperationData
+	if op == null:
+		return
+	AudioManager.play_select()
+	var payload: Dictionary = InspectResolver.resolve_encounter(op, _threat_level(_operation_index), THREAT_PIP_COUNT)
+	InspectPopup.open(self, payload, _enc_banner.get_global_rect(), _enc_banner.get_instance_id())
 
 
 # Threat level (1..THREAT_PIP_COUNT) derived from encounter order.
@@ -445,60 +464,54 @@ func _build_squad_section() -> Control:
 	header.add_child(_counter_label)
 	section.add_child(header)
 
-	# Role legend: decodes the portrait corner chips. Same chip size (ROLE_BADGE_SIZE)
-	# so the association reads at a glance; small dim text so it never fights the grid.
-	section.add_child(_build_role_legend())
+	# No role legend (redesign): role reads from the portrait corner pip + the named
+	# tag in the detail panel — nothing else teaches the color code.
 
-	_detail_panel = _build_detail_bar()
-	section.add_child(_detail_panel)
-
+	# Grid holds UNLOCKED heroes only; locked heroes collapse into one slim strip below.
 	var grid := GridContainer.new()
 	grid.columns = GRID_COLUMNS
 	grid.add_theme_constant_override("h_separation", TILE_GAP)
 	grid.add_theme_constant_override("v_separation", TILE_GAP)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	section.add_child(grid)
+	var locked_count: int = 0
 	for unit_id in _unit_ids:
 		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
 		if unit == null:
 			continue
+		if not SaveManager.is_hero_unlocked(unit_id):
+			locked_count += 1
+			continue
 		grid.add_child(_build_unit_tile(unit_id, unit))
 
+	section.add_child(_build_locked_strip(locked_count))
 	return section
 
 
-# The legend decodes the role chips — info-carrying, so it sits on the floor
-# (UI review DB-5: at 30 it was the least legible text in the game).
-const LEGEND_FONT := PixelUI.FONT_INFO_MIN
-
-
-# One inline row of role key entries (chip + label) using the same color mapping and
-# chip size as the portrait corner badges.
-func _build_role_legend() -> Control:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 22)
-	var entries := [
-		["OFFENSIVE", PixelUI.DT_RUST],
-		["DEFENSIVE", PixelUI.DT_CYAN],
-		["SUPPORT", Color("9a6ad0")],
-		["CONTROL", PixelUI.DT_AMBER],
-	]
-	for entry in entries:
-		var item := HBoxContainer.new()
-		item.add_theme_constant_override("separation", 8)
-		item.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		var chip := ColorRect.new()
-		chip.color = entry[1]
-		chip.custom_minimum_size = Vector2(ROLE_BADGE_SIZE, ROLE_BADGE_SIZE)
-		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		item.add_child(chip)
-		var label := _make_pixel_label(entry[0], LEGEND_FONT, PixelUI.TEXT_MUTED)
-		label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		item.add_child(label)
-		row.add_child(item)
-	return row
+# One slim strip standing in for every locked roster slot: lock glyph + "N LOCKED".
+# Reads the same roster/unlock source the old full-size locked cells did
+# (SaveManager.is_hero_unlocked over _unit_ids), so it stays true as heroes unlock.
+func _build_locked_strip(locked_count: int) -> Control:
+	var strip := HBoxContainer.new()
+	strip.alignment = BoxContainer.ALIGNMENT_CENTER
+	strip.add_theme_constant_override("separation", 14)
+	strip.custom_minimum_size = Vector2(0, LOCKED_STRIP_H)
+	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip.visible = locked_count > 0
+	var icon := TextureRect.new()
+	icon.texture = load(PixelUI.ICON_LOCK) as Texture2D
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(LOCKED_ICON, LOCKED_ICON)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.modulate = PixelUI.TEXT_MUTED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.add_child(icon)
+	_locked_strip_label = _make_pixel_label("%d LOCKED" % locked_count, PixelUI.FONT_INFO_MIN, PixelUI.TEXT_MUTED)
+	_locked_strip_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	strip.add_child(_locked_strip_label)
+	return strip
 
 
 func _build_detail_bar() -> PanelContainer:
@@ -553,42 +566,23 @@ func _build_detail_bar() -> PanelContainer:
 	return panel
 
 
+# Tile = square portrait (the ONLY tap target) + name label UNDER it. Quick tap
+# toggles selection; long-press opens the unit inspect popup. Only unlocked heroes
+# get tiles — locked heroes collapse into the strip.
 func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var cell := VBoxContainer.new()
-	cell.add_theme_constant_override("separation", 10)
+	cell.add_theme_constant_override("separation", 8)
 	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Quick tap selects the unit; long-press opens the unified inspect popup (same gesture as
-	# the battle unit cards). LongPressInput watches the cell's gui_input and disambiguates.
 	var long_press := LongPressInput.new()
 	cell.add_child(long_press)
 	long_press.tapped.connect(_on_tile_tapped.bind(unit_id))
 	long_press.long_pressed.connect(_on_tile_long_pressed.bind(unit_id, cell))
 
-	# Name strip on top of the tile (battle-card style), above the portrait.
-	var tile_name: String = unit.callsign if unit.callsign != "" else unit.display_name
-	var name_strip := PanelContainer.new()
-	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_strip.custom_minimum_size = Vector2(0, TILE_NAME_STRIP_H)
-	name_strip.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_HEADER, PixelUI.DT_HERO_BORDER))
-	var name_pad := MarginContainer.new()
-	name_pad.add_theme_constant_override("margin_left", 6)
-	name_pad.add_theme_constant_override("margin_right", 6)
-	name_pad.add_theme_constant_override("margin_top", 4)
-	name_pad.add_theme_constant_override("margin_bottom", 4)
-	name_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_strip.add_child(name_pad)
-	var name_label := _make_pixel_label(tile_name.to_upper(), TILE_NAME_FONT, PixelUI.DT_HERO_NAME)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_pad.add_child(name_label)
-	cell.add_child(name_strip)
-
 	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
-	frame.custom_minimum_size = Vector2(0, TILE_PORTRAIT_H)
+	frame.custom_minimum_size = Vector2(0, PORTRAIT_CELL)
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.add_child(frame)
 	(portrait_box["tex"] as TextureRect).texture = unit.portrait
@@ -605,30 +599,43 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crop.add_child(role_badge)
 
-	# No slot-number badge — the cyan highlight border is enough to show selection.
+	# Slot badge (top-left): filled cyan plate with the pick order (1/2/3) — the
+	# selection indicator on the portrait itself, alongside the bright border.
+	var slot_badge := PanelContainer.new()
+	slot_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	slot_badge.offset_left = CHECK_INSET
+	slot_badge.offset_top = CHECK_INSET
+	slot_badge.custom_minimum_size = Vector2(SLOT_BADGE_SIZE, SLOT_BADGE_SIZE)
+	slot_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot_badge.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_CYAN, PixelUI.DT_CYAN, 0))
+	var slot_label := _make_pixel_label("", TILE_NAME_FONT, PixelUI.BTN_PRIMARY_INK)
+	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	slot_badge.add_child(slot_label)
+	slot_badge.visible = false
+	crop.add_child(slot_badge)
 
-	# Locked heroes stay a mystery: identity hidden. The name strip reads "[ LOCKED ]",
-	# the portrait renders as a solid black silhouette (hero art is a cutout, so modulate
-	# to black keeps the shape), and the role chip is hidden so nothing leaks — no unlock
-	# hint either (figuring out how is part of the surprise).
 	# Newly-unlocked heroes: a NEW badge until first added to a squad.
-	var locked: bool = not SaveManager.is_hero_unlocked(unit_id)
 	var new_badge: Control = null
-	if locked:
-		(portrait_box["tex"] as TextureRect).modulate = Color(0.0, 0.0, 0.0, 1.0)
-		role_badge.visible = false
-		name_label.text = "[ LOCKED ]"
-		name_label.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
-		crop.add_child(_make_lock_overlay())
-	elif SaveManager.is_hero_new(unit_id):
+	if SaveManager.is_hero_new(unit_id):
 		new_badge = _make_new_badge()
 		crop.add_child(new_badge)
+
+	# Name label UNDER the portrait — a label, not a button.
+	var tile_name: String = unit.callsign if unit.callsign != "" else unit.display_name
+	var name_label := _make_pixel_label(tile_name.to_upper(), TILE_NAME_FONT, PixelUI.DT_HERO_NAME)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.clip_text = true
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.add_child(name_label)
 
 	_unit_tiles[unit_id] = {
 		"frame": frame,
 		"role_badge": role_badge,
 		"name": name_label,
-		"locked": locked,
+		"slot_badge": slot_badge,
+		"slot_label": slot_label,
+		"locked": false,
 		"new_badge": new_badge,
 	}
 	return cell
@@ -722,7 +729,6 @@ func _refresh_unit_tiles() -> void:
 		var tile: Dictionary = _unit_tiles[unit_id]
 		var frame: PanelContainer = tile["frame"]
 		var name_label: Label = tile["name"]
-		var locked: bool = bool(tile.get("locked", false))
 		var is_selected := _selected_unit_ids.has(unit_id)
 		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
@@ -730,8 +736,14 @@ func _refresh_unit_tiles() -> void:
 		var frame_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_HERO_BG, border)
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
-		if not locked:
-			name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
+		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
+		# Slot badge = the on-portrait selection indicator (1/2/3 pick order).
+		var slot_badge: Variant = tile.get("slot_badge")
+		var slot_label: Variant = tile.get("slot_label")
+		if slot_badge != null and is_instance_valid(slot_badge):
+			(slot_badge as Control).visible = is_selected
+			if is_selected and slot_label != null and is_instance_valid(slot_label):
+				(slot_label as Label).text = str(_selected_unit_ids.find(unit_id) + 1)
 		var new_badge: Variant = tile.get("new_badge")
 		if new_badge != null and is_instance_valid(new_badge):
 			(new_badge as Control).visible = SaveManager.is_hero_new(unit_id)
@@ -749,6 +761,12 @@ func _refresh_unit_thumbs() -> void:
 
 func _refresh_begin_button() -> void:
 	_refresh_deploy()
+
+
+# Focus a unit in the detail panel (capture harness drives this by name).
+func _show_unit_detail(unit_id: String) -> void:
+	_focused_unit_id = unit_id
+	_refresh_detail()
 
 
 func _refresh_detail() -> void:
@@ -815,7 +833,7 @@ func _build_deploy_button() -> Control:
 	_deploy_button.focus_mode = Control.FOCUS_NONE
 	_deploy_button.custom_minimum_size = Vector2(0, 130)
 	_deploy_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_deploy_button.text = "0/%d SELECTED" % MAX_SELECTED_UNITS
+	_deploy_button.text = "DEPLOY SQUAD (%d MORE)" % MAX_SELECTED_UNITS
 	_deploy_button.pressed.connect(_on_begin_run_pressed)
 	_deploy_panel.add_child(_deploy_button)
 	return _deploy_panel
@@ -834,13 +852,14 @@ func _refresh_deploy() -> void:
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
-		# Requirement unmet → progress-locked button. A locked operation blocks deploy
-		# even with a full squad.
+		# Requirement unmet → the button states its own gate (redesign §5): what it
+		# is + what's missing. A locked operation blocks deploy even with a full squad.
 		if units_ready and not op_unlocked:
 			_deploy_button.text = "OPERATION LOCKED"
 		else:
-			_deploy_button.text = "%d/%d SELECTED" % [_selected_unit_ids.size(), MAX_SELECTED_UNITS]
-		PixelUI.style_locked_button(_deploy_button, DEPLOY_FONT)
+			var missing: int = MAX_SELECTED_UNITS - _selected_unit_ids.size()
+			_deploy_button.text = "DEPLOY SQUAD (%d MORE)" % missing
+		PixelUI.style_locked_button(_deploy_button, DEPLOY_GATE_FONT)
 		_deploy_button.disabled = true
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
