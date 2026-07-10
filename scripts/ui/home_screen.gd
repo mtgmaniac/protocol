@@ -25,7 +25,7 @@ extends Control
 const MAX_SELECTED_UNITS := 3
 
 # Layout (logical units).
-const ROOT_MARGIN_X := 60
+const ROOT_MARGIN_X := 40   # 60→40 (composition pass): buys the grid its exact-fit width
 const ROOT_MARGIN_TOP := 60
 const ROOT_MARGIN_BOTTOM := 48
 const SECTION_GAP := 30
@@ -38,7 +38,7 @@ const COUNTER_FONT := 64
 const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
                                    # (STELLAR MENAGERIE) wrap to two lines instead of clipping
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
-const TILE_NAME_FONT := 56
+const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
 const DETAIL_NAME_FONT := 76
 const DETAIL_DESC_FONT := 56       # kit blurb — sized up from 52 (redesign sizing rule)
 const FOCUS_CHIP_FONT := 40
@@ -50,10 +50,13 @@ const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller t
 const PANEL_BORDER := 4
 const PANEL_RADIUS := 0
 
-# ONE square portrait cell size shared by the hero grid and the banner boss thumb.
-# Pixel-snapped: content width 1080 − 2×60 margins = 960; 4 columns with 3×16 gaps
-# → (960 − 48) / 4 = 228 exactly (even, so 114 crisp px in the 540 preview).
-const PORTRAIT_CELL := 228
+# ONE portrait cell width shared by the hero grid and the (square) banner boss
+# thumb. Pixel-snapped: content width 1080 − 2×40 margins = 1000; 4 columns with
+# 3×16 gaps → (1000 − 48) / 4 = 238 exactly (even → crisp halves at 540 preview).
+const PORTRAIT_CELL := 238
+# Grid portraits are TALL cells (composition pass): the vertical space reclaimed
+# from the name-button row / legend / mid-page detail panel goes to the portraits.
+const PORTRAIT_H := 400
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
@@ -125,6 +128,12 @@ func _ready() -> void:
 	_apply_background()
 	_gather_data()
 	_build_layout()
+	# The detail panel is never empty: open on the first unlocked hero (display
+	# only — nothing is selected). It follows the last-tapped hero from there.
+	for uid in _unit_ids:
+		if SaveManager.is_hero_unlocked(uid):
+			_focused_unit_id = uid
+			break
 	_refresh_encounter()
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
@@ -207,14 +216,13 @@ func _build_layout() -> void:
 	column.add_child(_build_encounter_section())
 	column.add_child(_build_divider())
 	column.add_child(_build_squad_section())
-	# Spacer pushes the detail panel + DEPLOY to the bottom.
+	# Composition pass: content flows top-down (banner → grid → locked strip →
+	# detail panel); the ONE flex gap sits here, between the detail panel and
+	# DEPLOY — breathing room before the action button, never a mid-page void.
 	var spacer := Control.new()
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(spacer)
-	# Detail panel anchors directly ABOVE the deploy button (redesign §4).
-	_detail_panel = _build_detail_bar()
-	column.add_child(_detail_panel)
 	column.add_child(_build_deploy_button())
 
 
@@ -324,8 +332,9 @@ func _build_threat_row() -> Control:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	row.add_child(_make_pixel_label("THREAT", ENC_META_FONT, PixelUI.TEXT_MUTED))
-
+	# No "THREAT" word — the pips + LV label carry it (the word's fixed width was
+	# the straw that pushed the banner's minimum past the 960px content column,
+	# inflating every sibling section and bleeding the grid past the right margin).
 	var pips := HBoxContainer.new()
 	pips.add_theme_constant_override("separation", 6)
 	pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -485,6 +494,11 @@ func _build_squad_section() -> Control:
 		grid.add_child(_build_unit_tile(unit_id, unit))
 
 	section.add_child(_build_locked_strip(locked_count))
+
+	# Detail panel lives directly under the locked strip (composition pass §2) —
+	# part of the content flow, not pinned at the bottom.
+	_detail_panel = _build_detail_bar()
+	section.add_child(_detail_panel)
 	return section
 
 
@@ -537,7 +551,9 @@ func _build_detail_bar() -> PanelContainer:
 	name_row.add_theme_constant_override("separation", 16)
 	col.add_child(name_row)
 
-	_detail_name = _make_pixel_label("SELECT A UNIT", DETAIL_NAME_FONT, PixelUI.TEXT_PRIMARY)
+	# No placeholder state — _ready() focuses the first unlocked hero, so the
+	# panel is populated from the first frame (composition pass §3).
+	_detail_name = _make_pixel_label("", DETAIL_NAME_FONT, PixelUI.TEXT_PRIMARY)
 	# Name takes the row; the focus tag is pushed to the top-right of the box.
 	_detail_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -559,7 +575,7 @@ func _build_detail_bar() -> PanelContainer:
 	_detail_focus_chip.visible = false   # shown once a unit is tapped
 	name_row.add_child(_detail_focus_chip)
 
-	_detail_desc = _make_pixel_label("Tap a specialist to inspect their focus and kit.", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
+	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_detail_desc)
 
@@ -582,7 +598,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
-	frame.custom_minimum_size = Vector2(0, PORTRAIT_CELL)
+	frame.custom_minimum_size = Vector2(0, PORTRAIT_H)
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.add_child(frame)
 	(portrait_box["tex"] as TextureRect).texture = unit.portrait

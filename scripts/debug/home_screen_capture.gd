@@ -13,6 +13,13 @@ func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
 	if bool(config.get("native", false)):
 		DisplayServer.window_set_size(Vector2i(1080, 2400))
+	if bool(config.get("unlock_all_mem", false)):
+		var sm: Variant = root.get_node_or_null("/root/SaveManager")
+		if sm != null:
+			sm._disk_enabled = false   # nothing below can reach the save file
+			sm.data["unlocks"]["heroes"] = (sm.ALL_HEROES as Array).duplicate()
+			sm.data["unlocks"]["heroes_new"] = []
+			print("[HOME_UI_CAPTURE] in-memory unlock-all (disk disabled)")
 	change_scene_to_file("res://scenes/ui/UnitSelect.tscn")
 	await _wait_for_scene(config)
 	var output_path: String = str(config.get("output", DEFAULT_OUTPUT))
@@ -55,6 +62,10 @@ func _parse_args() -> Dictionary:
 			# Drives the banner's long-press handler (squad-select redesign: the
 			# encounter blurb lives in the InspectPopup, not on the screen).
 			config["encounter_inspect"] = true
+		elif arg == "--capture-unlock-all-mem":
+			# IN-MEMORY-ONLY full roster unlock (grid wrap test): disables the
+			# SaveManager disk path first, so nothing about the unlock persists.
+			config["unlock_all_mem"] = true
 	return config
 
 
