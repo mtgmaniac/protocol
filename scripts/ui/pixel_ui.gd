@@ -140,6 +140,8 @@ const ICON_FLEE := "res://assets/ui/icons/icon_flee.png"
 const ICON_SETTINGS := "res://assets/ui/icons/icon_settings.png"
 const ICON_LOCK := "res://assets/ui/icons/icon_lock.png"
 const ICON_NEW := "res://assets/ui/icons/icon_new.png"
+# The battle "Set" protocol button — the roll d20 recolored to the UI teal.
+const ICON_SET := "res://assets/ui/icons/icon_set.png"
 # Pip icons moved to per-key files under assets/ui/pips/ (batch 155-179); see
 # PIP_ICON_BY_KEY + pip_texture_for_key below. The old pip_*_scifi.png are orphaned.
 

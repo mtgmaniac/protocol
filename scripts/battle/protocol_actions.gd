@@ -55,7 +55,7 @@ func restyle_buttons() -> void:
 	if nudge_button != null and is_instance_valid(nudge_button):
 		_scene._style_frame_icon_action_button(nudge_button, PixelUI.ICON_INCREASE, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	if set_button != null and is_instance_valid(set_button):
-		_scene._style_frame_icon_action_button(set_button, PixelUI.ICON_DEBUG2, _scene.BOTTOM_BAR_BUTTON_SIZE)
+		_scene._style_frame_icon_action_button(set_button, PixelUI.ICON_SET, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	if item_button != null and is_instance_valid(item_button):
 		_scene._style_frame_icon_action_button(item_button, PixelUI.ICON_ITEM, _scene.BOTTOM_BAR_BUTTON_SIZE)
 
@@ -395,7 +395,7 @@ func _add_set_button() -> void:
 	btn.custom_minimum_size = _scene.BOTTOM_BAR_BUTTON_SIZE
 	btn.pressed.connect(_on_set_button_pressed)
 	_attach_protocol_inspect(btn, "set")
-	_scene._style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, _scene.BOTTOM_BAR_BUTTON_SIZE)
+	_scene._style_frame_icon_action_button(btn, PixelUI.ICON_SET, _scene.BOTTOM_BAR_BUTTON_SIZE)
 	set_button = btn
 	_scene.protocol_spend_button.get_parent().add_child(btn)
 	_scene.protocol_spend_button.get_parent().move_child(btn, nudge_button.get_index() + 1)
