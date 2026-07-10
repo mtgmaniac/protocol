@@ -177,7 +177,7 @@ static func build_group(
 	if str(effect.get("scope", "")) == "all":
 		var aoe_texture: Texture2D = PixelUI.pip_texture_for_key("aoe")
 		if aoe_texture != null:
-			var aoe_size: int = int(round(float(profile.get("icon_size", 40)) * 0.62))
+			var aoe_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
 			var aoe_rect := TextureRect.new()
 			aoe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			aoe_rect.custom_minimum_size = Vector2(aoe_size, aoe_size)

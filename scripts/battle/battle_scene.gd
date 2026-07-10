@@ -931,11 +931,11 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	plate.clip_contents = true
 	plate.custom_minimum_size = tag_size
 	plate.size = tag_size
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = PixelUI.DT_PANEL_BG.lightened(0.13)   # ~13% lighter than the tray panel, no border
-	style.set_border_width_all(0)
-	style.set_corner_radius_all(6)
-	plate.add_theme_stylebox_override("panel", style)
+	# Transparent plate: the pip icons + numbers read directly over the tray, with
+	# no gray background box or edge outline behind them (Kev 2026-07-09). The
+	# Panel still sizes/centres the content; the value labels' own text outline
+	# keeps them legible over the tray.
+	plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var center: CenterContainer = CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

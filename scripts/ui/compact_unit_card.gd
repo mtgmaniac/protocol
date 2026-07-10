@@ -58,21 +58,22 @@ class HPTickLayer extends Control:
 const CARD_NAME_FONT_SIZE := 72
 const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
-const STATUS_ICON_FONT_SIZE := 48
+const STATUS_ICON_FONT_SIZE := 56
 # Value numerals read at a glance (Kev 2026-07-07: they were too small) —
 # bigger digits, slightly smaller icon so a 1-digit chip fits its plate at
-# FULL size and only 2+ digits take the one-step downscale.
-const STATUS_VALUE_FONT_SIZE := 60
+# FULL size and only 2+ digits take the one-step downscale. Bumped again
+# 2026-07-09 for mobile legibility (icon + numeral both larger).
+const STATUS_VALUE_FONT_SIZE := 68
 const STATUS_NAME_FONT_SIZE := 48
-const STATUS_ICON_TEXTURE_SIZE := 44.0
-const STATUS_ICON_MIN_WIDTH := 48.0
+const STATUS_ICON_TEXTURE_SIZE := 56.0
+const STATUS_ICON_MIN_WIDTH := 56.0
 const STATUS_VALUE_MIN_WIDTH := 24.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
 # m5x7 digit advance ≈ 0.35 × font size (measured in-shot: 7 glyphs at font 72
 # spanned ~166 design px). Used to estimate chip content width for the
 # one-step rule — the old 0.55 guess forced downscales that made numerals tiny.
 const STATUS_GLYPH_WIDTH_FACTOR := 0.35
-const STATUS_CHIP_HEIGHT := 56.0
+const STATUS_CHIP_HEIGHT := 64.0
 # Result-tag law for chips (UI precision batch): the status row divides into
 # this many equal constant-size plates (STATUS_MAX_VISIBLE chips + the +N
 # badge); content downscales ONE step when it would exceed the plate.
