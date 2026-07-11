@@ -812,7 +812,7 @@ func _run_ward_regressions() -> void:
 
 
 func _run_chain_regression() -> void:
-	# Chain: primary takes full damage; the lowest-HP OTHER enemy takes 60%
+	# Chain: primary takes full damage; the lowest-HP OTHER enemy takes 50%
 	# (round down); chain 2 jumps to the next lowest-HP unhit enemy.
 	var manager: CombatManager = CombatManager.new()
 	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Arc Whip", {"dmg": 10, "chain": 1})
@@ -830,11 +830,11 @@ func _run_chain_regression() -> void:
 	c["current_hp"] = 90
 	var a_before: int = int(a["current_hp"])
 	manager.resolve_round({str(hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var single_ok: bool = int(a["current_hp"]) == a_before - 10 and int(b["current_hp"]) == 54 and int(c["current_hp"]) == 90
+	var single_ok: bool = int(a["current_hp"]) == a_before - 10 and int(b["current_hp"]) == 55 and int(c["current_hp"]) == 90
 	if single_ok:
-		_record_pass("Regression / chain jumps to lowest other enemy at 60%", "chain")
+		_record_pass("Regression / chain jumps to lowest other enemy at 50%", "chain")
 	else:
-		_record_failure("Regression / chain jumps to lowest other enemy at 60%", "chain", "primary -10, lowest other -6, third untouched", "a=%d b=%d c=%d" % [int(a["current_hp"]), int(b["current_hp"]), int(c["current_hp"])])
+		_record_failure("Regression / chain jumps to lowest other enemy at 50%", "chain", "primary -10, lowest other -5, third untouched", "a=%d b=%d c=%d" % [int(a["current_hp"]), int(b["current_hp"]), int(c["current_hp"])])
 
 	var double_manager: CombatManager = CombatManager.new()
 	var double_hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Cascade", {"dmg": 10, "chain": 2})
@@ -849,11 +849,11 @@ func _run_chain_regression() -> void:
 	dc["current_hp"] = 90
 	var da_before: int = int(da["current_hp"])
 	double_manager.resolve_round({str(double_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var double_ok: bool = int(da["current_hp"]) == da_before - 10 and int(db["current_hp"]) == 54 and int(dc["current_hp"]) == 84
+	var double_ok: bool = int(da["current_hp"]) == da_before - 10 and int(db["current_hp"]) == 55 and int(dc["current_hp"]) == 85
 	if double_ok:
 		_record_pass("Regression / chain x2 adds a second jump", "chain")
 	else:
-		_record_failure("Regression / chain x2 adds a second jump", "chain", "primary -10, two other enemies -6 each", "a=%d b=%d c=%d" % [int(da["current_hp"]), int(db["current_hp"]), int(dc["current_hp"])])
+		_record_failure("Regression / chain x2 adds a second jump", "chain", "primary -10, two other enemies -5 each", "a=%d b=%d c=%d" % [int(da["current_hp"]), int(db["current_hp"]), int(dc["current_hp"])])
 
 
 func _run_detonate_regression() -> void:
@@ -1341,7 +1341,7 @@ func _run_new_relic_regressions() -> void:
 	doc_b["current_hp"] = 60
 	doc_c["current_hp"] = 90
 	doctrine_manager.resolve_round({str(doctrine_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var doctrine_ok: bool = int(doc_b["current_hp"]) == 54 and int(doc_c["current_hp"]) == 84
+	var doctrine_ok: bool = int(doc_b["current_hp"]) == 55 and int(doc_c["current_hp"]) == 85
 	_expect_and_record("Regression / relic chainDoctrine extra jump", "chainExtraJump", "true", str(doctrine_ok))
 
 	# Dead Man's Hand: the first squad wipe survives at 1 HP with forced 20s.

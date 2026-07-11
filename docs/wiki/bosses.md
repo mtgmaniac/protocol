@@ -28,7 +28,7 @@ Cadence constants are provisional pending the global balance pass (BALANCE-TODO 
 - Rule text: "while any ally lives, gains a Firewall at the start of each round."
 - Code (`combat_manager.gd:219-227`): round start, if any other living enemy exists and it is not already warded, `_apply_ward` (Firewall doesn't stack — an unbroken Firewall just stays).
 - Stats: 180 HP, d19–25, kit `veilBoss`. Escort: Aegis Anchor — kill it and the Court falls, ending the Firewall stream.
-- Signature faces: Veil Cataclysm (overload) wipe shields → 30 dmg, +2 roll allies 3t, summon ~30% nat20 (Prism Charger).
+- Signature faces: Veil Cataclysm (overload) wipe shields → 30 dmg, +2 roll allies 2t, summon ~30% nat20 (Prism Charger).
 
 ### ROOT HIEROPHANT (voidCirclet / Null Synod) — ROOT ACCESS
 - Rule text: "every round, Rewrites the squad's highest die to 3."

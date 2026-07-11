@@ -1551,7 +1551,7 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 
 
 # Chain: after the primary hit, the attack jumps to the lowest-HP other living
-# enemy at 60% of the base damage (round down); "chain": 2 adds a second jump
+# enemy at 50% of the base damage (round down); "chain": 2 adds a second jump
 # to the next lowest-HP enemy not yet hit. Chain Doctrine (relic hook
 # chainExtraJump) adds one extra jump.
 func _apply_chain_jumps(
@@ -1571,9 +1571,10 @@ func _apply_chain_jumps(
 	# Conductor directive: this hero's Chains jump one extra target.
 	if _has_directive(hero_state, "chainExtraJump"):
 		jumps += 1
-	# BALANCE-TODO: chain jump damage is 60% of base, round down.
+	# chain jump damage is 50% of base, round down (chain_ratio; set 0.6→0.5 in
+	# Batch-1, Kev 2026-07-11 — see DECISIONS_RESOLVED #10).
 	# Amplifier directive: chain hits carry the full base damage.
-	var chain_damage: int = base_damage if _has_directive(hero_state, "chainFullDamage") else int(floor(float(base_damage) * _tuned_float("chain_ratio", 0.6)))
+	var chain_damage: int = base_damage if _has_directive(hero_state, "chainFullDamage") else int(floor(float(base_damage) * _tuned_float("chain_ratio", 0.5)))
 	if chain_damage <= 0:
 		return
 	var hit_ids: Dictionary = {str(primary_target.get("id", "")): true}

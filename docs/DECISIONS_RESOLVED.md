@@ -188,6 +188,13 @@ to this checkpoint." (Prior anchor for lineage: the repeat-freeze checkpoint,
 overall 0.2533.) All six numbers are sweepable via the balance workbench
 (`scripts/sim/knobs.json`).
 
+**Batch-1 update (Kev 2026-07-11):** #10 `chain_ratio` was explicitly set
+**0.6→0.5** in the Batch-1 data/balance pass (a small-changes batch, NOT the
+global balance pass). The pinned chain audit regression was updated to the new
+50% expectation in the same pass (still 228/0). The other deferred numbers
+(#6, #7, #8, #9, #17) remain untouched. Baseline intentionally NOT re-pinned
+(a full balance pass follows; win-rate implications deferred per the batch).
+
 ## 11. Reverse Gimbal UX
 **Question:** "may subtract" implemented as tap-again to flip +3 ↔ −3.
 **Ruling (verbatim):** "#11 CONFIRMED: Reverse Gimbal tap again to flip +3/−3
@@ -205,7 +212,8 @@ and tooltip state it."
 
 ## 13. Tutorial runs count toward `runs_started` — IMPLEMENTED 2026-07-07
 **Status:** start_run skips record_run_started when tutorial_mode is set; the
-rung-1 pity unlock (3 runs → engineer) counts real runs only. No retroactive
+rung-1 pity unlock (3 runs → avalanche post-Batch-1; engineer before the
+2026-07-11 starter swap) counts real runs only. No retroactive
 save adjustment — already-banked tutorial runs are grandfathered (TRUTH notes it).
 **Question:** they do today, feeding the rung-1 pity unlock (3 runs → engineer).
 **Ruling (verbatim):** "#13: tutorial completion no longer increments

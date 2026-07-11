@@ -15,7 +15,7 @@ class_name BattleEngine
 extends RefCounted
 
 const MAX_PROTOCOL := 10
-const SET_DIE_COST := 3
+const SET_DIE_COST := 4
 
 var combat_manager: CombatManager
 var roll_provider: RollProvider

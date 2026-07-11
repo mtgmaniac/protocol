@@ -83,14 +83,14 @@
       "id": "chain_ratio",
       "kind": "engine_tuning",
       "scope": "global",
-      "path": "combat_manager._apply_chain_jumps _tuned_float('chain_ratio', 0.6)",
-      "default": 0.6,
+      "path": "combat_manager._apply_chain_jumps _tuned_float('chain_ratio', 0.5)",
+      "default": 0.5,
       "range": [
         0.3,
         1.0
       ],
       "step": 0.05,
-      "notes": "Chain jump damage as a fraction of base (floor). Amplifier directive still overrides to 100%. DECISIONS_RESOLVED #10 is ruled-pending."
+      "notes": "Chain jump damage as a fraction of base (floor). Amplifier directive still overrides to 100%. Shipped default set 0.6→0.5 in Batch-1 (Kev 2026-07-11, DECISIONS_RESOLVED #10)."
     },
     {
       "id": "glacier_weave_shield",

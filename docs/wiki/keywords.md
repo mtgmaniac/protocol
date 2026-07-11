@@ -10,9 +10,9 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 
 ### Chain (CH)
 
-- **Rule:** after the primary single-target hit, the attack jumps to the lowest-HP other living enemy at 60% of base damage, round down; `chain: 2` adds a second jump to the next lowest not yet hit. Chain Doctrine relic and the Conductor directive each add a jump; Amplifier makes jumps carry full base damage (`combat_manager.gd:1465-1497`).
+- **Rule:** after the primary single-target hit, the attack jumps to the lowest-HP other living enemy at 50% of base damage, round down; `chain: 2` adds a second jump to the next lowest not yet hit. Chain Doctrine relic and the Conductor directive each add a jump; Amplifier makes jumps carry full base damage (`combat_manager.gd:1465-1497`).
 - **Timing:** last step of the damage pass — after detonate/execute/burn/mark on the primary (`:1280`). Jumps still run when the primary hit was Firewall-blocked (the ward negates the ability only for its own carrier).
-- **Formula:** `floor(base_damage × 0.6)` (tuning key `chain_ratio`; number DEFERRED to the balance pass, DECISIONS_RESOLVED #10). "Lowest HP" is by **ratio** (current/max), and cloaked enemies can't be jumped to (`:2312`).
+- **Formula:** `floor(base_damage × 0.5)` (tuning key `chain_ratio`; set 0.6→0.5 in Batch-1, Kev 2026-07-11 — DECISIONS_RESOLVED #10). "Lowest HP" is by **ratio** (current/max), and cloaked enemies can't be jumped to (`:2312`).
 - **Carriers:** Pulse Tech — Static Ping, Singularity Burst (+ Arc line) per TRUTH.
 - **Feedback:** cyan tracer from actor to jumped target (`battle_feedback.gd:435`), red `-N` float.
 - **Audit:** `_run_chain_regression` (`ability_audit.gd:815`) pins 10 → 6 and the ×2 second jump.

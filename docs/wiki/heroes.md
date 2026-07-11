@@ -10,7 +10,7 @@ Progression (`scripts/autoloads/GameState.gd`): `XP_TO_EVOLVE := 100` (line 72),
 
 Ability resolution: `scripts/battle/combat_manager.gd:926-1152` (`_apply_hero_ability`) and `:1191-1301` (`_apply_hero_ability_damage`). Manual targeting: **max ONE manually-picked component per ability** (INVARIANTS #12) — the pick side is derived in `scripts/battle/battle_scene.gd:2050-2074` (`_get_manual_target_side`); `freezeAnyDice` counts as the pick and is the only "either side" pick. `healLowest`/`shieldLowest` auto-target the lowest-HP living hero (`battle_scene.gd:2135-2141`, `combat_manager.gd:972-976`). A nat-20 overload fires the ability-name slam animation (`scripts/battle/battle_feedback.gd:612-649`).
 
-Unlock state (SaveManager hero ladder): starters `combat`, `avalanche`, `medic`; rung 1 → `engineer`, rung 2 → `shield`, rung 3 → `pulse`, rung 4 → `ghost`, rung 5 → `breaker`.
+Unlock state (SaveManager hero ladder): starters `combat`, `engineer`, `medic`; rung 1 → `avalanche`, rung 2 → `shield`, rung 3 → `pulse`, rung 4 → `ghost`, rung 5 → `breaker`. (Batch-1 2026-07-11 swapped engineer↔avalanche between the starter set and rung 1.)
 
 ### Roster summary
 
@@ -65,7 +65,7 @@ The Cryo Specialist path is DEAD — replaced by Arc Specialist (ground-truth ch
 | strike | 6–10 | Arc Whip | 9 dmg, chain | chain |
 | surge | 11–15 | Fork Lightning | 12 dmg, chain | chain |
 | crit | 16–19 | Cascade | 15 dmg, chain | chain |
-| overload | 20 | Grid Collapse | 14 dmg (all) | — |
+| overload | 20 | Grid Collapse | 18 dmg (all) | — |
 
 Directives: **Conductor** / **Amplifier**.
 
@@ -80,7 +80,7 @@ Callsign STRIKE · STRIKE OPS · damage · 55 HP · **starter**. Blurb: "Marks t
 | recharge | 1–4 | Target Lock | 3 dmg, mark | mark |
 | strike | 5–10 | Suppression Fire | 7 dmg | — |
 | surge | 11–15 | Rail Strike | 11 dmg | — |
-| crit | 16–19 | Overdrive | 14 dmg, pierce | pierce (`ignSh`) |
+| crit | 16–19 | Precision Shot | 14 dmg, pierce | pierce (`ignSh`) |
 | overload | 20 | Terminal Velocity | 18 dmg, execute | execute |
 
 ### Bladecore (blade) — 70 HP, "Wide pierce and shield breaking"
@@ -167,8 +167,8 @@ Callsign AVALANCHE · SQUAD SHELL · defense · 55 HP · **starter**. Blurb: "Fr
 |---|---|---|---|---|
 | recharge | 1–6 | Permafrost Weave | self 5 shield, freeze any (repeat 1) | freeze (`freezeAnyDice`) |
 | strike | 7–12 | Whiteout Salvo | 5 dmg (all), freeze (repeat 1) | freeze (enemy-side pick; AoE dmg needs no pick, so still one pick) |
-| surge | 13–16 | Shatter Lance | 12 dmg, +6 vs frozen | — (`vsFrozenBonus` is a rider, not a keyword — `combat_manager.gd:1249-1255`) |
-| crit | 17–19 | Permafrost Aegis | all 7 shield, freeze any (repeat 1) | freeze (`freezeAnyDice`) |
+| surge | 13–16 | Shatter Lance | 10 dmg, +5 vs frozen | — (`vsFrozenBonus` is a rider, not a keyword — `combat_manager.gd:1249-1255`) |
+| crit | 17–19 | Permafrost Aegis | 14 dmg, +8 vs frozen | — (`vsFrozenBonus` rider; Batch-1 redesign from shield+freeze) |
 | overload | 20 | Absolute Zero | 10 dmg (all), freeze all (repeat 1) | freeze |
 
 Shatter exists ONLY here (Shatter Lance rider + Shatterpoint directive) and in the Cold Logic relic (`combat_manager.gd:1815`) — ground-truth check PASSED.
@@ -181,9 +181,9 @@ Directives: **Deep Freeze** / **Shatterpoint**.
 |---|---|---|---|---|
 | recharge | 1–6 | Stabilize | 10 heal (ally) | — |
 | strike | 7–12 | Dig In | self 8 shield, taunt | taunt |
-| surge | 13–16 | Bunker Firewall | ally firewall | firewall (`ward`+`wardTgt`, manual ally pick) |
-| crit | 17–19 | Trench Breaker | 12 dmg, breach | breach |
-| overload | 20 | Last Bastion | all 8 heal, all 6 shield | — |
+| surge | 13–16 | Bunker Firewall | 5 heal (self), ally firewall | firewall (`ward`+`wardTgt`, manual ally pick) |
+| crit | 17–19 | Trench Breaker | 18 dmg, breach | breach |
+| overload | 20 | Last Bastion | all 10 heal, all 8 shield | — |
 
 Directives: **Field Triage** / **Entrench**.
 
@@ -235,9 +235,9 @@ Callsign ENGINEER · SUPPORT TECH · support · 50 HP · unlock: rung 1 (facilit
 
 | Zone | Roll | Ability | Eff | Keyword |
 |---|---|---|---|---|
-| recharge | 1–4 | Field Patch | 8 heal (ally), +1 protocol | — |
+| recharge | 1–4 | Field Patch | 4 shield (self), +1 protocol | — |
 | strike | 5–10 | Barrier Deploy | ally 9 shield | — |
-| surge | 11–15 | Precision Shot | 11 dmg | — |
+| surge | 11–15 | Overdrive | 11 dmg | — |
 | crit | 16–19 | Missile Volley | 9 dmg (all) | — |
 | overload | 20 | Scorched Earth | 12 dmg (all), +2 protocol | — |
 

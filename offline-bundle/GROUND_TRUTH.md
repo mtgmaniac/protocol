@@ -45,7 +45,7 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 ## Protocol economy (implemented in battle_scene.gd / combat_manager.gd)
 Battle-only resource for dice manipulation; resets each battle (unless the Overflow relic carries 50%).
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
-- **Costs:** Nudge **1** (+**3** to effective roll) · Reroll **2** · Set-a-die **3** · Item **1 flat** (all rarities).
+- **Costs:** Nudge **1** (+**3** to effective roll) · Reroll **2** · Set-a-die **4** · Item **1 flat** (all rarities).
 - **Model:** 1 income ≈ one protocol action per turn; bank turns for bigger plays.
 - **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor), `protocolOnDieTamper` (Mirror Plate); relics `protocolCarryover`, `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnShieldBreak` (Salvage Rig +1, boss relic); enemy `siphon: N` drains the pool on hit (floor 0).
 - **Discounts/overflow:** Priming Charge gear — first Nudge free; Root Access boss relic — first Set each battle costs 0; Overflow Vent relic — protocol gained past the cap deals 2 damage per point to a random enemy; Twin Fates relic — once per battle copy one hero die to another, free.
@@ -90,7 +90,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 
 | Keyword | Pip | Field | Rule |
 |---|---|---|---|
-| Chain | CH | `chain: N` | damage also hits the lowest-HP other enemy at 60% (round down); N = extra jumps; `chainExtraJump` relic hook |
+| Chain | CH | `chain: N` | damage also hits the lowest-HP other enemy at 50% (round down); N = extra jumps; `chainExtraJump` relic hook |
 | Detonate | DT | `detonate: true` | consume target's Burn: burn × remaining turns immediate damage, Burn cleared; `gear_detonate_bonus` +50% hook |
 | Execute | EX | `execute: true` | target below 25% max HP after base damage → +8 bonus (`execute_threshold_pct` hook) |
 | Breach | BR | `breach` / `breachAll` | destroy all shield on target (or every enemy) before damage |
@@ -155,10 +155,10 @@ Pyro: Flashpoint (burn ticks on apply) / Slow Roast (burns +1t) · Arc: Conducto
 
 ## Save system (pkg5 — SaveManager autoload)
 
-`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op: {}, nat20s, deaths}, unlocks: {boss_relics: [], heroes: ["combat","avalanche","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, settings: {}}`. Headless runs (audits/smokes) keep the profile in memory — no disk writes, and **read as fully unlocked** (`is_hero_unlocked`/`is_operation_unlocked` force-true when `DisplayServer` is headless) so sim/audit can pick any hero/op. Hooks: `GameState.start_run` → runs_started; `GameState.finish_run` → best_clear ratchet + `best_clear_by_op[op]` + victory increments `runs_won_by_op[op]` and unlocks that op's boss relic (facility→salvageRig · hive→chitinGraft · veil→resonantChorus · voidCirclet→rootAccess · stellarMenagerie→mantleCore); post-roll nat 20s; hero deaths; tutorial completion.
+`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op: {}, nat20s, deaths}, unlocks: {boss_relics: [], heroes: ["combat","engineer","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, settings: {}}`. Headless runs (audits/smokes) keep the profile in memory — no disk writes, and **read as fully unlocked** (`is_hero_unlocked`/`is_operation_unlocked` force-true when `DisplayServer` is headless) so sim/audit can pick any hero/op. Hooks: `GameState.start_run` → runs_started; `GameState.finish_run` → best_clear ratchet + `best_clear_by_op[op]` + victory increments `runs_won_by_op[op]` and unlocks that op's boss relic (facility→salvageRig · hive→chitinGraft · veil→resonantChorus · voidCirclet→rootAccess · stellarMenagerie→mantleCore); post-roll nat 20s; hero deaths; tutorial completion.
 
 **Hero unlocks (progression):**
-- **Hero ladder** (`unlocks.hero_ladder_rung`, ordered, at most ONE rung awarded per run end — overshoot defers to later runs, mirroring the evolution one-stop-per-win rule): (1) `best_clear_by_op.facility ≥ 6` OR `runs_started ≥ 3` → **engineer**; (2) facility in `runs_won_by_op` → **shield**; (3) `best_clear_by_op.hive ≥ 6` → **pulse**; (4) hive won → **ghost**; (5) `best_clear_by_op.veil ≥ 6` → **breaker**. Starters: combat, avalanche, medic.
+- **Hero ladder** (`unlocks.hero_ladder_rung`, ordered, at most ONE rung awarded per run end — overshoot defers to later runs, mirroring the evolution one-stop-per-win rule): (1) `best_clear_by_op.facility ≥ 6` OR `runs_started ≥ 3` → **avalanche**; (2) facility in `runs_won_by_op` → **shield**; (3) `best_clear_by_op.hive ≥ 6` → **pulse**; (4) hive won → **ghost**; (5) `best_clear_by_op.veil ≥ 6` → **breaker**. Starters: combat, engineer, medic. (Batch-1 2026-07-11 swapped engineer↔avalanche between starters and rung 1.)
 - **Operation chain** (separate, uncapped): clearing an op's boss unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie.
 - **Grandfather clause** (`_merge_loaded`): a pre-existing profile lacking the new unlock schema that has played (runs_started > 0 or tutorial_done) unlocks every hero + operation and maxes the ladder, so no current player loses access.
 - `check_new_unlocks()` returns this run's awards `[{type, id, display_name}]` for the run-end UNLOCKED panel. `heroes_new` drives the unit-select NEW badge (cleared on first squad add via `acknowledge_hero`). Dev tools in the help menu SETTINGS tab: **UNLOCK ALL** (`dev_unlock_all`) and **RESET SAVE PROFILE** (`dev_reset_profile`, two-step confirm).

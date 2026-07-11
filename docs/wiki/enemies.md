@@ -64,10 +64,10 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 | Kit | recharge (1–4) | strike (5–10) | surge (11–16) | crit (17–19) | overload (20) |
 |---|---|---|---|---|---|
 | scrap | ECM Shell — 8 shield | Stab — 7 dmg | Overcharge — 10 dmg, 1 burn | Overcharge+ — 15 dmg, 2 burn | Detonator — 20 dmg, 3 burn |
-| rust | ECM Hiss — -1 roll, 5 shield | Sparking Cut — 6 dmg, -1 roll | Disrupt Pulse — 9 dmg, -1 roll | EMP Spike — 12 dmg, -2 roll | Total Jam — 14 dmg, -3 roll |
+| rust | ECM Hiss — 5 shield, +1 roll self | Sparking Cut — 6 dmg, -1 roll | Disrupt Pulse — 9 dmg, -1 roll | EMP Spike — 12 dmg, -2 roll | Total Jam — 14 dmg, -3 roll |
 | signalSkimmer | ECM Ping — 5 shield, jam | Spike Bleed — 5 dmg, -1 roll | Sideband Scrap — 8 dmg, -1 roll, 2t | Nullburst — 11 dmg, jam | Whitenoise Collapse — 13 dmg, jam all |
 | patrol | Regroup — 6 shield | Assault — 15 dmg | Heavy Barrage — 18 dmg | Devastate — 21 dmg, -1 roll, 2t | Final Sweep — 23 dmg, -2 roll, 3t |
-| guard | Bulwark Link — 6 shield all allies | Suppressing Fire — 12 dmg, ally 6 shield | Cover Field — 11 dmg, ally 9 shield, +1 roll to allies, 2t | Barrier Burst — 15 dmg, ally 7 shield | Fortress Protocol — 18 dmg, ally 13 shield |
+| guard | Bulwark Link — 6 shield all allies | Suppressing Fire — 12 dmg, ally 6 shield | Cover Field — 11 dmg, ally 9 shield, +2 roll to allies | Barrier Burst — 15 dmg, ally 7 shield | Fortress Protocol — 18 dmg, ally 13 shield |
 | warden | Field Service — 7 heal, 7 shield | Crushing Blow — 11 dmg | Sustained Fire — 11 dmg, 3 burn, 3t | Punisher — 24 dmg, jam | Execution — 29 dmg, 6 heal |
 | volt | Grounding — 5 shield all allies, spike 4 | Arc Jab — 9 dmg, 1 burn, 2t | Arc Strike — 11 dmg, 2 burn, 2t | Conduction — 13 dmg, 3 burn, 2t | Meltdown Arc — 15 dmg, 4 burn, 3t |
 | boss | Shield Matrix — 12 shield | Suppressor — 12 dmg, -2 roll, 2t | Core Blast — 17 dmg | System Purge — wipe shields, then 21 dmg | Annihilate — 26 dmg (all) |
@@ -90,12 +90,12 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 |---|---|---|---|---|---|
 | veilShard | Phase Shell — 4 shield | Shard Cut — 7 dmg | Lattice Flicker — 9 dmg | Crystal Break — 12 dmg | Harmonic Break — 15 dmg, 2 burn, 2t |
 | veilPrism | Lattice Guard — taunt (all heroes must target this enemy) | Ram — 8 dmg | Prism Surge — 11 dmg, 4 shield | Focused Beam — 14 dmg | Overcharge Drive — 18 dmg |
-| veilAegis | Lattice Link — 6 shield, ally 6 shield, +1 roll to allies, 2t, **firewall** | Aegis Bash — 12 dmg, ally 6 shield, +1 roll to allies, 2t | Bulwark Pulse — 14 dmg, ally 8 shield, +1 roll to allies, 2t | Fortress Lash — 18 dmg, ally 9 shield, +2 roll to allies, 2t, **firewall** | Conclave Bulwark — 20 dmg, ally 12 shield, +2 roll to allies, 3t, summon ~42% nat20, **firewall** |
-| veilResonance | Harmonic Mend — 7 heal, 7 shield, +1 roll to allies, 2t, **firewall** | Resonant Slam — 12 dmg | Pulse Burn — 12 dmg, 3 burn, 3t, +1 roll to allies, 2t | Catastrophic Wave — 22 dmg, +2 roll to allies, 2t | Veil Collapse — 28 dmg, 6 heal, +2 roll to allies, 3t, summon ~40% nat20 |
-| veilNull | Void Stillness — 5 shield, +1 roll to allies, 2t | Null Slash — 14 dmg | Erase Vector — 16 dmg | Annulment — 19 dmg, **firewall** | Total Eclipse — 24 dmg, summon ~40% nat20 |
-| veilStorm | Capacitor Hum — +1 roll to allies, 2t | Arc Needle — 10 dmg, 1 burn, 2t | Storm Weave — 12 dmg, 2 burn, 2t, +1 roll to allies, 2t | Psi Tempest — 14 dmg, 3 burn, 3t, +1 roll to allies, 2t | Lattice Storm — 16 dmg, 5 burn, 4t, +2 roll to allies, 3t, summon ~42% nat20 |
-| veilSynapse | Synaptic Tune — +2 roll to allies, 2t, **firewall** | Herald Strike — 11 dmg, ally 6 shield | Weave Shield — 10 dmg, ally 7 shield, +1 roll to allies, 2t | Conduit Spike — 15 dmg, ally 8 shield, +1 roll to allies, 3t | Broodlink Surge — 17 dmg, 8 heal, +2 roll to allies, 3t, summon ~40% nat20 |
-| veilBoss | Overseer Mantle — 22 shield, ally 8 shield, +2 roll to allies, 2t | Decree — 19 dmg, -2 roll, 2t | Judgment Arc — 22 dmg, 2 burn, 2t, +1 roll to allies, 2t | Absolute Vector — 26 dmg, -3 roll, 2t, +1 roll to allies, 2t | Veil Cataclysm — wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~30% nat20 |
+| veilAegis | Lattice Link — 6 shield, ally 6 shield, +1 roll to allies, **firewall** | Aegis Bash — 12 dmg, ally 6 shield, +1 roll to allies | Bulwark Pulse — 14 dmg, ally 8 shield, +1 roll to allies | Fortress Lash — 18 dmg, ally 9 shield, +2 roll to allies, **firewall** | Conclave Bulwark — 20 dmg, ally 12 shield, +2 roll to allies, 2t, summon ~42% nat20, **firewall** |
+| veilResonance | Harmonic Mend — 7 heal, 7 shield, +1 roll to allies, **firewall** | Resonant Slam — 12 dmg | Pulse Burn — 12 dmg, 3 burn, 3t, +1 roll to allies | Catastrophic Wave — 22 dmg, +2 roll to allies | Veil Collapse — 28 dmg, 6 heal, +2 roll to allies, 2t, summon ~40% nat20 |
+| veilNull | Void Stillness — 5 shield, +1 roll to allies | Null Slash — 14 dmg | Erase Vector — 16 dmg | Annulment — 19 dmg, **firewall** | Total Eclipse — 24 dmg, summon ~40% nat20 |
+| veilStorm | Capacitor Hum — +1 roll to allies | Arc Needle — 10 dmg, 1 burn, 2t | Storm Weave — 12 dmg, 2 burn, 2t, +1 roll to allies | Psi Tempest — 14 dmg, 3 burn, 3t, +1 roll to allies | Lattice Storm — 16 dmg, 5 burn, 4t, +2 roll to allies, 2t, summon ~42% nat20 |
+| veilSynapse | Synaptic Tune — +2 roll to allies, **firewall** | Herald Strike — 11 dmg, ally 6 shield | Weave Shield — 10 dmg, ally 7 shield, +1 roll to allies | Conduit Spike — 15 dmg, ally 8 shield, +1 roll to allies, 2t | Broodlink Surge — 17 dmg, 8 heal, +2 roll to allies, 2t, summon ~40% nat20 |
+| veilBoss | Overseer Mantle — 22 shield, ally 8 shield, +2 roll to allies | Decree — 19 dmg, -2 roll, 2t | Judgment Arc — 22 dmg, 2 burn, 2t, +1 roll to allies | Absolute Vector — 26 dmg, -3 roll, 2t, +1 roll to allies | Veil Cataclysm — wipe shields, then 30 dmg, +2 roll to allies, 2t, summon ~30% nat20 |
 
 **Null Synod** (internal id `voidCirclet`)
 
@@ -103,11 +103,11 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 |---|---|---|---|---|---|
 | voidWisp | Static Hiss — -1 roll | Spark Flick — 6 dmg, -1 roll | Arc Nibble — 8 dmg, 1 burn | Bit Rot — 10 dmg, -2 roll | Stack Overflow — 11 dmg, siphon 2 |
 | voidAcolyte | Seal Sigil — **firewall** | Binding Lash — 12 dmg, siphon 2 | Geas Needle — 14 dmg, rewrite | Init Collar — 17 dmg, **firewall** | Ritual Clamp — 18 dmg, summon ~40% nat20 |
-| voidScribe | Checksum Pass — +1 roll to allies, 2t | Glyph Strike — 11 dmg, ally 6 shield | Checksum Copy — 10 dmg, hijack | Prophecy Spike — 15 dmg, rewrite | Summon Verse — 16 dmg, +2 roll to allies, 3t, summon ~45% nat20 |
+| voidScribe | Checksum Pass — +1 roll to allies | Glyph Strike — 11 dmg, ally 6 shield | Checksum Copy — 10 dmg, hijack | Prophecy Spike — 15 dmg, rewrite | Summon Verse — 16 dmg, +2 roll to allies, 2t, summon ~45% nat20 |
 | voidBinder | Quiet Pact — -1 roll, 2t | Compulsion — 14 dmg, -1 roll, 2t | Geas Burst — 16 dmg, siphon 2 | Dominion Mark — 19 dmg | Mass Snare — 21 dmg, summon ~35% nat20, **firewall**, rewrite |
 | voidGlimmer | Refork — 6 shield, cloak | False Edge — 13 dmg | Mirror Break — wipe shields, then 12 dmg | Afterimage — 17 dmg, hijack | Fork Collapse — 19 dmg, rewrite |
-| voidChanneler | Channel Focus — +2 roll, 2t | Arc Lance — 16 dmg | Storm Loom — 15 dmg, 2 burn, 3t | Starfall — 20 dmg, siphon 2 | Warp Nova — 22 dmg, 4 burn, 4t, summon ~42% nat20 |
-| voidCircletBoss | Hierophant Mantle — 20 shield, ally 8 shield, +2 roll to allies, 2t, **firewall** | Decree of Stillness — 19 dmg, -2 roll, 2t | Circlet Cataclysm — 22 dmg, 2 burn, 2t, +1 roll to allies, 2t | Absolute Binding — 26 dmg, -3 roll, 2t | Void Gate — wipe shields, then 30 dmg, +2 roll to allies, 3t, summon ~32% nat20 |
+| voidChanneler | Channel Focus — +2 roll | Arc Lance — 16 dmg | Storm Loom — 15 dmg, 2 burn, 3t | Starfall — 20 dmg, siphon 2 | Warp Nova — 22 dmg, 4 burn, 4t, summon ~42% nat20 |
+| voidCircletBoss | Hierophant Mantle — 20 shield, ally 8 shield, +2 roll to allies, **firewall** | Decree of Stillness — 19 dmg, -2 roll, 2t | Circlet Cataclysm — 22 dmg, 2 burn, 2t, +1 roll to allies | Absolute Binding — 26 dmg, -3 roll, 2t | Void Gate — wipe shields, then 30 dmg, +2 roll to allies, 2t, summon ~32% nat20 |
 
 **The Accretion** (internal id `stellarMenagerie`)
 

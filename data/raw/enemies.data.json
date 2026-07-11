@@ -56,15 +56,15 @@
     "rust": {
       "recharge": {
         "name": "ECM Hiss",
-        "eff": "5 shield, -1 roll",
+        "eff": "5 shield, +1 roll (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 5,
-        "rfm": 1,
-        "rfmT": 1
+        "erb": 1,
+        "erbT": 2
       },
       "strike": {
         "name": "Sparking Cut",
@@ -196,7 +196,7 @@
       },
       "surge": {
         "name": "Cover Field",
-        "eff": "11 dmg, 9 shield, +1 roll (all), 2t",
+        "eff": "11 dmg, 9 shield, +2 roll (all)",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
@@ -204,7 +204,7 @@
         "rfe": 0,
         "shield": 0,
         "shieldAlly": 9,
-        "erb": 1,
+        "erb": 2,
         "erbT": 2,
         "erbAll": true
       },
@@ -890,7 +890,7 @@
     "veilAegis": {
       "recharge": {
         "name": "Lattice Link",
-        "eff": "6 shield (self), 6 shield, +1 roll (all), 2t, firewall",
+        "eff": "6 shield (self), 6 shield, +1 roll (all), firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -905,7 +905,7 @@
       },
       "strike": {
         "name": "Aegis Bash",
-        "eff": "12 dmg, 6 shield, +1 roll (all), 2t",
+        "eff": "12 dmg, 6 shield, +1 roll (all)",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
@@ -919,7 +919,7 @@
       },
       "surge": {
         "name": "Bulwark Pulse",
-        "eff": "14 dmg, 8 shield, +1 roll (all), 2t",
+        "eff": "14 dmg, 8 shield, +1 roll (all)",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
@@ -933,7 +933,7 @@
       },
       "crit": {
         "name": "Fortress Lash",
-        "eff": "18 dmg, 9 shield, +2 roll (all), 2t, firewall",
+        "eff": "18 dmg, 9 shield, +2 roll (all), firewall",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
@@ -948,7 +948,7 @@
       },
       "overload": {
         "name": "Conclave Bulwark",
-        "eff": "20 dmg, 12 shield, +2 roll (all), 3t, firewall, summon (42%)",
+        "eff": "20 dmg, 12 shield, +2 roll (all), 2t, firewall, summon (42%)",
         "dmg": 20,
         "burn": 0,
         "burnT": 0,
@@ -967,7 +967,7 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 shield, 7 heal, +1 roll (all), 2t, firewall",
+        "eff": "7 shield, 7 heal, +1 roll (all), firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -991,7 +991,7 @@
       },
       "surge": {
         "name": "Pulse Burn",
-        "eff": "12 dmg, 3 burn, 3t, +1 roll (all), 2t",
+        "eff": "12 dmg, 3 burn, 3t, +1 roll (all)",
         "dmg": 12,
         "burn": 3,
         "burnT": 3,
@@ -1004,7 +1004,7 @@
       },
       "crit": {
         "name": "Catastrophic Wave",
-        "eff": "22 dmg, +2 roll (all), 2t",
+        "eff": "22 dmg, +2 roll (all)",
         "dmg": 22,
         "burn": 0,
         "burnT": 0,
@@ -1017,7 +1017,7 @@
       },
       "overload": {
         "name": "Veil Collapse",
-        "eff": "28 dmg, 6 heal, +2 roll (all), 3t, summon (40%)",
+        "eff": "28 dmg, 6 heal, +2 roll (all), 2t, summon (40%)",
         "dmg": 28,
         "burn": 0,
         "burnT": 0,
@@ -1034,7 +1034,7 @@
     "veilNull": {
       "recharge": {
         "name": "Void Stillness",
-        "eff": "5 shield, +1 roll (all), 2t",
+        "eff": "5 shield, +1 roll (all)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1092,7 +1092,7 @@
     "veilStorm": {
       "recharge": {
         "name": "Capacitor Hum",
-        "eff": "+1 roll (all), 2t",
+        "eff": "+1 roll (all)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1115,7 +1115,7 @@
       },
       "surge": {
         "name": "Storm Weave",
-        "eff": "12 dmg, 2 burn, 2t, +1 roll (all), 2t",
+        "eff": "12 dmg, 2 burn, 2t, +1 roll (all)",
         "dmg": 12,
         "burn": 2,
         "burnT": 2,
@@ -1128,7 +1128,7 @@
       },
       "crit": {
         "name": "Psi Tempest",
-        "eff": "14 dmg, 3 burn, 3t, +1 roll (all), 2t",
+        "eff": "14 dmg, 3 burn, 3t, +1 roll (all)",
         "dmg": 14,
         "burn": 3,
         "burnT": 3,
@@ -1141,7 +1141,7 @@
       },
       "overload": {
         "name": "Lattice Storm",
-        "eff": "16 dmg, 5 burn, 4t, +2 roll (all), 3t, summon (42%)",
+        "eff": "16 dmg, 5 burn, 4t, +2 roll (all), 2t, summon (42%)",
         "dmg": 16,
         "burn": 5,
         "burnT": 4,
@@ -1158,7 +1158,7 @@
     "veilSynapse": {
       "recharge": {
         "name": "Synaptic Tune",
-        "eff": "+2 roll (all), 2t, firewall",
+        "eff": "+2 roll (all), firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1183,7 +1183,7 @@
       },
       "surge": {
         "name": "Weave Shield",
-        "eff": "10 dmg, 7 shield, +1 roll (all), 2t",
+        "eff": "10 dmg, 7 shield, +1 roll (all)",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
@@ -1197,7 +1197,7 @@
       },
       "crit": {
         "name": "Conduit Spike",
-        "eff": "15 dmg, 8 shield, +1 roll (all), 3t",
+        "eff": "15 dmg, 8 shield, +1 roll (all), 2t",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
@@ -1211,7 +1211,7 @@
       },
       "overload": {
         "name": "Broodlink Surge",
-        "eff": "17 dmg, 8 heal, +2 roll (all), 3t, summon (40%)",
+        "eff": "17 dmg, 8 heal, +2 roll (all), 2t, summon (40%)",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1228,7 +1228,7 @@
     "veilBoss": {
       "recharge": {
         "name": "Overseer Mantle",
-        "eff": "22 shield (self), 8 shield, +2 roll (all), 2t",
+        "eff": "22 shield (self), 8 shield, +2 roll (all)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1254,7 +1254,7 @@
       },
       "surge": {
         "name": "Judgment Arc",
-        "eff": "22 dmg, 2 burn, 2t, +1 roll (all), 2t",
+        "eff": "22 dmg, 2 burn, 2t, +1 roll (all)",
         "dmg": 22,
         "burn": 2,
         "burnT": 2,
@@ -1267,7 +1267,7 @@
       },
       "crit": {
         "name": "Absolute Vector",
-        "eff": "26 dmg, -3 roll, 2t, +1 roll (all), 2t",
+        "eff": "26 dmg, -3 roll, 2t, +1 roll (all)",
         "dmg": 26,
         "burn": 0,
         "burnT": 0,
@@ -1282,7 +1282,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "30 dmg, +2 roll (all), 3t, wipe shields, summon (30%)",
+        "eff": "30 dmg, +2 roll (all), 2t, wipe shields, summon (30%)",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -1417,7 +1417,7 @@
     "voidScribe": {
       "recharge": {
         "name": "Checksum Pass",
-        "eff": "+1 roll (all), 2t",
+        "eff": "+1 roll (all)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1463,7 +1463,7 @@
       },
       "overload": {
         "name": "Summon Verse",
-        "eff": "16 dmg, +2 roll (all), 3t, summon (45%)",
+        "eff": "16 dmg, +2 roll (all), 2t, summon (45%)",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
@@ -1597,7 +1597,7 @@
     "voidChanneler": {
       "recharge": {
         "name": "Channel Focus",
-        "eff": "+2 roll, 2t",
+        "eff": "+2 roll",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1654,7 +1654,7 @@
     "voidCircletBoss": {
       "recharge": {
         "name": "Hierophant Mantle",
-        "eff": "20 shield (self), 8 shield, +2 roll (all), 2t, firewall",
+        "eff": "20 shield (self), 8 shield, +2 roll (all), firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1681,7 +1681,7 @@
       },
       "surge": {
         "name": "Circlet Cataclysm",
-        "eff": "22 dmg, 2 burn, 2t, +1 roll (all), 2t",
+        "eff": "22 dmg, 2 burn, 2t, +1 roll (all)",
         "dmg": 22,
         "burn": 2,
         "burnT": 2,
@@ -1706,7 +1706,7 @@
       },
       "overload": {
         "name": "Void Gate",
-        "eff": "30 dmg, +2 roll (all), 3t, wipe shields, summon (32%)",
+        "eff": "30 dmg, +2 roll (all), 2t, wipe shields, summon (32%)",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,

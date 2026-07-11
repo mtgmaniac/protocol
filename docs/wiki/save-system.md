@@ -21,7 +21,7 @@
 | `stats.nat20s` | `0` | `record_nat20()` (`:410`) | lifetime natural 20s |
 | `stats.deaths` | `0` | `record_hero_death()` (`:415`) | lifetime squad deaths |
 | `unlocks.boss_relics` | `[]` | `unlock_boss_relic_for_op()` (`:426-434`) on first op win | boss relic ids available as Starting Directives |
-| `unlocks.heroes` | `["combat","avalanche","medic"]` (`STARTING_HEROES`, `:23`) | `_award_hero` (`:294`) | owned hero ids (legacy ids frozen per INVARIANTS #11) |
+| `unlocks.heroes` | `["combat","engineer","medic"]` (`STARTING_HEROES`, `:23`) | `_award_hero` (`:294`) | owned hero ids (legacy ids frozen per INVARIANTS #11) |
 | `unlocks.operations` | `["facility"]` (`STARTING_OPERATIONS`, `:25`) | `_award_operation` (`:306`) | unlocked op ids |
 | `unlocks.hero_ladder_rung` | `0` | `_evaluate_run_end_unlocks` (`:262-265`) | rungs climbed (0–5) |
 | `unlocks.heroes_new` | `[]` | `_award_hero`; cleared by `acknowledge_hero()` (`:361-366`) on first squad add (`home_screen.gd:679`) | drives the NEW badge |

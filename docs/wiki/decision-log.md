@@ -80,7 +80,8 @@ be implemented from memory — see [conventions.md](conventions.md#decisions_res
   (was 0/1/2/3 by rarity); Reroll 2; Set-a-die 3.
 - **Reason (commit):** economy tuning — the UI already had 10 protocol lights; flat
   item cost removes rarity bookkeeping from the spend decision.
-- **Superseded by:** — (verified in TRUTH §Protocol economy). See
+- **Superseded by:** Set-a-die cost 3 → **4** in Batch-1 (Kev 2026-07-11); the
+  rest verified current in TRUTH §Protocol economy. See
   [protocol-economy.md](protocol-economy.md).
 
 ### C2. Enemy summons replace dead slots, gated on nat 20

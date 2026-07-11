@@ -20,7 +20,7 @@ const BOSS_RELIC_BY_OP := {
 
 # --- Progression / unlocks ---
 # Heroes the profile owns from the very first launch.
-const STARTING_HEROES := ["combat", "avalanche", "medic"]
+const STARTING_HEROES := ["combat", "engineer", "medic"]
 # Operations available from the first launch (the rest unlock down the chain).
 const STARTING_OPERATIONS := ["facility"]
 # Every hero id in the game (used by the grandfather clause + the dev unlock-all).
@@ -30,7 +30,7 @@ const ALL_HEROES := ["combat", "avalanche", "medic", "engineer", "shield", "puls
 const OPERATION_CHAIN := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
 # Hero ladder: ordered rungs, at most ONE awarded per run end. HERO_LADDER[i] is the
 # hero granted for rung (i + 1); its unlock condition lives in _hero_rung_satisfied().
-const HERO_LADDER := ["engineer", "shield", "pulse", "ghost", "breaker"]
+const HERO_LADDER := ["avalanche", "shield", "pulse", "ghost", "breaker"]
 const MAX_HERO_LADDER_RUNG := 5
 # One-line unlock hints (all-caps, UI-facing), keyed by hero id and tied to each
 # ladder rung's condition.
@@ -276,7 +276,7 @@ func _hero_rung_satisfied(rung_index: int) -> bool:
 	var best_by_op: Dictionary = stats.get("best_clear_by_op", {})
 	var wins: Dictionary = stats.get("runs_won_by_op", {})
 	match rung_index:
-		0:  # engineer — first foothold, with a pity fallback
+		0:  # avalanche — first foothold, with a pity fallback
 			return int(best_by_op.get("facility", 0)) >= 6 or int(stats.get("runs_started", 0)) >= 3
 		1:  # shield — beat Facility
 			return wins.has("facility")

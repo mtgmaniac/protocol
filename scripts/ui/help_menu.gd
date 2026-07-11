@@ -343,7 +343,7 @@ func _build_protocol(host: VBoxContainer) -> void:
 	_add_section(host, "SPENDING PROTOCOL", [
 		"Nudge (1): +3 to a die's effective roll (once per die per turn).",
 		"Reroll (2): reroll a single die.",
-		"Set (3): set a hero's die to any value.",
+		"Set (4): set a hero's die to any value.",
 	])
 
 

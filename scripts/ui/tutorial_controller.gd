@@ -69,7 +69,7 @@ func _build_steps() -> Array:
 		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn — time to spend it. It builds +1 every turn, caps at 10."},
 		{"targets": ["nudge", "pulse"], "separate": true, "text": "Nudge costs 1 Protocol — tap it, then Pulse Tech's die to add +3 and push it over the line.", "advance": "nudged"},
 		{"targets": ["pulse"], "text": "It jumped into a stronger band — Plasma Lance."},
-		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (3) cost more — they unlock as you bank Protocol."},
+		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more — they unlock as you bank Protocol."},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Pulse Tech's die, then the enemy to fire it.", "advance": "assigned"},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Clear them out — assign the rest and end the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},

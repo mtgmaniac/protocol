@@ -502,14 +502,14 @@
                 20
               ],
               "name": "Grid Collapse",
-              "eff": "14 dmg (all)",
-              "dmg": 14,
+              "eff": "18 dmg (all)",
+              "dmg": 18,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 18,
+              "dMax": 18,
               "blastAll": true
             }
           ],
@@ -597,7 +597,7 @@
             16,
             19
           ],
-          "name": "Overdrive",
+          "name": "Precision Shot",
           "eff": "14 dmg, pierce",
           "dmg": 14,
           "burn": 0,
@@ -1332,15 +1332,15 @@
                 16
               ],
               "name": "Shatter Lance",
-              "eff": "12 dmg, +6 vs frozen",
-              "dmg": 12,
+              "eff": "10 dmg, +5 vs frozen",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
-              "vsFrozenBonus": 6
+              "dMin": 10,
+              "dMax": 10,
+              "vsFrozenBonus": 5
             },
             {
               "zone": "crit",
@@ -1349,17 +1349,15 @@
                 19
               ],
               "name": "Permafrost Aegis",
-              "eff": "7 shield (all), freeze any die",
-              "dmg": 0,
+              "eff": "14 dmg, +8 vs frozen",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "shield": 7,
-              "shieldAll": true,
-              "freezeAnyDice": 1
+              "dMin": 14,
+              "dMax": 14,
+              "vsFrozenBonus": 8
             },
             {
               "zone": "overload",
@@ -1448,12 +1446,12 @@
                 16
               ],
               "name": "Bunker Firewall",
-              "eff": "firewall",
+              "eff": "5 heal (self), firewall",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 0,
+              "heal": 5,
               "dMin": 0,
               "dMax": 0,
               "ward": true,
@@ -1466,14 +1464,14 @@
                 19
               ],
               "name": "Trench Breaker",
-              "eff": "12 dmg, breach",
-              "dmg": 12,
+              "eff": "18 dmg, breach",
+              "dmg": 18,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
+              "dMin": 18,
+              "dMax": 18,
               "breach": true
             },
             {
@@ -1483,16 +1481,16 @@
                 20
               ],
               "name": "Last Bastion",
-              "eff": "6 shield (all), 8 heal (all)",
+              "eff": "8 shield (all), 10 heal (all)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
-              "heal": 8,
+              "heal": 10,
               "dMin": 0,
               "dMax": 0,
               "healAll": true,
-              "shield": 6,
+              "shield": 8,
               "shieldAll": true
             }
           ],
@@ -1862,15 +1860,15 @@
             4
           ],
           "name": "Field Patch",
-          "eff": "8 heal, +1 protocol",
+          "eff": "4 shield (self), +1 protocol",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
-          "heal": 8,
+          "heal": 0,
           "dMin": 0,
           "dMax": 0,
-          "healTgt": true,
+          "shield": 4,
           "gainProtocol": 1
         },
         {
@@ -1897,7 +1895,7 @@
             11,
             15
           ],
-          "name": "Precision Shot",
+          "name": "Overdrive",
           "eff": "11 dmg",
           "dmg": 11,
           "burn": 0,

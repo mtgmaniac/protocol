@@ -342,7 +342,7 @@ Footer rules:
 - protocol display on the left
 - action buttons on the right
 - protocol capped at `10`; battles start at `0`, gain `+1` at end of each turn
-- footer actions: Reroll (2), Nudge (1, +3 roll), Set-a-die (3), Item (1 flat)
+- footer actions: Reroll (2), Nudge (1, +3 roll), Set-a-die (4), Item (1 flat)
 
 ## 13. Data Source Files
 

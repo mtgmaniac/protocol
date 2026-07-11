@@ -22,7 +22,7 @@ Protocol (PP) is the battle-only dice-manipulation resource. The pool lives in `
 |---|---|---|---|
 | Nudge (+3 effective) | **1** | `battle_engine.gd:220-242` | Priming Charge gear: holder's first Nudge each battle free (:221); Reverse Gimbal flip is free (:234) |
 | Reroll | **2** | `battle_engine.gd:210` | none |
-| Set a die | **3** (`SET_DIE_COST`, :18) | `battle_engine.gd:246-261` | Root Access boss relic: first Set each battle 0 (:247) |
+| Set a die | **4** (`SET_DIE_COST`, :18) | `battle_engine.gd:246-261` | Root Access boss relic: first Set each battle 0 (:247) |
 | Item (any rarity) | **1 flat** | `battle_engine.gd:287-294` | Protocol Override relic → 0; Supply Drone intercept (`items_free`) → 0; **Sealed Supplies route modifier → 2** |
 | Twin Fates copy | **0**, once per battle | `battle_engine.gd:266` | relic-gated button (`protocol_actions.gd:36`) |
 
@@ -65,7 +65,7 @@ Kill/siphon grants made during resolution accumulate in `combat_manager._pending
 ## Why it works that way
 
 - Costs 1/2/3 form a ladder of certainty: Nudge nudges a boundary, Reroll gambles, Set guarantees — priced accordingly. Item cost 1 flat keeps consumables a tempo decision, not a rarity calculation (TRUTH §Protocol economy).
-- Income +1/turn with cap 10 makes hoarding for Set (3) a real 3-turn commitment; siphon and Blackout attack exactly that plan.
+- Income +1/turn with cap 10 makes hoarding for Set (4) a real 4-turn commitment; siphon and Blackout attack exactly that plan.
 - Pending-grant draining once per round keeps mid-resolution protocol from being spent inside the same resolution (the pool is caller-owned; combat_manager stays pool-agnostic).
 - Protocol pips are amber (never green — INVARIANTS #7).
 

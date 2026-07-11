@@ -21,7 +21,7 @@ extends RefCounted
 const PROTOCOL_ACTIONS := {
 	"nudge": {"name": "NUDGE", "cost": 1, "effect": "Add +3 to a hero's effective roll. Once per die per turn."},
 	"reroll": {"name": "REROLL", "cost": 2, "effect": "Reroll a hero's die to a fresh random value."},
-	"set": {"name": "SET A DIE", "cost": 3, "effect": "Set a hero's die to any value you choose."},
+	"set": {"name": "SET A DIE", "cost": 4, "effect": "Set a hero's die to any value you choose."},
 }
 
 # fix-2.5: ability raw field -> keyword id in keywords.data.json. Any ability

@@ -19,7 +19,7 @@ Every handler was read and matches its `desc` text. "Handler" = `scripts/battle/
 | pyro | Flashpoint | Your Burn ticks once immediately on apply. | `burnImmediateTick` | :1371-1374 | MATCH — extra tick on apply, duration untouched (shared hook with Ignition Coil gear) |
 | pyro | Slow Roast | Your Burns last +1 turn. | `burnDurationBonus` (1) | :1367-1368 | MATCH |
 | arc | Conductor | Your Chains jump one extra target. | `chainExtraJump` | :1480-1481 | MATCH — stacks with Chain Doctrine relic (:1477) |
-| arc | Amplifier | Your Chain hits deal 100% damage. | `chainFullDamage` | :1484 | MATCH — replaces the 60% ratio |
+| arc | Amplifier | Your Chain hits deal 100% damage. | `chainFullDamage` | :1484 | MATCH — replaces the 50% ratio |
 | blade | Serrated | Your Pierce attacks also Breach. | `pierceAlsoBreach` | :1216-1217 | MATCH — breach forced when `ignSh` |
 | blade | Momentum | Each kill adds +4 to your next ability's damage. | `killNextAbilityDamage` (4) | bank :2152-2155, spend :1206-1211 | MATCH — additive bank (multi-kill turns stack), consumed in one hit |
 | ravager | Deep Cuts | +3 damage against Burning targets. | `bonusVsBurning` (3) | :1823-1826 | MATCH — carrier's hits on any burning enemy |

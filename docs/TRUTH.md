@@ -53,7 +53,7 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 ## Protocol economy (battle_engine.gd / battle_scene.gd)
 
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
-- **Costs:** Nudge **1** (+3 to effective roll) · Reroll **2** · Set-a-die **3** (`SET_DIE_COST`) · Item **1 flat** (all rarities).
+- **Costs:** Nudge **1** (+3 to effective roll) · Reroll **2** · Set-a-die **4** (`SET_DIE_COST`) · Item **1 flat** (all rarities).
 - **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor — grants at resolution when a die's FINAL face is 20, amount read from gear data, once per die, not on freeze repeats), `protocolOnDieTamper` (Mirror Plate — only an ENEMY tamper pays out; friendly freeze-any on an ally does not, audit A-062); relics `protocolCarryover`, `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1, **except protocol-gain items, which get no bonus +1** so they can't print Protocol for free, audit A-063), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnShieldBreak` (Salvage Rig +1, boss relic); enemy `siphon: N` drains the pool on hit (floor 0). **Summoned/rebuilt enemies grant no kill economy** (Protocol, Bounty, Chitin, Kill Switch, Momentum, Scavenger) — prevents stall-farming boss reinforcements (per Kev NK-10).
 - **Discounts/overflow:** Priming Charge — first Nudge free; Root Access boss relic — first Set each battle 0; Overflow Vent — protocol past the cap deals 2 dmg/point to a random enemy; Twin Fates — once per battle copy one hero die to another, free.
 - Footer shows "PROTOCOL n/m" with amber segment pips.
@@ -75,12 +75,23 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 direc
 | `ghost` | Ghost Operative | GHOST | control | 45 | Shadow (SHADOW) / Wraith (WRAITH) |
 | `breaker` | Signal Breaker | BREAKER | control | 45 | Noise (NOISE) / Nullwire (NULLWIRE) |
 
-**Legacy id quirks (do NOT change):** Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`. Freeze belongs to the Avalanche line only (hero-side); ±Roll chips to the Signal Breaker line only. Starters: `combat`, `avalanche`, `medic`.
+**Legacy id quirks (do NOT change):** Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`. Freeze belongs to the Avalanche line only (hero-side); ±Roll chips to the Signal Breaker line only. Starters: `combat`, `engineer`, `medic` (Batch-1 swap 2026-07-11 — Field Engineer replaced Avalanche Suit as a starter; Avalanche now unlocks at hero-ladder rung 1).
 
 ## Ability eff text syntax (canonical)
 
 Format: `[value type] [modifier] [target] [duration]`, clauses joined by `, ` (comma-space); AoE marked with a trailing `(all)`. Numbers first, type second, target third, duration last; target omitted for single enemy; duration omitted when instant. (Per Kev NK-17: the comma / `(all)` house style is canonical — the data uses it 100%; the earlier ` + ` / bare-`all` grammar was never adopted and is corrected here.)
 - Damage `12 dmg` · `9 dmg (all)` · `10 dmg, pierce` · Burn `4 burn 3t` · Heal `8 heal ally` / `13 heal all` / `11 heal lowest` · Shield (one round, no suffix) `ally 9 shield` / `all 14 shield` · Roll `+3 roll ally` / `-2 roll all enemies 2t` · Protocol `+2 protocol` · Status `freeze (repeat 1)` / `freeze any (repeat 1)` / `freeze all (repeat 1)` / `cloak` / `self firewall` / `taunt` / `rampage +1` · Boss extras `wipe shields` / `summon 40%` (no phase-2 syntax).
+
+**Roll-modifier duration display (Batch-1, 2026-07-11):** eff strings show a roll
+modifier's EFFECTIVE uses, not its backend turn count. Buffs (`rfm`/`erb`, via
+`_add_roll_buff`) tick on the cast round; debuffs (`rfe` and enemy `rfm`, via
+`_add_rfe_stack` with `skip_next_tick`) do not — so a backend `Nt` **buff** shapes
+`N−1` upcoming rolls while a backend `Nt` **debuff** shapes `N`. Therefore `+roll`
+eff text shows `N−1` (a single-use 2t buff omits the suffix, like a one-round
+shield: `+2 roll (all)`, `+1 roll (self)`); `−roll` eff text keeps the backend
+number (already the true count: `−2 roll, 2t`). Backend `erbT`/`rfmT`/`rfT` values
+are UNCHANGED — this is display only. Do NOT "resync" buff eff durations to the
+backend number.
 
 ### Data field glossary
 `dmg` · `burn`+`burnT` · `heal`(+`healTgt`/`healAll`/`healLowest`) · `shield`(+`shieldAll`/`shTgt`/`shieldLowest`) · `rfe`+`rfT`(+`rfeAll`) · `rfm`+`rfmT`(+`rfmTgt`) · `ignSh` (pierce) · `blastAll` · `cloak` · `ward`(+`wardTgt`; displayed Firewall) · `taunt` / `enemySelfTaunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` (+`freeze_flavor`). **Max ONE manually-picked component per hero ability** (audit-enforced).
@@ -89,7 +100,7 @@ Format: `[value type] [modifier] [target] [duration]`, clauses joined by `, ` (c
 
 | Keyword | Pip | Rule (verified) |
 |---|---|---|
-| Chain | CH | also hits lowest-HP other enemy at 60% round down; ×2 adds a jump |
+| Chain | CH | also hits lowest-HP other enemy at 50% round down; ×2 adds a jump |
 | Detonate | DT | consume finite Burn: amount × remaining turns immediate; a PERMANENT burn adds one tick's damage and is NOT consumed (per Kev 2026-07-06 — `DETONATE_MAX_TURNS` removed, resolves old DECISIONS #4) |
 | Execute | EX | target below 25% max HP after base damage → +8 flat bonus |
 | Breach | BR | destroy all shield on target (or every enemy) before damage |
@@ -136,9 +147,9 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Save system + progression (SaveManager autoload)
 
-`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths}, unlocks: {boss_relics, heroes: ["combat","avalanche","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, onboarding: {primers_seen: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
+`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths}, unlocks: {boss_relics, heroes: ["combat","engineer","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, onboarding: {primers_seen: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
 
-- **Hero ladder** (ONE rung max per run end; overshoot defers): (1) facility best_clear ≥ 6 OR runs_started ≥ 3 → **engineer** (tutorial runs no longer increment runs_started per DECISIONS_RESOLVED #13; profiles that already banked tutorial runs keep the count — grandfathered, no retroactive adjustment) · (2) facility won → **shield** · (3) hive best_clear ≥ 6 → **pulse** · (4) hive won → **ghost** · (5) veil best_clear ≥ 6 → **breaker**.
+- **Hero ladder** (ONE rung max per run end; overshoot defers): (1) facility best_clear ≥ 6 OR runs_started ≥ 3 → **avalanche** (Batch-1 swap: this rung-1 gate moved from engineer to avalanche when engineer became a starter; tutorial runs no longer increment runs_started per DECISIONS_RESOLVED #13; profiles that already banked tutorial runs keep the count — grandfathered, no retroactive adjustment) · (2) facility won → **shield** · (3) hive best_clear ≥ 6 → **pulse** · (4) hive won → **ghost** · (5) veil best_clear ≥ 6 → **breaker**.
 - **Operation chain** (uncapped): boss clear unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie.
 - **Grandfather clause:** pre-unlock-schema profiles that have played unlock everything, ladder maxed.
 - `check_new_unlocks()` feeds the run-end UNLOCKED panel; `heroes_new` drives the NEW badge (cleared on first squad add). Locked heroes/ops render as black silhouettes + `[ LOCKED ]`, no hints. Dev tools (help menu SETTINGS): UNLOCK ALL, RESET SAVE PROFILE (two-step), RESET PRIMERS.
@@ -259,7 +270,7 @@ ruling from chat memory.**
 7. **RULED, pending** — route modifier numbers.
 8. **RULED, pending** — boss cadence numbers.
 9. **RULED, pending** — execute bonus.
-10. **RULED, pending** — chain jump ratio.
+10. **RESOLVED & IMPLEMENTED (Batch-1, 2026-07-11)** — chain jump ratio `chain_ratio` set 0.6→0.5 (baseline NOT re-pinned; full balance pass follows).
 11. **RULED, pending** — Reverse Gimbal UX.
 12. **RESOLVED & IMPLEMENTED — cloak hostile-only untargetability** (2026-07-07).
 13. **RESOLVED & IMPLEMENTED — tutorial runs excluded from `runs_started`** (2026-07-07, grandfathered).
