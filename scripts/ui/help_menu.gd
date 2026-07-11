@@ -445,9 +445,8 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 
 	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2))
 	text_box.add_child(_make_wrap_label(str(kw.get("def", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 2))
-	var syntax: String = str(kw.get("syntax", "")).strip_edges()
-	if syntax != "":
-		text_box.add_child(_make_wrap_label(syntax, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
+	# No trailing syntax line (Kev 2026-07-10): it just repeated the keyword
+	# name under its own definition.
 
 
 # ── UNITS codex ───────────────────────────────────────────────────────────────
@@ -635,11 +634,35 @@ func _select_bestiary_faction(faction: String) -> void:
 
 
 func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
+	# Kev 2026-07-10: every bestiary entry carries a small portrait.
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 14)
+	host.add_child(row)
+
+	if enemy.portrait != null:
+		var frame := PanelContainer.new()
+		frame.custom_minimum_size = Vector2(96, 96)
+		frame.clip_contents = true
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_ENEMY_BORDER, 2))
+		var tex := TextureRect.new()
+		tex.texture = enemy.portrait
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(tex)
+		row.add_child(frame)
+
 	var entry := VBoxContainer.new()
 	entry.mouse_filter = Control.MOUSE_FILTER_PASS
 	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	entry.add_theme_constant_override("separation", 1)
-	host.add_child(entry)
+	row.add_child(entry)
 
 	entry.add_child(_make_wrap_label(enemy.display_name.to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, 2))
 
@@ -689,7 +712,12 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
-	# Room for more settings here later (e.g. volume sliders, haptics, reduced motion).
+
+	# --- Tutorials (Kev 2026-07-10) ---
+	host.add_child(_make_label("TUTORIALS", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var sm_t: Variant = _save_manager()
+	var primers_on: bool = sm_t == null or bool(sm_t.get_setting("ability_primers_enabled", true))
+	_add_toggle_row(host, "One-time ability tips (keyword primers)", primers_on, _on_toggle_ability_primers)
 
 	# --- Dev tools ---
 	host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
@@ -715,6 +743,12 @@ func _on_dev_reset_primers() -> void:
 	var sm: Variant = _save_manager()
 	if sm != null:
 		sm.dev_reset_primers()
+
+
+func _on_toggle_ability_primers(pressed: bool) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting("ability_primers_enabled", pressed)
 
 
 # Variant lookups (mirroring _audio()) so this compiles even when the autoloads

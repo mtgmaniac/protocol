@@ -26,7 +26,7 @@ enum CoachAnchor { AUTO, BOTTOM, CENTER }
 const DIM := Color(0.01, 0.015, 0.02, 0.82)
 const ACCENT := Color("6fe0ef")  # PixelUI.DT_CYAN_BRIGHT
 const COACH_FONT := 32
-const HINT_FONT := 24
+const HINT_FONT := 36  # Kev 2026-07-10: "tap to continue" was too small at 24
 const SCREEN_MARGIN := 40.0
 const FULLSCREEN_INSET := 12.0  # "highlight the whole screen" frame inset
 

@@ -884,12 +884,13 @@ func _lunge(card: Control, side: String) -> void:
 	if card == null or not is_instance_valid(card):
 		return
 	var dir_y: float = -1.0 if side == "hero" else 1.0
-	var base: Vector2 = card.position
+	var base: Vector2 = _fx_rest_position(card)
 	var tween: Tween = create_tween()
 	tween.tween_property(card, "position", base + Vector2(0.0, dir_y * LUNGE_DIST), LUNGE_OUT) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card, "position", base, LUNGE_BACK) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_fx_release_rest.bind(card))
 
 
 # Decaying positional jitter — a struck unit's recoil. Steps to shrinking random
@@ -900,7 +901,7 @@ const SHAKE_STEPS := 7
 func _shake(node: Control, amplitude: float, duration: float) -> void:
 	if node == null or not is_instance_valid(node):
 		return
-	var base: Vector2 = node.position
+	var base: Vector2 = _fx_rest_position(node)
 	var step_time: float = duration / float(SHAKE_STEPS + 1)
 	var tween: Tween = create_tween()
 	for i in range(SHAKE_STEPS):
@@ -909,6 +910,27 @@ func _shake(node: Control, amplitude: float, duration: float) -> void:
 		tween.tween_property(node, "position", base + off, step_time) \
 			.set_trans(Tween.TRANS_SINE)
 	tween.tween_property(node, "position", base, step_time).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(_fx_release_rest.bind(node))
+
+
+# Transient positional effects (lunge / shake) share ONE captured rest
+# position per node: two overlapping effects both restore to the SAME base, so
+# a card can never get stuck offset from its rail (Kev 2026-07-10 — Splice sat
+# low after a shake started mid-lunge). The meta clears when an effect
+# completes so container re-layouts re-capture a fresh base next beat.
+func _fx_rest_position(node: Control) -> Vector2:
+	if node.has_meta("fx_rest_pos"):
+		return node.get_meta("fx_rest_pos")
+	var base: Vector2 = node.position
+	node.set_meta("fx_rest_pos", base)
+	return base
+
+
+func _fx_release_rest(node: Control) -> void:
+	if node != null and is_instance_valid(node):
+		if node.has_meta("fx_rest_pos"):
+			node.position = node.get_meta("fx_rest_pos")
+			node.remove_meta("fx_rest_pos")
 
 
 # ── 2D dice widgets ───────────────────────────────────────────────────────────

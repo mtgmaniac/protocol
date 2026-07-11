@@ -116,11 +116,11 @@ const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
-# Footer protocol stack (Kev 2026-07-10 alignment contract) — tuned by capture:
-# label font up from 44; the glyph-top nudge cancels m5x7's above-cap padding.
+# Footer protocol stack (Kev 2026-07-10) — the label sits directly on top of
+# the pip bar (bottom-anchored; the overlap eats m5x7's below-baseline pad).
 const PROTOCOL_STACK_LABEL_FONT := 52
-const PROTOCOL_LABEL_GLYPH_TOP_NUDGE := -18.0
 const PROTOCOL_LABEL_BOX_H := 84.0
+const PROTOCOL_LABEL_PIP_OVERLAP := -2.0
 const PROTOCOL_PIP_BAR_H := 52.0
 
 var dice_manager: DiceManager = DiceManager.new()
@@ -590,12 +590,13 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		await get_tree().process_frame
 
 	# Keyword primers: a new player turn begins — reset the one-per-turn gate,
-	# then report the idle-phase sightings (personalities that picked a target,
-	# protocol actions now affordable) and show at most one.
+	# then report the ROLL sightings (Kev 2026-07-10: a keyword primes the
+	# first time it appears on a revealed roll, BEFORE the player commits) and
+	# show at most one.
 	if _primer != null and is_instance_valid(_primer):
 		_primer.on_turn_started()
 		_notice_personality_primers()
-		_primer.notice_protocol_affordability(protocol_points)
+		_notice_rolled_ability_primers()
 		await _primer.flush_player_phase()
 
 	if pending_manual_target_ids.is_empty():
@@ -687,6 +688,30 @@ func _notice_personality_primers() -> void:
 			continue
 		var personality: int = TargetingPersonality.resolve_personality(unit)
 		_primer.notice_personality_assigned(TargetingPersonality.personality_name(personality), str(enemy_state["id"]))
+
+
+# Kev 2026-07-10: every keyword on a revealed roll primes NOW (before the
+# player assigns actions), anchored to the rolling unit.
+func _notice_rolled_ability_primers() -> void:
+	if _primer == null or not is_instance_valid(_primer):
+		return
+	var sides: Array = [
+		["hero", combat_manager.get_hero_states(), hero_rolls],
+		["enemy", combat_manager.get_enemy_states(), enemy_rolls],
+	]
+	for side_variant in sides:
+		var side: String = str(side_variant[0])
+		var rolls: Dictionary = side_variant[2]
+		for state_variant in side_variant[1]:
+			var state: Dictionary = state_variant
+			if bool(state.get("dead", false)):
+				continue
+			var state_id: String = str(state.get("id", ""))
+			if not rolls.has(state_id):
+				continue
+			var eff_roll: int = combat_manager.get_effective_roll(state, int(rolls[state_id]))
+			var entry: Dictionary = dice_manager.get_ability_for_roll(state["unit"], eff_roll)
+			_primer.notice_rolled_ability(entry.get("raw", {}), side, state_id)
 
 
 func _roll_for_states(states: Array) -> Dictionary:
@@ -1632,11 +1657,14 @@ func _ensure_protocol_stack_layout() -> void:
 	if spacer != null:
 		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		spacer.custom_minimum_size = Vector2.ZERO
-	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	protocol_label.offset_top = PROTOCOL_LABEL_GLYPH_TOP_NUDGE
-	protocol_label.offset_bottom = protocol_label.offset_top + PROTOCOL_LABEL_BOX_H
+	# Label sits RIGHT on top of the pips (Kev 2026-07-10: anchoring it to the
+	# stack top clipped the glyphs under the panel above). Bottom-anchored just
+	# above the pip bar; the overlap eats m5x7's below-baseline padding.
+	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	protocol_label.offset_bottom = -PROTOCOL_PIP_BAR_H + PROTOCOL_LABEL_PIP_OVERLAP
+	protocol_label.offset_top = protocol_label.offset_bottom - PROTOCOL_LABEL_BOX_H
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	protocol_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	protocol_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_STACK_LABEL_FONT)
 	protocol_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	protocol_bar.offset_top = -PROTOCOL_PIP_BAR_H

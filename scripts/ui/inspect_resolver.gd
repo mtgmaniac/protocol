@@ -236,18 +236,19 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", EffectPip.keyword_code("rampage", "RA"), 0, _status_text("rampage", "", 0)))
 	# pkg8.1: die statuses surface in the readout too (they render on the die).
+	# One SHORT line each (Kev 2026-07-10 trim).
 	if int(state.get("jam_cap", 0)) > 0:
-		entries.append(_status_entry("jam", "≤%d" % int(state["jam_cap"]), 0, "Die is Jammed — next roll capped at %d." % int(state["jam_cap"])))
+		entries.append(_status_entry("jam", "≤%d" % int(state["jam_cap"]), 0, _status_text("jam", str(state["jam_cap"]), 0)))
 	if bool(state.get("rewrite_pending", false)):
-		entries.append(_status_entry("rewrite", "→3", 0, "Die is being Rewritten — next roll becomes 3."))
+		entries.append(_status_entry("rewrite", "→3", 0, _status_text("rewrite", "", 0)))
 	if bool(state.get("hijack_pending", false)):
-		entries.append(_status_entry("hijack", EffectPip.keyword_code("hijack", "HJ"), 0, "Hijack pending — this die will copy the squad's highest roll."))
+		entries.append(_status_entry("hijack", EffectPip.keyword_code("hijack", "HJ"), 0, _status_text("hijack", "", 0)))
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s — the die keeps this face and the unit acts again on it %d more time(s)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
+			"%s: die locked on this face (%d more)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
-		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, "Spike %d — attackers take damage this round." % int(state["spike"])))
+		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, _status_text("spike", str(state["spike"]), 0)))
 	return entries
 
 

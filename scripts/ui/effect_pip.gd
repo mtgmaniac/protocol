@@ -453,8 +453,12 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "freeze", "", int(effect.get("repeats", 0)))
 		"enemyDieFreezeAll":
 			_append_effect(effects, "freeze", "", int(effect.get("repeats", 0)), "all")
+		"deathDamageAll":
+			_append_effect(effects, "dmg", "%d" % int(effect.get("amount", 0)), 0, "all")
 		_:
-			if target_kind != "":
+			# No pip beats a placeholder: "none"/"" target kinds render nothing
+			# (Kev 2026-07-10: never show a NONE tag).
+			if target_kind != "" and target_kind.to_lower() != "none":
 				_append_effect(effects, "tag", target_kind.to_upper())
 	return effects
 

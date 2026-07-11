@@ -28,7 +28,7 @@
       "id": "execute",
       "term": "Execute",
       "category": "offense",
-      "def": "If the target is below 25% max HP after the base damage, deal bonus damage.",
+      "def": "If the target is below 25% max HP after the base damage, deal +8 bonus damage.",
       "syntax": "execute",
       "code": "EX"
     },
@@ -126,7 +126,7 @@
       "id": "jam",
       "term": "Jam",
       "category": "control",
-      "def": "The target's next roll is capped at 10. Shown on the die, not as a status chip.",
+      "def": "The target's next roll is capped at 10.",
       "syntax": "jam / jam all",
       "code": "JM"
     },
@@ -134,7 +134,7 @@
       "id": "rewrite",
       "term": "Rewrite",
       "category": "control",
-      "def": "The target's next roll is set to 3. Telegraphed: applied this turn, it fires at the next roll.",
+      "def": "The target's next roll is set to 3.",
       "syntax": "rewrite",
       "code": "RW"
     },

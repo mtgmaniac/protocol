@@ -18,7 +18,9 @@ const BUTTON_FONT := 38
 # deterministically by battle number so successive forks show different corridors.
 const HALLWAY_ART := "res://assets/ui/events/hallway_%d.png"
 const HALLWAY_COUNT := 5
-const HALLWAY_BANNER_H := 260
+# Kev 2026-07-10: taller banner + KEEP_ASPECT (not cover-crop) so more of the
+# corridor art shows — larger and zoomed out.
+const HALLWAY_BANNER_H := 420
 
 var _modifier_id: String = ""
 
@@ -135,7 +137,7 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	art.texture = tex
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(art)

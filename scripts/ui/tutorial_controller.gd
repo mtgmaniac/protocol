@@ -54,19 +54,21 @@ func _build_steps() -> Array:
 		# enemy to tap, then open up the whole screen to assign the rest.
 		{"targets": ["heroes"], "text": "Tap a die (or its hero card) to pick who fires.", "advance": "targeting_started"},
 		{"targets": ["enemy_cards"], "text": "Now tap the enemy to fire it.", "advance": "assigned"},
-		{"targets": [], "fullscreen": true, "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
-		{"targets": ["enemy_readouts"], "text": "Here's what the enemy will do this turn. Control matters."},
-		{"targets": ["roll_button"], "text": "Lock it in — ending the turn fires every die you assigned, all at once, then the enemy takes its action.", "advance": "turn_resolved"},
-		{"targets": ["protocol_bar"], "text": "You earned 1 Protocol. It builds +1 every turn, caps at 10. Watch what it does next."},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
+		{"targets": ["enemy_readouts"], "text": "Enemies telegraph their moves, be sure to account for this!"},
+		{"targets": ["roll_button"], "text": "Lock it in — ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},
 		# Phase 2 — turn 2: Protocol & Nudge. "Roll again" waits for the dice to settle (advance
 		# "rolled") before moving on.
-		{"targets": ["roll_button"], "text": "Roll again.", "advance": "rolled"},
-		{"targets": ["protocol_value"], "text": "You have 1 Protocol. Time to spend it."},
+		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
+		# Invisible waiter: the coach hides while the dice roll, then the
+		# Protocol beat lands once they settle (Kev 2026-07-10).
+		{"targets": [], "hide_coach": true, "advance": "rolled"},
+		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn — time to spend it. It builds +1 every turn, caps at 10."},
 		{"targets": ["nudge", "pulse"], "separate": true, "text": "Nudge costs 1 Protocol — tap it, then Pulse Tech's die to add +3 and push it over the line.", "advance": "nudged"},
 		{"targets": ["pulse"], "text": "It jumped into a stronger band — Plasma Lance."},
 		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (3) cost more — they unlock as you bank Protocol."},
-		{"targets": [], "fullscreen": true, "text": "Tap Pulse Tech's die, then the enemy to fire it.", "advance": "assigned"},
-		{"targets": [], "fullscreen": true, "text": "Clear them out — assign the rest and end the turn.", "advance": "won"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Pulse Tech's die, then the enemy to fire it.", "advance": "assigned"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Clear them out — assign the rest and end the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]
 
@@ -153,12 +155,19 @@ func _layout_step() -> void:
 		return
 	var mode: String = _advance_mode()
 	var tap_step: bool = mode == "tap" or mode == "tap_finish"
+	# hide_coach waiter steps (Kev 2026-07-10): no dim, no coach — the board
+	# plays out (dice rolling) until the advance event fires.
+	if bool(step.get("hide_coach", false)):
+		if _spot != null:
+			_spot.dismiss()
+		return
 	var holes: Array = _compute_holes(step)
 	# Whole-screen steps pin the coach to the bottom so it never covers the
-	# centre Roll/End-Turn button; no-hole steps center it.
+	# centre Roll/End-Turn button; coach_center steps read mid-screen instead
+	# (Kev 2026-07-10: bottom text was hard to read on assign-dice beats).
 	var anchor: int = SpotlightLayerScript.CoachAnchor.AUTO
 	if bool(step.get("fullscreen", false)):
-		anchor = SpotlightLayerScript.CoachAnchor.BOTTOM
+		anchor = SpotlightLayerScript.CoachAnchor.CENTER if bool(step.get("coach_center", false)) else SpotlightLayerScript.CoachAnchor.BOTTOM
 	if _spot != null:
 		_spot.spotlight(holes, str(step.get("text", "")), anchor, {
 			"title": str(step.get("title", "")),

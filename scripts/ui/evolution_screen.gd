@@ -194,7 +194,9 @@ func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> Panel
 	vbox.add_child(_create_divider())
 
 	var choose_button: Button = Button.new()
-	choose_button.custom_minimum_size = Vector2(0, 78)
+	# Kev 2026-07-10: 78 read weirdly short with the text hugging the bottom —
+	# taller button gives the label breathing room.
+	choose_button.custom_minimum_size = Vector2(0, 104)
 	choose_button.text = "CHOOSE %s" % directive_name.to_upper()
 	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
 	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
@@ -328,13 +330,15 @@ func _create_ability_row(entry: Dictionary) -> VBoxContainer:
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 4)
 
+	# Alignment contract (Kev 2026-07-10, matches the inspect popup): the
+	# "Roll: N - M  Name" line is CENTERED; pips LEFT, description RIGHT.
 	var row1: HBoxContainer = HBoxContainer.new()
 	row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.alignment = BoxContainer.ALIGNMENT_CENTER
 	row1.add_theme_constant_override("separation", 12)
 	row1.add_child(_make_label("Roll: %d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
 	var ability_name: Label = _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.DT_CYAN, 2)
-	ability_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ability_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ability_name.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row1.add_child(ability_name)
 	box.add_child(row1)
 
@@ -353,6 +357,7 @@ func _create_ability_row(entry: Dictionary) -> VBoxContainer:
 			var description: Label = _make_label(eff_text, ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
 			description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			description.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			row2.add_child(description)
 		box.add_child(row2)
 	return box

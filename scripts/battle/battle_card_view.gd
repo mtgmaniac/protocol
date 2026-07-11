@@ -438,6 +438,25 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	if str(state.get("lured_by_id", "")) != "":
 		statuses.append(_make_compact_icon_status("taunt", 3))
 
+	# Kev 2026-07-10: the chip TYPE limit is lifted — every active status gets a
+	# chip (the row still visually caps and overflows into the "+N" badge; the
+	# full list lives in the unit long-press). Cloak / Jam / Rewrite / Spike:
+	if bool(state.get("cloaked", false)):
+		statuses.append(_make_compact_icon_status("cloak", 3))
+	if int(state.get("jam_cap", 0)) > 0:
+		statuses.append(_make_compact_icon_status("jam", 3))
+	if bool(state.get("rewrite_pending", false)):
+		statuses.append(_make_compact_icon_status("rewrite", 3))
+	var spike_value: int = int(state.get("spike", 0))
+	if spike_value > 0:
+		statuses.append({
+			"type": "spike",
+			"mode": "numeric",
+			"icon": "▲",
+			"value": spike_value,
+			"priority": 3,
+		})
+
 	return statuses
 
 

@@ -154,30 +154,6 @@
       "requires_feature": null
     },
     {
-      "id": "primer_nudge",
-      "trigger": { "type": "protocol_action_affordable", "param": "nudge" },
-      "target": "footer_button",
-      "text": "NUDGE (1 Protocol): add +3 to one die.",
-      "priority": 60,
-      "requires_feature": null
-    },
-    {
-      "id": "primer_reroll",
-      "trigger": { "type": "protocol_action_affordable", "param": "reroll" },
-      "target": "footer_button",
-      "text": "REROLL (2 Protocol): reroll one of your dice.",
-      "priority": 60,
-      "requires_feature": null
-    },
-    {
-      "id": "primer_set",
-      "trigger": { "type": "protocol_action_affordable", "param": "set" },
-      "target": "footer_button",
-      "text": "SET (3 Protocol): set one die to any value.",
-      "priority": 60,
-      "requires_feature": null
-    },
-    {
       "id": "primer_rampage",
       "trigger": { "type": "attack_keyword_resolved", "param": "rampage" },
       "target": "unit_card",

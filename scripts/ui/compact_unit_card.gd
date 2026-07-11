@@ -334,7 +334,9 @@ func _build() -> void:
 	_hp_tick_layer = HPTickLayer.new()
 	_hp_tick_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_tick_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_hp_tick_layer.z_index = 2
+	# Above the damage-preview rects (z 2) so the 10-HP scale never vanishes
+	# while incoming damage is previewed (Kev 2026-07-10).
+	_hp_tick_layer.z_index = 3
 	_hp_back.add_child(_hp_tick_layer)
 	_hp_tick_layer.resized.connect(_hp_tick_layer.queue_redraw)
 
@@ -864,7 +866,7 @@ func _status_effect_kind(status: Dictionary) -> String:
 			return PixelUI.pip_key_for_effect(status_type, str(status.get("value", "")))
 		"frozen", "freeze", "die_freeze":
 			return "freeze"
-		"cloak", "mark", "taunt":
+		"cloak", "mark", "taunt", "jam", "rewrite", "spike":
 			return status_type
 		"firewall", "ward":
 			return "firewall"
@@ -1164,7 +1166,9 @@ func _layout_preview_overlays() -> void:
 	if final_hp < cur_hp:
 		var loss: float = cur_hp - final_hp
 		var burn_slice: float = minf(hp_burn, loss)
-		_place_preview_rect(_preview_rect_purple, final_hp, burn_slice, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.62, 0.18, 0.82, 0.85))
+		# Burn slice previews in the burn channel's EMBER ORANGE (Kev 2026-07-10;
+		# burn is fire now, not poison purple).
+		_place_preview_rect(_preview_rect_purple, final_hp, burn_slice, hp_max, bar_w, HP_FILL_HEIGHT, Color(PixelUI.COLOR_BURN.r, PixelUI.COLOR_BURN.g, PixelUI.COLOR_BURN.b, 0.85))
 		_place_preview_rect(_preview_rect_red, final_hp + burn_slice, loss - burn_slice, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.COLOR_DAMAGE)
 	elif final_hp > cur_hp:
 		_place_preview_rect(_preview_rect_heal, cur_hp, final_hp - cur_hp, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.DT_HP_GREEN)

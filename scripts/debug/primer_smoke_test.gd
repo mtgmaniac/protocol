@@ -100,24 +100,28 @@ func _run() -> void:
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_chain"), "attack_keyword_resolved (chain) fires and persists")
 
-	# ── 4) protocol_action_affordable + priority tie-break ──────────────────────
-	# All three become affordable at once (same priority 60): exactly ONE shows;
-	# the losers are not marked seen and fire on later turns.
+	# ── 4) same-priority tie-break (protocol primers were CUT 2026-07-10 — the
+	# tutorial teaches nudge/reroll/set; keyword primers carry the tie test now).
+	# Three same-priority (30) keyword sightings in one moment: exactly ONE
+	# shows; the losers are not marked seen and fire on later turns.
 	primer.on_turn_started()
-	primer.notice_protocol_affordability(3)
-	await primer.flush_player_phase()
-	var protocol_seen: int = 0
-	for pid in ["primer_nudge", "primer_reroll", "primer_set"]:
+	primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
+	await primer.flush_at_group_boundary()
+	var tie_seen: int = 0
+	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
 		if sm.call("is_primer_seen", pid):
-			protocol_seen += 1
-	_check(protocol_seen == 1, "protocol affordability: exactly one of three ties shows per turn (saw %d)" % protocol_seen)
-	primer.on_turn_started()
-	primer.notice_protocol_affordability(3)
-	await primer.flush_player_phase()
-	primer.on_turn_started()
-	primer.notice_protocol_affordability(3)
-	await primer.flush_player_phase()
-	for pid in ["primer_nudge", "primer_reroll", "primer_set"]:
+			tie_seen += 1
+	_check(tie_seen == 1, "same-priority ties: exactly one of three shows per turn (saw %d)" % tie_seen)
+	for _round in 2:
+		primer.on_turn_started()
+		primer._fired_params.clear()
+		primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
+		primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
+		primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
+		await primer.flush_at_group_boundary()
+	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
 		_check(sm.call("is_primer_seen", pid), "%s eventually fires across turns" % pid)
 
 	# Priority breaks a mixed same-moment tie: freeze-die (55) beats mark-level

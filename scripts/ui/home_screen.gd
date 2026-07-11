@@ -107,6 +107,7 @@ var _focused_unit_id: String = ""
 var _current_op_locked: bool = false
 var _enc_banner: PanelContainer
 var _enc_portrait: TextureRect
+var _enc_thumb_holder: Control
 var _enc_portrait_placeholder: Label
 var _enc_lock_overlay: Control
 var _enc_name_label: Label
@@ -132,15 +133,13 @@ func _ready() -> void:
 	# label and leave its buttons inert (this screen binds none of them).
 	PersistentHeader.set_run_active(false)
 	PersistentHeader.clear_battle_actions()
+	# Back from the deploy screen returns to the title screen (Kev 2026-07-10).
+	PersistentHeader.bind_battle_actions(Callable(), Callable(), Callable(), _on_back_to_title)
 	_apply_background()
 	_gather_data()
 	_build_layout()
-	# The detail panel is never empty: open on the first unlocked hero (display
-	# only — nothing is selected). It follows the last-tapped hero from there.
-	for uid in _unit_ids:
-		if SaveManager.is_hero_unlocked(uid):
-			_focused_unit_id = uid
-			break
+	# Kev 2026-07-10: the detail panel stays HIDDEN until the player taps a
+	# unit — no default dossier on entry.
 	_refresh_encounter()
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
@@ -302,14 +301,18 @@ func _build_encounter_section() -> Control:
 	thumb_frame.add_theme_stylebox_override("panel", thumb_style)
 	var thumb_holder := Control.new()
 	thumb_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Cover-crop like the battle cards (Kev 2026-07-10: heads to the top of the
+	# box, no letterboxing) — PixelUI.cover_fit_portrait is the framing rule.
+	thumb_holder.clip_contents = true
 	thumb_frame.add_child(thumb_holder)
+	_enc_thumb_holder = thumb_holder
 	_enc_portrait = TextureRect.new()
 	_enc_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_enc_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_enc_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_enc_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_enc_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	thumb_holder.add_child(_enc_portrait)
+	thumb_holder.resized.connect(func() -> void:
+		PixelUI.cover_fit_portrait(_enc_portrait, _enc_thumb_holder.size))
 	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
 	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -402,6 +405,8 @@ func _refresh_encounter() -> void:
 	_enc_name_label.text = op.display_name.to_upper()
 	var boss_tex: Texture2D = _get_boss_portrait(op)
 	_enc_portrait.texture = boss_tex
+	if _enc_thumb_holder != null and is_instance_valid(_enc_thumb_holder):
+		PixelUI.cover_fit_portrait(_enc_portrait, _enc_thumb_holder.size)
 	_enc_portrait_placeholder.visible = boss_tex == null
 
 	var level: int = _threat_level(_operation_index)
@@ -823,7 +828,15 @@ func _show_unit_detail(unit_id: String) -> void:
 	_refresh_detail()
 
 
+func _on_back_to_title() -> void:
+	AudioManager.play_select()
+	SceneManager.go_to_main_menu()
+
+
 func _refresh_detail() -> void:
+	# Hidden until a unit is tapped (Kev 2026-07-10).
+	if _detail_panel != null and is_instance_valid(_detail_panel):
+		_detail_panel.visible = _focused_unit_id != ""
 	if _focused_unit_id == "":
 		return
 	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData

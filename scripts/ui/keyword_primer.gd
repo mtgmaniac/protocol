@@ -112,6 +112,9 @@ func _suppressed() -> bool:
 		return false
 	if DisplayServer.get_name() == "headless":
 		return true
+	# Player opt-out (help → settings → tutorials, Kev 2026-07-10).
+	if not bool(SaveManager.get_setting("ability_primers_enabled", true)):
+		return true
 	var gs: Node = get_node_or_null("/root/GameState")
 	if gs != null and bool(gs.get("tutorial_mode")):
 		return true
@@ -141,12 +144,72 @@ func notice_event(event: Dictionary) -> void:
 	})
 
 
-# Protocol actions becoming affordable during a player phase.
+# Protocol actions becoming affordable during a player phase. (No loaded
+# entries since 2026-07-10 — the tutorial teaches nudge/reroll/set — but the
+# seam stays for future protocol mechanics.)
 func notice_protocol_affordability(protocol_points: int) -> void:
 	var costs: Dictionary = {"nudge": 1, "reroll": 2, "set": 3}
 	for action_id in costs.keys():
 		if protocol_points >= int(costs[action_id]):
 			_queue("protocol_action_affordable", str(action_id), {"param": str(action_id)})
+
+
+# Raw ability field → the primer trigger it teaches. Kev 2026-07-10: keywords
+# prime the FIRST time they appear on a revealed ROLL — before the player
+# commits — not mid-resolution. The event-stream triggers stay as the fallback
+# for effects that never surface on a readout.
+const RAW_FIELD_TRIGGERS := {
+	"burn": ["status_applied", "burn"],
+	"mark": ["status_applied", "mark"],
+	"ward": ["status_applied", "firewall"],
+	"cloak": ["status_applied", "cloak"],
+	"taunt": ["status_applied", "taunt"],
+	"enemySelfTaunt": ["status_applied", "taunt"],
+	"spike": ["status_applied", "spike"],
+	"jam": ["die_status_applied", "jam"],
+	"jamAll": ["die_status_applied", "jam"],
+	"rewrite": ["die_status_applied", "rewrite"],
+	"hijack": ["die_status_applied", "hijack"],
+	"freezeAnyDice": ["die_status_applied", "freeze"],
+	"freezeEnemyDice": ["die_status_applied", "freeze"],
+	"freezeAllEnemyDice": ["die_status_applied", "freeze"],
+	"chain": ["attack_keyword_resolved", "chain"],
+	"detonate": ["attack_keyword_resolved", "detonate"],
+	"execute": ["attack_keyword_resolved", "execute"],
+	"breach": ["attack_keyword_resolved", "breach"],
+	"breachAll": ["attack_keyword_resolved", "breach"],
+	"wipeShields": ["attack_keyword_resolved", "breach"],
+	"ignSh": ["attack_keyword_resolved", "pierce"],
+	"leech": ["attack_keyword_resolved", "leech"],
+	"lifestealPct": ["attack_keyword_resolved", "leech"],
+	"siphon": ["attack_keyword_resolved", "siphon"],
+	"revive": ["attack_keyword_resolved", "revive"],
+	"reviveAll": ["attack_keyword_resolved", "revive"],
+	"grantRampage": ["attack_keyword_resolved", "rampage"],
+	"grantRampageAll": ["attack_keyword_resolved", "rampage"],
+	"packBonus": ["attack_keyword_resolved", "pack_bonus"],
+	"summonChance": ["attack_keyword_resolved", "summon"],
+}
+
+
+# A revealed roll chose this ability — queue a primer for each keyword it
+# carries, anchored to the ROLLING unit (its die for die statuses, its card
+# otherwise). The one-per-turn rule still applies at flush.
+func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> void:
+	if raw.is_empty():
+		return
+	for field in RAW_FIELD_TRIGGERS.keys():
+		if not raw.has(field):
+			continue
+		var value: Variant = raw[field]
+		var active: bool = bool(value) if value is bool else float(value) > 0.0
+		if not active:
+			continue
+		var mapping: Array = RAW_FIELD_TRIGGERS[field]
+		_queue(str(mapping[0]), str(mapping[1]), {
+			"side": side,
+			"target_id": unit_id,
+		})
 
 
 # A targeting personality picked a target (enemy intents assigned).
