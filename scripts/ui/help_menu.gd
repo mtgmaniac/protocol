@@ -293,19 +293,17 @@ func _build_basics(host: VBoxContainer) -> void:
 		"Every unit — squad and hostile — rolls a D20 at the same time.",
 		"Assign your hero rolls to targets, then enemies act, then you gain +1 Protocol.",
 		"Each die is split into 5 ability bands; the roll's band decides which ability fires.",
-		"Higher roll = stronger ability. Bands run Recharge > Strike > Surge > Crit > Overload.",
-		"Overload is the 20 — always that unit's strongest ability.",
+		"A 20 always fires that unit's ultimate ability.",
 	])
 	_add_section(host, "READING A UNIT CARD", [
-		"Bands differ per unit: glass units reach Crit at 14, tanks need 17 — the card shows its own ranges.",
-		"The HP bar is current / max; the thin bar below tracks XP toward evolution.",
-		"Status icons appear when active. Long-press a unit to read its full intel.",
+		"The name and portrait identify the unit.",
+		"The HP bar reads current / max. Status icons appear when effects are active.",
+		"Long-press a unit to read its full intel — abilities, roll ranges, and keywords.",
 	])
 	_add_section(host, "EVOLUTION", [
 		"Units earn XP each battle by dealing damage, healing, or applying effects.",
-		"When the XP bar fills, the unit evolves at battle end.",
-		"Choose one of two paths — each changes abilities and raises max HP.",
-		"After evolving, continued XP advances toward a MAX-tier upgrade.",
+		"At enough XP, the unit evolves at battle end — choose one of two paths.",
+		"Each path changes abilities and raises max HP; more XP later unlocks a directive.",
 	])
 	_add_section(host, "WIN / LOSS", [
 		"Clear every enemy to win the battle.",
@@ -335,9 +333,8 @@ func _replay_tutorial() -> void:
 
 func _build_protocol(host: VBoxContainer) -> void:
 	_add_section(host, "THE PROTOCOL", [
-		"Protocol is a shared squad resource — the signature system.",
-		"Starts at 0 each battle, +1 at the end of every turn, caps at 10.",
-		"Spend it to manipulate dice before you confirm the turn.",
+		"Protocol is a shared squad resource that starts at 0 each battle, +1 at the end of every turn, and caps at 10.",
+		"Spend it to manipulate dice and use items before you confirm the turn.",
 		"Unspent Protocol can carry between battles (some gear/relics seed a starting pool).",
 	])
 	_add_section(host, "SPENDING PROTOCOL", [

@@ -149,7 +149,7 @@
   {
     "id": "standingOrder",
     "name": "Standing Order",
-    "desc": "All crit bands extend 1 down.",
+    "desc": "Every unit's high-roll ability triggers 1 lower.",
     "icon": "die",
     "effect": { "type": "critBandExtend", "amount": 1 }
   },

@@ -20,7 +20,7 @@
       "id": "detonate",
       "term": "Detonate",
       "category": "offense",
-      "def": "Consumes the target's finite Burn: deals burn amount × remaining turns as immediate damage, then that Burn is cleared. A permanent Burn adds one tick's damage and is not consumed.",
+      "def": "Consumes the target's finite Burn: deals burn amount × remaining turns as immediate damage, then that Burn is cleared.",
       "syntax": "detonate",
       "code": "DT"
     },
@@ -211,7 +211,7 @@
       "id": "summon",
       "term": "Summon",
       "category": "offense",
-      "def": "Enemy-only: on its Overload (a 20), this enemy may call one reinforcement into an open slot.",
+      "def": "Enemy-only: on a 20, this enemy may call one reinforcement into an open slot.",
       "syntax": "summon ~N% on 20"
     },
     {

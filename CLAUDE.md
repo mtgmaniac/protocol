@@ -27,6 +27,16 @@ When any doc conflicts, **docs/TRUTH.md wins** (it supersedes `offline-bundle/GR
 **Portrait** — internal viewport `1080×2400`, desktop preview `450×1000`. The old
 landscape / Phase 0 docs are archived under `docs/archive/` — do not use them.
 
+## Band vocabulary rule
+
+Never use the words "recharge", "strike", "surge", "crit", or "overload" to
+describe or name dice bands in any player-facing copy, documentation, or design
+discussion. These are internal JSON/code keys only. In player-facing text, bands
+are referred to by their numeric range (e.g. "1–4", "20") or not at all. Do not
+claim higher bands are strictly stronger — they are not. (Proper nouns are exempt:
+the unit "Strike Unit", the title "Overload Protocol", and ability/gear/relic/enemy
+names like "Overload Capacitor" or "Core Surge" stay as-is.)
+
 ## Visual theming — single source of truth
 
 - **`PixelUI` (`scripts/ui/pixel_ui.gd`) is the single source of truth for all visual

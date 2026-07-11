@@ -83,7 +83,7 @@ no OTHERS, no ALL·FOE.
 `freezeAllEnemyDice` (+`repeats`, cosmetic `freeze_flavor`: ice/petrify) ·
 `vsFrozenBonus`. Keywords: `chain`, `detonate`, `execute`, `breach`/`breachAll`,
 `leech`, `mark`, `spike`, `jam`/`jamAll`, `rewrite`, `hijack`, `siphon`.
-Zone names: `recharge` → `strike` → `surge` → `crit` → `overload`.
+Zone names: `recharge` → `strike` → `surge` → `crit` → `overload`. **Internal keys ONLY** (Batch 2 band-vocabulary rule): never used in player-facing copy to name/describe bands — player text uses the numeric range ("1–4", "20") or nothing, and never claims higher bands are strictly stronger. Proper nouns (Strike Unit, Overload Protocol, gear/relic/ability names) are exempt.
 
 ## Naming schemes
 

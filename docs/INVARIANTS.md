@@ -60,6 +60,14 @@ max, stating the RULE not flavor. `PixelUI` is the single source of visual const
 `theme_overload.tres` only mirrors it. **Violation looks like:** a green buff chip, an
 outlined selection rectangle, a two-sentence tooltip, a hex literal in a scene script.
 
+**Band vocabulary (Batch 2):** the words `recharge` / `strike` / `surge` / `crit` /
+`overload` are internal zone keys ONLY. Never surface them in player-facing copy,
+docs, or design discussion to name/describe dice bands — refer to a band by its
+numeric range ("1–4", "20") or not at all, and never claim higher bands are strictly
+stronger (they are not). Proper nouns are exempt (Strike Unit, Overload Protocol,
+ability/gear/relic/enemy names). **Violation looks like:** a help line reading "the
+Crit band" or "bands run Recharge > Strike > …", an inspect tooltip naming a band.
+
 ## 8. Balance numbers move together, against the pinned target
 The target is 25–40% skilled full-clear of facility in real play; the sim metric is
 per-op AND per-hero clear-rate variance (l1 policy, `baseline.json`). Numbers interlock —

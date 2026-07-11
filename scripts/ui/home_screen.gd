@@ -859,12 +859,10 @@ func _refresh_detail() -> void:
 		_detail_desc.text = "Locked specialist."
 		return
 	_detail_name.text = unit.display_name.to_upper()
-	_detail_focus_chip.visible = true
-	var focus_text: String = unit.picker_category if unit.picker_category != "" else (unit.role if unit.role != "" else unit.class_name_text)
-	_detail_focus.text = focus_text.to_upper()
-	var accent: Color = _role_color(unit)
-	_detail_focus.add_theme_color_override("font_color", accent)
-	_detail_focus_chip.add_theme_stylebox_override("panel", PixelUI.make_hard_style(accent.darkened(0.74), accent, 2))
+	# Unit category is hidden from the player (Batch 2) — visibility change only.
+	# The picker_category field and _role_color (portrait badge + grid ordering)
+	# still read it on the backend; only this text chip is suppressed.
+	_detail_focus_chip.visible = false
 	var blurb: String = unit.picker_blurb if unit.picker_blurb != "" else "No dossier available."
 	_detail_desc.text = blurb
 

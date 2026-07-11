@@ -938,7 +938,7 @@
             20
           ],
           "name": "Total Suppression",
-          "eff": "11 dmg (all), breach (all)",
+          "eff": "11 dmg (all), breach",
           "dmg": 11,
           "burn": 0,
           "burnT": 0,
@@ -1481,7 +1481,7 @@
                 20
               ],
               "name": "Last Bastion",
-              "eff": "8 shield (all), 10 heal (all)",
+              "eff": "8 shield (all), 10 heal",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1791,7 +1791,7 @@
                 19
               ],
               "name": "Adrenaline Surge",
-              "eff": "6 dmg (all), 6 heal (all)",
+              "eff": "6 dmg (all), 6 heal",
               "dmg": 6,
               "burn": 0,
               "burnT": 0,
@@ -2139,7 +2139,7 @@
                 20
               ],
               "name": "Total Blackout",
-              "eff": "12 dmg (all), jam (all)",
+              "eff": "12 dmg (all), jam",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -2577,7 +2577,7 @@
             20
           ],
           "name": "Total Bandkill",
-          "eff": "14 dmg (all), -3 roll (all), 2t",
+          "eff": "14 dmg (all), -3 roll, 2t",
           "dmg": 14,
           "burn": 0,
           "burnT": 0,
@@ -2605,7 +2605,7 @@
                 5
               ],
               "name": "Carrier Wash",
-              "eff": "3 dmg (all), -1 roll (all), 2t",
+              "eff": "3 dmg (all), -1 roll, 2t",
               "dmg": 3,
               "burn": 0,
               "burnT": 0,
@@ -2624,7 +2624,7 @@
                 11
               ],
               "name": "Scatterjam",
-              "eff": "7 dmg (all), -1 roll (all), 2t",
+              "eff": "7 dmg (all), -1 roll, 2t",
               "dmg": 7,
               "burn": 0,
               "burnT": 0,
@@ -2679,7 +2679,7 @@
                 20
               ],
               "name": "White Noise Core",
-              "eff": "16 dmg (all), jam (all)",
+              "eff": "16 dmg (all), jam",
               "dmg": 16,
               "burn": 0,
               "burnT": 0,
