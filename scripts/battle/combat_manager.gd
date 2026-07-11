@@ -204,7 +204,9 @@ func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) ->
 			enemy_state["target_display"] = "--"
 			continue
 		enemy_state["selected_target_id"] = str(pick["id"])
-		enemy_state["target_display"] = str(pick["unit"].display_name)
+		# Display string only — battle_name() (the callsign) so every surface
+		# (cards, inspect TARGETING line) labels the hero the same way.
+		enemy_state["target_display"] = str(pick["unit"].battle_name())
 		_enemy_assignments[str(enemy_state["id"])] = str(pick["id"])
 
 

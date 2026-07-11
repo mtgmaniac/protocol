@@ -144,31 +144,30 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),
 		})
 	var statuses: Array = _unit_status_entries(state)
-	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
-	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
+	# No role subtitle (Kev 2026-07-10: "HEALER / COMBAT AUGMENTOR" is irrelevant
+	# here) — the header carries just the name; statuses render below it.
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
 	var payload: Dictionary = {
 		"accent": _side_accent(side),
 		"header": {
 			"title": str(data.get("display_name")),
-			"subtitle": subtitle,
+			"subtitle": "",
 		},
 		"statuses": statuses,
 		"abilities": abilities,
 	}
-	# Boss standing rule + targeting personality — always visible in the popup.
 	if is_enemy:
 		var description_lines: Array[String] = []
 		var standing_rule: String = CombatManager.get_boss_standing_rule(str(data.get("display_name")))
 		if standing_rule != "":
 			description_lines.append(standing_rule)
-		# The complete truth of how this enemy picks targets (Task 9).
-		var personality: int = TargetingPersonality.resolve_personality(data)
-		description_lines.append("TARGETING: %s — %s." % [
-			TargetingPersonality.personality_name(personality),
-			TargetingPersonality.personality_blurb(personality),
-		])
-		payload["description"] = "\n".join(description_lines)
+		# WHO this enemy is targeting right now — not HOW it picks (Kev
+		# 2026-07-10: the personality explainer was cut from the popup).
+		var target_display: String = str(state.get("target_display", "")).strip_edges()
+		if target_display != "" and target_display != "--":
+			description_lines.append("TARGETING: %s" % target_display.to_upper())
+		if not description_lines.is_empty():
+			payload["description"] = "\n".join(description_lines)
 	return payload
 
 
@@ -235,14 +234,14 @@ static func _status_entry(kind: String, value: String, duration: int, text: Stri
 
 
 static func _roll_status_text(delta: int) -> String:
-	return "%+d to this unit's die rolls." % delta
+	return "%+d to rolls." % delta
 
 
 # fix-2.2: name + one-line definition for the ±roll chip pinned to a die.
 static func roll_chip_entry(delta: int) -> Dictionary:
 	return _status_entry(
 		"rfm" if delta > 0 else "roll", "%+d" % delta, 0,
-		"Roll chip — this die's effective roll is shifted %+d by active buffs and debuffs." % delta
+		"%+d to this die's rolls." % delta
 	)
 
 
@@ -323,22 +322,6 @@ static func _side_accent(side: String) -> Color:
 	return PixelUI.DT_ENEMY_BORDER if side == "enemy" else PixelUI.DT_HERO_BORDER
 
 
-static func _unit_subtitle(data: Resource) -> String:
-	if data is UnitData:
-		var role: String = str((data as UnitData).role)
-		var cls: String = str((data as UnitData).class_name_text)
-		if role != "" and cls != "":
-			return "%s / %s" % [role, cls]
-		return cls if cls != "" else role
-	if data is EnemyData:
-		var faction: String = str((data as EnemyData).faction)
-		var etype: String = str((data as EnemyData).enemy_type)
-		if faction != "" and etype != "":
-			return "%s / %s" % [faction, etype]
-		return etype if etype != "" else faction
-	return ""
-
-
 static func _status_keyword(kind: String) -> String:
 	match kind:
 		"burn":
@@ -369,35 +352,37 @@ static func _value_label(kind: String) -> String:
 	return "VALUE"
 
 
+# One SHORT line per active effect (Kev 2026-07-10: the freeze / -roll / cloak
+# texts ran multi-line — trimmed hard; the rule details live in the glossary).
 static func _status_text(kind: String, value: String, duration: int) -> String:
 	var turns: String = "%d turn%s" % [duration, "" if duration == 1 else "s"] if duration > 0 else ""
 	match kind:
 		"burn":
-			return "Takes %s damage at the end of each round%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
+			return "Takes %s damage each round%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
 		"shield":
-			return "Absorbs %s incoming damage before HP is touched." % (value if value != "" else "")
+			return "Absorbs %s incoming damage." % (value if value != "" else "")
 		"frozen", "freeze", "die_freeze":
-			return "Die result is locked — it keeps this face and the unit acts again on it%s." % ((" for " + turns) if turns != "" else "")
+			return "Die locked on this face%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
-			return "Untargetable by hostile single-target abilities; friendly picks stay legal. Breaks when this unit deals damage or is hit by an AoE."
+			return "Can't be targeted; breaks on dealing damage."
 		"taunt":
-			return "Taunting — hostile units can only target this unit."
+			return "Hostiles can only target this unit."
 		"taunted":
-			return "Taunted — this unit can only target the taunter."
+			return "Can only target the taunter."
 		"rampage":
-			return "Deals double damage this turn."
+			return "Next hit deals double damage."
 		"ward":
-			return "Blocks the next ability that targets this unit, then breaks."
+			return "Blocks the next ability, then breaks."
 		"mark":
-			return "The next hit on this unit deals +50%, then the Mark is consumed."
+			return "Next hit on this unit deals +50%."
 		"jam":
-			return "Die is Jammed — the next roll is capped%s." % ((" at " + value) if value != "" else "")
+			return "Next roll capped%s." % ((" at " + value) if value != "" else "")
 		"rewrite":
-			return "Die is being Rewritten — the next roll becomes 3."
+			return "Next roll becomes 3."
 		"hijack":
-			return "Hijack pending — this die will copy the squad's highest roll."
+			return "Next roll copies the squad's highest die."
 		"spike":
-			return "Spike %s — any attacker that connects this round takes that much back." % (value if value != "" else "")
+			return "Attackers take %s back this round." % (value if value != "" else "damage")
 	return ""
 
 
