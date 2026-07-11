@@ -200,7 +200,7 @@ func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> Panel
 	var body_row: HBoxContainer = HBoxContainer.new()
 	body_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body_row.add_theme_constant_override("separation", 20)
-	var pips: Array = EffectPip.effects_from_passive(directive.get("effect", {}))
+	var pips: Array = EffectPip.effects_from_directive(directive.get("effect", {}))
 	if not pips.is_empty():
 		var pip_col: VBoxContainer = VBoxContainer.new()
 		pip_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER

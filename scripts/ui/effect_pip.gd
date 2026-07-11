@@ -470,6 +470,50 @@ static func ability_readout_payload(raw: Dictionary, side: String = "hero") -> D
 	return {"effects": effects_from_ability_raw(raw, side), "target": ""}
 
 
+# Directive passives (tier-3 picks) — every directive effect type maps to the
+# pip icon(s) that carry its identity (Kev 2026-07-10: the pips ARE the
+# directive card's image). Icon-only (no values — the desc carries numbers).
+const DIRECTIVE_PIP_KINDS := {
+	"abilityProtocolBonus": ["protocol"],
+	"abilityRevivePctOverride": ["revive"],
+	"battleStartShieldSelf": ["shield"],
+	"bonusVsBurning": ["dmg", "burn"],
+	"bonusVsFrozen": ["dmg", "freeze"],
+	"burnDurationBonus": ["burn"],
+	"burnImmediateTick": ["burn"],
+	"chainExtraJump": ["chain"],
+	"chainFullDamage": ["chain"],
+	"cloakAttackBonus": ["cloak", "dmg"],
+	"damageAppliesMark": ["mark"],
+	"decloakExecute": ["cloak", "execute"],
+	"executeThresholdPct": ["execute"],
+	"freezeDurationBonus": ["freeze"],
+	"healGrantsShield": ["heal", "shield"],
+	"killNextAbilityDamage": ["dmg"],
+	"lowHpCloakOnce": ["cloak"],
+	"nonDamageRecloak": ["cloak"],
+	"overloadDetonateAfter": ["detonate"],
+	"ownShieldBonus": ["shield"],
+	"pierceAlsoBreach": ["pierce", "breach"],
+	"protocolCapBonus": ["protocol"],
+	"rfeAllAlsoJam": ["rfe", "jam"],
+	"rfeAlsoJam": ["rfe", "jam"],
+	"rfeDamagePerRound": ["rfe", "dmg"],
+	"rfeGrantsProtocol": ["rfe", "protocol"],
+	"shieldGrantsSpike": ["shield", "spike"],
+	"spikeBonus": ["spike"],
+	"squadShieldBonus": ["shield"],
+	"tauntDamageReduction": ["taunt", "shield"],
+}
+
+
+static func effects_from_directive(effect: Dictionary) -> Array:
+	var effects: Array = []
+	for kind in DIRECTIVE_PIP_KINDS.get(str(effect.get("type", "")), []):
+		_append_effect(effects, str(kind), "")
+	return effects
+
+
 static func _append_effect(
 	effects: Array,
 	kind: String,
