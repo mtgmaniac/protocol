@@ -47,10 +47,16 @@ const EVENT_TRIGGERS := {
 	"detonate": ["attack_keyword_resolved", "detonate"],
 	"execute": ["attack_keyword_resolved", "execute"],
 	"breach": ["attack_keyword_resolved", "breach"],
+	# An enemy shield-wipe IS Breach semantics (the pips render it as BR) — the
+	# first wipe teaches the same rule.
+	"wipe_shields": ["attack_keyword_resolved", "breach"],
 	"pierce": ["attack_keyword_resolved", "pierce"],
 	"leech": ["attack_keyword_resolved", "leech"],
 	"siphon": ["attack_keyword_resolved", "siphon"],
 	"revive": ["attack_keyword_resolved", "revive"],
+	"rampage": ["attack_keyword_resolved", "rampage"],
+	"pack_bonus": ["attack_keyword_resolved", "pack_bonus"],
+	"summon": ["attack_keyword_resolved", "summon"],
 }
 
 # Features that exist in this build — requires_feature entries whose feature is
@@ -129,6 +135,9 @@ func notice_event(event: Dictionary) -> void:
 	_queue(str(mapping[0]), str(mapping[1]), {
 		"side": str(event.get("side", "")),
 		"target_id": str(event.get("target_id", "")),
+		# Some events (summon) carry only a display name — the card resolver
+		# falls back to it when no id matches.
+		"target_name": str(event.get("target_name", "")),
 	})
 
 
@@ -266,6 +275,15 @@ func _resolve_unit_card_rect(context: Dictionary) -> Rect2:
 		if str(state.get("id", "")) != str(context.get("target_id", "")):
 			continue
 		return _control_rect(view.get("card", null))
+	# Name fallback (summon events carry no target_id, only the summoner's name).
+	var target_name: String = str(context.get("target_name", ""))
+	if target_name != "":
+		for view_variant in views:
+			var view: Dictionary = view_variant
+			var state: Dictionary = view.get("state", {})
+			var unit: Resource = state.get("unit", null) as Resource
+			if unit != null and str(unit.get("display_name")) == target_name:
+				return _control_rect(view.get("card", null))
 	return Rect2()
 
 

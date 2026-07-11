@@ -1,5 +1,5 @@
 {
-  "$comment": "Keyword primers — one-shot micro-tutorials shown the FIRST time a mechanic is sighted (docs/PRIMERS.md is the authoring guide). Text rules: ONE sentence, ~12 words max, states the RULE not flavor, sourced/compressed from keywords.data.json defs — a primer must never contradict the glossary. '$signal_hook_examples' entries are documentation only (not loaded): they show the future signal_hook trigger shape.",
+  "$comment": "Keyword primers — one-shot micro-tutorials shown the FIRST time a mechanic is sighted (docs/PRIMERS.md is the authoring guide). Text rules: ONE sentence, ~12 words max, states the RULE not flavor, sourced/compressed from keywords.data.json defs — a primer must never contradict the glossary. '$signal_hook_examples' entries are documentation only (not loaded): they show the future signal_hook trigger shape. The four targeting-personality primers (SYSTEMATIC/WOUNDED/PACK/SPITEFUL) were CUT 2026-07-10 (Kev: a regular user doesn't need attack-style tutorials) — the unit long-press popup's TARGETING line remains the reference.",
   "primers": [
     {
       "id": "primer_jam",
@@ -178,36 +178,28 @@
       "requires_feature": null
     },
     {
-      "id": "primer_personality_systematic",
-      "trigger": { "type": "personality_assigned", "param": "SYSTEMATIC" },
+      "id": "primer_rampage",
+      "trigger": { "type": "attack_keyword_resolved", "param": "rampage" },
       "target": "unit_card",
-      "text": "SYSTEMATIC: attacks the squad left to right.",
-      "priority": 20,
-      "requires_feature": "targeting_personalities"
+      "text": "RAMPAGE: a stored charge doubled that hit's damage.",
+      "priority": 30,
+      "requires_feature": null
     },
     {
-      "id": "primer_personality_wounded",
-      "trigger": { "type": "personality_assigned", "param": "WOUNDED" },
+      "id": "primer_pack_bonus",
+      "trigger": { "type": "attack_keyword_resolved", "param": "pack_bonus" },
       "target": "unit_card",
-      "text": "WOUNDED: hunts the lowest-HP hero.",
-      "priority": 20,
-      "requires_feature": "targeting_personalities"
+      "text": "PACK BONUS: +1 damage per other living pack member.",
+      "priority": 30,
+      "requires_feature": null
     },
     {
-      "id": "primer_personality_pack",
-      "trigger": { "type": "personality_assigned", "param": "PACK" },
+      "id": "primer_summon",
+      "trigger": { "type": "attack_keyword_resolved", "param": "summon" },
       "target": "unit_card",
-      "text": "PACK: joins another attacker's target.",
-      "priority": 20,
-      "requires_feature": "targeting_personalities"
-    },
-    {
-      "id": "primer_personality_spiteful",
-      "trigger": { "type": "personality_assigned", "param": "SPITEFUL" },
-      "target": "unit_card",
-      "text": "SPITEFUL: strikes back at whoever hurt it last.",
-      "priority": 20,
-      "requires_feature": "targeting_personalities"
+      "text": "SUMMON: this enemy calls reinforcements into the fight.",
+      "priority": 30,
+      "requires_feature": null
     }
   ],
   "$signal_hook_examples": [

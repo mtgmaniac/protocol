@@ -131,11 +131,16 @@ func _run() -> void:
 	_check(sm.call("is_primer_seen", "primer_rewrite"), "higher priority wins the same-moment tie")
 	_check(not sm.call("is_primer_seen", "primer_cloak"), "lower priority loser not marked seen")
 
-	# ── 5) personality_assigned (requires_feature present) ──────────────────────
+	# ── 5) rampage + shield-wipe events route to their keyword primers ──────────
+	# (Personality primers were cut 2026-07-10 — attack styles aren't tutorialized.)
 	primer.on_turn_started()
-	primer.notice_personality_assigned("WOUNDED", "e1")
-	await primer.flush_player_phase()
-	_check(sm.call("is_primer_seen", "primer_personality_wounded"), "personality_assigned (WOUNDED) fires and persists")
+	primer.notice_event({"type": "rampage", "side": "enemy", "target_id": "e1"})
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_rampage"), "rampage event fires the rampage primer and persists")
+	primer.on_turn_started()
+	primer.notice_event({"type": "wipe_shields", "side": "hero", "target_id": "h1"})
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_breach"), "wipe_shields event teaches the Breach rule")
 
 	# ── 6) signal_hook seam: unknown hook is a safe no-op ────────────────────────
 	primer.on_turn_started()
@@ -161,7 +166,7 @@ func _run() -> void:
 	# ── Persistence: grandfather clause + heal-on-merge ──────────────────────────
 	# Veteran save WITHOUT onboarding → all current primers pre-seen.
 	sm.call("_merge_loaded", {"tutorial_done": true, "stats": {"runs_started": 4}})
-	_check(sm.call("is_primer_seen", "primer_jam") and sm.call("is_primer_seen", "primer_personality_spiteful"),
+	_check(sm.call("is_primer_seen", "primer_jam") and sm.call("is_primer_seen", "primer_rampage"),
 		"grandfathered veteran save starts with all current primers seen")
 	# Save WITH onboarding → preserved verbatim, not grandfathered.
 	sm.call("_merge_loaded", {"tutorial_done": true, "stats": {"runs_started": 4}, "onboarding": {"primers_seen": ["primer_jam"]}})

@@ -89,12 +89,12 @@ static func _keyword_definitions_for_raw(raw: Dictionary) -> Array[String]:
 	return lines
 
 
-# The ability's eff string plus the definitions of every keyword it carries.
-static func _ability_inspect_text(raw: Dictionary, fallback: String = "") -> String:
-	var text: String = str(raw.get("eff", fallback))
-	for line in _keyword_definitions_for_raw(raw):
-		text += "\n" + line
-	return text
+# Keyword one-liners only. The authored eff prose was CUT from the popup (Kev
+# 2026-07-10: the long descriptions ate the screen) — the pips carry the
+# numbers, the keyword defs carry the rules.
+static func _ability_inspect_text(raw: Dictionary, _fallback: String = "") -> String:
+	var lines: Array[String] = _keyword_definitions_for_raw(raw)
+	return "\n".join(lines)
 
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
