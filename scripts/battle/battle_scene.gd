@@ -608,7 +608,11 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 
 	if pending_manual_target_ids.is_empty():
 		transition(PHASE_READY_TO_END)
-		return
+	# The refresh at the end of the roll ran while still in AWAIT_ROLL, where the
+	# preview is suppressed; recompute now that the phase is settled (TARGETING or
+	# READY_TO_END) so auto-targeted abilities — AoE and forced-single — show their
+	# damage/heal preview immediately, not only after a manual pick (§3, Batch 4).
+	_card_view.refresh_all_cards()
 
 
 # pkg8.1: every die status renders on the die itself — freeze/petrify crust,
@@ -1597,6 +1601,30 @@ func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
 	return _engine.effective_enemy_roll(state, unit_id, _state)
 
 
+# §2 (Batch 4): enemy-reroll items (Phase Scrambler / Cascade Jammer) mutate
+# enemy_rolls but nothing pushed the new value to the 3D die, so its numeral went
+# stale while the card pips (which read enemy_rolls) updated. Route the rerolled
+# die(s) through the same in-place tray update hero nudge/set/twin use, so the
+# numeral and pips always agree. Skips frozen dice (their reroll fizzles).
+func sync_enemy_dice_after_item_reroll(effect_type: String, target_state: Dictionary) -> void:
+	if dice_tray_3d == null:
+		return
+	if effect_type == "enemyRerollDie":
+		if target_state.is_empty():
+			return
+		var eid: String = str(target_state.get("id", ""))
+		if eid != "" and enemy_rolls.has(eid) and int(target_state.get("die_freeze_turns", 0)) == 0:
+			dice_tray_3d.update_die_result_in_place("enemy", eid, _get_effective_enemy_roll(target_state, eid))
+	elif effect_type == "enemyRerollAll":
+		for es_variant in combat_manager.get_enemy_states():
+			var es: Dictionary = es_variant
+			if bool(es.get("dead", false)) or int(es.get("die_freeze_turns", 0)) > 0:
+				continue
+			var eid2: String = str(es.get("id", ""))
+			if enemy_rolls.has(eid2):
+				dice_tray_3d.update_die_result_in_place("enemy", eid2, _get_effective_enemy_roll(es, eid2))
+
+
 # Builds a dict of effective rolls for all living units in the given states array.
 # Used to pass fully-resolved roll values into combat_manager.resolve_round().
 func _build_effective_rolls(raw_rolls: Dictionary, states: Array, is_hero: bool) -> Dictionary:
@@ -2501,6 +2529,11 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 	if battle_over:
 		return
 	if _protocol.handle_enemy_card_pressed(target_id):
+		return
+	# An enemy card is never a valid target for a roll-modifier pick — tapping one
+	# cancels the armed pick and passes through (§1).
+	if _protocol.in_roll_modifier_pick():
+		_protocol.cancel_roll_modifier_pick()
 		return
 	if turn_phase != PHASE_TARGETING:
 		return

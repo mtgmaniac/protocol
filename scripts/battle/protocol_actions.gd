@@ -216,9 +216,11 @@ func handle_enemy_card_pressed(target_id: String) -> bool:
 	return true
 
 
-# Off-card tap while the item overlay is up cancels back to the loadout.
+# Off-card tap while the item overlay is up cancels back to the loadout; an
+# off-target tap (empty space) while a roll-modifier pick is armed cancels that
+# pick — the ARMED state's exit edge for taps that hit no unit (§1).
 func handle_unhandled_input(event: InputEvent) -> bool:
-	if not _in_item_phase():
+	if not _in_item_phase() and not in_roll_modifier_pick():
 		return false
 	var pressed := false
 	if event is InputEventMouseButton:
@@ -226,11 +228,47 @@ func handle_unhandled_input(event: InputEvent) -> bool:
 		pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
 	elif event is InputEventScreenTouch:
 		pressed = (event as InputEventScreenTouch).pressed
-	if pressed:
-		get_viewport().set_input_as_handled()
+	if not pressed:
+		return false
+	get_viewport().set_input_as_handled()
+	if _in_item_phase():
 		_cancel_item_to_loadout()
-		return true
-	return false
+	else:
+		cancel_roll_modifier_pick()
+	return true
+
+
+# True while a roll-modifier pick (reroll/nudge/set/twin) is armed but not yet
+# committed — the state §1 must always be escapable from.
+func in_roll_modifier_pick() -> bool:
+	var p: int = _scene.turn_phase
+	return p == _scene.PHASE_REROLL_PICK or p == _scene.PHASE_NUDGE_PICK \
+		or p == _scene.PHASE_SET_PICK or p == _scene.PHASE_TWIN_SOURCE_PICK \
+		or p == _scene.PHASE_TWIN_TARGET_PICK
+
+
+# The exit edge from ARMED (§1): drop all pending pick state and return to the
+# resting phase (READY_TO_END / TARGETING) via _finish_roll_modifier_pick, which
+# commits nothing and spends NO Protocol. Arming never deducts Protocol (reroll/
+# nudge/set/twin only pay inside their _apply_*), so a cancel is always free.
+func cancel_roll_modifier_pick() -> void:
+	_close_set_value_popup()
+	_pending_set_hero_id = ""
+	_scene._twin_fates_source_id = ""
+	_scene._finish_roll_modifier_pick()
+
+
+# A Protocol button pressed while another action is armed cancels the armed one
+# first (§1). Returns true when the press should stop here — the SAME action was
+# re-pressed, so it toggles off with nothing armed. A DIFFERENT action returns
+# false and falls through to arm normally now that the resting phase is restored.
+func _cancel_armed_for_button(this_phase_a: int, this_phase_b: int = -1) -> bool:
+	if not in_roll_modifier_pick():
+		return false
+	var same: bool = _scene.turn_phase == this_phase_a \
+		or (this_phase_b != -1 and _scene.turn_phase == this_phase_b)
+	cancel_roll_modifier_pick()
+	return same
 
 
 # ── Moved verbatim from battle_scene (scene state via _scene.) ────────────────
@@ -294,6 +332,8 @@ var _phase_before_item: int = -1
 func _on_reroll_button_pressed() -> void:
 	if _consume_protocol_long_press():
 		return
+	if _cancel_armed_for_button(_scene.PHASE_REROLL_PICK):
+		return
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Reroll.")
@@ -307,6 +347,8 @@ func _on_reroll_button_pressed() -> void:
 
 func _on_nudge_button_pressed() -> void:
 	if _consume_protocol_long_press():
+		return
+	if _cancel_armed_for_button(_scene.PHASE_NUDGE_PICK):
 		return
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
 		if _scene.hero_rolls.is_empty():
@@ -426,6 +468,8 @@ func _get_set_cost() -> int:
 
 
 func _on_set_button_pressed() -> void:
+	if _cancel_armed_for_button(_scene.PHASE_SET_PICK):
+		return
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Set.")
@@ -492,6 +536,8 @@ func _add_twin_fates_button() -> void:
 
 
 func _on_twin_fates_button_pressed() -> void:
+	if _cancel_armed_for_button(_scene.PHASE_TWIN_SOURCE_PICK, _scene.PHASE_TWIN_TARGET_PICK):
+		return
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Twin Fates.")
@@ -789,6 +835,10 @@ func _update_item_panel() -> void:
 func _on_item_button_pressed_menu() -> void:
 	if item_button == null:
 		return
+	# An armed roll-modifier pick is cancelled first so the item is usable in the
+	# restored resting phase (§1: Set → item box cancels Set, then opens the box).
+	if in_roll_modifier_pick():
+		cancel_roll_modifier_pick()
 	AudioManager.play_select()
 	var relic_item: ItemData = null
 	var relic_ids: Array = _scene._game_state().relics
@@ -1040,6 +1090,10 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 		var log_line: String = _scene._engine.apply_consumable_effect(effect, target_state, _scene._state, revive_pct, item.display_name)
 		if log_line != "":
 			_scene._append_log(log_line)
+
+	# §2: enemy-reroll items changed enemy_rolls above — push the new value to the
+	# 3D die so its numeral matches the refreshed card pips.
+	_scene.sync_enemy_dice_after_item_reroll(effect_type, target_state)
 
 	_consume_item(item.id)
 	_pending_item = null

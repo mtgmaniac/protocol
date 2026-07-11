@@ -205,14 +205,13 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 			pass
 		_:
 			return {}
-	# Hero ability previews require *some* committed targeting context: either
-	# we're past targeting (READY_TO_END), or the player has assigned at least
-	# one target this turn. Pick sub-modes inherit that context from the phase
-	# they were opened from, so this check still works without a special case.
-	var include_hero_ability_previews: bool = \
-		_scene.turn_phase == _scene.PHASE_READY_TO_END \
-		or _scene.has_player_target_assignment
-
+	# §3 (Batch 4): preview at ability-resolution time. An ability contributes to a
+	# unit's preview as soon as its target is DETERMINED — AoE (hits its whole
+	# side) or a single-target whose selected_target_id is set, whether the player
+	# picked it or it auto-resolved (the only legal target). There is deliberately
+	# NO dependency on the player having committed a manual pick; the
+	# hero_target == target_id check below is the only gate single-target needs
+	# (an un-targeted ability has selected_target_id == "" and matches nothing).
 	var target_id: String = str(target_state["id"])
 	var total_dmg: int    = 0
 	var total_heal: int   = 0
@@ -235,15 +234,6 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		var blast_all: bool     = bool(raw.get("blastAll", false))
 		var heal_all: bool      = bool(raw.get("healAll", false))
 		var shield_all: bool    = bool(raw.get("shieldAll", false))
-		var is_aoe: bool        = blast_all or heal_all or shield_all
-
-		# AoE abilities need no committed targeting context — they hit every unit
-		# on their side regardless of selection, so preview them the moment the
-		# roll is committed. Single-target previews still require that context
-		# (we're past targeting, or the player has assigned at least one target),
-		# which is gated here and reinforced by the hero_target == target_id check.
-		if not is_aoe and not include_hero_ability_previews:
-			continue
 
 		var hits_this: bool = false
 		if not is_hero:

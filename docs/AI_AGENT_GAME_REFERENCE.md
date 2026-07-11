@@ -271,6 +271,17 @@ projection/paint lives in `compact_unit_card._layout_preview_overlays()`:
   `combat_manager.get_expected_burn_tick()` — never re-derive it in UI code
 - the resolution-feedback chip (`_hp_chip` / `forecast_hp`) is hidden while a
   preview is active; the two systems must not both paint
+- **auto-targeted abilities preview too (Batch 4 §3):** AoE (hits its whole side)
+  and forced-single (its only legal target auto-resolves) contribute to the
+  preview the moment the roll's targeting settles — NOT only after a manual pick.
+  `compute_preview_for_unit` keys single-target on `selected_target_id` (auto or
+  manual), with no `has_player_target_assignment` gate. The preview is recomputed
+  after the roll's phase transition (the refresh at the end of `battle_scene._do_roll`
+  runs once the phase is TARGETING/READY_TO_END, not the stale AWAIT_ROLL refresh).
+- **item-applied burn (Batch 4 §4):** burn from an item skips its application
+  round like any burn (`_apply_burn`, skip-first-tick) and previews on the round it
+  first ticks; the same roll-time refresh above makes that forecast appear. The
+  burn damage itself was always correct — only the preview refresh was missing.
 
 ## 10. Ability Readout Rules
 
@@ -343,6 +354,19 @@ Footer rules:
 - action buttons on the right
 - protocol capped at `10`; battles start at `0`, gain `+1` at end of each turn
 - footer actions: Reroll (2), Nudge (1, +3 roll), Set-a-die (4), Item (1 flat)
+- **Protocol actions ARM, they don't commit (Batch 4 §1):** selecting
+  Reroll/Nudge/Set/Twin enters a pick sub-phase and spends nothing. Clicking
+  anything that is not a valid target for the armed action — another Protocol
+  button, the item box, an enemy card, or empty space — cancels the pending action
+  and passes the click through; pressing the same button toggles it off. Zero
+  Protocol is spent on a cancel. The exit edge is
+  `protocol_actions.cancel_roll_modifier_pick()` (routes through
+  `battle_scene._finish_roll_modifier_pick`); before this the *_PICK phases had no
+  exit and the player was stuck.
+- **enemy die reroll numeral (Batch 4 §2):** enemy-reroll items (Phase Scrambler /
+  Cascade Jammer) push the new roll to the 3D die via
+  `battle_scene.sync_enemy_dice_after_item_reroll` so the numeral matches the card
+  pips; hero rerolls already did this through `reroll_die_to_result`.
 
 ## 13. Data Source Files
 
