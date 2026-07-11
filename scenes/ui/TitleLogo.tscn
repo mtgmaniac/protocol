@@ -1,0 +1,73 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/title_logo.gd" id="1_tlogo"]
+[ext_resource type="Texture2D" uid="uid://bbvt1vlykha34" path="res://assets/ui/logo_base.png" id="2_base"]
+[ext_resource type="Texture2D" uid="uid://ccsxrdbholjnw" path="res://assets/ui/logo_core.png" id="3_core"]
+[ext_resource type="Texture2D" uid="uid://lbs8typauls5" path="res://assets/ui/logo_protocol.png" id="4_proto"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_core"]
+blend_mode = 1
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_proto"]
+blend_mode = 1
+
+[node name="TitleLogo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture_filter = 1
+script = ExtResource("1_tlogo")
+
+[node name="Stack" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Base" type="TextureRect" parent="Stack"]
+texture_filter = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_base")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CoreGlow" type="TextureRect" parent="Stack"]
+texture_filter = 1
+material = SubResource("CanvasItemMaterial_core")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_core")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ProtoGlow" type="TextureRect" parent="Stack"]
+texture_filter = 1
+material = SubResource("CanvasItemMaterial_proto")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_proto")
+expand_mode = 1
+stretch_mode = 5
