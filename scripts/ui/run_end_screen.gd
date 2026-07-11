@@ -19,6 +19,9 @@ const BUTTON_SIZE := Vector2(360, 120)
 
 
 func _ready() -> void:
+	# Encounter end (victory or defeat): crossfade back to loop 1.
+	MusicManager.play_track(&"sci_fi_loop_1")
+	MusicManager.set_combat(false)
 	# Run is over here — blank the persistent header's run label and make its
 	# buttons inert (this screen binds none of them).
 	PersistentHeader.set_run_active(false)

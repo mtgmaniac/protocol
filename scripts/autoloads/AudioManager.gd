@@ -23,18 +23,23 @@ const VOLUME_OVERRIDES := {
 
 const SETTINGS_PATH := "user://settings.cfg"
 
+const DEFAULT_SFX_VOLUME := 1.0
+const SILENCE_DB := -80.0
+
 var _streams: Dictionary = {}
 var _pool: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _recent: Dictionary = {}
 var _suppressed: bool = false
 var _muted: bool = false
+var _sfx_volume: float = DEFAULT_SFX_VOLUME  # linear 0..1 (the user slider)
 
 
 func _ready() -> void:
 	_ensure_sfx_bus()
 	_load_settings()
 	_apply_mute()
+	_apply_sfx_volume()
 	for key in SFX_KEYS:
 		var path: String = SFX_DIR + key + ".wav"
 		# exists() guard: a registered key whose clip hasn't been dropped in yet
@@ -113,14 +118,35 @@ func _apply_mute() -> void:
 		AudioServer.set_bus_mute(idx, _muted)
 
 
+# ── SFX volume (the user slider; music volume lives on MusicManager) ────────────
+func get_sfx_volume() -> float:
+	return _sfx_volume
+
+
+func set_sfx_volume(volume: float) -> void:
+	_sfx_volume = clampf(volume, 0.0, 1.0)
+	_apply_sfx_volume()
+	_save_settings()
+
+
+func _apply_sfx_volume() -> void:
+	var idx: int = AudioServer.get_bus_index("SFX")
+	if idx == -1:
+		return
+	var db: float = SILENCE_DB if _sfx_volume <= 0.001 else linear_to_db(_sfx_volume)
+	AudioServer.set_bus_volume_db(idx, db)
+
+
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) == OK:
 		_muted = bool(cfg.get_value("audio", "muted", false))
+		_sfx_volume = clampf(float(cfg.get_value("audio", "sfx_volume", DEFAULT_SFX_VOLUME)), 0.0, 1.0)
 
 
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SETTINGS_PATH)  # preserve any other sections; ignore "not found" on first save
 	cfg.set_value("audio", "muted", _muted)
+	cfg.set_value("audio", "sfx_volume", _sfx_volume)
 	cfg.save(SETTINGS_PATH)

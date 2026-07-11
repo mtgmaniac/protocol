@@ -541,6 +541,7 @@ func _slow_mo() -> void:
 # board-wide shake, framing the payoff beat. Flat, no glow — just a flash. Fires
 # on any ability whose die's final face is 20, however it reached 20 (NK-02).
 func _celebrate_overload() -> void:
+	MusicManager.duck_for_stinger()  # drop the bed so the stinger cuts through
 	AudioManager.play_sfx("overload")
 	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):
 		var wash: ColorRect = ColorRect.new()

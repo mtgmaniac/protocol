@@ -224,6 +224,8 @@ func _scene_manager() -> Variant:
 
 
 func _ready() -> void:
+	# The faction track keeps playing uninterrupted — battle only opens it up.
+	MusicManager.set_combat(true)
 	_layout = BattleLayout.new()
 	add_child(_layout)
 	_layout.setup(self)
@@ -400,6 +402,8 @@ func _on_auto_battle_button_pressed() -> void:
 
 func _exit_tree() -> void:
 	AudioManager.set_suppressed(false)
+	# Safety net: whatever path left the battle, the track settles back.
+	MusicManager.set_combat(false)
 	# Header survives scene changes; release this battle's button bindings so its
 	# buttons go inert on the screens that follow (reward / evolution / home).
 	if is_instance_valid(PersistentHeader):
@@ -1172,6 +1176,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	var outcome: String = str(result.get("result", "ongoing"))
 	if outcome == "victory":
 		battle_over = true
+		MusicManager.set_combat(false)
 		roll_button.disabled = true
 		_persist_protocol_carryover()
 		_capture_battle_victory_for_xp()
@@ -1190,6 +1195,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 			_scene_manager().go_to_reward_screen()
 	elif outcome == "defeat":
 		battle_over = true
+		MusicManager.set_combat(false)
 		roll_button.disabled = true
 		_refresh_summary("Defeat. Squad wiped.")
 		_game_state().finish_run("defeat")
@@ -1259,6 +1265,7 @@ func _capture_battle_victory_for_xp() -> void:
 
 func _finish_battle_victory() -> void:
 	battle_over = true
+	MusicManager.set_combat(false)
 	_disable_combat_actions()
 	_persist_protocol_carryover()
 	_capture_battle_victory_for_xp()
@@ -1277,6 +1284,7 @@ func _finish_battle_victory() -> void:
 
 func _finish_battle_defeat() -> void:
 	battle_over = true
+	MusicManager.set_combat(false)
 	_disable_combat_actions()
 	_refresh_summary("Defeat. Squad wiped.")
 	_game_state().finish_run("defeat")

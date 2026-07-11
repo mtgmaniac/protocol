@@ -131,6 +131,9 @@ var _deploy_button: Button
 
 # ─── Lifecycle ────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# Same track as the title — a strict no-op arriving from it (never restarts).
+	MusicManager.play_track(&"sci_fi_loop_1")
+	MusicManager.set_combat(false)
 	# No run is active on the deploy screen — blank the persistent header's run
 	# label and leave its buttons inert (this screen binds none of them).
 	PersistentHeader.set_run_active(false)
@@ -957,6 +960,9 @@ func _on_begin_run_pressed() -> void:
 
 func _launch_run(directive_relic_id: String) -> void:
 	GameState.start_run(_selected_unit_ids, _selected_operation_id)
+	# Encounter start: the ONE crossfade to the faction's track. It then plays
+	# unbroken across every battle and between-battle screen until encounter end.
+	MusicManager.play_for_faction(GameState.selected_operation_id)
 	if directive_relic_id != "":
 		GameState.set_starting_directive(directive_relic_id)
 	GameState.advance_to_next_battle()

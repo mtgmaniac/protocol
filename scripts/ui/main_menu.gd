@@ -16,6 +16,9 @@ var _tutorial_button: Button
 
 
 func _ready() -> void:
+	# Boot → title: loop 1 starts here and won't restart on the way to deploy.
+	MusicManager.play_track(&"sci_fi_loop_1")
+	MusicManager.set_combat(false)
 	# Header carries no run on the splash.
 	if is_instance_valid(PersistentHeader):
 		PersistentHeader.set_run_active(false)

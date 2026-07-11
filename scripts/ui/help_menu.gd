@@ -701,6 +701,11 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 # ── SETTINGS ─────────────────────────────────────────────────────────────────────
 func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var mm: Variant = _music()
+	_add_toggle_row(host, "Music", mm == null or bool(mm.is_music_enabled()), _on_toggle_music)
+	_add_slider_row(host, "Music volume", 0.8 if mm == null else float(mm.get_music_volume()), _on_music_volume_changed)
+	var am: Variant = _audio()
+	_add_slider_row(host, "SFX volume", 1.0 if am == null else float(am.get_sfx_volume()), _on_sfx_volume_changed)
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
 
 	# --- Tutorials (Kev 2026-07-10) ---
@@ -820,6 +825,29 @@ func _on_toggle_mute(pressed: bool) -> void:
 		am.set_muted(pressed)
 
 
+# Live MusicManager node (Variant), same absent-autoload tolerance as _audio().
+func _music() -> Variant:
+	return get_node_or_null("/root/MusicManager")
+
+
+func _on_toggle_music(pressed: bool) -> void:
+	var mm: Variant = _music()
+	if mm != null:
+		mm.set_music_enabled(pressed)
+
+
+func _on_music_volume_changed(value: float) -> void:
+	var mm: Variant = _music()
+	if mm != null:
+		mm.set_music_volume(value)
+
+
+func _on_sfx_volume_changed(value: float) -> void:
+	var am: Variant = _audio()
+	if am != null:
+		am.set_sfx_volume(value)
+
+
 # A label + ON/OFF toggle button row, styled like the active/inactive tab buttons.
 func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, on_toggle: Callable) -> void:
 	var row := HBoxContainer.new()
@@ -844,6 +872,60 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 		on_toggle.call(pressed)
 		_style_toggle_button(btn))
 	row.add_child(btn)
+
+
+# A label + slider row (0..1, live-applies on drag). Hard-edged track/fill per
+# INVARIANTS #7 (no rounded corners); flat square grabber generated from PixelUI
+# colors so no new art asset is needed.
+func _add_slider_row(parent: VBoxContainer, label_text: String, initial: float, on_change: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 12)
+	parent.add_child(row)
+
+	var label := _make_wrap_label(label_text, 40, PixelUI.TEXT_PRIMARY, 2)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(label)
+
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = clampf(initial, 0.0, 1.0)
+	slider.custom_minimum_size = Vector2(420, 96)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_END
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.mouse_filter = Control.MOUSE_FILTER_STOP
+	slider.focus_mode = Control.FOCUS_NONE
+	# The track/fill styleboxes need explicit content height or HSlider draws them
+	# as a hairline. 32 design px → 16 window px at the half-scale preview.
+	var track := PixelUI.make_hard_style(PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 2)
+	track.content_margin_top = 16
+	track.content_margin_bottom = 16
+	var fill := PixelUI.make_hard_style(Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, 2)
+	fill.content_margin_top = 16
+	fill.content_margin_bottom = 16
+	slider.add_theme_stylebox_override("slider", track)
+	slider.add_theme_stylebox_override("grabber_area", fill)
+	slider.add_theme_stylebox_override("grabber_area_highlight", fill)
+	slider.add_theme_icon_override("grabber", _slider_grabber_icon())
+	slider.add_theme_icon_override("grabber_highlight", _slider_grabber_icon())
+	slider.add_theme_icon_override("grabber_disabled", _slider_grabber_icon())
+	slider.value_changed.connect(on_change)
+	row.add_child(slider)
+
+
+var _grabber_icon: ImageTexture
+
+
+func _slider_grabber_icon() -> Texture2D:
+	if _grabber_icon == null:
+		var img := Image.create(28, 64, false, Image.FORMAT_RGBA8)
+		img.fill(PixelUI.DT_CYAN)
+		_grabber_icon = ImageTexture.create_from_image(img)
+	return _grabber_icon
 
 
 func _style_toggle_button(btn: Button) -> void:

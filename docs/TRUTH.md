@@ -166,6 +166,41 @@ Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Tau
 
 Deep navy bg; pixel art; `m5x7` font; hard edges, no gradients. Meaning-based color (current, post terminal-UI pass): **cyan/teal = player + primary actions** (teal primary buttons, corner brackets) · **red/rust = enemy/damage** · **green = HP bars and heals ONLY** · **amber = protocol pips, risk/confirm actions, unlock accents** · **gold = commit/reward moments**. `PixelUI` (`scripts/ui/pixel_ui.gd`) is the single source of truth for visual constants; `theme_overload.tres` mirrors it.
 
+## Audio (2026-07-11 music pass)
+
+**SFX:** `AudioManager` autoload — runtime `SFX` bus, pooled players, pitch/volume
+randomization, `set_suppressed` for harnesses. **Music:** `MusicManager` autoload
+(`scripts/autoloads/MusicManager.gd`) — runtime `Music` bus + one lowpass filter,
+two-player crossfade pair, tracks in `assets/audio/music/sci_fi_loop_N.ogg`
+(OGG, `loop=true` in import; only the 6 mapped files ship).
+
+- **Track lifecycle (the encounter identity rule):** the faction track starts once at
+  encounter start and plays continuously and uninterrupted until encounter end — no
+  stop/restart/crossfade between battles. Track changes at exactly THREE moments:
+  boot→title (`sci_fi_loop_1`), encounter start (`_launch_run` →
+  `play_for_faction`), encounter end (`run_end_screen._ready` → loop 1). Same-key
+  `play_track` is a strict no-op (title→deploy never restarts). Any other
+  `play_track`/`play_for_faction` caller is a bug. Tutorial stays on loop 1.
+- **Faction map** (`FACTION_TRACKS`; hive=4 spec-fixed, rest are op-order
+  placeholders pending an ear pass): facility=2, hive=4, veil=3, voidCirclet=5,
+  stellarMenagerie=6.
+- **Intensity states** (`set_combat(bool)`, the ONLY thing battle screens touch):
+  combat = full user volume / 20000 Hz / pitch 1.06 over 0.5s; non-combat = −6 dB /
+  1400 Hz / 1.0 over 1.0s; SINE IN_OUT, playback position never jumps. Wired:
+  `battle_scene._ready` true; the four `battle_over = true` sites + `_exit_tree`
+  false. Pitch stays ≤1.06 (Godot resamples — higher goes cartoon).
+- **Volume model:** Music bus = `_user_music_db + _state_db + _duck_db` — every
+  operation is an offset from the user's configured level; slider moves apply
+  immediately mid-anything. Nat-20 duck (`duck_for_stinger`, hooked in
+  `battle_feedback._celebrate_overload`): −8 dB, 0.04s attack / 0.30s hold / 0.45s
+  release, restores to the state target.
+- **Settings** (`user://settings.cfg` `[audio]`): `muted` + `sfx_volume`
+  (AudioManager), `music_enabled` + `music_volume` (MusicManager). UI in help-menu
+  SETTINGS: Music toggle, Music/SFX volume sliders (`_add_slider_row`), Mute-all.
+- **Headless:** MusicManager runs its full state machine but never starts playback
+  (dummy driver; a live OGG playback at exit leaks past ObjectDB cleanup).
+  Regression: `scripts/debug/music_smoke_test.gd` (in `verify_gate.py`).
+
 **Splash logo:** the main menu title is `scenes/ui/TitleLogo.tscn` — three stacked layers (`assets/ui/logo_base/core/protocol.png`: dimmed base + two additive-blend glow layers), Tween-driven boot-in → desynced idle pulses → 5–9s glitch tear → flare-out on BEGIN (`scripts/ui/title_logo.gd`; timings are `@export` tunables). BEGIN/TUTORIAL stay disabled until `boot_finished`. Sequence via the `boot_finished`/`flare_finished` signals, not by awaiting the methods — a coroutine await that dies mid-flight (quit at menu) leaks a GDScriptFunctionState cycle. The old static `logo_scifi_overload_protocol.png` is no longer referenced.
 
 ## Assets — portraits (2026-07-07 wiring pass)
