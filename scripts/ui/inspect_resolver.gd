@@ -168,7 +168,32 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 			description_lines.append("TARGETING: %s" % target_display.to_upper())
 		if not description_lines.is_empty():
 			payload["description"] = "\n".join(description_lines)
+	else:
+		# Equipped gear (Kev 2026-07-10): icon + name + pips + description,
+		# loadout-row style, so the long-press shows what the unit is wearing.
+		payload["gear"] = _unit_gear_entries(str(data.get("id")))
 	return payload
+
+
+static func _unit_gear_entries(unit_id: String) -> Array:
+	var entries: Array = []
+	if unit_id == "":
+		return entries
+	var gs: Node = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() is SceneTree else null
+	if gs == null:
+		return entries
+	var gear_map: Dictionary = gs.get("gear_by_unit")
+	for gear_id_variant in gear_map.get(unit_id, []):
+		var item: ItemData = DataManager.get_item(str(gear_id_variant)) as ItemData
+		if item == null:
+			continue
+		entries.append({
+			"icon": item.icon,
+			"name": item.display_name,
+			"effects": EffectPip.effects_from_passive(item.effect, item.target_kind),
+			"text": item.description,
+		})
+	return entries
 
 
 # Active battle statuses for the unit inspect — each entry { effects:[pip], text } renders as a

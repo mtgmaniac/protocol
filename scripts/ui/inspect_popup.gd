@@ -169,6 +169,19 @@ func _build_sections(content: VBoxContainer, payload: Dictionary) -> void:
 		prev_exists = true
 		first_content = false
 
+	# Equipped gear (Kev 2026-07-10): loadout-row style — icon, name, pips +
+	# written description.
+	var gear: Array = payload.get("gear", [])
+	if not gear.is_empty():
+		var gear_block := VBoxContainer.new()
+		gear_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gear_block.add_theme_constant_override("separation", ROW_SEP + 4)
+		for gear_variant in gear:
+			gear_block.add_child(_build_gear_row(gear_variant as Dictionary))
+		_add_section(content, prev_exists, first_content and has_header, gear_block, "GEAR")
+		prev_exists = true
+		first_content = false
+
 	var stats: Array = payload.get("stats", [])
 	if not stats.is_empty():
 		_add_section(content, prev_exists, first_content and has_header, _build_stats(stats), "")
@@ -230,6 +243,47 @@ func _build_header(header: Dictionary) -> Control:
 	var subtitle: String = str(header.get("subtitle", ""))
 	if subtitle != "":
 		title_box.add_child(_make_label(subtitle.to_upper(), SUBTITLE_FONT, PixelUI.INSPECT_TEXT_MUTED))
+	return row
+
+
+# One equipped-gear row: large bare icon beside name, then pips + description.
+func _build_gear_row(entry: Dictionary) -> Control:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 16)
+	var icon: Texture2D = entry.get("icon") as Texture2D
+	if icon != null:
+		var center := CenterContainer.new()
+		center.custom_minimum_size = Vector2(88, 88)
+		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tex := TextureRect.new()
+		tex.custom_minimum_size = Vector2(80, 80)
+		tex.texture = icon
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		center.add_child(tex)
+		row.add_child(center)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	info.add_theme_constant_override("separation", 4)
+	row.add_child(info)
+	info.add_child(_make_label(str(entry.get("name", "")), ABILITY_NAME_FONT, _accent))
+	var detail := HBoxContainer.new()
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.add_theme_constant_override("separation", 10)
+	for effect_variant in entry.get("effects", []):
+		var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD)
+		group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		detail.add_child(group)
+	var text: String = str(entry.get("text", "")).strip_edges()
+	if text != "":
+		var text_label := _make_label(text, BODY_FONT, PixelUI.INSPECT_TEXT_MUTED, true)
+		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		detail.add_child(text_label)
+	if detail.get_child_count() > 0:
+		info.add_child(detail)
 	return row
 
 

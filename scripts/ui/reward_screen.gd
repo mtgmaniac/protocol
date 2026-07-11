@@ -14,9 +14,6 @@
 # codebase's centralization convention — see home_screen.gd). No hardcoded scene values.
 extends Control
 
-# Preloaded (not referenced by global class_name) so the screen builds even before the
-# editor regenerates its global-class cache for the new ItemTypeFrame script.
-const TypeFrameScript := preload("res://scripts/ui/item_type_frame.gd")
 const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
 
 
@@ -30,10 +27,9 @@ const CARD_PADDING := 18
 const CARD_SEP := 9
 const CARD_BORDER := 5   # hard border, thick enough to survive the canvas_items downscale
 
-# Type-silhouette icon frame.
-const ICON_FRAME_SIZE := 124.0
-const ICON_TEXTURE_SIZE := 80.0
-const ICON_FRAME_LINE := 5.0
+# Bare large icon (Kev 2026-07-10: silhouette frames cut, icon is the star).
+const ICON_AREA_SIZE := 200.0
+const ICON_TEXTURE_SIZE := 180.0
 
 # Corner-bracket selection indicator (L per corner = horizontal arm + vertical arm).
 const BRACKET_LEN := 46.0
@@ -290,12 +286,22 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 
 	vbox.add_child(_create_icon_area(item, accent))
 	vbox.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, accent, 3))
-	# Label line, plain text, rarity-colored (no filled chip). "RARITY TYPE" (rarity
-	# first); relics show just "RELIC" but keep the legendary color scheme. Type is
-	# carried by the icon silhouette, not by color.
-	var label_text: String = _format_item_type_label(item) if item.item_type == "relic" \
-		else "%s %s" % [_rarity_name(item).to_upper(), _format_item_type_label(item)]
-	vbox.add_child(_make_centered_label(label_text, LABEL_FONT_SIZE, accent, 1))
+	# Rarity word + the boxed TYPE chip (shared with ItemCard) — the type cue
+	# that replaced the shape silhouettes (Kev 2026-07-10).
+	var type_row := HBoxContainer.new()
+	type_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	type_row.add_theme_constant_override("separation", 12)
+	type_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	type_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if item.item_type != "relic":
+		var rarity_label := _make_centered_label(_rarity_name(item).to_upper(), LABEL_FONT_SIZE, accent, 1)
+		rarity_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		rarity_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		type_row.add_child(rarity_label)
+	var chip := ItemCard.type_chip(item, accent)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	type_row.add_child(chip)
+	vbox.add_child(type_row)
 	vbox.add_child(_create_pip_row(item))
 	vbox.add_child(_create_description_label(item.description))
 
@@ -319,39 +325,27 @@ func _style_card_panel(panel: PanelContainer, accent: Color, selected: bool) -> 
 	panel.add_theme_stylebox_override("panel", style)
 
 
+# Bare LARGE icon — no outline, no shape silhouette (Kev 2026-07-10: the icon
+# is the star; the boxed type word below carries type).
 func _create_icon_area(item: ItemData, accent: Color) -> Control:
 	var center := CenterContainer.new()
-	center.custom_minimum_size = Vector2(0, ICON_FRAME_SIZE)
+	center.custom_minimum_size = Vector2(0, ICON_AREA_SIZE)
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var frame := TypeFrameScript.new()
-	frame.custom_minimum_size = Vector2(ICON_FRAME_SIZE, ICON_FRAME_SIZE)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.configure(item.item_type, accent, ICON_FRAME_LINE)
-	center.add_child(frame)
-
-	# Icon centered inside the silhouette (circle / square / hexagon all centre on their
-	# bounding box, so a plain CenterContainer is correct).
-	var icon_center := CenterContainer.new()
-	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(icon_center)
-
 	if item.icon != null:
 		var texture_rect := TextureRect.new()
 		texture_rect.custom_minimum_size = Vector2(ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE)
 		texture_rect.texture = item.icon
 		texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_center.add_child(texture_rect)
+		center.add_child(texture_rect)
 	else:
-		var icon_label := _make_label(_get_item_icon_char(item.icon_key), 44, accent, 2)
+		var icon_label := _make_label(_get_item_icon_char(item.icon_key), 64, accent, 2)
 		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		icon_center.add_child(icon_label)
+		center.add_child(icon_label)
 	return center
 
 

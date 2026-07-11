@@ -1,33 +1,42 @@
 # The themed LOADOUT menu opened from the battle item button. Shows the player's consumable
-# slots (3) and relic (1) in the shared Dithered-Terminal / inspect styling, using the
-# ItemTypeFrame silhouettes (square = item, hexagon = relic). Tapping a filled item invokes
-# the supplied use-callback and closes; tapping outside dismisses. One menu at a time.
+# slots (3) and relic (1) in the shared Dithered-Terminal / inspect styling. Each row is a
+# LARGE bare icon (the shape silhouettes were cut 2026-07-10) beside the name and a pip
+# preview of what the item does — long-press for the full description. Tapping a filled
+# item invokes the supplied use-callback and closes; tapping outside dismisses.
 #
 # All colors via PixelUI tokens (INSPECT_* / rarity_color); blocky corners, m5x7 font, no
 # gradients/glows/shadows.
 class_name LoadoutMenu
 extends CanvasLayer
 
-const TypeFrameScript := preload("res://scripts/ui/item_type_frame.gd")
 const HEADER_BAND_HEIGHT := 144.0
 
 const MENU_LAYER := 128
 const SCREEN_MARGIN := 18.0
-const PANEL_WIDTH := 540.0
-const CONTENT_PAD := 22
-const SECTION_SEP := 12
-const ROW_SEP := 10
+# Kev 2026-07-10: drastically bigger menu + icons.
+const PANEL_WIDTH := 900.0
+const CONTENT_PAD := 26
+const SECTION_SEP := 14
+const ROW_SEP := 12
 const ITEM_SLOTS := 3
-const ICON_SIZE := 78.0
-const ICON_TEXTURE := 46.0
-const ICON_LINE := 4.0
+const ICON_SIZE := 150.0
+const ICON_TEXTURE := 136.0
 const PANEL_BORDER := 3
 const HEADER_DIVIDER := 6
 const SECTION_DIVIDER := 2
 
-const HEADER_FONT := 46
-const SECTION_FONT := 28
-const NAME_FONT := 34
+const HEADER_FONT := 56
+const SECTION_FONT := 36
+const NAME_FONT := 44
+const ROW_PIP_PROFILE := {
+	"icon_size": 44,
+	"value_font": 52,
+	"duration_ratio": 0.6,
+	"icon_value_gap": 4,
+	"group_min_width": 72,
+	"outline": 2,
+	"duration_outline": 2,
+}
 
 static var _active: LoadoutMenu = null
 
@@ -105,20 +114,22 @@ func _build(items: Array, relic: Resource, anchor_rect: Rect2) -> void:
 	content.add_child(item_rows)
 	for i in ITEM_SLOTS:
 		var item: ItemData = items[i] as ItemData if i < items.size() else null
-		item_rows.add_child(_make_slot_row(item, "square", true))
+		item_rows.add_child(_make_slot_row(item, true))
 
 	content.add_child(_divider(SECTION_DIVIDER, PixelUI.INSPECT_DIVIDER))
 	content.add_child(_make_label("RELIC", SECTION_FONT, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
-	content.add_child(_make_slot_row(relic as ItemData, "hexagon", false))
+	content.add_child(_make_slot_row(relic as ItemData, false))
 
 	call_deferred("_relayout", anchor_rect)
 
 
-# A single loadout row: silhouette-framed icon + item name. Filled item slots are tappable
-# (invoke the use-callback); empty slots and the relic row are display-only.
-func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
+# A single loadout row: LARGE bare icon beside the name + a pip preview of the
+# item's effect (long-press for the full description). Filled item slots are
+# tappable (invoke the use-callback); empty slots and the relic row are
+# display-only.
+func _make_slot_row(item: ItemData, usable: bool) -> Control:
 	var filled: bool = item != null
-	var accent: Color = _slot_accent(item, shape)
+	var accent: Color = _slot_accent(item, usable)
 
 	var row := PanelContainer.new()
 	row.custom_minimum_size = Vector2(0, ICON_SIZE + 8.0)
@@ -130,21 +141,35 @@ func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
 
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_theme_constant_override("separation", 16)
+	hbox.add_theme_constant_override("separation", 20)
 	hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(hbox)
 
-	hbox.add_child(_make_icon(item, shape, accent))
+	hbox.add_child(_make_icon(item))
 
-	# Name reads bright for legibility; rarity/type is carried by the icon frame's color
-	# and silhouette, not the name.
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	info.add_theme_constant_override("separation", 6)
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(info)
+
 	var name_text: String = item.display_name if filled else "—"
-	var name_color: Color = (PixelUI.INSPECT_TEXT if filled else PixelUI.INSPECT_TEXT_DIM)
+	var name_color: Color = (accent if filled else PixelUI.INSPECT_TEXT_DIM)
 	var name_label := _make_label(name_text, NAME_FONT, name_color, HORIZONTAL_ALIGNMENT_LEFT)
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hbox.add_child(name_label)
+	info.add_child(name_label)
+
+	# Effect-pip preview — the "what does it do" hint without the long text.
+	if filled:
+		var pips: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
+		if not pips.is_empty():
+			var pip_row := HBoxContainer.new()
+			pip_row.add_theme_constant_override("separation", 10)
+			pip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			for pip_variant in pips:
+				pip_row.add_child(EffectPip.build_group(pip_variant, ROW_PIP_PROFILE))
+			info.add_child(pip_row)
 
 	if filled:
 		# Long-press inspects any filled item/relic (same InspectPopup as the battle cards);
@@ -160,42 +185,28 @@ func _make_slot_row(item: ItemData, shape: String, usable: bool) -> Control:
 	return row
 
 
-func _make_icon(item: ItemData, shape: String, accent: Color) -> Control:
+# Bare, large icon — no outline, no shape frame (Kev 2026-07-10).
+func _make_icon(item: ItemData) -> Control:
 	var center := CenterContainer.new()
 	center.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
 	center.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var frame := TypeFrameScript.new()
-	frame.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.shape = shape
-	frame.line_color = accent
-	frame.line_width = ICON_LINE
-	frame.queue_redraw()
-	center.add_child(frame)
-
-	var icon_center := CenterContainer.new()
-	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(icon_center)
-
 	if item != null and item.icon != null:
 		var tex := TextureRect.new()
 		tex.custom_minimum_size = Vector2(ICON_TEXTURE, ICON_TEXTURE)
 		tex.texture = item.icon
 		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_center.add_child(tex)
+		center.add_child(tex)
 	return center
 
 
-func _slot_accent(item: ItemData, shape: String) -> Color:
+func _slot_accent(item: ItemData, usable: bool) -> Color:
 	if item == null:
 		return PixelUI.INSPECT_TEXT_DIM
-	if shape == "hexagon":
+	if not usable:
 		return PixelUI.rarity_color("legendary")
 	return PixelUI.rarity_color(item.rarity if item.rarity != "" else "common")
 

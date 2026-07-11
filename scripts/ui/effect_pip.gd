@@ -51,6 +51,10 @@ const PROFILE_CARD := {
 # Self stays parenthesized; "all" no longer uses )..( — the AoE marker icon is
 # appended after the value by build_group instead (batch 161).
 static func format_scoped(text: String, scope: String) -> String:
+	# An icon-carried keyword strips its letter code to "" — never wrap the
+	# empty string ("()" artifact on self-scoped cloak/ward pips).
+	if text == "":
+		return ""
 	match scope:
 		"self":
 			return "(%s)" % text

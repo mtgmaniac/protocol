@@ -94,6 +94,9 @@ func _parse_args() -> Dictionary:
 			config["pick_mode"] = arg.get_slice("=", 1)
 		elif arg == "--capture-inspect-hero":
 			config["inspect"] = "hero"
+		elif arg.begins_with("--capture-hero-gear="):
+			# Comma-separated gear item ids equipped on the FIRST hero before inspect.
+			config["hero_gear"] = arg.get_slice("=", 1).split(",", false)
 		elif arg == "--capture-inspect-enemy":
 			config["inspect"] = "enemy"
 		elif arg == "--capture-show-die-hitboxes":
@@ -187,6 +190,18 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await _force_pick_mode(pick_mode)
 	if bool(config.get("show_hitboxes", false)):
 		_tint_die_hitboxes()
+	var hero_gear: Variant = config.get("hero_gear", null)
+	if hero_gear != null and current_scene != null:
+		var gs2: Node = root.get_node_or_null("/root/GameState")
+		var hero_views2: Array = current_scene.get("hero_card_views")
+		if gs2 != null and hero_views2 != null and not hero_views2.is_empty():
+			var first_state: Dictionary = (hero_views2[0] as Dictionary).get("state", {})
+			var unit_res: Resource = first_state.get("unit", null) as Resource
+			if unit_res != null:
+				var gear_ids: Array = []
+				for g in hero_gear:
+					gear_ids.append(str(g))
+				(gs2.get("gear_by_unit") as Dictionary)[str(unit_res.get("id"))] = gear_ids
 	var inspect_side: String = str(config.get("inspect", ""))
 	if inspect_side != "":
 		_open_inspect(inspect_side)
@@ -325,9 +340,10 @@ func _open_loadout() -> void:
 		gs.set("relics", ["ironCurtain"])
 	if "protocol_points" in current_scene:
 		current_scene.set("protocol_points", 10)
-	if current_scene.has_method("_update_item_panel"):
-		current_scene.call("_update_item_panel")
+	# The item list lives on the protocol module — refresh it AFTER seeding so
+	# the menu shows the seeded consumables.
 	if current_scene.get("_protocol") != null:
+		current_scene.get("_protocol").call("_update_item_panel")
 		current_scene.get("_protocol").call("_on_item_button_pressed_menu")
 
 

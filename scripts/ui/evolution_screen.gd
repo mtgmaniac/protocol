@@ -316,36 +316,46 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		hp_label_text = "MAX HP %d" % hp_value
 	text_stack.add_child(_make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.GOLD_ACCENT, 1))
 
-	if base_unit != null:
-		text_stack.add_child(_make_label("FROM %s" % base_unit.display_name.to_upper(), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+	# No FROM <unit> line (Kev 2026-07-10) — the player just came from that unit.
 	return header
 
 
-func _create_ability_row(entry: Dictionary) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 14)
+# Ability row in the SAME shape as the long-press inspect popup (Kev
+# 2026-07-10): "Roll: N - M  Name" on one line, then the effect pips beside
+# the short eff text — the layout the player already reads in battle.
+func _create_ability_row(entry: Dictionary) -> VBoxContainer:
+	var box: VBoxContainer = VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 4)
 
-	var range_label: Label = _make_label("%d-%d" % [int(entry.get("min", 0)), int(entry.get("max", 0))], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	range_label.custom_minimum_size = Vector2(110, 0)
-	range_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	row.add_child(range_label)
-
-	var text_stack: VBoxContainer = VBoxContainer.new()
-	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_stack.add_theme_constant_override("separation", 3)
-	row.add_child(text_stack)
-
-	var ability_name: Label = _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
+	var row1: HBoxContainer = HBoxContainer.new()
+	row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.add_theme_constant_override("separation", 12)
+	row1.add_child(_make_label("Roll: %d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+	var ability_name: Label = _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.DT_CYAN, 2)
 	ability_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text_stack.add_child(ability_name)
+	ability_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.add_child(ability_name)
+	box.add_child(row1)
 
-	var description_text: String = str(entry.get("description", "")).strip_edges()
-	if description_text != "":
-		var description: Label = _make_label(description_text, ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text_stack.add_child(description)
-	return row
+	var raw: Dictionary = entry.get("raw", {})
+	var eff_text: String = str(raw.get("eff", entry.get("description", ""))).strip_edges()
+	var effects: Array = EffectPip.effects_from_ability_raw(raw, "hero") if not raw.is_empty() else []
+	if not effects.is_empty() or eff_text != "":
+		var row2: HBoxContainer = HBoxContainer.new()
+		row2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row2.add_theme_constant_override("separation", 10)
+		for effect_variant in effects:
+			var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD, "hero")
+			group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			row2.add_child(group)
+		if eff_text != "":
+			var description: Label = _make_label(eff_text, ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
+			description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row2.add_child(description)
+		box.add_child(row2)
+	return box
 
 
 func _create_divider() -> ColorRect:

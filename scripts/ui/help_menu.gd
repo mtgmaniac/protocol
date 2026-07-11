@@ -25,8 +25,11 @@ const HELP_TABS := [
 	{"id": "rewards", "label": "REWARDS"},
 	{"id": "units", "label": "UNITS"},
 	{"id": "bestiary", "label": "BESTIARY"},
+	{"id": "log", "label": "BATTLE LOG"},
 	{"id": "settings", "label": "SETTINGS"},
 ]
+# Battle-log tab cap: plenty to review the fight without building 1000 labels.
+const LOG_MAX_LINES := 200
 # Each keyword now has its own pip icon (batch 155-179). Keyword id -> pip key.
 # rampage / pack_bonus / summon have no icon and fall back to their code letter.
 const HELP_KEYWORD_ICON := {
@@ -241,6 +244,8 @@ func _select_tab(tab_id: String) -> void:
 			_build_codex(_content_host)
 		"bestiary":
 			_build_bestiary(_content_host)
+		"log":
+			_build_battle_log(_content_host)
 		"settings":
 			_build_settings(_content_host)
 	if _content_scroll != null:
@@ -259,6 +264,28 @@ func _style_tab_button(button: Button, active: bool) -> void:
 
 
 # ── Tab content ───────────────────────────────────────────────────────────────
+
+# BATTLE LOG (Kev 2026-07-10): the running combat log, newest first, so a
+# player can look back at what happened. Reads the live battle scene's
+# accumulated log; outside battle the tab says so.
+func _build_battle_log(host: VBoxContainer) -> void:
+	var log_text: String = ""
+	var scene: Node = get_tree().current_scene
+	if scene != null:
+		var log_label: Variant = scene.get("battle_log_label")
+		if log_label is RichTextLabel and is_instance_valid(log_label):
+			log_text = (log_label as RichTextLabel).text
+	var lines: Array = []
+	for line in log_text.split("\n", false):
+		if lines.size() >= LOG_MAX_LINES:
+			break
+		lines.append(line)
+	if lines.is_empty():
+		_add_section(host, "BATTLE LOG", ["No battle activity yet."])
+		return
+	_add_section(host, "BATTLE LOG — NEWEST FIRST", lines)
+
+
 func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit — squad and hostile — rolls a D20 at the same time.",
