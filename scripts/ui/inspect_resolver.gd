@@ -89,12 +89,12 @@ static func _keyword_definitions_for_raw(raw: Dictionary) -> Array[String]:
 	return lines
 
 
-# Keyword one-liners only. The authored eff prose was CUT from the popup (Kev
-# 2026-07-10: the long descriptions ate the screen) — the pips carry the
-# numbers, the keyword defs carry the rules.
-static func _ability_inspect_text(raw: Dictionary, _fallback: String = "") -> String:
-	var lines: Array[String] = _keyword_definitions_for_raw(raw)
-	return "\n".join(lines)
+# The authored eff string ONLY ("8 dmg, leech") — the multi-line keyword
+# glossary definitions were CUT from the popup (Kev 2026-07-10: an 8-line
+# definition per named ability ate the screen; keyword rules are taught by
+# the first-sighting primers and live in the help-menu glossary).
+static func _ability_inspect_text(raw: Dictionary, fallback: String = "") -> String:
+	return str(raw.get("eff", fallback))
 
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
