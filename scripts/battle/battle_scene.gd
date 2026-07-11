@@ -45,6 +45,12 @@ const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 const DIE_TAG_GAP := 2.0            # flush dock: 0-2px gap, never over the die
 const DIE_TAG_HEIGHT_RATIO := 0.52  # tag height as a fraction of the die diameter
 const DIE_TAG_FONT_RATIO := 0.72    # value-font size as a fraction of the tag height
+# Content may extend to this fraction of the die diameter before the one-step
+# font shrink kicks in. The old boundary (1.0 diameter) was the visible plate
+# box, cut 2026-07-09; adjacent dice sit ~1.9 diameters apart, so THAT is the
+# real collision limit — at 1.0, every 2-pip tag shrank next to full-size
+# 1-pip neighbors and the typography read as inconsistent (Kev 2026-07-10).
+const DIE_TAG_FIT_WIDTH_RATIO := 1.9
 const DIE_TAG_DIAMETER_FALLBACK := 90.0
 # The turn/phase machine (architecture review §1 rec 2): a real enum with ONE
 # transition() choke point routing every phase change. The PHASE_* aliases keep
@@ -944,7 +950,7 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	plate.add_child(center)
-	var inner_w: float = tag_size.x - 8.0
+	var inner_w: float = tag_size.x * DIE_TAG_FIT_WIDTH_RATIO
 	var value_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
 	var profile: Dictionary = _tag_pip_profile(value_font)
 	if _estimate_tag_content_width(effects, target, value_font, profile) > inner_w:
