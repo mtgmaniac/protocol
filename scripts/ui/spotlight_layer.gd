@@ -228,7 +228,9 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 		# Pinned to the bottom so it never covers the centre action button.
 		y = s.y - ch - SCREEN_MARGIN
 	elif anchor == CoachAnchor.CENTER or hole.size == Vector2.ZERO:
-		y = (s.y - ch) * 0.5
+		# Upper-middle, not dead center (Kev 2026-07-10): the End Turn button
+		# lives mid-screen and a centered coach was blocking it.
+		y = s.y * 0.34 - ch * 0.5
 	elif hole.get_center().y < s.y * 0.5:
 		y = minf(hole.end.y + 28.0, s.y - ch - SCREEN_MARGIN)  # hole in top half → coach below
 	else:

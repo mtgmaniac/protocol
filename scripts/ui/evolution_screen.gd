@@ -20,6 +20,16 @@ const SMALL_FONT_SIZE := 32
 # (UI review S-1: the densest decision screen had the smallest text).
 const ABILITY_NAME_FONT_SIZE := PixelUI.FONT_INFO_MIN
 const ABILITY_DESC_FONT_SIZE := PixelUI.FONT_INFO_MIN
+# Directive cards (Kev 2026-07-10): the effect pips ARE the item image — large.
+const DIRECTIVE_PIP_PROFILE := {
+	"icon_size": 96,
+	"value_font": 84,
+	"duration_ratio": 0.6,
+	"icon_value_gap": 6,
+	"group_min_width": 110,
+	"outline": 3,
+	"duration_outline": 2,
+}
 const BUTTON_FONT_SIZE := 36
 
 @onready var background: ColorRect = $Background
@@ -185,18 +195,33 @@ func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> Panel
 
 	var directive_name: String = str(directive.get("name", "Directive"))
 	vbox.add_child(_make_label(directive_name.to_upper(), CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
+	# Kev 2026-07-10: image beside description — the directive's effect pip
+	# icons render LARGE on the left, the passive text reads to the right.
+	var body_row: HBoxContainer = HBoxContainer.new()
+	body_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body_row.add_theme_constant_override("separation", 20)
+	var pips: Array = EffectPip.effects_from_passive(directive.get("effect", {}))
+	if not pips.is_empty():
+		var pip_col: VBoxContainer = VBoxContainer.new()
+		pip_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip_col.add_theme_constant_override("separation", 8)
+		for pip_variant in pips:
+			pip_col.add_child(EffectPip.build_group(pip_variant, DIRECTIVE_PIP_PROFILE))
+		body_row.add_child(pip_col)
 	var desc: Label = _make_label(str(directive.get("desc", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(desc)
+	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	body_row.add_child(desc)
+	vbox.add_child(body_row)
 	if base_unit != null:
 		var evolved_name: String = GameState.get_unit_evolution_name(base_unit.id)
 		vbox.add_child(_make_label("PERMANENT PASSIVE FOR %s" % evolved_name.to_upper(), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
 	vbox.add_child(_create_divider())
 
 	var choose_button: Button = Button.new()
-	# Kev 2026-07-10: 78 read weirdly short with the text hugging the bottom —
-	# taller button gives the label breathing room.
-	choose_button.custom_minimum_size = Vector2(0, 104)
+	# Kev 2026-07-10 (rev 2): big tap target, label vertically comfortable.
+	choose_button.custom_minimum_size = Vector2(0, 128)
 	choose_button.text = "CHOOSE %s" % directive_name.to_upper()
 	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
 	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D

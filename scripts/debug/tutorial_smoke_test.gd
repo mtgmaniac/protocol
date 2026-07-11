@@ -47,14 +47,18 @@ func _run() -> void:
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 5)
 
-	# Steps 5-6: tray tour (tap), then inspect gate. The real gate is a
-	# long-press InspectPopup; emit the same event the popup handler fires.
+	# Steps 5-7: tray tour (tap), the hand-taught BURN primer beat (tap), then
+	# the inspect gate. The real gate is a long-press InspectPopup; emit the
+	# same event the popup handler fires.
 	_check_holes(controller)
 	controller.call("_next")
 	await _expect_step(controller, 6)
 	_check_holes(controller)
-	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
+	controller.call("_next")
 	await _expect_step(controller, 7)
+	_check_holes(controller)
+	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
+	await _expect_step(controller, 8)
 
 	# Dice are still animating; targeting only opens in PHASE_TARGETING.
 	await _wait_for_phase(scene, "targeting")
@@ -67,12 +71,12 @@ func _run() -> void:
 		_fail("Tutorial battle has no hero/enemy states")
 		return
 	scene.call("_select_targeting_hero", hero_ids[0])
-	await _expect_step(controller, 8)
+	await _expect_step(controller, 9)
 
 	# Step 8: assign the enemy (gated on assigned).
 	_check_holes(controller)
 	scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
-	await _expect_step(controller, 9)
+	await _expect_step(controller, 10)
 
 	# Step 9: assign remaining dice until ready_to_end.
 	_check_holes(controller)
@@ -81,32 +85,32 @@ func _run() -> void:
 		await _wait_frames(2)
 		scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
 		await _wait_frames(2)
-	await _expect_step(controller, 10)
+	await _expect_step(controller, 11)
 
 	# Step 10: enemy readout tour (tap).
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 11)
+	await _expect_step(controller, 12)
 
 	# Step 11: End Turn (gated on turn_resolved — waits out feedback).
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 12)
+	await _expect_step(controller, 13)
 
 	# Step 12: protocol tour (tap).
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 13)
+	await _expect_step(controller, 14)
 
 	# Step 13: roll again (gated on rolled — fires after dice settle).
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 14)
+	await _expect_step(controller, 15)
 
 	# Step 14: protocol value (tap).
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 15)
+	await _expect_step(controller, 16)
 
 	# Step 15: Nudge Pulse (gated on nudged).
 	await _wait_for_phase(scene, "targeting")
@@ -120,21 +124,21 @@ func _run() -> void:
 	protocol.call("_on_nudge_button_pressed")
 	await _wait_frames(2)
 	protocol.call("_apply_nudge", pulse_id)
-	await _expect_step(controller, 16)
+	await _expect_step(controller, 17)
 
 	# Steps 16-17: taps (band jump + reroll/set costs).
 	for _i in range(2):
 		_check_holes(controller)
 		controller.call("_next")
 		await _wait_frames(3)
-	await _expect_step(controller, 18)
+	await _expect_step(controller, 19)
 
 	# Step 18: fire Pulse (gated on assigned).
 	_check_holes(controller)
 	scene.call("_select_targeting_hero", pulse_id)
 	await _wait_frames(2)
 	scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
-	await _expect_step(controller, 19)
+	await _expect_step(controller, 20)
 
 	# Step 19: assign the rest + end turn (gated on won).
 	_check_holes(controller)
@@ -146,7 +150,7 @@ func _run() -> void:
 		scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
 		await _wait_frames(2)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 20)
+	await _expect_step(controller, 21)
 
 	# Step 20: DRILL COMPLETE (tap_finish) → back to the main menu.
 	_check_holes(controller)
@@ -157,7 +161,7 @@ func _run() -> void:
 		_errors.append("tutorial_mode still true after finish")
 
 	if _errors.is_empty():
-		print("[TUTORIAL_SMOKE] PASS — all 21 steps advanced, all spotlights resolved")
+		print("[TUTORIAL_SMOKE] PASS — all 22 steps advanced, all spotlights resolved")
 		quit(0)
 	else:
 		for e in _errors:

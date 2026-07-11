@@ -220,6 +220,21 @@
       "category": "offense",
       "def": "The effect hits every valid target (all enemies, or the whole squad) rather than one.",
       "syntax": "(all) on damage; \"all\" / \"squad\" on buffs and heals"
+    },
+    {
+      "id": "target_self",
+      "term": "Targets Self",
+      "category": "support",
+      "def": "The circled-figure marker (or (self) in text) means the ability affects its own caster.",
+      "syntax": "(self)"
+    },
+    {
+      "id": "target_lowest",
+      "term": "Targets Lowest",
+      "category": "support",
+      "def": "A down arrow means the ability picks the lowest-HP ally automatically.",
+      "syntax": "↓",
+      "code": "↓"
     }
   ],
   "conventions": {

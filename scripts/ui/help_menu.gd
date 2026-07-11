@@ -30,8 +30,8 @@ const HELP_TABS := [
 ]
 # Battle-log tab cap: plenty to review the fight without building 1000 labels.
 const LOG_MAX_LINES := 200
-# Each keyword now has its own pip icon (batch 155-179). Keyword id -> pip key.
-# rampage / pack_bonus / summon have no icon and fall back to their code letter.
+# Each keyword now has its own pip icon (batch 155-179 + the 2026-07-10 icon
+# batch: rampage / pack_bonus / summon / self marker). Keyword id -> pip key.
 const HELP_KEYWORD_ICON := {
 	"burn": "burn", "chain": "chain", "detonate": "detonate", "execute": "execute",
 	"breach": "breach", "leech": "leech", "mark": "mark", "spike": "spike",
@@ -40,6 +40,8 @@ const HELP_KEYWORD_ICON := {
 	"hijack": "hijack", "freeze": "freeze", "cloak": "cloak", "ward": "firewall",
 	"accrete": "accrete", "taunt": "taunt", "siphon": "siphon", "aoe": "aoe",
 	"protocol_gain": "protocol", "wipe_shields": "breach",
+	"rampage": "rampage", "pack_bonus": "pack_bonus", "summon": "summon",
+	"target_self": "self", "target_all": "aoe",
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
@@ -346,25 +348,13 @@ func _build_protocol(host: VBoxContainer) -> void:
 
 
 func _build_rewards(host: VBoxContainer) -> void:
+	# Kev 2026-07-10: the icon-frame shape code and rarity color legend are
+	# gone — cards carry a boxed TYPE word and the rarity name in plain text.
 	_add_section(host, "ITEMS, GEAR & RELICS", [
 		"Items: one-use, spent in battle. The reward picker is single-select + confirm.",
 		"Gear: permanent passive, applies at battle start (+rolls, +max HP, starting shield).",
 		"Relics: run-long global rules that affect every battle.",
-	])
-	_add_section(host, "RARITY (BORDER COLOR)", [
-		"Common — gray.",
-		"Uncommon — green.",
-		"Rare — blue.",
-		"Legendary — gold.",
-	])
-	_add_section(host, "ICON FRAME = TYPE", [
-		"Heart — heal / support.",
-		"Shield — defense.",
-		"Skull — damage / kill.",
-		"Bolt — energy hit.",
-		"Die — dice manipulation.",
-		"Cloak — stealth.",
-		"Star — buff.",
+		"Every card names its rarity and carries a boxed type tag (CONSUMABLE / GEAR / RELIC).",
 	])
 
 
@@ -770,10 +760,11 @@ func _make_dev_button(text: String, amber: bool) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.focus_mode = Control.FOCUS_NONE
-	btn.custom_minimum_size = Vector2(0, 90)
+	btn.custom_minimum_size = Vector2(0, 110)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_primary_button(btn, BODY_FONT, amber)
+	# Kev 2026-07-10: settings buttons + text sized up for phone hands.
+	PixelUI.style_primary_button(btn, 44, amber)
 	return btn
 
 
@@ -837,7 +828,7 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	row.add_theme_constant_override("separation", 12)
 	parent.add_child(row)
 
-	var label := _make_wrap_label(label_text, BODY_FONT, PixelUI.TEXT_PRIMARY, 2)
+	var label := _make_wrap_label(label_text, 40, PixelUI.TEXT_PRIMARY, 2)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(label)
@@ -845,7 +836,7 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	var btn := Button.new()
 	btn.toggle_mode = true
 	btn.button_pressed = initial
-	btn.custom_minimum_size = Vector2(150, 76)
+	btn.custom_minimum_size = Vector2(190, 96)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_toggle_button(btn)

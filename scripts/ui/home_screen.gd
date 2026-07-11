@@ -64,7 +64,9 @@ const BATTLE_PORTRAIT_REGION := Vector2(320.0, 486.0)
 # (hero + boss portraits are 592×880 ≈ 0.673 w:h; the five operations' boss arts
 # all sit within ±2% of it). 188×280 ≈ 0.671 — dominant art sits flush; the few
 # wider bestiary outliers (never banner subjects) would letterbox, not stretch.
-const ENC_THUMB_W := 188
+# Kev 2026-07-10: wider thumb so the cover crop shows more of the art (the
+# narrow frame read as over-zoomed).
+const ENC_THUMB_W := 224
 const ENC_THUMB_H := 280
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
@@ -834,10 +836,15 @@ func _on_back_to_title() -> void:
 
 
 func _refresh_detail() -> void:
-	# Hidden until a unit is tapped (Kev 2026-07-10).
-	if _detail_panel != null and is_instance_valid(_detail_panel):
-		_detail_panel.visible = _focused_unit_id != ""
+	# The box is ALWAYS there (Kev 2026-07-10 rev 2) — it just starts empty
+	# until a unit is tapped, so the layout never jumps.
 	if _focused_unit_id == "":
+		if _detail_name != null:
+			_detail_name.text = ""
+		if _detail_focus_chip != null:
+			_detail_focus_chip.visible = false
+		if _detail_desc != null:
+			_detail_desc.text = ""
 		return
 	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData
 	if unit == null:

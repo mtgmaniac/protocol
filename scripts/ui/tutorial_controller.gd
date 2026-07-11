@@ -49,6 +49,9 @@ func _build_steps() -> Array:
 		# Phase 1 — turn 1: the core loop
 		{"targets": ["roll_button"], "text": "Tap Roll to set your dice.", "advance": "roll_pressed"},
 		{"targets": ["center"], "text": "Each die slots into a band. Higher rolls fire stronger abilities."},
+		# One primer taught by hand (Kev 2026-07-10): Pulse's Arc Burst carries
+		# BURN — and this is what the one-time ability tips look like.
+		{"targets": ["pulse"], "text": "See the flame on Pulse's roll? BURN deals damage at the end of each round. The first time a new ability type appears, you'll get a one-time tip like this."},
 		{"targets": ["hero_cards"], "text": "Every unit's bands differ — long-press a card to see its ranges. Give it a try.", "advance": "inspected"},
 		# Pick a die first (heroes + pips + dice highlighted); once targeting starts we spotlight the
 		# enemy to tap, then open up the whole screen to assign the rest.

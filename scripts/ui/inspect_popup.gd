@@ -242,10 +242,17 @@ func _build_header(header: Dictionary) -> Control:
 	title_box.add_theme_constant_override("separation", 2)
 	row.add_child(title_box)
 
-	title_box.add_child(_make_label(str(header.get("title", "")), TITLE_FONT, _accent, false, 3))
+	# Title centered (Kev 2026-07-10).
+	var title_label := _make_label(str(header.get("title", "")), TITLE_FONT, _accent, false, 3)
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_box.add_child(title_label)
 	var subtitle: String = str(header.get("subtitle", ""))
 	if subtitle != "":
-		title_box.add_child(_make_label(subtitle.to_upper(), SUBTITLE_FONT, PixelUI.INSPECT_TEXT_MUTED))
+		var subtitle_label := _make_label(subtitle.to_upper(), SUBTITLE_FONT, PixelUI.INSPECT_TEXT_MUTED)
+		subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		subtitle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title_box.add_child(subtitle_label)
 	return row
 
 

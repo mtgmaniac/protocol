@@ -5,9 +5,9 @@ extends RefCounted
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
 ## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
 
-# Batch 155-179 gave every keyword its own pip icon. Only `rampage` and `tag`
-# remain iconless (rendered as their letter/text). Everything else draws its icon.
-const LETTER_ONLY_KINDS: Array[String] = ["rampage", "tag"]
+# Batch 155-179 gave every keyword its own pip icon; the 2026-07-10 icon batch
+# added rampage / pack_bonus / summon / self. Only `tag` remains text-rendered.
+const LETTER_ONLY_KINDS: Array[String] = ["tag"]
 
 # fix-2.6: keyword pip codes are single-sourced from keywords.data.json (the
 # "code" field) — battle pips, inspect rows, and the help menu all read the
@@ -50,16 +50,11 @@ const PROFILE_CARD := {
 
 # Self stays parenthesized; "all" no longer uses )..( — the AoE marker icon is
 # appended after the value by build_group instead (batch 161).
-static func format_scoped(text: String, scope: String) -> String:
-	# An icon-carried keyword strips its letter code to "" — never wrap the
-	# empty string ("()" artifact on self-scoped cloak/ward pips).
-	if text == "":
-		return ""
-	match scope:
-		"self":
-			return "(%s)" % text
-		_:
-			return text
+static func format_scoped(text: String, _scope: String) -> String:
+	# Scope no longer decorates the VALUE text (Kev 2026-07-10): "self" renders
+	# as the self-marker icon appended by build_group (like the AoE marker),
+	# not as parentheses. Kept as a seam for future scope notations.
+	return text
 
 
 static func is_letter_only_kind(kind: String) -> bool:
@@ -78,7 +73,7 @@ static func pip_key_for_effect(effect: Dictionary, _side: String = "hero") -> St
 # Kinds that now carry an icon AND were authored with a leading keyword code in
 # their value (e.g. "SP3", "CH×2", "BR", "MK"). The icon carries the keyword, so
 # we drop the letters and keep only the numeric/×N/% remainder.
-const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete"]
+const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete", "rampage"]
 
 
 static func display_text_for_effect(effect: Dictionary) -> String:
@@ -144,8 +139,9 @@ static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> f
 	if duration > 1:
 		var sup_size: int = maxi(28, int(round(float(value_font) * float(profile.get("duration_ratio", 0.6)))))
 		width += float(sup_size) * 0.75
-	# The "hits all" marker sits AFTER the value (batch 161).
-	if str(effect.get("scope", "")) == "all":
+	# Scope markers ("hits all" / "targets self") sit AFTER the value.
+	var scope: String = str(effect.get("scope", ""))
+	if scope == "all" or scope == "self":
 		width += gap + icon_size * 0.95
 	return maxf(float(profile.get("group_min_width", 64)), width)
 
@@ -192,20 +188,22 @@ static func build_group(
 	else:
 		group.add_child(_make_value_display(effect, profile, side))
 
-	# AoE marker (batch 161): replaces the old )value( notation — a small
-	# "hits all" icon that sits AFTER the value.
-	if str(effect.get("scope", "")) == "all":
-		var aoe_texture: Texture2D = PixelUI.pip_texture_for_key("aoe")
-		if aoe_texture != null:
-			var aoe_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
-			var aoe_rect := TextureRect.new()
-			aoe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			aoe_rect.custom_minimum_size = Vector2(aoe_size, aoe_size)
-			aoe_rect.texture = aoe_texture
-			aoe_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			aoe_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			aoe_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			group.add_child(aoe_rect)
+	# Scope markers sit AFTER the value: "hits all" (aoe starburst) and
+	# "targets self" (circled figure — replaces the old parentheses, Kev
+	# 2026-07-10).
+	var scope: String = str(effect.get("scope", ""))
+	if scope == "all" or scope == "self":
+		var marker_texture: Texture2D = PixelUI.pip_texture_for_key("aoe" if scope == "all" else "self")
+		if marker_texture != null:
+			var marker_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
+			var marker_rect := TextureRect.new()
+			marker_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			marker_rect.custom_minimum_size = Vector2(marker_size, marker_size)
+			marker_rect.texture = marker_texture
+			marker_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			marker_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			marker_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			group.add_child(marker_rect)
 
 	return group
 
@@ -332,6 +330,11 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 
 	if bool(raw.get("taunt", false)) or bool(raw.get("enemySelfTaunt", false)):
 		_append_effect(effects, "taunt", keyword_code("taunt", "T"))
+
+	if int(raw.get("summonChance", 0)) > 0:
+		_append_effect(effects, "summon", "")
+	if bool(raw.get("packBonus", false)):
+		_append_effect(effects, "pack_bonus", "")
 
 	var revive_pct: int = int(raw.get("revivePct", 50))
 	if bool(raw.get("reviveAll", false)):

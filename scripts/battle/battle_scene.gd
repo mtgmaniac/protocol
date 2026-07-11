@@ -151,17 +151,20 @@ var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
 # Single weak scripted enemy (Scrap Drone @28 HP) that telegraphs a weak Stab (enemy roll 6 =
-# strike band) and dies on turn 2. Hero rolls keyed by unit id, all single-enemy damage:
-#   turn 1: Pulse 5 (Arc Burst 6) + Strike 1 (Test Shot 1) + Ghost 3 (Probe Strike 7) = 14
-#   turn 2: Pulse 9→Nudge→12 (Plasma Lance 8) + 1 + 7 = 16  → 30 total kills the 28-HP enemy.
+# strike band) and dies on turn 2. Hero rolls keyed by unit id (Kev 2026-07-10: Strike rolls
+# 5 BOTH turns — Suppression Fire, plain damage — so Target Lock's Mark never muddies the
+# drill; Mark primes later in real play):
+#   turn 1: Pulse 5 (Arc Burst 6 + 2 burn) + Strike 5 (Suppression 7) + Ghost 3 (Probe 7)
+#           = 20 direct + 2 burn tick → 22, the 28-HP drone survives on 6.
+#   turn 2: Pulse 9→Nudge→12 (Plasma Lance 9) + 7 + 7 = 23 → kill.
 # Pulse 9 sits one short of the Surge band (Plasma Lance opens at 10); +3 Nudge → 12 flips
-# flat Arc Burst into Plasma Lance (8 dmg + 2 burn) — the taught payoff.
+# flat Arc Burst into Plasma Lance — the taught payoff.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_HP := 28
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
-	{"pulse": 5, "combat": 1, "ghost": 3},
-	{"pulse": 9, "combat": 1, "ghost": 3},
+	{"pulse": 5, "combat": 5, "ghost": 3},
+	{"pulse": 9, "combat": 5, "ghost": 3},
 ]
 var _tutorial_turn: int = 0
 

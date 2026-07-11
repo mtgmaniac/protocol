@@ -326,6 +326,12 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 			return "breach"
 		"accrete":
 			return "accrete"
+		"rampage":
+			return "rampage"
+		"pack_bonus":
+			return "pack_bonus"
+		"summon":
+			return "summon"
 		"rfe":
 			return "roll_down"
 		"rfm":
@@ -415,6 +421,9 @@ const PIP_ICON_BY_KEY := {
 	"rewrite": "rewrite", "hijack": "hijack", "siphon": "siphon", "chain": "chain",
 	"detonate": "detonate", "execute": "execute", "breach": "breach",
 	"pierce": "pierce", "revive": "revive", "accrete": "accrete",
+	# Kev 2026-07-10 icon batch (newicons.png): self marker, summon, rampage,
+	# pack bonus (aoe.png was replaced by the 8-arrow starburst).
+	"self": "self", "summon": "summon", "rampage": "rampage", "pack_bonus": "pack_bonus",
 }
 
 static func pip_texture_for_key(key: String) -> Texture2D:
