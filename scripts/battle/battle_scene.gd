@@ -45,12 +45,14 @@ const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 const DIE_TAG_GAP := 2.0            # flush dock: 0-2px gap, never over the die
 const DIE_TAG_HEIGHT_RATIO := 0.52  # tag height as a fraction of the die diameter
 const DIE_TAG_FONT_RATIO := 0.72    # value-font size as a fraction of the tag height
-# Content may extend to this fraction of the die diameter before the one-step
-# font shrink kicks in. The old boundary (1.0 diameter) was the visible plate
-# box, cut 2026-07-09; adjacent dice sit ~1.9 diameters apart, so THAT is the
-# real collision limit — at 1.0, every 2-pip tag shrank next to full-size
-# 1-pip neighbors and the typography read as inconsistent (Kev 2026-07-10).
-const DIE_TAG_FIT_WIDTH_RATIO := 1.9
+# Every die owns a FIXED pip slot this many diameters wide (adjacent dice sit
+# ~1.9 diameters apart, so 1.8 never collides with a neighbor or the screen
+# edge). Content presents in three tiers (Kev 2026-07-10): fits at full size →
+# large font + large pips · overflows → one-step shrink, still one line · still
+# overflows → the SAME shrunk size wrapped onto two lines. Content never
+# escapes the slot sideways again.
+const DIE_TAG_SLOT_WIDTH_RATIO := 1.8
+const DIE_TAG_SHRINK_STEP := 0.72   # tier-2/3 font step (matches the chip law)
 const DIE_TAG_DIAMETER_FALLBACK := 90.0
 # The turn/phase machine (architecture review §1 rec 2): a real enum with ONE
 # transition() choke point routing every phase change. The PHASE_* aliases keep
@@ -929,35 +931,64 @@ func _estimate_tag_content_width(effects: Array, target: String, value_font: int
 	return total
 
 
-# A fixed-size filled plate (identical for every die). Content is centered; if it would
-# overflow the plate, the content font shrinks one step — the plate never grows.
+# The die tag plate: transparent (pips + numbers read directly over the tray,
+# their own text outline keeps them legible — Kev 2026-07-09), sized to the
+# die's fixed slot. Three presentation tiers (Kev 2026-07-10):
+#   1. basic ability  — full font + full pips, one line
+#   2. extended       — one-step shrink (x0.72 font + pips), one line
+#   3. complicated    — the shrunk size WRAPPED onto two centered lines
+# The slot width is fixed per die; content never overflows it sideways.
 func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	var tag_size: Vector2 = _die_tag_size()
+	var slot_w: float = round(_die_tag_diameter * DIE_TAG_SLOT_WIDTH_RATIO)
+	var base_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
+	var value_font: int = base_font
+	var profile: Dictionary = _tag_pip_profile(value_font)
+	var rows: Array = [{"effects": effects, "target": target}]
+	if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w:
+		# Tier 2: one-step shrink, still a single line.
+		value_font = int(round(base_font * DIE_TAG_SHRINK_STEP))
+		profile = _tag_pip_profile(value_font)
+		if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w and effects.size() >= 2:
+			# Tier 3: wrap the shrunk content onto two lines.
+			rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
+
+	var row_h: float = round(tag_size.y * (1.0 if value_font == base_font else DIE_TAG_SHRINK_STEP))
 	var plate: Panel = Panel.new()
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# No background box now, so don't clip: let the centered content extend past
-	# the nominal plate rect instead of cutting off a duration superscript / AoE
-	# marker when the pips are wider than the die (Kev 2026-07-09).
 	plate.clip_contents = false
-	plate.custom_minimum_size = tag_size
-	plate.size = tag_size
-	# Transparent plate: the pip icons + numbers read directly over the tray, with
-	# no gray background box or edge outline behind them (Kev 2026-07-09). The
-	# Panel still sizes/centres the content; the value labels' own text outline
-	# keeps them legible over the tray.
+	plate.custom_minimum_size = Vector2(slot_w, row_h * float(rows.size()))
+	plate.size = plate.custom_minimum_size
 	plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var center: CenterContainer = CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	plate.add_child(center)
-	var inner_w: float = tag_size.x * DIE_TAG_FIT_WIDTH_RATIO
-	var value_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
-	var profile: Dictionary = _tag_pip_profile(value_font)
-	if _estimate_tag_content_width(effects, target, value_font, profile) > inner_w:
-		value_font = int(round(value_font * 0.72))
-		profile = _tag_pip_profile(value_font)
-	center.add_child(_build_tag_content(side, effects, target, value_font, profile))
+	var stack: VBoxContainer = VBoxContainer.new()
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 0)
+	center.add_child(stack)
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		var line: Control = _build_tag_content(side, row.get("effects", []), str(row.get("target", "")), value_font, profile)
+		line.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		stack.add_child(line)
 	return plate
+
+
+# Greedy split for tier 3: the largest effect prefix that fits the slot stays on
+# line 1; the remainder (plus the target label) wraps to line 2.
+func _split_tag_rows(effects: Array, target: String, value_font: int, profile: Dictionary, slot_w: float) -> Array:
+	var split: int = 1
+	for count in range(effects.size() - 1, 0, -1):
+		if _estimate_tag_content_width(effects.slice(0, count), "", value_font, profile) <= slot_w:
+			split = count
+			break
+	return [
+		{"effects": effects.slice(0, split), "target": ""},
+		{"effects": effects.slice(split), "target": target},
+	]
 
 
 func _build_tag_content(side: String, effects: Array, target: String, value_font: int, profile: Dictionary) -> Control:
@@ -981,11 +1012,12 @@ func _build_tag_content(side: String, effects: Array, target: String, value_font
 
 # One shared derivation for every tag: center x on the die's bounds center, dock flush just
 # OUTSIDE the die's projected bounds (a tiny gap, never overlapping) — below hero dice,
-# above enemy dice.
+# above enemy dice. Uses the plate's OWN size (set at build): a two-line tier-3
+# tag is taller and must grow AWAY from the die, not over it.
 func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
 	if plate == null or not is_instance_valid(plate):
 		return
-	var tag_size: Vector2 = _die_tag_size()
+	var tag_size: Vector2 = plate.custom_minimum_size
 	plate.size = tag_size
 	var center_x: float = die_bounds.position.x + die_bounds.size.x * 0.5
 	var x: float = center_x - tag_size.x * 0.5

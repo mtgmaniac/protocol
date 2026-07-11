@@ -132,7 +132,10 @@ static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> f
 	# Leading keyword icon (letter-only kinds render text instead of an icon).
 	if not is_letter_only_kind(effect_kind) and PixelUI.pip_texture_for_key(pip_key_for_effect(effect)) != null:
 		width += icon_size + gap
-	width += maxf(28.0, float(display_text_for_effect(effect).length()) * float(value_font) * 0.3)
+	# m5x7's real glyph advance is ~0.375x the font size (measured: 21px/char at
+	# font 56). The old 0.3 guess under-measured wide values, so borderline tags
+	# picked a presentation tier they couldn't actually fit (die-tag overflow).
+	width += maxf(28.0, float(display_text_for_effect(effect).length()) * float(value_font) * 0.38)
 	var duration: int = int(effect.get("duration", 0))
 	if duration > 1:
 		var sup_size: int = maxi(28, int(round(float(value_font) * float(profile.get("duration_ratio", 0.6)))))
