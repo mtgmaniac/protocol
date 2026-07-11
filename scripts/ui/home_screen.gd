@@ -1003,14 +1003,37 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		var relic: ItemData = DataManager.get_item(relic_id) as ItemData
 		if relic == null:
 			continue
+		# Kev 2026-07-10: each pick shows the relic's ICON beside its name +
+		# rule (the plain text rows read anonymous).
 		var pick := Button.new()
 		pick.focus_mode = Control.FOCUS_NONE
-		pick.custom_minimum_size = Vector2(0, 120)
+		pick.custom_minimum_size = Vector2(0, 148)
 		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pick.text = "%s — %s" % [relic.display_name.to_upper(), relic.description]
-		pick.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		PixelUI.style_button(pick, PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, FOCUS_CHIP_FONT)
 		pick.pressed.connect(_on_directive_picked.bind(relic_id))
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		row.offset_left = 18.0
+		row.offset_right = -18.0
+		row.add_theme_constant_override("separation", 20)
+		pick.add_child(row)
+		if relic.icon != null:
+			var icon := TextureRect.new()
+			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			icon.custom_minimum_size = Vector2(104, 104)
+			icon.texture = relic.icon
+			icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(icon)
+		var text_label := _make_pixel_label("%s — %s" % [relic.display_name.to_upper(), relic.description], FOCUS_CHIP_FONT, PixelUI.DT_CYAN_BRIGHT)
+		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(text_label)
 		col.add_child(pick)
 
 	var skip := Button.new()
