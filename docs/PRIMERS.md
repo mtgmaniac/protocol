@@ -39,15 +39,21 @@ Worked example — suppose Rampage needs a primer when its chip first appears:
 3. `npm run validate-data` (schema + unique-id + no-signal_hook-in-loaded checks).
 4. Run `scripts/debug/primer_smoke_test.gd` and the flow smoke.
 
+**Roll-time sighting (Kev 2026-07-10):** every keyword on a revealed roll queues its
+primer immediately after the dice settle (`KeywordPrimer.notice_rolled_ability`, mapped
+by `RAW_FIELD_TRIGGERS`), so the tip shows BEFORE the player commits — the event-stream
+triggers below remain as the mid-resolution fallback. Players can disable ability
+primers entirely in Help → Settings → Tutorials (`ability_primers_enabled`).
+
 ### Trigger types (implemented)
 
 | type | param | fires when |
 |---|---|---|
 | `die_status_applied` | jam / freeze / rewrite / hijack | the die status first lands on ANY die, either side |
 | `status_applied` | mark / firewall / cloak / taunt / burn / spike / accrete | the status first appears on any unit card |
-| `attack_keyword_resolved` | chain / detonate / execute / breach / pierce / leech / siphon / revive | the keyword first visibly resolves in the feedback stream |
-| `protocol_action_affordable` | nudge / reroll / set | the action first becomes affordable during a player phase |
-| `personality_assigned` | SYSTEMATIC / WOUNDED / PACK / SPITEFUL | that personality first selects a target (`requires_feature: "targeting_personalities"`) |
+| `attack_keyword_resolved` | chain / detonate / execute / breach / pierce / leech / siphon / revive / rampage / pack_bonus / summon | the keyword first visibly resolves in the feedback stream, friendly or enemy (`wipe_shields` events also route to the breach primer — same rule). Basics (damage/heal/shield/roll/protocol/aoe) are deliberately unprimed — the tutorial covers them |
+| `protocol_action_affordable` | *(no loaded entries)* | seam kept; the nudge/reroll/set primers were CUT 2026-07-10 — the scripted tutorial teaches them |
+| `personality_assigned` | *(no loaded entries)* | trigger plumbing kept; the four attack-style primers were CUT 2026-07-10 (Kev: not tutorial material — the unit popup's TARGETING line remains the reference) |
 | `signal_hook` | any signal name | reserved seam — see below; no loaded entries yet |
 
 ### Targets (the spotlight anchor)

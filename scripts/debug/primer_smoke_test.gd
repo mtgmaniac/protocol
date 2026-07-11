@@ -100,24 +100,28 @@ func _run() -> void:
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_chain"), "attack_keyword_resolved (chain) fires and persists")
 
-	# ── 4) protocol_action_affordable + priority tie-break ──────────────────────
-	# All three become affordable at once (same priority 60): exactly ONE shows;
-	# the losers are not marked seen and fire on later turns.
+	# ── 4) same-priority tie-break (protocol primers were CUT 2026-07-10 — the
+	# tutorial teaches nudge/reroll/set; keyword primers carry the tie test now).
+	# Three same-priority (30) keyword sightings in one moment: exactly ONE
+	# shows; the losers are not marked seen and fire on later turns.
 	primer.on_turn_started()
-	primer.notice_protocol_affordability(3)
-	await primer.flush_player_phase()
-	var protocol_seen: int = 0
-	for pid in ["primer_nudge", "primer_reroll", "primer_set"]:
+	primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
+	await primer.flush_at_group_boundary()
+	var tie_seen: int = 0
+	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
 		if sm.call("is_primer_seen", pid):
-			protocol_seen += 1
-	_check(protocol_seen == 1, "protocol affordability: exactly one of three ties shows per turn (saw %d)" % protocol_seen)
-	primer.on_turn_started()
-	primer.notice_protocol_affordability(3)
-	await primer.flush_player_phase()
-	primer.on_turn_started()
-	primer.notice_protocol_affordability(3)
-	await primer.flush_player_phase()
-	for pid in ["primer_nudge", "primer_reroll", "primer_set"]:
+			tie_seen += 1
+	_check(tie_seen == 1, "same-priority ties: exactly one of three shows per turn (saw %d)" % tie_seen)
+	for _round in 2:
+		primer.on_turn_started()
+		primer._fired_params.clear()
+		primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
+		primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
+		primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
+		await primer.flush_at_group_boundary()
+	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
 		_check(sm.call("is_primer_seen", pid), "%s eventually fires across turns" % pid)
 
 	# Priority breaks a mixed same-moment tie: freeze-die (55) beats mark-level
@@ -131,11 +135,16 @@ func _run() -> void:
 	_check(sm.call("is_primer_seen", "primer_rewrite"), "higher priority wins the same-moment tie")
 	_check(not sm.call("is_primer_seen", "primer_cloak"), "lower priority loser not marked seen")
 
-	# ── 5) personality_assigned (requires_feature present) ──────────────────────
+	# ── 5) rampage + shield-wipe events route to their keyword primers ──────────
+	# (Personality primers were cut 2026-07-10 — attack styles aren't tutorialized.)
 	primer.on_turn_started()
-	primer.notice_personality_assigned("WOUNDED", "e1")
-	await primer.flush_player_phase()
-	_check(sm.call("is_primer_seen", "primer_personality_wounded"), "personality_assigned (WOUNDED) fires and persists")
+	primer.notice_event({"type": "rampage", "side": "enemy", "target_id": "e1"})
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_rampage"), "rampage event fires the rampage primer and persists")
+	primer.on_turn_started()
+	primer.notice_event({"type": "wipe_shields", "side": "hero", "target_id": "h1"})
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_breach"), "wipe_shields event teaches the Breach rule")
 
 	# ── 6) signal_hook seam: unknown hook is a safe no-op ────────────────────────
 	primer.on_turn_started()
@@ -161,7 +170,7 @@ func _run() -> void:
 	# ── Persistence: grandfather clause + heal-on-merge ──────────────────────────
 	# Veteran save WITHOUT onboarding → all current primers pre-seen.
 	sm.call("_merge_loaded", {"tutorial_done": true, "stats": {"runs_started": 4}})
-	_check(sm.call("is_primer_seen", "primer_jam") and sm.call("is_primer_seen", "primer_personality_spiteful"),
+	_check(sm.call("is_primer_seen", "primer_jam") and sm.call("is_primer_seen", "primer_rampage"),
 		"grandfathered veteran save starts with all current primers seen")
 	# Save WITH onboarding → preserved verbatim, not grandfathered.
 	sm.call("_merge_loaded", {"tutorial_done": true, "stats": {"runs_started": 4}, "onboarding": {"primers_seen": ["primer_jam"]}})

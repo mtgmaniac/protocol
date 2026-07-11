@@ -155,6 +155,19 @@ func save() -> void:
 	file.close()
 
 
+# --- Settings (the free-form "settings" dict; persisted with the profile) ---
+
+func get_setting(key: String, default: Variant = null) -> Variant:
+	return (data.get("settings", {}) as Dictionary).get(key, default)
+
+
+func set_setting(key: String, value: Variant) -> void:
+	if not (data.get("settings") is Dictionary):
+		data["settings"] = {}
+	(data["settings"] as Dictionary)[key] = value
+	save()
+
+
 # --- Keyword primers (onboarding) ---
 
 # Reads primer ids straight from the data file — SaveManager loads during

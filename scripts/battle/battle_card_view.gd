@@ -84,9 +84,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	if bool(state.get("marked", false)):
 		status_list.append("MARK")
 
-	if bool(show_dead):
-		status_list.append("DOWN")
-
+	# No DOWN token (Kev 2026-07-10) — the grayed portrait reads dead on its own.
 	var state_id: String = str(state["id"])
 	var is_selected: bool = state_id == _scene.active_targeting_hero_id
 	var is_targetable: bool = _scene._is_target_highlight_phase() and _scene.legal_target_ids.has(state_id)
@@ -382,7 +380,7 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 func _build_compact_status_tokens(state: Dictionary) -> Array:
 	var statuses: Array = []
 	if bool(state.get("dead", false)):
-		statuses.append(_make_compact_named_status("DOWN", "", 99))
+		# No DOWN chip (Kev 2026-07-10) — the grayed portrait carries it.
 		return statuses
 
 	# Chip doctrine (pkg8.1, amended): the card chip row renders Burn, SHIELD,
@@ -439,6 +437,25 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	# restricted to the taunter — the chip makes the restriction legible.
 	if str(state.get("lured_by_id", "")) != "":
 		statuses.append(_make_compact_icon_status("taunt", 3))
+
+	# Kev 2026-07-10: the chip TYPE limit is lifted — every active status gets a
+	# chip (the row still visually caps and overflows into the "+N" badge; the
+	# full list lives in the unit long-press). Cloak / Jam / Rewrite / Spike:
+	if bool(state.get("cloaked", false)):
+		statuses.append(_make_compact_icon_status("cloak", 3))
+	if int(state.get("jam_cap", 0)) > 0:
+		statuses.append(_make_compact_icon_status("jam", 3))
+	if bool(state.get("rewrite_pending", false)):
+		statuses.append(_make_compact_icon_status("rewrite", 3))
+	var spike_value: int = int(state.get("spike", 0))
+	if spike_value > 0:
+		statuses.append({
+			"type": "spike",
+			"mode": "numeric",
+			"icon": "▲",
+			"value": spike_value,
+			"priority": 3,
+		})
 
 	return statuses
 

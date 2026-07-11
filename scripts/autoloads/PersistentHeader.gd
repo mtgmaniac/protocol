@@ -43,6 +43,11 @@ func _ready() -> void:
 	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action, false))
 	_back_button.pressed.connect(func() -> void: _dispatch(_back_action, true))
 	set_run_active(false)
+	# Debug buttons ship hidden; the SETTINGS > DEV "Developer mode" toggle shows them
+	# (persisted in the save profile). SaveManager autoloads before this scene, but stay
+	# defensive for headless harnesses that strip autoloads.
+	var sm: Variant = get_node_or_null("/root/SaveManager")
+	set_dev_mode(sm != null and bool(sm.get_setting("dev_mode", false)))
 
 
 func _on_help_pressed() -> void:
@@ -122,3 +127,14 @@ func set_debug_enabled(enabled: bool) -> void:
 func set_debug2_enabled(enabled: bool) -> void:
 	if is_instance_valid(_debug2_button):
 		_debug2_button.disabled = not enabled
+
+
+## Developer mode (SETTINGS > DEV toggle): the debug buttons are entirely absent
+## from the header unless it is on. Orthogonal to set_debug_enabled — visibility
+## gates whether the buttons exist to the player; disabled gates whether the
+## current screen bound them.
+func set_dev_mode(enabled: bool) -> void:
+	if is_instance_valid(_debug_button):
+		_debug_button.visible = enabled
+	if is_instance_valid(_debug2_button):
+		_debug2_button.visible = enabled

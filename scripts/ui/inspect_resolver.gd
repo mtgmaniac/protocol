@@ -89,12 +89,12 @@ static func _keyword_definitions_for_raw(raw: Dictionary) -> Array[String]:
 	return lines
 
 
-# The ability's eff string plus the definitions of every keyword it carries.
+# The authored eff string ONLY ("8 dmg, leech") — the multi-line keyword
+# glossary definitions were CUT from the popup (Kev 2026-07-10: an 8-line
+# definition per named ability ate the screen; keyword rules are taught by
+# the first-sighting primers and live in the help-menu glossary).
 static func _ability_inspect_text(raw: Dictionary, fallback: String = "") -> String:
-	var text: String = str(raw.get("eff", fallback))
-	for line in _keyword_definitions_for_raw(raw):
-		text += "\n" + line
-	return text
+	return str(raw.get("eff", fallback))
 
 
 # ── 1. Ability (long-press a die / ability pip) ─────────────────────────────────
@@ -144,32 +144,56 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),
 		})
 	var statuses: Array = _unit_status_entries(state)
-	# Active statuses take the role descriptor's place; otherwise keep the role subtitle.
-	var subtitle: String = "" if not statuses.is_empty() else _unit_subtitle(data)
+	# No role subtitle (Kev 2026-07-10: "HEALER / COMBAT AUGMENTOR" is irrelevant
+	# here) — the header carries just the name; statuses render below it.
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
 	var payload: Dictionary = {
 		"accent": _side_accent(side),
 		"header": {
 			"title": str(data.get("display_name")),
-			"subtitle": subtitle,
+			"subtitle": "",
 		},
 		"statuses": statuses,
 		"abilities": abilities,
 	}
-	# Boss standing rule + targeting personality — always visible in the popup.
 	if is_enemy:
 		var description_lines: Array[String] = []
 		var standing_rule: String = CombatManager.get_boss_standing_rule(str(data.get("display_name")))
 		if standing_rule != "":
 			description_lines.append(standing_rule)
-		# The complete truth of how this enemy picks targets (Task 9).
-		var personality: int = TargetingPersonality.resolve_personality(data)
-		description_lines.append("TARGETING: %s — %s." % [
-			TargetingPersonality.personality_name(personality),
-			TargetingPersonality.personality_blurb(personality),
-		])
-		payload["description"] = "\n".join(description_lines)
+		# WHO this enemy is targeting right now — not HOW it picks (Kev
+		# 2026-07-10: the personality explainer was cut from the popup).
+		var target_display: String = str(state.get("target_display", "")).strip_edges()
+		if target_display != "" and target_display != "--":
+			description_lines.append("TARGETING: %s" % target_display.to_upper())
+		if not description_lines.is_empty():
+			payload["description"] = "\n".join(description_lines)
+	else:
+		# Equipped gear (Kev 2026-07-10): icon + name + pips + description,
+		# loadout-row style, so the long-press shows what the unit is wearing.
+		payload["gear"] = _unit_gear_entries(str(data.get("id")))
 	return payload
+
+
+static func _unit_gear_entries(unit_id: String) -> Array:
+	var entries: Array = []
+	if unit_id == "":
+		return entries
+	var gs: Node = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() is SceneTree else null
+	if gs == null:
+		return entries
+	var gear_map: Dictionary = gs.get("gear_by_unit")
+	for gear_id_variant in gear_map.get(unit_id, []):
+		var item: ItemData = DataManager.get_item(str(gear_id_variant)) as ItemData
+		if item == null:
+			continue
+		entries.append({
+			"icon": item.icon,
+			"name": item.display_name,
+			"effects": EffectPip.effects_from_passive(item.effect, item.target_kind),
+			"text": item.description,
+		})
+	return entries
 
 
 # Active battle statuses for the unit inspect — each entry { effects:[pip], text } renders as a
@@ -212,18 +236,19 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("rampage_charges", 0)) > 0:
 		entries.append(_status_entry("rampage", EffectPip.keyword_code("rampage", "RA"), 0, _status_text("rampage", "", 0)))
 	# pkg8.1: die statuses surface in the readout too (they render on the die).
+	# One SHORT line each (Kev 2026-07-10 trim).
 	if int(state.get("jam_cap", 0)) > 0:
-		entries.append(_status_entry("jam", "≤%d" % int(state["jam_cap"]), 0, "Die is Jammed — next roll capped at %d." % int(state["jam_cap"])))
+		entries.append(_status_entry("jam", "≤%d" % int(state["jam_cap"]), 0, _status_text("jam", str(state["jam_cap"]), 0)))
 	if bool(state.get("rewrite_pending", false)):
-		entries.append(_status_entry("rewrite", "→3", 0, "Die is being Rewritten — next roll becomes 3."))
+		entries.append(_status_entry("rewrite", "→3", 0, _status_text("rewrite", "", 0)))
 	if bool(state.get("hijack_pending", false)):
-		entries.append(_status_entry("hijack", EffectPip.keyword_code("hijack", "HJ"), 0, "Hijack pending — this die will copy the squad's highest roll."))
+		entries.append(_status_entry("hijack", EffectPip.keyword_code("hijack", "HJ"), 0, _status_text("hijack", "", 0)))
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s — the die keeps this face and the unit acts again on it %d more time(s)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
+			"%s: die locked on this face (%d more)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
-		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, "Spike %d — attackers take damage this round." % int(state["spike"])))
+		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, _status_text("spike", str(state["spike"]), 0)))
 	return entries
 
 
@@ -235,14 +260,14 @@ static func _status_entry(kind: String, value: String, duration: int, text: Stri
 
 
 static func _roll_status_text(delta: int) -> String:
-	return "%+d to this unit's die rolls." % delta
+	return "%+d to rolls." % delta
 
 
 # fix-2.2: name + one-line definition for the ±roll chip pinned to a die.
 static func roll_chip_entry(delta: int) -> Dictionary:
 	return _status_entry(
 		"rfm" if delta > 0 else "roll", "%+d" % delta, 0,
-		"Roll chip — this die's effective roll is shifted %+d by active buffs and debuffs." % delta
+		"%+d to this die's rolls." % delta
 	)
 
 
@@ -304,25 +329,23 @@ static func resolve_protocol_action(action: String) -> Dictionary:
 	}
 
 
+# ── 7. Encounter (long-press the squad-select banner) ───────────────────────────
+# The operation blurb lives HERE (squad-select redesign): the banner shows only
+# name + threat; long-press surfaces the full flavor copy, verbatim from data.
+static func resolve_encounter(op: OperationData, threat_level: int, threat_max: int) -> Dictionary:
+	if op == null:
+		return {}
+	return {
+		"accent": _side_accent("enemy"),
+		"header": {"title": op.display_name.to_upper(), "subtitle": "ENCOUNTER"},
+		"stats": [{"label": "THREAT", "value": "LV %d / %d" % [threat_level, threat_max]}],
+		"description": op.blurb,
+	}
+
+
 # ── helpers ─────────────────────────────────────────────────────────────────────
 static func _side_accent(side: String) -> Color:
 	return PixelUI.DT_ENEMY_BORDER if side == "enemy" else PixelUI.DT_HERO_BORDER
-
-
-static func _unit_subtitle(data: Resource) -> String:
-	if data is UnitData:
-		var role: String = str((data as UnitData).role)
-		var cls: String = str((data as UnitData).class_name_text)
-		if role != "" and cls != "":
-			return "%s / %s" % [role, cls]
-		return cls if cls != "" else role
-	if data is EnemyData:
-		var faction: String = str((data as EnemyData).faction)
-		var etype: String = str((data as EnemyData).enemy_type)
-		if faction != "" and etype != "":
-			return "%s / %s" % [faction, etype]
-		return etype if etype != "" else faction
-	return ""
 
 
 static func _status_keyword(kind: String) -> String:
@@ -355,42 +378,44 @@ static func _value_label(kind: String) -> String:
 	return "VALUE"
 
 
+# One SHORT line per active effect (Kev 2026-07-10: the freeze / -roll / cloak
+# texts ran multi-line — trimmed hard; the rule details live in the glossary).
 static func _status_text(kind: String, value: String, duration: int) -> String:
 	var turns: String = "%d turn%s" % [duration, "" if duration == 1 else "s"] if duration > 0 else ""
 	match kind:
 		"burn":
-			return "Takes %s damage at the end of each round%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
+			return "Takes %s damage each round%s." % [value if value != "" else "some", (" for " + turns) if turns != "" else ""]
 		"shield":
-			return "Absorbs %s incoming damage before HP is touched." % (value if value != "" else "")
+			return "Absorbs %s incoming damage." % (value if value != "" else "")
 		"frozen", "freeze", "die_freeze":
-			return "Die result is locked — it keeps this face and the unit acts again on it%s." % ((" for " + turns) if turns != "" else "")
+			return "Die locked on this face%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
-			return "Untargetable by hostile single-target abilities; friendly picks stay legal. Breaks when this unit deals damage or is hit by an AoE."
+			return "Can't be targeted; breaks on dealing damage."
 		"taunt":
-			return "Taunting — hostile units can only target this unit."
+			return "Hostiles can only target this unit."
 		"taunted":
-			return "Taunted — this unit can only target the taunter."
+			return "Can only target the taunter."
 		"rampage":
-			return "Deals double damage this turn."
+			return "Next hit deals double damage."
 		"ward":
-			return "Blocks the next ability that targets this unit, then breaks."
+			return "Blocks the next ability, then breaks."
 		"mark":
-			return "The next hit on this unit deals +50%, then the Mark is consumed."
+			return "Next hit on this unit deals +50%."
 		"jam":
-			return "Die is Jammed — the next roll is capped%s." % ((" at " + value) if value != "" else "")
+			return "Next roll capped%s." % ((" at " + value) if value != "" else "")
 		"rewrite":
-			return "Die is being Rewritten — the next roll becomes 3."
+			return "Next roll becomes 3."
 		"hijack":
-			return "Hijack pending — this die will copy the squad's highest roll."
+			return "Next roll copies the squad's highest die."
 		"spike":
-			return "Spike %s — any attacker that connects this round takes that much back." % (value if value != "" else "")
+			return "Attackers take %s back this round." % (value if value != "" else "damage")
 	return ""
 
 
 static func _status_accent(kind: String) -> Color:
 	match kind:
 		"burn":
-			return PixelUI.COLOR_DEBUFF
+			return PixelUI.COLOR_BURN
 		"shield":
 			return PixelUI.COLOR_SHIELD
 		"frozen", "freeze", "die_freeze":

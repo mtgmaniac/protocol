@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://7txm0vnhdsof"
+
+[deps]
+
+files=["res://docs/TASK_MASTER_LIST.Source.translation", "res://docs/TASK_MASTER_LIST.Section.translation", "res://docs/TASK_MASTER_LIST.Status.translation", "res://docs/TASK_MASTER_LIST.Lane.translation", "res://docs/TASK_MASTER_LIST.Branch.translation", "res://docs/TASK_MASTER_LIST.Title.translation", "res://docs/TASK_MASTER_LIST.Description.translation", "res://docs/TASK_MASTER_LIST.en.translation", "res://docs/TASK_MASTER_LIST.en.translation"]
+
+source_file="res://docs/TASK_MASTER_LIST.csv"
+dest_files=["res://docs/TASK_MASTER_LIST.Source.translation", "res://docs/TASK_MASTER_LIST.Section.translation", "res://docs/TASK_MASTER_LIST.Status.translation", "res://docs/TASK_MASTER_LIST.Lane.translation", "res://docs/TASK_MASTER_LIST.Branch.translation", "res://docs/TASK_MASTER_LIST.Title.translation", "res://docs/TASK_MASTER_LIST.Description.translation", "res://docs/TASK_MASTER_LIST.en.translation", "res://docs/TASK_MASTER_LIST.en.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

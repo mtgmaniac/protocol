@@ -45,6 +45,14 @@ const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 const DIE_TAG_GAP := 2.0            # flush dock: 0-2px gap, never over the die
 const DIE_TAG_HEIGHT_RATIO := 0.52  # tag height as a fraction of the die diameter
 const DIE_TAG_FONT_RATIO := 0.72    # value-font size as a fraction of the tag height
+# Every die owns a FIXED pip slot this many diameters wide (adjacent dice sit
+# ~1.9 diameters apart, so 1.8 never collides with a neighbor or the screen
+# edge). Content presents in three tiers (Kev 2026-07-10): fits at full size →
+# large font + large pips · overflows → one-step shrink, still one line · still
+# overflows → the SAME shrunk size wrapped onto two lines. Content never
+# escapes the slot sideways again.
+const DIE_TAG_SLOT_WIDTH_RATIO := 1.8
+const DIE_TAG_SHRINK_STEP := 0.72   # tier-2/3 font step (matches the chip law)
 const DIE_TAG_DIAMETER_FALLBACK := 90.0
 # The turn/phase machine (architecture review §1 rec 2): a real enum with ONE
 # transition() choke point routing every phase change. The PHASE_* aliases keep
@@ -108,6 +116,12 @@ const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
+# Footer protocol stack (Kev 2026-07-10) — the label sits directly on top of
+# the pip bar (bottom-anchored; the overlap eats m5x7's below-baseline pad).
+const PROTOCOL_STACK_LABEL_FONT := 52
+const PROTOCOL_LABEL_BOX_H := 84.0
+const PROTOCOL_LABEL_PIP_OVERLAP := -2.0
+const PROTOCOL_PIP_BAR_H := 52.0
 
 var dice_manager: DiceManager = DiceManager.new()
 var combat_manager: CombatManager = CombatManager.new()
@@ -137,17 +151,20 @@ var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
 # Single weak scripted enemy (Scrap Drone @28 HP) that telegraphs a weak Stab (enemy roll 6 =
-# strike band) and dies on turn 2. Hero rolls keyed by unit id, all single-enemy damage:
-#   turn 1: Pulse 5 (Arc Burst 6) + Strike 1 (Test Shot 1) + Ghost 3 (Probe Strike 7) = 14
-#   turn 2: Pulse 9→Nudge→12 (Plasma Lance 8) + 1 + 7 = 16  → 30 total kills the 28-HP enemy.
+# strike band) and dies on turn 2. Hero rolls keyed by unit id (Kev 2026-07-10: Strike rolls
+# 5 BOTH turns — Suppression Fire, plain damage — so Target Lock's Mark never muddies the
+# drill; Mark primes later in real play):
+#   turn 1: Pulse 5 (Arc Burst 6 + 2 burn) + Strike 5 (Suppression 7) + Ghost 3 (Probe 7)
+#           = 20 direct + 2 burn tick → 22, the 28-HP drone survives on 6.
+#   turn 2: Pulse 9→Nudge→12 (Plasma Lance 9) + 7 + 7 = 23 → kill.
 # Pulse 9 sits one short of the Surge band (Plasma Lance opens at 10); +3 Nudge → 12 flips
-# flat Arc Burst into Plasma Lance (8 dmg + 2 burn) — the taught payoff.
+# flat Arc Burst into Plasma Lance — the taught payoff.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_HP := 28
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
-	{"pulse": 5, "combat": 1, "ghost": 3},
-	{"pulse": 9, "combat": 1, "ghost": 3},
+	{"pulse": 5, "combat": 5, "ghost": 3},
+	{"pulse": 9, "combat": 5, "ghost": 3},
 ]
 var _tutorial_turn: int = 0
 
@@ -576,12 +593,13 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		await get_tree().process_frame
 
 	# Keyword primers: a new player turn begins — reset the one-per-turn gate,
-	# then report the idle-phase sightings (personalities that picked a target,
-	# protocol actions now affordable) and show at most one.
+	# then report the ROLL sightings (Kev 2026-07-10: a keyword primes the
+	# first time it appears on a revealed roll, BEFORE the player commits) and
+	# show at most one.
 	if _primer != null and is_instance_valid(_primer):
 		_primer.on_turn_started()
 		_notice_personality_primers()
-		_primer.notice_protocol_affordability(protocol_points)
+		_notice_rolled_ability_primers()
 		await _primer.flush_player_phase()
 
 	if pending_manual_target_ids.is_empty():
@@ -673,6 +691,30 @@ func _notice_personality_primers() -> void:
 			continue
 		var personality: int = TargetingPersonality.resolve_personality(unit)
 		_primer.notice_personality_assigned(TargetingPersonality.personality_name(personality), str(enemy_state["id"]))
+
+
+# Kev 2026-07-10: every keyword on a revealed roll primes NOW (before the
+# player assigns actions), anchored to the rolling unit.
+func _notice_rolled_ability_primers() -> void:
+	if _primer == null or not is_instance_valid(_primer):
+		return
+	var sides: Array = [
+		["hero", combat_manager.get_hero_states(), hero_rolls],
+		["enemy", combat_manager.get_enemy_states(), enemy_rolls],
+	]
+	for side_variant in sides:
+		var side: String = str(side_variant[0])
+		var rolls: Dictionary = side_variant[2]
+		for state_variant in side_variant[1]:
+			var state: Dictionary = state_variant
+			if bool(state.get("dead", false)):
+				continue
+			var state_id: String = str(state.get("id", ""))
+			if not rolls.has(state_id):
+				continue
+			var eff_roll: int = combat_manager.get_effective_roll(state, int(rolls[state_id]))
+			var entry: Dictionary = dice_manager.get_ability_for_roll(state["unit"], eff_roll)
+			_primer.notice_rolled_ability(entry.get("raw", {}), side, state_id)
 
 
 func _roll_for_states(states: Array) -> Dictionary:
@@ -923,35 +965,64 @@ func _estimate_tag_content_width(effects: Array, target: String, value_font: int
 	return total
 
 
-# A fixed-size filled plate (identical for every die). Content is centered; if it would
-# overflow the plate, the content font shrinks one step — the plate never grows.
+# The die tag plate: transparent (pips + numbers read directly over the tray,
+# their own text outline keeps them legible — Kev 2026-07-09), sized to the
+# die's fixed slot. Three presentation tiers (Kev 2026-07-10):
+#   1. basic ability  — full font + full pips, one line
+#   2. extended       — one-step shrink (x0.72 font + pips), one line
+#   3. complicated    — the shrunk size WRAPPED onto two centered lines
+# The slot width is fixed per die; content never overflows it sideways.
 func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	var tag_size: Vector2 = _die_tag_size()
+	var slot_w: float = round(_die_tag_diameter * DIE_TAG_SLOT_WIDTH_RATIO)
+	var base_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
+	var value_font: int = base_font
+	var profile: Dictionary = _tag_pip_profile(value_font)
+	var rows: Array = [{"effects": effects, "target": target}]
+	if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w:
+		# Tier 2: one-step shrink, still a single line.
+		value_font = int(round(base_font * DIE_TAG_SHRINK_STEP))
+		profile = _tag_pip_profile(value_font)
+		if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w and effects.size() >= 2:
+			# Tier 3: wrap the shrunk content onto two lines.
+			rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
+
+	var row_h: float = round(tag_size.y * (1.0 if value_font == base_font else DIE_TAG_SHRINK_STEP))
 	var plate: Panel = Panel.new()
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# No background box now, so don't clip: let the centered content extend past
-	# the nominal plate rect instead of cutting off a duration superscript / AoE
-	# marker when the pips are wider than the die (Kev 2026-07-09).
 	plate.clip_contents = false
-	plate.custom_minimum_size = tag_size
-	plate.size = tag_size
-	# Transparent plate: the pip icons + numbers read directly over the tray, with
-	# no gray background box or edge outline behind them (Kev 2026-07-09). The
-	# Panel still sizes/centres the content; the value labels' own text outline
-	# keeps them legible over the tray.
+	plate.custom_minimum_size = Vector2(slot_w, row_h * float(rows.size()))
+	plate.size = plate.custom_minimum_size
 	plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var center: CenterContainer = CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	plate.add_child(center)
-	var inner_w: float = tag_size.x - 8.0
-	var value_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
-	var profile: Dictionary = _tag_pip_profile(value_font)
-	if _estimate_tag_content_width(effects, target, value_font, profile) > inner_w:
-		value_font = int(round(value_font * 0.72))
-		profile = _tag_pip_profile(value_font)
-	center.add_child(_build_tag_content(side, effects, target, value_font, profile))
+	var stack: VBoxContainer = VBoxContainer.new()
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 0)
+	center.add_child(stack)
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		var line: Control = _build_tag_content(side, row.get("effects", []), str(row.get("target", "")), value_font, profile)
+		line.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		stack.add_child(line)
 	return plate
+
+
+# Greedy split for tier 3: the largest effect prefix that fits the slot stays on
+# line 1; the remainder (plus the target label) wraps to line 2.
+func _split_tag_rows(effects: Array, target: String, value_font: int, profile: Dictionary, slot_w: float) -> Array:
+	var split: int = 1
+	for count in range(effects.size() - 1, 0, -1):
+		if _estimate_tag_content_width(effects.slice(0, count), "", value_font, profile) <= slot_w:
+			split = count
+			break
+	return [
+		{"effects": effects.slice(0, split), "target": ""},
+		{"effects": effects.slice(split), "target": target},
+	]
 
 
 func _build_tag_content(side: String, effects: Array, target: String, value_font: int, profile: Dictionary) -> Control:
@@ -975,11 +1046,12 @@ func _build_tag_content(side: String, effects: Array, target: String, value_font
 
 # One shared derivation for every tag: center x on the die's bounds center, dock flush just
 # OUTSIDE the die's projected bounds (a tiny gap, never overlapping) — below hero dice,
-# above enemy dice.
+# above enemy dice. Uses the plate's OWN size (set at build): a two-line tier-3
+# tag is taller and must grow AWAY from the die, not over it.
 func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
 	if plate == null or not is_instance_valid(plate):
 		return
-	var tag_size: Vector2 = _die_tag_size()
+	var tag_size: Vector2 = plate.custom_minimum_size
 	plate.size = tag_size
 	var center_x: float = die_bounds.position.x + die_bounds.size.x * 0.5
 	var x: float = center_x - tag_size.x * 0.5
@@ -1563,11 +1635,16 @@ func _ensure_protocol_stack_layout() -> void:
 		return
 	# Let the stack expand across the whole row up to the action buttons.
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	var stack := VBoxContainer.new()
+	# Alignment contract (Kev 2026-07-10): the stack is exactly the action-button
+	# height — the visible top of PROTOCOL N/M lines up with the button tops and
+	# the pip bottoms line up with the button bottoms. Manual anchors (not a
+	# VBox): m5x7 pads ~30% of its line height above the caps, so the label is
+	# nudged up for its VISIBLE glyph top to sit at the stack top.
+	var stack := Control.new()
 	stack.name = "ProtocolStack"
+	stack.custom_minimum_size = Vector2(0, BOTTOM_BAR_BUTTON_SIZE.y)
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	stack.add_theme_constant_override("separation", 2)
 	row.remove_child(protocol_label)
 	row.remove_child(protocol_bar)
 	stack.add_child(protocol_label)
@@ -1583,19 +1660,21 @@ func _ensure_protocol_stack_layout() -> void:
 	if spacer != null:
 		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		spacer.custom_minimum_size = Vector2.ZERO
-	# Wide segment bar (fills the stack); "Protocol N/M" centered above all the blips.
-	# Tall pips (fill the footer minus the label + small padding) so the core Protocol
-	# economy reads as prominent, not subordinate.
-	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Label + pip bar must total <= the action-button height (112) so the stack
-	# centres LEVEL with the buttons instead of spilling below. The "Protocol N/M"
-	# label at font 48 was ~76px tall on its own; trimmed to keep the tall pips.
-	protocol_bar.custom_minimum_size = Vector2(0, 58)
-	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# Label sits RIGHT on top of the pips (Kev 2026-07-10: anchoring it to the
+	# stack top clipped the glyphs under the panel above). Bottom-anchored just
+	# above the pip bar; the overlap eats m5x7's below-baseline padding.
+	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	protocol_label.offset_bottom = -PROTOCOL_PIP_BAR_H + PROTOCOL_LABEL_PIP_OVERLAP
+	protocol_label.offset_top = protocol_label.offset_bottom - PROTOCOL_LABEL_BOX_H
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	protocol_label.add_theme_font_size_override("font_size", 34)
+	protocol_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_STACK_LABEL_FONT)
+	protocol_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	protocol_bar.offset_top = -PROTOCOL_PIP_BAR_H
+	protocol_bar.offset_bottom = 0.0
+	# The legacy footer-display sizing (aspect-derived width) must not re-shrink
+	# the anchored bar.
+	protocol_bar.custom_minimum_size = Vector2.ZERO
 
 
 # Deep Cells directive: the Protocol cap rises while a living carrier stands.
@@ -1638,6 +1717,9 @@ func _update_protocol_bar() -> void:
 	protocol_label.text = "PROTOCOL %d/%d" % [protocol_points, _max_protocol()]
 	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
 	_update_protocol_footer_display()
+	# Cost badges + affordability dim track every pool change (UI review S-4).
+	if _protocol != null:
+		_protocol.refresh_action_affordability()
 	_emit_tutorial("protocol_changed", {"value": protocol_points})
 
 
@@ -1657,13 +1739,14 @@ func _ensure_protocol_footer_display() -> void:
 			protocol_row.move_child(_protocol_footer_spacer, protocol_spend_button.get_index())
 	protocol_bar.visible = true
 	protocol_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	protocol_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	# Scaled down to make footer room for the third protocol action (Set) button.
-	# Width/height scale together so the art aspect holds and the lights stay aligned.
-	# (Provisional — the upcoming UI refactor will redo the footer layout properly.)
-	var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y * 0.74
-	var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
-	protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
+	# The stack layout (anchored label + pips, _ensure_protocol_stack_layout)
+	# owns the bar's geometry — the legacy aspect-derived min size fought the
+	# BOTTOM_WIDE anchors (Kev 2026-07-10 alignment contract).
+	if protocol_row == null or protocol_row.get_node_or_null("ProtocolStack") == null:
+		protocol_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y * 0.74
+		var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
+		protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
 	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
 		_protocol_footer_display = Control.new()
 		_protocol_footer_display.name = "ProtocolFooterDisplay"

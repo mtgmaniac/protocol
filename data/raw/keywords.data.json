@@ -28,7 +28,7 @@
       "id": "execute",
       "term": "Execute",
       "category": "offense",
-      "def": "If the target is below 25% max HP after the base damage, deal bonus damage.",
+      "def": "If the target is below 25% max HP after the base damage, deal +8 bonus damage.",
       "syntax": "execute",
       "code": "EX"
     },
@@ -126,7 +126,7 @@
       "id": "jam",
       "term": "Jam",
       "category": "control",
-      "def": "The target's next roll is capped at 10. Shown on the die, not as a status chip.",
+      "def": "The target's next roll is capped at 10.",
       "syntax": "jam / jam all",
       "code": "JM"
     },
@@ -134,7 +134,7 @@
       "id": "rewrite",
       "term": "Rewrite",
       "category": "control",
-      "def": "The target's next roll is set to 3. Telegraphed: applied this turn, it fires at the next roll.",
+      "def": "The target's next roll is set to 3.",
       "syntax": "rewrite",
       "code": "RW"
     },
@@ -220,6 +220,21 @@
       "category": "offense",
       "def": "The effect hits every valid target (all enemies, or the whole squad) rather than one.",
       "syntax": "(all) on damage; \"all\" / \"squad\" on buffs and heals"
+    },
+    {
+      "id": "target_self",
+      "term": "Targets Self",
+      "category": "support",
+      "def": "The circled-figure marker (or (self) in text) means the ability affects its own caster.",
+      "syntax": "(self)"
+    },
+    {
+      "id": "target_lowest",
+      "term": "Targets Lowest",
+      "category": "support",
+      "def": "A down arrow means the ability picks the lowest-HP ally automatically.",
+      "syntax": "↓",
+      "code": "↓"
     }
   ],
   "conventions": {

@@ -5,9 +5,9 @@ extends RefCounted
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
 ## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
 
-# Batch 155-179 gave every keyword its own pip icon. Only `rampage` and `tag`
-# remain iconless (rendered as their letter/text). Everything else draws its icon.
-const LETTER_ONLY_KINDS: Array[String] = ["rampage", "tag"]
+# Batch 155-179 gave every keyword its own pip icon; the 2026-07-10 icon batch
+# added rampage / pack_bonus / summon / self. Only `tag` remains text-rendered.
+const LETTER_ONLY_KINDS: Array[String] = ["tag"]
 
 # fix-2.6: keyword pip codes are single-sourced from keywords.data.json (the
 # "code" field) — battle pips, inspect rows, and the help menu all read the
@@ -50,12 +50,11 @@ const PROFILE_CARD := {
 
 # Self stays parenthesized; "all" no longer uses )..( — the AoE marker icon is
 # appended after the value by build_group instead (batch 161).
-static func format_scoped(text: String, scope: String) -> String:
-	match scope:
-		"self":
-			return "(%s)" % text
-		_:
-			return text
+static func format_scoped(text: String, _scope: String) -> String:
+	# Scope no longer decorates the VALUE text (Kev 2026-07-10): "self" renders
+	# as the self-marker icon appended by build_group (like the AoE marker),
+	# not as parentheses. Kept as a seam for future scope notations.
+	return text
 
 
 static func is_letter_only_kind(kind: String) -> bool:
@@ -74,7 +73,7 @@ static func pip_key_for_effect(effect: Dictionary, _side: String = "hero") -> St
 # Kinds that now carry an icon AND were authored with a leading keyword code in
 # their value (e.g. "SP3", "CH×2", "BR", "MK"). The icon carries the keyword, so
 # we drop the letters and keep only the numeric/×N/% remainder.
-const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete"]
+const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete", "rampage"]
 
 
 static func display_text_for_effect(effect: Dictionary) -> String:
@@ -119,14 +118,31 @@ static func _numeric_suffix(value: String) -> String:
 	return value.substr(i)
 
 
+# Must mirror build_group's actual children (leading keyword icon · value ·
+# duration superscript · trailing AoE marker). The pre-icon version hardcoded a
+# 48px base and ignored the AoE marker entirely, so icon-bearing rows
+# under-measured and edge readouts clipped off-screen (UI review DB-2).
 static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> float:
 	var value_font: int = int(profile.get("value_font", 48))
-	var width := 48.0
-	width += maxf(28.0, float(display_text_for_effect(effect).length()) * float(value_font) * 0.3)
+	var icon_size: float = float(profile.get("icon_size", 40))
+	var gap: float = float(profile.get("icon_value_gap", 4))
+	var effect_kind: String = str(effect.get("kind", ""))
+	var width := 0.0
+	# Leading keyword icon (letter-only kinds render text instead of an icon).
+	if not is_letter_only_kind(effect_kind) and PixelUI.pip_texture_for_key(pip_key_for_effect(effect)) != null:
+		width += icon_size + gap
+	# m5x7's real glyph advance is ~0.375x the font size (measured: 21px/char at
+	# font 56). The old 0.3 guess under-measured wide values, so borderline tags
+	# picked a presentation tier they couldn't actually fit (die-tag overflow).
+	width += maxf(28.0, float(display_text_for_effect(effect).length()) * float(value_font) * 0.38)
 	var duration: int = int(effect.get("duration", 0))
 	if duration > 1:
 		var sup_size: int = maxi(28, int(round(float(value_font) * float(profile.get("duration_ratio", 0.6)))))
 		width += float(sup_size) * 0.75
+	# Scope markers ("hits all" / "targets self") sit AFTER the value.
+	var scope: String = str(effect.get("scope", ""))
+	if scope == "all" or scope == "self":
+		width += gap + icon_size * 0.95
 	return maxf(float(profile.get("group_min_width", 64)), width)
 
 
@@ -172,20 +188,22 @@ static func build_group(
 	else:
 		group.add_child(_make_value_display(effect, profile, side))
 
-	# AoE marker (batch 161): replaces the old )value( notation — a small
-	# "hits all" icon that sits AFTER the value.
-	if str(effect.get("scope", "")) == "all":
-		var aoe_texture: Texture2D = PixelUI.pip_texture_for_key("aoe")
-		if aoe_texture != null:
-			var aoe_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
-			var aoe_rect := TextureRect.new()
-			aoe_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			aoe_rect.custom_minimum_size = Vector2(aoe_size, aoe_size)
-			aoe_rect.texture = aoe_texture
-			aoe_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			aoe_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			aoe_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			group.add_child(aoe_rect)
+	# Scope markers sit AFTER the value: "hits all" (aoe starburst) and
+	# "targets self" (circled figure — replaces the old parentheses, Kev
+	# 2026-07-10).
+	var scope: String = str(effect.get("scope", ""))
+	if scope == "all" or scope == "self":
+		var marker_texture: Texture2D = PixelUI.pip_texture_for_key("aoe" if scope == "all" else "self")
+		if marker_texture != null:
+			var marker_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
+			var marker_rect := TextureRect.new()
+			marker_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			marker_rect.custom_minimum_size = Vector2(marker_size, marker_size)
+			marker_rect.texture = marker_texture
+			marker_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			marker_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			marker_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			group.add_child(marker_rect)
 
 	return group
 
@@ -313,6 +331,11 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	if bool(raw.get("taunt", false)) or bool(raw.get("enemySelfTaunt", false)):
 		_append_effect(effects, "taunt", keyword_code("taunt", "T"))
 
+	if int(raw.get("summonChance", 0)) > 0:
+		_append_effect(effects, "summon", "")
+	if bool(raw.get("packBonus", false)):
+		_append_effect(effects, "pack_bonus", "")
+
 	var revive_pct: int = int(raw.get("revivePct", 50))
 	if bool(raw.get("reviveAll", false)):
 		_append_effect(effects, "revive", "%d" % revive_pct, 0, "all")
@@ -433,14 +456,62 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			_append_effect(effects, "freeze", "", int(effect.get("repeats", 0)))
 		"enemyDieFreezeAll":
 			_append_effect(effects, "freeze", "", int(effect.get("repeats", 0)), "all")
+		"deathDamageAll":
+			_append_effect(effects, "dmg", "%d" % int(effect.get("amount", 0)), 0, "all")
 		_:
-			if target_kind != "":
+			# No pip beats a placeholder: "none"/"" target kinds render nothing
+			# (Kev 2026-07-10: never show a NONE tag).
+			if target_kind != "" and target_kind.to_lower() != "none":
 				_append_effect(effects, "tag", target_kind.to_upper())
 	return effects
 
 
 static func ability_readout_payload(raw: Dictionary, side: String = "hero") -> Dictionary:
 	return {"effects": effects_from_ability_raw(raw, side), "target": ""}
+
+
+# Directive passives (tier-3 picks) — every directive effect type maps to the
+# pip icon(s) that carry its identity (Kev 2026-07-10: the pips ARE the
+# directive card's image). Icon-only (no values — the desc carries numbers).
+const DIRECTIVE_PIP_KINDS := {
+	"abilityProtocolBonus": ["protocol"],
+	"abilityRevivePctOverride": ["revive"],
+	"battleStartShieldSelf": ["shield"],
+	"bonusVsBurning": ["dmg", "burn"],
+	"bonusVsFrozen": ["dmg", "freeze"],
+	"burnDurationBonus": ["burn"],
+	"burnImmediateTick": ["burn"],
+	"chainExtraJump": ["chain"],
+	"chainFullDamage": ["chain"],
+	"cloakAttackBonus": ["cloak", "dmg"],
+	"damageAppliesMark": ["mark"],
+	"decloakExecute": ["cloak", "execute"],
+	"executeThresholdPct": ["execute"],
+	"freezeDurationBonus": ["freeze"],
+	"healGrantsShield": ["heal", "shield"],
+	"killNextAbilityDamage": ["dmg"],
+	"lowHpCloakOnce": ["cloak"],
+	"nonDamageRecloak": ["cloak"],
+	"overloadDetonateAfter": ["detonate"],
+	"ownShieldBonus": ["shield"],
+	"pierceAlsoBreach": ["pierce", "breach"],
+	"protocolCapBonus": ["protocol"],
+	"rfeAllAlsoJam": ["rfe", "jam"],
+	"rfeAlsoJam": ["rfe", "jam"],
+	"rfeDamagePerRound": ["rfe", "dmg"],
+	"rfeGrantsProtocol": ["rfe", "protocol"],
+	"shieldGrantsSpike": ["shield", "spike"],
+	"spikeBonus": ["spike"],
+	"squadShieldBonus": ["shield"],
+	"tauntDamageReduction": ["taunt", "shield"],
+}
+
+
+static func effects_from_directive(effect: Dictionary) -> Array:
+	var effects: Array = []
+	for kind in DIRECTIVE_PIP_KINDS.get(str(effect.get("type", "")), []):
+		_append_effect(effects, str(kind), "")
+	return effects
 
 
 static func _append_effect(

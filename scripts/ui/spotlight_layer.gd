@@ -26,7 +26,7 @@ enum CoachAnchor { AUTO, BOTTOM, CENTER }
 const DIM := Color(0.01, 0.015, 0.02, 0.82)
 const ACCENT := Color("6fe0ef")  # PixelUI.DT_CYAN_BRIGHT
 const COACH_FONT := 32
-const HINT_FONT := 24
+const HINT_FONT := 36  # Kev 2026-07-10: "tap to continue" was too small at 24
 const SCREEN_MARGIN := 40.0
 const FULLSCREEN_INSET := 12.0  # "highlight the whole screen" frame inset
 
@@ -228,7 +228,9 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 		# Pinned to the bottom so it never covers the centre action button.
 		y = s.y - ch - SCREEN_MARGIN
 	elif anchor == CoachAnchor.CENTER or hole.size == Vector2.ZERO:
-		y = (s.y - ch) * 0.5
+		# Upper-middle, not dead center (Kev 2026-07-10): the End Turn button
+		# lives mid-screen and a centered coach was blocking it.
+		y = s.y * 0.34 - ch * 0.5
 	elif hole.get_center().y < s.y * 0.5:
 		y = minf(hole.end.y + 28.0, s.y - ch - SCREEN_MARGIN)  # hole in top half → coach below
 	else:

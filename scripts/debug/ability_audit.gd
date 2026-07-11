@@ -3418,10 +3418,11 @@ func _run_text_alignment_audits() -> void:
 				_record_pass("Text alignment / %s" % path.get_file(), "no stale %s" % pattern)
 
 	# Status descriptions live in InspectResolver now (the long-press InspectPopup replaced the
-	# old hover tooltips that used to carry this text in compact_unit_card).
+	# old hover tooltips that used to carry this text in compact_unit_card). Canonical short
+	# forms per the 2026-07-10 status-text trim (Kev: one short line per active effect).
 	var status_text: String = FileAccess.get_file_as_string("res://scripts/ui/inspect_resolver.gd")
-	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak untargetable text", "contains cloak untargetable text" if status_text.contains("Untargetable by hostile single-target abilities; friendly picks stay legal.") else "missing")
-	_expect_and_record("Text alignment / inspect ward text", "text", "contains ward block text", "contains ward block text" if status_text.contains("Blocks the next ability that targets this unit") else "missing")
+	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak untargetable text", "contains cloak untargetable text" if status_text.contains("Can't be targeted; breaks on dealing damage.") else "missing")
+	_expect_and_record("Text alignment / inspect ward text", "text", "contains ward block text", "contains ward block text" if status_text.contains("Blocks the next ability, then breaks.") else "missing")
 
 
 func _build_context(raw: Dictionary, ability_name: String) -> Dictionary:

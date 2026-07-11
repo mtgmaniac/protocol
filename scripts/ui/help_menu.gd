@@ -10,7 +10,7 @@ const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8
 const TITLE_FONT := 48
 const TAB_FONT := 30
 const SECTION_FONT := 36
-const BODY_FONT := 30
+const BODY_FONT := PixelUI.FONT_INFO_MIN  # help body is read under duress — floor it (UI review S-1)
 const TERM_FONT := 33
 const SYNTAX_FONT := 27
 const HEADER_FONT := 42
@@ -25,10 +25,13 @@ const HELP_TABS := [
 	{"id": "rewards", "label": "REWARDS"},
 	{"id": "units", "label": "UNITS"},
 	{"id": "bestiary", "label": "BESTIARY"},
+	{"id": "log", "label": "BATTLE LOG"},
 	{"id": "settings", "label": "SETTINGS"},
 ]
-# Each keyword now has its own pip icon (batch 155-179). Keyword id -> pip key.
-# rampage / pack_bonus / summon have no icon and fall back to their code letter.
+# Battle-log tab cap: plenty to review the fight without building 1000 labels.
+const LOG_MAX_LINES := 200
+# Each keyword now has its own pip icon (batch 155-179 + the 2026-07-10 icon
+# batch: rampage / pack_bonus / summon / self marker). Keyword id -> pip key.
 const HELP_KEYWORD_ICON := {
 	"burn": "burn", "chain": "chain", "detonate": "detonate", "execute": "execute",
 	"breach": "breach", "leech": "leech", "mark": "mark", "spike": "spike",
@@ -37,6 +40,8 @@ const HELP_KEYWORD_ICON := {
 	"hijack": "hijack", "freeze": "freeze", "cloak": "cloak", "ward": "firewall",
 	"accrete": "accrete", "taunt": "taunt", "siphon": "siphon", "aoe": "aoe",
 	"protocol_gain": "protocol", "wipe_shields": "breach",
+	"rampage": "rampage", "pack_bonus": "pack_bonus", "summon": "summon",
+	"target_self": "self", "target_all": "aoe",
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
@@ -241,6 +246,8 @@ func _select_tab(tab_id: String) -> void:
 			_build_codex(_content_host)
 		"bestiary":
 			_build_bestiary(_content_host)
+		"log":
+			_build_battle_log(_content_host)
 		"settings":
 			_build_settings(_content_host)
 	if _content_scroll != null:
@@ -259,6 +266,28 @@ func _style_tab_button(button: Button, active: bool) -> void:
 
 
 # ── Tab content ───────────────────────────────────────────────────────────────
+
+# BATTLE LOG (Kev 2026-07-10): the running combat log, newest first, so a
+# player can look back at what happened. Reads the live battle scene's
+# accumulated log; outside battle the tab says so.
+func _build_battle_log(host: VBoxContainer) -> void:
+	var log_text: String = ""
+	var scene: Node = get_tree().current_scene
+	if scene != null:
+		var log_label: Variant = scene.get("battle_log_label")
+		if log_label is RichTextLabel and is_instance_valid(log_label):
+			log_text = (log_label as RichTextLabel).text
+	var lines: Array = []
+	for line in log_text.split("\n", false):
+		if lines.size() >= LOG_MAX_LINES:
+			break
+		lines.append(line)
+	if lines.is_empty():
+		_add_section(host, "BATTLE LOG", ["No battle activity yet."])
+		return
+	_add_section(host, "BATTLE LOG — NEWEST FIRST", lines)
+
+
 func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit — squad and hostile — rolls a D20 at the same time.",
@@ -319,25 +348,13 @@ func _build_protocol(host: VBoxContainer) -> void:
 
 
 func _build_rewards(host: VBoxContainer) -> void:
+	# Kev 2026-07-10: the icon-frame shape code and rarity color legend are
+	# gone — cards carry a boxed TYPE word and the rarity name in plain text.
 	_add_section(host, "ITEMS, GEAR & RELICS", [
 		"Items: one-use, spent in battle. The reward picker is single-select + confirm.",
 		"Gear: permanent passive, applies at battle start (+rolls, +max HP, starting shield).",
 		"Relics: run-long global rules that affect every battle.",
-	])
-	_add_section(host, "RARITY (BORDER COLOR)", [
-		"Common — gray.",
-		"Uncommon — green.",
-		"Rare — blue.",
-		"Legendary — gold.",
-	])
-	_add_section(host, "ICON FRAME = TYPE", [
-		"Heart — heal / support.",
-		"Shield — defense.",
-		"Skull — damage / kill.",
-		"Bolt — energy hit.",
-		"Die — dice manipulation.",
-		"Cloak — stealth.",
-		"Star — buff.",
+		"Every card names its rarity and carries a boxed type tag (CONSUMABLE / GEAR / RELIC).",
 	])
 
 
@@ -418,9 +435,8 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 
 	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2))
 	text_box.add_child(_make_wrap_label(str(kw.get("def", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 2))
-	var syntax: String = str(kw.get("syntax", "")).strip_edges()
-	if syntax != "":
-		text_box.add_child(_make_wrap_label(syntax, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
+	# No trailing syntax line (Kev 2026-07-10): it just repeated the keyword
+	# name under its own definition.
 
 
 # ── UNITS codex ───────────────────────────────────────────────────────────────
@@ -608,11 +624,35 @@ func _select_bestiary_faction(faction: String) -> void:
 
 
 func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
+	# Kev 2026-07-10: every bestiary entry carries a small portrait.
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 14)
+	host.add_child(row)
+
+	if enemy.portrait != null:
+		var frame := PanelContainer.new()
+		frame.custom_minimum_size = Vector2(96, 96)
+		frame.clip_contents = true
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_ENEMY_BORDER, 2))
+		var tex := TextureRect.new()
+		tex.texture = enemy.portrait
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(tex)
+		row.add_child(frame)
+
 	var entry := VBoxContainer.new()
 	entry.mouse_filter = Control.MOUSE_FILTER_PASS
 	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	entry.add_theme_constant_override("separation", 1)
-	host.add_child(entry)
+	row.add_child(entry)
 
 	entry.add_child(_make_wrap_label(enemy.display_name.to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, 2))
 
@@ -662,10 +702,20 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
-	# Room for more settings here later (e.g. volume sliders, haptics, reduced motion).
+
+	# --- Tutorials (Kev 2026-07-10) ---
+	host.add_child(_make_label("TUTORIALS", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var sm_t: Variant = _save_manager()
+	var primers_on: bool = sm_t == null or bool(sm_t.get_setting("ability_primers_enabled", true))
+	_add_toggle_row(host, "One-time ability tips (keyword primers)", primers_on, _on_toggle_ability_primers)
 
 	# --- Dev tools ---
 	host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	# Developer mode: shows the header debug buttons (hidden by default for
+	# non-dev hands — UI review DB-1). Persisted in the save profile.
+	var sm: Variant = _save_manager()
+	var dev_mode_on: bool = sm != null and bool(sm.get_setting("dev_mode", false))
+	_add_toggle_row(host, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
 	var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
 	unlock_btn.pressed.connect(_on_dev_unlock_all)
 	host.add_child(unlock_btn)
@@ -680,22 +730,48 @@ func _build_settings(host: VBoxContainer) -> void:
 
 
 func _on_dev_reset_primers() -> void:
-	SaveManager.dev_reset_primers()
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.dev_reset_primers()
+
+
+func _on_toggle_ability_primers(pressed: bool) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting("ability_primers_enabled", pressed)
+
+
+# Variant lookups (mirroring _audio()) so this compiles even when the autoloads
+# are absent (e.g. the headless capture harness).
+func _save_manager() -> Variant:
+	return get_node_or_null("/root/SaveManager")
+
+
+func _on_toggle_dev_mode(pressed: bool) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting("dev_mode", pressed)
+	var header: Variant = get_node_or_null("/root/PersistentHeader")
+	if header != null:
+		header.set_dev_mode(pressed)
 
 
 func _make_dev_button(text: String, amber: bool) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.focus_mode = Control.FOCUS_NONE
-	btn.custom_minimum_size = Vector2(0, 90)
+	btn.custom_minimum_size = Vector2(0, 110)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_primary_button(btn, BODY_FONT, amber)
+	# Kev 2026-07-10: settings buttons + text sized up for phone hands.
+	PixelUI.style_primary_button(btn, 44, amber)
 	return btn
 
 
 func _on_dev_unlock_all() -> void:
-	SaveManager.dev_unlock_all()
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.dev_unlock_all()
 	# Rebuild the underlying screen so unlock state (locked heroes/ops) refreshes.
 	dismiss()
 	get_tree().reload_current_scene()
@@ -709,10 +785,14 @@ func _on_dev_reset_profile() -> void:
 		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
 		_disarm_reset_after_delay()
 		return
-	SaveManager.dev_reset_profile()
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.dev_reset_profile()
 	_reset_armed = false
 	dismiss()
-	SceneManager.go_to_main_menu()
+	var scene_mgr: Variant = get_node_or_null("/root/SceneManager")
+	if scene_mgr != null:
+		scene_mgr.go_to_main_menu()
 
 
 func _disarm_reset_after_delay() -> void:
@@ -748,7 +828,7 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	row.add_theme_constant_override("separation", 12)
 	parent.add_child(row)
 
-	var label := _make_wrap_label(label_text, BODY_FONT, PixelUI.TEXT_PRIMARY, 2)
+	var label := _make_wrap_label(label_text, 40, PixelUI.TEXT_PRIMARY, 2)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(label)
@@ -756,7 +836,7 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	var btn := Button.new()
 	btn.toggle_mode = true
 	btn.button_pressed = initial
-	btn.custom_minimum_size = Vector2(150, 76)
+	btn.custom_minimum_size = Vector2(190, 96)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_toggle_button(btn)

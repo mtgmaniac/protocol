@@ -7,7 +7,10 @@
       "rarity": "common",
       "icon": "heart",
       "target": "ally",
-      "effect": { "type": "heal", "amount": 5 }
+      "effect": {
+        "type": "heal",
+        "amount": 5
+      }
     },
     {
       "id": "triage_broadcast",
@@ -16,7 +19,10 @@
       "rarity": "common",
       "icon": "heart",
       "target": "none",
-      "effect": { "type": "healAll", "amount": 2 }
+      "effect": {
+        "type": "healAll",
+        "amount": 2
+      }
     },
     {
       "id": "scrap_plate",
@@ -25,7 +31,10 @@
       "rarity": "common",
       "icon": "shield",
       "target": "ally",
-      "effect": { "type": "shield", "amount": 5 }
+      "effect": {
+        "type": "shield",
+        "amount": 5
+      }
     },
     {
       "id": "buckler_array",
@@ -34,7 +43,10 @@
       "rarity": "common",
       "icon": "shield",
       "target": "none",
-      "effect": { "type": "shieldAll", "amount": 4 }
+      "effect": {
+        "type": "shieldAll",
+        "amount": 4
+      }
     },
     {
       "id": "calibration_chip",
@@ -43,7 +55,11 @@
       "rarity": "common",
       "icon": "die",
       "target": "ally",
-      "effect": { "type": "rollBuff", "amount": 1, "turns": 1 }
+      "effect": {
+        "type": "rollBuff",
+        "amount": 1,
+        "turns": 1
+      }
     },
     {
       "id": "momentum_core",
@@ -52,7 +68,11 @@
       "rarity": "uncommon",
       "icon": "die",
       "target": "ally",
-      "effect": { "type": "rollBuff", "amount": 2, "turns": 1 }
+      "effect": {
+        "type": "rollBuff",
+        "amount": 2,
+        "turns": 1
+      }
     },
     {
       "id": "harmonic_injector",
@@ -61,7 +81,11 @@
       "rarity": "rare",
       "icon": "die",
       "target": "ally",
-      "effect": { "type": "rollBuff", "amount": 4, "turns": 2 }
+      "effect": {
+        "type": "rollBuff",
+        "amount": 4,
+        "turns": 2
+      }
     },
     {
       "id": "archive_cascade",
@@ -70,7 +94,11 @@
       "rarity": "legendary",
       "icon": "die",
       "target": "ally",
-      "effect": { "type": "rollBuff", "amount": 5, "turns": 3 }
+      "effect": {
+        "type": "rollBuff",
+        "amount": 5,
+        "turns": 3
+      }
     },
     {
       "id": "defib_spark",
@@ -79,7 +107,10 @@
       "rarity": "uncommon",
       "icon": "bolt",
       "target": "allyDead",
-      "effect": { "type": "revive", "pct": 50 }
+      "effect": {
+        "type": "revive",
+        "pct": 50
+      }
     },
     {
       "id": "ghost_veil",
@@ -88,7 +119,9 @@
       "rarity": "uncommon",
       "icon": "cloak",
       "target": "ally",
-      "effect": { "type": "cloak" }
+      "effect": {
+        "type": "cloak"
+      }
     },
     {
       "id": "scatter_veil_array",
@@ -97,7 +130,9 @@
       "rarity": "rare",
       "icon": "cloak",
       "target": "none",
-      "effect": { "type": "cloakAll" }
+      "effect": {
+        "type": "cloakAll"
+      }
     },
     {
       "id": "grounding_clip",
@@ -106,7 +141,11 @@
       "rarity": "common",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyRfe", "amount": 1, "rfT": 2 }
+      "effect": {
+        "type": "enemyRfe",
+        "amount": 1,
+        "rfT": 2
+      }
     },
     {
       "id": "corrosion_bomb",
@@ -115,7 +154,11 @@
       "rarity": "uncommon",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyRfe", "amount": 2, "rfT": 2 }
+      "effect": {
+        "type": "enemyRfe",
+        "amount": 2,
+        "rfT": 2
+      }
     },
     {
       "id": "entropy_seed",
@@ -124,7 +167,11 @@
       "rarity": "rare",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyRfe", "amount": 3, "rfT": 3 }
+      "effect": {
+        "type": "enemyRfe",
+        "amount": 3,
+        "rfT": 3
+      }
     },
     {
       "id": "shock_charge",
@@ -133,7 +180,10 @@
       "rarity": "common",
       "icon": "bolt",
       "target": "enemy",
-      "effect": { "type": "enemyDmg", "amount": 10 }
+      "effect": {
+        "type": "enemyDmg",
+        "amount": 10
+      }
     },
     {
       "id": "acid_vial",
@@ -142,7 +192,11 @@
       "rarity": "common",
       "icon": "skull",
       "target": "enemy",
-      "effect": { "type": "enemyBurn", "amount": 3, "burnT": 2 }
+      "effect": {
+        "type": "enemyBurn",
+        "amount": 3,
+        "burnT": 2
+      }
     },
     {
       "id": "phase_scrambler",
@@ -151,7 +205,9 @@
       "rarity": "common",
       "icon": "die",
       "target": "enemy",
-      "effect": { "type": "enemyRerollDie" }
+      "effect": {
+        "type": "enemyRerollDie"
+      }
     },
     {
       "id": "cascade_jammer",
@@ -160,34 +216,45 @@
       "rarity": "rare",
       "icon": "die",
       "target": "none",
-      "effect": { "type": "enemyRerollAll" }
+      "effect": {
+        "type": "enemyRerollAll"
+      }
     },
     {
       "id": "cryo_gel",
       "name": "Cryo Gel",
-      "desc": "Freeze any unit's die — it keeps its face and repeats that result on its next roll.",
+      "desc": "Freeze any unit's die.",
       "rarity": "uncommon",
       "icon": "bolt",
       "target": "any",
-      "effect": { "type": "anyDieFreeze", "repeats": 1 }
+      "effect": {
+        "type": "anyDieFreeze",
+        "repeats": 1
+      }
     },
     {
       "id": "cryo_web",
       "name": "Cryo Web",
-      "desc": "Freeze any unit's die — it keeps its face and repeats that result on its next two rolls.",
+      "desc": "Freeze any unit's die for two rolls.",
       "rarity": "rare",
       "icon": "bolt",
       "target": "any",
-      "effect": { "type": "anyDieFreeze", "repeats": 2 }
+      "effect": {
+        "type": "anyDieFreeze",
+        "repeats": 2
+      }
     },
     {
       "id": "deep_zero_pin",
       "name": "Deep Zero Pin",
-      "desc": "Pin every enemy die to its weakest face and freeze it — each enemy repeats its recharge result next roll.",
+      "desc": "Pin every enemy die to its weakest face and freeze it.",
       "rarity": "rare",
       "icon": "bolt",
       "target": "none",
-      "effect": { "type": "enemyDieFreezeAll", "repeats": 1 }
+      "effect": {
+        "type": "enemyDieFreezeAll",
+        "repeats": 1
+      }
     },
     {
       "id": "protocol_cell",
@@ -196,7 +263,10 @@
       "rarity": "common",
       "icon": "die",
       "target": "none",
-      "effect": { "type": "gainProtocol", "amount": 2 }
+      "effect": {
+        "type": "gainProtocol",
+        "amount": 2
+      }
     },
     {
       "id": "capacitor_dose",
@@ -205,7 +275,10 @@
       "rarity": "uncommon",
       "icon": "die",
       "target": "none",
-      "effect": { "type": "gainProtocol", "amount": 3 }
+      "effect": {
+        "type": "gainProtocol",
+        "amount": 3
+      }
     },
     {
       "id": "core_surge",
@@ -214,7 +287,10 @@
       "rarity": "rare",
       "icon": "die",
       "target": "none",
-      "effect": { "type": "gainProtocol", "amount": 4 }
+      "effect": {
+        "type": "gainProtocol",
+        "amount": 4
+      }
     },
     {
       "id": "mainline_cache",
@@ -223,7 +299,10 @@
       "rarity": "legendary",
       "icon": "die",
       "target": "none",
-      "effect": { "type": "gainProtocol", "amount": 5 }
+      "effect": {
+        "type": "gainProtocol",
+        "amount": 5
+      }
     }
   ]
 }

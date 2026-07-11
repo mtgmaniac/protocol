@@ -15,9 +15,21 @@ const TITLE_FONT_SIZE := 58
 const SUMMARY_FONT_SIZE := 36
 const CARD_TITLE_FONT_SIZE := 44
 const BODY_FONT_SIZE := 36
-const SMALL_FONT_SIZE := 30
-const ABILITY_NAME_FONT_SIZE := 34
-const ABILITY_DESC_FONT_SIZE := 30
+const SMALL_FONT_SIZE := 32
+# Band effect rows are the substance of a PERMANENT choice — floor them
+# (UI review S-1: the densest decision screen had the smallest text).
+const ABILITY_NAME_FONT_SIZE := PixelUI.FONT_INFO_MIN
+const ABILITY_DESC_FONT_SIZE := PixelUI.FONT_INFO_MIN
+# Directive cards (Kev 2026-07-10): the effect pips ARE the item image — large.
+const DIRECTIVE_PIP_PROFILE := {
+	"icon_size": 96,
+	"value_font": 84,
+	"duration_ratio": 0.6,
+	"icon_value_gap": 6,
+	"group_min_width": 110,
+	"outline": 3,
+	"duration_outline": 2,
+}
 const BUTTON_FONT_SIZE := 36
 
 @onready var background: ColorRect = $Background
@@ -183,16 +195,33 @@ func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> Panel
 
 	var directive_name: String = str(directive.get("name", "Directive"))
 	vbox.add_child(_make_label(directive_name.to_upper(), CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
+	# Kev 2026-07-10: image beside description — the directive's effect pip
+	# icons render LARGE on the left, the passive text reads to the right.
+	var body_row: HBoxContainer = HBoxContainer.new()
+	body_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body_row.add_theme_constant_override("separation", 20)
+	var pips: Array = EffectPip.effects_from_directive(directive.get("effect", {}))
+	if not pips.is_empty():
+		var pip_col: VBoxContainer = VBoxContainer.new()
+		pip_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip_col.add_theme_constant_override("separation", 8)
+		for pip_variant in pips:
+			pip_col.add_child(EffectPip.build_group(pip_variant, DIRECTIVE_PIP_PROFILE))
+		body_row.add_child(pip_col)
 	var desc: Label = _make_label(str(directive.get("desc", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(desc)
+	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	body_row.add_child(desc)
+	vbox.add_child(body_row)
 	if base_unit != null:
 		var evolved_name: String = GameState.get_unit_evolution_name(base_unit.id)
 		vbox.add_child(_make_label("PERMANENT PASSIVE FOR %s" % evolved_name.to_upper(), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
 	vbox.add_child(_create_divider())
 
 	var choose_button: Button = Button.new()
-	choose_button.custom_minimum_size = Vector2(0, 78)
+	# Kev 2026-07-10 (rev 2): big tap target, label vertically comfortable.
+	choose_button.custom_minimum_size = Vector2(0, 128)
 	choose_button.text = "CHOOSE %s" % directive_name.to_upper()
 	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
 	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
@@ -297,7 +326,8 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	if path_callsign != "":
 		text_stack.add_child(_make_label(path_callsign, CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
 
-	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.HERO_ACCENT, 3)
+	# Branch name is a selection, not a rarity — cyan, not green (UI review S-2).
+	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.DT_CYAN, 3)
 	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_stack.add_child(path_name)
 
@@ -313,36 +343,49 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		hp_label_text = "MAX HP %d" % hp_value
 	text_stack.add_child(_make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.GOLD_ACCENT, 1))
 
-	if base_unit != null:
-		text_stack.add_child(_make_label("FROM %s" % base_unit.display_name.to_upper(), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+	# No FROM <unit> line (Kev 2026-07-10) — the player just came from that unit.
 	return header
 
 
-func _create_ability_row(entry: Dictionary) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 14)
+# Ability row in the SAME shape as the long-press inspect popup (Kev
+# 2026-07-10): "Roll: N - M  Name" on one line, then the effect pips beside
+# the short eff text — the layout the player already reads in battle.
+func _create_ability_row(entry: Dictionary) -> VBoxContainer:
+	var box: VBoxContainer = VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 4)
 
-	var range_label: Label = _make_label("%d-%d" % [int(entry.get("min", 0)), int(entry.get("max", 0))], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	range_label.custom_minimum_size = Vector2(110, 0)
-	range_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	row.add_child(range_label)
+	# Alignment contract (Kev 2026-07-10, matches the inspect popup): the
+	# "Roll: N - M  Name" line is CENTERED; pips LEFT, description RIGHT.
+	var row1: HBoxContainer = HBoxContainer.new()
+	row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.alignment = BoxContainer.ALIGNMENT_CENTER
+	row1.add_theme_constant_override("separation", 12)
+	row1.add_child(_make_label("Roll: %d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+	var ability_name: Label = _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.DT_CYAN, 2)
+	ability_name.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	row1.add_child(ability_name)
+	box.add_child(row1)
 
-	var text_stack: VBoxContainer = VBoxContainer.new()
-	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_stack.add_theme_constant_override("separation", 3)
-	row.add_child(text_stack)
-
-	var ability_name: Label = _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-	ability_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text_stack.add_child(ability_name)
-
-	var description_text: String = str(entry.get("description", "")).strip_edges()
-	if description_text != "":
-		var description: Label = _make_label(description_text, ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text_stack.add_child(description)
-	return row
+	var raw: Dictionary = entry.get("raw", {})
+	var eff_text: String = str(raw.get("eff", entry.get("description", ""))).strip_edges()
+	var effects: Array = EffectPip.effects_from_ability_raw(raw, "hero") if not raw.is_empty() else []
+	if not effects.is_empty() or eff_text != "":
+		var row2: HBoxContainer = HBoxContainer.new()
+		row2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row2.add_theme_constant_override("separation", 10)
+		for effect_variant in effects:
+			var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD, "hero")
+			group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			row2.add_child(group)
+		if eff_text != "":
+			var description: Label = _make_label(eff_text, ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
+			description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			description.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			row2.add_child(description)
+		box.add_child(row2)
+	return box
 
 
 func _create_divider() -> ColorRect:

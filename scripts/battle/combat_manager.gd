@@ -204,7 +204,9 @@ func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) ->
 			enemy_state["target_display"] = "--"
 			continue
 		enemy_state["selected_target_id"] = str(pick["id"])
-		enemy_state["target_display"] = str(pick["unit"].display_name)
+		# Display string only — battle_name() (the callsign) so every surface
+		# (cards, inspect TARGETING line) labels the hero the same way.
+		enemy_state["target_display"] = str(pick["unit"].battle_name())
 		_enemy_assignments[str(enemy_state["id"])] = str(pick["id"])
 
 
@@ -1641,6 +1643,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			final_damage = scaled_damage * 2
 			enemy_state["rampage_charges"] = int(enemy_state["rampage_charges"]) - 1
 			_log("%s triggers Rampage! (2× damage)" % enemy_state["unit"].display_name)
+			# Presentation-only marker (primer first-sighting + feedback hook);
+			# floats/sfx ignore unknown types, no state or RNG touched.
+			_emit_event(enemy_state, "rampage", final_damage, "enemy")
 		if bool(raw.get("packBonus", false)) and final_damage > 0:
 			# Pack Bonus: +1 per OTHER living pack member of the SAME KIND. "Kind"
 			# is the enemy_type (kit) — Obsidian and Slag hounds both count as
@@ -1657,6 +1662,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if pack_count > 0:
 				final_damage += pack_count
 				_log("%s pack bonus +%d (%d fellow pack member(s))." % [enemy_state["unit"].display_name, pack_count, pack_count])
+				# Presentation-only marker (primer first-sighting); floats/sfx
+				# ignore unknown types, no state or RNG touched.
+				_emit_event(enemy_state, "pack_bonus", pack_count, "enemy")
 		final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
 		if should_wipe_shields:
 			_wipe_all_hero_shields(enemy_state)

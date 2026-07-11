@@ -15,7 +15,17 @@ const COLOR_DAMAGE := Color(0.96, 0.22, 0.18, 1.0)
 const COLOR_HEAL := Color(0.28, 0.90, 0.46, 1.0)
 const COLOR_SHIELD := Color(0.34, 0.66, 1.0, 1.0)
 const COLOR_DEBUFF := Color(0.72, 0.34, 0.95, 1.0)
+# Burn is FIRE now (Kev 2026-07-10) — ember orange, not the old poison purple.
+const COLOR_BURN := Color(0.95, 0.58, 0.22, 1.0)
 const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
+
+# ── Font-size floors (UI review S-1, Kev-approved 2026-07-10) ──
+# Nominal m5x7 sizes in the 1080×2400 design space. INFO = text a player needs to
+# read to play correctly (legends, costs, rarity lines, ability effect rows,
+# stats, help body). ACCENT = decorative/eyebrow labels that may stay smaller.
+# New screens should not hand-roll label sizes below these.
+const FONT_INFO_MIN := 36
+const FONT_ACCENT_MIN := 28
 
 # ── Direction 05 "Dithered Terminal" palette (battle HUD redesign) ──
 # Green is reserved for HP + the ROLL commit only; heroes read cyan, enemies rust.
@@ -85,9 +95,12 @@ static var DT_STATUS := {
 # (rare-indigo must not look like player cyan DT_CYAN; legendary-orange must not look
 # like commit gold GOLD_ACCENT / enemy red). Relics carry no rarity and reuse the
 # legendary token (see reward_screen._rarity_name). Tunable starting values.
+# Rarity ladder (Kev ruling 2026-07-10, UI review S-2): green exits the rarity
+# palette entirely — green stays reserved for HP/heals (INVARIANTS #7).
+# gray -> blue -> purple -> orange. "epic" is unused in data (kept aligned).
 static var RARITY_COMMON := Color("7a8290")
-static var RARITY_UNCOMMON := Color("5cb85c")
-static var RARITY_RARE := Color("5b7fe8")
+static var RARITY_UNCOMMON := Color("5b7fe8")
+static var RARITY_RARE := Color("9d52d8")
 static var RARITY_EPIC := Color("9d52d8")
 static var RARITY_LEGENDARY := Color("ff8230")
 
@@ -313,6 +326,12 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 			return "breach"
 		"accrete":
 			return "accrete"
+		"rampage":
+			return "rampage"
+		"pack_bonus":
+			return "pack_bonus"
+		"summon":
+			return "summon"
 		"rfe":
 			return "roll_down"
 		"rfm":
@@ -402,6 +421,9 @@ const PIP_ICON_BY_KEY := {
 	"rewrite": "rewrite", "hijack": "hijack", "siphon": "siphon", "chain": "chain",
 	"detonate": "detonate", "execute": "execute", "breach": "breach",
 	"pierce": "pierce", "revive": "revive", "accrete": "accrete",
+	# Kev 2026-07-10 icon batch (newicons.png): self marker, summon, rampage,
+	# pack bonus (aoe.png was replaced by the 8-arrow starburst).
+	"self": "self", "summon": "summon", "rampage": "rampage", "pack_bonus": "pack_bonus",
 }
 
 static func pip_texture_for_key(key: String) -> Texture2D:
@@ -612,7 +634,9 @@ static func effect_color(kind: String) -> Color:
 			return COLOR_HEAL
 		"shield", "taunt":
 			return COLOR_SHIELD
-		"burn", "debuff":
+		"burn":
+			return COLOR_BURN
+		"debuff":
 			return COLOR_DEBUFF
 		"roll", "rfe", "rfm", "freeze":
 			return COLOR_ROLL
@@ -644,7 +668,9 @@ static func rarity_color(rarity: String) -> Color:
 
 static func status_color(token: String) -> Color:
 	var upper: String = token.to_upper()
-	if upper.begins_with("BRN") or upper.begins_with("BURN") or upper == "DOWN" or upper == "P":
+	if upper.begins_with("BRN") or upper.begins_with("BURN"):
+		return COLOR_BURN
+	if upper == "DOWN" or upper == "P":
 		return COLOR_DEBUFF
 	if upper == "RMP":
 		return COLOR_DAMAGE
@@ -665,6 +691,32 @@ static func style_panel(panel: Control, bg: Color = BG_PANEL, border: Color = LI
 ## (auto-tracks resize). Pass Color.TRANSPARENT to remove.
 static func add_corner_brackets(target: Control, color: Color, arm: float = 16.0, thick: float = 3.0, inset: float = 4.0) -> void:
 	_refresh_corner_brackets(target, color, arm, thick, inset)
+
+
+## A framed scene-illustration banner sized to the image's OWN aspect ratio so the
+## whole picture shows (no cover-crop / zoom). The frame is scaled to fit inside a
+## max_w x max_h box and hugs the resulting size, so its height floats per-image
+## within that range and it centers horizontally in its parent. Pixel art stays
+## nearest-filtered. Returns the frame (already carries border + corner brackets).
+static func make_scene_banner(tex: Texture2D, max_w: float, max_h: float, border: Color) -> PanelContainer:
+	var iw: float = maxf(1.0, float(tex.get_width()))
+	var ih: float = maxf(1.0, float(tex.get_height()))
+	var scale: float = minf(max_w / iw, max_h / ih)
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(round(iw * scale), round(ih * scale))
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.clip_contents = true
+	frame.add_theme_stylebox_override("panel", make_hard_style(DT_PANEL_BG, border, 2))
+	var art := TextureRect.new()
+	art.texture = tex
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED  # frame == image aspect, so no crop
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(art)
+	add_corner_brackets(frame, border, 24.0, 3.0, 8.0)
+	return frame
 
 
 ## Frames a PanelContainer as a "transmission window": very dark fill, 2px teal border,

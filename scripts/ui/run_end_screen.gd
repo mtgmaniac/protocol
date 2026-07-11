@@ -3,9 +3,11 @@ extends Control
 
 const VICTORY_TITLE_FONT := 108
 const DEFEAT_TITLE_FONT := 150
-const SECTION_HEAD_FONT := 26
-const SUMMARY_FONT := 40
-const BUTTON_FONT := 44
+# Kev 2026-07-10: readability pass — heads/summary/button were well below the
+# phone-legibility floor (section heads rendered ~13 preview px).
+const SECTION_HEAD_FONT := 40
+const SUMMARY_FONT := 56
+const BUTTON_FONT := 56
 const BUTTON_SIZE := Vector2(360, 120)
 
 @onready var background: ColorRect = $Background
@@ -95,6 +97,7 @@ func _apply_visual_theme(victory: bool) -> void:
 	var title_font: int = VICTORY_TITLE_FONT if victory else DEFEAT_TITLE_FONT
 	_style_label(title_label, title_font, accent)
 
+	_add_result_banner(victory, accent)
 	_build_two_section_stats(accent)
 	_build_unlocked_section()
 
@@ -107,6 +110,24 @@ func _apply_visual_theme(victory: bool) -> void:
 	new_run_button.add_theme_constant_override("icon_max_width", 56)
 	new_run_button.add_theme_color_override("icon_normal_color", PixelUI.BTN_PRIMARY_INK)
 	new_run_button.add_theme_constant_override("h_separation", 16)
+
+
+# Result illustration (victory / defeat) pinned above the title. Cover-cropped
+# to a fixed banner height so the centered emblem reads at any source aspect.
+func _add_result_banner(victory: bool, accent: Color) -> void:
+	var path: String = "res://assets/ui/events/%s.png" % ("victory" if victory else "defeat")
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path) as Texture2D
+	if tex == null:
+		return
+	# Show the whole illustration at its own aspect (no crop), fit inside the
+	# content width x a bounded height so the emblem and full scene both read.
+	var max_w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080)) - 2.0 * 60.0
+	var frame := PixelUI.make_scene_banner(tex, max_w, 980.0, accent)
+	var vbox := $Content/VBox as VBoxContainer
+	vbox.add_child(frame)
+	vbox.move_child(frame, 0)
 
 
 # Shows an "UNLOCKED" panel (heroes / operations awarded this run) above Start New Run.
@@ -140,7 +161,7 @@ func _make_unlock_row(entry: Dictionary) -> Control:
 		var unit := DataManager.get_unit(str(entry.get("id", ""))) as UnitData
 		if unit != null and unit.portrait != null:
 			var frame := PanelContainer.new()
-			frame.custom_minimum_size = Vector2(96, 96)
+			frame.custom_minimum_size = Vector2(144, 144)
 			frame.clip_contents = true
 			frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2))
 			var tex := TextureRect.new()
@@ -156,11 +177,11 @@ func _make_unlock_row(entry: Dictionary) -> Control:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", "")).to_upper()
-	_style_label(name_label, 44, PixelUI.TEXT_PRIMARY)
+	_style_label(name_label, 64, PixelUI.TEXT_PRIMARY)
 	info.add_child(name_label)
 	var tag := Label.new()
 	tag.text = "NEW OPERATIVE UNLOCKED" if is_hero else "NEW OPERATION UNLOCKED"
-	_style_label(tag, 24, PixelUI.DT_AMBER)
+	_style_label(tag, 40, PixelUI.DT_AMBER)
 	info.add_child(tag)
 	row.add_child(info)
 	return row
@@ -192,7 +213,8 @@ func _build_two_section_stats(accent: Color) -> void:
 	record.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	record.text = _service_record_text()
-	_style_label(record, SUMMARY_FONT - 6, PixelUI.TEXT_MUTED)
+	# Lifetime stats are the retention hook here — keep them on the info floor.
+	_style_label(record, maxi(SUMMARY_FONT - 6, PixelUI.FONT_INFO_MIN), PixelUI.TEXT_MUTED)
 	col.add_child(record)
 
 

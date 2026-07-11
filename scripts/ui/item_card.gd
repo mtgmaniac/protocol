@@ -1,21 +1,20 @@
 # Reusable "item picker" square card builder — the same visual the reward screen uses:
-# perfect-square plate, rarity-colored hard border, type silhouette (circle = consumable,
-# square = gear, hexagon = relic), name, "RARITY TYPE" label, effect pips, description.
-# All colors via PixelUI tokens; built from an ItemData. Used by the reward picker and the
-# in-battle item-targeting overlay so the card looks identical in both places.
+# perfect-square plate, rarity-colored hard border, a LARGE bare item icon (the type
+# silhouettes — circle/square/hexagon — were cut 2026-07-10: the boxed type word carries
+# type now, the icon carries identity), name, rarity + boxed TYPE chip, effect pips,
+# description. All colors via PixelUI tokens; built from an ItemData. Used by the reward
+# picker and the in-battle item-targeting overlay so the card looks identical in both.
 class_name ItemCard
 extends RefCounted
-
-const TypeFrameScript := preload("res://scripts/ui/item_type_frame.gd")
 
 const CARD_PADDING := 18
 const CARD_SEP := 8
 const CARD_BORDER := 5
-const ICON_FRAME_SIZE := 118.0
-const ICON_TEXTURE_SIZE := 74.0
-const ICON_FRAME_LINE := 5.0
+const ICON_AREA_SIZE := 190.0
+const ICON_TEXTURE_SIZE := 170.0
 const NAME_FONT := 44
 const LABEL_FONT := 30
+const TYPE_CHIP_FONT := 28
 const BODY_FONT := 32
 const PIP_PROFILE := {
 	"icon_size": 52,
@@ -56,12 +55,50 @@ static func build(item: ItemData, width: float) -> PanelContainer:
 
 	vbox.add_child(_icon_area(item, accent))
 	vbox.add_child(_label(item.display_name, NAME_FONT, accent))
-	var label_text: String = _type_label(item) if item.item_type == "relic" \
-		else "%s %s" % [_rarity_name(item).to_upper(), _type_label(item)]
-	vbox.add_child(_label(label_text, LABEL_FONT, accent))
+	vbox.add_child(_type_row(item, accent))
 	vbox.add_child(_pip_row(item))
 	vbox.add_child(_description(item.description))
 	return panel
+
+
+# Rarity word (plain) + the TYPE word in a small boxed chip — the type cue that
+# replaced the shape silhouettes (Kev 2026-07-10).
+static func _type_row(item: ItemData, accent: Color) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if item.item_type != "relic":
+		var rarity := Label.new()
+		rarity.text = _rarity_name(item).to_upper()
+		rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		PixelUI.style_label(rarity, LABEL_FONT, accent, 1)
+		row.add_child(rarity)
+	var chip := type_chip(item, accent)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(chip)
+	return row
+
+
+# The boxed type word (RELIC / CONSUMABLE / GEAR) — shared by the reward card,
+# the loadout rows, and the gear section of the unit inspect.
+static func type_chip(item: ItemData, accent: Color) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.03, 0.045, 0.065, 0.96), accent, 2)
+	style.content_margin_left = 10.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 2.0
+	style.content_margin_bottom = 2.0
+	chip.add_theme_stylebox_override("panel", style)
+	var label := Label.new()
+	label.text = _type_label(item)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PixelUI.style_label(label, TYPE_CHIP_FONT, accent, 0)
+	chip.add_child(label)
+	return chip
 
 
 static func accent_for(item: ItemData) -> Color:
@@ -85,32 +122,22 @@ static func _type_label(item: ItemData) -> String:
 	return item.item_type.to_upper()
 
 
-static func _icon_area(item: ItemData, accent: Color) -> Control:
+# Bare, LARGE icon — no outline, no shape frame (Kev 2026-07-10: the icon is
+# the star; type is the boxed word below).
+static func _icon_area(item: ItemData, _accent: Color) -> Control:
 	var center := CenterContainer.new()
-	center.custom_minimum_size = Vector2(0, ICON_FRAME_SIZE)
+	center.custom_minimum_size = Vector2(0, ICON_AREA_SIZE)
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var frame := TypeFrameScript.new()
-	frame.custom_minimum_size = Vector2(ICON_FRAME_SIZE, ICON_FRAME_SIZE)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.configure(item.item_type, accent, ICON_FRAME_LINE)
-	center.add_child(frame)
-
-	var icon_center := CenterContainer.new()
-	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(icon_center)
-
 	if item.icon != null:
 		var tex := TextureRect.new()
 		tex.custom_minimum_size = Vector2(ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE)
 		tex.texture = item.icon
 		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon_center.add_child(tex)
+		center.add_child(tex)
 	return center
 
 
