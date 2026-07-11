@@ -8,7 +8,7 @@ const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8
 
 # Mobile-readable font scale (matches the inspect popup, not the old tiny help text).
 const TITLE_FONT := 48
-const TAB_FONT := 30
+const TAB_FONT := 36  # Batch 3: 30 → 36 (category tabs read under duress too)
 const SECTION_FONT := 36
 const BODY_FONT := PixelUI.FONT_INFO_MIN  # help body is read under duress — floor it (UI review S-1)
 const TERM_FONT := 33
@@ -191,7 +191,7 @@ func _build() -> void:
 		var tab_button := Button.new()
 		tab_button.text = str(tab["label"])
 		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tab_button.custom_minimum_size = Vector2(0, 70)
+		tab_button.custom_minimum_size = Vector2(0, 100)
 		tab_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		tab_button.pressed.connect(_select_tab.bind(tab_id))
 		tab_grid.add_child(tab_button)

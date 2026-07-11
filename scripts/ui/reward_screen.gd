@@ -3,12 +3,12 @@
 #
 # Direction-05 "Dithered Terminal" card (matches the battle screen, the locked source of
 # truth): perfect-square plate, hard blocky corners, flat 1-tone border whose color = the
-# item's RARITY (PixelUI.rarity_color). Anatomy top→bottom: type-silhouette icon frame
-# (triangle/circle/hexagon = consumable/gear/relic), item name, "RARITY TYPE" label line
-# (plain text, rarity-colored), centered effect pips (reused battle-screen EffectPip
-# assets), then the full description. Selection lights up corner brackets on the chosen
-# card only; the confirm button clones the squad screen's DEPLOY button (green ROLL-commit
-# style when armed, idle-gray + disabled until a card is picked).
+# item's RARITY (PixelUI.rarity_color). Anatomy top→bottom (Batch 3, unit-card pattern):
+# item NAME in its own filled strip at the top (like a battle card's name band), the bare
+# icon, the "RARITY TYPE" line styled as a header, then effect pips on the LEFT with the
+# description on the RIGHT. Selection lights up corner brackets on the chosen card only;
+# the confirm button clones the squad screen's DEPLOY button (idle-gray + disabled until
+# a card is picked).
 #
 # All colors/borders come from PixelUI tokens; layout sizes are named consts (this
 # codebase's centralization convention — see home_screen.gd). No hardcoded scene values.
@@ -40,6 +40,11 @@ const BRACKET_INSET := 8.0
 const NAME_FONT_SIZE := 46
 const LABEL_FONT_SIZE := PixelUI.FONT_INFO_MIN  # rarity+type line — a pick signal (UI review S-1)
 const BODY_FONT_SIZE := 36
+# "UNCOMMON GEAR" line — a header, the way the unit card's name reads (Batch 3).
+const TYPE_HEADER_FONT := 42
+# Footer read-back ("EQUIP TO: AVALANCHE") — the commit cue, sized well above
+# the INFO floor (Batch 3: was 28, under the S-1 floor and easy to miss).
+const FOOTER_FONT := 44
 
 # Gear "equip to" chooser — sized large for mobile tap targets.
 const GEAR_TARGET_TITLE_FONT := 50
@@ -278,32 +283,52 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# Center the content block vertically inside the square plate.
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Unit-card pattern (Batch 3): name strip pinned at the top, content below.
+	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	vbox.add_theme_constant_override("separation", CARD_SEP)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(vbox)
 
+	# Card anatomy (Batch 3, unit-card pattern): the item NAME sits in its own
+	# filled strip at the top (the way a battle card's name band does), then the
+	# icon, then the rarity+type line styled as a header, then pips on the LEFT
+	# with the description on the RIGHT.
+	var name_strip := PanelContainer.new()
+	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG.lightened(0.06), Color.TRANSPARENT, 0)
+	strip_style.set_content_margin(SIDE_TOP, 8.0)
+	strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
+	name_strip.add_theme_stylebox_override("panel", strip_style)
+	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, accent, 3))
+	vbox.add_child(name_strip)
+
 	vbox.add_child(_create_icon_area(item, accent))
-	vbox.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, accent, 3))
-	# Rarity word + the boxed TYPE chip (shared with ItemCard) — the type cue
-	# that replaced the shape silhouettes (Kev 2026-07-10).
-	var type_row := HBoxContainer.new()
-	type_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	type_row.add_theme_constant_override("separation", 12)
-	type_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	type_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var type_header: String = _format_item_type_label(item)
 	if item.item_type != "relic":
-		var rarity_label := _make_centered_label(_rarity_name(item).to_upper(), LABEL_FONT_SIZE, accent, 1)
-		rarity_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		rarity_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		type_row.add_child(rarity_label)
-	var chip := ItemCard.type_chip(item, accent)
-	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	type_row.add_child(chip)
-	vbox.add_child(type_row)
-	vbox.add_child(_create_pip_row(item))
-	vbox.add_child(_create_description_label(item.description))
+		type_header = "%s %s" % [_rarity_name(item).to_upper(), type_header]
+	vbox.add_child(_make_centered_label(type_header, TYPE_HEADER_FONT, accent, 2))
+
+	var body_row := HBoxContainer.new()
+	body_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body_row.add_theme_constant_override("separation", 18)
+	var pip_col := VBoxContainer.new()
+	pip_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip_col.alignment = BoxContainer.ALIGNMENT_BEGIN
+	pip_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	pip_col.add_theme_constant_override("separation", 8)
+	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
+	if parts.is_empty():
+		pip_col.add_child(_make_label("—", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+	for part_variant in parts:
+		var part: Dictionary = part_variant
+		var group: Control = EffectPip.build_group(part, PIP_PROFILE)
+		group.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		pip_col.add_child(group)
+	body_row.add_child(pip_col)
+	body_row.add_child(_create_description_label(item.description))
+	vbox.add_child(body_row)
 
 	# Corner-bracket selection indicator. Hosted on a non-container overlay so the
 	# brackets honor their corner anchors (a PanelContainer would stretch them to fill).
@@ -347,22 +372,6 @@ func _create_icon_area(item: ItemData, accent: Color) -> Control:
 		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		center.add_child(icon_label)
 	return center
-
-
-func _create_pip_row(item: ItemData) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
-	if parts.is_empty():
-		row.add_child(_make_centered_label("—", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
-		return row
-	for part_variant in parts:
-		var part: Dictionary = part_variant
-		row.add_child(EffectPip.build_group(part, PIP_PROFILE))
-	return row
 
 
 func _create_description_label(text: String) -> Label:
@@ -621,7 +630,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 			AudioManager.play_select()
 			_selected_gear_unit_id = captured_unit_id
 			_hide_gear_target_overlay()
-			footer_label.text = "Equip to: %s  —  press CONFIRM" % _run_unit_label(captured_unit_id)
+			footer_label.text = "EQUIP TO: %s" % _run_unit_label(captured_unit_id)
 			footer_label.visible = true
 			_refresh_confirm()
 		)
@@ -709,7 +718,7 @@ func _show_consumable_swap_overlay(item: ItemData) -> void:
 			AudioManager.play_select()
 			_selected_swap_consumable_id = captured_id
 			_hide_consumable_swap_overlay()
-			footer_label.text = "Discard %s  —  press CONFIRM" % captured_name
+			footer_label.text = "DISCARD: %s" % captured_name
 			footer_label.visible = true
 			_refresh_confirm()
 		)
@@ -797,6 +806,7 @@ func _apply_visual_theme() -> void:
 		reward_top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# Header bar (label + buttons) is owned + styled by the PersistentHeader autoload.
 	title_label.text = "Choose Reward"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -819,7 +829,7 @@ func _apply_visual_theme() -> void:
 	PixelUI.style_label(reward_title_label, 62, PixelUI.GOLD_ACCENT, 3)
 	PixelUI.style_label(summary_label, 32, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_label(inventory_label, 28, PixelUI.TEXT_MUTED, 1)
-	PixelUI.style_label(footer_label, 28, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(footer_label, FOOTER_FONT, PixelUI.TEXT_PRIMARY, 2)
 	reward_content.add_theme_constant_override("separation", 18)
 	reward_cards.add_theme_constant_override("separation", 18)
 	reward_scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())

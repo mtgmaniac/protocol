@@ -172,7 +172,10 @@ static func build_group(
 			var icon_size: int = int(profile.get("icon_size", 40))
 			var icon_rect := TextureRect.new()
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			icon_rect.custom_minimum_size = Vector2(icon_size, icon_size)
+			# Box width follows the (content-cropped) glyph's aspect so the value
+			# sits at the same separation from EVERY glyph — square boxes left
+			# narrow glyphs (the damage bolt) with dead air before their number.
+			icon_rect.custom_minimum_size = Vector2(_icon_box_width(icon_texture, icon_size), icon_size)
 			icon_rect.texture = icon_texture
 			icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -198,7 +201,7 @@ static func build_group(
 			var marker_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
 			var marker_rect := TextureRect.new()
 			marker_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			marker_rect.custom_minimum_size = Vector2(marker_size, marker_size)
+			marker_rect.custom_minimum_size = Vector2(_icon_box_width(marker_texture, marker_size), marker_size)
 			marker_rect.texture = marker_texture
 			marker_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			marker_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -206,6 +209,17 @@ static func build_group(
 			group.add_child(marker_rect)
 
 	return group
+
+
+# Width of an icon's layout box at a given cell height: the glyph's own aspect
+# (clamped so a pathological asset can't stretch a row), min the height for
+# near-square glyphs.
+static func _icon_box_width(texture: Texture2D, icon_size: int) -> int:
+	var th: float = float(texture.get_height())
+	if th <= 0.0:
+		return icon_size
+	var aspect: float = clampf(float(texture.get_width()) / th, 0.4, 1.6)
+	return int(round(float(icon_size) * aspect))
 
 
 static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> Array:

@@ -179,11 +179,32 @@ static var _pixel_font: Font = null
 static var _pip_texture_cache: Dictionary = {}
 
 
+# ── Minimum stroke law (INVARIANTS #14 corollary) ────────────────────────────
+# StyleBoxFlat borders can't be snapped per-instance, so their design-space
+# width must guarantee ≥1 window px on EVERY edge at every supported window
+# scale. A border of design width N spans N*scale window px; any span ≥ 1
+# always covers a pixel center, but a span < 1 can fall entirely between two
+# pixel centers and rasterize to ZERO rows — the game-wide "clipped border"
+# defect (a 2px stroke is 0.83 window px at a ~450x1000 window; which edge
+# vanished depended only on where the control's rect landed). Odd widths are
+# 1.5 window px at the exact-half 540x1200 preview and shimmer, so strokes
+# must also be even. 4 design px is the smallest even width whose span stays
+# ≥ 1 window px down to scale 0.25. Width ≤ 0 means "no border" and passes
+# through. Every StyleBoxFlat border in the game must flow through this (via
+# make_panel_style / make_hard_style or directly).
+const MIN_STROKE := 4
+
+static func min_stroke(width: int) -> int:
+	if width <= 0:
+		return width
+	return maxi(width + (width & 1), MIN_STROKE)
+
+
 static func make_panel_style(bg: Color = BG_PANEL, border: Color = LINE_DIM, border_width: int = 2, corner: int = 4) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = bg
 	style.border_color = border
-	style.set_border_width_all(border_width)
+	style.set_border_width_all(min_stroke(border_width))
 	style.corner_radius_top_left = corner
 	style.corner_radius_top_right = corner
 	style.corner_radius_bottom_left = corner
@@ -204,7 +225,7 @@ static func make_hard_style(bg: Color, border: Color, width: int = 2) -> StyleBo
 	s.anti_aliasing = false
 	s.bg_color = bg
 	s.border_color = border
-	s.set_border_width_all(width)
+	s.set_border_width_all(min_stroke(width))
 	s.corner_radius_top_left = 0
 	s.corner_radius_top_right = 0
 	s.corner_radius_bottom_left = 0
@@ -345,6 +366,15 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 # full-bleed scenic art (tagged by DataManager) centres both axes; cutout art
 # anchors to the top edge so heads are never cropped off. Single framing rule
 # for every screen — no per-unit offsets.
+#
+# PORTRAIT_TOP_PAD (Batch 3): fixed downward shift so the subject's head never
+# kisses/clips the frame's top edge. Cutout art gets the full pad (the strip
+# above it shows the card background — reads as headroom). Full-bleed art only
+# shifts as far as it can while still covering the frame top (never reveals a
+# background gap above opaque art). One constant, applied by the shared rule —
+# no per-unit hand-tuning.
+const PORTRAIT_TOP_PAD := 12.0
+
 static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> void:
 	if tex_rect == null:
 		return
@@ -367,7 +397,11 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 	var nw: float = tw * cover_scale
 	var nh: float = th * cover_scale
 	var full_bleed: bool = bool(tex.get_meta("full_bleed", false))
-	var top_y: float = (fh - nh) * 0.5 if full_bleed else 0.0
+	var top_y: float
+	if full_bleed:
+		top_y = minf((fh - nh) * 0.5 + PORTRAIT_TOP_PAD, 0.0)
+	else:
+		top_y = PORTRAIT_TOP_PAD
 	tex_rect.position = Vector2((fw - nw) * 0.5, top_y)
 	tex_rect.size = Vector2(nw, nh)
 
@@ -431,13 +465,31 @@ static func pip_texture_for_key(key: String) -> Texture2D:
 		return null
 	if _pip_texture_cache.has(key):
 		return _pip_texture_cache.get(key)
-	var file_name: String = str(PIP_ICON_BY_KEY.get(key, ""))
-	if file_name == "":
-		return null
-	var texture: Texture2D = _load_texture(PIP_ICON_DIR + file_name + ".png")
+	var texture: Texture2D = _load_texture(PIP_ICON_DIR + str(PIP_ICON_BY_KEY.get(key, "")) + ".png")
 	if texture != null:
+		texture = _content_cropped(texture)
 		_pip_texture_cache[key] = texture
 	return texture
+
+
+# Trim an icon's transparent margins (AtlasTexture over the source, computed
+# once per key via the cache above). The glyphs carry uneven baked padding —
+# the damage bolt is only 84/128 px wide, so its value floated ~10px further
+# from the visible glyph than every other pip's (Batch 3). Cropping lets
+# layout hug the glyph; the drawn pixels are unchanged.
+static func _content_cropped(texture: Texture2D) -> Texture2D:
+	var img: Image = texture.get_image()
+	if img == null:
+		return texture
+	var used: Rect2i = img.get_used_rect()
+	if used.size.x <= 0 or used.size.y <= 0:
+		return texture
+	if used.position == Vector2i.ZERO and used.size == Vector2i(img.get_width(), img.get_height()):
+		return texture
+	var atlas := AtlasTexture.new()
+	atlas.atlas = texture
+	atlas.region = Rect2(used)
+	return atlas
 
 
 static func _frame_margin_for(texture_path: String, fallback_margin: int) -> int:
@@ -792,19 +844,36 @@ static func make_modal_scrim(alpha: float = 0.6, block_input: bool = false) -> C
 	return scrim
 
 
+# m5x7 vertical-metrics compensation (Batch 3): the font's em box carries
+# ~15% dead space above the visible caps, so Button's ascent+descent centering
+# seats the VISIBLE glyphs low (measured ~7px at font 48 on the intercept
+# buttons). Raising the bottom content margin by 2×offset shifts the centered
+# text back up by offset. Every text-button styler applies this.
+static func _recenter_button_text(style: StyleBoxFlat, font_px: int) -> void:
+	var offset: float = roundf(float(font_px) * 0.15)
+	style.set_content_margin(SIDE_BOTTOM, style.get_content_margin(SIDE_TOP) + 2.0 * offset)
+
+
 static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Color = LINE_BRIGHT, font_size: int = 20) -> void:
 	apply_pixel_font(button)
-	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	var font_px: int = scale_font_size(font_size)
+	button.add_theme_font_size_override("font_size", font_px)
 	button.add_theme_color_override("font_color", TEXT_PRIMARY)
 	button.add_theme_color_override("font_hover_color", TEXT_PRIMARY)
 	button.add_theme_color_override("font_pressed_color", TEXT_PRIMARY)
 	button.add_theme_color_override("font_focus_color", TEXT_PRIMARY)
 	button.add_theme_constant_override("outline_size", 3)
 	button.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	button.add_theme_stylebox_override("normal", make_panel_style(fill, border.darkened(0.10), 4, 0))
-	button.add_theme_stylebox_override("hover", make_panel_style(fill, border.lightened(0.05), 4, 0))
-	button.add_theme_stylebox_override("pressed", make_panel_style(fill.darkened(0.18), border.darkened(0.12), 4, 0))
-	button.add_theme_stylebox_override("disabled", make_panel_style(fill.darkened(0.25), border.darkened(0.45), 4, 0))
+	var states := {
+		"normal": make_panel_style(fill, border.darkened(0.10), 4, 0),
+		"hover": make_panel_style(fill, border.lightened(0.05), 4, 0),
+		"pressed": make_panel_style(fill.darkened(0.18), border.darkened(0.12), 4, 0),
+		"disabled": make_panel_style(fill.darkened(0.25), border.darkened(0.45), 4, 0),
+	}
+	for state_name in states.keys():
+		var style: StyleBoxFlat = states[state_name]
+		_recenter_button_text(style, font_px)
+		button.add_theme_stylebox_override(state_name, style)
 
 
 ## The canonical PRIMARY action button (BEGIN / ROLL / DEPLOY / CONFIRM / …).
@@ -816,7 +885,8 @@ static func style_primary_button(button: Button, font_size: int = 32, amber: boo
 		return
 	apply_pixel_font(button)
 	button.text = button.text.to_upper()
-	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	var font_px: int = scale_font_size(font_size)
+	button.add_theme_font_size_override("font_size", font_px)
 	var border: Color = BTN_AMBER_BORDER if amber else BTN_TEAL_BORDER
 	var text_col: Color = BTN_AMBER_TEXT if amber else BTN_TEAL_TEXT
 	var text_bright: Color = BTN_AMBER_TEXT_BRIGHT if amber else BTN_TEAL_TEXT_BRIGHT
@@ -826,11 +896,17 @@ static func style_primary_button(button: Button, font_size: int = 32, amber: boo
 	button.add_theme_color_override("font_pressed_color", BTN_PRIMARY_INK)
 	button.add_theme_color_override("font_disabled_color", BTN_DISABLED_TEXT)
 	button.add_theme_constant_override("outline_size", 0)
-	button.add_theme_stylebox_override("normal", _primary_btn_style(BTN_PRIMARY_BG, border, false))
-	button.add_theme_stylebox_override("hover", _primary_btn_style(BTN_PRIMARY_BG_HOVER, border.lightened(0.22), true))
-	button.add_theme_stylebox_override("focus", _primary_btn_style(BTN_PRIMARY_BG_HOVER, border.lightened(0.22), true))
-	button.add_theme_stylebox_override("pressed", _primary_btn_style(border, border, false))  # inverted: accent fill
-	button.add_theme_stylebox_override("disabled", _primary_btn_disabled_style())
+	var states := {
+		"normal": _primary_btn_style(BTN_PRIMARY_BG, border, false),
+		"hover": _primary_btn_style(BTN_PRIMARY_BG_HOVER, border.lightened(0.22), true),
+		"focus": _primary_btn_style(BTN_PRIMARY_BG_HOVER, border.lightened(0.22), true),
+		"pressed": _primary_btn_style(border, border, false),  # inverted: accent fill
+		"disabled": _primary_btn_disabled_style(),
+	}
+	for state_name in states.keys():
+		var style: StyleBoxFlat = states[state_name]
+		_recenter_button_text(style, font_px)
+		button.add_theme_stylebox_override(state_name, style)
 	_refresh_corner_brackets(button, border if brackets else Color.TRANSPARENT)
 
 
@@ -840,7 +916,8 @@ static func style_locked_button(button: Button, font_size: int = 32) -> void:
 	if button == null:
 		return
 	apply_pixel_font(button)
-	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	var font_px: int = scale_font_size(font_size)
+	button.add_theme_font_size_override("font_size", font_px)
 	button.add_theme_color_override("font_color", BTN_DISABLED_TEXT)
 	button.add_theme_color_override("font_hover_color", BTN_DISABLED_TEXT)
 	button.add_theme_color_override("font_pressed_color", BTN_DISABLED_TEXT)
@@ -849,17 +926,17 @@ static func style_locked_button(button: Button, font_size: int = 32) -> void:
 	button.add_theme_constant_override("outline_size", 0)
 	var locked: StyleBoxFlat = make_hard_style(BTN_PRIMARY_BG.darkened(0.2), Color(0, 0, 0, 0), 0)
 	locked.set_content_margin_all(10.0)
+	_recenter_button_text(locked, font_px)
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		button.add_theme_stylebox_override(state, locked)
 	_refresh_corner_brackets(button, Color.TRANSPARENT)
 
 
 static func _primary_btn_style(bg: Color, border: Color, glow: bool) -> StyleBoxFlat:
-	# EVEN width (INVARIANTS #14): the preview window is exactly half the
-	# 1080x2400 design space, so even-numbered strokes land on whole window
-	# pixels (2 -> 1px crisp on every edge). The old 3px was a workaround for
-	# the fractional 450x1000 scale, where 2px vertical edges dropped out.
-	var s: StyleBoxFlat = make_hard_style(bg, border, 2)
+	# MIN_STROKE (4): a 2px stroke assumed the window is exactly 540x1200; any
+	# resize/clamp gives a fractional scale where 0.83-window-px edges drop to
+	# zero rows (the clipped-border defect). 4px stays ≥1 window px everywhere.
+	var s: StyleBoxFlat = make_hard_style(bg, border, MIN_STROKE)
 	s.set_content_margin_all(10.0)
 	if glow:
 		s.shadow_color = Color(border.r, border.g, border.b, 0.45)

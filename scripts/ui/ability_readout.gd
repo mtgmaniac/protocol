@@ -425,7 +425,7 @@ func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBo
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = bg
 	style.border_color = border
-	style.set_border_width_all(border_width)
+	style.set_border_width_all(PixelUI.min_stroke(border_width))
 	style.corner_radius_top_left = 0
 	style.corner_radius_top_right = 0
 	style.corner_radius_bottom_left = 0

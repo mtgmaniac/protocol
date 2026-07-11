@@ -7,6 +7,10 @@ var _death_sfx_played_ids: Dictionary = {}
 # card stack ABOVE the lowest still-alive float so simultaneous numbers never
 # overlap (float-text redesign stacking rule).
 var _live_floats_by_card: Dictionary = {}
+# Per-card spawn counter driving the x-jitter cycle (Batch 3): sequential
+# numbers on one unit alternate left/right of center so they never pile into
+# one unreadable column. Deterministic (no RNG) so captures stay reproducible.
+var _float_seq_by_card: Dictionary = {}
 
 
 func setup(scene: Control) -> void:
@@ -20,6 +24,7 @@ func play_round_feedback(events: Array) -> void:
 	# Drop stale float-stacking entries (freed labels / last battle's cards) so
 	# the registry never grows across a run.
 	_live_floats_by_card.clear()
+	_float_seq_by_card.clear()
 	var action_groups: Array = _build_action_feedback_groups(events)
 	for group_variant in action_groups:
 		var group: Dictionary = group_variant
@@ -330,11 +335,19 @@ const FLOAT_LIFETIME := 1.5
 const FLOAT_FADE_HOLD := 0.6
 const FLOAT_STACK_GAP := 6.0
 
+# X-jitter cycle as a fraction of the card's width: center, then alternating
+# left/right. ±0.14 keeps a full-size damage number over the portrait even on
+# the narrowest 5-enemy cards.
+const FLOAT_JITTER_FRACTIONS := [0.0, -0.14, 0.14, -0.07, 0.07]
+
 func _spawn_floating_text(card: Control, event_type: String, amount: int) -> void:
 	var float_text: String = _build_floating_text(event_type, amount)
 	if float_text == "":
 		return
 	var origin: Vector2 = _get_card_float_origin(card)
+	var seq: int = int(_float_seq_by_card.get(card.get_instance_id(), 0))
+	_float_seq_by_card[card.get_instance_id()] = seq + 1
+	origin.x += card.size.x * float(FLOAT_JITTER_FRACTIONS[seq % FLOAT_JITTER_FRACTIONS.size()])
 	var mult: float = _float_size_mult(event_type, amount)
 	_spawn_float_label(float_text, _get_floating_color(event_type), origin, mult, card.get_instance_id())
 

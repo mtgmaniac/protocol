@@ -136,12 +136,19 @@ or a "1px" line whose measured width varies along the bar in a screenshot zoom.
 
 Two corollaries (2026-07-07, after the route-fork border round):
 - **Godot-drawn strokes can't be per-instance snapped** (StyleBoxFlat borders), so the
-  SCALE must be integer-friendly instead: the dev preview window is **540×1200 —
-  exactly half** the 1080×2400 design space — and **stroke widths must be EVEN design
-  pixels** (2/4/6 → crisp 1/2/3 window px; a 3px stroke is 1.5 and shimmers). A
-  1080-native device renders at scale 1.0 and is always exact. Measured precedent: at
-  the old 450×1000 (5/12) preview, ONE panel's 2px border rendered 2px left, 1px
-  right, 0px along parts of the top.
+  stroke width itself must survive every window scale: a border of design width N
+  spans N×scale window px, and any span under 1 window px can fall entirely between
+  pixel centers and rasterize to ZERO rows — which edge vanished depended only on
+  where the control's rect landed (the Batch-3 game-wide "clipped border" defect: 2px
+  = 0.83 window px at a ~450×1000 window; the exact-half 540×1200 preview masked it
+  until the window was resized/clamped). Spans ≥ 1 always cover a pixel center, and
+  odd widths are fractional window px at half scale and shimmer, so **strokes must be
+  EVEN design pixels AND ≥ 4** — enforced at the source since Batch 3 (2026-07-11):
+  `PixelUI.min_stroke` clamps every border built by `make_panel_style` /
+  `make_hard_style` (and the per-screen stylebox factories route through it); the
+  theme `.tres` mirrors 4px. A 1080-native device renders at scale 1.0 and is always
+  exact. Measured precedent: at the old 450×1000 (5/12) preview, ONE panel's 2px
+  border rendered 2px left, 1px right, 0px along parts of the top.
 - **Window resizes change the final transform without resizing controls** — every
   snapped draw layer must `queue_redraw` on `viewport.size_changed` or it keeps the
   stale scale (HPTickLayer / ProtocolPips / CornerBracketLayer do).

@@ -118,8 +118,10 @@ const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
 # Footer protocol stack (Kev 2026-07-10) — the label sits directly on top of
 # the pip bar (bottom-anchored; the overlap eats m5x7's below-baseline pad).
-const PROTOCOL_STACK_LABEL_FONT := 52
-const PROTOCOL_LABEL_BOX_H := 84.0
+# Batch 3: label sized up 52→60; it grows UPWARD into the footer's free band
+# (bottom-anchored box raised to match) so the pips below never move.
+const PROTOCOL_STACK_LABEL_FONT := 60
+const PROTOCOL_LABEL_BOX_H := 96.0
 const PROTOCOL_LABEL_PIP_OVERLAP := -2.0
 const PROTOCOL_PIP_BAR_H := 52.0
 

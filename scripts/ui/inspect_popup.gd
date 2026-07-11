@@ -29,12 +29,12 @@ const HEADER_BAND_HEIGHT := 144.0
 
 const TITLE_FONT := 50
 const SUBTITLE_FONT := 32
-const SECTION_LABEL_FONT := 26
+const SECTION_LABEL_FONT := 34  # Batch 3: 26 → 34 ("ACTIVE EFFECTS" was near-illegible)
 const ABILITY_NAME_FONT := 38
 const META_FONT := 26
 const ROLL_FONT := 34
 const BODY_FONT := 36
-const HINT_FONT := 26
+const HINT_FONT := 34  # Batch 3: 26 → 34 ("Tap anywhere to close" is the only exit cue)
 const HEADER_ICON_SIZE := 84.0
 
 static var _active: InspectPopup = null

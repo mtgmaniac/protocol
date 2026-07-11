@@ -1,11 +1,11 @@
 [gd_resource type="Theme" format=3 uid="uid://byx8sircsks0l"]
 
-; Overload Protocol default Theme — MIRRORS the canonical PixelUI DT_* palette
+; Overload Protocol default Theme â€” MIRRORS the canonical PixelUI DT_* palette
 ; (scripts/ui/pixel_ui.gd). This only provides default font + per-Control-type
 ; default styles so NEW Control nodes inherit the Dithered-Terminal baseline
 ; without per-node code. The battle screen's signature look (dither overlays,
 ; per-side card tints, dynamic dividers, bevels) stays programmatic in PixelUI.
-; Do NOT hand-edit colors here independently — keep them equal to PixelUI.
+; Do NOT hand-edit colors here independently â€” keep them equal to PixelUI.
 
 [ext_resource type="FontFile" uid="uid://cp7ja8pelvxgs" path="res://assets/fonts/m5x7.ttf" id="1_font"]
 
@@ -15,10 +15,10 @@ content_margin_top = 4.0
 content_margin_right = 4.0
 content_margin_bottom = 4.0
 bg_color = Color(0.035294, 0.047059, 0.054902, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.105882, 0.133333, 0.14902, 1)
 corner_radius_top_left = 0
 corner_radius_top_right = 0
@@ -31,10 +31,10 @@ content_margin_top = 10.0
 content_margin_right = 10.0
 content_margin_bottom = 10.0
 bg_color = Color(0.039216, 0.078431, 0.109804, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.247059, 0.815686, 0.886275, 1)
 corner_radius_top_left = 0
 corner_radius_top_right = 0
@@ -47,10 +47,10 @@ content_margin_top = 10.0
 content_margin_right = 10.0
 content_margin_bottom = 10.0
 bg_color = Color(0.058824, 0.121569, 0.164706, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.435294, 0.878431, 0.937255, 1)
 corner_radius_top_left = 0
 corner_radius_top_right = 0
@@ -65,10 +65,10 @@ content_margin_top = 10.0
 content_margin_right = 10.0
 content_margin_bottom = 10.0
 bg_color = Color(0.247059, 0.815686, 0.886275, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.247059, 0.815686, 0.886275, 1)
 corner_radius_top_left = 0
 corner_radius_top_right = 0

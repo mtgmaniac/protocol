@@ -60,14 +60,12 @@ const PORTRAIT_CELL := 238
 # (PixelUI.cover_fit_portrait, center-x / top-aligned), scaled to cell width —
 # the hero you pick is framed identically to the hero in battle, smaller.
 const BATTLE_PORTRAIT_REGION := Vector2(320.0, 486.0)
-# Banner boss thumb (refinement pass §4): rectangular at the DOMINANT art aspect
-# (hero + boss portraits are 592×880 ≈ 0.673 w:h; the five operations' boss arts
-# all sit within ±2% of it). 188×280 ≈ 0.671 — dominant art sits flush; the few
-# wider bestiary outliers (never banner subjects) would letterbox, not stretch.
-# Kev 2026-07-10: wider thumb so the cover crop shows more of the art (the
-# narrow frame read as over-zoomed).
+# Banner boss thumb (Batch 3): the SAME portrait aspect as the battle card's
+# region (BATTLE_PORTRAIT_REGION 320:486) so the boss is framed identically to
+# its battle card, smaller — the old 224×280 (0.8) cell cover-cropped the art
+# to a different window and read as over-zoomed. 224 × round(224·486/320) = 340.
 const ENC_THUMB_W := 224
-const ENC_THUMB_H := 280
+const ENC_THUMB_H := 340
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
@@ -615,9 +613,13 @@ func _build_detail_bar() -> PanelContainer:
 
 	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Reserve exactly two blurb lines so the panel height is constant.
+	# Reserve exactly two blurb lines INCLUDING the inter-line spacing so the
+	# panel height is constant. Reserving 2×font_height alone under-measured by
+	# the Label's line_spacing (3px): the first populate grew the panel and the
+	# whole centered cluster shifted up 1px (Batch 3 — the screen must never move).
 	var desc_font: Font = PixelUI.get_pixel_font()
-	_detail_desc.custom_minimum_size = Vector2(0, ceilf(desc_font.get_height(DETAIL_DESC_FONT) * 2.0))
+	var desc_line_spacing: int = _detail_desc.get_theme_constant("line_spacing")
+	_detail_desc.custom_minimum_size = Vector2(0, ceilf(desc_font.get_height(DETAIL_DESC_FONT) * 2.0 + float(desc_line_spacing)))
 	_detail_desc.max_lines_visible = 2
 	col.add_child(_detail_desc)
 
@@ -1135,7 +1137,7 @@ func _make_panel_style(bg: Color, border: Color, border_width: int = PANEL_BORDE
 	var style := StyleBoxFlat.new()
 	style.bg_color = bg
 	style.border_color = border
-	style.set_border_width_all(border_width)
+	style.set_border_width_all(PixelUI.min_stroke(border_width))
 	style.corner_radius_top_left = PANEL_RADIUS
 	style.corner_radius_top_right = PANEL_RADIUS
 	style.corner_radius_bottom_left = PANEL_RADIUS

@@ -1256,7 +1256,7 @@ func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBo
 	style.anti_aliasing = false
 	style.bg_color = bg
 	style.border_color = border
-	style.set_border_width_all(border_width)
+	style.set_border_width_all(PixelUI.min_stroke(border_width))
 	style.corner_radius_top_left = 2
 	style.corner_radius_top_right = 2
 	style.corner_radius_bottom_left = 2
