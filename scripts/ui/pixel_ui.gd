@@ -15,6 +15,8 @@ const COLOR_DAMAGE := Color(0.96, 0.22, 0.18, 1.0)
 const COLOR_HEAL := Color(0.28, 0.90, 0.46, 1.0)
 const COLOR_SHIELD := Color(0.34, 0.66, 1.0, 1.0)
 const COLOR_DEBUFF := Color(0.72, 0.34, 0.95, 1.0)
+# Burn is FIRE now (Kev 2026-07-10) — ember orange, not the old poison purple.
+const COLOR_BURN := Color(0.95, 0.58, 0.22, 1.0)
 const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
 
 # ── Font-size floors (UI review S-1, Kev-approved 2026-07-10) ──
@@ -623,7 +625,9 @@ static func effect_color(kind: String) -> Color:
 			return COLOR_HEAL
 		"shield", "taunt":
 			return COLOR_SHIELD
-		"burn", "debuff":
+		"burn":
+			return COLOR_BURN
+		"debuff":
 			return COLOR_DEBUFF
 		"roll", "rfe", "rfm", "freeze":
 			return COLOR_ROLL
@@ -655,7 +659,9 @@ static func rarity_color(rarity: String) -> Color:
 
 static func status_color(token: String) -> Color:
 	var upper: String = token.to_upper()
-	if upper.begins_with("BRN") or upper.begins_with("BURN") or upper == "DOWN" or upper == "P":
+	if upper.begins_with("BRN") or upper.begins_with("BURN"):
+		return COLOR_BURN
+	if upper == "DOWN" or upper == "P":
 		return COLOR_DEBUFF
 	if upper == "RMP":
 		return COLOR_DAMAGE

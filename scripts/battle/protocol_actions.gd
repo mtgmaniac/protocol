@@ -88,7 +88,7 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	PixelUI.apply_pixel_font(badge)
-	badge.add_theme_font_size_override("font_size", 40)
+	badge.add_theme_font_size_override("font_size", 48)
 	badge.add_theme_color_override("font_color", PixelUI.DT_AMBER)
 	# Bare number, no plate (Kev 2026-07-10) — a dark glyph outline separates it
 	# from the button art instead of a box.

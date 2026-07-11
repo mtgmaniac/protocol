@@ -116,6 +116,12 @@ const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const PROTOCOL_LABEL_FONT_SIZE := 70
 const PROTOCOL_VALUE_FONT_SIZE := 48
+# Footer protocol stack (Kev 2026-07-10 alignment contract) — tuned by capture:
+# label font up from 44; the glyph-top nudge cancels m5x7's above-cap padding.
+const PROTOCOL_STACK_LABEL_FONT := 52
+const PROTOCOL_LABEL_GLYPH_TOP_NUDGE := -18.0
+const PROTOCOL_LABEL_BOX_H := 84.0
+const PROTOCOL_PIP_BAR_H := 52.0
 
 var dice_manager: DiceManager = DiceManager.new()
 var combat_manager: CombatManager = CombatManager.new()
@@ -1601,11 +1607,16 @@ func _ensure_protocol_stack_layout() -> void:
 		return
 	# Let the stack expand across the whole row up to the action buttons.
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	var stack := VBoxContainer.new()
+	# Alignment contract (Kev 2026-07-10): the stack is exactly the action-button
+	# height — the visible top of PROTOCOL N/M lines up with the button tops and
+	# the pip bottoms line up with the button bottoms. Manual anchors (not a
+	# VBox): m5x7 pads ~30% of its line height above the caps, so the label is
+	# nudged up for its VISIBLE glyph top to sit at the stack top.
+	var stack := Control.new()
 	stack.name = "ProtocolStack"
+	stack.custom_minimum_size = Vector2(0, BOTTOM_BAR_BUTTON_SIZE.y)
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	stack.add_theme_constant_override("separation", 2)
 	row.remove_child(protocol_label)
 	row.remove_child(protocol_bar)
 	stack.add_child(protocol_label)
@@ -1621,22 +1632,18 @@ func _ensure_protocol_stack_layout() -> void:
 	if spacer != null:
 		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		spacer.custom_minimum_size = Vector2.ZERO
-	# Wide segment bar (fills the stack); "Protocol N/M" centered above all the blips.
-	# Tall pips (fill the footer minus the label + small padding) so the core Protocol
-	# economy reads as prominent, not subordinate.
-	protocol_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	protocol_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Label + pip bar must total <= the action-button height (112) so the stack
-	# centres LEVEL with the buttons instead of spilling below. The "Protocol N/M"
-	# label at font 48 was ~76px tall on its own; trimmed to keep the tall pips.
-	protocol_bar.custom_minimum_size = Vector2(0, 58)
-	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	protocol_label.offset_top = PROTOCOL_LABEL_GLYPH_TOP_NUDGE
+	protocol_label.offset_bottom = protocol_label.offset_top + PROTOCOL_LABEL_BOX_H
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Kev 2026-07-10: 34 was unreadable at phone scale. 44 is the ceiling that
-	# keeps label + pips inside the footer (pips must not clip off-screen —
-	# verified by capture; m5x7 line height ≈ 1.58x the font size).
-	protocol_label.add_theme_font_size_override("font_size", 44)
+	protocol_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_STACK_LABEL_FONT)
+	protocol_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	protocol_bar.offset_top = -PROTOCOL_PIP_BAR_H
+	protocol_bar.offset_bottom = 0.0
+	# The legacy footer-display sizing (aspect-derived width) must not re-shrink
+	# the anchored bar.
+	protocol_bar.custom_minimum_size = Vector2.ZERO
 
 
 # Deep Cells directive: the Protocol cap rises while a living carrier stands.
@@ -1701,13 +1708,14 @@ func _ensure_protocol_footer_display() -> void:
 			protocol_row.move_child(_protocol_footer_spacer, protocol_spend_button.get_index())
 	protocol_bar.visible = true
 	protocol_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	protocol_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	# Scaled down to make footer room for the third protocol action (Set) button.
-	# Width/height scale together so the art aspect holds and the lights stay aligned.
-	# (Provisional — the upcoming UI refactor will redo the footer layout properly.)
-	var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y * 0.74
-	var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
-	protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
+	# The stack layout (anchored label + pips, _ensure_protocol_stack_layout)
+	# owns the bar's geometry — the legacy aspect-derived min size fought the
+	# BOTTOM_WIDE anchors (Kev 2026-07-10 alignment contract).
+	if protocol_row == null or protocol_row.get_node_or_null("ProtocolStack") == null:
+		protocol_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y * 0.74
+		var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
+		protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
 	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
 		_protocol_footer_display = Control.new()
 		_protocol_footer_display.name = "ProtocolFooterDisplay"

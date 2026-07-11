@@ -820,6 +820,10 @@ func _make_status_icon_control(status: Dictionary, scale_step: float = 1.0) -> C
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		# +roll rides the shared gold d20 — tint it green like the readout pips
+		# (Kev 2026-07-10) so buff vs debuff reads at a glance.
+		if icon_kind == "roll_up":
+			icon.modulate = PixelUI.COLOR_HEAL
 		wrap.add_child(icon)
 		return wrap
 

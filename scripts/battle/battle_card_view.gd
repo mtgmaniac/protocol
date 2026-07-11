@@ -84,9 +84,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	if bool(state.get("marked", false)):
 		status_list.append("MARK")
 
-	if bool(show_dead):
-		status_list.append("DOWN")
-
+	# No DOWN token (Kev 2026-07-10) — the grayed portrait reads dead on its own.
 	var state_id: String = str(state["id"])
 	var is_selected: bool = state_id == _scene.active_targeting_hero_id
 	var is_targetable: bool = _scene._is_target_highlight_phase() and _scene.legal_target_ids.has(state_id)
@@ -382,7 +380,7 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 func _build_compact_status_tokens(state: Dictionary) -> Array:
 	var statuses: Array = []
 	if bool(state.get("dead", false)):
-		statuses.append(_make_compact_named_status("DOWN", "", 99))
+		# No DOWN chip (Kev 2026-07-10) — the grayed portrait carries it.
 		return statuses
 
 	# Chip doctrine (pkg8.1, amended): the card chip row renders Burn, SHIELD,

@@ -559,20 +559,17 @@ func _celebrate_overload() -> void:
 
 
 # ── pkg8.4 keyword feedback (composed from the primitive library) ────────────
-# Chain = tracer to the jumped target · Detonate = burn-chip flash then ember
-# burst (the combined number floats via the generic channel) · Breach =
-# shield-shatter burst · Spike = spark burst on the attacker · Siphon = amber
-# pip drifts from the protocol bar to the enemy · Hijack = ghost die label
-# drifts from the hero rail to the enemy card · Jam = static flicker on the
-# die · Rewrite = the die's marker scrambles then slams to 3 · Decloak = the
-# portrait resolves sharp · Leech = dim red return tracer from the drained
-# enemy (paired event; the heal event carries the green number) · Ward
-# consume = hex flash + "✕ NEGATED". Mark/Execute run through the
-# floating-text and pause channels. All flat, palette-driven, no glow.
+# Detonate = burn-chip flash then ember burst (the combined number floats via
+# the generic channel) · Breach = shield-shatter burst · Spike = spark burst
+# on the attacker · Siphon = amber pip drifts from the protocol bar to the
+# enemy · Hijack = ghost die label drifts from the hero rail to the enemy
+# card · Jam = static flicker on the die · Rewrite = the die's marker
+# scrambles then slams to 3 · Decloak = the portrait resolves sharp · Ward
+# consume = hex flash + ✕ float. Chain/Leech read through their floats (the
+# card-to-card tracer line was cut 2026-07-10 — disruptive). Mark/Execute run
+# through the floating-text and pause channels. All flat, palette-driven.
 func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: Control, target_card: Control) -> void:
 	match event_type:
-		"chain":
-			_tracer(actor_card, target_card, Color(0.55, 0.85, 1.0, 0.9))
 		"detonate":
 			_chip_flash_then_burst(target_card, PixelUI.DT_STATUS["burn"]["border"], Color(0.95, 0.55, 0.20, 1.0), 14)
 		"breach":
@@ -581,10 +578,6 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 			_shield_shatter(target_card, Color(1.0, 0.80, 0.20, 1.0))
 		"spike":
 			_burst_particles(target_card, Color(0.86, 0.42, 0.28, 1.0), 8)
-		"leech":
-			# fix-2.7: the return tracer — HP flows back from the drained enemy.
-			var source_card: Control = _find_card_by_state_id(str(event.get("source_side", "")), str(event.get("source_id", "")))
-			_tracer(source_card, target_card, Color(0.85, 0.30, 0.30, 0.75))
 		"block":
 			if int(event.get("amount", 0)) <= 0:
 				# Ward consume — hex flash in the shield channel.
@@ -607,25 +600,8 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 			_resolve_portrait_sharp(target_card)
 
 
-# Primitive: a flat tracer line from one card to another — snaps in bright,
-# fades fast. Used by Chain (and future paired beats).
-func _tracer(from_card: Control, to_card: Control, color: Color) -> void:
-	if from_card == null or to_card == null or not is_instance_valid(from_card) or not is_instance_valid(to_card):
-		return
-	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
-		return
-	var line: Line2D = Line2D.new()
-	line.width = 5.0
-	line.default_color = color
-	line.z_as_relative = false
-	line.z_index = 190
-	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
-	line.add_point(from_card.get_global_rect().get_center() - layer_origin)
-	line.add_point(to_card.get_global_rect().get_center() - layer_origin)
-	_scene.float_layer.add_child(line)
-	var tween: Tween = create_tween()
-	tween.tween_property(line, "modulate:a", 0.0, 0.28).set_delay(0.10)
-	tween.tween_callback(line.queue_free)
+# (The straight-line card-to-card tracer was CUT 2026-07-10 — Kev: disruptive.
+# Chain and Leech now read through their floats + the paired heal event.)
 
 
 # Detonate composition: a chip-sized flash in the burn color pops at the

@@ -389,7 +389,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 static func _status_accent(kind: String) -> Color:
 	match kind:
 		"burn":
-			return PixelUI.COLOR_DEBUFF
+			return PixelUI.COLOR_BURN
 		"shield":
 			return PixelUI.COLOR_SHIELD
 		"frozen", "freeze", "die_freeze":
