@@ -1595,7 +1595,10 @@ func _ensure_protocol_stack_layout() -> void:
 	protocol_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	protocol_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	protocol_label.add_theme_font_size_override("font_size", 34)
+	# Kev 2026-07-10: 34 was unreadable at phone scale. 44 is the ceiling that
+	# keeps label + pips inside the footer (pips must not clip off-screen —
+	# verified by capture; m5x7 line height ≈ 1.58x the font size).
+	protocol_label.add_theme_font_size_override("font_size", 44)
 
 
 # Deep Cells directive: the Protocol cap rises while a living carrier stands.

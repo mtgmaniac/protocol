@@ -10,7 +10,7 @@ extends Node
 const SFX_DIR := "res://assets/audio/sfx/"
 const SFX_KEYS := [
 	"damage", "death", "evolve", "freeze", "heal", "item", "overload",
-	"burn", "select", "shield",
+	"burn", "revive", "select", "shield", "summon",
 ]
 const POOL_SIZE := 12            # max simultaneous voices
 const PITCH_VARIATION := 0.07    # ±7% pitch so repeats never feel machine-gun
@@ -18,7 +18,7 @@ const VOLUME_VARIATION_DB := 1.5 # ±1.5 dB
 const DEBOUNCE_MS := 40          # collapse identical key within a frame (multi-target abilities → one sound)
 const VOLUME_OVERRIDES := {
 	"burn": -5.0,
-	"select": -6.0,  # ~50% amplitude vs default UI click
+	"select": -9.1,  # was -6.0; Kev 2026-07-10: 30% quieter again (x0.7 amplitude = -3.1 dB)
 }
 
 const SETTINGS_PATH := "user://settings.cfg"
@@ -37,7 +37,11 @@ func _ready() -> void:
 	_apply_mute()
 	for key in SFX_KEYS:
 		var path: String = SFX_DIR + key + ".wav"
-		var stream: AudioStream = load(path) as AudioStream
+		# exists() guard: a registered key whose clip hasn't been dropped in yet
+		# (asset still pending) warns without an engine load error.
+		var stream: AudioStream = null
+		if ResourceLoader.exists(path):
+			stream = load(path) as AudioStream
 		if stream != null:
 			_streams[key] = stream
 		else:

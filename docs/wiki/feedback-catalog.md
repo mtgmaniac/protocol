@@ -95,16 +95,21 @@ Every `play_sfx` call site. Assets in `assets/audio/sfx/<key>.wav` (all present,
 | `heal` | `heal` event | `:176` | heal.wav | |
 | `shield` | `shield` event | `:178` | shield.wav | shield.wav is a reversed clip (per AudioManager header) |
 | `freeze` | `freeze` event | `:180` | freeze.wav | |
+| `revive` | `revive` event | `_play_event_sfx` | revive.wav | **wired 2026-07-10; .wav not yet on disk** — warns at launch until dropped in |
+| `summon` | `summon` event | `_play_event_sfx` | summon.wav | **wired 2026-07-10; .wav not yet on disk** — fires in-beat (summon events flow through `play_round_feedback` before `_process_summon_events`) |
+| `damage` (fallback) | ability group with NO other sfx | `_play_action_feedback_group` audio floor | damage.wav | Kev 2026-07-10: every ability beat makes a sound — silent-keyword-only abilities (jam/mark/cloak/taunt/siphon/...) fall back to the damage clip. Ticks exempt |
 | `death` | fatal hit (`hp_after ≤ 0`), once per target | `:205` (`_try_play_death_sfx`) | death.wav | dedupes via `_death_sfx_played_ids` |
 | `overload` | effective-face 20 (`zone == "overload"`) | `:405` (`_celebrate_overload`) | overload.wav | the 20-face stinger |
 | `evolve` | evolution confirm | `evolution_screen.gd:208, 416` | evolve.wav | |
 | `item` | item used | `protocol_actions.gd:937` | item.wav | |
-| `select` | default UI tap (`play_click`) | `AudioManager.gd:65` | select.wav | `VOLUME_OVERRIDES` −6 dB |
+| `select` | default UI tap (`play_click`) | `AudioManager.gd:65` | select.wav | `VOLUME_OVERRIDES` −9.1 dB (was −6; Kev 2026-07-10: 30% quieter) |
 | ~~`phase2`~~ | — | *removed* | phase2.wav (orphan on disk) | **Orphan sfx key CUT this session** (`6c987e6`); the `.wav` file remains on disk, unwired |
 
-**Events with NO sound** (Prompt-8 candidates — currently silent): taunt, jam, rewrite, hijack, mark,
-cloak/decloak, siphon, revive, chain, detonate, execute, breach, spike, block/wipe_shields, summon, and
-every protocol spend (nudge / reroll / set). Only 10 of the ~26 feedback events carry audio.
+**Events with NO dedicated sound** (Prompt-8 candidates): taunt, jam, rewrite, hijack, mark,
+cloak/decloak, siphon, chain, detonate, execute, breach, spike, block/wipe_shields, and every protocol
+spend (nudge / reroll / set). ~~revive, summon~~ wired 2026-07-10. **Since 2026-07-10 no ability beat is
+fully silent** — a group with none of the sounding events falls back to the damage clip (audio floor,
+`_play_action_feedback_group`); the list above is now about dedicated character, not silence.
 
 ---
 
@@ -149,8 +154,10 @@ The former unimplemented list is now zero: four items built, three retired from 
 ### Undocumented firing sites (in code, not in the ANIMATION table)
 - **F-11 — Frame shake fires ONLY on `damage`** (`battle_feedback.gd:139`), not on burn, death, or a
   bare crit. The spec's event→primitive table implies shake on every hit; document the actual single caller.
-- **F-12 — Summon feedback lives in `battle_scene.gd:2576`**, outside the `battle_feedback` event table,
-  so it isn't sound-aware and isn't in the primitive library.
+- **F-12 — Summon feedback lives in `battle_scene.gd` (`_process_summon_events`)**, outside the
+  `battle_feedback` event table, so the card-entry VISUAL isn't in the primitive library. *(Partially
+  resolved 2026-07-10: the summon SOUND now fires from `_play_event_sfx` — summon events flow through
+  the feedback groups before `_process_summon_events` builds the card.)*
 - **F-13 — `_hex_flash` Ward-consume** (`battle_feedback.gd:447`) fires on `block` events with
   `amount ≤ 0`; the amount-0 sentinel that means "firewall negate" is an undocumented convention.
 

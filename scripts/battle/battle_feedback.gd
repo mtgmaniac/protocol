@@ -111,6 +111,7 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 	var peak_damage: int = 0
 	var had_fatal_hit: bool = false
 	var had_execute: bool = false
+	var any_sfx: bool = is_overload  # the overload stinger already fired
 	# Roll-buff floats live at the DIE, not the unit card (Kev's ruling: the buff
 	# affects the die — relocating it frees blue-at-a-unit to mean shield only).
 	# A squad-wide buff (several roll_buff events on one side in this group)
@@ -137,7 +138,7 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 		var primer: Variant = _scene.get("_primer")
 		if primer != null and is_instance_valid(primer):
 			primer.notice_event(event)
-		_play_event_sfx(event_type, event)
+		any_sfx = _play_event_sfx(event_type, event) or any_sfx
 		if event_type == "roll_buff":
 			_spawn_roll_buff_float(event, int(roll_buff_counts.get(str(event.get("side", "")), 0)) >= 2, roll_buff_floated_sides)
 		var target_card: Control = _find_card_for_event(event)
@@ -166,6 +167,14 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 			peak_damage = maxi(peak_damage, amount)
 			# Tier 2: struck unit recoils — jitter scales with the hit.
 			_shake(target_card, clampf(2.0 + float(amount) * 0.16, 2.0, 11.0), 0.22)
+
+	# Audio floor (Kev 2026-07-10): every ABILITY beat makes a sound. Most carry a
+	# damage/heal/shield/freeze/revive/summon event that already does; an ability
+	# whose effects are all silent keywords (jam, mark, cloak, taunt, siphon, ...)
+	# falls back to the standard damage clip. Round ticks are exempt — a silent
+	# tick stays silent — and a fatal hit already carried the death clip.
+	if not any_sfx and not had_fatal_hit and not action.is_empty() and not is_tick:
+		AudioManager.play_sfx("damage")
 
 	# Tier 1: impact freeze — skip after a kill so death reads immediately, not after pause.
 	# Execute (pkg8.4) lands with a heavier pause than a plain hit.
@@ -197,8 +206,10 @@ func _get_action_feedback_kind(effects: Array) -> String:
 	return "neutral"
 
 
-# Maps a combat event to its SFX. Death is handled separately at the fatal hit moment.
-func _play_event_sfx(event_type: String, _event: Dictionary) -> void:
+# Maps a combat event to its SFX; returns whether a sound fired so the group
+# player can detect fully-silent abilities. Death is handled separately at the
+# fatal hit moment.
+func _play_event_sfx(event_type: String, _event: Dictionary) -> bool:
 	match event_type:
 		"damage":
 			AudioManager.play_sfx("damage")
@@ -210,6 +221,13 @@ func _play_event_sfx(event_type: String, _event: Dictionary) -> void:
 			AudioManager.play_sfx("shield")
 		"freeze":
 			AudioManager.play_sfx("freeze")
+		"revive":
+			AudioManager.play_sfx("revive")
+		"summon":
+			AudioManager.play_sfx("summon")
+		_:
+			return false
+	return true
 
 
 func _is_fatal_hit_event(event: Dictionary) -> bool:

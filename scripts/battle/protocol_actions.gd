@@ -88,17 +88,17 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	PixelUI.apply_pixel_font(badge)
-	badge.add_theme_font_size_override("font_size", PixelUI.FONT_ACCENT_MIN)
+	badge.add_theme_font_size_override("font_size", 40)
 	badge.add_theme_color_override("font_color", PixelUI.DT_AMBER)
 	# Bare number, no plate (Kev 2026-07-10) — a dark glyph outline separates it
 	# from the button art instead of a box.
 	badge.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
-	badge.add_theme_constant_override("outline_size", 4)
+	badge.add_theme_constant_override("outline_size", 5)
 	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	badge.offset_left = -46.0
-	badge.offset_top = -42.0
+	badge.offset_left = -66.0
+	badge.offset_top = -66.0
 	badge.offset_right = -6.0
-	badge.offset_bottom = -4.0
+	badge.offset_bottom = -2.0
 	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	button.add_child(badge)

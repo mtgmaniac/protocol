@@ -43,12 +43,13 @@ class HPTickLayer extends Control:
 
 	# Pixel snap law (INVARIANTS #14): each notch x = round(i*10/max_hp * bar
 	# width) IN PHYSICAL PIXELS (the bar sits at a sub-pixel global x, so local
-	# rounding still smears), drawn exactly ONE physical pixel wide — filled and
-	# empty regions alike. Tick heights snap to whole physical pixels too.
+	# rounding still smears), drawn exactly TWO physical pixels wide (Kev
+	# 2026-07-10; was one) — filled and empty regions alike. Tick heights snap
+	# to whole physical pixels too.
 	func _draw() -> void:
 		if fracs.is_empty() or size.x < 2.0 or size.y < 2.0:
 			return
-		var w: float = PixelUI.physical_px_width(self, 1.0)
+		var w: float = PixelUI.physical_px_width(self, 2.0)
 		var seg_top: float = PixelUI.snap_to_physical_px(self, size.y * END_FRAC, 1)
 		var seg_bottom_y: float = PixelUI.snap_to_physical_px(self, size.y * (1.0 - END_FRAC), 1)
 		for frac in fracs:
