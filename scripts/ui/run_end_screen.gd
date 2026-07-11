@@ -3,9 +3,11 @@ extends Control
 
 const VICTORY_TITLE_FONT := 108
 const DEFEAT_TITLE_FONT := 150
-const SECTION_HEAD_FONT := 26
-const SUMMARY_FONT := 40
-const BUTTON_FONT := 44
+# Kev 2026-07-10: readability pass — heads/summary/button were well below the
+# phone-legibility floor (section heads rendered ~13 preview px).
+const SECTION_HEAD_FONT := 40
+const SUMMARY_FONT := 56
+const BUTTON_FONT := 56
 const BUTTON_SIZE := Vector2(360, 120)
 
 @onready var background: ColorRect = $Background
@@ -159,7 +161,7 @@ func _make_unlock_row(entry: Dictionary) -> Control:
 		var unit := DataManager.get_unit(str(entry.get("id", ""))) as UnitData
 		if unit != null and unit.portrait != null:
 			var frame := PanelContainer.new()
-			frame.custom_minimum_size = Vector2(96, 96)
+			frame.custom_minimum_size = Vector2(144, 144)
 			frame.clip_contents = true
 			frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2))
 			var tex := TextureRect.new()
@@ -175,11 +177,11 @@ func _make_unlock_row(entry: Dictionary) -> Control:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", "")).to_upper()
-	_style_label(name_label, 44, PixelUI.TEXT_PRIMARY)
+	_style_label(name_label, 64, PixelUI.TEXT_PRIMARY)
 	info.add_child(name_label)
 	var tag := Label.new()
 	tag.text = "NEW OPERATIVE UNLOCKED" if is_hero else "NEW OPERATION UNLOCKED"
-	_style_label(tag, 24, PixelUI.DT_AMBER)
+	_style_label(tag, 40, PixelUI.DT_AMBER)
 	info.add_child(tag)
 	row.add_child(info)
 	return row
