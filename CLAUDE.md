@@ -51,6 +51,21 @@ names like "Overload Capacitor" or "Core Surge" stay as-is.)
   not in the `.tres`.
 - The old `UiTheme` (`scripts/autoloads/Theme.gd`) is **deleted** — do not re-add it.
 
+## Portrait region — single source of truth
+
+> **The hero portrait window is `PixelUI.HERO_PORTRAIT_REGION` = 328 × 380, aspect
+> 0.863** — measured live from the battle card. Every screen that displays a hero
+> portrait uses this aspect (scaled to its physical size) and routes through
+> `PixelUI.cover_fit_portrait`. Do not define a portrait window anywhere else, and
+> do not hardcode a second aspect.
+>
+> Portraits are authored to this window. A *taller* display frame cover-fits by
+> height and trims the sides, which is harmless. A *shorter* frame trims the bottom
+> and destroys the framing — that was the 320×486 bug: squad select and the battle
+> card showed different windows onto the same art, and every framing pass authored
+> against the wrong one. Never derive head positions from pixels — framing anchors
+> are hand-declared in `assets/portraits/portrait_anchors.json`.
+
 ## Persistent header — one global header bar
 
 - **`PersistentHeader`** is a global autoload (`scenes/ui/PersistentHeader.tscn` +

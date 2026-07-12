@@ -57,18 +57,19 @@ const PANEL_RADIUS := 0
 # 1000; 4 columns with 3×16 gaps → (1000 − 48) / 4 = 238 exactly (even → crisp
 # halves at 540 preview). Width is DERIVED from the usable width, not a target.
 const PORTRAIT_CELL := 238
-# Battle-scene portrait framing (refinement pass §2): the compact battle card is
-# 344×570 with a 320×486 portrait region (width−24, height−84 reserved bands).
-# Select-screen tiles reuse that region aspect + the same cover-fit function
-# (PixelUI.cover_fit_portrait, center-x / top-aligned), scaled to cell width —
-# the hero you pick is framed identically to the hero in battle, smaller.
-const BATTLE_PORTRAIT_REGION := Vector2(320.0, 486.0)
-# Banner boss thumb (Batch 3): the SAME portrait aspect as the battle card's
-# region (BATTLE_PORTRAIT_REGION 320:486) so the boss is framed identically to
-# its battle card, smaller — the old 224×280 (0.8) cell cover-cropped the art
-# to a different window and read as over-zoomed. 224 × round(224·486/320) = 340.
+# Battle-scene portrait framing: tiles reuse the ONE portrait region
+# (PixelUI.HERO_PORTRAIT_REGION, 328×380 — measured live from the battle card)
+# + the same cover-fit function (PixelUI.cover_fit_portrait), scaled to cell
+# width — the hero you pick is framed identically to the hero in battle,
+# smaller. The old local 320×486 constant was STALE (a pre-redesign card
+# anatomy) and gave squad select a different window than battle — the
+# 2026-07-12 portrait-framing bug. Never define a second portrait aspect.
+const BATTLE_PORTRAIT_REGION := PixelUI.HERO_PORTRAIT_REGION
+# Banner boss thumb: the SAME portrait region aspect, so the boss is framed
+# identically to its battle card, smaller. 224 × round(224·380/328) = 260
+# (kept even for the pixel-snap law; derivation must track HERO_PORTRAIT_REGION).
 const ENC_THUMB_W := 224
-const ENC_THUMB_H := 340
+const ENC_THUMB_H := 260
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
@@ -648,8 +649,9 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
-	# Crop region carries the battle card's exact portrait aspect (320:486);
-	# frame height = region height + the 4px border insets on both edges.
+	# Crop region carries the battle card's exact portrait aspect
+	# (PixelUI.HERO_PORTRAIT_REGION, 328:380); frame height = region height +
+	# the border insets on both edges.
 	var inner_w: float = float(PORTRAIT_CELL - 2 * PANEL_BORDER)
 	var inner_h: float = roundf(inner_w * BATTLE_PORTRAIT_REGION.y / BATTLE_PORTRAIT_REGION.x)
 	frame.custom_minimum_size = Vector2(PORTRAIT_CELL, inner_h + 2.0 * float(PANEL_BORDER))

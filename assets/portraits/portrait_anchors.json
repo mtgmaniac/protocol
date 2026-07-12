@@ -1,0 +1,44 @@
+{
+  "_doc1": "Hand-declared framing anchors for every LIVE hero portrait (base + evolutions).",
+  "_doc2": "head_top = topmost pixel of the SKULL/HELMET DOME only — never antennas, hoods, horns, spikes, icicles, halos, or glow. chin = bottom of the head.",
+  "_doc3": "Declared by Kev from the measuring sheets (scripts/assets/portrait_measure_sheet.py). NEVER derive these from pixels — automated head detection is how the 2026-07-12 framing failure happened.",
+  "_doc4": "Consumed by scripts/assets/portrait_frame_crop.py: scale = _target_head_height / (chin - head_top), then a fixed _crop_height window with the scaled head_top sitting _head_top_margin px below the top edge. A new portrait gets framed by adding its two numbers here and re-running the tool.",
+  "_doc5": "Key = portrait file basename without .png. 2026-07-12: 'breaker_nullterre' in the hand-off was a typo for breaker_nullwire (Breaker's evolutions are noise/nullwire); anchors kept verbatim.",
+
+  "_reference": "combat",
+  "_target_head_height": 240,
+  "_head_top_margin": 3,
+  "_crop_height": 448,
+
+  "combat":               { "head_top": 55,  "chin": 295 },
+  "combat_blade":         { "head_top": 60,  "chin": 285 },
+  "combat_ravager":       { "head_top": 80,  "chin": 310 },
+
+  "engineer":             { "head_top": 55,  "chin": 290 },
+  "engineer_overclocked": { "head_top": 70,  "chin": 295 },
+  "engineer_phantom":     { "head_top": 95,  "chin": 265 },
+
+  "medic":                { "head_top": 55,  "chin": 285 },
+  "medic_medic":          { "head_top": 75,  "chin": 285 },
+  "medic_synth":          { "head_top": 115, "chin": 295 },
+
+  "avalanche":            { "head_top": 60,  "chin": 295 },
+  "avalanche_glacier":    { "head_top": 100, "chin": 300 },
+  "avalanche_trench":     { "head_top": 140, "chin": 300 },
+
+  "breaker":              { "head_top": 115, "chin": 295 },
+  "breaker_noise":        { "head_top": 150, "chin": 320 },
+  "breaker_nullwire":     { "head_top": 190, "chin": 330 },
+
+  "pulse":                { "head_top": 45,  "chin": 290 },
+  "pulse_arc":            { "head_top": 45,  "chin": 290 },
+  "pulse_pyro":           { "head_top": 45,  "chin": 300 },
+
+  "shield":               { "head_top": 55,  "chin": 255 },
+  "shield_bulwark":       { "head_top": 55,  "chin": 250 },
+  "shield_sentinel":      { "head_top": 80,  "chin": 255 },
+
+  "ghost":                { "head_top": 75,  "chin": 250 },
+  "ghost_shadow":         { "head_top": 60,  "chin": 255 },
+  "ghost_wraith":         { "head_top": 70,  "chin": 285 }
+}

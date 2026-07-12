@@ -362,17 +362,59 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 	return ""
 
 
+# ── Portrait region (single source of truth) ────────────────────────────────
+# The hero portrait window is 328×380 (aspect ≈0.863) — measured live from the
+# battle card (2026-07-12, stable pre/post-roll). EVERY screen that displays a
+# hero portrait uses this aspect; a screen needing a different physical size
+# scales this aspect — it never defines its own. A TALLER display frame
+# cover-fits by height and trims the sides (harmless); a SHORTER frame trims
+# the bottom and destroys the framing — that was the 320×486 bug: squad select
+# and the battle card showed different windows onto the same art, and every
+# framing pass authored against the wrong one. Do not define a portrait window
+# anywhere else, and do not hardcode a second aspect.
+const HERO_PORTRAIT_REGION := Vector2(328.0, 380.0)
+
+# ── Hero portrait display zoom (display-time only; the PNGs stay pristine) ──
+# HERO_PORTRAIT_ZOOM: uniform extra scale applied inside cover_fit_portrait to
+# HERO art only (>1.0 = tighter). Enemies are the framing reference and are
+# NEVER zoomed. 1.2 picked by Kev 2026-07-12 against the RUST reference card.
+# HERO_PORTRAIT_ANCHOR_Y (+ per-portrait HERO_PORTRAIT_ANCHOR_Y_OVERRIDES):
+# vertical bias as a FRACTION of the frame height — positive shifts the art UP
+# in the frame (0.03 ≈ 11 px in the 380-tall region), negative down; scales
+# with the frame like PORTRAIT_TOP_PAD. Overrides add on top of the global.
+# The breaker family's source art draws the body lower in the canvas to fit
+# tall antennas/crown — the per-unit anchors re-seat their helmet DOMES at the
+# roster height (derived from the hand-declared portrait_anchors.json head_top
+# values, NOT from pixels). Antenna/crown crop-off is ruled acceptable
+# (TRUTH.md): the head is what must frame consistently, never the headgear.
+# HERO_PORTRAIT_ZOOM_OVERRIDES: per-portrait multiplier on top of the global
+# zoom, keyed by portrait key ("combat", "medic_synth", …). Kept EMPTY by
+# design — the global zoom does the work; add an entry only for a genuine
+# outlier, never as a substitute for fixing the global value.
+const HERO_PORTRAIT_ZOOM := 1.2
+const HERO_PORTRAIT_ANCHOR_Y := 0.0
+const HERO_PORTRAIT_ZOOM_OVERRIDES := {}
+const HERO_PORTRAIT_ANCHOR_Y_OVERRIDES := {
+	"breaker": 0.105,
+	"breaker_noise": 0.166,
+	"breaker_nullwire": 0.237,
+}
+
+
 # Cover-fit a portrait TextureRect inside its crop frame. Composition-aware:
 # full-bleed scenic art (tagged by DataManager) centres both axes; cutout art
 # anchors to the top edge so heads are never cropped off. Single framing rule
 # for every screen — no per-unit offsets.
 #
-# PORTRAIT_TOP_PAD (Batch 3): fixed downward shift so the subject's head never
+# PORTRAIT_TOP_PAD (Batch 3): downward shift so the subject's head never
 # kisses/clips the frame's top edge. Cutout art gets the full pad (the strip
 # above it shows the card background — reads as headroom). Full-bleed art only
 # shifts as far as it can while still covering the frame top (never reveals a
 # background gap above opaque art). One constant, applied by the shared rule —
-# no per-unit hand-tuning.
+# no per-unit hand-tuning. The pad is authored in HERO_PORTRAIT_REGION units
+# and SCALES with the frame (fix/portrait-region): an absolute pad gave smaller
+# frames proportionally more headroom, so squad tiles framed subtly differently
+# than the battle card even at the right aspect.
 const PORTRAIT_TOP_PAD := 12.0
 
 static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> void:
@@ -394,14 +436,24 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		tex_rect.size = frame_size
 		return
 	var cover_scale: float = maxf(fw / tw, fh / th)
+	# HERO art only: uniform display zoom (+ optional per-portrait override) and
+	# vertical anchor bias (fraction of frame height, + per-portrait override).
+	# Enemies stay untagged → zoom 1.0, anchor 0.
+	var anchor_shift: float = 0.0
+	if bool(tex.get_meta("hero_portrait", false)):
+		var key: String = str(tex.get_meta("portrait_key", ""))
+		cover_scale *= HERO_PORTRAIT_ZOOM * float(HERO_PORTRAIT_ZOOM_OVERRIDES.get(key, 1.0))
+		anchor_shift = (HERO_PORTRAIT_ANCHOR_Y + float(HERO_PORTRAIT_ANCHOR_Y_OVERRIDES.get(key, 0.0))) * fh
 	var nw: float = tw * cover_scale
 	var nh: float = th * cover_scale
 	var full_bleed: bool = bool(tex.get_meta("full_bleed", false))
+	var pad: float = PORTRAIT_TOP_PAD * (fh / HERO_PORTRAIT_REGION.y)
 	var top_y: float
 	if full_bleed:
-		top_y = minf((fh - nh) * 0.5 + PORTRAIT_TOP_PAD, 0.0)
+		top_y = minf((fh - nh) * 0.5 + pad, 0.0)
 	else:
-		top_y = PORTRAIT_TOP_PAD
+		top_y = pad
+	top_y -= anchor_shift  # positive ANCHOR_Y = art shifts UP in the frame
 	tex_rect.position = Vector2((fw - nw) * 0.5, top_y)
 	tex_rect.size = Vector2(nw, nh)
 
