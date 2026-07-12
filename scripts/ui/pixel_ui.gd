@@ -374,6 +374,20 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 # anywhere else, and do not hardcode a second aspect.
 const HERO_PORTRAIT_REGION := Vector2(328.0, 380.0)
 
+# ── Hero portrait display zoom (display-time only; the PNGs stay pristine) ──
+# HERO_PORTRAIT_ZOOM: uniform extra scale applied inside cover_fit_portrait to
+# HERO art only (>1.0 = tighter). Enemies are the framing reference and are
+# NEVER zoomed. HERO_PORTRAIT_ANCHOR_Y: vertical bias in HERO_PORTRAIT_REGION
+# units — positive shifts the art UP in the frame (tighter headroom), negative
+# shifts it down; it scales with the frame like PORTRAIT_TOP_PAD does.
+# HERO_PORTRAIT_ZOOM_OVERRIDES: per-portrait multiplier on top of the global
+# zoom, keyed by portrait key ("combat", "medic_synth", …). Kept EMPTY by
+# design — the global zoom does the work; add an entry only for a genuine
+# outlier, never as a substitute for fixing the global value.
+const HERO_PORTRAIT_ZOOM := 1.0
+const HERO_PORTRAIT_ANCHOR_Y := 0.0
+const HERO_PORTRAIT_ZOOM_OVERRIDES := {}
+
 
 # Cover-fit a portrait TextureRect inside its crop frame. Composition-aware:
 # full-bleed scenic art (tagged by DataManager) centres both axes; cutout art
@@ -410,6 +424,13 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		tex_rect.size = frame_size
 		return
 	var cover_scale: float = maxf(fw / tw, fh / th)
+	# HERO art only: uniform display zoom (+ optional per-portrait override) and
+	# vertical anchor bias, both in region units. Enemies stay untagged → 1.0/0.
+	var anchor_shift: float = 0.0
+	if bool(tex.get_meta("hero_portrait", false)):
+		var key: String = str(tex.get_meta("portrait_key", ""))
+		cover_scale *= HERO_PORTRAIT_ZOOM * float(HERO_PORTRAIT_ZOOM_OVERRIDES.get(key, 1.0))
+		anchor_shift = HERO_PORTRAIT_ANCHOR_Y * (fh / HERO_PORTRAIT_REGION.y)
 	var nw: float = tw * cover_scale
 	var nh: float = th * cover_scale
 	var full_bleed: bool = bool(tex.get_meta("full_bleed", false))
@@ -419,6 +440,7 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		top_y = minf((fh - nh) * 0.5 + pad, 0.0)
 	else:
 		top_y = pad
+	top_y -= anchor_shift  # positive ANCHOR_Y = art shifts UP in the frame
 	tex_rect.position = Vector2((fw - nw) * 0.5, top_y)
 	tex_rect.size = Vector2(nw, nh)
 

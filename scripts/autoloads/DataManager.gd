@@ -607,7 +607,9 @@ func _load_hero_portrait(unit_id: String) -> Texture2D:
 	var file_name: String = str(HERO_PORTRAIT_BY_ID.get(unit_id, ""))
 	if file_name == "":
 		return null
-	return _finalize_hero_portrait(_load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name]))
+	return _finalize_hero_portrait(
+		_load_texture_if_exists("%s%s" % [HERO_PORTRAIT_ROOT, file_name]),
+		file_name.get_basename())
 
 
 # Hero portraits are ZOOM-NORMALIZED OFFLINE (Batch 6): every PNG is pre-cropped so the
@@ -619,16 +621,24 @@ func _load_hero_portrait(unit_id: String) -> Texture2D:
 # small uniform PORTRAIT_TOP_PAD, and square frames (inspect header icon) show the face
 # rather than a center-crop of the chest. Art WITH alpha (future cutout drops) still
 # crops to its opaque bbox as before.
-func _finalize_hero_portrait(tex: Texture2D) -> Texture2D:
+func _finalize_hero_portrait(tex: Texture2D, portrait_key: String = "") -> Texture2D:
 	if tex == null:
 		return null
 	var img: Image = tex.get_image()
 	if img == null:
 		return tex
+	var out: Texture2D
 	if img.detect_alpha() == Image.ALPHA_NONE:
 		tex.set_meta("full_bleed", false)
-		return tex
-	return _crop_to_content(tex, false)
+		out = tex
+	else:
+		out = _crop_to_content(tex, false)
+	# Tag as HERO art: cover_fit_portrait applies HERO_PORTRAIT_ZOOM (+ per-key
+	# override) to tagged textures only — enemies are the framing reference and
+	# stay untagged/unzoomed.
+	out.set_meta("hero_portrait", true)
+	out.set_meta("portrait_key", portrait_key)
+	return out
 
 
 # Evolved-unit portrait convention: assets/portraits/<hero_id>_<evo_id>.png
@@ -645,7 +655,7 @@ func get_evolution_portrait(hero_id: String, evo_id: String) -> Texture2D:
 	var key: String = "%s_%s" % [hero_id, evo_id]
 	if _evolution_portraits.has(key):
 		return _evolution_portraits[key]
-	var tex: Texture2D = _finalize_hero_portrait(_load_texture_if_exists("%s%s.png" % [HERO_PORTRAIT_ROOT, key]))
+	var tex: Texture2D = _finalize_hero_portrait(_load_texture_if_exists("%s%s.png" % [HERO_PORTRAIT_ROOT, key]), key)
 	_evolution_portraits[key] = tex
 	return tex
 
