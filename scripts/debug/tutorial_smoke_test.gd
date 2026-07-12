@@ -32,7 +32,7 @@ func _run() -> void:
 		_fail("TutorialController not spawned in tutorial_mode")
 		return
 
-	# ── Walk the script ──────────────────────────────────────────────────────
+	# ── Walk the script (Batch 5: starting trio, ability-pip + status-badge steps) ──
 	await _expect_step(controller, 0)
 
 	# Steps 0-3: orientation taps.
@@ -47,9 +47,9 @@ func _run() -> void:
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 5)
 
-	# Steps 5-7: tray tour (tap), the hand-taught BURN primer beat (tap), then
-	# the inspect gate. The real gate is a long-press InspectPopup; emit the
-	# same event the popup handler fires.
+	# Steps 5-6: tray tour (tap), then the ability-pip beat (tap — highlights all three
+	# units' pips). Step 7 is the inspect gate; the real gate is a long-press InspectPopup,
+	# so emit the same event the popup handler fires.
 	_check_holes(controller)
 	controller.call("_next")
 	await _expect_step(controller, 6)
@@ -64,7 +64,7 @@ func _run() -> void:
 	await _wait_for_phase(scene, "targeting")
 	_check_holes(controller)
 
-	# Step 7: pick a hero die (gated on targeting_started).
+	# Step 8: pick the first hero die (gated on targeting_started).
 	var hero_ids: Array = _living_ids(scene, true)
 	var enemy_ids: Array = _living_ids(scene, false)
 	if hero_ids.is_empty() or enemy_ids.is_empty():
@@ -73,86 +73,82 @@ func _run() -> void:
 	scene.call("_select_targeting_hero", hero_ids[0])
 	await _expect_step(controller, 9)
 
-	# Step 8: assign the enemy (gated on assigned).
+	# Step 9: assign it to a legal target (gated on assigned). The trio mixes attacks and
+	# support, so each die targets whatever is legal for it (enemy for combat, ally for heal/
+	# shield), not always the enemy.
 	_check_holes(controller)
-	scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
+	_assign_active_to_legal(scene)
 	await _expect_step(controller, 10)
 
-	# Step 9: assign remaining dice until ready_to_end.
+	# Step 10: assign remaining dice until ready_to_end.
 	_check_holes(controller)
 	for hero_id in hero_ids.slice(1):
-		scene.call("_select_targeting_hero", hero_id)
-		await _wait_frames(2)
-		scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
-		await _wait_frames(2)
+		await _pick_and_assign(scene, hero_id)
 	await _expect_step(controller, 11)
 
-	# Step 10: enemy readout tour (tap).
+	# Step 11: enemy readout tour (tap).
 	_check_holes(controller)
 	controller.call("_next")
 	await _expect_step(controller, 12)
 
-	# Step 11: End Turn (gated on turn_resolved — waits out feedback).
+	# Step 12: End Turn (gated on turn_resolved — waits out feedback).
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 13)
 
-	# Step 12: protocol tour (tap).
+	# Step 13: status-badge beat — the MARK left on the drone (tap).
 	_check_holes(controller)
 	controller.call("_next")
 	await _expect_step(controller, 14)
 
-	# Step 13: roll again (gated on rolled — fires after dice settle).
+	# Step 14: roll again (gated on roll_pressed → step 15 hide_coach waiter → rolled → 16).
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 15)
-
-	# Step 14: protocol value (tap).
-	_check_holes(controller)
-	controller.call("_next")
 	await _expect_step(controller, 16)
 
-	# Step 15: Nudge Pulse (gated on nudged).
+	# Step 16: protocol value (tap).
+	_check_holes(controller)
+	controller.call("_next")
+	await _expect_step(controller, 17)
+
+	# Step 17: Nudge Strike Unit (gated on nudged).
 	await _wait_for_phase(scene, "targeting")
 	_check_holes(controller)
-	var pulse_id: String = _state_id_for_unit(scene, "pulse")
-	if pulse_id == "":
-		_fail("Pulse Tech state not found for nudge step")
+	var combat_id: String = _state_id_for_unit(scene, "combat")
+	if combat_id == "":
+		_fail("Strike Unit state not found for nudge step")
 		return
 	# Nudge lives in the ProtocolActions module (architecture review §1 rec 1).
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
 	await _wait_frames(2)
-	protocol.call("_apply_nudge", pulse_id)
-	await _expect_step(controller, 17)
+	protocol.call("_apply_nudge", combat_id)
+	await _expect_step(controller, 18)
 
-	# Steps 16-17: taps (band jump + reroll/set costs).
+	# Steps 18-19: taps (band jump + reroll/set costs).
 	for _i in range(2):
 		_check_holes(controller)
 		controller.call("_next")
 		await _wait_frames(3)
-	await _expect_step(controller, 19)
-
-	# Step 18: fire Pulse (gated on assigned).
-	_check_holes(controller)
-	scene.call("_select_targeting_hero", pulse_id)
-	await _wait_frames(2)
-	scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
 	await _expect_step(controller, 20)
 
-	# Step 19: assign the rest + end turn (gated on won).
+	# Step 20: fire Strike Unit at the drone (gated on assigned).
 	_check_holes(controller)
-	for hero_id in hero_ids:
-		if hero_id == pulse_id:
-			continue
-		scene.call("_select_targeting_hero", hero_id)
-		await _wait_frames(2)
-		scene.call("_assign_target_to_active_hero", enemy_ids[0], "enemy")
-		await _wait_frames(2)
-	scene.call("_on_roll_button_pressed")
+	scene.call("_select_targeting_hero", combat_id)
+	await _wait_frames(2)
+	_assign_active_to_legal(scene)
 	await _expect_step(controller, 21)
 
-	# Step 20: DRILL COMPLETE (tap_finish) → back to the main menu.
+	# Step 21: assign the rest + end turn (gated on won).
+	_check_holes(controller)
+	for hero_id in hero_ids:
+		if hero_id == combat_id:
+			continue
+		await _pick_and_assign(scene, hero_id)
+	scene.call("_on_roll_button_pressed")
+	await _expect_step(controller, 22)
+
+	# Step 22: DRILL COMPLETE (tap_finish) → back to the main menu.
 	_check_holes(controller)
 	controller.call("_next")
 	await _wait_frames(10)
@@ -161,7 +157,7 @@ func _run() -> void:
 		_errors.append("tutorial_mode still true after finish")
 
 	if _errors.is_empty():
-		print("[TUTORIAL_SMOKE] PASS — all 22 steps advanced, all spotlights resolved")
+		print("[TUTORIAL_SMOKE] PASS — all 23 steps advanced, all spotlights resolved")
 		quit(0)
 	else:
 		for e in _errors:
@@ -220,6 +216,24 @@ func _living_ids(scene: Node, heroes: bool) -> Array:
 		if not bool(state.get("dead", false)):
 			ids.append(str(state.get("id", "")))
 	return ids
+
+
+# Assign the currently-targeting hero to the first LEGAL target (whatever side its ability
+# wants — enemy for an attack, ally for a heal/shield), reading the scene's live legal set.
+func _assign_active_to_legal(scene: Node) -> void:
+	var side: String = str(scene.get("legal_target_side"))
+	var ids: Variant = scene.get("legal_target_ids")
+	if ids is Array and not (ids as Array).is_empty():
+		scene.call("_assign_target_to_active_hero", str((ids as Array)[0]), side)
+	else:
+		_errors.append("no legal target for the active hero (side='%s')" % side)
+
+
+func _pick_and_assign(scene: Node, hero_id: String) -> void:
+	scene.call("_select_targeting_hero", hero_id)
+	await _wait_frames(2)
+	_assign_active_to_legal(scene)
+	await _wait_frames(2)
 
 
 func _state_id_for_unit(scene: Node, unit_id: String) -> String:

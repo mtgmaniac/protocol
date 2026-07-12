@@ -53,27 +53,50 @@ func _run() -> void:
 	if mm._current_track != &"sci_fi_loop_1":
 		_errors.append("current track drifted on same-key play_track")
 
-	# 3. Faction lookup: hive is spec-fixed to loop 4.
+	var bus_idx: int = AudioServer.get_bus_index("Music")
+	# Deterministic dB math for the rest of the test.
+	mm.set_music_volume(0.5)
+	var user_db: float = linear_to_db(0.5)
+
+	# 3. Faction lookup + Batch-5 sequenced combat entry. hive is spec-fixed to loop 4;
+	# the crossfade is the encounter-start fade, and set_combat(true) fired during it
+	# must DEFER its ramp (never boost the still-dominant outgoing track — the record
+	# drag). Ensure a clean non-combat baseline with no fade in flight first.
+	mm.set_combat(false)
+	await create_timer(mm.crossfade_duration + mm.to_noncombat_duration + 0.2).timeout
 	mm.play_for_faction("hive")
 	if mm._current_track != &"sci_fi_loop_4":
 		_errors.append("hive resolved to %s, expected sci_fi_loop_4" % mm._current_track)
-
-	var bus_idx: int = AudioServer.get_bus_index("Music")
-
-	# 4. Volume model: a slider move mid-state recomputes the bus immediately.
-	mm.set_combat(true)
-	await create_timer(mm.to_combat_duration + 0.2).timeout
-	mm.set_music_volume(0.5)
-	var expected: float = linear_to_db(0.5)  # combat state offset = 0
+	# The incoming faction track must enter already at combat pitch (not swept later).
+	if absf(mm._players[mm._active].pitch_scale - mm.combat_pitch) > 0.001:
+		_errors.append("faction track entered at pitch %.3f, expected combat_pitch %.3f" % [
+			mm._players[mm._active].pitch_scale, mm.combat_pitch])
+	mm.set_combat(true)  # crossfade in flight → must defer
+	await create_timer(mm.to_combat_duration + 0.2).timeout  # crossfade (2 s) still running
+	var expected: float = user_db + mm.noncombat_db_offset  # STILL non-combat: ramp deferred
 	var got: float = AudioServer.get_bus_volume_db(bus_idx)
 	if absf(got - expected) > EPS_DB:
-		_errors.append("combat bus volume %.2f dB, expected %.2f" % [got, expected])
+		_errors.append("combat ramp not deferred during crossfade: bus %.2f dB, expected %.2f" % [got, expected])
+
+	# 4. Once the crossfade finishes, the deferred ramp fires and reaches combat level.
+	await create_timer(mm.crossfade_duration).timeout          # crossfade completes → ramp fires
+	await create_timer(mm.to_combat_duration + 0.2).timeout    # ramp completes
+	expected = user_db  # combat state offset = 0
+	got = AudioServer.get_bus_volume_db(bus_idx)
+	if absf(got - expected) > EPS_DB:
+		_errors.append("deferred combat ramp reached %.2f dB, expected combat %.2f" % [got, expected])
+	# Immediate path (no crossfade in flight): set_combat(false) applies right away.
 	mm.set_combat(false)
 	await create_timer(mm.to_noncombat_duration + 0.2).timeout
-	expected = linear_to_db(0.5) + mm.noncombat_db_offset
+	expected = user_db + mm.noncombat_db_offset
 	got = AudioServer.get_bus_volume_db(bus_idx)
 	if absf(got - expected) > EPS_DB:
 		_errors.append("non-combat bus volume %.2f dB, expected %.2f" % [got, expected])
+	# Slider move mid-state recomputes the bus immediately (offsets ride the new level).
+	mm.set_music_volume(0.5)
+	got = AudioServer.get_bus_volume_db(bus_idx)
+	if absf(got - (user_db + mm.noncombat_db_offset)) > EPS_DB:
+		_errors.append("slider recompute drifted: bus %.2f dB, expected %.2f" % [got, user_db + mm.noncombat_db_offset])
 
 	# 5. Duck bottoms at state+duck and restores to the state target, not 0 dB.
 	mm.duck_for_stinger()

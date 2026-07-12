@@ -10,6 +10,16 @@ extends Node
 ## the lowpass, restores full volume, and leans the pitch forward; non-combat sits
 ## back (−6 dB, ~1400 Hz muffle). The underlying playback position never jumps.
 ##
+## Combat entry is SEQUENCED, never overlapped (Batch 5): the encounter-start
+## crossfade (loop 1 → faction track) fires at deploy, and the battle scene's
+## set_combat(true) fires ~immediately after on load. If those overlap, the still-
+## dominant OUTGOING track gets the pitch/volume boost = an audible "record drag."
+## So: (1) the incoming faction track enters ALREADY at combat pitch (play_for_faction
+## always precedes a battle); (2) _set_pitch touches only the ACTIVE (incoming) player,
+## never the outgoing one; (3) set_combat(true) DEFERS its state ramp until any in-flight
+## crossfade finishes — the old track fades out first, then the lone faction track rises
+## to battle state. Battles 2–10 (no crossfade in flight) still snap immediately.
+##
 ## Volume model: the Music bus is always _user_music_db + _state_db + _duck_db.
 ## Every operation (combat state, nat-20 duck) is an OFFSET from the user's
 ## configured level, so slider moves mid-encounter apply immediately and ducks
@@ -40,7 +50,9 @@ const FACTION_TRACKS := {
 
 const SETTINGS_PATH := "user://settings.cfg"
 const SILENCE_DB := -80.0
-const DEFAULT_MUSIC_VOLUME := 0.8
+# Default music level (Batch 5): 30%. A saved user preference in settings.cfg still wins
+# (see _load_settings) — this only sets the level for a fresh profile.
+const DEFAULT_MUSIC_VOLUME := 0.3
 
 @export var crossfade_duration := 2.0
 
@@ -125,7 +137,10 @@ func _ensure_music_bus() -> void:
 ## Switch to a track. Same key = strict no-op (title → encounter select must not
 ## restart loop 1); different key = one crossfade. The three legal call sites are
 ## title/select ready, encounter start, and encounter end — anywhere else is a bug.
-func play_track(key: StringName) -> void:
+## `incoming_pitch` > 0 forces the pitch the incoming track enters at (the faction
+## crossfade uses combat_pitch so the battle track is already at pitch, never swept);
+## -1 = auto (combat_pitch while in combat, else 1.0).
+func play_track(key: StringName, incoming_pitch: float = -1.0) -> void:
 	if key == _current_track:
 		return
 	if not TRACK_FILES.has(key):
@@ -134,7 +149,7 @@ func play_track(key: StringName) -> void:
 	_current_track = key
 	if _suppressed or not _music_enabled:
 		return
-	_crossfade_to(key)
+	_crossfade_to(key, incoming_pitch)
 
 
 func play_for_faction(faction_id: String) -> void:
@@ -142,21 +157,40 @@ func play_for_faction(faction_id: String) -> void:
 		push_warning("[MusicManager] no track mapped for faction: %s" % faction_id)
 		play_track(TITLE_TRACK)
 		return
-	play_track(FACTION_TRACKS[faction_id])
+	# Encounter start always leads straight into a battle, so the faction track enters
+	# already at combat pitch — set_combat(true) then has no pitch to sweep (Batch 5).
+	play_track(FACTION_TRACKS[faction_id], combat_pitch)
 
 
 ## The only thing that changes as the player moves between battle and non-battle
 ## screens. Volume, filter cutoff, and pitch tween together; playback never jumps.
+##
+## Sequencing rule (Batch 5): if a track crossfade is still in flight (only ever the
+## encounter-start loop 1 → faction fade), applying the combat ramp NOW would boost the
+## still-dominant OUTGOING track — the "record drag." So we DEFER the ramp until the
+## crossfade finishes; by then the old track is gone and only the faction track (already
+## at combat pitch) remains to rise into battle state. No crossfade in flight (battles
+## 2–10) → apply immediately, the snappy 0.5 s forward lean.
 func set_combat(active: bool) -> void:
 	if _combat == active:
 		return
 	_combat = active
+	if active and _fade_tween != null and _fade_tween.is_valid():
+		if not _fade_tween.finished.is_connected(_apply_combat_state):
+			_fade_tween.finished.connect(_apply_combat_state, CONNECT_ONE_SHOT)
+		return
+	_apply_combat_state()
+
+
+# Ramps volume, filter cutoff, and (active-player-only) pitch toward the CURRENT combat
+# state. Read _combat freshly so a deferred call always lands on the latest intent.
+func _apply_combat_state() -> void:
 	if _state_tween != null and _state_tween.is_valid():
 		_state_tween.kill()
-	var duration := to_combat_duration if active else to_noncombat_duration
-	var target_db := 0.0 if active else noncombat_db_offset
-	var target_cutoff := combat_cutoff_hz if active else noncombat_cutoff_hz
-	var target_pitch := combat_pitch if active else 1.0
+	var duration := to_combat_duration if _combat else to_noncombat_duration
+	var target_db := 0.0 if _combat else noncombat_db_offset
+	var target_cutoff := combat_cutoff_hz if _combat else noncombat_cutoff_hz
+	var target_pitch := combat_pitch if _combat else 1.0
 	_state_tween = create_tween().set_parallel(true) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_state_tween.tween_method(_set_state_db, _state_db, target_db, duration)
@@ -219,7 +253,7 @@ func set_suppressed(suppressed: bool) -> void:
 		_crossfade_to(_current_track)
 
 
-func _crossfade_to(key: StringName) -> void:
+func _crossfade_to(key: StringName, incoming_pitch: float = -1.0) -> void:
 	var stream := _load_track(key)
 	if stream == null:
 		return
@@ -229,7 +263,9 @@ func _crossfade_to(key: StringName) -> void:
 	_active = (_active + 1) % _players.size()
 	var incoming: AudioStreamPlayer = _players[_active]
 	incoming.stream = stream
-	incoming.pitch_scale = outgoing.pitch_scale if outgoing.playing else (combat_pitch if _combat else 1.0)
+	# Incoming enters at its own clean target pitch — NEVER inheriting the outgoing
+	# player's (possibly mid-sweep) pitch, which is what dragged the record (Batch 5).
+	incoming.pitch_scale = incoming_pitch if incoming_pitch > 0.0 else (combat_pitch if _combat else 1.0)
 	incoming.volume_db = SILENCE_DB
 	if not _headless:
 		incoming.play()
@@ -276,9 +312,10 @@ func _set_cutoff(value: float) -> void:
 	_filter.cutoff_hz = value
 
 
+# Active (incoming/current) player ONLY. The outgoing player of a crossfade is fading
+# out and must keep its own pitch — sweeping it is the "record drag" (Batch 5).
 func _set_pitch(value: float) -> void:
-	for player in _players:
-		player.pitch_scale = value
+	_players[_active].pitch_scale = value
 
 
 func _apply_bus_volume() -> void:

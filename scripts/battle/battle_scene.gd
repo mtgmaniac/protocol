@@ -152,21 +152,24 @@ var hero_units: Array = []
 var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
-# Single weak scripted enemy (Scrap Drone @28 HP) that telegraphs a weak Stab (enemy roll 6 =
-# strike band) and dies on turn 2. Hero rolls keyed by unit id (Kev 2026-07-10: Strike rolls
-# 5 BOTH turns — Suppression Fire, plain damage — so Target Lock's Mark never muddies the
-# drill; Mark primes later in real play):
-#   turn 1: Pulse 5 (Arc Burst 6 + 2 burn) + Strike 5 (Suppression 7) + Ghost 3 (Probe 7)
-#           = 20 direct + 2 burn tick → 22, the 28-HP drone survives on 6.
-#   turn 2: Pulse 9→Nudge→12 (Plasma Lance 9) + 7 + 7 = 23 → kill.
-# Pulse 9 sits one short of the Surge band (Plasma Lance opens at 10); +3 Nudge → 12 flips
-# flat Arc Burst into Plasma Lance — the taught payoff.
+# Starting trio — Strike Unit (combat), Field Engineer (engineer), Splice Medic (medic),
+# Batch 5 — vs one weak Scrap Drone (13 HP) that telegraphs a weak Stab (enemy roll 6 =
+# strike band). Rolls keyed by unit id:
+#   turn 1: Strike 3 (Target Lock — 3 dmg + MARK on the drone) + Engineer 7 (Barrier Deploy,
+#           shields an ally) + Medic 6 (Infusion, heals an ally). Only Strike touches the drone
+#           (3 dmg → 10 left), and its Mark PERSISTS because nobody else hits the drone — that's
+#           the status-badge lesson, visible right into turn 2.
+#   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire → Rail Strike, 11 dmg; the Mark spends for
+#           +50% → 17) kills the 10-HP drone. Engineer/Medic support again.
+# Strike 8 sits one short of the Surge band (Rail Strike opens at 11); +3 Nudge → 11 flips
+# the band — the taught payoff. The 13 HP is set so turn 2 kills WITH OR WITHOUT the Mark
+# (Rail Strike 11 ≥ the 10 remaining), so the drill never stalls on a rounding edge.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
-const TUTORIAL_ENEMY_HP := 28
+const TUTORIAL_ENEMY_HP := 13
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
-	{"pulse": 5, "combat": 5, "ghost": 3},
-	{"pulse": 9, "combat": 5, "ghost": 3},
+	{"combat": 3, "engineer": 7, "medic": 6},
+	{"combat": 8, "engineer": 5, "medic": 6},
 ]
 var _tutorial_turn: int = 0
 
@@ -1197,6 +1200,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 			_scene_manager().go_to_run_end()
 		else:
 			_refresh_summary("Victory. Routing to rewards.")
+			_store_battle_snapshot()
 			_game_state().prepare_battle_rewards()
 			_scene_manager().go_to_reward_screen()
 	elif outcome == "defeat":
@@ -1259,6 +1263,26 @@ func _persist_protocol_carryover() -> void:
 	_game_state().save_protocol_carryover(protocol_points, carry_pct)
 
 
+# Read-only review snapshot (Batch 5): grab the final battle frame so the reward
+# screen's "View Battlescreen" can show the player what the board looked like. The
+# most-recently-rendered frame is the post-feedback board (feedback is awaited before
+# victory is processed). Skipped headless / auto-battle — no human reviewer there, and
+# the dummy renderer's readback is meaningless.
+func _store_battle_snapshot() -> void:
+	if _auto_battle_running or DisplayServer.get_name() == "headless":
+		return
+	var viewport: Viewport = get_viewport()
+	if viewport == null:
+		return
+	var viewport_texture: ViewportTexture = viewport.get_texture()
+	if viewport_texture == null:
+		return
+	var image: Image = viewport_texture.get_image()
+	if image == null:
+		return
+	_game_state().last_battle_snapshot = ImageTexture.create_from_image(image)
+
+
 func _capture_battle_victory_for_xp() -> void:
 	_game_state().capture_battle_end_survival(combat_manager.get_hero_states())
 	# Memorial Protocol (pkg7.4) tracks who fell in the last two battles.
@@ -1285,6 +1309,8 @@ func _finish_battle_victory() -> void:
 		_game_state().finish_run("victory")
 		_scene_manager().go_to_run_end()
 	else:
+		# Snapshot the clean board BEFORE the round-complete modal covers it.
+		_store_battle_snapshot()
 		_show_round_complete_modal()
 
 

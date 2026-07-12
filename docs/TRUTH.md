@@ -171,6 +171,12 @@ Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Ene
 ## UI & feedback
 
 **Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; max one per turn; suppressed in tutorial/headless/auto battle; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
+
+**Rigged onboarding tutorial** (`scripts/ui/tutorial_controller.gd`, `GameState.start_tutorial_run`): runs the STARTING trio Strike Unit / Field Engineer / Splice Medic (Batch 5 — not Pulse/Avalanche) vs one 13-HP Scrap Drone across two scripted turns. Turn 1 Strike marks the drone (Target Lock) while Engineer/Medic support, so the MARK persists as a visible status badge; turn 2 Strike nudges 8→11 (Rail Strike) and the mark pays off. Coachmarks highlight **ability pips** (the readout, not the whole unit) and highlight ALL of a turn's new abilities at once; a dedicated beat teaches the status badge, and the long-press beat notes it works on nearly everything. 23 steps, pinned by `tutorial_smoke_test.gd`.
+
+**Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
+
+**View Battlescreen** (reward screen, Batch 5): battle_scene captures the final battle frame at victory into `GameState.last_battle_snapshot` (transient; skipped headless/auto). The reward screen shows a "VIEW BATTLESCREEN" button when a snapshot exists; it opens a read-only in-screen overlay (only RETURN is interactive) — never a scene change, so the offered rewards can't re-roll.
 Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤10" marker · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
@@ -200,7 +206,16 @@ two-player crossfade pair, tracks in `assets/audio/music/sci_fi_loop_N.ogg`
   1400 Hz / 1.0 over 1.0s; SINE IN_OUT, playback position never jumps. Wired:
   `battle_scene._ready` true; the four `battle_over = true` sites + `_exit_tree`
   false. Pitch stays ≤1.06 (Godot resamples — higher goes cartoon).
-- **Volume model:** Music bus = `_user_music_db + _state_db + _duck_db` — every
+- **Sequenced combat entry (Batch 5):** the encounter-start crossfade and the battle
+  scene's `set_combat(true)` fire back-to-back, so they must NOT overlap or the still-
+  dominant OUTGOING track gets the pitch/volume boost (the "record drag"). Three rules:
+  (1) `play_for_faction` brings the incoming faction track in ALREADY at combat pitch;
+  (2) `_set_pitch` touches only the ACTIVE (incoming) player, never the outgoing one;
+  (3) `set_combat(true)` DEFERS its state ramp (via `_fade_tween.finished`) while a
+  crossfade is in flight — the old track fades out first, then the lone faction track
+  rises to battle state. Battles 2–10 (no crossfade) still snap immediately.
+- **Volume model:** default music level is **30%** (`DEFAULT_MUSIC_VOLUME`; a saved
+  `music_volume` in settings.cfg still wins). Music bus = `_user_music_db + _state_db + _duck_db` — every
   operation is an offset from the user's configured level; slider moves apply
   immediately mid-anything. Nat-20 duck (`duck_for_stinger`, hooked in
   `battle_feedback._celebrate_overload`): −8 dB, 0.04s attack / 0.30s hold / 0.45s

@@ -49,17 +49,20 @@ func _build_steps() -> Array:
 		# Phase 1 — turn 1: the core loop
 		{"targets": ["roll_button"], "text": "Tap Roll to set your dice.", "advance": "roll_pressed"},
 		{"targets": ["center"], "text": "Each die slots into a band. Higher rolls fire stronger abilities."},
-		# One primer taught by hand (Kev 2026-07-10): Pulse's Arc Burst carries
-		# BURN — and this is what the one-time ability tips look like.
-		{"targets": ["pulse"], "text": "See the flame on Pulse's roll? BURN deals damage at the end of each round. The first time a new ability type appears, you'll get a one-time tip like this."},
-		{"targets": ["hero_cards"], "text": "Every unit's bands differ — long-press a card to see its ranges. Give it a try.", "advance": "inspected"},
+		# Ability pips (Batch 5): highlight the ACTUAL ability pips, not the whole unit — and
+		# every unit's roll this turn is a new ability, so highlight all three at once.
+		{"targets": ["ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "These pips are what each die will do: Strike Unit marks the drone, Field Engineer shields, Splice Medic heals. The first time an ability type appears you'll get a one-time tip like this."},
+		# Long-press (Batch 5): note it works on nearly everything.
+		{"targets": ["hero_cards"], "text": "Long-press a card for its full breakdown — bands, keywords, all of it. Long-press works on nearly everything in the game. Try it.", "advance": "inspected"},
 		# Pick a die first (heroes + pips + dice highlighted); once targeting starts we spotlight the
 		# enemy to tap, then open up the whole screen to assign the rest.
 		{"targets": ["heroes"], "text": "Tap a die (or its hero card) to pick who fires.", "advance": "targeting_started"},
-		{"targets": ["enemy_cards"], "text": "Now tap the enemy to fire it.", "advance": "assigned"},
+		{"targets": ["enemy_cards"], "text": "Now tap a target to fire it — the drone for an attack, an ally for a heal or shield.", "advance": "assigned"},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
 		{"targets": ["enemy_readouts"], "text": "Enemies telegraph their moves, be sure to account for this!"},
 		{"targets": ["roll_button"], "text": "Lock it in — ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},
+		# Status-badge lesson (Batch 5): Target Lock left a MARK chip on the drone. Spotlight it.
+		{"targets": ["enemy_status"], "text": "Strike Unit's Target Lock left a MARK on the drone. Units carry status badges like this after effects land — the next hit spends the Mark for extra damage."},
 		# Phase 2 — turn 2: Protocol & Nudge. "Roll again" waits for the dice to settle (advance
 		# "rolled") before moving on.
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
@@ -67,11 +70,11 @@ func _build_steps() -> Array:
 		# Protocol beat lands once they settle (Kev 2026-07-10).
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
 		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn — time to spend it. It builds +1 every turn, caps at 10."},
-		{"targets": ["nudge", "pulse"], "separate": true, "text": "Nudge costs 1 Protocol — tap it, then Pulse Tech's die to add +3 and push it over the line.", "advance": "nudged"},
-		{"targets": ["pulse"], "text": "It jumped into a stronger band — Plasma Lance."},
+		{"targets": ["nudge", "combat"], "separate": true, "text": "Nudge costs 1 Protocol — tap it, then Strike Unit's die to add +3 and push it into a stronger band.", "advance": "nudged"},
+		{"targets": ["ability:combat"], "text": "It jumped a band — Suppression Fire became Rail Strike, and the Mark makes the hit land even harder."},
 		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more — they unlock as you bank Protocol."},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Pulse Tech's die, then the enemy to fire it.", "advance": "assigned"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Clear them out — assign the rest and end the turn.", "advance": "won"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Strike Unit's die, then the drone to fire it.", "advance": "assigned"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Finish it — assign the rest and end the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]
 
@@ -217,6 +220,14 @@ func _targets_rect(keys: Array) -> Rect2:
 
 
 func _target_rect(key: String) -> Rect2:
+	# "ability:<unit_id>" spotlights just that hero's ability-pip readout (Batch 5:
+	# highlight the ability, not the whole unit).
+	if key.begins_with("ability:"):
+		return _hero_readout_rect(key.substr(8))
+	# The enemy's status-badge slot (the MARK chip); falls back to the enemy card so the
+	# spotlight always resolves a hole even before the chip has laid out.
+	if key == "enemy_status":
+		return _enemy_status_rect()
 	match key:
 		"header":
 			var h: Node = get_node_or_null("/root/PersistentHeader")
@@ -272,6 +283,37 @@ func _target_rect(key: String) -> Rect2:
 		"battle_log":
 			return _node_rect(_scene.get("battle_log_panel"))
 	return Rect2()
+
+
+# Just the ability-pip readout row for one hero (Batch 5 — highlight the ability, not the unit).
+func _hero_readout_rect(unit_id: String) -> Rect2:
+	var views: Variant = _scene.get("hero_card_views")
+	if not (views is Array):
+		return Rect2()
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var state: Dictionary = view.get("state", {})
+		var unit: Object = state.get("unit", null) as Object
+		if unit != null and str(unit.id) == unit_id:
+			var readout_rect: Rect2 = _node_rect(view.get("readout", null))
+			# Fall back to the whole unit if the readout hasn't been built/laid out yet, so the
+			# spotlight always resolves a hole.
+			return readout_rect if readout_rect.size != Vector2.ZERO else _hero_unit_rect(unit_id)
+	return Rect2()
+
+
+# The enemy card's status-badge slot (the MARK chip lives here). Falls back to the whole enemy
+# card so the spotlight always resolves a hole.
+func _enemy_status_rect() -> Rect2:
+	var views: Variant = _scene.get("enemy_card_views")
+	if not (views is Array) or (views as Array).is_empty():
+		return Rect2()
+	var view: Dictionary = (views as Array)[0]
+	var card: Object = view.get("card", null) as Object
+	if card == null:
+		return Rect2()
+	var slot_rect: Rect2 = _node_rect(card.get("_status_slot"))
+	return slot_rect if slot_rect.size != Vector2.ZERO else _node_rect(card)
 
 
 # Spotlight one hero by unit id: their card + ability-pip readout + their rolled die. The die isn't
