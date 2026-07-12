@@ -10,7 +10,10 @@ const CARD_MAX_WIDTH := 920.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
 const CARD_BG := Color(0.024, 0.040, 0.060, 0.82)
 const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.92)
-const PORTRAIT_SIZE := Vector2(170, 210)
+# Branch-portrait token width; height derives from PixelUI.HERO_PORTRAIT_REGION
+# in _create_path_header — never define a second portrait aspect here.
+const PORTRAIT_W := 170
+const PORTRAIT_BORDER := 4
 const TITLE_FONT_SIZE := 58
 const SUMMARY_FONT_SIZE := 36
 const CARD_TITLE_FONT_SIZE := 44
@@ -300,22 +303,32 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	header.add_theme_constant_override("separation", 18)
 
 	var portrait_frame: PanelContainer = PanelContainer.new()
-	portrait_frame.custom_minimum_size = PORTRAIT_SIZE
+	# The ONE portrait window (PixelUI.HERO_PORTRAIT_REGION aspect) scaled to
+	# PORTRAIT_W, art inset by the border — the old private 170×210 (0.81) window
+	# + centered cover was liar #3 of the 2026-07-12 portrait-region bug.
+	var inner_w: float = float(PORTRAIT_W - 2 * PORTRAIT_BORDER)
+	var inner_h: float = roundf(inner_w * PixelUI.HERO_PORTRAIT_REGION.y / PixelUI.HERO_PORTRAIT_REGION.x)
+	portrait_frame.custom_minimum_size = Vector2(PORTRAIT_W, inner_h + 2.0 * float(PORTRAIT_BORDER))
 	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# DT hard-square portrait frame (hero tokens), matching the battle card portraits.
-	var portrait_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 4)
-	portrait_style.set_content_margin_all(0.0)
+	var portrait_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, PORTRAIT_BORDER)
+	portrait_style.set_content_margin_all(float(PORTRAIT_BORDER))
 	portrait_frame.add_theme_stylebox_override("panel", portrait_style)
 	header.add_child(portrait_frame)
+
+	var crop: Control = Control.new()
+	crop.clip_contents = true
+	crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_frame.add_child(crop)
 
 	var portrait: TextureRect = TextureRect.new()
 	portrait.texture = _get_path_portrait(path, base_unit)
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	portrait.stretch_mode = TextureRect.STRETCH_SCALE  # position/size set by cover-fit
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	portrait_frame.add_child(portrait)
+	crop.add_child(portrait)
+	# Shared framing rule — same function as the battle card and squad tiles.
+	crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(portrait, crop.size))
 
 	var text_stack: VBoxContainer = VBoxContainer.new()
 	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL

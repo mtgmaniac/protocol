@@ -164,16 +164,25 @@ func _make_unlock_row(entry: Dictionary) -> Control:
 		var unit := DataManager.get_unit(str(entry.get("id", ""))) as UnitData
 		if unit != null and unit.portrait != null:
 			var frame := PanelContainer.new()
-			frame.custom_minimum_size = Vector2(144, 144)
+			# The ONE portrait window (PixelUI.HERO_PORTRAIT_REGION aspect) at token
+			# size — the old 144×144 square with centered cover trimmed the top and
+			# bottom of the head (liar #4 of the 2026-07-12 portrait-region bug).
+			var token_w := 144.0
+			frame.custom_minimum_size = Vector2(token_w, roundf(token_w * PixelUI.HERO_PORTRAIT_REGION.y / PixelUI.HERO_PORTRAIT_REGION.x))
 			frame.clip_contents = true
 			frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2))
+			var crop := Control.new()
+			crop.clip_contents = true
+			crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			frame.add_child(crop)
 			var tex := TextureRect.new()
 			tex.texture = unit.portrait
 			tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-			tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			frame.add_child(tex)
+			tex.stretch_mode = TextureRect.STRETCH_SCALE  # position/size set by cover-fit
+			crop.add_child(tex)
+			# Shared framing rule — same function as the battle card and squad tiles.
+			crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(tex, crop.size))
 			row.add_child(frame)
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
