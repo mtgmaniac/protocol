@@ -422,8 +422,12 @@ const PIP_ICON_BY_KEY := {
 	"detonate": "detonate", "execute": "execute", "breach": "breach",
 	"pierce": "pierce", "revive": "revive", "accrete": "accrete",
 	# Kev 2026-07-10 icon batch (newicons.png): self marker, summon, rampage,
-	# pack bonus (aoe.png was replaced by the 8-arrow starburst).
+	# pack bonus.
 	"self": "self", "summon": "summon", "rampage": "rampage", "pack_bonus": "pack_bonus",
+	# Batch 5 icon swap (newicons.png / newicons2.png): target_lowest is new (reticle
+	# + down arrow, the lowest-HP-ally scope marker); aoe, taunt, leech, summon were
+	# re-cut from the sheets (aoe now the cardinal-arrow burst — distinct from freeze).
+	"target_lowest": "target_lowest",
 }
 
 static func pip_texture_for_key(key: String) -> Texture2D:

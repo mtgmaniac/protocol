@@ -232,8 +232,8 @@
       "id": "target_lowest",
       "term": "Targets Lowest",
       "category": "support",
-      "def": "A down arrow means the ability picks the lowest-HP ally automatically.",
-      "syntax": "↓",
+      "def": "The reticle marker means the ability picks the lowest-HP ally automatically.",
+      "syntax": "(lowest)",
       "code": "↓"
     }
   ],

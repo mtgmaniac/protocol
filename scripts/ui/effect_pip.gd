@@ -139,9 +139,9 @@ static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> f
 	if duration > 1:
 		var sup_size: int = maxi(28, int(round(float(value_font) * float(profile.get("duration_ratio", 0.6)))))
 		width += float(sup_size) * 0.75
-	# Scope markers ("hits all" / "targets self") sit AFTER the value.
+	# Scope markers ("hits all" / "targets self" / "targets lowest") sit AFTER the value.
 	var scope: String = str(effect.get("scope", ""))
-	if scope == "all" or scope == "self":
+	if scope == "all" or scope == "self" or scope == "lowest":
 		width += gap + icon_size * 0.95
 	return maxf(float(profile.get("group_min_width", 64)), width)
 
@@ -188,12 +188,13 @@ static func build_group(
 	else:
 		group.add_child(_make_value_display(effect, profile, side))
 
-	# Scope markers sit AFTER the value: "hits all" (aoe starburst) and
-	# "targets self" (circled figure — replaces the old parentheses, Kev
-	# 2026-07-10).
+	# Scope markers sit AFTER the value: "hits all" (aoe cardinal-arrow burst),
+	# "targets self" (circled figure — replaces the old parentheses, Kev 2026-07-10),
+	# and "targets lowest" (reticle + down arrow — replaces the old ↓ text, Batch 5).
 	var scope: String = str(effect.get("scope", ""))
-	if scope == "all" or scope == "self":
-		var marker_texture: Texture2D = PixelUI.pip_texture_for_key("aoe" if scope == "all" else "self")
+	if scope == "all" or scope == "self" or scope == "lowest":
+		var marker_key: String = "aoe" if scope == "all" else ("self" if scope == "self" else "target_lowest")
+		var marker_texture: Texture2D = PixelUI.pip_texture_for_key(marker_key)
 		if marker_texture != null:
 			var marker_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
 			var marker_rect := TextureRect.new()
@@ -226,14 +227,16 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		_append_effect(effects, "burn", "%d" % burn, int(raw.get("burnT", 0)))
 
 	var shield_all: bool = bool(raw.get("shieldAll", false))
+	var shield_lowest: bool = bool(raw.get("shieldLowest", false))
 	var shield_self: bool = (
 		not shield_all
+		and not shield_lowest
 		and not bool(raw.get("shieldAllyAll", false))
 		and not bool(raw.get("shTgt", false))
 	)
 	var shield: int = int(raw.get("shield", 0))
 	if shield > 0 and not bool(raw.get("shieldAllyAll", false)):
-		var shield_scope: String = "all" if shield_all else ("self" if shield_self else "")
+		var shield_scope: String = "all" if shield_all else ("lowest" if shield_lowest else ("self" if shield_self else ""))
 		_append_effect(effects, "shield", "%d" % shield, 0, shield_scope)
 	var shield_ally: int = int(raw.get("shieldAlly", 0))
 	if bool(raw.get("shieldAllyAll", false)) and shield_ally > 0:
@@ -247,12 +250,14 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		and not bool(raw.get("healTgt", false))
 		and not bool(raw.get("healLowest", false))
 	)
+	var heal_lowest: bool = bool(raw.get("healLowest", false))
 	var heal: int = int(raw.get("heal", 0))
 	if heal > 0:
-		var heal_scope: String = "all" if heal_all else ("self" if heal_self else "")
+		var heal_scope: String = "all" if heal_all else ("lowest" if heal_lowest else ("self" if heal_self else ""))
 		_append_effect(effects, "heal", "%d" % heal, 0, heal_scope)
-	if bool(raw.get("healLowest", false)):
-		_append_effect(effects, "heal", "↓")
+	elif heal_lowest:
+		# Defensive: a heal-lowest with no amount still reads as a lowest-target heal.
+		_append_effect(effects, "heal", "", 0, "lowest")
 
 	var rfe: int = int(raw.get("rfe", 0))
 	if rfe > 0:

@@ -41,7 +41,7 @@ const HELP_KEYWORD_ICON := {
 	"accrete": "accrete", "taunt": "taunt", "siphon": "siphon", "aoe": "aoe",
 	"protocol_gain": "protocol", "wipe_shields": "breach",
 	"rampage": "rampage", "pack_bonus": "pack_bonus", "summon": "summon",
-	"target_self": "self", "target_all": "aoe",
+	"target_self": "self", "target_all": "aoe", "target_lowest": "target_lowest",
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
@@ -700,7 +700,7 @@ func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	var mm: Variant = _music()
 	_add_toggle_row(host, "Music", mm == null or bool(mm.is_music_enabled()), _on_toggle_music)
-	_add_slider_row(host, "Music volume", 0.8 if mm == null else float(mm.get_music_volume()), _on_music_volume_changed)
+	_add_slider_row(host, "Music volume", 0.3 if mm == null else float(mm.get_music_volume()), _on_music_volume_changed)
 	var am: Variant = _audio()
 	_add_slider_row(host, "SFX volume", 1.0 if am == null else float(am.get_sfx_volume()), _on_sfx_volume_changed)
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)

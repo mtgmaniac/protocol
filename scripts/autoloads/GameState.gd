@@ -68,6 +68,12 @@ var deaths_prev_battle: Array = []
 # the tutorial is opt-in from the splash / Help, so it needs no persistence.
 var tutorial_mode: bool = false
 
+## Read-only snapshot of the just-finished battle's final frame (Batch 5). Captured by
+## battle_scene at victory; the reward screen's "View Battlescreen" overlays it so the
+## player can review the board before choosing a reward. Transient (in-memory), replaced
+## each battle, never persisted; null when there's nothing to review.
+var last_battle_snapshot: Texture2D = null
+
 const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
 ## Tier-3 progression (pkg6): evolved units hitting this pick a Directive.
@@ -109,6 +115,7 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 	enforce_squad_limit()
 	selected_operation_id = operation_id
 	current_battle = 0
+	last_battle_snapshot = null
 	var operation: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
 	if operation != null:
 		total_battles = operation.battles.size()
@@ -151,13 +158,14 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 		SaveManager.record_run_started()
 
 
-# Launch the rigged onboarding encounter: forced trio (Pulse Tech required for the Nudge
-# demo), first operation, battle 1. battle_scene reads tutorial_mode to rig dice/enemy and
-# spawn the coachmark controller.
+# Launch the rigged onboarding encounter: the STARTING trio the player actually owns
+# from a fresh profile — Strike Unit (combat), Field Engineer (engineer), Splice Medic
+# (medic), Batch 1 / Batch 5. First operation, battle 1. battle_scene reads tutorial_mode
+# to rig dice/enemy and spawn the coachmark controller.
 func start_tutorial_run() -> void:
 	var op_ids: Array = DataManager.get_operation_order()
 	var op_id: String = str(op_ids[0]) if not op_ids.is_empty() else ""
-	start_run(["pulse", "combat", "ghost"], op_id, -1, true)
+	start_run(["combat", "engineer", "medic"], op_id, -1, true)
 	current_battle = 1
 
 

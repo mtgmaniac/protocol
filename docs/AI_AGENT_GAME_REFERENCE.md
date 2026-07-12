@@ -426,8 +426,10 @@ Full scene-flow smoke test (home → battle → reward → home → evolution �
 & 'C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe' --path 'C:\Users\Kev\Documents\protocol' --script 'res://scripts/debug/flow_smoke_test.gd'
 ```
 
-Tutorial playthrough (drives all 21 coachmark steps with real actions and
-asserts every spotlight resolves):
+Tutorial playthrough (drives all 23 coachmark steps with real actions and
+asserts every spotlight resolves — the onboarding runs the STARTING trio
+Strike Unit / Field Engineer / Splice Medic, highlights ability pips, teaches
+the MARK status badge, and notes universal long-press; Batch 5):
 
 ```powershell
 & $GODOT --headless --path . --script 'res://scripts/debug/tutorial_smoke_test.gd'
