@@ -44,6 +44,9 @@ const DETAIL_DESC_FONT := 56       # kit blurb — sized up from 52 (redesign si
 const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
 const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller than DEPLOY
+# Fixed DEPLOY button height so the locked→armed font swap never resizes it (measured
+# armed height at DEPLOY_FONT). Both states pin to this; the cluster never shifts.
+const DEPLOY_BUTTON_HEIGHT := 145
 
 # 4px (not 2) so borders survive the canvas_items downscale to the preview window —
 # at 2px they render sub-pixel and drop edges, worst on bright accent borders.
@@ -908,7 +911,12 @@ func _build_deploy_button() -> Control:
 
 	_deploy_button = Button.new()
 	_deploy_button.focus_mode = Control.FOCUS_NONE
-	_deploy_button.custom_minimum_size = Vector2(0, 130)
+	# Constant height (Batch 6): the armed DEPLOY (font 84 + corner brackets) is 145 px
+	# tall while the locked gate (font 64) is only ~130 — so arming used to grow the
+	# button 15 px and the two centering spacers rebalanced, shifting the whole cluster.
+	# Pinning the minimum to the armed height makes both states render at 145: the button
+	# never resizes, the screen never shifts.
+	_deploy_button.custom_minimum_size = Vector2(0, DEPLOY_BUTTON_HEIGHT)
 	_deploy_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_deploy_button.text = "DEPLOY SQUAD (%d MORE)" % MAX_SELECTED_UNITS
 	_deploy_button.pressed.connect(_on_begin_run_pressed)
