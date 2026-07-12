@@ -377,16 +377,28 @@ const HERO_PORTRAIT_REGION := Vector2(328.0, 380.0)
 # ── Hero portrait display zoom (display-time only; the PNGs stay pristine) ──
 # HERO_PORTRAIT_ZOOM: uniform extra scale applied inside cover_fit_portrait to
 # HERO art only (>1.0 = tighter). Enemies are the framing reference and are
-# NEVER zoomed. HERO_PORTRAIT_ANCHOR_Y: vertical bias in HERO_PORTRAIT_REGION
-# units — positive shifts the art UP in the frame (tighter headroom), negative
-# shifts it down; it scales with the frame like PORTRAIT_TOP_PAD does.
+# NEVER zoomed. 1.2 picked by Kev 2026-07-12 against the RUST reference card.
+# HERO_PORTRAIT_ANCHOR_Y (+ per-portrait HERO_PORTRAIT_ANCHOR_Y_OVERRIDES):
+# vertical bias as a FRACTION of the frame height — positive shifts the art UP
+# in the frame (0.03 ≈ 11 px in the 380-tall region), negative down; scales
+# with the frame like PORTRAIT_TOP_PAD. Overrides add on top of the global.
+# The breaker family's source art draws the body lower in the canvas to fit
+# tall antennas/crown — the per-unit anchors re-seat their helmet DOMES at the
+# roster height (derived from the hand-declared portrait_anchors.json head_top
+# values, NOT from pixels). Antenna/crown crop-off is ruled acceptable
+# (TRUTH.md): the head is what must frame consistently, never the headgear.
 # HERO_PORTRAIT_ZOOM_OVERRIDES: per-portrait multiplier on top of the global
 # zoom, keyed by portrait key ("combat", "medic_synth", …). Kept EMPTY by
 # design — the global zoom does the work; add an entry only for a genuine
 # outlier, never as a substitute for fixing the global value.
-const HERO_PORTRAIT_ZOOM := 1.0
+const HERO_PORTRAIT_ZOOM := 1.2
 const HERO_PORTRAIT_ANCHOR_Y := 0.0
 const HERO_PORTRAIT_ZOOM_OVERRIDES := {}
+const HERO_PORTRAIT_ANCHOR_Y_OVERRIDES := {
+	"breaker": 0.105,
+	"breaker_noise": 0.166,
+	"breaker_nullwire": 0.237,
+}
 
 
 # Cover-fit a portrait TextureRect inside its crop frame. Composition-aware:
@@ -425,12 +437,13 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		return
 	var cover_scale: float = maxf(fw / tw, fh / th)
 	# HERO art only: uniform display zoom (+ optional per-portrait override) and
-	# vertical anchor bias, both in region units. Enemies stay untagged → 1.0/0.
+	# vertical anchor bias (fraction of frame height, + per-portrait override).
+	# Enemies stay untagged → zoom 1.0, anchor 0.
 	var anchor_shift: float = 0.0
 	if bool(tex.get_meta("hero_portrait", false)):
 		var key: String = str(tex.get_meta("portrait_key", ""))
 		cover_scale *= HERO_PORTRAIT_ZOOM * float(HERO_PORTRAIT_ZOOM_OVERRIDES.get(key, 1.0))
-		anchor_shift = HERO_PORTRAIT_ANCHOR_Y * (fh / HERO_PORTRAIT_REGION.y)
+		anchor_shift = (HERO_PORTRAIT_ANCHOR_Y + float(HERO_PORTRAIT_ANCHOR_Y_OVERRIDES.get(key, 0.0))) * fh
 	var nw: float = tw * cover_scale
 	var nh: float = th * cover_scale
 	var full_bleed: bool = bool(tex.get_meta("full_bleed", false))
