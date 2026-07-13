@@ -24,8 +24,9 @@ When any doc conflicts, **docs/TRUTH.md wins** (it supersedes `offline-bundle/GR
 
 ## Orientation
 
-**Portrait** — internal viewport `1080×2400`, desktop preview `450×1000`. The old
-landscape / Phase 0 docs are archived under `docs/archive/` — do not use them.
+**Portrait** — internal viewport `1080×2400`, desktop preview `540×1200` (exactly
+half, 0.5× — `project.godot`). The old landscape / Phase 0 docs are archived under
+`docs/archive/` — do not use them.
 
 ## Band vocabulary rule
 
@@ -65,6 +66,12 @@ names like "Overload Capacitor" or "Core Surge" stay as-is.)
 > card showed different windows onto the same art, and every framing pass authored
 > against the wrong one. Never derive head positions from pixels — framing anchors
 > are hand-declared in `assets/portraits/portrait_anchors.json`.
+>
+> **Antenna / crown rule (design ruling, Kev):** it is acceptable for antennas,
+> crowns, and silhouette flourishes to be cropped out of the portrait frame. The
+> **head** is what must be framed consistently, not the headgear. Never adjust the
+> framing to preserve an antenna. (This is why the breaker family carries anchor-Y
+> overrides — its source art seats the body lower to fit tall antennas.)
 
 ## Persistent header — one global header bar
 

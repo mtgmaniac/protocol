@@ -85,7 +85,7 @@ We are still tuning:
 
 Success looks like:
 
-- readable at `450x1000`
+- readable at `540x1200`
 - clear role separation between portrait and lower information bands
 - no squinting required for names or HP
 

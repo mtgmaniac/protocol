@@ -12,12 +12,12 @@ Your repo has TWO generations of docs that disagree. Here's the verdict on each 
 
 | Question | Stale docs say | Current docs say | **TRUTH (what code does)** |
 |---|---|---|---|
-| Orientation | landscape (`GDD.md`, `ROADMAP.md`, `docs/CLAUDE.md`, `PHASE_0_STATUS.md`) | portrait 1080×2400 (`BATTLE_UI_V2_SPEC.md`, `AI_AGENT_GAME_REFERENCE.md`) | **Portrait 1080×2400**, preview 450×1000 |
+| Orientation | landscape (`GDD.md`, `ROADMAP.md`, `docs/CLAUDE.md`, `PHASE_0_STATUS.md`) | portrait 1080×2400 (`BATTLE_UI_V2_SPEC.md`, `AI_AGENT_GAME_REFERENCE.md`) | **Portrait 1080×2400**, preview 540×1200 (0.5×) |
 | Squad size | 4 units | 3 units | **3** (`GameState.SQUAD_UNIT_LIMIT := 3`) |
 | Healer name | Systems Medic | Splice Medic | **Splice Medic**, callsign SPLICE |
 | Operations | "build 1 faction first" | 5 operations | **5 fully defined** in `battle-modes.json` |
 | Project phase | Phase 0 setup (`PHASE_0_STATUS.md`) | mid-implementation | **Well past Phase 0** — battle loop runs |
-| Main scene | — | UnitSelect | **`res://scenes/ui/UnitSelect.tscn`** |
+| Main scene | — | UnitSelect | **`res://scenes/ui/MainMenu.tscn`** (splash → UnitSelect) |
 
 **Stale/ignore these docs:** `PHASE_0_STATUS.md` (entirely obsolete), the landscape/4-unit claims in `GDD.md`, `ROADMAP.md`, and `docs/CLAUDE.md`.
 **Trust these docs:** `AI_AGENT_GAME_REFERENCE.md` (updated 2026-04-19, matches code) and `BATTLE_UI_V2_SPEC.md`.
@@ -183,7 +183,7 @@ Pyro: Flashpoint (burn ticks on apply) / Slow Roast (burns +1t) · Arc: Conducto
 
 ## Battle UI V2 geometry (the layout contract)
 
-Five stacked bands, portrait. At 1080×2400 / (450×1000 preview):
+Five stacked bands, portrait. At 1080×2400 / (540×1200 preview):
 - Header: 144 / 60 px — battle label
 - Enemy rail: 768 / 320 px
 - Center rail: 432 / 180 px — dice + centered action button

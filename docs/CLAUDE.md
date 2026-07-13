@@ -6,17 +6,17 @@ This file is the practical AI-assistant context for the current Overload
 Protocol Godot project. It is intentionally grounded in the live repo, not the
 original migration fantasy.
 
-Last refreshed on 2026-06-21.
+Last refreshed on 2026-07-12.
 
 ## Canonical facts (do not contradict)
 
 | Fact | Value |
 |------|--------|
-| Orientation | Portrait **1080×2400** internal; **450×1000** desktop preview |
+| Orientation | Portrait **1080×2400** internal; **540×1200** desktop preview (exactly half, 0.5× — see `project.godot`) |
 | Squad | **3** heroes chosen from **8** (`GameState.SQUAD_UNIT_LIMIT`) |
 | Healer | **Splice Medic** (callsign SPLICE) — not "Systems Medic" |
 | Operations | **5** fully defined in `data/raw/battle-modes.json` |
-| Main scene | `res://scenes/ui/UnitSelect.tscn` |
+| Main scene | `res://scenes/ui/MainMenu.tscn` (splash → UnitSelect) |
 | Combat authority | `scripts/battle/combat_manager.gd` |
 | Phase | Well past Phase 0 — battle, reward, and evolution loops run |
 
@@ -29,7 +29,7 @@ Overload Protocol is a portrait-phone-first, tactical dice battler in Godot 4.
 Current active target:
 
 - `1080x2400` internal layout
-- `450x1000` desktop preview
+- `540x1200` desktop preview (exactly half of the internal layout, 0.5× scale)
 - `canvas_items` stretch
 - portrait orientation
 
@@ -59,11 +59,19 @@ Important working rule:
 
 ### Autoloads
 
+(the live set, in `project.godot` load order)
+
 - `GameState`
 - `DataManager`
 - `SceneManager`
-- `Theme`
+- `AudioManager`
+- `MusicManager`
+- `SaveManager`
+- `PersistentHeader` (`scenes/ui/PersistentHeader.tscn` — the one global header bar)
 - `DebugBattleLauncher`
+
+The old `Theme` / `UiTheme` autoload (`scripts/autoloads/Theme.gd`) is **deleted** —
+do not re-add it. Visual constants live in `PixelUI` (`scripts/ui/pixel_ui.gd`).
 
 ### Primary battle systems
 
@@ -116,7 +124,7 @@ These are worth repeating because they cost time:
 
 1. The live owner matters more than the old scene file.
 2. A compile-clean change can still be visually irrelevant.
-3. The `450x1000` preview scale makes logical sizes shrink much more than they
+3. The `540x1200` preview scale (0.5×) makes logical sizes shrink more than they
    look in code.
 4. `HPBack` height and visible `HPFill` height are different things.
 5. `_locked_layout_size` can mislead portrait sizing if used blindly.

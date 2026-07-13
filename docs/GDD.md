@@ -3,7 +3,7 @@
 > **Agents:** This GDD is **design intent, not runtime truth**. For runtime facts read **`docs/TRUTH.md`** (canonical — wins every doc conflict), plus `docs/AI_AGENT_GAME_REFERENCE.md` and `docs/BATTLE_UI_V2_SPEC.md`. When this GDD conflicts with TRUTH.md or code, they win.
 
 **Version:** 0.3 (Active Development)
-**Platform:** Mobile First (Android), portrait 1080×2400 (preview 450×1000)
+**Platform:** Mobile First (Android), portrait 1080×2400 (preview 540×1200, 0.5×)
 **Engine:** Godot 4.6
 **Developer:** Solo (Kev)
 **Status:** Battle loop running; ongoing combat/UI/content work
@@ -309,7 +309,7 @@ Enemy stats in Godot use flat `enemyUnitDefs` per fight. Balance-sim scaling key
 
 ## 11. UI / UX Design Goals
 
-- **Mobile first:** All interactions thumb-friendly. Large touch targets. Portrait (vertical) orientation, 1080×2400 internal, 450×1000 preview.
+- **Mobile first:** All interactions thumb-friendly. Large touch targets. Portrait (vertical) orientation, 1080×2400 internal, 540×1200 preview (0.5×).
 - **At-a-glance clarity:** Player should always know exactly what every die result will do.
 - **Minimal menus:** Fewer screens, more battlefield.
 - **Tactile feedback:** Dice roll animations, damage numbers floating, satisfying hit feedback.

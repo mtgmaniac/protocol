@@ -77,6 +77,8 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 direc
 
 **Legacy id quirks (do NOT change):** Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`. Freeze belongs to the Avalanche line only (hero-side); ±Roll chips to the Signal Breaker line only. Starters: `combat`, `engineer`, `medic` (Batch-1 swap 2026-07-11 — Field Engineer replaced Avalanche Suit as a starter; Avalanche now unlocks at hero-ladder rung 1).
 
+**Unit Category is INTERNAL-ONLY (Batch 2, do NOT surface player-side):** the `pickerCategory` field (damage/defense/support/control) stays in the data and drives backend ordering + role-badge tint, but is **never shown to the player as text** (`home_screen.gd:869` hides the category chip). Do not "fix" it back into any card/detail UI — its absence from player copy is deliberate. **Violation looks like:** a category label rendered on a unit card, squad tile, or detail panel; or code reading `picker_category` to build visible player text.
+
 ## Ability eff text syntax (canonical)
 
 Format: `[value type] [modifier] [target] [duration]`, clauses joined by `, ` (comma-space); AoE marked with a trailing `(all)`. Numbers first, type second, target third, duration last; target omitted for single enemy; duration omitted when instant. (Per Kev NK-17: the comma / `(all)` house style is canonical — the data uses it 100%; the earlier ` + ` / bare-`all` grammar was never adopted and is corrected here.)

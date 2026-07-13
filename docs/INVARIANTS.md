@@ -122,7 +122,7 @@ excuses, or dropping the audit floor to make a green run, without the token.
 Every UI position or size computed from a RATIO (HP-notch x, protocol-pip spacing, chip
 offsets) must round to whole PHYSICAL pixels before drawing, and 1px elements must land
 on the physical pixel grid. Local-space rounding is NOT enough: the game renders
-1080×2400 scaled into the window (450×1000 preview ≈ 0.42×), so a whole local pixel is a
+1080×2400 scaled into the window (540×1200 preview = 0.5×), so a whole local pixel is a
 fraction of a screen pixel — and the scale lives in the viewport's FINAL transform
 (stretch mode canvas_items), which `get_global_transform_with_canvas()` does NOT
 include. Use `PixelUI.snap_to_physical_px` / `physical_px_width` (they compose it)

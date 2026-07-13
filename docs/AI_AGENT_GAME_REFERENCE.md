@@ -16,7 +16,7 @@ Last refreshed from local source on 2026-07-08.
 - Main scene: [MainMenu.tscn](C:/Users/Kev/Documents/protocol/scenes/ui/MainMenu.tscn) (splash; continues into UnitSelect)
 - Orientation: portrait
 - Internal authored viewport: `1080x2400`
-- Desktop preview window: `450x1000`
+- Desktop preview window: `540x1200` (exactly half of `1080x2400`, 0.5× scale)
 - Stretch mode: `canvas_items`
 - Rendering method: mobile
 - 3D physics engine: Jolt
@@ -178,9 +178,9 @@ The live `CompactUnitCard` currently has these major bands:
 Important active lesson:
 
 - the card’s VBox structure can be correct while the proportions still look
-  wrong at `450x1000`
-- preview scale is about `0.4167x`, so logical sizes that look reasonable in
-  code can still become too small on screen
+  wrong at `540x1200`
+- preview scale is `0.5x` (exactly half), so logical sizes that look reasonable
+  in code can still become too small on screen
 
 When changing card layout:
 

@@ -19,7 +19,7 @@ This file should be treated as the living reference for:
 
 - Primary target: portrait phone
 - Internal design baseline: `1080x2400`
-- Desktop preview window: `450x1000`
+- Desktop preview window: `540x1200`
 - Stretch mode: `canvas_items`
 - Orientation: portrait
 - Battle is touch-first
@@ -27,8 +27,8 @@ This file should be treated as the living reference for:
 
 Important implication:
 
-- `450x1000` is the desktop preview for the `1080x2400` authored layout
-- preview scale is approximately `0.4167x`
+- `540x1200` is the desktop preview for the `1080x2400` authored layout
+- preview scale is `0.5x` (exactly half)
 - logical sizes that look reasonable in code may still read too small on the
   real preview if they are not proportioned for that scale
 
@@ -48,13 +48,13 @@ using:
 
 - `CompactUnitCard.new()`
 
-### Legacy authored scene
+### Legacy authored scene — DELETED
 
-- [UnitCard.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/UnitCard.tscn)
-
-This older scene exists, but it is not the live owner for the current battle
-screen. It should not be treated as the source of truth for battle card
-structure unless battle is explicitly rewired to use it again.
+- `scenes/shared/UnitCard.tscn` and `scripts/units/unit_card.gd` were **removed**
+  (the scene referenced a deleted script). Do not treat them as the source of
+  truth for battle card structure, and do not re-add them. The live battle card
+  is `CompactUnitCard` (`scripts/ui/compact_unit_card.gd`), instantiated directly
+  by `battle_scene.gd`.
 
 ## 3. Global Theme Source
 
@@ -85,26 +85,29 @@ Important note:
 - The old `Theme` autoload has been removed (its name collided with Godot's built-in
   `Theme` type). `PixelUI` is a `class_name`, so reference it directly — no preload needed.
 
-## 4. Shared Battle Header
+## 4. Global Header — `PersistentHeader` autoload
 
-All in-match screens should share one header scene and one placement model.
+There is **one** header bar for the whole game, and it is not a per-scene scene.
+The old `scenes/shared/BattleHeader.tscn` (and `UnitDetailPanel.tscn`) are
+**deleted** — do not re-add them.
 
-Shared header scene:
+Header owner:
 
-- [BattleHeader.tscn](C:/Users/Kev/Documents/protocol/scenes/shared/BattleHeader.tscn)
+- `PersistentHeader` autoload (`scenes/ui/PersistentHeader.tscn` +
+  `scripts/autoloads/PersistentHeader.gd`) — a `CanvasLayer` that is **always alive
+  on every screen** and never rebuilt on scene transitions. It overlays the top
+  144px (`HEADER_HEIGHT`); each non-battle screen reserves that space at the top.
 
-Current intended screens using the shared header:
-
-- battle
-- reward selection
-- evolution selection
+Every screen uses this same global header (battle, reward selection, evolution
+selection, home, run-end). The active screen binds its button handlers via
+`bind_battle_actions(...)` on `_ready` and calls `clear_battle_actions()` on
+`_exit_tree`; unbound buttons are inert. `update_progress(...)` sets the run
+label and `set_run_active(false)` blanks it when no run is active.
 
 Header rules:
 
-- same structure on every in-match screen
-- same top position on every in-match screen
-- same button set and button size
-- same title line treatment
+- same structure, top position, button set, and button size on every screen
+- same title line treatment (operation name + battle counter)
 
 Current title behavior:
 
@@ -215,7 +218,7 @@ The major lesson from recent debugging:
 
 - the card layout structure can be correct while the proportions are still wrong
 
-Because the project previews at `0.4167x`, fixed bands that look acceptable in
+Because the project previews at `0.5x`, fixed bands that look acceptable in
 logical units can still become visually negligible on screen.
 
 Current direction:
