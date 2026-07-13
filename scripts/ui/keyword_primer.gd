@@ -436,10 +436,22 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 		var state: Dictionary = view.get("state", {})
 		if str(state.get("id", "")) != str(context.get("target_id", "")):
 			continue
+		var side: String = str(context.get("side", ""))
+		var target_id: String = str(context.get("target_id", ""))
 		var icon: String = str(context.get("icon", ""))
 		var plate: Control = null
 		if _scene.has_method("get_die_tag_plate"):
-			plate = _scene.call("get_die_tag_plate", str(context.get("side", "")), str(context.get("target_id", "")))
+			plate = _scene.call("get_die_tag_plate", side, target_id)
+			if plate == null and _scene.has_method("_sync_die_tags"):
+				# Self-heal (Kev 2026-07-13, the first-modal race): plates build
+				# in _process ONE frame after readout reveal, but the drain's
+				# first modal resolves inside _do_roll's awaited flush — same
+				# frame, zero plates. _sync_die_tags is idempotent + synchronous;
+				# build the surface we need instead of degrading to the row.
+				# (The row fallback degraded so gracefully the wrong anchor
+				# shipped past the DoD screenshots and 17 green gates.)
+				_scene.call("_sync_die_tags")
+				plate = _scene.call("get_die_tag_plate", side, target_id)
 		if plate != null:
 			if icon != "":
 				var glyph: Rect2 = _find_glyph_rect(plate, icon)
@@ -447,7 +459,13 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 					return glyph
 			var plate_rect: Rect2 = _control_rect(plate)
 			if plate_rect.size != Vector2.ZERO:
+				if icon != "":
+					# A silent fallback is indistinguishable from no fallback
+					# firing at all (Kev 2026-07-13) — complain loudly.
+					push_warning("[KeywordPrimer] anchor fell back past the plate glyph: icon '%s' not found on %s/%s plate — ringing the WHOLE PLATE" % [icon, side, target_id])
 				return plate_rect
+		if icon != "":
+			push_warning("[KeywordPrimer] anchor fell back past the plate: no plate for %s/%s (icon '%s') even after _sync_die_tags — ringing the readout row/card" % [side, target_id, icon])
 		var r: Rect2 = _control_rect(view.get("readout", null))
 		return r if r.size != Vector2.ZERO else _control_rect(view.get("card", null))
 	return Rect2()

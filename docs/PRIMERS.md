@@ -131,6 +131,13 @@ signal:
   ghosts with live rects (the 2026-07-12 wrong-node bug: a ghost match ringed
   empty screen space). `_find_glyph_rect` requires **effective alpha > 0**, not
   `.visible`. Fallback chain: plate glyph → whole plate → readout row → card.
+  **Self-heal (2026-07-13):** plates build in `_process` one frame after reveal,
+  so the drain's FIRST modal used to resolve with zero plates and silently ride
+  the row fallback (position-dependent — burn/mark, the earliest-met icons,
+  ringed whole plates while later icons anchored fine). A null plate now calls
+  the scene's idempotent `_sync_die_tags()` and re-fetches; any resolution that
+  still falls past the plate glyph `push_warning`s — a silent fallback is
+  indistinguishable from no fallback firing at all.
 - **Suppression:** never during the scripted tutorial, headless mode, or auto
   battle. `requires_feature` entries skip silently when the feature is absent.
 - **Failure safety:** if the target can't resolve or the layer is dead, the

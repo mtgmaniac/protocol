@@ -65,14 +65,24 @@ func _find_tagged(node: Node, icon: String) -> TextureRect:
 	return null
 
 
-# Stand-in battle scene exposing the visible-plate lookup (Bug-1 round 2).
+# Stand-in battle scene exposing the visible-plate lookup (Bug-1 round 2) and
+# the first-modal race (round 3): `lazy_plate` models plates that only exist
+# after _sync_die_tags runs — exactly the real _process timing, where the
+# drain's first modal resolves before any plate has been built.
 class StubBattleScene extends Node:
 	var hero_card_views: Array = []
 	var enemy_card_views: Array = []
 	var plate: Control = null
+	var lazy_plate: Control = null
+	var sync_calls: int = 0
 
 	func get_die_tag_plate(_side: String, _unit_id: String) -> Control:
 		return plate
+
+	func _sync_die_tags() -> void:
+		sync_calls += 1
+		if lazy_plate != null:
+			plate = lazy_plate
 
 
 func _run() -> void:
@@ -341,10 +351,54 @@ func _run() -> void:
 			"resolved rect intersects a glyph with effective alpha > 0 (the visible plate)")
 		_check(not picked.intersects(ghost_glyph.get_global_rect()),
 			"resolved rect does NOT land on the alpha-0 ghost glyph")
-	# With NO plate (pre-roll), the chain falls back to readout row -> card.
+	# With NO plate at all (pre-roll, and none buildable), the chain falls back
+	# to readout row -> card (and warns — the fallback is no longer silent).
 	stub.plate = null
+	stub.lazy_plate = null
 	var fallback: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
 	_check(fallback.size != Vector2.ZERO, "plate-less fallback still resolves (row/card chain intact)")
+
+	# ── 10) FIRST-MODAL RACE (Kev 2026-07-13 — this test FAILS on the pre-fix
+	# resolver): plates build in _process one frame after reveal, so the drain's
+	# first modal resolves with ZERO plates. The resolver must self-heal by
+	# calling the scene's idempotent _sync_die_tags and re-fetching — never
+	# degrade to the row while a plate is one sync away. The lazy stub IS the
+	# race: get_die_tag_plate returns null until _sync_die_tags runs.
+	stub.plate = null
+	stub.lazy_plate = plate
+	stub.sync_calls = 0
+	var healed: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
+	_check(stub.sync_calls >= 1, "null plate triggers a _sync_die_tags self-heal")
+	if plate_glyph != null and ghost_glyph != null:
+		_check(healed.intersects(plate_glyph.get_global_rect()),
+			"first-modal race: self-healed anchor lands on the plate glyph")
+		_check(not healed.intersects(ghost_glyph.get_global_rect()),
+			"first-modal race: self-healed anchor is not the ghost/row")
+
+	# ── 11) CATEGORY SWEEP (standing assertion, Kev 2026-07-13): every
+	# primer-capable icon category — kind, condition, scope marker — resolves to
+	# ITS OWN glyph on the plate, never a fallback link. There is no fourth
+	# category (verified 2026-07-12: pierce is a kind icon).
+	var sweep_plate := Control.new()
+	sweep_plate.position = Vector2(60, 1300)
+	var sweep_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "8", "duration": 0, "scope": "self", "bonus": "+5", "bonus_icon": "freeze"},
+		EffectPipScript.PROFILE_CARD)
+	sweep_plate.add_child(sweep_group)
+	root.add_child(sweep_plate)
+	sweep_group.size = sweep_group.get_combined_minimum_size()
+	await process_frame
+	stub.plate = sweep_plate
+	stub.lazy_plate = null
+	for category_case in [["shield", "kind icon"], ["freeze", "condition icon"], ["self", "scope marker"]]:
+		var cat_icon: String = str(category_case[0])
+		var cat_label: String = str(category_case[1])
+		var cat_glyph: TextureRect = _find_tagged(sweep_plate, cat_icon)
+		_check(cat_glyph != null, "category sweep: %s (%s) glyph exists on the plate" % [cat_icon, cat_label])
+		if cat_glyph != null:
+			var cat_picked: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": cat_icon})
+			_check(cat_picked == cat_glyph.get_global_rect(),
+				"category sweep: %s (%s) resolves to its OWN glyph, not a fallback link" % [cat_icon, cat_label])
 
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()
