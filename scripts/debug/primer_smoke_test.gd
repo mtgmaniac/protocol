@@ -196,6 +196,14 @@ func _run() -> void:
 	primer.notice_rolled_ability({"gainProtocol": 1}, "hero", "h1")
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_icon_protocol"), "protocol-gain pip fires the protocol primer")
+	# Conditional-modifier condition icon (Shatter Lance-style "+5❄" on a dmg pip)
+	# teaches freeze on first sight — the dmg base stays exempt.
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"dmg": 10, "vsFrozenBonus": 5}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_freeze"), "vs-frozen bonus icon fires the freeze primer")
 
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()

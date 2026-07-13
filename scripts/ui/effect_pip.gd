@@ -139,6 +139,14 @@ static func estimate_display_width(effect: Dictionary, profile: Dictionary) -> f
 	if duration > 1:
 		var sup_size: int = maxi(28, int(round(float(value_font) * float(profile.get("duration_ratio", 0.6)))))
 		width += float(sup_size) * 0.75
+	# Conditional-modifier suffix ("+N" + condition icon) — must be measured or
+	# bonus-carrying rows under-measure and clip (the DB-2 failure class).
+	var bonus_text: String = str(effect.get("bonus", ""))
+	if bonus_text != "":
+		var bonus_font: float = maxf(28.0, float(value_font) * 0.75)
+		width += gap + float(bonus_text.length()) * bonus_font * 0.38
+		if PixelUI.pip_texture_for_key(str(effect.get("bonus_icon", ""))) != null:
+			width += gap + icon_size * 0.72
 	# Scope markers ("hits all" / "targets self" / "targets lowest") sit AFTER the value.
 	var scope: String = str(effect.get("scope", ""))
 	if scope == "all" or scope == "self" or scope == "lowest":
@@ -191,6 +199,26 @@ static func build_group(
 	else:
 		group.add_child(_make_value_display(effect, profile, side))
 
+	# Conditional-modifier suffix (Kev ruling 2026-07-12): "+N" + condition icon
+	# after the base value — "10 +5❄" reads 10 dmg, 5 more if frozen. The number
+	# stays in the pip's own color (the icon carries the condition, the number
+	# carries the amount); slightly smaller than the base value.
+	var bonus_text: String = str(effect.get("bonus", ""))
+	if bonus_text != "":
+		var bonus_font: int = maxi(28, int(round(float(profile.get("value_font", 48)) * 0.75)))
+		group.add_child(_make_text_label(bonus_text, bonus_font, value_color, int(profile.get("outline", 2))))
+		var cond_texture: Texture2D = PixelUI.pip_texture_for_key(str(effect.get("bonus_icon", "")))
+		if cond_texture != null:
+			var cond_size: int = int(round(float(profile.get("icon_size", 40)) * 0.72))
+			var cond_rect := TextureRect.new()
+			cond_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cond_rect.custom_minimum_size = Vector2(_icon_box_width(cond_texture, cond_size), cond_size)
+			cond_rect.texture = cond_texture
+			cond_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			cond_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			cond_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			group.add_child(cond_rect)
+
 	# Scope markers sit AFTER the value: "hits all" (aoe cardinal-arrow burst),
 	# "targets self" (circled figure — replaces the old parentheses, Kev 2026-07-10),
 	# and "targets lowest" (reticle + down arrow — replaces the old ↓ text, Batch 5).
@@ -229,11 +257,20 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	var damage_min: int = int(raw.get("dMin", 0))
 	var damage_max: int = int(raw.get("dMax", 0))
 	var blast_all: bool = bool(raw.get("blastAll", false))
+	# Conditional-modifier notation (Kev ruling 2026-07-12): a conditional damage
+	# bonus renders as a +N suffix + condition icon ON the base dmg pip
+	# ("10 +5❄" = 10 dmg, 5 more if frozen) — NOT a second pip (eats the 3-pip
+	# budget), NOT a tint (a blue number says "cold", not "+5"). This is the
+	# standard for all future conditionals (vs-burning/vs-marked/vs-shielded);
+	# long-press eff text carries the wording. TRUTH.md "Ability eff text syntax".
+	var vs_frozen: int = int(raw.get("vsFrozenBonus", 0))
+	var dmg_bonus: String = ("+%d" % vs_frozen) if vs_frozen > 0 else ""
+	var dmg_bonus_icon: String = "freeze" if vs_frozen > 0 else ""
 	if damage > 0:
-		_append_effect(effects, "dmg", "%d" % damage, 0, "all" if blast_all else "")
+		_append_effect(effects, "dmg", "%d" % damage, 0, "all" if blast_all else "", dmg_bonus, dmg_bonus_icon)
 	elif damage_min > 0 or damage_max > 0:
 		_append_effect(
-			effects, "dmg", "%d-%d" % [damage_min, damage_max], 0, "all" if blast_all else ""
+			effects, "dmg", "%d-%d" % [damage_min, damage_max], 0, "all" if blast_all else "", dmg_bonus, dmg_bonus_icon
 		)
 
 	var burn: int = int(raw.get("burn", 0))
@@ -546,13 +583,19 @@ static func _append_effect(
 	kind: String,
 	value: String,
 	duration: int = 0,
-	scope: String = ""
+	scope: String = "",
+	bonus: String = "",
+	bonus_icon: String = ""
 ) -> void:
 	effects.append({
 		"kind": kind,
 		"value": value,
 		"duration": maxi(duration, 0),
 		"scope": scope,
+		# Conditional-modifier suffix: "+N" + condition icon rendered on the base
+		# pip (Kev ruling 2026-07-12; empty for unconditional effects).
+		"bonus": bonus,
+		"bonus_icon": bonus_icon,
 	})
 
 

@@ -233,6 +233,11 @@ func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> vo
 		var marker_icon: String = str(SCOPE_MARKER_ICONS.get(str(effect.get("scope", "")), ""))
 		if marker_icon != "":
 			icons.append(marker_icon)
+		# Conditional-modifier suffix icon ("+N❄" etc., Kev ruling 2026-07-12) —
+		# an icon the player sees, so its first sighting teaches too.
+		var bonus_icon: String = str(effect.get("bonus_icon", ""))
+		if bonus_icon != "":
+			icons.append(bonus_icon)
 		for icon in icons:
 			if icon in HIGHLIGHT_EXEMPT_ICONS:
 				continue

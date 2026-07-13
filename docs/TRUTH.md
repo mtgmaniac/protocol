@@ -105,13 +105,22 @@ battle and unteachable by the primer system** (primers key on rendered icons).
 Precedent: `gainProtocol` was in four eff strings ("+N protocol") but had no pip
 branch — Field Patch, a starting-trio unit whose job is teaching the Protocol
 economy, showed no protocol pip at all until the 2026-07-12 fix. **When adding a new
-effect field: add the `effects_from_ability_raw` branch in the same change.** The
-one KNOWN remaining gap (flagged, pending design ruling): `vsFrozenBonus` (Shatter
-Lance "+5 vs frozen", Permafrost Aegis "+8 vs frozen") — the base dmg pip renders
-but the conditional bonus lives only in eff text; a conditional-modifier pip has no
-notation yet. Enemy ability fields are fully covered; gear/relic passives are a
-different pipeline (cards display their desc text, and unmatched types fall back to
-a generic tag).
+effect field: add the `effects_from_ability_raw` branch in the same change.** Enemy
+ability fields are fully covered. Gear/relic passives are a different pipeline —
+cards display their desc text prominently, so the 26 types on the generic-tag
+fallback are **ruled fine as-is (Kev 2026-07-12): leave them.**
+
+**Conditional-modifier notation (Kev ruling 2026-07-12 — the standard):** a
+conditional bonus renders as a **+N suffix + condition icon on the base pip** —
+Shatter Lance reads `10 +5❄` (10 dmg, 5 more if frozen), Permafrost Aegis `14 +8❄`.
+NOT a second pip (eats the 3-pip budget), NOT a tint (a blue number says "cold", it
+doesn't say "+5"). The notation is base + bonus + condition-icon and generalizes to
+every future conditional (vs-burning, vs-marked, vs-shielded); long-press eff text
+carries the full wording. This matters: Shatter Lance / Permafrost Aegis are the
+whole payoff of the Glacier branch — before this the freeze→bigger-hit synergy that
+defines the evolution was invisible. Implemented via `bonus`/`bonus_icon` on the
+effect dict (`EffectPip._append_effect` → `build_group` / `estimate_display_width`);
+the condition icon participates in first-sight primer teaching like any other icon.
 
 ### Keyword engine (combat_manager.gd handlers ↔ keywords.data.json ↔ EffectPip codes)
 
