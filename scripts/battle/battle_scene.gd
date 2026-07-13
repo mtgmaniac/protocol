@@ -1209,7 +1209,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		roll_button.disabled = true
 		_refresh_summary("Defeat. Squad wiped.")
 		_game_state().finish_run("defeat")
-		_scene_manager().go_to_run_end()
+		_scene_manager().go_to_run_end(true)  # defeat -> POWER DOWN transition
 	else:
 		if _try_finish_battle_from_current_state():
 			return

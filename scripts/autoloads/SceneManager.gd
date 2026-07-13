@@ -11,8 +11,11 @@ const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
 const INTERCEPT_SCENE := "res://scenes/ui/InterceptScreen.tscn"
 
 
-func go_to(scene_path: String) -> void:
-	get_tree().change_scene_to_file(scene_path)
+# All scene changes route through TransitionManager (docs/TRANSITIONS_SCOPE.md):
+# DITHER DISSOLVE is the one default transition (no per-route variants — ruling
+# 2026-07-12); headless degrades to the old instant hard cut inside the manager.
+func go_to(scene_path: String, transition_kind: String = "dither_dissolve") -> void:
+	TransitionManager.change_scene(scene_path, transition_kind)
 
 
 # Post-victory routing (pkg7.2): when a beat sits after the battle just won,
@@ -48,8 +51,11 @@ func go_to_reward_screen() -> void:
 	go_to(REWARD_SCENE)
 
 
-func go_to_run_end() -> void:
-	go_to(RUN_END_SCENE)
+# POWER DOWN exclusively means you died (ruling 2026-07-12) — defeat only.
+# Victory -> run-end and quit-to-menu use the standard dissolve, or the signal
+# stops being a signal and becomes an animation.
+func go_to_run_end(defeat: bool = false) -> void:
+	go_to(RUN_END_SCENE, "power_down" if defeat else "dither_dissolve")
 
 
 func go_to_evolution() -> void:

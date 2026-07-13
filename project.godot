@@ -24,6 +24,7 @@ AudioManager="*res://scripts/autoloads/AudioManager.gd"
 MusicManager="*res://scripts/autoloads/MusicManager.gd"
 SaveManager="*res://scripts/autoloads/SaveManager.gd"
 PersistentHeader="*res://scenes/ui/PersistentHeader.tscn"
+TransitionManager="*res://scripts/autoloads/TransitionManager.gd"
 DebugBattleLauncher="*res://scripts/debug/DebugBattleLauncher.gd"
 
 [display]
