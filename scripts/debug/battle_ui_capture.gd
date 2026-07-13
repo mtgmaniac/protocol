@@ -52,7 +52,7 @@ func _parse_args() -> Dictionary:
 			# --capture-evolve=engineer:Phantom,avalanche:Trench Rig
 			config["evolve"] = arg.get_slice("=", 1).split(",", false)
 		elif arg.begins_with("--capture-hero-hp="):
-			# Set the first hero's current HP (UI precision acceptance: notches at 48/55).
+			# Set the first hero's current HP (UI precision acceptance: HP number legibility).
 			config["hero_hp"] = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--capture-protocol="):
 			# Set the protocol pool (pip acceptance at 1/10 and 10/10).
@@ -72,6 +72,10 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-force-auto":
 			config["force_auto"] = true
 			config["rolled"] = true
+		elif arg == "--capture-no-primers":
+			# Suppress first-sight keyword primers so a locked-target capture shows the
+			# board (e.g. the incoming-damage block behind an HP number) un-dimmed.
+			config["no_primers"] = true
 		elif arg == "--capture-debug-log":
 			config["debug_log"] = true
 		elif arg == "--capture-enemy-shield":
@@ -135,6 +139,8 @@ func _parse_args() -> Dictionary:
 
 
 func _prepare_run(config: Dictionary) -> void:
+	if bool(config.get("no_primers", false)):
+		_save_manager().set_setting("ability_primers_enabled", false)
 	if bool(config.get("tutorial", false)):
 		_game_state().start_tutorial_run()
 		return
@@ -580,9 +586,10 @@ func _force_enemy_rolls_shield_scenario() -> void:
 	await process_frame
 
 
-# UI precision acceptance rig: pin the first hero's HP (notch check) and/or
-# grant 4 simultaneous statuses (burn + shield + dice+1 + mark -> 3 chips and
-# the "+1" overflow badge, the documented chip cap).
+# UI precision acceptance rig: pin the first hero's HP (e.g. a non-round value to
+# verify the HP number reads over the fill/damage block) and/or grant 4 simultaneous
+# statuses (burn + shield + dice+1 + mark -> 3 chips and the "+1" overflow badge, the
+# documented chip cap).
 func _force_hero_card_state(config: Dictionary) -> void:
 	if current_scene == null:
 		return
@@ -733,3 +740,7 @@ func _capture_viewport_to_file(absolute_output: String) -> Error:
 
 func _game_state() -> Node:
 	return root.get_node("/root/GameState")
+
+
+func _save_manager() -> Node:
+	return root.get_node("/root/SaveManager")

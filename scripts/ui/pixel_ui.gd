@@ -900,13 +900,22 @@ static func make_modal_scrim(alpha: float = 0.6, block_input: bool = false) -> C
 	return scrim
 
 
-# m5x7 vertical-metrics compensation (Batch 3): the font's em box carries
-# ~15% dead space above the visible caps, so Button's ascent+descent centering
-# seats the VISIBLE glyphs low (measured ~7px at font 48 on the intercept
-# buttons). Raising the bottom content margin by 2×offset shifts the centered
-# text back up by offset. Every text-button styler applies this.
+# m5x7 vertical-metrics compensation (Batch 3): the font's em box carries dead
+# space above the visible caps, so Button's ascent+descent centering seats the
+# VISIBLE glyphs low. Raising the bottom content margin by 2×offset shifts the
+# centered text back up by offset. Every text-button styler applies this.
+#
+# The lift is CAPPED (Batch 6): the dead space is roughly font-size-independent
+# (measured ~7 internal px at font 48 on the intercept buttons AND ~7 px at the
+# DEPLOY font 84 → px 113), so a size-PROPORTIONAL 0.15 lift overshot badly at
+# large fonts — the armed DEPLOY label rode ~10 px high in its 145 px slot.
+# min(proportional, DEAD_SPACE_LIFT_PX) keeps small fonts untouched and stops big
+# fonts from over-lifting: the correction only ever moves high text back DOWN
+# toward center, never up. Pixel-snap safe — content margins are whole px.
+const DEAD_SPACE_LIFT_PX := 7.0
+
 static func _recenter_button_text(style: StyleBoxFlat, font_px: int) -> void:
-	var offset: float = roundf(float(font_px) * 0.15)
+	var offset: float = minf(roundf(float(font_px) * 0.15), DEAD_SPACE_LIFT_PX)
 	style.set_content_margin(SIDE_BOTTOM, style.get_content_margin(SIDE_TOP) + 2.0 * offset)
 
 
@@ -1089,6 +1098,29 @@ static func style_label(label: Label, font_size: int, color: Color = TEXT_PRIMAR
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	label.add_theme_constant_override("outline_size", outline_size)
+
+
+# ── HP number readout (the "n / m" printed over every HP bar) ──
+# Bright white glyphs + a HARD BLACK outline so the number stays legible against
+# whatever sits behind the bar — most importantly the red incoming-damage block
+# (HP_CHIP), which otherwise washes the white text out. The single treatment for
+# every HP number on every surface (battle card heroes + enemies, previews) —
+# never restyle an HP label inline.
+# HP_NUMBER_OUTLINE_PX is 2 DESIGN px on purpose: the game renders 1080-native
+# scaled 0.5× into the 540 preview, so 2 design px = exactly ONE whole physical
+# pixel there (an odd 1 would rasterize to a smeared half-pixel — pixel-snap law,
+# INVARIANTS #14). font_size is applied verbatim (NOT scale_font_size'd): HP
+# numbers are authored in card-local px like the rest of the card anatomy.
+const HP_NUMBER_COLOR := Color(0.98, 0.99, 1.0, 1.0)
+const HP_NUMBER_OUTLINE := Color(0.0, 0.0, 0.0, 1.0)
+const HP_NUMBER_OUTLINE_PX := 2
+
+static func style_hp_number(label: Label, font_size: int) -> void:
+	apply_pixel_font(label)
+	label.add_theme_font_size_override("font_size", maxi(1, font_size))
+	label.add_theme_color_override("font_color", HP_NUMBER_COLOR)
+	label.add_theme_color_override("font_outline_color", HP_NUMBER_OUTLINE)
+	label.add_theme_constant_override("outline_size", HP_NUMBER_OUTLINE_PX)
 
 
 static func style_progress_bar(bar: ProgressBar, fill: Color, bg: Color = Color(0.015, 0.020, 0.035, 1.0), border: Color = LINE_DIM) -> void:

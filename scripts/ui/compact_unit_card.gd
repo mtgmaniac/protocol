@@ -19,43 +19,10 @@ static var SELECT_LINE := PixelUI.GOLD_ACCENT
 static var HP_FILL := PixelUI.DT_HP_GREEN
 static var HP_CHIP := PixelUI.COLOR_DAMAGE  # "doomed HP" forecast overlay — pending damage, drains per hit
 static var HP_BACK := PixelUI.DT_FIELD_BG
-# Scale notches every 10 HP: two short marks per division — one at the top edge, one at
-# the bottom — with the middle left open so they never sit over the HP numerals. Drawn
-# by HPTickLayer, snapped to physical pixels so every mark is the same crisp width.
-static var HP_TICK := Color(0.07, 0.11, 0.06, 1.0)
-const HP_TICK_INTERVAL := 10
-
-
-# Physical-pixel-snapped HP scale ticks. Anchoring thin ColorRects by fraction lands them
-# on sub-pixel x under the non-integer canvas scale, so some render 1px and some 2px —
-# looking uneven. Here we snap each mark's x and width to whole physical pixels in _draw,
-# and draw only the top-10% / bottom-10% segments so the middle stays clear for the label.
-class HPTickLayer extends Control:
-	var fracs: PackedFloat32Array = PackedFloat32Array()
-	var tick_color: Color = Color(0.07, 0.11, 0.06, 1.0)
-	const END_FRAC := 0.12      # each mark covers the top ~12% / bottom ~12% of the bar height
-
-	func _ready() -> void:
-		# Window resizes change the FINAL transform without resizing controls —
-		# re-snap or the ticks keep the previous window scale (INVARIANTS #14).
-		get_viewport().size_changed.connect(queue_redraw)
-
-
-	# Pixel snap law (INVARIANTS #14): each notch x = round(i*10/max_hp * bar
-	# width) IN PHYSICAL PIXELS (the bar sits at a sub-pixel global x, so local
-	# rounding still smears), drawn exactly TWO physical pixels wide (Kev
-	# 2026-07-10; was one) — filled and empty regions alike. Tick heights snap
-	# to whole physical pixels too.
-	func _draw() -> void:
-		if fracs.is_empty() or size.x < 2.0 or size.y < 2.0:
-			return
-		var w: float = PixelUI.physical_px_width(self, 2.0)
-		var seg_top: float = PixelUI.snap_to_physical_px(self, size.y * END_FRAC, 1)
-		var seg_bottom_y: float = PixelUI.snap_to_physical_px(self, size.y * (1.0 - END_FRAC), 1)
-		for frac in fracs:
-			var x: float = PixelUI.snap_to_physical_px(self, frac * size.x, 0)
-			draw_rect(Rect2(x, 0.0, w, seg_top), tick_color, true)
-			draw_rect(Rect2(x, seg_bottom_y, w, size.y - seg_bottom_y), tick_color, true)
+# HP scale notches were REMOVED (Batch 6): they duplicated the HP number printed on
+# top of the bar, landed at fractional positions on any unit whose max HP isn't a
+# multiple of 10, and degenerated into a picket fence at boss HP (up to 200). The
+# number is the readout. No tick layer, no interval constant, no HP_TICK color.
 const CARD_NAME_FONT_SIZE := 72
 const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
@@ -113,8 +80,6 @@ var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
 var _hp_chip: ColorRect = null
-var _hp_tick_layer: HPTickLayer = null
-var _hp_ticks_for_max: int = -1
 var _hp_ratio_shown: float = -1.0
 var _hp_drain_tween: Tween = null
 var _action_panel: PanelContainer = null
@@ -331,15 +296,6 @@ func _build() -> void:
 	_hp_chip.z_index = 2
 	_hp_back.add_child(_hp_chip)
 
-	_hp_tick_layer = HPTickLayer.new()
-	_hp_tick_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hp_tick_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# Above the damage-preview rects (z 2) so the 10-HP scale never vanishes
-	# while incoming damage is previewed (Kev 2026-07-10).
-	_hp_tick_layer.z_index = 3
-	_hp_back.add_child(_hp_tick_layer)
-	_hp_tick_layer.resized.connect(_hp_tick_layer.queue_redraw)
-
 	_hp_label = Label.new()
 	_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -347,7 +303,7 @@ func _build() -> void:
 	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_label(_hp_label, CARD_HP_FONT_SIZE, Color(0.98, 0.99, 1.0, 1.0), 2)
+	PixelUI.style_hp_number(_hp_label, CARD_HP_FONT_SIZE)
 	_hp_back.add_child(_hp_label)
 
 	_action_panel = PanelContainer.new()
@@ -457,7 +413,6 @@ func _refresh() -> void:
 	_name_label.text = unit_name.to_upper()
 	_name_label.add_theme_color_override("font_color", _name_font_color(is_hero))
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
-	_rebuild_hp_ticks()
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
 
@@ -491,28 +446,6 @@ func _refresh() -> void:
 # reads as "this is where it ends up — now watch the green get chipped to it."
 # First paint / no-change snaps without animating (and never stomps an in-flight
 # animation, since a no-op refresh fires right after the feedback loop).
-# Refreshes the 10-HP scale notches whenever max HP changes. Positions (fractions of the
-# bar width) are handed to HPTickLayer, which draws two physical-pixel-snapped marks per
-# division — top edge + bottom edge — so every mark is identical width. A 55-HP unit gets
-# 5 divisions; a 40-HP unit gets 3 (the mark exactly at max is omitted).
-func _rebuild_hp_ticks() -> void:
-	if _hp_tick_layer == null:
-		return
-	if max_hp == _hp_ticks_for_max:
-		_hp_tick_layer.queue_redraw()
-		return
-	_hp_ticks_for_max = max_hp
-	var fracs := PackedFloat32Array()
-	var count: int = int(max_hp / HP_TICK_INTERVAL)
-	for i in range(1, count + 1):
-		var frac: float = float(i * HP_TICK_INTERVAL) / float(maxi(max_hp, 1))
-		if frac < 1.0:
-			fracs.append(frac)
-	_hp_tick_layer.fracs = fracs
-	_hp_tick_layer.tick_color = HP_TICK
-	_hp_tick_layer.queue_redraw()
-
-
 func _set_hp_display(displayed: float, forecast: float) -> void:
 	if _hp_fill == null:
 		return

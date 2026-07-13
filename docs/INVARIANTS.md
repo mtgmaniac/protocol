@@ -119,17 +119,21 @@ commit-msg threshold guard (`scripts/hooks/threshold_guard.py`) enforces both po
 excuses, or dropping the audit floor to make a green run, without the token.
 
 ## 14. Pixel snap law (UI)
-Every UI position or size computed from a RATIO (HP-notch x, protocol-pip spacing, chip
-offsets) must round to whole PHYSICAL pixels before drawing, and 1px elements must land
+Every UI position or size computed from a RATIO (protocol-pip spacing, chip offsets) must
+round to whole PHYSICAL pixels before drawing, and 1px elements must land
 on the physical pixel grid. Local-space rounding is NOT enough: the game renders
 1080×2400 scaled into the window (540×1200 preview = 0.5×), so a whole local pixel is a
 fraction of a screen pixel — and the scale lives in the viewport's FINAL transform
 (stretch mode canvas_items), which `get_global_transform_with_canvas()` does NOT
 include. Use `PixelUI.snap_to_physical_px` / `physical_px_width` (they compose it)
-like `HPTickLayer` and `ProtocolPips` do. Precedent:
+like `ProtocolPips` does. This also governs 1px strokes/outlines authored in DESIGN px:
+at the 0.5× preview an ODD design width is a half physical pixel and smears, so use EVEN
+design px (the HP-number outline is 2 design px = 1 whole physical px — Batch 6). Precedent:
 the HP-bar notches were computed by accumulated float ratios and drawn 3 local px wide —
 at preview scale they rendered as alternating 1px/2px ticks, some faint, some dropped
-(the 2026-07-07 notch defect). Same failure class: protocol pips laid out by an
+(the 2026-07-07 notch defect; the notches themselves were later REMOVED as redundant with
+the HP number they overlaid — Batch 6 — but the law they exposed stands). Same failure
+class: protocol pips laid out by an
 `HBoxContainer` distributing fractional widths. **Violation looks like:** `frac * width`
 drawn without physical rounding, a container distributing ratio widths across pip rows,
 or a "1px" line whose measured width varies along the bar in a screenshot zoom.

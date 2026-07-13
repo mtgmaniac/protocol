@@ -9,8 +9,10 @@
 # - Encounter = ONE compact banner row: [◀] name + threat [boss thumb] [▶], dots
 #   under. The flavor blurb is NOT on screen — long-press the banner opens the
 #   InspectPopup (InspectResolver.resolve_encounter) with the verbatim copy.
-#   The boss thumb is a SQUARE cell at the same size as the hero portrait cells,
-#   letterboxed KEEP_ASPECT_CENTERED (never cover-cropped like hero busts).
+#   The boss thumb frames the enemy through the SAME portrait window as the battle
+#   card (PixelUI.HERO_PORTRAIT_REGION aspect + PixelUI.cover_fit_portrait), so the
+#   boss reads identically to its battle card, smaller — no zoom (enemies are the
+#   framing reference and are never zoomed; the hero zoom is hero-only).
 # - Squad: the portrait IS the button (no name-button row); hero name is a label
 #   UNDER each portrait. Tap toggles selection (slot badge + cyan border); the
 #   detail panel follows the last-tapped hero. No role legend — role reads from
@@ -295,9 +297,12 @@ func _build_encounter_section() -> Control:
 	text_col.add_child(_enc_name_label)
 	text_col.add_child(_build_threat_row())
 
-	# Boss thumb — rectangular at the dominant art aspect (ENC_THUMB_W/H ≈ the
-	# 592×880 portrait art), letterboxed KEEP_ASPECT_CENTERED so nothing ever
-	# stretches; dominant-aspect art sits flush, outliers letterbox.
+	# Boss thumb — the enemy is framed through the ONE portrait window
+	# (ENC_THUMB_W/H carry the PixelUI.HERO_PORTRAIT_REGION aspect) and COVER-fit by
+	# PixelUI.cover_fit_portrait (below), exactly like the enemy battle card: same
+	# region, same crop rule, no zoom. The boss reads identically to its battle
+	# card, smaller. (The old letterboxed / dominant-art-aspect thumb was unified
+	# into this window by fix 9322a30, matching the hero-tile fix.)
 	var thumb_frame := PanelContainer.new()
 	thumb_frame.clip_contents = true
 	thumb_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
