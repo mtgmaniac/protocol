@@ -14,9 +14,16 @@ this document is now the reference for how it works and why.
 3. **Quit-to-menu is a DISSOLVE, never power-down. POWER DOWN exclusively means
    you died.** If quit used it, it would stop being a signal and become an
    animation.
-4. **Dissolve-direct, not through-black.** Through-black is the generic engine
-   default; dissolving the outgoing snapshot straight into the incoming scene is
-   what reads as authored.
+4. **~~Dissolve-direct, not through-black.~~ SUPERSEDED 2026-07-13 — reversed to a
+   COVER phase.** The original ruling ("dissolve the outgoing snapshot straight
+   into the incoming scene, no through-black") was wrong in practice: because both
+   frames are simultaneously visible during the dissolve, it read as a chaotic
+   crossfade/flicker, not an authored transition. The dissolve now runs three
+   beats — dissolve OUT to an opaque cover, HOLD fully covered (scene swap + load
+   concealed here), dissolve IN from the cover — so the player perceives a genuine
+   empty "in between", never two blended images. Timings ~0.10 out / 0.05 hold /
+   0.12 in (total 0.27s). POWER DOWN keeps its collapse shape but its reveal now
+   goes through the same dither-in from black, not an alpha crossfade.
 
 ## Why the architecture is cheap
 
@@ -36,11 +43,14 @@ Direction-05 "Dithered Terminal" signature (`assets/ui/dither_2x2.png`,
 
 1. Snapshot the outgoing viewport (`get_viewport().get_texture().get_image()` →
    `ImageTexture`) into a full-rect TextureRect on the transition CanvasLayer.
-2. `change_scene_to_file` runs UNDER the snapshot (new scene loads while covered).
-3. A shader dissolves the snapshot away: Bayer-matrix threshold vs an animated
-   ramp uniform. Pixels drop to transparent in dither order, revealing the new
-   scene DIRECTLY (dissolve-direct, ruling #4 — no through-black cover phase).
-4. Duration **0.25s** (ruling #1); tween drives the ramp uniform.
+2. `change_scene_to_file` runs UNDER the snapshot at the very start; the opaque
+   OUT+HOLD cover conceals the new scene's load entirely.
+3. A shader runs the three-beat cover (ruling #4, revised): OUT dithers each
+   Bayer cell snapshot→backdrop; HOLD is a fully opaque `DT_FIELD_BG` cover; IN
+   dithers each cell backdrop→transparent (discard), revealing the new scene.
+   Two frames are never simultaneously visible.
+4. Duration **0.27s** — ~0.10 out / 0.05 hold / ~0.12 in (the `OUT_END`/`HOLD_END`
+   ramp split lives in the shader); a single tween drives the `ramp` uniform 0→1.
 
 Shader: `assets/shaders/dither_dissolve.gdshader` — 4×4 Bayer computed in-shader,
 thresholded on **`FRAGCOORD` device pixels** (see pixel law below).

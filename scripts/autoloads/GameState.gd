@@ -74,6 +74,15 @@ var tutorial_mode: bool = false
 ## each battle, never persisted; null when there's nothing to review.
 var last_battle_snapshot: Texture2D = null
 
+## Live battle review (2026-07-13): the FULL final combat state so "View Battlescreen"
+## re-enters BattleScene read-only — real cards, statuses, and long-press inspect, not a
+## flat image. Shape: {combat: snapshot_state(), protocol: int, hero_rolls, enemy_rolls}.
+## `entering_battle_review` is the one-shot flag BattleScene._ready consumes to init in
+## review mode (a normal battle entry leaves it false). Both transient, cleared when the
+## run advances or resets.
+var battle_review_state: Dictionary = {}
+var entering_battle_review: bool = false
+
 const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
 ## Tier-3 progression (pkg6): evolved units hitting this pick a Directive.
@@ -116,6 +125,8 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 	selected_operation_id = operation_id
 	current_battle = 0
 	last_battle_snapshot = null
+	battle_review_state = {}
+	entering_battle_review = false
 	var operation: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
 	if operation != null:
 		total_battles = operation.battles.size()
@@ -824,6 +835,10 @@ func get_revive_hp_pct(default_pct: int) -> int:
 
 func advance_to_next_battle() -> void:
 	current_battle += 1
+	# The review belongs to the battle just finished — drop it as the run moves on
+	# so the NEXT battle entry is never mistaken for a review.
+	battle_review_state = {}
+	entering_battle_review = false
 
 
 func reset_run() -> void:

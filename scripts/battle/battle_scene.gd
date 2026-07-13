@@ -184,6 +184,12 @@ var legal_target_side: String = ""
 var pending_manual_target_ids: Array = []
 var has_player_target_assignment: bool = false
 var battle_over: bool = false
+# Read-only battle review (2026-07-13): this BattleScene was entered from the
+# reward screen's "View Battlescreen" to look back at the finished board —
+# real cards + long-press inspect, no actions. The center button becomes
+# "Return to Rewards" and every combat handler no-ops (they already gate on
+# battle_over, which review also sets).
+var _review_mode: bool = false
 var hero_roll_nudges: Dictionary:
 	get: return _state.hero_roll_nudges
 	set(value): _state.hero_roll_nudges = value
@@ -245,6 +251,56 @@ func _ready() -> void:
 	_protocol.setup(self)
 	_apply_battle_theme()
 	_build_round_complete_modal()
+	# Review re-entry (from the reward screen): rebuild the finished board
+	# read-only instead of starting a fresh battle. This MUST branch before the
+	# live setup below, which has run-state side effects (consumes carried
+	# protocol + the route modifier, grants battle-start consumables, begins XP
+	# tracking) — a review may not fire any of those.
+	if _game_state().entering_battle_review and not _game_state().battle_review_state.is_empty():
+		_game_state().entering_battle_review = false
+		_review_mode = true
+	if _review_mode:
+		_restore_review_board()
+	else:
+		_init_live_battle()
+	_layout.queue_board_layout_refresh()
+	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it.
+	# No "↺" text — the swap icon is the whole button (else it double-draws an arrow).
+	protocol_spend_button.text = ""
+	# The header bar lives in the PersistentHeader autoload now — bind its buttons to
+	# this battle's handlers. They go inert again when this scene exits the tree.
+	# Help ("?") is handled globally by PersistentHeader → HelpMenu, so no help binding here.
+	PersistentHeader.bind_battle_actions(
+		Callable(),
+		_on_auto_turn_button_pressed,
+		_on_auto_battle_button_pressed,
+		_on_return_to_menu_button_pressed,
+	)
+	_protocol.build_footer_buttons()
+	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
+	board.move_child(enemy_panel, 0)
+	board.move_child(center_panel, 1)
+	board.move_child(hero_panel, 2)
+	Callable(_layout, "stabilize_board_layout").call_deferred()
+	if _game_state().tutorial_mode:
+		_spawn_tutorial_controller.call_deferred()
+	elif not _review_mode:
+		# Keyword primers observe every non-tutorial battle; their own
+		# suppression covers headless + auto battle at fire time. (No primers in
+		# a read-only review — nothing is being cast.)
+		_primer = KEYWORD_PRIMER_SCRIPT.new()
+		add_child(_primer)
+		_primer.setup(self)
+	if _review_mode:
+		# After the shared tail built the footer, lock the board read-only and
+		# turn the center button into the way back (deferred so it wins the race
+		# with the footer build above).
+		call_deferred("_finalize_review")
+
+
+# ── Live battle init (extracted from _ready so review can branch around its
+# run-state side effects) ─────────────────────────────────────────────────────
+func _init_live_battle() -> void:
 	_update_battle_header()
 	_build_runtime_units()
 	combat_manager.setup_battle(hero_units, enemy_units)
@@ -281,33 +337,53 @@ func _ready() -> void:
 		if rule_text != "":
 			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
 	transition(PHASE_AWAIT_ROLL)
-	_layout.queue_board_layout_refresh()
-	# Wire protocol_spend_button as Reroll and add a Nudge button alongside it.
-	# No "↺" text — the swap icon is the whole button (else it double-draws an arrow).
-	protocol_spend_button.text = ""
-	# The header bar lives in the PersistentHeader autoload now — bind its buttons to
-	# this battle's handlers. They go inert again when this scene exits the tree.
-	# Help ("?") is handled globally by PersistentHeader → HelpMenu, so no help binding here.
-	PersistentHeader.bind_battle_actions(
-		Callable(),
-		_on_auto_turn_button_pressed,
-		_on_auto_battle_button_pressed,
-		_on_return_to_menu_button_pressed,
-	)
-	_protocol.build_footer_buttons()
-	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
-	board.move_child(enemy_panel, 0)
-	board.move_child(center_panel, 1)
-	board.move_child(hero_panel, 2)
-	Callable(_layout, "stabilize_board_layout").call_deferred()
-	if _game_state().tutorial_mode:
-		_spawn_tutorial_controller.call_deferred()
-	else:
-		# Keyword primers observe every non-tutorial battle; their own
-		# suppression covers headless + auto battle at fire time.
-		_primer = KEYWORD_PRIMER_SCRIPT.new()
-		add_child(_primer)
-		_primer.setup(self)
+
+
+# ── Read-only battle review ───────────────────────────────────────────────────
+# Rebuild the finished board from the captured combat state (no setup_battle, so
+# zero run-state side effects). Cards + statuses + ability readouts render from
+# the restored states; long-press inspect works natively (it never gated on a
+# live battle). No dice roll — the pips read from the un-hidden readout rows.
+func _restore_review_board() -> void:
+	var rs: Dictionary = _game_state().battle_review_state
+	combat_manager.restore_state(rs.get("combat", {}))
+	protocol_points = int(rs.get("protocol", 0))
+	hero_rolls = (rs.get("hero_rolls", {}) as Dictionary).duplicate(true)
+	enemy_rolls = (rs.get("enemy_rolls", {}) as Dictionary).duplicate(true)
+	battle_over = true
+	_update_battle_header()
+	_update_protocol_bar()
+	_populate_hero_cards()
+	_populate_enemy_cards()
+	_card_view.refresh_all_cards()
+	_card_view.show_all_ability_readouts()
+	# The readout rows are alpha-0 in live play (the visible pips are die-docked
+	# tags drawn over the 3D dice). There are no dice in review, so un-hide the
+	# rows to surface the resolved pips.
+	for views_variant in [hero_card_views, enemy_card_views]:
+		for view_variant in views_variant:
+			var readout: Object = (view_variant as Dictionary).get("readout")
+			if readout is CanvasItem and is_instance_valid(readout):
+				(readout as CanvasItem).modulate = Color(1, 1, 1, 1)
+	_set_battle_log_visible(false)
+
+
+# Runs after the shared _ready tail: disable every action surface and turn the
+# center button into "Return to Rewards".
+func _finalize_review() -> void:
+	if _protocol != null and is_instance_valid(_protocol):
+		_protocol.reset_battle_over_state()  # disables the nudge/reroll/set/item footer
+	PersistentHeader.set_debug_enabled(false)
+	PersistentHeader.set_debug2_enabled(false)
+	roll_button.visible = true
+	roll_button.disabled = false
+	roll_button.text = "RETURN TO REWARDS"
+	_refresh_summary("Reviewing the last battle — read-only. Long-press any unit to inspect.")
+
+
+func _return_from_review() -> void:
+	AudioManager.play_select()
+	_scene_manager().go_to_reward_screen()
 
 
 # Coachmark/step controller for the rigged onboarding encounter (lives on its own high layer).
@@ -531,6 +607,11 @@ func _find_state_for_card(card: Control) -> Dictionary:
 
 
 func _on_roll_button_pressed() -> void:
+	if _review_mode:
+		# The center button is "Return to Rewards" here — go straight back
+		# without _on_open_reward_button_pressed's reward RE-ROLL.
+		_return_from_review()
+		return
 	if battle_over:
 		AudioManager.play_select()
 		_on_open_reward_button_pressed()
@@ -1310,6 +1391,21 @@ func _store_battle_snapshot() -> void:
 	_game_state().last_battle_snapshot = ImageTexture.create_from_image(image)
 
 
+# Capture the FULL final combat state so the reward screen's "View Battlescreen"
+# can re-enter this scene read-only (real cards + inspect, not the flat image).
+# Deep-copied via snapshot_state (keeps unit Resource refs alive through the
+# scene change); skipped headless / auto-battle like the image snapshot.
+func _capture_review_state() -> void:
+	if _auto_battle_running or DisplayServer.get_name() == "headless":
+		return
+	_game_state().battle_review_state = {
+		"combat": combat_manager.snapshot_state(),
+		"protocol": protocol_points,
+		"hero_rolls": hero_rolls.duplicate(true),
+		"enemy_rolls": enemy_rolls.duplicate(true),
+	}
+
+
 func _capture_battle_victory_for_xp() -> void:
 	_game_state().capture_battle_end_survival(combat_manager.get_hero_states())
 	# Memorial Protocol (pkg7.4) tracks who fell in the last two battles.
@@ -1338,6 +1434,7 @@ func _finish_battle_victory() -> void:
 	else:
 		# Snapshot the clean board BEFORE the round-complete modal covers it.
 		_store_battle_snapshot()
+		_capture_review_state()
 		_show_round_complete_modal()
 
 
