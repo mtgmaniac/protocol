@@ -89,9 +89,10 @@ func _scan_pips(owner: String, name: String, pips: Array, roll_rows: Array, dup_
 			scope_summary.append("%s(%s%s)" % [kind, str(pip.get("value", "")), "/" + scope])
 		if kind == "rfm" or (kind == "roll" and dur > 0):
 			var is_buff: bool = kind == "rfm"
-			var effective: String = ("%d" % maxi(dur - 1, 0)) if is_buff else ("%d" % dur)
+			# Post-2026-07-13: stored = effective turns for every family (TRUTH #10),
+			# so effective == backend. (Was backend-1 for buffs under the old bug.)
 			roll_rows.append([owner, name, ("buff" if is_buff else "debuff"),
-				str(pip.get("value", "")), str(dur) + "t", effective + " roll(s)"])
+				str(pip.get("value", "")), str(dur) + "t", "%d roll(s)" % dur])
 	for scope in scope_counts:
 		if int(scope_counts[scope]) > 1:
 			dup_rows.append([owner, name, str(scope), int(scope_counts[scope]), ", ".join(scope_summary)])

@@ -999,10 +999,25 @@ func _refresh_roll_buff_total(state: Dictionary) -> void:
 	state["roll_buff"] = _get_total_roll_buff(state)
 
 
-func _add_roll_buff(state: Dictionary, amount: int, turns: int) -> void:
+# `turns` is EFFECTIVE turns — the number of rolls this buff shapes (docs/TRUTH.md
+# duration convention). `shapes_current_roll` says whether the CAST round's roll
+# counts toward that number, which decides the tick timing:
+#  • true  — the buff is fed into get_effective_roll BEFORE the beneficiary
+#    commits, so it shapes the cast-round roll (items). The cast round counts;
+#    the stack ticks at that round's end like any other (no skip).
+#  • false — the buff is applied AFTER the beneficiary's roll is spent (enemy
+#    self-buffs cast during resolution; reactive relics like Emergency Signal),
+#    so it CANNOT shape the cast round. That round doesn't count, so the stack
+#    skips the cast-round tick and its `turns` future rolls all land.
+# Same meaning of N either way — see TRUTH.md. Passing the wrong value here is a
+# timing bug that used to be hidden by shrinking the number instead.
+func _add_roll_buff(state: Dictionary, amount: int, turns: int, shapes_current_roll: bool) -> void:
 	if state.is_empty() or bool(state.get("dead", false)) or amount <= 0 or turns <= 0:
 		return
-	state["roll_buff_stacks"].append({"amt": amount, "turns_left": turns})
+	var stack: Dictionary = {"amt": amount, "turns_left": turns}
+	if not shapes_current_roll:
+		stack["skip_next_tick"] = true
+	state["roll_buff_stacks"].append(stack)
 	_refresh_roll_buff_total(state)
 	_log("%s gains +%d roll buff (%dt)." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "roll_buff", amount, _resolve_side_for_state(state))
@@ -1085,15 +1100,19 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			_heal_state(hero_state, heal, hero_state)
 
 	if roll_buff_amount > 0:
+		# Cast during hero resolution — the beneficiaries' abilities for this turn
+		# were already selected from their rolls, so this shapes FUTURE rolls only
+		# (shapes_current_roll=false). No hero ability carries rfm today, but the
+		# path must be timing-correct if one is authored.
 		if roll_buff_targeted:
 			var roll_buff_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
 			if roll_buff_target.is_empty():
 				roll_buff_target = hero_state
-			_add_roll_buff(roll_buff_target, roll_buff_amount, roll_buff_turns)
+			_add_roll_buff(roll_buff_target, roll_buff_amount, roll_buff_turns, false)
 		else:
 			for ally_state in _hero_states:
 				if not ally_state["dead"]:
-					_add_roll_buff(ally_state, roll_buff_amount, roll_buff_turns)
+					_add_roll_buff(ally_state, roll_buff_amount, roll_buff_turns, false)
 
 	var gain_protocol: int = int(raw.get("gainProtocol", 0))
 	# Surge Wiring directive: the named ability generates extra Protocol.
@@ -1728,12 +1747,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var erb_turns: int = int(raw.get("erbT", 1))
 	var erb_all: bool = bool(raw.get("erbAll", false))
 	if erb_amount > 0:
+		# Enemy self-buff cast during the enemy's own resolution — its roll this
+		# round is already spent, so this shapes FUTURE rolls only (false).
 		if erb_all:
 			for es in _enemy_states:
 				if not es["dead"]:
-					_add_roll_buff(es, erb_amount, erb_turns)
+					_add_roll_buff(es, erb_amount, erb_turns, false)
 		else:
-			_add_roll_buff(enemy_state, erb_amount, erb_turns)
+			_add_roll_buff(enemy_state, erb_amount, erb_turns, false)
 
 	# Freeze hero dice (freeze = repeat, per Kev 2026-07-06): the crusted die
 	# repeats its face on the hero's next N rolls. Enemy AI freeze always
@@ -2055,13 +2076,14 @@ func _trigger_low_hp_squad_roll_buff() -> void:
 	var buff_amount: int = int(_get_relic_value("lowHpSquadRollBuff", "amount", 0))
 	if buff_amount <= 0:
 		return
-	# 2t (timer-contract correction, 2026-07-06 cleanup): under instance timers
-	# a 1t buff cast mid-round expired at that round's tick without shaping a
-	# roll — 2t restores the authored intent (buff the NEXT roll).
-	var buff_turns: int = int(_get_relic_value("lowHpSquadRollBuff", "turns", 2))
+	# Reactive squad buff fired mid-round after the low-HP squad has already
+	# rolled — future-shaping (false). Default turns is now 1 EFFECTIVE turn
+	# (was 2 under the old off-by-one encoding; the tick fix + skip flag mean 1
+	# reads and behaves as one subsequent roll).
+	var buff_turns: int = int(_get_relic_value("lowHpSquadRollBuff", "turns", 1))
 	for hero_state in _hero_states:
 		if not hero_state["dead"]:
-			_add_roll_buff(hero_state, buff_amount, buff_turns)
+			_add_roll_buff(hero_state, buff_amount, buff_turns, false)
 	_log("Emergency signal: squad gains +%d roll (%dt)." % [buff_amount, buff_turns])
 
 
@@ -2693,13 +2715,20 @@ func _tick_state(state: Dictionary) -> void:
 		if new_rfe_stacks.is_empty():
 			state["feedback_per_round"] = 0
 
-	# Tick roll-buff stacks: every stack loses a turn at every round-end tick
-	# (an Nt instance cast on turn T is live turns T..T+N-1 — the contract of
-	# the instance-timer ruling, per Kev 2026-07-06).
+	# Tick roll-buff stacks. A future-shaping buff (skip_next_tick, set by
+	# _add_roll_buff when shapes_current_roll=false) sits out the tick of its
+	# cast round — the round it couldn't shape — then `turns_left` counts the
+	# future rolls it does shape. Current-roll buffs (items) carry no skip flag,
+	# so they tick immediately: `turns` = rolls including the cast round. Either
+	# way the stored number equals effective turns (docs/TRUTH.md).
 	if not (state.get("roll_buff_stacks", []) as Array).is_empty():
 		var live_buff_stacks: Array = []
 		for stack_variant in state.get("roll_buff_stacks", []):
 			var stack: Dictionary = stack_variant
+			if bool(stack.get("skip_next_tick", false)):
+				stack["skip_next_tick"] = false
+				live_buff_stacks.append(stack)
+				continue
 			var buff_tl: int = int(stack["turns_left"]) - 1
 			if buff_tl > 0:
 				stack["turns_left"] = buff_tl
@@ -2735,7 +2764,11 @@ func apply_item_shield_all(amount: int) -> void:
 
 
 func apply_item_roll_buff(target_state: Dictionary, amount: int, turns: int) -> void:
-	_add_roll_buff(target_state, amount, turns)
+	# Items are used post-roll but pre-commit and feed get_effective_roll, so they
+	# shape the CURRENT roll — shapes_current_roll=true (the cast round counts,
+	# no cast-tick skip). A turns=1 item grants exactly one roll (the current);
+	# adding a skip here would silently hand it a second (the item guard test).
+	_add_roll_buff(target_state, amount, turns, true)
 
 
 func apply_item_revive(target_state: Dictionary, hp_pct: int) -> void:

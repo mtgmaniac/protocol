@@ -64,7 +64,7 @@
         "rfe": 0,
         "shield": 5,
         "erb": 1,
-        "erbT": 2
+        "erbT": 1
       },
       "strike": {
         "name": "Sparking Cut",
@@ -205,7 +205,7 @@
         "shield": 0,
         "shieldAlly": 9,
         "erb": 2,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -899,7 +899,7 @@
         "shield": 6,
         "shieldAlly": 6,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true,
         "ward": true
       },
@@ -914,7 +914,7 @@
         "shield": 0,
         "shieldAlly": 6,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "surge": {
@@ -928,7 +928,7 @@
         "shield": 0,
         "shieldAlly": 8,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -942,7 +942,7 @@
         "shield": 0,
         "shieldAlly": 9,
         "erb": 2,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true,
         "ward": true
       },
@@ -957,7 +957,7 @@
         "shield": 0,
         "shieldAlly": 12,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "ward": true,
         "summonChance": 42,
@@ -975,7 +975,7 @@
         "rfe": 0,
         "shield": 7,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true,
         "ward": true
       },
@@ -999,7 +999,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -1012,7 +1012,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "overload": {
@@ -1025,7 +1025,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "summonChance": 40,
         "summonName": "Prism Charger"
@@ -1042,7 +1042,7 @@
         "rfe": 0,
         "shield": 5,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "strike": {
@@ -1100,7 +1100,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "strike": {
@@ -1123,7 +1123,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -1136,7 +1136,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "overload": {
@@ -1149,7 +1149,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "summonChance": 42,
         "summonName": "Prism Charger"
@@ -1166,7 +1166,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true,
         "ward": true
       },
@@ -1192,7 +1192,7 @@
         "shield": 0,
         "shieldAlly": 7,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -1206,7 +1206,7 @@
         "shield": 0,
         "shieldAlly": 8,
         "erb": 1,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true
       },
       "overload": {
@@ -1219,7 +1219,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "summonChance": 40,
         "summonName": "Shardmite"
@@ -1237,7 +1237,7 @@
         "shield": 22,
         "shieldAlly": 8,
         "erb": 2,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "strike": {
@@ -1262,7 +1262,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -1277,7 +1277,7 @@
         "rfm": 3,
         "rfmT": 2,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "overload": {
@@ -1291,7 +1291,7 @@
         "shield": 0,
         "wipeShields": true,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "summonChance": 30,
         "summonName": "Prism Charger"
@@ -1425,7 +1425,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "strike": {
@@ -1471,7 +1471,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "summonChance": 45,
         "summonName": "Glitch Sprite"
@@ -1605,7 +1605,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 2
+        "erbT": 1
       },
       "strike": {
         "name": "Arc Lance",
@@ -1663,7 +1663,7 @@
         "shield": 20,
         "shieldAlly": 8,
         "erb": 2,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true,
         "ward": true
       },
@@ -1689,7 +1689,7 @@
         "rfe": 0,
         "shield": 0,
         "erb": 1,
-        "erbT": 2,
+        "erbT": 1,
         "erbAll": true
       },
       "crit": {
@@ -1715,7 +1715,7 @@
         "shield": 0,
         "wipeShields": true,
         "erb": 2,
-        "erbT": 3,
+        "erbT": 2,
         "erbAll": true,
         "summonChance": 32,
         "summonName": "Glitch Sprite"
