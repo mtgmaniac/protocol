@@ -460,9 +460,22 @@ func _run() -> void:
 	# A scope marker describes the ABILITY's targeting: at most once per scope
 	# per pip. ECM Hiss = 5 shield (self) + erb +1 (self) → two self effects,
 	# exactly ONE self marker.
-	var ecm_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "erb": 1, "erbT": 2}, "enemy")
+	var ecm_effects: Array = EffectPipScript.effects_from_ability_raw({"shield": 5, "erb": 1, "erbT": 2}, "enemy")
+	var ecm_markers: Array = []
+	for e in ecm_effects:
+		var g: Control = EffectPipScript.build_group(e, EffectPipScript.PROFILE_CARD, "enemy")
+		_collect_scope_markers(g, ecm_markers)
+		g.free()
 	_check(ecm_markers.count("self") == 1,
 		"two same-scope (self) effects emit exactly one self marker (saw %s)" % str(ecm_markers))
+	# Position: the surviving self scope sits on the LAST effect, so the marker
+	# renders at the END of the row (Kev 2026-07-13), not in the middle.
+	var ecm_self_idx: int = -1
+	for i in range(ecm_effects.size()):
+		if str((ecm_effects[i] as Dictionary).get("scope", "")) == "self":
+			ecm_self_idx = i
+	_check(ecm_self_idx == ecm_effects.size() - 1,
+		"whole-self ability keeps its marker on the LAST effect (end of row), not the middle")
 	# Distinct scopes each still emit once: self shield + all-blast damage.
 	var mixed_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "dmg": 6, "blastAll": true}, "hero")
 	_check(mixed_markers.count("self") == 1 and mixed_markers.count("aoe") == 1,

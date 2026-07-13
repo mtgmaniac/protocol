@@ -585,22 +585,24 @@ static func effects_from_directive(effect: Dictionary) -> Array:
 
 
 # A scope marker describes the ABILITY's targeting, not each individual effect's
-# (TRUTH.md, Kev 2026-07-13). It appears at most ONCE per scope, per pip: keep
-# each distinct scope on the FIRST effect that carries it and blank it on later
-# effects, so build_group renders one marker per distinct scope — never the same
-# marker twice (the ECM Hiss "⊙ … ⊙" bug; scope is consumed only for the marker,
-# so blanking is safe). Distinct scopes each still emit once.
+# (TRUTH.md, Kev 2026-07-13). It appears at most ONCE per scope, per pip, on the
+# LAST effect that carries that scope — every earlier occurrence is blanked. Keep
+# on LAST, not first, so a wholly single-scope ability renders its one marker at
+# the END of the row instead of wedged between effects: ECM Hiss "5 shield (self),
+# +1 roll (self)" reads "🛡5 🎲+1 ⊙", not "🛡5 ⊙ 🎲+1". Distinct scopes each still
+# emit once, on their own last occurrence. (Scope is consumed only for the marker,
+# so blanking is safe.)
 static func dedupe_scope_markers(effects: Array) -> Array:
-	var seen: Dictionary = {}
-	for effect_variant in effects:
-		var effect: Dictionary = effect_variant
+	var last_index: Dictionary = {}
+	for i in range(effects.size()):
+		var scope: String = str((effects[i] as Dictionary).get("scope", ""))
+		if scope != "":
+			last_index[scope] = i
+	for i in range(effects.size()):
+		var effect: Dictionary = effects[i]
 		var scope: String = str(effect.get("scope", ""))
-		if scope == "":
-			continue
-		if seen.has(scope):
+		if scope != "" and int(last_index[scope]) != i:
 			effect["scope"] = ""
-		else:
-			seen[scope] = true
 	return effects
 
 
