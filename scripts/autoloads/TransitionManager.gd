@@ -1,12 +1,16 @@
-# Scene-transition overlay (docs/TRANSITIONS_SCOPE.md — rulings Kev 2026-07-12).
+# Scene-transition overlay (docs/TRANSITIONS_SCOPE.md — rulings Kev 2026-07-12,
+# cover-phase revision 2026-07-13).
 #
 # One mechanism: snapshot the outgoing viewport into a full-rect TextureRect on
 # this CanvasLayer (layer 200 — above PersistentHeader 8, primers 110, popups
-# 130/135), change the scene UNDER the snapshot, then a shader dissolves the
-# snapshot away to reveal the new scene directly (dissolve-direct ruling — no
-# through-black cover phase).
+# 130/135), change the scene UNDER the snapshot, then a shader runs a THREE-BEAT
+# cover transition: the snapshot dithers OUT to an opaque cover, HOLDS fully
+# covered, then the new scene dithers IN from the cover. The two frames are
+# never simultaneously visible (the old dissolve-direct read as a crossfade).
+# The scene swap happens at the very start, under the opaque snapshot, so the
+# load is fully concealed across the OUT+HOLD beats.
 #
-# Kinds: "dither_dissolve" (0.25s, the default for every scene change) ·
+# Kinds: "dither_dissolve" (0.27s, the default for every scene change) ·
 # "power_down" (0.8s, DEFEAT ONLY — it exclusively means you died) · "none".
 #
 # CONTRACT:
@@ -20,7 +24,9 @@
 extends CanvasLayer
 
 const LAYER := 200
-const DISSOLVE_DURATION := 0.25   # ruling: fires constantly, every 50ms is felt
+# ruling: fires constantly, every 50ms is felt. 0.27s = ~0.10 out / 0.05 hold /
+# ~0.12 in (the OUT_END/HOLD_END split lives in dither_dissolve.gdshader).
+const DISSOLVE_DURATION := 0.27
 const POWER_DOWN_DURATION := 0.8  # ruling: the death screen should linger
 const SHADERS := {
 	"dither_dissolve": "res://assets/shaders/dither_dissolve.gdshader",
