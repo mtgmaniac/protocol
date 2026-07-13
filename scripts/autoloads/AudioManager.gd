@@ -137,16 +137,23 @@ func _apply_sfx_volume() -> void:
 	AudioServer.set_bus_volume_db(idx, db)
 
 
+# Profile isolation (DevContext, Kev 2026-07-12): rigs/tests read+write a
+# scratch settings file — the real user://settings.cfg is untouchable from any
+# dev context (this write previously had NO guard at all).
+func _settings_path() -> String:
+	return "user://dev_settings.cfg" if DevContext.is_isolated() else SETTINGS_PATH
+
+
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SETTINGS_PATH) == OK:
+	if cfg.load(_settings_path()) == OK:
 		_muted = bool(cfg.get_value("audio", "muted", false))
 		_sfx_volume = clampf(float(cfg.get_value("audio", "sfx_volume", DEFAULT_SFX_VOLUME)), 0.0, 1.0)
 
 
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
-	cfg.load(SETTINGS_PATH)  # preserve any other sections; ignore "not found" on first save
+	cfg.load(_settings_path())  # preserve any other sections; ignore "not found" on first save
 	cfg.set_value("audio", "muted", _muted)
 	cfg.set_value("audio", "sfx_volume", _sfx_volume)
-	cfg.save(SETTINGS_PATH)
+	cfg.save(_settings_path())

@@ -887,6 +887,18 @@ func _ensure_die_tag_layer() -> void:
 	add_child(_die_tag_layer)
 
 
+# The VISIBLE pip surface for a unit (primer glyph anchors resolve against
+# this, Kev 2026-07-12): the rail AbilityReadout is an alpha-0 data holder —
+# its glyph nodes are ghosts with live rects, which is how the primer ring
+# landed on empty space. Returns null when no plate exists (unrolled/empty).
+func get_die_tag_plate(side: String, unit_id: String) -> Control:
+	var entry: Dictionary = _die_tags.get("%s:%s" % [side, unit_id], {})
+	var plate: Variant = entry.get("plate")
+	if plate is Control and is_instance_valid(plate):
+		return plate as Control
+	return null
+
+
 func _sync_die_tags() -> void:
 	if dice_tray_3d == null or not is_instance_valid(dice_tray_3d):
 		return

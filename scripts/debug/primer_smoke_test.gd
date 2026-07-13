@@ -53,6 +53,28 @@ func _collect_icon_metas(node: Node, out: Array) -> void:
 		_collect_icon_metas(child, out)
 
 
+# First tagged TextureRect for an icon, alpha-blind (test helper — used to
+# locate the ghost node the resolver must NOT pick).
+func _find_tagged(node: Node, icon: String) -> TextureRect:
+	if node is TextureRect and node.has_meta("pip_icon_key") and str(node.get_meta("pip_icon_key")) == icon:
+		return node
+	for child in node.get_children():
+		var found: TextureRect = _find_tagged(child, icon)
+		if found != null:
+			return found
+	return null
+
+
+# Stand-in battle scene exposing the visible-plate lookup (Bug-1 round 2).
+class StubBattleScene extends Node:
+	var hero_card_views: Array = []
+	var enemy_card_views: Array = []
+	var plate: Control = null
+
+	func get_die_tag_plate(_side: String, _unit_id: String) -> Control:
+		return plate
+
+
 func _run() -> void:
 	# Fresh in-memory profile (headless SaveManager never touches disk).
 	var sm: Node = root.get_node("/root/SaveManager")
@@ -228,6 +250,19 @@ func _run() -> void:
 	_check(primer.debug_shown_ids == ["primer_mark", "primer_jam"],
 		"hero rail teaches before enemy rail (saw %s)" % str(primer.debug_shown_ids))
 
+	# In-flight dedupe: TWO units raise the same icon in one moment — one drain
+	# teaches the lesson ONCE (2026-07-12 DoD recapture found it showing twice;
+	# this case fails without the _fired_params check in _flush).
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
+	primer.notice_rolled_ability({"shield": 4}, "hero", "h1")   # self marker
+	primer.notice_rolled_ability({"shield": 5}, "hero", "h2")   # self marker again
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_shown_ids == ["primer_icon_self"],
+		"same icon from two units teaches once per drain (saw %s)" % str(primer.debug_shown_ids))
+
 	# ── 8) Glyph identity tags (Phase 1): every icon TextureRect carries its
 	# pip_icon_key meta, so the primer spotlights ONE glyph, never the row.
 	# This is the shield+self case from Kev's screenshot — both individually
@@ -248,6 +283,52 @@ func _run() -> void:
 	_collect_icon_metas(bonus_group, metas)
 	_check(metas == ["damage", "freeze"], "dmg+condition pip exposes kind and condition identities (saw %s)" % str(metas))
 	bonus_group.free()
+
+	# ── 9) GHOST-MATCH regression (Bug-1 round 2 — this test FAILS on the
+	# original bug): the rail readout is an alpha-0 data holder whose tagged
+	# glyph nodes are ghosts with live rects; the resolver must land on the
+	# VISIBLE die-docked plate's glyph (effective alpha > 0), never the ghost.
+	var stub := StubBattleScene.new()
+	root.add_child(stub)
+	var ghost_holder := Control.new()
+	ghost_holder.modulate = Color(1, 1, 1, 0)  # exactly how AbilityReadout hides
+	ghost_holder.position = Vector2(100, 100)
+	ghost_holder.size = Vector2(300, 104)  # the rail readout reserves real space
+	var ghost_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "8", "duration": 0, "scope": "self", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	ghost_holder.add_child(ghost_group)
+	root.add_child(ghost_holder)
+	var plate := Control.new()
+	plate.position = Vector2(400, 900)  # far from the ghost — intersects() discriminates
+	var plate_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "8", "duration": 0, "scope": "self", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	plate.add_child(plate_group)
+	root.add_child(plate)
+	stub.hero_card_views = [{"state": {"id": "h9"}, "readout": ghost_holder, "card": ghost_holder}]
+	stub.plate = plate
+	ghost_group.size = ghost_group.get_combined_minimum_size()
+	plate_group.size = plate_group.get_combined_minimum_size()
+	await process_frame
+	await process_frame
+	var primer2 = KeywordPrimerScript.new()
+	root.add_child(primer2)
+	primer2.setup(stub)
+	var picked: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
+	var plate_glyph: TextureRect = _find_tagged(plate, "self")
+	var ghost_glyph: TextureRect = _find_tagged(ghost_holder, "self")
+	_check(plate_glyph != null and ghost_glyph != null, "ghost-match rig built both trees")
+	_check(picked.size != Vector2.ZERO, "resolver returns a rect with a plate present")
+	if plate_glyph != null and ghost_glyph != null:
+		_check(picked.intersects(plate_glyph.get_global_rect()),
+			"resolved rect intersects a glyph with effective alpha > 0 (the visible plate)")
+		_check(not picked.intersects(ghost_glyph.get_global_rect()),
+			"resolved rect does NOT land on the alpha-0 ghost glyph")
+	# With NO plate (pre-roll), the chain falls back to readout row -> card.
+	stub.plate = null
+	var fallback: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
+	_check(fallback.size != Vector2.ZERO, "plate-less fallback still resolves (row/card chain intact)")
 
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()

@@ -125,8 +125,12 @@ signal:
   taught (SpotlightLayer `opts["glyph"]`, keyed from the sighting's icon or the
   trigger param) ahead of the text — "this marker" is meaningless when two
   markers are on screen. The spotlight hole is the icon's own glyph node
-  (`pip_icon_key` meta, tagged in `EffectPip.build_group`), never the whole
-  readout row; fallback chain glyph → row → card.
+  (`pip_icon_key` meta, tagged in `EffectPip.build_group`), searched in the
+  **visible die-docked plate** (`battle_scene.get_die_tag_plate`) — NEVER the
+  rail `AbilityReadout`, which is an alpha-0 data holder whose glyph nodes are
+  ghosts with live rects (the 2026-07-12 wrong-node bug: a ghost match ringed
+  empty screen space). `_find_glyph_rect` requires **effective alpha > 0**, not
+  `.visible`. Fallback chain: plate glyph → whole plate → readout row → card.
 - **Suppression:** never during the scripted tutorial, headless mode, or auto
   battle. `requires_feature` entries skip silently when the feature is absent.
 - **Failure safety:** if the target can't resolve or the layer is dead, the

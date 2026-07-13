@@ -319,7 +319,15 @@ func _flush() -> void:
 	var candidates: Array = _pending.duplicate()
 	_pending.clear()
 	for candidate_variant in candidates:
-		await _try_show(candidate_variant as Dictionary)
+		var candidate: Dictionary = candidate_variant
+		# In-flight dedupe: two units can queue the SAME key in one moment
+		# (e.g. two self-marked pips on one turn) — both enter _pending before
+		# the first shows, and _queue's seen-check ran too early to stop the
+		# second. Without this, one drain teaches the same lesson twice in a
+		# row (found by the 2026-07-12 DoD recapture).
+		if _fired_params.has(str(candidate.get("key", ""))):
+			continue
+		await _try_show(candidate)
 
 
 # The guarded fire path: every failure skips silently (returns false, primer
@@ -408,13 +416,17 @@ func _resolve_unit_card_rect(context: Dictionary) -> Rect2:
 	return Rect2()
 
 
-# The resolving unit's effect-pip readout. Glyph precision (Kev 2026-07-12):
-# when the context names the icon being taught, the spotlight hole is THAT
-# glyph's own node (found by its `pip_icon_key` meta, tagged in
-# EffectPip.build_group) — never the whole readout row, which can hold several
-# icons and leaves the player guessing which one the popup is about. Fallback
-# chain: glyph → readout row → card (failure-safety contract). If the same icon
-# appears in two pip groups, first match wins — any instance teaches the lesson.
+# The resolving unit's VISIBLE pip surface. Glyph precision (Kev 2026-07-12,
+# round 2): the spotlight hole is the taught icon's own glyph node — found by
+# its `pip_icon_key` meta — searched in the DIE-DOCKED PLATE the player
+# actually sees (battle_scene.get_die_tag_plate), NEVER the rail
+# AbilityReadout: that readout is an alpha-0 data holder whose glyph nodes are
+# ghosts with live layout rects, and matching them ringed empty screen space
+# (the 2026-07-12 wrong-node bug — my ghost-match passed .visible because
+# alpha-0 modulate doesn't flip visibility; _find_glyph_rect now requires
+# effective alpha > 0, killing the whole class). Fallback chain: plate glyph →
+# whole plate → readout row → card (failure-safety contract). Same icon twice:
+# first match wins — any instance teaches the lesson.
 func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 	var views: Variant = _scene.get("hero_card_views") if str(context.get("side", "")) == "hero" else _scene.get("enemy_card_views")
 	if not (views is Array):
@@ -424,26 +436,50 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 		var state: Dictionary = view.get("state", {})
 		if str(state.get("id", "")) != str(context.get("target_id", "")):
 			continue
-		var readout: Node = view.get("readout", null) as Node
 		var icon: String = str(context.get("icon", ""))
-		if icon != "" and readout != null:
-			var glyph: Rect2 = _find_glyph_rect(readout, icon)
-			if glyph.size != Vector2.ZERO:
-				return glyph
-		var r: Rect2 = _control_rect(readout)
+		var plate: Control = null
+		if _scene.has_method("get_die_tag_plate"):
+			plate = _scene.call("get_die_tag_plate", str(context.get("side", "")), str(context.get("target_id", "")))
+		if plate != null:
+			if icon != "":
+				var glyph: Rect2 = _find_glyph_rect(plate, icon)
+				if glyph.size != Vector2.ZERO:
+					return glyph
+			var plate_rect: Rect2 = _control_rect(plate)
+			if plate_rect.size != Vector2.ZERO:
+				return plate_rect
+		var r: Rect2 = _control_rect(view.get("readout", null))
 		return r if r.size != Vector2.ZERO else _control_rect(view.get("card", null))
 	return Rect2()
 
 
-# First visible TextureRect under `root` whose pip_icon_key meta matches.
+# First TextureRect under `root` whose pip_icon_key meta matches AND that is
+# actually rendered: effective alpha > 0 through the whole ancestor modulate
+# chain. `.visible` is NOT sufficient — an alpha-0 ancestor (the rail readout)
+# leaves visible=true on ghost nodes.
 func _find_glyph_rect(root: Node, icon: String) -> Rect2:
 	if root is TextureRect and root.has_meta("pip_icon_key") and str(root.get_meta("pip_icon_key")) == icon:
-		return _control_rect(root)
+		if _effective_alpha(root) > 0.0:
+			return _control_rect(root)
 	for child in root.get_children():
 		var found: Rect2 = _find_glyph_rect(child, icon)
 		if found.size != Vector2.ZERO:
 			return found
 	return Rect2()
+
+
+func _effective_alpha(node: Node) -> float:
+	# self_modulate does NOT propagate to children — count it on the node
+	# itself only; ancestors contribute their (inherited) modulate alpha.
+	var alpha: float = 1.0
+	if node is CanvasItem:
+		alpha = (node as CanvasItem).self_modulate.a
+	var walker: Node = node
+	while walker != null:
+		if walker is CanvasItem:
+			alpha *= (walker as CanvasItem).modulate.a
+		walker = walker.get_parent()
+	return alpha
 
 
 # The protocol action button (param: nudge / reroll / set). Nudge/Set live in

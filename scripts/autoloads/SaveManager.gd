@@ -1,11 +1,15 @@
 # Persistent player profile: user://save.json, save_version 1.
 # Holds cross-run state only (tutorial flag, lifetime stats, boss-relic
 # unlocks, reserved settings). Run state stays in GameState.
-# Headless runs (audits, smoke tests, CI) keep the profile in memory and
-# never touch disk, so gates can't pollute a developer's save.
+# PROFILE ISOLATION (Kev 2026-07-12, see DevContext): in any dev context —
+# headless (audits, smokes, CI) OR a windowed `-s` rig (captures, diagnostics)
+# — the profile resolves to DEV_SAVE_PATH, never the real save. Headless
+# additionally stays memory-only (belt AND braces). The old headless-only
+# guard let a windowed capture rig wipe and repopulate the real primer ledger.
 extends Node
 
 const SAVE_PATH := "user://save.json"
+const DEV_SAVE_PATH := "user://dev_profile_save.json"  # rigs/tests land here, never the real profile
 const SAVE_VERSION := 1
 
 # First clear of an operation unlocks its boss's relic (drafted as a
@@ -36,6 +40,7 @@ const MAX_HERO_LADDER_RUNG := 5
 # ladder rung's condition.
 var data: Dictionary = {}
 var _disk_enabled: bool = true
+var _save_path: String = SAVE_PATH
 # Entries awarded by the most recent record_run_finished(), consumed by the
 # run-end UI via check_new_unlocks(). Shape: [{type, id, display_name}].
 var _run_end_unlocks: Array = []
@@ -43,6 +48,9 @@ var _run_end_unlocks: Array = []
 
 func _ready() -> void:
 	_disk_enabled = DisplayServer.get_name() != "headless"
+	if DevContext.is_isolated():
+		_save_path = DEV_SAVE_PATH
+		print("[SaveManager] dev context — profile isolated to %s (real save untouchable)" % _save_path)
 	load_save()
 
 
@@ -77,11 +85,11 @@ func default_data() -> Dictionary:
 
 func load_save() -> void:
 	data = default_data()
-	if not _disk_enabled or not FileAccess.file_exists(SAVE_PATH):
+	if not _disk_enabled or not FileAccess.file_exists(_save_path):
 		return
-	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var file: FileAccess = FileAccess.open(_save_path, FileAccess.READ)
 	if file == null:
-		push_warning("[SaveManager] Could not open %s for reading." % SAVE_PATH)
+		push_warning("[SaveManager] Could not open %s for reading." % _save_path)
 		return
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
@@ -147,9 +155,9 @@ func _string_array(value: Variant) -> Array:
 func save() -> void:
 	if not _disk_enabled:
 		return
-	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file: FileAccess = FileAccess.open(_save_path, FileAccess.WRITE)
 	if file == null:
-		push_warning("[SaveManager] Could not open %s for writing." % SAVE_PATH)
+		push_warning("[SaveManager] Could not open %s for writing." % _save_path)
 		return
 	file.store_string(JSON.stringify(data, "  "))
 	file.close()

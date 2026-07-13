@@ -14,6 +14,7 @@ Kev's sign-off: commit message must contain BASELINE-APPROVED-BY-KEV — see
 docs/INVARIANTS.md #9).
 """
 import argparse
+import hashlib
 import re
 import json
 import os
@@ -53,6 +54,40 @@ GATES = [
     ("auto-target preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/auto_target_preview_test.gd"], "[AUTO_PREVIEW] PASS", False),
     ("item burn preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/item_burn_preview_test.gd"], "[ITEM_BURN] PASS", False),
 ]
+
+
+# ── Profile isolation (Kev 2026-07-12) ──────────────────────────────────────
+# No test or rig may touch the REAL player profile. DevContext redirects every
+# dev-context launch to dev_* scratch files (structural); this gate proves it
+# stays that way: fingerprint the real files before the suite, fail on any
+# change after. Precedent: a windowed capture rig wiped and repopulated the
+# real primer ledger, which then presented as a game bug.
+REAL_PROFILE_FILES = ["save.json", "settings.cfg"]
+
+
+def _real_profile_dir() -> Path:
+    return Path(os.environ.get("APPDATA", "")) / "Godot" / "app_userdata" / "Overload Protocol"
+
+
+def profile_fingerprint() -> dict:
+    fp = {}
+    base = _real_profile_dir()
+    for name in REAL_PROFILE_FILES:
+        p = base / name
+        fp[name] = hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
+    return fp
+
+
+def check_profile_isolation(before: dict) -> bool:
+    print("── profile isolation ...", flush=True)
+    after = profile_fingerprint()
+    dirty = [name for name in before if before[name] != after[name]]
+    if dirty:
+        print(f"   FAIL — the suite WROTE the real player profile: {', '.join(dirty)}")
+        print("   A test or rig escaped DevContext isolation (scripts/autoloads/dev_context.gd).")
+        return False
+    print("   PASS")
+    return True
 
 
 def run_gate(name: str, cmd: list, needle: str, use_shell: bool) -> bool:
@@ -122,7 +157,10 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=300)
     args = ap.parse_args()
 
+    profile_before = profile_fingerprint()
     failed = [name for name, cmd, needle, sh in GATES if not run_gate(name, cmd, needle, sh)]
+    if not check_profile_isolation(profile_before):
+        failed.append("profile isolation")
     if failed:
         print(f"\nGATE FAILED: {', '.join(failed)}")
         return 1

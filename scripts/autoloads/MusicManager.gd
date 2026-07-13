@@ -328,16 +328,24 @@ func _volume_to_db(volume: float) -> float:
 	return linear_to_db(volume)
 
 
+# Profile isolation (DevContext, Kev 2026-07-12): rigs/tests read+write a
+# scratch settings file — the real user://settings.cfg is untouchable from any
+# dev context (this write previously had NO guard at all; the music smoke could
+# persist volume changes into the real settings).
+func _settings_path() -> String:
+	return "user://dev_settings.cfg" if DevContext.is_isolated() else SETTINGS_PATH
+
+
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SETTINGS_PATH) == OK:
+	if cfg.load(_settings_path()) == OK:
 		_music_enabled = bool(cfg.get_value("audio", "music_enabled", true))
 		_music_volume = clampf(float(cfg.get_value("audio", "music_volume", DEFAULT_MUSIC_VOLUME)), 0.0, 1.0)
 
 
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
-	cfg.load(SETTINGS_PATH)  # preserve other sections; ignore "not found" on first save
+	cfg.load(_settings_path())  # preserve other sections; ignore "not found" on first save
 	cfg.set_value("audio", "music_enabled", _music_enabled)
 	cfg.set_value("audio", "music_volume", _music_volume)
-	cfg.save(SETTINGS_PATH)
+	cfg.save(_settings_path())
