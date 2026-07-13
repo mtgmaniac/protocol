@@ -53,6 +53,27 @@ func _collect_icon_metas(node: Node, out: Array) -> void:
 		_collect_icon_metas(child, out)
 
 
+# Collect just the SCOPE-marker glyphs (aoe / self / target_lowest) rendered
+# under a node — the markers the de-dup rule governs.
+func _collect_scope_markers(node: Node, out: Array) -> void:
+	if node is TextureRect and node.has_meta("pip_icon_key"):
+		var k: String = str(node.get_meta("pip_icon_key"))
+		if k == "aoe" or k == "self" or k == "target_lowest":
+			out.append(k)
+	for child in node.get_children():
+		_collect_scope_markers(child, out)
+
+
+# All scope markers an ability's pips render, across every effect group.
+func _ability_scope_markers(pip_script: GDScript, raw: Dictionary, side: String) -> Array:
+	var markers: Array = []
+	for effect_variant in pip_script.effects_from_ability_raw(raw, side):
+		var group: Control = pip_script.build_group(effect_variant, pip_script.PROFILE_CARD, side)
+		_collect_scope_markers(group, markers)
+		group.free()
+	return markers
+
+
 # First tagged TextureRect for an icon, alpha-blind (test helper — used to
 # locate the ghost node the resolver must NOT pick).
 func _find_tagged(node: Node, icon: String) -> TextureRect:
@@ -433,6 +454,23 @@ func _run() -> void:
 	_check(not trap_same_frame.is_equal_approx(trap_deferred),
 		"layout trap: same-frame rect is garbage — differs from the laid-out rect (reproduces the Round-3 bug)")
 	trap_plate.free()
+
+	# ── 13) SCOPE-MARKER DE-DUP (Kev 2026-07-13 — the ECM Hiss "⊙ … ⊙" bug;
+	# this FAILS on the pre-fix producer, which stamped a marker per effect).
+	# A scope marker describes the ABILITY's targeting: at most once per scope
+	# per pip. ECM Hiss = 5 shield (self) + erb +1 (self) → two self effects,
+	# exactly ONE self marker.
+	var ecm_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "erb": 1, "erbT": 2}, "enemy")
+	_check(ecm_markers.count("self") == 1,
+		"two same-scope (self) effects emit exactly one self marker (saw %s)" % str(ecm_markers))
+	# Distinct scopes each still emit once: self shield + all-blast damage.
+	var mixed_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "dmg": 6, "blastAll": true}, "hero")
+	_check(mixed_markers.count("self") == 1 and mixed_markers.count("aoe") == 1,
+		"distinct scopes each emit exactly once — self AND all (saw %s)" % str(mixed_markers))
+	# Three self effects (defensive) still collapse to one.
+	var triple_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "heal": 4, "cloak": true}, "enemy")
+	_check(triple_markers.count("self") == 1,
+		"three same-scope effects collapse to one marker (saw %s)" % str(triple_markers))
 
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()

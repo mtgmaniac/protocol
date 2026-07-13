@@ -202,6 +202,18 @@ Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Ene
 
 **Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 
+> **Scope-marker rule (Kev 2026-07-13):** a scope marker describes the
+> **ability's** targeting, not each individual effect's. It appears **at most
+> once per scope, per pip.** If every effect on an ability shares a scope, that
+> marker is emitted once; if effects genuinely differ in scope, each distinct
+> scope is emitted once — never the same marker twice. This generalizes the
+> older "no ability uses the `all` sign twice" invariant to every scope (`self`,
+> `all`, `lowest`, and any future one). Enforced at the single producer
+> (`EffectPip.dedupe_scope_markers`, applied by `effects_from_ability_raw` /
+> `effects_from_passive`), so every surface — readout, die-docked tag, inspect,
+> first-sight primer — is de-duped once. (The ECM Hiss "`⊙ … ⊙`" bug: 5 shield
+> (self) + +1 roll (self) had stamped two self markers.)
+
 **View Battlescreen** (reward screen, Batch 5): battle_scene captures the final battle frame at victory into `GameState.last_battle_snapshot` (transient; skipped headless/auto). The reward screen shows a "VIEW BATTLESCREEN" button when a snapshot exists; it opens a read-only in-screen overlay (only RETURN is interactive) — never a scene change, so the offered rewards can't re-roll.
 Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = die tint + "JAM ≤10" marker · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
