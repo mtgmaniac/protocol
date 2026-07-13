@@ -126,13 +126,13 @@
       "scope": "global (hero data)",
       "tuning_key": "ability:avalanche/Glacier Mantle/Shatter Lance/dmg",
       "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Shatter Lance \u2192 dmg (memory-only at sim spawn)",
-      "default": 12,
+      "default": 10,
       "range": [
         6,
         20
       ],
       "step": 1,
-      "notes": "Glacier surge-band single-target damage. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+      "notes": "Glacier surge-band single-target damage (shipped Shatter Lance dmg, retuned 12→10 in Batch-1). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
     },
     {
       "id": "glacier_lance_frozen_bonus",
@@ -140,27 +140,41 @@
       "scope": "global (hero data)",
       "tuning_key": "ability:avalanche/Glacier Mantle/Shatter Lance/vsFrozenBonus",
       "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Shatter Lance \u2192 vsFrozenBonus (memory-only at sim spawn)",
-      "default": 6,
+      "default": 5,
       "range": [
         2,
         14
       ],
       "step": 1,
-      "notes": "Shatter Lance's +dmg vs frozen-die targets. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+      "notes": "Shatter Lance's +dmg vs frozen-die targets (shipped value, retuned 6→5 in Batch-1). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
     },
     {
-      "id": "glacier_aegis_shield",
+      "id": "glacier_aegis_dmg",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Aegis/shield",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Aegis \u2192 shield (memory-only at sim spawn)",
-      "default": 7,
+      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Aegis/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Aegis \u2192 dmg (memory-only at sim spawn)",
+      "default": 14,
       "range": [
-        3,
+        6,
+        20
+      ],
+      "step": 1,
+      "notes": "Glacier crit-band single-target damage. Permafrost Aegis was reworked from a squad shield into '14 dmg, +8 vs frozen' in Batch-1 (2026-07-11); this knob replaced glacier_aegis_shield, whose 'shield' field no longer exists on the ability. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "glacier_aegis_frozen_bonus",
+      "kind": "ability_field",
+      "scope": "global (hero data)",
+      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Aegis/vsFrozenBonus",
+      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Aegis \u2192 vsFrozenBonus (memory-only at sim spawn)",
+      "default": 8,
+      "range": [
+        2,
         14
       ],
       "step": 1,
-      "notes": "Glacier crit-band squad shield (rides the freezeAnyDice band). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+      "notes": "Permafrost Aegis's +dmg vs frozen-die targets (shipped value). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
     },
     {
       "id": "glacier_zero_dmg",
