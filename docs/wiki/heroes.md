@@ -235,7 +235,7 @@ Callsign ENGINEER · SUPPORT TECH · support · 50 HP · unlock: rung 1 (facilit
 
 | Zone | Roll | Ability | Eff | Keyword |
 |---|---|---|---|---|
-| recharge | 1–4 | Field Patch | 4 shield (self), +1 protocol | — |
+| recharge | 1–4 | Field Patch | ally 4 shield, +1 protocol | — |
 | strike | 5–10 | Barrier Deploy | ally 9 shield | — |
 | surge | 11–15 | Overdrive | 11 dmg | — |
 | crit | 16–19 | Missile Volley | 9 dmg (all) | — |

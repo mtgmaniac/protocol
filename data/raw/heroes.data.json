@@ -1860,7 +1860,7 @@
             4
           ],
           "name": "Field Patch",
-          "eff": "4 shield (self), +1 protocol",
+          "eff": "4 shield, +1 protocol",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1869,6 +1869,7 @@
           "dMin": 0,
           "dMax": 0,
           "shield": 4,
+          "shTgt": true,
           "gainProtocol": 1
         },
         {

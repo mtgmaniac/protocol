@@ -1,9 +1,11 @@
 # Keyword primer smoke test (headless): exercises at least one primer per
 # trigger type through the real manager pipeline (queue → flush → display →
 # persist), asserting each fires ONCE, persists as seen, and never refires —
-# plus the one-per-turn gate, priority ties, failure safety, and the
-# grandfather clause. Uses the manager's documented test seams
-# (debug_force_active / debug_auto_dismiss); display runs through the real
+# plus the FULL-DRAIN contract (Kev 2026-07-12: every unseen icon raised in a
+# turn is taught in that turn, modal sequence, enqueue/spatial order, priority
+# inert), glyph identity tagging, failure safety, and the grandfather clause.
+# Uses the manager's documented test seams (debug_force_active /
+# debug_auto_dismiss / debug_shown_ids); display runs through the real
 # SpotlightLayer (headless Godot renders Control trees fine).
 # Run: godot --headless --path . -s scripts/debug/primer_smoke_test.gd
 # Exit 0 = pass, 1 = fail.
@@ -43,6 +45,46 @@ func _check(cond: bool, label: String) -> void:
 		_errors.append(label)
 
 
+# Depth-first collection of pip_icon_key metas — mirrors the primer's glyph walk.
+func _collect_icon_metas(node: Node, out: Array) -> void:
+	if node is TextureRect and node.has_meta("pip_icon_key"):
+		out.append(str(node.get_meta("pip_icon_key")))
+	for child in node.get_children():
+		_collect_icon_metas(child, out)
+
+
+# First tagged TextureRect for an icon, alpha-blind (test helper — used to
+# locate the ghost node the resolver must NOT pick).
+func _find_tagged(node: Node, icon: String) -> TextureRect:
+	if node is TextureRect and node.has_meta("pip_icon_key") and str(node.get_meta("pip_icon_key")) == icon:
+		return node
+	for child in node.get_children():
+		var found: TextureRect = _find_tagged(child, icon)
+		if found != null:
+			return found
+	return null
+
+
+# Stand-in battle scene exposing the visible-plate lookup (Bug-1 round 2) and
+# the first-modal race (round 3): `lazy_plate` models plates that only exist
+# after _sync_die_tags runs — exactly the real _process timing, where the
+# drain's first modal resolves before any plate has been built.
+class StubBattleScene extends Node:
+	var hero_card_views: Array = []
+	var enemy_card_views: Array = []
+	var plate: Control = null
+	var lazy_plate: Control = null
+	var sync_calls: int = 0
+
+	func get_die_tag_plate(_side: String, _unit_id: String) -> Control:
+		return plate
+
+	func _sync_die_tags() -> void:
+		sync_calls += 1
+		if lazy_plate != null:
+			plate = lazy_plate
+
+
 func _run() -> void:
 	# Fresh in-memory profile (headless SaveManager never touches disk).
 	var sm: Node = root.get_node("/root/SaveManager")
@@ -62,25 +104,16 @@ func _run() -> void:
 	for key in ["die", "unit_card", "ability_pip", "footer_button", "popup_line"]:
 		primer._target_resolvers[key] = fixed_rect
 
-	# ── 1) die_status_applied: fires once, persists ─────────────────────────────
+	# ── 1) die_status_applied fires + FULL DRAIN: two first-sightings the SAME
+	# turn are BOTH taught that turn, in enqueue order (no cap, no deferral).
 	primer.on_turn_started()
 	primer.notice_event({"type": "jam", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_jam"), "die_status_applied (jam) fires and persists")
-	_check(primer.debug_show_count == 1, "jam displayed exactly once")
-
-	# One per turn: a second first-sighting the SAME turn shows nothing and is
-	# NOT marked seen.
-	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
-	await primer.flush_at_group_boundary()
-	_check(not sm.call("is_primer_seen", "primer_freeze"), "second sighting same turn NOT marked seen")
-	_check(primer.debug_show_count == 1, "one primer per turn (no second display)")
-
-	# Next natural occurrence (new turn): it fires.
-	primer.on_turn_started()
-	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
-	await primer.flush_at_group_boundary()
-	_check(sm.call("is_primer_seen", "primer_freeze"), "deferred sighting fires on its next occurrence")
+	_check(sm.call("is_primer_seen", "primer_freeze"), "second sighting same turn ALSO taught (full drain)")
+	_check(primer.debug_show_count == 2, "both primers displayed in the same turn")
+	_check(primer.debug_shown_ids == ["primer_jam", "primer_freeze"], "drain runs in enqueue order")
 
 	# Never refires: jam again on a fresh turn shows nothing new.
 	primer.on_turn_started()
@@ -100,40 +133,32 @@ func _run() -> void:
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_chain"), "attack_keyword_resolved (chain) fires and persists")
 
-	# ── 4) same-priority tie-break (protocol primers were CUT 2026-07-10 — the
-	# tutorial teaches nudge/reroll/set; keyword primers carry the tie test now).
-	# Three same-priority (30) keyword sightings in one moment: exactly ONE
-	# shows; the losers are not marked seen and fire on later turns.
+	# ── 4) FULL DRAIN, ORDER (Kev 2026-07-12): three same-moment sightings all
+	# teach in ONE turn, in enqueue order — the old cap dropped the losers.
 	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
 	primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
 	primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
 	primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
 	await primer.flush_at_group_boundary()
-	var tie_seen: int = 0
 	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
-		if sm.call("is_primer_seen", pid):
-			tie_seen += 1
-	_check(tie_seen == 1, "same-priority ties: exactly one of three shows per turn (saw %d)" % tie_seen)
-	for _round in 2:
-		primer.on_turn_started()
-		primer._fired_params.clear()
-		primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
-		primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
-		primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
-		await primer.flush_at_group_boundary()
-	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
-		_check(sm.call("is_primer_seen", pid), "%s eventually fires across turns" % pid)
+		_check(sm.call("is_primer_seen", pid), "%s taught in the turn it was raised" % pid)
+	_check(primer.debug_shown_ids == ["primer_detonate", "primer_execute", "primer_pierce"],
+		"three-candidate drain preserves enqueue order")
 
-	# Priority breaks a mixed same-moment tie: freeze-die (55) beats mark-level
-	# statuses (40) — exercised with two unseen entries queued the same moment.
+	# Priority is DEAD (ruling 2026-07-12): cloak (json prio 40) enqueued before
+	# rewrite (json prio 50) shows FIRST — spatial/enqueue order, no sort.
 	sm.call("dev_reset_primers")
 	primer._fired_params.clear()
 	primer.on_turn_started()
-	primer.notice_event({"type": "cloak", "side": "enemy", "target_id": "e1"})   # priority 40
-	primer.notice_event({"type": "rewrite", "side": "enemy", "target_id": "e1"}) # priority 50
+	primer.debug_shown_ids.clear()
+	primer.notice_event({"type": "cloak", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "rewrite", "side": "enemy", "target_id": "e1"})
 	await primer.flush_at_group_boundary()
-	_check(sm.call("is_primer_seen", "primer_rewrite"), "higher priority wins the same-moment tie")
-	_check(not sm.call("is_primer_seen", "primer_cloak"), "lower priority loser not marked seen")
+	_check(primer.debug_shown_ids == ["primer_cloak", "primer_rewrite"],
+		"priority field is inert — enqueue order wins over json priority")
+	_check(sm.call("is_primer_seen", "primer_cloak") and sm.call("is_primer_seen", "primer_rewrite"),
+		"both mixed-priority sightings taught in the same turn")
 
 	# ── 5) rampage + shield-wipe events route to their keyword primers ──────────
 	# (Personality primers were cut 2026-07-10 — attack styles aren't tutorialized.)
@@ -181,16 +206,23 @@ func _run() -> void:
 	primer.notice_rolled_ability({"heal": 6, "healLowest": true}, "hero", "h1")
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_icon_target_lowest"), "target-lowest marker fires on an exempt-heal pip")
-	# ±roll icon from an ENEMY ability (ECM Hiss-style erb self roll-buff).
+	# ±roll icon from an ENEMY ability (ECM Hiss-style erb self roll-buff): the
+	# pip carries TWO teachable icons (roll_up kind + self marker) — full drain
+	# teaches both in that turn, pips left-to-right (kind before marker).
 	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
 	primer.notice_rolled_ability({"erb": 2, "erbT": 2}, "enemy", "e1")
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_icon_roll"), "enemy ±roll icon fires the roll primer")
-	# The targets-self marker on an exempt shield pip.
+	_check(sm.call("is_primer_seen", "primer_icon_self"), "the self marker on the same pip drains the same turn")
+	_check(primer.debug_shown_ids == ["primer_icon_roll", "primer_icon_self"],
+		"within one pip the kind icon teaches before the scope marker")
+	# Seen icons never refire through the roll path either.
 	primer.on_turn_started()
+	var shows_after_erb: int = primer.debug_show_count
 	primer.notice_rolled_ability({"shield": 4}, "hero", "h1")
 	await primer.flush_at_group_boundary()
-	_check(sm.call("is_primer_seen", "primer_icon_self"), "targets-self marker fires on an exempt-shield pip")
+	_check(primer.debug_show_count == shows_after_erb, "already-seen self marker does not refire on a new pip")
 	# Protocol-gain pip (Field Patch-style gainProtocol) fires the protocol primer.
 	primer.on_turn_started()
 	primer.notice_rolled_ability({"gainProtocol": 1}, "hero", "h1")
@@ -204,6 +236,203 @@ func _run() -> void:
 	primer.notice_rolled_ability({"dmg": 10, "vsFrozenBonus": 5}, "hero", "h1")
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_freeze"), "vs-frozen bonus icon fires the freeze primer")
+
+	# THREE unseen icons on one ability drain in one turn, pips left-to-right:
+	# dmg effect contributes [aoe marker, freeze bonus], chain effect [chain].
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
+	primer.notice_rolled_ability({"dmg": 6, "chain": 2, "blastAll": true, "vsFrozenBonus": 5}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_shown_ids == ["primer_icon_aoe", "primer_freeze", "primer_chain"],
+		"three icons from one roll drain in pip order (saw %s)" % str(primer.debug_shown_ids))
+
+	# Rail order: hero sightings teach before enemy sightings raised the same
+	# turn (battle_scene reports hero states first — the written rule).
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
+	primer.notice_rolled_ability({"dmg": 5, "mark": true}, "hero", "h1")
+	primer.notice_rolled_ability({"jam": true}, "enemy", "e1")
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_shown_ids == ["primer_mark", "primer_jam"],
+		"hero rail teaches before enemy rail (saw %s)" % str(primer.debug_shown_ids))
+
+	# In-flight dedupe: TWO units raise the same icon in one moment — one drain
+	# teaches the lesson ONCE (2026-07-12 DoD recapture found it showing twice;
+	# this case fails without the _fired_params check in _flush).
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
+	primer.notice_rolled_ability({"shield": 4}, "hero", "h1")   # self marker
+	primer.notice_rolled_ability({"shield": 5}, "hero", "h2")   # self marker again
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_shown_ids == ["primer_icon_self"],
+		"same icon from two units teaches once per drain (saw %s)" % str(primer.debug_shown_ids))
+
+	# ── 8) Glyph identity tags (Phase 1): every icon TextureRect carries its
+	# pip_icon_key meta, so the primer spotlights ONE glyph, never the row.
+	# This is the shield+self case from Kev's screenshot — both individually
+	# addressable. (Runtime load, NOT the EffectPip class_name — the parse-time
+	# reference would compile effect_pip.gd before autoloads exist: -s gotcha.)
+	var EffectPipScript: GDScript = load("res://scripts/ui/effect_pip.gd")
+	var tag_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "4", "duration": 0, "scope": "self", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	var metas: Array = []
+	_collect_icon_metas(tag_group, metas)
+	_check(metas == ["shield", "self"], "shield+self pip exposes both glyph identities (saw %s)" % str(metas))
+	tag_group.free()
+	var bonus_group: Control = EffectPipScript.build_group(
+		{"kind": "dmg", "value": "10", "duration": 0, "scope": "", "bonus": "+5", "bonus_icon": "freeze"},
+		EffectPipScript.PROFILE_CARD)
+	metas = []
+	_collect_icon_metas(bonus_group, metas)
+	_check(metas == ["damage", "freeze"], "dmg+condition pip exposes kind and condition identities (saw %s)" % str(metas))
+	bonus_group.free()
+
+	# ── 8b) Field Patch retarget (2026-07-12): targets ANY ally — the shield
+	# pip carries NO self marker (this check FAILS on the pre-fix self-only
+	# data, where the derived scope was "self").
+	var dm_units: Node = root.get_node("/root/DataManager")
+	var eng: Resource = dm_units.call("get_unit", "engineer")
+	var fp_raw: Dictionary = {}
+	for range_variant in eng.get("dice_ranges"):
+		var range_entry: Dictionary = range_variant
+		if str(range_entry.get("ability_name", "")) == "Field Patch":
+			fp_raw = range_entry.get("raw", {})
+	_check(bool(fp_raw.get("shTgt", false)), "Field Patch is a targeted ally shield (shTgt)")
+	var fp_scopes: Array = []
+	for fp_effect_variant in EffectPipScript.effects_from_ability_raw(fp_raw, "hero"):
+		fp_scopes.append(str((fp_effect_variant as Dictionary).get("scope", "")))
+	_check(not fp_scopes.has("self"), "Field Patch pip carries no self marker (saw scopes %s)" % str(fp_scopes))
+
+	# ── 9) GHOST-MATCH regression (Bug-1 round 2 — this test FAILS on the
+	# original bug): the rail readout is an alpha-0 data holder whose tagged
+	# glyph nodes are ghosts with live rects; the resolver must land on the
+	# VISIBLE die-docked plate's glyph (effective alpha > 0), never the ghost.
+	var stub := StubBattleScene.new()
+	root.add_child(stub)
+	var ghost_holder := Control.new()
+	ghost_holder.modulate = Color(1, 1, 1, 0)  # exactly how AbilityReadout hides
+	ghost_holder.position = Vector2(100, 100)
+	ghost_holder.size = Vector2(300, 104)  # the rail readout reserves real space
+	var ghost_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "8", "duration": 0, "scope": "self", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	ghost_holder.add_child(ghost_group)
+	root.add_child(ghost_holder)
+	var plate := Control.new()
+	plate.position = Vector2(400, 900)  # far from the ghost — intersects() discriminates
+	var plate_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "8", "duration": 0, "scope": "self", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	plate.add_child(plate_group)
+	root.add_child(plate)
+	stub.hero_card_views = [{"state": {"id": "h9"}, "readout": ghost_holder, "card": ghost_holder}]
+	stub.plate = plate
+	ghost_group.size = ghost_group.get_combined_minimum_size()
+	plate_group.size = plate_group.get_combined_minimum_size()
+	await process_frame
+	await process_frame
+	var primer2 = KeywordPrimerScript.new()
+	root.add_child(primer2)
+	primer2.setup(stub)
+	var picked: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
+	var plate_glyph: TextureRect = _find_tagged(plate, "self")
+	var ghost_glyph: TextureRect = _find_tagged(ghost_holder, "self")
+	_check(plate_glyph != null and ghost_glyph != null, "ghost-match rig built both trees")
+	_check(picked.size != Vector2.ZERO, "resolver returns a rect with a plate present")
+	if plate_glyph != null and ghost_glyph != null:
+		_check(picked.intersects(plate_glyph.get_global_rect()),
+			"resolved rect intersects a glyph with effective alpha > 0 (the visible plate)")
+		_check(not picked.intersects(ghost_glyph.get_global_rect()),
+			"resolved rect does NOT land on the alpha-0 ghost glyph")
+	# With NO plate at all (pre-roll, and none buildable), the chain falls back
+	# to readout row -> card (and warns — the fallback is no longer silent).
+	stub.plate = null
+	stub.lazy_plate = null
+	var fallback: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
+	_check(fallback.size != Vector2.ZERO, "plate-less fallback still resolves (row/card chain intact)")
+
+	# ── 10) FIRST-MODAL RACE (Kev 2026-07-13 — this test FAILS on the pre-fix
+	# resolver): plates build in _process one frame after reveal, so the drain's
+	# first modal resolves with ZERO plates. The resolver must self-heal by
+	# calling the scene's idempotent _sync_die_tags and re-fetching — never
+	# degrade to the row while a plate is one sync away. The lazy stub IS the
+	# race: get_die_tag_plate returns null until _sync_die_tags runs.
+	stub.plate = null
+	stub.lazy_plate = plate
+	stub.sync_calls = 0
+	var healed: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": "self"})
+	_check(stub.sync_calls >= 1, "null plate triggers a _sync_die_tags self-heal")
+	if plate_glyph != null and ghost_glyph != null:
+		_check(healed.intersects(plate_glyph.get_global_rect()),
+			"first-modal race: self-healed anchor lands on the plate glyph")
+		_check(not healed.intersects(ghost_glyph.get_global_rect()),
+			"first-modal race: self-healed anchor is not the ghost/row")
+
+	# ── 11) CATEGORY SWEEP (standing assertion, Kev 2026-07-13): every
+	# primer-capable icon category — kind, condition, scope marker — resolves to
+	# ITS OWN glyph on the plate, never a fallback link. There is no fourth
+	# category (verified 2026-07-12: pierce is a kind icon).
+	var sweep_plate := Control.new()
+	sweep_plate.position = Vector2(60, 1300)
+	var sweep_group: Control = EffectPipScript.build_group(
+		{"kind": "shield", "value": "8", "duration": 0, "scope": "self", "bonus": "+5", "bonus_icon": "freeze"},
+		EffectPipScript.PROFILE_CARD)
+	sweep_plate.add_child(sweep_group)
+	root.add_child(sweep_plate)
+	sweep_group.size = sweep_group.get_combined_minimum_size()
+	await process_frame
+	stub.plate = sweep_plate
+	stub.lazy_plate = null
+	for category_case in [["shield", "kind icon"], ["freeze", "condition icon"], ["self", "scope marker"]]:
+		var cat_icon: String = str(category_case[0])
+		var cat_label: String = str(category_case[1])
+		var cat_glyph: TextureRect = _find_tagged(sweep_plate, cat_icon)
+		_check(cat_glyph != null, "category sweep: %s (%s) glyph exists on the plate" % [cat_icon, cat_label])
+		if cat_glyph != null:
+			var cat_picked: Rect2 = primer2._resolve_ability_pip_rect({"side": "hero", "target_id": "h9", "icon": cat_icon})
+			_check(cat_picked == cat_glyph.get_global_rect(),
+				"category sweep: %s (%s) resolves to its OWN glyph, not a fallback link" % [cat_icon, cat_label])
+
+	# ── 12) SAME-FRAME LAYOUT TRAP (Kev 2026-07-13 — the Round-3 root cause,
+	# the sentence every anchor round was a variation of): a Control's children
+	# have NO real global rect in the frame they're created — container sort is
+	# deferred to end-of-frame, so a glyph reads its plate's ORIGIN until then
+	# (the screen-left anchor box). The fix defers the whole drain a frame; this
+	# test proves WHY, by reproducing the trap and its one-frame cure. The plate
+	# mirrors the real die-tag structure (Panel → CenterContainer → VBox → HBox →
+	# glyph) positioned well off-origin so a centered glyph moves visibly.
+	var trap_plate := Panel.new()
+	trap_plate.position = Vector2(600, 1500)
+	trap_plate.custom_minimum_size = Vector2(280, 100)
+	trap_plate.size = Vector2(280, 100)
+	var trap_center := CenterContainer.new()
+	trap_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	trap_plate.add_child(trap_center)
+	var trap_group: Control = EffectPipScript.build_group(
+		{"kind": "mark", "value": "", "duration": 0, "scope": "", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	trap_center.add_child(trap_group)
+	root.add_child(trap_plate)
+	# SAME FRAME — before any layout pass: garbage (glyph at the plate origin, or
+	# size-0 → empty). Either way it is NOT the laid-out rect.
+	var trap_same_frame: Rect2 = primer2._find_glyph_rect(trap_plate, "mark")
+	# DEFERRED — after a frame, container sort has run and the glyph is centered.
+	await process_frame
+	await process_frame
+	var trap_deferred: Rect2 = primer2._find_glyph_rect(trap_plate, "mark")
+	_check(trap_deferred.size != Vector2.ZERO, "layout trap: deferred glyph resolves to a real rect")
+	_check(trap_plate.get_global_rect().encloses(trap_deferred),
+		"layout trap: deferred glyph sits inside the laid-out plate")
+	_check(not trap_same_frame.is_equal_approx(trap_deferred),
+		"layout trap: same-frame rect is garbage — differs from the laid-out rect (reproduces the Round-3 bug)")
+	trap_plate.free()
 
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()

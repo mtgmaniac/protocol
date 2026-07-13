@@ -179,6 +179,10 @@ static func build_group(
 		if icon_texture != null:
 			var icon_size: int = int(profile.get("icon_size", 40))
 			var icon_rect := TextureRect.new()
+			# Identity tag (primer glyph-precision anchor, 2026-07-12): the node's
+			# rect was always live in the layout — the meta stops the ICON KEY from
+			# being discarded, so KeywordPrimer can spotlight this one glyph.
+			icon_rect.set_meta("pip_icon_key", pip_key)
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			# Box width follows the (content-cropped) glyph's aspect so the value
 			# sits at the same separation from EVERY glyph — square boxes left
@@ -211,6 +215,7 @@ static func build_group(
 		if cond_texture != null:
 			var cond_size: int = int(round(float(profile.get("icon_size", 40)) * 0.72))
 			var cond_rect := TextureRect.new()
+			cond_rect.set_meta("pip_icon_key", str(effect.get("bonus_icon", "")))
 			cond_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			cond_rect.custom_minimum_size = Vector2(_icon_box_width(cond_texture, cond_size), cond_size)
 			cond_rect.texture = cond_texture
@@ -229,6 +234,7 @@ static func build_group(
 		if marker_texture != null:
 			var marker_size: int = int(round(float(profile.get("icon_size", 40)) * 0.95))
 			var marker_rect := TextureRect.new()
+			marker_rect.set_meta("pip_icon_key", marker_key)
 			marker_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			marker_rect.custom_minimum_size = Vector2(_icon_box_width(marker_texture, marker_size), marker_size)
 			marker_rect.texture = marker_texture

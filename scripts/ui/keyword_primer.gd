@@ -11,9 +11,14 @@
 # - Triggers queue candidates; display happens at safe moments only: between
 #   battle-feedback action groups (flush_at_group_boundary, awaited by
 #   BattleFeedback) or during an idle player phase (flush_player_phase).
-# - Maximum ONE primer per turn. Additional first sightings the same turn are
-#   NOT marked seen — they fire on their next natural occurrence.
-# - Priority breaks same-moment ties (higher number wins; stable order after).
+# - FULL DRAIN (Kev 2026-07-12): every unseen icon raised in a turn is taught
+#   IN that turn — the queue drains completely, one modal at a time, tapping
+#   through each. No per-turn cap, no deferral. (The old one-per-turn throttle
+#   didn't defer the losers — `_pending.clear()` DROPPED them and hoped the
+#   icons recurred naturally; an icon that never reappeared was never taught.)
+# - Order is spatial, not priority: enqueue order == hero rail left→right,
+#   then enemy rail, pips left→right within a readout. The JSON `priority`
+#   field is inert (retained for schema compatibility only).
 # - Suppressed entirely during the scripted tutorial, headless mode, and auto
 #   battle. requires_feature entries skip silently when the feature is absent.
 # - FAILURE SAFETY: a resolver returning nothing, a missing node, or a dead
@@ -67,14 +72,25 @@ const PRESENT_FEATURES := {
 
 # Test seams (primer_smoke_test.gd only): force the manager active under
 # headless, and skip the await-tap so the scripted test can drive dismissal.
+# debug_shown_ids records the display SEQUENCE so drain-order is assertable.
 var debug_force_active: bool = false
 var debug_auto_dismiss: bool = false
 var debug_show_count: int = 0
+var debug_shown_ids: Array = []
+
+# ── Anchor render-trace (Kev 2026-07-13, observation ONLY — no behavior
+# change). When debug_anchor_trace is on, every _resolve_ability_pip_rect
+# records: the rect it returned, WHICH chain link produced it, whether the
+# self-heal ran, the frame number, the plate's node path + instance id, and a
+# weakref to the matched glyph node — so a rig can re-query the TRUE glyph rect
+# at RENDER time and catch the resolve→render gap no probe has measured yet.
+var debug_anchor_trace: bool = false
+var debug_last_resolve: Dictionary = {}
+var _debug_glyph_hit: Node = null
 
 var _scene: Node = null
 var _spot = null  # SpotlightLayer
-var _shown_this_turn: bool = false
-var _pending: Array = []          # same-moment candidates: [{primer, context}]
+var _pending: Array = []          # queued candidates: [{primer, context}]
 var _fired_params: Dictionary = {}  # "type/param" seen this battle (cheap dedupe)
 var _by_trigger: Dictionary = {}  # "type/param" -> primer entry (built once)
 
@@ -126,7 +142,8 @@ func _suppressed() -> bool:
 # ── Trigger intake (queue only — display happens at flush points) ─────────────
 
 func on_turn_started() -> void:
-	_shown_this_turn = false
+	# Defensive only: flushes drain the queue completely within the turn, so
+	# this should always find it empty already.
 	_pending.clear()
 
 
@@ -217,13 +234,6 @@ const SCOPE_MARKER_ICONS := {"all": "aoe", "self": "self", "lowest": "target_low
 func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> void:
 	if raw.is_empty():
 		return
-	var context: Dictionary = {
-		"side": side,
-		"target_id": unit_id,
-		# Bug-2: the roll sighting highlights the PIP the icon lives in, not the
-		# entry's authored anchor (which serves the mid-resolution event path).
-		"target_override": "ability_pip",
-	}
 	for effect_variant in EffectPip.effects_from_ability_raw(raw, side):
 		var effect: Dictionary = effect_variant
 		var icons: Array[String] = []
@@ -243,7 +253,16 @@ func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> vo
 				continue
 			var mapping: Variant = ICON_TRIGGERS.get(icon)
 			if mapping != null:
-				_queue(str(mapping[0]), str(mapping[1]), context)
+				_queue(str(mapping[0]), str(mapping[1]), {
+					"side": side,
+					"target_id": unit_id,
+					# Glyph-precision anchor: the roll sighting spotlights THIS
+					# icon's own glyph node (found by pip_icon_key meta), not the
+					# readout row — the entry's authored anchor serves the
+					# mid-resolution event path only.
+					"target_override": "ability_pip",
+					"icon": icon,
+				})
 
 
 # A targeting personality picked a target (enemy intents assigned).
@@ -297,20 +316,28 @@ func flush_player_phase() -> void:
 func _flush() -> void:
 	if _pending.is_empty():
 		return
-	if _shown_this_turn or _suppressed():
-		# Not marked seen — they refire on their next natural occurrence.
+	if _suppressed():
+		# Suppressed contexts (tutorial/headless/auto/opt-out): not marked seen.
 		_pending.clear()
 		return
-	# Priority breaks same-moment ties (higher first; stable for equals).
+	# FULL DRAIN (Kev 2026-07-12): every candidate shows this turn, one modal at
+	# a time, in ENQUEUE order — which is spatial: hero rail left→right, then
+	# enemy rail, pips left→right within a readout. No priority sort (it only
+	# ever existed to pick the single winner under the old cap, and would
+	# scramble the spatial order); no cap; no deferral. A failed show still
+	# skips silently without being marked seen (failure-safety contract).
 	var candidates: Array = _pending.duplicate()
 	_pending.clear()
-	candidates.sort_custom(func(a, b) -> bool:
-		return int((a["primer"] as Dictionary).get("priority", 0)) > int((b["primer"] as Dictionary).get("priority", 0)))
 	for candidate_variant in candidates:
 		var candidate: Dictionary = candidate_variant
-		if await _try_show(candidate):
-			_shown_this_turn = true
-			return
+		# In-flight dedupe: two units can queue the SAME key in one moment
+		# (e.g. two self-marked pips on one turn) — both enter _pending before
+		# the first shows, and _queue's seen-check ran too early to stop the
+		# second. Without this, one drain teaches the same lesson twice in a
+		# row (found by the 2026-07-12 DoD recapture).
+		if _fired_params.has(str(candidate.get("key", ""))):
+			continue
+		await _try_show(candidate)
 
 
 # The guarded fire path: every failure skips silently (returns false, primer
@@ -334,15 +361,25 @@ func _try_show(candidate: Dictionary) -> bool:
 	var text: String = str(entry.get("text", ""))
 	if text == "":
 		return false
+	# Copy leads with the ACTUAL glyph being taught (Kev 2026-07-12): "this
+	# marker" is meaningless when two markers are on screen — show the marker.
+	# Roll sightings carry the icon key in context; event-path primers' trigger
+	# param IS a pip-icon key (jam/freeze/mark/chain/…), so both paths render
+	# the glyph. Unknown key → null texture → the coachmark shows text only.
+	var glyph_key: String = str(context.get("icon", ""))
+	if glyph_key == "":
+		glyph_key = str(context.get("param", ""))
 	AudioManager.play_select()
 	await _spot.spotlight([rect.grow(PAD)], text, SpotlightLayerScript.CoachAnchor.AUTO, {
 		"hint": "tap to continue ▸",
 		"interactive": true,
+		"glyph": PixelUI.pip_texture_for_key(glyph_key),
 	})
 	if not debug_auto_dismiss:
 		await _spot.tapped
 	_spot.dismiss()
 	debug_show_count += 1
+	debug_shown_ids.append(str(entry.get("id", "")))
 	_fired_params[str(candidate.get("key", ""))] = true
 	SaveManager.mark_primer_seen(str(entry.get("id", "")))
 	return true
@@ -389,7 +426,17 @@ func _resolve_unit_card_rect(context: Dictionary) -> Rect2:
 	return Rect2()
 
 
-# The resolving unit's effect-pip readout (falls back to its card).
+# The resolving unit's VISIBLE pip surface. Glyph precision (Kev 2026-07-12,
+# round 2): the spotlight hole is the taught icon's own glyph node — found by
+# its `pip_icon_key` meta — searched in the DIE-DOCKED PLATE the player
+# actually sees (battle_scene.get_die_tag_plate), NEVER the rail
+# AbilityReadout: that readout is an alpha-0 data holder whose glyph nodes are
+# ghosts with live layout rects, and matching them ringed empty screen space
+# (the 2026-07-12 wrong-node bug — my ghost-match passed .visible because
+# alpha-0 modulate doesn't flip visibility; _find_glyph_rect now requires
+# effective alpha > 0, killing the whole class). Fallback chain: plate glyph →
+# whole plate → readout row → card (failure-safety contract). Same icon twice:
+# first match wins — any instance teaches the lesson.
 func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 	var views: Variant = _scene.get("hero_card_views") if str(context.get("side", "")) == "hero" else _scene.get("enemy_card_views")
 	if not (views is Array):
@@ -399,9 +446,92 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 		var state: Dictionary = view.get("state", {})
 		if str(state.get("id", "")) != str(context.get("target_id", "")):
 			continue
+		var side: String = str(context.get("side", ""))
+		var target_id: String = str(context.get("target_id", ""))
+		var icon: String = str(context.get("icon", ""))
+		var heal_ran: bool = false
+		var plate: Control = null
+		if _scene.has_method("get_die_tag_plate"):
+			plate = _scene.call("get_die_tag_plate", side, target_id)
+			if plate == null and _scene.has_method("_sync_die_tags"):
+				# Self-heal (Kev 2026-07-13, the first-modal race): plates build
+				# in _process ONE frame after readout reveal, but the drain's
+				# first modal resolves inside _do_roll's awaited flush — same
+				# frame, zero plates. _sync_die_tags is idempotent + synchronous;
+				# build the surface we need instead of degrading to the row.
+				# (The row fallback degraded so gracefully the wrong anchor
+				# shipped past the DoD screenshots and 17 green gates.)
+				_scene.call("_sync_die_tags")
+				plate = _scene.call("get_die_tag_plate", side, target_id)
+				heal_ran = true
+		if plate != null:
+			if icon != "":
+				_debug_glyph_hit = null
+				var glyph: Rect2 = _find_glyph_rect(plate, icon)
+				if glyph.size != Vector2.ZERO:
+					return _trace(glyph, "plate_glyph", context, heal_ran, plate, _debug_glyph_hit)
+			var plate_rect: Rect2 = _control_rect(plate)
+			if plate_rect.size != Vector2.ZERO:
+				if icon != "":
+					# A silent fallback is indistinguishable from no fallback
+					# firing at all (Kev 2026-07-13) — complain loudly.
+					push_warning("[KeywordPrimer] anchor fell back past the plate glyph: icon '%s' not found on %s/%s plate — ringing the WHOLE PLATE" % [icon, side, target_id])
+				return _trace(plate_rect, "whole_plate", context, heal_ran, plate, null)
+		if icon != "":
+			push_warning("[KeywordPrimer] anchor fell back past the plate: no plate for %s/%s (icon '%s') even after _sync_die_tags — ringing the readout row/card" % [side, target_id, icon])
 		var r: Rect2 = _control_rect(view.get("readout", null))
-		return r if r.size != Vector2.ZERO else _control_rect(view.get("card", null))
+		if r.size != Vector2.ZERO:
+			return _trace(r, "readout_row", context, heal_ran, null, null)
+		return _trace(_control_rect(view.get("card", null)), "card", context, heal_ran, null, null)
 	return Rect2()
+
+
+# Render-trace recorder (observation only — returns the rect unchanged).
+func _trace(rect: Rect2, link: String, context: Dictionary, heal_ran: bool, plate: Control, glyph: Node) -> Rect2:
+	if debug_anchor_trace:
+		debug_last_resolve = {
+			"icon": str(context.get("icon", "")),
+			"side": str(context.get("side", "")),
+			"target_id": str(context.get("target_id", "")),
+			"rect": rect,
+			"link": link,
+			"heal_ran": heal_ran,
+			"resolve_frame": Engine.get_process_frames(),
+			"plate_path": str(plate.get_path()) if plate != null and is_instance_valid(plate) else "",
+			"plate_id": plate.get_instance_id() if plate != null and is_instance_valid(plate) else 0,
+			"glyph_ref": weakref(glyph) if glyph != null else null,
+		}
+	return rect
+
+
+# First TextureRect under `root` whose pip_icon_key meta matches AND that is
+# actually rendered: effective alpha > 0 through the whole ancestor modulate
+# chain. `.visible` is NOT sufficient — an alpha-0 ancestor (the rail readout)
+# leaves visible=true on ghost nodes.
+func _find_glyph_rect(root: Node, icon: String) -> Rect2:
+	if root is TextureRect and root.has_meta("pip_icon_key") and str(root.get_meta("pip_icon_key")) == icon:
+		if _effective_alpha(root) > 0.0:
+			_debug_glyph_hit = root  # render-trace: which node matched (observation only)
+			return _control_rect(root)
+	for child in root.get_children():
+		var found: Rect2 = _find_glyph_rect(child, icon)
+		if found.size != Vector2.ZERO:
+			return found
+	return Rect2()
+
+
+func _effective_alpha(node: Node) -> float:
+	# self_modulate does NOT propagate to children — count it on the node
+	# itself only; ancestors contribute their (inherited) modulate alpha.
+	var alpha: float = 1.0
+	if node is CanvasItem:
+		alpha = (node as CanvasItem).self_modulate.a
+	var walker: Node = node
+	while walker != null:
+		if walker is CanvasItem:
+			alpha *= (walker as CanvasItem).modulate.a
+		walker = walker.get_parent()
+	return alpha
 
 
 # The protocol action button (param: nudge / reroll / set). Nudge/Set live in
