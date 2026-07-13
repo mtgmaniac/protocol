@@ -284,6 +284,22 @@ func _run() -> void:
 	_check(metas == ["damage", "freeze"], "dmg+condition pip exposes kind and condition identities (saw %s)" % str(metas))
 	bonus_group.free()
 
+	# ── 8b) Field Patch retarget (2026-07-12): targets ANY ally — the shield
+	# pip carries NO self marker (this check FAILS on the pre-fix self-only
+	# data, where the derived scope was "self").
+	var dm_units: Node = root.get_node("/root/DataManager")
+	var eng: Resource = dm_units.call("get_unit", "engineer")
+	var fp_raw: Dictionary = {}
+	for range_variant in eng.get("dice_ranges"):
+		var range_entry: Dictionary = range_variant
+		if str(range_entry.get("ability_name", "")) == "Field Patch":
+			fp_raw = range_entry.get("raw", {})
+	_check(bool(fp_raw.get("shTgt", false)), "Field Patch is a targeted ally shield (shTgt)")
+	var fp_scopes: Array = []
+	for fp_effect_variant in EffectPipScript.effects_from_ability_raw(fp_raw, "hero"):
+		fp_scopes.append(str((fp_effect_variant as Dictionary).get("scope", "")))
+	_check(not fp_scopes.has("self"), "Field Patch pip carries no self marker (saw scopes %s)" % str(fp_scopes))
+
 	# ── 9) GHOST-MATCH regression (Bug-1 round 2 — this test FAILS on the
 	# original bug): the rail readout is an alpha-0 data holder whose tagged
 	# glyph nodes are ghosts with live rects; the resolver must land on the
