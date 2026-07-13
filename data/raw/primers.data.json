@@ -176,6 +176,47 @@
       "text": "SUMMON: this enemy calls reinforcements into the fight.",
       "priority": 30,
       "requires_feature": null
+    },
+    {
+      "$comment": "icon_first_seen entries (Bug-2, 2026-07-12): non-keyword pip icons — the icon itself is the lesson. Fired by KeywordPrimer.notice_rolled_ability via ICON_TRIGGERS; only damage/heal/shield are exempt (HIGHLIGHT_EXEMPT_ICONS).",
+      "id": "primer_icon_aoe",
+      "trigger": { "type": "icon_first_seen", "param": "aoe" },
+      "target": "ability_pip",
+      "text": "HITS ALL: this marker means the effect applies to every unit on that side.",
+      "priority": 20,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_icon_target_lowest",
+      "trigger": { "type": "icon_first_seen", "param": "target_lowest" },
+      "target": "ability_pip",
+      "text": "TARGETS LOWEST: this effect automatically picks the lowest-HP ally.",
+      "priority": 20,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_icon_roll",
+      "trigger": { "type": "icon_first_seen", "param": "roll" },
+      "target": "ability_pip",
+      "text": "±ROLL: this unit's die rolls are shifted by that amount for the shown turns.",
+      "priority": 20,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_icon_self",
+      "trigger": { "type": "icon_first_seen", "param": "self" },
+      "target": "ability_pip",
+      "text": "TARGETS SELF: this marker means the effect applies to the unit using it.",
+      "priority": 20,
+      "requires_feature": null
+    },
+    {
+      "id": "primer_icon_protocol",
+      "trigger": { "type": "icon_first_seen", "param": "protocol" },
+      "target": "ability_pip",
+      "text": "PROTOCOL: adds to the squad's shared pool for dice actions and items.",
+      "priority": 20,
+      "requires_feature": null
     }
   ],
   "$signal_hook_examples": [

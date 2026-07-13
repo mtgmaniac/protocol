@@ -152,6 +152,51 @@ func _run() -> void:
 	await primer.flush_at_group_boundary()
 	_check(true, "signal_hook with no loaded entry does not crash")
 
+	# ── 7) Bug-2: roll sightings key on ICONS — every unseen non-exempt icon
+	# fires; damage/heal/shield never do (HIGHLIGHT_EXEMPT_ICONS is the ONE
+	# exclusion list). Enemy abilities go through the same path.
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	var exempt: Array = primer.HIGHLIGHT_EXEMPT_ICONS
+	_check(exempt.size() == 3 and exempt.has("damage") and exempt.has("heal") and exempt.has("shield"),
+		"exclusion list is exactly damage/heal/shield")
+	# Exempt-only pip (plain damage): never highlights.
+	primer.on_turn_started()
+	var shows_before: int = primer.debug_show_count
+	primer.notice_rolled_ability({"dmg": 10}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_show_count == shows_before, "exempt-only pip (damage) never highlights")
+	# A keyword icon on the same pip fires (unified ledger with the event path).
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"dmg": 6, "chain": 2}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_chain"), "roll-sighted chain icon fires the chain primer")
+	# The hits-all MARKER on an otherwise-exempt damage pip fires the aoe primer.
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"dmg": 12, "blastAll": true}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_icon_aoe"), "hits-all marker fires on an exempt-damage pip")
+	# The targets-lowest marker on an exempt heal pip.
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"heal": 6, "healLowest": true}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_icon_target_lowest"), "target-lowest marker fires on an exempt-heal pip")
+	# ±roll icon from an ENEMY ability (ECM Hiss-style erb self roll-buff).
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"erb": 2, "erbT": 2}, "enemy", "e1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_icon_roll"), "enemy ±roll icon fires the roll primer")
+	# The targets-self marker on an exempt shield pip.
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"shield": 4}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_icon_self"), "targets-self marker fires on an exempt-shield pip")
+	# Protocol-gain pip (Field Patch-style gainProtocol) fires the protocol primer.
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"gainProtocol": 1}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_icon_protocol"), "protocol-gain pip fires the protocol primer")
+
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()
 	primer.on_turn_started()

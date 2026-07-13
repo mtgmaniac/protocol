@@ -98,6 +98,21 @@ backend number.
 ### Data field glossary
 `dmg` · `burn`+`burnT` · `heal`(+`healTgt`/`healAll`/`healLowest`) · `shield`(+`shieldAll`/`shTgt`/`shieldLowest`) · `rfe`+`rfT`(+`rfeAll`) · `rfm`+`rfmT`(+`rfmTgt`) · `ignSh` (pierce) · `blastAll` · `cloak` · `ward`(+`wardTgt`; displayed Firewall) · `taunt` / `enemySelfTaunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` (+`freeze_flavor`). **Max ONE manually-picked component per hero ability** (audit-enforced).
 
+**⚠ Every effect field needs a pip branch (2026-07-12):** the battle readout strip
+renders PIPS, not eff text — an effect that exists in an ability's eff string but has
+no branch in `EffectPip.effects_from_ability_raw` is **invisible to the player in
+battle and unteachable by the primer system** (primers key on rendered icons).
+Precedent: `gainProtocol` was in four eff strings ("+N protocol") but had no pip
+branch — Field Patch, a starting-trio unit whose job is teaching the Protocol
+economy, showed no protocol pip at all until the 2026-07-12 fix. **When adding a new
+effect field: add the `effects_from_ability_raw` branch in the same change.** The
+one KNOWN remaining gap (flagged, pending design ruling): `vsFrozenBonus` (Shatter
+Lance "+5 vs frozen", Permafrost Aegis "+8 vs frozen") — the base dmg pip renders
+but the conditional bonus lives only in eff text; a conditional-modifier pip has no
+notation yet. Enemy ability fields are fully covered; gear/relic passives are a
+different pipeline (cards display their desc text, and unmatched types fall back to
+a generic tag).
+
 ### Keyword engine (combat_manager.gd handlers ↔ keywords.data.json ↔ EffectPip codes)
 
 | Keyword | Pip | Rule (verified) |

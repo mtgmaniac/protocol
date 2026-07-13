@@ -39,10 +39,18 @@ Worked example — suppose Rampage needs a primer when its chip first appears:
 3. `npm run validate-data` (schema + unique-id + no-signal_hook-in-loaded checks).
 4. Run `scripts/debug/primer_smoke_test.gd` and the flow smoke.
 
-**Roll-time sighting (Kev 2026-07-10):** every keyword on a revealed roll queues its
-primer immediately after the dice settle (`KeywordPrimer.notice_rolled_ability`, mapped
-by `RAW_FIELD_TRIGGERS`), so the tip shows BEFORE the player commits — the event-stream
-triggers below remain as the mid-resolution fallback. Players can disable ability
+**Roll-time sighting (Kev 2026-07-10; icon-keyed Bug-2 rework 2026-07-12):** when a
+revealed roll picks an ability, `KeywordPrimer.notice_rolled_ability` resolves the
+ICONS its pip readout actually renders (`EffectPip.effects_from_ability_raw` → kind
+icon + scope marker per effect, both sides — enemy rolls included) and queues a primer
+for every not-yet-seen icon via `ICON_TRIGGERS`, so the tip shows BEFORE the player
+commits. **The ONE exclusion list is `HIGHLIGHT_EXEMPT_ICONS` = damage / heal / shield**
+(self-evident; the tutorial covers them) — a pip whose icons are all exempt never
+highlights; any non-exempt icon on it does. Roll sightings anchor to the pip readout
+(`target_override`), and the event-stream triggers below remain as the mid-resolution
+fallback with their authored anchors. An icon mapped in `ICON_TRIGGERS` but with no
+loaded JSON entry skips silently — authoring the entry is the whole job of turning it
+on (all mapped icons are authored as of 2026-07-12). Players can disable ability
 primers entirely in Help → Settings → Tutorials (`ability_primers_enabled`).
 
 ### Trigger types (implemented)
@@ -51,7 +59,8 @@ primers entirely in Help → Settings → Tutorials (`ability_primers_enabled`).
 |---|---|---|
 | `die_status_applied` | jam / freeze / rewrite / hijack | the die status first lands on ANY die, either side |
 | `status_applied` | mark / firewall / cloak / taunt / burn / spike / accrete | the status first appears on any unit card |
-| `attack_keyword_resolved` | chain / detonate / execute / breach / pierce / leech / siphon / revive / rampage / pack_bonus / summon | the keyword first visibly resolves in the feedback stream, friendly or enemy (`wipe_shields` events also route to the breach primer — same rule). Basics (damage/heal/shield/roll/protocol/aoe) are deliberately unprimed — the tutorial covers them |
+| `attack_keyword_resolved` | chain / detonate / execute / breach / pierce / leech / siphon / revive / rampage / pack_bonus / summon | the keyword first visibly resolves in the feedback stream, friendly or enemy (`wipe_shields` events also route to the breach primer — same rule) |
+| `icon_first_seen` | aoe / target_lowest / roll / self / protocol | a non-keyword pip icon first appears on a revealed roll — the icon itself is the lesson (Bug-2, 2026-07-12). Only damage/heal/shield are exempt (`HIGHLIGHT_EXEMPT_ICONS`) — do not re-add them |
 | `protocol_action_affordable` | *(no loaded entries)* | seam kept; the nudge/reroll/set primers were CUT 2026-07-10 — the scripted tutorial teaches them |
 | `personality_assigned` | *(no loaded entries)* | trigger plumbing kept; the four attack-style primers were CUT 2026-07-10 (Kev: not tutorial material — the unit popup's TARGETING line remains the reference) |
 | `signal_hook` | any signal name | reserved seam — see below; no loaded entries yet |
@@ -95,7 +104,7 @@ signal:
 - Current wording law: Firewall (not Ward), Taunt (Lure is dead), Jam cap 10,
   two-clause Cloak, freeze = repeat, corrected Pierce/Breach sentences.
 - Schema caps text at 90 chars; the audit of last resort is a human squint at
-  450×1000.
+  540×1200.
 
 ## Behavior semantics (what the manager guarantees)
 

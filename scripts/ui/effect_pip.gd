@@ -273,6 +273,14 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		# Defensive: a heal-lowest with no amount still reads as a lowest-target heal.
 		_append_effect(effects, "heal", "", 0, "lowest")
 
+	# Protocol gain (Field Patch, Scorched Earth, Bias Charge, Meltdown Protocol):
+	# the eff strings all say "+N protocol", so the readout renders the pip too
+	# (Bug-2 follow-up 2026-07-12 — also what lets the protocol icon primer fire
+	# on its first roll sighting). No scope: the pool is squad-shared.
+	var gain_protocol: int = int(raw.get("gainProtocol", 0))
+	if gain_protocol > 0:
+		_append_effect(effects, "protocol", "+%d" % gain_protocol)
+
 	var rfe: int = int(raw.get("rfe", 0))
 	if rfe > 0:
 		var rfe_scope: String = "all" if bool(raw.get("rfeAll", false)) else ""

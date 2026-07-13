@@ -148,68 +148,97 @@ func notice_event(event: Dictionary) -> void:
 # entries since 2026-07-10 — the tutorial teaches nudge/reroll/set — but the
 # seam stays for future protocol mechanics.)
 func notice_protocol_affordability(protocol_points: int) -> void:
-	var costs: Dictionary = {"nudge": 1, "reroll": 2, "set": 3}
+	# Costs mirror battle_engine.gd (NUDGE 1, REROLL 2, SET_DIE_COST 4). Keep in sync.
+	var costs: Dictionary = {"nudge": 1, "reroll": 2, "set": 4}
 	for action_id in costs.keys():
 		if protocol_points >= int(costs[action_id]):
 			_queue("protocol_action_affordable", str(action_id), {"param": str(action_id)})
 
 
-# Raw ability field → the primer trigger it teaches. Kev 2026-07-10: keywords
-# prime the FIRST time they appear on a revealed ROLL — before the player
-# commits — not mid-resolution. The event-stream triggers stay as the fallback
-# for effects that never surface on a readout.
-const RAW_FIELD_TRIGGERS := {
-	"burn": ["status_applied", "burn"],
-	"mark": ["status_applied", "mark"],
-	"ward": ["status_applied", "firewall"],
-	"cloak": ["status_applied", "cloak"],
-	"taunt": ["status_applied", "taunt"],
-	"enemySelfTaunt": ["status_applied", "taunt"],
-	"spike": ["status_applied", "spike"],
+# NEVER highlight these three — they are self-evident and the tutorial covers
+# them. This is the ONE exclusion list (Bug-2, Kev 2026-07-12): every OTHER
+# not-yet-seen icon on a revealed roll fires its primer. Do NOT "fix" damage/
+# heal/shield back in later — a pip whose icons are all exempt must never
+# highlight. (Keys are PixelUI pip-icon keys, i.e. what pip_key_for_effect
+# returns — "dmg" has already normalized to "damage" by then.)
+const HIGHLIGHT_EXEMPT_ICONS: Array[String] = ["damage", "heal", "shield"]
+
+# Pip-icon key → the primer trigger it teaches (Bug-2 rework, Kev 2026-07-12):
+# roll sightings key on the ICONS the readout actually renders, not on raw JSON
+# field names — the old RAW_FIELD_TRIGGERS map structurally couldn't see icons
+# that aren't raw fields (the hits-all marker, target-lowest, ±roll). Keyword
+# icons route to their existing primer keys so the seen-ledger and the
+# event-stream fallback stay unified; marker/scope icons get their own
+# icon_first_seen entries. Both roll icons teach ONE lesson (same gold d20).
+# An icon with no loaded primer entry skips silently (the _queue null path) —
+# the mechanism is ready the moment its JSON entry is authored.
+const ICON_TRIGGERS := {
 	"jam": ["die_status_applied", "jam"],
-	"jamAll": ["die_status_applied", "jam"],
+	"freeze": ["die_status_applied", "freeze"],
 	"rewrite": ["die_status_applied", "rewrite"],
 	"hijack": ["die_status_applied", "hijack"],
-	"freezeAnyDice": ["die_status_applied", "freeze"],
-	"freezeEnemyDice": ["die_status_applied", "freeze"],
-	"freezeAllEnemyDice": ["die_status_applied", "freeze"],
+	"mark": ["status_applied", "mark"],
+	"firewall": ["status_applied", "firewall"],
+	"cloak": ["status_applied", "cloak"],
+	"taunt": ["status_applied", "taunt"],
+	"burn": ["status_applied", "burn"],
+	"spike": ["status_applied", "spike"],
+	"accrete": ["status_applied", "accrete"],
 	"chain": ["attack_keyword_resolved", "chain"],
 	"detonate": ["attack_keyword_resolved", "detonate"],
 	"execute": ["attack_keyword_resolved", "execute"],
 	"breach": ["attack_keyword_resolved", "breach"],
-	"breachAll": ["attack_keyword_resolved", "breach"],
-	"wipeShields": ["attack_keyword_resolved", "breach"],
-	"ignSh": ["attack_keyword_resolved", "pierce"],
+	"pierce": ["attack_keyword_resolved", "pierce"],
 	"leech": ["attack_keyword_resolved", "leech"],
-	"lifestealPct": ["attack_keyword_resolved", "leech"],
 	"siphon": ["attack_keyword_resolved", "siphon"],
 	"revive": ["attack_keyword_resolved", "revive"],
-	"reviveAll": ["attack_keyword_resolved", "revive"],
-	"grantRampage": ["attack_keyword_resolved", "rampage"],
-	"grantRampageAll": ["attack_keyword_resolved", "rampage"],
-	"packBonus": ["attack_keyword_resolved", "pack_bonus"],
-	"summonChance": ["attack_keyword_resolved", "summon"],
+	"rampage": ["attack_keyword_resolved", "rampage"],
+	"pack_bonus": ["attack_keyword_resolved", "pack_bonus"],
+	"summon": ["attack_keyword_resolved", "summon"],
+	# Non-keyword icons — the icon itself is the lesson.
+	"roll_up": ["icon_first_seen", "roll"],
+	"roll_down": ["icon_first_seen", "roll"],
+	"aoe": ["icon_first_seen", "aoe"],
+	"target_lowest": ["icon_first_seen", "target_lowest"],
+	"self": ["icon_first_seen", "self"],
+	"protocol": ["icon_first_seen", "protocol"],
 }
 
+# scope string (EffectPip effect "scope") → the marker icon build_group renders.
+const SCOPE_MARKER_ICONS := {"all": "aoe", "self": "self", "lowest": "target_lowest"}
 
-# A revealed roll chose this ability — queue a primer for each keyword it
-# carries, anchored to the ROLLING unit (its die for die statuses, its card
-# otherwise). The one-per-turn rule still applies at flush.
+
+# A revealed roll chose this ability — resolve the icons its pip readout
+# actually renders (kind icon + scope marker per effect, both sides) and queue
+# a primer for every not-yet-seen NON-EXEMPT icon, anchored to the rolling
+# unit's pip readout. Kev 2026-07-10: primes BEFORE the player commits; the
+# event-stream triggers stay as the fallback for effects that never surface on
+# a readout. The one-per-turn rule still applies at flush.
 func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> void:
 	if raw.is_empty():
 		return
-	for field in RAW_FIELD_TRIGGERS.keys():
-		if not raw.has(field):
-			continue
-		var value: Variant = raw[field]
-		var active: bool = bool(value) if value is bool else float(value) > 0.0
-		if not active:
-			continue
-		var mapping: Array = RAW_FIELD_TRIGGERS[field]
-		_queue(str(mapping[0]), str(mapping[1]), {
-			"side": side,
-			"target_id": unit_id,
-		})
+	var context: Dictionary = {
+		"side": side,
+		"target_id": unit_id,
+		# Bug-2: the roll sighting highlights the PIP the icon lives in, not the
+		# entry's authored anchor (which serves the mid-resolution event path).
+		"target_override": "ability_pip",
+	}
+	for effect_variant in EffectPip.effects_from_ability_raw(raw, side):
+		var effect: Dictionary = effect_variant
+		var icons: Array[String] = []
+		var kind_icon: String = EffectPip.pip_key_for_effect(effect, side)
+		if kind_icon != "":
+			icons.append(kind_icon)
+		var marker_icon: String = str(SCOPE_MARKER_ICONS.get(str(effect.get("scope", "")), ""))
+		if marker_icon != "":
+			icons.append(marker_icon)
+		for icon in icons:
+			if icon in HIGHLIGHT_EXEMPT_ICONS:
+				continue
+			var mapping: Variant = ICON_TRIGGERS.get(icon)
+			if mapping != null:
+				_queue(str(mapping[0]), str(mapping[1]), context)
 
 
 # A targeting personality picked a target (enemy intents assigned).
@@ -286,7 +315,12 @@ func _try_show(candidate: Dictionary) -> bool:
 	var context: Dictionary = candidate.get("context", {})
 	if _spot == null or not is_instance_valid(_spot):
 		return false
-	var resolver: Variant = _target_resolvers.get(str(entry.get("target", "")))
+	# Roll sightings anchor to the pip readout (context target_override); the
+	# entry's authored target serves the event-stream path.
+	var target_key: String = str(context.get("target_override", ""))
+	if target_key == "":
+		target_key = str(entry.get("target", ""))
+	var resolver: Variant = _target_resolvers.get(target_key)
 	if resolver == null:
 		return false
 	var rect: Rect2 = (resolver as Callable).call(context)

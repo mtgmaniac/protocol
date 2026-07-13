@@ -32,6 +32,7 @@
                 "die_status_applied",
                 "status_applied",
                 "attack_keyword_resolved",
+                "icon_first_seen",
                 "protocol_action_affordable",
                 "personality_assigned",
                 "signal_hook"
