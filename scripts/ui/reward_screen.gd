@@ -89,7 +89,6 @@ const CONFIRM_IDLE_TEXT := Color(0.34, 0.38, 0.42, 1.0)
 var _help_overlay: Control = null
 var _gear_target_overlay: Control = null
 var _consumable_swap_overlay: Control = null
-var _battle_review_overlay: Control = null   # read-only "View Battlescreen" viewer (Batch 5)
 
 # View-Battlescreen button (Batch 5): a secondary peek back at the finished battle.
 const VIEW_BATTLE_FONT := 34
@@ -507,7 +506,7 @@ func _refresh_selection() -> void:
 # in-screen overlay — the reward screen instance never leaves the tree, so the offered
 # rewards can't re-roll or change. Read-only: the overlay has one control, RETURN.
 func _build_view_battle_button() -> void:
-	if GameState.last_battle_snapshot == null:
+	if GameState.battle_review_state.is_empty():
 		return
 	var button := Button.new()
 	button.name = "ViewBattleButton"
@@ -521,73 +520,18 @@ func _build_view_battle_button() -> void:
 	content_vbox.add_child(button)
 
 
+# "View Battlescreen" re-enters the real BattleScene read-only (2026-07-13,
+# replacing the flat-image overlay): the review board is the live cards, so
+# long-press inspect works on units / abilities / statuses / pips. The reward
+# offers are untouched — `pending_reward_item_ids` persists and the reward
+# screen's re-entry re-roll is already guarded — and the button in the End Turn
+# slot returns here. entering_battle_review is the one-shot BattleScene consumes.
 func _on_view_battle_pressed() -> void:
-	AudioManager.play_select()
-	_show_battle_review_overlay()
-
-
-func _show_battle_review_overlay() -> void:
-	if GameState.last_battle_snapshot == null:
+	if GameState.battle_review_state.is_empty():
 		return
-	if _battle_review_overlay != null and is_instance_valid(_battle_review_overlay):
-		_battle_review_overlay.queue_free()
-
-	_battle_review_overlay = Control.new()
-	_battle_review_overlay.name = "BattleReviewOverlay"
-	_battle_review_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_battle_review_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_battle_review_overlay.z_as_relative = false
-	_battle_review_overlay.z_index = 240
-	add_child(_battle_review_overlay)
-
-	# Opaque backdrop so nothing of the reward screen bleeds through the letterbox bars.
-	var backdrop := ColorRect.new()
-	backdrop.color = Color(0.02, 0.03, 0.05, 1.0)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP  # swallow taps: read-only, no pass-through
-	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_battle_review_overlay.add_child(backdrop)
-
-	# The captured battle frame, letterboxed to its own aspect (never stretched). It fills
-	# the screen since it was captured at the same resolution.
-	var snapshot := TextureRect.new()
-	snapshot.texture = GameState.last_battle_snapshot
-	snapshot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	snapshot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	snapshot.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	snapshot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	snapshot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_battle_review_overlay.add_child(snapshot)
-
-	# "REVIEW — READ ONLY" eyebrow so it's unmistakably a look-back, not a live board.
-	var eyebrow := _make_label("BATTLE REVIEW — READ ONLY", LABEL_FONT_SIZE, PixelUI.DT_AMBER, 2)
-	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	eyebrow.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	eyebrow.offset_top = int(PersistentHeader.HEADER_HEIGHT) + 12
-	eyebrow.offset_left = 20
-	eyebrow.offset_right = -20
-	_battle_review_overlay.add_child(eyebrow)
-
-	# The only interactive control — RETURN closes the overlay; the reward screen and its
-	# offered rewards are exactly as they were.
-	var return_button := Button.new()
-	return_button.text = "RETURN TO REWARDS"
-	return_button.focus_mode = Control.FOCUS_NONE
-	return_button.custom_minimum_size = Vector2(0, CONFIRM_HEIGHT)
-	return_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	return_button.offset_top = -CONFIRM_HEIGHT - 40
-	return_button.offset_bottom = -40
-	return_button.offset_left = 40
-	return_button.offset_right = -40
-	PixelUI.style_primary_button(return_button, CONFIRM_FONT)
-	return_button.pressed.connect(_hide_battle_review_overlay)
-	_battle_review_overlay.add_child(return_button)
-
-
-func _hide_battle_review_overlay() -> void:
 	AudioManager.play_select()
-	if _battle_review_overlay != null and is_instance_valid(_battle_review_overlay):
-		_battle_review_overlay.queue_free()
-	_battle_review_overlay = null
+	GameState.entering_battle_review = true
+	SceneManager.go_to_battle()
 
 
 # ─── Confirm button (cloned from squad-screen DEPLOY) ───────────────────────────
