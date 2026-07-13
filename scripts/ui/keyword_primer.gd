@@ -78,6 +78,16 @@ var debug_auto_dismiss: bool = false
 var debug_show_count: int = 0
 var debug_shown_ids: Array = []
 
+# ── Anchor render-trace (Kev 2026-07-13, observation ONLY — no behavior
+# change). When debug_anchor_trace is on, every _resolve_ability_pip_rect
+# records: the rect it returned, WHICH chain link produced it, whether the
+# self-heal ran, the frame number, the plate's node path + instance id, and a
+# weakref to the matched glyph node — so a rig can re-query the TRUE glyph rect
+# at RENDER time and catch the resolve→render gap no probe has measured yet.
+var debug_anchor_trace: bool = false
+var debug_last_resolve: Dictionary = {}
+var _debug_glyph_hit: Node = null
+
 var _scene: Node = null
 var _spot = null  # SpotlightLayer
 var _pending: Array = []          # queued candidates: [{primer, context}]
@@ -439,6 +449,7 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 		var side: String = str(context.get("side", ""))
 		var target_id: String = str(context.get("target_id", ""))
 		var icon: String = str(context.get("icon", ""))
+		var heal_ran: bool = false
 		var plate: Control = null
 		if _scene.has_method("get_die_tag_plate"):
 			plate = _scene.call("get_die_tag_plate", side, target_id)
@@ -452,23 +463,45 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 				# shipped past the DoD screenshots and 17 green gates.)
 				_scene.call("_sync_die_tags")
 				plate = _scene.call("get_die_tag_plate", side, target_id)
+				heal_ran = true
 		if plate != null:
 			if icon != "":
+				_debug_glyph_hit = null
 				var glyph: Rect2 = _find_glyph_rect(plate, icon)
 				if glyph.size != Vector2.ZERO:
-					return glyph
+					return _trace(glyph, "plate_glyph", context, heal_ran, plate, _debug_glyph_hit)
 			var plate_rect: Rect2 = _control_rect(plate)
 			if plate_rect.size != Vector2.ZERO:
 				if icon != "":
 					# A silent fallback is indistinguishable from no fallback
 					# firing at all (Kev 2026-07-13) — complain loudly.
 					push_warning("[KeywordPrimer] anchor fell back past the plate glyph: icon '%s' not found on %s/%s plate — ringing the WHOLE PLATE" % [icon, side, target_id])
-				return plate_rect
+				return _trace(plate_rect, "whole_plate", context, heal_ran, plate, null)
 		if icon != "":
 			push_warning("[KeywordPrimer] anchor fell back past the plate: no plate for %s/%s (icon '%s') even after _sync_die_tags — ringing the readout row/card" % [side, target_id, icon])
 		var r: Rect2 = _control_rect(view.get("readout", null))
-		return r if r.size != Vector2.ZERO else _control_rect(view.get("card", null))
+		if r.size != Vector2.ZERO:
+			return _trace(r, "readout_row", context, heal_ran, null, null)
+		return _trace(_control_rect(view.get("card", null)), "card", context, heal_ran, null, null)
 	return Rect2()
+
+
+# Render-trace recorder (observation only — returns the rect unchanged).
+func _trace(rect: Rect2, link: String, context: Dictionary, heal_ran: bool, plate: Control, glyph: Node) -> Rect2:
+	if debug_anchor_trace:
+		debug_last_resolve = {
+			"icon": str(context.get("icon", "")),
+			"side": str(context.get("side", "")),
+			"target_id": str(context.get("target_id", "")),
+			"rect": rect,
+			"link": link,
+			"heal_ran": heal_ran,
+			"resolve_frame": Engine.get_process_frames(),
+			"plate_path": str(plate.get_path()) if plate != null and is_instance_valid(plate) else "",
+			"plate_id": plate.get_instance_id() if plate != null and is_instance_valid(plate) else 0,
+			"glyph_ref": weakref(glyph) if glyph != null else null,
+		}
+	return rect
 
 
 # First TextureRect under `root` whose pip_icon_key meta matches AND that is
@@ -478,6 +511,7 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 func _find_glyph_rect(root: Node, icon: String) -> Rect2:
 	if root is TextureRect and root.has_meta("pip_icon_key") and str(root.get_meta("pip_icon_key")) == icon:
 		if _effective_alpha(root) > 0.0:
+			_debug_glyph_hit = root  # render-trace: which node matched (observation only)
 			return _control_rect(root)
 	for child in root.get_children():
 		var found: Rect2 = _find_glyph_rect(child, icon)

@@ -400,6 +400,40 @@ func _run() -> void:
 			_check(cat_picked == cat_glyph.get_global_rect(),
 				"category sweep: %s (%s) resolves to its OWN glyph, not a fallback link" % [cat_icon, cat_label])
 
+	# ── 12) SAME-FRAME LAYOUT TRAP (Kev 2026-07-13 — the Round-3 root cause,
+	# the sentence every anchor round was a variation of): a Control's children
+	# have NO real global rect in the frame they're created — container sort is
+	# deferred to end-of-frame, so a glyph reads its plate's ORIGIN until then
+	# (the screen-left anchor box). The fix defers the whole drain a frame; this
+	# test proves WHY, by reproducing the trap and its one-frame cure. The plate
+	# mirrors the real die-tag structure (Panel → CenterContainer → VBox → HBox →
+	# glyph) positioned well off-origin so a centered glyph moves visibly.
+	var trap_plate := Panel.new()
+	trap_plate.position = Vector2(600, 1500)
+	trap_plate.custom_minimum_size = Vector2(280, 100)
+	trap_plate.size = Vector2(280, 100)
+	var trap_center := CenterContainer.new()
+	trap_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	trap_plate.add_child(trap_center)
+	var trap_group: Control = EffectPipScript.build_group(
+		{"kind": "mark", "value": "", "duration": 0, "scope": "", "bonus": "", "bonus_icon": ""},
+		EffectPipScript.PROFILE_CARD)
+	trap_center.add_child(trap_group)
+	root.add_child(trap_plate)
+	# SAME FRAME — before any layout pass: garbage (glyph at the plate origin, or
+	# size-0 → empty). Either way it is NOT the laid-out rect.
+	var trap_same_frame: Rect2 = primer2._find_glyph_rect(trap_plate, "mark")
+	# DEFERRED — after a frame, container sort has run and the glyph is centered.
+	await process_frame
+	await process_frame
+	var trap_deferred: Rect2 = primer2._find_glyph_rect(trap_plate, "mark")
+	_check(trap_deferred.size != Vector2.ZERO, "layout trap: deferred glyph resolves to a real rect")
+	_check(trap_plate.get_global_rect().encloses(trap_deferred),
+		"layout trap: deferred glyph sits inside the laid-out plate")
+	_check(not trap_same_frame.is_equal_approx(trap_deferred),
+		"layout trap: same-frame rect is garbage — differs from the laid-out rect (reproduces the Round-3 bug)")
+	trap_plate.free()
+
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()
 	primer.on_turn_started()

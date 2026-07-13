@@ -601,11 +601,26 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	if skip_dice_visuals and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
 
-	# Keyword primers: a new player turn begins — reset the one-per-turn gate,
-	# then report the ROLL sightings (Kev 2026-07-10: a keyword primes the
-	# first time it appears on a revealed roll, BEFORE the player commits) and
-	# show at most one.
+	# Keyword primers: a new player turn begins — report the ROLL sightings
+	# (Kev 2026-07-10: a keyword primes the first time it appears on a revealed
+	# roll, BEFORE the player commits) and drain them.
+	#
+	# BOARD-READABLE GATE (Kev 2026-07-13 — the last of the anchor rounds). The
+	# drain must not begin until the pip plates exist AND have been laid out:
+	# the plates build in _process and their glyph children only get real global
+	# rects at END of the frame they're created (Godot container sort is
+	# deferred). A drain that resolves an anchor in the plate's birth frame reads
+	# every glyph at the plate's origin → a screen-left anchor box (the Round-3
+	# bug; Round-2's synchronous self-heal was what created the plate in that
+	# doomed frame). So: build the plates now (the same readable surface the
+	# die-docked result tags use — dice have already settled via roll_finished),
+	# then yield ONE frame so their glyphs are laid out. Primers and plates key
+	# off the same "board is readable" moment — and no coachmark shows over
+	# still-bouncing dice. NEVER resolve a Control's rect in its creation frame.
 	if _primer != null and is_instance_valid(_primer):
+		_sync_die_tags()
+		if is_inside_tree() and get_tree() != null:
+			await get_tree().process_frame
 		_primer.on_turn_started()
 		_notice_personality_primers()
 		_notice_rolled_ability_primers()

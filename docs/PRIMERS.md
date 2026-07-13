@@ -131,13 +131,29 @@ signal:
   ghosts with live rects (the 2026-07-12 wrong-node bug: a ghost match ringed
   empty screen space). `_find_glyph_rect` requires **effective alpha > 0**, not
   `.visible`. Fallback chain: plate glyph → whole plate → readout row → card.
-  **Self-heal (2026-07-13):** plates build in `_process` one frame after reveal,
-  so the drain's FIRST modal used to resolve with zero plates and silently ride
-  the row fallback (position-dependent — burn/mark, the earliest-met icons,
-  ringed whole plates while later icons anchored fine). A null plate now calls
-  the scene's idempotent `_sync_die_tags()` and re-fetches; any resolution that
-  still falls past the plate glyph `push_warning`s — a silent fallback is
-  indistinguishable from no fallback firing at all.
+  **Board-readable gate (2026-07-13 — the fix that ended the anchor rounds):**
+  the primer drain does NOT begin until the pip plates exist and are laid out.
+  `battle_scene._do_roll` builds them (`_sync_die_tags`, dice already settled via
+  `roll_finished`) and yields ONE frame before draining — plates and primers key
+  off the same "board is readable" moment (and no coachmark shows over bouncing
+  dice). The self-heal below is kept only as belt-and-braces; after the gate it
+  should never fire in normal play, and its `push_warning` is the tripwire if it
+  does — **if you see that warning in normal play, something new is wrong.**
+
+  **⚠ GODOT LAW — never resolve a Control's rect in the frame it was created.**
+  Container layout (sort_children) is deferred to end-of-frame, so a freshly
+  built node's children sit at the parent's origin until then. Every anchor round
+  here was a variation of one sentence — *the drain started before the board's
+  geometry existed*. Round 1 read an alpha-0 ghost tree; Round 2's synchronous
+  self-heal built a plate and read it same-frame (children at local 0,0 → a
+  screen-left anchor box); the render-trace (`debug_anchor_trace` +
+  `primer_render_trace.gd`) proved it by comparing the resolver's rect to the
+  glyph's TRUE global rect at render time. If you build UI and need its geometry,
+  `await get_tree().process_frame` first.
+
+  **Self-heal (belt-and-braces):** a null plate calls the scene's idempotent
+  `_sync_die_tags()` and re-fetches; any resolution that still falls past the
+  plate glyph `push_warning`s.
 - **Suppression:** never during the scripted tutorial, headless mode, or auto
   battle. `requires_feature` entries skip silently when the feature is absent.
 - **Failure safety:** if the target can't resolve or the layer is dead, the
