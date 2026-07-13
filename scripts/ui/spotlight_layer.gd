@@ -34,6 +34,7 @@ var _dim_canvas: _DimCanvas = null
 var _tap_catcher: Control = null
 var _coach: PanelContainer = null
 var _coach_label: Label = null
+var _coach_glyph: TextureRect = null
 var _hint_label: Label = null
 var _ring_tween: Tween = null
 
@@ -126,11 +127,30 @@ func _ready() -> void:
 	col.add_theme_constant_override("separation", 10)
 	_coach.add_child(col)
 
+	# Body row: optional leading glyph (the ACTUAL icon a primer teaches —
+	# opts["glyph"], Kev 2026-07-12) + the text. The glyph is hidden when no
+	# texture is passed, so callers that never set it (the tutorial) render
+	# pixel-identically to the pre-glyph layout.
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 14)
+	col.add_child(body)
+
+	_coach_glyph = TextureRect.new()
+	_coach_glyph.visible = false
+	_coach_glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_coach_glyph.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_coach_glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_coach_glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_coach_glyph.custom_minimum_size = Vector2(56, 56)
+	_coach_glyph.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	body.add_child(_coach_glyph)
+
 	_coach_label = Label.new()
 	_coach_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_coach_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_coach_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	PixelUI.style_label(_coach_label, COACH_FONT, PixelUI.TEXT_PRIMARY, 2)
-	col.add_child(_coach_label)
+	body.add_child(_coach_label)
 
 	_hint_label = Label.new()
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -156,6 +176,9 @@ func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnc
 	set_interactive(bool(opts.get("interactive", true)))
 	var title: String = str(opts.get("title", ""))
 	_coach_label.text = ("[ %s ]\n%s" % [title, text]) if title != "" else text
+	var glyph: Texture2D = opts.get("glyph", null) as Texture2D
+	_coach_glyph.texture = glyph
+	_coach_glyph.visible = glyph != null
 	var hint: String = str(opts.get("hint", ""))
 	_hint_label.visible = hint != ""
 	_hint_label.text = hint

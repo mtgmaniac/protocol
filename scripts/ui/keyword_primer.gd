@@ -11,9 +11,14 @@
 # - Triggers queue candidates; display happens at safe moments only: between
 #   battle-feedback action groups (flush_at_group_boundary, awaited by
 #   BattleFeedback) or during an idle player phase (flush_player_phase).
-# - Maximum ONE primer per turn. Additional first sightings the same turn are
-#   NOT marked seen — they fire on their next natural occurrence.
-# - Priority breaks same-moment ties (higher number wins; stable order after).
+# - FULL DRAIN (Kev 2026-07-12): every unseen icon raised in a turn is taught
+#   IN that turn — the queue drains completely, one modal at a time, tapping
+#   through each. No per-turn cap, no deferral. (The old one-per-turn throttle
+#   didn't defer the losers — `_pending.clear()` DROPPED them and hoped the
+#   icons recurred naturally; an icon that never reappeared was never taught.)
+# - Order is spatial, not priority: enqueue order == hero rail left→right,
+#   then enemy rail, pips left→right within a readout. The JSON `priority`
+#   field is inert (retained for schema compatibility only).
 # - Suppressed entirely during the scripted tutorial, headless mode, and auto
 #   battle. requires_feature entries skip silently when the feature is absent.
 # - FAILURE SAFETY: a resolver returning nothing, a missing node, or a dead
@@ -67,14 +72,15 @@ const PRESENT_FEATURES := {
 
 # Test seams (primer_smoke_test.gd only): force the manager active under
 # headless, and skip the await-tap so the scripted test can drive dismissal.
+# debug_shown_ids records the display SEQUENCE so drain-order is assertable.
 var debug_force_active: bool = false
 var debug_auto_dismiss: bool = false
 var debug_show_count: int = 0
+var debug_shown_ids: Array = []
 
 var _scene: Node = null
 var _spot = null  # SpotlightLayer
-var _shown_this_turn: bool = false
-var _pending: Array = []          # same-moment candidates: [{primer, context}]
+var _pending: Array = []          # queued candidates: [{primer, context}]
 var _fired_params: Dictionary = {}  # "type/param" seen this battle (cheap dedupe)
 var _by_trigger: Dictionary = {}  # "type/param" -> primer entry (built once)
 
@@ -126,7 +132,8 @@ func _suppressed() -> bool:
 # ── Trigger intake (queue only — display happens at flush points) ─────────────
 
 func on_turn_started() -> void:
-	_shown_this_turn = false
+	# Defensive only: flushes drain the queue completely within the turn, so
+	# this should always find it empty already.
 	_pending.clear()
 
 
@@ -217,13 +224,6 @@ const SCOPE_MARKER_ICONS := {"all": "aoe", "self": "self", "lowest": "target_low
 func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> void:
 	if raw.is_empty():
 		return
-	var context: Dictionary = {
-		"side": side,
-		"target_id": unit_id,
-		# Bug-2: the roll sighting highlights the PIP the icon lives in, not the
-		# entry's authored anchor (which serves the mid-resolution event path).
-		"target_override": "ability_pip",
-	}
 	for effect_variant in EffectPip.effects_from_ability_raw(raw, side):
 		var effect: Dictionary = effect_variant
 		var icons: Array[String] = []
@@ -243,7 +243,16 @@ func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> vo
 				continue
 			var mapping: Variant = ICON_TRIGGERS.get(icon)
 			if mapping != null:
-				_queue(str(mapping[0]), str(mapping[1]), context)
+				_queue(str(mapping[0]), str(mapping[1]), {
+					"side": side,
+					"target_id": unit_id,
+					# Glyph-precision anchor: the roll sighting spotlights THIS
+					# icon's own glyph node (found by pip_icon_key meta), not the
+					# readout row — the entry's authored anchor serves the
+					# mid-resolution event path only.
+					"target_override": "ability_pip",
+					"icon": icon,
+				})
 
 
 # A targeting personality picked a target (enemy intents assigned).
@@ -297,20 +306,20 @@ func flush_player_phase() -> void:
 func _flush() -> void:
 	if _pending.is_empty():
 		return
-	if _shown_this_turn or _suppressed():
-		# Not marked seen — they refire on their next natural occurrence.
+	if _suppressed():
+		# Suppressed contexts (tutorial/headless/auto/opt-out): not marked seen.
 		_pending.clear()
 		return
-	# Priority breaks same-moment ties (higher first; stable for equals).
+	# FULL DRAIN (Kev 2026-07-12): every candidate shows this turn, one modal at
+	# a time, in ENQUEUE order — which is spatial: hero rail left→right, then
+	# enemy rail, pips left→right within a readout. No priority sort (it only
+	# ever existed to pick the single winner under the old cap, and would
+	# scramble the spatial order); no cap; no deferral. A failed show still
+	# skips silently without being marked seen (failure-safety contract).
 	var candidates: Array = _pending.duplicate()
 	_pending.clear()
-	candidates.sort_custom(func(a, b) -> bool:
-		return int((a["primer"] as Dictionary).get("priority", 0)) > int((b["primer"] as Dictionary).get("priority", 0)))
 	for candidate_variant in candidates:
-		var candidate: Dictionary = candidate_variant
-		if await _try_show(candidate):
-			_shown_this_turn = true
-			return
+		await _try_show(candidate_variant as Dictionary)
 
 
 # The guarded fire path: every failure skips silently (returns false, primer
@@ -334,15 +343,25 @@ func _try_show(candidate: Dictionary) -> bool:
 	var text: String = str(entry.get("text", ""))
 	if text == "":
 		return false
+	# Copy leads with the ACTUAL glyph being taught (Kev 2026-07-12): "this
+	# marker" is meaningless when two markers are on screen — show the marker.
+	# Roll sightings carry the icon key in context; event-path primers' trigger
+	# param IS a pip-icon key (jam/freeze/mark/chain/…), so both paths render
+	# the glyph. Unknown key → null texture → the coachmark shows text only.
+	var glyph_key: String = str(context.get("icon", ""))
+	if glyph_key == "":
+		glyph_key = str(context.get("param", ""))
 	AudioManager.play_select()
 	await _spot.spotlight([rect.grow(PAD)], text, SpotlightLayerScript.CoachAnchor.AUTO, {
 		"hint": "tap to continue ▸",
 		"interactive": true,
+		"glyph": PixelUI.pip_texture_for_key(glyph_key),
 	})
 	if not debug_auto_dismiss:
 		await _spot.tapped
 	_spot.dismiss()
 	debug_show_count += 1
+	debug_shown_ids.append(str(entry.get("id", "")))
 	_fired_params[str(candidate.get("key", ""))] = true
 	SaveManager.mark_primer_seen(str(entry.get("id", "")))
 	return true
@@ -389,7 +408,13 @@ func _resolve_unit_card_rect(context: Dictionary) -> Rect2:
 	return Rect2()
 
 
-# The resolving unit's effect-pip readout (falls back to its card).
+# The resolving unit's effect-pip readout. Glyph precision (Kev 2026-07-12):
+# when the context names the icon being taught, the spotlight hole is THAT
+# glyph's own node (found by its `pip_icon_key` meta, tagged in
+# EffectPip.build_group) — never the whole readout row, which can hold several
+# icons and leaves the player guessing which one the popup is about. Fallback
+# chain: glyph → readout row → card (failure-safety contract). If the same icon
+# appears in two pip groups, first match wins — any instance teaches the lesson.
 func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 	var views: Variant = _scene.get("hero_card_views") if str(context.get("side", "")) == "hero" else _scene.get("enemy_card_views")
 	if not (views is Array):
@@ -399,8 +424,25 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 		var state: Dictionary = view.get("state", {})
 		if str(state.get("id", "")) != str(context.get("target_id", "")):
 			continue
-		var r: Rect2 = _control_rect(view.get("readout", null))
+		var readout: Node = view.get("readout", null) as Node
+		var icon: String = str(context.get("icon", ""))
+		if icon != "" and readout != null:
+			var glyph: Rect2 = _find_glyph_rect(readout, icon)
+			if glyph.size != Vector2.ZERO:
+				return glyph
+		var r: Rect2 = _control_rect(readout)
 		return r if r.size != Vector2.ZERO else _control_rect(view.get("card", null))
+	return Rect2()
+
+
+# First visible TextureRect under `root` whose pip_icon_key meta matches.
+func _find_glyph_rect(root: Node, icon: String) -> Rect2:
+	if root is TextureRect and root.has_meta("pip_icon_key") and str(root.get_meta("pip_icon_key")) == icon:
+		return _control_rect(root)
+	for child in root.get_children():
+		var found: Rect2 = _find_glyph_rect(child, icon)
+		if found.size != Vector2.ZERO:
+			return found
 	return Rect2()
 
 

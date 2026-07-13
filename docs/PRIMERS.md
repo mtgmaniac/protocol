@@ -111,9 +111,22 @@ signal:
 - **Safe moments only:** primers display between battle-feedback action groups
   (the sequence pauses, resumes on dismiss) or during an idle player phase —
   never mid-swing.
-- **One per turn, maximum.** Additional first sightings the same turn are NOT
-  marked seen; they fire on their next natural occurrence.
-- **Priority** (higher wins) breaks same-moment ties only.
+- **FULL DRAIN, no cap (Kev 2026-07-12):** every unseen icon raised in a turn is
+  taught IN that turn — the queue drains completely as a MODAL SEQUENCE (one
+  popup at a time, tap through each; never simultaneous — that's the tutorial's
+  `separate:true` spotlight mechanism, a different system). The old one-per-turn
+  throttle didn't defer the losers, it DROPPED them (`_pending.clear()`) and
+  hoped the icons recurred; an icon that never reappeared was never taught.
+- **Order is spatial:** enqueue order == hero rail left→right, then enemy rail,
+  pips left→right within a readout. The JSON `priority` field is **inert**
+  (retained for schema compatibility; it only ever picked the single winner
+  under the old cap — do not reintroduce a sort on it).
+- **Copy leads with the glyph:** the coachmark renders the ACTUAL icon being
+  taught (SpotlightLayer `opts["glyph"]`, keyed from the sighting's icon or the
+  trigger param) ahead of the text — "this marker" is meaningless when two
+  markers are on screen. The spotlight hole is the icon's own glyph node
+  (`pip_icon_key` meta, tagged in `EffectPip.build_group`), never the whole
+  readout row; fallback chain glyph → row → card.
 - **Suppression:** never during the scripted tutorial, headless mode, or auto
   battle. `requires_feature` entries skip silently when the feature is absent.
 - **Failure safety:** if the target can't resolve or the layer is dead, the
