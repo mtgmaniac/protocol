@@ -70,7 +70,14 @@ func _build_steps() -> Array:
 		# Protocol beat lands once they settle (Kev 2026-07-10).
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
 		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn — time to spend it. It builds +1 every turn, caps at 10."},
-		{"targets": ["nudge", "combat"], "separate": true, "text": "Nudge costs 1 Protocol — tap it, then Strike Unit's die to add +3 and push it into a stronger band.", "advance": "nudged"},
+		# Nudge is TWO beats (Kev fix #3, 2026-07-12): the button beat advances the
+		# INSTANT the press arms the pick (the "phase" event from transition() — the
+		# shared choke point, zero new wiring), then the die beat gates on the
+		# applied nudge. The old single beat gated on "nudged" (emitted only after
+		# button + die pick + apply), so pressing the big highlighted button moved
+		# nothing — it read as a consumed click.
+		{"targets": ["nudge"], "text": "Nudge costs 1 Protocol — tap it.", "advance": "phase", "phase": "nudge_pick"},
+		{"targets": ["combat"], "text": "Now tap Strike Unit's die — +3 pushes it into a stronger band.", "advance": "nudged"},
 		{"targets": ["ability:combat"], "text": "It jumped a band — Suppression Fire became Rail Strike, and the Mark makes the hit land even harder."},
 		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more — they unlock as you bank Protocol."},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Strike Unit's die, then the drone to fire it.", "advance": "assigned"},
@@ -260,9 +267,6 @@ func _target_rect(key: String) -> Rect2:
 			# The whole dice tray — the actual combat-zone rect the 3D dice roll inside, not the
 			# thin layout containers (which sit empty beside the cards).
 			return _dice_tray_rect()
-		"pulse":
-			# Just the Pulse Tech unit: its card, its ability pips (readout) and its die.
-			return _hero_unit_rect("pulse")
 		"enemy_cards":
 			return _merge_nonempty(_node_rect(_scene.get("enemy_cards")), _node_rect(_scene.get("enemy_dice_row")))
 		"enemy_readouts":
@@ -282,6 +286,13 @@ func _target_rect(key: String) -> Rect2:
 			return _node_rect(_scene.get("protocol_spend_button"))
 		"battle_log":
 			return _node_rect(_scene.get("battle_log_panel"))
+	# Any hero unit id spotlights that unit (card + pips + die) — generic form
+	# of the old hardcoded "pulse" case. The nudge die beat targets "combat";
+	# the old ["nudge", "combat"] step silently resolved NO hole for "combat"
+	# because no such key existed (found by the 2026-07-12 step split).
+	var unit_rect: Rect2 = _hero_unit_rect(key)
+	if unit_rect.size != Vector2.ZERO:
+		return unit_rect
 	return Rect2()
 
 

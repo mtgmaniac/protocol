@@ -111,7 +111,10 @@ func _run() -> void:
 	controller.call("_next")
 	await _expect_step(controller, 17)
 
-	# Step 17: Nudge Strike Unit (gated on nudged).
+	# Step 17: Nudge button beat — PRESSING the button advances IMMEDIATELY
+	# (Kev fix #3: gates on the nudge_pick phase from transition(), not on the
+	# applied nudge). This expectation FAILS on the pre-fix single-beat step,
+	# which only advanced after the die pick applied.
 	await _wait_for_phase(scene, "targeting")
 	_check_holes(controller)
 	var combat_id: String = _state_id_for_unit(scene, "combat")
@@ -121,34 +124,37 @@ func _run() -> void:
 	# Nudge lives in the ProtocolActions module (architecture review §1 rec 1).
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _wait_frames(2)
-	protocol.call("_apply_nudge", combat_id)
 	await _expect_step(controller, 18)
 
-	# Steps 18-19: taps (band jump + reroll/set costs).
+	# Step 18: die beat — the applied nudge advances it.
+	_check_holes(controller)
+	protocol.call("_apply_nudge", combat_id)
+	await _expect_step(controller, 19)
+
+	# Steps 19-20: taps (band jump + reroll/set costs).
 	for _i in range(2):
 		_check_holes(controller)
 		controller.call("_next")
 		await _wait_frames(3)
-	await _expect_step(controller, 20)
+	await _expect_step(controller, 21)
 
-	# Step 20: fire Strike Unit at the drone (gated on assigned).
+	# Step 21: fire Strike Unit at the drone (gated on assigned).
 	_check_holes(controller)
 	scene.call("_select_targeting_hero", combat_id)
 	await _wait_frames(2)
 	_assign_active_to_legal(scene)
-	await _expect_step(controller, 21)
+	await _expect_step(controller, 22)
 
-	# Step 21: assign the rest + end turn (gated on won).
+	# Step 22: assign the rest + end turn (gated on won).
 	_check_holes(controller)
 	for hero_id in hero_ids:
 		if hero_id == combat_id:
 			continue
 		await _pick_and_assign(scene, hero_id)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 22)
+	await _expect_step(controller, 23)
 
-	# Step 22: DRILL COMPLETE (tap_finish) → back to the main menu.
+	# Step 23: DRILL COMPLETE (tap_finish) → back to the main menu.
 	_check_holes(controller)
 	controller.call("_next")
 	await _wait_frames(10)
