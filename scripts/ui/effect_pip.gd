@@ -417,7 +417,7 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	elif int(raw.get("grantRampage", 0)) > 0:
 		_append_effect(effects, "rampage", keyword_code("rampage", "RA"), 0, "self")
 
-	return effects.slice(0, 3)
+	return dedupe_scope_markers(effects.slice(0, 3))
 
 
 static func effects_from_passive(effect: Dictionary, target_kind: String = "") -> Array:
@@ -533,7 +533,7 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			# (Kev 2026-07-10: never show a NONE tag).
 			if target_kind != "" and target_kind.to_lower() != "none":
 				_append_effect(effects, "tag", target_kind.to_upper())
-	return effects
+	return dedupe_scope_markers(effects)
 
 
 static func ability_readout_payload(raw: Dictionary, side: String = "hero") -> Dictionary:
@@ -581,6 +581,26 @@ static func effects_from_directive(effect: Dictionary) -> Array:
 	var effects: Array = []
 	for kind in DIRECTIVE_PIP_KINDS.get(str(effect.get("type", "")), []):
 		_append_effect(effects, str(kind), "")
+	return effects
+
+
+# A scope marker describes the ABILITY's targeting, not each individual effect's
+# (TRUTH.md, Kev 2026-07-13). It appears at most ONCE per scope, per pip: keep
+# each distinct scope on the FIRST effect that carries it and blank it on later
+# effects, so build_group renders one marker per distinct scope — never the same
+# marker twice (the ECM Hiss "⊙ … ⊙" bug; scope is consumed only for the marker,
+# so blanking is safe). Distinct scopes each still emit once.
+static func dedupe_scope_markers(effects: Array) -> Array:
+	var seen: Dictionary = {}
+	for effect_variant in effects:
+		var effect: Dictionary = effect_variant
+		var scope: String = str(effect.get("scope", ""))
+		if scope == "":
+			continue
+		if seen.has(scope):
+			effect["scope"] = ""
+		else:
+			seen[scope] = true
 	return effects
 
 

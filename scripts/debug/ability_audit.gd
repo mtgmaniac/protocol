@@ -654,10 +654,11 @@ func _run_roll_modifier_timing_regressions() -> void:
 	var cleared_debuff_roll: int = debuff_manager.get_effective_roll(debuff_enemy, 10)
 	_expect_and_record("Regression / RFE timing", "rfe", "8 then 10", "%d then %d" % [debuffed_roll, cleared_debuff_roll])
 
-	# Instance timers (per Kev 2026-07-06): an Nt buff instance loses a turn at
-	# EVERY round-end tick, including the cast round — a 2t buff cast during
-	# round 1 covers round 2's roll and is gone by round 3.
-	var buff_context: Dictionary = _build_context({"rfm": 3, "rfmT": 2}, "Roll Buff Timing Regression")
+	# Duration convention (Kev 2026-07-13): a future-shaping buff stores EFFECTIVE
+	# turns and skips its cast-round tick, so `rfmT:1` covers exactly the next roll
+	# (behavior-identical to the old off-by-one `rfmT:2`, which is why this reads
+	# 13 then 10 unchanged after the encoding fix).
+	var buff_context: Dictionary = _build_context({"rfm": 3, "rfmT": 1}, "Roll Buff Timing Regression")
 	var buff_manager: CombatManager = buff_context["manager"]
 	var buff_actor: Dictionary = buff_context["actor"]
 	buff_manager.resolve_round({str(buff_actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
@@ -2790,12 +2791,12 @@ func _run_summon_end_to_end_regression() -> void:
 # erb cast in round 1 covers round 2's reveal and is gone after round 2's tick.
 func _run_enemy_roll_buff_expiry_regression() -> void:
 	var manager: CombatManager = CombatManager.new()
-	var buffer_unit: EnemyData = _make_enemy("audit_buffer", "Audit Buffer", "Rally", {"erb": 2, "erbT": 2})
+	var buffer_unit: EnemyData = _make_enemy("audit_buffer", "Audit Buffer", "Rally", {"erb": 2, "erbT": 1})
 	manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [buffer_unit])
 	var buffer_state: Dictionary = manager.get_enemy_states()[0]
 	var buffer_id: String = str(buffer_state["id"])
 
-	# Round 1: enemy casts the 2t buff (one tick already spent at round end).
+	# Round 1: enemy casts the 1t (effective) buff — it skips the cast-round tick.
 	manager.resolve_round({}, {buffer_id: 10}, DiceManager.new())
 	var active_after_cast: bool = int(buffer_state.get("roll_buff", 0)) == 2
 	# Round 2: no re-cast; the instance covers this round and expires at its tick.
@@ -3319,13 +3320,14 @@ func _run_relic_low_hp_squad_roll_buff_regression() -> void:
 	var hero_b: Dictionary = manager.get_hero_states()[1]
 	manager.call("_damage_state", hero_a, 51)
 	var a_stacks: Array = hero_a.get("roll_buff_stacks", [])
-	# 2t (timer-contract correction): survives the cast round's tick and shapes
-	# the NEXT roll.
+	# Emergency Signal is future-shaping: stored `turns:1` = one effective turn
+	# (skips the cast tick, shapes the next roll). Was `2` under the old off-by-one
+	# encoding; decremented to 1 on 2026-07-13, behavior unchanged.
 	var ok: bool = (
 		int(hero_a.get("roll_buff", 0)) == 2
 		and int(hero_b.get("roll_buff", 0)) == 2
 		and a_stacks.size() == 1
-		and int((a_stacks[0] as Dictionary).get("turns_left", 0)) == 2
+		and int((a_stacks[0] as Dictionary).get("turns_left", 0)) == 1
 	)
 	if ok:
 		_record_pass("Regression / relic lowHpSquadRollBuff", "lowHpSquadRollBuff")
