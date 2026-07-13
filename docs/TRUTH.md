@@ -212,7 +212,10 @@ Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Ene
 > marker is emitted once; if effects genuinely differ in scope, each distinct
 > scope is emitted once — never the same marker twice. This generalizes the
 > older "no ability uses the `all` sign twice" invariant to every scope (`self`,
-> `all`, `lowest`, and any future one). Enforced at the single producer
+> `all`, `lowest`, and any future one). The marker sits on the **LAST** effect
+> carrying that scope, so a wholly single-scope ability renders its one marker at
+> the **END** of the row, not wedged between effects — ECM Hiss reads
+> "`🛡5 🎲+1 ⊙`", not "`🛡5 ⊙ 🎲+1`". Enforced at the single producer
 > (`EffectPip.dedupe_scope_markers`, applied by `effects_from_ability_raw` /
 > `effects_from_passive`), so every surface — readout, die-docked tag, inspect,
 > first-sight primer — is de-duped once. (The ECM Hiss "`⊙ … ⊙`" bug: 5 shield
