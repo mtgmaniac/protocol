@@ -29,6 +29,9 @@ dist/
 
 # Debug captures / transient logs
 /debug_artifacts/
+# baselines/ is TRACKED on purpose: the canonical per-screen capture set,
+# regenerated once per visual build as its own commit so diffs are reviewable.
+# debug_artifacts/ stays ignored scratch.
 debug_screenshot.png
 *.log
 debug_readout_*.txt
