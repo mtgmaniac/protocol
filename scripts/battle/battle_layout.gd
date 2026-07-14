@@ -196,7 +196,15 @@ func refresh_board_layout() -> void:
 		return
 	if _scene.hero_scroll == null or _scene.enemy_scroll == null:
 		return
-	_scene.center_panel.custom_minimum_size = Vector2(0, CENTER_ZONE_HEIGHT)
+	# Safe area — Build #2 RULING: the dice field absorbs the ENTIRE inset
+	# budget (cutout top + gesture bottom). The center band gives up exactly
+	# safe_top + safe_bottom; the rails keep their authored floors, so on a
+	# cutout device the leftover height the EXPAND rails share is unchanged and
+	# every band except this one renders at its desktop height. The 3D tray's
+	# camera is orthographic KEEP_HEIGHT, so the dice scale down with the band.
+	# Insets are 0 on desktop → CENTER_ZONE_HEIGHT exactly, pixel-identical.
+	var center_h: float = maxf(CENTER_ZONE_HEIGHT - float(PixelUI.safe_top + PixelUI.safe_bottom), 0.0)
+	_scene.center_panel.custom_minimum_size = Vector2(0, center_h)
 	_scene.hero_panel.custom_minimum_size = Vector2(0, CARD_ZONE_HEIGHT)
 	_scene.enemy_panel.custom_minimum_size = Vector2(0, CARD_ZONE_HEIGHT)
 	_scene.hero_scroll.add_theme_constant_override("separation", RAIL_ROW_GAP_PX)

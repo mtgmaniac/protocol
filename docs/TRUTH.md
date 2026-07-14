@@ -196,23 +196,47 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Battle UI geometry (layout contract)
 
-Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Enemy rail 768 — Center rail 432 (dice + centered action button) — Hero rail 768 — Footer 144 (**Reroll, Nudge, Set, Item** + PROTOCOL n/m pips). Header height == footer height; all unit cards identical outer size; dice align to card slots; result tags are uniform die-docked plates (below hero dice, above enemy dice, never occluding the sprite). No scrolling. Touch-first.
+Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Enemy rail (flex, floor 768) — Center rail (dice + centered action button; floor **540**, not the old spec's 432 — 432 clipped the readout pips into the dice, `battle_layout.gd`) — Hero rail (flex, floor 768) — Footer 144 (**Reroll, Nudge, Set, Item** + PROTOCOL n/m pips). The two rails share leftover height via EXPAND (adapts across phone aspects, stretch aspect = expand). Header height == footer height; all unit cards identical outer size; dice align to card slots; result tags are uniform die-docked plates (below hero dice, above enemy dice, never occluding the sprite). No scrolling. Touch-first.
 
-**Safe area (Android Build #1, 2026-07-13):** `PixelUI.safe_top/right/bottom/left`
-(four named ints, DESIGN px, all 0 on desktop) is the single source of truth for
-display-cutout / gesture-bar insets; `PixelUI.refresh_safe_insets` computes them
-(ceil, never floor — INVARIANTS #14) and the always-alive `PersistentHeader`
-autoload drives refresh (ready + root `size_changed`) and emits `safe_area_changed`.
-The header BAND grows by `safe_top` (chrome paints under the punch-hole; only the
-Bar content shifts down — `band_height()` = 144 + inset is what overlays clear);
-the battle footer's `ProtocolMargin` grows its bottom pad by `safe_bottom`; every
-between-battle screen adds the insets to its authored edge margins at build time.
-Known Build-#2 item: on a cutout device the grown band overlaps the top `safe_top`
-px of the battle's fixed 2256px band stack (enemy rail top) — needs a layout
-ruling. Regression: `scripts/debug/safe_area_test.gd` (in `verify_gate.py`). The
-temporary `SafeAreaDebug` overlay autoload (two tap-toggled pages: display info +
-m5x7 font-size ladder; mobile-gated, kill switch `overload/debug/safe_area_overlay`)
-is deleted in Build #2.
+**Safe area (Android Builds #1–#2, 2026-07-13, Pixel-8-verified):**
+`PixelUI.safe_top/right/bottom/left` (four named ints, DESIGN px, all 0 on
+desktop) is the single source of truth for display-cutout / gesture-bar insets;
+`PixelUI.refresh_safe_insets` computes them (ceil, never floor — INVARIANTS #14)
+and the always-alive `PersistentHeader` autoload drives refresh (ready + root
+`size_changed`) and emits `safe_area_changed`. The header BAND grows by
+`safe_top` (chrome paints under the punch-hole; only the Bar content shifts down
+— `band_height()` = 144 + inset is what overlays clear); every between-battle
+screen adds the insets to its authored edge margins at build time.
+**Battle band ruling (Build #2):** the DICE FIELD absorbs the entire inset
+budget — the board shifts below the grown band and above the gesture reserve,
+and the center band gives up exactly `safe_top + safe_bottom`; rails, footer,
+and header content keep their authored heights (desktop pixel-identical). The
+Build-#1 footer bottom-pad mechanism is replaced by this. **Gesture reserve
+(Build #2):** Android's `get_display_safe_area()` is cutout-only (Pixel 8
+reported bottom 0 with a live gesture bar), so `safe_bottom` carries a floor of
+`PixelUI.SAFE_BOTTOM_RESERVE` = 56 on Android only (`bottom_reserve()`), folded
+into the same single inset — no parallel path. **Font root cause (Build #2, PROVEN
+against the shipped Build-#1 APK's file list):** two call sites — 
+`PixelUI.get_pixel_font` and `dice_tray_3d._get_dice_number_font` — loaded the
+font via `FontFile.load_dynamic_font("res://assets/fonts/m5x7.ttf")`, the RAW
+source path. Exports pack only the IMPORTED artifact + `.import` remap (the
+APK contains `m5x7.ttf-*.fontdata` but **no raw `.ttf`**), so on device both
+loads failed and each site's own silent `SystemFont` fallback rendered the
+Android system font — every label AND the die numerals ("Bug 2" was never the
+dice). Fixed: both sites load the imported resource via `load()` (single
+source: `get_pixel_font`; the dice tray delegates), failing LOUDLY
+(`push_error`) if it can't. Side effect: the six Phase-0 import params
+(antialiasing=0 etc.) are now actually in effect on this path — desktop text
+is not bit-identical, marginally crisper. `m5x7.ttf.import` also pins
+`allow_system_fallback=false` (defense-in-depth for the theme path, NOT the
+proven mechanism), and the diagnostic overlay's page 0 prints
+`font_name`/`font_path`/`ttf_exists` (the on-device verdict line). Never load
+a font (or any imported resource) by raw source path — the safe-area test
+scans for `load_dynamic_font` at source level. Regression: `scripts/debug/safe_area_test.gd`
+(in `verify_gate.py`). The temporary `SafeAreaDebug` overlay autoload (two
+tap-toggled pages: display info + m5x7 font-size ladder; mobile-gated, kill
+switch `overload/debug/safe_area_overlay`) is deleted in Build #3 once the font
+is confirmed fixed on device.
 
 ## UI & feedback
 

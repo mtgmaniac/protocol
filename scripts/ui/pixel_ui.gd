@@ -251,9 +251,19 @@ static func make_dither_overlay(tint: Color, alpha: float) -> TextureRect:
 
 static func get_pixel_font() -> Font:
 	if _pixel_font == null:
-		var font: FontFile = FontFile.new()
-		var load_error: Error = font.load_dynamic_font(UI_FONT_PATH)
-		if load_error != OK:
+		# ResourceLoader, NOT FontFile.load_dynamic_font(raw path): an export
+		# packs only the IMPORTED artifact + the .import remap — the raw .ttf is
+		# not in the APK (verified against Build #1's shipped APK file list), so
+		# the old dynamic load failed on device and the silent SystemFont
+		# fallback rendered every label in Roboto (the Android Build #1 "font
+		# mush" bug). load() follows the remap to the imported FontFile, which
+		# carries the six Phase-0-verified import params. Desktop resolves the
+		# same imported resource — pixel-identical.
+		var font: Font = load(UI_FONT_PATH) as Font
+		if font == null:
+			# Loud failure (Build #2 rule: never substitute silently). The
+			# SystemFont keeps the game readable; the error names the bug.
+			push_error("[PixelUI] m5x7 failed to load from '%s' — falling back to a SYSTEM font. Text is rendering in the wrong typeface; fix the font resource, do not ship this." % UI_FONT_PATH)
 			var fallback_font: SystemFont = SystemFont.new()
 			fallback_font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "Courier New", "monospace"])
 			_pixel_font = fallback_font
@@ -1154,14 +1164,31 @@ static var safe_right := 0
 static var safe_bottom := 0
 static var safe_left := 0
 
+# Android gesture-navigation reserve (Build #2, device-verified): on the
+# Pixel 8, get_display_safe_area() reports the display CUTOUT only — bottom
+# came back 0 while the gesture bar sits on the protocol row. Godot exposes no
+# WindowInsets.Type.systemGestures(), so a fixed reserve is the ruling (option
+# 1): crude but correct in practice, zero new machinery. Folded into
+# safe_bottom itself inside refresh_safe_insets — every existing consumer
+# inherits it; there is NO second inset path. 0 on every non-Android platform.
+const SAFE_BOTTOM_RESERVE := 56
+
+# Pure rule (headless-testable without being on Android): the effective bottom
+# floor for a given OS. Only Android gets the gesture reserve.
+static func bottom_reserve(os_name: String) -> int:
+	return SAFE_BOTTOM_RESERVE if os_name == "Android" else 0
+
+
 static func refresh_safe_insets(vp: Viewport) -> void:
 	# "No data" (zero window: headless/mid-init; zero safe rect: dummy driver)
-	# means EVERYTHING IS SAFE — reset to 0, never keep stale insets.
+	# means EVERYTHING IS SAFE — reset to the floor, never keep stale insets.
+	# (The floor, not 0: an Android driver that reports nothing still has a
+	# gesture bar.)
 	var win := Vector2(DisplayServer.window_get_size())
 	if win.x <= 0.0 or win.y <= 0.0:
 		safe_top = 0
 		safe_right = 0
-		safe_bottom = 0
+		safe_bottom = bottom_reserve(OS.get_name())
 		safe_left = 0
 		return
 
@@ -1170,7 +1197,7 @@ static func refresh_safe_insets(vp: Viewport) -> void:
 	if sa.size.x <= 0 or sa.size.y <= 0:
 		safe_top = 0
 		safe_right = 0
-		safe_bottom = 0
+		safe_bottom = bottom_reserve(OS.get_name())
 		safe_left = 0
 		return
 
@@ -1216,7 +1243,9 @@ static func refresh_safe_insets(vp: Viewport) -> void:
 
 	safe_top = _to_design(t, sy)
 	safe_right = _to_design(r, sx)
-	safe_bottom = _to_design(b, sy)
+	# Gesture-bar floor (Android): the reported bottom is cutouts-only and reads
+	# 0 on a punch-hole phone; the reserve keeps the footer above the bar.
+	safe_bottom = maxi(_to_design(b, sy), bottom_reserve(OS.get_name()))
 	safe_left = _to_design(l, sx)
 
 

@@ -1689,16 +1689,14 @@ func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basi
 # ── ORIENTATION HELPERS ───────────────────────────────────────────────────────
 
 func _get_dice_number_font() -> Font:
+	# Delegates to the single font source (duplicated-loader rule): this used to
+	# be a COPY of PixelUI's raw-path loader, and both copies failed identically
+	# on device (the raw .ttf isn't in the APK — only the imported artifact),
+	# which is why the die numerals rendered in the system font ("Bug 2": the
+	# dice were never wrong, their labels were). PixelUI.get_pixel_font() loads
+	# the imported resource via ResourceLoader and fails LOUDLY if it can't.
 	if _dice_number_font == null:
-		var font: FontFile = FontFile.new()
-		var load_error: Error = font.load_dynamic_font(PixelUI.UI_FONT_PATH)
-		if load_error != OK:
-			var fallback_font: SystemFont = SystemFont.new()
-			fallback_font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "Courier New", "monospace"])
-			fallback_font.font_weight = 700
-			_dice_number_font = fallback_font
-			return _dice_number_font
-		_dice_number_font = font
+		_dice_number_font = PixelUI.get_pixel_font()
 	return _dice_number_font
 
 

@@ -76,6 +76,14 @@ func _parse_args() -> Dictionary:
 			# Suppress first-sight keyword primers so a locked-target capture shows the
 			# board (e.g. the incoming-damage block behind an HP number) un-dimmed.
 			config["no_primers"] = true
+		elif arg.begins_with("--capture-insets="):
+			# Simulate device safe-area insets (top,bottom design px) on desktop —
+			# e.g. --capture-insets=132,56 reproduces the Pixel 8 cutout + gesture
+			# reserve so the reclaimed dice band can be eyeballed without a device.
+			var parts: PackedStringArray = arg.get_slice("=", 1).split(",", false)
+			if parts.size() >= 2:
+				config["inset_top"] = maxi(int(parts[0]), 0)
+				config["inset_bottom"] = maxi(int(parts[1]), 0)
 		elif arg == "--capture-debug-log":
 			config["debug_log"] = true
 		elif arg == "--capture-enemy-shield":
@@ -141,6 +149,14 @@ func _parse_args() -> Dictionary:
 func _prepare_run(config: Dictionary) -> void:
 	if bool(config.get("no_primers", false)):
 		_save_manager().set_setting("ability_primers_enabled", false)
+	if config.has("inset_top"):
+		# Simulated device insets: poke the single source of truth, then have the
+		# header re-apply so the sim matches the real device pipeline.
+		PixelUI.safe_top = int(config["inset_top"])
+		PixelUI.safe_bottom = int(config["inset_bottom"])
+		var header: Node = root.get_node_or_null("/root/PersistentHeader")
+		if header != null and header.has_method("_apply_safe_area"):
+			header.call("_apply_safe_area")
 	if bool(config.get("tutorial", false)):
 		_game_state().start_tutorial_run()
 		return

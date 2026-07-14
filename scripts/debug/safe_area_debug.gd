@@ -170,6 +170,10 @@ func _refresh() -> void:
 		_ladder_root.add_theme_constant_override("margin_bottom", PixelUI.safe_bottom)
 	var inv: Transform2D = vp.get_screen_transform().affine_inverse()
 	var scale_factor: float = (1.0 / inv.x.x) if inv.x.x != 0.0 else 0.0
+	# Font identity (Build #2, Task 1a): get_font_name() returns the literal
+	# family string — "m5x7" or "Roboto". Not inference; the answer. This is the
+	# same Font object the label renders with (theme lookup honors the override).
+	var f: Font = _label.get_theme_font("font")
 	var lines := "\n".join([
 		"win        %s" % DisplayServer.window_get_size(),
 		"scale      %.5f" % scale_factor,
@@ -182,6 +186,9 @@ func _refresh() -> void:
 		"cutouts    %s" % str(DisplayServer.get_display_cutouts()),
 		"insets     T%d R%d B%d L%d" % [PixelUI.safe_top, PixelUI.safe_right,
 			PixelUI.safe_bottom, PixelUI.safe_left],
+		"font_name  %s" % (f.get_font_name() if f != null else "NULL"),
+		"font_path  %s" % (f.resource_path if f != null else "-"),
+		"ttf_exists %s" % ResourceLoader.exists("res://assets/fonts/m5x7.ttf"),
 	])
 	_label.text = lines
 	# stdout copy → adb logcat, in case the overlay text itself is the bug.

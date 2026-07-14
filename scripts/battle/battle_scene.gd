@@ -24,7 +24,6 @@ signal tutorial_event(event: StringName, payload: Dictionary)
 @onready var battle_log_label: RichTextLabel = %BattleLogLabel
 @onready var battle_log_panel: PanelContainer = %BattleLogPanel
 @onready var protocol_panel: PanelContainer = %ProtocolPanel
-@onready var protocol_margin: MarginContainer = %ProtocolMargin
 @onready var roll_button: Button = %RollButton
 @onready var protocol_spend_button: Button = %ProtocolSpendButton
 @onready var float_layer: Control = %FloatLayer
@@ -1796,24 +1795,38 @@ var _protocol_pips: Control = null
 # Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
 # header/footer content lines up with the tray instead of running to the screen edge.
 const TRAY_EDGE_INSET := 16
-# ProtocolMargin's authored bottom pad (mirrors the .tscn's margin_bottom = 4 =
-# its margin_top). _apply_safe_area() re-derives the override, so the base pad
-# must be named here or a zero inset (every desktop run) would erase it.
-const FOOTER_BOTTOM_PAD := 4
+# Content's authored offsets (mirror the .tscn: top 170 = 144 header band + 26
+# gap; bottom 144 = the footer band). _apply_safe_area() re-derives the offsets,
+# so the authored values must be named here or a zero inset (every desktop run)
+# would erase them.
+const CONTENT_TOP_OFFSET := 170.0
+const CONTENT_BOTTOM_OFFSET := 144.0
 
 
-# Safe area (Android punch-hole / gesture bar): the footer row sits flush to the
-# screen's bottom edge, under the gesture bar on device. Grow ProtocolMargin's
-# bottom pad by the inset — the panel keeps its footprint; the row lifts clear.
-# The TOP inset is owned entirely by PersistentHeader (the band grows down over
-# this scene's fixed 144px reservation; see the Build-#1 report for the known
-# enemy-rail overlap on cutout devices — a Build-#2 layout ruling).
+# Safe area — Build #2 RULING: the DICE FIELD absorbs the ENTIRE inset budget.
+# The whole board shifts below the grown header band (top inset) and lifts above
+# the gesture bar (bottom inset); the center/dice band gives up that exact
+# height in battle_layout.refresh_board_layout, so the enemy rail, hero rail,
+# footer, and header content region all keep their authored heights — desktop
+# stays pixel-identical (insets 0 → authored offsets exactly). This replaces the
+# Build-#1 ProtocolMargin bottom-pad mechanism, which shrank the footer ROW
+# instead (the footer keeps its authored anatomy now). The Build-#1 flag — the
+# grown band clipping the enemy name plates on device — is what this fixes.
 func _apply_safe_area() -> void:
-	if protocol_margin == null:
-		return
-	protocol_margin.add_theme_constant_override(
-		"margin_bottom", FOOTER_BOTTOM_PAD + PixelUI.safe_bottom
-	)
+	var content: MarginContainer = get_node_or_null("Content") as MarginContainer
+	if content != null:
+		content.offset_top = CONTENT_TOP_OFFSET + float(PixelUI.safe_top)
+		content.offset_bottom = -(CONTENT_BOTTOM_OFFSET + float(PixelUI.safe_bottom))
+	if protocol_panel != null and is_instance_valid(protocol_panel):
+		# The footer band rides above the gesture reserve at full authored height
+		# (its top is re-derived from the hero cards by _position_zone_dividers).
+		protocol_panel.offset_bottom = -float(PixelUI.safe_bottom)
+	if _layout != null and is_instance_valid(_layout):
+		# Full stabilize pass (not a single deferred refresh): the footer top is
+		# derived from the hero cards' SETTLED rects, and a lone refresh reads
+		# them pre-shift when insets change live (rotation/fold). Same loop the
+		# scene runs at _ready; inset changes are rare, so the cost is nothing.
+		Callable(_layout, "stabilize_board_layout").call_deferred()
 
 
 # A fixed 3px divider line at the header (top) or footer (bottom) boundary, inset to
