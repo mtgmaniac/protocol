@@ -47,8 +47,10 @@ func _ready() -> void:
 	var side: int = PixelUI.screen_frame_side_margin()
 	margin.add_theme_constant_override("margin_left", side)
 	margin.add_theme_constant_override("margin_right", side)
-	margin.add_theme_constant_override("margin_top", 150)
-	margin.add_theme_constant_override("margin_bottom", 80)
+	# Safe area: +insets so the window clears the grown header band and the
+	# gesture bar on cutout devices (0 on desktop — no-op).
+	margin.add_theme_constant_override("margin_top", 150 + PixelUI.safe_top)
+	margin.add_theme_constant_override("margin_bottom", 80 + PixelUI.safe_bottom)
 	add_child(margin)
 
 	var center_col := VBoxContainer.new()

@@ -81,6 +81,8 @@ names like "Overload Capacitor" or "Core Surge" stay as-is.)
   header bar** (the old `scenes/shared/BattleHeader.tscn` is deleted).
 - It overlays the top 144px (`HEADER_HEIGHT`) of every screen, so each non-battle screen
   reserves that space at the top of its layout (BattleScene already does via its 144 offset).
+  On a display-cutout device the band is `PixelUI.safe_top` taller (`band_height()`), and
+  screens add the safe insets to their authored edge margins at build time.
 - Public API:
   - `update_progress(battle_number, total_battles, operation_name)` — sets the run label.
   - `set_run_active(active)` — blanks the label when no run is active (home / run-end).
@@ -88,3 +90,9 @@ names like "Overload Capacitor" or "Core Surge" stay as-is.)
     screen binds its button handlers on `_ready` and clears them on `_exit_tree`. Unbound
     buttons are inert (no-op). This is how the same buttons do different things per screen.
   - `set_debug_enabled(bool)` / `set_debug2_enabled(bool)` — toggle the debug buttons.
+  - `band_height()` — the band's REAL height: `HEADER_HEIGHT + PixelUI.safe_top` (0 extra on
+    desktop). Overlays that clear the header (help / inspect / loadout) use this, not the raw
+    constant.
+  - `safe_area_changed` signal — fired after `PixelUI.refresh_safe_insets` re-measures on a
+    root size change. PersistentHeader owns the refresh cadence; **`PixelUI.safe_top/right/
+    bottom/left` (design px) is the single source of truth for safe-area insets.**

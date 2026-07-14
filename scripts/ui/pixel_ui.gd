@@ -1138,3 +1138,90 @@ static func style_progress_bar(bar: ProgressBar, fill: Color, bg: Color = Color(
 	fill_style.set_content_margin(SIDE_BOTTOM, 0.0)
 	bar.add_theme_stylebox_override("background", bg_style)
 	bar.add_theme_stylebox_override("fill", fill_style)
+
+
+# ── Safe area — single source of truth (INVARIANTS #14) ──────────────────────
+# Insets in DESIGN-SPACE pixels (1080×2400 space), NOT physical pixels.
+# All four read 0 on desktop and on any device without cutouts, so this is a
+# no-op everywhere it isn't needed. PersistentHeader (always alive, autoload)
+# drives refresh on ready + every root size change and emits safe_area_changed;
+# screens read these at build time (every screen rebuilds on entry).
+#
+# Four named ints, deliberately — not a Vector4i. `Vector4i.w` meaning "left"
+# is exactly the kind of thing that becomes a silent wrong-edge bug later.
+static var safe_top := 0
+static var safe_right := 0
+static var safe_bottom := 0
+static var safe_left := 0
+
+static func refresh_safe_insets(vp: Viewport) -> void:
+	# "No data" (zero window: headless/mid-init; zero safe rect: dummy driver)
+	# means EVERYTHING IS SAFE — reset to 0, never keep stale insets.
+	var win := Vector2(DisplayServer.window_get_size())
+	if win.x <= 0.0 or win.y <= 0.0:
+		safe_top = 0
+		safe_right = 0
+		safe_bottom = 0
+		safe_left = 0
+		return
+
+	# OS safe area, in PHYSICAL pixels, in SCREEN coordinates.
+	var sa: Rect2i = DisplayServer.get_display_safe_area()
+	if sa.size.x <= 0 or sa.size.y <= 0:
+		safe_top = 0
+		safe_right = 0
+		safe_bottom = 0
+		safe_left = 0
+		return
+
+	# Screen → window-relative. On mobile fullscreen the window origin is (0,0)
+	# and this is a no-op; on a desktop WINDOW the safe area is the monitor's
+	# usable rect in screen coords, and comparing it to the window size without
+	# this correction yields garbage (negative/huge insets). A window fully
+	# inside the usable area lands on 0 for all four after the max(0, …) below.
+	var win_pos := Vector2(DisplayServer.window_get_position())
+	var t: float = float(sa.position.y) - win_pos.y
+	var l: float = float(sa.position.x) - win_pos.x
+	var r: float = (win_pos.x + win.x) - float(sa.position.x + sa.size.x)
+	var b: float = (win_pos.y + win.y) - float(sa.position.y + sa.size.y)
+
+	# Belt-and-suspenders. In immersive/fullscreen, get_display_safe_area()
+	# frequently returns the WHOLE screen even when a punch-hole exists.
+	# Cutout rects are the ground truth. Only widen the edge each one touches.
+	for c: Rect2 in DisplayServer.get_display_cutouts():
+		var cp: Vector2 = c.position - win_pos
+		if cp.y <= 1.0:
+			t = maxf(t, cp.y + c.size.y)
+		if cp.x <= 1.0:
+			l = maxf(l, cp.x + c.size.x)
+		if cp.x + c.size.x >= win.x - 1.0:
+			r = maxf(r, win.x - cp.x)
+		if cp.y + c.size.y >= win.y - 1.0:
+			b = maxf(b, win.y - cp.y)
+
+	t = maxf(t, 0.0)
+	l = maxf(l, 0.0)
+	r = maxf(r, 0.0)
+	b = maxf(b, 0.0)
+
+	# PHYSICAL → DESIGN. get_screen_transform() folds in BOTH the content scale
+	# factor and the expand/letterbox offset. Do NOT hand-roll win/design — that
+	# silently drops the offset and is wrong on any phone that isn't 1080 wide.
+	# (This project ships stretch aspect "expand", so the offset is zero and the
+	# inset LENGTHS convert by pure scale; the inverse transform keeps this
+	# correct even if the aspect mode ever changes.)
+	var inv: Transform2D = vp.get_screen_transform().affine_inverse()
+	var sx: float = inv.x.x
+	var sy: float = inv.y.y
+
+	safe_top = _to_design(t, sy)
+	safe_right = _to_design(r, sx)
+	safe_bottom = _to_design(b, sy)
+	safe_left = _to_design(l, sx)
+
+
+# Always ceil. Rounding DOWN leaves content under the camera. Pure so the
+# headless test can hit it without a live DisplayServer (pixel-snap law:
+# insets are whole design pixels, always rounded up).
+static func _to_design(physical_px: float, inv_scale: float) -> int:
+	return int(ceil(physical_px * inv_scale))

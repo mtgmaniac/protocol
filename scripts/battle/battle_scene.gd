@@ -24,6 +24,7 @@ signal tutorial_event(event: StringName, payload: Dictionary)
 @onready var battle_log_label: RichTextLabel = %BattleLogLabel
 @onready var battle_log_panel: PanelContainer = %BattleLogPanel
 @onready var protocol_panel: PanelContainer = %ProtocolPanel
+@onready var protocol_margin: MarginContainer = %ProtocolMargin
 @onready var roll_button: Button = %RollButton
 @onready var protocol_spend_button: Button = %ProtocolSpendButton
 @onready var float_layer: Control = %FloatLayer
@@ -276,6 +277,10 @@ func _ready() -> void:
 		_on_auto_battle_button_pressed,
 		_on_return_to_menu_button_pressed,
 	)
+	# Bottom safe-area inset (gesture bar), live-updating on rotation/resize.
+	# The connection dies with this scene, so no explicit disconnect needed.
+	_apply_safe_area()
+	PersistentHeader.safe_area_changed.connect(_apply_safe_area)
 	_protocol.build_footer_buttons()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
 	board.move_child(enemy_panel, 0)
@@ -1791,6 +1796,24 @@ var _protocol_pips: Control = null
 # Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
 # header/footer content lines up with the tray instead of running to the screen edge.
 const TRAY_EDGE_INSET := 16
+# ProtocolMargin's authored bottom pad (mirrors the .tscn's margin_bottom = 4 =
+# its margin_top). _apply_safe_area() re-derives the override, so the base pad
+# must be named here or a zero inset (every desktop run) would erase it.
+const FOOTER_BOTTOM_PAD := 4
+
+
+# Safe area (Android punch-hole / gesture bar): the footer row sits flush to the
+# screen's bottom edge, under the gesture bar on device. Grow ProtocolMargin's
+# bottom pad by the inset — the panel keeps its footprint; the row lifts clear.
+# The TOP inset is owned entirely by PersistentHeader (the band grows down over
+# this scene's fixed 144px reservation; see the Build-#1 report for the known
+# enemy-rail overlap on cutout devices — a Build-#2 layout ruling).
+func _apply_safe_area() -> void:
+	if protocol_margin == null:
+		return
+	protocol_margin.add_theme_constant_override(
+		"margin_bottom", FOOTER_BOTTOM_PAD + PixelUI.safe_bottom
+	)
 
 
 # A fixed 3px divider line at the header (top) or footer (bottom) boundary, inset to

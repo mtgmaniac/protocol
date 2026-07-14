@@ -198,6 +198,22 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Enemy rail 768 — Center rail 432 (dice + centered action button) — Hero rail 768 — Footer 144 (**Reroll, Nudge, Set, Item** + PROTOCOL n/m pips). Header height == footer height; all unit cards identical outer size; dice align to card slots; result tags are uniform die-docked plates (below hero dice, above enemy dice, never occluding the sprite). No scrolling. Touch-first.
 
+**Safe area (Android Build #1, 2026-07-13):** `PixelUI.safe_top/right/bottom/left`
+(four named ints, DESIGN px, all 0 on desktop) is the single source of truth for
+display-cutout / gesture-bar insets; `PixelUI.refresh_safe_insets` computes them
+(ceil, never floor — INVARIANTS #14) and the always-alive `PersistentHeader`
+autoload drives refresh (ready + root `size_changed`) and emits `safe_area_changed`.
+The header BAND grows by `safe_top` (chrome paints under the punch-hole; only the
+Bar content shifts down — `band_height()` = 144 + inset is what overlays clear);
+the battle footer's `ProtocolMargin` grows its bottom pad by `safe_bottom`; every
+between-battle screen adds the insets to its authored edge margins at build time.
+Known Build-#2 item: on a cutout device the grown band overlaps the top `safe_top`
+px of the battle's fixed 2256px band stack (enemy rail top) — needs a layout
+ruling. Regression: `scripts/debug/safe_area_test.gd` (in `verify_gate.py`). The
+temporary `SafeAreaDebug` overlay autoload (two tap-toggled pages: display info +
+m5x7 font-size ladder; mobile-gated, kill switch `overload/debug/safe_area_overlay`)
+is deleted in Build #2.
+
 ## UI & feedback
 
 **Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; max one per turn; suppressed in tutorial/headless/auto battle; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.

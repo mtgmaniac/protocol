@@ -13,10 +13,29 @@ extends CanvasLayer
 ## scripts/ui/pixel_ui.gd. The fixed bottom divider here REPLACES the battle scene's
 ## old dynamic HeaderDivider.
 
+## The header's CONTENT height in design px. The band NODE can be taller on a
+## device with a display cutout (band_height() = this + PixelUI.safe_top) — the
+## band chrome paints underneath the camera so the punch-hole sits on solid
+## header instead of on game art, and only the Bar contents shift down.
+## This constant is the single source for 144: _apply_safe_area() writes it
+## into the .tscn's HeaderBand.offset_bottom on ready, and the popup/overlay
+## consumers (help / inspect / loadout) read it (or band_height()) dynamically.
 const HEADER_HEIGHT := 144.0
+## Bar's horizontal breathing room (mirrors the authored .tscn offsets ±16) —
+## _apply_safe_area() re-derives the offsets, so the pad must be named here or
+## the safe-area pass would silently erase it.
+const BAR_PAD_X := 16.0
 const SUMMARY_FONT_SIZE := 112
 const BUTTON_SIZE := Vector2(112, 112)
 
+## Fired after safe-area insets are re-measured on a root size change (device
+## rotation / fold, window resize). Live screens with edge-flush content
+## re-apply their insets on this (BattleScene does); regular screens just read
+## PixelUI.safe_* at build time since every screen rebuilds on entry.
+signal safe_area_changed
+
+@onready var _band: Control = $HeaderBand
+@onready var _bar: Control = $HeaderBand/Bar
 @onready var _background: ColorRect = %Background
 @onready var _summary_label: Label = %SummaryLabel
 @onready var _help_button: Button = %HelpButton
@@ -48,6 +67,38 @@ func _ready() -> void:
 	# defensive for headless harnesses that strip autoloads.
 	var sm: Variant = get_node_or_null("/root/SaveManager")
 	set_dev_mode(sm != null and bool(sm.get_setting("dev_mode", false)))
+	# Safe area: this always-alive autoload owns the refresh cadence for the
+	# whole game (PixelUI.safe_* is the single source of truth for the values).
+	PixelUI.refresh_safe_insets(get_viewport())
+	get_tree().root.size_changed.connect(_on_root_resized)
+	_apply_safe_area()
+
+
+func _on_root_resized() -> void:
+	PixelUI.refresh_safe_insets(get_viewport())
+	_apply_safe_area()
+	safe_area_changed.emit()
+
+
+## The band's REAL height: content + the top cutout inset. Overlays that clear
+## the header (help menu, inspect popup, loadout) should use this, not the raw
+## HEADER_HEIGHT constant.
+func band_height() -> float:
+	return HEADER_HEIGHT + float(PixelUI.safe_top)
+
+
+# Critical layout intent: HeaderBand GROWS by the top inset and Background stays
+# anchored to the full band — the header chrome must paint underneath the camera
+# cutout, so the camera sits on solid header instead of on game art. Only the
+# Bar contents shift down (and in, for notched side edges). Do NOT add a top
+# offset to HeaderBand itself — that would expose game art behind the cutout.
+func _apply_safe_area() -> void:
+	if _band == null or _bar == null:
+		return
+	_band.offset_bottom = HEADER_HEIGHT + float(PixelUI.safe_top)
+	_bar.offset_top = float(PixelUI.safe_top)
+	_bar.offset_left = BAR_PAD_X + float(PixelUI.safe_left)
+	_bar.offset_right = -(BAR_PAD_X + float(PixelUI.safe_right))
 
 
 func _on_help_pressed() -> void:

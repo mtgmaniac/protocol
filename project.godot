@@ -26,6 +26,7 @@ SaveManager="*res://scripts/autoloads/SaveManager.gd"
 PersistentHeader="*res://scenes/ui/PersistentHeader.tscn"
 TransitionManager="*res://scripts/autoloads/TransitionManager.gd"
 DebugBattleLauncher="*res://scripts/debug/DebugBattleLauncher.gd"
+SafeAreaDebug="*res://scenes/debug/SafeAreaDebug.tscn"
 
 [display]
 
@@ -35,11 +36,18 @@ window/size/window_width_override=540
 window/size/window_height_override=1200
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation="portrait"
+window/handheld/orientation=1
 
 [gui]
 
 theme/custom="res://assets/ui/theme_overload.tres"
+
+[overload]
+
+; TEMPORARY (Android Build #1) — kill switch for the SafeAreaDebug overlay
+; autoload. The overlay additionally self-gates to mobile / SAFE_AREA_DEBUG=1,
+; so desktop and the screenshot harness never see it. Deleted in Build #2.
+debug/safe_area_overlay=true
 
 [physics]
 
@@ -50,3 +58,4 @@ common/physics_ticks_per_second=120
 
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

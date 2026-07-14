@@ -422,10 +422,14 @@ func _build_ui() -> void:
 	skip_wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# On the spotlight's canvas layer so Skip renders above the dim.
 	_spot.add_overlay_control(skip_wrap)
-	# Vertically centred within the header band, pinned to the left over the FACILITY label.
+	# Vertically centred within the header band's CONTENT region, pinned to the
+	# left over the FACILITY label. On a cutout device the band is safe_top
+	# taller and its content sits below the camera — center in that region, not
+	# the raw band rect (which would seat SKIP partially under the punch-hole).
 	var header_band: float = _target_rect("header").size.y
 	var skip_h: float = 84.0
-	var skip_top: float = maxf((header_band - skip_h) * 0.5, 12.0)
+	var content_h: float = maxf(header_band - float(PixelUI.safe_top), skip_h)
+	var skip_top: float = maxf(float(PixelUI.safe_top) + (content_h - skip_h) * 0.5, 12.0)
 	skip.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	skip.offset_left = 20
 	skip.offset_top = skip_top

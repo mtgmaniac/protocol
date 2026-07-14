@@ -19,6 +19,12 @@ const BUTTON_SIZE := Vector2(360, 120)
 
 
 func _ready() -> void:
+	# Safe area (device cutout / gesture bar): drop below the grown header band
+	# and lift the bottom button row clear. Both insets are 0 on desktop
+	# (no-op); the authored .tscn offsets (192 / −48) stay the base.
+	var content: MarginContainer = $Content
+	content.offset_top += float(PixelUI.safe_top)
+	content.offset_bottom -= float(PixelUI.safe_bottom)
 	# Encounter end (victory or defeat): crossfade back to loop 1.
 	MusicManager.play_track(&"sci_fi_loop_1")
 	MusicManager.set_combat(false)

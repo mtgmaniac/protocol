@@ -218,8 +218,11 @@ func _build_layout() -> void:
 	margin.add_theme_constant_override("margin_left", ROOT_MARGIN_X)
 	margin.add_theme_constant_override("margin_right", ROOT_MARGIN_X)
 	# Reserve room for the always-on PersistentHeader band (overlays the top 144px).
-	margin.add_theme_constant_override("margin_top", ROOT_MARGIN_TOP + int(PersistentHeader.HEADER_HEIGHT))
-	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM)
+	# Safe area: the header band grows by safe_top on cutout devices, and DEPLOY
+	# sits near the bottom edge (under the gesture bar without safe_bottom).
+	# Both insets are 0 on desktop (no-op).
+	margin.add_theme_constant_override("margin_top", ROOT_MARGIN_TOP + int(PersistentHeader.HEADER_HEIGHT) + PixelUI.safe_top)
+	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
 
 	var column := VBoxContainer.new()

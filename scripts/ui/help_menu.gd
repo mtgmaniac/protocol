@@ -118,12 +118,17 @@ func _build() -> void:
 
 	# Clear the persistent header band so the title isn't hidden behind it. Read the height off
 	# the live node (not the PersistentHeader global) so this compiles without the autoload too.
+	# band_height() = HEADER_HEIGHT + the top safe-area inset, so the panel also clears the
+	# camera-cutout-grown band on device.
 	var header_node := get_node_or_null("/root/PersistentHeader")
 	var band_height: float = 144.0
 	if header_node != null:
-		var value: Variant = header_node.get("HEADER_HEIGHT")
-		if value != null:
-			band_height = float(value)
+		if header_node.has_method("band_height"):
+			band_height = float(header_node.call("band_height"))
+		else:
+			var value: Variant = header_node.get("HEADER_HEIGHT")
+			if value != null:
+				band_height = float(value)
 	var top_margin: int = int(band_height) + 16 if header_node != null else 46
 	var margin := MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -131,7 +136,8 @@ func _build() -> void:
 	margin.add_theme_constant_override("margin_left", 28)
 	margin.add_theme_constant_override("margin_top", top_margin)
 	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_bottom", 46)
+	# Bottom clears the gesture-bar inset on device (0 on desktop).
+	margin.add_theme_constant_override("margin_bottom", 46 + PixelUI.safe_bottom)
 	add_child(margin)
 
 	var panel := PanelContainer.new()

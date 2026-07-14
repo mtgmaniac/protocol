@@ -219,8 +219,13 @@ func _relayout(anchor_rect: Rect2) -> void:
 	var top_limit: float = SCREEN_MARGIN
 	var header_node := get_node_or_null("/root/PersistentHeader")
 	if header_node != null:
-		var value: Variant = header_node.get("HEADER_HEIGHT")
-		top_limit = (float(value) if value != null else HEADER_BAND_HEIGHT) + SCREEN_MARGIN
+		# band_height() = HEADER_HEIGHT + the top safe-area inset (camera
+		# cutout), so the panel clamp also clears the grown band on device.
+		if header_node.has_method("band_height"):
+			top_limit = float(header_node.call("band_height")) + SCREEN_MARGIN
+		else:
+			var value: Variant = header_node.get("HEADER_HEIGHT")
+			top_limit = (float(value) if value != null else HEADER_BAND_HEIGHT) + SCREEN_MARGIN
 
 	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0)
 	_panel.size = Vector2(PANEL_WIDTH, 0)

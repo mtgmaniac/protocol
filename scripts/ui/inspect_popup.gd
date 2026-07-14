@@ -452,6 +452,10 @@ func _relayout(anchor_rect: Rect2) -> void:
 
 
 func _header_band_height(header: Node) -> float:
+	# band_height() = HEADER_HEIGHT + the top safe-area inset (camera cutout),
+	# so the popup's top clamp also clears the grown band on device.
+	if header.has_method("band_height"):
+		return float(header.call("band_height"))
 	var value: Variant = header.get("HEADER_HEIGHT")
 	return float(value) if value != null else HEADER_BAND_HEIGHT
 

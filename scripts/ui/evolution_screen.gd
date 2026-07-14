@@ -49,6 +49,12 @@ var _help_overlay: Control = null
 
 
 func _ready() -> void:
+	# Safe area (device cutout / gesture bar): drop below the grown header band
+	# and lift the footer clear. Both insets are 0 on desktop (no-op); the
+	# authored .tscn offsets (156 / −12) stay the base.
+	var content: MarginContainer = $Content
+	content.offset_top += float(PixelUI.safe_top)
+	content.offset_bottom -= float(PixelUI.safe_bottom)
 	_apply_visual_theme()
 	resized.connect(_update_choice_layout)
 	# Header bar lives in the PersistentHeader autoload; bind this screen's handlers.
