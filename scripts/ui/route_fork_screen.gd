@@ -176,12 +176,12 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	if flagged:
 		var modifier_info: Dictionary = GameState.BATTLE_MODIFIERS.get(_modifier_id, {})
 		var mod_chip := Label.new()
-		mod_chip.text = "⚠ %s — %s" % [str(modifier_info.get("name", _modifier_id)), str(modifier_info.get("desc", ""))]
+		mod_chip.text = "! %s - %s" % [str(modifier_info.get("name", _modifier_id)), str(modifier_info.get("desc", ""))]
 		mod_chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		PixelUI.style_label(mod_chip, CHIP_FONT, PixelUI.DT_RUST, 1)
 		vbox.add_child(mod_chip)
 		var reward_chip := Label.new()
-		reward_chip.text = "◆ SUPPLY GRADE +2"
+		reward_chip.text = "* SUPPLY GRADE +2"
 		PixelUI.style_label(reward_chip, CHIP_FONT, PixelUI.GOLD_ACCENT, 1)
 		vbox.add_child(reward_chip)
 	else:

@@ -160,9 +160,23 @@ func _position_zone_dividers(combat_zone: Rect2) -> void:
 	var footer_divider: Control = _scene.get_node_or_null("FooterDivider")
 	if footer_divider != null and hero_card.size.y > 2.0:
 		var ftop: float = hero_card.end.y - origin_y + gap
+		# The 6.5px footer bleed (Build #3 Phase 0): this derivation hugged the
+		# hero cards with NO regard for the footer's own minimum height. The
+		# board stack's minimums overshoot its allocation, so the cards end low
+		# enough that the remaining span (115px) is under the footer's combined
+		# minimum (128px) — and the grow-BOTH PanelContainer split the 13px
+		# overflow 6.5 above / 6.5 BELOW the screen bottom (a pixel-snap-law
+		# violation compounding with the gesture reserve). Clamp: the divider
+		# never sits lower than what leaves the footer its full minimum above
+		# the bottom inset. Read the minimum live (no one-off constant); floor
+		# to a whole design pixel (INVARIANTS #14 — err on MORE footer room).
+		if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
+			var footer_min: float = _scene.protocol_panel.get_combined_minimum_size().y
+			var max_ftop: float = _scene.size.y - float(PixelUI.safe_bottom) - footer_min - 3.0
+			ftop = floorf(minf(ftop, max_ftop))
 		footer_divider.offset_top = ftop
 		footer_divider.offset_bottom = ftop + 3.0
-		# Footer panel occupies [divider, screen bottom] so its content centers there.
+		# Footer panel occupies [divider, screen bottom − safe_bottom].
 		if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
 			_scene.protocol_panel.offset_top = (ftop + 3.0) - _scene.size.y
 

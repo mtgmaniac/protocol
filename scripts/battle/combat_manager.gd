@@ -107,11 +107,11 @@ const BROOD_SPAWN_NAME := "Bloodmite"
 const PERMANENT_BURN_TURNS := 9999
 
 const BOSS_STANDING_RULES := {
-	BOSS_SCRAPMASTER: "ASSEMBLY LINE — every 2nd enemy phase from its first activation, rebuilds one destroyed Scrap Drone at 50% HP.",
-	BOSS_MATRIARCH: "THE BROOD — spawns a Bloodmite every 3 rounds.",
-	BOSS_OVERSEER: "THE COURT — while any ally lives, gains a Firewall at the start of each round.",
-	BOSS_HIEROPHANT: "ROOT ACCESS — every round, Rewrites the squad's highest die to 3.",
-	BOSS_MANTLE: "ACCRETION — gains 6 shield at the start of every round; its shields persist and stack.",
+	BOSS_SCRAPMASTER: "ASSEMBLY LINE - every 2nd enemy phase from its first activation, rebuilds one destroyed Scrap Drone at 50% HP.",
+	BOSS_MATRIARCH: "THE BROOD - spawns a Bloodmite every 3 rounds.",
+	BOSS_OVERSEER: "THE COURT - while any ally lives, gains a Firewall at the start of each round.",
+	BOSS_HIEROPHANT: "ROOT ACCESS - every round, Rewrites the squad's highest die to 3.",
+	BOSS_MANTLE: "ACCRETION - gains 6 shield at the start of every round; its shields persist and stack.",
 }
 
 # BALANCE-TODO: rebuild HP 50%, brood cadence 3, mantle shield 6 are provisional.
@@ -257,7 +257,7 @@ func _apply_boss_round_start_rules() -> void:
 						court_stands = true
 						break
 				if court_stands and not bool(enemy_state.get("warded", false)):
-					_log("The Court stands — the Overseer raises a Firewall.")
+					_log("The Court stands - the Overseer raises a Firewall.")
 					_apply_ward(enemy_state)
 			BOSS_MANTLE:
 				_log("The Tyrant accretes its mantle.")
@@ -281,13 +281,13 @@ func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 				if (_battle_round - int(enemy_state["assembly_line_first_round"])) % 2 == 1:
 					for drone_state in _enemy_states:
 						if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and bool(drone_state["dead"]):
-							_log("ASSEMBLY LINE — the SCRAPMASTER rebuilds a Scrap Drone!")
+							_log("ASSEMBLY LINE - the SCRAPMASTER rebuilds a Scrap Drone!")
 							_revive_state(drone_state, _tuned_int("scrapmaster_rebuild_pct", SCRAPMASTER_REBUILD_PCT))
 							drone_state["summoned"] = true  # NK-10: rebuilds grant no kill economy
 							break
 			BOSS_MATRIARCH:
 				if _battle_round % maxi(_tuned_int("brood_cadence", BROOD_CADENCE), 1) == 0 and _count_living_enemies() < GameState.SQUAD_UNIT_LIMIT:
-					_log("THE BROOD — the Matriarch births a Bloodmite!")
+					_log("THE BROOD - the Matriarch births a Bloodmite!")
 					_round_events.append({
 						"type": "summon",
 						"amount": 0,
@@ -306,7 +306,7 @@ func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 						highest_roll = hero_roll
 						highest_hero = hero_state
 				if not highest_hero.is_empty():
-					_log("ROOT ACCESS — the Hierophant seizes the squad's highest die.")
+					_log("ROOT ACCESS - the Hierophant seizes the squad's highest die.")
 					apply_rewrite_to_state(highest_hero, true)
 
 
@@ -698,7 +698,7 @@ func resolve_round(
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"] and bool(enemy_state.get("hijack_pending", false)):
 				if int(enemy_state.get("die_freeze_turns", 0)) > 0:
-					_log("%s's die is frozen solid — the Hijack can't take hold." % enemy_state["unit"].display_name)
+					_log("%s's die is frozen solid - the Hijack can't take hold." % enemy_state["unit"].display_name)
 					continue
 				enemy_rolls[str(enemy_state["id"])] = highest_hero_roll
 				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
@@ -1148,7 +1148,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			if ally_state != hero_state:
 				ally_state["taunting"] = false
 		hero_state["taunting"] = true
-		_log("%s is taunting — enemies will target them!" % hero_state["unit"].display_name)
+		_log("%s is taunting - enemies will target them!" % hero_state["unit"].display_name)
 		_emit_event(hero_state, "taunt", 0, "hero")
 
 	if bool(raw.get("reviveAll", false)):
@@ -1171,7 +1171,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		spike_amount += _directive_value(hero_state, "amount", 4)
 	if spike_amount > 0:
 		hero_state["spike"] = maxi(int(hero_state.get("spike", 0)), spike_amount)
-		_log("%s bristles with Spike %d — attackers take damage this round." % [hero_state["unit"].display_name, spike_amount])
+		_log("%s bristles with Spike %d - attackers take damage this round." % [hero_state["unit"].display_name, spike_amount])
 		_emit_event(hero_state, "spike_up", spike_amount, "hero")
 
 	# Ward application: self by default, targeted ally with wardTgt.
@@ -1346,7 +1346,7 @@ func _apply_hero_ability_damage(
 	else:
 		var target_enemy: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if target_enemy.is_empty():
-			_log("%s finds no visible target — the attack fizzles." % hero_state["unit"].display_name)
+			_log("%s finds no visible target - the attack fizzles." % hero_state["unit"].display_name)
 		# breach all on a single-target ability still strips every enemy's
 		# shields before the hit lands.
 		if breach_all:
@@ -1363,7 +1363,7 @@ func _apply_hero_ability_damage(
 				var frozen_bonus: int = int(raw.get("vsFrozenBonus", 0))
 				if frozen_bonus > 0 and int(target_enemy.get("die_freeze_turns", 0)) > 0:
 					single_target_dmg += frozen_bonus
-					_log("%s shatters the frozen die — +%d damage!" % [hero_state["unit"].display_name, frozen_bonus])
+					_log("%s shatters the frozen die - +%d damage!" % [hero_state["unit"].display_name, frozen_bonus])
 				leech_hp_dealt += _damage_state(target_enemy, single_target_dmg, ignores_shield, hero_state, shield_pierce)
 				if bool(raw.get("detonate", false)):
 					_detonate_burn(hero_state, target_enemy)
@@ -1423,11 +1423,11 @@ func _apply_rewrite(state: Dictionary, survives_current_tick: bool = true) -> vo
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	if int(state.get("die_freeze_turns", 0)) > 0:
-		_log("%s's die is frozen solid — the Rewrite can't take hold." % state["unit"].display_name)
+		_log("%s's die is frozen solid - the Rewrite can't take hold." % state["unit"].display_name)
 		return
 	state["rewrite_pending"] = true
 	state["rewrite_skip_next_tick"] = survives_current_tick
-	_log("%s's die is being REWRITTEN — next roll becomes %d." % [state["unit"].display_name, REWRITE_VALUE])
+	_log("%s's die is being REWRITTEN - next roll becomes %d." % [state["unit"].display_name, REWRITE_VALUE])
 	_emit_event(state, "rewrite", REWRITE_VALUE, _resolve_side_for_state(state))
 	_grant_mirror_plate_protocol(state)
 
@@ -1456,12 +1456,12 @@ func _apply_jam(state: Dictionary, cap: int = JAM_CAP, survives_current_tick: bo
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	if int(state.get("die_freeze_turns", 0)) > 0:
-		_log("%s's die is frozen solid — the Jam can't take hold." % state["unit"].display_name)
+		_log("%s's die is frozen solid - the Jam can't take hold." % state["unit"].display_name)
 		return
 	var existing: int = int(state.get("jam_cap", 0))
 	state["jam_cap"] = cap if existing <= 0 else mini(existing, cap)
 	state["jam_skip_next_tick"] = survives_current_tick
-	_log("%s's die is JAMMED — next roll capped at %d." % [state["unit"].display_name, int(state["jam_cap"])])
+	_log("%s's die is JAMMED - next roll capped at %d." % [state["unit"].display_name, int(state["jam_cap"])])
 	_emit_event(state, "jam", int(state["jam_cap"]), _resolve_side_for_state(state))
 	_grant_mirror_plate_protocol(state)
 
@@ -1491,7 +1491,7 @@ func _apply_mark(target_state: Dictionary) -> void:
 	if target_state.is_empty() or bool(target_state.get("dead", false)):
 		return
 	target_state["marked"] = true
-	_log("%s is MARKED — the next hit deals +50%%." % target_state["unit"].display_name)
+	_log("%s is MARKED - the next hit deals +50%%." % target_state["unit"].display_name)
 	_emit_event(target_state, "mark", 0, _resolve_side_for_state(target_state))
 
 
@@ -1555,7 +1555,7 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 		return
 	var burst: int = get_expected_detonate_burst(attacker_state, target_state)
 	if burst <= 0:
-		_log("%s's Detonate fizzles — no Burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
+		_log("%s's Detonate fizzles - no Burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
 		return
 	# Finite stacks are consumed; permanent stacks stay and keep ticking.
 	var remaining_stacks: Array = []
@@ -1708,7 +1708,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		else:
 			var target_hero: Dictionary = hostile_hero_target
 			if target_hero.is_empty():
-				_log("%s finds no visible target — the attack fizzles." % enemy_state["unit"].display_name)
+				_log("%s finds no visible target - the attack fizzles." % enemy_state["unit"].display_name)
 			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
 				attack_connected = true
 				_damage_state(target_hero, final_damage, false, enemy_state)
@@ -1809,7 +1809,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if bool(raw.get("hijack", false)):
 		enemy_state["hijack_pending"] = true
 		enemy_state["hijack_skip_next_tick"] = true
-		_log("%s locks onto the squad's dice — its next roll will HIJACK the highest." % enemy_state["unit"].display_name)
+		_log("%s locks onto the squad's dice - its next roll will HIJACK the highest." % enemy_state["unit"].display_name)
 		_emit_event(enemy_state, "hijack_primed", 0, "enemy")
 
 	# Cloak (self): Geode Panther re-cloaks on recharge; Forked Double reforks.
@@ -1824,7 +1824,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
 			hostile_hero_target["lured_by_id"] = str(enemy_state["id"])
 			hostile_hero_target["lure_skip_next_tick"] = true
-			_log("%s TAUNTS %s — next turn they can only strike back!" % [enemy_state["unit"].display_name, hostile_hero_target["unit"].display_name])
+			_log("%s TAUNTS %s - next turn they can only strike back!" % [enemy_state["unit"].display_name, hostile_hero_target["unit"].display_name])
 			_emit_event(hostile_hero_target, "taunt", 0, "hero")
 
 	# Spike: heroes that damage this enemy next hero phase take N back. Granted
@@ -1842,7 +1842,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		for es in _enemy_states:
 			es["taunting"] = false
 		enemy_state["taunting"] = true
-		_log("%s is taunting — all heroes must target it!" % enemy_state["unit"].display_name)
+		_log("%s is taunting - all heroes must target it!" % enemy_state["unit"].display_name)
 
 	# Summon: fires when an eligible enemy's overload ability resolves (final die
 	# face 20; no natural-20 check — ruling NK-02). Synod and Accretion summon too.
@@ -1930,7 +1930,7 @@ func _damage_state(
 		amount = int(ceil(float(amount) * 1.5))
 		state["marked"] = false
 		state["mark_consumed_this_hit"] = true
-		_log("%s's Mark is consumed — the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
+		_log("%s's Mark is consumed - the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
 		_emit_event(state, "mark_consumed", amount, _resolve_side_for_state(state))
 
 	# Flat vs-state riders fire once per ABILITY per target (NK-06), so a
@@ -2059,7 +2059,7 @@ func _damage_state(
 			# survives at 1 HP and the next roll is all 20s.
 			if _is_hero_state(state) and _all_states_dead(_hero_states) and has_relic("squadWipeSurvive") and not GameState.dead_mans_hand_used:
 				GameState.dead_mans_hand_used = true
-				_log("DEAD MAN'S HAND — the squad refuses to fall!")
+				_log("DEAD MAN'S HAND - the squad refuses to fall!")
 				for hero_state in _hero_states:
 					hero_state["dead"] = false
 					hero_state["current_hp"] = 1
@@ -2126,7 +2126,7 @@ func _apply_ward(state: Dictionary) -> void:
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	state["warded"] = true
-	_log("%s raises a Firewall — the next ability that targets them is blocked." % state["unit"].display_name)
+	_log("%s raises a Firewall - the next ability that targets them is blocked." % state["unit"].display_name)
 	_emit_event(state, "ward", 0, _resolve_side_for_state(state))
 
 
@@ -2160,7 +2160,7 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, flavor: String = "
 		frozen_value = int(state.get("last_die_value", 0))
 	if frozen_value > 0:
 		state["frozen_die_value"] = frozen_value
-	_log("%s's die is frozen at %d — it repeats that result %d more time(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
+	_log("%s's die is frozen at %d - it repeats that result %d more time(s)." % [state["unit"].display_name, int(state.get("frozen_die_value", 0)), int(state.get("die_freeze_turns", 0))])
 	_emit_event(state, "freeze", int(state.get("frozen_die_value", 0)), _resolve_side_for_state(state))
 	# Mirror Plate only pays out when an ENEMY tampered with the die. A friendly
 	# freezeAnyDice on an ally (banking their good roll on purpose) must not print
@@ -2257,7 +2257,7 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 		for hero_state in _hero_states:
 			if hero_state != dead_state and not hero_state["dead"]:
 				hero_state["forced_20_pending"] = true
-		_log("VENGEANCE PROTOCOL — the squad's next roll is all 20s!")
+		_log("VENGEANCE PROTOCOL - the squad's next roll is all 20s!")
 
 	# Chain Reaction relic: other living enemies take damage when an enemy dies.
 	# Top-level kills only, so it never cascades off the deaths it itself causes.
@@ -2273,7 +2273,7 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 		var charge_targets: Array = _hero_states.filter(func(hs): return not bool(hs["dead"]))
 		if not charge_targets.is_empty():
 			var charge_target: Dictionary = charge_targets[_rand_index(charge_targets.size())]
-			_log("DEAD MAN'S CHARGE — %s takes 4!" % charge_target["unit"].display_name)
+			_log("DEAD MAN'S CHARGE - %s takes 4!" % charge_target["unit"].display_name)
 			_damage_state(charge_target, 4)
 
 	# Scavenger Manifest relic: the first kill each battle drops a consumable.
@@ -2429,7 +2429,7 @@ func _apply_burn(state: Dictionary, amount: int, turns: int) -> void:
 	})
 	_refresh_burn_totals(state)
 	if permanent:
-		_log("%s is burning for %d — permanently." % [state["unit"].display_name, amount])
+		_log("%s is burning for %d - permanently." % [state["unit"].display_name, amount])
 	else:
 		_log("%s is burning for %d over %d turns." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "burn", amount, _resolve_side_for_state(state))
@@ -2826,7 +2826,7 @@ func _try_emit_enemy_summon(enemy_state: Dictionary, ability_entry: Dictionary, 
 	# Seeded so the sim reproduces the summon roll from a seed (NK-01 / INV #1).
 	if _rand_pct() > summon_chance:
 		return
-	_log("%s calls for reinforcements — %s incoming!" % [enemy_state["unit"].display_name, summon_name])
+	_log("%s calls for reinforcements - %s incoming!" % [enemy_state["unit"].display_name, summon_name])
 	_round_events.append({
 		"type": "summon",
 		"amount": 0,
@@ -2838,7 +2838,7 @@ func _try_emit_enemy_summon(enemy_state: Dictionary, ability_entry: Dictionary, 
 
 func inject_enemy(enemy_data: EnemyData) -> Dictionary:
 	if _count_living_enemies() >= GameState.SQUAD_UNIT_LIMIT:
-		_log("Summon blocked — enemy field is full.")
+		_log("Summon blocked - enemy field is full.")
 		return {}
 
 	var new_state: Dictionary = _create_runtime_state(enemy_data, _next_enemy_instance_id(enemy_data))

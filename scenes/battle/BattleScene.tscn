@@ -301,6 +301,6 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(112, 112)
 size_flags_vertical = 4
-text = "↺"
+text = ""
 
 [connection signal="pressed" from="Content/VBox/Board/CenterPanel/CenterMargin/CenterVBox/ActionButtonWrap/RollButton" to="." method="_on_roll_button_pressed"]

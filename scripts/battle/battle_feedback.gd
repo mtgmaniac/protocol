@@ -476,7 +476,7 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 		"heal", "shield":
 			return "+%d" % amount
 		"block":
-			return "✕" if amount <= 0 else "✕ %d" % amount
+			return "X" if amount <= 0 else "X %d" % amount
 		_:
 			# freeze / mark / wipe_shields: cut (redundant with chip + keyword
 			# visual). leech / pierce / accrete / revive: the paired damage /

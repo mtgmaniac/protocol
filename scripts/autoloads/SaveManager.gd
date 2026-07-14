@@ -50,7 +50,7 @@ func _ready() -> void:
 	_disk_enabled = DisplayServer.get_name() != "headless"
 	if DevContext.is_isolated():
 		_save_path = DEV_SAVE_PATH
-		print("[SaveManager] dev context — profile isolated to %s (real save untouchable)" % _save_path)
+		print("[SaveManager] dev context - profile isolated to %s (real save untouchable)" % _save_path)
 	load_save()
 
 
@@ -94,7 +94,7 @@ func load_save() -> void:
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
 	if not (parsed is Dictionary):
-		push_warning("[SaveManager] Malformed save file — starting fresh.")
+		push_warning("[SaveManager] Malformed save file - starting fresh.")
 		return
 	_merge_loaded(parsed as Dictionary)
 

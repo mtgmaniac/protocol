@@ -44,10 +44,7 @@ theme/custom="res://assets/ui/theme_overload.tres"
 
 [overload]
 
-; TEMPORARY (Android Build #1) — kill switch for the SafeAreaDebug overlay
-; autoload. The overlay additionally self-gates to mobile / SAFE_AREA_DEBUG=1,
-; so desktop and the screenshot harness never see it. Deleted in Build #2.
-debug/safe_area_overlay=true
+debug/safe_area_overlay=false
 
 [physics]
 

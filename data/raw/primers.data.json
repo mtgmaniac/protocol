@@ -1,5 +1,5 @@
 {
-  "$comment": "Keyword primers — one-shot micro-tutorials shown the FIRST time a mechanic is sighted (docs/PRIMERS.md is the authoring guide). Text rules: ONE sentence, ~12 words max, states the RULE not flavor, sourced/compressed from keywords.data.json defs — a primer must never contradict the glossary. '$signal_hook_examples' entries are documentation only (not loaded): they show the future signal_hook trigger shape. The four targeting-personality primers (SYSTEMATIC/WOUNDED/PACK/SPITEFUL) were CUT 2026-07-10 (Kev: a regular user doesn't need attack-style tutorials) — the unit long-press popup's TARGETING line remains the reference.",
+  "$comment": "Keyword primers - one-shot micro-tutorials shown the FIRST time a mechanic is sighted (docs/PRIMERS.md is the authoring guide). Text rules: ONE sentence, ~12 words max, states the RULE not flavor, sourced/compressed from keywords.data.json defs - a primer must never contradict the glossary. '$signal_hook_examples' entries are documentation only (not loaded): they show the future signal_hook trigger shape. The four targeting-personality primers (SYSTEMATIC/WOUNDED/PACK/SPITEFUL) were CUT 2026-07-10 (Kev: a regular user doesn't need attack-style tutorials) - the unit long-press popup's TARGETING line remains the reference.",
   "primers": [
     {
       "id": "primer_jam",
@@ -13,7 +13,7 @@
       "id": "primer_freeze",
       "trigger": { "type": "die_status_applied", "param": "freeze" },
       "target": "die",
-      "text": "FREEZE: the die keeps its face — that unit acts again.",
+      "text": "FREEZE: the die keeps its face - that unit acts again.",
       "priority": 55,
       "requires_feature": null
     },
@@ -125,7 +125,7 @@
       "id": "primer_pierce",
       "trigger": { "type": "attack_keyword_resolved", "param": "pierce" },
       "target": "unit_card",
-      "text": "PIERCE: the damage ignores shields — they stay up.",
+      "text": "PIERCE: the damage ignores shields - they stay up.",
       "priority": 30,
       "requires_feature": null
     },
@@ -178,7 +178,7 @@
       "requires_feature": null
     },
     {
-      "$comment": "icon_first_seen entries (Bug-2, 2026-07-12): non-keyword pip icons — the icon itself is the lesson. Fired by KeywordPrimer.notice_rolled_ability via ICON_TRIGGERS; only damage/heal/shield are exempt (HIGHLIGHT_EXEMPT_ICONS).",
+      "$comment": "icon_first_seen entries (Bug-2, 2026-07-12): non-keyword pip icons - the icon itself is the lesson. Fired by KeywordPrimer.notice_rolled_ability via ICON_TRIGGERS; only damage/heal/shield are exempt (HIGHLIGHT_EXEMPT_ICONS).",
       "id": "primer_icon_aoe",
       "trigger": { "type": "icon_first_seen", "param": "aoe" },
       "target": "ability_pip",
@@ -221,7 +221,7 @@
   ],
   "$signal_hook_examples": [
     {
-      "$comment": "NOT LOADED — documentation for the future signal_hook trigger type: one entry here + one emitted signal is a whole new primer (docs/PRIMERS.md).",
+      "$comment": "NOT LOADED - documentation for the future signal_hook trigger type: one entry here + one emitted signal is a whole new primer (docs/PRIMERS.md).",
       "id": "primer_haunt",
       "trigger": { "type": "signal_hook", "param": "haunt_applied" },
       "target": "unit_card",

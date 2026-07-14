@@ -407,10 +407,13 @@ These are still active tuning areas and should be treated as ongoing work:
 
 - final card proportion balance between portrait / HP / status
 - exact phone-readable unit-name sizing
-- exact HP-number readability over the HP bar
 - final status-region density and clarity
 - readout overflow behavior in the most complex two-row cases
 - final button/header/footer polish after the readability pass is stable
+
+(Removed 2026-07-14: "exact HP-number readability over the HP bar" — shipped as
+`PixelUI.style_hp_number`, white + hard black outline sized to a whole physical
+pixel, screenshot-verified over the red incoming-damage block.)
 
 ## 20. Editing Rules Going Forward
 

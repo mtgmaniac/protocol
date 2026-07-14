@@ -1,5 +1,8 @@
 extends CanvasLayer
-## TEMPORARY diagnostic — Android Build #1. DELETED IN BUILD #2.
+## STANDING device diagnostic (Build #3 ruling — kept, not deleted): it proved
+## the Android font fallback and the safe-area insets, and the next device with
+## different cutout geometry gets diagnosed in one launch instead of three
+## builds. The font-identity lines are a permanent silent-fallback tripwire.
 ##
 ## Two tap-toggled pages (one build, both views — a tap anywhere that no game
 ## control consumed flips between them):
@@ -15,20 +18,24 @@ extends CanvasLayer
 ## punch-hole in our fullscreen mode, the one thing Phase 0 could not determine
 ## from source.
 ##
-## PAGE 1 — font ladder. m5x7 is a 16px-native pixel font, so it should only be
-## crisp at integer multiples of 16; the working theory is that every
-## non-multiple size in the project produces broken glyph strokes and desktop's
-## clean 0.5× scale has been hiding it. One sample line per in-use size, plain
-## white on the dark panel bg — no modulation, no outline, no shadow, nothing
-## that could mask a rendering artifact. Each line is prefixed with its size
-## number at a fixed 32 (a 16-multiple, so the prefix itself is always legible).
+## PAGE 1 — font ladder. One sample line per in-use m5x7 size, plain white on
+## the dark panel bg — no modulation, no outline, no shadow, nothing that could
+## mask a rendering artifact. Each line is prefixed with its size number at a
+## fixed 32. (Historical note: this page was built for the dead "16-grid"
+## theory; it stays because it renders the font at every live size in one
+## glance — the fastest possible on-device font sanity check.)
 ##
-## Gating: the `overload/debug/safe_area_overlay` project setting is the kill
-## switch (flip false to disable without removing the autoload). Even when on,
-## the overlay only arms on mobile builds or with SAFE_AREA_DEBUG=1 in the
-## environment — desktop runs and the screenshot harness never see it.
+## Gating (Build #3): DEFAULT OFF. Arms only in a debug build, never headless,
+## when either the Settings > DEBUG toggle (persisted via SaveManager
+## "safe_area_overlay"; default = the `overload/debug/safe_area_overlay`
+## project setting, false) or the SAFE_AREA_DEBUG=1 env var (capture harness)
+## asks for it. Arms/disarms LIVE via refresh_from_settings() — no restart.
 
 const FLAG_SETTING := "overload/debug/safe_area_overlay"
+# SaveManager settings key for the Settings > DEBUG toggle (Build #3). Default
+# comes from the project setting above (off) — one persistence path, no second
+# mechanism.
+const SAVE_SETTING := "safe_area_overlay"
 const OUTLINE_W := 2.0
 const LABEL_FONT_SIZE := 36  # = PixelUI.FONT_INFO_MIN, deliberately (see above)
 
@@ -42,20 +49,56 @@ const LADDER_PREFIX_W := 110.0   # fixed column so sample starts align
 @onready var _label: Label = $Label
 
 var _armed := false
+var _built := false
 var _page := 0
 var _outline: OutlineLayer = null
 var _ladder_root: Control = null
 
 
+# The arming RULE, pure and headless-testable (Build #3): default OFF — arms
+# only in a debug build, never headless, and only when the capture-harness env
+# var or the persisted Settings > DEBUG toggle asks for it. The old
+# unconditional mobile arm is gone: the overlay painted over the live game.
+static func _should_arm(is_headless: bool, is_debug: bool, env_on: bool, setting_on: bool) -> bool:
+	if is_headless or not is_debug:
+		return false
+	return env_on or setting_on
+
+
 func _ready() -> void:
 	layer = 100
-	var flag_on: bool = bool(ProjectSettings.get_setting(FLAG_SETTING, true))
-	_armed = flag_on and (OS.has_feature("mobile") or OS.has_environment("SAFE_AREA_DEBUG"))
-	if DisplayServer.get_name() == "headless" or not _armed:
-		visible = false
-		_armed = false
-		return
+	refresh_from_settings()
 
+
+## Recomputes the arm state from the live inputs (called at ready and by the
+## Settings > DEBUG toggle) — arms/disarms WITHOUT a restart. Page content is
+## built lazily on first arm so a disarmed overlay costs nothing.
+func refresh_from_settings() -> void:
+	var sm: Variant = get_node_or_null("/root/SaveManager")
+	var default_on: bool = bool(ProjectSettings.get_setting(FLAG_SETTING, false))
+	var setting_on: bool = bool(sm.get_setting(SAVE_SETTING, default_on)) if sm != null else default_on
+	var want: bool = _should_arm(
+		DisplayServer.get_name() == "headless",
+		OS.is_debug_build(),
+		OS.has_environment("SAFE_AREA_DEBUG"),
+		setting_on,
+	)
+	if want == _armed:
+		return
+	_armed = want
+	visible = _armed
+	if not _armed:
+		return
+	if not _built:
+		_build_pages()
+	# Desktop-verification hook: start on the ladder page so the screenshot
+	# harness can photograph it without simulating a tap.
+	_show_page(1 if OS.has_environment("SAFE_AREA_DEBUG_LADDER") else 0)
+	_refresh()
+
+
+func _build_pages() -> void:
+	_built = true
 	PixelUI.apply_pixel_font(_label)
 	_label.add_theme_font_size_override("font_size", LABEL_FONT_SIZE)
 	_label.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0, 1.0))
@@ -74,10 +117,6 @@ func _ready() -> void:
 	var header: Node = get_node_or_null("/root/PersistentHeader")
 	if header != null and header.has_signal("safe_area_changed"):
 		header.connect("safe_area_changed", _refresh)
-	# Desktop-verification hook: start on the ladder page so the screenshot
-	# harness can photograph it without simulating a tap.
-	_show_page(1 if OS.has_environment("SAFE_AREA_DEBUG_LADDER") else 0)
-	_refresh()
 
 
 # Page flip: any tap/click NO game control consumed. Deliberately unhandled
@@ -161,6 +200,8 @@ func _bare_label(text: String, px: int) -> Label:
 
 
 func _refresh() -> void:
+	if not _armed:
+		return  # disarmed after a live toggle-off — no repaint, no stdout spam
 	var vp := get_viewport()
 	if vp == null:
 		return

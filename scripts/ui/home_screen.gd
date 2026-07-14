@@ -282,7 +282,7 @@ func _build_encounter_section() -> Control:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pad.add_child(row)
 
-	row.add_child(_make_nav_button("◀", -1))   # ◀
+	row.add_child(_make_nav_button("<", -1))   # <
 
 	# Name + threat, stacked, centered in the leftover width.
 	var text_col := VBoxContainer.new()
@@ -340,7 +340,7 @@ func _build_encounter_section() -> Control:
 	thumb_holder.add_child(_enc_lock_overlay)
 	row.add_child(thumb_frame)
 
-	row.add_child(_make_nav_button("▶", 1))    # ▶
+	row.add_child(_make_nav_button(">", 1))    # >
 
 	# Dots.
 	_dot_row = HBoxContainer.new()
@@ -1052,7 +1052,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(icon)
-		var text_label := _make_pixel_label("%s — %s" % [relic.display_name.to_upper(), relic.description], FOCUS_CHIP_FONT, PixelUI.DT_CYAN_BRIGHT)
+		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], FOCUS_CHIP_FONT, PixelUI.DT_CYAN_BRIGHT)
 		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER

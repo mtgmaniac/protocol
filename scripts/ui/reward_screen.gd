@@ -331,7 +331,7 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 	pip_col.add_theme_constant_override("separation", 8)
 	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
 	if parts.is_empty():
-		pip_col.add_child(_make_label("—", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+		pip_col.add_child(_make_label("-", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
 	for part_variant in parts:
 		var part: Dictionary = part_variant
 		var group: Control = EffectPip.build_group(part, PIP_PROFILE)
@@ -741,7 +741,7 @@ func _show_consumable_swap_overlay(item: ItemData) -> void:
 	vbox.add_theme_constant_override("separation", 22)
 	margin.add_child(vbox)
 
-	var title := _make_label("BAG FULL — DISCARD ONE FOR %s" % item.display_name.to_upper(), GEAR_TARGET_TITLE_FONT, accent, 2)
+	var title := _make_label("BAG FULL - DISCARD ONE FOR %s" % item.display_name.to_upper(), GEAR_TARGET_TITLE_FONT, accent, 2)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(title)
@@ -903,23 +903,27 @@ func _format_item_type_label(item: ItemData) -> String:
 	return item.item_type.to_upper()
 
 
+# ASCII-only fallback glyphs (Build #3): shown only when an item has no icon
+# texture. m5x7 has no coverage for the old symbol set (♥⚡☠…) and
+# allow_system_fallback=false means uncovered chars are tofu — the glyph sweep
+# gate enforces coverage now.
 func _get_item_icon_char(icon_key: String) -> String:
 	match icon_key:
 		"heart":
-			return "♥"
+			return "+"
 		"shield":
-			return "⬡"
+			return "S"
 		"die":
-			return "⚄"
+			return "D"
 		"bolt":
-			return "⚡"
+			return "B"
 		"skull":
-			return "☠"
+			return "X"
 		"cloak":
-			return "◉"
+			return "C"
 		"star":
-			return "★"
-	return "●"
+			return "*"
+	return "?"
 
 
 func _make_label(text: String, font_size: int, color: Color, outline: int = 1) -> Label:

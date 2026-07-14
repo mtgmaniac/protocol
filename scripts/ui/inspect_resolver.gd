@@ -85,7 +85,7 @@ static func _keyword_definitions_for_raw(raw: Dictionary) -> Array[String]:
 		var entry: Dictionary = _keyword_registry().get(keyword_id, {})
 		if entry.is_empty():
 			continue
-		lines.append("%s — %s" % [str(entry.get("term", keyword_id.capitalize())), str(entry.get("def", ""))])
+		lines.append("%s - %s" % [str(entry.get("term", keyword_id.capitalize())), str(entry.get("def", ""))])
 	return lines
 
 
@@ -238,9 +238,9 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	# pkg8.1: die statuses surface in the readout too (they render on the die).
 	# One SHORT line each (Kev 2026-07-10 trim).
 	if int(state.get("jam_cap", 0)) > 0:
-		entries.append(_status_entry("jam", "≤%d" % int(state["jam_cap"]), 0, _status_text("jam", str(state["jam_cap"]), 0)))
+		entries.append(_status_entry("jam", "<=%d" % int(state["jam_cap"]), 0, _status_text("jam", str(state["jam_cap"]), 0)))
 	if bool(state.get("rewrite_pending", false)):
-		entries.append(_status_entry("rewrite", "→3", 0, _status_text("rewrite", "", 0)))
+		entries.append(_status_entry("rewrite", "->3", 0, _status_text("rewrite", "", 0)))
 	if bool(state.get("hijack_pending", false)):
 		entries.append(_status_entry("hijack", EffectPip.keyword_code("hijack", "HJ"), 0, _status_text("hijack", "", 0)))
 	if int(state.get("die_freeze_turns", 0)) > 0:

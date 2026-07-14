@@ -149,7 +149,7 @@ static func _pip_row(item: ItemData) -> HBoxContainer:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
 	if parts.is_empty():
-		row.add_child(_label("—", BODY_FONT, PixelUI.TEXT_MUTED))
+		row.add_child(_label("-", BODY_FONT, PixelUI.TEXT_MUTED))
 		return row
 	for part_variant in parts:
 		row.add_child(EffectPip.build_group(part_variant, PIP_PROFILE))

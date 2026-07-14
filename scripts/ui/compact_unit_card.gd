@@ -769,7 +769,7 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 	var label: Label = Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _is_frozen_status(status):
-		label.text = "â„"
+		label.text = "FR"
 	else:
 		label.text = str(status.get("icon", _status_icon_for_type(str(status.get("type", "")))))
 	label.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, 0)
@@ -879,11 +879,11 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 	var value: String = parts[1] if parts.size() > 1 else ""
 
 	if first.begins_with("BRN") or first.begins_with("BURN"):
-		return {"type": "burn", "mode": "numeric", "icon": "â˜ ", "value": value, "priority": 0}
+		return {"type": "burn", "mode": "numeric", "icon": "B", "value": value, "priority": 0}
 	if first.begins_with("SH"):
-		return {"type": "shield", "mode": "numeric", "icon": "ðŸ›¡", "value": value, "priority": 1}
+		return {"type": "shield", "mode": "numeric", "icon": "S", "value": value, "priority": 1}
 	if first == "FROZEN" or first == "FREEZE" or first == "FR" or first == "DIE_FREEZE":
-		return {"type": "frozen", "mode": "icon", "icon": "â„", "priority": 2}
+		return {"type": "frozen", "mode": "icon", "icon": "FR", "priority": 2}
 	if first.begins_with("+") or first.begins_with("-") or first == "RFE" or first == "RFM":
 		var roll_value: String = first if first != "RFE" and first != "RFM" else value
 		return {"type": "roll", "mode": "numeric", "icon": "", "value": roll_value, "priority": 2}
@@ -922,13 +922,13 @@ func _status_priority(status_type: String) -> int:
 func _status_icon_for_type(status_type: String) -> String:
 	match status_type.to_lower():
 		"burn":
-			return "â˜ "
+			return "B"
 		"shield":
-			return "ðŸ›¡"
+			return "S"
 		"roll", "rfe", "rfm":
-			return "ðŸŽ²"
+			return "R"
 		"frozen", "freeze", "die_freeze":
-			return "â„"
+			return "FR"
 	return ""
 
 

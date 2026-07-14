@@ -325,7 +325,7 @@ func _init_live_battle() -> void:
 		var comp_warded: Array = _game_state().get_current_battle_comp().get("warded", [])
 		combat_manager.setup_battle_modifier(route_modifier, comp_warded)
 		var modifier_info: Dictionary = _game_state().BATTLE_MODIFIERS.get(route_modifier, {})
-		_append_log("ROUTE FLAGGED — %s: %s" % [str(modifier_info.get("name", route_modifier)), str(modifier_info.get("desc", ""))])
+		_append_log("ROUTE FLAGGED - %s: %s" % [str(modifier_info.get("name", route_modifier)), str(modifier_info.get("desc", ""))])
 	_apply_intercept_battle_effects()
 	# Protocol Tap gear (engine rule, shared with the sim — sim-B.2).
 	protocol_points = mini(protocol_points + _engine.gear_start_protocol(), _max_protocol())
@@ -382,7 +382,7 @@ func _finalize_review() -> void:
 	roll_button.visible = true
 	roll_button.disabled = false
 	roll_button.text = "RETURN TO REWARDS"
-	_refresh_summary("Reviewing the last battle — read-only. Long-press any unit to inspect.")
+	_refresh_summary("Reviewing the last battle - read-only. Long-press any unit to inspect.")
 
 
 func _return_from_review() -> void:
@@ -1273,12 +1273,12 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	var protocol_grant: int = int(step["protocol_grant"])
 	if protocol_grant > 0:
 		_gain_protocol(protocol_grant)
-		_append_log("Protocol +%d from kill → %d" % [protocol_grant, protocol_points])
+		_append_log("Protocol +%d from kill -> %d" % [protocol_grant, protocol_points])
 	var protocol_drain: int = int(step["protocol_drain"])
 	if protocol_drain > 0:
 		protocol_points = maxi(0, protocol_points - protocol_drain)
 		_update_protocol_bar()
-		_append_log("Protocol SIPHONED -%d → %d" % [protocol_drain, protocol_points])
+		_append_log("Protocol SIPHONED -%d -> %d" % [protocol_drain, protocol_points])
 	if skip_feedback:
 		_feedback.reset_death_sfx_tracking()
 		for event_variant in result.get("events", []):
@@ -1331,12 +1331,12 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		_income_debt = int(income["debt_left"])
 		match str(income["reason"]):
 			"blackout":
-				_append_log("BLACKOUT — no Protocol income yet.")
+				_append_log("BLACKOUT - no Protocol income yet.")
 			"debt":
-				_append_log("Income owed — %d turns of debt remain." % _income_debt)
+				_append_log("Income owed - %d turns of debt remain." % _income_debt)
 			_:
 				_gain_protocol(1)
-				_append_log("Protocol +1 → %d" % protocol_points)
+				_append_log("Protocol +1 -> %d" % protocol_points)
 		_round_number += 1
 		transition(PHASE_AWAIT_ROLL)
 		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
@@ -1615,7 +1615,7 @@ func _apply_intercept_battle_effects() -> void:
 	var start_protocol: int = int(applied["start_protocol"])
 	if start_protocol > 0:
 		_gain_protocol(start_protocol)
-		_append_log("Battle-start Protocol +%d → %d" % [start_protocol, protocol_points])
+		_append_log("Battle-start Protocol +%d -> %d" % [start_protocol, protocol_points])
 
 
 func _squad_id_for_state(hero_state: Dictionary) -> String:
@@ -1708,7 +1708,7 @@ func _apply_post_roll_gear_effects() -> void:
 					# effective roll this round (audit A-041 — the old roll_buff
 					# write was a display-only cache the effective path ignored).
 					combat_manager.apply_item_roll_buff(sync_state, 3, 1)
-			_append_log("Sync Antenna: matched %d — both dice +3." % holder_roll)
+			_append_log("Sync Antenna: matched %d - both dice +3." % holder_roll)
 
 
 func _re_assign_hero_target(hero_id: String) -> void:

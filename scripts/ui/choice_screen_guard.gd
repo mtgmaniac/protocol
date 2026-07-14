@@ -17,7 +17,7 @@ extends RefCounted
 static func ensure_options(screen_name: String, option_count: int, resolve_default: Callable) -> bool:
 	if option_count > 0:
 		return true
-	push_error("[CHOICE_GUARD] %s screen built ZERO options — auto-resolving the default. This is a bug in the offer roll, not normal flow." % screen_name)
+	push_error("[CHOICE_GUARD] %s screen built ZERO options - auto-resolving the default. This is a bug in the offer roll, not normal flow." % screen_name)
 	# Telemetry stub: greppable in playtest logs / headless output.
 	print("[CHOICE_GUARD][telemetry-stub] screen=%s options=0 auto_resolved=default" % screen_name)
 	if resolve_default.is_valid():

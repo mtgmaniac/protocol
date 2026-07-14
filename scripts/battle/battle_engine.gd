@@ -98,20 +98,20 @@ func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dic
 	var logs: Array[String] = []
 	if bool(effects.get("decoy", false)):
 		combat_manager.set_decoy_round_one()
-		logs.append("DECOY BEACON — enemies will waste turn 1.")
+		logs.append("DECOY BEACON - enemies will waste turn 1.")
 	var income_debt: int = int(effects.get("income_debt", 0))
 	if income_debt > 0:
-		logs.append("DEEP CACHE — %d turns of Protocol income are owed." % income_debt)
+		logs.append("DEEP CACHE - %d turns of Protocol income are owed." % income_debt)
 	var items_free: bool = bool(effects.get("items_free", false))
 	if items_free:
-		logs.append("SUPPLY DRONE — items cost 0 this battle.")
+		logs.append("SUPPLY DRONE - items cost 0 this battle.")
 
 	var hp_pct: int = int(effects.get("enemy_hp_pct", 100))
 	if hp_pct < 100:
 		for enemy_state_variant in combat_manager.get_enemy_states():
 			var enemy_state: Dictionary = enemy_state_variant
 			enemy_state["current_hp"] = maxi(int(enemy_state["max_hp"]) * hp_pct / 100, 1)
-		logs.append("UNSTABLE REACTOR — enemies spawn at %d%% HP." % hp_pct)
+		logs.append("UNSTABLE REACTOR - enemies spawn at %d%% HP." % hp_pct)
 
 	if bool(effects.get("marked_highest", false)):
 		var mark_target: Dictionary = {}
@@ -122,7 +122,7 @@ func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dic
 		if not mark_target.is_empty():
 			mark_target["current_hp"] = maxi(int(mark_target["max_hp"]) * 90 / 100, 1)
 			combat_manager.apply_item_mark(mark_target)
-			logs.append("FIRING SOLUTION — %s starts Marked at 90%% HP." % mark_target["unit"].display_name)
+			logs.append("FIRING SOLUTION - %s starts Marked at 90%% HP." % mark_target["unit"].display_name)
 
 	# Rogue Engineer + intercept protocol grants (applied by the caller).
 	var start_protocol: int = int(effects.get("protocol", 0)) + run_protocol_per_battle
@@ -409,7 +409,7 @@ func apply_consumable_effect(effect: Dictionary, target_state: Dictionary, bs: B
 			return "Item: %s cloaks %s." % [item_name, tname]
 		"cloakAll":
 			item_cloak_all()
-			return "Item: %s — all living allies cloaked." % item_name
+			return "Item: %s - all living allies cloaked." % item_name
 		"enemyRfe":
 			var a: int = int(effect.get("amount", 0))
 			var t: int = int(effect.get("rfT", 1))
@@ -428,20 +428,20 @@ func apply_consumable_effect(effect: Dictionary, target_state: Dictionary, bs: B
 			if not target_state.is_empty():
 				var r: int = item_enemy_reroll(bs, target_state)
 				if r <= 0:
-					return "Item: %s fizzles — %s's die is frozen solid." % [item_name, tname]
-				return "Item: %s rerolls %s → %d." % [item_name, tname, r]
+					return "Item: %s fizzles - %s's die is frozen solid." % [item_name, tname]
+				return "Item: %s rerolls %s -> %d." % [item_name, tname, r]
 		"enemyRerollAll":
 			item_enemy_reroll_all(bs)
-			return "Item: %s — all unfrozen enemy dice rerolled." % item_name
+			return "Item: %s - all unfrozen enemy dice rerolled." % item_name
 		"anyDieFreeze":
 			if not target_state.is_empty():
 				var s: int = int(effect.get("repeats", 1))
 				item_freeze_die(bs, target_state, s)
-				return "Item: %s freezes %s's die — it repeats its result %d more time(s)." % [item_name, tname, s]
+				return "Item: %s freezes %s's die - it repeats its result %d more time(s)." % [item_name, tname, s]
 		"enemyDieFreezeAll":
 			var s: int = int(effect.get("repeats", 1))
 			item_enemy_freeze_all(bs, s)
-			return "Item: %s — all enemy dice frozen; each repeats its result." % item_name
+			return "Item: %s - all enemy dice frozen; each repeats its result." % item_name
 	return ""
 
 

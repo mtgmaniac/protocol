@@ -272,7 +272,7 @@ func _show_draft_stage(draft: Dictionary) -> void:
 		return
 	for item_id_variant in options:
 		var item: ItemData = DataManager.get_item(str(item_id_variant)) as ItemData
-		var label: String = "%s — %s" % [item.display_name.to_upper(), item.description] if item != null else str(item_id_variant)
+		var label: String = "%s - %s" % [item.display_name.to_upper(), item.description] if item != null else str(item_id_variant)
 		_add_choice_button(label, _on_draft_picked.bind(str(item_id_variant)))
 
 

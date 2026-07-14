@@ -233,10 +233,32 @@ proven mechanism), and the diagnostic overlay's page 0 prints
 `font_name`/`font_path`/`ttf_exists` (the on-device verdict line). Never load
 a font (or any imported resource) by raw source path — the safe-area test
 scans for `load_dynamic_font` at source level. Regression: `scripts/debug/safe_area_test.gd`
-(in `verify_gate.py`). The temporary `SafeAreaDebug` overlay autoload (two
-tap-toggled pages: display info + m5x7 font-size ladder; mobile-gated, kill
-switch `overload/debug/safe_area_overlay`) is deleted in Build #3 once the font
-is confirmed fixed on device.
+(in `verify_gate.py`). **The `SafeAreaDebug` overlay is a STANDING instrument
+(Build #3 ruling — kept, not deleted):** two tap-toggled pages (display info
+incl. the font-identity tripwire + m5x7 font ladder), default OFF, armed by the
+Settings > DEBUG toggle (debug builds only — the section is structurally absent
+in release; persisted via SaveManager `safe_area_overlay`) or the
+`SAFE_AREA_DEBUG=1` / `SAFE_AREA_DEBUG_LADDER=1` env vars the capture harness
+uses; arms/disarms live, never headless. The next device with new cutout
+geometry gets diagnosed in one launch. **Footer bleed (Build #3):** the footer
+sat 6.5px past the screen bottom (pre-existing; NOT the Build-#2 font fix —
+measured identical under both loaders): `_position_zone_dividers` derived the
+divider from the hero cards with no regard for the footer's 128px minimum, and
+the grow-BOTH container split the 13px overflow half below the screen. Fixed at
+the one writer: the divider clamps so the footer always gets its live combined
+minimum above `safe_bottom` — footer bottom now lands EXACTLY on
+screen − inset, whole design pixels, at zero insets and the Pixel 8 budget.
+**Glyph coverage law (Build #3):** `allow_system_fallback=false` means an
+m5x7-uncovered codepoint is a tofu box on device — every player-facing string
+(data JSON + UI copy) is ASCII-only, enforced by the `glyph coverage` gate
+(`scripts/debug/glyph_coverage_check.gd`, real `has_char()` coverage, never a
+blocklist). The 2026-07-14 sweep replaced 159 sites (em dashes, `→`/`≤`/`▸`
+arrows, nav `◀▶`, item/status glyph tables — incl. pre-existing double-encoded
+mojibake in `compact_unit_card`/`ability_readout`). ETC2/ASTC: the project
+setting is pinned true (stowaway since Build #1's commit) but is currently a
+NO-OP — all 343 texture imports are Lossless (mode 0, correct for
+NEAREST-filtered pixel art; platform-neutral); no texture uses VRAM
+compression, so no etc2 artifacts exist and none are needed.
 
 ## UI & feedback
 

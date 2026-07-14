@@ -43,7 +43,7 @@ func _build_steps() -> Array:
 		# Phase 0 — orientation (tap). Inspect is taught later on the player's own unit, so no
 		# separate enemy long-press beat here.
 		{"targets": [], "title": "WELCOME", "text": "Welcome to Overload Protocol. I'll show you around the screen, then walk you through your first two turns."},
-		{"targets": ["header"], "text": "This bar stays with you all run — squad progress and the Help menu live here. Help holds the full encyclopedia."},
+		{"targets": ["header"], "text": "This bar stays with you all run - squad progress and the Help menu live here. Help holds the full encyclopedia."},
 		{"targets": ["hero_cards"], "text": "Your three specialists. Each has its own HP and abilities."},
 		{"targets": ["enemy_cards"], "text": "Your target."},
 		# Phase 1 — turn 1: the core loop
@@ -53,35 +53,35 @@ func _build_steps() -> Array:
 		# every unit's roll this turn is a new ability, so highlight all three at once.
 		{"targets": ["ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "These pips are what each die will do: Strike Unit marks the drone, Field Engineer shields, Splice Medic heals. The first time an ability type appears you'll get a one-time tip like this."},
 		# Long-press (Batch 5): note it works on nearly everything.
-		{"targets": ["hero_cards"], "text": "Long-press a card for its full breakdown — bands, keywords, all of it. Long-press works on nearly everything in the game. Try it.", "advance": "inspected"},
+		{"targets": ["hero_cards"], "text": "Long-press a card for its full breakdown - bands, keywords, all of it. Long-press works on nearly everything in the game. Try it.", "advance": "inspected"},
 		# Pick a die first (heroes + pips + dice highlighted); once targeting starts we spotlight the
 		# enemy to tap, then open up the whole screen to assign the rest.
 		{"targets": ["heroes"], "text": "Tap a die (or its hero card) to pick who fires.", "advance": "targeting_started"},
-		{"targets": ["enemy_cards"], "text": "Now tap a target to fire it — the drone for an attack, an ally for a heal or shield.", "advance": "assigned"},
+		{"targets": ["enemy_cards"], "text": "Now tap a target to fire it - the drone for an attack, an ally for a heal or shield.", "advance": "assigned"},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
 		{"targets": ["enemy_readouts"], "text": "Enemies telegraph their moves, be sure to account for this!"},
-		{"targets": ["roll_button"], "text": "Lock it in — ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},
+		{"targets": ["roll_button"], "text": "Lock it in - ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},
 		# Status-badge lesson (Batch 5): Target Lock left a MARK chip on the drone. Spotlight it.
-		{"targets": ["enemy_status"], "text": "Strike Unit's Target Lock left a MARK on the drone. Units carry status badges like this after effects land — the next hit spends the Mark for extra damage."},
+		{"targets": ["enemy_status"], "text": "Strike Unit's Target Lock left a MARK on the drone. Units carry status badges like this after effects land - the next hit spends the Mark for extra damage."},
 		# Phase 2 — turn 2: Protocol & Nudge. "Roll again" waits for the dice to settle (advance
 		# "rolled") before moving on.
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
 		# Invisible waiter: the coach hides while the dice roll, then the
 		# Protocol beat lands once they settle (Kev 2026-07-10).
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn — time to spend it. It builds +1 every turn, caps at 10."},
+		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn - time to spend it. It builds +1 every turn, caps at 10."},
 		# Nudge is TWO beats (Kev fix #3, 2026-07-12): the button beat advances the
 		# INSTANT the press arms the pick (the "phase" event from transition() — the
 		# shared choke point, zero new wiring), then the die beat gates on the
 		# applied nudge. The old single beat gated on "nudged" (emitted only after
 		# button + die pick + apply), so pressing the big highlighted button moved
 		# nothing — it read as a consumed click.
-		{"targets": ["nudge"], "text": "Nudge costs 1 Protocol — tap it.", "advance": "phase", "phase": "nudge_pick"},
-		{"targets": ["combat"], "text": "Now tap Strike Unit's die — +3 pushes it into a stronger band.", "advance": "nudged"},
-		{"targets": ["ability:combat"], "text": "It jumped a band — Suppression Fire became Rail Strike, and the Mark makes the hit land even harder."},
-		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more — they unlock as you bank Protocol."},
+		{"targets": ["nudge"], "text": "Nudge costs 1 Protocol - tap it.", "advance": "phase", "phase": "nudge_pick"},
+		{"targets": ["combat"], "text": "Now tap Strike Unit's die - +3 pushes it into a stronger band.", "advance": "nudged"},
+		{"targets": ["ability:combat"], "text": "It jumped a band - Suppression Fire became Rail Strike, and the Mark makes the hit land even harder."},
+		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more - they unlock as you bank Protocol."},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Strike Unit's die, then the drone to fire it.", "advance": "assigned"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Finish it — assign the rest and end the turn.", "advance": "won"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Finish it - assign the rest and end the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]
 
@@ -184,7 +184,7 @@ func _layout_step() -> void:
 	if _spot != null:
 		_spot.spotlight(holes, str(step.get("text", "")), anchor, {
 			"title": str(step.get("title", "")),
-			"hint": "tap to continue ▸" if tap_step else "",
+			"hint": "tap to continue >" if tap_step else "",
 			"interactive": tap_step,
 		})
 

@@ -155,7 +155,7 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(info)
 
-	var name_text: String = item.display_name if filled else "—"
+	var name_text: String = item.display_name if filled else "-"
 	var name_color: Color = (accent if filled else PixelUI.INSPECT_TEXT_DIM)
 	var name_label := _make_label(name_text, NAME_FONT, name_color, HORIZONTAL_ALIGNMENT_LEFT)
 	info.add_child(name_label)

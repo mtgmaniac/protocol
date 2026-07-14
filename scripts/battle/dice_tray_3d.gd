@@ -1786,7 +1786,7 @@ func _set_die_jam_visual(die: RigidBody3D, jam_cap: int) -> void:
 		label.position = Vector3(0, DIE_RADIUS * 1.82, 0)
 		label.scale = Vector3(0.028, 0.028, 0.028)
 		_die_visuals(die).add_child(label)
-	label.text = "JAM ≤%d" % jam_cap
+	label.text = "JAM <=%d" % jam_cap
 	label.visible = jammed
 
 
@@ -1824,9 +1824,9 @@ func play_rewrite_scramble(side: String, unit_id: String) -> void:
 		return
 	var tween: Tween = create_tween()
 	for _i in 6:
-		tween.tween_callback(func(): label.text = "REWRITE→%d" % (randi() % 20 + 1))
+		tween.tween_callback(func(): label.text = "REWRITE->%d" % (randi() % 20 + 1))
 		tween.tween_interval(0.05)
-	tween.tween_callback(func(): label.text = "REWRITE→3")
+	tween.tween_callback(func(): label.text = "REWRITE->3")
 
 
 # Rewrite / Hijack pending (pkg8.1): marker on the threatened die.
@@ -1843,7 +1843,7 @@ func _set_die_pending_marker(die: RigidBody3D, rewrite_pending: bool, hijack_pen
 		label.scale = Vector3(0.028, 0.028, 0.028)
 		_die_visuals(die).add_child(label)
 	if rewrite_pending:
-		label.text = "REWRITE→3"
+		label.text = "REWRITE->3"
 		label.modulate = Color(0.82, 0.55, 1.0, 0.95)
 	elif hijack_pending:
 		label.text = "HIJACK"

@@ -452,7 +452,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Squad drills: all heroes gain +15 XP.", "effects": [{"type": "squadXp", "amount": 15}]},
 	]},
 	"salvageCache": {"tier": "minor", "name": "SALVAGE CACHE", "desc": "A rigged cache. The good stuff is under the alarm.", "choices": [
-		{"label": "Spring it: rare gear draft now — next battle is HARDENED.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
+		{"label": "Spring it: rare gear draft now - next battle is HARDENED.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
 		{"label": "Take the loose crate: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
 	]},
 	"signalDecrypt": {"tier": "minor", "name": "SIGNAL DECRYPT", "desc": "An enemy carrier wave, weakly encrypted.", "choices": [
@@ -464,7 +464,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Keep it.", "effects": []},
 	]},
 	"driftingWreck": {"tier": "minor", "name": "DRIFTING WRECK", "desc": "A dead hull. Its dead crew is still aboard.", "choices": [
-		{"label": "Board it: uncommon gear draft — next battle has DEAD MAN'S CHARGE.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
+		{"label": "Board it: uncommon gear draft - next battle has DEAD MAN'S CHARGE.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
 		{"label": "Siphon the tanks: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
 	"loadoutSwap": {"tier": "minor", "name": "LOADOUT SWAP", "desc": "A calibrated workbench. Time enough to re-rig.", "choices": [
@@ -472,7 +472,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Skip.", "effects": []},
 	]},
 	"cryoPod": {"tier": "minor", "name": "CRYO POD", "desc": "A working pod. The treatment is slow.", "choices": [
-		{"label": "Treat a hero: +10 max HP this op — next battle is BLACKOUT.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": 10}, {"type": "armModifier", "id": "blackout"}]},
+		{"label": "Treat a hero: +10 max HP this op - next battle is BLACKOUT.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": 10}, {"type": "armModifier", "id": "blackout"}]},
 		{"label": "Strip the coolant: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
 	]},
 	"supplyDrone": {"tier": "minor", "name": "SUPPLY DRONE", "desc": "A lost logistics drone pings for orders.", "choices": [
@@ -493,7 +493,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Leave.", "effects": []},
 	]},
 	"unstableReactor": {"tier": "major", "name": "UNSTABLE REACTOR", "desc": "A cracked core, bleeding radiation into the next sector.", "choices": [
-		{"label": "Vent it forward: next battle enemies spawn at 70% HP — a random hero takes 10 now.", "effects": [{"type": "nextBattleEnemyHpPct", "pct": 70}, {"type": "randomHeroDamage", "amount": 10}]},
+		{"label": "Vent it forward: next battle enemies spawn at 70% HP - a random hero takes 10 now.", "effects": [{"type": "nextBattleEnemyHpPct", "pct": 70}, {"type": "randomHeroDamage", "amount": 10}]},
 		{"label": "Seal it: +3 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 3}]},
 	]},
 	"rogueEngineer": {"tier": "major", "name": "ROGUE ENGINEER", "desc": "She'll ride along and hot-feed your Protocol lines. Her way.", "choices": [
@@ -505,7 +505,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Keep moving: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
 	]},
 	"deepCache": {"tier": "major", "name": "DEEP CACHE", "desc": "A vault seal. Cracking it will drink your Protocol lines dry.", "choices": [
-		{"label": "Crack it: legendary draft 1 of 2 — next battle starts at -5 Protocol income debt.", "draft": {"kind": "any", "min_rarity": "legendary", "count": 2}, "effects": [{"type": "incomeDebt", "amount": 5}]},
+		{"label": "Crack it: legendary draft 1 of 2 - next battle starts at -5 Protocol income debt.", "draft": {"kind": "any", "min_rarity": "legendary", "count": 2}, "effects": [{"type": "incomeDebt", "amount": 5}]},
 		{"label": "Leave it.", "effects": []},
 	]},
 	"theFoundry": {"tier": "major", "name": "THE FOUNDRY", "desc": "A forge line still runs. Feed it and it feeds you.", "choices": [
@@ -768,7 +768,7 @@ func _build_run_reveal_text() -> String:
 		var beat_note: String = ""
 		var beat: Dictionary = get_beat_after_battle(i + 1)
 		if not beat.is_empty() and not consumed_beats.has(i + 1):
-			beat_note = "  → then: %s" % str(beat.get("type", "")).to_upper()
+			beat_note = "  -> then: %s" % str(beat.get("type", "")).to_upper()
 		lines.append("B%d: %s%s" % [i + 1, ", ".join(PackedStringArray(names)), beat_note])
 	return "\n".join(PackedStringArray(lines))
 

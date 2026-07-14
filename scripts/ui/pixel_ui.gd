@@ -263,7 +263,7 @@ static func get_pixel_font() -> Font:
 		if font == null:
 			# Loud failure (Build #2 rule: never substitute silently). The
 			# SystemFont keeps the game readable; the error names the bug.
-			push_error("[PixelUI] m5x7 failed to load from '%s' — falling back to a SYSTEM font. Text is rendering in the wrong typeface; fix the font resource, do not ship this." % UI_FONT_PATH)
+			push_error("[PixelUI] m5x7 failed to load from '%s' - falling back to a SYSTEM font. Text is rendering in the wrong typeface; fix the font resource, do not ship this." % UI_FONT_PATH)
 			var fallback_font: SystemFont = SystemFont.new()
 			fallback_font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "Courier New", "monospace"])
 			_pixel_font = fallback_font

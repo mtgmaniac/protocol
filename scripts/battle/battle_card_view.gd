@@ -385,7 +385,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append({
 			"type": "burn",
 			"mode": "numeric",
-			"icon": "☠",
+			"icon": "B",
 			"value": int(state.get("burn", 0)),
 			"priority": 0,
 		})
@@ -394,7 +394,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append({
 			"type": "shield",
 			"mode": "numeric",
-			"icon": "⬡",
+			"icon": "S",
 			"value": int(state.get("shield", 0)),
 			"priority": 1,
 		})
@@ -415,7 +415,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append({
 			"type": "roll",
 			"mode": "numeric",
-			"icon": "🎲",
+			"icon": "",
 			"value": "%+d" % roll_delta,
 			"priority": 2,
 		})
@@ -442,7 +442,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 		statuses.append({
 			"type": "spike",
 			"mode": "numeric",
-			"icon": "▲",
+			"icon": "SP",
 			"value": spike_value,
 			"priority": 3,
 		})

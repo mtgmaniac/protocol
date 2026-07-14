@@ -154,7 +154,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		if reroll_state.is_empty() or bool(reroll_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, reroll_state):
 			return true
 		if int(reroll_state.get("die_freeze_turns", 0)) > 0:
-			_scene._refresh_summary("That die is frozen solid — it can't be rerolled.")
+			_scene._refresh_summary("That die is frozen solid - it can't be rerolled.")
 			return true
 		AudioManager.play_select()
 		_apply_reroll(target_id)
@@ -171,7 +171,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		if set_state.is_empty() or bool(set_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, set_state):
 			return true
 		if int(set_state.get("die_freeze_turns", 0)) > 0:
-			_scene._refresh_summary("That die is frozen solid — it can't be Set.")
+			_scene._refresh_summary("That die is frozen solid - it can't be Set.")
 			return true
 		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
@@ -181,7 +181,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		if twin_state.is_empty() or bool(twin_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, twin_state):
 			return true
 		if _scene.turn_phase == _scene.PHASE_TWIN_TARGET_PICK and int(twin_state.get("die_freeze_turns", 0)) > 0:
-			_scene._refresh_summary("That die is frozen solid — it can't be overwritten.")
+			_scene._refresh_summary("That die is frozen solid - it can't be overwritten.")
 			return true
 		AudioManager.play_select()
 		if _scene.turn_phase == _scene.PHASE_TWIN_SOURCE_PICK:
@@ -671,7 +671,7 @@ func _open_set_value_popup() -> void:
 	_set_value_track.resized.connect(_update_set_value_visuals)
 
 	var hint: Label = Label.new()
-	hint.text = "Drag to choose — costs %d Protocol" % _scene.SET_DIE_COST
+	hint.text = "Drag to choose - costs %d Protocol" % _scene.SET_DIE_COST
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -855,18 +855,6 @@ func _on_item_menu_id_pressed(id: int) -> void:
 	if item == null:
 		return
 	_on_item_button_pressed(item)
-
-
-func _get_item_icon_char(icon_key: String) -> String:
-	match icon_key:
-		"heart":  return "♥"
-		"shield": return "⬡"
-		"die":    return "⚄"
-		"bolt":   return "⚡"
-		"skull":  return "☠"
-		"cloak":  return "◉"
-		"star":   return "★"
-	return "●"
 
 
 # Returns true if the item tap was accepted (the loadout menu should close), false if it was
@@ -1077,13 +1065,13 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	# item still grants its own amount below; it just gets no extra +1 on top.
 	if _scene.combat_manager.has_relic("protocolOnItemUse") and effect_type != "gainProtocol":
 		_scene._gain_protocol(1)
-		_scene._append_log("Protocol Override: +1 Protocol → %d" % _scene.protocol_points)
+		_scene._append_log("Protocol Override: +1 Protocol -> %d" % _scene.protocol_points)
 
 	if effect_type == "gainProtocol":
 		# Pool op stays here (Overflow Vent + bar + logging live on the scene).
 		var protocol_grant: int = int(effect.get("amount", 0))
 		_scene._gain_protocol(protocol_grant)
-		_scene._append_log("Item: %s grants +%d Protocol → %d." % [item.display_name, protocol_grant, _scene.protocol_points])
+		_scene._append_log("Item: %s grants +%d Protocol -> %d." % [item.display_name, protocol_grant, _scene.protocol_points])
 	else:
 		# Combat-state mutation is shared with the sim (sim-D).
 		var revive_pct: int = _scene._game_state().get_revive_hp_pct(int(effect.get("pct", 50)))

@@ -291,12 +291,12 @@ func _build_battle_log(host: VBoxContainer) -> void:
 	if lines.is_empty():
 		_add_section(host, "BATTLE LOG", ["No battle activity yet."])
 		return
-	_add_section(host, "BATTLE LOG — NEWEST FIRST", lines)
+	_add_section(host, "BATTLE LOG - NEWEST FIRST", lines)
 
 
 func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "HOW A TURN WORKS", [
-		"Every unit — squad and hostile — rolls a D20 at the same time.",
+		"Every unit - squad and hostile - rolls a D20 at the same time.",
 		"Assign your hero rolls to targets, then enemies act, then you gain +1 Protocol.",
 		"Each die is split into 5 ability bands; the roll's band decides which ability fires.",
 		"A 20 always fires that unit's ultimate ability.",
@@ -304,11 +304,11 @@ func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "READING A UNIT CARD", [
 		"The name and portrait identify the unit.",
 		"The HP bar reads current / max. Status icons appear when effects are active.",
-		"Long-press a unit to read its full intel — abilities, roll ranges, and keywords.",
+		"Long-press a unit to read its full intel - abilities, roll ranges, and keywords.",
 	])
 	_add_section(host, "EVOLUTION", [
 		"Units earn XP each battle by dealing damage, healing, or applying effects.",
-		"At enough XP, the unit evolves at battle end — choose one of two paths.",
+		"At enough XP, the unit evolves at battle end - choose one of two paths.",
 		"Each path changes abilities and raises max HP; more XP later unlocks a directive.",
 	])
 	_add_section(host, "WIN / LOSS", [
@@ -736,6 +736,16 @@ func _build_settings(host: VBoxContainer) -> void:
 	reset_primers_btn.pressed.connect(_on_dev_reset_primers)
 	host.add_child(reset_primers_btn)
 
+	# --- Debug (Build #3) --- STRUCTURALLY absent outside debug builds: the
+	# section is never instantiated in release, so a player cannot reach it.
+	# (Unlike DEV above, which is deliberately player-visible per DB-1.)
+	if _is_debug_build():
+		host.add_child(_make_label("DEBUG", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+		var overlay_default: bool = bool(ProjectSettings.get_setting("overload/debug/safe_area_overlay", false))
+		var overlay_on: bool = sm != null and bool(sm.get_setting("safe_area_overlay", overlay_default))
+		var row: HBoxContainer = _add_toggle_row(host, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
+		row.name = "DebugOverlayToggleRow"
+
 
 func _on_dev_reset_primers() -> void:
 	var sm: Variant = _save_manager()
@@ -762,6 +772,28 @@ func _on_toggle_dev_mode(pressed: bool) -> void:
 	var header: Variant = get_node_or_null("/root/PersistentHeader")
 	if header != null:
 		header.set_dev_mode(pressed)
+
+
+# Test seam for the release-absence assertion: OS.is_debug_build() is true in
+# every headless/editor run, so the safe-area test injects false here to prove
+# the DEBUG section is structurally absent (not merely hidden) in release.
+static var debug_build_override: Variant = null
+
+func _is_debug_build() -> bool:
+	if debug_build_override != null:
+		return bool(debug_build_override)
+	return OS.is_debug_build()
+
+
+# Persist via the ONE settings path (SaveManager), then arm/disarm the live
+# overlay without a restart.
+func _on_toggle_safe_area_overlay(pressed: bool) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting("safe_area_overlay", pressed)
+	var overlay: Variant = get_node_or_null("/root/SafeAreaDebug")
+	if overlay != null and overlay.has_method("refresh_from_settings"):
+		overlay.refresh_from_settings()
 
 
 func _make_dev_button(text: String, amber: bool) -> Button:
@@ -852,7 +884,9 @@ func _on_sfx_volume_changed(value: float) -> void:
 
 
 # A label + ON/OFF toggle button row, styled like the active/inactive tab buttons.
-func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, on_toggle: Callable) -> void:
+# Returns the row so callers may name/inspect it (Build #3: the DEBUG overlay
+# row is asserted structurally absent in release by the safe-area test).
+func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, on_toggle: Callable) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -875,6 +909,7 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 		on_toggle.call(pressed)
 		_style_toggle_button(btn))
 	row.add_child(btn)
+	return row
 
 
 # A label + slider row (0..1, live-applies on drag). Hard-edged track/fill per

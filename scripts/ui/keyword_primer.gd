@@ -371,7 +371,7 @@ func _try_show(candidate: Dictionary) -> bool:
 		glyph_key = str(context.get("param", ""))
 	AudioManager.play_select()
 	await _spot.spotlight([rect.grow(PAD)], text, SpotlightLayerScript.CoachAnchor.AUTO, {
-		"hint": "tap to continue ▸",
+		"hint": "tap to continue >",
 		"interactive": true,
 		"glyph": PixelUI.pip_texture_for_key(glyph_key),
 	})
@@ -475,10 +475,10 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 				if icon != "":
 					# A silent fallback is indistinguishable from no fallback
 					# firing at all (Kev 2026-07-13) — complain loudly.
-					push_warning("[KeywordPrimer] anchor fell back past the plate glyph: icon '%s' not found on %s/%s plate — ringing the WHOLE PLATE" % [icon, side, target_id])
+					push_warning("[KeywordPrimer] anchor fell back past the plate glyph: icon '%s' not found on %s/%s plate - ringing the WHOLE PLATE" % [icon, side, target_id])
 				return _trace(plate_rect, "whole_plate", context, heal_ran, plate, null)
 		if icon != "":
-			push_warning("[KeywordPrimer] anchor fell back past the plate: no plate for %s/%s (icon '%s') even after _sync_die_tags — ringing the readout row/card" % [side, target_id, icon])
+			push_warning("[KeywordPrimer] anchor fell back past the plate: no plate for %s/%s (icon '%s') even after _sync_die_tags - ringing the readout row/card" % [side, target_id, icon])
 		var r: Rect2 = _control_rect(view.get("readout", null))
 		if r.size != Vector2.ZERO:
 			return _trace(r, "readout_row", context, heal_ran, null, null)

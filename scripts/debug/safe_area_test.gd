@@ -40,6 +40,28 @@
 #      reads all-zero insets; the battle boots with authored geometry (center
 #      at its authored floor, footer flush to the screen bottom) and returns
 #      to it after a live inset round-trip.                      [Builds #1+#2]
+#  T7  Overlay arming rule (_should_arm, pure): default OFF with no env and no
+#      saved setting; arms on env or setting only in a debug build, never
+#      headless. Fails on Build #2's code (rule missing — it armed
+#      unconditionally on mobile). Rule-level: the OS/env wiring is thin and
+#      only a windowed/device run exercises it.                   [Build #3]
+#  T8  Settings DEBUG section structurally absent in release: builds the REAL
+#      settings tab with the debug_build_override seam forced false and
+#      asserts the toggle row was never instantiated. Honest split: the
+#      builder path is genuinely exercised; OS.is_debug_build() itself cannot
+#      read false under a headless editor binary, so the flag READ is a
+#      build-flag proxy.                                          [Build #3]
+#  T9  Overlay toggle round-trip: setting persists via SaveManager both ways
+#      and refresh_from_settings() re-evaluates live. HONEST: headless can
+#      never VISUALLY arm (correct behavior, asserted) — the on-screen
+#      arm/disarm needs a windowed run; this covers persistence + the state
+#      machine.                                                   [Build #3]
+#  T10 Footer bleed (the 6.5px): footer bottom lands EXACTLY on
+#      screen − safe_bottom, a whole design pixel, at (0,0) AND (132,56).
+#      Fails on pre-fix code at both (2406.5 / 2350.5) — the real bug.
+#                                                                  [Build #3]
+#  T11 ETC2/ASTC setting pinned true in project.godot. Config-level defense
+#      only — says nothing about device texture behavior.          [Build #3]
 extends SceneTree
 
 const PIXEL_UI_PATH := "res://scripts/ui/pixel_ui.gd"
@@ -74,8 +96,108 @@ func _run() -> void:
 	_test_header_consumes_top_inset()
 	_test_font_identity()
 	_test_bottom_reserve()
+	_test_overlay_arming_rule()
+	_test_debug_section_release_absence()
+	_test_overlay_toggle_round_trip()
+	_test_etc2_pinned()
 	await _test_band_reclaim_and_desktop_baseline()
 	_finish()
+
+
+# ── T7 ─────────────────────────────────────────────────────────────────────
+func _test_overlay_arming_rule() -> void:
+	var overlay: Node = root.get_node_or_null("/root/SafeAreaDebug")
+	if overlay == null or not overlay.has_method("_should_arm"):
+		_fail("T7: SafeAreaDebug._should_arm missing — overlay arms unconditionally (pre-Build-#3)")
+		return
+	var script: GDScript = overlay.get_script() as GDScript
+	# (is_headless, is_debug, env_on, setting_on)
+	var cases := [
+		[[false, true, false, false], false, "default: no env, no setting → OFF"],
+		[[false, true, true, false], true, "env arms (capture harness)"],
+		[[false, true, false, true], true, "settings toggle arms"],
+		[[true, true, true, true], false, "headless never arms"],
+		[[false, false, true, true], false, "release build never arms"],
+	]
+	for case_variant in cases:
+		var args: Array = case_variant[0]
+		var want: bool = case_variant[1]
+		var got: bool = bool(script.call("_should_arm", args[0], args[1], args[2], args[3]))
+		if got != want:
+			_fail("T7: _should_arm%s = %s, want %s (%s)" % [str(args), got, want, case_variant[2]])
+			return
+	print("[SAFE_AREA] T7 pass — overlay arming rule: default off, env/setting arm, headless+release never")
+
+
+# ── T8 ─────────────────────────────────────────────────────────────────────
+func _test_debug_section_release_absence() -> void:
+	var menu_script: GDScript = load("res://scripts/ui/help_menu.gd") as GDScript
+	if menu_script == null:
+		_fail("T8: cannot load help_menu.gd")
+		return
+	# Seam presence probe: the sentinel default is null, so set-then-read (a
+	# missing static var makes set() a silent no-op and get() stays null).
+	menu_script.set("debug_build_override", true)
+	if menu_script.get("debug_build_override") != true:
+		_fail("T8: HelpMenu.debug_build_override seam missing — release absence unverifiable (pre-Build-#3)")
+		return
+	menu_script.set("debug_build_override", null)
+	for case_variant in [[false, false, "release"], [true, true, "debug"]]:
+		menu_script.set("debug_build_override", case_variant[0])
+		var menu: CanvasLayer = menu_script.new() as CanvasLayer
+		root.add_child(menu)
+		var host := VBoxContainer.new()
+		menu.add_child(host)
+		menu.call("_build_settings", host)
+		var row: Node = host.find_child("DebugOverlayToggleRow", true, false)
+		var present: bool = row != null
+		menu.queue_free()
+		if present != bool(case_variant[1]):
+			_fail("T8: DEBUG overlay toggle row %s in a %s build" % ["present" if present else "absent", case_variant[2]])
+			menu_script.set("debug_build_override", null)
+			return
+	menu_script.set("debug_build_override", null)
+	print("[SAFE_AREA] T8 pass — DEBUG section structurally absent in release, present in debug")
+
+
+# ── T9 ─────────────────────────────────────────────────────────────────────
+func _test_overlay_toggle_round_trip() -> void:
+	var overlay: Node = root.get_node_or_null("/root/SafeAreaDebug")
+	var sm: Node = root.get_node_or_null("/root/SaveManager")
+	if overlay == null or sm == null or not overlay.has_method("refresh_from_settings"):
+		_fail("T9: SafeAreaDebug.refresh_from_settings / SaveManager missing")
+		return
+	var before: Variant = sm.call("get_setting", "safe_area_overlay", false)
+	sm.call("set_setting", "safe_area_overlay", true)
+	overlay.call("refresh_from_settings")
+	var on_persisted: bool = bool(sm.call("get_setting", "safe_area_overlay", false))
+	# Headless may never VISUALLY arm even with the setting on — that is the
+	# correct behavior and is itself asserted here.
+	var armed_headless: bool = bool(overlay.get("_armed"))
+	sm.call("set_setting", "safe_area_overlay", false)
+	overlay.call("refresh_from_settings")
+	var off_persisted: bool = bool(sm.call("get_setting", "safe_area_overlay", true))
+	sm.call("set_setting", "safe_area_overlay", before)
+	if not on_persisted:
+		_fail("T9: toggle ON did not persist via SaveManager")
+	elif off_persisted:
+		_fail("T9: toggle OFF did not persist via SaveManager")
+	elif armed_headless:
+		_fail("T9: overlay armed in a HEADLESS run — the headless guard is broken")
+	else:
+		print("[SAFE_AREA] T9 pass — toggle persists both ways; headless stays disarmed (live visual arm needs a windowed run)")
+
+
+# ── T11 ────────────────────────────────────────────────────────────────────
+func _test_etc2_pinned() -> void:
+	var f: FileAccess = FileAccess.open("res://project.godot", FileAccess.READ)
+	if f == null:
+		_fail("T11: cannot open project.godot")
+		return
+	if not f.get_as_text().contains("textures/vram_compression/import_etc2_astc=true"):
+		_fail("T11: import_etc2_astc is not pinned true in project.godot")
+	else:
+		print("[SAFE_AREA] T11 pass — etc2_astc pinned (config-level only; no device coverage)")
 
 
 # ── T1 ─────────────────────────────────────────────────────────────────────
@@ -218,12 +340,7 @@ func _test_band_reclaim_and_desktop_baseline() -> void:
 		return
 	var screen_h: float = (scene as Control).size.y
 
-	# T6 — desktop baseline: authored geometry at zero insets. The footer
-	# carries a PRE-EXISTING ~6.5px min-height overflow past the screen bottom
-	# (grow-both container whose content minimum exceeds its anchored span) —
-	# harmless offscreen bleed that predates the safe-area work. Desktop must
-	# stay pixel-identical, so the baseline RECORDS it and T4 asserts the
-	# RELATIVE shift rather than an absolute flush line.
+	# T6 — desktop baseline: authored geometry at zero insets.
 	var base_enemy_h: float = enemy_panel.size.y
 	var base_hero_h: float = hero_panel.size.y
 	var base_footer_h: float = footer.size.y
@@ -235,6 +352,18 @@ func _test_band_reclaim_and_desktop_baseline() -> void:
 		_fail("T6: desktop footer bottom = %s — does not reach the screen bottom %s" % [base_footer_bottom, screen_h])
 	else:
 		print("[SAFE_AREA] T6 pass — desktop battle at authored geometry (center %s, footer bottom %s)" % [base_center_h, base_footer_bottom])
+
+	# T10 (Build #3, the 6.5px footer bleed) — at ZERO insets the footer's
+	# bottom edge lands EXACTLY on the screen bottom, on a whole design pixel.
+	# Pre-fix code fails here at 2406.5 (min-height overflow split downward by
+	# the grow-BOTH container because _position_zone_dividers ignored the
+	# footer's minimum).
+	if base_footer_bottom > screen_h + 0.01:
+		_fail("T10: footer bleeds %.2fpx past the screen bottom at zero insets — the 6.5px bug" % (base_footer_bottom - screen_h))
+	elif absf(base_footer_bottom - roundf(base_footer_bottom)) > 0.01:
+		_fail("T10: footer bottom %.2f is not a whole design pixel (INVARIANTS #14)" % base_footer_bottom)
+	else:
+		print("[SAFE_AREA] T10 pass — zero-inset footer bottom exactly %.0f, whole pixel" % base_footer_bottom)
 
 	# T4 — apply the Pixel 8 budget live (rotation/fold path: signal re-apply).
 	_set_insets(DEVICE_TOP, DEVICE_BOTTOM)
@@ -257,12 +386,20 @@ func _test_band_reclaim_and_desktop_baseline() -> void:
 	if enemy_top < band_bottom - 0.5:
 		_fail("T4: enemy rail top %.1f is under the grown header band (bottom %.1f) — the clipped-name-plate regression" % [enemy_top, band_bottom])
 		t4_failed = true
-	# Relative to the recorded desktop baseline (which carries the pre-existing
-	# ~6.5px offscreen bleed): the whole footer must ride UP by exactly the
-	# gesture reserve.
+	# The whole footer rides UP by exactly the gesture reserve…
 	if absf(footer_bottom - (base_footer_bottom - float(DEVICE_BOTTOM))) > 0.5:
 		_fail("T4: footer bottom %.1f, want %.1f (desktop %.1f lifted by the %dpx reserve)" % [footer_bottom, base_footer_bottom - float(DEVICE_BOTTOM), base_footer_bottom, DEVICE_BOTTOM])
 		t4_failed = true
+	# …and T10 at the Pixel 8 budget: bottom edge ≤ screen − safe_bottom, whole
+	# pixel — pre-fix code fails at 2350.5.
+	if footer_bottom > screen_h - float(DEVICE_BOTTOM) + 0.01:
+		_fail("T10: footer bottom %.2f is under the gesture reserve line %.0f at (132,56) — the 6.5px bug" % [footer_bottom, screen_h - float(DEVICE_BOTTOM)])
+		t4_failed = true
+	elif absf(footer_bottom - roundf(footer_bottom)) > 0.01:
+		_fail("T10: inset footer bottom %.2f is not a whole design pixel (INVARIANTS #14)" % footer_bottom)
+		t4_failed = true
+	else:
+		print("[SAFE_AREA] T10 pass — inset footer bottom exactly %.0f (screen − %d), whole pixel" % [footer_bottom, DEVICE_BOTTOM])
 	if absf(enemy_panel.size.y - base_enemy_h) > 0.5 or absf(hero_panel.size.y - base_hero_h) > 0.5:
 		_fail("T4: rail heights changed (%s/%s, desktop %s/%s) — only the dice field may give up height" % [enemy_panel.size.y, hero_panel.size.y, base_enemy_h, base_hero_h])
 		t4_failed = true

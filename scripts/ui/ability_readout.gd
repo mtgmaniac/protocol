@@ -261,7 +261,7 @@ func _clear_row(row: HBoxContainer) -> void:
 func _add_empty_state(row: HBoxContainer) -> void:
 	var label := Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = "â€”"
+	label.text = "-"
 	label.modulate = Color(0.70, 0.80, 0.90, EMPTY_ALPHA)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Single source of truth for ability / item / gear / relic effect pips.
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
-## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest ↓; freeze = icon + superscript.
+## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest LOW; freeze = icon + superscript.
 
 # Batch 155-179 gave every keyword its own pip icon; the 2026-07-10 icon batch
 # added rampage / pack_bonus / summon / self. Only `tag` remains text-rendered.
@@ -88,8 +88,11 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 		"revive":
 			text = "%s%%" % raw_value.trim_suffix("%")  # icon + "50%"
 		"heal":
-			if raw_value in ["LOW", "↓"]:
-				text = "↓"
+			# ASCII "LOW" (Build #3): the old "↓" text has no m5x7 glyph (tofu
+			# with fallback off). The real heal-lowest visual is the
+			# target_lowest reticle icon; this text is the no-icon fallback.
+			if raw_value == "LOW":
+				text = "LOW"
 			else:
 				text = raw_value.to_upper()
 		"roll", "rfe", "rfm":

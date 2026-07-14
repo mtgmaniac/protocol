@@ -57,6 +57,10 @@ GATES = [
     # Android Build #1: safe-area insets (cutout/gesture bar) — header grows,
     # protocol row lifts, desktop reads all-zero (no-regression guarantee).
     ("safe area", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/safe_area_test.gd"], "[SAFE_AREA] PASS", False),
+    # Android Build #3: allow_system_fallback=false means an m5x7-uncovered
+    # codepoint is a TOFU BOX on device — every player-facing string must pass
+    # actual font coverage (has_char), never a hardcoded blocklist.
+    ("glyph coverage", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/glyph_coverage_check.gd"], "[GLYPH] PASS", False),
 ]
 
 

@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for combat keywords. Help menu + tooltips both read this. Colors intentionally omitted — assign PixelUI tokens per the meaning-first palette (green reserved for Protocol).",
+  "$comment": "Single source of truth for combat keywords. Help menu + tooltips both read this. Colors intentionally omitted - assign PixelUI tokens per the meaning-first palette (green reserved for Protocol).",
   "keywords": [
     {
       "id": "burn",
@@ -12,7 +12,7 @@
       "id": "chain",
       "term": "Chain",
       "category": "offense",
-      "def": "The damage also hits a second target — the lowest-HP other enemy — at 50% (round down). Chain ×2 adds a second jump.",
+      "def": "The damage also hits a second target - the lowest-HP other enemy - at 50% (round down). Chain ×2 adds a second jump.",
       "syntax": "chain / chain ×2",
       "code": "CH"
     },
@@ -44,7 +44,7 @@
       "id": "leech",
       "term": "Leech",
       "category": "offense",
-      "def": "The attacker heals HP equal to a share of the damage dealt to HP, after shields — 50% for heroes; each enemy shows its own rate as 'lifesteal N%'.",
+      "def": "The attacker heals HP equal to a share of the damage dealt to HP, after shields - 50% for heroes; each enemy shows its own rate as 'lifesteal N%'.",
       "syntax": "leech",
       "code": "LC"
     },
@@ -150,7 +150,7 @@
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be altered at all — not by Jam, Rewrite, Hijack, Nudge, Reroll, or Set.",
+      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be altered at all - not by Jam, Rewrite, Hijack, Nudge, Reroll, or Set.",
       "syntax": "freeze (repeat N)",
       "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },
@@ -234,7 +234,7 @@
       "category": "support",
       "def": "The reticle marker means the ability picks the lowest-HP ally automatically.",
       "syntax": "(lowest)",
-      "code": "↓"
+      "code": "LOW"
     }
   ],
   "conventions": {
