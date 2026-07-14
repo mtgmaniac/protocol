@@ -17,7 +17,7 @@ const PORTRAIT_BORDER := 4
 const TITLE_FONT_SIZE := 58
 const SUMMARY_FONT_SIZE := 36
 const CARD_TITLE_FONT_SIZE := 44
-const BODY_FONT_SIZE := 36
+const BODY_FONT_SIZE := PixelUI.FONT_BODY_MIN  # long-form prose (path focus, directive desc) — Polish Build A
 const SMALL_FONT_SIZE := 32
 # Band effect rows are the substance of a PERMANENT choice — floor them
 # (UI review S-1: the densest decision screen had the smallest text).
@@ -122,7 +122,8 @@ func _build_help_overlay() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(820, 0)
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
+	# Component: Modal (the legacy sci-fi ninepatch was a second frame language).
+	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
 	center.add_child(panel)
 
 	var margin: MarginContainer = MarginContainer.new()
@@ -416,13 +417,13 @@ func _create_divider() -> ColorRect:
 
 
 func _style_evolution_panel(panel: PanelContainer, hovered: bool) -> void:
-	# Direction-05: flat hard-square card matching the battle hero cards. Muted hero
-	# border at rest, brightens to DT_CYAN on hover. No rounded sci-fi ninepatch.
-	var border: Color = PixelUI.DT_CYAN if hovered else PixelUI.DT_HERO_BORDER
-	var fill: Color = CARD_BG_HOVER if hovered else CARD_BG
-	# 4px so the border survives the preview downscale (2px renders sub-pixel).
-	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, 4)
-	style.set_content_margin_all(0.0)
+	# Component: Major-event — evolutions are the ceremonial tier, the one place
+	# strong gold is legal. Hover brightens the gold; the old cyan hover read as
+	# a selection state on a card that wasn't selected.
+	var style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_MAJOR)
+	style.bg_color = CARD_BG_HOVER if hovered else CARD_BG
+	if hovered:
+		style.border_color = style.border_color.lightened(0.20)
 	panel.add_theme_stylebox_override("panel", style)
 
 

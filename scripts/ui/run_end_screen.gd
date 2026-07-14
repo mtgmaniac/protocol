@@ -146,7 +146,8 @@ func _build_unlocked_section() -> void:
 		return
 	var vbox := $Content/VBox as VBoxContainer
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_AMBER, 2))
+	# Component: Reward card (amber unlock accent).
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_REWARD))
 	PixelUI.add_corner_brackets(panel, PixelUI.DT_AMBER, 24.0, 3.0, 8.0)
 	var pad := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:

@@ -83,9 +83,8 @@ func _build(items: Array, relic: Resource, anchor_rect: Rect2) -> void:
 
 	_panel = PanelContainer.new()
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, PANEL_BORDER)
-	style.set_content_margin_all(0.0)
-	_panel.add_theme_stylebox_override("panel", style)
+	# Component: Modal (scrim added above).
+	_panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_MODAL))
 	# Transparent (not `visible = false`) until _relayout positions it, so it never flashes at
 	# the top-left first frame. modulate keeps the subtree laid out while _relayout measures it
 	# (a hidden PanelContainer skips child-sorting, which corrupts the height measurement).
@@ -133,7 +132,7 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 
 	var row := PanelContainer.new()
 	row.custom_minimum_size = Vector2(0, ICON_SIZE + 8.0)
-	var row_style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0)
+	var row_style: StyleBoxFlat = PixelUI.make_hard_style(Color.TRANSPARENT, Color.TRANSPARENT, 0)
 	row_style.set_content_margin_all(2.0)
 	row.add_theme_stylebox_override("panel", row_style)
 	# Any filled row is STOP so it can receive the long-press gesture; empty slots stay IGNORE.

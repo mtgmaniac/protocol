@@ -10,7 +10,7 @@ const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.g
 const TYPE_FONT := 28
 const TITLE_FONT := 62
 const CARD_TITLE_FONT := 46
-const BODY_FONT := 36
+const BODY_FONT := PixelUI.FONT_BODY_MIN  # route blurb prose — Polish Build A body tier
 const CHIP_FONT := 30
 const BUTTON_FONT := 38
 
@@ -134,7 +134,9 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	frame.custom_minimum_size = Vector2(0, HALLWAY_BANNER_H)
 	frame.clip_contents = true
-	frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_CYAN, 2))
+	# Component: Normal card (a decorative banner is not a selection — the old
+	# strong-cyan frame was border noise).
+	frame.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
 	var art := TextureRect.new()
 	art.texture = tex
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -143,14 +145,21 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(art)
-	PixelUI.add_corner_brackets(frame, PixelUI.DT_CYAN, 24.0, 3.0, 8.0)
+	PixelUI.add_corner_brackets(frame, PixelUI.DT_HERO_BORDER, 24.0, 3.0, 8.0)
 	column.add_child(frame)
 
 
 func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	var panel := PanelContainer.new()
+	# Components: the flagged route wears Enemy chrome (rust = danger, the
+	# meaning-first color law); the standard route is a Normal hero-tint card.
+	# The old resting DT_CYAN border broke "strong cyan = Selected only" — the
+	# accent now colors TEXT only (text-tier accents are not frames).
 	var accent: Color = PixelUI.DT_RUST if flagged else PixelUI.DT_CYAN
-	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(Color(0.024, 0.040, 0.060, 0.92), accent, 4))
+	if flagged:
+		panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_ENEMY))
+	else:
+		panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var margin := MarginContainer.new()

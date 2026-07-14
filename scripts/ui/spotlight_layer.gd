@@ -118,7 +118,9 @@ func _ready() -> void:
 	_coach = PanelContainer.new()
 	_coach.mouse_filter = Control.MOUSE_FILTER_STOP
 	_coach.gui_input.connect(_on_tap_input)
-	var coach_style: StyleBoxFlat = PixelUI.make_hard_style(Color("0b1117"), ACCENT, 4)
+	# Component: Modal — the coach card floats over the spotlight dim (its
+	# scrim). Attention comes from the spotlight ring, not a bright border.
+	var coach_style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_MODAL)
 	coach_style.set_content_margin_all(22.0)
 	_coach.add_theme_stylebox_override("panel", coach_style)
 	add_child(_coach)

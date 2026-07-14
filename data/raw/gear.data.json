@@ -25,9 +25,9 @@
     { "id": "priming_charge", "name": "Priming Charge", "desc": "This unit's first Nudge each battle is free.", "rarity": "uncommon", "icon": "bolt", "effect": { "type": "firstNudgeFree" } },
     { "id": "overload_capacitor", "name": "Overload Capacitor", "desc": "A 20 grants +2 Protocol.", "rarity": "rare", "icon": "bolt", "effect": { "type": "protocolOnNat20", "amount": 2 } },
     { "id": "ignition_coil", "name": "Ignition Coil", "desc": "Burn this unit applies ticks once immediately.", "rarity": "rare", "icon": "bolt", "effect": { "type": "burnImmediateTick" } },
-    { "id": "payload_fuse", "name": "Payload Fuse", "desc": "This unit's Detonates deal +50%.", "rarity": "rare", "icon": "bolt", "effect": { "type": "detonateBonus", "amount": 50 } },
-    { "id": "targeting_optic", "name": "Targeting Optic", "desc": "Battles start with this unit's first target Marked.", "rarity": "uncommon", "icon": "die", "effect": { "type": "battleStartMark" } },
-    { "id": "mirror_plate", "name": "Mirror Plate", "desc": "When an enemy Jams, Rewrites, or Freezes this unit's die, gain 2 Protocol.", "rarity": "rare", "icon": "shield", "effect": { "type": "protocolOnDieTamper", "amount": 2 } },
+    { "id": "payload_fuse", "name": "Payload Fuse", "desc": "This unit's detonates deal +50%.", "rarity": "rare", "icon": "bolt", "effect": { "type": "detonateBonus", "amount": 50 } },
+    { "id": "targeting_optic", "name": "Targeting Optic", "desc": "Battles start with this unit's first target marked.", "rarity": "uncommon", "icon": "die", "effect": { "type": "battleStartMark" } },
+    { "id": "mirror_plate", "name": "Mirror Plate", "desc": "When an enemy jams, rewrites, or freezes this unit's die, gain 2 Protocol.", "rarity": "rare", "icon": "shield", "effect": { "type": "protocolOnDieTamper", "amount": 2 } },
     { "id": "anchor_frame", "name": "Anchor Frame", "desc": "Taunts while above 50% HP.", "rarity": "rare", "icon": "shield", "effect": { "type": "tauntAbove50" } },
     { "id": "killswitch_relay", "name": "Killswitch Relay", "desc": "On death, deal 12 to all enemies.", "rarity": "legendary", "icon": "skull", "effect": { "type": "deathDamageAll", "amount": 12 } },
     { "id": "sync_antenna", "name": "Sync Antenna", "desc": "When this unit and an ally roll the same number, both gain +3 to it.", "rarity": "legendary", "icon": "die", "effect": { "type": "syncRollBonus", "amount": 3 } }

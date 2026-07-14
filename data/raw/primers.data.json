@@ -101,7 +101,7 @@
       "id": "primer_detonate",
       "trigger": { "type": "attack_keyword_resolved", "param": "detonate" },
       "target": "unit_card",
-      "text": "DETONATE: consumes the Burn for its remaining damage, instantly.",
+      "text": "DETONATE: consumes the burn for its remaining damage, instantly.",
       "priority": 30,
       "requires_feature": null
     },

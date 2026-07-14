@@ -406,14 +406,14 @@
           "directives": [
             {
               "name": "Flashpoint",
-              "desc": "Your Burn ticks once immediately on apply.",
+              "desc": "Your burn ticks once immediately on apply.",
               "effect": {
                 "type": "burnImmediateTick"
               }
             },
             {
               "name": "Slow Roast",
-              "desc": "Your Burns last +1 turn.",
+              "desc": "Your burns last +1 turn.",
               "effect": {
                 "type": "burnDurationBonus",
                 "amount": 1
@@ -516,14 +516,14 @@
           "directives": [
             {
               "name": "Conductor",
-              "desc": "Your Chains jump one extra target.",
+              "desc": "Your chains jump one extra target.",
               "effect": {
                 "type": "chainExtraJump"
               }
             },
             {
               "name": "Amplifier",
-              "desc": "Your Chain hits deal 100% damage.",
+              "desc": "Your chain hits deal 100% damage.",
               "effect": {
                 "type": "chainFullDamage"
               }
@@ -724,7 +724,7 @@
           "directives": [
             {
               "name": "Serrated",
-              "desc": "Your Pierce attacks also Breach.",
+              "desc": "Your pierce attacks also breach.",
               "effect": {
                 "type": "pierceAlsoBreach"
               }
@@ -834,7 +834,7 @@
           "directives": [
             {
               "name": "Deep Cuts",
-              "desc": "+3 damage against Burning targets.",
+              "desc": "+3 damage against burning targets.",
               "effect": {
                 "type": "bonusVsBurning",
                 "amount": 3
@@ -842,7 +842,7 @@
             },
             {
               "name": "Open Veins",
-              "desc": "Your overload Detonates after its damage.",
+              "desc": "Your overload detonates after its damage.",
               "effect": {
                 "type": "overloadDetonateAfter"
               }
@@ -1061,7 +1061,7 @@
             },
             {
               "name": "Bunker Doctrine",
-              "desc": "Allies holding your shields Spike 3.",
+              "desc": "Allies holding your shields spike 3.",
               "effect": {
                 "type": "shieldGrantsSpike",
                 "amount": 3
@@ -1174,7 +1174,7 @@
             },
             {
               "name": "Counterweight",
-              "desc": "Your Spike deals +4.",
+              "desc": "Your spike deals +4.",
               "effect": {
                 "type": "spikeBonus",
                 "amount": 4
@@ -1709,7 +1709,7 @@
           "directives": [
             {
               "name": "Combat Sense",
-              "desc": "Your single-target hits Mark their primary target.",
+              "desc": "Your single-target hits mark their primary target.",
               "effect": {
                 "type": "damageAppliesMark"
               }
@@ -2155,14 +2155,14 @@
           "directives": [
             {
               "name": "Silent Running",
-              "desc": "Your non-damage abilities re-Cloak you.",
+              "desc": "Your non-damage abilities re-cloak you.",
               "effect": {
                 "type": "nonDamageRecloak"
               }
             },
             {
               "name": "Ambush Wiring",
-              "desc": "Your attacks from Cloak deal +5.",
+              "desc": "Your attacks from cloak deal +5.",
               "effect": {
                 "type": "cloakAttackBonus",
                 "amount": 5
@@ -2363,7 +2363,7 @@
           "directives": [
             {
               "name": "Ghostblade",
-              "desc": "Your decloak strike also Executes.",
+              "desc": "Your decloak strike also executes.",
               "effect": {
                 "type": "decloakExecute"
               }
@@ -2475,14 +2475,14 @@
           "directives": [
             {
               "name": "Marked for Death",
-              "desc": "Your single-target hits Mark their primary target.",
+              "desc": "Your single-target hits mark their primary target.",
               "effect": {
                 "type": "damageAppliesMark"
               }
             },
             {
               "name": "Reaper",
-              "desc": "Your Executes trigger below 35%.",
+              "desc": "Your executes trigger below 35%.",
               "effect": {
                 "type": "executeThresholdPct",
                 "pct": 35
@@ -2695,7 +2695,7 @@
           "directives": [
             {
               "name": "Wall of Static",
-              "desc": "Your tray-wide roll-downs also Jam (cap 15).",
+              "desc": "Your tray-wide roll-downs also jam (cap 15).",
               "effect": {
                 "type": "rfeAllAlsoJam",
                 "cap": 15
@@ -2808,7 +2808,7 @@
           "directives": [
             {
               "name": "Hard Lock",
-              "desc": "Your single-target roll-downs also Jam.",
+              "desc": "Your single-target roll-downs also jam.",
               "effect": {
                 "type": "rfeAlsoJam"
               }

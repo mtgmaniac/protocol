@@ -60,6 +60,22 @@ max, stating the RULE not flavor. `PixelUI` is the single source of visual const
 `theme_overload.tres` only mirrors it. **Violation looks like:** a green buff chip, an
 outlined selection rectangle, a two-sentence tooltip, a hex literal in a scene script.
 
+**Six components (Polish Build A, Kev 2026-07-14):** every panel frame is one of six
+`PixelUI.component_style` kinds; strong cyan borders belong to `selected_card` only,
+strong gold to `major_event` only; one 4px frame width — rank is color, never width.
+Frame strength is a RANK: when everything shouts, nothing does — that was the
+border-noise defect this exists to prevent. Enforced by
+`scripts/checks/component_contract.py`. **Violation looks like:** a `StyleBoxFlat.new()`
+in a screen script, a DT_CYAN border on something that isn't selected, a gold frame on
+a routine popup, a seventh frame style invented instead of reported.
+
+**Capitalization law (Polish Build A, Kev 2026-07-14):** ALL CAPS for
+alerts/headings/buttons/metadata/callsigns/keyword-headers; Title Case for ability
+names and proper nouns; sentence case for body/lore/help — keyword mentions inline
+are lowercase. Enforced (mechanical subset) by `scripts/checks/caps_law.py`.
+**Violation looks like:** "applies BURN" in a desc, a Title-Case button label, a new
+`"literal".to_upper()`, a shouting body paragraph.
+
 **Band vocabulary (Batch 2):** the words `recharge` / `strike` / `surge` / `crit` /
 `overload` are internal zone keys ONLY. Never surface them in player-facing copy,
 docs, or design discussion to name/describe dice bands — refer to a band by its

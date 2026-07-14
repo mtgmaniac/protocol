@@ -62,7 +62,7 @@ func _build_steps() -> Array:
 		{"targets": ["enemy_readouts"], "text": "Enemies telegraph their moves, be sure to account for this!"},
 		{"targets": ["roll_button"], "text": "Lock it in - ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},
 		# Status-badge lesson (Batch 5): Target Lock left a MARK chip on the drone. Spotlight it.
-		{"targets": ["enemy_status"], "text": "Strike Unit's Target Lock left a MARK on the drone. Units carry status badges like this after effects land - the next hit spends the Mark for extra damage."},
+		{"targets": ["enemy_status"], "text": "Strike Unit's Target Lock left a mark on the drone. Units carry status badges like this after effects land - the next hit spends the mark for extra damage."},
 		# Phase 2 — turn 2: Protocol & Nudge. "Roll again" waits for the dice to settle (advance
 		# "rolled") before moving on.
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
@@ -78,7 +78,7 @@ func _build_steps() -> Array:
 		# nothing — it read as a consumed click.
 		{"targets": ["nudge"], "text": "Nudge costs 1 Protocol - tap it.", "advance": "phase", "phase": "nudge_pick"},
 		{"targets": ["combat"], "text": "Now tap Strike Unit's die - +3 pushes it into a stronger band.", "advance": "nudged"},
-		{"targets": ["ability:combat"], "text": "It jumped a band - Suppression Fire became Rail Strike, and the Mark makes the hit land even harder."},
+		{"targets": ["ability:combat"], "text": "It jumped a band - Suppression Fire became Rail Strike, and the mark makes the hit land even harder."},
 		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more - they unlock as you bank Protocol."},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Strike Unit's die, then the drone to fire it.", "advance": "assigned"},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Finish it - assign the rest and end the turn.", "advance": "won"},
@@ -184,7 +184,7 @@ func _layout_step() -> void:
 	if _spot != null:
 		_spot.spotlight(holes, str(step.get("text", "")), anchor, {
 			"title": str(step.get("title", "")),
-			"hint": "tap to continue >" if tap_step else "",
+			"hint": "Tap to continue >" if tap_step else "",
 			"interactive": tap_step,
 		})
 

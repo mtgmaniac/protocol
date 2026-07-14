@@ -41,6 +41,11 @@ GATES = [
     # delay fuse — check the copies instead of trusting them to stay in sync.
     ("doc consistency", [sys.executable, str(ROOT / "scripts" / "checks" / "doc_consistency.py")], "[DOC_CONSISTENCY] PASS", False),
     ("knobs contract", [sys.executable, str(ROOT / "scripts" / "checks" / "knobs_contract.py")], "[KNOBS_CONTRACT] PASS", False),
+    # Polish Build A: the capitalization law's mechanical subset (data JSON body
+    # text, .tscn button text, literal .to_upper()) and the six-component panel
+    # contract (no raw styleboxes / strong accents outside PixelUI).
+    ("caps law", [sys.executable, str(ROOT / "scripts" / "checks" / "caps_law.py")], "[CAPS_LAW] PASS", False),
+    ("component contract", [sys.executable, str(ROOT / "scripts" / "checks" / "component_contract.py")], "[COMPONENT_CONTRACT] PASS", False),
     ("ability audit", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/AbilityAuditRunner.tscn"], ", 0 failed", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),

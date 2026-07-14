@@ -109,8 +109,8 @@ const PERMANENT_BURN_TURNS := 9999
 const BOSS_STANDING_RULES := {
 	BOSS_SCRAPMASTER: "ASSEMBLY LINE - every 2nd enemy phase from its first activation, rebuilds one destroyed Scrap Drone at 50% HP.",
 	BOSS_MATRIARCH: "THE BROOD - spawns a Bloodmite every 3 rounds.",
-	BOSS_OVERSEER: "THE COURT - while any ally lives, gains a Firewall at the start of each round.",
-	BOSS_HIEROPHANT: "ROOT ACCESS - every round, Rewrites the squad's highest die to 3.",
+	BOSS_OVERSEER: "THE COURT - while any ally lives, gains a firewall at the start of each round.",
+	BOSS_HIEROPHANT: "ROOT ACCESS - every round, rewrites the squad's highest die to 3.",
 	BOSS_MANTLE: "ACCRETION - gains 6 shield at the start of every round; its shields persist and stack.",
 }
 
@@ -257,7 +257,7 @@ func _apply_boss_round_start_rules() -> void:
 						court_stands = true
 						break
 				if court_stands and not bool(enemy_state.get("warded", false)):
-					_log("The Court stands - the Overseer raises a Firewall.")
+					_log("The Court stands - the Overseer raises a firewall.")
 					_apply_ward(enemy_state)
 			BOSS_MANTLE:
 				_log("The Tyrant accretes its mantle.")
@@ -698,7 +698,7 @@ func resolve_round(
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"] and bool(enemy_state.get("hijack_pending", false)):
 				if int(enemy_state.get("die_freeze_turns", 0)) > 0:
-					_log("%s's die is frozen solid - the Hijack can't take hold." % enemy_state["unit"].display_name)
+					_log("%s's die is frozen solid - the hijack can't take hold." % enemy_state["unit"].display_name)
 					continue
 				enemy_rolls[str(enemy_state["id"])] = highest_hero_roll
 				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
@@ -1171,7 +1171,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		spike_amount += _directive_value(hero_state, "amount", 4)
 	if spike_amount > 0:
 		hero_state["spike"] = maxi(int(hero_state.get("spike", 0)), spike_amount)
-		_log("%s bristles with Spike %d - attackers take damage this round." % [hero_state["unit"].display_name, spike_amount])
+		_log("%s bristles with spike %d - attackers take damage this round." % [hero_state["unit"].display_name, spike_amount])
 		_emit_event(hero_state, "spike_up", spike_amount, "hero")
 
 	# Ward application: self by default, targeted ally with wardTgt.
@@ -1259,7 +1259,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	# Silent Running directive: non-damage abilities re-Cloak the caster.
 	if damage <= 0 and _has_directive(hero_state, "nonDamageRecloak") and not bool(hero_state.get("cloaked", false)) and not bool(hero_state.get("dead", false)):
 		hero_state["cloaked"] = true
-		_log("%s slips back into Cloak (Silent Running)." % hero_state["unit"].display_name)
+		_log("%s slips back into cloak (Silent Running)." % hero_state["unit"].display_name)
 		_emit_event(hero_state, "cloak", 0, "hero")
 
 
@@ -1269,7 +1269,7 @@ func _apply_bunker_doctrine_spike(granter_state: Dictionary, holder_state: Dicti
 		return
 	var spike_value: int = _directive_value(granter_state, "amount", 3)
 	holder_state["spike"] = maxi(int(holder_state.get("spike", 0)), spike_value)
-	_log("Bunker Doctrine: %s gains Spike %d." % [holder_state["unit"].display_name, spike_value])
+	_log("Bunker Doctrine: %s gains spike %d." % [holder_state["unit"].display_name, spike_value])
 
 
 # Roll-down riders (Noise Floor / Nullwire directives): fired per enemy that
@@ -1423,7 +1423,7 @@ func _apply_rewrite(state: Dictionary, survives_current_tick: bool = true) -> vo
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	if int(state.get("die_freeze_turns", 0)) > 0:
-		_log("%s's die is frozen solid - the Rewrite can't take hold." % state["unit"].display_name)
+		_log("%s's die is frozen solid - the rewrite can't take hold." % state["unit"].display_name)
 		return
 	state["rewrite_pending"] = true
 	state["rewrite_skip_next_tick"] = survives_current_tick
@@ -1456,7 +1456,7 @@ func _apply_jam(state: Dictionary, cap: int = JAM_CAP, survives_current_tick: bo
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	if int(state.get("die_freeze_turns", 0)) > 0:
-		_log("%s's die is frozen solid - the Jam can't take hold." % state["unit"].display_name)
+		_log("%s's die is frozen solid - the jam can't take hold." % state["unit"].display_name)
 		return
 	var existing: int = int(state.get("jam_cap", 0))
 	state["jam_cap"] = cap if existing <= 0 else mini(existing, cap)
@@ -1481,7 +1481,7 @@ func _apply_burn_from_hero(hero_state: Dictionary, target_state: Dictionary, amo
 	# Ignition Coil gear / Flashpoint directive: the Burn ticks once on apply.
 	var ignites: bool = bool(hero_state.get("gear_burn_immediate", false)) or _has_directive(hero_state, "burnImmediateTick")
 	if ignites and amount > 0 and not bool(target_state.get("dead", false)):
-		_log("The Burn ignites instantly for %d!" % amount)
+		_log("The burn ignites instantly for %d!" % amount)
 		_damage_state(target_state, amount)
 
 
@@ -1555,7 +1555,7 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 		return
 	var burst: int = get_expected_detonate_burst(attacker_state, target_state)
 	if burst <= 0:
-		_log("%s's Detonate fizzles - no Burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
+		_log("%s's detonate fizzles - no burn on %s." % [attacker_state["unit"].display_name, target_state["unit"].display_name])
 		return
 	# Finite stacks are consumed; permanent stacks stay and keep ticking.
 	var remaining_stacks: Array = []
@@ -1564,7 +1564,7 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 			remaining_stacks.append(stack_variant)
 	target_state["burn_stacks"] = remaining_stacks
 	_refresh_burn_totals(target_state)
-	_log("%s DETONATES the Burn on %s for %d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, burst])
+	_log("%s detonates the burn on %s for %d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, burst])
 	_emit_event(target_state, "detonate", burst, _resolve_side_for_state(target_state))
 	_damage_state(target_state, burst, false, attacker_state)
 
@@ -1834,7 +1834,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if enemy_spike > 0:
 		enemy_state["spike"] = maxi(int(enemy_state.get("spike", 0)), enemy_spike)
 		enemy_state["spike_skip_next_tick"] = true
-		_log("%s bristles with Spike %d." % [enemy_state["unit"].display_name, enemy_spike])
+		_log("%s bristles with spike %d." % [enemy_state["unit"].display_name, enemy_spike])
 		_emit_event(enemy_state, "spike_up", enemy_spike, "enemy")
 
 	# Taunt: force all heroes to target this enemy next player phase
@@ -1930,7 +1930,7 @@ func _damage_state(
 		amount = int(ceil(float(amount) * 1.5))
 		state["marked"] = false
 		state["mark_consumed_this_hit"] = true
-		_log("%s's Mark is consumed - the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
+		_log("%s's mark is consumed - the hit deals +50%% (%d)!" % [state["unit"].display_name, amount])
 		_emit_event(state, "mark_consumed", amount, _resolve_side_for_state(state))
 
 	# Flat vs-state riders fire once per ABILITY per target (NK-06), so a
@@ -1948,7 +1948,7 @@ func _damage_state(
 			if int(state.get("burn", 0)) > 0 and _has_directive(attacker_state, "bonusVsBurning"):
 				var cuts_bonus: int = _directive_value(attacker_state, "amount", 3)
 				amount += cuts_bonus
-				_log("Deep Cuts: +%d against the Burning target." % cuts_bonus)
+				_log("Deep Cuts: +%d against the burning target." % cuts_bonus)
 			if int(state.get("die_freeze_turns", 0)) > 0 and _has_directive(attacker_state, "bonusVsFrozen"):
 				var shatter_bonus: int = _directive_value(attacker_state, "amount", 6)
 				amount += shatter_bonus
@@ -2007,7 +2007,7 @@ func _damage_state(
 	if spike_retaliation > 0 and not attacker_state.is_empty() and not bool(attacker_state.get("dead", false)) \
 			and not _ability_spike_carrier_ids.has(spike_carrier_id):
 		_ability_spike_carrier_ids[spike_carrier_id] = true
-		_log("%s's Spike hits %s back for %d!" % [state["unit"].display_name, attacker_state["unit"].display_name, spike_retaliation])
+		_log("%s's spike hits %s back for %d!" % [state["unit"].display_name, attacker_state["unit"].display_name, spike_retaliation])
 		_emit_event(attacker_state, "spike", spike_retaliation, _resolve_side_for_state(attacker_state))
 		_damage_state(attacker_state, spike_retaliation)
 
@@ -2038,7 +2038,7 @@ func _damage_state(
 		if int(state["current_hp"]) * 100 < int(state["max_hp"]) * vanish_pct:
 			state["vanish_used"] = true
 			state["cloaked"] = true
-			_log("%s VANISHES into Cloak!" % state["unit"].display_name)
+			_log("%s vanishes into cloak!" % state["unit"].display_name)
 			_emit_event(state, "cloak", 0, "hero")
 
 	if int(state["current_hp"]) <= 0:
@@ -2126,7 +2126,7 @@ func _apply_ward(state: Dictionary) -> void:
 	if state.is_empty() or bool(state.get("dead", false)):
 		return
 	state["warded"] = true
-	_log("%s raises a Firewall - the next ability that targets them is blocked." % state["unit"].display_name)
+	_log("%s raises a firewall - the next ability that targets them is blocked." % state["unit"].display_name)
 	_emit_event(state, "ward", 0, _resolve_side_for_state(state))
 
 
@@ -2140,7 +2140,7 @@ func _ward_blocks_hostile(target_state: Dictionary) -> bool:
 		return false
 	target_state["warded"] = false
 	_ability_ward_blocked_ids[target_id] = true
-	_log("%s's Firewall blocks the ability!" % target_state["unit"].display_name)
+	_log("%s's firewall blocks the ability!" % target_state["unit"].display_name)
 	_emit_event(target_state, "block", 0, _resolve_side_for_state(target_state))
 	return true
 
@@ -2309,7 +2309,7 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 			if has_relic("protocolOnMarkedKill") and bool(dead_state.get("mark_consumed_this_hit", false)):
 				var refund: int = int(_get_relic_value("protocolOnMarkedKill", "amount", 2))
 				_pending_protocol_grants += refund
-				_log("Salvage Directive: +%d Protocol for downing a Marked target." % refund)
+				_log("Salvage Directive: +%d Protocol for downing a marked target." % refund)
 			# Momentum directive: each kill banks bonus damage for the next ability.
 			if _has_directive(killer_state, "killNextAbilityDamage"):
 				var momentum_gain: int = _directive_value(killer_state, "amount", 4)

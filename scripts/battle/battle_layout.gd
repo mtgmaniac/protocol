@@ -313,7 +313,7 @@ func ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
 	# Direction-05 tray: the frame is an OVERLAY above the dice viewport, so its fill
 	# must be fully transparent (any tint darkens the dice). Border + corner ticks only.
-	PixelUI.style_panel(_combat_zone_frame, Color(0, 0, 0, 0), PixelUI.LINE_DIM, 3, 0)
+	PixelUI.style_panel(_combat_zone_frame, Color.TRANSPARENT, PixelUI.LINE_DIM, 3, 0)
 	_ensure_tray_corner_ticks()
 
 

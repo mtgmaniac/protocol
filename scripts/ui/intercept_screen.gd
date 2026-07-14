@@ -11,7 +11,7 @@ var _enabled_choice_count: int = 0
 const TYPE_FONT := 28
 const TITLE_FONT := 62
 const CARD_TITLE_FONT := 50
-const BODY_FONT := 36
+const BODY_FONT := PixelUI.FONT_BODY_MIN  # event flavor/lore prose — Polish Build A body tier
 const BUTTON_FONT := 36
 
 # Per-card scene art (banner above the title). File name == card id; a missing

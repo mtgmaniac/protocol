@@ -421,19 +421,11 @@ func _apply_pixel_label(label: Label, font_size: int, color: Color, outline: int
 	label.add_theme_constant_override("outline_size", outline)
 
 
+# Thin wrapper over the PixelUI factory (component gate: this file constructs
+# no styleboxes) — behavior-identical to the old local builder.
 func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = bg
-	style.border_color = border
-	style.set_border_width_all(PixelUI.min_stroke(border_width))
-	style.corner_radius_top_left = 0
-	style.corner_radius_top_right = 0
-	style.corner_radius_bottom_left = 0
-	style.corner_radius_bottom_right = 0
-	style.set_content_margin(SIDE_LEFT, margin)
-	style.set_content_margin(SIDE_TOP, margin)
-	style.set_content_margin(SIDE_RIGHT, margin)
-	style.set_content_margin(SIDE_BOTTOM, margin)
+	var style: StyleBoxFlat = PixelUI.make_hard_style(bg, border, border_width)
+	style.set_content_margin_all(margin)
 	return style
 
 

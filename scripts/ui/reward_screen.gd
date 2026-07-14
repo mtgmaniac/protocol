@@ -184,7 +184,9 @@ func _build_help_overlay() -> void:
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_ninepatch_panel(panel, PixelUI.FRAME_BOTTOM_BAR_SCIFI)
+	# Component: Modal (the legacy sci-fi ninepatch frame was a second frame
+	# language; the scrim above already carries elevation).
+	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
 	outer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -307,7 +309,7 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 	var name_strip := PanelContainer.new()
 	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG.lightened(0.06), Color.TRANSPARENT, 0)
+	var strip_style: StyleBoxFlat = PixelUI.component_header_style(PixelUI.COMPONENT_REWARD)
 	strip_style.set_content_margin(SIDE_TOP, 8.0)
 	strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
 	name_strip.add_theme_stylebox_override("panel", strip_style)
@@ -347,17 +349,23 @@ func _create_reward_card(item: ItemData) -> PanelContainer:
 	overlay.name = "BracketOverlay"
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(overlay)
-	var brackets: Array = _make_corner_brackets(overlay, accent.lightened(0.30))
+	# Selection brackets are cyan — one selection language with the border.
+	var brackets: Array = _make_corner_brackets(overlay, PixelUI.DT_CYAN)
 
 	_cards[item.id] = {"panel": panel, "brackets": brackets, "accent": accent}
 	return panel
 
 
 func _style_card_panel(panel: PanelContainer, accent: Color, selected: bool) -> void:
-	var fill: Color = PixelUI.DT_PANEL_BG.lightened(0.05) if selected else PixelUI.DT_PANEL_BG
-	var border: Color = accent.lightened(0.20) if selected else accent
-	var style: StyleBoxFlat = PixelUI.make_hard_style(fill, border, CARD_BORDER)
-	style.set_content_margin_all(0.0)
+	# Components: Reward (rarity accent) at rest, Selected (strong cyan) on pick —
+	# selection is the ONE cyan-border state, same read as squad tiles and battle
+	# cards. The rarity identity stays on the name/type text and icon.
+	var style: StyleBoxFlat
+	if selected:
+		style = PixelUI.component_style(PixelUI.COMPONENT_SELECTED)
+		style.bg_color = PixelUI.DT_PANEL_BG.lightened(0.05)
+	else:
+		style = PixelUI.component_style(PixelUI.COMPONENT_REWARD, accent)
 	panel.add_theme_stylebox_override("panel", style)
 
 

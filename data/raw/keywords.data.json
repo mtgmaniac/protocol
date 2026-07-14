@@ -20,7 +20,7 @@
       "id": "detonate",
       "term": "Detonate",
       "category": "offense",
-      "def": "Consumes the target's finite Burn: deals burn amount × remaining turns as immediate damage, then that Burn is cleared.",
+      "def": "Consumes the target's finite burn: deals burn amount × remaining turns as immediate damage, then that burn is cleared.",
       "syntax": "detonate",
       "code": "DT"
     },
@@ -52,7 +52,7 @@
       "id": "mark",
       "term": "Mark",
       "category": "offense",
-      "def": "The next hit on this target deals +50% (round up), then the Mark is consumed.",
+      "def": "The next hit on this target deals +50% (round up), then the mark is consumed.",
       "syntax": "mark",
       "code": "MK"
     },
@@ -91,7 +91,7 @@
       "id": "shield",
       "term": "Shield",
       "category": "defense",
-      "def": "Absorbs incoming damage before HP. Lasts one round: gone at round end. Pierce goes through it; Breach destroys it.",
+      "def": "Absorbs incoming damage before HP. Lasts one round: gone at round end. Pierce goes through it; breach destroys it.",
       "syntax": "N shield = N shield this round"
     },
     {
@@ -150,7 +150,7 @@
       "id": "freeze",
       "term": "Freeze",
       "category": "control",
-      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be altered at all - not by Jam, Rewrite, Hijack, Nudge, Reroll, or Set.",
+      "def": "The die crusts and does not reroll: on each of its next N rolls it keeps the same face and its unit acts again on that result (targets are re-picked). Identical for heroes and enemies; frozen dice stay in the tray as blockers and can't be altered at all - not by jam, rewrite, hijack, Nudge, Reroll, or Set.",
       "syntax": "freeze (repeat N)",
       "note": "Petrify is cosmetic Freeze (stone-gray instead of ice)."
     },

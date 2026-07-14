@@ -290,6 +290,78 @@ Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Tau
 
 Deep navy bg; pixel art; `m5x7` font; hard edges, no gradients. Meaning-based color (current, post terminal-UI pass): **cyan/teal = player + primary actions** (teal primary buttons, corner brackets) · **red/rust = enemy/damage** · **green = HP bars and heals ONLY** · **amber = protocol pips, risk/confirm actions, unlock accents** · **gold = commit/reward moments**. `PixelUI` (`scripts/ui/pixel_ui.gd`) is the single source of truth for visual constants; `theme_overload.tres` mirrors it.
 
+**Capitalization law (Polish Build A, ruled by Kev 2026-07-14):**
+**ALL CAPS** = major alerts, page headings, buttons, small metadata labels
+("ROLL: 1 - 4"), unit callsigns on battle cards, keyword names as
+chips/headers (the primer "BURN: ..." label form). **Title Case** = ability
+names and other proper nouns wherever they appear. **Sentence case** = ability
+body text, lore, help copy, battle-log narration — and keyword mentions inline
+are ALWAYS lowercase ("applies burn", never "applies BURN" or "applies Burn").
+Hint-tier text is Sentence case game-wide ("Tap to continue >", "Tap anywhere
+to close"). Intel-popup titles are page headings (ALL CAPS). Protocol-action
+names (Nudge / Reroll / Set) and the resource word "Protocol" stay Title Case
+as proper nouns. Gate: `scripts/checks/caps_law.py` (in `verify_gate.py`)
+enforces the mechanical subset — data-JSON body text (no ALL-CAPS or
+Title-Case keyword inline; not all-caps bodies), data-JSON name fields (no
+all-upper / all-lower), `.tscn` Button `text` ALL CAPS, and no literal
+`"..."` `.to_upper()` in scripts. Tier judgments on `.gd`-authored label
+strings are EYES-ONLY. Prefer authoring the final casing; `.to_upper()` is for
+genuinely dynamic values (names from data) plus the ONE central transform in
+`style_primary_button`.
+
+**Six-component law (Polish Build A — the border-noise fix):** every panel
+FRAME is exactly one of six components, built ONLY by
+`PixelUI.component_style` / `style_component` (mirrored as theme type
+variations `CardNormal` / `CardSelected` / `CardEnemy` / `CardReward` /
+`ModalPanel` / `CardMajorEvent` in `theme_overload.tres`):
+1. **normal_card** — quiet frame + filled header strip (`hero_tint` variant for
+   player-side surfaces).
+2. **selected_card** — strong cyan border: the ONLY routine use of strong cyan.
+   Battle-card selection is CYAN now (`SELECT_LINE = DT_CYAN` — the old gold
+   selection was the biggest strong-gold leak).
+3. **enemy_card** — rust chrome (meaning-first color law).
+4. **reward_card** — amber accent; rarity borders ride the accent param.
+5. **modal** — INSPECT chrome over a dim scrim (help menu, inspect popup,
+   loadout chooser, SET-die popup, round-complete popup, coach/primer card,
+   directive picker; the legacy sci-fi ninepatch help overlays migrated here).
+6. **major_event** — the ceremonial tier (relics, evolutions, bosses): strong
+   gold here and ONLY here (evolution choice cards wear it now).
+ONE frame width for all six (4 design px) — rank is border COLOR, never width
+(width flips would move content margins and make selection jump layouts).
+Secondary grouping = spacing + filled plates (INVARIANTS #7), never extra
+frames (battle log and home detail bar dropped their stroked outlines; the
+route-fork banner and standard route card dropped resting strong cyan; the
+flagged route card wears enemy chrome). Gate:
+`scripts/checks/component_contract.py` (in `verify_gate.py`) — no `.tscn`
+StyleBox, no `StyleBoxFlat/Texture.new()` outside `pixel_ui.gd`, no strong
+accent tokens (`DT_CYAN`, `DT_CYAN_BRIGHT`, `GOLD_ACCENT`) or Color literals
+(except `Color.TRANSPARENT`) in panel-factory calls outside `pixel_ui.gd`.
+WHICH of the six a surface picks is eyes-tier (the component usage map).
+Known none-of-the-six (reported, not seventh-ed): the transmission windows
+(`style_transmission_panel` — intercept / route fork / run-end), the dice-tray
+combat-zone frame, footer/header bars, and sub-components (chips, badges,
+pips, HP tracks, sliders — they inherit a card's accent). The dead legacy
+protocol-footer LED display (texture + lights, built then always hidden) was
+DELETED from battle_scene.
+
+**Body-copy tier (Polish Build A):** long-form prose reads at
+`PixelUI.FONT_BODY_MIN` (42 design → 64 rendered, one ladder step above
+`FONT_INFO_MIN`) with the game's first line-spacing token
+(`BODY_LINE_SPACING` = 10, applied via `PixelUI.style_body_label`). Migrated:
+help bullets + keyword definitions, inspect free-form description, evolution
+path-focus / directive descs, intercept + route-fork blurbs, home kit blurb
+(raw-px screens author `scale_font_size(FONT_BODY_MIN)`). Titles, buttons,
+names, numbers, and table-ish rows (inspect ability/gear rows, bestiary
+stats, help syntax sub-lines, reward/item cards pending Prompt B) keep their
+sizes — deliberately, to avoid name-under-description rank inversions.
+
+**Header chevron buttons (Task 4 finding, 2026-07-14):** the two dev-mode
+header buttons are NOT speed controls — Debug (single chevron) = auto-complete
+the current turn, Debug2 (double chevron) = auto-complete the battle
+(`battle_scene._on_auto_turn_button_pressed` / `_on_auto_battle_button_pressed`;
+hidden unless SETTINGS > DEV developer mode). Label proposal pending Kev's
+ruling: "AUTO TURN" / "AUTO BATTLE" (not "1X"/"2X" — they are not speeds).
+
 ## Audio (2026-07-11 music pass)
 
 **SFX:** `AudioManager` autoload — runtime `SFX` bus, pooled players, pitch/volume

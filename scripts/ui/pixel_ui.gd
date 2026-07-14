@@ -27,6 +27,18 @@ const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
 const FONT_INFO_MIN := 36
 const FONT_ACCENT_MIN := 28
 
+# ── Long-form body copy (Polish Build A, Task 3) ──
+# Help/reference panels, ability descriptions, lore, and intel-popup prose use
+# a size one ladder step above FONT_INFO_MIN (42 design → 64 rendered via
+# scale_font_size) plus the game's first line-spacing token. Titles, buttons,
+# names, and numbers keep their own sizes — this token is ONLY for paragraphs
+# a player reads, not labels a player scans. Raw-px screens (home kit blurb,
+# run-end summary) author against scale_font_size(FONT_BODY_MIN) so there is
+# one source. BODY_LINE_SPACING is rendered px between wrapped lines (whole px,
+# pixel-snap safe).
+const FONT_BODY_MIN := 42
+const BODY_LINE_SPACING := 10
+
 # ── Direction 05 "Dithered Terminal" palette (battle HUD redesign) ──
 # Green is reserved for HP + the ROLL commit only; heroes read cyan, enemies rust.
 static var DT_FIELD_BG := Color("07090b")
@@ -43,6 +55,9 @@ static var DT_PROTO_EMPTY_BORDER := Color("2a2c1c")
 # Flat icon buttons (header/footer): dark square, 2px border; active uses DT_CYAN.
 static var DT_BTN_BG := Color("11161a")
 static var DT_BTN_BORDER := Color("28323a")
+# Translucent grouping plate over live game art (battle log). Grouping is a
+# FILLED plate, never a stroked outline (INVARIANTS #7).
+static var DT_PLATE_TRANSLUCENT := Color(0.015, 0.022, 0.035, 0.82)
 # Enemy (rust) card tokens
 static var DT_ENEMY_BG := Color("130c0a")
 static var DT_ENEMY_BORDER := Color("5e3022")
@@ -896,6 +911,115 @@ static func add_terminal_backdrop(root: Control, vignette_strength: float = 0.5,
 	root.add_child(make_vignette(vignette_strength))
 
 
+# ── The six standard components (Polish Build A, Kev 2026-07-14) ─────────────
+# Every panel FRAME in the game is exactly ONE of six components — frame
+# strength is a RANK, not a decoration. Too many equally strong frames was the
+# border-noise defect: everything shouted, nothing ranked. The law:
+#
+#   normal_card   — quiet frame + filled header strip. Player-side surfaces
+#                   pass hero_tint=true for the navy/teal family; neutral
+#                   panels leave it false.
+#   selected_card — strong cyan border. The ONLY routine use of strong cyan.
+#   enemy_card    — rust chrome (meaning-first color law: rust = enemy).
+#   reward_card   — amber accent. Rarity borders pass their color as `accent`
+#                   (the rarity ladder stays intentionally offset from the
+#                   gameplay palette).
+#   modal         — elevated neutral panel over a dim scrim (make_modal_scrim);
+#                   a muted side/rarity accent may pass as `accent`.
+#   major_event   — the ceremonial tier (relics, evolutions, bosses). Strong
+#                   gold is permitted here and ONLY here.
+#
+# Secondary grouping inside a component uses SPACING and filled header strips
+# (component_header_style), never additional frames — INVARIANTS #7: grouping
+# is filled plates, not stroked outlines. Anything that genuinely fits none of
+# the six is reported to Kev, never invented as a silent seventh.
+#
+# Single source of truth: screens call component_style / style_component (and
+# the existing button/bar/chip helpers); the component gate
+# (scripts/checks/component_contract.py) bans raw StyleBox construction and
+# strong-accent borders outside this file.
+
+const COMPONENT_NORMAL := "normal_card"
+const COMPONENT_SELECTED := "selected_card"
+const COMPONENT_ENEMY := "enemy_card"
+const COMPONENT_REWARD := "reward_card"
+const COMPONENT_MODAL := "modal"
+const COMPONENT_MAJOR := "major_event"
+
+# ONE frame width for all six components (pixel-snap law: even, ≥ MIN_STROKE).
+# Rank is conveyed by BORDER COLOR strength, never width — a width change on a
+# state flip (normal ↔ selected) would move content margins and make layouts
+# jump on tap.
+const COMPONENT_FRAME_WIDTH := 4
+
+
+static func component_style(kind: String, accent: Color = Color.TRANSPARENT, hero_tint: bool = false) -> StyleBoxFlat:
+	var has_accent: bool = accent.a > 0.0
+	match kind:
+		COMPONENT_NORMAL:
+			if hero_tint:
+				return make_hard_style(DT_HERO_BG, DT_HERO_BORDER, COMPONENT_FRAME_WIDTH)
+			return make_hard_style(DT_PANEL_BG, DT_FIELD_BORDER, COMPONENT_FRAME_WIDTH)
+		COMPONENT_SELECTED:
+			# Strong cyan — selection only. Accent overrides are IGNORED here on
+			# purpose: selection strength has one source.
+			return make_hard_style(DT_HERO_BG, DT_CYAN, COMPONENT_FRAME_WIDTH)
+		COMPONENT_ENEMY:
+			return make_hard_style(DT_ENEMY_BG, DT_ENEMY_BORDER, COMPONENT_FRAME_WIDTH)
+		COMPONENT_REWARD:
+			return make_hard_style(DT_PANEL_BG, accent if has_accent else DT_AMBER, COMPONENT_FRAME_WIDTH)
+		COMPONENT_MODAL:
+			return make_hard_style(INSPECT_BG, accent if has_accent else INSPECT_BORDER, COMPONENT_FRAME_WIDTH)
+		COMPONENT_MAJOR:
+			# Strong gold — ceremonial tier only. Accent overrides ignored.
+			return make_hard_style(DT_PANEL_BG, GOLD_ACCENT, COMPONENT_FRAME_WIDTH)
+	push_error("[PixelUI] unknown component kind '%s'" % kind)
+	return make_hard_style(DT_PANEL_BG, DT_FIELD_BORDER, COMPONENT_FRAME_WIDTH)
+
+
+static func style_component(panel: Control, kind: String, accent: Color = Color.TRANSPARENT, hero_tint: bool = false) -> void:
+	panel.add_theme_stylebox_override("panel", component_style(kind, accent, hero_tint))
+
+
+## The filled header strip that ranks a component's title row WITHOUT another
+## frame (borderless plate; INVARIANTS #7). Same fill family as the component.
+static func component_header_style(kind: String, hero_tint: bool = false) -> StyleBoxFlat:
+	match kind:
+		COMPONENT_ENEMY:
+			return make_hard_style(DT_ENEMY_HEADER, Color.TRANSPARENT, 0)
+		COMPONENT_NORMAL, COMPONENT_SELECTED:
+			if hero_tint or kind == COMPONENT_SELECTED:
+				return make_hard_style(DT_HERO_HEADER, Color.TRANSPARENT, 0)
+			return make_hard_style(DT_PANEL_BG.lightened(0.05), Color.TRANSPARENT, 0)
+	return make_hard_style(DT_PANEL_BG.lightened(0.05), Color.TRANSPARENT, 0)
+
+
+## The component a panel's border COLOR comes from, for surfaces that draw
+## their own internal dividers/strips in the card's line color (battle card
+## header underline, HP-track top rule). Keeps card anatomy on-token without a
+## second color system.
+static func component_line_color(kind: String, hero_tint: bool = false) -> Color:
+	match kind:
+		COMPONENT_SELECTED:
+			return DT_CYAN
+		COMPONENT_ENEMY:
+			return DT_ENEMY_BORDER
+		COMPONENT_REWARD:
+			return DT_AMBER
+		COMPONENT_MODAL:
+			return INSPECT_BORDER
+		COMPONENT_MAJOR:
+			return GOLD_ACCENT
+	return DT_HERO_BORDER if hero_tint else DT_FIELD_BORDER
+
+
+## Filled cyan badge plate (pick-order number on a selected tile) — the
+## Selected component's sub-badge. The only routine cyan FILL; lives here so
+## screens never construct strong-cyan styleboxes themselves.
+static func selection_badge_style() -> StyleBoxFlat:
+	return make_hard_style(DT_CYAN, DT_CYAN, 0)
+
+
 ## Shared modal scrim: a full-screen 60%-black ColorRect that dims (and, when
 ## block_input is true, blocks) the layer below a popup. Add it as the FIRST child of
 ## the popup's full-rect root/catcher so the popup panel renders on top of it. Every
@@ -1108,6 +1232,15 @@ static func style_label(label: Label, font_size: int, color: Color = TEXT_PRIMAR
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	label.add_theme_constant_override("outline_size", outline_size)
+
+
+## Long-form BODY copy (help/reference prose, ability descriptions, lore,
+## intel-popup text): FONT_BODY_MIN + the line-spacing token, wrapped. The one
+## styler for text a player READS in paragraphs — never use it for titles,
+## buttons, names, or numbers (they keep their scan-tier sizes).
+static func style_body_label(label: Label, font_size: int = FONT_BODY_MIN, color: Color = TEXT_PRIMARY) -> void:
+	style_label(label, font_size, color)
+	label.add_theme_constant_override("line_spacing", BODY_LINE_SPACING)
 
 
 # ── HP number readout (the "n / m" printed over every HP bar) ──

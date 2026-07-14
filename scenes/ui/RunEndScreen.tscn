@@ -75,6 +75,6 @@ theme_override_constants/separation = 16
 [node name="NewRunButton" type="Button" parent="Content/VBox/ButtonRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(220, 56)
-text = "Start New Run"
+text = "START NEW RUN"
 
 [connection signal="pressed" from="Content/VBox/ButtonRow/NewRunButton" to="." method="_on_new_run_button_pressed"]

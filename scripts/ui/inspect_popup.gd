@@ -34,6 +34,7 @@ const ABILITY_NAME_FONT := 38
 const META_FONT := 26
 const ROLL_FONT := 34
 const BODY_FONT := 36
+const BODY_LONG_FONT := PixelUI.FONT_BODY_MIN  # free-form description prose (Polish Build A)
 const HINT_FONT := 34  # Batch 3: 26 → 34 ("Tap anywhere to close" is the only exit cue)
 const HEADER_ICON_SIZE := 84.0
 
@@ -193,7 +194,9 @@ func _build_sections(content: VBoxContainer, payload: Dictionary) -> void:
 
 	var description: String = str(payload.get("description", "")).strip_edges()
 	if description != "":
-		_add_section(content, prev_exists, first_content and has_header, _make_label(description, BODY_FONT, PixelUI.INSPECT_TEXT_MUTED, true), "")
+		var desc_label := _make_label(description, BODY_LONG_FONT, PixelUI.INSPECT_TEXT_MUTED, true)
+		desc_label.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
+		_add_section(content, prev_exists, first_content and has_header, desc_label, "")
 		prev_exists = true
 		first_content = false
 
@@ -333,7 +336,7 @@ func _build_ability(ability: Dictionary) -> Control:
 		row1.alignment = BoxContainer.ALIGNMENT_CENTER
 		row1.add_theme_constant_override("separation", 12)
 		if roll_text != "":
-			var roll_label := _make_label("Roll: %s" % roll_text, ROLL_FONT, PixelUI.INSPECT_TEXT_MUTED)
+			var roll_label := _make_label("ROLL: %s" % roll_text, ROLL_FONT, PixelUI.INSPECT_TEXT_MUTED)
 			roll_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			roll_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			row1.add_child(roll_label)
@@ -480,9 +483,8 @@ func _set_descendants_ignore(node: Node) -> void:
 
 # ── Style helpers ───────────────────────────────────────────────────────────────
 func _panel_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, _accent, PANEL_BORDER)
-	style.set_content_margin_all(0.0)
-	return style
+	# Component: Modal — the side/rarity accent rides the accent param.
+	return PixelUI.component_style(PixelUI.COMPONENT_MODAL, _accent)
 
 
 func _divider(thickness: int = SECTION_DIVIDER, color: Color = PixelUI.INSPECT_DIVIDER) -> ColorRect:

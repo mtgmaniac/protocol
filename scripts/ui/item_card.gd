@@ -34,8 +34,8 @@ static func build(item: ItemData, width: float) -> PanelContainer:
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	panel.clip_contents = true
-	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, accent, CARD_BORDER)
-	style.set_content_margin_all(0.0)
+	# Component: Reward card — rarity/relic color rides the accent param.
+	var style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_REWARD, accent)
 	panel.add_theme_stylebox_override("panel", style)
 
 	var margin := MarginContainer.new()
@@ -87,7 +87,7 @@ static func type_chip(item: ItemData, accent: Color) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var style: StyleBoxFlat = PixelUI.make_hard_style(Color(0.03, 0.045, 0.065, 0.96), accent, 2)
+	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.INSPECT_BG, accent, 2)
 	style.content_margin_left = 10.0
 	style.content_margin_right = 10.0
 	style.content_margin_top = 2.0

@@ -15,7 +15,10 @@ const ACTION_PANEL_HEIGHT := 88.0
 # and a const can't be initialized from a non-const value.
 static var HERO_LINE := PixelUI.DT_HERO_BORDER
 static var ENEMY_LINE := PixelUI.DT_ENEMY_BORDER
-static var SELECT_LINE := PixelUI.GOLD_ACCENT
+# Selection is the Selected component: strong cyan (Polish Build A). Gold is
+# reserved for the major-event tier — the old GOLD_ACCENT selection was the
+# single biggest strong-gold leak in the game.
+static var SELECT_LINE := PixelUI.DT_CYAN
 static var HP_FILL := PixelUI.DT_HP_GREEN
 static var HP_CHIP := PixelUI.COLOR_DAMAGE  # "doomed HP" forecast overlay — pending damage, drains per hit
 static var HP_BACK := PixelUI.DT_FIELD_BG
@@ -48,7 +51,9 @@ const STATUS_CHIP_HEIGHT := 64.0
 const STATUS_PLATE_SLOTS := STATUS_MAX_VISIBLE + 1
 const STATUS_PLATE_SEP := 2.0
 const STATUS_CONTENT_SCALE_STEP := 0.78
-const CARD_BORDER_WIDTH := 6
+# The component frame width (PixelUI.COMPONENT_FRAME_WIDTH). Border noise fix:
+# cards rank by border COLOR, and every component frame is 4px.
+const CARD_BORDER_WIDTH := 4
 var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
 var current_hp: int = 45
@@ -387,10 +392,23 @@ func _refresh() -> void:
 
 	var is_hero: bool = side == "hero"
 	var line_color: Color = _line_color()
-	var panel_bg: Color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
+	# Component frame: Normal (hero tint) / Enemy, promoted to Selected on pick.
+	# The targetable dither tint rides the same frame (a target cue, not a rank).
 	# margin == border width so the card's children (portrait included) sit INSIDE the
 	# border instead of drawing over it — the frame always stays on top of the portrait.
-	add_theme_stylebox_override("panel", _style(panel_bg, line_color, CARD_BORDER_WIDTH, CARD_BORDER_WIDTH))
+	var card_style: StyleBoxFlat
+	if selected:
+		card_style = PixelUI.component_style(PixelUI.COMPONENT_SELECTED)
+		# Selection is a border rank — the side's fill stays.
+		card_style.bg_color = PixelUI.DT_HERO_BG if is_hero else PixelUI.DT_ENEMY_BG
+	elif is_hero:
+		card_style = PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true)
+	else:
+		card_style = PixelUI.component_style(PixelUI.COMPONENT_ENEMY)
+	if not selected and targetable:
+		card_style.border_color = line_color
+	card_style.set_content_margin_all(CARD_BORDER_WIDTH)
+	add_theme_stylebox_override("panel", card_style)
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
@@ -1184,18 +1202,11 @@ func _apply_label(label: Label, font_size: int, color: Color, outline: int = 1) 
 	label.add_theme_constant_override("outline_size", outline)
 
 
+# Sub-component plates (header strip, HP track, pips) build on the PixelUI
+# factory — this file constructs no styleboxes of its own (component gate).
+# The old 2px corner radius is gone: hard corners are the Direction-05 language
+# and the radius was sub-pixel at the 0.5x preview anyway.
 func _style(bg: Color, border: Color, border_width: int, margin: int) -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.anti_aliasing = false
-	style.bg_color = bg
-	style.border_color = border
-	style.set_border_width_all(PixelUI.min_stroke(border_width))
-	style.corner_radius_top_left = 2
-	style.corner_radius_top_right = 2
-	style.corner_radius_bottom_left = 2
-	style.corner_radius_bottom_right = 2
-	style.set_content_margin(SIDE_LEFT, margin)
-	style.set_content_margin(SIDE_TOP, margin)
-	style.set_content_margin(SIDE_RIGHT, margin)
-	style.set_content_margin(SIDE_BOTTOM, margin)
+	var style: StyleBoxFlat = PixelUI.make_hard_style(bg, border, border_width)
+	style.set_content_margin_all(margin)
 	return style

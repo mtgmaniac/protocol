@@ -616,7 +616,8 @@ func _open_set_value_popup() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, accent, 4))
+	# Component: Modal (muted accent allowed via the accent param).
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_MODAL, accent))
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	panel.custom_minimum_size = Vector2(clampf(vp.x - 40.0, 340.0, 720.0), 0.0)
 	center.add_child(panel)
@@ -1035,12 +1036,9 @@ func _add_confirm_card_highlight(card: PanelContainer) -> void:
 	ring.name = "ConfirmHighlight"
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	style.set_border_width_all(7)
-	style.border_color = PixelUI.DT_HERO_DITHER
-	style.set_corner_radius_all(0)
-	ring.add_theme_stylebox_override("panel", style)
+	# Selection-family target cue (border-only ring); width 8 = even design px
+	# (pixel-snap law — the old 7 was already min_stroke'd elsewhere).
+	ring.add_theme_stylebox_override("panel", PixelUI.make_hard_style(Color.TRANSPARENT, PixelUI.DT_HERO_DITHER, 8))
 	card.add_child(ring)
 	# Bound to the card so the loop dies with it; pulses the ring's alpha as the "tap me" cue.
 	var tween := card.create_tween().set_loops()

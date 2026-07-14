@@ -10,7 +10,8 @@ const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8
 const TITLE_FONT := 48
 const TAB_FONT := 36  # Batch 3: 30 → 36 (category tabs read under duress too)
 const SECTION_FONT := 36
-const BODY_FONT := PixelUI.FONT_INFO_MIN  # help body is read under duress — floor it (UI review S-1)
+const BODY_FONT := PixelUI.FONT_INFO_MIN  # table rows / stats (read under duress — floored, UI review S-1)
+const BODY_LONG_FONT := PixelUI.FONT_BODY_MIN  # long-form prose: bullets, keyword definitions (Polish Build A)
 const TERM_FONT := 33
 const SYNTAX_FONT := 27
 const HEADER_FONT := 42
@@ -144,7 +145,9 @@ func _build() -> void:
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	PixelUI.style_panel(panel, Color(0.018, 0.026, 0.044, 0.98), Color(0.36, 0.55, 0.78, 0.95), 4, 0)
+	# Component: Modal (the old bright-blue border was border noise; the scrim +
+	# elevation carry the "this is a layer" read).
+	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
 	margin.add_child(panel)
 
 	var panel_margin := MarginContainer.new()
@@ -405,7 +408,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	icon_frame.custom_minimum_size = Vector2(64, 64)
 	icon_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	icon_frame.mouse_filter = Control.MOUSE_FILTER_PASS
-	PixelUI.style_panel(icon_frame, Color(0.035, 0.050, 0.078, 0.92), Color(0.22, 0.34, 0.48, 0.95), 2, 0)
+	PixelUI.style_panel(icon_frame, PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, 2, 0)
 	row.add_child(icon_frame)
 
 	var icon_key: String = str(HELP_KEYWORD_ICON.get(str(kw.get("id", "")), ""))
@@ -437,7 +440,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	row.add_child(text_box)
 
 	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2))
-	text_box.add_child(_make_wrap_label(str(kw.get("def", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 2))
+	text_box.add_child(_make_body_label(str(kw.get("def", "")), PixelUI.TEXT_PRIMARY))
 	# No trailing syntax line (Kev 2026-07-10): it just repeated the keyword
 	# name under its own definition.
 
@@ -666,7 +669,7 @@ func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
 
 	var keywords: String = _enemy_keyword_summary(enemy)
 	if keywords != "":
-		entry.add_child(_make_wrap_label("Applies: %s" % keywords, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
+		entry.add_child(_make_wrap_label("APPLIES: %s" % keywords, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
 
 
 func _enemy_keyword_summary(enemy: EnemyData) -> String:
@@ -674,27 +677,29 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 	for ability_variant in enemy.dice_ranges:
 		var ability: Dictionary = ability_variant
 		var raw: Dictionary = ability.get("raw", {})
+		# Keyword mentions inline are lowercase (caps law); AoE keeps its
+		# initialism form.
 		var tags: Array = []
 		if int(raw.get("burn", 0)) > 0:
-			tags.append("Burn")
+			tags.append("burn")
 		if int(raw.get("rfe", 0)) > 0:
-			tags.append("Roll Down")
+			tags.append("roll down")
 		if int(raw.get("shield", 0)) > 0 or int(raw.get("shieldAlly", 0)) > 0:
-			tags.append("Shield")
+			tags.append("shield")
 		if int(raw.get("heal", 0)) > 0 or int(raw.get("lifestealPct", 0)) > 0:
-			tags.append("Heal")
+			tags.append("heal")
 		if bool(raw.get("packBonus", false)):
-			tags.append("Pack Bonus")
+			tags.append("pack bonus")
 		if bool(raw.get("blastAll", false)):
 			tags.append("AoE")
 		if bool(raw.get("ward", false)):
-			tags.append("Firewall")
+			tags.append("firewall")
 		if bool(raw.get("wipeShields", false)):
-			tags.append("Shield Wipe")
+			tags.append("shield wipe")
 		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0 or int(raw.get("freezeAnyDice", 0)) > 0:
-			tags.append("Freeze")
+			tags.append("freeze")
 		if int(raw.get("summonChance", 0)) > 0 or str(raw.get("summonName", "")) != "":
-			tags.append("Summon")
+			tags.append("summon")
 		for tag in tags:
 			if not found.has(tag):
 				found.append(tag)
@@ -942,7 +947,9 @@ func _add_slider_row(parent: VBoxContainer, label_text: String, initial: float, 
 	var track := PixelUI.make_hard_style(PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 2)
 	track.content_margin_top = 16
 	track.content_margin_bottom = 16
-	var fill := PixelUI.make_hard_style(Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, 2)
+	# Slider fill is a CONTROL accent (button-family teal tokens), not a panel
+	# frame — strong cyan panel borders stay Selected-only.
+	var fill := PixelUI.make_hard_style(PixelUI.BTN_PRIMARY_BG_HOVER, PixelUI.BTN_TEAL_BORDER, 2)
 	fill.content_margin_top = 16
 	fill.content_margin_bottom = 16
 	slider.add_theme_stylebox_override("slider", track)
@@ -1001,7 +1008,19 @@ func _add_bullet(parent: VBoxContainer, text: String) -> void:
 	bullet.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	row.add_child(bullet)
 
-	row.add_child(_make_wrap_label(text, BODY_FONT, PixelUI.TEXT_PRIMARY, 2))
+	row.add_child(_make_body_label(text, PixelUI.TEXT_PRIMARY))
+
+
+# Long-form reference prose (Tactical Reference bullets, keyword definitions):
+# the body-copy tier — FONT_BODY_MIN + line spacing, wrapped.
+func _make_body_label(text: String, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	PixelUI.style_body_label(label, PixelUI.FONT_BODY_MIN, color)
+	return label
 
 
 func _make_label(text: String, font_size: int, color: Color, align: int = HORIZONTAL_ALIGNMENT_LEFT, outline: int = 2) -> Label:

@@ -274,7 +274,7 @@ func get_beat_after_battle(battle_number: int) -> Dictionary:
 # BALANCE-TODO: all modifier numbers provisional.
 const BATTLE_MODIFIERS := {
 	"hardened": {"name": "HARDENED", "desc": "Enemies spawn with 8 shield.", "amount": 8},
-	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are Jammed (cap 10) on turn 1.", "cap": 10},
+	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are jammed (cap 10) on turn 1.", "cap": 10},
 	"overrun": {"name": "OVERRUN", "desc": "One extra fodder unit joins the comp.", "requires": "small_comp"},
 	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy slot upgrades to the elite pool.", "requires": "non_elite_slot"},
 	"ferocity": {"name": "FEROCITY", "desc": "Enemy hits deal +2.", "amount": 2},
@@ -282,7 +282,7 @@ const BATTLE_MODIFIERS := {
 	"blackout": {"name": "BLACKOUT", "desc": "Protocol income starts on turn 3.", "fromTurn": 3},
 	"sealedSupplies": {"name": "SEALED SUPPLIES", "desc": "Items cost +1 Protocol.", "amount": 1},
 	"regenerative": {"name": "REGENERATIVE", "desc": "Enemies heal 3 each round.", "amount": 3},
-	"warded": {"name": "FIREWALLED", "desc": "Support enemies spawn with a Firewall.", "requires": "has_support"},
+	"warded": {"name": "FIREWALLED", "desc": "Support enemies spawn with a firewall.", "requires": "has_support"},
 }
 
 
@@ -480,7 +480,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Scrap it: 2 common consumables.", "effects": [{"type": "consumable", "rarity": "common", "count": 2}]},
 	]},
 	"firingSolution": {"tier": "minor", "name": "FIRING SOLUTION", "desc": "Orbital assets have a brief window.", "choices": [
-		{"label": "Take the shot: the highest-HP enemy next battle starts Marked at 90% HP.", "effects": [{"type": "nextBattleFlag", "flag": "marked_highest"}]},
+		{"label": "Take the shot: the highest-HP enemy next battle starts marked at 90% HP.", "effects": [{"type": "nextBattleFlag", "flag": "marked_highest"}]},
 		{"label": "Sell the window: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
 	# ── Major deck (beats after b6–b8) ──
@@ -501,7 +501,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Decline.", "effects": []},
 	]},
 	"memorialProtocol": {"tier": "major", "name": "MEMORIAL PROTOCOL", "desc": "The squad wants to honor the fallen.", "requires": "recent_death", "choices": [
-		{"label": "Honor them: the fallen hero starts every remaining battle with a Firewall.", "effects": [{"type": "memorialWard"}]},
+		{"label": "Honor them: the fallen hero starts every remaining battle with a firewall.", "effects": [{"type": "memorialWard"}]},
 		{"label": "Keep moving: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
 	]},
 	"deepCache": {"tier": "major", "name": "DEEP CACHE", "desc": "A vault seal. Cracking it will drink your Protocol lines dry.", "choices": [
@@ -521,7 +521,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Decline.", "effects": []},
 	]},
 	"ghostFrequency": {"tier": "major", "name": "GHOST FREQUENCY", "desc": "A carrier wave that unmakes a silhouette. It takes something with it.", "choices": [
-		{"label": "Tune a hero: starts every remaining battle Cloaked, -6 max HP.", "pick": "hero", "effects": [{"type": "heroStartCloaked"}, {"type": "heroMaxHp", "amount": -6}]},
+		{"label": "Tune a hero: starts every remaining battle cloaked, -6 max HP.", "pick": "hero", "effects": [{"type": "heroStartCloaked"}, {"type": "heroMaxHp", "amount": -6}]},
 		{"label": "Sell the wave: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
 	]},
 	"deepScan": {"tier": "major", "name": "DEEP SCAN", "desc": "A survey array with reach across the whole op.", "choices": [
@@ -648,7 +648,7 @@ func apply_intercept_effects(effects: Array, hero_id: String = "", gear_context:
 				var fallen: String = _recent_death_hero()
 				if fallen != "":
 					_hero_mods(fallen)["start_warded"] = true
-					info = "%s will carry the Firewall." % fallen
+					info = "%s will carry the firewall." % fallen
 			"heroNat20Twice":
 				_hero_mods(hero_id)["nat20_twice"] = true
 			"heroStartCloaked":

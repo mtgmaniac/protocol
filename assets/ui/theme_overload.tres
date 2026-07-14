@@ -75,6 +75,81 @@ corner_radius_top_right = 0
 corner_radius_bottom_right = 0
 corner_radius_bottom_left = 0
 
+; ── The six standard components (Polish Build A) — MIRROR PixelUI.component_style.
+; Strong cyan only on CardSelected; strong gold only on CardMajorEvent. One frame
+; width (4) for all six — rank is border COLOR. Do not edit independently.
+[sub_resource type="StyleBoxFlat" id="SB_card_normal"]
+bg_color = Color(0.035294, 0.047059, 0.054902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.137255, 0.164706, 0.180392, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_card_selected"]
+bg_color = Color(0.039216, 0.078431, 0.109804, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.247059, 0.815686, 0.886275, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_card_enemy"]
+bg_color = Color(0.07451, 0.047059, 0.039216, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.368627, 0.188235, 0.133333, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_card_reward"]
+bg_color = Color(0.035294, 0.047059, 0.054902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.811765, 0.603922, 0.211765, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_modal"]
+bg_color = Color(0.043137, 0.058824, 0.07451, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.164706, 0.207843, 0.25098, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="SB_card_major_event"]
+bg_color = Color(0.035294, 0.047059, 0.054902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.82, 0.58, 0.24, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
 [sub_resource type="StyleBoxFlat" id="SB_btn_disabled"]
 content_margin_left = 10.0
 content_margin_top = 10.0
@@ -109,3 +184,15 @@ LabelMuted/base_type = "Label"
 LabelMuted/colors/font_color = Color(0.52, 0.6, 0.7, 1)
 Panel/styles/panel = SubResource("SB_panel")
 PanelContainer/styles/panel = SubResource("SB_panel")
+CardNormal/base_type = "PanelContainer"
+CardNormal/styles/panel = SubResource("SB_card_normal")
+CardSelected/base_type = "PanelContainer"
+CardSelected/styles/panel = SubResource("SB_card_selected")
+CardEnemy/base_type = "PanelContainer"
+CardEnemy/styles/panel = SubResource("SB_card_enemy")
+CardReward/base_type = "PanelContainer"
+CardReward/styles/panel = SubResource("SB_card_reward")
+ModalPanel/base_type = "PanelContainer"
+ModalPanel/styles/panel = SubResource("SB_modal")
+CardMajorEvent/base_type = "PanelContainer"
+CardMajorEvent/styles/panel = SubResource("SB_card_major_event")

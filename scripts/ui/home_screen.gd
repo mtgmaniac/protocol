@@ -42,7 +42,9 @@ const ENC_NAME_FONT := 80          # biggest text in the banner by design; long 
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
 const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
 const DETAIL_NAME_FONT := 76
-const DETAIL_DESC_FONT := 56       # kit blurb — sized up from 52 (redesign sizing rule)
+# Kit blurb — the body-copy tier, expressed through the ONE body token (this
+# screen authors raw px, so it takes the token's post-scale value: 42 → 64).
+static var DETAIL_DESC_FONT: int = PixelUI.scale_font_size(PixelUI.FONT_BODY_MIN)
 const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
 const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller than DEPLOY
@@ -266,7 +268,7 @@ func _build_encounter_section() -> Control:
 	# game-wide inspect convention.
 	_enc_banner = PanelContainer.new()
 	_enc_banner.mouse_filter = Control.MOUSE_FILTER_STOP
-	_enc_banner.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER))
+	_enc_banner.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
 	section.add_child(_enc_banner)
 	var banner_press := LongPressInput.new()
 	_enc_banner.add_child(banner_press)
@@ -311,7 +313,7 @@ func _build_encounter_section() -> Control:
 	thumb_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	thumb_frame.custom_minimum_size = Vector2(ENC_THUMB_W, ENC_THUMB_H)
 	thumb_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var thumb_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER)
+	var thumb_style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_ENEMY)
 	thumb_style.set_content_margin_all(float(PANEL_BORDER))
 	thumb_frame.add_theme_stylebox_override("panel", thumb_style)
 	var thumb_holder := Control.new()
@@ -392,11 +394,12 @@ func _make_nav_button(glyph: String, direction: int) -> Button:
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.text = glyph
-	# Flippers match the panel OUTLINE (hero border / cyan), not the red enemy frame.
+	# Flippers match the panel OUTLINE (quiet hero border); the glyph stays cyan.
+	# The old strong-cyan hover border was retired (strong cyan = Selected only),
+	# and hover barely exists on the touch target anyway.
 	_apply_button_font(button, 44, PixelUI.DT_CYAN)
 	for state in ["normal", "hover", "pressed", "focus"]:
 		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, PANEL_BORDER))
-	button.add_theme_stylebox_override("hover", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, PANEL_BORDER))
 	button.pressed.connect(_on_nav_pressed.bind(direction))
 	return button
 
@@ -582,7 +585,9 @@ func _build_detail_bar() -> PanelContainer:
 	# exceeds 2 lines at this width — verified against data), so swapping between
 	# 1- and 2-line heroes never reflows the layout.
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_TRAY_BG, PixelUI.DT_HERO_BORDER))
+	# Grouping surface: filled plate, no stroked outline (INVARIANTS #7 — the
+	# old hero-border frame here was border noise).
+	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_TRAY_BG, Color.TRANSPARENT, 0))
 
 	var pad := MarginContainer.new()
 	pad.add_theme_constant_override("margin_left", 24)
@@ -625,6 +630,8 @@ func _build_detail_bar() -> PanelContainer:
 
 	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Body-copy line spacing — set BEFORE the 2-line reservation below reads it.
+	_detail_desc.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
 	# Reserve exactly two blurb lines INCLUDING the inter-line spacing so the
 	# panel height is constant. Reserving 2×font_height alone under-measured by
 	# the Label's line_spacing (3px): the first populate grew the panel and the
@@ -686,7 +693,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	slot_badge.offset_top = CHECK_INSET
 	slot_badge.custom_minimum_size = Vector2(SLOT_BADGE_SIZE, SLOT_BADGE_SIZE)
 	slot_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	slot_badge.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_CYAN, PixelUI.DT_CYAN, 0))
+	slot_badge.add_theme_stylebox_override("panel", PixelUI.selection_badge_style())
 	var slot_label := _make_pixel_label("", TILE_NAME_FONT, PixelUI.BTN_PRIMARY_INK)
 	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -809,10 +816,12 @@ func _refresh_unit_tiles() -> void:
 		var frame: PanelContainer = tile["frame"]
 		var name_label: Label = tile["name"]
 		var is_selected := _selected_unit_ids.has(unit_id)
-		var border: Color = PixelUI.DT_CYAN if is_selected else PixelUI.DT_HERO_BORDER
+		# Components: Selected (strong cyan) / Normal hero tile.
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
 		# (matches _make_portrait_box; otherwise the portrait would cover the border).
-		var frame_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_HERO_BG, border)
+		var frame_style: StyleBoxFlat = PixelUI.component_style(
+			PixelUI.COMPONENT_SELECTED if is_selected else PixelUI.COMPONENT_NORMAL,
+			Color.TRANSPARENT, true)
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
 		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
@@ -1004,7 +1013,9 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	_directive_layer.add_child(dim)
 
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, 4))
+	# Component: Modal with the amber commit accent (a Starting-Directive pick is
+	# a confirm moment — amber per the meaning-first color law, never gold here).
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_MODAL, PixelUI.DT_AMBER))
 	panel.custom_minimum_size = Vector2(880, 0)
 	_directive_layer.add_child(panel)
 
@@ -1151,18 +1162,7 @@ func _set_button_text_color(button: Button, color: Color) -> void:
 	button.add_theme_color_override("font_disabled_color", color)
 
 
+# Thin wrapper over the PixelUI factory (component gate: this file constructs
+# no styleboxes). PANEL_RADIUS was already 0 — behavior-identical.
 func _make_panel_style(bg: Color, border: Color, border_width: int = PANEL_BORDER) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg
-	style.border_color = border
-	style.set_border_width_all(PixelUI.min_stroke(border_width))
-	style.corner_radius_top_left = PANEL_RADIUS
-	style.corner_radius_top_right = PANEL_RADIUS
-	style.corner_radius_bottom_left = PANEL_RADIUS
-	style.corner_radius_bottom_right = PANEL_RADIUS
-	style.shadow_size = 0
-	style.set_content_margin(SIDE_LEFT, 0)
-	style.set_content_margin(SIDE_RIGHT, 0)
-	style.set_content_margin(SIDE_TOP, 0)
-	style.set_content_margin(SIDE_BOTTOM, 0)
-	return style
+	return PixelUI.make_hard_style(bg, border, border_width)

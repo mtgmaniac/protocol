@@ -246,7 +246,7 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s: die locked on this face (%d more)." % ["Petrified" if flavor == "petrify" else "Frozen", int(state["die_freeze_turns"])]))
+			"%s: die locked on this face (%d more)." % ["PETRIFIED" if flavor == "petrify" else "FROZEN", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
 		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, _status_text("spike", str(state["spike"]), 0)))
 	return entries

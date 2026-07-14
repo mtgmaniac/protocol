@@ -371,7 +371,7 @@ func _try_show(candidate: Dictionary) -> bool:
 		glyph_key = str(context.get("param", ""))
 	AudioManager.play_select()
 	await _spot.spotlight([rect.grow(PAD)], text, SpotlightLayerScript.CoachAnchor.AUTO, {
-		"hint": "tap to continue >",
+		"hint": "Tap to continue >",
 		"interactive": true,
 		"glyph": PixelUI.pip_texture_for_key(glyph_key),
 	})

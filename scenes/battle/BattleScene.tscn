@@ -159,7 +159,7 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(672, 168)
 theme_override_font_sizes/font_size = 64
-text = "Roll"
+text = "ROLL"
 
 [node name="HeroPanel" type="PanelContainer" parent="Content/VBox/Board"]
 unique_name_in_owner = true
@@ -228,7 +228,7 @@ theme_override_constants/separation = 4
 [node name="BattleLogTitle" type="Label" parent="Content/VBox/BattleLogPanel/BattleLogMargin/BattleLogVBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
-text = "Battle Log"
+text = "BATTLE LOG"
 
 [node name="BattleLogLabel" type="RichTextLabel" parent="Content/VBox/BattleLogPanel/BattleLogMargin/BattleLogVBox"]
 unique_name_in_owner = true

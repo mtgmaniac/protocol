@@ -97,20 +97,11 @@ const ACTION_FEEDBACK_PAUSE := 0.34
 const ACTION_EFFECT_LEAD_TIME := 0.10
 const AUTO_TURN_TARGET_PAUSE := 0.16
 const MAX_PROTOCOL := 10
-const PROTOCOL_FOOTER_BAR_TEXTURE := "res://assets/ui/protocol_footer_bar_scifi.png"
+# Legacy sci-fi footer aspect — still sizes the bare protocol bar on the
+# fallback path (no ProtocolStack). The texture + LED-lights display it came
+# from was dead chrome (built, then unconditionally hidden by the theme pass)
+# and was deleted in Polish Build A.
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
-const PROTOCOL_LIGHT_RECTS := [
-	Rect2(126, 125, 61, 61),
-	Rect2(239, 125, 61, 61),
-	Rect2(352, 125, 61, 61),
-	Rect2(465, 125, 61, 61),
-	Rect2(578, 125, 61, 61),
-	Rect2(691, 125, 61, 61),
-	Rect2(804, 125, 61, 61),
-	Rect2(917, 125, 61, 61),
-	Rect2(1030, 125, 61, 61),
-	Rect2(1143, 125, 61, 61),
-]
 const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
 const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
@@ -203,8 +194,6 @@ var _die_tag_layer: Control = null
 var _die_tags: Dictionary = {}
 var _die_tag_diameter: float = DIE_TAG_DIAMETER_FALLBACK   # projected die diameter (uniform)
 var _relic_slot: Control = null
-var _protocol_footer_display: Control = null
-var _protocol_footer_lights: Array = []
 var _protocol_footer_spacer: Control = null
 var _header_frame: PanelContainer = null
 var _footer_frame: PanelContainer = null
@@ -1498,7 +1487,9 @@ func _build_round_complete_modal() -> void:
 	panel.name = "ModalPanel"
 	panel.custom_minimum_size = Vector2(420, 210)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_panel(panel, Color(0.026, 0.044, 0.066, 0.98), Color(0.98, 0.78, 0.22, 1.0), 4, 0)
+	# Component: Modal (Polish Build A) — the old bright-gold border made a routine
+	# end-of-round popup wear the ceremonial tier; gold is major-event only now.
+	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
 	center.add_child(panel)
 
 	var margin: MarginContainer = MarginContainer.new()
@@ -1514,7 +1505,7 @@ func _build_round_complete_modal() -> void:
 	margin.add_child(vbox)
 
 	var title: Label = Label.new()
-	title.text = "Round Complete"
+	title.text = "ROUND COMPLETE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	PixelUI.style_label(title, 38, PixelUI.TEXT_PRIMARY, 4)
@@ -1920,8 +1911,8 @@ func _ensure_protocol_segments() -> void:
 	# Direction-05: 10 discrete segments over the hidden native ProgressBar fill.
 	# Integer physical-pixel layout (pixel snap law) lives in ProtocolPips.
 	protocol_bar.show_percentage = false
-	protocol_bar.add_theme_stylebox_override("background", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
-	protocol_bar.add_theme_stylebox_override("fill", PixelUI.make_hard_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
+	protocol_bar.add_theme_stylebox_override("background", StyleBoxEmpty.new())
+	protocol_bar.add_theme_stylebox_override("fill", StyleBoxEmpty.new())
 	_protocol_pips = ProtocolPipsScript.new()
 	_protocol_pips.name = "ProtocolSegments"
 	_protocol_pips.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1940,14 +1931,13 @@ func _update_protocol_bar() -> void:
 	# Numeric readout folded into the label so the count is always legible above the pips.
 	protocol_label.text = "PROTOCOL %d/%d" % [protocol_points, _max_protocol()]
 	protocol_value_label.text = "%d / %d" % [protocol_points, _max_protocol()]
-	_update_protocol_footer_display()
 	# Cost badges + affordability dim track every pool change (UI review S-4).
 	if _protocol != null:
 		_protocol.refresh_action_affordability()
 	_emit_tutorial("protocol_changed", {"value": protocol_points})
 
 
-func _ensure_protocol_footer_display() -> void:
+func _ensure_protocol_footer_layout() -> void:
 	if protocol_bar == null:
 		return
 	var protocol_row := protocol_panel.get_node_or_null("ProtocolMargin/ProtocolRow") as HBoxContainer
@@ -1971,76 +1961,6 @@ func _ensure_protocol_footer_display() -> void:
 		var protocol_height: float = BOTTOM_BAR_BUTTON_SIZE.y * 0.74
 		var protocol_width: float = roundf((PROTOCOL_FOOTER_SOURCE_SIZE.x / PROTOCOL_FOOTER_SOURCE_SIZE.y) * protocol_height)
 		protocol_bar.custom_minimum_size = Vector2(protocol_width, protocol_height)
-	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
-		_protocol_footer_display = Control.new()
-		_protocol_footer_display.name = "ProtocolFooterDisplay"
-		_protocol_footer_display.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_protocol_footer_display.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		protocol_bar.add_child(_protocol_footer_display)
-		protocol_bar.move_child(_protocol_footer_display, 0)
-
-		var texture: TextureRect = TextureRect.new()
-		texture.name = "ProtocolFooterTexture"
-		texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		texture.texture = load(PROTOCOL_FOOTER_BAR_TEXTURE) as Texture2D
-		_protocol_footer_display.add_child(texture)
-		_protocol_footer_display.move_child(texture, 0)
-		_protocol_footer_display.resized.connect(_layout_protocol_footer_lights)
-
-		_protocol_footer_lights.clear()
-		for light_rect in PROTOCOL_LIGHT_RECTS:
-			var light: Panel = Panel.new()
-			light.name = "ProtocolLight%d" % _protocol_footer_lights.size()
-			light.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var style: StyleBoxFlat = StyleBoxFlat.new()
-			style.bg_color = Color(0.20, 0.58, 0.98, 0.92)
-			style.border_color = Color(0.74, 0.94, 1.0, 0.78)
-			style.set_border_width_all(1)
-			style.corner_radius_top_left = 2
-			style.corner_radius_top_right = 2
-			style.corner_radius_bottom_right = 2
-			style.corner_radius_bottom_left = 2
-			light.add_theme_stylebox_override("panel", style)
-			light.visible = false
-			_protocol_footer_display.add_child(light)
-			_protocol_footer_lights.append(light)
-	_layout_protocol_footer_lights()
-	_update_protocol_footer_display()
-
-
-func _layout_protocol_footer_lights() -> void:
-	if _protocol_footer_display == null or not is_instance_valid(_protocol_footer_display):
-		return
-	if _protocol_footer_lights.is_empty():
-		return
-	var scale_x: float = 1.0
-	var scale_y: float = 1.0
-	if PROTOCOL_FOOTER_SOURCE_SIZE.x > 0.0:
-		scale_x = _protocol_footer_display.size.x / PROTOCOL_FOOTER_SOURCE_SIZE.x
-	if PROTOCOL_FOOTER_SOURCE_SIZE.y > 0.0:
-		scale_y = _protocol_footer_display.size.y / PROTOCOL_FOOTER_SOURCE_SIZE.y
-	for i in range(mini(_protocol_footer_lights.size(), PROTOCOL_LIGHT_RECTS.size())):
-		var light: Panel = _protocol_footer_lights[i] as Panel
-		if light == null or not is_instance_valid(light):
-			continue
-		var source_rect: Rect2 = PROTOCOL_LIGHT_RECTS[i]
-		light.position = Vector2(source_rect.position.x * scale_x, source_rect.position.y * scale_y)
-		light.size = Vector2(source_rect.size.x * scale_x, source_rect.size.y * scale_y)
-
-
-func _update_protocol_footer_display() -> void:
-	if _protocol_footer_lights.is_empty():
-		return
-	var active_count: int = clampi(protocol_points, 0, _max_protocol())
-	for i in range(_protocol_footer_lights.size()):
-		var light: Panel = _protocol_footer_lights[i] as Panel
-		if light == null or not is_instance_valid(light):
-			continue
-		light.visible = i < active_count
 
 
 func _build_runtime_units() -> void:
@@ -2790,10 +2710,12 @@ func _apply_battle_theme() -> void:
 	# The header bar (FACILITY label + buttons) and its divider now live in the
 	# PersistentHeader autoload, not this scene. Only the footer divider stays here.
 	_ensure_zone_divider("FooterDivider", true)
-	PixelUI.style_panel(hero_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_panel(enemy_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_panel(center_panel, Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0)
-	PixelUI.style_panel(battle_log_panel, Color(0.015, 0.022, 0.035, 0.82), PixelUI.LINE_DIM, 2, 2)
+	PixelUI.style_panel(hero_panel, Color.TRANSPARENT, Color.TRANSPARENT, 0, 0)
+	PixelUI.style_panel(enemy_panel, Color.TRANSPARENT, Color.TRANSPARENT, 0, 0)
+	PixelUI.style_panel(center_panel, Color.TRANSPARENT, Color.TRANSPARENT, 0, 0)
+	# Battle log is a grouping surface: filled plate, no stroked outline
+	# (INVARIANTS #7 — the old LINE_DIM border was border noise).
+	PixelUI.style_panel(battle_log_panel, PixelUI.DT_PLATE_TRANSLUCENT, Color.TRANSPARENT, 0, 0)
 	# Direction-05: flat dark field instead of the starfield texture.
 	if background != null:
 		background.texture = null
@@ -2824,7 +2746,7 @@ func _apply_battle_theme() -> void:
 	_style_roll_button_for_phase()
 	_style_frame_icon_action_button(protocol_spend_button, PixelUI.ICON_SWAP, BOTTOM_BAR_BUTTON_SIZE)
 	_protocol.restyle_buttons()
-	_ensure_protocol_footer_display()
+	_ensure_protocol_footer_layout()
 	protocol_label.visible = true
 	# The numeric value is redundant with the 10 segments and kept landing in awkward
 	# spots (over the bar / among buttons) — hide it; the segments convey the count.
@@ -2841,8 +2763,6 @@ func _apply_battle_theme() -> void:
 			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
 	_ensure_protocol_stack_layout()
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
-	if _protocol_footer_display != null and is_instance_valid(_protocol_footer_display):
-		_protocol_footer_display.visible = false
 	_update_protocol_bar()
 	if _header_frame != null and is_instance_valid(_header_frame):
 		_header_frame.queue_free()
