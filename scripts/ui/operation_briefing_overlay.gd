@@ -6,8 +6,10 @@ extends Control
 
 signal dismissed(mode: String)
 
-const PANEL_MARGIN := 52
-const PANEL_PAD := 32
+const PANEL_MARGIN := 32
+const PANEL_PAD := 24
+const KEY_COLUMN_WIDTH := 128
+const KEY_VALUE_SEPARATION := 12
 const TITLE_FONT := 64
 const SECTION_FONT := 40
 const BODY_FONT := PixelUI.FONT_BODY_MIN
@@ -163,6 +165,8 @@ func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> 
 	var center := CenterContainer.new()
 	center.name = "BriefingCenter"
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	outer.add_child(center)
 
 	var panel := PanelContainer.new()
@@ -170,6 +174,9 @@ func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> 
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.custom_minimum_size = Vector2(0, 0)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The slate owns the available width but keeps its content-derived height so
+	# the centered modal remains compact over the live battlefield.
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	PixelUI.style_component(panel, component_kind, accent)
 	center.add_child(panel)
 
@@ -215,12 +222,15 @@ func _add_body(text: String) -> void:
 func _add_key_value(key: String, value: String, value_color: Color) -> void:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", KEY_VALUE_SEPARATION)
 	var key_label := _make_label(key, SECTION_FONT, PixelUI.TEXT_MUTED, 1)
-	key_label.custom_minimum_size = Vector2(180, 0)
+	key_label.custom_minimum_size = Vector2(KEY_COLUMN_WIDTH, 0)
 	row.add_child(key_label)
 	var value_label := _make_label(value, SECTION_FONT, value_color, 2)
-	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# The accepted operation values are authored to fit this full-width slate at
+	# 540x1200. Keep each row to one decisive scan line rather than introducing
+	# operation-specific wraps or positioning.
+	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(value_label)
 	_content().add_child(row)

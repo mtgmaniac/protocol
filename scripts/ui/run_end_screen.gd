@@ -7,8 +7,8 @@ const VICTORY_TITLE_FONT := 108
 const DEFEAT_TITLE_FONT := 150
 # Kev 2026-07-10: readability pass — heads/summary/button were well below the
 # phone-legibility floor (section heads rendered ~13 preview px).
-const SECTION_HEAD_FONT := 40
-const SUMMARY_FONT := 56
+const SECTION_HEAD_FONT := 48
+const SUMMARY_FONT := 64
 const BUTTON_FONT := 56
 const BUTTON_SIZE := Vector2(360, 120)
 
@@ -170,6 +170,8 @@ func _build_unlocked_section() -> void:
 		return
 	var vbox := $Content/VBox as VBoxContainer
 	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(760, 0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	# Component: Reward card (amber unlock accent).
 	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_REWARD))
 	PixelUI.add_corner_brackets(panel, PixelUI.DT_AMBER, 24.0, 3.0, 8.0)
@@ -178,17 +180,23 @@ func _build_unlocked_section() -> void:
 		pad.add_theme_constant_override(side, 20)
 	panel.add_child(pad)
 	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", 12)
 	pad.add_child(col)
 	col.add_child(_make_section_head("UNLOCKED", PixelUI.DT_AMBER))
 	for entry_variant in unlocks:
 		col.add_child(_make_unlock_row(entry_variant as Dictionary))
-	vbox.add_child(panel)
-	vbox.move_child(panel, button_row.get_index())
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.add_child(panel)
+	vbox.add_child(center)
+	vbox.move_child(center, button_row.get_index())
 
 
 func _make_unlock_row(entry: Dictionary) -> Control:
 	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row.add_theme_constant_override("separation", 16)
 	var is_hero: bool = str(entry.get("type", "")) == "hero"
 	if is_hero:
@@ -216,14 +224,16 @@ func _make_unlock_row(entry: Dictionary) -> Control:
 			crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(tex, crop.size))
 			row.add_child(frame)
 	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", "")).to_upper()
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_style_label(name_label, 64, PixelUI.TEXT_PRIMARY)
 	info.add_child(name_label)
 	var tag := Label.new()
 	tag.text = "NEW OPERATIVE UNLOCKED" if is_hero else "NEW OPERATION UNLOCKED"
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_style_label(tag, 40, PixelUI.DT_AMBER)
 	info.add_child(tag)
 	row.add_child(info)

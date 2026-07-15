@@ -84,6 +84,8 @@ const CHECK_INSET := 8
 
 const BANNER_PAD := 16
 const NAV_BUTTON_W := 96
+const NAV_ICON_SIZE := 64
+const NAV_ARROW_ICON := preload("res://assets/ui/icons/icon_back.png")
 const THREAT_PIP_COUNT := 5
 const THREAT_PIP_SIZE := Vector2(48, 36)   # sized up from (42,30) — near-illegible strip
 
@@ -288,7 +290,7 @@ func _build_encounter_section() -> Control:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pad.add_child(row)
 
-	row.add_child(_make_nav_button("<", -1))   # <
+	row.add_child(_make_nav_button(-1))
 
 	# Name + threat, stacked, centered in the leftover width.
 	var text_col := VBoxContainer.new()
@@ -352,7 +354,7 @@ func _build_encounter_section() -> Control:
 	thumb_holder.add_child(_enc_lock_overlay)
 	row.add_child(thumb_frame)
 
-	row.add_child(_make_nav_button(">", 1))    # >
+	row.add_child(_make_nav_button(1))
 
 	# Dots.
 	_dot_row = HBoxContainer.new()
@@ -408,19 +410,31 @@ func _build_threat_row() -> Control:
 	return row
 
 
-func _make_nav_button(glyph: String, direction: int) -> Button:
+func _make_nav_button(direction: int) -> Button:
 	var button := Button.new()
 	# Full banner height (= the boss thumb) so the swipe targets are easy thumbs.
 	button.custom_minimum_size = Vector2(NAV_BUTTON_W, ENC_THUMB_H)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
-	button.text = glyph
-	# Flippers match the panel OUTLINE (quiet hero border); the glyph stays cyan.
-	# The old strong-cyan hover border was retired (strong cyan = Selected only),
-	# and hover barely exists on the touch target anyway.
-	_apply_button_font(button, 44, PixelUI.DT_CYAN)
+	# The selector uses the project arrow artwork, never a font-dependent < or >
+	# glyph. The same left-chevron asset mirrors for the right control, preserving
+	# one crisp nearest-filtered source and the existing target size.
+	button.text = ""
 	for state in ["normal", "hover", "pressed", "focus"]:
 		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, PANEL_BORDER))
+	var icon := TextureRect.new()
+	icon.texture = NAV_ARROW_ICON
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.flip_h = direction > 0
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_preset(Control.PRESET_CENTER)
+	icon.offset_left = -NAV_ICON_SIZE * 0.5
+	icon.offset_top = -NAV_ICON_SIZE * 0.5
+	icon.offset_right = NAV_ICON_SIZE * 0.5
+	icon.offset_bottom = NAV_ICON_SIZE * 0.5
+	button.add_child(icon)
 	button.pressed.connect(_on_nav_pressed.bind(direction))
 	return button
 
@@ -722,7 +736,8 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	(portrait_box["tex"] as TextureRect).texture = unit.portrait
 	call_deferred("_cover_fit_portrait", portrait_box["crop"], portrait_box["tex"])
 
-	# Role-color corner badge (top-right), always shown.
+	# Role-color corner badge (top-right) remains implemented for later roster
+	# work, but beta presentation keeps it hidden through PixelUI's shared rule.
 	var role_badge := ColorRect.new()
 	role_badge.color = _role_color(unit)
 	role_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -731,6 +746,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.offset_right = -CHECK_INSET
 	role_badge.offset_bottom = CHECK_INSET + ROLE_BADGE_SIZE
 	role_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	role_badge.visible = PixelUI.SHOW_BETA_UNIT_BADGES
 	crop.add_child(role_badge)
 
 	# Slot badge (top-left): filled cyan plate with the pick order (1/2/3) — the
@@ -1064,7 +1080,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	# Component: Modal with the amber commit accent (a Starting-Directive pick is
 	# a confirm moment — amber per the meaning-first color law, never gold here).
 	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_MODAL, PixelUI.DT_AMBER))
-	panel.custom_minimum_size = Vector2(880, 0)
+	panel.custom_minimum_size = Vector2(920, 0)
 	_directive_layer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -1073,7 +1089,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	panel.add_child(margin)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 28)
+	col.add_theme_constant_override("separation", 32)
 	margin.add_child(col)
 
 	col.add_child(_make_pixel_label("STARTING DIRECTIVE", DETAIL_NAME_FONT, PixelUI.DT_AMBER))
@@ -1090,29 +1106,32 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		# rule (the plain text rows read anonymous).
 		var pick := Button.new()
 		pick.focus_mode = Control.FOCUS_NONE
-		pick.custom_minimum_size = Vector2(0, 148)
+		# Directive picks are deliberately closer to the ceremonial mid-run relic
+		# cards: generous, equal-sized choices with readable art and rules.
+		pick.custom_minimum_size = Vector2(0, 232)
 		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		PixelUI.style_button(pick, PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, FOCUS_CHIP_FONT)
 		pick.pressed.connect(_on_directive_picked.bind(relic_id))
 		var row := HBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row.offset_left = 18.0
-		row.offset_right = -18.0
-		row.add_theme_constant_override("separation", 20)
+		row.offset_left = 28.0
+		row.offset_right = -28.0
+		row.add_theme_constant_override("separation", 28)
 		pick.add_child(row)
 		if relic.icon != null:
 			var icon := TextureRect.new()
 			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			icon.custom_minimum_size = Vector2(104, 104)
+			icon.custom_minimum_size = Vector2(168, 168)
 			icon.texture = relic.icon
 			icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(icon)
-		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], FOCUS_CHIP_FONT, PixelUI.DT_CYAN_BRIGHT)
+		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], DETAIL_DESC_FONT, PixelUI.DT_CYAN_BRIGHT)
 		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text_label.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
 		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE

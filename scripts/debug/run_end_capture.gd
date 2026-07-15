@@ -17,9 +17,18 @@ func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
 	await process_frame
 	var gs: Node = root.get_node("/root/GameState")
+	var save_manager: Node = root.get_node("/root/SaveManager")
+	if bool(config.get("unlock", false)):
+		# Deterministic in-memory run-end award for validating the centered
+		# UNLOCKED composition. Mark the operation origin seen so its required
+		# acknowledgement overlay does not cover the panel in this capture.
+		save_manager.call("dev_reset_profile")
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
 	var result: String = str(config.get("result", "victory"))
 	gs.set("last_run_result", result)
+	if bool(config.get("unlock", false)):
+		save_manager.call("record_run_finished", result, "facility", 10)
+		save_manager.call("acknowledge_operation_origin", "hive")
 	change_scene_to_file(SCENE)
 	await create_timer(float(config.get("delay_ms", DEFAULT_DELAY_MS)) / 1000.0).timeout
 	var absolute_output: String = ProjectSettings.globalize_path(str(config.get("output", DEFAULT_OUTPUT)))
@@ -47,4 +56,6 @@ func _parse_args() -> Dictionary:
 			config["delay_ms"] = maxi(int(arg.get_slice("=", 1)), 100)
 		elif arg.begins_with("--capture-result="):
 			config["result"] = arg.get_slice("=", 1)
+		elif arg == "--capture-unlock":
+			config["unlock"] = true
 	return config

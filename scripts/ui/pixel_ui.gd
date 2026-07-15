@@ -441,6 +441,15 @@ const HERO_PORTRAIT_ANCHOR_Y_OVERRIDES := {
 # frames proportionally more headroom, so squad tiles framed subtly differently
 # than the battle card even at the right aspect.
 const PORTRAIT_TOP_PAD := 12.0
+# Portrait art is shifted by this many final-display pixels after the shared
+# cover fit. Keeping this in physical pixels makes the crop correction exactly
+# the same on the 540px capture, native phones, and smaller supported windows.
+const PORTRAIT_CONTENT_UP_PHYSICAL_PX := 8.0
+
+# The small role-color square is retained as a component affordance for later
+# roster work, but is intentionally suppressed during the beta. Screens which
+# host it must consult this single flag rather than carrying local exceptions.
+const SHOW_BETA_UNIT_BADGES := false
 
 static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> void:
 	if tex_rect == null:
@@ -479,6 +488,14 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 	else:
 		top_y = pad
 	top_y -= anchor_shift  # positive ANCHOR_Y = art shifts UP in the frame
+	# One shared visual correction for every unit surface using this helper.
+	# Convert the requested final-display movement back into local coordinates
+	# so it remains an exact eight physical pixels under canvas scaling.
+	var physical_scale_y: float = physical_transform(tex_rect).get_scale().y
+	if physical_scale_y > 0.0:
+		top_y -= PORTRAIT_CONTENT_UP_PHYSICAL_PX / physical_scale_y
+	else:
+		top_y -= PORTRAIT_CONTENT_UP_PHYSICAL_PX
 	tex_rect.position = Vector2((fw - nw) * 0.5, top_y)
 	tex_rect.size = Vector2(nw, nh)
 
