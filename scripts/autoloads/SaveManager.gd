@@ -78,10 +78,9 @@ func default_data() -> Dictionary:
 		# have successfully displayed and been dismissed.
 		"onboarding": {
 			"primers_seen": [],
-			# One-time operation-origin acknowledgement and first-deployment slate.
-			# These live beside primers so save migration has one onboarding surface.
+			# One-time operation-origin acknowledgement lives beside primers so save
+			# migration has one onboarding surface.
 			"operation_origins_seen": [],
-			"operation_deployments_seen": [],
 		},
 		"settings": {},
 	}
@@ -133,7 +132,6 @@ func _merge_loaded(loaded: Dictionary) -> void:
 		var loaded_onboarding: Dictionary = loaded["onboarding"] as Dictionary
 		data["onboarding"]["primers_seen"] = _string_array(loaded_onboarding.get("primers_seen", []))
 		data["onboarding"]["operation_origins_seen"] = _string_array(loaded_onboarding.get("operation_origins_seen", []))
-		data["onboarding"]["operation_deployments_seen"] = _string_array(loaded_onboarding.get("operation_deployments_seen", []))
 	# Grandfather clause: a pre-existing profile (played a run, or finished the
 	# tutorial) that predates the unlock system keeps full access — every hero and
 	# operation, ladder maxed — so no current player loses what they already had.
@@ -150,18 +148,10 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	if is_existing_profile and not had_onboarding:
 		data["onboarding"]["primers_seen"] = _all_primer_ids()
 	# Lore presentation migration: existing operations were unlocked before this
-	# feature existed, so never replay their unlock-origin event. Deployment
-	# history is inferred only from an actual recorded clear/reach; an unlocked
-	# but never-entered operation still receives its first DEPLOY acknowledgement.
+	# feature existed, so never replay their unlock-origin event.
 	var saved_onboarding: Dictionary = loaded.get("onboarding", {}) as Dictionary
 	if not saved_onboarding.has("operation_origins_seen"):
 		data["onboarding"]["operation_origins_seen"] = (data["unlocks"].get("operations", []) as Array).duplicate()
-	if not saved_onboarding.has("operation_deployments_seen"):
-		var deployed_ops: Array = []
-		for op_id_variant in (data["stats"].get("best_clear_by_op", {}) as Dictionary).keys():
-			if int((data["stats"].get("best_clear_by_op", {}) as Dictionary).get(op_id_variant, 0)) > 0:
-				deployed_ops.append(str(op_id_variant))
-		data["onboarding"]["operation_deployments_seen"] = deployed_ops
 
 
 func _string_array(value: Variant) -> Array:
@@ -208,19 +198,6 @@ func acknowledge_operation_origin(operation_id: String) -> void:
 		return
 	seen.append(operation_id)
 	data["onboarding"]["operation_origins_seen"] = seen
-	save()
-
-
-func has_seen_operation_deployment(operation_id: String) -> bool:
-	return (data["onboarding"].get("operation_deployments_seen", []) as Array).has(operation_id)
-
-
-func acknowledge_operation_deployment(operation_id: String) -> void:
-	var seen: Array = data["onboarding"].get("operation_deployments_seen", [])
-	if seen.has(operation_id):
-		return
-	seen.append(operation_id)
-	data["onboarding"]["operation_deployments_seen"] = seen
 	save()
 
 

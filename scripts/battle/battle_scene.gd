@@ -396,15 +396,13 @@ func _show_deployment_slate() -> void:
 	var operation_id: String = str(_game_state().selected_operation_id)
 	if OPERATION_BRIEFING_OVERLAY.operation_copy(operation_id).is_empty():
 		return
-	var repeat_deployment: bool = SaveManager.has_seen_operation_deployment(operation_id)
 	var briefing := OPERATION_BRIEFING_OVERLAY.new()
 	_briefing_active = true
 	add_child(briefing)
 	briefing.dismissed.connect(func(_mode: String) -> void:
 		_briefing_active = false
-		SaveManager.acknowledge_operation_deployment(operation_id)
 	)
-	briefing.present_deployment(operation_id, repeat_deployment)
+	briefing.present_deployment(operation_id)
 
 
 func _show_boss_alert() -> void:

@@ -6,7 +6,6 @@ extends Control
 
 signal dismissed(mode: String)
 
-const AUTO_DISMISS_SECONDS := 2.25
 const PANEL_MARGIN := 52
 const PANEL_PAD := 32
 const TITLE_FONT := 64
@@ -72,7 +71,7 @@ const BOSS_FLAVOR := {
 }
 
 var _mode := ""
-var _repeat_deployment := false
+var _dismissed := false
 var _action: Button = null
 var _content_container: VBoxContainer = null
 
@@ -110,21 +109,18 @@ func present_unlock(operation_id: String) -> void:
 	_add_action("ACKNOWLEDGE", PixelUI.DT_AMBER)
 
 
-func present_deployment(operation_id: String, repeat_deployment: bool) -> void:
+func present_deployment(operation_id: String) -> void:
 	var copy := operation_copy(operation_id)
 	if copy.is_empty():
 		queue_free()
 		return
 	_mode = "deployment"
-	_repeat_deployment = repeat_deployment
 	_build_shell(PixelUI.COMPONENT_MODAL)
 	_add_title("OPERATION %s // %s" % [str(copy["number"]), str(copy["name"])], PixelUI.DT_CYAN)
 	_add_key_value("SITE", str(copy["site"]), copy["accent"] as Color)
 	_add_key_value("FAILURE", str(copy["failure"]), PixelUI.DT_RUST)
 	_add_key_value("DIRECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
-	_add_action("TAP TO DEPLOY" if repeat_deployment else "DEPLOY", PixelUI.DT_CYAN)
-	if repeat_deployment:
-		get_tree().create_timer(AUTO_DISMISS_SECONDS).timeout.connect(_auto_dismiss)
+	_add_action("ENGAGE", PixelUI.DT_CYAN)
 
 
 func present_boss_alert(boss_name: String, runtime_rule: String) -> void:
@@ -154,7 +150,6 @@ func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> 
 	z_index = 250
 	var scrim := PixelUI.make_modal_scrim(0.72, true)
 	scrim.name = "BriefingScrim"
-	scrim.gui_input.connect(_on_scrim_input)
 	add_child(scrim)
 
 	var outer := MarginContainer.new()
@@ -252,23 +247,10 @@ func _make_label(text: String, font_size: int, color: Color, outline: int) -> La
 	return label
 
 
-func _on_scrim_input(event: InputEvent) -> void:
-	if not _repeat_deployment:
-		return
-	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
-		_dismiss()
-	elif event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
-		_dismiss()
-
-
-func _auto_dismiss() -> void:
-	if is_inside_tree() and _repeat_deployment:
-		_dismiss()
-
-
 func _dismiss() -> void:
-	if not is_inside_tree():
+	if _dismissed or not is_inside_tree():
 		return
+	_dismissed = true
 	AudioManager.play_select()
 	dismissed.emit(_mode)
 	queue_free()

@@ -55,13 +55,9 @@ func _test_save_defaults_and_migration() -> void:
 	save_manager.call("dev_reset_profile")
 	for operation_id in OPERATION_IDS:
 		_expect(not bool(save_manager.call("has_seen_operation_origin", operation_id)), "%s origin begins unseen on a fresh profile" % operation_id)
-		_expect(not bool(save_manager.call("has_seen_operation_deployment", operation_id)), "%s deployment begins unseen on a fresh profile" % operation_id)
 	save_manager.call("acknowledge_operation_origin", "hive")
 	save_manager.call("acknowledge_operation_origin", "hive")
-	save_manager.call("acknowledge_operation_deployment", "hive")
-	save_manager.call("acknowledge_operation_deployment", "hive")
 	_expect(bool(save_manager.call("has_seen_operation_origin", "hive")), "origin acknowledgement persists idempotently")
-	_expect(bool(save_manager.call("has_seen_operation_deployment", "hive")), "deployment acknowledgement persists idempotently")
 
 	var legacy_payload := {
 		"tutorial_done": false,
@@ -72,8 +68,6 @@ func _test_save_defaults_and_migration() -> void:
 	save_manager.call("_merge_loaded", legacy_payload)
 	_expect(bool(save_manager.call("has_seen_operation_origin", "facility")), "legacy unlocked facility does not replay its origin")
 	_expect(bool(save_manager.call("has_seen_operation_origin", "hive")), "legacy unlocked hive does not replay its origin")
-	_expect(bool(save_manager.call("has_seen_operation_deployment", "facility")), "legacy clear marks facility deployment seen")
-	_expect(not bool(save_manager.call("has_seen_operation_deployment", "hive")), "legacy unlocked-but-unplayed hive still receives first DEPLOY")
 	save_manager.call("dev_reset_profile")
 
 
@@ -87,9 +81,9 @@ func _test_overlay_modes() -> void:
 		operation_unlock.queue_free()
 		var operation_deployment := OPERATION_BRIEFING_OVERLAY.new()
 		get_tree().root.add_child(operation_deployment)
-		operation_deployment.present_deployment(operation_id, false)
+		operation_deployment.present_deployment(operation_id)
 		await get_tree().process_frame
-		_expect(_has_action(operation_deployment, "DEPLOY"), "%s first deployment requires DEPLOY" % operation_id)
+		_expect(_has_action(operation_deployment, "ENGAGE"), "%s deployment requires ENGAGE" % operation_id)
 		operation_deployment.queue_free()
 
 	var unlock := OPERATION_BRIEFING_OVERLAY.new()
@@ -99,37 +93,35 @@ func _test_overlay_modes() -> void:
 	_expect(_has_action(unlock, "ACKNOWLEDGE"), "unlock overlay requires ACKNOWLEDGE")
 	unlock.queue_free()
 
-	var first_deployment := OPERATION_BRIEFING_OVERLAY.new()
-	get_tree().root.add_child(first_deployment)
-	first_deployment.present_deployment("facility", false)
+	var deployments: Array[Dictionary] = []
+	for operation_id in OPERATION_IDS:
+		var deployment := OPERATION_BRIEFING_OVERLAY.new()
+		var state := {"dismissals": 0}
+		get_tree().root.add_child(deployment)
+		deployment.dismissed.connect(func(_mode: String) -> void: state["dismissals"] = int(state["dismissals"]) + 1)
+		deployment.present_deployment(operation_id)
+		deployments.append({"operation_id": operation_id, "overlay": deployment, "state": state})
 	await get_tree().process_frame
-	_expect(_has_action(first_deployment, "DEPLOY"), "first deployment requires DEPLOY")
-	first_deployment.call("_auto_dismiss")
+	# All five slates stay in place beyond the former repeat-run timeout.
+	await get_tree().create_timer(2.65).timeout
+	for deployment_entry in deployments:
+		var overlay: Control = deployment_entry["overlay"] as Control
+		var state: Dictionary = deployment_entry["state"] as Dictionary
+		var operation_id: String = str(deployment_entry["operation_id"])
+		_expect(is_instance_valid(overlay) and int(state["dismissals"]) == 0, "%s deployment remains until ENGAGE" % operation_id)
+		var action := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel/BriefingPadding/BriefingContent/BriefingAction") as Button
+		if action != null:
+			action.emit_signal("pressed")
+			action.emit_signal("pressed")
+		_expect(int(state["dismissals"]) == 1, "%s ENGAGE dismisses exactly once" % operation_id)
 	await get_tree().process_frame
-	_expect(is_instance_valid(first_deployment), "first deployment cannot auto-dismiss")
-	first_deployment.queue_free()
 
-	var repeat_deployment := OPERATION_BRIEFING_OVERLAY.new()
-	var repeat_state := {"dismissed": false}
-	get_tree().root.add_child(repeat_deployment)
-	repeat_deployment.dismissed.connect(func(_mode: String) -> void: repeat_state["dismissed"] = true)
-	repeat_deployment.present_deployment("facility", true)
+	var next_run_deployment := OPERATION_BRIEFING_OVERLAY.new()
+	get_tree().root.add_child(next_run_deployment)
+	next_run_deployment.present_deployment("facility")
 	await get_tree().process_frame
-	_expect(_has_action(repeat_deployment, "TAP TO DEPLOY"), "repeat deployment advertises tap-to-skip")
-	await get_tree().create_timer(OPERATION_BRIEFING_OVERLAY.AUTO_DISMISS_SECONDS + 0.15).timeout
-	_expect(bool(repeat_state["dismissed"]), "repeat deployment auto-dismisses")
-	await get_tree().process_frame
-
-	var repeat_skip := OPERATION_BRIEFING_OVERLAY.new()
-	var skip_state := {"dismissed": false}
-	get_tree().root.add_child(repeat_skip)
-	repeat_skip.dismissed.connect(func(_mode: String) -> void: skip_state["dismissed"] = true)
-	repeat_skip.present_deployment("facility", true)
-	await get_tree().process_frame
-	repeat_skip.call("_dismiss")
-	_expect(bool(skip_state["dismissed"]), "repeat deployment allows immediate tap-to-skip")
-	# Let its scheduled timer expire before the runner exits.
-	await get_tree().create_timer(OPERATION_BRIEFING_OVERLAY.AUTO_DISMISS_SECONDS + 0.15).timeout
+	_expect(_has_action(next_run_deployment, "ENGAGE"), "a later run presents deployment again")
+	next_run_deployment.queue_free()
 
 	for boss_name in BOSS_NAMES:
 		var boss_alert := OPERATION_BRIEFING_OVERLAY.new()
@@ -145,6 +137,7 @@ func _test_overlay_modes() -> void:
 	await get_tree().process_frame
 	_expect(_has_action(reminder, "CLOSE"), "boss reminder is dismissible")
 	reminder.queue_free()
+	await get_tree().process_frame
 
 
 func _has_action(overlay: Control, text: String) -> bool:
