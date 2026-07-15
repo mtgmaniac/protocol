@@ -14,6 +14,8 @@
 #                                         arms the confirm button); omit for none selected
 #   --capture-force-items=<id,id,id>      override the reward roll with explicit item ids
 #                                         (any mix of consumable/gear/relic, by id)
+#   --capture-intercept-kind=draft         render the same forced offers through the
+#                                         shared Intercept reward handoff
 #   --capture-native                      force the 1080x2400 logical window size
 extends SceneTree
 
@@ -62,6 +64,8 @@ func _parse_args() -> Dictionary:
 			config["select"] = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--capture-force-items="):
 			config["force_items"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-intercept-kind="):
+			config["intercept_kind"] = arg.get_slice("=", 1)
 		elif arg == "--capture-native":
 			config["native"] = true
 	return config
@@ -72,12 +76,28 @@ func _prepare_run(config: Dictionary) -> void:
 	game_state.start_run(DEFAULT_SQUAD, str(config.get("operation_id", DEFAULT_OPERATION_ID)))
 	game_state.advance_to_next_battle()
 	var forced: Variant = config.get("force_items", null)
-	if forced is PackedStringArray and not (forced as PackedStringArray).is_empty():
+	if (forced is Array and not (forced as Array).is_empty()) or (forced is PackedStringArray and not (forced as PackedStringArray).is_empty()):
 		# Override the roll with explicit ids (reward_screen skips its own roll when
 		# pending_reward_item_ids is already populated).
 		var ids: Array = []
 		for id_variant in forced:
 			ids.append(str(id_variant).strip_edges())
+		var intercept_kind: String = str(config.get("intercept_kind", ""))
+		if intercept_kind == "draft":
+			game_state.call("begin_intercept_state", "abandonedArmory")
+			game_state.call("set_intercept_choice", {"draft": {"kind": "any", "count": ids.size()}, "effects": []})
+			game_state.call("begin_intercept_item_request", "draft", "CHOOSE INTERCEPT REWARD", ids)
+			return
+		if intercept_kind == "owned_gear":
+			var entries: Array = []
+			for item_id in ids:
+				entries.append({"hero_id": "shield", "gear_id": item_id})
+			game_state.set("gear_by_unit", {"shield": ids.duplicate()})
+			game_state.set("equipped_gear", {"shield": ids.duplicate()})
+			game_state.call("begin_intercept_state", "blackMarketNode")
+			game_state.call("set_intercept_choice", {"pick": "gear", "effects": []})
+			game_state.call("begin_intercept_item_request", "owned_gear", "SELECT EQUIPPED GEAR", [], entries)
+			return
 		game_state.set("pending_reward_item_ids", ids)
 		return
 	# Seed the reward roll before the scene builds (reward_screen also guards this).
@@ -141,6 +161,10 @@ func _select_card(index: int) -> void:
 		current_scene.set("_selected_item_id", item_id)
 		if current_scene.has_method("_refresh_selection"):
 			current_scene.call("_refresh_selection")
+	if current_scene.has_method("_item_for_selection"):
+		var selected_item: ItemData = current_scene.call("_item_for_selection", item_id) as ItemData
+		if selected_item != null and selected_item.item_type == "gear" and current_scene.get("_gear_target_overlay") == null:
+			current_scene.call("_select_item", item_id)
 
 
 func _resolve_output_path(path: String) -> String:

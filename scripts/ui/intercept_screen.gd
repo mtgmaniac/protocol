@@ -36,12 +36,22 @@ func _ready() -> void:
 	if operation != null:
 		PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, operation.battle_name())
 
-	var beat: Dictionary = GameState.get_beat_after_battle(GameState.current_battle)
-	_card_id = GameState.draw_intercept_card(str(beat.get("tier", "minor")))
+	if GameState.pending_intercept_state.is_empty():
+		var beat: Dictionary = GameState.get_beat_after_battle(GameState.current_battle)
+		_card_id = GameState.draw_intercept_card(str(beat.get("tier", "minor")))
+		if _card_id == "":
+			_continue_to_battle()
+			return
+		GameState.begin_intercept_state(_card_id)
+	else:
+		_card_id = str(GameState.pending_intercept_state.get("card_id", ""))
 	if _card_id == "":
 		_continue_to_battle()
 		return
 	_card = GameState.INTERCEPT_CARDS.get(_card_id, {})
+	_choice = GameState.pending_intercept_state.get("choice", {}) as Dictionary
+	_picked_hero_id = str(GameState.pending_intercept_state.get("picked_hero_id", ""))
+	_gear_context = GameState.pending_intercept_state.get("gear_context", {}) as Dictionary
 
 	var bg := ColorRect.new()
 	bg.color = PixelUI.DT_FIELD_BG
@@ -84,7 +94,10 @@ func _ready() -> void:
 	_stage_box.add_theme_constant_override("separation", 16)
 	pad.add_child(_stage_box)
 
-	_show_card_stage()
+	if str(GameState.pending_intercept_state.get("stage", "card")) == "result_pending":
+		_resolve_choice()
+	else:
+		_show_card_stage()
 
 
 func _clear_stage() -> void:
@@ -173,6 +186,7 @@ func _show_card_stage() -> void:
 	# re-entered the just-won battle and paid its rewards/XP twice (audit A-075).
 	if not ChoiceScreenGuardScript.ensure_options("intercept", _enabled_choice_count, _continue_to_battle):
 		return
+	_add_view_battle_button()
 
 
 func _on_choice_pressed(choice: Dictionary) -> void:
@@ -180,9 +194,17 @@ func _on_choice_pressed(choice: Dictionary) -> void:
 	_choice = choice
 	_picked_hero_id = ""
 	_gear_context = {}
+	GameState.set_intercept_choice(choice)
 	match str(choice.get("pick", "")):
 		"hero":
-			_show_hero_pick_stage()
+			# Gear-draft cards used to ask for a hero before revealing the gear,
+			# then auto-equipped it. Route them directly to the shared picker so
+			# its existing recipient confirmation owns that same choice.
+			var draft: Dictionary = choice.get("draft", {}) as Dictionary
+			if str(draft.get("kind", "")) == "gear":
+				_after_picks()
+			else:
+				_show_hero_pick_stage()
 		"gear":
 			_show_gear_pick_stage()
 		"consumable":
@@ -201,11 +223,13 @@ func _show_hero_pick_stage() -> void:
 		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
 		var display: String = unit.display_name if unit != null else unit_id
 		_add_choice_button(display.to_upper(), _on_hero_picked.bind(unit_id))
+	_add_view_battle_button()
 
 
 func _on_hero_picked(unit_id: String) -> void:
 	AudioManager.play_select()
 	_picked_hero_id = unit_id
+	GameState.set_intercept_hero_pick(unit_id)
 	_after_picks()
 
 
@@ -219,22 +243,8 @@ func _all_equipped_gear() -> Array:
 
 
 func _show_gear_pick_stage() -> void:
-	_clear_stage()
-	_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.DT_AMBER, 3)
-	_add_label("Choose a piece of equipped gear.", BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
-	for entry_variant in _all_equipped_gear():
-		var entry: Dictionary = entry_variant
-		var item: ItemData = DataManager.get_item(str(entry["gear_id"])) as ItemData
-		var unit: UnitData = DataManager.get_unit(str(entry["hero_id"])) as UnitData
-		var label: String = "%s (%s)" % [item.display_name if item != null else str(entry["gear_id"]), unit.display_name if unit != null else str(entry["hero_id"])]
-		_add_choice_button(label.to_upper(), _on_gear_picked.bind(entry))
-
-
-func _on_gear_picked(entry: Dictionary) -> void:
-	AudioManager.play_select()
-	_gear_context = entry
-	_picked_hero_id = str(entry.get("hero_id", ""))
-	_after_picks()
+	GameState.begin_intercept_item_request("owned_gear", "SELECT EQUIPPED GEAR", [], _all_equipped_gear())
+	SceneManager.go_to_reward_screen()
 
 
 func _spend_highest_rarity_consumable() -> void:
@@ -259,9 +269,6 @@ func _after_picks() -> void:
 
 
 func _show_draft_stage(draft: Dictionary) -> void:
-	_clear_stage()
-	_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.DT_AMBER, 3)
-	_add_label("Choose one.", BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 	var options: Array = GameState.roll_intercept_draft(
 		str(draft.get("kind", "consumable")),
 		str(draft.get("min_rarity", "common")),
@@ -270,31 +277,22 @@ func _show_draft_stage(draft: Dictionary) -> void:
 	if options.is_empty():
 		_resolve_choice()
 		return
-	for item_id_variant in options:
-		var item: ItemData = DataManager.get_item(str(item_id_variant)) as ItemData
-		var label: String = "%s - %s" % [item.display_name.to_upper(), item.description] if item != null else str(item_id_variant)
-		_add_choice_button(label, _on_draft_picked.bind(str(item_id_variant)))
-
-
-func _on_draft_picked(item_id: String) -> void:
-	AudioManager.play_select()
-	var item: ItemData = DataManager.get_item(item_id) as ItemData
-	if item != null and item.item_type == "gear":
-		# Drafted gear equips to the picked hero (or the first squad slot).
-		var target_id: String = _picked_hero_id
-		if target_id == "" and not GameState.selected_units.is_empty():
-			target_id = str(GameState.selected_units[0])
-		var unit_gear: Array = GameState.gear_by_unit.get(target_id, []).duplicate()
-		unit_gear.append(item_id)
-		GameState.gear_by_unit[target_id] = unit_gear
-		GameState.equipped_gear[target_id] = unit_gear.duplicate()
-	elif item != null and GameState.consumables.size() < GameState.MAX_CONSUMABLES:
-		GameState.consumables.append(item_id)
-	_resolve_choice(item)
+	GameState.begin_intercept_item_request("draft", "CHOOSE INTERCEPT REWARD", options)
+	SceneManager.go_to_reward_screen()
 
 
 func _resolve_choice(drafted_item: ItemData = null) -> void:
+	if drafted_item == null:
+		var drafted_id: String = str(GameState.pending_intercept_state.get("drafted_item_id", ""))
+		if drafted_id != "":
+			drafted_item = DataManager.get_item(drafted_id) as ItemData
+	if bool(GameState.pending_intercept_state.get("resolved", false)):
+		_show_result_stage(str(GameState.pending_intercept_state.get("result_info", "")), drafted_item)
+		return
 	var info: String = GameState.apply_intercept_effects(_choice.get("effects", []), _picked_hero_id, _gear_context)
+	GameState.pending_intercept_state["resolved"] = true
+	GameState.pending_intercept_state["result_info"] = info
+	GameState.pending_intercept_state["stage"] = "result"
 	_show_result_stage(info, drafted_item)
 
 
@@ -308,8 +306,24 @@ func _show_result_stage(info: String, drafted_item: ItemData) -> void:
 	if info != "":
 		_add_label(info, BODY_FONT - 4, PixelUI.TEXT_MUTED, 1)
 	_add_choice_button("CONTINUE", _continue_to_battle)
+	_add_view_battle_button()
+
+
+func _add_view_battle_button() -> void:
+	if GameState.battle_review_state.is_empty():
+		return
+	_add_choice_button("VIEW BATTLEFIELD", _on_view_battle_pressed)
+
+
+func _on_view_battle_pressed() -> void:
+	AudioManager.play_select()
+	GameState.battle_review_return_target = "intercept"
+	GameState.entering_battle_review = true
+	SceneManager.go_to_battle()
 
 
 func _continue_to_battle() -> void:
+	GameState.pending_choice_request.clear()
+	GameState.pending_intercept_state.clear()
 	GameState.advance_to_next_battle()
 	SceneManager.go_to_battle()

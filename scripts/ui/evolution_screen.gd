@@ -67,6 +67,7 @@ func _ready() -> void:
 	_update_battle_header()
 	_refresh_summary()
 	_build_choice_cards()
+	_build_view_battle_button()
 
 
 func _exit_tree() -> void:
@@ -91,6 +92,28 @@ func _on_help_button_pressed() -> void:
 func _on_header_unavailable_pressed(message: String) -> void:
 	footer_label.text = message
 	footer_label.visible = true
+
+
+func _build_view_battle_button() -> void:
+	if GameState.battle_review_state.is_empty():
+		return
+	var button := Button.new()
+	button.name = "ViewBattleButton"
+	button.text = "VIEW BATTLEFIELD"
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(0, 96)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_button(button, Color(0.04, 0.09, 0.12, 0.96), PixelUI.DT_HERO_BORDER, 34)
+	button.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME)
+	button.pressed.connect(_on_view_battle_pressed)
+	content_vbox.add_child(button)
+
+
+func _on_view_battle_pressed() -> void:
+	AudioManager.play_select()
+	GameState.battle_review_return_target = "evolution"
+	GameState.entering_battle_review = true
+	SceneManager.go_to_battle()
 
 
 func _hide_help_overlay() -> void:

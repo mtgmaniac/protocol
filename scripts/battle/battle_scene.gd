@@ -463,7 +463,13 @@ func _open_boss_rule_reminder() -> void:
 
 func _return_from_review() -> void:
 	AudioManager.play_select()
-	_scene_manager().go_to_reward_screen()
+	match str(_game_state().battle_review_return_target):
+		"intercept":
+			_scene_manager().go_to_intercept()
+		"evolution":
+			_scene_manager().go_to_evolution()
+		_:
+			_scene_manager().go_to_reward_screen()
 
 
 # Coachmark/step controller for the rigged onboarding encounter (lives on its own high layer).

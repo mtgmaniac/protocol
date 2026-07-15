@@ -100,7 +100,7 @@ var _help_overlay: Control = null
 var _gear_target_overlay: Control = null
 var _consumable_swap_overlay: Control = null
 
-# View-Battlescreen button (Batch 5): a secondary peek back at the finished battle.
+# View-Battlescreen button: a secondary read-only return to the finished battle.
 const VIEW_BATTLE_FONT := 34
 const VIEW_BATTLE_HEIGHT := 96
 
@@ -109,9 +109,11 @@ var _selected_gear_unit_id: String = ""   # unit chosen in the equip chooser (ge
 var _selected_swap_consumable_id: String = ""  # held consumable to discard when full (consumable only)
 var _cards: Dictionary = {}   # item_id -> { panel, brackets: Array[ColorRect], accent: Color }
 var _confirm_button: Button = null
+var _choice_request: Dictionary = {}
 
 
 func _ready() -> void:
+	_choice_request = GameState.pending_choice_request.duplicate(true)
 	# Safe area (device cutout / gesture bar): drop below the grown header band
 	# and lift the footer clear. Both insets are 0 on desktop (no-op); the
 	# authored .tscn offsets (156 / −12) stay the base.
@@ -130,13 +132,14 @@ func _ready() -> void:
 		_on_header_unavailable_pressed.bind("Auto battle is unavailable while choosing a reward."),
 		_on_return_to_menu_button_pressed,
 	)
-	if GameState.pending_reward_item_ids.is_empty():
+	if _choice_request.is_empty() and GameState.pending_reward_item_ids.is_empty():
 		GameState.prepare_battle_rewards()
 	_update_battle_header()
 	_refresh_inventory_summary()
 	_build_reward_cards()
 	_build_view_battle_button()
 	_build_confirm_button()
+	call_deferred("_restore_picker_ui_state")
 
 
 func _exit_tree() -> void:
@@ -232,17 +235,24 @@ func _build_reward_cards() -> void:
 	_selected_item_id = ""
 
 	_update_reward_layout()
-	var reward_items: Array = GameState.get_pending_reward_items()
-	for item_variant in reward_items:
-		var item: ItemData = item_variant as ItemData
+	var offers: Array = _choice_request.get("offers", []) if not _choice_request.is_empty() else []
+	if offers.is_empty() and _choice_request.is_empty():
+		for item_variant in GameState.get_pending_reward_items():
+			var item: ItemData = item_variant as ItemData
+			if item != null:
+				offers.append({"selection_id": item.id, "item_id": item.id})
+	for offer_variant in offers:
+		var offer: Dictionary = offer_variant as Dictionary
+		var selection_id: String = str(offer.get("selection_id", ""))
+		var item: ItemData = DataManager.get_item(str(offer.get("item_id", ""))) as ItemData
 		if item == null:
 			continue
 		# Two tiers on purpose (Build B): relic offers are ceremonial Major-event
 		# cards; everything ordinary is a wide Reward-component row.
 		if item.item_type == "relic":
-			reward_cards.add_child(_create_relic_card(item))
+			reward_cards.add_child(_create_relic_card(item, selection_id))
 		else:
-			reward_cards.add_child(_create_reward_row(item))
+			reward_cards.add_child(_create_reward_row(item, selection_id, str(offer.get("hero_id", ""))))
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): an empty
 	# offer must never strand the run on a dead picker.
 	if not ChoiceScreenGuardScript.ensure_options("reward", reward_cards.get_child_count(), _auto_resolve_empty_offer):
@@ -305,7 +315,9 @@ func _get_card_width() -> float:
 
 # Ordinary reward ROW (Build B): art LEFT at 128 integer scale, name + meta +
 # effect info RIGHT. Full width = the tap target; tap selects, CONFIRM commits.
-func _create_reward_row(item: ItemData) -> PanelContainer:
+func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: String = "") -> PanelContainer:
+	if selection_id == "":
+		selection_id = item.id
 	var accent: Color = _get_item_accent(item)
 
 	var panel := PanelContainer.new()
@@ -314,10 +326,11 @@ func _create_reward_row(item: ItemData) -> PanelContainer:
 	panel.custom_minimum_size = Vector2(0, ROW_MIN_HEIGHT)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.set_meta("item_id", item.id)
+	panel.set_meta("item_id", selection_id)
 	panel.set_meta("reward_kind", "row")
 	_style_card_panel(panel, accent, false)
-	panel.gui_input.connect(_on_card_input.bind(item.id))
+	panel.gui_input.connect(_on_card_input.bind(selection_id))
+	_attach_item_inspect(panel, item)
 
 	var margin := MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -356,6 +369,8 @@ func _create_reward_row(item: ItemData) -> PanelContainer:
 	var meta_text: String = _format_item_type_label(item)
 	if item.item_type != "relic":
 		meta_text = "%s %s" % [_rarity_name(item).to_upper(), meta_text]
+	if owner_id != "":
+		meta_text += "  |  EQUIPPED: %s" % _run_unit_label(owner_id)
 	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, PixelUI.TEXT_MUTED, ROW_META_SLOT_HEIGHT, 1)
 	meta_label.name = "RewardMetaSlot"
 	info.add_child(meta_label)
@@ -374,13 +389,15 @@ func _create_reward_row(item: ItemData) -> PanelContainer:
 	effect_row.add_child(description)
 	info.add_child(effect_row)
 
-	_add_selection_brackets(panel, item, accent, "row")
+	_add_selection_brackets(panel, selection_id, accent, "row")
 	return panel
 
 
 # Relic ceremonial card (Build B): Major-event tier — gold chrome, large art,
 # deliberately a rank above ordinary rows. Same select-then-CONFIRM model.
-func _create_relic_card(item: ItemData) -> PanelContainer:
+func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelContainer:
+	if selection_id == "":
+		selection_id = item.id
 	var accent: Color = _get_item_accent(item)
 
 	var panel := PanelContainer.new()
@@ -388,10 +405,11 @@ func _create_relic_card(item: ItemData) -> PanelContainer:
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.set_meta("item_id", item.id)
+	panel.set_meta("item_id", selection_id)
 	panel.set_meta("reward_kind", "relic")
 	_style_relic_panel(panel, false)
-	panel.gui_input.connect(_on_card_input.bind(item.id))
+	panel.gui_input.connect(_on_card_input.bind(selection_id))
+	_attach_item_inspect(panel, item)
 
 	var margin := MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -439,7 +457,7 @@ func _create_relic_card(item: ItemData) -> PanelContainer:
 	description.name = "RelicDescription"
 	vbox.add_child(description)
 
-	_add_selection_brackets(panel, item, accent, "relic")
+	_add_selection_brackets(panel, selection_id, accent, "relic")
 	return panel
 
 
@@ -460,16 +478,25 @@ func _make_pip_col(item: ItemData) -> Control:
 	return pip_col
 
 
+func _attach_item_inspect(panel: PanelContainer, item: ItemData) -> void:
+	var long_press := LongPressInput.new()
+	panel.add_child(long_press)
+	long_press.long_pressed.connect(func(_global_position: Vector2) -> void:
+		AudioManager.play_select()
+		InspectPopup.open(self, InspectResolver.resolve_item(item), panel.get_global_rect(), panel.get_instance_id())
+	)
+
+
 # Corner-bracket selection indicator + _cards registration, shared by both tiers.
 # Hosted on a non-container overlay so the brackets honor their corner anchors.
-func _add_selection_brackets(panel: PanelContainer, item: ItemData, accent: Color, kind: String) -> void:
+func _add_selection_brackets(panel: PanelContainer, selection_id: String, accent: Color, kind: String) -> void:
 	var overlay := Control.new()
 	overlay.name = "BracketOverlay"
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(overlay)
 	# Selection brackets are cyan — one selection language with the border.
 	var brackets: Array = _make_corner_brackets(overlay, PixelUI.DT_CYAN)
-	_cards[item.id] = {"panel": panel, "brackets": brackets, "accent": accent, "kind": kind}
+	_cards[selection_id] = {"panel": panel, "brackets": brackets, "accent": accent, "kind": kind}
 
 
 func _style_card_panel(panel: PanelContainer, accent: Color, selected: bool) -> void:
@@ -613,10 +640,10 @@ func _select_item(item_id: String) -> void:
 	_refresh_selection()
 	# Gear is assigned to a unit at selection time: pop the chooser now, then the player
 	# confirms with the bottom button (which finalizes the equip).
-	var item: ItemData = DataManager.get_item(item_id) as ItemData
+	var item: ItemData = _item_for_selection(item_id)
 	if item == null:
 		return
-	if item.item_type == "gear":
+	if item.item_type == "gear" and str(_choice_request.get("kind", "")) != "owned_gear":
 		_show_gear_target_overlay(item)
 	# Consumables are capped: if the bag is already full, choose which one to discard now,
 	# mirroring the gear chooser. Under the cap, no prompt — it just gets picked up.
@@ -640,15 +667,14 @@ func _refresh_selection() -> void:
 
 # ─── View Battlescreen (Batch 5): read-only peek at the finished battle ─────────
 # A secondary button pinned above CONFIRM. Only shown when battle_scene captured a
-# snapshot (skipped headless / auto-battle / no-battle paths). Opening it is a pure
-# in-screen overlay — the reward screen instance never leaves the tree, so the offered
-# rewards can't re-roll or change. Read-only: the overlay has one control, RETURN.
+# snapshot (skipped headless / auto-battle / no-battle paths). Picker state is retained
+# before the real BattleScene opens read-only, then restored when it returns here.
 func _build_view_battle_button() -> void:
 	if GameState.battle_review_state.is_empty():
 		return
 	var button := Button.new()
 	button.name = "ViewBattleButton"
-	button.text = "VIEW BATTLESCREEN"
+	button.text = "VIEW BATTLEFIELD"
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(0, VIEW_BATTLE_HEIGHT)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -658,16 +684,21 @@ func _build_view_battle_button() -> void:
 	content_vbox.add_child(button)
 
 
-# "View Battlescreen" re-enters the real BattleScene read-only (2026-07-13,
-# replacing the flat-image overlay): the review board is the live cards, so
-# long-press inspect works on units / abilities / statuses / pips. The reward
-# offers are untouched — `pending_reward_item_ids` persists and the reward
-# screen's re-entry re-roll is already guarded — and the button in the End Turn
-# slot returns here. entering_battle_review is the one-shot BattleScene consumes.
+# "View Battlescreen" re-enters the real BattleScene read-only: the review board
+# is live, so long-press inspect works on units, abilities, statuses, and pips.
+# The offer and UI state are retained; BattleScene consumes the one-shot flag then
+# routes its only control back to this picker.
 func _on_view_battle_pressed() -> void:
 	if GameState.battle_review_state.is_empty():
 		return
 	AudioManager.play_select()
+	GameState.reward_picker_ui_state = {
+		"selected_item_id": _selected_item_id,
+		"selected_gear_unit_id": _selected_gear_unit_id,
+		"selected_swap_consumable_id": _selected_swap_consumable_id,
+		"scroll_vertical": reward_scroll.scroll_vertical,
+	}
+	GameState.battle_review_return_target = "reward"
 	GameState.entering_battle_review = true
 	SceneManager.go_to_battle()
 
@@ -704,10 +735,20 @@ func _refresh_confirm() -> void:
 func _on_confirm_pressed() -> void:
 	if _selected_item_id == "":
 		return
-	var item: ItemData = DataManager.get_item(_selected_item_id) as ItemData
+	var item: ItemData = _item_for_selection(_selected_item_id)
 	if item == null:
 		return
 	AudioManager.play_select()
+	if not _choice_request.is_empty():
+		var event_kind: String = str(_choice_request.get("kind", ""))
+		if event_kind != "owned_gear" and item.item_type == "gear" and _selected_gear_unit_id == "":
+			_show_gear_target_overlay(item)
+			return
+		if event_kind != "owned_gear" and item.item_type == "consumable" and GameState.is_consumables_full() and _selected_swap_consumable_id == "":
+			_show_consumable_swap_overlay(item)
+			return
+		_commit_intercept_choice(item, _selected_gear_unit_id, _selected_swap_consumable_id)
+		return
 	# Gear is equipped to the unit chosen in the chooser. If none was picked (the player
 	# dismissed it), re-open the chooser instead of claiming.
 	if item.item_type == "gear":
@@ -909,6 +950,42 @@ func _hide_consumable_swap_overlay() -> void:
 
 
 # ─── Claim / advance ────────────────────────────────────────────────────────────
+func _item_for_selection(selection_id: String) -> ItemData:
+	if not _choice_request.is_empty():
+		return GameState.get_choice_item(selection_id)
+	return DataManager.get_item(selection_id) as ItemData
+
+
+func _restore_picker_ui_state() -> void:
+	var state: Dictionary = GameState.reward_picker_ui_state
+	if state.is_empty():
+		return
+	var restored_id: String = str(state.get("selected_item_id", ""))
+	if _cards.has(restored_id):
+		_selected_item_id = restored_id
+		_selected_gear_unit_id = str(state.get("selected_gear_unit_id", ""))
+		_selected_swap_consumable_id = str(state.get("selected_swap_consumable_id", ""))
+		if _selected_gear_unit_id != "":
+			footer_label.text = "EQUIP TO: %s" % _run_unit_label(_selected_gear_unit_id)
+			footer_label.visible = true
+		elif _selected_swap_consumable_id != "":
+			var swapped: ItemData = DataManager.get_item(_selected_swap_consumable_id) as ItemData
+			footer_label.text = "DISCARD: %s" % (swapped.display_name if swapped != null else _selected_swap_consumable_id)
+			footer_label.visible = true
+		_refresh_selection()
+	reward_scroll.scroll_vertical = int(state.get("scroll_vertical", 0))
+	GameState.reward_picker_ui_state.clear()
+
+
+func _commit_intercept_choice(item: ItemData, target_unit_id: String, swap_consumable_id: String = "") -> void:
+	if not GameState.complete_intercept_item_choice(_selected_item_id, target_unit_id, swap_consumable_id):
+		footer_label.text = "That choice could not be applied. Try again."
+		footer_label.visible = true
+		return
+	_choice_request.clear()
+	SceneManager.go_to_intercept()
+
+
 func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: String = "") -> void:
 	# Resolve the discarded item's name before the claim erases it (for the result text).
 	var swapped_out_name: String = ""
@@ -994,6 +1071,8 @@ func _apply_visual_theme() -> void:
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.visible = false
 	reward_title_label.text = "CHOOSE REWARD"
+	if not _choice_request.is_empty():
+		reward_title_label.text = str(_choice_request.get("title", "CHOOSE REWARD"))
 	# Fixed beat (pkg7.2): the battle-5 relic draft renders in event chrome.
 	# Same drafted-relic accounting as the roll + claim paths (a Starting
 	# Directive relic never counts against the draft slot).
@@ -1074,6 +1153,11 @@ func _make_label(text: String, font_size: int, color: Color, outline: int = 1) -
 # ChoiceScreenGuard fallback: no options were built — award the battle XP the
 # claim path would have awarded and route on (evolution stop still honored).
 func _auto_resolve_empty_offer() -> void:
+	if not _choice_request.is_empty():
+		GameState.pending_choice_request.clear()
+		GameState.pending_intercept_state["stage"] = "result_pending"
+		SceneManager.go_to_intercept()
+		return
 	GameState.award_battle_xp()
 	if GameState.has_pending_evolution():
 		SceneManager.go_to_evolution()

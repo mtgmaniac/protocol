@@ -51,6 +51,10 @@ func go_to_reward_screen() -> void:
 	go_to(REWARD_SCENE)
 
 
+func go_to_intercept() -> void:
+	go_to(INTERCEPT_SCENE)
+
+
 # POWER DOWN exclusively means you died (ruling 2026-07-12) — defeat only.
 # Victory -> run-end and quit-to-menu use the standard dissolve, or the signal
 # stops being a signal and becomes an animation.

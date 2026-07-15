@@ -82,6 +82,16 @@ var last_battle_snapshot: Texture2D = null
 ## run advances or resets.
 var battle_review_state: Dictionary = {}
 var entering_battle_review: bool = false
+## The screen that requested the current read-only battle review. This is transient
+## run state, just like the review snapshot itself.
+var battle_review_return_target: String = "reward"
+
+## Shared, transient selection handoff for between-battle choices. Intercepts use
+## this to hand item drafts and owned-gear sacrifices to RewardScreen without
+## duplicating its card, confirmation, recipient, or bag-replacement logic.
+var pending_choice_request: Dictionary = {}
+var pending_intercept_state: Dictionary = {}
+var reward_picker_ui_state: Dictionary = {}
 
 const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
@@ -127,6 +137,10 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 	last_battle_snapshot = null
 	battle_review_state = {}
 	entering_battle_review = false
+	battle_review_return_target = "reward"
+	pending_choice_request.clear()
+	pending_intercept_state.clear()
+	reward_picker_ui_state.clear()
 	var operation: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
 	if operation != null:
 		total_battles = operation.battles.size()
@@ -743,6 +757,131 @@ func roll_intercept_draft(kind: String, min_rarity: String, count: int) -> Array
 	return picks
 
 
+# --- Shared between-battle choice handoff -----------------------------------
+# Intercept card state used to live only in InterceptScreen. Keeping the small
+# state bundle here makes a scene change to RewardScreen or the read-only battle
+# review safe: offers do not reroll and effects cannot be applied twice.
+func begin_intercept_state(card_id: String) -> void:
+	pending_intercept_state = {
+		"card_id": card_id,
+		"choice": {},
+		"picked_hero_id": "",
+		"gear_context": {},
+		"drafted_item_id": "",
+		"stage": "card",
+		"resolved": false,
+		"result_info": "",
+	}
+
+
+func set_intercept_choice(choice: Dictionary) -> void:
+	pending_intercept_state["choice"] = choice.duplicate(true)
+	pending_intercept_state["picked_hero_id"] = ""
+	pending_intercept_state["gear_context"] = {}
+	pending_intercept_state["drafted_item_id"] = ""
+	pending_intercept_state["stage"] = "picking"
+	pending_intercept_state["resolved"] = false
+	pending_intercept_state["result_info"] = ""
+
+
+func set_intercept_hero_pick(unit_id: String) -> void:
+	pending_intercept_state["picked_hero_id"] = unit_id
+
+
+func begin_intercept_item_request(kind: String, title: String, item_ids: Array, gear_entries: Array = []) -> void:
+	var offers: Array = []
+	if kind == "owned_gear":
+		for entry_variant in gear_entries:
+			var entry: Dictionary = entry_variant as Dictionary
+			var item_id: String = str(entry.get("gear_id", ""))
+			var hero_id: String = str(entry.get("hero_id", ""))
+			if item_id != "" and hero_id != "":
+				offers.append({"selection_id": "%s|%s" % [hero_id, item_id], "item_id": item_id, "hero_id": hero_id})
+	else:
+		for item_id_variant in item_ids:
+			var item_id: String = str(item_id_variant)
+			if item_id != "":
+				offers.append({"selection_id": item_id, "item_id": item_id})
+	pending_choice_request = {
+		"source": "intercept",
+		"kind": kind,
+		"title": title,
+		"offers": offers,
+	}
+	pending_intercept_state["stage"] = "awaiting_item_choice"
+
+
+func has_pending_choice_request() -> bool:
+	return not pending_choice_request.is_empty()
+
+
+func get_pending_choice_offers() -> Array:
+	return (pending_choice_request.get("offers", []) as Array).duplicate(true)
+
+
+func get_choice_item(selection_id: String) -> ItemData:
+	for offer_variant in pending_choice_request.get("offers", []):
+		var offer: Dictionary = offer_variant as Dictionary
+		if str(offer.get("selection_id", "")) == selection_id:
+			return DataManager.get_item(str(offer.get("item_id", ""))) as ItemData
+	return null
+
+
+# Completes exactly one routed Intercept item selection. The caller owns visual
+# confirmation; this method owns the one irreversible state mutation.
+func complete_intercept_item_choice(selection_id: String, target_unit_id: String = "", swap_consumable_id: String = "") -> bool:
+	if str(pending_choice_request.get("source", "")) != "intercept":
+		return false
+	var selected_offer: Dictionary = {}
+	for offer_variant in pending_choice_request.get("offers", []):
+		var offer: Dictionary = offer_variant as Dictionary
+		if str(offer.get("selection_id", "")) == selection_id:
+			selected_offer = offer
+			break
+	if selected_offer.is_empty():
+		return false
+	var kind: String = str(pending_choice_request.get("kind", ""))
+	var item_id: String = str(selected_offer.get("item_id", ""))
+	if kind == "owned_gear":
+		pending_intercept_state["gear_context"] = {
+			"hero_id": str(selected_offer.get("hero_id", "")),
+			"gear_id": item_id,
+		}
+		pending_intercept_state["picked_hero_id"] = str(selected_offer.get("hero_id", ""))
+	else:
+		if not _claim_choice_item(item_id, target_unit_id, swap_consumable_id):
+			return false
+		pending_intercept_state["drafted_item_id"] = item_id
+	pending_choice_request.clear()
+	pending_intercept_state["stage"] = "result_pending"
+	return true
+
+
+func _claim_choice_item(item_id: String, target_unit_id: String, swap_consumable_id: String) -> bool:
+	var item: ItemData = DataManager.get_item(item_id) as ItemData
+	if item == null:
+		return false
+	match item.item_type:
+		"gear":
+			if target_unit_id == "":
+				return false
+			var unit_gear: Array = gear_by_unit.get(target_unit_id, []).duplicate()
+			unit_gear.append(item_id)
+			gear_by_unit[target_unit_id] = unit_gear
+			equipped_gear[target_unit_id] = unit_gear.duplicate()
+		"consumable":
+			if consumables.size() >= MAX_CONSUMABLES:
+				if swap_consumable_id == "" or not consumables.has(swap_consumable_id):
+					return false
+				consumables.erase(swap_consumable_id)
+			consumables.append(item_id)
+		"relic":
+			relics.append(item_id)
+		_:
+			return false
+	return true
+
+
 func _build_boss_reveal_text() -> String:
 	var operation: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
 	if operation == null or operation.battles.is_empty():
@@ -839,6 +978,10 @@ func advance_to_next_battle() -> void:
 	# so the NEXT battle entry is never mistaken for a review.
 	battle_review_state = {}
 	entering_battle_review = false
+	battle_review_return_target = "reward"
+	pending_choice_request.clear()
+	pending_intercept_state.clear()
+	reward_picker_ui_state.clear()
 
 
 func reset_run() -> void:
@@ -851,6 +994,10 @@ func reset_run() -> void:
 	gear_by_unit.clear()
 	equipped_gear.clear()
 	pending_reward_item_ids.clear()
+	pending_choice_request.clear()
+	pending_intercept_state.clear()
+	reward_picker_ui_state.clear()
+	battle_review_return_target = "reward"
 	claimed_reward_item_id = ""
 	last_run_result = ""
 	unit_xp.clear()
