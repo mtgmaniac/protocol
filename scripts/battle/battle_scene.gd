@@ -33,6 +33,7 @@ const ABILITY_READOUT_SCENE := preload("res://scenes/shared/AbilityReadout.tscn"
 # Keyword primers (one-shot micro-tutorials; docs/PRIMERS.md). Preload, not the
 # global class name, so fresh-checkout headless runs parse (class-cache gotcha).
 const KEYWORD_PRIMER_SCRIPT := preload("res://scripts/ui/keyword_primer.gd")
+const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
 # Protocol-spend subsystem (ARCHITECTURE_REVIEW_JUL2026 §1 rec 1) — preload,
 # not the global class name, for fresh-checkout headless parses.
 const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
@@ -207,6 +208,11 @@ var _round_complete_next_button: Button = null
 var _auto_turn_running: bool = false
 var _auto_battle_running: bool = false
 var _primer = null  # KeywordPrimer — null in tutorial battles
+var _briefing_active: bool = false
+var _boss_rule_reminder: Button = null
+var _boss_rule_name: String = ""
+var _boss_rule_mechanic: String = ""
+var _boss_name: String = ""
 
 var _is_resolving_turn: bool = false
 
@@ -284,6 +290,9 @@ func _ready() -> void:
 		_primer = KEYWORD_PRIMER_SCRIPT.new()
 		add_child(_primer)
 		_primer.setup(self)
+	if not _review_mode and not _game_state().tutorial_mode:
+		# Deferred so the board has finished constructing before the slate darkens it.
+		call_deferred("_show_battle_entry_briefing")
 	if _review_mode:
 		# After the shared tail built the footer, lock the board read-only and
 		# turn the center button into the way back (deferred so it wins the race
@@ -374,6 +383,86 @@ func _finalize_review() -> void:
 	_refresh_summary("Reviewing the last battle - read-only. Long-press any unit to inspect.")
 
 
+func _show_battle_entry_briefing() -> void:
+	if OS.has_feature("headless") or _review_mode or _game_state().tutorial_mode:
+		return
+	if _game_state().current_battle == _game_state().total_battles:
+		_show_boss_alert()
+	elif _game_state().current_battle == 1:
+		_show_deployment_slate()
+
+
+func _show_deployment_slate() -> void:
+	var operation_id: String = str(_game_state().selected_operation_id)
+	if OPERATION_BRIEFING_OVERLAY.operation_copy(operation_id).is_empty():
+		return
+	var repeat_deployment: bool = SaveManager.has_seen_operation_deployment(operation_id)
+	var briefing := OPERATION_BRIEFING_OVERLAY.new()
+	_briefing_active = true
+	add_child(briefing)
+	briefing.dismissed.connect(func(_mode: String) -> void:
+		_briefing_active = false
+		SaveManager.acknowledge_operation_deployment(operation_id)
+	)
+	briefing.present_deployment(operation_id, repeat_deployment)
+
+
+func _show_boss_alert() -> void:
+	for enemy_state_variant in combat_manager.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant as Dictionary
+		var boss_name: String = _state_unit_name(enemy_state)
+		var rule_text: String = CombatManager.get_boss_standing_rule(boss_name)
+		if rule_text == "":
+			continue
+		var rule_parts: Dictionary = OPERATION_BRIEFING_OVERLAY.split_runtime_rule(rule_text)
+		_boss_name = boss_name
+		_boss_rule_name = str(rule_parts.get("name", "STANDING RULE"))
+		_boss_rule_mechanic = str(rule_parts.get("mechanic", rule_text))
+		var briefing := OPERATION_BRIEFING_OVERLAY.new()
+		_briefing_active = true
+		add_child(briefing)
+		briefing.dismissed.connect(func(_mode: String) -> void:
+			_briefing_active = false
+			_show_boss_rule_reminder()
+		)
+		briefing.present_boss_alert(_boss_name, "%s - %s" % [_boss_rule_name, _boss_rule_mechanic])
+		return
+
+
+func _show_boss_rule_reminder() -> void:
+	if _boss_name == "" or _boss_rule_name == "" or _boss_rule_mechanic == "":
+		return
+	if _boss_rule_reminder != null and is_instance_valid(_boss_rule_reminder):
+		_boss_rule_reminder.queue_free()
+	var reminder := Button.new()
+	reminder.name = "BossRuleReminder"
+	reminder.text = _boss_rule_name
+	reminder.tooltip_text = "Tap for boss standing rule"
+	reminder.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	reminder.offset_left = -306.0
+	reminder.offset_right = -22.0
+	reminder.offset_top = 134.0
+	reminder.offset_bottom = 206.0
+	reminder.focus_mode = Control.FOCUS_NONE
+	reminder.z_index = 20
+	PixelUI.style_button(reminder, PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER, 28)
+	reminder.pressed.connect(_open_boss_rule_reminder)
+	add_child(reminder)
+	_boss_rule_reminder = reminder
+
+
+func _open_boss_rule_reminder() -> void:
+	if _briefing_active:
+		return
+	var briefing := OPERATION_BRIEFING_OVERLAY.new()
+	_briefing_active = true
+	add_child(briefing)
+	briefing.dismissed.connect(func(_mode: String) -> void:
+		_briefing_active = false
+	)
+	briefing.present_boss_reminder(_boss_name, "%s - %s" % [_boss_rule_name, _boss_rule_mechanic])
+
+
 func _return_from_review() -> void:
 	AudioManager.play_select()
 	_scene_manager().go_to_reward_screen()
@@ -406,7 +495,7 @@ func _on_return_to_menu_button_pressed() -> void:
 
 
 func _on_auto_turn_button_pressed() -> void:
-	if _auto_turn_running or _auto_battle_running or battle_over:
+	if _briefing_active or _auto_turn_running or _auto_battle_running or battle_over:
 		return
 	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or is_item_pick_phase(turn_phase):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
@@ -427,7 +516,7 @@ func _on_auto_turn_button_pressed() -> void:
 
 
 func _on_auto_battle_button_pressed() -> void:
-	if _auto_turn_running or _auto_battle_running:
+	if _briefing_active or _auto_turn_running or _auto_battle_running:
 		return
 	if battle_over:
 		_on_open_reward_button_pressed()
@@ -600,6 +689,8 @@ func _find_state_for_card(card: Control) -> Dictionary:
 
 
 func _on_roll_button_pressed() -> void:
+	if _briefing_active:
+		return
 	if _review_mode:
 		# The center button is "Return to Rewards" here — go straight back
 		# without _on_open_reward_button_pressed's reward RE-ROLL.

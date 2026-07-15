@@ -1,6 +1,8 @@
 # Run-end screen — victory / defeat summary in the Direction-05 DT language.
 extends Control
 
+const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
+
 const VICTORY_TITLE_FONT := 108
 const DEFEAT_TITLE_FONT := 150
 # Kev 2026-07-10: readability pass — heads/summary/button were well below the
@@ -109,6 +111,7 @@ func _apply_visual_theme(victory: bool) -> void:
 	_add_result_banner(victory, accent)
 	_build_two_section_stats(accent)
 	_build_unlocked_section()
+	call_deferred("_show_operation_unlock_origin")
 
 	# Single primary action (start a fresh run) = teal primary button, prefixed
 	# with the swap/restart glyph (batch 181).
@@ -119,6 +122,27 @@ func _apply_visual_theme(victory: bool) -> void:
 	new_run_button.add_theme_constant_override("icon_max_width", 56)
 	new_run_button.add_theme_color_override("icon_normal_color", PixelUI.BTN_PRIMARY_INK)
 	new_run_button.add_theme_constant_override("h_separation", 16)
+
+
+func _show_operation_unlock_origin() -> void:
+	# Headless runs award all operations for coverage; they do not have a player
+	# to acknowledge a presentation-only overlay.
+	if OS.has_feature("headless"):
+		return
+	for entry_variant in SaveManager.check_new_unlocks():
+		var entry: Dictionary = entry_variant as Dictionary
+		if str(entry.get("type", "")) != "operation":
+			continue
+		var operation_id: String = str(entry.get("id", ""))
+		if operation_id == "" or SaveManager.has_seen_operation_origin(operation_id):
+			continue
+		var briefing := OPERATION_BRIEFING_OVERLAY.new()
+		add_child(briefing)
+		briefing.dismissed.connect(func(_mode: String) -> void:
+			SaveManager.acknowledge_operation_origin(operation_id)
+		)
+		briefing.present_unlock(operation_id)
+		return
 
 
 # Result illustration (victory / defeat) pinned above the title. Cover-cropped
