@@ -51,6 +51,7 @@ const DETAIL_NAME_FONT := 76
 # screen authors raw px, so it takes the token's post-scale value: 42 → 64).
 static var DETAIL_DESC_FONT: int = PixelUI.scale_font_size(PixelUI.FONT_BODY_MIN)
 const FOCUS_CHIP_FONT := 40
+const DETAIL_THREAT_FONT := ENC_SITE_FONT
 const DEPLOY_FONT := 84
 const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller than DEPLOY
 # Fixed DEPLOY button height so the locked→armed font swap never resizes it (measured
@@ -138,9 +139,13 @@ var _unit_tiles: Dictionary = {}    # unit_id -> { frame, role_badge, slot_panel
 var _counter_label: Label
 var _detail_panel: PanelContainer
 var _detail_name: Label
+var _detail_name_row: HBoxContainer
 var _detail_focus: Label
 var _detail_focus_chip: PanelContainer
 var _detail_desc: Label
+var _detail_operation_spacer: Control
+var _detail_threat_row: HBoxContainer
+var _detail_threat_label: Label
 var _detail_threats: Label
 var _deploy_panel: PanelContainer
 var _deploy_button: Button
@@ -684,7 +689,10 @@ func _build_detail_bar() -> PanelContainer:
 
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 16)
+	var detail_font: Font = PixelUI.get_pixel_font()
+	name_row.custom_minimum_size = Vector2(0, ceilf(detail_font.get_height(DETAIL_NAME_FONT)))
 	col.add_child(name_row)
+	_detail_name_row = name_row
 
 	# No placeholder state — _ready() focuses the first unlocked hero, so the
 	# panel is populated from the first frame (composition pass §3).
@@ -724,14 +732,30 @@ func _build_detail_bar() -> PanelContainer:
 	_detail_desc.max_lines_visible = 2
 	col.add_child(_detail_desc)
 
-	_detail_threats = _make_pixel_label("", FOCUS_CHIP_FONT, PixelUI.DT_AMBER)
+	_detail_threat_row = HBoxContainer.new()
+	_detail_threat_row.add_theme_constant_override("separation", 12)
+	_detail_threat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_threat_label = _make_pixel_label("THREATS:", DETAIL_THREAT_FONT, PixelUI.DT_AMBER)
+	_detail_threat_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_detail_threat_row.add_child(_detail_threat_label)
+	_detail_threats = _make_pixel_label("", DETAIL_THREAT_FONT, PixelUI.TEXT_PRIMARY)
 	_detail_threats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_threats.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_detail_threats.clip_text = true
+	_detail_threat_row.add_child(_detail_threats)
 	# This fixed empty row stays in hero-dossier mode so operation intel and hero
 	# descriptions never cause the surrounding squad layout to jump.
 	var threat_font: Font = PixelUI.get_pixel_font()
-	_detail_threats.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(FOCUS_CHIP_FONT)))
-	col.add_child(_detail_threats)
+	_detail_threat_row.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(DETAIL_THREAT_FONT)))
+	col.add_child(_detail_threat_row)
+
+	# Operation mode removes the unused hero-name row, then puts that exact height
+	# after the intel lines so the detail plate keeps the hero-state footprint.
+	_detail_operation_spacer = Control.new()
+	_detail_operation_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail_operation_spacer.custom_minimum_size = name_row.custom_minimum_size
+	_detail_operation_spacer.visible = false
+	col.add_child(_detail_operation_spacer)
 
 	return panel
 
@@ -968,6 +992,8 @@ func _refresh_detail() -> void:
 	if _focused_unit_id == "":
 		_show_operation_detail()
 		return
+	_detail_name_row.visible = true
+	_detail_operation_spacer.visible = false
 	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData
 	if unit == null:
 		return
@@ -976,6 +1002,7 @@ func _refresh_detail() -> void:
 		_detail_name.text = "[ LOCKED ]"
 		_detail_focus_chip.visible = false
 		_detail_desc.text = "Locked specialist."
+		_detail_threat_label.visible = false
 		_detail_threats.text = ""
 		return
 	_detail_name.text = unit.display_name.to_upper()
@@ -985,29 +1012,36 @@ func _refresh_detail() -> void:
 	_detail_focus_chip.visible = false
 	var blurb: String = unit.picker_blurb if unit.picker_blurb != "" else "No dossier available."
 	_detail_desc.text = blurb
+	_detail_threat_label.visible = false
 	_detail_threats.text = ""
 
 
 func _show_operation_detail() -> void:
 	if _detail_name == null or _detail_desc == null or _detail_threats == null:
 		return
+	_detail_name_row.visible = false
+	_detail_operation_spacer.visible = true
 	_detail_name.text = ""
 	_detail_focus_chip.visible = false
 	if _current_op_locked:
 		_detail_desc.text = ""
+		_detail_threat_label.visible = false
 		_detail_threats.text = ""
 		return
 	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
 	if presentation.is_empty():
 		_detail_desc.text = ""
+		_detail_threat_label.visible = false
 		_detail_threats.text = ""
 		return
 	_detail_desc.text = str(presentation.get("origin", ""))
 	var threats: String = str(presentation.get("threats", ""))
-	_detail_threats.text = "THREATS: %s" % threats if threats != "" else ""
+	_detail_threat_label.visible = threats != ""
+	_detail_threats.text = threats
 	var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
 	if accent is Color:
-		_detail_threats.add_theme_color_override("font_color", accent as Color)
+		_detail_threat_label.add_theme_color_override("font_color", accent as Color)
+	_detail_threats.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 
 
 # Type ordering for the squad grid; matches the badge color buckets so each row

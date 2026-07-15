@@ -8,8 +8,9 @@ signal dismissed(mode: String)
 
 const PANEL_MARGIN := 32
 const PANEL_PAD := 24
-const KEY_COLUMN_WIDTH := 128
-const KEY_VALUE_SEPARATION := 12
+const KEY_COLUMN_WIDTH := 240
+const KEY_VALUE_SEPARATION := 32
+const DEPLOYMENT_GRID_WIDTH := 900
 const TITLE_FONT := 64
 const SECTION_FONT := 40
 const BODY_FONT := PixelUI.FONT_BODY_MIN
@@ -124,9 +125,7 @@ func present_deployment(operation_id: String) -> void:
 	_mode = "deployment"
 	_build_shell(PixelUI.COMPONENT_MODAL)
 	_add_title("OPERATION %s // %s" % [str(copy["number"]), str(copy["name"])], PixelUI.DT_CYAN)
-	_add_key_value("SITE", str(copy["site"]), copy["accent"] as Color)
-	_add_key_value("FAILURE", str(copy["failure"]), PixelUI.DT_RUST)
-	_add_key_value("DIRECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
+	_add_deployment_grid(copy)
 	_add_action("ENGAGE", PixelUI.DT_CYAN)
 
 
@@ -224,21 +223,54 @@ func _add_body(text: String) -> void:
 	_content().add_child(label)
 
 
-func _add_key_value(key: String, value: String, value_color: Color) -> void:
+func _add_deployment_grid(copy: Dictionary) -> void:
+	var center := CenterContainer.new()
+	center.name = "DeploymentInfoCenter"
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content().add_child(center)
+	var grid := VBoxContainer.new()
+	grid.name = "DeploymentInfoGrid"
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.custom_minimum_size = Vector2(DEPLOYMENT_GRID_WIDTH, 0)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	grid.add_theme_constant_override("separation", 10)
+	center.add_child(grid)
+	_add_key_value(grid, "SITE", str(copy["site"]), copy["accent"] as Color)
+	_add_key_value(grid, "FAILURE", str(copy["failure"]), PixelUI.DT_RUST)
+	_add_key_value(grid, "DIRECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
+
+
+func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color: Color) -> void:
 	var row := HBoxContainer.new()
+	row.name = "DeploymentRow%s" % key.capitalize()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", KEY_VALUE_SEPARATION)
+	# A Label in an HBox can expand to its natural text width. Put it in a
+	# fixed-width slot so every value column has exactly the same start.
+	var key_slot := Control.new()
+	key_slot.name = "DeploymentKeySlot%s" % key.capitalize()
+	key_slot.custom_minimum_size = Vector2(KEY_COLUMN_WIDTH, 0)
+	key_slot.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	key_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(key_slot)
 	var key_label := _make_label(key, SECTION_FONT, PixelUI.TEXT_MUTED, 1)
-	key_label.custom_minimum_size = Vector2(KEY_COLUMN_WIDTH, 0)
-	row.add_child(key_label)
+	key_label.name = "DeploymentKey%s" % key.capitalize()
+	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	key_label.clip_text = true
+	key_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	key_slot.add_child(key_label)
 	var value_label := _make_label(value, SECTION_FONT, value_color, 2)
+	value_label.name = "DeploymentValue%s" % key.capitalize()
 	# The accepted operation values are authored to fit this full-width slate at
 	# 540x1200. Keep each row to one decisive scan line rather than introducing
 	# operation-specific wraps or positioning.
 	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(value_label)
-	_content().add_child(row)
+	grid.add_child(row)
 
 
 func _add_action(text: String, accent: Color) -> void:

@@ -53,6 +53,7 @@ const TYPE_HEADER_FONT := 42
 # Footer read-back ("EQUIP TO: AVALANCHE") — the commit cue, sized well above
 # the INFO floor (Batch 3: was 28, under the S-1 floor and easy to miss).
 const FOOTER_FONT := 44
+const FOOTER_RESERVED_HEIGHT := 64
 
 # Gear "equip to" chooser — sized large for mobile tap targets.
 const GEAR_TARGET_TITLE_FONT := 50
@@ -636,7 +637,7 @@ func _select_item(item_id: String) -> void:
 	_selected_item_id = item_id
 	_selected_gear_unit_id = ""
 	_selected_swap_consumable_id = ""
-	footer_label.visible = false
+	footer_label.text = ""
 	_refresh_selection()
 	# Gear is assigned to a unit at selection time: pop the chooser now, then the player
 	# confirms with the bottom button (which finalizes the equip).
@@ -1085,7 +1086,11 @@ func _apply_visual_theme() -> void:
 	inventory_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary_label.visible = false
 	inventory_label.visible = false
-	footer_label.visible = false
+	# Reserve the status line even while it is empty so selecting a gear recipient
+	# never changes the RewardScroll height or shifts the choice rows.
+	footer_label.visible = true
+	footer_label.text = ""
+	footer_label.custom_minimum_size = Vector2(0, FOOTER_RESERVED_HEIGHT)
 	PixelUI.style_label(title_label, 44, PixelUI.GOLD_ACCENT, 2)
 	PixelUI.style_label(reward_title_label, 62, PixelUI.GOLD_ACCENT, 3)
 	PixelUI.style_label(summary_label, 32, PixelUI.TEXT_PRIMARY, 2)

@@ -84,7 +84,10 @@ func _test_overlay_modes() -> void:
 		get_tree().root.add_child(operation_deployment)
 		operation_deployment.present_deployment(operation_id)
 		await get_tree().process_frame
+		await get_tree().process_frame
+		await get_tree().process_frame
 		_expect(_has_action(operation_deployment, "ENGAGE"), "%s deployment requires ENGAGE" % operation_id)
+		_test_deployment_grid(operation_id, operation_deployment)
 		operation_deployment.queue_free()
 
 	var unlock := OPERATION_BRIEFING_OVERLAY.new()
@@ -144,6 +147,31 @@ func _test_overlay_modes() -> void:
 func _has_action(overlay: Control, text: String) -> bool:
 	var action := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel/BriefingPadding/BriefingContent/BriefingAction") as Button
 	return action != null and action.text == text
+
+
+func _test_deployment_grid(operation_id: String, overlay: Control) -> void:
+	var grid := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel/BriefingPadding/BriefingContent/DeploymentInfoCenter/DeploymentInfoGrid") as Control
+	_expect(grid != null, "%s deployment builds one centered info grid" % operation_id)
+	if grid == null:
+		return
+	var grid_center := grid.get_parent() as Control
+	_expect(grid_center != null and absf(grid.get_global_rect().get_center().x - grid_center.get_global_rect().get_center().x) < 1.0, "%s deployment grid is centered" % operation_id)
+	var key_x := -1.0
+	var value_x := -1.0
+	for key in ["Site", "Failure", "Directive"]:
+		var key_label := grid.get_node_or_null("DeploymentRow%s/DeploymentKeySlot%s/DeploymentKey%s" % [key, key, key]) as Label
+		var value_label := grid.get_node_or_null("DeploymentRow%s/DeploymentValue%s" % [key, key]) as Label
+		_expect(key_label != null and value_label != null, "%s %s row has fixed columns" % [operation_id, key])
+		if key_label == null or value_label == null:
+			continue
+		if key_x < 0.0:
+			key_x = key_label.get_global_rect().position.x
+			value_x = value_label.get_global_rect().position.x
+		else:
+			_expect(absf(key_label.get_global_rect().position.x - key_x) < 1.0, "%s %s label aligns" % [operation_id, key])
+			_expect(absf(value_label.get_global_rect().position.x - value_x) < 1.0, "%s %s value aligns" % [operation_id, key])
+		_expect(value_label.autowrap_mode == TextServer.AUTOWRAP_OFF, "%s %s remains one line" % [operation_id, key])
+		_expect(value_label.get_minimum_size().x <= value_label.size.x + 1.0, "%s %s value fits column" % [operation_id, key])
 
 
 func _expect(condition: bool, label: String) -> void:

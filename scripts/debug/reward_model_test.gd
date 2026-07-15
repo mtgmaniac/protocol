@@ -29,6 +29,7 @@ const ORDINARY_ITEMS := ["patch_kit", "scrap_plate", "momentum_core"]
 const RELIC_ITEMS := ["gravityWell", "staticField"]
 const LONG_ORDINARY_ITEMS := ["deep_zero_pin", "buckler_array", "triage_broadcast"]
 const LONG_RELIC_ITEMS := ["martyrdomProtocol", "openingGambit"]
+const FOOTER_GEAR_ITEMS := ["bounty_chip", "breach_tip", "mirror_plate"]
 
 var _failed := 0
 
@@ -41,6 +42,7 @@ func _run() -> void:
 	await _test_ordinary(0, 0)
 	await _test_relics()
 	await _test_long_copy_layout()
+	await _test_footer_stability()
 	await _test_ordinary(132, 56)  # Pixel-8 budget: cutout top + gesture bottom
 	PixelUI.safe_top = 0
 	PixelUI.safe_bottom = 0
@@ -192,6 +194,24 @@ func _test_ordinary(safe_top: int, safe_bottom: int) -> void:
 	confirm.emit_signal("pressed")
 	await process_frame
 	_check(str(gs.get("claimed_reward_item_id")) == ORDINARY_ITEMS[2], "T6 CONFIRM committed the selection")
+
+
+func _test_footer_stability() -> void:
+	print("-- reward footer stability")
+	await _boot_reward(FOOTER_GEAR_ITEMS, 0, 0)
+	var screen: Node = current_scene
+	var scroll := screen.get_node_or_null("Content/VBox/RewardScroll") as ScrollContainer
+	var rows: Array = _reward_panels(screen, "row")
+	if scroll == null or rows.is_empty():
+		_check(false, "T12 gear footer setup")
+		return
+	var height_before: float = scroll.size.y
+	_tap(rows[0] as Control)
+	for i in 3:
+		await process_frame
+	_check(absf(scroll.size.y - height_before) < 0.1, "T12 EQUIP TO keeps reward scroll height fixed")
+	var footer: Label = screen.get_node_or_null("Content/VBox/FooterLabel") as Label
+	_check(footer != null and footer.visible and footer.custom_minimum_size.y > 0.0, "T12 footer reserves status space")
 
 
 func _test_relics() -> void:
