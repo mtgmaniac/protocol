@@ -140,15 +140,6 @@ func present_boss_alert(boss_name: String, runtime_rule: String) -> void:
 	_add_action("ENGAGE", PixelUI.DT_ENEMY_BORDER)
 
 
-func present_boss_reminder(boss_name: String, runtime_rule: String) -> void:
-	var parsed := split_runtime_rule(runtime_rule)
-	_mode = "boss_reminder"
-	_build_shell(PixelUI.COMPONENT_ENEMY)
-	_add_title("%s // %s" % [boss_name.to_upper(), str(parsed["name"])], PixelUI.DT_ENEMY_BORDER)
-	_add_body(str(parsed["mechanic"]))
-	_add_action("CLOSE", PixelUI.DT_ENEMY_BORDER)
-
-
 func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP

@@ -209,10 +209,6 @@ var _auto_turn_running: bool = false
 var _auto_battle_running: bool = false
 var _primer = null  # KeywordPrimer — null in tutorial battles
 var _briefing_active: bool = false
-var _boss_rule_reminder: Button = null
-var _boss_rule_name: String = ""
-var _boss_rule_mechanic: String = ""
-var _boss_name: String = ""
 
 var _is_resolving_turn: bool = false
 
@@ -412,53 +408,14 @@ func _show_boss_alert() -> void:
 		var rule_text: String = CombatManager.get_boss_standing_rule(boss_name)
 		if rule_text == "":
 			continue
-		var rule_parts: Dictionary = OPERATION_BRIEFING_OVERLAY.split_runtime_rule(rule_text)
-		_boss_name = boss_name
-		_boss_rule_name = str(rule_parts.get("name", "STANDING RULE"))
-		_boss_rule_mechanic = str(rule_parts.get("mechanic", rule_text))
 		var briefing := OPERATION_BRIEFING_OVERLAY.new()
 		_briefing_active = true
 		add_child(briefing)
 		briefing.dismissed.connect(func(_mode: String) -> void:
 			_briefing_active = false
-			_show_boss_rule_reminder()
 		)
-		briefing.present_boss_alert(_boss_name, "%s - %s" % [_boss_rule_name, _boss_rule_mechanic])
+		briefing.present_boss_alert(boss_name, rule_text)
 		return
-
-
-func _show_boss_rule_reminder() -> void:
-	if _boss_name == "" or _boss_rule_name == "" or _boss_rule_mechanic == "":
-		return
-	if _boss_rule_reminder != null and is_instance_valid(_boss_rule_reminder):
-		_boss_rule_reminder.queue_free()
-	var reminder := Button.new()
-	reminder.name = "BossRuleReminder"
-	reminder.text = _boss_rule_name
-	reminder.tooltip_text = "Tap for boss standing rule"
-	reminder.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	reminder.offset_left = -306.0
-	reminder.offset_right = -22.0
-	reminder.offset_top = 134.0
-	reminder.offset_bottom = 206.0
-	reminder.focus_mode = Control.FOCUS_NONE
-	reminder.z_index = 20
-	PixelUI.style_button(reminder, PixelUI.DT_ENEMY_BG, PixelUI.DT_ENEMY_BORDER, 28)
-	reminder.pressed.connect(_open_boss_rule_reminder)
-	add_child(reminder)
-	_boss_rule_reminder = reminder
-
-
-func _open_boss_rule_reminder() -> void:
-	if _briefing_active:
-		return
-	var briefing := OPERATION_BRIEFING_OVERLAY.new()
-	_briefing_active = true
-	add_child(briefing)
-	briefing.dismissed.connect(func(_mode: String) -> void:
-		_briefing_active = false
-	)
-	briefing.present_boss_reminder(_boss_name, "%s - %s" % [_boss_rule_name, _boss_rule_mechanic])
 
 
 func _return_from_review() -> void:

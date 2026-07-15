@@ -49,6 +49,9 @@ func _test_runtime_metadata() -> void:
 		_expect(enemy != null, "%s exists in runtime enemy data" % boss_name)
 		_expect(OPERATION_BRIEFING_OVERLAY.boss_flavor(boss_name) != "", "%s has accepted flavor copy" % boss_name)
 		_expect(str(rule_parts.get("name", "")) != "" and str(rule_parts.get("mechanic", "")) != "", "%s exposes a literal runtime standing rule" % boss_name)
+		if enemy != null:
+			var inspect_payload: Dictionary = InspectResolver.resolve_unit(enemy)
+			_expect(str(inspect_payload.get("description", "")).contains(runtime_rule), "%s long-press inspection exposes its literal standing rule" % boss_name)
 
 
 func _test_save_defaults_and_migration() -> void:
@@ -134,15 +137,6 @@ func _test_overlay_modes() -> void:
 		await get_tree().process_frame
 		_expect(_has_action(boss_alert, "ENGAGE"), "%s boss alert requires ENGAGE" % boss_name)
 		boss_alert.queue_free()
-
-	var reminder := OPERATION_BRIEFING_OVERLAY.new()
-	get_tree().root.add_child(reminder)
-	reminder.present_boss_reminder("MANTLE TYRANT", CombatManager.get_boss_standing_rule("MANTLE TYRANT"))
-	await get_tree().process_frame
-	_expect(_has_action(reminder, "CLOSE"), "boss reminder is dismissible")
-	reminder.queue_free()
-	await get_tree().process_frame
-
 
 func _has_action(overlay: Control, text: String) -> bool:
 	var action := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel/BriefingPadding/BriefingContent/BriefingAction") as Button
