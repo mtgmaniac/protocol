@@ -24,6 +24,8 @@
 #   operation's highest-HP enemy with art.
 extends Control
 
+const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
+
 const MAX_SELECTED_UNITS := 3
 
 # Layout (logical units).
@@ -40,6 +42,7 @@ const COUNTER_FONT := 64
 const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
                                    # (STELLAR MENAGERIE) wrap to two lines instead of clipping
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
+const ENC_SITE_FONT := 44
 const PROGRESS_FONT := 44          # one metadata-tier clearance line in the carousel card (Build B)
 const LORE_FONT := 48              # one unframed flavor sentence under the carousel (Build B slot; copy lands in Build C)
 const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
@@ -123,6 +126,7 @@ var _enc_thumb_holder: Control
 var _enc_portrait_placeholder: Label
 var _enc_lock_overlay: Control
 var _enc_name_label: Label
+var _enc_site_label: Label
 var _enc_level_label: Label
 var _enc_progress_label: Label
 var _op_lore_label: Label
@@ -137,6 +141,7 @@ var _detail_name: Label
 var _detail_focus: Label
 var _detail_focus_chip: PanelContainer
 var _detail_desc: Label
+var _detail_threats: Label
 var _deploy_panel: PanelContainer
 var _deploy_button: Button
 
@@ -306,6 +311,11 @@ func _build_encounter_section() -> Control:
 	_enc_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_col.add_child(_enc_name_label)
+	_enc_site_label = _make_pixel_label("", ENC_SITE_FONT, PixelUI.DT_AMBER)
+	_enc_site_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_enc_site_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enc_site_label.visible = false
+	text_col.add_child(_enc_site_label)
 	text_col.add_child(_build_threat_row())
 	# Progress/clearance — ONE metadata-tier line (caps law) inside the existing
 	# carousel card; not a module (Build B).
@@ -446,6 +456,7 @@ func _on_nav_pressed(direction: int) -> void:
 	_operation_index = wrapi(_operation_index + direction, 0, _operation_ids.size())
 	_selected_operation_id = _operation_ids[_operation_index]
 	_refresh_encounter()
+	_refresh_detail()
 	_refresh_deploy()
 
 
@@ -456,6 +467,13 @@ func _refresh_encounter() -> void:
 	if op == null:
 		return
 	_enc_name_label.text = op.display_name.to_upper()
+	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
+	if _enc_site_label != null:
+		_enc_site_label.text = str(presentation.get("site", ""))
+		_enc_site_label.visible = _enc_site_label.text != ""
+		var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
+		if accent is Color:
+			_enc_site_label.add_theme_color_override("font_color", accent as Color)
 	var boss_tex: Texture2D = _get_boss_portrait(op)
 	_enc_portrait.texture = boss_tex
 	if _enc_thumb_holder != null and is_instance_valid(_enc_thumb_holder):
@@ -488,6 +506,8 @@ func _refresh_encounter() -> void:
 	if _current_op_locked:
 		_enc_name_label.text = "[ LOCKED ]"
 		# Locked operations reveal nothing (no clearance, no lore).
+		if _enc_site_label != null:
+			_enc_site_label.visible = false
 		if _enc_progress_label != null:
 			_enc_progress_label.text = ""
 		if _op_lore_label != null:
@@ -704,6 +724,15 @@ func _build_detail_bar() -> PanelContainer:
 	_detail_desc.max_lines_visible = 2
 	col.add_child(_detail_desc)
 
+	_detail_threats = _make_pixel_label("", FOCUS_CHIP_FONT, PixelUI.DT_AMBER)
+	_detail_threats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_threats.clip_text = true
+	# This fixed empty row stays in hero-dossier mode so operation intel and hero
+	# descriptions never cause the surrounding squad layout to jump.
+	var threat_font: Font = PixelUI.get_pixel_font()
+	_detail_threats.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(FOCUS_CHIP_FONT)))
+	col.add_child(_detail_threats)
+
 	return panel
 
 
@@ -835,12 +864,19 @@ func _make_new_badge() -> Control:
 
 
 func _on_tile_tapped(unit_id: String) -> void:
-	_focused_unit_id = unit_id
 	# Locked heroes are not selectable; still focus so the detail bar shows the hint.
 	if not SaveManager.is_hero_unlocked(unit_id):
+		_focused_unit_id = unit_id
 		_refresh_detail()
 		return
+	var was_selected: bool = _selected_unit_ids.has(unit_id)
 	_toggle_unit_selection(unit_id)
+	if _selected_unit_ids.is_empty():
+		_focused_unit_id = ""
+	elif was_selected:
+		_focused_unit_id = str(_selected_unit_ids.back())
+	else:
+		_focused_unit_id = unit_id
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
 	_refresh_detail()
@@ -930,12 +966,7 @@ func _refresh_detail() -> void:
 	# The box is ALWAYS there (Kev 2026-07-10 rev 2) — it just starts empty
 	# until a unit is tapped, so the layout never jumps.
 	if _focused_unit_id == "":
-		if _detail_name != null:
-			_detail_name.text = ""
-		if _detail_focus_chip != null:
-			_detail_focus_chip.visible = false
-		if _detail_desc != null:
-			_detail_desc.text = ""
+		_show_operation_detail()
 		return
 	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData
 	if unit == null:
@@ -945,6 +976,7 @@ func _refresh_detail() -> void:
 		_detail_name.text = "[ LOCKED ]"
 		_detail_focus_chip.visible = false
 		_detail_desc.text = "Locked specialist."
+		_detail_threats.text = ""
 		return
 	_detail_name.text = unit.display_name.to_upper()
 	# Unit category is hidden from the player (Batch 2) — visibility change only.
@@ -953,6 +985,29 @@ func _refresh_detail() -> void:
 	_detail_focus_chip.visible = false
 	var blurb: String = unit.picker_blurb if unit.picker_blurb != "" else "No dossier available."
 	_detail_desc.text = blurb
+	_detail_threats.text = ""
+
+
+func _show_operation_detail() -> void:
+	if _detail_name == null or _detail_desc == null or _detail_threats == null:
+		return
+	_detail_name.text = ""
+	_detail_focus_chip.visible = false
+	if _current_op_locked:
+		_detail_desc.text = ""
+		_detail_threats.text = ""
+		return
+	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
+	if presentation.is_empty():
+		_detail_desc.text = ""
+		_detail_threats.text = ""
+		return
+	_detail_desc.text = str(presentation.get("origin", ""))
+	var threats: String = str(presentation.get("threats", ""))
+	_detail_threats.text = "THREATS: %s" % threats if threats != "" else ""
+	var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
+	if accent is Color:
+		_detail_threats.add_theme_color_override("font_color", accent as Color)
 
 
 # Type ordering for the squad grid; matches the badge color buckets so each row

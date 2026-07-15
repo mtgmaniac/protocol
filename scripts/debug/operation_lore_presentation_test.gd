@@ -41,6 +41,7 @@ func _test_runtime_metadata() -> void:
 		_expect(str(copy.get("name", "")) != "", "%s has an accepted name" % operation_id)
 		_expect(str(copy.get("origin", "")) != "", "%s has an unlock origin" % operation_id)
 		_expect(str(copy.get("site", "")) != "" and str(copy.get("failure", "")) != "" and str(copy.get("directive", "")) != "", "%s has a complete deployment slate" % operation_id)
+		_expect(str(copy.get("threats", "")) != "", "%s has a compact encounter threat summary" % operation_id)
 	for boss_name in BOSS_NAMES:
 		var enemy: Resource = data_manager.call("get_enemy_by_display_name", boss_name) as Resource
 		var runtime_rule: String = CombatManager.get_boss_standing_rule(boss_name)

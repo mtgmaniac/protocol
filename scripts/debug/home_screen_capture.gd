@@ -55,6 +55,8 @@ func _parse_args() -> Dictionary:
 		elif arg.begins_with("--capture-select-units="):
 			# Comma-separated unit ids; simulates the user having tapped them.
 			config["units"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-deselect-unit="):
+			config["deselect_unit"] = arg.get_slice("=", 1).strip_edges()
 		elif arg.begins_with("--capture-scroll-thumbs-end"):
 			config["scroll_thumbs_end"] = true
 		elif arg.begins_with("--capture-native"):
@@ -103,6 +105,11 @@ func _wait_for_scene(config: Dictionary) -> void:
 	var unit_ids: Variant = config.get("units", null)
 	if unit_ids != null:
 		_force_select_units(unit_ids)
+	var deselect_unit: String = str(config.get("deselect_unit", ""))
+	if deselect_unit != "" and current_scene != null and current_scene.has_method("_on_tile_tapped"):
+		current_scene.call("_on_tile_tapped", deselect_unit)
+		await process_frame
+		await process_frame
 	if bool(config.get("scroll_thumbs_end", false)):
 		_scroll_thumbs_to_end()
 	var click_thumb: Variant = config.get("click_thumb", null)
