@@ -10,8 +10,9 @@ extends RefCounted
 const CARD_PADDING := 18
 const CARD_SEP := 8
 const CARD_BORDER := 5
+# Icon box — art renders at an INTEGER multiple of native inside it (128
+# native -> 1x; integer icon law, Polish Build B).
 const ICON_AREA_SIZE := 190.0
-const ICON_TEXTURE_SIZE := 170.0
 const NAME_FONT := 44
 const LABEL_FONT := 30
 const TYPE_CHIP_FONT := 28
@@ -123,21 +124,14 @@ static func _type_label(item: ItemData) -> String:
 
 
 # Bare, LARGE icon — no outline, no shape frame (Kev 2026-07-10: the icon is
-# the star; type is the boxed word below).
-static func _icon_area(item: ItemData, _accent: Color) -> Control:
+# the star; type is the boxed word below). Integer-scaled (icon law, Build B).
+static func _icon_area(item: ItemData, accent: Color) -> Control:
 	var center := CenterContainer.new()
 	center.custom_minimum_size = Vector2(0, ICON_AREA_SIZE)
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if item.icon != null:
-		var tex := TextureRect.new()
-		tex.custom_minimum_size = Vector2(ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE)
-		tex.texture = item.icon
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		center.add_child(tex)
+		center.add_child(PixelUI.make_integer_icon(item.icon, ICON_AREA_SIZE - 8.0, accent))
 	return center
 
 

@@ -1,35 +1,39 @@
 # Phase 6 reward / item picker. Rolls three reward choices and lets the player SINGLE-
 # select one, then commit with a single confirm button at the bottom of the screen.
 #
-# Direction-05 "Dithered Terminal" card (matches the battle screen, the locked source of
-# truth): perfect-square plate, hard blocky corners, flat 1-tone border whose color = the
-# item's RARITY (PixelUI.rarity_color). Anatomy top→bottom (Batch 3, unit-card pattern):
-# item NAME in its own filled strip at the top (like a battle card's name band), the bare
-# icon, the "RARITY TYPE" line styled as a header, then effect pips on the LEFT with the
-# description on the RIGHT. Selection lights up corner brackets on the chosen card only;
-# the confirm button clones the squad screen's DEPLOY button (idle-gray + disabled until
-# a card is picked).
+# Polish Build B (Kev ruling, supersedes the old perfect-square card): ORDINARY
+# rewards are WIDE HORIZONTAL ROWS on the Reward component — large item art on
+# the LEFT (integer-scaled, PixelUI.make_integer_icon), name + rarity/type +
+# effect info on the RIGHT with room to breathe (fewer forced line breaks). The
+# full row is the tap target; tapping SELECTS (Selected component + brackets),
+# the bottom CONFIRM commits. RELIC offers stay ceremonial: two large
+# Major-event cards (gold), deliberately a tier above ordinary rows.
 #
-# All colors/borders come from PixelUI tokens; layout sizes are named consts (this
-# codebase's centralization convention — see home_screen.gd). No hardcoded scene values.
+# All colors/borders come from PixelUI components/tokens; layout sizes are named
+# consts (this codebase's centralization convention). No hardcoded scene values.
 extends Control
 
 const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
 
 
-# Card geometry (logical px). The card is a PERFECT SQUARE (width == height) with content
-# vertically centered inside it.
+# Ordinary reward ROW geometry (logical px). Art left, info right; the whole
+# row is the tap target. ROW_MIN_HEIGHT comfortably clears the ruled 96px
+# floor (the 128 art box + padding sets the real height).
+const ROW_MIN_HEIGHT := 176.0
+const ROW_ICON_BOX := 128.0    # item art renders 128 native at 1x (integer law)
+const ROW_PADDING := 16
+const ROW_HGAP := 26
+const ROW_NAME_FONT := 48
+const ROW_META_FONT := 32      # "UNCOMMON GEAR" — metadata tier, ALL CAPS
+
+# Relic ceremonial card geometry (Major-event tier — deliberately larger).
 const CARD_WIDTH_FRACTION := 0.86
 const CARD_MIN_WIDTH := 360.0
 const CARD_MAX_WIDTH := 460.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
 const CARD_PADDING := 18
 const CARD_SEP := 9
-const CARD_BORDER := 5   # hard border, thick enough to survive the canvas_items downscale
-
-# Bare large icon (Kev 2026-07-10: silhouette frames cut, icon is the star).
-const ICON_AREA_SIZE := 200.0
-const ICON_TEXTURE_SIZE := 180.0
+const RELIC_ICON_BOX := 256.0  # 128 native at 2x; the low-res gravityWell sits at exactly 4x on its emblem plate
 
 # Corner-bracket selection indicator (L per corner = horizontal arm + vertical arm).
 const BRACKET_LEN := 46.0
@@ -108,6 +112,9 @@ func _ready() -> void:
 	var content: MarginContainer = $Content
 	content.offset_top += float(PixelUI.safe_top)
 	content.offset_bottom -= float(PixelUI.safe_bottom)
+	# Rows span the full width, so they consume the side insets too (Build B).
+	content.offset_left += float(PixelUI.safe_left)
+	content.offset_right -= float(PixelUI.safe_right)
 	_apply_visual_theme()
 	resized.connect(_update_reward_layout)
 	# Header bar lives in the PersistentHeader autoload; bind this screen's handlers.
@@ -203,10 +210,9 @@ func _build_help_overlay() -> void:
 	var title := _make_label("REWARD HELP", 42, PixelUI.TEXT_PRIMARY, 3)
 	content.add_child(title)
 	for line in [
-		"Tap a card to select it; tap another to switch.",
-		"The chosen card lights up its corner brackets.",
-		"Border color = rarity; the icon shape = type.",
-		"Triangle = consumable, circle = gear, hexagon = relic.",
+		"Tap a reward to select it; tap another to switch.",
+		"The selected reward lights up cyan.",
+		"Border color = rarity; the boxed word = type.",
 		"Press CONFIRM to take the selected reward.",
 	]:
 		content.add_child(_make_label(line, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
@@ -225,7 +231,12 @@ func _build_reward_cards() -> void:
 		var item: ItemData = item_variant as ItemData
 		if item == null:
 			continue
-		reward_cards.add_child(_create_reward_card(item))
+		# Two tiers on purpose (Build B): relic offers are ceremonial Major-event
+		# cards; everything ordinary is a wide Reward-component row.
+		if item.item_type == "relic":
+			reward_cards.add_child(_create_relic_card(item))
+		else:
+			reward_cards.add_child(_create_reward_row(item))
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): an empty
 	# offer must never strand the run on a dead picker.
 	if not ChoiceScreenGuardScript.ensure_options("reward", reward_cards.get_child_count(), _auto_resolve_empty_offer):
@@ -256,10 +267,17 @@ func _update_reward_layout() -> void:
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	for child in reward_cards.get_children():
 		var panel: PanelContainer = child as PanelContainer
-		if panel != null:
-			# Perfect square: width == height.
-			panel.custom_minimum_size = Vector2(card_width, card_width)
+		if panel == null:
+			continue
+		if str(panel.get_meta("reward_kind", "row")) == "relic":
+			# Ceremonial tier: large centered card, natural content height.
+			panel.custom_minimum_size = Vector2(card_width, 0)
 			panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		else:
+			# Ordinary tier: full-width row; the whole width is the tap target.
+			panel.custom_minimum_size = Vector2(0, ROW_MIN_HEIGHT)
+			panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
@@ -271,89 +289,162 @@ func _get_card_width() -> float:
 	return clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH)
 
 
-func _create_reward_card(item: ItemData) -> PanelContainer:
-	var card_width: float = _get_card_width()
+# Ordinary reward ROW (Build B): art LEFT at 128 integer scale, name + meta +
+# effect info RIGHT. Full width = the tap target; tap selects, CONFIRM commits.
+func _create_reward_row(item: ItemData) -> PanelContainer:
 	var accent: Color = _get_item_accent(item)
 
 	var panel := PanelContainer.new()
-	panel.name = "RewardCard"
+	panel.name = "RewardRow"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.custom_minimum_size = Vector2(card_width, card_width)
-	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.custom_minimum_size = Vector2(0, ROW_MIN_HEIGHT)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.clip_contents = true
 	panel.set_meta("item_id", item.id)
+	panel.set_meta("reward_kind", "row")
 	_style_card_panel(panel, accent, false)
 	panel.gui_input.connect(_on_card_input.bind(item.id))
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", CARD_PADDING)
-	margin.add_theme_constant_override("margin_top", CARD_PADDING)
-	margin.add_theme_constant_override("margin_right", CARD_PADDING)
-	margin.add_theme_constant_override("margin_bottom", CARD_PADDING)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side_key in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		margin.add_theme_constant_override(side_key, ROW_PADDING)
+	panel.add_child(margin)
+
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", ROW_HGAP)
+	margin.add_child(hbox)
+
+	# LEFT: item art at integer scale (the icon is the identity carrier).
+	var icon_holder: Control = PixelUI.make_integer_icon(item.icon, ROW_ICON_BOX, accent)
+	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if item.icon == null:
+		var glyph := _make_label(_get_item_icon_char(item.icon_key), 64, accent, 2)
+		glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon_holder.add_child(glyph)
+	hbox.add_child(icon_holder)
+
+	# RIGHT: name / metadata / effect line, left-aligned with reading room.
+	var info := VBoxContainer.new()
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	info.add_theme_constant_override("separation", 6)
+	hbox.add_child(info)
+
+	var name_label := _make_label(item.display_name, ROW_NAME_FONT, accent, 2)
+	info.add_child(name_label)
+
+	var meta_text: String = _format_item_type_label(item)
+	if item.item_type != "relic":
+		meta_text = "%s %s" % [_rarity_name(item).to_upper(), meta_text]
+	info.add_child(_make_label(meta_text, ROW_META_FONT, PixelUI.TEXT_MUTED, 1))
+
+	var effect_row := HBoxContainer.new()
+	effect_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	effect_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	effect_row.add_theme_constant_override("separation", 18)
+	var pip_col: Control = _make_pip_col(item)
+	if pip_col != null:
+		effect_row.add_child(pip_col)
+	effect_row.add_child(_create_description_label(item.description))
+	info.add_child(effect_row)
+
+	_add_selection_brackets(panel, item, accent, "row")
+	return panel
+
+
+# Relic ceremonial card (Build B): Major-event tier — gold chrome, large art,
+# deliberately a rank above ordinary rows. Same select-then-CONFIRM model.
+func _create_relic_card(item: ItemData) -> PanelContainer:
+	var accent: Color = _get_item_accent(item)
+
+	var panel := PanelContainer.new()
+	panel.name = "RelicCard"
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.set_meta("item_id", item.id)
+	panel.set_meta("reward_kind", "relic")
+	_style_relic_panel(panel, false)
+	panel.gui_input.connect(_on_card_input.bind(item.id))
+
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side_key in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		margin.add_theme_constant_override(side_key, CARD_PADDING)
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# Unit-card pattern (Batch 3): name strip pinned at the top, content below.
-	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-	vbox.add_theme_constant_override("separation", CARD_SEP)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", CARD_SEP)
 	margin.add_child(vbox)
 
-	# Card anatomy (Batch 3, unit-card pattern): the item NAME sits in its own
-	# filled strip at the top (the way a battle card's name band does), then the
-	# icon, then the rarity+type line styled as a header, then pips on the LEFT
-	# with the description on the RIGHT.
+	# Name in a filled header strip; gold is the ceremonial voice here.
 	var name_strip := PanelContainer.new()
 	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var strip_style: StyleBoxFlat = PixelUI.component_header_style(PixelUI.COMPONENT_REWARD)
+	var strip_style: StyleBoxFlat = PixelUI.component_header_style(PixelUI.COMPONENT_MAJOR)
 	strip_style.set_content_margin(SIDE_TOP, 8.0)
 	strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
 	name_strip.add_theme_stylebox_override("panel", strip_style)
-	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, accent, 3))
+	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
 	vbox.add_child(name_strip)
 
-	vbox.add_child(_create_icon_area(item, accent))
-	var type_header: String = _format_item_type_label(item)
-	if item.item_type != "relic":
-		type_header = "%s %s" % [_rarity_name(item).to_upper(), type_header]
-	vbox.add_child(_make_centered_label(type_header, TYPE_HEADER_FONT, accent, 2))
+	# Large relic art at integer scale (128 native -> 2x; the low-res
+	# gravityWell sits at exactly 4x on its Reward-chrome emblem plate).
+	var icon_holder: Control = PixelUI.make_integer_icon(item.icon, RELIC_ICON_BOX, accent)
+	icon_holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vbox.add_child(icon_holder)
 
-	var body_row := HBoxContainer.new()
-	body_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body_row.add_theme_constant_override("separation", 18)
-	var pip_col := VBoxContainer.new()
-	pip_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pip_col.alignment = BoxContainer.ALIGNMENT_BEGIN
-	pip_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	pip_col.add_theme_constant_override("separation", 8)
+	vbox.add_child(_make_centered_label("RELIC", TYPE_HEADER_FONT, PixelUI.GOLD_ACCENT, 2))
+
+	var pip_row := HBoxContainer.new()
+	pip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	pip_row.add_theme_constant_override("separation", 12)
+	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
+	for part_variant in parts:
+		pip_row.add_child(EffectPip.build_group(part_variant, PIP_PROFILE))
+	if not parts.is_empty():
+		vbox.add_child(pip_row)
+
+	vbox.add_child(_create_description_label(item.description))
+
+	_add_selection_brackets(panel, item, accent, "relic")
+	return panel
+
+
+# Effect-pip column for a row; null when the item has no pip-visible effects.
+func _make_pip_col(item: ItemData) -> Control:
 	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
 	if parts.is_empty():
-		pip_col.add_child(_make_label("-", BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+		return null
+	var pip_col := VBoxContainer.new()
+	pip_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	pip_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pip_col.add_theme_constant_override("separation", 8)
 	for part_variant in parts:
-		var part: Dictionary = part_variant
-		var group: Control = EffectPip.build_group(part, PIP_PROFILE)
+		var group: Control = EffectPip.build_group(part_variant, PIP_PROFILE)
 		group.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		pip_col.add_child(group)
-	body_row.add_child(pip_col)
-	body_row.add_child(_create_description_label(item.description))
-	vbox.add_child(body_row)
+	return pip_col
 
-	# Corner-bracket selection indicator. Hosted on a non-container overlay so the
-	# brackets honor their corner anchors (a PanelContainer would stretch them to fill).
+
+# Corner-bracket selection indicator + _cards registration, shared by both tiers.
+# Hosted on a non-container overlay so the brackets honor their corner anchors.
+func _add_selection_brackets(panel: PanelContainer, item: ItemData, accent: Color, kind: String) -> void:
 	var overlay := Control.new()
 	overlay.name = "BracketOverlay"
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(overlay)
 	# Selection brackets are cyan — one selection language with the border.
 	var brackets: Array = _make_corner_brackets(overlay, PixelUI.DT_CYAN)
-
-	_cards[item.id] = {"panel": panel, "brackets": brackets, "accent": accent}
-	return panel
+	_cards[item.id] = {"panel": panel, "brackets": brackets, "accent": accent, "kind": kind}
 
 
 func _style_card_panel(panel: PanelContainer, accent: Color, selected: bool) -> void:
@@ -369,41 +460,29 @@ func _style_card_panel(panel: PanelContainer, accent: Color, selected: bool) -> 
 	panel.add_theme_stylebox_override("panel", style)
 
 
-# Bare LARGE icon — no outline, no shape silhouette (Kev 2026-07-10: the icon
-# is the star; the boxed type word below carries type).
-func _create_icon_area(item: ItemData, accent: Color) -> Control:
-	var center := CenterContainer.new()
-	center.custom_minimum_size = Vector2(0, ICON_AREA_SIZE)
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if item.icon != null:
-		var texture_rect := TextureRect.new()
-		texture_rect.custom_minimum_size = Vector2(ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE)
-		texture_rect.texture = item.icon
-		texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		center.add_child(texture_rect)
+func _style_relic_panel(panel: PanelContainer, selected: bool) -> void:
+	# Components: Major-event (ceremonial gold) at rest, Selected on pick —
+	# the selection language stays cyan even on the ceremonial tier.
+	var style: StyleBoxFlat
+	if selected:
+		style = PixelUI.component_style(PixelUI.COMPONENT_SELECTED)
+		style.bg_color = PixelUI.DT_PANEL_BG.lightened(0.05)
 	else:
-		var icon_label := _make_label(_get_item_icon_char(item.icon_key), 64, accent, 2)
-		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		center.add_child(icon_label)
-	return center
+		style = PixelUI.component_style(PixelUI.COMPONENT_MAJOR)
+	panel.add_theme_stylebox_override("panel", style)
 
 
 func _create_description_label(text: String) -> Label:
-	# Full sentence, left-aligned, wraps freely (no max_lines clip). The square is sized
-	# to budget a 2-line worst case.
+	# Full sentence, left-aligned, wraps freely — the wide row gives it reading
+	# room (fewer forced line breaks is an explicit Build B goal). Body tier.
 	var label := Label.new()
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	PixelUI.style_label(label, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_body_label(label, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED)
 	return label
 
 
@@ -508,7 +587,10 @@ func _refresh_selection() -> void:
 		var item_id := str(item_id_variant)
 		var entry: Dictionary = _cards[item_id]
 		var is_selected: bool = item_id == _selected_item_id
-		_style_card_panel(entry["panel"], entry["accent"], is_selected)
+		if str(entry.get("kind", "row")) == "relic":
+			_style_relic_panel(entry["panel"], is_selected)
+		else:
+			_style_card_panel(entry["panel"], entry["accent"], is_selected)
 		for rect_variant in entry["brackets"]:
 			(rect_variant as ColorRect).visible = is_selected
 	_refresh_confirm()

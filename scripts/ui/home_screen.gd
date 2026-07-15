@@ -40,6 +40,8 @@ const COUNTER_FONT := 64
 const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
                                    # (STELLAR MENAGERIE) wrap to two lines instead of clipping
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
+const PROGRESS_FONT := 44          # one metadata-tier clearance line in the carousel card (Build B)
+const LORE_FONT := 48              # one unframed flavor sentence under the carousel (Build B slot; copy lands in Build C)
 const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
 const DETAIL_NAME_FONT := 76
 # Kit blurb — the body-copy tier, expressed through the ONE body token (this
@@ -120,6 +122,8 @@ var _enc_portrait_placeholder: Label
 var _enc_lock_overlay: Control
 var _enc_name_label: Label
 var _enc_level_label: Label
+var _enc_progress_label: Label
+var _op_lore_label: Label
 var _locked_strip_label: Label
 var _threat_pips: Array[ColorRect] = []
 var _dot_row: HBoxContainer
@@ -301,6 +305,12 @@ func _build_encounter_section() -> Control:
 	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_col.add_child(_enc_name_label)
 	text_col.add_child(_build_threat_row())
+	# Progress/clearance — ONE metadata-tier line (caps law) inside the existing
+	# carousel card; not a module (Build B).
+	_enc_progress_label = _make_pixel_label("", PROGRESS_FONT, PixelUI.TEXT_MUTED)
+	_enc_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_enc_progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_col.add_child(_enc_progress_label)
 
 	# Boss thumb — the enemy is framed through the ONE portrait window
 	# (ENC_THUMB_W/H carry the PixelUI.HERO_PORTRAIT_REGION aspect) and COVER-fit by
@@ -356,6 +366,17 @@ func _build_encounter_section() -> Control:
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_dot_row.add_child(dot)
 		_dot_nodes.append(dot)
+
+	# Operation lore — one sentence of UNFRAMED flavor text directly under the
+	# carousel (Build B wires the slot; Build C supplies the copy via the
+	# operation data `lore` field). Empty lore hides the label entirely so no
+	# awkward space is reserved.
+	_op_lore_label = _make_pixel_label("", LORE_FONT, PixelUI.TEXT_MUTED)
+	_op_lore_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_op_lore_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_op_lore_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_op_lore_label.visible = false
+	section.add_child(_op_lore_label)
 
 	return section
 
@@ -432,6 +453,14 @@ func _refresh_encounter() -> void:
 	for i in _threat_pips.size():
 		_threat_pips[i].color = THREAT_FILL if i < level else THREAT_EMPTY
 
+	# Clearance line (one metadata-tier line, Build B) + the lore slot (empty
+	# until Build C authors operation lore).
+	if _enc_progress_label != null:
+		_enc_progress_label.text = _operation_progress_text(_selected_operation_id)
+	if _op_lore_label != null:
+		_op_lore_label.text = op.lore.strip_edges()
+		_op_lore_label.visible = _op_lore_label.text != ""
+
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
@@ -444,7 +473,26 @@ func _refresh_encounter() -> void:
 		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
 		_enc_name_label.text = "[ LOCKED ]"
+		# Locked operations reveal nothing (no clearance, no lore).
+		if _enc_progress_label != null:
+			_enc_progress_label.text = ""
+		if _op_lore_label != null:
+			_op_lore_label.visible = false
 	_refresh_deploy()
+
+
+# One metadata-tier clearance line for the carousel card (Build B): cleared /
+# furthest battle reached / never entered. Reads the persistent profile stats.
+func _operation_progress_text(op_id: String) -> String:
+	var stats: Dictionary = SaveManager.get_stats()
+	var wins: Dictionary = stats.get("runs_won_by_op", {}) as Dictionary
+	if int(wins.get(op_id, 0)) > 0:
+		return "CLEARED"
+	var best_by_op: Dictionary = stats.get("best_clear_by_op", {}) as Dictionary
+	var best: int = int(best_by_op.get(op_id, 0))
+	if best > 0:
+		return "BEST: BATTLE %d" % best
+	return "NO CLEARANCE"
 
 
 # Long-press on the banner → encounter InspectPopup (name, threat, and the full

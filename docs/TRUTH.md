@@ -344,6 +344,37 @@ pips, HP tracks, sliders — they inherit a card's accent). The dead legacy
 protocol-footer LED display (texture + lights, built then always hidden) was
 DELETED from battle_scene.
 
+**Reward presentation (Polish Build B, Kev ruling — SUPERSEDES the old
+perfect-square reward card):** ordinary rewards are WIDE HORIZONTAL ROWS on
+the Reward component — large item art LEFT (128 design px box), name +
+rarity/type metadata + effect pips + description RIGHT with reading room. The
+full row width is the tap target (min height comfortably over the 96px floor);
+tapping SELECTS (Selected component + cyan brackets), the bottom CONFIRM
+commits, CONFIRM is progress-locked until a selection exists. RELIC offers
+stay ceremonial: two large Major-event (gold) cards — deliberately a tier
+above ordinary rows, split builders on purpose
+(`reward_screen._create_reward_row` / `_create_relic_card`). **Integer icon
+law:** item art renders ONLY at whole-integer multiples of native
+(`PixelUI.make_integer_icon`; 128 native → 1x rows / 2x relic cards); low-res
+art (≤48 native — only `gravityWell` at 32 is live) renders at EXACTLY 4x on
+a framed Reward-chrome emblem plate. The 5 boss-relic icons were normalized
+from oddball AI-gen sizes (338–481) to 128 nearest-neighbor (2026-07-14). The
+other 24 32×32 files in `assets/icons/items/` are UNREFERENCED legacy content
+(art-regeneration backlog). Gate: `scripts/debug/reward_model_test.gd` (in
+`verify_gate.py`) — selection model, row geometry, integer scale, containment
+at inset budgets (0,0) and (132,56).
+
+**Squad/operation selection (Polish Build B):** the composition is FROZEN —
+operation carousel, squad row, hero blurb panel, DEPLOY; enrichment adds ZERO
+new framed panels (gate: `scripts/debug/panel_count_test.gd`, pinned at 11
+framed panels; an empty-feeling screen is fixed with spacing, never a frame).
+Added within existing modules: one metadata clearance line in the carousel
+card ("CLEARED" / "BEST: BATTLE N" / "NO CLEARANCE"; blank while locked) and
+the operation-lore SLOT under the carousel (unframed one-sentence flavor from
+the `lore` field in `battle-modes.json` via `OperationData.lore`; empty until
+Build C authors copy, and an empty slot renders nothing). The mechanical
+threat summary moved to Build C (authored operation data).
+
 **Body-copy tier (Polish Build A):** long-form prose reads at
 `PixelUI.FONT_BODY_MIN` (42 design → 64 rendered, one ladder step above
 `FONT_INFO_MIN`) with the game's first line-spacing token

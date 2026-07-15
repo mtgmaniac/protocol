@@ -154,6 +154,12 @@ class: protocol pips laid out by an
 drawn without physical rounding, a container distributing ratio widths across pip rows,
 or a "1px" line whose measured width varies along the bar in a screenshot zoom.
 
+**Integer icon corollary (Polish Build B, 2026-07-14):** pixel-art item icons render
+ONLY at whole-integer multiples of their native size (`PixelUI.make_integer_icon`);
+low-res legacy art (≤48 native) renders at exactly 4x on a Reward-chrome emblem
+plate. **Violation looks like:** a TextureRect stretching 128 art to 180, or a new
+icon surface bypassing the helper (`reward_model_test.gd` walks the tagged rects).
+
 Two corollaries (2026-07-07, after the route-fork border round):
 - **Godot-drawn strokes can't be per-instance snapped** (StyleBoxFlat borders), so the
   stroke width itself must survive every window scale: a border of design width N

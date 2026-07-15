@@ -440,6 +440,7 @@ func _load_operation_from_entry(operation_id: String, mode_entry: Dictionary) ->
 	operation.display_name = str(mode_entry.get("label", ""))
 	operation.callsign = str(mode_entry.get("callsign", ""))
 	operation.blurb = str(mode_entry.get("blurb", ""))
+	operation.lore = str(mode_entry.get("lore", ""))  # Build B slot; Build C authors the copy
 	operation.victory_title = str(mode_entry.get("victoryTitle", ""))
 	operation.victory_subtitle = str(mode_entry.get("victorySub", ""))
 	operation.track_hp_scale = float(mode_entry.get("trackHpScale", 1.0))

@@ -1020,6 +1020,59 @@ static func selection_badge_style() -> StyleBoxFlat:
 	return make_hard_style(DT_CYAN, DT_CYAN, 0)
 
 
+# ── Integer icon law (Polish Build B) ────────────────────────────────────────
+# Pixel-art item icons render ONLY at whole-integer multiples of their native
+# size — fractional scaling smears pixel art (pixel-snap law, INVARIANTS #14).
+# Standard item art is 128 native. Low-res legacy art (<= ICON_LOW_RES_MAX
+# native, currently only gravityWell at 32) renders at EXACTLY
+# ICON_LOW_RES_SCALE (4x -> 128 effective) centered on a framed emblem plate
+# (Reward-component chrome) so the coarser pixel density reads deliberate.
+# Regression: scripts/debug/reward_model_test.gd walks every `item_icon`-tagged
+# TextureRect and asserts the integer law.
+const ICON_LOW_RES_MAX := 48
+const ICON_LOW_RES_SCALE := 4
+
+
+## An item icon in a `box_px`-square holder, scaled to the LARGEST integer
+## multiple of its native size that fits (min 1x). Low-res art gets the exact
+## 4x + emblem-plate treatment. The TextureRect carries meta `item_icon` for
+## the integer-scale gate.
+static func make_integer_icon(tex: Texture2D, box_px: float, accent: Color = Color.TRANSPARENT) -> Control:
+	var holder := CenterContainer.new()
+	holder.custom_minimum_size = Vector2(box_px, box_px)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if tex == null:
+		return holder
+	var native_w: float = maxf(float(tex.get_width()), 1.0)
+	var native_h: float = maxf(float(tex.get_height()), 1.0)
+	var low_res: bool = native_w <= float(ICON_LOW_RES_MAX)
+	var k: int = ICON_LOW_RES_SCALE if low_res else maxi(int(floor(box_px / maxf(native_w, native_h))), 1)
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.custom_minimum_size = Vector2(native_w, native_h) * float(k)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.set_meta("item_icon", true)
+	if low_res:
+		# Emblem plate: Reward chrome behind the 4x glyph — the frame declares
+		# the density choice instead of letting it read as a mistake.
+		var plate := PanelContainer.new()
+		plate.name = "EmblemPlate"
+		plate.custom_minimum_size = Vector2(box_px, box_px)
+		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		plate.add_theme_stylebox_override("panel", component_style(COMPONENT_REWARD, accent))
+		var inner := CenterContainer.new()
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.add_child(rect)
+		plate.add_child(inner)
+		holder.add_child(plate)
+	else:
+		holder.add_child(rect)
+	return holder
+
+
 ## Shared modal scrim: a full-screen 60%-black ColorRect that dims (and, when
 ## block_input is true, blocks) the layer below a popup. Add it as the FIRST child of
 ## the popup's full-rect root/catcher so the popup panel renders on top of it. Every
