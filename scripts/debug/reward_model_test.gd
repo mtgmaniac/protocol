@@ -17,12 +17,18 @@
 # Containment:
 #   T9  at inset budgets (0,0) and (132,56) the confirm button and every row
 #       land inside the safe screen box.
+#   T10 ordinary rows have equal fixed geometry, two-line description slots,
+#       and a centered choice group below the heading.
+#   T11 relic cards use a shared near-full safe width, remain centered, and
+#       preserve unclipped description space for the longest supported copy.
 extends SceneTree
 
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const SQUAD := ["shield", "avalanche", "pulse"]
 const ORDINARY_ITEMS := ["patch_kit", "scrap_plate", "momentum_core"]
 const RELIC_ITEMS := ["gravityWell", "staticField"]
+const LONG_ORDINARY_ITEMS := ["deep_zero_pin", "buckler_array", "triage_broadcast"]
+const LONG_RELIC_ITEMS := ["martyrdomProtocol", "openingGambit"]
 
 var _failed := 0
 
@@ -34,6 +40,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await _test_ordinary(0, 0)
 	await _test_relics()
+	await _test_long_copy_layout()
 	await _test_ordinary(132, 56)  # Pixel-8 budget: cutout top + gesture bottom
 	PixelUI.safe_top = 0
 	PixelUI.safe_bottom = 0
@@ -145,6 +152,7 @@ func _test_ordinary(safe_top: int, safe_bottom: int) -> void:
 		var row: Control = row_variant
 		_check(row.size.y >= 96.0, "T1 row height %.0f >= 96" % row.size.y)
 		_check(row.size.x > row.size.y, "T1 row is wide (w %.0f > h %.0f)" % [row.size.x, row.size.y])
+	_check_fixed_row_layout(screen, rows, "T10")
 
 	# T2 confirm disabled before selection
 	var confirm: Button = screen.get("_confirm_button") as Button
@@ -192,4 +200,74 @@ func _test_relics() -> void:
 	var screen: Node = current_scene
 	var cards: Array = _reward_panels(screen, "relic")
 	_check(cards.size() == 2, "T7 two RelicCard nodes (found %d)" % cards.size())
+	_check_relic_layout(screen, cards, "T11")
 	_check_integer_icons(screen.get("reward_cards"), "T8")
+
+
+func _test_long_copy_layout() -> void:
+	print("-- long supported reward copy")
+	await _boot_reward(LONG_ORDINARY_ITEMS, 0, 0)
+	var screen: Node = current_scene
+	var rows: Array = _reward_panels(screen, "row")
+	_check(rows.size() == 3, "T10 long-copy rows render")
+	_check_fixed_row_layout(screen, rows, "T10 long-copy")
+
+	await _boot_reward(LONG_RELIC_ITEMS, 0, 0)
+	screen = current_scene
+	var cards: Array = _reward_panels(screen, "relic")
+	_check(cards.size() == 2, "T11 long-copy relic cards render")
+	_check_relic_layout(screen, cards, "T11 long-copy")
+	for card_variant in cards:
+		var card: Control = card_variant
+		var description: Label = card.find_child("RelicDescription", true, false) as Label
+		_check(description != null and not description.clip_text and description.size.y >= 100.0,
+			"T11 long relic description reserves unclipped space")
+
+
+func _check_fixed_row_layout(screen: Node, rows: Array, label: String) -> void:
+	if rows.is_empty():
+		return
+	var first: Control = rows[0] as Control
+	for row_variant in rows:
+		var row: Control = row_variant
+		_check(absf(row.size.y - first.size.y) < 0.1, "%s equal row heights" % label)
+		var description: Label = row.find_child("RewardDescriptionSlot", true, false) as Label
+		_check(description != null and description.max_lines_visible == 2 and description.size.y >= 100.0,
+			"%s fixed two-line description slot" % label)
+	_check_group_centered(screen, rows, label)
+
+
+func _check_relic_layout(screen: Node, cards: Array, label: String) -> void:
+	if cards.is_empty():
+		return
+	var scroll: Control = screen.get("reward_scroll") as Control
+	var first: Control = cards[0] as Control
+	for card_variant in cards:
+		var card: Control = card_variant
+		_check(absf(card.size.x - first.size.x) < 0.1, "%s equal relic widths" % label)
+		_check(absf((card.global_position.x + card.size.x * 0.5) - (scroll.global_position.x + scroll.size.x * 0.5)) < 1.0,
+			"%s relic horizontally centered" % label)
+	# The runtime caps an ultra-wide desktop viewport at 1000px, while phone
+	# layouts use at least 90% of the safe content width.
+	_check(first.size.x >= minf(scroll.size.x * 0.9, 1000.0), "%s relic uses near-full safe width" % label)
+	_check_group_centered(screen, cards, label)
+
+
+func _check_group_centered(screen: Node, panels: Array, label: String) -> void:
+	if panels.is_empty():
+		return
+	var title: Control = screen.get("reward_title_label") as Control
+	var first: Control = panels[0] as Control
+	var last: Control = panels[panels.size() - 1] as Control
+	var group_top: float = first.global_position.y
+	var group_bottom: float = last.global_position.y + last.size.y
+	var top_spacer: Control = screen.find_child("RewardGroupTopSpacer", true, false) as Control
+	var bottom_spacer: Control = screen.find_child("RewardGroupBottomSpacer", true, false) as Control
+	if top_spacer != null and bottom_spacer != null and top_spacer.size.y > 0.0 and bottom_spacer.size.y > 0.0:
+		_check(absf(top_spacer.size.y - bottom_spacer.size.y) < 1.5,
+			"%s choice group centered below heading" % label)
+	else:
+		# On constrained layouts the spacers collapse and the ScrollContainer
+		# keeps the group reachable rather than forcing clipped cards.
+		_check(group_top >= title.global_position.y + title.size.y - 0.5,
+			"%s constrained choice group starts below heading" % label)

@@ -17,23 +17,27 @@ const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.g
 
 
 # Ordinary reward ROW geometry (logical px). Art left, info right; the whole
-# row is the tap target. ROW_MIN_HEIGHT comfortably clears the ruled 96px
-# floor (the 128 art box + padding sets the real height).
-const ROW_MIN_HEIGHT := 176.0
-const ROW_ICON_BOX := 128.0    # item art renders 128 native at 1x (integer law)
-const ROW_PADDING := 16
-const ROW_HGAP := 26
+# row is the tap target. ROW_MIN_HEIGHT reserves 2x standard art, generous
+# padding, and stable text slots without relying on description length.
+const ROW_MIN_HEIGHT := 304.0
+const ROW_ICON_BOX := 256.0    # standard 128px item art renders at 2x
+const ROW_PADDING := 24
+const ROW_HGAP := 28
 const ROW_NAME_FONT := 48
+const ROW_NAME_SLOT_HEIGHT := 62.0
+const ROW_META_SLOT_HEIGHT := 42.0
+const ROW_EFFECT_SLOT_HEIGHT := 112.0
 const ROW_META_FONT := 32      # "UNCOMMON GEAR" — metadata tier, ALL CAPS
 
 # Relic ceremonial card geometry (Major-event tier — deliberately larger).
-const CARD_WIDTH_FRACTION := 0.86
-const CARD_MIN_WIDTH := 360.0
-const CARD_MAX_WIDTH := 460.0
+const CARD_WIDTH_FRACTION := 0.94
+const CARD_MIN_WIDTH := 480.0
+const CARD_MAX_WIDTH := 1000.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
 const CARD_PADDING := 18
 const CARD_SEP := 9
-const RELIC_ICON_BOX := 256.0  # 128 native at 2x; the low-res gravityWell sits at exactly 4x on its emblem plate
+const RELIC_ICON_BOX := 256.0  # standard 128px relic art renders at 2x
+const RELIC_DESC_MIN_HEIGHT := 112.0
 
 # Corner-bracket selection indicator (L per corner = horizontal arm + vertical arm).
 const BRACKET_LEN := 46.0
@@ -87,7 +91,9 @@ const CONFIRM_IDLE_TEXT := Color(0.34, 0.38, 0.42, 1.0)
 @onready var reward_content: VBoxContainer = %RewardContent
 @onready var reward_top_spacer: Control = %RewardTopSpacer
 @onready var reward_title_label: Label = %RewardTitle
+@onready var reward_group_top_spacer: Control = %RewardGroupTopSpacer
 @onready var reward_cards: VBoxContainer = %RewardCards
+@onready var reward_group_bottom_spacer: Control = %RewardGroupBottomSpacer
 @onready var footer_label: Label = %FooterLabel
 
 var _help_overlay: Control = null
@@ -254,7 +260,11 @@ func _update_reward_layout() -> void:
 	reward_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	reward_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	reward_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	reward_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# The inner column fills the scroll viewport. Paired flexible spacers place
+	# the choice group in the usable well below the heading; when content exceeds
+	# that well they collapse and the existing scroll path takes over.
+	reward_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	reward_content.alignment = BoxContainer.ALIGNMENT_BEGIN
 	reward_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	reward_content.add_theme_constant_override("separation", 18)
@@ -265,6 +275,10 @@ func _update_reward_layout() -> void:
 	reward_list_margin.add_theme_constant_override("margin_bottom", 24)
 	if reward_top_spacer != null:
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
+	for spacer in [reward_group_top_spacer, reward_group_bottom_spacer]:
+		if spacer != null:
+			spacer.custom_minimum_size = Vector2.ZERO
+			spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	for child in reward_cards.get_children():
 		var panel: PanelContainer = child as PanelContainer
 		if panel == null:
@@ -318,6 +332,7 @@ func _create_reward_row(item: ItemData) -> PanelContainer:
 
 	# LEFT: item art at integer scale (the icon is the identity carrier).
 	var icon_holder: Control = PixelUI.make_integer_icon(item.icon, ROW_ICON_BOX, accent)
+	icon_holder.name = "RewardArtwork"
 	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if item.icon == null:
 		var glyph := _make_label(_get_item_icon_char(item.icon_key), 64, accent, 2)
@@ -334,22 +349,29 @@ func _create_reward_row(item: ItemData) -> PanelContainer:
 	info.add_theme_constant_override("separation", 6)
 	hbox.add_child(info)
 
-	var name_label := _make_label(item.display_name, ROW_NAME_FONT, accent, 2)
+	var name_label := _make_fixed_slot_label(item.display_name, ROW_NAME_FONT, accent, ROW_NAME_SLOT_HEIGHT, 2)
+	name_label.name = "RewardNameSlot"
 	info.add_child(name_label)
 
 	var meta_text: String = _format_item_type_label(item)
 	if item.item_type != "relic":
 		meta_text = "%s %s" % [_rarity_name(item).to_upper(), meta_text]
-	info.add_child(_make_label(meta_text, ROW_META_FONT, PixelUI.TEXT_MUTED, 1))
+	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, PixelUI.TEXT_MUTED, ROW_META_SLOT_HEIGHT, 1)
+	meta_label.name = "RewardMetaSlot"
+	info.add_child(meta_label)
 
 	var effect_row := HBoxContainer.new()
 	effect_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	effect_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	effect_row.custom_minimum_size = Vector2(0, ROW_EFFECT_SLOT_HEIGHT)
+	effect_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	effect_row.add_theme_constant_override("separation", 18)
 	var pip_col: Control = _make_pip_col(item)
 	if pip_col != null:
 		effect_row.add_child(pip_col)
-	effect_row.add_child(_create_description_label(item.description))
+	var description := _create_description_label(item.description, ROW_EFFECT_SLOT_HEIGHT, 2)
+	description.name = "RewardDescriptionSlot"
+	effect_row.add_child(description)
 	info.add_child(effect_row)
 
 	_add_selection_brackets(panel, item, accent, "row")
@@ -397,6 +419,7 @@ func _create_relic_card(item: ItemData) -> PanelContainer:
 	# Large relic art at integer scale (128 native -> 2x; the low-res
 	# gravityWell sits at exactly 4x on its Reward-chrome emblem plate).
 	var icon_holder: Control = PixelUI.make_integer_icon(item.icon, RELIC_ICON_BOX, accent)
+	icon_holder.name = "RelicArtwork"
 	icon_holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	vbox.add_child(icon_holder)
 
@@ -412,7 +435,9 @@ func _create_relic_card(item: ItemData) -> PanelContainer:
 	if not parts.is_empty():
 		vbox.add_child(pip_row)
 
-	vbox.add_child(_create_description_label(item.description))
+	var description := _create_description_label(item.description, RELIC_DESC_MIN_HEIGHT)
+	description.name = "RelicDescription"
+	vbox.add_child(description)
 
 	_add_selection_brackets(panel, item, accent, "relic")
 	return panel
@@ -472,7 +497,7 @@ func _style_relic_panel(panel: PanelContainer, selected: bool) -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 
-func _create_description_label(text: String) -> Label:
+func _create_description_label(text: String, min_height: float = 0.0, max_lines: int = 0) -> Label:
 	# Full sentence, left-aligned, wraps freely — the wide row gives it reading
 	# room (fewer forced line breaks is an explicit Build B goal). Body tier.
 	var label := Label.new()
@@ -480,9 +505,26 @@ func _create_description_label(text: String) -> Label:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label.custom_minimum_size = Vector2(0, min_height)
+	if max_lines > 0:
+		label.max_lines_visible = max_lines
+		label.clip_text = true
 	PixelUI.style_body_label(label, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED)
+	return label
+
+
+# Fixed single-line slots keep the row anatomy stable. Content remains centered
+# vertically so short metadata does not cling to the top of its reserved band.
+func _make_fixed_slot_label(text: String, font_size: int, color: Color, slot_height: float, outline: int) -> Label:
+	var label := _make_label(text, font_size, color, outline)
+	label.custom_minimum_size = Vector2(0, slot_height)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.clip_text = true
 	return label
 
 
@@ -934,12 +976,17 @@ func _apply_visual_theme() -> void:
 	reward_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward_cards.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	reward_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	reward_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	reward_content.alignment = BoxContainer.ALIGNMENT_BEGIN
 	reward_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	if reward_top_spacer != null:
 		reward_top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
+	for spacer in [reward_group_top_spacer, reward_group_bottom_spacer]:
+		if spacer != null:
+			spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# Header bar (label + buttons) is owned + styled by the PersistentHeader autoload.
