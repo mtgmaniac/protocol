@@ -414,7 +414,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"cloak":
 			return "Can't be targeted; breaks on dealing damage."
 		"taunt":
-			return "Hostiles can only target this unit."
+			return "The taunted unit can only target this unit."
 		"taunted":
 			return "Can only target the taunter."
 		"rampage":

@@ -230,6 +230,10 @@ func _ability_targets_single_hero(raw: Dictionary) -> bool:
 # honored; a dead/cloaked pick falls through to the personality's stated
 # fallback via the same choke-point.
 func _resolve_enemy_hero_target(enemy_state: Dictionary) -> Dictionary:
+	# Single-target taunt (G-4): only the LURED enemy redirects to its taunter.
+	var lurer: Dictionary = _lurer_for_enemy(enemy_state)
+	if not lurer.is_empty():
+		return lurer
 	var taunter: Dictionary = _get_taunting_hero_state()
 	if not taunter.is_empty():
 		return taunter
@@ -1144,12 +1148,20 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				_apply_roll_down_directives(hero_state, rfe_target, false)
 
 	if bool(raw.get("taunt", false)):
-		for ally_state in _hero_states:
-			if ally_state != hero_state:
-				ally_state["taunting"] = false
+		# Build G ruling G-4: taunt marks ONE enemy — the taunted unit can only
+		# target the taunter until round end (the keyword def always said so;
+		# the old code was an all-enemy stance). Manual pick like any hostile
+		# single-target; _hostile_single_target supplies the deterministic
+		# fallback for sim/auto and honors an active lure on the caster. A
+		# firewall blocks (and is consumed by) the taunt, symmetric with the
+		# enemy-side lure. The hero flag stays for Ironclad + the readout;
+		# multiple heroes may taunt different enemies in one round.
 		hero_state["taunting"] = true
-		_log("%s is taunting - enemies will target them!" % hero_state["unit"].display_name)
-		_emit_event(hero_state, "taunt", 0, "hero")
+		var taunt_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
+		if not taunt_target.is_empty() and not _ward_blocks_hostile(taunt_target):
+			taunt_target["lured_by_id"] = str(hero_state["id"])
+			_log("%s taunts %s - it can only strike back this round!" % [hero_state["unit"].display_name, taunt_target["unit"].display_name])
+			_emit_event(taunt_target, "taunt", 0, "enemy")
 
 	if bool(raw.get("reviveAll", false)):
 		var revive_all_pct: int = _directive_revive_pct(hero_state, ability_entry, _resolve_revive_hp_pct(raw))
@@ -1768,7 +1780,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
 				_freeze_die_state(hero_state, enemy_freeze_all, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
-		var freeze_rider_target: Dictionary = _freeze_pick_hero_lowest_die()
+		var freeze_rider_target: Dictionary = _freeze_pick_hero_lowest_die(enemy_state)
 		if not freeze_rider_target.is_empty() and not _ward_blocks_hostile(freeze_rider_target):
 			_freeze_die_state(freeze_rider_target, enemy_freeze_one, enemy_freeze_flavor)
 
@@ -2172,7 +2184,11 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, flavor: String = "
 # Enemy AI freeze pick: the living hero with the LOWEST revealed die face this
 # round — deterministic (ties break to slot order, no randi). Taunt overrides
 # everything; cloaked heroes can't be picked by hostile single-target effects.
-func _freeze_pick_hero_lowest_die() -> Dictionary:
+func _freeze_pick_hero_lowest_die(enemy_state: Dictionary = {}) -> Dictionary:
+	# Single-target taunt (G-4): a lured caster freezes its taunter's die.
+	var lurer: Dictionary = _lurer_for_enemy(enemy_state)
+	if not lurer.is_empty():
+		return lurer
 	var taunter: Dictionary = _get_taunting_hero_state()
 	if not taunter.is_empty():
 		return taunter
@@ -2543,16 +2559,28 @@ func _find_target_by_id_including_dead(states: Array, target_id: String) -> Dict
 
 
 func _get_taunting_hero_state() -> Dictionary:
-	for hero_state in _hero_states:
-		if not bool(hero_state["dead"]) and bool(hero_state.get("taunting", false)):
-			return hero_state
-	# Anchor Frame gear: taunts while above 50% HP (explicit taunts win).
+	# G-4: the ability-cast taunt is single-target (per-enemy lured_by_id via
+	# _lurer_for_enemy) and no longer feeds this stance aura. The ONE remaining
+	# aura is Anchor Frame gear ("taunts while above 50% HP"), kept as-is
+	# pending its own ruling (recorded in DECISIONS_RESOLVED G-4).
 	for hero_state in _hero_states:
 		if bool(hero_state["dead"]) or not bool(hero_state.get("gear_anchor_taunt", false)):
 			continue
 		if int(hero_state["current_hp"]) * 2 > int(hero_state["max_hp"]):
 			return hero_state
 	return {}
+
+
+# The hero this enemy is lured to (single-target taunt, ruling G-4): {} when
+# unlured or the taunter is gone. Taunt overrides cloak by doctrine — the
+# lookup ignores the cloak flag on purpose.
+func _lurer_for_enemy(enemy_state: Dictionary) -> Dictionary:
+	if enemy_state.is_empty():
+		return {}
+	var lured_by: String = str(enemy_state.get("lured_by_id", ""))
+	if lured_by == "":
+		return {}
+	return _find_target_by_id(_hero_states, lured_by)
 
 
 func _tick_end_of_round_states() -> void:

@@ -2343,6 +2343,11 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return "any"
 	if int(raw.get("freezeEnemyDice", 0)) > 0:
 		return "enemy"
+	# Single-target taunt (G-4): pick the ONE enemy to mark. The shield halves
+	# of Fortify/Challenge/Dig In are self (auto), so this stays the ability's
+	# single manual pick (INVARIANTS #12).
+	if bool(raw.get("taunt", false)):
+		return "enemy"
 	if bool(raw.get("reviveAll", false)):
 		return ""
 	if bool(raw.get("revive", false)):

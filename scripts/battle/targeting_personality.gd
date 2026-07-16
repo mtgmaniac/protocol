@@ -114,7 +114,8 @@ static func resolve_personality(unit: Object) -> int:
 
 
 # THE choke-point. Universal rules live here and nowhere else:
-# - a taunting hero overrides everything (taunt beats cloak);
+# - a LURED enemy can only target its taunter (single-target taunt, G-4;
+#   taunt beats cloak);
 # - cloaked heroes are skipped (personality picks among uncloaked);
 # - a personality whose preferred target is dead or illegal falls through to
 #   its STATED fallback (PACK -> WOUNDED, SPITEFUL -> SYSTEMATIC), never to
@@ -123,11 +124,16 @@ static func resolve_personality(unit: Object) -> int:
 # assignments_so_far: {enemy_id: hero_id} written in slot order this turn —
 # Godot Dictionaries preserve insertion order, which PACK relies on.
 static func personality_pick_target(enemy_state: Dictionary, hero_states: Array, assignments_so_far: Dictionary) -> Dictionary:
-	# Taunt overrides everything.
-	for hero_variant in hero_states:
-		var hero_state: Dictionary = hero_variant
-		if not bool(hero_state.get("dead", false)) and bool(hero_state.get("taunting", false)):
-			return hero_state
+	# Taunt overrides everything — single-target (ruling G-4): only an enemy
+	# carrying lured_by_id redirects, and only to ITS taunter (beats cloak).
+	# The Anchor Frame stance aura stays a resolve-time rule
+	# (combat_manager._get_taunting_hero_state), same as before G-4.
+	var lured_by: String = str(enemy_state.get("lured_by_id", ""))
+	if lured_by != "":
+		for hero_variant in hero_states:
+			var lured_hero: Dictionary = hero_variant
+			if str(lured_hero.get("id", "")) == lured_by and not bool(lured_hero.get("dead", false)):
+				return lured_hero
 	var legal: Array = []
 	for hero_variant in hero_states:
 		var hero_state: Dictionary = hero_variant

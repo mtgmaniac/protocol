@@ -415,6 +415,9 @@ func _run_targeting_audits() -> void:
 		{"name": "revive all requires no manual target", "raw": {"reviveAll": true, "revivePct": 30}, "manual": ""},
 		{"name": "revive with healTgt still requires dead hero", "raw": {"revive": true, "healTgt": true, "revivePct": 70}, "manual": "dead_hero"},
 		{"name": "freeze any requires any", "raw": {"freezeAnyDice": 1}, "manual": "any"},
+		# Single-target taunt (Build G ruling G-4): the cast picks ONE enemy.
+		{"name": "taunt requires enemy", "raw": {"taunt": true}, "manual": "enemy"},
+		{"name": "self shield plus taunt still requires enemy", "raw": {"shield": 7, "taunt": true}, "manual": "enemy"},
 	]
 
 	for case in cases:
@@ -443,6 +446,7 @@ func _run_regression_audits() -> void:
 	_run_roll_modifier_timing_regressions()
 	_run_shield_timing_regression()
 	_run_cloak_regression()
+	_run_taunt_regression()
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
 	_run_new_gear_regressions()
@@ -710,6 +714,84 @@ func _run_shield_timing_regression() -> void:
 			"persistent shield still 5 after two round-end ticks",
 			"shield=%d" % persist_shield
 		)
+
+
+# Build G ruling G-4: hero taunt marks ONE enemy — only the taunted enemy
+# redirects to the taunter (through every enemy targeting path); other enemies
+# keep their own personalities; a firewall blocks (and is consumed by) the
+# taunt; the mark clears at the round-end tick (NK-08).
+func _run_taunt_regression() -> void:
+	# Redirect is per-enemy: two SYSTEMATIC enemies would both hit slot 0 —
+	# the taunted one crosses to the slot-1 taunter, the free one does not.
+	var manager: CombatManager = CombatManager.new()
+	var ally_unit: UnitData = _make_unit("audit_ally", "Audit Ally", "Noop", {})
+	var taunter_unit: UnitData = _make_unit("audit_taunter", "Audit Taunter", "Taunt Protocol", {"taunt": true})
+	manager.setup_battle(
+		[ally_unit, taunter_unit],
+		[_make_enemy("audit_taunted", "Audit Taunted", "Fang", {"dmg": 7}), _make_enemy("audit_free", "Audit Free", "Claw", {"dmg": 5})]
+	)
+	var ally: Dictionary = manager.get_hero_states()[0]
+	var taunter: Dictionary = manager.get_hero_states()[1]
+	var taunted: Dictionary = manager.get_enemy_states()[0]
+	var free_enemy: Dictionary = manager.get_enemy_states()[1]
+	taunter["selected_target_id"] = str(taunted["id"])
+	manager.resolve_round(
+		{str(ally["id"]): AUDIT_ROLL, str(taunter["id"]): AUDIT_ROLL},
+		{str(taunted["id"]): AUDIT_ROLL, str(free_enemy["id"]): AUDIT_ROLL},
+		DiceManager.new()
+	)
+	var single_redirect: bool = (
+		int(taunter["current_hp"]) == 100 - 7
+		and int(ally["current_hp"]) == 100 - 5
+	)
+	if single_redirect:
+		_record_pass("Regression / taunt redirects ONLY the taunted enemy", "taunt")
+	else:
+		_record_failure("Regression / taunt redirects ONLY the taunted enemy", "taunt", "taunter takes 7 (taunted enemy), ally takes 5 (free enemy)", "taunter_hp=%d ally_hp=%d" % [int(taunter["current_hp"]), int(ally["current_hp"])])
+	if str(taunted.get("lured_by_id", "")) == "" and not bool(taunter.get("taunting", false)):
+		_record_pass("Regression / taunt clears at round end (NK-08)", "taunt")
+	else:
+		_record_failure("Regression / taunt clears at round end (NK-08)", "taunt", "lured_by_id empty + taunting false after the tick", "lured=%s taunting=%s" % [str(taunted.get("lured_by_id", "")), str(taunter.get("taunting", false))])
+
+	# A firewalled enemy blocks the taunt (and the block consumes the wall):
+	# no lure lands, the enemy keeps its own pick (slot-0 ally under SYSTEMATIC).
+	var ward_manager: CombatManager = CombatManager.new()
+	ward_manager.setup_battle(
+		[_make_unit("audit_ally", "Audit Ally", "Noop", {}), _make_unit("audit_taunter", "Audit Taunter", "Taunt Protocol", {"taunt": true})],
+		[_make_enemy("audit_warded", "Audit Warded", "Fang", {"dmg": 7})]
+	)
+	var ward_ally: Dictionary = ward_manager.get_hero_states()[0]
+	var ward_taunter: Dictionary = ward_manager.get_hero_states()[1]
+	var warded_enemy: Dictionary = ward_manager.get_enemy_states()[0]
+	warded_enemy["warded"] = true
+	ward_taunter["selected_target_id"] = str(warded_enemy["id"])
+	ward_manager.resolve_round(
+		{str(ward_ally["id"]): AUDIT_ROLL, str(ward_taunter["id"]): AUDIT_ROLL},
+		{str(warded_enemy["id"]): AUDIT_ROLL},
+		DiceManager.new()
+	)
+	var ward_blocked: bool = (
+		not bool(warded_enemy.get("warded", false))
+		and int(ward_ally["current_hp"]) == 100 - 7
+		and int(ward_taunter["current_hp"]) == 100
+	)
+	if ward_blocked:
+		_record_pass("Regression / firewall blocks the taunt and breaks", "taunt")
+	else:
+		_record_failure("Regression / firewall blocks the taunt and breaks", "taunt", "ward consumed, enemy keeps its own pick (ally takes 7)", "warded=%s ally_hp=%d taunter_hp=%d" % [str(warded_enemy.get("warded", false)), int(ward_ally["current_hp"]), int(ward_taunter["current_hp"])])
+
+	# Choke-point law: only the LURED enemy's pick crosses to the taunter, and
+	# taunt beats cloak (doctrine) — asserted at personality_pick_target itself.
+	var pick_heroes: Array = [
+		{"id": "slot0", "dead": false, "cloaked": false, "current_hp": 50, "max_hp": 50},
+		{"id": "slot1", "dead": false, "cloaked": true, "current_hp": 50, "max_hp": 50},
+	]
+	var lured_pick: Dictionary = TargetingPersonality.personality_pick_target({"lured_by_id": "slot1"}, pick_heroes, {})
+	var free_pick: Dictionary = TargetingPersonality.personality_pick_target({"lured_by_id": ""}, pick_heroes, {})
+	if str(lured_pick.get("id", "")) == "slot1" and str(free_pick.get("id", "")) == "slot0":
+		_record_pass("Regression / lure is per-enemy at the choke-point, beats cloak", "taunt")
+	else:
+		_record_failure("Regression / lure is per-enemy at the choke-point, beats cloak", "taunt", "lured -> its cloaked taunter; unlured -> personality pick", "lured=%s free=%s" % [str(lured_pick.get("id", "")), str(free_pick.get("id", ""))])
 
 
 func _run_cloak_regression() -> void:
@@ -3654,11 +3736,11 @@ func _assert_effect(effect_field: String, raw: Dictionary, before: Dictionary, a
 		"freezeAllEnemyDice":
 			return _expect_bool(effect_field, _count_events(events, "freeze", "enemy") >= 2, "freeze events on all enemy dice", "events=%s" % str(events))
 		"taunt":
-			# Hero taunt clears at the round-end tick (NK-08, symmetric with enemy
-			# self-taunt) — it redirects enemy aim during its round, then expires.
-			# The harness snapshots AFTER a full resolve_round, so the persistent
-			# flag is (correctly) false by then; assert the taunt EVENT fired.
-			return _expect_bool(effect_field, _has_event(events, "taunt", 0, "hero"), "taunt event emitted by the hero taunt ability", "events=%s" % str(events))
+			# Single-target taunt (Build G ruling G-4): the taunt event lands on
+			# the TAUNTED ENEMY (the lured unit carries the state and the chip),
+			# no longer on the casting hero. Clears at the round-end tick
+			# (NK-08), so the harness's post-round snapshot asserts the EVENT.
+			return _expect_bool(effect_field, _has_event(events, "taunt", 0, "enemy"), "taunt event emitted on the taunted enemy", "events=%s" % str(events))
 		"revive":
 			var revive_pct: int = int(raw.get("revivePct", 50))
 			var expected_hp: int = maxi(1, int(after.ally_a.max_hp) * revive_pct / 100)

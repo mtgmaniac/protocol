@@ -424,8 +424,9 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	if bool(state.get("warded", false)):
 		statuses.append(_make_compact_icon_status("firewall", 3))
 
-	# Taunted hero (enemy-side Taunt, internal lured_by state): targeting is
-	# restricted to the taunter — the chip makes the restriction legible.
+	# Taunted unit (internal lured_by state, BOTH directions since G-4): its
+	# targeting is restricted to the taunter — the chip makes the restriction
+	# legible on the unit that carries it (a lured hero or a hero-taunted enemy).
 	if str(state.get("lured_by_id", "")) != "":
 		statuses.append(_make_compact_icon_status("taunt", 3))
 
