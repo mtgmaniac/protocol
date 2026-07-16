@@ -38,6 +38,9 @@ const STATUS_VALUE_FONT_SIZE := 68
 const STATUS_NAME_FONT_SIZE := 48
 const STATUS_ICON_TEXTURE_SIZE := 56.0
 const STATUS_ICON_MIN_WIDTH := 56.0
+# Firewall portrait badge (Build G item 11) — even design px (pixel-snap law).
+const FIREWALL_BADGE_SIZE := 56.0
+const FIREWALL_BADGE_INSET := 8.0
 const STATUS_VALUE_MIN_WIDTH := 24.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
 # m5x7 digit advance ≈ 0.35 × font size (measured in-shot: 7 glyphs at font 72
@@ -69,6 +72,11 @@ var interaction_enabled: bool = true
 var dead: bool = false
 ## pkg8.1: cloak reads as a ghosted portrait, not a chip.
 var cloaked: bool = false
+## Build G item 11 (ruled): an armed firewall reads at the PORTRAIT tier — a
+## badge docked to the portrait corner, always visible regardless of the
+## 3-chip contest (the chip kept losing the priority sort and vanished into
+## the +N overflow, leaving a hidden defensive state).
+var warded: bool = false
 var target_locked: bool = false
 var needs_manual_target: bool = false
 var show_action_pips: bool = true
@@ -81,6 +89,7 @@ var _portrait_frame: Control = null
 var _portrait_crop: Control = null
 var _portrait_rect: TextureRect = null
 var _portrait_dither: TextureRect = null
+var _firewall_badge: TextureRect = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
@@ -140,6 +149,7 @@ func configure(data: Dictionary) -> void:
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
 	cloaked = bool(data.get("cloaked", cloaked))
+	warded = bool(data.get("warded", warded))
 	target_locked = bool(data.get("target_locked", target_locked))
 	needs_manual_target = bool(data.get("needs_manual_target", needs_manual_target))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
@@ -251,6 +261,24 @@ func _build() -> void:
 	# multiply darken overlay from the design). Alpha set per side in _refresh.
 	_portrait_dither = PixelUI.make_dither_overlay(Color.BLACK, 0.17)
 	_portrait_crop.add_child(_portrait_dither)
+
+	# Firewall badge (Build G item 11): portrait-tier state marker, docked to
+	# the portrait's top-right corner above the dither. Visibility follows the
+	# `warded` state on every refresh (grant shows it, break/expiry clears it).
+	_firewall_badge = TextureRect.new()
+	_firewall_badge.name = "FirewallBadge"
+	_firewall_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_firewall_badge.texture = PixelUI.pip_texture_for_key("firewall")
+	_firewall_badge.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_firewall_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_firewall_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_firewall_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_firewall_badge.offset_left = -(FIREWALL_BADGE_SIZE + FIREWALL_BADGE_INSET)
+	_firewall_badge.offset_top = FIREWALL_BADGE_INSET
+	_firewall_badge.offset_right = -FIREWALL_BADGE_INSET
+	_firewall_badge.offset_bottom = FIREWALL_BADGE_SIZE + FIREWALL_BADGE_INSET
+	_firewall_badge.visible = false
+	_portrait_crop.add_child(_firewall_badge)
 
 	# Uniform thin gap between portrait and HP bar so the card panel color
 	# shows through as a subtle separator on every card.
@@ -446,6 +474,9 @@ func _refresh() -> void:
 		_portrait_rect.modulate = Color(0.70, 0.80, 0.95, 0.42)
 	else:
 		_portrait_rect.modulate = Color(1.12, 1.12, 1.12, 1.0)
+	# Firewall (Build G item 11): portrait-tier badge follows the warded state.
+	if _firewall_badge != null:
+		_firewall_badge.visible = warded and not dead
 	if dead:
 		modulate = Color(0.55, 0.56, 0.62, 0.72)
 	else:

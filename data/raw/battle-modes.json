@@ -11,7 +11,7 @@
     "facility": {
       "trackHpScale": 1.05,
       "callsign": "FACILITY",
-      "label": "Facility sweep",
+      "label": "Facility Sweep",
       "blurb": "Drones jam your dice and wall up behind shields. Bank Protocol and breach through.",
       "victoryTitle": "VICTORY",
       "victorySub": "Scrapmaster down. Facility clear.",
@@ -97,7 +97,7 @@
     "hive": {
       "trackHpScale": 1,
       "callsign": "HIVE",
-      "label": "Hive incursion",
+      "label": "Hive Incursion",
       "blurb": "The swarm drains you and multiplies. Burst it down before the brood builds.",
       "victoryTitle": "VICTORY",
       "victorySub": "Matriarch down. Brood scattered.",

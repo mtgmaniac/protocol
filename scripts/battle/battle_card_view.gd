@@ -130,6 +130,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
 			"dead": show_dead,
 			"cloaked": bool(state.get("cloaked", false)),
+			"warded": bool(state.get("warded", false)),
 			"target_locked": is_target_locked,
 			"needs_manual_target": needs_manual_target,
 			"show_action_pips": readout == null,

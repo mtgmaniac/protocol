@@ -931,6 +931,9 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		var roll_mods: Dictionary = combat_manager.get_roll_modifier_totals(state)
 		entry["roll_rfe"] = int(roll_mods["roll_rfe"])
 		entry["roll_buff"] = int(roll_mods["roll_buff"])
+		# Jam value feed (Build G item 2): the die numeral must show the JAMMED
+		# value, not the raw face — same cap get_effective_roll applies.
+		entry["jam_cap"] = int(state.get("jam_cap", 0))
 		entries.append(entry)
 	return entries
 

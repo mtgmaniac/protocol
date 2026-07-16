@@ -14,6 +14,12 @@ target convention (`cloak`, `firewall`, `jam`, `spike`, `rampage +1 (all)`, `sum
 `wipe shields`) and are intentionally out of scope. Count-based, so a DOUBLE suffix (the
 historical double-stamp bug) fails just like a missing one.
 
+Equipment self-buff exception (Build G amendment, Kev 2026-07-15): GEAR and RELIC
+(and consumable) text must NOT carry a `(self)` marker — equipment context makes the
+holder implicit, so a holder-buff reads bare ("5 shield", never "5 shield (self)").
+ABILITY eff text keeps the rule above exactly as-is. Enforced here by scanning every
+string value in gear/relics/items data for the banned marker.
+
   python scripts/checks/effect_text_target.py   ->  [EFFECT_TARGET] PASS | FAIL
 """
 import json
@@ -25,6 +31,12 @@ ROOT = Path(__file__).resolve().parents[2]
 FILES = [
     (ROOT / "data" / "raw" / "enemies.data.json", "enemy"),
     (ROOT / "data" / "raw" / "heroes.data.json", "hero"),
+]
+# Equipment files: (self) is BANNED anywhere in their text (Build G amendment).
+EQUIPMENT_FILES = [
+    ROOT / "data" / "raw" / "gear.data.json",
+    ROOT / "data" / "raw" / "relics.data.json",
+    ROOT / "data" / "raw" / "items.data.json",
 ]
 VALUE_WORDS = ("dmg", "shield", "heal", "roll")
 SCOPES = ("self", "all", "lowest")
@@ -97,6 +109,17 @@ def walk(node, path=""):
             yield from walk(v, "%s[%d]" % (path, i))
 
 
+def walk_strings(node, path=""):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            yield from walk_strings(v, "%s/%s" % (path, k))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            yield from walk_strings(v, "%s[%d]" % (path, i))
+    elif isinstance(node, str):
+        yield path, node
+
+
 def main() -> int:
     failures = []
     for fpath, side in FILES:
@@ -111,6 +134,16 @@ def main() -> int:
                         "%s %s: expected %d (%s) on value clauses, found %d | %r"
                         % (side, path, req[scope], scope, got[scope], eff)
                     )
+    # Equipment sweep: gear/relic/item text never carries (self) — the holder
+    # is implicit in equipment context (Build G amendment; abilities unaffected).
+    for fpath in EQUIPMENT_FILES:
+        data = json.loads(fpath.read_text(encoding="utf-8"))
+        for path, text in walk_strings(data):
+            if "(self)" in text:
+                failures.append(
+                    "equipment %s %s: (self) is banned on gear/relic/item text | %r"
+                    % (fpath.name, path, text)
+                )
     if failures:
         print("[EFFECT_TARGET] FAIL — %d ability(ies) with a wrong target suffix:" % len(failures))
         for f in failures:

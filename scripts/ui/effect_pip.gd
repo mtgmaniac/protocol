@@ -536,6 +536,14 @@ static func effects_from_passive(effect: Dictionary, target_kind: String = "") -
 			# (Kev 2026-07-10: never show a NONE tag).
 			if target_kind != "" and target_kind.to_lower() != "none":
 				_append_effect(effects, "tag", target_kind.to_upper())
+	# Equipment self-buff exception (Build G, NK-17 amendment, Kev 2026-07-15):
+	# gear/relic context makes the HOLDER implicit — a passive that buffs the
+	# holder carries no self marker/icon. Other scopes (all / lowest) stay.
+	# Ability pips (effects_from_ability_raw) keep NK-17 unchanged.
+	for effect_variant in effects:
+		var effect_dict: Dictionary = effect_variant as Dictionary
+		if str(effect_dict.get("scope", "")) == "self":
+			effect_dict["scope"] = ""
 	return dedupe_scope_markers(effects)
 
 

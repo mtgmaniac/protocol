@@ -273,3 +273,50 @@ token stays aligned with rare. Green now has zero non-HP/heal surfaces. The
 evolution branch-name green (`PixelUI.HERO_ACCENT` at its single call site) is a
 selection, not a rarity — recolored to `DT_CYAN` in the same pass.
 **Where it lives:** `pixel_ui.gd` RARITY_* tokens, `evolution_screen.gd:300`.
+
+---
+
+# BUILD G PUNCH-LIST RULINGS (Kev, 2026-07-15 playtest)
+
+## G-1. Operation-unlock popup FOLDED into the UnlockScreen *(ruled; landed Build G)*
+**Ruling.** The separate one-time operation-unlock popup
+(`OperationBriefingOverlay.present_unlock`) is retired. The UnlockScreen's NEW
+OPERATION section shows the operation name (caps law: Title-Case label form -
+"Facility Sweep" / "Hive Incursion" fixed in battle-modes.json) with its
+one-sentence origin line beneath at body tier. Building the row acknowledges
+`operation_origins_seen`. The deployment slate's first-run behavior is
+unchanged.
+
+## G-2. NK-17 amendment: equipped self-buffs drop the (self) marker *(ruled; landed Build G)*
+**Ruling.** GEAR and RELIC effects that buff the HOLDER omit the `(self)`
+marker and any self-target icon - equipment context makes it redundant.
+ABILITY effect text keeps NK-17 exactly as-is. Encoded in TRUTH.md's grammar
+section and gate-enforced both directions by
+`scripts/checks/effect_text_target.py` (abilities: computed suffix required;
+gear/relic/item text: `(self)` banned). `EffectPip.effects_from_passive`
+strips the `self` scope at its single exit; `all`/`lowest` scopes stay.
+The D sweep re-ran under the amended grammar: zero equipment offenders
+existed (the amendment prevents future stamping and removes the redundant
+self icon from equipment pip rows).
+
+## G-3. Firewall must be visible *(ruled: yes; landed Build G)*
+**Ruling.** Firewall (one mechanic - internal field `ward`, displayed
+Firewall; NOT a duplicate of some other mechanic) displays at the portrait
+tier alongside cloak/freeze: a FirewallBadge docked to the portrait corner
+whenever `warded` is true, both sides, cleared on break/expiry. Not a new
+chip - the sanctioned chip stays and still competes in the 3-chip row; the
+badge is the always-visible tier. A hidden defensive state that eats an
+ability without explanation was the defect.
+
+## G-4. Taunt targets a SINGLE enemy *(ruled; landed Build G Lane 2)*
+**Ruling.** Hero-side taunt is a single-enemy redirect, not an all-enemy
+stance: casting taunt picks ONE enemy; that enemy can only target the
+taunter until round end (NK-08 clearing unchanged). This aligns the code
+with what the keyword def and NK-17 bare-`taunt` grammar already claimed
+("The taunted unit can only target the taunter."). Enemy-side paths keep
+their shapes: beastHyena's lure stays single-hero (`lured_by_id`);
+veilPrism's `enemySelfTaunt` stays the all-heroes self-taunt (the taunted
+units are all heroes, each restricted to the one taunter - consistent with
+the def). Anchor Frame gear (`tauntAbove50`) is a standing stance and keeps
+its aura behavior pending its own ruling - recorded here as the ONE
+remaining aura-form taunt.

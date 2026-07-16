@@ -290,10 +290,23 @@ func _resolve_choice(drafted_item: ItemData = null) -> void:
 		_show_result_stage(str(GameState.pending_intercept_state.get("result_info", "")), drafted_item)
 		return
 	var info: String = GameState.apply_intercept_effects(_choice.get("effects", []), _picked_hero_id, _gear_context)
+	if draft_commits_directly(drafted_item, info):
+		_continue_to_battle()
+		return
 	GameState.pending_intercept_state["resolved"] = true
 	GameState.pending_intercept_state["result_info"] = info
 	GameState.pending_intercept_state["stage"] = "result"
 	_show_result_stage(info, drafted_item)
+
+
+# Build G item 9 (ruled): a draft already committed on the reward screen
+# (select + CONFIRM) — the result stage was a redundant reconfirm for it, so a
+# pure draft routes straight to battle. The stage survives only when the
+# effects produced information the player has not seen (reveal text, a forfeit
+# note) — and for every non-draft choice. Static so the flow regression can
+# pin the decision table without standing up the scene.
+static func draft_commits_directly(drafted_item: ItemData, info: String) -> bool:
+	return drafted_item != null and info == ""
 
 
 func _show_result_stage(info: String, drafted_item: ItemData) -> void:

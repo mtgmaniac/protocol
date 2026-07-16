@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,6 +73,15 @@ GATES = [
     ("music smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/music_smoke_test.gd"], "[MUSIC_SMOKE] PASS", False),
     ("transition smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/transition_smoke_test.gd"], "[TRANSITION_SMOKE] PASS", False),
     ("duration encoding", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/duration_encoding_test.gd"], "[DURATION] PASS", False),
+    # Build G: the die numeral shows the JAMMED value (value feed, not the
+    # fenced dice renderer); firewall reads at the portrait tier (badge
+    # follows the warded state through grant/break/expiry).
+    ("jam display", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/jam_display_test.gd"], "[JAM_DISPLAY] PASS", False),
+    ("firewall display", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/firewall_display_test.gd"], "[FIREWALL_DISPLAY] PASS", False),
+    # Build G item 3: every item "upgrade" draw succeeds at EVERY unlock state
+    # (gating forced, fresh profile included) and ELITE PRESENCE upgrades
+    # exactly one slot whenever its precondition holds (non-boss battles).
+    ("upgrade draws", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/upgrade_draw_test.gd"], "[UPGRADE_DRAW] PASS", False),
     ("freeze regression", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/freeze_engine_regression.tscn"], "[FREEZE] RESULT: freeze = repeat", False),
     # Batch 4 combat-bug regressions (each launches a live battle).
     ("protocol cancel", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/protocol_cancel_test.gd"], "[PROTOCOL_CANCEL] PASS", False),
@@ -122,16 +132,64 @@ def check_profile_isolation(before: dict) -> bool:
     return True
 
 
+# ── Per-gate hard timeout (Kev 2026-07-15, after the jam-test zombie round) ─
+# A smoke that can't finish in 90 seconds is FAILED by definition — the old
+# blanket 600s let one hung headless instance eat 10 minutes per gate. The
+# named budgets below are the only sanctioned exceptions (structurally heavy
+# suites, never a plain smoke); each is still minutes under the old ceiling.
+# Budgets only ratchet DOWN for free (INVARIANTS #13); every PASS line prints
+# its elapsed seconds so tightening is data, not guesswork.
+GATE_TIMEOUT_DEFAULT = 90
+GATE_TIMEOUT_OVERRIDES = {
+    "validate-data": 180,       # npm cold start
+    "ability audit": 420,       # 228+ recorded regressions, one process
+    "flow smoke": 300,          # walks the entire scene flow twice
+    "loadout cap": 180,         # scene runner boot + discard state machine
+    "unlock progression": 180,  # full-run counter + gate-evaluation walk
+    "tutorial smoke": 180,      # 23 scripted steps
+    "upgrade draws": 180,       # 18 unlock states x 5 seeds x every draw
+}
+
+
+def kill_lingering_headless() -> None:
+    """Pre-run cleanup: a zombie headless instance from a hung test poisons
+    every later gate (contention -> cascade timeouts). Kill anything Godot
+    launched with --headless; NEVER the editor (no --headless on its line)."""
+    if os.name != "nt":
+        return
+    ps = (
+        "Get-CimInstance Win32_Process -Filter \"Name like 'Godot%'\" | "
+        "Where-Object { $_.CommandLine -match '--headless' } | "
+        "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }"
+    )
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps],
+            capture_output=True, text=True, timeout=30,
+        )
+        killed = [line for line in (proc.stdout or "").split() if line.strip().isdigit()]
+        if killed:
+            print(f"── pre-run cleanup: killed {len(killed)} lingering headless Godot instance(s): {', '.join(killed)}", flush=True)
+    except Exception as exc:  # noqa: BLE001 — cleanup must never block the gate
+        print(f"── pre-run cleanup skipped ({exc})", flush=True)
+
+
 def run_gate(name: str, cmd: list, needle: str, use_shell: bool) -> bool:
     print(f"── {name} ...", flush=True)
+    budget = GATE_TIMEOUT_OVERRIDES.get(name, GATE_TIMEOUT_DEFAULT)
+    started = time.monotonic()
     try:
         proc = subprocess.run(
             " ".join(cmd) if use_shell else cmd,
-            shell=use_shell, cwd=ROOT, capture_output=True, text=True, timeout=600,
+            shell=use_shell, cwd=ROOT, capture_output=True, text=True, timeout=budget,
         )
+    except subprocess.TimeoutExpired:
+        print(f"   FAIL (TIMEOUT after {budget}s — a test that can't finish in its budget is failed by definition)")
+        return False
     except Exception as exc:  # noqa: BLE001 — a dead gate must print, not raise
         print(f"   FAIL ({exc})")
         return False
+    elapsed = time.monotonic() - started
     out = (proc.stdout or "") + (proc.stderr or "")
     ok = needle in out
     if name == "ability audit":
@@ -140,7 +198,7 @@ def run_gate(name: str, cmd: list, needle: str, use_shell: bool) -> bool:
         if m and int(m.group(1)) < AUDIT_MIN_PASSED:
             print(f"   FAIL — audit recorded {m.group(1)} passes, floor is {AUDIT_MIN_PASSED}: tests are silently vanishing")
             ok = False
-    print(f"   {'PASS' if ok else 'FAIL'}")
+    print(f"   {'PASS' if ok else 'FAIL'} ({elapsed:.0f}s / {budget}s)")
     if not ok:
         tail = "\n".join(out.strip().splitlines()[-12:])
         print(f"   ── last output ──\n{tail}")
@@ -189,6 +247,7 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=300)
     args = ap.parse_args()
 
+    kill_lingering_headless()
     profile_before = profile_fingerprint()
     failed = [name for name, cmd, needle, sh in GATES if not run_gate(name, cmd, needle, sh)]
     if not check_profile_isolation(profile_before):

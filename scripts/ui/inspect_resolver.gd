@@ -246,7 +246,7 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		var flavor: String = str(state.get("freeze_flavor", "ice"))
 		entries.append(_status_entry("freeze", "%d" % int(state["die_freeze_turns"]), 0,
-			"%s: die locked on this face (%d more)." % ["PETRIFIED" if flavor == "petrify" else "FROZEN", int(state["die_freeze_turns"])]))
+			"%s: die keeps this face - acts again on it (%d more)." % ["PETRIFIED" if flavor == "petrify" else "FROZEN", int(state["die_freeze_turns"])]))
 	if int(state.get("spike", 0)) > 0:
 		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, _status_text("spike", str(state["spike"]), 0)))
 	return entries
@@ -343,6 +343,28 @@ static func resolve_encounter(op: OperationData, threat_level: int, threat_max: 
 	}
 
 
+# Operation identity without an encounter context (Build G: unlock-screen
+# long-press) — site + threat summary; no threat level, that is run state.
+static func resolve_operation(op: OperationData) -> Dictionary:
+	if op == null:
+		return {}
+	# Runtime load, not the class_name: keeps the overlay (and its
+	# CombatManager closure) out of this resolver's compile-time dependency
+	# graph, so a preload of any InspectResolver-referencing script inside an
+	# `-s` harness (which parses before autoloads register) can't cascade.
+	var overlay_script: GDScript = load("res://scripts/ui/operation_briefing_overlay.gd")
+	var copy: Dictionary = overlay_script.operation_copy(op.id)
+	var payload: Dictionary = {
+		"accent": _side_accent("enemy"),
+		"header": {"title": op.display_name.to_upper(), "subtitle": "OPERATION"},
+		"description": op.blurb,
+	}
+	var site: String = str(copy.get("site", ""))
+	if site != "":
+		payload["stats"] = [{"label": "SITE", "value": site}]
+	return payload
+
+
 # ── helpers ─────────────────────────────────────────────────────────────────────
 static func _side_accent(side: String) -> Color:
 	return PixelUI.DT_ENEMY_BORDER if side == "enemy" else PixelUI.DT_HERO_BORDER
@@ -388,7 +410,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"shield":
 			return "Absorbs %s incoming damage." % (value if value != "" else "")
 		"frozen", "freeze", "die_freeze":
-			return "Die locked on this face%s." % ((" for " + turns) if turns != "" else "")
+			return "Die keeps this face - acts again on it%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
 			return "Can't be targeted; breaks on dealing damage."
 		"taunt":

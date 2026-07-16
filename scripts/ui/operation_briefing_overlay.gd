@@ -104,19 +104,9 @@ static func split_runtime_rule(runtime_rule: String) -> Dictionary:
 	}
 
 
-func present_unlock(operation_id: String) -> void:
-	var copy := operation_copy(operation_id)
-	if copy.is_empty():
-		queue_free()
-		return
-	_mode = "unlock"
-	_build_shell(PixelUI.COMPONENT_REWARD, PixelUI.DT_AMBER)
-	_add_title("OPERATION UNLOCKED", PixelUI.DT_AMBER)
-	_add_section("OPERATION %s // %s" % [str(copy["number"]), str(copy["name"])], PixelUI.TEXT_PRIMARY)
-	_add_body(str(copy["origin"]))
-	_add_action("ACKNOWLEDGE", PixelUI.DT_AMBER)
-
-
+# present_unlock is RETIRED (Build G, ruled): the one-time operation-unlock
+# popup folded into the UnlockScreen's NEW OPERATION section (name + origin
+# line at body tier). Deployment and boss-alert modes are unchanged.
 func present_deployment(operation_id: String) -> void:
 	var copy := operation_copy(operation_id)
 	if copy.is_empty():

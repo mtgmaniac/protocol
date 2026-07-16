@@ -1053,8 +1053,10 @@ const ICON_LOW_RES_SCALE := 4
 ## An item icon in a `box_px`-square holder, scaled to the LARGEST integer
 ## multiple of its native size that fits (min 1x). Low-res art gets the exact
 ## 4x + emblem-plate treatment. The TextureRect carries meta `item_icon` for
-## the integer-scale gate.
-static func make_integer_icon(tex: Texture2D, box_px: float, accent: Color = Color.TRANSPARENT) -> Control:
+## the integer-scale gate. `force_plate` puts the emblem plate behind EVERY
+## icon (Build G: the unlock grids plate uniformly so the one low-res plate
+## can't read as a selection highlight); standard surfaces leave it false.
+static func make_integer_icon(tex: Texture2D, box_px: float, accent: Color = Color.TRANSPARENT, force_plate: bool = false) -> Control:
 	var holder := CenterContainer.new()
 	holder.custom_minimum_size = Vector2(box_px, box_px)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1072,7 +1074,7 @@ static func make_integer_icon(tex: Texture2D, box_px: float, accent: Color = Col
 	rect.custom_minimum_size = Vector2(native_w, native_h) * float(k)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect.set_meta("item_icon", true)
-	if low_res:
+	if low_res or force_plate:
 		# Emblem plate: Reward chrome behind the 4x glyph — the frame declares
 		# the density choice instead of letting it read as a mistake.
 		var plate := PanelContainer.new()

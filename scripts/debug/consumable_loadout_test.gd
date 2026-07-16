@@ -41,6 +41,7 @@ func _run() -> void:
 	_test_relic_invariant(relics)
 	_test_relic_display(relics)
 	_test_event_consumable_filter()
+	_test_passive_self_scope()
 	_finish()
 
 
@@ -190,3 +191,19 @@ func _test_event_consumable_filter() -> void:
 	var info: String = GameState.apply_intercept_effects([{"type": "consumable", "rarity": "common", "count": 1}])
 	_check(info.contains("FORFEITED"), "event consumable grant at cap states the forfeit (not silent)")
 	_check(GameState.consumables.size() == 4, "forfeited grant left the bag at cap")
+
+
+# ── Equipment self-buff exception (Build G, NK-17 amendment) ────────────────────
+# Gear/relic passives never emit a self scope marker/icon — the holder is
+# implicit in equipment context. Non-self scopes (all/lowest) are untouched.
+func _test_passive_self_scope() -> void:
+	var self_count := 0
+	for effect_variant in EffectPip.effects_from_passive({"type": "battleStartShield", "amount": 5}, ""):
+		if str((effect_variant as Dictionary).get("scope", "")) == "self":
+			self_count += 1
+	_check(self_count == 0, "equipment passive emits no self scope marker (NK-17 equipment exception)")
+	var all_count := 0
+	for effect_variant in EffectPip.effects_from_passive({"type": "healGrantsShieldAll", "amount": 4}, ""):
+		if str((effect_variant as Dictionary).get("scope", "")) == "all":
+			all_count += 1
+	_check(all_count > 0, "equipment passive keeps non-self scopes (all)")

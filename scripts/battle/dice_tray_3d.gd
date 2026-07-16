@@ -915,7 +915,14 @@ func _display_face_for_entry(raw: int, entry: Dictionary) -> int:
 		return clamped_raw
 	var rfe: int = int(entry.get("roll_rfe", 0))
 	var buff: int = int(entry.get("roll_buff", 0))
-	return clampi(clamped_raw + buff - rfe, 1, 20)
+	var display: int = clampi(clamped_raw + buff - rfe, 1, 20)
+	# Jam (Build G item 2): the numeral shows the CAPPED value — mirrors
+	# get_effective_roll so the die face and the resolved ability agree. This
+	# is the value feed, not the fenced materials/SubViewport pipeline.
+	var jam_cap: int = int(entry.get("jam_cap", 0))
+	if jam_cap > 0:
+		display = mini(display, jam_cap)
+	return display
 
 
 # Late in the roll the "felt" grabs: damping ramps up so a die spiralling on a

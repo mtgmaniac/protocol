@@ -76,13 +76,10 @@ func _test_save_defaults_and_migration() -> void:
 
 
 func _test_overlay_modes() -> void:
+	# present_unlock is RETIRED (Build G): the operation announcement lives in
+	# the UnlockScreen NEW OPERATION section (name + origin at body tier); this
+	# test keeps the surviving overlay modes (deployment / boss alert) honest.
 	for operation_id in OPERATION_IDS:
-		var operation_unlock := OPERATION_BRIEFING_OVERLAY.new()
-		get_tree().root.add_child(operation_unlock)
-		operation_unlock.present_unlock(operation_id)
-		await get_tree().process_frame
-		_expect(_has_action(operation_unlock, "ACKNOWLEDGE"), "%s unlock overlay requires acknowledgement" % operation_id)
-		operation_unlock.queue_free()
 		var operation_deployment := OPERATION_BRIEFING_OVERLAY.new()
 		get_tree().root.add_child(operation_deployment)
 		operation_deployment.present_deployment(operation_id)
@@ -92,13 +89,6 @@ func _test_overlay_modes() -> void:
 		_expect(_has_action(operation_deployment, "ENGAGE"), "%s deployment requires ENGAGE" % operation_id)
 		_test_deployment_grid(operation_id, operation_deployment)
 		operation_deployment.queue_free()
-
-	var unlock := OPERATION_BRIEFING_OVERLAY.new()
-	get_tree().root.add_child(unlock)
-	unlock.present_unlock("hive")
-	await get_tree().process_frame
-	_expect(_has_action(unlock, "ACKNOWLEDGE"), "unlock overlay requires ACKNOWLEDGE")
-	unlock.queue_free()
 
 	var deployments: Array[Dictionary] = []
 	for operation_id in OPERATION_IDS:
