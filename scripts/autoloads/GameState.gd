@@ -1,9 +1,15 @@
 # Stores run-level state that persists while the player moves between scenes.
 extends Node
 
-# Hard cap on carried consumables — matches the in-battle LoadoutMenu's slot count
-# (loadout_menu.gd ITEM_SLOTS). Picking up a consumable while full requires swapping one out.
-const MAX_CONSUMABLES := 3
+# Hard cap on carried consumables — the SINGLE SOURCE of truth. The in-battle
+# LoadoutMenu derives its slot count from this constant (no twin constant to drift).
+# Picking up a consumable while full requires swapping one out (or abandoning the pickup).
+const MAX_CONSUMABLES := 4
+
+# Hard cap on carried relics — TWO by design, long-term (INVARIANTS #16). Every path
+# that adds a relic routes through _grant_relic(), which refuses beyond this cap, so no
+# claim/grant/directive path can structurally produce a third.
+const MAX_RELICS := 2
 
 
 var selected_units: Array = []
@@ -634,10 +640,21 @@ func apply_intercept_effects(effects: Array, hero_id: String = "", gear_context:
 			"protocolNextBattle":
 				next_battle_effects["protocol"] = int(next_battle_effects.get("protocol", 0)) + int(effect.get("amount", 0))
 			"consumable":
+				# A "consumable" grant must roll a consumable (not gear from the mixed pool).
+				# This is a bundled, non-interactive effect (no picker handoff point), so a
+				# grant at cap is FORFEIT — but stated, never silently dropped.
+				var forfeited: int = 0
 				for _i in int(effect.get("count", 1)):
-					var item_id: String = _pick_random_reward_by_rarity(str(effect.get("rarity", "common")), consumables)
-					if item_id != "" and consumables.size() < MAX_CONSUMABLES:
-						consumables.append(item_id)
+					var item_id: String = _pick_random_reward_by_rarity(str(effect.get("rarity", "common")), consumables, "consumable")
+					if item_id == "":
+						continue
+					if consumables.size() >= MAX_CONSUMABLES:
+						forfeited += 1
+						continue
+					consumables.append(item_id)
+				if forfeited > 0:
+					var forfeit_note: String = "LOADOUT FULL - %d ITEM%s FORFEITED" % [forfeited, "S" if forfeited > 1 else ""]
+					info = forfeit_note if info == "" else "%s\n%s" % [info, forfeit_note]
 			"armModifier":
 				# Marks the modifier used (NK-16: consumes the fork no-repeats
 				# pool) and won't silently clobber an already-armed one (A-077).
@@ -876,9 +893,19 @@ func _claim_choice_item(item_id: String, target_unit_id: String, swap_consumable
 				consumables.erase(swap_consumable_id)
 			consumables.append(item_id)
 		"relic":
-			relics.append(item_id)
+			if not _grant_relic(item_id):
+				return false
 		_:
 			return false
+	return true
+
+
+# Single choke for relic acquisition: refuses beyond MAX_RELICS so no path
+# (reward claim, intercept choice, Starting Directive) can ever seat a third.
+func _grant_relic(relic_id: String) -> bool:
+	if relic_id == "" or relics.size() >= MAX_RELICS:
+		return false
+	relics.append(relic_id)
 	return true
 
 
@@ -919,7 +946,7 @@ func set_starting_directive(relic_id: String) -> void:
 		return
 	starting_directive_relic_id = relic_id
 	if not relics.has(relic_id):
-		relics.append(relic_id)
+		_grant_relic(relic_id)
 
 
 func enforce_squad_limit() -> void:
@@ -1061,7 +1088,8 @@ func claim_reward(item_id: String, target_unit_id: String = "", swap_consumable_
 			# The Starting Directive doesn't consume the battle-5 draft slot.
 			if drafted_relic_count() > 0:
 				return false
-			relics.append(item_id)
+			if not _grant_relic(item_id):
+				return false
 		_:
 			return false
 
@@ -1427,7 +1455,11 @@ func _owned_gear_ids() -> Array:
 	return owned
 
 
-func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array) -> String:
+# `item_type` "" = the mixed consumable+gear reward pool (ordinary reward drafts, where
+# either type is a valid offer). Pass "consumable" (or "gear") to constrain an event that
+# promises a SPECIFIC type — otherwise a "1 uncommon consumable" grant can roll gear that
+# is inert in the consumable bag.
+func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array, item_type: String = "") -> String:
 	var owned_gear: Array = _owned_gear_ids()
 	var pool: Array = []
 	for item_key in DataManager.items.keys():
@@ -1435,6 +1467,8 @@ func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array) -> Strin
 		if item == null:
 			continue
 		if item.item_type != "consumable" and item.item_type != "gear":
+			continue
+		if item_type != "" and item.item_type != item_type:
 			continue
 		if str(item.rarity) != rarity:
 			continue

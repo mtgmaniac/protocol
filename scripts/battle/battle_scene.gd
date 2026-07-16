@@ -194,7 +194,6 @@ var _battle_consumables: Array = []
 var _die_tag_layer: Control = null
 var _die_tags: Dictionary = {}
 var _die_tag_diameter: float = DIE_TAG_DIAMETER_FALLBACK   # projected die diameter (uniform)
-var _relic_slot: Control = null
 var _protocol_footer_spacer: Control = null
 var _header_frame: PanelContainer = null
 var _footer_frame: PanelContainer = null
@@ -380,7 +379,10 @@ func _finalize_review() -> void:
 
 
 func _show_battle_entry_briefing() -> void:
-	if OS.has_feature("headless") or _review_mode or _game_state().tutorial_mode:
+	# DevContext.is_isolated() (not OS.has_feature("headless"), which is FALSE under
+	# a `-s` launch) so the modal never opens in a headless smoke, an audit, or a
+	# windowed capture rig and blocks the first roll / auto-battle.
+	if DevContext.is_isolated() or _review_mode or _game_state().tutorial_mode:
 		return
 	if _game_state().current_battle == _game_state().total_battles:
 		_show_boss_alert()

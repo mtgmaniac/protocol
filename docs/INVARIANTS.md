@@ -178,3 +178,34 @@ Two corollaries (2026-07-07, after the route-fork border round):
 - **Window resizes change the final transform without resizing controls** — every
   snapped draw layer must `queue_redraw` on `viewport.size_changed` or it keeps the
   stale scale (HPTickLayer / ProtocolPips / CornerBracketLayer do).
+
+## 15. No reward silently evaporates (Polish Build D, Kev 2026-07-15)
+Consumables cap at **`GameState.MAX_CONSUMABLES` = 4** — the SINGLE source; `LoadoutMenu`
+derives its slot count from it (no twin constant). A pickup at cap runs the **discard
+picker** (`LoadoutMenu.open_discard`): the incoming item's stats are shown, any held item
+can be inspected, and **ABANDON** (or tap-outside) keeps all four and drops the incoming —
+nothing is ever destroyed by a dismissal. `claim_reward` requires a `swap_consumable_id` at
+cap; the reward UI must run the picker before firing such a claim (debug-`assert` in
+`reward_screen._claim_reward` catches a bypass). Non-interactive event grants at cap
+**forfeit explicitly** ("LOADOUT FULL - ... FORFEITED"), never silently. **Violation looks
+like:** a consumable claim at cap returning false into a swallowed UI path, a second
+hardcoded slot constant, or a full-bag grant that vanishes with no message.
+
+## 16. Relics are TWO, by design — one choke, display-only in the loadout (Polish Build D)
+`GameState.MAX_RELICS` = 2 and every acquisition routes through `GameState._grant_relic`,
+which refuses beyond the cap — so no claim / intercept / Starting-Directive path can seat a
+third (a run opened on a boss-relic directive plus the battle-5 draft is the intended two).
+Relics render **only** in the `LoadoutMenu` RELIC section — one row per held relic, up to
+two, section hidden at zero, **never a placeholder slot** — and **never on battle chrome**
+(the old `_relic_slot` was dead and is removed). **Violation looks like:** a relic count > 2
+from any path, a relic pip/slot on the battle screen, or an empty relic placeholder row.
+
+## 17. Ability effect text carries its coded target suffix (NK-17, Polish Build D)
+Authored `eff` text (data/raw/{enemies,heroes}.data.json) must carry the parenthetical
+target suffix its COMPUTED scope requires — `(self)` for self-buffs, `(all)` for AoE,
+`(lowest)` for lowest-target — and none for single-target, matching how `effect_pip.gd`
+derives scope from the structured fields. Keyword-only clauses (`cloak`, `firewall`, `jam`,
+`spike`, `rampage +1 (all)`, `summon`) keep their own convention. Enforced by
+`scripts/checks/effect_text_target.py` (count-based, so a double suffix fails like a missing
+one — the historical double-stamp). **Violation looks like:** a self-shield authored "8
+shield" with no "(self)", an AoE heal missing "(all)", or a doubled "(self) (self)".

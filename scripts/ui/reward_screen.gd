@@ -99,7 +99,6 @@ const CONFIRM_IDLE_TEXT := Color(0.34, 0.38, 0.42, 1.0)
 
 var _help_overlay: Control = null
 var _gear_target_overlay: Control = null
-var _consumable_swap_overlay: Control = null
 
 # View-Battlescreen button: a secondary read-only return to the finished battle.
 const VIEW_BATTLE_FONT := 34
@@ -646,10 +645,9 @@ func _select_item(item_id: String) -> void:
 		return
 	if item.item_type == "gear" and str(_choice_request.get("kind", "")) != "owned_gear":
 		_show_gear_target_overlay(item)
-	# Consumables are capped: if the bag is already full, choose which one to discard now,
-	# mirroring the gear chooser. Under the cap, no prompt — it just gets picked up.
-	elif item.item_type == "consumable" and GameState.is_consumables_full():
-		_show_consumable_swap_overlay(item)
+	# Consumables are capped, but the discard decision is deferred to CONFIRM (the
+	# discard picker shows the incoming item's stats and offers ABANDON) — selecting
+	# a reward must never be the thing that destroys a held item.
 
 
 func _refresh_selection() -> void:
@@ -746,7 +744,7 @@ func _on_confirm_pressed() -> void:
 			_show_gear_target_overlay(item)
 			return
 		if event_kind != "owned_gear" and item.item_type == "consumable" and GameState.is_consumables_full() and _selected_swap_consumable_id == "":
-			_show_consumable_swap_overlay(item)
+			_open_discard_picker(item)
 			return
 		_commit_intercept_choice(item, _selected_gear_unit_id, _selected_swap_consumable_id)
 		return
@@ -758,11 +756,11 @@ func _on_confirm_pressed() -> void:
 			return
 		_claim_reward(item, _selected_gear_unit_id)
 		return
-	# A full consumable bag needs a discard target chosen. If none was picked (the player
-	# dismissed the chooser), re-open it instead of claiming.
+	# A full consumable bag needs a discard target chosen. Confirming opens the discard
+	# picker (incoming stats + ABANDON); it resolves back through _on_discard_resolved.
 	if item.item_type == "consumable" and GameState.is_consumables_full():
 		if _selected_swap_consumable_id == "":
-			_show_consumable_swap_overlay(item)
+			_open_discard_picker(item)
 			return
 		_claim_reward(item, "", _selected_swap_consumable_id)
 		return
@@ -862,92 +860,34 @@ func _hide_gear_target_overlay() -> void:
 	_gear_target_overlay = null
 
 
-# ─── Consumable swap chooser (shown when the bag is full) ───────────────────────
-func _show_consumable_swap_overlay(item: ItemData) -> void:
-	if _consumable_swap_overlay != null and is_instance_valid(_consumable_swap_overlay):
-		_consumable_swap_overlay.queue_free()
-
-	_consumable_swap_overlay = Control.new()
-	_consumable_swap_overlay.name = "ConsumableSwapOverlay"
-	_consumable_swap_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_consumable_swap_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_consumable_swap_overlay.z_as_relative = false
-	_consumable_swap_overlay.z_index = 220
-	add_child(_consumable_swap_overlay)
-
-	var dim := ColorRect.new()
-	dim.color = Color(0.005, 0.007, 0.012, 0.76)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
-			_hide_consumable_swap_overlay()
-		elif event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
-			_hide_consumable_swap_overlay()
-	)
-	_consumable_swap_overlay.add_child(dim)
-
-	var outer := CenterContainer.new()
-	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_consumable_swap_overlay.add_child(outer)
-
-	var accent: Color = _get_item_accent(item)
-	var panel := PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	var panel_width: float = clampf(
-		get_viewport().get_visible_rect().size.x * GEAR_TARGET_WIDTH_FRACTION,
-		GEAR_TARGET_MIN_WIDTH,
-		GEAR_TARGET_MAX_WIDTH,
-	)
-	panel.custom_minimum_size = Vector2(panel_width, 0)
-	_style_card_panel(panel, accent, false)
-	outer.add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_bottom", 28)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 22)
-	margin.add_child(vbox)
-
-	var title := _make_label("BAG FULL - DISCARD ONE FOR %s" % item.display_name.to_upper(), GEAR_TARGET_TITLE_FONT, accent, 2)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(title)
-
+# ─── Discard picker (LOADOUT FULL) ─────────────────────────────────────────────
+# Confirming a consumable at cap opens the shared LoadoutMenu discard picker OVER
+# this screen (incoming stats pinned, held rows select-then-confirm, ABANDON). It
+# resolves back through _on_discard_resolved — nothing is destroyed on ABANDON.
+func _open_discard_picker(incoming: ItemData) -> void:
+	var held: Array = []
 	for held_id_variant in GameState.consumables:
-		var held_id: String = str(held_id_variant)
-		var held: ItemData = DataManager.get_item(held_id) as ItemData
-		if held == null:
-			continue
-		var swap_button := Button.new()
-		swap_button.text = held.display_name
-		swap_button.focus_mode = Control.FOCUS_NONE
-		swap_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
-		swap_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		PixelUI.style_button(swap_button, Color(0.022, 0.034, 0.050, 0.95), accent, GEAR_TARGET_BUTTON_FONT_SIZE)
-		var captured_id := held_id
-		var captured_name := held.display_name
-		swap_button.pressed.connect(func() -> void:
-			AudioManager.play_select()
-			_selected_swap_consumable_id = captured_id
-			_hide_consumable_swap_overlay()
-			footer_label.text = "DISCARD: %s" % captured_name
-			footer_label.visible = true
-			_refresh_confirm()
-		)
-		vbox.add_child(swap_button)
+		var held_item: ItemData = DataManager.get_item(str(held_id_variant)) as ItemData
+		if held_item != null:
+			held.append(held_item)
+	LoadoutMenu.open_discard(self, held, incoming, _on_discard_resolved.bind(incoming))
 
 
-func _hide_consumable_swap_overlay() -> void:
-	if _consumable_swap_overlay != null and is_instance_valid(_consumable_swap_overlay):
-		_consumable_swap_overlay.queue_free()
-	_consumable_swap_overlay = null
+func _on_discard_resolved(discard_id: String, incoming: ItemData) -> void:
+	if discard_id == "":
+		# ABANDON: keep the incoming unclaimed, pending rewards intact; clear the
+		# selection so the player may pick a different reward (or the same again).
+		_selected_item_id = ""
+		_selected_gear_unit_id = ""
+		_selected_swap_consumable_id = ""
+		footer_label.text = ""
+		_refresh_selection()
+		return
+	_selected_swap_consumable_id = discard_id
+	if not _choice_request.is_empty():
+		_commit_intercept_choice(incoming, "", discard_id)
+	else:
+		_claim_reward(incoming, "", discard_id)
 
 
 # ─── Claim / advance ────────────────────────────────────────────────────────────
@@ -997,6 +937,11 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 
 	var claimed: bool = GameState.claim_reward(item.id, target_unit_id, swap_consumable_id)
 	if not claimed:
+		# Contract (Build D): a consumable claim can only fail at cap when no discard
+		# was supplied — and the UI must never reach here without the discard picker
+		# having run. A false return in that state is a silent-loss regression.
+		assert(not (item.item_type == "consumable" and swap_consumable_id == "" and GameState.is_consumables_full()),
+			"consumable claim returned false at cap without a discard - discard picker was bypassed")
 		footer_label.text = "That reward could not be claimed. Try again."
 		footer_label.visible = true
 		return

@@ -841,11 +841,13 @@ func _on_item_button_pressed_menu() -> void:
 	if in_roll_modifier_pick():
 		cancel_roll_modifier_pick()
 	AudioManager.play_select()
-	var relic_item: ItemData = null
-	var relic_ids: Array = _scene._game_state().relics
-	if not relic_ids.is_empty():
-		relic_item = _scene._data_manager().get_item(str(relic_ids[0])) as ItemData
-	LoadoutMenu.open(self, _item_menu_items, relic_item, _on_item_button_pressed, item_button.get_global_rect())
+	# All held relics (0-2 by design) — the loadout is the ONLY relic display.
+	var relic_items: Array = []
+	for relic_id_variant in _scene._game_state().relics:
+		var relic_item: ItemData = _scene._data_manager().get_item(str(relic_id_variant)) as ItemData
+		if relic_item != null:
+			relic_items.append(relic_item)
+	LoadoutMenu.open(self, _item_menu_items, relic_items, _on_item_button_pressed, item_button.get_global_rect())
 
 
 func _on_item_menu_id_pressed(id: int) -> void:

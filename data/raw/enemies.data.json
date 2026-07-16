@@ -4,7 +4,7 @@
     "scrap": {
       "recharge": {
         "name": "ECM Shell",
-        "eff": "8 shield",
+        "eff": "8 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -56,7 +56,7 @@
     "rust": {
       "recharge": {
         "name": "ECM Hiss",
-        "eff": "5 shield, +1 roll (self)",
+        "eff": "5 shield (self), +1 roll (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -118,7 +118,7 @@
     "patrol": {
       "recharge": {
         "name": "Regroup",
-        "eff": "6 shield",
+        "eff": "6 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -234,7 +234,7 @@
     "warden": {
       "recharge": {
         "name": "Field Service",
-        "eff": "7 shield, 7 heal",
+        "eff": "7 shield (self), 7 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -275,7 +275,7 @@
       },
       "overload": {
         "name": "Execution",
-        "eff": "29 dmg, 6 heal",
+        "eff": "29 dmg, 6 heal (self)",
         "dmg": 29,
         "burn": 0,
         "burnT": 0,
@@ -342,7 +342,7 @@
     "boss": {
       "recharge": {
         "name": "Shield Matrix",
-        "eff": "12 shield",
+        "eff": "12 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -398,7 +398,7 @@
     "skitter": {
       "recharge": {
         "name": "Burrow Regen",
-        "eff": "5 heal",
+        "eff": "5 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -451,7 +451,7 @@
     "mite": {
       "recharge": {
         "name": "Pheromone Surge",
-        "eff": "3 heal",
+        "eff": "3 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -504,7 +504,7 @@
     "stalker": {
       "recharge": {
         "name": "Chitin Regroup",
-        "eff": "6 shield, spike 4",
+        "eff": "6 shield (self), spike 4",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -618,7 +618,7 @@
     "brood": {
       "recharge": {
         "name": "Nutrient Share",
-        "eff": "7 shield, 7 heal",
+        "eff": "7 shield (self), 7 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -726,7 +726,7 @@
     "hiveBoss": {
       "recharge": {
         "name": "Chitin Bulwark",
-        "eff": "22 shield",
+        "eff": "22 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -785,7 +785,7 @@
     "veilShard": {
       "recharge": {
         "name": "Phase Shell",
-        "eff": "4 shield",
+        "eff": "4 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -858,7 +858,7 @@
       },
       "surge": {
         "name": "Prism Surge",
-        "eff": "11 dmg, 4 shield",
+        "eff": "11 dmg, 4 shield (self)",
         "dmg": 11,
         "burn": 0,
         "burnT": 0,
@@ -967,7 +967,7 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 shield, 7 heal, +1 roll (all), firewall",
+        "eff": "7 shield (self), 7 heal (self), +1 roll (all), firewall",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1017,7 +1017,7 @@
       },
       "overload": {
         "name": "Veil Collapse",
-        "eff": "28 dmg, 6 heal, +2 roll (all), 2t, summon (40%)",
+        "eff": "28 dmg, 6 heal (self), +2 roll (all), 2t, summon (40%)",
         "dmg": 28,
         "burn": 0,
         "burnT": 0,
@@ -1034,7 +1034,7 @@
     "veilNull": {
       "recharge": {
         "name": "Void Stillness",
-        "eff": "5 shield, +1 roll (all)",
+        "eff": "5 shield (self), +1 roll (all)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1211,7 +1211,7 @@
       },
       "overload": {
         "name": "Broodlink Surge",
-        "eff": "17 dmg, 8 heal, +2 roll (all), 2t, summon (40%)",
+        "eff": "17 dmg, 8 heal (self), +2 roll (all), 2t, summon (40%)",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1541,7 +1541,7 @@
     "voidGlimmer": {
       "recharge": {
         "name": "Refork",
-        "eff": "6 shield, cloak",
+        "eff": "6 shield (self), cloak",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1597,7 +1597,7 @@
     "voidChanneler": {
       "recharge": {
         "name": "Channel Focus",
-        "eff": "+2 roll",
+        "eff": "+2 roll (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1724,7 +1724,7 @@
     "beastMonkey": {
       "recharge": {
         "name": "Still Perch",
-        "eff": "3 heal",
+        "eff": "3 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1777,7 +1777,7 @@
     "beastWolf": {
       "recharge": {
         "name": "Slag Coat",
-        "eff": "4 shield",
+        "eff": "4 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1831,7 +1831,7 @@
     "beastLynx": {
       "recharge": {
         "name": "Geode Veil",
-        "eff": "10 shield, cloak",
+        "eff": "10 shield (self), cloak",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1890,7 +1890,7 @@
     "beastBison": {
       "recharge": {
         "name": "Basalt Set",
-        "eff": "14 shield, spike 5",
+        "eff": "14 shield (self), spike 5",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1944,7 +1944,7 @@
     "beastHyena": {
       "recharge": {
         "name": "Scavenge Breath",
-        "eff": "8 shield, 4 heal",
+        "eff": "8 shield (self), 4 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -2000,7 +2000,7 @@
     "beastBadger": {
       "recharge": {
         "name": "Magma Coil",
-        "eff": "8 shield",
+        "eff": "8 shield (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -2052,7 +2052,7 @@
     "beastTyrant": {
       "recharge": {
         "name": "Reaver Mantle",
-        "eff": "20 shield, rampage +1",
+        "eff": "20 shield (self), rampage +1",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -2112,7 +2112,7 @@
     "signalSkimmer": {
       "recharge": {
         "name": "ECM Ping",
-        "eff": "5 shield, jam",
+        "eff": "5 shield (self), jam",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,

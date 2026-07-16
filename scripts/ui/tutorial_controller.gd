@@ -57,7 +57,7 @@ func _build_steps() -> Array:
 		# Pick a die first (heroes + pips + dice highlighted); once targeting starts we spotlight the
 		# enemy to tap, then open up the whole screen to assign the rest.
 		{"targets": ["heroes"], "text": "Tap a die (or its hero card) to pick who fires.", "advance": "targeting_started"},
-		{"targets": ["enemy_cards"], "text": "Now tap a target to fire it - the drone for an attack, an ally for a heal or shield.", "advance": "assigned"},
+		{"targets": ["enemy_cards"], "text": "Now tap a target to fire it - the drone or its die for an attack, an ally for a heal or shield.", "advance": "assigned"},
 		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
 		{"targets": ["enemy_readouts"], "text": "Enemies telegraph their moves, be sure to account for this!"},
 		{"targets": ["roll_button"], "text": "Lock it in - ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},

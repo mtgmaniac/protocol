@@ -46,11 +46,17 @@ GATES = [
     # contract (no raw styleboxes / strong accents outside PixelUI).
     ("caps law", [sys.executable, str(ROOT / "scripts" / "checks" / "caps_law.py")], "[CAPS_LAW] PASS", False),
     ("component contract", [sys.executable, str(ROOT / "scripts" / "checks" / "component_contract.py")], "[COMPONENT_CONTRACT] PASS", False),
+    # Polish Build D: authored ability eff text must carry the target suffix its coded
+    # scope requires (NK-17) — self-targeted self-buffs missing (self) was the defect.
+    ("effect target", [sys.executable, str(ROOT / "scripts" / "checks" / "effect_text_target.py")], "[EFFECT_TARGET] PASS", False),
     # Polish Build B: reward selection model (tap selects, CONFIRM commits) +
     # integer icon law + containment at both inset budgets; and the selection
     # screen's zero-new-framed-panels pin.
     ("reward model", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/reward_model_test.gd"], "[REWARD_MODEL] PASS", False),
     ("panel count", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/panel_count_test.gd"], "[PANEL_COUNT] PASS", False),
+    # Polish Build D: consumable cap (4) + discard picker state machine, relic cap (2)
+    # + display, event-consumable pool filter, and the silent-loss/swap contract.
+    ("loadout cap", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/ConsumableLoadoutRunner.tscn"], "[LOADOUT_CAP] PASS", False),
     ("ability audit", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/AbilityAuditRunner.tscn"], ", 0 failed", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
