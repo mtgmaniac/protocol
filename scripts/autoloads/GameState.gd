@@ -744,9 +744,9 @@ func _foundry_upgrade(hero_id: String, gear_id: String) -> String:
 
 func _pick_random_gear_by_rarity(rarity: String, excluded_ids: Array) -> String:
 	var pool: Array = []
-	for item_key in DataManager.items.keys():
-		var item: ItemData = DataManager.items[item_key] as ItemData
-		if item != null and item.item_type == "gear" and item.rarity == rarity and not excluded_ids.has(item.id):
+	for item_id in DataManager.pool_ids("gear"):
+		var item: ItemData = DataManager.get_item(str(item_id)) as ItemData
+		if item != null and item.rarity == rarity and not excluded_ids.has(item.id):
 			pool.append(item.id)
 	if pool.is_empty():
 		return ""
@@ -756,12 +756,15 @@ func _pick_random_gear_by_rarity(rarity: String, excluded_ids: Array) -> String:
 # Items of a kind at or above a rarity, for intercept drafts.
 func roll_intercept_draft(kind: String, min_rarity: String, count: int) -> Array:
 	var floor_index: int = maxi(RARITY_LADDER.find(min_rarity), 0)
+	var candidate_ids: Array
+	if kind == "any":
+		candidate_ids = DataManager.pool_ids("consumable") + DataManager.pool_ids("gear")
+	else:
+		candidate_ids = DataManager.pool_ids(kind)
 	var pool: Array = []
-	for item_key in DataManager.items.keys():
-		var item: ItemData = DataManager.items[item_key] as ItemData
-		if item == null or item.item_type == "relic":
-			continue
-		if kind != "any" and item.item_type != kind:
+	for item_id in candidate_ids:
+		var item: ItemData = DataManager.get_item(str(item_id)) as ItemData
+		if item == null:
 			continue
 		if RARITY_LADDER.find(item.rarity) < floor_index:
 			continue
@@ -1462,11 +1465,9 @@ func _owned_gear_ids() -> Array:
 func _pick_random_reward_by_rarity(rarity: String, excluded_ids: Array, item_type: String = "") -> String:
 	var owned_gear: Array = _owned_gear_ids()
 	var pool: Array = []
-	for item_key in DataManager.items.keys():
-		var item: ItemData = DataManager.items[item_key] as ItemData
+	for item_id in DataManager.pool_ids("consumable") + DataManager.pool_ids("gear"):
+		var item: ItemData = DataManager.get_item(str(item_id)) as ItemData
 		if item == null:
-			continue
-		if item.item_type != "consumable" and item.item_type != "gear":
 			continue
 		if item_type != "" and item.item_type != item_type:
 			continue
@@ -1492,11 +1493,9 @@ func _pick_random_item_id(item_type: String, excluded_ids: Array) -> String:
 		return ""
 	var owned_gear: Array = _owned_gear_ids() if item_type == "gear" else []
 	var pool: Array = []
-	for item_key in DataManager.items.keys():
-		var item: ItemData = DataManager.items[item_key] as ItemData
+	for item_id in DataManager.pool_ids(item_type):
+		var item: ItemData = DataManager.get_item(str(item_id)) as ItemData
 		if item == null:
-			continue
-		if item.item_type != item_type:
 			continue
 		# Never offer a relic the run already owns (a Starting Directive relic
 		# would otherwise be duplicable in the battle-5 draft).

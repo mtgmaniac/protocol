@@ -65,6 +65,9 @@ func default_data() -> Dictionary:
 			"best_clear_by_op": {},
 			"nat20s": 0,
 			"deaths": 0,
+			# Unlock metric (Build F fence): every encounter ENTERED counts once,
+			# win, lose, or retreat — never rounds (farmable).
+			"battles_fought": 0,
 		},
 		"unlocks": {
 			"boss_relics": [],
@@ -73,6 +76,10 @@ func default_data() -> Dictionary:
 			"hero_ladder_rung": 0,
 			# Heroes unlocked but not yet added to a squad — drive the "NEW" badge.
 			"heroes_new": [],
+			# Item-gate progression (Build F): how many battle-count gates have been
+			# AWARDED (buckets 0..N open). Earning accrues in battles_fought; gates
+			# are evaluated at run end only, so pools never change mid-run.
+			"item_gates_awarded": 0,
 		},
 		# Keyword primers (one-shot micro-tutorials, docs/PRIMERS.md): ids that
 		# have successfully displayed and been dismissed.
@@ -124,6 +131,7 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	data["unlocks"]["operations"] = _string_array(loaded_unlocks.get("operations", STARTING_OPERATIONS))
 	data["unlocks"]["hero_ladder_rung"] = int(loaded_unlocks.get("hero_ladder_rung", 0))
 	data["unlocks"]["heroes_new"] = _string_array(loaded_unlocks.get("heroes_new", []))
+	data["unlocks"]["item_gates_awarded"] = int(loaded_unlocks.get("item_gates_awarded", 0))
 	if loaded.get("settings") is Dictionary:
 		data["settings"] = loaded["settings"]
 	# Onboarding block heals to defaults when absent (older saves).
@@ -142,6 +150,11 @@ func _merge_loaded(loaded: Dictionary) -> void:
 		data["unlocks"]["operations"] = OPERATION_CHAIN.duplicate()
 		data["unlocks"]["hero_ladder_rung"] = MAX_HERO_LADDER_RUNG
 		data["unlocks"]["heroes_new"] = []
+	# Item-gate grandfather (Build F, same clause shape): a profile that has
+	# played but predates the item-gate schema keeps full pools — every gate
+	# awarded, so no current player loses reward variety they already had.
+	if is_existing_profile and not loaded_unlocks.has("item_gates_awarded"):
+		data["unlocks"]["item_gates_awarded"] = DataManager.unlock_gate_count()
 	# Primer grandfather (same clause shape): a veteran profile that predates the
 	# primer system starts with every CURRENT primer marked seen — they've met
 	# the mechanics; primers are for genuinely first sightings.
@@ -263,11 +276,33 @@ func record_run_started() -> void:
 	save()
 
 
+# Build F: the unlock metric. Called exactly once per encounter ENTERED
+# (battle_scene._init_live_battle, live entries only — review re-entries and
+# the tutorial never reach it). Farm-proof by construction: nothing
+# round-based touches this counter.
+func record_battle_entered() -> void:
+	data["stats"]["battles_fought"] = int(data["stats"].get("battles_fought", 0)) + 1
+	save()
+
+
+func get_battles_fought() -> int:
+	return int(data["stats"].get("battles_fought", 0))
+
+
+# Gates already AWARDED (buckets 0..N open). Only _evaluate_item_gates — run
+# end — ever advances this, so pool composition is frozen for a whole run.
+func get_item_gates_awarded() -> int:
+	return int(data["unlocks"].get("item_gates_awarded", 0))
+
+
 # Called once at run end. Victory on the final battle counts as an op win
 # and unlocks that op's boss relic; best_clear tracks the furthest battle
 # reached in any run. Also evaluates the hero ladder + operation chain and
 # records any newly-awarded unlocks for the run-end UI (check_new_unlocks).
 func record_run_finished(result: String, op_id: String, battle_reached: int) -> void:
+	# One delta per run end: boss relic (event-gated), item gates (battle-count),
+	# hero ladder + operation chain — everything lands together on the unlock screen.
+	_run_end_unlocks.clear()
 	var stats: Dictionary = data["stats"]
 	stats["best_clear"] = maxi(int(stats.get("best_clear", 0)), battle_reached)
 	var best_by_op: Dictionary = stats.get("best_clear_by_op", {})
@@ -278,6 +313,7 @@ func record_run_finished(result: String, op_id: String, battle_reached: int) -> 
 		wins[op_id] = int(wins.get(op_id, 0)) + 1
 		stats["runs_won_by_op"] = wins
 		unlock_boss_relic_for_op(op_id)
+	_evaluate_item_gates()
 	_evaluate_run_end_unlocks(result, op_id)
 	save()
 
@@ -287,7 +323,8 @@ func record_run_finished(result: String, op_id: String, battle_reached: int) -> 
 # Runs once per run end. Advances the operation chain (on a boss clear) and at most
 # ONE hero-ladder rung, accumulating awards in _run_end_unlocks for the UI.
 func _evaluate_run_end_unlocks(result: String, op_id: String) -> void:
-	_run_end_unlocks.clear()
+	# (record_run_finished cleared _run_end_unlocks; boss-relic and item-gate
+	# awards may already sit in it.)
 	# Operation chain: clearing this op's boss unlocks the next link. Guard on the raw
 	# unlock list via _award_operation (NOT is_operation_unlocked, which is force-true
 	# when headless) so the stored progression advances correctly in every context.
@@ -301,6 +338,33 @@ func _evaluate_run_end_unlocks(result: String, op_id: String) -> void:
 	if rung < MAX_HERO_LADDER_RUNG and _hero_rung_satisfied(rung):
 		data["unlocks"]["hero_ladder_rung"] = rung + 1
 		_award_hero(HERO_LADDER[rung])
+
+
+# Build F: item gates. Earning (battles_fought) accrues during play; awarding
+# happens HERE, at run end only — pools never change composition mid-run.
+# Every gate whose threshold the counter has crossed since the last award
+# lands together: a retreat-abandoned run has no run end, so its crossings
+# catch up on the next completed run's screen (nothing is dropped).
+func _evaluate_item_gates() -> void:
+	var fought: int = int(data["stats"].get("battles_fought", 0))
+	var awarded: int = int(data["unlocks"].get("item_gates_awarded", 0))
+	var schedule: Array = DataManager.unlock_schedule()
+	var target: int = awarded
+	while target < schedule.size() and fought >= int(schedule[target]):
+		target += 1
+	if target == awarded:
+		return
+	for gate in range(awarded, target):
+		for item_id in DataManager.bucket_items(gate + 1):
+			var item: Resource = DataManager.get_item(str(item_id))
+			if item == null:
+				continue
+			_run_end_unlocks.append({
+				"type": str(item.get("item_type")),
+				"id": str(item_id),
+				"display_name": str(item.get("display_name")),
+			})
+	data["unlocks"]["item_gates_awarded"] = target
 
 
 # Whether the (0-based) ladder rung's condition is met by lifetime stats.
@@ -412,12 +476,13 @@ func _operation_display_name(op_id: String) -> String:
 
 # --- Dev tools ---
 
-# Unlock everything: every hero, operation, and boss relic; ladder maxed.
+# Unlock everything: every hero, operation, boss relic, and item gate; ladder maxed.
 func dev_unlock_all() -> void:
 	data["unlocks"]["heroes"] = ALL_HEROES.duplicate()
 	data["unlocks"]["operations"] = OPERATION_CHAIN.duplicate()
 	data["unlocks"]["hero_ladder_rung"] = MAX_HERO_LADDER_RUNG
 	data["unlocks"]["heroes_new"] = []
+	data["unlocks"]["item_gates_awarded"] = DataManager.unlock_gate_count()
 	var boss_relics: Array = []
 	for op_id in BOSS_RELIC_BY_OP.keys():
 		boss_relics.append(str(BOSS_RELIC_BY_OP[op_id]))
@@ -456,4 +521,13 @@ func unlock_boss_relic_for_op(op_id: String) -> void:
 	if not unlocked.has(relic_id):
 		unlocked.append(relic_id)
 		data["unlocks"]["boss_relics"] = unlocked
+		# Build F: boss relics join the unified unlock screen when earned — they
+		# used to unlock silently and just appear in the next Starting Directive
+		# picker, so a player could earn one and never notice.
+		var relic: Resource = DataManager.get_item(relic_id)
+		_run_end_unlocks.append({
+			"type": "boss_relic",
+			"id": relic_id,
+			"display_name": str(relic.get("display_name")) if relic != null else relic_id,
+		})
 		save()

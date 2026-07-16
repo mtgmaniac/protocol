@@ -195,6 +195,10 @@ func _run(args: Dictionary) -> int:
 	var gs: Node = get_node("/root/GameState")
 	var dm: Node = get_node("/root/DataManager")
 
+	# Sim pin (Build F, Task 3): every balance baseline assumes FULL pools —
+	# pinned explicitly here, never as a side effect of an unlocked profile.
+	dm.call("pin_pools_fully_unlocked")
+
 	if args.has("bench"):
 		return _bench(gs, dm, args)
 

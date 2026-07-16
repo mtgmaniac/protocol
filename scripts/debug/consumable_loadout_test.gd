@@ -21,12 +21,9 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _ids_of_type(kind: String) -> Array:
-	var ids: Array = []
-	for item_key in DataManager.items.keys():
-		var item: ItemData = DataManager.items[item_key] as ItemData
-		if item != null and item.item_type == kind:
-			ids.append(item.id)
-	return ids
+	# Through the choke point (Build F): pool_ids owns unlock filtering; this
+	# headless rig reads fully unlocked (isolated context).
+	return DataManager.pool_ids(kind)
 
 
 func _run() -> void:

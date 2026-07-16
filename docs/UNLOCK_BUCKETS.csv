@@ -1,0 +1,87 @@
+type,id,name,rarity,bucket,unlock_battle,rationale
+consumable,patch_kit,Patch Kit,common,0,0,flat heal - simplest item in the game
+consumable,triage_broadcast,Triage Broadcast,common,0,0,flat AoE heal
+consumable,scrap_plate,Scrap Plate,common,0,0,flat shield
+consumable,buckler_array,Buckler Array,common,0,0,flat AoE shield
+consumable,calibration_chip,Calibration Chip,common,0,0,smallest roll buff
+consumable,grounding_clip,Grounding Clip,common,0,0,smallest enemy roll debuff
+consumable,shock_charge,Shock Charge,common,0,0,flat damage
+consumable,acid_vial,Acid Vial,common,0,0,plain burn - burn has a primer
+consumable,phase_scrambler,Phase Scrambler,common,0,0,reroll one enemy die - one sentence
+consumable,protocol_cell,Protocol Cell,common,0,0,flat protocol gain
+consumable,momentum_core,Momentum Core,uncommon,0,0,roll-buff family tier 2 - same shape as calibration_chip; also feeds uncommon+ intercept drafts (abandonedArmory)
+consumable,capacitor_dose,Capacitor Dose,uncommon,0,0,protocol family tier 2; feeds uncommon+ intercept drafts and uncommon consumable event grants
+consumable,harmonic_injector,Harmonic Injector,rare,0,0,roll-buff family tier 3 - big number of a bucket-0 shape; covers the rare-consumable event grants (memorialProtocol / ghostFrequency)
+consumable,core_surge,Core Surge,rare,0,0,protocol family tier 3; second rare so the rare-consumable grant is not deterministic
+consumable,defib_spark,Defib Spark,uncommon,1,3,revive - simple concept but a new verb
+consumable,corrosion_bomb,Corrosion Bomb,uncommon,1,3,enemy-debuff family tier 2
+consumable,ghost_veil,Ghost Veil,uncommon,2,6,cloak - needs the cloak rules understood
+consumable,cascade_jammer,Cascade Jammer,rare,4,12,reroll EVERY enemy die - board-wide die manipulation
+consumable,entropy_seed,Entropy Seed,rare,5,15,enemy-debuff family tier 3
+consumable,mainline_cache,Mainline Cache,legendary,6,20,protocol family tier 4
+consumable,cryo_gel,Cryo Gel,uncommon,7,25,freeze ANY die - freezing your own ally on purpose is the weird half
+consumable,scatter_veil_array,Scatter Veil Array,rare,8,30,AoE cloak - whole-squad stealth turns
+consumable,archive_cascade,Archive Cascade,legendary,9,35,roll-buff family tier 4
+consumable,cryo_web,Cryo Web,rare,11,45,two-repeat freeze - repeat math on top of freeze
+consumable,deep_zero_pin,Deep Zero Pin,rare,17,96,pin every enemy die to weakest face + freeze - the weirdest item in the pool
+gear,neural_splice,Neural Splice,uncommon,0,0,flat roll bonus
+gear,combat_plating,Combat Plating,uncommon,0,0,battle-start shield
+gear,stim_injector,Stim Injector,uncommon,0,0,flat max HP
+gear,kill_switch,Kill Switch,uncommon,0,0,heal on kill - one trigger
+gear,protocol_tap,Protocol Tap,uncommon,0,0,battle-start protocol
+gear,counterweight,Counterweight,uncommon,0,0,flat damage reduction
+gear,spike_driver,Spike Driver,uncommon,0,0,first-ability bonus - one condition
+gear,bounty_chip,Bounty Chip,uncommon,0,0,protocol on basic kill
+gear,triage_gel,Triage Gel,uncommon,0,0,heals also shield - mild composition
+gear,priming_charge,Priming Charge,uncommon,0,0,first Nudge free - teaches the protocol economy
+gear,breach_tip,Breach Tip,rare,0,0,ignore 5 shield - simple; with siphon_loop covers the rare+ gear intercept drafts (salvageCache / blackMarketNode need 3 rare+ options with warframe_core / predator_lens)
+gear,siphon_loop,Siphon Loop,rare,0,0,20% leech - leech has a primer; rare+ intercept coverage
+gear,warframe_core,Warframe Core,legendary,0,0,max-HP family tier 3 - pure stat; with predator_lens covers the deepCache legendary draft (needs 2 legendary options)
+gear,predator_lens,Predator Lens,legendary,0,0,roll-bonus family tier 2 - pure stat; deepCache legendary coverage
+gear,dead_mans_chip,Dead Man's Chip,rare,1,3,once-per-battle death save - one sentence
+gear,phase_weave,Phase Weave,uncommon,2,6,start cloaked - paired with ghost_veil's bucket
+gear,targeting_optic,Targeting Optic,uncommon,3,9,start with first target marked - needs mark understood
+gear,mainline_bus,Mainline Bus,legendary,4,12,battle-start protocol family tier 2
+gear,hemophage_nexus,Hemophage Nexus,legendary,5,15,leech family tier 2
+gear,overkill_matrix,Overkill Matrix,legendary,6,20,first-ability bonus family tier 2
+gear,ignition_coil,Ignition Coil,rare,7,25,burn ticks once immediately - subtle timing change
+gear,payload_fuse,Payload Fuse,rare,8,30,detonate amplifier - needs the detonate keyword
+gear,overload_capacitor,Overload Capacitor,rare,10,40,20-face trigger - rides the final-face-20 rule
+gear,echo_matrix,Echo Matrix,rare,12,50,first ability echoes its damage - damage-repeat semantics
+gear,anchor_frame,Anchor Frame,rare,13,58,conditional taunt above 50% HP - HP-threshold state
+gear,mirror_plate,Mirror Plate,rare,14,67,pays out when the ENEMY tampers your die - reactive economy
+gear,reverse_gimbal,Reverse Gimbal,uncommon,15,76,nudge may subtract - UX ruling still pending (DECISIONS #11); late gate buys time
+gear,killswitch_relay,Killswitch Relay,legendary,15,76,on-death AoE - rewards dying
+gear,wide_aperture,Wide Aperture,rare,15,76,band modification - moves the dice zones themselves
+gear,band_compressor,Band Compressor,legendary,16,86,band modification - widens the 20 band
+gear,sync_antenna,Sync Antenna,legendary,17,96,matching rolls with an ally - cross-unit dice reading
+relic,overcharge,Overcharge,-,0,0,global damage multiplier - simplest relic shape
+relic,ironCurtain,Iron Curtain,-,0,0,global enemy damage multiplier
+relic,coordinatedStrike,Coordinated Strike,-,0,0,permanent +2 roll
+relic,signalJam,Signal Jam,-,0,0,permanent enemy -2 roll
+relic,bulwarkAura,Bulwark Aura,-,0,0,flat shield per turn
+relic,naniteField,Nanite Field,-,0,0,flat heal per turn
+relic,gravityWell,Gravity Well,-,2,6,flat AoE damage per turn
+relic,plagueProtocol,Plague Protocol,-,3,9,enemies start burning
+relic,overflowBuffer,Overflow Buffer,-,3,9,protocol carryover - changes the between-battle economy
+relic,fieldCache,Field Cache,-,4,12,battle-start consumable grant
+relic,curatedCache,Curated Cache,-,5,15,reward-pool filter - a relic about the reward system itself
+relic,chainReaction,Chain Reaction,-,6,20,on-death AoE chain
+relic,emergencySignal,Emergency Signal,-,7,25,conditional HP-threshold squad buff
+relic,aegisField,Aegis Field,-,8,30,every heal also shields the squad - event composition
+relic,mercyProtocol,Mercy Protocol,-,9,35,revive modifier - composes with revive sources
+relic,scavengerManifest,Scavenger Manifest,-,9,35,first kill drops a consumable
+relic,protocolOverride,Protocol Override,-,10,40,items cost 0 and refund - inverts the item economy
+relic,entropyLeak,Entropy Leak,-,10,40,battles 6+ enemies spawn at 85% - conditional late-run scaling
+relic,staticField,Static Field,-,11,45,turn-1 enemy jam - die suppression
+relic,salvageDirective,Salvage Directive,-,11,45,marked-kill protocol refund - two-keyword composition
+relic,resonanceCascade,Resonance Cascade,-,12,50,burn tick amplifier
+relic,coldLogic,Cold Logic,-,12,50,bonus vs frozen dice - freeze synergy
+relic,chainDoctrine,Chain Doctrine,-,13,58,chains jump one extra time - keyword modifier
+relic,overflowVent,Overflow Vent,-,13,58,protocol past cap becomes damage - overflow conversion
+relic,twinFates,Twin Fates,-,14,67,copy one hero die to another - direct dice surgery
+relic,standingOrder,Standing Order,-,14,67,band modification for every unit
+relic,openingGambit,Opening Salvo,-,15,76,battle-start HP swing both ways - high-variance gamble
+relic,overloadLoop,Overload Loop,-,16,86,20s resolve twice - stacks rules on the 20 face
+relic,martyrdomProtocol,Vengeance Protocol,-,16,86,ally death triggers all-20s - death-as-resource
+relic,deadMansHand,Dead Man's Hand,-,17,96,squad-wipe save + all 20s - rewrites the loss rule itself

@@ -49,6 +49,11 @@ GATES = [
     # Polish Build D: authored ability eff text must carry the target suffix its coded
     # scope requires (NK-17) — self-targeted self-buffs missing (self) was the defect.
     ("effect target", [sys.executable, str(ROOT / "scripts" / "checks" / "effect_text_target.py")], "[EFFECT_TARGET] PASS", False),
+    # Build F: no pool draw reaches item data except through DataManager.pool_ids
+    # (the choke point), and the unlock buckets stay complete, floored, and equal
+    # to the Kev-approved CSV.
+    ("pool choke", [sys.executable, str(ROOT / "scripts" / "checks" / "pool_choke.py")], "[POOL_CHOKE] PASS", False),
+    ("pool floor", [sys.executable, str(ROOT / "scripts" / "checks" / "unlock_pool_floor.py")], "[POOL_FLOOR] PASS", False),
     # Polish Build B: reward selection model (tap selects, CONFIRM commits) +
     # integer icon law + containment at both inset budgets; and the selection
     # screen's zero-new-framed-panels pin.
@@ -58,6 +63,9 @@ GATES = [
     # + display, event-consumable pool filter, and the silent-loss/swap contract.
     ("loadout cap", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/ConsumableLoadoutRunner.tscn"], "[LOADOUT_CAP] PASS", False),
     ("ability audit", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/AbilityAuditRunner.tscn"], ", 0 failed", False),
+    # Build F: counter integrity (once per encounter entered), run-end-only gate
+    # evaluation, delta correctness, boss-relic announcement, sim pin.
+    ("unlock progression", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/unlock_progression_test.gd"], "[UNLOCK_PROGRESSION] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
     ("primer smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/primer_smoke_test.gd"], "[PRIMER_SMOKE] PASS", False),

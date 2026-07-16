@@ -1,8 +1,6 @@
 # Run-end screen — victory / defeat summary in the Direction-05 DT language.
 extends Control
 
-const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
-
 const VICTORY_TITLE_FONT := 108
 const DEFEAT_TITLE_FONT := 150
 # Kev 2026-07-10: readability pass — heads/summary/button were well below the
@@ -82,8 +80,14 @@ func _service_record_text() -> String:
 
 func _on_new_run_button_pressed() -> void:
 	AudioManager.play_select()
-	GameState.reset_run()
-	SceneManager.go_to_unit_select()
+	# Build F: anything unlocked this run end (boss relic, item gates, hero,
+	# operation) gets the UNLOCKS screen on the way home — victory AND failure.
+	# Nothing unlocked -> straight home, never an empty ceremony.
+	if SaveManager.check_new_unlocks().is_empty():
+		GameState.reset_run()
+		SceneManager.go_to_unit_select()
+	else:
+		SceneManager.go_to_unlocks()
 
 
 func _apply_visual_theme(victory: bool) -> void:
@@ -110,8 +114,6 @@ func _apply_visual_theme(victory: bool) -> void:
 
 	_add_result_banner(victory, accent)
 	_build_two_section_stats(accent)
-	_build_unlocked_section()
-	call_deferred("_show_operation_unlock_origin")
 
 	# Single primary action (start a fresh run) = teal primary button, prefixed
 	# with the swap/restart glyph (batch 181).
@@ -122,27 +124,6 @@ func _apply_visual_theme(victory: bool) -> void:
 	new_run_button.add_theme_constant_override("icon_max_width", 56)
 	new_run_button.add_theme_color_override("icon_normal_color", PixelUI.BTN_PRIMARY_INK)
 	new_run_button.add_theme_constant_override("h_separation", 16)
-
-
-func _show_operation_unlock_origin() -> void:
-	# Headless runs award all operations for coverage; they do not have a player
-	# to acknowledge a presentation-only overlay.
-	if OS.has_feature("headless"):
-		return
-	for entry_variant in SaveManager.check_new_unlocks():
-		var entry: Dictionary = entry_variant as Dictionary
-		if str(entry.get("type", "")) != "operation":
-			continue
-		var operation_id: String = str(entry.get("id", ""))
-		if operation_id == "" or SaveManager.has_seen_operation_origin(operation_id):
-			continue
-		var briefing := OPERATION_BRIEFING_OVERLAY.new()
-		add_child(briefing)
-		briefing.dismissed.connect(func(_mode: String) -> void:
-			SaveManager.acknowledge_operation_origin(operation_id)
-		)
-		briefing.present_unlock(operation_id)
-		return
 
 
 # Result illustration (victory / defeat) pinned above the title. Cover-cropped
@@ -163,81 +144,11 @@ func _add_result_banner(victory: bool, accent: Color) -> void:
 	vbox.move_child(frame, 0)
 
 
-# Shows an "UNLOCKED" panel (heroes / operations awarded this run) above Start New Run.
-func _build_unlocked_section() -> void:
-	var unlocks: Array = SaveManager.check_new_unlocks()
-	if unlocks.is_empty():
-		return
-	var vbox := $Content/VBox as VBoxContainer
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(760, 0)
-	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# Component: Reward card (amber unlock accent).
-	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_REWARD))
-	PixelUI.add_corner_brackets(panel, PixelUI.DT_AMBER, 24.0, 3.0, 8.0)
-	var pad := MarginContainer.new()
-	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		pad.add_theme_constant_override(side, 20)
-	panel.add_child(pad)
-	var col := VBoxContainer.new()
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 12)
-	pad.add_child(col)
-	col.add_child(_make_section_head("UNLOCKED", PixelUI.DT_AMBER))
-	for entry_variant in unlocks:
-		col.add_child(_make_unlock_row(entry_variant as Dictionary))
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.add_child(panel)
-	vbox.add_child(center)
-	vbox.move_child(center, button_row.get_index())
-
-
-func _make_unlock_row(entry: Dictionary) -> Control:
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	row.add_theme_constant_override("separation", 16)
-	var is_hero: bool = str(entry.get("type", "")) == "hero"
-	if is_hero:
-		var unit := DataManager.get_unit(str(entry.get("id", ""))) as UnitData
-		if unit != null and unit.portrait != null:
-			var frame := PanelContainer.new()
-			# The ONE portrait window (PixelUI.HERO_PORTRAIT_REGION aspect) at token
-			# size — the old 144×144 square with centered cover trimmed the top and
-			# bottom of the head (liar #4 of the 2026-07-12 portrait-region bug).
-			var token_w := 144.0
-			frame.custom_minimum_size = Vector2(token_w, roundf(token_w * PixelUI.HERO_PORTRAIT_REGION.y / PixelUI.HERO_PORTRAIT_REGION.x))
-			frame.clip_contents = true
-			frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2))
-			var crop := Control.new()
-			crop.clip_contents = true
-			crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			frame.add_child(crop)
-			var tex := TextureRect.new()
-			tex.texture = unit.portrait
-			tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex.stretch_mode = TextureRect.STRETCH_SCALE  # position/size set by cover-fit
-			crop.add_child(tex)
-			# Shared framing rule — same function as the battle card and squad tiles.
-			crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(tex, crop.size))
-			row.add_child(frame)
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var name_label := Label.new()
-	name_label.text = str(entry.get("display_name", "")).to_upper()
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_style_label(name_label, 64, PixelUI.TEXT_PRIMARY)
-	info.add_child(name_label)
-	var tag := Label.new()
-	tag.text = "NEW OPERATIVE UNLOCKED" if is_hero else "NEW OPERATION UNLOCKED"
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_style_label(tag, 40, PixelUI.DT_AMBER)
-	info.add_child(tag)
-	row.add_child(info)
-	return row
+# The old amber "UNLOCKED" panel lived here (heroes / operations only — boss
+# relics unlocked silently). Retired in Build F: every run-end award now lands
+# on the dedicated UnlockScreen (unlock_screen.gd), which also announces boss
+# relics and item-gate buckets. The one-time operation-origin acknowledgement
+# moved with it.
 
 
 # Splits the stats panel into two divider-separated sections: THIS RUN (the run

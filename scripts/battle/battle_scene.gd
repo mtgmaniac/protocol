@@ -298,6 +298,12 @@ func _ready() -> void:
 # ── Live battle init (extracted from _ready so review can branch around its
 # run-state side effects) ─────────────────────────────────────────────────────
 func _init_live_battle() -> void:
+	# Unlock metric (Build F): one increment per encounter ENTERED — this runs
+	# exactly once per live battle (review re-entries branch around it), so a
+	# multi-round battle counts once and a retreat still counted its entry.
+	# The tutorial is a scripted exhibition, not an encounter (DECISIONS #13).
+	if not _game_state().tutorial_mode:
+		SaveManager.record_battle_entered()
 	_update_battle_header()
 	_build_runtime_units()
 	combat_manager.setup_battle(hero_units, enemy_units)

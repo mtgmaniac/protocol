@@ -157,6 +157,9 @@ func run(timeout_msec: int = 10000) -> Dictionary:
 	_notes.clear()
 	_started_msec = Time.get_ticks_msec()
 	_timeout_msec = maxi(timeout_msec, 1000)
+	# Sim pin (Build F, Task 3): audit regressions draw from FULL pools,
+	# explicitly — audit results never depend on profile unlock state.
+	DataManager.pin_pools_fully_unlocked()
 
 	print("Ability Audit: reading %s" % HEROES_DATA_PATH)
 	var abilities: Array[Dictionary] = _load_hero_abilities()
@@ -1708,18 +1711,22 @@ func _run_save_manager_regressions() -> void:
 	# Progression: best_clear_by_op records; a facility clear awards ONE ladder rung
 	# (engineer) and unlocks the next op (hive); rung 2 (shield) defers to a later run.
 	# Asserts against the raw unlock lists — is_*_unlocked() is force-true when headless.
+	# Build F: the boss relic joins the run-end delta (3 entries: relic, hero, op).
 	SaveManager.data = SaveManager.default_data()
 	SaveManager.record_run_started()
 	SaveManager.record_run_finished("victory", "facility", 8)
 	var prog_heroes: Array = SaveManager.data["unlocks"]["heroes"]
 	var prog_ops: Array = SaveManager.data["unlocks"]["operations"]
+	var prog_unlock_types: Array = []
+	for prog_entry in SaveManager.check_new_unlocks():
+		prog_unlock_types.append(str(prog_entry.get("type", "")))
 	var prog_ok: bool = (
 		int((SaveManager.data["stats"]["best_clear_by_op"] as Dictionary).get("facility", 0)) == 8
 		and prog_heroes.has("engineer")
 		and SaveManager.get_hero_ladder_rung() == 1
 		and prog_ops.has("hive")
 		and not prog_heroes.has("shield")
-		and SaveManager.check_new_unlocks().size() == 2
+		and prog_unlock_types == ["boss_relic", "operation", "hero"]
 	)
 	_expect_and_record("Regression / progression ladder + op chain", "saveManager", "true", str(prog_ok))
 

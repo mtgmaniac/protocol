@@ -8,6 +8,7 @@ const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
+const UNLOCK_SCENE := "res://scenes/ui/UnlockScreen.tscn"
 const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
 const INTERCEPT_SCENE := "res://scenes/ui/InterceptScreen.tscn"
 const DEFAULT_SQUAD := ["pulse", "combat", "shield"]
@@ -330,6 +331,7 @@ func _step_run_end_new_run_button() -> void:
 	else:
 		_errors.append("Run end missing _on_new_run_button_pressed")
 		return
+	await _traverse_unlock_screen_if_awarded()
 	await _wait_for_scene(HOME_SCENE)
 	await _wait_frames(2)
 
@@ -343,7 +345,24 @@ func _step_run_end_new_run_button() -> void:
 	run_end = _current()
 	if run_end != null and run_end.has_method("_on_new_run_button_pressed"):
 		run_end.call("_on_new_run_button_pressed")
+	await _traverse_unlock_screen_if_awarded()
 	await _wait_for_scene(HOME_SCENE)
+
+
+# Build F: a non-empty run-end delta detours run-end -> UNLOCKS -> home; an
+# empty delta goes straight home (never an empty ceremony). Walk whichever
+# path the delta chose.
+func _traverse_unlock_screen_if_awarded() -> void:
+	var unlocks: Array = root.get_node("/root/SaveManager").call("check_new_unlocks")
+	if unlocks.is_empty():
+		return
+	await _wait_for_scene(UNLOCK_SCENE)
+	await _wait_frames(2)
+	var unlock_screen := _current()
+	if unlock_screen != null and unlock_screen.has_method("_on_continue_button_pressed"):
+		unlock_screen.call("_on_continue_button_pressed")
+	else:
+		_errors.append("Unlock screen missing _on_continue_button_pressed")
 
 
 func _start_run_and_go_battle() -> void:

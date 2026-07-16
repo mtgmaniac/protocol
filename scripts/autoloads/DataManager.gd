@@ -9,6 +9,7 @@ const RELICS_DATA_PATH := "res://data/raw/relics.data.json"
 const BATTLE_MODES_DATA_PATH := "res://data/raw/battle-modes.json"
 const KEYWORDS_DATA_PATH := "res://data/raw/keywords.data.json"
 const PRIMERS_DATA_PATH := "res://data/raw/primers.data.json"
+const UNLOCKS_DATA_PATH := "res://data/raw/unlocks.data.json"
 const HERO_PORTRAIT_ROOT := "res://assets/portraits/"
 const ENEMY_PORTRAIT_ROOT := "res://assets/portraits/enemies/"
 const LEGACY_UI_ROOT := "res://legacy-angular/public/ui/"
@@ -290,6 +291,21 @@ var _keywords_cache: Dictionary = {}
 var operations: Dictionary = {}
 var operation_order: Array = []
 
+# --- Unlock progression (Build F) --------------------------------------------
+# Ordered buckets + battle-count gates (docs/TRUTH.md, THE FENCE). Bucket 0 is
+# open from zero; schedule[i] battles award bucket i+1, EVALUATED AT RUN END
+# ONLY (SaveManager owns the award). Boss relics live in NO bucket (event-gated).
+var _unlock_schedule: Array = []
+var _unlock_buckets: Array = []
+var _bucket_by_item_id: Dictionary = {}
+# Harness pin (Task 3): the balance sim and audit rigs run FULLY UNLOCKED,
+# explicitly — never as a side effect of an unlocked profile. The pin beats
+# everything, including the test-only gating force below.
+var _pool_pinned_fully_unlocked: bool = false
+# Test hook: unlock regression tests re-enable gating inside an isolated
+# (headless) context, which otherwise reads fully unlocked.
+var _pool_gating_forced: bool = false
+
 
 func _ready() -> void:
 	_load_all_data()
@@ -309,6 +325,72 @@ func get_enemy_by_display_name(enemy_name: String) -> Resource:
 
 func get_item(item_id: String) -> Resource:
 	return items.get(item_id)
+
+
+# --- Pool queries (THE choke point, Build F) ---------------------------------
+# pool_ids is the ONLY sanctioned enumeration of the item tables for pool
+# draws: it owns the unlocked-bucket filter and call sites cannot opt out
+# (same architecture rule as make_integer_icon and the font loader — one
+# owner, or the next grant path silently bypasses the gate). Iteration keeps
+# the items-table insertion (file) order so a fully-unlocked query is
+# byte-identical to the pre-gate behavior under a fixed seed.
+# Enforced by scripts/checks/pool_choke.py: `DataManager.items` is banned
+# outside this file.
+
+func pin_pools_fully_unlocked() -> void:
+	_pool_pinned_fully_unlocked = true
+
+
+func force_pool_gating_for_test() -> void:
+	_pool_gating_forced = true
+
+
+func pools_fully_unlocked() -> bool:
+	if _pool_pinned_fully_unlocked:
+		return true
+	if _pool_gating_forced:
+		return false
+	# Isolated contexts (headless smokes, capture rigs) default to full pools so
+	# existing harnesses keep their behavior; the sim/audit additionally pin.
+	return DevContext.is_isolated()
+
+
+func unlock_gate_count() -> int:
+	return _unlock_schedule.size()
+
+
+func unlock_schedule() -> Array:
+	return _unlock_schedule.duplicate()
+
+
+# Item ids awarded by bucket `index` (0 = open from zero).
+func bucket_items(index: int) -> Array:
+	if index < 0 or index >= _unlock_buckets.size():
+		return []
+	return (_unlock_buckets[index] as Array).duplicate()
+
+
+# Unlock-filtered ids of one item_type ("consumable" / "gear" / "relic").
+# Boss relics are event-gated, never bucket-gated: pool queries never return
+# them (the Starting Directive picker reads SaveManager.boss_relics instead).
+func pool_ids(item_type: String) -> Array:
+	var fully: bool = pools_fully_unlocked()
+	var awarded: int = 0
+	if not fully:
+		awarded = SaveManager.get_item_gates_awarded()
+	var out: Array = []
+	for item_key in items.keys():
+		var item: ItemData = items[item_key] as ItemData
+		if item == null or item.item_type != item_type:
+			continue
+		if item.item_type == "relic" and item.boss_relic:
+			continue
+		if not fully:
+			var bucket: int = int(_bucket_by_item_id.get(item.id, -1))
+			if bucket < 0 or bucket > awarded:
+				continue
+		out.append(item.id)
+	return out
 
 
 # Combat keyword glossary (single source of truth for the help menu + tooltips). Lazy-loaded
@@ -352,6 +434,7 @@ func _load_all_data() -> void:
 	_load_enemies()
 	_build_enemy_role_pools()
 	_load_items()
+	_load_unlocks()
 	_load_operations()
 
 
@@ -418,6 +501,35 @@ func _load_items() -> void:
 	for relic_entry in relics_payload:
 		var relic_item: ItemData = _build_item_resource(relic_entry, "relic")
 		items[relic_item.id] = relic_item
+
+
+func _load_unlocks() -> void:
+	_unlock_schedule.clear()
+	_unlock_buckets.clear()
+	_bucket_by_item_id.clear()
+	var payload: Variant = _parse_json_file(UNLOCKS_DATA_PATH)
+	if not (payload is Dictionary):
+		push_error("[DataManager] unlocks.data.json missing or malformed - pools would be empty")
+		return
+	var payload_dict: Dictionary = payload as Dictionary
+	for threshold in payload_dict.get("schedule", []):
+		_unlock_schedule.append(int(threshold))
+	for bucket in payload_dict.get("buckets", []):
+		var ids: Array = []
+		for item_id in bucket:
+			var id_s: String = str(item_id)
+			ids.append(id_s)
+			if _bucket_by_item_id.has(id_s):
+				push_error("[DataManager] unlock bucket duplicate id '%s'" % id_s)
+			if not items.has(id_s):
+				push_error("[DataManager] unlock bucket references unknown item '%s'" % id_s)
+			_bucket_by_item_id[id_s] = _unlock_buckets.size()
+		_unlock_buckets.append(ids)
+	# Every gate must have a bucket to award (bucket 0 is free, so buckets =
+	# gates + 1); a mismatch is authored-data drift, fail loudly.
+	if _unlock_buckets.size() != _unlock_schedule.size() + 1:
+		push_error("[DataManager] unlocks.data.json: %d buckets but %d gates (+1 expected)" % [
+			_unlock_buckets.size(), _unlock_schedule.size()])
 
 
 func _load_operations() -> void:

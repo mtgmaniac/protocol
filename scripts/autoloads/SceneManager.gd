@@ -6,6 +6,7 @@ const UNIT_SELECT_SCENE := "res://scenes/ui/UnitSelect.tscn"
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
+const UNLOCK_SCENE := "res://scenes/ui/UnlockScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
 const INTERCEPT_SCENE := "res://scenes/ui/InterceptScreen.tscn"
@@ -64,3 +65,9 @@ func go_to_run_end(defeat: bool = false) -> void:
 
 func go_to_evolution() -> void:
 	go_to(EVOLUTION_SCENE)
+
+
+# Build F: run summary -> unlock screen (only when the run-end delta is
+# non-empty; the run-end screen owns that branch) -> home.
+func go_to_unlocks() -> void:
+	go_to(UNLOCK_SCENE)

@@ -1,0 +1,54 @@
+{
+  "$doc": [
+    "Unlock progression data (Build F). THE FENCE: unlock progression is ordered",
+    "buckets + battle-count gates, nothing else (docs/TRUTH.md). Buckets are",
+    "hand-ordered simple -> weird; design data approved via docs/UNLOCK_BUCKETS.csv",
+    "(the CSV and this file are pinned equal by scripts/checks/unlock_pool_floor.py).",
+    "schedule[i] is the battles_fought threshold that awards bucket i+1; bucket 0 is",
+    "open from zero. Gates are EVALUATED AT RUN END ONLY (SaveManager). Boss relics",
+    "are event-gated and appear in NO bucket. floors are the approved bucket-0",
+    "minimums per type; the gate fails if bucket 0 ever drops below them."
+  ],
+  "schedule": [3, 6, 9, 12, 15, 20, 25, 30, 35, 40, 45, 50, 58, 67, 76, 86, 96],
+  "floors": {
+    "consumable": 12,
+    "gear": 10,
+    "relic": 6,
+    "consumable_common": 8,
+    "consumable_uncommon_plus": 2,
+    "consumable_rare_plus": 1,
+    "gear_rare_plus": 3,
+    "legendary_total": 2
+  },
+  "buckets": [
+    [
+      "patch_kit", "triage_broadcast", "scrap_plate", "buckler_array",
+      "calibration_chip", "grounding_clip", "shock_charge", "acid_vial",
+      "phase_scrambler", "protocol_cell", "momentum_core", "capacitor_dose",
+      "harmonic_injector", "core_surge",
+      "neural_splice", "combat_plating", "stim_injector", "kill_switch",
+      "protocol_tap", "counterweight", "spike_driver", "bounty_chip",
+      "triage_gel", "priming_charge", "breach_tip", "siphon_loop",
+      "warframe_core", "predator_lens",
+      "overcharge", "ironCurtain", "coordinatedStrike", "signalJam",
+      "bulwarkAura", "naniteField"
+    ],
+    ["defib_spark", "corrosion_bomb", "dead_mans_chip"],
+    ["ghost_veil", "phase_weave", "gravityWell"],
+    ["targeting_optic", "plagueProtocol", "overflowBuffer"],
+    ["cascade_jammer", "mainline_bus", "fieldCache"],
+    ["entropy_seed", "hemophage_nexus", "curatedCache"],
+    ["mainline_cache", "overkill_matrix", "chainReaction"],
+    ["cryo_gel", "ignition_coil", "emergencySignal"],
+    ["scatter_veil_array", "payload_fuse", "aegisField"],
+    ["archive_cascade", "mercyProtocol", "scavengerManifest"],
+    ["overload_capacitor", "protocolOverride", "entropyLeak"],
+    ["cryo_web", "staticField", "salvageDirective"],
+    ["echo_matrix", "resonanceCascade", "coldLogic"],
+    ["anchor_frame", "chainDoctrine", "overflowVent"],
+    ["mirror_plate", "twinFates", "standingOrder"],
+    ["reverse_gimbal", "killswitch_relay", "wide_aperture", "openingGambit"],
+    ["band_compressor", "overloadLoop", "martyrdomProtocol"],
+    ["deep_zero_pin", "sync_antenna", "deadMansHand"]
+  ]
+}

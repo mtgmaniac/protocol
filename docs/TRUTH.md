@@ -178,12 +178,68 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Save system + progression (SaveManager autoload)
 
-`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths}, unlocks: {boss_relics, heroes: ["combat","engineer","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: []}, onboarding: {primers_seen: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
+`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths, battles_fought}, unlocks: {boss_relics, heroes: ["combat","engineer","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: [], item_gates_awarded: 0}, onboarding: {primers_seen: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
 
 - **Hero ladder** (ONE rung max per run end; overshoot defers): (1) facility best_clear ≥ 6 OR runs_started ≥ 3 → **avalanche** (Batch-1 swap: this rung-1 gate moved from engineer to avalanche when engineer became a starter; tutorial runs no longer increment runs_started per DECISIONS_RESOLVED #13; profiles that already banked tutorial runs keep the count — grandfathered, no retroactive adjustment) · (2) facility won → **shield** · (3) hive best_clear ≥ 6 → **pulse** · (4) hive won → **ghost** · (5) veil best_clear ≥ 6 → **breaker**.
 - **Operation chain** (uncapped): boss clear unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie.
 - **Grandfather clause:** pre-unlock-schema profiles that have played unlock everything, ladder maxed.
-- `check_new_unlocks()` feeds the run-end UNLOCKED panel; `heroes_new` drives the NEW badge (cleared on first squad add). Locked heroes/ops render as black silhouettes + `[ LOCKED ]`, no hints. Dev tools (help menu SETTINGS): UNLOCK ALL, RESET SAVE PROFILE (two-step), RESET PRIMERS.
+- `check_new_unlocks()` feeds the **UnlockScreen** (Build F — the old run-end amber UNLOCKED panel is retired); `heroes_new` drives the NEW badge (cleared on first squad add). Locked heroes/ops render as black silhouettes + `[ LOCKED ]`, no hints. Dev tools (help menu SETTINGS): UNLOCK ALL (now includes item gates), RESET SAVE PROFILE (two-step), RESET PRIMERS.
+
+### Unlock progression — THE FENCE (Build F, Kev 2026-07-15)
+
+Unlock progression is **ordered buckets + battle-count gates**, and nothing else.
+**FORBIDDEN, now and forever without a Kev ruling:** unlock trees, unlock currency,
+a collection screen, per-item unlock ceremonies, mid-run pool changes. The moment a
+future change wants any of those, it has left the sanctioned design.
+
+- **Metric: BATTLES FOUGHT** — every encounter entered counts exactly once, win or
+  lose. Not rounds (farmable). Losing runs progress unlocks.
+- **Earning vs awarding are split:** the battle counter accrues during play, but
+  gates are **evaluated at run end only**. Pools never change composition mid-run.
+  Everything crossed during a run lands together on the unlock screen.
+- Consumables, gear, AND draftable relics are bucket-gated. Boss relics stay
+  **event-gated** (kill boss → unlock), outside the battle schedule; they join the
+  unified unlock screen when earned.
+- Buckets are small (2–4 items), hand-ordered simple → weird (complexity ordering is
+  design work, CSV-approved by Kev — never a heuristic).
+- Schedule shape: **escalating spacing** — fast early, widening tail (gates 1–5 every
+  3 battles, 6–12 every 5, 13+ every 8–10; exact counts are tuning, the shape is the
+  design). A first run opens several buckets even on a loss.
+- **All sim baselines assume FULL pools** — the balance sim and every harness draft
+  pool run fully unlocked, explicitly pinned in the harness.
+
+**Shipped mechanics (Build F):** `stats.battles_fought` increments exactly once per
+encounter entered (`battle_scene._init_live_battle`, live entries only — review
+re-entries and the tutorial never reach it; a retreat still counted its entry).
+`unlocks.item_gates_awarded` advances ONLY in `SaveManager._evaluate_item_gates`
+(run end); a retreat-abandoned run has no run end, so its crossings catch up on the
+next completed run's screen — deferred, never dropped. Buckets + schedule + floors
+live in `data/raw/unlocks.data.json`, hand-ordered and pinned equal to the approval
+CSV `docs/UNLOCK_BUCKETS.csv` by the `pool floor` gate
+(`scripts/checks/unlock_pool_floor.py` — completeness: every live consumable/gear/
+draftable relic in exactly one bucket, non-zero buckets 2–4 items, bucket-0 floors
+incl. the rarity sub-floors the intercept drafts need). **The pool choke point is
+`DataManager.pool_ids(item_type)`** — the ONE sanctioned enumeration of the item
+tables; every draw (reward drafts, battle-5 relic cache, intercept drafts, event
+consumable grants, Foundry) routes through it and call sites cannot opt out
+(`scripts/checks/pool_choke.py` bans `DataManager.items` outside DataManager.gd).
+Isolated contexts (headless smokes, capture rigs) read full pools structurally;
+`sim_runner` and `ability_audit` additionally call
+`DataManager.pin_pools_fully_unlocked()` (the explicit Task-3 pin);
+`force_pool_gating_for_test()` re-enables gating for the unlock regressions.
+Item-gate grandfather: a played profile that predates the schema loads with every
+gate awarded. **UnlockScreen** (`scenes/ui/UnlockScreen.tscn`): run summary →
+UNLOCKS (only if the delta is non-empty — never an empty ceremony; victory AND
+failure) → home. Transmission-window chrome; sections biggest news first — BOSS
+RELIC (major-event gold card, full description; boss relics no longer unlock
+silently) → NEW UNIT → NEW OPERATION → NEW RELICS → NEW ITEMS (4-across
+`make_integer_icon` grids, name beneath, long-press inspect); the screen scrolls on
+fat runs, icons never shrink; single CONTINUE. The one-time operation-origin
+acknowledgement moved here from the run-end screen. Regressions:
+`scripts/debug/unlock_progression_test.gd` (counter integrity, run-end-only,
+delta correctness, boss-relic announcement, sim pin) + the two checks above, all
+in `verify_gate.py`. Captures: `scripts/debug/unlock_screen_capture.gd`
+(`--capture-scenario=single|fat|boss`).
 
 ## Run structure
 

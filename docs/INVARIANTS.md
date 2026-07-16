@@ -209,3 +209,21 @@ derives scope from the structured fields. Keyword-only clauses (`cloak`, `firewa
 `scripts/checks/effect_text_target.py` (count-based, so a double suffix fails like a missing
 one — the historical double-stamp). **Violation looks like:** a self-shield authored "8
 shield" with no "(self)", an AoE heal missing "(all)", or a doubled "(self) (self)".
+
+## 18. Unlock progression: one choke point, gates at run end only (Build F)
+Unlock progression is ordered buckets + battle-count gates and NOTHING else — no
+trees, no currency, no collection screen, no per-item ceremonies, no mid-run pool
+changes (THE FENCE, ruled by Kev 2026-07-15; a future change wanting any of those
+has left the sanctioned design). The metric is `battles_fought` — encounters
+ENTERED, never rounds (rounds are farmable); losing runs progress. Earning accrues
+during play but gates are AWARDED at run end only (`_evaluate_item_gates`), so pool
+composition is frozen for a whole run. Every pool draw routes through
+`DataManager.pool_ids` — the same one-owner rule as `make_integer_icon` and the
+font loader, because the next grant path added beside the choke silently bypasses
+the gate. Harness pools are fully unlocked structurally (isolation) plus the
+explicit sim/audit pin — a balance number must never depend on a profile's unlock
+state. **Violation looks like:** a `DataManager.items` iteration in a screen
+script, a pool query that consults `battles_fought` instead of
+`item_gates_awarded`, an award written anywhere but run end, an unlock currency
+proposal, or a sim run whose draft pool shrank because a fresh dev profile
+happened to be loaded.
