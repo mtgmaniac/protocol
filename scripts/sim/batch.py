@@ -41,7 +41,7 @@ def godot_bin() -> str:
     return os.environ.get("GODOT", DEFAULT_GODOT)
 
 
-def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, out_path: Path) -> dict:
+def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, battle_slots: str, enemy_hp: str, out_path: Path) -> dict:
     args = [godot_bin(), "--headless", "--path", str(ROOT), SCENE, "--",
             "--seed", str(seed), "--squad", squad, "--op", op,
             "--policy", policy, "--out", str(out_path)]
@@ -53,6 +53,10 @@ def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: 
         args += ["--tuning", tuning]
     if pool_buckets != "":
         args += ["--pool-buckets", pool_buckets]
+    if battle_slots:
+        args += ["--battle-slots", battle_slots]
+    if enemy_hp:
+        args += ["--enemy-hp", enemy_hp]
     t0 = time.time()
     proc = subprocess.run(args, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -79,6 +83,10 @@ def main() -> int:
                     help="balance-workbench knobs 'key[@op]=value,...' (scripts/sim/knobs.json; measurement only)")
     ap.add_argument("--pool-buckets", default="",
                     help="restrict draft pools to unlock buckets 0..N (harness-side, NON-baseline; '0' = new-player pool)")
+    ap.add_argument("--battle-slots", default="",
+                    help="in-memory slot-template override 'N=slot,slot;...' (comp instrument, measurement only)")
+    ap.add_argument("--enemy-hp", default="",
+                    help="in-memory enemy data max_hp override 'Name=hp;...' (bake preview, measurement only)")
     ap.add_argument("--out-root", default=str(ROOT / "results"))
     args = ap.parse_args()
 
@@ -91,14 +99,15 @@ def main() -> int:
         seed = args.seed_base + i
         squad = args.squad or ",".join(picker.sample(HEROES, 3))
         op = args.op or picker.choice(OPS)
-        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, out_dir / f"run_{seed}.jsonl"))
+        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, args.battle_slots, args.enemy_hp, out_dir / f"run_{seed}.jsonl"))
 
     manifest = {
         "name": args.name, "runs": args.runs, "policy": args.policy,
         "seed_base": args.seed_base, "squad": args.squad or "random",
         "op": args.op or "random", "grant": args.grant,
         "archetype": args.archetype, "tuning": args.tuning,
-        "pool_buckets": args.pool_buckets, "godot": godot_bin(),
+        "pool_buckets": args.pool_buckets, "battle_slots": args.battle_slots,
+        "enemy_hp": args.enemy_hp, "godot": godot_bin(),
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

@@ -236,6 +236,18 @@ func _run(args: Dictionary) -> int:
 	# streams. L2 reseeds per-decision on top of this (also deterministic).
 	seed(_seed ^ COMBAT_SEED_OFFSET)
 
+	# Cycle-1 comp instrument (measurement only): `--battle-slots "4=heavy,fodder"`
+	# rewrites the op's slot template IN MEMORY before start_run, so the revised
+	# comp rolls through the real _resolve_battle_comps path with the run RNG.
+	# The real comp change lands in encounter data at bake; this seam measures it.
+	_apply_battle_slots_override(dm, op, str(args.get("battle-slots", "")))
+	# Cycle-1 bake preview (measurement only): `--enemy-hp "Name=hp;Name2=hp"`
+	# overwrites enemy DATA max_hp in memory — a faithful preview of literal
+	# baked values (flows through battleEnemyScale exactly like shipped data).
+	# Role pools were classified at load, so classification is NOT re-derived —
+	# matching the bake rule that classification must not flip (Stage 2).
+	_apply_enemy_hp_override(dm, str(args.get("enemy-hp", "")))
+
 	# Seed the run: GameState._reward_rng deterministic, then start.
 	gs.call("start_run", squad, op, _seed)
 	# Forced content (Stage-2 A/B arms): grant items at run start. Deterministic;
@@ -263,6 +275,8 @@ func _run(args: Dictionary) -> int:
 		"roll_source": provider.describe(), "granted": granted,
 		"tuning": tuning_spec,
 		"pool_buckets": str(args.get("pool-buckets", "")),
+		"battle_slots": str(args.get("battle-slots", "")),
+		"enemy_hp": str(args.get("enemy-hp", "")),
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
@@ -373,8 +387,58 @@ func _apply_grants(gs: Node, dm: Node, spec: String) -> Array:
 			"relic":
 				if not (gs.get("relics") as Array).has(item_id):
 					(gs.get("relics") as Array).append(item_id)
+					# Cycle-1 measurement fix: a granted relic must NOT suppress the
+					# battle-5 relic cache. GameState.drafted_relic_count() excludes
+					# the starting-directive relic, so route the grant through that
+					# slot — the cache still rolls and relic-arm lifts become
+					# ADDITIVE like gear/consumable arms (the Cycle-0 substitution
+					# confound, GameState.gd:1393). One relic grant per arm.
+					if str(gs.get("starting_directive_relic_id")) == "":
+						gs.set("starting_directive_relic_id", item_id)
 		granted.append(entry)
 	return granted
+
+
+# Rewrites `operation.battles[N-1]["slots"]` in memory (measurement only; never
+# written to disk). Spec: "4=heavy,fodder;5=elite,fodder". A fixed-comp battle
+# overridden here drops its authored names so the slot roll takes effect.
+func _apply_battle_slots_override(dm: Node, op: String, spec: String) -> void:
+	if spec.strip_edges() == "":
+		return
+	var operation: OperationData = dm.call("get_operation", op) as OperationData
+	if operation == null:
+		push_warning("[SIM] --battle-slots: unknown op '%s'" % op)
+		return
+	for token in spec.split(";", false):
+		var kv: PackedStringArray = str(token).split("=", true, 1)
+		if kv.size() != 2:
+			continue
+		var index: int = int(str(kv[0]).strip_edges()) - 1
+		if index < 0 or index >= operation.battles.size():
+			push_warning("[SIM] --battle-slots: battle %d out of range" % (index + 1))
+			continue
+		var battle: Dictionary = operation.battles[index]
+		var slots: Array = []
+		for slot in str(kv[1]).split(",", false):
+			slots.append(str(slot).strip_edges())
+		battle["slots"] = slots
+		battle.erase("enemy_names")
+		battle.erase("cloaked_names")
+
+
+# Overwrites EnemyData.max_hp in memory per display name (never disk).
+func _apply_enemy_hp_override(dm: Node, spec: String) -> void:
+	if spec.strip_edges() == "":
+		return
+	for token in spec.split(";", false):
+		var kv: PackedStringArray = str(token).split("=", true, 1)
+		if kv.size() != 2:
+			continue
+		var enemy: EnemyData = dm.call("get_enemy_by_display_name", str(kv[0]).strip_edges()) as EnemyData
+		if enemy == null:
+			push_warning("[SIM] --enemy-hp: unknown enemy '%s'" % str(kv[0]).strip_edges())
+			continue
+		enemy.max_hp = int(str(kv[1]).strip_edges())
 
 
 func _squad_from_args(args: Dictionary) -> Array:
