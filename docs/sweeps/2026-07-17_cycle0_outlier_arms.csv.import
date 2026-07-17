@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://b4ra7s3w2sekq"
+
+[deps]
+
+files=["res://docs/sweeps/2026-07-17_cycle0_outlier_arms.type.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.lift.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.arm.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.ctrl.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.n.translation"]
+
+source_file="res://docs/sweeps/2026-07-17_cycle0_outlier_arms.csv"
+dest_files=["res://docs/sweeps/2026-07-17_cycle0_outlier_arms.type.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.lift.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.arm.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.ctrl.translation", "res://docs/sweeps/2026-07-17_cycle0_outlier_arms.n.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
