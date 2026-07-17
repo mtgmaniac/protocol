@@ -9,7 +9,7 @@
     "are event-gated and appear in NO bucket. floors are the approved bucket-0",
     "minimums per type; the gate fails if bucket 0 ever drops below them."
   ],
-  "schedule": [3, 6, 9, 12, 15, 20, 25, 30, 35, 40, 45, 50, 58, 67, 76, 86, 96],
+  "schedule": [3, 6, 9, 12, 16, 22, 29, 37, 45, 54, 63, 73, 84, 96, 109, 123, 138],
   "floors": {
     "consumable": 12,
     "gear": 10,

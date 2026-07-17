@@ -203,9 +203,11 @@ future change wants any of those, it has left the sanctioned design.
   unified unlock screen when earned.
 - Buckets are small (2–4 items), hand-ordered simple → weird (complexity ordering is
   design work, CSV-approved by Kev — never a heuristic).
-- Schedule shape: **escalating spacing** — fast early, widening tail (gates 1–5 every
-  3 battles, 6–12 every 5, 13+ every 8–10; exact counts are tuning, the shape is the
-  design). A first run opens several buckets even on a loss.
+- Schedule shape: **escalating spacing** — fast early, continuously widening tail
+  (gates 1–4 every 3 battles, then gaps grow one at a time: +4, +6, +7, +8… up to +15
+  at the last gate; exact counts are tuning, the shape is the design; see the Build H
+  retune below for the current thresholds). A first run opens several buckets even on a
+  loss.
 - **All sim baselines assume FULL pools** — the balance sim and every harness draft
   pool run fully unlocked, explicitly pinned in the harness.
 
@@ -253,6 +255,29 @@ slate's first-run behavior is unchanged. Regressions:
 delta correctness, boss-relic announcement, sim pin) + the two checks above, all
 in `verify_gate.py`. Captures: `scripts/debug/unlock_screen_capture.gd`
 (`--capture-scenario=single|fat|boss`).
+
+**Schedule retune — Build H (Kev 2026-07-17, data-only).** The middle of the
+schedule opened too fast: the original gates put ~81% of the catalog in a player's
+hands by battle ~50 (roughly run 6–7) while they were likely still in Hive. The
+*ends* were correct — the start must NOT slow down (bucket 0 is floor-locked for the
+intercept drafts, and the run-1/run-2 drip does anti-repetition work) and the tail was
+already paced right — so this retune stretches only the middle. Same 17 gates, same
+buckets, same bucket membership and order; **thresholds only.**
+- OLD: `3 / 6 / 9 / 12 / 15 / 20 / 25 / 30 / 35 / 40 / 45 / 50 / 58 / 67 / 76 / 86 / 96`
+- NEW: `3 / 6 / 9 / 12 / 16 / 22 / 29 / 37 / 45 / 54 / 63 / 73 / 84 / 96 / 109 / 123 / 138`
+- Positional remap: the first four gates are unchanged; the 15-bucket now opens at 16,
+  the 20-bucket at 22, … the 96-bucket at 138.
+- Target curve (design intent, ~7 battles/early run): ~55% of catalog by run 3, ~70% by
+  run 7, 100% around run 15–18 (~5–6 hours).
+- **This schedule is an explicit playtest observable.** The next retune input is how
+  demo testers react to pool variety — overwhelmed (too fast) vs starved (too slow) —
+  NOT developer feel. Retune is a two-file edit (`unlocks.data.json` +
+  `UNLOCK_BUCKETS.csv`, pinned equal by the pool-floor gate) by construction.
+- Grandfather-safe in both directions: awarded gates persist as
+  `unlocks.item_gates_awarded` (a monotonic counter advanced only forward at run end)
+  and pools read from THAT counter, never re-derived from `battles_fought` vs the
+  schedule at load — so a threshold change can never re-lock content a profile already
+  holds. The pre-schema fully-unlocked grandfather is untouched.
 
 ## Run structure
 
