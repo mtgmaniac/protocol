@@ -571,9 +571,45 @@ Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-c
 
 ## Sim baseline (current)
 
-`scripts/sim/baseline.json` — **post crit-banking checkpoint, accepted per Kev 2026-07-06 (BASELINE-APPROVED-BY-KEV)**: policy **l1** (greedy), **300 runs**, overall clear **0.2867**; per-op: facility **0.592**, voidCirclet **0.404**, veil **0.215**, hive **0.068**, stellarMenagerie **0.063**. voidCirclet's +10.5 vs the prior checkpoint is mechanically coherent: frozen dice are immune to Rewrite and Hijack, so ally banking directly counters ROOT HIEROPHANT's Root Access standing rule. Avalanche (**0.237**) remains the known repricing target; no ability numbers move until that ruling. Deferred balance numbers (DECISIONS_RESOLVED #6–#10, #17) re-anchor to this checkpoint. Historical reference only: repeat-freeze checkpoint 0.2533, pre-repeat 0.53 (`3901e06`), "flat sim ~1.7%". Design target stays: 25–40% skilled full-clear of facility in real play.
+**Baseline v2 — Cycle 0 re-baseline (2026-07-17, LOCKED PENDING KEV RULING).**
+Policy **l1**, **1000 runs per operation** (random squads, fixed op, matched seed
+sets across arms), post-Phase-0 harness fixes. Per-op clear: **facility 0.547 ·
+hive 0.035 · veil 0.148 · voidCirclet 0.274 · stellarMenagerie 0.120**; overall
+(op-balanced) **0.225**. Full dashboard: `docs/sweeps/2026-07-17_cycle0_dashboard.md`
+(the reusable per-cycle format — `scripts/sim/dashboard_cycle0.py`).
+`scripts/sim/baseline.json` (the CI pin) still holds the **dead v1** numbers and is
+NOT re-pinned — re-pinning to v2 needs a BASELINE-APPROVED-BY-KEV commit (per-op
+drift vs v1 exceeds ±10 on voidCirclet).
 
-**Stale-baselined arms (Build G, taunt single-target — ruling G-4):** the baseline was NOT re-run for the taunt behavior change (standing rule: no balance sim mid-build). Every taunt-carrying arm — Spike Guard base + Bulwark/Sentinel evolutions, Trench (Dig In), Anchor Frame gear matchups, and the beastHyena / veilPrism comps — is stale-baselined until the next sim pass.
+- **v1 baselines are DEAD as comparison targets** (they predate taunt-G-4,
+  MAX_CONSUMABLES 3→4, the NK-17 sweeps, the unlock system, every polish build, and
+  the Cycle-0 harness fix). Historical record — v1 (locked, pre-polish): overall
+  **0.283** / facility **0.592** / hive **0.085** / veil **0.169** / nullSynod
+  (`voidCirclet`) **0.404** / accretion (`stellarMenagerie`) **0.083**. (Doc
+  correction: the on-disk `baseline.json` is the post-Batch-1 re-pin — overall
+  0.3133 / facility 0.6338 — not the 2026-07-06 crit-banking figures this section
+  previously quoted. Older checkpoints: crit-banking 0.2867, repeat-freeze 0.2533,
+  pre-repeat 0.53, "flat sim ~1.7%".)
+- **Decision-density gap (L1↔L2) is a first-class metric from Cycle 0 on** — the
+  boredom dashboard, reported every cycle. Cycle-0 gaps (matched seeds, n=1000/op):
+  facility **+25.1pp** · hive **+7.1** · veil **+8.5** · voidCirclet **+29.5** ·
+  stellarMenagerie **+10.3**. Small gap = greedy play is near-optimal (obvious turns).
+- **Bucket-0 arm (non-baseline):** the new-player pool BEATS full pools at L1 on
+  every op (+4.6 to +17.0pp) — L1's rarity-greedy drafting picks late-bucket
+  situational content over bucket-0 staples; pool dilution is real at greedy skill.
+  Harness arm `--pool-buckets N`; the fully-unlocked baseline pin is unchanged.
+- **Proposed target bands (PROPOSALS for Kev's ruling, not law):** facility
+  0.55–0.65; each subsequent operation ~10 points below the previous; final
+  operation 0.15–0.25. Cycle 0 ran under the CURRENT op order (facility, hive,
+  veil, voidCirclet, stellarMenagerie) — the pending reorder ruling has not landed.
+- **Standing caveat:** the sim measures winnability, not fun; cognitive-load and
+  turn-feel problems are invisible to every policy tier (demo-tester territory).
+  Headline numbers describe full-unlock (veteran) pools except the bucket-0 arm.
+
+**Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
+sim pass has now run; every formerly stale-baselined taunt arm is measured in
+Baseline v2. Avalanche repricing remains the known open target; no ability numbers
+move until that ruling.
 
 ## Out of scope (don't build)
 
