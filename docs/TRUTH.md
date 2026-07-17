@@ -571,15 +571,35 @@ Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-c
 
 ## Sim baseline (current)
 
-**Baseline v2 — Cycle 0 re-baseline (2026-07-17, LOCKED PENDING KEV RULING).**
-Policy **l1**, **1000 runs per operation** (random squads, fixed op, matched seed
-sets across arms), post-Phase-0 harness fixes. Per-op clear: **facility 0.547 ·
-hive 0.035 · veil 0.148 · voidCirclet 0.274 · stellarMenagerie 0.120**; overall
-(op-balanced) **0.225**. Full dashboard: `docs/sweeps/2026-07-17_cycle0_dashboard.md`
-(the reusable per-cycle format — `scripts/sim/dashboard_cycle0.py`).
-`scripts/sim/baseline.json` (the CI pin) still holds the **dead v1** numbers and is
-NOT re-pinned — re-pinning to v2 needs a BASELINE-APPROVED-BY-KEV commit (per-op
-drift vs v1 exceeds ±10 on voidCirclet).
+**Baseline v2 — Cycle 0 re-baseline (2026-07-17, LOCKED; Synod attribution
+resolved Cycle 1).** Policy **l1**, **1000 runs per operation** (random squads,
+fixed op, matched seed sets across arms), post-Phase-0 harness fixes. Per-op
+clear: **facility 0.547 · hive 0.035→0.293 (Cycle-1 Hive retune, below) · veil
+0.148 · voidCirclet 0.274 · stellarMenagerie 0.120**. Full dashboard:
+`docs/sweeps/2026-07-17_cycle0_dashboard.md` (the reusable per-cycle format —
+`scripts/sim/dashboard_cycle0.py`). `scripts/sim/baseline.json` (the CI pin) was
+re-pinned post-Cycle-1-bake (BASELINE-APPROVED-BY-KEV — Kev's Stage-2 approval
+2026-07-17 is the ceremony sign-off; the pre-Cycle-1 pin was the dead v1).
+
+**Cycle 1 — Hive retune (2026-07-17, BAKED, Kev-approved Stage 2).** Scalar was
+the instrument, literal data is the law: `enemy_hp_scalar@hive=0.75` dialed the
+band, then LITERAL HP landed in `enemies.data.json` and the scalar ships inert
+at 1.0. Skitterling 40→30 · Bloodmite 35→26 · Spine Stalker 65→49 ·
+Broodwarden 115→**90** (⚑ floored: `DataManager.HEAVY_HP_MIN=90` classifies
+roles from data HP — dropping below 90 would EMPTY hive's heavy pool and break
+slot comps) · Caustic Spewer 90→**90** (⚑ uncut, same floor) · Hive Matriarch
+180→135. Attack values unchanged (HP is ~1.7× the more efficient dial — hive's
+problem was durability/exposure, not incoming damage). Comp: hive b4
+`heavyOrElites` → `heavy, fodder` in `battle-modes.json`, killing the
+double-Spine-Stalker degeneracy (hive's elite pool has ONE member, so "two
+elites" always duplicated him — 37% defeat rate at b4). **Result: hive L1
+0.035 → 0.293** (band 25–40 ✓), b3-4 defeat share 29%→12% (facility-normal),
+Matriarch still a real wall (79% of defeats). **L2 51.5% — the L1/L2 gap
+widened +7.1→+22.2pp** (winnable AND skill-expressive). **Equivalence proof:**
+the baked build reproduced the approved arm **byte-identically on all 1000
+matched seeds** (`hive_equivalence` vs `hive_bakepreview`), win rate exactly
+0.293. Ability audit 234/0 unchanged. Other operations' data and baselines
+untouched. Stage-1 report: `docs/sweeps/2026-07-17_cycle1_stage1_hive.md`.
 
 - **v1 baselines are DEAD as comparison targets** (they predate taunt-G-4,
   MAX_CONSUMABLES 3→4, the NK-17 sweeps, the unlock system, every polish build, and

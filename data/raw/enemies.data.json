@@ -2235,7 +2235,7 @@
       "callsign": "MASTER"
     },
     "Skitterling": {
-      "hp": 40,
+      "hp": 30,
       "dMin": 5,
       "dMax": 9,
       "type": "skitter",
@@ -2243,7 +2243,7 @@
       "callsign": "SKITTER"
     },
     "Bloodmite": {
-      "hp": 35,
+      "hp": 26,
       "dMin": 5,
       "dMax": 8,
       "type": "mite",
@@ -2251,7 +2251,7 @@
       "callsign": "MITE"
     },
     "Spine Stalker": {
-      "hp": 65,
+      "hp": 49,
       "dMin": 12,
       "dMax": 16,
       "type": "stalker",
@@ -2267,7 +2267,7 @@
       "callsign": "CARAPACE"
     },
     "Broodwarden": {
-      "hp": 115,
+      "hp": 90,
       "dMin": 17,
       "dMax": 23,
       "type": "brood",
@@ -2283,7 +2283,7 @@
       "callsign": "SPEWER"
     },
     "Hive Matriarch": {
-      "hp": 180,
+      "hp": 135,
       "dMin": 15,
       "dMax": 21,
       "type": "hiveBoss",
