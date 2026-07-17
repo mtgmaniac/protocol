@@ -65,6 +65,15 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 				var freeze_pick: Dictionary = _lowest_die_unfrozen_enemy(bs, cm)
 				if not freeze_pick.is_empty():
 					hero_state["selected_target_id"] = str(freeze_pick["id"])
+			# Taunt (single-target since G-4): the lure redirects ONE enemy onto
+			# the taunter, so aim it at the HEAVIEST HITTER, not the dying focus
+			# target — the redirect's whole value is eating the scariest attack.
+			# (Cycle-2 Phase-0 fix: the scorer predated G-4 and taunted the
+			# focus enemy. Face-value heuristic — max damage face off intel.)
+			if bool(band_raw.get("taunt", false)):
+				var lure: Dictionary = _highest_threat_enemy(cm)
+				if not lure.is_empty():
+					hero_state["selected_target_id"] = str(lure["id"])
 
 	# Spends, in priority order, one pass over the squad. Keep a 1-point buffer
 	# so Siphon/next-round income swings don't zero us out.
@@ -206,6 +215,22 @@ func _lowest_die_unfrozen_enemy(bs: BattleState, cm: CombatManager) -> Dictionar
 			continue
 		if face < best_face:
 			best_face = face
+			best = enemy_state
+	return best
+
+
+# The living, uncloaked enemy with the biggest max damage face (unit dMax —
+# what intel shows). Deterministic: strict greater-than keeps slot order on ties.
+func _highest_threat_enemy(cm: CombatManager) -> Dictionary:
+	var best: Dictionary = {}
+	var best_dmax: int = -1
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		if bool(enemy_state.get("dead", false)) or bool(enemy_state.get("cloaked", false)):
+			continue
+		var dmax: int = int((enemy_state.get("unit") as Object).get("damage_preview_max"))
+		if dmax > best_dmax:
+			best_dmax = dmax
 			best = enemy_state
 	return best
 

@@ -76,6 +76,8 @@ def main() -> int:
     ap.add_argument("--seed-base", type=int, default=100000)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) - 1))
     ap.add_argument("--squad", default="", help="fixed squad (else uniform 3-of-8 per run)")
+    ap.add_argument("--include-hero", default="",
+                    help="forced-inclusion arm: squad = this hero + 2 uniform from the rest (portfolio cells)")
     ap.add_argument("--op", default="", help="fixed op (else uniform per run)")
     ap.add_argument("--grant", default="", help="forced content ids for a Stage-2 arm")
     ap.add_argument("--archetype", default="", help="draft bias: burn|control|protocol|value")
@@ -95,15 +97,20 @@ def main() -> int:
 
     picker = random.Random(args.seed_base)  # reproducible squad/op draws
     jobs = []
+    others = [h for h in HEROES if h != args.include_hero]
     for i in range(args.runs):
         seed = args.seed_base + i
-        squad = args.squad or ",".join(picker.sample(HEROES, 3))
+        if args.include_hero:
+            squad = ",".join([args.include_hero] + picker.sample(others, 2))
+        else:
+            squad = args.squad or ",".join(picker.sample(HEROES, 3))
         op = args.op or picker.choice(OPS)
         jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, args.battle_slots, args.enemy_hp, out_dir / f"run_{seed}.jsonl"))
 
     manifest = {
         "name": args.name, "runs": args.runs, "policy": args.policy,
         "seed_base": args.seed_base, "squad": args.squad or "random",
+        "include_hero": args.include_hero,
         "op": args.op or "random", "grant": args.grant,
         "archetype": args.archetype, "tuning": args.tuning,
         "pool_buckets": args.pool_buckets, "battle_slots": args.battle_slots,
