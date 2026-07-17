@@ -195,9 +195,20 @@ func _run(args: Dictionary) -> int:
 	var gs: Node = get_node("/root/GameState")
 	var dm: Node = get_node("/root/DataManager")
 
-	# Sim pin (Build F, Task 3): every balance baseline assumes FULL pools —
+	# Sim pin (Build F, Task 3): every balance BASELINE assumes FULL pools —
 	# pinned explicitly here, never as a side effect of an unlocked profile.
-	dm.call("pin_pools_fully_unlocked")
+	# Cycle-0 bucket-restricted arm (explicitly NON-baseline): `--pool-buckets N`
+	# instead forces gating (the unlock-test seam) and sets the awarded-gate
+	# counter on the in-memory dev profile, so draft pools flow through the SAME
+	# choke point (DataManager.pool_ids) restricted to buckets 0..N — the true
+	# new-player pool at N=0. Harness-side only: the game's unlock system and
+	# the baseline pin are untouched.
+	if args.has("pool-buckets"):
+		dm.call("force_pool_gating_for_test")
+		var sm_pool: Node = get_node("/root/SaveManager")
+		(sm_pool.get("data")["unlocks"] as Dictionary)["item_gates_awarded"] = int(args.get("pool-buckets", "0"))
+	else:
+		dm.call("pin_pools_fully_unlocked")
 
 	if args.has("bench"):
 		return _bench(gs, dm, args)
@@ -251,6 +262,7 @@ func _run(args: Dictionary) -> int:
 		"sim_version": SIM_VERSION, "schema_version": SimTelemetryScript.SCHEMA_VERSION,
 		"roll_source": provider.describe(), "granted": granted,
 		"tuning": tuning_spec,
+		"pool_buckets": str(args.get("pool-buckets", "")),
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))

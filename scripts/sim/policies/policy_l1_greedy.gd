@@ -308,10 +308,19 @@ func choose_intercept(_card_id: String, card: Dictionary, gs: Node) -> Dictionar
 			match str(effect.get("type", "")):
 				"consumable", "protocolNextBattle", "heroXp", "squadXp", "runProtocolPerBattle", "heroRollBonus":
 					score += 1
+				# Cycle-0 staleness fix (2026-07-17): these effect types postdate the
+				# original scorer and sat unscored (0), so L1 misread newer cards.
+				# Signs match what the player sees on the card, nothing more.
+				"memorialWard", "heroNat20Twice", "heroStartCloaked", "spliceBands", "foundryUpgrade":
+					score += 1
+				"nextBattleEnemyHpPct":
+					score += 1 if int(effect.get("pct", 100)) < 100 else -1
 				"heroMaxHp":
 					score += 1 if int(effect.get("amount", 0)) > 0 else -1
-				"incomeDebt", "destroyPickedGear", "randomHeroDamage", "nextBattleFlag", "followupModifier":
+				"incomeDebt", "destroyPickedGear", "randomHeroDamage", "nextBattleFlag", "followupModifier", "armModifier":
 					score -= 1
+				# rotateGear (sideways swap) and revealBoss/revealRun (info-only in
+				# the sim) stay deliberately unscored.
 		if score > best_score:
 			best_score = score
 			best_index = i

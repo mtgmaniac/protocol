@@ -41,7 +41,7 @@ def godot_bin() -> str:
     return os.environ.get("GODOT", DEFAULT_GODOT)
 
 
-def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, out_path: Path) -> dict:
+def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, out_path: Path) -> dict:
     args = [godot_bin(), "--headless", "--path", str(ROOT), SCENE, "--",
             "--seed", str(seed), "--squad", squad, "--op", op,
             "--policy", policy, "--out", str(out_path)]
@@ -51,8 +51,15 @@ def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: 
         args += ["--archetype", archetype]
     if tuning:
         args += ["--tuning", tuning]
+    if pool_buckets != "":
+        args += ["--pool-buckets", pool_buckets]
     t0 = time.time()
     proc = subprocess.run(args, capture_output=True, text=True)
+    if proc.returncode != 0:
+        # Transient parallel-spawn flake (observed ~0.2% under a full worker
+        # pool, 0xC0000409, not seed-reproducible — Cycle 0). The sim is
+        # deterministic, so one retry is safe: same seed+config, same bytes.
+        proc = subprocess.run(args, capture_output=True, text=True)
     return {"seed": seed, "rc": proc.returncode, "secs": round(time.time() - t0, 2),
             "out": str(out_path), "stderr_tail": proc.stderr.strip().splitlines()[-1:] if proc.returncode else []}
 
@@ -70,6 +77,8 @@ def main() -> int:
     ap.add_argument("--archetype", default="", help="draft bias: burn|control|protocol|value")
     ap.add_argument("--tuning", default="",
                     help="balance-workbench knobs 'key[@op]=value,...' (scripts/sim/knobs.json; measurement only)")
+    ap.add_argument("--pool-buckets", default="",
+                    help="restrict draft pools to unlock buckets 0..N (harness-side, NON-baseline; '0' = new-player pool)")
     ap.add_argument("--out-root", default=str(ROOT / "results"))
     args = ap.parse_args()
 
@@ -82,13 +91,14 @@ def main() -> int:
         seed = args.seed_base + i
         squad = args.squad or ",".join(picker.sample(HEROES, 3))
         op = args.op or picker.choice(OPS)
-        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, out_dir / f"run_{seed}.jsonl"))
+        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, out_dir / f"run_{seed}.jsonl"))
 
     manifest = {
         "name": args.name, "runs": args.runs, "policy": args.policy,
         "seed_base": args.seed_base, "squad": args.squad or "random",
         "op": args.op or "random", "grant": args.grant,
-        "archetype": args.archetype, "tuning": args.tuning, "godot": godot_bin(),
+        "archetype": args.archetype, "tuning": args.tuning,
+        "pool_buckets": args.pool_buckets, "godot": godot_bin(),
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

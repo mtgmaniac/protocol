@@ -21,7 +21,10 @@ GODOT='…/Godot_v4.6.2-stable_win64_console.exe'
 
 Flags: `--policy stub|l0|l1|l2` · `--archetype burn|control|protocol|value`
 (draft bias, layered on l1/l2) · `--grant id[@unit],…` (force content for a
-Stage-2 arm) · `--battles-only N` · `--bench N` (throughput, no JSONL).
+Stage-2 arm) · `--battles-only N` · `--bench N` (throughput, no JSONL) ·
+`--pool-buckets N` (restrict draft pools to unlock buckets 0..N through the
+live pool choke point — the new-player-pool arm at `0`; **explicitly
+NON-baseline**: baselines stay pinned fully unlocked).
 
 Policies: **stub** (auto-target, no spends) · **L0** random-legal (floor) ·
 **L1** greedy heuristic (the workhorse; focus fire + band-aware spends) · **L2**
