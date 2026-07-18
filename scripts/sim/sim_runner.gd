@@ -247,6 +247,13 @@ func _run(args: Dictionary) -> int:
 	# Role pools were classified at load, so classification is NOT re-derived —
 	# matching the bake rule that classification must not flip (Stage 2).
 	_apply_enemy_hp_override(dm, str(args.get("enemy-hp", "")))
+	# Cycle-3 sweep instruments (measurement only, same in-memory contract):
+	# `--hero-hp "id=hp;..."` overwrites hero DATA max_hp;
+	# `--item-field "id/key=value;..."` overwrites ItemData.effect entries
+	# (numbers stay numeric, non-numeric values apply as strings — e.g.
+	# `predator_lens/type=rollBonusNat20Protocol`).
+	_apply_hero_hp_override(dm, str(args.get("hero-hp", "")))
+	_apply_item_field_override(dm, str(args.get("item-field", "")))
 
 	# Seed the run: GameState._reward_rng deterministic, then start.
 	gs.call("start_run", squad, op, _seed)
@@ -277,6 +284,8 @@ func _run(args: Dictionary) -> int:
 		"pool_buckets": str(args.get("pool-buckets", "")),
 		"battle_slots": str(args.get("battle-slots", "")),
 		"enemy_hp": str(args.get("enemy-hp", "")),
+		"hero_hp": str(args.get("hero-hp", "")),
+		"item_field": str(args.get("item-field", "")),
 	})
 
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
@@ -424,6 +433,45 @@ func _apply_battle_slots_override(dm: Node, op: String, spec: String) -> void:
 		battle["slots"] = slots
 		battle.erase("enemy_names")
 		battle.erase("cloaked_names")
+
+
+# Overwrites UnitData.max_hp in memory per hero id (never disk).
+func _apply_hero_hp_override(dm: Node, spec: String) -> void:
+	if spec.strip_edges() == "":
+		return
+	for token in spec.split(";", false):
+		var kv: PackedStringArray = str(token).split("=", true, 1)
+		if kv.size() != 2:
+			continue
+		var unit: UnitData = dm.call("get_unit", str(kv[0]).strip_edges()) as UnitData
+		if unit == null:
+			push_warning("[SIM] --hero-hp: unknown hero '%s'" % str(kv[0]).strip_edges())
+			continue
+		unit.max_hp = int(str(kv[1]).strip_edges())
+
+
+# Overwrites ItemData.effect[key] in memory (never disk). Numeric values stay
+# numeric (int when whole); anything unparseable applies as a string.
+func _apply_item_field_override(dm: Node, spec: String) -> void:
+	if spec.strip_edges() == "":
+		return
+	for token in spec.split(";", false):
+		var kv: PackedStringArray = str(token).split("=", true, 1)
+		if kv.size() != 2:
+			continue
+		var path: PackedStringArray = str(kv[0]).strip_edges().split("/", true, 1)
+		if path.size() != 2:
+			continue
+		var item: ItemData = dm.call("get_item", str(path[0])) as ItemData
+		if item == null:
+			push_warning("[SIM] --item-field: unknown item '%s'" % str(path[0]))
+			continue
+		var raw_value: String = str(kv[1]).strip_edges()
+		var value: Variant = raw_value
+		if raw_value.is_valid_float():
+			var f: float = raw_value.to_float()
+			value = int(f) if f == floor(f) else f
+		(item.effect as Dictionary)[str(path[1])] = value
 
 
 # Overwrites EnemyData.max_hp in memory per display name (never disk).

@@ -41,7 +41,7 @@ def godot_bin() -> str:
     return os.environ.get("GODOT", DEFAULT_GODOT)
 
 
-def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, battle_slots: str, enemy_hp: str, out_path: Path) -> dict:
+def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, battle_slots: str, enemy_hp: str, hero_hp: str, item_field: str, out_path: Path) -> dict:
     args = [godot_bin(), "--headless", "--path", str(ROOT), SCENE, "--",
             "--seed", str(seed), "--squad", squad, "--op", op,
             "--policy", policy, "--out", str(out_path)]
@@ -57,6 +57,10 @@ def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: 
         args += ["--battle-slots", battle_slots]
     if enemy_hp:
         args += ["--enemy-hp", enemy_hp]
+    if hero_hp:
+        args += ["--hero-hp", hero_hp]
+    if item_field:
+        args += ["--item-field", item_field]
     t0 = time.time()
     proc = subprocess.run(args, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -89,6 +93,10 @@ def main() -> int:
                     help="in-memory slot-template override 'N=slot,slot;...' (comp instrument, measurement only)")
     ap.add_argument("--enemy-hp", default="",
                     help="in-memory enemy data max_hp override 'Name=hp;...' (bake preview, measurement only)")
+    ap.add_argument("--hero-hp", default="",
+                    help="in-memory hero data max_hp override 'id=hp;...' (sweep instrument, measurement only)")
+    ap.add_argument("--item-field", default="",
+                    help="in-memory ItemData.effect override 'id/key=value;...' (sweep instrument, measurement only)")
     ap.add_argument("--out-root", default=str(ROOT / "results"))
     args = ap.parse_args()
 
@@ -105,7 +113,7 @@ def main() -> int:
         else:
             squad = args.squad or ",".join(picker.sample(HEROES, 3))
         op = args.op or picker.choice(OPS)
-        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, args.battle_slots, args.enemy_hp, out_dir / f"run_{seed}.jsonl"))
+        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, args.battle_slots, args.enemy_hp, args.hero_hp, args.item_field, out_dir / f"run_{seed}.jsonl"))
 
     manifest = {
         "name": args.name, "runs": args.runs, "policy": args.policy,
@@ -114,7 +122,8 @@ def main() -> int:
         "op": args.op or "random", "grant": args.grant,
         "archetype": args.archetype, "tuning": args.tuning,
         "pool_buckets": args.pool_buckets, "battle_slots": args.battle_slots,
-        "enemy_hp": args.enemy_hp, "godot": godot_bin(),
+        "enemy_hp": args.enemy_hp, "hero_hp": args.hero_hp,
+        "item_field": args.item_field, "godot": godot_bin(),
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

@@ -411,6 +411,13 @@ func _apply_gear_passive(hero_state: Dictionary, effect: Dictionary) -> void:
 			# the die reached 20 — ruling NK-02). Amount read from data (fixes the
 			# old hardcoded +2, audit A-016).
 			hero_state["gear_protocol_on_20"] = int(hero_state.get("gear_protocol_on_20", 0)) + int(effect.get("amount", 2))
+		"rollBonusNat20Protocol":
+			# Cycle-3 Predator Lens candidate (Kev reprice list): flat roll bonus
+			# PLUS Protocol on a resolved 20 — differentiates the legendary from
+			# Neural Splice by rider, not a fourth flat point. Ships inert until
+			# the Stage-2-approved bake points predator_lens at it.
+			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + int(effect.get("amount", 0))
+			hero_state["gear_protocol_on_20"] = int(hero_state.get("gear_protocol_on_20", 0)) + int(effect.get("protocol", 1))
 
 
 # --- Battle-start relic effects ---
