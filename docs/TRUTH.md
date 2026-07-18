@@ -569,6 +569,26 @@ python scripts/sim/sweep.py --name X --knob K --values ...     # balance workben
 ```
 Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-check by `load()` from a headless SceneTree or just run the audit.
 
+## Balance doctrine — portfolio balance (Kev ruling, Cycle 2, 2026-07-17)
+
+**Content is balanced on its MEAN lift across operations, not per-fight.
+Situational spikes are desirable** — a hero who is REALLY good on one operation
+and weak on another is a specialist, and specialists are why squad/draft
+choices matter. The constraint is the portfolio average; **the variance is the
+feature.** Shapes and verdicts: high mean everywhere → overpowered (nerf
+candidate) · low mean everywhere → dead (buff candidate) · fine mean, flat
+profile → balanced-but-boring (acceptable, note it) · **fine mean, high
+variance → THE TARGET SHAPE (protect it)**. Rarity prices the bands: higher
+rarity legitimately buys a higher mean. The operation reorder is PARKED (current
+order kept; comprehension is a demo-tester question; the parked data-edit exists
+if they hit a wall) — bands are set for the current order.
+
+**Audit-count provenance:** the ability-audit floor moved 228 → **234** in Build
+G Lane 2 (`0de9ab3`, taunt single-target G-4) — six taunt-targeting regressions
+(taunt-requires-enemy, taunter/taunted/free-target scenarios). NOT from the
+Cycle-1 Hive bake, which reclassified nothing (heavies floored at 90 precisely
+to keep classification fixed; audit 234/0 before and after the bake).
+
 ## Sim baseline (current)
 
 **Baseline v2 — Cycle 0 re-baseline (2026-07-17, LOCKED; Synod attribution
