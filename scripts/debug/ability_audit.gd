@@ -1620,7 +1620,9 @@ func _run_boss_standing_rule_regressions() -> void:
 	var low_untouched: bool = root_manager.get_effective_roll(low_hero, 18) == 18
 	_expect_and_record("Regression / boss Hierophant root access", "bossStandingRule", "true", str(high_rewritten and low_untouched))
 
-	# MANTLE TYRANT — Accretion: +6 shield at every round start; persists and stacks.
+	# MANTLE TYRANT — Accretion (Cycle-4 ruling): +6 shield every 2ND round
+	# start; persists and stacks. Rounds 1-2 hold one plate (6); round 3 lays
+	# the second (12).
 	var mantle_manager: CombatManager = CombatManager.new()
 	mantle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("tyrant", "MANTLE TYRANT")])
 	var tyrant: Dictionary = mantle_manager.get_enemy_states()[0]
@@ -1628,7 +1630,9 @@ func _run_boss_standing_rule_regressions() -> void:
 	var first_plate: int = int(tyrant.get("shield", 0))
 	mantle_manager.resolve_round({}, {}, DiceManager.new())
 	var second_plate: int = int(tyrant.get("shield", 0))
-	_expect_and_record("Regression / boss Tyrant accretion stacks", "bossStandingRule", "6/12", "%d/%d" % [first_plate, second_plate])
+	mantle_manager.resolve_round({}, {}, DiceManager.new())
+	var third_plate: int = int(tyrant.get("shield", 0))
+	_expect_and_record("Regression / boss Tyrant accretion stacks", "bossStandingRule", "6/6/12", "%d/%d/%d" % [first_plate, second_plate, third_plate])
 
 	# Standing rules surface in the inspect popup payload.
 	var inspect_unit: EnemyData = _make_enemy("tyrant", "MANTLE TYRANT")
@@ -1716,11 +1720,14 @@ func _run_boss_fight_data_regressions() -> void:
 				manager.resolve_round({str(hero_a["id"]): 6, str(hero_b["id"]): 14}, {}, DiceManager.new())
 				_expect_and_record("Boss fight / synod root access", "bossFight", "3", str(manager.get_effective_roll(hero_b, 18)))
 			"stellarMenagerie":
+				# Cycle-4 cadence: plate on rounds 1 and 3; round 2 holds.
 				manager.resolve_round({}, {}, DiceManager.new())
 				var plate_one: int = int(boss_state.get("shield", 0))
 				manager.resolve_round({}, {}, DiceManager.new())
+				var plate_hold: int = int(boss_state.get("shield", 0))
+				manager.resolve_round({}, {}, DiceManager.new())
 				var plate_two: int = int(boss_state.get("shield", 0))
-				var stacking: bool = plate_one >= 6 and plate_two == plate_one * 2
+				var stacking: bool = plate_one >= 6 and plate_hold == plate_one and plate_two == plate_one * 2
 				_expect_and_record("Boss fight / accretion mantle stacks", "bossFight", "true", str(stacking))
 
 

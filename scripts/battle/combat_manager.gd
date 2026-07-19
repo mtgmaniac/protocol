@@ -111,12 +111,16 @@ const BOSS_STANDING_RULES := {
 	BOSS_MATRIARCH: "THE BROOD - spawns a Bloodmite every 3 rounds.",
 	BOSS_OVERSEER: "THE COURT - while any ally lives, gains a firewall at the start of each round.",
 	BOSS_HIEROPHANT: "ROOT ACCESS - every round, rewrites the squad's highest die to 3.",
-	BOSS_MANTLE: "ACCRETION - gains 6 shield at the start of every round; its shields persist and stack.",
+	BOSS_MANTLE: "ACCRETION - gains 6 shield at the start of every 2nd round; its shields persist and stack.",
 }
 
-# BALANCE-TODO: rebuild HP 50%, brood cadence 3, mantle shield 6 are provisional.
+# BALANCE-TODO: rebuild HP 50% and brood cadence 3 are provisional. Mantle
+# shield 6 every 2nd round is RULED (Cycle 4, Kev): cadence softened the wall
+# more efficiently than value, and the off-round burst windows are the skill
+# texture; value 6 keeps the stack identity.
 const SCRAPMASTER_REBUILD_PCT := 50
 const MANTLE_ROUND_SHIELD := 6
+const MANTLE_SHIELD_CADENCE := 2
 const BROOD_CADENCE := 3
 
 # ── Balance-workbench tuning seam (scripts/sim/sweep.py — MEASUREMENT ONLY) ──
@@ -264,11 +268,10 @@ func _apply_boss_round_start_rules() -> void:
 					_log("The Court stands - the Overseer raises a firewall.")
 					_apply_ward(enemy_state)
 			BOSS_MANTLE:
-				# Cadence seam (Cycle-4 measurement): `mantle_shield_cadence` N
-				# fires the accretion every Nth round from the first. Default 1
-				# = every round = the shipped rule, byte-identical when unswept
-				# (the counter key is only written under an active sweep).
-				var mantle_cadence: int = _tuned_int("mantle_shield_cadence", 1)
+				# ACCRETION (Cycle-4 ruling): fires every MANTLE_SHIELD_CADENCE-th
+				# round from the first. Both knobs stay sweepable through the
+				# tuning seam (defaults = the shipped rule).
+				var mantle_cadence: int = _tuned_int("mantle_shield_cadence", MANTLE_SHIELD_CADENCE)
 				var mantle_fires: bool = true
 				if mantle_cadence > 1:
 					var mantle_rounds: int = int(enemy_state.get("mantle_rounds", 0)) + 1
