@@ -264,8 +264,19 @@ func _apply_boss_round_start_rules() -> void:
 					_log("The Court stands - the Overseer raises a firewall.")
 					_apply_ward(enemy_state)
 			BOSS_MANTLE:
-				_log("The Tyrant accretes its mantle.")
-				_add_shield_stack(enemy_state, _tuned_int("mantle_round_shield", MANTLE_ROUND_SHIELD), true)
+				# Cadence seam (Cycle-4 measurement): `mantle_shield_cadence` N
+				# fires the accretion every Nth round from the first. Default 1
+				# = every round = the shipped rule, byte-identical when unswept
+				# (the counter key is only written under an active sweep).
+				var mantle_cadence: int = _tuned_int("mantle_shield_cadence", 1)
+				var mantle_fires: bool = true
+				if mantle_cadence > 1:
+					var mantle_rounds: int = int(enemy_state.get("mantle_rounds", 0)) + 1
+					enemy_state["mantle_rounds"] = mantle_rounds
+					mantle_fires = (mantle_rounds - 1) % mantle_cadence == 0
+				if mantle_fires:
+					_log("The Tyrant accretes its mantle.")
+					_add_shield_stack(enemy_state, _tuned_int("mantle_round_shield", MANTLE_ROUND_SHIELD), true)
 
 
 # Enemy-phase rules (turn-cadence actions): Assembly Line rebuild, Brood
