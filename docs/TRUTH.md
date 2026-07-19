@@ -646,6 +646,30 @@ untouched. Stage-1 report: `docs/sweeps/2026-07-17_cycle1_stage1_hive.md`.
   turn-feel problems are invisible to every policy tier (demo-tester territory).
   Headline numbers describe full-unlock (veteran) pools except the bucket-0 arm.
 
+**Cycle 3 — The Reprice (2026-07-19, BAKED, Kev-approved Stage 2).** Approved
+set #1–4, sweep-dialed and baked as literals (Cycle-1 protocol): **Overcharge**
+130%→**110%** (lift +32.4→+15.3pp) · **Iron Curtain** 75%→**90%** (+31.0→+15.1)
+· **Predator Lens** → `rollBonusNat20Protocol` {+3 rolls, +1 Protocol on a 20}
+(+10.6pp, +4.3 over Neural Splice — the rarity mispricing resolved by rider) ·
+**Ghost flat tax G2** Probe 7→5 / Breach 9→7 / Blade 13→12 / Exec 16→14 (mean
++7.1→**+5.2**, hive/synod spikes preserved, spread 16.0 — shape kept per
+doctrine). **Equivalence proof: 5000/5000 runs byte-identical** to the approved
+verification arm across all five ops. Audit **234/0, zero delta**. NK-17 text
+in the same commits. **Baseline v3 (per-op, approved-set/equiv arms, n=1000):
+facility 0.538 · hive 0.305 · veil 0.143 · voidCirclet 0.292 · stellarMenagerie
+0.113.** CI pin re-accepted post-bake (ceremony = Kev's Stage-2 approval).
+**DEFERRED with evidence** (docs/sweeps/2026-07-18_cycle3_stage2_table.md):
+Shield (9 sweep points flat incl. outside-lever probes; **L2 −8.1 — dead at
+both tiers, structural**), Medic (heal-value ceiling: doubling heals = +0.6pp
+mean; L1 triage caps healing), Combat (Candidate-B carve measured dead: mean
+UP +6.4, spread COLLAPSED 7.1 — execute is op-agnostic under focus-fire; pure
+trim −12 flat = −0.6pp and flat), Pulse (chain-fizzle hypothesis FALSE —
+Facility has the highest chain rate). PROTECTED verdicts: Vengeance Protocol
+(L2 +1.0), Band Compressor (L1 −2.2 → L2 +2.8, skill-gated), avalanche/
+breaker/engineer untouched per ruling. **Dead-dozen Cycle-4 worklist:**
+curatedCache the lone both-tier corpse; salvageDirective the clearest
+skill-gate (+2.6 L2); rest neutral-at-L2 (n=500, SE 3.1pp).
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers
