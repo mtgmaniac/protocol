@@ -2291,7 +2291,7 @@
       "callsign": "MATRON"
     },
     "Shardmite": {
-      "hp": 40,
+      "hp": 34,
       "dMin": 5,
       "dMax": 9,
       "type": "veilShard",
@@ -2299,7 +2299,7 @@
       "callsign": "SHARD"
     },
     "Prism Charger": {
-      "hp": 38,
+      "hp": 32,
       "dMin": 6,
       "dMax": 10,
       "type": "veilPrism",
@@ -2307,7 +2307,7 @@
       "callsign": "PRISM"
     },
     "Aegis Anchor": {
-      "hp": 68,
+      "hp": 58,
       "dMin": 12,
       "dMax": 16,
       "type": "veilAegis",
@@ -2316,7 +2316,7 @@
       "callsign": "AEGIS"
     },
     "Resonance Warden": {
-      "hp": 118,
+      "hp": 100,
       "dMin": 17,
       "dMax": 23,
       "type": "veilResonance",
@@ -2325,7 +2325,7 @@
       "callsign": "RESONANT"
     },
     "Nullblade": {
-      "hp": 70,
+      "hp": 60,
       "dMin": 13,
       "dMax": 17,
       "type": "veilNull",
@@ -2334,7 +2334,7 @@
       "callsign": "NULL"
     },
     "Stormweaver": {
-      "hp": 92,
+      "hp": 90,
       "dMin": 15,
       "dMax": 21,
       "type": "veilStorm",
@@ -2343,7 +2343,7 @@
       "callsign": "STORM"
     },
     "Synapse Herald": {
-      "hp": 76,
+      "hp": 65,
       "dMin": 12,
       "dMax": 16,
       "type": "veilSynapse",
@@ -2352,7 +2352,7 @@
       "callsign": "SYNAPSE"
     },
     "CONCLAVE OVERSEER": {
-      "hp": 180,
+      "hp": 153,
       "dMin": 19,
       "dMax": 25,
       "type": "veilBoss",
