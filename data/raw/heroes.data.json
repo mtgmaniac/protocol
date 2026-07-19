@@ -2206,14 +2206,14 @@
             8
           ],
           "name": "Probe Strike",
-          "eff": "7 dmg",
-          "dmg": 7,
+          "eff": "5 dmg",
+          "dmg": 5,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 7,
-          "dMax": 7
+          "dMin": 5,
+          "dMax": 5
         },
         {
           "zone": "surge",
@@ -2222,14 +2222,14 @@
             13
           ],
           "name": "System Breach",
-          "eff": "9 dmg, breach",
-          "dmg": 9,
+          "eff": "7 dmg, breach",
+          "dmg": 7,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 9,
-          "dMax": 9,
+          "dMin": 7,
+          "dMax": 7,
           "breach": true
         },
         {
@@ -2239,14 +2239,14 @@
             19
           ],
           "name": "Phase Blade",
-          "eff": "13 dmg, pierce",
-          "dmg": 13,
+          "eff": "12 dmg, pierce",
+          "dmg": 12,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 13,
-          "dMax": 13,
+          "dMin": 12,
+          "dMax": 12,
           "ignSh": true
         },
         {
@@ -2256,14 +2256,14 @@
             20
           ],
           "name": "Execution Protocol",
-          "eff": "16 dmg, execute",
-          "dmg": 16,
+          "eff": "14 dmg, execute",
+          "dmg": 14,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 16,
-          "dMax": 16,
+          "dMin": 14,
+          "dMax": 14,
           "execute": true
         }
       ],
