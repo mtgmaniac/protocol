@@ -670,6 +670,33 @@ breaker/engineer untouched per ruling. **Dead-dozen Cycle-4 worklist:**
 curatedCache the lone both-tier corpse; salvageDirective the clearest
 skill-gate (+2.6 L2); rest neutral-at-L2 (n=500, SE 3.1pp).
 
+**Cycle 4 — Era refresh, Veil, Mantle Tyrant, rarity audit (2026-07-19, BAKED,
+Kev-approved R4 checkpoint).** Full report:
+`docs/sweeps/2026-07-19_cycle4_report.md`. **Veil** to the ruled 30–40 band via
+HP literals at 0.85 (levers tied in diagnosis; HP picked on cascade tiebreak;
+Overseer owns only 30% of deaths — not boss-shaped): Shardmite 34 · Prism
+Charger 32 · Aegis Anchor 58 · Nullblade 60 · Synapse Herald 65 · Stormweaver
+**90⚑ floored** (HEAVY_HP_MIN) · Resonance Warden 100 · CONCLAVE OVERSEER 153
+— **14.3% → 33.3%**, equivalence 1000/1000. **MANTLE TYRANT boss rule:
+ACCRETION fires every 2ND round** (value 6 kept; cadence beat value per swept
+point; `MANTLE_SHIELD_CADENCE := 2`; briefing copy + two audit regressions
+updated, 234/0): Accretion **11.3% → 16.3%**, clear-of-reached 13% → 19% —
+still the game's hardest wall (Hierophant 34%, Scrapmaster 62%). Metric
+ruling-note: the death-share target is arithmetically share-bound on
+Accretion's short road; clear-of-reached is the comparable wall metric.
+**Baseline v4 (changed ops only): veil 0.333 · stellarMenagerie 0.163**;
+facility/hive/voidCirclet v3 numbers stand — the combined final arm showed
+EXACT +0.0pp on all three (op-local changes are byte-invisible elsewhere).
+**Era refresh:** fresh L2 gaps (facility +25.5 · hive +18.6 · veil +6.7 ·
+synod +23.3 · accretion +9.0) and bucket-0 deltas (+6.2..+14.4 — attenuated
+post-reprice, still positive everywhere). **Rarity audit (curatedCache stays
+AS-IS per revised ruling):** tier medians rank correctly in every era/method —
+mislabeling hypothesis rejected; R5 shortlist (demote priming_charge,
+reverse_gimbal ⚑#11-pending, deep_zero_pin; no promotions; grounding_clip
+cleared — observational selection bias again) awaits ruling; NO rarity
+changes shipped. Veil b4 spike (26–28% of deaths) reported as a future
+comp-shaped item. CI pin re-accepted post-bakes.
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers
