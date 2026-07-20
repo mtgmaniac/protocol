@@ -447,6 +447,7 @@ func _run_regression_audits() -> void:
 	_run_shield_timing_regression()
 	_run_cloak_regression()
 	_run_taunt_regression()
+	_run_cleanse_regressions()
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
 	_run_new_gear_regressions()
@@ -851,6 +852,43 @@ func _run_cloak_regression() -> void:
 		_record_pass("Regression / attack from cloak decloaks without pierce", "cloak")
 	else:
 		_record_failure("Regression / attack from cloak decloaks without pierce", "cloak", "shield absorbs 9 (20 -> 11), no HP damage; attacker decloaked", "hp_delta=%d shield=%d cloaked=%s" % [strike_before - int(strike_enemy["current_hp"]), int(strike_enemy["shield"]), str(strike_hero.get("cloaked", false))])
+
+
+# Cleanse (Build I): purges the target's unit-level negatives (burn, negative
+# roll stacks, jam, lure), KEEPS positive roll buffs, leaves die states (a
+# frozen die stays frozen). A cast with nothing to remove is a legal no-op.
+func _run_cleanse_regressions() -> void:
+	var manager: CombatManager = CombatManager.new()
+	manager.setup_battle(
+		[_make_unit("audit_medic", "Audit Medic", "Audit Infusion", {"heal": 10, "healTgt": true, "cleanse": true}),
+		 _make_unit("audit_ally", "Audit Ally", "Noop", {})],
+		[_make_enemy("audit_enemy", "Audit Enemy")])
+	var medic: Dictionary = manager.get_hero_states()[0]
+	var ally: Dictionary = manager.get_hero_states()[1]
+	ally["burn_stacks"] = [{"amt": 3, "turns_left": 2}]
+	ally["roll_buff_stacks"] = [{"amt": -2, "turns_left": 2}, {"amt": 2, "turns_left": 2}]
+	ally["jam_cap"] = 6
+	ally["lured_by_id"] = "audit_enemy#1"
+	ally["die_freeze_turns"] = 1
+	medic["selected_target_id"] = str(ally["id"])
+	manager.resolve_round({str(medic["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var purged: bool = (
+		(ally["burn_stacks"] as Array).is_empty()
+		and (ally["roll_buff_stacks"] as Array).size() == 1
+		and int((ally["roll_buff_stacks"] as Array)[0]["amt"]) == 2
+		and int(ally.get("jam_cap", 0)) == 0
+		and str(ally.get("lured_by_id", "")) == ""
+		and int(ally.get("die_freeze_turns", 0)) == 1
+	)
+	_expect_and_record("Regression / cleanse purges negatives keeps buffs and dice", "cleanse", "true", str(purged))
+	# No-op legality: cleansing a clean target changes nothing and cannot crash.
+	# (Buff stacks cleared first — natural expiry between rounds would otherwise
+	# masquerade as a cleanse effect.)
+	ally["roll_buff_stacks"] = []
+	manager.resolve_round({str(medic["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var noop_ok: bool = (ally["burn_stacks"] as Array).is_empty() \
+		and int(ally.get("jam_cap", 0)) == 0 and str(ally.get("lured_by_id", "")) == ""
+	_expect_and_record("Regression / cleanse no-op is legal", "cleanse", "true", str(noop_ok))
 
 
 func _run_ward_regressions() -> void:

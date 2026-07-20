@@ -102,6 +102,14 @@
       "syntax": "N heal"
     },
     {
+      "id": "cleanse",
+      "term": "Cleanse",
+      "category": "defense",
+      "def": "Removes the target's negative effects: burn, roll penalties, jam, and lure. Dice are not affected - a frozen die stays frozen.",
+      "syntax": "cleanse",
+      "code": "CL"
+    },
+    {
       "id": "revive",
       "term": "Revive",
       "category": "defense",

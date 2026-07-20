@@ -35,7 +35,7 @@ CEREMONY_PTS = 10.0  # per-op clear-rate points
 # count check). Raise when adding tests; LOWERING needs BASELINE-APPROVED-BY-KEV
 # (threshold_guard, inverted polarity — floors loosen downward).
 # 228 -> 234 (Build G Lane 2): +2 taunt targeting cases, +4 taunt regressions.
-AUDIT_MIN_PASSED = 234
+AUDIT_MIN_PASSED = 236
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),

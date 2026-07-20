@@ -1124,6 +1124,18 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		else:
 			_heal_state(hero_state, heal, hero_state)
 
+	# Cleanse (Build I, instant keyword — fires and done, no persistent chip):
+	# purge the target's unit-level negative statuses. Follows the heal target
+	# (Infusion heals-and-cleanses one ally); a cast with nothing to remove is
+	# a legal no-op. Die-attached states (frozen/repeat dice, rewrite/hijack
+	# pending) are NOT cleansed by ruling — the die is the crust's object, and
+	# freeze-as-repeat can be a banked benefit the player chose.
+	if bool(raw.get("cleanse", false)):
+		var cleanse_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
+		if cleanse_target.is_empty():
+			cleanse_target = hero_state
+		_apply_cleanse(cleanse_target)
+
 	if roll_buff_amount > 0:
 		# Cast during hero resolution — the beneficiaries' abilities for this turn
 		# were already selected from their rolls, so this shapes FUTURE rolls only
@@ -2470,6 +2482,38 @@ func _apply_burn(state: Dictionary, amount: int, turns: int) -> void:
 	else:
 		_log("%s is burning for %d over %d turns." % [state["unit"].display_name, amount, turns])
 	_emit_event(state, "burn", amount, _resolve_side_for_state(state))
+
+
+# Cleanse (Build I): removes the unit-level negative statuses — burn stacks,
+# NEGATIVE roll-buff stacks (positives survive), jam cap, lure, mark. Die
+# states are untouched by ruling (see the firing site). Logs only when
+# something was removed; the event always fires (the cast is real feedback).
+func _apply_cleanse(state: Dictionary) -> void:
+	var removed: bool = false
+	if not (state.get("burn_stacks", []) as Array).is_empty():
+		(state["burn_stacks"] as Array).clear()
+		_refresh_burn_totals(state)
+		removed = true
+	var kept_buffs: Array = []
+	for stack_variant in state.get("roll_buff_stacks", []):
+		if int((stack_variant as Dictionary).get("amt", 0)) > 0:
+			kept_buffs.append(stack_variant)
+	if kept_buffs.size() != (state.get("roll_buff_stacks", []) as Array).size():
+		state["roll_buff_stacks"] = kept_buffs
+		_refresh_roll_buff_total(state)
+		removed = true
+	if int(state.get("jam_cap", 0)) > 0:
+		state["jam_cap"] = 0
+		removed = true
+	if str(state.get("lured_by_id", "")) != "":
+		state["lured_by_id"] = ""
+		removed = true
+	if bool(state.get("marked", false)):
+		state["marked"] = false
+		removed = true
+	if removed:
+		_log("%s is cleansed - negative effects removed." % state["unit"].display_name)
+	_emit_event(state, "cleanse", 0, _resolve_side_for_state(state))
 
 
 # Derived display caches: "burn" = summed live stack value, "burn_turns" =

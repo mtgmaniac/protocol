@@ -10,6 +10,10 @@ const TEXT_MUTED := Color(0.52, 0.60, 0.70, 1.0)
 const HERO_ACCENT := Color(0.20, 0.66, 0.50, 1.0)
 const ENEMY_ACCENT := Color(0.74, 0.28, 0.23, 1.0)
 const GOLD_ACCENT := Color(0.82, 0.58, 0.24, 1.0)
+# Cleanse pip tint (Build I, Kev ruling): the heal glyph tinted GOLDEN. This is
+# a PIP-level color ONLY — the amber-gold CHROME reserve (reward/ceremonial
+# borders) is NOT implicated. Do not "correct" this token into a chrome role.
+const COLOR_CLEANSE_PIP := Color(0.92, 0.76, 0.32, 1.0)
 const BLACK_EDGE := Color(0.005, 0.006, 0.010, 1.0)
 const COLOR_DAMAGE := Color(0.96, 0.22, 0.18, 1.0)
 const COLOR_HEAL := Color(0.28, 0.90, 0.46, 1.0)
@@ -350,6 +354,8 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 			return "firewall"
 		"mark":
 			return "mark"
+		"cleanse":
+			return "cleanse"
 		"leech":
 			return "leech"
 		"spike":
@@ -552,6 +558,9 @@ const PIP_ICON_BY_KEY := {
 	# Kev 2026-07-10 icon batch (newicons.png): self marker, summon, rampage,
 	# pack bonus.
 	"self": "self", "summon": "summon", "rampage": "rampage", "pack_bonus": "pack_bonus",
+	# Cleanse (Build I): REUSES the heal glyph — the golden tint is applied by
+	# the caller (EffectPip.build_group), same pattern as roll_up's green.
+	"cleanse": "heal",
 	# Batch 5 icon swap (newicons.png / newicons2.png): target_lowest is new (reticle
 	# + down arrow, the lowest-HP-ally scope marker); aoe, taunt, leech, summon were
 	# re-cut from the sheets (aoe now the cardinal-arrow burst — distinct from freeze).

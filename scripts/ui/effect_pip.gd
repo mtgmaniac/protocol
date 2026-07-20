@@ -73,7 +73,7 @@ static func pip_key_for_effect(effect: Dictionary, _side: String = "hero") -> St
 # Kinds that now carry an icon AND were authored with a leading keyword code in
 # their value (e.g. "SP3", "CH×2", "BR", "MK"). The icon carries the keyword, so
 # we drop the letters and keep only the numeric/×N/% remainder.
-const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete", "rampage"]
+const CODE_ICON_KINDS: Array[String] = ["pierce", "cloak", "taunt", "ward", "mark", "leech", "breach", "chain", "detonate", "execute", "jam", "rewrite", "hijack", "spike", "siphon", "accrete", "rampage", "cleanse"]
 
 
 static func display_text_for_effect(effect: Dictionary) -> String:
@@ -198,6 +198,9 @@ static func build_group(
 			# Roll is one gold d20; a +roll (roll_up) tints green, −roll stays gold.
 			if pip_key == "roll_up":
 				icon_rect.modulate = PixelUI.COLOR_HEAL
+			# Cleanse reuses the heal glyph tinted GOLDEN (Build I ruling).
+			elif pip_key == "cleanse":
+				icon_rect.modulate = PixelUI.COLOR_CLEANSE_PIP
 			group.add_child(icon_rect)
 
 	if effect_kind == "freeze":
@@ -361,6 +364,8 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 		_append_effect(effects, "detonate", keyword_code("detonate", "DT"))
 	if bool(raw.get("execute", false)):
 		_append_effect(effects, "execute", keyword_code("execute", "EX"))
+	if bool(raw.get("cleanse", false)):
+		_append_effect(effects, "cleanse", keyword_code("cleanse", "CL"))
 	if bool(raw.get("breachAll", false)):
 		_append_effect(effects, "breach", keyword_code("breach", "BR"), 0, "all")
 	elif bool(raw.get("breach", false)):
