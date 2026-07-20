@@ -372,21 +372,26 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   deleted). Drone roll rigged to 6 both turns = Stab, 7 dmg (the kit has no
   8-dmg band — copy was fixed to the engine per the v2 ruling), aimed at
   Strike via its real SYSTEMATIC slot-0 personality.
-- **Rig v2.1 (playtest fix pass, Pixel 2026-07):** the mark payoff belongs to
-  FIELD ENGINEER, not Medic — every Medic damage band below the nat-20
-  carries leech (an off-script icon for turn 1) and Shock Therapy (20) would
-  fire the overload slam AND deal 30 through the mark, collapsing the
-  two-turn structure. **Leech appears nowhere in the drill** (smoke-asserted,
-  including nudged +3 variants; no rigged band reaches 20).
-  **Turn 1** rolls {combat 3, engineer 12, medic 2}: Target Lock (mark) →
-  Overdrive (11 → 17 on the marked drone; 35 → 18) teaches CAST ORDER (set
-  up first, spend second); Diagnostic Pulse (3 heal + 3 shield on Strike —
-  the heal overflows at full HP, honest and harmless) soaks 3 of the Stab
-  (Strike takes 4). **Turn 2** rolls {combat 8 → Nudged 11, engineer 12,
-  medic 6}: the band jump (Suppression Fire 6 → Rail Strike 10), a plain
-  Overdrive 11, Infusion heal — the kill closes ON DICE (10 + 11 = 21 into
-  18). Protocol entering turn 2 is exactly 1 (income only): the "exactly one
-  Nudge" framing, and a second Nudge is simply unaffordable.
+- **Rig v2.3 (Prompt-6 delta): MARK IS OUT OF THE DRILL.** Strike rolls 9
+  (Suppression Fire, 6 dmg) instead of Target Lock — mark is taught by its
+  PRIMER at first real-play sighting (suppression never writes
+  `primers_seen`, so it fires). Cast order is carried by the first-assign
+  beat line ("Your squad fires in the order you assign") plus the visible
+  order badges. **Neither leech NOR mark appears on any rigged band**
+  (smoke-asserted, including nudged +3 variants; no rigged band reaches 20 —
+  the v2.1 leech/Shock-Therapy analysis stands).
+  **Turn 1** rolls {combat 9, engineer 12, medic 2}: Suppression Fire 6 +
+  Overdrive 11 = 17 (35 → 18) — with no setup effects the turn-1 math is
+  **ORDER-INVARIANT** (audit-asserted under a fully reversed cast order),
+  which is its own stall-proofing; Diagnostic Pulse (3 heal + 3 shield on
+  Strike — the heal overflows at full HP, honest and harmless) soaks 3 of
+  the Stab (Strike takes 4). **Turn 2** rolls {combat 8 → Nudged 11,
+  engineer 12, medic 6}: the band jump (Suppression Fire 6 → Rail Strike 10
+  — and the player FELT the 6 land in turn 1), a plain Overdrive 11,
+  Infusion heal — the kill closes ON DICE (10 + 11 = 21 into 18). Protocol
+  entering turn 2 is exactly 1 (income only): the "exactly one Nudge"
+  framing, and a second Nudge is simply unaffordable (0-PP press refused,
+  smoke-asserted).
 - **Item lesson = SIGNPOST (Prompt-5 delta, rationale recorded):** the v2.1
   rig banked exactly 1 Protocol into turn 2, the Nudge spent it, and items
   cost 1 — so the item-USE beat was only survivable via the items_free
@@ -427,12 +432,21 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   (`_layout_step` retry). Both fixes are generic — every step and the primer
   coachmarks inherit them.
 - **Stall-proofing (the drill must be unable to dead-end):** the kill needs
-  NO resource beyond the dice — a resequenced (unspent) turn-1 mark leaves
-  the drone at 24 and turn 2 pays it late on the first hit (Rail 15 +
-  Overdrive 11, or Overdrive 17 + Rail 10) — dead either way; a Nudge at
-  0 PP is refused (the pick never arms) and a nudged 14 stays inside Rail
-  Strike's 11-15 band. Audit-pinned (5 kill-math regressions incl. the
-  stall-proof arm). The old items_free crutch is gone with the item beat.
+  NO resource beyond the dice, and with no setup effects the totals are
+  ORDER-INVARIANT — any resequence lands the identical 35 → 18 → dead line;
+  a Nudge at 0 PP is refused (the pick never arms) and a nudged 14 stays
+  inside Rail Strike's 11-15 band. Audit-pinned (5 kill-math regressions
+  incl. the reversed-order arms). The old items_free crutch is gone with the
+  item beat.
+- **Coach panel sizes to its text (Prompt-6):** the coachmark panel derives
+  its width from measured text bounds (the label's own resolved m5x7 font)
+  plus the named paddings — no fixed full-screen width. Copy longer than one
+  line wraps regardless, so it contributes its BALANCED width (unwrapped
+  width split over the fewest lines, plus word-boundary slack) — short cards
+  (WELCOME / DRILL COMPLETE) shrink to fit and center, long copy wraps into
+  even lines. Applies to every coach placement (tutorial AND primers —
+  shared SpotlightLayer); positions round to whole px; the bottom anchor
+  clears `PixelUI.safe_bottom`.
 - **Dice-settle rig:** the scripted values are handed to the tray BEFORE the
   physics roll (`dice_tray_3d.set_rigged_results`, consumed one-shot in
   `_resolve_landed_die_face`), so the settle presentation rotates the RIGGED

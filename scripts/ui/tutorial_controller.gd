@@ -38,7 +38,7 @@ func start(scene: Node) -> void:
 	_show_step(0)
 
 
-# ── Step script (v2.2, Prompt-5 item-signpost delta — 24 beats) ─────────────────
+# ── Step script (v2.3, Prompt-6 mark-out delta — 24 beats) ──────────────────────
 # Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
 # predicate), hero:"" (optional event predicate — the unit id carried in the
 # event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
@@ -58,16 +58,18 @@ func _build_steps() -> Array:
 		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
 		# Invisible waiter: the coach hides while the dice roll and settle.
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit marks, Field Engineer hits for 11, Splice Medic shields."},
+		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields."},
 		{"targets": ["hero_cards"], "text": "Long-press a card for the full breakdown - long-press works on nearly everything. Try it.", "advance": "inspected"},
-		# Cast order (Model A): assignment order = firing order. Set up first, spend second.
-		{"targets": ["die:combat", "card:combat"], "separate": true, "text": "Your squad fires in the order you assign. Set up first: tap Strike Unit's die, then the drone, to mark it.", "advance": "assigned", "hero": "combat"},
-		{"targets": ["die:engineer", "card:engineer"], "separate": true, "text": "Now spend it: Field Engineer's Overdrive hits a marked target for +50% - 11 becomes 17. Tap the die, then the drone.", "advance": "assigned", "hero": "engineer"},
+		# Cast order (Model A): assignment order = firing order — carried by
+		# this line + the visible order badges (Prompt-6: mark left the drill;
+		# its primer teaches it at first real-play sighting).
+		{"targets": ["die:combat", "card:combat"], "separate": true, "text": "Tap Strike Unit's die, then the drone, to fire it. Your squad fires in the order you assign.", "advance": "assigned", "hero": "combat"},
+		{"targets": ["die:engineer", "card:engineer"], "separate": true, "text": "Now Field Engineer - tap the die, then the drone.", "advance": "assigned", "hero": "engineer"},
 		# Telegraph: the drone's card + its ability pip + its die (separate holes).
 		{"targets": ["enemy_card", "enemy_pip", "enemy_die"], "separate": true, "text": "The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands."},
 		{"targets": ["die:medic", "card:medic"], "separate": true, "text": "Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic"},
 		{"targets": ["roll_button"], "text": "Lock it in - your squad fires in order, then the drone acts.", "advance": "turn_resolved"},
-		{"targets": ["combat", "battle_log"], "separate": true, "text": "Your order paid off - the mark turned 11 into 17. The drone hit for 7: the shield soaked 3, Strike Unit took 4. Time to patch up."},
+		{"targets": ["combat", "battle_log"], "separate": true, "text": "The drone took 17. Its hit landed for 7: the shield soaked 3, Strike Unit took 4. Time to patch up."},
 		# Phase 2 — turn 2
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled"},

@@ -29,6 +29,20 @@ const COACH_FONT := 32
 const HINT_FONT := 36  # Kev 2026-07-10: "tap to continue" was too small at 24
 const SCREEN_MARGIN := 40.0
 const FULLSCREEN_INSET := 12.0  # "highlight the whole screen" frame inset
+# Coach panel padding (the modal component's content margin) and glyph row
+# metrics — named so the text-fit measurement and the built layout can never
+# drift apart. Even design px (pixel-snap law).
+const COACH_PAD := 22.0
+const COACH_GLYPH_SIZE := 56.0
+const COACH_GLYPH_SEP := 14.0
+# Rasterization safety on the measured line width (outline px + rounding) so
+# the widest line never wraps by a hair.
+const COACH_MEASURE_SLACK := 4.0
+# When copy is longer than one line it wraps regardless — size the panel to
+# the BALANCED wrapped width (unwrapped width split over the fewest lines)
+# instead of pinning to full screen width. The slack absorbs word-boundary
+# raggedness (autowrap breaks on words, the estimate doesn't).
+const COACH_BALANCE_SLACK := 72.0
 
 var _dim_canvas: _DimCanvas = null
 var _tap_catcher: Control = null
@@ -121,7 +135,7 @@ func _ready() -> void:
 	# Component: Modal — the coach card floats over the spotlight dim (its
 	# scrim). Attention comes from the spotlight ring, not a bright border.
 	var coach_style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_MODAL)
-	coach_style.set_content_margin_all(22.0)
+	coach_style.set_content_margin_all(COACH_PAD)
 	_coach.add_theme_stylebox_override("panel", coach_style)
 	add_child(_coach)
 
@@ -134,7 +148,7 @@ func _ready() -> void:
 	# texture is passed, so callers that never set it (the tutorial) render
 	# pixel-identically to the pre-glyph layout.
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 14)
+	body.add_theme_constant_override("separation", int(COACH_GLYPH_SEP))
 	col.add_child(body)
 
 	_coach_glyph = TextureRect.new()
@@ -143,7 +157,7 @@ func _ready() -> void:
 	_coach_glyph.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_coach_glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_coach_glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_coach_glyph.custom_minimum_size = Vector2(56, 56)
+	_coach_glyph.custom_minimum_size = Vector2(COACH_GLYPH_SIZE, COACH_GLYPH_SIZE)
 	_coach_glyph.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	body.add_child(_coach_glyph)
 
@@ -248,22 +262,62 @@ func _bounds_of(holes: Array) -> Rect2:
 
 func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 	var s: Vector2 = get_viewport().get_visible_rect().size
-	var width: float = s.x - SCREEN_MARGIN * 2.0
+	# Text-fit width (playtest fix): the panel derives from its text bounds +
+	# the named paddings — never a fixed full-screen width. Long copy still
+	# clamps to the screen margins and autowraps as before; short copy (the
+	# WELCOME / DRILL COMPLETE cards) shrinks to fit and centers.
+	var max_width: float = s.x - SCREEN_MARGIN * 2.0
+	var width: float = minf(_coach_content_width(max_width), max_width)
 	_coach.custom_minimum_size = Vector2(width, 0)
 	_coach.size = Vector2(width, 0)
 	await get_tree().process_frame
 	var ch: float = _coach.get_combined_minimum_size().y
 	var y: float
 	if anchor == CoachAnchor.BOTTOM:
-		# Pinned to the bottom so it never covers the centre action button.
-		y = s.y - ch - SCREEN_MARGIN
+		# Pinned to the bottom so it never covers the centre action button —
+		# above the gesture reserve on a cutout device (safe_bottom is 0 on
+		# desktop).
+		y = s.y - ch - SCREEN_MARGIN - float(PixelUI.safe_bottom)
 	elif anchor == CoachAnchor.CENTER or hole.size == Vector2.ZERO:
 		# Upper-middle, not dead center (Kev 2026-07-10): the End Turn button
 		# lives mid-screen and a centered coach was blocking it.
 		y = s.y * 0.34 - ch * 0.5
 	elif hole.get_center().y < s.y * 0.5:
-		y = minf(hole.end.y + 28.0, s.y - ch - SCREEN_MARGIN)  # hole in top half → coach below
+		y = minf(hole.end.y + 28.0, s.y - ch - SCREEN_MARGIN - float(PixelUI.safe_bottom))  # hole in top half → coach below
 	else:
 		y = maxf(hole.position.y - ch - 28.0, SCREEN_MARGIN)    # hole in bottom half → coach above
-	_coach.position = Vector2(SCREEN_MARGIN, y)
+	# Whole design px (pixel-snap law); centered horizontally — full-width
+	# copy lands exactly on the old SCREEN_MARGIN position.
+	_coach.position = Vector2(roundf((s.x - width) * 0.5), roundf(y))
 	_coach.size = Vector2(width, ch)
+
+
+# The coach panel's natural content width: the widest text line (the label
+# carries the optional [ TITLE ] line inline), the glyph row when visible,
+# and the hint line — plus the named paddings. Measured with the label's OWN
+# resolved theme font (m5x7), so metrics can't drift from what renders. A
+# line longer than the available content width wraps regardless, so it
+# contributes its BALANCED width (split over the fewest lines it needs) —
+# short copy shrinks the panel, long copy wraps evenly instead of pinning a
+# ragged last line to a full-width panel.
+func _coach_content_width(panel_max_width: float) -> float:
+	var glyph_extra: float = (COACH_GLYPH_SIZE + COACH_GLYPH_SEP) if _coach_glyph.visible else 0.0
+	var chrome: float = COACH_PAD * 2.0 + COACH_MEASURE_SLACK
+	var content_max: float = panel_max_width - chrome - glyph_extra
+	var width: float = 0.0
+	var font: Font = _coach_label.get_theme_font("font")
+	var font_size: int = _coach_label.get_theme_font_size("font_size")
+	if font != null:
+		for line in _coach_label.text.split("\n"):
+			var line_w: float = font.get_string_size(str(line), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+			if line_w > content_max and content_max > 0.0:
+				var wrapped_lines: float = ceilf(line_w / content_max)
+				line_w = minf(ceilf(line_w / wrapped_lines) + COACH_BALANCE_SLACK, content_max)
+			width = maxf(width, line_w)
+	width += glyph_extra
+	if _hint_label.visible:
+		var hint_font: Font = _hint_label.get_theme_font("font")
+		var hint_size: int = _hint_label.get_theme_font_size("font_size")
+		if hint_font != null:
+			width = maxf(width, hint_font.get_string_size(_hint_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, hint_size).x)
+	return ceilf(width + COACH_MEASURE_SLACK) + COACH_PAD * 2.0

@@ -1,16 +1,17 @@
-# Scripted end-to-end tutorial playthroughs (v2.2, Prompt-5 item-signpost
-# delta: no consumable grant, no items_free, the kill closes ON DICE; the
-# item lesson is an informational signpost beat). Drives the same
-# battle-scene entry points the real UI calls and asserts every
-# TutorialController step advances, every spotlighted step resolves holes,
-# every assigned-gated step RETARGETS its spotlight onto the legal targets
-# when targeting starts, and the HONEST-RIG math lands exactly where the
-# coach copy claims (35 -> 18 -> dead on 10+11; shield soaks 3; protocol 1).
+# Scripted end-to-end tutorial playthroughs (v2.3, Prompt-6 mark-out delta:
+# Strike rolls 9 — Target Lock and mark appear NOWHERE in the drill; mark is
+# taught by its primer at first real-play sighting. Turn-1 math is
+# ORDER-INVARIANT). Drives the same battle-scene entry points the real UI
+# calls and asserts every TutorialController step advances, every spotlighted
+# step resolves holes, every assigned-gated step RETARGETS its spotlight onto
+# the legal targets when targeting starts, and the HONEST-RIG math lands
+# exactly where the coach copy claims (35 -> 18 -> dead on 10+11; shield
+# soaks 3; protocol 1).
 #
 # Scenario A — the happy path: all 24 steps in the taught order.
-# Scenario B — stall-proofing: the mark is resequenced to fire UNSPENT in
-#   turn 1 (drone 24), a Nudge is attempted at 0 PP (rejected), and the
-#   late-paying mark on the first turn-2 hit still wins on dice alone. The
+# Scenario B — stall-proofing: assignments are resequenced (identical totals
+#   — order-invariance asserted at the same 18 checkpoint), a Nudge is
+#   attempted at 0 PP (rejected), and the dice-only kill still closes. The
 #   drill must be UNABLE to dead-end.
 #
 # Run:
@@ -34,7 +35,7 @@ func _run() -> void:
 		await _run_stall_proof_path()
 
 	if _errors.is_empty():
-		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof), spotlights resolved + retargeted, rig math exact, no leech" % STEP_COUNT)
+		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof), spotlights resolved + retargeted, rig math exact + order-invariant, no leech/mark" % STEP_COUNT)
 		quit(0)
 	else:
 		for e in _errors:
@@ -125,14 +126,14 @@ func _run_happy_path() -> void:
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 12)
 
-	# Turn-1 math, exactly as the coach copy claims: mark spent 11 -> 17
-	# (drone 35 -> 18, mark consumed); Stab 7 soaked 3 by Diagnostic Pulse's
-	# shield (Strike 55 -> 51); protocol = income only = 1.
+	# Turn-1 math, exactly as the coach copy claims: 6 + 11 = 17 (drone
+	# 35 -> 18, nothing ever marked — mark left the drill); Stab 7 soaked 3
+	# by Diagnostic Pulse's shield (Strike 55 -> 51); protocol = income = 1.
 	drone = _enemy_state(scene)
 	if int(drone.get("current_hp", 0)) != 18:
-		_fail("turn-1 drone HP: expected 18 (35 - marked 17), got %d" % int(drone.get("current_hp", 0)))
+		_fail("turn-1 drone HP: expected 18 (35 - 17), got %d" % int(drone.get("current_hp", 0)))
 	if bool(drone.get("marked", false)):
-		_fail("turn-1 mark must be CONSUMED by Overdrive")
+		_fail("mark must appear NOWHERE in the drill (drone marked after T1)")
 	var strike: Dictionary = _hero_state(scene, "combat")
 	if int(strike.get("current_hp", 0)) != 51:
 		_fail("turn-1 Strike HP: expected 51 (Stab 7, shield soaked 3), got %d" % int(strike.get("current_hp", 0)))
@@ -210,10 +211,10 @@ func _run_happy_path() -> void:
 
 
 # ── Scenario B: stall-proofing ───────────────────────────────────────────────
-# The player fights the script: the mark is resequenced to fire AFTER
-# Overdrive (unspent in turn 1, drone 24), a second Nudge is attempted at
-# 0 PP (rejected — the pick never arms), and the late-paying mark on the
-# first turn-2 hit still kills on dice alone (15 + 11 into 24).
+# The player fights the script: assignments are resequenced (re-tap exercise
+# kept — with no setup effects the totals are ORDER-INVARIANT, so turn 1
+# lands the identical 18), a second Nudge is attempted at 0 PP (rejected —
+# the pick never arms), and the dice-only kill still closes.
 
 func _run_stall_proof_path() -> void:
 	var scene: Node = await _start_drill()
@@ -247,8 +248,8 @@ func _run_stall_proof_path() -> void:
 	await _expect_step(controller, 10)
 
 	# ...then RESEQUENCE: re-tap Strike Unit — its stamp clears and the
-	# recommit appends at the END of the order, so Overdrive now fires BEFORE
-	# the mark. The unspent mark must persist into turn 2.
+	# recommit appends at the END of the order. With no setup effects in the
+	# rig the totals are order-invariant: the same 18 checkpoint must land.
 	var combat_id: String = _state_id_for_unit(scene, "combat")
 	scene.call("_unassign_hero_cast", combat_id)
 	await _wait_frames(2)
@@ -260,10 +261,10 @@ func _run_stall_proof_path() -> void:
 	await _expect_step(controller, 12)
 
 	var drone: Dictionary = _enemy_state(scene)
-	if int(drone.get("current_hp", 0)) != 24:
-		_fail("stall-proof turn 1: expected 24 (unmarked 11), got %d" % int(drone.get("current_hp", 0)))
-	if not bool(drone.get("marked", false)):
-		_fail("stall-proof turn 1: the unspent mark must PERSIST on the drone")
+	if int(drone.get("current_hp", 0)) != 18:
+		_fail("stall-proof turn 1: order-invariance broken — expected 18, got %d" % int(drone.get("current_hp", 0)))
+	if bool(drone.get("marked", false)):
+		_fail("mark must appear NOWHERE in the drill (hostile path)")
 
 	controller.call("_next")
 	await _expect_step(controller, 13)
@@ -300,8 +301,7 @@ func _run_stall_proof_path() -> void:
 		await _pick_and_assign(scene, str(hero_id))
 	await _expect_step(controller, 22)
 
-	# END TURN: the persisted mark pays late on the FIRST hit (Rail 15 +
-	# Overdrive 11 = 26 into 24) — dead on dice alone, no item needed.
+	# END TURN: identical dice-only kill (10 + 11 into 18) — no dead end.
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 23)
 	if not bool(_enemy_state(scene).get("dead", false)):
@@ -402,8 +402,9 @@ func _assert_spotlight_on_legal(scene: Node, controller: Node) -> void:
 			_errors.append("step %d spotlight did NOT retarget onto legal target '%s' (side %s)" % [int(controller.get("_step")), target_id, side])
 
 
-# Playtest item 4: no rigged band on either turn may carry leech (and none
-# may reach the nat-20 overload band).
+# Playtest item 4 + Prompt-6: no rigged band on either turn may carry leech
+# OR mark (Target Lock is out of the drill — its primer teaches it), and
+# none may reach the nat-20 overload band.
 func _assert_no_leech_in_rig(scene: Node) -> void:
 	var rigs: Variant = scene.get("TUTORIAL_HERO_ROLLS")
 	if not (rigs is Array):
@@ -424,6 +425,8 @@ func _assert_no_leech_in_rig(scene: Node) -> void:
 				var raw: Dictionary = entry.get("raw", {})
 				if bool(raw.get("leech", false)):
 					_errors.append("leech leaked into the drill: %s roll %d -> %s" % [str(unit_id), roll, str(entry.get("ability_name", ""))])
+				if bool(raw.get("mark", false)):
+					_errors.append("mark leaked into the drill: %s roll %d -> %s" % [str(unit_id), roll, str(entry.get("ability_name", ""))])
 				if roll >= 20:
 					_errors.append("rig can reach the nat-20 overload band: %s" % str(unit_id))
 

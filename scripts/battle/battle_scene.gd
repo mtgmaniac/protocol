@@ -146,33 +146,30 @@ var enemy_units: Array = []
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
 # v2 (2026-07-20): HONEST RIG — rig the inputs, never fake the outputs. The
 # Scrap Drone fights at its REAL statline (35 HP, enemies.data.json); only the
-# dice and the drone's aim are scripted. Playtest fix pass (Pixel, item 4):
-# the mark payoff moved OFF Splice Medic — every Medic damage band below the
-# nat-20 carries leech (off-script for turn 1) and Shock Therapy would fire
-# the overload slam AND one-shot through the mark. Engineer now spends the
-# mark; Medic takes the turn-1 shield. Rolls keyed by unit id:
-#   turn 1: Strike 3 (Target Lock, 0-dmg mark) + Engineer 12 (Overdrive,
-#           11 dmg, no keywords) + Medic 2 (Diagnostic Pulse, 3 heal +
-#           3 shield targeted). Taught order mark→Overdrive: 11 becomes 17
-#           (ceil 11*1.5) — drone 35 → 18. Drone roll 6 = Stab 7 at Strike
-#           (SYSTEMATIC slot 0): the 3 shield soaks 3, Strike takes 4 (the
-#           3 heal overflows at full HP — honest, harmless).
+# dice and the drone's aim are scripted. Prompt-6 delta: MARK LEAVES THE
+# DRILL — Strike rolls 9 (Suppression Fire 6) instead of Target Lock; mark is
+# taught by its primer at first real-play sighting (suppressed-not-seen in
+# the tutorial, so it fires). Cast order is carried by the first-assign beat
+# line + the visible order badges; with no setup effects the turn-1 math is
+# ORDER-INVARIANT, which is its own stall-proofing. Rolls keyed by unit id:
+#   turn 1: Strike 9 (Suppression Fire, 6 dmg) + Engineer 12 (Overdrive,
+#           11 dmg) + Medic 2 (Diagnostic Pulse, 3 heal + 3 shield targeted).
+#           6 + 11 = 17 — drone 35 → 18 under ANY assignment order. Drone
+#           roll 6 = Stab 7 at Strike (SYSTEMATIC slot 0): the 3 shield
+#           soaks 3, Strike takes 4 (the 3 heal overflows at full HP —
+#           honest, harmless).
 #   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire 6 → Rail Strike 10, the
-#           taught band jump) + Engineer 12 (Overdrive 11 again — plain this
-#           time, the mark is spent) + Medic 6 (Infusion, 10 heal targeted).
-#           Protocol entering turn 2 is exactly 1 (income only — no
-#           gainProtocol in this rig), the one taught Nudge; a second Nudge
-#           is simply unaffordable. Rail Strike 10 + Overdrive 11 = 21 into
-#           18 — the kill closes ON DICE (Prompt-5 delta: the item beat was
-#           only survivable via an items_free fiction that mis-taught the
-#           item economy, so the item lesson is now a SIGNPOST — no grant, no
-#           gate, real cost stated). Stall-proof: a resequenced (unspent)
-#           turn-1 mark leaves the drone at 24; turn 2 pays it late on the
-#           first hit (15+11 or 17+10) — dead either way.
+#           taught band jump — and the player FELT the 6 land in turn 1) +
+#           Engineer 12 (Overdrive 11) + Medic 6 (Infusion, 10 heal
+#           targeted). Protocol entering turn 2 is exactly 1 (income only),
+#           the one taught Nudge; a second Nudge is simply unaffordable.
+#           Rail Strike 10 + Overdrive 11 = 21 into 18 — the kill closes ON
+#           DICE (Prompt-5: the item lesson is a SIGNPOST — no grant, no
+#           gate, real cost stated).
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
-	{"combat": 3, "engineer": 12, "medic": 2},
+	{"combat": 9, "engineer": 12, "medic": 2},
 	{"combat": 8, "engineer": 12, "medic": 6},
 ]
 var _tutorial_turn: int = 0
