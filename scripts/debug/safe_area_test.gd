@@ -96,12 +96,39 @@ func _run() -> void:
 	_test_header_consumes_top_inset()
 	_test_font_identity()
 	_test_bottom_reserve()
+	_test_trim_bottom_floor()
+	_test_trim_never_negative()
 	_test_overlay_arming_rule()
 	_test_debug_section_release_absence()
 	_test_overlay_toggle_round_trip()
 	_test_etc2_pinned()
 	await _test_band_reclaim_and_desktop_baseline()
 	_finish()
+
+
+# ── T12 (Build J Item 2): the bottom trim must never drop the Android
+# reserve below BEZEL_BOTTOM_FLOOR (48). Removing the clamp makes 50-4=46
+# and this fails. ────────────────────────────────────────────────────────────
+func _test_trim_bottom_floor() -> void:
+	var normal: Vector2i = _pixel_ui.apply_inset_trims(0, 56, "Android")
+	if normal.y != 52:
+		_fail("T12: Android 56 bottom should trim to 52, got %d" % normal.y)
+		return
+	var floored: Vector2i = _pixel_ui.apply_inset_trims(0, 50, "Android")
+	if floored.y != 48:
+		_fail("T12: Android 50 bottom must clamp at the 48 floor, got %d" % floored.y)
+		return
+	print("[SAFE_AREA] T12 pass — bottom trim honors the 48px Android floor")
+
+
+# ── T13 (Build J Item 2): trims can never produce a negative inset.
+# Removing the clamp makes 2-4=-2 and this fails. ────────────────────────────
+func _test_trim_never_negative() -> void:
+	var trimmed: Vector2i = _pixel_ui.apply_inset_trims(2, 0, "Windows")
+	if trimmed.x != 0 or trimmed.y != 0:
+		_fail("T13: trims must clamp at zero, got top=%d bottom=%d" % [trimmed.x, trimmed.y])
+		return
+	print("[SAFE_AREA] T13 pass — trims clamp at zero (desktop inert)")
 
 
 # ── T7 ─────────────────────────────────────────────────────────────────────

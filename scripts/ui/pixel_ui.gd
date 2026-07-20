@@ -1386,6 +1386,19 @@ static var safe_left := 0
 # safe_bottom itself inside refresh_safe_insets — every existing consumer
 # inherits it; there is NO second inset path. 0 on every non-Android platform.
 const SAFE_BOTTOM_RESERVE := 56
+# Device-bezel blend color (Build J Item 2): the safe-area reserve bands render
+# PURE BLACK so they read as hardware bezel, not as UI. Intentionally OUTSIDE
+# the DT_* theme palette — do not "correct" it to a theme token.
+const DT_BEZEL_BLACK := Color("000000")
+# Conservative inset trims (design px, Build J Item 2): subtracted AFTER the
+# ceil in refresh_safe_insets, clamped so no inset goes negative and the
+# Android bottom never drops below BEZEL_BOTTOM_FLOOR. Deliberately SMALL —
+# this ships to devices with different cutout geometry than the reference
+# Pixel 8; 4px is reclaimable headroom, 20px is a regression on someone
+# else's phone. These constants live HERE and nowhere else.
+const SAFE_TOP_TRIM := 4
+const SAFE_BOTTOM_TRIM := 4
+const BEZEL_BOTTOM_FLOOR := 48
 
 # Pure rule (headless-testable without being on Android): the effective bottom
 # floor for a given OS. Only Android gets the gesture reserve.
@@ -1393,7 +1406,26 @@ static func bottom_reserve(os_name: String) -> int:
 	return SAFE_BOTTOM_RESERVE if os_name == "Android" else 0
 
 
+# Pure trim rule (Build J Item 2, headless-testable): applied AFTER the ceil.
+# Top clamps at zero; bottom (already floored at the OS reserve by the caller)
+# trims but never below BEZEL_BOTTOM_FLOOR on Android and never negative.
+static func apply_inset_trims(top_design: int, bottom_design: int, os_name: String) -> Vector2i:
+	var floor_bottom: int = BEZEL_BOTTOM_FLOOR if os_name == "Android" else 0
+	return Vector2i(
+		maxi(top_design - SAFE_TOP_TRIM, 0),
+		maxi(bottom_design - SAFE_BOTTOM_TRIM, floor_bottom)
+	)
+
+
+# Debug-capture pin (Build J): when a capture harness simulates device insets
+# on desktop, the real desktop refresh (root size_changed during window init)
+# must not wipe them. Never set outside debug capture scripts.
+static var sim_insets_pinned := false
+
+
 static func refresh_safe_insets(vp: Viewport) -> void:
+	if sim_insets_pinned:
+		return
 	# "No data" (zero window: headless/mid-init; zero safe rect: dummy driver)
 	# means EVERYTHING IS SAFE — reset to the floor, never keep stale insets.
 	# (The floor, not 0: an Android driver that reports nothing still has a
@@ -1455,11 +1487,18 @@ static func refresh_safe_insets(vp: Viewport) -> void:
 	var sx: float = inv.x.x
 	var sy: float = inv.y.y
 
-	safe_top = _to_design(t, sy)
-	safe_right = _to_design(r, sx)
 	# Gesture-bar floor (Android): the reported bottom is cutouts-only and reads
-	# 0 on a punch-hole phone; the reserve keeps the footer above the bar.
-	safe_bottom = maxi(_to_design(b, sy), bottom_reserve(OS.get_name()))
+	# 0 on a punch-hole phone; the reserve keeps the footer above the bar. The
+	# conservative trims (Build J Item 2) reclaim the ceil's overshoot, clamped
+	# by apply_inset_trims (never negative; Android bottom never < 48).
+	var trimmed: Vector2i = apply_inset_trims(
+		_to_design(t, sy),
+		maxi(_to_design(b, sy), bottom_reserve(OS.get_name())),
+		OS.get_name()
+	)
+	safe_top = trimmed.x
+	safe_right = _to_design(r, sx)
+	safe_bottom = trimmed.y
 	safe_left = _to_design(l, sx)
 
 

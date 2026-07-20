@@ -743,6 +743,32 @@ follow-up input): Medic evolutions LOSE cleanse entirely; Shield evolutions
 lose the taunt-spike pairing; Bladecore's Target Paint keeps damage on mark
 (upgrade, noted); Ravager has no mark band.
 
+**Build J — Enemy status timing + bezel bars (2026-07-19/20, presentation
+only).** **Item 1:** status chips land at their CAUSING beat. Combat state
+still applies fully at resolve (untouched — proven by the state-hash tripwire
+`scripts/debug/state_hash_tripwire.py`, byte-identical pre/post); the leak was
+an earlier group's card refresh re-rendering ALL chips from live state.
+Deferral: pre-resolve token snapshot → (chip, last-causing-group) plan in
+BattleFeedback → snapshot-value substitution while suppressed → release at the
+group's impact beat → unconditional clear at sequence end. Side-agnostic;
+skip/auto path renders end-state immediately; cleanse's beat gates chip
+REMOVAL. Presentation-order test `scripts/debug/status_timing_test.gd`
+(headless, planner-level; fails on pre-Build-J code). **Known remaining leak
+(flagged, out of Item-1 scope): die-crust visuals (`_sync_die_status_visuals`)
+have the same early-application class — a future item.** **Item 2:** the
+bottom gesture reserve renders PURE BLACK (`PixelUI.DT_BEZEL_BLACK #000000`,
+device-bezel blend, intentionally outside the DT palette; painted globally by
+PersistentHeader, inert at zero insets); the top inset stays header chrome BY
+DESIGN. Conservative trims `SAFE_TOP_TRIM`/`SAFE_BOTTOM_TRIM` = 4 design px,
+subtracted post-ceil via the pure `apply_inset_trims` — never negative, and
+the Android bottom never below `BEZEL_BOTTOM_FLOOR` 48 (tests T12/T13; suite
+T1–T13 green; desktop inert). Capture-harness fix: `--capture-insets` was
+silently broken (the desktop resize refresh wiped simulated values — captures
+showed zero-inset layouts); now pinned via `PixelUI.sim_insets_pinned`, and
+`--capture-insets-raw` reproduces the pre-Build-J presentation for
+comparisons. Pixel-verified at the Pixel-8 budget: strip (0,0,0), insets
+132/56 → 128/52.
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers

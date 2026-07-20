@@ -37,6 +37,7 @@ signal safe_area_changed
 @onready var _band: Control = $HeaderBand
 @onready var _bar: Control = $HeaderBand/Bar
 @onready var _background: ColorRect = %Background
+var _bezel_bottom: ColorRect = null
 @onready var _summary_label: Label = %SummaryLabel
 @onready var _help_button: Button = %HelpButton
 @onready var _debug_button: Button = %DebugButton
@@ -99,6 +100,25 @@ func _apply_safe_area() -> void:
 	_bar.offset_top = float(PixelUI.safe_top)
 	_bar.offset_left = BAR_PAD_X + float(PixelUI.safe_left)
 	_bar.offset_right = -(BAR_PAD_X + float(PixelUI.safe_right))
+	_apply_bottom_bezel()
+
+
+# Build J Item 2: the bottom gesture-reserve strip renders PURE bezel black
+# (DT_BEZEL_BLACK) so it reads as hardware, not as UI. The TOP inset stays
+# header chrome BY DESIGN (see the layout-intent note above) — only the area
+# outside chrome gets the bezel treatment. This always-alive layer paints it
+# globally; inert on desktop (zero inset -> hidden).
+func _apply_bottom_bezel() -> void:
+	if _bezel_bottom == null:
+		_bezel_bottom = ColorRect.new()
+		_bezel_bottom.name = "BezelBottom"
+		_bezel_bottom.color = PixelUI.DT_BEZEL_BLACK
+		_bezel_bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_bezel_bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		add_child(_bezel_bottom)
+	_bezel_bottom.visible = PixelUI.safe_bottom > 0
+	_bezel_bottom.offset_top = -float(PixelUI.safe_bottom)
+	_bezel_bottom.offset_bottom = 0.0
 
 
 func _on_help_pressed() -> void:
