@@ -248,7 +248,7 @@
       "id": "deep_zero_pin",
       "name": "Deep Zero Pin",
       "desc": "Pin every enemy die to its weakest face and freeze it.",
-      "rarity": "rare",
+      "rarity": "uncommon",
       "icon": "bolt",
       "target": "none",
       "effect": {

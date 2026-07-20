@@ -697,6 +697,21 @@ cleared — observational selection bias again) awaits ruling; NO rarity
 changes shipped. Veil b4 spike (26–28% of deaths) reported as a future
 comp-shaped item. CI pin re-accepted post-bakes.
 
+**R5 shortlist — CLOSED (Kev ruling, 2026-07-19).** deep_zero_pin rare →
+**uncommon**: APPROVED and shipped (items.data.json + UNLOCK_BUCKETS.csv, pin
+holds). Cascade verified: six rare consumables remain full-pool and the
+bucket-0 floor pair (harmonic_injector, core_surge) is intact — the
+zero-options guard cannot trip on rare-consumable grants; no hard-coded
+rarity strings anywhere (display metadata is data-driven); curatedCache
+unaffected (its filter is commons-only); pool-floor gate PASS. Seeded draw
+test through the real `_pick_random_reward_by_rarity`: 0/500 rare draws
+offer it, 69/500 uncommon draws do. Rarity is outside NK-17 grammar — no
+effect-text change. **Era annotation:** content-arm lifts involving
+deep_zero_pin measured before 2026-07-19 predate its draft-frequency change.
+priming_charge: **HELD** (coupled to curatedCache's filter zone — revisit
+with curatedCache's structural question). reverse_gimbal: **HELD**
+(DECISIONS #11 pending on the same item). No other rarity changes.
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers

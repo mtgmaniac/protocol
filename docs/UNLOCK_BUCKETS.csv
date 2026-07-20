@@ -23,7 +23,7 @@ consumable,cryo_gel,Cryo Gel,uncommon,7,29,freeze ANY die - freezing your own al
 consumable,scatter_veil_array,Scatter Veil Array,rare,8,37,AoE cloak - whole-squad stealth turns
 consumable,archive_cascade,Archive Cascade,legendary,9,45,roll-buff family tier 4
 consumable,cryo_web,Cryo Web,rare,11,63,two-repeat freeze - repeat math on top of freeze
-consumable,deep_zero_pin,Deep Zero Pin,rare,17,138,pin every enemy die to weakest face + freeze - the weirdest item in the pool
+consumable,deep_zero_pin,Deep Zero Pin,uncommon,17,138,pin every enemy die to weakest face + freeze - the weirdest item in the pool
 gear,neural_splice,Neural Splice,uncommon,0,0,flat roll bonus
 gear,combat_plating,Combat Plating,uncommon,0,0,battle-start shield
 gear,stim_injector,Stim Injector,uncommon,0,0,flat max HP
