@@ -30,6 +30,7 @@ const TARGETING_ONLY_FIELDS := [
 const HERO_HANDLED_FIELDS := [
 	"dmg",
 	"heal",
+	"cleanse",
 	"shield",
 	"blastAll",
 	"healAll",
@@ -3138,30 +3139,36 @@ func _run_relic_per_turn_aura_regression() -> void:
 # Tutorial rig must stay unlosable AND land the win exactly on turn 2: the 28-HP Scrap Drone
 # survives turn 1's rigged assignments and dies on turn 2 (nudged Pulse=12 → Plasma Lance).
 func _run_tutorial_kill_math_regression() -> void:
-	var pulse: UnitData = DataManager.get_unit("pulse") as UnitData
+	# Mirrors the LIVE tutorial rig (battle_scene: combat/engineer/medic trio,
+	# Scrap Drone at TUTORIAL_ENEMY_HP=10, Batch-5 script updated for Build I's
+	# 0-dmg Target Lock): T1 marks without damage, T2's nudged Rail Strike (11)
+	# kills with or without the Mark. Was pulse/combat/ghost vs 28 — a stale
+	# mirror of a pre-Batch-5 tutorial (caught by the Build-I kit change).
 	var combat: UnitData = DataManager.get_unit("combat") as UnitData
-	var ghost: UnitData = DataManager.get_unit("ghost") as UnitData
+	var engineer: UnitData = DataManager.get_unit("engineer") as UnitData
+	var medic: UnitData = DataManager.get_unit("medic") as UnitData
 	var scrap: EnemyData = DataManager.get_enemy_by_display_name("Scrap Drone") as EnemyData
-	if pulse == null or combat == null or ghost == null or scrap == null:
+	if combat == null or engineer == null or medic == null or scrap == null:
 		_record_failure("Tutorial / kill math", "tutorial", "real data present", "missing data")
 		return
 	var enemy_unit: EnemyData = scrap.duplicate(true)
-	enemy_unit.max_hp = 28
+	enemy_unit.max_hp = 10
 	var mgr: CombatManager = CombatManager.new()
-	mgr.setup_battle([pulse, combat, ghost], [enemy_unit])
+	mgr.setup_battle([combat, engineer, medic], [enemy_unit])
 	var enemy: Dictionary = mgr.get_enemy_states()[0]
 	var enemy_id: String = str(enemy["id"])
-	_tutorial_resolve_turn(mgr, enemy_id, {"pulse": 5, "combat": 1, "ghost": 3})
+	_tutorial_resolve_turn(mgr, enemy_id, {"combat": 3, "engineer": 7, "medic": 6})
 	var hp_after_t1: int = int(enemy["current_hp"])
+	var marked_t1: bool = bool(enemy.get("marked", false))
 	var dead_t1: bool = bool(enemy["dead"])
 	if not dead_t1:
-		_tutorial_resolve_turn(mgr, enemy_id, {"pulse": 12, "combat": 1, "ghost": 3})
+		_tutorial_resolve_turn(mgr, enemy_id, {"combat": 11, "engineer": 5, "medic": 6})
 	var dead_t2: bool = bool(enemy["dead"])
-	if (not dead_t1) and hp_after_t1 > 0 and dead_t2:
+	if (not dead_t1) and hp_after_t1 == 10 and marked_t1 and dead_t2:
 		_record_pass("Tutorial / kill math", "tutorial")
 	else:
-		_record_failure("Tutorial / kill math", "tutorial", "survive T1 (>0), die T2",
-			"t1_hp=%d dead_t1=%s dead_t2=%s" % [hp_after_t1, str(dead_t1), str(dead_t2)])
+		_record_failure("Tutorial / kill math", "tutorial", "T1: unhurt (10) and marked; T2 kills",
+			"t1_hp=%d marked=%s dead_t1=%s dead_t2=%s" % [hp_after_t1, str(marked_t1), str(dead_t1), str(dead_t2)])
 
 
 func _tutorial_resolve_turn(mgr: CombatManager, enemy_id: String, rolls_by_unit: Dictionary) -> void:

@@ -1164,6 +1164,15 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
 			_apply_burn_from_hero(hero_state, burn_target, burn_amount, burn_turns)
 
+	# Mark without damage (Build I — Target Lock is now a 0-dmg setup band):
+	# the mark path historically lived inside the damage pass, so a pure-mark
+	# ability never marked. Same hostile-single-target idiom as the
+	# burn-without-damage case above; a firewall blocks it like any hostile.
+	if damage <= 0 and bool(raw.get("mark", false)):
+		var mark_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
+		if not mark_target.is_empty() and not _ward_blocks_hostile(mark_target):
+			_apply_mark(mark_target)
+
 	# RFE application (roll debuff on enemies)
 	var rfe_amount: int = int(raw.get("rfe", 0))
 	var rfe_turns: int = int(raw.get("rfT", 1))
@@ -1215,9 +1224,21 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if spike_amount > 0 and _has_directive(hero_state, "spikeBonus"):
 		spike_amount += _directive_value(hero_state, "amount", 4)
 	if spike_amount > 0:
-		hero_state["spike"] = maxi(int(hero_state.get("spike", 0)), spike_amount)
-		_log("%s bristles with spike %d - attackers take damage this round." % [hero_state["unit"].display_name, spike_amount])
-		_emit_event(hero_state, "spike_up", spike_amount, "hero")
+		# Build I (Enforce rider): when the band ALSO carries a targeted shield
+		# (shTgt), the spike rides the SHIELDED target — the guard hardens
+		# whoever he covers. Same target-resolution chain as the shield grant,
+		# so the spike lands exactly where the shield landed. Self-spike bands
+		# (Spike Stance, enemy carriers) are unchanged.
+		var spike_holder: Dictionary = hero_state
+		if bool(raw.get("shTgt", false)):
+			var spike_shield_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
+			if spike_shield_target.is_empty():
+				spike_shield_target = _lowest_hp_state(_hero_states)
+			if not spike_shield_target.is_empty():
+				spike_holder = spike_shield_target
+		spike_holder["spike"] = maxi(int(spike_holder.get("spike", 0)), spike_amount)
+		_log("%s bristles with spike %d - attackers take damage this round." % [spike_holder["unit"].display_name, spike_amount])
+		_emit_event(spike_holder, "spike_up", spike_amount, "hero")
 
 	# Ward application: self by default, targeted ally with wardTgt.
 	if bool(raw.get("ward", false)):

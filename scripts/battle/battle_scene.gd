@@ -145,19 +145,19 @@ var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
 # Starting trio — Strike Unit (combat), Field Engineer (engineer), Splice Medic (medic),
-# Batch 5 — vs one weak Scrap Drone (13 HP) that telegraphs a weak Stab (enemy roll 6 =
+# Batch 5 — vs one weak Scrap Drone (10 HP) that telegraphs a weak Stab (enemy roll 6 =
 # strike band). Rolls keyed by unit id:
-#   turn 1: Strike 3 (Target Lock — 3 dmg + MARK on the drone) + Engineer 7 (Barrier Deploy,
-#           shields an ally) + Medic 6 (Infusion, heals an ally). Only Strike touches the drone
-#           (3 dmg → 10 left), and its Mark PERSISTS because nobody else hits the drone — that's
+#   turn 1: Strike 3 (Target Lock — MARK only since Build I, 0 dmg) + Engineer 7 (Barrier
+#           Deploy, shields an ally) + Medic 6 (Infusion, heals an ally). Nothing damages
+#           the drone (10 stays 10), and the Mark PERSISTS because nobody hits it — that's
 #           the status-badge lesson, visible right into turn 2.
-#   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire → Rail Strike, 11 dmg; the Mark spends for
-#           +50% → 17) kills the 10-HP drone. Engineer/Medic support again.
+#   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire → Rail Strike, 10 dmg; the Mark spends for
+#           +50% → 15) kills the 10-HP drone. Engineer/Medic support again.
 # Strike 8 sits one short of the Surge band (Rail Strike opens at 11); +3 Nudge → 11 flips
-# the band — the taught payoff. The 13 HP is set so turn 2 kills WITH OR WITHOUT the Mark
-# (Rail Strike 11 ≥ the 10 remaining), so the drill never stalls on a rounding edge.
+# the band — the taught payoff. The 10 HP is set so turn 2 kills WITH OR WITHOUT the Mark
+# (Rail Strike 10 ≥ the 10 remaining), so the drill never stalls on a rounding edge.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
-const TUTORIAL_ENEMY_HP := 13
+const TUTORIAL_ENEMY_HP := 10
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
 	{"combat": 3, "engineer": 7, "medic": 6},
