@@ -672,21 +672,54 @@ func restore_state(snap: Dictionary) -> void:
 	_round_events.clear()
 
 
-# Reorder the hero action order for L2 order-search. `ordered_ids` is a
-# permutation of the current living-hero ids; unknown/dead ids keep their
-# relative position at the end.
+# Set the hero firing order by CAST STAMPS (player-chosen cast order; also the
+# L2 order-search entry point). `ordered_ids` gets stamps 1..N; ids not listed
+# are cleared to unstamped and resolve after the stamped ones in squad order.
+# This REPLACED the old array reorder: _hero_states must stay in squad order —
+# reordering it leaked the firing order into enemy SYSTEMATIC (slot-order)
+# targeting and every other squad-order iteration (battle-start effects,
+# income, XP), which the live scene never did.
 func set_hero_order(ordered_ids: Array) -> void:
-	var by_id: Dictionary = {}
-	for state in _hero_states:
-		by_id[str((state as Dictionary)["id"])] = state
-	var reordered: Array = []
+	var listed: Dictionary = {}
+	var stamp: int = 0
 	for id in ordered_ids:
-		if by_id.has(str(id)):
-			reordered.append(by_id[str(id)])
-			by_id.erase(str(id))
-	for leftover in by_id.values():
-		reordered.append(leftover)
-	_hero_states = reordered
+		stamp += 1
+		listed[str(id)] = stamp
+	for state_variant in _hero_states:
+		var state: Dictionary = state_variant
+		state["cast_stamp"] = int(listed.get(str(state["id"]), 0))
+
+
+# Hero states in firing order: stamped heroes ascending, then unstamped in
+# squad order. A LIVING, ROLLED hero left unstamped while others are stamped is
+# the defensive case (rule: it appends in squad order and warns) — a fully
+# unstamped squad is the legacy/auto path and resolves in squad order silently.
+func _hero_states_in_cast_order(hero_rolls: Dictionary) -> Array:
+	var stamped: Array = []
+	var unstamped: Array = []
+	for state_variant in _hero_states:
+		var state: Dictionary = state_variant
+		if int(state.get("cast_stamp", 0)) > 0:
+			stamped.append(state)
+		else:
+			unstamped.append(state)
+	if stamped.is_empty():
+		return _hero_states
+	stamped.sort_custom(func(a, b): return int(a["cast_stamp"]) < int(b["cast_stamp"]))
+	for state_variant in unstamped:
+		var state: Dictionary = state_variant
+		if not bool(state.get("dead", false)) and hero_rolls.has(str(state["id"])):
+			push_warning("[CAST_ORDER] %s reached resolution unstamped - appending in squad order." % str(state["unit"].display_name))
+	return stamped + unstamped
+
+
+# The order heroes actually fired in last round (living, rolled ids only) —
+# telemetry + battle-log source.
+var _last_cast_order: Array = []
+
+
+func get_last_cast_order() -> Array:
+	return _last_cast_order.duplicate()
 
 
 func take_pending_protocol_drain() -> int:
@@ -735,7 +768,22 @@ func resolve_round(
 	# runs get their assignment here.
 	assign_enemy_intents(enemy_rolls, dice_manager)
 
-	for hero_state in _hero_states:
+	# Player-chosen cast order: stamped heroes fire in ascending stamp order,
+	# unstamped append in squad order. The array itself stays in squad order.
+	var cast_ordered: Array = _hero_states_in_cast_order(hero_rolls)
+	_last_cast_order = []
+	for hero_state_variant in cast_ordered:
+		var hero_state: Dictionary = hero_state_variant
+		if not bool(hero_state.get("dead", false)) and hero_rolls.has(str(hero_state["id"])):
+			_last_cast_order.append(str(hero_state["id"]))
+	if _last_cast_order.size() > 1:
+		var order_names: Array = []
+		for hid in _last_cast_order:
+			var ordered_state: Dictionary = _find_target_by_id(_hero_states, str(hid))
+			if not ordered_state.is_empty():
+				order_names.append(str(ordered_state["unit"].display_name))
+		_log("Cast order: %s." % " -> ".join(order_names))
+	for hero_state in cast_ordered:
 		if hero_state["dead"]:
 			continue
 		var roll_value: Variant = hero_rolls.get(hero_state["id"], null)
@@ -766,6 +814,11 @@ func resolve_round(
 			if cap_gain > 0:
 				_pending_protocol_grants += cap_gain
 				_log("Overload Capacitor: a 20 grants +%d Protocol." % cap_gain)
+
+	# Cast stamps are one-round state: cleared here (hero phase done) so the
+	# next targeting phase starts unstamped on every exit path.
+	for cleared_state_variant in _hero_states:
+		(cleared_state_variant as Dictionary)["cast_stamp"] = 0
 
 	if _all_states_dead(_enemy_states):
 		_log("All enemies are down.")
@@ -863,6 +916,12 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		"dmg_scale": 1.0,
 		"selected_target_id": "",
 		"target_display": "--",
+		# Player-chosen cast order: the round's firing rank, stamped during the
+		# targeting phase (auto-assigns in squad order at phase start, manual
+		# picks at assignment). 0 = unstamped. Heroes resolve in ascending stamp
+		# order; cleared by resolve_round after the hero phase. Enemy states
+		# carry the field inert.
+		"cast_stamp": 0,
 		"cloaked": false,
 		"die_freeze_turns": 0,
 		"freeze_flavor": "",

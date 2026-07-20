@@ -20,7 +20,8 @@ changes may keep the version but must be noted here.
 
 ### `run_header` — first line
 `policy` (stub/l0/l1/…), `squad` [unit ids], `op` (operation id),
-`sim_version`, `schema_version`, `roll_source` (provider description).
+`sim_version`, `schema_version`, `roll_source` (provider description),
+`order_mode` (L2 cast-order seam: "" default / search / setups / squad).
 
 ### `battle_start`
 `index` (1-based battle number), `comp` [enemy display names],
@@ -36,6 +37,9 @@ next-battle effects dict; {} when none), `squad_hp` [per hero, battle start],
   set/nudge/buffs/rfe, as resolved.
 - `spends`: policy protocol spends this round, in order:
   `{kind: nudge|reroll|set|item|twin_fates, unit, cost, detail}`.
+- `cast_order`: [hero state ids] in the order the hero phase fired them
+  (player-chosen cast order; the PLANNED order — a hero killed mid-phase by
+  spike stays listed but did not act). Add-only field, schema_version kept.
 - `events`: the CombatManager event stream for the round, verbatim
   (`action_start`, `damage`, `burn`, `heal`, `shield`, `freeze`, `summon`,
   keyword events, … — see combat_manager `_emit_event`/`_emit_action_event`).

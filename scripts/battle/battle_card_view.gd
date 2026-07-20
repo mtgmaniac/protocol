@@ -90,11 +90,15 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	var is_targetable: bool = _scene._is_target_highlight_phase() and _scene.legal_target_ids.has(state_id)
 	var is_target_locked: bool = false
 	var needs_manual_target: bool = false
+	var cast_rank: int = 0
 	if accent_color == _scene.HERO_ACCENT and not show_dead and roll_value != null:
 		if _scene.turn_phase == _scene.PHASE_TARGETING or _scene.turn_phase == _scene.PHASE_READY_TO_END:
 			needs_manual_target = _scene.pending_manual_target_ids.has(state_id)
 			if state_id != _scene.active_targeting_hero_id:
 				is_target_locked = not needs_manual_target
+			# Cast-order badge: this hero's 1-based firing rank among committed
+			# heroes (0 = uncommitted, no badge).
+			cast_rank = _scene.hero_cast_rank(state_id)
 	if card is CompactUnitCard:
 		var compact_card: CompactUnitCard = card as CompactUnitCard
 		var has_revealed_roll: bool = roll_value != null
@@ -133,6 +137,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"warded": bool(state.get("warded", false)),
 			"target_locked": is_target_locked,
 			"needs_manual_target": needs_manual_target,
+			"cast_rank": cast_rank,
 			"show_action_pips": readout == null,
 			"unit_data": unit,
 			"gear_rows": get_gear_detail_rows(str(unit.id)) if unit is UnitData else [],

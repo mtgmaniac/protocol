@@ -32,9 +32,18 @@ const W_PROTOCOL := 1.0
 
 var _decision_index: int = 0
 
+# Cast-order A/B seam (player-chosen cast order):
+#  - "search" (default): the existing order-permutation axis — unchanged L2.
+#  - "setups": ONE candidate order, the setups-first heuristic (mark/breach
+#    stamp before damage; ties squad order; no lookahead) — models a player
+#    using the ordering mechanic sensibly.
+#  - "squad": ONE candidate order, squad order — the matched-seed control.
+# Target/spend search is identical across modes, so an A/B isolates ordering.
+var order_mode: String = "search"
+
 
 func describe() -> String:
-	return "l2"
+	return "l2" if order_mode == "search" else "l2_%s" % order_mode
 
 
 func decide_round(engine, bs, cm, _gs) -> Array:
@@ -53,7 +62,14 @@ func decide_round(engine, bs, cm, _gs) -> Array:
 		return []
 
 	# Candidate axes.
-	var orders: Array = _permutations(living_heroes)
+	var orders: Array
+	match order_mode:
+		"setups":
+			orders = [_setups_first_order(living_heroes, engine, bs, cm)]
+		"squad":
+			orders = [living_heroes]
+		_:
+			orders = _permutations(living_heroes)
 	var target_combos: Array = _target_assignments(living_heroes, living_enemies)
 	var spend_plans: Array = _spend_plans(engine, bs)
 	if orders.size() * target_combos.size() * spend_plans.size() > CANDIDATE_CAP:
@@ -177,6 +193,31 @@ func _apply_spend_plan(engine, bs, plan: Array) -> Array:
 				var paid: int = engine.apply_set(bs, str(step["unit"]), int(step["value"]))
 				spends.append({"kind": "set", "unit": str(step["unit"]), "cost": paid, "detail": "= %d" % int(step["value"])})
 	return spends
+
+
+# Setups-first ordering (the "setups" order_mode): heroes whose SELECTED
+# ability (from the effective roll) applies mark or breach stamp before
+# everyone else; ties and the rest keep squad order. Deliberately this simple —
+# no lookahead (the whole point is measuring a heuristic a player could run).
+func _setups_first_order(living_heroes: Array, engine, bs, cm) -> Array:
+	var setups: Array = []
+	var rest: Array = []
+	for hid in living_heroes:
+		var hero_state: Dictionary = {}
+		for hs in cm.get_hero_states():
+			if str((hs as Dictionary)["id"]) == str(hid):
+				hero_state = hs
+				break
+		if hero_state.is_empty() or engine.dice_manager == null:
+			rest.append(hid)
+			continue
+		var eff: int = engine.effective_hero_roll(hero_state, str(hid), bs)
+		var raw: Dictionary = engine.dice_manager.get_ability_for_roll(hero_state.get("unit"), eff).get("raw", {})
+		if bool(raw.get("mark", false)) or bool(raw.get("breach", false)) or bool(raw.get("breachAll", false)):
+			setups.append(hid)
+		else:
+			rest.append(hid)
+	return setups + rest
 
 
 # All target assignments (living heroes over living enemies). Focus-fire and

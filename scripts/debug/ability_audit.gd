@@ -455,6 +455,7 @@ func _run_regression_audits() -> void:
 	_run_cloak_regression()
 	_run_taunt_regression()
 	_run_mark_targeting_regression()
+	_run_cast_order_regressions()
 	_run_cleanse_regressions()
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
@@ -838,6 +839,104 @@ func _run_mark_targeting_regression() -> void:
 		_record_pass("Regression / firewall blocks the pure mark and breaks", "mark")
 	else:
 		_record_failure("Regression / firewall blocks the pure mark and breaks", "mark", "unmarked, ward consumed", "marked=%s warded=%s" % [str(warded_enemy.get("marked", false)), str(warded_enemy.get("warded", false))])
+
+
+func _run_cast_order_regressions() -> void:
+	# Player-chosen cast order: heroes resolve in ascending stamp order (via
+	# set_hero_order, the one stamp writer the sim shares). Cross-unit
+	# mark-then-attack is the payoff case: marker before attacker yields the
+	# +50% (10 -> 15); reversed, the plain 10 lands and the mark stays banked.
+	var marked_hp: int = _resolve_mark_attack_pair(["audit_marker", "audit_attacker"])
+	if marked_hp == 100 - 15:
+		_record_pass("Regression / cast order: mark before attack pays +50%", "cast_order")
+	else:
+		_record_failure("Regression / cast order: mark before attack pays +50%", "cast_order", "enemy at 85 (10 dmg + mark bonus)", "hp=%d" % marked_hp)
+	var reversed_hp: int = _resolve_mark_attack_pair(["audit_attacker", "audit_marker"])
+	if reversed_hp == 100 - 10:
+		_record_pass("Regression / cast order: attack before mark stays flat", "cast_order")
+	else:
+		_record_failure("Regression / cast order: attack before mark stays flat", "cast_order", "enemy at 90 (plain 10, mark lands after)", "hp=%d" % reversed_hp)
+
+	# Same for breach (authored on hero kits: Rail Slam / Piledriver / ...):
+	# breach-first strips the shield so the follow-up damage is all HP; damage-
+	# first buries the hit in the shield the breach then strips for nothing.
+	var breach_first_hp: int = _resolve_breach_attack_pair(["audit_breacher", "audit_attacker"])
+	if breach_first_hp == 100 - 15:
+		_record_pass("Regression / cast order: breach before attack strips first", "cast_order")
+	else:
+		_record_failure("Regression / cast order: breach before attack strips first", "cast_order", "enemy at 85 (shield gone before both hits)", "hp=%d" % breach_first_hp)
+	var breach_last_hp: int = _resolve_breach_attack_pair(["audit_attacker", "audit_breacher"])
+	if breach_last_hp == 100 - 7:
+		_record_pass("Regression / cast order: attack before breach wastes the shield strip", "cast_order")
+	else:
+		_record_failure("Regression / cast order: attack before breach wastes the shield strip", "cast_order", "enemy at 93 (8 shield eats the 10 first)", "hp=%d" % breach_last_hp)
+
+	# Defensive fallback: a stamped/unstamped mix resolves stamped-first, the
+	# unstamped hero appends in squad order (and warns); get_last_cast_order
+	# reports the actual firing order for telemetry.
+	var mix_manager: CombatManager = CombatManager.new()
+	mix_manager.setup_battle(
+		[_make_unit("audit_a", "Audit A", "Jab", {"dmg": 1}), _make_unit("audit_b", "Audit B", "Jab", {"dmg": 1})],
+		[_make_enemy("audit_dummy", "Audit Dummy")]
+	)
+	var mix_a: Dictionary = mix_manager.get_hero_states()[0]
+	var mix_b: Dictionary = mix_manager.get_hero_states()[1]
+	mix_manager.set_hero_order(["audit_b"])
+	mix_manager.resolve_round(
+		{str(mix_a["id"]): AUDIT_ROLL, str(mix_b["id"]): AUDIT_ROLL},
+		{}, DiceManager.new()
+	)
+	var mix_order: Array = mix_manager.get_last_cast_order()
+	if str(mix_order[0]) == "audit_b" and str(mix_order[1]) == "audit_a" and int(mix_a.get("cast_stamp", -1)) == 0 and int(mix_b.get("cast_stamp", -1)) == 0:
+		_record_pass("Regression / cast order: unstamped appends in squad order + stamps clear", "cast_order")
+	else:
+		_record_failure("Regression / cast order: unstamped appends in squad order + stamps clear", "cast_order", "order [audit_b, audit_a], stamps cleared to 0", "order=%s a=%d b=%d" % [str(mix_order), int(mix_a.get("cast_stamp", -1)), int(mix_b.get("cast_stamp", -1))])
+
+
+# One round: a pure marker + a 10-dmg attacker on one 100-HP enemy, firing in
+# `order` (unit ids). Returns the enemy's HP after the round.
+func _resolve_mark_attack_pair(order: Array) -> int:
+	var manager: CombatManager = CombatManager.new()
+	manager.setup_battle(
+		[
+			_make_unit("audit_marker", "Audit Marker", "Target Lock", {"dmg": 0, "mark": true}),
+			_make_unit("audit_attacker", "Audit Attacker", "Rail Strike", {"dmg": 10}),
+		],
+		[_make_enemy("audit_focus", "Audit Focus")]
+	)
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	var rolls: Dictionary = {}
+	for hero_state_variant in manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		hero_state["selected_target_id"] = str(enemy["id"])
+		rolls[str(hero_state["id"])] = AUDIT_ROLL
+	manager.set_hero_order(order)
+	manager.resolve_round(rolls, {}, DiceManager.new())
+	return int(enemy["current_hp"])
+
+
+# One round: a 5-dmg breacher + a 10-dmg attacker on one 100-HP enemy holding
+# 8 shield, firing in `order`. Returns the enemy's HP after the round.
+func _resolve_breach_attack_pair(order: Array) -> int:
+	var manager: CombatManager = CombatManager.new()
+	manager.setup_battle(
+		[
+			_make_unit("audit_breacher", "Audit Breacher", "Rail Slam", {"dmg": 5, "breach": true}),
+			_make_unit("audit_attacker", "Audit Attacker", "Rail Strike", {"dmg": 10}),
+		],
+		[_make_enemy("audit_shelled", "Audit Shelled")]
+	)
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["shield"] = 8
+	enemy["shield_stacks"] = [{"amt": 8, "skip_next_tick": false}]
+	var rolls: Dictionary = {}
+	for hero_state_variant in manager.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		hero_state["selected_target_id"] = str(enemy["id"])
+		rolls[str(hero_state["id"])] = AUDIT_ROLL
+	manager.set_hero_order(order)
+	manager.resolve_round(rolls, {}, DiceManager.new())
+	return int(enemy["current_hp"])
 
 
 func _run_cloak_regression() -> void:

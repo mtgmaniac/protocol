@@ -175,6 +175,11 @@ var legal_target_ids: Array = []
 var legal_target_side: String = ""
 var pending_manual_target_ids: Array = []
 var has_player_target_assignment: bool = false
+# Player-chosen cast order: monotonic within the round; each committed
+# assignment takes the next value as its hero's cast_stamp (auto-assigns in
+# squad order at targeting start, manual picks at assignment, re-commits at
+# the end of the current order). Reset when the targeting phase begins.
+var _cast_stamp_counter: int = 0
 var battle_over: bool = false
 # Read-only battle review (2026-07-13): this BattleScene was entered from the
 # reward screen's "View Battlescreen" to look back at the finished board —
@@ -2309,6 +2314,12 @@ func _assign_enemy_targets() -> void:
 
 
 func _prepare_hero_targets() -> void:
+	# Cast order: a fresh targeting phase — reset the stamp sequence and clear
+	# any stale stamps (the engine already cleared them at round resolution).
+	_cast_stamp_counter = 0
+	for state_variant in combat_manager.get_hero_states():
+		_clear_cast_stamp(state_variant)
+
 	# Taunt: if any enemy is taunting, force all living heroes to target it
 	var taunt_id: String = _get_taunt_enemy_id()
 	if taunt_id != "":
@@ -2320,6 +2331,8 @@ func _prepare_hero_targets() -> void:
 			var taunt_state: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), taunt_id)
 			var taunt_name: String = str(taunt_state["unit"].display_name) if not taunt_state.is_empty() else "Taunter"
 			_set_state_target(hero_state, taunt_id, taunt_name)
+			# Forced assignments are commits: stamped in squad order.
+			_stamp_cast(hero_state)
 		return
 
 	for hero_view_variant in hero_card_views:
@@ -2388,12 +2401,17 @@ func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: St
 	pending_manual_target_ids.erase(hero_id)
 	if target_ids.is_empty():
 		_set_state_target(hero_state, "", _get_no_legal_target_display(manual_side))
+		# No legal target = nothing to pick; the hero still fires (engine
+		# fallback/fizzle), so it commits into the order now.
+		_stamp_cast(hero_state)
 		return
 	if _try_auto_assign_single_manual_target(hero_state, manual_side, target_ids):
 		return
 	if not pending_manual_target_ids.has(hero_id):
 		pending_manual_target_ids.append(hero_id)
 	hero_state["target_display"] = "--"
+	# Back in the pending queue: uncommitted until the target tap lands.
+	_clear_cast_stamp(hero_state)
 
 
 func _try_auto_assign_single_manual_target(hero_state: Dictionary, target_side: String, target_ids: Array) -> bool:
@@ -2410,6 +2428,8 @@ func _try_auto_assign_single_manual_target(hero_state: Dictionary, target_side: 
 	if target_state.is_empty():
 		return false
 	_set_state_target(hero_state, target_id, str(target_state["unit"].display_name))
+	# A completed assignment (the single legal target auto-commits).
+	_stamp_cast(hero_state)
 	pending_manual_target_ids.erase(str(hero_state["id"]))
 	if active_targeting_hero_id == str(hero_state["id"]):
 		active_targeting_hero_id = ""
@@ -2430,6 +2450,9 @@ func _get_no_legal_target_display(target_side: String) -> String:
 
 
 func _auto_assign_hero_target(hero_state: Dictionary, ability_entry: Dictionary) -> void:
+	# Every auto-assign is a cast-order commit: stamped immediately (squad
+	# order at targeting start; end-of-order on a recommit).
+	_stamp_cast(hero_state)
 	var raw: Dictionary = ability_entry.get("raw", {})
 	if bool(raw.get("healAll", false)):
 		_set_state_target(hero_state, "", "All Squad")
@@ -2509,20 +2532,48 @@ func _select_targeting_hero(hero_id: String) -> void:
 	_emit_tutorial("targeting_started", {"hero": hero_id})
 
 
-func _can_retarget_hero(hero_id: String) -> bool:
-	if _get_taunt_enemy_id() != "":
-		return false
+# Re-tap rule (cast order): an already-committed hero can always be re-tapped —
+# it unassigns (manual abilities return to the pending queue) and recommitting
+# appends a fresh stamp at the end of the order. This replaced the old
+# _can_retarget_hero direct-retarget predicate.
+func _can_unassign_hero(hero_id: String) -> bool:
 	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
 	if hero_state.is_empty() or bool(hero_state.get("dead", false)):
 		return false
 	if not _has_roll_for_state(hero_rolls, hero_state):
 		return false
+	return _hero_cast_stamp(hero_state) > 0
+
+
+# Re-tap on a committed hero. Manual abilities (with a live legal-target set and
+# no taunt lock) go back to the pending queue and immediately re-open targeting,
+# so a retarget stays two taps; the fresh stamp lands when the new target does.
+# Auto abilities and taunt-locked heroes have nothing to re-pick — one tap moves
+# them to the END of the current order.
+func _unassign_hero_cast(hero_id: String) -> void:
+	var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), hero_id)
+	if hero_state.is_empty() or bool(hero_state.get("dead", false)):
+		return
 	var eff_roll: int = _get_effective_roll_for_state(hero_state, hero_id)
 	var ability_entry: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], eff_roll)
-	if ability_entry.is_empty():
-		return false
 	var manual_side: String = _get_manual_target_side(ability_entry)
-	return manual_side != "" and not _get_legal_target_ids(manual_side, hero_state).is_empty()
+	var manual_retarget: bool = (
+		manual_side != ""
+		and _get_taunt_enemy_id() == ""
+		and not _get_legal_target_ids(manual_side, hero_state).is_empty()
+	)
+	_clear_cast_stamp(hero_state)
+	if manual_retarget:
+		_set_state_target(hero_state, "", "--")
+		if not pending_manual_target_ids.has(hero_id):
+			pending_manual_target_ids.append(hero_id)
+		if turn_phase == PHASE_READY_TO_END:
+			transition(PHASE_TARGETING)
+		_select_targeting_hero(hero_id)
+		return
+	_stamp_cast(hero_state)
+	_card_view.refresh_all_cards()
+	_refresh_summary("%s moves to the end of the cast order." % str(hero_state["unit"].display_name))
 
 
 func _assign_target_to_active_hero(target_id: String, target_side: String) -> void:
@@ -2533,6 +2584,8 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	if target_state.is_empty():
 		return
 	_set_state_target(hero_state, target_id, str(target_state["unit"].display_name))
+	# The player's tap completes this assignment: commit into the cast order.
+	_stamp_cast(hero_state)
 	has_player_target_assignment = true
 	pending_manual_target_ids.erase(active_targeting_hero_id)
 	active_targeting_hero_id = ""
@@ -2648,6 +2701,48 @@ func _set_state_target(state: Dictionary, target_id: String, target_display: Str
 	state["target_display"] = target_display
 
 
+# --- Player-chosen cast order (stamping) ---
+
+# Commit a hero into the firing order: the next monotonic stamp. Re-stamping an
+# already-stamped hero moves it to the END of the current order (the re-tap /
+# roll-modifier recommit rule).
+func _stamp_cast(hero_state: Dictionary) -> void:
+	_cast_stamp_counter += 1
+	hero_state["cast_stamp"] = _cast_stamp_counter
+
+
+func _clear_cast_stamp(hero_state: Dictionary) -> void:
+	hero_state["cast_stamp"] = 0
+
+
+func _hero_cast_stamp(hero_state: Dictionary) -> int:
+	return int(hero_state.get("cast_stamp", 0))
+
+
+# Display rank (1-based) of a stamped hero among living stamped heroes — what
+# the card badge shows. 0 = unstamped (no badge).
+func hero_cast_rank(hero_id: String) -> int:
+	var stamps: Array = []
+	var own_stamp: int = 0
+	for state_variant in combat_manager.get_hero_states():
+		var state: Dictionary = state_variant
+		if bool(state.get("dead", false)):
+			continue
+		var stamp: int = int(state.get("cast_stamp", 0))
+		if stamp <= 0:
+			continue
+		stamps.append(stamp)
+		if str(state["id"]) == hero_id:
+			own_stamp = stamp
+	if own_stamp <= 0:
+		return 0
+	var rank: int = 1
+	for stamp_variant in stamps:
+		if int(stamp_variant) < own_stamp:
+			rank += 1
+	return rank
+
+
 func _get_target_text(state: Dictionary) -> String:
 	return str(state.get("target_display", "--"))
 
@@ -2685,12 +2780,12 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 
 	var state_id: String = str(state["id"])
 	if turn_phase == PHASE_READY_TO_END:
-		return accent_color == HERO_ACCENT and _can_retarget_hero(state_id)
+		return accent_color == HERO_ACCENT and _can_unassign_hero(state_id)
 
 	if active_targeting_hero_id == "":
 		if accent_color != HERO_ACCENT:
 			return false
-		return pending_manual_target_ids.has(state_id) or _can_retarget_hero(state_id)
+		return pending_manual_target_ids.has(state_id) or _can_unassign_hero(state_id)
 
 	if legal_target_side == "enemy" and accent_color == ENEMY_ACCENT:
 		return legal_target_ids.has(state_id)
@@ -2744,18 +2839,20 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		return
 
 	if turn_phase == PHASE_READY_TO_END:
-		if _can_retarget_hero(target_id):
+		if _can_unassign_hero(target_id):
 			AudioManager.play_select()
-			transition(PHASE_TARGETING)
-			_select_targeting_hero(target_id)
+			_unassign_hero_cast(target_id)
 		return
 
 	if turn_phase != PHASE_TARGETING:
 		return
 	if active_targeting_hero_id == "":
-		if pending_manual_target_ids.has(target_id) or _can_retarget_hero(target_id):
+		if pending_manual_target_ids.has(target_id):
 			AudioManager.play_select()
 			_select_targeting_hero(target_id)
+		elif _can_unassign_hero(target_id):
+			AudioManager.play_select()
+			_unassign_hero_cast(target_id)
 		return
 	if legal_target_side == "hero" and legal_target_ids.has(target_id):
 		AudioManager.play_select()

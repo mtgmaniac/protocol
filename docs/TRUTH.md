@@ -789,6 +789,59 @@ already expected this; the step script's `targeting_started`/`assigned` gates
 are unchanged). **Audit floor 236 → 241** (+3 targeting cases, +2 mark
 regressions).
 
+**Player-chosen cast order (2026-07-20, Model A: assignment order = firing
+order).** Heroes no longer resolve in fixed squad order — the order the player
+COMMITS assignments is the order heroes fire. No new UI surface: meaning was
+added to the taps the player already makes.
+- **Stamping:** every hero acquires an integer `cast_stamp` (on the hero state,
+  like `selected_target_id`) during the targeting phase, monotonically
+  increasing within the round. Auto-assigned heroes (no manual pick: self /
+  all-target / no-legal-target / taunt-forced) stamp immediately when the phase
+  begins, in squad order — a player who never interacts gets today's default.
+  Manual-pick heroes stamp when their target tap lands (a single-legal-target
+  auto-assign stamps at phase start like an auto).
+- **Resequencing (the ONLY reorder mechanism):** re-tapping an assigned hero's
+  card unassigns it — stamp cleared; manual abilities return to the pending
+  queue and immediately re-open targeting (a retarget stays two taps), auto
+  abilities and taunt-locked heroes move straight to the END of the order in
+  one tap. Recommitting always appends a fresh stamp. Nudge/Set/Reroll re-run
+  assignment (pre-existing behavior), so a die modification also recommits the
+  hero at the end of the order.
+- **Resolution:** at END TURN heroes fire in ascending stamp order
+  (`combat_manager._hero_states_in_cast_order`); a living, rolled hero somehow
+  unstamped (defensive case) appends in squad order and `push_warning`s — in
+  normal play everyone is stamped. Stamps clear at round resolution.
+  `_hero_states` itself STAYS in squad order — every non-resolution iteration
+  (battle-start effects, income, XP, enemy SYSTEMATIC slot-order targeting)
+  is unchanged. The old L2 `set_hero_order` array reorder is REPLACED by stamp
+  writing (it used to leak the firing order into enemy targeting — a
+  sim-vs-live divergence, fixed).
+- **Enemy timing untouched:** all heroes fire, then enemies. Intra-hero only.
+- **Kill-mid-sequence (documented existing rules, NOT new behavior):** if an
+  earlier hero kills a later hero's target, `_find_target_by_id` skips dead
+  states, so `_hostile_single_target` retargets the later hero to the FIRST
+  LIVING non-cloaked enemy in slot order (taunt lure still overrides); with no
+  living enemy the ability logs "finds no visible target - the attack fizzles."
+  Friendly picks fall back per-effect (heal/shield → lowest-HP living ally).
+  A hero killed mid-phase (enemy Spike) keeps its stamp but does not act
+  (combat rule 4).
+- **UI:** assigned hero cards wear a firing-rank badge (numeral on a filled
+  plate, portrait top-LEFT corner — firewall badge owns top-right), sourced
+  from the stamp rank, gone at resolution. The battle log records
+  "Cast order: A -> B -> C" each round (logged by the engine's round log, so
+  the live log panel shows it without scene code).
+- **Sim:** L1 stamps squad order explicitly (control, behavior-identical).
+  L2 gains an `order_mode` seam: "search" (default — its pre-existing order
+  permutation search, unchanged), "setups" (setups-first heuristic: heroes
+  whose selected ability applies mark/breach stamp first, ties squad order, no
+  lookahead), "squad" (identity control for matched-seed A/B). Round telemetry
+  carries `cast_order` (planned firing order, add-only field); batch.py passes
+  `--order-mode` through. The state-hash tripwire digest was re-recorded for
+  the add-only telemetry field (state trajectory verified unchanged, see
+  commit).
+- **Tutorial redesign around this mechanic is DEFERRED** (tracked in
+  TASK_QUEUE) — the existing 23-step script passes unchanged.
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers

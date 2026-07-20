@@ -36,6 +36,15 @@ func describe() -> String:
 # ── Round: focus fire + band-aware spends ─────────────────────────────────────
 func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs: Node) -> Array:
 	var spends: Array = []
+	# Cast order (the control): naive squad order — stamp living, rolled heroes
+	# 1..N. Behavior-identical to the unstamped fallback; stamped explicitly so
+	# every L1 run exercises the stamp path the live game uses.
+	var squad_order_ids: Array = []
+	for hero_state_variant in cm.get_hero_states():
+		var order_state: Dictionary = hero_state_variant
+		if not bool(order_state.get("dead", false)) and bs.hero_rolls.has(str(order_state["id"])):
+			squad_order_ids.append(str(order_state["id"]))
+	cm.set_hero_order(squad_order_ids)
 	# Focus fire: every hero aims at the lowest-HP living, uncloaked enemy —
 	# finishing kills removes enemy actions from the board fastest.
 	# Exceptions (freeze = repeat, per Kev 2026-07-06):

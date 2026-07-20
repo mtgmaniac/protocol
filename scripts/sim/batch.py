@@ -41,12 +41,14 @@ def godot_bin() -> str:
     return os.environ.get("GODOT", DEFAULT_GODOT)
 
 
-def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, battle_slots: str, enemy_hp: str, hero_hp: str, item_field: str, out_path: Path) -> dict:
+def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, battle_slots: str, enemy_hp: str, hero_hp: str, item_field: str, order_mode: str, out_path: Path) -> dict:
     args = [godot_bin(), "--headless", "--path", str(ROOT), SCENE, "--",
             "--seed", str(seed), "--squad", squad, "--op", op,
             "--policy", policy, "--out", str(out_path)]
     if grant:
         args += ["--grant", grant]
+    if order_mode:
+        args += ["--order-mode", order_mode]
     if archetype:
         args += ["--archetype", archetype]
     if tuning:
@@ -97,6 +99,8 @@ def main() -> int:
                     help="in-memory hero data max_hp override 'id=hp;...' (sweep instrument, measurement only)")
     ap.add_argument("--item-field", default="",
                     help="in-memory ItemData.effect override 'id/key=value;...' (sweep instrument, measurement only)")
+    ap.add_argument("--order-mode", default="",
+                    help="L2 cast-order mode: search (default) | setups | squad (the ordering A/B seam)")
     ap.add_argument("--out-root", default=str(ROOT / "results"))
     args = ap.parse_args()
 
@@ -113,7 +117,7 @@ def main() -> int:
         else:
             squad = args.squad or ",".join(picker.sample(HEROES, 3))
         op = args.op or picker.choice(OPS)
-        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, args.battle_slots, args.enemy_hp, args.hero_hp, args.item_field, out_dir / f"run_{seed}.jsonl"))
+        jobs.append((seed, squad, op, args.policy, args.grant, args.archetype, args.tuning, args.pool_buckets, args.battle_slots, args.enemy_hp, args.hero_hp, args.item_field, args.order_mode, out_dir / f"run_{seed}.jsonl"))
 
     manifest = {
         "name": args.name, "runs": args.runs, "policy": args.policy,
@@ -123,7 +127,8 @@ def main() -> int:
         "archetype": args.archetype, "tuning": args.tuning,
         "pool_buckets": args.pool_buckets, "battle_slots": args.battle_slots,
         "enemy_hp": args.enemy_hp, "hero_hp": args.hero_hp,
-        "item_field": args.item_field, "godot": godot_bin(),
+        "item_field": args.item_field, "order_mode": args.order_mode,
+        "godot": godot_bin(),
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

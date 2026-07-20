@@ -51,11 +51,11 @@ SPITEFUL bookkeeping: `last_attacker_id` is stamped on any connecting hero hit, 
 
 ### Hero-side taunt (enemy `enemySelfTaunt`)
 
-While any enemy is taunting, ALL living heroes are force-targeted onto it and retargeting is disabled (`_prepare_hero_targets`, `battle_scene.gd:2019-2030`; `_can_retarget_hero`, :2205). Taunting clears at end of round (`combat_manager.gd:2419-2421`). One taunter at a time — a new `enemySelfTaunt` clears all others (:1720-1723).
+While any enemy is taunting, ALL living heroes are force-targeted onto it (`_prepare_hero_targets` taunt branch); re-tapping a taunt-locked hero can still move it to the end of the cast order but cannot change its target. Taunting clears at end of round. One taunter at a time — a new `enemySelfTaunt` clears all others.
 
-### Retargeting
+### Retargeting / cast order (2026-07-20)
 
-During TARGETING/READY_TO_END a hero with a manual-target ability can be re-tapped to change targets (`_can_retarget_hero`, `battle_scene.gd:2204`); Reroll/Nudge/Set/Twin Fates re-run target assignment because the zone may have changed (`_re_assign_hero_target`, :1478).
+Assignment order IS firing order (player-chosen cast order — see TRUTH.md). During TARGETING/READY_TO_END, re-tapping an assigned hero unassigns it (`_can_unassign_hero` / `_unassign_hero_cast` in `battle_scene.gd`): manual abilities return to the pending queue and immediately re-open targeting (retarget stays two taps, the hero recommits at the END of the order); auto abilities move to the end of the order in one tap. Reroll/Nudge/Set/Twin Fates re-run target assignment because the zone may have changed (`_re_assign_hero_target`) — which also recommits the hero at the end of the order.
 
 ## Why it works that way
 

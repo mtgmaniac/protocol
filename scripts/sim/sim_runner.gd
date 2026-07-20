@@ -146,7 +146,7 @@ func _apply_state_scalars(enemy_state: Dictionary) -> void:
 		enemy_state["dmg_scale"] = float(enemy_state.get("dmg_scale", 1.0)) * _tuning_dmg_scalar
 
 
-func _make_policy(policy_name: String, policy_seed: int, archetype: String = ""):
+func _make_policy(policy_name: String, policy_seed: int, archetype: String = "", order_mode: String = ""):
 	var policy
 	match policy_name.to_lower():
 		"l0", "random":
@@ -160,6 +160,10 @@ func _make_policy(policy_name: String, policy_seed: int, archetype: String = "")
 	# Archetype drafting (D) layers on L1/L2 (which own choose_draft affinity).
 	if archetype != "" and (policy is PolicyL1Script):
 		policy.archetype = archetype
+	# Cast-order A/B seam (L2 only): "search" (default order permutation
+	# search), "setups" (setups-first heuristic), "squad" (identity control).
+	if order_mode != "" and (policy is PolicyL2Script):
+		policy.order_mode = order_mode
 	return policy
 
 
@@ -268,7 +272,7 @@ func _run(args: Dictionary) -> int:
 	# Seeded streams two and three (offset from the reward-rng seed so all
 	# streams are independent but reproducible): d20s and policy choices.
 	var provider := SeededRollProvider.new(_seed ^ 0x9E3779B9)
-	var policy = _make_policy(policy_name, _seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")))
+	var policy = _make_policy(policy_name, _seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")), str(args.get("order-mode", "")))
 
 	# Balance-workbench tuning (measurement only; recorded in the header so a
 	# swept run is reproducible from its JSONL alone).
@@ -280,6 +284,7 @@ func _run(args: Dictionary) -> int:
 		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,
 		"sim_version": SIM_VERSION, "schema_version": SimTelemetryScript.SCHEMA_VERSION,
 		"roll_source": provider.describe(), "granted": granted,
+		"order_mode": str(args.get("order-mode", "")),
 		"tuning": tuning_spec,
 		"pool_buckets": str(args.get("pool-buckets", "")),
 		"battle_slots": str(args.get("battle-slots", "")),
@@ -352,7 +357,7 @@ func _bench(gs: Node, dm: Node, args: Dictionary) -> int:
 		gs.call("start_run", squad, op, run_seed)
 		gs.call("advance_to_next_battle")
 		var provider := SeededRollProvider.new(run_seed ^ 0x9E3779B9)
-		var bench_policy = _make_policy(bench_policy_name, run_seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")))
+		var bench_policy = _make_policy(bench_policy_name, run_seed ^ POLICY_SEED_OFFSET, str(args.get("archetype", "")), str(args.get("order-mode", "")))
 		var summary: Dictionary = _play_run(gs, dm, provider, bench_policy, int(gs.get("total_battles")))
 		battles += int(summary["battles_played"])
 		run_index += 1
@@ -593,6 +598,7 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 			"hero_rolls": raw_hero_rolls, "eff_hero_rolls": step["eff_hero_rolls"],
 			"enemy_rolls": raw_enemy_rolls, "eff_enemy_rolls": step["eff_enemy_rolls"],
 			"spends": spends,
+			"cast_order": cm.get_last_cast_order(),
 			"events": (step["result"] as Dictionary).get("events", []),
 			"squad_hp": _hp_snapshot(cm.get_hero_states()),
 			"enemy_hp": _hp_snapshot(cm.get_enemy_states()),

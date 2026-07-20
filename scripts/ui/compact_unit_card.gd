@@ -41,6 +41,12 @@ const STATUS_ICON_MIN_WIDTH := 56.0
 # Firewall portrait badge (Build G item 11) — even design px (pixel-snap law).
 const FIREWALL_BADGE_SIZE := 56.0
 const FIREWALL_BADGE_INSET := 8.0
+# Cast-order badge (player-chosen cast order): the hero's firing rank, docked
+# to the portrait's top-LEFT corner (firewall owns top-right; name strip above,
+# HP bar + status chips below — no collisions). Even design px (pixel-snap).
+const CAST_BADGE_SIZE := 56.0
+const CAST_BADGE_INSET := 8.0
+const CAST_BADGE_FONT_SIZE := 48
 const STATUS_VALUE_MIN_WIDTH := 24.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
 # m5x7 digit advance ≈ 0.35 × font size (measured in-shot: 7 glyphs at font 72
@@ -79,6 +85,8 @@ var cloaked: bool = false
 var warded: bool = false
 var target_locked: bool = false
 var needs_manual_target: bool = false
+## Cast-order rank (1-based) among committed heroes this round; 0 = no badge.
+var cast_rank: int = 0
 var show_action_pips: bool = true
 var unit_data: Resource = null
 var gear_detail_rows: Array = []
@@ -90,6 +98,7 @@ var _portrait_crop: Control = null
 var _portrait_rect: TextureRect = null
 var _portrait_dither: TextureRect = null
 var _firewall_badge: TextureRect = null
+var _cast_badge: Label = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
 var _hp_fill: ColorRect = null
@@ -152,6 +161,7 @@ func configure(data: Dictionary) -> void:
 	warded = bool(data.get("warded", warded))
 	target_locked = bool(data.get("target_locked", target_locked))
 	needs_manual_target = bool(data.get("needs_manual_target", needs_manual_target))
+	cast_rank = int(data.get("cast_rank", 0))
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
 	unit_data = data.get("unit_data", unit_data) as Resource
 	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
@@ -279,6 +289,25 @@ func _build() -> void:
 	_firewall_badge.offset_bottom = FIREWALL_BADGE_SIZE + FIREWALL_BADGE_INSET
 	_firewall_badge.visible = false
 	_portrait_crop.add_child(_firewall_badge)
+
+	# Cast-order badge: firing-rank numeral on a filled plate, portrait
+	# top-LEFT (firewall badge owns top-right). Follows `cast_rank` on refresh.
+	_cast_badge = Label.new()
+	_cast_badge.name = "CastOrderBadge"
+	_cast_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cast_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cast_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_cast_badge.add_theme_font_size_override("font_size", CAST_BADGE_FONT_SIZE)
+	_cast_badge.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME)
+	# Stroke law (INVARIANTS #14): borders are even design px and >= 4.
+	_cast_badge.add_theme_stylebox_override("normal", _style(Color(0.006, 0.012, 0.020, 0.80), HERO_LINE, 4, 0))
+	_cast_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_cast_badge.offset_left = CAST_BADGE_INSET
+	_cast_badge.offset_top = CAST_BADGE_INSET
+	_cast_badge.offset_right = CAST_BADGE_INSET + CAST_BADGE_SIZE
+	_cast_badge.offset_bottom = CAST_BADGE_INSET + CAST_BADGE_SIZE
+	_cast_badge.visible = false
+	_portrait_crop.add_child(_cast_badge)
 
 	# Uniform thin gap between portrait and HP bar so the card panel color
 	# shows through as a subtle separator on every card.
@@ -477,6 +506,10 @@ func _refresh() -> void:
 	# Firewall (Build G item 11): portrait-tier badge follows the warded state.
 	if _firewall_badge != null:
 		_firewall_badge.visible = warded and not dead
+	# Cast-order badge: firing rank while committed this round (hero side only).
+	if _cast_badge != null:
+		_cast_badge.visible = side == "hero" and cast_rank > 0 and not dead
+		_cast_badge.text = str(cast_rank)
 	if dead:
 		modulate = Color(0.55, 0.56, 0.62, 0.72)
 	else:
