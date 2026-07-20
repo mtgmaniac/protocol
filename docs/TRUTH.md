@@ -769,6 +769,26 @@ showed zero-inset layouts); now pinned via `PixelUI.sim_insets_pinned`, and
 comparisons. Pixel-verified at the Pixel-8 budget: strip (0,0,0), insets
 132/56 → 128/52.
 
+**Pure-mark targeting fix (2026-07-20).** Since Build I made Target Lock a
+0-dmg mark band, the ability never entered manual targeting:
+`battle_scene._get_manual_target_side` had no branch for `mark`, so the ability
+auto-assigned and combat_manager's pure-mark path silently marked the
+first-living-enemy fallback (invisible in single-enemy fights, player-silent in
+multi-enemy ones). **Rule: every hostile flag combat_manager resolves through
+`_hostile_single_target` on a hero ability must appear in the manual-targeting
+disjunction.** `mark`, `jam`, and `rewrite` are now in it (jam/rewrite are
+no-ops today — every authored hero jam/rewrite rides a damaging band — but the
+resolution paths read `selected_target_id`, so a future 0-dmg jam/rewrite band
+would have regressed identically); hijack/siphon are enemy-only and breach only
+resolves inside the damage pass, so they take no branch. Mark-with-damage
+already routed through the `dmg > 0` clause — this changes only the 0-damage
+case, still ONE manual pick per ability (INVARIANTS #12). A firewall still
+blocks (and is consumed by) the pure mark. Tutorial: Strike's turn-1 Target
+Lock is now a real targeting step like the other two picks (forced-manual mode
+already expected this; the step script's `targeting_started`/`assigned` gates
+are unchanged). **Audit floor 236 → 241** (+3 targeting cases, +2 mark
+regressions).
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers

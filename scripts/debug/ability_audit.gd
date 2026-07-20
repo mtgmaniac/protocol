@@ -419,6 +419,12 @@ func _run_targeting_audits() -> void:
 		# Single-target taunt (Build G ruling G-4): the cast picks ONE enemy.
 		{"name": "taunt requires enemy", "raw": {"taunt": true}, "manual": "enemy"},
 		{"name": "self shield plus taunt still requires enemy", "raw": {"shield": 7, "taunt": true}, "manual": "enemy"},
+		# Pure-status hostile picks (the Target Lock fall-through fix): a 0-dmg
+		# ability whose only component is a hostile single-target status must
+		# still queue the manual enemy pick.
+		{"name": "pure mark requires enemy", "raw": {"dmg": 0, "mark": true}, "manual": "enemy"},
+		{"name": "pure jam requires enemy", "raw": {"dmg": 0, "jam": true}, "manual": "enemy"},
+		{"name": "pure rewrite requires enemy", "raw": {"dmg": 0, "rewrite": true}, "manual": "enemy"},
 	]
 
 	for case in cases:
@@ -448,6 +454,7 @@ func _run_regression_audits() -> void:
 	_run_shield_timing_regression()
 	_run_cloak_regression()
 	_run_taunt_regression()
+	_run_mark_targeting_regression()
 	_run_cleanse_regressions()
 	_run_ward_regressions()
 	_run_shield_lowest_regression()
@@ -794,6 +801,43 @@ func _run_taunt_regression() -> void:
 		_record_pass("Regression / lure is per-enemy at the choke-point, beats cloak", "taunt")
 	else:
 		_record_failure("Regression / lure is per-enemy at the choke-point, beats cloak", "taunt", "lured -> its cloaked taunter; unlured -> personality pick", "lured=%s free=%s" % [str(lured_pick.get("id", "")), str(free_pick.get("id", ""))])
+
+
+func _run_mark_targeting_regression() -> void:
+	# Pure mark (Target Lock, dmg 0 + mark): the player's pick — not the
+	# first-living-enemy fallback — must end the round marked. The fallback
+	# is what made the fall-through bug invisible in single-enemy fights.
+	var manager: CombatManager = CombatManager.new()
+	var marker_unit: UnitData = _make_unit("audit_marker", "Audit Marker", "Target Lock", {"dmg": 0, "mark": true})
+	manager.setup_battle(
+		[marker_unit],
+		[_make_enemy("audit_first", "Audit First"), _make_enemy("audit_chosen", "Audit Chosen")]
+	)
+	var marker: Dictionary = manager.get_hero_states()[0]
+	var first_enemy: Dictionary = manager.get_enemy_states()[0]
+	var chosen_enemy: Dictionary = manager.get_enemy_states()[1]
+	marker["selected_target_id"] = str(chosen_enemy["id"])
+	manager.resolve_round({str(marker["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if bool(chosen_enemy.get("marked", false)) and not bool(first_enemy.get("marked", false)):
+		_record_pass("Regression / pure mark lands on the CHOSEN enemy", "mark")
+	else:
+		_record_failure("Regression / pure mark lands on the CHOSEN enemy", "mark", "chosen marked, first-living unmarked", "chosen=%s first=%s" % [str(chosen_enemy.get("marked", false)), str(first_enemy.get("marked", false))])
+
+	# A firewalled target blocks the mark (and the block consumes the wall).
+	var ward_manager: CombatManager = CombatManager.new()
+	ward_manager.setup_battle(
+		[_make_unit("audit_marker", "Audit Marker", "Target Lock", {"dmg": 0, "mark": true})],
+		[_make_enemy("audit_warded", "Audit Warded")]
+	)
+	var ward_marker: Dictionary = ward_manager.get_hero_states()[0]
+	var warded_enemy: Dictionary = ward_manager.get_enemy_states()[0]
+	warded_enemy["warded"] = true
+	ward_marker["selected_target_id"] = str(warded_enemy["id"])
+	ward_manager.resolve_round({str(ward_marker["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	if not bool(warded_enemy.get("marked", false)) and not bool(warded_enemy.get("warded", false)):
+		_record_pass("Regression / firewall blocks the pure mark and breaks", "mark")
+	else:
+		_record_failure("Regression / firewall blocks the pure mark and breaks", "mark", "unmarked, ward consumed", "marked=%s warded=%s" % [str(warded_enemy.get("marked", false)), str(warded_enemy.get("warded", false))])
 
 
 func _run_cloak_regression() -> void:

@@ -174,6 +174,7 @@ Backend code, sim fidelity, mechanics — **`fix/cleanup`**. Not data-only JSON,
 
 | Item | Status | Scope |
 |------|--------|-------|
+| **Pure-mark targeting fix (Jul 2026)** | **Done** | `_get_manual_target_side` had no branch for 0-dmg hostile statuses — Target Lock (`dmg: 0, mark: true`, Build I) never entered manual targeting and silently marked the first-living-enemy fallback in multi-enemy fights. Fix: `mark`/`jam`/`rewrite` added to the single-enemy-effect disjunction (jam/rewrite are no-ops today — always ride damage — but close the same regression shape); comment in the function states the rule for future 0-dmg status flags. New audit cases (pure mark/jam/rewrite require enemy) + end-to-end regressions (chosen enemy marked, firewall blocks + breaks). |
 | **Evolution XP (D2)** | **Done** | Avg-roll + survival bonus model in `GameState.gd`; **one evolution per battle win** (extras deferred FIFO) |
 | **Revive pct + revive all (medic evos)** | **Done** | `revivePct`, `reviveAll` in schema + `combat_manager.gd`; ability audit 82/82 |
 | **Gear/relic ability audit regressions** | **Done** | 12 gear/relic handlers covered in `AbilityAuditRunner.tscn` |

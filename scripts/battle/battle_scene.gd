@@ -2359,11 +2359,21 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 		return "hero"
 	if bool(raw.get("rfmTgt", false)):
 		return "hero"
+	# Every hostile flag combat_manager resolves through _hostile_single_target
+	# on a hero ability MUST appear in this disjunction, or a 0-damage ability
+	# carrying it falls through to auto-assign and the player never gets the
+	# pick (the Build I Target Lock bug: dmg 0 + mark had no branch, so the
+	# mark silently hit the first-living-enemy fallback). mark/jam/rewrite are
+	# the hero-kit-authored ones today; hijack/siphon are enemy-only and breach
+	# only resolves inside the damage pass, so they take no branch here.
 	var has_single_enemy_effect: bool = (
 		(int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)))
 		or int(raw.get("burn", 0)) > 0
 		or (int(raw.get("rfe", 0)) > 0 and not bool(raw.get("rfeAll", false)))
 		or bool(raw.get("rfeOnly", false))
+		or bool(raw.get("mark", false))
+		or bool(raw.get("jam", false))
+		or bool(raw.get("rewrite", false))
 	)
 	if has_single_enemy_effect:
 		return "enemy"
