@@ -712,6 +712,37 @@ priming_charge: **HELD** (coupled to curatedCache's filter zone — revisit
 with curatedCache's structural question). reverse_gimbal: **HELD**
 (DECISIONS #11 pending on the same item). No other rarity changes.
 
+**Build I — Kit surgery: Shield / Medic (+CLEANSE) / Combat (2026-07-19,
+values RULED not swept).** Kits: Spike Guard Taunt Protocol "taunt, spike 3" ·
+Enforce "6 shield, spike 3" (rider rides the SHIELDED target — engine rule:
+spike+shTgt grants where the shield lands) · Splice Medic Diagnostic Pulse
+"3 heal, 3 shield" · Infusion "10 heal, cleanse" · Strike Unit Target Lock
+"mark" (0 dmg) · Suppression 6 · Rail 10. **CLEANSE (new instant keyword,
+code CL):** removes the target's unit-level negatives — burn stacks, negative
+roll-buff stacks (positives survive), jam, lure, mark; **die states excluded
+by ruling** (a frozen die stays frozen — freeze-as-repeat can be a banked
+choice); no-op casts legal; golden-tinted heal glyph pip (PIP color only —
+amber-gold chrome reserve NOT implicated); sole carrier: Infusion.
+**Overheal-to-shield: REJECTED (Kev) — never re-propose.** Overpenetration:
+SHELVED; its return condition ("balanced-but-flat") HALF-fires — Combat
+measured OVER-band and flat (+6.3 mean, spread 8.3). Engine fix exposed by
+the 0-dmg band: mark historically applied only inside the damage pass —
+mark-without-damage now mirrors burn-without-damage. Tutorial cascade: drone
+13→10 HP; the audit's kill-math mirror rebuilt to the live Batch-5 rig (was
+a stale pre-Batch-5 mirror). **Audit floor 234 → 236** (two cleanse
+regressions). **Re-measure (3×5 + trio, n=1000, fresh controls): Shield
+−8.3 mean (MISS, backward; Synod +7.7 spike intact, spread 31.5), Medic
+−8.4 (MISS; cleanse ≈ worthless at L1's triage timing), Combat +6.3
+(MISS; ruled trim moved 0.1pp — flat levers inert at L1, fifth
+demonstration).** Cross-check PASS: hive 33.3% ≥ 25%; controls +0.6..+2.8pp
+uniform upward drift (three adjusted heroes in the pool) — within paired
+noise, baselines NOT updated (proposed: fold into next refresh). Trio arm
+(shield,medic,combat): +18.3 Synod / +12.7 Accretion / −26.0 Hive / −23.7
+Veil — a hyper-specialist composition. Base/evo inconsistency report (Kev
+follow-up input): Medic evolutions LOSE cleanse entirely; Shield evolutions
+lose the taunt-spike pairing; Bladecore's Target Paint keeps damage on mark
+(upgrade, noted); Ravager has no mark band.
+
 **Taunt stale-arm note (Build G) — RESOLVED by Cycle 0:** the taunt-single-target
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers
