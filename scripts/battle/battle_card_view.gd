@@ -124,7 +124,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"action": action_label,
 			"pips": card_pips,
 			"portrait": unit.portrait,
-			"statuses": _build_compact_status_tokens(state),
+			"statuses": _composed_status_tokens(state),
 			"selected": is_selected,
 			"targetable": is_targetable,
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
@@ -366,6 +366,39 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 				var dt_code: String = EffectPip.keyword_code("detonate", "DT")
 				effect["value"] = "%s %d" % [dt_code, burst] if burst > 0 else dt_code
 		return
+
+
+# Build J Item 1 (presentation only): live chip tokens, with SNAPSHOT values
+# substituted for chip types whose causing action hasn't played its beat yet
+# (BattleFeedback owns the suppression plan; empty plan = plain live tokens,
+# which is every skip/auto path and every idle refresh). Canonical chip order
+# keeps the row deterministic across the substitution.
+func _composed_status_tokens(state: Dictionary) -> Array:
+	var live: Array = _build_compact_status_tokens(state)
+	var feedback: Variant = _scene.get("_feedback")
+	if feedback == null or not is_instance_valid(feedback):
+		return live
+	var suppressed: Dictionary = feedback.suppressed_chip_types(str(state.get("id", "")))
+	if suppressed.is_empty():
+		return live
+	var merged: Dictionary = {}
+	for token_variant in live:
+		var token: Dictionary = token_variant
+		if not suppressed.has(str(token.get("type", ""))):
+			merged[str(token.get("type", ""))] = token
+	for token_variant in feedback.snapshot_tokens_for(str(state.get("id", ""))):
+		var token: Dictionary = token_variant
+		if suppressed.has(str(token.get("type", ""))):
+			merged[str(token.get("type", ""))] = token
+	var out: Array = []
+	for chip_type in feedback.CHIP_CANONICAL_ORDER:
+		if merged.has(chip_type):
+			out.append(merged[chip_type])
+	# Anything outside the canonical list (named/future chips) rides at the end.
+	for chip_type in merged.keys():
+		if not feedback.CHIP_CANONICAL_ORDER.has(chip_type):
+			out.append(merged[chip_type])
+	return out
 
 
 func _build_compact_status_tokens(state: Dictionary) -> Array:

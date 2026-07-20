@@ -1305,6 +1305,9 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	_is_resolving_turn = true
 	InspectPopup.dismiss()
 
+	# Build J: capture pre-round chip tokens BEFORE state applies, so deferred
+	# chips keep showing their old values until their causing beat.
+	_feedback.snapshot_pre_resolve_statuses()
 	# Resolve the round through the shared engine (A.1 cluster 6): build effective
 	# rolls, resolve_round, clear the spent roll state, drain pending protocol.
 	# This scene keeps XP recording, feedback, logging, income, and scene handoff.

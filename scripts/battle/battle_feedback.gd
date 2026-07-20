@@ -17,6 +17,104 @@ func setup(scene: Control) -> void:
 	_scene = scene
 
 
+# ── Status-chip deferral (Build J Item 1 — PRESENTATION ONLY) ─────────────────
+# Combat STATE applies fully at resolve (deterministic, sim-shared — never
+# touched here). The VISUAL landing of status chips defers to the causing
+# action's beat: snapshot pre-resolve tokens → plan (chip, last-causing-group)
+# → the card view substitutes snapshot values while suppressed → each group
+# releases its chips at its impact beat → unconditional clear at sequence end
+# (edge e). The skip/auto path never plans, so it renders end-state
+# immediately (edge d). Side-agnostic: self-buffs defer the same way (edge c).
+
+# Status event type -> the card chip types it lands on. Cleanse REMOVES chips,
+# so its beat gates the removal of the whole negative set (inverted leak).
+const STATUS_EVENT_CHIP: Dictionary = {
+	"burn": ["burn"], "shield": ["shield"], "mark": ["mark"],
+	"roll_buff": ["roll"], "rfe": ["roll"], "roll_down": ["roll"],
+	"ward": ["firewall"], "taunt": ["taunt"], "jam": ["jam"],
+	"rewrite": ["rewrite"], "spike_up": ["spike"], "cloak": ["cloak"],
+	"cleanse": ["burn", "roll", "jam", "taunt", "mark"],
+}
+const CHIP_CANONICAL_ORDER: Array = ["burn", "shield", "mark", "roll",
+	"firewall", "taunt", "cloak", "jam", "rewrite", "spike"]
+var _status_snapshot: Dictionary = {}   # state_id -> Array[token] (pre-resolve)
+var _chip_suppression: Dictionary = {}  # state_id -> {chip_type: group_index}
+var _suppression_sides: Dictionary = {} # state_id -> side (release refresh)
+
+
+# Called by battle_scene immediately BEFORE resolve_step: capture every card's
+# pre-round chip tokens so suppressed chips can keep showing their old values
+# (never hide pre-existing state — an old burn stays visible at its old total
+# until the new application's beat).
+func snapshot_pre_resolve_statuses() -> void:
+	_status_snapshot.clear()
+	if _scene == null or _scene.combat_manager == null:
+		return
+	for state_variant in _scene.combat_manager.get_hero_states() + _scene.combat_manager.get_enemy_states():
+		var state: Dictionary = state_variant
+		_status_snapshot[str(state.get("id", ""))] = _scene._card_view._build_compact_status_tokens(state)
+
+
+# Pure planner (also the headless test surface): event list -> suppression
+# maps. Each (target, chip type) is suppressed until the LAST group that
+# mutates it has played.
+func plan_status_suppression(events: Array) -> void:
+	_chip_suppression.clear()
+	_suppression_sides.clear()
+	var groups: Array = _build_action_feedback_groups(events)
+	for group_index in groups.size():
+		var effects: Array = (groups[group_index] as Dictionary).get("effects", [])
+		for event_variant in effects:
+			var event: Dictionary = event_variant
+			var chips: Array = STATUS_EVENT_CHIP.get(str(event.get("type", "")), [])
+			if chips.is_empty():
+				continue
+			var target_id: String = str(event.get("target_id", ""))
+			if target_id == "":
+				continue
+			var per_target: Dictionary = _chip_suppression.get(target_id, {})
+			for chip in chips:
+				per_target[str(chip)] = group_index
+			_chip_suppression[target_id] = per_target
+			_suppression_sides[target_id] = str(event.get("side", ""))
+
+
+func suppressed_chip_types(state_id: String) -> Dictionary:
+	return _chip_suppression.get(state_id, {})
+
+
+func snapshot_tokens_for(state_id: String) -> Array:
+	return _status_snapshot.get(state_id, [])
+
+
+# Release every suppression owed to this group, then refresh the touched cards
+# so their chips land exactly at the cause's beat (edge b: one group's chips
+# land together).
+func release_group_suppression(group_index: int) -> void:
+	var touched: Array = []
+	for state_id in _chip_suppression.keys():
+		var per_target: Dictionary = _chip_suppression[state_id]
+		var released: bool = false
+		for chip in per_target.keys().duplicate():
+			if int(per_target[chip]) == group_index:
+				per_target.erase(chip)
+				released = true
+		if released:
+			touched.append(state_id)
+		if per_target.is_empty():
+			_chip_suppression.erase(state_id)
+	for state_id in touched:
+		_scene._card_view.refresh_card_for_event({
+			"side": str(_suppression_sides.get(state_id, "")), "target_id": str(state_id),
+		})
+
+
+func clear_status_suppression() -> void:
+	_chip_suppression.clear()
+	_suppression_sides.clear()
+	_status_snapshot.clear()
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 func play_round_feedback(events: Array) -> void:
@@ -25,16 +123,19 @@ func play_round_feedback(events: Array) -> void:
 	# the registry never grows across a run.
 	_live_floats_by_card.clear()
 	_float_seq_by_card.clear()
+	plan_status_suppression(events)
 	var action_groups: Array = _build_action_feedback_groups(events)
-	for group_variant in action_groups:
-		var group: Dictionary = group_variant
-		await _play_action_feedback_group(group)
+	for group_index in action_groups.size():
+		var group: Dictionary = action_groups[group_index]
+		await _play_action_feedback_group(group, group_index)
 		# Keyword primers pause the sequence at GROUP BOUNDARIES only: any
 		# first sighting queued during this group shows now (one per turn),
 		# then the sequence resumes on dismiss.
 		var primer: Variant = _scene.get("_primer")
 		if primer != null and is_instance_valid(primer):
 			await primer.flush_at_group_boundary()
+	# Edge e: nothing may still be pending-visual at the round summary.
+	clear_status_suppression()
 
 
 func play_death_sfx_for_event(event: Dictionary) -> void:
@@ -86,7 +187,7 @@ func _build_action_feedback_groups(events: Array) -> Array:
 	return groups
 
 
-func _play_action_feedback_group(group: Dictionary) -> void:
+func _play_action_feedback_group(group: Dictionary, group_index: int = -1) -> void:
 	var action: Dictionary = group.get("action", {}) as Dictionary
 	var effects: Array = group.get("effects", []) as Array
 	var action_kind: String = _get_action_feedback_kind(effects)
@@ -112,6 +213,12 @@ func _play_action_feedback_group(group: Dictionary) -> void:
 
 	if not _group_has_fatal_hit(effects):
 		await get_tree().create_timer(_scene.ACTION_EFFECT_LEAD_TIME).timeout
+
+	# Status-chip deferral (Build J): this group's chips land NOW — at the
+	# cause's impact beat, together with its floats (edges a/b: a dead actor's
+	# group still plays, so its statuses still land here).
+	if group_index >= 0:
+		release_group_suppression(group_index)
 
 	var peak_damage: int = 0
 	var had_fatal_hit: bool = false
