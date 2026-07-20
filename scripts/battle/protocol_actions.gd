@@ -1089,8 +1089,10 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	_scene.legal_target_side = ""
 	_scene._card_view.refresh_all_cards()
 	_scene._update_protocol_bar()
-	# Tutorial gate: the item has fully resolved and been consumed. Emitted
+	# Tutorial event: the item has fully resolved and been consumed. Emitted
 	# BEFORE the finish check so an item that ends the battle still reports.
+	# Currently UNCONSUMED (the Prompt-5 tutorial teaches items as a signpost,
+	# no gate) — kept as generic plumbing for future gated surfaces.
 	_scene._emit_tutorial("item_used", {"item": item.id})
 	if _scene._try_finish_battle_from_current_state():
 		return

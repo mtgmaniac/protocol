@@ -158,24 +158,22 @@ var enemy_units: Array = []
 #           (SYSTEMATIC slot 0): the 3 shield soaks 3, Strike takes 4 (the
 #           3 heal overflows at full HP — honest, harmless).
 #   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire 6 → Rail Strike 10, the
-#           taught band jump; a stray second Nudge lands 14, still Rail
-#           Strike's 11-15 band — harmless) + Engineer 7 (Barrier Deploy,
-#           9 shield targeted — uncommented insurance, assigned in the
-#           fullscreen beat) + Medic 6 (Infusion, 10 heal targeted).
+#           taught band jump) + Engineer 12 (Overdrive 11 again — plain this
+#           time, the mark is spent) + Medic 6 (Infusion, 10 heal targeted).
 #           Protocol entering turn 2 is exactly 1 (income only — no
-#           gainProtocol in this rig), the one taught Nudge. Rail Strike 10
-#           into 18 leaves 8; the gated Shock Charge (10, granted by
-#           start_tutorial_run) closes it — the item stays mathematically
-#           necessary. Stall-proof: a resequenced (unspent) turn-1 mark
-#           leaves the drone at 24; Rail Strike pays it late (15) → 9, item
-#           → dead. Items are cost-0 in the tutorial
-#           (_apply_intercept_battle_effects) so the pool can never dead-end
-#           the item beat.
+#           gainProtocol in this rig), the one taught Nudge; a second Nudge
+#           is simply unaffordable. Rail Strike 10 + Overdrive 11 = 21 into
+#           18 — the kill closes ON DICE (Prompt-5 delta: the item beat was
+#           only survivable via an items_free fiction that mis-taught the
+#           item economy, so the item lesson is now a SIGNPOST — no grant, no
+#           gate, real cost stated). Stall-proof: a resequenced (unspent)
+#           turn-1 mark leaves the drone at 24; turn 2 pays it late on the
+#           first hit (15+11 or 17+10) — dead either way.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
 	{"combat": 3, "engineer": 12, "medic": 2},
-	{"combat": 8, "engineer": 7, "medic": 6},
+	{"combat": 8, "engineer": 12, "medic": 6},
 ]
 var _tutorial_turn: int = 0
 
@@ -1697,12 +1695,6 @@ func _apply_intercept_battle_effects() -> void:
 	var gs: Variant = _game_state()
 	_battle_effects = (gs.next_battle_effects as Dictionary).duplicate(true)
 	gs.next_battle_effects.clear()
-	# Tutorial stall-proofing (v2): items cost 0 in the drill, so a stray extra
-	# Nudge during a pass-through step can never drain the pool below the gated
-	# Shock Charge — the drill must be unable to dead-end. Set silently here
-	# (not via next_battle_effects) so no "SUPPLY DRONE" log line appears.
-	if bool(gs.tutorial_mode):
-		_battle_effects["items_free"] = true
 	# Prisoner Exchange's follow-up arms AFTER this battle's own modifier ran.
 	gs.promote_followup_effects()
 

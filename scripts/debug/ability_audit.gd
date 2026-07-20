@@ -3279,15 +3279,16 @@ func _run_relic_per_turn_aura_regression() -> void:
 	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
 
 
-# Tutorial rig v2.1 must stay unlosable against the REAL 35-HP Scrap Drone.
+# Tutorial rig v2.2 must stay unlosable against the REAL 35-HP Scrap Drone.
 # The happy path: T1 mark->Overdrive (35 -> 18, mark spent at ceil(11*1.5)=17;
 # Stab 7 soaked 3 by Diagnostic Pulse's shield, Strike takes 4; NO protocol
-# grants — income-only); T2 Shock Charge 10 + Rail Strike 10 close 18. The
-# stall-proof path: Overdrive resolves BEFORE the mark (player resequenced) —
-# the unspent mark persists (drone 24) and item + the late-paying mark on
-# Rail Strike still kill on turn 2. If any of these numbers drift (kit or
-# drone data change), the tutorial coach copy must be re-verified against the
-# engine. Leech stays OUT of the drill by design (playtest item 4).
+# grants — income-only); T2 closes ON DICE: Rail Strike 10 + Overdrive 11 =
+# 21 into 18 (Prompt-5 delta — no item grant, the item lesson is a signpost).
+# The stall-proof path: Overdrive resolves BEFORE the mark (player
+# resequenced) — the unspent mark persists (drone 24) and turn 2 pays it late
+# on the first hit (15+11 or 17+10), dead either way. If any of these numbers
+# drift (kit or drone data change), the tutorial coach copy must be
+# re-verified against the engine. Leech stays OUT of the drill by design.
 func _run_tutorial_kill_math_regression() -> void:
 	var combat: UnitData = DataManager.get_unit("combat") as UnitData
 	var engineer: UnitData = DataManager.get_unit("engineer") as UnitData
@@ -3322,18 +3323,18 @@ func _run_tutorial_kill_math_regression() -> void:
 		_record_failure("Tutorial / T1 math (marked 17, Stab 7 soaks 3, income-only Protocol)", "tutorial",
 			"drone 18 unmarked, Strike 51, grant 0",
 			"drone=%d marked=%s strike=%d grant=%d" % [int(enemy["current_hp"]), str(enemy.get("marked", false)), int(strike["current_hp"]), grants_t1])
-	# T2: Shock Charge (item) + nudged Rail Strike 10 into 18 (Barrier Deploy
-	# and Infusion are friendly casts).
-	mgr.apply_item_damage(enemy, 10)
-	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 7, "medic": 6}, ["combat", "engineer", "medic"])
+	# T2 closes on DICE alone: nudged Rail Strike 10 + Overdrive 11 into 18
+	# (Infusion is a friendly cast; no item in the rig — Prompt-5 delta).
+	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 12, "medic": 6}, ["combat", "engineer", "medic"])
 	if bool(enemy["dead"]):
-		_record_pass("Tutorial / T2 kill (item 10 + Rail Strike 10 into 18)", "tutorial")
+		_record_pass("Tutorial / T2 kill (dice only: 10 + 11 into 18)", "tutorial")
 	else:
-		_record_failure("Tutorial / T2 kill (item 10 + Rail Strike 10 into 18)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
+		_record_failure("Tutorial / T2 kill (dice only: 10 + 11 into 18)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
 
 	# Stall-proof: Overdrive fires BEFORE the mark (resequenced) — mark
-	# unspent, drone 24; turn 2's item + the late-paying mark on Rail Strike
-	# (15) still kill. The drill cannot dead-end on player-chosen ordering.
+	# unspent, drone 24; turn 2 pays it late on the first hit (Rail 15 +
+	# Overdrive 11 = 26) and still kills on dice alone. The drill cannot
+	# dead-end on player-chosen ordering.
 	var mgr2: CombatManager = CombatManager.new()
 	mgr2.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
 	var enemy2: Dictionary = mgr2.get_enemy_states()[0]
@@ -3345,12 +3346,11 @@ func _run_tutorial_kill_math_regression() -> void:
 	else:
 		_record_failure("Tutorial / stall-proof T1 (unspent mark persists, drone 24)", "tutorial",
 			"drone 24 and marked", "drone=%d marked=%s" % [int(enemy2["current_hp"]), str(enemy2.get("marked", false))])
-	mgr2.apply_item_damage(enemy2, 10)
-	_tutorial_resolve_turn(mgr2, {"combat": 11, "engineer": 7, "medic": 6}, ["combat", "engineer", "medic"])
+	_tutorial_resolve_turn(mgr2, {"combat": 11, "engineer": 12, "medic": 6}, ["combat", "engineer", "medic"])
 	if bool(enemy2["dead"]):
-		_record_pass("Tutorial / stall-proof T2 kill (mark pays late, no dead end)", "tutorial")
+		_record_pass("Tutorial / stall-proof T2 kill (mark pays late on dice, no dead end)", "tutorial")
 	else:
-		_record_failure("Tutorial / stall-proof T2 kill (mark pays late, no dead end)", "tutorial", "drone dead", "hp=%d" % int(enemy2["current_hp"]))
+		_record_failure("Tutorial / stall-proof T2 kill (mark pays late on dice, no dead end)", "tutorial", "drone dead", "hp=%d" % int(enemy2["current_hp"]))
 
 	# The taught band jump and its double-Nudge safety: 8 -> 11 flips
 	# Suppression Fire (6) into Rail Strike (10); a stray second +3 (14) stays

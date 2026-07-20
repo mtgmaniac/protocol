@@ -1,17 +1,17 @@
-# Scripted end-to-end tutorial playthroughs (v2.1, playtest fix pass: mark
-# payoff on Engineer, no leech anywhere, badge beat and Skip button deleted,
-# two-stage assign spotlights). Drives the same battle-scene entry points the
-# real UI calls and asserts every TutorialController step advances, every
-# spotlighted step resolves holes, every assigned-gated step RETARGETS its
-# spotlight onto the legal targets when targeting starts, and the HONEST-RIG
-# math lands exactly where the coach copy claims (35 -> 18 -> dead; shield
-# soaks 3; protocol 1).
+# Scripted end-to-end tutorial playthroughs (v2.2, Prompt-5 item-signpost
+# delta: no consumable grant, no items_free, the kill closes ON DICE; the
+# item lesson is an informational signpost beat). Drives the same
+# battle-scene entry points the real UI calls and asserts every
+# TutorialController step advances, every spotlighted step resolves holes,
+# every assigned-gated step RETARGETS its spotlight onto the legal targets
+# when targeting starts, and the HONEST-RIG math lands exactly where the
+# coach copy claims (35 -> 18 -> dead on 10+11; shield soaks 3; protocol 1).
 #
 # Scenario A — the happy path: all 24 steps in the taught order.
 # Scenario B — stall-proofing: the mark is resequenced to fire UNSPENT in
-#   turn 1 (drone 24), a double-Nudge is attempted on an empty pool, and the
-#   cost-0 Shock Charge plus the late-paying mark still win. The drill must
-#   be UNABLE to dead-end.
+#   turn 1 (drone 24), a Nudge is attempted at 0 PP (rejected), and the
+#   late-paying mark on the first turn-2 hit still wins on dice alone. The
+#   drill must be UNABLE to dead-end.
 #
 # Run:
 #   godot --headless --path . -s res://scripts/debug/tutorial_smoke_test.gd
@@ -163,36 +163,35 @@ func _run_happy_path() -> void:
 	protocol.call("_apply_nudge", combat_id)
 	await _expect_step(controller, 18)
 
-	# Step 18: band-jump recap (tap, die + pip holes). Step 19: heal beat.
+	# Step 18: band-jump recap (tap). Step 19: the item SIGNPOST — purely
+	# informational, holes the (empty) consumable slot, advances on tap.
 	_check_holes(controller)
 	controller.call("_next")
 	await _expect_step(controller, 19)
 	_check_holes(controller)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
+	controller.call("_next")
 	await _expect_step(controller, 20)
 
-	# Step 20: assign the rest (Rail Strike at the drone, Barrier Deploy on
-	# an ally) -> ready_to_end.
+	# Step 20: heal beat (assigned, hero=medic).
+	_check_holes(controller)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
+	await _expect_step(controller, 21)
+
+	# Step 21: assign the rest (Rail Strike and Overdrive at the drone).
 	_check_holes(controller)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 21)
-
-	# Step 21: Shock Charge (gated item_used) — 18 HP, dice deal 10, the item
-	# stays mathematically necessary.
-	_check_holes(controller)
-	await _use_shock_charge(scene)
 	await _expect_step(controller, 22)
-	drone = _enemy_state(scene)
-	if int(drone.get("current_hp", 0)) != 8:
-		_fail("Shock Charge: expected drone at 8 (18 - 10), got %d" % int(drone.get("current_hp", 0)))
 
-	# Step 22: END TURN (gated won) — Rail Strike 10 into 8.
+	# Step 22: END TURN (gated won) — the kill closes ON DICE: 10 + 11 into 18.
 	_check_holes(controller)
+	drone = _enemy_state(scene)
+	if int(drone.get("current_hp", 0)) != 18:
+		_fail("pre-end-turn drone HP: expected 18 (no item in the drill), got %d" % int(drone.get("current_hp", 0)))
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 23)
 	if not bool(_enemy_state(scene).get("dead", false)):
-		_fail("drone must be dead at the DRILL COMPLETE beat")
+		_fail("drone must be dead at the DRILL COMPLETE beat (dice-only kill)")
 
 	# Step 23: DRILL COMPLETE (tap_finish) -> main menu; done-flag persisted;
 	# primers never marked seen (they fire in the first real battle).
@@ -212,9 +211,9 @@ func _run_happy_path() -> void:
 
 # ── Scenario B: stall-proofing ───────────────────────────────────────────────
 # The player fights the script: the mark is resequenced to fire AFTER
-# Overdrive (unspent in turn 1, drone 24), a double-Nudge is attempted on an
-# empty pool (no-op), and the cost-0 tutorial item + the late-paying mark on
-# Rail Strike still kill on turn 2.
+# Overdrive (unspent in turn 1, drone 24), a second Nudge is attempted at
+# 0 PP (rejected — the pick never arms), and the late-paying mark on the
+# first turn-2 hit still kills on dice alone (15 + 11 into 24).
 
 func _run_stall_proof_path() -> void:
 	var scene: Node = await _start_drill()
@@ -279,35 +278,34 @@ func _run_stall_proof_path() -> void:
 	protocol.call("_apply_nudge", combat_id)
 	await _expect_step(controller, 18)
 
-	# Double-Nudge attempt on the emptied pool (1 income - 1 spent = 0): the
-	# button press can't arm, the nudge stays +3, the pool stays 0. (14 would
-	# still be Rail Strike's 11-15 band — audit-pinned.)
+	# Nudge-at-0-PP rejection (Prompt-5): the pool is spent (1 income - 1
+	# Nudge = 0); a second Nudge press must REFUSE to arm the pick, the
+	# applied nudge stays +3, the pool stays 0.
 	protocol.call("_on_nudge_button_pressed")
-	protocol.call("_apply_nudge", combat_id)
+	if str(scene.call("phase_name", scene.get("turn_phase"))) == "nudge_pick":
+		_fail("Nudge at 0 PP must be rejected (pick armed anyway)")
 	if int((scene.get("hero_roll_nudges") as Dictionary).get(combat_id, 0)) != 3:
-		_fail("double-Nudge must be a no-op (nudge stays +3)")
+		_fail("rejected Nudge must not touch the applied +3")
 	if int(scene.get("protocol_points")) != 0:
-		_fail("double-Nudge must not charge on an empty pool, got %d" % int(scene.get("protocol_points")))
+		_fail("rejected Nudge must not charge, got %d" % int(scene.get("protocol_points")))
 
+	# Band-jump tap -> signpost tap -> heal -> assigns -> end turn.
 	controller.call("_next")
 	await _expect_step(controller, 19)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	controller.call("_next")
 	await _expect_step(controller, 20)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	await _expect_step(controller, 21)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 21)
-
-	# The cost-0 tutorial item must fire on a 0 pool — no dead end.
-	await _use_shock_charge(scene)
 	await _expect_step(controller, 22)
-	if int(_enemy_state(scene).get("current_hp", 0)) != 14:
-		_fail("stall-proof: expected drone at 14 (24 - 10), got %d" % int(_enemy_state(scene).get("current_hp", 0)))
 
-	# END TURN: the persisted mark pays late on Rail Strike (10 -> 15) — 14 dies.
+	# END TURN: the persisted mark pays late on the FIRST hit (Rail 15 +
+	# Overdrive 11 = 26 into 24) — dead on dice alone, no item needed.
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 23)
 	if not bool(_enemy_state(scene).get("dead", false)):
-		_fail("stall-proof: the drill dead-ended — drone alive after turn 2 + item")
+		_fail("stall-proof: the drill dead-ended — drone alive after the dice-only turn 2")
 	controller.call("_next")
 	await _wait_frames(10)
 
@@ -324,9 +322,11 @@ func _start_drill() -> Node:
 	if scene == null or scene.get("hero_card_views") == null:
 		_fail("Battle scene failed to load for tutorial")
 		return null
+	# Prompt-5 delta: the tutorial loadout is EMPTY — the item lesson is a
+	# signpost, not a granted freebie.
 	var held: Array = gs.get("consumables")
-	if held.size() != 1 or str(held[0]) != "shock_charge":
-		_fail("tutorial loadout must be exactly one shock_charge, got %s" % str(held))
+	if not held.is_empty():
+		_fail("tutorial loadout must be empty (item signpost, no grant), got %s" % str(held))
 	return scene
 
 
@@ -467,23 +467,6 @@ func _pick_and_assign(scene: Node, hero_id: String, controller: Node = null) -> 
 	if controller != null:
 		_assert_spotlight_on_legal(scene, controller)
 	_assign_active_to_legal(scene)
-	await _wait_frames(2)
-
-
-# Fire the Shock Charge through the real item flow.
-func _use_shock_charge(scene: Node) -> void:
-	var protocol: Node = scene.get("_protocol")
-	var item: Resource = root.get_node("/root/DataManager").call("get_item", "shock_charge")
-	if item == null:
-		_fail("shock_charge missing from item data")
-		return
-	protocol.call("_on_item_button_pressed", item)
-	await _wait_frames(2)
-	if str(scene.call("phase_name", scene.get("turn_phase"))) != "item_pick_enemy":
-		_fail("Shock Charge should open the enemy-target pick, phase is '%s'" % str(scene.call("phase_name", scene.get("turn_phase"))))
-		return
-	var drone_id: String = str(_enemy_state(scene).get("id", ""))
-	protocol.call("handle_enemy_card_pressed", drone_id)
 	await _wait_frames(2)
 
 

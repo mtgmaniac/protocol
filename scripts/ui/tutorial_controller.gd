@@ -38,7 +38,7 @@ func start(scene: Node) -> void:
 	_show_step(0)
 
 
-# ── Step script (v2.1, playtest fix pass 2026-07 — 24 beats) ────────────────────
+# ── Step script (v2.2, Prompt-5 item-signpost delta — 24 beats) ─────────────────
 # Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
 # predicate), hero:"" (optional event predicate — the unit id carried in the
 # event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
@@ -78,9 +78,12 @@ func _build_steps() -> Array:
 		{"targets": ["combat"], "text": "Tap Strike Unit's die - +3 turns an 8 into an 11.", "advance": "nudged"},
 		# Band jump: the die + its ability pip, separate holes (playtest item 10).
 		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10."},
+		# Item SIGNPOST (Prompt-5 delta): informational only, while the Protocol
+		# spend is fresh — no grant, no gate, the REAL cost stated. The item
+		# button holes fine with an empty loadout (it always renders).
+		{"targets": ["item"], "text": "Item slots. You'll collect consumables on your run - using one costs 1 Protocol, same as a Nudge, and doesn't spend a die."},
 		{"targets": ["die:medic", "card:medic"], "separate": true, "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore that hit.", "advance": "assigned", "hero": "medic"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike at the drone, Barrier Deploy on an ally.", "advance": "phase", "phase": "ready_to_end"},
-		{"targets": ["item"], "text": "The drone has 18 HP; your dice deal 10. Items don't cost a die - tap the Shock Charge and close the gap.", "advance": "item_used"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike and Overdrive at the drone.", "advance": "phase", "phase": "ready_to_end"},
 		{"targets": ["roll_button"], "text": "End the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu holds the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]

@@ -382,12 +382,22 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   Overdrive (11 → 17 on the marked drone; 35 → 18) teaches CAST ORDER (set
   up first, spend second); Diagnostic Pulse (3 heal + 3 shield on Strike —
   the heal overflows at full HP, honest and harmless) soaks 3 of the Stab
-  (Strike takes 4). **Turn 2** rolls {combat 8 → Nudged 11, engineer 7,
-  medic 6}: the band jump (Suppression Fire 6 → Rail Strike 10), Barrier
-  Deploy (9 shield, uncommented insurance assigned in the fullscreen beat),
-  Infusion heal, and the item beat — the ONE granted Shock Charge (10)
-  closes 18 vs 10, mathematically necessary. Protocol entering turn 2 is
-  exactly 1 (income only): the "exactly one Nudge" framing.
+  (Strike takes 4). **Turn 2** rolls {combat 8 → Nudged 11, engineer 12,
+  medic 6}: the band jump (Suppression Fire 6 → Rail Strike 10), a plain
+  Overdrive 11, Infusion heal — the kill closes ON DICE (10 + 11 = 21 into
+  18). Protocol entering turn 2 is exactly 1 (income only): the "exactly one
+  Nudge" framing, and a second Nudge is simply unaffordable.
+- **Item lesson = SIGNPOST (Prompt-5 delta, rationale recorded):** the v2.1
+  rig banked exactly 1 Protocol into turn 2, the Nudge spent it, and items
+  cost 1 — so the item-USE beat was only survivable via the items_free
+  fiction, which also mis-taught the item economy (a granted freebie whose
+  cost was never paid). Both the Shock Charge grant and the tutorial
+  items_free effect are DELETED; the item beat is now an informational
+  tap-through signpost (right after the band-jump beat, holing the footer
+  item button — it renders with an empty loadout) stating the REAL cost:
+  "using one costs 1 Protocol, same as a Nudge, and doesn't spend a die"
+  (verified against `item_protocol_cost`: flat 1). The `item_used` tutorial
+  event emission remains as generic plumbing, currently unconsumed.
 - **24 steps**: no status-badge beat (chip teaching is DELEGATED TO PRIMERS,
   Kev ruling); the order-badges beat is DELETED (playtest ruling — no badge
   explanation, no resequencing encouragement); beat 3 introduces the DRONE
@@ -416,13 +426,13 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   rects haven't laid out yet waits (bounded) before spotlighting
   (`_layout_step` retry). Both fixes are generic — every step and the primer
   coachmarks inherit them.
-- **Stall-proofing (the drill must be unable to dead-end):** items cost 0 in
-  the tutorial (`_battle_effects["items_free"]`, set silently in
-  `_apply_intercept_battle_effects`); a resequenced (unspent) turn-1 mark
-  leaves the drone at 24 and item + the late-paying mark on Rail Strike (15)
-  still kill on turn 2; a double Nudge is refused at both layers (button
-  affordability, engine "already") and 14 stays inside Rail Strike's 11-15
-  band. Audit-pinned (5 kill-math regressions incl. the stall-proof arm).
+- **Stall-proofing (the drill must be unable to dead-end):** the kill needs
+  NO resource beyond the dice — a resequenced (unspent) turn-1 mark leaves
+  the drone at 24 and turn 2 pays it late on the first hit (Rail 15 +
+  Overdrive 11, or Overdrive 17 + Rail 10) — dead either way; a Nudge at
+  0 PP is refused (the pick never arms) and a nudged 14 stays inside Rail
+  Strike's 11-15 band. Audit-pinned (5 kill-math regressions incl. the
+  stall-proof arm). The old items_free crutch is gone with the item beat.
 - **Dice-settle rig:** the scripted values are handed to the tray BEFORE the
   physics roll (`dice_tray_3d.set_rigged_results`, consumed one-shot in
   `_resolve_landed_die_face`), so the settle presentation rotates the RIGGED

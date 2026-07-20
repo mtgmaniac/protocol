@@ -198,10 +198,9 @@ func start_tutorial_run() -> void:
 	var op_id: String = str(op_ids[0]) if not op_ids.is_empty() else ""
 	start_run(["combat", "engineer", "medic"], op_id, -1, true)
 	current_battle = 1
-	# Tutorial v2: the drill teaches the item action with exactly one Shock
-	# Charge (10 dmg, single enemy) — it closes the turn-2 kill math against
-	# the real 35-HP drone. Granted AFTER start_run (which clears consumables).
-	consumables = ["shock_charge"]
+	# Prompt-5 delta: NO consumable grant — the item lesson is a signpost beat
+	# (the drill's kill closes on dice alone) and the empty loadout keeps the
+	# item economy honest (a granted freebie taught a cost that wasn't paid).
 
 
 # --- Templated battle comps (pkg7.1) ---
