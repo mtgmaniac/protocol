@@ -152,6 +152,11 @@ func _parse_args() -> Dictionary:
 		elif arg.begins_with("--capture-tutorial-step="):
 			config["tutorial"] = true
 			config["tutorial_step"] = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--capture-tutorial-select="):
+			# Stage 2 of a two-stage assign beat: after showing the step, select
+			# the named hero for targeting so the spotlight retargets to the
+			# legal targets (playtest items 5/6 verification).
+			config["tutorial_select"] = arg.get_slice("=", 1).strip_edges()
 	return config
 
 
@@ -333,6 +338,10 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 			await process_frame
 			await process_frame
 			await process_frame
+			if config.has("tutorial_select"):
+				current_scene.call("_select_targeting_hero", str(config["tutorial_select"]))
+				await process_frame
+				await process_frame
 	var help_tab: String = str(config.get("help_tab", ""))
 	if help_tab != "" and current_scene != null:
 		HelpMenu.open(current_scene)

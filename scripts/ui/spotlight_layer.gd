@@ -184,8 +184,13 @@ func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnc
 	var hint: String = str(opts.get("hint", ""))
 	_hint_label.visible = hint != ""
 	_hint_label.text = hint
-	_coach.visible = true
+	# Placement-flicker fix (playtest item 9): _place_coach must yield a frame
+	# to measure the reflowed label, and a visible coach rendered that frame at
+	# its PREVIOUS position/size — the one-frame blip. Keep it hidden until it
+	# is placed, then show. (Min-size measurement works on hidden Controls.)
+	_coach.visible = false
 	await _place_coach(_bounds_of(target_rects), anchor)
+	_coach.visible = true
 
 
 func set_holes(holes: Array) -> void:

@@ -1,22 +1,24 @@
-# Scripted end-to-end tutorial playthroughs (v2 script: honest rig, cast order,
-# shield, item). Drives the same battle-scene entry points the real UI calls
-# (roll, select die, assign target, nudge, item, end turn) and asserts that
-# every TutorialController step advances, every spotlighted step resolves at
-# least one hole rect, and the HONEST-RIG math lands exactly where the coach
-# copy claims (drone 35 -> 23 -> dead; shield soaks 4; protocol 2).
+# Scripted end-to-end tutorial playthroughs (v2.1, playtest fix pass: mark
+# payoff on Engineer, no leech anywhere, badge beat and Skip button deleted,
+# two-stage assign spotlights). Drives the same battle-scene entry points the
+# real UI calls and asserts every TutorialController step advances, every
+# spotlighted step resolves holes, every assigned-gated step RETARGETS its
+# spotlight onto the legal targets when targeting starts, and the HONEST-RIG
+# math lands exactly where the coach copy claims (35 -> 18 -> dead; shield
+# soaks 3; protocol 1).
 #
-# Scenario A — the happy path: all 25 steps in the taught order.
-# Scenario B — stall-proofing: the mark is resequenced to fire UNSPENT in turn
-#   1 (combat re-tapped to the end of the cast order), a double-Nudge no-op is
-#   attempted, and a stray Nudge drains the pool to 0 — the cost-0 tutorial
-#   Shock Charge must still fire and the drill must still be won. The drill
-#   must be UNABLE to dead-end.
+# Scenario A — the happy path: all 24 steps in the taught order.
+# Scenario B — stall-proofing: the mark is resequenced to fire UNSPENT in
+#   turn 1 (drone 24), a double-Nudge is attempted on an empty pool, and the
+#   cost-0 Shock Charge plus the late-paying mark still win. The drill must
+#   be UNABLE to dead-end.
 #
 # Run:
 #   godot --headless --path . -s res://scripts/debug/tutorial_smoke_test.gd
 extends SceneTree
 
 const STEP_TIMEOUT_SECS := 20.0
+const STEP_COUNT := 24
 
 var _errors: Array[String] = []
 
@@ -32,7 +34,7 @@ func _run() -> void:
 		await _run_stall_proof_path()
 
 	if _errors.is_empty():
-		print("[TUTORIAL_SMOKE] PASS — all 25 steps advanced (happy + stall-proof), spotlights resolved, rig math exact")
+		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof), spotlights resolved + retargeted, rig math exact, no leech" % STEP_COUNT)
 		quit(0)
 	else:
 		for e in _errors:
@@ -51,26 +53,31 @@ func _run_happy_path() -> void:
 	if controller == null:
 		_fail("TutorialController not spawned in tutorial_mode")
 		return
+	if (controller.call("_build_steps") as Array).size() != STEP_COUNT:
+		_fail("step script must be %d beats (badge beat deleted), got %d" % [STEP_COUNT, (controller.call("_build_steps") as Array).size()])
 
-	# Steps 0-2: orientation taps (WELCOME / header / squad-vs-drone).
+	# Playtest item 4: leech must appear NOWHERE in the drill — no rigged hero
+	# band on either turn carries it (and none reaches the nat-20 overload).
+	_assert_no_leech_in_rig(scene)
+
+	# Steps 0-2: orientation taps (WELCOME / header / the drone).
 	await _expect_step(controller, 0)
 	for _i in range(3):
 		_check_holes(controller)
 		controller.call("_next")
 		await _wait_frames(3)
 
-	# Step 3: ROLL (gated roll_pressed) -> step 4 waiter (rolled) -> step 5.
+	# Step 3: ROLL -> step 4 waiter -> step 5.
 	await _expect_step(controller, 3)
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 5)
 	await _wait_for_phase(scene, "targeting")
 
-	# The honest rig: real 35-HP drone, scripted faces only.
+	# Honest rig: real 35-HP drone aiming its Stab at Strike Unit.
 	var drone: Dictionary = _enemy_state(scene)
 	if int(drone.get("max_hp", 0)) != 35 or int(drone.get("current_hp", 0)) != 35:
 		_fail("drone must fight at its REAL statline (35 HP), got %d/%d" % [int(drone.get("current_hp", 0)), int(drone.get("max_hp", 0))])
-	# The drone aims at Strike Unit (SYSTEMATIC slot 0) with its Stab (roll 6).
 	if str(drone.get("selected_target_id", "")) != _state_id_for_unit(scene, "combat"):
 		_fail("drone must aim at Strike Unit, got '%s'" % str(drone.get("selected_target_id", "")))
 
@@ -82,113 +89,113 @@ func _run_happy_path() -> void:
 	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
 	await _expect_step(controller, 7)
 
-	# Step 7: mark first (assigned, hero=combat). Off-script heroes must NOT
-	# advance the hero-gated step: engineer's assigned event is ignored.
-	_check_holes(controller)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"))
-	if int(controller.get("_step")) != 7:
-		_fail("hero predicate leaked: engineer's assigned advanced the combat-gated step 7")
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "combat"))
-	await _expect_step(controller, 8)
-
-	# Step 8: spend it (assigned, hero=medic).
+	# Step 7: mark first (assigned, hero=combat). The hero predicate must
+	# ignore an off-script hero, and the spotlight must RETARGET to the legal
+	# targets when the gated hero starts targeting (two-stage assign).
 	_check_holes(controller)
 	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	if int(controller.get("_step")) != 7:
+		_fail("hero predicate leaked: medic's assigned advanced the combat-gated step 7")
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "combat"), controller)
+	await _expect_step(controller, 8)
+
+	# Step 8: spend it (assigned, hero=engineer) — hostile pick, retarget to drone.
+	_check_holes(controller)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"), controller)
 	await _expect_step(controller, 9)
 
-	# Steps 9-10: order badges + enemy telegraph (taps).
-	for _i in range(2):
-		_check_holes(controller)
-		controller.call("_next")
-		await _wait_frames(3)
-
-	# Step 11: shield beat (assigned, hero=engineer) — engineer was assigned
-	# off-script earlier; re-tap pulls it back (unassign) and re-assigning it
-	# fires the gate with a fresh end-of-order stamp.
-	await _expect_step(controller, 11)
+	# Step 9: telegraph beat (tap) — drone card + pip + die holes.
 	_check_holes(controller)
-	scene.call("_unassign_hero_cast", _state_id_for_unit(scene, "engineer"))
+	controller.call("_next")
+	await _wait_frames(3)
+
+	# Step 10: shield beat (assigned, hero=medic) — medic was assigned
+	# off-script earlier; re-tap pulls it back and re-assigning fires the gate
+	# (friendly pick, retarget to the ally cards).
+	await _expect_step(controller, 10)
+	_check_holes(controller)
+	scene.call("_unassign_hero_cast", _state_id_for_unit(scene, "medic"))
 	await _wait_frames(2)
+	_assert_spotlight_on_legal(scene, controller)
 	_assign_active_to_legal(scene)
+	await _expect_step(controller, 11)
+
+	# Step 11: END TURN (gated turn_resolved).
+	_check_holes(controller)
+	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 12)
 
-	# Step 12: END TURN (gated turn_resolved).
-	_check_holes(controller)
-	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 13)
-
-	# Turn-1 math, exactly as the coach copy claims: mark spent 8 -> 12
-	# (drone 35 -> 23, mark consumed); Stab 7 soaked 4 by Field Patch's
-	# shield (Strike 55 -> 52); protocol = income 1 + Field Patch 1 = 2.
+	# Turn-1 math, exactly as the coach copy claims: mark spent 11 -> 17
+	# (drone 35 -> 18, mark consumed); Stab 7 soaked 3 by Diagnostic Pulse's
+	# shield (Strike 55 -> 51); protocol = income only = 1.
 	drone = _enemy_state(scene)
-	if int(drone.get("current_hp", 0)) != 23:
-		_fail("turn-1 drone HP: expected 23 (35 - marked 12), got %d" % int(drone.get("current_hp", 0)))
+	if int(drone.get("current_hp", 0)) != 18:
+		_fail("turn-1 drone HP: expected 18 (35 - marked 17), got %d" % int(drone.get("current_hp", 0)))
 	if bool(drone.get("marked", false)):
-		_fail("turn-1 mark must be CONSUMED by Neural Override")
+		_fail("turn-1 mark must be CONSUMED by Overdrive")
 	var strike: Dictionary = _hero_state(scene, "combat")
-	if int(strike.get("current_hp", 0)) != 52:
-		_fail("turn-1 Strike HP: expected 52 (Stab 7, shield soaked 4), got %d" % int(strike.get("current_hp", 0)))
-	if int(scene.get("protocol_points")) != 2:
-		_fail("turn-2 protocol: expected 2 (income 1 + Field Patch 1), got %d" % int(scene.get("protocol_points")))
+	if int(strike.get("current_hp", 0)) != 51:
+		_fail("turn-1 Strike HP: expected 51 (Stab 7, shield soaked 3), got %d" % int(strike.get("current_hp", 0)))
+	if int(scene.get("protocol_points")) != 1:
+		_fail("turn-2 protocol: expected 1 (income only), got %d" % int(scene.get("protocol_points")))
 
-	# Step 13: recap (tap). Step 14: roll again -> step 15 waiter -> 16.
+	# Step 12: recap (tap). Step 13: roll again -> step 14 waiter -> 15.
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 14)
+	await _expect_step(controller, 13)
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 16)
+	await _expect_step(controller, 15)
 	await _wait_for_phase(scene, "targeting")
 
-	# Step 16: protocol beat (tap). Step 17: Nudge button (phase nudge_pick).
+	# Step 15: protocol beat (tap). Step 16: Nudge button (phase nudge_pick).
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 17)
+	await _expect_step(controller, 16)
 	_check_holes(controller)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _expect_step(controller, 18)
+	await _expect_step(controller, 17)
 
-	# Step 18: nudge Strike's die (8 -> 11, the band jump).
+	# Step 17: nudge Strike's die (8 -> 11, the band jump).
 	_check_holes(controller)
 	var combat_id: String = _state_id_for_unit(scene, "combat")
 	protocol.call("_apply_nudge", combat_id)
-	await _expect_step(controller, 19)
+	await _expect_step(controller, 18)
 
-	# Step 19: band-jump recap (tap). Step 20: targeted heal (assigned medic).
+	# Step 18: band-jump recap (tap, die + pip holes). Step 19: heal beat.
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 20)
+	await _expect_step(controller, 19)
 	_check_holes(controller)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
-	await _expect_step(controller, 21)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
+	await _expect_step(controller, 20)
 
-	# Step 21: assign the rest (phase ready_to_end).
+	# Step 20: assign the rest (Rail Strike at the drone, Barrier Deploy on
+	# an ally) -> ready_to_end.
 	_check_holes(controller)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 22)
+	await _expect_step(controller, 21)
 
-	# Step 22: Shock Charge (gated item_used) — 23 HP, dice deal 21, the item
-	# closes the gap. Enemy-targeted pick: item button -> tap the drone.
+	# Step 21: Shock Charge (gated item_used) — 18 HP, dice deal 10, the item
+	# stays mathematically necessary.
 	_check_holes(controller)
 	await _use_shock_charge(scene)
-	await _expect_step(controller, 23)
+	await _expect_step(controller, 22)
 	drone = _enemy_state(scene)
-	if int(drone.get("current_hp", 0)) != 13:
-		_fail("Shock Charge: expected drone at 13 (23 - 10), got %d" % int(drone.get("current_hp", 0)))
+	if int(drone.get("current_hp", 0)) != 8:
+		_fail("Shock Charge: expected drone at 8 (18 - 10), got %d" % int(drone.get("current_hp", 0)))
 
-	# Step 23: END TURN (gated won) — 21 dice damage into 13.
+	# Step 22: END TURN (gated won) — Rail Strike 10 into 8.
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 24)
+	await _expect_step(controller, 23)
 	if not bool(_enemy_state(scene).get("dead", false)):
 		_fail("drone must be dead at the DRILL COMPLETE beat")
 
-	# Step 24: DRILL COMPLETE (tap_finish) -> main menu; done-flag persisted;
-	# primers must NOT have been marked seen (they fire in the first real
-	# battle — the drill sights mark/leech/protocol icons but suppression
-	# never writes primers_seen).
+	# Step 23: DRILL COMPLETE (tap_finish) -> main menu; done-flag persisted;
+	# primers never marked seen (they fire in the first real battle).
 	_check_holes(controller)
 	controller.call("_next")
 	await _wait_frames(10)
@@ -198,16 +205,16 @@ func _run_happy_path() -> void:
 	var sm: Node = root.get_node("/root/SaveManager")
 	if not bool(sm.call("is_tutorial_done")):
 		_errors.append("tutorial_done flag not persisted (main-menu checkmark would not render)")
-	for primer_id in ["primer_mark", "primer_leech", "primer_icon_protocol"]:
+	for primer_id in ["primer_mark", "primer_icon_protocol"]:
 		if bool(sm.call("is_primer_seen", primer_id)):
 			_errors.append("%s marked seen during the tutorial — it must still fire in the first real battle" % primer_id)
 
 
 # ── Scenario B: stall-proofing ───────────────────────────────────────────────
-# The player fights the script: the mark is resequenced to fire AFTER Neural
-# Override (unspent in turn 1), a second Nudge on the same die is attempted
-# (no-op), and a stray Nudge on Field Engineer drains the pool to 0. The
-# cost-0 tutorial item must still fire and the drone must still die.
+# The player fights the script: the mark is resequenced to fire AFTER
+# Overdrive (unspent in turn 1, drone 24), a double-Nudge is attempted on an
+# empty pool (no-op), and the cost-0 tutorial item + the late-paying mark on
+# Rail Strike still kill on turn 2.
 
 func _run_stall_proof_path() -> void:
 	var scene: Node = await _start_drill()
@@ -231,82 +238,74 @@ func _run_stall_proof_path() -> void:
 	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
 	await _expect_step(controller, 7)
 
-	# Steps 7/8 in the taught order (combat then medic)...
+	# Steps 7/8 in the taught order (combat then engineer)...
 	await _pick_and_assign(scene, _state_id_for_unit(scene, "combat"))
 	await _expect_step(controller, 8)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"))
 	await _expect_step(controller, 9)
 	controller.call("_next")
 	await _wait_frames(3)
-	controller.call("_next")
-	await _wait_frames(3)
-	await _expect_step(controller, 11)
+	await _expect_step(controller, 10)
 
 	# ...then RESEQUENCE: re-tap Strike Unit — its stamp clears and the
-	# recommit appends at the END of the order, so Neural Override now fires
-	# BEFORE the mark. The unspent mark must persist into turn 2.
+	# recommit appends at the END of the order, so Overdrive now fires BEFORE
+	# the mark. The unspent mark must persist into turn 2.
 	var combat_id: String = _state_id_for_unit(scene, "combat")
 	scene.call("_unassign_hero_cast", combat_id)
 	await _wait_frames(2)
 	_assign_active_to_legal(scene)
 	await _wait_frames(2)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"))
-	await _expect_step(controller, 12)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	await _expect_step(controller, 11)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 13)
+	await _expect_step(controller, 12)
 
 	var drone: Dictionary = _enemy_state(scene)
-	if int(drone.get("current_hp", 0)) != 27:
-		_fail("stall-proof turn 1: expected 27 (unmarked 8), got %d" % int(drone.get("current_hp", 0)))
+	if int(drone.get("current_hp", 0)) != 24:
+		_fail("stall-proof turn 1: expected 24 (unmarked 11), got %d" % int(drone.get("current_hp", 0)))
 	if not bool(drone.get("marked", false)):
 		_fail("stall-proof turn 1: the unspent mark must PERSIST on the drone")
 
 	controller.call("_next")
-	await _expect_step(controller, 14)
+	await _expect_step(controller, 13)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 16)
+	await _expect_step(controller, 15)
 	await _wait_for_phase(scene, "targeting")
 	controller.call("_next")
-	await _expect_step(controller, 17)
+	await _expect_step(controller, 16)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _expect_step(controller, 18)
+	await _expect_step(controller, 17)
 	protocol.call("_apply_nudge", combat_id)
-	await _expect_step(controller, 19)
+	await _expect_step(controller, 18)
 
-	# Double-Nudge on the same die: a no-op (engine "already"), pool unchanged;
-	# 11 + 3 would be 14, still Rail Strike's 11-15 band anyway.
-	var pool_before: int = int(scene.get("protocol_points"))
+	# Double-Nudge attempt on the emptied pool (1 income - 1 spent = 0): the
+	# button press can't arm, the nudge stays +3, the pool stays 0. (14 would
+	# still be Rail Strike's 11-15 band — audit-pinned.)
 	protocol.call("_on_nudge_button_pressed")
 	protocol.call("_apply_nudge", combat_id)
 	if int((scene.get("hero_roll_nudges") as Dictionary).get(combat_id, 0)) != 3:
-		_fail("double-Nudge must be a no-op on the same die (nudge stays +3)")
-	if int(scene.get("protocol_points")) != pool_before:
-		_fail("double-Nudge must not charge twice")
-	# Stray Nudge on Field Engineer (12 -> 15, still Overdrive) drains the
-	# pool to 0 — the tutorial item is cost-0, so no dead end.
-	protocol.call("_on_nudge_button_pressed")
-	protocol.call("_apply_nudge", _state_id_for_unit(scene, "engineer"))
+		_fail("double-Nudge must be a no-op (nudge stays +3)")
+	if int(scene.get("protocol_points")) != 0:
+		_fail("double-Nudge must not charge on an empty pool, got %d" % int(scene.get("protocol_points")))
 
 	controller.call("_next")
-	await _expect_step(controller, 20)
+	await _expect_step(controller, 19)
 	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
-	await _expect_step(controller, 21)
+	await _expect_step(controller, 20)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 22)
+	await _expect_step(controller, 21)
 
-	if int(scene.get("protocol_points")) != 0:
-		_fail("stall-proof: pool should be drained to 0 by the stray Nudge, got %d" % int(scene.get("protocol_points")))
+	# The cost-0 tutorial item must fire on a 0 pool — no dead end.
 	await _use_shock_charge(scene)
-	await _expect_step(controller, 23)
-	if int(_enemy_state(scene).get("current_hp", 0)) != 17:
-		_fail("stall-proof: expected drone at 17 (27 - 10), got %d" % int(_enemy_state(scene).get("current_hp", 0)))
+	await _expect_step(controller, 22)
+	if int(_enemy_state(scene).get("current_hp", 0)) != 14:
+		_fail("stall-proof: expected drone at 14 (24 - 10), got %d" % int(_enemy_state(scene).get("current_hp", 0)))
 
-	# END TURN: the persisted mark pays out in turn 2 (Rail Strike 10 -> 15 or
-	# Overdrive 11 -> 17, order-dependent) — 17 HP dies either way.
+	# END TURN: the persisted mark pays late on Rail Strike (10 -> 15) — 14 dies.
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 24)
+	await _expect_step(controller, 23)
 	if not bool(_enemy_state(scene).get("dead", false)):
 		_fail("stall-proof: the drill dead-ended — drone alive after turn 2 + item")
 	controller.call("_next")
@@ -325,7 +324,6 @@ func _start_drill() -> Node:
 	if scene == null or scene.get("hero_card_views") == null:
 		_fail("Battle scene failed to load for tutorial")
 		return null
-	# The v2 loadout: exactly one Shock Charge.
 	var held: Array = gs.get("consumables")
 	if held.size() != 1 or str(held[0]) != "shock_charge":
 		_fail("tutorial loadout must be exactly one shock_charge, got %s" % str(held))
@@ -360,9 +358,7 @@ func _wait_for_phase(scene: Node, phase: String) -> void:
 	_errors.append("Timed out waiting for phase %s" % phase)
 
 
-# Every step that declares targets/fullscreen must produce at least one hole
-# (v2: includes the new die:<unit_id> and item keys against the CURRENT card
-# chrome — cast-order badges included).
+# Every step that declares targets/fullscreen must produce at least one hole.
 func _check_holes(controller: Node) -> void:
 	var step: Dictionary = controller.call("_current")
 	var wants_spotlight: bool = bool(step.get("fullscreen", false)) or not (step.get("targets", []) as Array).is_empty()
@@ -371,6 +367,65 @@ func _check_holes(controller: Node) -> void:
 	var holes: Array = controller.call("_compute_holes", step)
 	if holes.is_empty():
 		_errors.append("Step %d ('%s…') resolved NO spotlight holes" % [int(controller.get("_step")), str(step.get("text", "")).left(32)])
+
+
+# Two-stage assign spotlight (playtest items 5/6): after the gated hero's
+# targeting_started, the live holes must contain every legal target's card
+# center — the player never taps into dimmed screen.
+func _assert_spotlight_on_legal(scene: Node, controller: Node) -> void:
+	var spot: Variant = controller.get("_spot")
+	if spot == null:
+		_errors.append("retarget assert: no spotlight layer")
+		return
+	var canvas: Variant = (spot as Object).get("_dim_canvas")
+	if canvas == null:
+		_errors.append("retarget assert: no dim canvas")
+		return
+	var holes: Array = (canvas as Object).get("holes")
+	var side: String = str(scene.get("legal_target_side"))
+	for id_variant in scene.get("legal_target_ids"):
+		var target_id: String = str(id_variant)
+		var rect: Rect2
+		if side == "enemy" or side == "any":
+			rect = controller.call("_enemy_card_rect", target_id)
+		else:
+			rect = controller.call("_hero_card_rect", target_id)
+		if rect.size == Vector2.ZERO:
+			continue
+		var center: Vector2 = rect.get_center()
+		var covered: bool = false
+		for hole_variant in holes:
+			if (hole_variant as Rect2).has_point(center):
+				covered = true
+				break
+		if not covered:
+			_errors.append("step %d spotlight did NOT retarget onto legal target '%s' (side %s)" % [int(controller.get("_step")), target_id, side])
+
+
+# Playtest item 4: no rigged band on either turn may carry leech (and none
+# may reach the nat-20 overload band).
+func _assert_no_leech_in_rig(scene: Node) -> void:
+	var rigs: Variant = scene.get("TUTORIAL_HERO_ROLLS")
+	if not (rigs is Array):
+		_errors.append("TUTORIAL_HERO_ROLLS not readable")
+		return
+	var dm: Object = scene.get("dice_manager")
+	for rig_variant in rigs:
+		var rig: Dictionary = rig_variant
+		for unit_id in rig.keys():
+			var state: Dictionary = _hero_state(scene, str(unit_id))
+			var unit: Object = state.get("unit", null) as Object
+			if unit == null:
+				continue
+			# The nudged value can shift the band: check the rigged roll AND
+			# rigged roll + 3 (the one taught Nudge).
+			for roll in [int(rig[unit_id]), mini(int(rig[unit_id]) + 3, 20)]:
+				var entry: Dictionary = dm.call("get_ability_for_roll", unit, roll)
+				var raw: Dictionary = entry.get("raw", {})
+				if bool(raw.get("leech", false)):
+					_errors.append("leech leaked into the drill: %s roll %d -> %s" % [str(unit_id), roll, str(entry.get("ability_name", ""))])
+				if roll >= 20:
+					_errors.append("rig can reach the nat-20 overload band: %s" % str(unit_id))
 
 
 func _enemy_state(scene: Node) -> Dictionary:
@@ -394,8 +449,6 @@ func _state_id_for_unit(scene: Node, unit_id: String) -> String:
 	return str(state.get("id", ""))
 
 
-# Assign the currently-targeting hero to the first LEGAL target (whatever side
-# its ability wants — enemy for an attack, ally for a heal/shield).
 func _assign_active_to_legal(scene: Node) -> void:
 	var side: String = str(scene.get("legal_target_side"))
 	var ids: Variant = scene.get("legal_target_ids")
@@ -405,15 +458,19 @@ func _assign_active_to_legal(scene: Node) -> void:
 		_errors.append("no legal target for the active hero (side='%s')" % side)
 
 
-func _pick_and_assign(scene: Node, hero_id: String) -> void:
+# Select then assign. When `controller` is passed, the step is an
+# assigned-gated beat for THIS hero — assert the two-stage retarget landed on
+# the legal targets between the select and the assign.
+func _pick_and_assign(scene: Node, hero_id: String, controller: Node = null) -> void:
 	scene.call("_select_targeting_hero", hero_id)
 	await _wait_frames(2)
+	if controller != null:
+		_assert_spotlight_on_legal(scene, controller)
 	_assign_active_to_legal(scene)
 	await _wait_frames(2)
 
 
-# Fire the Shock Charge through the real item flow: item accept -> enemy-pick
-# phase -> tap the drone (same handler the enemy card press uses).
+# Fire the Shock Charge through the real item flow.
 func _use_shock_charge(scene: Node) -> void:
 	var protocol: Node = scene.get("_protocol")
 	var item: Resource = root.get_node("/root/DataManager").call("get_item", "shock_charge")

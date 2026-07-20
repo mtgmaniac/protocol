@@ -13,7 +13,10 @@ extends Node
 const LAYER := 110
 const PAD := 14.0
 const DIE_HALF_PX := 84.0       # half-size of a rendered die, for spotlighting a single unit's die
-const SKIP_FONT := 26
+# Frames a step will wait for its target rects to become valid before showing
+# anyway (playtest item 9 — steps that follow a resolution animation could
+# place against a not-yet-laid-out rect).
+const LAYOUT_RETRY_FRAMES := 30
 
 # Preload (not the global class name) so a fresh checkout's headless run parses
 # before the editor rebuilds the class cache — same gotcha as the sim policies.
@@ -35,46 +38,49 @@ func start(scene: Node) -> void:
 	_show_step(0)
 
 
-# ── Step script (v2, 2026-07-20 — honest rig, cast order, shield, item) ─────────
+# ── Step script (v2.1, playtest fix pass 2026-07 — 24 beats) ────────────────────
 # Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
 # predicate), hero:"" (optional event predicate — the unit id carried in the
 # event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
-# Keys resolve to battle nodes in _target_rect(). Copy is Kev-final; the two
-# engine corrections (drone's Stab is 7, badges are plain numerals per the
-# glyph law) are fixed to the engine, never the reverse.
+# Keys resolve to battle nodes in _target_rect(). Copy is Kev-final; engine
+# corrections only (drone's Stab is 7; badges are plain numerals — glyph law;
+# the fullscreen beat names Barrier Deploy, engineer's REAL turn-2 band).
+# Playtest pass: mark payoff is ENGINEER (leech stays out of the drill), the
+# order-badges beat is deleted, and every assigned-gated beat runs the
+# TWO-STAGE spotlight (die+card → legal targets on targeting_started).
 func _build_steps() -> Array:
 	return [
 		# Phase 0 — orientation
 		{"targets": [], "title": "WELCOME", "text": "Welcome to Overload Protocol. I'll walk you through your first fight."},
 		{"targets": ["header"], "text": "This bar stays with you all run - squad progress and the Help menu live here."},
-		{"targets": ["hero_cards", "enemy_cards"], "separate": true, "text": "Your three specialists face a Scrap Drone. It has 35 HP and it will hit back."},
+		{"targets": ["enemy_cards"], "text": "This is your target - a Scrap Drone. 35 HP, and it hits back."},
 		# Phase 1 — turn 1
 		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
 		# Invisible waiter: the coach hides while the dice roll and settle.
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit marks, Splice Medic hits for 8, Field Engineer shields."},
+		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit marks, Field Engineer hits for 11, Splice Medic shields."},
 		{"targets": ["hero_cards"], "text": "Long-press a card for the full breakdown - long-press works on nearly everything. Try it.", "advance": "inspected"},
 		# Cast order (Model A): assignment order = firing order. Set up first, spend second.
-		{"targets": ["die:combat"], "text": "Your squad fires in the order you assign. Set up first: tap Strike Unit's die, then the drone, to mark it.", "advance": "assigned", "hero": "combat"},
-		{"targets": ["die:medic"], "text": "Now spend it: Splice Medic's Neural Override hits a marked target for +50% - 8 becomes 12. Tap the die, then the drone.", "advance": "assigned", "hero": "medic"},
-		# Order badges are tap-through (Kev ruling: never force undoing a correct assignment).
-		{"targets": ["hero_cards"], "text": "The 1-2 badges are your firing order. Re-tap any card to pull it back and resequence."},
-		{"targets": ["enemy_readouts"], "text": "The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands."},
-		{"targets": ["die:engineer"], "text": "Blunt it: tap Field Engineer's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "engineer"},
+		{"targets": ["die:combat", "card:combat"], "separate": true, "text": "Your squad fires in the order you assign. Set up first: tap Strike Unit's die, then the drone, to mark it.", "advance": "assigned", "hero": "combat"},
+		{"targets": ["die:engineer", "card:engineer"], "separate": true, "text": "Now spend it: Field Engineer's Overdrive hits a marked target for +50% - 11 becomes 17. Tap the die, then the drone.", "advance": "assigned", "hero": "engineer"},
+		# Telegraph: the drone's card + its ability pip + its die (separate holes).
+		{"targets": ["enemy_card", "enemy_pip", "enemy_die"], "separate": true, "text": "The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands."},
+		{"targets": ["die:medic", "card:medic"], "separate": true, "text": "Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic"},
 		{"targets": ["roll_button"], "text": "Lock it in - your squad fires in order, then the drone acts.", "advance": "turn_resolved"},
-		{"targets": ["combat", "battle_log"], "separate": true, "text": "Your order paid off - the mark turned 8 into 12. The drone hit for 7: the shield soaked 4, Strike Unit took 3. Time to patch up."},
+		{"targets": ["combat", "battle_log"], "separate": true, "text": "Your order paid off - the mark turned 11 into 17. The drone hit for 7: the shield soaked 3, Strike Unit took 4. Time to patch up."},
 		# Phase 2 — turn 2
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["protocol_value"], "text": "You banked 2 Protocol - +1 income every turn, and Field Patch generated 1 more. Time to spend."},
+		{"targets": ["protocol_value"], "text": "You banked 1 Protocol - income ticks +1 every turn, caps at 10. That's exactly enough for a Nudge."},
 		# Nudge stays TWO beats (Kev fix #3): button beat advances the instant the
 		# press arms the pick; the die beat gates on the applied nudge.
 		{"targets": ["nudge"], "text": "Nudge costs 1 - tap it. (Reroll and Set cost 2 and 4 - they unlock as you bank more.)", "advance": "phase", "phase": "nudge_pick"},
 		{"targets": ["combat"], "text": "Tap Strike Unit's die - +3 turns an 8 into an 11.", "advance": "nudged"},
-		{"targets": ["ability:combat"], "text": "It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10."},
-		{"targets": ["die:medic"], "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore that hit.", "advance": "assigned", "hero": "medic"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike and Overdrive at the drone.", "advance": "phase", "phase": "ready_to_end"},
-		{"targets": ["item"], "text": "The drone has 23 HP; your dice deal 21. Items don't cost a die - tap the Shock Charge and close the gap.", "advance": "item_used"},
+		# Band jump: the die + its ability pip, separate holes (playtest item 10).
+		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10."},
+		{"targets": ["die:medic", "card:medic"], "separate": true, "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore that hit.", "advance": "assigned", "hero": "medic"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike at the drone, Barrier Deploy on an ally.", "advance": "phase", "phase": "ready_to_end"},
+		{"targets": ["item"], "text": "The drone has 18 HP; your dice deal 10. Items don't cost a die - tap the Shock Charge and close the gap.", "advance": "item_used"},
 		{"targets": ["roll_button"], "text": "End the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu holds the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]
@@ -96,6 +102,13 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	# control and the player can watch the roll / turn resolution play out.
 	if (event == &"roll_pressed" or event == &"end_turn_pressed") and String(event) != mode:
 		_reveal_whole_screen()
+	# Two-stage assign spotlight (playtest items 5/6 — "selecting in the dark"):
+	# when the GATED hero starts targeting, the hole MOVES to the legal
+	# target(s) so the player never taps into dimmed screen. Reuses the
+	# existing targeting_started event + set_holes; the coach text stays.
+	if event == &"targeting_started" and mode == "assigned" \
+			and _current().has("hero") and str(payload.get("hero", "")) == str(_current()["hero"]):
+		_retarget_spotlight_to_legal()
 	if mode == "tap" or mode == "tap_finish":
 		return
 	if String(event) != mode:
@@ -118,6 +131,36 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 func _reveal_whole_screen() -> void:
 	if _spot != null:
 		_spot.set_holes([_spot.fullscreen_hole()])
+
+
+# Stage 2 of an assign beat: move the holes to the scene's CURRENT legal
+# targets — enemy card + its die for hostile picks, the legal ally card(s)
+# for friendly picks. Falls back to the whole screen if nothing resolves (the
+# player must never be locked out).
+func _retarget_spotlight_to_legal() -> void:
+	if _spot == null:
+		return
+	var side: String = str(_scene.get("legal_target_side"))
+	var ids: Variant = _scene.get("legal_target_ids")
+	if not (ids is Array) or (ids as Array).is_empty():
+		return
+	var holes: Array = []
+	for id_variant in ids:
+		var target_id: String = str(id_variant)
+		if side == "enemy" or side == "any":
+			var card_rect: Rect2 = _enemy_card_rect(target_id)
+			if card_rect.size != Vector2.ZERO:
+				holes.append(card_rect.grow(PAD))
+			var die_rect: Rect2 = _die_rect("enemy", target_id)
+			if die_rect.size != Vector2.ZERO:
+				holes.append(die_rect.grow(PAD))
+		if side == "hero" or side == "dead_hero" or side == "any":
+			var hero_rect: Rect2 = _hero_card_rect(target_id)
+			if hero_rect.size != Vector2.ZERO:
+				holes.append(hero_rect.grow(PAD))
+	if holes.is_empty():
+		holes = [_fullscreen_hole()]
+	_spot.set_holes(holes)
 
 
 # Taps only arrive from the SpotlightLayer when the step is interactive
@@ -176,6 +219,21 @@ func _layout_step() -> void:
 			_spot.dismiss()
 		return
 	var holes: Array = _compute_holes(step)
+	# Never place against a not-yet-valid rect (playtest item 9): a step that
+	# follows a resolution animation can run before its target has laid out —
+	# the coach then placed off a fallback rect for a frame. Wait (bounded)
+	# for a real hole; a step change while waiting abandons this pass.
+	if holes.is_empty() and not (step.get("targets", []) as Array).is_empty():
+		var waiting_step: int = _step
+		for _i in range(LAYOUT_RETRY_FRAMES):
+			if not is_inside_tree() or get_tree() == null:
+				return
+			await get_tree().process_frame
+			if _step != waiting_step:
+				return
+			holes = _compute_holes(step)
+			if not holes.is_empty():
+				break
 	# Whole-screen steps pin the coach to the bottom so it never covers the
 	# centre Roll/End-Turn button; coach_center steps read mid-screen instead
 	# (Kev 2026-07-10: bottom text was hard to read on assign-dice beats).
@@ -237,6 +295,10 @@ func _target_rect(key: String) -> Rect2:
 	# whole unit so the spotlight always resolves a hole.
 	if key.begins_with("die:"):
 		return _hero_die_rect_for_unit(key.substr(4))
+	# "card:<unit_id>" spotlights just that hero's card (stage 1 of the
+	# two-stage assign spotlight pairs it with the die as separate holes).
+	if key.begins_with("card:"):
+		return _hero_card_rect_for_unit(key.substr(5))
 	# The enemy's status-badge slot (the MARK chip); falls back to the enemy card so the
 	# spotlight always resolves a hole even before the chip has laid out.
 	if key == "enemy_status":
@@ -277,6 +339,14 @@ func _target_rect(key: String) -> Rect2:
 			return _merge_nonempty(_node_rect(_scene.get("enemy_cards")), _node_rect(_scene.get("enemy_dice_row")))
 		"enemy_readouts":
 			return _merge_nonempty(_node_rect(_scene.get("enemy_readouts")), _node_rect(_scene.get("enemy_dice_row")))
+		# Telegraph beat (playtest item 8): the FIRST enemy's card / ability
+		# pip / die as three separate keys — not the whole readout strip.
+		"enemy_card":
+			return _first_enemy_part_rect("card")
+		"enemy_pip":
+			return _first_enemy_part_rect("readout")
+		"enemy_die":
+			return _first_enemy_die_rect()
 		"protocol_bar":
 			return _merge_nonempty(_node_rect(_scene.get("protocol_bar")), _node_rect(_scene.get("protocol_panel")))
 		"protocol_value":
@@ -318,6 +388,70 @@ func _hero_die_rect_for_unit(unit_id: String) -> Rect2:
 				var die_rect: Rect2 = _hero_die_rect(str(state.get("id", "")))
 				return die_rect if die_rect.size != Vector2.ZERO else _hero_unit_rect(unit_id)
 	return _hero_unit_rect(unit_id)
+
+
+# Just one hero's CARD (no readout, no die) — stage 1 of the two-stage assign
+# spotlight. Falls back to the whole unit if the card hasn't laid out.
+func _hero_card_rect_for_unit(unit_id: String) -> Rect2:
+	var views: Variant = _scene.get("hero_card_views")
+	if views is Array:
+		for view_variant in views:
+			var view: Dictionary = view_variant
+			var state: Dictionary = view.get("state", {})
+			var unit: Object = state.get("unit", null) as Object
+			if unit != null and str(unit.id) == unit_id:
+				var card_rect: Rect2 = _node_rect(view.get("card", null))
+				return card_rect if card_rect.size != Vector2.ZERO else _hero_unit_rect(unit_id)
+	return _hero_unit_rect(unit_id)
+
+
+# Hero card rect by STATE id (stage-2 retarget of friendly picks).
+func _hero_card_rect(state_id: String) -> Rect2:
+	var views: Variant = _scene.get("hero_card_views")
+	if not (views is Array):
+		return Rect2()
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var state: Dictionary = view.get("state", {})
+		if str(state.get("id", "")) == state_id:
+			return _node_rect(view.get("card", null))
+	return Rect2()
+
+
+# Enemy card rect by STATE id (stage-2 retarget of hostile picks).
+func _enemy_card_rect(state_id: String) -> Rect2:
+	var views: Variant = _scene.get("enemy_card_views")
+	if not (views is Array):
+		return Rect2()
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var state: Dictionary = view.get("state", {})
+		if str(state.get("id", "")) == state_id:
+			return _node_rect(view.get("card", null))
+	return Rect2()
+
+
+# The FIRST enemy's card or readout node rect (telegraph beat); falls back to
+# the merged enemy strip so the spotlight always resolves a hole.
+func _first_enemy_part_rect(part: String) -> Rect2:
+	var views: Variant = _scene.get("enemy_card_views")
+	if views is Array and not (views as Array).is_empty():
+		var view: Dictionary = (views as Array)[0]
+		var rect: Rect2 = _node_rect(view.get(part, null))
+		if rect.size != Vector2.ZERO:
+			return rect
+	return _merge_nonempty(_node_rect(_scene.get("enemy_cards")), _node_rect(_scene.get("enemy_readouts")))
+
+
+func _first_enemy_die_rect() -> Rect2:
+	var views: Variant = _scene.get("enemy_card_views")
+	if views is Array and not (views as Array).is_empty():
+		var view: Dictionary = (views as Array)[0]
+		var state: Dictionary = view.get("state", {})
+		var rect: Rect2 = _die_rect("enemy", str(state.get("id", "")))
+		if rect.size != Vector2.ZERO:
+			return rect
+	return _node_rect(_scene.get("enemy_dice_row"))
 
 
 # Just the ability-pip readout row for one hero (Batch 5 — highlight the ability, not the unit).
@@ -383,19 +517,23 @@ func _dice_tray_rect() -> Rect2:
 	return r if r.size.x > 2.0 and r.size.y > 2.0 else Rect2()
 
 
-# Global rect of the rendered die for one hero state, around its tray anchor point.
-func _hero_die_rect(state_id: String) -> Rect2:
+# Global rect of the rendered die for one state, around its tray anchor point.
+func _die_rect(side: String, state_id: String) -> Rect2:
 	var layout: Object = _layout_node()
 	if layout == null or state_id == "":
 		return Rect2()
 	var cz: Rect2 = layout.get_combat_zone_rect()
 	if cz.size.x <= 2.0 or cz.size.y <= 2.0:
 		return Rect2()
-	var pt: Vector2 = layout.get_dice_anchor_point("hero", state_id)
+	var pt: Vector2 = layout.get_dice_anchor_point(side, state_id)
 	if pt == Vector2.INF:
 		return Rect2()
 	var g: Vector2 = pt + cz.position
 	return Rect2(g - Vector2(DIE_HALF_PX, DIE_HALF_PX), Vector2(DIE_HALF_PX * 2.0, DIE_HALF_PX * 2.0))
+
+
+func _hero_die_rect(state_id: String) -> Rect2:
+	return _die_rect("hero", state_id)
 
 
 # The spend buttons moved into the ProtocolActions module (architecture review
@@ -427,36 +565,13 @@ func _node_rect(node: Variant) -> Rect2:
 
 # ── Build the overlay UI ──────────────────────────────────────────────────────────
 func _build_ui() -> void:
-	# All dim/ring/coachmark visuals live in the shared SpotlightLayer; the
-	# tutorial only adds its persistent Skip button on top.
+	# All dim/ring/coachmark visuals live in the shared SpotlightLayer.
+	# The SKIP button is DELETED (playtest fix pass, Kev ruling): the drill is
+	# opt-in from the splash, replayable from Help, two turns long, and
+	# provably un-strandable (the hostile-path smoke). Removing it also ends
+	# its coachmark occlusion. Mid-drill abandonment remains via the header's
+	# back button (battle binds it to return-to-menu, which reset_run()s and
+	# clears tutorial_mode).
 	_spot = SpotlightLayerScript.new(LAYER)
 	_spot.tapped.connect(_on_spot_tapped)
 	add_child(_spot)
-
-	# Persistent Skip — always available. Sits at the very top-left, over the FACILITY header label.
-	var skip := Button.new()
-	skip.text = "SKIP TUTORIAL"
-	skip.custom_minimum_size = Vector2(360, 84)
-	skip.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_button(skip, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, SKIP_FONT)
-	skip.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
-	skip.pressed.connect(_finish)
-	var skip_wrap := Control.new()
-	skip_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	skip_wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# On the spotlight's canvas layer so Skip renders above the dim.
-	_spot.add_overlay_control(skip_wrap)
-	# Vertically centred within the header band's CONTENT region, pinned to the
-	# left over the FACILITY label. On a cutout device the band is safe_top
-	# taller and its content sits below the camera — center in that region, not
-	# the raw band rect (which would seat SKIP partially under the punch-hole).
-	var header_band: float = _target_rect("header").size.y
-	var skip_h: float = 84.0
-	var content_h: float = maxf(header_band - float(PixelUI.safe_top), skip_h)
-	var skip_top: float = maxf(float(PixelUI.safe_top) + (content_h - skip_h) * 0.5, 12.0)
-	skip.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	skip.offset_left = 20
-	skip.offset_top = skip_top
-	skip.offset_right = 380
-	skip.offset_bottom = skip_top + skip_h
-	skip_wrap.add_child(skip)

@@ -372,28 +372,57 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   deleted). Drone roll rigged to 6 both turns = Stab, 7 dmg (the kit has no
   8-dmg band — copy was fixed to the engine per the v2 ruling), aimed at
   Strike via its real SYSTEMATIC slot-0 personality.
-- **Turn 1** rolls {combat 3, engineer 2, medic 13}: Target Lock (mark) →
-  Neural Override (8 → 12 on the marked drone; 35 → 23) teaches CAST ORDER
-  (set up first, spend second); Field Patch (4 shield on Strike, +1 Protocol)
-  soaks 4 of the Stab (Strike takes 3). **Turn 2** rolls {combat 8 → Nudged
-  11, engineer 12, medic 6}: the band jump (Suppression Fire 6 → Rail Strike
-  10), Overdrive 11, Infusion heal, and the item beat — `start_tutorial_run`
-  grants exactly ONE Shock Charge (10 dmg) that closes 23 vs 21.
-- **25 steps** (was 23): no status-badge beat (chip teaching is DELEGATED TO
-  PRIMERS, Kev ruling); the order-badges beat is TAP-THROUGH (never force
-  undoing a correct assignment); both friendly picks stay (shield T1, heal
-  T2). Step gate schema gains an optional `hero` payload predicate (same
-  pattern as `phase`) — `assigned` gates match a SPECIFIC hero; plus an
-  `item_used` event emitted where `_apply_item_effect` resolves. New spotlight
-  keys: `die:<unit_id>` (single die, falls back to the unit) and `item` (the
-  footer consumable button).
+- **Rig v2.1 (playtest fix pass, Pixel 2026-07):** the mark payoff belongs to
+  FIELD ENGINEER, not Medic — every Medic damage band below the nat-20
+  carries leech (an off-script icon for turn 1) and Shock Therapy (20) would
+  fire the overload slam AND deal 30 through the mark, collapsing the
+  two-turn structure. **Leech appears nowhere in the drill** (smoke-asserted,
+  including nudged +3 variants; no rigged band reaches 20).
+  **Turn 1** rolls {combat 3, engineer 12, medic 2}: Target Lock (mark) →
+  Overdrive (11 → 17 on the marked drone; 35 → 18) teaches CAST ORDER (set
+  up first, spend second); Diagnostic Pulse (3 heal + 3 shield on Strike —
+  the heal overflows at full HP, honest and harmless) soaks 3 of the Stab
+  (Strike takes 4). **Turn 2** rolls {combat 8 → Nudged 11, engineer 7,
+  medic 6}: the band jump (Suppression Fire 6 → Rail Strike 10), Barrier
+  Deploy (9 shield, uncommented insurance assigned in the fullscreen beat),
+  Infusion heal, and the item beat — the ONE granted Shock Charge (10)
+  closes 18 vs 10, mathematically necessary. Protocol entering turn 2 is
+  exactly 1 (income only): the "exactly one Nudge" framing.
+- **24 steps**: no status-badge beat (chip teaching is DELEGATED TO PRIMERS,
+  Kev ruling); the order-badges beat is DELETED (playtest ruling — no badge
+  explanation, no resequencing encouragement); beat 3 introduces the DRONE
+  only (the squad is carried by the bands beat); both friendly picks stay
+  (shield T1, heal T2). Step gate schema has the optional `hero` payload
+  predicate — `assigned` gates match a SPECIFIC hero — plus the `item_used`
+  event emitted where `_apply_item_effect` resolves. Spotlight keys:
+  `die:<unit_id>` / `card:<unit_id>` (fall back to the unit), `item` (footer
+  consumable button), `enemy_card` / `enemy_pip` / `enemy_die` (the first
+  enemy's card / ability pip / die — the telegraph beat's separate holes).
+- **Two-stage assign spotlight (playtest items 5/6 — THE RULE):** every step
+  gated on `assigned` with a `hero` predicate spotlights the hero's die +
+  card (separate holes) as stage 1; when THAT hero's `targeting_started`
+  fires, the holes MOVE to the legal target(s) — enemy card + die for
+  hostile picks, the legal ally card(s) for friendly picks — so the player
+  never taps into dimmed screen. Reuses `targeting_started` + `set_holes`,
+  coach text unchanged through the swap; smoke-asserted on every gated beat.
+- **SKIP button DELETED (playtest ruling, recorded):** the drill is opt-in
+  from the splash, replayable from Help, two turns long, and provably
+  un-strandable (the hostile-path smoke) — and removing it ends its coachmark
+  occlusion. Mid-drill abandonment remains via the header back button
+  (return-to-menu → `reset_run()`, which clears `tutorial_mode`).
+- **Coachmark placement (playtest item 9):** the coach stays HIDDEN until it
+  is placed (`SpotlightLayer.spotlight` — the placement await used to render
+  one frame at the previous position, the "blip"), and a step whose target
+  rects haven't laid out yet waits (bounded) before spotlighting
+  (`_layout_step` retry). Both fixes are generic — every step and the primer
+  coachmarks inherit them.
 - **Stall-proofing (the drill must be unable to dead-end):** items cost 0 in
   the tutorial (`_battle_effects["items_free"]`, set silently in
-  `_apply_intercept_battle_effects`) so a stray Nudge can never price out the
-  gated Shock Charge; a resequenced (unspent) turn-1 mark leaves the drone at
-  27 and item + dice (≥31, mark pays late) still kill on turn 2; a double
-  Nudge is an engine no-op and 14 stays inside Rail Strike's 11-15 band.
-  Audit-pinned (5 kill-math regressions incl. the stall-proof arm).
+  `_apply_intercept_battle_effects`); a resequenced (unspent) turn-1 mark
+  leaves the drone at 24 and item + the late-paying mark on Rail Strike (15)
+  still kill on turn 2; a double Nudge is refused at both layers (button
+  affordability, engine "already") and 14 stays inside Rail Strike's 11-15
+  band. Audit-pinned (5 kill-math regressions incl. the stall-proof arm).
 - **Dice-settle rig:** the scripted values are handed to the tray BEFORE the
   physics roll (`dice_tray_3d.set_rigged_results`, consumed one-shot in
   `_resolve_landed_die_face`), so the settle presentation rotates the RIGGED
@@ -405,9 +434,11 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   player's first real battle (smoke-asserted). Systems stay decoupled per
   docs/PRIMERS.md.
 - Pinned by `tutorial_smoke_test.gd`: TWO full scenarios (happy path with
-  exact rig math + the stall-proof resequence/double-Nudge/pool-drain path).
+  exact rig math + spotlight-retarget assertions on every gated beat + the
+  no-leech sweep, and the stall-proof resequence/double-Nudge path).
   Tutorial capture: `--capture-tutorial [--capture-rolled |
-  --capture-tutorial-step=N]` (windowed).
+  --capture-tutorial-step=N | --capture-tutorial-select=<unit>]` (windowed;
+  the select flag drives stage 2 of a two-stage assign beat).
 
 **Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 

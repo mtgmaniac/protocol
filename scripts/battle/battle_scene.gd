@@ -146,26 +146,36 @@ var enemy_units: Array = []
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
 # v2 (2026-07-20): HONEST RIG — rig the inputs, never fake the outputs. The
 # Scrap Drone fights at its REAL statline (35 HP, enemies.data.json); only the
-# dice and the drone's aim are scripted. Rolls keyed by unit id:
-#   turn 1: Strike 3 (Target Lock, 0-dmg mark) + Engineer 2 (Field Patch,
-#           4 shield targeted +1 Protocol) + Medic 13 (Neural Override, 8 dmg
-#           leech). Taught order mark→Override: 8 becomes 12 (ceil 8*1.5) —
-#           drone 35 → 23. Drone roll 6 = Stab 7 at Strike (SYSTEMATIC slot 0):
-#           Field Patch's 4 shield soaks 4, Strike takes 3.
+# dice and the drone's aim are scripted. Playtest fix pass (Pixel, item 4):
+# the mark payoff moved OFF Splice Medic — every Medic damage band below the
+# nat-20 carries leech (off-script for turn 1) and Shock Therapy would fire
+# the overload slam AND one-shot through the mark. Engineer now spends the
+# mark; Medic takes the turn-1 shield. Rolls keyed by unit id:
+#   turn 1: Strike 3 (Target Lock, 0-dmg mark) + Engineer 12 (Overdrive,
+#           11 dmg, no keywords) + Medic 2 (Diagnostic Pulse, 3 heal +
+#           3 shield targeted). Taught order mark→Overdrive: 11 becomes 17
+#           (ceil 11*1.5) — drone 35 → 18. Drone roll 6 = Stab 7 at Strike
+#           (SYSTEMATIC slot 0): the 3 shield soaks 3, Strike takes 4 (the
+#           3 heal overflows at full HP — honest, harmless).
 #   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire 6 → Rail Strike 10, the
 #           taught band jump; a stray second Nudge lands 14, still Rail
-#           Strike's 11-15 band — harmless) + Engineer 12 (Overdrive 11) +
-#           Medic 6 (Infusion, 10 heal targeted). Dice deal 21 into 23; the
-#           gated Shock Charge (10, granted by start_tutorial_run) closes the
-#           gap. Stall-proof: even if the player resequenced turn 1 so the
-#           mark went unspent (drone 27), item + dice ≥ 31 always kills, and
-#           items are cost-0 in the tutorial (_apply_intercept_battle_effects)
-#           so a stray Nudge can never drain the pool below the item.
+#           Strike's 11-15 band — harmless) + Engineer 7 (Barrier Deploy,
+#           9 shield targeted — uncommented insurance, assigned in the
+#           fullscreen beat) + Medic 6 (Infusion, 10 heal targeted).
+#           Protocol entering turn 2 is exactly 1 (income only — no
+#           gainProtocol in this rig), the one taught Nudge. Rail Strike 10
+#           into 18 leaves 8; the gated Shock Charge (10, granted by
+#           start_tutorial_run) closes it — the item stays mathematically
+#           necessary. Stall-proof: a resequenced (unspent) turn-1 mark
+#           leaves the drone at 24; Rail Strike pays it late (15) → 9, item
+#           → dead. Items are cost-0 in the tutorial
+#           (_apply_intercept_battle_effects) so the pool can never dead-end
+#           the item beat.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
-	{"combat": 3, "engineer": 2, "medic": 13},
-	{"combat": 8, "engineer": 12, "medic": 6},
+	{"combat": 3, "engineer": 12, "medic": 2},
+	{"combat": 8, "engineer": 7, "medic": 6},
 ]
 var _tutorial_turn: int = 0
 
