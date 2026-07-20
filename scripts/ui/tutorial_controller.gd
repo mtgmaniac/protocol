@@ -35,54 +35,48 @@ func start(scene: Node) -> void:
 	_show_step(0)
 
 
-# ── Step script ─────────────────────────────────────────────────────────────────
-# Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event predicate),
-# title:"" (optional) }. Keys resolve to battle nodes in _target_rect().
+# ── Step script (v2, 2026-07-20 — honest rig, cast order, shield, item) ─────────
+# Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
+# predicate), hero:"" (optional event predicate — the unit id carried in the
+# event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
+# Keys resolve to battle nodes in _target_rect(). Copy is Kev-final; the two
+# engine corrections (drone's Stab is 7, badges are plain numerals per the
+# glyph law) are fixed to the engine, never the reverse.
 func _build_steps() -> Array:
 	return [
-		# Phase 0 — orientation (tap). Inspect is taught later on the player's own unit, so no
-		# separate enemy long-press beat here.
-		{"targets": [], "title": "WELCOME", "text": "Welcome to Overload Protocol. I'll show you around the screen, then walk you through your first two turns."},
-		{"targets": ["header"], "text": "This bar stays with you all run - squad progress and the Help menu live here. Help holds the full encyclopedia."},
-		{"targets": ["hero_cards"], "text": "Your three specialists. Each has its own HP and abilities."},
-		{"targets": ["enemy_cards"], "text": "Your target."},
-		# Phase 1 — turn 1: the core loop
-		{"targets": ["roll_button"], "text": "Tap Roll to set your dice.", "advance": "roll_pressed"},
-		{"targets": ["center"], "text": "Each die slots into a band. Higher rolls fire stronger abilities."},
-		# Ability pips (Batch 5): highlight the ACTUAL ability pips, not the whole unit — and
-		# every unit's roll this turn is a new ability, so highlight all three at once.
-		{"targets": ["ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "These pips are what each die will do: Strike Unit marks the drone, Field Engineer shields, Splice Medic heals. The first time an ability type appears you'll get a one-time tip like this."},
-		# Long-press (Batch 5): note it works on nearly everything.
-		{"targets": ["hero_cards"], "text": "Long-press a card for its full breakdown - bands, keywords, all of it. Long-press works on nearly everything in the game. Try it.", "advance": "inspected"},
-		# Pick a die first (heroes + pips + dice highlighted); once targeting starts we spotlight the
-		# enemy to tap, then open up the whole screen to assign the rest.
-		{"targets": ["heroes"], "text": "Tap a die (or its hero card) to pick who fires.", "advance": "targeting_started"},
-		{"targets": ["enemy_cards"], "text": "Now tap a target to fire it - the drone or its die for an attack, an ally for a heal or shield.", "advance": "assigned"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign your remaining dice.", "advance": "phase", "phase": "ready_to_end"},
-		{"targets": ["enemy_readouts"], "text": "Enemies telegraph their moves, be sure to account for this!"},
-		{"targets": ["roll_button"], "text": "Lock it in - ending the turn fires every die you assigned, then the enemy takes its action.", "advance": "turn_resolved"},
-		# Status-badge lesson (Batch 5): Target Lock left a MARK chip on the drone. Spotlight it.
-		{"targets": ["enemy_status"], "text": "Strike Unit's Target Lock left a mark on the drone. Units carry status badges like this after effects land - the next hit spends the mark for extra damage."},
-		# Phase 2 — turn 2: Protocol & Nudge. "Roll again" waits for the dice to settle (advance
-		# "rolled") before moving on.
-		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
-		# Invisible waiter: the coach hides while the dice roll, then the
-		# Protocol beat lands once they settle (Kev 2026-07-10).
+		# Phase 0 — orientation
+		{"targets": [], "title": "WELCOME", "text": "Welcome to Overload Protocol. I'll walk you through your first fight."},
+		{"targets": ["header"], "text": "This bar stays with you all run - squad progress and the Help menu live here."},
+		{"targets": ["hero_cards", "enemy_cards"], "separate": true, "text": "Your three specialists face a Scrap Drone. It has 35 HP and it will hit back."},
+		# Phase 1 — turn 1
+		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
+		# Invisible waiter: the coach hides while the dice roll and settle.
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["protocol_value"], "text": "You earned 1 Protocol after your last turn - time to spend it. It builds +1 every turn, caps at 10."},
-		# Nudge is TWO beats (Kev fix #3, 2026-07-12): the button beat advances the
-		# INSTANT the press arms the pick (the "phase" event from transition() — the
-		# shared choke point, zero new wiring), then the die beat gates on the
-		# applied nudge. The old single beat gated on "nudged" (emitted only after
-		# button + die pick + apply), so pressing the big highlighted button moved
-		# nothing — it read as a consumed click.
-		{"targets": ["nudge"], "text": "Nudge costs 1 Protocol - tap it.", "advance": "phase", "phase": "nudge_pick"},
-		{"targets": ["combat"], "text": "Now tap Strike Unit's die - +3 pushes it into a stronger band.", "advance": "nudged"},
-		{"targets": ["ability:combat"], "text": "It jumped a band - Suppression Fire became Rail Strike, and the mark makes the hit land even harder."},
-		{"targets": ["reroll", "set"], "separate": true, "text": "Reroll (2) and Set (4) cost more - they unlock as you bank Protocol."},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Tap Strike Unit's die, then the drone to fire it.", "advance": "assigned"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Finish it - assign the rest and end the turn.", "advance": "won"},
-		{"targets": [], "text": "That's the loop. The Help menu has the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
+		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit marks, Splice Medic hits for 8, Field Engineer shields."},
+		{"targets": ["hero_cards"], "text": "Long-press a card for the full breakdown - long-press works on nearly everything. Try it.", "advance": "inspected"},
+		# Cast order (Model A): assignment order = firing order. Set up first, spend second.
+		{"targets": ["die:combat"], "text": "Your squad fires in the order you assign. Set up first: tap Strike Unit's die, then the drone, to mark it.", "advance": "assigned", "hero": "combat"},
+		{"targets": ["die:medic"], "text": "Now spend it: Splice Medic's Neural Override hits a marked target for +50% - 8 becomes 12. Tap the die, then the drone.", "advance": "assigned", "hero": "medic"},
+		# Order badges are tap-through (Kev ruling: never force undoing a correct assignment).
+		{"targets": ["hero_cards"], "text": "The 1-2 badges are your firing order. Re-tap any card to pull it back and resequence."},
+		{"targets": ["enemy_readouts"], "text": "The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands."},
+		{"targets": ["die:engineer"], "text": "Blunt it: tap Field Engineer's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "engineer"},
+		{"targets": ["roll_button"], "text": "Lock it in - your squad fires in order, then the drone acts.", "advance": "turn_resolved"},
+		{"targets": ["combat", "battle_log"], "separate": true, "text": "Your order paid off - the mark turned 8 into 12. The drone hit for 7: the shield soaked 4, Strike Unit took 3. Time to patch up."},
+		# Phase 2 — turn 2
+		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
+		{"targets": [], "hide_coach": true, "advance": "rolled"},
+		{"targets": ["protocol_value"], "text": "You banked 2 Protocol - +1 income every turn, and Field Patch generated 1 more. Time to spend."},
+		# Nudge stays TWO beats (Kev fix #3): button beat advances the instant the
+		# press arms the pick; the die beat gates on the applied nudge.
+		{"targets": ["nudge"], "text": "Nudge costs 1 - tap it. (Reroll and Set cost 2 and 4 - they unlock as you bank more.)", "advance": "phase", "phase": "nudge_pick"},
+		{"targets": ["combat"], "text": "Tap Strike Unit's die - +3 turns an 8 into an 11.", "advance": "nudged"},
+		{"targets": ["ability:combat"], "text": "It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10."},
+		{"targets": ["die:medic"], "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore that hit.", "advance": "assigned", "hero": "medic"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike and Overdrive at the drone.", "advance": "phase", "phase": "ready_to_end"},
+		{"targets": ["item"], "text": "The drone has 23 HP; your dice deal 21. Items don't cost a die - tap the Shock Charge and close the gap.", "advance": "item_used"},
+		{"targets": ["roll_button"], "text": "End the turn.", "advance": "won"},
+		{"targets": [], "text": "That's the loop. The Help menu holds the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]
 
 
@@ -108,6 +102,13 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 		return
 	# Optional payload predicate (e.g. phase == ready_to_end).
 	if _current().has("phase") and str(payload.get("phase", "")) != str(_current()["phase"]):
+		return
+	# Optional hero predicate (v2): the step waits for the event to land on a
+	# SPECIFIC hero (unit id in the payload — "assigned" for combat/medic/
+	# engineer). Same pattern as the phase predicate; an off-script hero's
+	# event simply doesn't advance the step (never a dead end — the scripted
+	# hero stays available).
+	if _current().has("hero") and str(payload.get("hero", "")) != str(_current()["hero"]):
 		return
 	_next()
 
@@ -231,6 +232,11 @@ func _target_rect(key: String) -> Rect2:
 	# highlight the ability, not the whole unit).
 	if key.begins_with("ability:"):
 		return _hero_readout_rect(key.substr(8))
+	# "die:<unit_id>" spotlights just that hero's rolled die in the tray (v2 —
+	# the assign beats point at the die the copy names). Falls back to the
+	# whole unit so the spotlight always resolves a hole.
+	if key.begins_with("die:"):
+		return _hero_die_rect_for_unit(key.substr(4))
 	# The enemy's status-badge slot (the MARK chip); falls back to the enemy card so the
 	# spotlight always resolves a hole even before the chip has laid out.
 	if key == "enemy_status":
@@ -284,6 +290,9 @@ func _target_rect(key: String) -> Rect2:
 			return _node_rect(_protocol_button("set_button"))
 		"reroll":
 			return _node_rect(_scene.get("protocol_spend_button"))
+		"item":
+			# The consumable slot — the footer ITEM button (v2 Shock Charge beat).
+			return _node_rect(_protocol_button("item_button"))
 		"battle_log":
 			return _node_rect(_scene.get("battle_log_panel"))
 	# Any hero unit id spotlights that unit (card + pips + die) — generic form
@@ -294,6 +303,21 @@ func _target_rect(key: String) -> Rect2:
 	if unit_rect.size != Vector2.ZERO:
 		return unit_rect
 	return Rect2()
+
+
+# Just one hero's rolled die in the tray (v2 assign beats). Fall back to the
+# whole unit (card + pips + die) if the die hasn't laid out yet.
+func _hero_die_rect_for_unit(unit_id: String) -> Rect2:
+	var views: Variant = _scene.get("hero_card_views")
+	if views is Array:
+		for view_variant in views:
+			var view: Dictionary = view_variant
+			var state: Dictionary = view.get("state", {})
+			var unit: Object = state.get("unit", null) as Object
+			if unit != null and str(unit.id) == unit_id:
+				var die_rect: Rect2 = _hero_die_rect(str(state.get("id", "")))
+				return die_rect if die_rect.size != Vector2.ZERO else _hero_unit_rect(unit_id)
+	return _hero_unit_rect(unit_id)
 
 
 # Just the ability-pip readout row for one hero (Batch 5 — highlight the ability, not the unit).

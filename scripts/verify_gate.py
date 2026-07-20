@@ -39,7 +39,9 @@ CEREMONY_PTS = 10.0  # per-op clear-rate points
 # (mark/jam/rewrite), +2 mark regressions (chosen-enemy pick, firewall block).
 # 241 -> 246 (player-chosen cast order): +2 mark-order, +2 breach-order,
 # +1 defensive unstamped-fallback regressions.
-AUDIT_MIN_PASSED = 246
+# 246 -> 250 (tutorial v2 honest rig): the single kill-math mirror became 5
+# regressions (T1 math, T2 kill, stall-proof T1+T2, nudge band jump).
+AUDIT_MIN_PASSED = 250
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),

@@ -3279,14 +3279,14 @@ func _run_relic_per_turn_aura_regression() -> void:
 	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
 
 
-# Tutorial rig must stay unlosable AND land the win exactly on turn 2: the 28-HP Scrap Drone
-# survives turn 1's rigged assignments and dies on turn 2 (nudged Pulse=12 → Plasma Lance).
+# Tutorial rig v2 must stay unlosable against the REAL 35-HP Scrap Drone. The
+# happy path: T1 mark->Override (35 -> 23, mark spent, Stab 7 soaked 4 by Field
+# Patch, Strike takes 3, +1 Protocol pending); T2 dice 21 + Shock Charge 10
+# close it. The stall-proof path: Override resolves BEFORE the mark (player
+# resequenced) — the unspent mark persists (drone 27) and item + dice still
+# kill on turn 2. If any of these numbers drift (kit or drone data change),
+# the tutorial coach copy must be re-verified against the engine.
 func _run_tutorial_kill_math_regression() -> void:
-	# Mirrors the LIVE tutorial rig (battle_scene: combat/engineer/medic trio,
-	# Scrap Drone at TUTORIAL_ENEMY_HP=10, Batch-5 script updated for Build I's
-	# 0-dmg Target Lock): T1 marks without damage, T2's nudged Rail Strike (11)
-	# kills with or without the Mark. Was pulse/combat/ghost vs 28 — a stale
-	# mirror of a pre-Batch-5 tutorial (caught by the Build-I kit change).
 	var combat: UnitData = DataManager.get_unit("combat") as UnitData
 	var engineer: UnitData = DataManager.get_unit("engineer") as UnitData
 	var medic: UnitData = DataManager.get_unit("medic") as UnitData
@@ -3294,34 +3294,95 @@ func _run_tutorial_kill_math_regression() -> void:
 	if combat == null or engineer == null or medic == null or scrap == null:
 		_record_failure("Tutorial / kill math", "tutorial", "real data present", "missing data")
 		return
-	var enemy_unit: EnemyData = scrap.duplicate(true)
-	enemy_unit.max_hp = 10
+	if int(scrap.max_hp) != 35:
+		_record_failure("Tutorial / kill math", "tutorial", "Scrap Drone real statline 35 HP (honest rig)", "hp=%d" % int(scrap.max_hp))
+		return
+
+	# Happy path: cast order combat (mark) -> medic (Override) -> engineer
+	# (Field Patch shield on Strike), exactly as the drill teaches.
 	var mgr: CombatManager = CombatManager.new()
-	mgr.setup_battle([combat, engineer, medic], [enemy_unit])
+	mgr.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
 	var enemy: Dictionary = mgr.get_enemy_states()[0]
-	var enemy_id: String = str(enemy["id"])
-	_tutorial_resolve_turn(mgr, enemy_id, {"combat": 3, "engineer": 7, "medic": 6})
-	var hp_after_t1: int = int(enemy["current_hp"])
-	var marked_t1: bool = bool(enemy.get("marked", false))
-	var dead_t1: bool = bool(enemy["dead"])
-	if not dead_t1:
-		_tutorial_resolve_turn(mgr, enemy_id, {"combat": 11, "engineer": 5, "medic": 6})
-	var dead_t2: bool = bool(enemy["dead"])
-	if (not dead_t1) and hp_after_t1 == 10 and marked_t1 and dead_t2:
-		_record_pass("Tutorial / kill math", "tutorial")
+	var strike: Dictionary = mgr.get_hero_states()[0]
+	_tutorial_resolve_turn(mgr, {"combat": 3, "engineer": 2, "medic": 13}, ["combat", "medic", "engineer"])
+	var grants_t1: int = mgr.take_pending_protocol_grants()
+	var t1_ok: bool = (
+		int(enemy["current_hp"]) == 23
+		and not bool(enemy.get("marked", false))
+		and int(strike["current_hp"]) == 52
+		and grants_t1 == 1
+	)
+	if t1_ok:
+		_record_pass("Tutorial / T1 math (marked 12, Stab 7 soaks 4, +1 Protocol)", "tutorial")
 	else:
-		_record_failure("Tutorial / kill math", "tutorial", "T1: unhurt (10) and marked; T2 kills",
-			"t1_hp=%d marked=%s dead_t1=%s dead_t2=%s" % [hp_after_t1, str(marked_t1), str(dead_t1), str(dead_t2)])
+		_record_failure("Tutorial / T1 math (marked 12, Stab 7 soaks 4, +1 Protocol)", "tutorial",
+			"drone 23 unmarked, Strike 52, grant 1",
+			"drone=%d marked=%s strike=%d grant=%d" % [int(enemy["current_hp"]), str(enemy.get("marked", false)), int(strike["current_hp"]), grants_t1])
+	# T2: Shock Charge (item) + nudged Rail Strike 10 + Overdrive 11.
+	mgr.apply_item_damage(enemy, 10)
+	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 12, "medic": 6}, ["combat", "engineer", "medic"])
+	if bool(enemy["dead"]):
+		_record_pass("Tutorial / T2 kill (item 10 + dice 21 into 23)", "tutorial")
+	else:
+		_record_failure("Tutorial / T2 kill (item 10 + dice 21 into 23)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
+
+	# Stall-proof: Override fires BEFORE the mark (resequenced) — mark unspent,
+	# drone 27; turn 2's item + marked dice still kill. The drill cannot
+	# dead-end on player-chosen ordering.
+	var mgr2: CombatManager = CombatManager.new()
+	mgr2.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
+	var enemy2: Dictionary = mgr2.get_enemy_states()[0]
+	_tutorial_resolve_turn(mgr2, {"combat": 3, "engineer": 2, "medic": 13}, ["medic", "combat", "engineer"])
+	mgr2.take_pending_protocol_grants()
+	var resequenced_ok: bool = int(enemy2["current_hp"]) == 27 and bool(enemy2.get("marked", false))
+	if resequenced_ok:
+		_record_pass("Tutorial / stall-proof T1 (unspent mark persists, drone 27)", "tutorial")
+	else:
+		_record_failure("Tutorial / stall-proof T1 (unspent mark persists, drone 27)", "tutorial",
+			"drone 27 and marked", "drone=%d marked=%s" % [int(enemy2["current_hp"]), str(enemy2.get("marked", false))])
+	mgr2.apply_item_damage(enemy2, 10)
+	_tutorial_resolve_turn(mgr2, {"combat": 11, "engineer": 12, "medic": 6}, ["combat", "engineer", "medic"])
+	if bool(enemy2["dead"]):
+		_record_pass("Tutorial / stall-proof T2 kill (mark pays late, no dead end)", "tutorial")
+	else:
+		_record_failure("Tutorial / stall-proof T2 kill (mark pays late, no dead end)", "tutorial", "drone dead", "hp=%d" % int(enemy2["current_hp"]))
+
+	# The taught band jump and its double-Nudge safety: 8 -> 11 flips
+	# Suppression Fire (6) into Rail Strike (10); a stray second +3 (14) stays
+	# in Rail Strike's 11-15 band.
+	var dm := DiceManager.new()
+	var band_11: String = str(dm.get_ability_for_roll(combat, 11).get("ability_name", ""))
+	var band_14: String = str(dm.get_ability_for_roll(combat, 14).get("ability_name", ""))
+	if band_11 == "Rail Strike" and band_14 == "Rail Strike":
+		_record_pass("Tutorial / nudge band jump (11 and 14 both Rail Strike)", "tutorial")
+	else:
+		_record_failure("Tutorial / nudge band jump (11 and 14 both Rail Strike)", "tutorial", "Rail Strike / Rail Strike", "%s / %s" % [band_11, band_14])
 
 
-func _tutorial_resolve_turn(mgr: CombatManager, enemy_id: String, rolls_by_unit: Dictionary) -> void:
+# One rigged tutorial turn: rolls keyed by unit id; targets = drone for
+# damage/mark casts, Strike Unit for the engineer shield / medic heal; cast
+# order stamped via set_hero_order (unit ids; heroes' state ids equal them).
+func _tutorial_resolve_turn(mgr: CombatManager, rolls_by_unit: Dictionary, cast_order: Array) -> void:
+	var enemy_id: String = str(mgr.get_enemy_states()[0]["id"])
+	var strike_id: String = ""
+	for hero_state in mgr.get_hero_states():
+		var unit: Object = hero_state.get("unit") as Object
+		if unit != null and str(unit.id) == "combat":
+			strike_id = str(hero_state["id"])
 	var hero_rolls: Dictionary = {}
 	for hero_state in mgr.get_hero_states():
 		var unit: Object = hero_state.get("unit") as Object
 		var uid: String = str(unit.id) if unit != null else ""
-		hero_state["selected_target_id"] = enemy_id
-		if rolls_by_unit.has(uid):
-			hero_rolls[str(hero_state["id"])] = int(rolls_by_unit[uid])
+		var roll: int = int(rolls_by_unit.get(uid, 0))
+		# Friendly casts aim at Strike (the drone's target): engineer's Field
+		# Patch shield and medic's turn-2 Infusion heal. Damage/mark casts aim
+		# at the drone.
+		var raw: Dictionary = DiceManager.new().get_ability_for_roll(unit, roll).get("raw", {})
+		var friendly: bool = bool(raw.get("shTgt", false)) or bool(raw.get("healTgt", false))
+		hero_state["selected_target_id"] = strike_id if friendly else enemy_id
+		if roll > 0:
+			hero_rolls[str(hero_state["id"])] = roll
+	mgr.set_hero_order(cast_order)
 	mgr.resolve_round(hero_rolls, {enemy_id: 6}, DiceManager.new())
 
 

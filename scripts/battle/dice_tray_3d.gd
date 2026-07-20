@@ -281,6 +281,19 @@ func show_result_actions(action_entries: Array) -> void:
 		_highlight_top_face(die, display_face_value, str(entry.get("side", "")), str(entry.get("zone", "")))
 
 
+# Tutorial dice rig (v2, one-shot per play_rolls): "side:unit_id" -> forced
+# raw result, set BEFORE play_rolls. Consumed at face-resolve time so the
+# normal settle presentation rotates the RIGGED face up — the physics roll
+# plays naturally and the player never sees a wrong number (the old flow
+# repainted the die AFTER settle, a visible snap). Cleared when the roll
+# finishes so ordinary battles are untouched.
+var _rigged_results: Dictionary = {}
+
+
+func set_rigged_results(rigged: Dictionary) -> void:
+	_rigged_results = rigged.duplicate()
+
+
 func update_die_result_in_place(side: String, unit_id: String, display_effective: int) -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
@@ -488,6 +501,8 @@ func _finish_roll(dice: Array) -> void:
 	_enforce_assigned_result_origins(result_entries)
 
 	_is_rolling = false
+	# One-shot: the tutorial rig covers exactly the roll it was set for.
+	_rigged_results.clear()
 	# Stay visible so the player can read the results; reset() hides later
 	roll_finished.emit()
 
@@ -900,6 +915,11 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	_set_die_collision_enabled(die, false)
 	var entry: Dictionary = die.get_meta("entry", {})
 	var raw: int = _get_most_visible_face_value(die)
+	# Tutorial rig: the scripted value replaces the physics face BEFORE the
+	# result presentation, so the settle tween rotates the rigged face up.
+	var rig_key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
+	if _rigged_results.has(rig_key):
+		raw = clampi(int(_rigged_results[rig_key]), 1, 20)
 	var display: int = _display_face_for_entry(raw, entry)
 	die.set_meta("raw_result", raw)
 	die.set_meta("resolved_result", raw)

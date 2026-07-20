@@ -363,7 +363,51 @@ compression, so no etc2 artifacts exist and none are needed.
 
 **Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; max one per turn; suppressed in tutorial/headless/auto battle; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
 
-**Rigged onboarding tutorial** (`scripts/ui/tutorial_controller.gd`, `GameState.start_tutorial_run`): runs the STARTING trio Strike Unit / Field Engineer / Splice Medic (Batch 5 — not Pulse/Avalanche) vs one 13-HP Scrap Drone across two scripted turns. Turn 1 Strike marks the drone (Target Lock) while Engineer/Medic support, so the MARK persists as a visible status badge; turn 2 Strike nudges 8→11 (Rail Strike) and the mark pays off. Coachmarks highlight **ability pips** (the readout, not the whole unit) and highlight ALL of a turn's new abilities at once; a dedicated beat teaches the status badge, and the long-press beat notes it works on nearly everything. 23 steps, pinned by `tutorial_smoke_test.gd`.
+**Rigged onboarding tutorial — v2, HONEST RIG (2026-07-20, supersedes the
+Batch-5 script wholesale).** `scripts/ui/tutorial_controller.gd` +
+`GameState.start_tutorial_run`. Principle: **rig the inputs, never fake the
+outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
+- **The fight:** starting trio (Strike Unit / Field Engineer / Splice Medic) vs
+  ONE Scrap Drone at its REAL 35-HP statline (the old 10-HP override is
+  deleted). Drone roll rigged to 6 both turns = Stab, 7 dmg (the kit has no
+  8-dmg band — copy was fixed to the engine per the v2 ruling), aimed at
+  Strike via its real SYSTEMATIC slot-0 personality.
+- **Turn 1** rolls {combat 3, engineer 2, medic 13}: Target Lock (mark) →
+  Neural Override (8 → 12 on the marked drone; 35 → 23) teaches CAST ORDER
+  (set up first, spend second); Field Patch (4 shield on Strike, +1 Protocol)
+  soaks 4 of the Stab (Strike takes 3). **Turn 2** rolls {combat 8 → Nudged
+  11, engineer 12, medic 6}: the band jump (Suppression Fire 6 → Rail Strike
+  10), Overdrive 11, Infusion heal, and the item beat — `start_tutorial_run`
+  grants exactly ONE Shock Charge (10 dmg) that closes 23 vs 21.
+- **25 steps** (was 23): no status-badge beat (chip teaching is DELEGATED TO
+  PRIMERS, Kev ruling); the order-badges beat is TAP-THROUGH (never force
+  undoing a correct assignment); both friendly picks stay (shield T1, heal
+  T2). Step gate schema gains an optional `hero` payload predicate (same
+  pattern as `phase`) — `assigned` gates match a SPECIFIC hero; plus an
+  `item_used` event emitted where `_apply_item_effect` resolves. New spotlight
+  keys: `die:<unit_id>` (single die, falls back to the unit) and `item` (the
+  footer consumable button).
+- **Stall-proofing (the drill must be unable to dead-end):** items cost 0 in
+  the tutorial (`_battle_effects["items_free"]`, set silently in
+  `_apply_intercept_battle_effects`) so a stray Nudge can never price out the
+  gated Shock Charge; a resequenced (unspent) turn-1 mark leaves the drone at
+  27 and item + dice (≥31, mark pays late) still kill on turn 2; a double
+  Nudge is an engine no-op and 14 stays inside Rail Strike's 11-15 band.
+  Audit-pinned (5 kill-math regressions incl. the stall-proof arm).
+- **Dice-settle rig:** the scripted values are handed to the tray BEFORE the
+  physics roll (`dice_tray_3d.set_rigged_results`, consumed one-shot in
+  `_resolve_landed_die_face`), so the settle presentation rotates the RIGGED
+  face up — the old post-settle repaint (a visible wrong-number snap) is
+  deleted. Headless keeps the dict-level rig.
+- **Primer suppression:** `keyword_primer.gd` gates in `_queue` AND `_flush`
+  on `tutorial_mode` and never writes `primers_seen` while suppressed — the
+  drill sights mark/leech/protocol icons, and every one still fires in the
+  player's first real battle (smoke-asserted). Systems stay decoupled per
+  docs/PRIMERS.md.
+- Pinned by `tutorial_smoke_test.gd`: TWO full scenarios (happy path with
+  exact rig math + the stall-proof resequence/double-Nudge/pool-drain path).
+  Tutorial capture: `--capture-tutorial [--capture-rolled |
+  --capture-tutorial-step=N]` (windowed).
 
 **Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 

@@ -144,26 +144,48 @@ var hero_units: Array = []
 var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
-# Starting trio — Strike Unit (combat), Field Engineer (engineer), Splice Medic (medic),
-# Batch 5 — vs one weak Scrap Drone (10 HP) that telegraphs a weak Stab (enemy roll 6 =
-# strike band). Rolls keyed by unit id:
-#   turn 1: Strike 3 (Target Lock — MARK only since Build I, 0 dmg) + Engineer 7 (Barrier
-#           Deploy, shields an ally) + Medic 6 (Infusion, heals an ally). Nothing damages
-#           the drone (10 stays 10), and the Mark PERSISTS because nobody hits it — that's
-#           the status-badge lesson, visible right into turn 2.
-#   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire → Rail Strike, 10 dmg; the Mark spends for
-#           +50% → 15) kills the 10-HP drone. Engineer/Medic support again.
-# Strike 8 sits one short of the Surge band (Rail Strike opens at 11); +3 Nudge → 11 flips
-# the band — the taught payoff. The 10 HP is set so turn 2 kills WITH OR WITHOUT the Mark
-# (Rail Strike 10 ≥ the 10 remaining), so the drill never stalls on a rounding edge.
+# v2 (2026-07-20): HONEST RIG — rig the inputs, never fake the outputs. The
+# Scrap Drone fights at its REAL statline (35 HP, enemies.data.json); only the
+# dice and the drone's aim are scripted. Rolls keyed by unit id:
+#   turn 1: Strike 3 (Target Lock, 0-dmg mark) + Engineer 2 (Field Patch,
+#           4 shield targeted +1 Protocol) + Medic 13 (Neural Override, 8 dmg
+#           leech). Taught order mark→Override: 8 becomes 12 (ceil 8*1.5) —
+#           drone 35 → 23. Drone roll 6 = Stab 7 at Strike (SYSTEMATIC slot 0):
+#           Field Patch's 4 shield soaks 4, Strike takes 3.
+#   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire 6 → Rail Strike 10, the
+#           taught band jump; a stray second Nudge lands 14, still Rail
+#           Strike's 11-15 band — harmless) + Engineer 12 (Overdrive 11) +
+#           Medic 6 (Infusion, 10 heal targeted). Dice deal 21 into 23; the
+#           gated Shock Charge (10, granted by start_tutorial_run) closes the
+#           gap. Stall-proof: even if the player resequenced turn 1 so the
+#           mark went unspent (drone 27), item + dice ≥ 31 always kills, and
+#           items are cost-0 in the tutorial (_apply_intercept_battle_effects)
+#           so a stray Nudge can never drain the pool below the item.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
-const TUTORIAL_ENEMY_HP := 10
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_HERO_ROLLS := [
-	{"combat": 3, "engineer": 7, "medic": 6},
-	{"combat": 8, "engineer": 5, "medic": 6},
+	{"combat": 3, "engineer": 2, "medic": 13},
+	{"combat": 8, "engineer": 12, "medic": 6},
 ]
 var _tutorial_turn: int = 0
+
+
+# The tray-rig map for the CURRENT tutorial turn ("side:state_id" -> raw
+# value), handed to dice_tray_3d BEFORE the physics roll so each die's settle
+# presentation rotates the RIGGED face up — no post-settle repaint, no
+# wrong-number flash. Does not advance the turn counter.
+func _tutorial_rig_values() -> Dictionary:
+	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
+	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
+	var values: Dictionary = {}
+	for hero_state in combat_manager.get_hero_states():
+		var unit: Object = hero_state.get("unit") as Object
+		var unit_id: String = str(unit.id) if unit != null else ""
+		if rig.has(unit_id):
+			values["hero:%s" % str(hero_state["id"])] = int(rig[unit_id])
+	for enemy_state in combat_manager.get_enemy_states():
+		values["enemy:%s" % str(enemy_state["id"])] = TUTORIAL_ENEMY_ROLL
+	return values
 
 
 func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
@@ -706,6 +728,11 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		await get_tree().process_frame
 		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
+		# Tutorial dice-settle rig (v2): hand the tray the scripted values BEFORE
+		# the physics roll, so each die's settle presentation rotates the rigged
+		# face up — the player never sees a wrong number.
+		if _game_state().tutorial_mode:
+			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.play_rolls(
 			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
 			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
@@ -794,8 +821,12 @@ func _sync_die_status_visuals() -> void:
 			})
 
 
-# Overwrite the just-rolled dice with the scripted tutorial values and repaint the 3D tray in
-# place (same call Nudge uses), so the animation plays but the result is deterministic.
+# Pin the roll DICTS to the scripted tutorial values and advance the turn
+# counter. In the windowed path the tray was rigged BEFORE the physics roll
+# (set_rigged_results in _do_roll), so the dice already settled showing these
+# faces and this is a same-value no-op; headless (no tray) this IS the rig.
+# The old post-settle update_die_result_in_place repaint — the visible
+# wrong-number snap — is gone.
 func _apply_tutorial_dice_rig() -> void:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
@@ -804,16 +835,9 @@ func _apply_tutorial_dice_rig() -> void:
 		var unit_id: String = str(unit.id) if unit != null else ""
 		if not rig.has(unit_id):
 			continue
-		var sid: String = str(hero_state["id"])
-		var value: int = int(rig[unit_id])
-		hero_rolls[sid] = value
-		if dice_tray_3d != null:
-			dice_tray_3d.update_die_result_in_place("hero", sid, value)
+		hero_rolls[str(hero_state["id"])] = int(rig[unit_id])
 	for enemy_state in combat_manager.get_enemy_states():
-		var esid: String = str(enemy_state["id"])
-		enemy_rolls[esid] = TUTORIAL_ENEMY_ROLL
-		if dice_tray_3d != null:
-			dice_tray_3d.update_die_result_in_place("enemy", esid, TUTORIAL_ENEMY_ROLL)
+		enemy_rolls[str(enemy_state["id"])] = TUTORIAL_ENEMY_ROLL
 	_tutorial_turn += 1
 
 
@@ -1663,6 +1687,12 @@ func _apply_intercept_battle_effects() -> void:
 	var gs: Variant = _game_state()
 	_battle_effects = (gs.next_battle_effects as Dictionary).duplicate(true)
 	gs.next_battle_effects.clear()
+	# Tutorial stall-proofing (v2): items cost 0 in the drill, so a stray extra
+	# Nudge during a pass-through step can never drain the pool below the gated
+	# Shock Charge — the drill must be unable to dead-end. Set silently here
+	# (not via next_battle_effects) so no "SUPPLY DRONE" log line appears.
+	if bool(gs.tutorial_mode):
+		_battle_effects["items_free"] = true
 	# Prisoner Exchange's follow-up arms AFTER this battle's own modifier ran.
 	gs.promote_followup_effects()
 
@@ -2046,14 +2076,13 @@ func _build_runtime_units() -> void:
 		if unit != null:
 			hero_units.append(unit)
 
-	# Tutorial: a single weak scripted enemy instead of the operation's battle, HP tuned so the
-	# win lands on turn 2's nudged Plasma Lance.
+	# Tutorial (v2, honest rig): ONE Scrap Drone at its REAL statline — no HP
+	# override. Only the dice and the drone's aim are scripted; the drill's
+	# numbers are the game's numbers.
 	if _game_state().tutorial_mode:
 		var base_enemy: EnemyData = _data_manager().get_enemy_by_display_name(TUTORIAL_ENEMY_NAME) as EnemyData
 		if base_enemy != null:
-			var tutorial_enemy: EnemyData = _duplicate_enemy(base_enemy)
-			tutorial_enemy.max_hp = TUTORIAL_ENEMY_HP
-			enemy_units = [tutorial_enemy]
+			enemy_units = [_duplicate_enemy(base_enemy)]
 			return
 
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
@@ -2592,7 +2621,13 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	legal_target_ids.clear()
 	legal_target_side = ""
 	_card_view.refresh_all_cards()
-	_emit_tutorial("assigned", {"remaining": pending_manual_target_ids.size()})
+	var assigned_unit: Object = hero_state.get("unit") as Object
+	_emit_tutorial("assigned", {
+		"remaining": pending_manual_target_ids.size(),
+		# Unit id (not state id) — the tutorial's per-hero `hero` gate matches
+		# against squad unit ids ("combat"/"medic"/"engineer").
+		"hero": str(assigned_unit.get("id")) if assigned_unit != null else "",
+	})
 	if pending_manual_target_ids.is_empty():
 		transition(PHASE_READY_TO_END)
 	else:
