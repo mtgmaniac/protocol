@@ -361,7 +361,7 @@ compression, so no etc2 artifacts exist and none are needed.
 
 ## UI & feedback
 
-**Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; max one per turn; suppressed in tutorial/headless/auto battle; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
+**Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; full drain per turn; suppressed in headless/auto battle; in the scripted tutorial exactly ONE showcase primer displays — Kev 2026-07-21, see the tutorial block; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
 
 **Rigged onboarding tutorial — v2, HONEST RIG (2026-07-20, supersedes the
 Batch-5 script wholesale).** `scripts/ui/tutorial_controller.gd` +
@@ -403,11 +403,14 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   "using one costs 1 Protocol, same as a Nudge, and doesn't spend a die"
   (verified against `item_protocol_cost`: flat 1). The `item_used` tutorial
   event emission remains as generic plumbing, currently unconsumed.
-- **24 steps**: no status-badge beat (chip teaching is DELEGATED TO PRIMERS,
-  Kev ruling); the order-badges beat is DELETED (playtest ruling — no badge
-  explanation, no resequencing encouragement); beat 3 introduces the DRONE
-  only (the squad is carried by the bands beat); both friendly picks stay
-  (shield T1, heal T2). Step gate schema has the optional `hero` payload
+- **25 steps (v2.4, primer-showcase delta — Kev 2026-07-21)**: no status-badge
+  beat (chip teaching is DELEGATED TO PRIMERS, Kev ruling); the order-badges
+  beat is DELETED (playtest ruling — no badge explanation, no resequencing
+  encouragement); beat 3 introduces the DRONE only (the squad is carried by
+  the bands beat); both friendly picks stay (shield T1, heal T2); beat 15
+  (right after the turn-2 waiter) is the PRIMER-SHOWCASE EXPLAINER — it holes
+  Splice Medic's pip readout and names the one-time-tip mechanic, with copy
+  that stands alone on a replay where nothing displayed. Step gate schema has the optional `hero` payload
   predicate — `assigned` gates match a SPECIFIC hero — plus the `item_used`
   event emitted where `_apply_item_effect` resolves. Spotlight keys:
   `die:<unit_id>` / `card:<unit_id>` (fall back to the unit), `item` (footer
@@ -420,11 +423,23 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   hostile picks, the legal ally card(s) for friendly picks — so the player
   never taps into dimmed screen. Reuses `targeting_started` + `set_holes`,
   coach text unchanged through the swap; smoke-asserted on every gated beat.
-- **SKIP button DELETED (playtest ruling, recorded):** the drill is opt-in
-  from the splash, replayable from Help, two turns long, and provably
-  un-strandable (the hostile-path smoke) — and removing it ends its coachmark
-  occlusion. Mid-drill abandonment remains via the header back button
-  (return-to-menu → `reset_run()`, which clears `tutorial_mode`).
+- **FIRST-RUN CHOICE OVERLAY (Kev ruling 2026-07-21; revised same day — the
+  briefly-restored in-drill Skip button is OUT again, so the playtest
+  SKIP-deletion stands for the drill itself).** BEGIN on a profile with
+  `SaveManager.tutorial_done` unset raises a one-question modal over the
+  darkened splash (`main_menu._show_first_run_prompt`: "This is your first
+  time playing - want to run the tutorial?") — unmissable, no menu
+  discovery. **RUN TUTORIAL** enters the drill with
+  `GameState.tutorial_continue_to_play` set, so `TutorialController._finish`
+  exits seamlessly into the squad picker; **SKIP TUTORIAL sets the SAME
+  `tutorial_done` flag** (one flag, two paths in) and heads straight into
+  the squad picker without ever entering the drill. Manual replays (splash
+  TUTORIAL button / Help → REPLAY TUTORIAL) return to the menu as before and
+  never reset the flag. Deleting the `user://` save re-triggers first-run
+  behavior (the intended reset path). Mid-drill abandonment remains via the
+  header back button (return-to-menu → `reset_run()`, which clears
+  `tutorial_mode` and the continue flag — `tutorial_done` stays unset, so
+  the next BEGIN asks again).
 - **Coachmark placement (playtest item 9):** the coach stays HIDDEN until it
   is placed (`SpotlightLayer.spotlight` — the placement await used to render
   one frame at the previous position, the "blip"), and a step whose target
@@ -452,17 +467,29 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   `_resolve_landed_die_face`), so the settle presentation rotates the RIGGED
   face up — the old post-settle repaint (a visible wrong-number snap) is
   deleted. Headless keeps the dict-level rig.
-- **Primer suppression:** `keyword_primer.gd` gates in `_queue` AND `_flush`
-  on `tutorial_mode` and never writes `primers_seen` while suppressed — the
-  drill sights mark/leech/protocol icons, and every one still fires in the
-  player's first real battle (smoke-asserted). Systems stay decoupled per
-  docs/PRIMERS.md.
-- Pinned by `tutorial_smoke_test.gd`: TWO full scenarios (happy path with
-  exact rig math + spotlight-retarget assertions on every gated beat + the
-  no-leech sweep, and the stall-proof resequence/double-Nudge path).
-  Tutorial capture: `--capture-tutorial [--capture-rolled |
-  --capture-tutorial-step=N | --capture-tutorial-select=<unit>]` (windowed;
-  the select flag drives stage 2 of a two-stage assign beat).
+- **Primer showcase — ONE primer fires in the drill (Kev ruling 2026-07-21,
+  supersedes full tutorial suppression):** the primer manager now exists in
+  tutorial battles and `keyword_primer.gd` caps the drill at exactly ONE
+  displayed primer (`TUTORIAL_SHOWCASE_CAP`); it is marked seen as normal
+  ("don't have to redo that one"), everything past the cap stays suppressed
+  and unmarked and fires in the first real battle (smoke-asserted). The
+  natural sighting is CLEANSE: Splice Medic's turn-2 Infusion (10 heal,
+  cleanse) is the drill's only non-exempt icon — `primer_cleanse` is new
+  (icon_first_seen/cleanse, roll-sighted only; cleanse emits no feedback
+  event) and fires in real play too. `battle_scene` emits the `rolled`
+  tutorial event only AFTER the primer drain, so the showcase modal and the
+  tutorial coach never overlap. The showcase respects the ability-primers
+  opt-out and headless suppression.
+- Pinned by `tutorial_smoke_test.gd`: THREE scenarios (happy path with exact
+  rig math + spotlight-retarget assertions on every gated beat + the
+  no-leech sweep + the cleanse-showcase display/seen assertions, the
+  stall-proof resequence/double-Nudge path, and the first-run choice — SKIP
+  sets the flag and lands on the squad picker, RUN TUTORIAL enters the drill
+  and finishing continues to the squad picker). Tutorial capture:
+  `--capture-tutorial
+  [--capture-rolled | --capture-tutorial-step=N |
+  --capture-tutorial-select=<unit>]` (windowed; the select flag drives stage
+  2 of a two-stage assign beat).
 
 **Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 

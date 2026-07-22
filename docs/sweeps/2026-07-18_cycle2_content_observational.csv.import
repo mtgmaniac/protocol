@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://1uei4wn1p3qx"
+
+[deps]
+
+files=["res://docs/sweeps/2026-07-18_cycle2_content_observational.type.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.rarity.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.mean.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.facility.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.hive.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.veil.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.voidCirclet.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.stellarMenagerie.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.n.translation"]
+
+source_file="res://docs/sweeps/2026-07-18_cycle2_content_observational.csv"
+dest_files=["res://docs/sweeps/2026-07-18_cycle2_content_observational.type.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.rarity.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.mean.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.facility.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.hive.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.veil.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.voidCirclet.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.stellarMenagerie.translation", "res://docs/sweeps/2026-07-18_cycle2_content_observational.n.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

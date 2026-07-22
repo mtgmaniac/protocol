@@ -1,6 +1,9 @@
 # Drives the rigged onboarding encounter: dims the screen, cuts a spotlight hole around one
 # real UI element at a time, attaches a coachmark, and gates each beat on the player's actual
-# action (via battle_scene's tutorial_event signal) or a tap. A persistent Skip ends it. The
+# action (via battle_scene's tutorial_event signal) or a tap. There is NO in-drill Skip
+# button (playtest deletion stands — coachmark occlusion): the skip decision happens BEFORE
+# entry, on the main menu's first-run choice overlay (Kev 2026-07-21), where SKIP sets the
+# same tutorial_done flag as completing. The
 # dim/ring/coachmark visuals live in the shared SpotlightLayer (also used by the keyword
 # primers); this controller owns the step script, the event gating, and target resolution.
 # The spotlight hole leaves the highlighted element fully interactive so gated steps work on
@@ -38,7 +41,7 @@ func start(scene: Node) -> void:
 	_show_step(0)
 
 
-# ── Step script (v2.3, Prompt-6 mark-out delta — 24 beats) ──────────────────────
+# ── Step script (v2.4, primer-showcase delta — 25 beats) ────────────────────────
 # Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
 # predicate), hero:"" (optional event predicate — the unit id carried in the
 # event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
@@ -73,6 +76,12 @@ func _build_steps() -> Array:
 		# Phase 2 — turn 2
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
+		# Primer-showcase explainer (Kev 2026-07-21): on a fresh profile the
+		# CLEANSE tip just displayed — the drill's ONE live primer (Splice
+		# Medic's Infusion sights it; battle_scene emits "rolled" only after
+		# the drain, so the modals never overlap). The copy stands alone on a
+		# replay where the tip is already seen and nothing displayed.
+		{"targets": ["ability:medic"], "text": "When a mechanic you've never seen appears, a one-time tip points it out - like the Cleanse on Splice Medic's roll. The Help menu keeps every keyword whenever you need a reminder."},
 		{"targets": ["protocol_value"], "text": "You banked 1 Protocol - income ticks +1 every turn, caps at 10. That's exactly enough for a Nudge."},
 		# Nudge stays TWO beats (Kev fix #3): button beat advances the instant the
 		# press arms the pick; the die beat gates on the applied nudge.
@@ -189,19 +198,26 @@ func _next() -> void:
 	_show_step(_step)
 
 
+# Persists tutorial_done, clears the run, and exits to wherever the drill was
+# entered from: the first-run choice (RUN TUTORIAL on the menu overlay, which
+# sets the continue flag) continues into the squad picker — no bounce to the
+# menu; manual replays (splash TUTORIAL button / Help) return to the main menu
+# as before. (SKIP on the overlay sets the same flag without ever entering.)
 func _finish() -> void:
 	if _scene != null and _scene.has_signal("tutorial_event") and _scene.tutorial_event.is_connected(_on_tutorial_event):
 		_scene.tutorial_event.disconnect(_on_tutorial_event)
+	var continue_to_play: bool = false
 	var gs: Node = get_node_or_null("/root/GameState")
 	if gs != null:
-		gs.set("tutorial_mode", false)
+		continue_to_play = bool(gs.get("tutorial_continue_to_play"))
+		gs.call("reset_run")  # clears tutorial_mode + the continue flag
 	var save_manager: Node = get_node_or_null("/root/SaveManager")
 	if save_manager != null:
 		save_manager.call("mark_tutorial_done")
 	var sm: Node = get_node_or_null("/root/SceneManager")
 	queue_free()
 	if sm != null:
-		sm.call("go_to_main_menu")
+		sm.call("go_to_unit_select" if continue_to_play else "go_to_main_menu")
 
 
 # ── Layout / spotlight ────────────────────────────────────────────────────────────
@@ -570,13 +586,13 @@ func _node_rect(node: Variant) -> Rect2:
 
 # ── Build the overlay UI ──────────────────────────────────────────────────────────
 func _build_ui() -> void:
-	# All dim/ring/coachmark visuals live in the shared SpotlightLayer.
-	# The SKIP button is DELETED (playtest fix pass, Kev ruling): the drill is
-	# opt-in from the splash, replayable from Help, two turns long, and
-	# provably un-strandable (the hostile-path smoke). Removing it also ends
-	# its coachmark occlusion. Mid-drill abandonment remains via the header's
-	# back button (battle binds it to return-to-menu, which reset_run()s and
-	# clears tutorial_mode).
+	# All dim/ring/coachmark visuals live in the shared SpotlightLayer. No
+	# in-drill Skip button (the playtest deletion STANDS — it occluded
+	# coachmarks): skipping happens on the main menu's first-run choice
+	# overlay before entry (Kev 2026-07-21). Mid-drill abandonment remains via
+	# the header's back button (return-to-menu → reset_run(), which clears
+	# tutorial_mode and the continue flag — tutorial_done stays unset, so the
+	# next BEGIN asks again).
 	_spot = SpotlightLayerScript.new(LAYER)
 	_spot.tapped.connect(_on_spot_tapped)
 	add_child(_spot)

@@ -217,6 +217,15 @@
       "text": "PROTOCOL: adds to the squad's shared pool for dice actions and items.",
       "priority": 20,
       "requires_feature": null
+    },
+    {
+      "$comment": "Cleanse (Kev 2026-07-21): keyword icon, roll-sighted like the icon_first_seen family (no event-stream fallback - cleanse emits no feedback event). Doubles as the tutorial's ONE showcase primer: Splice Medic's turn-2 Infusion (10 heal, cleanse) sights it naturally, so the drill demonstrates the first-encounter tip with a real primer and it stays seen.",
+      "id": "primer_cleanse",
+      "trigger": { "type": "icon_first_seen", "param": "cleanse" },
+      "target": "ability_pip",
+      "text": "CLEANSE: strips burn, roll penalties, and jam - frozen dice stay frozen.",
+      "priority": 20,
+      "requires_feature": null
     }
   ],
   "$signal_hook_examples": [

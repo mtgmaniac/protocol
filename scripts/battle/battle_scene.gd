@@ -238,7 +238,7 @@ var _round_complete_modal: Control = null
 var _round_complete_next_button: Button = null
 var _auto_turn_running: bool = false
 var _auto_battle_running: bool = false
-var _primer = null  # KeywordPrimer — null in tutorial battles
+var _primer = null  # KeywordPrimer — null only in review battles
 var _briefing_active: bool = false
 
 var _is_resolving_turn: bool = false
@@ -310,10 +310,12 @@ func _ready() -> void:
 	Callable(_layout, "stabilize_board_layout").call_deferred()
 	if _game_state().tutorial_mode:
 		_spawn_tutorial_controller.call_deferred()
-	elif not _review_mode:
-		# Keyword primers observe every non-tutorial battle; their own
-		# suppression covers headless + auto battle at fire time. (No primers in
-		# a read-only review — nothing is being cast.)
+	if not _review_mode:
+		# Keyword primers observe every live battle — tutorial included since
+		# the showcase ruling (Kev 2026-07-21): the drill lets exactly ONE primer
+		# through (KeywordPrimer.TUTORIAL_SHOWCASE_CAP). Their own suppression
+		# covers headless + auto battle at fire time. (No primers in a read-only
+		# review — nothing is being cast.)
 		_primer = KEYWORD_PRIMER_SCRIPT.new()
 		add_child(_primer)
 		_primer.setup(self)
@@ -768,7 +770,6 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		_sync_die_status_visuals()
 	transition(PHASE_TARGETING)
 	_append_log("Dice rolled for all units.")
-	_emit_tutorial("rolled", {"turn": _tutorial_turn})
 	if skip_dice_visuals and is_inside_tree() and get_tree() != null:
 		await get_tree().process_frame
 
@@ -796,6 +797,13 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		_notice_personality_primers()
 		_notice_rolled_ability_primers()
 		await _primer.flush_player_phase()
+
+	# "rolled" fires AFTER the primer drain (Kev 2026-07-21): the tutorial's
+	# waiter beats advance on it, so the drill's ONE showcase primer finishes
+	# its modal before the next coachmark places — the two spotlight layers
+	# never overlap. Outside the tutorial the emit is a no-op, and in turns
+	# with an empty queue the drain returns instantly, so nothing shifts.
+	_emit_tutorial("rolled", {"turn": _tutorial_turn})
 
 	if pending_manual_target_ids.is_empty():
 		transition(PHASE_READY_TO_END)

@@ -1,7 +1,10 @@
 # Splash / main menu — the app's boot scene. Animated title logo, a big BEGIN (battle
 # Roll-button styling) into the squad picker, and a smaller TUTORIAL button that launches
-# the rigged onboarding encounter. Built in code (matching the rest of the UI) over a
-# dark field; the buttons stay dark until the logo's boot-in finishes.
+# the rigged onboarding encounter as a replay. First-run choice (Kev 2026-07-21):
+# when SaveManager.tutorial_done is unset, BEGIN raises a one-question overlay —
+# RUN TUTORIAL or SKIP — and either path sets the flag and continues into the squad
+# picker. Built in code (matching the rest of the UI) over a dark field; the buttons
+# stay dark until the logo's boot-in finishes.
 extends Control
 
 const TITLE_LOGO_SCENE := preload("res://scenes/ui/TitleLogo.tscn")
@@ -9,6 +12,14 @@ const BEGIN_SIZE := Vector2(640, 136)
 const BEGIN_FONT := 52
 const TUTORIAL_SIZE := Vector2(420, 92)
 const TUTORIAL_FONT := 34
+# First-run choice overlay (question card after the first BEGIN).
+const PROMPT_WIDTH := 780.0
+const PROMPT_PAD := 36
+const PROMPT_TITLE_FONT := 46
+const PROMPT_BODY_FONT := 36
+const PROMPT_BUTTON_SIZE := Vector2(560, 112)
+const PROMPT_BUTTON_FONT := 40
+const PROMPT_SKIP_FONT := 30
 
 var _logo: Control
 var _begin_button: Button
@@ -98,6 +109,15 @@ func _on_begin_pressed() -> void:
 	await _logo.flare_finished
 	if not is_inside_tree():
 		return
+	# First-run choice (Kev 2026-07-21, revised same day: no mid-drill Skip
+	# button — the choice happens HERE, once, after the first BEGIN): a profile
+	# that has never completed or skipped the drill gets one question — run the
+	# tutorial, or head straight in. Unmissable, no menu discovery required.
+	# Deleting the user:// save re-triggers first-run behavior (the intended
+	# reset path).
+	if not SaveManager.is_tutorial_done():
+		_show_first_run_prompt()
+		return
 	SceneManager.go_to_unit_select()
 
 
@@ -105,3 +125,72 @@ func _on_tutorial_pressed() -> void:
 	AudioManager.play_select()
 	GameState.start_tutorial_run()
 	SceneManager.go_to_battle()
+
+
+# ── First-run choice overlay ──────────────────────────────────────────────────
+# One modal question over the darkened splash. RUN TUTORIAL enters the drill
+# with the continue flag set (TutorialController._finish → squad picker); SKIP
+# sets the SAME tutorial_done flag as completing (one flag, two paths in) and
+# heads straight into the squad picker. Neither path returns here.
+func _show_first_run_prompt() -> void:
+	var scrim := PixelUI.make_modal_scrim(0.78, true)
+	add_child(scrim)
+
+	var panel := PanelContainer.new()
+	PixelUI.style_panel(panel, PixelUI.BG_PANEL, PixelUI.LINE_BRIGHT, 3)
+	panel.custom_minimum_size = Vector2(PROMPT_WIDTH, 0)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	add_child(panel)
+
+	var pad := MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side, PROMPT_PAD)
+	panel.add_child(pad)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 28)
+	pad.add_child(box)
+
+	var title := Label.new()
+	title.text = "FIRST TIME?"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
+	box.add_child(title)
+
+	var body := Label.new()
+	body.text = "This is your first time playing - want to run the tutorial? You can replay it anytime from the Help menu."
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD
+	PixelUI.style_body_label(body, PROMPT_BODY_FONT)
+	box.add_child(body)
+
+	var run := Button.new()
+	run.text = "RUN TUTORIAL"
+	run.custom_minimum_size = PROMPT_BUTTON_SIZE
+	run.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_primary_button(run, PROMPT_BUTTON_FONT)
+	run.pressed.connect(_on_first_run_tutorial_pressed)
+	box.add_child(run)
+
+	var skip := Button.new()
+	skip.text = "SKIP TUTORIAL"
+	skip.custom_minimum_size = Vector2(PROMPT_BUTTON_SIZE.x, 92)
+	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_button(skip, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, PROMPT_SKIP_FONT)
+	skip.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	skip.pressed.connect(_on_first_run_skip_pressed)
+	box.add_child(skip)
+
+
+func _on_first_run_tutorial_pressed() -> void:
+	AudioManager.play_select()
+	GameState.start_tutorial_run(true)
+	SceneManager.go_to_battle()
+
+
+func _on_first_run_skip_pressed() -> void:
+	AudioManager.play_select()
+	SaveManager.mark_tutorial_done()
+	SceneManager.go_to_unit_select()

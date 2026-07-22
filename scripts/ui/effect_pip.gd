@@ -195,12 +195,9 @@ static func build_group(
 			icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			# Roll is one gold d20; a +roll (roll_up) tints green, −roll stays gold.
-			if pip_key == "roll_up":
-				icon_rect.modulate = PixelUI.COLOR_HEAL
-			# Cleanse reuses the heal glyph tinted GOLDEN (Build I ruling).
-			elif pip_key == "cleanse":
-				icon_rect.modulate = PixelUI.COLOR_CLEANSE_PIP
+			# Per-key glyph tint (roll_up green, cleanse golden) — the rule lives
+			# in PixelUI.pip_tint_for_key so primer coachmarks render the same tint.
+			icon_rect.modulate = PixelUI.pip_tint_for_key(pip_key)
 			group.add_child(icon_rect)
 
 	if effect_kind == "freeze":

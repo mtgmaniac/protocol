@@ -13,7 +13,7 @@
 | Field | Type / default | Written by | Meaning |
 |---|---|---|---|
 | `save_version` | `1` | always stamped on load | schema version; `_merge_loaded` heals older saves onto defaults (`:103-144`) |
-| `tutorial_done` | `false` | `mark_tutorial_done()` (`:212`), called by `TutorialController._finish` (`scripts/ui/tutorial_controller.gd:128-140`) | tutorial completed at least once |
+| `tutorial_done` | `false` | `mark_tutorial_done()` — from `TutorialController._finish` (completing) or `main_menu._on_first_run_skip_pressed` (SKIP on the first-run choice overlay); one flag, two paths in (Kev 2026-07-21) | tutorial completed OR skipped at least once; read by `main_menu._on_begin_pressed` (unset → BEGIN raises the RUN TUTORIAL / SKIP question, either path continues into the squad picker) |
 | `stats.runs_started` | `0` | `record_run_started()` (`:223`), from `GameState.start_run` — **skipped for tutorial runs** per [DECISIONS_RESOLVED #13](../DECISIONS_RESOLVED.md) (`GameState.gd:146-151`) | lifetime run count; feeds the rung-1 pity unlock |
 | `stats.runs_won_by_op` | `{}` | `record_run_finished` on victory (`:238-242`) | op id → win count |
 | `stats.best_clear` | `0` | `record_run_finished` (`:234`) | furthest battle REACHED in any run (defeat at b6 records 6) |

@@ -195,6 +195,9 @@ func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnc
 	var glyph: Texture2D = opts.get("glyph", null) as Texture2D
 	_coach_glyph.texture = glyph
 	_coach_glyph.visible = glyph != null
+	# opts["glyph_tint"]: shared-glyph keys (cleanse = golden heal glyph) keep
+	# their pip tint on the coachmark; callers that never set it stay untinted.
+	_coach_glyph.modulate = opts.get("glyph_tint", Color.WHITE) as Color
 	var hint: String = str(opts.get("hint", ""))
 	_hint_label.visible = hint != ""
 	_hint_label.text = hint

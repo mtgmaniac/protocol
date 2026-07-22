@@ -1,6 +1,10 @@
-# Scripted end-to-end tutorial playthroughs (v2.3, Prompt-6 mark-out delta:
-# Strike rolls 9 — Target Lock and mark appear NOWHERE in the drill; mark is
-# taught by its primer at first real-play sighting. Turn-1 math is
+# Scripted end-to-end tutorial playthroughs (v2.4, primer-showcase delta —
+# Kev 2026-07-21: the drill lets exactly ONE primer display, CLEANSE on Splice
+# Medic's turn-2 Infusion, and beat 15 explains the tip mechanic; the main
+# menu's first-run overlay carries the skip choice — no in-drill Skip button.
+# Prompt-6 still holds: Strike rolls 9
+# — Target Lock and mark appear NOWHERE in the drill; every OTHER primer stays
+# unseen and fires at first real-play sighting. Turn-1 math is
 # ORDER-INVARIANT). Drives the same battle-scene entry points the real UI
 # calls and asserts every TutorialController step advances, every spotlighted
 # step resolves holes, every assigned-gated step RETARGETS its spotlight onto
@@ -8,18 +12,22 @@
 # exactly where the coach copy claims (35 -> 18 -> dead on 10+11; shield
 # soaks 3; protocol 1).
 #
-# Scenario A — the happy path: all 24 steps in the taught order.
+# Scenario A — the happy path: all 25 steps in the taught order, with the
+#   cleanse showcase displaying (debug seams) and marked seen.
 # Scenario B — stall-proofing: assignments are resequenced (identical totals
 #   — order-invariance asserted at the same 18 checkpoint), a Nudge is
 #   attempted at 0 PP (rejected), and the dice-only kill still closes. The
 #   drill must be UNABLE to dead-end.
+# Scenario C — first-run choice: the menu overlay's SKIP sets tutorial_done
+#   and heads straight to the squad picker; RUN TUTORIAL enters the drill and
+#   finishing it also exits into the squad picker.
 #
 # Run:
 #   godot --headless --path . -s res://scripts/debug/tutorial_smoke_test.gd
 extends SceneTree
 
 const STEP_TIMEOUT_SECS := 20.0
-const STEP_COUNT := 24
+const STEP_COUNT := 25
 
 var _errors: Array[String] = []
 
@@ -33,9 +41,11 @@ func _run() -> void:
 	await _run_happy_path()
 	if _errors.is_empty():
 		await _run_stall_proof_path()
+	if _errors.is_empty():
+		await _run_skip_path()
 
 	if _errors.is_empty():
-		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof), spotlights resolved + retargeted, rig math exact + order-invariant, no leech/mark" % STEP_COUNT)
+		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof + skip), cleanse showcase shown once, spotlights resolved + retargeted, rig math exact + order-invariant, no leech/mark" % STEP_COUNT)
 		quit(0)
 	else:
 		for e in _errors:
@@ -55,11 +65,22 @@ func _run_happy_path() -> void:
 		_fail("TutorialController not spawned in tutorial_mode")
 		return
 	if (controller.call("_build_steps") as Array).size() != STEP_COUNT:
-		_fail("step script must be %d beats (badge beat deleted), got %d" % [STEP_COUNT, (controller.call("_build_steps") as Array).size()])
+		_fail("step script must be %d beats (primer-showcase beat added), got %d" % [STEP_COUNT, (controller.call("_build_steps") as Array).size()])
 
 	# Playtest item 4: leech must appear NOWHERE in the drill — no rigged hero
 	# band on either turn carries it (and none reaches the nat-20 overload).
 	_assert_no_leech_in_rig(scene)
+
+	# Primer showcase (Kev 2026-07-21): the manager must EXIST in tutorial
+	# battles now. Force it active under headless (debug seam) + auto-dismiss
+	# so the drill's ONE showcase actually displays during turn 2.
+	var sm_save: Node = root.get_node("/root/SaveManager")
+	var primer: Node = scene.get("_primer")
+	if primer == null:
+		_fail("KeywordPrimer must exist in tutorial battles (showcase ruling)")
+	else:
+		primer.set("debug_force_active", true)
+		primer.set("debug_auto_dismiss", true)
 
 	# Steps 0-2: orientation taps (WELCOME / header / the drone).
 	await _expect_step(controller, 0)
@@ -149,64 +170,77 @@ func _run_happy_path() -> void:
 	await _expect_step(controller, 15)
 	await _wait_for_phase(scene, "targeting")
 
-	# Step 15: protocol beat (tap). Step 16: Nudge button (phase nudge_pick).
+	# Step 15 (NEW): the primer-showcase explainer. On this fresh profile the
+	# CLEANSE tip must have ACTUALLY displayed (auto-dismissed) during the
+	# turn-2 drain — exactly one, marked seen so it never repeats in real play
+	# — BEFORE "rolled" advanced the waiter (the modals never overlap).
+	if primer != null:
+		if (primer.get("debug_shown_ids") as Array) != ["primer_cleanse"]:
+			_fail("showcase: expected exactly [primer_cleanse] shown, got %s" % str(primer.get("debug_shown_ids")))
+		if not bool(sm_save.call("is_primer_seen", "primer_cleanse")):
+			_fail("showcased cleanse primer must be marked seen (never repeats)")
 	_check_holes(controller)
 	controller.call("_next")
 	await _expect_step(controller, 16)
+
+	# Step 16: protocol beat (tap). Step 17: Nudge button (phase nudge_pick).
+	_check_holes(controller)
+	controller.call("_next")
+	await _expect_step(controller, 17)
 	_check_holes(controller)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _expect_step(controller, 17)
+	await _expect_step(controller, 18)
 
-	# Step 17: nudge Strike's die (8 -> 11, the band jump).
+	# Step 18: nudge Strike's die (8 -> 11, the band jump).
 	_check_holes(controller)
 	var combat_id: String = _state_id_for_unit(scene, "combat")
 	protocol.call("_apply_nudge", combat_id)
-	await _expect_step(controller, 18)
+	await _expect_step(controller, 19)
 
-	# Step 18: band-jump recap (tap). Step 19: the item SIGNPOST — purely
+	# Step 19: band-jump recap (tap). Step 20: the item SIGNPOST — purely
 	# informational, holes the (empty) consumable slot, advances on tap.
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 19)
+	await _expect_step(controller, 20)
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 20)
-
-	# Step 20: heal beat (assigned, hero=medic).
-	_check_holes(controller)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
 	await _expect_step(controller, 21)
 
-	# Step 21: assign the rest (Rail Strike and Overdrive at the drone).
+	# Step 21: heal beat (assigned, hero=medic).
+	_check_holes(controller)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
+	await _expect_step(controller, 22)
+
+	# Step 22: assign the rest (Rail Strike and Overdrive at the drone).
 	_check_holes(controller)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 22)
+	await _expect_step(controller, 23)
 
-	# Step 22: END TURN (gated won) — the kill closes ON DICE: 10 + 11 into 18.
+	# Step 23: END TURN (gated won) — the kill closes ON DICE: 10 + 11 into 18.
 	_check_holes(controller)
 	drone = _enemy_state(scene)
 	if int(drone.get("current_hp", 0)) != 18:
 		_fail("pre-end-turn drone HP: expected 18 (no item in the drill), got %d" % int(drone.get("current_hp", 0)))
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 23)
+	await _expect_step(controller, 24)
 	if not bool(_enemy_state(scene).get("dead", false)):
 		_fail("drone must be dead at the DRILL COMPLETE beat (dice-only kill)")
 
-	# Step 23: DRILL COMPLETE (tap_finish) -> main menu; done-flag persisted;
-	# primers never marked seen (they fire in the first real battle).
+	# Step 24: DRILL COMPLETE (tap_finish) -> main menu (manual-entry drill);
+	# done-flag persisted; every primer EXCEPT the one showcase stays unseen
+	# (fires in the first real battle).
 	_check_holes(controller)
 	controller.call("_next")
 	await _wait_frames(10)
 	var gs: Node = root.get_node("/root/GameState")
 	if bool(gs.get("tutorial_mode")):
 		_errors.append("tutorial_mode still true after finish")
-	var sm: Node = root.get_node("/root/SaveManager")
-	if not bool(sm.call("is_tutorial_done")):
-		_errors.append("tutorial_done flag not persisted (main-menu checkmark would not render)")
+	if not bool(sm_save.call("is_tutorial_done")):
+		_errors.append("tutorial_done flag not persisted after completing the drill")
 	for primer_id in ["primer_mark", "primer_icon_protocol"]:
-		if bool(sm.call("is_primer_seen", primer_id)):
+		if bool(sm_save.call("is_primer_seen", primer_id)):
 			_errors.append("%s marked seen during the tutorial — it must still fire in the first real battle" % primer_id)
 
 
@@ -269,15 +303,19 @@ func _run_stall_proof_path() -> void:
 	controller.call("_next")
 	await _expect_step(controller, 13)
 	scene.call("_on_roll_button_pressed")
+	# Step 15: showcase explainer (cleanse already seen after scenario A — no
+	# primer displays on a replay; the beat still shows and taps through).
 	await _expect_step(controller, 15)
 	await _wait_for_phase(scene, "targeting")
 	controller.call("_next")
 	await _expect_step(controller, 16)
+	controller.call("_next")
+	await _expect_step(controller, 17)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _expect_step(controller, 17)
-	protocol.call("_apply_nudge", combat_id)
 	await _expect_step(controller, 18)
+	protocol.call("_apply_nudge", combat_id)
+	await _expect_step(controller, 19)
 
 	# Nudge-at-0-PP rejection (Prompt-5): the pool is spent (1 income - 1
 	# Nudge = 0); a second Nudge press must REFUSE to arm the pick, the
@@ -292,22 +330,93 @@ func _run_stall_proof_path() -> void:
 
 	# Band-jump tap -> signpost tap -> heal -> assigns -> end turn.
 	controller.call("_next")
-	await _expect_step(controller, 19)
-	controller.call("_next")
 	await _expect_step(controller, 20)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	controller.call("_next")
 	await _expect_step(controller, 21)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	await _expect_step(controller, 22)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 22)
+	await _expect_step(controller, 23)
 
 	# END TURN: identical dice-only kill (10 + 11 into 18) — no dead end.
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 23)
+	await _expect_step(controller, 24)
 	if not bool(_enemy_state(scene).get("dead", false)):
 		_fail("stall-proof: the drill dead-ended — drone alive after the dice-only turn 2")
 	controller.call("_next")
 	await _wait_frames(10)
+
+
+# ── Scenario C: first-run choice (Kev 2026-07-21, revised — no in-drill Skip) ─
+# The main menu's first-run overlay carries the choice: SKIP sets the SAME
+# tutorial_done flag as completing and heads straight into the squad picker;
+# RUN TUTORIAL enters the drill with the continue flag, and finishing that
+# drill ALSO exits into the squad picker — no bounce to the menu.
+
+func _run_skip_path() -> void:
+	var sm_save: Node = root.get_node("/root/SaveManager")
+	var gs: Node = root.get_node("/root/GameState")
+	var scene_mgr: Node = root.get_node("/root/SceneManager")
+
+	# SKIP branch.
+	sm_save.call("dev_reset_profile")  # back to a first-launch profile
+	if bool(sm_save.call("is_tutorial_done")):
+		_fail("first-run precondition: profile reset must clear tutorial_done")
+		return
+	scene_mgr.call("go_to_main_menu")
+	await _wait_frames(10)
+	var menu: Node = current_scene
+	if menu == null or not menu.has_method("_show_first_run_prompt"):
+		_fail("main menu is missing the first-run choice overlay")
+		return
+	menu.call("_show_first_run_prompt")
+	await _wait_frames(2)
+	menu.call("_on_first_run_skip_pressed")
+	await _wait_frames(10)
+	if not bool(sm_save.call("is_tutorial_done")):
+		_fail("SKIP must set tutorial_done (one flag, two paths in)")
+	if bool(gs.get("tutorial_mode")):
+		_fail("SKIP must never enter tutorial_mode")
+	if not _current_scene_is("UnitSelect.tscn"):
+		_fail("SKIP must head straight into the squad picker, got '%s'" % _current_scene_file())
+
+	# RUN TUTORIAL branch: enters the drill with the continue flag; finishing
+	# exits into the squad picker.
+	sm_save.call("dev_reset_profile")
+	scene_mgr.call("go_to_main_menu")
+	await _wait_frames(10)
+	menu = current_scene
+	if menu == null or not menu.has_method("_on_first_run_tutorial_pressed"):
+		_fail("main menu is missing the run-tutorial handler")
+		return
+	menu.call("_on_first_run_tutorial_pressed")
+	await _wait_frames(10)
+	if not bool(gs.get("tutorial_mode")):
+		_fail("RUN TUTORIAL must enter tutorial_mode")
+	if not bool(gs.get("tutorial_continue_to_play")):
+		_fail("RUN TUTORIAL must set the continue flag (finish -> squad picker)")
+	var controller: Node = _find_controller(current_scene)
+	if controller == null:
+		_fail("RUN TUTORIAL must spawn the TutorialController")
+		return
+	await _expect_step(controller, 0)
+	controller.call("_finish")  # completing's endpoint, without replaying 25 beats
+	await _wait_frames(10)
+	if not bool(sm_save.call("is_tutorial_done")):
+		_fail("completing the first-run drill must set tutorial_done")
+	if bool(gs.get("tutorial_continue_to_play")):
+		_fail("finish must consume the continue flag (reset_run)")
+	if not _current_scene_is("UnitSelect.tscn"):
+		_fail("completing the first-run drill must continue into the squad picker, got '%s'" % _current_scene_file())
+
+
+func _current_scene_file() -> String:
+	return str(current_scene.scene_file_path) if current_scene != null else ""
+
+
+func _current_scene_is(suffix: String) -> bool:
+	return _current_scene_file().ends_with(suffix)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

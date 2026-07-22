@@ -579,6 +579,19 @@ static func pip_texture_for_key(key: String) -> Texture2D:
 	return texture
 
 
+# The modulate a pip glyph carries wherever it renders (readout pips AND primer
+# coachmarks — single source, so the shared-glyph keys can't drift): roll_up
+# tints the gold d20 green; cleanse tints the shared heal glyph golden (Build I
+# ruling — COLOR_CLEANSE_PIP). Everything else renders untinted.
+static func pip_tint_for_key(key: String) -> Color:
+	match key:
+		"roll_up":
+			return COLOR_HEAL
+		"cleanse":
+			return COLOR_CLEANSE_PIP
+	return Color.WHITE
+
+
 # Trim an icon's transparent margins (AtlasTexture over the source, computed
 # once per key via the cache above). The glyphs carry uneven baked padding —
 # the damage bolt is only 84/128 px wide, so its value floated ~10px further

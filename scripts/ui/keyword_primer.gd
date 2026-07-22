@@ -2,8 +2,10 @@
 # (docs/PRIMERS.md is the authoring guide; data lives in data/raw/primers.data.json).
 #
 # Architecture: its own CanvasLayer (same 110 band as the tutorial — above the
-# battle scene + header, BELOW InspectPopup 130 / HelpMenu 135; the two never
-# coexist because primers are suppressed during the tutorial). Reuses the
+# battle scene + header, BELOW InspectPopup 130 / HelpMenu 135; during the
+# drill the ONE showcase primer displays while the tutorial coach is hidden —
+# battle_scene emits "rolled" only after the primer drain, so the two
+# coachmarks never overlap). Reuses the
 # shared SpotlightLayer for dim + ring + coachmark. This manager only OBSERVES
 # — it never touches combat state, so it cannot move a sim number.
 #
@@ -19,8 +21,13 @@
 # - Order is spatial, not priority: enqueue order == hero rail left→right,
 #   then enemy rail, pips left→right within a readout. The JSON `priority`
 #   field is inert (retained for schema compatibility only).
-# - Suppressed entirely during the scripted tutorial, headless mode, and auto
-#   battle. requires_feature entries skip silently when the feature is absent.
+# - TUTORIAL SHOWCASE (Kev 2026-07-21): during the scripted tutorial exactly
+#   ONE primer may display (the drill's first natural sighting — cleanse, on
+#   Splice Medic's turn-2 Infusion). It is marked seen as normal, so the demoed
+#   tip never repeats in real play; everything past the cap stays suppressed
+#   and unmarked (fires in the first real battle, as before). Headless mode and
+#   auto battle remain fully suppressed. requires_feature entries skip silently
+#   when the feature is absent.
 # - FAILURE SAFETY: a resolver returning nothing, a missing node, or a dead
 #   layer skips the primer WITHOUT marking it seen and never blocks the battle.
 # - Marked seen (SaveManager.mark_primer_seen) only after the primer displayed
@@ -121,8 +128,24 @@ func setup(scene: Node) -> void:
 
 # ── Suppression ───────────────────────────────────────────────────────────────
 
+# Tutorial showcase cap (Kev 2026-07-21): the drill lets exactly ONE primer
+# through — its first natural sighting — so the player meets the tip mechanic
+# before real play; that one is marked seen ("don't have to redo that one").
+# Everything past the cap is suppressed and unmarked. The cap sits ABOVE the
+# debug_force_active seam so the headless tutorial smoke exercises it too.
+const TUTORIAL_SHOWCASE_CAP := 1
+var _tutorial_shown: int = 0
+
+
+func _in_tutorial() -> bool:
+	var gs: Node = get_node_or_null("/root/GameState")
+	return gs != null and bool(gs.get("tutorial_mode"))
+
+
 func _suppressed() -> bool:
 	if _scene == null or not is_instance_valid(_scene):
+		return true
+	if _in_tutorial() and _tutorial_shown >= TUTORIAL_SHOWCASE_CAP:
 		return true
 	if debug_force_active:
 		return false
@@ -130,9 +153,6 @@ func _suppressed() -> bool:
 		return true
 	# Player opt-out (help → settings → tutorials, Kev 2026-07-10).
 	if not bool(SaveManager.get_setting("ability_primers_enabled", true)):
-		return true
-	var gs: Node = get_node_or_null("/root/GameState")
-	if gs != null and bool(gs.get("tutorial_mode")):
 		return true
 	if bool(_scene.get("_auto_battle_running")) or bool(_scene.get("_auto_turn_running")):
 		return true
@@ -212,6 +232,11 @@ const ICON_TRIGGERS := {
 	"rampage": ["attack_keyword_resolved", "rampage"],
 	"pack_bonus": ["attack_keyword_resolved", "pack_bonus"],
 	"summon": ["attack_keyword_resolved", "summon"],
+	# Cleanse (Kev 2026-07-21): keyword icon with NO event-stream fallback —
+	# cleanse emits no feedback event, so the roll sighting is its only trigger.
+	# It keys icon_first_seen like the marker icons below. Splice Medic's turn-2
+	# Infusion sights it in the drill — the tutorial's ONE showcase primer.
+	"cleanse": ["icon_first_seen", "cleanse"],
 	# Non-keyword icons — the icon itself is the lesson.
 	"roll_up": ["icon_first_seen", "roll"],
 	"roll_down": ["icon_first_seen", "roll"],
@@ -330,6 +355,11 @@ func _flush() -> void:
 	_pending.clear()
 	for candidate_variant in candidates:
 		var candidate: Dictionary = candidate_variant
+		# Re-check per candidate: the tutorial showcase cap can trip MID-drain
+		# (the one shown primer suppresses the rest of this batch — dropped
+		# unmarked, same semantics as any suppressed context).
+		if _suppressed():
+			return
 		# In-flight dedupe: two units can queue the SAME key in one moment
 		# (e.g. two self-marked pips on one turn) — both enter _pending before
 		# the first shows, and _queue's seen-check ran too early to stop the
@@ -374,10 +404,14 @@ func _try_show(candidate: Dictionary) -> bool:
 		"hint": "Tap to continue >",
 		"interactive": true,
 		"glyph": PixelUI.pip_texture_for_key(glyph_key),
+		# Shared-glyph keys keep their pip tint (cleanse = golden heal glyph).
+		"glyph_tint": PixelUI.pip_tint_for_key(glyph_key),
 	})
 	if not debug_auto_dismiss:
 		await _spot.tapped
 	_spot.dismiss()
+	if _in_tutorial():
+		_tutorial_shown += 1
 	debug_show_count += 1
 	debug_shown_ids.append(str(entry.get("id", "")))
 	_fired_params[str(candidate.get("key", ""))] = true

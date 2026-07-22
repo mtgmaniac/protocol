@@ -249,6 +249,39 @@ func _run() -> void:
 	primer.notice_rolled_ability({"gainProtocol": 1}, "hero", "h1")
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_icon_protocol"), "protocol-gain pip fires the protocol primer")
+	# Cleanse pip (Infusion-style heal+cleanse — Kev 2026-07-21): the heal base
+	# stays exempt, the cleanse keyword icon fires its primer. This is also the
+	# tutorial's one showcase primer (tutorial_smoke pins that path).
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"heal": 10, "cleanse": true}, "hero", "h1")
+	await primer.flush_at_group_boundary()
+	_check(sm.call("is_primer_seen", "primer_cleanse"), "cleanse icon on an exempt-heal pip fires the cleanse primer")
+
+	# ── Tutorial showcase cap (Kev 2026-07-21): during tutorial_mode exactly ONE
+	# primer displays per drill, marked seen; the rest of the drain drops
+	# unmarked (they fire in the first real battle).
+	var gs_cap: Node = root.get_node("/root/GameState")
+	gs_cap.set("tutorial_mode", true)
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
+	primer.notice_event({"type": "jam", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_shown_ids == ["primer_jam"],
+		"tutorial cap: only the FIRST candidate displays (saw %s)" % str(primer.debug_shown_ids))
+	_check(sm.call("is_primer_seen", "primer_jam"), "the tutorial showcase IS marked seen")
+	_check(not sm.call("is_primer_seen", "primer_freeze"),
+		"past the cap: dropped unmarked — fires in the first real battle")
+	primer.on_turn_started()
+	primer.notice_event({"type": "mark", "side": "enemy", "target_id": "e1"})
+	await primer.flush_at_group_boundary()
+	_check(not sm.call("is_primer_seen", "primer_mark"), "cap persists across turns within the drill")
+	gs_cap.set("tutorial_mode", false)
+	primer._tutorial_shown = 0
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
 	# Conditional-modifier condition icon (Shatter Lance-style "+5❄" on a dmg pip)
 	# teaches freeze on first sight — the dmg base stays exempt.
 	sm.call("dev_reset_primers")

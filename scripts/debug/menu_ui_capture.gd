@@ -3,6 +3,7 @@
 #   --capture-delay-ms=300    mid-boot (buttons still dark)
 #   --capture-delay-ms=1800   idle (glows pulsing, buttons live)
 #   --capture-flare           press-BEGIN flare, captured mid-blowout
+#   --capture-first-run       the first-run choice overlay (RUN TUTORIAL / SKIP)
 extends SceneTree
 
 const MENU_SCENE := "res://scenes/ui/MainMenu.tscn"
@@ -18,6 +19,7 @@ func _run_capture() -> void:
 	var output := DEFAULT_OUTPUT
 	var delay_ms := DEFAULT_DELAY_MS
 	var flare := false
+	var first_run := false
 	# User args arrive after "--" (get_cmdline_user_args), engine-style without.
 	for arg in Array(OS.get_cmdline_args()) + Array(OS.get_cmdline_user_args()):
 		if arg.begins_with("--capture-output="):
@@ -26,6 +28,8 @@ func _run_capture() -> void:
 			delay_ms = maxi(int(arg.get_slice("=", 1)), 50)
 		elif arg == "--capture-flare":
 			flare = true
+		elif arg == "--capture-first-run":
+			first_run = true
 	change_scene_to_file(MENU_SCENE)
 	var retries := 120
 	while retries > 0:
@@ -41,6 +45,9 @@ func _run_capture() -> void:
 			logo.call("flare_out")
 			# Catch the frame near peak core flare (0.12s ramp).
 			await create_timer(0.10).timeout
+	if first_run and current_scene != null and current_scene.has_method("_show_first_run_prompt"):
+		current_scene.call("_show_first_run_prompt")
+		await create_timer(0.15).timeout
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var absolute_output := ProjectSettings.globalize_path(output)

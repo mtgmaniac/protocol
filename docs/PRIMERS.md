@@ -9,7 +9,10 @@ shows one sentence. Then never again (per save profile).
 `scripts/ui/spotlight_layer.gd` (shared dim/ring/coachmark, also used by the tutorial)
 · `SaveManager` `onboarding.primers_seen` (persistence) · `scripts/debug/primer_smoke_test.gd`
 (headless regression). The tutorial (`TutorialController`) shares the SpotlightLayer but
-is otherwise a separate system — never couple primer logic to it.
+is otherwise a separate system — never couple primer logic to it. The ONE sanctioned
+crossover is the tutorial showcase cap (Kev 2026-07-21, see Behavior semantics): the
+drill lets exactly one primer display via the manager's own cap, with zero tutorial
+knowledge inside the primer beyond the existing `tutorial_mode` read.
 
 ---
 
@@ -60,7 +63,7 @@ primers entirely in Help → Settings → Tutorials (`ability_primers_enabled`).
 | `die_status_applied` | jam / freeze / rewrite / hijack | the die status first lands on ANY die, either side |
 | `status_applied` | mark / firewall / cloak / taunt / burn / spike / accrete | the status first appears on any unit card |
 | `attack_keyword_resolved` | chain / detonate / execute / breach / pierce / leech / siphon / revive / rampage / pack_bonus / summon | the keyword first visibly resolves in the feedback stream, friendly or enemy (`wipe_shields` events also route to the breach primer — same rule) |
-| `icon_first_seen` | aoe / target_lowest / roll / self / protocol | a non-keyword pip icon first appears on a revealed roll — the icon itself is the lesson (Bug-2, 2026-07-12). Only damage/heal/shield are exempt (`HIGHLIGHT_EXEMPT_ICONS`) — do not re-add them |
+| `icon_first_seen` | aoe / target_lowest / roll / self / protocol / cleanse | a non-keyword pip icon first appears on a revealed roll — the icon itself is the lesson (Bug-2, 2026-07-12). Only damage/heal/shield are exempt (`HIGHLIGHT_EXEMPT_ICONS`) — do not re-add them. Cleanse (2026-07-21) is a keyword icon parked here because cleanse emits no feedback event — the roll sighting is its only trigger; it is also the tutorial's showcase primer |
 | `protocol_action_affordable` | *(no loaded entries)* | seam kept; the nudge/reroll/set primers were CUT 2026-07-10 — the scripted tutorial teaches them |
 | `personality_assigned` | *(no loaded entries)* | trigger plumbing kept; the four attack-style primers were CUT 2026-07-10 (Kev: not tutorial material — the unit popup's TARGETING line remains the reference) |
 | `signal_hook` | any signal name | reserved seam — see below; no loaded entries yet |
@@ -154,8 +157,14 @@ signal:
   **Self-heal (belt-and-braces):** a null plate calls the scene's idempotent
   `_sync_die_tags()` and re-fetches; any resolution that still falls past the
   plate glyph `push_warning`s.
-- **Suppression:** never during the scripted tutorial, headless mode, or auto
-  battle. `requires_feature` entries skip silently when the feature is absent.
+- **Suppression:** never in headless mode or auto battle. During the scripted
+  tutorial exactly ONE primer may display (Kev 2026-07-21,
+  `TUTORIAL_SHOWCASE_CAP` — the drill's first natural sighting, cleanse on
+  Splice Medic's turn-2 Infusion); it is marked seen as normal, everything
+  past the cap is suppressed and unmarked and fires in the first real battle.
+  battle_scene emits the `rolled` tutorial event only after the primer drain,
+  so the showcase modal and the tutorial coach never overlap.
+  `requires_feature` entries skip silently when the feature is absent.
 - **Failure safety:** if the target can't resolve or the layer is dead, the
   primer is skipped silently, NOT marked seen, and the battle never blocks.
 - **Marked seen** only after the primer actually displayed and was dismissed

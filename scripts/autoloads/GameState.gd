@@ -71,8 +71,13 @@ var run_protocol_cap_override: int = 0
 var deaths_last_battle: Array = []
 var deaths_prev_battle: Array = []
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
-# the tutorial is opt-in from the splash / Help, so it needs no persistence.
+# completion/skip persistence is SaveManager.tutorial_done (first-run auto-init,
+# Kev 2026-07-21: the first BEGIN with that flag unset launches the drill).
 var tutorial_mode: bool = false
+# Where the drill exits to (in-memory, set by start_tutorial_run): first-run
+# auto-init continues into the squad picker; manual replays (splash TUTORIAL
+# button / Help) return to the main menu. Consumed by TutorialController._finish.
+var tutorial_continue_to_play: bool = false
 
 ## Read-only snapshot of the just-finished battle's final frame (Batch 5). Captured by
 ## battle_scene at victory; the reward screen's "View Battlescreen" overlays it so the
@@ -193,7 +198,8 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 # from a fresh profile — Strike Unit (combat), Field Engineer (engineer), Splice Medic
 # (medic), Batch 1 / Batch 5. First operation, battle 1. battle_scene reads tutorial_mode
 # to rig dice/enemy and spawn the coachmark controller.
-func start_tutorial_run() -> void:
+func start_tutorial_run(continue_to_play: bool = false) -> void:
+	tutorial_continue_to_play = continue_to_play
 	var op_ids: Array = DataManager.get_operation_order()
 	var op_id: String = str(op_ids[0]) if not op_ids.is_empty() else ""
 	start_run(["combat", "engineer", "medic"], op_id, -1, true)
@@ -1019,6 +1025,7 @@ func advance_to_next_battle() -> void:
 
 func reset_run() -> void:
 	tutorial_mode = false
+	tutorial_continue_to_play = false
 	selected_units.clear()
 	current_battle = 0
 	selected_operation_id = ""
