@@ -201,13 +201,19 @@ func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnc
 	var hint: String = str(opts.get("hint", ""))
 	_hint_label.visible = hint != ""
 	_hint_label.text = hint
-	# Placement-flicker fix (playtest item 9): _place_coach must yield a frame
-	# to measure the reflowed label, and a visible coach rendered that frame at
-	# its PREVIOUS position/size — the one-frame blip. Keep it hidden until it
-	# is placed, then show. (Min-size measurement works on hidden Controls.)
-	_coach.visible = false
-	await _place_coach(_bounds_of(target_rects), anchor)
+	# Placement-flicker fix (playtest item 9), REVISED for the height fix (Kev
+	# 2026-07-21): the coach must be invisible while _place_coach yields a
+	# frame to measure the reflowed label (a visible coach rendered that frame
+	# at its PREVIOUS position/size — the one-frame blip), but it must stay
+	# `visible = true` — a HIDDEN Container never re-sorts its children, so
+	# the autowrap label kept its previous width during measurement and
+	# reported a stale (taller) line count; the card then rendered at the new
+	# width with fewer lines and dead space below (the taller-than-content
+	# bug). Transparent keeps layout live with zero blip.
 	_coach.visible = true
+	_coach.modulate.a = 0.0
+	await _place_coach(_bounds_of(target_rects), anchor)
+	_coach.modulate.a = 1.0
 
 
 func set_holes(holes: Array) -> void:
@@ -273,8 +279,13 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 	var width: float = minf(_coach_content_width(max_width), max_width)
 	_coach.custom_minimum_size = Vector2(width, 0)
 	_coach.size = Vector2(width, 0)
+	# One frame so the container SORTS at the new width (the caller keeps the
+	# coach visible-but-transparent precisely so this sort actually runs) —
+	# only then does the autowrap label's min height reflect the real line
+	# count. Ceil to a whole design px (pixel-snap law; m5x7 metrics can land
+	# fractional through the theme chain).
 	await get_tree().process_frame
-	var ch: float = _coach.get_combined_minimum_size().y
+	var ch: float = ceilf(_coach.get_combined_minimum_size().y)
 	var y: float
 	if anchor == CoachAnchor.BOTTOM:
 		# Pinned to the bottom so it never covers the centre action button —

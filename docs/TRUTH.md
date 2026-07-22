@@ -459,8 +459,15 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
   line wraps regardless, so it contributes its BALANCED width (unwrapped
   width split over the fewest lines, plus word-boundary slack) — short cards
   (WELCOME / DRILL COMPLETE) shrink to fit and center, long copy wraps into
-  even lines. Applies to every coach placement (tutorial AND primers —
-  shared SpotlightLayer); positions round to whole px; the bottom anchor
+  even lines. **Height shrink-wraps too (2026-07-21 fix):** the card is
+  measured visible-but-transparent during placement — a HIDDEN Container
+  never re-sorts its children, so the old `visible = false` blip fix made
+  the autowrap label report a stale line count at its previous width and
+  every card carried dead space below its text (the WELCOME card measured
+  at ~zero width was worst). Measured height ceils to a whole design px; no
+  artificial minimum — padding + one text line + the hint line is already
+  the natural floor. Applies to every coach placement (tutorial AND primers
+  — shared SpotlightLayer); positions round to whole px; the bottom anchor
   clears `PixelUI.safe_bottom`.
 - **Dice-settle rig:** the scripted values are handed to the tray BEFORE the
   physics roll (`dice_tray_3d.set_rigged_results`, consumed one-shot in
