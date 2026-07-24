@@ -33,6 +33,11 @@ func _ready() -> void:
 	# Header carries no run on the splash.
 	if is_instance_valid(PersistentHeader):
 		PersistentHeader.set_run_active(false)
+	# Web: precompile the dice WebGL programs while the player reads the menu
+	# (once per session — DiceTray3D gates internally). Deferred so the menu's
+	# own first paint isn't sharing frames with the compile hitches.
+	if OS.has_feature("web"):
+		_start_web_dice_warmup.call_deferred()
 
 	var bg := ColorRect.new()
 	bg.color = PixelUI.DT_FIELD_BG
@@ -125,6 +130,24 @@ func _on_tutorial_pressed() -> void:
 	AudioManager.play_select()
 	GameState.start_tutorial_run()
 	SceneManager.go_to_battle()
+
+
+# Web-only (no-op elsewhere and after the first run): a tiny hidden DiceTray3D
+# renders every dice material variant so WebGL program compilation happens here,
+# spread across menu frames, instead of freezing battle entry (~1.3s measured).
+# The tray is 64px, alpha-0 and mouse-ignoring — never visible, no layout shift
+# (added directly to the scene root, not a container). If the player enters a
+# battle before it finishes, the tray dies with the menu and the warm-up's
+# start-set gate keeps it from ever running twice.
+func _start_web_dice_warmup() -> void:
+	if not is_inside_tree():
+		return
+	var tray := DiceTray3D.new()
+	tray.size = Vector2(64, 64)
+	add_child(tray)
+	await tray.warm_up_web_pipelines()
+	if is_instance_valid(tray):
+		tray.queue_free()
 
 
 # ── First-run choice overlay ──────────────────────────────────────────────────

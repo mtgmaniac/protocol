@@ -88,13 +88,32 @@ var _face_centers: Array[Vector3] = []
 var _face_text_bases: Array[Basis] = []
 var _face_values: Array[int] = []
 var _is_rolling: bool = false
-var _frozen_filter_material: StandardMaterial3D
 var _dice_number_font: Font
 var _is_exiting_tree: bool = false
 var _bounds_half_width: float = TRAY_HALF_WIDTH
 var _bounds_min_z: float = -TRAY_HALF_DEPTH
 var _bounds_max_z: float = TRAY_HALF_DEPTH
 var _tray_bodies: Dictionary = {}
+
+# ── Shared material bank ──────────────────────────────────────────────────────
+# Every dice material comes from this STATIC cache, keyed by role + colour/zone.
+# Static on purpose (web Issue 1): besides deduplicating per-die copies, the
+# bank holds a permanent reference to each material feature-set, so the engine's
+# internal per-feature-set shader is never freed when a battle's dice are torn
+# down. Without it the compiled GL programs die with the last die of a battle
+# and WebGL relinks them synchronously (~2s) at the next battle's first draw.
+static var _material_bank: Dictionary = {}
+# One-shot per session: web pipeline warm-up has already run.
+static var _web_warmup_done: bool = false
+
+
+static func _bank_material(key: String, builder: Callable) -> StandardMaterial3D:
+	var cached: Variant = _material_bank.get(key, null)
+	if cached is StandardMaterial3D:
+		return cached
+	var made: StandardMaterial3D = builder.call()
+	_material_bank[key] = made
+	return made
 
 
 func _ready() -> void:
@@ -104,6 +123,87 @@ func _ready() -> void:
 	_build_d20_face_data()
 	_sync_viewport_size()
 	reset()
+
+
+# WebGL compiles+links every GL program synchronously at first draw, which used
+# to land on the first roll of the battle (~2s freeze before dice appeared).
+# Instead, MainMenu spawns a tiny hidden DiceTray3D at menu load and calls this
+# (web only, once per session): it renders every dice material variant (both
+# side colours, status filters, highlight/dim faces, billboard + face labels)
+# in BATCHES with frames awaited between them, so the compile cost lands as a
+# few short hitches while the player reads the menu instead of one long freeze
+# at battle entry. The static material bank keeps the programs alive afterwards.
+# The done-gate is set at START on purpose: if the player enters a battle before
+# this finishes (the menu instance is freed mid-run), it never re-runs — the
+# battle's first roll just eats whatever compilation remains (worst case equals
+# the old behaviour; no deadlock, no double run).
+func warm_up_web_pipelines() -> void:
+	if not OS.has_feature("web") or _web_warmup_done:
+		return
+	if _is_rolling or _is_exiting_tree or not is_inside_tree():
+		return
+	_web_warmup_done = true
+	var start_ms: int = Time.get_ticks_msec()
+	_throw_context = {}
+	var hero_die: RigidBody3D = _spawn_die({"side": "hero", "id": "__warmup_hero"}, 0, 2)
+	var enemy_die: RigidBody3D = _spawn_die({"side": "enemy", "id": "__warmup_enemy"}, 1, 2)
+	for die in [hero_die, enemy_die]:
+		die.freeze = true
+		die.linear_velocity = Vector3.ZERO
+		die.angular_velocity = Vector3.ZERO
+	hero_die.position = Vector3(-1.5, DIE_RADIUS, 0.6)
+	enemy_die.position = Vector3(1.5, DIE_RADIUS, 0.6)
+	var setup_ms: int = Time.get_ticks_msec() - start_ms
+	# Draw offscreen: alpha-zero modulate keeps the SubViewport rendering (its
+	# update mode gates on visibility, not modulate) while nothing reaches the
+	# player's screen.
+	var prev_modulate: Color = modulate
+	modulate = Color(1.0, 1.0, 1.0, 0.0)
+	visible = true
+	# Batch 1: base die (body, inner shell, face panels, bevels, edges, numerals).
+	if not await _warm_render_frames(2):
+		return
+	# Batch 2: freeze/petrify shells + their billboard overlay labels.
+	if is_instance_valid(hero_die):
+		_set_die_frozen_visual(hero_die, true)
+	if is_instance_valid(enemy_die):
+		_set_die_frozen_visual(enemy_die, true, "petrify")
+	if not await _warm_render_frames(2):
+		return
+	# Batch 3: jam shell + cap marker + pending (rewrite/hijack) marker.
+	if is_instance_valid(enemy_die):
+		_set_die_jam_visual(enemy_die, 5)
+		_set_die_pending_marker(enemy_die, true, false)
+	if not await _warm_render_frames(2):
+		return
+	# Batch 4: result highlight + dimmed faces + bevel outline (both sides).
+	if is_instance_valid(hero_die):
+		_highlight_top_face(hero_die, 20, "hero")
+	if is_instance_valid(enemy_die):
+		_highlight_top_face(enemy_die, 1, "enemy")
+	if not await _warm_render_frames(2):
+		return
+	if _is_rolling:
+		modulate = prev_modulate
+		return
+	visible = false
+	modulate = prev_modulate
+	_clear_dice()
+	var total_ms: int = Time.get_ticks_msec() - start_ms
+	print("[DiceTray3D] web pipeline warm-up: setup %d ms, render %d ms (total %d ms)" % [setup_ms, total_ms - setup_ms, total_ms])
+
+
+# Awaits `count` process frames while the tray stays alive. Returns false if
+# the tray is being freed (scene change) — callers abort the warm-up.
+func _warm_render_frames(count: int) -> bool:
+	for _i in range(count):
+		var tree: SceneTree = get_tree()
+		if _is_exiting_tree or tree == null:
+			return false
+		await tree.process_frame
+		if _is_exiting_tree or not is_inside_tree():
+			return false
+	return true
 
 
 func _notification(what: int) -> void:
@@ -686,47 +786,58 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 	var panel: MeshInstance3D = _die_part(die, "FacePanel%d" % result) as MeshInstance3D
 	if panel == null:
 		return
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-	mat.render_priority = 1
 	var zone_key: String = zone.strip_edges().to_lower()
-	if zone_key != "":
-		var zone_style: Dictionary = _get_zone_face_style(zone_key)
-		mat.albedo_color = zone_style["face"]
-		mat.emission = zone_style["emission"]
-		mat.emission_energy_multiplier = float(zone_style["energy"])
-	elif side == "hero" and result == 20:
-		mat.albedo_color = Color(0.46, 0.26, 0.03, 1.0)
-		mat.emission = Color(1.0, 0.58, 0.10, 1.0)
-		mat.emission_energy_multiplier = 1.2
-	elif side == "hero":
-		mat.albedo_color = Color(0.06, 0.14, 0.32, 1.0)
-		mat.emission = Color(0.04, 0.10, 0.25, 1.0)
-		mat.emission_energy_multiplier = 0.8
-	else:
-		mat.albedo_color = Color(0.30, 0.06, 0.05, 1.0)
-		mat.emission = Color(0.20, 0.04, 0.03, 1.0)
-		mat.emission_energy_multiplier = 0.8
-	mat.emission_enabled = true
-	mat.roughness = 0.80
-	panel.material_override = mat
+	var is_crit: bool = zone_key == "" and side == "hero" and result == 20
+	var hl_key: String = "hl:%s:%s:%s" % [zone_key, side, "crit" if is_crit else "std"]
+	panel.material_override = _bank_material(hl_key, func() -> StandardMaterial3D:
+		var mat: StandardMaterial3D = StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		mat.render_priority = 1
+		if zone_key != "":
+			var zone_style: Dictionary = _get_zone_face_style(zone_key)
+			mat.albedo_color = zone_style["face"]
+			mat.emission = zone_style["emission"]
+			mat.emission_energy_multiplier = float(zone_style["energy"])
+		elif is_crit:
+			mat.albedo_color = Color(0.46, 0.26, 0.03, 1.0)
+			mat.emission = Color(1.0, 0.58, 0.10, 1.0)
+			mat.emission_energy_multiplier = 1.2
+		elif side == "hero":
+			mat.albedo_color = Color(0.06, 0.14, 0.32, 1.0)
+			mat.emission = Color(0.04, 0.10, 0.25, 1.0)
+			mat.emission_energy_multiplier = 0.8
+		else:
+			mat.albedo_color = Color(0.30, 0.06, 0.05, 1.0)
+			mat.emission = Color(0.20, 0.04, 0.03, 1.0)
+			mat.emission_energy_multiplier = 0.8
+		mat.emission_enabled = true
+		mat.roughness = 0.80
+		return mat)
 	# Result face gets a thin light outline: recolor its bevel rim bright (instead of
 	# hiding it) so a crisp light ring frames the winning face.
 	var result_bevel: MeshInstance3D = _die_part(die, "FaceBevel%d" % result) as MeshInstance3D
 	if result_bevel != null:
-		var outline_color: Color = (PixelUI.DT_HERO_DITHER if side == "hero" else PixelUI.DT_ENEMY_DITHER).lightened(0.45)
-		var outline_mat: StandardMaterial3D = StandardMaterial3D.new()
-		outline_mat.albedo_color = outline_color
-		outline_mat.emission_enabled = true
-		outline_mat.emission = outline_color
-		outline_mat.emission_energy_multiplier = 1.5
-		outline_mat.render_priority = 2
-		result_bevel.material_override = outline_mat
+		result_bevel.material_override = _bank_material("outline:%s" % side, func() -> StandardMaterial3D:
+			var outline_color: Color = (PixelUI.DT_HERO_DITHER if side == "hero" else PixelUI.DT_ENEMY_DITHER).lightened(0.45)
+			var outline_mat: StandardMaterial3D = StandardMaterial3D.new()
+			outline_mat.albedo_color = outline_color
+			outline_mat.emission_enabled = true
+			outline_mat.emission = outline_color
+			outline_mat.emission_energy_multiplier = 1.5
+			outline_mat.render_priority = 2
+			return outline_mat)
 		result_bevel.visible = true
 	# Dim every non-result face (panel + bevel) to ~40% brightness so only the result reads bright.
 	var base_color: Color = _die_base_color(die)
 	var dim_face: Color = _face_color_for(base_color).darkened(0.6)
+	var dim_mat: StandardMaterial3D = _bank_material("dim:%s" % base_color.to_html(false), func() -> StandardMaterial3D:
+		var m: StandardMaterial3D = StandardMaterial3D.new()
+		m.albedo_color = dim_face
+		m.emission_enabled = true
+		m.emission = dim_face.darkened(0.5)
+		m.emission_energy_multiplier = 0.15
+		return m)
 	for face_value in _face_values:
 		var fv: int = int(face_value)
 		if fv == result:
@@ -735,11 +846,6 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 			var mesh: MeshInstance3D = _die_part(die, "%s%d" % [part_prefix, fv]) as MeshInstance3D
 			if mesh == null:
 				continue
-			var dim_mat: StandardMaterial3D = StandardMaterial3D.new()
-			dim_mat.albedo_color = dim_face
-			dim_mat.emission_enabled = true
-			dim_mat.emission = dim_face.darkened(0.5)
-			dim_mat.emission_energy_multiplier = 0.15
 			mesh.material_override = dim_mat
 	# Fade the non-result numerals; keep each engrave colour, only adjust alpha (all layers).
 	for face_value2 in _face_values:
@@ -1124,34 +1230,17 @@ func _spawn_die(entry: Dictionary, index: int, _total_count: int) -> RigidBody3D
 
 	var mesh_instance: MeshInstance3D = MeshInstance3D.new()
 	mesh_instance.mesh = _build_d20_mesh()
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.render_priority = -2
-	mat.albedo_color = Color(0.12, 0.42, 0.88, 1.0) if str(entry.get("side", "")) == "hero" else Color(0.72, 0.20, 0.18, 1.0)
 	# Every accent on this die — face panels, bevel rim, edges, engraved numbers — is derived
 	# deterministically from this one base colour so the look is consistent per die.
-	die.set_meta("base_color", mat.albedo_color)
-	mat.emission_enabled = true
-	mat.emission = mat.albedo_color.darkened(0.50)
-	mat.emission_energy_multiplier = 0.5
-	mat.roughness = 0.35
-	mat.metallic = 0.10
-	mesh_instance.material_override = mat
+	var base_color: Color = Color(0.12, 0.42, 0.88, 1.0) if str(entry.get("side", "")) == "hero" else Color(0.72, 0.20, 0.18, 1.0)
+	die.set_meta("base_color", base_color)
+	mesh_instance.material_override = _bank_material("body:%s" % base_color.to_html(false), func() -> StandardMaterial3D: return _make_body_material(base_color))
 	visual_root.add_child(mesh_instance)
 
 	# Inner shell — solid blocker so no back-face geometry shows through
 	var inner_mesh_instance: MeshInstance3D = MeshInstance3D.new()
 	inner_mesh_instance.mesh = _build_inner_shell_mesh()
-	var inner_mat: StandardMaterial3D = StandardMaterial3D.new()
-	inner_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	inner_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-	inner_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	inner_mat.render_priority = -3
-	inner_mat.albedo_color = mat.albedo_color.darkened(0.3)
-	inner_mat.roughness = 1.0
-	inner_mesh_instance.material_override = inner_mat
+	inner_mesh_instance.material_override = _bank_material("inner:%s" % base_color.to_html(false), func() -> StandardMaterial3D: return _make_inner_shell_material(base_color))
 	visual_root.add_child(inner_mesh_instance)
 
 	_add_face_panels(die)
@@ -1480,7 +1569,7 @@ func _add_face_panels(die: RigidBody3D) -> void:
 		_die_visuals(die).add_child(panel_inst)
 		var bevel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.80, 0.016)
 		bevel_inst.name = "FaceBevel%d" % (face_index + 1)
-		bevel_inst.material_override = _make_bevel_material(_die_base_color(die))
+		bevel_inst.material_override = _bevel_material_for(_die_base_color(die))
 		_die_visuals(die).add_child(bevel_inst)
 
 
@@ -1511,7 +1600,7 @@ func _add_edge_lines(die: RigidBody3D) -> void:
 	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
 	var edge_keys: Dictionary = {}
 	# One shared unshaded material per die → every edge is the exact same fixed dark tone (#1).
-	var edge_mat: StandardMaterial3D = _make_edge_material(_die_base_color(die))
+	var edge_mat: StandardMaterial3D = _edge_material_for(_die_base_color(die))
 	for face_variant in _get_d20_faces():
 		var face: Array = face_variant
 		_add_edge_line_if_needed(die, raw_vertices, int(face[0]), int(face[1]), edge_keys, edge_mat)
@@ -1589,6 +1678,32 @@ func _number_well_color_for(base: Color) -> Color:
 	return base.darkened(0.78)                   # soft oversize backing that reads as the carved well
 
 
+func _make_body_material(base: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.render_priority = -2
+	m.albedo_color = base
+	m.emission_enabled = true
+	m.emission = base.darkened(0.50)
+	m.emission_energy_multiplier = 0.5
+	m.roughness = 0.35
+	m.metallic = 0.10
+	return m
+
+
+func _make_inner_shell_material(base: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.render_priority = -3
+	m.albedo_color = base.darkened(0.3)
+	m.roughness = 1.0
+	return m
+
+
 func _make_face_panel_material(base: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
@@ -1618,13 +1733,16 @@ func _make_bevel_material(base: Color) -> StandardMaterial3D:
 
 
 func _face_panel_material_for(die: RigidBody3D) -> StandardMaterial3D:
-	if die.has_meta("face_panel_mat"):
-		var cached: Variant = die.get_meta("face_panel_mat")
-		if cached is StandardMaterial3D:
-			return cached
-	var made := _make_face_panel_material(_die_base_color(die))
-	die.set_meta("face_panel_mat", made)
-	return made
+	var base: Color = _die_base_color(die)
+	return _bank_material("face:%s" % base.to_html(false), func() -> StandardMaterial3D: return _make_face_panel_material(base))
+
+
+func _bevel_material_for(base: Color) -> StandardMaterial3D:
+	return _bank_material("bevel:%s" % base.to_html(false), func() -> StandardMaterial3D: return _make_bevel_material(base))
+
+
+func _edge_material_for(base: Color) -> StandardMaterial3D:
+	return _bank_material("edge:%s" % base.to_html(false), func() -> StandardMaterial3D: return _make_edge_material(base))
 
 
 # Unshaded so the edge reads its exact albedo from every angle — no grey-vs-black lighting drift.
@@ -1878,50 +1996,46 @@ func _set_die_pending_marker(die: RigidBody3D, rewrite_pending: bool, hijack_pen
 	label.visible = rewrite_pending or hijack_pending
 
 
-var _petrify_filter_material: StandardMaterial3D = null
-var _jam_filter_material: StandardMaterial3D = null
-
-
 func _get_petrify_filter_material() -> StandardMaterial3D:
-	if _petrify_filter_material == null:
-		_petrify_filter_material = StandardMaterial3D.new()
-		_petrify_filter_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_petrify_filter_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		_petrify_filter_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_petrify_filter_material.render_priority = 4
-		_petrify_filter_material.albedo_color = Color(0.55, 0.53, 0.49, 0.38)
-		_petrify_filter_material.roughness = 0.85
-		_petrify_filter_material.metallic = 0.0
-	return _petrify_filter_material
+	return _bank_material("filter:petrify", func() -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.render_priority = 4
+		m.albedo_color = Color(0.55, 0.53, 0.49, 0.38)
+		m.roughness = 0.85
+		m.metallic = 0.0
+		return m)
 
 
 func _get_jam_filter_material() -> StandardMaterial3D:
-	if _jam_filter_material == null:
-		_jam_filter_material = StandardMaterial3D.new()
-		_jam_filter_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_jam_filter_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		_jam_filter_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_jam_filter_material.render_priority = 3
-		_jam_filter_material.albedo_color = Color(0.92, 0.68, 0.20, 0.20)
-		_jam_filter_material.roughness = 0.5
-		_jam_filter_material.metallic = 0.0
-	return _jam_filter_material
+	return _bank_material("filter:jam", func() -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.render_priority = 3
+		m.albedo_color = Color(0.92, 0.68, 0.20, 0.20)
+		m.roughness = 0.5
+		m.metallic = 0.0
+		return m)
 
 
 func _get_frozen_filter_material() -> StandardMaterial3D:
-	if _frozen_filter_material == null:
-		_frozen_filter_material = StandardMaterial3D.new()
-		_frozen_filter_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_frozen_filter_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		_frozen_filter_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_frozen_filter_material.render_priority = 4
-		_frozen_filter_material.albedo_color = Color(0.48, 0.86, 1.0, 0.26)
-		_frozen_filter_material.emission_enabled = true
-		_frozen_filter_material.emission = Color(0.28, 0.70, 1.0, 1.0)
-		_frozen_filter_material.emission_energy_multiplier = 0.38
-		_frozen_filter_material.roughness = 0.18
-		_frozen_filter_material.metallic = 0.0
-	return _frozen_filter_material
+	return _bank_material("filter:frozen", func() -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.render_priority = 4
+		m.albedo_color = Color(0.48, 0.86, 1.0, 0.26)
+		m.emission_enabled = true
+		m.emission = Color(0.28, 0.70, 1.0, 1.0)
+		m.emission_energy_multiplier = 0.38
+		m.roughness = 0.18
+		m.metallic = 0.0
+		return m)
 
 
 func _clear_dice() -> void:
