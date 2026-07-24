@@ -168,6 +168,11 @@ var enemy_units: Array = []
 #           gate, real cost stated).
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
+# v2.5 beat-19 fix: the drill teaches THE Nudge on Strike's die with exactly 1
+# Protocol banked. protocol_actions ignores nudge picks on any other die while
+# in tutorial_mode — an off-script apply would spend the only point, make the
+# band-jump copy false, and break the scripted dice-only kill (17 < 18).
+const TUTORIAL_NUDGE_HERO := "combat"
 const TUTORIAL_HERO_ROLLS := [
 	{"combat": 9, "engineer": 12, "medic": 2},
 	{"combat": 8, "engineer": 12, "medic": 6},

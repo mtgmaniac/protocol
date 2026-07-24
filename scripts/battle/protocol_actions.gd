@@ -163,6 +163,15 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		var nudge_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
 		if not _can_nudge_hero(nudge_state):
 			return true
+		# Tutorial beat-19 fix (v2.5): the drill teaches THE Nudge on Strike's
+		# die with exactly 1 Protocol — an off-script apply would spend the only
+		# point and strand the beat with false copy. Ignore picks on other dice
+		# (mirrors the assigned beats' off-script handling: silently ignored,
+		# never a dead end — the pick stays ARMED, nothing is charged).
+		if _scene._game_state().tutorial_mode:
+			var nudge_unit: Object = nudge_state.get("unit", null) as Object
+			if nudge_unit == null or str(nudge_unit.get("id")) != str(_scene.TUTORIAL_NUDGE_HERO):
+				return true
 		AudioManager.play_select()
 		_apply_nudge(target_id)
 		return true
@@ -422,7 +431,10 @@ func _apply_nudge(hero_id: String) -> void:
 	_scene._refresh_dice_result_actions()
 	_scene._finish_roll_modifier_pick()
 	if str(res["kind"]) == "applied":
-		_scene._emit_tutorial("nudged", {"hero": hero_id})
+		# Unit id (not state id) — the tutorial's per-hero `hero` gate matches
+		# against squad unit ids, same convention as the "assigned" emit.
+		var nudged_unit: Object = hero_state.get("unit", null) as Object
+		_scene._emit_tutorial("nudged", {"hero": str(nudged_unit.get("id")) if nudged_unit != null else hero_id})
 
 
 func _was_hero_nudged_this_turn(hero_id: String) -> bool:
