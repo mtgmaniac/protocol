@@ -36,14 +36,16 @@ config/icon="res://icon.svg"
 ;    3-minute tracks are never decoded to full PCM (~69 MB/track, a mobile-web
 ;    memory bomb).
 ; 3. The stream mixer runs on the main thread in this single-threaded build, so
-;    frame hitches starve the audio worklet and crackle. 100 ms output latency
-;    -> a 4096-frame (85 ms) ring: measured crackle-free under 60 ms main-thread
-;    stalls (the default 43 ms ring glitched 28% of windows). Stalls > 85 ms
-;    still break through; music-only cost, SFX are samples and unaffected.
+;    frame hitches starve the audio worklet and crackle. 150 ms output latency
+;    -> an 8192-frame (170 ms) ring; music-only cost (SFX are samples and
+;    unaffected). History: default 43 ms ring glitched 28% of measured windows
+;    under 60 ms stalls; 85 ms (setting 100) survived 60 ms but not 120 ms
+;    stalls, and faint static remained on real dice-heavy frames (demo2 ear
+;    report; destination peaks measured -7.7 dBFS worst case, so NOT clipping).
 ;
 ; Native platforms: buses come from the same .tres (same names/indices), stream
 ; playback is the native default anyway, and output_latency.web does not apply.
-driver/output_latency.web=100
+driver/output_latency.web=150
 
 [autoload]
 
