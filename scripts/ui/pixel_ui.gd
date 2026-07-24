@@ -1419,6 +1419,68 @@ static func bottom_reserve(os_name: String) -> int:
 	return SAFE_BOTTOM_RESERVE if os_name == "Android" else 0
 
 
+# ── Web-demo safe-area floors (Kev ruling 2026-07-24) ───────────────────────
+# Browsers never surface the phone's safe area to Godot: on iPhone Safari and
+# the itch.io embed, get_display_safe_area() returns the full canvas and
+# get_display_cutouts() is empty, so all four insets evaluate 0 and the layout
+# runs under the camera cutout (over the persistent header) and the screen's
+# rounded corners (clipping corner buttons). True env(safe-area-inset-*)
+# plumbing is out of scope for the demo; instead MOBILE-web builds get fixed
+# minimum insets — generic-phone bezel protection, not any one device's
+# geometry. Merged as max(reported, floor): if a browser ever starts
+# reporting real insets, the larger value wins. Values in design px
+# (1080×2400 space); tune against the SafeAreaDebug overlay (?safearea=1).
+# Desktop web (incl. the 540×1200 itch preview) gets NO floors — they would
+# visibly indent a bezel-less letterbox. Native/Android is untouched: the OS
+# reports real insets there and floors would double-pad the playfield.
+const WEB_SAFE_FLOOR_TOP := 72     # camera cutout / Dynamic Island band
+const WEB_SAFE_FLOOR_BOTTOM := 48  # home-gesture area + corner radius
+const WEB_SAFE_FLOOR_SIDE := 24    # rounded corners beside edge-flush buttons
+
+# Mobile-web detection is USER-AGENT based (plus the iPadOS "Macintosh"-UA +
+# maxTouchPoints tell), NOT touchscreen availability: touch-capable laptops
+# report a touchscreen and would false-positive the floors onto desktop
+# layouts. A mobile browser lying about its UA degrades to today's behaviour
+# (no floors) — the benign failure direction.
+static var _web_mobile_cached := -1  # -1 unknown, 0 no, 1 yes
+static var _web_insets_logged := false
+
+
+static func is_mobile_web() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	if _web_mobile_cached < 0:
+		var mobile: Variant = JavaScriptBridge.eval(
+			"/Android|iPhone|iPod/i.test(navigator.userAgent)"
+			+ " || (/Macintosh|iPad/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1)",
+			true)
+		_web_mobile_cached = 1 if bool(mobile) else 0
+	return _web_mobile_cached == 1
+
+
+# Single merge point: EVERY safe_* assignment routes through here, so all
+# consumers (PersistentHeader band, screen edge margins, corner buttons,
+# bottom gesture reserve) inherit the web floors with no per-screen changes.
+static func _set_insets(top: int, right: int, bottom: int, left: int) -> void:
+	var raw_top := top
+	var raw_right := right
+	var raw_bottom := bottom
+	var raw_left := left
+	if is_mobile_web():
+		top = maxi(top, WEB_SAFE_FLOOR_TOP)
+		right = maxi(right, WEB_SAFE_FLOOR_SIDE)
+		bottom = maxi(bottom, WEB_SAFE_FLOOR_BOTTOM)
+		left = maxi(left, WEB_SAFE_FLOOR_SIDE)
+	safe_top = top
+	safe_right = right
+	safe_bottom = bottom
+	safe_left = left
+	if OS.has_feature("web") and not _web_insets_logged:
+		_web_insets_logged = true
+		print("[SafeArea] web insets: raw t/r/b/l %d/%d/%d/%d -> applied %d/%d/%d/%d (mobile_web=%s)" % [
+			raw_top, raw_right, raw_bottom, raw_left, safe_top, safe_right, safe_bottom, safe_left, is_mobile_web()])
+
+
 # Pure trim rule (Build J Item 2, headless-testable): applied AFTER the ceil.
 # Top clamps at zero; bottom (already floored at the OS reserve by the caller)
 # trims but never below BEZEL_BOTTOM_FLOOR on Android and never negative.
@@ -1445,19 +1507,13 @@ static func refresh_safe_insets(vp: Viewport) -> void:
 	# gesture bar.)
 	var win := Vector2(DisplayServer.window_get_size())
 	if win.x <= 0.0 or win.y <= 0.0:
-		safe_top = 0
-		safe_right = 0
-		safe_bottom = bottom_reserve(OS.get_name())
-		safe_left = 0
+		_set_insets(0, 0, bottom_reserve(OS.get_name()), 0)
 		return
 
 	# OS safe area, in PHYSICAL pixels, in SCREEN coordinates.
 	var sa: Rect2i = DisplayServer.get_display_safe_area()
 	if sa.size.x <= 0 or sa.size.y <= 0:
-		safe_top = 0
-		safe_right = 0
-		safe_bottom = bottom_reserve(OS.get_name())
-		safe_left = 0
+		_set_insets(0, 0, bottom_reserve(OS.get_name()), 0)
 		return
 
 	# Screen → window-relative. On mobile fullscreen the window origin is (0,0)
@@ -1509,10 +1565,7 @@ static func refresh_safe_insets(vp: Viewport) -> void:
 		maxi(_to_design(b, sy), bottom_reserve(OS.get_name())),
 		OS.get_name()
 	)
-	safe_top = trimmed.x
-	safe_right = _to_design(r, sx)
-	safe_bottom = trimmed.y
-	safe_left = _to_design(l, sx)
+	_set_insets(trimmed.x, _to_design(r, sx), trimmed.y, _to_design(l, sx))
 
 
 # Always ceil. Rounding DOWN leaves content under the camera. Pure so the

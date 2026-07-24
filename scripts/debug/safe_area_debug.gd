@@ -70,6 +70,20 @@ func _ready() -> void:
 	refresh_from_settings()
 
 
+# TEMPORARY web tuning hook (safe-area floor calibration, Kev 2026-07-24): the
+# web demo is a RELEASE export, so is_debug_build() is false and the Settings
+# DEBUG toggle row doesn't even exist there. Loading the build with
+# `?safearea=1` in the URL arms the overlay so the PixelUI.WEB_SAFE_FLOOR_*
+# values can be tuned on a real phone. Explicit URL opt-in only — inert
+# otherwise; remove once the floors are locked (or leave: it gates on web +
+# the literal query string and nothing else).
+static func _web_tuning_query() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var q: Variant = JavaScriptBridge.eval("window.location.search", true)
+	return q is String and (q as String).contains("safearea=1")
+
+
 ## Recomputes the arm state from the live inputs (called at ready and by the
 ## Settings > DEBUG toggle) — arms/disarms WITHOUT a restart. Page content is
 ## built lazily on first arm so a disarmed overlay costs nothing.
@@ -79,8 +93,8 @@ func refresh_from_settings() -> void:
 	var setting_on: bool = bool(sm.get_setting(SAVE_SETTING, default_on)) if sm != null else default_on
 	var want: bool = _should_arm(
 		DisplayServer.get_name() == "headless",
-		OS.is_debug_build(),
-		OS.has_environment("SAFE_AREA_DEBUG"),
+		OS.is_debug_build() or _web_tuning_query(),
+		OS.has_environment("SAFE_AREA_DEBUG") or _web_tuning_query(),
 		setting_on,
 	)
 	if want == _armed:
