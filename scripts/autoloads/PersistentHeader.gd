@@ -53,6 +53,7 @@ var _back_action := Callable()
 
 
 func _ready() -> void:
+	_fit_desktop_window()
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_style()
@@ -73,6 +74,30 @@ func _ready() -> void:
 	PixelUI.refresh_safe_insets(get_viewport())
 	get_tree().root.size_changed.connect(_on_root_resized)
 	_apply_safe_area()
+
+
+## Desktop scaling scheme (ruling Kev 2026-07-23): the window is FIXED at
+## 540×1200 (exact 0.5× of the 1080×2400 design space — linear sampling there
+## is a uniform 2×2 box filter, which is the canonical desktop rendering) and
+## free resize is disabled in project.godot. The art is authored at 1:1 design
+## pixels (1-px dithers/hairlines), so nearest/integer schemes are wrong here —
+## do not "fix" this to nearest filtering.
+## Fallback: if the display can't fit 1200 tall (short laptops), shrink to fit
+## the usable screen height at the same 0.45 aspect — a fractional scale with
+## linear filtering, mildly softer but never distorted. Still non-resizable.
+const _WINDOW_DECORATION_SLACK := 80  # title bar + taskbar allowance, px
+
+
+func _fit_desktop_window() -> void:
+	if not OS.has_feature("pc"):
+		return
+	var screen: Rect2i = DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
+	var fit_h: int = screen.size.y - _WINDOW_DECORATION_SLACK
+	if fit_h >= 1200:
+		return
+	var w: int = int(round(float(fit_h) * (540.0 / 1200.0)))
+	DisplayServer.window_set_size(Vector2i(w, fit_h))
+	DisplayServer.window_set_position(screen.position + (screen.size - Vector2i(w, fit_h)) / 2)
 
 
 func _on_root_resized() -> void:

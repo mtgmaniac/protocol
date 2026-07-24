@@ -32,6 +32,7 @@ SafeAreaDebug="*res://scenes/debug/SafeAreaDebug.tscn"
 
 window/size/viewport_width=1080
 window/size/viewport_height=2400
+window/size/resizable=false
 window/size/window_width_override=540
 window/size/window_height_override=1200
 window/stretch/mode="canvas_items"
