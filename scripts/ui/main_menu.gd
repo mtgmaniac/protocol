@@ -93,6 +93,8 @@ func _ready() -> void:
 	begin.modulate.a = 0.0
 	tutorial.disabled = true
 	tutorial.modulate.a = 0.0
+	# Last child on purpose: the stamp must paint over the full-rect background.
+	_add_version_stamp()
 	_logo.boot_in()
 	await _logo.boot_finished
 	if not is_inside_tree():
@@ -139,6 +141,30 @@ func _on_tutorial_pressed() -> void:
 # (added directly to the scene root, not a container). If the player enters a
 # battle before it finishes, the tray dies with the menu and the warm-up's
 # start-set gate keeps it from ever running twice.
+# Bottom-corner version stamp — read from ProjectSettings (project.godot
+# config/version is the single source; never hardcode the string). Nominal 24 →
+# rendered 32, the smallest crisp m5x7 rung: the stamp is chrome, not
+# player-read copy, sized below the ACCENT floor by ruling (Kev 2026-07-24).
+# Overlay label on the scene root (not the layout column) — zero layout shift.
+# Margins add the live safe-area insets so the stamp clears the mobile-web
+# floors (bottom 48 / left 24) instead of sitting under the corner radius.
+func _add_version_stamp() -> void:
+	var stamp := Label.new()
+	stamp.text = str(ProjectSettings.get_setting("application/config/version", ""))
+	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PixelUI.style_label(stamp, 24, PixelUI.INSPECT_TEXT_DIM, 0)
+	stamp.anchor_left = 0.0
+	stamp.anchor_right = 0.0
+	stamp.anchor_top = 1.0
+	stamp.anchor_bottom = 1.0
+	stamp.grow_horizontal = Control.GROW_DIRECTION_END
+	stamp.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	stamp.offset_left = 24.0 + float(PixelUI.safe_left)
+	stamp.offset_bottom = -(16.0 + float(PixelUI.safe_bottom))
+	stamp.offset_top = stamp.offset_bottom - 44.0
+	add_child(stamp)
+
+
 func _start_web_dice_warmup() -> void:
 	if not is_inside_tree():
 		return

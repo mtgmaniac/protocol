@@ -751,6 +751,15 @@ func _build_settings(host: VBoxContainer) -> void:
 		var row: HBoxContainer = _add_toggle_row(host, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
 		row.name = "DebugOverlayToggleRow"
 
+	# Version footer — read from ProjectSettings (project.godot config/version is
+	# the single source; never hardcode the string). Nominal 24 → rendered 32,
+	# the smallest crisp m5x7 rung: the stamp is chrome, not player-read copy,
+	# sized below the ACCENT floor by ruling (Kev 2026-07-24).
+	var version_label: Label = _make_label(
+		"v" + str(ProjectSettings.get_setting("application/config/version", "")),
+		24, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 0)
+	host.add_child(version_label)
+
 
 func _on_dev_reset_primers() -> void:
 	var sm: Variant = _save_manager()
