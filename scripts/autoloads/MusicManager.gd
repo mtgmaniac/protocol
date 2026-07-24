@@ -98,6 +98,10 @@ func _ready() -> void:
 	for _i in range(2):
 		var player := AudioStreamPlayer.new()
 		player.bus = "Music"
+		# Explicit STREAM playback: on web the project default is Sample, which
+		# bypasses bus effects (the lowpass would go dead) and decodes the whole
+		# track to PCM. Stream is the native default, so this is a no-op off web.
+		player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 		add_child(player)
 		_players.append(player)
 	# Boot in the non-combat state, instantly (no tween before the first track).

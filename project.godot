@@ -16,6 +16,35 @@ run/main_scene="res://scenes/ui/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
+[audio]
+
+; Web audio configuration (hybrid, verified 2026-07-24 — see the repro notes in
+; the demo audit doc). Keep all three pieces together; each covers a different
+; failure:
+;
+; 1. SFX use the web DEFAULT playback type (Sample): natively scheduled by the
+;    browser, zero buffer latency, immune to main-thread frame stalls. Safe ONLY
+;    because the SFX/Music buses are predefined in default_bus_layout.tres —
+;    creating buses at RUNTIME (AudioServer.add_bus) corrupts Godot 4.6's JS
+;    sample-bus array (Bus.addAt/move mishandle the append index) and rewires
+;    Master->Music->SFX->Master in a cycle with no path to the destination:
+;    total silence on every web platform. Do not remove the .tres, and do not
+;    add buses at runtime.
+; 2. Music is explicitly PLAYBACK_TYPE_STREAM (set in MusicManager): streams mix
+;    in the wasm mixer, so the Music-bus lowpass (the noncombat/combat intensity
+;    signal) still works on web — sample playback ignores bus effects — and the
+;    3-minute tracks are never decoded to full PCM (~69 MB/track, a mobile-web
+;    memory bomb).
+; 3. The stream mixer runs on the main thread in this single-threaded build, so
+;    frame hitches starve the audio worklet and crackle. 100 ms output latency
+;    -> a 4096-frame (85 ms) ring: measured crackle-free under 60 ms main-thread
+;    stalls (the default 43 ms ring glitched 28% of windows). Stalls > 85 ms
+;    still break through; music-only cost, SFX are samples and unaffected.
+;
+; Native platforms: buses come from the same .tres (same names/indices), stream
+; playback is the native default anyway, and output_latency.web does not apply.
+driver/output_latency.web=100
+
 [autoload]
 
 GameState="*res://scripts/autoloads/GameState.gd"
