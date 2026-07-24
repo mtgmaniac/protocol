@@ -1351,11 +1351,10 @@ func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 
 
 func _launch_die(die: RigidBody3D) -> void:
-	# Impact audio hooks — only on launched (rolling) dice, and only in
-	# per-impact mode: DiceAudio.ONE_SHOT_MODE skips contact_monitor entirely,
-	# so the fallback mode also drops the physics cost of contact reporting.
+	# Impact audio hooks — only on launched (rolling) dice; frozen and warm-up
+	# dice never get contact monitoring.
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
-	if dice_audio != null and not bool(dice_audio.ONE_SHOT_MODE):
+	if dice_audio != null:
 		die.contact_monitor = true
 		die.max_contacts_reported = 4
 		die.body_entered.connect(_on_die_contact.bind(die))
