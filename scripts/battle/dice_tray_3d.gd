@@ -546,6 +546,11 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 			rolling_dice.append(die)
 		dice.append(die)
 
+	if not rolling_dice.is_empty():
+		var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+		if dice_audio != null:
+			dice_audio.on_roll_started(rolling_dice.size())
+
 	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
 	_assign_frozen_die_origins(dice, target_origins)
 	await _wait_for_dice_to_settle(rolling_dice, target_origins)
@@ -976,13 +981,22 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 				all_ready = false
 				continue
 			var die_id: int = die.get_instance_id()
+			var prev_settled: float = float(settled_times.get(die_id, 0.0))
 			if die.sleeping:
 				settled_times[die_id] = SETTLE_REQUIRED_TIME
 			elif _is_die_ready_for_face_resolve(die):
-				settled_times[die_id] = float(settled_times.get(die_id, 0.0)) + delta
+				settled_times[die_id] = prev_settled + delta
 			else:
 				settled_times[die_id] = 0.0
-			if float(settled_times.get(die_id, 0.0)) < SETTLE_REQUIRED_TIME:
+			var now_settled: float = float(settled_times.get(die_id, 0.0))
+			# Settle tick fires on the upward crossing — once per come-to-rest.
+			# A die that gets bumped resets to 0 and ticks again when it re-lands,
+			# which is the physical read.
+			if prev_settled < SETTLE_REQUIRED_TIME and now_settled >= SETTLE_REQUIRED_TIME:
+				var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+				if dice_audio != null:
+					dice_audio.on_die_settled(die_id)
+			if now_settled < SETTLE_REQUIRED_TIME:
 				all_ready = false
 		if all_ready:
 			break
@@ -1334,6 +1348,14 @@ func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 
 
 func _launch_die(die: RigidBody3D) -> void:
+	# Impact audio hooks — only on launched (rolling) dice, and only in
+	# per-impact mode: DiceAudio.ONE_SHOT_MODE skips contact_monitor entirely,
+	# so the fallback mode also drops the physics cost of contact reporting.
+	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	if dice_audio != null and not bool(dice_audio.ONE_SHOT_MODE):
+		die.contact_monitor = true
+		die.max_contacts_reported = 4
+		die.body_entered.connect(_on_die_contact.bind(die))
 	var ctx: Dictionary = _throw_context
 	var dir: Vector3 = (ctx.get("dir", Vector3.FORWARD) as Vector3).rotated(Vector3.UP, randf_range(-THROW_YAW_JITTER, THROW_YAW_JITTER))
 	var speed: float = randf_range(THROW_SPEED_MIN, THROW_SPEED_MAX)
@@ -1345,6 +1367,17 @@ func _launch_die(die: RigidBody3D) -> void:
 		randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)
 	) * randf_range(0.0, THROW_WOBBLE_MAX)
 	die.angular_velocity = tumble_axis * randf_range(THROW_TUMBLE_MIN, THROW_TUMBLE_MAX) + wobble
+
+
+# One reported contact (other die, wall, or floor — the tray's static bodies
+# share the dice collision layer, so tray hits count). Post-collision speed is
+# the energy proxy; DiceAudio owns debounce/shaping.
+func _on_die_contact(_other: Node, die: RigidBody3D) -> void:
+	if die == null or not is_instance_valid(die) or die.freeze:
+		return
+	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	if dice_audio != null:
+		dice_audio.on_die_impact(die.get_instance_id(), die.linear_velocity.length())
 
 
 func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
