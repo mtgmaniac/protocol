@@ -1,7 +1,9 @@
 extends Node
 ## Global SFX player. play_sfx(key) with pitch/volume randomization and voice
-## limiting (a small round-robin pool caps simultaneous voices). Routed through a
-## dedicated SFX bus (created at runtime) so volume/mute can hang off it later.
+## limiting (a small round-robin pool caps simultaneous voices). Routed through
+## the SFX bus (predefined in default_bus_layout.tres), except keys in
+## BUS_BY_KEY which ride a child bus (UI clicks -> "UI"). Dice impacts live in
+## DiceAudio, not here.
 ##
 ## Clips live at res://assets/audio/sfx/<key>.wav. New sound = drop a file + add
 ## the key to SFX_KEYS + name it on the event hook. shield.wav is the reversed
@@ -20,10 +22,20 @@ const VOLUME_OVERRIDES := {
 	"burn": -5.0,
 	"select": -9.1,  # was -6.0; Kev 2026-07-10: 30% quieter again (x0.7 amplitude = -3.1 dB)
 }
+# Keys that route somewhere other than the general SFX bus. DICE and UI are
+# children of SFX in default_bus_layout.tres, so the SOUND FX slider/mute still
+# governs them as a parent while each keeps its own trim.
+const BUS_BY_KEY := {
+	"select": "UI",
+}
 
 const SETTINGS_PATH := "user://settings.cfg"
 
-const DEFAULT_SFX_VOLUME := 1.0
+# The user-facing volume channels (settings rows). Each is a real bus predefined
+# in default_bus_layout.tres — NEVER created at runtime (web sample playback:
+# runtime AudioServer.add_bus corrupts the JS bus graph; see project.godot).
+const CHANNELS := ["SFX", "DICE", "UI"]
+
 const SILENCE_DB := -80.0
 
 var _streams: Dictionary = {}
@@ -32,14 +44,16 @@ var _next: int = 0
 var _recent: Dictionary = {}
 var _suppressed: bool = false
 var _muted: bool = false
-var _sfx_volume: float = DEFAULT_SFX_VOLUME  # linear 0..1 (the user slider)
+var _channel_volume: Dictionary = {"SFX": 1.0, "DICE": 1.0, "UI": 1.0}  # linear 0..1 sliders
+var _channel_enabled: Dictionary = {"SFX": true, "DICE": true, "UI": true}
 
 
 func _ready() -> void:
 	_ensure_sfx_bus()
 	_load_settings()
 	_apply_mute()
-	_apply_sfx_volume()
+	for channel in CHANNELS:
+		_apply_channel(channel)
 	for key in SFX_KEYS:
 		var path: String = SFX_DIR + key + ".wav"
 		# exists() guard: a registered key whose clip hasn't been dropped in yet
@@ -60,6 +74,10 @@ func _ready() -> void:
 		_suppressed = true
 
 
+# Fallback ONLY for a context missing default_bus_layout.tres (never the real
+# game). On web, runtime add_bus corrupts the JS sample-bus graph into silence
+# (see project.godot [audio]) — the .tres predefining SFX/DICE/UI is what keeps
+# this branch dead.
 func _ensure_sfx_bus() -> void:
 	if AudioServer.get_bus_index("SFX") != -1:
 		return
@@ -91,6 +109,7 @@ func play_sfx(key: String, volume_db: float = 0.0) -> void:
 	var player: AudioStreamPlayer = _pool[_next]
 	_next = (_next + 1) % _pool.size()
 	player.stream = stream
+	player.bus = str(BUS_BY_KEY.get(key, "SFX"))
 	player.pitch_scale = 1.0 + randf_range(-PITCH_VARIATION, PITCH_VARIATION)
 	var base_db: float = volume_db + float(VOLUME_OVERRIDES.get(key, 0.0))
 	player.volume_db = base_db + randf_range(-VOLUME_VARIATION_DB, VOLUME_VARIATION_DB)
@@ -118,23 +137,41 @@ func _apply_mute() -> void:
 		AudioServer.set_bus_mute(idx, _muted)
 
 
-# ── SFX volume (the user slider; music volume lives on MusicManager) ────────────
-func get_sfx_volume() -> float:
-	return _sfx_volume
+# ── Channel volumes/mutes (the user sliders; music lives on MusicManager) ───────
+# channel is one of CHANNELS ("SFX", "DICE", "UI"). SFX is the parent bus, so its
+# slider/mute scales DICE and UI too; their own rows are independent trims.
+func get_channel_volume(channel: String) -> float:
+	return float(_channel_volume.get(channel, 1.0))
 
 
-func set_sfx_volume(volume: float) -> void:
-	_sfx_volume = clampf(volume, 0.0, 1.0)
-	_apply_sfx_volume()
+func set_channel_volume(channel: String, volume: float) -> void:
+	if not CHANNELS.has(channel):
+		return
+	_channel_volume[channel] = clampf(volume, 0.0, 1.0)
+	_apply_channel(channel)
 	_save_settings()
 
 
-func _apply_sfx_volume() -> void:
-	var idx: int = AudioServer.get_bus_index("SFX")
+func is_channel_enabled(channel: String) -> bool:
+	return bool(_channel_enabled.get(channel, true))
+
+
+func set_channel_enabled(channel: String, enabled: bool) -> void:
+	if not CHANNELS.has(channel):
+		return
+	_channel_enabled[channel] = enabled
+	_apply_channel(channel)
+	_save_settings()
+
+
+func _apply_channel(channel: String) -> void:
+	var idx: int = AudioServer.get_bus_index(channel)
 	if idx == -1:
 		return
-	var db: float = SILENCE_DB if _sfx_volume <= 0.001 else linear_to_db(_sfx_volume)
+	var volume: float = float(_channel_volume.get(channel, 1.0))
+	var db: float = SILENCE_DB if volume <= 0.001 else linear_to_db(volume)
 	AudioServer.set_bus_volume_db(idx, db)
+	AudioServer.set_bus_mute(idx, not bool(_channel_enabled.get(channel, true)))
 
 
 # Profile isolation (DevContext, Kev 2026-07-12): rigs/tests read+write a
@@ -144,16 +181,27 @@ func _settings_path() -> String:
 	return "user://dev_settings.cfg" if DevContext.is_isolated() else SETTINGS_PATH
 
 
+# Persistence keys: sfx_volume keeps its historical name (pre-channels saves
+# load unchanged); DICE/UI use the lowercased channel name.
+func _settings_key(channel: String, suffix: String) -> String:
+	return channel.to_lower() + "_" + suffix
+
+
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(_settings_path()) == OK:
 		_muted = bool(cfg.get_value("audio", "muted", false))
-		_sfx_volume = clampf(float(cfg.get_value("audio", "sfx_volume", DEFAULT_SFX_VOLUME)), 0.0, 1.0)
+		for channel in CHANNELS:
+			_channel_volume[channel] = clampf(
+				float(cfg.get_value("audio", _settings_key(channel, "volume"), 1.0)), 0.0, 1.0)
+			_channel_enabled[channel] = bool(cfg.get_value("audio", _settings_key(channel, "enabled"), true))
 
 
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(_settings_path())  # preserve any other sections; ignore "not found" on first save
 	cfg.set_value("audio", "muted", _muted)
-	cfg.set_value("audio", "sfx_volume", _sfx_volume)
+	for channel in CHANNELS:
+		cfg.set_value("audio", _settings_key(channel, "volume"), float(_channel_volume.get(channel, 1.0)))
+		cfg.set_value("audio", _settings_key(channel, "enabled"), bool(_channel_enabled.get(channel, true)))
 	cfg.save(_settings_path())

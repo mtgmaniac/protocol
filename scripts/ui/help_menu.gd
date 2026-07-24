@@ -709,11 +709,23 @@ func _enemy_keyword_summary(enemy: EnemyData) -> String:
 # ── SETTINGS ─────────────────────────────────────────────────────────────────────
 func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	# Four channel rows (slider + ON/OFF each): MUSIC on MusicManager; SOUND FX /
+	# DICE / UI on AudioManager buses. SOUND FX is the parent bus of DICE and UI,
+	# so its row scales/mutes both; their rows are independent trims.
 	var mm: Variant = _music()
-	_add_toggle_row(host, "Music", mm == null or bool(mm.is_music_enabled()), _on_toggle_music)
-	_add_slider_row(host, "Music volume", 0.3 if mm == null else float(mm.get_music_volume()), _on_music_volume_changed)
 	var am: Variant = _audio()
-	_add_slider_row(host, "SFX volume", 1.0 if am == null else float(am.get_sfx_volume()), _on_sfx_volume_changed)
+	_add_channel_row(host, "MUSIC",
+		0.3 if mm == null else float(mm.get_music_volume()), _on_music_volume_changed,
+		mm == null or bool(mm.is_music_enabled()), _on_toggle_music)
+	_add_channel_row(host, "SOUND FX",
+		1.0 if am == null else float(am.get_channel_volume("SFX")), _on_channel_volume_changed.bind("SFX"),
+		am == null or bool(am.is_channel_enabled("SFX")), _on_channel_toggled.bind("SFX"))
+	_add_channel_row(host, "DICE",
+		1.0 if am == null else float(am.get_channel_volume("DICE")), _on_channel_volume_changed.bind("DICE"),
+		am == null or bool(am.is_channel_enabled("DICE")), _on_channel_toggled.bind("DICE"))
+	_add_channel_row(host, "UI",
+		1.0 if am == null else float(am.get_channel_volume("UI")), _on_channel_volume_changed.bind("UI"),
+		am == null or bool(am.is_channel_enabled("UI")), _on_channel_toggled.bind("UI"))
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
 
 	# --- Tutorials (Kev 2026-07-10) ---
@@ -891,10 +903,16 @@ func _on_music_volume_changed(value: float) -> void:
 		mm.set_music_volume(value)
 
 
-func _on_sfx_volume_changed(value: float) -> void:
+func _on_channel_volume_changed(value: float, channel: String) -> void:
 	var am: Variant = _audio()
 	if am != null:
-		am.set_sfx_volume(value)
+		am.set_channel_volume(channel, value)
+
+
+func _on_channel_toggled(pressed: bool, channel: String) -> void:
+	var am: Variant = _audio()
+	if am != null:
+		am.set_channel_enabled(channel, pressed)
 
 
 # A label + ON/OFF toggle button row, styled like the active/inactive tab buttons.
@@ -926,10 +944,11 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	return row
 
 
-# A label + slider row (0..1, live-applies on drag). Hard-edged track/fill per
-# INVARIANTS #7 (no rounded corners); flat square grabber generated from PixelUI
-# colors so no new art asset is needed.
-func _add_slider_row(parent: VBoxContainer, label_text: String, initial: float, on_change: Callable) -> void:
+# One audio channel row: label + slider + ON/OFF toggle on a single line, so the
+# four channels (MUSIC / SOUND FX / DICE / UI) stack without pushing the section
+# below the fold. Slider live-applies on drag; toggle is the channel mute.
+func _add_channel_row(parent: VBoxContainer, label_text: String, initial_volume: float,
+		on_volume: Callable, initial_on: bool, on_toggle: Callable) -> void:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -941,12 +960,31 @@ func _add_slider_row(parent: VBoxContainer, label_text: String, initial: float, 
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(label)
 
+	row.add_child(_make_volume_slider(initial_volume, on_volume))
+
+	var btn := Button.new()
+	btn.toggle_mode = true
+	btn.button_pressed = initial_on
+	btn.custom_minimum_size = Vector2(160, 96)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_style_toggle_button(btn)
+	btn.toggled.connect(func(pressed: bool) -> void:
+		on_toggle.call(pressed)
+		_style_toggle_button(btn))
+	row.add_child(btn)
+
+
+# A 0..1 volume slider. Hard-edged track/fill per INVARIANTS #7 (no rounded
+# corners); flat square grabber generated from PixelUI colors so no new art
+# asset is needed.
+func _make_volume_slider(initial: float, on_change: Callable) -> HSlider:
 	var slider := HSlider.new()
 	slider.min_value = 0.0
 	slider.max_value = 1.0
 	slider.step = 0.05
 	slider.value = clampf(initial, 0.0, 1.0)
-	slider.custom_minimum_size = Vector2(420, 96)
+	slider.custom_minimum_size = Vector2(380, 96)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_END
 	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slider.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -968,7 +1006,7 @@ func _add_slider_row(parent: VBoxContainer, label_text: String, initial: float, 
 	slider.add_theme_icon_override("grabber_highlight", _slider_grabber_icon())
 	slider.add_theme_icon_override("grabber_disabled", _slider_grabber_icon())
 	slider.value_changed.connect(on_change)
-	row.add_child(slider)
+	return slider
 
 
 var _grabber_icon: ImageTexture
