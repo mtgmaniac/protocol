@@ -19,33 +19,41 @@ const SETTLE_PATH := "res://assets/audio/sfx/dice/dice_settle_01.wav"
 
 const POOL_SIZE := 6              # voice cap: oldest voice is stolen beyond this
 
-# ── Trigger thinning (pass 2) — every gate is a tunable ──────────────────────
+# ── Trigger thinning (pass 2, retimed pass 4) — every gate is a tunable ──────
 # Tuned against the seeded 5-dice physics probe (DiceTrayPhysicsProbe, seed
-# 20260705). Raw stream there: ~95-113 contacts per roll (~30/s), speed
-# distribution min~0.7 / p50~3.6 / p75~7.5 / p90~12 / max~17. The old gates
-# fired 54 clicks per 5-dice roll ("reads as ~15 dice", Kev); these cut that
-# to ~10 front-loaded clicks + settle ticks. Do NOT loosen for cleaner samples
-# — density was the problem, not the material.
-const IMPACT_SPEED_MIN := 7.0     # ~p75 of the contact stream: first bounce or
-                                  # two per die speak, micro-settles never do.
-                                  # (Pass-1 value 1.5 passed 88% of all contacts.)
-const IMPACT_SPEED_FULL := 14.0   # ~p90+: only a hard direct hit plays at max
-const VOLUME_CURVE_EXP := 2.0     # t^N volume curve: steeper than linear, soft
-                                  # end of the passing range stays nearly silent
-const IMPACT_DB_QUIET := -22.0
+# 20260705): ~95-113 contacts per roll (~30/s). The pass-2 gate at 7.0 kept
+# counts in the 8-15 band but killed the TIMING: mid-roll bounces run at
+# speeds 2-6, so everything after ~0.9s of a ~2.4s roll was silent, then the
+# settle ticks clumped at the end (per-contact log, pass 4). The fix: admit
+# the mid-roll band but keep it QUIET via the curve, and pace with time
+# windows instead of a per-roll budget.
+const IMPACT_SPEED_MIN := 2.5     # just above the sub-2 micro-jitter tail:
+                                  # mid-roll tumble bounces (2.6-5.7) now speak
+const IMPACT_SPEED_FULL := 14.0   # only a hard direct hit plays at max
+const VOLUME_CURVE_EXP := 2.0     # t^N: steep — mid-roll bounces sit within a
+                                  # few dB of QUIET, early wall hits near MAX
+const IMPACT_DB_QUIET := -20.0
 const IMPACT_DB_MAX := -3.0       # headroom against pileups on the DICE bus
-const DEBOUNCE_MS := 120          # per-die: a double-bounce inside this is ONE hit
-const GLOBAL_MIN_GAP_MS := 45     # min gap between ANY two clicks game-wide —
-                                  # simultaneous landings collapse (see boost below)
+const DEBOUNCE_MS := 250          # per-die WINDOW (replaces the per-roll budget):
+                                  # max 1 click per die per 250ms — one click per
+                                  # bounce-cycle, so a die stays audible for the
+                                  # whole roll instead of spending 4 clicks in
+                                  # the first violent 200ms
+const GLOBAL_MIN_GAP_MS := 110    # min gap between ANY two clicks game-wide
+                                  # (~9 clicks/s hard ceiling); simultaneous
+                                  # landings collapse (see boost below)
 const COLLAPSE_BOOST_DB := 1.5    # ...into one slightly louder click, never a chord
-const PER_DIE_MAX_CLICKS := 4     # per-roll click budget per die; once spent the
-                                  # die only gets its settle tick
 const PITCH_MIN := 0.9            # synth clicks are clean single transients —
 const PITCH_MAX := 1.15           # this spread reads as natural dice, not mush
 const VOLUME_JITTER_DB := 1.5
-# Settle tick: dice_settle_01.wav is already softer/lower than the clicks, so
-# it plays near-unity — small pitch jitter keeps repeated rests from twinning.
-const SETTLE_DB := 0.0
+# Settle ticks: staggered 30-80ms and played soft so the roll's end reads as
+# dice stopping one by one, not an event. dice_settle_01.wav is already
+# softer/lower; near-unity pitch with small jitter.
+const SETTLE_DB := -6.0
+const SETTLE_STAGGER_MIN_S := 0.03
+const SETTLE_STAGGER_MAX_S := 0.08
+const SETTLE_MIN_GAP_MS := 40     # settles use their OWN smaller gap (the 110ms
+                                  # click gap would swallow the 30-80ms stagger)
 const SETTLE_PITCH_MIN := 0.95
 const SETTLE_PITCH_MAX := 1.05
 
@@ -72,6 +80,20 @@ var _stat_start_ms: int = 0
 var _last_click_ms: int = -100000
 var _last_click_player: AudioStreamPlayer = null
 var _last_click_boosted: bool = false
+
+# Verbose per-contact decision log (timing diagnosis): every contact prints
+# time-into-roll, die, speed, and which gate decided its fate. Debug tool —
+# leave off in normal play, the per-roll stats line is the always-on summary.
+const DEBUG_CONTACT_LOG := false
+var _log_die_names: Dictionary = {}
+
+
+func _log_contact(die_id: int, t_ms: int, speed: float, decision: String) -> void:
+	if not DEBUG_CONTACT_LOG:
+		return
+	if not _log_die_names.has(die_id):
+		_log_die_names[die_id] = "d%d" % (_log_die_names.size() + 1)
+	print("[DiceAudio] t=%4dms %s v=%5.1f %s" % [t_ms, _log_die_names[die_id], speed, decision])
 
 
 func _ready() -> void:
@@ -134,13 +156,14 @@ func on_die_impact(die_id: int, speed: float) -> void:
 		return
 	_stat_contacts += 1
 	_stat_contacts_per_die[die_id] = int(_stat_contacts_per_die.get(die_id, 0)) + 1
+	var t_ms: int = Time.get_ticks_msec() - _stat_start_ms
 	if speed < IMPACT_SPEED_MIN:
+		_log_contact(die_id, t_ms, speed, "below-threshold")
 		return
 	_stat_gated += 1
-	if int(_stat_clicks_per_die.get(die_id, 0)) >= PER_DIE_MAX_CLICKS:
-		return
 	var now: int = Time.get_ticks_msec()
 	if int(_last_impact_ms.get(die_id, -DEBOUNCE_MS)) + DEBOUNCE_MS > now:
+		_log_contact(die_id, t_ms, speed, "debounced")
 		return
 	# Global rate limit: two dice landing in the same instant read as ONE hit.
 	# The dropped click nudges the in-flight one a hair louder instead.
@@ -148,8 +171,10 @@ func on_die_impact(die_id: int, speed: float) -> void:
 		if _last_click_player != null and _last_click_player.playing and not _last_click_boosted:
 			_last_click_player.volume_db += COLLAPSE_BOOST_DB
 			_last_click_boosted = true
+		_log_contact(die_id, t_ms, speed, "rate-limited")
 		return
 	_last_impact_ms[die_id] = now
+	_log_contact(die_id, t_ms, speed, "PLAYED")
 	var t: float = pow(clampf((speed - IMPACT_SPEED_MIN) / (IMPACT_SPEED_FULL - IMPACT_SPEED_MIN), 0.0, 1.0), VOLUME_CURVE_EXP)
 	var db: float = lerpf(IMPACT_DB_QUIET, IMPACT_DB_MAX, t) + randf_range(-VOLUME_JITTER_DB, VOLUME_JITTER_DB)
 	_stat_clicks += 1
@@ -158,15 +183,21 @@ func on_die_impact(die_id: int, speed: float) -> void:
 
 
 ## The die crossed its settle threshold (fires again if it gets bumped and
-## re-settles — that re-tick is physical, keep it).
+## re-settles — that re-tick is physical, keep it). Each tick is staggered by
+## a random 30-80ms so dice force-settled in the same physics frame land as a
+## soft one-by-one patter instead of a chord; ticks that STILL collide after
+## the stagger are dropped by the global gap.
 func on_die_settled(_die_id: int) -> void:
 	if _suppressed or _settle == null:
 		return
-	# Same global gap as impacts: dice force-settled in the same instant
-	# collapse to one tick instead of a chord.
-	if _last_click_ms + GLOBAL_MIN_GAP_MS > Time.get_ticks_msec():
+	await get_tree().create_timer(randf_range(SETTLE_STAGGER_MIN_S, SETTLE_STAGGER_MAX_S)).timeout
+	if _last_click_ms + SETTLE_MIN_GAP_MS > Time.get_ticks_msec():
+		if DEBUG_CONTACT_LOG:
+			print("[DiceAudio] t=%4dms SETTLE dropped (rate-limited)" % (Time.get_ticks_msec() - _stat_start_ms))
 		return
 	_stat_settles += 1
+	if DEBUG_CONTACT_LOG:
+		print("[DiceAudio] t=%4dms SETTLE played" % (Time.get_ticks_msec() - _stat_start_ms))
 	_play(_settle, SETTLE_DB + randf_range(-VOLUME_JITTER_DB, VOLUME_JITTER_DB),
 		randf_range(SETTLE_PITCH_MIN, SETTLE_PITCH_MAX))
 
