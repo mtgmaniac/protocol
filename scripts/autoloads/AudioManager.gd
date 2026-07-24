@@ -44,9 +44,11 @@ var _next: int = 0
 var _recent: Dictionary = {}
 var _suppressed: bool = false
 var _muted: bool = false
-# Slider defaults. DICE starts at 0.4 (~-8 dB under SFX): dice are texture
-# under the action, not a lead instrument — Kev fine-tunes from there.
-const CHANNEL_DEFAULTS := {"SFX": 1.0, "DICE": 0.4, "UI": 1.0}
+# Slider defaults. DICE starts at 0.2 (~-14 dB under SFX): dice are texture
+# under the action, not a lead instrument. Dropped a further -6 dB for
+# demo2-final as a static mitigation (see docs/DEFERRED_30_WEB_MUSIC_STATIC.md)
+# — quieter overall beats audible static. Kev fine-tunes from there.
+const CHANNEL_DEFAULTS := {"SFX": 1.0, "DICE": 0.2, "UI": 1.0}
 
 var _channel_volume: Dictionary = CHANNEL_DEFAULTS.duplicate()  # linear 0..1 sliders
 var _channel_enabled: Dictionary = {"SFX": true, "DICE": true, "UI": true}
