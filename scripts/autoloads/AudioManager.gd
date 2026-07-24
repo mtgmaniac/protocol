@@ -44,7 +44,11 @@ var _next: int = 0
 var _recent: Dictionary = {}
 var _suppressed: bool = false
 var _muted: bool = false
-var _channel_volume: Dictionary = {"SFX": 1.0, "DICE": 1.0, "UI": 1.0}  # linear 0..1 sliders
+# Slider defaults. DICE starts at 0.4 (~-8 dB under SFX): dice are texture
+# under the action, not a lead instrument — Kev fine-tunes from there.
+const CHANNEL_DEFAULTS := {"SFX": 1.0, "DICE": 0.4, "UI": 1.0}
+
+var _channel_volume: Dictionary = CHANNEL_DEFAULTS.duplicate()  # linear 0..1 sliders
 var _channel_enabled: Dictionary = {"SFX": true, "DICE": true, "UI": true}
 
 
@@ -141,7 +145,7 @@ func _apply_mute() -> void:
 # channel is one of CHANNELS ("SFX", "DICE", "UI"). SFX is the parent bus, so its
 # slider/mute scales DICE and UI too; their own rows are independent trims.
 func get_channel_volume(channel: String) -> float:
-	return float(_channel_volume.get(channel, 1.0))
+	return float(_channel_volume.get(channel, float(CHANNEL_DEFAULTS.get(channel, 1.0))))
 
 
 func set_channel_volume(channel: String, volume: float) -> void:
@@ -193,7 +197,8 @@ func _load_settings() -> void:
 		_muted = bool(cfg.get_value("audio", "muted", false))
 		for channel in CHANNELS:
 			_channel_volume[channel] = clampf(
-				float(cfg.get_value("audio", _settings_key(channel, "volume"), 1.0)), 0.0, 1.0)
+				float(cfg.get_value("audio", _settings_key(channel, "volume"),
+					float(CHANNEL_DEFAULTS.get(channel, 1.0)))), 0.0, 1.0)
 			_channel_enabled[channel] = bool(cfg.get_value("audio", _settings_key(channel, "enabled"), true))
 
 

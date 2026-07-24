@@ -606,6 +606,9 @@ func _finish_roll(dice: Array) -> void:
 	_enforce_assigned_result_origins(result_entries)
 
 	_is_rolling = false
+	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	if dice_audio != null:
+		dice_audio.on_roll_finished()
 	# One-shot: the tutorial rig covers exactly the roll it was set for.
 	_rigged_results.clear()
 	# Stay visible so the player can read the results; reset() hides later
