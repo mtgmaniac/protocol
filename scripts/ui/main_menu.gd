@@ -209,7 +209,7 @@ func _show_first_run_prompt() -> void:
 	box.add_child(title)
 
 	var body := Label.new()
-	body.text = "This is your first time playing - want to run the tutorial? You can replay it anytime from the Help menu."
+	body.text = "This is your first time playing, want to run the tutorial?"
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	PixelUI.style_body_label(body, PROMPT_BODY_FONT)

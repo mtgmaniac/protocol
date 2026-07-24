@@ -32,30 +32,45 @@ var _steps: Array = []
 var _spot = null  # SpotlightLayer — the shared dim + ring + coachmark machine
 
 
+var _js_refresh_cb: JavaScriptObject = null
+
+
 func start(scene: Node) -> void:
 	_scene = scene
 	_steps = _build_steps()
 	_build_ui()
 	if _scene.has_signal("tutorial_event"):
 		_scene.tutorial_event.connect(_on_tutorial_event)
+	if OS.has_feature("web"):
+		# Web test seam: `window.__tut_refresh()` re-publishes the live state on
+		# demand (read-only; drives nothing).
+		_js_refresh_cb = JavaScriptBridge.create_callback(_on_js_refresh)
+		JavaScriptBridge.get_interface("window").set("__tut_refresh", _js_refresh_cb)
 	_show_step(0)
 
 
-# ── Step script (v2.4, primer-showcase delta — 25 beats) ────────────────────────
+func _on_js_refresh(_args: Array) -> void:
+	_publish_debug_state(_current(), [], "poll")
+
+
+# ── Step script (v2.5, polish pass — 26 beats) ─────────────────────────────────
 # Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
 # predicate), hero:"" (optional event predicate — the unit id carried in the
 # event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
 # Keys resolve to battle nodes in _target_rect(). Copy is Kev-final; engine
-# corrections only (drone's Stab is 7; badges are plain numerals — glyph law;
-# the fullscreen beat names Barrier Deploy, engineer's REAL turn-2 band).
-# Playtest pass: mark payoff is ENGINEER (leech stays out of the drill), the
-# order-badges beat is deleted, and every assigned-gated beat runs the
-# TWO-STAGE spotlight (die+card → legal targets on targeting_started).
+# corrections only (drone's Stab is 7; badges are plain numerals — glyph law).
+# v2.5 (Kev-approved polish pass): hero-intro beat added (welcome → header →
+# YOUR side → THEIR side → roll), stage-1 assign spotlights include the ability
+# pip, the nudge beat gates on hero=combat (with an input-level block in
+# protocol_actions — the drill's only Protocol point must not be spendable on
+# the wrong die), and order-teaching consolidated to the beat where ordering is
+# actionable (the assign-the-rest beat).
 func _build_steps() -> Array:
 	return [
 		# Phase 0 — orientation
 		{"targets": [], "title": "WELCOME", "text": "Welcome to Overload Protocol. I'll walk you through your first fight."},
 		{"targets": ["header"], "text": "This bar stays with you all run - squad progress and the Help menu live here."},
+		{"targets": ["hero_cards"], "text": "Your squad - Strike Unit, Field Engineer, Splice Medic. Each rolls one die every turn."},
 		{"targets": ["enemy_cards"], "text": "This is your target - a Scrap Drone. 35 HP, and it hits back."},
 		# Phase 1 — turn 1
 		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
@@ -63,16 +78,15 @@ func _build_steps() -> Array:
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
 		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields."},
 		{"targets": ["hero_cards"], "text": "Long-press a card for the full breakdown - long-press works on nearly everything. Try it.", "advance": "inspected"},
-		# Cast order (Model A): assignment order = firing order — carried by
-		# this line + the visible order badges (Prompt-6: mark left the drill;
-		# its primer teaches it at first real-play sighting).
-		{"targets": ["die:combat", "card:combat"], "separate": true, "text": "Tap Strike Unit's die, then the drone, to fire it. Your squad fires in the order you assign.", "advance": "assigned", "hero": "combat"},
-		{"targets": ["die:engineer", "card:engineer"], "separate": true, "text": "Now Field Engineer - tap the die, then the drone.", "advance": "assigned", "hero": "engineer"},
+		# Cast order (Model A): first mention here as setup; the actionable
+		# teaching lives on the assign-the-rest beat (v2.5 consolidation).
+		{"targets": ["die:combat", "card:combat", "ability:combat"], "separate": true, "text": "Tap Strike Unit's die, then the drone, to fire it. Your squad fires in the order you assign.", "advance": "assigned", "hero": "combat"},
+		{"targets": ["die:engineer", "card:engineer", "ability:engineer"], "separate": true, "text": "Now Field Engineer - tap the die, then the drone.", "advance": "assigned", "hero": "engineer"},
 		# Telegraph: the drone's card + its ability pip + its die (separate holes).
 		{"targets": ["enemy_card", "enemy_pip", "enemy_die"], "separate": true, "text": "The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands."},
-		{"targets": ["die:medic", "card:medic"], "separate": true, "text": "Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic"},
-		{"targets": ["roll_button"], "text": "Lock it in - your squad fires in order, then the drone acts.", "advance": "turn_resolved"},
-		{"targets": ["combat", "battle_log"], "separate": true, "text": "The drone took 17. Its hit landed for 7: the shield soaked 3, Strike Unit took 4. Time to patch up."},
+		{"targets": ["die:medic", "card:medic", "ability:medic"], "separate": true, "text": "Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic"},
+		{"targets": ["roll_button"], "text": "Lock it in - your squad acts, then the drone.", "advance": "turn_resolved"},
+		{"targets": ["combat", "battle_log"], "separate": true, "text": "The drone took 17. Its hit landed for 7: the shield soaked 3, Strike Unit took 4."},
 		# Phase 2 — turn 2
 		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
@@ -84,17 +98,23 @@ func _build_steps() -> Array:
 		{"targets": ["ability:medic"], "text": "When a mechanic you've never seen appears, a one-time tip points it out - like the Cleanse on Splice Medic's roll. The Help menu keeps every keyword whenever you need a reminder."},
 		{"targets": ["protocol_value"], "text": "You banked 1 Protocol - income ticks +1 every turn, caps at 10. That's exactly enough for a Nudge."},
 		# Nudge stays TWO beats (Kev fix #3): button beat advances the instant the
-		# press arms the pick; the die beat gates on the applied nudge.
+		# press arms the pick; the die beat gates on the applied nudge. The pick
+		# is cancellable (tap-away / Nudge re-press) — cancels are free and the
+		# button stays tappable through the pass-through spotlight, so the die
+		# beat simply waits for a re-arm + apply (v2.5 ruling: no revert beat).
 		{"targets": ["nudge"], "text": "Nudge costs 1 - tap it. (Reroll and Set cost 2 and 4 - they unlock as you bank more.)", "advance": "phase", "phase": "nudge_pick"},
-		{"targets": ["combat"], "text": "Tap Strike Unit's die - +3 turns an 8 into an 11.", "advance": "nudged"},
+		# v2.5 beat-19 fix: gated on STRIKE's nudge (belt) + protocol_actions
+		# ignores wrong-die picks in the drill (braces) — the only Protocol
+		# point can never be spent off-script.
+		{"targets": ["combat"], "text": "Tap Strike Unit's die - +3 turns an 8 into an 11.", "advance": "nudged", "hero": "combat"},
 		# Band jump: the die + its ability pip, separate holes (playtest item 10).
 		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10."},
 		# Item SIGNPOST (Prompt-5 delta): informational only, while the Protocol
 		# spend is fresh — no grant, no gate, the REAL cost stated. The item
 		# button holes fine with an empty loadout (it always renders).
 		{"targets": ["item"], "text": "Item slots. You'll collect consumables on your run - using one costs 1 Protocol, same as a Nudge, and doesn't spend a die."},
-		{"targets": ["die:medic", "card:medic"], "separate": true, "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore that hit.", "advance": "assigned", "hero": "medic"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike and Overdrive at the drone.", "advance": "phase", "phase": "ready_to_end"},
+		{"targets": ["die:medic", "card:medic", "ability:medic"], "separate": true, "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore life.", "advance": "assigned", "hero": "medic"},
+		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike and Overdrive at the drone. You pick the firing order; later, order wins fights.", "advance": "phase", "phase": "ready_to_end"},
 		{"targets": ["roll_button"], "text": "End the turn.", "advance": "won"},
 		{"targets": [], "text": "That's the loop. The Help menu holds the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
 	]
@@ -175,6 +195,7 @@ func _retarget_spotlight_to_legal() -> void:
 	if holes.is_empty():
 		holes = [_fullscreen_hole()]
 	_spot.set_holes(holes)
+	_publish_debug_state(_current(), holes, "retarget")
 
 
 # Taps only arrive from the SpotlightLayer when the step is interactive
@@ -215,6 +236,9 @@ func _finish() -> void:
 	if save_manager != null:
 		save_manager.call("mark_tutorial_done")
 	var sm: Node = get_node_or_null("/root/SceneManager")
+	print("[Tutorial] finished -> %s" % ("squad_picker" if continue_to_play else "main_menu"))
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.__tut_done = '%s'" % ("squad_picker" if continue_to_play else "main_menu"), true)
 	queue_free()
 	if sm != null:
 		sm.call("go_to_unit_select" if continue_to_play else "go_to_main_menu")
@@ -238,6 +262,7 @@ func _layout_step() -> void:
 	if bool(step.get("hide_coach", false)):
 		if _spot != null:
 			_spot.dismiss()
+		_publish_debug_state(step, [])
 		return
 	var holes: Array = _compute_holes(step)
 	# Never place against a not-yet-valid rect (playtest item 9): a step that
@@ -267,6 +292,71 @@ func _layout_step() -> void:
 			"hint": "Tap to continue >" if tap_step else "",
 			"interactive": tap_step,
 		})
+	_publish_debug_state(step, holes)
+
+
+# ── Diagnostics (console) + web test seam ──────────────────────────────────────
+# One console line per beat (and per stage-2 retarget) — cheap, tutorial-only,
+# and it is what makes the drill verifiable from a browser console. On web it
+# additionally publishes the live geometry (hole rects, per-hero die rects, the
+# enemy cards, the Nudge button) to `window.__tut` so an automated page-side
+# driver can tap the REAL targets. Read-only data out; no input path in.
+func _publish_debug_state(step: Dictionary, holes: Array, stage: String = "step") -> void:
+	print("[Tutorial] step %d/%d advance=%s %s holes=%d" % [
+		_step + 1, _steps.size(), _advance_mode(), stage, holes.size()])
+	if not OS.has_feature("web"):
+		return
+	var hole_list: Array = []
+	for hole_variant in holes:
+		var r: Rect2 = hole_variant
+		hole_list.append([r.position.x, r.position.y, r.size.x, r.size.y])
+	var dice: Dictionary = {}
+	var views: Variant = _scene.get("hero_card_views")
+	if views is Array:
+		for view_variant in views:
+			var view: Dictionary = view_variant
+			var state: Dictionary = view.get("state", {})
+			var unit: Object = state.get("unit", null) as Object
+			if unit == null:
+				continue
+			var die_rect: Rect2 = _die_rect("hero", str(state.get("id", "")))
+			if die_rect.size != Vector2.ZERO:
+				dice[str(unit.id)] = [die_rect.position.x, die_rect.position.y, die_rect.size.x, die_rect.size.y]
+	var enemies: Array = []
+	var enemy_views: Variant = _scene.get("enemy_card_views")
+	if enemy_views is Array:
+		for view_variant in enemy_views:
+			var rect: Rect2 = _node_rect((view_variant as Dictionary).get("card", null))
+			if rect.size != Vector2.ZERO:
+				enemies.append([rect.position.x, rect.position.y, rect.size.x, rect.size.y])
+	var nudge_rect: Rect2 = _node_rect(_protocol_button("nudge_button"))
+	var data: Dictionary = {
+		"step": _step,
+		"advance": _advance_mode(),
+		"stage": stage,
+		"targets": step.get("targets", []),
+		"holes": hole_list,
+		"dice": dice,
+		"enemies": enemies,
+		"nudge": [nudge_rect.position.x, nudge_rect.position.y, nudge_rect.size.x, nudge_rect.size.y] if nudge_rect.size != Vector2.ZERO else [],
+		"phase": str(_scene.call("phase_name", _scene.get("turn_phase"))) if _scene.has_method("phase_name") else "",
+		"active": str(_scene.get("active_targeting_hero_id")),
+		"pending": _scene.get("pending_manual_target_ids"),
+		"state_ids": _hero_state_ids(),
+	}
+	JavaScriptBridge.eval("window.__tut = %s" % JSON.stringify(data), true)
+
+
+func _hero_state_ids() -> Dictionary:
+	var out: Dictionary = {}
+	var views: Variant = _scene.get("hero_card_views")
+	if views is Array:
+		for view_variant in views:
+			var state: Dictionary = (view_variant as Dictionary).get("state", {})
+			var unit: Object = state.get("unit", null) as Object
+			if unit != null:
+				out[str(unit.id)] = str(state.get("id", ""))
+	return out
 
 
 # Holes to spotlight this step, in screen space:
