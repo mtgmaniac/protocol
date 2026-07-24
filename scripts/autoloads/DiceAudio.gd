@@ -46,14 +46,21 @@ const COLLAPSE_BOOST_DB := 1.5    # ...into one slightly louder click, never a c
 const PITCH_MIN := 0.9            # synth clicks are clean single transients —
 const PITCH_MAX := 1.15           # this spread reads as natural dice, not mush
 const VOLUME_JITTER_DB := 1.5
-# Settle ticks: staggered 30-80ms and played soft so the roll's end reads as
-# dice stopping one by one, not an event. dice_settle_01.wav is already
-# softer/lower; near-unity pitch with small jitter.
-const SETTLE_DB := -6.0
+# Per-die wind-down (pass 5): dice rocking to rest generate a late flurry of
+# 3-5 speed contacts that passed the gate and read as a phantom reroll. Once a
+# die's contacts have stayed below WIND_DOWN_SPEED for WIND_DOWN_MS, that die
+# is DONE speaking for the roll — no further clicks no matter how many
+# micro-contacts follow. It still gets its (single) settle tick.
+const WIND_DOWN_SPEED := 6.0      # above the base gate: 3-5 speed rocking never
+                                  # resets the clock, real bounces (6+) do
+const WIND_DOWN_MS := 150         # this long below WIND_DOWN_SPEED = done
+
+# Settle ticks: at most ONE per die per roll, staggered 30-80ms, soft, and
+# subject to the global rate limiter (colliding ticks drop — fewer end sounds
+# is the goal). dice_settle_01.wav is already softer/lower; near-unity pitch.
+const SETTLE_DB := -14.0          # set to -80.0 for full silence at rest (Kev's call)
 const SETTLE_STAGGER_MIN_S := 0.03
 const SETTLE_STAGGER_MAX_S := 0.08
-const SETTLE_MIN_GAP_MS := 40     # settles use their OWN smaller gap (the 110ms
-                                  # click gap would swallow the 30-80ms stagger)
 const SETTLE_PITCH_MIN := 0.95
 const SETTLE_PITCH_MAX := 1.05
 
@@ -62,6 +69,9 @@ var _settle: AudioStream = null
 var _pool: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _last_impact_ms: Dictionary = {}  # die instance id -> last click Time.get_ticks_msec()
+var _lively_ms: Dictionary = {}       # die id -> last contact >= WIND_DOWN_SPEED
+var _wound_down: Dictionary = {}      # die id -> true once done speaking this roll
+var _settled_dice: Dictionary = {}    # die id -> true once its settle tick is spent
 var _suppressed: bool = false
 
 # ── Per-roll trigger stats ───────────────────────────────────────────────────
@@ -124,6 +134,9 @@ func set_suppressed(suppressed: bool) -> void:
 ## dice excluded). Resets per-die debounce/budget state and the stats window.
 func on_roll_started(rolling_count: int) -> void:
 	_last_impact_ms.clear()
+	_lively_ms.clear()
+	_wound_down.clear()
+	_settled_dice.clear()
 	_stat_active = true
 	_stat_dice = rolling_count
 	_stat_contacts = 0
@@ -156,12 +169,22 @@ func on_die_impact(die_id: int, speed: float) -> void:
 		return
 	_stat_contacts += 1
 	_stat_contacts_per_die[die_id] = int(_stat_contacts_per_die.get(die_id, 0)) + 1
-	var t_ms: int = Time.get_ticks_msec() - _stat_start_ms
+	var now: int = Time.get_ticks_msec()
+	var t_ms: int = now - _stat_start_ms
+	# Wind-down bookkeeping runs on EVERY contact (a below-gate contact is
+	# still evidence the die has lost its energy). Done is done for the roll —
+	# even a later hard knock stays silent; the settle tick is the die's coda.
+	if speed >= WIND_DOWN_SPEED:
+		_lively_ms[die_id] = now
+	elif not _wound_down.has(die_id) and now - int(_lively_ms.get(die_id, _stat_start_ms)) > WIND_DOWN_MS:
+		_wound_down[die_id] = true
+	if _wound_down.has(die_id):
+		_log_contact(die_id, t_ms, speed, "wound-down")
+		return
 	if speed < IMPACT_SPEED_MIN:
 		_log_contact(die_id, t_ms, speed, "below-threshold")
 		return
 	_stat_gated += 1
-	var now: int = Time.get_ticks_msec()
 	if int(_last_impact_ms.get(die_id, -DEBOUNCE_MS)) + DEBOUNCE_MS > now:
 		_log_contact(die_id, t_ms, speed, "debounced")
 		return
@@ -182,16 +205,18 @@ func on_die_impact(die_id: int, speed: float) -> void:
 	_play(_clicks[randi_range(0, _clicks.size() - 1)], db, randf_range(PITCH_MIN, PITCH_MAX))
 
 
-## The die crossed its settle threshold (fires again if it gets bumped and
-## re-settles — that re-tick is physical, keep it). Each tick is staggered by
-## a random 30-80ms so dice force-settled in the same physics frame land as a
-## soft one-by-one patter instead of a chord; ticks that STILL collide after
-## the stagger are dropped by the global gap.
-func on_die_settled(_die_id: int) -> void:
+## The die crossed its settle threshold. At most ONE tick per die per roll
+## (a bumped-and-resettled die does not tick again), staggered by a random
+## 30-80ms and subject to the global rate limiter — colliding ticks drop;
+## fewer end sounds is the goal.
+func on_die_settled(die_id: int) -> void:
 	if _suppressed or _settle == null:
 		return
+	if _settled_dice.has(die_id):
+		return
+	_settled_dice[die_id] = true
 	await get_tree().create_timer(randf_range(SETTLE_STAGGER_MIN_S, SETTLE_STAGGER_MAX_S)).timeout
-	if _last_click_ms + SETTLE_MIN_GAP_MS > Time.get_ticks_msec():
+	if _last_click_ms + GLOBAL_MIN_GAP_MS > Time.get_ticks_msec():
 		if DEBUG_CONTACT_LOG:
 			print("[DiceAudio] t=%4dms SETTLE dropped (rate-limited)" % (Time.get_ticks_msec() - _stat_start_ms))
 		return
