@@ -1,7 +1,10 @@
 # Godot-specific ignores
 .godot/
 *.tmp
-export_presets.cfg
+# export_presets.cfg is TRACKED (checked clean of credentials 2026-07-23):
+# no keystore entries, no encryption keys. If Android signing is ever
+# configured in the editor, move the credentials to environment overrides
+# (EDITOR: Export > Options > "Environment variables") — never commit them.
 
 # Editor tool snapshots (Ziva)
 /.ziva/
