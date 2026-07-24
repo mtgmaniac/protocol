@@ -17,6 +17,11 @@ func _ready() -> void:
 		await get_tree().process_frame
 		_launch()
 		return
+	if "--debug-web-timing" in args:
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_web_timing()
+		return
 	var screen_id: String = _arg_value(args, "--debug-screen")
 	if screen_id != "":
 		await get_tree().process_frame
@@ -33,6 +38,56 @@ func _arg_value(args: PackedStringArray, flag: String) -> String:
 		if args[i].begins_with(flag + "="):
 			return args[i].substr((flag + "=").length())
 	return ""
+
+
+# Battle-entry timing probe (web warm-up relocation, 2026-07-23): drives the
+# TUTORIAL and DEPLOY battle entries in ONE session and prints press->scene
+# time plus the post-entry frame stalls (where the WebGL pipeline warm-up
+# lands). Also proves the once-per-session warm-up gate: the [DiceTray3D]
+# warm-up log must appear at most once across both entries.
+func _web_timing() -> void:
+	print("[WEBTIME] session start")
+	# Menu dwell: models the player reading the menu — long enough for the
+	# menu-load warm-up to finish (the speedrun-BEGIN case is covered by the
+	# warm-up's start-set gate, not by this probe).
+	await get_tree().create_timer(5.0).timeout
+	await _time_battle_entry("tutorial", func() -> void:
+		GameState.start_tutorial_run()
+		SceneManager.go_to_battle())
+	SceneManager.go_to_main_menu()
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(2.0).timeout
+	var unit_ids: Array = DataManager.units.keys().slice(0, 3)
+	var ops: Array = DataManager.get_operation_order()
+	var op_id: String = ops[0] if not ops.is_empty() else ""
+	await _time_battle_entry("deploy", func() -> void:
+		GameState.start_run(unit_ids, op_id)
+		SceneManager.go_to_battle())
+	print("[WEBTIME] done")
+	get_tree().quit()
+
+
+func _time_battle_entry(tag: String, launch: Callable) -> void:
+	var t0: int = Time.get_ticks_msec()
+	launch.call()
+	var deadline: int = t0 + 15000
+	while Time.get_ticks_msec() < deadline:
+		var scene: Node = get_tree().get_current_scene()
+		if scene != null and scene.name == "BattleScene":
+			break
+		await get_tree().process_frame
+	var t_scene: int = Time.get_ticks_msec()
+	var frame_total: int = 0
+	var frame_max: int = 0
+	for _i in range(15):
+		var f0: int = Time.get_ticks_msec()
+		await get_tree().process_frame
+		var fd: int = Time.get_ticks_msec() - f0
+		frame_total += fd
+		frame_max = maxi(frame_max, fd)
+	print("[WEBTIME] %s: press->scene %d ms | next 15 frames %d ms (max frame %d ms)" % [tag, t_scene - t0, frame_total, frame_max])
 
 
 func _launch() -> void:
