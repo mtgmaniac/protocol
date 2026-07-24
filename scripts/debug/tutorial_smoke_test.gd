@@ -1,19 +1,21 @@
-# Scripted end-to-end tutorial playthroughs (v2.4, primer-showcase delta —
-# Kev 2026-07-21: the drill lets exactly ONE primer display, CLEANSE on Splice
-# Medic's turn-2 Infusion, and beat 15 explains the tip mechanic; the main
-# menu's first-run overlay carries the skip choice — no in-drill Skip button.
-# Prompt-6 still holds: Strike rolls 9
-# — Target Lock and mark appear NOWHERE in the drill; every OTHER primer stays
-# unseen and fires at first real-play sighting. Turn-1 math is
-# ORDER-INVARIANT). Drives the same battle-scene entry points the real UI
-# calls and asserts every TutorialController step advances, every spotlighted
-# step resolves holes, every assigned-gated step RETARGETS its spotlight onto
-# the legal targets when targeting starts, and the HONEST-RIG math lands
-# exactly where the coach copy claims (35 -> 18 -> dead on 10+11; shield
-# soaks 3; protocol 1).
+# Scripted end-to-end tutorial playthroughs (v2.5, polish pass — hero-intro
+# beat added, stage-1 assign spotlights include the ability pip, and the nudge
+# beat is hero-gated with an INPUT-LEVEL wrong-die block in protocol_actions.
+# v2.4 rulings stand: the drill lets exactly ONE primer display, CLEANSE on
+# Splice Medic's turn-2 Infusion; the main menu's first-run overlay carries the
+# skip choice — no in-drill Skip button; Target Lock and mark appear NOWHERE
+# in the drill; every OTHER primer stays unseen and fires at first real-play
+# sighting. Turn-1 math is ORDER-INVARIANT). Drives the same battle-scene
+# entry points the real UI calls and asserts every TutorialController step
+# advances, every spotlighted step resolves holes, every assigned-gated step
+# RETARGETS its spotlight onto the legal targets when targeting starts, and
+# the HONEST-RIG math lands exactly where the coach copy claims (35 -> 18 ->
+# dead on 10+11; shield soaks 3; protocol 1).
 #
-# Scenario A — the happy path: all 25 steps in the taught order, with the
-#   cleanse showcase displaying (debug seams) and marked seen.
+# Scenario A — the happy path: all 26 steps in the taught order, with the
+#   cleanse showcase displaying (debug seams) and marked seen, plus the
+#   beat-19 fix coverage: a wrong-die nudge pick is IGNORED (pick stays armed,
+#   nothing charged), the pick cancels free on Nudge re-press and re-arms.
 # Scenario B — stall-proofing: assignments are resequenced (identical totals
 #   — order-invariance asserted at the same 18 checkpoint), a Nudge is
 #   attempted at 0 PP (rejected), and the dice-only kill still closes. The
@@ -27,7 +29,7 @@
 extends SceneTree
 
 const STEP_TIMEOUT_SECS := 20.0
-const STEP_COUNT := 25
+const STEP_COUNT := 26
 
 var _errors: Array[String] = []
 
@@ -65,7 +67,7 @@ func _run_happy_path() -> void:
 		_fail("TutorialController not spawned in tutorial_mode")
 		return
 	if (controller.call("_build_steps") as Array).size() != STEP_COUNT:
-		_fail("step script must be %d beats (primer-showcase beat added), got %d" % [STEP_COUNT, (controller.call("_build_steps") as Array).size()])
+		_fail("step script must be %d beats (v2.5: hero-intro beat added), got %d" % [STEP_COUNT, (controller.call("_build_steps") as Array).size()])
 
 	# Playtest item 4: leech must appear NOWHERE in the drill — no rigged hero
 	# band on either turn carries it (and none reaches the nat-20 overload).
@@ -82,18 +84,18 @@ func _run_happy_path() -> void:
 		primer.set("debug_force_active", true)
 		primer.set("debug_auto_dismiss", true)
 
-	# Steps 0-2: orientation taps (WELCOME / header / the drone).
+	# Steps 0-3: orientation taps (WELCOME / header / YOUR squad (v2.5) / the drone).
 	await _expect_step(controller, 0)
-	for _i in range(3):
+	for _i in range(4):
 		_check_holes(controller)
 		controller.call("_next")
 		await _wait_frames(3)
 
-	# Step 3: ROLL -> step 4 waiter -> step 5.
-	await _expect_step(controller, 3)
+	# Step 4: ROLL -> step 5 waiter -> step 6.
+	await _expect_step(controller, 4)
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 5)
+	await _expect_step(controller, 6)
 	await _wait_for_phase(scene, "targeting")
 
 	# Honest rig: real 35-HP drone aiming its Stab at Strike Unit.
@@ -103,49 +105,49 @@ func _run_happy_path() -> void:
 	if str(drone.get("selected_target_id", "")) != _state_id_for_unit(scene, "combat"):
 		_fail("drone must aim at Strike Unit, got '%s'" % str(drone.get("selected_target_id", "")))
 
-	# Step 5: bands beat (tap). Step 6: long-press gate.
+	# Step 6: bands beat (tap). Step 7: long-press gate.
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 6)
+	await _expect_step(controller, 7)
 	_check_holes(controller)
 	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
-	await _expect_step(controller, 7)
+	await _expect_step(controller, 8)
 
-	# Step 7: mark first (assigned, hero=combat). The hero predicate must
+	# Step 8: Strike first (assigned, hero=combat). The hero predicate must
 	# ignore an off-script hero, and the spotlight must RETARGET to the legal
 	# targets when the gated hero starts targeting (two-stage assign).
 	_check_holes(controller)
 	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
-	if int(controller.get("_step")) != 7:
-		_fail("hero predicate leaked: medic's assigned advanced the combat-gated step 7")
+	if int(controller.get("_step")) != 8:
+		_fail("hero predicate leaked: medic's assigned advanced the combat-gated step 8")
 	await _pick_and_assign(scene, _state_id_for_unit(scene, "combat"), controller)
-	await _expect_step(controller, 8)
-
-	# Step 8: spend it (assigned, hero=engineer) — hostile pick, retarget to drone.
-	_check_holes(controller)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"), controller)
 	await _expect_step(controller, 9)
 
-	# Step 9: telegraph beat (tap) — drone card + pip + die holes.
+	# Step 9: spend it (assigned, hero=engineer) — hostile pick, retarget to drone.
+	_check_holes(controller)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"), controller)
+	await _expect_step(controller, 10)
+
+	# Step 10: telegraph beat (tap) — drone card + pip + die holes.
 	_check_holes(controller)
 	controller.call("_next")
 	await _wait_frames(3)
 
-	# Step 10: shield beat (assigned, hero=medic) — medic was assigned
+	# Step 11: shield beat (assigned, hero=medic) — medic was assigned
 	# off-script earlier; re-tap pulls it back and re-assigning fires the gate
 	# (friendly pick, retarget to the ally cards).
-	await _expect_step(controller, 10)
+	await _expect_step(controller, 11)
 	_check_holes(controller)
 	scene.call("_unassign_hero_cast", _state_id_for_unit(scene, "medic"))
 	await _wait_frames(2)
 	_assert_spotlight_on_legal(scene, controller)
 	_assign_active_to_legal(scene)
-	await _expect_step(controller, 11)
+	await _expect_step(controller, 12)
 
-	# Step 11: END TURN (gated turn_resolved).
+	# Step 12: END TURN (gated turn_resolved).
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 12)
+	await _expect_step(controller, 13)
 
 	# Turn-1 math, exactly as the coach copy claims: 6 + 11 = 17 (drone
 	# 35 -> 18, nothing ever marked — mark left the drill); Stab 7 soaked 3
@@ -161,16 +163,16 @@ func _run_happy_path() -> void:
 	if int(scene.get("protocol_points")) != 1:
 		_fail("turn-2 protocol: expected 1 (income only), got %d" % int(scene.get("protocol_points")))
 
-	# Step 12: recap (tap). Step 13: roll again -> step 14 waiter -> 15.
+	# Step 13: recap (tap). Step 14: roll again -> step 15 waiter -> 16.
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 13)
+	await _expect_step(controller, 14)
 	_check_holes(controller)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 15)
+	await _expect_step(controller, 16)
 	await _wait_for_phase(scene, "targeting")
 
-	# Step 15 (NEW): the primer-showcase explainer. On this fresh profile the
+	# Step 16: the primer-showcase explainer. On this fresh profile the
 	# CLEANSE tip must have ACTUALLY displayed (auto-dismissed) during the
 	# turn-2 drain — exactly one, marked seen so it never repeats in real play
 	# — BEFORE "rolled" advanced the waiter (the modals never overlap).
@@ -181,54 +183,75 @@ func _run_happy_path() -> void:
 			_fail("showcased cleanse primer must be marked seen (never repeats)")
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 16)
+	await _expect_step(controller, 17)
 
-	# Step 16: protocol beat (tap). Step 17: Nudge button (phase nudge_pick).
+	# Step 17: protocol beat (tap). Step 18: Nudge button (phase nudge_pick).
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 17)
+	await _expect_step(controller, 18)
 	_check_holes(controller)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _expect_step(controller, 18)
-
-	# Step 18: nudge Strike's die (8 -> 11, the band jump).
-	_check_holes(controller)
-	var combat_id: String = _state_id_for_unit(scene, "combat")
-	protocol.call("_apply_nudge", combat_id)
 	await _expect_step(controller, 19)
 
-	# Step 19: band-jump recap (tap). Step 20: the item SIGNPOST — purely
+	# Step 19 (v2.5 beat-19 fix): a wrong-die pick through the REAL input path
+	# is IGNORED — pick stays armed, nothing charged, step doesn't advance.
+	_check_holes(controller)
+	var combat_id: String = _state_id_for_unit(scene, "combat")
+	protocol.call("handle_hero_card_pressed", _state_id_for_unit(scene, "medic"))
+	await _wait_frames(2)
+	if str(scene.call("phase_name", scene.get("turn_phase"))) != "nudge_pick":
+		_fail("beat-19: wrong-die pick must leave the nudge pick ARMED")
+	if int(scene.get("protocol_points")) != 1:
+		_fail("beat-19: wrong-die pick must not charge, got %d" % int(scene.get("protocol_points")))
+	if int(controller.get("_step")) != 19:
+		_fail("beat-19: wrong-die pick advanced the step")
+	# Cancel (Nudge re-press toggles off, free) and re-arm — the beat waits.
+	protocol.call("_on_nudge_button_pressed")
+	await _wait_frames(2)
+	if str(scene.call("phase_name", scene.get("turn_phase"))) == "nudge_pick":
+		_fail("beat-19: Nudge re-press must cancel the armed pick")
+	if int(scene.get("protocol_points")) != 1:
+		_fail("beat-19: cancel must be free, got %d" % int(scene.get("protocol_points")))
+	protocol.call("_on_nudge_button_pressed")
+	await _wait_frames(2)
+	if str(scene.call("phase_name", scene.get("turn_phase"))) != "nudge_pick":
+		_fail("beat-19: pick must re-arm after a cancel")
+	# The taught apply, through the real input path: Strike's die, 8 -> 11.
+	protocol.call("handle_hero_card_pressed", combat_id)
+	await _expect_step(controller, 20)
+
+	# Step 20: band-jump recap (tap). Step 21: the item SIGNPOST — purely
 	# informational, holes the (empty) consumable slot, advances on tap.
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 20)
+	await _expect_step(controller, 21)
 	_check_holes(controller)
 	controller.call("_next")
-	await _expect_step(controller, 21)
-
-	# Step 21: heal beat (assigned, hero=medic).
-	_check_holes(controller)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
 	await _expect_step(controller, 22)
 
-	# Step 22: assign the rest (Rail Strike and Overdrive at the drone).
+	# Step 22: heal beat (assigned, hero=medic).
+	_check_holes(controller)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"), controller)
+	await _expect_step(controller, 23)
+
+	# Step 23: assign the rest (Rail Strike and Overdrive at the drone).
 	_check_holes(controller)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 23)
+	await _expect_step(controller, 24)
 
-	# Step 23: END TURN (gated won) — the kill closes ON DICE: 10 + 11 into 18.
+	# Step 24: END TURN (gated won) — the kill closes ON DICE: 10 + 11 into 18.
 	_check_holes(controller)
 	drone = _enemy_state(scene)
 	if int(drone.get("current_hp", 0)) != 18:
 		_fail("pre-end-turn drone HP: expected 18 (no item in the drill), got %d" % int(drone.get("current_hp", 0)))
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 24)
+	await _expect_step(controller, 25)
 	if not bool(_enemy_state(scene).get("dead", false)):
 		_fail("drone must be dead at the DRILL COMPLETE beat (dice-only kill)")
 
-	# Step 24: DRILL COMPLETE (tap_finish) -> main menu (manual-entry drill);
+	# Step 25: DRILL COMPLETE (tap_finish) -> main menu (manual-entry drill);
 	# done-flag persisted; every primer EXCEPT the one showcase stays unseen
 	# (fires in the first real battle).
 	_check_holes(controller)
@@ -260,26 +283,26 @@ func _run_stall_proof_path() -> void:
 		return
 
 	await _expect_step(controller, 0)
-	for _i in range(3):
+	for _i in range(4):
 		controller.call("_next")
 		await _wait_frames(3)
-	await _expect_step(controller, 3)
+	await _expect_step(controller, 4)
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 5)
+	await _expect_step(controller, 6)
 	await _wait_for_phase(scene, "targeting")
 	controller.call("_next")
-	await _expect_step(controller, 6)
-	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
 	await _expect_step(controller, 7)
-
-	# Steps 7/8 in the taught order (combat then engineer)...
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "combat"))
+	scene.emit_signal("tutorial_event", &"inspected", {"side": "hero"})
 	await _expect_step(controller, 8)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"))
+
+	# Steps 8/9 in the taught order (combat then engineer)...
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "combat"))
 	await _expect_step(controller, 9)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "engineer"))
+	await _expect_step(controller, 10)
 	controller.call("_next")
 	await _wait_frames(3)
-	await _expect_step(controller, 10)
+	await _expect_step(controller, 11)
 
 	# ...then RESEQUENCE: re-tap Strike Unit — its stamp clears and the
 	# recommit appends at the END of the order. With no setup effects in the
@@ -290,9 +313,9 @@ func _run_stall_proof_path() -> void:
 	_assign_active_to_legal(scene)
 	await _wait_frames(2)
 	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
-	await _expect_step(controller, 11)
-	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 12)
+	scene.call("_on_roll_button_pressed")
+	await _expect_step(controller, 13)
 
 	var drone: Dictionary = _enemy_state(scene)
 	if int(drone.get("current_hp", 0)) != 18:
@@ -301,21 +324,21 @@ func _run_stall_proof_path() -> void:
 		_fail("mark must appear NOWHERE in the drill (hostile path)")
 
 	controller.call("_next")
-	await _expect_step(controller, 13)
+	await _expect_step(controller, 14)
 	scene.call("_on_roll_button_pressed")
-	# Step 15: showcase explainer (cleanse already seen after scenario A — no
+	# Step 16: showcase explainer (cleanse already seen after scenario A — no
 	# primer displays on a replay; the beat still shows and taps through).
-	await _expect_step(controller, 15)
+	await _expect_step(controller, 16)
 	await _wait_for_phase(scene, "targeting")
 	controller.call("_next")
-	await _expect_step(controller, 16)
-	controller.call("_next")
 	await _expect_step(controller, 17)
+	controller.call("_next")
+	await _expect_step(controller, 18)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
-	await _expect_step(controller, 18)
-	protocol.call("_apply_nudge", combat_id)
 	await _expect_step(controller, 19)
+	protocol.call("_apply_nudge", combat_id)
+	await _expect_step(controller, 20)
 
 	# Nudge-at-0-PP rejection (Prompt-5): the pool is spent (1 income - 1
 	# Nudge = 0); a second Nudge press must REFUSE to arm the pick, the
@@ -330,18 +353,18 @@ func _run_stall_proof_path() -> void:
 
 	# Band-jump tap -> signpost tap -> heal -> assigns -> end turn.
 	controller.call("_next")
-	await _expect_step(controller, 20)
-	controller.call("_next")
 	await _expect_step(controller, 21)
-	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	controller.call("_next")
 	await _expect_step(controller, 22)
+	await _pick_and_assign(scene, _state_id_for_unit(scene, "medic"))
+	await _expect_step(controller, 23)
 	for hero_id in [combat_id, _state_id_for_unit(scene, "engineer")]:
 		await _pick_and_assign(scene, str(hero_id))
-	await _expect_step(controller, 23)
+	await _expect_step(controller, 24)
 
 	# END TURN: identical dice-only kill (10 + 11 into 18) — no dead end.
 	scene.call("_on_roll_button_pressed")
-	await _expect_step(controller, 24)
+	await _expect_step(controller, 25)
 	if not bool(_enemy_state(scene).get("dead", false)):
 		_fail("stall-proof: the drill dead-ended — drone alive after the dice-only turn 2")
 	controller.call("_next")
@@ -401,7 +424,7 @@ func _run_skip_path() -> void:
 		_fail("RUN TUTORIAL must spawn the TutorialController")
 		return
 	await _expect_step(controller, 0)
-	controller.call("_finish")  # completing's endpoint, without replaying 25 beats
+	controller.call("_finish")  # completing's endpoint, without replaying 26 beats
 	await _wait_frames(10)
 	if not bool(sm_save.call("is_tutorial_done")):
 		_fail("completing the first-run drill must set tutorial_done")
