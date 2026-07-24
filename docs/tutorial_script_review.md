@@ -1,9 +1,14 @@
-# Tutorial Script Review
+# Tutorial Script Review — v2.5
 
-Extracted 2026-07-24 from `scripts/ui/tutorial_controller.gd` (step script v2.4, 25 beats),
-`scripts/battle/battle_scene.gd` (tutorial rig + event emits), `scripts/ui/main_menu.gd`
-(first-run choice overlay), and `scripts/ui/spotlight_layer.gd` (coachmark rendering).
-Copy is verbatim from code. **No code was changed.**
+Extracted 2026-07-24 from `scripts/ui/tutorial_controller.gd` (step script v2.5, 26 beats),
+`scripts/battle/battle_scene.gd` (tutorial rig + event emits), `scripts/battle/protocol_actions.gd`
+(v2.5 wrong-die nudge block), `scripts/ui/main_menu.gd` (first-run choice overlay), and
+`scripts/ui/spotlight_layer.gd` (coachmark rendering). Copy is verbatim from code.
+
+v2.5 polish pass (Kev-approved): hero-intro beat added (new beat 3), stage-1 assign
+spotlights include the ability pip (beats 9/10/12/23), the nudge beat is hero-gated with an
+input-level wrong-die block (beat 20), order-teaching consolidated to the assign-the-rest
+beat (24), and copy edits on the first-run overlay and beats 13/14/23.
 
 ## Rendering notes (apply to every beat)
 
@@ -15,25 +20,28 @@ Copy is verbatim from code. **No code was changed.**
   copy. Event-gated beats show no hint. The hint is SpotlightLayer chrome, not part of the
   copy string.
 - On event-gated beats the overlay passes input through (the spotlighted control is fully
-  interactive); on tap beats the overlay itself consumes the tap.
+  interactive, and so is everything else — which is what makes the cancelled-nudge
+  recovery on beat 20 work); on tap beats the overlay itself consumes the tap.
 - When the player presses ROLL / END TURN on a beat that is *not* gated on that press, the
-  dim drops to a whole-screen frame so the board animation is watchable (the spotlight
-  never lingers on a stale control).
+  dim drops to a whole-screen frame so the board animation is watchable.
+- Diagnostics: every beat prints `[Tutorial] step N/26 advance=... holes=...` to the
+  console (stage-2 retargets print again with `retarget`), and web builds publish live
+  spotlight/die/button geometry to `window.__tut` (read-only test seam).
 
 ## Pre-entry: skip decision (not a beat)
 
-There is **no in-drill Skip button** (playtest deletion — it occluded coachmarks). The skip
-decision happens on the main menu's first-run choice overlay, shown after the first BEGIN
-on a profile that has never completed or skipped the drill:
+There is **no in-drill Skip button**. The skip decision happens on the main menu's
+first-run choice overlay, shown after the first BEGIN on a profile that has never
+completed or skipped the drill:
 
 - Title: `FIRST TIME?`
-- Body: `This is your first time playing - want to run the tutorial? You can replay it anytime from the Help menu.`
+- Body: `This is your first time playing, want to run the tutorial?`
 - Primary button: `RUN TUTORIAL` (enters the drill; on completion continues into the squad picker)
 - Secondary button: `SKIP TUTORIAL` (sets the same tutorial_done flag; straight to squad picker)
 
 The main menu also has a permanent `TUTORIAL` button (manual replay; exits to main menu on
-completion). Mid-drill abandonment: header back button (tutorial_done stays unset, so the
-next BEGIN asks again).
+completion — the Help-menu replay path is unchanged). Mid-drill abandonment: header back
+button (tutorial_done stays unset, so the next BEGIN asks again).
 
 ## Global rigged state (all beats)
 
@@ -45,6 +53,9 @@ next BEGIN asks again).
   turn 2 — Strike 8, Engineer 12, Medic 6, drone 6.
 - Auto-assign of single-target shots is **disabled** in tutorial mode (forced manual
   targeting so the assign beats can gate on the real tap-die-tap-target flow).
+- **v2.5:** during tutorial mode the nudge pick only applies to Strike's die
+  (`TUTORIAL_NUDGE_HERO`); picks on other dice are silently ignored at the input level —
+  the pick stays armed and no Protocol is charged.
 - No consumable grant — the item loadout is empty (the item beat is a signpost only).
 - Battle-entry briefing modal and encounter-counter increment are suppressed in tutorial mode.
 
@@ -64,141 +75,169 @@ next BEGIN asks again).
 - **SPOTLIGHT:** The persistent header band (full width × 144 design px).
 - **STATE:** As beat 1.
 
-### 3
+### 3  ← NEW in v2.5
+- **COPY:** `Your squad - Strike Unit, Field Engineer, Splice Medic. Each rolls one die every turn.` + `Tap to continue >`
+- **ADVANCE:** Tap anywhere.
+- **SPOTLIGHT:** Hero cards row (one merged hole — same target key beat 8 uses; no dice
+  exist yet pre-roll).
+- **STATE:** As beat 1. Intro arc is now welcome → header → YOUR side → THEIR side → roll.
+
+### 4
 - **COPY:** `This is your target - a Scrap Drone. 35 HP, and it hits back.` + `Tap to continue >`
 - **ADVANCE:** Tap anywhere.
 - **SPOTLIGHT:** Enemy cards + enemy dice row (one merged hole).
 - **STATE:** Drone at real 35 HP.
 
-### 4
-- **COPY:** `Tap ROLL.`
-- **ADVANCE:** Perform the action — press the ROLL button (`roll_pressed` event). Not a tap-anywhere.
-- **SPOTLIGHT:** The ROLL button (interactive through the hole).
-- **STATE:** Turn-1 dice rig armed: Strike 9 / Engineer 12 / Medic 2 / drone 6. Rigged values are fed to the 3D tray pre-roll so the physics settle shows the rigged face (no repaint flash).
-
 ### 5
-- **COPY:** *(none — invisible waiter; coach and dim are hidden while the dice roll and settle)*
+- **COPY:** `Tap ROLL.`
+- **ADVANCE:** Perform the action — press the ROLL button (`roll_pressed` event).
+- **SPOTLIGHT:** The ROLL button (interactive through the hole).
+- **STATE:** Turn-1 dice rig armed: Strike 9 / Engineer 12 / Medic 2 / drone 6.
+
+### 6
+- **COPY:** *(none — invisible waiter; coach and dim hidden while the dice roll and settle)*
 - **ADVANCE:** Automatic — `rolled` event when the roll resolves.
 - **SPOTLIGHT:** None (overlay dismissed).
 - **STATE:** Physics roll animating with rigged results.
 
-### 6
+### 7
 - **COPY:** `Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields.` + `Tap to continue >`
 - **ADVANCE:** Tap anywhere.
-- **SPOTLIGHT:** Separate holes: the dice tray (combat zone) + each hero's ability-pip readout (combat, engineer, medic).
-- **STATE:** Rigged rolls landed: Strike 9 → Suppression Fire (6 dmg), Engineer 12 → Overdrive (11 dmg), Medic 2 → Diagnostic Pulse (3 heal + 3 shield, targeted). Copy matches the rig.
-
-### 7
-- **COPY:** `Long-press a card for the full breakdown - long-press works on nearly everything. Try it.`
-- **ADVANCE:** Perform the action — long-press any card (`inspected` event). **No side predicate**: inspecting an enemy card also advances, though the spotlight points at the hero row.
-- **SPOTLIGHT:** Hero cards row.
-- **STATE:** As beat 6. InspectPopup renders above the coachmarks (layer 130 > 110).
+- **SPOTLIGHT:** Separate holes: the dice tray (combat zone) + each hero's ability-pip readout.
+- **STATE:** Strike 9 → Suppression Fire (6 dmg), Engineer 12 → Overdrive (11 dmg),
+  Medic 2 → Diagnostic Pulse (3 heal + 3 shield, targeted). Copy matches the rig.
 
 ### 8
-- **COPY:** `Tap Strike Unit's die, then the drone, to fire it. Your squad fires in the order you assign.`
-- **ADVANCE:** Perform the action — complete Strike Unit's assignment (`assigned` event gated on hero == `combat`). Assigning another hero first is possible but silently ignored (no dead end).
-- **SPOTLIGHT:** Two-stage: stage 1 = Strike's die + Strike's card (separate holes); when Strike's targeting starts, the holes MOVE to the legal targets (drone card + drone die).
-- **STATE:** Manual targeting forced. Cast order = assignment order (order badges visible).
+- **COPY:** `Long-press a card for the full breakdown - long-press works on nearly everything. Try it.`
+- **ADVANCE:** Perform the action — long-press any card (`inspected`). No side predicate
+  (enemy-card inspect also advances — accepted).
+- **SPOTLIGHT:** Hero cards row.
+- **STATE:** As beat 7. InspectPopup renders above the coachmarks.
 
 ### 9
-- **COPY:** `Now Field Engineer - tap the die, then the drone.`
-- **ADVANCE:** Perform the action — Engineer's assignment (`assigned`, hero == `engineer`).
-- **SPOTLIGHT:** Two-stage: Engineer's die + card → legal targets on targeting start.
-- **STATE:** As beat 8.
+- **COPY:** `Tap Strike Unit's die, then the drone, to fire it. Your squad fires in the order you assign.`
+- **ADVANCE:** Perform the action — Strike's assignment (`assigned`, hero == `combat`).
+  Off-script assignments are silently ignored (no dead end).
+- **SPOTLIGHT:** Two-stage. Stage 1 (v2.5): Strike's die + card + **ability pip** (three
+  separate holes — the player sees WHAT they're firing). Stage 2: holes move to the legal
+  targets (drone card + die) when Strike's targeting starts.
+- **STATE:** Manual targeting forced. First mention of cast order (setup; the actionable
+  teaching is beat 24).
 
 ### 10
-- **COPY:** `The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands.` + `Tap to continue >`
-- **ADVANCE:** Tap anywhere.
-- **SPOTLIGHT:** Separate holes: the drone's card, its ability pip, and its die (the telegraph).
-- **STATE:** Drone rigged roll 6 → Stab (7 dmg) aimed at Strike (systematic targeting, slot 0). Copy matches.
+- **COPY:** `Now Field Engineer - tap the die, then the drone.`
+- **ADVANCE:** Perform the action — Engineer's assignment (`assigned`, hero == `engineer`).
+- **SPOTLIGHT:** Two-stage; stage 1 = die + card + **ability pip** (v2.5).
+- **STATE:** As beat 9.
 
 ### 11
-- **COPY:** `Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.`
-- **ADVANCE:** Perform the action — Medic's assignment (`assigned`, hero == `medic`).
-- **SPOTLIGHT:** Two-stage: Medic's die + card → legal ally card(s) on targeting start.
-- **STATE:** Medic 2 → Diagnostic Pulse: 3 heal + 3 shield, targeted.
+- **COPY:** `The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands.` + `Tap to continue >`
+- **ADVANCE:** Tap anywhere.
+- **SPOTLIGHT:** Separate holes: the drone's card, its ability pip, and its die.
+- **STATE:** Drone rigged roll 6 → Stab (7 dmg) aimed at Strike. Copy matches.
 
 ### 12
-- **COPY:** `Lock it in - your squad fires in order, then the drone acts.`
-- **ADVANCE:** Perform the action **and wait**: gates on `turn_resolved` (the full turn resolution finishing), not on the button press. On the press the dim drops to a whole-screen frame so the resolution is watchable.
-- **SPOTLIGHT:** The commit button (reads END TURN at this phase; copy deliberately doesn't name it).
-- **STATE:** Resolution math (all real): drone takes 6 + 11 = 17 → 18 HP. Drone's Stab 7: shield soaks 3, Strike takes 4 (Medic's 3 heal overflowed at full HP — honest, harmless).
+- **COPY:** `Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.`
+- **ADVANCE:** Perform the action — Medic's assignment (`assigned`, hero == `medic`).
+- **SPOTLIGHT:** Two-stage; stage 1 = die + card + **ability pip** (v2.5); stage 2 = legal
+  ally card(s).
+- **STATE:** Medic 2 → Diagnostic Pulse: 3 heal + 3 shield, targeted.
 
 ### 13
-- **COPY:** `The drone took 17. Its hit landed for 7: the shield soaked 3, Strike Unit took 4. Time to patch up.` + `Tap to continue >`
+- **COPY:** `Lock it in - your squad acts, then the drone.`  *(v2.5: order clause dropped — taught at beat 24)*
+- **ADVANCE:** Perform the action **and wait**: gates on `turn_resolved`, not the press.
+  On the press the dim drops to a whole-screen frame.
+- **SPOTLIGHT:** The commit button (reads END TURN at this phase).
+- **STATE:** Resolution: drone 35 − 17 → 18 HP; Stab 7: shield soaks 3, Strike takes 4.
+
+### 14
+- **COPY:** `The drone took 17. Its hit landed for 7: the shield soaked 3, Strike Unit took 4.` + `Tap to continue >`  *(v2.5: "Time to patch up." dropped)*
 - **ADVANCE:** Tap anywhere.
 - **SPOTLIGHT:** Separate holes: Strike Unit (card + readout + die) + the battle log panel.
 - **STATE:** Drone 18 HP; Strike −4 HP. Copy matches resolved math.
 
-### 14
+### 15
 - **COPY:** `Roll again.`
 - **ADVANCE:** Perform the action — press ROLL (`roll_pressed`).
 - **SPOTLIGHT:** The ROLL button.
 - **STATE:** Turn-2 rig armed: Strike 8 / Engineer 12 / Medic 6 / drone 6.
 
-### 15
-- **COPY:** *(none — invisible waiter, as beat 5)*
+### 16
+- **COPY:** *(none — invisible waiter, as beat 6)*
 - **ADVANCE:** Automatic — `rolled`.
 - **SPOTLIGHT:** None.
-- **STATE:** On a fresh profile, the CLEANSE keyword primer (Medic's 6 → Infusion sights it) displays **during** this roll; the `rolled` event is emitted only after the primer is dismissed, so the primer modal and the next coachmark never overlap.
+- **STATE:** On a fresh profile, the CLEANSE keyword primer displays during this roll;
+  `rolled` is emitted only after the primer is dismissed (modals never overlap).
 
-### 16  ← primer-showcase beat
+### 17  ← primer-showcase beat
 - **COPY:** `When a mechanic you've never seen appears, a one-time tip points it out - like the Cleanse on Splice Medic's roll. The Help menu keeps every keyword whenever you need a reminder.` + `Tap to continue >`
 - **ADVANCE:** Tap anywhere.
 - **SPOTLIGHT:** Medic's ability-pip readout.
-- **STATE:** On a fresh profile the Cleanse tip just displayed (beat 15 note). On a replay the tip is already seen and nothing displayed — the copy is written to stand alone either way. **Flag:** on replays the line "the Cleanse tip just pointed it out" experience is absent; copy still reads sensibly but refers to something the replaying player didn't just see.
-
-### 17
-- **COPY:** `You banked 1 Protocol - income ticks +1 every turn, caps at 10. That's exactly enough for a Nudge.` + `Tap to continue >`
-- **ADVANCE:** Tap anywhere.
-- **SPOTLIGHT:** The Protocol bar (the numeric label is hidden since the footer redesign — the target resolves to the 10-segment bar; the hidden label would merge back in automatically if it ever returns).
-- **STATE:** Protocol is exactly 1 (income only). A second Nudge is unaffordable by design.
+- **STATE:** On replays the tip is already seen and nothing displayed — accepted; copy
+  stands alone.
 
 ### 18
-- **COPY:** `Nudge costs 1 - tap it. (Reroll and Set cost 2 and 4 - they unlock as you bank more.)`
-- **ADVANCE:** Perform the action — press the Nudge button; advances the instant the press arms the pick (`phase` event with `phase == "nudge_pick"`), before any die is chosen.
-- **SPOTLIGHT:** The Nudge button.
-- **STATE:** Protocol 1; Reroll (2) and Set (4) unaffordable, visible with real costs.
+- **COPY:** `You banked 1 Protocol - income ticks +1 every turn, caps at 10. That's exactly enough for a Nudge.` + `Tap to continue >`
+- **ADVANCE:** Tap anywhere.
+- **SPOTLIGHT:** The Protocol bar.
+- **STATE:** Protocol is exactly 1 (income only).
 
 ### 19
+- **COPY:** `Nudge costs 1 - tap it. (Reroll and Set cost 2 and 4 - they unlock as you bank more.)`
+- **ADVANCE:** Perform the action — press the Nudge button; advances the instant the press
+  arms the pick (`phase == "nudge_pick"`), before any die is chosen.
+- **SPOTLIGHT:** The Nudge button.
+- **STATE:** Protocol 1; Reroll (2) and Set (4) unaffordable, visible with real costs.
+- **Cancel finding (v2.5 investigation):** the armed pick IS cancellable — off-unit tap,
+  Nudge re-press (toggle-off), or another Protocol button — and cancels are always free
+  (arming never deducts). Chosen recovery: **beat 20 stays active with the pick
+  re-armable** (zero code — the pass-through spotlight leaves the Nudge button tappable);
+  covered by the smoke test.
+
+### 20  ← beat-19 fix landed here (v2.5)
 - **COPY:** `Tap Strike Unit's die - +3 turns an 8 into an 11.`
-- **ADVANCE:** Perform the action — apply the Nudge (`nudged` event). **No hero predicate** — see accidental-advance notes: nudging any die advances this beat.
+- **ADVANCE:** Perform the action — apply the Nudge to STRIKE's die (`nudged` gated on
+  hero == `combat`). **Input-level block (protocol_actions):** during the drill, pick
+  attempts on any other die are silently ignored — the pick stays armed and the drill's
+  only Protocol point cannot be spent off-script. The former any-die advance bug (false
+  beat-21 copy + failable kill) is closed.
 - **SPOTLIGHT:** Strike Unit as one merged hole (card + readout + die).
 - **STATE:** Strike's die is the rigged 8; Nudge +3 → 11.
 
-### 20
+### 21
 - **COPY:** `It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10.` + `Tap to continue >`
 - **ADVANCE:** Tap anywhere.
 - **SPOTLIGHT:** Separate holes: Strike's die + Strike's ability pip.
-- **STATE:** 8 → 11 crossed a band boundary: Suppression Fire (6 dmg) → Rail Strike (10 dmg). Copy matches.
+- **STATE:** 8 → 11 crossed a band boundary. Copy matches.
 
-### 21
+### 22
 - **COPY:** `Item slots. You'll collect consumables on your run - using one costs 1 Protocol, same as a Nudge, and doesn't spend a die.` + `Tap to continue >`
 - **ADVANCE:** Tap anywhere.
 - **SPOTLIGHT:** The footer ITEM button (renders even with an empty loadout).
-- **STATE:** Loadout is EMPTY (no grant — signpost only); Protocol is now 0 (spent on the Nudge), so the stated cost is real but not payable this turn.
-
-### 22
-- **COPY:** `Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore that hit.`
-- **ADVANCE:** Perform the action — Medic's assignment (`assigned`, hero == `medic`).
-- **SPOTLIGHT:** Two-stage: Medic's die + card → legal ally card(s) on targeting start.
-- **STATE:** Medic 6 → Infusion (10 heal, targeted); Strike is at −4 from turn 1.
+- **STATE:** Loadout EMPTY (signpost only); Protocol now 0.
 
 ### 23
-- **COPY:** `Assign the rest - Rail Strike and Overdrive at the drone.`
-- **ADVANCE:** Perform the actions — assign both remaining dice; gates on `phase == "ready_to_end"`.
-- **SPOTLIGHT:** Full-screen frame (whole board visible and interactive); coachmark pinned mid-screen (`coach_center`).
-- **STATE:** Strike (Rail Strike 10) and Engineer (Overdrive 11) unassigned; drone at 18 HP.
+- **COPY:** `Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore life.`  *(v2.5: "that hit" → "life")*
+- **ADVANCE:** Perform the action — Medic's assignment (`assigned`, hero == `medic`).
+- **SPOTLIGHT:** Two-stage; stage 1 = die + card + **ability pip** (v2.5).
+- **STATE:** Medic 6 → Infusion (10 heal, targeted); Strike at −4 from turn 1.
 
 ### 24
-- **COPY:** `End the turn.`
-- **ADVANCE:** Perform the action **and win**: gates on the `won` event (victory at end of resolution), not the press. On the press, dim drops to whole-screen so the kill plays out.
-- **SPOTLIGHT:** The commit (END TURN) button.
-- **STATE:** Rail Strike 10 + Overdrive 11 = 21 into 18 HP — the kill closes on dice alone, any assignment order.
+- **COPY:** `Assign the rest - Rail Strike and Overdrive at the drone. You pick the firing order; later, order wins fights.`  *(v2.5: order teaching consolidated here, where ordering is actionable)*
+- **ADVANCE:** Perform the actions — assign both remaining dice; gates on `phase == "ready_to_end"`.
+- **SPOTLIGHT:** Full-screen frame (whole board interactive); coachmark pinned mid-screen.
+- **STATE:** Strike (Rail Strike 10) and Engineer (Overdrive 11) unassigned; drone 18 HP.
 
 ### 25
+- **COPY:** `End the turn.`
+- **ADVANCE:** Perform the action **and win**: gates on `won`, not the press.
+- **SPOTLIGHT:** The commit (END TURN) button.
+- **STATE:** Rail Strike 10 + Overdrive 11 = 21 into 18 — the kill closes on dice alone.
+
+### 26
 - **COPY:** `[ DRILL COMPLETE ]` / `That's the loop. The Help menu holds the full encyclopedia whenever you need it.` + `Tap to continue >`
-- **ADVANCE:** Tap anywhere (finish): persists tutorial_done, clears the run, exits — to the squad picker if entered via the first-run choice, to the main menu on manual replays.
+- **ADVANCE:** Tap anywhere (finish): persists tutorial_done, clears the run, exits — to
+  the squad picker if entered via the first-run choice, to the main menu on manual replays.
 - **SPOTLIGHT:** None — full-screen dim, coachmark only.
 - **STATE:** Battle won; run state about to be reset.
 
@@ -206,12 +245,13 @@ next BEGIN asks again).
 
 ## Summary notes
 
-- **Total beat count: 25** (23 visible coachmarks + 2 invisible roll-waiters, beats 5 and 15).
-- **Primer-showcase beat: #16** (the Cleanse tip itself fires during beat 15's roll on fresh profiles).
-- **Help-menu pointer:** there is no single dedicated Help beat — the Help menu is pointed at three times: beat 2 (lives in the header bar), beat 16 (keeps every keyword), and beat 25 (full encyclopedia).
-- **Accidental-advance risks:**
-  - Every tap beat advances on **any tap anywhere**, so consecutive tap beats are double-tap skippable before the copy is readable. The exposed runs are beats **1→2→3**, **16→17**, and **20→21** (beat 25 only ends the drill, which is its purpose).
-  - **Beat 19 has no hero predicate on `nudged`**: the copy says "Tap Strike Unit's die," but nudging *any* die (e.g. Medic's 6 → 9) advances the beat — and then beat 20's band-jump copy ("Suppression Fire became Rail Strike") would be false for what the player actually did, and the turn-2 kill math (21 into 18) would still hold only via Engineer 11 + Strike's un-nudged Suppression Fire 6 = 17 < 18 — **the scripted kill can actually fail**, sending the drill into a third, unscripted turn. This is the one beat where an off-script action both advances the script and diverges the state from the copy.
-  - **Beat 7's `inspected` has no side predicate**: long-pressing the enemy card advances even though the spotlight and copy point at hero cards (minor — the lesson still lands).
-  - Beat 18 advances on arming the pick, not applying it — if the player then cancels the pick (if cancellation is possible in that phase), beat 19's instruction still applies and re-picking works; not a dead end, but the copy sequence assumes no cancel.
-- **Copy vs render:** no discrepancies found — all strings are literals in plain Labels (no BBCode, no format substitutions). The only rendering additions are the bracketed titles (`[ WELCOME ]`, `[ DRILL COMPLETE ]`) and the `Tap to continue >` hint on tap beats, both SpotlightLayer chrome as documented above.
+- **Total beat count: 26** (24 visible coachmarks + 2 invisible roll-waiters, beats 6 and 16).
+- **Primer-showcase beat: #17** (the Cleanse tip itself fires during beat 16's roll on fresh profiles).
+- **Help-menu pointer:** no single dedicated beat — pointed at three times: beats 2, 17, and 26.
+- **Accidental-advance status (v2.5):**
+  - The former beat-19 any-die nudge bug is **FIXED** (input-level block + hero gate).
+  - Tap beats still advance on any tap anywhere; the double-tap-skippable runs are now
+    **1→2→3→4**, **17→18**, and **21→22** — accepted by ruling (no tap-lockout).
+  - Beat 8's `inspected` has no side predicate — accepted by ruling.
+- **Copy vs render:** no discrepancies — all strings are plain-Label literals; the only
+  rendering additions are the bracketed titles and the `Tap to continue >` hint.
