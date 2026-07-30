@@ -734,6 +734,12 @@ func _build_settings(host: VBoxContainer) -> void:
 	var primers_on: bool = sm_t == null or bool(sm_t.get_setting("ability_primers_enabled", true))
 	_add_toggle_row(host, "One-time ability tips (keyword primers)", primers_on, _on_toggle_ability_primers)
 
+	# --- Feedback (mirrors the main-menu FEEDBACK button; one URL, feedback.gd) ---
+	host.add_child(_make_label("FEEDBACK", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var feedback_btn := _make_dev_button("SEND FEEDBACK", true)
+	feedback_btn.pressed.connect(_on_send_feedback)
+	host.add_child(feedback_btn)
+
 	# --- Dev tools ---
 	host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	# Developer mode: shows the header debug buttons (hidden by default for
@@ -771,6 +777,12 @@ func _build_settings(host: VBoxContainer) -> void:
 		"v" + str(ProjectSettings.get_setting("application/config/version", "")),
 		24, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 0)
 	host.add_child(version_label)
+
+
+func _on_send_feedback() -> void:
+	# Synchronous inside the tap's handler — web popup blockers permit
+	# gesture-initiated opens only (see feedback.gd).
+	Feedback.open_form(self)
 
 
 func _on_dev_reset_primers() -> void:

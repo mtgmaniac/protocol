@@ -65,6 +65,9 @@ func default_data() -> Dictionary:
 			"best_clear_by_op": {},
 			"nat20s": 0,
 			"deaths": 0,
+			# Completed run-ends, win AND loss (unlike runs_started this only
+			# advances at record_run_finished) — the feedback-nudge cadence key.
+			"runs_finished": 0,
 			# Unlock metric (Build F fence): every encounter ENTERED counts once,
 			# win, lose, or retreat — never rounds (farmable).
 			"battles_fought": 0,
@@ -199,6 +202,38 @@ func set_setting(key: String, value: Variant) -> void:
 	save()
 
 
+# --- Feedback nudge cadence (main menu one-liner near the FEEDBACK button) ---
+# Shows after the 1st completed run, then every FEEDBACK_NUDGE_INTERVAL-th
+# run-end; an explicit dismissal skips the next scheduled show (never twice in
+# a row after a dismissal). State lives in settings so it persists with the
+# profile and heals on old saves (absent keys read as never shown).
+
+const FEEDBACK_NUDGE_INTERVAL := 3
+
+func should_show_feedback_nudge() -> bool:
+	var finished: int = int(data["stats"].get("runs_finished", 0))
+	if finished <= 0:
+		return false
+	var shown_at: int = int(get_setting("feedback_nudge_shown_at", 0))
+	if shown_at <= 0:
+		return true
+	var interval: int = FEEDBACK_NUDGE_INTERVAL
+	if bool(get_setting("feedback_nudge_dismissed", false)):
+		interval *= 2
+	return finished - shown_at >= interval
+
+
+# Called when the nudge actually displays — one show per eligible run-end,
+# no matter how many times the menu is revisited.
+func mark_feedback_nudge_shown() -> void:
+	set_setting("feedback_nudge_shown_at", int(data["stats"].get("runs_finished", 0)))
+	set_setting("feedback_nudge_dismissed", false)
+
+
+func mark_feedback_nudge_dismissed() -> void:
+	set_setting("feedback_nudge_dismissed", true)
+
+
 # --- Operation lore onboarding ---
 
 func has_seen_operation_origin(operation_id: String) -> bool:
@@ -304,6 +339,7 @@ func record_run_finished(result: String, op_id: String, battle_reached: int) -> 
 	# hero ladder + operation chain — everything lands together on the unlock screen.
 	_run_end_unlocks.clear()
 	var stats: Dictionary = data["stats"]
+	stats["runs_finished"] = int(stats.get("runs_finished", 0)) + 1
 	stats["best_clear"] = maxi(int(stats.get("best_clear", 0)), battle_reached)
 	var best_by_op: Dictionary = stats.get("best_clear_by_op", {})
 	best_by_op[op_id] = maxi(int(best_by_op.get(op_id, 0)), battle_reached)

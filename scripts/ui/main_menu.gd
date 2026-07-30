@@ -12,6 +12,14 @@ const BEGIN_SIZE := Vector2(640, 136)
 const BEGIN_FONT := 52
 const TUTORIAL_SIZE := Vector2(420, 92)
 const TUTORIAL_FONT := 34
+# FEEDBACK sits on the tutorial's secondary tier (same footprint, below it) but
+# wears the amber accent so strangers find it — BEGIN keeps the only teal
+# primary treatment and stays the unchallenged first action.
+const FEEDBACK_SIZE := Vector2(420, 92)
+const FEEDBACK_FONT := 34
+# Post-run nudge one-liner (overlay near FEEDBACK — never in the layout column).
+const NUDGE_FONT := PixelUI.FONT_INFO_MIN
+const NUDGE_GAP := 20.0
 # First-run choice overlay (question card after the first BEGIN).
 const PROMPT_WIDTH := 780.0
 const PROMPT_PAD := 36
@@ -24,6 +32,8 @@ const PROMPT_SKIP_FONT := 30
 var _logo: Control
 var _begin_button: Button
 var _tutorial_button: Button
+var _feedback_button: Button
+var _nudge: Control
 
 
 func _ready() -> void:
@@ -88,11 +98,25 @@ func _ready() -> void:
 	col.add_child(tutorial)
 	_tutorial_button = tutorial
 
+	var feedback := Button.new()
+	feedback.text = "FEEDBACK"
+	feedback.custom_minimum_size = FEEDBACK_SIZE
+	feedback.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_button(feedback, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, FEEDBACK_FONT)
+	feedback.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	feedback.add_theme_color_override("font_hover_color", PixelUI.DT_AMBER)
+	feedback.add_theme_color_override("font_pressed_color", PixelUI.DT_AMBER)
+	feedback.pressed.connect(_on_feedback_pressed)
+	col.add_child(feedback)
+	_feedback_button = feedback
+
 	# Buttons arrive only after the reactor ignites.
 	begin.disabled = true
 	begin.modulate.a = 0.0
 	tutorial.disabled = true
 	tutorial.modulate.a = 0.0
+	feedback.disabled = true
+	feedback.modulate.a = 0.0
 	# Last child on purpose: the stamp must paint over the full-rect background.
 	_add_version_stamp()
 	_logo.boot_in()
@@ -103,8 +127,11 @@ func _ready() -> void:
 	fade.set_parallel(true)
 	fade.tween_property(begin, "modulate:a", 1.0, 0.25)
 	fade.tween_property(tutorial, "modulate:a", 1.0, 0.25)
+	fade.tween_property(feedback, "modulate:a", 1.0, 0.25)
 	begin.disabled = false
 	tutorial.disabled = false
+	feedback.disabled = false
+	_maybe_show_feedback_nudge()
 
 
 func _on_begin_pressed() -> void:
@@ -132,6 +159,77 @@ func _on_tutorial_pressed() -> void:
 	AudioManager.play_select()
 	GameState.start_tutorial_run()
 	SceneManager.go_to_battle()
+
+
+func _on_feedback_pressed() -> void:
+	AudioManager.play_select()
+	if _nudge != null and is_instance_valid(_nudge):
+		_nudge.queue_free()
+		_nudge = null
+	# Synchronous inside the tap's handler — web popup blockers permit
+	# gesture-initiated opens only (see feedback.gd).
+	Feedback.open_form(self)
+
+
+# ── Post-run feedback nudge ───────────────────────────────────────────────────
+# A small dismissible one-liner floated near the FEEDBACK button after a run
+# ends (cadence in SaveManager.should_show_feedback_nudge). Overlay on the
+# scene root, positioned from the button's laid-out rect: zero layout shift,
+# input passes through everywhere except its own two tap targets.
+func _maybe_show_feedback_nudge() -> void:
+	if not SaveManager.should_show_feedback_nudge():
+		return
+	SaveManager.mark_feedback_nudge_shown()
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var line := Button.new()
+	line.text = "Tell me what to fix >"
+	PixelUI.style_button(line, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, NUDGE_FONT)
+	line.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	line.add_theme_color_override("font_hover_color", PixelUI.DT_AMBER)
+	line.add_theme_color_override("font_pressed_color", PixelUI.DT_AMBER)
+	line.pressed.connect(_on_nudge_line_pressed)
+	row.add_child(line)
+
+	var dismiss := Button.new()
+	dismiss.text = "X"
+	dismiss.custom_minimum_size = Vector2(80, 0)
+	PixelUI.style_button(dismiss, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, NUDGE_FONT)
+	dismiss.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	dismiss.pressed.connect(_on_nudge_dismiss_pressed)
+	row.add_child(dismiss)
+
+	add_child(row)
+	_nudge = row
+	# Position after the row measures: centered under the FEEDBACK button.
+	await get_tree().process_frame
+	if not is_instance_valid(row) or not is_instance_valid(_feedback_button):
+		return
+	var anchor: Vector2 = _feedback_button.global_position
+	row.global_position = Vector2(
+		roundf(anchor.x + (_feedback_button.size.x - row.size.x) / 2.0),
+		roundf(anchor.y + _feedback_button.size.y + NUDGE_GAP))
+
+
+func _on_nudge_line_pressed() -> void:
+	AudioManager.play_select()
+	var host := self
+	if _nudge != null and is_instance_valid(_nudge):
+		_nudge.queue_free()
+		_nudge = null
+	# Same gesture-synchronous rule as the FEEDBACK button.
+	Feedback.open_form(host)
+
+
+func _on_nudge_dismiss_pressed() -> void:
+	AudioManager.play_select()
+	SaveManager.mark_feedback_nudge_dismissed()
+	if _nudge != null and is_instance_valid(_nudge):
+		_nudge.queue_free()
+		_nudge = null
 
 
 # Web-only (no-op elsewhere and after the first run): a tiny hidden DiceTray3D

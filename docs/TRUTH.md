@@ -179,7 +179,7 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Save system + progression (SaveManager autoload)
 
-`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths, battles_fought}, unlocks: {boss_relics, heroes: ["combat","engineer","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: [], item_gates_awarded: 0}, onboarding: {primers_seen: []}, settings: {}}`. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
+`user://save.json`, `save_version: 1`: `{tutorial_done, stats: {runs_started, runs_won_by_op, best_clear, best_clear_by_op, nat20s, deaths, battles_fought, runs_finished}, unlocks: {boss_relics, heroes: ["combat","engineer","medic"], operations: ["facility"], hero_ladder_rung: 0, heroes_new: [], item_gates_awarded: 0}, onboarding: {primers_seen: []}, settings: {}}`. `runs_finished` counts completed run-ends (win AND loss, advanced only in `record_run_finished`) — the feedback-nudge cadence key. Headless runs keep the profile in memory and **read as fully unlocked** so sim/audit can pick any hero/op. `onboarding.primers_seen` drives the keyword primers (one-shot micro-tutorials, `docs/PRIMERS.md`); pre-primer veteran saves are grandfathered with all current primers seen.
 
 - **Hero ladder** (ONE rung max per run end; overshoot defers): (1) facility best_clear ≥ 6 OR runs_started ≥ 3 → **avalanche** (Batch-1 swap: this rung-1 gate moved from engineer to avalanche when engineer became a starter; tutorial runs no longer increment runs_started per DECISIONS_RESOLVED #13; profiles that already banked tutorial runs keep the count — grandfathered, no retroactive adjustment) · (2) facility won → **shield** · (3) hive best_clear ≥ 6 → **pulse** · (4) hive won → **ghost** · (5) veil best_clear ≥ 6 → **breaker**.
 - **Operation chain** (uncapped): boss clear unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie.
@@ -637,6 +637,27 @@ recorded at both battle-finish sites; `run_start_unix` — wall clock), cleared 
 `start_run`/`reset_run`, never persisted. SERVICE RECORD (lifetime save stats)
 is unchanged and ends with the sentence-case pointer "Thoughts? FEEDBACK on the
 main menu." Captures: `run_end_capture.gd` seeds representative rows.
+
+**Feedback channel:** `scripts/ui/feedback.gd` (`class_name Feedback`) holds the
+ONE `FEEDBACK_URL` constant (Google Form) — never duplicate the URL. Entry
+points: the main-menu FEEDBACK button (amber accent on the TUTORIAL-sized
+secondary tier — BEGIN keeps the only teal primary) and Help > SETTINGS >
+FEEDBACK > SEND FEEDBACK. `Feedback.open_form` MUST be called synchronously
+inside the tap's pressed handler (web popup blockers permit gesture-initiated
+opens only): web = `JavaScriptBridge.eval` `window.open(..., '_blank')` with a
+blocked-popup fallback panel showing the short URL as readable text; native =
+`OS.shell_open`. (itch.io's game iframe carries NO sandbox attribute —
+verified live 2026-07-30 — so gesture-initiated window.open is not
+structurally blocked there.)
+
+**Post-run nudge:** on the main menu, a dismissible overlay one-liner ("Tell me
+what to fix >") near the FEEDBACK button — overlay-positioned (zero layout
+shift), never blocks input. Cadence (`SaveManager.should_show_feedback_nudge`,
+state in `settings.feedback_nudge_*`, counter `stats.runs_finished`): first
+completed run, then every 3rd run-end; shows once per eligible run-end no matter
+how many menu visits; an explicit dismissal (the X) skips the next scheduled
+show. Regression: `scripts/debug/feedback_nudge_test.gd` (in `verify_gate.py`);
+menu capture: `scripts/debug/main_menu_capture.gd [--capture-nudge]`.
 
 ## Audio (2026-07-11 music pass)
 
