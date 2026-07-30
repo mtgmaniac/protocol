@@ -625,6 +625,19 @@ the current turn, Debug2 (double chevron) = auto-complete the battle
 hidden unless SETTINGS > DEV developer mode). Label proposal pending Kev's
 ruling: "AUTO TURN" / "AUTO BATTLE" (not "1X"/"2X" — they are not speeds).
 
+## Run report + feedback channel (2026-07-30, stranger-readiness)
+
+**Run report parity:** victory and defeat share ONE run-end screen
+(`run_end_screen.gd`) and ONE compact THIS RUN block (`_run_report_text` — the
+old defeat structure is the template): battle progress, `Duration | Turns`,
+inventory counts, `Fallen: <full hero names | none>`. Per-run sources are
+in-memory `GameState` accumulators only (`run_hero_deaths` — dead-at-battle-end
+union, defeat unions the whole squad; `run_total_turns` — `_round_number`
+recorded at both battle-finish sites; `run_start_unix` — wall clock), cleared in
+`start_run`/`reset_run`, never persisted. SERVICE RECORD (lifetime save stats)
+is unchanged and ends with the sentence-case pointer "Thoughts? FEEDBACK on the
+main menu." Captures: `run_end_capture.gd` seeds representative rows.
+
 ## Audio (2026-07-11 music pass)
 
 **SFX:** `AudioManager` autoload — runtime `SFX` bus, pooled players, pitch/volume

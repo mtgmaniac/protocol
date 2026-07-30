@@ -43,10 +43,9 @@ func _ready() -> void:
 		title_label.text = "OPERATION COMPLETE"
 		if operation != null and operation.victory_title != "":
 			title_label.text = operation.victory_title.to_upper()
-		summary_label.text = "%s cleared.\n%s\n%s" % [
+		summary_label.text = "%s cleared.\n%s" % [
 			operation_name,
-			GameState.get_battle_progress_text(),
-			GameState.get_inventory_summary(),
+			_run_report_text(),
 		]
 		if operation != null and operation.victory_subtitle != "":
 			summary_label.text = "%s\n%s" % [summary_label.text, operation.victory_subtitle]
@@ -55,10 +54,45 @@ func _ready() -> void:
 		summary_label.text = "The squad was wiped during %s.\nOperation: %s\n%s" % [
 			GameState.get_battle_progress_text(),
 			operation_name,
-			GameState.get_inventory_summary(),
+			_run_report_text(),
 		]
 
 	_apply_visual_theme(victory)
+
+
+# The shared compact run report — identical rows on victory and defeat (the
+# defeat screen's old structure is the template; victory folds progress into
+# its "cleared" line, defeat into its "wiped during" line, so the block itself
+# never repeats the battle count).
+func _run_report_text() -> String:
+	var lines: Array = []
+	if GameState.last_run_result == "victory":
+		lines.append(GameState.get_battle_progress_text())
+	lines.append("Duration: %s | Turns: %d" % [
+		_format_duration(GameState.run_duration_secs()),
+		GameState.run_total_turns,
+	])
+	lines.append(GameState.get_inventory_summary())
+	lines.append("Fallen: %s" % _fallen_heroes_text())
+	return "\n".join(lines)
+
+
+func _fallen_heroes_text() -> String:
+	if GameState.run_hero_deaths.is_empty():
+		return "none"
+	var names: Array = []
+	for unit_id in GameState.run_hero_deaths:
+		var unit: Resource = DataManager.get_unit(str(unit_id))
+		names.append(str(unit.get("display_name")) if unit != null else str(unit_id))
+	return ", ".join(names)
+
+
+func _format_duration(secs: int) -> String:
+	if secs >= 3600:
+		return "%dh %02dm" % [secs / 3600, (secs % 3600) / 60]
+	if secs >= 60:
+		return "%dm %02ds" % [secs / 60, secs % 60]
+	return "%ds" % secs
 
 
 # Lifetime record from the save profile — the "service record" section body (the
@@ -180,6 +214,16 @@ func _build_two_section_stats(accent: Color) -> void:
 	# Lifetime stats are the retention hook here — keep them on the info floor.
 	_style_label(record, maxi(SUMMARY_FONT - 6, PixelUI.FONT_INFO_MIN), PixelUI.TEXT_MUTED)
 	col.add_child(record)
+
+	# Feedback pointer — one unobtrusive sentence-case line on the info floor
+	# (FEEDBACK in caps because it names the main-menu button, caps law).
+	var feedback := Label.new()
+	feedback.text = "Thoughts? FEEDBACK on the main menu."
+	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_style_label(feedback, PixelUI.scale_font_size(PixelUI.FONT_INFO_MIN), PixelUI.TEXT_MUTED)
+	col.add_child(feedback)
 
 
 func _make_section_head(text: String, accent: Color) -> Label:

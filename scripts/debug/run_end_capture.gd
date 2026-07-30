@@ -26,6 +26,15 @@ func _run_capture() -> void:
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
 	var result: String = str(config.get("result", "victory"))
 	gs.set("last_run_result", result)
+	# Representative run-report rows (duration / turns / fallen): a defeat is a
+	# full wipe, a victory here shows one casualty so the Fallen line renders
+	# both populated and "none" across the two capture results.
+	gs.set("run_total_turns", 34)
+	gs.set("run_start_unix", int(Time.get_unix_time_from_system()) - 1520)
+	if result == "defeat":
+		gs.set("run_hero_deaths", ["combat", "avalanche", "medic"])
+	else:
+		gs.set("run_hero_deaths", ["medic"])
 	if bool(config.get("unlock", false)):
 		save_manager.call("record_run_finished", result, "facility", 10)
 		save_manager.call("acknowledge_operation_origin", "hive")

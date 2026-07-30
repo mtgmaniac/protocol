@@ -1525,6 +1525,7 @@ func _capture_battle_victory_for_xp() -> void:
 func _finish_battle_victory() -> void:
 	battle_over = true
 	MusicManager.set_combat(false)
+	_game_state().record_battle_turns(_round_number)
 	_disable_combat_actions()
 	_persist_protocol_carryover()
 	_capture_battle_victory_for_xp()
@@ -1547,6 +1548,7 @@ func _finish_battle_victory() -> void:
 func _finish_battle_defeat() -> void:
 	battle_over = true
 	MusicManager.set_combat(false)
+	_game_state().record_battle_turns(_round_number)
 	_disable_combat_actions()
 	_refresh_summary("Defeat. Squad wiped.")
 	_game_state().finish_run("defeat")

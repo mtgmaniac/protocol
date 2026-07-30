@@ -70,6 +70,13 @@ var run_protocol_cap_override: int = 0
 ## Hero unit ids that died during the last two battles (Memorial Protocol).
 var deaths_last_battle: Array = []
 var deaths_prev_battle: Array = []
+## Run-report accumulators (in-memory, cleared each start_run — never persisted):
+## every hero id dead at any battle's end this run (defeat unions the whole
+## squad), total combat rounds across the run's battles, and the run's wall-clock
+## start for the duration line.
+var run_hero_deaths: Array = []
+var run_total_turns: int = 0
+var run_start_unix: int = 0
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # completion/skip persistence is SaveManager.tutorial_done (first-run auto-init,
 # Kev 2026-07-21: the first BEGIN with that flag unset launches the drill).
@@ -183,6 +190,9 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 	starting_directive_relic_id = ""
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
+	run_hero_deaths.clear()
+	run_total_turns = 0
+	run_start_unix = int(Time.get_unix_time_from_system())
 	for unit_id in selected_units:
 		unit_xp[str(unit_id)] = 0
 		unit_levels[str(unit_id)] = 1
@@ -617,6 +627,14 @@ func _recent_death_hero() -> String:
 func record_battle_hero_deaths(dead_unit_ids: Array) -> void:
 	deaths_prev_battle = deaths_last_battle.duplicate()
 	deaths_last_battle = dead_unit_ids.duplicate()
+	for unit_id in dead_unit_ids:
+		if not run_hero_deaths.has(str(unit_id)):
+			run_hero_deaths.append(str(unit_id))
+
+
+# Called by battle_scene at both battle-finish sites (victory and defeat).
+func record_battle_turns(rounds: int) -> void:
+	run_total_turns += maxi(rounds, 0)
 
 
 func _hero_mods(unit_id: String) -> Dictionary:
@@ -1057,6 +1075,9 @@ func reset_run() -> void:
 	_reset_intercept_state()
 	_battle_effective_rolls.clear()
 	_battle_end_alive.clear()
+	run_hero_deaths.clear()
+	run_total_turns = 0
+	run_start_unix = 0
 
 
 func prepare_battle_rewards() -> void:
@@ -1129,8 +1150,21 @@ func is_final_battle() -> bool:
 
 func finish_run(result: String) -> void:
 	last_run_result = result
+	# A defeat is a full squad wipe — every deployed hero fell this run.
+	if result == "defeat":
+		for unit_id in selected_units:
+			if not run_hero_deaths.has(str(unit_id)):
+				run_hero_deaths.append(str(unit_id))
 	pending_reward_item_ids.clear()
 	SaveManager.record_run_finished(result, selected_operation_id, current_battle)
+
+
+# Elapsed wall-clock seconds since start_run (0 when no run timestamp exists,
+# e.g. capture harnesses that set state directly).
+func run_duration_secs() -> int:
+	if run_start_unix <= 0:
+		return 0
+	return maxi(int(Time.get_unix_time_from_system()) - run_start_unix, 0)
 
 
 func get_unit_xp(unit_id: String) -> int:
