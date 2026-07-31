@@ -1,5 +1,17 @@
 # Balance snapshot — July 2026 (shipped demo build; report only, no changes)
 
+## Facility light-hybrid pass — 2026-07-30
+
+This pass raises only the seven non-boss Facility unit HP values (Scrap 35→40,
+Rust 40→45, Static 35→40, Patrol 55→60, Guard 65→70, Volt 70→75, Warden
+105→110) and every positive direct `dmg` value in their seven ability families
+by exactly one. Player-facing `eff` text was updated in lockstep. SCRAPMASTER,
+dice ranges, targeting/AI, status fields, shields, heals, burns, jam, and every
+non-Facility operation are unchanged. Results must be read against the same
+L1/300/seed-base-900000 baseline below; the deterministic tutorial now uses the
+new real Scrap 40 HP and Stab 8 checkpoint. This is a single diagnostic pass,
+not authorization for follow-up tuning.
+
 *Captured 2026-07-30 at `dcc0dd5` (0.9.x demo build, post-demo2). This
 snapshot ships no balance changes and does not re-pin the baseline — the
 pre-demo sim freeze stands. Ruling reference:
