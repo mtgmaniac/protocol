@@ -47,7 +47,7 @@ Per-op strings: `label`, `callsign`, `blurb`, `victoryTitle`/`victorySub` (e.g. 
 
 ### Unlock chain
 
-`SaveManager.OPERATION_CHAIN` (`scripts/autoloads/SaveManager.gd:30`): clearing an op's boss unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie. Uncapped (unlike the one-rung hero ladder). First clear of each op also unlocks its boss relic (`SaveManager.gd:17-18` maps voidCirclet→rootAccess, stellarMenagerie→mantleCore, etc.). All five cards stay visible: locked ops use their own dark boss-art silhouette, real name, existing blurb, and `LOCKED`, but cannot be inspected or deployed. Headless runs read as fully unlocked (TRUTH §save system).
+`SaveManager.OPERATION_CHAIN` (`scripts/autoloads/SaveManager.gd:30`): clearing an op's boss unlocks the next — facility → hive → veil → voidCirclet → stellarMenagerie. Uncapped (unlike the one-rung hero ladder). First clear of each op also unlocks its boss relic (`SaveManager.gd:17-18` maps voidCirclet→rootAccess, stellarMenagerie→mantleCore, etc.). All five cards stay visible: locked ops use their own dark boss-art silhouette, real name, and `LOCKED`, but hide their blurb and cannot be inspected or deployed. Headless runs read as fully unlocked (TRUTH §save system).
 
 ### Interaction with beats and forks
 

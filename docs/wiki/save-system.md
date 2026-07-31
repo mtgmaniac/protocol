@@ -61,7 +61,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 
 ### Consumer surfaces
 
-- `home_screen.gd`: all five ops stay browsable; locked ops show their own dark boss art, real name, safe blurb, and `LOCKED`, with DEPLOY disabled. All eight hero cards stay in the roster; locked cards use each hero's own dark silhouette, real name, and `LOCKED`, and cannot be selected or inspected. NEW badge remains until first squad add.
+- `home_screen.gd`: all five ops stay browsable; locked ops show their own dark boss art, real name, and `LOCKED`, while hiding their blurb and keeping DEPLOY disabled. All eight hero cards stay in the roster; locked cards use each hero's own dark silhouette, real name, and `LOCKED`, and cannot be selected or inspected. NEW badge remains until first squad add.
 - `run_end_screen.gd`: SERVICE RECORD section renders lifetime stats (`_service_record_text`, `:55-67`); UNLOCKED panel from `check_new_unlocks`.
 - `keyword_primer.gd`: `is_primer_seen` gates queuing (`:170`); max one primer/turn; suppressed in tutorial/headless/auto battle; failure paths never mark seen.
 
@@ -70,7 +70,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 - One rung per run end paces the roster reveal like the evolution stop paces power (comment at `SaveManager.gd:260-261`).
 - Headless full-unlock keeps sim/audit coverage total without polluting a developer's real save (file header, `:4-5`).
 - Merge-onto-defaults means schema growth never needs a migration table — absent keys heal, present keys survive.
-- Locked content exposes identity, not progression details: hero cards show their real names and operation cards retain their compact blurbs, but neither exposes unlock conditions, kits, bosses, rewards, or detailed mechanics. The unused hint constants remain outside the player path.
+- Locked content exposes identity, not progression details: hero cards show their real names and operation cards show only their real names, but neither exposes unlock conditions, kits, bosses, rewards, descriptions, or detailed mechanics. The unused hint constants remain outside the player path.
 
 ## What it replaced
 

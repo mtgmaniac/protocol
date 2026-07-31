@@ -474,22 +474,22 @@ func _refresh_encounter() -> void:
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
-	# Locked operations stay browsable: their own boss art is a dark silhouette,
-	# while the real operation name and its compact blurb remain visible. Detailed
-	# intel stays hidden and DEPLOY remains disabled.
+	# Locked operations stay browsable: their own boss art is a dark silhouette
+	# and the real operation name remains visible. Their blurb and all detailed
+	# intel stay hidden, while DEPLOY remains disabled.
 	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
 	_enc_portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if _current_op_locked else Color.WHITE
 	if _enc_lock_overlay != null:
 		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
-		# Keep the true operation identity and its existing spoiler-light blurb.
+		# Keep the true operation identity, but do not leak its description.
 		if _enc_site_label != null:
 			_enc_site_label.visible = false
 		if _enc_progress_label != null:
 			_enc_progress_label.text = "LOCKED"
 		if _op_lore_label != null:
-			_op_lore_label.text = op.blurb.strip_edges()
-			_op_lore_label.visible = _op_lore_label.text != ""
+			_op_lore_label.text = ""
+			_op_lore_label.visible = false
 	_refresh_deploy()
 
 

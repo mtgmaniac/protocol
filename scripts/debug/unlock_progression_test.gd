@@ -240,7 +240,7 @@ func _test_first_profile_progression_and_presentation() -> void:
 		var blurb_label: Label = home.get("_op_lore_label") as Label
 		var deploy: Button = home.get("_deploy_button") as Button
 		_check(bool(home.get("_current_op_locked")) and name_label.text == op.display_name.to_upper() and lock_label.text == "LOCKED", "%s remains visibly locked with its real name" % op_id)
-		_check(blurb_label.visible and blurb_label.text == op.blurb and deploy.disabled, "%s locked card retains its blurb and cannot deploy" % op_id)
+		_check(not blurb_label.visible and blurb_label.text == "" and deploy.disabled, "%s locked card hides its blurb and cannot deploy" % op_id)
 
 	_test_renamed_enemy_abilities()
 	_test_band_copy()
