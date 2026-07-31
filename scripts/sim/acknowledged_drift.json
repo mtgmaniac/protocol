@@ -1,0 +1,24 @@
+{
+  "ruling": "Kev 2026-07-30: pre-demo ceremony debt, acknowledged. Sim freeze stands; no balance changes and no baseline re-pin before the public demo. Baseline re-pin is the first task of the next balance cycle (TASK_MASTER_LIST BAL-001). The drift accumulated across earlier merges and moves hive TOWARD the healthy band from its old 8.5% problem state.",
+  "note": "verify_gate treats the ceremony warning as acknowledged ONLY while the current deterministic metrics match these values exactly. Any further movement re-raises the ceremony. This file is NOT a baseline: ci_smoke still diffs against baseline.json and stays red on purpose.",
+  "runs": 300,
+  "policy": "l1",
+  "overall_clear": 0.3633,
+  "clear_by_op": {
+    "facility": 0.6338,
+    "hive": 0.2881,
+    "stellarMenagerie": 0.1667,
+    "veil": 0.4,
+    "voidCirclet": 0.2281
+  },
+  "clear_by_hero": {
+    "avalanche": 0.307,
+    "breaker": 0.3913,
+    "combat": 0.4701,
+    "engineer": 0.3694,
+    "ghost": 0.4274,
+    "medic": 0.3714,
+    "pulse": 0.2991,
+    "shield": 0.2523
+  }
+}

@@ -235,6 +235,20 @@ def sim_deltas(runs: int) -> int:
             beyond.append(op)
         print(f"   {op:<18}{b:>10.4f}{c:>10.4f}{d:>+8.1f}{flag}")
     if beyond:
+        # Acknowledged-drift carve-out (Kev ruling 2026-07-30): the ceremony
+        # warning is silenced ONLY while the deterministic metrics match the
+        # signed-off snapshot EXACTLY — any further movement re-raises it, so
+        # enforcement is not loosened (nothing new can hide behind the
+        # acknowledgment). This is not a re-pin: baseline.json is untouched
+        # and ci_smoke standalone stays red on purpose.
+        if _drift_is_acknowledged(cur):
+            print(
+                "\n   Drift previously ACKNOWLEDGED (Kev 2026-07-30, pre-demo ceremony\n"
+                "   debt — see scripts/sim/acknowledged_drift.json and\n"
+                "   docs/balance_snapshot_2026-07.md). Baseline re-pin is the first\n"
+                "   task of the next balance cycle. Not a new failure."
+            )
+            return 0
         print(
             "\n   ⚠ CEREMONY: per-op drift beyond ±10 points ({}). A human signs off\n"
             "   on drift this size (precedents: voidCirclet +26, freeze=repeat −27.7).\n"
@@ -245,6 +259,31 @@ def sim_deltas(runs: int) -> int:
         return 3
     print("   within tolerance.")
     return 0
+
+
+# True only when the current metrics EXACTLY match the acknowledged snapshot
+# (overall + per-op + per-hero, tiny float epsilon). The sim is deterministic,
+# so an unchanged tree reproduces the snapshot bit-for-bit; any behavior change
+# breaks the match and the full ceremony warning returns.
+ACKNOWLEDGED_DRIFT = ROOT / "scripts" / "sim" / "acknowledged_drift.json"
+
+def _drift_is_acknowledged(cur: dict) -> bool:
+    if not ACKNOWLEDGED_DRIFT.exists():
+        return False
+    try:
+        ack = json.loads(ACKNOWLEDGED_DRIFT.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    eps = 1e-9
+    if abs(cur.get("overall_clear", -1) - ack.get("overall_clear", -2)) > eps:
+        return False
+    for key in ("clear_by_op", "clear_by_hero"):
+        cur_map, ack_map = cur.get(key, {}), ack.get(key, {})
+        if set(cur_map) != set(ack_map):
+            return False
+        if any(abs(cur_map[k] - ack_map[k]) > eps for k in ack_map):
+            return False
+    return True
 
 
 def main() -> int:

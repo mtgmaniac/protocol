@@ -797,6 +797,17 @@ untouched. Stage-1 report: `docs/sweeps/2026-07-17_cycle1_stage1_hive.md`.
   0.3133 / facility 0.6338 — not the 2026-07-06 crit-banking figures this section
   previously quoted. Older checkpoints: crit-banking 0.2867, repeat-freeze 0.2533,
   pre-repeat 0.53, "flat sim ~1.7%".)
+- **Acknowledged drift vs the pin (Kev ruling 2026-07-30 — do not chase):** the
+  shipped demo tree deterministically reads overall **0.3633** / hive **0.2881**
+  (+10.2 vs the pin, past the ±10 ceremony line) — accumulated debt from earlier
+  merges, proven feature-neutral by a clean-HEAD stash rerun, and moving hive
+  TOWARD healthy from its old 0.085 problem state. Sim freeze stands: no balance
+  changes, **no baseline re-pin before the public demo**; re-pin is the FIRST task
+  of the next balance cycle (TASK_MASTER_LIST `BAL-001`). The CURRENT TRUE state
+  lives in `docs/balance_snapshot_2026-07.md` (feeds the external design review).
+  `verify_gate` silences the ceremony warning ONLY while metrics exactly match
+  `scripts/sim/acknowledged_drift.json` (any further movement re-raises it);
+  `ci_smoke.py` standalone still diffs the pin and stays red on purpose.
 - **Decision-density gap (L1↔L2) is a first-class metric from Cycle 0 on** — the
   boredom dashboard, reported every cycle. Cycle-0 gaps (matched seeds, n=1000/op):
   facility **+25.1pp** · hive **+7.1** · veil **+8.5** · voidCirclet **+29.5** ·
