@@ -1980,7 +1980,7 @@ func _run_save_manager_regressions() -> void:
 	_expect_and_record("Regression / save boss-relic op mapping", "saveManager", "true", str(mapping_ok))
 
 	# Progression: best_clear_by_op records; a facility clear awards ONE ladder rung
-	# (engineer) and unlocks the next op (hive); rung 2 (shield) defers to a later run.
+	# (avalanche) and unlocks the next op (hive); rung 2 (shield) defers to a later run.
 	# Asserts against the raw unlock lists — is_*_unlocked() is force-true when headless.
 	# Build F: the boss relic joins the run-end delta (3 entries: relic, hero, op).
 	SaveManager.data = SaveManager.default_data()
@@ -1993,7 +1993,7 @@ func _run_save_manager_regressions() -> void:
 		prog_unlock_types.append(str(prog_entry.get("type", "")))
 	var prog_ok: bool = (
 		int((SaveManager.data["stats"]["best_clear_by_op"] as Dictionary).get("facility", 0)) == 8
-		and prog_heroes.has("engineer")
+		and prog_heroes.has("avalanche")
 		and SaveManager.get_hero_ladder_rung() == 1
 		and prog_ops.has("hive")
 		and not prog_heroes.has("shield")

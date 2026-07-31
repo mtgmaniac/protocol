@@ -164,7 +164,7 @@ func _build_help_overlay() -> void:
 	for line in [
 		"Choose one evolution branch for this unit.",
 		"Each card shows the full ability table after the upgrade.",
-		"Portraits currently reuse the base unit art. Unique evolved art can drop into the same card later.",
+		"Each evolution card previews that branch's unique portrait and full ability table.",
 	]:
 		var label: Label = _make_label(line, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

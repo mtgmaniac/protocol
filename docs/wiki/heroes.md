@@ -10,20 +10,20 @@ Progression (`scripts/autoloads/GameState.gd`): `XP_TO_EVOLVE := 100` (line 72),
 
 Ability resolution: `scripts/battle/combat_manager.gd:926-1152` (`_apply_hero_ability`) and `:1191-1301` (`_apply_hero_ability_damage`). Manual targeting: **max ONE manually-picked component per ability** (INVARIANTS #12) — the pick side is derived in `scripts/battle/battle_scene.gd:2050-2074` (`_get_manual_target_side`); `freezeAnyDice` counts as the pick and is the only "either side" pick. `healLowest`/`shieldLowest` auto-target the lowest-HP living hero (`battle_scene.gd:2135-2141`, `combat_manager.gd:972-976`). A nat-20 overload fires the ability-name slam animation (`scripts/battle/battle_feedback.gd:612-649`).
 
-Unlock state (SaveManager hero ladder): starters `combat`, `engineer`, `medic`; rung 1 → `avalanche`, rung 2 → `shield`, rung 3 → `pulse`, rung 4 → `ghost`, rung 5 → `breaker`. (Batch-1 2026-07-11 swapped engineer↔avalanche between the starter set and rung 1.)
+Unlock state (SaveManager hero ladder): starters `combat`, `engineer`, `medic`, `pulse`; rung 1 → `avalanche`, rung 2 → `shield`, rung 3 → `ghost`, rung 4 → `breaker`. The default selected squad remains Strike Unit, Field Engineer, and Splice Medic. Existing profiles gain Pulse and normalize rung progress from the heroes they own.
 
 ### Roster summary
 
 | ID | Name | Callsign | Class | Category | HP | Evolutions | Availability |
 |---|---|---|---|---|---|---|---|
-| `pulse` | Pulse Tech | PULSE | ENERGY WIELDER | damage | 45 | Pyro Specialist / Arc Specialist | ladder rung 3 |
+| `pulse` | Pulse Tech | PULSE | ENERGY WIELDER | damage | 45 | Pyro Specialist / Arc Specialist | **starter** |
 | `combat` | Strike Unit | STRIKE | STRIKE OPS | damage | 55 | Bladecore / Ravager | **starter** |
 | `shield` | Spike Guard | SPIKE | ANTAGONIST PLATE | defense | 55 | Bulwark / Sentinel | ladder rung 2 |
-| `avalanche` | Avalanche Suit | AVALANCHE | SQUAD SHELL | defense | 55 | Glacier Mantle / Trench Rig | **starter** |
+| `avalanche` | Avalanche Suit | AVALANCHE | SQUAD SHELL | defense | 55 | Glacier Mantle / Trench Rig | ladder rung 1 |
 | `medic` | Splice Medic | SPLICE | COMBAT AUGMENTOR | support | 50 | Combat Medic / Synth Warden | **starter** |
-| `engineer` | Field Engineer | ENGINEER | SUPPORT TECH | support | 50 | Overclocked / Phantom | ladder rung 1 |
-| `ghost` | Ghost Operative | GHOST | INFILTRATOR | control | 45 | Shadow Operative / Wraith | ladder rung 4 |
-| `breaker` | Signal Breaker | BREAKER | COMMS INTERDICTOR | control | 45 | Noise Floor / Nullwire | ladder rung 5 |
+| `engineer` | Field Engineer | ENGINEER | SUPPORT TECH | support | 50 | Overclocked / Phantom | **starter** |
+| `ghost` | Ghost Operative | GHOST | INFILTRATOR | control | 45 | Shadow Operative / Wraith | ladder rung 3 |
+| `breaker` | Signal Breaker | BREAKER | COMMS INTERDICTOR | control | 45 | Noise Floor / Nullwire | ladder rung 4 |
 
 Legacy id quirks (INVARIANTS #11, frozen): Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`, and the Combat Medic evolution id is also `medic`.
 
@@ -31,7 +31,7 @@ Legacy id quirks (INVARIANTS #11, frozen): Strike Unit=`combat`, Spike Guard=`sh
 
 ## Pulse Tech (pulse)
 
-Callsign PULSE · ENERGY WIELDER · damage · 45 HP · unlock: hive best_clear ≥ 6 (rung 3). Blurb: "Plants burn on every hit, then detonates it for burst damage." Data: `data/raw/heroes.data.json:222`.
+Callsign PULSE · ENERGY WIELDER · damage · 45 HP · **starter**. Blurb: "Plants burn on every hit, then detonates it for burst damage." Data: `data/raw/heroes.data.json:222`.
 
 | Zone | Roll | Ability | Eff | Keyword |
 |---|---|---|---|---|
@@ -311,7 +311,7 @@ Directives: **Marked for Death** / **Reaper**.
 
 ## Signal Breaker (breaker)
 
-Callsign BREAKER · COMMS INTERDICTOR · control · 45 HP · unlock: veil best_clear ≥ 6 (rung 5). Blurb: "Drags every enemy roll down and jams their strongest dice." Data: `data/raw/heroes.data.json:2497`. ±Roll chips live ONLY in this line (ground-truth check PASSED — `rfe` appears on no other hero; no hero carries `rfm` at all).
+Callsign BREAKER · COMMS INTERDICTOR · control · 45 HP · unlock: veil best_clear ≥ 6 (rung 4). Blurb: "Drags every enemy roll down and jams their strongest dice." Data: `data/raw/heroes.data.json:2497`. ±Roll chips live ONLY in this line (ground-truth check PASSED — `rfe` appears on no other hero; no hero carries `rfm` at all).
 
 | Zone | Roll | Ability | Eff | Keyword |
 |---|---|---|---|---|

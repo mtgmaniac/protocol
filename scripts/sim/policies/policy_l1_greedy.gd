@@ -99,7 +99,7 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 				and int(hero_state.get("die_freeze_turns", 0)) <= 0:
 			var new_roll: int = engine.apply_reroll(bs, unit_id)
 			spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
-	# 2) Nudge when +3 lifts the hero's EFFECTIVE roll into a stronger band.
+	# 2) Nudge when +3 lifts the hero's EFFECTIVE roll into a higher-numbered band.
 	for hero_state_variant in cm.get_hero_states():
 		var hero_state: Dictionary = hero_state_variant
 		if bool(hero_state.get("dead", false)):

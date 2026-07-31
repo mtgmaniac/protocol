@@ -101,7 +101,7 @@ button (tutorial_done stays unset, so the next BEGIN asks again).
 - **STATE:** Physics roll animating with rigged results.
 
 ### 7
-- **COPY:** `Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields.` + `Tap to continue >`
+- **COPY:** `Each die lands in a band, and each band triggers a different ability. Higher is not always better. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields.` + `Tap to continue >`
 - **ADVANCE:** Tap anywhere.
 - **SPOTLIGHT:** Separate holes: the dice tray (combat zone) + each hero's ability-pip readout.
 - **STATE:** Strike 9 → Suppression Fire (6 dmg), Engineer 12 → Overdrive (11 dmg),

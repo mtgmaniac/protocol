@@ -93,8 +93,8 @@ const NAV_ARROW_ICON := preload("res://assets/ui/icons/icon_back.png")
 const THREAT_PIP_COUNT := 5
 const THREAT_PIP_SIZE := Vector2(48, 36)   # sized up from (42,30) — near-illegible strip
 
-const LOCKED_STRIP_H := 72
-const LOCKED_ICON := 48
+const ROSTER_ORDER := ["combat", "engineer", "medic", "pulse", "avalanche", "shield", "ghost", "breaker"]
+const DEFAULT_SQUAD := ["combat", "engineer", "medic"]
 
 const DOT_SIZE := 18
 const DOT_GAP := 18
@@ -131,7 +131,6 @@ var _enc_site_label: Label
 var _enc_level_label: Label
 var _enc_progress_label: Label
 var _op_lore_label: Label
-var _locked_strip_label: Label
 var _threat_pips: Array[ColorRect] = []
 var _dot_row: HBoxContainer
 var _dot_nodes: Array[ColorRect] = []
@@ -164,6 +163,10 @@ func _ready() -> void:
 	PersistentHeader.bind_battle_actions(Callable(), Callable(), Callable(), _on_back_to_title)
 	_apply_background()
 	_gather_data()
+	_selected_unit_ids.clear()
+	for unit_id in DEFAULT_SQUAD:
+		if _unit_ids.has(unit_id) and SaveManager.is_hero_unlocked(unit_id):
+			_selected_unit_ids.append(unit_id)
 	_build_layout()
 	# Kev 2026-07-10: the detail panel stays HIDDEN until the player taps a
 	# unit — no default dossier on entry.
@@ -191,42 +194,12 @@ func _gather_data() -> void:
 		_operation_index = 0
 		_selected_operation_id = _operation_ids[0]
 
-	# Order units so each grid COLUMN is a same-type pair, stacked top/bottom: with a
-	# 4-wide grid, row 1 holds the first unit of each type and row 2 the second.
+	# The whole roster is always present in this stable, player-facing order. It
+	# starts with the default squad, then follows the hero progression order.
 	_unit_ids.clear()
-	var groups: Dictionary = {}   # type rank -> [unit_id], name-sorted
-	for k in DataManager.units.keys():
-		var unit := DataManager.get_unit(str(k)) as UnitData
-		var rank: int = _type_rank(unit)
-		if not groups.has(rank):
-			groups[rank] = []
-		groups[rank].append(str(k))
-	var ranks: Array = groups.keys()
-	ranks.sort()
-	for rank in ranks:
-		(groups[rank] as Array).sort_custom(func(a: String, b: String) -> bool:
-			return str((DataManager.get_unit(a) as UnitData).display_name) < str((DataManager.get_unit(b) as UnitData).display_name)
-		)
-	# First pass: one per type (top row). Second pass: the rest (bottom row[s]).
-	var max_in_group: int = 0
-	for rank in ranks:
-		max_in_group = maxi(max_in_group, (groups[rank] as Array).size())
-	for slot in range(max_in_group):
-		for rank in ranks:
-			var g: Array = groups[rank]
-			if slot < g.size():
-				_unit_ids.append(str(g[slot]))
-
-	# Surface the 3 original starting heroes as the top slots; the locked ladder heroes
-	# fill in behind them.
-	var ordered: Array[String] = []
-	for starter in SaveManager.STARTING_HEROES:
-		if _unit_ids.has(starter) and not ordered.has(str(starter)):
-			ordered.append(str(starter))
-	for uid in _unit_ids:
-		if not ordered.has(uid):
-			ordered.append(str(uid))
-	_unit_ids = ordered
+	for unit_id in ROSTER_ORDER:
+		if DataManager.get_unit(unit_id) != null:
+			_unit_ids.append(unit_id)
 
 
 # ─── Layout ───────────────────────────────────────────────────────────────────
@@ -501,22 +474,22 @@ func _refresh_encounter() -> void:
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
-	# Locked operations stay browsable but hidden: the boss renders as a black silhouette,
-	# the name reads "[ LOCKED ]" (no unlock hint — part of the surprise), and DEPLOY is
-	# disabled. The portrait node is reused on scroll, so reset its tint for unlocked ops.
+	# Locked operations stay browsable: their own boss art is a dark silhouette,
+	# while the real operation name and its compact blurb remain visible. Detailed
+	# intel stays hidden and DEPLOY remains disabled.
 	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
-	_enc_portrait.modulate = Color(0.0, 0.0, 0.0, 1.0) if _current_op_locked else Color(1.0, 1.0, 1.0, 1.0)
+	_enc_portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if _current_op_locked else Color.WHITE
 	if _enc_lock_overlay != null:
 		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
-		_enc_name_label.text = "[ LOCKED ]"
-		# Locked operations reveal nothing (no clearance, no lore).
+		# Keep the true operation identity and its existing spoiler-light blurb.
 		if _enc_site_label != null:
 			_enc_site_label.visible = false
 		if _enc_progress_label != null:
-			_enc_progress_label.text = ""
+			_enc_progress_label.text = "LOCKED"
 		if _op_lore_label != null:
-			_op_lore_label.visible = false
+			_op_lore_label.text = op.blurb.strip_edges()
+			_op_lore_label.visible = _op_lore_label.text != ""
 	_refresh_deploy()
 
 
@@ -601,24 +574,18 @@ func _build_squad_section() -> Control:
 	# No role legend (redesign): role reads from the portrait corner pip + the named
 	# tag in the detail panel — nothing else teaches the color code.
 
-	# Grid holds UNLOCKED heroes only; locked heroes collapse into one slim strip
-	# below. Rows are hand-chunked HBoxes (not a GridContainer) so a PARTIAL last
-	# row centers its cells instead of left-aligning against a dead column (final
-	# pass §2). Cells are fixed-width, so a full row spans the content width
-	# exactly (4×238 + 3×16 = 1000) and partial rows keep identical cell sizes.
+	# Every base hero gets the same fixed-size cell. Locked cards keep their real
+	# portrait silhouette and name, so the player can see the full roster without
+	# exposing the locked hero's kit or unlock condition.
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", TILE_GAP)
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	section.add_child(rows)
-	var locked_count: int = 0
 	var row: HBoxContainer = null
 	var row_count: int = 0
 	for unit_id in _unit_ids:
 		var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
 		if unit == null:
-			continue
-		if not SaveManager.is_hero_unlocked(unit_id):
-			locked_count += 1
 			continue
 		if row == null or row_count == GRID_COLUMNS:
 			row = HBoxContainer.new()
@@ -630,39 +597,10 @@ func _build_squad_section() -> Control:
 		row.add_child(_build_unit_tile(unit_id, unit))
 		row_count += 1
 
-	section.add_child(_build_locked_strip(locked_count))
-
-	# Detail panel lives directly under the locked strip (composition pass §2) —
-	# part of the content flow, not pinned at the bottom.
+	# Detail panel remains part of the content flow, not pinned at the bottom.
 	_detail_panel = _build_detail_bar()
 	section.add_child(_detail_panel)
 	return section
-
-
-# One slim strip standing in for every locked roster slot: lock glyph + "N LOCKED".
-# Reads the same roster/unlock source the old full-size locked cells did
-# (SaveManager.is_hero_unlocked over _unit_ids), so it stays true as heroes unlock.
-func _build_locked_strip(locked_count: int) -> Control:
-	var strip := HBoxContainer.new()
-	strip.alignment = BoxContainer.ALIGNMENT_CENTER
-	strip.add_theme_constant_override("separation", 14)
-	strip.custom_minimum_size = Vector2(0, LOCKED_STRIP_H)
-	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	strip.visible = locked_count > 0
-	var icon := TextureRect.new()
-	icon.texture = load(PixelUI.ICON_LOCK) as Texture2D
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = Vector2(LOCKED_ICON, LOCKED_ICON)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.modulate = PixelUI.TEXT_MUTED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	strip.add_child(icon)
-	_locked_strip_label = _make_pixel_label("%d LOCKED" % locked_count, PixelUI.FONT_INFO_MIN, PixelUI.TEXT_MUTED)
-	_locked_strip_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	strip.add_child(_locked_strip_label)
-	return strip
 
 
 func _build_detail_bar() -> PanelContainer:
@@ -761,8 +699,7 @@ func _build_detail_bar() -> PanelContainer:
 
 
 # Tile = square portrait (the ONLY tap target) + name label UNDER it. Quick tap
-# toggles selection; long-press opens the unit inspect popup. Only unlocked heroes
-# get tiles — locked heroes collapse into the strip.
+# toggles an unlocked selection; long-press opens an unlocked unit's inspect popup.
 func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	# Fixed-width cell (final pass §2): identical in full and partial rows; the
 	# row container centers partial rows, so cells must not stretch.
@@ -786,7 +723,12 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var inner_h: float = roundf(inner_w * BATTLE_PORTRAIT_REGION.y / BATTLE_PORTRAIT_REGION.x)
 	frame.custom_minimum_size = Vector2(PORTRAIT_CELL, inner_h + 2.0 * float(PANEL_BORDER))
 	cell.add_child(frame)
-	(portrait_box["tex"] as TextureRect).texture = unit.portrait
+	var is_locked := not SaveManager.is_hero_unlocked(unit_id)
+	var portrait: TextureRect = portrait_box["tex"] as TextureRect
+	portrait.texture = unit.portrait
+	# Keep the hero's own composition, but reduce it to an unmistakably dark
+	# silhouette until the profile owns that hero.
+	portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if is_locked else Color.WHITE
 	call_deferred("_cover_fit_portrait", portrait_box["crop"], portrait_box["tex"])
 
 	# Role-color corner badge (top-right) remains implemented for later roster
@@ -820,13 +762,16 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 
 	# Newly-unlocked heroes: a NEW badge until first added to a squad.
 	var new_badge: Control = null
-	if SaveManager.is_hero_new(unit_id):
+	if not is_locked and SaveManager.is_hero_new(unit_id):
 		new_badge = _make_new_badge()
 		crop.add_child(new_badge)
+	if is_locked:
+		crop.add_child(_make_lock_overlay())
 
-	# Name label UNDER the portrait — a label, not a button.
-	var tile_name: String = unit.callsign if unit.callsign != "" else unit.display_name
-	var name_label := _make_pixel_label(tile_name.to_upper(), TILE_NAME_FONT, PixelUI.DT_HERO_NAME)
+	# Locked cards name the actual hero; unlocked cards retain their compact callsign.
+	var tile_name: String = unit.display_name if is_locked else (unit.callsign if unit.callsign != "" else unit.display_name)
+	var tile_font: int = PixelUI.FONT_INFO_MIN if is_locked else TILE_NAME_FONT
+	var name_label := _make_pixel_label(tile_name.to_upper(), tile_font, PixelUI.DT_HERO_NAME)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.clip_text = true
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -838,26 +783,36 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 		"name": name_label,
 		"slot_badge": slot_badge,
 		"slot_label": slot_label,
-		"locked": false,
+		"locked": is_locked,
 		"new_badge": new_badge,
 	}
 	return cell
 
 
-# The padlock glyph (batch 188) centered over a locked hero's black silhouette.
+# The padlock glyph and explicit state centered over a locked hero's silhouette.
 func _make_lock_overlay() -> Control:
 	var wrap := CenterContainer.new()
 	wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var stack := VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 4)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(stack)
 	var icon := TextureRect.new()
 	icon.texture = load(PixelUI.ICON_LOCK) as Texture2D
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = Vector2(72, 72)
+	icon.custom_minimum_size = Vector2(56, 56)
 	icon.modulate = PixelUI.TEXT_MUTED
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(icon)
+	stack.add_child(icon)
+	var label := _make_pixel_label("LOCKED", PixelUI.FONT_INFO_MIN, PixelUI.TEXT_MUTED)
+	label.name = "LockedLabel"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(label)
 	return wrap
 
 
@@ -888,10 +843,8 @@ func _make_new_badge() -> Control:
 
 
 func _on_tile_tapped(unit_id: String) -> void:
-	# Locked heroes are not selectable; still focus so the detail bar shows the hint.
+	# Locked heroes remain visible but never become selected or inspectable.
 	if not SaveManager.is_hero_unlocked(unit_id):
-		_focused_unit_id = unit_id
-		_refresh_detail()
 		return
 	var was_selected: bool = _selected_unit_ids.has(unit_id)
 	_toggle_unit_selection(unit_id)
@@ -989,6 +942,8 @@ func _on_back_to_title() -> void:
 func _refresh_detail() -> void:
 	# The box is ALWAYS there (Kev 2026-07-10 rev 2) — it just starts empty
 	# until a unit is tapped, so the layout never jumps.
+	if _detail_panel != null:
+		_detail_panel.visible = true
 	if _focused_unit_id == "":
 		_show_operation_detail()
 		return
@@ -1024,6 +979,9 @@ func _show_operation_detail() -> void:
 	_detail_name.text = ""
 	_detail_focus_chip.visible = false
 	if _current_op_locked:
+		# The carousel already presents the safe blurb; don't reserve a blank
+		# dossier panel for content the profile has not unlocked.
+		_detail_panel.visible = false
 		_detail_desc.text = ""
 		_detail_threat_label.visible = false
 		_detail_threats.text = ""
@@ -1042,23 +1000,6 @@ func _show_operation_detail() -> void:
 	if accent is Color:
 		_detail_threat_label.add_theme_color_override("font_color", accent as Color)
 	_detail_threats.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-
-
-# Type ordering for the squad grid; matches the badge color buckets so each row
-# pairs same-type units.
-func _type_rank(unit: UnitData) -> int:
-	if unit == null:
-		return 99
-	var c: Color = _role_color(unit)
-	if c == PixelUI.DT_RUST:
-		return 0
-	if c == PixelUI.DT_CYAN:
-		return 1
-	if c == Color("9a6ad0"):
-		return 2
-	if c == PixelUI.DT_AMBER:
-		return 3
-	return 4
 
 
 # Maps a unit's focus to a DT accent color for its badge + detail chip. Driven by

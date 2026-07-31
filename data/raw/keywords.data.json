@@ -120,14 +120,14 @@
       "id": "roll_down",
       "term": "Roll Down",
       "category": "control",
-      "def": "Lowers an enemy's effective roll, dropping its ability to a weaker band.",
+      "def": "Lowers an enemy's effective roll, moving it to a lower-numbered ability band.",
       "syntax": "-N roll, [Yt] = -N to roll, optionally for Y turns"
     },
     {
       "id": "roll_up",
       "term": "Roll Up",
       "category": "support",
-      "def": "Raises an ally's effective roll, pushing its ability to a stronger band.",
+      "def": "Raises an ally's effective roll, moving it to a higher-numbered ability band.",
       "syntax": "+N roll"
     },
     {

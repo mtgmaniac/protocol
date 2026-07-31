@@ -12,6 +12,7 @@ extends SceneTree
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const REWARD_SCENE := "res://scenes/ui/RewardScreen.tscn"
 const RUN_END_SCENE := "res://scenes/ui/RunEndScreen.tscn"
+const HOME_SCENE := "res://scenes/ui/UnitSelect.tscn"
 const DEFAULT_SQUAD := ["pulse", "combat", "shield"]
 const STEP_TIMEOUT_SECS := 120.0
 
@@ -33,6 +34,7 @@ func _check(cond: bool, msg: String) -> void:
 func _run() -> void:
 	await _test_counter_integrity()
 	_test_gating_and_delta()
+	await _test_first_profile_progression_and_presentation()
 	_test_sim_pin()  # LAST — the pin is sticky for the process
 	if _failed == 0:
 		print("[UNLOCK_PROGRESSION] PASS")
@@ -157,6 +159,128 @@ func _test_gating_and_delta() -> void:
 
 
 # ── Sim pin: harness pool query returns FULL pools regardless of profile ─────
+func _test_first_profile_progression_and_presentation() -> void:
+	var sm := _save_manager()
+	var original_disk_enabled: bool = bool(sm.get("_disk_enabled"))
+	# Headless normally force-unlocks for broad audit coverage. This presentation
+	# regression deliberately uses the raw first-profile state instead.
+	sm.set("_disk_enabled", true)
+
+	var expected_starters := ["combat", "engineer", "medic", "pulse"]
+	var expected_ladder := ["avalanche", "shield", "ghost", "breaker"]
+	sm.set("data", sm.call("default_data"))
+	_check((sm.get("data")["unlocks"] as Dictionary).get("heroes", []) == expected_starters, "fresh profile owns exactly the four intended starters")
+	_check((sm.get("HERO_LADDER") as Array) == expected_ladder and not (sm.get("HERO_LADDER") as Array).has("pulse"), "Pulse is absent from the four-rung hero ladder")
+
+	# The old numeric rung 3 represented Pulse. Preserve every owned hero, add
+	# Pulse if needed, then derive the new rung from owned ladder heroes.
+	var legacy_heroes := ["combat", "engineer", "medic", "avalanche", "shield", "pulse"]
+	sm.call("_merge_loaded", {
+		"stats": {"best_clear_by_op": {"facility": 10}, "runs_won_by_op": {"facility": 1}},
+		"unlocks": {"heroes": legacy_heroes, "operations": ["facility"], "hero_ladder_rung": 3, "heroes_new": []},
+		"onboarding": {"primers_seen": []},
+	})
+	var migrated_heroes: Array = (sm.get("data")["unlocks"] as Dictionary).get("heroes", [])
+	var kept_all := true
+	for hero_id in legacy_heroes:
+		kept_all = kept_all and migrated_heroes.has(hero_id)
+	_check(kept_all and migrated_heroes.has("pulse") and int(sm.call("get_hero_ladder_rung")) == 2, "existing-profile migration preserves ownership and normalizes the changed rung")
+
+	# Each rung retains its stated condition and awards exactly the intended hero.
+	sm.set("data", sm.call("default_data"))
+	sm.call("record_run_finished", "defeat", "facility", 6)
+	_check((sm.get("data")["unlocks"] as Dictionary).get("heroes", []).has("avalanche"), "Facility depth or pity awards Avalanche")
+	sm.call("record_run_finished", "victory", "facility", 10)
+	_check((sm.get("data")["unlocks"] as Dictionary).get("heroes", []).has("shield"), "Facility clear awards Spike Guard")
+	sm.call("record_run_finished", "victory", "hive", 10)
+	_check((sm.get("data")["unlocks"] as Dictionary).get("heroes", []).has("ghost"), "Hive clear awards Ghost Operative")
+	sm.call("record_run_finished", "defeat", "veil", 6)
+	_check((sm.get("data")["unlocks"] as Dictionary).get("heroes", []).has("breaker") and int(sm.call("get_hero_ladder_rung")) == 4, "Veil depth awards Signal Breaker and completes the ladder")
+	_check((sm.get("data")["unlocks"] as Dictionary).get("operations", []) == ["facility", "hive", "veil"], "operation unlock chain remains boss-clear only")
+
+	# Fresh-profile screen: all hero and operation cards are rendered, while locked
+	# content cannot change the squad or begin a run.
+	sm.call("dev_reset_profile")
+	change_scene_to_file(HOME_SCENE)
+	await _wait_for_scene(HOME_SCENE)
+	await process_frame
+	var home := current_scene
+	var tiles: Dictionary = home.get("_unit_tiles") as Dictionary
+	var roster: Array = home.get("_unit_ids") as Array
+	_check(roster == ["combat", "engineer", "medic", "pulse", "avalanche", "shield", "ghost", "breaker"] and tiles.size() == 8, "all eight hero roster cards render in stable order")
+	_check((home.get("_selected_unit_ids") as Array) == ["combat", "engineer", "medic"], "default selected squad remains Strike, Engineer, Medic")
+	for hero_id in roster:
+		var tile: Dictionary = tiles.get(hero_id, {}) as Dictionary
+		var expected_locked: bool = not expected_starters.has(hero_id)
+		var title: Label = tile.get("name") as Label
+		_check(bool(tile.get("locked", false)) == expected_locked, "%s card reports its lock state" % hero_id)
+		if expected_locked:
+			_check(title != null and title.text == str((_data_manager().call("get_unit", hero_id) as UnitData).display_name).to_upper(), "%s locked card keeps its real name" % hero_id)
+			_check(title != null and title.get_parent().find_child("LockedLabel", true, false) != null, "%s locked card displays LOCKED" % hero_id)
+	var before_locked_tap: Array = (home.get("_selected_unit_ids") as Array).duplicate()
+	home.call("_on_tile_tapped", "avalanche")
+	_check(home.get("_selected_unit_ids") == before_locked_tap, "locked hero cards remain unselectable")
+	home.call("_on_tile_tapped", "combat")
+	home.call("_on_tile_tapped", "pulse")
+	_check((home.get("_selected_unit_ids") as Array).has("pulse"), "Pulse Tech is selectable on a fresh profile")
+
+	var op_order: Array = sm.get("OPERATION_CHAIN") as Array
+	_check(home.get("_operation_ids") == op_order, "all five operations render in canonical order")
+	for index in range(op_order.size()):
+		var op_id := str(op_order[index])
+		home.set("_operation_index", index)
+		home.set("_selected_operation_id", op_id)
+		home.call("_refresh_encounter")
+		if index == 0:
+			_check(not bool(home.get("_current_op_locked")), "Facility remains unlocked on a fresh profile")
+			continue
+		var op: OperationData = _data_manager().call("get_operation", op_id) as OperationData
+		var name_label: Label = home.get("_enc_name_label") as Label
+		var lock_label: Label = home.get("_enc_progress_label") as Label
+		var blurb_label: Label = home.get("_op_lore_label") as Label
+		var deploy: Button = home.get("_deploy_button") as Button
+		_check(bool(home.get("_current_op_locked")) and name_label.text == op.display_name.to_upper() and lock_label.text == "LOCKED", "%s remains visibly locked with its real name" % op_id)
+		_check(blurb_label.visible and blurb_label.text == op.blurb and deploy.disabled, "%s locked card retains its blurb and cannot deploy" % op_id)
+
+	_test_renamed_enemy_abilities()
+	_test_band_copy()
+	sm.set("_disk_enabled", original_disk_enabled)
+
+
+func _test_renamed_enemy_abilities() -> void:
+	var file := FileAccess.open("res://data/raw/enemies.data.json", FileAccess.READ)
+	var parsed: Dictionary = JSON.parse_string(file.get_as_text()) as Dictionary
+	file.close()
+	var abilities: Dictionary = parsed.get("enemyAbilities", {}) as Dictionary
+	var cases := [
+		{"enemy": "scrap", "band": "overload", "name": "Incendiary Charge", "mechanics": {"eff": "20 dmg, 3 burn", "dmg": 20, "burn": 3, "burnT": 1, "heal": 0, "rfe": 0, "shield": 0}},
+		{"enemy": "rust", "band": "crit", "name": "Voltage Drop", "mechanics": {"eff": "12 dmg, -2 roll", "dmg": 12, "burn": 0, "burnT": 0, "heal": 0, "rfe": 0, "shield": 0, "rfm": 2, "rfmT": 1}},
+		{"enemy": "rust", "band": "overload", "name": "Signal Crush", "mechanics": {"eff": "14 dmg, -3 roll", "dmg": 14, "burn": 0, "burnT": 0, "heal": 0, "rfe": 0, "shield": 0, "rfm": 3, "rfmT": 1}},
+	]
+	for case_entry in cases:
+		var source: Dictionary = (abilities.get(str(case_entry["enemy"]), {}) as Dictionary).get(str(case_entry["band"]), {}) as Dictionary
+		var mechanics: Dictionary = case_entry["mechanics"] as Dictionary
+		var mechanics_match := source.size() == mechanics.size() + 1
+		for key in mechanics:
+			mechanics_match = mechanics_match and source.has(key) and source[key] == mechanics[key]
+		_check(str(source.get("name", "")) == str(case_entry["name"]) and mechanics_match, "%s rename preserves byte-equivalent mechanics" % str(case_entry["name"]))
+
+
+func _test_band_copy() -> void:
+	var tutorial_file := FileAccess.open("res://scripts/ui/tutorial_controller.gd", FileAccess.READ)
+	var tutorial_text := tutorial_file.get_as_text()
+	tutorial_file.close()
+	var keywords_file := FileAccess.open("res://data/raw/keywords.data.json", FileAccess.READ)
+	var keywords_text := keywords_file.get_as_text()
+	keywords_file.close()
+	var truth_file := FileAccess.open("res://docs/TRUTH.md", FileAccess.READ)
+	var truth_text := truth_file.get_as_text()
+	truth_file.close()
+	_check(tutorial_text.contains("Higher is not always better.") and not tutorial_text.contains("higher rolls, stronger abilities"), "tutorial no longer claims higher rolls are universally stronger")
+	_check(keywords_text.contains("higher-numbered ability band") and keywords_text.contains("lower-numbered ability band") and not keywords_text.contains("stronger band") and not keywords_text.contains("weaker band"), "Roll Up and Roll Down glossary copy is band-neutral")
+	_check(not truth_text.contains("→ **pulse**") and not truth_text.contains("hive best_clear ≥ 6 → **pulse**"), "documentation no longer identifies Pulse as a locked ladder hero")
+
+
 func _test_sim_pin() -> void:
 	var dm := _data_manager()
 	var sm := _save_manager()

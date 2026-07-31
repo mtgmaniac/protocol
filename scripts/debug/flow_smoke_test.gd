@@ -392,6 +392,8 @@ func _select_home_squad(scene: Node) -> void:
 	if scene == null:
 		return
 	if scene.has_method("_toggle_unit_selection"):
+		for selected_id in (scene.get("_selected_unit_ids") as Array).duplicate():
+			scene.call("_toggle_unit_selection", str(selected_id))
 		for unit_id in DEFAULT_SQUAD:
 			scene.call("_toggle_unit_selection", unit_id)
 	if scene.has_method("_refresh_unit_thumbs"):

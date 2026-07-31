@@ -43,7 +43,7 @@
         "shield": 0
       },
       "overload": {
-        "name": "Detonator",
+        "name": "Incendiary Charge",
         "eff": "20 dmg, 3 burn",
         "dmg": 20,
         "burn": 3,
@@ -91,7 +91,7 @@
         "rfmT": 1
       },
       "crit": {
-        "name": "EMP Spike",
+        "name": "Voltage Drop",
         "eff": "12 dmg, -2 roll",
         "dmg": 12,
         "burn": 0,
@@ -103,7 +103,7 @@
         "rfmT": 1
       },
       "overload": {
-        "name": "Total Jam",
+        "name": "Signal Crush",
         "eff": "14 dmg, -3 roll",
         "dmg": 14,
         "burn": 0,

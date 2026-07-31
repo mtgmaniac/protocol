@@ -63,8 +63,8 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 
 | Kit | recharge (1–4) | strike (5–10) | surge (11–16) | crit (17–19) | overload (20) |
 |---|---|---|---|---|---|
-| scrap | ECM Shell — 8 shield | Stab — 7 dmg | Overcharge — 10 dmg, 1 burn | Overcharge+ — 15 dmg, 2 burn | Detonator — 20 dmg, 3 burn |
-| rust | ECM Hiss — 5 shield, +1 roll self | Sparking Cut — 6 dmg, -1 roll | Disrupt Pulse — 9 dmg, -1 roll | EMP Spike — 12 dmg, -2 roll | Total Jam — 14 dmg, -3 roll |
+| scrap | ECM Shell — 8 shield | Stab — 7 dmg | Overcharge — 10 dmg, 1 burn | Overcharge+ — 15 dmg, 2 burn | Incendiary Charge — 20 dmg, 3 burn |
+| rust | ECM Hiss — 5 shield, +1 roll self | Sparking Cut — 6 dmg, -1 roll | Disrupt Pulse — 9 dmg, -1 roll | Voltage Drop — 12 dmg, -2 roll | Signal Crush — 14 dmg, -3 roll |
 | signalSkimmer | ECM Ping — 5 shield, jam | Spike Bleed — 5 dmg, -1 roll | Sideband Scrap — 8 dmg, -1 roll, 2t | Nullburst — 11 dmg, jam | Whitenoise Collapse — 13 dmg, jam all |
 | patrol | Regroup — 6 shield | Assault — 15 dmg | Heavy Barrage — 18 dmg | Devastate — 21 dmg, -1 roll, 2t | Final Sweep — 23 dmg, -2 roll, 3t |
 | guard | Bulwark Link — 6 shield all allies | Suppressing Fire — 12 dmg, ally 6 shield | Cover Field — 11 dmg, ally 9 shield, +2 roll to allies | Barrier Burst — 15 dmg, ally 7 shield | Fortress Protocol — 18 dmg, ally 13 shield |

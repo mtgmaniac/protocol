@@ -310,7 +310,7 @@ The current raw data contains **38 enemy kits**, each with a five-band ability d
 
 ### Facility demo — definition of done
 
-- One polished Facility operation: 10 battles, Scrapmaster, all core Protocol actions, 3 starters, reward rows, consumables, one relic cache, and the tutorial.
+- One polished Facility operation: 10 battles, Scrapmaster, all core Protocol actions, 4 starters, reward rows, consumables, one relic cache, and the tutorial.
 - A first-time player can explain what Protocol is, why they spent it, and what killed them after one run.
 - Facility human completion target is set from observed novice/experienced cohorts; sim is used only as a relative guardrail.
 - No missing audio references, no flow soft-locks, no glyph/safe-area/component violations at supported phone sizes.

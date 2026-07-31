@@ -76,7 +76,7 @@ func _build_steps() -> Array:
 		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
 		# Invisible waiter: the coach hides while the dice roll and settle.
 		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band - higher rolls, stronger abilities. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields."},
+		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band, and each band triggers a different ability. Higher is not always better. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields."},
 		{"targets": ["hero_cards"], "text": "Long-press a card for the full breakdown - long-press works on nearly everything. Try it.", "advance": "inspected"},
 		# Cast order (Model A): first mention here as setup; the actionable
 		# teaching lives on the assign-the-rest beat (v2.5 consolidation).

@@ -305,7 +305,7 @@ See [heroes.md](../wiki/heroes.md). **All 120 live abilities pass the keyword bu
 - **Fix:** change the example to "(e.g. PYRO, ARC)". → [heroes](../wiki/heroes.md)
 
 ### A-038 — Evolution-screen help claims portraits aren't evolved yet {#a-038}
-- **Where:** `evolution_screen.gd:122` ("Portraits currently reuse the base unit art...") contradicted by `_get_path_portrait` (`:382-390`) and TRUTH §Assets (24 portraits installed). (heroes-03)
+- **Resolved:** evolution Help now states that each branch previews its unique portrait; `_get_path_portrait` (`evolution_screen.gd`) remains the runtime source. (heroes-03)
 - **Severity:** confusing.
 - **Fix:** delete the line or replace with "Each card previews the evolved unit's art." → [heroes](../wiki/heroes.md)
 

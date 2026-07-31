@@ -21,9 +21,9 @@
 | `stats.nat20s` | `0` | `record_nat20()` (`:410`) | lifetime natural 20s |
 | `stats.deaths` | `0` | `record_hero_death()` (`:415`) | lifetime squad deaths |
 | `unlocks.boss_relics` | `[]` | `unlock_boss_relic_for_op()` (`:426-434`) on first op win | boss relic ids available as Starting Directives |
-| `unlocks.heroes` | `["combat","engineer","medic"]` (`STARTING_HEROES`, `:23`) | `_award_hero` (`:294`) | owned hero ids (legacy ids frozen per INVARIANTS #11) |
+| `unlocks.heroes` | `["combat","engineer","medic","pulse"]` (`STARTING_HEROES`, `:23`) | `_award_hero` (`:294`) | owned hero ids (legacy ids frozen per INVARIANTS #11) |
 | `unlocks.operations` | `["facility"]` (`STARTING_OPERATIONS`, `:25`) | `_award_operation` (`:306`) | unlocked op ids |
-| `unlocks.hero_ladder_rung` | `0` | `_evaluate_run_end_unlocks` (`:262-265`) | rungs climbed (0–5) |
+| `unlocks.hero_ladder_rung` | `0` | `_evaluate_run_end_unlocks` (`:262-265`) | rungs climbed (0–4) |
 | `unlocks.heroes_new` | `[]` | `_award_hero`; cleared by `acknowledge_hero()` (`:361-366`) on first squad add (`home_screen.gd:679`) | drives the NEW badge |
 | `onboarding.primers_seen` | `[]` | `mark_primer_seen()` (`:190-197`), only after a primer displayed AND was dismissed (`keyword_primer.gd:236`) | one-shot keyword primer ids |
 | `settings` | `{}` | loaded wholesale (`:124-125`) | reserved (audio etc.) |
@@ -37,11 +37,10 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 
 | Rung | Hero | Condition | UI hint (`HERO_UNLOCK_HINT`, `:37-43`) |
 |---|---|---|---|
-| 1 | `engineer` | facility best_clear ≥ 6 OR runs_started ≥ 3 (pity; real runs only per #13) | REACH BATTLE 6 |
+| 1 | `avalanche` (Avalanche Suit) | facility best_clear ≥ 6 OR runs_started ≥ 3 (pity; real runs only per #13) | REACH BATTLE 6 |
 | 2 | `shield` (Spike Guard) | facility won | CLEAR FACILITY SWEEP |
-| 3 | `pulse` | hive best_clear ≥ 6 | REACH BATTLE 6 IN THE HIVE |
-| 4 | `ghost` | hive won | CLEAR THE HIVE |
-| 5 | `breaker` | veil best_clear ≥ 6 | REACH BATTLE 6 IN THE VEIL |
+| 3 | `ghost` | hive won | CLEAR THE HIVE |
+| 4 | `breaker` | veil best_clear ≥ 6 | REACH BATTLE 6 IN THE VEIL |
 
   NOTE: the hint API (`hero_unlock_hint` / `operation_unlock_hint`, `:348-357`) has **zero callers** — locked heroes/ops deliberately render `[ LOCKED ]` with no hint (`home_screen.gd:599-613, 724-727`; TRUTH §Save system). Dead code, finding F-meta-06.
 
@@ -50,7 +49,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 
 ### Grandfather clauses (`_merge_loaded`, `SaveManager.gd:103-144`)
 
-1. **Unlock schema:** a loaded save WITHOUT `unlocks.heroes` that shows play (runs_started > 0 or tutorial_done) gets everything — all heroes, full op chain, ladder maxed (`:134-139`). No current player loses access.
+1. **Unlock schema:** a loaded save WITHOUT `unlocks.heroes` that shows play (runs_started > 0 or tutorial_done) gets everything — all heroes, full op chain, ladder maxed (`:134-139`). No current player loses access. Every loaded profile also gains Pulse Tech; its rung is recomputed from its actual owned heroes under the four-rung ladder, never copied from the old numeric meaning.
 2. **Primers:** a played profile WITHOUT an `onboarding` block starts with every CURRENT primer id marked seen (`:143-144`); ids are read straight from `data/raw/primers.data.json` (`_all_primer_ids`, `:171-181`) to avoid a cross-autoload init dependency on DataManager.
 3. **Tutorial runs_started:** profiles that banked tutorial runs before #13 keep the count — no retroactive adjustment (ruling text in DECISIONS_RESOLVED #13).
 
@@ -62,7 +61,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 
 ### Consumer surfaces
 
-- `home_screen.gd`: locked ops browsable but blacked out, blurb blank, DEPLOY disabled (`:381-386, 787-808`); locked heroes black silhouettes, not selectable, no inspect (`:604-613, 646-648, 656-661`); NEW badge until first squad add.
+- `home_screen.gd`: all five ops stay browsable; locked ops show their own dark boss art, real name, safe blurb, and `LOCKED`, with DEPLOY disabled. All eight hero cards stay in the roster; locked cards use each hero's own dark silhouette, real name, and `LOCKED`, and cannot be selected or inspected. NEW badge remains until first squad add.
 - `run_end_screen.gd`: SERVICE RECORD section renders lifetime stats (`_service_record_text`, `:55-67`); UNLOCKED panel from `check_new_unlocks`.
 - `keyword_primer.gd`: `is_primer_seen` gates queuing (`:170`); max one primer/turn; suppressed in tutorial/headless/auto battle; failure paths never mark seen.
 
@@ -71,7 +70,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 - One rung per run end paces the roster reveal like the evolution stop paces power (comment at `SaveManager.gd:260-261`).
 - Headless full-unlock keeps sim/audit coverage total without polluting a developer's real save (file header, `:4-5`).
 - Merge-onto-defaults means schema growth never needs a migration table — absent keys heal, present keys survive.
-- Locked content shows no hints by design ("part of the surprise", `home_screen.gd:601-602`); the hint constants predate that call. RATIONALE for keeping them: unconfirmed.
+- Locked content exposes identity, not progression details: hero cards show their real names and operation cards retain their compact blurbs, but neither exposes unlock conditions, kits, bosses, rewards, or detailed mechanics. The unused hint constants remain outside the player path.
 
 ## What it replaced
 

@@ -24,7 +24,7 @@ const BOSS_RELIC_BY_OP := {
 
 # --- Progression / unlocks ---
 # Heroes the profile owns from the very first launch.
-const STARTING_HEROES := ["combat", "engineer", "medic"]
+const STARTING_HEROES := ["combat", "engineer", "medic", "pulse"]
 # Operations available from the first launch (the rest unlock down the chain).
 const STARTING_OPERATIONS := ["facility"]
 # Every hero id in the game (used by the grandfather clause + the dev unlock-all).
@@ -34,8 +34,8 @@ const ALL_HEROES := ["combat", "avalanche", "medic", "engineer", "shield", "puls
 const OPERATION_CHAIN := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
 # Hero ladder: ordered rungs, at most ONE awarded per run end. HERO_LADDER[i] is the
 # hero granted for rung (i + 1); its unlock condition lives in _hero_rung_satisfied().
-const HERO_LADDER := ["avalanche", "shield", "pulse", "ghost", "breaker"]
-const MAX_HERO_LADDER_RUNG := 5
+const HERO_LADDER := ["avalanche", "shield", "ghost", "breaker"]
+const MAX_HERO_LADDER_RUNG := 4
 # One-line unlock hints (all-caps, UI-facing), keyed by hero id and tied to each
 # ladder rung's condition.
 var data: Dictionary = {}
@@ -131,6 +131,10 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	# New unlock keys heal to their defaults when absent (older saves).
 	var had_new_schema: bool = loaded_unlocks.has("heroes")
 	data["unlocks"]["heroes"] = _string_array(loaded_unlocks.get("heroes", STARTING_HEROES))
+	# Pulse Tech joined the starting roster after profiles already existed. Add the
+	# starter without removing or reordering anything the player already owns.
+	if not (data["unlocks"]["heroes"] as Array).has("pulse"):
+		(data["unlocks"]["heroes"] as Array).append("pulse")
 	data["unlocks"]["operations"] = _string_array(loaded_unlocks.get("operations", STARTING_OPERATIONS))
 	data["unlocks"]["hero_ladder_rung"] = int(loaded_unlocks.get("hero_ladder_rung", 0))
 	data["unlocks"]["heroes_new"] = _string_array(loaded_unlocks.get("heroes_new", []))
@@ -168,6 +172,10 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	var saved_onboarding: Dictionary = loaded.get("onboarding", {}) as Dictionary
 	if not saved_onboarding.has("operation_origins_seen"):
 		data["onboarding"]["operation_origins_seen"] = (data["unlocks"].get("operations", []) as Array).duplicate()
+	# The old rung 3 meant Pulse. Rungs now mean the ordered heroes above, so a
+	# stored number cannot be carried forward safely. Derive it from actual owned
+	# ladder heroes instead; ownership itself is always preserved.
+	data["unlocks"]["hero_ladder_rung"] = _normalized_hero_ladder_rung(data["unlocks"]["heroes"] as Array)
 
 
 func _string_array(value: Variant) -> Array:
@@ -176,6 +184,17 @@ func _string_array(value: Variant) -> Array:
 		for entry in value:
 			out.append(str(entry))
 	return out
+
+
+# Counts only the contiguous prefix: a malformed/dev-edited profile that owns a
+# later ladder hero still receives any earlier missing rung in the proper order.
+func _normalized_hero_ladder_rung(heroes: Array) -> int:
+	var rung := 0
+	for hero_id in HERO_LADDER:
+		if not heroes.has(hero_id):
+			break
+		rung += 1
+	return rung
 
 
 func save() -> void:
@@ -413,11 +432,9 @@ func _hero_rung_satisfied(rung_index: int) -> bool:
 			return int(best_by_op.get("facility", 0)) >= 6 or int(stats.get("runs_started", 0)) >= 3
 		1:  # shield — beat Facility
 			return wins.has("facility")
-		2:  # pulse — reach deep into Hive
-			return int(best_by_op.get("hive", 0)) >= 6
-		3:  # ghost — beat Hive
+		2:  # ghost — beat Hive
 			return wins.has("hive")
-		4:  # breaker — reach deep into Veil
+		3:  # breaker — reach deep into Veil
 			return int(best_by_op.get("veil", 0)) >= 6
 	return false
 
