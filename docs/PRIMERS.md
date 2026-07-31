@@ -1,6 +1,6 @@
 # PRIMERS — authoring guide (keyword primer system)
 
-> Current ruling (Tutorial V3.0): the mandatory tutorial suppresses every
+> Current ruling (Tutorial V3.1): the mandatory tutorial suppresses every
 > primer and never marks a primer seen. The Advanced Protocol primer is the
 > one-time `protocol_action_affordable/reroll` lesson: at the first legal,
 > normal post-roll decision with 2+ Protocol and an unassigned hero die, it

@@ -361,14 +361,16 @@ compression, so no etc2 artifacts exist and none are needed.
 
 ## UI & feedback
 
-> **Tutorial V3.0 ruling (current):** Mandatory onboarding is 15 visible
+> **Tutorial V3.1 ruling (current):** Mandatory onboarding is 15 visible
 > coachmark beats plus two hidden dice-settle waiters (17 internal states).
 > It rigs only the two rounds of inputs and uses the real 40-HP Scrap Drone:
-> Target Lock -> marked Overdrive 17 -> Neural Override 8 -> Stab 8 on Strike,
-> then Nudge 8->11 and Diagnostic Pulse -> Rail Strike -> Overdrive for the
-> kill before the round-two enemy action. All primers are suppressed and remain
-> unseen; only completion persists `tutorial_done`. This supersedes every older
-> V2/tutorial-showcase description in this historical section.
+> MARK -> 17-damage hit -> 8-damage hit -> 8 damage to Strike, then Nudge
+> 8->11 and a 3 heal + 3 shield -> 10-damage hit -> 11-damage hit for the kill
+> before the round-two enemy action. The real inspection popup must open and
+> close; input is allowlisted and every assignment validates its effect, target,
+> and cast order. All primers are suppressed and remain unseen; only completion
+> persists `tutorial_done`. This supersedes every older V2/tutorial-showcase
+> description in this historical section.
 
 > **Advanced Protocol primer (current):** first legal normal post-roll decision
 > with Protocol >=2 and an unassigned hero die, once per save; it highlights

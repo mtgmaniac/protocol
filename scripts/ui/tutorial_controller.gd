@@ -33,6 +33,7 @@ var _spot = null  # SpotlightLayer — the shared dim + ring + coachmark machine
 
 
 var _js_refresh_cb: JavaScriptObject = null
+var _inspection_opened: bool = false
 
 
 func start(scene: Node) -> void:
@@ -67,23 +68,23 @@ func _on_js_refresh(_args: Array) -> void:
 # actionable (the assign-the-rest beat).
 func _build_steps() -> Array:
 	return [
-		{"targets": ["enemy_cards", "center", "hero_cards"], "separate": true, "title": "WELCOME", "text": "Welcome to Overload Protocol. This is your squad, the dice tray, and the Scrap Drone."},
-		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
+		{"targets": ["enemy_cards", "center", "hero_area"], "separate": true, "title": "WELCOME", "text": "Your enemy is at the top, your squad is at the bottom, and every turn begins by rolling the dice in the center."},
+		{"targets": ["roll_button"], "text": "Tap ROLL to roll one die for every unit.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 1},
-		{"targets": ["die:combat", "ability:combat", "card:combat"], "separate": true, "text": "A die's band selects its ability. Higher is not always better. Long-press Strike Unit for the full breakdown.", "advance": "inspected", "inspect_hero": "combat"},
-		{"targets": ["enemy_card", "enemy_pip", "enemy_die"], "separate": true, "text": "The Scrap Drone rolled 6: Stab will deal 8 to Strike Unit."},
-		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "Assign Target Lock to the Scrap Drone first. MARK makes the next hit 50% stronger.", "advance": "assigned", "hero": "combat"},
-		{"targets": ["die:engineer", "ability:engineer"], "separate": true, "text": "Assign Overdrive next. Its 11 damage becomes 17 against the marked drone.", "advance": "assigned", "hero": "engineer"},
-		{"targets": ["die:medic", "ability:medic"], "separate": true, "text": "Assign Neural Override last. All three dice are now ordered.", "advance": "assigned", "hero": "medic"},
-		{"targets": ["roll_button", "hero_cards"], "separate": true, "text": "END TURN resolves your cast order, then the enemy.", "advance": "turn_resolved", "round": 1},
-		{"targets": ["battle_log", "combat", "roll_button"], "separate": true, "text": "Mark raised Overdrive to 17. Neural Override dealt 8. The drone has 15 HP; Strike took 8; you gained 1 Protocol. Roll again.", "advance": "roll_pressed"},
+		{"targets": ["card:combat", "die:combat", "ability:combat", "die:engineer", "ability:engineer", "die:medic", "ability:medic"], "separate": true, "text": "Each roll selects a different ability band. Higher is not always better. Long-press Strike Unit to view every ability on its die.", "advance": "inspected", "inspect_hero": "combat"},
+		{"targets": ["enemy_card", "enemy_pip", "enemy_die", "card:combat"], "separate": true, "text": "The drone plans to deal 8 damage to Strike Unit. Enemy rolls, actions, and targets are shown before you commit your turn."},
+		{"targets": ["card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Strike Unit rolled a setup ability. It deals no damage, but puts MARK on the drone so the next hit deals 50% more. Tap Strike Unit's die, then tap the drone.", "advance": "assigned", "hero": "combat", "order": 1, "effect": "mark"},
+		{"targets": ["order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Now select Field Engineer's 11-damage attack and target the marked drone. Because it acts second, MARK will increase the hit to 17.", "advance": "assigned", "hero": "engineer", "order": 2, "effect": "11 dmg"},
+		{"targets": ["order:combat", "order:engineer", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "Select Splice Medic's 8-damage attack and target the drone.", "advance": "assigned", "hero": "medic", "order": 3, "effect": "8 dmg"},
+		{"targets": ["order:combat", "order:engineer", "order:medic", "roll_button"], "separate": true, "text": "Your squad acts in the numbered order, then the enemy acts. Tap END TURN and watch the setup ability amplify the next hit.", "advance": "turn_resolved", "round": 1},
+		{"targets": ["enemy_card", "card:combat", "protocol_value", "roll_button", "battle_log"], "separate": true, "text": "The setup ability increased the next hit, the drone struck back, and you banked 1 Protocol. Tap ROLL for the next turn.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 2},
-		{"targets": ["nudge"], "text": "Use Nudge, then select Strike Unit's die. It costs 1 Protocol and changes 8 to 11.", "advance": "nudged", "hero": "combat", "prev_roll": 8, "new_roll": 11},
-		{"targets": ["die:medic", "ability:medic"], "separate": true, "text": "Rail Strike is ready. First assign Diagnostic Pulse to Strike Unit for 3 heal and 3 shield.", "advance": "assigned", "hero": "medic", "target_hero": "combat"},
-		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "Assign Rail Strike to the drone second.", "advance": "assigned", "hero": "combat"},
-		{"targets": ["die:engineer", "ability:engineer"], "separate": true, "text": "Assign Overdrive to the drone third.", "advance": "assigned", "hero": "engineer"},
-		{"targets": ["roll_button", "hero_cards"], "separate": true, "text": "END TURN. Your order heals Strike, then Rail Strike and Overdrive finish the drone.", "advance": "won", "round": 2},
-		{"targets": [], "fullscreen": true, "coach_center": true, "title": "DRILL COMPLETE", "text": "You rolled, read enemy intent, chose targets and cast order, used Mark and Nudge, and won. The Help menu keeps the full reference whenever you need it.", "advance": "tap_finish"},
+		{"targets": ["protocol_value", "nudge", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Nudge costs 1 Protocol. It increases or decreases one unassigned die by 3. Tap NUDGE, then increase Strike Unit's roll from 8 to 11.", "armed_text": "Strike Unit rolled 8. Tap its die to increase the roll by 3, moving it to 11.", "advance": "nudged", "hero": "combat", "prev_roll": 8, "new_roll": 11, "effect": "10 dmg"},
+		{"targets": ["card:combat", "die:combat", "ability:combat", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "Increasing the roll by 3 moved it into a different ability band, changing 6 damage into 10. Now select Splice Medic's heal and target the injured Strike Unit.", "advance": "assigned", "hero": "medic", "target_hero": "combat", "order": 1, "effect": "3 heal"},
+		{"targets": ["order:medic", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Select Strike Unit's 10-damage attack and target the drone.", "advance": "assigned", "hero": "combat", "order": 2, "effect": "10 dmg"},
+		{"targets": ["order:medic", "order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Select Field Engineer's 11-damage attack and target the drone.", "advance": "assigned", "hero": "engineer", "order": 3, "effect": "11 dmg"},
+		{"targets": ["order:medic", "order:combat", "order:engineer", "enemy_card", "roll_button"], "separate": true, "text": "The heal resolves first. Your two attacks then deal 21 total damage. Tap END TURN.", "advance": "won", "round": 2},
+		{"targets": [], "fullscreen": true, "coach_center": true, "title": "DRILL COMPLETE", "text": "Roll, read the board, choose your targets and firing order, and spend Protocol when the dice miss what you need. New mechanics will explain themselves when they first appear, and Help keeps the full reference.", "advance": "tap_finish"},
 	]
 
 
@@ -110,6 +111,8 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	if event == &"targeting_started" and mode == "assigned" \
 			and _current().has("hero") and str(payload.get("hero", "")) == str(_current()["hero"]):
 		_retarget_spotlight_to_legal()
+	if event == &"phase" and mode == "nudged" and str(payload.get("phase", "")) == "nudge_pick":
+		_show_armed_nudge()
 	if mode == "tap" or mode == "tap_finish":
 		return
 	if String(event) != mode:
@@ -129,7 +132,46 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 			return
 	if _current().has("target_hero") and str(payload.get("target_unit", "")) != str(_current()["target_hero"]):
 		return
+	if _current().has("order") and int(payload.get("cast_order_position", -1)) != int(_current()["order"]):
+		return
+	if _current().has("effect") and str(payload.get("visible_effect", "")).to_lower().find(str(_current()["effect"]).to_lower()) < 0:
+		return
+	if _current().has("round") and event != &"rolled" and int(payload.get("round", -1)) != int(_current()["round"]):
+		return
+	if event == &"inspected":
+		if not bool(payload.get("opened", false)):
+			return
+		_inspection_opened = true
+		call_deferred("_advance_after_inspection_closes")
+		return
+	if event == &"turn_resolved" and not _valid_resolution_payload(payload):
+		return
+	if event == &"won" and not _valid_resolution_payload(payload):
+		return
 	_next()
+
+
+func _advance_after_inspection_closes() -> void:
+	while _scene != null and _scene.has_method("is_tutorial_inspection_open") and bool(_scene.call("is_tutorial_inspection_open")):
+		await get_tree().process_frame
+	if _inspection_opened and _advance_mode() == "inspected":
+		_inspection_opened = false
+		_next()
+
+
+func _valid_resolution_payload(payload: Dictionary) -> bool:
+	var round: int = int(payload.get("round", -1))
+	if round == 1:
+		var hero_states: Array = payload.get("heroes", []) as Array
+		for hero_variant in hero_states:
+			var hero: Dictionary = hero_variant as Dictionary
+			var unit: Object = hero.get("unit", null) as Object
+			if unit != null and str(unit.get("id")) == "combat":
+				return int(payload.get("enemy_hp", -1)) == 15 and int(hero.get("current_hp", -1)) == 47 and int(payload.get("protocol", -1)) == 1
+		return false
+	if round == 2:
+		return bool(payload.get("enemy_defeated", false)) and int(payload.get("protocol", -1)) == 0 and not bool(payload.get("enemy_second_round_action", true))
+	return false
 
 
 # Input-level tutorial fence. Spotlight holes guide the player; this gate is the
@@ -172,7 +214,10 @@ func _retarget_spotlight_to_legal() -> void:
 	var ids: Variant = _scene.get("legal_target_ids")
 	if not (ids is Array) or (ids as Array).is_empty():
 		return
-	var holes: Array = []
+	# Keep the source action's card/die/readout/order visible while appending
+	# the legal target holes. Targeting should never hide the information the
+	# player is choosing from.
+	var holes: Array = _compute_holes(_current())
 	for id_variant in ids:
 		var target_id: String = str(id_variant)
 		if side == "enemy" or side == "any":
@@ -190,6 +235,15 @@ func _retarget_spotlight_to_legal() -> void:
 		holes = [_fullscreen_hole()]
 	_spot.set_holes(holes)
 	_publish_debug_state(_current(), holes, "retarget")
+
+
+func _show_armed_nudge() -> void:
+	var step: Dictionary = _current()
+	if _spot == null or _advance_mode() != "nudged" or not step.has("armed_text"):
+		return
+	var holes: Array = _compute_holes(step)
+	_spot.spotlight(holes, str(step["armed_text"]), SpotlightLayerScript.CoachAnchor.AUTO, {"interactive": false})
+	_publish_debug_state(step, holes, "nudge_armed")
 
 
 # Taps only arrive from the SpotlightLayer when the step is interactive
@@ -274,6 +328,9 @@ func _layout_step() -> void:
 			holes = _compute_holes(step)
 			if not holes.is_empty():
 				break
+	if holes.is_empty() and not (step.get("targets", []) as Array).is_empty():
+		push_error("[Tutorial] Could not resolve spotlight geometry for step %d; revealing board." % (_step + 1))
+		holes = [_fullscreen_hole()]
 	# Whole-screen steps pin the coach to the bottom so it never covers the
 	# centre Roll/End-Turn button; coach_center steps read mid-screen instead
 	# (Kev 2026-07-10: bottom text was hard to read on assign-dice beats).
@@ -391,6 +448,8 @@ func _targets_rect(keys: Array) -> Rect2:
 
 
 func _target_rect(key: String) -> Rect2:
+	if key.begins_with("order:"):
+		return _hero_order_badge_rect(key.substr(6))
 	# "ability:<unit_id>" spotlights just that hero's ability-pip readout (Batch 5:
 	# highlight the ability, not the whole unit).
 	if key.begins_with("ability:"):
@@ -508,6 +567,24 @@ func _hero_card_rect_for_unit(unit_id: String) -> Rect2:
 				var card_rect: Rect2 = _node_rect(view.get("card", null))
 				return card_rect if card_rect.size != Vector2.ZERO else _hero_unit_rect(unit_id)
 	return _hero_unit_rect(unit_id)
+
+
+func _hero_order_badge_rect(unit_id: String) -> Rect2:
+	var views: Variant = _scene.get("hero_card_views")
+	if views is Array:
+		for view_variant in views:
+			var view: Dictionary = view_variant
+			var state: Dictionary = view.get("state", {})
+			var unit: Object = state.get("unit", null) as Object
+			if unit != null and str(unit.id) == unit_id:
+				var card: Node = view.get("card", null) as Node
+				if card != null:
+					var badge: Node = card.find_child("CastOrderBadge", true, false)
+					var badge_rect: Rect2 = _node_rect(badge)
+					if badge_rect.size != Vector2.ZERO:
+						return badge_rect
+				return _hero_card_rect_for_unit(unit_id)
+	return Rect2()
 
 
 # Hero card rect by STATE id (stage-2 retarget of friendly picks).

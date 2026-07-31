@@ -375,8 +375,19 @@ func _try_show(candidate: Dictionary) -> bool:
 	var resolver: Variant = _target_resolvers.get(target_key)
 	if resolver == null:
 		return false
-	var rect: Rect2 = (resolver as Callable).call(context)
-	if rect.size == Vector2.ZERO:
+	var resolved: Variant = (resolver as Callable).call(context)
+	var rects: Array = []
+	if resolved is Rect2:
+		var rect: Rect2 = resolved
+		if rect.size != Vector2.ZERO:
+			rects.append(rect.grow(PAD))
+	elif resolved is Array:
+		for resolved_rect_variant in resolved:
+			if resolved_rect_variant is Rect2:
+				var resolved_rect: Rect2 = resolved_rect_variant
+				if resolved_rect.size != Vector2.ZERO:
+					rects.append(resolved_rect.grow(PAD))
+	if rects.is_empty():
 		return false
 	var text: String = str(entry.get("text", ""))
 	if text == "":
@@ -390,7 +401,7 @@ func _try_show(candidate: Dictionary) -> bool:
 	if glyph_key == "":
 		glyph_key = str(context.get("param", ""))
 	AudioManager.play_select()
-	await _spot.spotlight([rect.grow(PAD)], text, SpotlightLayerScript.CoachAnchor.AUTO, {
+	await _spot.spotlight(rects, text, SpotlightLayerScript.CoachAnchor.AUTO, {
 		"hint": "Tap to continue >",
 		"interactive": true,
 		"glyph": PixelUI.pip_texture_for_key(glyph_key),
@@ -573,17 +584,19 @@ func _resolve_footer_button_rect(context: Dictionary) -> Rect2:
 
 # Advanced Protocol anchors all three relevant surfaces without changing their
 # enabled state: Protocol pool, Reroll (2), and Set (4).
-func _resolve_protocol_actions_rect(_context: Dictionary) -> Rect2:
+func _resolve_protocol_actions_rect(_context: Dictionary) -> Array:
 	var protocol: Variant = _scene.get("_protocol")
-	var rect: Rect2 = _control_rect(_scene.get("protocol_value_label"))
+	var rects: Array = []
 	for node in [
+		_scene.get("protocol_bar"),
+		_scene.get("protocol_value_label"),
 		_scene.get("protocol_spend_button"),
 		protocol.get("set_button") if protocol != null else null,
 	]:
 		var part: Rect2 = _control_rect(node)
 		if part.size != Vector2.ZERO:
-			rect = part if rect.size == Vector2.ZERO else rect.merge(part)
-	return rect
+			rects.append(part)
+	return rects
 
 
 # The inspect popup's personality row — only resolvable while the popup is open

@@ -64,14 +64,14 @@ func _run_v3_path() -> void:
 		return
 	var steps: Array = controller.call("_build_steps")
 	if steps.size() != STEP_COUNT:
-		_fail("V3.0 must contain 17 internal states, got %d" % steps.size())
+		_fail("V3.1 must contain 17 internal states, got %d" % steps.size())
 		return
 	var visible: int = 0
 	for step_variant in steps:
 		if not bool((step_variant as Dictionary).get("hide_coach", false)):
 			visible += 1
 	if visible != 15:
-		_fail("V3.0 must contain exactly 15 visible beats, got %d" % visible)
+		_fail("V3.1 must contain exactly 15 visible beats, got %d" % visible)
 		return
 	controller.call("_next")
 	await _expect_step(controller, 1)
@@ -80,6 +80,11 @@ func _run_v3_path() -> void:
 	var combat_id: String = _state_id_for_unit(scene, "combat")
 	var combat_view: Dictionary = (scene.get("hero_card_views") as Array)[0]
 	scene.call("_on_unit_detail_requested", combat_view.get("card"))
+	await _expect_step(controller, 3)
+	if not bool(scene.call("is_tutorial_inspection_open")):
+		_fail("V3.1 inspection beat must open the real InspectPopup")
+		return
+	scene.call("_close_tutorial_inspection")
 	await _expect_step(controller, 4)
 	controller.call("_next")
 	await _expect_step(controller, 5)

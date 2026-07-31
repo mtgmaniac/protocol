@@ -445,10 +445,13 @@ func _apply_nudge(hero_id: String) -> void:
 		var nudged_unit: Object = hero_state.get("unit", null) as Object
 		var next_roll: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
 		var next_ability: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state.get("unit"), next_roll)
+		var previous_raw: Dictionary = previous_ability.get("raw", {}) as Dictionary
+		var next_raw: Dictionary = next_ability.get("raw", {}) as Dictionary
 		_scene._emit_tutorial("nudged", {
 			"hero": str(nudged_unit.get("id")) if nudged_unit != null else hero_id,
 			"prev_roll": previous_roll, "new_roll": next_roll, "direction": "+3",
 			"prev_ability": str(previous_ability.get("ability_name", "")), "new_ability": str(next_ability.get("ability_name", "")),
+			"previous_visible_effect": str(previous_raw.get("eff", "")), "visible_effect": str(next_raw.get("eff", "")),
 			"protocol_before": protocol_before, "protocol_after": _scene.protocol_points,
 		})
 
@@ -865,6 +868,8 @@ func _update_item_panel() -> void:
 
 func _on_item_button_pressed_menu() -> void:
 	if item_button == null:
+		return
+	if not _scene._tutorial_allows("item"):
 		return
 	# An armed roll-modifier pick is cancelled first so the item is usable in the
 	# restored resting phase (§1: Set → item box cancels Set, then opens the box).

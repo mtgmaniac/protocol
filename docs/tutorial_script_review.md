@@ -10,7 +10,34 @@ spotlights include the ability pip (beats 9/10/12/23), the nudge beat is hero-ga
 input-level wrong-die block (beat 20), order-teaching consolidated to the assign-the-rest
 beat (24), and copy edits on the first-run overlay and beats 13/14/23.
 
-## Rendering notes (apply to every beat)
+## V3.1 current script
+
+The mandatory tutorial is **15 visible coachmark beats plus two invisible
+dice-settle waiters** (17 internal states). It uses the real first-profile
+squad and real combat resolution; only the two rounds of dice and the enemy
+target are rigged. Off-script actions are rejected at the input boundary.
+
+| Round | Inputs and committed order | Required outcome |
+| --- | --- | --- |
+| 1 | Strike 3 MARK -> Engineer 12 -> Medic 12 | 40 -> 15 enemy HP; Strike takes 8; Protocol 1 |
+| 2 | Strike 8 NUDGE +3 -> Medic 3 -> Strike 11 -> Engineer 12 | Medic heals/shields Strike; 21 damage kills before the enemy acts |
+
+The V3.1 visible script is: welcome; Roll; inspect Strike (the real popup must
+open and close); read the enemy plan; assign MARK, Engineer, Medic; end turn;
+read the result; Roll; Nudge; assign Medic, Strike, Engineer; end turn; drill
+complete. Assignment spotlights always retain the complete source cluster
+(card, die, ability readout, and assigned order badge) while adding the legal
+target holes. The tutorial suppresses all primers without marking them seen.
+
+The current copy intentionally names only the actor, shown effect, and target;
+it does not depend on ability-display names. Resolution advances only when the
+real events prove the stated round-one and round-two outcomes. Everything below
+is archived V2.5 review, not implementation guidance; this section and
+`docs/TRUTH.md` win.
+
+---
+
+## Historical V2.5 rendering notes (apply to every beat)
 
 - Coachmark text renders in a plain `Label` — **no BBCode, no substitutions**; every copy
   string below is a literal and renders exactly as written (hyphens are plain `-`).

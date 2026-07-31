@@ -673,7 +673,18 @@ func _on_unit_detail_requested(card: Control) -> void:
 		compact_card.get_global_rect(),
 		compact_card.get_instance_id(),
 	)
-	_emit_tutorial("inspected", {"side": compact_card.side, "inspect_hero": str(compact_card.unit_data.id), "entity": "hero", "unit_id": str(compact_card.unit_data.id), "source": "card"})
+	_emit_tutorial("inspected", {"side": compact_card.side, "inspect_hero": str(compact_card.unit_data.id), "entity": "hero", "unit_id": str(compact_card.unit_data.id), "source_control": "card", "opened": InspectPopup.is_open(), "closed": false})
+
+
+func is_tutorial_inspection_open() -> bool:
+	return InspectPopup.is_open()
+
+
+# Test seam and tutorial close action: the controller advances only after the
+# real inspection popup has opened and then been dismissed.
+func _close_tutorial_inspection() -> void:
+	if InspectPopup.is_open():
+		InspectPopup.dismiss()
 
 
 # The live battle-state dict backing a unit card (empty if not found).
@@ -1402,7 +1413,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		_persist_protocol_carryover()
 		_capture_battle_victory_for_xp()
 		if _game_state().tutorial_mode:
-			_emit_tutorial("won", {"round": _tutorial_turn, "enemy_defeated": true, "protocol": protocol_points, "heroes": combat_manager.get_hero_states().duplicate(true)})
+			_emit_tutorial("won", {"round": _tutorial_turn, "enemy_defeated": true, "protocol": protocol_points, "heroes": combat_manager.get_hero_states().duplicate(true), "enemy_second_round_action": false})
 			return
 		if _auto_battle_running:
 			_debug_advance_after_auto_battle_victory()
@@ -1447,7 +1458,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 			if tutorial_unit != null and str(tutorial_unit.get("id")) == "combat":
 				tutorial_strike = tutorial_hero
 				break
-		_emit_tutorial("turn_resolved", {"round": _tutorial_turn, "protocol": protocol_points, "enemy_hp": int(tutorial_enemy.get("current_hp", -1)), "strike_hp": int(tutorial_strike.get("current_hp", -1))})
+		_emit_tutorial("turn_resolved", {"round": _tutorial_turn, "protocol": protocol_points, "enemy_hp": int(tutorial_enemy.get("current_hp", -1)), "strike_hp": int(tutorial_strike.get("current_hp", -1)), "heroes": combat_manager.get_hero_states().duplicate(true), "events": result.get("events", []).duplicate(true)})
 
 
 # --- Protocol / Reroll / Nudge ---
@@ -1536,7 +1547,7 @@ func _finish_battle_victory() -> void:
 	_persist_protocol_carryover()
 	_capture_battle_victory_for_xp()
 	if _game_state().tutorial_mode:
-		_emit_tutorial("won")
+		_emit_tutorial("won", {"round": _tutorial_turn, "enemy_defeated": true, "protocol": protocol_points, "heroes": combat_manager.get_hero_states().duplicate(true), "enemy_second_round_action": false})
 		return
 	if _auto_battle_running:
 		_debug_advance_after_auto_battle_victory()
@@ -2579,8 +2590,10 @@ func _select_targeting_hero(hero_id: String) -> void:
 	# Targeting has begun (a die/hero is picked, awaiting its target) — the tutorial opens up to
 	# the whole screen here so the enemy is an easy tap.
 	var targeting_unit: Object = hero_state.get("unit") as Object
+	var targeting_raw: Dictionary = ability_entry.get("raw", {}) as Dictionary
 	_emit_tutorial("targeting_started", {
 		"hero": str(targeting_unit.get("id")) if targeting_unit != null else hero_id,
+		"roll": eff_roll, "ability_id": str(ability_entry.get("ability_name", "")), "visible_effect": str(targeting_raw.get("eff", "")),
 		"legal_side": legal_target_side,
 		"legal_ids": legal_target_ids.duplicate(),
 	})
@@ -2647,12 +2660,16 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	legal_target_side = ""
 	_card_view.refresh_all_cards()
 	var assigned_unit: Object = hero_state.get("unit") as Object
+	var assigned_roll: int = _get_effective_roll_for_state(hero_state, str(hero_state["id"]))
+	var assigned_ability: Dictionary = dice_manager.get_ability_for_roll(hero_state.get("unit"), assigned_roll)
+	var assigned_raw: Dictionary = assigned_ability.get("raw", {}) as Dictionary
 	_emit_tutorial("assigned", {
 		"remaining": pending_manual_target_ids.size(),
 		"remaining_unassigned_ids": pending_manual_target_ids.duplicate(),
 		"selected_state_id": target_id,
 		"target_unit": str((target_state.get("unit") as Object).get("id")) if target_state.get("unit") is Object else target_id,
 		"cast_order_position": hero_cast_rank(str(hero_state["id"])),
+		"roll": assigned_roll, "ability_id": str(assigned_ability.get("ability_name", "")), "visible_effect": str(assigned_raw.get("eff", "")),
 		# Unit id (not state id) — the tutorial's per-hero `hero` gate matches
 		# against squad unit ids ("combat"/"medic"/"engineer").
 		"hero": str(assigned_unit.get("id")) if assigned_unit != null else "",
