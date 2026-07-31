@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-demo",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8123", "--directory", "build/web"],
+      "port": 8123
+    },
+    {
+      "name": "feedback-harness",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8124", "--directory", "C:/Users/Kev/AppData/Local/Temp/claude/C--Users-Kev-Documents-protocol/6db5c370-9e2b-47e8-8944-0c4a589d8808/scratchpad"],
+      "port": 8124
+    }
+  ]
+}

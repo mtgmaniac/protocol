@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>$GODOT_PROJECT_NAME</title>
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: white;
+	background-color: black;
+	overflow: hidden;
+	touch-action: none;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status, #status-splash, #status-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+#status, #status-splash {
+	top: 0;
+	bottom: 0;
+}
+
+#status {
+	background-color: $GODOT_SPLASH_COLOR;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+}
+
+#status-splash {
+	max-height: 100%;
+	max-width: 100%;
+	margin: auto;
+}
+
+#status-splash.show-image--false {
+	display: none;
+}
+
+#status-splash.fullsize--true {
+	height: 100%;
+	width: 100%;
+	object-fit: contain;
+}
+
+#status-splash.use-filter--false {
+	image-rendering: pixelated;
+}
+
+#status-progress, #status-notice {
+	display: none;
+}
+
+#status-progress {
+	bottom: 10%;
+	width: 50%;
+	margin: 0 auto;
+}
+
+#status-notice {
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	line-height: 1.3;
+	margin: 0 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}
+		</style>
+		<script>
+// ============================================================================
+// Web-audio instrumentation + iOS unlock (Overload Protocol custom shell).
+//
+// Two jobs, both of which must run BEFORE the engine script so the
+// AudioContext constructor is wrapped before Godot creates its context:
+//
+// 1. FIX (always on): first-gesture audio unlock. Godot only calls
+//    ctx.resume() from its canvas input callbacks; iOS Safari — especially
+//    inside the itch.io iframe — additionally wants a silent buffer *played*
+//    inside a genuine gesture (touchend) on our document, and can park the
+//    context in the non-standard "interrupted" state after tab switches,
+//    which Godot never re-resumes. We resume + play a 1-frame silent buffer
+//    on the first gesture, and re-resume on visibility/focus changes.
+//    Also: iOS 17+ AudioSession — ask for "playback" so Web Audio routes as
+//    media instead of ambient.
+//
+// 2. DIAGNOSTIC overlay: armed by ?audiodebug=1 / #audiodebug=1 (LAN) or a
+//    TRIPLE-TAP in the top-left 110x110 CSS px corner (itch strips query
+//    params). Live readout: context state, hardware vs requested sample
+//    rate, currentTime advance (a "running" context that is secretly dead
+//    has a frozen clock), worklet module load results, resume-call ledger
+//    with user-activation flags, gesture counts, destination RMS/peak
+//    meter, and every captured audio error.
+// ============================================================================
+(function () {
+	'use strict';
+	var t0 = performance.now();
+	function now() { return ((performance.now() - t0) / 1000).toFixed(1); }
+
+	var AD = window.__audioDebug = {
+		enabled: false,
+		log: [],
+		errors: [],
+		contexts: [],
+		requestedRate: null,   // sampleRate Godot asked for (null = browser default)
+		worklets: [],          // {path, ok:null|true|false, err}
+		resumeCalls: 0, resumeOK: 0, resumeFail: 0, lastResumeUA: '-',
+		suspendCalls: 0,
+		gestures: {},          // event type -> count
+		lastGesture: '-',
+		unlocked: false, unlockVia: '-',
+		taps: 0,               // node->destination connections seen
+		rms: 0, peak: 0,
+		stateHistory: [],
+	};
+
+	function log(msg) {
+		AD.log.push('[' + now() + '] ' + msg);
+		if (AD.log.length > 60) { AD.log.shift(); }
+		try { console.log('[audiodebug] ' + msg); } catch (e) { /* no-op */ }
+	}
+	function err(msg) {
+		AD.errors.push('[' + now() + '] ' + msg);
+		if (AD.errors.length > 20) { AD.errors.shift(); }
+		log('ERROR ' + msg);
+	}
+
+	window.addEventListener('error', function (e) {
+		var m = String(e.message || '');
+		if (/audio|worklet|AudioContext/i.test(m)) { err('window: ' + m); }
+	});
+	window.addEventListener('unhandledrejection', function (e) {
+		var r = e.reason;
+		var m = (r && r.message) ? r.message : String(r);
+		if (/audio|worklet|AudioContext/i.test(m)) { err('rejection: ' + m); }
+	});
+
+	// ---- AudioSession (iOS 17.4+): route as media, not ambient ------------
+	try {
+		if (navigator.audioSession) {
+			log('audioSession present, type=' + navigator.audioSession.type);
+			if (navigator.audioSession.type === 'auto') {
+				navigator.audioSession.type = 'playback';
+				log('audioSession.type -> playback');
+			}
+		}
+	} catch (e) { err('audioSession: ' + e.message); }
+
+	// ---- AudioContext constructor wrap -------------------------------------
+	var RealAC = window.AudioContext || window.webkitAudioContext;
+	var origConnect = window.AudioNode ? AudioNode.prototype.connect : null;
+
+	if (RealAC) {
+		var HookedAC = function (opts) {
+			AD.requestedRate = (opts && opts.sampleRate) ? opts.sampleRate : null;
+			var ctx;
+			try {
+				ctx = opts ? new RealAC(opts) : new RealAC();
+			} catch (e) {
+				err('ctx ctor failed (requested rate ' + AD.requestedRate + '): ' + e.message);
+				throw e;
+			}
+			AD.contexts.push(ctx);
+			log('ctx #' + AD.contexts.length + ' created: rate=' + ctx.sampleRate
+				+ ' requested=' + (AD.requestedRate || 'browser-default')
+				+ ' state=' + ctx.state);
+			AD.stateHistory.push(ctx.state);
+
+			// Parallel statechange listener — does not disturb the
+			// ctx.onstatechange property the engine assigns.
+			ctx.addEventListener('statechange', function () {
+				AD.stateHistory.push(ctx.state);
+				if (AD.stateHistory.length > 12) { AD.stateHistory.shift(); }
+				log('ctx state -> ' + ctx.state);
+			});
+
+			var origResume = ctx.resume.bind(ctx);
+			ctx.resume = function () {
+				AD.resumeCalls++;
+				var ua = (navigator.userActivation && navigator.userActivation.isActive) ? 'yes' : 'no';
+				AD.lastResumeUA = ua;
+				log('resume() call #' + AD.resumeCalls + ' (state=' + ctx.state + ', userActivation=' + ua + ')');
+				return origResume().then(function (r) {
+					AD.resumeOK++;
+					log('resume resolved, state=' + ctx.state);
+					return r;
+				}, function (e) {
+					AD.resumeFail++;
+					err('resume rejected: ' + e.message);
+					throw e;
+				});
+			};
+			var origSuspend = ctx.suspend.bind(ctx);
+			ctx.suspend = function () {
+				AD.suspendCalls++;
+				log('suspend() called');
+				return origSuspend();
+			};
+
+			if (ctx.audioWorklet) {
+				var origAdd = ctx.audioWorklet.addModule.bind(ctx.audioWorklet);
+				ctx.audioWorklet.addModule = function (path, o) {
+					var rec = { path: String(path), ok: null, err: '' };
+					AD.worklets.push(rec);
+					log('worklet addModule: ' + rec.path);
+					return origAdd(path, o).then(function (r) {
+						rec.ok = true;
+						log('worklet LOADED: ' + rec.path);
+						return r;
+					}, function (e) {
+						rec.ok = false;
+						rec.err = e.message || String(e);
+						err('worklet FAILED ' + rec.path + ': ' + rec.err);
+						throw e;
+					});
+				};
+			} else {
+				err('ctx has NO audioWorklet (stream/music path cannot start)');
+			}
+			return ctx;
+		};
+		HookedAC.prototype = RealAC.prototype;
+		window.AudioContext = HookedAC;
+		if (window.webkitAudioContext) { window.webkitAudioContext = HookedAC; }
+	} else {
+		err('no AudioContext constructor in this browser');
+	}
+
+	// ---- destination tap: parallel analyser on anything wired to output ----
+	if (origConnect) {
+		AudioNode.prototype.connect = function (target) {
+			try {
+				if (window.AudioDestinationNode && target instanceof AudioDestinationNode) {
+					var ctx = this.context;
+					if (!ctx.__adAnalyser) {
+						ctx.__adAnalyser = ctx.createAnalyser();
+						ctx.__adAnalyser.fftSize = 2048;
+					}
+					origConnect.call(this, ctx.__adAnalyser);
+					AD.taps++;
+					log('tap: ' + (this.constructor && this.constructor.name || 'node') + ' -> destination');
+				}
+			} catch (e) { err('tap: ' + e.message); }
+			return origConnect.apply(this, arguments);
+		};
+	}
+
+	// ---- gesture ledger + first-gesture unlock (the FIX) -------------------
+	function silentKick(ctx) {
+		// Canonical iOS unlock: an actually-played (silent) buffer inside the
+		// gesture. resume() alone is not always enough in the itch iframe.
+		try {
+			var buf = ctx.createBuffer(1, 1, 22050);
+			var src = ctx.createBufferSource();
+			src.buffer = buf;
+			origConnect.call(src, ctx.destination);
+			src.start(0);
+		} catch (e) { err('silent kick: ' + e.message); }
+	}
+	function unlockAll(via) {
+		var acted = false;
+		AD.contexts.forEach(function (ctx) {
+			if (ctx.state !== 'running') {
+				ctx.resume();
+				acted = true;
+			}
+			if (!ctx.__adKicked) {
+				ctx.__adKicked = true;
+				silentKick(ctx);
+				acted = true;
+			}
+		});
+		if (acted && !AD.unlocked) {
+			AD.unlocked = true;
+			AD.unlockVia = via;
+			log('unlock attempt via ' + via);
+		}
+	}
+	['touchstart', 'touchend', 'pointerdown', 'pointerup', 'mousedown', 'click', 'keydown'].forEach(function (t) {
+		window.addEventListener(t, function () {
+			AD.gestures[t] = (AD.gestures[t] || 0) + 1;
+			AD.lastGesture = t + ' @' + now();
+			// touchend / pointerup / click carry the strongest user-activation
+			// signal on iOS; try the unlock on the tail events.
+			if (t === 'touchend' || t === 'pointerup' || t === 'click' || t === 'keydown') {
+				unlockAll(t);
+			}
+		}, { capture: true, passive: true });
+	});
+	// Safari parks contexts in "interrupted"/"suspended" after tab switches,
+	// route changes, or calls; re-resume when we come back.
+	['visibilitychange', 'pageshow', 'focus'].forEach(function (t) {
+		window.addEventListener(t, function () {
+			if (document.visibilityState === 'visible') {
+				AD.contexts.forEach(function (ctx) {
+					if (ctx.state !== 'running') {
+						log('re-resume after ' + t + ' (state=' + ctx.state + ')');
+						ctx.resume();
+					}
+				});
+			}
+		});
+	});
+
+	// ---- overlay ------------------------------------------------------------
+	var panel = null;
+	var meterTimer = null, paintTimer = null;
+	var lastTime = -1, lastWall = 0, timeRate = 0;
+
+	function dbfs(x) {
+		if (!(x > 0)) { return '-inf'; }
+		return (20 * Math.log10(x)).toFixed(1);
+	}
+	function bar(rms) {
+		var db = (rms > 0) ? 20 * Math.log10(rms) : -60;
+		var n = Math.max(0, Math.min(16, Math.round((db + 60) / 60 * 16)));
+		return '[' + '#'.repeat(n) + '-'.repeat(16 - n) + ']';
+	}
+	function sampleMeter() {
+		var ctx = AD.contexts[0];
+		if (!ctx || !ctx.__adAnalyser) { return; }
+		try {
+			var a = ctx.__adAnalyser;
+			var buf = new Float32Array(a.fftSize);
+			if (a.getFloatTimeDomainData) {
+				a.getFloatTimeDomainData(buf);
+			} else {
+				var b8 = new Uint8Array(a.fftSize);
+				a.getByteTimeDomainData(b8);
+				for (var i = 0; i < b8.length; i++) { buf[i] = (b8[i] - 128) / 128; }
+			}
+			var sum = 0, pk = 0;
+			for (var j = 0; j < buf.length; j++) {
+				var v = buf[j];
+				sum += v * v;
+				if (Math.abs(v) > pk) { pk = Math.abs(v); }
+			}
+			AD.rms = Math.sqrt(sum / buf.length);
+			if (pk > AD.peak) { AD.peak = pk; }
+		} catch (e) { /* meter is best-effort */ }
+	}
+	function paint() {
+		if (!panel) { return; }
+		var ctx = AD.contexts[0];
+		var lines = [];
+		lines.push('AUDIO DEBUG  t=' + now() + 's  (triple-tap corner toggles)');
+		if (!ctx) {
+			lines.push('ctx      : NOT CREATED YET');
+		} else {
+			var adv = '?';
+			var wall = performance.now();
+			if (lastTime >= 0 && wall > lastWall) {
+				timeRate = (ctx.currentTime - lastTime) / ((wall - lastWall) / 1000);
+				adv = (timeRate > 0.5) ? 'ADVANCING' : 'FROZEN(' + timeRate.toFixed(2) + 'x)';
+			}
+			lastTime = ctx.currentTime; lastWall = wall;
+			lines.push('ctx      : ' + ctx.state + '   [' + AD.stateHistory.join('>') + ']');
+			lines.push('rate     : hw ' + ctx.sampleRate + ' Hz | requested ' + (AD.requestedRate || 'browser-default (unpinned)'));
+			lines.push('clock    : ' + ctx.currentTime.toFixed(2) + 's  ' + adv);
+			lines.push('latency  : base ' + (ctx.baseLatency || 0).toFixed(3) + '  out ' + (ctx.outputLatency || 0).toFixed(3));
+			lines.push('channels : dest ' + ctx.destination.channelCount + ' max ' + ctx.destination.maxChannelCount);
+		}
+		if (AD.worklets.length === 0) {
+			lines.push('worklets : none requested yet');
+		} else {
+			AD.worklets.forEach(function (w) {
+				var s = (w.ok === null) ? 'PENDING' : (w.ok ? 'OK' : 'FAIL ' + w.err);
+				var name = w.path.split('/').pop();
+				lines.push('worklet  : ' + name + ' ' + s);
+			});
+		}
+		lines.push('resume   : calls ' + AD.resumeCalls + ' ok ' + AD.resumeOK + ' fail ' + AD.resumeFail
+			+ ' | suspends ' + AD.suspendCalls + ' | lastUA=' + AD.lastResumeUA);
+		lines.push('unlock   : ' + (AD.unlocked ? 'fired via ' + AD.unlockVia : 'NOT FIRED YET (tap anywhere)'));
+		var g = Object.keys(AD.gestures).map(function (k) { return k.replace('touch', 't').replace('pointer', 'p') + ':' + AD.gestures[k]; }).join(' ');
+		lines.push('gesture  : ' + AD.lastGesture + '  (' + (g || 'none yet') + ')');
+		try {
+			lines.push('session  : ' + (navigator.audioSession
+				? (navigator.audioSession.type + ' / ' + (navigator.audioSession.state || '?'))
+				: 'n/a') + ' | userActivation=' + (navigator.userActivation ? (navigator.userActivation.isActive ? 'active' : 'idle') : 'n/a'));
+		} catch (e) { /* older Safari */ }
+		lines.push('output   : rms ' + dbfs(AD.rms) + ' dB  peak ' + dbfs(AD.peak) + ' dB  ' + bar(AD.rms) + '  taps ' + AD.taps);
+		if (AD.errors.length) {
+			lines.push('--- errors ---');
+			AD.errors.slice(-5).forEach(function (x) { lines.push(x); });
+		} else {
+			lines.push('errors   : none');
+		}
+		lines.push('--- log ---');
+		AD.log.slice(-8).forEach(function (x) { lines.push(x); });
+		panel.textContent = lines.join('\n');
+	}
+	function setEnabled(on) {
+		AD.enabled = on;
+		if (on) {
+			if (!panel) {
+				panel = document.createElement('pre');
+				panel.id = 'gd-audiodebug';
+				panel.style.cssText = 'position:fixed;left:4px;top:12%;z-index:2147483647;'
+					+ 'background:rgba(0,0,0,.85);color:#8ff0a4;border:1px solid #2c5;'
+					+ 'border-radius:4px;font:10px/1.4 Menlo,Consolas,monospace;'
+					+ 'padding:6px 8px;margin:0;max-width:96vw;max-height:72vh;'
+					+ 'overflow:hidden;white-space:pre-wrap;word-break:break-all;'
+					+ 'pointer-events:none;';
+				(document.body || document.documentElement).appendChild(panel);
+			}
+			panel.style.display = 'block';
+			if (!meterTimer) { meterTimer = setInterval(sampleMeter, 100); }
+			if (!paintTimer) { paintTimer = setInterval(paint, 250); }
+			paint();
+			log('overlay ON');
+		} else if (panel) {
+			panel.style.display = 'none';
+			clearInterval(meterTimer); meterTimer = null;
+			clearInterval(paintTimer); paintTimer = null;
+			log('overlay OFF');
+		}
+	}
+	window.__audioDebugToggle = function () { setEnabled(!AD.enabled); };
+
+	// Activation path 1: URL param/hash (LAN / direct URL; itch strips these).
+	var wanted = /(\?|&|#)audiodebug=1/.test(location.search + location.hash);
+	if (wanted) {
+		if (document.body) { setEnabled(true); }
+		else { document.addEventListener('DOMContentLoaded', function () { setEnabled(true); }); }
+	}
+
+	// Activation path 2: triple-tap in the top-left 110x110 CSS px corner
+	// within 1.6 s (works inside the itch iframe; the corner holds only the
+	// run label, no buttons, so stray taps are inert in-game).
+	var cornerTaps = [];
+	function cornerTap(x, y) {
+		if (x > 110 || y > 110) { return; }
+		var t = performance.now();
+		cornerTaps.push(t);
+		cornerTaps = cornerTaps.filter(function (v) { return t - v < 1600; });
+		if (cornerTaps.length >= 3) {
+			cornerTaps = [];
+			setEnabled(!AD.enabled);
+		}
+	}
+	window.addEventListener('touchend', function (e) {
+		var tc = e.changedTouches && e.changedTouches[0];
+		if (tc) { cornerTap(tc.clientX, tc.clientY); }
+	}, { capture: true, passive: true });
+	window.addEventListener('mouseup', function (e) {
+		cornerTap(e.clientX, e.clientY);
+	}, { capture: true, passive: true });
+}());
+		</script>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Your browser does not support JavaScript.
+		</noscript>
+
+		<div id="status">
+			<img id="status-splash" class="$GODOT_SPLASH_CLASSES" src="$GODOT_SPLASH" alt="">
+			<progress id="status-progress"></progress>
+			<div id="status-notice"></div>
+		</div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = text.split('\n');
+		lines.forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('An unknown error occurred.');
+		}
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+			let serviceWorkerRegistrationPromise;
+			try {
+				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
+			} catch (err) {
+				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
+			}
+			// There's a chance that installing the service worker would fix the issue
+			Promise.race([
+				serviceWorkerRegistrationPromise.then((registration) => {
+					if (registration != null) {
+						return Promise.reject(new Error('Service worker already exists.'));
+					}
+					return registration;
+				}).then(() => engine.installServiceWorker()),
+				// For some reason, `getRegistration()` can stall
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
+			]).then(() => {
+				// Reload if there was no error.
+				window.location.reload();
+			}).catch((err) => {
+				console.error('Error while registering service worker:', err);
+			});
+		} else {
+			// Display the message as usual
+			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
+			displayFailureNotice(missingMsg + missing.join('\n'));
+		}
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					statusProgress.value = current;
+					statusProgress.max = total;
+				} else {
+					statusProgress.removeAttribute('value');
+					statusProgress.removeAttribute('max');
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+		}, displayFailureNotice);
+	}
+}());
+		</script>
+	</body>
+</html>

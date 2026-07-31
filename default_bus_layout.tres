@@ -1,4 +1,4 @@
-[gd_resource type="AudioBusLayout" load_steps=2 format=3]
+[gd_resource type="AudioBusLayout" format=3 uid="uid://qtl3ujxqa20b"]
 
 [sub_resource type="AudioEffectLowPassFilter" id="1"]
 cutoff_hz = 1400.0
