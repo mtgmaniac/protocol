@@ -1,5 +1,12 @@
 # PRIMERS — authoring guide (keyword primer system)
 
+> Current ruling (Tutorial V3.0): the mandatory tutorial suppresses every
+> primer and never marks a primer seen. The Advanced Protocol primer is the
+> one-time `protocol_action_affordable/reroll` lesson: at the first legal,
+> normal post-roll decision with 2+ Protocol and an unassigned hero die, it
+> highlights Protocol, Reroll, and Set without changing combat state. This
+> ruling supersedes older tutorial-showcase references below.
+
 One-shot micro-tutorials: the FIRST time a mechanic is sighted in a real battle, the
 game pauses at a safe beat, dims everything except the thing that just happened, and
 shows one sentence. Then never again (per save profile).

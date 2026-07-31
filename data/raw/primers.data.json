@@ -219,6 +219,14 @@
       "requires_feature": null
     },
     {
+      "id": "primer_advanced_protocol",
+      "trigger": { "type": "protocol_action_affordable", "param": "reroll" },
+      "target": "protocol_actions",
+      "text": "You have enough Protocol for more control. REROLL costs 2 to roll one unassigned die again. SET costs 4 to choose an exact die result. Spend now, or save Protocol between rounds for Set.",
+      "priority": 20,
+      "requires_feature": null
+    },
+    {
       "$comment": "Cleanse (Kev 2026-07-21): keyword icon, roll-sighted like the icon_first_seen family (no event-stream fallback - cleanse emits no feedback event). Doubles as the tutorial's ONE showcase primer: Splice Medic's turn-2 Infusion (10 heal, cleanse) sights it naturally, so the drill demonstrates the first-encounter tip with a real primer and it stays seen.",
       "id": "primer_cleanse",
       "trigger": { "type": "icon_first_seen", "param": "cleanse" },

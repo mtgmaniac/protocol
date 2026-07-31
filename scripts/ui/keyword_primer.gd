@@ -21,13 +21,8 @@
 # - Order is spatial, not priority: enqueue order == hero rail left→right,
 #   then enemy rail, pips left→right within a readout. The JSON `priority`
 #   field is inert (retained for schema compatibility only).
-# - TUTORIAL SHOWCASE (Kev 2026-07-21): during the scripted tutorial exactly
-#   ONE primer may display (the drill's first natural sighting — cleanse, on
-#   Splice Medic's turn-2 Infusion). It is marked seen as normal, so the demoed
-#   tip never repeats in real play; everything past the cap stays suppressed
-#   and unmarked (fires in the first real battle, as before). Headless mode and
-#   auto battle remain fully suppressed. requires_feature entries skip silently
-#   when the feature is absent.
+# - Tutorial suppression: mandatory tutorial encounters never display or mark
+#   primers; all first-sighting lessons remain eligible for normal play.
 # - FAILURE SAFETY: a resolver returning nothing, a missing node, or a dead
 #   layer skips the primer WITHOUT marking it seen and never blocks the battle.
 # - Marked seen (SaveManager.mark_primer_seen) only after the primer displayed
@@ -118,6 +113,7 @@ func setup(scene: Node) -> void:
 		"unit_card": _resolve_unit_card_rect,
 		"ability_pip": _resolve_ability_pip_rect,
 		"footer_button": _resolve_footer_button_rect,
+		"protocol_actions": _resolve_protocol_actions_rect,
 		"popup_line": _resolve_popup_line_rect,
 	}
 	for entry_variant in DataManager.get_primers():
@@ -128,15 +124,6 @@ func setup(scene: Node) -> void:
 
 # ── Suppression ───────────────────────────────────────────────────────────────
 
-# Tutorial showcase cap (Kev 2026-07-21): the drill lets exactly ONE primer
-# through — its first natural sighting — so the player meets the tip mechanic
-# before real play; that one is marked seen ("don't have to redo that one").
-# Everything past the cap is suppressed and unmarked. The cap sits ABOVE the
-# debug_force_active seam so the headless tutorial smoke exercises it too.
-const TUTORIAL_SHOWCASE_CAP := 1
-var _tutorial_shown: int = 0
-
-
 func _in_tutorial() -> bool:
 	var gs: Node = get_node_or_null("/root/GameState")
 	return gs != null and bool(gs.get("tutorial_mode"))
@@ -145,7 +132,10 @@ func _in_tutorial() -> bool:
 func _suppressed() -> bool:
 	if _scene == null or not is_instance_valid(_scene):
 		return true
-	if _in_tutorial() and _tutorial_shown >= TUTORIAL_SHOWCASE_CAP:
+	# Mandatory Tutorial V3.0 uses real abilities but never consumes a primer.
+	# Suppression happens before candidates are queued or persisted, so each term
+	# remains eligible for its first normal battle.
+	if _in_tutorial():
 		return true
 	if debug_force_active:
 		return false
@@ -410,8 +400,6 @@ func _try_show(candidate: Dictionary) -> bool:
 	if not debug_auto_dismiss:
 		await _spot.tapped
 	_spot.dismiss()
-	if _in_tutorial():
-		_tutorial_shown += 1
 	debug_show_count += 1
 	debug_shown_ids.append(str(entry.get("id", "")))
 	_fired_params[str(candidate.get("key", ""))] = true
@@ -581,6 +569,21 @@ func _resolve_footer_button_rect(context: Dictionary) -> Rect2:
 		"set":
 			return _control_rect(protocol.get("set_button") if protocol != null else null)
 	return Rect2()
+
+
+# Advanced Protocol anchors all three relevant surfaces without changing their
+# enabled state: Protocol pool, Reroll (2), and Set (4).
+func _resolve_protocol_actions_rect(_context: Dictionary) -> Rect2:
+	var protocol: Variant = _scene.get("_protocol")
+	var rect: Rect2 = _control_rect(_scene.get("protocol_value_label"))
+	for node in [
+		_scene.get("protocol_spend_button"),
+		protocol.get("set_button") if protocol != null else null,
+	]:
+		var part: Rect2 = _control_rect(node)
+		if part.size != Vector2.ZERO:
+			rect = part if rect.size == Vector2.ZERO else rect.merge(part)
+	return rect
 
 
 # The inspect popup's personality row — only resolvable while the popup is open

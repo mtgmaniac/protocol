@@ -3279,15 +3279,10 @@ func _run_relic_per_turn_aura_regression() -> void:
 	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
 
 
-# Tutorial rig v2.3 must stay unlosable against the REAL 35-HP Scrap Drone.
-# The happy path: T1 Suppression Fire 6 + Overdrive 11 = 17 (35 -> 18; Stab 7
-# soaked 3 by Diagnostic Pulse's shield, Strike takes 4; NO protocol grants —
-# income-only); T2 closes ON DICE: Rail Strike 10 + Overdrive 11 = 21 into 18.
-# Prompt-6: MARK LEFT THE DRILL (taught by its primer at first real-play
-# sighting), so turn-1 math is ORDER-INVARIANT — asserted under a reversed
-# cast order in place of the old mark-persistence stall-proof. If any of
-# these numbers drift (kit or drone data change), the tutorial coach copy
-# must be re-verified against the engine. Leech stays OUT of the drill.
+# Tutorial V3.0 pins the real 40-HP Scrap Drone: Target Lock -> marked
+# Overdrive (17) -> Neural Override (8), then Stab 8 on Strike. Round two
+# uses Diagnostic Pulse -> Rail Strike -> Overdrive and must kill before an
+# enemy action. If this math drifts, tutorial copy must be re-verified.
 func _run_tutorial_kill_math_regression() -> void:
 	var combat: UnitData = DataManager.get_unit("combat") as UnitData
 	var engineer: UnitData = DataManager.get_unit("engineer") as UnitData
@@ -3296,55 +3291,37 @@ func _run_tutorial_kill_math_regression() -> void:
 	if combat == null or engineer == null or medic == null or scrap == null:
 		_record_failure("Tutorial / kill math", "tutorial", "real data present", "missing data")
 		return
-	if int(scrap.max_hp) != 35:
-		_record_failure("Tutorial / kill math", "tutorial", "Scrap Drone real statline 35 HP (honest rig)", "hp=%d" % int(scrap.max_hp))
+	if int(scrap.max_hp) != 40:
+		_record_failure("Tutorial / kill math", "tutorial", "Scrap Drone real statline 40 HP", "hp=%d" % int(scrap.max_hp))
 		return
 
-	# Happy path: taught order combat -> engineer -> medic. No mark, no
-	# gainProtocol anywhere — Protocol entering T2 is income-only (1).
+	# T1: Target Lock -> Overdrive -> Neural Override = 25 damage, then Stab 8.
 	var mgr: CombatManager = CombatManager.new()
 	mgr.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
 	var enemy: Dictionary = mgr.get_enemy_states()[0]
 	var strike: Dictionary = mgr.get_hero_states()[0]
-	_tutorial_resolve_turn(mgr, {"combat": 9, "engineer": 12, "medic": 2}, ["combat", "engineer", "medic"])
+	_tutorial_resolve_turn(mgr, {"combat": 3, "engineer": 12, "medic": 12}, ["combat", "engineer", "medic"])
 	var grants_t1: int = mgr.take_pending_protocol_grants()
 	var t1_ok: bool = (
-		int(enemy["current_hp"]) == 18
+		int(enemy["current_hp"]) == 15
 		and not bool(enemy.get("marked", false))
-		and int(strike["current_hp"]) == 51
+		and int(strike["current_hp"]) == 47
 		and grants_t1 == 0
 	)
 	if t1_ok:
-		_record_pass("Tutorial / T1 math (6+11=17, Stab 7 soaks 3, income-only Protocol)", "tutorial")
+		_record_pass("Tutorial / T1 math (Mark 17 + 8 = 25, Stab 8, Protocol 1)", "tutorial")
 	else:
-		_record_failure("Tutorial / T1 math (6+11=17, Stab 7 soaks 3, income-only Protocol)", "tutorial",
-			"drone 18 unmarked, Strike 51, grant 0",
+		_record_failure("Tutorial / T1 math (Mark 17 + 8 = 25, Stab 8, Protocol 1)", "tutorial",
+			"drone 15 unmarked, Strike 47, grant 0",
 			"drone=%d marked=%s strike=%d grant=%d" % [int(enemy["current_hp"]), str(enemy.get("marked", false)), int(strike["current_hp"]), grants_t1])
-	# T2 closes on DICE alone: nudged Rail Strike 10 + Overdrive 11 into 18.
-	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 12, "medic": 6}, ["combat", "engineer", "medic"])
+	# T2 closes before the enemy action: heal/shield -> Rail Strike -> Overdrive.
+	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 12, "medic": 3}, ["medic", "combat", "engineer"])
 	if bool(enemy["dead"]):
-		_record_pass("Tutorial / T2 kill (dice only: 10 + 11 into 18)", "tutorial")
+		_record_pass("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 15)", "tutorial")
 	else:
-		_record_failure("Tutorial / T2 kill (dice only: 10 + 11 into 18)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
-
-	# Order-invariance (the Prompt-6 stall-proof): with no setup effects in
-	# the rig, a fully REVERSED cast order lands the identical turn-1
-	# checkpoint (18, nothing marked) and the identical turn-2 kill.
-	var mgr2: CombatManager = CombatManager.new()
-	mgr2.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
-	var enemy2: Dictionary = mgr2.get_enemy_states()[0]
-	_tutorial_resolve_turn(mgr2, {"combat": 9, "engineer": 12, "medic": 2}, ["medic", "engineer", "combat"])
-	mgr2.take_pending_protocol_grants()
-	if int(enemy2["current_hp"]) == 18 and not bool(enemy2.get("marked", false)):
-		_record_pass("Tutorial / order-invariant T1 (reversed order, same 18)", "tutorial")
-	else:
-		_record_failure("Tutorial / order-invariant T1 (reversed order, same 18)", "tutorial",
-			"drone 18, nothing marked", "drone=%d marked=%s" % [int(enemy2["current_hp"]), str(enemy2.get("marked", false))])
-	_tutorial_resolve_turn(mgr2, {"combat": 11, "engineer": 12, "medic": 6}, ["medic", "engineer", "combat"])
-	if bool(enemy2["dead"]):
-		_record_pass("Tutorial / order-invariant T2 kill (reversed order, no dead end)", "tutorial")
-	else:
-		_record_failure("Tutorial / order-invariant T2 kill (reversed order, no dead end)", "tutorial", "drone dead", "hp=%d" % int(enemy2["current_hp"]))
+		_record_failure("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 15)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
+	_expect_and_record("Tutorial / T2 Diagnostic Pulse restores Strike", "tutorial", "50", str(int(strike["current_hp"])))
+	_expect_and_record("Tutorial / T2 Diagnostic Pulse grants Strike shield", "tutorial", "3", str(int(strike["shield"])))
 
 	# The taught band jump and its double-Nudge safety: 8 -> 11 flips
 	# Suppression Fire (6) into Rail Strike (10); a stray second +3 (14) stays

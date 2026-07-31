@@ -269,9 +269,9 @@ func _run() -> void:
 	primer.notice_event({"type": "jam", "side": "enemy", "target_id": "e1"})
 	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
 	await primer.flush_at_group_boundary()
-	_check(primer.debug_shown_ids == ["primer_jam"],
-		"tutorial cap: only the FIRST candidate displays (saw %s)" % str(primer.debug_shown_ids))
-	_check(sm.call("is_primer_seen", "primer_jam"), "the tutorial showcase IS marked seen")
+	_check(primer.debug_shown_ids.is_empty(),
+		"tutorial suppression: no primer displays (saw %s)" % str(primer.debug_shown_ids))
+	_check(not sm.call("is_primer_seen", "primer_jam"), "tutorial suppression leaves jam unseen")
 	_check(not sm.call("is_primer_seen", "primer_freeze"),
 		"past the cap: dropped unmarked — fires in the first real battle")
 	primer.on_turn_started()
@@ -279,7 +279,6 @@ func _run() -> void:
 	await primer.flush_at_group_boundary()
 	_check(not sm.call("is_primer_seen", "primer_mark"), "cap persists across turns within the drill")
 	gs_cap.set("tutorial_mode", false)
-	primer._tutorial_shown = 0
 	sm.call("dev_reset_primers")
 	primer._fired_params.clear()
 	# Conditional-modifier condition icon (Shatter Lance-style "+5❄" on a dmg pip)

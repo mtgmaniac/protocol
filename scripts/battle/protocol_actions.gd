@@ -170,7 +170,8 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		# never a dead end — the pick stays ARMED, nothing is charged).
 		if _scene._game_state().tutorial_mode:
 			var nudge_unit: Object = nudge_state.get("unit", null) as Object
-			if nudge_unit == null or str(nudge_unit.get("id")) != str(_scene.TUTORIAL_NUDGE_HERO):
+			if nudge_unit == null or str(nudge_unit.get("id")) != str(_scene.TUTORIAL_NUDGE_HERO) \
+					or not _scene._tutorial_allows("nudge_pick", {"hero": str(nudge_unit.get("id"))}):
 				return true
 		AudioManager.play_select()
 		_apply_nudge(target_id)
@@ -339,6 +340,8 @@ var _phase_before_item: int = -1
 
 
 func _on_reroll_button_pressed() -> void:
+	if not _scene._tutorial_allows("reroll"):
+		return
 	if _consume_protocol_long_press():
 		return
 	if _cancel_armed_for_button(_scene.PHASE_REROLL_PICK):
@@ -355,6 +358,8 @@ func _on_reroll_button_pressed() -> void:
 
 
 func _on_nudge_button_pressed() -> void:
+	if not _scene._tutorial_allows("nudge_button"):
+		return
 	if _consume_protocol_long_press():
 		return
 	if _cancel_armed_for_button(_scene.PHASE_NUDGE_PICK):
@@ -407,6 +412,10 @@ func _apply_nudge(hero_id: String) -> void:
 	# update, retargeting, logs, and tutorial emit.
 	# DESIGN-TODO(kev): confirm the Reverse Gimbal flip interaction (tap again to
 	# swap +3 <-> -3) as the "may subtract" UX.
+	var hero_before: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), hero_id)
+	var previous_roll: int = _scene._get_effective_roll_for_state(hero_before, hero_id)
+	var previous_ability: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_before.get("unit"), previous_roll)
+	var protocol_before: int = _scene.protocol_points
 	var res: Dictionary = _scene._engine.apply_nudge(
 		_scene._state,
 		hero_id,
@@ -434,7 +443,14 @@ func _apply_nudge(hero_id: String) -> void:
 		# Unit id (not state id) — the tutorial's per-hero `hero` gate matches
 		# against squad unit ids, same convention as the "assigned" emit.
 		var nudged_unit: Object = hero_state.get("unit", null) as Object
-		_scene._emit_tutorial("nudged", {"hero": str(nudged_unit.get("id")) if nudged_unit != null else hero_id})
+		var next_roll: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
+		var next_ability: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state.get("unit"), next_roll)
+		_scene._emit_tutorial("nudged", {
+			"hero": str(nudged_unit.get("id")) if nudged_unit != null else hero_id,
+			"prev_roll": previous_roll, "new_roll": next_roll, "direction": "+3",
+			"prev_ability": str(previous_ability.get("ability_name", "")), "new_ability": str(next_ability.get("ability_name", "")),
+			"protocol_before": protocol_before, "protocol_after": _scene.protocol_points,
+		})
 
 
 func _was_hero_nudged_this_turn(hero_id: String) -> bool:
@@ -480,6 +496,8 @@ func _get_set_cost() -> int:
 
 
 func _on_set_button_pressed() -> void:
+	if not _scene._tutorial_allows("set"):
+		return
 	if _cancel_armed_for_button(_scene.PHASE_SET_PICK):
 		return
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:

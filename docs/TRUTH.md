@@ -361,6 +361,19 @@ compression, so no etc2 artifacts exist and none are needed.
 
 ## UI & feedback
 
+> **Tutorial V3.0 ruling (current):** Mandatory onboarding is 15 visible
+> coachmark beats plus two hidden dice-settle waiters (17 internal states).
+> It rigs only the two rounds of inputs and uses the real 40-HP Scrap Drone:
+> Target Lock -> marked Overdrive 17 -> Neural Override 8 -> Stab 8 on Strike,
+> then Nudge 8->11 and Diagnostic Pulse -> Rail Strike -> Overdrive for the
+> kill before the round-two enemy action. All primers are suppressed and remain
+> unseen; only completion persists `tutorial_done`. This supersedes every older
+> V2/tutorial-showcase description in this historical section.
+
+> **Advanced Protocol primer (current):** first legal normal post-roll decision
+> with Protocol >=2 and an unassigned hero die, once per save; it highlights
+> Protocol/Reroll/Set and changes neither a die nor Protocol.
+
 **Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; full drain per turn; suppressed in headless/auto battle; in the scripted tutorial exactly ONE showcase primer displays — Kev 2026-07-21, see the tutorial block; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
 
 **Rigged onboarding tutorial — v2, HONEST RIG (2026-07-20, supersedes the

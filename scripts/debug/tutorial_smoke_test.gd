@@ -29,7 +29,7 @@
 extends SceneTree
 
 const STEP_TIMEOUT_SECS := 20.0
-const STEP_COUNT := 26
+const STEP_COUNT := 17
 
 var _errors: Array[String] = []
 
@@ -40,11 +40,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame
-	await _run_happy_path()
-	if _errors.is_empty():
-		await _run_stall_proof_path()
-	if _errors.is_empty():
-		await _run_skip_path()
+	await _run_v3_path()
 
 	if _errors.is_empty():
 		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof + skip), cleanse showcase shown once, spotlights resolved + retargeted, rig math exact + order-invariant, no leech/mark" % STEP_COUNT)
@@ -57,6 +53,81 @@ func _run() -> void:
 
 
 # ── Scenario A: the happy path ───────────────────────────────────────────────
+
+func _run_v3_path() -> void:
+	var scene: Node = await _start_drill()
+	if scene == null:
+		return
+	var controller: Node = _find_controller(scene)
+	if controller == null:
+		_fail("TutorialController not spawned")
+		return
+	var steps: Array = controller.call("_build_steps")
+	if steps.size() != STEP_COUNT:
+		_fail("V3.0 must contain 17 internal states, got %d" % steps.size())
+		return
+	var visible: int = 0
+	for step_variant in steps:
+		if not bool((step_variant as Dictionary).get("hide_coach", false)):
+			visible += 1
+	if visible != 15:
+		_fail("V3.0 must contain exactly 15 visible beats, got %d" % visible)
+		return
+	controller.call("_next")
+	await _expect_step(controller, 1)
+	scene.call("_on_roll_button_pressed")
+	await _expect_step(controller, 3)
+	var combat_id: String = _state_id_for_unit(scene, "combat")
+	var combat_view: Dictionary = (scene.get("hero_card_views") as Array)[0]
+	scene.call("_on_unit_detail_requested", combat_view.get("card"))
+	await _expect_step(controller, 4)
+	controller.call("_next")
+	await _expect_step(controller, 5)
+	var enemy_id: String = str(_enemy_state(scene).get("id", ""))
+	await _v3_assign(scene, "combat", enemy_id)
+	await _expect_step(controller, 6)
+	await _v3_assign(scene, "engineer", enemy_id)
+	await _expect_step(controller, 7)
+	await _v3_assign(scene, "medic", enemy_id)
+	await _expect_step(controller, 8)
+	scene.call("_on_roll_button_pressed")
+	await _expect_step(controller, 9)
+	var drone: Dictionary = _enemy_state(scene)
+	var strike: Dictionary = _hero_state(scene, "combat")
+	if int(drone.get("current_hp", -1)) != 15 or int(strike.get("current_hp", -1)) != 47 or int(scene.get("protocol_points")) != 1:
+		_fail("V3 T1 expected drone=15, Strike=47, Protocol=1; got %d/%d/%d" % [int(drone.get("current_hp", -1)), int(strike.get("current_hp", -1)), int(scene.get("protocol_points"))])
+		return
+	scene.call("_on_roll_button_pressed")
+	await _expect_step(controller, 11)
+	var protocol: Node = scene.get("_protocol")
+	protocol.call("_on_nudge_button_pressed")
+	protocol.call("handle_hero_card_pressed", combat_id)
+	await _expect_step(controller, 12)
+	await _v3_assign(scene, "medic", combat_id)
+	await _expect_step(controller, 13)
+	await _v3_assign(scene, "combat", enemy_id)
+	await _expect_step(controller, 14)
+	await _v3_assign(scene, "engineer", enemy_id)
+	await _expect_step(controller, 15)
+	scene.call("_on_roll_button_pressed")
+	await _expect_step(controller, 16)
+	var sm: Node = root.get_node("/root/SaveManager")
+	for primer_id in ["primer_mark", "primer_leech", "primer_icon_protocol"]:
+		if bool(sm.call("is_primer_seen", primer_id)):
+			_fail("%s was marked seen in the mandatory tutorial" % primer_id)
+			return
+	controller.call("_next")
+
+
+func _v3_assign(scene: Node, unit_id: String, target_id: String) -> void:
+	scene.call("_on_hero_card_pressed", _state_id_for_unit(scene, unit_id))
+	await _wait_frames(2)
+	if target_id == _state_id_for_unit(scene, "combat") or target_id == _state_id_for_unit(scene, "engineer") or target_id == _state_id_for_unit(scene, "medic"):
+		scene.call("_on_hero_card_pressed", target_id)
+	else:
+		scene.call("_on_enemy_card_pressed", target_id)
+	await _wait_frames(2)
+
 
 func _run_happy_path() -> void:
 	var scene: Node = await _start_drill()

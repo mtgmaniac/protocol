@@ -43,13 +43,13 @@
           "additionalProperties": false
         },
         "target": {
-          "enum": ["die", "unit_card", "ability_pip", "footer_button", "popup_line"]
+          "enum": ["die", "unit_card", "ability_pip", "footer_button", "protocol_actions", "popup_line"]
         },
         "text": {
           "$comment": "One sentence, ~12 words, the RULE not flavor; never contradicts keywords.data.json.",
           "type": "string",
           "minLength": 8,
-          "maxLength": 90
+          "maxLength": 220
         },
         "priority": { "type": "integer", "minimum": 0, "maximum": 100 },
         "requires_feature": { "type": ["string", "null"] }

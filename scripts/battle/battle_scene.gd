@@ -144,38 +144,16 @@ var hero_units: Array = []
 var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
-# v2 (2026-07-20): HONEST RIG — rig the inputs, never fake the outputs. The
-# Scrap Drone fights at its REAL statline (35 HP, enemies.data.json); only the
-# dice and the drone's aim are scripted. Prompt-6 delta: MARK LEAVES THE
-# DRILL — Strike rolls 9 (Suppression Fire 6) instead of Target Lock; mark is
-# taught by its primer at first real-play sighting (suppressed-not-seen in
-# the tutorial, so it fires). Cast order is carried by the first-assign beat
-# line + the visible order badges; with no setup effects the turn-1 math is
-# ORDER-INVARIANT, which is its own stall-proofing. Rolls keyed by unit id:
-#   turn 1: Strike 9 (Suppression Fire, 6 dmg) + Engineer 12 (Overdrive,
-#           11 dmg) + Medic 2 (Diagnostic Pulse, 3 heal + 3 shield targeted).
-#           6 + 11 = 17 — drone 35 → 18 under ANY assignment order. Drone
-#           roll 6 = Stab 7 at Strike (SYSTEMATIC slot 0): the 3 shield
-#           soaks 3, Strike takes 4 (the 3 heal overflows at full HP —
-#           honest, harmless).
-#   turn 2: Strike 8 →Nudge→ 11 (Suppression Fire 6 → Rail Strike 10, the
-#           taught band jump — and the player FELT the 6 land in turn 1) +
-#           Engineer 12 (Overdrive 11) + Medic 6 (Infusion, 10 heal
-#           targeted). Protocol entering turn 2 is exactly 1 (income only),
-#           the one taught Nudge; a second Nudge is simply unaffordable.
-#           Rail Strike 10 + Overdrive 11 = 21 into 18 — the kill closes ON
-#           DICE (Prompt-5: the item lesson is a SIGNPOST — no grant, no
-#           gate, real cost stated).
+# Tutorial v3.0 rigs inputs only. Its real 40-HP Scrap Drone receives Mark,
+# then 17 Overdrive + 8 Neural Override, attacks Strike for Stab 8, and dies
+# in round two to the targeted Diagnostic Pulse setup, Rail Strike, and
+# Overdrive. Keyword primers are suppressed without marking them seen.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
-# v2.5 beat-19 fix: the drill teaches THE Nudge on Strike's die with exactly 1
-# Protocol banked. protocol_actions ignores nudge picks on any other die while
-# in tutorial_mode — an off-script apply would spend the only point, make the
-# band-jump copy false, and break the scripted dice-only kill (17 < 18).
 const TUTORIAL_NUDGE_HERO := "combat"
 const TUTORIAL_HERO_ROLLS := [
-	{"combat": 9, "engineer": 12, "medic": 2},
-	{"combat": 8, "engineer": 12, "medic": 6},
+	{"combat": 3, "engineer": 12, "medic": 12},
+	{"combat": 8, "engineer": 12, "medic": 3},
 ]
 var _tutorial_turn: int = 0
 
@@ -201,6 +179,15 @@ func _tutorial_rig_values() -> Dictionary:
 func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
 	if _game_state().tutorial_mode:
 		tutorial_event.emit(event, payload)
+
+
+func _tutorial_allows(action: String, payload: Dictionary = {}) -> bool:
+	if not _game_state().tutorial_mode:
+		return true
+	for child in get_children():
+		if child.has_method("allows_action"):
+			return bool(child.call("allows_action", action, payload))
+	return false
 var turn_phase: int = Phase.AWAIT_ROLL
 var active_targeting_hero_id: String = ""
 var legal_target_ids: Array = []
@@ -318,7 +305,7 @@ func _ready() -> void:
 	if not _review_mode:
 		# Keyword primers observe every live battle — tutorial included since
 		# the showcase ruling (Kev 2026-07-21): the drill lets exactly ONE primer
-		# through (KeywordPrimer.TUTORIAL_SHOWCASE_CAP). Their own suppression
+		# through (KeywordPrimer's tutorial suppression). Their own suppression
 		# covers headless + auto battle at fire time. (No primers in a read-only
 		# review — nothing is being cast.)
 		_primer = KEYWORD_PRIMER_SCRIPT.new()
@@ -674,6 +661,8 @@ func _on_unit_detail_requested(card: Control) -> void:
 	var compact_card: CompactUnitCard = card as CompactUnitCard
 	if compact_card == null or compact_card.unit_data == null:
 		return
+	if not _tutorial_allows("inspect", {"hero": str(compact_card.unit_data.id)}):
+		return
 	AudioManager.play_select()
 	# Unified long-press inspect (replaces the old UnitDetailPanel popup). The popup
 	# self-dismisses on outside press, so no close-on-event handling is needed here. Pass the
@@ -684,7 +673,7 @@ func _on_unit_detail_requested(card: Control) -> void:
 		compact_card.get_global_rect(),
 		compact_card.get_instance_id(),
 	)
-	_emit_tutorial("inspected", {"side": compact_card.side})
+	_emit_tutorial("inspected", {"side": compact_card.side, "inspect_hero": str(compact_card.unit_data.id), "entity": "hero", "unit_id": str(compact_card.unit_data.id), "source": "card"})
 
 
 # The live battle-state dict backing a unit card (empty if not found).
@@ -710,10 +699,14 @@ func _on_roll_button_pressed() -> void:
 		return
 	AudioManager.play_select()
 	if turn_phase == PHASE_AWAIT_ROLL:
+		if not _tutorial_allows("roll"):
+			return
 		_emit_tutorial("roll_pressed")
 		_begin_targeting_phase()
 		return
 	if turn_phase == PHASE_READY_TO_END:
+		if not _tutorial_allows("end_turn"):
+			return
 		_emit_tutorial("end_turn_pressed")
 		_resolve_current_turn()
 
@@ -808,10 +801,15 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	# its modal before the next coachmark places — the two spotlight layers
 	# never overlap. Outside the tutorial the emit is a no-op, and in turns
 	# with an empty queue the drain returns instantly, so nothing shifts.
-	_emit_tutorial("rolled", {"turn": _tutorial_turn})
+	_emit_tutorial("rolled", {"turn": _tutorial_turn, "round": _tutorial_turn})
 
 	if pending_manual_target_ids.is_empty():
 		transition(PHASE_READY_TO_END)
+	# Advanced Protocol is a normal-play, post-roll primer: only after the board
+	# is settled, the player can still act, and at least one hero die is unassigned.
+	if not _game_state().tutorial_mode and _primer != null and not pending_manual_target_ids.is_empty():
+		_primer.notice_protocol_affordability(protocol_points)
+		await _primer.flush_player_phase()
 	# The refresh at the end of the roll ran while still in AWAIT_ROLL, where the
 	# preview is suppressed; recompute now that the phase is settled (TARGETING or
 	# READY_TO_END) so auto-targeted abilities — AoE and forced-single — show their
@@ -1404,7 +1402,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		_persist_protocol_carryover()
 		_capture_battle_victory_for_xp()
 		if _game_state().tutorial_mode:
-			_emit_tutorial("won")
+			_emit_tutorial("won", {"round": _tutorial_turn, "enemy_defeated": true, "protocol": protocol_points, "heroes": combat_manager.get_hero_states().duplicate(true)})
 			return
 		if _auto_battle_running:
 			_debug_advance_after_auto_battle_victory()
@@ -1441,7 +1439,15 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 				_append_log("Protocol +1 -> %d" % protocol_points)
 		_round_number += 1
 		transition(PHASE_AWAIT_ROLL)
-		_emit_tutorial("turn_resolved", {"protocol": protocol_points})
+		var tutorial_enemy: Dictionary = combat_manager.get_enemy_states()[0] if not combat_manager.get_enemy_states().is_empty() else {}
+		var tutorial_strike: Dictionary = {}
+		for hero_variant in combat_manager.get_hero_states():
+			var tutorial_hero: Dictionary = hero_variant
+			var tutorial_unit: Object = tutorial_hero.get("unit") as Object
+			if tutorial_unit != null and str(tutorial_unit.get("id")) == "combat":
+				tutorial_strike = tutorial_hero
+				break
+		_emit_tutorial("turn_resolved", {"round": _tutorial_turn, "protocol": protocol_points, "enemy_hp": int(tutorial_enemy.get("current_hp", -1)), "strike_hp": int(tutorial_strike.get("current_hp", -1))})
 
 
 # --- Protocol / Reroll / Nudge ---
@@ -2572,7 +2578,12 @@ func _select_targeting_hero(hero_id: String) -> void:
 	_refresh_summary("Choose a target for %s." % str(hero_state["unit"].display_name))
 	# Targeting has begun (a die/hero is picked, awaiting its target) — the tutorial opens up to
 	# the whole screen here so the enemy is an easy tap.
-	_emit_tutorial("targeting_started", {"hero": hero_id})
+	var targeting_unit: Object = hero_state.get("unit") as Object
+	_emit_tutorial("targeting_started", {
+		"hero": str(targeting_unit.get("id")) if targeting_unit != null else hero_id,
+		"legal_side": legal_target_side,
+		"legal_ids": legal_target_ids.duplicate(),
+	})
 
 
 # Re-tap rule (cast order): an already-committed hero can always be re-tapped —
@@ -2638,6 +2649,10 @@ func _assign_target_to_active_hero(target_id: String, target_side: String) -> vo
 	var assigned_unit: Object = hero_state.get("unit") as Object
 	_emit_tutorial("assigned", {
 		"remaining": pending_manual_target_ids.size(),
+		"remaining_unassigned_ids": pending_manual_target_ids.duplicate(),
+		"selected_state_id": target_id,
+		"target_unit": str((target_state.get("unit") as Object).get("id")) if target_state.get("unit") is Object else target_id,
+		"cast_order_position": hero_cast_rank(str(hero_state["id"])),
 		# Unit id (not state id) — the tutorial's per-hero `hero` gate matches
 		# against squad unit ids ("combat"/"medic"/"engineer").
 		"hero": str(assigned_unit.get("id")) if assigned_unit != null else "",
@@ -2874,6 +2889,10 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 		return
 	if not legal_target_ids.has(target_id):
 		return
+	var active_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), active_targeting_hero_id)
+	var active_unit: Object = active_state.get("unit") as Object
+	if not _tutorial_allows("target", {"hero": str(active_unit.get("id")) if active_unit != null else active_targeting_hero_id}):
+		return
 	AudioManager.play_select()
 	_assign_target_to_active_hero(target_id, "enemy")
 
@@ -2897,6 +2916,10 @@ func _on_hero_card_pressed(target_id: String) -> void:
 		return
 	if active_targeting_hero_id == "":
 		if pending_manual_target_ids.has(target_id):
+			var selected_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), target_id)
+			var selected_unit: Object = selected_state.get("unit") as Object
+			if not _tutorial_allows("select_hero", {"hero": str(selected_unit.get("id")) if selected_unit != null else target_id}):
+				return
 			AudioManager.play_select()
 			_select_targeting_hero(target_id)
 		elif _can_unassign_hero(target_id):
@@ -2904,6 +2927,10 @@ func _on_hero_card_pressed(target_id: String) -> void:
 			_unassign_hero_cast(target_id)
 		return
 	if legal_target_side == "hero" and legal_target_ids.has(target_id):
+		var active_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), active_targeting_hero_id)
+		var active_unit: Object = active_state.get("unit") as Object
+		if not _tutorial_allows("target", {"hero": str(active_unit.get("id")) if active_unit != null else active_targeting_hero_id}):
+			return
 		AudioManager.play_select()
 		_assign_target_to_active_hero(target_id, "hero")
 	elif legal_target_side == "dead_hero" and legal_target_ids.has(target_id):

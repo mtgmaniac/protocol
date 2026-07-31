@@ -53,7 +53,7 @@ func _on_js_refresh(_args: Array) -> void:
 	_publish_debug_state(_current(), [], "poll")
 
 
-# ── Step script (v2.5, polish pass — 26 beats) ─────────────────────────────────
+# ── Step script (v3.0 — 15 visible beats + 2 roll waiters) ───────────────────────
 # Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
 # predicate), hero:"" (optional event predicate — the unit id carried in the
 # event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
@@ -67,56 +67,23 @@ func _on_js_refresh(_args: Array) -> void:
 # actionable (the assign-the-rest beat).
 func _build_steps() -> Array:
 	return [
-		# Phase 0 — orientation
-		{"targets": [], "title": "WELCOME", "text": "Welcome to Overload Protocol. I'll walk you through your first fight."},
-		{"targets": ["header"], "text": "This bar stays with you all run - squad progress and the Help menu live here."},
-		{"targets": ["hero_cards"], "text": "Your squad - Strike Unit, Field Engineer, Splice Medic. Each rolls one die every turn."},
-		{"targets": ["enemy_cards"], "text": "This is your target - a Scrap Drone. 35 HP, and it hits back."},
-		# Phase 1 — turn 1
+		{"targets": ["enemy_cards", "center", "hero_cards"], "separate": true, "title": "WELCOME", "text": "Welcome to Overload Protocol. This is your squad, the dice tray, and the Scrap Drone."},
 		{"targets": ["roll_button"], "text": "Tap ROLL.", "advance": "roll_pressed"},
-		# Invisible waiter: the coach hides while the dice roll and settle.
-		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		{"targets": ["center", "ability:combat", "ability:engineer", "ability:medic"], "separate": true, "text": "Each die lands in a band, and each band triggers a different ability. Higher is not always better. This turn: Strike Unit hits for 6, Field Engineer for 11, Splice Medic shields."},
-		{"targets": ["hero_cards"], "text": "Long-press a card for the full breakdown - long-press works on nearly everything. Try it.", "advance": "inspected"},
-		# Cast order (Model A): first mention here as setup; the actionable
-		# teaching lives on the assign-the-rest beat (v2.5 consolidation).
-		{"targets": ["die:combat", "card:combat", "ability:combat"], "separate": true, "text": "Tap Strike Unit's die, then the drone, to fire it. Your squad fires in the order you assign.", "advance": "assigned", "hero": "combat"},
-		{"targets": ["die:engineer", "card:engineer", "ability:engineer"], "separate": true, "text": "Now Field Engineer - tap the die, then the drone.", "advance": "assigned", "hero": "engineer"},
-		# Telegraph: the drone's card + its ability pip + its die (separate holes).
-		{"targets": ["enemy_card", "enemy_pip", "enemy_die"], "separate": true, "text": "The drone is winding up a 7-point hit on Strike Unit. Enemies always show their hand before it lands."},
-		{"targets": ["die:medic", "card:medic", "ability:medic"], "separate": true, "text": "Blunt it: tap Splice Medic's die, then Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic"},
-		{"targets": ["roll_button"], "text": "Lock it in - your squad acts, then the drone.", "advance": "turn_resolved"},
-		{"targets": ["combat", "battle_log"], "separate": true, "text": "The drone took 17. Its hit landed for 7: the shield soaked 3, Strike Unit took 4."},
-		# Phase 2 — turn 2
-		{"targets": ["roll_button"], "text": "Roll again.", "advance": "roll_pressed"},
-		{"targets": [], "hide_coach": true, "advance": "rolled"},
-		# Primer-showcase explainer (Kev 2026-07-21): on a fresh profile the
-		# CLEANSE tip just displayed — the drill's ONE live primer (Splice
-		# Medic's Infusion sights it; battle_scene emits "rolled" only after
-		# the drain, so the modals never overlap). The copy stands alone on a
-		# replay where the tip is already seen and nothing displayed.
-		{"targets": ["ability:medic"], "text": "When a mechanic you've never seen appears, a one-time tip points it out - like the Cleanse on Splice Medic's roll. The Help menu keeps every keyword whenever you need a reminder."},
-		{"targets": ["protocol_value"], "text": "You banked 1 Protocol - income ticks +1 every turn, caps at 10. That's exactly enough for a Nudge."},
-		# Nudge stays TWO beats (Kev fix #3): button beat advances the instant the
-		# press arms the pick; the die beat gates on the applied nudge. The pick
-		# is cancellable (tap-away / Nudge re-press) — cancels are free and the
-		# button stays tappable through the pass-through spotlight, so the die
-		# beat simply waits for a re-arm + apply (v2.5 ruling: no revert beat).
-		{"targets": ["nudge"], "text": "Nudge costs 1 - tap it. (Reroll and Set cost 2 and 4 - they unlock as you bank more.)", "advance": "phase", "phase": "nudge_pick"},
-		# v2.5 beat-19 fix: gated on STRIKE's nudge (belt) + protocol_actions
-		# ignores wrong-die picks in the drill (braces) — the only Protocol
-		# point can never be spent off-script.
-		{"targets": ["combat"], "text": "Tap Strike Unit's die - +3 turns an 8 into an 11.", "advance": "nudged", "hero": "combat"},
-		# Band jump: the die + its ability pip, separate holes (playtest item 10).
-		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "It jumped a band - Suppression Fire became Rail Strike, 6 damage became 10."},
-		# Item SIGNPOST (Prompt-5 delta): informational only, while the Protocol
-		# spend is fresh — no grant, no gate, the REAL cost stated. The item
-		# button holes fine with an empty loadout (it always renders).
-		{"targets": ["item"], "text": "Item slots. You'll collect consumables on your run - using one costs 1 Protocol, same as a Nudge, and doesn't spend a die."},
-		{"targets": ["die:medic", "card:medic", "ability:medic"], "separate": true, "text": "Splice Medic rolled a targeted heal. Tap the die, then Strike Unit, to restore life.", "advance": "assigned", "hero": "medic"},
-		{"targets": [], "fullscreen": true, "coach_center": true, "text": "Assign the rest - Rail Strike and Overdrive at the drone. You pick the firing order; later, order wins fights.", "advance": "phase", "phase": "ready_to_end"},
-		{"targets": ["roll_button"], "text": "End the turn.", "advance": "won"},
-		{"targets": [], "text": "That's the loop. The Help menu holds the full encyclopedia whenever you need it.", "title": "DRILL COMPLETE", "advance": "tap_finish"},
+		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 1},
+		{"targets": ["die:combat", "ability:combat", "card:combat"], "separate": true, "text": "A die's band selects its ability. Higher is not always better. Long-press Strike Unit for the full breakdown.", "advance": "inspected", "inspect_hero": "combat"},
+		{"targets": ["enemy_card", "enemy_pip", "enemy_die"], "separate": true, "text": "The Scrap Drone rolled 6: Stab will deal 8 to Strike Unit."},
+		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "Assign Target Lock to the Scrap Drone first. MARK makes the next hit 50% stronger.", "advance": "assigned", "hero": "combat"},
+		{"targets": ["die:engineer", "ability:engineer"], "separate": true, "text": "Assign Overdrive next. Its 11 damage becomes 17 against the marked drone.", "advance": "assigned", "hero": "engineer"},
+		{"targets": ["die:medic", "ability:medic"], "separate": true, "text": "Assign Neural Override last. All three dice are now ordered.", "advance": "assigned", "hero": "medic"},
+		{"targets": ["roll_button", "hero_cards"], "separate": true, "text": "END TURN resolves your cast order, then the enemy.", "advance": "turn_resolved", "round": 1},
+		{"targets": ["battle_log", "combat", "roll_button"], "separate": true, "text": "Mark raised Overdrive to 17. Neural Override dealt 8. The drone has 15 HP; Strike took 8; you gained 1 Protocol. Roll again.", "advance": "roll_pressed"},
+		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 2},
+		{"targets": ["nudge"], "text": "Use Nudge, then select Strike Unit's die. It costs 1 Protocol and changes 8 to 11.", "advance": "nudged", "hero": "combat", "prev_roll": 8, "new_roll": 11},
+		{"targets": ["die:medic", "ability:medic"], "separate": true, "text": "Rail Strike is ready. First assign Diagnostic Pulse to Strike Unit for 3 heal and 3 shield.", "advance": "assigned", "hero": "medic", "target_hero": "combat"},
+		{"targets": ["die:combat", "ability:combat"], "separate": true, "text": "Assign Rail Strike to the drone second.", "advance": "assigned", "hero": "combat"},
+		{"targets": ["die:engineer", "ability:engineer"], "separate": true, "text": "Assign Overdrive to the drone third.", "advance": "assigned", "hero": "engineer"},
+		{"targets": ["roll_button", "hero_cards"], "separate": true, "text": "END TURN. Your order heals Strike, then Rail Strike and Overdrive finish the drone.", "advance": "won", "round": 2},
+		{"targets": [], "fullscreen": true, "coach_center": true, "title": "DRILL COMPLETE", "text": "You rolled, read enemy intent, chose targets and cast order, used Mark and Nudge, and won. The Help menu keeps the full reference whenever you need it.", "advance": "tap_finish"},
 	]
 
 
@@ -157,7 +124,34 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	# hero stays available).
 	if _current().has("hero") and str(payload.get("hero", "")) != str(_current()["hero"]):
 		return
+	for key in ["inspect_hero", "prev_roll", "new_roll"]:
+		if _current().has(key) and str(payload.get(key, "")) != str(_current()[key]):
+			return
+	if _current().has("target_hero") and str(payload.get("target_unit", "")) != str(_current()["target_hero"]):
+		return
 	_next()
+
+
+# Input-level tutorial fence. Spotlight holes guide the player; this gate is the
+# authority that prevents an off-script control from mutating the honest rig.
+func allows_action(action: String, payload: Dictionary = {}) -> bool:
+	var step: Dictionary = _current()
+	if step.is_empty() or bool(step.get("hide_coach", false)):
+		return false
+	match action:
+		"roll":
+			return _advance_mode() == "roll_pressed"
+		"end_turn":
+			return _advance_mode() == "turn_resolved" or _advance_mode() == "won"
+		"inspect":
+			return _advance_mode() == "inspected" and str(payload.get("hero", "")) == str(step.get("inspect_hero", ""))
+		"select_hero":
+			return _advance_mode() == "assigned" and str(payload.get("hero", "")) == str(step.get("hero", ""))
+		"target":
+			return _advance_mode() == "assigned" and str(payload.get("hero", "")) == str(step.get("hero", ""))
+		"nudge_button", "nudge_pick":
+			return _advance_mode() == "nudged" and str(payload.get("hero", "combat")) == "combat"
+	return false
 
 
 # Drop the dim to the whole-screen frame (no dimming, just the edge border), keeping the coachmark —
