@@ -3,7 +3,7 @@
     { "id": "neural_splice", "name": "Neural Splice", "desc": "+2 to all rolls.", "rarity": "uncommon", "icon": "die", "effect": { "type": "rollBonus", "amount": 2 } },
     { "id": "predator_lens", "name": "Predator Lens", "desc": "+3 to all rolls. A 20 grants +1 Protocol.", "rarity": "legendary", "icon": "die", "effect": { "type": "rollBonusNat20Protocol", "amount": 3, "protocol": 1 } },
     { "id": "combat_plating", "name": "Combat Plating", "desc": "Start each battle with 6 shield.", "rarity": "uncommon", "icon": "shield", "effect": { "type": "battleStartShield", "amount": 6 } },
-    { "id": "stim_injector", "name": "Stim Injector", "desc": "+6 max HP each battle.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 6 } },
+    { "id": "stim_injector", "name": "Stim Injector", "desc": "+6 max HP.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 6 } },
     { "id": "warframe_core", "name": "Warframe Core", "desc": "+14 max HP each battle.", "rarity": "legendary", "icon": "heart", "effect": { "type": "maxHpBonus", "amount": 14 } },
     { "id": "phase_weave", "name": "Phase Weave", "desc": "Start each battle cloaked.", "rarity": "uncommon", "icon": "star", "effect": { "type": "battleStartCloak" } },
     { "id": "kill_switch", "name": "Kill Switch", "desc": "Restore 5 HP when any enemy dies.", "rarity": "uncommon", "icon": "heart", "effect": { "type": "healOnKill", "amount": 5 } },

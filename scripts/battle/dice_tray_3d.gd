@@ -429,6 +429,21 @@ func set_die_status(side: String, unit_id: String, status: Dictionary) -> void:
 	_set_die_pending_marker(die, bool(status.get("rewrite", false)), bool(status.get("hijack", false)))
 
 
+# Remove ONE unit's die from the tray. Enemies roll at turn start but act AFTER
+# the heroes, so a kill during the hero phase leaves a die sitting in the tray
+# announcing an action that will never be taken — that face is no longer intent,
+# it is stale. The stored RESULT is deliberately left alone: battle_scene's
+# hero_rolls / enemy_rolls stay the authority for what was rolled this turn, and
+# nothing in the determinism fence reads the tray. No-op when the die is already
+# gone.
+func clear_die(side: String, unit_id: String) -> void:
+	var key: String = _entry_key(side, unit_id)
+	var die: RigidBody3D = _die_by_key.get(key, null) as RigidBody3D
+	_die_by_key.erase(key)
+	if die != null and is_instance_valid(die):
+		die.queue_free()
+
+
 func reroll_die_to_result(side: String, unit_id: String, raw_result: int) -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:

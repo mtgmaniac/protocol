@@ -323,9 +323,14 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	# the eff strings all say "+N protocol", so the readout renders the pip too
 	# (Bug-2 follow-up 2026-07-12 — also what lets the protocol icon primer fire
 	# on its first roll sighting). No scope: the pool is squad-shared.
+	# No "+" on the amount (Kev, copy/UI batch): the protocol icon already says
+	# "you gain protocol", so the sign was the icon's job spelled twice. Reads
+	# like every other pip now — "12" for damage, "5" for shield, "2" here. The
+	# amount stays: two abilities grant 2, and blanking it would make them
+	# indistinguishable from the ones that grant 1.
 	var gain_protocol: int = int(raw.get("gainProtocol", 0))
 	if gain_protocol > 0:
-		_append_effect(effects, "protocol", "+%d" % gain_protocol)
+		_append_effect(effects, "protocol", "%d" % gain_protocol)
 
 	var rfe: int = int(raw.get("rfe", 0))
 	if rfe > 0:
@@ -422,6 +427,17 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	elif int(raw.get("grantRampage", 0)) > 0:
 		_append_effect(effects, "rampage", keyword_code("rampage", "RA"), 0, "self")
 
+	# Hero self-buff exception (Kev, copy/UI batch): the self-target marker is
+	# information only on the ENEMY side, where "who does this hit?" is the open
+	# question. On your own squad card a self-buff is already obvious, so the
+	# circled-figure icon is noise — strip the `self` scope on the hero side and
+	# keep it on the enemy side. `all` / `lowest` stay on both sides, and the
+	# authored eff TEXT is untouched (NK-17 still owns the "(self)" suffix).
+	if side == "hero":
+		for effect_variant in effects:
+			var effect_dict: Dictionary = effect_variant as Dictionary
+			if str(effect_dict.get("scope", "")) == "self":
+				effect_dict["scope"] = ""
 	return dedupe_scope_markers(effects.slice(0, 3))
 
 

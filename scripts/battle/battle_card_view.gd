@@ -33,6 +33,18 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 	var target_text: String = _scene._get_target_text(state)
 	var active_zone: String = ""
 
+	# A dead enemy's die is no longer intent. Enemies roll at turn start but act
+	# AFTER the heroes, so a kill during the hero phase used to leave the rolled
+	# face in the tray and the ability it would have cast on the card — the board
+	# reading as though a corpse were still about to swing. Drop both on the same
+	# beat the HP bar empties (this runs per feedback event via hp_override), so
+	# the card falls back to DOWN with no pips. Hero dice are untouched: the
+	# player's own tray is still the surface they are resolving.
+	if accent_color == _scene.ENEMY_ACCENT and show_dead:
+		roll_value = null
+		if _scene.dice_tray_3d != null and is_instance_valid(_scene.dice_tray_3d):
+			_scene.dice_tray_3d.clear_die("enemy", str(state["id"]))
+
 	if roll_value != null:
 		var raw_roll: int = int(roll_value)
 		var uid: String = str(state["id"])

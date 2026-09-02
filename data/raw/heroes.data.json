@@ -842,7 +842,7 @@
             },
             {
               "name": "Open Veins",
-              "desc": "Your overload detonates after its damage.",
+              "desc": "Your 20 ability also detonates.",
               "effect": {
                 "type": "overloadDetonateAfter"
               }

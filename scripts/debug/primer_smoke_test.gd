@@ -238,10 +238,12 @@ func _run() -> void:
 	_check(sm.call("is_primer_seen", "primer_icon_self"), "the self marker on the same pip drains the same turn")
 	_check(primer.debug_shown_ids == ["primer_icon_roll", "primer_icon_self"],
 		"within one pip the kind icon teaches before the scope marker")
-	# Seen icons never refire through the roll path either.
+	# Seen icons never refire through the roll path either. ENEMY side: the self
+	# marker is enemy-only now, so a hero pip here would make the assertion
+	# vacuous (nothing to refire) instead of proving the seen-ledger holds.
 	primer.on_turn_started()
 	var shows_after_erb: int = primer.debug_show_count
-	primer.notice_rolled_ability({"shield": 4}, "hero", "h1")
+	primer.notice_rolled_ability({"shield": 4}, "enemy", "e1")
 	await primer.flush_at_group_boundary()
 	_check(primer.debug_show_count == shows_after_erb, "already-seen self marker does not refire on a new pip")
 	# Protocol-gain pip (Field Patch-style gainProtocol) fires the protocol primer.
@@ -320,8 +322,10 @@ func _run() -> void:
 	primer._fired_params.clear()
 	primer.on_turn_started()
 	primer.debug_shown_ids.clear()
-	primer.notice_rolled_ability({"shield": 4}, "hero", "h1")   # self marker
-	primer.notice_rolled_ability({"shield": 5}, "hero", "h2")   # self marker again
+	# ENEMY side for the same reason as above — the self marker only renders
+	# there now, and it is the icon this dedupe case is built around.
+	primer.notice_rolled_ability({"shield": 4}, "enemy", "e1")   # self marker
+	primer.notice_rolled_ability({"shield": 5}, "enemy", "e2")   # self marker again
 	await primer.flush_at_group_boundary()
 	_check(primer.debug_shown_ids == ["primer_icon_self"],
 		"same icon from two units teaches once per drain (saw %s)" % str(primer.debug_shown_ids))
@@ -509,9 +513,18 @@ func _run() -> void:
 	_check(ecm_self_idx == ecm_effects.size() - 1,
 		"whole-self ability keeps its marker on the LAST effect (end of row), not the middle")
 	# Distinct scopes each still emit once: self shield + all-blast damage.
-	var mixed_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "dmg": 6, "blastAll": true}, "hero")
+	# ENEMY side, because the self marker is now enemy-only (see below) — the
+	# de-dupe rule itself is unchanged and still needs a two-distinct-scope case.
+	var mixed_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "dmg": 6, "blastAll": true}, "enemy")
 	_check(mixed_markers.count("self") == 1 and mixed_markers.count("aoe") == 1,
 		"distinct scopes each emit exactly once — self AND all (saw %s)" % str(mixed_markers))
+	# Hero-side self-buff exception (Kev, copy/UI batch): the SAME raw ability
+	# drops its self marker on the hero side — a self-buff on your own card is
+	# implicit — while every other scope survives. Both halves matter: stripping
+	# `self` must not take `all` with it.
+	var hero_mixed: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "dmg": 6, "blastAll": true}, "hero")
+	_check(hero_mixed.count("self") == 0 and hero_mixed.count("aoe") == 1,
+		"hero ability pips carry no self marker; other scopes survive (saw %s)" % str(hero_mixed))
 	# Three self effects (defensive) still collapse to one.
 	var triple_markers: Array = _ability_scope_markers(EffectPipScript, {"shield": 5, "heal": 4, "cloak": true}, "enemy")
 	_check(triple_markers.count("self") == 1,

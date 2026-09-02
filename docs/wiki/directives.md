@@ -23,7 +23,7 @@ Every handler was read and matches its `desc` text. "Handler" = `scripts/battle/
 | blade | Serrated | Your Pierce attacks also Breach. | `pierceAlsoBreach` | :1216-1217 | MATCH — breach forced when `ignSh` |
 | blade | Momentum | Each kill adds +4 to your next ability's damage. | `killNextAbilityDamage` (4) | bank :2152-2155, spend :1206-1211 | MATCH — additive bank (multi-kill turns stack), consumed in one hit |
 | ravager | Deep Cuts | +3 damage against Burning targets. | `bonusVsBurning` (3) | :1823-1826 | MATCH — carrier's hits on any burning enemy |
-| ravager | Open Veins | Your overload Detonates after its damage. | `overloadDetonateAfter` | :1260-1261 | MATCH — overload zone, single-target branch (Evisceration is single-target); skipped if the ability already detonates |
+| ravager | Open Veins | Your 20 ability also detonates. | `overloadDetonateAfter` | :1260-1261 | MATCH — overload zone, single-target branch (Evisceration is single-target); skipped if the ability already detonates |
 | bulwark | Rampart | Your shields grant +2. | `ownShieldBonus` (2) | :963-966 | MATCH — all grant branches incl. self |
 | bulwark | Bunker Doctrine | Allies holding your shields Spike 3. | `shieldGrantsSpike` (3) | :1156-1161 | MATCH — allies only (granter excluded), spike = max not sum |
 | sentinel | Ironclad | While taunting, incoming hits deal -2. | `tauntDamageReduction` (2) | :1796-1797 | MATCH — reduction only while `taunting` |

@@ -344,7 +344,6 @@ func _build_protocol(host: VBoxContainer) -> void:
 	_add_section(host, "THE PROTOCOL", [
 		"Protocol is a shared squad resource that starts at 0 each battle, +1 at the end of every turn, and caps at 10.",
 		"Spend it to manipulate dice and use items before you confirm the turn.",
-		"Unspent Protocol can carry between battles (some gear/relics seed a starting pool).",
 	])
 	_add_section(host, "SPENDING PROTOCOL", [
 		"Nudge (1): +3 to a die's effective roll (once per die per turn).",
@@ -1062,9 +1061,14 @@ func _add_bullet(parent: VBoxContainer, text: String) -> void:
 	row.add_theme_constant_override("separation", 10)
 	parent.add_child(row)
 
-	var bullet := _make_label(">", BODY_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2)
+	# The chevron marks the entry's FIRST LINE, so it must not stretch to the
+	# row height and center itself against a wrapped bullet. SHRINK_BEGIN pins
+	# its one-line box to the top of the row; the body tier font matches the
+	# prose line box so the two first lines share a baseline.
+	var bullet := _make_label(">", BODY_LONG_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2)
 	bullet.custom_minimum_size = Vector2(30, 0)
 	bullet.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	bullet.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(bullet)
 
 	row.add_child(_make_body_label(text, PixelUI.TEXT_PRIMARY))
