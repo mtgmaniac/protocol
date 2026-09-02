@@ -363,10 +363,15 @@ compression, so no etc2 artifacts exist and none are needed.
 
 > **Tutorial V3.1 ruling (current):** Mandatory onboarding is 15 visible
 > coachmark beats plus two hidden dice-settle waiters (17 internal states).
-> It rigs only the two rounds of inputs and uses the real 40-HP Scrap Drone:
-> MARK -> 17-damage hit -> 8-damage hit -> 8 damage to Strike, then Nudge
-> 8->11 and a 3 heal + 3 shield -> 10-damage hit -> 11-damage hit for the kill
-> before the round-two enemy action. The real inspection popup must open and
+> It rigs only the two rounds of inputs and uses the real 35-HP Scrap Drone
+> (Facility light-hybrid pass, selective-HP): MARK -> 17-damage hit -> a
+> 3 heal + 3 shield placed on Strike, leaving the drone at 18; the drone's
+> real Stab 7 is then soaked 3 by that shield (4 to HP, Strike 51). Round two
+> Nudges 8->11, heals the injured Strike, and kills from 18 with the
+> 10-damage and 11-damage hits before the enemy action. **Every guided action
+> in both rounds resolves meaningfully — the round-one enemy HP is held above
+> 11 so neither round-two attack can fizzle on a dead target** (pinned by the
+> ability audit). The real inspection popup must open and
 > close; input is allowlisted and every assignment validates its effect, target,
 > and cast order. All primers are suppressed and remain unseen; only completion
 > persists `tutorial_done`. This supersedes every older V2/tutorial-showcase

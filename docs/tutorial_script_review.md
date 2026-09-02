@@ -19,8 +19,8 @@ target are rigged. Off-script actions are rejected at the input boundary.
 
 | Round | Inputs and committed order | Required outcome |
 | --- | --- | --- |
-| 1 | Strike 3 MARK -> Engineer 12 -> Medic 12 | 40 -> 15 enemy HP; Strike takes 8; Protocol 1 |
-| 2 | Strike 8 NUDGE +3 -> Medic 3 -> Strike 11 -> Engineer 12 | Medic heals/shields Strike; 21 damage kills before the enemy acts |
+| 1 | Strike 3 MARK -> Engineer 12 -> Medic 2 | 35 -> 18 enemy HP; shield soaks 3 of Stab 7, Strike takes 4 (51); Protocol 1 |
+| 2 | Strike 8 NUDGE +3 -> Medic 3 -> Strike 11 -> Engineer 12 | Medic heals the injured Strike (54); 10 + 11 kill from 18 before the enemy acts — both guided attacks land |
 
 The V3.1 visible script is: welcome; Roll; inspect Strike (the real popup must
 open and close); read the enemy plan; assign MARK, Engineer, Medic; end turn;

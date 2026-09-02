@@ -166,12 +166,17 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		# Tutorial beat-19 fix (v2.5): the drill teaches THE Nudge on Strike's
 		# die with exactly 1 Protocol — an off-script apply would spend the only
 		# point and strand the beat with false copy. Ignore picks on other dice
-		# (mirrors the assigned beats' off-script handling: silently ignored,
-		# never a dead end — the pick stays ARMED, nothing is charged).
+		# (mirrors the assigned beats' off-script handling: ignored, never a
+		# dead end — the pick stays ARMED, nothing is charged; the fence
+		# answers with a redirect pulse on the die the beat DOES want).
 		if _scene._game_state().tutorial_mode:
 			var nudge_unit: Object = nudge_state.get("unit", null) as Object
-			if nudge_unit == null or str(nudge_unit.get("id")) != str(_scene.TUTORIAL_NUDGE_HERO) \
-					or not _scene._tutorial_allows("nudge_pick", {"hero": str(nudge_unit.get("id"))}):
+			var nudge_unit_id: String = str(nudge_unit.get("id")) if nudge_unit != null else ""
+			# The fence is evaluated FIRST, never short-circuited past, so an
+			# off-script die still reaches its rejection. Same verdict as
+			# before — only the evaluation order changed.
+			var nudge_allowed: bool = _scene._tutorial_allows("nudge_pick", {"hero": nudge_unit_id})
+			if nudge_unit_id != str(_scene.TUTORIAL_NUDGE_HERO) or not nudge_allowed:
 				return true
 		AudioManager.play_select()
 		_apply_nudge(target_id)

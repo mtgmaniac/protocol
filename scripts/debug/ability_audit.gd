@@ -3279,10 +3279,12 @@ func _run_relic_per_turn_aura_regression() -> void:
 	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
 
 
-# Tutorial V3.0 pins the real 40-HP Scrap Drone: Target Lock -> marked
-# Overdrive (17) -> Neural Override (8), then Stab 8 on Strike. Round two
-# uses Diagnostic Pulse -> Rail Strike -> Overdrive and must kill before an
-# enemy action. If this math drifts, tutorial copy must be re-verified.
+# Tutorial V3.1 pins the real 35-HP Scrap Drone: Target Lock -> marked
+# Overdrive (17) -> Diagnostic Pulse shielding Strike, leaving the drone at 18.
+# The drone's real Stab 7 is then soaked 3 by that shield (4 to HP). Round two
+# uses Diagnostic Pulse -> Rail Strike -> Overdrive and must kill from 18 with
+# BOTH attacks landing (10 then 11), before an enemy action. If this math
+# drifts, tutorial copy must be re-verified.
 func _run_tutorial_kill_math_regression() -> void:
 	var combat: UnitData = DataManager.get_unit("combat") as UnitData
 	var engineer: UnitData = DataManager.get_unit("engineer") as UnitData
@@ -3291,36 +3293,42 @@ func _run_tutorial_kill_math_regression() -> void:
 	if combat == null or engineer == null or medic == null or scrap == null:
 		_record_failure("Tutorial / kill math", "tutorial", "real data present", "missing data")
 		return
-	if int(scrap.max_hp) != 40:
-		_record_failure("Tutorial / kill math", "tutorial", "Scrap Drone real statline 40 HP", "hp=%d" % int(scrap.max_hp))
+	if int(scrap.max_hp) != 35:
+		_record_failure("Tutorial / kill math", "tutorial", "Scrap Drone real statline 35 HP", "hp=%d" % int(scrap.max_hp))
 		return
 
-	# T1: Target Lock -> Overdrive -> Neural Override = 25 damage, then Stab 8.
+	# T1: Target Lock -> marked Overdrive (17) -> Diagnostic Pulse shield on
+	# Strike, then Stab 7 (shield soaks 3, Strike takes 4).
 	var mgr: CombatManager = CombatManager.new()
 	mgr.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
 	var enemy: Dictionary = mgr.get_enemy_states()[0]
 	var strike: Dictionary = mgr.get_hero_states()[0]
-	_tutorial_resolve_turn(mgr, {"combat": 3, "engineer": 12, "medic": 12}, ["combat", "engineer", "medic"])
+	_tutorial_resolve_turn(mgr, {"combat": 3, "engineer": 12, "medic": 2}, ["combat", "engineer", "medic"])
 	var grants_t1: int = mgr.take_pending_protocol_grants()
 	var t1_ok: bool = (
-		int(enemy["current_hp"]) == 15
+		int(enemy["current_hp"]) == 18
 		and not bool(enemy.get("marked", false))
-		and int(strike["current_hp"]) == 47
+		and int(strike["current_hp"]) == 51
 		and grants_t1 == 0
 	)
 	if t1_ok:
-		_record_pass("Tutorial / T1 math (Mark 17 + 8 = 25, Stab 8, Protocol 1)", "tutorial")
+		_record_pass("Tutorial / T1 math (Mark 11 -> 17, shield soaks 3 of Stab 7, Protocol 1)", "tutorial")
 	else:
-		_record_failure("Tutorial / T1 math (Mark 17 + 8 = 25, Stab 8, Protocol 1)", "tutorial",
-			"drone 15 unmarked, Strike 47, grant 0",
+		_record_failure("Tutorial / T1 math (Mark 11 -> 17, shield soaks 3 of Stab 7, Protocol 1)", "tutorial",
+			"drone 18 unmarked, Strike 51, grant 0",
 			"drone=%d marked=%s strike=%d grant=%d" % [int(enemy["current_hp"]), str(enemy.get("marked", false)), int(strike["current_hp"]), grants_t1])
+	# The round-two guarantee: the drone must outlive the FIRST guided attack so
+	# that neither Rail Strike (10) nor Overdrive (11) is asked of the player and
+	# then fizzles on an already-dead target.
+	_expect_and_record("Tutorial / round-two drone HP outlives the largest single guided hit (11)",
+		"tutorial", "true", str(int(enemy["current_hp"]) > 11))
 	# T2 closes before the enemy action: heal/shield -> Rail Strike -> Overdrive.
 	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 12, "medic": 3}, ["medic", "combat", "engineer"])
 	if bool(enemy["dead"]):
-		_record_pass("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 15)", "tutorial")
+		_record_pass("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 18)", "tutorial")
 	else:
-		_record_failure("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 15)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
-	_expect_and_record("Tutorial / T2 Diagnostic Pulse restores Strike", "tutorial", "50", str(int(strike["current_hp"])))
+		_record_failure("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 18)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
+	_expect_and_record("Tutorial / T2 Diagnostic Pulse restores Strike", "tutorial", "54", str(int(strike["current_hp"])))
 	_expect_and_record("Tutorial / T2 Diagnostic Pulse grants Strike shield", "tutorial", "3", str(int(strike["shield"])))
 
 	# The taught band jump and its double-Nudge safety: 8 -> 11 flips

@@ -11,6 +11,11 @@
 class_name TutorialController
 extends Node
 
+# Emitted when allows_action() refuses an off-script input, carrying the beat's
+# expected target so battle_scene can pulse it (see _expected_target for the
+# payload shape). Feedback only — the fence itself is unchanged.
+signal action_rejected(action: StringName, expected: Dictionary)
+
 # Above the battle scene + header (8) but BELOW InspectPopup (130) / HelpMenu (135), so a
 # long-press inspect shows above the coachmarks instead of being dimmed under them.
 const LAYER := 110
@@ -71,16 +76,16 @@ func _build_steps() -> Array:
 		{"targets": ["enemy_cards", "center", "hero_area"], "separate": true, "title": "WELCOME", "text": "Your enemy is at the top, your squad is at the bottom, and every turn begins by rolling the dice in the center."},
 		{"targets": ["roll_button"], "text": "Tap ROLL to roll one die for every unit.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 1},
-		{"targets": ["card:combat", "die:combat", "ability:combat", "die:engineer", "ability:engineer", "die:medic", "ability:medic"], "separate": true, "text": "Each roll selects a different ability band. Higher is not always better. Long-press Strike Unit to view every ability on its die.", "advance": "inspected", "inspect_hero": "combat"},
-		{"targets": ["enemy_card", "enemy_pip", "enemy_die", "card:combat"], "separate": true, "text": "The drone plans to deal 8 damage to Strike Unit. Enemy rolls, actions, and targets are shown before you commit your turn."},
-		{"targets": ["card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Strike Unit rolled a setup ability. It deals no damage, but puts MARK on the drone so the next hit deals 50% more. Tap Strike Unit's die, then tap the drone.", "advance": "assigned", "hero": "combat", "order": 1, "effect": "mark"},
-		{"targets": ["order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Now select Field Engineer's 11-damage attack and target the marked drone. Because it acts second, MARK will increase the hit to 17.", "advance": "assigned", "hero": "engineer", "order": 2, "effect": "11 dmg"},
-		{"targets": ["order:combat", "order:engineer", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "Select Splice Medic's 8-damage attack and target the drone.", "advance": "assigned", "hero": "medic", "order": 3, "effect": "8 dmg"},
+		{"targets": ["card:combat", "die:combat", "ability:combat", "die:engineer", "ability:engineer", "die:medic", "ability:medic"], "separate": true, "text": "Each roll selects a different ability. Higher is not always better. Long-press Strike Unit to view everything its die can do.", "advance": "inspected", "inspect_hero": "combat"},
+		{"targets": ["enemy_card", "enemy_pip", "enemy_die", "card:combat"], "separate": true, "text": "The drone plans to deal 7 damage to Strike Unit. Enemy rolls, actions, and targets are shown before you commit your turn."},
+		{"targets": ["card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Strike Unit rolled a setup ability. It deals no damage, but puts MARK on the drone so the next hit deals 50% more. Select Strike Unit, then target the drone.", "advance": "assigned", "hero": "combat", "order": 1, "effect": "mark"},
+		{"targets": ["order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Now select Field Engineer's 11-damage attack and target the marked drone. Because it acts second, the hit will increase to 17.", "advance": "assigned", "hero": "engineer", "order": 2, "effect": "11 dmg"},
+		{"targets": ["order:combat", "order:engineer", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "The drone is still aiming at Strike Unit. Select Splice Medic's shield and target Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic", "target_hero": "combat", "order": 3, "effect": "3 heal"},
 		{"targets": ["order:combat", "order:engineer", "order:medic", "roll_button"], "separate": true, "text": "Your squad acts in the numbered order, then the enemy acts. Tap END TURN and watch the setup ability amplify the next hit.", "advance": "turn_resolved", "round": 1},
-		{"targets": ["enemy_card", "card:combat", "protocol_value", "roll_button", "battle_log"], "separate": true, "text": "The setup ability increased the next hit, the drone struck back, and you banked 1 Protocol. Tap ROLL for the next turn.", "advance": "roll_pressed"},
+		{"targets": ["enemy_card", "card:combat", "protocol_value", "roll_button", "battle_log"], "separate": true, "text": "The setup ability increased the next hit, the shield soaked 3 of the drone's 7, and you banked 1 Protocol. Tap ROLL for the next turn.", "advance": "roll_pressed"},
 		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 2},
-		{"targets": ["protocol_value", "nudge", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Nudge costs 1 Protocol. It increases or decreases one unassigned die by 3. Tap NUDGE, then increase Strike Unit's roll from 8 to 11.", "armed_text": "Strike Unit rolled 8. Tap its die to increase the roll by 3, moving it to 11.", "advance": "nudged", "hero": "combat", "prev_roll": 8, "new_roll": 11, "effect": "10 dmg"},
-		{"targets": ["card:combat", "die:combat", "ability:combat", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "Increasing the roll by 3 moved it into a different ability band, changing 6 damage into 10. Now select Splice Medic's heal and target the injured Strike Unit.", "advance": "assigned", "hero": "medic", "target_hero": "combat", "order": 1, "effect": "3 heal"},
+		{"targets": ["protocol_value", "nudge", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Nudge costs 1 Protocol and raises one unassigned die by 3. Tap NUDGE, then raise Strike Unit's roll from 8 to 11.", "armed_text": "Strike Unit rolled 8. Tap its die to raise the roll to 11.", "advance": "nudged", "hero": "combat", "prev_roll": 8, "new_roll": 11, "effect": "10 dmg"},
+		{"targets": ["card:combat", "die:combat", "ability:combat", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "Raising the roll by 3 moved Strike Unit into a different ability. Its attack changed from 6 damage to 10. Now select Splice Medic's heal and target the injured Strike Unit.", "advance": "assigned", "hero": "medic", "target_hero": "combat", "order": 1, "effect": "3 heal"},
 		{"targets": ["order:medic", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Select Strike Unit's 10-damage attack and target the drone.", "advance": "assigned", "hero": "combat", "order": 2, "effect": "10 dmg"},
 		{"targets": ["order:medic", "order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Select Field Engineer's 11-damage attack and target the drone.", "advance": "assigned", "hero": "engineer", "order": 3, "effect": "11 dmg"},
 		{"targets": ["order:medic", "order:combat", "order:engineer", "enemy_card", "roll_button"], "separate": true, "text": "The heal resolves first. Your two attacks then deal 21 total damage. Tap END TURN.", "advance": "won", "round": 2},
@@ -167,7 +172,7 @@ func _valid_resolution_payload(payload: Dictionary) -> bool:
 			var hero: Dictionary = hero_variant as Dictionary
 			var unit: Object = hero.get("unit", null) as Object
 			if unit != null and str(unit.get("id")) == "combat":
-				return int(payload.get("enemy_hp", -1)) == 15 and int(hero.get("current_hp", -1)) == 47 and int(payload.get("protocol", -1)) == 1
+				return int(payload.get("enemy_hp", -1)) == 18 and int(hero.get("current_hp", -1)) == 51 and int(payload.get("protocol", -1)) == 1
 		return false
 	if round == 2:
 		return bool(payload.get("enemy_defeated", false)) and int(payload.get("protocol", -1)) == 0 and not bool(payload.get("enemy_second_round_action", true))
@@ -176,7 +181,19 @@ func _valid_resolution_payload(payload: Dictionary) -> bool:
 
 # Input-level tutorial fence. Spotlight holes guide the player; this gate is the
 # authority that prevents an off-script control from mutating the honest rig.
+# The RULES live in _action_allowed and are unchanged; this wrapper only makes a
+# refusal audible — a swallowed tap with zero feedback reads as a broken game
+# (public itch.io report: a player quit after tapping a die and nothing
+# happened). On refusal we publish what the beat IS waiting for and the scene
+# pulses it, so the off-script tap redirects instead of stonewalling.
 func allows_action(action: String, payload: Dictionary = {}) -> bool:
+	if _action_allowed(action, payload):
+		return true
+	action_rejected.emit(StringName(action), _expected_target())
+	return false
+
+
+func _action_allowed(action: String, payload: Dictionary) -> bool:
 	var step: Dictionary = _current()
 	if step.is_empty() or bool(step.get("hide_coach", false)):
 		return false
@@ -194,6 +211,46 @@ func allows_action(action: String, payload: Dictionary = {}) -> bool:
 		"nudge_button", "nudge_pick":
 			return _advance_mode() == "nudged" and str(payload.get("hero", "combat")) == "combat"
 	return false
+
+
+# What the CURRENT step is waiting for, described in terms battle_scene can
+# highlight. Mirrors _action_allowed's arms — keep the two in step. Keys:
+#   "control"   — a named scene control ("roll_button" / "nudge_button")
+#   "hero"      — unit id whose die (card as fallback) is the thing to tap
+#   "state_ids" — live legal-target state ids, with "side", once the scripted
+#                 hero is already picked and the beat wants a TARGET tap
+# An empty dict means "nothing to point at" (waiter steps, finished drill) and
+# the scene draws nothing.
+func _expected_target() -> Dictionary:
+	var step: Dictionary = _current()
+	if _scene == null or step.is_empty() or bool(step.get("hide_coach", false)):
+		return {}
+	match _advance_mode():
+		"roll_pressed", "turn_resolved", "won":
+			return {"control": "roll_button"}
+		"inspected":
+			return {"hero": str(step.get("inspect_hero", ""))}
+		"assigned":
+			# Stage 2 mirror of _retarget_spotlight_to_legal: once the scripted
+			# hero is picked, the beat wants a TARGET tap, so redirect onto the
+			# legal targets rather than back at the die already in hand.
+			var ids: Variant = _scene.get("legal_target_ids")
+			if str(_scene.get("active_targeting_hero_id")) != "" and ids is Array and not (ids as Array).is_empty():
+				return {"side": str(_scene.get("legal_target_side")), "state_ids": (ids as Array).duplicate()}
+			return {"hero": str(step.get("hero", ""))}
+		"nudged":
+			# Before the pick is armed the player must press NUDGE; once armed,
+			# the die named by the step's hero gate is the thing to tap.
+			if _in_nudge_pick():
+				return {"hero": str(step.get("hero", ""))}
+			return {"control": "nudge_button"}
+	return {}
+
+
+func _in_nudge_pick() -> bool:
+	if _scene == null or not _scene.has_method("phase_name"):
+		return false
+	return str(_scene.call("phase_name", _scene.get("turn_phase"))) == "nudge_pick"
 
 
 # Drop the dim to the whole-screen frame (no dimming, just the edge border), keeping the coachmark —
@@ -221,20 +278,29 @@ func _retarget_spotlight_to_legal() -> void:
 	for id_variant in ids:
 		var target_id: String = str(id_variant)
 		if side == "enemy" or side == "any":
-			var card_rect: Rect2 = _enemy_card_rect(target_id)
-			if card_rect.size != Vector2.ZERO:
-				holes.append(card_rect.grow(PAD))
-			var die_rect: Rect2 = _die_rect("enemy", target_id)
-			if die_rect.size != Vector2.ZERO:
-				holes.append(die_rect.grow(PAD))
+			_append_unique_hole(holes, _enemy_card_rect(target_id))
+			_append_unique_hole(holes, _die_rect("enemy", target_id))
 		if side == "hero" or side == "dead_hero" or side == "any":
-			var hero_rect: Rect2 = _hero_card_rect(target_id)
-			if hero_rect.size != Vector2.ZERO:
-				holes.append(hero_rect.grow(PAD))
+			_append_unique_hole(holes, _hero_card_rect(target_id))
 	if holes.is_empty():
 		holes = [_fullscreen_hole()]
 	_spot.set_holes(holes)
 	_publish_debug_state(_current(), holes, "retarget")
+
+
+# Append a padded hole unless an equivalent rect is already spotlit. A friendly
+# pick's legal-target set includes the SOURCE hero, whose card is already in the
+# step's own cluster — appending it blind drew the ring twice, which reads as a
+# doubled border on exactly those cards (spotted in the §4.2 density capture).
+func _append_unique_hole(holes: Array, rect: Rect2) -> void:
+	if rect.size == Vector2.ZERO:
+		return
+	var padded: Rect2 = rect.grow(PAD)
+	for existing_variant in holes:
+		var existing: Rect2 = existing_variant
+		if existing.position.is_equal_approx(padded.position) and existing.size.is_equal_approx(padded.size):
+			return
+	holes.append(padded)
 
 
 func _show_armed_nudge() -> void:
@@ -292,6 +358,70 @@ func _finish() -> void:
 		sm.call("go_to_unit_select" if continue_to_play else "go_to_main_menu")
 
 
+# ── Waiter failsafe (spec §8) ─────────────────────────────────────────────────
+# A hide_coach waiter advances on the scene's "rolled" event. If that event
+# never arrives the drill is UNRECOVERABLE by design: the spotlight has been
+# dismissed so there is no coachmark, and allows_action refuses every control
+# because hide_coach short-circuits the fence to false — no instruction on
+# screen and nothing that responds to a tap. This bounds that window.
+#
+# dice_tray_3d.MAX_ROLL_TIME is 6.0s and its settle loop is already bounded by
+# it, so 12s is double the worst legitimate physics wait. The clock additionally
+# PAUSES while a primer or inspect modal is up (see
+# battle_scene.is_tutorial_waiter_blocked) — those wait on a real tap and must
+# never count against the budget.
+const WAITER_FAILSAFE_SECS := 12.0
+# Test seam: the smoke gate shortens the budget so it does not spend 12s of wall
+# clock proving a rule that does not depend on the constant's value.
+var waiter_failsafe_secs: float = WAITER_FAILSAFE_SECS
+var _waiter_token: int = 0
+
+
+func _watch_stalled_waiter(step_index: int, token: int) -> void:
+	var elapsed: float = 0.0
+	while true:
+		if not is_inside_tree() or get_tree() == null:
+			return
+		await get_tree().process_frame
+		# Superseded (the beat advanced, or a newer waiter started): stand down.
+		if _step != step_index or _waiter_token != token:
+			return
+		if _scene == null or not is_instance_valid(_scene):
+			return
+		if _scene.has_method("is_tutorial_waiter_blocked") and bool(_scene.call("is_tutorial_waiter_blocked")):
+			continue
+		elapsed += get_process_delta_time()
+		if elapsed >= waiter_failsafe_secs:
+			_recover_stalled_waiter(step_index)
+			return
+
+
+# Recovery must leave the player somewhere valid and must not skip instruction.
+func _recover_stalled_waiter(step_index: int) -> void:
+	var rolled: bool = _scene_has_rolls()
+	var phase: String = str(_scene.call("phase_name", _scene.get("turn_phase"))) if _scene.has_method("phase_name") else "?"
+	push_warning("[Tutorial] waiter beat %d stalled %.1fs (rolls=%s phase=%s) - recovering" % [
+		step_index + 1, waiter_failsafe_secs, str(rolled), phase])
+	print("[Tutorial] WAITER FAILSAFE beat %d rolls=%s phase=%s" % [step_index + 1, str(rolled), phase])
+	if rolled:
+		# The dice ARE on the board and only the event was lost, so the beat the
+		# roll was meant to unlock is exactly where the player belongs. Nothing
+		# is skipped and nothing is marked complete.
+		_next()
+		return
+	# The roll never landed. Step BACK to the beat that asks for it, so the
+	# player gets a coachmark and a live control instead of a dead screen.
+	_reveal_whole_screen()
+	_show_step(maxi(step_index - 1, 0))
+
+
+func _scene_has_rolls() -> bool:
+	if _scene == null:
+		return false
+	var rolls: Variant = _scene.get("hero_rolls")
+	return rolls is Dictionary and not (rolls as Dictionary).is_empty()
+
+
 # ── Layout / spotlight ────────────────────────────────────────────────────────────
 func _show_step(index: int) -> void:
 	_step = index
@@ -311,6 +441,8 @@ func _layout_step() -> void:
 		if _spot != null:
 			_spot.dismiss()
 		_publish_debug_state(step, [])
+		_waiter_token += 1
+		_watch_stalled_waiter(_step, _waiter_token)
 		return
 	var holes: Array = _compute_holes(step)
 	# Never place against a not-yet-valid rect (playtest item 9): a step that

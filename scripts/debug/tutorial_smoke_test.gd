@@ -41,9 +41,10 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame
 	await _run_v3_path()
+	await _run_waiter_failsafe()
 
 	if _errors.is_empty():
-		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof + skip), cleanse showcase shown once, spotlights resolved + retargeted, rig math exact + order-invariant, no leech/mark" % STEP_COUNT)
+		print("[TUTORIAL_SMOKE] PASS — all %d steps advanced (happy + stall-proof + skip), cleanse showcase shown once, spotlights resolved + retargeted, clusters survive targeting, redirects land on the expected element, waiter failsafe recovers, rig math exact + order-invariant" % STEP_COUNT)
 		quit(0)
 	else:
 		for e in _errors:
@@ -65,6 +66,11 @@ func _run_v3_path() -> void:
 	var steps: Array = controller.call("_build_steps")
 	if steps.size() != STEP_COUNT:
 		_fail("V3.1 must contain 17 internal states, got %d" % steps.size())
+		return
+	# Structure / cluster / copy contract over the WHOLE script, not just the
+	# beats this path happens to walk (spec §2, §4.1, §7 beat 10).
+	_assert_script_contract(controller)
+	if not _errors.is_empty():
 		return
 	var visible: int = 0
 	for step_variant in steps:
@@ -89,23 +95,59 @@ func _run_v3_path() -> void:
 	controller.call("_next")
 	await _expect_step(controller, 5)
 	var enemy_id: String = str(_enemy_state(scene).get("id", ""))
-	await _v3_assign(scene, "combat", enemy_id)
+	# Off-script tap redirect: the fence still refuses an unscripted die (the
+	# beat must not advance), but the refusal now answers with a pulse on the
+	# die the beat DOES want. A silent swallow read as a dead button — a public
+	# itch.io report has a player quitting over exactly this.
+	await _assert_redirect_pulse(scene, controller, 5, "engineer", "combat")
+	# Select the gated hero, then probe the TARGET half of the fence: the source
+	# cluster must survive targeting (§4.3), and an illegal target tap must
+	# redirect onto the legal one rather than back at the die already in hand.
+	# §10: the cooldown must stop a mash from stacking rings. The tap above was
+	# moments ago, so an immediate second refusal draws nothing.
+	var before_mash: Dictionary = _ring_ids(scene)
+	scene.call("_on_hero_card_pressed", _state_id_for_unit(scene, "medic"))
+	await _wait_frames(2)
+	if not _rings_added_since(scene, before_mash).is_empty():
+		_fail("redirect: cooldown must suppress a second pulse inside the window")
+		return
+	_clear_redirect_cooldown(scene)
+	scene.call("_on_hero_card_pressed", _state_id_for_unit(scene, "combat"))
+	await _wait_frames(2)
+	_assert_cluster_survives_targeting(scene, controller, "combat")
+	_clear_redirect_cooldown(scene)
+	await _assert_redirect_on_target(scene, controller, 5, "engineer")
+	scene.call("_on_enemy_card_pressed", enemy_id)
+	await _wait_frames(2)
 	await _expect_step(controller, 6)
 	await _v3_assign(scene, "engineer", enemy_id)
 	await _expect_step(controller, 7)
-	await _v3_assign(scene, "medic", enemy_id)
+	# V3.1 selective-HP re-rig: round one's Medic beat shields Strike Unit (the
+	# drone's telegraphed target) instead of attacking, so this assignment is an
+	# ALLY pick — the shield then soaks 3 of the drone's real Stab 7.
+	await _v3_assign(scene, "medic", _state_id_for_unit(scene, "combat"))
 	await _expect_step(controller, 8)
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 9)
 	var drone: Dictionary = _enemy_state(scene)
 	var strike: Dictionary = _hero_state(scene, "combat")
-	if int(drone.get("current_hp", -1)) != 15 or int(strike.get("current_hp", -1)) != 47 or int(scene.get("protocol_points")) != 1:
-		_fail("V3 T1 expected drone=15, Strike=47, Protocol=1; got %d/%d/%d" % [int(drone.get("current_hp", -1)), int(strike.get("current_hp", -1)), int(scene.get("protocol_points"))])
+	if int(drone.get("current_hp", -1)) != 18 or int(strike.get("current_hp", -1)) != 51 or int(scene.get("protocol_points")) != 1:
+		_fail("V3 T1 expected drone=18, Strike=51, Protocol=1; got %d/%d/%d" % [int(drone.get("current_hp", -1)), int(strike.get("current_hp", -1)), int(scene.get("protocol_points"))])
 		return
 	scene.call("_on_roll_button_pressed")
 	await _expect_step(controller, 11)
 	var protocol: Node = scene.get("_protocol")
 	protocol.call("_on_nudge_button_pressed")
+	# Wrong-die pick during the armed nudge: still ignored (pick stays ARMED,
+	# nothing charged — the beat-19 ruling stands), now with the redirect pulse
+	# on Strike Unit's die.
+	await _assert_redirect_pulse(scene, controller, 11, "medic", "combat")
+	if str(scene.call("phase_name", scene.get("turn_phase"))) != "nudge_pick":
+		_fail("redirect: a wrong-die nudge pick must leave the pick ARMED")
+		return
+	if int(scene.get("protocol_points")) != 1:
+		_fail("redirect: a wrong-die nudge pick must not charge, got %d" % int(scene.get("protocol_points")))
+		return
 	protocol.call("handle_hero_card_pressed", combat_id)
 	await _expect_step(controller, 12)
 	await _v3_assign(scene, "medic", combat_id)
@@ -122,6 +164,305 @@ func _run_v3_path() -> void:
 			_fail("%s was marked seen in the mandatory tutorial" % primer_id)
 			return
 	controller.call("_next")
+
+
+# Tap `tapped_unit`'s die through the REAL input path during a beat gated on
+# `expected_unit`, and assert the spec §5 contract: the step does not advance
+# (the fence is untouched), EXACTLY ONE primary ring lands on the tap target the
+# beat wants, the rest of that hero's source cluster is carried as quieter
+# secondary rings, and nothing emphasizes the element that was actually tapped.
+func _assert_redirect_pulse(scene: Node, controller: Node, step_index: int, tapped_unit: String, expected_unit: String) -> void:
+	var before: Dictionary = _ring_ids(scene)
+	scene.call("_on_hero_card_pressed", _state_id_for_unit(scene, tapped_unit))
+	await _wait_frames(2)
+	if int(controller.get("_step")) != step_index:
+		_fail("redirect: the off-script %s tap advanced step %d" % [tapped_unit, step_index])
+		return
+	var drawn: Array = _rings_added_since(scene, before)
+	var primary: Array = []
+	for ring_variant in drawn:
+		if bool((ring_variant as Control).get_meta("primary", false)):
+			primary.append(ring_variant)
+	if primary.size() != 1:
+		_fail("redirect: an off-script %s tap must draw exactly ONE primary pulse, drew %d (of %d rings)" % [
+			tapped_unit, primary.size(), drawn.size()])
+		return
+	# §5: the source cluster is emphasized, not an isolated die.
+	if drawn.size() < 2:
+		_fail("redirect: expected the %s cluster (die + card), got %d ring(s)" % [expected_unit, drawn.size()])
+		return
+	var want: Rect2 = scene.call("_tutorial_die_hit_rect", "hero", _state_id_for_unit(scene, expected_unit))
+	if want.size == Vector2.ZERO:
+		_fail("redirect: %s has no die hit rect for the pulse to point at" % expected_unit)
+		return
+	# A ring collapses onto its target, so its live rect is mid-transform — the
+	# rect it was BUILT for is carried as metadata.
+	var lead: Control = primary[0] as Control
+	if not lead.has_meta("target_rect"):
+		_fail("redirect: pulse ring carries no target_rect metadata")
+		return
+	var got: Rect2 = lead.get_meta("target_rect")
+	if not got.encloses(want):
+		_fail("redirect: primary pulse %s must cover %s's die %s" % [str(got), expected_unit, str(want)])
+		return
+	var wrong: Rect2 = scene.call("_tutorial_die_hit_rect", "hero", _state_id_for_unit(scene, tapped_unit))
+	if wrong.size == Vector2.ZERO:
+		return
+	for ring_variant in drawn:
+		var rect: Rect2 = (ring_variant as Control).get_meta("target_rect", Rect2())
+		if rect.size != Vector2.ZERO and rect.encloses(wrong):
+			_fail("redirect: a pulse landed on the TAPPED die (%s), not the expected one" % tapped_unit)
+			return
+
+
+# Off-script TARGET tap: the correct hero is already selected, and the player
+# taps something that is not a legal target. The fence refuses it, and the
+# redirect points at the legal target(s) rather than back at the source die.
+func _assert_redirect_on_target(scene: Node, controller: Node, step_index: int, tapped_unit: String) -> void:
+	var before: Dictionary = _ring_ids(scene)
+	scene.call("_on_hero_card_pressed", _state_id_for_unit(scene, tapped_unit))
+	await _wait_frames(2)
+	if int(controller.get("_step")) != step_index:
+		_fail("redirect(target): the off-script %s tap advanced step %d" % [tapped_unit, step_index])
+		return
+	var drawn: Array = _rings_added_since(scene, before)
+	if drawn.is_empty():
+		_fail("redirect(target): an illegal target tap drew no pulse")
+		return
+	var legal: Array = scene.get("legal_target_ids") as Array
+	if legal.is_empty():
+		_fail("redirect(target): no legal targets to point at")
+		return
+	var legal_rect: Rect2 = _card_rect_for_state(scene, str(legal[0]))
+	var covered: bool = false
+	for ring_variant in drawn:
+		var rect: Rect2 = (ring_variant as Control).get_meta("target_rect", Rect2())
+		if rect.size != Vector2.ZERO and legal_rect.size != Vector2.ZERO and rect.encloses(legal_rect):
+			covered = true
+	if not covered:
+		_fail("redirect(target): no pulse covered the legal target %s" % str(legal[0]))
+
+
+func _card_rect_for_state(scene: Node, state_id: String) -> Rect2:
+	for views_variant in [scene.get("hero_card_views"), scene.get("enemy_card_views")]:
+		for view_variant in (views_variant as Array):
+			var view: Dictionary = view_variant
+			if str((view.get("state", {}) as Dictionary).get("id", "")) == state_id:
+				var card: Control = view.get("card", null) as Control
+				if card != null and is_instance_valid(card) and card.is_inside_tree():
+					return card.get_global_rect()
+	return Rect2()
+
+
+# The redirect cooldown is wall-clock, and a headless frame is far shorter than
+# a real one — waiting it out by frame count would be unreliable. Clear it
+# directly when a test needs consecutive pulses.
+func _clear_redirect_cooldown(scene: Node) -> void:
+	scene.set("_tutorial_redirect_msec", 0)
+
+
+# Rings free themselves mid-tween, so a positional slice can silently miss the
+# new ones when an older ring leaves the child list in the same frame. Diff by
+# instance id instead.
+func _ring_ids(scene: Node) -> Dictionary:
+	var ids: Dictionary = {}
+	for ring_variant in _redirect_rings(scene):
+		ids[(ring_variant as Object).get_instance_id()] = true
+	return ids
+
+
+func _rings_added_since(scene: Node, before: Dictionary) -> Array:
+	var added: Array = []
+	for ring_variant in _redirect_rings(scene):
+		if not before.has((ring_variant as Object).get_instance_id()):
+			added.append(ring_variant)
+	return added
+
+
+func _redirect_rings(scene: Node) -> Array:
+	var rings: Array = []
+	# Built on first pulse, so absent until a refusal has actually fired.
+	var layer: Node = scene.get_node_or_null("TutorialRedirectLayer")
+	if layer == null:
+		return rings
+	for child in layer.get_children():
+		# Identify by the contract (every pulse carries the rect it points at),
+		# not by name: Godot renames a collision with a still-alive ring to
+		# "@Panel@N", which silently escaped a name-prefix match.
+		if (child as Object).has_meta("target_rect"):
+			rings.append(child)
+	return rings
+
+
+# ── Scenario D: waiter failsafe (spec §8) ────────────────────────────────────
+# A hide_coach waiter that never receives "rolled" used to be terminal: no
+# coachmark (the spotlight is dismissed) and no live control (hide_coach refuses
+# every action). Drive the drill onto waiter A, swallow the event, and assert
+# the bounded recovery lands the player somewhere valid without skipping
+# instruction or marking the tutorial done.
+func _run_waiter_failsafe() -> void:
+	var scene: Node = await _start_drill()
+	if scene == null:
+		return
+	var controller: Node = _find_controller(scene)
+	if controller == null:
+		_fail("failsafe: TutorialController not spawned")
+		return
+	# Shorten the budget so the gate does not burn its wall clock on a 12s wait.
+	# The failsafe RULE is what is under test, not the constant's value.
+	# Long enough that the dice (MAX_ROLL_TIME 6.0s, ~3.5s in practice) have
+	# actually landed when it fires, so the RECOVER-FORWARD path is what gets
+	# exercised; short enough not to eat the gate's wall clock.
+	controller.set("waiter_failsafe_secs", 6.0)
+	var budget: float = float(controller.get("waiter_failsafe_secs"))
+	if budget != 6.0:
+		_fail("failsafe: could not set waiter_failsafe_secs (got %s)" % str(budget))
+		return
+	# This scenario runs after the happy path, which completed the drill and set
+	# the flag. Clear it so "recovery must not mark complete" tests something.
+	(sm_data(sm_node()) as Dictionary)["tutorial_done"] = false
+
+	controller.call("_next")
+	await _expect_step(controller, 1)
+	scene.call("_on_roll_button_pressed")
+	# Let roll_pressed land the drill ON waiter A, THEN cut the signal so only
+	# the "rolled" event is lost — the exact failure the failsafe exists for.
+	# (Cutting it earlier would strand beat 2, which is a different bug.)
+	await _expect_step(controller, 2)
+	scene.disconnect("tutorial_event", Callable(controller, "_on_tutorial_event"))
+	# Waiter A is now stranded: no coachmark, and hide_coach refuses every input.
+	var frames: int = int(25.0 * 60.0)
+	while frames > 0 and int(controller.get("_step")) <= 2:
+		frames -= 1
+		await process_frame
+	if int(controller.get("_step")) <= 2:
+		_fail("failsafe: waiter never recovered (still on step %d)" % int(controller.get("_step")))
+		return
+	# Recovered forward: the dice were on the board, so the beat the roll unlocks
+	# is where the player belongs — exactly one step, nothing skipped.
+	if int(controller.get("_step")) != 3:
+		_fail("failsafe: recovery must advance ONE beat to 3, landed on %d" % int(controller.get("_step")))
+		return
+	# And the player is not stranded: the recovered beat resolves real holes.
+	var holes: Array = controller.call("_compute_holes", controller.call("_current"))
+	if holes.is_empty():
+		_fail("failsafe: recovered beat resolved NO spotlight holes — player has no coachmark")
+		return
+	# Recovery must never count as finishing the drill.
+	if bool(sm_node().call("is_tutorial_done")):
+		_fail("failsafe: recovery marked the tutorial complete")
+
+
+func sm_node() -> Node:
+	return root.get_node("/root/SaveManager")
+
+
+func sm_data(sm: Node) -> Variant:
+	return sm.get("data")
+
+
+# ── Static script assertions (spec §10: structure, clusters, copy) ───────────
+# These read the step script directly, so they cover every beat rather than only
+# the ones the happy path happens to walk through.
+func _assert_script_contract(controller: Node) -> void:
+	var steps: Array = controller.call("_build_steps")
+	var visible: int = 0
+	var waiters: int = 0
+	for step_variant in steps:
+		if bool((step_variant as Dictionary).get("hide_coach", false)):
+			waiters += 1
+		else:
+			visible += 1
+	if visible != 15 or waiters != 2:
+		_fail("V3.1 structure: expected 15 visible beats + 2 waiters, got %d + %d" % [visible, waiters])
+		return
+
+	for i in range(steps.size()):
+		var step: Dictionary = steps[i]
+		var text: String = str(step.get("text", "")) + " " + str(step.get("armed_text", ""))
+		# §2 / project band-vocabulary law: player copy never names the die ranges.
+		for banned in ["band", "recharge", "surge", "crit zone", "overload zone"]:
+			if text.to_lower().find(banned) >= 0:
+				_fail("beat %d copy names a die range ('%s'): %s" % [i + 1, banned, text.strip_edges()])
+				return
+		# §2: copy identifies actions by hero/roll/effect/target, never by ability name.
+		for ability_name in ["Target Lock", "Overdrive", "Neural Override", "Rail Strike",
+				"Suppression Fire", "Diagnostic Pulse", "Infusion"]:
+			if text.find(ability_name) >= 0:
+				_fail("beat %d copy uses an ability name ('%s')" % [i + 1, ability_name])
+				return
+		# §4.1: an action beat must spotlight the whole source cluster.
+		if str(step.get("advance", "tap")) != "assigned":
+			continue
+		var targets: Array = step.get("targets", [])
+		var hero: String = str(step.get("hero", ""))
+		var has_card: bool = false
+		var has_die: bool = false
+		var has_pips: bool = false
+		for key_variant in targets:
+			var key: String = str(key_variant)
+			if key == "card:" + hero:
+				has_card = true
+			elif key == "die:" + hero:
+				has_die = true
+			elif key == "ability:" + hero:
+				has_pips = true
+		if not (has_card and has_die and has_pips):
+			_fail("beat %d (%s) is not a full source cluster: card=%s die=%s pips=%s" % [
+				i + 1, hero, str(has_card), str(has_die), str(has_pips)])
+			return
+		if targets.size() < 3:
+			_fail("beat %d highlights only %d region(s) — never highlight the die alone" % [i + 1, targets.size()])
+			return
+
+	# §7 beat 10 / the shipped copy bug: base Nudge only RAISES a die. "increases
+	# or decreases" is only true with Reverse Gimbal gear, which the drill's
+	# empty loadout never has.
+	for step_variant in steps:
+		var step: Dictionary = step_variant
+		if str(step.get("advance", "")) != "nudged":
+			continue
+		var nudge_text: String = (str(step.get("text", "")) + " " + str(step.get("armed_text", ""))).to_lower()
+		if nudge_text.find("decrease") >= 0 or nudge_text.find("increases or") >= 0:
+			_fail("nudge copy claims a decrease, which needs Reverse Gimbal gear: %s" % nudge_text.strip_edges())
+			return
+		if nudge_text.find("rais") < 0:
+			_fail("nudge copy must say the die is RAISED: %s" % nudge_text.strip_edges())
+			return
+
+
+# §4.3 / §10: while the gated hero is targeting, the live holes must still carry
+# that hero's source cluster AND separately carry the legal target.
+func _assert_cluster_survives_targeting(scene: Node, controller: Node, unit_id: String) -> void:
+	var holes: Array = controller.call("_compute_holes", controller.call("_current"))
+	var live: Array = scene.get("legal_target_ids") as Array
+	if live.is_empty():
+		_fail("cluster: %s is targeting but has no legal targets" % unit_id)
+		return
+	var state_id: String = _state_id_for_unit(scene, unit_id)
+	var die_rect: Rect2 = scene.call("_tutorial_die_hit_rect", "hero", state_id)
+	var card_rect: Rect2 = _card_rect_for_state(scene, state_id)
+	var has_die: bool = false
+	var has_card: bool = false
+	for hole_variant in holes:
+		var hole: Rect2 = hole_variant
+		if die_rect.size != Vector2.ZERO and hole.intersects(die_rect):
+			has_die = true
+		if card_rect.size != Vector2.ZERO and hole.encloses(card_rect):
+			has_card = true
+	if not has_die or not has_card:
+		_fail("cluster: targeting dropped %s's source (die=%s card=%s)" % [unit_id, str(has_die), str(has_card)])
+		return
+	# Duplicate-hole guard (found by the §4.2 density capture): a friendly pick's
+	# legal set contains the source hero, whose card is already spotlit — appending
+	# it blind drew the ring twice and read as a doubled border.
+	for i in range(holes.size()):
+		for j in range(i + 1, holes.size()):
+			var a: Rect2 = holes[i]
+			var b: Rect2 = holes[j]
+			if a.position.is_equal_approx(b.position) and a.size.is_equal_approx(b.size):
+				_fail("cluster: duplicate spotlight hole %s drawn twice" % str(a))
+				return
 
 
 func _v3_assign(scene: Node, unit_id: String, target_id: String) -> void:

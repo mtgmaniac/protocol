@@ -144,15 +144,16 @@ var hero_units: Array = []
 var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
-# Tutorial v3.0 rigs inputs only. Its real 40-HP Scrap Drone receives Mark,
-# then 17 Overdrive + 8 Neural Override, attacks Strike for Stab 8, and dies
-# in round two to the targeted Diagnostic Pulse setup, Rail Strike, and
-# Overdrive. Keyword primers are suppressed without marking them seen.
+# Tutorial v3.1 rigs inputs only. Its real 35-HP Scrap Drone receives Mark,
+# then the marked 17-damage hit, leaving 18. Medic shields Strike, so the
+# drone's real Stab 7 is soaked 3 / 4 to HP. Round two heals the injured
+# Strike and kills from 18 with 10 + 11 — both guided attacks land.
+# Keyword primers are suppressed without marking them seen.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_NUDGE_HERO := "combat"
 const TUTORIAL_HERO_ROLLS := [
-	{"combat": 3, "engineer": 12, "medic": 12},
+	{"combat": 3, "engineer": 12, "medic": 2},
 	{"combat": 8, "engineer": 12, "medic": 3},
 ]
 var _tutorial_turn: int = 0
@@ -179,6 +180,18 @@ func _tutorial_rig_values() -> Dictionary:
 func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
 	if _game_state().tutorial_mode:
 		tutorial_event.emit(event, payload)
+
+
+# An illegal TARGET tap is filtered by the base game's targeting rules, so it
+# never reaches the tutorial fence — which left the drill's most confusing tap
+# (a hero is selected, the player tries to send it somewhere it can't go) with
+# no answer at all. Route it through the fence under an action name nothing
+# permits, purely so the rejection redirect fires onto the legal target. No
+# permission changes: the tap was already refused and still is.
+func _tutorial_reject_illegal_target() -> void:
+	if not _game_state().tutorial_mode:
+		return
+	_tutorial_allows("target_illegal")
 
 
 func _tutorial_allows(action: String, payload: Dictionary = {}) -> bool:
@@ -467,7 +480,187 @@ func _return_from_review() -> void:
 func _spawn_tutorial_controller() -> void:
 	var controller := TutorialController.new()
 	add_child(controller)
+	controller.action_rejected.connect(_on_tutorial_action_rejected)
 	controller.start(self)
+
+
+# ── Off-script tap redirect (tutorial only) ───────────────────────────────────
+# The fence in TutorialController refuses everything the current beat did not
+# ask for, and that refusal stands. What was missing is the answer: a swallowed
+# tap with no feedback reads as a dead button (public itch.io report — a player
+# quit after tapping a die and getting nothing). A refusal now pulses whatever
+# the beat IS waiting for, so an off-script tap redirects the player.
+#
+# It has to read as MOTION, not another border: the SpotlightLayer already
+# holds a slow cyan ring around the same target, so a second static rectangle
+# beside it says nothing. The redirect collapses inward onto the target twice —
+# distinguishable at a glance from the steady ring underneath it.
+const TUTORIAL_REDIRECT_COOLDOWN_MSEC := 450   # a mash must not stack rings
+const TUTORIAL_REDIRECT_HALF_CYCLE := 0.18
+const TUTORIAL_REDIRECT_CYCLES := 2
+const TUTORIAL_REDIRECT_START_SCALE := 1.3
+const TUTORIAL_REDIRECT_SECONDARY_ALPHA := 0.45  # cluster context, never the loudest thing
+const TUTORIAL_REDIRECT_RING_WIDTH := 8        # even design px (pixel-snap law)
+const TUTORIAL_REDIRECT_PAD := 10.0
+# Above the SpotlightLayer's dim (110), below InspectPopup (130) / HelpMenu
+# (135). The pulse starts oversized, so most of it lands OUTSIDE the spotlight
+# hole — on the float layer (20) the dim swallowed it at 18% brightness.
+const TUTORIAL_REDIRECT_LAYER := 115
+var _tutorial_redirect_msec: int = 0
+var _tutorial_redirect_layer: CanvasLayer = null
+
+
+func _on_tutorial_action_rejected(_action: StringName, expected: Dictionary) -> void:
+	if expected.is_empty():
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _tutorial_redirect_msec < TUTORIAL_REDIRECT_COOLDOWN_MSEC:
+		return
+	_tutorial_redirect_msec = now
+	var rects: Array = _tutorial_redirect_rects(expected)
+	if rects.is_empty():
+		return
+	for entry_variant in rects:
+		var entry: Dictionary = entry_variant
+		_pulse_tutorial_redirect(entry["rect"], bool(entry["primary"]))
+
+
+# Screen rects the beat wants tapped, resolved from the controller's expected
+# payload, as {rect, primary} entries. Spec §5: a hero-action redirect
+# emphasizes the whole SOURCE CLUSTER, not an isolated die — so the card pulses
+# alongside the die, and `primary` marks the one that is actually the tap
+# target so the strongest motion lands there. Empty entries are dropped so a
+# not-yet-laid-out node draws nothing rather than a ring at the origin.
+func _tutorial_redirect_rects(expected: Dictionary) -> Array:
+	var candidates: Array = []
+	match str(expected.get("control", "")):
+		"roll_button":
+			candidates.append({"rect": _tutorial_control_rect(roll_button), "primary": true})
+		"nudge_button":
+			candidates.append({"rect": _tutorial_control_rect(_protocol.nudge_button if _protocol != null else null), "primary": true})
+	var hero_unit_id: String = str(expected.get("hero", ""))
+	if hero_unit_id != "":
+		var state_id: String = _tutorial_state_id_for_unit(hero_unit_id)
+		var card_rect: Rect2 = _tutorial_control_rect(_tutorial_card_for_state("hero", state_id))
+		# The die hit area (die merged with its pip row) is the tap target the
+		# coach copy names; the card carries the rest of the cluster. Before the
+		# dice exist the card IS the whole cluster, so it takes the lead motion.
+		var die_rect: Rect2 = _tutorial_die_hit_rect("hero", state_id)
+		var has_die: bool = die_rect.size != Vector2.ZERO
+		candidates.append({"rect": die_rect, "primary": true})
+		candidates.append({"rect": card_rect, "primary": not has_die})
+	var side: String = str(expected.get("side", ""))
+	for id_variant in (expected.get("state_ids", []) as Array):
+		var target_id: String = str(id_variant)
+		if side == "enemy" or side == "any":
+			candidates.append({"rect": _tutorial_control_rect(_tutorial_card_for_state("enemy", target_id)), "primary": true})
+		if side == "hero" or side == "dead_hero" or side == "any":
+			candidates.append({"rect": _tutorial_control_rect(_tutorial_card_for_state("hero", target_id)), "primary": true})
+	var rects: Array = []
+	for entry_variant in candidates:
+		var entry: Dictionary = entry_variant
+		var rect: Rect2 = entry["rect"]
+		if rect.size.x > 2.0 and rect.size.y > 2.0:
+			rects.append(entry)
+	return rects
+
+
+# Built on first use so a non-tutorial battle never carries the layer at all.
+# Also the node the tutorial smoke gate reads the live pulses off.
+func _ensure_tutorial_redirect_layer() -> CanvasLayer:
+	if _tutorial_redirect_layer != null and is_instance_valid(_tutorial_redirect_layer):
+		return _tutorial_redirect_layer
+	_tutorial_redirect_layer = CanvasLayer.new()
+	_tutorial_redirect_layer.name = "TutorialRedirectLayer"
+	_tutorial_redirect_layer.layer = TUTORIAL_REDIRECT_LAYER
+	add_child(_tutorial_redirect_layer)
+	return _tutorial_redirect_layer
+
+
+func _tutorial_control_rect(node: Variant) -> Rect2:
+	var control: Control = node as Control
+	if control == null or not is_instance_valid(control) or not control.is_inside_tree() or not control.visible:
+		return Rect2()
+	return control.get_global_rect()
+
+
+func _tutorial_state_id_for_unit(unit_id: String) -> String:
+	for view_variant in hero_card_views:
+		var state: Dictionary = (view_variant as Dictionary).get("state", {})
+		var unit: Object = state.get("unit", null) as Object
+		if unit != null and str(unit.get("id")) == unit_id:
+			return str(state.get("id", ""))
+	return ""
+
+
+func _tutorial_card_for_state(side: String, state_id: String) -> Control:
+	if state_id == "":
+		return null
+	for view_variant in (hero_card_views if side == "hero" else enemy_card_views):
+		var view: Dictionary = view_variant
+		if str((view.get("state", {}) as Dictionary).get("id", "")) == state_id:
+			return view.get("card", null) as Control
+	return null
+
+
+# The die's real hit area — the invisible tooltip overlay built over die + pips
+# is exactly what a tap lands on, so the ring lands where the finger goes.
+func _tutorial_die_hit_rect(side: String, state_id: String) -> Rect2:
+	if state_id == "":
+		return Rect2()
+	var wanted: String = "DieTooltip_%s_%s" % [side, state_id]
+	for overlay_variant in _die_tooltip_overlays:
+		var overlay: Control = overlay_variant as Control
+		if overlay != null and is_instance_valid(overlay) and str(overlay.name) == wanted:
+			return overlay.get_global_rect()
+	return Rect2()
+
+
+# A ring over one cluster element. `primary` is the element the player is
+# actually meant to tap: it collapses inward from oversized at full strength.
+# A secondary element (the hero's card behind the die it names) gets the same
+# ring on a quieter alpha-only pulse — present enough to read as one cluster,
+# never loud enough to compete with the tap target (spec §5).
+# Border-only "tap me" language borrowed from the item confirm-card highlight
+# (ProtocolActions._add_confirm_card_highlight) — DT_HERO_DITHER, not a strong
+# accent, which the component contract reserves for selected_card / major_event.
+func _pulse_tutorial_redirect(rect: Rect2, primary: bool = true) -> void:
+	var layer: CanvasLayer = _ensure_tutorial_redirect_layer()
+	if layer == null:
+		return
+	var grown: Rect2 = rect.grow(TUTORIAL_REDIRECT_PAD)
+	var ring := Panel.new()
+	ring.name = "TutorialRedirectPulse" if primary else "TutorialRedirectPulseSecondary"
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.add_theme_stylebox_override("panel", PixelUI.make_hard_style(
+		Color.TRANSPARENT, PixelUI.DT_HERO_DITHER, TUTORIAL_REDIRECT_RING_WIDTH))
+	# The rect it is pointing at, for the smoke gate — reading it off the node
+	# would have to undo the collapse transform mid-tween.
+	ring.set_meta("target_rect", grown)
+	ring.set_meta("primary", primary)
+	ring.modulate.a = 0.0
+	# force_readable_name: a pulse can start while an earlier one is still
+	# alive, and a plain add_child renames the collision to "@Panel@N".
+	layer.add_child(ring, true)
+	ring.custom_minimum_size = grown.size
+	ring.size = grown.size
+	ring.global_position = grown.position
+	ring.pivot_offset = grown.size * 0.5   # collapse toward the target's center
+	var peak: float = 1.0 if primary else TUTORIAL_REDIRECT_SECONDARY_ALPHA
+	var tween: Tween = ring.create_tween()
+	for _cycle in range(TUTORIAL_REDIRECT_CYCLES):
+		# Snap back out, then collapse in while fading up — the fade-out step
+		# below only begins once the whole parallel step has finished.
+		if primary:
+			tween.tween_callback(func() -> void:
+				ring.scale = Vector2.ONE * TUTORIAL_REDIRECT_START_SCALE
+			)
+			tween.tween_property(ring, "scale", Vector2.ONE, TUTORIAL_REDIRECT_HALF_CYCLE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.parallel().tween_property(ring, "modulate:a", peak, TUTORIAL_REDIRECT_HALF_CYCLE * 0.4).set_trans(Tween.TRANS_SINE)
+		else:
+			tween.tween_property(ring, "modulate:a", peak, TUTORIAL_REDIRECT_HALF_CYCLE).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(ring, "modulate:a", 0.0, TUTORIAL_REDIRECT_HALF_CYCLE * 0.7).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(ring.queue_free)
 
 
 func _on_open_reward_button_pressed() -> void:
@@ -678,6 +871,21 @@ func _on_unit_detail_requested(card: Control) -> void:
 
 func is_tutorial_inspection_open() -> bool:
 	return InspectPopup.is_open()
+
+
+# Modal surfaces that LEGITIMATELY hold a tutorial dice-waiter open: the drill's
+# one showcase primer (a modal that waits on a real tap, and which fires before
+# the "rolled" emit) and a long-press inspect. The waiter failsafe pauses its
+# clock while either is up, so a player reading a primer can never trip the
+# recovery path no matter how long they take.
+func is_tutorial_waiter_blocked() -> bool:
+	if InspectPopup.is_open():
+		return true
+	if _primer != null and is_instance_valid(_primer):
+		var primer_spot: Variant = _primer.get("_spot")
+		if primer_spot is CanvasLayer and is_instance_valid(primer_spot) and (primer_spot as CanvasLayer).visible:
+			return true
+	return false
 
 
 # Test seam and tutorial close action: the controller advances only after the
@@ -2905,6 +3113,7 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 	if active_targeting_hero_id == "" or (legal_target_side != "enemy" and legal_target_side != "any"):
 		return
 	if not legal_target_ids.has(target_id):
+		_tutorial_reject_illegal_target()
 		return
 	var active_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), active_targeting_hero_id)
 	var active_unit: Object = active_state.get("unit") as Object
@@ -2956,6 +3165,11 @@ func _on_hero_card_pressed(target_id: String) -> void:
 	elif legal_target_side == "any" and legal_target_ids.has(target_id):
 		AudioManager.play_select()
 		_assign_target_to_active_hero(target_id, "hero")
+	else:
+		# A hero is mid-targeting and this ally is not a legal target for it.
+		# The base game already refuses the tap; during the drill it also earns
+		# a redirect onto the target(s) that ARE legal.
+		_tutorial_reject_illegal_target()
 
 
 func _append_round_log(entries: Array) -> void:

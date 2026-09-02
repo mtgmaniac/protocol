@@ -41,7 +41,10 @@ CEREMONY_PTS = 10.0  # per-op clear-rate points
 # +1 defensive unstamped-fallback regressions.
 # 246 -> 250 (tutorial v2 honest rig): the single kill-math mirror became 5
 # regressions (T1 math, T2 kill, stall-proof T1+T2, nudge band jump).
-AUDIT_MIN_PASSED = 250
+# 250 -> 251 (V3.1 selective-HP re-rig): +1 guard pinning that the drone
+# outlives the first round-two guided attack, so neither guided attack can
+# fizzle on an already-dead target.
+AUDIT_MIN_PASSED = 251
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),
