@@ -106,12 +106,17 @@ const BROOD_SPAWN_NAME := "Bloodmite"
 # (per Kev 2026-07-06 — resolves the old DETONATE_MAX_TURNS placeholder cap).
 const PERMANENT_BURN_TURNS := 9999
 
+# Every rule names its own SUBJECT and, where one exists, the unit that RECEIVES
+# the effect. A bare "gains a firewall" read as though the allies were the ones
+# being buffed; the short boss titles used here are the same ones the live combat
+# log already uses ("the Overseer raises a firewall", "the Tyrant accretes its
+# mantle"), so the two never disagree.
 const BOSS_STANDING_RULES := {
-	BOSS_SCRAPMASTER: "ASSEMBLY LINE - every 2nd enemy phase from its first activation, rebuilds one destroyed Scrap Drone at 50% HP.",
-	BOSS_MATRIARCH: "THE BROOD - spawns a Bloodmite every 3 rounds.",
-	BOSS_OVERSEER: "THE COURT - while any ally lives, gains a firewall at the start of each round.",
-	BOSS_HIEROPHANT: "ROOT ACCESS - every round, rewrites the squad's highest die to 3.",
-	BOSS_MANTLE: "ACCRETION - gains 6 shield at the start of every 2nd round; its shields persist and stack.",
+	BOSS_SCRAPMASTER: "ASSEMBLY LINE - every 2nd enemy phase from its first activation, the Scrapmaster rebuilds one destroyed Scrap Drone at 50% HP.",
+	BOSS_MATRIARCH: "THE BROOD - the Matriarch spawns a Bloodmite every 3 rounds.",
+	BOSS_OVERSEER: "THE COURT - while any ally lives, the Overseer gains a firewall on itself at the start of each round.",
+	BOSS_HIEROPHANT: "ROOT ACCESS - every round, the Hierophant rewrites YOUR squad's highest die to 3.",
+	BOSS_MANTLE: "ACCRETION - the Tyrant gains 6 shield on itself at the start of every 2nd round; its shields persist and stack.",
 }
 
 # BALANCE-TODO: rebuild HP 50% and brood cadence 3 are provisional. Mantle

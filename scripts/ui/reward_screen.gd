@@ -285,6 +285,13 @@ func _update_reward_layout() -> void:
 	reward_list_margin.add_theme_constant_override("margin_bottom", 24)
 	if reward_top_spacer != null:
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
+	# The paired spacers still EXPAND equally — the choice group stays centred in
+	# the well, which reward_model_test T10 pins. What changed is WHAT they
+	# bracket: CHOOSE REWARD now sits INSIDE the centred group (see the .tscn
+	# node order) instead of being stranded at the top of the scroll. Centring
+	# the cards alone left a ~500px dead band between the heading and the first
+	# option and pushed all three into the bottom half of the screen; centring
+	# heading-plus-cards closes that band without giving up the centring.
 	for spacer in [reward_group_top_spacer, reward_group_bottom_spacer]:
 		if spacer != null:
 			spacer.custom_minimum_size = Vector2.ZERO

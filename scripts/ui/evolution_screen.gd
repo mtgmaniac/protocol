@@ -39,7 +39,7 @@ const BUTTON_FONT_SIZE := 36
 @onready var content_vbox: VBoxContainer = $Content/VBox
 @onready var title_label: Label = $Content/VBox/Title
 @onready var summary_label: Label = %SummaryLabel
-@onready var choice_area: MarginContainer = $Content/VBox/ChoiceArea
+@onready var choice_area: ScrollContainer = $Content/VBox/ChoiceArea
 @onready var choice_content: VBoxContainer = %ChoiceContent
 @onready var top_spacer: Control = %TopSpacer
 @onready var choice_cards: VBoxContainer = %ChoiceCards
@@ -55,6 +55,20 @@ func _ready() -> void:
 	var content: MarginContainer = $Content
 	content.offset_top += float(PixelUI.safe_top)
 	content.offset_bottom -= float(PixelUI.safe_bottom)
+	# The two branch cards are as tall as the unit's kit makes them, and the
+	# screen was authored with ZERO slack: a 5-band pair plus VIEW BATTLEFIELD
+	# already filled the viewport exactly, so the safe-area growth on a
+	# cutout device pushed the title up under the header band and the last
+	# button off the bottom edge (both ends, because an over-tall VBox
+	# overruns its rect in both directions). The card list scrolls now, so
+	# overflow costs a swipe instead of hiding content with no way to reach it.
+	choice_area.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	choice_area.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	choice_area.follow_focus = true
+	# ScrollContainer draws a themed panel by default; this screen's cards carry
+	# their own frames, so keep the scroll viewport invisible (INVARIANTS #7 —
+	# no extra framed panels).
+	choice_area.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_apply_visual_theme()
 	resized.connect(_update_choice_layout)
 	# Header bar lives in the PersistentHeader autoload; bind this screen's handlers.
@@ -529,9 +543,12 @@ func _update_choice_layout() -> void:
 	if choice_cards == null:
 		return
 	var card_width: float = _get_card_width()
-	choice_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	choice_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	choice_cards.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The card list SCROLLS (see _ready): the area must accept wheel/drag, so it
+	# can no longer be MOUSE_FILTER_IGNORE. PASS keeps the cards themselves
+	# clickable while the container still sees the scroll gesture.
+	choice_area.mouse_filter = Control.MOUSE_FILTER_PASS
+	choice_content.mouse_filter = Control.MOUSE_FILTER_PASS
+	choice_cards.mouse_filter = Control.MOUSE_FILTER_PASS
 	choice_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choice_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	choice_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -551,6 +568,12 @@ func _get_card_width() -> float:
 	var available_width: float = choice_area.size.x if choice_area != null else size.x
 	if available_width <= 1.0:
 		available_width = get_viewport().get_visible_rect().size.x
+	# Subtract the vertical scrollbar: it appears exactly when the cards
+	# overflow, and a card sized to the full viewport width would sit under it.
+	if choice_area != null:
+		var vbar: VScrollBar = choice_area.get_v_scroll_bar()
+		if vbar != null and vbar.visible:
+			available_width -= vbar.size.x
 	available_width = maxf(available_width - 24.0, 1.0)
 	return clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH)
 

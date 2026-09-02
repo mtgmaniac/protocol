@@ -60,10 +60,11 @@ layout_mode = 2
 autowrap_mode = 3
 text = "Choose a branch."
 
-[node name="ChoiceArea" type="MarginContainer" parent="Content/VBox"]
+[node name="ChoiceArea" type="ScrollContainer" parent="Content/VBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
 [node name="ChoiceContent" type="VBoxContainer" parent="Content/VBox/ChoiceArea"]
 unique_name_in_owner = true

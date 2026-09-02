@@ -273,6 +273,12 @@ func _check_relic_layout(screen: Node, cards: Array, label: String) -> void:
 	_check_group_centered(screen, cards, label)
 
 
+# Design px between the CHOOSE REWARD heading and the first option row. The
+# scene's RewardContent separation is 18; the ceiling leaves room for a font or
+# spacing tweak without leaving room for the dead band to come back.
+const MAX_HEADING_GAP := 96.0
+
+
 func _check_group_centered(screen: Node, panels: Array, label: String) -> void:
 	if panels.is_empty():
 		return
@@ -285,9 +291,17 @@ func _check_group_centered(screen: Node, panels: Array, label: String) -> void:
 	var bottom_spacer: Control = screen.find_child("RewardGroupBottomSpacer", true, false) as Control
 	if top_spacer != null and bottom_spacer != null and top_spacer.size.y > 0.0 and bottom_spacer.size.y > 0.0:
 		_check(absf(top_spacer.size.y - bottom_spacer.size.y) < 1.5,
-			"%s choice group centered below heading" % label)
+			"%s heading+choice group centered in the well" % label)
 	else:
 		# On constrained layouts the spacers collapse and the ScrollContainer
 		# keeps the group reachable rather than forcing clipped cards.
 		_check(group_top >= title.global_position.y + title.size.y - 0.5,
 			"%s constrained choice group starts below heading" % label)
+	# The heading travels WITH the group (it sits between the top spacer and the
+	# cards in the scene), so the two are always adjacent. Pinned because the
+	# heading used to sit at the top of the scroll while only the cards were
+	# centered, which opened a ~500px dead band under CHOOSE REWARD and pushed
+	# every option into the bottom half of the screen.
+	var heading_gap: float = group_top - (title.global_position.y + title.size.y)
+	_check(heading_gap >= -0.5 and heading_gap <= MAX_HEADING_GAP,
+		"%s heading sits directly above the first option (gap %.1f, max %.1f)" % [label, heading_gap, MAX_HEADING_GAP])

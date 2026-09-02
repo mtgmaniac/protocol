@@ -419,12 +419,24 @@ const HERO_PORTRAIT_REGION := Vector2(328.0, 380.0)
 # values, NOT from pixels). Antenna/crown crop-off is ruled acceptable
 # (TRUTH.md): the head is what must frame consistently, never the headgear.
 # HERO_PORTRAIT_ZOOM_OVERRIDES: per-portrait multiplier on top of the global
-# zoom, keyed by portrait key ("combat", "medic_synth", …). Kept EMPTY by
-# design — the global zoom does the work; add an entry only for a genuine
-# outlier, never as a substitute for fixing the global value.
+# zoom, keyed by portrait key ("combat", "medic_synth", …). The global zoom does
+# the work; add an entry only for a genuine outlier, never as a substitute for
+# fixing the global value.
 const HERO_PORTRAIT_ZOOM := 1.2
 const HERO_PORTRAIT_ANCHOR_Y := 0.0
-const HERO_PORTRAIT_ZOOM_OVERRIDES := {}
+const HERO_PORTRAIT_ZOOM_OVERRIDES := {
+	# pulse_pyro is the roster's one framing outlier: its source art draws the
+	# head 255 px tall (portrait_anchors.json head_top 45 → chin 300) against
+	# that file's declared _target_head_height of 240, and against 245 for its
+	# own sibling branch pulse_arc. Same frame, same cover fit — so Pyro alone
+	# reads noticeably tighter than every other portrait. 240/255 = 0.94 puts it
+	# back on the declared roster height. Derived from the HAND-DECLARED anchor
+	# numbers, never measured from pixels (INVARIANTS: automated head detection
+	# is what caused the 2026-07-12 framing failure). Display-time only — the
+	# PNG stays pristine; re-running scripts/assets/portrait_frame_crop.py is
+	# the permanent fix if the art is ever re-exported.
+	"pulse_pyro": 0.94,
+}
 const HERO_PORTRAIT_ANCHOR_Y_OVERRIDES := {
 	"breaker": 0.105,
 	"breaker_noise": 0.166,

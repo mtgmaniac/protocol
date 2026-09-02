@@ -141,7 +141,28 @@ func _add_event_banner(card_id: String) -> void:
 	_add_gap(12)
 
 
-func _add_choice_button(text: String, callback: Callable, enabled: bool = true) -> void:
+# A choice that arms a battle modifier names it in ALL CAPS ("next battle is
+# BLACKOUT") and nothing on screen said what that meant — the player was asked
+# to accept a rule they could not read. The rule text already exists, once, in
+# GameState.BATTLE_MODIFIERS; this reads it from there rather than restating it
+# in the choice label, so the two can never drift apart. Returns "" for choices
+# that arm no modifier.
+func _modifier_note(choice: Dictionary) -> String:
+	var notes: PackedStringArray = []
+	for effect_variant in choice.get("effects", []):
+		var effect: Dictionary = effect_variant
+		var effect_type: String = str(effect.get("type", ""))
+		if effect_type != "armModifier" and effect_type != "followupModifier":
+			continue
+		var info: Dictionary = GameState.BATTLE_MODIFIERS.get(str(effect.get("id", "")), {})
+		var desc: String = str(info.get("desc", ""))
+		if desc == "":
+			continue
+		notes.append("%s: %s" % [str(info.get("name", str(effect.get("id", "")))), desc])
+	return "\n".join(notes)
+
+
+func _add_choice_button(text: String, callback: Callable, enabled: bool = true, note: String = "") -> void:
 	# Choice buttons live in their own box: 24px padding above the group, 12px between.
 	if _button_box == null:
 		_add_gap(24)
@@ -159,6 +180,15 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true) 
 	PixelUI.style_button(button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_AMBER if enabled else PixelUI.LINE_DIM, BUTTON_FONT)
 	button.pressed.connect(callback)
 	_button_box.add_child(button)
+	if note != "":
+		var note_label := Label.new()
+		note_label.text = note
+		note_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		note_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_body_label(note_label, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED if enabled else PixelUI.LINE_DIM)
+		_button_box.add_child(note_label)
 
 
 func _show_card_stage() -> void:
@@ -177,7 +207,7 @@ func _show_card_stage() -> void:
 			enabled = false
 		if str(choice.get("pick", "")) == "gear" and _all_equipped_gear().is_empty():
 			enabled = false
-		_add_choice_button(str(choice.get("label", "")), _on_choice_pressed.bind(choice), enabled)
+		_add_choice_button(str(choice.get("label", "")), _on_choice_pressed.bind(choice), enabled, _modifier_note(choice))
 		if enabled:
 			_enabled_choice_count += 1
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): a card with
@@ -316,6 +346,11 @@ func _show_result_stage(info: String, drafted_item: ItemData) -> void:
 	if drafted_item != null:
 		summary += "\nAcquired: %s." % drafted_item.display_name
 	_add_label(summary, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
+	# Same rule text on the way out: the modifier just accepted is what the
+	# player meets next battle, so it is worth reading a second time.
+	var accepted_note: String = _modifier_note(_choice)
+	if accepted_note != "":
+		_add_label(accepted_note, BODY_FONT - 4, PixelUI.TEXT_MUTED, 1)
 	if info != "":
 		_add_label(info, BODY_FONT - 4, PixelUI.TEXT_MUTED, 1)
 	_add_choice_button("CONTINUE", _continue_to_battle)

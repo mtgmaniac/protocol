@@ -676,10 +676,133 @@ func _on_open_reward_button_pressed() -> void:
 	_scene_manager().go_to_reward_screen()
 
 
+# ── Abandon-run confirmation ──────────────────────────────────────────────────
+# The persistent header's back control sits in the top-right corner, a thumb's
+# width from the board, and used to call reset_run() on the FIRST press: one
+# mistap ended a 20-minute run outright. There is no undo and no resume — the
+# save layer persists only the profile (stats / unlocks / settings), never run
+# state — so the press is irreversible and must be confirmed. Cancel is the
+# safe default: a press anywhere outside the panel backs out, and KEEP PLAYING
+# is the primary button so a reflex tap never destroys the run.
+const ABANDON_LAYER := 140  # above HelpMenu (135); nothing may sit over this
+
+var _abandon_overlay: CanvasLayer = null
+
+
 func _on_return_to_menu_button_pressed() -> void:
 	AudioManager.play_select()
+	if _abandon_overlay != null and is_instance_valid(_abandon_overlay):
+		return
+	_build_abandon_confirm()
+
+
+func _dismiss_abandon_confirm() -> void:
+	if _abandon_overlay != null and is_instance_valid(_abandon_overlay):
+		_abandon_overlay.queue_free()
+	_abandon_overlay = null
+
+
+func _on_abandon_confirmed() -> void:
+	AudioManager.play_select()
+	_dismiss_abandon_confirm()
 	_game_state().reset_run()
 	_scene_manager().go_to_unit_select()
+
+
+func _build_abandon_confirm() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "AbandonConfirm"
+	layer.layer = ABANDON_LAYER
+	_abandon_overlay = layer
+	add_child(layer)
+
+	# Full-screen catcher: a press anywhere outside the panel CANCELS. The panel
+	# sits on top and swallows its own presses, so its buttons keep working.
+	var catcher := Control.new()
+	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	catcher.gui_input.connect(func(event: InputEvent) -> void:
+		var pressed := false
+		if event is InputEventMouseButton:
+			var mb: InputEventMouseButton = event
+			pressed = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
+		elif event is InputEventScreenTouch:
+			pressed = (event as InputEventScreenTouch).pressed
+		if pressed:
+			_dismiss_abandon_confirm()
+	)
+	layer.add_child(catcher)
+	catcher.add_child(PixelUI.make_modal_scrim(0.72))
+
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.custom_minimum_size = Vector2(760, 0)
+	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_PASS
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_%s" % side, 40)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 36)
+	panel.add_child(margin)
+
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_PASS
+	column.add_theme_constant_override("separation", 24)
+	margin.add_child(column)
+
+	var title := Label.new()
+	title.text = "ABANDON RUN?"
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(title, 56, PixelUI.TEXT_PRIMARY, 3)
+	column.add_child(title)
+
+	var body := Label.new()
+	body.text = "Progress will be lost."
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	PixelUI.style_body_label(body, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED)
+	column.add_child(body)
+
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 20)
+	column.add_child(row)
+
+	# KEEP PLAYING is the primary (teal) action and sits FIRST: the destructive
+	# one must never be the button a thumb lands on by reflex. Abandon is amber
+	# — the risk/confirm channel (INVARIANTS #7: green is HP and heals only).
+	var stay := Button.new()
+	stay.text = "KEEP PLAYING"
+	stay.focus_mode = Control.FOCUS_NONE
+	stay.custom_minimum_size = Vector2(320, 112)
+	stay.mouse_filter = Control.MOUSE_FILTER_STOP
+	PixelUI.style_primary_button(stay, 36)
+	stay.pressed.connect(func() -> void:
+		AudioManager.play_select()
+		_dismiss_abandon_confirm()
+	)
+	row.add_child(stay)
+
+	var leave := Button.new()
+	leave.text = "ABANDON"
+	leave.focus_mode = Control.FOCUS_NONE
+	leave.custom_minimum_size = Vector2(320, 112)
+	leave.mouse_filter = Control.MOUSE_FILTER_STOP
+	PixelUI.style_button(leave, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, 36)
+	leave.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	leave.pressed.connect(_on_abandon_confirmed)
+	row.add_child(leave)
 
 
 func _on_auto_turn_button_pressed() -> void:
