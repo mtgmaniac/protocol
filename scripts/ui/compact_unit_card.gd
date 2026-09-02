@@ -38,12 +38,10 @@ const STATUS_VALUE_FONT_SIZE := 68
 const STATUS_NAME_FONT_SIZE := 48
 const STATUS_ICON_TEXTURE_SIZE := 56.0
 const STATUS_ICON_MIN_WIDTH := 56.0
-# Firewall portrait badge (Build G item 11) — even design px (pixel-snap law).
-const FIREWALL_BADGE_SIZE := 56.0
-const FIREWALL_BADGE_INSET := 8.0
 # Cast-order badge (player-chosen cast order): the hero's firing rank, docked
-# to the portrait's top-LEFT corner (firewall owns top-right; name strip above,
-# HP bar + status chips below — no collisions). Even design px (pixel-snap).
+# to the portrait's top-LEFT corner. The top-RIGHT corner is deliberately EMPTY
+# (portrait-corner status ruling, 2026-09-02 — see below); name strip above,
+# HP bar + status chips below, so nothing collides. Even design px (pixel-snap).
 const CAST_BADGE_SIZE := 56.0
 const CAST_BADGE_INSET := 8.0
 const CAST_BADGE_FONT_SIZE := 48
@@ -78,11 +76,12 @@ var interaction_enabled: bool = true
 var dead: bool = false
 ## pkg8.1: cloak reads as a ghosted portrait, not a chip.
 var cloaked: bool = false
-## Build G item 11 (ruled): an armed firewall reads at the PORTRAIT tier — a
-## badge docked to the portrait corner, always visible regardless of the
-## 3-chip contest (the chip kept losing the priority sort and vanished into
-## the +N overflow, leaving a hidden defensive state).
-var warded: bool = false
+## Portrait corners carry NO status markers (ruled 2026-09-02, reversing Build
+## G item 11): an armed firewall is an ordinary bottom-row chip under the same
+## 3-chip cap and the same +N overflow as every other status. Firewall may now
+## sit in overflow — the accepted cost, since long-press shows the full
+## breakdown. The card therefore keeps no `warded` mirror; the firewall chip is
+## built from state by battle_card_view._build_compact_status_tokens.
 var target_locked: bool = false
 var needs_manual_target: bool = false
 ## Cast-order rank (1-based) among committed heroes this round; 0 = no badge.
@@ -97,7 +96,6 @@ var _portrait_frame: Control = null
 var _portrait_crop: Control = null
 var _portrait_rect: TextureRect = null
 var _portrait_dither: TextureRect = null
-var _firewall_badge: TextureRect = null
 var _cast_badge: Label = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
@@ -158,7 +156,6 @@ func configure(data: Dictionary) -> void:
 	interaction_enabled = bool(data.get("interaction_enabled", interaction_enabled))
 	dead = bool(data.get("dead", dead))
 	cloaked = bool(data.get("cloaked", cloaked))
-	warded = bool(data.get("warded", warded))
 	target_locked = bool(data.get("target_locked", target_locked))
 	needs_manual_target = bool(data.get("needs_manual_target", needs_manual_target))
 	cast_rank = int(data.get("cast_rank", 0))
@@ -272,26 +269,12 @@ func _build() -> void:
 	_portrait_dither = PixelUI.make_dither_overlay(Color.BLACK, 0.17)
 	_portrait_crop.add_child(_portrait_dither)
 
-	# Firewall badge (Build G item 11): portrait-tier state marker, docked to
-	# the portrait's top-right corner above the dither. Visibility follows the
-	# `warded` state on every refresh (grant shows it, break/expiry clears it).
-	_firewall_badge = TextureRect.new()
-	_firewall_badge.name = "FirewallBadge"
-	_firewall_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_firewall_badge.texture = PixelUI.pip_texture_for_key("firewall")
-	_firewall_badge.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_firewall_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_firewall_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_firewall_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_firewall_badge.offset_left = -(FIREWALL_BADGE_SIZE + FIREWALL_BADGE_INSET)
-	_firewall_badge.offset_top = FIREWALL_BADGE_INSET
-	_firewall_badge.offset_right = -FIREWALL_BADGE_INSET
-	_firewall_badge.offset_bottom = FIREWALL_BADGE_SIZE + FIREWALL_BADGE_INSET
-	_firewall_badge.visible = false
-	_portrait_crop.add_child(_firewall_badge)
+	# Portrait top-RIGHT is intentionally unoccupied (portrait-corner status
+	# ruling, 2026-09-02): no status marker docks to a portrait corner. The
+	# firewall that used to live here is an ordinary bottom-row chip now.
 
 	# Cast-order badge: firing-rank numeral on a filled plate, portrait
-	# top-LEFT (firewall badge owns top-right). Follows `cast_rank` on refresh.
+	# top-LEFT (the only occupied corner). Follows `cast_rank` on refresh.
 	_cast_badge = Label.new()
 	_cast_badge.name = "CastOrderBadge"
 	_cast_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -503,9 +486,6 @@ func _refresh() -> void:
 		_portrait_rect.modulate = Color(0.70, 0.80, 0.95, 0.42)
 	else:
 		_portrait_rect.modulate = Color(1.12, 1.12, 1.12, 1.0)
-	# Firewall (Build G item 11): portrait-tier badge follows the warded state.
-	if _firewall_badge != null:
-		_firewall_badge.visible = warded and not dead
 	# Cast-order badge: firing rank while committed this round (hero side only).
 	if _cast_badge != null:
 		_cast_badge.visible = side == "hero" and cast_rank > 0 and not dead
@@ -1057,6 +1037,10 @@ func _pip_border(kind: String) -> Color:
 			return Color(0.38, 0.82, 0.55, 0.92)
 		"frozen", "freeze", "die_freeze", "cloak":
 			return Color(0.48, 0.78, 0.88, 0.92)
+		"overflow":
+			# The pip row's "+N" badge speaks the chip row's overflow language:
+			# gold (EffectPip.MAX_VISIBLE_EFFECTS / _make_status_overflow).
+			return Color(PixelUI.GOLD_ACCENT, 0.92)
 	return Color(0.34, 0.52, 0.70, 0.86)
 
 

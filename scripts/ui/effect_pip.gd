@@ -7,7 +7,19 @@ extends RefCounted
 
 # Batch 155-179 gave every keyword its own pip icon; the 2026-07-10 icon batch
 # added rampage / pack_bonus / summon / self. Only `tag` remains text-rendered.
-const LETTER_ONLY_KINDS: Array[String] = ["tag"]
+# `overflow` is the "+N" badge (see MAX_VISIBLE_EFFECTS) — a text plate, no icon.
+const LETTER_ONLY_KINDS: Array[String] = ["tag", "overflow"]
+
+# Effect-pip cap (ruled 2026-09-02): a pip row shows the first three effects in
+# AUTHORING order; everything past the third folds into a single trailing "+N"
+# badge, the same overflow language the card's status chip row already uses
+# (TRUTH.md chip doctrine, `compact_unit_card._make_status_overflow`). Before
+# the ruling the tail was sliced off SILENTLY: twelve abilities lost a keyword
+# with nothing to say so — Conclave Bulwark's long-press read
+# "firewall, summon (42%)" over an icon row that showed neither. The dropped
+# effects are still spelled out in the ability's authored eff text, which is
+# what long-press renders beneath the pips.
+const MAX_VISIBLE_EFFECTS := 3
 
 # fix-2.6: keyword pip codes are single-sourced from keywords.data.json (the
 # "code" field) — battle pips, inspect rows, and the help menu all read the
@@ -438,7 +450,25 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 			var effect_dict: Dictionary = effect_variant as Dictionary
 			if str(effect_dict.get("scope", "")) == "self":
 				effect_dict["scope"] = ""
-	return dedupe_scope_markers(effects.slice(0, 3))
+	return _cap_with_overflow(dedupe_scope_markers(effects.slice(0, MAX_VISIBLE_EFFECTS)), effects.size())
+
+
+# Apply the pip cap's "+N" badge. `total` is the effect count BEFORE the slice;
+# with nothing dropped the row is returned untouched (no badge on a
+# three-or-fewer ability).
+static func _cap_with_overflow(visible: Array, total: int) -> Array:
+	var hidden: int = total - MAX_VISIBLE_EFFECTS
+	if hidden <= 0:
+		return visible
+	visible.append({
+		"kind": "overflow",
+		"value": "+%d" % hidden,
+		"duration": 0,
+		"scope": "",
+		"bonus": "",
+		"bonus_icon": "",
+	})
+	return visible
 
 
 static func effects_from_passive(effect: Dictionary, target_kind: String = "") -> Array:
@@ -657,6 +687,10 @@ static func _append_effect(
 
 
 static func _value_color_for_kind(color_key: String, effect_kind: String) -> Color:
+	# The "+N" overflow badge borrows the chip row's overflow color (gold), so
+	# both surfaces say "there is more here" in the same voice.
+	if effect_kind.to_lower() == "overflow":
+		return PixelUI.GOLD_ACCENT
 	if effect_kind.to_lower() in ["protocol", "tag"]:
 		return PixelUI.GOLD_ACCENT if effect_kind == "protocol" else PixelUI.effect_value_color("heal")
 	return PixelUI.effect_value_color(color_key)

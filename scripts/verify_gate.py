@@ -84,10 +84,17 @@ GATES = [
     ("transition smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/transition_smoke_test.gd"], "[TRANSITION_SMOKE] PASS", False),
     ("duration encoding", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/duration_encoding_test.gd"], "[DURATION] PASS", False),
     # Build G: the die numeral shows the JAMMED value (value feed, not the
-    # fenced dice renderer); firewall reads at the portrait tier (badge
-    # follows the warded state through grant/break/expiry).
+    # fenced dice renderer). Firewall (ruled 2026-09-02, reversing Build G item
+    # 11): portrait corners carry NO status markers — the firewall is a plain
+    # bottom-row chip under the shared 3-chip cap and +N overflow, and THE
+    # COURT's grant-and-consume-in-one-resolve ward is made visible by
+    # BattleFeedback's transient-chip injection.
     ("jam display", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/jam_display_test.gd"], "[JAM_DISPLAY] PASS", False),
     ("firewall display", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/firewall_display_test.gd"], "[FIREWALL_DISPLAY] PASS", False),
+    # Ruled 2026-09-02: the effect-pip cap keeps 3 but no longer drops the tail
+    # SILENTLY — everything past the third folds into a "+N" badge (the chip
+    # row's overflow language). Twelve abilities were losing a keyword.
+    ("effect pip overflow", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/effect_pip_overflow_test.gd"], "[EFFECT_PIP_OVERFLOW] PASS", False),
     # Build G item 3: every item "upgrade" draw succeeds at EVERY unlock state
     # (gating forced, fresh profile included) and ELITE PRESENCE upgrades
     # exactly one slot whenever its precondition holds (non-boss battles).

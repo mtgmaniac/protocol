@@ -37,9 +37,40 @@ const STATUS_EVENT_CHIP: Dictionary = {
 }
 const CHIP_CANONICAL_ORDER: Array = ["burn", "shield", "mark", "roll",
 	"firewall", "taunt", "cloak", "jam", "rewrite", "spike"]
+
+# ── Transient-chip injection (THE COURT fix, 2026-09-02) ─────────────────────
+# The mirror of suppression. Suppression covers "the chip existed BEFORE resolve
+# and its new value lands at the beat" by substituting snapshot tokens. It has
+# no answer for a chip that is granted AND consumed inside one resolve_round:
+# such a chip is in neither the pre-resolve snapshot nor the post-resolve state,
+# so there is nothing to substitute and the card shows nothing at all.
+#
+# That is exactly the Conclave Overseer's standing rule. `_apply_boss_round_start
+# _rules` raises the firewall at the top of resolve_round; the hero phase inside
+# the SAME call consumes it via `_ward_blocks_hostile`. Every card built
+# afterwards reads `warded = false`, so the player's attack was eaten every
+# round with the ✕ float negating something they were never shown.
+#
+# So: replay the grant/clear pair from the event list and INJECT the chip for
+# exactly the beats it was live. Presentation only — combat state is untouched,
+# and the injection is discarded with the rest of the plan at sequence end.
+#
+# Events that REMOVE a chip. (A ward blocks one ability and breaks.)
+const STATUS_EVENT_CHIP_CLEAR: Dictionary = {
+	"block": ["firewall"],
+}
+# Token shape per injectable chip type — mirrors
+# battle_card_view._make_compact_icon_status so the injected chip is
+# indistinguishable from a state-built one.
+const INJECTED_CHIP_TOKEN: Dictionary = {
+	"firewall": {"type": "firewall", "mode": "icon", "priority": 3},
+}
 var _status_snapshot: Dictionary = {}   # state_id -> Array[token] (pre-resolve)
 var _chip_suppression: Dictionary = {}  # state_id -> {chip_type: group_index}
 var _suppression_sides: Dictionary = {} # state_id -> side (release refresh)
+# state_id -> {chip_type: {"from": group_index, "until": group_index (-1 = never)}}
+var _chip_injection: Dictionary = {}
+var _played_group: int = -1             # last group whose beat has played
 
 
 # Called by battle_scene immediately BEFORE resolve_step: capture every card's
@@ -61,22 +92,43 @@ func snapshot_pre_resolve_statuses() -> void:
 func plan_status_suppression(events: Array) -> void:
 	_chip_suppression.clear()
 	_suppression_sides.clear()
+	_chip_injection.clear()
+	_played_group = -1
 	var groups: Array = _build_action_feedback_groups(events)
 	for group_index in groups.size():
 		var effects: Array = (groups[group_index] as Dictionary).get("effects", [])
 		for event_variant in effects:
 			var event: Dictionary = event_variant
-			var chips: Array = STATUS_EVENT_CHIP.get(str(event.get("type", "")), [])
-			if chips.is_empty():
-				continue
+			var event_type: String = str(event.get("type", ""))
 			var target_id: String = str(event.get("target_id", ""))
 			if target_id == "":
+				continue
+			# A chip this event REMOVES closes any injection window still open
+			# for it (the ward's block beat).
+			for cleared_variant in STATUS_EVENT_CHIP_CLEAR.get(event_type, []):
+				var cleared: String = str(cleared_variant)
+				var open_windows: Dictionary = _chip_injection.get(target_id, {})
+				if open_windows.has(cleared) and int((open_windows[cleared] as Dictionary).get("until", -1)) < 0:
+					(open_windows[cleared] as Dictionary)["until"] = group_index
+			var chips: Array = STATUS_EVENT_CHIP.get(event_type, [])
+			if chips.is_empty():
 				continue
 			var per_target: Dictionary = _chip_suppression.get(target_id, {})
 			for chip in chips:
 				per_target[str(chip)] = group_index
 			_chip_suppression[target_id] = per_target
 			_suppression_sides[target_id] = str(event.get("side", ""))
+			# A chip this event GRANTS opens an injection window. Only types
+			# with a token shape are injectable; the merge in the card view
+			# discards the window whenever live/snapshot already carries the
+			# chip, so a ward that outlives its round costs nothing here.
+			for chip_variant in chips:
+				var chip_type: String = str(chip_variant)
+				if not INJECTED_CHIP_TOKEN.has(chip_type):
+					continue
+				var windows: Dictionary = _chip_injection.get(target_id, {})
+				windows[chip_type] = {"from": group_index, "until": -1}
+				_chip_injection[target_id] = windows
 
 
 func suppressed_chip_types(state_id: String) -> Dictionary:
@@ -87,10 +139,32 @@ func snapshot_tokens_for(state_id: String) -> Array:
 	return _status_snapshot.get(state_id, [])
 
 
+# Chip tokens that are live at the CURRENT beat but exist in neither the
+# pre-resolve snapshot nor the post-resolve state (see the injection block
+# above). The card view merges these only where the chip type is absent from
+# both, so live and snapshot always win and this can never mask real state.
+func injected_chip_tokens(state_id: String) -> Array:
+	var tokens: Array = []
+	for chip_variant in _chip_injection.get(state_id, {}).keys():
+		var chip_type: String = str(chip_variant)
+		if _injection_open(state_id, chip_type):
+			tokens.append((INJECTED_CHIP_TOKEN[chip_type] as Dictionary).duplicate(true))
+	return tokens
+
+
+func _injection_open(state_id: String, chip_type: String) -> bool:
+	var window: Dictionary = _chip_injection.get(state_id, {}).get(chip_type, {})
+	if window.is_empty():
+		return false
+	var until: int = int(window.get("until", -1))
+	return _played_group >= int(window.get("from", 0)) and (until < 0 or _played_group < until)
+
+
 # Release every suppression owed to this group, then refresh the touched cards
 # so their chips land exactly at the cause's beat (edge b: one group's chips
 # land together).
 func release_group_suppression(group_index: int) -> void:
+	_played_group = group_index
 	var touched: Array = []
 	for state_id in _chip_suppression.keys():
 		var per_target: Dictionary = _chip_suppression[state_id]
@@ -103,6 +177,20 @@ func release_group_suppression(group_index: int) -> void:
 			touched.append(state_id)
 		if per_target.is_empty():
 			_chip_suppression.erase(state_id)
+	# An injection window that OPENS or CLOSES on this group needs the same
+	# refresh. A `block` event touches no suppression, so without this the ward
+	# chip would linger past the beat that consumed it.
+	for state_id in _chip_injection.keys():
+		if touched.has(state_id):
+			continue
+		for chip_variant in (_chip_injection[state_id] as Dictionary).keys():
+			var window: Dictionary = (_chip_injection[state_id] as Dictionary)[chip_variant]
+			if int(window.get("from", -1)) == group_index or int(window.get("until", -1)) == group_index:
+				touched.append(state_id)
+				break
+	# Headless planner runs (status_timing_test) drive the maps with no scene.
+	if _scene == null or not is_instance_valid(_scene):
+		return
 	for state_id in touched:
 		_scene._card_view.refresh_card_for_event({
 			"side": str(_suppression_sides.get(state_id, "")), "target_id": str(state_id),
@@ -113,6 +201,8 @@ func clear_status_suppression() -> void:
 	_chip_suppression.clear()
 	_suppression_sides.clear()
 	_status_snapshot.clear()
+	_chip_injection.clear()
+	_played_group = -1
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

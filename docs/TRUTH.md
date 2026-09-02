@@ -520,6 +520,20 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
 
 **Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 
+> **Pip-row cap + `+N` overflow (ruled 2026-09-02):** a pip row shows the first
+> `EffectPip.MAX_VISIBLE_EFFECTS` (3) effects in AUTHORING order; everything
+> past the third folds into ONE trailing `+N` badge, the same overflow language
+> the card's status chip row uses. The cap is unchanged — what changed is that
+> the tail is no longer dropped SILENTLY. Twelve abilities were losing a
+> keyword with nothing on the card to say so (Lattice Link, Fortress Lash,
+> Conclave Bulwark, Harmonic Mend, Hierophant Mantle lose firewall; Veil
+> Collapse, Lattice Storm, Broodlink Surge, Veil Cataclysm, Mass Snare, Void
+> Gate, Total Eclipse lose summon); Conclave Bulwark's long-press read
+> "firewall, summon (42%)" over an icon row showing neither. The dropped
+> effects stay readable in the ability's authored eff text, which is what
+> long-press renders beneath the pips. Regression
+> `scripts/debug/effect_pip_overflow_test.gd`.
+
 > **Scope-marker rule (Kev 2026-07-13):** a scope marker describes the
 > **ability's** targeting, not each individual effect's. It appears **at most
 > once per scope, per pip.** If every effect on an ability shares a scope, that
@@ -536,7 +550,7 @@ outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
 > (self) + +1 roll (self) had stamped two self markers.)
 
 **View Battlefield** (between-battle choices): `battle_scene` captures the final combat state at victory into transient `GameState.battle_review_state` (skipped headless/auto). Reward, Intercept, and evolution/directive choices show `VIEW BATTLEFIELD` when that state exists; it re-enters the real battle scene read-only, then returns to the originating choice. Reward/Intercept offers, selection, recipient/swap choice, and scroll state are retained in the transient picker session; no reward rolls again and no event transaction can commit twice.
-Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — the reveal feeds the jam cap through `_display_face_for_entry`, mirroring `get_effective_roll`; regression `jam_display_test.gd`) + die tint + "JAM ≤10" marker · **Firewall = portrait-corner FW badge** (Build G item 11, ruled — portrait-tier state marker on `warded`, both sides, cleared on break/expiry; the chip alone kept losing the 3-chip priority contest into the +N overflow; regression `firewall_display_test.gd`) plus its chip when the row has room · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
+Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — the reveal feeds the jam cap through `_display_face_for_entry`, mirroring `get_effective_roll`; regression `jam_display_test.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
 
@@ -951,7 +965,19 @@ BattleFeedback → snapshot-value substitution while suppressed → release at t
 group's impact beat → unconditional clear at sequence end. Side-agnostic;
 skip/auto path renders end-state immediately; cleanse's beat gates chip
 REMOVAL. Presentation-order test `scripts/debug/status_timing_test.gd`
-(headless, planner-level; fails on pre-Build-J code). **Known remaining leak
+(headless, planner-level; fails on pre-Build-J code; NOT wired into
+`verify_gate.py` — flagged 2026-09-02). **Transient-chip injection (ruled
+2026-09-02, the mirror of suppression):** a chip granted AND consumed inside
+one `resolve_round` is in neither the snapshot nor the end state, so there is
+nothing to substitute and it renders nowhere. BattleFeedback replays the
+grant/clear pair (`STATUS_EVENT_CHIP_CLEAR`) and INJECTS the chip for exactly
+the beats it was live; the card view merges injected tokens ONLY where the chip
+type is absent from both live and snapshot, so real state always wins. This is
+what makes THE COURT's firewall visible — the Conclave Overseer's standing rule
+raises the ward at the top of `resolve_round` and the hero phase inside the
+same call consumes it, so `warded` read false on every card and the block's ✕
+negated something the player was never shown (a lifetime bug). Regression
+`firewall_display_test.gd`. **Known remaining leak
 (flagged, out of Item-1 scope): die-crust visuals (`_sync_die_status_visuals`)
 have the same early-application class — a future item.** **Item 2:** the
 bottom gesture reserve renders PURE BLACK (`PixelUI.DT_BEZEL_BLACK #000000`,

@@ -320,3 +320,73 @@ units are all heroes, each restricted to the one taunter - consistent with
 the def). Anchor Frame gear (`tauntAbove50`) is a standing stance and keeps
 its aura behavior pending its own ruling - recorded here as the ONE
 remaining aura-form taunt.
+
+## G-5. Portrait corners carry NO status markers *(ruled by Kev, 2026-09-02; REVERSES G-3 / Build G item 11)*
+**Ruling.** Nothing renders in a battle card's portrait top-right corner. The
+`FirewallBadge` docked there by G-3 is DELETED. An armed firewall is an ordinary
+chip in the bottom status row, on the existing priority order, under the same
+3-chip cap and the same `+N` overflow as every other chip.
+**This reverses G-3 ("Firewall must be visible"), which added the portrait-tier
+badge precisely because the chip kept losing the 3-chip priority contest into
+the `+N` overflow.** That outcome is now ACCEPTED: firewall may sit in overflow.
+The cost is paid for by long-press, which shows the full status breakdown — and
+the badge's own cost (a status tier that only one mechanic could ever use, and
+a portrait corner permanently reserved) was the larger one.
+**Corner audit at the time of ruling** (`compact_unit_card.gd`): top-LEFT is the
+`CastOrderBadge` — the hero's own cast-order rank, an input the player set, not
+unit state — and is UNCHANGED by this ruling; top-RIGHT is now empty;
+bottom-left/right were already empty (the chip row is a full-width
+`PRESET_BOTTOM_WIDE` strip, not a corner dock). The roster-tile corner badges on
+the home screen (role color, pick-order slot, NEW) are selection and unlock
+affordances, not unit status, and are untouched.
+**Where it lives:** `scripts/ui/compact_unit_card.gd` (badge, its constants, its
+layout reservation and the dead `warded` mirror all removed),
+`battle_card_view.gd` (the `warded` configure key dropped — the firewall chip is
+built from state by `_build_compact_status_tokens` as before), TRUTH.md chip
+doctrine. Regression `scripts/debug/firewall_display_test.gd`, rewritten to
+assert the new behaviour: no badge node, the chip renders, and firewall folding
+into `+N` behind three higher-priority chips is a PASS, not a failure.
+
+## G-6. Effect-pip overflow renders `+N` *(ruled by Kev, 2026-09-02)*
+**Ruling.** The pip-row cap stays at 3, kept first-three-by-authoring-order.
+What changes: effects past the third no longer vanish SILENTLY. They fold into
+one trailing `+N` badge after the third pip, using the same overflow language
+the card's status chip row already speaks (gold, "+N", TRUTH.md chip doctrine).
+`effects_from_ability_raw` used to end in a bare `effects.slice(0, 3)`. Twelve
+abilities were losing a keyword with nothing on the card to say so — Lattice
+Link, Fortress Lash, Conclave Bulwark, Harmonic Mend and Hierophant Mantle lost
+firewall; Veil Collapse, Lattice Storm, Broodlink Surge, Veil Cataclysm, Mass
+Snare, Void Gate and Total Eclipse lost summon. Conclave Bulwark's long-press
+read "…firewall, summon (42%)" over an icon row that showed neither.
+The dropped effects remain readable: long-press renders the ability's authored
+eff text beneath the pips, and that text carries every clause. Verified, and
+asserted in the regression — if the eff text ever stops carrying them, the badge
+points at nothing and THAT is the bug.
+**Where it lives:** `scripts/ui/effect_pip.gd` (`MAX_VISIBLE_EFFECTS`,
+`_cap_with_overflow`, the `overflow` letter-only kind and its gold value color),
+`compact_unit_card._pip_border`. Every pip surface — readout, die-docked tag,
+inspect, evolution — inherits it through `EffectPip.build_group`, one producer.
+Regression `scripts/debug/effect_pip_overflow_test.gd` (gated), which also
+sweeps all 230 authored abilities for a well-formed row.
+
+## G-7. G-2's principle extends to hero-side ability PIPS *(ruled by Kev, 2026-09-02; extends G-2)*
+**Ruling.** The `self` scope MARKER (the circled-figure icon) is stripped from
+hero-side ability pips: on your own squad card a self-buff is already obvious,
+so the icon is noise. It stays on the ENEMY side, where "who does this hit?" is
+the open question, and `all`/`lowest` stay on both sides. This is the same
+principle G-2 applied to gear/relic/consumable passives — redundant
+self-marking is noise where context already answers it — extended from
+equipment passives to hero ability pips. Recorded now because an earlier batch
+landed the code without a written ruling.
+**Tension to record honestly:** G-2 closed with "ABILITY eff text keeps NK-17
+exactly as-is," and read narrowly that line reserves abilities from the
+amendment entirely. The reconciliation: G-2's sentence governs authored eff
+TEXT, and eff text IS untouched — NK-17 still owns the "(self)" suffix and
+`scripts/checks/effect_text_target.py` still requires it on abilities in both
+directions. What this ruling changes is the ICON, a different surface. Anyone
+reading G-2's closing line as covering pips too is reading it reasonably; this
+entry is the ruling that settles it, not a claim that G-2 already allowed it.
+**Where it lives:** `EffectPip.effects_from_ability_raw`, the hero self-buff
+exception block at its exit (mirrors `effects_from_passive`'s single-exit strip
+from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
+still enforces the text side.

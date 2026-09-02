@@ -44,6 +44,9 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		roll_value = null
 		if _scene.dice_tray_3d != null and is_instance_valid(_scene.dice_tray_3d):
 			_scene.dice_tray_3d.clear_die("enemy", str(state["id"]))
+		# The die's invisible long-press hit rect goes with it — otherwise a
+		# long-press over the now-empty tray keeps opening the corpse's ability.
+		_scene.clear_die_tooltip_overlay("enemy", str(state["id"]))
 
 	if roll_value != null:
 		var raw_roll: int = int(roll_value)
@@ -146,7 +149,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"interaction_enabled": _scene._is_card_clickable(state, accent_color),
 			"dead": show_dead,
 			"cloaked": bool(state.get("cloaked", false)),
-			"warded": bool(state.get("warded", false)),
 			"target_locked": is_target_locked,
 			"needs_manual_target": needs_manual_target,
 			"cast_rank": cast_rank,
@@ -396,7 +398,11 @@ func _composed_status_tokens(state: Dictionary) -> Array:
 	if feedback == null or not is_instance_valid(feedback):
 		return live
 	var suppressed: Dictionary = feedback.suppressed_chip_types(str(state.get("id", "")))
-	if suppressed.is_empty():
+	# Transient chips (THE COURT, 2026-09-02): granted AND consumed inside one
+	# resolve, so they are in neither `live` nor the snapshot. BattleFeedback
+	# hands them over only for the beats they were actually up.
+	var injected: Array = feedback.injected_chip_tokens(str(state.get("id", "")))
+	if suppressed.is_empty() and injected.is_empty():
 		return live
 	var merged: Dictionary = {}
 	for token_variant in live:
@@ -406,6 +412,13 @@ func _composed_status_tokens(state: Dictionary) -> Array:
 	for token_variant in feedback.snapshot_tokens_for(str(state.get("id", ""))):
 		var token: Dictionary = token_variant
 		if suppressed.has(str(token.get("type", ""))):
+			merged[str(token.get("type", ""))] = token
+	# Injection FILLS GAPS ONLY — live and snapshot always win, so a ward that
+	# outlives its round (the Aegis ally) is rendered from state as before and
+	# this can never mask or duplicate real state.
+	for token_variant in injected:
+		var token: Dictionary = token_variant
+		if not merged.has(str(token.get("type", ""))):
 			merged[str(token.get("type", ""))] = token
 	var out: Array = []
 	for chip_type in feedback.CHIP_CANONICAL_ORDER:

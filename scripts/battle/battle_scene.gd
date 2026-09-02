@@ -1682,6 +1682,23 @@ func _clear_die_tooltip_overlays() -> void:
 	_die_tooltip_overlays.clear()
 
 
+# One unit's long-press hit rect, dropped on the same beat its die leaves the
+# tray. The overlays are built ONCE at reveal over the units that are alive
+# then; a kill during the hero phase used to clear the die and leave its
+# invisible rect behind, so a long-press over empty tray still opened the dead
+# unit's ability inspect. Torn down alongside dice_tray_3d.clear_die().
+func clear_die_tooltip_overlay(side: String, unit_id: String) -> void:
+	var wanted: String = "DieTooltip_%s_%s" % [side, unit_id]
+	for i in range(_die_tooltip_overlays.size() - 1, -1, -1):
+		var overlay: Control = _die_tooltip_overlays[i] as Control
+		if overlay == null or not is_instance_valid(overlay):
+			_die_tooltip_overlays.remove_at(i)
+			continue
+		if str(overlay.name) == wanted:
+			overlay.queue_free()
+			_die_tooltip_overlays.remove_at(i)
+
+
 func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	if battle_over:
 		return
