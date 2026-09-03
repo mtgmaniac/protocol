@@ -219,6 +219,47 @@ func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) ->
 		_enemy_assignments[str(enemy_state["id"])] = str(pick["id"])
 
 
+# Keys that carry no effect of their own: pure targeting hints, the revive
+# knobs themselves, and the damage-range metadata. Anything else with a live
+# value means the ability still DOES something when the revive finds no body.
+const REVIVE_INERT_KEYS := {
+	"revive": true, "reviveAll": true, "revivePct": true,
+	"healTgt": true, "shTgt": true, "wardTgt": true,
+	"dMin": true, "dMax": true, "range": true, "zone": true,
+	"name": true, "eff": true, "desc": true, "band": true,
+}
+
+
+# True when EVERY effect this ability carries is gated on a target that does
+# not exist, so resolving it changes nothing at all. Today that is exactly the
+# revive family (Surge Revive, Mass Revival): both carry revive/reviveAll and
+# zero of anything else, and a squad with no downed hero gives them nothing to
+# do. Deliberately fail-safe — an unrecognized live key means "still does
+# something", so a new ability announces (today's behavior) until it is
+# understood, rather than going silently missing.
+func _ability_fizzles_for_lack_of_target(ability_entry: Dictionary) -> bool:
+	var raw: Dictionary = ability_entry.get("raw", {})
+	if not (bool(raw.get("revive", false)) or bool(raw.get("reviveAll", false))):
+		return false
+	for key in raw.keys():
+		if REVIVE_INERT_KEYS.has(str(key)):
+			continue
+		var value: Variant = raw[key]
+		if value is bool and bool(value):
+			return false
+		if (value is int or value is float) and float(value) != 0.0:
+			return false
+		if value is String and str(value) != "":
+			return false
+	# reviveAll needs any downed ally; a single-target revive with no pick
+	# falls back to the first dead hero, so "no dead hero at all" is the exact
+	# legality test for both.
+	for state_variant in _hero_states:
+		if bool((state_variant as Dictionary).get("dead", false)):
+			return false
+	return true
+
+
 # True when the ability needs a single hero pick (AoE and support don't).
 func _ability_targets_single_hero(raw: Dictionary) -> bool:
 	if int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)):
@@ -799,8 +840,20 @@ func resolve_round(
 		if bool(hero_state.get("die_freeze_repeat_this_round", false)):
 			_log("%s's frozen die repeats its %d." % [hero_state["unit"].display_name, int(roll_value)])
 		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(hero_state["unit"], int(roll_value))
-		_log("%s uses %s." % [hero_state["unit"].display_name, str(ability_entry.get("ability_name", "Unknown"))])
-		_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")), str(ability_entry.get("zone", "")))
+		# No legal target => no announcement (2026-09-02). The action event is
+		# what drives the banner, the ability-name slam and the overload
+		# celebration, so firing it for an ability that provably does NOTHING
+		# is the game claiming something happened when nothing did. Only the
+		# ANNOUNCE is suppressed: the ability still resolves (a no-op) and the
+		# 20-face riders below still pay out, because the die really did land
+		# on 20 and Overload Capacitor / the lifetime-20s stat are owed either
+		# way. Suppressing the whole beat there would be a balance change.
+		var fizzles: bool = _ability_fizzles_for_lack_of_target(ability_entry)
+		if fizzles:
+			_log("%s holds %s - there is no one to revive." % [hero_state["unit"].display_name, str(ability_entry.get("ability_name", "Unknown"))])
+		else:
+			_log("%s uses %s." % [hero_state["unit"].display_name, str(ability_entry.get("ability_name", "Unknown"))])
+			_emit_action_event(hero_state, "hero", str(ability_entry.get("ability_name", "Unknown")), str(ability_entry.get("zone", "")))
 		_apply_hero_ability(hero_state, ability_entry)
 		# Overload Loop relic / Overload Rites intercept: a 20 resolves twice.
 		# Keys on the die's FINAL face (ruling NK-02 — no natural-20 check, a die

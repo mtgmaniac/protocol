@@ -209,6 +209,174 @@ func refresh_card_for_event(event: Dictionary) -> void:
 		return
 
 
+# ── Hero-phase forecast (2026-09-02, "the preview lies") ─────────────────────
+# The preview used to read the CURRENT board and telegraph every living enemy's
+# attack, which produced three lies the player could catch in one round:
+#   1. an enemy the squad is about to kill still telegraphed its damage,
+#   2. a taunt cast this round did not redirect the attacks it will redirect,
+#   3. leech healing never showed, so the net HP change was wrong.
+# All three come from one missing step: heroes resolve BEFORE the enemy phase,
+# so an honest forecast has to walk the hero phase first. This is a LIGHTWEIGHT
+# forecast, not a resolution — it models damage, shields, cast order, kills,
+# taunt and leech, and deliberately NOT mark / execute / chain / breach /
+# detonate / relic multipliers. Every one of those only ADDS hero damage, so
+# the forecast under-estimates the squad's output and therefore under-predicts
+# kills: it errs toward showing damage that will not land (today's behavior),
+# never toward hiding damage that will. It never touches combat state.
+#
+# Returns:
+#   dead_enemy_ids  {enemy_id: true}    enemies the assignment is projected to kill
+#   lured           {enemy_id: hero_id} taunt redirects this round's casts create
+#   taunter_id      the Anchor Frame aura taunter (redirects EVERY enemy), or ""
+#   leech_by_hero   {hero_id: int}      self-heal each leeching hero is owed
+func _forecast_hero_phase() -> Dictionary:
+	var forecast: Dictionary = {
+		"dead_enemy_ids": {},
+		"lured": {},
+		"taunter_id": "",
+		"leech_by_hero": {},
+	}
+	var enemy_states: Array = _scene.combat_manager.get_enemy_states()
+	# Working copy of the enemy line: HP and shield burn down IN CAST ORDER, so
+	# a second hero aimed at an already-dead target adds nothing and a leech
+	# only heals off damage that actually reached HP.
+	var hp_left: Dictionary = {}
+	var shield_left: Dictionary = {}
+	for enemy_variant in enemy_states:
+		var enemy_state: Dictionary = enemy_variant
+		if bool(enemy_state.get("dead", false)):
+			continue
+		hp_left[str(enemy_state["id"])] = int(enemy_state.get("current_hp", 0))
+		shield_left[str(enemy_state["id"])] = int(enemy_state.get("shield", 0))
+
+	for hero_variant in _heroes_in_forecast_order():
+		var hero_state: Dictionary = hero_variant
+		if bool(hero_state.get("dead", false)):
+			continue
+		var hero_id: String = str(hero_state["id"])
+		if not _scene.hero_rolls.has(hero_id):
+			continue
+		var eff: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
+		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
+		if entry.is_empty():
+			continue
+		var raw: Dictionary = entry.get("raw", {})
+		var hero_target: String = str(hero_state.get("selected_target_id", ""))
+		var dmg: int = int(raw.get("dmg", 0))
+		var hp_dealt: int = 0
+		if dmg > 0:
+			if bool(raw.get("blastAll", false)):
+				for enemy_id in hp_left.keys():
+					hp_dealt += _forecast_apply_damage(hp_left, shield_left, str(enemy_id), dmg)
+			elif hero_target != "":
+				hp_dealt += _forecast_apply_damage(hp_left, shield_left, hero_target, dmg)
+		if bool(raw.get("leech", false)) and hp_dealt > 0:
+			# Mirrors combat_manager: the attacker heals 50% of the HP damage
+			# dealt after shields, rounded down.
+			var leech_heal: int = int(floor(float(hp_dealt) * 0.5))
+			if leech_heal > 0:
+				var leech_map: Dictionary = forecast["leech_by_hero"]
+				leech_map[hero_id] = int(leech_map.get(hero_id, 0)) + leech_heal
+		# Taunt (ruling G-4): the cast lures ONE enemy, which can then only
+		# strike the taunter. A firewall eats the taunt, so a warded enemy is
+		# NOT lured — the same order combat_manager resolves it in.
+		if bool(raw.get("taunt", false)):
+			var lured_state: Dictionary = _forecast_taunt_target(enemy_states, hero_target)
+			if not lured_state.is_empty() and not bool(lured_state.get("warded", false)):
+				var lure_map: Dictionary = forecast["lured"]
+				lure_map[str(lured_state["id"])] = hero_id
+
+	var dead_map: Dictionary = forecast["dead_enemy_ids"]
+	for enemy_id in hp_left.keys():
+		if int(hp_left[enemy_id]) <= 0:
+			dead_map[str(enemy_id)] = true
+
+	# Anchor Frame gear: a standing aura, not a cast — already live on the board,
+	# redirecting EVERY enemy's single-target pick while its holder is above half
+	# HP (combat_manager._get_taunting_hero_state).
+	for hero_variant in _scene.combat_manager.get_hero_states():
+		var aura_state: Dictionary = hero_variant
+		if bool(aura_state.get("dead", false)) or not bool(aura_state.get("gear_anchor_taunt", false)):
+			continue
+		if int(aura_state.get("current_hp", 0)) * 2 > int(aura_state.get("max_hp", 1)):
+			forecast["taunter_id"] = str(aura_state["id"])
+			break
+	return forecast
+
+
+# Heroes in the order they will actually fire: stamped picks ascending, then
+# unstamped in squad order — the same rule as the private
+# combat_manager._hero_states_in_cast_order.
+func _heroes_in_forecast_order() -> Array:
+	var stamped: Array = []
+	var unstamped: Array = []
+	for state_variant in _scene.combat_manager.get_hero_states():
+		var state: Dictionary = state_variant
+		if int(state.get("cast_stamp", 0)) > 0:
+			stamped.append(state)
+		else:
+			unstamped.append(state)
+	if stamped.is_empty():
+		return unstamped
+	stamped.sort_custom(func(a, b): return int(a["cast_stamp"]) < int(b["cast_stamp"]))
+	return stamped + unstamped
+
+
+# Burns `amount` through one enemy's forecast shield then HP; returns the part
+# that reached HP (what a leech feeds on). A target already at 0 absorbs
+# nothing — combat_manager._damage_state returns early on a dead state.
+func _forecast_apply_damage(hp_left: Dictionary, shield_left: Dictionary, enemy_id: String, amount: int) -> int:
+	if not hp_left.has(enemy_id) or int(hp_left[enemy_id]) <= 0 or amount <= 0:
+		return 0
+	var absorbed: int = mini(amount, int(shield_left.get(enemy_id, 0)))
+	shield_left[enemy_id] = int(shield_left.get(enemy_id, 0)) - absorbed
+	var to_hp: int = mini(amount - absorbed, int(hp_left[enemy_id]))
+	hp_left[enemy_id] = int(hp_left[enemy_id]) - to_hp
+	return to_hp
+
+
+# The enemy a taunt cast lures, mirroring combat_manager._hostile_single_target:
+# the explicit pick when it is living and uncloaked, else the first living
+# uncloaked enemy.
+func _forecast_taunt_target(enemy_states: Array, selected_id: String) -> Dictionary:
+	for state_variant in enemy_states:
+		var state: Dictionary = state_variant
+		if str(state.get("id", "")) != selected_id:
+			continue
+		if not bool(state.get("dead", false)) and not bool(state.get("cloaked", false)):
+			return state
+	for state_variant in enemy_states:
+		var fallback: Dictionary = state_variant
+		if not bool(fallback.get("dead", false)) and not bool(fallback.get("cloaked", false)):
+			return fallback
+	return {}
+
+
+# The hero one enemy will actually hit, given this round's forecast. Priority is
+# combat_manager._resolve_enemy_hero_target's: a standing lure, then a taunt
+# cast this round, then the Anchor Frame aura, then the enemy's own pick.
+func _forecast_enemy_target(enemy_state: Dictionary, forecast: Dictionary) -> String:
+	var standing_lure: String = str(enemy_state.get("lured_by_id", ""))
+	if standing_lure != "" and _forecast_hero_is_live(standing_lure):
+		return standing_lure
+	var lure_map: Dictionary = forecast["lured"]
+	var new_lure: String = str(lure_map.get(str(enemy_state["id"]), ""))
+	if new_lure != "" and _forecast_hero_is_live(new_lure):
+		return new_lure
+	var aura: String = str(forecast.get("taunter_id", ""))
+	if aura != "" and _forecast_hero_is_live(aura):
+		return aura
+	return str(enemy_state.get("selected_target_id", ""))
+
+
+func _forecast_hero_is_live(hero_id: String) -> bool:
+	for state_variant in _scene.combat_manager.get_hero_states():
+		var state: Dictionary = state_variant
+		if str(state.get("id", "")) == hero_id:
+			return not bool(state.get("dead", false))
+	return false
+
+
 func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictionary:
 	# Preview only makes sense once rolls/targets exist. Targeting and the
 	# pre-end-turn ready state are the obvious cases; the *_pick phases
@@ -237,6 +405,11 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 	var total_heal: int   = 0
 	var total_shield: int = 0
 	var found: bool = false
+	# Walk the hero phase first: heroes resolve BEFORE enemies, so which enemies
+	# are still standing to act, and who they are still allowed to hit, both
+	# depend on the assignment the player is looking at right now.
+	var forecast: Dictionary = _forecast_hero_phase()
+	var forecast_dead: Dictionary = forecast["dead_enemy_ids"]
 
 	# ── Hero abilities ────────────────────────────────────────────────────────
 	for hero_state in _scene.combat_manager.get_hero_states():
@@ -276,9 +449,27 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 			total_heal   += int(raw.get("heal", 0))
 			total_shield += int(raw.get("shield", 0))
 
+	# ── Leech (hero self-heal) ────────────────────────────────────────────────
+	# Leech heals the ATTACKER, so it never passes the "does this ability land
+	# on this card" gate above and was missing from the net-HP projection
+	# entirely. The forecast already knows how much damage each leeching hero
+	# gets through shields, which is exactly what the heal is a fraction of.
+	if is_hero:
+		var leech_map: Dictionary = forecast["leech_by_hero"]
+		var leech_heal: int = int(leech_map.get(target_id, 0))
+		if leech_heal > 0:
+			found = true
+			total_heal += leech_heal
+
 	# ── Enemy abilities ───────────────────────────────────────────────────────
 	for enemy_state in _scene.combat_manager.get_enemy_states():
 		if bool(enemy_state.get("dead", false)):
+			continue
+		# An enemy the assignment is about to KILL never reaches the enemy
+		# phase, so nothing it telegraphs can land: it contributes no damage to
+		# any hero bar and no self-heal to its own. Its card still previews the
+		# incoming kill normally — that is computed from the hero loop above.
+		if forecast_dead.has(str(enemy_state["id"])):
 			continue
 		var enemy_id: String = str(enemy_state["id"])
 		if not _scene.enemy_rolls.has(enemy_id):
@@ -292,7 +483,13 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		var e_blast: bool     = bool(raw.get("blastAll", false))
 
 		if is_hero:
-			var hits_hero: bool = e_blast or e_target == target_id
+			# The pick shown on the enemy card is not necessarily who it hits:
+			# a taunt cast this round (or the standing Anchor Frame aura)
+			# redirects it at resolve time. Preview the hero it will ACTUALLY
+			# strike. The self-heal branch below keeps the raw pick — the
+			# redirect is a HOSTILE-targeting rule only.
+			var hostile_target: String = _forecast_enemy_target(enemy_state, forecast)
+			var hits_hero: bool = e_blast or hostile_target == target_id
 			if hits_hero and int(raw.get("dmg", 0)) > 0:
 				found = true
 				total_dmg += int(raw.get("dmg", 0))

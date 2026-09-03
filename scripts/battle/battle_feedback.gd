@@ -668,7 +668,7 @@ func _get_card_float_origin(card: Control) -> Vector2:
 # _spawn_roll_buff_float, never here.
 func _build_floating_text(event_type: String, amount: int) -> String:
 	match event_type:
-		"damage", "burn", "chain", "detonate", "spike", "execute":
+		"damage", "burn":
 			return "-%d" % amount
 		"heal", "shield":
 			return "+%d" % amount
@@ -678,6 +678,18 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 			# freeze / mark / wipe_shields: cut (redundant with chip + keyword
 			# visual). leech / pierce / accrete / revive: the paired damage /
 			# shield / heal events carry the numbers. Everything else is silent.
+			#
+			# chain / detonate / spike / execute are in that SAME paired-event
+			# family and were wrongly floating their own number (2026-09-02):
+			# each announces the packet and then calls _damage_state, which
+			# emits the "damage" event — so one hit painted TWO red numbers on
+			# one card. The marker's number was also the WRONG one (it is the
+			# pre-mitigation figure: shields, Mark's +50% and gear reduction all
+			# land inside _damage_state), and a chain jump into a ward emitted
+			# its "-N" before _ward_blocks_hostile cut the packet, so the float
+			# announced damage that never happened at all. The keyword visuals
+			# (ember burst, shatter, spark, deep-red flash) still fire from
+			# _play_keyword_feedback — only the duplicate numeral is gone.
 			return ""
 
 

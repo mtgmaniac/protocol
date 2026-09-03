@@ -2,7 +2,14 @@ class_name BattleLayout
 extends Node
 
 const DICE_SNAP_HORIZONTAL_MARGIN_PX := 88.0
-const DICE_VISUAL_HALF_HEIGHT_PX := 80.0
+# Fallback only — the live value comes from
+# DiceTray3D.settled_die_half_height_px(), because this number is a PROJECTION
+# of a 3D die and moves with every tray resize. 80 was a guess and a settled die
+# really measures ~105px at 1080x2400, so every gap computed from it came out
+# 25px tighter than authored: the Roll button was clearing the dice rows by 29px
+# where DICE_BUTTON_GAP_PX asks for 54 (reported 2026-09-02 as a die rendering
+# partly behind the button).
+const DICE_VISUAL_HALF_HEIGHT_PX := 105.0
 const DICE_BUTTON_GAP_PX := 54.0
 const DICE_LANE_HEIGHT_PX := 168.0
 const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
@@ -405,11 +412,16 @@ func sync_combat_zone_frame(combat_zone: Rect2) -> void:
 	var top_bound: float = enemy_readout_bottom + lane_gap
 	var bottom_bound: float = hero_readout_top - lane_gap
 	var lane_height: float = DICE_LANE_HEIGHT_PX
-	var max_symmetric_offset: float = maxf(0.0, minf(button_center_local - top_bound - DICE_VISUAL_HALF_HEIGHT_PX, bottom_bound - button_center_local - DICE_VISUAL_HALF_HEIGHT_PX))
+	# Both bounds use the die's REAL projected half-height. The button itself is
+	# deliberately NOT resized to buy room: it sits in the centre column's own
+	# VBox, so changing its height reflows the readout rows, which moves the
+	# combat zone, which moves the dice — the clearance chases its own tail.
+	var die_half: float = _settled_die_half_height()
+	var max_symmetric_offset: float = maxf(0.0, minf(button_center_local - top_bound - die_half, bottom_bound - button_center_local - die_half))
 	# Button reservation shifts dice outward when the Roll/End Turn button is visible;
 	# when the button is hidden (targeting phase, item picks) dice compress to center.
 	var button_reservation: float = button_rect.size.y * 0.5 if button_rect.size.y > 2.0 else 0.0
-	var required_center_offset: float = button_reservation + DICE_VISUAL_HALF_HEIGHT_PX + DICE_BUTTON_GAP_PX
+	var required_center_offset: float = button_reservation + die_half + DICE_BUTTON_GAP_PX
 	var center_offset: float = minf(required_center_offset, max_symmetric_offset)
 	var enemy_lane_y: float = button_center_local - center_offset - lane_height * 0.5
 	var hero_lane_y: float = button_center_local + center_offset - lane_height * 0.5
@@ -423,6 +435,18 @@ func sync_combat_zone_frame(combat_zone: Rect2) -> void:
 		_combat_zone_hero_lane.position = Vector2.ZERO if hero_lane_height <= 0.0 else Vector2(0.0, hero_lane_y)
 		_combat_zone_hero_lane.size = Vector2(combat_zone.size.x, hero_lane_height)
 		_combat_zone_hero_lane.visible = hero_lane_height > 0.0
+
+
+# The live projected half-height of a settled die, from the tray that renders it
+# (single source of truth); DICE_VISUAL_HALF_HEIGHT_PX is only the
+# before-the-camera-exists fallback.
+func _settled_die_half_height() -> float:
+	if _scene.dice_tray_3d == null or not is_instance_valid(_scene.dice_tray_3d):
+		return DICE_VISUAL_HALF_HEIGHT_PX
+	if not _scene.dice_tray_3d.has_method("settled_die_half_height_px"):
+		return DICE_VISUAL_HALF_HEIGHT_PX
+	var measured: float = float(_scene.dice_tray_3d.settled_die_half_height_px())
+	return measured if measured > 1.0 else DICE_VISUAL_HALF_HEIGHT_PX
 
 
 func build_row_slots(row: HBoxContainer, count: int) -> Array:

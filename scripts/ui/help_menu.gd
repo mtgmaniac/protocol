@@ -301,6 +301,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit - squad and hostile - rolls a D20 at the same time.",
 		"Assign your hero rolls to targets, then enemies act, then you gain +1 Protocol.",
+		"A unit with only one legal target selects it automatically.",
 		"Each die is split into 5 ability bands; the roll's band decides which ability fires.",
 		"A 20 always fires that unit's ultimate ability.",
 	])

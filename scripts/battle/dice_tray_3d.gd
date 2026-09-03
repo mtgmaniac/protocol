@@ -240,6 +240,29 @@ func _update_world_bounds() -> void:
 	_layout_tray_bodies()
 
 
+# A settled die is snapped face-up, so its screen height is a fixed multiple of
+# the tray's world scale. MEASURED off get_die_screen_bounds at the shipped
+# 1080x2400 layout (209.8px tall in a 938px tray whose camera spans 8.345
+# units => 104.9px => 0.933 units) rather than derived, because the silhouette
+# of a d20 at RESULT_SCALE is not 2 x DIE_RADIUS in any axis. Held in WORLD
+# units so it tracks the tray through every resize; the clearance gate
+# (roll_button_clearance_test) is what keeps it honest.
+const SETTLED_DIE_HALF_HEIGHT_UNITS := 0.933
+
+
+# Half the height one settled die occupies ON SCREEN, in the same pixel space as
+# get_die_screen_bounds. The layout reserves space around the Roll button from
+# this: it used to reserve a hardcoded 80px for a die that really measures
+# ~105px, so the 54px button/dice gap it thought it was leaving was actually 29.
+# 0.0 before the camera exists — callers keep their own fallback.
+func settled_die_half_height_px() -> float:
+	if _camera == null or not is_instance_valid(_camera) or _camera.size <= 0.0:
+		return 0.0
+	if size.y <= 2.0:
+		return 0.0
+	return SETTLED_DIE_HALF_HEIGHT_UNITS * (size.y / _camera.size)
+
+
 func set_combat_zone_rect(rect: Rect2) -> void:
 	if rect.size.x <= 2.0 or rect.size.y <= 2.0:
 		return

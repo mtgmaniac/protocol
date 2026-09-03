@@ -965,8 +965,8 @@ BattleFeedback → snapshot-value substitution while suppressed → release at t
 group's impact beat → unconditional clear at sequence end. Side-agnostic;
 skip/auto path renders end-state immediately; cleanse's beat gates chip
 REMOVAL. Presentation-order test `scripts/debug/status_timing_test.gd`
-(headless, planner-level; fails on pre-Build-J code; NOT wired into
-`verify_gate.py` — flagged 2026-09-02). **Transient-chip injection (ruled
+(headless, planner-level; fails on pre-Build-J code; wired into
+`verify_gate.py` 2026-09-02). **Transient-chip injection (ruled
 2026-09-02, the mirror of suppression):** a chip granted AND consumed inside
 one `resolve_round` is in neither the snapshot nor the end state, so there is
 nothing to substitute and it renders nowhere. BattleFeedback replays the
@@ -1070,6 +1070,77 @@ added to the taps the player already makes.
 sim pass has now run; every formerly stale-baselined taunt arm is measured in
 Baseline v2. Avalanche repricing remains the known open target; no ability numbers
 move until that ruling.
+
+**Preview honesty + feedback honesty batch (2026-09-02).** Four defects that
+share one shape — a surface stating something the round will not do.
+
+- **The damage preview is a HERO-PHASE FORECAST, not a reading of the current
+  board.** `battle_card_view._forecast_hero_phase` walks the hero phase before
+  anything is drawn, because heroes resolve first and everything the enemy
+  phase does is downstream of that. It fixes three lies: (a) an enemy the
+  assignment will KILL no longer telegraphs damage onto a hero bar — it never
+  gets to act; (b) a taunt cast this round (and the standing Anchor Frame aura)
+  redirects the telegraph to the taunter, mirroring
+  `combat_manager._resolve_enemy_hero_target`'s priority order; (c) LEECH
+  healing reaches the net-HP projection — it heals the ATTACKER, so it never
+  passed the "does this ability land on this card" gate and was simply absent.
+  The forecast models damage, shields, cast order, kills, taunt and leech, and
+  deliberately NOT mark / execute / chain / breach / detonate / relic
+  multipliers. **That asymmetry is the safety property, not laziness:** every
+  omitted effect only ADDS hero damage, so the forecast under-states the
+  squad's output and under-predicts kills — it errs toward showing damage that
+  will not land (the old behavior), never toward hiding damage that will. It
+  reads state and mutates nothing. **A fully accurate preview would need a
+  speculative-resolution path the UI does not have:** `snapshot_state` /
+  `restore_state` exist and the L2 sim solver already resolves candidate rounds
+  on them, but `resolve_round` also writes OUTSIDE that snapshot —
+  `SaveManager.record_nat20`, `SaveManager.record_hero_death`,
+  `GameState.grant_battle_start_consumables`, `GameState.dead_mans_hand_used` —
+  and advances the seeded RNG stream. Running it from the UI on every tap would
+  inflate lifetime stats and hand out consumables. Gate:
+  `scripts/debug/preview_accuracy_test.gd`.
+- **One hit, one number.** `chain`, `detonate`, `spike` and `execute` each
+  emitted a NUMBERED marker event and then called `_damage_state`, which emits
+  the real `damage` event — two red floats on one card for a hit that applied
+  once. Display-only (the damage was never double-counted), but the marker also
+  carried the PRE-mitigation figure, and a chain jump into a firewall floated
+  its number before `_ward_blocks_hostile` cancelled the packet. They now join
+  leech / pierce / accrete / revive in the silent-marker family: the keyword
+  visuals still fire from `_play_keyword_feedback`, only the duplicate numeral
+  is gone.
+- **No legal target, no announcement.** A revive with no downed ally played its
+  banner, name slam and overload celebration and did nothing.
+  `combat_manager._ability_fizzles_for_lack_of_target` suppresses the
+  `action_start` event (which is what drives all three) for an ability whose
+  EVERY effect is gated on a target that is absent. Only the revive family
+  qualifies today (Surge Revive, Mass Revival). **The beat still resolves** — the
+  20-face riders (Overload Capacitor, the lifetime-20s stat) still pay out,
+  because the die really did land on 20; suppressing those would be a balance
+  change. Fail-safe by construction: an unrecognized live key in the raw means
+  "still does something", so a new ability keeps announcing. Gate:
+  `scripts/debug/feedback_honesty_test.gd` (both defects).
+- **The Roll button reserves the die's REAL height.** `BattleLayout` reserved a
+  hardcoded 80px half-height for a die that projects to ~105px at 1080x2400, so
+  the authored `DICE_BUTTON_GAP_PX` of 54 was really 29 — thin enough to read as
+  the button sitting on the dice. The live value now comes from
+  `DiceTray3D.settled_die_half_height_px()` (single source of truth; the layout
+  constant is only the before-the-camera-exists fallback) and the measured
+  clearance is 47px. **The button is deliberately NOT resized to buy room:** it
+  sits in the centre column's own VBox, so changing its height reflows the
+  readout rows, which moves the combat zone, which moves the dice — the
+  clearance chases its own tail. Gate:
+  `scripts/debug/roll_button_clearance_test.gd` (non-overlap plus a 40px
+  clearance floor).
+- **Unlock screen — investigated, NOT a defect.** "Cleared Hive, the operation
+  persisted but never appeared on the unlock screen" reproduces only on a
+  RE-clear: `SaveManager._award_operation` early-returns when the op is already
+  in `unlocks.operations`, so nothing joins the run-end delta while the op stays
+  (correctly) unlocked. `check_new_unlocks` is non-destructive, so there is no
+  consume-once path. Verified on a raw profile: facility clear announces
+  `hive/Hive Incursion`, hive clear announces `veil/Veil Concord`, the re-clear
+  announces nothing, and `is_operation_unlocked("veil")` reads true afterwards
+  (the carousel's lock-state rendering is already gated by
+  `unlock_progression_test`). No code changed.
 
 ## Out of scope (don't build)
 

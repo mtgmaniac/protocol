@@ -91,6 +91,12 @@ GATES = [
     # BattleFeedback's transient-chip injection.
     ("jam display", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/jam_display_test.gd"], "[JAM_DISPLAY] PASS", False),
     ("firewall display", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/firewall_display_test.gd"], "[FIREWALL_DISPLAY] PASS", False),
+    # Build J item 1: the chip-deferral planner (chips land at their CAUSING
+    # beat, not at resolve). Written 2026-07-19 and enforced by NOTHING until
+    # now — the firewall work above wired THE COURT's transient-chip injection
+    # straight through this planner, so the seam was carrying new load with its
+    # only regression unrun. Planner-level and headless: no rendered frames.
+    ("status timing", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/status_timing_test.gd"], "[STATUS_TIMING] PASS", False),
     # Ruled 2026-09-02: the effect-pip cap keeps 3 but no longer drops the tail
     # SILENTLY — everything past the third folds into a "+N" badge (the chip
     # row's overflow language). Twelve abilities were losing a keyword.
@@ -105,6 +111,19 @@ GATES = [
     ("die reroll visual", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/die_reroll_visual_test.gd"], "[DIE_REROLL] PASS", False),
     ("auto-target preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/auto_target_preview_test.gd"], "[AUTO_PREVIEW] PASS", False),
     ("item burn preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/item_burn_preview_test.gd"], "[ITEM_BURN] PASS", False),
+    # 2026-09-02, "the damage preview lies": heroes resolve BEFORE the enemy
+    # phase, so the forecast has to walk the hero phase first — a doomed enemy
+    # stops telegraphing, a taunt redirects the telegraph, and leech healing
+    # reaches the net-HP projection.
+    ("preview accuracy", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/preview_accuracy_test.gd"], "[PREVIEW_ACCURACY] PASS", False),
+    # Same batch, two "the game told me something untrue" defects: Chain and its
+    # siblings floated a SECOND number for one hit, and a revive with no downed
+    # ally still played its banner.
+    ("feedback honesty", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/feedback_honesty_test.gd"], "[FEEDBACK_HONESTY] PASS", False),
+    # The ROLL/END TURN button must not sit on a settled die. The layout was
+    # reserving 80px for a die that projects to ~105, so the authored 54px gap
+    # was really 29 at 1080x2400.
+    ("roll button clearance", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/roll_button_clearance_test.gd"], "[ROLL_CLEARANCE] PASS", False),
     # Android Build #1: safe-area insets (cutout/gesture bar) — header grows,
     # protocol row lifts, desktop reads all-zero (no-regression guarantee).
     ("safe area", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/safe_area_test.gd"], "[SAFE_AREA] PASS", False),
