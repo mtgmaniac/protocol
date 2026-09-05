@@ -139,7 +139,7 @@
     "aiType": { "type": "string", "enum": ["dumb", "smart"] },
     "enemyUnitDef": {
       "type": "object",
-      "required": ["hp", "dMin", "dMax", "type", "ai"],
+      "required": ["hp", "dMin", "dMax", "type", "ai", "role"],
       "additionalProperties": false,
       "properties": {
         "hp": { "type": "integer", "minimum": 1 },
@@ -147,6 +147,11 @@
         "dMax": { "type": "integer", "minimum": 1 },
         "type": { "$ref": "#/$defs/enemyType" },
         "ai": { "$ref": "#/$defs/aiType" },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-line bestiary description of what this unit DOES to you in play. Behaviour, not ability names; sentence case with keywords lowercase inline; never a dice-band name."
+        },
         "callsign": {
           "type": "string",
           "maxLength": 8,

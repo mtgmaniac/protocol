@@ -11,6 +11,9 @@ extends Resource
 ## Targeting personality override (systematic / wounded / pack / spiteful).
 ## Independent of ai_type — empty means "use the kit default table".
 @export var targeting: String = ""
+## One-line bestiary description of what this unit DOES in play (data field
+## `role` on enemyUnitDefs). Behaviour, never ability names, never a band name.
+@export_multiline var role: String = ""
 @export var max_hp: int = 0
 @export var damage_preview_min: int = 0
 @export var damage_preview_max: int = 0

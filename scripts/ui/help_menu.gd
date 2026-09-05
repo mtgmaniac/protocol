@@ -5,6 +5,10 @@ class_name HelpMenu
 extends CanvasLayer
 
 const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8)
+# ...except while THIS screen is showing a breakdown: a popup the help menu
+# itself opened has to render above the help panel, so the menu ducks under
+# the popup layer for the duration. Restored the moment the popup closes.
+const MENU_LAYER_UNDER_POPUP := 125
 
 # Mobile-readable font scale (matches the inspect popup, not the old tiny help text).
 const TITLE_FONT := 48
@@ -57,15 +61,14 @@ const SECTION_HEADER_COLOR := Color(0.72, 0.88, 1.0, 1.0)
 
 static var _active: HelpMenu = null
 
+var _breakdown_open: bool = false
+
 var _content_host: VBoxContainer = null
 var _content_scroll: ScrollContainer = null
 var _reset_armed: bool = false
 var _reset_dev_button: Button = null
 var _tab_buttons: Dictionary = {}
 var _active_tab: String = ""
-var _codex_detail: VBoxContainer = null
-var _codex_buttons: Dictionary = {}
-var _codex_unit: String = ""
 var _bestiary_detail: VBoxContainer = null
 var _bestiary_buttons: Dictionary = {}
 var _bestiary_faction: String = ""
@@ -446,122 +449,58 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 
 
 # ── UNITS codex ───────────────────────────────────────────────────────────────
+# A reference LIST, not a browser: all 24 entries at once (8 heroes, each
+# followed by its two evolution branches as indented children). The per-unit
+# tab strip and the three full ability tables it revealed are gone — five
+# abilities with roll ranges, three times over, is a battle card's job, not a
+# reference screen's. The whole table is one long-press away on any row.
 func _build_codex(host: VBoxContainer) -> void:
-	var selector := GridContainer.new()
-	selector.columns = 2
-	selector.mouse_filter = Control.MOUSE_FILTER_PASS
-	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	selector.add_theme_constant_override("h_separation", 8)
-	selector.add_theme_constant_override("v_separation", 8)
-	host.add_child(selector)
+	var list := VBoxContainer.new()
+	list.mouse_filter = Control.MOUSE_FILTER_PASS
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	host.add_child(list)
 
-	_codex_buttons.clear()
-	var units: Dictionary = _dm().units
-	var first_id: String = ""
-	for unit_id_variant in units.keys():
-		var unit_id: String = str(unit_id_variant)
-		var unit: UnitData = units[unit_id_variant] as UnitData
+	for unit_variant in _dm().units.values():
+		var unit: UnitData = unit_variant as UnitData
 		if unit == null:
 			continue
-		if first_id == "":
-			first_id = unit_id
-		var btn := Button.new()
-		btn.text = unit.callsign if unit.callsign != "" else unit.display_name
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.custom_minimum_size = Vector2(0, 66)
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		btn.pressed.connect(_select_codex_unit.bind(unit_id))
-		selector.add_child(btn)
-		_codex_buttons[unit_id] = btn
-
-	_codex_detail = VBoxContainer.new()
-	_codex_detail.mouse_filter = Control.MOUSE_FILTER_PASS
-	_codex_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_codex_detail.add_theme_constant_override("separation", 14)
-	host.add_child(_codex_detail)
-
-	var target: String = _codex_unit if units.has(_codex_unit) else first_id
-	if target != "":
-		_select_codex_unit(target)
+		_add_reference_row(
+			list, unit.portrait, unit.display_name.to_upper(), unit.max_hp,
+			_derive_keyword_line(unit.dice_ranges, "hero", 0), "hero", unit)
+		for evolution in _codex_evolution_groups(unit):
+			var group: Dictionary = evolution
+			# The battlefield card shows the CALLSIGN, so the reference screen
+			# names an evolution the same way the player will meet it.
+			var evo_title: String = str(group["callsign"]).to_upper()
+			var abilities: Array = group["abilities"]
+			_add_reference_row(
+				list, unit.portrait, evo_title, int(group["hp"]),
+				_derive_keyword_line(abilities, "hero", 0), "evolution", group, true)
 
 
-func _select_codex_unit(unit_id: String) -> void:
-	_codex_unit = unit_id
-	for known_id in _codex_buttons.keys():
-		_style_tab_button(_codex_buttons[known_id], str(known_id) == unit_id)
-	if _codex_detail == null or not is_instance_valid(_codex_detail):
-		return
-	for child in _codex_detail.get_children():
-		child.queue_free()
-	var unit: UnitData = _dm().get_unit(unit_id) as UnitData
-	if unit == null:
-		return
-	_build_codex_unit_detail(_codex_detail, unit)
-
-
-func _build_codex_unit_detail(host: VBoxContainer, unit: UnitData) -> void:
-	var title: String = unit.callsign if unit.callsign != "" else unit.display_name
-	host.add_child(_make_wrap_label("%s · %s · %d HP" % [title.to_upper(), unit.class_name_text.to_upper(), unit.max_hp], HEADER_FONT, PixelUI.GOLD_ACCENT, 3))
-	if unit.picker_blurb.strip_edges() != "":
-		host.add_child(_make_wrap_label(unit.picker_blurb, BLURB_FONT, PixelUI.TEXT_MUTED, 1))
-
-	_add_band_table(host, "ABILITIES", unit.dice_ranges)
-
-	# evolution_paths is flat (one entry per ability); group by path name into the two evos.
+# evolution_paths is FLAT (one entry per ability) — regroup it into the two
+# branches, preserving authored order.
+func _codex_evolution_groups(unit: UnitData) -> Array:
 	var groups: Dictionary = {}
 	var order: Array = []
 	for path_variant in unit.evolution_paths:
 		var path: Dictionary = path_variant
-		var nm: String = str(path.get("name", ""))
-		if not groups.has(nm):
-			groups[nm] = {"callsign": "", "focus": "", "hp": 0, "abilities": []}
-			order.append(nm)
-		var g: Dictionary = groups[nm]
+		var key: String = str(path.get("name", ""))
+		if not groups.has(key):
+			groups[key] = {"callsign": key, "hp": 0, "abilities": []}
+			order.append(key)
+		var group: Dictionary = groups[key]
 		if str(path.get("callsign", "")) != "":
-			g["callsign"] = str(path.get("callsign", ""))
-		if str(path.get("focus", "")) != "":
-			g["focus"] = str(path.get("focus", ""))
+			group["callsign"] = str(path.get("callsign", ""))
 		if int(path.get("hp", 0)) > 0:
-			g["hp"] = int(path.get("hp", 0))
+			group["hp"] = int(path.get("hp", 0))
 		for ability_variant in path.get("abilities", []):
-			(g["abilities"] as Array).append(ability_variant)
-
-	if not order.is_empty():
-		host.add_child(_make_label("EVOLUTIONS", SECTION_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 3))
-		for nm in order:
-			var g: Dictionary = groups[nm]
-			var evo_title: String = str(g["callsign"]) if str(g["callsign"]) != "" else nm
-			var label: String = "%s · %d HP" % [evo_title.to_upper(), int(g["hp"])]
-			if str(g["focus"]) != "":
-				label = "%s · %s · %d HP" % [evo_title.to_upper(), str(g["focus"]), int(g["hp"])]
-			_add_band_table(host, label, g["abilities"])
-
-
-func _add_band_table(host: VBoxContainer, label: String, ability_entries: Array) -> void:
-	host.add_child(_make_wrap_label(label, TERM_FONT, SECTION_HEADER_COLOR, 2))
-	for ability_variant in ability_entries:
-		var ability: Dictionary = ability_variant
-		var row := HBoxContainer.new()
-		row.mouse_filter = Control.MOUSE_FILTER_PASS
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", 12)
-		host.add_child(row)
-
-		var range_label := _make_label("%d-%d" % [int(ability.get("min", 0)), int(ability.get("max", 0))], RANGE_FONT, PixelUI.DT_CYAN, HORIZONTAL_ALIGNMENT_LEFT, 2)
-		range_label.custom_minimum_size = Vector2(118, 0)
-		range_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		row.add_child(range_label)
-
-		var text_box := VBoxContainer.new()
-		text_box.mouse_filter = Control.MOUSE_FILTER_PASS
-		text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		text_box.add_theme_constant_override("separation", 1)
-		row.add_child(text_box)
-
-		text_box.add_child(_make_wrap_label(str(ability.get("ability_name", "")), BODY_FONT, PixelUI.GOLD_ACCENT, 2))
-		var eff: String = str(ability.get("description", "")).strip_edges()
-		if eff != "":
-			text_box.add_child(_make_wrap_label(eff, SYNTAX_FONT, PixelUI.TEXT_PRIMARY, 1))
+			(group["abilities"] as Array).append(ability_variant)
+	var out: Array = []
+	for key in order:
+		out.append(groups[key])
+	return out
 
 
 # ── BESTIARY codex (all unlocked; discovery gating comes later) ─────────────────
@@ -630,83 +569,13 @@ func _select_bestiary_faction(faction: String) -> void:
 
 
 func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
-	# Kev 2026-07-10: every bestiary entry carries a small portrait.
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 14)
-	host.add_child(row)
-
-	if enemy.portrait != null:
-		var frame := PanelContainer.new()
-		frame.custom_minimum_size = Vector2(96, 96)
-		frame.clip_contents = true
-		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_ENEMY_BORDER, 2))
-		var tex := TextureRect.new()
-		tex.texture = enemy.portrait
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(tex)
-		row.add_child(frame)
-
-	var entry := VBoxContainer.new()
-	entry.mouse_filter = Control.MOUSE_FILTER_PASS
-	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	entry.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	entry.add_theme_constant_override("separation", 1)
-	row.add_child(entry)
-
-	entry.add_child(_make_wrap_label(enemy.display_name.to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, 2))
-
-	var stats: String = "HP %d" % enemy.max_hp
-	if enemy.damage_preview_max > 0:
-		stats += " · Attack %d-%d" % [enemy.damage_preview_min, enemy.damage_preview_max]
-	entry.add_child(_make_label(stats, BODY_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_LEFT, 1))
-
-	var keywords: String = _enemy_keyword_summary(enemy)
-	if keywords != "":
-		entry.add_child(_make_wrap_label("APPLIES: %s" % keywords, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
+	# Same row shape as the Units list. The `role` sentence stays in the data
+	# and moves to the long-press breakdown: it never scanned as a list row.
+	_add_reference_row(
+		host, enemy.portrait, enemy.display_name.to_upper(), enemy.max_hp,
+		_derive_keyword_line(enemy.dice_ranges, "enemy", enemy.accrete), "enemy", enemy)
 
 
-func _enemy_keyword_summary(enemy: EnemyData) -> String:
-	var found: Array = []
-	for ability_variant in enemy.dice_ranges:
-		var ability: Dictionary = ability_variant
-		var raw: Dictionary = ability.get("raw", {})
-		# Keyword mentions inline are lowercase (caps law); AoE keeps its
-		# initialism form.
-		var tags: Array = []
-		if int(raw.get("burn", 0)) > 0:
-			tags.append("burn")
-		if int(raw.get("rfe", 0)) > 0:
-			tags.append("roll down")
-		if int(raw.get("shield", 0)) > 0 or int(raw.get("shieldAlly", 0)) > 0:
-			tags.append("shield")
-		if int(raw.get("heal", 0)) > 0 or int(raw.get("lifestealPct", 0)) > 0:
-			tags.append("heal")
-		if bool(raw.get("packBonus", false)):
-			tags.append("pack bonus")
-		if bool(raw.get("blastAll", false)):
-			tags.append("AoE")
-		if bool(raw.get("ward", false)):
-			tags.append("firewall")
-		if bool(raw.get("wipeShields", false)):
-			tags.append("shield wipe")
-		if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0 or int(raw.get("freezeAnyDice", 0)) > 0:
-			tags.append("freeze")
-		if int(raw.get("summonChance", 0)) > 0 or str(raw.get("summonName", "")) != "":
-			tags.append("summon")
-		for tag in tags:
-			if not found.has(tag):
-				found.append(tag)
-	return ", ".join(found)
-
-
-# ── SETTINGS ─────────────────────────────────────────────────────────────────────
 func _build_settings(host: VBoxContainer) -> void:
 	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	# Four channel rows (slider + ON/OFF each): MUSIC on MusicManager; SOUND FX /
@@ -1086,6 +955,308 @@ func _make_body_label(text: String, color: Color) -> Label:
 	PixelUI.style_body_label(label, PixelUI.FONT_BODY_MIN, color)
 	return label
 
+
+# ── Reference rows (Bestiary + Units share ONE row shape) ────────────────────
+# Portrait · name · HP · a derived keyword line. Nothing else: the full ability
+# table lives one long-press away, the same gesture the battlefield card uses.
+# Both screens call _add_reference_row, so they cannot drift apart.
+
+const ROW_KEYWORD_CAP := 4
+const ROW_PORTRAIT_BOX := 96.0
+const ROW_CHILD_PORTRAIT_BOX := 72.0
+const ROW_CHILD_INDENT := 34.0
+# m5x7 has no box-drawing glyphs (U+2514/U+251C are TOFU on device — the glyph
+# gate catches them), so the evolution connector is ASCII.
+const ROW_CHILD_CONNECTOR := "|-"
+
+# Keyword ids that carry a display label differing from the keywords.data.json
+# term: the internal `ward` shows as Firewall everywhere in game, roll_down
+# reads as two words, and Protocol Gain is just "protocol" in a keyword line.
+const ROW_KEYWORD_LABEL := {
+	"ward": "firewall",
+	"roll_down": "roll down",
+	"protocol_gain": "protocol",
+	"aoe": "AoE",
+}
+
+
+# The canonical keyword sequence IS the hand-ordered keywords.data.json list —
+# the same order the KEYWORDS tab renders. Both screens sort by it so a term
+# always sits in the same relative place, whichever screen you are reading.
+func _canonical_keyword_ids() -> Array:
+	var ids: Array = []
+	for entry_variant in (_dm().get_keywords() as Dictionary).get("keywords", []):
+		ids.append(str((entry_variant as Dictionary).get("id", "")))
+	return ids
+
+
+func _keyword_row_label(keyword_id: String) -> String:
+	if ROW_KEYWORD_LABEL.has(keyword_id):
+		return str(ROW_KEYWORD_LABEL[keyword_id])
+	for entry_variant in (_dm().get_keywords() as Dictionary).get("keywords", []):
+		var entry: Dictionary = entry_variant
+		if str(entry.get("id", "")) == keyword_id:
+			return str(entry.get("term", "")).to_lower()
+	return keyword_id
+
+
+# Keyword ids ONE ability contributes, read from the structured fields the
+# engine actually resolves — never from the authored eff string, which is copy
+# and would drift the first time an ability is retuned.
+#
+# The roll fields are SIDE-INVERTED and this is the one place that matters:
+# hero `rfe` lowers an enemy roll and hero `rfm` raises the squad's, but on the
+# enemy side `rfm` is the one that lowers a HERO's roll (`erb` is its own
+# buff), and no enemy ability uses `rfe` at all. Reading `rfe` for enemies is
+# why the old bestiary line never once printed "roll down" — for any of the ten
+# kits that have it, the five bosses included.
+func _ability_keyword_ids(raw: Dictionary, side: String) -> Array:
+	var ids: Array = []
+	if int(raw.get("burn", 0)) > 0:
+		ids.append("burn")
+	if int(raw.get("chain", 0)) > 0:
+		ids.append("chain")
+	if bool(raw.get("detonate", false)):
+		ids.append("detonate")
+	if bool(raw.get("execute", false)):
+		ids.append("execute")
+	if bool(raw.get("breach", false)) or bool(raw.get("breachAll", false)):
+		ids.append("breach")
+	if bool(raw.get("leech", false)) or int(raw.get("lifestealPct", 0)) > 0:
+		ids.append("leech")
+	if bool(raw.get("mark", false)):
+		ids.append("mark")
+	if bool(raw.get("grantRampage", false)) or bool(raw.get("grantRampageAll", false)):
+		ids.append("rampage")
+	if bool(raw.get("packBonus", false)):
+		ids.append("pack_bonus")
+	if int(raw.get("spike", 0)) > 0:
+		ids.append("spike")
+	if bool(raw.get("ignSh", false)):
+		ids.append("pierce")
+	if int(raw.get("shield", 0)) > 0 or int(raw.get("shieldAlly", 0)) > 0:
+		ids.append("shield")
+	if int(raw.get("heal", 0)) > 0:
+		ids.append("heal")
+	if bool(raw.get("cleanse", false)):
+		ids.append("cleanse")
+	if bool(raw.get("revive", false)) or bool(raw.get("reviveAll", false)):
+		ids.append("revive")
+	if side == "hero":
+		if int(raw.get("rfe", 0)) > 0:
+			ids.append("roll_down")
+		if int(raw.get("rfm", 0)) > 0:
+			ids.append("roll_up")
+	else:
+		if int(raw.get("rfm", 0)) > 0:
+			ids.append("roll_down")
+		if int(raw.get("erb", 0)) > 0:
+			ids.append("roll_up")
+	if bool(raw.get("jam", false)) or bool(raw.get("jamAll", false)):
+		ids.append("jam")
+	if bool(raw.get("rewrite", false)):
+		ids.append("rewrite")
+	if bool(raw.get("hijack", false)):
+		ids.append("hijack")
+	if int(raw.get("freezeEnemyDice", 0)) > 0 or int(raw.get("freezeAllEnemyDice", 0)) > 0 \
+			or int(raw.get("freezeAnyDice", 0)) > 0:
+		ids.append("freeze")
+	if bool(raw.get("cloak", false)):
+		ids.append("cloak")
+	if bool(raw.get("ward", false)):
+		ids.append("ward")
+	if bool(raw.get("taunt", false)) or bool(raw.get("enemySelfTaunt", false)):
+		ids.append("taunt")
+	if int(raw.get("siphon", 0)) > 0:
+		ids.append("siphon")
+	if int(raw.get("gainProtocol", 0)) > 0:
+		ids.append("protocol_gain")
+	if bool(raw.get("wipeShields", false)):
+		ids.append("wipe_shields")
+	if int(raw.get("summonChance", 0)) > 0:
+		ids.append("summon")
+	return ids
+
+
+# The keyword line: every term the kit can produce, in canonical order, capped.
+# AoE is tagged from DAMAGE AoE (`blastAll`) only — a unit that hits the whole
+# enemy line. Squad-wide shields and heals are not what the tag is asking (a
+# Bulwark carrying three squad-shields is a shield unit, not an AoE one), which
+# is the shape Kev's reference table has.
+func _derive_keyword_line(dice_ranges: Array, side: String, accrete: int) -> String:
+	var found: Dictionary = {}
+	var damage_aoe: int = 0
+	for entry_variant in dice_ranges:
+		var entry: Dictionary = entry_variant
+		var raw: Dictionary = entry.get("raw", {})
+		if raw.is_empty():
+			continue
+		for keyword_id in _ability_keyword_ids(raw, side):
+			found[keyword_id] = true
+		if bool(raw.get("blastAll", false)):
+			damage_aoe += 1
+	# Accrete is a UNIT property, not an ability one.
+	if accrete > 0:
+		found["accrete"] = true
+	if damage_aoe > 0:
+		found["aoe"] = true
+	var labels: Array = []
+	for keyword_id in _canonical_keyword_ids():
+		if labels.size() >= ROW_KEYWORD_CAP:
+			break
+		if found.has(keyword_id):
+			labels.append(_keyword_row_label(keyword_id))
+	return ", ".join(labels)
+
+
+# ONE row, both screens. The breakdown is described, not built: `source_kind` +
+# `source_data` are resolved into an InspectPopup payload only when a row is
+# actually long-pressed. Building 62 payloads up front meant running the whole
+# resolver (pips, keyword definitions, gear lookups) for every row on every tab
+# open, to throw all but at most one away.
+func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
+		hp: int, keyword_line: String, source_kind: String, source_data: Variant,
+		indented: bool = false) -> void:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 14)
+	host.add_child(row)
+
+	var box: float = ROW_CHILD_PORTRAIT_BOX if indented else ROW_PORTRAIT_BOX
+	if indented:
+		var indent := Control.new()
+		indent.custom_minimum_size = Vector2(ROW_CHILD_INDENT, 0)
+		indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(indent)
+		var connector := _make_label(ROW_CHILD_CONNECTOR, TERM_FONT, PixelUI.TEXT_MUTED, HORIZONTAL_ALIGNMENT_LEFT, 1)
+		connector.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		connector.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(connector)
+
+	if portrait != null:
+		var frame := PanelContainer.new()
+		frame.custom_minimum_size = Vector2(box, box)
+		frame.clip_contents = true
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var border: Color = PixelUI.DT_ENEMY_BORDER if source_kind == "enemy" else PixelUI.DT_CYAN
+		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, border, 2))
+		var tex := TextureRect.new()
+		tex.texture = portrait
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(tex)
+		row.add_child(frame)
+
+	var entry := VBoxContainer.new()
+	entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	entry.add_theme_constant_override("separation", 1)
+	row.add_child(entry)
+
+	var head := HBoxContainer.new()
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_theme_constant_override("separation", 10)
+	entry.add_child(head)
+	var name_label := _make_wrap_label(title, TERM_FONT, PixelUI.GOLD_ACCENT, 2)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(name_label)
+	var hp_label := _make_label("%d HP" % hp, BODY_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_RIGHT, 1)
+	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head.add_child(hp_label)
+
+	# No "APPLIES:" label — the word is implied, and dropping it puts the terms
+	# themselves at the start of the line where they scan.
+	if keyword_line != "":
+		entry.add_child(_make_wrap_label(keyword_line, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
+
+	if source_kind != "":
+		var long_press := LongPressInput.new()
+		row.add_child(long_press)
+		long_press.long_pressed.connect(
+			_on_reference_row_long_pressed.bind(source_kind, source_data, row))
+
+
+# The breakdown, on the battlefield's own gesture. HelpMenu sits ABOVE the
+# InspectPopup's layer by design (135 vs 130) so an in-battle popup can't cover
+# the help panel; a popup THIS screen opens has to win instead, so the menu
+# drops below it for as long as the breakdown is up and restores on dismiss.
+# InspectPopup exposes no dismissed signal, hence the polled restore.
+func _on_reference_row_long_pressed(_where: Vector2, source_kind: String,
+		source_data: Variant, source: Control) -> void:
+	var payload: Dictionary = _resolve_row_payload(source_kind, source_data)
+	if payload.is_empty():
+		return
+	var anchor: Rect2 = source.get_global_rect() if is_instance_valid(source) else Rect2()
+	var source_id: int = source.get_instance_id() if is_instance_valid(source) else 0
+	layer = MENU_LAYER_UNDER_POPUP
+	_breakdown_open = true
+	set_process(true)
+	InspectPopup.open(self, payload, anchor, source_id)
+	if not InspectPopup.is_open():
+		_restore_layer_after_breakdown()
+
+
+func _process(_delta: float) -> void:
+	if _breakdown_open and not InspectPopup.is_open():
+		_restore_layer_after_breakdown()
+
+
+func _restore_layer_after_breakdown() -> void:
+	_breakdown_open = false
+	layer = MENU_LAYER
+	set_process(false)
+
+
+# Descriptor -> breakdown payload, built on demand.
+func _resolve_row_payload(source_kind: String, source_data: Variant) -> Dictionary:
+	match source_kind:
+		"hero":
+			return InspectResolver.resolve_unit(source_data as UnitData)
+		"enemy":
+			return _enemy_breakdown_payload(source_data as EnemyData)
+		"evolution":
+			var group: Dictionary = source_data
+			return _evolution_breakdown_payload(
+				str(group.get("callsign", "")).to_upper(),
+				int(group.get("hp", 0)),
+				group.get("abilities", []) as Array)
+	return {}
+
+
+# The enemy breakdown carries the authored `role` sentence. It is appended HERE
+# rather than inside InspectResolver so the battlefield long-press is untouched
+# — the role line is reference-screen copy, and the popup component itself is
+# out of scope for this pass.
+func _enemy_breakdown_payload(enemy: EnemyData) -> Dictionary:
+	var payload: Dictionary = InspectResolver.resolve_unit(enemy)
+	if payload.is_empty():
+		return payload
+	var role: String = enemy.role.strip_edges()
+	if role != "":
+		var existing: String = str(payload.get("description", "")).strip_edges()
+		payload["description"] = role if existing == "" else "%s\n%s" % [role, existing]
+	return payload
+
+
+# An evolution is not its own UnitData — it lives in unit.evolution_paths in the
+# SAME dice_ranges shape — so the breakdown is resolved through a throwaway
+# UnitData rather than by teaching InspectResolver a second entry point.
+func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array) -> Dictionary:
+	var stand_in := UnitData.new()
+	stand_in.id = ""
+	stand_in.display_name = evo_name
+	stand_in.max_hp = hp
+	var bands: Array[Dictionary] = []
+	for ability_variant in abilities:
+		bands.append(ability_variant as Dictionary)
+	stand_in.dice_ranges = bands
+	return InspectResolver.resolve_unit(stand_in)
 
 func _make_label(text: String, font_size: int, color: Color, align: int = HORIZONTAL_ALIGNMENT_LEFT, outline: int = 2) -> Label:
 	var label := Label.new()

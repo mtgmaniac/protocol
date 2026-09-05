@@ -12,32 +12,32 @@ Every operation ends at battle 10 with a boss plus a fixed escort. Each boss has
 Cadence constants are provisional pending the global balance pass (BALANCE-TODO :107-110; DECISIONS_RESOLVED #8 deferred) and sweepable via the tuning seam (:112-131, `scripts/sim/knobs.json`).
 
 ### SCRAPMASTER (facility) — ASSEMBLY LINE
-- Rule text: "every 2nd enemy phase from its first activation, rebuilds one destroyed Scrap Drone at 50% HP."
+- Rule text: "a Scrap Drone you already destroyed stands back up at 50% HP. The Scrapmaster rebuilds one every 2nd enemy phase, counting from its first."
 - Code (`combat_manager.gd:240-252`): stamps `assembly_line_first_round` on its first live enemy phase (phase 1); rebuilds when `(round − first) % 2 == 1` → phases 2, 4, 6…; revives the **first dead "Scrap Drone"** at `SCRAPMASTER_REBUILD_PCT` = 50%.
 - Cadence semantics are the DECISIONS_RESOLVED #5 ruling (counted from first activation, NOT even-numbered rounds; regression-pinned).
 - Stats: 140 HP, d12–22, kit `boss`. Escort: 2× Scrap Drone (b10 comp `data/raw/battle-modes.json:83-94`).
 - Signature faces: System Purge (crit) wipes all hero shields before 21 dmg; Annihilate (overload) 26 dmg AoE.
 
 ### Hive Matriarch (hive) — THE BROOD
-- Rule text: "spawns a Bloodmite every 3 rounds."
+- Rule text: "a new Bloodmite joins the fight. The Matriarch births one every 3 rounds."
 - Code (`combat_manager.gd:253-262`): on rounds where `round % BROOD_CADENCE(3) == 0` **and fewer than 3 enemies live**, emits a summon event for "Bloodmite" (injected via the standard dumb-only guard, dead-slot replacement). The field-cap clause is not in the player text — finding F-enemies-08.
 - Stats: 180 HP, d15–21, kit `hiveBoss`. Escort: Spine Stalker.
 - Signature faces: Chitin Bulwark 22 shield; Acid Cataclysm (overload) wipe shields → 28 dmg + lifesteal 40%.
 
 ### CONCLAVE OVERSEER (veil) — THE COURT
-- Rule text: "while any ally lives, gains a Firewall at the start of each round."
+- Rule text: "an ability you aim at the Overseer is negated outright. It raises that firewall on itself at the start of every round, for as long as any ally lives."
 - Code (`combat_manager.gd:219-227`): round start, if any other living enemy exists and it is not already warded, `_apply_ward` (Firewall doesn't stack — an unbroken Firewall just stays).
 - Stats: 180 HP, d19–25, kit `veilBoss`. Escort: Aegis Anchor — kill it and the Court falls, ending the Firewall stream.
 - Signature faces: Veil Cataclysm (overload) wipe shields → 30 dmg, +2 roll allies 2t, summon ~30% nat20 (Prism Charger).
 
 ### ROOT HIEROPHANT (voidCirclet / Null Synod) — ROOT ACCESS
-- Rule text: "every round, Rewrites the squad's highest die to 3."
+- Rule text: "your squad's highest die is seized and rewritten to 3. The Hierophant does this every round."
 - Code (`combat_manager.gd:263-275`): each enemy phase, finds the living hero with the highest roll THIS round (strict `>`, ties go to the lower slot) and applies Rewrite — the hero's **next** roll is set to 3 (standard telegraphed Rewrite, `apply_rewrite_to_state` :1336; frozen dice are immune, :1314 — which is why ally crit-banking counters this boss, TRUTH §sim baseline).
 - Stats: 180 HP, d19–25, kit `voidCircletBoss`. Escort: Checksum Scribe.
 - Signature faces: Hierophant Mantle (recharge) 20 shield + ally 8 + buffs + Firewall (one of the 4 Synod firewall instances); "Circlet Cataclysm" (surge) carries the dead faction name — finding F-enemies-02; Void Gate (overload) wipe shields → 30 dmg + summon ~32% (Glitch Sprite).
 
 ### MANTLE TYRANT (stellarMenagerie / The Accretion) — ACCRETION
-- Rule text: "gains 6 shield at the start of every round; its shields persist and stack."
+- Rule text: "the Tyrant plates itself with 6 more shield and keeps every layer. It accretes at the start of every 2nd round; its shields persist and stack." (the old wiki copy said "every round" — the code has been every 2ND round since the Cycle-4 ruling)
 - Code: round start `+MANTLE_ROUND_SHIELD(6)` (`combat_manager.gd:228-230`); persistence comes from `shields_persist = true` stamped at battle setup by display name (:38-41), which exempts its stacks from the round-end expiry (:2518-2519). This is one half of the game's SINGLE shield-persistence exception (the other is the Mantle Core relic — TRUTH rule 5).
 - Stats: 180 HP, d19–25, kit `beastTyrant`. Escort: Geode Panther.
 - Signature faces: Reaver Mantle (recharge) 20 shield + rampage +1 (rampage = next damaging ability ×2, :1548-1551); Annihilation Sweep (crit) rampage ALL; Total Eclipse (overload) wipe shields → 26 dmg + rampage all + freeze-all (repeat 1) — currently rendering ICE crust instead of the faction's petrify (finding F-enemies-09).

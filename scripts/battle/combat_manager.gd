@@ -111,12 +111,21 @@ const PERMANENT_BURN_TURNS := 9999
 # being buffed; the short boss titles used here are the same ones the live combat
 # log already uses ("the Overseer raises a firewall", "the Tyrant accretes its
 # mantle"), so the two never disagree.
+#
+# READABILITY REWRITE (2026-09-03, copy only — no mechanic, number, condition or
+# timing moved): each rule now leads with WHAT THE PLAYER WILL SEE HAPPEN and
+# puts the cadence second. The player reads this once, in a modal, before their
+# first boss fight, with no way to re-read it mid-battle, so the first clause has
+# to be the observable event rather than the engine's phrasing of it.
+# The "TITLE - mechanic" shape is load-bearing: OperationBriefingOverlay
+# .split_runtime_rule splits on the first " - " and renders the left half as
+# "<TITLE> ACTIVE" above the right half as body.
 const BOSS_STANDING_RULES := {
-	BOSS_SCRAPMASTER: "ASSEMBLY LINE - every 2nd enemy phase from its first activation, the Scrapmaster rebuilds one destroyed Scrap Drone at 50% HP.",
-	BOSS_MATRIARCH: "THE BROOD - the Matriarch spawns a Bloodmite every 3 rounds.",
-	BOSS_OVERSEER: "THE COURT - while any ally lives, the Overseer gains a firewall on itself at the start of each round.",
-	BOSS_HIEROPHANT: "ROOT ACCESS - every round, the Hierophant rewrites YOUR squad's highest die to 3.",
-	BOSS_MANTLE: "ACCRETION - the Tyrant gains 6 shield on itself at the start of every 2nd round; its shields persist and stack.",
+	BOSS_SCRAPMASTER: "ASSEMBLY LINE - a Scrap Drone you already destroyed stands back up at 50% HP. The Scrapmaster rebuilds one every 2nd enemy phase, counting from its first.",
+	BOSS_MATRIARCH: "THE BROOD - a new Bloodmite joins the fight. The Matriarch births one every 3 rounds.",
+	BOSS_OVERSEER: "THE COURT - an ability you aim at the Overseer is negated outright. It raises that firewall on itself at the start of every round, for as long as any ally lives.",
+	BOSS_HIEROPHANT: "ROOT ACCESS - your squad's highest die is seized and rewritten to 3. The Hierophant does this every round.",
+	BOSS_MANTLE: "ACCRETION - the Tyrant plates itself with 6 more shield and keeps every layer. It accretes at the start of every 2nd round; its shields persist and stack.",
 }
 
 # BALANCE-TODO: rebuild HP 50% and brood cadence 3 are provisional. Mantle

@@ -77,6 +77,13 @@ GATES = [
     # Build F: counter integrity (once per encounter entered), run-end-only gate
     # evaluation, delta correctness, boss-relic announcement, sim pin.
     ("unlock progression", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/unlock_progression_test.gd"], "[UNLOCK_PROGRESSION] PASS", False),
+    # Operation lore + boss standing rules: accepted flavor metadata, the five
+    # LITERAL runtime standing-rule strings reaching the inspect popup, origin
+    # persistence/migration, and the surviving overlay modes. Written as a
+    # SCENE runner (it builds real overlays and measures their layout), so it
+    # runs by .tscn — invoking it with -s strips the autoloads and it fails to
+    # compile, which is how it read as broken while it was merely ungated.
+    ("operation lore", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/OperationLorePresentationRunner.tscn"], "[OPERATION_LORE] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
     ("primer smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/primer_smoke_test.gd"], "[PRIMER_SMOKE] PASS", False),

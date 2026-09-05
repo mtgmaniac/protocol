@@ -2176,7 +2176,8 @@
       "dMax": 9,
       "type": "scrap",
       "ai": "dumb",
-      "callsign": "SCRAP"
+      "callsign": "SCRAP",
+      "role": "Disposable chaff that plates itself once, then lands hits that leave burn behind."
     },
     "Rust Drone": {
       "hp": 45,
@@ -2184,7 +2185,8 @@
       "dMax": 8,
       "type": "rust",
       "ai": "dumb",
-      "callsign": "RUST"
+      "callsign": "RUST",
+      "role": "Shields itself, nudges its own roll up, and shaves yours down with every hit."
     },
     "Static Skimmer": {
       "hp": 40,
@@ -2192,7 +2194,8 @@
       "dMax": 8,
       "type": "signalSkimmer",
       "ai": "dumb",
-      "callsign": "STATIC"
+      "callsign": "STATIC",
+      "role": "Caps your next rolls with jam and shaves the rest down."
     },
     "Patrol Elite": {
       "hp": 60,
@@ -2200,7 +2203,8 @@
       "dMax": 16,
       "type": "patrol",
       "ai": "smart",
-      "callsign": "PATROL"
+      "callsign": "PATROL",
+      "role": "Plain heavy damage that starts stapling roll penalties on as it escalates."
     },
     "Guard Elite": {
       "hp": 70,
@@ -2208,7 +2212,8 @@
       "dMax": 18,
       "type": "guard",
       "ai": "smart",
-      "callsign": "GUARD"
+      "callsign": "GUARD",
+      "role": "Attacks and shields in the same breath, keeping its whole line plated."
     },
     "Heavy Warden": {
       "hp": 110,
@@ -2216,7 +2221,8 @@
       "dMax": 23,
       "type": "warden",
       "ai": "smart",
-      "callsign": "WARDEN"
+      "callsign": "WARDEN",
+      "role": "A durable bruiser that heals off its biggest hits and jams your dice."
     },
     "Volt Elite": {
       "hp": 75,
@@ -2224,7 +2230,8 @@
       "dMax": 21,
       "type": "volt",
       "ai": "smart",
-      "callsign": "VOLT"
+      "callsign": "VOLT",
+      "role": "Plates its allies, punishes attackers with spike, and stacks burn on you."
     },
     "SCRAPMASTER": {
       "hp": 140,
@@ -2232,7 +2239,8 @@
       "dMax": 22,
       "type": "boss",
       "ai": "smart",
-      "callsign": "MASTER"
+      "callsign": "MASTER",
+      "role": "Strips your shields and hits the whole squad, and it keeps putting its drones back on the field."
     },
     "Skitterling": {
       "hp": 30,
@@ -2240,7 +2248,8 @@
       "dMax": 9,
       "type": "skitter",
       "ai": "dumb",
-      "callsign": "SKITTER"
+      "callsign": "SKITTER",
+      "role": "Small and quick; it feeds on the damage it deals and leaves burn behind."
     },
     "Bloodmite": {
       "hp": 26,
@@ -2248,7 +2257,8 @@
       "dMax": 8,
       "type": "mite",
       "ai": "dumb",
-      "callsign": "MITE"
+      "callsign": "MITE",
+      "role": "The weakest thing on the field, draining a little HP back on every bite."
     },
     "Spine Stalker": {
       "hp": 49,
@@ -2256,7 +2266,8 @@
       "dMax": 16,
       "type": "stalker",
       "ai": "smart",
-      "callsign": "STALKER"
+      "callsign": "STALKER",
+      "role": "Opens behind spike armour, then stacks burns that outlast the fight."
     },
     "Carapace Beetle": {
       "hp": 80,
@@ -2264,7 +2275,8 @@
       "dMax": 18,
       "type": "carapace",
       "ai": "smart",
-      "callsign": "CARAPACE"
+      "callsign": "CARAPACE",
+      "role": "Hard to remove: it shields itself and its allies while burning you down."
     },
     "Broodwarden": {
       "hp": 90,
@@ -2272,7 +2284,8 @@
       "dMax": 23,
       "type": "brood",
       "ai": "smart",
-      "callsign": "BROOD"
+      "callsign": "BROOD",
+      "role": "Feeds on the damage it deals and layers long burn on top."
     },
     "Caustic Spewer": {
       "hp": 90,
@@ -2280,7 +2293,8 @@
       "dMax": 21,
       "type": "spewer",
       "ai": "smart",
-      "callsign": "SPEWER"
+      "callsign": "SPEWER",
+      "role": "Copies your highest die, then hoses you down with heavy, long burn."
     },
     "Hive Matriarch": {
       "hp": 135,
@@ -2288,7 +2302,8 @@
       "dMax": 21,
       "type": "hiveBoss",
       "ai": "smart",
-      "callsign": "MATRON"
+      "callsign": "MATRON",
+      "role": "Drags your rolls down, wipes your shields, and heals off the damage it deals."
     },
     "Shardmite": {
       "hp": 34,
@@ -2296,7 +2311,8 @@
       "dMax": 9,
       "type": "veilShard",
       "ai": "dumb",
-      "callsign": "SHARD"
+      "callsign": "SHARD",
+      "role": "Fragile and simple: straight damage that only turns dangerous on a high roll."
     },
     "Prism Charger": {
       "hp": 32,
@@ -2304,7 +2320,8 @@
       "dMax": 10,
       "type": "veilPrism",
       "ai": "dumb",
-      "callsign": "PRISM"
+      "callsign": "PRISM",
+      "role": "Pulls your attacks onto itself with taunt, then answers with rising damage."
     },
     "Aegis Anchor": {
       "hp": 58,
@@ -2313,7 +2330,8 @@
       "type": "veilAegis",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "AEGIS"
+      "callsign": "AEGIS",
+      "role": "Holds the lattice up: shields its allies, lifts their rolls, and hides behind a firewall."
     },
     "Resonance Warden": {
       "hp": 100,
@@ -2322,7 +2340,8 @@
       "type": "veilResonance",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "RESONANT"
+      "callsign": "RESONANT",
+      "role": "Heals itself, lifts its allies' rolls, and calls in reinforcements at its peak."
     },
     "Nullblade": {
       "hp": 60,
@@ -2331,7 +2350,8 @@
       "type": "veilNull",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "NULL"
+      "callsign": "NULL",
+      "role": "Straight, heavy damage, with a firewall up when it needs to survive."
     },
     "Stormweaver": {
       "hp": 90,
@@ -2340,7 +2360,8 @@
       "type": "veilStorm",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "STORM"
+      "callsign": "STORM",
+      "role": "Lifts every ally's roll while stacking burn on your squad."
     },
     "Synapse Herald": {
       "hp": 65,
@@ -2349,7 +2370,8 @@
       "type": "veilSynapse",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "SYNAPSE"
+      "callsign": "SYNAPSE",
+      "role": "Feeds shields and roll bonuses to its allies, and shrugs off one ability with a firewall."
     },
     "CONCLAVE OVERSEER": {
       "hp": 153,
@@ -2358,7 +2380,8 @@
       "type": "veilBoss",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "OVERSEER"
+      "callsign": "OVERSEER",
+      "role": "Plates itself and its court, drags your rolls down, and wipes your shields at its peak."
     },
     "Glitch Sprite": {
       "hp": 38,
@@ -2366,7 +2389,8 @@
       "dMax": 9,
       "type": "voidWisp",
       "ai": "dumb",
-      "callsign": "GLITCH"
+      "callsign": "GLITCH",
+      "role": "Nibbles your rolls down and siphons Protocol out of your pool."
     },
     "Init Acolyte": {
       "hp": 62,
@@ -2375,7 +2399,8 @@
       "type": "voidAcolyte",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "INIT"
+      "callsign": "INIT",
+      "role": "Hides behind firewalls, drains your Protocol, and rewrites a die to 3."
     },
     "Checksum Scribe": {
       "hp": 74,
@@ -2384,7 +2409,8 @@
       "type": "voidScribe",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "SCRIBE"
+      "callsign": "SCRIBE",
+      "role": "Copies your highest die, rewrites another, and lifts its allies' rolls."
     },
     "Axiom Binder": {
       "hp": 112,
@@ -2393,7 +2419,8 @@
       "type": "voidBinder",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "AXIOM"
+      "callsign": "AXIOM",
+      "role": "A slow grinder: roll penalties, drained Protocol, and a die rewritten to 3."
     },
     "Forked Double": {
       "hp": 68,
@@ -2403,7 +2430,8 @@
       "ai": "smart",
       "summonElite": true,
       "callsign": "FORK",
-      "startsCloaked": true
+      "startsCloaked": true,
+      "role": "Cloaks out of reach, wipes your shields, and takes your highest die for itself."
     },
     "Daemon Channeler": {
       "hp": 94,
@@ -2412,7 +2440,8 @@
       "type": "voidChanneler",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "DAEMON"
+      "callsign": "DAEMON",
+      "role": "Winds up its own rolls, then lands the Synod's heaviest burn."
     },
     "ROOT HIEROPHANT": {
       "hp": 180,
@@ -2421,7 +2450,8 @@
       "type": "voidCircletBoss",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "ROOT"
+      "callsign": "ROOT",
+      "role": "Plates its line behind a firewall, then buries your rolls under penalties."
     },
     "Pumice Macaque": {
       "hp": 38,
@@ -2429,7 +2459,8 @@
       "dMax": 9,
       "type": "beastMonkey",
       "ai": "dumb",
-      "callsign": "PUMICE"
+      "callsign": "PUMICE",
+      "role": "Weak alone, stronger for every other one of its kind still on the field."
     },
     "Obsidian Hound": {
       "hp": 42,
@@ -2437,7 +2468,8 @@
       "dMax": 10,
       "type": "beastWolf",
       "ai": "dumb",
-      "callsign": "HOUND"
+      "callsign": "HOUND",
+      "role": "Hunts in a pack: every surviving packmate makes its bite land harder."
     },
     "Slag Hound": {
       "hp": 34,
@@ -2445,7 +2477,8 @@
       "dMax": 9,
       "type": "beastWolf",
       "ai": "dumb",
-      "callsign": "SLAG"
+      "callsign": "SLAG",
+      "role": "The smaller pack hound, and it still hits harder the more of them are left."
     },
     "Geode Panther": {
       "hp": 74,
@@ -2453,7 +2486,8 @@
       "dMax": 17,
       "type": "beastLynx",
       "ai": "smart",
-      "callsign": "GEODE"
+      "callsign": "GEODE",
+      "role": "Opens from cloak and freezes your dice, so a bad result repeats."
     },
     "Basalt Ape": {
       "hp": 112,
@@ -2462,7 +2496,8 @@
       "type": "beastBison",
       "ai": "smart",
       "callsign": "BASALT",
-      "accrete": 3
+      "accrete": 3,
+      "role": "Grows armour every turn, punishes attackers with spike, and strips your shields."
     },
     "Pyroclast Raptor": {
       "hp": 86,
@@ -2471,7 +2506,8 @@
       "type": "beastHyena",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "RAPTOR"
+      "callsign": "RAPTOR",
+      "role": "Heals itself, pulls your attacks onto it with taunt, and calls in more."
     },
     "Magma Drake": {
       "hp": 98,
@@ -2480,7 +2516,8 @@
       "type": "beastBadger",
       "ai": "smart",
       "callsign": "MAGMA",
-      "accrete": 4
+      "accrete": 4,
+      "role": "Grows armour every turn and keeps you burning the whole fight."
     },
     "MANTLE TYRANT": {
       "hp": 180,
@@ -2488,7 +2525,8 @@
       "dMax": 25,
       "type": "beastTyrant",
       "ai": "smart",
-      "callsign": "MANTLE"
+      "callsign": "MANTLE",
+      "role": "Its armour never comes off; it doubles its own hits and freezes your whole tray."
     }
   },
   "battleEnemyScale": [

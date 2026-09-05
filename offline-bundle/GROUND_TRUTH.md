@@ -129,7 +129,7 @@ Signature units: Forked Double `startsCloaked`; Basalt Ape accrete 3 + spike 5; 
 
 | Boss | Rule |
 |---|---|
-| SCRAPMASTER | ASSEMBLY LINE — every other round, rebuilds one destroyed Scrap Drone at 50% HP |
+| SCRAPMASTER | ASSEMBLY LINE — every 2nd enemy phase counting from its first, rebuilds one destroyed Scrap Drone at 50% HP (was "every other round" — superseded by DECISIONS_RESOLVED #5) |
 | Hive Matriarch | THE BROOD — spawns a Bloodmite every 3 rounds |
 | CONCLAVE OVERSEER | THE COURT — while any ally lives, gains a Firewall at the start of each round |
 | ROOT HIEROPHANT | ROOT ACCESS — every round, Rewrites the squad's highest die to 3 |

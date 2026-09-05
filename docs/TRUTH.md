@@ -166,7 +166,7 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 **Targeting personalities (`scripts/battle/targeting_personality.gd`):** every hostile single-hero pick goes through ONE choke-point `personality_pick_target(enemy_state, hero_states, assignments_so_far)`, shared by UI and headless sim; no `randi()`. **SYSTEMATIC** (left→right by slot) · **WOUNDED** (lowest-HP) · **PACK** (joins an already-assigned hero; none → WOUNDED) · **SPITEFUL** (last hero to damage it, `last_attacker_id`, cleared on that hero's death; none → SYSTEMATIC). Universal: taunt overrides everything; cloaked heroes skipped; dead/illegal preferred target → the STATED fallback only (old "pure debuff → highest HP" special case REMOVED). Resolution: unit `targeting` field → kit table → SYSTEMATIC. Kit defaults: Facility SYSTEMATIC (guard/patrol/volt PACK; warden/boss WOUNDED) · Hive PACK (stalker/hiveBoss WOUNDED) · Veil WOUNDED (veilPrism/veilShard SYSTEMATIC) · Synod SYSTEMATIC (voidBinder/voidChanneler/voidCircletBoss WOUNDED; voidGlimmer SPITEFUL) · Accretion SPITEFUL (beastWolf/beastMonkey PACK; beastLynx WOUNDED). `ai_type` is UNTOUCHED and independent (20-face elite summons + summon-injection guard). Enemy inspect shows "TARGETING: NAME — definition."
 
-**Boss standing rules** (one always-on rule per boss, from turn 1, `BOSS_STANDING_RULES` keyed by display name): SCRAPMASTER — ASSEMBLY LINE, every 2nd enemy phase from its first activation rebuilds one destroyed Scrap Drone at 50% HP (DECISIONS_RESOLVED #5) · Hive Matriarch — THE BROOD, spawns a Bloodmite every 3 rounds · CONCLAVE OVERSEER — THE COURT, while any ally lives gains a Firewall each round start · ROOT HIEROPHANT — ROOT ACCESS, every round Rewrites the squad's highest die to 3 · MANTLE TYRANT — ACCRETION, +6 shield every round start, shields persist and stack. Round-start rules fire before the hero phase; turn-cadence rules at the start of the enemy phase.
+**Boss standing rules** (one always-on rule per boss, from turn 1, `BOSS_STANDING_RULES` keyed by display name): SCRAPMASTER — ASSEMBLY LINE, every 2nd enemy phase from its first activation rebuilds one destroyed Scrap Drone at 50% HP (DECISIONS_RESOLVED #5) · Hive Matriarch — THE BROOD, spawns a Bloodmite every 3 rounds · CONCLAVE OVERSEER — THE COURT, while any ally lives gains a Firewall each round start · ROOT HIEROPHANT — ROOT ACCESS, every round Rewrites the squad's highest die to 3 · MANTLE TYRANT — ACCRETION, +6 shield at the start of every 2nd round, shields persist and stack (cadence per the Cycle-4 ruling below; this line said "every round start" until 2026-09-03, contradicting the ruling recorded in the same document). Round-start rules fire before the hero phase; turn-cadence rules at the start of the enemy phase.
 
 ---
 
@@ -640,6 +640,14 @@ the operation-lore SLOT under the carousel (unframed one-sentence flavor from
 the `lore` field in `battle-modes.json` via `OperationData.lore`; empty until
 Build C authors copy, and an empty slot renders nothing). The mechanical
 threat summary moved to Build C (authored operation data).
+
+**Help reference lists (2026-09-05):** Units lists all eight heroes with their
+two evolution branches indented beneath them. Bestiary rows show enemy reference
+information; keyword summaries derive from structured ability fields in canonical
+keyword order. Long-press opens the shared inspect breakdown above the help menu;
+enemy breakdowns include the authored `enemyUnitDefs.role` description, loaded
+through `EnemyData.role`. Boss standing-rule copy is checked by the operation-lore
+scene runner, now included in `scripts/verify_gate.py`.
 
 **Body-copy tier (Polish Build A):** long-form prose reads at
 `PixelUI.FONT_BODY_MIN` (42 design → 64 rendered, one ladder step above
