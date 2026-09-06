@@ -12,9 +12,9 @@
       "trackHpScale": 1.05,
       "callsign": "FACILITY",
       "label": "Facility Sweep",
-      "blurb": "Drones jam your dice and wall up behind shields. Bank Protocol and breach through.",
+      "blurb": "Rogue war machines defend the foundry and rebuild their dead.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Scrapmaster down. Facility clear.",
+      "victorySub": "Scrapmaster destroyed. Foundry secured.",
       "battles": [
         {
           "enemies": [
@@ -46,10 +46,10 @@
         {
           "enemies": [
             {
-              "name": "Guard Elite"
+              "name": "Shield Enforcer"
             },
             {
-              "name": "Guard Elite"
+              "name": "Shield Enforcer"
             }
           ]
         },
@@ -85,7 +85,7 @@
               "name": "Scrap Drone"
             },
             {
-              "name": "SCRAPMASTER"
+              "name": "Scrapmaster"
             },
             {
               "name": "Scrap Drone"
@@ -98,9 +98,9 @@
       "trackHpScale": 1,
       "callsign": "HIVE",
       "label": "Hive Incursion",
-      "blurb": "The swarm drains you and multiplies. Burst it down before the brood builds.",
+      "blurb": "Acid-spitting swarms feed on the wounded and breed unchecked.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Matriarch down. Brood scattered.",
+      "victorySub": "Matriarch slain. Brood scattered.",
       "battles": [
         {
           "enemies": [
@@ -174,15 +174,15 @@
     "veil": {
       "trackHpScale": 0.94,
       "callsign": "VEIL",
-      "label": "Veil Concord",
-      "blurb": "A lattice that shields and buffs its own. Kill the supports or drown in firewalls.",
+      "label": "Veil Breach",
+      "blurb": "Alien Veil troops defend the relay with linked energy shields.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Overseer down. Concord gone.",
+      "victorySub": "Overseer eliminated. Relay secured.",
       "battles": [
         {
           "enemies": [
             {
-              "name": "Shardmite"
+              "name": "Shard Drone"
             },
             {
               "name": "Prism Charger"
@@ -244,7 +244,7 @@
         {
           "enemies": [
             {
-              "name": "CONCLAVE OVERSEER"
+              "name": "Veil Overseer"
             },
             {
               "name": "Aegis Anchor"
@@ -255,22 +255,22 @@
     },
     "voidCirclet": {
       "trackHpScale": 0.94,
-      "callsign": "SYNOD",
-      "label": "Null Synod",
-      "blurb": "Machine cultists who rewrite your dice and drain your Protocol. Guard your best rolls.",
+      "callsign": "SIGNAL",
+      "label": "Signal Purge",
+      "blurb": "Machine cultists corrupt targeting systems and drain power.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Hierophant down. Gate sealed.",
+      "victorySub": "Hierophant eliminated. Broadcast silenced.",
       "battles": [
         {
           "enemies": [
             {
-              "name": "Glitch Sprite"
+              "name": "Signal Wisp"
             },
             {
-              "name": "Glitch Sprite"
+              "name": "Signal Wisp"
             },
             {
-              "name": "Glitch Sprite"
+              "name": "Signal Wisp"
             }
           ]
         },
@@ -289,7 +289,7 @@
         {
           "enemies": [
             {
-              "name": "Axiom Binder"
+              "name": "Oath Binder"
             }
           ]
         },
@@ -327,10 +327,10 @@
         {
           "enemies": [
             {
-              "name": "ROOT HIEROPHANT"
+              "name": "Signal Hierophant"
             },
             {
-              "name": "Checksum Scribe"
+              "name": "Cipher Scribe"
             }
           ]
         }
@@ -338,16 +338,16 @@
     },
     "stellarMenagerie": {
       "trackHpScale": 0.94,
-      "callsign": "ACCRETION",
-      "label": "The Accretion",
-      "blurb": "Igneous beasts that armor up every turn. Cut them down before the mass sets.",
+      "callsign": "MANTLE",
+      "label": "Mantle Hunt",
+      "blurb": "Stone-plated predators grow armor as they stalk the squad.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Tyrant down. Accretion silent.",
+      "victorySub": "Tyrant slain. Mining perimeter secured.",
       "battles": [
         {
           "enemies": [
             {
-              "name": "Pumice Macaque"
+              "name": "Pumice Climber"
             }
           ]
         },
@@ -405,7 +405,7 @@
         {
           "enemies": [
             {
-              "name": "MANTLE TYRANT"
+              "name": "Mantle Tyrant"
             },
             {
               "name": "Geode Panther"

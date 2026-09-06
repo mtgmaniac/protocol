@@ -386,8 +386,8 @@ func _assert_script_contract(controller: Node) -> void:
 				_fail("beat %d copy names a die range ('%s'): %s" % [i + 1, banned, text.strip_edges()])
 				return
 		# §2: copy identifies actions by hero/roll/effect/target, never by ability name.
-		for ability_name in ["Target Lock", "Overdrive", "Neural Override", "Rail Strike",
-				"Suppression Fire", "Diagnostic Pulse", "Infusion"]:
+		for ability_name in ["Target Lock", "Overdrive", "Neural Tap", "Rail Strike",
+				"Rifle Burst", "Diagnostic Pulse", "Infusion"]:
 			if text.find(ability_name) >= 0:
 				_fail("beat %d copy uses an ability name ('%s')" % [i + 1, ability_name])
 				return

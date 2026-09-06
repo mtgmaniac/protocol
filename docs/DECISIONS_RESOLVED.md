@@ -390,3 +390,16 @@ entry is the ruling that settles it, not a claim that G-2 already allowed it.
 exception block at its exit (mirrors `effects_from_passive`'s single-exit strip
 from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
 still enforces the text side.
+
+
+## G-9. Apply the concise copy review (Kev, 2026-09-06)
+
+Kev approved implementing the full revised copy workbook. Apply its names, lore, descriptions and compact ability tooltips, with matching runtime references and preserved internal IDs/art paths. The approved effect syntax uses “damage” and explicit “turns”; hero self effects are implicit, while enemy self effects retain `(self)`. Group targets say `(all heroes)` or `(all enemies)` and lowest-HP support says `(lowest HP)`. This updates the text portion of NK-17/G-7; target checking must still derive and verify each clause's actual scope. Gear and consumables keep concise holder/target context. Operation threat lines retain their original text. Deployment labels become SITUATION and OBJECTIVE.
+
+Resolve the review's copy/code mismatches without tuning authored numbers: enemy ally-shield clauses work independently of self-shield; Bounty excludes every standing-rule boss, including Mantle Tyrant; Deep Freeze Charge does not change an already-frozen face (it extends that freeze). Twin Fates retains its existing free, once-per-battle base-roll copy and controls. Long intercept choices use short action buttons and separate readable consequences.
+
+## G-8. Frozen 20s and reinforcement kill rewards (Kev, 2026-09-05; supersedes NK-04 and NK-10)
+
+Kev requested that Overload Loop activate again on frozen turns, removed frozen-repeat exclusions, and confirmed that summoned and rebuilt enemies should count for kill rewards. Every resolution of a frozen 20 now triggers the usual 20-face riders on both sides: Loop/Rites echo, Protocol-on-20 gear, the 20s statistic, and enemy summon chance. Loop/Rites grant one extra activation, not recursive echoes; Protocol and stats pay once per resolving hero turn, not once per echo. Existing summon chances and field limits remain.
+
+Summoned and rebuilt enemy deaths now qualify for normal kill rewards: Protocol, Bounty, Chitin Graft, Kill Switch, Momentum, and Scavenger Manifest. Killer, mark, enemy-type, inventory-capacity, and once-per-battle requirements still apply. Freeze duration and alteration immunity remain unchanged. Player copy uses “turns”; Glacier's Deep Freeze adds one turn.

@@ -21,61 +21,61 @@ const OPERATION_COPY := {
 	"facility": {
 		"number": "01",
 		"name": "FACILITY SWEEP",
-		"origin": "The recovery network now classifies every survivor as salvage.",
-		"site": "ORPHEUS RECOVERY COMPLEX",
+		"origin": "The foundry has turned on its workers. Its machines are building an army from the wreckage.",
+		"site": "COLONY RECLAMATION WORKS",
 		"threats": "SHIELDS · JAM · REBUILD",
-		"failure": "RECLAMATION LOOP",
-		"directive": "DISMANTLE SCRAPMASTER",
+		"failure": "SECURITY MACHINES HOSTILE",
+		"directive": "DESTROY THE Scrapmaster",
 		"accent": Color("C07A45"),
 	},
 	"hive": {
 		"number": "02",
 		"name": "HIVE INCURSION",
-		"origin": "Biofabrication organisms have breached containment and begun self-replication.",
-		"site": "KHEPRI BIOFOUNDRY",
+		"origin": "An invasive brood has overrun the colony labs. The hive is spreading into the surrounding settlements.",
+		"site": "COLONY BIORESEARCH LABS",
 		"threats": "BURN · SWARM · SIPHON",
-		"failure": "CONTAINMENT OVERRUN",
-		"directive": "TERMINATE THE MATRIARCH",
+		"failure": "HIVE CONTAINMENT LOST",
+		"directive": "KILL THE HIVE MATRIARCH",
 		"accent": Color("B94A70"),
 	},
 	"veil": {
 		"number": "03",
-		"name": "VEIL CONCORD",
-		"origin": "The colony's command lattice has rejected authority and sealed itself.",
-		"site": "VEIL COMMAND ARRAY",
+		"name": "VEIL BREACH",
+		"origin": "An alien force known as the Veil has seized the colony relay. Its troops fight behind linked energy shields.",
+		"site": "COLONY COMMAND RELAY",
 		"threats": "FIREWALL · SHIELDS · SUPPORT",
-		"failure": "CONSENSUS LOCKOUT",
-		"directive": "ISOLATE THE OVERSEER",
+		"failure": "COMMAND RELAY OCCUPIED",
+		"directive": "ELIMINATE THE VEIL OVERSEER",
 		"accent": Color("A6A9C9"),
 	},
 	"voidCirclet": {
 		"number": "04",
-		"name": "NULL SYNOD",
-		"origin": "An isolated maintenance order now worships a corrupted root signal.",
-		"site": "NULL ROOT ARCHIVE",
+		"name": "SIGNAL PURGE",
+		"origin": "A machine cult has seized the colony archive. Its broadcasts are corrupting military systems across the colony.",
+		"site": "COLONY SIGNAL ARCHIVE",
 		"threats": "REWRITE · HIJACK · SIPHON",
-		"failure": "ROOT-SIGNAL CORRUPTION",
-		"directive": "SEVER THE HIEROPHANT",
+		"failure": "HOSTILE SIGNAL BROADCAST",
+		"directive": "ELIMINATE THE SIGNAL HIEROPHANT",
 		"accent": Color("B653C8"),
 	},
 	"stellarMenagerie": {
 		"number": "05",
-		"name": "THE ACCRETION",
-		"origin": "Terraforming fauna are mineralizing around a rupture in the planetary mantle.",
-		"site": "NADIR TERRAFORMING BASIN",
+		"name": "MANTLE HUNT",
+		"origin": "Deep drilling has driven mineral-plated predators to the surface. The largest is tearing through the mining perimeter.",
+		"site": "COLONY DEEP-CORE MINE",
 		"threats": "PACK · PETRIFY · ARMOR",
-		"failure": "MANTLE BREACH",
-		"directive": "SHATTER THE TYRANT",
+		"failure": "PREDATORS THROUGH THE PERIMETER",
+		"directive": "KILL THE Mantle Tyrant",
 		"accent": Color("D89B4A"),
 	},
 }
 
 const BOSS_FLAVOR := {
-	"SCRAPMASTER": "The facility's central assembler turns battlefield wreckage back into soldiers.",
-	"Hive Matriarch": "The brood's reproductive core continues producing combat organisms.",
-	"CONCLAVE OVERSEER": "The lattice's sovereign node draws protection from every surviving subordinate.",
-	"ROOT HIEROPHANT": "The Synod's root authority treats probability as writable doctrine.",
-	"MANTLE TYRANT": "A mantle-fed apex organism grows new armor throughout the fight.",
+	"Scrapmaster": "An industrial assembler that turns fallen drones into fresh troops.",
+	"Hive Matriarch": "A living brood factory that sends its offspring into the fight.",
+	"Veil Overseer": "The Veil commander fights behind a firewall sustained by its surviving troops.",
+	"Signal Hierophant": "A machine priest whose broadcasts override the squad's targeting systems.",
+	"Mantle Tyrant": "An apex predator that grows fresh mineral armor as it fights.",
 }
 
 var _mode := ""
@@ -218,8 +218,8 @@ func _add_deployment_grid(copy: Dictionary) -> void:
 	grid.add_theme_constant_override("separation", 10)
 	center.add_child(grid)
 	_add_key_value(grid, "SITE", str(copy["site"]), copy["accent"] as Color)
-	_add_key_value(grid, "FAILURE", str(copy["failure"]), PixelUI.DT_RUST)
-	_add_key_value(grid, "DIRECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
+	_add_key_value(grid, "SITUATION", str(copy["failure"]), PixelUI.DT_RUST)
+	_add_key_value(grid, "OBJECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
 
 
 func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color: Color) -> void:

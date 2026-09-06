@@ -43,11 +43,11 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 2. Player resolves first, in any order; then surviving enemies resolve.
 3. End of turn: status effects tick, dice reset.
 4. A unit that dies mid-turn does not act.
-5. Shields last **one opposing action phase** (per-side expiry, CONFIRMED per Kev 2026-07-06, DECISIONS_RESOLVED #2): granted this round, absorb through this round's opposing phase, gone at the round-end tick (no `shT` field exists anywhere in data — audited 2026-07-07, zero offenders). Enemy-phase grants survive one tick so they cover exactly one hero phase. **The SINGLE named exception is `shieldsPersist`** (Mantle Core relic / MANTLE TYRANT standing rule), which keeps shields until broken — nothing else may persist a shield. A unit's **total shield is capped at its max HP** (`_cap_shield_at_max_hp`), so persistent shields can't accumulate without bound from per-round drips like Bulwark Aura / Aegis Field (audit A-034). Aegis Field (`healGrantsShieldAll`) only fires on **friendly** heals — an enemy heal no longer shields the squad (audit A-033).
+5. Shields last **one opposing action phase** (per-side expiry, CONFIRMED per Kev 2026-07-06, DECISIONS_RESOLVED #2): granted this round, absorb through this round's opposing phase, gone at the round-end tick (no `shT` field exists anywhere in data — audited 2026-07-07, zero offenders). Enemy-phase grants survive one tick so they cover exactly one hero phase. **The SINGLE named exception is `shieldsPersist`** (Mantle Core relic / Mantle Tyrant standing rule), which keeps shields until broken — nothing else may persist a shield. A unit's **total shield is capped at its max HP** (`_cap_shield_at_max_hp`), so persistent shields can't accumulate without bound from per-round drips like Bulwark Projector / Aegis Field (audit A-034). Aegis Field (`healGrantsShieldAll`) only fires on **friendly** heals — an enemy heal no longer shields the squad (audit A-033).
 6. Protocol resets each battle (does NOT carry over; Overflow relic carries 50%).
-7. **Freeze = REPEAT** (one keyword, identical both sides; per Kev 2026-07-06, FINAL — restores the original design intent, supersedes both the next-turn lockout and the fix-1.4 bank/thaw banked-face model, see `docs/DECISIONS_RESOLVED.md` #1): a frozen die crusts and stays static in the tray as a hard physics blocker other dice bounce off. On each of its next N rolls it does NOT reroll — it keeps the same face, and its unit **acts again on that same result: same zone, same ability**. Targeting is re-picked fresh on each repeat (manual pick for heroes, personality choke-point for enemies); only the die result is locked. After its authored N repeats the die thaws and rerolls normally. While frozen the die is **fully immune to alteration** — Jam, Rewrite, Hijack, **Nudge**, Reroll, Set, and Twin-Fates all bounce off (one clean rule: "a frozen die can't be altered", per Kev NK-03). 20-face riders (Overload Capacitor Protocol, the 20s stat, Overload Loop, the enemy elite-summon roll) fire **once, on the original resolution — never on a freeze repeat** (per Kev NK-04); enemy summon rolls respect the freeze decrement. Any freeze ability with **no damage component** (incl. shield+freeze / heal+freeze) uses `freezeAnyDice` — one manual pick, EITHER side (freezing an ally repeats their good roll on purpose); freeze riders on damaging abilities stay enemy-side. **Enemy AI freeze targets the hero's LOWEST revealed die** — deterministic, no randi (taunt still overrides; cloak still hides). Re-freezing adds repeats; a frozen unit whose repeated ability applies freeze chains legally (each repeat decrements — no infinite loop). Deep Freeze directive extends the repeat count. Cosmetic `freeze_flavor`: ice (default) / petrify.
+7. **Freeze = REPEAT** (one keyword, identical both sides; per Kev 2026-07-06, FINAL — restores the original design intent, supersedes both the next-turn lockout and the fix-1.4 bank/thaw banked-face model, see `docs/DECISIONS_RESOLVED.md` #1): a frozen die crusts and stays static in the tray as a hard physics blocker other dice bounce off. On each of its next N rolls it does NOT reroll — it keeps the same face, and its unit **acts again on that same result: same zone, same ability**. Targeting is re-picked fresh on each repeat (manual pick for heroes, personality choke-point for enemies); only the die result is locked. After its authored N repeats the die thaws and rerolls normally. While frozen the die is **fully immune to alteration** — Jam, Rewrite, Hijack, **Nudge**, Reroll, Set, and Twin-Fates all bounce off (one clean rule: "a frozen die can't be altered", per Kev NK-03). 20-face riders (Overload Capacitor Protocol, the 20s stat, Overload Loop, the enemy elite-summon roll) fire **on every resolving turn, including frozen turns** (Kev G-8, 2026-09-05, supersedes NK-04). Loop/Rites add one activation; Protocol and the 20s stat pay once per resolving turn, not per echo. Enemy summon chances and field limits still apply. Any freeze ability with **no damage component** (incl. shield+freeze / heal+freeze) uses `freezeAnyDice` — one manual pick, EITHER side (freezing an ally repeats their good roll on purpose); freeze riders on damaging abilities stay enemy-side. **Enemy AI freeze targets the hero's LOWEST revealed die** — deterministic, no randi (taunt still overrides; cloak still hides). Re-freezing adds repeats; a frozen unit whose repeated ability applies freeze chains legally (each repeat decrements — no infinite loop). Deep Freeze directive extends the repeat count. Cosmetic `freeze_flavor`: ice (default) / petrify.
 8. **Firewall** (internal field `ward`, displayed Firewall/FW): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only.
-9. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20). **These five words are INTERNAL KEYS ONLY** (Batch 2 band-vocabulary rule): never use them to name or describe dice bands in player-facing copy, documentation, or design discussion — player text refers to a band by its numeric range ("1–4", "20") or not at all, and never claims higher bands are strictly stronger (they are not). Proper nouns are exempt (Strike Unit, Overload Protocol, Overload Capacitor, Core Surge, etc.).
+9. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20). **These five words are INTERNAL KEYS ONLY** (Batch 2 band-vocabulary rule): never use them to name or describe dice bands in player-facing copy, documentation, or design discussion — player text refers to a band by its numeric range ("1–4", "20") or not at all, and never claims higher bands are strictly stronger (they are not). Proper nouns are exempt (Strike Unit, Overload Protocol, Overload Capacitor, Core Cell, etc.).
 10. **Buff/DoT timers are independent instances** (per Kev 2026-07-06, FINAL — resolves old DECISIONS #3, see `docs/DECISIONS_RESOLVED.md`): roll buffs (`rfm` heroes / `erb` enemies, identical) and Burn no longer refresh on re-cast. Each application is its own instance with its own remaining duration; the effective value is the SUM of live instances; each expires on its own clock. Canonical stacking case: +3/2t cast turn 1 plus +5/2t cast turn 2 → turn 2 total +8, turn 3 total +5, turn 4 zero. Burn instances run independent clocks; the display aggregates ONE chip: summed value, longest remaining duration.
    **Duration convention (Kev 2026-07-13, supersedes the old "N−1 / eat-a-turn" encoding):** a duration field stores **N effective turns** — the status is present for exactly N turns and absent on turn N+1. Whether the CAST round counts toward N depends on whether the buff can shape that round's roll:
    - **Current-roll buffs** (items — fed into `get_effective_roll` before the beneficiary commits) shape the cast round, so it counts; they do NOT skip the cast-round tick (`_add_roll_buff(..., shapes_current_roll=true)`). A `turns:1` item grants exactly one roll (the current).
@@ -59,7 +59,7 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
 - **Costs:** Nudge **1** (+3 to effective roll) · Reroll **2** · Set-a-die **4** (`SET_DIE_COST`) · Item **1 flat** (all rarities).
-- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor — grants at resolution when a die's FINAL face is 20, amount read from gear data, once per die, not on freeze repeats), `protocolOnDieTamper` (Mirror Plate — only an ENEMY tamper pays out; friendly freeze-any on an ally does not, audit A-062); relics `protocolCarryover`, `protocolOnItemUse` (Protocol Override — items cost 0 AND grant +1, **except protocol-gain items, which get no bonus +1** so they can't print Protocol for free, audit A-063), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnShieldBreak` (Salvage Rig +1, boss relic); enemy `siphon: N` drains the pool on hit (floor 0). **Summoned/rebuilt enemies grant no kill economy** (Protocol, Bounty, Chitin, Kill Switch, Momentum, Scavenger) — prevents stall-farming boss reinforcements (per Kev NK-10).
+- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor — grants at resolution when a die's FINAL face is 20, amount read from gear data, once per resolving turn, including frozen turns), `protocolOnDieTamper` (Mirror Plate — only an ENEMY tamper pays out; friendly freeze-any on an ally does not, audit A-062); relics `protocolCarryover`, `protocolOnItemUse` (Supply Bypass — items cost 0 AND grant +1, **except protocol-gain items, which get no bonus +1** so they can't print Protocol for free, audit A-063), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnShieldBreak` (Salvage Rig +1, boss relic); enemy `siphon: N` drains the pool on hit (floor 0). **Summoned/rebuilt enemies grant normal kill rewards** (Protocol, Bounty, Chitin, Salvage Injector, Momentum, Scavenger), subject to the usual killer/type/mark requirements and existing caps (Kev G-8, 2026-09-05, supersedes NK-10).
 - **Discounts/overflow:** Priming Charge — first Nudge free; Root Access boss relic — first Set each battle 0; Overflow Vent — protocol past the cap deals 2 dmg/point to a random enemy; Twin Fates — once per battle copy one hero die to another, free.
 - Footer shows "PROTOCOL n/m" with amber segment pips.
 
@@ -72,11 +72,11 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 direc
 | ID | Name | Callsign | Category | HP | Evolutions |
 |---|---|---|---|---|---|
 | `pulse` | Pulse Tech | PULSE | damage | 45 | Pyro (PYRO) / Arc (ARC) |
-| `combat` | Strike Unit | STRIKE | damage | 55 | Bladecore (BLADE) / Ravager (RAVAGER) |
+| `combat` | Strike Unit | STRIKE | damage | 55 | Blade Trooper (BLADE) / Ravager (RAVAGER) |
 | `shield` | Spike Guard | SPIKE | defense | 55 | Bulwark (BULWARK) / Sentinel (SENTINEL) |
 | `avalanche` | Avalanche Suit | AVALANCHE | defense | 55 | Glacier (GLACIER) / Trench (TRENCH) |
 | `medic` | Splice Medic | SPLICE | support | 50 | Combat Medic (MEDIC) / Synth (SYNTH) |
-| `engineer` | Field Engineer | ENGINEER | support | 50 | Overclocked (OVERCLOCKED) / Phantom (PHANTOM) |
+| `engineer` | Field Engineer | ENGINEER | support | 50 | Overclock Engineer (OVERCLOCK) / Phantom (PHANTOM) |
 | `ghost` | Ghost Operative | GHOST | control | 45 | Shadow (SHADOW) / Wraith (WRAITH) |
 | `breaker` | Signal Breaker | BREAKER | control | 45 | Noise (NOISE) / Nullwire (NULLWIRE) |
 
@@ -86,20 +86,14 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 direc
 
 ## Ability eff text syntax (canonical)
 
-Format: `[value type] [modifier] [target] [duration]`, clauses joined by `, ` (comma-space); AoE marked with a trailing `(all)`. Numbers first, type second, target third, duration last; target omitted for single enemy; duration omitted when instant. (Per Kev NK-17: the comma / `(all)` house style is canonical — the data uses it 100%; the earlier ` + ` / bare-`all` grammar was never adopted and is corrected here.)
-- Damage `12 dmg` · `9 dmg (all)` · `10 dmg, pierce` · Burn `4 burn 3t` · Heal `8 heal ally` / `13 heal all` / `11 heal lowest` · Shield (one round, no suffix) `ally 9 shield` / `all 14 shield` · Roll `+3 roll ally` / `-2 roll all enemies 2t` · Protocol `+2 protocol` · Status `freeze (repeat 1)` / `freeze any (repeat 1)` / `freeze all (repeat 1)` / `cloak` / `self firewall` / `taunt` / `rampage +1` · Boss extras `wipe shields` / `summon 40%` (no phase-2 syntax).
-- **Target suffix is gate-enforced (Polish Build D, INVARIANTS #17):** a value clause (dmg / shield / heal / roll) carries the parenthetical suffix its computed scope requires — `(self)` for a self-buff, `(all)` for AoE, `(lowest)` for lowest-target, none for single-target — matching how `effect_pip.gd` derives scope from the structured fields. `scripts/checks/effect_text_target.py` checks every enemy + hero ability (count-based, so a doubled `(self)` fails like a missing one); keyword-only clauses keep their own convention. The Build-D sweep added the missing `(self)` to 27 enemy self-buffs and the missing `(all)` to 5 hero AoE clauses.
-- **Equipment self-buff exception (Build G amendment, Kev 2026-07-15):** GEAR and RELIC (and consumable) effects that buff the HOLDER omit the `(self)` marker AND the self-target icon — equipment context makes the holder implicit, so a holder-buff reads bare ("5 shield", never "5 shield (self)") and its pip row carries no circled-figure marker (`EffectPip.effects_from_passive` strips the `self` scope; `all` / `lowest` scopes stay). ABILITY eff text keeps NK-17 exactly as-is. Gate-enforced both directions by `scripts/checks/effect_text_target.py`: abilities must carry their computed suffix; gear/relic/item text must carry NO `(self)` anywhere.
+Format (G-9, Kev 2026-09-06): concise numeric effects, comma-separated. Use `damage` and explicit `turn` / `turns`: `8 damage, 3 burn 2 turns`. Keep keyword names short (`pierce`, `leech`, `jam`) and their definitions in shared help. Do not repeat rules prose in every tooltip.
 
-**Roll-modifier duration display (rewritten 2026-07-13 — the number now means
-what it says):** every duration field stores **effective turns** (see #10), so
-eff text and the pip both render the stored value **directly, no arithmetic**.
-A future-shaping buff of `erbT:1` shows no suffix (a single subsequent roll, like
-a one-round shield: `+1 roll (self)`); `erbT:2` shows `2t` (`+2 roll (all), 2t`).
-Debuffs likewise: `−2 roll, 2t`. (This replaces the Batch-1 "eff text shows N−1"
-convention, which existed only to paper over the roll-buff tick bug — that bug is
-fixed, the backend values were decremented to their true effective counts, and
-display arithmetic is gone. Do NOT reintroduce an N−1 rule.)
+- Hero self effects are implicit: `5 shield`, `cloak`. Enemy self effects retain `(self)`.
+- Group targets name the side: `8 damage (all enemies)`, `6 heal (all heroes)`, `7 shield (all enemies)`. Chosen friendly targets use `(hero)`; lowest-HP support uses `(lowest HP)`; an enemy shielding another enemy uses `(ally)` (self fallback if alone).
+- Single hostile targets are implicit. Burn and other attack riders share that attack's targets. Freeze uses `freeze 1 turn`, `freeze any die 1 turn`, or `freeze all enemies 1 turn`.
+- `scripts/checks/effect_text_target.py` compares effect/target counts against coded scopes, including separate ally shields. Duplicate suffixes, wrong sides and missing targets fail. This replaces the text syntax of NK-17/G-7; effect pips retain their existing icon conventions.
+- Equipment holder effects omit `(self)` and redundant “this hero.” Reward rows allow two lines; actions, amounts, targets and limits take priority over prose.
+- Durations display the stored number directly. Roll buffs, debuffs and freeze say `N turns`, without display arithmetic. The cast-round timing rules in Combat #10 still apply.
 
 ### Data field glossary
 `dmg` · `burn`+`burnT` · `heal`(+`healTgt`/`healAll`/`healLowest`) · `shield`(+`shieldAll`/`shTgt`/`shieldLowest`) · `rfe`+`rfT`(+`rfeAll`) · `rfm`+`rfmT`(+`rfmTgt`) · `ignSh` (pierce) · `blastAll` · `cloak` · `ward`(+`wardTgt`; displayed Firewall) · `taunt` / `enemySelfTaunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` (+`freeze_flavor`). **Max ONE manually-picked component per hero ability** (audit-enforced).
@@ -156,17 +150,17 @@ the condition icon participates in first-sight primer teaching like any other ic
 
 | Operation | Label | Identity | Boss (b10 escort) |
 |---|---|---|---|
-| `facility` | Facility sweep | drones: jam, shields, breach bait | SCRAPMASTER (+2 Scrap Drones) |
+| `facility` | Facility sweep | drones: jam, shields, breach bait | Scrapmaster (+2 Scrap Drones) |
 | `hive` | Hive incursion | swarm: burn, siphon, summons, spike | Hive Matriarch (+Spine Stalker) |
-| `veil` | Veil Concord | lattice: ally shields, firewalls, buffs | CONCLAVE OVERSEER (+Aegis Anchor) |
-| `voidCirclet` | Null Synod | machine cult: rewrite, hijack, siphon, ±roll | ROOT HIEROPHANT (+Checksum Scribe) |
-| `stellarMenagerie` | The Accretion | igneous beasts: accrete, petrify, spike, cloak | MANTLE TYRANT (+Geode Panther) |
+| `veil` | Veil Breach | lattice: ally shields, firewalls, buffs | Veil Overseer (+Aegis Anchor) |
+| `voidCirclet` | Signal Purge | machine cult: rewrite, hijack, siphon, ±roll | Signal Hierophant (+Cipher Scribe) |
+| `stellarMenagerie` | Mantle Hunt | igneous beasts: accrete, petrify, spike, cloak | Mantle Tyrant (+Geode Panther) |
 
 Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, Conclave Bulwark, Harmonic Mend, Annulment, Synaptic Tune · 4 Synod: Seal Sigil, Init Collar, Mass Snare, Hierophant Mantle). Enemies don't use Protocol.
 
 **Targeting personalities (`scripts/battle/targeting_personality.gd`):** every hostile single-hero pick goes through ONE choke-point `personality_pick_target(enemy_state, hero_states, assignments_so_far)`, shared by UI and headless sim; no `randi()`. **SYSTEMATIC** (left→right by slot) · **WOUNDED** (lowest-HP) · **PACK** (joins an already-assigned hero; none → WOUNDED) · **SPITEFUL** (last hero to damage it, `last_attacker_id`, cleared on that hero's death; none → SYSTEMATIC). Universal: taunt overrides everything; cloaked heroes skipped; dead/illegal preferred target → the STATED fallback only (old "pure debuff → highest HP" special case REMOVED). Resolution: unit `targeting` field → kit table → SYSTEMATIC. Kit defaults: Facility SYSTEMATIC (guard/patrol/volt PACK; warden/boss WOUNDED) · Hive PACK (stalker/hiveBoss WOUNDED) · Veil WOUNDED (veilPrism/veilShard SYSTEMATIC) · Synod SYSTEMATIC (voidBinder/voidChanneler/voidCircletBoss WOUNDED; voidGlimmer SPITEFUL) · Accretion SPITEFUL (beastWolf/beastMonkey PACK; beastLynx WOUNDED). `ai_type` is UNTOUCHED and independent (20-face elite summons + summon-injection guard). Enemy inspect shows "TARGETING: NAME — definition."
 
-**Boss standing rules** (one always-on rule per boss, from turn 1, `BOSS_STANDING_RULES` keyed by display name): SCRAPMASTER — ASSEMBLY LINE, every 2nd enemy phase from its first activation rebuilds one destroyed Scrap Drone at 50% HP (DECISIONS_RESOLVED #5) · Hive Matriarch — THE BROOD, spawns a Bloodmite every 3 rounds · CONCLAVE OVERSEER — THE COURT, while any ally lives gains a Firewall each round start · ROOT HIEROPHANT — ROOT ACCESS, every round Rewrites the squad's highest die to 3 · MANTLE TYRANT — ACCRETION, +6 shield at the start of every 2nd round, shields persist and stack (cadence per the Cycle-4 ruling below; this line said "every round start" until 2026-09-03, contradicting the ruling recorded in the same document). Round-start rules fire before the hero phase; turn-cadence rules at the start of the enemy phase.
+**Boss standing rules** (one always-on rule per boss, from turn 1, `BOSS_STANDING_RULES` keyed by display name): Scrapmaster — ASSEMBLY LINE, every 2nd enemy phase from its first activation rebuilds one destroyed Scrap Drone at 50% HP (DECISIONS_RESOLVED #5) · Hive Matriarch — THE BROOD, spawns a Bloodmite every 3 rounds · Veil Overseer — THE COURT, while any ally lives gains a Firewall each round start · Signal Hierophant — ROOT ACCESS, every round Rewrites the squad's highest die to 3 · Mantle Tyrant — ACCRETION, +6 shield at the start of every 2nd round, shields persist and stack (cadence per the Cycle-4 ruling below; this line said "every round start" until 2026-09-03, contradicting the ruling recorded in the same document). Round-start rules fire before the hero phase; turn-cadence rules at the start of the enemy phase.
 
 ---
 
@@ -884,7 +878,7 @@ both tiers, structural**), Medic (heal-value ceiling: doubling heals = +0.6pp
 mean; L1 triage caps healing), Combat (Candidate-B carve measured dead: mean
 UP +6.4, spread COLLAPSED 7.1 — execute is op-agnostic under focus-fire; pure
 trim −12 flat = −0.6pp and flat), Pulse (chain-fizzle hypothesis FALSE —
-Facility has the highest chain rate). PROTECTED verdicts: Vengeance Protocol
+Facility has the highest chain rate). PROTECTED verdicts: Vengeance Order
 (L2 +1.0), Band Compressor (L1 −2.2 → L2 +2.8, skill-gated), avalanche/
 breaker/engineer untouched per ruling. **Dead-dozen Cycle-4 worklist:**
 curatedCache the lone both-tier corpse; salvageDirective the clearest
@@ -894,10 +888,10 @@ skill-gate (+2.6 L2); rest neutral-at-L2 (n=500, SE 3.1pp).
 Kev-approved R4 checkpoint).** Full report:
 `docs/sweeps/2026-07-19_cycle4_report.md`. **Veil** to the ruled 30–40 band via
 HP literals at 0.85 (levers tied in diagnosis; HP picked on cascade tiebreak;
-Overseer owns only 30% of deaths — not boss-shaped): Shardmite 34 · Prism
-Charger 32 · Aegis Anchor 58 · Nullblade 60 · Synapse Herald 65 · Stormweaver
-**90⚑ floored** (HEAVY_HP_MIN) · Resonance Warden 100 · CONCLAVE OVERSEER 153
-— **14.3% → 33.3%**, equivalence 1000/1000. **MANTLE TYRANT boss rule:
+Overseer owns only 30% of deaths — not boss-shaped): Shard Drone 34 · Prism
+Charger 32 · Aegis Anchor 58 · Phaseblade 60 · Relay Herald 65 · Stormweaver
+**90⚑ floored** (HEAVY_HP_MIN) · Resonance Warden 100 · Veil Overseer 153
+— **14.3% → 33.3%**, equivalence 1000/1000. **Mantle Tyrant boss rule:
 ACCRETION fires every 2ND round** (value 6 kept; cadence beat value per swept
 point; `MANTLE_SHIELD_CADENCE := 2`; briefing copy + two audit regressions
 updated, 234/0): Accretion **11.3% → 16.3%**, clear-of-reached 13% → 19% —
@@ -960,7 +954,7 @@ noise, baselines NOT updated (proposed: fold into next refresh). Trio arm
 (shield,medic,combat): +18.3 Synod / +12.7 Accretion / −26.0 Hive / −23.7
 Veil — a hyper-specialist composition. Base/evo inconsistency report (Kev
 follow-up input): Medic evolutions LOSE cleanse entirely; Shield evolutions
-lose the taunt-spike pairing; Bladecore's Target Paint keeps damage on mark
+lose the taunt-spike pairing; Blade Trooper's Target Paint keeps damage on mark
 (upgrade, noted); Ravager has no mark band.
 
 **Build J — Enemy status timing + bezel bars (2026-07-19/20, presentation
@@ -1145,7 +1139,7 @@ share one shape — a surface stating something the round will not do.
   in `unlocks.operations`, so nothing joins the run-end delta while the op stays
   (correctly) unlocked. `check_new_unlocks` is non-destructive, so there is no
   consume-once path. Verified on a raw profile: facility clear announces
-  `hive/Hive Incursion`, hive clear announces `veil/Veil Concord`, the re-clear
+  `hive/Hive Incursion`, hive clear announces `veil/Veil Breach`, the re-clear
   announces nothing, and `is_operation_unlocked("veil")` reads true afterwards
   (the carousel's lock-state rendering is already gated by
   `unlock_progression_test`). No code changed.
@@ -1185,3 +1179,12 @@ ruling from chat memory.**
 Shipped adjudications without a number (cloak 2 clauses, pierce+breach kept
 distinct, taunt unified, jam cap 10, ECS rejected) are recorded as K1–K5 in
 DECISIONS_RESOLVED.md.
+
+
+## Approved copy implementation (2026-09-06)
+
+The concise review is implemented across operation briefings, bosses, heroes/evolutions, abilities, directives, enemies, relics, gear, consumables, intercepts and battle modifiers. Operations are Facility Sweep, Hive Incursion, Veil Breach, Signal Purge and Mantle Hunt; original short threat lines remain. Deployment fields use SITE / SITUATION / OBJECTIVE. Long intercept choices separate the action button from its consequences.
+
+Display-name migrations preserve enemy IDs through DataManager.ENEMY_STABLE_IDS and keep kit IDs, item IDs, evolution IDs, portrait paths and operation unlock IDs stable. OVERCLOCK keeps evolution ID `overclocked`. Twin Fates still copies the base roll through its existing button beside Set; destination modifiers apply.
+
+Enemy ally-shield effects apply even when the same ability grants no self-shield. Bounty excludes all standing-rule bosses, including Mantle Tyrant. Deep Freeze Charge pins unfrozen enemy dice to 1; already-frozen faces remain intact and gain the extra freeze turn. These are G-9 copy/code alignment fixes, not authored stat tuning.

@@ -2149,8 +2149,8 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 # Roll-time gear: Sync Antenna (holder + an ally rolling the same number both
 # gain +3 to it). The Overload Capacitor Protocol grant and the lifetime 20s
 # stat moved to resolution time in combat_manager, so they key on the die's
-# FINAL face (a die Set/Nudged to 20 now counts — ruling NK-02) and fire once
-# even under freeze=repeat (NK-04).
+# FINAL face (a die Set/Nudged to 20 counts — NK-02). They fire once per
+# resolving turn, including frozen turns (G-8).
 func _apply_post_roll_gear_effects() -> void:
 	var hero_states: Array = combat_manager.get_hero_states()
 	var synced_ids: Dictionary = {}

@@ -94,11 +94,11 @@ func set_decoy_round_one() -> void:
 # The text below is the single source for the inspect popup and the
 # battle-start line (battle_scene reads it via get_boss_standing_rule).
 
-const BOSS_SCRAPMASTER := "SCRAPMASTER"
+const BOSS_SCRAPMASTER := "Scrapmaster"
 const BOSS_MATRIARCH := "Hive Matriarch"
-const BOSS_OVERSEER := "CONCLAVE OVERSEER"
-const BOSS_HIEROPHANT := "ROOT HIEROPHANT"
-const BOSS_MANTLE := "MANTLE TYRANT"
+const BOSS_OVERSEER := "Veil Overseer"
+const BOSS_HIEROPHANT := "Signal Hierophant"
+const BOSS_MANTLE := "Mantle Tyrant"
 const SCRAP_DRONE_NAME := "Scrap Drone"
 const BROOD_SPAWN_NAME := "Bloodmite"
 # Burns at or past this turn count are PERMANENT (plagueProtocol): they tick
@@ -354,9 +354,9 @@ func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 				if (_battle_round - int(enemy_state["assembly_line_first_round"])) % 2 == 1:
 					for drone_state in _enemy_states:
 						if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and bool(drone_state["dead"]):
-							_log("ASSEMBLY LINE - the SCRAPMASTER rebuilds a Scrap Drone!")
+							_log("ASSEMBLY LINE - the Scrapmaster rebuilds a Scrap Drone!")
 							_revive_state(drone_state, _tuned_int("scrapmaster_rebuild_pct", SCRAPMASTER_REBUILD_PCT))
-							drone_state["summoned"] = true  # NK-10: rebuilds grant no kill economy
+							drone_state["summoned"] = true  # Rebuilt reinforcement; normal kill rewards apply.
 							break
 			BOSS_MATRIARCH:
 				if _battle_round % maxi(_tuned_int("brood_cadence", BROOD_CADENCE), 1) == 0 and _count_living_enemies() < GameState.SQUAD_UNIT_LIMIT:
@@ -533,7 +533,7 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"]:
 				_apply_burn(enemy_state, burn_amt, PERMANENT_BURN_TURNS)
-				_log("Plague Protocol: %s starts with %d burn." % [enemy_state["unit"].display_name, burn_amt])
+				_log("Caustic Disperser: %s starts with %d burn." % [enemy_state["unit"].display_name, burn_amt])
 
 	# signalJam: all enemies start with permanent -2 RFE
 	if has_relic("enemyStartRfe"):
@@ -541,7 +541,7 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"]:
 				enemy_state["perm_rfe"] = int(enemy_state.get("perm_rfe", 0)) + rfe_amt
-				_log("Signal Jam: %s permanently at -%d roll." % [enemy_state["unit"].display_name, rfe_amt])
+				_log("Signal Interference: %s permanently at -%d roll." % [enemy_state["unit"].display_name, rfe_amt])
 
 	# coordinatedStrike: all heroes start with permanent +2 roll buff
 	if has_relic("heroStartRollBuff"):
@@ -559,7 +559,7 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			for enemy_state in _enemy_states:
 				var spawn_hp: int = maxi(1, int(enemy_state["max_hp"]) * hp_pct / 100)
 				enemy_state["current_hp"] = mini(int(enemy_state["current_hp"]), spawn_hp)
-				_log("Entropy Leak: %s spawns at %d%% HP." % [enemy_state["unit"].display_name, hp_pct])
+				_log("Attrition Field: %s spawns at %d%% HP." % [enemy_state["unit"].display_name, hp_pct])
 
 
 # --- Battle-start gear effects ---
@@ -866,16 +866,16 @@ func resolve_round(
 		_apply_hero_ability(hero_state, ability_entry)
 		# Overload Loop relic / Overload Rites intercept: a 20 resolves twice.
 		# Keys on the die's FINAL face (ruling NK-02 — no natural-20 check, a die
-		# Set/Nudged/buffed to 20 counts the same), and fires only on the original
-		# resolution, never re-firing on a freeze repeat (ruling NK-04).
-		if int(roll_value) == 20 and not bool(hero_state.get("die_freeze_repeat_this_round", false)) \
+		# Set/Nudged/buffed to 20 counts the same), including frozen turns (G-8).
+		if int(roll_value) == 20 \
 				and (has_relic("critResolveTwice") or bool(hero_state.get("nat20_twice", false))):
 			_log("Overload Loop echoes the 20 for %s!" % hero_state["unit"].display_name)
 			_apply_hero_ability(hero_state, ability_entry)
 		# 20-face riders (Overload Capacitor Protocol + the lifetime 20s stat).
 		# Key on the die's FINAL face so a die Set/Nudged/buffed to 20 counts the
-		# same as a rolled 20 (NK-02); fire ONCE, never on a freeze repeat (NK-04).
-		if int(roll_value) == 20 and not bool(hero_state.get("die_freeze_repeat_this_round", false)):
+		# same as a rolled 20 (NK-02). Once per resolving turn, including frozen
+		# turns; the Loop/Rites echo does not double these payouts (G-8).
+		if int(roll_value) == 20:
 			SaveManager.record_nat20()
 			var cap_gain: int = int(hero_state.get("gear_protocol_on_20", 0))
 			if cap_gain > 0:
@@ -1825,8 +1825,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		for es in _enemy_states:
 			if not bool(es["dead"]):
 				_add_shield_stack(es, shield_ally, true)
-	elif shield > 0:
-		_add_shield_stack(enemy_state, shield, true)
+	else:
+		if shield > 0:
+			_add_shield_stack(enemy_state, shield, true)
 		if shield_ally > 0:
 			var enemy_ally: Dictionary = _find_living_enemy_ally_by_id(enemy_state, str(enemy_state.get("selected_target_id", "")))
 			if enemy_ally.is_empty():
@@ -2238,7 +2239,7 @@ func _damage_state(
 		if bool(state.get("gear_survive_once", false)) and not bool(state.get("gear_survive_once_used", false)):
 			state["current_hp"] = 1
 			state["gear_survive_once_used"] = true
-			_log("%s survives on Dead Man's Chip at 1 HP!" % state["unit"].display_name)
+			_log("%s survives on Survival Chip at 1 HP!" % state["unit"].display_name)
 			_emit_event(state, "survive", 1, _resolve_side_for_state(state))
 		else:
 			state["current_hp"] = 0
@@ -2284,7 +2285,7 @@ func _is_basic_enemy(enemy_state: Dictionary) -> bool:
 	if unit == null:
 		return true
 	var enemy_type: String = str(unit.enemy_type).to_lower()
-	return enemy_type != "boss" and not enemy_type.ends_with("boss")
+	return not BOSS_STANDING_RULES.has(unit.display_name) and enemy_type != "boss" and not enemy_type.ends_with("boss")
 
 
 func _wipe_all_hero_shields(source_state: Dictionary = {}) -> void:
@@ -2440,11 +2441,7 @@ func _on_unit_killed(dead_state: Dictionary, killer_state: Dictionary = {}) -> v
 
 
 func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_top_level: bool) -> void:
-	# Summoned / rebuilt units (nat-20 summons, Brood spawns, ASSEMBLY LINE
-	# rebuilds) grant no kill economy — prevents stall-farming reinforcements
-	# (ruling NK-10). Bookkeeping (Vengeance, hero-death stats, Chain Reaction
-	# damage) still fires; only the resource payouts are gated.
-	var payout_ok: bool = not bool(dead_state.get("summoned", false))
+	# All enemy deaths qualify, including summoned and rebuilt units (G-8).
 
 	# Vengeance Protocol: when an ally falls, the surviving squad's next roll
 	# is forced to 20 (once per battle).
@@ -2473,13 +2470,13 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 			_damage_state(charge_target, 4)
 
 	# Scavenger Manifest relic: the first kill each battle drops a consumable.
-	if payout_ok and not _is_hero_state(dead_state) and has_relic("firstKillDropsConsumable") and not _scavenger_drop_done:
+	if not _is_hero_state(dead_state) and has_relic("firstKillDropsConsumable") and not _scavenger_drop_done:
 		_scavenger_drop_done = true
 		GameState.grant_battle_start_consumables(1)
 		_log("Scavenger Manifest: a consumable drops from the wreck!")
 
 	# Kill Switch (gear): heroes with healOnKill heal when any enemy dies
-	if payout_ok and not _is_hero_state(dead_state):
+	if not _is_hero_state(dead_state):
 		for hero_state in _hero_states:
 			if not hero_state["dead"]:
 				var heal_on_kill: int = int(hero_state.get("gear_heal_on_kill", 0))
@@ -2523,7 +2520,7 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 				enemy_state["last_attacker_id"] = ""
 		var relay_damage: int = int(dead_state.get("gear_death_damage_all", 0))
 		if relay_damage > 0:
-			_log("%s's Killswitch Relay detonates for %d to all enemies!" % [dead_state["unit"].display_name, relay_damage])
+			_log("%s's Deathburst Relay detonates for %d to all enemies!" % [dead_state["unit"].display_name, relay_damage])
 			for enemy_state in _enemy_states:
 				if not enemy_state["dead"]:
 					_damage_state(enemy_state, relay_damage)
@@ -3059,10 +3056,7 @@ func _try_emit_enemy_summon(enemy_state: Dictionary, ability_entry: Dictionary, 
 		return
 	if enemy_unit.ai_type != "smart" or not enemy_unit.can_summon_elite:
 		return
-	# Freeze = repeat must not re-roll the summon on every repeat round; the
-	# chance is rolled once, on the original resolution (ruling NK-04).
-	if bool(enemy_state.get("die_freeze_repeat_this_round", false)):
-		return
+	# Frozen overloads roll their summon chance again (G-8).
 	# Seeded so the sim reproduces the summon roll from a seed (NK-01 / INV #1).
 	if _rand_pct() > summon_chance:
 		return
@@ -3082,7 +3076,7 @@ func inject_enemy(enemy_data: EnemyData) -> Dictionary:
 		return {}
 
 	var new_state: Dictionary = _create_runtime_state(enemy_data, _next_enemy_instance_id(enemy_data))
-	new_state["summoned"] = true  # NK-10: injected units grant no kill economy
+	new_state["summoned"] = true  # Reinforcement metadata; normal kill rewards apply.
 	var slot_index: int = _first_dead_enemy_index()
 	if slot_index >= 0:
 		_enemy_states[slot_index] = new_state

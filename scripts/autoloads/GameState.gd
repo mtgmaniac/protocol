@@ -312,16 +312,16 @@ func get_beat_after_battle(battle_number: int) -> Dictionary:
 # (the reward rarity ladder rolls two rows deeper, capped at row 10).
 # BALANCE-TODO: all modifier numbers provisional.
 const BATTLE_MODIFIERS := {
-	"hardened": {"name": "HARDENED", "desc": "Enemies spawn with 8 shield.", "amount": 8},
-	"jammingField": {"name": "JAMMING FIELD", "desc": "Your dice are jammed (cap 10) on turn 1.", "cap": 10},
-	"overrun": {"name": "OVERRUN", "desc": "One extra fodder unit joins the comp.", "requires": "small_comp"},
-	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy slot upgrades to the elite pool.", "requires": "non_elite_slot"},
-	"ferocity": {"name": "FEROCITY", "desc": "Enemy hits deal +2.", "amount": 2},
-	"deadMansCharge": {"name": "DEAD MAN'S CHARGE", "desc": "Enemies deal 4 to a random hero on death.", "amount": 4},
-	"blackout": {"name": "BLACKOUT", "desc": "Protocol income starts on turn 3.", "fromTurn": 3},
-	"sealedSupplies": {"name": "SEALED SUPPLIES", "desc": "Items cost +1 Protocol.", "amount": 1},
-	"regenerative": {"name": "REGENERATIVE", "desc": "Enemies heal 3 each round.", "amount": 3},
-	"warded": {"name": "FIREWALLED", "desc": "Support enemies spawn with a firewall.", "requires": "has_support"},
+	"hardened": {"name": "HARDENED", "desc": "Enemies start the battle with 8 shield.", "amount": 8},
+	"jammingField": {"name": "JAMMING FIELD", "desc": "Jam all hero dice on the first round, capping their rolls at 10.", "cap": 10},
+	"overrun": {"name": "OVERRUN", "desc": "One additional basic enemy joins the battle.", "requires": "small_comp"},
+	"elitePresence": {"name": "ELITE PRESENCE", "desc": "One enemy is replaced by an elite.", "requires": "non_elite_slot"},
+	"ferocity": {"name": "FEROCITY", "desc": "Enemy attacks deal 2 additional damage.", "amount": 2},
+	"deadMansCharge": {"name": "DEAD MAN'S CHARGE", "desc": "When an enemy dies, deal 4 damage to a random hero.", "amount": 4},
+	"blackout": {"name": "BLACKOUT", "desc": "End-of-round Protocol income begins on round 3.", "fromTurn": 3},
+	"sealedSupplies": {"name": "SEALED SUPPLIES", "desc": "Items cost 1 additional Protocol.", "amount": 1},
+	"regenerative": {"name": "REGENERATIVE", "desc": "At the start of each enemy phase, restore 3 HP to all living enemies.", "amount": 3},
+	"warded": {"name": "FIREWALLED", "desc": "Support enemies start the battle with a firewall.", "requires": "has_support"},
 }
 
 
@@ -478,93 +478,93 @@ func get_current_battle_comp() -> Dictionary:
 # one). `draft`: a follow-up pick from rolled items. BALANCE-TODO: numbers.
 const INTERCEPT_CARDS := {
 	# ── Minor deck (beats after b2–b4) ──
-	"overclockChamber": {"tier": "minor", "name": "OVERCLOCK CHAMBER", "desc": "A resonance rig hums, ready to push a frame past spec.", "choices": [
-		{"label": "Overclock a hero: +1 to all rolls this op, -8 max HP.", "pick": "hero", "effects": [{"type": "heroRollBonus", "amount": 1}, {"type": "heroMaxHp", "amount": -8}]},
+	"overclockChamber": {"tier": "minor", "name": "OVERCLOCK CHAMBER", "desc": "A military calibration rig can push one suit beyond its safety limits.", "choices": [
+		{"label": "Calibrate: one hero gains +1 to rolls and loses 8 max HP for the rest of this run.", "pick": "hero", "effects": [{"type": "heroRollBonus", "amount": 1}, {"type": "heroMaxHp", "amount": -8}]},
 		{"label": "Decline.", "effects": []},
 	]},
-	"abandonedArmory": {"tier": "minor", "name": "ABANDONED ARMORY", "desc": "Sealed crates, still warm. Someone left in a hurry.", "choices": [
-		{"label": "Crack the crates: draft 1 of 3 uncommon+ consumables.", "draft": {"kind": "consumable", "min_rarity": "uncommon", "count": 3}, "effects": []},
+	"abandonedArmory": {"tier": "minor", "name": "ABANDONED ARMORY", "desc": "The garrison left sealed supply crates behind during the evacuation.", "choices": [
+		{"label": "Open the crates: choose 1 of 3 consumables of uncommon rarity or higher.", "draft": {"kind": "consumable", "min_rarity": "uncommon", "count": 3}, "effects": []},
 		{"label": "Strip the wiring: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
-	"trainingSim": {"tier": "minor", "name": "TRAINING SIM", "desc": "A live combat sim, still powered.", "choices": [
-		{"label": "Focused drills: one hero gains +40 XP.", "pick": "hero", "effects": [{"type": "heroXp", "amount": 40}]},
+	"trainingSim": {"tier": "minor", "name": "TRAINING SIM", "desc": "The garrison's combat simulator is still running.", "choices": [
+		{"label": "Run focused drills: grant 40 XP to one hero.", "pick": "hero", "effects": [{"type": "heroXp", "amount": 40}]},
 		{"label": "Squad drills: all heroes gain +15 XP.", "effects": [{"type": "squadXp", "amount": 15}]},
 	]},
-	"salvageCache": {"tier": "minor", "name": "SALVAGE CACHE", "desc": "A rigged cache. The good stuff is under the alarm.", "choices": [
-		{"label": "Spring it: rare gear draft now - next battle is HARDENED.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
+	"salvageCache": {"tier": "minor", "name": "SALVAGE CACHE", "desc": "A supply locker sits beneath a live security alarm.", "choices": [
+		{"label": "Trigger the alarm: choose 1 of 3 gear pieces of rare rarity or higher. Enemies start the next battle with 8 shield.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
 		{"label": "Take the loose crate: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
 	]},
-	"signalDecrypt": {"tier": "minor", "name": "SIGNAL DECRYPT", "desc": "An enemy carrier wave, weakly encrypted.", "choices": [
-		{"label": "Decrypt: reveal the boss kit, +2 Protocol next battle.", "effects": [{"type": "revealBoss"}, {"type": "protocolNextBattle", "amount": 2}]},
+	"signalDecrypt": {"tier": "minor", "name": "SIGNAL INTERCEPT", "desc": "An enemy transmission carries details of the force ahead.", "choices": [
+		{"label": "Decode: reveal the boss's abilities and gain 2 Protocol at the start of the next battle.", "effects": [{"type": "revealBoss"}, {"type": "protocolNextBattle", "amount": 2}]},
 		{"label": "Sell the intercept: 1 uncommon consumable.", "effects": [{"type": "consumable", "rarity": "uncommon", "count": 1}]},
 	]},
-	"decoyBeacon": {"tier": "minor", "name": "DECOY BEACON", "desc": "A beacon rig that can wear a consumable's signature.", "choices": [
-		{"label": "Spend your highest-rarity consumable: enemies waste turn 1 on a decoy.", "pick": "consumable", "effects": [{"type": "nextBattleFlag", "flag": "decoy"}]},
+	"decoyBeacon": {"tier": "minor", "name": "DECOY BEACON", "desc": "A damaged beacon needs a supply cell to project false targets.", "choices": [
+		{"label": "Power the decoy: consume your highest-rarity consumable. Enemies skip their first action phase next battle.", "pick": "consumable", "effects": [{"type": "nextBattleFlag", "flag": "decoy"}]},
 		{"label": "Keep it.", "effects": []},
 	]},
-	"driftingWreck": {"tier": "minor", "name": "DRIFTING WRECK", "desc": "A dead hull. Its dead crew is still aboard.", "choices": [
-		{"label": "Board it: uncommon gear draft - next battle has DEAD MAN'S CHARGE.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
+	"driftingWreck": {"tier": "minor", "name": "WRECKED TRANSPORT", "desc": "A troop transport lies wrecked along the route. Its cargo bay is still sealed.", "choices": [
+		{"label": "Search the wreck: choose 1 of 3 gear pieces of uncommon rarity or higher. Next battle, each enemy death deals 4 damage to a random hero.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
 		{"label": "Siphon the tanks: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
-	"loadoutSwap": {"tier": "minor", "name": "LOADOUT SWAP", "desc": "A calibrated workbench. Time enough to re-rig.", "choices": [
-		{"label": "Re-rig: rotate all gear loadouts one hero over, +1 uncommon consumable.", "effects": [{"type": "rotateGear"}, {"type": "consumable", "rarity": "uncommon", "count": 1}]},
+	"loadoutSwap": {"tier": "minor", "name": "FIELD WORKBENCH", "desc": "A field workbench has enough power for one equipment refit.", "choices": [
+		{"label": "Refit: move each hero's gear to the next hero in squad order and gain 1 uncommon consumable.", "effects": [{"type": "rotateGear"}, {"type": "consumable", "rarity": "uncommon", "count": 1}]},
 		{"label": "Skip.", "effects": []},
 	]},
-	"cryoPod": {"tier": "minor", "name": "CRYO POD", "desc": "A working pod. The treatment is slow.", "choices": [
-		{"label": "Treat a hero: +10 max HP this op - next battle is BLACKOUT.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": 10}, {"type": "armModifier", "id": "blackout"}]},
+	"cryoPod": {"tier": "minor", "name": "CRYO POD", "desc": "An intact treatment pod can reinforce one body, but its power draw will drain the squad's reserves.", "choices": [
+		{"label": "Treat one hero: gain 10 max HP for this run. Next battle, end-of-round Protocol income begins on round 3.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": 10}, {"type": "armModifier", "id": "blackout"}]},
 		{"label": "Strip the coolant: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
 	]},
-	"supplyDrone": {"tier": "minor", "name": "SUPPLY DRONE", "desc": "A lost logistics drone pings for orders.", "choices": [
-		{"label": "Redirect it: items cost 0 next battle.", "effects": [{"type": "nextBattleFlag", "flag": "items_free"}]},
+	"supplyDrone": {"tier": "minor", "name": "SUPPLY DRONE", "desc": "A stranded supply drone is waiting for a new destination.", "choices": [
+		{"label": "Redirect the drone: items cost 0 Protocol next battle.", "effects": [{"type": "nextBattleFlag", "flag": "items_free"}]},
 		{"label": "Scrap it: 2 common consumables.", "effects": [{"type": "consumable", "rarity": "common", "count": 2}]},
 	]},
-	"firingSolution": {"tier": "minor", "name": "FIRING SOLUTION", "desc": "Orbital assets have a brief window.", "choices": [
-		{"label": "Take the shot: the highest-HP enemy next battle starts marked at 90% HP.", "effects": [{"type": "nextBattleFlag", "flag": "marked_highest"}]},
+	"firingSolution": {"tier": "minor", "name": "FIRING SOLUTION", "desc": "An orbital battery has a clear shot at the force ahead.", "choices": [
+		{"label": "Request fire: next battle's highest-HP enemy starts marked at 90% max HP.", "effects": [{"type": "nextBattleFlag", "flag": "marked_highest"}]},
 		{"label": "Sell the window: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
 	# ── Major deck (beats after b6–b8) ──
-	"spliceDeal": {"tier": "major", "name": "THE SPLICE DEAL", "desc": "A back-alley splicer offers to rewire a hero's luck.", "choices": [
-		{"label": "Deal: a hero's overload band becomes 19-20; recharge band widens by 2.", "pick": "hero", "effects": [{"type": "spliceBands"}]},
+	"spliceDeal": {"tier": "major", "name": "THE SPLICE DEAL", "desc": "An unlicensed medtech offers to alter one hero's combat implants.", "choices": [
+		{"label": "Accept the splice: one hero's fifth ability also triggers on 19, and their first ability range expands upward by 2 for this run.", "pick": "hero", "effects": [{"type": "spliceBands"}]},
 		{"label": "Refuse.", "effects": []},
 	]},
-	"blackMarketNode": {"tier": "major", "name": "BLACK MARKET NODE", "desc": "A fence with taste. Payment in hardware only.", "choices": [
-		{"label": "Trade: destroy one equipped gear, draft 1 of 3 rare+ gear.", "pick": "gear", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "destroyPickedGear"}]},
+	"blackMarketNode": {"tier": "major", "name": "BLACK MARKET DEPOT", "desc": "A quartermaster trades restricted equipment for working hardware.", "choices": [
+		{"label": "Trade: destroy one equipped gear piece and choose 1 of 3 gear pieces of rare rarity or higher.", "pick": "gear", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "destroyPickedGear"}]},
 		{"label": "Leave.", "effects": []},
 	]},
-	"unstableReactor": {"tier": "major", "name": "UNSTABLE REACTOR", "desc": "A cracked core, bleeding radiation into the next sector.", "choices": [
-		{"label": "Vent it forward: next battle enemies spawn at 70% HP - a random hero takes 10 now.", "effects": [{"type": "nextBattleEnemyHpPct", "pct": 70}, {"type": "randomHeroDamage", "amount": 10}]},
+	"unstableReactor": {"tier": "major", "name": "UNSTABLE REACTOR", "desc": "A damaged reactor can vent into the enemy-held sector ahead. Someone must open the valve.", "choices": [
+		{"label": "Vent the reactor: enemies start the next battle at 70% max HP. A random hero takes 10 damage now.", "effects": [{"type": "nextBattleEnemyHpPct", "pct": 70}, {"type": "randomHeroDamage", "amount": 10}]},
 		{"label": "Seal it: +3 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 3}]},
 	]},
-	"rogueEngineer": {"tier": "major", "name": "ROGUE ENGINEER", "desc": "She'll ride along and hot-feed your Protocol lines. Her way.", "choices": [
-		{"label": "Take her on: +1 Protocol at every remaining battle start; Protocol cap becomes 8.", "effects": [{"type": "runProtocolPerBattle", "amount": 1, "cap": 8}]},
+	"rogueEngineer": {"tier": "major", "name": "ROGUE ENGINEER", "desc": "A field engineer offers a steady power feed if you let her bypass the safety limiters.", "choices": [
+		{"label": "Recruit: gain 1 Protocol at the start of every remaining battle. Set the Protocol cap to 8 for this run.", "effects": [{"type": "runProtocolPerBattle", "amount": 1, "cap": 8}]},
 		{"label": "Decline.", "effects": []},
 	]},
-	"memorialProtocol": {"tier": "major", "name": "MEMORIAL PROTOCOL", "desc": "The squad wants to honor the fallen.", "requires": "recent_death", "choices": [
-		{"label": "Honor them: the fallen hero starts every remaining battle with a firewall.", "effects": [{"type": "memorialWard"}]},
+	"memorialProtocol": {"tier": "major", "name": "SECOND CHANCE", "desc": "After the last casualty, the squad can rebuild the fallen hero's defensive systems.", "requires": "recent_death", "choices": [
+		{"label": "Reinforce: the most recently fallen hero starts every remaining battle with a firewall.", "effects": [{"type": "memorialWard"}]},
 		{"label": "Keep moving: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
 	]},
-	"deepCache": {"tier": "major", "name": "DEEP CACHE", "desc": "A vault seal. Cracking it will drink your Protocol lines dry.", "choices": [
-		{"label": "Crack it: legendary draft 1 of 2 - next battle starts at -5 Protocol income debt.", "draft": {"kind": "any", "min_rarity": "legendary", "count": 2}, "effects": [{"type": "incomeDebt", "amount": 5}]},
+	"deepCache": {"tier": "major", "name": "DEEP CACHE", "desc": "A sealed military vault will take most of the squad's stored power to open.", "choices": [
+		{"label": "Open the vault: choose 1 of 2 legendary rewards. The next battle withholds 5 points of end-of-round Protocol income.", "draft": {"kind": "any", "min_rarity": "legendary", "count": 2}, "effects": [{"type": "incomeDebt", "amount": 5}]},
 		{"label": "Leave it.", "effects": []},
 	]},
-	"theFoundry": {"tier": "major", "name": "THE FOUNDRY", "desc": "A forge line still runs. Feed it and it feeds you.", "choices": [
-		{"label": "Feed it one gear: receive a random gear one rarity higher.", "pick": "gear", "effects": [{"type": "foundryUpgrade"}]},
+	"theFoundry": {"tier": "major", "name": "THE FOUNDRY", "desc": "An automated forge can rebuild one piece of equipment with better components.", "choices": [
+		{"label": "Reforge: consume one equipped gear piece and gain a random piece one rarity higher.", "pick": "gear", "effects": [{"type": "foundryUpgrade"}]},
 		{"label": "Leave.", "effects": []},
 	]},
-	"prisonerExchange": {"tier": "major", "name": "PRISONER EXCHANGE", "desc": "A captured cell offers a trade: safe passage for a name.", "choices": [
-		{"label": "Trade: next battle has one fewer enemy; the battle after gains ELITE PRESENCE.", "effects": [{"type": "nextBattleFlag", "flag": "minus_one_enemy"}, {"type": "followupModifier", "id": "elitePresence"}]},
+	"prisonerExchange": {"tier": "major", "name": "PRISONER EXCHANGE", "desc": "An enemy prisoner offers to divert the next patrol in exchange for release. Command will send an elite to investigate.", "choices": [
+		{"label": "Release the prisoner: the next battle has one fewer enemy. In the battle after that, one enemy is replaced by an elite.", "effects": [{"type": "nextBattleFlag", "flag": "minus_one_enemy"}, {"type": "followupModifier", "id": "elitePresence"}]},
 		{"label": "Refuse: 1 uncommon consumable.", "effects": [{"type": "consumable", "rarity": "uncommon", "count": 1}]},
 	]},
-	"overloadRites": {"tier": "major", "name": "OVERLOAD RITES", "desc": "A Synod rite, stolen. It burns the body to feed the die.", "choices": [
-		{"label": "Undergo: a hero loses 12 max HP this op; their 20s resolve twice.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": -12}, {"type": "heroNat20Twice"}]},
+	"overloadRites": {"tier": "major", "name": "FORBIDDEN AUGMENT", "desc": "A stolen machine-cult implant can double a weapon's output. The strain will weaken its bearer.", "choices": [
+		{"label": "Install: one hero loses 12 max HP for this run. Their abilities activate twice on a 20.", "pick": "hero", "effects": [{"type": "heroMaxHp", "amount": -12}, {"type": "heroNat20Twice"}]},
 		{"label": "Decline.", "effects": []},
 	]},
-	"ghostFrequency": {"tier": "major", "name": "GHOST FREQUENCY", "desc": "A carrier wave that unmakes a silhouette. It takes something with it.", "choices": [
-		{"label": "Tune a hero: starts every remaining battle cloaked, -6 max HP.", "pick": "hero", "effects": [{"type": "heroStartCloaked"}, {"type": "heroMaxHp", "amount": -6}]},
+	"ghostFrequency": {"tier": "major", "name": "GHOST FREQUENCY", "desc": "A stolen cloak emitter can mask one hero, but its radiation will weaken them.", "choices": [
+		{"label": "Tune the emitter: one hero loses 6 max HP and starts every remaining battle cloaked.", "pick": "hero", "effects": [{"type": "heroStartCloaked"}, {"type": "heroMaxHp", "amount": -6}]},
 		{"label": "Sell the wave: 1 rare consumable.", "effects": [{"type": "consumable", "rarity": "rare", "count": 1}]},
 	]},
-	"deepScan": {"tier": "major", "name": "DEEP SCAN", "desc": "A survey array with reach across the whole op.", "choices": [
-		{"label": "Scan: reveal every remaining comp and beat this run.", "effects": [{"type": "revealRun"}]},
+	"deepScan": {"tier": "major", "name": "DEEP SCAN", "desc": "A long-range survey array can map the enemy positions and crossings ahead.", "choices": [
+		{"label": "Scan: reveal the remaining enemy formations and route events for this run.", "effects": [{"type": "revealRun"}]},
 		{"label": "Sell the array time: +3 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 3}]},
 	]},
 }

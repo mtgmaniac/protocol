@@ -200,15 +200,15 @@ two, section hidden at zero, **never a placeholder slot** — and **never on bat
 (the old `_relic_slot` was dead and is removed). **Violation looks like:** a relic count > 2
 from any path, a relic pip/slot on the battle screen, or an empty relic placeholder row.
 
-## 17. Ability effect text carries its coded target suffix (NK-17, Polish Build D)
-Authored `eff` text (data/raw/{enemies,heroes}.data.json) must carry the parenthetical
-target suffix its COMPUTED scope requires — `(self)` for self-buffs, `(all)` for AoE,
-`(lowest)` for lowest-target — and none for single-target, matching how `effect_pip.gd`
-derives scope from the structured fields. Keyword-only clauses (`cloak`, `firewall`, `jam`,
-`spike`, `rampage +1 (all)`, `summon`) keep their own convention. Enforced by
-`scripts/checks/effect_text_target.py` (count-based, so a double suffix fails like a missing
-one — the historical double-stamp). **Violation looks like:** a self-shield authored "8
-shield" with no "(self)", an AoE heal missing "(all)", or a doubled "(self) (self)".
+## 17. Ability effect text matches its coded targets (G-9, 2026-09-06)
+Approved concise text names group targets as `(all heroes)` / `(all enemies)`,
+lowest-HP support as `(lowest HP)`, and chosen friendly targets as `(hero)`.
+Hero self effects are implicit; enemy self effects retain `(self)`. Enemy ally
+shields say `(ally)`. Single hostile targets remain implicit. Use `damage` and
+explicit `turns`. This supersedes NK-17's abbreviated text markers while keeping
+its reason: text must match computed target scope. The gate compares effect/target
+counts, so wrong-side markers, missing targets and duplicates fail. Equipment
+continues to omit `(self)` and pips keep their existing G-7 conventions.
 
 ## 18. Unlock progression: one choke point, gates at run end only (Build F)
 Unlock progression is ordered buckets + battle-count gates and NOTHING else — no

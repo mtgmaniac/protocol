@@ -70,7 +70,7 @@ func _part_b_announce() -> void:
 	if quiet == null:
 		_errors.append("could not construct a CombatManager - part B measured NOTHING")
 		return
-	var reviver: Object = _make_unit("audit_medic", "Audit Medic", "Surge Revive", REVIVE_RAW)
+	var reviver: Object = _make_unit("audit_medic", "Audit Medic", "Resuscitate", REVIVE_RAW)
 	var ally: Object = _make_unit("audit_ally", "Audit Ally", "Strike", STRIKE_RAW)
 	quiet.call("setup_battle", [reviver, ally], [_make_enemy("audit_enemy", "Audit Enemy")])
 	var quiet_result: Dictionary = quiet.call("resolve_round", {"audit_medic": ROLL}, {}, _new_dice())
@@ -85,7 +85,7 @@ func _part_b_announce() -> void:
 	# Case 2: an ally is down. The same ability announces AND fires.
 	var live: Object = _new_manager()
 	live.call("setup_battle", [
-		_make_unit("audit_medic", "Audit Medic", "Surge Revive", REVIVE_RAW),
+		_make_unit("audit_medic", "Audit Medic", "Resuscitate", REVIVE_RAW),
 		_make_unit("audit_ally", "Audit Ally", "Strike", STRIKE_RAW),
 	], [_make_enemy("audit_enemy", "Audit Enemy")])
 	for state_variant in live.call("get_hero_states"):

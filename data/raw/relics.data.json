@@ -2,217 +2,217 @@
   {
     "id": "ironCurtain",
     "name": "Iron Curtain",
-    "desc": "All enemies deal 90% damage (rounded down) for the rest of the run.",
+    "desc": "Enemies deal 10% less damage.",
     "icon": "shield",
     "effect": { "type": "enemyDmgMult", "mult": 0.9 }
   },
   {
     "id": "openingGambit",
     "name": "Opening Salvo",
-    "desc": "At battle start, a random enemy loses 50% max HP and a random hero loses 20%.",
+    "desc": "Battle start: hit a random enemy for 50% max HP and a random hero for 20% max HP.",
     "icon": "bolt",
     "effect": { "type": "battleStartHalfHp" }
   },
   {
     "id": "bulwarkAura",
-    "name": "Bulwark Aura",
-    "desc": "Every hero gains 3 shield at the start of each enemy turn.",
+    "name": "Bulwark Projector",
+    "desc": "Enemy phase start: 3 shield to all heroes.",
     "icon": "shield",
     "effect": { "type": "heroShieldPerTurn", "amount": 3 }
   },
   {
     "id": "naniteField",
     "name": "Nanite Field",
-    "desc": "Every hero heals 3 HP at the start of each enemy turn.",
+    "desc": "Enemy phase start: heal 3 HP to all heroes.",
     "icon": "heart",
     "effect": { "type": "heroHealPerTurn", "amount": 3 }
   },
   {
     "id": "plagueProtocol",
-    "name": "Plague Protocol",
-    "desc": "All enemies begin every battle with 3 burn.",
+    "name": "Caustic Disperser",
+    "desc": "All enemies start with 3 burn for the battle.",
     "icon": "skull",
     "effect": { "type": "enemyBurnPermanent", "amount": 3 }
   },
   {
     "id": "overcharge",
     "name": "Overcharge",
-    "desc": "All heroes deal 110% damage on ability hits (rounded up).",
+    "desc": "Hero attacks deal 10% more damage.",
     "icon": "bolt",
     "effect": { "type": "heroDmgMult", "mult": 1.1 }
   },
   {
     "id": "signalJam",
-    "name": "Signal Jam",
-    "desc": "All enemies begin every battle with a permanent -2 roll penalty.",
+    "name": "Signal Interference",
+    "desc": "-2 to all enemy rolls.",
     "icon": "die",
     "effect": { "type": "enemyStartRfe", "amount": 2 }
   },
   {
     "id": "coordinatedStrike",
     "name": "Coordinated Strike",
-    "desc": "All heroes begin every battle with a permanent +2 roll bonus.",
+    "desc": "+2 to all hero rolls.",
     "icon": "die",
     "effect": { "type": "heroStartRollBuff", "amount": 2 }
   },
   {
     "id": "resonanceCascade",
-    "name": "Resonance Cascade",
-    "desc": "Burn on enemies ticks for +2 damage.",
+    "name": "Thermal Catalyst",
+    "desc": "Enemy burn deals +2 damage per tick.",
     "icon": "skull",
     "effect": { "type": "burnAmplified", "bonus": 2 }
   },
   {
     "id": "gravityWell",
     "name": "Gravity Well",
-    "desc": "At the start of each enemy turn, all living enemies take 2 damage.",
+    "desc": "Enemy phase start: 2 damage to all enemies.",
     "icon": "bolt",
     "effect": { "type": "auraEnemyDmg", "amount": 2 }
   },
   {
     "id": "protocolOverride",
-    "name": "Protocol Override",
-    "desc": "Items cost 0 Protocol and grant +1 Protocol when used.",
+    "name": "Supply Bypass",
+    "desc": "Items are free. +1 Protocol per use, except Protocol items.",
     "icon": "die",
     "effect": { "type": "protocolOnItemUse" }
   },
   {
     "id": "entropyLeak",
-    "name": "Entropy Leak",
-    "desc": "Battles 6+: enemies spawn at 85% HP.",
+    "name": "Attrition Field",
+    "desc": "From battle 6: enemies start at 85% HP or less.",
     "icon": "skull",
     "effect": { "type": "enemyHpEscalation", "fromBattle": 6, "hpPct": 85 }
   },
   {
     "id": "chainReaction",
     "name": "Chain Reaction",
-    "desc": "When an enemy dies, all other living enemies take 4 damage.",
+    "desc": "Enemy dies: 4 damage to all other enemies. Cannot chain itself.",
     "icon": "bolt",
     "effect": { "type": "chainReaction", "amount": 4 }
   },
   {
     "id": "martyrdomProtocol",
-    "name": "Vengeance Protocol",
-    "desc": "When an ally falls, your surviving squad's next roll is all 20s (once per battle).",
+    "name": "Vengeance Order",
+    "desc": "Hero falls: all survivors roll 20 next turn. Once per battle.",
     "icon": "die",
     "effect": { "type": "vengeanceProtocol" }
   },
   {
     "id": "overloadLoop",
     "name": "Overload Loop",
-    "desc": "20s resolve their effects twice.",
+    "desc": "Hero abilities on a 20 activate twice.",
     "icon": "die",
     "effect": { "type": "critResolveTwice" }
   },
   {
     "id": "curatedCache",
-    "name": "Curated Cache",
-    "desc": "Rewards never include common items.",
+    "name": "Priority Cache",
+    "desc": "Rewards exclude common consumables.",
     "icon": "star",
     "effect": { "type": "rewardsNoCommon" }
   },
   {
     "id": "overflowBuffer",
-    "name": "Overflow Buffer",
-    "desc": "Carry 50% unspent Protocol into the next battle.",
+    "name": "Reserve Capacitor",
+    "desc": "Carry 50% of unused Protocol to the next battle.",
     "icon": "die",
     "effect": { "type": "protocolCarryover", "amount": 50 }
   },
   {
     "id": "fieldCache",
     "name": "Field Cache",
-    "desc": "Start each battle with 1 random consumable.",
+    "desc": "Battle start: gain 1 random consumable if space allows.",
     "icon": "heart",
     "effect": { "type": "battleStartConsumable", "amount": 1 }
   },
   {
     "id": "mercyProtocol",
-    "name": "Mercy Protocol",
-    "desc": "Revives restore full HP instead of the usual penalty.",
+    "name": "Revival Matrix",
+    "desc": "Revive heroes at 100% HP.",
     "icon": "heart",
     "effect": { "type": "reviveNoPenalty" }
   },
   {
     "id": "emergencySignal",
     "name": "Emergency Signal",
-    "desc": "First time an ally drops below 50% HP, squad gains +2 roll for 1 turn.",
+    "desc": "Hero crosses to 50% HP or less: +2 to all next hero rolls. Once per battle.",
     "icon": "die",
     "effect": { "type": "lowHpSquadRollBuff", "amount": 2, "turns": 1 }
   },
   {
     "id": "aegisField",
     "name": "Aegis Field",
-    "desc": "Any heal grants all allies 3 shield.",
+    "desc": "Friendly healing restores HP: 3 shield to all heroes.",
     "icon": "shield",
     "effect": { "type": "healGrantsShieldAll", "amount": 3 }
   },
   {
     "id": "standingOrder",
     "name": "Standing Order",
-    "desc": "Every unit's high-roll ability triggers 1 lower.",
+    "desc": "Each hero's fourth ability starts 1 die value lower.",
     "icon": "die",
     "effect": { "type": "critBandExtend", "amount": 1 }
   },
   {
     "id": "staticField",
     "name": "Static Field",
-    "desc": "Enemy dice are jammed (cap 10) on turn 1 of every battle.",
+    "desc": "First round: jam all enemy dice.",
     "icon": "die",
     "effect": { "type": "battleStartJamEnemies" }
   },
   {
     "id": "twinFates",
     "name": "Twin Fates",
-    "desc": "Once per battle, copy one hero die's result to another, free.",
+    "desc": "Copy one hero's base roll to another. Free, once per battle.",
     "icon": "die",
     "effect": { "type": "twinFates" }
   },
   {
     "id": "overflowVent",
     "name": "Overflow Vent",
-    "desc": "Protocol past the cap deals 2 damage to a random enemy per point.",
+    "desc": "Each excess Protocol: 2 damage to a random enemy.",
     "icon": "bolt",
     "effect": { "type": "protocolOverflowDamage", "amount": 2 }
   },
   {
     "id": "salvageDirective",
     "name": "Salvage Directive",
-    "desc": "Killing a marked enemy refunds 2 Protocol.",
+    "desc": "Kill with a mark-boosted hit: +2 Protocol.",
     "icon": "bolt",
     "effect": { "type": "protocolOnMarkedKill", "amount": 2 }
   },
   {
     "id": "coldLogic",
     "name": "Cold Logic",
-    "desc": "Enemies with frozen dice take +4 damage.",
+    "desc": "Hero attacks: +4 damage vs frozen enemies.",
     "icon": "die",
     "effect": { "type": "frozenBonusDamage", "amount": 4 }
   },
   {
     "id": "chainDoctrine",
     "name": "Chain Doctrine",
-    "desc": "Your chains jump one extra time.",
+    "desc": "Hero chains jump to 1 more enemy.",
     "icon": "bolt",
     "effect": { "type": "chainExtraJump" }
   },
   {
     "id": "scavengerManifest",
     "name": "Scavenger Manifest",
-    "desc": "The first kill each battle drops a random consumable.",
+    "desc": "First enemy death each battle: gain 1 consumable if space allows.",
     "icon": "star",
     "effect": { "type": "firstKillDropsConsumable" }
   },
   {
     "id": "deadMansHand",
     "name": "Dead Man's Hand",
-    "desc": "First squad wipe each run: all heroes survive at 1 HP and roll 20s.",
+    "desc": "On a squad wipe: revive all at 1 HP; next rolls are 20. Once per run.",
     "icon": "heart",
     "effect": { "type": "squadWipeSurvive" }
   },
   {
     "id": "salvageRig",
     "name": "Salvage Rig",
-    "desc": "+1 Protocol when an enemy shield fully breaks.",
+    "desc": "Break an enemy shield with an attack: +1 Protocol.",
     "icon": "bolt",
     "bossRelic": true,
     "effect": { "type": "protocolOnShieldBreak", "amount": 1 }
@@ -220,7 +220,7 @@
   {
     "id": "chitinGraft",
     "name": "Chitin Graft",
-    "desc": "Heroes heal 3 on their kills.",
+    "desc": "Hero kills an enemy: heal that hero 3 HP.",
     "icon": "heart",
     "bossRelic": true,
     "effect": { "type": "heroHealOnOwnKill", "amount": 3 }
@@ -228,7 +228,7 @@
   {
     "id": "resonantChorus",
     "name": "Resonant Chorus",
-    "desc": "Turn 1 dice can't land below 8.",
+    "desc": "First-round hero dice roll at least 8.",
     "icon": "die",
     "bossRelic": true,
     "effect": { "type": "turn1RollFloor", "floor": 8 }
@@ -236,7 +236,7 @@
   {
     "id": "rootAccess",
     "name": "Root Access",
-    "desc": "Once per battle, Set costs 0.",
+    "desc": "First Set each battle is free.",
     "icon": "die",
     "bossRelic": true,
     "effect": { "type": "setCostZeroOncePerBattle" }
@@ -244,7 +244,7 @@
   {
     "id": "mantleCore",
     "name": "Mantle Core",
-    "desc": "Your shields persist until broken.",
+    "desc": "Hero shields last until depleted or removed.",
     "icon": "shield",
     "bossRelic": true,
     "effect": { "type": "shieldsPersist" }

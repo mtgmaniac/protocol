@@ -64,7 +64,7 @@ func _initialize() -> void:
 	var dm: Node = root.get_node("/root/DataManager")
 
 	# ── Conclave Bulwark: 20 dmg · 12 shield · +2 roll (all) · firewall · summon.
-	var bulwark: Dictionary = _find_enemy_raw(dm, "Conclave Bulwark")
+	var bulwark: Dictionary = _find_enemy_raw(dm, "Shieldline Rally")
 	_check(not bulwark.is_empty(), "Conclave Bulwark is present in the enemy data")
 	var pips: Array = EffectPip.effects_from_ability_raw(bulwark, "enemy")
 	_check(pips.size() == EffectPip.MAX_VISIBLE_EFFECTS + 1,

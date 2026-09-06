@@ -54,8 +54,8 @@ const BESTIARY_FACTION_LABEL := {
 	"facility": "FACILITY",
 	"hive": "HIVE",
 	"veil": "VEIL",
-	"voidCirclet": "NULL SYNOD",
-	"stellarMenagerie": "THE ACCRETION",
+	"voidCirclet": "NULL SIGNAL",
+	"stellarMenagerie": "THE MANTLE",
 }
 const SECTION_HEADER_COLOR := Color(0.72, 0.88, 1.0, 1.0)
 

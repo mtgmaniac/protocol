@@ -345,14 +345,13 @@ func item_freeze_die(bs: BattleState, target_state: Dictionary, repeats: int) ->
 
 
 func item_enemy_freeze_all(bs: BattleState, repeats: int) -> void:
-	# Deep Zero Pin (NK-14 redesign): pins every enemy die to its LOWEST face
-	# (1 → recharge zone, each unit's weakest ability) and freezes it there, so
-	# every enemy repeats its weakest result for `repeats` rounds. Under
-	# freeze=repeat this is unambiguously strong; the old "keep whatever face
-	# showed" could replay an enemy crit (audit A-066), making a rare item
-	# situational. BASELINE-SENSITIVE — expected to move the sim baseline.
+	# Deep Freeze Charge sets unfrozen enemy dice to 1 and freezes them.
+	# Already-frozen faces are immutable; only their duration extends (G-9).
 	for enemy_state in combat_manager.get_enemy_states():
 		if bool(enemy_state.get("dead", true)):
+			continue
+		if int(enemy_state.get("die_freeze_turns", 0)) > 0:
+			enemy_state["die_freeze_turns"] = int(enemy_state["die_freeze_turns"]) + repeats
 			continue
 		bs.enemy_rolls[str(enemy_state["id"])] = 1
 		enemy_state["last_die_value"] = 1

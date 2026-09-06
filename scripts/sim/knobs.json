@@ -109,8 +109,8 @@
       "id": "glacier_weave_shield",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Weave/shield",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Weave \u2192 shield (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Permafrost Weave/shield",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Permafrost Weave \u2192 shield (memory-only at sim spawn)",
       "default": 5,
       "range": [
         2,
@@ -123,8 +123,8 @@
       "id": "glacier_salvo_dmg",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Whiteout Salvo/dmg",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Whiteout Salvo \u2192 dmg (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Whiteout Salvo/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Whiteout Salvo \u2192 dmg (memory-only at sim spawn)",
       "default": 5,
       "range": [
         2,
@@ -137,8 +137,8 @@
       "id": "glacier_lance_dmg",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Shatter Lance/dmg",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Shatter Lance \u2192 dmg (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Shatter Lance/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Shatter Lance \u2192 dmg (memory-only at sim spawn)",
       "default": 10,
       "range": [
         6,
@@ -151,8 +151,8 @@
       "id": "glacier_lance_frozen_bonus",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Shatter Lance/vsFrozenBonus",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Shatter Lance \u2192 vsFrozenBonus (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Shatter Lance/vsFrozenBonus",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Shatter Lance \u2192 vsFrozenBonus (memory-only at sim spawn)",
       "default": 5,
       "range": [
         2,
@@ -165,36 +165,36 @@
       "id": "glacier_aegis_dmg",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Aegis/dmg",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Aegis \u2192 dmg (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Fracture Cannon/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Fracture Cannon \u2192 dmg (memory-only at sim spawn)",
       "default": 14,
       "range": [
         6,
         20
       ],
       "step": 1,
-      "notes": "Glacier crit-band single-target damage. Permafrost Aegis was reworked from a squad shield into '14 dmg, +8 vs frozen' in Batch-1 (2026-07-11); this knob replaced glacier_aegis_shield, whose 'shield' field no longer exists on the ability. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+      "notes": "Glacier crit-band single-target damage. Fracture Cannon was reworked from a squad shield into '14 dmg, +8 vs frozen' in Batch-1 (2026-07-11); this knob replaced glacier_aegis_shield, whose 'shield' field no longer exists on the ability. Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
     },
     {
       "id": "glacier_aegis_frozen_bonus",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Permafrost Aegis/vsFrozenBonus",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Permafrost Aegis \u2192 vsFrozenBonus (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Fracture Cannon/vsFrozenBonus",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Fracture Cannon \u2192 vsFrozenBonus (memory-only at sim spawn)",
       "default": 8,
       "range": [
         2,
         14
       ],
       "step": 1,
-      "notes": "Permafrost Aegis's +dmg vs frozen-die targets (shipped value). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+      "notes": "Fracture Cannon's +dmg vs frozen-die targets (shipped value). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
     },
     {
       "id": "glacier_zero_dmg",
       "kind": "ability_field",
       "scope": "global (hero data)",
-      "tuning_key": "ability:avalanche/Glacier Mantle/Absolute Zero/dmg",
-      "path": "heroes.data.json avalanche \u2192 Glacier Mantle \u2192 Absolute Zero \u2192 dmg (memory-only at sim spawn)",
+      "tuning_key": "ability:avalanche/Glacier Rig/Absolute Zero/dmg",
+      "path": "heroes.data.json avalanche \u2192 Glacier Rig \u2192 Absolute Zero \u2192 dmg (memory-only at sim spawn)",
       "default": 10,
       "range": [
         5,

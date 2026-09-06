@@ -44,7 +44,9 @@ CEREMONY_PTS = 10.0  # per-op clear-rate points
 # 250 -> 251 (V3.1 selective-HP re-rig): +1 guard pinning that the drone
 # outlives the first round-two guided attack, so neither guided attack can
 # fizzle on an already-dead target.
-AUDIT_MIN_PASSED = 251
+# G-8: +12 frozen-20 and reinforcement-reward assertions.
+# G-9: +8 copy/behavior and display-name migration assertions.
+AUDIT_MIN_PASSED = 271
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),

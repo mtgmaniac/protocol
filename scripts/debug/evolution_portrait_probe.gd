@@ -37,10 +37,10 @@ func _initialize() -> void:
 	# Evolved run unit swaps its portrait; unevolved keeps the base texture.
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
 	var base_portrait = gs.call("get_run_unit_data", "combat").get("portrait")
-	gs.get("unit_evolutions")["combat"] = "Bladecore"
+	gs.get("unit_evolutions")["combat"] = "Blade Trooper"
 	var evolved_portrait = gs.call("get_run_unit_data", "combat").get("portrait")
 	if evolved_portrait == null or evolved_portrait == base_portrait:
-		failures.append("evolved run unit did not swap to the Bladecore portrait")
+		failures.append("evolved run unit did not swap to the Blade Trooper portrait")
 
 	if failures.is_empty():
 		print("[EVO_PORTRAIT] PASS — 16/16 resolve, fallback silent, run-unit swap live")

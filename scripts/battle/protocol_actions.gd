@@ -1105,7 +1105,7 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	# item still grants its own amount below; it just gets no extra +1 on top.
 	if _scene.combat_manager.has_relic("protocolOnItemUse") and effect_type != "gainProtocol":
 		_scene._gain_protocol(1)
-		_scene._append_log("Protocol Override: +1 Protocol -> %d" % _scene.protocol_points)
+		_scene._append_log("Supply Bypass: +1 Protocol -> %d" % _scene.protocol_points)
 
 	if effect_type == "gainProtocol":
 		# Pool op stays here (Overflow Vent + bar + logging live on the scene).

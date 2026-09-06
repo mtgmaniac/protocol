@@ -59,16 +59,18 @@ if (!vPrimers(primers)) {
 }
 
 // Evolution ids: stable keys for portrait resolution
-// (assets/portraits/<hero_id>_<evo_id>.png). Must be the lowercased callsign
-// and globally unique across all heroes.
+// (assets/portraits/<hero_id>_<evo_id>.png). Display callsigns may be renamed;
+// preserve the stable ID and explicitly record those migrations (G-9).
+const EVOLUTION_CALLSIGN_IDS = { OVERCLOCK: 'overclocked' };
 function validateEvolutionIds(heroes) {
   const errs = [];
   const seen = new Set();
   for (const h of heroes.heroes || []) {
     for (const e of h.evolutions || []) {
       if (!e.id) continue; // presence enforced by the schema
-      if (e.callsign && e.id !== e.callsign.toLowerCase()) {
-        errs.push(`heroes.data.json: ${h.id} evolution '${e.name}' id '${e.id}' != lowercased callsign '${e.callsign.toLowerCase()}'`);
+      const expectedId = EVOLUTION_CALLSIGN_IDS[e.callsign] || e.callsign?.toLowerCase();
+      if (e.callsign && e.id !== expectedId) {
+        errs.push(`heroes.data.json: ${h.id} evolution '${e.name}' id '${e.id}' != stable id '${expectedId}'`);
       }
       if (seen.has(e.id)) errs.push(`heroes.data.json: duplicate evolution id '${e.id}'`);
       seen.add(e.id);

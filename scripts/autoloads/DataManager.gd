@@ -181,15 +181,37 @@ const ENEMY_FACTION_BY_TYPE := {
 	"beastTyrant": "stellarMenagerie",
 }
 
+# G-9 display migration: keep runtime enemy IDs stable across renames.
+const ENEMY_STABLE_IDS := {
+	"Patrol Enforcer": "patrol_elite",
+	"Shield Enforcer": "guard_elite",
+	"Volt Enforcer": "volt_elite",
+	"Scrapmaster": "scrapmaster",
+	"Shard Drone": "shardmite",
+	"Phaseblade": "nullblade",
+	"Relay Herald": "synapse_herald",
+	"Veil Overseer": "conclave_overseer",
+	"Signal Wisp": "glitch_sprite",
+	"Circuit Acolyte": "init_acolyte",
+	"Cipher Scribe": "checksum_scribe",
+	"Oath Binder": "axiom_binder",
+	"False Image": "forked_double",
+	"Ash Channeler": "daemon_channeler",
+	"Signal Hierophant": "root_hierophant",
+	"Pumice Climber": "pumice_macaque",
+	"Cinder Raptor": "pyroclast_raptor",
+	"Mantle Tyrant": "mantle_tyrant",
+}
+
 const ENEMY_PORTRAIT_BY_NAME := {
 	"Scrap Drone": "scrap_drone.png",
 	"Rust Drone": "rust_drone.png",
 	"Static Skimmer": "static_skimmer.png",
-	"Patrol Elite": "patrol_elite.png",
-	"Guard Elite": "guard_elite.png",
+	"Patrol Enforcer": "patrol_elite.png",
+	"Shield Enforcer": "guard_elite.png",
 	"Heavy Warden": "heavy_warden.png",
-	"Volt Elite": "volt_elite.png",
-	"SCRAPMASTER": "scrapmaster.png",
+	"Volt Enforcer": "volt_elite.png",
+	"Scrapmaster": "scrapmaster.png",
 	"Skitterling": "skitterling.png",
 	"Bloodmite": "bloodmite.png",
 	"Spine Stalker": "spine_stalker.png",
@@ -198,34 +220,34 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"Caustic Spewer": "caustic_spewer.png",
 	"Hive Matriarch": "hive_matriarch.png",
 	# The Accretion (files renamed to current unit names, 2026-07-07).
-	"Pumice Macaque": "pumice_macaque.png",
+	"Pumice Climber": "pumice_macaque.png",
 	"Obsidian Hound": "obsidian_hound.png",
 	# Hound art gap CLOSED 2026-07-07: Slag Hound has its own file now.
 	"Slag Hound": "slag_hound.png",
 	"Geode Panther": "geode_panther.png",
 	"Magma Drake": "magma_drake.png",
-	"Pyroclast Raptor": "pyroclast_raptor.png",
+	"Cinder Raptor": "pyroclast_raptor.png",
 	"Basalt Ape": "basalt_ape.png",
-	"MANTLE TYRANT": "mantle_tyrant.png",
+	"Mantle Tyrant": "mantle_tyrant.png",
 	# Null Synod (files renamed to current unit names, 2026-07-07).
-	"Glitch Sprite": "glitch_sprite.png",
-	"Init Acolyte": "init_acolyte.png",
-	"Checksum Scribe": "checksum_scribe.png",
-	"Axiom Binder": "axiom_binder.png",
-	"Forked Double": "forked_double.png",
-	"Daemon Channeler": "daemon_channeler.png",
-	"ROOT HIEROPHANT": "root_hierophant.png",
+	"Signal Wisp": "glitch_sprite.png",
+	"Circuit Acolyte": "init_acolyte.png",
+	"Cipher Scribe": "checksum_scribe.png",
+	"Oath Binder": "axiom_binder.png",
+	"False Image": "forked_double.png",
+	"Ash Channeler": "daemon_channeler.png",
+	"Signal Hierophant": "root_hierophant.png",
 	# Veil Concord — previously resolved only through the _slugify fallback
 	# (audited 2026-07-07: every unit landed on its own file; veil_spare.png
 	# and harmonic_hexnode.png were referenced by nothing → moved to unused/).
 	"Prism Charger": "prism_charger.png",
-	"Shardmite": "shardmite.png",
+	"Shard Drone": "shardmite.png",
 	"Aegis Anchor": "aegis_anchor.png",
 	"Resonance Warden": "resonance_warden.png",
-	"Nullblade": "nullblade.png",
-	"Synapse Herald": "synapse_herald.png",
+	"Phaseblade": "nullblade.png",
+	"Relay Herald": "synapse_herald.png",
 	"Stormweaver": "stormweaver.png",
-	"CONCLAVE OVERSEER": "conclave_overseer.png",
+	"Veil Overseer": "conclave_overseer.png",
 }
 
 # Enemy files painted in the MATTED-BUST style (fully opaque subject on a flat
@@ -320,7 +342,7 @@ func get_enemy(enemy_id: String) -> Resource:
 
 
 func get_enemy_by_display_name(enemy_name: String) -> Resource:
-	return enemies.get(_slugify(enemy_name))
+	return enemies.get(str(ENEMY_STABLE_IDS.get(enemy_name, _slugify(enemy_name))))
 
 
 func get_item(item_id: String) -> Resource:
@@ -467,7 +489,7 @@ func _load_enemies() -> void:
 		var enemy_def: Dictionary = enemy_unit_defs[enemy_name]
 		var enemy: EnemyData = EnemyData.new()
 		var enemy_type: String = str(enemy_def.get("type", ""))
-		enemy.id = _slugify(enemy_name)
+		enemy.id = str(ENEMY_STABLE_IDS.get(enemy_name, _slugify(enemy_name)))
 		enemy.display_name = str(enemy_name)
 		enemy.callsign = str(enemy_def.get("callsign", ""))
 		enemy.enemy_type = enemy_type

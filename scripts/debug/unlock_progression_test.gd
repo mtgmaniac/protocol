@@ -253,9 +253,9 @@ func _test_renamed_enemy_abilities() -> void:
 	file.close()
 	var abilities: Dictionary = parsed.get("enemyAbilities", {}) as Dictionary
 	var cases := [
-		{"enemy": "scrap", "band": "overload", "name": "Incendiary Charge", "mechanics": {"eff": "20 dmg, 3 burn", "dmg": 20, "burn": 3, "burnT": 1, "heal": 0, "rfe": 0, "shield": 0}},
-		{"enemy": "rust", "band": "crit", "name": "Voltage Drop", "mechanics": {"eff": "12 dmg, -2 roll", "dmg": 12, "burn": 0, "burnT": 0, "heal": 0, "rfe": 0, "shield": 0, "rfm": 2, "rfmT": 1}},
-		{"enemy": "rust", "band": "overload", "name": "Signal Crush", "mechanics": {"eff": "14 dmg, -3 roll", "dmg": 14, "burn": 0, "burnT": 0, "heal": 0, "rfe": 0, "shield": 0, "rfm": 3, "rfmT": 1}},
+		{"enemy": "scrap", "band": "overload", "name": "Incendiary Charge", "mechanics": {"eff": "20 damage, 3 burn 1 turn", "dmg": 20, "burn": 3, "burnT": 1, "heal": 0, "rfe": 0, "shield": 0}},
+		{"enemy": "rust", "band": "crit", "name": "Voltage Drop", "mechanics": {"eff": "12 damage, -2 roll 1 turn", "dmg": 12, "burn": 0, "burnT": 0, "heal": 0, "rfe": 0, "shield": 0, "rfm": 2, "rfmT": 1}},
+		{"enemy": "rust", "band": "overload", "name": "Signal Crush", "mechanics": {"eff": "14 damage, -3 roll 1 turn", "dmg": 14, "burn": 0, "burnT": 0, "heal": 0, "rfe": 0, "shield": 0, "rfm": 3, "rfmT": 1}},
 	]
 	for case_entry in cases:
 		var source: Dictionary = (abilities.get(str(case_entry["enemy"]), {}) as Dictionary).get(str(case_entry["band"]), {}) as Dictionary

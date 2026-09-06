@@ -72,11 +72,16 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_bottom", 80 + PixelUI.safe_bottom)
 	add_child(margin)
 
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(scroll)
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(col)
+	scroll.add_child(col)
 
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -207,7 +212,16 @@ func _show_card_stage() -> void:
 			enabled = false
 		if str(choice.get("pick", "")) == "gear" and _all_equipped_gear().is_empty():
 			enabled = false
-		_add_choice_button(str(choice.get("label", "")), _on_choice_pressed.bind(choice), enabled, _modifier_note(choice))
+		# The approved label has an action before ':' and consequences after.
+		# Keep the full consequences as body copy instead of a giant button.
+		var full_label: String = str(choice.get("label", ""))
+		var divider: int = full_label.find(":")
+		var action: String = full_label.left(divider) if divider >= 0 else full_label
+		var consequence: String = full_label.substr(divider + 1).strip_edges() if divider >= 0 else ""
+		var modifier_note: String = _modifier_note(choice)
+		if modifier_note != "" and consequence == "":
+			consequence += ("\n" if consequence != "" else "") + modifier_note
+		_add_choice_button(action.to_upper(), _on_choice_pressed.bind(choice), enabled, consequence)
 		if enabled:
 			_enabled_choice_count += 1
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): a card with

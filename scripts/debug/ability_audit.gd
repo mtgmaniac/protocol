@@ -503,6 +503,9 @@ func _run_regression_audits() -> void:
 	_run_gear_protocol_on_kill_regression()
 	_run_gear_protocol_on_kill_any_regression()
 	_run_relic_crit_resolve_twice_regression()
+	_run_frozen_twenty_reward_regressions()
+	_run_reinforcement_reward_regressions()
+	_run_copy_alignment_regressions()
 	_run_relic_rewards_no_common_regression()
 	_run_relic_protocol_carryover_regression()
 	_run_relic_battle_start_consumable_regression()
@@ -735,7 +738,7 @@ func _run_taunt_regression() -> void:
 	# the taunted one crosses to the slot-1 taunter, the free one does not.
 	var manager: CombatManager = CombatManager.new()
 	var ally_unit: UnitData = _make_unit("audit_ally", "Audit Ally", "Noop", {})
-	var taunter_unit: UnitData = _make_unit("audit_taunter", "Audit Taunter", "Taunt Protocol", {"taunt": true})
+	var taunter_unit: UnitData = _make_unit("audit_taunter", "Audit Taunter", "Challenge Beacon", {"taunt": true})
 	manager.setup_battle(
 		[ally_unit, taunter_unit],
 		[_make_enemy("audit_taunted", "Audit Taunted", "Fang", {"dmg": 7}), _make_enemy("audit_free", "Audit Free", "Claw", {"dmg": 5})]
@@ -767,7 +770,7 @@ func _run_taunt_regression() -> void:
 	# no lure lands, the enemy keeps its own pick (slot-0 ally under SYSTEMATIC).
 	var ward_manager: CombatManager = CombatManager.new()
 	ward_manager.setup_battle(
-		[_make_unit("audit_ally", "Audit Ally", "Noop", {}), _make_unit("audit_taunter", "Audit Taunter", "Taunt Protocol", {"taunt": true})],
+		[_make_unit("audit_ally", "Audit Ally", "Noop", {}), _make_unit("audit_taunter", "Audit Taunter", "Challenge Beacon", {"taunt": true})],
 		[_make_enemy("audit_warded", "Audit Warded", "Fang", {"dmg": 7})]
 	)
 	var ward_ally: Dictionary = ward_manager.get_hero_states()[0]
@@ -967,7 +970,7 @@ func _run_cloak_regression() -> void:
 
 	# An AoE that includes the cloaked unit hits it and breaks the cloak.
 	var aoe_manager: CombatManager = CombatManager.new()
-	aoe_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Ghost Volley", {"dmg": 6, "blastAll": true})], [_make_enemy("audit_cloaked", "Audit Cloaked")])
+	aoe_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Phase Volley", {"dmg": 6, "blastAll": true})], [_make_enemy("audit_cloaked", "Audit Cloaked")])
 	var aoe_hero: Dictionary = aoe_manager.get_hero_states()[0]
 	var aoe_enemy: Dictionary = aoe_manager.get_enemy_states()[0]
 	aoe_enemy["cloaked"] = true
@@ -1105,7 +1108,7 @@ func _run_chain_regression() -> void:
 		_record_failure("Regression / chain jumps to lowest other enemy at 50%", "chain", "primary -10, lowest other -5, third untouched", "a=%d b=%d c=%d" % [int(a["current_hp"]), int(b["current_hp"]), int(c["current_hp"])])
 
 	var double_manager: CombatManager = CombatManager.new()
-	var double_hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Cascade", {"dmg": 10, "chain": 2})
+	var double_hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Arc Cascade", {"dmg": 10, "chain": 2})
 	double_manager.setup_battle([double_hero_unit], [_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B"), _make_enemy("audit_enemy_c", "Audit Enemy C")])
 	var d_states: Array = double_manager.get_enemy_states()
 	var da: Dictionary = d_states[0]
@@ -1199,7 +1202,7 @@ func _run_detonate_regression() -> void:
 func _run_execute_regression() -> void:
 	# Execute: +8 bonus only when the target is below 25% max HP after base damage.
 	var manager: CombatManager = CombatManager.new()
-	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Terminal Velocity", {"dmg": 10, "execute": true})
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Kill Shot", {"dmg": 10, "execute": true})
 	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
 	manager.setup_battle([hero_unit], [enemy_unit])
 	var hero: Dictionary = manager.get_hero_states()[0]
@@ -1214,7 +1217,7 @@ func _run_execute_regression() -> void:
 		_record_failure("Regression / execute bonus below threshold", "execute", "30 - 10 base - 8 bonus = 12", "hp=%d" % int(enemy["current_hp"]))
 
 	var high_manager: CombatManager = CombatManager.new()
-	high_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Terminal Velocity", {"dmg": 10, "execute": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	high_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Kill Shot", {"dmg": 10, "execute": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
 	var h_hero: Dictionary = high_manager.get_hero_states()[0]
 	var h_enemy: Dictionary = high_manager.get_enemy_states()[0]
 	h_hero["selected_target_id"] = str(h_enemy["id"])
@@ -1249,7 +1252,7 @@ func _run_breach_regression() -> void:
 	# breach all strips every enemy before an AoE hit.
 	var all_manager: CombatManager = CombatManager.new()
 	all_manager.setup_battle(
-		[_make_unit("audit_hero", "Audit Hero", "Total Suppression", {"dmg": 11, "blastAll": true, "breachAll": true})],
+		[_make_unit("audit_hero", "Audit Hero", "Linebreaker", {"dmg": 11, "blastAll": true, "breachAll": true})],
 		[_make_enemy("audit_enemy_a", "Audit Enemy A"), _make_enemy("audit_enemy_b", "Audit Enemy B")]
 	)
 	var a_hero: Dictionary = all_manager.get_hero_states()[0]
@@ -1274,7 +1277,7 @@ func _run_breach_regression() -> void:
 func _run_leech_regression() -> void:
 	# Leech heals the attacker for 50% of HP damage dealt (after shields).
 	var manager: CombatManager = CombatManager.new()
-	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Rend", {"dmg": 10, "leech": true})
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Siphon Slash", {"dmg": 10, "leech": true})
 	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
 	manager.setup_battle([hero_unit], [enemy_unit])
 	var hero: Dictionary = manager.get_hero_states()[0]
@@ -1289,7 +1292,7 @@ func _run_leech_regression() -> void:
 
 	# Shields eat the hit -> nothing to leech.
 	var shielded_manager: CombatManager = CombatManager.new()
-	shielded_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Rend", {"dmg": 10, "leech": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	shielded_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Siphon Slash", {"dmg": 10, "leech": true})], [_make_enemy("audit_enemy", "Audit Enemy")])
 	var s_hero: Dictionary = shielded_manager.get_hero_states()[0]
 	var s_enemy: Dictionary = shielded_manager.get_enemy_states()[0]
 	s_hero["selected_target_id"] = str(s_enemy["id"])
@@ -1377,7 +1380,7 @@ func _run_jam_regression() -> void:
 func _run_rewrite_regression() -> void:
 	# Rewrite forces the target's NEXT roll to 3, then clears.
 	var manager: CombatManager = CombatManager.new()
-	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Spectral Sever", {"dmg": 4, "rewrite": true})
+	var hero_unit: UnitData = _make_unit("audit_hero", "Audit Hero", "Signal Sever", {"dmg": 4, "rewrite": true})
 	var enemy_unit: EnemyData = _make_enemy("audit_enemy", "Audit Enemy")
 	manager.setup_battle([hero_unit], [enemy_unit])
 	var hero: Dictionary = manager.get_hero_states()[0]
@@ -1461,7 +1464,7 @@ func _run_new_gear_regressions() -> void:
 
 	# Mirror Plate: enemy jam on the holder grants Protocol.
 	var mirror_manager: CombatManager = CombatManager.new()
-	mirror_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "ECM Ping", {"jam": true})])
+	mirror_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy", "Jammer Screen", {"jam": true})])
 	var mirror_hero: Dictionary = mirror_manager.get_hero_states()[0]
 	var mirror_enemy: Dictionary = mirror_manager.get_enemy_states()[0]
 	mirror_hero["gear_mirror_plate"] = 2
@@ -1714,7 +1717,7 @@ func _run_boss_standing_rule_regressions() -> void:
 	var line_manager: CombatManager = CombatManager.new()
 	line_manager.setup_battle(
 		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
-		[_make_enemy("scrapmaster", "SCRAPMASTER"), _make_enemy("scrap_drone", "Scrap Drone")]
+		[_make_enemy("scrapmaster", "Scrapmaster"), _make_enemy("scrap_drone", "Scrap Drone")]
 	)
 	var line_drone: Dictionary = line_manager.get_enemy_states()[1]
 	line_drone["dead"] = true
@@ -1730,7 +1733,7 @@ func _run_boss_standing_rule_regressions() -> void:
 	var down_phase3: bool = bool(line_drone["dead"])
 	line_manager.resolve_round({}, {}, DiceManager.new())
 	var rebuilt_phase4: bool = not bool(line_drone["dead"])
-	_expect_and_record("Regression / boss SCRAPMASTER assembly line cadence", "bossStandingRule",
+	_expect_and_record("Regression / boss Scrapmaster assembly line cadence", "bossStandingRule",
 		"true/true/true/true", "%s/%s/%s/%s" % [str(still_down), str(rebuilt), str(down_phase3), str(rebuilt_phase4)])
 
 	# Cadence counts from FIRST ACTIVATION, not global even rounds (DECISIONS
@@ -1738,7 +1741,7 @@ func _run_boss_standing_rule_regressions() -> void:
 	var offset_manager: CombatManager = CombatManager.new()
 	offset_manager.setup_battle(
 		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
-		[_make_enemy("scrapmaster", "SCRAPMASTER"), _make_enemy("scrap_drone", "Scrap Drone")]
+		[_make_enemy("scrapmaster", "Scrapmaster"), _make_enemy("scrap_drone", "Scrap Drone")]
 	)
 	var offset_boss: Dictionary = offset_manager.get_enemy_states()[0]
 	var offset_drone: Dictionary = offset_manager.get_enemy_states()[1]
@@ -1777,13 +1780,13 @@ func _run_boss_standing_rule_regressions() -> void:
 	var court_manager: CombatManager = CombatManager.new()
 	court_manager.setup_battle(
 		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
-		[_make_enemy("overseer", "CONCLAVE OVERSEER"), _make_enemy("anchor", "Aegis Anchor")]
+		[_make_enemy("overseer", "Veil Overseer"), _make_enemy("anchor", "Aegis Anchor")]
 	)
 	var court_boss: Dictionary = court_manager.get_enemy_states()[0]
 	court_manager.resolve_round({}, {}, DiceManager.new())
 	var court_warded: bool = bool(court_boss.get("warded", false))
 	var alone_manager: CombatManager = CombatManager.new()
-	alone_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("overseer", "CONCLAVE OVERSEER")])
+	alone_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("overseer", "Veil Overseer")])
 	var alone_boss: Dictionary = alone_manager.get_enemy_states()[0]
 	alone_manager.resolve_round({}, {}, DiceManager.new())
 	var alone_unwarded: bool = not bool(alone_boss.get("warded", false))
@@ -1793,7 +1796,7 @@ func _run_boss_standing_rule_regressions() -> void:
 	var root_manager: CombatManager = CombatManager.new()
 	root_manager.setup_battle(
 		[_make_unit("audit_low", "Audit Low", "Noop", {}), _make_unit("audit_high", "Audit High", "Noop", {})],
-		[_make_enemy("hierophant", "ROOT HIEROPHANT")]
+		[_make_enemy("hierophant", "Signal Hierophant")]
 	)
 	var low_hero: Dictionary = root_manager.get_hero_states()[0]
 	var high_hero: Dictionary = root_manager.get_hero_states()[1]
@@ -1806,7 +1809,7 @@ func _run_boss_standing_rule_regressions() -> void:
 	# start; persists and stacks. Rounds 1-2 hold one plate (6); round 3 lays
 	# the second (12).
 	var mantle_manager: CombatManager = CombatManager.new()
-	mantle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("tyrant", "MANTLE TYRANT")])
+	mantle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("tyrant", "Mantle Tyrant")])
 	var tyrant: Dictionary = mantle_manager.get_enemy_states()[0]
 	mantle_manager.resolve_round({}, {}, DiceManager.new())
 	var first_plate: int = int(tyrant.get("shield", 0))
@@ -1817,7 +1820,7 @@ func _run_boss_standing_rule_regressions() -> void:
 	_expect_and_record("Regression / boss Tyrant accretion stacks", "bossStandingRule", "6/6/12", "%d/%d/%d" % [first_plate, second_plate, third_plate])
 
 	# Standing rules surface in the inspect popup payload.
-	var inspect_unit: EnemyData = _make_enemy("tyrant", "MANTLE TYRANT")
+	var inspect_unit: EnemyData = _make_enemy("tyrant", "Mantle Tyrant")
 	var inspect_payload: Dictionary = InspectResolver.resolve_unit(inspect_unit)
 	var has_rule_text: bool = str(inspect_payload.get("description", "")) != ""
 	_expect_and_record("Regression / boss inspect shows standing rule", "bossStandingRule", "true", str(has_rule_text))
@@ -1828,11 +1831,11 @@ func _run_boss_standing_rule_regressions() -> void:
 # firing with the real unit defs (catches name/handler drift the synthetic
 # regressions can't).
 const PINNED_BOSS_COMPS := {
-	"facility": ["Scrap Drone", "SCRAPMASTER", "Scrap Drone"],
+	"facility": ["Scrap Drone", "Scrapmaster", "Scrap Drone"],
 	"hive": ["Spine Stalker", "Hive Matriarch"],
-	"veil": ["CONCLAVE OVERSEER", "Aegis Anchor"],
-	"voidCirclet": ["ROOT HIEROPHANT", "Checksum Scribe"],
-	"stellarMenagerie": ["MANTLE TYRANT", "Geode Panther"],
+	"veil": ["Veil Overseer", "Aegis Anchor"],
+	"voidCirclet": ["Signal Hierophant", "Cipher Scribe"],
+	"stellarMenagerie": ["Mantle Tyrant", "Geode Panther"],
 }
 
 
@@ -2297,10 +2300,10 @@ func _run_directive_combat_regressions() -> void:
 
 
 const SIGNATURE_FIGHTS := {
-	"facility": {"index": 4, "names": ["Guard Elite", "Guard Elite"]},
+	"facility": {"index": 4, "names": ["Shield Enforcer", "Shield Enforcer"]},
 	"hive": {"index": 6, "names": ["Broodwarden"]},
 	"veil": {"index": 6, "names": ["Aegis Anchor", "Aegis Anchor"]},
-	"voidCirclet": {"index": 3, "names": ["Axiom Binder"]},
+	"voidCirclet": {"index": 3, "names": ["Oath Binder"]},
 	"stellarMenagerie": {"index": 3, "names": ["Geode Panther"]},
 }
 
@@ -2473,7 +2476,7 @@ func _run_route_modifier_regressions() -> void:
 	if GameState.roll_route_modifier() != "":
 		precondition_ok = false
 	# With a support in the comp, warded becomes rollable.
-	GameState.resolved_battle_comps[2] = {"names": ["Guard Elite", "Rust Drone"], "cloaked": []}
+	GameState.resolved_battle_comps[2] = {"names": ["Shield Enforcer", "Rust Drone"], "cloaked": []}
 	if GameState.roll_route_modifier() != "warded":
 		precondition_ok = false
 	GameState.used_battle_modifiers.clear()
@@ -2487,17 +2490,17 @@ func _run_route_modifier_regressions() -> void:
 	# Flagged acceptance: comp-shaping modifiers reshape the next comp and the
 	# supply grade arms.
 	GameState.used_battle_modifiers.clear()
-	GameState.resolved_battle_comps[2] = {"names": ["Guard Elite", "Rust Drone"], "cloaked": []}
+	GameState.resolved_battle_comps[2] = {"names": ["Shield Enforcer", "Rust Drone"], "cloaked": []}
 	GameState.accept_flagged_route("overrun")
 	var overrun_comp: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("names", [])
 	var fodder_pool: Array = DataManager.get_role_pool("facility", "fodder")
 	var overrun_ok: bool = overrun_comp.size() == 3 and fodder_pool.has(str(overrun_comp[2]))
 	var armed_ok: bool = GameState.next_battle_modifier == "overrun" and GameState.next_battle_supply_grade == 2
 
-	GameState.resolved_battle_comps[2] = {"names": ["Guard Elite", "Rust Drone"], "cloaked": []}
+	GameState.resolved_battle_comps[2] = {"names": ["Shield Enforcer", "Rust Drone"], "cloaked": []}
 	GameState.accept_flagged_route("warded")
 	var warded_list: Array = (GameState.resolved_battle_comps[2] as Dictionary).get("warded", [])
-	var warded_ok: bool = warded_list == ["Guard Elite"]
+	var warded_ok: bool = warded_list == ["Shield Enforcer"]
 	_expect_and_record("Regression / flagged route acceptance", "routeModifiers", "true", str(overrun_ok and armed_ok and warded_ok))
 
 	# fix-1.5: no-op offers are forbidden — every preconditioned modifier is
@@ -2694,7 +2697,7 @@ func _run_evolution_kit_regression() -> void:
 	_expect_and_record(
 		"Regression / evolved kit full swap",
 		"evolutionKit",
-		str(["Static Coil", "Arc Whip", "Fork Lightning", "Cascade", "Grid Collapse"]),
+		str(["Static Coil", "Arc Whip", "Forked Lightning", "Arc Cascade", "Grid Collapse"]),
 		str(names)
 	)
 
@@ -3002,9 +3005,9 @@ func _run_summon_slot_regression() -> void:
 # dumb unit def, and injecting that unit must add it to the field. This is the
 # full battle_scene._process_summon_events contract minus the card rebuild.
 func _run_summon_end_to_end_regression() -> void:
-	var scribe: EnemyData = DataManager.get_enemy_by_display_name("Checksum Scribe") as EnemyData
+	var scribe: EnemyData = DataManager.get_enemy_by_display_name("Cipher Scribe") as EnemyData
 	if scribe == null:
-		_record_failure("Regression / summon end-to-end", "summon", "Checksum Scribe def exists", "missing")
+		_record_failure("Regression / summon end-to-end", "summon", "Cipher Scribe def exists", "missing")
 		return
 	if scribe.ai_type != "smart" or not scribe.can_summon_elite:
 		_record_failure("Regression / summon end-to-end", "summon", "Scribe smart + summonElite", "ai=%s summonElite=%s" % [scribe.ai_type, str(scribe.can_summon_elite)])
@@ -3178,7 +3181,7 @@ func _run_gear_lifesteal_regression() -> void:
 		_record_failure(
 			"Regression / gear lifesteal",
 			"lifesteal",
-			"20 damage kill leeches 20%% (4 HP) via Siphon Loop",
+			"20 damage kill leeches 20%% (4 HP) via Recovery Loop",
 			"hero_hp=%d enemy_dead=%s" % [int(hero["current_hp"]), str(enemy["dead"])]
 		)
 
@@ -3372,7 +3375,7 @@ func _tutorial_resolve_turn(mgr: CombatManager, rolls_by_unit: Dictionary, cast_
 
 func _run_revive_pct_regression() -> void:
 	var manager: CombatManager = CombatManager.new()
-	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Surge Revive", {
+	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Resuscitate", {
 		"revive": true,
 		"healTgt": true,
 		"revivePct": 70,
@@ -3570,6 +3573,141 @@ func _run_relic_crit_resolve_twice_regression() -> void:
 			"natural 20 resolves 9 dmg ability twice (18 total)",
 			"enemy_hp=%d delta=%d" % [int(enemy["current_hp"]), enemy_hp_before - int(enemy["current_hp"])]
 		)
+
+
+func _run_frozen_twenty_reward_regressions() -> void:
+	# Echo sources do not stack recursively. Each frozen turn pays its 20
+	# riders once, regardless of whether the ability receives an echo.
+	for mode in ["loop", "rites", "both", "neither"]:
+		var manager := CombatManager.new()
+		manager.setup_battle([_make_unit("hero", "Hero", "Strike", {"dmg": 9})], [_make_enemy("enemy", "Enemy")])
+		if mode in ["loop", "both"]:
+			manager.setup_relics(["overloadLoop"])
+		var hero: Dictionary = manager.get_hero_states()[0]
+		var enemy: Dictionary = manager.get_enemy_states()[0]
+		hero["nat20_twice"] = mode in ["rites", "both"]
+		hero["gear_protocol_on_20"] = 2
+		hero["selected_target_id"] = str(enemy["id"])
+		hero["die_freeze_turns"] = 1
+		hero["die_freeze_repeat_this_round"] = true
+		var old_stat: int = int(SaveManager.data["stats"].get("nat20s", 0))
+		manager.resolve_round({"hero": 20}, {}, DiceManager.new())
+		var expected_hp: int = 91 if mode == "neither" else 82
+		_expect_and_record("Regression / frozen 20 riders " + mode, "G-8", "%d/2/1/0" % expected_hp,
+			"%d/%d/%d/%d" % [int(enemy["current_hp"]), manager.take_pending_protocol_grants(), int(SaveManager.data["stats"].get("nat20s", 0)) - old_stat, int(hero["die_freeze_turns"])])
+
+	var manager := CombatManager.new()
+	var summoner: EnemyData = _make_enemy("summoner", "Summoner")
+	summoner.ai_type = "smart"
+	summoner.can_summon_elite = true
+	manager.setup_battle([_make_unit("hero", "Hero", "Noop", {})], [summoner])
+	var enemy: Dictionary = manager.get_enemy_states()[0]
+	enemy["die_freeze_repeat_this_round"] = true
+	manager.call("_try_emit_enemy_summon", enemy, {"zone": "overload"}, 20, 100, "Reinforcement")
+	var events: Array = manager.get("_round_events")
+	_expect_and_record("Regression / frozen enemy 20 summons", "G-8", "1", str(events.filter(func(e): return e.get("type") == "summon").size()))
+	for i in range(GameState.SQUAD_UNIT_LIMIT - 1):
+		manager.inject_enemy(_make_enemy("extra_%d" % i, "Extra"))
+	var before: int = (manager.get("_round_events") as Array).size()
+	manager.call("_try_emit_enemy_summon", enemy, {"zone": "overload"}, 20, 100, "Reinforcement")
+	_expect_and_record("Regression / frozen summon respects field cap", "G-8", str(before), str((manager.get("_round_events") as Array).size()))
+
+
+func _run_reinforcement_reward_regressions() -> void:
+	var snapshot: Dictionary = _snapshot_game_state()
+	for kind in ["original", "summoned", "rebuilt"]:
+		GameState.consumables.clear()
+		var manager := CombatManager.new()
+		manager.setup_battle([_make_unit("hero", "Hero", "Strike", {"dmg": 100})], [_make_enemy("enemy", "Enemy")])
+		manager.setup_relics(["salvageDirective", "chitinGraft", "scavengerManifest"])
+		var hero: Dictionary = manager.get_hero_states()[0]
+		var enemy: Dictionary = manager.get_enemy_states()[0]
+		if kind == "summoned":
+			manager.inject_enemy(_make_enemy("summoned", "Summoned"))
+			enemy = manager.get_enemy_states()[1]
+		elif kind == "rebuilt":
+			# ASSEMBLY LINE retains the slot and marks the reconstructed state.
+			enemy["summoned"] = true
+		hero["current_hp"] = 30
+		hero["gear_heal_on_kill"] = 5
+		hero["gear_protocol_on_kill"] = 1
+		hero["gear_protocol_on_kill_any"] = 1
+		hero["directive_type"] = "killNextAbilityDamage"
+		hero["directive_effect"] = {"amount": 4}
+		enemy["mark_consumed_this_hit"] = true
+		manager.call("_process_unit_killed", enemy, hero, true)
+		_expect_and_record("Regression / " + kind + " kill rewards", "G-8", "38/4/4/1",
+			"%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size()])
+		# A later environmental death still heals the holder; killer-only
+		# benefits do not pay, and Scavenger does not grant a second item.
+		manager.call("_process_unit_killed", _make_reward_dead_state(manager), {}, true)
+		_expect_and_record("Regression / " + kind + " reward limits", "G-8", "43/0/4/1",
+			"%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size()])
+	_restore_game_state_snapshot(snapshot)
+
+
+func _make_reward_dead_state(manager: CombatManager) -> Dictionary:
+	# Separate enemy dictionary: this represents a later death, not paying
+	# twice for the same enemy. Kill-queue de-duplication is unchanged.
+	var dead: Dictionary = manager.get_enemy_states()[0].duplicate()
+	dead["id"] = "later_reinforcement"
+	dead["summoned"] = true
+	return dead
+
+
+func _run_copy_alignment_regressions() -> void:
+	var manager := CombatManager.new()
+	manager.setup_battle([_make_unit("hero", "Hero", "Noop", {})], [_make_enemy("caster", "Caster"), _make_enemy("ally", "Ally")])
+	var caster: Dictionary = manager.get_enemy_states()[0]
+	var ally: Dictionary = manager.get_enemy_states()[1]
+	caster["selected_target_id"] = str(ally["id"])
+	manager.call("_apply_enemy_ability", caster, _make_ability_entry("Ally Shield", {"shieldAlly": 7}))
+	_expect_and_record("Regression / ally shield without self shield", "G-9", "0/7", "%d/%d" % [int(caster["shield"]), int(ally["shield"])])
+	ally["dead"] = true
+	manager.call("_apply_enemy_ability", caster, _make_ability_entry("Ally Shield", {"shieldAlly": 7}))
+	_expect_and_record("Regression / ally shield fallback", "G-9", "7", str(caster["shield"]))
+	manager = CombatManager.new()
+	manager.setup_battle([_make_unit("hero", "Hero", "Noop", {})], [_make_enemy("caster", "Caster"), _make_enemy("ally", "Ally")])
+	caster = manager.get_enemy_states()[0]
+	ally = manager.get_enemy_states()[1]
+	manager.call("_apply_enemy_ability", caster, _make_ability_entry("Group Shield", {"shield": 9, "shieldAlly": 7, "shieldAllyAll": true}))
+	_expect_and_record("Regression / group shield does not double self", "G-9", "7/7", "%d/%d" % [int(caster["shield"]), int(ally["shield"])])
+
+	var boss_payout: int = 0
+	for boss_name in CombatManager.BOSS_STANDING_RULES:
+		var boss: EnemyData = DataManager.get_enemy_by_display_name(boss_name) as EnemyData
+		manager.setup_battle([_make_unit("hero", "Hero", "Noop", {})], [boss])
+		var hero_state: Dictionary = manager.get_hero_states()[0]
+		hero_state["gear_protocol_on_kill"] = 1
+		manager.call("_process_unit_killed", manager.get_enemy_states()[0], hero_state, true)
+		boss_payout += manager.take_pending_protocol_grants()
+	_expect_and_record("Regression / every authored boss excluded from Bounty", "G-9", "0", str(boss_payout))
+
+	manager.setup_battle([_make_unit("hero", "Hero", "Noop", {})], [_make_enemy("held", "Held"), _make_enemy("free", "Free")])
+	var held: Dictionary = manager.get_enemy_states()[0]
+	var free: Dictionary = manager.get_enemy_states()[1]
+	held["die_freeze_turns"] = 2
+	held["frozen_die_value"] = 20
+	held["last_die_value"] = 20
+	var bs := BattleState.new()
+	bs.enemy_rolls = {str(held["id"]): 20, str(free["id"]): 17}
+	var engine := BattleEngine.new(manager)
+	engine.item_enemy_freeze_all(bs, 1)
+	_expect_and_record("Regression / freeze charge preserves held face", "G-9", "20/20/3", "%d/%d/%d" % [int(bs.enemy_rolls[str(held["id"])]), int(held["frozen_die_value"]), int(held["die_freeze_turns"])])
+	_expect_and_record("Regression / freeze charge pins unfrozen face", "G-9", "1/1/1", "%d/%d/%d" % [int(bs.enemy_rolls[str(free["id"])]), int(free["frozen_die_value"]), int(free["die_freeze_turns"])])
+
+	var migration_ok: bool = true
+	for display_name in DataManager.ENEMY_STABLE_IDS:
+		var unit: EnemyData = DataManager.get_enemy_by_display_name(display_name) as EnemyData
+		migration_ok = migration_ok and unit != null and unit.id == DataManager.ENEMY_STABLE_IDS[display_name] and unit.portrait != null
+	_expect_and_record("Regression / enemy display migration preserves IDs and portraits", "G-9", "true", str(migration_ok))
+	var references_ok: bool = true
+	for enemy_unit in DataManager.enemies.values():
+		for ability in enemy_unit.dice_ranges:
+			var summon: String = str((ability.get("raw", {}) as Dictionary).get("summonName", ""))
+			if summon != "":
+				references_ok = references_ok and DataManager.get_enemy_by_display_name(summon) != null
+	_expect_and_record("Regression / renamed summon references resolve", "G-9", "true", str(references_ok))
 
 
 func _run_relic_rewards_no_common_regression() -> void:

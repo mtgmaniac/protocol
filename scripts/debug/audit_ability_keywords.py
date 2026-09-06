@@ -20,7 +20,7 @@ HERO_HANDLED = frozenset({
     "rfe", "rfT", "rfeAll", "taunt", "revive", "reviveAll", "revivePct", "cloak", "cloakAll",
     "ward", "wardTgt", "chain", "detonate", "execute", "breach", "breachAll", "leech", "mark", "spike",
     "jam", "jamAll", "rewrite", "vsFrozenBonus",
-    "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol",
+    "freezeEnemyDice", "freezeAllEnemyDice", "freezeAnyDice", "gainProtocol", "cleanse",
 })
 
 ENEMY_HANDLED = frozenset({
@@ -182,6 +182,14 @@ def main() -> int:
                 multi_pick_violations.append(f"{label} -> picks {sorted(picks)}")
         keywords = count_keywords(raw)
         allowed = 2 if entry.get("zone", "") == "overload" else 1
+        # Build I (Kev, 2026-07-19; TRUTH): Spike Guard's setup deliberately
+        # pairs taunt + 3 spike. Match the stable hero/slot and exact effects,
+        # not its renamed display name; this is not a general two-keyword waiver.
+        if (side == "hero" and label.startswith("shield/base/")
+                and entry.get("zone") == "recharge"
+                and set(keywords) == {"taunt", "spike"}
+                and raw.get("spike") == 3 and not raw.get("dmg")):
+            allowed = 2
         if len(keywords) > allowed:
             keyword_count_violations.append(
                 f"{label} (zone={entry.get('zone', '?')}) -> {len(keywords)} keywords {keywords} (max {allowed})"

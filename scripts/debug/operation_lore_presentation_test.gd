@@ -5,7 +5,7 @@ extends Node
 
 const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
 const OPERATION_IDS := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
-const BOSS_NAMES := ["SCRAPMASTER", "Hive Matriarch", "CONCLAVE OVERSEER", "ROOT HIEROPHANT", "MANTLE TYRANT"]
+const BOSS_NAMES := ["Scrapmaster", "Hive Matriarch", "Veil Overseer", "Signal Hierophant", "Mantle Tyrant"]
 
 var _errors: Array[String] = []
 
@@ -142,7 +142,7 @@ func _test_deployment_grid(operation_id: String, overlay: Control) -> void:
 	_expect(grid_center != null and absf(grid.get_global_rect().get_center().x - grid_center.get_global_rect().get_center().x) < 1.0, "%s deployment grid is centered" % operation_id)
 	var key_x := -1.0
 	var value_x := -1.0
-	for key in ["Site", "Failure", "Directive"]:
+	for key in ["Site", "Situation", "Objective"]:
 		var key_label := grid.get_node_or_null("DeploymentRow%s/DeploymentKeySlot%s/DeploymentKey%s" % [key, key, key]) as Label
 		var value_label := grid.get_node_or_null("DeploymentRow%s/DeploymentValue%s" % [key, key]) as Label
 		_expect(key_label != null and value_label != null, "%s %s row has fixed columns" % [operation_id, key])

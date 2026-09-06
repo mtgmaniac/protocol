@@ -3,7 +3,7 @@
     {
       "id": "patch_kit",
       "name": "Patch Kit",
-      "desc": "Heal a living ally for 5 HP.",
+      "desc": "Heal 5 HP (1 hero).",
       "rarity": "common",
       "icon": "heart",
       "target": "ally",
@@ -15,7 +15,7 @@
     {
       "id": "triage_broadcast",
       "name": "Triage Broadcast",
-      "desc": "Heal all living allies for 2 HP.",
+      "desc": "Heal 2 HP (all heroes).",
       "rarity": "common",
       "icon": "heart",
       "target": "none",
@@ -27,7 +27,7 @@
     {
       "id": "scrap_plate",
       "name": "Scrap Plate",
-      "desc": "Grant +5 shield this round.",
+      "desc": "5 shield (1 hero).",
       "rarity": "common",
       "icon": "shield",
       "target": "ally",
@@ -38,8 +38,8 @@
     },
     {
       "id": "buckler_array",
-      "name": "Buckler Array",
-      "desc": "Grant all living allies +4 shield this round.",
+      "name": "Shield Array",
+      "desc": "4 shield (all heroes).",
       "rarity": "common",
       "icon": "shield",
       "target": "none",
@@ -51,7 +51,7 @@
     {
       "id": "calibration_chip",
       "name": "Calibration Chip",
-      "desc": "+1 to rolls for 1 turn.",
+      "desc": "+1 to 1 hero roll.",
       "rarity": "common",
       "icon": "die",
       "target": "ally",
@@ -63,8 +63,8 @@
     },
     {
       "id": "momentum_core",
-      "name": "Momentum Core",
-      "desc": "+2 to rolls for 1 turn.",
+      "name": "Calibration Core",
+      "desc": "+2 to 1 hero roll.",
       "rarity": "uncommon",
       "icon": "die",
       "target": "ally",
@@ -77,7 +77,7 @@
     {
       "id": "harmonic_injector",
       "name": "Harmonic Injector",
-      "desc": "+4 to rolls for 2 turns.",
+      "desc": "+4 roll (1 hero), 2 turns.",
       "rarity": "rare",
       "icon": "die",
       "target": "ally",
@@ -89,8 +89,8 @@
     },
     {
       "id": "archive_cascade",
-      "name": "Archive Cascade",
-      "desc": "+5 to rolls for 3 turns.",
+      "name": "Combat Cogitator",
+      "desc": "+5 roll (1 hero), 3 turns.",
       "rarity": "legendary",
       "icon": "die",
       "target": "ally",
@@ -102,8 +102,8 @@
     },
     {
       "id": "defib_spark",
-      "name": "Defib Spark",
-      "desc": "Revive a fallen ally at 50% max HP.",
+      "name": "Defibrillator",
+      "desc": "Revive 1 hero at 50% HP.",
       "rarity": "uncommon",
       "icon": "bolt",
       "target": "allyDead",
@@ -114,8 +114,8 @@
     },
     {
       "id": "ghost_veil",
-      "name": "Ghost Veil",
-      "desc": "Cloak a living ally.",
+      "name": "Cloak Emitter",
+      "desc": "Cloak 1 hero.",
       "rarity": "uncommon",
       "icon": "cloak",
       "target": "ally",
@@ -125,8 +125,8 @@
     },
     {
       "id": "scatter_veil_array",
-      "name": "Scatter Veil Array",
-      "desc": "Cloak all living allies.",
+      "name": "Cloak Array",
+      "desc": "Cloak all heroes.",
       "rarity": "rare",
       "icon": "cloak",
       "target": "none",
@@ -137,7 +137,7 @@
     {
       "id": "grounding_clip",
       "name": "Grounding Clip",
-      "desc": "Enemy takes -1 to rolls for 2 turns.",
+      "desc": "-1 roll (1 enemy), 2 turns.",
       "rarity": "common",
       "icon": "skull",
       "target": "enemy",
@@ -149,8 +149,8 @@
     },
     {
       "id": "corrosion_bomb",
-      "name": "Corrosion Bomb",
-      "desc": "Enemy takes -2 to rolls for 2 turns.",
+      "name": "Interference Charge",
+      "desc": "-2 roll (1 enemy), 2 turns.",
       "rarity": "uncommon",
       "icon": "skull",
       "target": "enemy",
@@ -162,8 +162,8 @@
     },
     {
       "id": "entropy_seed",
-      "name": "Entropy Seed",
-      "desc": "Enemy takes -3 to rolls for 3 turns.",
+      "name": "Disruption Core",
+      "desc": "-3 roll (1 enemy), 3 turns.",
       "rarity": "rare",
       "icon": "skull",
       "target": "enemy",
@@ -176,7 +176,7 @@
     {
       "id": "shock_charge",
       "name": "Shock Charge",
-      "desc": "Deal 10 damage to one enemy.",
+      "desc": "10 damage (1 enemy).",
       "rarity": "common",
       "icon": "bolt",
       "target": "enemy",
@@ -188,7 +188,7 @@
     {
       "id": "acid_vial",
       "name": "Acid Vial",
-      "desc": "Apply 3 burn to one enemy for 2 turns.",
+      "desc": "3 burn (1 enemy), 2 turns.",
       "rarity": "common",
       "icon": "skull",
       "target": "enemy",
@@ -201,7 +201,7 @@
     {
       "id": "phase_scrambler",
       "name": "Phase Scrambler",
-      "desc": "Reroll one enemy's die.",
+      "desc": "Reroll 1 enemy die.",
       "rarity": "common",
       "icon": "die",
       "target": "enemy",
@@ -211,8 +211,8 @@
     },
     {
       "id": "cascade_jammer",
-      "name": "Cascade Jammer",
-      "desc": "Reroll every living enemy's die.",
+      "name": "Cascade Scrambler",
+      "desc": "Reroll all enemy dice.",
       "rarity": "rare",
       "icon": "die",
       "target": "none",
@@ -223,7 +223,7 @@
     {
       "id": "cryo_gel",
       "name": "Cryo Gel",
-      "desc": "Freeze any unit's die.",
+      "desc": "Freeze any die, 1 turn.",
       "rarity": "uncommon",
       "icon": "bolt",
       "target": "any",
@@ -235,7 +235,7 @@
     {
       "id": "cryo_web",
       "name": "Cryo Web",
-      "desc": "Freeze any unit's die for two rolls.",
+      "desc": "Freeze any die, 2 turns.",
       "rarity": "rare",
       "icon": "bolt",
       "target": "any",
@@ -246,8 +246,8 @@
     },
     {
       "id": "deep_zero_pin",
-      "name": "Deep Zero Pin",
-      "desc": "Pin every enemy die to its weakest face and freeze it.",
+      "name": "Deep Freeze Charge",
+      "desc": "All enemy dice: set to 1, freeze 1 turn.",
       "rarity": "uncommon",
       "icon": "bolt",
       "target": "none",
@@ -259,7 +259,7 @@
     {
       "id": "protocol_cell",
       "name": "Protocol Cell",
-      "desc": "Gain +2 Protocol.",
+      "desc": "+2 Protocol.",
       "rarity": "common",
       "icon": "die",
       "target": "none",
@@ -270,8 +270,8 @@
     },
     {
       "id": "capacitor_dose",
-      "name": "Capacitor Dose",
-      "desc": "Gain +3 Protocol.",
+      "name": "Capacitor Cell",
+      "desc": "+3 Protocol.",
       "rarity": "uncommon",
       "icon": "die",
       "target": "none",
@@ -282,8 +282,8 @@
     },
     {
       "id": "core_surge",
-      "name": "Core Surge",
-      "desc": "Gain +4 Protocol.",
+      "name": "Core Cell",
+      "desc": "+4 Protocol.",
       "rarity": "rare",
       "icon": "die",
       "target": "none",
@@ -295,7 +295,7 @@
     {
       "id": "mainline_cache",
       "name": "Mainline Cache",
-      "desc": "Gain +5 Protocol.",
+      "desc": "+5 Protocol.",
       "rarity": "legendary",
       "icon": "die",
       "target": "none",

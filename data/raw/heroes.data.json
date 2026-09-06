@@ -222,7 +222,7 @@
     {
       "id": "pulse",
       "name": "Pulse Tech",
-      "cls": "ENERGY WIELDER",
+      "cls": "ENERGY WEAPONS TECH",
       "pickerCategory": "damage",
       "pickerBlurb": "Plants burn on every hit, then detonates it for burst damage.",
       "hp": 45,
@@ -235,7 +235,7 @@
             3
           ],
           "name": "Static Ping",
-          "eff": "4 dmg, chain",
+          "eff": "4 damage, chain",
           "dmg": 4,
           "burn": 0,
           "burnT": 0,
@@ -252,7 +252,7 @@
             9
           ],
           "name": "Arc Burst",
-          "eff": "6 dmg, 2 burn",
+          "eff": "6 damage, 2 burn 1 turn",
           "dmg": 6,
           "burn": 2,
           "burnT": 1,
@@ -268,7 +268,7 @@
             15
           ],
           "name": "Plasma Lance",
-          "eff": "9 dmg, 3 burn",
+          "eff": "9 damage, 3 burn 1 turn",
           "dmg": 9,
           "burn": 3,
           "burnT": 1,
@@ -283,8 +283,8 @@
             16,
             19
           ],
-          "name": "Ion Storm",
-          "eff": "12 dmg, detonate",
+          "name": "Flash Detonation",
+          "eff": "12 damage, detonate",
           "dmg": 12,
           "burn": 0,
           "burnT": 0,
@@ -300,8 +300,8 @@
             20,
             20
           ],
-          "name": "Singularity Burst",
-          "eff": "14 dmg, 3 burn, 3t, chain",
+          "name": "Plasma Cascade",
+          "eff": "14 damage, 3 burn 3 turns, chain",
           "dmg": 14,
           "burn": 3,
           "burnT": 3,
@@ -327,7 +327,7 @@
                 5
               ],
               "name": "Ignition Flash",
-              "eff": "6 dmg, 2 burn, 2t",
+              "eff": "6 damage, 2 burn 2 turns",
               "dmg": 6,
               "burn": 2,
               "burnT": 2,
@@ -343,7 +343,7 @@
                 10
               ],
               "name": "Accelerant",
-              "eff": "8 dmg, 3 burn, 2t",
+              "eff": "8 damage, 3 burn 2 turns",
               "dmg": 8,
               "burn": 3,
               "burnT": 2,
@@ -359,7 +359,7 @@
                 15
               ],
               "name": "Meltdown",
-              "eff": "5 dmg, 6 burn, 3t",
+              "eff": "5 damage, 6 burn 3 turns",
               "dmg": 5,
               "burn": 6,
               "burnT": 3,
@@ -375,7 +375,7 @@
                 19
               ],
               "name": "Backdraft",
-              "eff": "14 dmg, detonate",
+              "eff": "14 damage, detonate",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -391,8 +391,8 @@
                 20,
                 20
               ],
-              "name": "Supernova",
-              "eff": "12 dmg (all), 3 burn, 2t",
+              "name": "Firestorm",
+              "eff": "12 damage (all enemies), 3 burn 2 turns",
               "dmg": 12,
               "burn": 3,
               "burnT": 2,
@@ -406,14 +406,14 @@
           "directives": [
             {
               "name": "Flashpoint",
-              "desc": "Your burn ticks once immediately on apply.",
+              "desc": "Burn applied by this hero deals one tick of damage immediately.",
               "effect": {
                 "type": "burnImmediateTick"
               }
             },
             {
-              "name": "Slow Roast",
-              "desc": "Your burns last +1 turn.",
+              "name": "Sustained Ignition",
+              "desc": "Burn applied by this hero lasts 1 additional turn.",
               "effect": {
                 "type": "burnDurationBonus",
                 "amount": 1
@@ -435,7 +435,7 @@
                 5
               ],
               "name": "Static Coil",
-              "eff": "6 dmg",
+              "eff": "6 damage",
               "dmg": 6,
               "burn": 0,
               "burnT": 0,
@@ -451,7 +451,7 @@
                 10
               ],
               "name": "Arc Whip",
-              "eff": "9 dmg, chain",
+              "eff": "9 damage, chain",
               "dmg": 9,
               "burn": 0,
               "burnT": 0,
@@ -467,8 +467,8 @@
                 11,
                 15
               ],
-              "name": "Fork Lightning",
-              "eff": "12 dmg, chain",
+              "name": "Forked Lightning",
+              "eff": "12 damage, chain",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -484,8 +484,8 @@
                 16,
                 19
               ],
-              "name": "Cascade",
-              "eff": "15 dmg, chain",
+              "name": "Arc Cascade",
+              "eff": "15 damage, chain",
               "dmg": 15,
               "burn": 0,
               "burnT": 0,
@@ -502,7 +502,7 @@
                 20
               ],
               "name": "Grid Collapse",
-              "eff": "18 dmg (all)",
+              "eff": "18 damage (all enemies)",
               "dmg": 18,
               "burn": 0,
               "burnT": 0,
@@ -516,14 +516,14 @@
           "directives": [
             {
               "name": "Conductor",
-              "desc": "Your chains jump one extra target.",
+              "desc": "This hero's chain attacks jump to 1 additional enemy.",
               "effect": {
                 "type": "chainExtraJump"
               }
             },
             {
               "name": "Amplifier",
-              "desc": "Your chain hits deal 100% damage.",
+              "desc": "This hero's chain hits deal 100% damage instead of 50%.",
               "effect": {
                 "type": "chainFullDamage"
               }
@@ -565,8 +565,8 @@
             5,
             10
           ],
-          "name": "Suppression Fire",
-          "eff": "6 dmg",
+          "name": "Rifle Burst",
+          "eff": "6 damage",
           "dmg": 6,
           "burn": 0,
           "burnT": 0,
@@ -582,7 +582,7 @@
             15
           ],
           "name": "Rail Strike",
-          "eff": "10 dmg",
+          "eff": "10 damage",
           "dmg": 10,
           "burn": 0,
           "burnT": 0,
@@ -598,7 +598,7 @@
             19
           ],
           "name": "Precision Shot",
-          "eff": "14 dmg, pierce",
+          "eff": "14 damage, pierce",
           "dmg": 14,
           "burn": 0,
           "burnT": 0,
@@ -614,8 +614,8 @@
             20,
             20
           ],
-          "name": "Terminal Velocity",
-          "eff": "18 dmg, execute",
+          "name": "Kill Shot",
+          "eff": "18 damage, execute",
           "dmg": 18,
           "burn": 0,
           "burnT": 0,
@@ -629,7 +629,7 @@
       "evolutions": [
         {
           "id": "blade",
-          "name": "Bladecore",
+          "name": "Blade Trooper",
           "callsign": "BLADE",
           "hp": 70,
           "focus": "Wide pierce and shield breaking",
@@ -641,7 +641,7 @@
                 5
               ],
               "name": "Target Paint",
-              "eff": "5 dmg, mark",
+              "eff": "5 damage, mark",
               "dmg": 5,
               "burn": 0,
               "burnT": 0,
@@ -657,8 +657,8 @@
                 6,
                 10
               ],
-              "name": "Rapid Strike",
-              "eff": "7 dmg (all)",
+              "name": "Blade Sweep",
+              "eff": "7 damage (all enemies)",
               "dmg": 7,
               "burn": 0,
               "burnT": 0,
@@ -675,7 +675,7 @@
                 15
               ],
               "name": "Blade Rush",
-              "eff": "10 dmg, breach",
+              "eff": "breach, 10 damage",
               "dmg": 10,
               "burn": 0,
               "burnT": 0,
@@ -692,7 +692,7 @@
                 19
               ],
               "name": "Shred",
-              "eff": "15 dmg, pierce",
+              "eff": "15 damage, pierce",
               "dmg": 15,
               "burn": 0,
               "burnT": 0,
@@ -708,8 +708,8 @@
                 20,
                 20
               ],
-              "name": "Decimator",
-              "eff": "15 dmg (all), pierce",
+              "name": "Steel Tempest",
+              "eff": "15 damage (all enemies), pierce",
               "dmg": 15,
               "burn": 0,
               "burnT": 0,
@@ -724,14 +724,14 @@
           "directives": [
             {
               "name": "Serrated",
-              "desc": "Your pierce attacks also breach.",
+              "desc": "This hero's piercing attacks also breach the target.",
               "effect": {
                 "type": "pierceAlsoBreach"
               }
             },
             {
               "name": "Momentum",
-              "desc": "Each kill adds +4 to your next ability's damage.",
+              "desc": "Each kill adds 4 damage to the next damaging ability.",
               "effect": {
                 "type": "killNextAbilityDamage",
                 "amount": 4
@@ -752,8 +752,8 @@
                 1,
                 5
               ],
-              "name": "Lacerate",
-              "eff": "6 dmg, 2 burn, 2t",
+              "name": "Thermal Cut",
+              "eff": "6 damage, 2 burn 2 turns",
               "dmg": 6,
               "burn": 2,
               "burnT": 2,
@@ -768,8 +768,8 @@
                 6,
                 10
               ],
-              "name": "Rend",
-              "eff": "9 dmg, leech",
+              "name": "Siphon Slash",
+              "eff": "9 damage, leech",
               "dmg": 9,
               "burn": 0,
               "burnT": 0,
@@ -785,8 +785,8 @@
                 11,
                 15
               ],
-              "name": "Deep Wound",
-              "eff": "12 dmg, leech",
+              "name": "Deep Extraction",
+              "eff": "12 damage, leech",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -802,8 +802,8 @@
                 16,
                 19
               ],
-              "name": "Hemorrhage",
-              "eff": "14 dmg, detonate",
+              "name": "Wound Ignition",
+              "eff": "14 damage, detonate",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -820,7 +820,7 @@
                 20
               ],
               "name": "Evisceration",
-              "eff": "20 dmg, leech",
+              "eff": "20 damage, leech",
               "dmg": 20,
               "burn": 0,
               "burnT": 0,
@@ -833,16 +833,16 @@
           ],
           "directives": [
             {
-              "name": "Deep Cuts",
-              "desc": "+3 damage against burning targets.",
+              "name": "Thermal Trauma",
+              "desc": "This hero deals +3 damage to burning enemies.",
               "effect": {
                 "type": "bonusVsBurning",
                 "amount": 3
               }
             },
             {
-              "name": "Open Veins",
-              "desc": "Your 20 ability also detonates.",
+              "name": "Flash Cautery",
+              "desc": "This hero's 20 ability detonates the target's burn after dealing damage.",
               "effect": {
                 "type": "overloadDetonateAfter"
               }
@@ -855,7 +855,7 @@
     {
       "id": "shield",
       "name": "Spike Guard",
-      "cls": "ANTAGONIST PLATE",
+      "cls": "REACTIVE DEFENSE",
       "pickerCategory": "defense",
       "pickerBlurb": "Taunts hits onto itself, spikes attackers, and breaks enemy shields.",
       "hp": 55,
@@ -867,8 +867,8 @@
             1,
             6
           ],
-          "name": "Taunt Protocol",
-          "eff": "taunt, spike 3",
+          "name": "Challenge Beacon",
+          "eff": "3 spike, taunt",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -885,8 +885,8 @@
             7,
             12
           ],
-          "name": "Enforce",
-          "eff": "6 shield, spike 3",
+          "name": "Reactive Cover",
+          "eff": "6 shield (hero), 3 spike (hero)",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -905,7 +905,7 @@
             16
           ],
           "name": "Spike Stance",
-          "eff": "5 shield (self), spike 5",
+          "eff": "5 shield, 5 spike",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -923,7 +923,7 @@
             19
           ],
           "name": "Breach Slam",
-          "eff": "9 dmg, breach",
+          "eff": "breach, 9 damage",
           "dmg": 9,
           "burn": 0,
           "burnT": 0,
@@ -939,8 +939,8 @@
             20,
             20
           ],
-          "name": "Total Suppression",
-          "eff": "11 dmg (all), breach",
+          "name": "Linebreaker",
+          "eff": "breach all enemies, 11 damage (all enemies)",
           "dmg": 11,
           "burn": 0,
           "burnT": 0,
@@ -967,7 +967,7 @@
                 6
               ],
               "name": "Fortify",
-              "eff": "7 shield (self), taunt",
+              "eff": "7 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -985,7 +985,7 @@
                 12
               ],
               "name": "Cover Fire",
-              "eff": "5 dmg, 7 shield (lowest)",
+              "eff": "5 damage, 7 shield (lowest HP)",
               "dmg": 5,
               "burn": 0,
               "burnT": 0,
@@ -1003,7 +1003,7 @@
                 16
               ],
               "name": "Iron Wall",
-              "eff": "6 shield (all)",
+              "eff": "6 shield (all heroes)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1021,7 +1021,7 @@
                 19
               ],
               "name": "Bastion",
-              "eff": "8 shield (all)",
+              "eff": "8 shield (all heroes)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1038,8 +1038,8 @@
                 20,
                 20
               ],
-              "name": "Invincible",
-              "eff": "10 shield (all), firewall",
+              "name": "Fortress Screen",
+              "eff": "10 shield (all heroes), firewall",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1055,7 +1055,7 @@
           "directives": [
             {
               "name": "Rampart",
-              "desc": "Your shields grant +2.",
+              "desc": "This hero grants 2 additional shield with shield abilities.",
               "effect": {
                 "type": "ownShieldBonus",
                 "amount": 2
@@ -1063,7 +1063,7 @@
             },
             {
               "name": "Bunker Doctrine",
-              "desc": "Allies holding your shields spike 3.",
+              "desc": "When this hero shields another hero, that hero also gains 3 spike this round.",
               "effect": {
                 "type": "shieldGrantsSpike",
                 "amount": 3
@@ -1085,7 +1085,7 @@
                 5
               ],
               "name": "Challenge",
-              "eff": "4 shield (self), taunt",
+              "eff": "4 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1103,7 +1103,7 @@
                 10
               ],
               "name": "Counter Stance",
-              "eff": "spike 6",
+              "eff": "6 spike",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1120,7 +1120,7 @@
                 15
               ],
               "name": "Punish",
-              "eff": "10 dmg",
+              "eff": "10 damage",
               "dmg": 10,
               "burn": 0,
               "burnT": 0,
@@ -1136,7 +1136,7 @@
                 19
               ],
               "name": "Repulsion Field",
-              "eff": "8 dmg (all), 6 shield (self)",
+              "eff": "8 damage (all enemies), 6 shield",
               "dmg": 8,
               "burn": 0,
               "burnT": 0,
@@ -1154,7 +1154,7 @@
                 20
               ],
               "name": "Iron Judgment",
-              "eff": "14 dmg, execute",
+              "eff": "14 damage, execute",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -1168,7 +1168,7 @@
           "directives": [
             {
               "name": "Ironclad",
-              "desc": "While taunting, incoming hits deal -2.",
+              "desc": "While this hero is taunting, incoming hits deal 2 less damage.",
               "effect": {
                 "type": "tauntDamageReduction",
                 "amount": 2
@@ -1176,7 +1176,7 @@
             },
             {
               "name": "Counterweight",
-              "desc": "Your spike deals +4.",
+              "desc": "This hero's spike abilities grant 4 additional spike.",
               "effect": {
                 "type": "spikeBonus",
                 "amount": 4
@@ -1190,7 +1190,7 @@
     {
       "id": "avalanche",
       "name": "Avalanche Suit",
-      "cls": "SQUAD SHELL",
+      "cls": "CRYO SUPPORT",
       "pickerCategory": "defense",
       "pickerBlurb": "Freezes dice to lock and repeat results. Heals the squad high.",
       "hp": 55,
@@ -1202,8 +1202,8 @@
             1,
             6
           ],
-          "name": "Glacial Lattice",
-          "eff": "freeze any die",
+          "name": "Cryo Lattice",
+          "eff": "freeze any die 1 turn",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1220,7 +1220,7 @@
             12
           ],
           "name": "Glacial Shove",
-          "eff": "6 dmg, freeze target die",
+          "eff": "6 damage, freeze 1 turn",
           "dmg": 6,
           "burn": 0,
           "burnT": 0,
@@ -1237,7 +1237,7 @@
             16
           ],
           "name": "Whiteout Spray",
-          "eff": "9 dmg (all)",
+          "eff": "9 damage (all enemies)",
           "dmg": 9,
           "burn": 0,
           "burnT": 0,
@@ -1253,8 +1253,8 @@
             17,
             19
           ],
-          "name": "Crevasse Mend",
-          "eff": "10 heal (all)",
+          "name": "Cryo Recovery",
+          "eff": "10 heal (all heroes)",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1270,8 +1270,8 @@
             20,
             20
           ],
-          "name": "Avalanche Protocol",
-          "eff": "8 dmg (all), freeze all enemy dice",
+          "name": "Avalanche Barrage",
+          "eff": "8 damage (all enemies), freeze all enemies 1 turn",
           "dmg": 8,
           "burn": 0,
           "burnT": 0,
@@ -1286,7 +1286,7 @@
       "evolutions": [
         {
           "id": "glacier",
-          "name": "Glacier Mantle",
+          "name": "Glacier Rig",
           "callsign": "GLACIER",
           "hp": 80,
           "focus": "Freeze everything, then shatter it",
@@ -1298,7 +1298,7 @@
                 6
               ],
               "name": "Permafrost Weave",
-              "eff": "5 shield (self), freeze any die",
+              "eff": "5 shield, freeze any die 1 turn",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1316,7 +1316,7 @@
                 12
               ],
               "name": "Whiteout Salvo",
-              "eff": "5 dmg (all), freeze target die",
+              "eff": "5 damage (all enemies), freeze 1 enemy 1 turn",
               "dmg": 5,
               "burn": 0,
               "burnT": 0,
@@ -1334,7 +1334,7 @@
                 16
               ],
               "name": "Shatter Lance",
-              "eff": "10 dmg, +5 vs frozen",
+              "eff": "10 damage, +5 damage vs frozen",
               "dmg": 10,
               "burn": 0,
               "burnT": 0,
@@ -1350,8 +1350,8 @@
                 17,
                 19
               ],
-              "name": "Permafrost Aegis",
-              "eff": "14 dmg, +8 vs frozen",
+              "name": "Fracture Cannon",
+              "eff": "14 damage, +8 damage vs frozen",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -1368,7 +1368,7 @@
                 20
               ],
               "name": "Absolute Zero",
-              "eff": "10 dmg (all), freeze all enemy dice",
+              "eff": "10 damage (all enemies), freeze all enemies 1 turn",
               "dmg": 10,
               "burn": 0,
               "burnT": 0,
@@ -1383,7 +1383,7 @@
           "directives": [
             {
               "name": "Deep Freeze",
-              "desc": "Your freezes repeat 2 results.",
+              "desc": "This hero's freeze abilities last 1 additional turn.",
               "effect": {
                 "type": "freezeDurationBonus",
                 "amount": 1
@@ -1391,7 +1391,7 @@
             },
             {
               "name": "Shatterpoint",
-              "desc": "+6 damage against frozen-die enemies.",
+              "desc": "This hero deals +6 damage to enemies with frozen dice.",
               "effect": {
                 "type": "bonusVsFrozen",
                 "amount": 6
@@ -1413,7 +1413,7 @@
                 6
               ],
               "name": "Stabilize",
-              "eff": "10 heal",
+              "eff": "10 heal (hero)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1430,7 +1430,7 @@
                 12
               ],
               "name": "Dig In",
-              "eff": "8 shield (self), taunt",
+              "eff": "8 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1448,7 +1448,7 @@
                 16
               ],
               "name": "Bunker Firewall",
-              "eff": "5 heal (self), firewall",
+              "eff": "5 heal, firewall (hero)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1466,7 +1466,7 @@
                 19
               ],
               "name": "Trench Breaker",
-              "eff": "18 dmg, breach",
+              "eff": "breach, 18 damage",
               "dmg": 18,
               "burn": 0,
               "burnT": 0,
@@ -1483,7 +1483,7 @@
                 20
               ],
               "name": "Last Bastion",
-              "eff": "8 shield (all), 10 heal (all)",
+              "eff": "8 shield (all heroes), 10 heal (all heroes)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1499,7 +1499,7 @@
           "directives": [
             {
               "name": "Field Triage",
-              "desc": "Your heals grant 3 shield.",
+              "desc": "When this hero restores HP, grant 3 shield to the healed hero.",
               "effect": {
                 "type": "healGrantsShield",
                 "amount": 3
@@ -1507,7 +1507,7 @@
             },
             {
               "name": "Entrench",
-              "desc": "Start battles with 10 shield.",
+              "desc": "This hero starts each battle with 10 shield.",
               "effect": {
                 "type": "battleStartShieldSelf",
                 "amount": 10
@@ -1521,7 +1521,7 @@
     {
       "id": "medic",
       "name": "Splice Medic",
-      "cls": "COMBAT AUGMENTOR",
+      "cls": "COMBAT MEDTECH",
       "pickerCategory": "support",
       "pickerBlurb": "Heals allies low, drains enemies mid, hits shockingly hard on 20.",
       "hp": 50,
@@ -1534,7 +1534,7 @@
             4
           ],
           "name": "Diagnostic Pulse",
-          "eff": "3 heal, 3 shield",
+          "eff": "3 shield (hero), 3 heal (hero)",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1553,7 +1553,7 @@
             11
           ],
           "name": "Infusion",
-          "eff": "10 heal, cleanse",
+          "eff": "10 heal (hero), cleanse",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1570,8 +1570,8 @@
             12,
             16
           ],
-          "name": "Neural Override",
-          "eff": "8 dmg, leech",
+          "name": "Neural Tap",
+          "eff": "8 damage, leech",
           "dmg": 8,
           "burn": 0,
           "burnT": 0,
@@ -1587,8 +1587,8 @@
             17,
             19
           ],
-          "name": "Synaptic Overload",
-          "eff": "12 dmg, leech",
+          "name": "Synaptic Drain",
+          "eff": "12 damage, leech",
           "dmg": 12,
           "burn": 0,
           "burnT": 0,
@@ -1605,7 +1605,7 @@
             20
           ],
           "name": "Shock Therapy",
-          "eff": "20 dmg",
+          "eff": "20 damage",
           "dmg": 20,
           "burn": 0,
           "burnT": 0,
@@ -1630,7 +1630,7 @@
                 5
               ],
               "name": "Triage",
-              "eff": "6 heal",
+              "eff": "6 heal (hero)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1646,8 +1646,8 @@
                 6,
                 10
               ],
-              "name": "Bio-Shock",
-              "eff": "9 dmg, leech",
+              "name": "Bioelectric Tap",
+              "eff": "9 damage, leech",
               "dmg": 9,
               "burn": 0,
               "burnT": 0,
@@ -1663,8 +1663,8 @@
                 11,
                 15
               ],
-              "name": "Trauma Protocol",
-              "eff": "12 heal",
+              "name": "Trauma Care",
+              "eff": "12 heal (hero)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1680,8 +1680,8 @@
                 16,
                 19
               ],
-              "name": "Suppression Heal",
-              "eff": "10 dmg, 8 heal (all)",
+              "name": "Recovery Salvo",
+              "eff": "10 damage, 8 heal (all heroes)",
               "dmg": 10,
               "burn": 0,
               "burnT": 0,
@@ -1697,8 +1697,8 @@
                 20,
                 20
               ],
-              "name": "Surge Revive",
-              "eff": "revive 70%",
+              "name": "Resuscitate",
+              "eff": "revive 70% HP",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1714,17 +1714,17 @@
           "directives": [
             {
               "name": "Combat Sense",
-              "desc": "Your single-target hits mark their primary target.",
+              "desc": "This hero's single-target attacks mark the target after hitting.",
               "effect": {
                 "type": "damageAppliesMark"
               }
             },
             {
               "name": "Field Surgeon",
-              "desc": "Surge Revive restores 100% HP.",
+              "desc": "Resuscitate revives its target at 100% max HP.",
               "effect": {
                 "type": "abilityRevivePctOverride",
-                "ability": "Surge Revive",
+                "ability": "Resuscitate",
                 "pct": 100
               }
             }
@@ -1732,7 +1732,7 @@
         },
         {
           "id": "synth",
-          "name": "Synth Warden",
+          "name": "Synth Medic",
           "callsign": "SYNTH",
           "hp": 70,
           "focus": "Squad triage and mass revival",
@@ -1744,7 +1744,7 @@
                 5
               ],
               "name": "System Patch",
-              "eff": "8 heal (lowest)",
+              "eff": "8 heal (lowest HP)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1760,8 +1760,8 @@
                 6,
                 10
               ],
-              "name": "Overclock Mesh",
-              "eff": "5 shield (all)",
+              "name": "Barrier Mesh",
+              "eff": "5 shield (all heroes)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1778,8 +1778,8 @@
                 11,
                 15
               ],
-              "name": "Emergency Protocol",
-              "eff": "12 heal (lowest)",
+              "name": "Emergency Repair",
+              "eff": "12 heal (lowest HP)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1795,8 +1795,8 @@
                 16,
                 19
               ],
-              "name": "Adrenaline Surge",
-              "eff": "6 dmg (all), 6 heal (all)",
+              "name": "Nanite Crossfire",
+              "eff": "6 damage (all enemies), 6 heal (all heroes)",
               "dmg": 6,
               "burn": 0,
               "burnT": 0,
@@ -1814,7 +1814,7 @@
                 20
               ],
               "name": "Mass Revival",
-              "eff": "revive all 30%",
+              "eff": "revive all heroes 30% HP",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1828,16 +1828,16 @@
           ],
           "directives": [
             {
-              "name": "Overcharge Mesh",
-              "desc": "Squad shields grant +2.",
+              "name": "Reinforced Mesh",
+              "desc": "While this hero is alive, shield grants to the squad gain 2 additional shield.",
               "effect": {
                 "type": "squadShieldBonus",
                 "amount": 2
               }
             },
             {
-              "name": "Lazarus Loop",
-              "desc": "Mass Revival restores 50% HP.",
+              "name": "Resuscitation Loop",
+              "desc": "Mass Revival revives each fallen hero at 50% max HP.",
               "effect": {
                 "type": "abilityRevivePctOverride",
                 "ability": "Mass Revival",
@@ -1865,7 +1865,7 @@
             4
           ],
           "name": "Field Patch",
-          "eff": "4 shield, +1 protocol",
+          "eff": "4 shield (hero), +1 Protocol",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1884,7 +1884,7 @@
             10
           ],
           "name": "Barrier Deploy",
-          "eff": "9 shield",
+          "eff": "9 shield (hero)",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -1902,7 +1902,7 @@
             15
           ],
           "name": "Overdrive",
-          "eff": "11 dmg",
+          "eff": "11 damage",
           "dmg": 11,
           "burn": 0,
           "burnT": 0,
@@ -1918,7 +1918,7 @@
             19
           ],
           "name": "Missile Volley",
-          "eff": "9 dmg (all)",
+          "eff": "9 damage (all enemies)",
           "dmg": 9,
           "burn": 0,
           "burnT": 0,
@@ -1935,7 +1935,7 @@
             20
           ],
           "name": "Scorched Earth",
-          "eff": "12 dmg (all), +2 protocol",
+          "eff": "12 damage (all enemies), +2 Protocol",
           "dmg": 12,
           "burn": 0,
           "burnT": 0,
@@ -1950,8 +1950,8 @@
       "evolutions": [
         {
           "id": "overclocked",
-          "name": "Overclocked",
-          "callsign": "OVERCLOCKED",
+          "name": "Overclock Engineer",
+          "callsign": "OVERCLOCK",
           "hp": 65,
           "focus": "A walking Protocol engine",
           "abilities": [
@@ -1962,7 +1962,7 @@
                 5
               ],
               "name": "Bias Charge",
-              "eff": "4 shield (self), +1 protocol",
+              "eff": "4 shield, +1 Protocol",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1980,7 +1980,7 @@
                 10
               ],
               "name": "Chain Shot",
-              "eff": "9 dmg, chain",
+              "eff": "9 damage, chain",
               "dmg": 9,
               "burn": 0,
               "burnT": 0,
@@ -1997,7 +1997,7 @@
                 15
               ],
               "name": "Overclock Burst",
-              "eff": "14 dmg",
+              "eff": "14 damage",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -2013,7 +2013,7 @@
                 19
               ],
               "name": "Cascade Array",
-              "eff": "11 dmg (all)",
+              "eff": "11 damage (all enemies)",
               "dmg": 11,
               "burn": 0,
               "burnT": 0,
@@ -2029,8 +2029,8 @@
                 20,
                 20
               ],
-              "name": "Meltdown Protocol",
-              "eff": "18 dmg, 3 burn, 2t, +2 protocol",
+              "name": "Reactor Discharge",
+              "eff": "18 damage, 3 burn 2 turns, +2 Protocol",
               "dmg": 18,
               "burn": 3,
               "burnT": 2,
@@ -2044,15 +2044,15 @@
           "directives": [
             {
               "name": "Deep Cells",
-              "desc": "Protocol cap +2.",
+              "desc": "Increase the squad's Protocol cap by 2.",
               "effect": {
                 "type": "protocolCapBonus",
                 "amount": 2
               }
             },
             {
-              "name": "Surge Wiring",
-              "desc": "Bias Charge grants +2 Protocol.",
+              "name": "Power Wiring",
+              "desc": "Bias Charge grants 2 additional Protocol.",
               "effect": {
                 "type": "abilityProtocolBonus",
                 "ability": "Bias Charge",
@@ -2063,7 +2063,7 @@
         },
         {
           "id": "phantom",
-          "name": "Phantom",
+          "name": "Phantom Engineer",
           "callsign": "PHANTOM",
           "hp": 60,
           "focus": "Cloaked strikes that jam dice",
@@ -2092,7 +2092,7 @@
                 10
               ],
               "name": "EMP Pulse",
-              "eff": "7 dmg, jam",
+              "eff": "7 damage, jam",
               "dmg": 7,
               "burn": 0,
               "burnT": 0,
@@ -2109,7 +2109,7 @@
                 15
               ],
               "name": "Phantom Shield",
-              "eff": "10 shield (self), cloak",
+              "eff": "10 shield, cloak",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -2126,8 +2126,8 @@
                 16,
                 19
               ],
-              "name": "Ghost Volley",
-              "eff": "14 dmg (all), pierce",
+              "name": "Phase Volley",
+              "eff": "14 damage (all enemies), pierce",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -2145,7 +2145,7 @@
                 20
               ],
               "name": "Total Blackout",
-              "eff": "12 dmg (all), jam",
+              "eff": "12 damage (all enemies), jam all enemies",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -2160,14 +2160,14 @@
           "directives": [
             {
               "name": "Silent Running",
-              "desc": "Your non-damage abilities re-cloak you.",
+              "desc": "This hero gains cloak after using an ability that deals no damage.",
               "effect": {
                 "type": "nonDamageRecloak"
               }
             },
             {
               "name": "Ambush Wiring",
-              "desc": "Your attacks from cloak deal +5.",
+              "desc": "This hero's attacks from cloak deal +5 damage.",
               "effect": {
                 "type": "cloakAttackBonus",
                 "amount": 5
@@ -2193,7 +2193,7 @@
             1,
             2
           ],
-          "name": "Cloak Protocol",
+          "name": "Active Camouflage",
           "eff": "cloak",
           "dmg": 0,
           "burn": 0,
@@ -2211,7 +2211,7 @@
             8
           ],
           "name": "Probe Strike",
-          "eff": "5 dmg",
+          "eff": "5 damage",
           "dmg": 5,
           "burn": 0,
           "burnT": 0,
@@ -2227,7 +2227,7 @@
             13
           ],
           "name": "System Breach",
-          "eff": "7 dmg, breach",
+          "eff": "breach, 7 damage",
           "dmg": 7,
           "burn": 0,
           "burnT": 0,
@@ -2244,7 +2244,7 @@
             19
           ],
           "name": "Phase Blade",
-          "eff": "12 dmg, pierce",
+          "eff": "12 damage, pierce",
           "dmg": 12,
           "burn": 0,
           "burnT": 0,
@@ -2260,8 +2260,8 @@
             20,
             20
           ],
-          "name": "Execution Protocol",
-          "eff": "14 dmg, execute",
+          "name": "Final Shot",
+          "eff": "14 damage, execute",
           "dmg": 14,
           "burn": 0,
           "burnT": 0,
@@ -2287,7 +2287,7 @@
                 5
               ],
               "name": "Ghost Step",
-              "eff": "5 dmg, cloak",
+              "eff": "5 damage, cloak",
               "dmg": 5,
               "burn": 0,
               "burnT": 0,
@@ -2304,7 +2304,7 @@
                 10
               ],
               "name": "Shadow Strike",
-              "eff": "12 dmg",
+              "eff": "12 damage",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -2319,8 +2319,8 @@
                 11,
                 15
               ],
-              "name": "Vanishing Act",
-              "eff": "10 dmg, cloak",
+              "name": "Strike and Fade",
+              "eff": "10 damage, cloak",
               "dmg": 10,
               "burn": 0,
               "burnT": 0,
@@ -2336,8 +2336,8 @@
                 16,
                 19
               ],
-              "name": "Phantom Blade",
-              "eff": "15 dmg, pierce",
+              "name": "Phase Cutter",
+              "eff": "15 damage, pierce",
               "dmg": 15,
               "burn": 0,
               "burnT": 0,
@@ -2353,8 +2353,8 @@
                 20,
                 20
               ],
-              "name": "Death from Shadow",
-              "eff": "20 dmg, pierce",
+              "name": "Shadowfall",
+              "eff": "20 damage, pierce",
               "dmg": 20,
               "burn": 0,
               "burnT": 0,
@@ -2368,14 +2368,14 @@
           "directives": [
             {
               "name": "Ghostblade",
-              "desc": "Your decloak strike also executes.",
+              "desc": "This hero's attacks from cloak also execute.",
               "effect": {
                 "type": "decloakExecute"
               }
             },
             {
               "name": "Vanish",
-              "desc": "Below 50% HP: Cloak, once per battle.",
+              "desc": "Once per battle, this hero gains cloak when damage leaves them alive below 50% max HP.",
               "effect": {
                 "type": "lowHpCloakOnce",
                 "pct": 50
@@ -2397,7 +2397,7 @@
                 5
               ],
               "name": "Scan Weakness",
-              "eff": "4 dmg, mark",
+              "eff": "4 damage, mark",
               "dmg": 4,
               "burn": 0,
               "burnT": 0,
@@ -2413,8 +2413,8 @@
                 6,
                 10
               ],
-              "name": "Neural Hack",
-              "eff": "8 dmg, mark",
+              "name": "Neural Trace",
+              "eff": "8 damage, mark",
               "dmg": 8,
               "burn": 0,
               "burnT": 0,
@@ -2431,7 +2431,7 @@
                 15
               ],
               "name": "Assassinate",
-              "eff": "14 dmg, execute",
+              "eff": "14 damage, execute",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -2448,7 +2448,7 @@
                 19
               ],
               "name": "Wraith Blade",
-              "eff": "15 dmg, pierce",
+              "eff": "15 damage, pierce",
               "dmg": 15,
               "burn": 0,
               "burnT": 0,
@@ -2464,8 +2464,8 @@
                 20,
                 20
               ],
-              "name": "Execution Protocol",
-              "eff": "18 dmg, pierce, execute",
+              "name": "Death Warrant",
+              "eff": "18 damage, pierce, execute",
               "dmg": 18,
               "burn": 0,
               "burnT": 0,
@@ -2480,14 +2480,14 @@
           "directives": [
             {
               "name": "Marked for Death",
-              "desc": "Your single-target hits mark their primary target.",
+              "desc": "This hero's single-target attacks mark the target after hitting.",
               "effect": {
                 "type": "damageAppliesMark"
               }
             },
             {
               "name": "Reaper",
-              "desc": "Your executes trigger below 35%.",
+              "desc": "This hero's execute bonus triggers below 35% max HP instead of 25%.",
               "effect": {
                 "type": "executeThresholdPct",
                 "pct": 35
@@ -2501,7 +2501,7 @@
     {
       "id": "breaker",
       "name": "Signal Breaker",
-      "cls": "COMMS INTERDICTOR",
+      "cls": "SIGNAL WARFARE",
       "pickerCategory": "control",
       "pickerBlurb": "Drags every enemy roll down and jams their strongest dice.",
       "hp": 45,
@@ -2514,7 +2514,7 @@
             2
           ],
           "name": "Wideband Hiss",
-          "eff": "-2 roll (all)",
+          "eff": "-2 roll (all enemies) 1 turn",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -2530,8 +2530,8 @@
             3,
             8
           ],
-          "name": "Spike Coupler",
-          "eff": "7 dmg, -2 roll, 2t",
+          "name": "Disruptor Coupler",
+          "eff": "7 damage, -2 roll 2 turns",
           "dmg": 7,
           "burn": 0,
           "burnT": 0,
@@ -2548,7 +2548,7 @@
             13
           ],
           "name": "Harmonic Glitch",
-          "eff": "-2 roll (all), 2t",
+          "eff": "-2 roll (all enemies) 2 turns",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -2566,7 +2566,7 @@
             19
           ],
           "name": "Phase Tear",
-          "eff": "12 dmg, jam",
+          "eff": "12 damage, jam",
           "dmg": 12,
           "burn": 0,
           "burnT": 0,
@@ -2582,8 +2582,8 @@
             20,
             20
           ],
-          "name": "Total Bandkill",
-          "eff": "14 dmg (all), -3 roll (all), 2t",
+          "name": "Spectrum Collapse",
+          "eff": "14 damage (all enemies), -3 roll (all enemies) 2 turns",
           "dmg": 14,
           "burn": 0,
           "burnT": 0,
@@ -2599,7 +2599,7 @@
       "evolutions": [
         {
           "id": "noise",
-          "name": "Noise Floor",
+          "name": "Noise Specialist",
           "callsign": "NOISE",
           "hp": 65,
           "focus": "Tray-wide suppression",
@@ -2611,7 +2611,7 @@
                 5
               ],
               "name": "Carrier Wash",
-              "eff": "3 dmg (all), -1 roll (all), 2t",
+              "eff": "3 damage (all enemies), -1 roll (all enemies) 2 turns",
               "dmg": 3,
               "burn": 0,
               "burnT": 0,
@@ -2629,8 +2629,8 @@
                 6,
                 11
               ],
-              "name": "Scatterjam",
-              "eff": "7 dmg (all), -1 roll (all), 2t",
+              "name": "Scatter Static",
+              "eff": "7 damage (all enemies), -1 roll (all enemies) 2 turns",
               "dmg": 7,
               "burn": 0,
               "burnT": 0,
@@ -2649,7 +2649,7 @@
                 14
               ],
               "name": "Resonant Cage",
-              "eff": "-3 roll (all), 3t",
+              "eff": "-3 roll (all enemies) 3 turns",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -2667,7 +2667,7 @@
                 19
               ],
               "name": "Collapse Field",
-              "eff": "12 dmg, -2 roll (all), 2t",
+              "eff": "12 damage, -2 roll (all enemies) 2 turns",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -2685,7 +2685,7 @@
                 20
               ],
               "name": "White Noise Core",
-              "eff": "16 dmg (all), jam",
+              "eff": "16 damage (all enemies), jam all enemies",
               "dmg": 16,
               "burn": 0,
               "burnT": 0,
@@ -2700,7 +2700,7 @@
           "directives": [
             {
               "name": "Wall of Static",
-              "desc": "Your tray-wide roll-downs also jam (cap 15).",
+              "desc": "This hero's abilities that reduce all enemy rolls also jam those dice with a cap of 15.",
               "effect": {
                 "type": "rfeAllAlsoJam",
                 "cap": 15
@@ -2708,7 +2708,7 @@
             },
             {
               "name": "Feedback",
-              "desc": "Enemies under your roll-downs take 2 per round.",
+              "desc": "Enemies affected by this hero's roll penalties take 2 damage each round.",
               "effect": {
                 "type": "rfeDamagePerRound",
                 "amount": 2
@@ -2730,7 +2730,7 @@
                 5
               ],
               "name": "Lock Tone",
-              "eff": "6 dmg, -2 roll, 2t",
+              "eff": "6 damage, -2 roll 2 turns",
               "dmg": 6,
               "burn": 0,
               "burnT": 0,
@@ -2747,7 +2747,7 @@
                 10
               ],
               "name": "Bit Spike",
-              "eff": "9 dmg, jam",
+              "eff": "9 damage, jam",
               "dmg": 9,
               "burn": 0,
               "burnT": 0,
@@ -2763,8 +2763,8 @@
                 11,
                 15
               ],
-              "name": "Deep Cut",
-              "eff": "12 dmg, -2 roll, 2t",
+              "name": "Deep Interference",
+              "eff": "12 damage, -2 roll 2 turns",
               "dmg": 12,
               "burn": 0,
               "burnT": 0,
@@ -2780,8 +2780,8 @@
                 16,
                 19
               ],
-              "name": "Spectral Sever",
-              "eff": "14 dmg, rewrite",
+              "name": "Signal Sever",
+              "eff": "14 damage, rewrite",
               "dmg": 14,
               "burn": 0,
               "burnT": 0,
@@ -2798,7 +2798,7 @@
                 20
               ],
               "name": "Kill Carrier",
-              "eff": "18 dmg, pierce, rewrite",
+              "eff": "18 damage, pierce, rewrite",
               "dmg": 18,
               "burn": 0,
               "burnT": 0,
@@ -2813,14 +2813,14 @@
           "directives": [
             {
               "name": "Hard Lock",
-              "desc": "Your single-target roll-downs also jam.",
+              "desc": "This hero's single-target roll penalties also jam the target's die.",
               "effect": {
                 "type": "rfeAlsoJam"
               }
             },
             {
               "name": "Signal Theft",
-              "desc": "Your roll-downs grant +1 Protocol each.",
+              "desc": "Gain 1 Protocol for each enemy affected by this hero's roll penalties.",
               "effect": {
                 "type": "rfeGrantsProtocol",
                 "amount": 1
