@@ -35,7 +35,7 @@ func build_footer_buttons() -> void:
 	_add_set_button()
 	_build_item_panel()
 	# Cost badges (UI review S-4, restyled per Kev 2026-07-10): a bare PP number
-	# in the button's top-right corner — no plate. The item button carries no
+	# in the button's bottom-right corner — no plate. The item button carries no
 	# number (its cost varies per item; the loadout shows it). Set's cost can
 	# change mid-battle (Root Access) and
 	# refreshes in refresh_action_affordability.
@@ -92,13 +92,13 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	# from the button art instead of a box.
 	badge.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
 	badge.add_theme_constant_override("outline_size", 5)
-	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	badge.offset_left = -66.0
-	badge.offset_top = 2.0
+	badge.offset_top = -66.0
 	badge.offset_right = -6.0
-	badge.offset_bottom = 62.0
+	badge.offset_bottom = -2.0
 	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	badge.grow_vertical = Control.GROW_DIRECTION_END
+	badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	button.add_child(badge)
 	_cost_badges[button] = badge
 

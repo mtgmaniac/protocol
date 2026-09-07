@@ -99,7 +99,7 @@ const MAX_PROTOCOL := 10
 # from was dead chrome (built, then unconditionally hidden by the theme pass)
 # and was deleted in Polish Build A.
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
-const BOTTOM_BAR_BUTTON_SIZE := Vector2(144, 144)
+const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
 const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const PROTOCOL_LABEL_FONT_SIZE := 70
@@ -2627,10 +2627,6 @@ func _style_frame_icon_action_button(
 	# gold for the protocol spend button); default uses the neutral DT button border.
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
 	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate)
-	if min_size == BOTTOM_BAR_BUTTON_SIZE:
-		var captions := {PixelUI.ICON_INCREASE: "NUDGE", PixelUI.ICON_SWAP: "REROLL", PixelUI.ICON_SET: "SET", PixelUI.ICON_ITEM: "ITEMS"}
-		PixelUI.add_footer_caption(button as Button, str(captions.get(icon_path, "")))
-
 
 
 func _update_phase_target_sets() -> void:

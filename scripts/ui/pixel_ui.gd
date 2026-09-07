@@ -781,29 +781,6 @@ static func style_dt_icon_button(button: BaseButton, icon_path: String, border_c
 		b.add_theme_stylebox_override(state_name, styles[state_name])
 
 
-static func add_footer_caption(button: Button, caption: String) -> void:
-	# Reserve a bottom strip for the word; retain a large icon and full hit area.
-	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-		var style := button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
-		style.content_margin_bottom = 40.0
-		button.add_theme_stylebox_override(state, style)
-	var label := button.get_node_or_null("FooterCaption") as Label
-	if label == null:
-		label = Label.new()
-		label.name = "FooterCaption"
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.add_child(label)
-		label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		label.offset_top = -42.0
-		label.offset_bottom = -4.0
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		apply_pixel_font(label)
-		label.add_theme_font_size_override("font_size", 56)
-	label.text = caption
-	label.modulate = Color(1, 1, 1, 0.55 if button.disabled else 1.0)
-
-
 static func style_labeled_texture_button(button: Button, texture_path: String, font_size: int, font_color: Color = TEXT_PRIMARY) -> void:
 	if button == null:
 		return

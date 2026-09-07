@@ -392,6 +392,10 @@ from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
 still enforces the text side.
 
 
+## G-11. Restore compact battle footer (Kev, 2026-09-06)
+
+The enlarged, labeled footer overlaps friendly health bars. Kev approved going back to the prior compact icon-only layout. Restore 112×112 buttons and bottom-right costs, and remove permanent captions. This supersedes the footer portion of G-10. Keep Twin Fates removed and preserve the other step-1 changes. Do not repeat the label enlargement without a new layout decision.
+
 ## G-10. Public-demo visual step 1 (Kev, 2026-09-06)
 
 Kev approved step 1: preserve readable dice values under status overlays; improve the footer with icons and compact labels if they fit; replace the default application icon with the existing identity's reactor motif; hide developer controls until seven consecutive taps on the operation title unlock them for the current application session; and correct inaccurate help while deferring the full tutorial rethink to step 2.

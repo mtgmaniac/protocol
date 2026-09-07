@@ -1,5 +1,7 @@
 # Visual step 1 — implementation and verification
 
+**Footer correction (G-11):** The V02 enlargement below was rejected after player screenshots exposed overlap with friendly health bars. The original 112×112 icon-only buttons and bottom-right costs are restored. See [restoration verification](UI_FOOTER_RESTORE_2026-09-06.md). The captures below record the superseded first implementation.
+
 TASK: Implement approved V01–V05, remove Twin Fates, and defer the tutorial redesign.
 
 ## Context and constraints
