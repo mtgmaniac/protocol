@@ -369,7 +369,7 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	info.add_theme_constant_override("separation", 6)
 	hbox.add_child(info)
 
-	var name_label := _make_fixed_slot_label(item.display_name, ROW_NAME_FONT, accent, ROW_NAME_SLOT_HEIGHT, 2)
+	var name_label := _make_fixed_slot_label(item.display_name, ROW_NAME_FONT, PixelUI.TEXT_PRIMARY, ROW_NAME_SLOT_HEIGHT, 2)
 	name_label.name = "RewardNameSlot"
 	info.add_child(name_label)
 
@@ -388,10 +388,7 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	effect_row.custom_minimum_size = Vector2(0, ROW_EFFECT_SLOT_HEIGHT)
 	effect_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	effect_row.add_theme_constant_override("separation", 18)
-	var pip_col: Control = _make_pip_col(item)
-	if pip_col != null:
-		effect_row.add_child(pip_col)
-	var description := _create_description_label(item.description, ROW_EFFECT_SLOT_HEIGHT, 2)
+	var description := _create_description_label(item.description, ROW_EFFECT_SLOT_HEIGHT)
 	description.name = "RewardDescriptionSlot"
 	effect_row.add_child(description)
 	info.add_child(effect_row)
@@ -546,7 +543,7 @@ func _create_description_label(text: String, min_height: float = 0.0, max_lines:
 	if max_lines > 0:
 		label.max_lines_visible = max_lines
 		label.clip_text = true
-	PixelUI.style_body_label(label, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED)
+	PixelUI.style_body_label(label, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_PRIMARY)
 	return label
 
 

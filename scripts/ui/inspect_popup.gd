@@ -12,9 +12,9 @@ extends CanvasLayer
 
 const POPUP_LAYER := 130
 const SCREEN_MARGIN := 18.0
-const PANEL_WIDTH_FRACTION := 0.86
+const PANEL_WIDTH_FRACTION := 0.92
 const PANEL_MIN_WIDTH := 360.0
-const PANEL_MAX_WIDTH := 780.0
+const PANEL_MAX_WIDTH := 1000.0
 const PANEL_BORDER := 3
 const CONTENT_PAD := 22
 const SECTION_SEP := 12
@@ -246,7 +246,7 @@ func _build_header(header: Dictionary) -> Control:
 	row.add_child(title_box)
 
 	# Title centered (Kev 2026-07-10).
-	var title_label := _make_label(str(header.get("title", "")), TITLE_FONT, _accent, false, 3)
+	var title_label := _make_label(str(header.get("title", "")), TITLE_FONT, PixelUI.INSPECT_TEXT, false, 3)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_box.add_child(title_label)
@@ -321,54 +321,32 @@ func _build_roll_table(rows: Array) -> Control:
 
 
 func _build_ability(ability: Dictionary) -> Control:
-	# Row 1: "Roll: a - b" + ability name (accent). Row 2: effect pip(s) + effect text.
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", ROW_SEP)
-
-	# Alignment contract (Kev 2026-07-10): the "Roll: N - M  Name" line is
-	# CENTERED as a unit; below it the pips sit LEFT and the description RIGHT.
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 18)
 	var roll_text: String = str(ability.get("roll", ""))
-	var name_text: String = str(ability.get("name", ""))
-	if roll_text != "" or name_text != "":
-		var row1 := HBoxContainer.new()
-		row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row1.alignment = BoxContainer.ALIGNMENT_CENTER
-		row1.add_theme_constant_override("separation", 12)
-		if roll_text != "":
-			var roll_label := _make_label("ROLL: %s" % roll_text, ROLL_FONT, PixelUI.INSPECT_TEXT_MUTED)
-			roll_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			roll_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			row1.add_child(roll_label)
-		if name_text != "":
-			var name_label := _make_label(name_text, ABILITY_NAME_FONT, _accent)
-			name_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			row1.add_child(name_label)
-		box.add_child(row1)
-
-	var effects: Array = ability.get("effects", [])
+	var limits := roll_text.split(" - ")
+	if limits.size() == 2 and limits[0] == limits[1]:
+		roll_text = limits[0]
+	var roll := _make_label(roll_text, ROLL_FONT, PixelUI.DT_CYAN)
+	roll.custom_minimum_size.x = 120
+	roll.size_flags_horizontal = Control.SIZE_FILL
+	roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	row.add_child(roll)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 4)
+	row.add_child(body)
+	body.add_child(_make_label(str(ability.get("name", "")), ABILITY_NAME_FONT, PixelUI.INSPECT_TEXT_MUTED, true))
 	var text: String = str(ability.get("text", "")).strip_edges()
-	if not effects.is_empty() or text != "":
-		var row2 := HBoxContainer.new()
-		row2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row2.add_theme_constant_override("separation", 10)
-		for effect_variant in effects:
-			# Top-align the pip so it sits on the first line of wrapping text.
-			var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD)
-			group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-			row2.add_child(group)
-		if text != "":
-			var text_label := _make_label(text, BODY_FONT, PixelUI.INSPECT_TEXT_MUTED, true)
-			text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			row2.add_child(text_label)
-		box.add_child(row2)
-	return box
+	if text != "":
+		body.add_child(_make_label(text, BODY_FONT, PixelUI.INSPECT_TEXT, true))
+	else:
+		# Non-authored payloads may supply only glyphs; retain their information.
+		for effect in ability.get("effects", []):
+			body.add_child(EffectPip.build_group(effect, EffectPip.PROFILE_CARD))
+	return row
 
-
-# Active-status rows: each is the status pip(s) followed by its text description, the same
-# pip-beside-text layout abilities use.
 func _build_statuses(entries: Array) -> Control:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL

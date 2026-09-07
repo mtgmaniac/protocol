@@ -53,11 +53,16 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_bottom", 80 + PixelUI.safe_bottom)
 	add_child(margin)
 
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	margin.add_child(scroll)
 	var center_col := VBoxContainer.new()
 	center_col.alignment = BoxContainer.ALIGNMENT_CENTER
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(center_col)
+	scroll.add_child(center_col)
 
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -108,12 +113,17 @@ func _ready() -> void:
 	if next_index >= 0 and next_index < GameState.resolved_battle_comps.size():
 		comp_names = (GameState.resolved_battle_comps[next_index] as Dictionary).get("names", [])
 
-	# Standard card previews the comp as rolled; the flagged card previews the
-	# comp shaped at roll time (fix-1.5) so what you see is what you fight.
-	column.add_child(_build_route_card(false, comp_names))
+	var flagged_names: Array = (GameState.pending_flagged_comp as Dictionary).get("names", comp_names)
+	var shared: bool = _modifier_id == "" or flagged_names == comp_names
+	if shared:
+		var hostiles := Label.new()
+		hostiles.text = "HOSTILES: %s" % ", ".join(PackedStringArray(comp_names))
+		hostiles.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		PixelUI.style_label(hostiles, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
+		column.add_child(hostiles)
+	column.add_child(_build_route_card(false, [] if shared else comp_names))
 	if _modifier_id != "":
-		var flagged_names: Array = (GameState.pending_flagged_comp as Dictionary).get("names", comp_names)
-		column.add_child(_build_route_card(true, flagged_names))
+		column.add_child(_build_route_card(true, [] if shared else flagged_names))
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): with no
 	# route cards, take the standard route.
 	if not ChoiceScreenGuardScript.ensure_options("route_fork", column.get_child_count(), _on_route_chosen.bind(false)):
@@ -176,27 +186,28 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	PixelUI.style_label(card_title, CARD_TITLE_FONT, accent, 3)
 	vbox.add_child(card_title)
 
-	var comp := Label.new()
-	comp.text = "Hostiles: %s" % (", ".join(PackedStringArray(comp_names)) if not comp_names.is_empty() else "unknown")
-	comp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	PixelUI.style_label(comp, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
-	vbox.add_child(comp)
+	if not comp_names.is_empty():
+		var comp := Label.new()
+		comp.text = "Hostiles: %s" % (", ".join(PackedStringArray(comp_names)) if not comp_names.is_empty() else "unknown")
+		comp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		PixelUI.style_label(comp, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
+		vbox.add_child(comp)
 
 	if flagged:
 		var modifier_info: Dictionary = GameState.BATTLE_MODIFIERS.get(_modifier_id, {})
 		var mod_chip := Label.new()
-		mod_chip.text = "! %s - %s" % [str(modifier_info.get("name", _modifier_id)), str(modifier_info.get("desc", ""))]
+		mod_chip.text = "RISK: %s\n%s" % [str(modifier_info.get("name", _modifier_id)), str(modifier_info.get("desc", ""))]
 		mod_chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		PixelUI.style_label(mod_chip, CHIP_FONT, PixelUI.DT_RUST, 1)
+		PixelUI.style_label(mod_chip, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 		vbox.add_child(mod_chip)
 		var reward_chip := Label.new()
-		reward_chip.text = "* SUPPLY GRADE +2"
-		PixelUI.style_label(reward_chip, CHIP_FONT, PixelUI.GOLD_ACCENT, 1)
+		reward_chip.text = "REWARD: SUPPLY GRADE +2"
+		PixelUI.style_label(reward_chip, BODY_FONT, PixelUI.GOLD_ACCENT, 1)
 		vbox.add_child(reward_chip)
 	else:
 		var plain_chip := Label.new()
-		plain_chip.text = "No modifier. Standard supply."
-		PixelUI.style_label(plain_chip, CHIP_FONT, PixelUI.TEXT_MUTED, 1)
+		plain_chip.text = "RISK: No modifier\nREWARD: Standard supply"
+		PixelUI.style_label(plain_chip, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 		vbox.add_child(plain_chip)
 
 	var choose := Button.new()

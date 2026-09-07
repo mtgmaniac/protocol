@@ -515,6 +515,8 @@ func _flash_card(card: Control, event_type: String) -> void:
 		"execute":
 			# pkg8.4: Execute lands with its own deep-red flash (not default white).
 			flash_color = Color(1.0, 0.30, 0.30, 1.0)
+	if PixelUI.reduced_motion_enabled():
+		flash_color = base_modulate.lerp(flash_color, 0.20)
 	card.modulate = flash_color
 	tween.tween_property(card, "modulate", base_modulate, 0.22).from(flash_color)
 
@@ -638,12 +640,16 @@ func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float
 	# number "pops" on arrival. Bigger hits punch larger. Scale is centered on the
 	# label so it grows from its middle.
 	label.pivot_offset = label.get_minimum_size() * 0.5
-	label.scale = Vector2.ONE * mult * 0.5
-	var punch: Tween = label.create_tween()
-	punch.tween_property(label, "scale", Vector2.ONE * (mult * 1.25), 0.10) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	punch.tween_property(label, "scale", Vector2.ONE * mult, 0.13) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if PixelUI.reduced_motion_enabled():
+		label.scale = Vector2.ONE * mult
+		rise = 0.0
+	else:
+		label.scale = Vector2.ONE * mult * 0.5
+		var punch: Tween = label.create_tween()
+		punch.tween_property(label, "scale", Vector2.ONE * (mult * 1.25), 0.10) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		punch.tween_property(label, "scale", Vector2.ONE * mult, 0.13) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	# Rise over the whole lifetime; hold full alpha for a beat, then fade out.
 	var tween: Tween = label.create_tween()
@@ -784,6 +790,8 @@ func _slow_mo() -> void:
 # board-wide shake, framing the payoff beat. Flat, no glow — just a flash. Fires
 # on any ability whose die's final face is 20, however it reached 20 (NK-02).
 func _celebrate_overload() -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	MusicManager.duck_for_stinger()  # drop the bed so the stinger cuts through
 	AudioManager.play_sfx("overload")
 	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):
@@ -852,6 +860,8 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 # card's status strip (the consumed Burn chip's home), then hands off to the
 # ember burst. Flat rects only.
 func _chip_flash_then_burst(card: Control, chip_color: Color, burst_color: Color, count: int) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
@@ -881,6 +891,8 @@ func _chip_flash_then_burst(card: Control, chip_color: Color, burst_color: Color
 # Ward consume: a flat hexagon outline pops over the card and fades — the
 # "hex flash". Palette shield cyan, no glow.
 func _hex_flash(card: Control, color: Color) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
@@ -910,6 +922,8 @@ func _hex_flash(card: Control, color: Color) -> void:
 # Primitive: a flat particle burst — small squares scatter from the card's
 # center and fade. Palette color, no glow.
 func _burst_particles(card: Control, color: Color, count: int = 10) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
@@ -943,6 +957,8 @@ func _burst_particles(card: Control, color: Color, count: int = 10) -> void:
 const DEATH_DEBRIS_COUNT := 12
 
 func _death_scatter(card: Control, side: String, stagger: float = 0.0) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
@@ -989,6 +1005,8 @@ func _death_scatter(card: Control, side: String, stagger: float = 0.0) -> void:
 # surface popping) plus thin angular slivers fanning outward. Palette-driven, no
 # glow. Used by Breach and by wipe_shields.
 func _shield_shatter(card: Control, color: Color) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
@@ -1068,6 +1086,8 @@ func _drift_pip(from_position: Vector2, to_card: Control, color: Color, text: St
 # Decloak (pkg8.4): the ghosted portrait resolves sharp with a brief white
 # flash.
 func _resolve_portrait_sharp(card: Control) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	var base_modulate: Color = card.modulate
@@ -1102,6 +1122,12 @@ func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
 		card_rect.position.y - layer_origin.y + card_rect.size.y * 0.36
 	)
 	label.pivot_offset = label.size * 0.5
+	if PixelUI.reduced_motion_enabled():
+		var fade := label.create_tween()
+		fade.tween_interval(0.62)
+		fade.tween_property(label, "modulate:a", 0.0, 0.12)
+		fade.tween_callback(label.queue_free)
+		return
 	label.scale = Vector2(0.2, 0.2)
 	label.modulate.a = 0.0
 	var slam: Tween = create_tween()
@@ -1125,6 +1151,8 @@ const LUNGE_OUT := 0.08
 const LUNGE_BACK := 0.16
 
 func _lunge(card: Control, side: String) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 	var dir_y: float = -1.0 if side == "hero" else 1.0
@@ -1143,6 +1171,8 @@ func _lunge(card: Control, side: String) -> void:
 const SHAKE_STEPS := 7
 
 func _shake(node: Control, amplitude: float, duration: float) -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if node == null or not is_instance_valid(node):
 		return
 	var base: Vector2 = _fx_rest_position(node)

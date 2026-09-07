@@ -8,6 +8,8 @@
 # guard let a windowed capture rig wipe and repopulate the real primer ledger.
 extends Node
 
+signal setting_changed(key: String, value: Variant)
+
 const SAVE_PATH := "user://save.json"
 const DEV_SAVE_PATH := "user://dev_profile_save.json"  # rigs/tests land here, never the real profile
 const SAVE_VERSION := 1
@@ -221,6 +223,7 @@ func set_setting(key: String, value: Variant) -> void:
 		data["settings"] = {}
 	(data["settings"] as Dictionary)[key] = value
 	save()
+	setting_changed.emit(key, value)
 
 
 # --- Feedback nudge cadence (main menu one-liner near the FEEDBACK button) ---

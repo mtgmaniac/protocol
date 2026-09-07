@@ -17,7 +17,7 @@
 # Containment:
 #   T9  at inset budgets (0,0) and (132,56) the confirm button and every row
 #       land inside the safe screen box.
-#   T10 ordinary rows have equal fixed geometry, two-line description slots,
+#   T10 ordinary rows have equal geometry for short effects, unclipped description slots,
 #       and a centered choice group below the heading.
 #   T11 relic cards use a shared near-full safe width, remain centered, and
 #       preserve unclipped description space for the longest supported copy.
@@ -252,8 +252,8 @@ func _check_fixed_row_layout(screen: Node, rows: Array, label: String) -> void:
 		var row: Control = row_variant
 		_check(absf(row.size.y - first.size.y) < 0.1, "%s equal row heights" % label)
 		var description: Label = row.find_child("RewardDescriptionSlot", true, false) as Label
-		_check(description != null and description.max_lines_visible == 2 and description.size.y >= 100.0,
-			"%s fixed two-line description slot" % label)
+		_check(description != null and not description.clip_text and description.max_lines_visible == -1 and description.size.y >= 100.0,
+			"%s unclipped description slot" % label)
 	_check_group_centered(screen, rows, label)
 
 

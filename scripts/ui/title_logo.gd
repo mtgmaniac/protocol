@@ -39,9 +39,12 @@ var _core_pulse_tween: Tween
 var _proto_pulse_tween: Tween
 var _glitch_tween: Tween
 var _flaring := false
+var _booting := false
+var _motion_tweens: Array[Tween] = []
 
 
 func _ready() -> void:
+	SaveManager.setting_changed.connect(_on_setting_changed)
 	_rest_x = _stack.position.x
 	_update_pivot()
 	_stack.resized.connect(_update_pivot)
@@ -63,7 +66,14 @@ func _exit_tree() -> void:
 ## that dies mid-flight (quit at the menu) leaks a GDScriptFunctionState ref cycle;
 ## a plain signal await on the node is released cleanly when the node frees.
 func boot_in() -> void:
+	_booting = true
+	if PixelUI.reduced_motion_enabled():
+		_settle_reduced_logo()
+		call_deferred("_on_ignite_settled")
+		return
 	var boot := create_tween()
+	_motion_tweens = _motion_tweens.filter(func(t: Tween) -> bool: return t.is_valid())
+	_motion_tweens.append(boot)
 	boot.set_parallel(true)
 	boot.tween_property(_base, "modulate:a", 1.0, 0.45) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -73,8 +83,14 @@ func boot_in() -> void:
 
 
 func _play_ignite() -> void:
+	if PixelUI.reduced_motion_enabled():
+		_settle_reduced_logo()
+		_on_ignite_settled()
+		return
 	# Reactor ignite: overshoot past full, then settle to the idle floor.
 	var ignite := create_tween()
+	_motion_tweens = _motion_tweens.filter(func(t: Tween) -> bool: return t.is_valid())
+	_motion_tweens.append(ignite)
 	ignite.tween_property(_core_glow, "modulate:a", 1.35, 0.10) \
 		.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	ignite.tween_property(_core_glow, "modulate:a", core_pulse_lo, 0.40) \
@@ -83,12 +99,15 @@ func _play_ignite() -> void:
 
 	# PROTOCOL wordmark warms up alongside, slightly late.
 	var proto := create_tween()
+	_motion_tweens = _motion_tweens.filter(func(t: Tween) -> bool: return t.is_valid())
+	_motion_tweens.append(proto)
 	proto.tween_interval(0.12)
 	proto.tween_property(_proto_glow, "modulate:a", proto_pulse_lo, 0.60)
 	proto.finished.connect(_start_proto_pulse, CONNECT_ONE_SHOT)
 
 
 func _on_ignite_settled() -> void:
+	_booting = false
 	_start_core_pulse()
 	_schedule_glitch()
 	boot_finished.emit()
@@ -101,6 +120,11 @@ func flare_out() -> void:
 	for tween: Tween in [_core_pulse_tween, _proto_pulse_tween, _glitch_tween]:
 		if tween != null and tween.is_valid():
 			tween.kill()
+	if PixelUI.reduced_motion_enabled():
+		var fade := create_tween()
+		fade.tween_property(self, "modulate:a", 0.0, 0.18)
+		fade.finished.connect(flare_finished.emit, CONNECT_ONE_SHOT)
+		return
 	var flare := create_tween()
 	flare.set_parallel(true)
 	flare.tween_property(_core_glow, "modulate:a", 2.0, 0.12) \
@@ -115,7 +139,7 @@ func _update_pivot() -> void:
 
 
 func _start_core_pulse() -> void:
-	if _flaring:
+	if _flaring or PixelUI.reduced_motion_enabled():
 		return
 	if _core_pulse_tween != null and _core_pulse_tween.is_valid():
 		_core_pulse_tween.kill()
@@ -127,7 +151,7 @@ func _start_core_pulse() -> void:
 
 
 func _start_proto_pulse() -> void:
-	if _flaring:
+	if _flaring or PixelUI.reduced_motion_enabled():
 		return
 	if _proto_pulse_tween != null and _proto_pulse_tween.is_valid():
 		_proto_pulse_tween.kill()
@@ -142,6 +166,8 @@ func _start_proto_pulse() -> void:
 # combat/targeting, not menu dressing. The tween is bound to this node, so leaving
 # the tree pauses it and freeing kills it: no dangling loop on scene change.
 func _schedule_glitch() -> void:
+	if PixelUI.reduced_motion_enabled():
+		return
 	if _glitch_tween != null and _glitch_tween.is_valid():
 		_glitch_tween.kill()
 	_glitch_tween = create_tween()
@@ -150,10 +176,12 @@ func _schedule_glitch() -> void:
 
 
 func _fire_glitch() -> void:
-	if _flaring or not is_inside_tree():
+	if _flaring or PixelUI.reduced_motion_enabled() or not is_inside_tree():
 		return
 	# Hard horizontal tear — zero-duration steps, no easing; these are cuts.
 	var tear := create_tween()
+	_motion_tweens = _motion_tweens.filter(func(t: Tween) -> bool: return t.is_valid())
+	_motion_tweens.append(tear)
 	tear.tween_property(_stack, "position:x", _rest_x + glitch_tear_right, 0.0)
 	tear.tween_interval(glitch_tear_hold)
 	tear.tween_property(_stack, "position:x", _rest_x - glitch_tear_left, 0.0)
@@ -164,8 +192,35 @@ func _fire_glitch() -> void:
 	if _core_pulse_tween != null and _core_pulse_tween.is_valid():
 		_core_pulse_tween.kill()
 	var stutter := create_tween()
+	_motion_tweens = _motion_tweens.filter(func(t: Tween) -> bool: return t.is_valid())
+	_motion_tweens.append(stutter)
 	stutter.tween_property(_core_glow, "modulate:a", 0.15, 0.03)
 	stutter.tween_property(_core_glow, "modulate:a", 1.2, 0.05)
 	stutter.finished.connect(_start_core_pulse, CONNECT_ONE_SHOT)
 
 	_schedule_glitch()
+
+
+func _settle_reduced_logo() -> void:
+	_stack.scale = Vector2.ONE
+	_stack.position.x = _rest_x
+	_base.modulate.a = 1.0
+	_core_glow.modulate.a = core_pulse_lo
+	_proto_glow.modulate.a = proto_pulse_lo
+
+
+func _on_setting_changed(key: String, value: Variant) -> void:
+	if key != "reduced_motion" or _flaring:
+		return
+	if bool(value):
+		for tween in _motion_tweens + [_core_pulse_tween, _proto_pulse_tween, _glitch_tween]:
+			if tween != null and tween.is_valid():
+				tween.kill()
+		_motion_tweens.clear()
+		_settle_reduced_logo()
+		if _booting:
+			call_deferred("_on_ignite_settled")
+	else:
+		_start_core_pulse()
+		_start_proto_pulse()
+		_schedule_glitch()

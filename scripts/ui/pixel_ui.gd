@@ -1585,3 +1585,12 @@ static func refresh_safe_insets(vp: Viewport) -> void:
 # insets are whole design pixels, always rounded up).
 static func _to_design(physical_px: float, inv_scale: float) -> int:
 	return int(ceil(physical_px * inv_scale))
+
+
+# Optional presentation preference; safe for class-name consumers in test rigs.
+static func reduced_motion_enabled() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return false
+	var settings := tree.root.get_node_or_null("SaveManager")
+	return settings != null and bool(settings.get_setting("reduced_motion", false))

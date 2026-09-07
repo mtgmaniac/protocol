@@ -86,6 +86,7 @@ GATES = [
     # runs by .tscn — invoking it with -s strips the autoloads and it fails to
     # compile, which is how it read as broken while it was merely ungated.
     ("operation lore", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/OperationLorePresentationRunner.tscn"], "[OPERATION_LORE] PASS", False),
+    ("visual choices and motion", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/visual_choice_motion_test.gd"], "[VISUAL_CHOICE_MOTION] PASS", False),
     ("float bounds", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/float_bounds_test.gd"], "[FLOAT_BOUNDS] PASS", False),
     ("developer unlock", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dev_unlock_test.gd"], "[DEV_UNLOCK] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),

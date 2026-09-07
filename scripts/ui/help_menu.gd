@@ -597,6 +597,10 @@ func _build_settings(host: VBoxContainer) -> void:
 		am == null or bool(am.is_channel_enabled("UI")), _on_channel_toggled.bind("UI"))
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
 
+	host.add_child(_make_label("ACCESSIBILITY", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	_add_toggle_row(host, "Reduced motion", PixelUI.reduced_motion_enabled(), _on_toggle_reduced_motion)
+	host.add_child(_make_wrap_label("Less shake, flashing and zoom. Dice and results stay visible.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
+
 	# --- Tutorials (Kev 2026-07-10) ---
 	host.add_child(_make_label("TUTORIALS", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	var sm_t: Variant = _save_manager()
@@ -660,6 +664,12 @@ func _on_dev_reset_primers() -> void:
 	var sm: Variant = _save_manager()
 	if sm != null:
 		sm.dev_reset_primers()
+
+
+func _on_toggle_reduced_motion(pressed: bool) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting("reduced_motion", pressed)
 
 
 func _on_toggle_ability_primers(pressed: bool) -> void:

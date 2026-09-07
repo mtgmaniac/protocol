@@ -644,6 +644,12 @@ func _pulse_tutorial_redirect(rect: Rect2, primary: bool = true) -> void:
 	ring.pivot_offset = grown.size * 0.5   # collapse toward the target's center
 	var peak: float = 1.0 if primary else TUTORIAL_REDIRECT_SECONDARY_ALPHA
 	var tween: Tween = ring.create_tween()
+	if PixelUI.reduced_motion_enabled():
+		ring.modulate.a = peak
+		tween.tween_interval(TUTORIAL_REDIRECT_CYCLES * TUTORIAL_REDIRECT_HALF_CYCLE * 1.7)
+		tween.tween_property(ring, "modulate:a", 0.0, 0.15)
+		tween.tween_callback(ring.queue_free)
+		return
 	for _cycle in range(TUTORIAL_REDIRECT_CYCLES):
 		# Snap back out, then collapse in while fading up — the fade-out step
 		# below only begins once the whole parallel step has finished.

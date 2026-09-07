@@ -1,5 +1,7 @@
 # Overload Protocol — Task Queue
 
+**2026-09-07 showcase update:** V07/V08 approved choice layouts and V12 Reduced Motion are implemented, following V09/V10 and the centered Continue fix. See [implementation and verification](docs/UI_APPROVED_CHOICES_2026-09-07.md). Remaining visual-review items: **V06** current release/browser/device verification; **V11** title button hierarchy and sparse unlock composition. The full tutorial redesign remains a separate deferred step.
+
 **2026-09-06 visual showcase pass:** Step 1 (V01–V05) completed; see [implementation and checks](docs/UI_STEP1_IMPLEMENTATION_2026-09-06.md). The [visual bible](docs/UI_VISUAL_BIBLE.md) is the current overview. Step 2 is the deferred tutorial rethink; it has not been implemented.
 
 > **CLOSE-OUT (Jul 2026, master implementation prompt):** every item below is

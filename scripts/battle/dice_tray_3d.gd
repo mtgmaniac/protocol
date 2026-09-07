@@ -297,7 +297,7 @@ func _set_die_result_scale(die: RigidBody3D, animate: bool) -> void:
 	if visuals == null:
 		return
 	var target_scale := Vector3.ONE * RESULT_SCALE
-	if not animate:
+	if not animate or PixelUI.reduced_motion_enabled():
 		visuals.scale = target_scale
 		return
 	var tween: Tween = create_tween()

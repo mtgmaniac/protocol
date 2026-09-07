@@ -392,6 +392,10 @@ from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
 still enforces the text side.
 
 
+## G-13. Implement approved choice mockups and Reduced Motion (Kev, 2026-09-07)
+
+Implement V07 inspect/evolution and V08 route/reward mockups. Ability details use fixed roll columns, secondary names and bright left-aligned concise effects; evolution previews show the 20 first, expandable full abilities and selection before confirmation. Route consequences separate risk and reward; share hostile composition only when the two routes actually match. Reward names and effects remain bright regardless of rarity. Implement V12 as a persisted, default-off Reduced Motion setting: suppress decorative shake, glitch, strong washes and exaggerated scaling while keeping results, feedback and navigation functional. This supersedes G-12's mockup-only/deferred scope for V07/V08/V12 and older centered ability-row styling. Preserve gameplay and G-11's compact footer. V06 and V11 remain, with the full tutorial redesign separately deferred.
+
 ## G-12. Next visual pass scope (Kev, 2026-09-07)
 
 Mock up V07/V08 for review; do not implement those layouts yet. Implement V09 art-outlier fixes using existing art when it fits the item's role and current style, and V10 bounded combat-number stacking. Remove the icon from the run-end Continue button. Reproduce V11's unlock-layout finding and explain V11/V12; these are investigation/explanation, not approval to redesign unlocks or add reduced motion. Twin Fates stays removed. Keep gameplay, the restored compact footer and stable item IDs unchanged.

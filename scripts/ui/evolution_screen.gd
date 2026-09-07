@@ -4,9 +4,9 @@ extends Control
 const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
 
 
-const CARD_WIDTH_FRACTION := 0.78
+const CARD_WIDTH_FRACTION := 0.92
 const CARD_MIN_WIDTH := 620.0
-const CARD_MAX_WIDTH := 920.0
+const CARD_MAX_WIDTH := 1000.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
 const CARD_BG := Color(0.024, 0.040, 0.060, 0.82)
 const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.92)
@@ -46,6 +46,9 @@ const BUTTON_FONT_SIZE := 36
 @onready var footer_label: Label = %FooterLabel
 
 var _help_overlay: Control = null
+var _selected_path := ""
+var _path_buttons: Dictionary = {}
+var _confirm_path: Button
 
 
 func _ready() -> void:
@@ -81,6 +84,15 @@ func _ready() -> void:
 	_update_battle_header()
 	_refresh_summary()
 	_build_choice_cards()
+	if not GameState.is_pending_directive_stage():
+		_confirm_path = Button.new()
+		_confirm_path.name = "ConfirmEvolution"
+		_confirm_path.text = "SELECT A BRANCH"
+		_confirm_path.custom_minimum_size.y = 128
+		_confirm_path.disabled = true
+		PixelUI.style_primary_button(_confirm_path, BUTTON_FONT_SIZE)
+		_confirm_path.pressed.connect(func() -> void: _on_choose_path_pressed(_selected_path))
+		content_vbox.add_child(_confirm_path)
 	_build_view_battle_button()
 
 
@@ -177,8 +189,8 @@ func _build_help_overlay() -> void:
 	content.add_child(_make_label("EVOLUTION HELP", 40, PixelUI.TEXT_PRIMARY, 3))
 	for line in [
 		"Choose one evolution branch for this unit.",
-		"Each card shows the full ability table after the upgrade.",
-		"Each evolution card previews that branch's unique portrait and full ability table.",
+		"View all abilities to compare each complete kit.",
+		"Select a branch, then confirm your permanent choice.",
 	]:
 		var label: Label = _make_label(line, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -295,6 +307,7 @@ func _on_choose_directive_pressed(directive_name: String) -> void:
 
 func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
+	panel.set_meta("path_name", str(path.get("name", "")))
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.custom_minimum_size = Vector2(_get_card_width(), 0)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -319,24 +332,36 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	vbox.add_child(_create_path_header(path, base_unit))
 	vbox.add_child(_create_divider())
 
-	var abilities: VBoxContainer = VBoxContainer.new()
-	abilities.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	abilities.add_theme_constant_override("separation", 10)
-	for entry_variant in _build_merged_ranges(path, base_unit):
-		var entry: Dictionary = entry_variant
+	var ranges: Array = _build_merged_ranges(path, base_unit)
+	var preview := VBoxContainer.new()
+	if not ranges.is_empty():
+		preview.add_child(_create_ability_row(ranges.back()))
+	vbox.add_child(preview)
+	var abilities := VBoxContainer.new()
+	abilities.name = "FullAbilities"
+	abilities.visible = false
+	abilities.add_theme_constant_override("separation", 14)
+	for entry in ranges:
 		abilities.add_child(_create_ability_row(entry))
 	vbox.add_child(abilities)
-
-	var choose_button: Button = Button.new()
-	choose_button.custom_minimum_size = Vector2(0, 78)
-	choose_button.text = "CHOOSE %s" % str(path.get("name", "EVOLUTION")).to_upper()
-	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
-	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
-	choose_button.expand_icon = true
-	choose_button.add_theme_constant_override("icon_max_width", 44)
-	choose_button.add_theme_color_override("icon_normal_color", PixelUI.DT_CYAN)
-	choose_button.add_theme_constant_override("h_separation", 14)
-	choose_button.pressed.connect(_on_choose_path_pressed.bind(str(path.get("name", ""))))
+	var expand := Button.new()
+	expand.name = "ExpandAbilities"
+	expand.text = "VIEW ALL %d ABILITIES" % ranges.size()
+	expand.custom_minimum_size.y = 128
+	PixelUI.style_button(expand, CARD_BG, PixelUI.LINE_DIM, BUTTON_FONT_SIZE)
+	expand.pressed.connect(func() -> void:
+		abilities.visible = not abilities.visible
+		preview.visible = not abilities.visible
+		expand.text = "HIDE ABILITIES" if abilities.visible else "VIEW ALL %d ABILITIES" % ranges.size()
+	)
+	vbox.add_child(expand)
+	var path_name: String = str(path.get("name", ""))
+	var choose_button := Button.new()
+	choose_button.custom_minimum_size.y = 128
+	choose_button.text = "SELECT"
+	PixelUI.style_primary_button(choose_button, BUTTON_FONT_SIZE)
+	_path_buttons[path_name] = choose_button
+	choose_button.pressed.connect(_select_path.bind(path_name))
 	vbox.add_child(choose_button)
 	return panel
 
@@ -379,10 +404,6 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	text_stack.add_theme_constant_override("separation", 6)
 	header.add_child(text_stack)
 
-	var path_callsign: String = str(path.get("callsign", ""))
-	if path_callsign != "":
-		text_stack.add_child(_make_label(path_callsign, CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
-
 	# Branch name is a selection, not a rarity — cyan, not green (UI review S-2).
 	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.DT_CYAN, 3)
 	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -398,52 +419,49 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	var hp_label_text: String = "MAX HP UNCHANGED"
 	if hp_value > 0:
 		hp_label_text = "MAX HP %d" % hp_value
+		if base_unit != null:
+			hp_label_text += " (%+d)" % (hp_value - base_unit.max_hp)
 	text_stack.add_child(_make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.GOLD_ACCENT, 1))
 
 	# No FROM <unit> line (Kev 2026-07-10) — the player just came from that unit.
 	return header
 
 
-# Ability row in the SAME shape as the long-press inspect popup (Kev
-# 2026-07-10): "Roll: N - M  Name" on one line, then the effect pips beside
-# the short eff text — the layout the player already reads in battle.
+# G-13: fixed roll column, secondary ability name, bright concise effect.
 func _create_ability_row(entry: Dictionary) -> VBoxContainer:
-	var box: VBoxContainer = VBoxContainer.new()
+	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 4)
-
-	# Alignment contract (Kev 2026-07-10, matches the inspect popup): the
-	# "Roll: N - M  Name" line is CENTERED; pips LEFT, description RIGHT.
-	var row1: HBoxContainer = HBoxContainer.new()
-	row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row1.alignment = BoxContainer.ALIGNMENT_CENTER
-	row1.add_theme_constant_override("separation", 12)
-	row1.add_child(_make_label("Roll: %d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
-	var ability_name: Label = _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.DT_CYAN, 2)
-	ability_name.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	row1.add_child(ability_name)
-	box.add_child(row1)
-
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	box.add_child(row)
+	var low := int(entry.get("min", 0))
+	var high := int(entry.get("max", 0))
+	var roll := _make_label(str(low) if low == high else "%d-%d" % [low, high], SMALL_FONT_SIZE, PixelUI.DT_CYAN, 1)
+	roll.custom_minimum_size.x = 120
+	roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	row.add_child(roll)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(body)
+	var name_label := _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_child(name_label)
 	var raw: Dictionary = entry.get("raw", {})
-	var eff_text: String = str(raw.get("eff", entry.get("description", ""))).strip_edges()
-	var effects: Array = EffectPip.effects_from_ability_raw(raw, "hero") if not raw.is_empty() else []
-	if not effects.is_empty() or eff_text != "":
-		var row2: HBoxContainer = HBoxContainer.new()
-		row2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row2.add_theme_constant_override("separation", 10)
-		for effect_variant in effects:
-			var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD, "hero")
-			group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-			row2.add_child(group)
-		if eff_text != "":
-			var description: Label = _make_label(eff_text, ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-			description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			description.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			row2.add_child(description)
-		box.add_child(row2)
+	var desc := _make_label(str(raw.get("eff", entry.get("description", ""))), ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_PRIMARY, 1)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_child(desc)
 	return box
 
+
+func _select_path(path_name: String) -> void:
+	_selected_path = path_name
+	for key in _path_buttons:
+		var button: Button = _path_buttons[key]
+		button.text = "SELECTED" if key == path_name else "SELECT"
+	_confirm_path.disabled = false
+	_confirm_path.text = "CONFIRM %s" % path_name.to_upper()
+	for panel in choice_cards.get_children():
+		_style_evolution_panel(panel, false)
 
 func _create_divider() -> ColorRect:
 	var divider: ColorRect = ColorRect.new()
@@ -454,6 +472,9 @@ func _create_divider() -> ColorRect:
 
 
 func _style_evolution_panel(panel: PanelContainer, hovered: bool) -> void:
+	if _selected_path != "" and str(panel.get_meta("path_name", "")) == _selected_path:
+		panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_SELECTED))
+		return
 	# Component: Major-event — evolutions are the ceremonial tier, the one place
 	# strong gold is legal. Hover brightens the gold; the old cyan hover read as
 	# a selection state on a card that wasn't selected.
@@ -512,9 +533,9 @@ func _refresh_summary() -> void:
 			GameState.XP_TO_DIRECTIVE,
 		]
 		return
-	summary_label.text = "%s reached level %d. Choose a permanent branch." % [
+	summary_label.text = "%s reached %d XP. Choose a permanent branch." % [
 		unit.display_name,
-		GameState.get_unit_level(unit_id),
+		GameState.XP_TO_EVOLVE,
 	]
 
 

@@ -47,6 +47,10 @@ func _ready() -> void:
 
 
 func change_scene(scene_path: String, kind: String = "dither_dissolve") -> void:
+	if PixelUI.reduced_motion_enabled():
+		_cleanup()
+		_hard_change(scene_path)
+		return
 	if _suppressed() or kind == "none" or not SHADERS.has(kind):
 		_hard_change(scene_path)
 		return
