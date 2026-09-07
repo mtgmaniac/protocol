@@ -97,7 +97,6 @@ const RELIC_ICON_BY_ID := {
 	"aegisField": "res://assets/icons/items/aegisField.png",
 	"standingOrder": "res://assets/icons/items/standingOrder.png",
 	"staticField": "res://assets/icons/items/staticField.png",
-	"twinFates": "res://assets/icons/items/twinFates.png",
 	"overflowVent": "res://assets/icons/items/overflowVent.png",
 	"salvageDirective": "res://assets/icons/items/salvageDirective.png",
 	"coldLogic": "res://assets/icons/items/coldLogic.png",

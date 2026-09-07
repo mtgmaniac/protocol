@@ -933,7 +933,7 @@ func _claim_choice_item(item_id: String, target_unit_id: String, swap_consumable
 # Single choke for relic acquisition: refuses beyond MAX_RELICS so no path
 # (reward claim, intercept choice, Starting Directive) can ever seat a third.
 func _grant_relic(relic_id: String) -> bool:
-	if relic_id == "" or relics.size() >= MAX_RELICS:
+	if relic_id == "" or DataManager.get_item(relic_id) == null or relics.size() >= MAX_RELICS:
 		return false
 	relics.append(relic_id)
 	return true

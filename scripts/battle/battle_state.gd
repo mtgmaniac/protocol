@@ -28,8 +28,6 @@ var protocol_points: int = 0             # battles start at 0; +1 income at end 
 var income_debt: int = 0                 # Deep Cache intercept: turns of owed income
 var free_nudge_used: Dictionary = {}     # hero id -> Priming Charge free-Nudge consumed
 var root_access_used: bool = false       # Root Access relic: first Set each battle is free
-var twin_fates_used: bool = false        # Twin Fates relic: once-per-battle copy used
-var twin_fates_source_id: String = ""    # Twin Fates: chosen source die mid-pick
 
 
 # Deep copy for L2 speculative lookahead: mutate the clone, keep the original.
@@ -43,6 +41,4 @@ func duplicate_for_search() -> BattleState:
 	copy.income_debt = income_debt
 	copy.free_nudge_used = free_nudge_used.duplicate(true)
 	copy.root_access_used = root_access_used
-	copy.twin_fates_used = twin_fates_used
-	copy.twin_fates_source_id = twin_fates_source_id
 	return copy

@@ -1,5 +1,7 @@
 # UI Backlog — Direction-05 polish
 
+> **Superseded as the active visual priority list, 2026-09-06:** use [UI & Visual Bible §10](UI_VISUAL_BIBLE.md#10-prioritized-work-before-public-showcase). Entries below are historical implementation/playtest records, not a competing queue.
+
 Captured from playtest feedback. Grouped by area. UI lane (Claude); data-copy items
 need review before they touch JSON. Keep the DT visual language (PixelUI single source
 of truth, 1px borders per PixelUI — screens authored in 1080x2400 logical units draw

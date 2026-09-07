@@ -20,7 +20,7 @@ OPS = ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
 BASE = 210000
 MIX_BASE = 700000
 DEAD_DOZEN = ["curatedCache", "martyrdomProtocol", "overflowBuffer", "overflowVent",
-              "twinFates", "mercyProtocol", "salvageDirective", "chainDoctrine",
+              "mercyProtocol", "salvageDirective", "chainDoctrine",
               "scavengerManifest", "resonanceCascade", "protocolOverride", "standingOrder"]
 
 

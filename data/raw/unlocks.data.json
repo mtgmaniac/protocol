@@ -46,7 +46,7 @@
     ["cryo_web", "staticField", "salvageDirective"],
     ["echo_matrix", "resonanceCascade", "coldLogic"],
     ["anchor_frame", "chainDoctrine", "overflowVent"],
-    ["mirror_plate", "twinFates", "standingOrder"],
+    ["mirror_plate", "standingOrder"],
     ["reverse_gimbal", "killswitch_relay", "wide_aperture", "openingGambit"],
     ["band_compressor", "overloadLoop", "martyrdomProtocol"],
     ["deep_zero_pin", "sync_antenna", "deadMansHand"]

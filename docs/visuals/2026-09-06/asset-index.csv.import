@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dvvcmsqvx18xx"
+
+[deps]
+
+files=["res://docs/visuals/2026-09-06/asset-index.group.translation", "res://docs/visuals/2026-09-06/asset-index.width.translation", "res://docs/visuals/2026-09-06/asset-index.height.translation", "res://docs/visuals/2026-09-06/asset-index.nonopaque.translation", "res://docs/visuals/2026-09-06/asset-index.alpha.translation", "res://docs/visuals/2026-09-06/asset-index.bytes.translation", "res://docs/visuals/2026-09-06/asset-index.sha256.translation", "res://docs/visuals/2026-09-06/asset-index.reference.translation", "res://docs/visuals/2026-09-06/asset-index.owners.translation"]
+
+source_file="res://docs/visuals/2026-09-06/asset-index.csv"
+dest_files=["res://docs/visuals/2026-09-06/asset-index.group.translation", "res://docs/visuals/2026-09-06/asset-index.width.translation", "res://docs/visuals/2026-09-06/asset-index.height.translation", "res://docs/visuals/2026-09-06/asset-index.nonopaque.translation", "res://docs/visuals/2026-09-06/asset-index.alpha.translation", "res://docs/visuals/2026-09-06/asset-index.bytes.translation", "res://docs/visuals/2026-09-06/asset-index.sha256.translation", "res://docs/visuals/2026-09-06/asset-index.reference.translation", "res://docs/visuals/2026-09-06/asset-index.owners.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

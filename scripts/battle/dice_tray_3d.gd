@@ -2070,10 +2070,12 @@ func _set_die_pending_marker(die: RigidBody3D, rewrite_pending: bool, hijack_pen
 
 
 func _get_petrify_filter_material() -> StandardMaterial3D:
+	# Transparent status shells must not write depth: doing so masks the engraved
+	# face labels even though their render priorities are above the shell.
 	return _bank_material("filter:petrify", func() -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.render_priority = 4
 		m.albedo_color = Color(0.55, 0.53, 0.49, 0.38)
@@ -2086,7 +2088,7 @@ func _get_jam_filter_material() -> StandardMaterial3D:
 	return _bank_material("filter:jam", func() -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.render_priority = 3
 		m.albedo_color = Color(0.92, 0.68, 0.20, 0.20)
@@ -2099,7 +2101,7 @@ func _get_frozen_filter_material() -> StandardMaterial3D:
 	return _bank_material("filter:frozen", func() -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.render_priority = 4
 		m.albedo_color = Color(0.48, 0.86, 1.0, 0.26)

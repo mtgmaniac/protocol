@@ -1,0 +1,77 @@
+[
+  {
+    "series": "20",
+    "frames": 12,
+    "last_ms": 947
+  },
+  {
+    "series": "breach",
+    "frames": 12,
+    "last_ms": 879
+  },
+  {
+    "series": "damage",
+    "frames": 12,
+    "last_ms": 964
+  },
+  {
+    "series": "death",
+    "frames": 12,
+    "last_ms": 946
+  },
+  {
+    "series": "detonate",
+    "frames": 12,
+    "last_ms": 897
+  },
+  {
+    "series": "dice",
+    "frames": 36,
+    "last_ms": 3048
+  },
+  {
+    "series": "dissolve",
+    "frames": 8,
+    "last_ms": 349
+  },
+  {
+    "series": "flare",
+    "frames": 6,
+    "last_ms": 282
+  },
+  {
+    "series": "freeze",
+    "frames": 12,
+    "last_ms": 1133
+  },
+  {
+    "series": "heal",
+    "frames": 12,
+    "last_ms": 946
+  },
+  {
+    "series": "jam",
+    "frames": 12,
+    "last_ms": 1164
+  },
+  {
+    "series": "logo",
+    "frames": 18,
+    "last_ms": 1727
+  },
+  {
+    "series": "power_down",
+    "frames": 15,
+    "last_ms": 732
+  },
+  {
+    "series": "rewrite",
+    "frames": 12,
+    "last_ms": 963
+  },
+  {
+    "series": "shield",
+    "frames": 12,
+    "last_ms": 946
+  }
+]

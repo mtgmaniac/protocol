@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://bjxo6dpanpte4"
+
+[deps]
+
+files=["res://docs/visuals/2026-09-06/animation-functions.function.translation", "res://docs/visuals/2026-09-06/animation-functions.line.translation", "res://docs/visuals/2026-09-06/animation-functions.evidence.translation"]
+
+source_file="res://docs/visuals/2026-09-06/animation-functions.csv"
+dest_files=["res://docs/visuals/2026-09-06/animation-functions.function.translation", "res://docs/visuals/2026-09-06/animation-functions.line.translation", "res://docs/visuals/2026-09-06/animation-functions.evidence.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

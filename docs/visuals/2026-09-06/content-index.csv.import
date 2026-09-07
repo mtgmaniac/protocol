@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cnmmx22y0elrg"
+
+[deps]
+
+files=["res://docs/visuals/2026-09-06/content-index.id.translation", "res://docs/visuals/2026-09-06/content-index.name.translation", "res://docs/visuals/2026-09-06/content-index.asset.translation", "res://docs/visuals/2026-09-06/content-index.review.translation"]
+
+source_file="res://docs/visuals/2026-09-06/content-index.csv"
+dest_files=["res://docs/visuals/2026-09-06/content-index.id.translation", "res://docs/visuals/2026-09-06/content-index.name.translation", "res://docs/visuals/2026-09-06/content-index.asset.translation", "res://docs/visuals/2026-09-06/content-index.review.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

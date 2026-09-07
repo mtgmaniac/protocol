@@ -126,7 +126,8 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	var loaded_unlocks: Dictionary = loaded.get("unlocks", {})
 	var boss_relics: Array = []
 	for relic_id in loaded_unlocks.get("boss_relics", []):
-		boss_relics.append(str(relic_id))
+		if str(relic_id) != "twinFates":
+			boss_relics.append(str(relic_id))
 	data["unlocks"]["boss_relics"] = boss_relics
 	# New unlock keys heal to their defaults when absent (older saves).
 	var had_new_schema: bool = loaded_unlocks.has("heroes")
@@ -140,7 +141,8 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	data["unlocks"]["heroes_new"] = _string_array(loaded_unlocks.get("heroes_new", []))
 	data["unlocks"]["item_gates_awarded"] = int(loaded_unlocks.get("item_gates_awarded", 0))
 	if loaded.get("settings") is Dictionary:
-		data["settings"] = loaded["settings"]
+		data["settings"] = loaded["settings"].duplicate(true)
+		data["settings"].erase("dev_mode")
 	# Onboarding block heals to defaults when absent (older saves).
 	var had_onboarding: bool = loaded.get("onboarding") is Dictionary
 	if had_onboarding:

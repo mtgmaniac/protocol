@@ -36,7 +36,7 @@ next-battle effects dict; {} when none), `squad_hp` [per hero, battle start],
 - `eff_hero_rolls` / `eff_enemy_rolls`: {state_id: effective roll} after
   set/nudge/buffs/rfe, as resolved.
 - `spends`: policy protocol spends this round, in order:
-  `{kind: nudge|reroll|set|item|twin_fates, unit, cost, detail}`.
+  `{kind: nudge|reroll|set|item, unit, cost, detail}`.
 - `cast_order`: [hero state ids] in the order the hero phase fired them
   (player-chosen cast order; the PLANNED order — a hero killed mid-phase by
   spike stays listed but did not act). Add-only field, schema_version kept.

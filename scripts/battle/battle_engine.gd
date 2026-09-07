@@ -264,19 +264,6 @@ func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 	return cost
 
 
-# Twin Fates relic: copy the source hero's raw die onto the target (free, once
-# per battle). Mutates bs; returns false if the source has no roll yet.
-func twin_fates_copy(bs: BattleState, source_id: String, target_id: String) -> bool:
-	var source_roll: int = int(bs.hero_rolls.get(source_id, 0))
-	if source_roll <= 0:
-		return false
-	bs.twin_fates_used = true
-	bs.hero_rolls[target_id] = source_roll
-	bs.hero_roll_nudges.erase(target_id)
-	bs.hero_roll_sets.erase(target_id)
-	return true
-
-
 # ── Item effects not on combat_manager (extracted from battle_scene) ──────────
 # The item-effect dispatch + logging stay in battle_scene; these own the effect
 # mutations that used to be inline there. Most item types already delegate to

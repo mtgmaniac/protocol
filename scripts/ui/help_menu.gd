@@ -303,7 +303,7 @@ func _build_battle_log(host: VBoxContainer) -> void:
 func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit - squad and hostile - rolls a D20 at the same time.",
-		"Assign your hero rolls to targets, then enemies act, then you gain +1 Protocol.",
+		"Assign targets, then END TURN: heroes act before enemies.",
 		"A unit with only one legal target selects it automatically.",
 		"Each die is split into 5 ability bands; the roll's band decides which ability fires.",
 		"A 20 always fires that unit's ultimate ability.",
@@ -314,9 +314,9 @@ func _build_basics(host: VBoxContainer) -> void:
 		"Long-press a unit to read its full intel - abilities, roll ranges, and keywords.",
 	])
 	_add_section(host, "EVOLUTION", [
-		"Units earn XP each battle by dealing damage, healing, or applying effects.",
-		"At enough XP, the unit evolves at battle end - choose one of two paths.",
-		"Each path changes abilities and raises max HP; more XP later unlocks a directive.",
+		"After a win: XP equals average effective roll, rounded; survivors gain +20.",
+		"At 100 XP, choose an evolution after a win.",
+		"One hero upgrades per win; other eligible heroes wait. More XP unlocks a directive.",
 	])
 	_add_section(host, "WIN / LOSS", [
 		"Clear every enemy to win the battle.",
@@ -361,9 +361,9 @@ func _build_rewards(host: VBoxContainer) -> void:
 	# gone — cards carry a boxed TYPE word and the rarity name in plain text.
 	_add_section(host, "ITEMS, GEAR & RELICS", [
 		"Items: one-use, spent in battle. The reward picker is single-select + confirm.",
-		"Gear: permanent passive, applies at battle start (+rolls, +max HP, starting shield).",
+		"Gear: equipped passives that last for the run.",
 		"Relics: run-long global rules that affect every battle.",
-		"Every card names its rarity and carries a boxed type tag (CONSUMABLE / GEAR / RELIC).",
+		"Rewards show their type and rarity.",
 	])
 
 
@@ -609,34 +609,36 @@ func _build_settings(host: VBoxContainer) -> void:
 	feedback_btn.pressed.connect(_on_send_feedback)
 	host.add_child(feedback_btn)
 
-	# --- Dev tools ---
-	host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
-	# Developer mode: shows the header debug buttons (hidden by default for
-	# non-dev hands — UI review DB-1). Persisted in the save profile.
-	var sm: Variant = _save_manager()
-	var dev_mode_on: bool = sm != null and bool(sm.get_setting("dev_mode", false))
-	_add_toggle_row(host, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
-	var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
-	unlock_btn.pressed.connect(_on_dev_unlock_all)
-	host.add_child(unlock_btn)
-	_reset_armed = false
-	_reset_dev_button = _make_dev_button("RESET SAVE PROFILE (DEV)", true)
-	_reset_dev_button.pressed.connect(_on_dev_reset_profile)
-	host.add_child(_reset_dev_button)
-	# Clears only onboarding.primers_seen — every keyword primer fires fresh again.
-	var reset_primers_btn := _make_dev_button("RESET PRIMERS (DEV)", false)
-	reset_primers_btn.pressed.connect(_on_dev_reset_primers)
-	host.add_child(reset_primers_btn)
+	var header: Variant = get_node_or_null("/root/PersistentHeader")
+	if header != null and header.dev_tools_unlocked:
+		# --- Dev tools ---
+		host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+		# Developer mode: shows the header debug buttons (hidden by default for
+		# non-dev hands — UI review DB-1). Available for this session after seven taps on the operation title.
+		var sm: Variant = _save_manager()
+		var dev_mode_on: bool = header.dev_mode_enabled
+		_add_toggle_row(host, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
+		var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
+		unlock_btn.pressed.connect(_on_dev_unlock_all)
+		host.add_child(unlock_btn)
+		_reset_armed = false
+		_reset_dev_button = _make_dev_button("RESET SAVE PROFILE (DEV)", true)
+		_reset_dev_button.pressed.connect(_on_dev_reset_profile)
+		host.add_child(_reset_dev_button)
+		# Clears only onboarding.primers_seen — every keyword primer fires fresh again.
+		var reset_primers_btn := _make_dev_button("RESET PRIMERS (DEV)", false)
+		reset_primers_btn.pressed.connect(_on_dev_reset_primers)
+		host.add_child(reset_primers_btn)
 
-	# --- Debug (Build #3) --- STRUCTURALLY absent outside debug builds: the
-	# section is never instantiated in release, so a player cannot reach it.
-	# (Unlike DEV above, which is deliberately player-visible per DB-1.)
-	if _is_debug_build():
-		host.add_child(_make_label("DEBUG", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
-		var overlay_default: bool = bool(ProjectSettings.get_setting("overload/debug/safe_area_overlay", false))
-		var overlay_on: bool = sm != null and bool(sm.get_setting("safe_area_overlay", overlay_default))
-		var row: HBoxContainer = _add_toggle_row(host, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
-		row.name = "DebugOverlayToggleRow"
+		# --- Debug (Build #3) --- STRUCTURALLY absent outside debug builds: the
+		# section is never instantiated in release, so a player cannot reach it.
+		# Both sections require the session unlock.
+		if _is_debug_build():
+			host.add_child(_make_label("DEBUG", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+			var overlay_default: bool = bool(ProjectSettings.get_setting("overload/debug/safe_area_overlay", false))
+			var overlay_on: bool = sm != null and bool(sm.get_setting("safe_area_overlay", overlay_default))
+			var row: HBoxContainer = _add_toggle_row(host, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
+			row.name = "DebugOverlayToggleRow"
 
 	# Version footer — read from ProjectSettings (project.godot config/version is
 	# the single source; never hardcode the string). Nominal 24 → rendered 32,
@@ -673,9 +675,6 @@ func _save_manager() -> Variant:
 
 
 func _on_toggle_dev_mode(pressed: bool) -> void:
-	var sm: Variant = _save_manager()
-	if sm != null:
-		sm.set_setting("dev_mode", pressed)
 	var header: Variant = get_node_or_null("/root/PersistentHeader")
 	if header != null:
 		header.set_dev_mode(pressed)

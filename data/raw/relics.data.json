@@ -161,13 +161,6 @@
     "effect": { "type": "battleStartJamEnemies" }
   },
   {
-    "id": "twinFates",
-    "name": "Twin Fates",
-    "desc": "Copy one hero's base roll to another. Free, once per battle.",
-    "icon": "die",
-    "effect": { "type": "twinFates" }
-  },
-  {
     "id": "overflowVent",
     "name": "Overflow Vent",
     "desc": "Each excess Protocol: 2 damage to a random enemy.",

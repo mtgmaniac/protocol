@@ -1,6 +1,8 @@
 # Battle UI V2 Spec
 
-This document is the current battle UI contract for Overload Protocol.
+> **Visual overview superseded, 2026-09-06:** start with [UI & Visual Bible](UI_VISUAL_BIBLE.md) for the current visual review, inventory and priorities. This file remains a technical reference for the existing battle implementation; proposals in the bible require selection before implementation. TRUTH and INVARIANTS retain authority.
+
+This document records the existing battle UI implementation contract for Overload Protocol.
 
 It is no longer just a rebuild wish list. It now reflects the real
 implementation path, the real runtime owners, and the constraints we have

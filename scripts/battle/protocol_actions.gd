@@ -16,7 +16,7 @@
 #   reset_battle_over_state()       — clears pending item/pick state
 #   restyle_buttons()               — theme refresh hook
 #   update_item_panel() / in_item_phase() / can_use_item_in_current_phase()
-#   can_nudge_hero(state) / nudge_button / set_button / twin_fates_button / item_button
+#   can_nudge_hero(state) / nudge_button / set_button / item_button
 # Everything else in this file is internal plumbing for those entry points.
 class_name ProtocolActions
 extends Node
@@ -33,13 +33,11 @@ func build_footer_buttons() -> void:
 	_attach_protocol_inspect(_scene.protocol_spend_button, "reroll")
 	_add_nudge_button()
 	_add_set_button()
-	if _scene._game_state().has_relic_effect("twinFates"):
-		_add_twin_fates_button()
 	_build_item_panel()
 	# Cost badges (UI review S-4, restyled per Kev 2026-07-10): a bare PP number
-	# in the button's bottom-right corner — no plate. The item button carries no
-	# number (its cost varies per item; the loadout shows it). Twin Fates is free
-	# so it carries none. Set's cost can change mid-battle (Root Access) and
+	# in the button's top-right corner — no plate. The item button carries no
+	# number (its cost varies per item; the loadout shows it). Set's cost can
+	# change mid-battle (Root Access) and
 	# refreshes in refresh_action_affordability.
 	_attach_cost_badge(nudge_button, "1")
 	_attach_cost_badge(_scene.protocol_spend_button, "2")
@@ -94,13 +92,13 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	# from the button art instead of a box.
 	badge.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
 	badge.add_theme_constant_override("outline_size", 5)
-	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	badge.offset_left = -66.0
-	badge.offset_top = -66.0
+	badge.offset_top = 2.0
 	badge.offset_right = -6.0
-	badge.offset_bottom = -2.0
+	badge.offset_bottom = 62.0
 	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	badge.grow_vertical = Control.GROW_DIRECTION_END
 	button.add_child(badge)
 	_cost_badges[button] = badge
 
@@ -191,21 +189,6 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		AudioManager.play_select()
 		_begin_set_value_pick(target_id)
 		return true
-	if _scene.turn_phase == _scene.PHASE_TWIN_SOURCE_PICK or _scene.turn_phase == _scene.PHASE_TWIN_TARGET_PICK:
-		var twin_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
-		if twin_state.is_empty() or bool(twin_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, twin_state):
-			return true
-		if _scene.turn_phase == _scene.PHASE_TWIN_TARGET_PICK and int(twin_state.get("die_freeze_turns", 0)) > 0:
-			_scene._refresh_summary("That die is frozen solid - it can't be overwritten.")
-			return true
-		AudioManager.play_select()
-		if _scene.turn_phase == _scene.PHASE_TWIN_SOURCE_PICK:
-			_scene._twin_fates_source_id = target_id
-			_scene.transition(_scene.PHASE_TWIN_TARGET_PICK)
-			_scene._refresh_summary("Twin Fates: tap the die to copy TO.")
-		elif target_id != _scene._twin_fates_source_id:
-			_apply_twin_fates(_scene._twin_fates_source_id, target_id)
-		return true
 	if _in_item_phase():
 		if (_scene.turn_phase == _scene.PHASE_ITEM_PICK_ALLY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_ANY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_DEAD) and _scene.legal_target_ids.has(target_id) and _pending_item != null:
 			var target_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
@@ -253,13 +236,12 @@ func handle_unhandled_input(event: InputEvent) -> bool:
 	return true
 
 
-# True while a roll-modifier pick (reroll/nudge/set/twin) is armed but not yet
+# True while a roll-modifier pick (reroll/nudge/set) is armed but not yet
 # committed — the state §1 must always be escapable from.
 func in_roll_modifier_pick() -> bool:
 	var p: int = _scene.turn_phase
 	return p == _scene.PHASE_REROLL_PICK or p == _scene.PHASE_NUDGE_PICK \
-		or p == _scene.PHASE_SET_PICK or p == _scene.PHASE_TWIN_SOURCE_PICK \
-		or p == _scene.PHASE_TWIN_TARGET_PICK
+		or p == _scene.PHASE_SET_PICK
 
 
 # The exit edge from ARMED (§1): drop all pending pick state and return to the
@@ -269,7 +251,6 @@ func in_roll_modifier_pick() -> bool:
 func cancel_roll_modifier_pick() -> void:
 	_close_set_value_popup()
 	_pending_set_hero_id = ""
-	_scene._twin_fates_source_id = ""
 	_scene._finish_roll_modifier_pick()
 
 
@@ -482,7 +463,7 @@ func _can_nudge_hero(state: Dictionary) -> bool:
 		return false
 	# A frozen die is crusted static and cannot be altered at all — Nudge
 	# included (ruling NK-03: full freeze immunity, one clean rule "frozen dice
-	# can't be altered", matching Reroll / Set / Twin Fates).
+	# can't be altered", matching Reroll / Set).
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		return false
 	if _was_hero_nudged_this_turn(str(state["id"])):
@@ -556,56 +537,6 @@ func _add_set_button() -> void:
 	_scene.protocol_spend_button.get_parent().add_child(btn)
 	# Set sits just AFTER the reroll button (order: nudge, reroll, set, item).
 	_scene.protocol_spend_button.get_parent().move_child(btn, _scene.protocol_spend_button.get_index() + 1)
-
-
-# Twin Fates relic: once per battle, copy one hero die's result to another,
-# free. Two-tap flow: pick the source die, then the target die.
-var twin_fates_button: Button = null
-
-
-func _add_twin_fates_button() -> void:
-	var btn: Button = Button.new()
-	btn.custom_minimum_size = _scene.BOTTOM_BAR_BUTTON_SIZE
-	btn.pressed.connect(_on_twin_fates_button_pressed)
-	_scene._style_frame_icon_action_button(btn, PixelUI.ICON_DEBUG2, _scene.BOTTOM_BAR_BUTTON_SIZE)
-	twin_fates_button = btn
-	_scene.protocol_spend_button.get_parent().add_child(btn)
-	_scene.protocol_spend_button.get_parent().move_child(btn, set_button.get_index() + 1)
-
-
-func _on_twin_fates_button_pressed() -> void:
-	if _cancel_armed_for_button(_scene.PHASE_TWIN_SOURCE_PICK, _scene.PHASE_TWIN_TARGET_PICK):
-		return
-	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
-		if _scene.hero_rolls.is_empty():
-			_scene._refresh_summary("Roll dice before using Twin Fates.")
-		return
-	if _scene._twin_fates_used:
-		_scene._refresh_summary("Twin Fates was already spent this battle.")
-		return
-	AudioManager.play_select()
-	_scene._twin_fates_source_id = ""
-	_scene.transition(_scene.PHASE_TWIN_SOURCE_PICK)
-	_scene._refresh_summary("Twin Fates: tap the die to copy FROM.")
-
-
-# Pure state core of Twin Fates: copy the source die's result onto the target
-# die (clearing its pending nudge/set) and burn the once-per-battle use.
-func _twin_fates_copy_roll(source_id: String, target_id: String) -> bool:
-	return _scene._engine.twin_fates_copy(_scene._state, source_id, target_id)
-
-
-func _apply_twin_fates(source_id: String, target_id: String) -> void:
-	if not _twin_fates_copy_roll(source_id, target_id):
-		_scene._finish_roll_modifier_pick()
-		return
-	_scene._append_log("Twin Fates: %s's die copies %s's %d." % [target_id, source_id, int(_scene.hero_rolls.get(target_id, 0))])
-	var target_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
-	if _scene.dice_tray_3d != null and not target_state.is_empty():
-		_scene.dice_tray_3d.update_die_result_in_place("hero", target_id, _scene._get_effective_roll_for_state(target_state, target_id))
-	_scene._re_assign_hero_target(target_id)
-	_scene._refresh_dice_result_actions()
-	_scene._finish_roll_modifier_pick()
 
 
 # Set-pick: the player tapped a hero die; open the thumb-draggable value popup for it,

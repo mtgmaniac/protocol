@@ -64,11 +64,11 @@ func _ready() -> void:
 	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action, false))
 	_back_button.pressed.connect(func() -> void: _dispatch(_back_action, true))
 	set_run_active(false)
-	# Debug buttons ship hidden; the SETTINGS > DEV "Developer mode" toggle shows them
-	# (persisted in the save profile). SaveManager autoloads before this scene, but stay
-	# defensive for headless harnesses that strip autoloads.
-	var sm: Variant = get_node_or_null("/root/SaveManager")
-	set_dev_mode(sm != null and bool(sm.get_setting("dev_mode", false)))
+	set_dev_mode(false)
+	_summary_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	var gesture := LongPressInput.new()
+	gesture.tapped.connect(_register_dev_tap)
+	_summary_label.add_child(gesture)
 	# Safe area: this always-alive autoload owns the refresh cadence for the
 	# whole game (PixelUI.safe_* is the single source of truth for the values).
 	PixelUI.refresh_safe_insets(get_viewport())
@@ -230,7 +230,56 @@ func set_debug2_enabled(enabled: bool) -> void:
 ## gates whether the buttons exist to the player; disabled gates whether the
 ## current screen bound them.
 func set_dev_mode(enabled: bool) -> void:
+	dev_mode_enabled = enabled and dev_tools_unlocked
+	enabled = dev_mode_enabled
 	if is_instance_valid(_debug_button):
 		_debug_button.visible = enabled
 	if is_instance_valid(_debug2_button):
 		_debug2_button.visible = enabled
+
+
+# Session-only easter egg. Seven quick taps on the operation title; any other
+# press breaks the sequence. LongPressInput filters holds/drags and touch echoes.
+var dev_tools_unlocked := false
+var dev_mode_enabled := false
+var _dev_tap_count := 0
+var _dev_last_tap_ms := -2000
+
+func _input(event: InputEvent) -> void:
+	var press := false
+	var pos := Vector2.ZERO
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		press = event.pressed
+		pos = event.position
+	elif event is InputEventScreenTouch:
+		press = event.pressed
+		pos = event.position
+	if press and not _summary_label.get_global_rect().has_point(pos):
+		_dev_tap_count = 0
+
+func _register_dev_tap(now_ms: int = -1) -> void:
+	if dev_tools_unlocked or _summary_label.text.is_empty():
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	if now_ms - _dev_last_tap_ms > 1000:
+		_dev_tap_count = 0
+	_dev_last_tap_ms = now_ms
+	_dev_tap_count += 1
+	if _dev_tap_count < 7:
+		return
+	dev_tools_unlocked = true
+	set_dev_mode(true)
+	var notice := Label.new()
+	notice.text = "DEV TOOLS UNLOCKED"
+	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PixelUI.apply_pixel_font(notice)
+	notice.add_theme_font_size_override("font_size", 48)
+	notice.add_theme_color_override("font_color", PixelUI.DT_CYAN)
+	notice.add_theme_color_override("font_outline_color", PixelUI.DT_BTN_BG)
+	notice.add_theme_constant_override("outline_size", 8)
+	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_band.add_child(notice)
+	notice.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	notice.position.y += 12
+	get_tree().create_timer(2.5).timeout.connect(notice.queue_free)

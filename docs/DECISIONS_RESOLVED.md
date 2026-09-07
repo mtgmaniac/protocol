@@ -392,6 +392,12 @@ from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
 still enforces the text side.
 
 
+## G-10. Public-demo visual step 1 (Kev, 2026-09-06)
+
+Kev approved step 1: preserve readable dice values under status overlays; improve the footer with icons and compact labels if they fit; replace the default application icon with the existing identity's reactor motif; hide developer controls until seven consecutive taps on the operation title unlock them for the current application session; and correct inaccurate help while deferring the full tutorial rethink to step 2.
+
+Remove Twin Fates from the game for now, including offers, unlocks, reference content and its battle copy controls. Preserve old profile compatibility and unrelated stable IDs. This supersedes G-9's retention of Twin Fates. Existing art may remain as an unused source asset. No other relic, dice rule or progression formula changes.
+
 ## G-9. Apply the concise copy review (Kev, 2026-09-06)
 
 Kev approved implementing the full revised copy workbook. Apply its names, lore, descriptions and compact ability tooltips, with matching runtime references and preserved internal IDs/art paths. The approved effect syntax uses “damage” and explicit “turns”; hero self effects are implicit, while enemy self effects retain `(self)`. Group targets say `(all heroes)` or `(all enemies)` and lowest-HP support says `(lowest HP)`. This updates the text portion of NK-17/G-7; target checking must still derive and verify each clause's actual scope. Gear and consumables keep concise holder/target context. Operation threat lines retain their original text. Deployment labels become SITUATION and OBJECTIVE.

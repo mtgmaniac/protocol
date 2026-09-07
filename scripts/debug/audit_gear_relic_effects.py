@@ -29,7 +29,7 @@ RELIC_HANDLED = {
     "protocolCarryover", "battleStartConsumable", "reviveNoPenalty",
     "lowHpSquadRollBuff", "healGrantsShieldAll",
     # pkg3.5 pool
-    "critBandExtend", "battleStartJamEnemies", "twinFates", "protocolOverflowDamage",
+    "critBandExtend", "battleStartJamEnemies", "protocolOverflowDamage",
     "protocolOnMarkedKill", "frozenBonusDamage", "chainExtraJump",
     "firstKillDropsConsumable", "squadWipeSurvive",
     # boss relics (data now; dropped/unlocked in pkg5)

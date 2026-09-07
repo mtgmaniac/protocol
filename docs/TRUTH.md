@@ -4,6 +4,12 @@
 
 ---
 
+**Visual review and inventory (2026-09-06):** [UI & Visual Bible](UI_VISUAL_BIBLE.md) is the current visual overview, superseding older visual-review/backlog guidance. It distinguishes the existing implementation from recommendations pending Kev's selection; gameplay rulings and this canonical reference retain authority. Review source: `364822d`. No game behavior changed in the documentation pass.
+
+**Visual evidence correction:** the broad HP/heal-only green shorthand below is not a complete description of current glyph rendering: positive-roll pips render green through `EffectPip`/`PixelUI`, while negative-roll pips are gold. This records observed code behavior, not a newly approved palette rule. The bible flags reconciliation of the documented doctrine; no glyph colors were changed.
+
+**Visual step 1 implemented (2026-09-06, G-10):** Twin Fates is removed from data, unlock buckets and battle mechanics; remaining IDs and unlock gates retain their positions. Stale relic grants are rejected. Footer buttons are 144×144 design pixels with icons and NUDGE/REROLL/SET/ITEMS captions; costs occupy the upper right. Frozen/petrified/jammed translucent shells no longer write depth over die numerals. The project and Web icons use the reactor mark. During a run, seven quick consecutive taps on the operation title unlock developer controls for the app session; pauses over one second or taps elsewhere break the sequence. Settings then exposes the existing dev tools and a header-arrow toggle. Old saved developer-mode settings cannot unlock a new session. Help now describes average-effective-roll XP, +20 for survivors, the 100 XP evolution threshold, one upgrade per win and run-long gear accurately. The tutorial redesign is deferred to step 2. See [implementation and verification](UI_STEP1_IMPLEMENTATION_2026-09-06.md).
+
 ## ⚠️ Doc adjudications (carried + new)
 
 Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections found during this reconciliation:
@@ -60,7 +66,7 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
 - **Costs:** Nudge **1** (+3 to effective roll) · Reroll **2** · Set-a-die **4** (`SET_DIE_COST`) · Item **1 flat** (all rarities).
 - **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor — grants at resolution when a die's FINAL face is 20, amount read from gear data, once per resolving turn, including frozen turns), `protocolOnDieTamper` (Mirror Plate — only an ENEMY tamper pays out; friendly freeze-any on an ally does not, audit A-062); relics `protocolCarryover`, `protocolOnItemUse` (Supply Bypass — items cost 0 AND grant +1, **except protocol-gain items, which get no bonus +1** so they can't print Protocol for free, audit A-063), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnShieldBreak` (Salvage Rig +1, boss relic); enemy `siphon: N` drains the pool on hit (floor 0). **Summoned/rebuilt enemies grant normal kill rewards** (Protocol, Bounty, Chitin, Salvage Injector, Momentum, Scavenger), subject to the usual killer/type/mark requirements and existing caps (Kev G-8, 2026-09-05, supersedes NK-10).
-- **Discounts/overflow:** Priming Charge — first Nudge free; Root Access boss relic — first Set each battle 0; Overflow Vent — protocol past the cap deals 2 dmg/point to a random enemy; Twin Fates — once per battle copy one hero die to another, free.
+- **Discounts/overflow:** Priming Charge — first Nudge free; Root Access boss relic — first Set each battle 0; Overflow Vent — protocol past the cap deals 2 dmg/point to a random enemy.
 - Footer shows "PROTOCOL n/m" with amber segment pips.
 
 ---
@@ -166,7 +172,7 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 
 ## Rewards
 
-- **Consumables:** 25 (`items.data.json`). **Gear:** 31 passives (`gear.data.json`) — **unique per run**: an owned gear id is never re-offered, so numeric passives can't stack (per Kev NK-13). Consumables are exempt (they're spent). **Relics:** 35 = 30 draftable + 5 boss relics (`bossRelic: true`: Salvage Rig, Chitin Graft, Resonant Chorus, Root Access, Mantle Core); boss relics excluded from normal drafts, unlocked by first op clear, offered as Starting Directives at DEPLOY.
+- **Consumables:** 25 (`items.data.json`). **Gear:** 31 passives (`gear.data.json`) — **unique per run**: an owned gear id is never re-offered, so numeric passives can't stack (per Kev NK-13). Consumables are exempt (they're spent). **Relics:** 34 = 29 draftable + 5 boss relics (`bossRelic: true`: Salvage Rig, Chitin Graft, Resonant Chorus, Root Access, Mantle Core); boss relics excluded from normal drafts, unlocked by first op clear, offered as Starting Directives at DEPLOY.
 - **Rarity ladders:** an effect family may span **any number of rarity tiers** — 2-, 3-, and 4-tier chains are all permitted (roll-buff and gainProtocol run four tiers; enemyRfe three). The old "single-entry + max 4 two-tier pairs" cap is **removed** (per Kev NK-12); no pool content was cut.
 - **XP:** `XP_TO_EVOLVE = 100`, `XP_TO_DIRECTIVE = 250`. Per win: alive → `20 + round(avg effective roll)`; dead → `round(avg effective roll)`. One progression stop per win (extras deferred).
 - **Directives (tier-3 passives):** at 250 XP an evolved unit picks 1 of 2 path-scoped directives (`directives` block per evolution). Full list in `heroes.data.json`; handlers in combat_manager (+battle_scene for Deep Cells).
@@ -1185,6 +1191,6 @@ DECISIONS_RESOLVED.md.
 
 The concise review is implemented across operation briefings, bosses, heroes/evolutions, abilities, directives, enemies, relics, gear, consumables, intercepts and battle modifiers. Operations are Facility Sweep, Hive Incursion, Veil Breach, Signal Purge and Mantle Hunt; original short threat lines remain. Deployment fields use SITE / SITUATION / OBJECTIVE. Long intercept choices separate the action button from its consequences.
 
-Display-name migrations preserve enemy IDs through DataManager.ENEMY_STABLE_IDS and keep kit IDs, item IDs, evolution IDs, portrait paths and operation unlock IDs stable. OVERCLOCK keeps evolution ID `overclocked`. Twin Fates still copies the base roll through its existing button beside Set; destination modifiers apply.
+Display-name migrations preserve enemy IDs through DataManager.ENEMY_STABLE_IDS and keep kit IDs, item IDs, evolution IDs, portrait paths and operation unlock IDs stable. OVERCLOCK keeps evolution ID `overclocked`. Twin Fates was subsequently removed by G-10 (2026-09-06); its old source art remains unused.
 
 Enemy ally-shield effects apply even when the same ability grants no self-shield. Bounty excludes all standing-rule bosses, including Mantle Tyrant. Deep Freeze Charge pins unfrozen enemy dice to 1; already-frozen faces remain intact and gain the extra freeze turn. These are G-9 copy/code alignment fixes, not authored stat tuning.

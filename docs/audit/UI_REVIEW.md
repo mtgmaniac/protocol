@@ -1,5 +1,7 @@
 # UI Readability & Usability Review — Prompt 7
 
+> **Historical review, superseded 2026-09-06:** the [UI & Visual Bible](../UI_VISUAL_BIBLE.md) reviews the current build, including animation, asset inventory and PC/phone showcase priorities. Findings below describe the July build and must not be assumed to remain open.
+
 **Date:** 2026-07-10 · **Build:** `feat/event-sprites` (b0a07b5) · **Captures:** 24 window screenshots
 (540×1200 debug window = exactly 0.5× the 1080×2400 design space, per INVARIANTS #14 corollary) +
 2 engine captures (victory / defeat).

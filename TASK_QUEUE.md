@@ -1,5 +1,7 @@
 # Overload Protocol — Task Queue
 
+**2026-09-06 visual showcase pass:** Step 1 (V01–V05) completed; see [implementation and checks](docs/UI_STEP1_IMPLEMENTATION_2026-09-06.md). The [visual bible](docs/UI_VISUAL_BIBLE.md) is the current overview. Step 2 is the deferred tutorial rethink; it has not been implemented.
+
 > **CLOSE-OUT (Jul 2026, master implementation prompt):** every item below is
 > **Done or superseded** by the packages 1–9 pass (rules foundation, keyword
 > engine, content data, boss standing rules, save system, directives, run

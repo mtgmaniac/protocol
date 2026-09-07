@@ -1,0 +1,61 @@
+{
+  "heroes": {
+    "count": 25,
+    "pages": [
+      "heroes-01.jpg"
+    ]
+  },
+  "enemies": {
+    "count": 41,
+    "pages": [
+      "enemies-01.jpg",
+      "enemies-02.jpg"
+    ]
+  },
+  "items": {
+    "count": 115,
+    "pages": [
+      "items-01.jpg",
+      "items-02.jpg",
+      "items-03.jpg",
+      "items-04.jpg"
+    ]
+  },
+  "events": {
+    "count": 29,
+    "pages": [
+      "events-01.jpg"
+    ]
+  },
+  "pips": {
+    "count": 30,
+    "pages": [
+      "pips-01.jpg"
+    ]
+  },
+  "icons": {
+    "count": 16,
+    "pages": [
+      "icons-01.jpg"
+    ]
+  },
+  "logo": {
+    "count": 5,
+    "pages": [
+      "logo-01.jpg"
+    ]
+  },
+  "chrome": {
+    "count": 83,
+    "pages": [
+      "chrome-01.jpg",
+      "chrome-02.jpg",
+      "chrome-03.jpg"
+    ]
+  },
+  "legacy": {
+    "count": 51,
+    "pages": [],
+    "note": "Indexed as source warehouse; not part of current visual judgement."
+  }
+}

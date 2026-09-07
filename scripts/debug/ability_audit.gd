@@ -1665,25 +1665,9 @@ func _run_new_relic_regressions() -> void:
 		root_scene.free()
 		_expect_and_record("Regression / relic rootAccess free set", "setCostZeroOncePerBattle", "0", str(root_cost))
 
-	# Twin Fates: the copy core clones the source die and clears pending mods.
-	var twin_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
-	if twin_scene != null:
-		twin_scene.hero_rolls = {"hero_a": 17, "hero_b": 4}
-		twin_scene.hero_roll_nudges = {"hero_b": 1}
-		twin_scene.hero_roll_sets = {"hero_b": 12}
-		var twin_pa = PROTOCOL_ACTIONS_SCRIPT.new()
-		twin_pa.setup(twin_scene)
-		var twin_copied: bool = bool(twin_pa.call("_twin_fates_copy_roll", "hero_a", "hero_b"))
-		twin_pa.free()
-		var twin_ok: bool = (
-			twin_copied
-			and int(twin_scene.hero_rolls.get("hero_b", 0)) == 17
-			and not twin_scene.hero_roll_nudges.has("hero_b")
-			and not twin_scene.hero_roll_sets.has("hero_b")
-			and bool(twin_scene.get("_twin_fates_used"))
-		)
-		twin_scene.free()
-		_expect_and_record("Regression / relic twinFates copy", "twinFates", "true", str(twin_ok))
+	# Removed relic IDs cannot enter new runs, including stale external grants.
+	var removed_ok: bool = DataManager.get_item("twinFates") == null and not GameState._grant_relic("twinFates")
+	_expect_and_record("Regression / removed Twin Fates", "twinFates", "true", str(removed_ok))
 
 	# Overflow Vent: protocol past the cap deals 2 damage per point to an enemy.
 	var vent_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control

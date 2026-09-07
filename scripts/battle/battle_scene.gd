@@ -61,7 +61,7 @@ const DIE_TAG_DIAMETER_FALLBACK := 90.0
 # tools) compiling against typed values; PHASE_NAMES preserves the pre-enum
 # strings verbatim for tutorial payloads/tests.
 enum Phase {
-	AWAIT_ROLL, TARGETING, READY_TO_END, REROLL_PICK, NUDGE_PICK, SET_PICK, TWIN_SOURCE_PICK, TWIN_TARGET_PICK, ITEM_PICK_ALLY, ITEM_PICK_DEAD, ITEM_PICK_ENEMY, ITEM_PICK_ANY, ITEM_CONFIRM,
+	AWAIT_ROLL, TARGETING, READY_TO_END, REROLL_PICK, NUDGE_PICK, SET_PICK, ITEM_PICK_ALLY, ITEM_PICK_DEAD, ITEM_PICK_ENEMY, ITEM_PICK_ANY, ITEM_CONFIRM,
 }
 const PHASE_NAMES := {
 	Phase.AWAIT_ROLL: "await_roll",
@@ -70,8 +70,6 @@ const PHASE_NAMES := {
 	Phase.REROLL_PICK: "reroll_pick",
 	Phase.NUDGE_PICK: "nudge_pick",
 	Phase.SET_PICK: "set_pick",
-	Phase.TWIN_SOURCE_PICK: "twin_source_pick",
-	Phase.TWIN_TARGET_PICK: "twin_target_pick",
 	Phase.ITEM_PICK_ALLY: "item_pick_ally",
 	Phase.ITEM_PICK_DEAD: "item_pick_dead",
 	Phase.ITEM_PICK_ENEMY: "item_pick_enemy",
@@ -84,8 +82,6 @@ const PHASE_READY_TO_END := Phase.READY_TO_END
 const PHASE_REROLL_PICK := Phase.REROLL_PICK
 const PHASE_NUDGE_PICK := Phase.NUDGE_PICK
 const PHASE_SET_PICK := Phase.SET_PICK
-const PHASE_TWIN_SOURCE_PICK := Phase.TWIN_SOURCE_PICK
-const PHASE_TWIN_TARGET_PICK := Phase.TWIN_TARGET_PICK
 const SET_DIE_COST := 4
 const PHASE_ITEM_PICK_ALLY := Phase.ITEM_PICK_ALLY
 const PHASE_ITEM_PICK_DEAD := Phase.ITEM_PICK_DEAD
@@ -103,7 +99,7 @@ const MAX_PROTOCOL := 10
 # from was dead chrome (built, then unconditionally hidden by the theme pass)
 # and was deleted in Polish Build A.
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
-const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
+const BOTTOM_BAR_BUTTON_SIZE := Vector2(144, 144)
 const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const PROTOCOL_LABEL_FONT_SIZE := 70
@@ -808,7 +804,7 @@ func _build_abandon_confirm() -> void:
 func _on_auto_turn_button_pressed() -> void:
 	if _briefing_active or _auto_turn_running or _auto_battle_running or battle_over:
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or is_item_pick_phase(turn_phase):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or is_item_pick_phase(turn_phase):
 		_refresh_summary("Finish the current picker before auto-completing the turn.")
 		return
 	_auto_turn_running = true
@@ -832,7 +828,7 @@ func _on_auto_battle_button_pressed() -> void:
 	if battle_over:
 		_on_open_reward_button_pressed()
 		return
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or turn_phase == PHASE_TWIN_SOURCE_PICK or turn_phase == PHASE_TWIN_TARGET_PICK or is_item_pick_phase(turn_phase):
+	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_NUDGE_PICK or turn_phase == PHASE_SET_PICK or is_item_pick_phase(turn_phase):
 		_refresh_summary("Finish the current picker before auto-completing the battle.")
 		return
 
@@ -2109,15 +2105,6 @@ var _root_access_used: bool:
 	get: return _state.root_access_used
 	set(value): _state.root_access_used = value
 
-# Twin Fates relic: once per battle, copy one hero die's result to another.
-var _twin_fates_used: bool:
-	get: return _state.twin_fates_used
-	set(value): _state.twin_fates_used = value
-var _twin_fates_source_id: String:
-	get: return _state.twin_fates_source_id
-	set(value): _state.twin_fates_source_id = value
-
-
 # Vengeance Protocol / Dead Man's Hand (forced 20s) and Resonant Chorus (turn-1
 # dice can't land below 8) — roll-time face overrides. There is no "natural 20"
 # concept: forcing a 20 sets the die's face to 20 like any other override
@@ -2562,16 +2549,6 @@ func transition(next_phase: int) -> void:
 			roll_button.disabled = true
 			roll_button.text = ""
 			_refresh_summary("Tap a hero die to set its value.")
-		PHASE_TWIN_SOURCE_PICK:
-			roll_button.visible = false
-			roll_button.disabled = true
-			roll_button.text = ""
-			_refresh_summary("Twin Fates: tap the die to copy FROM.")
-		PHASE_TWIN_TARGET_PICK:
-			roll_button.visible = false
-			roll_button.disabled = true
-			roll_button.text = ""
-			_refresh_summary("Twin Fates: tap the die to copy TO.")
 		PHASE_ITEM_PICK_ALLY:
 			roll_button.visible = false
 			roll_button.disabled = true
@@ -2650,6 +2627,10 @@ func _style_frame_icon_action_button(
 	# gold for the protocol spend button); default uses the neutral DT button border.
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
 	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate)
+	if min_size == BOTTOM_BAR_BUTTON_SIZE:
+		var captions := {PixelUI.ICON_INCREASE: "NUDGE", PixelUI.ICON_SWAP: "REROLL", PixelUI.ICON_SET: "SET", PixelUI.ICON_ITEM: "ITEMS"}
+		PixelUI.add_footer_caption(button as Button, str(captions.get(icon_path, "")))
+
 
 
 func _update_phase_target_sets() -> void:
@@ -3181,16 +3162,14 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return false
 
 	# Reroll/Set pick phases: only living hero cards that have rolled. A frozen
-	# die can't be rerolled (the crust is physical) or copied onto; a repeating
+	# die can't be rerolled (the crust is physical); a repeating
 	# die can't be Set either — its crusted face IS the result.
-	if turn_phase == PHASE_REROLL_PICK or turn_phase == PHASE_TWIN_TARGET_PICK:
+	if turn_phase == PHASE_REROLL_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
 			and _has_roll_for_state(hero_rolls, state) and int(state.get("die_freeze_turns", 0)) <= 0
 	if turn_phase == PHASE_SET_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
 			and _has_roll_for_state(hero_rolls, state) and not bool(state.get("die_freeze_repeat_this_round", false))
-	if turn_phase == PHASE_TWIN_SOURCE_PICK:
-		return accent_color == HERO_ACCENT and not bool(state["dead"]) and _has_roll_for_state(hero_rolls, state)
 	if turn_phase == PHASE_NUDGE_PICK:
 		return accent_color == HERO_ACCENT and _protocol.can_nudge_hero(state)
 

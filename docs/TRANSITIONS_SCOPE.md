@@ -1,5 +1,7 @@
 # TRANSITIONS — DITHER DISSOLVE + POWER DOWN
 
+> **Current visual overview:** [UI & Visual Bible §7](UI_VISUAL_BIBLE.md#7-animation-bible) incorporates this system into the full visual inventory and review. This document retains the original transition rulings and implementation detail; the bible does not reverse those rulings.
+
 **Status: RULED + BUILT (2026-07-12).** Scoped after verifying no `TransitionManager`
 existed (spec-only; `SceneManager.go_to()` was a bare `change_scene_to_file` hard
 cut). Kev ruled the four open questions the same day and the system was built —

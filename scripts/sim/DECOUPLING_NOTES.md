@@ -194,7 +194,7 @@ methods that mutate a passed dict mutate the caller's dict directly.
   battle_scene members are property forwarders to `_state`.
 - ✅ **Cluster 4 — protocol spends:** `apply_reroll`, `nudge_cost`/`apply_nudge`
   (Priming Charge / Reverse Gimbal), `set_cost`/`apply_set` (Root Access),
-  `twin_fates_copy`. Gear-effect lookups passed in as booleans.
+  `twin_fates_copy` (removed by G-10 in September 2026). Gear-effect lookups passed in as booleans.
 - ✅ **Cluster 5 — inline item effects:** `item_protocol_cost`, `item_cloak`/
   `item_cloak_all`, `item_enemy_reroll`/`_all` (via provider), `item_enemy_freeze`/
   `_all`. battle_scene keeps the effect dispatch + logging.

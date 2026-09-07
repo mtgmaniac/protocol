@@ -169,7 +169,9 @@ func _test_debug_section_release_absence() -> void:
 		_fail("T8: HelpMenu.debug_build_override seam missing — release absence unverifiable (pre-Build-#3)")
 		return
 	menu_script.set("debug_build_override", null)
-	for case_variant in [[false, false, "release"], [true, true, "debug"]]:
+	var header: Node = root.get_node("PersistentHeader")
+	for case_variant in [[false, false, "release unlocked", true], [true, true, "debug unlocked", true], [true, false, "debug locked", false], [false, false, "release locked", false]]:
+		header.set("dev_tools_unlocked", case_variant[3])
 		menu_script.set("debug_build_override", case_variant[0])
 		var menu: CanvasLayer = menu_script.new() as CanvasLayer
 		root.add_child(menu)
@@ -184,7 +186,8 @@ func _test_debug_section_release_absence() -> void:
 			menu_script.set("debug_build_override", null)
 			return
 	menu_script.set("debug_build_override", null)
-	print("[SAFE_AREA] T8 pass — DEBUG section structurally absent in release, present in debug")
+	header.set("dev_tools_unlocked", false)
+	print("[SAFE_AREA] T8 pass — DEBUG requires both a debug build and the session unlock")
 
 
 # ── T9 ─────────────────────────────────────────────────────────────────────
