@@ -12,6 +12,8 @@ This is the current entry point for the game's visual language, inventory and vi
 
 The ratings, original screenshots and inventory below remain the review snapshot of `364822d`, including the now-retired Twin Fates entry. Use the implementation report for the current state of these five changes. No new overall rating is implied by passing the implementation checks; public-device playtesting remains outstanding.
 
+**Follow-up, 7 September:** V09 now uses matching orbital-device/emitter art; V10 bounds number floats to two portrait lanes; Continue has no icon. V07/V08 have interactive proposals in the conversation and are not implemented. V11 is narrowed to sparse award sets (reproduced), not large unlock screens or a functional failure. The Tutorial concern is visual hierarchy, not a disabled control. V12 remains an optional Reduced Motion proposal. [Follow-up report and captures](UI_VISUAL_PASS_2026-09-07.md).
+
 ## 1. Verdict and first step
 
 **Overall visual presentation: 6/10. Keep the foundation; improve communication before replacing the art direction.**

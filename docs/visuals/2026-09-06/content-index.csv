@@ -73,7 +73,7 @@ consumable,defib_spark,Defibrillator,assets/icons/items/defib_spark.png,Keep sub
 consumable,ghost_veil,Cloak Emitter,assets/icons/items/ghost_veil.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
 consumable,scatter_veil_array,Cloak Array,assets/icons/items/scatter_veil_array.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
 consumable,grounding_clip,Grounding Clip,assets/icons/items/grounding_clip.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
-consumable,corrosion_bomb,Interference Charge,assets/icons/items/corrosion_bomb.png,"Replace art: green leaking chemical bomb implies acid/poison, but Interference Charge lowers a roll. Use an interference emitter or antenna charge."
+consumable,corrosion_bomb,Interference Charge,assets/icons/items/signalJam.png,Updated 2026-09-07: reuse the detailed signal emitter for roll interference; original source remains shared with Signal Jammer.
 consumable,entropy_seed,Disruption Core,assets/icons/items/entropy_seed.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
 consumable,shock_charge,Shock Charge,assets/icons/items/shock_charge.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
 consumable,acid_vial,Acid Vial,assets/icons/items/acid_vial.png,Keep clear vial silhouette; green chemical art is appropriate here.
@@ -126,7 +126,7 @@ relic,overcharge,Overcharge,assets/icons/items/overcharge.png,Keep subject and r
 relic,signalJam,Signal Interference,assets/icons/items/signalJam.png,Increase antenna silhouette brightness/area; very thin gold wire disappears small.
 relic,coordinatedStrike,Coordinated Strike,assets/icons/items/coordinatedStrike.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
 relic,resonanceCascade,Thermal Catalyst,assets/icons/items/resonanceCascade.png,Clarify machinery; bell-like silhouette reads ceremonial before technological.
-relic,gravityWell,Gravity Well,assets/icons/items/gravityWell.png,Replace art: 32px pastel ring is the only mapped item/relic image outside the dominant 128px detailed set; fails style cohesion.
+relic,gravityWell,Gravity Well,assets/icons/items/momentum_core.png,Updated 2026-09-07: reuse the detailed orbital apparatus for the gravity field; original source remains shared with Momentum Core.
 relic,protocolOverride,Supply Bypass,assets/icons/items/protocolOverride.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.
 relic,entropyLeak,Attrition Field,assets/icons/items/entropyLeak.png,Rework hourglass motif toward a damaged clock/regulator; currently reads fantasy time magic.
 relic,chainReaction,Chain Reaction,assets/icons/items/chainReaction.png,Keep subject and rendering family; normalize occupied area and verify recognition at loadout size. Reduce small gold detail where it carries no meaning.

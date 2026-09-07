@@ -3,9 +3,8 @@ extends Node
 
 var _scene: Control
 var _death_sfx_played_ids: Dictionary = {}
-# Same-card floats in flight: card instance id -> Array[Label]. New floats on a
-# card stack ABOVE the lowest still-alive float so simultaneous numbers never
-# overlap (float-text redesign stacking rule).
+# Two bounded portrait lanes per card. New outcomes retire the oldest float
+# when both lanes are occupied; the battle log retains the complete sequence.
 var _live_floats_by_card: Dictionary = {}
 # Per-card spawn counter driving the x-jitter cycle (Batch 3): sequential
 # numbers on one unit alternate left/right of center so they never pile into
@@ -211,6 +210,9 @@ func play_round_feedback(events: Array) -> void:
 	reset_death_sfx_tracking()
 	# Drop stale float-stacking entries (freed labels / last battle's cards) so
 	# the registry never grows across a run.
+	for live in _live_floats_by_card.values():
+		for label in live:
+			_retire_float(label)
 	_live_floats_by_card.clear()
 	_float_seq_by_card.clear()
 	plan_status_suppression(events)
@@ -530,7 +532,7 @@ const FLOAT_LIFETIME := 1.5
 # Hold full alpha for a beat, then fade over the remainder — a linear whole-life
 # fade left the number half-gone by the time the punch-in settled.
 const FLOAT_FADE_HOLD := 0.6
-const FLOAT_STACK_GAP := 6.0
+const FLOAT_MAX_PER_CARD := 2
 
 # X-jitter cycle as a fraction of the card's width: center, then alternating
 # left/right. ±0.14 keeps a full-size damage number over the portrait even on
@@ -546,7 +548,11 @@ func _spawn_floating_text(card: Control, event_type: String, amount: int) -> voi
 	_float_seq_by_card[card.get_instance_id()] = seq + 1
 	origin.x += card.size.x * float(FLOAT_JITTER_FRACTIONS[seq % FLOAT_JITTER_FRACTIONS.size()])
 	var mult: float = _float_size_mult(event_type, amount)
-	_spawn_float_label(float_text, _get_floating_color(event_type), origin, mult, card.get_instance_id())
+	var bounds := card.get_global_rect()
+	bounds.position -= _scene.float_layer.get_global_position()
+	# Keep the title and HP strip clear. Each number remains with its portrait.
+	bounds = Rect2(bounds.position + Vector2(12, bounds.size.y * 0.20), Vector2(bounds.size.x - 24, bounds.size.y * 0.62))
+	_spawn_float_label(float_text, _get_floating_color(event_type), origin, mult, card.get_instance_id(), bounds)
 
 
 # Roll-buff float at the DIE (relocated from the unit card): the buff changes
@@ -578,8 +584,8 @@ func _spawn_roll_buff_float(event: Dictionary, squad_wide: bool, floated_sides: 
 # Shared float-label builder: punch-scale in, rise + fade, free. `origin` is the
 # float-layer-space point the label centers on horizontally (its top edge).
 # `stack_key` (a card instance id, 0 = no stacking) stacks simultaneous floats
-# on one card upward so they never overlap.
-func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float, stack_key: int) -> void:
+# on one card into two bounded lanes. Roll buffs retain their die anchor.
+func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float, stack_key: int, bounds: Rect2 = Rect2()) -> void:
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
 		return
 	var label: Label = Label.new()
@@ -595,23 +601,32 @@ func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float
 	_scene.float_layer.add_child(label)
 	label.move_to_front()
 	label.reset_size()
+	label.size = label.get_combined_minimum_size()
 	label.position = Vector2(origin.x - label.size.x * 0.5, origin.y)
 
-	# Stacking rule: a new float on a card with floats still in flight spawns
-	# ABOVE the highest-stacked live one (they all rise at the same speed, so
-	# they never cross).
+	var rise := FLOAT_RISE
 	if stack_key != 0:
 		var live: Array = _live_floats_by_card.get(stack_key, [])
 		var pruned: Array = []
-		var min_y: float = INF
 		for entry_variant in live:
-			# Validity check BEFORE the cast — casting a freed instance errors.
-			if entry_variant != null and is_instance_valid(entry_variant):
-				var entry: Label = entry_variant
-				pruned.append(entry)
-				min_y = minf(min_y, entry.position.y)
-		if min_y != INF:
-			label.position.y = minf(label.position.y, min_y - label.size.y * mult - FLOAT_STACK_GAP)
+			if is_instance_valid(entry_variant) and not entry_variant.is_queued_for_deletion():
+				pruned.append(entry_variant)
+		if pruned.size() >= FLOAT_MAX_PER_CARD:
+			_retire_float(pruned.pop_front())
+		var slot := 0
+		if not pruned.is_empty() and int(pruned[0].get_meta("float_slot", 0)) == 0:
+			slot = 1
+		label.set_meta("float_slot", slot)
+		if bounds.has_area():
+			var lane := Rect2(bounds.position + Vector2(0, bounds.size.y * slot / FLOAT_MAX_PER_CARD), Vector2(bounds.size.x, bounds.size.y / FLOAT_MAX_PER_CARD))
+			# Account for peak punch scale AND outline, including narrow enemy cards.
+			var ink_size := label.size + Vector2.ONE * (FLOAT_OUTLINE_SIZE * 2.0)
+			mult = minf(mult, minf((lane.size.x - 4) / ink_size.x, (lane.size.y - 4) / ink_size.y) / 1.25)
+			var peak_half := ink_size * mult * 1.25 * 0.5
+			var center_x := clampf(origin.x, lane.position.x + peak_half.x + 2, lane.end.x - peak_half.x - 2)
+			var center_y := lane.end.y - peak_half.y - 2
+			label.position = Vector2(center_x, center_y) - label.size * 0.5
+			rise = minf(FLOAT_RISE, maxf(0, center_y - lane.position.y - peak_half.y - 2))
 		pruned.append(label)
 		_live_floats_by_card[stack_key] = pruned
 
@@ -623,19 +638,25 @@ func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float
 	# number "pops" on arrival. Bigger hits punch larger. Scale is centered on the
 	# label so it grows from its middle.
 	label.pivot_offset = label.get_minimum_size() * 0.5
-	label.scale = Vector2(0.5, 0.5)
-	var punch: Tween = create_tween()
+	label.scale = Vector2.ONE * mult * 0.5
+	var punch: Tween = label.create_tween()
 	punch.tween_property(label, "scale", Vector2.ONE * (mult * 1.25), 0.10) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	punch.tween_property(label, "scale", Vector2.ONE * mult, 0.13) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	# Rise over the whole lifetime; hold full alpha for a beat, then fade out.
-	var tween: Tween = create_tween()
-	tween.tween_property(label, "position", label.position + Vector2(0, -FLOAT_RISE), FLOAT_LIFETIME)
+	var tween: Tween = label.create_tween()
+	tween.tween_property(label, "position", label.position + Vector2(0, -rise), FLOAT_LIFETIME)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, FLOAT_LIFETIME - FLOAT_FADE_HOLD) \
 		.set_delay(FLOAT_FADE_HOLD)
 	tween.tween_callback(label.queue_free)
+
+
+func _retire_float(label: Variant) -> void:
+	if is_instance_valid(label):
+		label.hide()
+		label.queue_free()
 
 
 # Floating-number punch scale: damage scales up with the hit (heavy hits read
@@ -1157,5 +1178,3 @@ func _fx_release_rest(node: Control) -> void:
 
 
 # ── 2D dice widgets ───────────────────────────────────────────────────────────
-
-

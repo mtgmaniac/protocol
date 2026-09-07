@@ -149,15 +149,10 @@ func _apply_visual_theme(victory: bool) -> void:
 	_add_result_banner(victory, accent)
 	_build_two_section_stats(accent)
 
-	# Single primary action (start a fresh run) = teal primary button, prefixed
-	# with the swap/restart glyph (batch 181).
+	# Continue is centered text, matching the unlock screen's primary action.
 	new_run_button.custom_minimum_size = BUTTON_SIZE
 	PixelUI.style_primary_button(new_run_button, BUTTON_FONT)
-	new_run_button.icon = load(PixelUI.ICON_SWAP) as Texture2D
-	new_run_button.expand_icon = true
-	new_run_button.add_theme_constant_override("icon_max_width", 56)
-	new_run_button.add_theme_color_override("icon_normal_color", PixelUI.BTN_PRIMARY_INK)
-	new_run_button.add_theme_constant_override("h_separation", 16)
+	new_run_button.icon = null
 
 
 # Result illustration (victory / defeat) pinned above the title. Cover-cropped

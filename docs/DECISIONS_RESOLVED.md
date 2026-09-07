@@ -392,6 +392,10 @@ from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
 still enforces the text side.
 
 
+## G-12. Next visual pass scope (Kev, 2026-09-07)
+
+Mock up V07/V08 for review; do not implement those layouts yet. Implement V09 art-outlier fixes using existing art when it fits the item's role and current style, and V10 bounded combat-number stacking. Remove the icon from the run-end Continue button. Reproduce V11's unlock-layout finding and explain V11/V12; these are investigation/explanation, not approval to redesign unlocks or add reduced motion. Twin Fates stays removed. Keep gameplay, the restored compact footer and stable item IDs unchanged.
+
 ## G-11. Restore compact battle footer (Kev, 2026-09-06)
 
 The enlarged, labeled footer overlaps friendly health bars. Kev approved going back to the prior compact icon-only layout. Restore 112×112 buttons and bottom-right costs, and remove permanent captions. This supersedes the footer portion of G-10. Keep Twin Fates removed and preserve the other step-1 changes. Do not repeat the label enlargement without a new layout decision.
