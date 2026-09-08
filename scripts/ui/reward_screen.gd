@@ -140,6 +140,9 @@ func _ready() -> void:
 	_build_view_battle_button()
 	_build_confirm_button()
 	call_deferred("_restore_picker_ui_state")
+	if GameState.tutorial_mode:
+		summary_label.text = "Choose one item. It goes into Items for the next training battle."
+		summary_label.visible = true
 
 
 func _exit_tree() -> void:
@@ -928,6 +931,8 @@ func _commit_intercept_choice(item: ItemData, target_unit_id: String, swap_consu
 		footer_label.visible = true
 		return
 	_choice_request.clear()
+	if item.item_type == "consumable" and not GameState.tutorial_mode:
+		await preload("res://scripts/ui/training_flow.gd").explain_first_item(self)
 	SceneManager.go_to_intercept()
 
 
@@ -954,6 +959,11 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 	footer_label.text = _build_reward_result_text(item, target_unit_id)
 	if swapped_out_name != "":
 		footer_label.text = "%s replaced %s." % [item.display_name, swapped_out_name]
+	if GameState.tutorial_mode:
+		await preload("res://scripts/ui/training_flow.gd").reward_claimed(self)
+		return
+	if item.item_type == "consumable":
+		await preload("res://scripts/ui/training_flow.gd").explain_first_item(self)
 	GameState.award_battle_xp()
 	if GameState.has_pending_evolution():
 		SceneManager.go_to_evolution()
@@ -964,8 +974,10 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 func _update_battle_header() -> void:
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
+	if GameState.tutorial_mode:
+		op_name = "TRAINING"
 	PersistentHeader.set_run_active(true)
-	PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, op_name)
+	PersistentHeader.update_progress(GameState.current_battle, 2 if GameState.tutorial_mode else GameState.total_battles, op_name)
 
 
 func _refresh_inventory_summary() -> void:
@@ -1111,6 +1123,9 @@ func _auto_resolve_empty_offer() -> void:
 		GameState.pending_choice_request.clear()
 		GameState.pending_intercept_state["stage"] = "result_pending"
 		SceneManager.go_to_intercept()
+		return
+	if GameState.tutorial_mode:
+		await preload("res://scripts/ui/training_flow.gd").reward_claimed(self)
 		return
 	GameState.award_battle_xp()
 	if GameState.has_pending_evolution():

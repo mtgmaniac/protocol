@@ -1902,14 +1902,14 @@
             15
           ],
           "name": "Overdrive",
-          "eff": "11 damage",
-          "dmg": 11,
+          "eff": "10 damage",
+          "dmg": 10,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 11,
-          "dMax": 11
+          "dMin": 10,
+          "dMax": 10
         },
         {
           "zone": "crit",

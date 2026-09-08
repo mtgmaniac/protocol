@@ -174,7 +174,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 			# off-script die still reaches its rejection. Same verdict as
 			# before — only the evaluation order changed.
 			var nudge_allowed: bool = _scene._tutorial_allows("nudge_pick", {"hero": nudge_unit_id})
-			if nudge_unit_id != str(_scene.TUTORIAL_NUDGE_HERO) or not nudge_allowed:
+			if not nudge_allowed:
 				return true
 		AudioManager.play_select()
 		_apply_nudge(target_id)

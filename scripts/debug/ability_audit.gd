@@ -3293,30 +3293,29 @@ func _run_tutorial_kill_math_regression() -> void:
 	_tutorial_resolve_turn(mgr, {"combat": 3, "engineer": 12, "medic": 2}, ["combat", "engineer", "medic"])
 	var grants_t1: int = mgr.take_pending_protocol_grants()
 	var t1_ok: bool = (
-		int(enemy["current_hp"]) == 18
+		int(enemy["current_hp"]) == 20
 		and not bool(enemy.get("marked", false))
 		and int(strike["current_hp"]) == 51
 		and grants_t1 == 0
 	)
 	if t1_ok:
-		_record_pass("Tutorial / T1 math (Mark 11 -> 17, shield soaks 3 of Stab 7, Protocol 1)", "tutorial")
+		_record_pass("Tutorial / T1 math (Mark 10 -> 15, shield soaks 3 of Stab 7, Protocol 1)", "tutorial")
 	else:
-		_record_failure("Tutorial / T1 math (Mark 11 -> 17, shield soaks 3 of Stab 7, Protocol 1)", "tutorial",
-			"drone 18 unmarked, Strike 51, grant 0",
+		_record_failure("Tutorial / T1 math (Mark 10 -> 15, shield soaks 3 of Stab 7, Protocol 1)", "tutorial",
+			"drone 20 unmarked, Strike 51, grant 0",
 			"drone=%d marked=%s strike=%d grant=%d" % [int(enemy["current_hp"]), str(enemy.get("marked", false)), int(strike["current_hp"]), grants_t1])
 	# The round-two guarantee: the drone must outlive the FIRST guided attack so
 	# that neither Rail Strike (10) nor Overdrive (11) is asked of the player and
 	# then fizzles on an already-dead target.
 	_expect_and_record("Tutorial / round-two drone HP outlives the largest single guided hit (11)",
 		"tutorial", "true", str(int(enemy["current_hp"]) > 11))
-	# T2 closes before the enemy action: heal/shield -> Rail Strike -> Overdrive.
-	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 12, "medic": 3}, ["medic", "combat", "engineer"])
-	if bool(enemy["dead"]):
-		_record_pass("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 18)", "tutorial")
-	else:
-		_record_failure("Tutorial / T2 kill (heal 3/shield 3, 10 + 11 into 18)", "tutorial", "drone dead", "hp=%d" % int(enemy["current_hp"]))
-	_expect_and_record("Tutorial / T2 Diagnostic Pulse restores Strike", "tutorial", "54", str(int(strike["current_hp"])))
-	_expect_and_record("Tutorial / T2 Diagnostic Pulse grants Strike shield", "tutorial", "3", str(int(strike["shield"])))
+	# T2 teaches Nudge while Engineer rolls shield: normal damage leaves T3 open.
+	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 6, "medic": 3}, ["combat", "engineer", "medic"])
+	_expect_and_record("Tutorial / T2 naturally leaves 10 HP", "tutorial", "10", str(int(enemy["current_hp"])))
+	_expect_and_record("Tutorial / T2 protects and heals Strike", "tutorial", "54", str(int(strike["current_hp"])))
+	_expect_and_record("Tutorial / T2 shields expire normally", "tutorial", "0", str(int(strike["shield"])))
+	_tutorial_resolve_turn(mgr, {"combat": 8, "engineer": 12, "medic": 3}, ["engineer", "medic", "combat"])
+	_expect_and_record("Tutorial / free T3 reversed order wins without spending", "tutorial", "true", str(bool(enemy["dead"])))
 
 	# The taught band jump and its double-Nudge safety: 8 -> 11 flips
 	# Suppression Fire (6) into Rail Strike (10); a stray second +3 (14) stays

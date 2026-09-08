@@ -278,6 +278,20 @@ selection, not a rarity — recolored to `DT_CYAN` in the same pass.
 
 # BUILD G PUNCH-LIST RULINGS (Kev, 2026-07-15 playtest)
 
+## G-14. Two-encounter training and Engineer damage (Kev, 2026-09-08)
+
+Implement the reviewed tutorial flow: complete guided turns, independent play after
+the guidance, a real item choice, and an optional second encounter with two enemies
+covering Burn and item use. Offer CONTINUE TRAINING / START YOUR RUN after the reward.
+Training rewards remain in training. Preserve first-time item guidance in real runs.
+Both dice and portraits remain valid selection/target inputs. Unit selection needs
+only its existing selection affordances, not a separate mandatory lesson.
+Use normal damage, HP and status rules; never clamp damage or prevent a legal kill.
+Arrange guided rolls to leave room for independent decisions, preferably round three
+of encounter one and throughout encounter two. Permanently change base Field
+Engineer's Overdrive (11–15) from 11 to 10 damage; Mark then gives 15 damage.
+Preserve the compact footer. This supersedes the tutorial deferral in G-13.
+
 ## G-1. Operation-unlock popup FOLDED into the UnlockScreen *(ruled; landed Build G)*
 **Ruling.** The separate one-time operation-unlock popup
 (`OperationBriefingOverlay.present_unlock`) is retired. The UnlockScreen's NEW

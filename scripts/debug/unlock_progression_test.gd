@@ -267,7 +267,7 @@ func _test_renamed_enemy_abilities() -> void:
 
 
 func _test_band_copy() -> void:
-	var tutorial_file := FileAccess.open("res://scripts/ui/tutorial_controller.gd", FileAccess.READ)
+	var tutorial_file := FileAccess.open("res://scripts/ui/training_lessons.gd", FileAccess.READ)
 	var tutorial_text := tutorial_file.get_as_text()
 	tutorial_file.close()
 	var keywords_file := FileAccess.open("res://data/raw/keywords.data.json", FileAccess.READ)

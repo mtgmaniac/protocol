@@ -81,6 +81,7 @@ var run_start_unix: int = 0
 # completion/skip persistence is SaveManager.tutorial_done (first-run auto-init,
 # Kev 2026-07-21: the first BEGIN with that flag unset launches the drill).
 var tutorial_mode: bool = false
+var tutorial_reward_item_id: String = ""
 # Where the drill exits to (in-memory, set by start_tutorial_run): first-run
 # auto-init continues into the squad picker; manual replays (splash TUTORIAL
 # button / Help) return to the main menu. Consumed by TutorialController._finish.
@@ -144,6 +145,7 @@ var _reward_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # for reproducible runs); the default (-1) randomizes as normal play does.
 func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, tutorial: bool = false) -> void:
 	tutorial_mode = tutorial
+	tutorial_reward_item_id = ""
 	if rng_seed >= 0:
 		_reward_rng.seed = rng_seed
 	else:
@@ -1043,6 +1045,7 @@ func advance_to_next_battle() -> void:
 
 func reset_run() -> void:
 	tutorial_mode = false
+	tutorial_reward_item_id = ""
 	tutorial_continue_to_play = false
 	selected_units.clear()
 	current_battle = 0

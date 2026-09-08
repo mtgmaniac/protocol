@@ -140,16 +140,13 @@ var hero_units: Array = []
 var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
-# Tutorial v3.1 rigs inputs only. Its real 35-HP Scrap Drone receives Mark,
-# then the marked 17-damage hit, leaving 18. Medic shields Strike, so the
-# drone's real Stab 7 is soaked 3 / 4 to HP. Round two heals the injured
-# Strike and kills from 18 with 10 + 11 — both guided attacks land.
-# Keyword primers are suppressed without marking them seen.
+# Training rigs inputs only. Core damage: 15, then 10, leaving independent play.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_NUDGE_HERO := "combat"
 const TUTORIAL_HERO_ROLLS := [
 	{"combat": 3, "engineer": 12, "medic": 2},
+	{"combat": 8, "engineer": 6, "medic": 3},
 	{"combat": 8, "engineer": 12, "medic": 3},
 ]
 var _tutorial_turn: int = 0
@@ -162,6 +159,8 @@ var _tutorial_turn: int = 0
 func _tutorial_rig_values() -> Dictionary:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
+	if _game_state().current_battle == 2:
+		rig = {"pulse": 4, "engineer": 6, "medic": 3} if turn_idx == 1 else {"pulse": 10, "engineer": 12, "medic": 3}
 	var values: Dictionary = {}
 	for hero_state in combat_manager.get_hero_states():
 		var unit: Object = hero_state.get("unit") as Object
@@ -1190,6 +1189,8 @@ func _sync_die_status_visuals() -> void:
 func _apply_tutorial_dice_rig() -> void:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
+	if _game_state().current_battle == 2:
+		rig = {"pulse": 4, "engineer": 6, "medic": 3} if turn_idx == 1 else {"pulse": 10, "engineer": 12, "medic": 3}
 	for hero_state in combat_manager.get_hero_states():
 		var unit: Object = hero_state.get("unit") as Object
 		var unit_id: String = str(unit.id) if unit != null else ""
@@ -1781,6 +1782,9 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 		MusicManager.set_combat(false)
 		roll_button.disabled = true
 		_refresh_summary("Defeat. Squad wiped.")
+		if _game_state().tutorial_mode:
+			preload("res://scripts/ui/training_flow.gd").defeat(self)
+			return
 		_game_state().finish_run("defeat")
 		_scene_manager().go_to_run_end(true)  # defeat -> POWER DOWN transition
 	else:
@@ -1918,6 +1922,9 @@ func _finish_battle_defeat() -> void:
 	_game_state().record_battle_turns(_round_number)
 	_disable_combat_actions()
 	_refresh_summary("Defeat. Squad wiped.")
+	if _game_state().tutorial_mode:
+		preload("res://scripts/ui/training_flow.gd").defeat(self)
+		return
 	_game_state().finish_run("defeat")
 	_scene_manager().go_to_run_end()
 
@@ -2455,6 +2462,8 @@ func _build_runtime_units() -> void:
 		var base_enemy: EnemyData = _data_manager().get_enemy_by_display_name(TUTORIAL_ENEMY_NAME) as EnemyData
 		if base_enemy != null:
 			enemy_units = [_duplicate_enemy(base_enemy)]
+			if _game_state().current_battle == 2:
+				enemy_units.append(_duplicate_enemy(base_enemy))
 			return
 
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
@@ -2496,8 +2505,10 @@ func _refresh_summary(_extra_text: String) -> void:
 func _update_battle_header() -> void:
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
+	if _game_state().tutorial_mode:
+		op_name = "TRAINING"
 	PersistentHeader.set_run_active(true)
-	PersistentHeader.update_progress(_game_state().current_battle, _game_state().total_battles, op_name)
+	PersistentHeader.update_progress(_game_state().current_battle, 2 if _game_state().tutorial_mode else _game_state().total_battles, op_name)
 
 
 # Pre-enum string name for a phase (tutorial payloads, tests, debug logs).

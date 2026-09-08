@@ -365,162 +365,45 @@ compression, so no etc2 artifacts exist and none are needed.
 
 ## UI & feedback
 
-> **Tutorial V3.1 ruling (current):** Mandatory onboarding is 15 visible
-> coachmark beats plus two hidden dice-settle waiters (17 internal states).
-> It rigs only the two rounds of inputs and uses the real 35-HP Scrap Drone
-> (Facility light-hybrid pass, selective-HP): MARK -> 17-damage hit -> a
-> 3 heal + 3 shield placed on Strike, leaving the drone at 18; the drone's
-> real Stab 7 is then soaked 3 by that shield (4 to HP, Strike 51). Round two
-> Nudges 8->11, heals the injured Strike, and kills from 18 with the
-> 10-damage and 11-damage hits before the enemy action. **Every guided action
-> in both rounds resolves meaningfully — the round-one enemy HP is held above
-> 11 so neither round-two attack can fizzle on a dead target** (pinned by the
-> ability audit). The real inspection popup must open and
-> close; input is allowlisted and every assignment validates its effect, target,
-> and cast order. All primers are suppressed and remain unseen; only completion
-> persists `tutorial_done`. This supersedes every older V2/tutorial-showcase
-> description in this historical section.
+**Two-encounter training (G-14, 2026-09-08):** `training_lessons.gd` owns the
+lesson script; `tutorial_controller.gd` gates guided actions and leaves open-play
+beats unrestricted. Both dice and portraits select units/targets; long-press
+inspection remains available. Footer geometry stays compact and icon-only.
 
-> **Advanced Protocol primer (current):** first legal normal post-roll decision
-> with Protocol >=2 and an unassigned hero die, once per save; it highlights
-> Protocol/Reroll/Set and changes neither a die nor Protocol.
+- Core: real 35-HP Scrap Drone, unchanged combat rules. Round one rolls
+  Strike 3 / Engineer 12 / Medic 2: Mark makes Engineer's **10 damage → 15**.
+  Medic can shield Strike against the real 7-damage enemy attack. Round two
+  rolls Strike 8 / Engineer 6 / Medic 3: Nudge changes Strike to 11 (10 damage),
+  Engineer shields and Medic heals. The drone naturally retains 10 HP.
+- Round three is independent: Strike 8 / Engineer 12 / Medic 3. Order, friendly
+  targets and Protocol spending are unrestricted. No health floors, invulnerability,
+  damage clamps, forced losses or outcome predicates. Later rounds remain playable.
+- Victory opens the real reward picker: Patch Kit, Scrap Plate or Calibration Chip.
+  The chosen item enters inventory. CONTINUE TRAINING starts encounter two;
+  START YOUR RUN clears training and opens unit selection.
+- Optional practice: Pulse / Engineer / Medic versus two real Scrap Drones. First
+  rolls 10 / 12 / 3 demonstrate 9 damage + 3 burn for 1 turn. Second rolls 4 / 6 / 3
+  leave space for the next-round burn tick and a normal-cost item. Later rolls
+  10 / 12 / 3 support an independent finish. Targets and order are player choices.
+  A defeated target does not take later burn damage. Items are optional, not a gate.
+- Failure offers retry of that encounter (including the original practice reward)
+  or exit, without recording a normal run defeat. Finish/exit clears training
+  inventory and marks tutorial completion. Header back retains normal abandonment.
+- First real consumable reward displays an acquisition/use explanation once,
+  acknowledged in the primer ledger. Training does not consume this real-run lesson.
+  Existing keyword primers remain suppressed in training and eligible in normal play.
+- Coaches use 60-design-pixel text and lighter board dimming; footer explanations
+  sit in the central gap. Guided assignment gates follow the selected hero; legal
+  alternative targets do not strand the lesson. The dice-waiter recovery remains.
 
-**Keyword primers** (`docs/PRIMERS.md`): one-shot micro-tutorials — first sighting of a mechanic pauses the feedback at a group boundary and spotlights one rule sentence (data: `primers.data.json`; full drain per turn; suppressed in headless/auto battle; in the scripted tutorial exactly ONE showcase primer displays — Kev 2026-07-21, see the tutorial block; observer-only, never touches combat outcomes). The tutorial and primers share `SpotlightLayer`.
+**Engineer balance change:** base Overdrive (11–15) permanently deals 10 damage.
+No evolution values or enemy stats changed. Baseline is not repinned.
 
-**Rigged onboarding tutorial — v2, HONEST RIG (2026-07-20, supersedes the
-Batch-5 script wholesale).** `scripts/ui/tutorial_controller.gd` +
-`GameState.start_tutorial_run`. Principle: **rig the inputs, never fake the
-outputs** — scripted dice and drone aim; real statlines, real damage, real HP.
-- **The fight:** starting trio (Strike Unit / Field Engineer / Splice Medic) vs
-  ONE Scrap Drone at its REAL 35-HP statline (the old 10-HP override is
-  deleted). Drone roll rigged to 6 both turns = Stab, 7 dmg (the kit has no
-  8-dmg band — copy was fixed to the engine per the v2 ruling), aimed at
-  Strike via its real SYSTEMATIC slot-0 personality.
-- **Rig v2.3 (Prompt-6 delta): MARK IS OUT OF THE DRILL.** Strike rolls 9
-  (Suppression Fire, 6 dmg) instead of Target Lock — mark is taught by its
-  PRIMER at first real-play sighting (suppression never writes
-  `primers_seen`, so it fires). Cast order is carried by the first-assign
-  beat line ("Your squad fires in the order you assign") plus the visible
-  order badges. **Neither leech NOR mark appears on any rigged band**
-  (smoke-asserted, including nudged +3 variants; no rigged band reaches 20 —
-  the v2.1 leech/Shock-Therapy analysis stands).
-  **Turn 1** rolls {combat 9, engineer 12, medic 2}: Suppression Fire 6 +
-  Overdrive 11 = 17 (35 → 18) — with no setup effects the turn-1 math is
-  **ORDER-INVARIANT** (audit-asserted under a fully reversed cast order),
-  which is its own stall-proofing; Diagnostic Pulse (3 heal + 3 shield on
-  Strike — the heal overflows at full HP, honest and harmless) soaks 3 of
-  the Stab (Strike takes 4). **Turn 2** rolls {combat 8 → Nudged 11,
-  engineer 12, medic 6}: the band jump (Suppression Fire 6 → Rail Strike 10
-  — and the player FELT the 6 land in turn 1), a plain Overdrive 11,
-  Infusion heal — the kill closes ON DICE (10 + 11 = 21 into 18). Protocol
-  entering turn 2 is exactly 1 (income only): the "exactly one Nudge"
-  framing, and a second Nudge is simply unaffordable (0-PP press refused,
-  smoke-asserted).
-- **Item lesson = SIGNPOST (Prompt-5 delta, rationale recorded):** the v2.1
-  rig banked exactly 1 Protocol into turn 2, the Nudge spent it, and items
-  cost 1 — so the item-USE beat was only survivable via the items_free
-  fiction, which also mis-taught the item economy (a granted freebie whose
-  cost was never paid). Both the Shock Charge grant and the tutorial
-  items_free effect are DELETED; the item beat is now an informational
-  tap-through signpost (right after the band-jump beat, holing the footer
-  item button — it renders with an empty loadout) stating the REAL cost:
-  "using one costs 1 Protocol, same as a Nudge, and doesn't spend a die"
-  (verified against `item_protocol_cost`: flat 1). The `item_used` tutorial
-  event emission remains as generic plumbing, currently unconsumed.
-- **25 steps (v2.4, primer-showcase delta — Kev 2026-07-21)**: no status-badge
-  beat (chip teaching is DELEGATED TO PRIMERS, Kev ruling); the order-badges
-  beat is DELETED (playtest ruling — no badge explanation, no resequencing
-  encouragement); beat 3 introduces the DRONE only (the squad is carried by
-  the bands beat); both friendly picks stay (shield T1, heal T2); beat 15
-  (right after the turn-2 waiter) is the PRIMER-SHOWCASE EXPLAINER — it holes
-  Splice Medic's pip readout and names the one-time-tip mechanic, with copy
-  that stands alone on a replay where nothing displayed. Step gate schema has the optional `hero` payload
-  predicate — `assigned` gates match a SPECIFIC hero — plus the `item_used`
-  event emitted where `_apply_item_effect` resolves. Spotlight keys:
-  `die:<unit_id>` / `card:<unit_id>` (fall back to the unit), `item` (footer
-  consumable button), `enemy_card` / `enemy_pip` / `enemy_die` (the first
-  enemy's card / ability pip / die — the telegraph beat's separate holes).
-- **Two-stage assign spotlight (playtest items 5/6 — THE RULE):** every step
-  gated on `assigned` with a `hero` predicate spotlights the hero's die +
-  card (separate holes) as stage 1; when THAT hero's `targeting_started`
-  fires, the holes MOVE to the legal target(s) — enemy card + die for
-  hostile picks, the legal ally card(s) for friendly picks — so the player
-  never taps into dimmed screen. Reuses `targeting_started` + `set_holes`,
-  coach text unchanged through the swap; smoke-asserted on every gated beat.
-- **FIRST-RUN CHOICE OVERLAY (Kev ruling 2026-07-21; revised same day — the
-  briefly-restored in-drill Skip button is OUT again, so the playtest
-  SKIP-deletion stands for the drill itself).** BEGIN on a profile with
-  `SaveManager.tutorial_done` unset raises a one-question modal over the
-  darkened splash (`main_menu._show_first_run_prompt`: "This is your first
-  time playing - want to run the tutorial?") — unmissable, no menu
-  discovery. **RUN TUTORIAL** enters the drill with
-  `GameState.tutorial_continue_to_play` set, so `TutorialController._finish`
-  exits seamlessly into the squad picker; **SKIP TUTORIAL sets the SAME
-  `tutorial_done` flag** (one flag, two paths in) and heads straight into
-  the squad picker without ever entering the drill. Manual replays (splash
-  TUTORIAL button / Help → REPLAY TUTORIAL) return to the menu as before and
-  never reset the flag. Deleting the `user://` save re-triggers first-run
-  behavior (the intended reset path). Mid-drill abandonment remains via the
-  header back button (return-to-menu → `reset_run()`, which clears
-  `tutorial_mode` and the continue flag — `tutorial_done` stays unset, so
-  the next BEGIN asks again).
-- **Coachmark placement (playtest item 9):** the coach stays HIDDEN until it
-  is placed (`SpotlightLayer.spotlight` — the placement await used to render
-  one frame at the previous position, the "blip"), and a step whose target
-  rects haven't laid out yet waits (bounded) before spotlighting
-  (`_layout_step` retry). Both fixes are generic — every step and the primer
-  coachmarks inherit them.
-- **Stall-proofing (the drill must be unable to dead-end):** the kill needs
-  NO resource beyond the dice, and with no setup effects the totals are
-  ORDER-INVARIANT — any resequence lands the identical 35 → 18 → dead line;
-  a Nudge at 0 PP is refused (the pick never arms) and a nudged 14 stays
-  inside Rail Strike's 11-15 band. Audit-pinned (5 kill-math regressions
-  incl. the reversed-order arms). The old items_free crutch is gone with the
-  item beat.
-- **Coach panel sizes to its text (Prompt-6):** the coachmark panel derives
-  its width from measured text bounds (the label's own resolved m5x7 font)
-  plus the named paddings — no fixed full-screen width. Copy longer than one
-  line wraps regardless, so it contributes its BALANCED width (unwrapped
-  width split over the fewest lines, plus word-boundary slack) — short cards
-  (WELCOME / DRILL COMPLETE) shrink to fit and center, long copy wraps into
-  even lines. **Height shrink-wraps too (2026-07-21 fix):** the card is
-  measured visible-but-transparent during placement — a HIDDEN Container
-  never re-sorts its children, so the old `visible = false` blip fix made
-  the autowrap label report a stale line count at its previous width and
-  every card carried dead space below its text (the WELCOME card measured
-  at ~zero width was worst). Measured height ceils to a whole design px; no
-  artificial minimum — padding + one text line + the hint line is already
-  the natural floor. Applies to every coach placement (tutorial AND primers
-  — shared SpotlightLayer); positions round to whole px; the bottom anchor
-  clears `PixelUI.safe_bottom`.
-- **Dice-settle rig:** the scripted values are handed to the tray BEFORE the
-  physics roll (`dice_tray_3d.set_rigged_results`, consumed one-shot in
-  `_resolve_landed_die_face`), so the settle presentation rotates the RIGGED
-  face up — the old post-settle repaint (a visible wrong-number snap) is
-  deleted. Headless keeps the dict-level rig.
-- **Primer showcase — ONE primer fires in the drill (Kev ruling 2026-07-21,
-  supersedes full tutorial suppression):** the primer manager now exists in
-  tutorial battles and `keyword_primer.gd` caps the drill at exactly ONE
-  displayed primer (`TUTORIAL_SHOWCASE_CAP`); it is marked seen as normal
-  ("don't have to redo that one"), everything past the cap stays suppressed
-  and unmarked and fires in the first real battle (smoke-asserted). The
-  natural sighting is CLEANSE: Splice Medic's turn-2 Infusion (10 heal,
-  cleanse) is the drill's only non-exempt icon — `primer_cleanse` is new
-  (icon_first_seen/cleanse, roll-sighted only; cleanse emits no feedback
-  event) and fires in real play too. `battle_scene` emits the `rolled`
-  tutorial event only AFTER the primer drain, so the showcase modal and the
-  tutorial coach never overlap. The showcase respects the ability-primers
-  opt-out and headless suppression.
-- Pinned by `tutorial_smoke_test.gd`: THREE scenarios (happy path with exact
-  rig math + spotlight-retarget assertions on every gated beat + the
-  no-leech sweep + the cleanse-showcase display/seen assertions, the
-  stall-proof resequence/double-Nudge path, and the first-run choice — SKIP
-  sets the flag and lands on the squad picker, RUN TUTORIAL enters the drill
-  and finishing continues to the squad picker). Tutorial capture:
-  `--capture-tutorial
-  [--capture-rolled | --capture-tutorial-step=N |
-  --capture-tutorial-select=<unit>]` (windowed; the select flag drives stage
-  2 of a two-stage assign beat).
+**Keyword primers** (`docs/PRIMERS.md`): first sightings pause at safe moments,
+one explanation at a time. Existing full-drain behavior and normal-play advanced
+Protocol primer remain. Tutorial is a separate controller using `SpotlightLayer`.
+Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
+`training_capture.gd`. Implementation evidence: [tutorial pass](TUTORIAL_IMPLEMENTATION_2026-09-08.md).
 
 **Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 

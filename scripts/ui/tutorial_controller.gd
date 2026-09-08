@@ -59,38 +59,11 @@ func _on_js_refresh(_args: Array) -> void:
 	_publish_debug_state(_current(), [], "poll")
 
 
-# ── Step script (v3.0 — 15 visible beats + 2 roll waiters) ───────────────────────
-# Each step: { targets:[keys], text, advance:"tap"|event, phase:"" (optional event
-# predicate), hero:"" (optional event predicate — the unit id carried in the
-# event payload, e.g. assigned for a SPECIFIC hero), title:"" (optional) }.
-# Keys resolve to battle nodes in _target_rect(). Copy is Kev-final; engine
-# corrections only (drone's Stab is 7; badges are plain numerals — glyph law).
-# v2.5 (Kev-approved polish pass): hero-intro beat added (welcome → header →
-# YOUR side → THEIR side → roll), stage-1 assign spotlights include the ability
-# pip, the nudge beat gates on hero=combat (with an input-level block in
-# protocol_actions — the drill's only Protocol point must not be spendable on
-# the wrong die), and order-teaching consolidated to the beat where ordering is
-# actionable (the assign-the-rest beat).
+# Lesson data lives separately; this controller handles events and geometry.
 func _build_steps() -> Array:
-	return [
-		{"targets": ["enemy_cards", "center", "hero_area"], "separate": true, "title": "WELCOME", "text": "Your enemy is at the top, your squad is at the bottom, and every turn begins by rolling the dice in the center."},
-		{"targets": ["roll_button"], "text": "Tap ROLL to roll one die for every unit.", "advance": "roll_pressed"},
-		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 1},
-		{"targets": ["card:combat", "die:combat", "ability:combat", "die:engineer", "ability:engineer", "die:medic", "ability:medic"], "separate": true, "text": "Each roll selects a different ability. Higher is not always better. Long-press Strike Unit to view everything its die can do.", "advance": "inspected", "inspect_hero": "combat"},
-		{"targets": ["enemy_card", "enemy_pip", "enemy_die", "card:combat"], "separate": true, "text": "The drone plans to deal 7 damage to Strike Unit. Enemy rolls, actions, and targets are shown before you commit your turn."},
-		{"targets": ["card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Strike Unit rolled a setup ability. It deals no damage, but puts MARK on the drone so the next hit deals 50% more. Select Strike Unit, then target the drone.", "advance": "assigned", "hero": "combat", "order": 1, "effect": "mark"},
-		{"targets": ["order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Now select Field Engineer's 11-damage attack and target the marked drone. Because it acts second, the hit will increase to 17.", "advance": "assigned", "hero": "engineer", "order": 2, "effect": "11 damage"},
-		{"targets": ["order:combat", "order:engineer", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "The drone is still aiming at Strike Unit. Select Splice Medic's shield and target Strike Unit. Shields absorb damage before HP does.", "advance": "assigned", "hero": "medic", "target_hero": "combat", "order": 3, "effect": "3 heal"},
-		{"targets": ["order:combat", "order:engineer", "order:medic", "roll_button"], "separate": true, "text": "Your squad acts in the numbered order, then the enemy acts. Tap END TURN and watch the setup ability amplify the next hit.", "advance": "turn_resolved", "round": 1},
-		{"targets": ["enemy_card", "card:combat", "protocol_value", "roll_button", "battle_log"], "separate": true, "text": "The setup ability increased the next hit, the shield soaked 3 of the drone's 7, and you banked 1 Protocol. Tap ROLL for the next turn.", "advance": "roll_pressed"},
-		{"targets": [], "hide_coach": true, "advance": "rolled", "round": 2},
-		{"targets": ["protocol_value", "nudge", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Nudge costs 1 Protocol and raises one unassigned die by 3. Tap NUDGE, then raise Strike Unit's roll from 8 to 11.", "armed_text": "Strike Unit rolled 8. Tap its die to raise the roll to 11.", "advance": "nudged", "hero": "combat", "prev_roll": 8, "new_roll": 11, "effect": "10 damage"},
-		{"targets": ["card:combat", "die:combat", "ability:combat", "card:medic", "die:medic", "ability:medic"], "separate": true, "text": "Raising the roll by 3 moved Strike Unit into a different ability. Its attack changed from 6 damage to 10. Now select Splice Medic's heal and target the injured Strike Unit.", "advance": "assigned", "hero": "medic", "target_hero": "combat", "order": 1, "effect": "3 heal"},
-		{"targets": ["order:medic", "card:combat", "die:combat", "ability:combat"], "separate": true, "text": "Select Strike Unit's 10-damage attack and target the drone.", "advance": "assigned", "hero": "combat", "order": 2, "effect": "10 damage"},
-		{"targets": ["order:medic", "order:combat", "card:engineer", "die:engineer", "ability:engineer"], "separate": true, "text": "Select Field Engineer's 11-damage attack and target the drone.", "advance": "assigned", "hero": "engineer", "order": 3, "effect": "11 damage"},
-		{"targets": ["order:medic", "order:combat", "order:engineer", "enemy_card", "roll_button"], "separate": true, "text": "The heal resolves first. Your two attacks then deal 21 total damage. Tap END TURN.", "advance": "won", "round": 2},
-		{"targets": [], "fullscreen": true, "coach_center": true, "title": "DRILL COMPLETE", "text": "Roll, read the board, choose your targets and firing order, and spend Protocol when the dice miss what you need. New mechanics will explain themselves when they first appear, and Help keeps the full reference.", "advance": "tap_finish"},
-	]
+	var lessons = preload("res://scripts/ui/training_lessons.gd")
+	return lessons.practice() if int(get_node("/root/GameState").current_battle) == 2 else lessons.core()
+
 
 
 func _current() -> Dictionary:
@@ -135,8 +108,6 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	for key in ["inspect_hero", "prev_roll", "new_roll"]:
 		if _current().has(key) and str(payload.get(key, "")) != str(_current()[key]):
 			return
-	if _current().has("target_hero") and str(payload.get("target_unit", "")) != str(_current()["target_hero"]):
-		return
 	if _current().has("order") and int(payload.get("cast_order_position", -1)) != int(_current()["order"]):
 		return
 	if _current().has("effect") and str(payload.get("visible_effect", "")).to_lower().find(str(_current()["effect"]).to_lower()) < 0:
@@ -164,28 +135,12 @@ func _advance_after_inspection_closes() -> void:
 		_next()
 
 
-func _valid_resolution_payload(payload: Dictionary) -> bool:
-	var round: int = int(payload.get("round", -1))
-	if round == 1:
-		var hero_states: Array = payload.get("heroes", []) as Array
-		for hero_variant in hero_states:
-			var hero: Dictionary = hero_variant as Dictionary
-			var unit: Object = hero.get("unit", null) as Object
-			if unit != null and str(unit.get("id")) == "combat":
-				return int(payload.get("enemy_hp", -1)) == 18 and int(hero.get("current_hp", -1)) == 51 and int(payload.get("protocol", -1)) == 1
-		return false
-	if round == 2:
-		return bool(payload.get("enemy_defeated", false)) and int(payload.get("protocol", -1)) == 0 and not bool(payload.get("enemy_second_round_action", true))
-	return false
+func _valid_resolution_payload(_payload: Dictionary) -> bool:
+	# Advancement follows real completed events, never a particular damage outcome.
+	return true
 
 
-# Input-level tutorial fence. Spotlight holes guide the player; this gate is the
-# authority that prevents an off-script control from mutating the honest rig.
-# The RULES live in _action_allowed and are unchanged; this wrapper only makes a
-# refusal audible — a swallowed tap with zero feedback reads as a broken game
-# (public itch.io report: a player quit after tapping a die and nothing
-# happened). On refusal we publish what the beat IS waiting for and the scene
-# pulses it, so the off-script tap redirects instead of stonewalling.
+
 func allows_action(action: String, payload: Dictionary = {}) -> bool:
 	if _action_allowed(action, payload):
 		return true
@@ -195,6 +150,10 @@ func allows_action(action: String, payload: Dictionary = {}) -> bool:
 
 func _action_allowed(action: String, payload: Dictionary) -> bool:
 	var step: Dictionary = _current()
+	if bool(step.get("free", false)):
+		return true
+	if action == "inspect":
+		return true
 	if step.is_empty() or bool(step.get("hide_coach", false)):
 		return false
 	match action:
@@ -307,8 +266,8 @@ func _show_armed_nudge() -> void:
 	var step: Dictionary = _current()
 	if _spot == null or _advance_mode() != "nudged" or not step.has("armed_text"):
 		return
-	var holes: Array = _compute_holes(step)
-	_spot.spotlight(holes, str(step["armed_text"]), SpotlightLayerScript.CoachAnchor.AUTO, {"interactive": false})
+	var holes: Array = [_hero_die_rect_for_unit("combat").grow(PAD), _hero_card_rect_for_unit("combat").grow(PAD)]
+	_spot.spotlight(holes, str(step["armed_text"]), SpotlightLayerScript.CoachAnchor.AUTO, {"interactive": false, "coach_y_ratio": 0.48})
 	_publish_debug_state(step, holes, "nudge_armed")
 
 
@@ -339,23 +298,13 @@ func _next() -> void:
 # menu; manual replays (splash TUTORIAL button / Help) return to the main menu
 # as before. (SKIP on the overlay sets the same flag without ever entering.)
 func _finish() -> void:
-	if _scene != null and _scene.has_signal("tutorial_event") and _scene.tutorial_event.is_connected(_on_tutorial_event):
-		_scene.tutorial_event.disconnect(_on_tutorial_event)
-	var continue_to_play: bool = false
-	var gs: Node = get_node_or_null("/root/GameState")
-	if gs != null:
-		continue_to_play = bool(gs.get("tutorial_continue_to_play"))
-		gs.call("reset_run")  # clears tutorial_mode + the continue flag
-	var save_manager: Node = get_node_or_null("/root/SaveManager")
-	if save_manager != null:
-		save_manager.call("mark_tutorial_done")
-	var sm: Node = get_node_or_null("/root/SceneManager")
-	print("[Tutorial] finished -> %s" % ("squad_picker" if continue_to_play else "main_menu"))
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.__tut_done = '%s'" % ("squad_picker" if continue_to_play else "main_menu"), true)
-	queue_free()
-	if sm != null:
-		sm.call("go_to_unit_select" if continue_to_play else "go_to_main_menu")
+	var state = get_node("/root/GameState")
+	if int(state.current_battle) == 1:
+		state.pending_reward_item_ids.assign(["patch_kit", "scrap_plate", "calibration_chip"])
+		get_node("/root/SceneManager").go_to_reward_screen()
+		return
+	preload("res://scripts/ui/training_flow.gd").finish(self)
+	return
 
 
 # ── Waiter failsafe (spec §8) ─────────────────────────────────────────────────
@@ -437,6 +386,9 @@ func _layout_step() -> void:
 	var tap_step: bool = mode == "tap" or mode == "tap_finish"
 	# hide_coach waiter steps (Kev 2026-07-10): no dim, no coach — the board
 	# plays out (dice rolling) until the advance event fires.
+	if bool(step.get("free", false)):
+		_spot.dismiss()
+		return
 	if bool(step.get("hide_coach", false)):
 		if _spot != null:
 			_spot.dismiss()
@@ -472,10 +424,23 @@ func _layout_step() -> void:
 	if _spot != null:
 		_spot.spotlight(holes, str(step.get("text", "")), anchor, {
 			"title": str(step.get("title", "")),
+			"glyph": PixelUI.pip_texture_for_key(str(step.get("glyph", ""))) if step.has("glyph") else null,
 			"hint": "Tap to continue >" if tap_step else "",
 			"interactive": tap_step,
+			"coach_y_ratio": _coach_y_ratio(step),
 		})
 	_publish_debug_state(step, holes)
+
+
+func _coach_y_ratio(step: Dictionary) -> float:
+	var targets: Array = step.get("targets", [])
+	# Once END TURN appears, the central gap belongs to that button. Use
+	# portrait artwork above, keeping enemy values and all controls exposed.
+	if targets.has("roll_button"):
+		return 0.18
+	if bool(step.get("fullscreen", false)) or targets.has("nudge") or targets.has("item"):
+		return 0.48
+	return -1.0
 
 
 # ── Diagnostics (console) + web test seam ──────────────────────────────────────
@@ -889,3 +854,4 @@ func _build_ui() -> void:
 	_spot = SpotlightLayerScript.new(LAYER)
 	_spot.tapped.connect(_on_spot_tapped)
 	add_child(_spot)
+	_spot.use_training_presentation()

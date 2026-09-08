@@ -21,6 +21,12 @@ extends CanvasLayer
 
 signal tapped
 
+var _coach_y_ratio: float = -1.0
+
+func use_training_presentation() -> void:
+	_dim_canvas.dim_color.a = 0.22
+	_coach_label.add_theme_font_size_override("font_size", 60)
+
 enum CoachAnchor { AUTO, BOTTOM, CENTER }
 
 const DIM := Color(0.01, 0.015, 0.02, 0.82)
@@ -187,6 +193,7 @@ func _ready() -> void:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnchor.AUTO, opts: Dictionary = {}) -> void:
+	_coach_y_ratio = float(opts.get("coach_y_ratio", -1.0))
 	visible = true
 	_dim_canvas.set_holes(target_rects)
 	set_interactive(bool(opts.get("interactive", true)))
@@ -287,7 +294,9 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 	await get_tree().process_frame
 	var ch: float = ceilf(_coach.get_combined_minimum_size().y)
 	var y: float
-	if anchor == CoachAnchor.BOTTOM:
+	if _coach_y_ratio >= 0.0:
+		y = s.y * _coach_y_ratio - ch * 0.5
+	elif anchor == CoachAnchor.BOTTOM:
 		# Pinned to the bottom so it never covers the centre action button —
 		# above the gesture reserve on a cutout device (safe_bottom is 0 on
 		# desktop).
