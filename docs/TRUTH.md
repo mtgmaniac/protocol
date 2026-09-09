@@ -1080,6 +1080,13 @@ DECISIONS_RESOLVED.md.
 
 ## Approved copy implementation (2026-09-06)
 
+**Icon Guide (G-17, 2026-09-09):** Help includes an ICON GUIDE tab with
+ACTIONS / EFFECTS sections. Actions pair the existing Nudge, Reroll, Set and
+Item icons with descriptions and normal Protocol costs, including free
+inventory opening and cost modifiers. Effects introduce damage/heal/shield,
+reuse canonical Burn/Mark definitions, and link to Keywords via MORE EFFECTS.
+Existing fonts, battle header, compact footer and battle prompts are unchanged.
+
 The concise review is implemented across operation briefings, bosses, heroes/evolutions, abilities, directives, enemies, relics, gear, consumables, intercepts and battle modifiers. Operations are Facility Sweep, Hive Incursion, Veil Breach, Signal Purge and Mantle Hunt; original short threat lines remain. Deployment fields use SITE / SITUATION / OBJECTIVE. Long intercept choices separate the action button from its consequences.
 
 Display-name migrations preserve enemy IDs through DataManager.ENEMY_STABLE_IDS and keep kit IDs, item IDs, evolution IDs, portrait paths and operation unlock IDs stable. OVERCLOCK keeps evolution ID `overclocked`. Twin Fates was subsequently removed by G-10 (2026-09-06); its old source art remains unused.

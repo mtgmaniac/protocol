@@ -8,6 +8,13 @@ This is the current entry point for the game's visual language, inventory and vi
 
 ## Implementation update — 6 September 2026
 
+**9 September, G-17:** Kev retained the existing typography and battle header
+after comparison. Help now has an ICON GUIDE tab pairing current icons with
+action names, normal costs and common effect definitions; MORE EFFECTS opens
+Keywords. The compact footer and battle prompts are unchanged. See
+[implementation and native captures](ICON_GUIDE_2026-09-09.md). This improves
+discovery without claiming completion of release-browser/device testing.
+
 **Step 1 (V01–V05) is implemented.** [Changes, captures and verification](UI_STEP1_IMPLEMENTATION_2026-09-06.md). This update supersedes the corresponding recommendations below: Twin Fates is removed entirely; the four footer actions are restored to their original compact icon-only presentation after the labeled version overlapped friendly health bars (G-11); seven quick taps on the operation title unlock developer tools for the session. The default icon and inaccurate help are replaced. The full tutorial redesign remains step 2.
 
 The ratings, original screenshots and inventory below remain the review snapshot of `364822d`, including the now-retired Twin Fates entry. Use the implementation report for the current state of these five changes. No new overall rating is implied by passing the implementation checks; public-device playtesting remains outstanding.

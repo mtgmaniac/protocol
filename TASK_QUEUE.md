@@ -1,5 +1,10 @@
 # Overload Protocol — Task Queue
 
+**2026-09-09 G-17:** Added Help / ICON GUIDE with Actions and Effects, normal
+costs and a link to the full keyword reference. Kev chose to keep current
+fonts/header (option A). Boss identification is next in the finishing-touch
+review; V06 release/device checks and V11 remain open.
+
 **2026-09-08 G-16:** Stable empty locked-encounter dossier, hidden locked hero names, no unplayed clearance disclaimer, consistent briefing case and SCRAP tutorial naming.
 
 **2026-09-08 copy follow-up:** Approved concise tutorial messages applied; results beat removed, Splice naming aligned, inspection redirects corrected to visible die and portrait.

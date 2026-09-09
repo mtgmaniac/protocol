@@ -278,6 +278,14 @@ selection, not a rarity — recolored to `DT_CYAN` in the same pass.
 
 # BUILD G PUNCH-LIST RULINGS (Kev, 2026-07-15 playtest)
 
+## G-17. Icon Guide in Help (Kev, 2026-09-09)
+
+Add the reviewed Icon Guide to Help, with Actions and Effects sections using
+the existing font and icons. Explain Nudge, Reroll, Set and Item, normal costs,
+and common effect symbols; retain access to the full keyword reference.
+Keep the current fonts and battle header (review option A). This approval is
+for the guide only; battle prompts and the compact footer remain unchanged.
+
 ## G-14. Two-encounter training and Engineer damage (Kev, 2026-09-08)
 
 Implement the reviewed tutorial flow: complete guided turns, independent play after

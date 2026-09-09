@@ -25,6 +25,7 @@ const BLURB_FONT := 28
 
 const HELP_TABS := [
 	{"id": "basics", "label": "BASICS"},
+	{"id": "icons", "label": "ICON GUIDE"},
 	{"id": "protocol", "label": "PROTOCOL"},
 	{"id": "keywords", "label": "KEYWORDS"},
 	{"id": "rewards", "label": "REWARDS"},
@@ -248,6 +249,8 @@ func _select_tab(tab_id: String) -> void:
 	match tab_id:
 		"basics":
 			_build_basics(_content_host)
+		"icons":
+			_build_icon_guide(_content_host)
 		"protocol":
 			_build_protocol(_content_host)
 		"keywords":
@@ -342,6 +345,86 @@ func _replay_tutorial() -> void:
 		gs.call("start_tutorial_run")
 	if sm != null:
 		sm.call("go_to_battle")
+
+
+func _build_icon_guide(host: VBoxContainer) -> void:
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 12)
+	host.add_child(tabs)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 24)
+	var buttons: Array[Button] = []
+	for title in ["ACTIONS", "EFFECTS"]:
+		var button := Button.new()
+		button.text = title
+		button.custom_minimum_size = Vector2(0, 112)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tabs.add_child(button)
+		buttons.append(button)
+	host.add_child(content)
+	buttons[0].pressed.connect(_select_icon_guide_section.bind(false, content, buttons))
+	buttons[1].pressed.connect(_select_icon_guide_section.bind(true, content, buttons))
+	_select_icon_guide_section(false, content, buttons)
+
+
+func _select_icon_guide_section(effects: bool, host: VBoxContainer, buttons: Array[Button]) -> void:
+	for child in host.get_children():
+		host.remove_child(child)
+		child.queue_free()
+	_style_tab_button(buttons[0], not effects)
+	_style_tab_button(buttons[1], effects)
+	if effects:
+		for entry in [
+			["damage", "DAMAGE", "The number is the damage amount."],
+			["heal", "HEAL", "The number is HP restored."],
+			["shield", "SHIELD", "Absorbs damage before HP."],
+		]:
+			_add_icon_guide_row(host, PixelUI.pip_texture_for_key(entry[0]), entry[1], entry[2])
+		# Use the canonical definitions, so this introduction cannot drift from Keywords.
+		for keyword in _dm().get_keywords().get("keywords", []):
+			if str(keyword.get("id", "")) in ["burn", "mark"]:
+				_add_keyword_row(host, keyword)
+		host.add_child(_make_body_label("Long-press a unit for its full effects.", PixelUI.TEXT_PRIMARY))
+		var more := Button.new()
+		more.text = "MORE EFFECTS"
+		more.custom_minimum_size = Vector2(0, 112)
+		PixelUI.style_button(more, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, TAB_FONT)
+		more.pressed.connect(_select_tab.bind("keywords"))
+		host.add_child(more)
+	else:
+		for entry in [
+			[PixelUI.ICON_INCREASE, "NUDGE - 1 PROTOCOL", "Add 3 to a hero's roll, once per die each turn."],
+			[PixelUI.ICON_REROLL, "REROLL - 2 PROTOCOL", "Roll one hero die again."],
+			[PixelUI.ICON_SET, "SET - 4 PROTOCOL", "Choose a hero die's value."],
+			[PixelUI.ICON_ITEM, "ITEM - 1 PROTOCOL", "Open inventory and choose an item."],
+		]:
+			_add_icon_guide_row(host, load(entry[0]) as Texture2D, entry[1], entry[2])
+		host.add_child(_make_body_label("Costs shown are the usual costs. Gear and relics can change them. Opening inventory is free.", PixelUI.TEXT_PRIMARY))
+	if _content_scroll != null:
+		_content_scroll.scroll_vertical = 0
+
+
+func _add_icon_guide_row(host: VBoxContainer, texture: Texture2D, title: String, description: String) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host.add_child(row)
+	var icon := TextureRect.new()
+	icon.texture = texture
+	icon.custom_minimum_size = Vector2(88, 88)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(icon)
+	var text_box := VBoxContainer.new()
+	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_box.add_theme_constant_override("separation", 4)
+	row.add_child(text_box)
+	text_box.add_child(_make_wrap_label(title, SECTION_FONT, PixelUI.GOLD_ACCENT, 2))
+	text_box.add_child(_make_body_label(description, PixelUI.TEXT_PRIMARY))
 
 
 func _build_protocol(host: VBoxContainer) -> void:
