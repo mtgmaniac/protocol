@@ -10,7 +10,7 @@ static func finish(parent: Node) -> void:
 	sm.go_to_unit_select()
 
 static func reward_claimed(parent: Node) -> void:
-	var prompt = Prompt.present(parent, "KEEP LEARNING?", "Your item is in Items. The optional next battle covers burn and item use. Training rewards stay in training.", ["CONTINUE TRAINING", "START YOUR RUN"])
+	var prompt = Prompt.present(parent, "KEEP LEARNING?", "Your chosen item is in your inventory. Keep learning about Mark, Burn and item use, or select your squad and begin your run.", ["CONTINUE TRAINING", "START YOUR RUN"])
 	var choice: int = await prompt.chosen
 	prompt.queue_free()
 	if choice == 1:
@@ -19,7 +19,7 @@ static func reward_claimed(parent: Node) -> void:
 	var gs = parent.get_node("/root/GameState")
 	var items: Array = gs.consumables.duplicate()
 	var op: String = gs.selected_operation_id
-	gs.start_run(["pulse", "engineer", "medic"], op, -1, true)
+	gs.start_run(["combat", "pulse", "medic"], op, -1, true)
 	gs.current_battle = 2
 	gs.consumables.assign(items)
 	gs.tutorial_reward_item_id = str(items[0]) if not items.is_empty() else ""
@@ -36,7 +36,7 @@ static func defeat(parent: Node) -> void:
 	var second: bool = gs.current_battle == 2
 	var reward: String = gs.tutorial_reward_item_id
 	if second:
-		gs.start_run(["pulse", "engineer", "medic"], gs.selected_operation_id, -1, true)
+		gs.start_run(["combat", "pulse", "medic"], gs.selected_operation_id, -1, true)
 		gs.current_battle = 2
 		gs.tutorial_reward_item_id = reward
 		if reward != "":
@@ -49,7 +49,7 @@ static func explain_first_item(parent: Node) -> void:
 	var save = parent.get_node("/root/SaveManager")
 	if save.is_primer_seen("item_acquired") or not save.get_setting("ability_primers_enabled", true):
 		return
-	var prompt = Prompt.present(parent, "ITEM ACQUIRED", "Your reward is in Items on the battle footer. Using an item costs 1 Protocol and consumes it. Protocol starts at 0; earn 1 each turn.", ["CONTINUE"])
+	var prompt = Prompt.present(parent, "ITEM ACQUIRED", "Your reward is in your inventory: the bottom-right button in battle. Using an item costs 1 Protocol and consumes it. Earn 1 Protocol each turn.", ["CONTINUE"])
 	await prompt.chosen
 	save.mark_primer_seen("item_acquired")
 	prompt.queue_free()

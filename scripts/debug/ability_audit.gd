@@ -3266,12 +3266,7 @@ func _run_relic_per_turn_aura_regression() -> void:
 	_expect_and_record("Regression / relic gravityWell dmg", "auraEnemyDmg", str(enemy_hp_before - 2), str(int(e["current_hp"])))
 
 
-# Tutorial V3.1 pins the real 35-HP Scrap Drone: Target Lock -> marked
-# Overdrive (17) -> Diagnostic Pulse shielding Strike, leaving the drone at 18.
-# The drone's real Stab 7 is then soaked 3 by that shield (4 to HP). Round two
-# uses Diagnostic Pulse -> Rail Strike -> Overdrive and must kill from 18 with
-# BOTH attacks landing (10 then 11), before an enemy action. If this math
-# drifts, tutorial copy must be re-verified.
+# Training uses normal damage: 16, then 10, leaving a free third turn.
 func _run_tutorial_kill_math_regression() -> void:
 	var combat: UnitData = DataManager.get_unit("combat") as UnitData
 	var engineer: UnitData = DataManager.get_unit("engineer") as UnitData
@@ -3284,38 +3279,45 @@ func _run_tutorial_kill_math_regression() -> void:
 		_record_failure("Tutorial / kill math", "tutorial", "Scrap Drone real statline 35 HP", "hp=%d" % int(scrap.max_hp))
 		return
 
-	# T1: Target Lock -> marked Overdrive (17) -> Diagnostic Pulse shield on
+	# T1: Suppression Fire (6) -> Overdrive (10) -> Diagnostic Pulse shield on
 	# Strike, then Stab 7 (shield soaks 3, Strike takes 4).
 	var mgr: CombatManager = CombatManager.new()
 	mgr.setup_battle([combat, engineer, medic], [scrap.duplicate(true)])
 	var enemy: Dictionary = mgr.get_enemy_states()[0]
 	var strike: Dictionary = mgr.get_hero_states()[0]
-	_tutorial_resolve_turn(mgr, {"combat": 3, "engineer": 12, "medic": 2}, ["combat", "engineer", "medic"])
+	_tutorial_resolve_turn(mgr, {"combat": 9, "engineer": 12, "medic": 2}, ["combat", "engineer", "medic"])
 	var grants_t1: int = mgr.take_pending_protocol_grants()
 	var t1_ok: bool = (
-		int(enemy["current_hp"]) == 20
+		int(enemy["current_hp"]) == 19
 		and not bool(enemy.get("marked", false))
 		and int(strike["current_hp"]) == 51
 		and grants_t1 == 0
 	)
 	if t1_ok:
-		_record_pass("Tutorial / T1 math (Mark 10 -> 15, shield soaks 3 of Stab 7, Protocol 1)", "tutorial")
+		_record_pass("Tutorial / T1 math (6 + 10 damage, shield soaks 3 of Stab 7, Protocol 1)", "tutorial")
 	else:
-		_record_failure("Tutorial / T1 math (Mark 10 -> 15, shield soaks 3 of Stab 7, Protocol 1)", "tutorial",
-			"drone 20 unmarked, Strike 51, grant 0",
+		_record_failure("Tutorial / T1 math (6 + 10 damage, shield soaks 3 of Stab 7, Protocol 1)", "tutorial",
+			"drone 19 unmarked, Strike 51, grant 0",
 			"drone=%d marked=%s strike=%d grant=%d" % [int(enemy["current_hp"]), str(enemy.get("marked", false)), int(strike["current_hp"]), grants_t1])
 	# The round-two guarantee: the drone must outlive the FIRST guided attack so
-	# that neither Rail Strike (10) nor Overdrive (11) is asked of the player and
-	# then fizzles on an already-dead target.
+	# that the guided attack lands and leaves a genuine free third turn.
 	_expect_and_record("Tutorial / round-two drone HP outlives the largest single guided hit (11)",
 		"tutorial", "true", str(int(enemy["current_hp"]) > 11))
 	# T2 teaches Nudge while Engineer rolls shield: normal damage leaves T3 open.
 	_tutorial_resolve_turn(mgr, {"combat": 11, "engineer": 6, "medic": 3}, ["combat", "engineer", "medic"])
-	_expect_and_record("Tutorial / T2 naturally leaves 10 HP", "tutorial", "10", str(int(enemy["current_hp"])))
+	_expect_and_record("Tutorial / T2 naturally leaves 9 HP", "tutorial", "9", str(int(enemy["current_hp"])))
 	_expect_and_record("Tutorial / T2 protects and heals Strike", "tutorial", "54", str(int(strike["current_hp"])))
 	_expect_and_record("Tutorial / T2 shields expire normally", "tutorial", "0", str(int(strike["shield"])))
 	_tutorial_resolve_turn(mgr, {"combat": 8, "engineer": 12, "medic": 3}, ["engineer", "medic", "combat"])
 	_expect_and_record("Tutorial / free T3 reversed order wins without spending", "tutorial", "true", str(bool(enemy["dead"])))
+
+	# The second battle combines real Mark with Pulse's low-band Burn.
+	var practice := CombatManager.new()
+	practice.setup_battle([combat, DataManager.get_unit("pulse"), medic], [scrap.duplicate(true), scrap.duplicate(true)])
+	_tutorial_resolve_turn(practice, {"combat": 3, "pulse": 4, "medic": 3}, ["combat", "pulse", "medic"])
+	_expect_and_record("Tutorial / Mark raises Pulse 6 to 9 before delayed Burn", "tutorial", "26", str(int(practice.get_enemy_states()[0].current_hp)))
+	_tutorial_resolve_turn(practice, {"combat": 8, "pulse": 4, "medic": 3}, ["combat", "pulse", "medic"])
+	_expect_and_record("Tutorial / next turn includes 2 delayed Burn damage", "tutorial", "12", str(int(practice.get_enemy_states()[0].current_hp)))
 
 	# The taught band jump and its double-Nudge safety: 8 -> 11 flips
 	# Suppression Fire (6) into Rail Strike (10); a stray second +3 (14) stays

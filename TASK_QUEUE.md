@@ -1,5 +1,7 @@
 # Overload Protocol — Task Queue
 
+**2026-09-08 revision:** G-15 adds a welcome, basic-only first battle, Mark/Burn in battle two, precise inventory highlighting, contextual Reroll and a final squad-selection handoff.
+
 **2026-09-08:** G-14 two-encounter tutorial implemented, with independent third-round play, reward choice, optional Burn/item practice, real-run item guidance and Engineer Overdrive 10 damage. See [verification](docs/TUTORIAL_IMPLEMENTATION_2026-09-08.md). Earlier tutorial-deferral entries below are superseded. V06/V11 remain.
 
 **2026-09-07 showcase update:** V07/V08 approved choice layouts and V12 Reduced Motion are implemented, following V09/V10 and the centered Continue fix. See [implementation and verification](docs/UI_APPROVED_CHOICES_2026-09-07.md). Remaining visual-review items: **V06** current release/browser/device verification; **V11** title button hierarchy and sparse unlock composition. The full tutorial redesign remains a separate deferred step.

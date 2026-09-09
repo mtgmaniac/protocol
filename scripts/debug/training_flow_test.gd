@@ -5,6 +5,7 @@ var frames: int = 0
 var observed_core_rounds: int = 0
 var item_used: bool = false
 var burn_ticked: bool = false
+var reroll_notices: int = 0
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -28,8 +29,8 @@ func run() -> void:
 	var first_tut: Node = controller(current_scene)
 	# Lost-roll recovery returns to the roll instruction; free play must not
 	# inherit the hidden-waiter's input lock or its timeout.
-	first_tut.call("_recover_stalled_waiter", 2)
-	check(first_tut.get("_step") == 1, "Missing-roll recovery restores the roll instruction")
+	first_tut.call("_recover_stalled_waiter", 3)
+	check(first_tut.get("_step") == 2, "Missing-roll recovery restores the roll instruction")
 	first_tut.call("_show_step", 0)
 	await drive_battle(false)
 	check(observed_core_rounds >= 3, "Core battle must reach independent round three")
@@ -49,12 +50,13 @@ func run() -> void:
 		return
 	prompt.emit_signal("chosen", 0)
 	await pause(15)
-	check(gs.current_battle == 2 and gs.selected_units.has("pulse"), "Practice uses Pulse and advances encounter")
+	check(gs.current_battle == 2 and gs.selected_units.has("pulse") and gs.selected_units.has("combat") and not gs.selected_units.has("engineer"), "Practice uses Pulse and advances encounter")
 	check(current_scene.get("enemy_units").size() == 2, "Practice has two real enemies")
 	await drive_battle(true)
 	await pause(15)
 	check(not gs.tutorial_mode and gs.consumables.is_empty(), "Finish clears training state and rewards")
 	check(item_used, "Practice can use the chosen real item")
+	check(reroll_notices == 1, "Affordable reroll explained exactly once")
 	check(burn_ticked, "Practice shows a real delayed Burn damage event")
 	check(root.get_node("SaveManager").is_tutorial_done(), "Completion persists")
 	# The same choice can exit without loading encounter two.
@@ -139,13 +141,18 @@ func drive_battle(practice: bool) -> void:
 		if not practice:
 			observed_core_rounds = maxi(observed_core_rounds, int(scene.get("_tutorial_turn")))
 		if mode == "tap" or mode == "tap_finish":
+			if step.get("title", "") == "REROLL":
+				reroll_notices += 1
+				check(int(scene.get("protocol_points")) >= 2, "Reroll hint waits for affordability")
+			if step.get("title", "") == "USE AN ITEM":
+				check(step.get("targets") == ["item"], "Inventory lesson highlights only its button")
 			tut.call("_next")
 		elif bool(step.get("free", false)):
 			check(tut.call("allows_action", "nudge_pick", {"hero": "engineer"}), "Free play permits Engineer Nudge")
 			if phase == "await_roll" and not scene.get("roll_button").disabled:
 				scene.call("_on_roll_button_pressed")
 			elif (phase == "targeting" or phase == "ready_to_end") and not bool(scene.get("_is_resolving_turn")):
-				if practice and not item_used and int(scene.get("protocol_points")) >= 1:
+				if practice and reroll_notices > 0 and not item_used and int(scene.get("protocol_points")) >= 1:
 					var protocol = scene.get("_protocol")
 					protocol.call("_on_item_button_pressed", root.get_node("DataManager").get_item("scrap_plate"))
 					protocol.call("handle_hero_card_pressed", state_id(scene, "medic"))
@@ -155,9 +162,9 @@ func drive_battle(practice: bool) -> void:
 				# Exercise a different order from the guided combat→engineer→medic.
 				var pending: Array = scene.get("pending_manual_target_ids")
 				if not pending.is_empty():
-					for uid in ["engineer", "medic", "pulse" if practice else "combat"]:
+					for uid in (["combat", "medic", "pulse"] if practice else ["engineer", "medic", "combat"]):
 						if pending.has(state_id(scene, uid)):
-							await assign(scene, uid)
+							await assign(scene, uid, "combat" if uid == "medic" else "")
 							break
 				elif phase == "ready_to_end" and not scene.get("roll_button").disabled:
 					scene.call("_on_roll_button_pressed")

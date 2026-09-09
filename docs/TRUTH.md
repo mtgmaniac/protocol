@@ -365,27 +365,30 @@ compression, so no etc2 artifacts exist and none are needed.
 
 ## UI & feedback
 
-**Two-encounter training (G-14, 2026-09-08):** `training_lessons.gd` owns the
+**Two-encounter training (G-14/G-15, 2026-09-08):** `training_lessons.gd` owns the
 lesson script; `tutorial_controller.gd` gates guided actions and leaves open-play
 beats unrestricted. Both dice and portraits select units/targets; long-press
 inspection remains available. Footer geometry stays compact and icon-only.
 
-- Core: real 35-HP Scrap Drone, unchanged combat rules. Round one rolls
-  Strike 3 / Engineer 12 / Medic 2: Mark makes Engineer's **10 damage → 15**.
+- Welcome precedes controls. Core: real 35-HP Scrap Drone, unchanged combat rules.
+  Round one rolls Strike 9 / Engineer 12 / Medic 2: **6 + 10 damage**, no Mark or Burn.
   Medic can shield Strike against the real 7-damage enemy attack. Round two
   rolls Strike 8 / Engineer 6 / Medic 3: Nudge changes Strike to 11 (10 damage),
-  Engineer shields and Medic heals. The drone naturally retains 10 HP.
+  Engineer shields and Medic heals. The drone naturally retains 9 HP.
 - Round three is independent: Strike 8 / Engineer 12 / Medic 3. Order, friendly
   targets and Protocol spending are unrestricted. No health floors, invulnerability,
   damage clamps, forced losses or outcome predicates. Later rounds remain playable.
 - Victory opens the real reward picker: Patch Kit, Scrap Plate or Calibration Chip.
   The chosen item enters inventory. CONTINUE TRAINING starts encounter two;
   START YOUR RUN clears training and opens unit selection.
-- Optional practice: Pulse / Engineer / Medic versus two real Scrap Drones. First
-  rolls 10 / 12 / 3 demonstrate 9 damage + 3 burn for 1 turn. Second rolls 4 / 6 / 3
-  leave space for the next-round burn tick and a normal-cost item. Later rolls
-  10 / 12 / 3 support an independent finish. Targets and order are player choices.
-  A defeated target does not take later burn damage. Items are optional, not a gate.
+- Optional practice: Strike / Pulse / Medic versus two real Scrap Drones. First
+  rolls 3 / 4 / 3 teach Mark then Burn: Pulse's 6 damage becomes 9, with 2 Burn
+  for 1 turn resolving at the end of the following turn. Second rolls 8 / 4 / 3;
+  later rolls 11 / 10 / 3 support free play. Target and order choices remain legal.
+  The inventory explanation highlights only the bottom-right inventory button.
+  Once 2 Protocol and an unfrozen, unassigned die are available after rolling,
+  a one-time Reroll tip appears; spending is optional. The ending introduces more
+  effects to discover, then thanks the player and sends them to squad selection.
 - Failure offers retry of that encounter (including the original practice reward)
   or exit, without recording a normal run defeat. Finish/exit clears training
   inventory and marks tutorial completion. Header back retains normal abandonment.

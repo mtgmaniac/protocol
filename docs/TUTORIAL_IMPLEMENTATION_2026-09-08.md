@@ -1,5 +1,18 @@
 # Two-encounter tutorial
 
+## Current revision — G-15
+Welcome now precedes the controls. Battle one uses Strike 9 / Engineer 12 / Medic 2: 6 + 10 damage, heal and shield; it teaches no Mark or Burn. Nudge on turn two leaves 9 HP for independent turn three. Battle two uses Strike / Pulse / Medic. Mark raises Pulse’s 6 damage to 9, with 2 Burn resolving on the following turn. Subsequent turns offer normal target, order and spending choices.
+
+Inventory copy uses “inventory” and highlights only the bottom-right button. Reroll receives a single optional tip after rolling with 2 Protocol and an unfrozen, unassigned die. The ending mentions more effects to discover and thanks the player before squad selection. Repeated starting-Protocol and training-reward disclaimers are removed; training inventory still clears on exit.
+
+Untouched baseline: all hard gates PASS with `--skip-sim` (`training_revision_baseline.log`). This revision changes training inputs and teaching only; no authored stats, normal combat rules, sim knobs or baseline changes. New combat regressions verify 6→9 Mark damage and the real delayed 2 Burn tick. The tutorial playthrough checks independent turn three, optional continuation/exit, inventory use, one affordable Reroll notice and completion.
+
+Verification: all hard gates PASS with `--skip-sim` (`training_revision_gate.log`), including the revised combat audit and tutorial smoke. Native 390×844 playthrough PASS (`training_revision_capture.log`). No balance sims needed for this training-only revision.
+
+Reviewed 390×844 native captures: [welcome](visuals/2026-09-08-training-revision/battle1-step0.png), [Burn](visuals/2026-09-08-training-revision/battle2-step4.png), [inventory](visuals/2026-09-08-training-revision/battle2-step7.png), [completion](visuals/2026-09-08-training-revision/battle2-step12.png).
+
+The original G-14 implementation and its balance report below are historical; G-15 above supersedes its tutorial sequence.
+
 ## Task / context
 Implement G-14: normal combat training with independent choices, reward learning,
 optional Burn/item practice, and permanent Engineer Overdrive damage 10.

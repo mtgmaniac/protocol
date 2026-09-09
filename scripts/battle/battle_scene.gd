@@ -140,12 +140,12 @@ var hero_units: Array = []
 var enemy_units: Array = []
 
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
-# Training rigs inputs only. Core damage: 15, then 10, leaving independent play.
+# Training rigs inputs only. Core damage: 16, then 10, leaving independent play.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
 const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_NUDGE_HERO := "combat"
 const TUTORIAL_HERO_ROLLS := [
-	{"combat": 3, "engineer": 12, "medic": 2},
+	{"combat": 9, "engineer": 12, "medic": 2},
 	{"combat": 8, "engineer": 6, "medic": 3},
 	{"combat": 8, "engineer": 12, "medic": 3},
 ]
@@ -160,7 +160,7 @@ func _tutorial_rig_values() -> Dictionary:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
 	if _game_state().current_battle == 2:
-		rig = {"pulse": 4, "engineer": 6, "medic": 3} if turn_idx == 1 else {"pulse": 10, "engineer": 12, "medic": 3}
+		rig = {"combat": 3, "pulse": 4, "medic": 3} if turn_idx == 0 else ({"combat": 8, "pulse": 4, "medic": 3} if turn_idx == 1 else {"combat": 11, "pulse": 10, "medic": 3})
 	var values: Dictionary = {}
 	for hero_state in combat_manager.get_hero_states():
 		var unit: Object = hero_state.get("unit") as Object
@@ -1190,7 +1190,7 @@ func _apply_tutorial_dice_rig() -> void:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
 	if _game_state().current_battle == 2:
-		rig = {"pulse": 4, "engineer": 6, "medic": 3} if turn_idx == 1 else {"pulse": 10, "engineer": 12, "medic": 3}
+		rig = {"combat": 3, "pulse": 4, "medic": 3} if turn_idx == 0 else ({"combat": 8, "pulse": 4, "medic": 3} if turn_idx == 1 else {"combat": 11, "pulse": 10, "medic": 3})
 	for hero_state in combat_manager.get_hero_states():
 		var unit: Object = hero_state.get("unit") as Object
 		var unit_id: String = str(unit.id) if unit != null else ""

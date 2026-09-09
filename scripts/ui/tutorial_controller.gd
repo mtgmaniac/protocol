@@ -39,6 +39,7 @@ var _spot = null  # SpotlightLayer — the shared dim + ring + coachmark machine
 
 var _js_refresh_cb: JavaScriptObject = null
 var _inspection_opened: bool = false
+var _reroll_taught: bool = false
 
 
 func start(scene: Node) -> void:
@@ -76,6 +77,8 @@ func _advance_mode() -> String:
 
 # ── Event / tap gating ──────────────────────────────────────────────────────────
 func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
+	if event == &"rolled" and _offer_reroll_lesson():
+		return
 	var mode: String = _advance_mode()
 	# A press that starts an animation (roll, end turn) but isn't our gate: reveal the whole board
 	# (no dim, just the edge frame) so the spotlight doesn't linger on the now-gone/changing
@@ -125,6 +128,25 @@ func _on_tutorial_event(event: StringName, payload: Dictionary) -> void:
 	if event == &"won" and not _valid_resolution_payload(payload):
 		return
 	_next()
+
+
+# Inserting a tap beat preserves the underlying free-play completion gate.
+func _offer_reroll_lesson() -> bool:
+	if _reroll_taught or not bool(_current().get("free", false)):
+		return false
+	if int(get_node("/root/GameState").current_battle) != 2 or int(_scene.get("protocol_points")) < 2:
+		return false
+	var pending: Array = _scene.get("pending_manual_target_ids")
+	var eligible: bool = false
+	for state in _scene.combat_manager.get_hero_states():
+		if pending.has(str(state.id)) and not bool(state.dead) and int(state.get("die_freeze_turns", 0)) == 0:
+			eligible = true
+	if not eligible:
+		return false
+	_reroll_taught = true
+	_steps.insert(_step, {"targets": ["reroll"], "title": "REROLL", "text": "You have 2 Protocol. Reroll costs 2 and rolls an unassigned die again. Use it if you want a different ability."})
+	_show_step(_step)
+	return true
 
 
 func _advance_after_inspection_closes() -> void:
@@ -438,7 +460,7 @@ func _coach_y_ratio(step: Dictionary) -> float:
 	# portrait artwork above, keeping enemy values and all controls exposed.
 	if targets.has("roll_button"):
 		return 0.18
-	if bool(step.get("fullscreen", false)) or targets.has("nudge") or targets.has("item"):
+	if bool(step.get("fullscreen", false)) or targets.has("nudge") or targets.has("item") or targets.has("reroll"):
 		return 0.48
 	return -1.0
 
