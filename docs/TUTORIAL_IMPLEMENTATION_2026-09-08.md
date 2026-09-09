@@ -1,5 +1,16 @@
 # Two-encounter tutorial
 
+## Copy and inspection follow-up
+Approved player-facing rewrite: explain battlefield positions and the central Roll button, explain Strike’s rolled 9 beside its ability, shorten enemy intent, remove the results state, introduce completed-turn income beside Nudge, simplify victory/optional continuation, clarify next-turn Burn and future keyword primers. All tutorial instructions use Splice. Alternate legal targets remain allowed.
+
+Inspection redirects now receive the visible die rectangle and emphasize the portrait too; they no longer use the invisible pip-inclusive hit area for this lesson. The smoke test sends wrong-unit input and verifies both redirect rectangles, visible pulses, and that inspection remains required. Combat rules, stats and rigged results are unchanged.
+
+Phone-size reviewed captures: [inspection](visuals/2026-09-08-tutorial-copy/battle1-step4.png), [income and Nudge](visuals/2026-09-08-tutorial-copy/battle1-step12.png), [Burn](visuals/2026-09-08-tutorial-copy/battle2-step4.png).
+
+Baseline: all hard gates PASS with `--skip-sim` (`tutorial_copy_baseline.log`). No balance-sim surface changed; no baseline repinning.
+
+Verification: final gate (`tutorial_copy_gate.log`) passed every check except an obsolete exact-copy assertion in unlock progression. Replaced that required old sentence with checks against misleading higher-is-always-better claims; the complete unlock progression test then passed (`tutorial_copy_unlock_recheck.log`). All required checks now pass. Native 390×844 full playthrough and inspection redirect checks also PASS (`tutorial_copy_capture.log`).
+
 ## Current revision — G-15
 Welcome now precedes the controls. Battle one uses Strike 9 / Engineer 12 / Medic 2: 6 + 10 damage, heal and shield; it teaches no Mark or Burn. Nudge on turn two leaves 9 HP for independent turn three. Battle two uses Strike / Pulse / Medic. Mark raises Pulse’s 6 damage to 9, with 2 Burn resolving on the following turn. Subsequent turns offer normal target, order and spending choices.
 

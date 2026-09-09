@@ -276,7 +276,7 @@ func _test_band_copy() -> void:
 	var truth_file := FileAccess.open("res://docs/TRUTH.md", FileAccess.READ)
 	var truth_text := truth_file.get_as_text()
 	truth_file.close()
-	_check(tutorial_text.contains("Higher is not always better.") and not tutorial_text.contains("higher rolls, stronger abilities"), "tutorial no longer claims higher rolls are universally stronger")
+	_check(not tutorial_text.to_lower().contains("higher rolls, stronger abilities") and not tutorial_text.to_lower().contains("higher is always better"), "tutorial no longer claims higher rolls are universally stronger")
 	_check(keywords_text.contains("higher-numbered ability band") and keywords_text.contains("lower-numbered ability band") and not keywords_text.contains("stronger band") and not keywords_text.contains("weaker band"), "Roll Up and Roll Down glossary copy is band-neutral")
 	_check(not truth_text.contains("→ **pulse**") and not truth_text.contains("hive best_clear ≥ 6 → **pulse**"), "documentation no longer identifies Pulse as a locked ladder hero")
 

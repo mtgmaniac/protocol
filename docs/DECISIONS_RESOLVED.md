@@ -439,3 +439,6 @@ Summoned and rebuilt enemy deaths now qualify for normal kill rewards: Protocol,
 ## G-15. Basics before effects (Kev, 2026-09-08)
 
 Approved: welcome first; battle one teaches damage, heal, shield and Protocol only, retaining free turn three. Battle two retains Strike and swaps Engineer for Pulse to teach Mark and Burn, inventory use, and a once-only Reroll hint when 2 Protocol and an available die make it usable. Inventory instructions spotlight only its button. Remove repeated starting-Protocol and training-reward disclaimers. Close with more effects to discover and thanks before squad selection. Training still clears its rewards on exit; authored combat rules and numbers remain unchanged.
+
+### G-15 copy follow-up (Kev, 2026-09-08)
+Approved concise battlefield/roll/inspection/intent teaching, remove the results beat, introduce income beside Nudge, shorten reward/continuation copy, clarify delayed Burn and future primers. Use Splice in instructions. Inspect redirects flash visible die and portrait rather than pip hit area. Suggested targets stay unenforced. Income wording remains each completed turn to match runtime.

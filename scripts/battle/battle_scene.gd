@@ -540,10 +540,11 @@ func _tutorial_redirect_rects(expected: Dictionary) -> Array:
 		# The die hit area (die merged with its pip row) is the tap target the
 		# coach copy names; the card carries the rest of the cluster. Before the
 		# dice exist the card IS the whole cluster, so it takes the lead motion.
-		var die_rect: Rect2 = _tutorial_die_hit_rect("hero", state_id)
+		# Inspection points at the visible die, excluding its pip hit area.
+		var die_rect: Rect2 = expected.get("die_rect", _tutorial_die_hit_rect("hero", state_id))
 		var has_die: bool = die_rect.size != Vector2.ZERO
 		candidates.append({"rect": die_rect, "primary": true})
-		candidates.append({"rect": card_rect, "primary": not has_die})
+		candidates.append({"rect": card_rect, "primary": bool(expected.get("portrait_primary", false)) or not has_die})
 	var side: String = str(expected.get("side", ""))
 	for id_variant in (expected.get("state_ids", []) as Array):
 		var target_id: String = str(id_variant)

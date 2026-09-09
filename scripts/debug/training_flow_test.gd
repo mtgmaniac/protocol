@@ -171,6 +171,18 @@ func drive_battle(practice: bool) -> void:
 		elif mode == "roll_pressed":
 			scene.call("_on_roll_button_pressed")
 		elif mode == "inspected":
+			# Wrong-unit input must redirect to the visible die and portrait.
+			var expected: Dictionary = tut.call("_expected_target")
+			var rects: Array = scene.call("_tutorial_redirect_rects", expected)
+			check(rects.size() == 2, "Inspect redirect has a die and portrait")
+			if rects.size() == 2:
+				check(rects[0].rect == tut.call("_hero_die_rect_for_unit", "combat"), "Inspect redirect excludes the pip hit area")
+				check(rects[1].rect == tut.call("_hero_card_rect_for_unit", "combat") and rects[1].primary, "Inspect redirect emphasizes the portrait")
+			scene.set("_tutorial_redirect_msec", 0)
+			scene.call("_on_hero_card_pressed", state_id(scene, "engineer"))
+			check(tut.call("_advance_mode") == "inspected", "Wrong unit does not skip inspection")
+			var layer = scene.get("_tutorial_redirect_layer")
+			check(layer != null and layer.get_child_count() >= 2, "Wrong input emits visible redirect pulses")
 			var views: Array = scene.get("hero_card_views")
 			scene.call("_on_unit_detail_requested", views[0].card)
 			await pause()

@@ -370,6 +370,7 @@ lesson script; `tutorial_controller.gd` gates guided actions and leaves open-pla
 beats unrestricted. Both dice and portraits select units/targets; long-press
 inspection remains available. Footer geometry stays compact and icon-only.
 
+- Copy follow-up: battlefield orientation precedes Roll; inspection explains the rolled 9 and its ability readout. Wrong-unit taps during inspection flash the visible die and portrait, excluding the pip hit area. The results beat is removed; income is introduced beside Nudge with separate meter/button highlights. Instructions use Splice, and alternative legal targets remain accepted.
 - Welcome precedes controls. Core: real 35-HP Scrap Drone, unchanged combat rules.
   Round one rolls Strike 9 / Engineer 12 / Medic 2: **6 + 10 damage**, no Mark or Burn.
   Medic can shield Strike against the real 7-damage enemy attack. Round two

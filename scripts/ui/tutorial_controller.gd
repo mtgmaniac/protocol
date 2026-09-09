@@ -210,7 +210,7 @@ func _expected_target() -> Dictionary:
 		"roll_pressed", "turn_resolved", "won":
 			return {"control": "roll_button"}
 		"inspected":
-			return {"hero": str(step.get("inspect_hero", ""))}
+			return {"hero": str(step.get("inspect_hero", "")), "die_rect": _hero_die_rect_for_unit(str(step.get("inspect_hero", ""))), "portrait_primary": true}
 		"assigned":
 			# Stage 2 mirror of _retarget_spotlight_to_legal: once the scripted
 			# hero is picked, the beat wants a TARGET tap, so redirect onto the

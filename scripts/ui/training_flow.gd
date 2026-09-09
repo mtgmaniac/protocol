@@ -10,7 +10,7 @@ static func finish(parent: Node) -> void:
 	sm.go_to_unit_select()
 
 static func reward_claimed(parent: Node) -> void:
-	var prompt = Prompt.present(parent, "KEEP LEARNING?", "Your chosen item is in your inventory. Keep learning about Mark, Burn and item use, or select your squad and begin your run.", ["CONTINUE TRAINING", "START YOUR RUN"])
+	var prompt = Prompt.present(parent, "KEEP LEARNING?", "Want another training battle to learn more mechanics?", ["CONTINUE TRAINING", "START YOUR RUN"])
 	var choice: int = await prompt.chosen
 	prompt.queue_free()
 	if choice == 1:
