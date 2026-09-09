@@ -215,7 +215,7 @@ func _test_first_profile_progression_and_presentation() -> void:
 		var title: Label = tile.get("name") as Label
 		_check(bool(tile.get("locked", false)) == expected_locked, "%s card reports its lock state" % hero_id)
 		if expected_locked:
-			_check(title != null and title.text == str((_data_manager().call("get_unit", hero_id) as UnitData).display_name).to_upper(), "%s locked card keeps its real name" % hero_id)
+			_check(title != null and title.text.is_empty(), "%s locked card hides its name" % hero_id)
 			_check(title != null and title.get_parent().find_child("LockedLabel", true, false) != null, "%s locked card displays LOCKED" % hero_id)
 	var before_locked_tap: Array = (home.get("_selected_unit_ids") as Array).duplicate()
 	home.call("_on_tile_tapped", "avalanche")
@@ -233,6 +233,7 @@ func _test_first_profile_progression_and_presentation() -> void:
 		home.call("_refresh_encounter")
 		if index == 0:
 			_check(not bool(home.get("_current_op_locked")), "Facility remains unlocked on a fresh profile")
+			_check(home.call("_operation_progress_text", "facility") == "", "Unplayed Facility has no clearance disclaimer")
 			continue
 		var op: OperationData = _data_manager().call("get_operation", op_id) as OperationData
 		var name_label: Label = home.get("_enc_name_label") as Label
@@ -242,6 +243,22 @@ func _test_first_profile_progression_and_presentation() -> void:
 		_check(bool(home.get("_current_op_locked")) and name_label.text == op.display_name.to_upper() and lock_label.text == "LOCKED", "%s remains visibly locked with its real name" % op_id)
 		_check(not blurb_label.visible and blurb_label.text == "" and deploy.disabled, "%s locked card hides its blurb and cannot deploy" % op_id)
 
+	# An empty locked-operation dossier must reserve the hero-dossier footprint.
+	home.get("_selected_unit_ids").clear()
+	home.set("_focused_unit_id", "")
+	home.call("_refresh_detail")
+	for _frame in 5:
+		await process_frame
+	var detail: Control = home.get("_detail_panel")
+	var empty_rect: Rect2 = detail.get_global_rect()
+	var tile_rect: Rect2 = (tiles["combat"]["frame"] as Control).get_global_rect()
+	_check(detail.visible and detail.modulate.a == 0.0, "Locked empty dossier is transparent, not collapsed")
+	home.call("_on_tile_tapped", "combat")
+	for _frame in 5:
+		await process_frame
+	_check(detail.modulate.a == 1.0, "Selecting a hero restores the dossier")
+	_check(detail.get_global_rect().is_equal_approx(empty_rect), "Detail footprint stays fixed on first selection")
+	_check((tiles["combat"]["frame"] as Control).get_global_rect().is_equal_approx(tile_rect), "Squad grid stays fixed on first selection")
 	_test_renamed_enemy_abilities()
 	_test_band_copy()
 	sm.set("_disk_enabled", original_disk_enabled)

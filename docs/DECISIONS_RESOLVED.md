@@ -442,3 +442,6 @@ Approved: welcome first; battle one teaches damage, heal, shield and Protocol on
 
 ### G-15 copy follow-up (Kev, 2026-09-08)
 Approved concise battlefield/roll/inspection/intent teaching, remove the results beat, introduce income beside Nudge, shorten reward/continuation copy, clarify delayed Burn and future primers. Use Splice in instructions. Inspect redirects flash visible die and portrait rather than pip hit area. Suggested targets stay unenforced. Income wording remains each completed turn to match runtime.
+
+## G-16. Stable squad selection and display-name copy (Kev, 2026-09-08)
+Keep the detail-panel footprint on locked encounters with no focused hero, transparent when empty. Hide locked hero names while retaining silhouettes/LOCKED and layout space; supersedes prior named-locked-card presentation. Remove NO CLEARANCE for unplayed operations; keep meaningful progress and LOCKED. Tutorial refers to SCRAP and introduces new abilities without naming them early. Briefing title/keys stay uppercase; site, situation and objective use sentence case with proper boss names. No unlock or combat changes.

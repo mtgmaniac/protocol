@@ -467,6 +467,7 @@ func _refresh_encounter() -> void:
 	# until Build C authors operation lore).
 	if _enc_progress_label != null:
 		_enc_progress_label.text = _operation_progress_text(_selected_operation_id)
+		_enc_progress_label.visible = _enc_progress_label.text != ""
 	if _op_lore_label != null:
 		_op_lore_label.text = op.lore.strip_edges()
 		_op_lore_label.visible = _op_lore_label.text != ""
@@ -487,6 +488,7 @@ func _refresh_encounter() -> void:
 			_enc_site_label.visible = false
 		if _enc_progress_label != null:
 			_enc_progress_label.text = "LOCKED"
+			_enc_progress_label.visible = true
 		if _op_lore_label != null:
 			_op_lore_label.text = ""
 			_op_lore_label.visible = false
@@ -504,7 +506,7 @@ func _operation_progress_text(op_id: String) -> String:
 	var best: int = int(best_by_op.get(op_id, 0))
 	if best > 0:
 		return "BEST: BATTLE %d" % best
-	return "NO CLEARANCE"
+	return ""
 
 
 # Long-press on the banner → encounter InspectPopup (name, threat, and the full
@@ -575,7 +577,7 @@ func _build_squad_section() -> Control:
 	# tag in the detail panel — nothing else teaches the color code.
 
 	# Every base hero gets the same fixed-size cell. Locked cards keep their real
-	# portrait silhouette and name, so the player can see the full roster without
+	# portrait silhouette, so the player can see the full roster without
 	# exposing the locked hero's kit or unlock condition.
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", TILE_GAP)
@@ -768,10 +770,11 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	if is_locked:
 		crop.add_child(_make_lock_overlay())
 
-	# Locked cards name the actual hero; unlocked cards retain their compact callsign.
-	var tile_name: String = unit.display_name if is_locked else (unit.callsign if unit.callsign != "" else unit.display_name)
+	# Locked names remain blank, with their label height reserved.
+	var tile_name: String = "" if is_locked else (unit.callsign if unit.callsign != "" else unit.display_name)
 	var tile_font: int = PixelUI.FONT_INFO_MIN if is_locked else TILE_NAME_FONT
 	var name_label := _make_pixel_label(tile_name.to_upper(), tile_font, PixelUI.DT_HERO_NAME)
+	name_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(tile_font))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.clip_text = true
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -944,6 +947,7 @@ func _refresh_detail() -> void:
 	# until a unit is tapped, so the layout never jumps.
 	if _detail_panel != null:
 		_detail_panel.visible = true
+		_detail_panel.modulate = Color.WHITE
 	if _focused_unit_id == "":
 		_show_operation_detail()
 		return
@@ -979,9 +983,8 @@ func _show_operation_detail() -> void:
 	_detail_name.text = ""
 	_detail_focus_chip.visible = false
 	if _current_op_locked:
-		# The carousel already presents the safe blurb; don't reserve a blank
-		# dossier panel for content the profile has not unlocked.
-		_detail_panel.visible = false
+		# Reserve the same footprint as a hero dossier without drawing empty chrome.
+		_detail_panel.modulate.a = 0.0
 		_detail_desc.text = ""
 		_detail_threat_label.visible = false
 		_detail_threats.text = ""
