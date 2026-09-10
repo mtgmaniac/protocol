@@ -144,9 +144,8 @@ GATES = [
     # codepoint is a TOFU BOX on device — every player-facing string must pass
     # actual font coverage (has_char), never a hardcoded blocklist.
     ("glyph coverage", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/glyph_coverage_check.gd"], "[GLYPH] PASS", False),
-    # Stranger-readiness: feedback-nudge cadence (1st run, every 3rd, dismissal
-    # skips one) + save/load round trip of the cadence state.
-    ("feedback nudge", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/feedback_nudge_test.gd"], "[FEEDBACK_NUDGE_TEST] PASS", False),
+    # G-19 replaces the retired feedback nudge with title-entry and unlock-layout coverage.
+    ("title and unlock UI", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/title_unlock_test.gd"], "[TITLE_UNLOCK] PASS", False),
 ]
 
 

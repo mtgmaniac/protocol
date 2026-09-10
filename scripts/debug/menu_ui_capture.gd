@@ -70,7 +70,7 @@ func _print_button_state() -> void:
 	if current_scene == null:
 		return
 	var begin: Button = current_scene.get("_begin_button") as Button
-	var tutorial: Button = current_scene.get("_tutorial_button") as Button
-	if begin != null and tutorial != null:
-		print("[MENU_UI_CAPTURE] begin disabled=%s alpha=%.2f | tutorial disabled=%s alpha=%.2f" % [
-			begin.disabled, begin.modulate.a, tutorial.disabled, tutorial.modulate.a])
+	var feedback: Button = current_scene.get("_feedback_button") as Button
+	if begin != null and feedback != null:
+		print("[MENU_UI_CAPTURE] begin disabled=%s alpha=%.2f | feedback disabled=%s alpha=%.2f" % [
+			begin.disabled, begin.modulate.a, feedback.disabled, feedback.modulate.a])

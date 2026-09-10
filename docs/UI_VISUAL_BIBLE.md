@@ -8,6 +8,12 @@ This is the current entry point for the game's visual language, inventory and vi
 
 ## Implementation update — 6 September 2026
 
+**9 September, G-19 / V11:** Small awards now use a compact centered title/panel;
+large unlock lists keep a full-height scroll area and Continue remains at the
+bottom. Title Tutorial and the duplicate feedback nudge are removed; BEGIN,
+FEEDBACK, first-run tutorial choice and Help replay remain. This supersedes
+the earlier title-button restyling proposal. [Current captures and checks](TITLE_UNLOCK_POLISH_2026-09-09.md).
+
 **9 September, G-18:** Approved boss option C is implemented: a copper-filled
 nameplate with BOSS above the callsign, within the unchanged strip footprint.
 All five standing-rule bosses use it; no new portrait art, glow, border rank,

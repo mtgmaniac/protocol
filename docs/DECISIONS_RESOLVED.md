@@ -294,6 +294,15 @@ Keep portraits, HP bars, status rows and targeting borders unchanged. No glow,
 new portrait-corner badge or animation. Use the existing standing-rule boss
 registry; ordinary enemies and heroes retain their current nameplates.
 
+## G-19. Compact unlocks and simpler title (Kev, 2026-09-09)
+
+Implement the reviewed compact small-unlock composition: title above a panel
+sized to its awards, centered in the available area; Continue stays at the
+bottom. Large lists retain scrolling and readable icon sizes.
+Remove the title-screen Tutorial button and the duplicate "Tell me what to
+fix" feedback nudge. Keep the Feedback button, the first-run tutorial choice,
+and Help's tutorial replay. No font replacement or first-run behavior change.
+
 ## G-14. Two-encounter training and Engineer damage (Kev, 2026-09-08)
 
 Implement the reviewed tutorial flow: complete guided turns, independent play after

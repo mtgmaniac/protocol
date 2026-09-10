@@ -17,6 +17,7 @@ const BUTTON_SIZE := Vector2(360, 120)
 const GRID_COLUMNS := 4
 const GRID_ICON_BOX := 128.0
 const BOSS_RELIC_ICON_BOX := 256.0
+const COMPACT_AWARD_PADDING := 48.0
 
 # Section order is the ruling: biggest news first.
 const SECTION_ORDER := ["boss_relic", "hero", "operation", "relic", "item"]
@@ -33,6 +34,11 @@ const SECTION_LABELS := {
 @onready var window_panel: PanelContainer = %WindowPanel
 @onready var sections: VBoxContainer = %Sections
 @onready var continue_button: Button = %ContinueButton
+@onready var award_space: CenterContainer = %AwardSpace
+@onready var award_group: VBoxContainer = %AwardGroup
+@onready var award_scroll: ScrollContainer = %Scroll
+var _award_fit_pending := false
+var _compact_awards := false
 
 
 func _ready() -> void:
@@ -53,6 +59,40 @@ func _ready() -> void:
 
 	_apply_visual_theme()
 	_build_sections(unlocks)
+	get_viewport().size_changed.connect(_queue_award_fit)
+	_queue_award_fit()
+
+
+func _queue_award_fit() -> void:
+	if _award_fit_pending:
+		return
+	_award_fit_pending = true
+	# Drop the old minimum before measuring a smaller viewport.
+	award_scroll.custom_minimum_size.y = 0
+	award_group.custom_minimum_size = Vector2.ZERO
+	award_group.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	window_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_fit_awards.call_deferred()
+
+
+func _fit_awards() -> void:
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	var chrome_height: float = window_panel.get_combined_minimum_size().y - award_scroll.get_combined_minimum_size().y
+	var content_height: float = sections.get_combined_minimum_size().y + COMPACT_AWARD_PADDING
+	var desired_height: float = title_label.get_combined_minimum_size().y + award_group.get_theme_constant("separation") + chrome_height + content_height
+	_compact_awards = desired_height <= award_space.size.y
+	if _compact_awards:
+		award_group.custom_minimum_size = Vector2(award_space.size.x, 0)
+		award_scroll.custom_minimum_size.y = content_height
+		award_group.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		window_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	else:
+		# CenterContainer keeps children at their minimum size, even with EXPAND.
+		# Explicitly give the long-list group the available viewport budget.
+		award_group.custom_minimum_size = award_space.size
+	_award_fit_pending = false
 
 
 func _apply_visual_theme() -> void:

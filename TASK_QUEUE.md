@@ -1,5 +1,12 @@
 # Overload Protocol — Task Queue
 
+**2026-09-09 G-19 / V11:** Compact centered awards when they fit; full scrolling
+area retained for large unlock lists. Continue stays at the bottom. Title now
+has BEGIN and FEEDBACK only; duplicate Tutorial and feedback nudge removed.
+First-run tutorial choice and Help replay remain. See
+[verification](docs/TITLE_UNLOCK_POLISH_2026-09-09.md). V06 web/device checks
+remain open; selective ability-animation review follows the visual polish.
+
 **2026-09-09 G-18:** Implemented approved boss nameplate C on all five
 standing-rule bosses. Rank is a copper fill plus BOSS/callsign inside the
 existing name strip. See [verification](docs/BOSS_NAMEPLATE_2026-09-09.md).

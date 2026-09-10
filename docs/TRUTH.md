@@ -573,7 +573,7 @@ main menu." Captures: `run_end_capture.gd` seeds representative rows.
 
 **Feedback channel:** `scripts/ui/feedback.gd` (`class_name Feedback`) holds the
 ONE `FEEDBACK_URL` constant (Google Form) — never duplicate the URL. Entry
-points: the main-menu FEEDBACK button (amber accent on the TUTORIAL-sized
+points: the main-menu FEEDBACK button (amber accent on the compact
 secondary tier — BEGIN keeps the only teal primary) and Help > SETTINGS >
 FEEDBACK > SEND FEEDBACK. `Feedback.open_form` MUST be called synchronously
 inside the tap's pressed handler (web popup blockers permit gesture-initiated
@@ -583,14 +583,17 @@ blocked-popup fallback panel showing the short URL as readable text; native =
 verified live 2026-07-30 — so gesture-initiated window.open is not
 structurally blocked there.)
 
-**Post-run nudge:** on the main menu, a dismissible overlay one-liner ("Tell me
-what to fix >") near the FEEDBACK button — overlay-positioned (zero layout
-shift), never blocks input. Cadence (`SaveManager.should_show_feedback_nudge`,
-state in `settings.feedback_nudge_*`, counter `stats.runs_finished`): first
-completed run, then every 3rd run-end; shows once per eligible run-end no matter
-how many menu visits; an explicit dismissal (the X) skips the next scheduled
-show. Regression: `scripts/debug/feedback_nudge_test.gd` (in `verify_gate.py`);
-menu capture: `scripts/debug/main_menu_capture.gd [--capture-nudge]`.
+**Title and unlock polish (G-19, 2026-09-09):** the title screen contains BEGIN
+and FEEDBACK. The duplicate TUTORIAL button and post-run "Tell me what to fix"
+nudge are removed, including the retired cadence helpers. Old feedback_nudge_*
+settings remain harmless in existing profiles. The first BEGIN still offers
+RUN TUTORIAL / SKIP TUTORIAL; Help / BASICS still offers REPLAY TUTORIAL.
+
+Unlock awards that fit use a compact centered title-and-panel group. Larger
+lists retain the full scrolling area; Continue stays at the bottom in both.
+Layout is remeasured when the viewport changes. Regression and captures:
+`scripts/debug/title_unlock_test.gd` (in the full gate), covering title actions,
+tutorial entry paths, small/large/boss-only awards and resize behavior.
 
 ## Audio (2026-07-11 music pass)
 

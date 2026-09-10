@@ -68,7 +68,7 @@ func default_data() -> Dictionary:
 			"nat20s": 0,
 			"deaths": 0,
 			# Completed run-ends, win AND loss (unlike runs_started this only
-			# advances at record_run_finished) — the feedback-nudge cadence key.
+			# advances at record_run_finished). Retained after retiring feedback nudges.
 			"runs_finished": 0,
 			# Unlock metric (Build F fence): every encounter ENTERED counts once,
 			# win, lose, or retreat — never rounds (farmable).
@@ -226,37 +226,7 @@ func set_setting(key: String, value: Variant) -> void:
 	setting_changed.emit(key, value)
 
 
-# --- Feedback nudge cadence (main menu one-liner near the FEEDBACK button) ---
-# Shows after the 1st completed run, then every FEEDBACK_NUDGE_INTERVAL-th
-# run-end; an explicit dismissal skips the next scheduled show (never twice in
-# a row after a dismissal). State lives in settings so it persists with the
-# profile and heals on old saves (absent keys read as never shown).
-
-const FEEDBACK_NUDGE_INTERVAL := 3
-
-func should_show_feedback_nudge() -> bool:
-	var finished: int = int(data["stats"].get("runs_finished", 0))
-	if finished <= 0:
-		return false
-	var shown_at: int = int(get_setting("feedback_nudge_shown_at", 0))
-	if shown_at <= 0:
-		return true
-	var interval: int = FEEDBACK_NUDGE_INTERVAL
-	if bool(get_setting("feedback_nudge_dismissed", false)):
-		interval *= 2
-	return finished - shown_at >= interval
-
-
-# Called when the nudge actually displays — one show per eligible run-end,
-# no matter how many times the menu is revisited.
-func mark_feedback_nudge_shown() -> void:
-	set_setting("feedback_nudge_shown_at", int(data["stats"].get("runs_finished", 0)))
-	set_setting("feedback_nudge_dismissed", false)
-
-
-func mark_feedback_nudge_dismissed() -> void:
-	set_setting("feedback_nudge_dismissed", true)
-
+# Retired feedback_nudge_* settings may remain in older profiles; they are inert.
 
 # --- Operation lore onboarding ---
 
