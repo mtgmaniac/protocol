@@ -41,6 +41,7 @@ func _run() -> void:
 	print("[FEEDBACK_HONESTY] Starting float-duplication + empty-announce regression")
 	_part_a_floats()
 	_part_b_announce()
+	_part_c_burn()
 	_finish()
 
 
@@ -48,10 +49,11 @@ func _run() -> void:
 func _part_a_floats() -> void:
 	var feedback: Node = load("res://scripts/battle/battle_feedback.gd").new()
 	# The events that ARE the damage keep their number.
-	for owned in ["damage", "burn"]:
+	for owned in ["damage"]:
 		var text: String = str(feedback.call("_build_floating_text", owned, 7))
 		_expect(text == "-7", "'%s' still floats its own number (got '%s')" % [owned, text])
 	_expect(str(feedback.call("_build_floating_text", "heal", 5)) == "+5", "'heal' still floats +5")
+	_expect(str(feedback.call("_build_floating_text", "burn", 3)) == "", "Burn application has no immediate damage float")
 	# The marker events that are FOLLOWED by a damage event must stay silent —
 	# the same rule leech/pierce/accrete/revive already followed.
 	for paired in ["chain", "detonate", "spike", "execute"]:
@@ -59,6 +61,25 @@ func _part_a_floats() -> void:
 		_expect(text2 == "",
 			"'%s' no longer floats a second number for the hit _damage_state already reports (got '%s')" % [paired, text2])
 	feedback.free()
+
+
+func _part_c_burn() -> void:
+	var manager: Object = _new_manager()
+	if manager == null:
+		_errors.append("could not construct manager for Burn event test")
+		return
+	manager.call("setup_battle", [_make_unit("audit_hero", "Audit Hero", "Strike", STRIKE_RAW)], [_make_enemy("audit_enemy", "Audit Enemy")])
+	var target: Dictionary = manager.call("get_enemy_states")[0]
+	var hp: int = int(target["current_hp"])
+	manager.call("_apply_burn", target, 3, 2)
+	_expect(int(target["current_hp"]) == hp, "Burn application does not damage HP")
+	_expect(_has_event({"events": manager.get("_round_events")}, "burn"), "Burn application emits status marker")
+	manager.call("_tick_state", target)
+	_expect(int(target["current_hp"]) == hp, "Burn skips application round")
+	manager.set("_round_events", [])
+	manager.call("_tick_state", target)
+	_expect(int(target["current_hp"]) == hp - 3, "Later Burn tick deals 3 HP")
+	_expect(_has_event({"events": manager.get("_round_events")}, "damage"), "Burn tick owns a real damage event/number")
 
 
 # ── PART B: no legal target, no announcement ─────────────────────────────────

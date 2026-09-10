@@ -49,7 +49,7 @@ static func explain_first_item(parent: Node) -> void:
 	var save = parent.get_node("/root/SaveManager")
 	if save.is_primer_seen("item_acquired") or not save.get_setting("ability_primers_enabled", true):
 		return
-	var prompt = Prompt.present(parent, "ITEM ACQUIRED", "Your reward is in your inventory: the bottom-right button in battle. Using an item costs 1 Protocol and consumes it. Earn 1 Protocol each turn.", ["CONTINUE"])
+	var prompt = Prompt.present(parent, "ITEM ACQUIRED", "Your reward is in your inventory: the bottom-right button in battle. Using an item costs 1 Protocol and consumes it.", ["CONTINUE"])
 	await prompt.chosen
 	save.mark_primer_seen("item_acquired")
 	prompt.queue_free()

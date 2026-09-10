@@ -2088,7 +2088,7 @@ func _apply_intercept_battle_effects() -> void:
 	# Rule application delegated to BattleEngine (sim-B.2) — one implementation
 	# shared with the headless sim. The scene keeps the bar + logging.
 	var applied: Dictionary = _engine.apply_battle_start_external_effects(
-		_battle_effects, gs.hero_run_mods, int(gs.run_protocol_per_battle)
+		_battle_effects, gs.hero_run_mods, int(gs.run_protocol_per_battle), gs.deaths_last_battle
 	)
 	_income_debt = int(applied["income_debt"])
 	for line_variant in applied["logs"]:
@@ -3450,3 +3450,4 @@ func _process_summon_events(events: Array) -> void:
 			enemy_units.append(summon_copy)
 		_populate_enemy_cards()
 		_append_log("%s joins the battle!" % summon_copy.display_name)
+		_feedback.play_summon_arrival(str(inject_result["state"]["id"]))

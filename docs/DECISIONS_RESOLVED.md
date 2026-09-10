@@ -431,6 +431,10 @@ from G-2). Gate `effect target` (`effect_text_target.py`) is unaffected and
 still enforces the text side.
 
 
+## G-20. Final feedback and casualty recovery (Kev, 2026-09-10)
+
+Implement local Mark acquisition, distinct Burn application/tick cues, and summon/revive arrival effects; respect Reduced Motion and preserve turn timing. Remove the income sentence from the first item-acquired primer. Heroes dead at the end of the previous battle return at 75% of their updated maximum HP (integer floor, minimum 1), before explicit battle-start damage. Survivors retain full recovery; in-battle revival percentages stay authored. Prioritize verified source committed and pushed to main; web/physical-device release verification remains open.
+
 ## G-13. Implement approved choice mockups and Reduced Motion (Kev, 2026-09-07)
 
 Implement V07 inspect/evolution and V08 route/reward mockups. Ability details use fixed roll columns, secondary names and bright left-aligned concise effects; evolution previews show the 20 first, expandable full abilities and selection before confirmation. Route consequences separate risk and reward; share hostile composition only when the two routes actually match. Reward names and effects remain bright regardless of rarity. Implement V12 as a persisted, default-off Reduced Motion setting: suppress decorative shake, glitch, strong washes and exaggerated scaling while keeping results, feedback and navigation functional. This supersedes G-12's mockup-only/deferred scope for V07/V08/V12 and older centered ability-row styling. Preserve gameplay and G-11's compact footer. V06 and V11 remain, with the full tutorial redesign separately deferred.

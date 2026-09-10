@@ -1,5 +1,7 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-10, G-20:** Heroes dead at the previous battle's end return at 75% of their current maximum HP (floor, minimum 1), after max-HP modifiers and before explicit starting damage. Survivors retain full recovery; in-battle revival percentages are unchanged. Live play and the Godot sim share this rule. First-item teaching omits repeated Protocol-income copy. Local Mark acquisition, Burn application/tick and summon/revive cues respect Reduced Motion; applying Burn no longer displays immediate damage. See [verification](FINAL_FEEDBACK_2026-09-10.md). V06 exported-web/physical-device verification remains open.
+
 *Generated 2026-07-06 by reconciling `offline-bundle/GROUND_TRUTH.md` against the live code and data on `feat/keyword-batch` (post keyword-batch, post unlock system). **When any doc disagrees with this file, this file wins.** When this file disagrees with code, the code wins — fix this file and record the correction.*
 
 ---

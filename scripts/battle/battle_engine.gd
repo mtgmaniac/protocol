@@ -94,7 +94,7 @@ func gear_start_protocol() -> int:
 # GameState.hero_run_mods. Returns {"logs", "income_debt", "items_free",
 # "start_protocol"} — the caller applies start_protocol through its own
 # gain-protocol wrapper (cap/overflow rules apply there) and keeps the debt.
-func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dictionary, run_protocol_per_battle: int) -> Dictionary:
+func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dictionary, run_protocol_per_battle: int, fallen_hero_ids: Array = []) -> Dictionary:
 	var logs: Array[String] = []
 	if bool(effects.get("decoy", false)):
 		combat_manager.set_decoy_round_one()
@@ -133,8 +133,6 @@ func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dic
 		var unit: Variant = hero_state.get("unit")
 		var unit_id: String = str((unit as UnitData).id) if unit is UnitData else str(hero_state.get("id", ""))
 		var mods: Dictionary = hero_run_mods.get(unit_id, {})
-		if mods.is_empty():
-			continue
 		var roll_bonus: int = int(mods.get("roll_bonus", 0))
 		if roll_bonus != 0:
 			hero_state["perm_roll_buff"] = int(hero_state.get("perm_roll_buff", 0)) + roll_bonus
@@ -143,6 +141,9 @@ func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dic
 			hero_state["max_hp"] = maxi(int(hero_state["max_hp"]) + hp_delta, 1)
 			hero_state["current_hp"] = clampi(int(hero_state["current_hp"]) + hp_delta, 1, int(hero_state["max_hp"]))
 		var start_damage: int = int(mods.get("start_hp_damage", 0))
+		if fallen_hero_ids.has(unit_id):
+			hero_state["current_hp"] = maxi(1, int(hero_state["max_hp"]) * 75 / 100)
+			logs.append("%s returns at 75%% HP." % str(unit.display_name))
 		if start_damage > 0:
 			hero_state["current_hp"] = maxi(int(hero_state["current_hp"]) - start_damage, 1)
 			mods["start_hp_damage"] = 0

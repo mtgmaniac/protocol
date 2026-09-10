@@ -1,5 +1,7 @@
 # Overload Protocol — UI & Visual Bible
 
+**10 September follow-up (G-20):** Mark briefly acquires its portrait with four corners; Burn application raises three embers while the later damage tick has one ember pulse and its actual damage number. Revive uses a green portrait scan; summons use cyan after the arriving card is laid out. All are local, short and suppressed by Reduced Motion, without added turn waits. No footer/font/layout changes. [Implementation evidence](FINAL_FEEDBACK_2026-09-10.md).
+
 **Review edition: 6 September 2026 · Game source: `364822d` · Intended showcase: itch.io PC demo, screenshots, optional short trailer.**
 
 This is the current entry point for the game's visual language, inventory and visual review. It supersedes the older visual overview and review in `BATTLE_UI_V2_SPEC.md`, `UI_BACKLOG.md` and `audit/UI_REVIEW.md`. Those documents retain useful historical and implementation detail. This document incorporates the transition system previously described separately in `TRANSITIONS_SCOPE.md`.

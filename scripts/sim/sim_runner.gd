@@ -538,7 +538,7 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 	(gs.get("next_battle_effects") as Dictionary).clear()
 	gs.call("promote_followup_effects")
 	var applied: Dictionary = engine.apply_battle_start_external_effects(
-		battle_effects, gs.get("hero_run_mods"), int(gs.get("run_protocol_per_battle"))
+		battle_effects, gs.get("hero_run_mods"), int(gs.get("run_protocol_per_battle")), gs.get("deaths_last_battle")
 	)
 	var income_debt: int = int(applied["income_debt"])
 	if int(applied["start_protocol"]) > 0:
@@ -608,6 +608,7 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 			break
 
 	gs.call("capture_battle_end_survival", cm.get_hero_states())
+	gs.call("record_battle_hero_deaths", _dead_hero_ids(cm.get_hero_states()))
 	_tel.emit({
 		"type": "battle_end", "index": battle_index, "result": result,
 		"rounds": rounds, "squad_hp": _hp_snapshot(cm.get_hero_states()),

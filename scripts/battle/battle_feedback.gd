@@ -357,6 +357,8 @@ func _play_action_feedback_group(group: Dictionary, group_index: int = -1) -> vo
 		_flash_card(target_card, event_type)
 		_spawn_floating_text(target_card, event_type, int(event.get("amount", 0)))
 		_play_keyword_feedback(event_type, event, actor_card, target_card)
+		if event_type == "damage" and is_tick and str(action.get("ability", "")) == "Burn":
+			_local_status_cue(target_card, "burn_tick")
 		# Death scatter: the card has just refreshed to its dead (grayed) state, so
 		# the debris bursting off it reads as "this unit broke apart." Frame-local
 		# and fire-and-forget, so it never stalls the turn (the fatal-hit path
@@ -504,8 +506,10 @@ func _flash_card(card: Control, event_type: String) -> void:
 	var base_modulate: Color = card.modulate
 	var flash_color: Color = Color(1, 1, 1, 1)
 	match event_type:
-		"damage", "burn":
+		"damage":
 			flash_color = Color(1.0, 0.45, 0.45, 1.0)
+		"burn":
+			flash_color = PixelUI.DT_STATUS["burn"]["text"]
 		"heal", "leech", "revive":
 			flash_color = Color(0.45, 1.0, 0.65, 1.0)
 		"shield", "block", "roll_buff", "freeze", "accrete":
@@ -695,7 +699,7 @@ func _get_card_float_origin(card: Control) -> Vector2:
 # _spawn_roll_buff_float, never here.
 func _build_floating_text(event_type: String, amount: int) -> String:
 	match event_type:
-		"damage", "burn":
+		"damage":
 			return "-%d" % amount
 		"heal", "shield":
 			return "+%d" % amount
@@ -818,10 +822,12 @@ func _celebrate_overload() -> void:
 # card · Jam = static flicker on the die · Rewrite = the die's marker
 # scrambles then slams to 3 · Decloak = the portrait resolves sharp · Ward
 # consume = hex flash + ✕ float. Chain/Leech read through their floats (the
-# card-to-card tracer line was cut 2026-07-10 — disruptive). Mark/Execute run
-# through the floating-text and pause channels. All flat, palette-driven.
+# card-to-card tracer line was cut 2026-07-10 — disruptive). All cues stay
+# local to their target, flat and palette-driven.
 func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: Control, target_card: Control) -> void:
 	match event_type:
+		"mark", "burn", "revive":
+			_local_status_cue(target_card, event_type)
 		"detonate":
 			_chip_flash_then_burst(target_card, PixelUI.DT_STATUS["burn"]["border"], Color(0.95, 0.55, 0.20, 1.0), 14)
 		"breach":
@@ -856,9 +862,69 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 # Chain and Leech now read through their floats + the paired heal event.)
 
 
-# Detonate composition: a chip-sized flash in the burn color pops at the
-# card's status strip (the consumed Burn chip's home), then hands off to the
-# ember burst. Flat rects only.
+# Brief portrait-local cues; no new input target or sequencing delay.
+func play_summon_arrival(state_id: String) -> void:
+	# Container layout and any further card rebuilds finish before locating
+	# the new portrait. Never retain a card freed by another summon this frame.
+	await get_tree().process_frame
+	if is_instance_valid(_scene):
+		_local_status_cue(_find_card_by_state_id("enemy", state_id), "summon")
+
+
+func _local_status_cue(card: Control, kind: String) -> void:
+	if PixelUI.reduced_motion_enabled() or not is_instance_valid(card) or not is_instance_valid(_scene.float_layer):
+		return
+	var frame: Control = card.get("_portrait_frame") as Control
+	var rect: Rect2 = frame.get_global_rect() if is_instance_valid(frame) else card.get_global_rect()
+	var cue := Node2D.new()
+	cue.name = "StatusCue"
+	cue.position = rect.get_center() - _scene.float_layer.get_global_position()
+	cue.z_index = 195
+	_scene.float_layer.add_child(cue)
+	var color: Color = PixelUI.DT_CYAN
+	if kind == "burn" or kind == "burn_tick":
+		color = PixelUI.DT_STATUS["burn"]["border"]
+	elif kind == "revive":
+		color = PixelUI.COLOR_HEAL
+	var half := rect.size * 0.36
+	if kind == "mark":
+		# Four corners close around the portrait; no cross-board tracer.
+		for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+			var line := Line2D.new()
+			line.width = 5.0
+			line.default_color = color
+			var point: Vector2 = half * corner
+			line.points = PackedVector2Array([point - Vector2(corner.x * 22, 0), point, point - Vector2(0, corner.y * 22)])
+			cue.add_child(line)
+		cue.scale = Vector2(1.25, 1.25)
+	elif kind == "burn" or kind == "burn_tick":
+		# Application rises in three embers; the later damage tick pulses once.
+		for i in (3 if kind == "burn" else 1):
+			var ember := Polygon2D.new()
+			ember.color = color
+			ember.polygon = PackedVector2Array([Vector2(0, -12), Vector2(7, 0), Vector2(0, 9), Vector2(-7, 0)])
+			ember.position = Vector2(float(i - 1) * 22 if kind == "burn" else 0.0, half.y * 0.6)
+			cue.add_child(ember)
+	else:
+		# A thin scan sweeps through the arriving/rebuilt portrait.
+		var line := Line2D.new()
+		line.width = 5.0
+		line.default_color = color
+		line.points = PackedVector2Array([Vector2(-half.x, -half.y), Vector2(half.x, -half.y)])
+		cue.add_child(line)
+		create_tween().tween_property(line, "position:y", half.y * 2.0, 0.32)
+	var tween := create_tween()
+	if kind == "mark":
+		tween.tween_property(cue, "scale", Vector2.ONE, 0.14)
+	elif kind == "burn":
+		tween.tween_property(cue, "position:y", cue.position.y - 24.0, 0.18)
+	else:
+		tween.tween_interval(0.16)
+	tween.tween_property(cue, "modulate:a", 0.0, 0.20)
+	tween.tween_callback(cue.queue_free)
+
+
+# Detonate: status-strip flash followed by an ember burst.
 func _chip_flash_then_burst(card: Control, chip_color: Color, burst_color: Color, count: int) -> void:
 	if PixelUI.reduced_motion_enabled():
 		return

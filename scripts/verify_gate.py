@@ -146,6 +146,7 @@ GATES = [
     ("glyph coverage", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/glyph_coverage_check.gd"], "[GLYPH] PASS", False),
     # G-19 replaces the retired feedback nudge with title-entry and unlock-layout coverage.
     ("title and unlock UI", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/title_unlock_test.gd"], "[TITLE_UNLOCK] PASS", False),
+    ("final feedback and recovery", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/final_feedback_test.gd"], "[FINAL_FEEDBACK] PASS", False),
 ]
 
 

@@ -1,5 +1,7 @@
 # Overload Protocol — Task Queue
 
+**2026-09-10 G-20:** Implemented local Mark/Burn/arrival effects, first-item primer trim, and 75% between-battle casualty recovery. See [verification](docs/FINAL_FEEDBACK_2026-09-10.md). Next release blocker: V06 current exported web build on desktop browsers and physical phones; then tutorial/normal-run acceptance and showcase assets.
+
 **2026-09-09 G-19 / V11:** Compact centered awards when they fit; full scrolling
 area retained for large unlock lists. Continue stays at the bottom. Title now
 has BEGIN and FEEDBACK only; duplicate Tutorial and feedback nudge removed.
