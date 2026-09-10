@@ -137,6 +137,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		compact_card.configure({
 			"side": "hero" if accent_color == _scene.HERO_ACCENT else "enemy",
 			"name": unit.battle_name(),
+			"boss": accent_color == _scene.ENEMY_ACCENT and CombatManager.BOSS_STANDING_RULES.has(str(unit.display_name)),
 			"current_hp": shown_hp,
 			"forecast_hp": forecast_hp,
 			"max_hp": int(state["max_hp"]),
@@ -734,5 +735,4 @@ func _make_compact_icon_status(status_type: String, priority: int = 3) -> Dictio
 
 func _revive_hp_pct_from_raw(raw: Dictionary) -> int:
 	return int(raw.get("revivePct", 50))
-
 

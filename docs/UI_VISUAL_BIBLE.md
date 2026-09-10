@@ -8,6 +8,11 @@ This is the current entry point for the game's visual language, inventory and vi
 
 ## Implementation update — 6 September 2026
 
+**9 September, G-18:** Approved boss option C is implemented: a copper-filled
+nameplate with BOSS above the callsign, within the unchanged strip footprint.
+All five standing-rule bosses use it; no new portrait art, glow, border rank,
+or corner badge. [Current captures and verification](BOSS_NAMEPLATE_2026-09-09.md).
+
 **9 September, G-17:** Kev retained the existing typography and battle header
 after comparison. Help now has an ICON GUIDE tab pairing current icons with
 action names, normal costs and common effect definitions; MORE EFFECTS opens

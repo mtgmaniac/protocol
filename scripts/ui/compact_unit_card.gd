@@ -1,4 +1,4 @@
-﻿class_name CompactUnitCard
+class_name CompactUnitCard
 extends PanelContainer
 
 signal card_pressed
@@ -63,6 +63,7 @@ const STATUS_CONTENT_SCALE_STEP := 0.78
 const CARD_BORDER_WIDTH := 4
 var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
+var is_boss: bool = false
 var current_hp: int = 45
 var max_hp: int = 45
 var forecast_hp: int = 45  # where HP settles this round (drives the pending-damage red zone)
@@ -91,6 +92,7 @@ var unit_data: Resource = null
 var gear_detail_rows: Array = []
 
 var _name_label: Label = null
+var _boss_label: Label = null
 var _name_strip: PanelContainer = null
 var _portrait_frame: Control = null
 var _portrait_crop: Control = null
@@ -144,6 +146,7 @@ func _notification(what: int) -> void:
 func configure(data: Dictionary) -> void:
 	side = str(data.get("side", side))
 	unit_name = str(data.get("name", unit_name))
+	is_boss = side == "enemy" and bool(data.get("boss", is_boss))
 	current_hp = int(data.get("current_hp", current_hp))
 	max_hp = int(data.get("max_hp", max_hp))
 	forecast_hp = int(data.get("forecast_hp", current_hp))
@@ -229,15 +232,29 @@ func _build() -> void:
 	_name_strip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	root.add_child(_name_strip)
 
+	# Fixed footprint: the second boss line must never reflow the portrait/HP.
+	var name_content := Control.new()
+	name_content.custom_minimum_size = Vector2(0, NAME_ROW_HEIGHT)
+	name_content.clip_contents = true
+	_name_strip.add_child(name_content)
 	_name_label = Label.new()
-	_name_label.custom_minimum_size = Vector2(0, NAME_ROW_HEIGHT)
 	_name_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.DT_CYAN, 0)
-	_name_strip.add_child(_name_label)
+	name_content.add_child(_name_label)
+	_name_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_boss_label = Label.new()
+	_boss_label.text = "BOSS"
+	_boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_apply_label(_boss_label, 48, PixelUI.DT_BOSS_INK, 0)
+	name_content.add_child(_boss_label)
+	_boss_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_boss_label.offset_top = -28
+	_boss_label.offset_bottom = -28
 
 	# Plain Control (NOT a Container) so the crop + status overlay can be positioned
 	# by anchors; a PanelContainer would force-lay-out both children.
@@ -456,6 +473,8 @@ func _refresh() -> void:
 	# 2px hard border in the card's line color (no rounded corners).
 	if _name_strip != null:
 		var header_bg: Color = PixelUI.DT_HERO_HEADER if is_hero else PixelUI.DT_ENEMY_HEADER
+		if is_boss:
+			header_bg = PixelUI.DT_BOSS_HEADER.darkened(0.45) if dead else PixelUI.DT_BOSS_HEADER
 		var header_style: StyleBoxFlat = _style(header_bg, line_color, 0, 0)
 		header_style.border_width_bottom = 2
 		_name_strip.add_theme_stylebox_override("panel", header_style)
@@ -470,6 +489,11 @@ func _refresh() -> void:
 
 	_name_label.text = unit_name.to_upper()
 	_name_label.add_theme_color_override("font_color", _name_font_color(is_hero))
+	_boss_label.visible = is_boss
+	_name_label.offset_top = 8 if is_boss else 0
+	_name_label.offset_bottom = 8 if is_boss else 0
+	if is_boss:
+		_name_label.add_theme_color_override("font_color", PixelUI.DT_BOSS_INK)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")

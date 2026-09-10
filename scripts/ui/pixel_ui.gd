@@ -69,6 +69,9 @@ static var DT_ENEMY_HEADER := Color("1e110c")
 static var DT_ENEMY_NAME := Color("c9755a")
 static var DT_ENEMY_TRACK := Color("0e0908")
 static var DT_ENEMY_DITHER := Color("dc785a")
+# G-18: boss rank is a filled nameplate, separate from target/selection borders.
+static var DT_BOSS_HEADER := Color("d18a4a")
+static var DT_BOSS_INK := Color("160f0b")
 # Hero (navy/cyan) card tokens
 static var DT_HERO_BG := Color("0a141c")
 static var DT_HERO_BORDER := Color("235461")

@@ -286,6 +286,14 @@ and common effect symbols; retain access to the full keyword reference.
 Keep the current fonts and battle header (review option A). This approval is
 for the guide only; battle prompts and the compact footer remain unchanged.
 
+## G-18. Filled boss nameplate, option C (Kev, 2026-09-09)
+
+Implement reviewed option C: a copper-filled nameplate with dark BOSS text
+above the existing callsign, inside the current name-strip footprint.
+Keep portraits, HP bars, status rows and targeting borders unchanged. No glow,
+new portrait-corner badge or animation. Use the existing standing-rule boss
+registry; ordinary enemies and heroes retain their current nameplates.
+
 ## G-14. Two-encounter training and Engineer damage (Kev, 2026-09-08)
 
 Implement the reviewed tutorial flow: complete guided turns, independent play after

@@ -1,5 +1,10 @@
 # Overload Protocol — Task Queue
 
+**2026-09-09 G-18:** Implemented approved boss nameplate C on all five
+standing-rule bosses. Rank is a copper fill plus BOSS/callsign inside the
+existing name strip. See [verification](docs/BOSS_NAMEPLATE_2026-09-09.md).
+V11 title/sparse-unlock composition is next; V06 remains open.
+
 **2026-09-09 G-17:** Added Help / ICON GUIDE with Actions and Effects, normal
 costs and a link to the full keyword reference. Kev chose to keep current
 fonts/header (option A). Boss identification is next in the finishing-touch

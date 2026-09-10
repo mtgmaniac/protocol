@@ -1080,6 +1080,12 @@ DECISIONS_RESOLVED.md.
 
 ## Approved copy implementation (2026-09-06)
 
+**Boss nameplates (G-18, 2026-09-09):** All five standing-rule bosses have a
+copper-filled name strip with dark BOSS text above their existing callsign.
+The strip keeps its original footprint; portraits, HP, statuses and targeting
+borders are unchanged. Defeated bosses retain a dimmed nameplate. The standing-rule
+registry determines rank; heroes and ordinary enemies retain their existing style.
+
 **Icon Guide (G-17, 2026-09-09):** Help includes an ICON GUIDE tab with
 ACTIONS / EFFECTS sections. Actions pair the existing Nudge, Reroll, Set and
 Item icons with descriptions and normal Protocol costs, including free

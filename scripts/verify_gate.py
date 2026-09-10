@@ -72,6 +72,7 @@ GATES = [
     # screen's zero-new-framed-panels pin.
     ("reward model", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/reward_model_test.gd"], "[REWARD_MODEL] PASS", False),
     ("panel count", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/panel_count_test.gd"], "[PANEL_COUNT] PASS", False),
+    ("boss nameplate", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/boss_nameplate_test.gd"], "[BOSS_NAMEPLATE] PASS", False),
     # Polish Build D: consumable cap (4) + discard picker state machine, relic cap (2)
     # + display, event-consumable pool filter, and the silent-loss/swap contract.
     ("loadout cap", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/ConsumableLoadoutRunner.tscn"], "[LOADOUT_CAP] PASS", False),
