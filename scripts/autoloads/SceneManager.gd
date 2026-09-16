@@ -19,6 +19,17 @@ func go_to(scene_path: String, transition_kind: String = "dither_dissolve") -> v
 	TransitionManager.change_scene(scene_path, transition_kind)
 
 
+# ── Save checkpoints ─────────────────────────────────────────────────────────
+# Routing is the choke point: every between-node transition in a run passes
+# through this file, so "what does CONTINUE resume into" is decided in ONE
+# place rather than in five screens. These writes lock in a resolved choice at
+# the moment the run commits to its next destination.
+#
+# Screens ALSO checkpoint at the end of their own _ready, once their offers are
+# rolled. That second write is strictly richer (it carries the exact cards) and
+# overwrites this one with the same `screen` value, so the two never disagree.
+
+
 # Post-victory routing (pkg7.2): when a beat sits after the battle just won,
 # detour through its screen before the next battle; otherwise advance directly.
 func go_to_next_battle_or_beat() -> void:
@@ -27,10 +38,10 @@ func go_to_next_battle_or_beat() -> void:
 		GameState.consumed_beats.append(GameState.current_battle)
 		match str(beat.get("type", "")):
 			"fork":
-				go_to(ROUTE_FORK_SCENE)
+				go_to_route_fork()
 				return
 			"intercept":
-				go_to(INTERCEPT_SCENE)
+				go_to_intercept()
 				return
 	GameState.advance_to_next_battle()
 	go_to_battle()
@@ -45,15 +56,28 @@ func go_to_unit_select() -> void:
 
 
 func go_to_battle() -> void:
+	# A read-only battle REVIEW re-enters this scene WITHOUT advancing the run.
+	# Checkpointing it would record screen="battle" while the run is really
+	# parked on the reward screen, so CONTINUE would restart a battle the player
+	# already won. The live entry checkpoints itself in _init_live_battle.
+	if not GameState.entering_battle_review:
+		SaveManager.checkpoint_run("battle")
 	go_to(BATTLE_SCENE)
 
 
 func go_to_reward_screen() -> void:
+	SaveManager.checkpoint_run("reward")
 	go_to(REWARD_SCENE)
 
 
 func go_to_intercept() -> void:
+	SaveManager.checkpoint_run("intercept")
 	go_to(INTERCEPT_SCENE)
+
+
+func go_to_route_fork() -> void:
+	SaveManager.checkpoint_run("fork")
+	go_to(ROUTE_FORK_SCENE)
 
 
 # POWER DOWN exclusively means you died (ruling 2026-07-12) — defeat only.
@@ -64,6 +88,7 @@ func go_to_run_end(defeat: bool = false) -> void:
 
 
 func go_to_evolution() -> void:
+	SaveManager.checkpoint_run("evolution")
 	go_to(EVOLUTION_SCENE)
 
 

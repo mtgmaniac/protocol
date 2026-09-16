@@ -118,7 +118,10 @@ var combat_manager: CombatManager = CombatManager.new()
 # Shared UI-free rules engine (balance-sim A.1). Owns the roll-shaping /
 # protocol-economy rules extracted from this god object so the headless sim and
 # the live screen run one implementation. See scripts/sim/DECOUPLING_NOTES.md.
-var _engine: BattleEngine = BattleEngine.new(combat_manager, PhysicsRollProvider.new(dice_manager), dice_manager)
+# Held by name (not just handed to the engine) so _init_live_battle can seed its
+# owned streams from the run's saved battle seed.
+var _roll_provider: PhysicsRollProvider = PhysicsRollProvider.new(dice_manager)
+var _engine: BattleEngine = BattleEngine.new(combat_manager, _roll_provider, dice_manager)
 # Caller-owned battle state (rolls / nudge-set maps / protocol pool / per-battle
 # spend flags) lives in one container so Package D's L2 solver can snapshot it
 # with a single duplicate_for_search(). The members below are property
@@ -336,8 +339,30 @@ func _init_live_battle() -> void:
 	# exactly once per live battle (review re-entries branch around it), so a
 	# multi-round battle counts once and a retreat still counted its entry.
 	# The tutorial is a scripted exhibition, not an encounter (DECISIONS #13).
-	if not _game_state().tutorial_mode:
-		SaveManager.record_battle_entered()
+	#
+	# RESUME (save system): a battle re-entered from a checkpoint was already
+	# counted before the tab died. Counting it again would turn "reload during a
+	# battle" into an unlock farm, which INVARIANTS #18 forbids by name.
+	# battle_entry_counted is saved run state and advance_to_next_battle clears
+	# it, so a genuine next battle still counts exactly once.
+	if not _game_state().battle_entry_counted:
+		if not _game_state().tutorial_mode:
+			SaveManager.record_battle_entered()
+		# This battle's owned random stream (rerolls, vents, summons). DERIVED
+		# from the run seed, so producing it consumes nothing and the balance
+		# sim's reward stream is untouched. A RESUMED battle keeps the seed the
+		# checkpoint stored and replays the same non-physics randomness.
+		_game_state().derive_battle_rng_seed()
+		_game_state().battle_entry_counted = true
+	_roll_provider.seed_streams(int(_game_state().battle_rng_seed))
+	# CHECKPOINT: after the encounter is counted, before _init_live_battle's
+	# one-shot CONSUMPTIONS below (carried protocol, battle-start consumables,
+	# the route modifier, the armed intercept effects). Saving after those would
+	# restore a post-consumption run and then re-enter the scene, which
+	# re-consumes nothing and silently drops the route modifier — the resumed
+	# fight would be the easy version. Saving here means a resume replays the
+	# identical deterministic setup from the same reward-RNG state.
+	SaveManager.checkpoint_run("battle")
 	_update_battle_header()
 	_build_runtime_units()
 	combat_manager.setup_battle(hero_units, enemy_units)

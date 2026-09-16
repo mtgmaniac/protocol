@@ -192,6 +192,94 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
 - **Grandfather clause:** pre-unlock-schema profiles that have played unlock everything, ladder maxed.
 - `check_new_unlocks()` feeds the **UnlockScreen** (Build F — the old run-end amber UNLOCKED panel is retired); `heroes_new` drives the NEW badge (cleared on first squad add). Locked heroes render as their own dark portrait silhouettes with their real name and `LOCKED`; locked operations retain only their real name, dark operation-specific art, and `LOCKED`. Neither is selectable, inspectable, or deployable. Dev tools (help menu SETTINGS): UNLOCK ALL (now includes item gates), RESET SAVE PROFILE (two-step), RESET PRIMERS.
 
+### Active-run save — `user://run.json` (Backlog #14, Kev 2026-09-15)
+
+TWO files, separate lifecycles. `save.json` (above) persists forever; `run.json`
+holds ONE run and is **deleted on victory, defeat and ABANDON RUN**, so a schema
+bump that discards a run in progress can never cost a player their unlocks.
+`GameState.reset_run()` and `finish_run()` are the only deletion sites — every
+quit-to-menu path already routes through `reset_run`. Dev contexts resolve
+`user://dev_run.json` through DevContext exactly as the profile does, and
+verify_gate's profile-isolation fingerprint now covers `run.json` too.
+
+Shape: `{schema_version: 1, build_id, saved_at, save_seq, screen, entry_counted,
+run: {...}, extra: {...}}`. `screen` is where CONTINUE resumes (`battle` /
+`reward` / `evolution` / `fork` / `intercept`); `extra` is opaque to SaveManager
+and carries only the balance harness's own seeded stream states. `GameState`
+owns the run's save shape (`SAVED_RUN_FIELDS` / `TRANSIENT_RUN_FIELDS`,
+`to_save_dict` / `load_from_dict`); SaveManager does orchestration and I/O only.
+A run save is **never written while `tutorial_mode` is true** — the drill is not
+resumable, only its completion flag persists.
+
+**Checkpoints are at node boundaries, never mid-battle**, taken after the node's
+content is generated and before the player acts on it: battle entry (right after
+`record_battle_entered`, before the one-shot consumptions), reward-screen entry
+(after the draft rolls), event/fork/intercept entry (after the draw), and at each
+routing commit in SceneManager. A reload restarts the current battle from its
+opening state. **Accepted trade:** a player losing a battle can reload to restart
+it.
+
+**`battles_fought` stays exactly-once across a resume** — the envelope's
+`entry_counted` flag makes `battle_scene._init_live_battle` skip the increment on
+a resumed entry. Without it, reloading mid-battle would farm unlock gates
+(INVARIANTS #18). `nat20s` and `deaths` are display-only SERVICE RECORD counters
+and DO double-count the replayed part of a restarted battle; accepted.
+
+**RNG.** The save stores RNG `state`, never the seed — restoring from a seed
+would rewind the between-battle economy and let a reload reroll rewards.
+**64-bit values (RNG states, seeds) are stored as STRINGS**: Godot's JSON parses
+every number as a double, so an unquoted int64 comes back rounded and retyped,
+silently. `GameState._reward_rng` covers drafts/beats/comps/decks;
+`GameState.battle_rng_seed` (drawn from the run stream at battle entry) seeds the
+battle's owned `PhysicsRollProvider` + `DiceManager` streams, which replaced
+bare global `randi()` calls. Live d20 FACES are read off the settled physics tray
+and are NOT restorable — a restarted battle can roll differently, by design.
+
+**Write safety.** `.tmp` → copy the outgoing primary to `.bak` → rename into
+place. On load, the best of primary / `.bak` / the web mirror wins by
+**`save_seq`** (a monotonic counter, not `saved_at`, which moves backwards across
+a clock change); a copy that will not parse loses to any copy that will; all
+three unusable = clean start, no crash. A `schema_version` mismatch on `run.json`
+**discards** it and shows one menu line ("Your previous run was from an older
+build and couldn't be restored."). `save.json` never discards — `_migrate_profile`
+dispatches on version and always lands in `_merge_loaded`.
+
+**Web durability.** Godot 4.6.2 mounts `user://` as IDBFS with **no
+`autoPersist`** (`FS.mount(IDBFS, {}, path)` in the exported `index.js`), so
+writes sit in MEMFS until the engine's debounced `FS.syncfs` fires from the main
+loop — and there is no GDScript API to force it (`FS`/`GodotFS` are module-closure
+locals, unreachable from JavaScriptBridge). Background the tab first, as iOS
+Safari does, and the write dies with the page. Every save is therefore ALSO
+mirrored to `localStorage` on web. This **narrows** the window; it does not close
+it — Safari persists localStorage asynchronously too, and inside the itch.io
+iframe both stores are subject to third-party partitioning. On web,
+`OS.is_userfs_persistent()` false raises a non-blocking menu notice.
+
+Deleting a run removes the mirror key as well as the files — a surviving mirror
+copy would put CONTINUE back on the menu after a finished run. When the mirror
+wins a load, the stale primary is **repaired in place** (same `save_seq`; a
+repair is not a new save): `run.json` would heal at the next checkpoint anyway,
+but `save.json` can go a whole session unwritten, so clearing site data
+afterwards would silently roll a profile back.
+
+**Schema fingerprint.** `RUN_SAVE_SCHEMA_FINGERPRINT` pins a hash of the run
+save's SHAPE — every key name and value type, recursively, never the values.
+Three things are excluded as DATA, not schema: array length; the keys of
+ID-keyed dictionaries (`GameState.ID_KEYED_RUN_FIELDS` — anything keyed by a
+unit id, item id or battle number, whose value shapes are hashed as a sorted set
+instead, so swapping a hero is not a schema change); and `save_seq`, which SaveIO
+stamps at write time. A container left EMPTY in the gate's fixture pins nothing
+(`[]` / `<>` / `{}` all mean "shape unknown"), so the gate fails when any
+top-level run field is an empty container rather than passing quietly. The `save schema` gate recomputes it from
+`SaveManager.build_run_payload` — the same builder `checkpoint_run` writes, in
+MEMORY types, because the on-disk JSON collapses int and float — and fails when
+it moves. So a field added, removed or retyped in `to_save_dict()` without a
+`RUN_SAVE_VERSION` bump is a build break here rather than a corrupt resume on a
+player's phone. The two constants move together.
+
+**Menu.** CONTINUE (built only when a valid run save exists) resumes on the saved
+screen; ABANDON RUN asks first and then deletes the run, keeping the profile.
+
 ### Unlock progression — THE FENCE (Build F, Kev 2026-07-15)
 
 Unlock progression is **ordered buckets + battle-count gates**, and nothing else.

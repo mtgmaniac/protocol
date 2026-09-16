@@ -8,11 +8,32 @@
 # guard let a windowed capture rig wipe and repopulate the real primer ledger.
 extends Node
 
+const SaveIO = preload("res://scripts/autoloads/save_io.gd")
+
 signal setting_changed(key: String, value: Variant)
 
 const SAVE_PATH := "user://save.json"
 const DEV_SAVE_PATH := "user://dev_profile_save.json"  # rigs/tests land here, never the real profile
 const SAVE_VERSION := 1
+
+# ── Active-run save (separate file, separate lifecycle) ──────────────────────
+# save.json persists forever; run.json holds ONE run and is destroyed at
+# victory, defeat and abandon. Two files because they fail differently: a
+# schema bump that discards an in-progress run must never cost a player their
+# unlocks, and that is only structurally true if they are not the same file.
+# Profile isolation applies identically — a rig writes dev_run.json.
+const RUN_SAVE_PATH := "user://run.json"
+const DEV_RUN_SAVE_PATH := "user://dev_run.json"
+## Bump ONLY when a run save from the previous build can no longer be trusted.
+## A mismatch discards run.json (and says so on the menu); save.json migrates.
+const RUN_SAVE_VERSION := 1
+## Hash of the run save's SHAPE — every key name and value type, recursively,
+## never the values (SaveIO.structure_fingerprint). The save_schema gate
+## recomputes this from a live checkpoint and fails when it moves, so changing
+## what to_save_dict() produces without bumping RUN_SAVE_VERSION cannot ship.
+## These two constants move TOGETHER: a version bump needs a new fingerprint,
+## and a new fingerprint needs a version bump plus a migration decision.
+const RUN_SAVE_SCHEMA_FINGERPRINT := "bfecc74c620074a9"
 
 # First clear of an operation unlocks its boss's relic (drafted as a
 # Starting Directive at run start; excluded from normal relic drafts).
@@ -43,6 +64,12 @@ const MAX_HERO_LADDER_RUNG := 4
 var data: Dictionary = {}
 var _disk_enabled: bool = true
 var _save_path: String = SAVE_PATH
+var _run_save_path: String = RUN_SAVE_PATH
+## Set at boot when a run.json was found but could not be used, so the menu can
+## say so once. Shape: "" (nothing to report) or a player-facing sentence.
+var _run_save_notice: String = ""
+## Harness-supplied block from the last resume_run(); always {} in live play.
+var _resume_extra: Dictionary = {}
 # Entries awarded by the most recent record_run_finished(), consumed by the
 # run-end UI via check_new_unlocks(). Shape: [{type, id, display_name}].
 var _run_end_unlocks: Array = []
@@ -52,6 +79,7 @@ func _ready() -> void:
 	_disk_enabled = DisplayServer.get_name() != "headless"
 	if DevContext.is_isolated():
 		_save_path = DEV_SAVE_PATH
+		_run_save_path = DEV_RUN_SAVE_PATH
 		print("[SaveManager] dev context - profile isolated to %s (real save untouchable)" % _save_path)
 	load_save()
 
@@ -100,18 +128,38 @@ func default_data() -> Dictionary:
 
 func load_save() -> void:
 	data = default_data()
-	if not _disk_enabled or not FileAccess.file_exists(_save_path):
+	if not _disk_enabled:
 		return
-	var file: FileAccess = FileAccess.open(_save_path, FileAccess.READ)
-	if file == null:
-		push_warning("[SaveManager] Could not open %s for reading." % _save_path)
+	# SaveIO picks the best surviving copy across primary / .bak / the web
+	# mirror, and returns {} when every one of them is missing or corrupt.
+	var loaded: Dictionary = SaveIO.read_dict(_save_path, true)
+	if loaded.is_empty():
 		return
-	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	file.close()
-	if not (parsed is Dictionary):
-		push_warning("[SaveManager] Malformed save file - starting fresh.")
-		return
-	_merge_loaded(parsed as Dictionary)
+	_migrate_profile(loaded)
+
+
+## Schema dispatch for the PROFILE. Unlike run.json, a version mismatch here may
+## never discard anything: these are the player's unlocks, and a future schema
+## bump that wipes them is the worst bug this system could have. Every version
+## must therefore land on a path that ends in _merge_loaded(), which already
+## heals missing keys against defaults and carries the grandfather clauses.
+##
+## v1 is the only version that has ever shipped, so the migration ladder is a
+## no-op today — it exists so the NEXT bump has an obvious place to go and
+## cannot be implemented as "discard and start fresh".
+func _migrate_profile(loaded: Dictionary) -> void:
+	var version: int = int(loaded.get("save_version", 0))
+	match version:
+		0, SAVE_VERSION:
+			# 0 = pre-versioning; _merge_loaded's grandfather clauses handle it.
+			pass
+		_:
+			# A save from a NEWER build than this one. Merging is still the right
+			# move — unknown keys are ignored, known keys are kept — and it beats
+			# the alternative of deleting a player's progress because they opened
+			# an older build once.
+			push_warning("[SaveManager] profile save_version %d is newer than %d - merging what is recognized." % [version, SAVE_VERSION])
+	_merge_loaded(loaded)
 
 
 # Merge a loaded payload onto defaults so missing keys (older saves) heal.
@@ -204,12 +252,108 @@ func _normalized_hero_ladder_rung(heroes: Array) -> int:
 func save() -> void:
 	if not _disk_enabled:
 		return
-	var file: FileAccess = FileAccess.open(_save_path, FileAccess.WRITE)
-	if file == null:
-		push_warning("[SaveManager] Could not open %s for writing." % _save_path)
+	SaveIO.write_dict(_save_path, data)
+
+
+# ── Active-run save ──────────────────────────────────────────────────────────
+# Checkpoints land at NODE BOUNDARIES: after a screen has generated its content
+# and before the player acts on it. Nothing mid-battle is ever serialized, so a
+# reload restarts the current battle from its opening state rather than
+# resuming a half-resolved round.
+
+## Writes the current run. `screen` is where CONTINUE should land the player.
+## There is no per-call "has this battle been counted" argument: that lives in
+## GameState.battle_entry_counted as saved run state, so every checkpoint from
+## every call site carries it and none of them can forget to.
+func checkpoint_run(screen: String, extra: Dictionary = {}) -> void:
+	# NOTE: unlike the profile, the run save is NOT disabled headless. The
+	# memory-only headless rule exists to make the real PLAYER PROFILE
+	# untouchable; run.json in any dev context already resolves to dev_run.json
+	# through DevContext, and the isolation gate fingerprints the real run.json
+	# alongside save.json. Disabling it here instead would make every headless
+	# save gate structurally unable to run, which is a worse trade.
+	# The tutorial is a scripted exhibition, not a run (Kev, Q4). Writing it
+	# would offer CONTINUE into a drill that has no resume path, and would put
+	# tutorial_mode into a file that outlives the session.
+	if bool(GameState.tutorial_mode):
 		return
-	file.store_string(JSON.stringify(data, "  "))
-	file.close()
+	if GameState.selected_operation_id == "" or GameState.current_battle <= 0:
+		return
+	SaveIO.write_dict(_run_save_path, build_run_payload(screen, extra))
+
+
+## The run save's payload, in MEMORY types. Extracted so the schema-fingerprint
+## gate hashes the same structure this writes, rather than a second copy of the
+## envelope maintained beside it — and so the fingerprint sees int vs float,
+## which the on-disk JSON collapses (every JSON number parses as a double).
+func build_run_payload(screen: String, extra: Dictionary = {}) -> Dictionary:
+	return {
+		"schema_version": RUN_SAVE_VERSION,
+		"build_id": str(ProjectSettings.get_setting("application/config/version", "")),
+		"saved_at": Time.get_datetime_string_from_system(true, true),
+		"screen": screen,
+		"run": GameState.to_save_dict(),
+		# Opaque to SaveManager. The balance harness parks its OWN seeded stream
+		# states here (the d20 provider and the policy RNG) — state the live game
+		# does not have, because in live play the d20 comes off the physics tray
+		# and there is no policy. Keeping it in the envelope rather than in the
+		# run block preserves "GameState owns the run's save shape".
+		"extra": extra,
+	}
+
+
+## The stored run, or {} when there is none / it cannot be used. Sets the menu
+## notice as a side effect when a save was found but rejected.
+func peek_run_save() -> Dictionary:
+	var loaded: Dictionary = SaveIO.read_dict(_run_save_path, true)
+	if loaded.is_empty():
+		return {}
+	var version: int = int(loaded.get("schema_version", 0))
+	if version != RUN_SAVE_VERSION:
+		# Ruled behavior: discard, say so once, never attempt a partial load.
+		# A run save spans the whole rules engine; migrating one across a schema
+		# bump is a far bigger promise than losing a single run in progress.
+		push_warning("[SaveManager] run save schema %d != %d - discarding." % [version, RUN_SAVE_VERSION])
+		clear_run_save()
+		_run_save_notice = "Your previous run was from an older build and couldn't be restored."
+		return {}
+	if not (loaded.get("run") is Dictionary):
+		push_warning("[SaveManager] run save has no run block - discarding.")
+		clear_run_save()
+		_run_save_notice = "Your previous run couldn't be restored."
+		return {}
+	return loaded
+
+
+func has_run_save() -> bool:
+	return not peek_run_save().is_empty()
+
+
+## Restores the run into GameState. Returns the screen to resume on, or "" when
+## there was nothing to restore.
+func resume_run() -> String:
+	var loaded: Dictionary = peek_run_save()
+	if loaded.is_empty():
+		return ""
+	GameState.load_from_dict(loaded.get("run", {}) as Dictionary)
+	_resume_extra = (loaded.get("extra", {}) as Dictionary).duplicate(true)
+	return str(loaded.get("screen", ""))
+
+
+## The `extra` block from the most recent resume_run() ({} in live play).
+func get_resume_extra() -> Dictionary:
+	return _resume_extra.duplicate(true)
+
+
+func clear_run_save() -> void:
+	SaveIO.erase(_run_save_path)
+
+
+## One-shot: the menu asks once and the notice is consumed.
+func take_run_save_notice() -> String:
+	var notice: String = _run_save_notice
+	_run_save_notice = ""
+	return notice
 
 
 # --- Settings (the free-form "settings" dict; persisted with the profile) ---

@@ -1,6 +1,8 @@
 # Stores run-level state that persists while the player moves between scenes.
 extends Node
 
+const SaveIO = preload("res://scripts/autoloads/save_io.gd")
+
 # Hard cap on carried consumables — the SINGLE SOURCE of truth. The in-battle
 # LoadoutMenu derives its slot count from this constant (no twin constant to drift).
 # Picking up a consumable while full requires swapping one out (or abandoning the pickup).
@@ -86,6 +88,29 @@ var tutorial_reward_item_id: String = ""
 # auto-init continues into the squad picker; manual replays (splash TUTORIAL
 # button / Help) return to the main menu. Consumed by TutorialController._finish.
 var tutorial_continue_to_play: bool = false
+## The run's master seed, fixed at start_run and never consumed. Battle seeds
+## are DERIVED from it (see derive_battle_rng_seed) so that producing one
+## perturbs no stream.
+var run_seed: int = 0
+## The current battle's OWNED random stream seed, derived from run_seed and the
+## battle number at battle entry and saved with the run. It feeds PhysicsRollProvider (Overflow
+## Vent / Dead Man's Charge / summon picks) and DiceManager (Protocol Reroll,
+## item enemy rerolls), so a resumed battle replays the same non-physics
+## randomness. The d20 FACES are not covered: in live play they come off the
+## settled tray mesh, so a restarted battle can roll differently — accepted.
+var battle_rng_seed: int = 0
+## Whether THIS battle's encounter has already been counted toward
+## battles_fought. battles_fought is the unlock metric and INVARIANTS #18 calls
+## it farm-proof by construction; without this, reloading mid-battle would
+## re-count the entry and turn CONTINUE into an unlock farm.
+##
+## Deliberately a saved RUN FIELD rather than an argument passed to
+## checkpoint_run: as a parameter every routing call site had to remember to
+## forward it, and one that forgot re-opened the hole for the width of a scene
+## transition (measured — the menu's own transition checkpoint did exactly
+## that). As state, every checkpoint carries it automatically and no call site
+## can drop it. Reset by advance_to_next_battle, so the next battle counts.
+var battle_entry_counted: bool = false
 
 ## Read-only snapshot of the just-finished battle's final frame (Batch 5). Captured by
 ## battle_scene at victory; the reward screen's "View Battlescreen" overlays it so the
@@ -150,10 +175,16 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 		_reward_rng.seed = rng_seed
 	else:
 		_reward_rng.randomize()
+	# Captured, not drawn: reading .seed back costs the stream nothing, so the
+	# sim's reward sequence is identical whether or not battle seeds exist.
+	run_seed = int(_reward_rng.seed)
 	selected_units = unit_ids.duplicate()
 	enforce_squad_limit()
 	selected_operation_id = operation_id
 	current_battle = 0
+	run_seed = 0
+	battle_rng_seed = 0
+	battle_entry_counted = false
 	last_battle_snapshot = null
 	battle_review_state = {}
 	entering_battle_review = false
@@ -1031,8 +1062,36 @@ func get_revive_hp_pct(default_pct: int) -> int:
 	return default_pct
 
 
+## This battle's owned RNG seed, DERIVED from (run_seed, current_battle) — it
+## consumes nothing. An earlier version drew it with _reward_rng.randi(), which
+## worked only because the balance sim happens not to run battle_scene: the
+## moment anything on a seeded path called it, every downstream reward, beat and
+## intercept roll would shift and the balance baseline would move for a reason
+## that had nothing to do with balance. Positional safety like that is a delay
+## fuse; a pure derivation removes the coupling instead of documenting it.
+##
+## Called once per live battle entry, BEFORE the battle-start checkpoint, so the
+## seed is part of the saved run and a resume reuses the stored value. The
+## stored value stays authoritative even if this derivation ever changes.
+func derive_battle_rng_seed() -> int:
+	battle_rng_seed = _mix64(run_seed ^ _mix64(current_battle))
+	return battle_rng_seed
+
+
+## splitmix64 finalizer. Written out rather than using hash(): this value has to
+## stay stable across engine versions, and hash()'s semantics are not a contract.
+## GDScript ints are int64 and multiplication wraps (verified on 4.6.2).
+static func _mix64(value: int) -> int:
+	var x: int = value
+	x = (x ^ (x >> 30)) * -4658895280553007687  # 0xBF58476D1CE4E5B9
+	x = (x ^ (x >> 27)) * -7723592293110705685  # 0x94D049BB133111EB
+	return x ^ (x >> 31)
+
+
 func advance_to_next_battle() -> void:
 	current_battle += 1
+	# A new encounter: its entry has not been counted yet.
+	battle_entry_counted = false
 	# The review belongs to the battle just finished — drop it as the run moves on
 	# so the NEXT battle entry is never mistaken for a review.
 	battle_review_state = {}
@@ -1081,6 +1140,22 @@ func reset_run() -> void:
 	run_hero_deaths.clear()
 	run_total_turns = 0
 	run_start_unix = 0
+	# Four fields start_run() cleared and reset_run() did not (found in the
+	# save-system recon). The gap was masked because start_run always followed
+	# reset_run; it stops being masked now that reset_run is the ABANDON RUN
+	# choke point, which ends a run without starting another one.
+	dead_mans_hand_used = false
+	battle_entry_counted = false
+	pending_flagged_comp = {}
+	pending_flagged_modifier_id = ""
+	last_battle_snapshot = null
+	battle_review_state = {}
+	entering_battle_review = false
+	# Abandoning a run destroys its save. This is the ONE choke point: every
+	# quit-to-menu path in the game already routes through here (battle back
+	# button, reward / evolution / run-end / unlock screens), so there is no
+	# second place to forget.
+	SaveManager.clear_run_save()
 
 
 func prepare_battle_rewards() -> void:
@@ -1159,6 +1234,10 @@ func finish_run(result: String) -> void:
 			if not run_hero_deaths.has(str(unit_id)):
 				run_hero_deaths.append(str(unit_id))
 	pending_reward_item_ids.clear()
+	# The run is over on BOTH branches, so its save dies here rather than at the
+	# run-end screen's exit: a tab closed while the summary is on screen must not
+	# leave a CONTINUE that resumes an already-finished run.
+	SaveManager.clear_run_save()
 	SaveManager.record_run_finished(result, selected_operation_id, current_battle)
 
 
@@ -1634,3 +1713,156 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 	for path_name in grouped.keys():
 		grouped_paths.append(grouped[path_name])
 	return grouped_paths
+
+
+# ── Run serialization (save system) ───────────────────────────────────────────
+# GameState owns the run, so GameState owns its save shape. SaveManager does
+# orchestration and I/O only and never reaches into these fields.
+#
+# The field list is EXPLICIT on purpose. A blanket property sweep would quietly
+# adopt every new member — including transient ones that cannot survive JSON —
+# and a forgotten field would present as a corrupt resume, not as an error.
+# Instead the two lists below are exhaustive by contract and
+# `save_roundtrip_test.gd` fails the build if any run-state property appears in
+# neither, so adding a field to GameState forces a decision about it.
+
+## Everything that defines the run. Order is the inventory order, not alphabetical.
+const SAVED_RUN_FIELDS := [
+	# Identity
+	"selected_units", "current_battle", "selected_operation_id", "total_battles",
+	"run_start_unix", "last_run_result",
+	# Inventory
+	"relics", "consumables", "gear_by_unit", "equipped_gear",
+	"starting_directive_relic_id", "carried_protocol", "dead_mans_hand_used",
+	# Hero progression
+	"unit_xp", "unit_levels", "unit_evolutions", "unit_directives",
+	"pending_evolution_unit_id", "deferred_evolution_unit_ids",
+	# Schedule (rolled once at run start — restoring these is what makes a
+	# resumed run the SAME run rather than a similar one)
+	"resolved_battle_comps", "run_beats", "consumed_beats",
+	# Route fork
+	"next_battle_modifier", "next_battle_supply_grade", "used_battle_modifiers",
+	"pending_flagged_comp", "pending_flagged_modifier_id",
+	# Intercept
+	"intercept_minor_deck", "intercept_major_deck", "hero_run_mods",
+	"next_battle_effects", "followup_battle_effects",
+	"run_protocol_per_battle", "run_protocol_cap_override",
+	# Cross-battle status
+	"deaths_last_battle", "deaths_prev_battle",
+	# The run master seed, this battle's derived RNG seed, and whether its
+	# encounter has been counted toward the unlock metric
+	"run_seed", "battle_rng_seed", "battle_entry_counted",
+	# Offers currently on screen (this is what "identical choices on offer" means)
+	"pending_reward_item_ids", "claimed_reward_item_id",
+	"pending_choice_request", "pending_intercept_state",
+	# Run report
+	"run_hero_deaths", "run_total_turns",
+]
+
+## Saved fields whose dictionary KEYS are data, not schema: unit ids, item ids,
+## battle numbers. The schema fingerprint ignores their key names and hashes only
+## the value shapes, so swapping a hero in the squad — or a run scheduling its
+## beats after different battles — does not read as a schema change. A dict NOT
+## listed here has its keys treated as part of the schema, which is correct for
+## the fixed-key structs (pending_intercept_state, next_battle_effects, ...).
+const ID_KEYED_RUN_FIELDS := [
+	"gear_by_unit", "equipped_gear",              # unit id -> gear ids
+	"unit_xp", "unit_levels",                     # unit id -> number
+	"unit_evolutions", "unit_directives",         # unit id -> chosen name
+	"hero_run_mods",                              # unit id -> mod struct
+	"run_beats",                                  # battle number -> beat struct
+]
+
+## Deliberately NOT saved, each for a stated reason. Anything here is expected
+## to be absent or default after a resume.
+const TRANSIENT_RUN_FIELDS := [
+	# A Texture2D and a combat snapshot holding live UnitData Resource
+	# references — neither survives JSON. Losing the post-battle "View
+	# Battlescreen" review on reload is invisible: the button simply doesn't
+	# appear, because its state is empty.
+	"last_battle_snapshot", "battle_review_state", "entering_battle_review",
+	"battle_review_return_target",
+	# Scroll offset + pending selection for the reward picker, written ONLY when
+	# leaving for the battle review and cleared on return. Tied to the review
+	# state above, so it goes with it; a resumed reward screen opens unselected.
+	"reward_picker_ui_state",
+	# Per-battle XP accumulators. We never checkpoint mid-battle, so a resumed
+	# battle restarts its own tracking from begin_battle_xp_tracking().
+	"_battle_effective_rolls", "_battle_end_alive",
+	# The tutorial is not resumable by design (Kev, Q4): no run save is ever
+	# written while tutorial_mode is true, so these can never need restoring.
+	"tutorial_mode", "tutorial_reward_item_id", "tutorial_continue_to_play",
+	# Saved beside the run as an RNG block, not as a field (see to_save_dict).
+	"_reward_rng",
+]
+
+
+func to_save_dict() -> Dictionary:
+	var out: Dictionary = {}
+	for field in SAVED_RUN_FIELDS:
+		var value: Variant = get(field)
+		out[field] = value.duplicate(true) if (value is Array or value is Dictionary) else value
+	# The RNG STATE, not the seed. Restoring from a seed would rewind the whole
+	# between-battle economy to run start, letting a reload reroll every reward
+	# the run has already offered. As a string: JSON numbers are doubles and
+	# this is a full-width 64-bit value (INVARIANTS-adjacent, verified on 4.6.2).
+	out["reward_rng_state"] = SaveIO.encode_i64(int(_reward_rng.state))
+	return out
+
+
+func load_from_dict(data: Dictionary) -> void:
+	for field in SAVED_RUN_FIELDS:
+		if data.has(field):
+			set(field, _restore_json_ints(data[field]))
+	# run_beats is keyed by battle NUMBER. JSON stringifies every object key, so
+	# without this the schedule silently reads empty: get_beat_after_battle(3)
+	# looks up int 3 against a key of "3" and finds nothing — every beat in the
+	# run would vanish on resume, with no error anywhere.
+	run_beats = _int_keyed(run_beats)
+	_reward_rng.state = SaveIO.decode_i64(data.get("reward_rng_state", ""), int(_reward_rng.state))
+
+
+## Godot's JSON parser returns every number as a float. Run state holds no
+## genuine fractional values — every number in SAVED_RUN_FIELDS is a count, an
+## id index, an HP delta or a battle number — so whole floats are restored to
+## int. Without this, a round trip turns 2 into 2.0 and the re-serialized dict
+## stops matching the original (which is exactly what the round-trip gate
+## checks), and `Array.has(int)` lookups get subtle.
+static func _restore_json_ints(value: Variant) -> Variant:
+	if value is float:
+		var as_float: float = value
+		return int(as_float) if is_equal_approx(as_float, floor(as_float)) else as_float
+	if value is Array:
+		var out_array: Array = []
+		for entry in (value as Array):
+			out_array.append(_restore_json_ints(entry))
+		return out_array
+	if value is Dictionary:
+		var out_dict: Dictionary = {}
+		for key in (value as Dictionary):
+			out_dict[key] = _restore_json_ints((value as Dictionary)[key])
+		return out_dict
+	return value
+
+
+static func _int_keyed(source: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for key in source:
+		var int_key: Variant = key
+		if key is String and (key as String).is_valid_int():
+			int_key = (key as String).to_int()
+		elif key is float:
+			int_key = int(key)
+		out[int_key] = source[key]
+	return out
+
+
+## The run RNG stream, exposed for the balance harness's save/resume leg (it
+## seeds deterministically via start_run and must be able to prove the stream
+## survives a checkpoint). Live play never calls these.
+func get_reward_rng_state() -> int:
+	return int(_reward_rng.state)
+
+
+func set_reward_rng_state(state: int) -> void:
+	_reward_rng.state = state

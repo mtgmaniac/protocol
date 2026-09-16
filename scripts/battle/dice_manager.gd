@@ -2,9 +2,37 @@
 class_name DiceManager
 extends RefCounted
 
+# OWNED stream, not Godot's global RNG (save-system refactor). roll_d20 is
+# reached in live play by the Protocol Reroll, the item enemy-reroll effects and
+# the skip-visuals auto-battle path — all run-affecting, so none of them may sit
+# on a global stream that nothing can save, restore, or reason about. (The sim
+# never calls this: BattleEngine hands combat a SeededRollProvider, and the
+# sim's DiceManager is used only for get_ability_for_roll.)
+#
+# randomize() by default so an unseeded manager behaves exactly as the global
+# RNG did; battle_scene seeds it from the run's battle seed so a resumed battle
+# reproduces the same non-physics stream.
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+
+func _init() -> void:
+	_rng.randomize()
+
+
+func seed_stream(stream_seed: int) -> void:
+	_rng.seed = stream_seed
+
+
+func get_stream_state() -> int:
+	return int(_rng.state)
+
+
+func set_stream_state(state: int) -> void:
+	_rng.state = state
+
 
 func roll_d20() -> int:
-	return randi_range(1, 20)
+	return _rng.randi_range(1, 20)
 
 
 func get_ability_for_roll(unit_data: Resource, roll: int) -> Dictionary:
