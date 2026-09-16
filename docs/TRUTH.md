@@ -202,8 +202,9 @@ quit-to-menu path already routes through `reset_run`. Dev contexts resolve
 `user://dev_run.json` through DevContext exactly as the profile does, and
 verify_gate's profile-isolation fingerprint now covers `run.json` too.
 
-Shape: `{schema_version: 1, build_id, saved_at, save_seq, screen, entry_counted,
-run: {...}, extra: {...}}`. `screen` is where CONTINUE resumes (`battle` /
+Shape: `{schema_version: 1, build_id, saved_at, save_seq, screen, run: {...},
+extra: {...}}` (`SaveManager.build_run_payload`, plus `save_seq` stamped by
+SaveIO at write time). `screen` is where CONTINUE resumes (`battle` /
 `reward` / `evolution` / `fork` / `intercept`); `extra` is opaque to SaveManager
 and carries only the balance harness's own seeded stream states. `GameState`
 owns the run's save shape (`SAVED_RUN_FIELDS` / `TRANSIENT_RUN_FIELDS`,
@@ -219,10 +220,13 @@ routing commit in SceneManager. A reload restarts the current battle from its
 opening state. **Accepted trade:** a player losing a battle can reload to restart
 it.
 
-**`battles_fought` stays exactly-once across a resume** — the envelope's
-`entry_counted` flag makes `battle_scene._init_live_battle` skip the increment on
-a resumed entry. Without it, reloading mid-battle would farm unlock gates
-(INVARIANTS #18). `nat20s` and `deaths` are display-only SERVICE RECORD counters
+**`battles_fought` stays exactly-once across a resume** —
+`GameState.battle_entry_counted` makes `battle_scene._init_live_battle` skip the
+increment on a resumed entry, and `advance_to_next_battle` clears it so the next
+encounter still counts. It is a saved RUN FIELD, deliberately not an argument to
+`checkpoint_run`: as a parameter every routing call site had to forward it, and
+one that forgot re-opened the hole for the width of a scene transition. Without
+it, reloading mid-battle would farm unlock gates (INVARIANTS #18). `nat20s` and `deaths` are display-only SERVICE RECORD counters
 and DO double-count the replayed part of a restarted battle; accepted.
 
 **RNG.** The save stores RNG `state`, never the seed — restoring from a seed
@@ -230,9 +234,14 @@ would rewind the between-battle economy and let a reload reroll rewards.
 **64-bit values (RNG states, seeds) are stored as STRINGS**: Godot's JSON parses
 every number as a double, so an unquoted int64 comes back rounded and retyped,
 silently. `GameState._reward_rng` covers drafts/beats/comps/decks;
-`GameState.battle_rng_seed` (drawn from the run stream at battle entry) seeds the
-battle's owned `PhysicsRollProvider` + `DiceManager` streams, which replaced
-bare global `randi()` calls. Live d20 FACES are read off the settled physics tray
+`GameState.battle_rng_seed` seeds the battle's owned `PhysicsRollProvider` +
+`DiceManager` streams, which replaced bare global `randi()` calls. That seed is
+**DERIVED** from (`run_seed`, `current_battle`) by `derive_battle_rng_seed` and
+**consumes no stream** — drawing it from `_reward_rng` was safe only because the
+balance sim happens not to run `battle_scene`, and the first seeded path to call
+it would have shifted every downstream reward, beat and intercept roll. The
+`save roundtrip` gate pins this: deriving battle seeds must leave the run RNG
+state and its next draws untouched. Live d20 FACES are read off the settled physics tray
 and are NOT restorable — a restarted battle can roll differently, by design.
 
 **Write safety.** `.tmp` → copy the outgoing primary to `.bak` → rename into
