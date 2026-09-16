@@ -147,6 +147,28 @@ GATES = [
     # G-19 replaces the retired feedback nudge with title-entry and unlock-layout coverage.
     ("title and unlock UI", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/title_unlock_test.gd"], "[TITLE_UNLOCK] PASS", False),
     ("final feedback and recovery", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/final_feedback_test.gd"], "[FINAL_FEEDBACK] PASS", False),
+    # Save system (Backlog #14). run.json is the ACTIVE RUN; save.json is the
+    # profile. Four gates, because they fail in four unrelated ways:
+    #   roundtrip  - the save carries the run (and the field-coverage contract:
+    #                a new GameState run field must be classified saved or
+    #                transient, or this breaks the build instead of presenting
+    #                later as a corrupt resume)
+    #   integrity  - schema mismatch, corrupt files, an interrupted write, and
+    #                the web localStorage-mirror conflict rules
+    #   lifecycle  - run.json dies at victory/defeat/abandon while unlocks live,
+    #                and battles_fought stays exactly-once across a resume
+    #                (INVARIANTS #18: reloading must not farm unlock gates)
+    #   resume     - THREE separate Godot processes: a seeded run played straight
+    #                through vs the same run saved, reloaded into a fresh scene
+    #                tree, and continued. Slower than the rest by design.
+    #   schema     - the save's key/type SHAPE is pinned beside RUN_SAVE_VERSION,
+    #                so a field added, removed or retyped without a version bump
+    #                is a build break here instead of a corrupt resume on a phone
+    ("save schema", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_schema_test.gd"], "[SAVE_SCHEMA] PASS", False),
+    ("save roundtrip", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_roundtrip_test.gd"], "[SAVE_ROUNDTRIP] PASS", False),
+    ("save integrity", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_integrity_test.gd"], "[SAVE_INTEGRITY] PASS", False),
+    ("save lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_lifecycle_test.gd"], "[SAVE_LIFECYCLE] PASS", False),
+    ("save resume", [sys.executable, str(ROOT / "scripts" / "checks" / "save_resume_gate.py")], "[SAVE_RESUME] PASS", False),
 ]
 
 
@@ -156,7 +178,10 @@ GATES = [
 # stays that way: fingerprint the real files before the suite, fail on any
 # change after. Precedent: a windowed capture rig wiped and repopulated the
 # real primer ledger, which then presented as a game bug.
-REAL_PROFILE_FILES = ["save.json", "settings.cfg"]
+# run.json joins the fingerprint with the save system: an active-run save is
+# player data too, and a rig that escaped DevContext could now destroy a run in
+# progress as well as a profile.
+REAL_PROFILE_FILES = ["save.json", "settings.cfg", "run.json"]
 
 
 def _real_profile_dir() -> Path:
@@ -200,6 +225,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "unlock progression": 180,  # full-run counter + gate-evaluation walk
     "tutorial smoke": 180,      # 23 scripted steps
     "upgrade draws": 180,       # 18 unlock states x 5 seeds x every draw
+    "save resume": 420,         # 6 full Godot processes (2 configs x 3 legs)
 }
 
 

@@ -134,6 +134,10 @@ func _ready() -> void:
 	)
 	if _choice_request.is_empty() and GameState.pending_reward_item_ids.is_empty():
 		GameState.prepare_battle_rewards()
+	# CHECKPOINT: the offers are rolled and stored in pending_reward_item_ids.
+	# The guard above is what makes a resume show the SAME cards — restoring the
+	# ids means _ready finds them non-empty and never re-rolls.
+	SaveManager.checkpoint_run("reward")
 	_update_battle_header()
 	_refresh_inventory_summary()
 	_build_reward_cards()
@@ -965,6 +969,11 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 	if item.item_type == "consumable":
 		await preload("res://scripts/ui/training_flow.gd").explain_first_item(self)
 	GameState.award_battle_xp()
+	# The claim is committed by the DESTINATION checkpoint that the routing
+	# below writes — deliberately not a checkpoint("reward") here. claim_reward
+	# empties pending_reward_item_ids, so a save that still said "reward" would
+	# resume onto a screen that finds no offers and rolls a fresh set: one
+	# reload, two rewards. Routing knows where the run actually went.
 	if GameState.has_pending_evolution():
 		SceneManager.go_to_evolution()
 		return

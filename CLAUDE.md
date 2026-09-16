@@ -38,6 +38,15 @@ claim higher bands are strictly stronger — they are not. (Proper nouns are exe
 the unit "Strike Unit", the title "Overload Protocol", and ability/gear/relic/enemy
 names like "Overload Capacitor" or "Core Surge" stay as-is.)
 
+## Save schema rule
+
+Any change to `GameState.to_save_dict()` — a field added, removed, or retyped —
+requires bumping `SaveManager.RUN_SAVE_VERSION` in the SAME commit, together with
+the migration decision (`run.json` discards on mismatch; `save.json` must never
+discard) and a new `RUN_SAVE_SCHEMA_FINGERPRINT`. The `save schema` gate hashes
+the save's key/type structure and fails when it moves, so this is enforced, not
+advisory.
+
 ## Visual theming — single source of truth
 
 - **`PixelUI` (`scripts/ui/pixel_ui.gd`) is the single source of truth for all visual

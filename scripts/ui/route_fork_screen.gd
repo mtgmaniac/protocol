@@ -32,7 +32,18 @@ func _ready() -> void:
 	if operation != null:
 		PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, operation.battle_name())
 
-	_modifier_id = GameState.roll_route_modifier()
+	# Resume guard: roll ONCE per visit. Restoring the reward-RNG state would
+	# happen to reproduce the same modifier, but relying on that makes the
+	# "same offers" promise depend on an RNG coincidence rather than on stored
+	# state — and roll_route_modifier() also re-shapes pending_flagged_comp.
+	# The other two rolling screens (reward, intercept) already guard this way.
+	if GameState.pending_flagged_modifier_id != "":
+		_modifier_id = GameState.pending_flagged_modifier_id
+	else:
+		_modifier_id = GameState.roll_route_modifier()
+	# CHECKPOINT: the offered route (and the comp it would produce) is now
+	# stored, so a reload shows the identical fork.
+	SaveManager.checkpoint_run("fork")
 
 	var bg := ColorRect.new()
 	bg.color = PixelUI.DT_FIELD_BG

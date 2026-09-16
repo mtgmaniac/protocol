@@ -218,6 +218,9 @@ func _run(args: Dictionary) -> int:
 		return _bench(gs, dm, args)
 
 	_seed = int(args.get("seed", "0"))
+	_checkpoint_at = int(args.get("checkpoint-at", "0"))
+	_fingerprint_path = str(args.get("fingerprint", ""))
+	var resuming: bool = args.has("resume")
 	var policy_name: String = str(args.get("policy", "stub"))
 	var op: String = str(args.get("op", ""))
 	if op == "":
@@ -260,14 +263,19 @@ func _run(args: Dictionary) -> int:
 	_apply_item_field_override(dm, str(args.get("item-field", "")))
 
 	# Seed the run: GameState._reward_rng deterministic, then start.
-	gs.call("start_run", squad, op, _seed)
+	# start_run is skipped when resuming — the saved run REPLACES it, and calling
+	# it would reroll the comps, beats and decks the save exists to preserve.
+	if not resuming:
+		gs.call("start_run", squad, op, _seed)
 	# Forced content (Stage-2 A/B arms): grant items at run start. Deterministic;
 	# mirrors claim_reward's routing but bypasses the pending-draft gate.
 	# `--grant id[@unit],id2,...` — gear defaults to the first squad slot unless
 	# an @unit suffix names one. Documented caveat: granted from battle 1, not
 	# the natural draft point, so the control arm must be matched the same way.
-	var granted: Array = _apply_grants(gs, dm, str(args.get("grant", "")))
-	gs.call("advance_to_next_battle")  # current_battle 0 -> 1
+	var granted: Array = []
+	if not resuming:
+		granted = _apply_grants(gs, dm, str(args.get("grant", "")))
+		gs.call("advance_to_next_battle")  # current_battle 0 -> 1
 
 	# Seeded streams two and three (offset from the reward-rng seed so all
 	# streams are independent but reproducible): d20s and policy choices.
@@ -293,8 +301,12 @@ func _run(args: Dictionary) -> int:
 		"item_field": str(args.get("item-field", "")),
 	})
 
+	if resuming and not _restore_resume_checkpoint(gs, provider, policy):
+		return 1
+
 	var battle_limit: int = int(args.get("battles-only", str(int(gs.get("total_battles")))))
 	var summary: Dictionary = _play_run(gs, dm, provider, policy, battle_limit)
+	_write_fingerprint(_fingerprint(gs, provider, policy, summary))
 
 	_tel.emit({
 		"type": "run_end", "result": summary["result"],
@@ -315,6 +327,13 @@ func _play_run(gs: Node, dm: Node, provider: RollProvider, policy, battle_limit:
 	var final_result: String = "incomplete"
 	while int(gs.get("current_battle")) <= total_battles:
 		var battle_index: int = int(gs.get("current_battle"))
+		# Save-system resume gate (G2): park the run at this node boundary and
+		# stop. Taken BEFORE the battle plays, which is the same boundary the
+		# live game checkpoints at in battle_scene._init_live_battle.
+		if _checkpoint_at > 0 and battle_index == _checkpoint_at:
+			_write_resume_checkpoint(gs, provider, policy)
+			return {"result": "checkpointed", "battles_cleared": battles_cleared,
+				"battles_played": battles_played}
 		var outcome: Dictionary = _play_battle(gs, dm, provider, policy, battle_index)
 		battles_played += 1
 		if outcome["result"] == "victory":
@@ -335,6 +354,105 @@ func _play_run(gs: Node, dm: Node, provider: RollProvider, policy, battle_limit:
 			break
 		_advance(gs, dm, policy)
 	return {"result": final_result, "battles_cleared": battles_cleared, "battles_played": battles_played}
+
+
+# ── Save/resume harness (save-system gate G2) ────────────────────────────────
+# Proves the run save carries everything a run needs to continue identically.
+# Three PROCESSES, not three passes in one: "reload into a fresh scene tree"
+# only means anything if the autoloads are genuinely reconstructed.
+#
+#   --checkpoint-at K   play to the boundary before battle K, save, exit
+#   --resume            load the save and continue from wherever it parked
+#   --fingerprint PATH  write the terminal run state to PATH for comparison
+#
+# The harness owns two seeded streams the live game does not have — the d20
+# provider (live play reads the physics tray instead) and the policy's decision
+# RNG — so it parks their states in the save envelope's `extra` block.
+
+var _checkpoint_at: int = 0
+var _fingerprint_path: String = ""
+
+
+func _write_resume_checkpoint(gs: Node, provider: RollProvider, policy) -> void:
+	var sm: Node = get_node("/root/SaveManager")
+	var extra: Dictionary = {"policy_rng_state": "0", "provider_state": "0"}
+	if provider is SeededRollProvider:
+		extra["provider_state"] = str((provider as SeededRollProvider).get_state())
+	if policy != null and policy.get("rng") != null:
+		extra["policy_rng_state"] = str(int((policy.get("rng") as RandomNumberGenerator).state))
+	sm.call("checkpoint_run", "battle", extra)
+	print("[SIM] checkpointed before battle %d" % _checkpoint_at)
+
+
+## Restores GameState + both harness streams. Returns false when there was
+## nothing to resume, which the gate treats as a failure rather than a fresh run.
+func _restore_resume_checkpoint(gs: Node, provider: RollProvider, policy) -> bool:
+	var sm: Node = get_node("/root/SaveManager")
+	if str(sm.call("resume_run")) == "":
+		push_error("[SIM] --resume found no usable run save")
+		return false
+	var extra: Dictionary = sm.call("get_resume_extra")
+	if provider is SeededRollProvider:
+		(provider as SeededRollProvider).set_state(str(extra.get("provider_state", "0")).to_int())
+	if policy != null and policy.get("rng") != null:
+		(policy.get("rng") as RandomNumberGenerator).state = str(extra.get("policy_rng_state", "0")).to_int()
+	return true
+
+
+## Fields the fingerprint cannot compare, with the reason each one is here. This
+## list is deliberately INDEPENDENT of GameState.TRANSIENT_RUN_FIELDS: if the
+## fingerprint reused the save's own field lists, then dropping a field from the
+## save would also drop it from the comparison and the gate would go quiet about
+## exactly the bug it exists to catch. (Measured: removing consumed_beats from
+## SAVED_RUN_FIELDS passed a to_save_dict-based fingerprint.)
+const FINGERPRINT_SKIP := [
+	"last_battle_snapshot",        # Texture2D - not comparable, not saved
+	"battle_review_state",         # holds live UnitData Resource references
+	"entering_battle_review", "battle_review_return_target", "reward_picker_ui_state",
+	"run_start_unix",              # wall clock: the two legs launched at different times
+	"_reward_rng",                 # an Object; its STATE is emitted separately below
+	"tutorial_mode", "tutorial_reward_item_id", "tutorial_continue_to_play",
+]
+
+
+## The comparable end state, read straight off GameState rather than through the
+## save layer — see FINGERPRINT_SKIP. Covers squad progression, inventory, the
+## schedule, and both RNG stream positions.
+func _fingerprint(gs: Node, provider: RollProvider, policy, summary: Dictionary) -> Dictionary:
+	var run_state: Dictionary = {}
+	for entry_variant in gs.get_property_list():
+		var entry: Dictionary = entry_variant
+		if int(entry.get("usage", 0)) & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
+			continue
+		var field: String = str(entry.get("name", ""))
+		if field == "" or FINGERPRINT_SKIP.has(field):
+			continue
+		var value: Variant = gs.get(field)
+		if value is Object:
+			continue
+		run_state[field] = value.duplicate(true) if (value is Array or value is Dictionary) else value
+	run_state["reward_rng_state"] = str(int(gs.call("get_reward_rng_state")))
+	var out: Dictionary = {
+		"result": str(summary.get("result", "")),
+		"battles_cleared": int(summary.get("battles_cleared", 0)),
+		"run": run_state,
+	}
+	if provider is SeededRollProvider:
+		out["provider_state"] = str((provider as SeededRollProvider).get_state())
+	if policy != null and policy.get("rng") != null:
+		out["policy_rng_state"] = str(int((policy.get("rng") as RandomNumberGenerator).state))
+	return out
+
+
+func _write_fingerprint(data: Dictionary) -> void:
+	if _fingerprint_path == "":
+		return
+	var file: FileAccess = FileAccess.open(_fingerprint_path, FileAccess.WRITE)
+	if file == null:
+		push_error("[SIM] could not write fingerprint to %s" % _fingerprint_path)
+		return
+	file.store_string(JSON.stringify(data, "  "))
+	file.close()
 
 
 # --bench N: play back-to-back full runs until N battles resolve, report

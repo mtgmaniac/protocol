@@ -48,6 +48,9 @@ func _ready() -> void:
 	if _card_id == "":
 		_continue_to_battle()
 		return
+	# CHECKPOINT: the card is drawn (and removed from the deck), so a reload
+	# shows the same event with the same choices in the same order.
+	SaveManager.checkpoint_run("intercept")
 	_card = GameState.INTERCEPT_CARDS.get(_card_id, {})
 	_choice = GameState.pending_intercept_state.get("choice", {}) as Dictionary
 	_picked_hero_id = str(GameState.pending_intercept_state.get("picked_hero_id", ""))
@@ -340,6 +343,10 @@ func _resolve_choice(drafted_item: ItemData = null) -> void:
 	GameState.pending_intercept_state["resolved"] = true
 	GameState.pending_intercept_state["result_info"] = info
 	GameState.pending_intercept_state["stage"] = "result"
+	# CHECKPOINT: the choice's effects are applied and the card is marked
+	# resolved. The resolved flag is what stops a resume re-applying them —
+	# _resolve_choice short-circuits to the result stage above.
+	SaveManager.checkpoint_run("intercept")
 	_show_result_stage(info, drafted_item)
 
 
