@@ -278,6 +278,100 @@ selection, not a rarity — recolored to `DT_CYAN` in the same pass.
 
 # BUILD G PUNCH-LIST RULINGS (Kev, 2026-07-15 playtest)
 
+## G-21. Save system — resumable runs + persistent meta (Kev, 2026-09-15)
+
+**Ruling.** Runs are resumable across a reload. Two files with separate
+lifecycles: `user://save.json` (the existing profile — tutorial flag, unlocks,
+lifetime stats, settings) keeps its path and schema, and `user://run.json` is
+added alongside it for the ACTIVE RUN ONLY, deleted on victory, defeat and
+ABANDON RUN. **No `meta.json`, no rename, no profile migration** — the profile
+gains only a `schema_version` dispatch wrapper in front of the existing
+`_merge_loaded`, which may never discard: a future schema bump must not cost a
+player their unlocks.
+
+Checkpoints land at NODE BOUNDARIES only, after a node's content is generated and
+before the player acts on it. Nothing mid-battle is serialized. A reload restarts
+the current battle from its opening state; the reward, event, fork and intercept
+screens show the identical offers, in the identical order.
+
+**The battle-start checkpoint is taken immediately after `record_battle_entered()`
+and BEFORE the remaining one-shot consumptions** in `battle_scene._init_live_battle`
+(carried protocol, battle-start consumables, the route modifier, the armed
+intercept effects). Saving after them would restore a post-consumption run and
+then re-enter the scene, which re-consumes nothing and silently drops the route
+modifier — the resumed fight would be the easy version.
+
+**`battles_fought` stays exactly-once across a resume.** It is the unlock metric
+and INVARIANTS #18 calls it farm-proof by construction; a resumed battle that
+re-counted its entry would make reloading an unlock farm. The guard is
+`GameState.battle_entry_counted`, saved RUN STATE rather than a checkpoint
+argument — as a parameter, every routing call site had to remember to forward it
+and one that forgot re-opened the hole for the width of a scene transition.
+`nat20s` and `deaths` are display-only SERVICE RECORD counters and DO double-count
+the replayed part of a restarted battle; accepted, not worth mid-battle buffering.
+
+**No run save is ever written while `tutorial_mode` is true.** The drill is not
+resumable; only its completion flag persists.
+
+**RNG.** Run-affecting randomness runs on owned `RandomNumberGenerator`
+instances, never Godot's global stream. The save stores RNG `state`, never the
+seed — restoring from a seed would rewind the between-battle economy and let a
+reload reroll every reward already offered. **64-bit values (RNG states, seeds)
+are stored as STRINGS**: Godot's JSON parses every number as a double, so an
+unquoted int64 comes back rounded AND retyped, silently (verified on 4.6.2:
+9007199254740993 → 9007199254740992.0). `DiceManager` and `PhysicsRollProvider`
+gained owned streams seeded from `GameState.battle_rng_seed`, replacing bare
+`randi()` / `randi_range()`. That seed is **derived** from (`run_seed`,
+`current_battle`) and consumes no stream: drawing it from the run RNG was safe
+only because the balance sim happens not to run `battle_scene`, and the first
+seeded path to call it would have shifted every downstream reward, beat and
+intercept roll. Live d20 FACES are read off the settled physics tray and are NOT
+restorable — a restarted battle can roll differently, by design (INVARIANTS #1:
+the tray is presentation).
+
+**Write safety.** Copy the outgoing primary to `.bak`, then `.tmp` → rename into
+place. Every write to a primary goes through that one atomic path, the repair
+below included. On load the best of primary / `.bak` / the web mirror wins by a
+monotonic **`save_seq`**, not `saved_at` (wall-clock moves backwards across a
+device clock change or a timezone-confused browser). A copy that will not parse
+loses to any copy that will; all three unusable = clean start, logged, no crash.
+Deleting a run removes the mirror key as well as the files — a surviving mirror
+copy would put CONTINUE back after a finished run. When the mirror wins a load,
+the stale primary is **repaired in place**, keeping the winner's `save_seq`
+(a repair is not a new save): `run.json` would heal at the next checkpoint
+anyway, but `save.json` can go a whole session unwritten, so clearing site data
+afterwards would silently roll a profile back.
+
+**Web durability.** Godot 4.6.2 mounts `user://` as IDBFS with **no
+`autoPersist`**, so writes sit in MEMFS until the engine's debounced `FS.syncfs`
+fires from the main loop, and no GDScript API can force it. Background the tab
+first — which is exactly what iOS Safari does — and the write dies with the page.
+Every save is therefore ALSO mirrored to `localStorage`. This **narrows** the
+window; it does not close it, because Safari persists localStorage
+asynchronously too and the itch.io iframe partitions both stores. Every
+`JavaScriptBridge` access degrades to the IDBFS-only path on failure. On web,
+`OS.is_userfs_persistent()` false raises a non-blocking menu notice.
+
+**Schema drift is a build break.** `RUN_SAVE_SCHEMA_FINGERPRINT` pins a hash of
+the save's key/type structure beside `RUN_SAVE_VERSION`, and the `save schema`
+gate fails when the structure moves without a version bump. Array length, the
+keys of ID-keyed dictionaries (`GameState.ID_KEYED_RUN_FIELDS`) and `save_seq`
+are excluded as data — a fingerprint that moved when a hero was swapped would
+fire on ordinary play and be turned off. Recorded as a rule in `CLAUDE.md`: any
+change to `to_save_dict()` bumps the version in the same commit, with the
+migration decision.
+
+**Known trade, accepted for the demo:** a player who is losing a battle can
+reload to restart it. No mitigation was built.
+
+**Supersedes.** `docs/OVERLOAD_PROTOCOL_DEMO_READINESS_AUDIT.md` R-02 ("either
+implement an atomic between-battle run checkpoint or scope the first demo to
+desktop") — the checkpoint is implemented, so the desktop-only fallback is off
+the table. R-03 (mobile pause/focus lifecycle) is NOT addressed and remains open.
+
+**Out of scope, unchanged:** mid-battle state serialization, cloud saves,
+multiple save slots, and any balance or content change.
+
 ## G-17. Icon Guide in Help (Kev, 2026-09-09)
 
 Add the reviewed Icon Guide to Help, with Actions and Effects sections using
