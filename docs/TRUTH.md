@@ -1,5 +1,7 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-21 run-end audio:** the final run summary plays `victory.wav` after a full operation clear and `failure.wav` after a squad wipe. These are run-result cues, not per-battle stingers.
+
 **2026-09-21 portrait facing (Kev):** heroes face right, enemies face left. Enemy source art mostly faces right, so `DataManager._mirror_enemy_portrait` mirrors every enemy portrait once at load; all screens read `enemy.portrait`, so none flips on its own. Hero art is not flipped. Portrait anchors are vertical-only, so framing is unaffected.
 
 **2026-09-21 versioning (Kev):** public-demo numbering restarts at `0.1.1` (was `0.9.0-demo4`). `project.godot` `config/version` is the only version source; players see `DEMO v0.1.1` via `PixelUI.version_label()` (title stamp and Help footer). Run saves record it as `build_id`, which is informational only and never compared on load. Release ZIPs keep dated names (`overload_protocol_web_YYYY-MM-DD.zip`).

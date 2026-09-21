@@ -39,6 +39,7 @@ func _ready() -> void:
 		operation_name = operation.display_name
 
 	var victory := GameState.last_run_result == "victory"
+	AudioManager.play_sfx("victory" if victory else "failure")
 	if victory:
 		title_label.text = "OPERATION COMPLETE"
 		if operation != null and operation.victory_title != "":
