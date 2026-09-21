@@ -38,7 +38,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2867**, facility **0.5915** (post crit-banking checkpoint, BASELINE-APPROVED-BY-KEV 2026-07-06). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2500**, facility **0.3662** (re-pinned 2026-09-21 with the Facility anti-sponginess package — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -891,9 +891,8 @@ untouched. Stage-1 report: `docs/sweeps/2026-07-17_cycle1_stage1_hive.md`.
   changes, **no baseline re-pin before the public demo**; re-pin is the FIRST task
   of the next balance cycle (TASK_MASTER_LIST `BAL-001`). The CURRENT TRUE state
   lives in `docs/balance_snapshot_2026-07.md` (feeds the external design review).
-  `verify_gate` silences the ceremony warning ONLY while metrics exactly match
-  `scripts/sim/acknowledged_drift.json` (any further movement re-raises it);
-  `ci_smoke.py` standalone still diffs the pin and stays red on purpose.
+  **CLOSED 2026-09-21** by the BAL-001 re-pin (below); the
+  `acknowledged_drift.json` carve-out that silenced the ceremony is deleted.
 - **Decision-density gap (L1↔L2) is a first-class metric from Cycle 0 on** — the
   boredom dashboard, reported every cycle. Cycle-0 gaps (matched seeds, n=1000/op):
   facility **+25.1pp** · hive **+7.1** · veil **+8.5** · voidCirclet **+29.5** ·
@@ -1212,6 +1211,16 @@ Facility clear 40.6% → 40.9%, rounds in battles 4–6 7.93 → 7.26 and 7–9
 7.97 → 7.20, battle 5 win 75.5% → 78.6%, hero deaths per battle 0.60 → 0.59,
 every squad within ±6 points. The live-data runs are byte-identical to the
 confirmation runs.
+- **Baseline re-pin (2026-09-21, BAL-001 closed, BASELINE-APPROVED-BY-KEV):**
+  `baseline.json` → overall **0.2500** · facility **0.3662** · hive **0.2203** ·
+  veil **0.2462** · voidCirclet **0.2105** · stellarMenagerie **0.1667**. The
+  non-Facility movement against the old pin is accepted pre-existing drift in the
+  tree, not an effect of the Facility package: on this CI batch the pre-package
+  tree already read facility 0.2958, hive 0.2203, veil 0.2462 and voidCirclet
+  0.2105. The package alone moves only facility (0.2958 → 0.3662, about 70 Facility
+  runs in the batch). `ci_smoke.py` is green against the new pin.
+  `scripts/sim/acknowledged_drift.json` and the `verify_gate` carve-out that read
+  it are deleted, since the pin makes them dead.
 
 ## Out of scope (don't build)
 
