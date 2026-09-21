@@ -46,6 +46,7 @@ func start(scene: Node) -> void:
 	_scene = scene
 	_steps = _build_steps()
 	_build_ui()
+	get_viewport().size_changed.connect(_queue_geometry_refresh)
 	if _scene.has_signal("tutorial_event"):
 		_scene.tutorial_event.connect(_on_tutorial_event)
 	if OS.has_feature("web"):
@@ -57,7 +58,7 @@ func start(scene: Node) -> void:
 
 
 func _on_js_refresh(_args: Array) -> void:
-	_publish_debug_state(_current(), [], "poll")
+	_publish_debug_state(_current(), _spot.current_holes(), "poll")
 
 
 # Lesson data lives separately; this controller handles events and geometry.
@@ -166,6 +167,9 @@ func _valid_resolution_payload(_payload: Dictionary) -> bool:
 func allows_action(action: String, payload: Dictionary = {}) -> bool:
 	if _action_allowed(action, payload):
 		return true
+	# A refused tap is the player aiming at the wrong thing; enough of them
+	# brings the stuck-beat assist forward without waiting out its clock.
+	_rejections += 1
 	action_rejected.emit(StringName(action), _expected_target())
 	return false
 
@@ -245,7 +249,7 @@ func _reveal_whole_screen() -> void:
 # targets — enemy card + its die for hostile picks, the legal ally card(s)
 # for friendly picks. Falls back to the whole screen if nothing resolves (the
 # player must never be locked out).
-func _retarget_spotlight_to_legal() -> void:
+func _retarget_spotlight_to_legal(restart_assist: bool = true) -> void:
 	if _spot == null:
 		return
 	var side: String = str(_scene.get("legal_target_side"))
@@ -267,6 +271,10 @@ func _retarget_spotlight_to_legal() -> void:
 		holes = [_fullscreen_hole()]
 	_spot.set_holes(holes)
 	_publish_debug_state(_current(), holes, "retarget")
+	# Picking the scripted hero is real progress inside the beat — the player
+	# is choosing a target now, so restart the assist budget.
+	if restart_assist:
+		_arm_gate_assist()
 
 
 # Append a padded hole unless an equivalent rect is already spotlit. A friendly
@@ -284,19 +292,28 @@ func _append_unique_hole(holes: Array, rect: Rect2) -> void:
 	holes.append(padded)
 
 
-func _show_armed_nudge() -> void:
+func _show_armed_nudge(restart_assist: bool = true) -> void:
 	var step: Dictionary = _current()
 	if _spot == null or _advance_mode() != "nudged" or not step.has("armed_text"):
 		return
 	var holes: Array = [_hero_die_rect_for_unit("combat").grow(PAD), _hero_card_rect_for_unit("combat").grow(PAD)]
 	_spot.spotlight(holes, str(step["armed_text"]), SpotlightLayerScript.CoachAnchor.AUTO, {"interactive": false, "coach_y_ratio": 0.48})
 	_publish_debug_state(step, holes, "nudge_armed")
+	# Arming the nudge is real progress inside the beat — restart the assist
+	# budget (and drop any offer this re-presented coach just overwrote).
+	if restart_assist:
+		_arm_gate_assist()
 
 
 # Taps only arrive from the SpotlightLayer when the step is interactive
 # (advance-on-tap); gated steps set the layer to pass input through.
 func _on_spot_tapped() -> void:
 	var mode: String = _advance_mode()
+	# On a gated beat the coach is only tappable once the assist has been
+	# offered (set_coach_tappable), so a tap here is the player taking it.
+	if _assist_offered and mode != "tap" and mode != "tap_finish":
+		_run_gate_assist()
+		return
 	if mode == "tap":
 		_next()
 	elif mode == "tap_finish":
@@ -393,14 +410,241 @@ func _scene_has_rolls() -> bool:
 	return rolls is Dictionary and not (rolls as Dictionary).is_empty()
 
 
+# ── Gated-beat assist (Kev 2026-09-20) ────────────────────────────────────────
+# The waiter failsafe above covers hide_coach beats only. A GATED beat
+# (roll_pressed / assigned / inspected / nudged / turn_resolved) had no timeout
+# at all: allows_action refuses every control but the scripted one, so a player
+# who cannot find or cannot complete the scripted action is stuck with only the
+# header back arrow. This can explain a stall, though the tester's exact beat
+# was not recorded.
+#
+# The recovery is OFFERED, never automatic, and it never SKIPS: after the budget
+# the coach grows a tappable line, and tapping it performs THAT BEAT'S OWN
+# action through the same handlers the player's tap would reach. The beat then
+# advances on its real event, so nothing is marked complete that did not happen
+# and no later beat is stranded (skipping the nudge beat, for instance, would
+# leave the next beat naming a 10-damage attack that does not exist).
+const GATED_ASSIST_SECS := 20.0
+# Two refused taps is better evidence of being stuck than any clock, so the
+# offer also arrives early once the player has aimed at the wrong thing twice.
+const GATED_ASSIST_REJECTIONS := 2
+const GATED_ASSIST_HINT := "Stuck? Tap here and we'll do it >"
+# Test seam, same shape as waiter_failsafe_secs.
+var gated_assist_secs: float = GATED_ASSIST_SECS
+var _assist_token: int = 0
+var _assist_offered: bool = false
+var _rejections: int = 0
+var _assist_restart_offered: bool = false
+var _geometry_refresh_queued: bool = false
+
+
+func is_assist_offered() -> bool:
+	return _assist_offered
+
+
+# Restart the budget. Called when a gated beat is presented AND whenever the
+# player makes real progress inside one (picking the scripted hero, arming the
+# nudge) — progress means they are not stuck, so the clock starts over.
+func _arm_gate_assist() -> void:
+	_assist_offered = false
+	_assist_restart_offered = false
+	_rejections = 0
+	_assist_token += 1
+	if _spot != null:
+		_spot.set_coach_tappable(false)
+	_watch_stalled_gate(_step, _assist_token)
+
+
+func _watch_stalled_gate(step_index: int, token: int) -> void:
+	var elapsed: float = 0.0
+	while true:
+		if not is_inside_tree() or get_tree() == null:
+			return
+		await get_tree().process_frame
+		# Superseded (the beat advanced, or a newer beat armed): stand down.
+		if _step != step_index or _assist_token != token:
+			return
+		if _scene == null or not is_instance_valid(_scene):
+			return
+		if _assist_offered:
+			return
+		# A primer or inspect modal is up: the player is reading, not stuck.
+		if bool(_scene.get("_is_resolving_turn")) or (_scene.has_method("is_tutorial_waiter_blocked") and bool(_scene.call("is_tutorial_waiter_blocked"))):
+			continue
+		elapsed += get_process_delta_time()
+		if _rejections >= GATED_ASSIST_REJECTIONS or elapsed >= gated_assist_secs:
+			_offer_gate_assist(elapsed)
+			return
+
+
+# Re-present the SAME beat with a tappable offer line. Holes come from the live
+# spotlight rather than _compute_holes so a two-stage assign retarget survives.
+func _offer_gate_assist(elapsed: float) -> void:
+	var step: Dictionary = _current()
+	if _spot == null or step.is_empty():
+		return
+	_assist_offered = true
+	print("[Tutorial] ASSIST OFFERED beat %d (advance=%s idle=%.1fs rejections=%d)" % [
+		_step + 1, _advance_mode(), elapsed, _rejections])
+	var anchor: int = SpotlightLayerScript.CoachAnchor.AUTO
+	if bool(step.get("fullscreen", false)):
+		anchor = SpotlightLayerScript.CoachAnchor.CENTER if bool(step.get("coach_center", false)) else SpotlightLayerScript.CoachAnchor.BOTTOM
+	var copy: String = str(step.get("armed_text", step.get("text", ""))) if _advance_mode() == "nudged" and _in_nudge_pick() else str(step.get("text", ""))
+	_spot.spotlight(_spot.current_holes(), copy, anchor, {
+		"title": str(step.get("title", "")),
+		"glyph": PixelUI.pip_texture_for_key(str(step.get("glyph", ""))) if step.has("glyph") else null,
+		"hint": "Can't continue? Tap here to restart training >" if _assist_restart_offered else GATED_ASSIST_HINT,
+		# NOT interactive: the real controls stay live under the catcher, so the
+		# offer never takes the scripted action away from a player who finds it.
+		"interactive": false,
+		"coach_y_ratio": _coach_y_ratio(step),
+	})
+	_spot.set_coach_tappable(true)
+	_publish_debug_state(step, _spot.current_holes(), "assist_offered")
+
+
+# The player took the offer. Perform the beat's own action; the resulting real
+# event advances the beat through the normal path.
+func _run_gate_assist() -> void:
+	if _assist_restart_offered:
+		var state = get_node("/root/GameState")
+		state.start_tutorial_run(state.tutorial_continue_to_play)
+		get_node("/root/SceneManager").go_to_battle()
+		return
+	_assist_offered = false
+	if _spot != null:
+		_spot.set_coach_tappable(false)
+	var step: Dictionary = _current()
+	var mode: String = _advance_mode()
+	var starting_step: int = _step
+	print("[Tutorial] ASSIST TAKEN beat %d (advance=%s)" % [_step + 1, mode])
+	var performed: bool = await _perform_gate_action(mode, step)
+	if not is_inside_tree() or _step != starting_step:
+		return
+	if performed:
+		# Inspection/resolution can finish later. Keep recovery armed until its
+		# real event arrives; handler invocation alone is not completion.
+		_arm_gate_assist()
+	else:
+		# A vanished target cannot be taught by removing the fence: subsequent
+		# instructions still require the missing action. Offer an explicit restart.
+		_assist_restart_offered = true
+		_offer_gate_assist(0.0)
+
+
+# Each arm mirrors _action_allowed's, and every call goes through the SAME
+# scene handler the player's tap reaches — so the assist can never do something
+# the fence would have refused the player.
+func _perform_gate_action(mode: String, step: Dictionary) -> bool:
+	if _scene == null or not is_instance_valid(_scene):
+		return false
+	match mode:
+		"roll_pressed", "turn_resolved", "won":
+			var button: Object = _scene.get("roll_button")
+			if button == null or bool(button.get("disabled")):
+				return false
+			var before_step: int = _step
+			_scene.call("_on_roll_button_pressed")
+			return _step != before_step or bool(_scene.get("_is_resolving_turn"))
+		"inspected":
+			var card: Control = _assist_card(str(step.get("inspect_hero", "")))
+			if card == null:
+				return false
+			_scene.call("_on_unit_detail_requested", card)
+			# Let the player read and close the real popup, just as a hold does.
+			return bool(_scene.call("is_tutorial_inspection_open"))
+		"assigned":
+			return await _perform_assign(step)
+		"nudged":
+			var before_step: int = _step
+			var protocol: Variant = _scene.get("_protocol")
+			if protocol == null:
+				return false
+			if not _in_nudge_pick():
+				protocol.call("_on_nudge_button_pressed")
+				await get_tree().process_frame
+			var nudge_state: String = _assist_state_id(str(step.get("hero", "combat")))
+			if nudge_state == "":
+				return false
+			protocol.call("handle_hero_card_pressed", nudge_state)
+			return _step != before_step
+	return false
+
+
+func _perform_assign(step: Dictionary) -> bool:
+	var before_step: int = _step
+	var hero_state: String = _assist_state_id(str(step.get("hero", "")))
+	if hero_state == "":
+		return false
+	if str(_scene.get("active_targeting_hero_id")) != hero_state:
+		_scene.call("_on_hero_card_pressed", hero_state)
+		await get_tree().process_frame
+	var legal: Variant = _scene.get("legal_target_ids")
+	if not (legal is Array) or (legal as Array).is_empty():
+		# No manual target needed — selecting the hero already committed it.
+		return _step != before_step
+	var side: String = str(_scene.get("legal_target_side"))
+	var wanted: String = _assist_state_id(str(step.get("target_hero", "")))
+	var target: String = wanted if wanted != "" and (legal as Array).has(wanted) else str((legal as Array)[0])
+	_scene.call("_on_enemy_card_pressed" if side == "enemy" else "_on_hero_card_pressed", target)
+	return _step != before_step
+
+
+func _assist_state_id(unit_id: String) -> String:
+	if unit_id == "" or _scene == null or _scene.combat_manager == null:
+		return ""
+	for state in _scene.combat_manager.get_hero_states():
+		if str(state.unit.id) == unit_id:
+			return str(state.id)
+	return ""
+
+
+func _assist_card(unit_id: String) -> Control:
+	var views: Variant = _scene.get("hero_card_views")
+	if not (views is Array):
+		return null
+	for view_variant in views:
+		var view: Dictionary = view_variant
+		var state: Dictionary = view.get("state", {})
+		var unit: Object = state.get("unit", null) as Object
+		if unit != null and str(unit.id) == unit_id:
+			return view.get("card", null) as Control
+	return null
+
+
 # ── Layout / spotlight ────────────────────────────────────────────────────────────
 func _show_step(index: int) -> void:
 	_step = index
+	_assist_token += 1
+	_assist_offered = false
+	_assist_restart_offered = false
 	# Resolve next frame so freshly-built nodes (dice rows after a roll) have a real rect.
 	call_deferred("_layout_step")
 
 
-func _layout_step() -> void:
+func _queue_geometry_refresh() -> void:
+	if not _geometry_refresh_queued:
+		_geometry_refresh_queued = true
+		_refresh_geometry.call_deferred()
+
+
+func _refresh_geometry() -> void:
+	# Containers need a frame to settle after a window/fullscreen change.
+	await get_tree().process_frame
+	_geometry_refresh_queued = false
+	if not is_inside_tree():
+		return
+	var was_offered: bool = _assist_offered
+	_layout_step(false)
+	if _advance_mode() == "assigned":
+		_retarget_spotlight_to_legal(false)
+	elif _advance_mode() == "nudged" and _in_nudge_pick():
+		_show_armed_nudge(false)
+	if was_offered:
+		_offer_gate_assist(0.0)
+
+
+func _layout_step(restart_assist: bool = true) -> void:
 	var step: Dictionary = _current()
 	if step.is_empty():
 		return
@@ -415,8 +659,9 @@ func _layout_step() -> void:
 		if _spot != null:
 			_spot.dismiss()
 		_publish_debug_state(step, [])
-		_waiter_token += 1
-		_watch_stalled_waiter(_step, _waiter_token)
+		if restart_assist:
+			_waiter_token += 1
+			_watch_stalled_waiter(_step, _waiter_token)
 		return
 	var holes: Array = _compute_holes(step)
 	# Never place against a not-yet-valid rect (playtest item 9): a step that
@@ -452,6 +697,28 @@ func _layout_step() -> void:
 			"coach_y_ratio": _coach_y_ratio(step),
 		})
 	_publish_debug_state(step, holes)
+	if not tap_step and restart_assist:
+		_arm_gate_assist()
+	if not tap_step and not _expected_target_visible():
+		_offer_gate_assist(0.0)
+
+
+func _expected_target_visible() -> bool:
+	var expected: Dictionary = _expected_target()
+	var rects: Array[Rect2] = []
+	if expected.has("control"):
+		var key: String = str(expected.control)
+		rects.append(_node_rect(_scene.get("roll_button") if key == "roll_button" else _protocol_button(key)))
+	elif expected.has("state_ids"):
+		for id in expected.state_ids:
+			rects.append(_enemy_card_rect(str(id)) if str(expected.get("side", "")) == "enemy" else _hero_card_rect(str(id)))
+	elif expected.has("hero"):
+		rects.append(_hero_card_rect_for_unit(str(expected.hero)))
+	var viewport_rect: Rect2 = get_viewport().get_visible_rect()
+	for rect in rects:
+		if rect.has_area() and viewport_rect.encloses(rect):
+			return true
+	return false
 
 
 func _coach_y_ratio(step: Dictionary) -> float:
@@ -481,6 +748,7 @@ func _publish_debug_state(step: Dictionary, holes: Array, stage: String = "step"
 		var r: Rect2 = hole_variant
 		hole_list.append([r.position.x, r.position.y, r.size.x, r.size.y])
 	var dice: Dictionary = {}
+	var cards: Dictionary = {}
 	var views: Variant = _scene.get("hero_card_views")
 	if views is Array:
 		for view_variant in views:
@@ -489,6 +757,7 @@ func _publish_debug_state(step: Dictionary, holes: Array, stage: String = "step"
 			var unit: Object = state.get("unit", null) as Object
 			if unit == null:
 				continue
+			cards[str(unit.id)] = _rect_data(_node_rect(view.get("card", null)))
 			var die_rect: Rect2 = _die_rect("hero", str(state.get("id", "")))
 			if die_rect.size != Vector2.ZERO:
 				dice[str(unit.id)] = [die_rect.position.x, die_rect.position.y, die_rect.size.x, die_rect.size.y]
@@ -513,8 +782,26 @@ func _publish_debug_state(step: Dictionary, holes: Array, stage: String = "step"
 		"active": str(_scene.get("active_targeting_hero_id")),
 		"pending": _scene.get("pending_manual_target_ids"),
 		"state_ids": _hero_state_ids(),
+		"cards": cards,
+		"roll_button": _rect_data(_node_rect(_scene.get("roll_button"))),
+		"coach": _rect_data(_spot.get("_coach")),
+		"coach_visible": _spot.visible,
+		"assist": _assist_offered,
+		"restart_offered": _assist_restart_offered,
+		"inspection_open": bool(_scene.call("is_tutorial_inspection_open")),
+		"free": bool(step.get("free", false)),
+		"hero": str(step.get("hero", "")),
+		"title": str(step.get("title", "")),
+		"target_hero": str(step.get("target_hero", "")),
+		"battle": int(get_node("/root/GameState").current_battle),
+		"viewport": _rect_data(get_viewport().get_visible_rect()),
 	}
 	JavaScriptBridge.eval("window.__tut = %s" % JSON.stringify(data), true)
+
+
+func _rect_data(value: Variant) -> Array:
+	var rect: Rect2 = value if value is Rect2 else _node_rect(value)
+	return [rect.position.x, rect.position.y, rect.size.x, rect.size.y]
 
 
 func _hero_state_ids() -> Dictionary:
@@ -856,7 +1143,7 @@ func _merge_nonempty(a: Rect2, b: Rect2) -> Rect2:
 
 func _node_rect(node: Variant) -> Rect2:
 	var control: Control = node as Control
-	if control == null or not is_instance_valid(control) or not control.is_inside_tree() or not control.visible:
+	if control == null or not is_instance_valid(control) or not control.is_inside_tree() or not control.is_visible_in_tree():
 		return Rect2()
 	var r: Rect2 = control.get_global_rect()
 	if r.size.x < 2.0 or r.size.y < 2.0:

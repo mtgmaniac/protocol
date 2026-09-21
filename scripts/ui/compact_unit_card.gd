@@ -614,6 +614,15 @@ func _update_portrait_rect_transform() -> void:
 	if fw < 2.0 or fh < 2.0:
 		return
 	PixelUI.cover_fit_portrait(_portrait_rect, Vector2(fw, fh))
+	# Keep the shared zoom/aspect intact. The old eight-pixel upward bias
+	# exposes Engineer's source-art mat below its torso. Seat all friendly
+	# portraits alike; only the two clipped Facility helmets need an enemy nudge.
+	var down_px: float = 6.0 if side == "hero" else 0.0
+	if side == "enemy" and unit_data != null and str(unit_data.display_name) in ["Scrap Drone", "Rust Drone"]:
+		down_px = 5.0
+	var pixel_scale: float = PixelUI.physical_transform(_portrait_rect).get_scale().y
+	if pixel_scale > 0.0:
+		_portrait_rect.position.y += down_px / pixel_scale
 
 
 func _populate_action_pips() -> void:

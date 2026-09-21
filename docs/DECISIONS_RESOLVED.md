@@ -1,5 +1,15 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## UI consistency polish (Kev, 2026-09-20) — RESOLVED & IMPLEMENTED
+
+Keep current battle portrait zoom and dimensions; correct friendly framing and
+Scrap/Rust vertical alignment only. Merge Help into Protocol, Units, Battle Log,
+Settings; retain Icon Guide within Protocol and enemy operation filters within
+Units. Increase codex descriptor legibility and normalize thumbnails/HP alignment.
+Add restrained pixel HUD default/hover cursors, Help hover/scroll/Escape polish,
+capture before/after evidence, then bump the version. Implemented in demo4;
+see `UI_CONSISTENCY_2026-09-20.md`. No combat or broader HUD redesign.
+
 Companion to `docs/TRUTH.md` §DECISIONS NEEDED. Entries land here once Kev rules;
 numbers are preserved from the TRUTH.md list so old references stay valid.
 **Do not re-open a ruled item without a new explicit ruling from Kev.** Purpose:
@@ -19,6 +29,24 @@ carry rulings in chat memory.
 ---
 
 # RESOLVED & IMPLEMENTED
+
+## G-21. Desktop fit and tutorial recovery (Kev, 2026-09-20)
+
+Kev approved completing and testing the existing Reddit-feedback fixes: offer help
+for stalled gated tutorial actions, preserve the real lesson action instead of
+skipping it, and keep THE OPERATION as the opening beat with the existing 0.22 dim.
+Desktop redesign and balance changes are outside this pass. Assistance leaves
+inspection open for the player to read; an impossible action offers an explicit
+restart rather than advancing into invalid instructions.
+
+**Web viewport (Kev, 2026-09-20, supersedes the same-day letterbox):** no custom
+portrait-width restriction. The Web build uses whatever viewport the browser or
+itch iframe supplies (Adaptive canvas, `canvas_items` + `expand` kept); no
+desktop max-width, breakpoint or fixed width in code. Kev controls the desktop
+presentation through itch.io's Embed Options. Mobile-sized viewports must keep
+working. Per-screen responsive redesign is a separate, later decision.
+
+Implementation and test evidence: [desktop verification](DESKTOP_TUTORIAL_2026-09-20.md).
 
 ## 1. Freeze semantics — FREEZE = REPEAT *(ruled by Kev, 2026-07-06; landed 52e2fa5)*
 

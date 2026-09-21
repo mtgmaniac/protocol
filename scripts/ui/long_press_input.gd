@@ -3,7 +3,7 @@
 #   - quick press+release        -> `tapped`        (the surface's normal action)
 #   - press held past the hold    -> `long_pressed`  (open the InspectPopup)
 # A fired long-press SUPPRESSES the tap on release, so the two never both fire. A drag
-# beyond MOVE_CANCEL_PX cancels (so scrolling a list never triggers either).
+# beyond the cancel tolerance cancels (so scrolling a list never triggers either).
 #
 # The hold duration lives in exactly one place: PixelUI.INSPECT_HOLD_SEC. No surface
 # re-declares it.
@@ -13,7 +13,15 @@ extends Node
 signal tapped
 signal long_pressed(global_position: Vector2)
 
-const MOVE_CANCEL_PX := 26.0
+# Cancel tolerance in screen pixels (CSS pixels on Web) — how far the pointer
+# actually travels on the glass, not how far the design space says it moved.
+# This was 26 DESIGN px, and design space scales into the window: at the 0.2917x
+# of a 1366x700 browser window it came to 7.6 device px, so a mouse drifting
+# eight screen pixels during the 0.42 s hold cancelled the gesture. The
+# tutorial's inspect beat ("Hold Strike's portrait") has no alternative path, so
+# that drift was a dead end. 26 device px is exactly what a 1080-native phone
+# always had (final-transform scale 1.0), so touch behaviour is unchanged.
+const MOVE_CANCEL_DEVICE_PX := 26.0
 
 var _target: Control = null
 var _timer: Timer = null
@@ -64,8 +72,32 @@ func _begin(global_pos: Vector2) -> void:
 
 
 func _check_drag(global_pos: Vector2) -> void:
-	if _pressed and global_pos.distance_to(_press_pos) > MOVE_CANCEL_PX:
+	if _pressed and global_pos.distance_to(_press_pos) > move_cancel_distance():
 		_cancel()
+
+
+## MOVE_CANCEL_DEVICE_PX expressed in the space the compared positions live in.
+## The positions are event GLOBAL positions — design space — and the viewport's
+## FINAL transform is what maps design space to window pixels (the same
+## transform INVARIANTS #14 exists about; get_global_transform_with_canvas does
+## NOT include it). Deliberately the final transform ALONE and not the target's
+## own global scale: cards get scaled by punch/zoom feedback mid-gesture, and a
+## tolerance that breathed with an animation would cancel holds at random.
+func move_cancel_distance() -> float:
+	if _target == null or not is_instance_valid(_target) or not _target.is_inside_tree():
+		return MOVE_CANCEL_DEVICE_PX
+	var viewport: Viewport = _target.get_viewport()
+	if viewport == null:
+		return MOVE_CANCEL_DEVICE_PX
+	var scale: float = viewport.get_final_transform().get_scale().x
+	if scale <= 0.0:
+		return MOVE_CANCEL_DEVICE_PX
+	# Web's backing store includes DPR; pointer travel is measured in CSS px.
+	# Native window coordinates already use the display server's input units.
+	var density: float = 1.0
+	if OS.has_feature("web"):
+		density = maxf(1.0, float(JavaScriptBridge.eval("window.devicePixelRatio || 1")))
+	return MOVE_CANCEL_DEVICE_PX * density / scale
 
 
 func _on_hold_elapsed() -> void:

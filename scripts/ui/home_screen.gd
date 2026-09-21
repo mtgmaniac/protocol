@@ -142,7 +142,7 @@ var _detail_name_row: HBoxContainer
 var _detail_focus: Label
 var _detail_focus_chip: PanelContainer
 var _detail_desc: Label
-var _detail_operation_spacer: Control
+var _detail_desc_hero_height := 0.0  # the fixed 2-line reservation (hero dossier)
 var _detail_threat_row: HBoxContainer
 var _detail_threat_label: Label
 var _detail_threats: Label
@@ -668,7 +668,8 @@ func _build_detail_bar() -> PanelContainer:
 	# whole centered cluster shifted up 1px (Batch 3 — the screen must never move).
 	var desc_font: Font = PixelUI.get_pixel_font()
 	var desc_line_spacing: int = _detail_desc.get_theme_constant("line_spacing")
-	_detail_desc.custom_minimum_size = Vector2(0, ceilf(desc_font.get_height(DETAIL_DESC_FONT) * 2.0 + float(desc_line_spacing)))
+	_detail_desc_hero_height = ceilf(desc_font.get_height(DETAIL_DESC_FONT) * 2.0 + float(desc_line_spacing))
+	_detail_desc.custom_minimum_size = Vector2(0, _detail_desc_hero_height)
 	_detail_desc.max_lines_visible = 2
 	col.add_child(_detail_desc)
 
@@ -688,14 +689,6 @@ func _build_detail_bar() -> PanelContainer:
 	var threat_font: Font = PixelUI.get_pixel_font()
 	_detail_threat_row.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(DETAIL_THREAT_FONT)))
 	col.add_child(_detail_threat_row)
-
-	# Operation mode removes the unused hero-name row, then puts that exact height
-	# after the intel lines so the detail plate keeps the hero-state footprint.
-	_detail_operation_spacer = Control.new()
-	_detail_operation_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_detail_operation_spacer.custom_minimum_size = name_row.custom_minimum_size
-	_detail_operation_spacer.visible = false
-	col.add_child(_detail_operation_spacer)
 
 	return panel
 
@@ -952,7 +945,8 @@ func _refresh_detail() -> void:
 		_show_operation_detail()
 		return
 	_detail_name_row.visible = true
-	_detail_operation_spacer.visible = false
+	_detail_desc.custom_minimum_size.y = _detail_desc_hero_height
+	_detail_desc.max_lines_visible = 2
 	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData
 	if unit == null:
 		return
@@ -979,7 +973,13 @@ func _show_operation_detail() -> void:
 	if _detail_name == null or _detail_desc == null or _detail_threats == null:
 		return
 	_detail_name_row.visible = false
-	_detail_operation_spacer.visible = true
+	# The operation origin can need a third line at the 1080 design width
+	# (Facility's was clipped after "army from the"). The hidden name row's
+	# height plus its column gap goes to the description, so the
+	# plate keeps the exact hero-dossier footprint.
+	var column_gap: float = float((_detail_desc.get_parent() as Control).get_theme_constant("separation"))
+	_detail_desc.custom_minimum_size.y = _detail_desc_hero_height + _detail_name_row.custom_minimum_size.y + column_gap
+	_detail_desc.max_lines_visible = 3
 	_detail_name.text = ""
 	_detail_focus_chip.visible = false
 	if _current_op_locked:
@@ -1228,6 +1228,12 @@ func _cover_fit_portrait(crop: Control, tex: TextureRect) -> void:
 	if crop == null or tex == null:
 		return
 	PixelUI.cover_fit_portrait(tex, crop.size)
+	# Engineer's source canvas ends above a dark matte. The selector owns this
+	# transform, so correct it here without changing other heroes or battle cards.
+	if tex.texture != null and str(tex.texture.get_meta("portrait_key", "")) == "engineer":
+		var pixel_scale: float = PixelUI.physical_transform(tex).get_scale().y
+		if pixel_scale > 0.0:
+			tex.position.y += 6.0 / pixel_scale
 
 
 func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:

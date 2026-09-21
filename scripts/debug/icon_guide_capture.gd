@@ -15,19 +15,19 @@ func _run() -> void:
 	help_script.open(root)
 	var menu = help_script._active
 	var tabs: Dictionary = menu.get("_tab_buttons")
-	tabs["icons"].pressed.emit()
+	tabs["basics"].pressed.emit()
+	menu.call("_select_tab", "reference")
 	await _capture("actions", menu)
 	var host: VBoxContainer = menu.get("_content_host")
-	var sections := host.get_child(0)
-	sections.get_child(1).pressed.emit()
+	for button in host.find_children("*", "Button", true, false):
+		if button.text == "EFFECTS": button.pressed.emit()
 	await _capture("effects", menu)
-	var content := host.get_child(1)
-	var more: Button = content.get_child(content.get_child_count() - 1)
-	more.pressed.emit()
+	for button in host.find_children("*", "Button", true, false):
+		if button.text.begins_with("MORE EFFECTS"): button.pressed.emit()
 	await process_frame
-	if menu.get("_active_tab") != "keywords":
+	if menu.get("_reference_section") != "keywords":
 		failures.append("More Effects must open Keywords")
-	tabs["icons"].pressed.emit()
+	tabs["basics"].pressed.emit()
 	await process_frame
 	if menu.get("_content_scroll").scroll_vertical != 0:
 		failures.append("Returning to Icon Guide must reset scrolling")

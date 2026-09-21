@@ -25,12 +25,7 @@ const BLURB_FONT := 28
 
 const HELP_TABS := [
 	{"id": "basics", "label": "BASICS"},
-	{"id": "icons", "label": "ICON GUIDE"},
-	{"id": "protocol", "label": "PROTOCOL"},
-	{"id": "keywords", "label": "KEYWORDS"},
-	{"id": "rewards", "label": "REWARDS"},
 	{"id": "units", "label": "UNITS"},
-	{"id": "bestiary", "label": "BESTIARY"},
 	{"id": "log", "label": "BATTLE LOG"},
 	{"id": "settings", "label": "SETTINGS"},
 ]
@@ -51,13 +46,6 @@ const HELP_KEYWORD_ICON := {
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
-const BESTIARY_FACTION_LABEL := {
-	"facility": "FACILITY",
-	"hive": "HIVE",
-	"veil": "VEIL",
-	"voidCirclet": "NULL SIGNAL",
-	"stellarMenagerie": "THE MANTLE",
-}
 const SECTION_HEADER_COLOR := Color(0.72, 0.88, 1.0, 1.0)
 
 static var _active: HelpMenu = null
@@ -73,6 +61,7 @@ var _active_tab: String = ""
 var _bestiary_detail: VBoxContainer = null
 var _bestiary_buttons: Dictionary = {}
 var _bestiary_faction: String = ""
+var _reference_section: String = ""
 
 
 static func toggle(host: Node) -> void:
@@ -175,11 +164,6 @@ func _build() -> void:
 	header_row.add_theme_constant_override("separation", 12)
 	root.add_child(header_row)
 
-	var title := _make_label("TACTICAL REFERENCE", TITLE_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_LEFT, 3)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	header_row.add_child(title)
-
 	var close_button := Button.new()
 	close_button.text = "X"
 	close_button.custom_minimum_size = Vector2(76, 70)
@@ -187,15 +171,15 @@ func _build() -> void:
 	close_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	PixelUI.style_button(close_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 38)
 	close_button.pressed.connect(HelpMenu.dismiss)
-	header_row.add_child(close_button)
 
 	var tab_grid := GridContainer.new()
-	tab_grid.columns = 3
+	tab_grid.columns = 4
 	tab_grid.mouse_filter = Control.MOUSE_FILTER_PASS
 	tab_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tab_grid.add_theme_constant_override("h_separation", 8)
 	tab_grid.add_theme_constant_override("v_separation", 8)
-	root.add_child(tab_grid)
+	header_row.add_child(tab_grid)
+	header_row.add_child(close_button)
 
 	_tab_buttons.clear()
 	for tab_variant in HELP_TABS:
@@ -213,16 +197,32 @@ func _build() -> void:
 	_content_scroll = ScrollContainer.new()
 	_content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	_content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_content_scroll)
+	var scrollbar := _content_scroll.get_v_scroll_bar()
+	scrollbar.custom_minimum_size.x = 18
+	scrollbar.add_theme_stylebox_override("scroll", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0))
+	for state_name in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		var color: Color = PixelUI.DT_HERO_BORDER if state_name == "grabber" else PixelUI.DT_CYAN
+		var style := PixelUI.make_hard_style(color, color, 0)
+		style.content_margin_left = 9
+		style.content_margin_right = 9
+		style.content_margin_top = 24
+		style.content_margin_bottom = 24
+		scrollbar.add_theme_stylebox_override(state_name, style)
 
 	_content_host = VBoxContainer.new()
 	_content_host.mouse_filter = Control.MOUSE_FILTER_PASS
 	_content_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_host.add_theme_constant_override("separation", 20)
-	_content_scroll.add_child(_content_host)
+	var content_margin := MarginContainer.new()
+	content_margin.mouse_filter = Control.MOUSE_FILTER_PASS
+	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_margin.add_theme_constant_override("margin_right", 28)
+	_content_scroll.add_child(content_margin)
+	content_margin.add_child(_content_host)
 
 	_select_tab("basics")
 
@@ -241,25 +241,23 @@ func _on_catcher_input(event: InputEvent) -> void:
 func _select_tab(tab_id: String) -> void:
 	if _content_host == null:
 		return
+	# Older links resolve into the player-facing Basics hierarchy.
+	var requested: String = tab_id
+	_reference_section = "reference" if requested in ["icons", "reference"] else ("keywords" if requested == "keywords" else "")
+	if requested in ["protocol", "rewards", "icons", "reference", "keywords"]:
+		tab_id = "basics"
+	elif tab_id == "bestiary":
+		tab_id = "units"
 	_active_tab = tab_id
 	for known_id in _tab_buttons.keys():
 		_style_tab_button(_tab_buttons[known_id], str(known_id) == tab_id)
 	for child in _content_host.get_children():
+		_content_host.remove_child(child)
 		child.queue_free()
 	match tab_id:
 		"basics":
-			_build_basics(_content_host)
-		"icons":
-			_build_icon_guide(_content_host)
-		"protocol":
-			_build_protocol(_content_host)
-		"keywords":
-			_build_keywords(_content_host)
-		"rewards":
-			_build_rewards(_content_host)
+			_build_basics_page(_content_host)
 		"units":
-			_build_codex(_content_host)
-		"bestiary":
 			_build_bestiary(_content_host)
 		"log":
 			_build_battle_log(_content_host)
@@ -267,6 +265,49 @@ func _select_tab(tab_id: String) -> void:
 			_build_settings(_content_host)
 	if _content_scroll != null:
 		_content_scroll.scroll_vertical = 0
+	_refresh_hover.call_deferred()
+
+
+func _build_basics_page(host: VBoxContainer) -> void:
+	if _reference_section != "":
+		var back := Button.new()
+		back.text = "BACK TO BASICS"
+		back.custom_minimum_size.y = 100
+		PixelUI.style_button(back, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
+		back.pressed.connect(_select_tab.bind("basics"))
+		host.add_child(back)
+		match _reference_section:
+			"keywords": _build_keywords(host)
+			"reference":
+				host.add_child(_make_label("COMBAT REFERENCE", SECTION_FONT, SECTION_HEADER_COLOR))
+				_build_icon_guide(host)
+		return
+	_build_basics(host)
+
+
+func _refresh_hover() -> void:
+	for node in find_children("*", "Button", true, false):
+		var button := node as Button
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		button.add_theme_color_override("font_hover_color", PixelUI.DT_CYAN_BRIGHT)
+		var base := button.get_theme_stylebox("normal") as StyleBoxFlat
+		if base != null:
+			var hover := base.duplicate() as StyleBoxFlat
+			hover.bg_color = base.bg_color.lightened(0.08)
+			hover.border_color = base.border_color.lightened(0.15)
+			button.add_theme_stylebox_override("hover", hover)
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		get_viewport().set_input_as_handled()
+		if _breakdown_open and InspectPopup.is_open():
+			InspectPopup.dismiss()
+			_restore_layer_after_breakdown()
+		elif _reference_section != "":
+			_select_tab("basics")
+		else:
+			HelpMenu.dismiss()
 
 
 func _style_tab_button(button: Button, active: bool) -> void:
@@ -278,6 +319,7 @@ func _style_tab_button(button: Button, active: bool) -> void:
 	else:
 		PixelUI.style_button(button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
 		button.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	_refresh_hover.call_deferred()
 
 
 # ── Tab content ───────────────────────────────────────────────────────────────
@@ -316,10 +358,13 @@ func _build_basics(host: VBoxContainer) -> void:
 		"The HP bar reads current / max. Status icons appear when effects are active.",
 		"Long-press a unit to read its full intel - abilities, roll ranges, and keywords.",
 	])
-	_add_section(host, "EVOLUTION", [
+	_build_protocol(host)
+	_add_section(host, "EVOLUTION / REWARDS", [
 		"After a win: XP equals average effective roll, rounded; survivors gain +20.",
 		"At 100 XP, choose an evolution after a win.",
 		"One hero upgrades per win; other eligible heroes wait. More XP unlocks a directive.",
+		"Items are one-use; equipped gear and relics last for the run.",
+		"Reward cards show their type and rarity.",
 	])
 	_add_section(host, "WIN / LOSS", [
 		"Clear every enemy to win the battle.",
@@ -335,6 +380,14 @@ func _build_basics(host: VBoxContainer) -> void:
 	replay.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
 	replay.pressed.connect(_replay_tutorial)
 	host.add_child(replay)
+
+	var reference := Button.new()
+	reference.text = "KEYWORDS / ICON GUIDE"
+	reference.custom_minimum_size = Vector2(0, 100)
+	reference.mouse_filter = Control.MOUSE_FILTER_STOP
+	PixelUI.style_button(reference, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, TAB_FONT)
+	reference.pressed.connect(_select_tab.bind("reference"))
+	host.add_child(reference)
 
 
 func _replay_tutorial() -> void:
@@ -541,7 +594,7 @@ func _build_codex(host: VBoxContainer) -> void:
 	var list := VBoxContainer.new()
 	list.mouse_filter = Control.MOUSE_FILTER_PASS
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 10)
+	list.add_theme_constant_override("separation", 18)
 	host.add_child(list)
 
 	for unit_variant in _dm().units.values():
@@ -605,7 +658,7 @@ func _build_bestiary(host: VBoxContainer) -> void:
 			ordered.append(f)
 
 	var picker := GridContainer.new()
-	picker.columns = 3
+	picker.columns = 2
 	picker.mouse_filter = Control.MOUSE_FILTER_PASS
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	picker.add_theme_constant_override("h_separation", 8)
@@ -613,11 +666,13 @@ func _build_bestiary(host: VBoxContainer) -> void:
 	host.add_child(picker)
 
 	_bestiary_buttons.clear()
+	ordered.push_front("squad")
 	for f in ordered:
 		var btn := Button.new()
-		btn.text = str(BESTIARY_FACTION_LABEL.get(f, str(f).to_upper()))
+		var operation: Resource = _dm().get_operation(str(f)) if f != "squad" else null
+		btn.text = "SQUAD" if operation == null else str(operation.display_name).to_upper()
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.custom_minimum_size = Vector2(0, 66)
+		btn.custom_minimum_size = Vector2(0, 104)
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 		btn.pressed.connect(_select_bestiary_faction.bind(str(f)))
 		picker.add_child(btn)
@@ -641,7 +696,13 @@ func _select_bestiary_faction(faction: String) -> void:
 	if _bestiary_detail == null or not is_instance_valid(_bestiary_detail):
 		return
 	for child in _bestiary_detail.get_children():
+		_bestiary_detail.remove_child(child)
 		child.queue_free()
+	if faction == "squad":
+		_bestiary_detail.add_child(_make_label("PLAYER UNITS", SECTION_FONT, SECTION_HEADER_COLOR))
+		_build_codex(_bestiary_detail)
+		return
+	_bestiary_detail.add_child(_make_label("HOSTILE UNITS", SECTION_FONT, SECTION_HEADER_COLOR))
 	for enemy_variant in _dm().enemies.values():
 		var enemy: EnemyData = enemy_variant as EnemyData
 		if enemy == null:
@@ -1055,7 +1116,8 @@ func _make_body_label(text: String, color: Color) -> Label:
 
 const ROW_KEYWORD_CAP := 4
 const ROW_PORTRAIT_BOX := 96.0
-const ROW_CHILD_PORTRAIT_BOX := 72.0
+const ROW_NAME_FONT := 44
+const ROW_DESCRIPTOR_FONT := 46
 const ROW_CHILD_INDENT := 34.0
 # m5x7 has no box-drawing glyphs (U+2514/U+251C are TOFU on device — the glyph
 # gate catches them), so the evolution connector is ASCII.
@@ -1210,18 +1272,20 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		hp: int, keyword_line: String, source_kind: String, source_data: Variant,
 		indented: bool = false) -> void:
 	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	row.custom_minimum_size.y = 154
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 14)
 	host.add_child(row)
 
-	var box: float = ROW_CHILD_PORTRAIT_BOX if indented else ROW_PORTRAIT_BOX
+	var box: float = ROW_PORTRAIT_BOX
 	if indented:
 		var indent := Control.new()
 		indent.custom_minimum_size = Vector2(ROW_CHILD_INDENT, 0)
 		indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(indent)
-		var connector := _make_label(ROW_CHILD_CONNECTOR, TERM_FONT, PixelUI.TEXT_MUTED, HORIZONTAL_ALIGNMENT_LEFT, 1)
+		var connector := _make_label(ROW_CHILD_CONNECTOR, SECTION_FONT, PixelUI.DT_HERO_BORDER.lightened(0.2), HORIZONTAL_ALIGNMENT_LEFT, 2)
 		connector.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		connector.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(connector)
@@ -1229,6 +1293,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	if portrait != null:
 		var frame := PanelContainer.new()
 		frame.custom_minimum_size = Vector2(box, box)
+		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		frame.clip_contents = true
 		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var border: Color = PixelUI.DT_ENEMY_BORDER if source_kind == "enemy" else PixelUI.DT_CYAN
@@ -1237,17 +1302,21 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		tex.texture = portrait
 		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tex.stretch_mode = TextureRect.STRETCH_SCALE
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(tex)
+		var crop := Control.new()
+		crop.clip_contents = true
+		crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(crop)
+		crop.add_child(tex)
+		crop.resized.connect(_fit_thumbnail.bind(tex, crop))
 		row.add_child(frame)
 
 	var entry := VBoxContainer.new()
 	entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	entry.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	entry.add_theme_constant_override("separation", 1)
+	entry.add_theme_constant_override("separation", 8)
 	row.add_child(entry)
 
 	var head := HBoxContainer.new()
@@ -1255,23 +1324,35 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_constant_override("separation", 10)
 	entry.add_child(head)
-	var name_label := _make_wrap_label(title, TERM_FONT, PixelUI.GOLD_ACCENT, 2)
+	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.GOLD_ACCENT, 2)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(name_label)
 	var hp_label := _make_label("%d HP" % hp, BODY_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_RIGHT, 1)
-	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hp_label.custom_minimum_size.x = 140
+	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	head.add_child(hp_label)
 
 	# No "APPLIES:" label — the word is implied, and dropping it puts the terms
 	# themselves at the start of the line where they scan.
 	if keyword_line != "":
-		entry.add_child(_make_wrap_label(keyword_line, SYNTAX_FONT, PixelUI.TEXT_MUTED, 1))
+		entry.add_child(_make_wrap_label(keyword_line, ROW_DESCRIPTOR_FONT, PixelUI.TEXT_PRIMARY, 2))
 
 	if source_kind != "":
 		var long_press := LongPressInput.new()
 		row.add_child(long_press)
 		long_press.long_pressed.connect(
 			_on_reference_row_long_pressed.bind(source_kind, source_data, row))
+
+
+func _fit_thumbnail(texture: TextureRect, crop: Control) -> void:
+	# Same cover scale as the old square thumbnails; top-align instead of
+	# centre-cropping the head away. Every row uses the same fixed box.
+	if texture.texture == null or crop.size.x <= 0 or crop.size.y <= 0:
+		return
+	var native_size: Vector2 = texture.texture.get_size()
+	var ratio: float = maxf(crop.size.x / native_size.x, crop.size.y / native_size.y)
+	texture.size = native_size * ratio
+	texture.position = Vector2(roundf((crop.size.x - texture.size.x) * 0.5), 0)
 
 
 # The breakdown, on the battlefield's own gesture. HelpMenu sits ABOVE the

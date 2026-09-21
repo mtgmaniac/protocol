@@ -62,6 +62,8 @@ func run() -> void:
 	var help_script = load("res://scripts/ui/help_menu.gd")
 	help_script.open(current_scene)
 	await settle()
+	help_script._active._select_tab("basics")
+	await settle()
 	var replay := button_with_text(help_script._active, "REPLAY TUTORIAL")
 	check(replay != null, "Help retains tutorial replay")
 	if replay != null:

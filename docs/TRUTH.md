@@ -1,5 +1,7 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-20 UI consistency polish (0.9.0-demo4):** Help has four primary tabs: Basics, Units, Battle Log, Settings. Basics is the default and directly contains turn/card rules, Protocol, evolution/rewards, win/loss and Replay Tutorial; Keywords / Icon Guide is its single secondary glossary. Esc backs out of the glossary or unit inspection before closing Help. Unit rows share 96px square thumbnails, larger descriptors, and aligned HP. Battle portrait zoom is unchanged: all friendly content shifts down 6 physical pixels; only Scrap/Rust enemy content shifts down 5 pixels. The Squad Selector applies the same 6-pixel correction only to Engineer. Desktop cursors are solid native 32px cyan pointers with a 2px hotspot and hover variant. [Evidence and verification](UI_CONSISTENCY_2026-09-20.md).
+
 **2026-09-10, G-20:** Heroes dead at the previous battle's end return at 75% of their current maximum HP (floor, minimum 1), after max-HP modifiers and before explicit starting damage. Survivors retain full recovery; in-battle revival percentages are unchanged. Live play and the Godot sim share this rule. First-item teaching omits repeated Protocol-income copy. Local Mark acquisition, Burn application/tick and summon/revive cues respect Reduced Motion; applying Burn no longer displays immediate damage. See [verification](FINAL_FEEDBACK_2026-09-10.md). V06 exported-web/physical-device verification remains open.
 
 *Generated 2026-07-06 by reconciling `offline-bundle/GROUND_TRUTH.md` against the live code and data on `feat/keyword-batch` (post keyword-batch, post unlock system). **When any doc disagrees with this file, this file wins.** When this file disagrees with code, the code wins — fix this file and record the correction.*
@@ -400,6 +402,23 @@ buckets, same bucket membership and order; **thresholds only.**
 
 Five stacked bands, portrait, 1080×2400 (preview 540×1200): Header 144 — Enemy rail (flex, floor 768) — Center rail (dice + centered action button; floor **540**, not the old spec's 432 — 432 clipped the readout pips into the dice, `battle_layout.gd`) — Hero rail (flex, floor 768) — Footer 144 (**Reroll, Nudge, Set, Item** + PROTOCOL n/m pips). The two rails share leftover height via EXPAND (adapts across phone aspects, stretch aspect = expand). Header height == footer height; all unit cards identical outer size; dice align to card slots; result tags are uniform die-docked plates (below hero dice, above enemy dice, never occluding the sprite). No scrolling. Touch-first.
 
+**Web presentation — the build takes the browser's viewport (Kev, 2026-09-20):**
+the Web preset ships `html/canvas_resize_policy = 2` (Adaptive): the canvas is
+the whole page / itch iframe, and Godot's `canvas_items` + `expand` stretch does
+the rest. The design height is always 2400; the design WIDTH follows the
+viewport aspect (432×960 → 1080×2400, 560×960 → 1400×2400). There is **no
+page-side width cap, breakpoint or fixed desktop size** — Kev sets the desktop
+presentation entirely through itch.io's Embed Options, so the game must accept
+any dimensions it is given and never force itself back to a phone column.
+Mobile-shaped viewports get the authored 1080-wide composition unchanged. A
+letterbox shell (canvas pinned to the 1080×2400 aspect) was added and removed
+the same day; do not reintroduce one. Screens that should not stretch keep
+their own sizing (e.g. the Squad Select grid stays fixed-size and centred while
+its plates widen). Very wide windows (landscape desktop) are functional — the
+tutorial and input regressions pass at 1366×768 and 1920×1080 — but not a
+designed composition. The band contract is unchanged. See
+[desktop verification](DESKTOP_TUTORIAL_2026-09-20.md).
+
 **Safe area (Android Builds #1–#2, 2026-07-13, Pixel-8-verified):**
 `PixelUI.safe_top/right/bottom/left` (four named ints, DESIGN px, all 0 on
 desktop) is the single source of truth for display-cutout / gesture-bar insets;
@@ -498,6 +517,38 @@ inspection remains available. Footer geometry stays compact and icon-only.
 - Coaches use 60-design-pixel text and lighter board dimming; footer explanations
   sit in the central gap. Guided assignment gates follow the selected hero; legal
   alternative targets do not strand the lesson. The dice-waiter recovery remains.
+- **The drill opens on a framing beat** (`THE OPERATION`, 2026-09-20): goal and
+  core loop before any board tour — squad of three, ten battles, a d20 per unit
+  per turn deciding which ability is available. It dims the whole screen with no
+  spotlight hole and gates nothing (tap to continue), and it names no jargon;
+  Protocol, bands, evolution and relics are introduced at the beat that uses
+  them. Core is **21 beats, 18 of them coached**; practice is 12 / 9, pinned by
+  `tutorial_reachability_test.gd`.
+- **Stuck gated beats offer an assist** (2026-09-20). The `hide_coach` waiter
+  failsafe never covered GATED beats (roll_pressed / assigned / inspected /
+  nudged / turn_resolved): `allows_action` refuses every other control, so a
+  player who could not find or complete the scripted action had only the header
+  back arrow. The public tester's exact stalled beat remains unknown. After
+  `GATED_ASSIST_SECS` (20s, clock paused while inspection/Help/a primer or turn
+  resolution is active) or two refused
+  taps, the coach grows a tappable line and **nothing else happens until the
+  player takes it**. Taking it PERFORMS that beat's own action through the same
+  scene handlers the player's tap reaches, so the beat advances on its real
+  event: nothing is skipped and no later beat is stranded (skipping the nudge
+  beat would leave the next beat naming a 10-damage attack that does not exist).
+  Inspection assistance leaves its popup open until the player closes it. A missing
+  or offscreen required target offers assistance immediately; an action that cannot
+  run offers an explicit restart of training, preserving its exit destination.
+  No lesson is skipped or silently freed. Resize refreshes highlights and the coach
+  without resetting the recovery budget or removing an offer. Coach presses are
+  consumed before callbacks, so assisting Nudge cannot also cancel its pick.
+- **Long-press cancel tolerance is a screen-pixel distance** (`LongPressInput.
+  MOVE_CANCEL_DEVICE_PX` = 26, scaled by the viewport's final transform; Web also
+  accounts for devicePixelRatio so the tolerance is 26 CSS pixels). It was
+  26 DESIGN px, which is 7.6 device px at the 0.2917× of a 1366×700 browser
+  window: a mouse drifting eight screen pixels during the 0.42 s hold cancelled
+  the gesture, and the inspect beat has no alternative path. Touch on a
+  1080-native phone is unchanged (scale 1.0).
 
 **Engineer balance change:** base Overdrive (11–15) permanently deals 10 damage.
 No evolution values or enemy stats changed. Baseline is not repinned.

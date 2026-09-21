@@ -1,5 +1,17 @@
 # Overload Protocol — Task Queue
 
+**2026-09-20 UI consistency:** Battle and Squad Selector framing, Basics-first
+four-tab Help, readable Units rows, desktop cursor/hover/scroll/Escape polish
+completed. Version `0.9.0-demo4`.
+See [before/after and checks](docs/UI_CONSISTENCY_2026-09-20.md).
+
+**2026-09-20 G-21:** Tutorial recovery implemented and verified locally in Chrome
+and Edge, including iframe fullscreen, DPR 1/2, resizing and real-input tutorial
+completion. The same-day portrait letterbox was removed: the Web build now takes
+the browser/itch viewport as given (desktop width set in itch Embed Options).
+Live itch configuration/publishing and physical-phone checks remain.
+See [scope and evidence](docs/DESKTOP_TUTORIAL_2026-09-20.md).
+
 **2026-09-10 G-20:** Implemented local Mark/Burn/arrival effects, first-item primer trim, and 75% between-battle casualty recovery. See [verification](docs/FINAL_FEEDBACK_2026-09-10.md). Next release blocker: V06 current exported web build on desktop browsers and physical phones; then tutorial/normal-run acceptance and showcase assets.
 
 **2026-09-09 G-19 / V11:** Compact centered awards when they fit; full scrolling

@@ -57,6 +57,7 @@ var _coach_label: Label = null
 var _coach_glyph: TextureRect = null
 var _hint_label: Label = null
 var _ring_tween: Tween = null
+var _presentation_id: int = 0
 
 
 # One full-screen visual layer that dims everything EXCEPT a set of hole rects, and draws a pulsing
@@ -193,6 +194,8 @@ func _ready() -> void:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnchor.AUTO, opts: Dictionary = {}) -> void:
+	_presentation_id += 1
+	var presentation: int = _presentation_id
 	_coach_y_ratio = float(opts.get("coach_y_ratio", -1.0))
 	visible = true
 	_dim_canvas.set_holes(target_rects)
@@ -219,13 +222,32 @@ func spotlight(target_rects: Array, text: String, anchor: CoachAnchor = CoachAnc
 	# bug). Transparent keeps layout live with zero blip.
 	_coach.visible = true
 	_coach.modulate.a = 0.0
-	await _place_coach(_bounds_of(target_rects), anchor)
-	_coach.modulate.a = 1.0
+	await _place_coach(_bounds_of(target_rects), anchor, presentation)
+	if is_inside_tree() and presentation == _presentation_id:
+		_coach.modulate.a = 1.0
 
 
 func set_holes(holes: Array) -> void:
 	if _dim_canvas != null:
 		_dim_canvas.set_holes(holes)
+
+
+## The holes currently lit. Callers that re-present the SAME beat (the tutorial's
+## stuck-beat assist offer) read them back rather than recomputing, so a hole set
+## that moved since layout — the two-stage assign retarget calls set_holes, not
+## spotlight — is not silently reverted.
+func current_holes() -> Array:
+	return (_dim_canvas.holes as Array).duplicate() if _dim_canvas != null else []
+
+
+## Make ONLY the coach card consume taps, leaving the full-screen catcher
+## transparent. `set_interactive` moves both together, which is right for a
+## tap-to-continue beat; a GATED beat needs the real controls under the catcher
+## to stay live while the coach itself becomes tappable (the assist offer).
+## spotlight() resets this via set_interactive, so call it after, not before.
+func set_coach_tappable(tappable: bool) -> void:
+	if _coach != null:
+		_coach.mouse_filter = Control.MOUSE_FILTER_STOP if tappable else Control.MOUSE_FILTER_IGNORE
 
 
 func fullscreen_hole() -> Rect2:
@@ -234,6 +256,7 @@ func fullscreen_hole() -> Rect2:
 
 
 func dismiss() -> void:
+	_presentation_id += 1
 	visible = false
 	if _dim_canvas != null:
 		_dim_canvas.set_holes([])
@@ -264,6 +287,9 @@ func _on_tap_input(event: InputEvent) -> void:
 	elif event is InputEventScreenTouch:
 		pressed = (event as InputEventScreenTouch).pressed
 	if pressed:
+		# A tapped callback can hide/change this coach before event propagation
+		# finishes. Consume first so the same press cannot cancel an armed pick.
+		get_viewport().set_input_as_handled()
 		tapped.emit()
 
 
@@ -276,7 +302,7 @@ func _bounds_of(holes: Array) -> Rect2:
 	return bounds if has_any else Rect2()
 
 
-func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
+func _place_coach(hole: Rect2, anchor: CoachAnchor, presentation: int) -> void:
 	var s: Vector2 = get_viewport().get_visible_rect().size
 	# Text-fit width (playtest fix): the panel derives from its text bounds +
 	# the named paddings — never a fixed full-screen width. Long copy still
@@ -292,6 +318,8 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 	# count. Ceil to a whole design px (pixel-snap law; m5x7 metrics can land
 	# fractional through the theme chain).
 	await get_tree().process_frame
+	if not is_inside_tree() or presentation != _presentation_id:
+		return
 	var ch: float = ceilf(_coach.get_combined_minimum_size().y)
 	var y: float
 	if _coach_y_ratio >= 0.0:
@@ -311,6 +339,7 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor) -> void:
 		y = maxf(hole.position.y - ch - 28.0, SCREEN_MARGIN)    # hole in bottom half → coach above
 	# Whole design px (pixel-snap law); centered horizontally — full-width
 	# copy lands exactly on the old SCREEN_MARGIN position.
+	y = clampf(y, SCREEN_MARGIN + float(PixelUI.safe_top), maxf(SCREEN_MARGIN, s.y - ch - SCREEN_MARGIN - float(PixelUI.safe_bottom)))
 	_coach.position = Vector2(roundf((s.x - width) * 0.5), roundf(y))
 	_coach.size = Vector2(width, ch)
 

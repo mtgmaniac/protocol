@@ -1029,7 +1029,7 @@ func is_tutorial_inspection_open() -> bool:
 # clock while either is up, so a player reading a primer can never trip the
 # recovery path no matter how long they take.
 func is_tutorial_waiter_blocked() -> bool:
-	if InspectPopup.is_open():
+	if InspectPopup.is_open() or HelpMenu.is_open():
 		return true
 	if _primer != null and is_instance_valid(_primer):
 		var primer_spot: Variant = _primer.get("_spot")

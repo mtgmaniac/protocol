@@ -28,9 +28,13 @@ func run() -> void:
 	await pause(12)
 	var first_tut: Node = controller(current_scene)
 	# Lost-roll recovery returns to the roll instruction; free play must not
-	# inherit the hidden-waiter's input lock or its timeout.
-	first_tut.call("_recover_stalled_waiter", 3)
-	check(first_tut.get("_step") == 2, "Missing-roll recovery restores the roll instruction")
+	# inherit the hidden-waiter's input lock or its timeout. Beat 4 is the
+	# hide_coach waiter and beat 3 the Roll instruction before it — both moved
+	# up one when the THE OPERATION framing beat was added in front of WELCOME
+	# (2026-09-20). Pinned, not derived: if a lesson edit moves them again this
+	# should fail and be re-read, not silently follow.
+	first_tut.call("_recover_stalled_waiter", 4)
+	check(first_tut.get("_step") == 3, "Missing-roll recovery restores the roll instruction")
 	first_tut.call("_show_step", 0)
 	await drive_battle(false)
 	check(observed_core_rounds >= 3, "Core battle must reach independent round three")

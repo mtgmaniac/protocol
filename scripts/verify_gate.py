@@ -92,6 +92,12 @@ GATES = [
     ("developer unlock", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dev_unlock_test.gd"], "[DEV_UNLOCK] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
+    # Reachability, not logic: tutorial smoke drives the drill by calling scene
+    # handlers directly, so it cannot see a scripted target the player could
+    # never hit, nor a gated beat that never advances. This one synthesizes real
+    # mouse events at real on-screen rects, including every guided action,
+    # resize recovery and clean scene teardown (about 30s).
+    ("tutorial reachability", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_reachability_test.gd"], "[TUTORIAL_REACH] PASS", False),
     ("primer smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/primer_smoke_test.gd"], "[PRIMER_SMOKE] PASS", False),
     ("music smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/music_smoke_test.gd"], "[MUSIC_SMOKE] PASS", False),
     ("transition smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/transition_smoke_test.gd"], "[TRANSITION_SMOKE] PASS", False),
@@ -146,6 +152,7 @@ GATES = [
     ("glyph coverage", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/glyph_coverage_check.gd"], "[GLYPH] PASS", False),
     # G-19 replaces the retired feedback nudge with title-entry and unlock-layout coverage.
     ("title and unlock UI", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/title_unlock_test.gd"], "[TITLE_UNLOCK] PASS", False),
+    ("help polish", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/help_polish_test.gd"], "[HELP_POLISH] PASS", False),
     ("final feedback and recovery", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/final_feedback_test.gd"], "[FINAL_FEEDBACK] PASS", False),
     # Save system (Backlog #14). run.json is the ACTIVE RUN; save.json is the
     # profile. Four gates, because they fail in four unrelated ways:
@@ -270,6 +277,8 @@ def run_gate(name: str, cmd: list, needle: str, use_shell: bool) -> bool:
     elapsed = time.monotonic() - started
     out = (proc.stdout or "") + (proc.stderr or "")
     ok = needle in out
+    if name == "tutorial reachability":
+        ok = ok and proc.returncode == 0 and "ERROR:" not in out
     if name == "ability audit":
         ok = ok and "FAIL" not in out.replace("0 failed", "")
         m = re.search(r"Ability Audit Complete: (\d+) passed", out)
