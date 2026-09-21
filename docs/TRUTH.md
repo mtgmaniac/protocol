@@ -1194,6 +1194,25 @@ share one shape — a surface stating something the round will not do.
   (the carousel's lock-state rendering is already gated by
   `unlock_progression_test`). No code changed.
 
+**Facility anti-sponginess package (2026-09-21, Kev-approved; evidence
+`docs/combat_sponginess_benchmark_2026-09.md` §14–16).** Durability is converted
+into threat on the three Facility sponge outliers only. **Shield Enforcer**
+(`guard`) ally shields 6/6/9/7/13 → **4/4/5/4/8**, damage 12/11/15/18 →
+**13/12/17/21**. **Heavy Warden** HP 110 → **95** (still ≥ `HEAVY_HP_MIN` 90,
+so still heavy), self-heals 7/6 → **4/3**, damage 11/11/24/29 → **12/12/26/32**;
+the 7 self-shield on its 1–4 face is unchanged. **Volt Enforcer** HP 75 → **65**,
+damage 9/11/13/15 → **10/12/14/16**; its 5 ally shield is unchanged. Roles,
+`dMin`/`dMax` preview values, fodder and every other unit are untouched.
+**Scrapmaster is untouched, Assembly Line stays 50% (ruling):** rebuilt drones
+do not respawn if ignored, and re-killing them is a strategic trap. Under an
+encounter-aware policy (`--policy l1_focus`) the boss fight is 7.7 rounds at 87%
+win, against 12.1 rounds at 66% under L1. **Never tune the Scrapmaster around
+L1's lowest-HP target priority.** Matched-seed result (8 squads × 400, L1):
+Facility clear 40.6% → 40.9%, rounds in battles 4–6 7.93 → 7.26 and 7–9
+7.97 → 7.20, battle 5 win 75.5% → 78.6%, hero deaths per battle 0.60 → 0.59,
+every squad within ±6 points. The live-data runs are byte-identical to the
+confirmation runs.
+
 ## Out of scope (don't build)
 
 Cross-run persistent **XP**; node map between battles; multiplayer; narrative; full audio mix. *(Cross-run **unlocks** are IN scope and shipped — hero ladder + operation chain above.)*

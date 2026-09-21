@@ -174,78 +174,78 @@
     "guard": {
       "recharge": {
         "name": "Bulwark Link",
-        "eff": "6 shield (all enemies)",
+        "eff": "4 shield (all enemies)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shieldAlly": 6,
+        "shieldAlly": 4,
         "shieldAllyAll": true
       },
       "strike": {
         "name": "Covering Shot",
-        "eff": "12 damage, 6 shield (ally)",
+        "eff": "13 damage, 4 shield (ally)",
+        "dmg": 13,
+        "burn": 0,
+        "burnT": 0,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0,
+        "shieldAlly": 4
+      },
+      "surge": {
+        "name": "Cover Field",
+        "eff": "12 damage, 5 shield (ally), +2 roll (all enemies) 1 turn",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 6
-      },
-      "surge": {
-        "name": "Cover Field",
-        "eff": "11 damage, 9 shield (ally), +2 roll (all enemies) 1 turn",
-        "dmg": 11,
-        "burn": 0,
-        "burnT": 0,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0,
-        "shieldAlly": 9,
+        "shieldAlly": 5,
         "erb": 2,
         "erbT": 1,
         "erbAll": true
       },
       "crit": {
         "name": "Barrier Burst",
-        "eff": "15 damage, 7 shield (ally)",
-        "dmg": 15,
+        "eff": "17 damage, 4 shield (ally)",
+        "dmg": 17,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 7
+        "shieldAlly": 4
       },
       "overload": {
         "name": "Fortress Advance",
-        "eff": "18 damage, 13 shield (ally)",
-        "dmg": 18,
+        "eff": "21 damage, 8 shield (ally)",
+        "dmg": 21,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 13
+        "shieldAlly": 8
       }
     },
     "warden": {
       "recharge": {
         "name": "Field Service",
-        "eff": "7 shield (self), 7 heal (self)",
+        "eff": "7 shield (self), 4 heal (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
-        "heal": 7,
+        "heal": 4,
         "rfe": 0,
         "shield": 7
       },
       "strike": {
         "name": "Crushing Blow",
-        "eff": "11 damage",
-        "dmg": 11,
+        "eff": "12 damage",
+        "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -254,8 +254,8 @@
       },
       "surge": {
         "name": "Sustained Fire",
-        "eff": "11 damage, 3 burn 3 turns",
-        "dmg": 11,
+        "eff": "12 damage, 3 burn 3 turns",
+        "dmg": 12,
         "burn": 3,
         "burnT": 3,
         "heal": 0,
@@ -264,8 +264,8 @@
       },
       "crit": {
         "name": "Jammer Cannon",
-        "eff": "24 damage, jam",
-        "dmg": 24,
+        "eff": "26 damage, jam",
+        "dmg": 26,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -275,11 +275,11 @@
       },
       "overload": {
         "name": "Reclamation Shot",
-        "eff": "29 damage, 6 heal (self)",
-        "dmg": 29,
+        "eff": "32 damage, 3 heal (self)",
+        "dmg": 32,
         "burn": 0,
         "burnT": 0,
-        "heal": 6,
+        "heal": 3,
         "rfe": 0,
         "shield": 0
       }
@@ -300,8 +300,8 @@
       },
       "strike": {
         "name": "Arc Jab",
-        "eff": "9 damage, 1 burn 2 turns",
-        "dmg": 9,
+        "eff": "10 damage, 1 burn 2 turns",
+        "dmg": 10,
         "burn": 1,
         "burnT": 2,
         "heal": 0,
@@ -310,8 +310,8 @@
       },
       "surge": {
         "name": "Arc Strike",
-        "eff": "11 damage, 2 burn 2 turns",
-        "dmg": 11,
+        "eff": "12 damage, 2 burn 2 turns",
+        "dmg": 12,
         "burn": 2,
         "burnT": 2,
         "heal": 0,
@@ -320,8 +320,8 @@
       },
       "crit": {
         "name": "Conduction",
-        "eff": "13 damage, 3 burn 2 turns",
-        "dmg": 13,
+        "eff": "14 damage, 3 burn 2 turns",
+        "dmg": 14,
         "burn": 3,
         "burnT": 2,
         "heal": 0,
@@ -330,8 +330,8 @@
       },
       "overload": {
         "name": "Meltdown Arc",
-        "eff": "15 damage, 4 burn 3 turns",
-        "dmg": 15,
+        "eff": "16 damage, 4 burn 3 turns",
+        "dmg": 16,
         "burn": 4,
         "burnT": 3,
         "heal": 0,
@@ -2216,7 +2216,7 @@
       "role": "Attacks and shields in the same breath, keeping its whole line plated."
     },
     "Heavy Warden": {
-      "hp": 110,
+      "hp": 95,
       "dMin": 17,
       "dMax": 23,
       "type": "warden",
@@ -2225,7 +2225,7 @@
       "role": "A durable bruiser that heals off its biggest hits and jams your dice."
     },
     "Volt Enforcer": {
-      "hp": 75,
+      "hp": 65,
       "dMin": 15,
       "dMax": 21,
       "type": "volt",
