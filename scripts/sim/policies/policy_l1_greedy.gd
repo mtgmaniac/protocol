@@ -28,9 +28,18 @@ const ARCHETYPE_AFFINITY := {
 
 var archetype: String = ""  # "" or "value" = unbiased rarity pick
 
+# Boss-aware targeting (sponginess study 2026-09, sim-only; "" = plain L1).
+# Models a player who has read the Scrapmaster encounter: Assembly Line only
+# rebuilds DESTROYED drones, so re-killing them feeds the loop.
+#   "focus"    — while a Scrapmaster lives, every hero aims at it (drones ignored).
+#   "norekill" — plain focus fire, but a rebuilt ("summoned") drone is never
+#                the focus while its Scrapmaster lives: kill each drone once.
+var boss_mode: String = ""
+
 
 func describe() -> String:
-	return "l1" if archetype == "" or archetype == "value" else "l1_%s" % archetype
+	var base: String = "l1" if archetype == "" or archetype == "value" else "l1_%s" % archetype
+	return base if boss_mode == "" else "%s_%s" % [base, boss_mode]
 
 
 # ── Round: focus fire + band-aware spends ─────────────────────────────────────
@@ -53,7 +62,7 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 	#    its best result next round. Deterministic, no randi.
 	#  - otherwise a freeze band aims at the enemy showing the LOWEST die —
 	#    pinning the weakest enemy result.
-	var focus: Dictionary = _lowest_hp_enemy(cm)
+	var focus: Dictionary = _boss_aware_focus(cm) if boss_mode != "" else _lowest_hp_enemy(cm)
 	if not focus.is_empty():
 		for hero_state_variant in cm.get_hero_states():
 			var hero_state: Dictionary = hero_state_variant
@@ -172,7 +181,7 @@ func decide_items(bs: BattleState, cm: CombatManager, gs: Node) -> Array:
 			return [{"item_id": by_type["anyDieFreeze"], "target_id": str(freeze_target["id"]), "side": "enemy"}]
 
 	# 3) Offensive item on the focus (lowest-HP) enemy.
-	var focus: Dictionary = _lowest_hp_enemy(cm)
+	var focus: Dictionary = _boss_aware_focus(cm) if boss_mode != "" else _lowest_hp_enemy(cm)
 	if not focus.is_empty():
 		for t in ["enemyDmg", "enemyBurn", "enemyRfe"]:
 			if by_type.has(t):
@@ -242,6 +251,28 @@ func _highest_threat_enemy(cm: CombatManager) -> Dictionary:
 			best_dmax = dmax
 			best = enemy_state
 	return best
+
+
+func _boss_aware_focus(cm: CombatManager) -> Dictionary:
+	var boss: Dictionary = {}
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		if not bool(enemy_state.get("dead", false)) and not bool(enemy_state.get("cloaked", false)) \
+				and str((enemy_state.get("unit") as Object).get("display_name")) == CombatManager.BOSS_SCRAPMASTER:
+			boss = enemy_state
+	if boss.is_empty():
+		return _lowest_hp_enemy(cm)
+	if boss_mode == "focus":
+		return boss
+	var best: Dictionary = {}
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		if bool(enemy_state.get("dead", false)) or bool(enemy_state.get("cloaked", false)) \
+				or bool(enemy_state.get("summoned", false)):
+			continue
+		if best.is_empty() or int(enemy_state["current_hp"]) < int(best["current_hp"]):
+			best = enemy_state
+	return boss if best.is_empty() else best
 
 
 func _lowest_hp_enemy(cm: CombatManager) -> Dictionary:

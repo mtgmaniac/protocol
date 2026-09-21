@@ -202,6 +202,15 @@
       ],
       "step": 1,
       "notes": "Glacier overload AoE damage (freeze-all rider unchanged). Repricing the GLACIER line is the flagged post-repeat target; sweeps inform the ruling, they do not ship numbers."
+    },
+    {
+      "id": "enemy_ability_field",
+      "kind": "enemy_ability_field",
+      "scope": "global",
+      "path": "sim_runner._apply_enemy_field_tuning — tuning key 'enemy_ability:Display Name/zone/field=value' written IN MEMORY to DataManager's EnemyData.dice_ranges[zone].raw before battles copy it; never written to disk",
+      "default": null,
+      "range": null,
+      "notes": "Added 2026-09-21 for the combat-sponginess benchmark (tools/sponginess). Pass keys straight through --tuning; sweep.py does not enumerate it."
     }
   ]
 }

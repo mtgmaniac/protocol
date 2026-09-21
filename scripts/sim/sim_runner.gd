@@ -57,6 +57,10 @@ var _tuning_dmg_scalar: float = 1.0
 # resolved IN MEMORY against DataManager's loaded hero data at run start —
 # never written to disk (measurement only; registry: scripts/sim/knobs.json).
 var _tuning_ability_fields: Array = []
+# enemy_ability knobs: "enemy_ability:Display Name/zone/field=value", the same
+# in-memory seam for ENEMY kits (EnemyData.dice_ranges[zone].raw), resolved
+# against DataManager's loaded enemies before any battle builds its copies.
+var _tuning_enemy_fields: Array = []
 
 
 func _resolve_tuning(spec: String, op: String) -> void:
@@ -64,6 +68,7 @@ func _resolve_tuning(spec: String, op: String) -> void:
 	_tuning_hp_scalar = 1.0
 	_tuning_dmg_scalar = 1.0
 	_tuning_ability_fields = []
+	_tuning_enemy_fields = []
 	for token in spec.split(",", false):
 		var entry: String = str(token).strip_edges()
 		if entry == "" or not entry.contains("="):
@@ -78,6 +83,9 @@ func _resolve_tuning(spec: String, op: String) -> void:
 			key = str(qualified[0]).strip_edges()
 		if key.begins_with("ability:"):
 			_tuning_ability_fields.append({"path": key.substr(8), "value": value})
+			continue
+		if key.begins_with("enemy_ability:"):
+			_tuning_enemy_fields.append({"path": key.substr(14), "value": value})
 			continue
 		match key:
 			"enemy_hp_scalar":
@@ -127,6 +135,31 @@ func _apply_ability_field_tuning(dm: Node) -> void:
 			push_warning("[SIM] ability tuning matched nothing: %s" % str(entry["path"]))
 
 
+# Applies enemy_ability tunings to DataManager's loaded EnemyData (memory only;
+# every battle deep-copies from these, so edits reach combat unchanged).
+func _apply_enemy_field_tuning(dm: Node) -> void:
+	for entry_variant in _tuning_enemy_fields:
+		var entry: Dictionary = entry_variant
+		var parts: PackedStringArray = str(entry["path"]).split("/", false)
+		if parts.size() != 3:
+			push_warning("[SIM] enemy ability tuning path needs Name/zone/field: %s" % str(entry["path"]))
+			continue
+		var enemy: EnemyData = dm.call("get_enemy_by_display_name", str(parts[0])) as EnemyData
+		if enemy == null:
+			push_warning("[SIM] enemy ability tuning: unknown enemy '%s'" % str(parts[0]))
+			continue
+		var raw_value: float = float(entry["value"])
+		var value: Variant = int(raw_value) if raw_value == floor(raw_value) else raw_value
+		var applied: bool = false
+		for range_variant in enemy.dice_ranges:
+			var range_entry: Dictionary = range_variant
+			if str(range_entry.get("zone", "")) == str(parts[1]):
+				(range_entry.get("raw", {}) as Dictionary)[str(parts[2])] = value
+				applied = true
+		if not applied:
+			push_warning("[SIM] enemy ability tuning matched nothing: %s" % str(entry["path"]))
+
+
 # Applied to a fresh CombatManager right after setup_battle (and to injected
 # summons): scale enemy pools/damage, hand engine keys to the tuning seam.
 func _apply_tuning(cm: CombatManager) -> void:
@@ -153,6 +186,9 @@ func _make_policy(policy_name: String, policy_seed: int, archetype: String = "",
 			policy = PolicyL0Script.new(policy_seed)
 		"l1", "greedy":
 			policy = PolicyL1Script.new(policy_seed)
+		"l1_focus", "l1_norekill":  # boss-aware L1 (sponginess study, sim-only)
+			policy = PolicyL1Script.new(policy_seed)
+			policy.boss_mode = policy_name.to_lower().trim_prefix("l1_")
 		"l2", "solver":
 			policy = PolicyL2Script.new(policy_seed)
 		_:
@@ -287,6 +323,7 @@ func _run(args: Dictionary) -> int:
 	var tuning_spec: String = str(args.get("tuning", ""))
 	_resolve_tuning(tuning_spec, op)
 	_apply_ability_field_tuning(dm)
+	_apply_enemy_field_tuning(dm)
 
 	_tel.emit({
 		"type": "run_header", "policy": policy.describe(), "squad": squad, "op": op,
