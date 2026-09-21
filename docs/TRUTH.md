@@ -208,8 +208,8 @@ quit-to-menu path already routes through `reset_run`. Dev contexts resolve
 `user://dev_run.json` through DevContext exactly as the profile does, and
 verify_gate's profile-isolation fingerprint now covers `run.json` too.
 
-Shape: `{schema_version: 1, build_id, saved_at, save_seq, screen, run: {...},
-extra: {...}}` (`SaveManager.build_run_payload`, plus `save_seq` stamped by
+Shape: `{schema_version: 2, build_id, saved_at, save_seq, screen, run: {...},
+extra: {...}, battle_checkpoint: {...}}` (`SaveManager.build_run_payload`, plus `save_seq` stamped by
 SaveIO at write time). `screen` is where CONTINUE resumes (`battle` /
 `reward` / `evolution` / `fork` / `intercept`); `extra` is opaque to SaveManager
 and carries only the balance harness's own seeded stream states. `GameState`
@@ -218,13 +218,38 @@ owns the run's save shape (`SAVED_RUN_FIELDS` / `TRANSIENT_RUN_FIELDS`,
 A run save is **never written while `tutorial_mode` is true** — the drill is not
 resumable, only its completion flag persists.
 
-**Checkpoints are at node boundaries, never mid-battle**, taken after the node's
+**Checkpoints are at node boundaries**, taken after the node's
 content is generated and before the player acts on it: battle entry (right after
 `record_battle_entered`, before the one-shot consumptions), reward-screen entry
 (after the draft rolls), event/fork/intercept entry (after the draw), and at each
-routing commit in SceneManager. A reload restarts the current battle from its
-opening state. **Accepted trade:** a player losing a battle can reload to restart
-it.
+routing commit in SceneManager.
+
+**Plus ONE mid-battle checkpoint kind: end of round** (Kev 2026-09-21,
+DECISIONS_RESOLVED "Web demo QoL"). After a round fully resolves — every action,
+damage, death, status tick, summon/revive, the Protocol income and the round
+counter — and immediately before the next Roll is offered,
+`battle_scene._resolve_current_turn` calls `SaveManager.checkpoint_battle_round`
+with `BattleCheckpoint.capture` (scripts/battle/battle_checkpoint.gd). Nothing
+mid-round is ever saved (no dice physics, selection, targeting, feedback, enemy
+actions or Nudge/Reroll/Set). The block holds `format` (its own version: a
+mismatch drops the CHECKPOINT and the battle restarts from its entry — never the
+run), `battle`, `round`, `run` (GameState.to_save_dict AT the checkpoint) and
+`state` (a `var_to_str` text of the combat unit states with Resource refs by id /
+display name, the RNG stream positions, the Protocol pool and per-battle spend
+flags, the round counter, the intercept battle effects and GameState's per-battle
+XP accumulators). **The envelope's own `run` block stays the battle-ENTRY
+snapshot** — so a checkpoint that fails validation falls back to exactly the
+pre-checkpoint behavior (restart the battle, pre-consumption). CONTINUE with a
+valid checkpoint rebuilds the board at that round's ready-to-roll state and
+replays nothing (no entry counting, no battle-start relic/gear/modifier/intercept
+effects, no consumable grants, no XP reset, no entry briefing). A battle that ends
+clears its checkpoint (`clear_battle_checkpoint`), so a finished encounter can
+never be restored; a close before the first completed round, or on the victory
+modal, restarts the battle from its entry as before. Gate: `battle checkpoint`
+(scripts/checks/battle_checkpoint_gate.py — separate-process full / save / resume
+legs, plus v1-save and bad-format fallbacks).
+**Accepted trade (narrowed):** a player losing a battle can reload to the start of
+the current round; the dice will not change.
 
 **`battles_fought` stays exactly-once across a resume** —
 `GameState.battle_entry_counted` makes `battle_scene._init_live_battle` skip the
@@ -233,7 +258,8 @@ encounter still counts. It is a saved RUN FIELD, deliberately not an argument to
 `checkpoint_run`: as a parameter every routing call site had to forward it, and
 one that forgot re-opened the hole for the width of a scene transition. Without
 it, reloading mid-battle would farm unlock gates (INVARIANTS #18). `nat20s` and `deaths` are display-only SERVICE RECORD counters
-and DO double-count the replayed part of a restarted battle; accepted.
+and DO double-count the replayed part of a restarted battle (since 2026-09-21 only
+the part since the last round checkpoint); accepted.
 
 **RNG.** The save stores RNG `state`, never the seed — restoring from a seed
 would rewind the between-battle economy and let a reload reroll rewards.
@@ -247,14 +273,28 @@ silently. `GameState._reward_rng` covers drafts/beats/comps/decks;
 balance sim happens not to run `battle_scene`, and the first seeded path to call
 it would have shifted every downstream reward, beat and intercept roll. The
 `save roundtrip` gate pins this: deriving battle seeds must leave the run RNG
-state and its next draws untouched. Live d20 FACES are read off the settled physics tray
-and are NOT restorable — a restarted battle can roll differently, by design.
+state and its next draws untouched. **Live d20 FACES come from the battle's d20
+stream** (since 2026-09-21): each round draws them via `_roll_for_states` (the same
+draws, in the same order, as the skip-visuals path) and RIGS the physics tray with
+them — the dice still tumble, the drawn face rotates up (the tutorial's rig
+mechanism; physics is presentation, INVARIANTS #1). The end-of-round checkpoint
+stores both owned stream positions (`PhysicsRollProvider.get_stream_states`), so a
+resumed round rolls exactly the dice the interrupted one would have: **a refresh
+cannot reroll the next dice.**
+**Known, pre-existing (not fixed here):** `run_seed` and `battle_rng_seed` are raw
+ints in `SAVED_RUN_FIELDS`, so despite the strings rule above they round-trip
+through JSON rounded (live play: a randomized `run_seed` and every derived
+`battle_rng_seed` are full 64-bit values, far beyond JSON's exact 2^53). The end-of-round checkpoint does not
+depend on them (its stream positions are exact text), but a battle restarted from
+its ENTRY after a reload derives a slightly different stream than the original.
 
 **Write safety.** `.tmp` → copy the outgoing primary to `.bak` → rename into
 place. On load, the best of primary / `.bak` / the web mirror wins by
 **`save_seq`** (a monotonic counter, not `saved_at`, which moves backwards across
 a clock change); a copy that will not parse loses to any copy that will; all
-three unusable = clean start, no crash. A `schema_version` mismatch on `run.json`
+three unusable = clean start, no crash. `RUN_SAVE_VERSIONS_READABLE` lists the
+versions loaded as-is — v1 (pre-checkpoint) is a strict subset of v2 and is READ
+FORWARD with no checkpoint. Any other `schema_version` mismatch on `run.json`
 **discards** it and shows one menu line ("Your previous run was from an older
 build and couldn't be restored."). `save.json` never discards — `_migrate_profile`
 dispatches on version and always lands in `_merge_loaded`.
@@ -422,6 +462,26 @@ its plates widen). Very wide windows (landscape desktop) are functional — the
 tutorial and input regressions pass at 1366×768 and 1920×1080 — but not a
 designed composition. The band contract is unchanged. See
 [desktop verification](DESKTOP_TUTORIAL_2026-09-20.md).
+
+**Web loader (Kev, 2026-09-21):** `web/shell.html` paints a branded loader from
+first paint, before the engine script downloads: `#07090b` page (= `DT_FIELD_BG`,
+no white flash; `color-scheme: dark`), the reactor O cropped from the TitleLogo
+layers (`logo_base` ring + `logo_core` glow, the glow pulsed by CSS with
+TitleLogo's own 0.35→1.0 / 0.85 s up / 1.25 s down), OVERLOAD / PROTOCOL in an
+m5x7 subset, `INITIALIZING OPERATION...`, `First launch may take a moment.`, and a
+thin bar driven ONLY by Godot's real byte progress (shown once a total is known;
+no invented percentage). Sized in `vmin`, `position: fixed` over the adaptive
+canvas — no wrapper. It fades once `startGame` resolves and the canvas has
+painted (a timer backs the frame wait for hidden tabs). The O art and the font
+are INLINED as data URIs (~41 KB) between the LOADER-ASSETS
+markers — regenerate with `python tools/web_loader_assets.py`, never hand-edit.
+`application/boot_splash` is `show_image=false` on the same `#07090b`, so the
+engine's own splash never shows the Godot logo. Every loader color is a COPY of a
+PixelUI token (the page cannot read PixelUI); the `web loader palette` gate
+(scripts/checks/web_loader_palette.py) fails if one — or the boot-splash color —
+drifts. Regression:
+`node scripts/debug/web_loader_test.cjs` after a Web export (4 viewports incl.
+the itch fixed 540×960 frame and a 390×844 phone).
 
 **Safe area (Android Builds #1–#2, 2026-07-13, Pixel-8-verified):**
 `PixelUI.safe_top/right/bottom/left` (four named ints, DESIGN px, all 0 on

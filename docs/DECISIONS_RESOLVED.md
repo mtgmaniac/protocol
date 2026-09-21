@@ -1,5 +1,41 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Web demo QoL: branded loader + end-of-round battle checkpoints (Kev, 2026-09-21) — RESOLVED & IMPLEMENTED
+
+**Ruling (transcribed from Kev's request).** Two focused web-demo improvements,
+no unrelated gameplay / UI / balance / layout changes:
+
+1. Replace the generic Godot web loading presentation with a branded Overload
+   Protocol loader: near-black, cyan accent, centered branding, the game's own O
+   symbol pulsing (lightweight CSS), `INITIALIZING OPERATION...`, a progress bar
+   only if the loader exposes reliable progress (never a fake percentage),
+   `First launch may take a moment.` Visible immediately, no white flash, scales
+   with the iframe, disappears cleanly; the "use whatever viewport the browser /
+   itch iframe provides" behavior is preserved (no fixed portrait wrapper).
+2. End-of-round battle checkpoints. An active battle is checkpointed ONCE per
+   completed round, at the stable ready-to-roll boundary (after every action,
+   damage, death, status tick, summon/revive and end-of-round cleanup; before
+   the next Roll). Never mid-interaction (dice physics, selection, targeting,
+   animation, enemy actions, Nudge/Reroll/Set). CONTINUE restores that state
+   exactly, without replaying completed actions or duplicating consumables,
+   rewards, XP, kills or relic triggers. **Refreshing must not reroll the upcoming
+   dice** — the deterministic RNG state is checkpointed. Extend the existing
+   run save with an optional `battle_checkpoint`; old saves keep loading. A
+   close before the first completed round may restart the battle (as before).
+   A finished battle clears its checkpoint. Exact mid-action recovery is out of
+   scope.
+
+**Supersedes in part G-21** ("Nothing mid-battle is serialized", "Live d20 FACES
+are read off the settled physics tray and are NOT restorable", and "mid-battle
+state serialization" under out-of-scope). Node-boundary checkpoints, the
+battle-entry checkpoint and every other G-21 rule stand.
+
+**As implemented.** Live d20 faces are drawn from the battle's seeded d20 stream
+and rigged onto the physics tray (the dice still tumble; physics is presentation,
+INVARIANTS #1), so the next round's dice are saveable state. `RUN_SAVE_VERSION`
+1 → 2; v1 run saves are read forward (a strict subset: no block = no
+checkpoint), not discarded. Details: TRUTH.md §Active-run save.
+
 ## UI consistency polish (Kev, 2026-09-20) — RESOLVED & IMPLEMENTED
 
 Keep current battle portrait zoom and dimensions; correct friendly framing and
@@ -307,6 +343,11 @@ selection, not a rarity — recolored to `DT_CYAN` in the same pass.
 # BUILD G PUNCH-LIST RULINGS (Kev, 2026-07-15 playtest)
 
 ## G-21. Save system — resumable runs + persistent meta (Kev, 2026-09-15)
+
+> **Superseded in part (2026-09-21)** by "Web demo QoL: branded loader +
+> end-of-round battle checkpoints" (top of this file): battles now checkpoint at
+> each completed round, and live d20 faces come from the seeded stream. The
+> clauses below that say otherwise are historical.
 
 **Ruling.** Runs are resumable across a reload. Two files with separate
 lifecycles: `user://save.json` (the existing profile — tutorial flag, unlocks,

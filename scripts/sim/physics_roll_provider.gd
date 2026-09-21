@@ -1,14 +1,11 @@
 # PhysicsRollProvider — the live-game roll source.
 #
-# In real play the settled physics-tray face is the roll value. This provider
-# wraps DiceManager.roll_d20() (the existing headless fallback / global-RNG
-# source) so the game and the headless fallback share one seam with the sim's
-# SeededRollProvider.
-#
-# SIM-TODO(kev): once BattleEngine owns the round loop inside battle_scene, the
-# game will construct this with a callable that reads the settled tray face
-# instead of DiceManager, so physics results flow through the same seam. Until
-# then it delegates to DiceManager (the current behavior — unchanged).
+# Wraps DiceManager.roll_d20() — the battle's seeded d20 stream — so the game
+# and the headless fallback share one seam with the sim's SeededRollProvider.
+# In live play battle_scene draws each round's faces here and RIGS the physics
+# tray with them (checkpoint system, 2026-09-21): the dice still tumble, but the
+# face that rotates up is the drawn one. Physics is presentation (roll_provider.gd),
+# and the round's outcome is saveable state rather than a physics accident.
 class_name PhysicsRollProvider
 extends RollProvider
 
@@ -29,13 +26,27 @@ func _init(dice_manager: DiceManager = null) -> void:
 
 
 ## Seeds BOTH streams this provider fronts from one run-stored battle seed, so a
-## resumed battle replays the same rerolls, vents and summons. The d20 FACES are
-## not restorable — in live play they are read off the settled physics mesh, not
-## drawn here (see roll_provider.gd) — which is why a restarted battle can roll
-## differently. That is the accepted trade, not an oversight.
+## battle restarted from its entry replays the same rerolls, vents and summons.
+## The live d20 FACES are drawn from the d20 stream too (battle_scene rigs the
+## physics tray with them; physics is presentation), so a battle restarted from
+## its entry rolls the same opening dice, and an end-of-round checkpoint that
+## restores get_stream_states() rolls the same next round.
 func seed_streams(battle_seed: int) -> void:
 	_rng.seed = battle_seed
 	_dice_manager.seed_stream(battle_seed ^ 0x5BF03635)
+
+
+## Both owned streams' positions, for the end-of-round battle checkpoint. The
+## d20 stream now also decides the live tray faces (battle_scene rigs the tray
+## from it), so restoring these makes a resumed round roll exactly what the
+## interrupted one would have: a refresh cannot reroll the next dice.
+func get_stream_states() -> Dictionary:
+	return {"d20": _dice_manager.get_stream_state(), "pick": int(_rng.state)}
+
+
+func set_stream_states(states: Dictionary) -> void:
+	_dice_manager.set_stream_state(int(states["d20"]))
+	_rng.state = int(states["pick"])
 
 
 func roll_d20() -> int:

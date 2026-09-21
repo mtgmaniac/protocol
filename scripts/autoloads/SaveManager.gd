@@ -22,18 +22,25 @@ const SAVE_VERSION := 1
 # schema bump that discards an in-progress run must never cost a player their
 # unlocks, and that is only structurally true if they are not the same file.
 # Profile isolation applies identically — a rig writes dev_run.json.
+const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
 const RUN_SAVE_PATH := "user://run.json"
 const DEV_RUN_SAVE_PATH := "user://dev_run.json"
 ## Bump ONLY when a run save from the previous build can no longer be trusted.
 ## A mismatch discards run.json (and says so on the menu); save.json migrates.
-const RUN_SAVE_VERSION := 1
+## v2 (2026-09-21) added the optional `battle_checkpoint` block. v1 is a strict
+## subset (no block = no checkpoint), so it is READ FORWARD rather than
+## discarded: see RUN_SAVE_VERSIONS_READABLE.
+const RUN_SAVE_VERSION := 2
+## Older run-save versions this build loads as-is. Only a version whose payload
+## is a strict subset of the current one belongs here; anything else discards.
+const RUN_SAVE_VERSIONS_READABLE := [1, 2]
 ## Hash of the run save's SHAPE — every key name and value type, recursively,
 ## never the values (SaveIO.structure_fingerprint). The save_schema gate
 ## recomputes this from a live checkpoint and fails when it moves, so changing
 ## what to_save_dict() produces without bumping RUN_SAVE_VERSION cannot ship.
 ## These two constants move TOGETHER: a version bump needs a new fingerprint,
 ## and a new fingerprint needs a version bump plus a migration decision.
-const RUN_SAVE_SCHEMA_FINGERPRINT := "bfecc74c620074a9"
+const RUN_SAVE_SCHEMA_FINGERPRINT := "133195c344ed7b29"
 
 # First clear of an operation unlocks its boss's relic (drafted as a
 # Starting Directive at run start; excluded from normal relic drafts).
@@ -70,6 +77,15 @@ var _run_save_path: String = RUN_SAVE_PATH
 var _run_save_notice: String = ""
 ## Harness-supplied block from the last resume_run(); always {} in live play.
 var _resume_extra: Dictionary = {}
+## The battle-ENTRY run block of the battle in progress (GameState.to_save_dict
+## at checkpoint_run("battle"), before the battle's one-shot consumptions).
+## Every end-of-round checkpoint is written beside THIS run block rather than
+## the live one, so a checkpoint that later fails validation still restarts
+## the battle from a correct, pre-consumption state. {} outside a battle.
+var _battle_entry_run: Dictionary = {}
+## A validated battle checkpoint waiting for battle_scene to restore it
+## (set by resume_run, taken once by take_pending_battle_restore).
+var _pending_battle_restore: Dictionary = {}
 # Entries awarded by the most recent record_run_finished(), consumed by the
 # run-end UI via check_new_unlocks(). Shape: [{type, id, display_name}].
 var _run_end_unlocks: Array = []
@@ -257,9 +273,11 @@ func save() -> void:
 
 # ── Active-run save ──────────────────────────────────────────────────────────
 # Checkpoints land at NODE BOUNDARIES: after a screen has generated its content
-# and before the player acts on it. Nothing mid-battle is ever serialized, so a
-# reload restarts the current battle from its opening state rather than
-# resuming a half-resolved round.
+# and before the player acts on it. Inside a battle there is ONE more kind: the
+# end-of-round checkpoint (checkpoint_battle_round), taken only at the stable
+# ready-to-roll boundary after a round fully resolves. Nothing mid-round is ever
+# serialized; a reload before the first round completes restarts the battle
+# from its opening state, as before.
 
 ## Writes the current run. `screen` is where CONTINUE should land the player.
 ## There is no per-call "has this battle been counted" argument: that lives in
@@ -279,26 +297,71 @@ func checkpoint_run(screen: String, extra: Dictionary = {}) -> void:
 		return
 	if GameState.selected_operation_id == "" or GameState.current_battle <= 0:
 		return
+	# Every node checkpoint supersedes any battle checkpoint: a battle entry
+	# starts a fresh one, and any other screen means the battle is behind us.
+	_pending_battle_restore = {}
+	_battle_entry_run = GameState.to_save_dict() if screen == "battle" else {}
 	SaveIO.write_dict(_run_save_path, build_run_payload(screen, extra))
+
+
+## End-of-round battle checkpoint (BattleCheckpoint.capture). Written beside the
+## battle-ENTRY run block, never the live one: see _battle_entry_run. No-op in
+## the tutorial and outside a battle checkpointed at entry.
+func checkpoint_battle_round(checkpoint: Dictionary) -> void:
+	if bool(GameState.tutorial_mode) or _battle_entry_run.is_empty() or checkpoint.is_empty():
+		return
+	SaveIO.write_dict(_run_save_path, build_run_payload("battle", {}, checkpoint, _battle_entry_run))
+
+
+## The battle ended normally: drop its checkpoint so a finished encounter can
+## never be restored. The run save goes back to the battle-entry snapshot (the
+## pre-checkpoint behavior) until the next node checkpoint (reward screen) or
+## the run end (run.json deleted) takes over.
+func clear_battle_checkpoint() -> void:
+	_pending_battle_restore = {}
+	if bool(GameState.tutorial_mode) or _battle_entry_run.is_empty():
+		return
+	SaveIO.write_dict(_run_save_path, build_run_payload("battle", {}, {}, _battle_entry_run))
+
+
+## Fallback for a checkpoint that validated but could not be rebuilt: put
+## GameState back on the battle-ENTRY run so the battle restarts correctly.
+func reload_battle_entry_run() -> void:
+	if not _battle_entry_run.is_empty():
+		GameState.load_from_dict(_battle_entry_run)
+
+
+## The validated checkpoint resume_run found for this battle, once; {} if none.
+func take_pending_battle_restore() -> Dictionary:
+	var pending: Dictionary = _pending_battle_restore
+	_pending_battle_restore = {}
+	return pending
 
 
 ## The run save's payload, in MEMORY types. Extracted so the schema-fingerprint
 ## gate hashes the same structure this writes, rather than a second copy of the
 ## envelope maintained beside it — and so the fingerprint sees int vs float,
 ## which the on-disk JSON collapses (every JSON number parses as a double).
-func build_run_payload(screen: String, extra: Dictionary = {}) -> Dictionary:
+## `run_block` overrides the live GameState run (end-of-round checkpoints keep
+## the battle-entry snapshot there).
+func build_run_payload(screen: String, extra: Dictionary = {}, battle_checkpoint: Dictionary = {},
+		run_block: Dictionary = {}) -> Dictionary:
 	return {
 		"schema_version": RUN_SAVE_VERSION,
 		"build_id": str(ProjectSettings.get_setting("application/config/version", "")),
 		"saved_at": Time.get_datetime_string_from_system(true, true),
 		"screen": screen,
-		"run": GameState.to_save_dict(),
+		"run": run_block if not run_block.is_empty() else GameState.to_save_dict(),
 		# Opaque to SaveManager. The balance harness parks its OWN seeded stream
 		# states here (the d20 provider and the policy RNG) — state the live game
-		# does not have, because in live play the d20 comes off the physics tray
-		# and there is no policy. Keeping it in the envelope rather than in the
-		# run block preserves "GameState owns the run's save shape".
+		# keeps elsewhere (its battle streams ride in battle_checkpoint) or does
+		# not have (there is no policy). Keeping it in the envelope rather than in
+		# the run block preserves "GameState owns the run's save shape".
 		"extra": extra,
+		# The battle in progress at its last completed round, or {} (between
+		# battles, before a battle's first round completes, or after it ends).
+		# Shape and rules: BattleCheckpoint.
+		"battle_checkpoint": battle_checkpoint,
 	}
 
 
@@ -309,7 +372,7 @@ func peek_run_save() -> Dictionary:
 	if loaded.is_empty():
 		return {}
 	var version: int = int(loaded.get("schema_version", 0))
-	if version != RUN_SAVE_VERSION:
+	if not RUN_SAVE_VERSIONS_READABLE.has(version):
 		# Ruled behavior: discard, say so once, never attempt a partial load.
 		# A run save spans the whole rules engine; migrating one across a schema
 		# bump is a far bigger promise than losing a single run in progress.
@@ -335,9 +398,26 @@ func resume_run() -> String:
 	var loaded: Dictionary = peek_run_save()
 	if loaded.is_empty():
 		return ""
-	GameState.load_from_dict(loaded.get("run", {}) as Dictionary)
+	var screen: String = str(loaded.get("screen", ""))
+	var run_block: Dictionary = loaded.get("run", {}) as Dictionary
+	_pending_battle_restore = {}
+	_battle_entry_run = GameState._restore_json_ints(run_block) if screen == "battle" else {}
+	# A battle checkpoint wins only if it fully validates against this run;
+	# otherwise the battle restarts from its entry exactly as it did before
+	# checkpoints existed. Validated BEFORE loading, because the two candidates
+	# are different run blocks (entry snapshot vs. mid-battle).
+	var checkpoint: Variant = loaded.get("battle_checkpoint", {})
+	if screen == "battle" and checkpoint is Dictionary and not (checkpoint as Dictionary).is_empty():
+		var decoded: Dictionary = BattleCheckpoint.decode(checkpoint, int(run_block.get("current_battle", 0)))
+		if not decoded.is_empty():
+			GameState.load_from_dict((checkpoint as Dictionary)["run"] as Dictionary)
+			_pending_battle_restore = {"state": decoded, "round": int((checkpoint as Dictionary).get("round", 0))}
+		else:
+			push_warning("[SaveManager] battle checkpoint unusable - the battle restarts from its entry.")
+	if _pending_battle_restore.is_empty():
+		GameState.load_from_dict(run_block)
 	_resume_extra = (loaded.get("extra", {}) as Dictionary).duplicate(true)
-	return str(loaded.get("screen", ""))
+	return screen
 
 
 ## The `extra` block from the most recent resume_run() ({} in live play).
@@ -346,6 +426,8 @@ func get_resume_extra() -> Dictionary:
 
 
 func clear_run_save() -> void:
+	_battle_entry_run = {}
+	_pending_battle_restore = {}
 	SaveIO.erase(_run_save_path)
 
 

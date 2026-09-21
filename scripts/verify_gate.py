@@ -176,6 +176,8 @@ GATES = [
     ("save integrity", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_integrity_test.gd"], "[SAVE_INTEGRITY] PASS", False),
     ("save lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_lifecycle_test.gd"], "[SAVE_LIFECYCLE] PASS", False),
     ("save resume", [sys.executable, str(ROOT / "scripts" / "checks" / "save_resume_gate.py")], "[SAVE_RESUME] PASS", False),
+    ("battle checkpoint", [sys.executable, str(ROOT / "scripts" / "checks" / "battle_checkpoint_gate.py")], "[BATTLE_CHECKPOINT] PASS", False),
+    ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
 ]
 
 
@@ -233,6 +235,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "tutorial smoke": 180,      # 23 scripted steps
     "upgrade draws": 180,       # 18 unlock states x 5 seeds x every draw
     "save resume": 420,         # 6 full Godot processes (2 configs x 3 legs)
+    "battle checkpoint": 360,   # 10 Godot processes (2 configs x 3 legs + 4 fallback legs); ~160s measured
 }
 
 

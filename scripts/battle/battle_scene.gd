@@ -113,6 +113,7 @@ const PROTOCOL_LABEL_BOX_H := 96.0
 const PROTOCOL_LABEL_PIP_OVERLAP := -2.0
 const PROTOCOL_PIP_BAR_H := 52.0
 
+const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
 var dice_manager: DiceManager = DiceManager.new()
 var combat_manager: CombatManager = CombatManager.new()
 # Shared UI-free rules engine (balance-sim A.1). Owns the roll-shaping /
@@ -243,6 +244,9 @@ var _auto_turn_running: bool = false
 var _auto_battle_running: bool = false
 var _primer = null  # KeywordPrimer — null only in review battles
 var _briefing_active: bool = false
+# True when this battle was rebuilt from an end-of-round checkpoint (CONTINUE
+# mid-battle): the entry briefing (deployment slate / boss alert) already showed.
+var _resumed_from_checkpoint: bool = false
 
 var _is_resolving_turn: bool = false
 
@@ -335,6 +339,18 @@ func _ready() -> void:
 # ── Live battle init (extracted from _ready so review can branch around its
 # run-state side effects) ─────────────────────────────────────────────────────
 func _init_live_battle() -> void:
+	# CONTINUE into a battle with a validated end-of-round checkpoint: rebuild
+	# the board at its ready-to-roll boundary instead of running the entry
+	# setup below (whose one-shot consumptions already happened before the
+	# checkpoint and are captured in it).
+	var pending_restore: Dictionary = SaveManager.take_pending_battle_restore()
+	if not pending_restore.is_empty():
+		if _restore_battle_checkpoint(pending_restore["state"]):
+			return
+		# Validated but could not be rebuilt: restart from the entry snapshot,
+		# never from the mid-battle run the checkpoint carried.
+		push_warning("[BattleCheckpoint] restore failed - restarting the battle from its entry.")
+		SaveManager.reload_battle_entry_run()
 	# Unlock metric (Build F): one increment per encounter ENTERED — this runs
 	# exactly once per live battle (review re-entries branch around it), so a
 	# multi-round battle counts once and a retreat still counted its entry.
@@ -401,6 +417,47 @@ func _init_live_battle() -> void:
 	transition(PHASE_AWAIT_ROLL)
 
 
+# Rebuilds a battle from its end-of-round checkpoint (BattleCheckpoint), in the
+# ready-to-roll state. Replays nothing: no entry counting, no battle-start
+# relic/gear/modifier/intercept effects, no consumable grants, no XP reset —
+# every one of those already happened and its result is in the restored state.
+func _restore_battle_checkpoint(saved: Dictionary) -> bool:
+	var combat: Dictionary = (saved["combat"] as Dictionary).duplicate(true)
+	if not BattleCheckpoint.link_units(combat, _game_state()):
+		return false
+	_resumed_from_checkpoint = true
+	# The streams are seeded as usual, then moved to where the checkpoint left
+	# them: the next roll draws exactly the faces the interrupted round would have.
+	_roll_provider.seed_streams(int(_game_state().battle_rng_seed))
+	_roll_provider.set_stream_states(saved["streams"])
+	_update_battle_header()
+	hero_units = (combat["hero_states"] as Array).map(func(s): return s["unit"])
+	enemy_units = (combat["enemy_states"] as Array).map(func(s): return s["unit"])
+	combat_manager.setup_battle(hero_units, enemy_units)
+	combat_manager.setup_relics(_game_state().relics)
+	combat_manager.setup_gear(_game_state().gear_by_unit)
+	combat_manager.import_checkpoint(combat)
+	_game_state().import_battle_xp_tracking(saved["xp"])
+	protocol_points = int(saved["protocol_points"])
+	_income_debt = int(saved["income_debt"])
+	_free_nudge_used = (saved["free_nudge_used"] as Dictionary).duplicate(true)
+	_root_access_used = bool(saved["root_access_used"])
+	_round_number = int(saved["round_number"])
+	_battle_effects = (saved["battle_effects"] as Dictionary).duplicate(true)
+	_update_protocol_bar()
+	_populate_hero_cards()
+	_populate_enemy_cards()
+	dice_tray_3d.reset()
+	_set_battle_log_visible(false)
+	_append_log("Battle resumed - round %d." % _round_number)
+	for enemy_state_variant in combat_manager.get_enemy_states():
+		var rule_text: String = CombatManager.get_boss_standing_rule(str(enemy_state_variant["unit"].display_name))
+		if rule_text != "" and not bool(enemy_state_variant.get("dead", false)):
+			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
+	transition(PHASE_AWAIT_ROLL)
+	return true
+
+
 # ── Read-only battle review ───────────────────────────────────────────────────
 # Rebuild the finished board from the captured combat state (no setup_battle, so
 # zero run-state side effects). Cards + statuses + ability readouts render from
@@ -447,7 +504,7 @@ func _show_battle_entry_briefing() -> void:
 	# DevContext.is_isolated() (not OS.has_feature("headless"), which is FALSE under
 	# a `-s` launch) so the modal never opens in a headless smoke, an audit, or a
 	# windowed capture rig and blocks the first roll / auto-battle.
-	if DevContext.is_isolated() or _review_mode or _game_state().tutorial_mode:
+	if DevContext.is_isolated() or _review_mode or _game_state().tutorial_mode or _resumed_from_checkpoint:
 		return
 	if _game_state().current_battle == _game_state().total_battles:
 		_show_boss_alert()
@@ -1107,6 +1164,14 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		# face up — the player never sees a wrong number.
 		if _game_state().tutorial_mode:
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
+		else:
+			# Every other roll draws its faces from the battle's seeded d20 stream
+			# (the same draws, in the same order, as the skip-visuals path below)
+			# and rigs the tray with them: the dice still tumble, the drawn face
+			# rotates up. That makes the round's dice saveable state, so an
+			# end-of-round checkpoint restores the SAME next roll and a refresh
+			# cannot reroll it (BattleCheckpoint).
+			dice_tray_3d.set_rigged_results(_stream_rig_values())
 		dice_tray_3d.play_rolls(
 			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
 			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
@@ -1297,6 +1362,20 @@ func _notice_rolled_ability_primers() -> void:
 
 func _roll_for_states(states: Array) -> Dictionary:
 	return _engine.roll_states(states)
+
+
+# This round's faces from the seeded d20 stream as a tray rig map
+# ("side:state_id" -> face). Drawn exactly like the skip-visuals path (all hero
+# states, then all enemy states) so both paths consume the stream identically.
+# Frozen dice keep their crusted value; the tray ignores the rig for them.
+func _stream_rig_values() -> Dictionary:
+	var rig: Dictionary = {}
+	for side in ["hero", "enemy"]:
+		var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
+		var faces: Dictionary = _roll_for_states(states)
+		for state_id in faces:
+			rig["%s:%s" % [side, str(state_id)]] = int(faces[state_id])
+	return rig
 
 
 func _get_auto_debug_target_id(target_side: String, target_ids: Array) -> String:
@@ -1785,6 +1864,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	var outcome: String = str(result.get("result", "ongoing"))
 	if outcome == "victory":
 		battle_over = true
+		SaveManager.clear_battle_checkpoint()
 		MusicManager.set_combat(false)
 		roll_button.disabled = true
 		_persist_protocol_carryover()
@@ -1830,6 +1910,11 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 				_append_log("Protocol +1 -> %d" % protocol_points)
 		_round_number += 1
 		transition(PHASE_AWAIT_ROLL)
+		# END-OF-ROUND CHECKPOINT: the round has fully resolved (actions, damage,
+		# deaths, ticks, summons, income) and the next Roll is available. The
+		# only mid-battle save point — see BattleCheckpoint. Never in the tutorial.
+		if not _game_state().tutorial_mode:
+			SaveManager.checkpoint_battle_round(BattleCheckpoint.capture(self, _game_state()))
 		var tutorial_enemy: Dictionary = combat_manager.get_enemy_states()[0] if not combat_manager.get_enemy_states().is_empty() else {}
 		var tutorial_strike: Dictionary = {}
 		for hero_variant in combat_manager.get_hero_states():
@@ -1921,6 +2006,8 @@ func _capture_battle_victory_for_xp() -> void:
 
 func _finish_battle_victory() -> void:
 	battle_over = true
+	# A finished encounter must never be restorable.
+	SaveManager.clear_battle_checkpoint()
 	MusicManager.set_combat(false)
 	_game_state().record_battle_turns(_round_number)
 	_disable_combat_actions()

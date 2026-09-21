@@ -15,6 +15,8 @@ config/version="0.1.1"
 run/main_scene="res://scenes/ui/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.02745098, 0.03529412, 0.043137256, 1)
+boot_splash/show_image=false
 
 [audio]
 

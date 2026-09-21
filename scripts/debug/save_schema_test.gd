@@ -18,6 +18,7 @@
 # element shape. Array LENGTH is excluded on purpose: it is data, not schema.
 extends SceneTree
 
+const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
 const SaveIO = preload("res://scripts/autoloads/save_io.gd")
 const SQUAD := ["pulse", "combat", "shield"]
 const OP := "facility"
@@ -125,9 +126,19 @@ func _build_checkpoint(squad: Array = SQUAD) -> Dictionary:
 	if sm().peek_run_save().is_empty():
 		_failures.append("fixture: no checkpoint was written, so nothing is under test")
 	# A representative `extra`: the harness parks its two seeded stream states
-	# there, and {} would leave the block's shape unpinned.
+	# there, and {} would leave the block's shape unpinned. Likewise a
+	# representative end-of-round `battle_checkpoint` (BattleCheckpoint.capture's
+	# envelope; its combat state is one var_to_str text field by design, with its
+	# own FORMAT version, so only the envelope is schema here).
+	var battle_checkpoint: Dictionary = {
+		"format": BattleCheckpoint.FORMAT,
+		"battle": int(gs().current_battle),
+		"round": 3,
+		"run": gs().to_save_dict(),
+		"state": var_to_str({"round_number": 3}),
+	}
 	var payload: Dictionary = sm().build_run_payload("reward",
-		{"provider_state": "0", "policy_rng_state": "0"})
+		{"provider_state": "0", "policy_rng_state": "0"}, battle_checkpoint)
 	sm().clear_run_save()
 	return payload
 
@@ -212,6 +223,8 @@ func _check_every_container_is_populated(payload: Dictionary) -> void:
 				% str(field))
 	if (payload.get("extra", {}) as Dictionary).is_empty():
 		_failures.append("fixture: the envelope's `extra` block is empty, so its shape is unpinned")
+	if (payload.get("battle_checkpoint", {}) as Dictionary).is_empty():
+		_failures.append("fixture: the envelope's `battle_checkpoint` block is empty, so its shape is unpinned")
 
 
 ## And it must NOT be blind to shape, or it can never fail.

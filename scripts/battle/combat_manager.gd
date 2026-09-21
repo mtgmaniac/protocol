@@ -727,6 +727,24 @@ func restore_state(snap: Dictionary) -> void:
 	_round_events.clear()
 
 
+# ── End-of-round battle checkpoint (save system, 2026-09-21) ──────────────────
+# The L2 snapshot plus the one battle-long field it leaves out: the route-fork
+# modifier, whose spawn-time effects already live in the unit states and whose
+# per-hit/per-round hooks read _battle_modifier. Restoring sets it WITHOUT
+# re-running setup_battle_modifier (that would re-apply its spawn effects).
+# "unit" Resource refs are the caller's to serialize (BattleCheckpoint).
+func export_checkpoint() -> Dictionary:
+	var snap: Dictionary = snapshot_state()
+	snap["battle_modifier"] = _battle_modifier
+	return snap
+
+
+func import_checkpoint(snap: Dictionary) -> void:
+	restore_state(snap)
+	_battle_modifier = str(snap.get("battle_modifier", ""))
+	_kill_queue.clear()
+
+
 # Set the hero firing order by CAST STAMPS (player-chosen cast order; also the
 # L2 order-search entry point). `ordered_ids` gets stamps 1..N; ids not listed
 # are cleared to unstamped and resolve after the stamped ones in squad order.

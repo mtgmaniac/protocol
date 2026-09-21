@@ -1305,6 +1305,19 @@ func begin_battle_xp_tracking() -> void:
 	_battle_end_alive.clear()
 
 
+## The per-battle XP accumulators, for the end-of-round battle checkpoint (they
+## are not run fields: see TRANSIENT_RUN_FIELDS). A resumed round keeps the
+## effective rolls its completed rounds recorded, so XP is neither lost nor
+## double-counted.
+func export_battle_xp_tracking() -> Dictionary:
+	return {"effective_rolls": _battle_effective_rolls.duplicate(true), "end_alive": _battle_end_alive.duplicate(true)}
+
+
+func import_battle_xp_tracking(tracking: Dictionary) -> void:
+	_battle_effective_rolls = (tracking.get("effective_rolls", {}) as Dictionary).duplicate(true)
+	_battle_end_alive = (tracking.get("end_alive", {}) as Dictionary).duplicate(true)
+
+
 func record_hero_effective_roll(unit_id: String, effective_roll: int) -> void:
 	if effective_roll <= 0:
 		return
@@ -1786,8 +1799,10 @@ const TRANSIENT_RUN_FIELDS := [
 	# leaving for the battle review and cleared on return. Tied to the review
 	# state above, so it goes with it; a resumed reward screen opens unselected.
 	"reward_picker_ui_state",
-	# Per-battle XP accumulators. We never checkpoint mid-battle, so a resumed
-	# battle restarts its own tracking from begin_battle_xp_tracking().
+	# Per-battle XP accumulators. Not run fields: a battle restarted from its
+	# entry restarts its own tracking from begin_battle_xp_tracking(), and an
+	# end-of-round battle checkpoint carries them in its own state block
+	# (export_battle_xp_tracking / BattleCheckpoint).
 	"_battle_effective_rolls", "_battle_end_alive",
 	# The tutorial is not resumable by design (Kev, Q4): no run save is ever
 	# written while tutorial_mode is true, so these can never need restoring.
