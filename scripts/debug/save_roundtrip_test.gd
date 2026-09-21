@@ -10,7 +10,8 @@
 #                  route-fork modifier are the same ids in the same ORDER.
 # G4 64-BIT RNG  — RNG states past 2^53 round-trip exactly. Godot's JSON parses
 #                  every number as a double, so an unquoted int64 comes back
-#                  rounded AND retyped, silently.
+#                  rounded AND retyped, silently. Includes the run and battle
+#                  SEEDS through a real save (_check_seed_precision).
 # COVERAGE       — every run-state property on GameState appears in either
 #                  SAVED_RUN_FIELDS or TRANSIENT_RUN_FIELDS. A field added to
 #                  GameState and forgotten here would present as a corrupt
@@ -40,6 +41,7 @@ func _run() -> void:
 	_check_coverage_contract()
 	_check_battle_seed_consumes_nothing()
 	_check_64bit_rng()
+	_check_seed_precision()
 	for node_kind in ["battle", "reward", "fork", "intercept"]:
 		_check_round_trip(node_kind)
 	_check_same_offers_reward()
@@ -181,6 +183,59 @@ func _check_64bit_rng() -> void:
 	if gs().get_reward_rng_state() != expected:
 		_fail("reward RNG state did not survive the save (%d -> %d)"
 			% [expected, gs().get_reward_rng_state()])
+
+
+## The run seed and the battle seed are full-width 64-bit values in live play
+## (a randomized run seed; every battle seed is a splitmix mix). Both must come
+## back from a real JSON save BIT-EXACT, or a battle restarted from its entry
+## after a reload derives a different RNG stream (so different dice) than the
+## original. The G1 round trip cannot see this: it compares the second trip to
+## the first, and a value already rounded on the first trip is "stable".
+func _check_seed_precision() -> void:
+	# Every run gets its OWN seed: an unseeded run randomizes it (it used to be
+	# zeroed right after capture, so all runs shared the same battle seeds and,
+	# with the tray rigged from the battle stream, the same dice), and a seeded
+	# run keeps exactly the seed it was given.
+	gs().start_run(SQUAD, OP)
+	var first_run: int = int(gs().run_seed)
+	gs().start_run(SQUAD, OP)
+	if first_run == 0 or int(gs().run_seed) == 0 or int(gs().run_seed) == first_run:
+		_fail("unseeded runs must get distinct non-zero run seeds (got %d, %d)" % [first_run, int(gs().run_seed)])
+	gs().start_run(SQUAD, OP, SEED)
+	if int(gs().run_seed) != SEED:
+		_fail("a seeded run must keep its seed (%d -> %d)" % [SEED, int(gs().run_seed)])
+	# Bit-exact through a real JSON save, for values JSON cannot hold as numbers.
+	for run_seed in [int(first_run), 9007199254740993, 9223372036854775807, -4442648289396466586]:
+		gs().start_run(SQUAD, OP)
+		gs().run_seed = run_seed
+		gs().advance_to_next_battle()
+		var battle_seed: int = gs().derive_battle_rng_seed()
+		if absi(battle_seed) <= 9007199254740992:
+			_fail("fixture: battle seed %d fits a double - the check proves nothing" % battle_seed)
+		var naive: Variant = JSON.parse_string(JSON.stringify({"v": battle_seed}))
+		if int((naive as Dictionary)["v"]) == battle_seed:
+			_fail("fixture: an unquoted battle seed survived JSON - the check proves nothing")
+		var later: Dictionary = {}
+		for battle in [2, 5, 10]:
+			gs().current_battle = battle
+			later[battle] = gs().derive_battle_rng_seed()
+		gs().current_battle = 1
+		gs().derive_battle_rng_seed()
+		var via_json: Dictionary = JSON.parse_string(JSON.stringify(gs().to_save_dict())) as Dictionary
+		if not (via_json.get("run_seed") is String) or not (via_json.get("battle_rng_seed") is String):
+			_fail("the seeds must be written as STRINGS (got %s / %s)"
+				% [type_string(typeof(via_json.get("run_seed"))), type_string(typeof(via_json.get("battle_rng_seed")))])
+		gs().run_seed = 0
+		gs().battle_rng_seed = 0
+		gs().load_from_dict(via_json)
+		if int(gs().run_seed) != run_seed:
+			_fail("run_seed lost precision across a save: %d -> %d" % [run_seed, int(gs().run_seed)])
+		if int(gs().battle_rng_seed) != battle_seed:
+			_fail("battle_rng_seed lost precision across a save: %d -> %d" % [battle_seed, int(gs().battle_rng_seed)])
+		for battle in later:
+			gs().current_battle = int(battle)
+			if gs().derive_battle_rng_seed() != int(later[battle]):
+				_fail("battle %d derives a different seed after a reload (run seed %d)" % [int(battle), run_seed])
 
 
 # ── G1: round trip at each node type ──────────────────────────────────────────

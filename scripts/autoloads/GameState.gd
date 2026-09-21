@@ -182,7 +182,10 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 	enforce_squad_limit()
 	selected_operation_id = operation_id
 	current_battle = 0
-	run_seed = 0
+	# run_seed is NOT reset here: it was captured from the reward RNG above. (It
+	# used to be zeroed on this line, so every run derived the SAME battle seeds;
+	# with the tray rigged from the battle stream that meant identical dice in
+	# battle N of every run. Fixed 2026-09-21; pinned by save_roundtrip.)
 	battle_rng_seed = 0
 	battle_entry_counted = false
 	last_battle_snapshot = null
@@ -1772,6 +1775,14 @@ const SAVED_RUN_FIELDS := [
 	"run_hero_deaths", "run_total_turns",
 ]
 
+## Saved fields holding full-width 64-bit ints (a randomized run seed and every
+## splitmix-derived battle seed exceed 2^53). They are written as STRINGS via
+## SaveIO.encode_i64 — an unquoted int64 comes back from JSON rounded, which made
+## a battle restarted from its entry after a reload derive a different RNG
+## stream than the original (fixed 2026-09-21, run save v3; older run saves are
+## discarded, not migrated).
+const I64_RUN_FIELDS := ["run_seed", "battle_rng_seed"]
+
 ## Saved fields whose dictionary KEYS are data, not schema: unit ids, item ids,
 ## battle numbers. The schema fingerprint ignores their key names and hashes only
 ## the value shapes, so swapping a hero in the squad — or a run scheduling its
@@ -1817,6 +1828,8 @@ func to_save_dict() -> Dictionary:
 	for field in SAVED_RUN_FIELDS:
 		var value: Variant = get(field)
 		out[field] = value.duplicate(true) if (value is Array or value is Dictionary) else value
+	for field in I64_RUN_FIELDS:
+		out[field] = SaveIO.encode_i64(int(get(field)))
 	# The RNG STATE, not the seed. Restoring from a seed would rewind the whole
 	# between-battle economy to run start, letting a reload reroll every reward
 	# the run has already offered. As a string: JSON numbers are doubles and
@@ -1827,7 +1840,11 @@ func to_save_dict() -> Dictionary:
 
 func load_from_dict(data: Dictionary) -> void:
 	for field in SAVED_RUN_FIELDS:
-		if data.has(field):
+		if not data.has(field):
+			continue
+		if I64_RUN_FIELDS.has(field):
+			set(field, SaveIO.decode_i64(data[field], int(get(field))))
+		else:
 			set(field, _restore_json_ints(data[field]))
 	# run_beats is keyed by battle NUMBER. JSON stringifies every object key, so
 	# without this the schedule silently reads empty: get_beat_after_battle(3)

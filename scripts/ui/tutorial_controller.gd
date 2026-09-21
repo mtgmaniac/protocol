@@ -428,7 +428,7 @@ const GATED_ASSIST_SECS := 20.0
 # Two refused taps is better evidence of being stuck than any clock, so the
 # offer also arrives early once the player has aimed at the wrong thing twice.
 const GATED_ASSIST_REJECTIONS := 2
-const GATED_ASSIST_HINT := "Stuck? Tap here and we'll do it >"
+const GATED_ASSIST_HINT := "Stuck? Select this and we'll do it >"
 # Test seam, same shape as waiter_failsafe_secs.
 var gated_assist_secs: float = GATED_ASSIST_SECS
 var _assist_token: int = 0
@@ -493,7 +493,7 @@ func _offer_gate_assist(elapsed: float) -> void:
 	_spot.spotlight(_spot.current_holes(), copy, anchor, {
 		"title": str(step.get("title", "")),
 		"glyph": PixelUI.pip_texture_for_key(str(step.get("glyph", ""))) if step.has("glyph") else null,
-		"hint": "Can't continue? Tap here to restart training >" if _assist_restart_offered else GATED_ASSIST_HINT,
+		"hint": "Can't continue? Select this to restart training >" if _assist_restart_offered else GATED_ASSIST_HINT,
 		# NOT interactive: the real controls stay live under the catcher, so the
 		# offer never takes the scripted action away from a player who finds it.
 		"interactive": false,
@@ -692,7 +692,7 @@ func _layout_step(restart_assist: bool = true) -> void:
 		_spot.spotlight(holes, str(step.get("text", "")), anchor, {
 			"title": str(step.get("title", "")),
 			"glyph": PixelUI.pip_texture_for_key(str(step.get("glyph", ""))) if step.has("glyph") else null,
-			"hint": "Tap to continue >" if tap_step else "",
+			"hint": "Continue >" if tap_step else "",
 			"interactive": tap_step,
 			"coach_y_ratio": _coach_y_ratio(step),
 		})

@@ -402,7 +402,7 @@ func _try_show(candidate: Dictionary) -> bool:
 		glyph_key = str(context.get("param", ""))
 	AudioManager.play_select()
 	await _spot.spotlight(rects, text, SpotlightLayerScript.CoachAnchor.AUTO, {
-		"hint": "Tap to continue >",
+		"hint": "Continue >",
 		"interactive": true,
 		"glyph": PixelUI.pip_texture_for_key(glyph_key),
 		# Shared-glyph keys keep their pip tint (cleanse = golden heal glyph).

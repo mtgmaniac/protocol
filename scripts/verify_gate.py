@@ -178,6 +178,8 @@ GATES = [
     ("save resume", [sys.executable, str(ROOT / "scripts" / "checks" / "save_resume_gate.py")], "[SAVE_RESUME] PASS", False),
     ("battle checkpoint", [sys.executable, str(ROOT / "scripts" / "checks" / "battle_checkpoint_gate.py")], "[BATTLE_CHECKPOINT] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
+    ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
+    ("checkpoint lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/checkpoint_lifecycle_test.gd"], "[CHECKPOINT_LIFECYCLE] PASS", False),
 ]
 
 

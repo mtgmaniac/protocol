@@ -27,20 +27,18 @@ const RUN_SAVE_PATH := "user://run.json"
 const DEV_RUN_SAVE_PATH := "user://dev_run.json"
 ## Bump ONLY when a run save from the previous build can no longer be trusted.
 ## A mismatch discards run.json (and says so on the menu); save.json migrates.
-## v2 (2026-09-21) added the optional `battle_checkpoint` block. v1 is a strict
-## subset (no block = no checkpoint), so it is READ FORWARD rather than
-## discarded: see RUN_SAVE_VERSIONS_READABLE.
-const RUN_SAVE_VERSION := 2
-## Older run-save versions this build loads as-is. Only a version whose payload
-## is a strict subset of the current one belongs here; anything else discards.
-const RUN_SAVE_VERSIONS_READABLE := [1, 2]
+## v2 (2026-09-21) added the optional `battle_checkpoint` block; v3 (same day)
+## stores the 64-bit run/battle seeds as strings (GameState.I64_RUN_FIELDS).
+## Older run saves are DISCARDED, not migrated (Kev 2026-09-21: no backward
+## compatibility for pre-v3 runs — their seeds were already rounded on disk).
+const RUN_SAVE_VERSION := 3
 ## Hash of the run save's SHAPE — every key name and value type, recursively,
 ## never the values (SaveIO.structure_fingerprint). The save_schema gate
 ## recomputes this from a live checkpoint and fails when it moves, so changing
 ## what to_save_dict() produces without bumping RUN_SAVE_VERSION cannot ship.
 ## These two constants move TOGETHER: a version bump needs a new fingerprint,
 ## and a new fingerprint needs a version bump plus a migration decision.
-const RUN_SAVE_SCHEMA_FINGERPRINT := "133195c344ed7b29"
+const RUN_SAVE_SCHEMA_FINGERPRINT := "4c439766b9384914"
 
 # First clear of an operation unlocks its boss's relic (drafted as a
 # Starting Directive at run start; excluded from normal relic drafts).
@@ -372,7 +370,7 @@ func peek_run_save() -> Dictionary:
 	if loaded.is_empty():
 		return {}
 	var version: int = int(loaded.get("schema_version", 0))
-	if not RUN_SAVE_VERSIONS_READABLE.has(version):
+	if version != RUN_SAVE_VERSION:
 		# Ruled behavior: discard, say so once, never attempt a partial load.
 		# A run save spans the whole rules engine; migrating one across a schema
 		# bump is a far bigger promise than losing a single run in progress.

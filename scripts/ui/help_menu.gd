@@ -356,7 +356,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "READING A UNIT CARD", [
 		"The name and portrait identify the unit.",
 		"The HP bar reads current / max. Status icons appear when effects are active.",
-		"Long-press a unit to read its full intel - abilities, roll ranges, and keywords.",
+		"Hold a unit to inspect its full intel - abilities, roll ranges, and keywords.",
 	])
 	_build_protocol(host)
 	_add_section(host, "EVOLUTION / REWARDS", [
@@ -438,7 +438,7 @@ func _select_icon_guide_section(effects: bool, host: VBoxContainer, buttons: Arr
 		for keyword in _dm().get_keywords().get("keywords", []):
 			if str(keyword.get("id", "")) in ["burn", "mark"]:
 				_add_keyword_row(host, keyword)
-		host.add_child(_make_body_label("Long-press a unit for its full effects.", PixelUI.TEXT_PRIMARY))
+		host.add_child(_make_body_label("Hold a unit to inspect its full effects.", PixelUI.TEXT_PRIMARY))
 		var more := Button.new()
 		more.text = "MORE EFFECTS"
 		more.custom_minimum_size = Vector2(0, 112)
@@ -881,7 +881,7 @@ func _on_dev_unlock_all() -> void:
 func _on_dev_reset_profile() -> void:
 	if not _reset_armed:
 		_reset_armed = true
-		_reset_dev_button.text = "TAP AGAIN TO CONFIRM"
+		_reset_dev_button.text = "SELECT AGAIN TO CONFIRM"
 		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
 		_disarm_reset_after_delay()
 		return

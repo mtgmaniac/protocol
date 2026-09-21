@@ -863,6 +863,66 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 
 
 # Brief portrait-local cues; no new input target or sequencing delay.
+# ── Battle-resume callout (save system, 2026-09-21) ───────────────────────────
+# CONTINUE rebuilt the battle from an end-of-round checkpoint: say so, briefly,
+# with the real round number. Non-blocking (ignores input, needs no dismissal),
+# in the top band of the combat zone — clear of the unit cards above/below and
+# kept above the Roll button. Hyphen, not an em dash: m5x7 has no U+2014 (the
+# glyph gate would catch it as a tofu box). Shown ONLY by battle_scene's
+# successful checkpoint restore; kept on `resume_callout` for the regression.
+const RESUME_CALLOUT_FONT := 40
+const RESUME_CALLOUT_HOLD := 1.9
+var resume_callout: PanelContainer = null
+
+
+func show_resume_callout(round_number: int) -> void:
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var panel := PanelContainer.new()
+	panel.name = "ResumeCallout"
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A standard component, player-side tint: informational, not a selection
+	# (strong cyan frames are reserved for selected_card — component contract).
+	PixelUI.style_component(panel, PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true)
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 28)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 12)
+	panel.add_child(margin)
+	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = "BATTLE RESUMED - ROUND %d" % round_number
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(label, RESUME_CALLOUT_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
+	margin.add_child(label)
+	panel.z_as_relative = false
+	panel.z_index = 110
+	_scene.float_layer.add_child(panel)
+	panel.reset_size()
+	panel.size = panel.get_combined_minimum_size()
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var zone: Rect2 = _scene.center_panel.get_global_rect()
+	var pos := Vector2(zone.get_center().x - panel.size.x * 0.5, zone.position.y + 24.0)
+	var roll_rect: Rect2 = _scene.roll_button.get_global_rect() if _scene.roll_button.visible else Rect2()
+	if roll_rect.size.y > 0.0 and pos.y + panel.size.y > roll_rect.position.y - 12.0:
+		pos.y = maxf(zone.position.y, roll_rect.position.y - 12.0 - panel.size.y)
+	panel.position = pos - layer_origin
+	resume_callout = panel
+	var reduced: bool = PixelUI.reduced_motion_enabled()
+	panel.modulate.a = 1.0 if reduced else 0.0
+	var tween := panel.create_tween()
+	if not reduced:
+		tween.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tween.tween_interval(RESUME_CALLOUT_HOLD)
+	if reduced:
+		tween.tween_callback(func() -> void: panel.modulate.a = 0.0)
+	else:
+		tween.tween_property(panel, "modulate:a", 0.0, 0.45)
+	tween.tween_callback(panel.queue_free)
+
+
 func play_summon_arrival(state_id: String) -> void:
 	# Container layout and any further card rebuilds finish before locating
 	# the new portrait. Never retain a card freed by another summon this frame.

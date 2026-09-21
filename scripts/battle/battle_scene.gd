@@ -455,6 +455,11 @@ func _restore_battle_checkpoint(saved: Dictionary) -> bool:
 		if rule_text != "" and not bool(enemy_state_variant.get("dead", false)):
 			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
 	transition(PHASE_AWAIT_ROLL)
+	# Brief, non-blocking "BATTLE RESUMED - ROUND X" once the board has laid out.
+	var resumed_round: int = _round_number
+	get_tree().create_timer(0.35).timeout.connect(func() -> void:
+		if is_instance_valid(self) and is_inside_tree():
+			_feedback.show_resume_callout(resumed_round))
 	return true
 
 

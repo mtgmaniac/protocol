@@ -208,7 +208,7 @@ quit-to-menu path already routes through `reset_run`. Dev contexts resolve
 `user://dev_run.json` through DevContext exactly as the profile does, and
 verify_gate's profile-isolation fingerprint now covers `run.json` too.
 
-Shape: `{schema_version: 2, build_id, saved_at, save_seq, screen, run: {...},
+Shape: `{schema_version: 3, build_id, saved_at, save_seq, screen, run: {...},
 extra: {...}, battle_checkpoint: {...}}` (`SaveManager.build_run_payload`, plus `save_seq` stamped by
 SaveIO at write time). `screen` is where CONTINUE resumes (`battle` /
 `reward` / `evolution` / `fork` / `intercept`); `extra` is opaque to SaveManager
@@ -245,9 +245,16 @@ replays nothing (no entry counting, no battle-start relic/gear/modifier/intercep
 effects, no consumable grants, no XP reset, no entry briefing). A battle that ends
 clears its checkpoint (`clear_battle_checkpoint`), so a finished encounter can
 never be restored; a close before the first completed round, or on the victory
-modal, restarts the battle from its entry as before. Gate: `battle checkpoint`
+modal, restarts the battle from its entry as before. A successful restore shows
+a brief non-blocking `BATTLE RESUMED - ROUND N` callout in the combat zone
+(`BattleFeedback.show_resume_callout`; hyphen because m5x7 has no em dash) —
+never for a between-battle CONTINUE or a rejected checkpoint; there is no
+per-round "saved" message. Gates: `battle checkpoint`
 (scripts/checks/battle_checkpoint_gate.py — separate-process full / save / resume
-legs, plus v1-save and bad-format fallbacks).
+legs, the banner, an old-version save discarded, a bad-format checkpoint
+restarting from entry) and `checkpoint lifecycle` (every permanent battle exit —
+mid-run and final victory, defeat, abandon, rewards, new run, tutorial — leaves
+nothing restorable).
 **Accepted trade (narrowed):** a player losing a battle can reload to the start of
 the current round; the dice will not change.
 
@@ -281,20 +288,27 @@ mechanism; physics is presentation, INVARIANTS #1). The end-of-round checkpoint
 stores both owned stream positions (`PhysicsRollProvider.get_stream_states`), so a
 resumed round rolls exactly the dice the interrupted one would have: **a refresh
 cannot reroll the next dice.**
-**Known, pre-existing (not fixed here):** `run_seed` and `battle_rng_seed` are raw
-ints in `SAVED_RUN_FIELDS`, so despite the strings rule above they round-trip
-through JSON rounded (live play: a randomized `run_seed` and every derived
-`battle_rng_seed` are full 64-bit values, far beyond JSON's exact 2^53). The end-of-round checkpoint does not
-depend on them (its stream positions are exact text), but a battle restarted from
-its ENTRY after a reload derives a slightly different stream than the original.
+**The seeds follow the strings rule too** (`GameState.I64_RUN_FIELDS`: `run_seed`,
+`battle_rng_seed`; run save v3, 2026-09-21). Until v3 they were written as raw
+JSON numbers and came back rounded (every splitmix `battle_rng_seed` and a
+randomized `run_seed` exceed 2^53), so a battle restarted from its ENTRY after a
+reload rolled a different stream — different opening dice — than the original.
+**Older run saves are discarded, not migrated** (Kev 2026-09-21). Also fixed the
+same day: `start_run` captured `run_seed` from the reward RNG and then ZEROED it
+a few lines later, so every run derived the same battle seeds — with the tray
+rigged from the battle stream, identical dice in battle N of every run. Pinned by
+`save roundtrip` (_check_seed_precision: distinct non-zero seeds per run, a
+seeded run keeps its seed, and bit-exact seeds through a real JSON save at values
+up to int64 max — fails on either old bug) and by the `battle checkpoint` gate (a
+battle restarted from its entry in a fresh process has identical RNG stream
+positions at entry and rolls the same opening dice as the original play).
 
 **Write safety.** `.tmp` → copy the outgoing primary to `.bak` → rename into
 place. On load, the best of primary / `.bak` / the web mirror wins by
 **`save_seq`** (a monotonic counter, not `saved_at`, which moves backwards across
 a clock change); a copy that will not parse loses to any copy that will; all
-three unusable = clean start, no crash. `RUN_SAVE_VERSIONS_READABLE` lists the
-versions loaded as-is — v1 (pre-checkpoint) is a strict subset of v2 and is READ
-FORWARD with no checkpoint. Any other `schema_version` mismatch on `run.json`
+three unusable = clean start, no crash. A `schema_version` mismatch on `run.json` (any run
+save older than v3 included — Kev 2026-09-21, no backward compatibility)
 **discards** it and shows one menu line ("Your previous run was from an older
 build and couldn't be restored."). `save.json` never discards — `_migrate_profile`
 dispatches on version and always lands in `_merge_loaded`.
@@ -670,7 +684,7 @@ chips/headers (the primer "BURN: ..." label form). **Title Case** = ability
 names and other proper nouns wherever they appear. **Sentence case** = ability
 body text, lore, help copy, battle-log narration — and keyword mentions inline
 are ALWAYS lowercase ("applies burn", never "applies BURN" or "applies Burn").
-Hint-tier text is Sentence case game-wide ("Tap to continue >", "Tap anywhere
+Hint-tier text is Sentence case game-wide ("Continue >", "Tap anywhere
 to close"). Intel-popup titles are page headings (ALL CAPS). Protocol-action
 names (Nudge / Reroll / Set) and the resource word "Protocol" stay Title Case
 as proper nouns. Gate: `scripts/checks/caps_law.py` (in `verify_gate.py`)

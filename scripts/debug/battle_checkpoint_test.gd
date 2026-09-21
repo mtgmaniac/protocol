@@ -31,6 +31,7 @@ const CHECKPOINT_ROUND := 3   # rounds completed before the checkpoint under tes
 var _leg: String = ""
 var _battle: int = 5
 var _out_path: String = ""
+var _shot_path: String = ""   # --shot <png>: capture the resume banner (windowed runs only)
 var _record: Dictionary = {}
 var _errors: PackedStringArray = []
 
@@ -42,6 +43,7 @@ func _initialize() -> void:
 			"--leg": _leg = args[i + 1]
 			"--battle": _battle = int(args[i + 1])
 			"--out": _out_path = args[i + 1]
+			"--shot": _shot_path = args[i + 1]
 	call_deferred("_run")
 
 
@@ -61,7 +63,9 @@ func _run() -> void:
 			await _play_leg()
 		"resume":
 			await _resume_leg()
-		"resume_v1", "resume_bad":
+		"resume_old":
+			_old_save_leg()
+		"resume_bad":
 			await _fallback_leg()
 		_:
 			_errors.append("unknown --leg '%s'" % _leg)
@@ -81,6 +85,8 @@ func _play_leg() -> void:
 	var scene: Node = current_scene
 	var heroes: Array = scene.combat_manager.get_hero_states()
 	_record["battles_fought_before"] = int(sm().get_battles_fought())
+	_record["entry_streams"] = _stream_text(scene)
+	_expect(scene._feedback.resume_callout == null, "no resume banner on a fresh battle entry")
 
 	# Round 1: a plain live round (Roll -> tray -> auto targets -> resolve).
 	await _live_round(scene)
@@ -129,6 +135,24 @@ func _resume_leg() -> void:
 	_expect(bool(scene._resumed_from_checkpoint), "the battle was rebuilt from the checkpoint")
 	_expect(int(scene.turn_phase) == int(scene.PHASE_AWAIT_ROLL), "restored in the ready-to-roll state")
 	_expect(int(sm().get_battles_fought()) == stats_before, "resume did not count the encounter again")
+	# The resume banner: shown after a successful restore, real round, non-blocking.
+	var callout: Variant = scene._feedback.resume_callout
+	_expect(callout != null and is_instance_valid(callout), "the BATTLE RESUMED banner is shown")
+	if callout != null and is_instance_valid(callout):
+		var text: String = str((callout.find_children("*", "Label", true, false)[0] as Label).text)
+		_record["resume_banner"] = text
+		_expect(text == "BATTLE RESUMED - ROUND %d" % (CHECKPOINT_ROUND + 1), "banner names the restored round (got '%s')" % text)
+		_expect(int(callout.mouse_filter) == int(Control.MOUSE_FILTER_IGNORE), "the banner never blocks input")
+		if _shot_path != "":
+			await create_timer(0.3).timeout
+			root.get_viewport().get_texture().get_image().save_png(_shot_path)
+		var zone: Rect2 = scene.center_panel.get_global_rect()
+		_expect(zone.encloses(callout.get_global_rect()), "the banner sits inside the combat zone (clear of the unit cards)")
+		if scene.roll_button.visible:
+			_expect(not callout.get_global_rect().intersects(scene.roll_button.get_global_rect()), "the banner does not cover the Roll button")
+	_expect(int(scene.turn_phase) == int(scene.PHASE_AWAIT_ROLL) and not bool(scene.roll_button.disabled), "Roll stays available under the banner")
+	await create_timer(3.0).timeout
+	_expect(not is_instance_valid(callout), "the banner clears itself with no dismissal")
 	_record["checkpoint_state"] = _live_state_text(scene)
 	_record["checkpoint_run"] = _normalized_run()
 	_record["summoned_in_checkpoint"] = _count_summoned(scene)
@@ -138,13 +162,29 @@ func _resume_leg() -> void:
 	await _finish_battle(scene)
 
 
-# ── resume_v1 / resume_bad ────────────────────────────────────────────────────
-# resume_v1 : the save leg's file rewritten as a PRE-CHECKPOINT (v1) run save —
-#             schema_version 1, no battle_checkpoint block. It must still load
-#             and restart the battle from its entry.
+# ── resume_old / resume_bad ───────────────────────────────────────────────────
+# resume_old: the save leg's file stamped as an older run-save version. Old run
+#             saves are DISCARDED cleanly (no migration, Kev 2026-09-21): no
+#             CONTINUE, the one-line "older build" notice, the file gone.
 # resume_bad: the checkpoint is present but unusable (unknown FORMAT). The run
 #             must survive and the battle restart from the battle-ENTRY
-#             snapshot, not from the mid-battle run the checkpoint carried.
+#             snapshot, not from the mid-battle run the checkpoint carried —
+#             with the SAME RNG stream as the original entry.
+func _old_save_leg() -> void:
+	var save_io: GDScript = load("res://scripts/autoloads/save_io.gd")
+	var path: String = str(sm()._run_save_path)
+	var saved: Dictionary = save_io.read_dict(path)
+	if saved.is_empty():
+		_errors.append("no run save to age (run the save leg first)")
+		return
+	saved["schema_version"] = int(sm().RUN_SAVE_VERSION) - 1
+	save_io.write_dict(path, saved)
+	_expect(not sm().has_run_save(), "an older run save offers no CONTINUE")
+	_expect(sm().resume_run() == "", "an older run save does not resume")
+	_expect(str(sm().take_run_save_notice()) != "", "the player is told the old run could not be restored")
+	_expect(save_io.read_dict(path).is_empty(), "the older run save is deleted")
+
+
 func _fallback_leg() -> void:
 	var save_io: GDScript = load("res://scripts/autoloads/save_io.gd")
 	var path: String = str(sm()._run_save_path)
@@ -152,23 +192,27 @@ func _fallback_leg() -> void:
 	if saved.is_empty() or (saved.get("battle_checkpoint", {}) as Dictionary).is_empty():
 		_errors.append("no checkpointed run save to degrade (run the save leg first)")
 		return
-	if _leg == "resume_v1":
-		saved["schema_version"] = 1
-		saved.erase("battle_checkpoint")
-	else:
-		(saved["battle_checkpoint"] as Dictionary)["format"] = 999
+	(saved["battle_checkpoint"] as Dictionary)["format"] = 999
 	save_io.write_dict(path, saved)
 	var screen: String = sm().resume_run()
 	_expect(screen == "battle", "the degraded save still loads onto the battle (got '%s')" % screen)
 	if not await _enter_battle():
 		return
 	var scene: Node = current_scene
+	_record["entry_streams"] = _stream_text(scene)
 	_expect(not bool(scene._resumed_from_checkpoint), "no checkpoint restore from a %s save" % _leg)
+	await create_timer(0.6).timeout
+	_expect(scene._feedback.resume_callout == null, "no resume banner when the checkpoint was rejected")
 	_expect(int(scene._round_number) == 1, "the battle restarted at round 1 (got %d)" % int(scene._round_number))
 	_expect(gs().consumables.has("defib_spark"), "restarted from the ENTRY snapshot (the round-2 revive item is unspent again)")
 	_expect(int(scene.turn_phase) == int(scene.PHASE_AWAIT_ROLL), "restarted in the ready-to-roll state")
 	var after: Dictionary = sm().peek_run_save()
 	_expect(int(after.get("schema_version", 0)) == int(sm().RUN_SAVE_VERSION), "the battle entry re-saved at the current version")
+	# A battle restarted from its entry after a reload must roll the SAME
+	# opening dice as the original: the battle seed survives the save exactly.
+	await _roll(scene)
+	_record["round1_hero_rolls"] = scene.hero_rolls.duplicate()
+	_record["round1_enemy_rolls"] = scene.enemy_rolls.duplicate()
 	_expect((after.get("battle_checkpoint", {}) as Dictionary).is_empty(), "the re-saved entry carries no checkpoint")
 
 
@@ -194,6 +238,9 @@ func _roll(scene: Node) -> void:
 # revive consumable on `revive_target`, auto-assign targets, resolve.
 func _live_round(scene: Node, revive_target: Variant = null) -> void:
 	await _roll(scene)
+	if int(scene._round_number) == 1:
+		_record["round1_hero_rolls"] = scene.hero_rolls.duplicate()
+		_record["round1_enemy_rolls"] = scene.enemy_rolls.duplicate()
 	if revive_target is Dictionary:
 		var item: Object = root.get_node("/root/DataManager").get_item("defib_spark")
 		# The same bookkeeping _on_item_button_pressed does before a pick, so the
@@ -222,6 +269,9 @@ func _layer_temporary_state(scene: Node) -> void:
 	_kill(heroes[1])                                   # a dead hero at the checkpoint
 	cm._apply_jam(heroes[0], 9)                        # jammed die
 	heroes[0]["last_die_value"] = 17
+	if bool(heroes[2]["dead"]):                        # only a LIVING hero's die can be frozen
+		heroes[2]["dead"] = false
+		heroes[2]["current_hp"] = 20
 	cm._freeze_die_state(heroes[2], 1, "ice", true)    # frozen die (repeats 17 next roll)
 	heroes[2]["frozen_die_value"] = 17
 	for enemy in enemies:
@@ -261,6 +311,11 @@ func _finish_battle(scene: Node) -> void:
 func _live_state_text(scene: Node) -> String:
 	var cp: Dictionary = BattleCheckpoint.capture(scene, gs())
 	return str(cp.get("state", ""))
+
+
+# Both owned stream positions as exact text (JSON would round the int64s).
+func _stream_text(scene: Node) -> String:
+	return var_to_str(scene._roll_provider.get_stream_states())
 
 
 func _normalized_run() -> Dictionary:

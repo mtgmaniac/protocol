@@ -36,6 +36,17 @@ INVARIANTS #1), so the next round's dice are saveable state. `RUN_SAVE_VERSION`
 1 → 2; v1 run saves are read forward (a strict subset: no block = no
 checkpoint), not discarded. Details: TRUTH.md §Active-run save.
 
+**Follow-up ruling (Kev, 2026-09-21, final QoL pass):** the saved battle RNG is
+AUTHORITATIVE for dice faces and physics only visually resolves to them
+(confirmed). 64-bit seeds are stored as strings (run save v3). **No backward
+compatibility:** run saves older than v3 are discarded cleanly (the one-line
+"older build" notice), not migrated — superseding the read-forward above.
+CONTINUE into a restored checkpoint shows a brief `BATTLE RESUMED - ROUND X`;
+no per-round SAVED message. Checkpoint frequency stays at the ready-to-roll
+boundary; an item used after the last checkpoint may be undone by a refresh
+(accepted). Tutorial/Help interaction wording is platform-neutral (Select /
+Hold / Hold to inspect).
+
 ## UI consistency polish (Kev, 2026-09-20) — RESOLVED & IMPLEMENTED
 
 Keep current battle portrait zoom and dimensions; correct friendly framing and
