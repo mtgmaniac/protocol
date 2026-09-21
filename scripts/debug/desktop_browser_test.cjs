@@ -40,7 +40,7 @@ const failures=[]; const log=[];
   await clickPoint(await centreX(),1304); // BEGIN on a fresh profile
   await page.waitForTimeout(900); // Let the prompt's containers finish layout.
   await clickPoint(await centreX(),1244); // RUN TUTORIAL
-  await frame.waitForFunction(()=>window.__tut?.title==='THE OPERATION', null, {timeout:30000});
+  await frame.waitForFunction(()=>window.__tut?.title==='WELCOME', null, {timeout:30000});
   await page.waitForTimeout(700);
   for(const [width,height] of [[432,992],[512,992],[560,992],[1366,768],[1920,1080],[1280,450]]) {
    await page.setViewportSize({width,height}); await page.waitForTimeout(350);

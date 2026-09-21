@@ -1,6 +1,10 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
-**2026-09-20 UI consistency polish (0.9.0-demo4):** Help has four primary tabs: Basics, Units, Battle Log, Settings. Basics is the default and directly contains turn/card rules, Protocol, evolution/rewards, win/loss and Replay Tutorial; Keywords / Icon Guide is its single secondary glossary. Esc backs out of the glossary or unit inspection before closing Help. Unit rows share 96px square thumbnails, larger descriptors, and aligned HP. Battle portrait zoom is unchanged: all friendly content shifts down 6 physical pixels; only Scrap/Rust enemy content shifts down 5 pixels. The Squad Selector applies the same 6-pixel correction only to Engineer. Desktop cursors are solid native 32px cyan pointers with a 2px hotspot and hover variant. [Evidence and verification](UI_CONSISTENCY_2026-09-20.md).
+**2026-09-21 portrait facing (Kev):** heroes face right, enemies face left. Enemy source art mostly faces right, so `DataManager._mirror_enemy_portrait` mirrors every enemy portrait once at load; all screens read `enemy.portrait`, so none flips on its own. Hero art is not flipped. Portrait anchors are vertical-only, so framing is unaffected.
+
+**2026-09-21 versioning (Kev):** public-demo numbering restarts at `0.1.1` (was `0.9.0-demo4`). `project.godot` `config/version` is the only version source; players see `DEMO v0.1.1` via `PixelUI.version_label()` (title stamp and Help footer). Run saves record it as `build_id`, which is informational only and never compared on load. Release ZIPs keep dated names (`overload_protocol_web_YYYY-MM-DD.zip`).
+
+**2026-09-20 UI consistency polish (0.9.0-demo4):** Help has four primary tabs: Basics, Units, Battle Log, Settings. Basics is the default and directly contains turn/card rules, Protocol, evolution/rewards, win/loss and Replay Tutorial; Keywords / Icon Guide is its single secondary glossary. Esc backs out of the glossary or unit inspection before closing Help. Unit rows share 96px square thumbnails, larger descriptors, and aligned HP. Battle portrait zoom is unchanged: all friendly content shifts down 6 physical pixels; only Scrap/Rust enemy content shifts down 5 pixels. The Squad Selector seats every hero tile 6 physical pixels lower than the shared cover-fit (Engineer first; all heroes since 2026-09-21), position only; its site subtitle and THREATS line are 52px (was 44). Desktop cursors are solid native 32px cyan pointers with a 2px hotspot and hover variant. [Evidence and verification](UI_CONSISTENCY_2026-09-20.md).
 
 **2026-09-10, G-20:** Heroes dead at the previous battle's end return at 75% of their current maximum HP (floor, minimum 1), after max-HP modifiers and before explicit starting damage. Survivors retain full recovery; in-battle revival percentages are unchanged. Live play and the Godot sim share this rule. First-item teaching omits repeated Protocol-income copy. Local Mark acquisition, Burn application/tick and summon/revive cues respect Reduced Motion; applying Burn no longer displays immediate damage. See [verification](FINAL_FEEDBACK_2026-09-10.md). V06 exported-web/physical-device verification remains open.
 
@@ -517,7 +521,9 @@ inspection remains available. Footer geometry stays compact and icon-only.
 - Coaches use 60-design-pixel text and lighter board dimming; footer explanations
   sit in the central gap. Guided assignment gates follow the selected hero; legal
   alternative targets do not strand the lesson. The dice-waiter recovery remains.
-- **The drill opens on a framing beat** (`THE OPERATION`, 2026-09-20): goal and
+- **The drill opens on WELCOME, then a framing beat** (`THE OPERATION`, 2026-09-20;
+  swapped to second on 2026-09-21). The tutorial header reads just `TUTORIAL`
+  (`PersistentHeader.set_run_label`), with no battle count. Framing beat: goal and
   core loop before any board tour — squad of three, ten battles, a d20 per unit
   per turn deciding which ability is available. It dims the whole screen with no
   spotlight hole and gates nothing (tap to continue), and it names no jargon;

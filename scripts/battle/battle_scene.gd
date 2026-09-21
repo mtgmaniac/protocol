@@ -2531,10 +2531,11 @@ func _refresh_summary(_extra_text: String) -> void:
 func _update_battle_header() -> void:
 	var operation: OperationData = _data_manager().get_operation(_game_state().selected_operation_id) as OperationData
 	var op_name: String = operation.battle_name() if operation != null else "OP"
-	if _game_state().tutorial_mode:
-		op_name = "TRAINING"
 	PersistentHeader.set_run_active(true)
-	PersistentHeader.update_progress(_game_state().current_battle, 2 if _game_state().tutorial_mode else _game_state().total_battles, op_name)
+	if _game_state().tutorial_mode:
+		PersistentHeader.set_run_label("TUTORIAL")
+		return
+	PersistentHeader.update_progress(_game_state().current_battle, _game_state().total_battles, op_name)
 
 
 # Pre-enum string name for a phase (tutorial payloads, tests, debug logs).

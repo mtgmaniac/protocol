@@ -3,17 +3,19 @@ extends RefCounted
 # The drill rigs inputs, never damage or HP. Open beats accept normal play.
 static func core() -> Array:
 	return [
-		# Framing beat (2026-09-20, public-tester report: "did not really
+		# WELCOME opens; the framing beat follows it (Kev, 2026-09-20: the two
+		# swapped so the opening reads naturally). Framing beat (2026-09-20,
+		# public-tester report: "did not really
 		# understand the principle of the game on first feeling"). The drill used
 		# to open on a board tour — where things ARE — and the bend-the-dice
 		# premise did not land until Nudge at beat 10. This states the goal and
-		# the core loop first. No targets and no `fullscreen` is deliberate: it
+		# the core loop before the tour. No targets and no `fullscreen` is deliberate: it
 		# dims the WHOLE screen with no spotlight hole and no board claim, and
 		# the coach centres itself (see tutorial_controller._compute_holes).
 		# Jargon stays out — Protocol, bands, evolution and relics are named
 		# later, at the beat where the player first uses them.
-		{"title": "THE OPERATION", "text": "You command a squad of three through ten battles.\n\nEach turn, every unit rolls a d20. The roll decides which ability they can use. You decide how to use it. Choose your targets, manage your squad, and survive what's waiting at the end."},
 		{"fullscreen": true, "title": "WELCOME", "text": "Welcome to Overload Protocol. Let us show you around with a short training battle."},
+		{"title": "THE OPERATION", "text": "You command a squad of three through ten battles.\n\nEach turn, every unit rolls a d20. The roll decides which ability they can use. You decide how to use it. Choose your targets, manage your squad, and survive what's waiting at the end."},
 		{"fullscreen": true, "title": "TRAINING", "text": "Your squad is at the bottom. Enemies are at the top."},
 		{"targets": ["roll_button"], "text": "Press Roll in the center to roll one die for each unit.", "advance": "roll_pressed"},
 		{"hide_coach": true, "advance": "rolled"},

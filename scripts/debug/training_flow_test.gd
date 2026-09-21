@@ -30,8 +30,8 @@ func run() -> void:
 	# Lost-roll recovery returns to the roll instruction; free play must not
 	# inherit the hidden-waiter's input lock or its timeout. Beat 4 is the
 	# hide_coach waiter and beat 3 the Roll instruction before it — both moved
-	# up one when the THE OPERATION framing beat was added in front of WELCOME
-	# (2026-09-20). Pinned, not derived: if a lesson edit moves them again this
+	# up one when the THE OPERATION framing beat was added
+	# (2026-09-20; it sits second, after WELCOME). Pinned, not derived: if a lesson edit moves them again this
 	# should fail and be re-read, not silently follow.
 	first_tut.call("_recover_stalled_waiter", 4)
 	check(first_tut.get("_step") == 3, "Missing-roll recovery restores the roll instruction")

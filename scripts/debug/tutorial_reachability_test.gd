@@ -174,11 +174,12 @@ func _check_beat_counts() -> void:
 	check(_visible(core) == 18, "core drill shows 18 coach beats (got %d)" % _visible(core))
 	check(practice.size() == 12, "practice drill is 12 beats (got %d)" % practice.size())
 	check(_visible(practice) == 9, "practice drill shows 9 coach beats (got %d)" % _visible(practice))
-	var first: Dictionary = core[0]
-	check(str(first.get("title", "")) == "THE OPERATION", "the drill opens on the framing beat")
-	check(not first.has("targets") and not first.has("fullscreen"),
+	check(str((core[0] as Dictionary).get("title", "")) == "WELCOME", "the drill opens on WELCOME")
+	var framing: Dictionary = core[1]
+	check(str(framing.get("title", "")) == "THE OPERATION", "the framing beat is second, right after WELCOME")
+	check(not framing.has("targets") and not framing.has("fullscreen"),
 		"framing beat dims the whole screen with no spotlight hole")
-	check(not first.has("advance"), "framing beat advances on a tap, gates nothing")
+	check(not framing.has("advance"), "framing beat advances on a tap, gates nothing")
 
 
 func _visible(steps: Array) -> int:

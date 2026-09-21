@@ -94,6 +94,7 @@ advisory.
   screens add the safe insets to their authored edge margins at build time.
 - Public API:
   - `update_progress(battle_number, total_battles, operation_name)` — sets the run label.
+  - `set_run_label(text)` — a bare label with no battle count (the tutorial shows `TUTORIAL`).
   - `set_run_active(active)` — blanks the label when no run is active (home / run-end).
   - `bind_battle_actions(help, debug, debug2, back)` / `clear_battle_actions()` — the active
     screen binds its button handlers on `_ready` and clears them on `_exit_tree`. Unbound

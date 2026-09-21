@@ -1335,6 +1335,16 @@ class CornerBracketLayer extends Control:
 		), color, true)
 
 
+## Player-facing version text ("DEMO v0.1.1"). The number itself lives ONLY in
+## project.godot config/version (also written to run saves as build_id); this
+## adds the public-demo prefix so every stamp reads the same.
+const VERSION_LABEL_PREFIX := "DEMO v"
+
+
+static func version_label() -> String:
+	return VERSION_LABEL_PREFIX + str(ProjectSettings.get_setting("application/config/version", ""))
+
+
 static func style_label(label: Label, font_size: int, color: Color = TEXT_PRIMARY, outline_size: int = 2) -> void:
 	apply_pixel_font(label)
 	label.add_theme_font_size_override("font_size", scale_font_size(font_size))

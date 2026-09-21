@@ -190,6 +190,13 @@ func update_progress(battle_number: int, total_battles: int, operation_name: Str
 	_summary_label.text = "%s  %d/%d" % [operation_name, battle_number, total_battles]
 
 
+## A bare run label with no battle count (the tutorial reads just "TUTORIAL").
+func set_run_label(text: String) -> void:
+	if _summary_label == null:
+		return
+	_summary_label.text = text
+
+
 ## Blanks the run label when no run is active (e.g. on the main menu / home screen).
 func set_run_active(active: bool) -> void:
 	if _summary_label == null:

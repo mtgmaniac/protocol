@@ -807,7 +807,24 @@ func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 		tex = _load_texture_if_exists(mapped_path)
 	else:
 		tex = _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, file_name])
-	return _crop_to_content(tex, MATTED_ENEMY_PORTRAITS.has(file_name.get_file()))
+	return _crop_to_content(_mirror_enemy_portrait(tex), MATTED_ENEMY_PORTRAITS.has(file_name.get_file()))
+
+
+# Facing rule (Kev, 2026-09-21): heroes face right, enemies face LEFT — the two
+# sides look at each other across the board. The source art mostly faces right,
+# so every enemy portrait is mirrored once here, at load. This is the single
+# source for enemy art (battle cards, Help rows, the squad-select boss thumb all
+# read enemy.portrait), so no screen flips on its own. Hero art is untouched.
+func _mirror_enemy_portrait(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	var img: Image = tex.get_image()
+	if img == null:
+		return tex
+	if img.is_compressed():
+		img.decompress()
+	img.flip_x()
+	return ImageTexture.create_from_image(img)
 
 
 # Portrait finalisation. Three art styles coexist:

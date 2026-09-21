@@ -194,7 +194,7 @@ func _on_feedback_pressed() -> void:
 # (added directly to the scene root, not a container). If the player enters a
 # battle before it finishes, the tray dies with the menu and the warm-up's
 # start-set gate keeps it from ever running twice.
-# Bottom-corner version stamp — read from ProjectSettings (project.godot
+# Bottom-corner version stamp — PixelUI.version_label() (project.godot
 # config/version is the single source; never hardcode the string). Nominal 24 →
 # rendered 32, the smallest crisp m5x7 rung: the stamp is chrome, not
 # player-read copy, sized below the ACCENT floor by ruling (Kev 2026-07-24).
@@ -203,7 +203,7 @@ func _on_feedback_pressed() -> void:
 # floors (bottom 48 / left 24) instead of sitting under the corner radius.
 func _add_version_stamp() -> void:
 	var stamp := Label.new()
-	stamp.text = str(ProjectSettings.get_setting("application/config/version", ""))
+	stamp.text = PixelUI.version_label()
 	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.style_label(stamp, 24, PixelUI.INSPECT_TEXT_DIM, 0)
 	stamp.anchor_left = 0.0

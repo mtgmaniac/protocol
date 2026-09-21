@@ -42,7 +42,7 @@ const COUNTER_FONT := 64
 const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
                                    # (STELLAR MENAGERIE) wrap to two lines instead of clipping
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
-const ENC_SITE_FONT := 44
+const ENC_SITE_FONT := 52          # site subtitle + THREATS line; 44 -> 52 readability bump (2026-09-21)
 const PROGRESS_FONT := 44          # one metadata-tier clearance line in the carousel card (Build B)
 const LORE_FONT := 48              # one unframed flavor sentence under the carousel (Build B slot; copy lands in Build C)
 const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
@@ -1228,9 +1228,11 @@ func _cover_fit_portrait(crop: Control, tex: TextureRect) -> void:
 	if crop == null or tex == null:
 		return
 	PixelUI.cover_fit_portrait(tex, crop.size)
-	# Engineer's source canvas ends above a dark matte. The selector owns this
-	# transform, so correct it here without changing other heroes or battle cards.
-	if tex.texture != null and str(tex.texture.get_meta("portrait_key", "")) == "engineer":
+	# Selector-only headroom: every hero tile sits 6 physical px lower than the
+	# shared cover-fit. Engineer got this first (its source canvas ends above a
+	# dark matte); the rest followed on 2026-09-21 because their helmets read as
+	# pinned to the frame top. Position only, never scale; battle cards untouched.
+	if tex.texture != null and bool(tex.texture.get_meta("hero_portrait", false)):
 		var pixel_scale: float = PixelUI.physical_transform(tex).get_scale().y
 		if pixel_scale > 0.0:
 			tex.position.y += 6.0 / pixel_scale
