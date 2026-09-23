@@ -2723,12 +2723,13 @@ func transition(next_phase: int) -> void:
 
 
 func _style_roll_button_for_phase() -> void:
+	var action_font: int = 80 if _layout != null and _layout.is_landscape else CENTER_ACTION_BUTTON_FONT_SIZE
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
 			# Active primary action: ready to roll — teal primary button.
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, CENTER_ACTION_BUTTON_FONT_SIZE)
+			PixelUI.style_primary_button(roll_button, action_font)
 		PHASE_TARGETING:
 			# Hidden: targetable cards use team border color (see CompactUnitCard).
 			pass
@@ -2736,7 +2737,7 @@ func _style_roll_button_for_phase() -> void:
 			# Active primary action: close out the turn — amber (commit) variant.
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, CENTER_ACTION_BUTTON_FONT_SIZE, true)
+			PixelUI.style_primary_button(roll_button, action_font, true)
 		_:
 			# Item-pick / fallback states are also hidden; the affordance
 			# is the highlighted card the player must tap.
@@ -2766,6 +2767,8 @@ func _style_frame_icon_action_button(
 	if button == null or not is_instance_valid(button):
 		return
 	button.custom_minimum_size = min_size
+	if _layout != null and _layout.is_landscape and min_size == BOTTOM_BAR_BUTTON_SIZE:
+		button.custom_minimum_size = Vector2(160, 160)
 	# Direction-05 flat dark square. frame_modulate carries the border accent (e.g.
 	# gold for the protocol spend button); default uses the neutral DT button border.
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
@@ -3513,6 +3516,7 @@ func _apply_battle_theme() -> void:
 	if _footer_frame != null and is_instance_valid(_footer_frame):
 		_footer_frame.queue_free()
 		_footer_frame = null
+	_layout.refresh_chrome()
 
 
 func _ensure_panel_background(panel: PanelContainer) -> void:

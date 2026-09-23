@@ -27,6 +27,16 @@ const HEADER_HEIGHT := 144.0
 const BAR_PAD_X := 16.0
 const SUMMARY_FONT_SIZE := 112
 const BUTTON_SIZE := Vector2(112, 112)
+var _battle_landscape := false
+
+
+## Scoped to the active battle; its layout restores this when the scene exits.
+func set_battle_landscape(enabled: bool) -> void:
+	if _battle_landscape == enabled:
+		return
+	_battle_landscape = enabled
+	_style()
+	_apply_safe_area()
 
 ## Fired after safe-area insets are re-measured on a root size change (device
 ## rotation / fold, window resize). Live screens with edge-flush content
@@ -110,7 +120,7 @@ func _on_root_resized() -> void:
 ## the header (help menu, inspect popup, loadout) should use this, not the raw
 ## HEADER_HEIGHT constant.
 func band_height() -> float:
-	return HEADER_HEIGHT + float(PixelUI.safe_top)
+	return (192.0 if _battle_landscape else HEADER_HEIGHT) + float(PixelUI.safe_top)
 
 
 # Critical layout intent: HeaderBand GROWS by the top inset and Background stays
@@ -121,7 +131,7 @@ func band_height() -> float:
 func _apply_safe_area() -> void:
 	if _band == null or _bar == null:
 		return
-	_band.offset_bottom = HEADER_HEIGHT + float(PixelUI.safe_top)
+	_band.offset_bottom = band_height()
 	_bar.offset_top = float(PixelUI.safe_top)
 	_bar.offset_left = BAR_PAD_X + float(PixelUI.safe_left)
 	_bar.offset_right = -(BAR_PAD_X + float(PixelUI.safe_right))
@@ -165,7 +175,7 @@ func _style() -> void:
 	_background.color = PixelUI.DT_PANEL_BG
 	_divider.color = PixelUI.DT_LINE
 	PixelUI.apply_pixel_font(_summary_label)
-	_summary_label.add_theme_font_size_override("font_size", SUMMARY_FONT_SIZE)
+	_summary_label.add_theme_font_size_override("font_size", 144 if _battle_landscape else SUMMARY_FONT_SIZE)
 	_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
 	_summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	_summary_label.add_theme_constant_override("outline_size", 2)
@@ -177,7 +187,7 @@ func _style() -> void:
 	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2)
 	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK)
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
-		b.custom_minimum_size = BUTTON_SIZE
+		b.custom_minimum_size = Vector2(152, 152) if _battle_landscape else BUTTON_SIZE
 
 
 # ─────────────────────────── Public API ───────────────────────────

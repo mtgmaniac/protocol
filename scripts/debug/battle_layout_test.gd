@@ -47,6 +47,9 @@ func geometry(landscape: bool) -> void:
 	var visible_rect := root.get_visible_rect()
 	var footer: Rect2 = s.protocol_panel.get_global_rect()
 	check(s._layout.is_landscape == landscape, "selected mode")
+	var header: Node = root.get_node("PersistentHeader")
+	check(header.band_height() == (192.0 if landscape else 144.0) + PixelUI.safe_top, "scoped header height")
+	check(header._summary_label.get_theme_font_size("font_size") == (144 if landscape else 112), "header typography and restoration")
 	for views in [s.hero_card_views, s.enemy_card_views]:
 		var last := Rect2()
 		for view in views:
@@ -55,6 +58,14 @@ func geometry(landscape: bool) -> void:
 			check(visible_rect.encloses(rect), "card inside viewport: " + str(view.state.id))
 			check(rect.end.y <= footer.position.y, "card clears Protocol")
 			check(not last.intersects(rect), "cards do not overlap")
+			check(card._name_label.get_theme_font_size("font_size") == (108 if landscape else 72), "card font is scoped")
+			check(rect.encloses(card._hp_back.get_global_rect()), "HP band stays inside card")
+			if landscape:
+				for chip in card._status_row.get_children():
+					if not chip.is_queued_for_deletion():
+						if not rect.encloses(chip.get_global_rect()):
+							print("[CHIP_FIT] card=", rect, " chip=", chip.get_global_rect(), " min=", chip.get_combined_minimum_size())
+						check(rect.encloses(chip.get_global_rect()), "status chip stays inside card")
 			if landscape:
 				check(rect.size.x > 344 and rect.size.y > 570, "larger landscape card")
 				check(rect.end.x < visible_rect.size.x * 0.5 if views == s.hero_card_views else rect.position.x > visible_rect.size.x * 0.5, "correct side")
@@ -142,6 +153,19 @@ func run() -> void:
 			check(card.position.x > rest.x and is_equal_approx(card.position.y, rest.y), "hero lunge points right")
 			await create_timer(0.3).timeout
 			check(card.position.is_equal_approx(rest), "lunge restores rest position")
+			card.configure({"name":"SCRAPMASTER", "current_hp":135, "max_hp":200,
+				"cast_rank":3, "statuses":[
+					{"type":"burn", "mode":"numeric", "value":"125"},
+					{"type":"shield", "mode":"numeric", "value":"135"},
+					{"type":"roll", "mode":"numeric", "value":"123"},
+					{"type":"mark", "mode":"icon"}]})
+			await frames()
+			geometry(true)
+			check(card._cast_badge.visible, "larger cast-order badge visible")
+			check(card._status_row.get_child_count() == 4, "shared three-status plus overflow rule")
+			for label in [card._name_label, card._hp_label]:
+				var font: Font = label.get_theme_font("font")
+				check(font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x <= label.size.x, "long name / boss HP text fits")
 		# Rebuild via the real summon event consumer after an enemy death.
 		s.combat_manager.get_enemy_states()[1].dead = true
 		s._process_summon_events([{"type":"summon", "summon_name":"Scrap Drone"}])
@@ -167,6 +191,12 @@ func run() -> void:
 	check(not current_scene._layout.is_landscape, "real AUTO tutorial portrait")
 	await start(2, "facility", 1, true)
 	check(current_scene._layout.is_landscape, "real forced tutorial landscape")
+	change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+	await frames(16)
+	var header: Node = root.get_node("PersistentHeader")
+	check(header.band_height() == 144.0 + PixelUI.safe_top, "non-battle header height restored")
+	check(header._summary_label.get_theme_font_size("font_size") == 112, "non-battle header font restored")
+	check(header._help_button.custom_minimum_size == Vector2(112,112), "non-battle header button restored")
 	POLICY.dev_override = 0
 	print("[BATTLE_LAYOUT] %s: %d checks, %d failures" % ["PASS" if failures.is_empty() else "FAIL", checks, failures.size()])
 	quit(0 if failures.is_empty() else 1)

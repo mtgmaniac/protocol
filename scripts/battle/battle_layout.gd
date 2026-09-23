@@ -55,6 +55,11 @@ func refresh_hit_areas() -> void:
 		_landscape.refresh_hit_areas()
 
 
+func refresh_chrome() -> void:
+	if is_landscape:
+		_landscape.refresh_chrome()
+
+
 func get_dice_anchor_point(side: String, state_id: String) -> Vector2:
 	if _scene.dice_tray_3d == null:
 		return Vector2.INF

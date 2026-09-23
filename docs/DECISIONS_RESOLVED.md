@@ -1,5 +1,13 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Experimental battle landscape Stage B (Kev, 2026-09-23) — APPROVED
+
+Proceed from Checkpoint 2 to landscape-specific typography, status/badge sizing,
+spacing and polish. Keep shared behavior, portrait presentation, non-battle
+presentation and global viewport/stretch settings unchanged. The player feature
+flag stays false; the original checkout's unrelated 640×960 edit remains untouched.
+Do not repair the pre-existing Nudge input issue or unrelated baseline failures.
+
 ## Experimental battle landscape Stage A (Kev, 2026-09-22) — APPROVED
 
 Use the committed portrait configuration as the regression baseline. Do not touch

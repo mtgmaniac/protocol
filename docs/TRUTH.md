@@ -1,5 +1,12 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-23 landscape Stage B (Kev):** Experimental landscape battles now use
+per-instance card typography/status sizing and larger battle-only HUD, Roll and
+Protocol controls. The shared persistent header restores its original presentation
+when the battle exits. Portrait, global themes/settings and non-battle layouts
+remain unchanged; the player feature flag is still false. See
+`docs/LANDSCAPE_STAGE_B.md` for verification and remaining release checks.
+
 **2026-09-22 experimental battle layout (Kev, Stage A):** BattleLayout may select a
 thin landscape placement strategy at battle initialization, reusing the same
 BattleScene, cards, dice, result tags and controllers. `BattleLayoutPolicy` owns

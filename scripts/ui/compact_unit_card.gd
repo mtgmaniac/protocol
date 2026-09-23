@@ -121,6 +121,29 @@ var _locked_portrait_width: float = 0.0
 var _locked_portrait_size: Vector2 = Vector2.ZERO
 var _portrait_long_press: LongPressInput = null
 var _pip_icon_atlas: Texture2D = null
+var _battle_text_scale := 1.0
+
+
+## Per-instance presentation only; the same refresh/input/status builders serve
+## both layouts. Portrait instances never call this and retain their defaults.
+func apply_battle_presentation(text_scale: float) -> void:
+	if is_equal_approx(_battle_text_scale, text_scale):
+		return
+	_battle_text_scale = text_scale
+	_name_label.add_theme_font_size_override("font_size", int(CARD_NAME_FONT_SIZE * text_scale))
+	_boss_label.add_theme_font_size_override("font_size", int(48 * text_scale))
+	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
+	_boss_label.offset_top = -28.0 * text_scale
+	_boss_label.offset_bottom = -28.0 * text_scale
+	_hp_label.add_theme_font_size_override("font_size", int(CARD_HP_FONT_SIZE * text_scale))
+	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
+	_hp_fill.offset_bottom = HP_FILL_HEIGHT * text_scale
+	_hp_chip.offset_bottom = HP_FILL_HEIGHT * text_scale
+	_cast_badge.add_theme_font_size_override("font_size", int(CAST_BADGE_FONT_SIZE * text_scale))
+	_cast_badge.offset_right = CAST_BADGE_INSET + CAST_BADGE_SIZE * text_scale
+	_cast_badge.offset_bottom = CAST_BADGE_INSET + CAST_BADGE_SIZE * text_scale
+	_status_slot.offset_top = -8.0 - 68.0 * text_scale
+	_refresh()
 
 
 func _ready() -> void:
@@ -490,8 +513,8 @@ func _refresh() -> void:
 	_name_label.text = unit_name.to_upper()
 	_name_label.add_theme_color_override("font_color", _name_font_color(is_hero))
 	_boss_label.visible = is_boss
-	_name_label.offset_top = 8 if is_boss else 0
-	_name_label.offset_bottom = 8 if is_boss else 0
+	_name_label.offset_top = 8 * _battle_text_scale if is_boss else 0
+	_name_label.offset_bottom = 8 * _battle_text_scale if is_boss else 0
 	if is_boss:
 		_name_label.add_theme_color_override("font_color", PixelUI.DT_BOSS_INK)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
@@ -704,6 +727,9 @@ func _status_plate_width() -> float:
 		card_w = CARD_SIZE.x
 	# Card border inset (x2) + status-slot insets (8+8) + row margins (2+2).
 	var row_w: float = card_w - 2.0 * CARD_BORDER_WIDTH - 16.0 - 4.0
+	if _battle_text_scale != 1.0:
+		var pixel_scale: float = PixelUI.physical_transform(self).get_scale().x
+		return floorf((row_w - float(STATUS_PLATE_SLOTS - 1) * STATUS_PLATE_SEP) / float(STATUS_PLATE_SLOTS) * pixel_scale) / pixel_scale
 	return floorf((row_w - float(STATUS_PLATE_SLOTS - 1) * STATUS_PLATE_SEP) / float(STATUS_PLATE_SLOTS))
 
 
@@ -786,9 +812,9 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 	chip.add_theme_constant_override("separation", 1)
 	badge.add_child(chip)
 
-	var scale_step: float = 1.0
+	var scale_step: float = _battle_text_scale
 	if plate_w > 0.0:
-		scale_step = _status_content_scale(status, plate_w)
+		scale_step *= _status_content_scale(status, plate_w)
 	if _is_frozen_status(status):
 		chip.add_child(_make_status_icon_control(status, scale_step))
 	elif str(status.get("mode", "named")) == "icon":
@@ -808,7 +834,7 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 		# spans the plate's inner width so named text can centre + ellipsize
 		# (a zero-min HBox collapses EXPAND_FILL labels to nothing).
 		badge.custom_minimum_size = Vector2(plate_w, 0.0)
-		chip.custom_minimum_size = Vector2(plate_w - 10.0, STATUS_CHIP_HEIGHT)
+		chip.custom_minimum_size = Vector2(plate_w - 10.0, STATUS_CHIP_HEIGHT * _battle_text_scale)
 	else:
 		# Legacy free-width path (no plate given).
 		var free_min: float = STATUS_NUMERIC_MIN_WIDTH if str(status.get("mode", "named")) == "numeric" else STATUS_ICON_MIN_WIDTH
@@ -822,6 +848,14 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 # and never pixel-clips (name text ellipsizes instead).
 func _status_content_scale(status: Dictionary, plate_w: float) -> float:
 	var inner_w: float = plate_w - 10.0  # 2px border + 3px content margin per side
+	if _battle_text_scale != 1.0 and str(status.get("mode", "named")) == "numeric":
+		# Large landscape chips still share the fixed four-slot row. Measure
+		# multi-digit values in the actual font and choose one fitted size;
+		# the portrait path below retains its original 0.78 step exactly.
+		var value_size: int = int(roundf(STATUS_VALUE_FONT_SIZE * _battle_text_scale))
+		var value_width: float = PixelUI.get_pixel_font().get_string_size(_display_status_value(status), HORIZONTAL_ALIGNMENT_LEFT, -1, value_size).x
+		var scaled_width: float = STATUS_ICON_TEXTURE_SIZE * _battle_text_scale + 1.0 + value_width
+		return minf(STATUS_CONTENT_SCALE_STEP, (inner_w - 4.0) / scaled_width) if scaled_width > inner_w else 1.0
 	var natural_w: float = 0.0
 	if _is_frozen_status(status):
 		natural_w = STATUS_ICON_TEXTURE_SIZE
@@ -831,7 +865,7 @@ func _status_content_scale(status: Dictionary, plate_w: float) -> float:
 	else:
 		var text: String = str(status.get("name", ""))
 		natural_w = text.length() * STATUS_NAME_FONT_SIZE * STATUS_GLYPH_WIDTH_FACTOR
-	return STATUS_CONTENT_SCALE_STEP if natural_w > inner_w else 1.0
+	return STATUS_CONTENT_SCALE_STEP if natural_w * _battle_text_scale > inner_w else 1.0
 
 
 func _make_status_icon_control(status: Dictionary, scale_step: float = 1.0) -> Control:
@@ -867,11 +901,11 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 		label.text = "FR"
 	else:
 		label.text = str(status.get("icon", _status_icon_for_type(str(status.get("type", "")))))
-	label.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH, 0)
+	label.custom_minimum_size = Vector2(STATUS_ICON_MIN_WIDTH * _battle_text_scale, 0)
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", STATUS_ICON_FONT_SIZE)
+	label.add_theme_font_size_override("font_size", int(STATUS_ICON_FONT_SIZE * _battle_text_scale))
 	label.add_theme_color_override("font_color", PixelUI.GOLD_ACCENT)
 	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
 	label.add_theme_constant_override("outline_size", 0)
@@ -942,7 +976,7 @@ func _make_status_overflow(hidden_count: int, plate_w: float = 0.0) -> Label:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	if plate_w > 0.0:
 		label.custom_minimum_size = Vector2(plate_w, 0)
-	_apply_label(label, STATUS_NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 0)
+	_apply_label(label, int(STATUS_NAME_FONT_SIZE * _battle_text_scale), PixelUI.GOLD_ACCENT, 0)
 	label.gui_input.connect(_on_status_overflow_input)
 	return label
 
