@@ -847,6 +847,11 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 			_drift_pip(bar_from, target_card, Color(0.95, 0.76, 0.28, 1.0), "-%d" % int(event.get("amount", 0)))
 		"hijack":
 			var tray_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y * 0.62)
+			if _scene._layout.is_landscape:
+				tray_from = _scene._layout.get_combat_zone_rect().get_center()
+				var source: Vector2 = _scene.dice_tray_3d.get_die_screen_position(str(event.get("side", "hero")), str(event.get("target_id", "")))
+				if source != Vector2.INF:
+					tray_from = source
 			_drift_pip(tray_from, target_card, Color(0.95, 0.45, 0.30, 1.0), EffectPip.keyword_code("hijack", "HJ"))
 		"jam":
 			if _scene.dice_tray_3d != null:
@@ -1281,10 +1286,12 @@ func _lunge(card: Control, side: String) -> void:
 		return
 	if card == null or not is_instance_valid(card):
 		return
-	var dir_y: float = -1.0 if side == "hero" else 1.0
+	var direction := Vector2(0.0, -1.0 if side == "hero" else 1.0)
+	if _scene._layout.is_landscape:
+		direction = Vector2(1.0 if side == "hero" else -1.0, 0.0)
 	var base: Vector2 = _fx_rest_position(card)
 	var tween: Tween = create_tween()
-	tween.tween_property(card, "position", base + Vector2(0.0, dir_y * LUNGE_DIST), LUNGE_OUT) \
+	tween.tween_property(card, "position", base + direction * LUNGE_DIST, LUNGE_OUT) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card, "position", base, LUNGE_BACK) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

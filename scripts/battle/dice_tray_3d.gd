@@ -94,6 +94,36 @@ var _bounds_half_width: float = TRAY_HALF_WIDTH
 var _bounds_min_z: float = -TRAY_HALF_DEPTH
 var _bounds_max_z: float = TRAY_HALF_DEPTH
 var _tray_bodies: Dictionary = {}
+## Optional placement provider. Invalid for the unchanged portrait path.
+var result_anchor_provider: Callable
+var _landscape_projection := false
+var _last_landscape_size := Vector2.ZERO
+
+
+func configure_landscape_projection() -> void:
+	if _camera == null:
+		return
+	_landscape_projection = true
+	# Three vertical slots plus their existing result tags; physical die radius,
+	# materials, toss, outcomes and animation timing remain shared.
+	_camera.size = 12.5
+	_update_world_bounds()
+	if not size.is_equal_approx(_last_landscape_size):
+		_last_landscape_size = size
+		call_deferred("_refresh_landscape_result_positions")
+
+
+func _refresh_landscape_result_positions() -> void:
+	if _is_rolling or _dice_root == null or not _landscape_projection:
+		return
+	var entries: Array = _get_result_entries_for_dice(_dice_root.get_children())
+	var origins: Dictionary = _get_non_overlapping_result_origins(entries)
+	for result in entries:
+		var die: RigidBody3D = result.die
+		var origin: Vector3 = origins.get(die.get_instance_id(), die.position)
+		origin.y = die.position.y
+		die.position = origin
+		die.set_meta("assigned_result_origin", origin)
 
 # ── Shared material bank ──────────────────────────────────────────────────────
 # Every dice material comes from this STATIC cache, keyed by role + colour/zone.
@@ -645,6 +675,8 @@ func _finish_roll(dice: Array) -> void:
 
 	_is_rolling = false
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	if _landscape_projection:
+		_refresh_landscape_result_positions()
 	if dice_audio != null:
 		dice_audio.on_roll_finished()
 	# One-shot: the tutorial rig covers exactly the roll it was set for.
@@ -742,6 +774,10 @@ func _get_non_overlapping_result_origins(result_entries: Array) -> Dictionary:
 
 
 func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
+	if _landscape_projection:
+		origin.x = clampf(origin.x, -_bounds_half_width + DIE_RADIUS, _bounds_half_width - DIE_RADIUS)
+		origin.z = clampf(origin.z, _bounds_min_z + DIE_RADIUS, _bounds_max_z - DIE_RADIUS)
+		return origin
 	var outer_min_x: float = -TRAY_HALF_WIDTH + RESULT_OUTER_MARGIN - RESULT_SIDE_OVERFLOW
 	var outer_max_x: float = TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN + RESULT_SIDE_OVERFLOW
 	var front_overflow: float = RESULT_HERO_BOTTOM_OVERFLOW if side == "hero" else RESULT_ENEMY_BOTTOM_OVERFLOW
@@ -753,6 +789,10 @@ func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
 func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -> Vector3:
 	var entry: Dictionary = result_entry.get("entry", {}) as Dictionary
 	var side: String = _get_result_entry_side(result_entry)
+	if result_anchor_provider.is_valid():
+		var live_anchor: Vector2 = result_anchor_provider.call(side, str(entry.get("id", "")))
+		if live_anchor != Vector2.INF:
+			return _clamp_result_origin(_anchor_to_world_origin(live_anchor, fallback_origin), side)
 	if entry.has("result_anchor"):
 		var anchor_variant: Variant = entry.get("result_anchor")
 		if anchor_variant is Vector2:

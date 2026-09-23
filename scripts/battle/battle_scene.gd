@@ -5,17 +5,17 @@ extends Control
 # TutorialController can gate coachmarks on the player's real actions.
 signal tutorial_event(event: StringName, payload: Dictionary)
 
-@onready var board: VBoxContainer = %Board
+@onready var board: BoxContainer = %Board
 @onready var background: TextureRect = $Background
 @onready var hero_panel: PanelContainer = %HeroPanel
 @onready var hero_scroll: VBoxContainer = %HeroScroll
 @onready var hero_dice_row: HBoxContainer = %HeroDiceRow
 @onready var hero_readouts: HBoxContainer = %HeroReadouts
-@onready var hero_cards: HBoxContainer = %HeroCards
+@onready var hero_cards: BoxContainer = %HeroCards
 @onready var center_panel: PanelContainer = %CenterPanel
 @onready var enemy_panel: PanelContainer = %EnemyPanel
 @onready var enemy_scroll: VBoxContainer = %EnemyScroll
-@onready var enemy_cards: HBoxContainer = %EnemyCards
+@onready var enemy_cards: BoxContainer = %EnemyCards
 @onready var enemy_readouts: HBoxContainer = %EnemyReadouts
 @onready var enemy_dice_row: HBoxContainer = %EnemyDiceRow
 @onready var protocol_bar: ProgressBar = %ProtocolBar
@@ -311,9 +311,9 @@ func _ready() -> void:
 	PersistentHeader.safe_area_changed.connect(_apply_safe_area)
 	_protocol.build_footer_buttons()
 	# Portrait mode: order is Enemy (top) → Center → Hero (bottom)
-	board.move_child(enemy_panel, 0)
+	board.move_child(hero_panel if _layout.is_landscape else enemy_panel, 0)
 	board.move_child(center_panel, 1)
-	board.move_child(hero_panel, 2)
+	board.move_child(enemy_panel if _layout.is_landscape else hero_panel, 2)
 	Callable(_layout, "stabilize_board_layout").call_deferred()
 	if _game_state().tutorial_mode:
 		_spawn_tutorial_controller.call_deferred()
@@ -1504,10 +1504,13 @@ func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, si
 		# die for enemies, below for heroes), so a long-press anywhere across the die + its
 		# pip line opens the inspect — one rectangle, no tiny per-pip targets.
 		var die_rect := Rect2(screen_position - Vector2(90.0, 90.0) * 0.5, Vector2(90.0, 90.0))
+		if _layout.is_landscape:
+			die_rect = dice_tray_3d.get_die_screen_bounds(side, unit_id)
 		var readout_rect: Rect2 = _get_unit_readout_rect(side, unit_id)
 		var overlay_rect: Rect2 = die_rect.merge(readout_rect) if readout_rect.size != Vector2.ZERO else die_rect
 		var overlay := ColorRect.new()
 		overlay.name = "DieTooltip_%s_%s" % [side, unit_id]
+		overlay.set_meta("layout_die", [side, unit_id])
 		overlay.color = Color(1.0, 1.0, 1.0, 0.0)
 		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 		overlay.custom_minimum_size = overlay_rect.size
@@ -1526,6 +1529,7 @@ func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, si
 # repositioned every frame. Empty dice get no plate.
 func _process(_delta: float) -> void:
 	_sync_die_tags()
+	_layout.refresh_hit_areas()
 
 
 func _ensure_die_tag_layer() -> void:
@@ -1743,6 +1747,9 @@ func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
 # The screen rect of a unit's effect-pip readout (the AbilityReadout owned by its view),
 # used to size the die hit-area so it spans the pips. Empty Rect2 if not ready.
 func _get_unit_readout_rect(side: String, unit_id: String) -> Rect2:
+	if _layout.is_landscape:
+		var tag: Control = get_die_tag_plate(side, unit_id)
+		return tag.get_global_rect() if tag != null else Rect2()
 	var views: Array = hero_card_views if side == "hero" else enemy_card_views
 	for view_variant in views:
 		var view: Dictionary = view_variant

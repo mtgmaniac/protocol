@@ -1,5 +1,14 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-22 experimental battle layout (Kev, Stage A):** BattleLayout may select a
+thin landscape placement strategy at battle initialization, reusing the same
+BattleScene, cards, dice, result tags and controllers. `BattleLayoutPolicy` owns
+`LANDSCAPE_BATTLE_ENABLED = false`; production AUTO remains portrait. A session-only
+override is exposed only in the unlocked DEBUG menu and ignored in release.
+Tutorial AUTO remains portrait; FORCE LANDSCAPE is a development test exception.
+Project settings and non-battle presentation are unchanged. See
+`docs/LANDSCAPE_STAGE_A.md` for selection, verification and the Checkpoint 2 scope.
+
 **2026-09-21 run-end audio:** the final run summary plays `victory.wav` after a full operation clear and `failure.wav` after a squad wipe. These are run-result cues, not per-battle stingers.
 
 **2026-09-21 portrait facing (Kev):** heroes face right, enemies face left. Enemy source art mostly faces right, so `DataManager._mirror_enemy_portrait` mirrors every enemy portrait once at load; all screens read `enemy.portrait`, so none flips on its own. Hero art is not flipped. Portrait anchors are vertical-only, so framing is unaffected.

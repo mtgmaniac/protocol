@@ -1,5 +1,18 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Experimental battle landscape Stage A (Kev, 2026-09-22) — APPROVED
+
+Use the committed portrait configuration as the regression baseline. Do not touch
+the separate working tree's uncommitted viewport change. Keep current non-battle
+presentation and all global viewport/stretch settings unchanged. Reuse one battle
+scene, shared components, bindings and behavior; only layout/sizing varies.
+Landscape remains behind a default-false feature flag, with a debug-only session
+override. AUTO tutorials stay portrait; explicit FORCE LANDSCAPE may test them.
+The existing 47 passes / 6 failures are the baseline: do not repair unrelated
+failures. Stop at Checkpoint 2 with portrait comparisons and both desktop captures,
+before Stage B typography/badge polish. This scoped experiment is an explicit
+exception to INVARIANTS #11's earlier prohibition on an orientation option.
+
 ## Web demo QoL: branded loader + end-of-round battle checkpoints (Kev, 2026-09-21) — RESOLVED & IMPLEMENTED
 
 **Ruling (transcribed from Kev's request).** Two focused web-demo improvements,

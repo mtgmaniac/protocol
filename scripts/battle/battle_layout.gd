@@ -28,6 +28,10 @@ const CENTER_ZONE_HEIGHT := 540.0
 const RAIL_ROW_GAP_PX := 1.0
 const RAIL_SLOT_GAP_PX := 2.0
 
+const POLICY := preload("res://scripts/battle/battle_layout_policy.gd")
+const LANDSCAPE_LAYOUT := preload("res://scripts/battle/landscape_battle_layout.gd")
+var is_landscape := false
+var _landscape: RefCounted
 var _scene: Control
 
 var _combat_zone_frame: PanelContainer = null
@@ -39,7 +43,16 @@ var _combat_zone_hero_slots: Array = []
 
 func setup(scene: Control) -> void:
 	_scene = scene
+	is_landscape = POLICY.select_for_battle(scene)
+	if is_landscape:
+		_landscape = LANDSCAPE_LAYOUT.new()
+		_landscape.setup(scene)
 	_scene.resized.connect(queue_board_layout_refresh)
+
+
+func refresh_hit_areas() -> void:
+	if is_landscape:
+		_landscape.refresh_hit_areas()
 
 
 func get_dice_anchor_point(side: String, state_id: String) -> Vector2:
@@ -49,6 +62,8 @@ func get_dice_anchor_point(side: String, state_id: String) -> Vector2:
 	var combat_zone: Rect2 = get_combat_zone_rect()
 	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		return Vector2.INF
+	if is_landscape:
+		return _landscape.dice_anchor(side, state_id, combat_zone)
 	var lane: HBoxContainer = _combat_zone_hero_lane if side == "hero" else _combat_zone_enemy_lane
 	if lane == null or not is_instance_valid(lane) or not lane.is_inside_tree():
 		return Vector2.INF
@@ -120,6 +135,8 @@ func _inset_tray_rect(r: Rect2) -> Rect2:
 func get_combat_zone_rect() -> Rect2:
 	if _scene.dice_tray_3d == null:
 		return Rect2()
+	if is_landscape:
+		return _inset_tray_rect(_scene.center_panel.get_global_rect())
 	var enemy_readout_rect: Rect2 = get_enemy_result_row_rect()
 	var enemy_card_rect: Rect2 = get_card_group_rect(_scene.enemy_card_views)
 	var friendly_readout_rect: Rect2 = get_friendly_result_row_rect()
@@ -152,7 +169,10 @@ func layout_dice_from_combat_zone() -> void:
 	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		return
 	_scene.dice_tray_3d.set_combat_zone_rect(combat_zone)
-	_position_zone_dividers(combat_zone)
+	if is_landscape:
+		_scene.dice_tray_3d.configure_landscape_projection()
+	else:
+		_position_zone_dividers(combat_zone)
 
 
 # Pin the header/footer divider lines exactly DIVIDER_GAP px from the card rows, so
@@ -217,6 +237,10 @@ func refresh_board_layout() -> void:
 		return
 	if _scene.hero_scroll == null or _scene.enemy_scroll == null:
 		return
+	if is_landscape:
+		_landscape.refresh()
+		call_deferred("layout_dice_from_combat_zone")
+		return
 	# Safe area — Build #2 RULING: the dice field absorbs the ENTIRE inset
 	# budget (cutout top + gesture bottom). The center band gives up exactly
 	# safe_top + safe_bottom; the rails keep their authored floors, so on a
@@ -243,7 +267,7 @@ func refresh_board_layout() -> void:
 	call_deferred("layout_dice_from_combat_zone")
 
 
-func apply_rail_layout(views: Array, cards_row: HBoxContainer, readouts_row: HBoxContainer, dice_row: HBoxContainer) -> void:
+func apply_rail_layout(views: Array, cards_row: BoxContainer, readouts_row: BoxContainer, dice_row: BoxContainer) -> void:
 	var slot_width: float = get_logical_slot_width(cards_row)
 	var card_size := Vector2(minf(slot_width, COMPACT_CARD_WIDTH_PX), COMPACT_CARD_HEIGHT_PX)
 	for view_variant in views:
@@ -267,7 +291,7 @@ func apply_rail_layout(views: Array, cards_row: HBoxContainer, readouts_row: HBo
 			anchor.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
-func get_logical_slot_width(row: HBoxContainer) -> float:
+func get_logical_slot_width(row: BoxContainer) -> float:
 	var gap: float = float(row.get_theme_constant("separation"))
 	var available_width: float = maxf(row.size.x, 320.0)
 	var slot_count: int = maxi(row.get_child_count(), 1)
@@ -403,6 +427,10 @@ func sync_combat_zone_frame(combat_zone: Rect2) -> void:
 	_combat_zone_frame.visible = true
 	_combat_zone_frame.global_position = combat_zone.position
 	_combat_zone_frame.size = combat_zone.size
+	if is_landscape:
+		_combat_zone_enemy_lane.hide()
+		_combat_zone_hero_lane.hide()
+		return
 	var enemy_readout_rect: Rect2 = get_enemy_result_row_rect()
 	var hero_readout_rect: Rect2 = get_friendly_result_row_rect()
 	var button_rect: Rect2 = _scene.roll_button.get_global_rect() if _scene.roll_button != null and is_instance_valid(_scene.roll_button) else Rect2()
@@ -450,7 +478,7 @@ func _settled_die_half_height() -> float:
 	return measured if measured > 1.0 else DICE_VISUAL_HALF_HEIGHT_PX
 
 
-func build_row_slots(row: HBoxContainer, count: int) -> Array:
+func build_row_slots(row: BoxContainer, count: int) -> Array:
 	var slots: Array = []
 	row.add_theme_constant_override("separation", RAIL_SLOT_GAP_PX)
 	var slot_count: int = maxi(count, 1)

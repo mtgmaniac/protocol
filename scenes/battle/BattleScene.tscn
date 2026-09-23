@@ -60,7 +60,8 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="Board" type="VBoxContainer" parent="Content/VBox"]
+[node name="Board" type="BoxContainer" parent="Content/VBox"]
+vertical = true
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -90,7 +91,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="EnemyCards" type="HBoxContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyScroll"]
+[node name="EnemyCards" type="BoxContainer" parent="Content/VBox/Board/EnemyPanel/EnemyMargin/EnemyScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 380)
@@ -200,7 +201,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 2
 
-[node name="HeroCards" type="HBoxContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroScroll"]
+[node name="HeroCards" type="BoxContainer" parent="Content/VBox/Board/HeroPanel/HeroMargin/HeroScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 380)

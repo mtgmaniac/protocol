@@ -787,6 +787,20 @@ func _build_settings(host: VBoxContainer) -> void:
 			var overlay_on: bool = sm != null and bool(sm.get_setting("safe_area_overlay", overlay_default))
 			var row: HBoxContainer = _add_toggle_row(host, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
 			row.name = "DebugOverlayToggleRow"
+			var policy = preload("res://scripts/battle/battle_layout_policy.gd")
+			host.add_child(_make_label("BATTLE LAYOUT (NEXT BATTLE)", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+			var layout_group := ButtonGroup.new()
+			for mode in ["AUTO", "FORCE PORTRAIT", "FORCE LANDSCAPE"]:
+				var index: int = ["AUTO", "FORCE PORTRAIT", "FORCE LANDSCAPE"].find(mode)
+				var button := _make_dev_button(mode, false)
+				button.name = "BattleLayout%d" % index
+				button.toggle_mode = true
+				button.button_group = layout_group
+				button.button_pressed = policy.dev_override == index
+				button.pressed.connect(func() -> void:
+					policy.dev_override = index
+				)
+				host.add_child(button)
 
 	# Version footer — PixelUI.version_label() (project.godot config/version is
 	# the single source; never hardcode the string). Nominal 24 → rendered 32,
