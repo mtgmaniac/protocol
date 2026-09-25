@@ -1,5 +1,20 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Experimental battle landscape Stage B2 (Kev, 2026-09-23) — APPROVED
+
+Stage B typography approved. Updated request (2026-09-25): rearrange the same
+CompactUnitCard as a horizontal plate with an aspect-preserving portrait and a
+separate information/status column; compare horizontal and vertical HP bars.
+Hero readouts dock left of dice, enemy readouts right, vertically centered.
+Cap and center Protocol with substantially larger grouped action buttons.
+Enlarge landscape dice/numerals/readouts about
+1.6–2×, reduce the gap between dice columns, center/clear the Protocol label,
+contain status overflow, and consolidate landscape sizing in one style table.
+Capture squad select, rewards, loadout, help and run end at 960×600 and 1280×720;
+report cramped presentation without changing those screens. Keep portrait,
+global viewport/settings, shared behavior and the default-false flag unchanged.
+Stop with screenshots for review. Original dirty checkout remains untouched.
+
 ## Experimental battle landscape Stage B (Kev, 2026-09-23) — APPROVED
 
 Proceed from Checkpoint 2 to landscape-specific typography, status/badge sizing,

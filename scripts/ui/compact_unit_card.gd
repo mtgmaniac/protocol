@@ -122,6 +122,7 @@ var _locked_portrait_size: Vector2 = Vector2.ZERO
 var _portrait_long_press: LongPressInput = null
 var _pip_icon_atlas: Texture2D = null
 var _battle_text_scale := 1.0
+var _battle_plate: RefCounted
 
 
 ## Per-instance presentation only; the same refresh/input/status builders serve
@@ -189,6 +190,16 @@ func configure(data: Dictionary) -> void:
 	unit_data = data.get("unit_data", unit_data) as Resource
 	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
 	_refresh()
+
+
+## Reuses every existing control, callback and HP animation. Comparison variant
+## is session/harness-only and never changes the portrait component path.
+func apply_horizontal_battle_plate(vertical_hp: bool = false) -> void:
+	if _battle_plate == null:
+		_battle_plate = preload("res://scripts/battle/landscape_card_layout.gd").new()
+		_battle_plate.setup(self)
+	_battle_plate._vertical_hp = vertical_hp
+	_battle_plate.refresh()
 
 
 func apply_battle_layout(layout_size: Vector2) -> void:
@@ -545,6 +556,8 @@ func _refresh() -> void:
 		_populate_action_pips()
 	_populate_statuses()
 	_layout_preview_overlays()
+	if _battle_plate != null:
+		_battle_plate.call_deferred("refresh")
 
 
 # Animated HP bar. `displayed` is the HP shown right now (steps down one hit at a
@@ -636,6 +649,12 @@ func _update_portrait_rect_transform() -> void:
 	var fh: float = _portrait_crop.size.y
 	if fw < 2.0 or fh < 2.0:
 		return
+	if _battle_plate != null:
+		# Full native-aspect artwork in the landscape plate, without portrait's
+		# cover crop or seating offset. The same texture and input node remain.
+		_portrait_rect.position = Vector2.ZERO
+		_portrait_rect.size = Vector2(fw, fh)
+		return
 	PixelUI.cover_fit_portrait(_portrait_rect, Vector2(fw, fh))
 	# Keep the shared zoom/aspect intact. The old eight-pixel upward bias
 	# exposes Engineer's source-art mat below its torso. Seat all friendly
@@ -722,6 +741,10 @@ func _make_action_pip(effect: Dictionary) -> PanelContainer:
 # can cross the card boundary. Content scales down ONE step when its natural
 # width exceeds the plate; name text ellipsizes rather than pixel-clipping.
 func _status_plate_width() -> float:
+	if _battle_plate != null:
+		var available: float = _status_slot.size.x - 4.0 - float(STATUS_PLATE_SLOTS - 1) * STATUS_PLATE_SEP
+		var physical: float = PixelUI.physical_transform(self).get_scale().x
+		return floorf(available / float(STATUS_PLATE_SLOTS) * physical) / physical
 	var card_w: float = _locked_layout_size.x if _locked_layout_size.x > 0.0 else size.x
 	if card_w <= 2.0:
 		card_w = CARD_SIZE.x
@@ -976,7 +999,15 @@ func _make_status_overflow(hidden_count: int, plate_w: float = 0.0) -> Label:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	if plate_w > 0.0:
 		label.custom_minimum_size = Vector2(plate_w, 0)
-	_apply_label(label, int(STATUS_NAME_FONT_SIZE * _battle_text_scale), PixelUI.GOLD_ACCENT, 0)
+	var overflow_font: int = int(STATUS_NAME_FONT_SIZE * _battle_text_scale)
+	if _battle_text_scale != 1.0 and plate_w > 0.0:
+		# Fix the fourth slot to the same width as the chips. Label minimum
+		# width must not expand the row when +N grows with battle typography.
+		label.clip_text = true
+		var text_width: float = PixelUI.get_pixel_font().get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, overflow_font).x
+		if text_width > plate_w:
+			overflow_font = int(floorf(overflow_font * plate_w / text_width))
+	_apply_label(label, overflow_font, PixelUI.GOLD_ACCENT, 0)
 	label.gui_input.connect(_on_status_overflow_input)
 	return label
 

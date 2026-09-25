@@ -1655,18 +1655,23 @@ func _estimate_tag_content_width(effects: Array, target: String, value_font: int
 # The slot width is fixed per die; content never overflows it sideways.
 func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	var tag_size: Vector2 = _die_tag_size()
-	var slot_w: float = round(_die_tag_diameter * DIE_TAG_SLOT_WIDTH_RATIO)
+	var slot_w: float = round(_die_tag_diameter * _layout.presentation("tag_slot_width_ratio", DIE_TAG_SLOT_WIDTH_RATIO))
 	var base_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
 	var value_font: int = base_font
 	var profile: Dictionary = _tag_pip_profile(value_font)
 	var rows: Array = [{"effects": effects, "target": target}]
 	if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w:
-		# Tier 2: one-step shrink, still a single line.
-		value_font = int(round(base_font * DIE_TAG_SHRINK_STEP))
-		profile = _tag_pip_profile(value_font)
-		if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w and effects.size() >= 2:
-			# Tier 3: wrap the shrunk content onto two lines.
+		# Side-docked landscape tags can use two full-size lines first. The
+		# portrait tiers and shared pip builder remain unchanged.
+		if _layout.presentation("tag_wrap_before_shrink", false) and effects.size() >= 2:
 			rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
+		var needs_shrink: bool = rows.any(func(row): return _estimate_tag_content_width(row.effects, row.target, value_font, profile) > slot_w)
+		if needs_shrink:
+			value_font = int(round(base_font * DIE_TAG_SHRINK_STEP))
+			profile = _tag_pip_profile(value_font)
+			rows = [{"effects": effects, "target": target}]
+			if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w and effects.size() >= 2:
+				rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
 
 	var row_h: float = round(tag_size.y * (1.0 if value_font == base_font else DIE_TAG_SHRINK_STEP))
 	var plate: Panel = Panel.new()
@@ -1734,6 +1739,9 @@ func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
 		return
 	var tag_size: Vector2 = plate.custom_minimum_size
 	plate.size = tag_size
+	if _layout.is_landscape:
+		_layout.position_landscape_tag(plate, side, die_bounds)
+		return
 	var center_x: float = die_bounds.position.x + die_bounds.size.x * 0.5
 	var x: float = center_x - tag_size.x * 0.5
 	var y: float
@@ -2723,7 +2731,7 @@ func transition(next_phase: int) -> void:
 
 
 func _style_roll_button_for_phase() -> void:
-	var action_font: int = 80 if _layout != null and _layout.is_landscape else CENTER_ACTION_BUTTON_FONT_SIZE
+	var action_font: int = _layout.presentation("action_font", CENTER_ACTION_BUTTON_FONT_SIZE) if _layout != null else CENTER_ACTION_BUTTON_FONT_SIZE
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
 			# Active primary action: ready to roll — teal primary button.
@@ -2767,8 +2775,8 @@ func _style_frame_icon_action_button(
 	if button == null or not is_instance_valid(button):
 		return
 	button.custom_minimum_size = min_size
-	if _layout != null and _layout.is_landscape and min_size == BOTTOM_BAR_BUTTON_SIZE:
-		button.custom_minimum_size = Vector2(160, 160)
+	if _layout != null and min_size == BOTTOM_BAR_BUTTON_SIZE:
+		button.custom_minimum_size = _layout.presentation("protocol_button_size", min_size)
 	# Direction-05 flat dark square. frame_modulate carries the border accent (e.g.
 	# gold for the protocol spend button); default uses the neutral DT button border.
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate

@@ -55,6 +55,14 @@ func refresh_hit_areas() -> void:
 		_landscape.refresh_hit_areas()
 
 
+func presentation(key: String, portrait_default: Variant) -> Variant:
+	return _landscape.STYLE.get(key, portrait_default) if is_landscape else portrait_default
+
+
+func position_landscape_tag(plate: Control, side: String, bounds: Rect2) -> void:
+	_landscape.position_tag(plate, side, bounds)
+
+
 func refresh_chrome() -> void:
 	if is_landscape:
 		_landscape.refresh_chrome()

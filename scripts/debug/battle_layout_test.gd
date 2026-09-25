@@ -58,16 +58,21 @@ func geometry(landscape: bool) -> void:
 			check(visible_rect.encloses(rect), "card inside viewport: " + str(view.state.id))
 			check(rect.end.y <= footer.position.y, "card clears Protocol")
 			check(not last.intersects(rect), "cards do not overlap")
-			check(card._name_label.get_theme_font_size("font_size") == (108 if landscape else 72), "card font is scoped")
-			check(rect.encloses(card._hp_back.get_global_rect()), "HP band stays inside card")
+			var card_font: int = card._name_label.get_theme_font_size("font_size")
+			check(card_font >= 88 and card_font <= 108 if landscape else card_font == 72, "card font is scoped and fits")
+			for corner in [Vector2.ZERO, Vector2(card._hp_back.size.x, 0), card._hp_back.size, Vector2(0, card._hp_back.size.y)]:
+				check(rect.grow(1).has_point(card._hp_back.get_global_transform() * corner), "HP band stays inside card in either orientation")
 			if landscape:
 				for chip in card._status_row.get_children():
 					if not chip.is_queued_for_deletion():
 						if not rect.encloses(chip.get_global_rect()):
 							print("[CHIP_FIT] card=", rect, " chip=", chip.get_global_rect(), " min=", chip.get_combined_minimum_size())
-						check(rect.encloses(chip.get_global_rect()), "status chip stays inside card")
+						check(card._status_slot.get_global_rect().grow(1).encloses(chip.get_global_rect()), "status chip including overflow stays inside its row")
 			if landscape:
-				check(rect.size.x > 344 and rect.size.y > 570, "larger landscape card")
+				check(not card._portrait_frame.get_global_rect().intersects(card._status_slot.get_global_rect()), "statuses beside portrait")
+				var source_aspect: float = float(card.portrait.get_width()) / card.portrait.get_height()
+				check(absf(card._portrait_rect.size.aspect() - source_aspect) < 0.015, "native portrait aspect")
+				check(rect.size.x > rect.size.y and rect.size.y > 500, "horizontal landscape plate")
 				check(rect.end.x < visible_rect.size.x * 0.5 if views == s.hero_card_views else rect.position.x > visible_rect.size.x * 0.5, "correct side")
 			last = rect
 
@@ -123,6 +128,33 @@ func run() -> void:
 			var zone: Rect2 = s._layout.get_combat_zone_rect()
 			for overlay in s._die_tooltip_overlays:
 				check(zone.encloses(overlay.get_global_rect()), "die + tag hit area stays in center")
+			for dimensions in [Vector2i(960,600), Vector2i(1280,720), Vector2i(1920,1080)]:
+				root.size = dimensions
+				await create_timer(0.4).timeout
+				geometry(true)
+				zone = s._layout.get_combat_zone_rect()
+				var occupied: Array[Rect2] = []
+				for views in [s.hero_card_views, s.enemy_card_views]:
+					var side: String = "hero" if views == s.hero_card_views else "enemy"
+					for view in views:
+						var bounds: Rect2 = s.dice_tray_3d.get_die_screen_bounds(side, str(view.state.id))
+						var tag: Control = s.get_die_tag_plate(side, str(view.state.id))
+						var tag_rect: Rect2 = tag.get_global_rect()
+						check(tag_rect.end.x <= bounds.position.x if side == "hero" else tag_rect.position.x >= bounds.end.x, "readout docks outside die")
+						check(absf(tag_rect.get_center().y - bounds.get_center().y) < 4, "readout centered vertically")
+						var union := bounds.merge(tag_rect)
+						if not zone.grow(1).encloses(union):
+							print("[DIE_FIT] ", dimensions, " ", side, " zone=", zone, " union=", union)
+						check(zone.grow(1).encloses(union), "enlarged die and readout inside tray")
+						for previous in occupied:
+							check(not previous.intersects(union), "die/readout hit areas do not overlap")
+						check(not union.intersects(s.roll_button.get_global_rect()), "Roll/End Turn stays clear of all dice and readouts")
+						occupied.append(union)
+				var bar: Rect2 = s.protocol_bar.get_global_rect()
+				var label: Rect2 = s.protocol_label.get_global_rect()
+				check(absf(bar.get_center().x - label.get_center().x) < 2, "Protocol label centered on bar")
+				check(absf(bar.get_center().x - root.get_visible_rect().get_center().x) < 6, "Protocol bar centered on screen")
+				check(label.end.y < bar.position.y, "Protocol label clears segments")
 			var die_at: Vector2 = s.dice_tray_3d.get_die_screen_position("hero", "combat")
 			mouse(die_at, true)
 			await create_timer(0.55).timeout
@@ -153,14 +185,30 @@ func run() -> void:
 			check(card.position.x > rest.x and is_equal_approx(card.position.y, rest.y), "hero lunge points right")
 			await create_timer(0.3).timeout
 			check(card.position.is_equal_approx(rest), "lunge restores rest position")
-			card.configure({"name":"SCRAPMASTER", "current_hp":135, "max_hp":200,
+			var stress_data := {"name":"SCRAPMASTER", "current_hp":135, "max_hp":200,
 				"cast_rank":3, "statuses":[
 					{"type":"burn", "mode":"numeric", "value":"125"},
 					{"type":"shield", "mode":"numeric", "value":"135"},
 					{"type":"roll", "mode":"numeric", "value":"123"},
-					{"type":"mark", "mode":"icon"}]})
+					{"type":"mark", "mode":"icon"}]}
+			card.configure(stress_data)
 			await frames()
 			geometry(true)
+			for stress_size in [Vector2i(1280,720), Vector2i(960,600)]:
+				root.size = stress_size
+				await create_timer(0.4).timeout
+				card.configure(stress_data)
+				await frames()
+				geometry(true)
+				for text_label in [card._name_label, card._hp_label]:
+					check(text_label.get_theme_font("font").get_string_size(text_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, text_label.get_theme_font_size("font_size")).x <= text_label.size.x, "stress text fits at small landscape size")
+			var same_fill: ColorRect = card._hp_fill
+			card.apply_horizontal_battle_plate(true)
+			await frames()
+			check(card._hp_fill == same_fill and is_equal_approx(card._hp_back.rotation, -PI * 0.5), "vertical variant reuses the HP layers")
+			geometry(true)
+			card.apply_horizontal_battle_plate()
+			await frames()
 			check(card._cast_badge.visible, "larger cast-order badge visible")
 			check(card._status_row.get_child_count() == 4, "shared three-status plus overflow rule")
 			for label in [card._name_label, card._hp_label]:

@@ -106,7 +106,7 @@ func configure_landscape_projection() -> void:
 	_landscape_projection = true
 	# Three vertical slots plus their existing result tags; physical die radius,
 	# materials, toss, outcomes and animation timing remain shared.
-	_camera.size = 12.5
+	_camera.size = preload("res://scripts/battle/landscape_battle_style.gd").VALUES.dice_camera_size
 	_update_world_bounds()
 	if not size.is_equal_approx(_last_landscape_size):
 		_last_landscape_size = size

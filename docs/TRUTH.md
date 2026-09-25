@@ -1,5 +1,13 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-25 landscape Stage B2 (Kev):** The same CompactUnitCard now has a
+landscape-only horizontal plate with a native-aspect portrait and an adjacent
+name/HP/status column. Enlarged dice sit closer together with hero readouts on
+the left and enemy readouts on the right. Protocol is centered and capped, with
+larger grouped actions; Roll/End Turn has its own footer band. Landscape sizes
+live in one style table. Portrait, non-battle UI and project settings are
+unchanged; the feature flag remains false. See `docs/LANDSCAPE_STAGE_B2.md`.
+
 **2026-09-23 landscape Stage B (Kev):** Experimental landscape battles now use
 per-instance card typography/status sizing and larger battle-only HUD, Roll and
 Protocol controls. The shared persistent header restores its original presentation
