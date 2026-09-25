@@ -143,6 +143,10 @@ GATES = [
     # reserving 80px for a die that projects to ~105, so the authored 54px gap
     # was really 29 at 1080x2400.
     ("roll button clearance", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/roll_button_clearance_test.gd"], "[ROLL_CLEARANCE] PASS", False),
+    # Landscape battle layout (PARKED 2026-09-25, flag false): policy selection,
+    # forced-landscape scene geometry, shared input and spawn regression. Keeps
+    # the parked path compiling and correct so re-enabling is a flag flip.
+    ("battle layout", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/battle_layout_test.gd"], "[BATTLE_LAYOUT] PASS", False),
     # Android Build #1: safe-area insets (cutout/gesture bar) — header grows,
     # protocol row lifts, desktop reads all-zero (no-regression guarantee).
     ("safe area", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/safe_area_test.gd"], "[SAFE_AREA] PASS", False),

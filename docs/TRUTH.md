@@ -1,5 +1,10 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-25 landscape PARKED (Kev):** Stage A/B/B2 are merged with
+`LANDSCAPE_BATTLE_ENABLED := false` and tagged `landscape-parked`. Players always
+get the portrait battle; the `battle layout` gate keeps the parked path green. See
+"Landscape battle layout — PARKED" below for how to enable it and the re-enable checklist.
+
 **2026-09-25 landscape Stage B2 (Kev):** The same CompactUnitCard now has a
 landscape-only horizontal plate with a native-aspect portrait and an adjacent
 name/HP/status column. Enlarged dice sit closer together with hero readouts on
@@ -47,6 +52,49 @@ Project settings and non-battle presentation are unchanged. See
 **Visual follow-up (2026-09-07, G-12):** Run-end Continue is centered text without an icon. Gravity Well reuses the detailed orbital-device art from Momentum Core; Interference Charge reuses Signal Jammer's emitter art. Combat numbers use at most two bounded portrait lanes per target; a newer number retires the oldest when full, while the battle log retains all events. Roll buffs remain at the dice. V11's small-award empty-space concern was reproduced, while large unlock sets work as expected. [Changes and evidence](UI_VISUAL_PASS_2026-09-07.md).
 
 **Approved mockups implemented (2026-09-07, G-13):** V07 inspect/evolution uses fixed roll columns, secondary ability names and bright left-aligned effects. Evolution starts with the 20 preview; each full kit expands independently. Select then Confirm applies a branch. V08 shares identical route hostiles once, retaining separate previews when a modifier changes the lineup, and emphasizes risk/reward. Reward names/effects stay bright; effect descriptions wrap without the old two-line cutoff. V12 adds a persisted, default-off Reduced Motion setting under Settings / Accessibility. It removes decorative shake, strong washes, glitch, particle bursts and punch/zoom; title/navigation completion, dice outcomes, numbers, status feedback and tutorial targeting remain. Motion changes apply to subsequent battle effects; live title loops stop immediately. V06 release checks and V11 title/small-unlock composition remain; the full tutorial redesign is separately deferred. [Implementation and evidence](UI_APPROVED_CHOICES_2026-09-07.md).
+
+## Landscape battle layout — PARKED
+
+**Status (2026-09-25):** parked, not shipped. The experimental landscape battle
+(Stage A layout strategy, Stage B typography, Stage B2 card plates and dice
+readability — `docs/LANDSCAPE_STAGE_A.md`, `_B.md`, `_B2.md`) is merged at tag
+`landscape-parked` with `BattleLayoutPolicy.LANDSCAPE_BATTLE_ENABLED := false`
+(`scripts/battle/battle_layout_policy.gd`). With the flag false, AUTO always resolves
+to portrait, so every player sees the portrait battle and the release web export is
+pixel-identical to the pre-merge portrait build. The `battle layout` gate
+(`scripts/debug/battle_layout_test.gd`) runs in `verify_gate.py` so the parked
+path keeps compiling and passing; a failure there is a real failure, not "parked code".
+
+**How to enable it:**
+- *Development testing (no code change):* in a debug build, open Help → DEBUG →
+  BATTLE LAYOUT (NEXT BATTLE) → FORCE LANDSCAPE; the next battle initializes in
+  landscape. The override is session-only, is ignored by `OS.is_debug_build() == false`,
+  and the controls are structurally absent from release builds.
+- *Players:* set `LANDSCAPE_BATTLE_ENABLED := true`. AUTO then selects landscape
+  only on a desktop (non-touch) device with a viewport at least 960 px wide and an
+  aspect of at least 1.3; the tutorial always stays portrait. Nothing else changes —
+  it is one flag, one BattleScene, the same cards, dice and controllers.
+
+**Re-enable checklist — every item must be checked before the flag flips to true:**
+1. **Non-battle screens at the new embed size.** Home, squad select, loadout,
+   rewards, evolution, codex/help, intercepts, run end and unlocks are portrait-authored;
+   capture each at the itch embed size that ships with landscape and confirm nothing
+   clips or letterboxes badly around a landscape battle.
+2. **Real itch embed and fullscreen testing.** Test the uploaded build inside the
+   actual itch.io iframe (not a local page), entering and leaving fullscreen
+   mid-run, including the transition between a landscape battle and portrait screens.
+3. **Tutorial decision.** The tutorial is forced portrait today. Decide whether it
+   stays portrait inside a landscape embed or gets full landscape support (the
+   forced-landscape tutorial is unverified).
+4. **Portrait frame fit and the empty band above Protocol.** Confirm the landscape
+   card plate still frames every hero head through `PixelUI.cover_fit_portrait` at the
+   `HERO_PORTRAIT_REGION` aspect (never a second aspect), and resolve the empty band
+   left above the Protocol row in landscape.
+5. **Physical phone and tablet tests.** Real phones and tablets (including a tablet
+   with a desktop user agent and a touch laptop) must resolve to the correct layout
+   through the coarse-pointer/no-hover check, and play correctly in both orientations.
+6. **itch embed settings.** Update the itch.io embed size, fullscreen button and
+   mobile-friendly/orientation options to match, and record them here.
 
 ## ⚠️ Doc adjudications (carried + new)
 
