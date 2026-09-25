@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 # High-water marks (INVARIANTS #13: raises need the KEV token; lowering free).
-HIGH_WATER_LINES = 2610          # scripts/battle/battle_scene.gd (post-extraction, 2026-07-06)
+HIGH_WATER_LINES = 3640          # scripts/battle/battle_scene.gd (reset 2026-09-25: 3590 post-landscape-park + 50)
 PROTOCOL_ACTIONS_HIGH_WATER = 971  # scripts/battle/protocol_actions.gd (at extraction, 2026-07-06)
 
 WATCHED = [
