@@ -1,5 +1,22 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-25. Set overrides modifiers (Kev, 2026-09-26) — RECORDED, NOT YET IMPLEMENTED
+
+The player can Set any value 1–20 and the unit acts on exactly that value,
+ignoring pre-roll buffs, penalties and jam caps. (The engine already resolves it
+this way: `BattleEngine.effective_hero_roll` returns the Set value absolutely.)
+Presentation under G-24: Setting clears the die's printed modifier labels. It
+becomes a plain 1–20 die and does a short tumble onto the chosen face, with
+static labels throughout, then the normal upright snap. This resolves the "Set
+to a value no face prints" case of the G-24 step-6 blocker.
+
+## G-26. Tutorial dice land on their scripted face (Kev, 2026-09-26) — RECORDED, NOT YET IMPLEMENTED
+
+A few scripted tutorial rolls are fine. Tutorial dice use a short scripted
+tumble that lands directly on the scripted face. No rotation onto a different
+face after landing. This replaces the pre-1171eb8 tutorial rig restored in G-24
+step 2, which turns the scripted face up after the die lands.
+
 ## G-24. Dice are real dice; the landed face is the roll (Kev, 2026-09-26)
 
 "Dice look and behave like real dice. Faces are static; numbers never
