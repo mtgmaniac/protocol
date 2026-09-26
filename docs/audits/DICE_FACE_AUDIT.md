@@ -468,3 +468,29 @@ engine reproduces exactly what `resolve_round` already did.
   face-resting d20 gets at any yaw: 0.982 R × 0.95). `tag_slot_width_ratio`
   went from 1.10 to 1.00 to fit 960×600. Portrait is unaffected: its reservation
   already used that invariant.
+
+## 9. Before/after capture
+
+`scripts/debug/dice_roll_capture.gd` runs **windowed** (a headless viewport renders
+nothing). It captures one seeded battle roll at 540×1200. It ran once on the
+pre-change code (a worktree at `9433f63`) and once on this branch. The outputs are
+in gitignored `debug_artifacts/dice_roll/`: a side-by-side GIF, the landing frames,
+and the final frame.
+
+**Before (`before_55_60.png`):**
+- A hero die comes to rest with 20 facing up (a 6 beside it).
+- Over the next frames it rolls across onto 11 while sliding to its slot. The
+  other hero die goes from 16/2 to 11 the same way. That is the P0 snap.
+
+**After:**
+- The numerals scramble through the tumble.
+- The dice land and lock on their values (the same 13 / 15 / 11 / 5 / 11) and
+  only slide.
+- The numerals keep their natural angle; they are not spun upright.
+
+**Limits:**
+- The two runs are not frame-synced. Other systems draw on the global RNG, so
+  the throws differ.
+- One capture frame is about 0.1 s of wall time, so a 0.26 s scramble shows as
+  only 2–3 frames.
+- Motion feel (scramble speed, lock timing) needs a look on a device.
