@@ -536,3 +536,44 @@ checks showing 17.
 Against the pinned baseline, every operation is now within ±10: voidCirclet sits
 at +5.3, down from +10.5. The baseline was not re-pinned. Each operation has
 only about 60 of the 300 runs, so single-operation moves of ±5 are close to noise.
+
+## 11. G-24: real dice (Kev, 2026-09-26). Steps 1–5 done, stopped before step 6
+
+Option C (§7) is removed. G-24 in DECISIONS_RESOLVED:
+- The physically landed face is the roll.
+- One upright snap after settling.
+- A face change only on a deliberate change, shown as a tip-over.
+
+**Kept from earlier steps:** the one value source (§6), hijack in the engine, and G-23.
+
+| Step | Commit | Result |
+|---|---|---|
+| 1 | `fa9fcb4` | Ruling recorded. INVARIANTS #1 reworded; "physics is presentation" retired everywhere it appeared |
+| 2 | `e2c19be` | Live raw = the landed natural (`get_hero_rolls` / `get_enemy_rolls`). Skip-visuals and the sim keep the seeded stream. Tutorial rig restored as it was before 1171eb8 |
+| 3 | `8d73aba` | On settle, the ready-to-roll checkpoint is re-saved with the landed raws as a **pending roll**. CONTINUE places those dice without throwing. `battle checkpoint` gate passes (182 s), including an unrigged physics roll → settle → reload → identical dice |
+| 4 | `656692d` | FaceRig, scramble and symmetry placement removed. The upright snap is restored and keeps the landed face (probe: 280/280). The snap's total rotation: median 92°, max 180°, all of it yaw (to read upright); the flattening tilt is at most 33° |
+| 5 | `1761c8b` | Pre-roll modifiers are printed on the faces before the throw (`BattleEngine.pre_roll_face_value`). Scene check: 10 rolls with +3, jam 12, forced 20 and rewrite; every landed face read the value the unit acts on, and no die moved after landing |
+
+**The step 6 blocker.** Printed faces can't show every value a deliberate change
+can produce:
+- Set to 1–3 on a +3 die (its faces print 4–20).
+- Nudge or Set above a jam cap.
+- Any Nudge or Set on a rewritten die (every face reads 3) or a forced-20 die
+  (every face reads 20).
+- A hijack copy outside a buffed or penalised enemy's printed range.
+- Deep Freeze Charge's pin to 1 on a buffed enemy.
+
+In those cases no face can be tipped onto without either changing labels or
+showing a value the unit won't act on. Until Kev decides:
+- Deliberate changes use the old instant turn to a face that prints the value.
+- When no face prints it, the die **stays on its face showing the old number**,
+  which breaks the rule that a die always shows the value the unit acts on.
+  Decision needed.
+
+**Gate state at this stop:**
+- `dice face` still encodes Option C and fails. Part A gives the tray synthetic
+  values, and some scenarios inject frozen values directly. It is rewritten in
+  step 7.
+- `battle layout` asserts a seeded live roll (physics now). Also step 7.
+- Every other hard gate passes (`--skip-sim`).
+- The balance sim was not run at this stop.
