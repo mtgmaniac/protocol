@@ -3369,10 +3369,10 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 	# die can't be Set either — its crusted face IS the result.
 	if turn_phase == PHASE_REROLL_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
-			and _has_roll_for_state(hero_rolls, state) and int(state.get("die_freeze_turns", 0)) <= 0
+			and _has_roll_for_state(hero_rolls, state) and _engine.can_alter_die(state)
 	if turn_phase == PHASE_SET_PICK:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
-			and _has_roll_for_state(hero_rolls, state) and not bool(state.get("die_freeze_repeat_this_round", false))
+			and _has_roll_for_state(hero_rolls, state) and _engine.can_alter_die(state)
 	if turn_phase == PHASE_NUDGE_PICK:
 		return accent_color == HERO_ACCENT and _protocol.can_nudge_hero(state)
 

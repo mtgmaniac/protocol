@@ -191,7 +191,8 @@ func _apply_spend_plan(engine, bs, plan: Array) -> Array:
 					spends.append({"kind": "nudge", "unit": str(step["unit"]), "cost": int(n.get("cost", 1)), "detail": "+3"})
 			"set":
 				var paid: int = engine.apply_set(bs, str(step["unit"]), int(step["value"]))
-				spends.append({"kind": "set", "unit": str(step["unit"]), "cost": paid, "detail": "= %d" % int(step["value"])})
+				if paid >= 0:   # -1 = the engine refused a frozen die
+					spends.append({"kind": "set", "unit": str(step["unit"]), "cost": paid, "detail": "= %d" % int(step["value"])})
 	return spends
 
 

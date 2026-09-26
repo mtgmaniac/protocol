@@ -57,11 +57,13 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 				spends.append({"kind": "nudge", "unit": unit_id, "cost": int(nudged.get("cost", 1)), "detail": "+3"})
 		"reroll":
 			var new_roll: int = engine.apply_reroll(bs, unit_id)
-			spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
+			if new_roll > 0:   # 0 = the engine refused a frozen die
+				spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
 		"set":
 			var value: int = rng.randi_range(1, 20)
 			var paid: int = engine.apply_set(bs, unit_id, value)
-			spends.append({"kind": "set", "unit": unit_id, "cost": paid, "detail": "= %d" % value})
+			if paid >= 0:   # -1 = the engine refused a frozen die
+				spends.append({"kind": "set", "unit": unit_id, "cost": paid, "detail": "= %d" % value})
 	return spends
 
 

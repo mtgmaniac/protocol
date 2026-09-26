@@ -151,7 +151,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		var reroll_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
 		if reroll_state.is_empty() or bool(reroll_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, reroll_state):
 			return true
-		if int(reroll_state.get("die_freeze_turns", 0)) > 0:
+		if not _scene._engine.can_alter_die(reroll_state):
 			_scene._refresh_summary("That die is frozen solid - it can't be rerolled.")
 			return true
 		AudioManager.play_select()
@@ -183,7 +183,7 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 		var set_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
 		if set_state.is_empty() or bool(set_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, set_state):
 			return true
-		if int(set_state.get("die_freeze_turns", 0)) > 0:
+		if not _scene._engine.can_alter_die(set_state):
 			_scene._refresh_summary("That die is frozen solid - it can't be Set.")
 			return true
 		AudioManager.play_select()
@@ -380,6 +380,9 @@ func _add_nudge_button() -> void:
 func _apply_reroll(hero_id: String) -> void:
 	# Rule delegated to BattleEngine (A.1); this scene keeps the animation + UI.
 	var new_roll: int = _scene._engine.apply_reroll(_scene._state, hero_id)
+	if new_roll <= 0:
+		_scene._refresh_summary("That die is frozen solid - it can't be rerolled.")
+		return
 	_scene._update_protocol_bar()
 	_scene._append_log("Reroll: %s draws %d." % [hero_id, new_roll])
 	if _scene.dice_tray_3d != null:
@@ -413,6 +416,9 @@ func _apply_nudge(hero_id: String) -> void:
 			_scene._append_log("Reverse Gimbal: nudge flipped to %+d." % int(res["value"]))
 		"already":
 			_scene._refresh_summary("That die was already nudged this turn.")
+			return
+		"frozen":
+			_scene._refresh_summary("That die is frozen solid - it can't be nudged.")
 			return
 		"applied":
 			if int(res["cost"]) == 0:
@@ -463,7 +469,7 @@ func _can_nudge_hero(state: Dictionary) -> bool:
 	# A frozen die is crusted static and cannot be altered at all — Nudge
 	# included (ruling NK-03: full freeze immunity, one clean rule "frozen dice
 	# can't be altered", matching Reroll / Set).
-	if int(state.get("die_freeze_turns", 0)) > 0:
+	if not _scene._engine.can_alter_die(state):
 		return false
 	if _was_hero_nudged_this_turn(str(state["id"])):
 		# Reverse Gimbal holders may re-tap to flip the nudge's sign.
@@ -745,6 +751,9 @@ func _close_set_value_popup() -> void:
 func _apply_set(hero_id: String, value: int) -> void:
 	# Rule delegated to BattleEngine (A.1); this scene keeps the logs + UI.
 	var set_cost: int = _scene._engine.apply_set(_scene._state, hero_id, value)
+	if set_cost < 0:
+		_scene._refresh_summary("That die is frozen solid - it can't be Set.")
+		return
 	if set_cost == 0:
 		_scene._append_log("Root Access: free Set.")
 	_scene._update_protocol_bar()

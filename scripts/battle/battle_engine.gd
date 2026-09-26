@@ -211,7 +211,25 @@ func gain_protocol(bs: BattleState, amount: int, cap: int) -> Array:
 
 # Reroll: spend 2, redraw the die via the provider, clear this hero's Nudge/Set
 # (their roll is fresh). Mutates bs; returns the new raw roll.
+# A frozen die can't be altered (NK-03, G-23): the ONE check every Reroll /
+# Nudge / Set path uses — the engine functions below refuse on their own, and
+# the UI and the sim policies ask this instead of reading the freeze fields.
+func can_alter_die(state: Dictionary) -> bool:
+	return not state.is_empty() and int(state.get("die_freeze_turns", 0)) <= 0 \
+		and not bool(state.get("die_freeze_repeat_this_round", false))
+
+
+func _hero_state_by_id(hero_id: String) -> Dictionary:
+	for hero_state in combat_manager.get_hero_states():
+		if str(hero_state.get("id", "")) == hero_id:
+			return hero_state
+	return {}
+
+
+# Returns the new raw roll, or 0 (nothing spent) when the die is frozen.
 func apply_reroll(bs: BattleState, hero_id: String) -> int:
+	if not can_alter_die(_hero_state_by_id(hero_id)):
+		return 0
 	bs.protocol_points -= 2
 	var new_roll: int = roll_provider.roll_d20()
 	bs.hero_rolls[hero_id] = new_roll
@@ -233,6 +251,8 @@ func nudge_cost(bs: BattleState, hero_id: String, first_nudge_free_gear: bool) -
 #  - already nudged, no gear -> "already" (caller shows the "already nudged" note)
 #  - otherwise -> deduct cost (0 if Priming Charge), set +3
 func apply_nudge(bs: BattleState, hero_id: String, first_nudge_free_gear: bool, nudge_may_subtract_gear: bool) -> Dictionary:
+	if not can_alter_die(_hero_state_by_id(hero_id)):
+		return {"kind": "frozen"}
 	if bs.hero_roll_nudges.has(hero_id):
 		if nudge_may_subtract_gear:
 			bs.hero_roll_nudges[hero_id] = -int(bs.hero_roll_nudges.get(hero_id, 3))
@@ -254,8 +274,11 @@ func set_cost(bs: BattleState) -> int:
 
 
 # Set-a-die to an absolute effective value; an explicit Set overrides any prior
-# Nudge. Mutates bs; returns the cost paid (0 signals the Root Access freebie).
+# Nudge. Mutates bs; returns the cost paid (0 signals the Root Access freebie),
+# or -1 (nothing spent, nothing set) when the die is frozen.
 func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
+	if not can_alter_die(_hero_state_by_id(hero_id)):
+		return -1
 	var cost: int = set_cost(bs)
 	if cost == 0:
 		bs.root_access_used = true

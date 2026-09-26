@@ -43,7 +43,12 @@ func describe() -> String:
 
 
 # ── Round: focus fire + band-aware spends ─────────────────────────────────────
+# The battle's engine, kept for decide_items' freeze banking (effective band).
+var _engine_for_bank: BattleEngine = null
+
+
 func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs: Node) -> Array:
+	_engine_for_bank = engine
 	var spends: Array = []
 	# Cast order (the control): naive squad order — stamp living, rolled heroes
 	# 1..N. Behavior-identical to the unstamped fallback; stamped explicitly so
@@ -104,10 +109,10 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 		if not bs.hero_rolls.has(unit_id):
 			continue
 		if bs.protocol_points >= 3 and int(bs.hero_rolls[unit_id]) <= 4 \
-				and not bool(hero_state.get("die_freeze_repeat_this_round", false)) \
-				and int(hero_state.get("die_freeze_turns", 0)) <= 0:
+				and engine.can_alter_die(hero_state):
 			var new_roll: int = engine.apply_reroll(bs, unit_id)
-			spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
+			if new_roll > 0:
+				spends.append({"kind": "reroll", "unit": unit_id, "cost": 2, "detail": "-> %d" % new_roll})
 	# 2) Nudge when +3 lifts the hero's EFFECTIVE roll into a higher-numbered band.
 	for hero_state_variant in cm.get_hero_states():
 		var hero_state: Dictionary = hero_state_variant
@@ -116,7 +121,7 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 		var unit_id: String = str(hero_state["id"])
 		if not bs.hero_rolls.has(unit_id) or bs.hero_roll_nudges.has(unit_id) or bs.hero_roll_sets.has(unit_id):
 			continue
-		if bs.protocol_points < 2 or bool(hero_state.get("die_freeze_repeat_this_round", false)):
+		if bs.protocol_points < 2 or not engine.can_alter_die(hero_state):
 			continue
 		var eff: int = engine.effective_hero_roll(hero_state, unit_id, bs)
 		if _band_improves(engine, hero_state, eff, mini(eff + 3, 20)):
@@ -132,10 +137,12 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 		var unit_id: String = str(hero_state["id"])
 		if not bs.hero_rolls.has(unit_id) or bs.hero_roll_sets.has(unit_id):
 			continue
-		if bool(hero_state.get("die_freeze_repeat_this_round", false)):
+		if not engine.can_alter_die(hero_state):
 			continue
 		if bs.protocol_points >= engine.set_cost(bs) + 3 and engine.effective_hero_roll(hero_state, unit_id, bs) < 11:
 			var paid: int = engine.apply_set(bs, unit_id, 20)
+			if paid < 0:
+				continue
 			spends.append({"kind": "set", "unit": unit_id, "cost": paid, "detail": "= 20"})
 			break  # at most one Set per round
 	return spends
@@ -194,11 +201,11 @@ func decide_items(bs: BattleState, cm: CombatManager, gs: Node) -> Array:
 
 
 # CRIT BANKING (freeze = repeat, per Kev 2026-07-06): the ally whose revealed
-# RAW die face lands in its own crit/overload band — freezing it replays the
-# result next round. Two deterministic passes (overload first, then crit),
-# slot order within a pass, no randi. Skips dead, already-frozen, and
-# currently-repeating dice. The RAW face is what the crust locks, so bands are
-# classified on the raw roll, not the buffed effective value.
+# die lands in its own top two bands — freezing it replays the result next
+# round. Two deterministic passes (highest band first), slot order within a
+# pass, no randi. Skips dead, already-frozen, and currently-repeating dice. The
+# crust locks the value the die SHOWS (G-23), so bands are classified on the
+# effective roll.
 func _ally_bank_target(bs: BattleState, cm: CombatManager) -> Dictionary:
 	var dm := DiceManager.new()
 	for wanted_zone in ["overload", "crit"]:
@@ -208,10 +215,12 @@ func _ally_bank_target(bs: BattleState, cm: CombatManager) -> Dictionary:
 				continue
 			if int(hero_state.get("die_freeze_turns", 0)) > 0 or bool(hero_state.get("die_freeze_repeat_this_round", false)):
 				continue
-			var raw: int = int(bs.hero_rolls.get(str(hero_state["id"]), 0))
-			if raw <= 0:
+			# G-23: the crust locks the value the die SHOWS (effective), so bank
+			# on the effective band.
+			if int(bs.hero_rolls.get(str(hero_state["id"]), 0)) <= 0:
 				continue
-			var zone: String = str(dm.get_ability_for_roll(hero_state.get("unit"), raw).get("zone", ""))
+			var shown: int = _engine_for_bank.effective_hero_roll(hero_state, str(hero_state["id"]), bs) if _engine_for_bank != null else int(bs.hero_rolls.get(str(hero_state["id"]), 0))
+			var zone: String = str(dm.get_ability_for_roll(hero_state.get("unit"), shown).get("zone", ""))
 			if zone == wanted_zone:
 				return hero_state
 	return {}

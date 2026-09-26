@@ -2447,7 +2447,9 @@ func _freeze_pick_hero_lowest_die(enemy_state: Dictionary = {}) -> Dictionary:
 	for hero_state in _hero_states:
 		if bool(hero_state["dead"]) or bool(hero_state.get("cloaked", false)):
 			continue
-		var face: int = int(_current_raw_hero_rolls.get(str(hero_state["id"]), 0))
+		# The value the die SHOWS and the hero acts on this round (stamped at
+		# resolve start), not its raw face — the player picks by what they see.
+		var face: int = int(_acted_hero_values.get(str(hero_state["id"]), 0))
 		if face <= 0:
 			face = int(hero_state.get("last_die_value", 0))
 		if face <= 0:
