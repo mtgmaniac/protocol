@@ -355,3 +355,52 @@ first locks on its landed value, then changes.
 - **Nothing near the die** shows an active ±roll buff or penalty at roll time, a
   pending forced 20, or Resonant Chorus. Those appear only as the card chip or
   in the battle log.
+
+## 7. Phase 2, step 2: Option C with scrambling digits
+
+**How a roll looks now:**
+1. The value is decided in game logic before the throw (§6). The throw is
+   unchanged: real Jolt physics.
+2. From the throw, the face numerals **scramble**: stepped pixel digits, a new
+   random 1–20 on each visible face every 0.08 s. Only the main numeral layer
+   cycles; the engraving layers come back on lock.
+3. **Settle.** Two things happen while the digits still scramble:
+   - The tray finds the physical face that landed up. It turns only the die's
+     `FaceRig` (the body mesh, panels, edges and numerals) by one of the
+     icosahedron's 60 rotational symmetries, so that face carries the value.
+   - Of the 3 symmetries that do this, it picks the one whose numeral reads
+     closest to screen-up.
+
+   A symmetry turn leaves the die's shape unchanged, so the turn can't be seen.
+   The scramble holds 0.20 s, then the digits lock.
+4. The die then **slides, without rotating,** to its result slot under its unit.
+   The 0.42 s correction that rolled the die onto a different face and spun it
+   upright is deleted.
+5. **After landing,** a changed value (Nudge, Set, items, Sync Antenna, a live
+   hijack copy) scrambles the digits for 0.26 s. The value is re-placed on the
+   same landed face during the scramble, then locks. The body does not move.
+6. **Reroll** keeps its spin-and-arc. It lands the body so that body and face rig
+   together put the new value up.
+7. **Frozen dice** stay static.
+   - A fresh one (e.g. after a checkpoint restore) is placed on its value.
+   - A carried-over one keeps its pose.
+   - Freeze captures the *raw* face, so a die that showed a buffed value can
+     repeat on the raw one. That change scrambles and relocks instead of
+     snapping. This was a hidden mismatch before.
+
+Status markers (FROZEN, JAM, REWRITE / HIJACK) and the freeze and jam shells stay
+under `Visuals`, not the face rig, so a symmetry turn never moves them.
+
+**Before and after, same probe, same seed** (`dice_face_audit_probe.gd`, 280 dice,
+7 slots × all 20 values):
+
+| | Before (rig + tween) | After (Option C) |
+|---|---|---|
+| Landed face ≠ value | 269 / 280 (96.1 %) | **0 / 280** |
+| Body rotation after settle | median 138°, max 180° | **0.0° (max 0.0°)** |
+| Numeral facing up ≠ value | 0 | 0 |
+
+**Deviation from the brief, for Kev to confirm:** "after the die settles it does
+not move again". The die still *slides* to its slot under its unit, as it did
+before. The dice-to-card layout and the die-docked tags depend on that position.
+It no longer rotates at all.

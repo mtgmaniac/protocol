@@ -363,10 +363,14 @@ Footer rules:
   `protocol_actions.cancel_roll_modifier_pick()` (routes through
   `battle_scene._finish_roll_modifier_pick`); before this the *_PICK phases had no
   exit and the player was stuck.
-- **enemy die reroll numeral (Batch 4 §2):** enemy-reroll items (Phase Scrambler /
-  Cascade Jammer) push the new roll to the 3D die via
-  `battle_scene.sync_enemy_dice_after_item_reroll` so the numeral matches the card
-  pips; hero rerolls already did this through `reroll_die_to_result`.
+- **die values have ONE source (dice-face audit, 2026-09-26):** every 3D die reads
+  `battle_scene._die_value(side, id)` (the effective roll the unit acts on, hijack
+  included) through `DiceTray3D.value_provider`, and follows it live from landing
+  until `_resolve_current_turn`. Nothing pushes values to the tray; after changing
+  a die value, call `battle_scene._on_die_values_changed()` (re-picks intents,
+  rebuilds readouts, syncs the tray at once). `dice_landed()` says whether this
+  round's dice have landed — roll values exist from the start of the throw. Hard
+  gate: `scripts/debug/dice_face_gate.gd`.
 
 ## 13. Data Source Files
 

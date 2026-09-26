@@ -1,7 +1,7 @@
 # P0 dice face audit probe (docs/audits/DICE_FACE_AUDIT.md, Phase 1).
-# Instruments the REAL DiceTray3D roll path with the battle's rig in place
-# (battle_scene rigs every roll from the seeded d20 stream since 2026-09-21)
-# and logs, per die per roll:
+# Instruments the REAL DiceTray3D roll path with a decided value per die (the
+# battle decides every value before the throw; the tray reads it through
+# value_provider) and logs, per die per roll:
 #   logic   — the rigged value the game will resolve from (display face)
 #   landed  — the face physically up when motion settles (before any snap)
 #   final   — the face up after the end-of-roll presentation
@@ -25,6 +25,10 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# 8x physics with the same 1/120 s step (ticks and time scale together).
+	Engine.physics_ticks_per_second = 960
+	Engine.time_scale = 8
+	Engine.max_physics_steps_per_frame = 64
 	seed(PROBE_SEED)
 	var host: Control = Control.new()
 	host.size = Vector2(1056, 1100)
@@ -54,7 +58,7 @@ func _run() -> void:
 			rig["%s:%s" % [side, id]] = v
 			(hero_entries if side == "hero" else enemy_entries).append({"id": id, "name": id})
 			slot += 1
-		_tray.call("set_rigged_results", rig)
+		_tray.set("value_provider", func(side: String, uid: String) -> int: return int(rig.get("%s:%s" % [side, uid], 0)))
 		_tray.call("play_rolls", hero_entries, enemy_entries)
 		var landed: Dictionary = {}
 		while bool(_tray.get("_is_rolling")):
@@ -70,7 +74,7 @@ func _run() -> void:
 			var logic: int = int(rig[key])
 			var land: Dictionary = landed.get(key, {})
 			var final_face: int = int(_tray.call("_get_most_visible_face_value", die))
-			var label_face: int = _label_up(die)
+			var label_face: int = int(_tray.call("up_face_numeral", str(key).get_slice(":", 0), str(key).get_slice(":", 1)))
 			var lb: Basis = land.get("basis", die.global_transform.basis)
 			var fb: Basis = die.global_transform.basis
 			var total_deg: float = rad_to_deg((fb * lb.inverse()).orthonormalized().get_rotation_quaternion().get_angle())
@@ -109,20 +113,3 @@ func _pct(arr: Array[float], p: float) -> float:
 	if arr.is_empty():
 		return 0.0
 	return arr[clampi(int(p * (arr.size() - 1)), 0, arr.size() - 1)]
-
-
-# The numeral that really faces up: the FaceNumber Label3D whose facing axis
-# (+Z of its basis) is closest to world UP. Checks the value->face table
-# against the built mesh rather than trusting _face_normals.
-func _label_up(die: RigidBody3D) -> int:
-	var best := -2.0
-	var best_v := -1
-	for v in range(1, 21):
-		var label: Node3D = die.get_node_or_null("Visuals/FaceNumber%d" % v) as Node3D
-		if label == null:
-			continue
-		var d: float = label.global_transform.basis.z.normalized().dot(Vector3.UP)
-		if d > best:
-			best = d
-			best_v = v
-	return best_v

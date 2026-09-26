@@ -34,7 +34,7 @@ Source: `heroZones` in `data/raw/heroes.data.json` (each ability entry also carr
 ### Where the roll value comes from (determinism fence)
 
 All roll values enter combat through the `RollProvider` seam (`scripts/sim/roll_provider.gd`, INVARIANTS #1):
-- **Live game:** the settled physics-tray face IS the roll. `DiceTray3D` throws real rigid-body D20s and reads the top face at settle (`_get_most_visible_face_value`, `scripts/battle/dice_tray_3d.gd:1359`; `_resolve_landed_die_face`:896). `battle_scene` copies the results out via `get_hero_rolls()`/`get_enemy_rolls()` (`scripts/battle/battle_scene.gd:548`). Package A.2 assumption: the physics settle is a uniform d20 draw.
+- **Live game:** the battle's seeded d20 stream decides every face BEFORE the dice are thrown (`battle_scene._begin_targeting_phase`, same path as skip-visuals). `DiceTray3D` throws real rigid-body D20s with scrambling numerals and, on settle, places the unit's effective value (`battle_scene._die_value`) on whichever face landed up by turning only the face rig (Option C, `docs/audits/DICE_FACE_AUDIT.md`). The tray never decides a value.
 - **Headless fallback / rerolls:** `PhysicsRollProvider` (`scripts/sim/physics_roll_provider.gd`) wraps `DiceManager.roll_d20()` = `randi_range(1, 20)` (`scripts/battle/dice_manager.gd:7`).
 - **Balance sim:** `SeededRollProvider` (`scripts/sim/seeded_roll_provider.gd`) — per-run seeded stream, byte-reproducible.
 
@@ -119,9 +119,9 @@ A frozen die crusts static in the tray at its current face — a real physics bl
 - A frozen die is **fully immune** — Nudge, Set, Reroll, Twin-Fates, Jam, Rewrite, and Hijack all bounce off from the moment it freezes (ruling NK-03, 2026-07-08). One clean rule: "a frozen die can't be altered."
 - Reroll clears Nudge and Set; Set clears Nudge; Twin Fates clears the target's Nudge and Set.
 - A jammed die that also gets Rewritten resolves as 3 (rewrite trumps jam).
-- Hijack copies the heroes' current highest RAW die, including a frozen hero face.
+- Hijack copies the heroes' current highest EFFECTIVE die (`resolve_step` hands `resolve_round` the effective hero rolls), including a frozen hero face; `BattleEngine.hijack_value` shows it live on the enemy die.
 - `_freeze_pick_hero_lowest_die`: if every hero is cloaked/unrevealed, falls back to the first living uncloaked hero; ward on the picked hero blocks the freeze rider.
-- The tray's display face bakes roll buffs/RFE into the shown number (`_display_face_for_entry`, `dice_tray_3d.gd:912`) — frozen dice display their raw crusted face instead.
+- The die shows the effective roll from the one source (`battle_scene._die_value`); the tray keeps no copy of the rule. Frozen dice show their crusted repeat value.
 - Reroll animation (`reroll_die_to_result`) takes the provider's value and animates TO it — reroll randomness is software RNG, not physics, even in live play.
 
 ## ⚠ Open findings

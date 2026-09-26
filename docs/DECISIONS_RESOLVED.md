@@ -1,5 +1,32 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Dice face: one value source + Option C presentation (Kev, 2026-09-26) — RESOLVED & IMPLEMENTED
+
+From the P0 dice-face audit (`docs/audits/DICE_FACE_AUDIT.md`). Rulings:
+1. **One source of truth for die values.** The tray keeps no copy of the
+   effective-roll rule; every die reads the value the unit will act on from game
+   logic. Invariant: whenever a die's value is readable it is the value the unit
+   acts on, and never a value the unit can't have.
+2. **Every roll modifier is classified** as KNOWN BEFORE ROLL (applied before the
+   throw; the die lands on it) or APPLIED AFTER LANDING (the die locks, then
+   changes). Sync Antenna is after-landing (it reacts to a matching pair).
+3. **Option C with scrambling digits.** Keep the seeded draw before the roll
+   (checkpoints depend on it) and the real physics throw. Numerals scramble
+   (stepped pixel digits) while tumbling; on settle the value is placed on the
+   landed face by turning only the visual mesh, unseen mid-scramble, then the
+   digits lock. The placed value is the effective value with every pre-roll
+   modifier, clamped 1–20 (a +3 die never shows 1–3; a forced 20 lands as 20).
+4. **No final spin.** Of the three placements, the numeral closest to screen-up;
+   a settled die does not rotate again. (As implemented it still slides, without
+   rotating, to its result slot under its unit.)
+5. **After-landing changes scramble-and-lock** on the die (~0.26 s): Nudge, Set,
+   after-landing relics/abilities, forced values. Reroll keeps its animation.
+   No single-frame jumps.
+6. **Hijack shows live** from landing and follows the heroes' highest die until
+   resolution; its readout follows the die. Frozen behaviour unchanged.
+7. **The tutorial uses the same path.**
+Hard gate: `dice face` (`scripts/debug/dice_face_gate.gd`).
+
 ## NK-17 conditional alternative: `else` + Medic 20-band fallback (Kev, 2026-09-25) — RESOLVED & IMPLEMENTED
 
 **Grammar.** NK-17 gains a *conditional-alternative* clause: `else N effect
@@ -120,7 +147,8 @@ checkpoint), not discarded. Details: TRUTH.md §Active-run save.
 
 **Follow-up ruling (Kev, 2026-09-21, final QoL pass):** the saved battle RNG is
 AUTHORITATIVE for dice faces and physics only visually resolves to them
-(confirmed). 64-bit seeds are stored as strings (run save v3). **No backward
+(confirmed). *(How the dice visually resolve changed 2026-09-26 — Option C, see
+the dice-face entry at the top of this file.)* 64-bit seeds are stored as strings (run save v3). **No backward
 compatibility:** run saves older than v3 are discarded cleanly (the one-line
 "older build" notice), not migrated — superseding the read-forward above.
 CONTINUE into a restored checkpoint shows a brief `BATTLE RESUMED - ROUND X`;

@@ -1,5 +1,16 @@
 extends "res://debug_artifacts/visual_motion.gd"
 
+
+class ScriptedRolls extends "res://scripts/sim/roll_provider.gd":
+	var queue: Array = []
+
+	func roll_d20() -> int:
+		return int(queue.pop_front()) if not queue.is_empty() else 10
+
+	func rand_index(size: int) -> int:
+		return 0
+
+
 func run() -> void:
 	await process_frame
 	root.get_node("SaveManager").call("set_setting", "ability_primers_enabled", false)
@@ -10,13 +21,11 @@ func run() -> void:
 	await create_timer(1.0).timeout
 	var battle: Node = current_scene
 	var tray: Node = battle.get_node("%DiceTray3D")
-	var rigged: Dictionary = {}
-	for side in ["hero", "enemy"]:
-		var views: Array = battle.get(side + "_card_views")
-		for i in views.size():
-			var id: String = str((views[i]["state"] as Dictionary)["id"])
-			rigged[side+":"+id] = [18, 9, 20][i] if side == "hero" else 7
-	tray.call("set_rigged_results", rigged)
+	# Scripted naturals through the engine's roll seam (the tray rig is gone:
+	# values are decided in game logic before the throw). Heroes, then enemies.
+	var scripted := ScriptedRolls.new()
+	scripted.queue = [18, 9, 20, 7, 7, 7, 7]
+	(battle.get("_engine") as Object).set("roll_provider", scripted)
 	battle.get_node("%RollButton").emit_signal("pressed")
 	await tray.roll_finished
 	await create_timer(0.6).timeout

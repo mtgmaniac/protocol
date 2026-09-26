@@ -2,10 +2,11 @@
 #
 # Wraps DiceManager.roll_d20() — the battle's seeded d20 stream — so the game
 # and the headless fallback share one seam with the sim's SeededRollProvider.
-# In live play battle_scene draws each round's faces here and RIGS the physics
-# tray with them (checkpoint system, 2026-09-21): the dice still tumble, but the
-# face that rotates up is the drawn one. Physics is presentation (roll_provider.gd),
-# and the round's outcome is saveable state rather than a physics accident.
+# In live play battle_scene draws each round's faces here BEFORE the dice are
+# thrown (checkpoint system, 2026-09-21); the tray places each unit's effective
+# value on whichever face lands up (Option C, docs/audits/DICE_FACE_AUDIT.md).
+# Physics is presentation (roll_provider.gd), and the round's outcome is saveable
+# state rather than a physics accident.
 class_name PhysicsRollProvider
 extends RollProvider
 

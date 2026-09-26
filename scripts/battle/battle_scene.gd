@@ -2361,6 +2361,8 @@ func _die_value(side: String, unit_id: String) -> int:
 # are rebuilt here — a hijacked enemy's value moves with the heroes' highest
 # die, and its readout and target must follow it.
 func _on_die_values_changed() -> void:
+	if dice_tray_3d != null:
+		dice_tray_3d.sync_values_now()
 	_assign_enemy_targets()
 	_refresh_dice_result_actions()
 	_card_view.refresh_all_cards()

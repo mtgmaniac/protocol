@@ -252,7 +252,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Spike | SP | this round, damaging the carrier costs N back; never persists |
 | Jam | JM | target's next roll capped at **10** (`JAM_CAP`); die status, no chip |
 | Rewrite | RW | target's next roll SET to 3; telegraphed |
-| Hijack | HJ | enemy-only: next roll copies heroes' current highest die (voidScribe Checksum Copy, voidGlimmer Afterimage, spewer Mimic Gland) |
+| Hijack | HJ | enemy-only: next roll copies heroes' current highest die (the highest EFFECTIVE hero die, as `resolve_round` copies it; shown live on the enemy die and readout from landing, following any Nudge/Set/Reroll/buff until resolution — `BattleEngine.hijack_value`, Kev 2026-09-26) (voidScribe Checksum Copy, voidGlimmer Afterimage, spewer Mimic Gland) |
 | Siphon | SI | enemy-only: on hit drain N Protocol (floor 0) |
 | Taunt | T | unified (Lure deleted): "The taunted unit can only target the taunter." **SINGLE-TARGET (Build G ruling G-4, Kev 2026-07-15):** a hero taunt is a manual ONE-ENEMY pick — that enemy gets `lured_by_id` and every one of its targeting paths (`_resolve_enemy_hero_target`, the freeze lowest-die pick, `personality_pick_target`) redirects to the taunter, overriding cloak; other enemies keep their personalities; multiple heroes may taunt different enemies in one round; a firewall blocks (and is consumed by) the taunt; no pick supplied (sim/auto) falls back deterministically via `_hostile_single_target`. Enemy-side keeps its shapes: beastHyena's lure restricts the hit hero; veilPrism's `enemySelfTaunt` self-aura restricts all heroes (each taunted unit → the one taunter, def-consistent). The TAUNT chip sits on whichever unit is LURED, either side. Anchor Frame gear keeps its stance aura pending its own ruling — the one remaining aura-form taunt. **Both sides clear at round end** (per Kev NK-08) |
 | Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
@@ -379,10 +379,19 @@ balance sim happens not to run `battle_scene`, and the first seeded path to call
 it would have shifted every downstream reward, beat and intercept roll. The
 `save roundtrip` gate pins this: deriving battle seeds must leave the run RNG
 state and its next draws untouched. **Live d20 FACES come from the battle's d20
-stream** (since 2026-09-21): each round draws them via `_roll_for_states` (the same
-draws, in the same order, as the skip-visuals path) and RIGS the physics tray with
-them — the dice still tumble, the drawn face rotates up (the tutorial's rig
-mechanism; physics is presentation, INVARIANTS #1). The end-of-round checkpoint
+stream** (since 2026-09-21): each round draws them via `_roll_for_states` BEFORE the
+dice are thrown, on the one path the skip-visuals roll also uses (physics is
+presentation, INVARIANTS #1). **Dice presentation (Option C, Kev 2026-09-26,
+`docs/audits/DICE_FACE_AUDIT.md`):** the dice tumble with real physics while their
+numerals scramble (stepped pixel digits); on settle the value is placed on the face
+that actually landed up by turning only the die's face rig (an icosahedral symmetry,
+picked so the numeral reads closest to screen-up) while the digits still scramble,
+then the digits lock. After it settles a die never rotates again (it slides to its
+slot under its unit). The value is `battle_scene._die_value` — the effective roll the
+unit acts on, every pre-roll modifier included (a +3 die can never show 1–3). A change
+after landing (Nudge, Set, items, Sync Antenna, a live hijack copy) scrambles and
+relocks on the die; Reroll keeps its spin. The old flow rotated the drawn face up
+after the die had landed — the P0 "lands on one face, snaps to another". The end-of-round checkpoint
 stores both owned stream positions (`PhysicsRollProvider.get_stream_states`), so a
 resumed round rolls exactly the dice the interrupted one would have: **a refresh
 cannot reroll the next dice.**
@@ -769,7 +778,7 @@ Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
 > (self) + +1 roll (self) had stamped two self markers.)
 
 **View Battlefield** (between-battle choices): `battle_scene` captures the final combat state at victory into transient `GameState.battle_review_state` (skipped headless/auto). Reward, Intercept, and evolution/directive choices show `VIEW BATTLEFIELD` when that state exists; it re-enters the real battle scene read-only, then returns to the originating choice. Reward/Intercept offers, selection, recipient/swap choice, and scroll state are retained in the transient picker session; no reward rolls again and no event transaction can commit twice.
-Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — the reveal feeds the jam cap through `_display_face_for_entry`, mirroring `get_effective_roll`; regression `jam_display_test.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
+Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
 

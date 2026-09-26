@@ -54,6 +54,14 @@ const FACE_RESOLVE_LINEAR_SPEED := 0.16
 const FACE_RESOLVE_ANGULAR_SPEED := 0.24
 const MAX_ROLL_TIME := 6.0
 const RESULT_SNAP_DELAY := 0.20
+# Option C (Kev 2026-09-26): face numerals SCRAMBLE while a die tumbles —
+# stepped pixel digits, never tweened — and lock once the value sits on the face
+# that actually landed up. A change after landing scrambles and relocks in place.
+const SCRAMBLE_STEP := 0.08
+const VALUE_CHANGE_TIME := 0.26
+# Faces whose normal points below this (world y) are hidden from the top-down
+# camera; they skip the per-step digit shuffle.
+const SCRAMBLE_VISIBLE_MIN_Y := -0.25
 const RESULT_PRESENTATION_TIME := 0.42
 const RESULT_SCALE := 0.95
 const SELECTED_REROLL_TIME := 0.82
@@ -85,6 +93,14 @@ var _face_normals: Array[Vector3] = []
 var _face_centers: Array[Vector3] = []
 var _face_text_bases: Array[Basis] = []
 var _face_values: Array[int] = []
+# Each face's three vertices in outward counter-clockwise order. Mapping one
+# face's triple onto another's (in one of 3 cyclic orders) gives one of the
+# icosahedron's 60 rotational symmetries — the rotations that leave the die's
+# shape (and collision hull) unchanged and only move WHICH number is on WHICH
+# physical face. That is how a value is placed on the face that landed.
+var _face_vertex_sets: Array = []
+var _scramble_rng := RandomNumberGenerator.new()
+var _scramble_accum: float = 0.0
 var _is_rolling: bool = false
 var _dice_number_font: Font
 var _is_exiting_tree: bool = false
@@ -352,6 +368,11 @@ func _die_visuals(die: RigidBody3D) -> Node3D:
 func _die_part(die: RigidBody3D, part_name: String) -> Node:
 	var visuals: Node3D = _die_visuals(die)
 	if visuals != null:
+		var rig: Node3D = visuals.get_node_or_null("FaceRig") as Node3D
+		if rig != null:
+			var in_rig: Node = rig.get_node_or_null(part_name)
+			if in_rig != null:
+				return in_rig
 		return visuals.get_node_or_null(part_name)
 	return die.get_node_or_null(part_name)
 
@@ -446,6 +467,8 @@ func _value_for_die(die: RigidBody3D) -> int:
 
 func set_values_live(live: bool) -> void:
 	_values_live = live
+	if live:
+		_poll_values()
 
 
 # Test/gate surface. A die is LOCKED when its digits are settled on a value
@@ -476,7 +499,25 @@ func up_face_numeral(side: String, unit_id: String) -> int:
 	return int(text) if text.is_valid_int() else -1
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_scramble_accum += delta
+	if _scramble_accum >= SCRAMBLE_STEP:
+		_scramble_accum = fmod(_scramble_accum, SCRAMBLE_STEP)
+		for die_variant in _die_by_key.values():
+			var scrambling_die: RigidBody3D = die_variant as RigidBody3D
+			if scrambling_die != null and is_instance_valid(scrambling_die) and bool(scrambling_die.get_meta("scrambling", false)):
+				_scramble_step(scrambling_die)
+	_poll_values()
+
+
+# Follow game logic: a die whose shown value no longer matches the one source
+# scrambles and relocks on the new value. Also called synchronously by the
+# scene right after it changes a value, so the die never reads stale.
+func sync_values_now() -> void:
+	_poll_values()
+
+
+func _poll_values() -> void:
 	if not _values_live or _is_rolling or not value_provider.is_valid():
 		return
 	for key in _die_by_key:
@@ -488,19 +529,22 @@ func _process(_delta: float) -> void:
 			_show_value_in_place(die, v)
 
 
+# APPLIED-AFTER-LANDING change (Nudge, Set, items, Sync Antenna, a live
+# hijack copy): the die does not move. Its digits scramble, the value is
+# re-placed on the same landed face while they scramble (a symmetry turn of the
+# face rig — invisible mid-scramble), then they lock. No single-frame jumps.
 func _show_value_in_place(die: RigidBody3D, target: int) -> void:
-	var entry: Dictionary = die.get_meta("entry", {})
-	var side: String = str(entry.get("side", ""))
-	die.set_meta("shown_value", target)
-	var face_index: int = _get_face_index_for_result(target)
-	if face_index >= 0:
-		var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
-		var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
-		target_origin.y = die.global_transform.origin.y
-		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
-	_reset_face_labels(die)
-	_reset_face_highlights(die)
-	_highlight_top_face(die, target, side, str(die.get_meta("zone", "")))
+	die.set_meta("busy", true)
+	_start_scramble(die)
+	_place_value_on_landed_face(die, target)
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(VALUE_CHANGE_TIME).timeout
+	if _is_exiting_tree or not is_instance_valid(die):
+		return
+	_lock_die(die)
+	die.set_meta("busy", false)
 
 
 func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool, flavor: String = "ice") -> void:
@@ -560,7 +604,10 @@ func reroll_die_to_result(side: String, unit_id: String) -> void:
 	_reset_face_highlights(die)
 
 	var from_transform: Transform3D = die.global_transform
-	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
+	# The face rig may hold a symmetry turn from an earlier placement; land the
+	# body so that rig-and-body together put `display` up, numeral screen-up.
+	var rig_basis: Basis = _face_rig_basis(die)
+	var to_transform: Transform3D = Transform3D((_get_face_forward_result_basis(face_index) * rig_basis.inverse()).orthonormalized(), target_origin)
 	var spin_axis: Vector3 = Vector3(randf_range(-0.4, 0.4), 1.0, randf_range(-0.4, 0.4)).normalized()
 	var elapsed: float = 0.0
 	while elapsed < SELECTED_REROLL_TIME:
@@ -584,9 +631,12 @@ func reroll_die_to_result(side: String, unit_id: String) -> void:
 	if not is_instance_valid(die):
 		return
 	die.global_transform = to_transform
+	die.set_meta("up_face", _body_up_face_index(die))
 	_set_die_result_scale(die, true)
 	die.set_meta("shown_value", display)
 	die.set_meta("assigned_result_origin", target_origin)
+	# If logic moved on during the spin, _lock_die re-reads the one source.
+	_lock_die(die)
 	die.set_meta("busy", false)
 	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
 
@@ -639,6 +689,7 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 		else:
 			die = _spawn_die(entry, side_slot, all_entries.size())
 			_launch_die(die)
+			_start_scramble(die)
 			rolling_dice.append(die)
 		dice.append(die)
 
@@ -705,21 +756,22 @@ func _finish_roll(dice: Array) -> void:
 	roll_finished.emit()
 
 
-func _start_result_face_present(die: RigidBody3D, result: int, target_origin: Vector3) -> void:
+# The die slides to its result slot under its unit (the dice-to-card layout
+# contract) WITHOUT rotating: the face that landed up stays up, exactly as it
+# came to rest. (This replaced the 0.42 s correction that rolled the die onto
+# a different face and spun it upright — the P0 snap.)
+func _slide_to_result_origin(die: RigidBody3D, target_origin: Vector3) -> void:
 	if _is_exiting_tree or not is_inside_tree():
 		return
-	var face_index: int = _get_face_index_for_result(result)
-	if face_index < 0:
-		return
-	var from_transform: Transform3D = die.global_transform
-	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
+	var from_origin: Vector3 = die.global_transform.origin
+	var fixed_basis: Basis = die.global_transform.basis
 	var tween: Tween = create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.tween_method(
 		func(weight: float) -> void:
 			if is_instance_valid(die):
-				die.global_transform = from_transform.interpolate_with(to_transform, weight)
+				die.global_transform = Transform3D(fixed_basis, from_origin.lerp(target_origin, weight))
 	, 0.0, 1.0, RESULT_PRESENTATION_TIME)
 
 
@@ -1111,6 +1163,14 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 		die.linear_velocity = Vector3.ZERO
 		die.angular_velocity = Vector3.ZERO
 
+	# Settled. While the digits still scramble, put each die's value on the face
+	# that landed up (face-rig symmetry turn, unseen), hold the scramble a beat,
+	# then lock the digits and slide the die to its slot. The body never rotates.
+	for die_variant in dice:
+		var die: RigidBody3D = die_variant as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		_resolve_landed_die_face(die, target_origins.get(die.get_instance_id(), die.global_transform.origin))
 	var settle_tree: SceneTree = get_tree()
 	if _is_exiting_tree or settle_tree == null:
 		return
@@ -1121,8 +1181,9 @@ func _wait_for_dice_to_settle(dice: Array, target_origins: Dictionary) -> void:
 		var die: RigidBody3D = die_variant as RigidBody3D
 		if die == null or not is_instance_valid(die):
 			continue
-		var die_id: int = die.get_instance_id()
-		_resolve_landed_die_face(die, target_origins.get(die_id, die.global_transform.origin))
+		_lock_die(die)
+		var origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
+		_slide_to_result_origin(die, origin_variant if origin_variant is Vector3 else die.global_transform.origin)
 
 
 func _is_die_ready_for_face_resolve(die: RigidBody3D) -> bool:
@@ -1134,11 +1195,115 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, false)
-	var display: int = _value_for_die(die)
-	die.set_meta("shown_value", display)
+	die.set_meta("up_face", _body_up_face_index(die))
+	_place_value_on_landed_face(die, _value_for_die(die))
 	target_origin.y = die.global_transform.origin.y
 	die.set_meta("assigned_result_origin", target_origin)
-	_start_result_face_present(die, display, target_origin)
+
+
+# ── Option C: value placement, scramble, lock ─────────────────────────────────
+
+func _face_rig(die: RigidBody3D) -> Node3D:
+	var visuals: Node3D = _die_visuals(die)
+	return visuals.get_node_or_null("FaceRig") as Node3D if visuals != null else null
+
+
+func _face_rig_basis(die: RigidBody3D) -> Basis:
+	var rig: Node3D = _face_rig(die)
+	return rig.basis.orthonormalized() if rig != null else Basis()
+
+
+# Index of the physical face (in body space) pointing most nearly up.
+func _body_up_face_index(die: RigidBody3D) -> int:
+	var local_up: Vector3 = die.global_transform.basis.orthonormalized().inverse() * Vector3.UP
+	var best: int = 0
+	var best_dot: float = -2.0
+	for i in range(_face_normals.size()):
+		var d: float = _face_normals[i].dot(local_up)
+		if d > best_dot:
+			best_dot = d
+			best = i
+	return best
+
+
+# The rotational symmetry mapping face `src` onto face `dst`, with src's
+# vertices landing on dst's in cyclic order `shift` (0-2).
+func _face_symmetry(src: int, dst: int, shift: int) -> Basis:
+	var a: Array = _face_vertex_sets[src]
+	var b: Array = _face_vertex_sets[dst]
+	var from_verts: Basis = Basis(a[0], a[1], a[2])
+	var to_verts: Basis = Basis(b[shift % 3], b[(shift + 1) % 3], b[(shift + 2) % 3])
+	return (to_verts * from_verts.inverse()).orthonormalized()
+
+
+# Put `value` on the face that landed up by turning ONLY the face rig (numbers,
+# panels, edges — the die's shape is unchanged by a symmetry turn). Of the 3
+# turns that do it, take the one whose numeral reads closest to screen-up.
+# Callers only do this while the digits scramble, so the turn is never seen.
+func _place_value_on_landed_face(die: RigidBody3D, value: int) -> void:
+	var value_face: int = _get_face_index_for_result(value)
+	var rig: Node3D = _face_rig(die)
+	if value_face < 0 or rig == null:
+		return
+	var landed_face: int = int(die.get_meta("up_face", _body_up_face_index(die)))
+	var body: Basis = die.global_transform.basis.orthonormalized()
+	var text_up_local: Vector3 = _face_text_bases[value_face].y
+	var best: Basis = Basis()
+	var best_score: float = -INF
+	for shift in range(3):
+		var g: Basis = _face_symmetry(value_face, landed_face, shift)
+		var up_world: Vector3 = body * (g * text_up_local)
+		var flat: Vector3 = Vector3(up_world.x, 0.0, up_world.z)
+		var score: float = flat.normalized().dot(RESULT_FACE_TEXT_UP) if flat.length_squared() > 0.000001 else -1.0
+		if score > best_score:
+			best_score = score
+			best = g
+	rig.quaternion = best.get_rotation_quaternion()
+	die.set_meta("shown_value", value)
+
+
+func _start_scramble(die: RigidBody3D) -> void:
+	die.set_meta("scrambling", true)
+	_reset_face_highlights(die)
+	# Only the main numeral cycles; the engrave layers return on lock (cheaper
+	# on mobile, and a cycling digit reads cleaner without its bevel stack).
+	_set_engrave_layers_visible(die, false)
+	_scramble_step(die)
+
+
+func _set_engrave_layers_visible(die: RigidBody3D, shown: bool) -> void:
+	for face_value in _face_values:
+		for prefix in ["FaceNumberWell", "FaceNumberShadow", "FaceNumberHighlight"]:
+			var layer: Label3D = _die_part(die, "%s%d" % [prefix, int(face_value)]) as Label3D
+			if layer != null:
+				layer.visible = shown
+
+
+func _scramble_step(die: RigidBody3D) -> void:
+	var world: Basis = die.global_transform.basis * _face_rig_basis(die)
+	for i in range(_face_values.size()):
+		if (world * _face_normals[i]).y < SCRAMBLE_VISIBLE_MIN_Y:
+			continue
+		var label: Label3D = _die_part(die, "FaceNumber%d" % int(_face_values[i])) as Label3D
+		if label != null:
+			var digit: String = "%d" % _scramble_rng.randi_range(1, 20)
+			label.text = digit
+			label.font_size = 128 if digit.length() == 1 else 108
+
+
+# Lock the digits on the one-source value (re-placing it first, still
+# unseen, if game logic moved while the die scrambled), restore the engraving
+# and highlight the face.
+func _lock_die(die: RigidBody3D) -> void:
+	var v: int = _value_for_die(die)
+	if bool(die.get_meta("scrambling", false)) and v != int(die.get_meta("shown_value", -1)):
+		_place_value_on_landed_face(die, v)
+	die.set_meta("scrambling", false)
+	_reset_face_labels(die)
+	_set_engrave_layers_visible(die, true)
+	_reset_face_highlights(die)
+	var entry: Dictionary = die.get_meta("entry", {})
+	_highlight_top_face(die, int(die.get_meta("shown_value", v)), str(entry.get("side", "")), str(die.get_meta("zone", "")))
 
 
 # Late in the roll the "felt" grabs: damping ramps up so a die spiralling on a
@@ -1317,6 +1482,12 @@ func _spawn_die(entry: Dictionary, index: int, _total_count: int) -> RigidBody3D
 	var visual_root: Node3D = Node3D.new()
 	visual_root.name = "Visuals"
 	die.add_child(visual_root)
+	# The symmetric face geometry (body mesh, shell, panels, edges, numerals)
+	# lives under FaceRig so a value can be placed on the landed face by turning
+	# the rig alone. Status overlays and markers stay directly under Visuals.
+	var face_rig: Node3D = Node3D.new()
+	face_rig.name = "FaceRig"
+	visual_root.add_child(face_rig)
 
 	var mesh_instance: MeshInstance3D = MeshInstance3D.new()
 	mesh_instance.mesh = _build_d20_mesh()
@@ -1325,13 +1496,13 @@ func _spawn_die(entry: Dictionary, index: int, _total_count: int) -> RigidBody3D
 	var base_color: Color = Color(0.12, 0.42, 0.88, 1.0) if str(entry.get("side", "")) == "hero" else Color(0.72, 0.20, 0.18, 1.0)
 	die.set_meta("base_color", base_color)
 	mesh_instance.material_override = _bank_material("body:%s" % base_color.to_html(false), func() -> StandardMaterial3D: return _make_body_material(base_color))
-	visual_root.add_child(mesh_instance)
+	face_rig.add_child(mesh_instance)
 
 	# Inner shell — solid blocker so no back-face geometry shows through
 	var inner_mesh_instance: MeshInstance3D = MeshInstance3D.new()
 	inner_mesh_instance.mesh = _build_inner_shell_mesh()
 	inner_mesh_instance.material_override = _bank_material("inner:%s" % base_color.to_html(false), func() -> StandardMaterial3D: return _make_inner_shell_material(base_color))
-	visual_root.add_child(inner_mesh_instance)
+	face_rig.add_child(inner_mesh_instance)
 
 	_add_face_panels(die)
 	_add_edge_lines(die)
@@ -1459,6 +1630,7 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	var side: String = str(entry.get("side", ""))
 	var unit_id: String = str(entry.get("id", ""))
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	var fresh: bool = die == null
 	if die == null:
 		die = _spawn_die(entry, index, total_count)
 		# Fresh frozen die (no carry-over from last roll): rest it on the floor
@@ -1476,15 +1648,26 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	var display: int = clampi(int(entry.get("frozen_roll", 1)), 1, 20)
 	if value_provider.is_valid() and int(value_provider.call(side, unit_id)) > 0:
 		display = clampi(int(value_provider.call(side, unit_id)), 1, 20)
-	die.set_meta("shown_value", display)
-	var face_index: int = _get_face_index_for_result(display)
-	if face_index >= 0:
-		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), die.global_transform.origin)
-	_set_die_result_scale(die, false)
-	_reset_face_labels(die)
-	_reset_face_highlights(die)
-	_highlight_top_face(die, display, side)
+	if fresh:
+		# Never seen before (e.g. a restored checkpoint): placed, not rolled.
+		var face_index: int = _get_face_index_for_result(display)
+		if face_index >= 0:
+			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), die.global_transform.origin)
+		die.set_meta("up_face", _body_up_face_index(die))
+		die.set_meta("shown_value", display)
+		_set_die_result_scale(die, false)
 	_set_die_frozen_visual(die, true)
+	# A carried-over frozen die keeps its pose. Freeze captures the RAW face, so
+	# a die that showed a buffed value last round repeats on the raw one: that
+	# is a real change of the value it acts on, shown as scramble-and-lock.
+	if not fresh and int(die.get_meta("shown_value", display)) != display and not bool(die.get_meta("busy", false)):
+		_show_value_in_place(die, display)
+		return die
+	if not bool(die.get_meta("busy", false)):
+		die.set_meta("scrambling", false)
+		_reset_face_labels(die)
+		_reset_face_highlights(die)
+		_highlight_top_face(die, int(die.get_meta("shown_value", display)), side)
 	return die
 
 
@@ -1563,6 +1746,7 @@ func _build_d20_face_data() -> void:
 	_face_centers.clear()
 	_face_text_bases.clear()
 	_face_values.clear()
+	_face_vertex_sets.clear()
 	var raw_vertices: Array[Vector3] = _get_raw_d20_vertices()
 	var faces: Array = _get_d20_faces()
 	for i in range(faces.size()):
@@ -1574,6 +1758,9 @@ func _build_d20_face_data() -> void:
 		var normal: Vector3 = (b - a).cross(c - a).normalized()
 		if normal.dot(center) < 0:
 			normal = -normal
+			_face_vertex_sets.append([a, c, b])
+		else:
+			_face_vertex_sets.append([a, b, c])
 		_face_normals.append(normal)
 		_face_centers.append(center)
 		_face_text_bases.append(_basis_for_triangle_face(a, b, c, normal))
@@ -1585,7 +1772,7 @@ func _get_most_visible_face_value(die: RigidBody3D) -> int:
 	var best_dot: float = -999.0
 	var best_value: int = 1
 	for i in range(_face_normals.size()):
-		var world_normal: Vector3 = die.global_transform.basis * _face_normals[i]
+		var world_normal: Vector3 = die.global_transform.basis * (_face_rig_basis(die) * _face_normals[i])
 		var dot: float = world_normal.normalized().dot(view_normal)
 		if dot > best_dot:
 			best_dot = dot
@@ -1674,11 +1861,11 @@ func _add_face_panels(die: RigidBody3D) -> void:
 		var panel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.96, 0.014)
 		panel_inst.name = "FacePanel%d" % (face_index + 1)
 		panel_inst.material_override = _face_panel_material_for(die)
-		_die_visuals(die).add_child(panel_inst)
+		_face_rig(die).add_child(panel_inst)
 		var bevel_inst: MeshInstance3D = _build_face_triangle(center, a, b, c, normal, 0.80, 0.016)
 		bevel_inst.name = "FaceBevel%d" % (face_index + 1)
 		bevel_inst.material_override = _bevel_material_for(_die_base_color(die))
-		_die_visuals(die).add_child(bevel_inst)
+		_face_rig(die).add_child(bevel_inst)
 
 
 # A flat triangle inset toward its face centre by `inset` and pushed `offset` along the normal.
@@ -1736,7 +1923,7 @@ func _add_edge_line_if_needed(die: RigidBody3D, raw_vertices: Array[Vector3], a_
 	edge.material_override = edge_mat
 	edge.position = (a + b) * 0.5
 	edge.basis = _basis_for_edge(direction.normalized())
-	_die_visuals(die).add_child(edge)
+	_face_rig(die).add_child(edge)
 
 
 func _basis_for_edge(y_axis: Vector3) -> Basis:
@@ -1936,7 +2123,7 @@ func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basi
 	label.render_priority = priority
 	label.position = pos
 	label.basis = face_basis
-	_die_visuals(die).add_child(label)
+	_face_rig(die).add_child(label)
 
 
 # ── ORIENTATION HELPERS ───────────────────────────────────────────────────────
