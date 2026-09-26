@@ -56,6 +56,10 @@ GATES = [
     # delay fuse — check the copies instead of trusting them to stay in sync.
     ("doc consistency", [sys.executable, str(ROOT / "scripts" / "checks" / "doc_consistency.py")], "[DOC_CONSISTENCY] PASS", False),
     ("knobs contract", [sys.executable, str(ROOT / "scripts" / "checks" / "knobs_contract.py")], "[KNOBS_CONTRACT] PASS", False),
+    # Bare autoload identifiers in the compile-time closure of an -s test are a
+    # compile error that hangs the test to its timeout (4 incidents). Self-tests
+    # by re-injecting every known incident on each run.
+    ("autoload closure", [sys.executable, str(ROOT / "scripts" / "checks" / "autoload_closure.py")], "[AUTOLOAD_CLOSURE] PASS", False),
     # Polish Build A: the capitalization law's mechanical subset (data JSON body
     # text, .tscn button text, literal .to_upper()) and the six-component panel
     # contract (no raw styleboxes / strong accents outside PixelUI).
