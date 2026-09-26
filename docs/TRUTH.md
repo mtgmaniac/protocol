@@ -183,12 +183,13 @@ Format (G-9, Kev 2026-09-06): concise numeric effects, comma-separated. Use `dam
 - Hero self effects are implicit: `5 shield`, `cloak`. Enemy self effects retain `(self)`.
 - Group targets name the side: `8 damage (all enemies)`, `6 heal (all heroes)`, `7 shield (all enemies)`. Chosen friendly targets use `(hero)`; lowest-HP support uses `(lowest HP)`; an enemy shielding another enemy uses `(ally)` (self fallback if alone).
 - Single hostile targets are implicit. Burn and other attack riders share that attack's targets. Freeze uses `freeze 1 turn`, `freeze any die 1 turn`, or `freeze all enemies 1 turn`.
+- Conditional alternative (Kev 2026-09-25): `else N heal (scope)` directly after a revive clause fires when nobody is down — `revive 50% HP, else 20 heal (hero)`. Decided at fire time; the battle readout pip is board-aware. NOT the conditional-bonus notation below (that adds to an effect that always fires; `else` replaces one that can't) — never interchange them. See DECISIONS_RESOLVED "NK-17 conditional alternative".
 - `scripts/checks/effect_text_target.py` compares effect/target counts against coded scopes, including separate ally shields. Duplicate suffixes, wrong sides and missing targets fail. This replaces the text syntax of NK-17/G-7; effect pips retain their existing icon conventions.
 - Equipment holder effects omit `(self)` and redundant “this hero.” Reward rows allow two lines; actions, amounts, targets and limits take priority over prose.
 - Durations display the stored number directly. Roll buffs, debuffs and freeze say `N turns`, without display arithmetic. The cast-round timing rules in Combat #10 still apply.
 
 ### Data field glossary
-`dmg` · `burn`+`burnT` · `heal`(+`healTgt`/`healAll`/`healLowest`) · `shield`(+`shieldAll`/`shTgt`/`shieldLowest`) · `rfe`+`rfT`(+`rfeAll`) · `rfm`+`rfmT`(+`rfmTgt`) · `ignSh` (pierce) · `blastAll` · `cloak` · `ward`(+`wardTgt`; displayed Firewall) · `taunt` / `enemySelfTaunt` · `revive` · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` (+`freeze_flavor`). **Max ONE manually-picked component per hero ability** (audit-enforced).
+`dmg` · `burn`+`burnT` · `heal`(+`healTgt`/`healAll`/`healLowest`) · `shield`(+`shieldAll`/`shTgt`/`shieldLowest`) · `rfe`+`rfT`(+`rfeAll`) · `rfm`+`rfmT`(+`rfmTgt`) · `ignSh` (pierce) · `blastAll` · `cloak` · `ward`(+`wardTgt`; displayed Firewall) · `taunt` / `enemySelfTaunt` · `revive`(+`reviveAll`/`revivePct`; `else` fallback `fallbackHeal`+`fallbackHealAll`, outcome and % via `ReviveResolution`) · `freezeAnyDice`/`freezeEnemyDice`/`freezeAllEnemyDice` (+`freeze_flavor`). **Max ONE manually-picked component per hero ability** (audit-enforced).
 
 **⚠ Every effect field needs a pip branch (2026-07-12):** the battle readout strip
 renders PIPS, not eff text — an effect that exists in an ability's eff string but has
@@ -1319,8 +1320,10 @@ share one shape — a surface stating something the round will not do.
   banner, name slam and overload celebration and did nothing.
   `combat_manager._ability_fizzles_for_lack_of_target` suppresses the
   `action_start` event (which is what drives all three) for an ability whose
-  EVERY effect is gated on a target that is absent. Only the revive family
-  qualifies today (Surge Revive, Mass Revival). **The beat still resolves** — the
+  EVERY effect is gated on a target that is absent. A PURE revive qualifies;
+  since 2026-09-25 Resuscitate and Mass Revival carry an `else` fallback heal
+  (`fallbackHeal`), so with nobody down they heal instead and always announce.
+  The rule stays for any future pure revive. **The beat still resolves** — the
   20-face riders (Overload Capacitor, the lifetime-20s stat) still pay out,
   because the die really did land on 20; suppressing those would be a balance
   change. Fail-safe by construction: an unrecognized live key in the raw means

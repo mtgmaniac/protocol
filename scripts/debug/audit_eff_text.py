@@ -129,6 +129,9 @@ def hero_expected(raw: dict) -> str:
             parts.append(f"revive ally {pct}%")
         else:
             parts.append(f"revive {pct}%")
+    if raw.get("fallbackHeal", 0) > 0:
+        scope = "all heroes" if raw.get("fallbackHealAll") else "hero"
+        parts.append(f"else {raw['fallbackHeal']} heal ({scope})")
     if raw.get("cloak"):
         parts.append("Cloak")
     if raw.get("ward"):

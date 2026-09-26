@@ -1,5 +1,51 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## NK-17 conditional alternative: `else` + Medic 20-band fallback (Kev, 2026-09-25) — RESOLVED & IMPLEMENTED
+
+**Grammar.** NK-17 gains a *conditional-alternative* clause: `else N effect
+(scope)`, comma-joined like every clause, legal only directly after a revive
+clause, and firing only when the preceding clause has nothing to act on (no
+hero down). `revive 50% HP, else 20 heal (hero)`. It is one token, reads
+naturally, and keeps the comma split intact. `effect_text_target.py` counts an
+`else` heal as its own kind (a plain heal can never stand in for it), requires
+the amount to equal `fallbackHeal`, and rejects `else` anywhere but after a revive.
+
+**Distinct from the conditional-BONUS ruling (Kev 2026-07-12).** That ruling adds
+MORE to an effect that always fires (`10 +5❄` — base + bonus + condition icon on
+one pip). `else` REPLACES an effect that cannot fire with a different one. They
+are not interchangeable: never write a fallback as a bonus, or a bonus as an else.
+
+**Abilities.** Resuscitate: revive a fallen hero at 50% HP (was 70%), else 20
+heal (hero). Mass Revival: revive all fallen heroes at 30% HP, else 12 heal (all
+heroes) — 12, not 20, so it is a clear step up from Nanite Crossfire's 6 (all)
+without the fallback outshining the revive. Data: `fallbackHeal`, `fallbackHealAll`.
+
+**Resolved at fire time, not pick time.** An ally can fall between the pick and
+the cast; the ability does the more useful thing when it fires (anyone down →
+revive, else heal). Lock-in at pick time would recreate the dead roll. Targeting
+offers a living pick only when the fallback will fire.
+
+**Board-aware pips.** The battle readout shows what this roll does NOW: the
+revive pip when someone is down, the heal pip when nobody is. No second pip or
+condition icon (keyword density is already a known problem). Inspect has no
+squad state: it shows the revive pip at the resolved percentage and the eff text
+carries the `else` clause.
+
+**Directives override the revive percentage only.** Field Surgeon (Resuscitate
+→ 100%) and Resuscitation Loop (Mass Revival → 50%) leave the fallback heal
+unchanged — a directive that removed the fallback would reintroduce the dead
+roll for the players who invested in it. Field Surgeon stays at 100%: its end
+state is strictly better than today; its gain grows from +30 to +50 points of
+max HP, **flagged for the next sim run**.
+
+**Display honesty fix (same change).** Revive pips used to show raw `revivePct`,
+ignoring the directive and the reviveNoPenalty relic (Field Surgeon showed 70
+while reviving at 100). `ReviveResolution.resolved_pct` is now the one source for
+the engine, the readout and inspect.
+
+**Balance:** revive 70→50 plus the new fallback — not measured alone; **flagged
+for the next sim run** together with Field Surgeon.
+
 ## Experimental battle landscape Stage B2 (Kev, 2026-09-23) — APPROVED
 
 Stage B typography approved. Updated request (2026-09-25): rearrange the same

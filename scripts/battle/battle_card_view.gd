@@ -121,8 +121,15 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		var action_pips: Variant = []
 		if has_revealed_roll:
 			action_label = str(chosen_entry.get("ability_name", "NO ACTION"))
+			var readout_raw: Dictionary = chosen_entry.get("raw", chosen_entry) as Dictionary
+			if accent_color == _scene.HERO_ACCENT:
+				# Board-aware revive family (Kev 2026-09-25): show what this roll
+				# does NOW — the fallback heal when nobody is down, else the
+				# revive at its resolved (directive/relic) percentage.
+				readout_raw = ReviveResolution.display_raw(readout_raw, state,
+					str(chosen_entry.get("ability_name", "")), _scene.combat_manager.get_hero_states())
 			action_pips = EffectPip.ability_readout_payload(
-				chosen_entry.get("raw", chosen_entry) as Dictionary,
+				readout_raw,
 				"hero" if accent_color == _scene.HERO_ACCENT else "enemy"
 			)
 			# pkg8.2: the Detonate pip shows the live computed burst once the
@@ -423,7 +430,10 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
 		if entry.is_empty():
 			continue
-		var raw: Dictionary     = entry.get("raw", {})
+		# Resolved like the readout: a revive whose `else` heal will fire projects
+		# as that heal on the net-HP forecast.
+		var raw: Dictionary     = ReviveResolution.display_raw(entry.get("raw", {}), hero_state,
+			str(entry.get("ability_name", "")), _scene.combat_manager.get_hero_states())
 		var hero_target: String = str(hero_state.get("selected_target_id", ""))
 		var blast_all: bool     = bool(raw.get("blastAll", false))
 		var heal_all: bool      = bool(raw.get("healAll", false))
@@ -731,8 +741,3 @@ func _make_compact_icon_status(status_type: String, priority: int = 3) -> Dictio
 		"mode": "icon",
 		"priority": priority,
 	}
-
-
-func _revive_hp_pct_from_raw(raw: Dictionary) -> int:
-	return int(raw.get("revivePct", 50))
-

@@ -200,6 +200,10 @@ def format_eff(raw: dict[str, Any], side: str) -> str:
         parts.append(f"revive all {_int(raw, 'revivePct', 50)}%")
     elif _bool(raw, "revive"):
         parts.append(f"revive {_int(raw, 'revivePct', 50)}%")
+    # NK-17 conditional alternative (Kev 2026-09-25): the heal when nobody is down.
+    if _int(raw, "fallbackHeal") > 0:
+        scope = "all heroes" if _bool(raw, "fallbackHealAll") else "hero"
+        parts.append(f"else {_int(raw, 'fallbackHeal')} heal ({scope})")
     if _bool(raw, "grantRampageAll"):
         parts.append("rampage +1 (all)")
     elif _int(raw, "grantRampage") > 0:
@@ -381,6 +385,9 @@ def format_inspect(raw: dict[str, Any], side: str) -> str:
         friendly.append(f"Revive all fallen allies at {_int(raw, 'revivePct', 50)}% max HP.")
     elif _bool(raw, "revive"):
         friendly.append(f"Revive a fallen ally at {_int(raw, 'revivePct', 50)}% max HP.")
+    if _int(raw, "fallbackHeal") > 0:
+        who = "every hero" if _bool(raw, "fallbackHealAll") else "one hero"
+        friendly.append(f"If no hero is down, heal {who} for {_int(raw, 'fallbackHeal')} instead.")
 
     protocol = _int(raw, "gainProtocol")
     if protocol > 0:

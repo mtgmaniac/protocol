@@ -103,7 +103,7 @@ static func _ability_inspect_text(raw: Dictionary, fallback: String = "") -> Str
 static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String = "") -> Dictionary:
 	if raw.is_empty():
 		return {}
-	var effects: Array = EffectPip.effects_from_ability_raw(raw, side)
+	var effects: Array = EffectPip.effects_from_ability_raw(_with_resolved_revive_pct(raw), side)
 	return {
 		"accent": _side_accent(side),
 		"header": {"title": str(raw.get("name", "Ability")), "subtitle": meta if meta != "" else "ABILITY"},
@@ -120,6 +120,18 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 # `state` is the unit's live battle-state dict (empty outside battle, e.g. the home screen).
 # When it carries active statuses they REPLACE the role subtitle, shown as pip + description
 # rows; with no statuses the role subtitle is kept.
+# Revive pips show the percentage that actually fires (reviveNoPenalty relic,
+# then the hero's revive directive), not raw revivePct. Inspect has no squad
+# state, so it is NOT board-aware: it keeps the revive pip and the eff text
+# carries the `else` clause; the battle readout is the board-aware surface.
+static func _with_resolved_revive_pct(raw: Dictionary, hero_state: Dictionary = {}, ability_name: String = "") -> Dictionary:
+	if not ReviveResolution.is_revive_family(raw):
+		return raw
+	var shown: Dictionary = raw.duplicate()
+	shown["revivePct"] = ReviveResolution.resolved_pct(raw, hero_state, ability_name)
+	return shown
+
+
 static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 	if data == null:
 		return {}
@@ -138,7 +150,8 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 		abilities.append({
 			"name": str(entry.get("ability_name", "")),
 			"roll": "%d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))],
-			"effects": EffectPip.effects_from_ability_raw(raw, side) if not raw.is_empty() else [],
+			"effects": EffectPip.effects_from_ability_raw(
+				_with_resolved_revive_pct(raw, state, str(entry.get("ability_name", ""))), side) if not raw.is_empty() else [],
 			# fix-2.4: the authored eff string IS the ability text — same live
 			# data battle renders. fix-2.5: keyword definitions ride along.
 			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),

@@ -46,7 +46,9 @@ CEREMONY_PTS = 10.0  # per-op clear-rate points
 # fizzle on an already-dead target.
 # G-8: +12 frozen-20 and reinforcement-reward assertions.
 # G-9: +8 copy/behavior and display-name migration assertions.
-AUDIT_MIN_PASSED = 271
+# 271 -> 282 (Medic 20-band fallback, NK-17 `else`): the floor had lagged at 271
+# while the audit passed 274; +8 fallback/fire-time/directive/readout regressions.
+AUDIT_MIN_PASSED = 282
 
 GATES = [
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),

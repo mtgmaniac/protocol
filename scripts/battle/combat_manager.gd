@@ -240,12 +240,12 @@ const REVIVE_INERT_KEYS := {
 
 
 # True when EVERY effect this ability carries is gated on a target that does
-# not exist, so resolving it changes nothing at all. Today that is exactly the
-# revive family (Surge Revive, Mass Revival): both carry revive/reviveAll and
-# zero of anything else, and a squad with no downed hero gives them nothing to
-# do. Deliberately fail-safe — an unrecognized live key means "still does
-# something", so a new ability announces (today's behavior) until it is
-# understood, rather than going silently missing.
+# not exist, so resolving it changes nothing at all: a PURE revive (revive or
+# reviveAll and zero of anything else) with no downed hero. Resuscitate and
+# Mass Revival carry an `else` fallback heal (fallbackHeal, a live key), so
+# they always act and never fizzle. Deliberately fail-safe — an unrecognized
+# live key means "still does something", so a new ability announces (today's
+# behavior) until it is understood, rather than going silently missing.
 func _ability_fizzles_for_lack_of_target(ability_entry: Dictionary) -> bool:
 	var raw: Dictionary = ability_entry.get("raw", {})
 	if not (bool(raw.get("revive", false)) or bool(raw.get("reviveAll", false))):
@@ -1349,18 +1349,8 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			_log("%s taunts %s - it can only strike back this round!" % [hero_state["unit"].display_name, taunt_target["unit"].display_name])
 			_emit_event(taunt_target, "taunt", 0, "enemy")
 
-	if bool(raw.get("reviveAll", false)):
-		var revive_all_pct: int = _directive_revive_pct(hero_state, ability_entry, _resolve_revive_hp_pct(raw))
-		for ally_state in _hero_states:
-			if bool(ally_state.get("dead", false)):
-				_revive_state(ally_state, revive_all_pct)
-	elif bool(raw.get("revive", false)):
-		var revive_pct: int = _directive_revive_pct(hero_state, ability_entry, _resolve_revive_hp_pct(raw))
-		var revive_target: Dictionary = _find_target_by_id_including_dead(_hero_states, str(hero_state.get("selected_target_id", "")))
-		if revive_target.is_empty():
-			revive_target = _first_dead_state(_hero_states)
-		if not revive_target.is_empty():
-			_revive_state(revive_target, revive_pct)
+	if ReviveResolution.is_revive_family(raw):
+		_resolve_revive_family(hero_state, ability_entry, raw)
 
 	# Spike: this round, any enemy that damages this unit takes N back.
 	var spike_amount: int = int(raw.get("spike", 0))
@@ -1503,10 +1493,35 @@ func _apply_roll_down_directives(hero_state: Dictionary, target_state: Dictionar
 
 
 # Field Surgeon / Lazarus Loop: the named ability revives at a fixed percent.
-func _directive_revive_pct(hero_state: Dictionary, ability_entry: Dictionary, base_pct: int) -> int:
-	if _has_directive(hero_state, "abilityRevivePctOverride") and _directive_ability(hero_state) == str(ability_entry.get("ability_name", "")):
-		return _directive_value(hero_state, "pct", base_pct)
-	return base_pct
+# Revive family, decided at FIRE time (NK-17 `else`, Kev 2026-09-25): anyone down
+# -> revive (the picked hero if still down, else the first fallen; reviveAll takes
+# every fallen hero); nobody down -> the fallback heal (picked living hero, else
+# lowest HP; fallbackHealAll heals the squad). Percentage comes from
+# ReviveResolution so the readout shows exactly what fires here.
+func _resolve_revive_family(hero_state: Dictionary, ability_entry: Dictionary, raw: Dictionary) -> void:
+	var fallback: int = ReviveResolution.fallback_heal(raw)
+	if not ReviveResolution.any_hero_down(_hero_states):
+		if fallback <= 0:
+			return
+		if bool(raw.get("fallbackHealAll", false)):
+			for ally_state in _hero_states:
+				_heal_state(ally_state, fallback, hero_state)
+			return
+		var heal_target: Dictionary = _find_target_by_id(_hero_states, str(hero_state.get("selected_target_id", "")))
+		if heal_target.is_empty():
+			heal_target = _lowest_hp_state(_hero_states)
+		_heal_state(heal_target, fallback, hero_state)
+		return
+	var revive_pct: int = ReviveResolution.resolved_pct(raw, hero_state, str(ability_entry.get("ability_name", "")))
+	if bool(raw.get("reviveAll", false)):
+		for ally_state in _hero_states:
+			if bool(ally_state.get("dead", false)):
+				_revive_state(ally_state, revive_pct)
+		return
+	var revive_target: Dictionary = _find_target_by_id_including_dead(_hero_states, str(hero_state.get("selected_target_id", "")))
+	if revive_target.is_empty() or not bool(revive_target.get("dead", false)):
+		revive_target = _first_dead_state(_hero_states)
+	_revive_state(revive_target, revive_pct)
 
 
 func _apply_hero_ability_damage(
@@ -2411,11 +2426,6 @@ func _freeze_pick_hero_lowest_die(enemy_state: Dictionary = {}) -> Dictionary:
 			if not bool(hero_state["dead"]) and not bool(hero_state.get("cloaked", false)):
 				return hero_state
 	return best
-
-
-func _resolve_revive_hp_pct(raw: Dictionary) -> int:
-	var default_pct: int = int(raw.get("revivePct", 50))
-	return GameState.get_revive_hp_pct(default_pct)
 
 
 func _revive_state(state: Dictionary, hp_pct: int) -> void:

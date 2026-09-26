@@ -1698,7 +1698,7 @@
                 20
               ],
               "name": "Resuscitate",
-              "eff": "revive 70% HP",
+              "eff": "revive 50% HP, else 20 heal (hero)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1708,7 +1708,8 @@
               "dMax": 0,
               "revive": true,
               "healTgt": true,
-              "revivePct": 70
+              "revivePct": 50,
+              "fallbackHeal": 20
             }
           ],
           "directives": [
@@ -1814,7 +1815,7 @@
                 20
               ],
               "name": "Mass Revival",
-              "eff": "revive all heroes 30% HP",
+              "eff": "revive all heroes 30% HP, else 12 heal (all heroes)",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1823,7 +1824,9 @@
               "dMin": 0,
               "dMax": 0,
               "reviveAll": true,
-              "revivePct": 30
+              "revivePct": 30,
+              "fallbackHeal": 12,
+              "fallbackHealAll": true
             }
           ],
           "directives": [

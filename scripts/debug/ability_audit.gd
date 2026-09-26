@@ -52,6 +52,8 @@ const HERO_HANDLED_FIELDS := [
 	"revive",
 	"reviveAll",
 	"revivePct",
+	"fallbackHeal",
+	"fallbackHealAll",
 	"cloak",
 	"cloakAll",
 	"ward",
@@ -498,6 +500,7 @@ func _run_regression_audits() -> void:
 	_run_relic_ally_death_heal_regression()
 	_run_revive_pct_regression()
 	_run_revive_all_regression()
+	_run_revive_fallback_regressions()
 	_run_gear_first_ability_echo_regression()
 	_run_gear_heal_shield_bonus_regression()
 	_run_gear_protocol_on_kill_regression()
@@ -3384,6 +3387,82 @@ func _run_revive_pct_regression() -> void:
 			"selected fallen ally revived at 70%% HP",
 			"dead=%s hp=%d expected=%d" % [str(ally["dead"]), int(ally["current_hp"]), expected_hp]
 		)
+
+
+# NK-17 conditional alternative (Kev 2026-09-25): `revive 50% HP, else 20 heal
+# (hero)`. Decided at FIRE time; directives override the revive % only.
+const FALLBACK_SINGLE_RAW := {"revive": true, "healTgt": true, "revivePct": 50, "fallbackHeal": 20}
+const FALLBACK_ALL_RAW := {"reviveAll": true, "revivePct": 30, "fallbackHeal": 12, "fallbackHealAll": true}
+
+
+func _run_revive_fallback_regressions() -> void:
+	_expect_revive_fallback("Regression / revive fallback heals the picked ally",
+		FALLBACK_SINGLE_RAW, "", false, false, [60, 60], ["", "80:alive"])
+	_expect_revive_fallback("Regression / reviveAll fallback heals the squad",
+		FALLBACK_ALL_RAW, "", false, false, [60, 60], ["72:alive", "72:alive"])
+	# Picked a LIVING ally (nobody was down), but an ally fell before the cast:
+	# fire time decides, so the fallen ally is revived instead.
+	_expect_revive_fallback("Regression / revive decided at fire time",
+		FALLBACK_SINGLE_RAW, "", false, true, [60, 0], ["60:alive", "50:alive"])
+	# Field Surgeon: nobody down -> the 20 heal is unchanged by the directive.
+	_expect_revive_fallback("Regression / revive directive leaves the fallback heal",
+		FALLBACK_SINGLE_RAW, "Resuscitate", false, false, [60, 60], ["", "80:alive"])
+	# Field Surgeon: someone down -> the revive fires at the directive's 100%.
+	_expect_revive_fallback("Regression / revive directive sets the revive pct",
+		FALLBACK_SINGLE_RAW, "Resuscitate", true, false, [60, 0], ["", "100:alive"])
+
+	var up: Array = [{"dead": false}, {"dead": false}]
+	var down: Array = [{"dead": false}, {"dead": true}]
+	var sides: String = "%s|%s|%s|%s" % [
+		ReviveResolution.manual_side(FALLBACK_SINGLE_RAW, up),
+		ReviveResolution.manual_side(FALLBACK_SINGLE_RAW, down),
+		ReviveResolution.manual_side({"revive": true, "healTgt": true}, up),
+		ReviveResolution.manual_side(FALLBACK_ALL_RAW, up)]
+	_expect_and_record("Targeting / revive fallback side follows the board", "manual_side",
+		"hero|dead_hero|dead_hero|", sides)
+
+	var heal_shown: Dictionary = ReviveResolution.display_raw(FALLBACK_SINGLE_RAW, {}, "Resuscitate", up)
+	_expect_and_record("Readout / revive shows the fallback heal when nobody is down", "display_raw",
+		"heal=20 healTgt=true revive=false",
+		"heal=%d healTgt=%s revive=%s" % [int(heal_shown.get("heal", 0)), str(bool(heal_shown.get("healTgt", false))).to_lower(), str(bool(heal_shown.get("revive", false))).to_lower()])
+	var surgeon: Dictionary = {"directive_type": "abilityRevivePctOverride", "directive_effect": {"ability": "Resuscitate", "pct": 100}}
+	var revive_shown: Dictionary = ReviveResolution.display_raw(FALLBACK_SINGLE_RAW, surgeon, "Resuscitate", down)
+	_expect_and_record("Readout / revive shows the directive-resolved pct", "display_raw",
+		"revive=true revivePct=100",
+		"revive=%s revivePct=%d" % [str(bool(revive_shown.get("revive", false))).to_lower(), int(revive_shown.get("revivePct", 0))])
+
+
+# One actor + one ally, both 100 max HP; the actor's pick is the ally. `hp` sets
+# current HP. `ally_down_at_pick` downs the ally before targeting (the revive
+# case); `ally_falls_late` downs it after a LIVING pick, before the cast fires
+# (the fire-time case). Expected entries are "hp:alive" per state, "" to skip.
+func _expect_revive_fallback(label: String, raw: Dictionary, directive_ability: String,
+		ally_down_at_pick: bool, ally_falls_late: bool, hp: Array, expected: Array) -> void:
+	var manager: CombatManager = CombatManager.new()
+	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Resuscitate", raw)
+	var ally_unit: UnitData = _make_unit("audit_ally_a", "Audit Ally A", "Noop", {})
+	manager.setup_battle([actor_unit, ally_unit], [])
+	var states: Array = manager.get_hero_states()
+	var actor: Dictionary = states[0]
+	var ally: Dictionary = states[1]
+	if directive_ability != "":
+		actor["directive_type"] = "abilityRevivePctOverride"
+		actor["directive_effect"] = {"ability": directive_ability, "pct": 100}
+	actor["current_hp"] = int(hp[0])
+	ally["current_hp"] = int(hp[1])
+	actor["selected_target_id"] = str(ally["id"])
+	if ally_down_at_pick or ally_falls_late:
+		ally["dead"] = true
+		ally["current_hp"] = 0
+	manager.resolve_round({str(actor["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	var actual: Array = []
+	for i in states.size():
+		if str(expected[i]) == "":
+			actual.append("")
+			continue
+		var st: Dictionary = states[i]
+		actual.append("%d:%s" % [int(st["current_hp"]), "dead" if bool(st["dead"]) else "alive"])
+	_expect_and_record(label, "fallbackHeal", ",".join(PackedStringArray(expected)), ",".join(PackedStringArray(actual)))
 
 
 func _run_revive_all_regression() -> void:

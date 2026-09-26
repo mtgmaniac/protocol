@@ -2903,10 +2903,10 @@ func _get_manual_target_side(ability_entry: Dictionary) -> String:
 	# single manual pick (INVARIANTS #12).
 	if bool(raw.get("taunt", false)):
 		return "enemy"
-	if bool(raw.get("reviveAll", false)):
-		return ""
-	if bool(raw.get("revive", false)):
-		return "dead_hero"
+	# Revive family: a fallen pick, or a living one when the `else` fallback
+	# heal will fire because nobody is down (ReviveResolution owns the rule).
+	if ReviveResolution.is_revive_family(raw):
+		return ReviveResolution.manual_side(raw, combat_manager.get_hero_states() if combat_manager != null else [])
 	if bool(raw.get("healTgt", false)) or bool(raw.get("shTgt", false)) or bool(raw.get("wardTgt", false)):
 		return "hero"
 	if bool(raw.get("rfmTgt", false)):
@@ -2993,7 +2993,9 @@ func _auto_assign_hero_target(hero_state: Dictionary, ability_entry: Dictionary)
 	# order at targeting start; end-of-order on a recommit).
 	_stamp_cast(hero_state)
 	var raw: Dictionary = ability_entry.get("raw", {})
-	if bool(raw.get("healAll", false)):
+	# reviveAll (Mass Revival) acts on the whole squad either way: every fallen
+	# hero, or the `else` heal on everyone standing.
+	if bool(raw.get("healAll", false)) or bool(raw.get("reviveAll", false)):
 		_set_state_target(hero_state, "", "All Squad")
 		return
 	if bool(raw.get("shieldAll", false)):
