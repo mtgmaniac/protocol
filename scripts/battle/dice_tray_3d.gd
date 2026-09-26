@@ -476,8 +476,11 @@ func _landed_rolls(side: String) -> Dictionary:
 	return out
 
 
-# Tutorial dice rig (one-shot per play_rolls): "side:unit_id" -> scripted raw
-# result, set BEFORE play_rolls and applied when the die lands. Tutorial only.
+# Scripted dice (G-26, one-shot per play_rolls): "side:unit_id" -> scripted raw
+# result, set BEFORE play_rolls. A scripted die is not thrown by physics: it
+# does a short scripted tumble that lands directly on the scripted face, flat
+# and upright — no turn after landing. The tutorial uses it; so do tests that
+# need identical landings across processes.
 var _rigged_results: Dictionary = {}
 
 
@@ -796,6 +799,7 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 
 	var dice: Array = []
 	var rolling_dice: Array = []
+	var scripted_dice: Array = []
 	var all_entries: Array = _collect_roll_entries(hero_entries, enemy_entries)
 
 	var frozen_keys: Array[String] = []
@@ -818,8 +822,16 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 		var side_slot: int = int(entry.get("slot_index", i))
 		_throw_context = throw_contexts.get(str(entry.get("side", "")), {})
 		var die: RigidBody3D
+		var rig_key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
 		if bool(entry.get("frozen", false)) and int(entry.get("frozen_roll", 0)) > 0:
 			die = _prepare_frozen_die(entry, side_slot, all_entries.size())
+		elif _rigged_results.has(rig_key):
+			die = _spawn_die(entry, side_slot, all_entries.size())
+			_print_faces(die, entry)
+			die.freeze = true
+			_set_die_collision_enabled(die, false)
+			die.set_meta("raw_result", clampi(int(_rigged_results[rig_key]), 1, 20))
+			scripted_dice.append(die)
 		else:
 			die = _spawn_die(entry, side_slot, all_entries.size())
 			_print_faces(die, entry)
@@ -834,7 +846,18 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 
 	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
 	_assign_frozen_die_origins(dice, target_origins)
+	for scripted_variant in scripted_dice:
+		var scripted: RigidBody3D = scripted_variant as RigidBody3D
+		_scripted_tumble(scripted, target_origins.get(scripted.get_instance_id(), scripted.global_transform.origin))
 	await _wait_for_dice_to_settle(rolling_dice, target_origins)
+	# Scripted tumbles end within SCRIPTED_TUMBLE_TIME of the throw.
+	for scripted_variant in scripted_dice:
+		var scripted: RigidBody3D = scripted_variant as RigidBody3D
+		while is_instance_valid(scripted) and bool(scripted.get_meta("busy", false)):
+			var tree: SceneTree = get_tree()
+			if _is_exiting_tree or tree == null:
+				return
+			await tree.process_frame
 	if _is_exiting_tree or not is_inside_tree():
 		_is_rolling = false
 		return
@@ -1338,17 +1361,9 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, false)
-	# G-24: the landed face is the raw roll (the tutorial rig overrides it).
-	var entry: Dictionary = die.get_meta("entry", {})
-	var landed_face: int = _get_most_visible_face_value(die)
-	var raw: int = landed_face
-	var rig_key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
-	if _rigged_results.has(rig_key):
-		raw = clampi(int(_rigged_results[rig_key]), 1, 20)
-	die.set_meta("raw_result", raw)
-	# The face that turns up is the face that landed — except under the tutorial
-	# rig, which turns the scripted face up (as before 1171eb8).
-	var face_up: int = raw if _rigged_results.has(rig_key) else landed_face
+	# G-24: the landed face is the raw roll, and it is the face that turns up.
+	var face_up: int = _get_most_visible_face_value(die)
+	die.set_meta("raw_result", face_up)
 	die.set_meta("face_up", face_up)
 	var printed: Label3D = _die_part(die, "FaceNumber%d" % face_up) as Label3D
 	die.set_meta("shown_value", int(printed.text) if printed != null and printed.text.is_valid_int() else face_up)
@@ -1637,6 +1652,47 @@ func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 		if Vector2(o.x - pos.x, o.z - pos.z).length() < DIE_RADIUS * 2.25:
 			return die
 	return null
+
+
+const SCRIPTED_TUMBLE_TIME := 0.9
+
+
+# G-26: a scripted die tumbles from the throw position to its slot and lands
+# directly on its scripted face, flat and upright — the tumble's last frame IS
+# the rest pose, so nothing turns after landing. Labels are static throughout.
+func _scripted_tumble(die: RigidBody3D, target_origin: Vector3) -> void:
+	die.set_meta("busy", true)
+	var raw: int = int(die.get_meta("raw_result", 1))
+	var face_index: int = _get_face_index_for_result(raw)
+	var rest_origin: Vector3 = Vector3(target_origin.x, DIE_RADIUS * 0.76, target_origin.z)
+	var to_basis: Basis = _get_face_forward_result_basis(face_index)
+	var to_q: Quaternion = to_basis.get_rotation_quaternion()
+	var from_origin: Vector3 = die.global_transform.origin
+	var from_q: Quaternion = die.global_transform.basis.orthonormalized().get_rotation_quaternion()
+	var spin_axis: Vector3 = Vector3(randf_range(-1.0, 1.0), randf_range(0.2, 1.0), randf_range(-1.0, 1.0)).normalized()
+	var elapsed: float = 0.0
+	while elapsed < SCRIPTED_TUMBLE_TIME:
+		var tree: SceneTree = get_tree()
+		if _is_exiting_tree or tree == null:
+			return
+		await tree.process_frame
+		if _is_exiting_tree or not is_inside_tree() or not is_instance_valid(die):
+			return
+		elapsed += get_process_delta_time()
+		var t: float = clampf(elapsed / SCRIPTED_TUMBLE_TIME, 0.0, 1.0)
+		var w: float = _ease_out_cubic(t)
+		# Two decaying hops across the tray, then rest.
+		var hop: float = absf(sin(t * PI * 2.0)) * (1.0 - t) * DIE_RADIUS * 1.6
+		var spun: Quaternion = from_q * Quaternion(spin_axis, TAU * 2.0 * (1.0 - w))
+		die.global_transform = Transform3D(Basis(spun.slerp(to_q, w)), from_origin.lerp(rest_origin, w) + Vector3.UP * hop)
+	if not is_instance_valid(die):
+		return
+	die.global_transform = Transform3D(to_basis, rest_origin)
+	die.set_meta("face_up", raw)
+	var printed: Label3D = _die_part(die, "FaceNumber%d" % raw) as Label3D
+	die.set_meta("shown_value", int(printed.text) if printed != null and printed.text.is_valid_int() else raw)
+	die.set_meta("assigned_result_origin", rest_origin)
+	die.set_meta("busy", false)
 
 
 # Dice actually thrown by this tray (test surface: a restored pending roll must

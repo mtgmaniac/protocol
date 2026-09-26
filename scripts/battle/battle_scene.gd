@@ -1186,8 +1186,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		await get_tree().process_frame
 		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
-		# Tutorial dice rig: the scripted values replace the landed faces (as
-		# before 1171eb8). Tutorial only.
+		# Tutorial (G-26): scripted dice tumble straight onto their faces.
 		if _game_state().tutorial_mode:
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.value_provider = _die_value
@@ -1306,11 +1305,9 @@ func _sync_die_status_visuals() -> void:
 
 
 # Pin the roll DICTS to the scripted tutorial values and advance the turn
-# counter. In the windowed path the tray was rigged before the throw
-# (set_rigged_results), so the dice already report these values and this is a
-# same-value no-op; headless (no tray) this IS the rig. NOTE (P0 dice-face
-# audit): the tray applies the rig when the die lands and then turns the rigged
-# face up — the tutorial dice still visibly change face on landing.
+# counter. In the windowed path the tray scripted the dice before the throw
+# (set_rigged_results -> a scripted tumble landing directly on the scripted
+# face, G-26), so this is a same-value no-op; headless (no tray) this IS the rig.
 func _apply_tutorial_dice_rig() -> void:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
