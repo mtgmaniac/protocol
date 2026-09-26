@@ -39,7 +39,10 @@ const VALUES := {
 	# Compensates for the taller footer: ~1.6x projected size versus Stage B.
 	"dice_camera_size": 7.04,
 	"dice_center_gap": 64.0,
-	"tag_slot_width_ratio": 1.10,
+	# 1.10 -> 1.00 (dice-face audit, 2026-09-26): tags now dock against the
+	# die's yaw-invariant reach (settled dice keep their landed yaw), which sits
+	# up to ~24 px further out at 960x600 than the old squared-up silhouette.
+	"tag_slot_width_ratio": 1.00,
 	"tag_wrap_before_shrink": true,
 	"tag_side_gap": 16.0,
 	"action_band_height": 168.0,

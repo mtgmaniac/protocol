@@ -404,3 +404,67 @@ under `Visuals`, not the face rig, so a symmetry turn never moves them.
 not move again". The die still *slides* to its slot under its unit, as it did
 before. The dice-to-card layout and the die-docked tags depend on that position.
 It no longer rotates at all.
+
+## 8. The `dice face` hard gate and verification
+
+`scripts/debug/dice_face_gate.gd` is wired into `verify_gate.py` (about 34 s of its
+90 s budget). Physics runs 8× by raising the tick rate and the time scale
+together, so every step is still 1/120 s. A monitor samples every die on every
+frame.
+
+**What it fails on:**
+- **(a)** A die with **locked** digits shows an up-face numeral (the `Label3D`
+  that really points up) different from the value the unit acts on. The oracle
+  is rebuilt the way `resolve_step`/`resolve_round` build it: effective rolls,
+  then hijack copies the heroes' highest. It is not read back from the tray.
+- **(b)** A die with a pre-roll modifier lands outside the range the gate
+  computes for it from the setup: +3 → 4–20, −2 → 1–18, jam → 1–10, rewrite → 3,
+  forced 20 → 20, Chorus → 8–20, frozen 20 → 20.
+- **(c)** A die rotates after settling, either its body pose or its face rig
+  turning while the digits are locked. Reroll is exempt: it is a deliberate
+  re-throw.
+
+**Coverage:**
+- **Part A:** the bare tray, 7 slots (3 hero + 4 enemy) × all 20 values, plus a
+  live change.
+- **Part B:** a live `BattleScene` with scripted naturals through a stub roll
+  provider:
+  - +3 / −2 / jam / enemy rewrite × all 20 naturals
+  - forced 20 + Resonant Chorus × all 20 naturals
+  - frozen 20s on both sides, including a carried-over frozen die
+- **Part C:**
+  - Live hijack following a Nudge, a Set, a Reroll and a roll-buff item.
+  - Sync Antenna.
+  - Nudge, Set and Reroll.
+  - Items: Harmonic Injector, Entropy Seed, Phase Scrambler, Cascade Jammer,
+    Cryo Gel, Deep Freeze Charge.
+
+**Clean runs:** PASS, 3 of 3. (a) 2,177 checks, (b) 142 landings, (c) about 7,000
+samples, 0 failures.
+
+**Broken on purpose, one at a time** (each break then restored):
+
+| Break | Result |
+|---|---|
+| (a) The tray ignores the one source and shows the physics face | **FAIL**: (a) 200 failures, e.g. "enemy:e0 locked on 15 but the unit acts on 1" |
+| (b) `get_effective_roll` drops roll buffs. Die, readout and resolve still agree, so only the range check can see it | **FAIL**: (b) "hero:combat landed on 1 / 2 / 3 outside its modifier range 4-20". The only (a) failures are the explicit Sync Antenna and hijack expectations |
+| (c) A 0.6 rad yaw spin during the slide | **FAIL**: (c) 200 failures, e.g. "enemy:e0 body rotated 7.05 deg after settling" |
+| (c) An in-place change swaps the face rig without scrambling | **FAIL**: (c) 164 failures, e.g. "hero:h0 face rig turned 120.0 deg with its digits locked" |
+
+**Full gate** (`python scripts/verify_gate.py`): all hard gates pass. The only
+drift flag is voidCirclet +10.5, which is expected, and the baseline was not
+re-pinned. The sim numbers are **identical** on the pre-change code (facility
+0.3803, hive 0.2373, stellarMenagerie 0.1667, veil 0.2462, voidCirclet 0.3158,
+overall 0.2767). This work has zero balance effect: moving hijack into the
+engine reproduces exactly what `resolve_round` already did.
+
+**Collateral fixes the full gate surfaced:**
+- **`firewall display`.** The card's ±Roll chip now reads
+  `CombatManager.roll_modifier_totals_of`, a static form of the one sum, so the
+  pure chip builder needs no scene.
+- **`battle layout`, the parked landscape layout.** A settled die keeps its landed
+  yaw now, so its silhouette width varies. Landscape tags dock against the die's
+  yaw-invariant reach (`settled_die_half_height_px`, which is the widest a
+  face-resting d20 gets at any yaw: 0.982 R × 0.95). `tag_slot_width_ratio`
+  went from 1.10 to 1.00 to fit 960×600. Portrait is unaffected: its reservation
+  already used that invariant.

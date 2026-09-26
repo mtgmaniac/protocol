@@ -136,5 +136,13 @@ func refresh_hit_areas() -> void:
 
 
 func position_tag(plate: Control, side: String, bounds: Rect2) -> void:
-	var at := Vector2(bounds.position.x - STYLE.tag_side_gap - plate.size.x if side == "hero" else bounds.end.x + STYLE.tag_side_gap, bounds.get_center().y - plate.size.y * 0.5)
+	# Dock against the die's YAW-INVARIANT reach, not its live silhouette: a
+	# settled die keeps the yaw it landed with (it never spins upright since the
+	# dice-face audit), so its silhouette width varies die to die. The widest a
+	# face-resting d20 gets at any yaw is settled_die_half_height_px().
+	var half: float = _scene.dice_tray_3d.settled_die_half_height_px()
+	var cx: float = bounds.get_center().x
+	var inner_left: float = minf(bounds.position.x, cx - half) if half > 0.0 else bounds.position.x
+	var inner_right: float = maxf(bounds.end.x, cx + half) if half > 0.0 else bounds.end.x
+	var at := Vector2(inner_left - STYLE.tag_side_gap - plate.size.x if side == "hero" else inner_right + STYLE.tag_side_gap, bounds.get_center().y - plate.size.y * 0.5)
 	plate.global_position = Vector2(PixelUI.snap_to_physical_px(_scene, at.x), PixelUI.snap_to_physical_px(_scene, at.y, 1))

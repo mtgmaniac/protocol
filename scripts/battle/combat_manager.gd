@@ -666,12 +666,21 @@ func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
 	return effective
 
 
-# PUBLIC: RFE/buff totals for dice-tray display (raw roll stored separately for crit rules).
+# PUBLIC: net roll-modifier totals — THE sum get_effective_roll applies.
 func get_roll_modifier_totals(state: Dictionary) -> Dictionary:
-	return {
-		"roll_rfe": _get_total_rfe(state) + int(state.get("perm_rfe", 0)),
-		"roll_buff": _get_total_roll_buff(state) + int(state.get("perm_roll_buff", 0)),
-	}
+	return roll_modifier_totals_of(state)
+
+
+# Static so pure display code (the card's ±Roll chip) reads the same sum
+# without a manager instance — one source, no hand-kept mirror.
+static func roll_modifier_totals_of(state: Dictionary) -> Dictionary:
+	var rfe: int = int(state.get("perm_rfe", 0))
+	for stack in state.get("rfe_stacks", []):
+		rfe += int(stack["amt"])
+	var buff: int = int(state.get("perm_roll_buff", 0))
+	for stack in state.get("roll_buff_stacks", []):
+		buff += int(stack["amt"])
+	return {"roll_rfe": rfe, "roll_buff": buff}
 
 
 func take_pending_protocol_grants() -> int:

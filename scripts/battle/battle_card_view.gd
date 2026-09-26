@@ -685,7 +685,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	# temporary stacks plus the permanent relic/gear modifiers). This used to be a
 	# hand-kept mirror of that sum — the same kind of copy that let the die show a
 	# face the unit didn't act on (P0 dice-face audit).
-	var roll_mods: Dictionary = _scene.combat_manager.get_roll_modifier_totals(state)
+	var roll_mods: Dictionary = CombatManager.roll_modifier_totals_of(state)
 	var roll_delta: int = int(roll_mods["roll_buff"]) - int(roll_mods["roll_rfe"])
 	if roll_delta != 0:
 		statuses.append({

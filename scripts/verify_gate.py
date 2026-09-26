@@ -134,6 +134,13 @@ GATES = [
     # Batch 4 combat-bug regressions (each launches a live battle).
     ("protocol cancel", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/protocol_cancel_test.gd"], "[PROTOCOL_CANCEL] PASS", False),
     ("die reroll visual", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/die_reroll_visual_test.gd"], "[DIE_REROLL] PASS", False),
+    # P0 dice face (docs/audits/DICE_FACE_AUDIT.md): every slot x all 20 values
+    # plus every modifier path (pre-roll: buff, penalty, jam, rewrite, forced
+    # 20, Resonant Chorus, frozen 20s; after landing: Nudge, Set, Reroll, items,
+    # Sync Antenna, live hijack). Fails if (a) a locked die shows a value the
+    # unit won't act on, (b) a die lands outside its modifier range, (c) a die
+    # rotates after settling. Physics runs 8x at the same 1/120 s step (~35s).
+    ("dice face", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dice_face_gate.gd"], "[DICE_FACE_GATE] PASS", False),
     ("auto-target preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/auto_target_preview_test.gd"], "[AUTO_PREVIEW] PASS", False),
     ("item burn preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/item_burn_preview_test.gd"], "[ITEM_BURN] PASS", False),
     # 2026-09-02, "the damage preview lies": heroes resolve BEFORE the enemy
