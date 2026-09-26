@@ -462,7 +462,41 @@ func _value_for_die(die: RigidBody3D) -> int:
 		var v: int = int(value_provider.call(str(entry.get("side", "")), str(entry.get("id", ""))))
 		if v > 0:
 			return clampi(v, 1, 20)
-	return _get_most_visible_face_value(die)
+	return int(die.get_meta("raw_result", _get_most_visible_face_value(die)))
+
+
+# G-24: the natural each die LANDED on is its raw roll (the tutorial rig
+# replaces it, as before 1171eb8). battle_scene reads these after roll_finished
+# and computes the effective values from them. Frozen dice report their
+# crusted value.
+func get_hero_rolls() -> Dictionary:
+	return _landed_rolls("hero")
+
+
+func get_enemy_rolls() -> Dictionary:
+	return _landed_rolls("enemy")
+
+
+func _landed_rolls(side: String) -> Dictionary:
+	var out: Dictionary = {}
+	for key in _die_by_key:
+		var die: RigidBody3D = _die_by_key[key] as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		var entry: Dictionary = die.get_meta("entry", {})
+		if str(entry.get("side", "")) != side:
+			continue
+		out[str(entry.get("id", ""))] = int(die.get_meta("raw_result", 0))
+	return out
+
+
+# Tutorial dice rig (one-shot per play_rolls): "side:unit_id" -> scripted raw
+# result, set BEFORE play_rolls and applied when the die lands. Tutorial only.
+var _rigged_results: Dictionary = {}
+
+
+func set_rigged_results(rigged: Dictionary) -> void:
+	_rigged_results = rigged.duplicate()
 
 
 func set_values_live(live: bool) -> void:
@@ -747,6 +781,7 @@ func _finish_roll(dice: Array) -> void:
 	_enforce_assigned_result_origins(result_entries)
 
 	_is_rolling = false
+	_rigged_results.clear()
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
 	if _landscape_projection:
 		_refresh_landscape_result_positions()
@@ -1196,6 +1231,13 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, false)
 	die.set_meta("up_face", _body_up_face_index(die))
+	# G-24: the landed face is the raw roll (the tutorial rig overrides it).
+	var entry: Dictionary = die.get_meta("entry", {})
+	var raw: int = _get_most_visible_face_value(die)
+	var rig_key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
+	if _rigged_results.has(rig_key):
+		raw = clampi(int(_rigged_results[rig_key]), 1, 20)
+	die.set_meta("raw_result", raw)
 	_place_value_on_landed_face(die, _value_for_die(die))
 	target_origin.y = die.global_transform.origin.y
 	die.set_meta("assigned_result_origin", target_origin)
@@ -1646,6 +1688,7 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	_set_die_collision_enabled(die, true)
 	# A frozen die repeats its crusted face: the one source returns it.
 	var display: int = clampi(int(entry.get("frozen_roll", 1)), 1, 20)
+	die.set_meta("raw_result", display)
 	if value_provider.is_valid() and int(value_provider.call(side, unit_id)) > 0:
 		display = clampi(int(value_provider.call(side, unit_id)), 1, 20)
 	if fresh:

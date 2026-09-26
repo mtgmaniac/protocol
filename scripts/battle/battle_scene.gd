@@ -160,6 +160,22 @@ var _tutorial_turn: int = 0
 # value), handed to dice_tray_3d BEFORE the physics roll so each die's settle
 # presentation rotates the RIGGED face up — no post-settle repaint, no
 # wrong-number flash. Does not advance the turn counter.
+func _tutorial_rig_values() -> Dictionary:
+	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
+	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
+	if _game_state().current_battle == 2:
+		rig = {"combat": 3, "pulse": 4, "medic": 3} if turn_idx == 0 else ({"combat": 8, "pulse": 4, "medic": 3} if turn_idx == 1 else {"combat": 11, "pulse": 10, "medic": 3})
+	var values: Dictionary = {}
+	for hero_state in combat_manager.get_hero_states():
+		var unit: Object = hero_state.get("unit") as Object
+		var unit_id: String = str(unit.id) if unit != null else ""
+		if rig.has(unit_id):
+			values["hero:%s" % str(hero_state["id"])] = int(rig[unit_id])
+	for enemy_state in combat_manager.get_enemy_states():
+		values["enemy:%s" % str(enemy_state["id"])] = TUTORIAL_ENEMY_ROLL
+	return values
+
+
 func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
 	if _game_state().tutorial_mode:
 		tutorial_event.emit(event, payload)
@@ -1143,15 +1159,29 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	has_player_target_assignment = false
 	_clear_target_assignments()
 
-	# Every value is decided in game logic BEFORE the dice are thrown, the same
-	# way on the visual and skip-visuals paths (P0 dice-face audit): the seeded
-	# stream draw (the checkpoint depends on it — a refresh cannot reroll it),
-	# frozen repeats, the tutorial rig, then every modifier KNOWN BEFORE THE
-	# ROLL (forced 20, Resonant Chorus; buffs/penalties/jam/rewrite/hijack
-	# live in the effective roll). The tray only presents: each die lands on
-	# `_die_value`, the value the unit will act on.
-	hero_rolls = _roll_for_states(combat_manager.get_hero_states())
-	enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
+	# G-24: in live play the natural each die physically LANDS on is its raw
+	# roll; the skip-visuals path (and the sim) draw the seeded stream instead.
+	# The engine computes every effective value from those raws (`_die_value`).
+	if dice_tray_3d != null and not skip_dice_visuals:
+		_layout.refresh_board_layout()
+		await get_tree().process_frame
+		_layout.layout_dice_from_combat_zone()
+		await get_tree().process_frame
+		# Tutorial dice rig: the scripted values replace the landed faces (as
+		# before 1171eb8). Tutorial only.
+		if _game_state().tutorial_mode:
+			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
+		dice_tray_3d.value_provider = _die_value
+		dice_tray_3d.play_rolls(
+			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
+		)
+		await dice_tray_3d.roll_finished
+		hero_rolls = dice_tray_3d.get_hero_rolls()
+		enemy_rolls = dice_tray_3d.get_enemy_rolls()
+	else:
+		hero_rolls = _roll_for_states(combat_manager.get_hero_states())
+		enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
 	_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
 	_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
 	if _game_state().tutorial_mode:
@@ -1159,18 +1189,6 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	_apply_roll_relic_overrides()
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
-
-	if dice_tray_3d != null and not skip_dice_visuals:
-		_layout.refresh_board_layout()
-		await get_tree().process_frame
-		_layout.layout_dice_from_combat_zone()
-		await get_tree().process_frame
-		dice_tray_3d.value_provider = _die_value
-		dice_tray_3d.play_rolls(
-			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
-			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
-		)
-		await dice_tray_3d.roll_finished
 	# APPLIED AFTER LANDING: it reacts to the rolled result (a matching pair).
 	_apply_post_roll_gear_effects()
 	if dice_tray_3d != null and not skip_dice_visuals:
@@ -1258,12 +1276,11 @@ func _sync_die_status_visuals() -> void:
 
 
 # Pin the roll DICTS to the scripted tutorial values and advance the turn
-# counter. Runs BEFORE the dice are thrown, on the same path as every other
-# roll: the tray reads the value from `_die_value` and places it on whichever
-# face lands up while the digits are still scrambling, so the tutorial die
-# never shows one face and then another. (The v2 rig claimed that already, but
-# it rotated the rigged face up after the die had landed — the same snap as
-# every rigged roll; P0 dice-face audit.)
+# counter. In the windowed path the tray was rigged before the throw
+# (set_rigged_results), so the dice already report these values and this is a
+# same-value no-op; headless (no tray) this IS the rig. NOTE (P0 dice-face
+# audit): the tray applies the rig when the die lands and then turns the rigged
+# face up — the tutorial dice still visibly change face on landing.
 func _apply_tutorial_dice_rig() -> void:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
