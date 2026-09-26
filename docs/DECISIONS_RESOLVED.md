@@ -159,6 +159,15 @@ carry rulings in chat memory.
 
 # RESOLVED & IMPLEMENTED
 
+## G-22. Version stamp renders at the 48 px text floor (Kev, 2026-09-26)
+
+Kev accepted the text legibility Step 1 web build (branch
+`text-legibility-step1`, 3443759). The version stamp (main-menu corner and Help
+footer, `PixelUI.version_label()`) renders at `PixelUI.TEXT_MIN_PX` = 48 like all
+other text. This **supersedes the 2026-07-24 ruling** that sized the stamp below
+the text floor (nominal 24 → rendered 32); that ruling was only ever recorded in
+code comments (`main_menu.gd`, `help_menu.gd`), which now point here.
+
 ## G-21. Desktop fit and tutorial recovery (Kev, 2026-09-20)
 
 Kev approved completing and testing the existing Reddit-feedback fixes: offer help

@@ -196,8 +196,8 @@ func _on_feedback_pressed() -> void:
 # start-set gate keeps it from ever running twice.
 # Bottom-corner version stamp — PixelUI.version_label() (project.godot
 # config/version is the single source; never hardcode the string). Nominal 24
-# renders at the PixelUI.TEXT_MIN_PX floor (48): the 2026-07-24 below-floor
-# exemption for the stamp was superseded by text legibility Step 1 (Kev 2026-09-26).
+# renders at the PixelUI.TEXT_MIN_PX floor (48) — DECISIONS_RESOLVED G-22
+# (supersedes the 2026-07-24 below-floor ruling).
 # Overlay label on the scene root (not the layout column) — zero layout shift.
 # Margins add the live safe-area insets so the stamp clears the mobile-web
 # floors (bottom 48 / left 24) instead of sitting under the corner radius.

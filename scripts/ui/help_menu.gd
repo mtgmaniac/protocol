@@ -805,8 +805,8 @@ func _build_settings(host: VBoxContainer) -> void:
 
 	# Version footer — PixelUI.version_label() (project.godot config/version is
 	# the single source; never hardcode the string). Nominal 24 renders at the
-	# PixelUI.TEXT_MIN_PX floor (48): the 2026-07-24 below-floor exemption for
-	# the stamp was superseded by the text legibility Step 1 floor (Kev 2026-09-26).
+	# PixelUI.TEXT_MIN_PX floor (48) — DECISIONS_RESOLVED G-22 (supersedes the
+	# 2026-07-24 below-floor ruling).
 	var version_label: Label = _make_label(
 		PixelUI.version_label(),
 		24, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 0)
