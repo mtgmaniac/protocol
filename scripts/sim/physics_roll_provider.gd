@@ -2,11 +2,10 @@
 #
 # Wraps DiceManager.roll_d20() — the battle's seeded d20 stream — so the game
 # and the headless fallback share one seam with the sim's SeededRollProvider.
-# In live play battle_scene draws each round's faces here BEFORE the dice are
-# thrown (checkpoint system, 2026-09-21); the tray places each unit's effective
-# value on whichever face lands up (Option C, docs/audits/DICE_FACE_AUDIT.md).
-# Physics is presentation (roll_provider.gd), and the round's outcome is saveable
-# state rather than a physics accident.
+# Live rolls come from the physics tray (G-24: the landed face is the roll); this
+# stream serves the skip-visuals path, rerolls and the other owned randomness.
+# A settled live roll is kept in the battle checkpoint as a pending roll, so a
+# refresh cannot reroll it.
 class_name PhysicsRollProvider
 extends RollProvider
 
@@ -28,10 +27,8 @@ func _init(dice_manager: DiceManager = null) -> void:
 
 ## Seeds BOTH streams this provider fronts from one run-stored battle seed, so a
 ## battle restarted from its entry replays the same rerolls, vents and summons.
-## The live d20 FACES are drawn from the d20 stream too (battle_scene rigs the
-## physics tray with them; physics is presentation), so a battle restarted from
-## its entry rolls the same opening dice, and an end-of-round checkpoint that
-## restores get_stream_states() rolls the same next round.
+## Live d20 faces come from the physics tray (G-24), not this stream; a settled
+## roll survives a refresh as the checkpoint's pending roll.
 func seed_streams(battle_seed: int) -> void:
 	_rng.seed = battle_seed
 	_dice_manager.seed_stream(battle_seed ^ 0x5BF03635)

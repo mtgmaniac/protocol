@@ -146,12 +146,14 @@ Do not add new chips without a ruling.
 
 ## Determinism fence (INVARIANTS #1)
 
-All combat outcomes flow through the seeded roll provider
-(`scripts/sim/roll_provider.gd` seam); the 3D tray physics is presentation only.
+Every d20 value enters combat through the roll provider seam
+(`scripts/sim/roll_provider.gd`) as a uniform draw: in live play the face the
+physics die lands on (G-24), in the sim and skip-visuals path the seeded stream.
 The headless sim must reproduce any battle byte-identically from a seed.
 **No `randi()` in combat/targeting code** (SeededRollProvider or nothing); no
-mechanic may depend on physical dice positions. Freeze=repeat passes the fence:
-the crust is presentation, the locked face is engine state. Any new event marker
+mechanic may depend on physical dice positions (anything but the landed face).
+Freeze=repeat passes the fence: the crust is a visual, the locked value is engine
+state. Any new event marker
 for primers/feedback must be observer-only and never change outcomes.
 
 ## Balance discipline

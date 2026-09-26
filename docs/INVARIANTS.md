@@ -6,15 +6,18 @@ original argument doesn't relitigate it. Changing an invariant requires an expli
 ruling from Kev recorded in `docs/DECISIONS_RESOLVED.md` — not a clever argument in chat.
 
 ## 1. Determinism fence
-All combat outcomes flow through the seeded roll provider (`scripts/sim/roll_provider.gd`
-seam); the 3D tray physics is presentation only. The headless sim must reproduce any
-battle byte-identically from a seed — that is what makes `baseline.json`, ci_smoke, and
-every balance conclusion trustworthy. A mechanic whose outcome depends on physical dice
-positions cannot be simmed and is therefore forbidden, no matter how good it feels.
+Every d20 value enters combat through the roll provider seam (`scripts/sim/roll_provider.gd`)
+as a uniform d20 draw: in live play it is the face the physics die lands on (G-24,
+Kev 2026-09-26); in the headless sim and the skip-visuals path it is the seeded stream.
+Everything after the draw is engine state. The headless sim must reproduce any battle
+byte-identically from a seed — that is what makes `baseline.json`, ci_smoke, and every
+balance conclusion trustworthy. A mechanic whose outcome depends on physical dice
+POSITIONS (anything but the landed face as a d20 value) cannot be simmed and is therefore
+forbidden, no matter how good it feels.
 **Violation looks like:** "the die that lands nearest the wall gets +1", damage read from
 tray collision events, `randi()` anywhere in combat/targeting code (SeededRollProvider or
-nothing). Freeze=repeat passes the fence: the crust is physics *presentation*; the locked
-face is engine state.
+nothing). Freeze=repeat passes the fence: the crust is a visual; the locked value is
+engine state.
 
 ## 2. ai_type is load-bearing; targeting is a separate field
 `ai_type` gates 20-face elite summons (`ai_type=="smart"`) and the summon-injection guard

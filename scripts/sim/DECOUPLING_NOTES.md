@@ -78,7 +78,7 @@ For byte-identical JSONL, **all** randomness must derive from the run seed. Ther
 
 | Stream | Where | Current source | Sim fix |
 |---|---|---|---|
-| **d20 rolls** (hero + enemy, per round) | `DiceManager.roll_d20()` → global `randi_range(1,20)` | global RNG; in the *game* the value comes from the physics tray, `roll_d20` is the headless fallback | **RollProvider** (A.2): `SeededRollProvider` draws uniform 1–20 from a per-run `RandomNumberGenerator`. Physics is presentation only — the sim never runs physics. |
+| **d20 rolls** (hero + enemy, per round) | `DiceManager.roll_d20()` → global `randi_range(1,20)` | global RNG; in the *game* the value comes from the physics tray, `roll_d20` is the headless fallback | **RollProvider** (A.2): `SeededRollProvider` draws uniform 1–20 from a per-run `RandomNumberGenerator`. The sim never runs physics; a live landed face is a uniform d20 draw (G-24). |
 | **Reroll / enemy-reroll items / Overflow Vent random enemy** | `roll_d20()` and `randi()` in `battle_scene` | global RNG | Same seeded stream via the extracted engine + RollProvider |
 | **Drafts / beats / comps / rewards / relics / intercept shuffle** | `GameState._reward_rng: RandomNumberGenerator` (@97) | `_reward_rng.randomize()` in `start_run` (@102) | Sim seeds `_reward_rng.seed = <derived>` deterministically instead of randomize |
 

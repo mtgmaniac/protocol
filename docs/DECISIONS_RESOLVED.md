@@ -1,6 +1,37 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
-## Dice face: one value source + Option C presentation (Kev, 2026-09-26) — RESOLVED & IMPLEMENTED
+## G-24. Dice are real dice; the landed face is the roll (Kev, 2026-09-26)
+
+"Dice look and behave like real dice. Faces are static; numbers never
+change or flash while a die tumbles. The face that physically lands up
+is the roll. After a die settles, it rotates into place so its top face
+reads right-side up to the player; this is the only automatic motion
+after landing. A die only moves to a different face when the player or
+an ability deliberately changes it (Nudge, Set, reroll, hijack), and that
+is shown as the die tipping over onto the new face."
+
+What this settles:
+- **Physics is authoritative for live rolls again**, as before 1171eb8: the
+  natural each die lands on is its raw roll, and the engine computes the
+  effective value from it exactly as before. The balance sim and the
+  skip-visuals path still draw from the seeded stream (a uniform d20 either
+  way). INVARIANTS #1 is reworded accordingly; the "physics is presentation"
+  framing is retired.
+- **Supersedes** the 2026-09-21 follow-up "the saved battle RNG is AUTHORITATIVE
+  for dice faces and physics only visually resolves to them", and items 3–5 of
+  the Dice face entry below (Option C: scrambling digits, relabelling on
+  landing, no upright snap). Items 1, 2, 6 and 7 of that entry, and G-23, stand.
+- **Refresh still cannot reroll a roll the player has seen.** As soon as all
+  dice settle, the landed raw values are written into the battle checkpoint as
+  a pending roll; CONTINUE places the dice showing them without rolling. A
+  refresh before the dice settle throws again (nothing was shown).
+- **Modifiers known before the roll are printed on the faces before the throw**
+  (each face shows its effective value), so the face that lands up already
+  reads the value the unit acts on.
+
+## Dice face: one value source + Option C presentation (Kev, 2026-09-26) — PARTLY SUPERSEDED by G-24
+
+> Items 3–5 (Option C presentation) are superseded by G-24 above. The rest stands.
 
 From the P0 dice-face audit (`docs/audits/DICE_FACE_AUDIT.md`). Rulings:
 1. **One source of truth for die values.** The tray keeps no copy of the
@@ -139,16 +170,16 @@ are read off the settled physics tray and are NOT restorable", and "mid-battle
 state serialization" under out-of-scope). Node-boundary checkpoints, the
 battle-entry checkpoint and every other G-21 rule stand.
 
-**As implemented.** Live d20 faces are drawn from the battle's seeded d20 stream
-and rigged onto the physics tray (the dice still tumble; physics is presentation,
-INVARIANTS #1), so the next round's dice are saveable state. `RUN_SAVE_VERSION`
+**As implemented (superseded by G-24, 2026-09-26).** Live d20 faces were drawn
+from the battle's seeded d20 stream and rigged onto the physics tray, so the next
+round's dice were saveable state. G-24 returns live faces to the physics landing
+and keeps refreshes honest with a pending-roll checkpoint instead. `RUN_SAVE_VERSION`
 1 → 2; v1 run saves are read forward (a strict subset: no block = no
 checkpoint), not discarded. Details: TRUTH.md §Active-run save.
 
 **Follow-up ruling (Kev, 2026-09-21, final QoL pass):** the saved battle RNG is
-AUTHORITATIVE for dice faces and physics only visually resolves to them
-(confirmed). *(How the dice visually resolve changed 2026-09-26 — Option C, see
-the dice-face entry at the top of this file.)* 64-bit seeds are stored as strings (run save v3). **No backward
+AUTHORITATIVE for dice faces (confirmed). *(Superseded 2026-09-26 by G-24: the
+face the die physically lands on is the roll.)* 64-bit seeds are stored as strings (run save v3). **No backward
 compatibility:** run saves older than v3 are discarded cleanly (the one-line
 "older build" notice), not migrated — superseding the read-forward above.
 CONTINUE into a restored checkpoint shows a brief `BATTLE RESUMED - ROUND X`;
@@ -200,13 +231,14 @@ contradicting #1's "same zone, same ability".
 As implemented: freeze captures the effective value (`BattleEngine.item_freeze_die`
 for items; `CombatManager._freeze_die_state` from `stamp_acted_values`, the values
 the round acts on, for abilities and riders). A frozen die returns its locked
-value from the moment it freezes (`BattleEngine._is_locked_by_freeze`), so it never
-scrambles or relocks while frozen. Deep Freeze Charge still pins to 1 (G-9): it
+value from the moment it freezes (`BattleEngine._is_locked_by_freeze`), so a
+frozen die never moves or changes face while frozen. Deep Freeze Charge still pins to 1 (G-9): it
 sets the value to 1 and freezes it, and the die now shows 1 from that moment.
 Hard gate: `dice face` criterion (d).
 
-Also decided with this ruling: dice keep sliding (without rotating) to their slot
-after landing; after-landing changes scramble all faces.
+Also decided with this ruling: dice keep sliding to their slot after landing.
+(The same day's approval of "after-landing changes scramble all faces" fell with
+Option C — see G-24.)
 
 ## G-22. Version stamp renders at the 48 px text floor (Kev, 2026-09-26)
 
@@ -546,8 +578,9 @@ gained owned streams seeded from `GameState.battle_rng_seed`, replacing bare
 only because the balance sim happens not to run `battle_scene`, and the first
 seeded path to call it would have shifted every downstream reward, beat and
 intercept roll. Live d20 FACES are read off the settled physics tray and are NOT
-restorable — a restarted battle can roll differently, by design (INVARIANTS #1:
-the tray is presentation).
+restorable — a restarted battle can roll differently, by design. *(2026-09-26,
+G-24: the landed faces of a settled roll are now kept as a pending roll in the
+battle checkpoint.)*
 
 **Write safety.** Copy the outgoing primary to `.bak`, then `.tmp` → rename into
 place. Every write to a primary goes through that one atomic path, the repair

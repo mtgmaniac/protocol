@@ -5,8 +5,9 @@
 # balance sim they come from a per-run seeded RNG stream. This interface lets
 # both sides feed the exact same rules engine.
 #
-# One assumption (Package A.2): physics is PRESENTATION. The tray animates to a
-# uniform face; the sim models rolls as a uniform d20 draw. Freeze / Jam /
+# One assumption (Package A.2): the physics landing is a uniform d20 draw (G-24:
+# the face a live die lands on is its roll); the sim models it with a seeded
+# uniform draw. Freeze / Jam /
 # Rewrite / Hijack all operate on roll VALUES and reveal-skips (in
 # combat_manager / BattleEngine), never on physics, so they behave identically
 # under either provider.

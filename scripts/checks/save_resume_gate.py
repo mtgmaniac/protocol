@@ -18,7 +18,7 @@ then A's fingerprint is compared against C's.
 
 Rolls come from the harness's SeededRollProvider, not the physics tray — G2 asks
 for the non-physics roll path, and physics results are non-deterministic by
-design (docs/INVARIANTS.md #1: the tray is presentation).
+design (G-24: the landed face is the live roll; INVARIANTS #1).
 
 Exit 0 = pass, 1 = a divergence or a leg that failed to run.
 """
