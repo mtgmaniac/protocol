@@ -485,6 +485,29 @@ func effective_enemy_roll(state: Dictionary, unit_id: String, bs: BattleState) -
 	return combat_manager.get_effective_roll(state, raw_roll)
 
 
+# ── Printed faces (G-24) ──────────────────────────────────────────────────────
+# Modifiers known before the roll are printed on the die before it is thrown:
+# each face shows the value the unit would act on if the die landed on it. The
+# raw overrides are the ones battle_scene applies after landing (forced 20,
+# Resonant Chorus) and the value rule is get_effective_roll (buffs, penalties,
+# jam, rewrite) — the same functions, so the landed face always reads the value
+# the engine then computes. Hijack is not known before the roll (it copies the
+# heroes' dice) and is not printed.
+
+# The raw roll a landed natural becomes under the pre-roll raw overrides.
+func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
+	if is_hero and bool(state.get("forced_20_pending", false)):
+		return 20
+	if is_hero and chorus_floor and natural > 0 and natural < 8:
+		return 8
+	return natural
+
+
+# The value printed on the face with natural number `natural`.
+func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
+	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural, chorus_floor))
+
+
 # G-23 (Kev 2026-09-26): a frozen die is locked on its number from the moment
 # it freezes — on its repeat rounds (the old test) AND in the round a freeze
 # item lands, so a modifier added or removed afterwards can't move it.

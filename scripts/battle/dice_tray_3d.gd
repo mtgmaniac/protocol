@@ -685,6 +685,7 @@ func place_rolls(hero_entries: Array, enemy_entries: Array, raws: Dictionary) ->
 			die = _prepare_frozen_die(entry, int(entry.get("slot_index", i)), all_entries.size())
 		else:
 			die = _spawn_die(entry, int(entry.get("slot_index", i)), all_entries.size())
+			_print_faces(die, entry)
 			var raw: int = clampi(int((raws.get(side, {}) as Dictionary).get(str(entry.get("id", "")), 1)), 1, 20)
 			die.freeze = true
 			die.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
@@ -693,7 +694,8 @@ func place_rolls(hero_entries: Array, enemy_entries: Array, raws: Dictionary) ->
 			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), Vector3(die.position.x, DIE_RADIUS * 0.76, die.position.z))
 			die.set_meta("raw_result", raw)
 			die.set_meta("face_up", raw)
-			die.set_meta("shown_value", raw)
+			var printed_up: Label3D = _die_part(die, "FaceNumber%d" % raw) as Label3D
+			die.set_meta("shown_value", int(printed_up.text) if printed_up != null and printed_up.text.is_valid_int() else raw)
 		dice.append(die)
 	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
 	for die_variant in dice:
@@ -763,6 +765,7 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 			die = _prepare_frozen_die(entry, side_slot, all_entries.size())
 		else:
 			die = _spawn_die(entry, side_slot, all_entries.size())
+			_print_faces(die, entry)
 			_launch_die(die)
 			rolling_dice.append(die)
 		dice.append(die)
@@ -1146,10 +1149,25 @@ func _reset_face_highlights(die: RigidBody3D) -> void:
 			bevel.visible = true
 
 
+# Restores each face's PRINTED number (G-24: the value printed before the throw;
+# its natural number when nothing was printed).
 func _reset_face_labels(die: RigidBody3D) -> void:
 	var base: Color = _die_base_color(die)
+	var printed: Array = die.get_meta("printed_values", [])
 	for face_value in _face_values:
-		_apply_face_number(die, int(face_value), int(face_value), base)
+		var fv: int = int(face_value)
+		var shown: int = int(printed[fv - 1]) if printed.size() == 20 else fv
+		_apply_face_number(die, fv, shown, base)
+
+
+# G-24: print the entry's face values on a fresh die, once, before it is thrown
+# or placed. They never change afterwards.
+func _print_faces(die: RigidBody3D, entry: Dictionary) -> void:
+	var printed: Variant = entry.get("face_values", [])
+	if not (printed is Array) or (printed as Array).size() != 20:
+		return
+	die.set_meta("printed_values", (printed as Array).duplicate())
+	_reset_face_labels(die)
 
 
 # Set the engraved numeral (all four stacked labels) on one face, restoring their engrave colours.

@@ -1442,9 +1442,16 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		if is_frozen:
 			entry["frozen"] = true
 			entry["frozen_roll"] = int(state.get("frozen_die_value", 0))
-		# No value fields: the tray reads every die value from `_die_value`
-		# (the effective roll — jam, buffs, rewrite, hijack included). A copy
-		# here is how the rewrite die came to show a face the unit didn't act on.
+		# G-24: the faces are PRINTED before the throw with every modifier known
+		# now (the engine's own functions, not a copy of the rule): face n reads
+		# the value the unit acts on if the die lands on n. A frozen die is not
+		# thrown and keeps its faces.
+		if not is_frozen:
+			var printed: Array = []
+			var chorus_floor: bool = _chorus_floor_active()
+			for natural in range(1, 21):
+				printed.append(_engine.pre_roll_face_value(state, side == "hero", natural, chorus_floor))
+			entry["face_values"] = printed
 		entries.append(entry)
 	return entries
 
@@ -2277,7 +2284,7 @@ var _root_access_used: bool:
 # KNOWN BEFORE THE ROLL: runs before the dice are thrown, so the die lands
 # directly on 20 / 8 and never shows the stream face first.
 func _apply_roll_relic_overrides() -> void:
-	var chorus_floor: bool = combat_manager.has_relic("turn1RollFloor") and _round_number == 1
+	var chorus_floor: bool = _chorus_floor_active()
 	for hero_state_variant in combat_manager.get_hero_states():
 		var hero_state: Dictionary = hero_state_variant
 		if bool(hero_state.get("dead", false)):
@@ -2286,13 +2293,21 @@ func _apply_roll_relic_overrides() -> void:
 		if int(hero_state.get("die_freeze_turns", 0)) > 0:
 			continue
 		var hero_id: String = str(hero_state["id"])
+		var natural: int = int(hero_rolls.get(hero_id, 0))
+		if natural <= 0:
+			continue
+		# The same override the printed faces used (BattleEngine.pre_roll_raw).
+		var raw: int = _engine.pre_roll_raw(hero_state, true, natural, chorus_floor)
 		if bool(hero_state.get("forced_20_pending", false)):
 			hero_state["forced_20_pending"] = false
-			hero_rolls[hero_id] = 20
 			_append_log("%s rolls a forced 20!" % hero_id)
-		elif chorus_floor and int(hero_rolls.get(hero_id, 0)) > 0 and int(hero_rolls.get(hero_id, 0)) < 8:
-			hero_rolls[hero_id] = 8
-			_append_log("Resonant Chorus: %s's die is lifted to 8." % hero_id)
+		elif raw != natural:
+			_append_log("Resonant Chorus: %s's die is lifted to %d." % [hero_id, raw])
+		hero_rolls[hero_id] = raw
+
+
+func _chorus_floor_active() -> bool:
+	return combat_manager.has_relic("turn1RollFloor") and _round_number == 1
 
 
 # Roll-time gear: Sync Antenna (holder + an ally rolling the same number both
