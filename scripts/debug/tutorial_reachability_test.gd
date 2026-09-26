@@ -370,7 +370,10 @@ func _beat_with_advance(tut: Node, advance: String) -> int:
 	return -1
 
 
+# Landed dice, not just drawn values: roll values are decided before the throw.
 func _has_rolls(scene: Node) -> bool:
+	if scene.has_method("dice_landed"):
+		return bool(scene.call("dice_landed"))
 	var rolls: Variant = scene.get("hero_rolls")
 	return rolls is Dictionary and not (rolls as Dictionary).is_empty()
 

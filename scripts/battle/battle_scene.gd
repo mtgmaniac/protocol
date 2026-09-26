@@ -160,22 +160,6 @@ var _tutorial_turn: int = 0
 # value), handed to dice_tray_3d BEFORE the physics roll so each die's settle
 # presentation rotates the RIGGED face up — no post-settle repaint, no
 # wrong-number flash. Does not advance the turn counter.
-func _tutorial_rig_values() -> Dictionary:
-	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
-	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
-	if _game_state().current_battle == 2:
-		rig = {"combat": 3, "pulse": 4, "medic": 3} if turn_idx == 0 else ({"combat": 8, "pulse": 4, "medic": 3} if turn_idx == 1 else {"combat": 11, "pulse": 10, "medic": 3})
-	var values: Dictionary = {}
-	for hero_state in combat_manager.get_hero_states():
-		var unit: Object = hero_state.get("unit") as Object
-		var unit_id: String = str(unit.id) if unit != null else ""
-		if rig.has(unit_id):
-			values["hero:%s" % str(hero_state["id"])] = int(rig[unit_id])
-	for enemy_state in combat_manager.get_enemy_states():
-		values["enemy:%s" % str(enemy_state["id"])] = TUTORIAL_ENEMY_ROLL
-	return values
-
-
 func _emit_tutorial(event: StringName, payload: Dictionary = {}) -> void:
 	if _game_state().tutorial_mode:
 		tutorial_event.emit(event, payload)
@@ -1159,42 +1143,39 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 	has_player_target_assignment = false
 	_clear_target_assignments()
 
+	# Every value is decided in game logic BEFORE the dice are thrown, the same
+	# way on the visual and skip-visuals paths (P0 dice-face audit): the seeded
+	# stream draw (the checkpoint depends on it — a refresh cannot reroll it),
+	# frozen repeats, the tutorial rig, then every modifier KNOWN BEFORE THE
+	# ROLL (forced 20, Resonant Chorus; buffs/penalties/jam/rewrite/hijack
+	# live in the effective roll). The tray only presents: each die lands on
+	# `_die_value`, the value the unit will act on.
+	hero_rolls = _roll_for_states(combat_manager.get_hero_states())
+	enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
+	_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
+	_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
+	if _game_state().tutorial_mode:
+		_apply_tutorial_dice_rig()
+	_apply_roll_relic_overrides()
+	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
+	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
+
 	if dice_tray_3d != null and not skip_dice_visuals:
 		_layout.refresh_board_layout()
 		await get_tree().process_frame
 		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
-		# Tutorial dice-settle rig (v2): hand the tray the scripted values BEFORE
-		# the physics roll, so each die's settle presentation rotates the rigged
-		# face up — the player never sees a wrong number.
-		if _game_state().tutorial_mode:
-			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
-		else:
-			# Every other roll draws its faces from the battle's seeded d20 stream
-			# (the same draws, in the same order, as the skip-visuals path below)
-			# and rigs the tray with them: the dice still tumble, the drawn face
-			# rotates up. That makes the round's dice saveable state, so an
-			# end-of-round checkpoint restores the SAME next roll and a refresh
-			# cannot reroll it (BattleCheckpoint).
-			dice_tray_3d.set_rigged_results(_stream_rig_values())
+		dice_tray_3d.value_provider = _die_value
 		dice_tray_3d.play_rolls(
 			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
 			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
 		)
 		await dice_tray_3d.roll_finished
-		hero_rolls = dice_tray_3d.get_hero_rolls()
-		enemy_rolls = dice_tray_3d.get_enemy_rolls()
-	else:
-		hero_rolls = _roll_for_states(combat_manager.get_hero_states())
-		enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
-		_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
-		_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
-	if _game_state().tutorial_mode:
-		_apply_tutorial_dice_rig()
-	_apply_roll_relic_overrides(skip_dice_visuals)
-	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
-	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
+	# APPLIED AFTER LANDING: it reacts to the rolled result (a matching pair).
 	_apply_post_roll_gear_effects()
+	if dice_tray_3d != null and not skip_dice_visuals:
+		# From here to resolution the dice follow game logic live.
+		dice_tray_3d.set_values_live(true)
 
 	_assign_enemy_targets()
 	_prepare_hero_targets()
@@ -1277,11 +1258,12 @@ func _sync_die_status_visuals() -> void:
 
 
 # Pin the roll DICTS to the scripted tutorial values and advance the turn
-# counter. In the windowed path the tray was rigged BEFORE the physics roll
-# (set_rigged_results in _do_roll), so the dice already settled showing these
-# faces and this is a same-value no-op; headless (no tray) this IS the rig.
-# The old post-settle update_die_result_in_place repaint — the visible
-# wrong-number snap — is gone.
+# counter. Runs BEFORE the dice are thrown, on the same path as every other
+# roll: the tray reads the value from `_die_value` and places it on whichever
+# face lands up while the digits are still scrambling, so the tutorial die
+# never shows one face and then another. (The v2 rig claimed that already, but
+# it rotated the rigged face up after the die had landed — the same snap as
+# every rigged roll; P0 dice-face audit.)
 func _apply_tutorial_dice_rig() -> void:
 	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
 	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
@@ -1360,27 +1342,13 @@ func _notice_rolled_ability_primers() -> void:
 			var state_id: String = str(state.get("id", ""))
 			if not rolls.has(state_id):
 				continue
-			var eff_roll: int = combat_manager.get_effective_roll(state, int(rolls[state_id]))
+			var eff_roll: int = _die_value(side, state_id)
 			var entry: Dictionary = dice_manager.get_ability_for_roll(state["unit"], eff_roll)
 			_primer.notice_rolled_ability(entry.get("raw", {}), side, state_id)
 
 
 func _roll_for_states(states: Array) -> Dictionary:
 	return _engine.roll_states(states)
-
-
-# This round's faces from the seeded d20 stream as a tray rig map
-# ("side:state_id" -> face). Drawn exactly like the skip-visuals path (all hero
-# states, then all enemy states) so both paths consume the stream identically.
-# Frozen dice keep their crusted value; the tray ignores the rig for them.
-func _stream_rig_values() -> Dictionary:
-	var rig: Dictionary = {}
-	for side in ["hero", "enemy"]:
-		var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
-		var faces: Dictionary = _roll_for_states(states)
-		for state_id in faces:
-			rig["%s:%s" % [side, str(state_id)]] = int(faces[state_id])
-	return rig
 
 
 func _get_auto_debug_target_id(target_side: String, target_ids: Array) -> String:
@@ -1428,12 +1396,9 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		if is_frozen:
 			entry["frozen"] = true
 			entry["frozen_roll"] = int(state.get("frozen_die_value", 0))
-		var roll_mods: Dictionary = combat_manager.get_roll_modifier_totals(state)
-		entry["roll_rfe"] = int(roll_mods["roll_rfe"])
-		entry["roll_buff"] = int(roll_mods["roll_buff"])
-		# Jam value feed (Build G item 2): the die numeral must show the JAMMED
-		# value, not the raw face — same cap get_effective_roll applies.
-		entry["jam_cap"] = int(state.get("jam_cap", 0))
+		# No value fields: the tray reads every die value from `_die_value`
+		# (the effective roll — jam, buffs, rewrite, hijack included). A copy
+		# here is how the rewrite die came to show a face the unit didn't act on.
 		entries.append(entry)
 	return entries
 
@@ -1838,6 +1803,11 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 
 	_is_resolving_turn = true
 	InspectPopup.dismiss()
+	# The acted-on values are snapshotted by resolve_step below; the dice stop
+	# following game logic so a status applied mid-round (a jam or rewrite
+	# telegraphed for NEXT roll) never changes a die this round.
+	if dice_tray_3d != null:
+		dice_tray_3d.set_values_live(false)
 
 	# Build J: capture pre-round chip tokens BEFORE state applies, so deferred
 	# chips keep showing their old values until their causing beat.
@@ -2257,7 +2227,10 @@ var _root_access_used: bool:
 # dice can't land below 8) — roll-time face overrides. There is no "natural 20"
 # concept: forcing a 20 sets the die's face to 20 like any other override
 # (ruling NK-02).
-func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
+#
+# KNOWN BEFORE THE ROLL: runs before the dice are thrown, so the die lands
+# directly on 20 / 8 and never shows the stream face first.
+func _apply_roll_relic_overrides() -> void:
 	var chorus_floor: bool = combat_manager.has_relic("turn1RollFloor") and _round_number == 1
 	for hero_state_variant in combat_manager.get_hero_states():
 		var hero_state: Dictionary = hero_state_variant
@@ -2267,18 +2240,13 @@ func _apply_roll_relic_overrides(skip_dice_visuals: bool = false) -> void:
 		if int(hero_state.get("die_freeze_turns", 0)) > 0:
 			continue
 		var hero_id: String = str(hero_state["id"])
-		var changed: bool = false
 		if bool(hero_state.get("forced_20_pending", false)):
 			hero_state["forced_20_pending"] = false
 			hero_rolls[hero_id] = 20
-			changed = true
 			_append_log("%s rolls a forced 20!" % hero_id)
 		elif chorus_floor and int(hero_rolls.get(hero_id, 0)) > 0 and int(hero_rolls.get(hero_id, 0)) < 8:
 			hero_rolls[hero_id] = 8
-			changed = true
 			_append_log("Resonant Chorus: %s's die is lifted to 8." % hero_id)
-		if changed and dice_tray_3d != null and not skip_dice_visuals:
-			dice_tray_3d.update_die_result_in_place("hero", hero_id, _get_effective_roll_for_state(hero_state, hero_id))
 
 
 # Roll-time gear: Sync Antenna (holder + an ally rolling the same number both
@@ -2363,28 +2331,39 @@ func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
 	return _engine.effective_enemy_roll(state, unit_id, _state)
 
 
-# §2 (Batch 4): enemy-reroll items (Phase Scrambler / Cascade Jammer) mutate
-# enemy_rolls but nothing pushed the new value to the 3D die, so its numeral went
-# stale while the card pips (which read enemy_rolls) updated. Route the rerolled
-# die(s) through the same in-place tray update hero nudge/set/twin use, so the
-# numeral and pips always agree. Skips frozen dice (their reroll fizzles).
-func sync_enemy_dice_after_item_reroll(effect_type: String, target_state: Dictionary) -> void:
-	if dice_tray_3d == null:
-		return
-	if effect_type == "enemyRerollDie":
-		if target_state.is_empty():
-			return
-		var eid: String = str(target_state.get("id", ""))
-		if eid != "" and enemy_rolls.has(eid) and int(target_state.get("die_freeze_turns", 0)) == 0:
-			dice_tray_3d.update_die_result_in_place("enemy", eid, _get_effective_enemy_roll(target_state, eid))
-	elif effect_type == "enemyRerollAll":
-		for es_variant in combat_manager.get_enemy_states():
-			var es: Dictionary = es_variant
-			if bool(es.get("dead", false)) or int(es.get("die_freeze_turns", 0)) > 0:
-				continue
-			var eid2: String = str(es.get("id", ""))
-			if enemy_rolls.has(eid2):
-				dice_tray_3d.update_die_result_in_place("enemy", eid2, _get_effective_enemy_roll(es, eid2))
+# True once this round's dice have LANDED (or there is no tray to watch).
+# hero_rolls alone no longer says that: the values are decided in game logic
+# before the throw (P0 dice-face audit), so they exist while the dice tumble.
+func dice_landed() -> bool:
+	if hero_rolls.is_empty():
+		return false
+	return dice_tray_3d == null or not bool(dice_tray_3d.get("_is_rolling"))
+
+
+# THE die value (P0 dice-face audit, one source of truth): the value the unit
+# will act on — the effective roll resolve_step hands resolve_round, hijack
+# included. The 3D tray, the die tags and the readouts all read this; the tray
+# keeps no copy of the rule. 0 = no value this round (no roll yet, dead).
+func _die_value(side: String, unit_id: String) -> int:
+	if side == "hero":
+		var hero_state: Dictionary = _find_state_by_id(combat_manager.get_hero_states(), unit_id)
+		if hero_state.is_empty() or bool(hero_state.get("dead", false)) or int(hero_rolls.get(unit_id, 0)) <= 0:
+			return 0
+		return _get_effective_roll_for_state(hero_state, unit_id)
+	var enemy_state: Dictionary = _find_state_by_id(combat_manager.get_enemy_states(), unit_id)
+	if enemy_state.is_empty() or bool(enemy_state.get("dead", false)) or int(enemy_rolls.get(unit_id, 0)) <= 0:
+		return 0
+	return _get_effective_enemy_roll(enemy_state, unit_id)
+
+
+# After ANY die value changes before resolution (Nudge, Set, Reroll, an item,
+# Sync Antenna): the tray follows on its own (live), but intents and readouts
+# are rebuilt here — a hijacked enemy's value moves with the heroes' highest
+# die, and its readout and target must follow it.
+func _on_die_values_changed() -> void:
+	_assign_enemy_targets()
+	_refresh_dice_result_actions()
+	_card_view.refresh_all_cards()
 
 
 # Builds a dict of effective rolls for all living units in the given states array.

@@ -383,9 +383,9 @@ func _apply_reroll(hero_id: String) -> void:
 	_scene._update_protocol_bar()
 	_scene._append_log("Reroll: %s draws %d." % [hero_id, new_roll])
 	if _scene.dice_tray_3d != null:
-		await _scene.dice_tray_3d.reroll_die_to_result("hero", hero_id, new_roll)
+		await _scene.dice_tray_3d.reroll_die_to_result("hero", hero_id)
 	_scene._re_assign_hero_target(hero_id)
-	_scene._refresh_dice_result_actions()
+	_scene._on_die_values_changed()
 	_scene._finish_roll_modifier_pick()
 
 
@@ -420,10 +420,9 @@ func _apply_nudge(hero_id: String) -> void:
 			_scene._update_protocol_bar()
 			_scene._append_log("Nudge: %s +3 to effective roll." % hero_id)
 	var hero_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), hero_id)
-	if _scene.dice_tray_3d != null and not hero_state.is_empty():
-		_scene.dice_tray_3d.update_die_result_in_place("hero", hero_id, _scene._get_effective_roll_for_state(hero_state, hero_id))
+	# The die follows the new value on its own (DiceTray3D live values).
 	_scene._re_assign_hero_target(hero_id)
-	_scene._refresh_dice_result_actions()
+	_scene._on_die_values_changed()
 	_scene._finish_roll_modifier_pick()
 	if str(res["kind"]) == "applied":
 		# Unit id (not state id) — the tutorial's per-hero `hero` gate matches
@@ -750,11 +749,9 @@ func _apply_set(hero_id: String, value: int) -> void:
 		_scene._append_log("Root Access: free Set.")
 	_scene._update_protocol_bar()
 	_scene._append_log("Set: %s die set to %d." % [hero_id, value])
-	var hero_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), hero_id)
-	if _scene.dice_tray_3d != null and not hero_state.is_empty():
-		_scene.dice_tray_3d.update_die_result_in_place("hero", hero_id, _scene._get_effective_roll_for_state(hero_state, hero_id))
+	# The die follows the new value on its own (DiceTray3D live values).
 	_scene._re_assign_hero_target(hero_id)
-	_scene._refresh_dice_result_actions()
+	_scene._on_die_values_changed()
 	_scene._finish_roll_modifier_pick()
 
 
@@ -1050,9 +1047,9 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 		if log_line != "":
 			_scene._append_log(log_line)
 
-	# §2: enemy-reroll items changed enemy_rolls above — push the new value to the
-	# 3D die so its numeral matches the refreshed card pips.
-	_scene.sync_enemy_dice_after_item_reroll(effect_type, target_state)
+	# Any die an item changed (rerolls, buffs, penalties, freezes) follows on
+	# its own (DiceTray3D live values); intents and readouts rebuild here.
+	_scene._on_die_values_changed()
 
 	_consume_item(item.id)
 	_pending_item = null

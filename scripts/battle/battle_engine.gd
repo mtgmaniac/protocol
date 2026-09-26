@@ -471,7 +471,30 @@ func effective_enemy_roll(state: Dictionary, unit_id: String, bs: BattleState) -
 	if bool(state.get("die_freeze_repeat_this_round", false)):
 		var frozen: int = int(state.get("frozen_die_value", raw_roll))
 		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
+	var hijacked: int = hijack_value(state, bs)
+	if hijacked > 0:
+		return hijacked
 	return combat_manager.get_effective_roll(state, raw_roll)
+
+
+# Hijack (enemy-only): the die copies the heroes' current highest EFFECTIVE die
+# — exactly what combat_manager.resolve_round copies from the effective hero
+# rolls it is handed. Folded in here so the die, its readout and the intent all
+# show the copy LIVE (Kev 2026-09-26): a Nudge/Set/Reroll/buff that changes the
+# heroes' highest die before resolution changes the hijacked value with it.
+# A frozen die is immune (its crusted face repeats). 0 = no hijack in effect.
+func hijack_value(state: Dictionary, bs: BattleState) -> int:
+	if not bool(state.get("hijack_pending", false)) or int(state.get("die_freeze_turns", 0)) > 0:
+		return 0
+	var highest: int = 0
+	for hero_state in combat_manager.get_hero_states():
+		if bool(hero_state.get("dead", false)):
+			continue
+		var hid: String = str(hero_state["id"])
+		if int(bs.hero_rolls.get(hid, 0)) == 0:
+			continue
+		highest = maxi(highest, effective_hero_roll(hero_state, hid, bs))
+	return highest
 
 
 # Builds a dict of effective rolls for all living units in the given states

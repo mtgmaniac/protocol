@@ -169,16 +169,25 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			compact_card.show_combat_preview(compact_preview)
 
 
+# Roll values are decided before the dice are thrown (P0 dice-face audit), so
+# they exist while the dice still tumble. Cards, readouts and forecasts must not
+# reveal a result the dice have not shown yet: until they land, no rolls.
+func _revealed_rolls(side: String) -> Dictionary:
+	if not _scene.dice_landed():
+		return {}
+	return _scene.hero_rolls if side == "hero" else _scene.enemy_rolls
+
+
 func refresh_all_cards() -> void:
 	for hero_view in _scene.hero_card_views:
 		var hero_state: Dictionary = hero_view["state"]
 		var readout: Control = hero_view.get("readout", null) as Control
-		update_card_view(hero_view["card"], hero_state, _scene.hero_rolls.get(str(hero_state["id"]), null), _scene.HERO_ACCENT, readout)
+		update_card_view(hero_view["card"], hero_state, _revealed_rolls("hero").get(str(hero_state["id"]), null), _scene.HERO_ACCENT, readout)
 
 	for enemy_view in _scene.enemy_card_views:
 		var enemy_state: Dictionary = enemy_view["state"]
 		var readout: Control = enemy_view.get("readout", null) as Control
-		update_card_view(enemy_view["card"], enemy_state, _scene.enemy_rolls.get(str(enemy_state["id"]), null), _scene.ENEMY_ACCENT, readout)
+		update_card_view(enemy_view["card"], enemy_state, _revealed_rolls("enemy").get(str(enemy_state["id"]), null), _scene.ENEMY_ACCENT, readout)
 
 
 func show_all_ability_readouts() -> void:
@@ -204,7 +213,7 @@ func refresh_card_for_event(event: Dictionary) -> void:
 		return
 	var views: Array = _scene.hero_card_views if side == "hero" else _scene.enemy_card_views
 	var accent: Color = _scene.HERO_ACCENT if side == "hero" else _scene.ENEMY_ACCENT
-	var rolls: Dictionary = _scene.hero_rolls if side == "hero" else _scene.enemy_rolls
+	var rolls: Dictionary = _revealed_rolls("hero") if side == "hero" else _revealed_rolls("enemy")
 	for view_variant in views:
 		var view: Dictionary = view_variant
 		var state: Dictionary = view["state"]
@@ -260,7 +269,7 @@ func _forecast_hero_phase() -> Dictionary:
 		if bool(hero_state.get("dead", false)):
 			continue
 		var hero_id: String = str(hero_state["id"])
-		if not _scene.hero_rolls.has(hero_id):
+		if not _revealed_rolls("hero").has(hero_id):
 			continue
 		var eff: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
@@ -422,7 +431,7 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		if bool(hero_state.get("dead", false)):
 			continue
 		var hero_id: String = str(hero_state["id"])
-		if not _scene.hero_rolls.has(hero_id):
+		if not _revealed_rolls("hero").has(hero_id):
 			continue
 		var eff: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
@@ -481,7 +490,7 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 		if forecast_dead.has(str(enemy_state["id"])):
 			continue
 		var enemy_id: String = str(enemy_state["id"])
-		if not _scene.enemy_rolls.has(enemy_id):
+		if not _revealed_rolls("enemy").has(enemy_id):
 			continue
 		var eff: int = _scene._get_effective_enemy_roll(enemy_state, enemy_id)
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(enemy_state["unit"], eff)
@@ -672,15 +681,12 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	if bool(state.get("marked", false)):
 		statuses.append(_make_compact_icon_status("mark", 1))
 
-	# Mirror combat_manager.get_roll_modifier_totals: temporary rfe_stacks/roll_buff PLUS the
-	# permanent relic/gear modifiers (perm_rfe from signalJam, perm_roll_buff from
-	# coordinatedStrike / battleStartCloakRoll), so those show as a roll pip like everything else.
-	var total_rfe: int = int(state.get("perm_rfe", 0))
-	for stack_variant in state.get("rfe_stacks", []):
-		var stack: Dictionary = stack_variant
-		total_rfe += int(stack.get("amt", 0))
-	var roll_buff: int = int(state.get("roll_buff", 0)) + int(state.get("perm_roll_buff", 0))
-	var roll_delta: int = roll_buff - total_rfe
+	# Net roll modifier from the ONE source (combat_manager.get_roll_modifier_totals:
+	# temporary stacks plus the permanent relic/gear modifiers). This used to be a
+	# hand-kept mirror of that sum — the same kind of copy that let the die show a
+	# face the unit didn't act on (P0 dice-face audit).
+	var roll_mods: Dictionary = _scene.combat_manager.get_roll_modifier_totals(state)
+	var roll_delta: int = int(roll_mods["roll_buff"]) - int(roll_mods["roll_rfe"])
 	if roll_delta != 0:
 		statuses.append({
 			"type": "roll",

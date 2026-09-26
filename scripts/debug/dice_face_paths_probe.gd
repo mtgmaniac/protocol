@@ -42,8 +42,10 @@ func _run() -> void:
 	var h2: Dictionary = heroes[2]
 	var e0: Dictionary = enemies[0]
 
-	await _roll("plain roll")
-	_report("plain roll")
+	cm.get("_active_relic_effects").append({"type": "turn1RollFloor"})
+	await _roll("round-1 roll with Resonant Chorus")
+	_report("chorus (no die below 8 on heroes)")
+	cm.get("_active_relic_effects").clear()
 	# Post-roll +roll buff (Sync Antenna's code path: a 1-turn roll-buff stack
 	# applied after the dice settle) on the lowest hero die.
 	var low: Dictionary = h0
@@ -51,6 +53,8 @@ func _run() -> void:
 		if int(_scene.call("_get_effective_roll_for_state", hs, str(hs["id"]))) < int(_scene.call("_get_effective_roll_for_state", low, str(low["id"]))):
 			low = hs
 	cm.call("apply_item_roll_buff", low, 3, 1)
+	_scene.call("_on_die_values_changed")
+	await _settle()
 	_report("post-roll +3 buff (Sync Antenna path)")
 
 	# Telegraphed statuses that ride into the NEXT reveal.
@@ -70,11 +74,11 @@ func _run() -> void:
 	var hid: String = str(h0["id"])
 	var before: Basis = _die(str("hero"), hid).global_transform.basis
 	pa.call("_apply_nudge", hid)
-	await create_timer(0.1).timeout
+	await _settle()
 	_report_one("nudge h0", "hero", h0, before)
 	before = _die("hero", str(h2["id"])).global_transform.basis
 	pa.call("_apply_set", str(h2["id"]), 17)
-	await create_timer(0.1).timeout
+	await _settle()
 	_report_one("set h2=17", "hero", h2, before)
 	before = _die("hero", str(h1["id"])).global_transform.basis
 	await pa.call("_apply_reroll", str(h1["id"]))
@@ -84,8 +88,8 @@ func _run() -> void:
 	var eng: Object = _scene.get("_engine")
 	before = _die("enemy", str(e0["id"])).global_transform.basis
 	eng.call("item_enemy_reroll", _scene.get("_state"), e0)
-	_scene.call("sync_enemy_dice_after_item_reroll", "enemyRerollDie", e0)
-	await create_timer(0.1).timeout
+	_scene.call("_on_die_values_changed")
+	await _settle()
 	_report_one("enemy reroll item e0", "enemy", e0, before)
 
 	# Freeze = repeat, including frozen 20s, both sides.
@@ -121,12 +125,21 @@ func _roll(label: String) -> void:
 		print("[DICE_PATHS] post-roll override %-12s face %2d -> %2d in ONE frame, rot=%.1f" % [key, int(pre[key][0]), _face(d), minf(deg, 360.0 - deg)])
 
 
+func _settle() -> void:
+	for i in range(60):
+		await process_frame
+	_report("  (all dice after change)")
+
+
 func _die(side: String, id: String) -> RigidBody3D:
 	return (_tray.get("_die_by_key") as Dictionary).get("%s:%s" % [side, id], null) as RigidBody3D
 
 
 func _face(die: RigidBody3D) -> int:
-	return int(_tray.call("_get_most_visible_face_value", die)) if die != null else -1
+	if die == null:
+		return -1
+	var entry: Dictionary = die.get_meta("entry", {})
+	return int(_tray.call("up_face_numeral", str(entry.get("side", "")), str(entry.get("id", ""))))
 
 
 func _resolve_value(side: String, state: Dictionary) -> int:

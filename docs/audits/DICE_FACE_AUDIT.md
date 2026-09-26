@@ -253,3 +253,105 @@ fails if the final up face (label check) ≠ the logic value, if the end-of-roll
 change is anything other than 0, or if the square-up rotates more than a small
 threshold. It will be broken on purpose once to prove it fails. It will reuse the
 probes above.
+
+---
+
+## 6. Phase 2, step 1: one source for every die value (Kev's decisions, 2026-09-26)
+
+**Rule:** at every moment the player can read a die, it shows the value the
+unit will act on. It never shows a value the unit can't have.
+
+**What changed:**
+- **The tray's copy of the rule is deleted.** `_display_face_for_entry`, the
+  `roll_rfe`/`roll_buff`/`jam_cap` value fields on tray entries, the tray rig
+  (`set_rigged_results`), `update_die_result_in_place`, `get_hero_rolls` /
+  `get_enemy_rolls`, and `sync_enemy_dice_after_item_reroll` are all gone.
+- **The tray reads one source.** Every die reads `battle_scene._die_value(side,
+  id)` through `DiceTray3D.value_provider`. That is `BattleEngine.effective_hero_roll`
+  / `effective_enemy_roll`, the same functions `resolve_step` feeds into
+  `resolve_round`.
+- **The tray follows game logic live.** From landing until the round resolves
+  (`set_values_live`), any change reaches the die without a call site having to
+  push it. The scene turns this off at `_resolve_current_turn`, where the
+  acted-on values are snapshotted.
+- **Hijack moved into the engine.** `BattleEngine.hijack_value`: a pending,
+  unfrozen hijack copies the heroes' highest *effective* die. That is exactly
+  what `resolve_round` copies (it is handed the effective hero rolls), so the sim
+  is unchanged. The enemy's die, readout and intent now show the copy live, and
+  `_on_die_values_changed` re-picks intents when the heroes' highest die changes.
+- **Values are decided before the throw, on one path.** `_begin_targeting_phase`
+  draws the stream, then applies frozen repeats, the tutorial rig, forced 20 /
+  Resonant Chorus, and `record_roll_values`, all before the dice are thrown.
+  Visual and skip-visuals rolls now share this code. The tutorial draws the
+  stream too, as the skip path always did.
+- **Nothing reveals a result before the dice land.** Values exist during the
+  tumble now, so the scene has `dice_landed()`. Card readouts and forecasts
+  (`BattleCardView._revealed_rolls`), the tutorial's stalled-waiter recovery, and
+  the reachability test all use it.
+- **The card ±Roll chip reads `get_roll_modifier_totals`** instead of a
+  hand-kept mirror of that sum.
+
+### Roll-modifier classification
+
+**KNOWN BEFORE ROLL.** Active when the throw starts, so the die lands on the
+modified value.
+
+| Modifier | Where it is set | How the die gets it |
+|---|---|---|
+| Temporary roll buffs from earlier rounds (hero and enemy abilities, Emergency Signal, multi-turn items) | `combat_manager._add_roll_buff` (from `:1292`, `:1296`, `:1981`, `:1983`, `:2312`, `:3036`) | `get_effective_roll` (`combat_manager.gd:655`) |
+| Permanent roll buff (Coordinated Strike, battle-start cloak roll, intercept roll bonus) | `combat_manager.gd:440`, `:488`, `:551`, `:592`; `battle_engine.gd:138` | `get_roll_modifier_totals` → `get_effective_roll` |
+| Roll penalties from earlier rounds (hero rfe, enemy rfm, penalty items with turns > 1) | `_add_rfe_stack` (from `:1328`, `:1333`, `:1969`, `:3044`) | `get_effective_roll` |
+| Permanent penalty (Signal Jam) | `combat_manager.gd:543` | `get_effective_roll` |
+| Jam cap | `_apply_jam` (`combat_manager.gd:1687`) | `get_effective_roll` |
+| Rewrite (Synod rewrite, Hierophant ROOT ACCESS) | `_apply_rewrite` (`:1653`), `:383` | `get_effective_roll` |
+| Hijack | `combat_manager.gd:2036` | `BattleEngine.hijack_value`, live (see below) |
+| Freeze repeat, including frozen 20s | freeze abilities and items from an earlier round | `apply_frozen_roll_overrides` + `effective_*_roll` (frozen branch) |
+| Forced 20 (Vengeance Protocol, Dead Man's Hand) | `forced_20_pending` (`combat_manager.gd:2480`, `:2292`) | `battle_scene._apply_roll_relic_overrides`, before the throw |
+| Resonant Chorus (round-1 floor of 8) | relic `turn1RollFloor` | `_apply_roll_relic_overrides`, before the throw |
+| Tutorial scripted values | `TUTORIAL_HERO_ROLLS` | `_apply_tutorial_dice_rig`, before the throw |
+
+**APPLIED AFTER LANDING.** These respond to the result or come later. The die
+first locks on its landed value, then changes.
+
+| Modifier | Where | Path |
+|---|---|---|
+| Nudge (incl. Reverse Gimbal flip, Priming Charge) | `BattleEngine.apply_nudge` | `hero_roll_nudges` → `effective_hero_roll` |
+| Set (incl. Root Access free Set) | `BattleEngine.apply_set` | `hero_roll_sets` → `effective_hero_roll` |
+| Reroll | `BattleEngine.apply_reroll` | `hero_rolls` → effective; keeps its own spin animation |
+| Roll-buff items (Calibration Chip, Momentum Core, Harmonic Injector, Archive Cascade) | `apply_item_roll_buff` (shapes the current roll) | `get_effective_roll` |
+| Penalty items (Grounding Clip, Corrosion Bomb, Entropy Seed) | `apply_item_rfe` | `get_effective_roll` |
+| Enemy reroll items (Phase Scrambler, Cascade Jammer) | `item_enemy_reroll`, `item_enemy_reroll_all` | `enemy_rolls` → effective |
+| Freeze items (Cryo Gel, Cryo Web) | `item_freeze_die`. This round's value is unchanged; it repeats next round | effective |
+| Deep Freeze Charge | `item_enemy_freeze_all` pins enemy dice to 1 | `enemy_rolls` → effective |
+| Sync Antenna | `battle_scene._apply_post_roll_gear_effects` | roll-buff stack → `get_effective_roll` |
+| Live hijack updates | any change to the heroes' highest die | `hijack_value` |
+
+**Unclear cases, and how they were classified:**
+- **Sync Antenna: after landing.** It is a reaction to the result: two heroes
+  rolling the same number. The values are drawn before the throw, so it *could*
+  be applied first. But then the die would land on 13 and the player would never
+  see the matching pair that caused it. After landing, they see the pair and
+  then both dice change.
+- **Hijack: before the roll *and* live.** The copy is in place when the dice
+  land, and it keeps following the heroes' highest die until resolution.
+- **Multi-turn items (Harmonic Injector, Archive Cascade, penalty items):**
+  after landing in the round they are used, then known before the roll in later
+  rounds.
+- **Mid-resolution changes** (abilities that buff, penalise, jam or rewrite
+  during resolution): **neither.** They shape the *next* roll
+  (`skip_next_tick`). The acted-on values are snapshotted at `resolve_step`, and
+  the dice stop following logic at resolution, so they never change a die in
+  the round they are cast.
+
+### Modifier indicators that exist today (report only; nothing built)
+- **Unit card:** a net ±Roll chip in the status row (`battle_card_view.gd`,
+  `type: "roll"`), plus Jam and Rewrite chips.
+- **At the die, transient:** a "+N" float spawns just above the die when a roll
+  buff is *cast* (`battle_feedback.gd`, roll_buff float). It fades, so it isn't
+  there at the next roll.
+- **On the die, persistent:** the freeze/petrify crust with a FROZEN or PETRIFIED
+  label, the jam tint with a "JAM <=N" marker, and "REWRITE->3" / "HIJACK" pending
+  markers (`dice_tray_3d.gd`, `_set_die_*`).
+- **Nothing near the die** shows an active ±roll buff or penalty at roll time, a
+  pending forced 20, or Resonant Chorus. Those appear only as the card chip or
+  in the battle log.

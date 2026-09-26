@@ -64,23 +64,24 @@ func _run() -> void:
 		_finish()
 		return
 
+	# P0 dice-face audit: the tray follows game logic live (value_provider =
+	# battle_scene._die_value), so no call site has to push the new value. A
+	# reroll item that changes enemy_rolls must reach the die numeral on its own.
 	var enemy_rolls: Dictionary = current_scene.get("enemy_rolls")
 	var raw0: int = int(enemy_rolls[eid])
-	var numeral_before: int = int(die.get_meta("display_face_value", -1))
-
-	# Simulate the reroll landing on a guaranteed-different face, WITHOUT syncing.
 	var new_raw: int = (raw0 % 20) + 1
 	enemy_rolls[eid] = new_raw
-	var stale_numeral: int = int(die.get_meta("display_face_value", -1))
-	_expect(stale_numeral == numeral_before, "numeral is stale until synced (the bug): %d" % stale_numeral)
-
-	# Now run the fix.
-	current_scene.call("sync_enemy_dice_after_item_reroll", "enemyRerollDie", picked)
-	var numeral_after: int = int(die.get_meta("display_face_value", -1))
-	var expected: int = int(current_scene.call("_get_effective_enemy_roll", picked, eid))
-	_expect(numeral_after == expected, "numeral matches new effective roll after sync (got %d, want %d)" % [numeral_after, expected])
-	_expect(numeral_after != stale_numeral or new_raw == raw0, "numeral changed to the new roll (was %d, now %d)" % [stale_numeral, numeral_after])
-
+	current_scene.call("_on_die_values_changed")
+	var expected: int = int(current_scene.call("_die_value", "enemy", eid))
+	for _i in range(90):
+		await process_frame
+		if not bool(tray3d.call("is_die_locked", "enemy", eid)):
+			continue
+		if int(die.get_meta("shown_value", -1)) == expected:
+			break
+	var numeral_after: int = int(die.get_meta("shown_value", -1))
+	_expect(numeral_after == expected, "die numeral follows the new effective roll (got %d, want %d)" % [numeral_after, expected])
+	_expect(int(tray3d.call("up_face_numeral", "enemy", eid)) == expected, "the numeral facing up reads the new value")
 	_finish()
 
 

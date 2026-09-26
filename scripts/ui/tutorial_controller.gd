@@ -409,6 +409,9 @@ func _recover_stalled_waiter(step_index: int) -> void:
 func _scene_has_rolls() -> bool:
 	if _scene == null:
 		return false
+	# The dice must have LANDED: roll values exist from the start of the throw.
+	if _scene.has_method("dice_landed"):
+		return bool(_scene.call("dice_landed"))
 	var rolls: Variant = _scene.get("hero_rolls")
 	return rolls is Dictionary and not (rolls as Dictionary).is_empty()
 

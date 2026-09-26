@@ -80,8 +80,6 @@ var _viewport_container: SubViewportContainer
 var _world_root: Node3D
 var _dice_root: Node3D
 var _camera: Camera3D
-var _hero_results: Dictionary = {}
-var _enemy_results: Dictionary = {}
 var _die_by_key: Dictionary = {}
 var _face_normals: Array[Vector3] = []
 var _face_centers: Array[Vector3] = []
@@ -96,6 +94,17 @@ var _bounds_max_z: float = TRAY_HALF_DEPTH
 var _tray_bodies: Dictionary = {}
 ## Optional placement provider. Invalid for the unchanged portrait path.
 var result_anchor_provider: Callable
+# ONE source of truth for every die value (P0 dice-face audit): the scene's
+# `_die_value(side, unit_id) -> int`, which is the value the unit will act on
+# (BattleEngine effective roll, hijack included). The tray keeps NO copy of the
+# effective-roll rule. Returns <= 0 when the unit has no value yet; the tray
+# then falls back to the physics face (debug harnesses without a scene).
+var value_provider: Callable
+# While true the tray follows value_provider every frame, so a change made
+# after landing (Nudge, Set, items, Sync Antenna, a live hijack copy) reaches
+# the die without any call site having to remember to push it. The scene turns
+# it off when the round resolves: the acted-on values are snapshotted there.
+var _values_live: bool = false
 var _landscape_projection := false
 var _last_landscape_size := Vector2.ZERO
 
@@ -309,8 +318,7 @@ func set_combat_zone_rect(rect: Rect2) -> void:
 
 func reset() -> void:
 	_is_rolling = false
-	_hero_results.clear()
-	_enemy_results.clear()
+	_values_live = false
 	_die_by_key.clear()
 	_clear_dice()
 	# Hide when not rolling so the Roll button underneath is visible
@@ -346,14 +354,6 @@ func _die_part(die: RigidBody3D, part_name: String) -> Node:
 	if visuals != null:
 		return visuals.get_node_or_null(part_name)
 	return die.get_node_or_null(part_name)
-
-
-func get_hero_rolls() -> Dictionary:
-	return _hero_results.duplicate()
-
-
-func get_enemy_rolls() -> Dictionary:
-	return _enemy_results.duplicate()
 
 
 func get_die_screen_position(side: String, unit_id: String) -> Vector2:
@@ -429,30 +429,69 @@ func show_result_actions(action_entries: Array) -> void:
 		var die: RigidBody3D = _die_by_key.get(key, null) as RigidBody3D
 		if die == null or not is_instance_valid(die):
 			continue
-		var effective_roll: int = int(entry.get("roll", 0))
-		var display_face_value: int = int(die.get_meta("display_face_value", effective_roll))
-		_highlight_top_face(die, display_face_value, str(entry.get("side", "")), str(entry.get("zone", "")))
+		die.set_meta("zone", str(entry.get("zone", "")))
+		_highlight_top_face(die, int(die.get_meta("shown_value", int(entry.get("roll", 0)))), str(entry.get("side", "")), str(entry.get("zone", "")))
 
 
-# Tutorial dice rig (v2, one-shot per play_rolls): "side:unit_id" -> forced
-# raw result, set BEFORE play_rolls. Consumed at face-resolve time so the
-# normal settle presentation rotates the RIGGED face up — the physics roll
-# plays naturally and the player never sees a wrong number (the old flow
-# repainted the die AFTER settle, a visible snap). Cleared when the roll
-# finishes so ordinary battles are untouched.
-var _rigged_results: Dictionary = {}
+# The value the unit will act on, from the ONE source (value_provider). Falls
+# back to the physics face only when no provider is wired (debug harnesses).
+func _value_for_die(die: RigidBody3D) -> int:
+	var entry: Dictionary = die.get_meta("entry", {})
+	if value_provider.is_valid():
+		var v: int = int(value_provider.call(str(entry.get("side", "")), str(entry.get("id", ""))))
+		if v > 0:
+			return clampi(v, 1, 20)
+	return _get_most_visible_face_value(die)
 
 
-func set_rigged_results(rigged: Dictionary) -> void:
-	_rigged_results = rigged.duplicate()
+func set_values_live(live: bool) -> void:
+	_values_live = live
 
 
-func update_die_result_in_place(side: String, unit_id: String, display_effective: int) -> void:
+# Test/gate surface. A die is LOCKED when its digits are settled on a value
+# (not tumbling, not scrambling, not mid-reroll) — the only time the player can
+# read it.
+func is_die_locked(side: String, unit_id: String) -> bool:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	return die != null and not _is_rolling and not bool(die.get_meta("busy", false)) and not bool(die.get_meta("scrambling", false))
+
+
+# The numeral a player reads: the text of the face label pointing most nearly
+# straight up in the world. Independent of the face tables on purpose — it
+# checks what the mesh actually shows. -1 when there is no die.
+func up_face_numeral(side: String, unit_id: String) -> int:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
+		return -1
+	var best: float = -2.0
+	var text: String = ""
+	for face_value in _face_values:
+		var label: Label3D = _die_part(die, "FaceNumber%d" % int(face_value)) as Label3D
+		if label == null:
+			continue
+		var d: float = label.global_transform.basis.z.normalized().dot(Vector3.UP)
+		if d > best:
+			best = d
+			text = label.text
+	return int(text) if text.is_valid_int() else -1
+
+
+func _process(_delta: float) -> void:
+	if not _values_live or _is_rolling or not value_provider.is_valid():
 		return
-	var target: int = clampi(display_effective, 1, 20)
-	die.set_meta("display_face_value", target)
+	for key in _die_by_key:
+		var die: RigidBody3D = _die_by_key[key] as RigidBody3D
+		if die == null or not is_instance_valid(die) or bool(die.get_meta("busy", false)):
+			continue
+		var v: int = _value_for_die(die)
+		if v != int(die.get_meta("shown_value", v)):
+			_show_value_in_place(die, v)
+
+
+func _show_value_in_place(die: RigidBody3D, target: int) -> void:
+	var entry: Dictionary = die.get_meta("entry", {})
+	var side: String = str(entry.get("side", ""))
+	die.set_meta("shown_value", target)
 	var face_index: int = _get_face_index_for_result(target)
 	if face_index >= 0:
 		var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
@@ -461,7 +500,7 @@ func update_die_result_in_place(side: String, unit_id: String, display_effective
 		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
 	_reset_face_labels(die)
 	_reset_face_highlights(die)
-	_highlight_top_face(die, target, side)
+	_highlight_top_face(die, target, side, str(die.get_meta("zone", "")))
 
 
 func set_die_frozen_visual(side: String, unit_id: String, is_frozen: bool, flavor: String = "ice") -> void:
@@ -497,23 +536,18 @@ func clear_die(side: String, unit_id: String) -> void:
 		die.queue_free()
 
 
-func reroll_die_to_result(side: String, unit_id: String, raw_result: int) -> void:
+# Reroll keeps its own spin-and-arc; the new value is already in game logic
+# (BattleEngine.apply_reroll ran first) and is read from the one source.
+func reroll_die_to_result(side: String, unit_id: String) -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		return
-	var entry: Dictionary = die.get_meta("entry", {})
-	var raw: int = clampi(raw_result, 1, 20)
-	var display: int = _display_face_for_entry(raw, entry)
+	var display: int = _value_for_die(die)
 	var face_index: int = _get_face_index_for_result(display)
 	if face_index < 0:
-		update_die_result_in_place(side, unit_id, display)
-		die.set_meta("raw_result", raw)
-		die.set_meta("resolved_result", raw)
-		if side == "hero":
-			_hero_results[unit_id] = raw
-		elif side == "enemy":
-			_enemy_results[unit_id] = raw
+		_show_value_in_place(die, display)
 		return
+	die.set_meta("busy", true)
 
 	var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
 	var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
@@ -551,15 +585,10 @@ func reroll_die_to_result(side: String, unit_id: String, raw_result: int) -> voi
 		return
 	die.global_transform = to_transform
 	_set_die_result_scale(die, true)
-	die.set_meta("raw_result", raw)
-	die.set_meta("resolved_result", raw)
-	die.set_meta("display_face_value", display)
+	die.set_meta("shown_value", display)
 	die.set_meta("assigned_result_origin", target_origin)
-	_highlight_top_face(die, display, side)
-	if side == "hero":
-		_hero_results[unit_id] = raw
-	elif side == "enemy":
-		_enemy_results[unit_id] = raw
+	die.set_meta("busy", false)
+	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
 
 
 func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
@@ -567,8 +596,7 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 		return
 	_is_rolling = true
 	visible = true
-	_hero_results.clear()
-	_enemy_results.clear()
+	_values_live = false
 
 	var dice: Array = []
 	var rolling_dice: Array = []
@@ -634,15 +662,9 @@ func _finish_roll(dice: Array) -> void:
 		var die: RigidBody3D = die_variant as RigidBody3D
 		if die == null or not is_instance_valid(die):
 			continue
-		var raw: int = int(die.get_meta("raw_result", die.get_meta("resolved_result", _get_most_visible_face_value(die))))
-		var display: int = int(die.get_meta("display_face_value", raw))
+		var display: int = int(die.get_meta("shown_value", _get_most_visible_face_value(die)))
 		var entry: Dictionary = die.get_meta("entry", {})
 		var side: String = str(entry.get("side", ""))
-		var unit_id: String = str(entry.get("id", ""))
-		if side == "hero":
-			_hero_results[unit_id] = raw
-		elif side == "enemy":
-			_enemy_results[unit_id] = raw
 		_set_die_frozen_visual(die, bool(entry.get("frozen", false)))
 		die.freeze = true
 		die.linear_velocity = Vector3.ZERO
@@ -679,8 +701,6 @@ func _finish_roll(dice: Array) -> void:
 		_refresh_landscape_result_positions()
 	if dice_audio != null:
 		dice_audio.on_roll_finished()
-	# One-shot: the tutorial rig covers exactly the roll it was set for.
-	_rigged_results.clear()
 	# Stay visible so the player can read the results; reset() hides later
 	roll_finished.emit()
 
@@ -842,7 +862,7 @@ func _get_result_entries_for_dice(dice: Array) -> Array:
 		var side: String = str(entry.get("side", ""))
 		result_entries.append({
 			"die": die,
-			"result": int(die.get_meta("resolved_result", 1)),
+			"result": int(die.get_meta("shown_value", 1)),
 			"side": side,
 			"entry": entry,
 		})
@@ -1114,36 +1134,11 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, false)
-	var entry: Dictionary = die.get_meta("entry", {})
-	var raw: int = _get_most_visible_face_value(die)
-	# Tutorial rig: the scripted value replaces the physics face BEFORE the
-	# result presentation, so the settle tween rotates the rigged face up.
-	var rig_key: String = _entry_key(str(entry.get("side", "")), str(entry.get("id", "")))
-	if _rigged_results.has(rig_key):
-		raw = clampi(int(_rigged_results[rig_key]), 1, 20)
-	var display: int = _display_face_for_entry(raw, entry)
-	die.set_meta("raw_result", raw)
-	die.set_meta("resolved_result", raw)
-	die.set_meta("display_face_value", display)
+	var display: int = _value_for_die(die)
+	die.set_meta("shown_value", display)
 	target_origin.y = die.global_transform.origin.y
 	die.set_meta("assigned_result_origin", target_origin)
 	_start_result_face_present(die, display, target_origin)
-
-
-func _display_face_for_entry(raw: int, entry: Dictionary) -> int:
-	var clamped_raw: int = clampi(raw, 1, 20)
-	if bool(entry.get("frozen", false)):
-		return clamped_raw
-	var rfe: int = int(entry.get("roll_rfe", 0))
-	var buff: int = int(entry.get("roll_buff", 0))
-	var display: int = clampi(clamped_raw + buff - rfe, 1, 20)
-	# Jam (Build G item 2): the numeral shows the CAPPED value — mirrors
-	# get_effective_roll so the die face and the resolved ability agree. This
-	# is the value feed, not the fenced materials/SubViewport pipeline.
-	var jam_cap: int = int(entry.get("jam_cap", 0))
-	if jam_cap > 0:
-		display = mini(display, jam_cap)
-	return display
 
 
 # Late in the roll the "felt" grabs: damping ramps up so a die spiralling on a
@@ -1463,8 +1458,6 @@ func _on_die_contact(_other: Node, die: RigidBody3D) -> void:
 func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> RigidBody3D:
 	var side: String = str(entry.get("side", ""))
 	var unit_id: String = str(entry.get("id", ""))
-	var raw: int = clampi(int(entry.get("frozen_roll", 1)), 1, 20)
-	var display: int = _display_face_for_entry(raw, entry)
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		die = _spawn_die(entry, index, total_count)
@@ -1479,9 +1472,11 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 	die.linear_velocity = Vector3.ZERO
 	die.angular_velocity = Vector3.ZERO
 	_set_die_collision_enabled(die, true)
-	die.set_meta("raw_result", raw)
-	die.set_meta("resolved_result", raw)
-	die.set_meta("display_face_value", display)
+	# A frozen die repeats its crusted face: the one source returns it.
+	var display: int = clampi(int(entry.get("frozen_roll", 1)), 1, 20)
+	if value_provider.is_valid() and int(value_provider.call(side, unit_id)) > 0:
+		display = clampi(int(value_provider.call(side, unit_id)), 1, 20)
+	die.set_meta("shown_value", display)
 	var face_index: int = _get_face_index_for_result(display)
 	if face_index >= 0:
 		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), die.global_transform.origin)
