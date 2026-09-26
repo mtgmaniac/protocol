@@ -63,6 +63,55 @@ Pick **one item**, implement, test, commit. Don't batch unrelated work.
 
 ---
 
+## Open backlog (2026-09-26)
+
+Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
+**P1** open bugs / near-term polish · **P2** planned, needs design or review first ·
+**P3** watch list, only if it becomes a problem. Work top to bottom.
+
+### P0
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Dice face snap after landing** | **Open — next session** | A die physically lands on one face, then snaps to a different face at the end of the roll. The face it lands on must be the face it resolves to. |
+
+### P1
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Detonate missing from enemy damage preview** | Open | With detonate planned and a target selected, the detonate number shows on the hero readout but not in the enemy's damage preview. Preview-honesty bug, same class as the chain-into-firewall float fixed earlier. Also check every other delayed or conditional damage source (burn ticks, spike, execute, chain) for the same gap. |
+| **Detonate number spacing on hero readout** | Open | The number sits too far from its icon. Match the gap of the other icon + number pairs. |
+| **Stray neighbour pixels in cut-sheet assets** | Open | Slivers of adjacent sprites at image edges (e.g. Nanite Field relic, left edge). Needs (a) an automated scan of every portrait, item and relic image flagging detached pixel fragments touching the edges, and (b) a per-asset crop option in the framing tool (next row). |
+| **Portrait / item / relic framing tool** | Open | Dev-only scene: every asset in its real frame at real size, per-asset offset / zoom / crop, guide lines (centre axis, shared eye line), onion-skin reference; saved to a framing JSON applied at runtime. Non-destructive — source images never change. Automated first pass anchored on head / eye line, then manual tuning by Kev. |
+| **Encounter select — fixed slots** | Open | Switching encounters must never shift the layout. Locked encounters show the unlock condition in the subtitle slot; the detail box stays visible with lock info and "THREATS: ???". Detail box shows encounter info only; unit info moves to hold-to-inspect. |
+| **Event header art — one aspect ratio** | Open | One fixed aspect for all event header art, frame built to match. Route Fork art is currently letterboxed with empty side panels. |
+| **Relic popup layout** | Open | Enlarge the icon box; remove or fill the empty band between the RELIC tag and the description. |
+| **Intercept screens — option layout + copy** | Open | Option descriptions sit between the buttons and read as belonging to either. Use Route Fork's boxed-option layout. Fix the lowercase start of "items cost 0 Protocol next battle." |
+| **Status badge long-press pass-through** | Open | Long-press on a status badge should pass through to the unit card underneath and show the unit's long-press. |
+
+### P2
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Animated corner accents** | Open | Replace the four-corner selection brackets with one shared component: a few pixels travel along the brackets like a snake. Pixel-snapped, stepped animation (no smooth tweening), identical on every screen. Inventory and unify every current bracket implementation first. Respect Reduced Motion. |
+| **Dice colour flair** | Open | 2–3 alternative palettes for hero and enemy dice, tied to the unlock system. Hero and enemy dice stay clearly distinct; numerals stay readable on every palette. |
+| **Battle-win relics rework** | Open — design first | They drop too often for what they do. Design pass with the current relic list before any change, then a sim run. |
+| **Empty band under the header** | Open | 100+ px unused on most screens. Use it, or give the space to content that needs room. |
+| **Balance: voidCirclet +10.5 drift** | Open — Kev review | From the Medic `else` fallback heal (acf38d4). Kev reviews before any baseline re-pin. |
+
+### P3 / watch
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Consolidate backlog files** | Watch | TASK_QUEUE.md, docs/TASK_MASTER_LIST.csv and docs/UI_BACKLOG.md → one source of truth. |
+| **Design rulings only in code comments** | Watch | Sweep and list them for Kev with file and line. Do not move or change them. |
+| **Moving-text shimmer on desktop web** | Watch | Floating combat numbers, status slams, flying protocol pip, card lunge and shake, scrolling lists. |
+| **Off-lattice screen font sizes** | Watch | Not on 16 px multiples: home 52/60/72, battle cards 72, pips 50/53, sizes 84–150. |
+| **Thirds-step scaling option** | Watch | From the text legibility audit — only if Step 1 turns out not to be enough on desktop. |
+| **3D dice numerals and the NEAREST hook** | Watch | 3D labels are outside the text filter hook. Kev found them acceptable; revisit only if they look soft. |
+
+---
+
 ## Ongoing
 
 Active threads — already in motion; continue when you pick them up, don't restart from scratch.
