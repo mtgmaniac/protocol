@@ -102,13 +102,13 @@ func _exit_tree() -> void:
 
 
 func _on_return_to_menu_button_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	GameState.reset_run()
 	SceneManager.go_to_unit_select()
 
 
 func _on_help_button_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	if _help_overlay == null or not is_instance_valid(_help_overlay):
 		_build_help_overlay()
 	_help_overlay.visible = true
@@ -136,7 +136,7 @@ func _build_view_battle_button() -> void:
 
 
 func _on_view_battle_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	GameState.battle_review_return_target = "evolution"
 	GameState.entering_battle_review = true
 	SceneManager.go_to_battle()

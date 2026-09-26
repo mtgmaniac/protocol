@@ -312,11 +312,14 @@ func _on_spot_tapped() -> void:
 	# On a gated beat the coach is only tappable once the assist has been
 	# offered (set_coach_tappable), so a tap here is the player taking it.
 	if _assist_offered and mode != "tap" and mode != "tap_finish":
+		get_node("/root/AudioManager").play_click()
 		_run_gate_assist()
 		return
 	if mode == "tap":
+		get_node("/root/AudioManager").play_click()
 		_next()
 	elif mode == "tap_finish":
+		get_node("/root/AudioManager").play_click()
 		_finish()
 
 

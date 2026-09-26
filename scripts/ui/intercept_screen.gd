@@ -385,7 +385,7 @@ func _add_view_battle_button() -> void:
 
 
 func _on_view_battle_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	GameState.battle_review_return_target = "intercept"
 	GameState.entering_battle_review = true
 	SceneManager.go_to_battle()

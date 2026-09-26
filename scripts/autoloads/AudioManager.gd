@@ -11,7 +11,7 @@ extends Node
 
 const SFX_DIR := "res://assets/audio/sfx/"
 const SFX_KEYS := [
-	"damage", "death", "evolve", "freeze", "heal", "item", "overload",
+	"click", "damage", "death", "evolve", "freeze", "heal", "item", "overload",
 	"burn", "failure", "revive", "select", "shield", "summon", "victory",
 ]
 const POOL_SIZE := 12            # max simultaneous voices
@@ -21,11 +21,13 @@ const DEBOUNCE_MS := 40          # collapse identical key within a frame (multi-
 const VOLUME_OVERRIDES := {
 	"burn": -5.0,
 	"select": -9.1,  # was -6.0; Kev 2026-07-10: 30% quieter again (x0.7 amplitude = -3.1 dB)
+	"click": -11.0,  # click.wav is ~1.8 dB RMS hotter than select.wav; matched to select's level
 }
 # Keys that route somewhere other than the general SFX bus. DICE and UI are
 # children of SFX in default_bus_layout.tres, so the SOUND FX slider/mute still
 # governs them as a parent while each keeps its own trim.
 const BUS_BY_KEY := {
+	"click": "UI",
 	"select": "UI",
 }
 
@@ -93,7 +95,14 @@ func _ensure_sfx_bus() -> void:
 	AudioServer.set_bus_send(idx, "Master")
 
 
-## Default UI click — select.wav for any button without a dedicated action sound.
+## UI sound rule (Kev 2026-09-25): click is navigation and browsing — tab
+## switches, opening/closing panels and inspects, scrolling between entries,
+## coach-mark advances. select is commitment — choosing a reward, deploying,
+## confirming an evolution, targeting, spending Protocol. Both ride the UI bus.
+func play_click() -> void:
+	play_sfx("click")
+
+
 func play_select() -> void:
 	play_sfx("select")
 

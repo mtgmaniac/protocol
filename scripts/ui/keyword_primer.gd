@@ -400,7 +400,7 @@ func _try_show(candidate: Dictionary) -> bool:
 	var glyph_key: String = str(context.get("icon", ""))
 	if glyph_key == "":
 		glyph_key = str(context.get("param", ""))
-	AudioManager.play_select()
+	AudioManager.play_click()
 	await _spot.spotlight(rects, text, SpotlightLayerScript.CoachAnchor.AUTO, {
 		"hint": "Continue >",
 		"interactive": true,
@@ -410,6 +410,7 @@ func _try_show(candidate: Dictionary) -> bool:
 	})
 	if not debug_auto_dismiss:
 		await _spot.tapped
+		AudioManager.play_click()
 	_spot.dismiss()
 	debug_show_count += 1
 	debug_shown_ids.append(str(entry.get("id", "")))

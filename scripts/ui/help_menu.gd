@@ -170,7 +170,7 @@ func _build() -> void:
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	PixelUI.style_button(close_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 38)
-	close_button.pressed.connect(HelpMenu.dismiss)
+	close_button.pressed.connect(_with_click(HelpMenu.dismiss))
 
 	var tab_grid := GridContainer.new()
 	tab_grid.columns = 4
@@ -190,7 +190,7 @@ func _build() -> void:
 		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tab_button.custom_minimum_size = Vector2(0, 100)
 		tab_button.mouse_filter = Control.MOUSE_FILTER_STOP
-		tab_button.pressed.connect(_select_tab.bind(tab_id))
+		tab_button.pressed.connect(_with_click(_select_tab.bind(tab_id)))
 		tab_grid.add_child(tab_button)
 		_tab_buttons[tab_id] = tab_button
 
@@ -235,6 +235,7 @@ func _on_catcher_input(event: InputEvent) -> void:
 	elif event is InputEventScreenTouch:
 		pressed = (event as InputEventScreenTouch).pressed
 	if pressed:
+		_play_click()
 		HelpMenu.dismiss()
 
 
@@ -274,7 +275,7 @@ func _build_basics_page(host: VBoxContainer) -> void:
 		back.text = "BACK TO BASICS"
 		back.custom_minimum_size.y = 100
 		PixelUI.style_button(back, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
-		back.pressed.connect(_select_tab.bind("basics"))
+		back.pressed.connect(_with_click(_select_tab.bind("basics")))
 		host.add_child(back)
 		match _reference_section:
 			"keywords": _build_keywords(host)
@@ -378,7 +379,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	replay.mouse_filter = Control.MOUSE_FILTER_STOP
 	PixelUI.style_button(replay, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, 30)
 	replay.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
-	replay.pressed.connect(_replay_tutorial)
+	replay.pressed.connect(_with_click(_replay_tutorial))
 	host.add_child(replay)
 
 	var reference := Button.new()
@@ -386,7 +387,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	reference.custom_minimum_size = Vector2(0, 100)
 	reference.mouse_filter = Control.MOUSE_FILTER_STOP
 	PixelUI.style_button(reference, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, TAB_FONT)
-	reference.pressed.connect(_select_tab.bind("reference"))
+	reference.pressed.connect(_with_click(_select_tab.bind("reference")))
 	host.add_child(reference)
 
 
@@ -416,8 +417,8 @@ func _build_icon_guide(host: VBoxContainer) -> void:
 		tabs.add_child(button)
 		buttons.append(button)
 	host.add_child(content)
-	buttons[0].pressed.connect(_select_icon_guide_section.bind(false, content, buttons))
-	buttons[1].pressed.connect(_select_icon_guide_section.bind(true, content, buttons))
+	buttons[0].pressed.connect(_with_click(_select_icon_guide_section.bind(false, content, buttons)))
+	buttons[1].pressed.connect(_with_click(_select_icon_guide_section.bind(true, content, buttons)))
 	_select_icon_guide_section(false, content, buttons)
 
 
@@ -443,7 +444,7 @@ func _select_icon_guide_section(effects: bool, host: VBoxContainer, buttons: Arr
 		more.text = "MORE EFFECTS"
 		more.custom_minimum_size = Vector2(0, 112)
 		PixelUI.style_button(more, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, TAB_FONT)
-		more.pressed.connect(_select_tab.bind("keywords"))
+		more.pressed.connect(_with_click(_select_tab.bind("keywords")))
 		host.add_child(more)
 	else:
 		for entry in [
@@ -674,7 +675,7 @@ func _build_bestiary(host: VBoxContainer) -> void:
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.custom_minimum_size = Vector2(0, 104)
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		btn.pressed.connect(_select_bestiary_faction.bind(str(f)))
+		btn.pressed.connect(_with_click(_select_bestiary_faction.bind(str(f))))
 		picker.add_child(btn)
 		_bestiary_buttons[str(f)] = btn
 
@@ -754,7 +755,7 @@ func _build_settings(host: VBoxContainer) -> void:
 	# --- Feedback (mirrors the main-menu FEEDBACK button; one URL, feedback.gd) ---
 	host.add_child(_make_label("FEEDBACK", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
 	var feedback_btn := _make_dev_button("SEND FEEDBACK", true)
-	feedback_btn.pressed.connect(_on_send_feedback)
+	feedback_btn.pressed.connect(_with_click(_on_send_feedback))
 	host.add_child(feedback_btn)
 
 	var header: Variant = get_node_or_null("/root/PersistentHeader")
@@ -767,15 +768,15 @@ func _build_settings(host: VBoxContainer) -> void:
 		var dev_mode_on: bool = header.dev_mode_enabled
 		_add_toggle_row(host, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
 		var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
-		unlock_btn.pressed.connect(_on_dev_unlock_all)
+		unlock_btn.pressed.connect(_with_click(_on_dev_unlock_all))
 		host.add_child(unlock_btn)
 		_reset_armed = false
 		_reset_dev_button = _make_dev_button("RESET SAVE PROFILE (DEV)", true)
-		_reset_dev_button.pressed.connect(_on_dev_reset_profile)
+		_reset_dev_button.pressed.connect(_with_click(_on_dev_reset_profile))
 		host.add_child(_reset_dev_button)
 		# Clears only onboarding.primers_seen — every keyword primer fires fresh again.
 		var reset_primers_btn := _make_dev_button("RESET PRIMERS (DEV)", false)
-		reset_primers_btn.pressed.connect(_on_dev_reset_primers)
+		reset_primers_btn.pressed.connect(_with_click(_on_dev_reset_primers))
 		host.add_child(reset_primers_btn)
 
 		# --- Debug (Build #3) --- STRUCTURALLY absent outside debug builds: the
@@ -797,9 +798,9 @@ func _build_settings(host: VBoxContainer) -> void:
 				button.toggle_mode = true
 				button.button_group = layout_group
 				button.button_pressed = policy.dev_override == index
-				button.pressed.connect(func() -> void:
+				button.pressed.connect(_with_click(func() -> void:
 					policy.dev_override = index
-				)
+				))
 				host.add_child(button)
 
 	# Version footer — PixelUI.version_label() (project.godot config/version is
@@ -923,6 +924,22 @@ func _audio() -> Variant:
 	return get_node_or_null("/root/AudioManager")
 
 
+# Navigation/browsing sound (AudioManager.play_click rule). Every player-facing
+# control in this menu is navigation or a settings change, so all of them click.
+func _play_click() -> void:
+	var am: Variant = _audio()
+	if am != null:
+		am.play_click()
+
+
+# Wraps a handler so the press clicks first. Connect-site only: _select_tab and
+# _select_icon_guide_section also run programmatically while building, silently.
+func _with_click(action: Callable) -> Callable:
+	return func() -> void:
+		_play_click()
+		action.call()
+
+
 func _audio_muted() -> bool:
 	var am: Variant = _audio()
 	return am != null and bool(am.is_muted())
@@ -986,6 +1003,7 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_toggle_button(btn)
 	btn.toggled.connect(func(pressed: bool) -> void:
+		_play_click()
 		on_toggle.call(pressed)
 		_style_toggle_button(btn))
 	row.add_child(btn)
@@ -1018,6 +1036,7 @@ func _add_channel_row(parent: VBoxContainer, label_text: String, initial_volume:
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_toggle_button(btn)
 	btn.toggled.connect(func(pressed: bool) -> void:
+		_play_click()
 		on_toggle.call(pressed)
 		_style_toggle_button(btn))
 	row.add_child(btn)
@@ -1054,6 +1073,11 @@ func _make_volume_slider(initial: float, on_change: Callable) -> HSlider:
 	slider.add_theme_icon_override("grabber_highlight", _slider_grabber_icon())
 	slider.add_theme_icon_override("grabber_disabled", _slider_grabber_icon())
 	slider.value_changed.connect(on_change)
+	# One click when a drag or track tap settles on a new value — not per
+	# value_changed step, which would machine-gun through the debounce.
+	slider.drag_ended.connect(func(value_changed: bool) -> void:
+		if value_changed:
+			_play_click())
 	return slider
 
 
@@ -1381,6 +1405,7 @@ func _on_reference_row_long_pressed(_where: Vector2, source_kind: String,
 		return
 	var anchor: Rect2 = source.get_global_rect() if is_instance_valid(source) else Rect2()
 	var source_id: int = source.get_instance_id() if is_instance_valid(source) else 0
+	_play_click()
 	layer = MENU_LAYER_UNDER_POPUP
 	_breakdown_open = true
 	set_process(true)

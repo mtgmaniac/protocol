@@ -160,7 +160,7 @@ func _apply_bottom_bezel() -> void:
 
 
 func _on_help_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	HelpMenu.toggle(self)
 
 
@@ -168,7 +168,7 @@ func _dispatch(action: Callable, play_click: bool = true) -> void:
 	if not action.is_valid():
 		return
 	if play_click:
-		AudioManager.play_select()
+		AudioManager.play_click()
 	action.call()
 
 

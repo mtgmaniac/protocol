@@ -503,7 +503,7 @@ func _on_item_row_tapped(row: Control, item: ItemData) -> void:
 func _on_row_long_pressed(_global_position: Vector2, item: ItemData, row: Control) -> void:
 	if item == null:
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	var anchor: Rect2 = row.get_global_rect() if is_instance_valid(row) else Rect2()
 	InspectPopup.open(self, InspectResolver.resolve_item(item), anchor, row.get_instance_id())
 

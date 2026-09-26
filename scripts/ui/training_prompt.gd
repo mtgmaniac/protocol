@@ -36,6 +36,10 @@ static func present(parent: Node, heading: String, body: String, choices: Array)
 		button.text = str(choices[i])
 		button.custom_minimum_size.y = 128
 		PixelUI.style_primary_button(button, 60)
-		button.pressed.connect(func(): prompt.chosen.emit(i))
+		# get_node, not the AudioManager global: training_flow preloads this script
+		# from -s test scripts, where autoload identifiers do not exist at compile time.
+		button.pressed.connect(func():
+			prompt.get_node("/root/AudioManager").play_select()
+			prompt.chosen.emit(i))
 		box.add_child(button)
 	return prompt

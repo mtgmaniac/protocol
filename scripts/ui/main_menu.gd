@@ -181,7 +181,7 @@ func _on_begin_pressed() -> void:
 
 
 func _on_feedback_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	# Synchronous inside the tap's handler — web popup blockers permit
 	# gesture-initiated opens only (see feedback.gd).
 	Feedback.open_form(self)
@@ -330,7 +330,7 @@ func _on_continue_pressed() -> void:
 
 
 func _on_abandon_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	_show_abandon_confirm()
 
 
@@ -396,7 +396,7 @@ func _show_abandon_confirm() -> void:
 
 
 func _dismiss_abandon_confirm(scrim: Control, panel: Control) -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	for node in [scrim, panel]:
 		if is_instance_valid(node):
 			node.queue_free()

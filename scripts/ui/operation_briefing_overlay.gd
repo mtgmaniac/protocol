@@ -279,6 +279,6 @@ func _dismiss() -> void:
 	if _dismissed or not is_inside_tree():
 		return
 	_dismissed = true
-	AudioManager.play_select()
+	AudioManager.play_click()
 	dismissed.emit(_mode)
 	queue_free()

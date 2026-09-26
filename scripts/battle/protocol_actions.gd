@@ -708,7 +708,7 @@ func _on_set_value_track_input(event: InputEvent) -> void:
 	var new_val: int = clampi(int(round(1.0 + frac * 19.0)), 1, 20)
 	if new_val != _set_value_current:
 		_set_value_current = new_val
-		AudioManager.play_select()
+		AudioManager.play_click()
 		_update_set_value_visuals()
 
 
@@ -728,7 +728,7 @@ func _confirm_set_value_popup() -> void:
 func _cancel_set_value_popup() -> void:
 	if _set_value_overlay == null:
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	_pending_set_hero_id = ""
 	_close_set_value_popup()
 
@@ -811,7 +811,7 @@ func _on_item_button_pressed_menu() -> void:
 	# restored resting phase (§1: Set → item box cancels Set, then opens the box).
 	if in_roll_modifier_pick():
 		cancel_roll_modifier_pick()
-	AudioManager.play_select()
+	AudioManager.play_click()
 	# All held relics (0-2 by design) — the loadout is the ONLY relic display.
 	var relic_items: Array = []
 	for relic_id_variant in _scene._game_state().relics:

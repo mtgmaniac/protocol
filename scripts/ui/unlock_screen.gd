@@ -346,19 +346,19 @@ func _make_grid_cell(entry: Dictionary) -> Control:
 
 
 func _on_cell_long_pressed(_global_position: Vector2, item: ItemData, cell: Control) -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	var anchor: Rect2 = cell.get_global_rect() if is_instance_valid(cell) else Rect2()
 	InspectPopup.open(self, InspectResolver.resolve_item(item), anchor, cell.get_instance_id())
 
 
 func _on_unit_long_pressed(_global_position: Vector2, unit: UnitData, row: Control) -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	var anchor: Rect2 = row.get_global_rect() if is_instance_valid(row) else Rect2()
 	InspectPopup.open(self, InspectResolver.resolve_unit(unit), anchor, row.get_instance_id())
 
 
 func _on_operation_long_pressed(_global_position: Vector2, operation_id: String, row: Control) -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	var operation: OperationData = DataManager.get_operation(operation_id) as OperationData
 	if operation == null:
 		return

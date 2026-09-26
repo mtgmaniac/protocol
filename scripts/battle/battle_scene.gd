@@ -548,7 +548,7 @@ func _show_boss_alert() -> void:
 
 
 func _return_from_review() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	match str(_game_state().battle_review_return_target):
 		"intercept":
 			_scene_manager().go_to_intercept()
@@ -779,7 +779,7 @@ var _abandon_overlay: CanvasLayer = null
 
 
 func _on_return_to_menu_button_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	if _abandon_overlay != null and is_instance_valid(_abandon_overlay):
 		return
 	_build_abandon_confirm()
@@ -878,7 +878,7 @@ func _build_abandon_confirm() -> void:
 	stay.mouse_filter = Control.MOUSE_FILTER_STOP
 	PixelUI.style_primary_button(stay, 36)
 	stay.pressed.connect(func() -> void:
-		AudioManager.play_select()
+		AudioManager.play_click()
 		_dismiss_abandon_confirm()
 	)
 	row.add_child(stay)
@@ -1068,7 +1068,7 @@ func _on_unit_detail_requested(card: Control) -> void:
 		return
 	if not _tutorial_allows("inspect", {"hero": str(compact_card.unit_data.id)}):
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	# Unified long-press inspect (replaces the old UnitDetailPanel popup). The popup
 	# self-dismisses on outside press, so no close-on-event handling is needed here. Pass the
 	# unit's live battle state so its active statuses show as pip + description rows.

@@ -430,7 +430,7 @@ func _make_nav_button(direction: int) -> Button:
 func _on_nav_pressed(direction: int) -> void:
 	if _operation_ids.is_empty():
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	_operation_index = wrapi(_operation_index + direction, 0, _operation_ids.size())
 	_selected_operation_id = _operation_ids[_operation_index]
 	_refresh_encounter()
@@ -518,7 +518,7 @@ func _on_banner_long_pressed(_global_position: Vector2) -> void:
 	var op: OperationData = DataManager.get_operation(_selected_operation_id) as OperationData
 	if op == null:
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	var payload: Dictionary = InspectResolver.resolve_encounter(op, _threat_level(_operation_index), THREAT_PIP_COUNT)
 	InspectPopup.open(self, payload, _enc_banner.get_global_rect(), _enc_banner.get_instance_id())
 
@@ -863,7 +863,7 @@ func _on_tile_long_pressed(_global_position: Vector2, unit_id: String, anchor: C
 	var unit := DataManager.get_unit(unit_id) as UnitData
 	if unit == null:
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	var anchor_rect: Rect2 = anchor.get_global_rect() if is_instance_valid(anchor) else Rect2()
 	InspectPopup.open(self, InspectResolver.resolve_unit(unit), anchor_rect, anchor.get_instance_id())
 
@@ -931,7 +931,7 @@ func _show_unit_detail(unit_id: String) -> void:
 
 
 func _on_back_to_title() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	SceneManager.go_to_main_menu()
 
 

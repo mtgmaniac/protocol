@@ -155,13 +155,13 @@ func _exit_tree() -> void:
 
 
 func _on_return_to_menu_button_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	GameState.reset_run()
 	SceneManager.go_to_unit_select()
 
 
 func _on_help_button_pressed() -> void:
-	AudioManager.play_select()
+	AudioManager.play_click()
 	if _help_overlay == null or not is_instance_valid(_help_overlay):
 		_build_help_overlay()
 	_help_overlay.visible = true
@@ -493,7 +493,7 @@ func _attach_item_inspect(panel: PanelContainer, item: ItemData) -> void:
 	var long_press := LongPressInput.new()
 	panel.add_child(long_press)
 	long_press.long_pressed.connect(func(_global_position: Vector2) -> void:
-		AudioManager.play_select()
+		AudioManager.play_click()
 		InspectPopup.open(self, InspectResolver.resolve_item(item), panel.get_global_rect(), panel.get_instance_id())
 	)
 
@@ -701,7 +701,7 @@ func _build_view_battle_button() -> void:
 func _on_view_battle_pressed() -> void:
 	if GameState.battle_review_state.is_empty():
 		return
-	AudioManager.play_select()
+	AudioManager.play_click()
 	GameState.reward_picker_ui_state = {
 		"selected_item_id": _selected_item_id,
 		"selected_gear_unit_id": _selected_gear_unit_id,
