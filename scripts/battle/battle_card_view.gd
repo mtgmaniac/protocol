@@ -90,8 +90,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 		status_list.append("CLOAK")
 	if int(state.get("die_freeze_turns", 0)) > 0:
 		status_list.append("FROZEN %d" % int(state["die_freeze_turns"]))
-	if int(state.get("rampage_charges", 0)) > 0:
-		status_list.append("RAGE ×%d" % int(state["rampage_charges"]))
 	if bool(state.get("taunting", false)) or str(state.get("lured_by_id", "")) != "":
 		status_list.append("TAUNT")
 	if bool(state.get("warded", false)):
@@ -706,6 +704,9 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	# full list lives in the unit long-press). Cloak / Jam / Rewrite / Spike:
 	if bool(state.get("cloaked", false)):
 		statuses.append(_make_compact_icon_status("cloak", 3))
+	# Rampage (a charged enemy's next hit doubles): icon only, like cloak.
+	if int(state.get("rampage_charges", 0)) > 0:
+		statuses.append(_make_compact_icon_status("rampage", 3))
 	if int(state.get("jam_cap", 0)) > 0:
 		statuses.append(_make_compact_icon_status("jam", 3))
 	if bool(state.get("rewrite_pending", false)):

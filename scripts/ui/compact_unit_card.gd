@@ -960,7 +960,7 @@ func _status_effect_kind(status: Dictionary) -> String:
 			return PixelUI.pip_key_for_effect(status_type, str(status.get("value", "")))
 		"frozen", "freeze", "die_freeze":
 			return "freeze"
-		"cloak", "mark", "taunt", "jam", "rewrite", "spike":
+		"cloak", "mark", "taunt", "jam", "rewrite", "spike", "rampage":
 			return status_type
 		"firewall", "ward":
 			return "firewall"
@@ -1066,8 +1066,10 @@ func _normalize_legacy_status(token: String) -> Dictionary:
 		return {"type": "taunt", "mode": "icon", "priority": 3}
 	if first == "FW" or first == "FIREWALL" or first == "WARD":
 		return {"type": "firewall", "mode": "icon", "priority": 3}
+	# Rampage shows its pip icon like cloak / taunt (2026-09-26): the text
+	# chip truncated to "RAMP" / "RAM3" on the constant plate.
 	if first == "RMP" or first == "RAGE" or first == "RAMPAGE":
-		return {"type": "named", "mode": "named", "name": "RAMPAGE", "value": value, "priority": 3}
+		return {"type": "rampage", "mode": "icon", "priority": 3}
 	return {"type": "named", "mode": "named", "name": first, "priority": 9}
 
 

@@ -35,7 +35,7 @@ const STATUS_EVENT_CHIP: Dictionary = {
 	"cleanse": ["burn", "roll", "jam", "taunt", "mark"],
 }
 const CHIP_CANONICAL_ORDER: Array = ["burn", "shield", "mark", "roll",
-	"firewall", "taunt", "cloak", "jam", "rewrite", "spike"]
+	"firewall", "taunt", "cloak", "rampage", "jam", "rewrite", "spike"]
 
 # ── Transient-chip injection (THE COURT fix, 2026-09-02) ─────────────────────
 # The mirror of suppression. Suppression covers "the chip existed BEFORE resolve

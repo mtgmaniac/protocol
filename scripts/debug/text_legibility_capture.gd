@@ -136,7 +136,7 @@ func _run() -> void:
 			await process_frame
 			scene.call("_sync_die_tags")
 		"battle_status":
-			# Worst-case status strips: named RAMPAGE, multi-digit numerics, and
+			# Worst-case status strips: the RAMPAGE icon chip, multi-digit numerics, and
 			# the +N overflow badge (more statuses than STATUS_MAX_VISIBLE).
 			var sets := [
 				["RAMPAGE 3", "BRN 12", "SH 15"],
