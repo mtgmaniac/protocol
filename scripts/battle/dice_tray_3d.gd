@@ -675,15 +675,59 @@ func reroll_die_to_result(side: String, unit_id: String) -> void:
 	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
 
 
-func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
+# CONTINUE with a pending roll (G-24): the dice appear at rest showing the
+# raw values that had landed before the refresh — no throw, so nothing can be
+# rerolled. `raws` = {"hero": {id: raw}, "enemy": {id: raw}}. Emits
+# roll_finished like a thrown roll.
+func place_rolls(hero_entries: Array, enemy_entries: Array, raws: Dictionary) -> void:
 	if _is_rolling:
 		return
 	_is_rolling = true
 	visible = true
 	_values_live = false
-
+	var all_entries: Array = _collect_roll_entries(hero_entries, enemy_entries)
+	var frozen_keys: Array[String] = []
+	for entry_variant in all_entries:
+		var entry: Dictionary = entry_variant
+		if bool(entry.get("frozen", false)) and int(entry.get("frozen_roll", 0)) > 0:
+			frozen_keys.append(_entry_key(str(entry.get("side", "")), str(entry.get("id", ""))))
+	_clear_dice_except(frozen_keys)
 	var dice: Array = []
-	var rolling_dice: Array = []
+	for i in range(all_entries.size()):
+		var entry: Dictionary = all_entries[i]
+		var side: String = str(entry.get("side", ""))
+		var die: RigidBody3D
+		if bool(entry.get("frozen", false)) and int(entry.get("frozen_roll", 0)) > 0:
+			die = _prepare_frozen_die(entry, int(entry.get("slot_index", i)), all_entries.size())
+		else:
+			die = _spawn_die(entry, int(entry.get("slot_index", i)), all_entries.size())
+			var raw: int = clampi(int((raws.get(side, {}) as Dictionary).get(str(entry.get("id", "")), 1)), 1, 20)
+			die.freeze = true
+			die.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+			_set_die_collision_enabled(die, false)
+			var face_index: int = _get_face_index_for_result(raw)
+			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), Vector3(die.position.x, DIE_RADIUS * 0.76, die.position.z))
+			die.set_meta("raw_result", raw)
+			die.set_meta("up_face", _body_up_face_index(die))
+			die.set_meta("shown_value", raw)
+		dice.append(die)
+	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
+	for die_variant in dice:
+		var die: RigidBody3D = die_variant as RigidBody3D
+		var origin: Vector3 = target_origins.get(die.get_instance_id(), die.global_transform.origin)
+		origin.y = die.global_transform.origin.y
+		die.global_transform = Transform3D(die.global_transform.basis, origin)
+		die.set_meta("assigned_result_origin", origin)
+	var tree: SceneTree = get_tree()
+	if tree != null:
+		await tree.process_frame
+	if _is_exiting_tree or not is_inside_tree():
+		_is_rolling = false
+		return
+	await _finish_roll(dice)
+
+
+func _collect_roll_entries(hero_entries: Array, enemy_entries: Array) -> Array:
 	var all_entries: Array = []
 	for entry_variant in enemy_entries:
 		var entry: Dictionary = entry_variant
@@ -697,6 +741,19 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 		entry["slot_index"] = all_entries.size() - enemy_entries.size()
 		entry["side_count"] = hero_entries.size()
 		all_entries.append(entry)
+	return all_entries
+
+
+func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
+	if _is_rolling:
+		return
+	_is_rolling = true
+	visible = true
+	_values_live = false
+
+	var dice: Array = []
+	var rolling_dice: Array = []
+	var all_entries: Array = _collect_roll_entries(hero_entries, enemy_entries)
 
 	var frozen_keys: Array[String] = []
 	for entry_variant in all_entries:
@@ -1636,7 +1693,13 @@ func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 	return null
 
 
+# Dice actually thrown by this tray (test surface: a restored pending roll must
+# place its dice without throwing any).
+var thrown_dice_total: int = 0
+
+
 func _launch_die(die: RigidBody3D) -> void:
+	thrown_dice_total += 1
 	# Impact audio hooks — only on launched (rolling) dice; frozen and warm-up
 	# dice never get contact monitoring.
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")

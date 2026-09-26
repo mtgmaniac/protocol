@@ -8,14 +8,17 @@
 # only from disk) and compares them:
 #   full   : play the battle straight through and record everything
 #   save   : play to the round-3 checkpoint (with temporary combat state
-#            layered on), record it, then ROLL round 4 and quit without
-#            saving - the "saw bad dice, refreshed" case
-#   resume : CONTINUE from the save leg's run.json, record the restored state,
-#            roll round 4, finish the battle, record the outcome
+#            layered on), record it, then ROLL round 4 and quit once the dice
+#            settle - the "saw bad dice, refreshed" case
+#   resume : CONTINUE from the save leg's run.json: the round-4 dice must come
+#            back PLACED (the checkpoint's pending roll, G-24), not thrown;
+#            record them and the state, finish the battle, record the outcome
+#   save_phys / resume_phys : the same refresh with an UNRIGGED physics roll
 #
-# The rounds before the checkpoint go through the real live path: Roll presses
-# the physics tray (rigged from the seeded stream), a real revive consumable is
-# used mid-round, targets are auto-assigned, feedback plays. The checkpoint
+# The rounds go through the real live path: Roll throws the physics tray (the
+# full/save legs pin the landed values through the tray's rig from a seeded test
+# RNG, so two separate processes land the same dice), a real revive consumable
+# is used mid-round, targets are auto-assigned, feedback plays. The checkpoint
 # state is deliberately rich: a dead hero, a revived hero, a spent consumable,
 # enemy burn / shield / mark / roll-buff stacks, a jammed and a frozen hero die,
 # Protocol, income debt and the per-battle spend flags.
@@ -34,6 +37,7 @@ var _out_path: String = ""
 var _shot_path: String = ""   # --shot <png>: capture the resume banner (windowed runs only)
 var _record: Dictionary = {}
 var _errors: PackedStringArray = []
+var _dice_rng := RandomNumberGenerator.new()
 
 
 func _initialize() -> void:
@@ -58,10 +62,11 @@ func sm() -> Node:
 func _run() -> void:
 	print("[BATTLE_CHECKPOINT] leg=%s battle=%d" % [_leg, _battle])
 	_record = {"leg": _leg, "battle": _battle}
+	_dice_rng.seed = SEED + _battle
 	match _leg:
-		"full", "save":
+		"full", "save", "save_phys":
 			await _play_leg()
-		"resume":
+		"resume", "resume_phys":
 			await _resume_leg()
 		"resume_old":
 			_old_save_leg()
@@ -113,13 +118,23 @@ func _play_leg() -> void:
 	_record["checkpoint_run"] = _normalized_run()
 	_record["summoned_in_checkpoint"] = _count_summoned(scene)
 
-	# Round 4's dice. The save leg then quits WITHOUT saving: a refresh after
-	# seeing these dice must reproduce them, not reroll them.
-	await _roll(scene)
+	# Round 4's dice. The save legs then quit as soon as they settle: a refresh
+	# after seeing these dice must restore them, not reroll them (G-24).
+	if _leg == "save_phys":
+		await scene._begin_targeting_phase()   # unrigged: whatever physics lands
+	else:
+		await _roll(scene)
 	_record["round4_hero_rolls"] = scene.hero_rolls.duplicate()
 	_record["round4_enemy_rolls"] = scene.enemy_rolls.duplicate()
-	_expect(int(_read_run_checkpoint().get("round", 0)) == CHECKPOINT_ROUND + 1, "rolling did not move the checkpoint")
-	if _leg == "save":
+	_record["post_roll_state"] = _live_state_text(scene)
+	_record["post_roll_run"] = _normalized_run()
+	var cp_after: Dictionary = _read_run_checkpoint()
+	_expect(int(cp_after.get("round", 0)) == CHECKPOINT_ROUND + 1, "rolling did not move the checkpoint's round")
+	var pending: Dictionary = BattleCheckpoint.pending_roll_of(str_to_var(str(cp_after.get("state", ""))) if cp_after.has("state") else {})
+	_expect(not pending.is_empty(), "the settled dice were written into the checkpoint as a pending roll")
+	_expect(_same_rolls(pending.get("hero", {}), scene.hero_rolls) and _same_rolls(pending.get("enemy", {}), scene.enemy_rolls),
+		"the pending roll holds exactly the landed dice")
+	if _leg != "full":
 		return
 	await _finish_battle(scene)
 
@@ -133,8 +148,29 @@ func _resume_leg() -> void:
 		return
 	var scene: Node = current_scene
 	_expect(bool(scene._resumed_from_checkpoint), "the battle was rebuilt from the checkpoint")
-	_expect(int(scene.turn_phase) == int(scene.PHASE_AWAIT_ROLL), "restored in the ready-to-roll state")
 	_expect(int(sm().get_battles_fought()) == stats_before, "resume did not count the encounter again")
+	# The pending roll comes back PLACED: the dice appear showing the values
+	# that had landed, and no die is thrown.
+	for i in 300:
+		if bool(scene.dice_landed()) and int(scene.turn_phase) != int(scene.PHASE_AWAIT_ROLL):
+			break
+		await process_frame
+	_expect(bool(scene.dice_landed()), "the pending roll's dice are on the table after CONTINUE")
+	_expect(int(scene.dice_tray_3d.thrown_dice_total) == 0, "no die was thrown on CONTINUE (placed, not rolled)")
+	_record["round4_hero_rolls"] = scene.hero_rolls.duplicate()
+	_record["round4_enemy_rolls"] = scene.enemy_rolls.duplicate()
+	_record["post_roll_state"] = _live_state_text(scene)
+	_record["post_roll_run"] = _normalized_run()
+	var shown: Dictionary = {}
+	for key in scene.dice_tray_3d._die_by_key:
+		var parts: PackedStringArray = str(key).split(":", true, 1)
+		shown[str(key)] = int(scene.dice_tray_3d.up_face_numeral(parts[0], parts[1]))
+	_record["round4_shown"] = shown
+	for key in shown:
+		var parts: PackedStringArray = str(key).split(":", true, 1)
+		_expect(int(shown[key]) == int(scene._die_value(parts[0], parts[1])), "restored die %s shows the value it acts on" % key)
+	if _leg == "resume_phys":
+		return
 	# The resume banner: shown after a successful restore, real round, non-blocking.
 	var callout: Variant = scene._feedback.resume_callout
 	_expect(callout != null and is_instance_valid(callout), "the BATTLE RESUMED banner is shown")
@@ -150,15 +186,9 @@ func _resume_leg() -> void:
 		_expect(zone.encloses(callout.get_global_rect()), "the banner sits inside the combat zone (clear of the unit cards)")
 		if scene.roll_button.visible:
 			_expect(not callout.get_global_rect().intersects(scene.roll_button.get_global_rect()), "the banner does not cover the Roll button")
-	_expect(int(scene.turn_phase) == int(scene.PHASE_AWAIT_ROLL) and not bool(scene.roll_button.disabled), "Roll stays available under the banner")
 	await create_timer(3.0).timeout
 	_expect(not is_instance_valid(callout), "the banner clears itself with no dismissal")
-	_record["checkpoint_state"] = _live_state_text(scene)
-	_record["checkpoint_run"] = _normalized_run()
 	_record["summoned_in_checkpoint"] = _count_summoned(scene)
-	await _roll(scene)
-	_record["round4_hero_rolls"] = scene.hero_rolls.duplicate()
-	_record["round4_enemy_rolls"] = scene.enemy_rolls.duplicate()
 	await _finish_battle(scene)
 
 
@@ -208,11 +238,8 @@ func _fallback_leg() -> void:
 	_expect(int(scene.turn_phase) == int(scene.PHASE_AWAIT_ROLL), "restarted in the ready-to-roll state")
 	var after: Dictionary = sm().peek_run_save()
 	_expect(int(after.get("schema_version", 0)) == int(sm().RUN_SAVE_VERSION), "the battle entry re-saved at the current version")
-	# A battle restarted from its entry after a reload must roll the SAME
-	# opening dice as the original: the battle seed survives the save exactly.
-	await _roll(scene)
-	_record["round1_hero_rolls"] = scene.hero_rolls.duplicate()
-	_record["round1_enemy_rolls"] = scene.enemy_rolls.duplicate()
+	# Live opening dice are physics (G-24), so they are not compared; the entry
+	# RNG streams are (the gate checks entry_streams).
 	_expect((after.get("battle_checkpoint", {}) as Dictionary).is_empty(), "the re-saved entry carries no checkpoint")
 
 
@@ -230,11 +257,29 @@ func _enter_battle() -> bool:
 	return true
 
 
+# A live roll whose landed values are pinned through the tray's rig from the
+# seeded test RNG, so separate processes land identical dice (physics throws
+# are not reproducible across processes).
 func _roll(scene: Node) -> void:
+	var rig: Dictionary = {}
+	for side in ["hero", "enemy"]:
+		var states: Array = scene.combat_manager.get_hero_states() if side == "hero" else scene.combat_manager.get_enemy_states()
+		for st in states:
+			rig["%s:%s" % [side, str(st["id"])]] = _dice_rng.randi_range(1, 20)
+	scene.dice_tray_3d.set_rigged_results(rig)
 	await scene._begin_targeting_phase()
 
 
-# One live round: Roll (physics tray, rigged from the stream), optionally a
+func _same_rolls(a: Variant, b: Variant) -> bool:
+	if not (a is Dictionary) or not (b is Dictionary) or (a as Dictionary).size() != (b as Dictionary).size():
+		return false
+	for k in a:
+		if not (b as Dictionary).has(k) or int((a as Dictionary)[k]) != int((b as Dictionary)[k]):
+			return false
+	return true
+
+
+# One live round: Roll (physics tray, landed values pinned), optionally a
 # revive consumable on `revive_target`, auto-assign targets, resolve.
 func _live_round(scene: Node, revive_target: Variant = null) -> void:
 	await _roll(scene)

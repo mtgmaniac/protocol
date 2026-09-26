@@ -5,22 +5,26 @@ Runs scripts/debug/battle_checkpoint_test.gd as SEPARATE Godot processes (a real
 reload: fresh autoloads, fresh scene, state only from disk) and compares them:
 
     full    play the battle straight through
-    save    play to the round-3 checkpoint, roll round 4, quit WITHOUT saving
-    resume  CONTINUE from the save leg's run.json, roll round 4, finish
+    save    play to the round-3 checkpoint, roll round 4, quit once it settles
+    resume  CONTINUE from the save leg's run.json: round 4's dice come back
+            placed from the pending roll (G-24), then finish
+    save_phys / resume_phys  the same refresh with an unrigged physics roll
 
 Asserted per config:
   * the restored battle state is EXACTLY the checkpointed one (combat units,
     HP, deaths/revives, shields, burn/mark/jam/freeze/roll stacks, summons,
     Protocol, spend flags, round, RNG stream positions, XP accumulators) and
     the run block (consumables etc.) matches
-  * round 4 rolls the SAME dice in all three legs: a refresh cannot reroll
+  * round 4's dice are the SAME in all three legs and a CONTINUE throws no
+    die: a refresh after landing restores identical dice (also for an
+    unrigged physics roll)
   * resuming ends in the same run state as never leaving (XP, rewards, items
     applied exactly once) and the finished battle leaves no checkpoint behind
 and, on the first config, that an older-version run save is discarded cleanly,
 that a checkpoint with an unknown format still loads and restarts the battle
 from its entry, and that the restarted battle has the SAME RNG streams at entry
-and rolls the SAME opening dice as the original (the 64-bit seeds survive the
-save exactly).
+(the 64-bit seeds survive the save exactly). Live opening dice are physics
+(G-24) and are not compared.
 
 Exit 0 = pass, 1 = a divergence or a leg that failed to run.
 """
@@ -91,10 +95,10 @@ def main() -> int:
             check(rec is not None and not rec.get("errors"), f"{name}: {leg} leg ran clean")
         if not (full and save and resume):
             continue
-        check(save["checkpoint_state"] == resume["checkpoint_state"],
-              f"{name}: restored battle state == checkpointed state (exact)")
-        check(save["checkpoint_run"] == resume["checkpoint_run"],
-              f"{name}: restored run block == checkpointed run block")
+        check(save["post_roll_state"] == resume["post_roll_state"],
+              f"{name}: restored battle state + pending roll == the state after the original landing (exact)")
+        check(save["post_roll_run"] == resume["post_roll_run"],
+              f"{name}: restored run block == the run block after the original landing")
         check(full["checkpoint_state"] == save["checkpoint_state"],
               f"{name}: two independent plays reach the same checkpoint (determinism)")
         rolls = [(r["round4_hero_rolls"], r["round4_enemy_rolls"]) for r in (full, save, resume)]
@@ -119,15 +123,19 @@ def main() -> int:
                       f"{name}: {leg} - " + ("an older run save is discarded cleanly" if leg == "resume_old"
                                              else "loads and restarts the battle from its entry"))
                 if leg == "resume_bad" and rec is not None:
-                    restarted = (rec.get("round1_hero_rolls"), rec.get("round1_enemy_rolls"))
-                    original = (save.get("round1_hero_rolls"), save.get("round1_enemy_rolls"))
-                    same = restarted[0] is not None and restarted == original
                     check(bool(rec.get("entry_streams")) and rec.get("entry_streams") == save.get("entry_streams"),
                           f"{name}: the restarted battle's RNG streams at entry == the original's "
                           f"({rec.get('entry_streams', '').strip()})")
-                    check(same, f"{name}: a battle restarted from its entry after a reload rolls the "
-                                f"same opening dice (hero {rec.get('round1_hero_rolls')}, "
-                                f"enemy {rec.get('round1_enemy_rolls')})")
+            # G-24: an UNRIGGED physics roll survives a refresh identically.
+            save_p = run_leg(config, "save_phys")
+            resume_p = run_leg(config, "resume_phys") if save_p else None
+            check(save_p is not None and not save_p.get("errors") and resume_p is not None and not resume_p.get("errors"),
+                  f"{name}: physics save/resume legs ran clean")
+            if save_p and resume_p:
+                same_p = (save_p["round4_hero_rolls"], save_p["round4_enemy_rolls"]) == \
+                         (resume_p["round4_hero_rolls"], resume_p["round4_enemy_rolls"])
+                check(same_p, f"{name}: roll, settle, reload -> identical physics dice "
+                              f"(hero {resume_p['round4_hero_rolls']}, enemy {resume_p['round4_enemy_rolls']})")
 
     if failures:
         print(f"[BATTLE_CHECKPOINT] FAIL - {len(failures)} check(s)")

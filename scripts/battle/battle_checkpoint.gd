@@ -21,9 +21,13 @@
 #                        hold 64-bit RNG states; var_to_str round-trips types
 #
 # `state` holds: combat (CombatManager.export_checkpoint with every "unit"
-# Resource replaced by a reference), the owned RNG stream states (the next
-# dice), the Protocol pool and per-battle spend flags, the round counter, the
-# intercept battle effects, and GameState's per-battle XP accumulators.
+# Resource replaced by a reference), the owned RNG stream states (rerolls,
+# vents, summons), the Protocol pool and per-battle spend flags, the round
+# counter, the intercept battle effects, and GameState's per-battle XP
+# accumulators. OPTIONAL `pending_roll` (G-24, 2026-09-26): once a live roll's
+# dice SETTLE, the ready-to-roll state is re-saved with the landed raw values
+# {"hero": {id: raw}, "enemy": {id: raw}}; CONTINUE places the dice showing
+# them instead of rolling, so a refresh can never reroll dice the player saw.
 # Preloaded by path (const BattleCheckpoint := preload(...)) at every use, not a
 # class_name: headless gates and fresh clones parse before the editor rebuilds
 # the global class cache (the sim policies' gotcha).
@@ -67,6 +71,47 @@ static func capture(scene: Node, game_state: Node) -> Dictionary:
 		"run": game_state.to_save_dict(),
 		"state": var_to_str(state_block),
 	}
+
+
+## The ready-to-roll checkpoint `checkpoint` re-encoded with this round's
+## landed raw values as its pending roll. {} when it can't be (no checkpoint).
+static func with_pending_roll(checkpoint: Dictionary, hero_raws: Dictionary, enemy_raws: Dictionary) -> Dictionary:
+	if checkpoint.is_empty():
+		return {}
+	var parsed: Variant = str_to_var(str(checkpoint.get("state", "")))
+	if not (parsed is Dictionary):
+		return {}
+	var state_block: Dictionary = parsed
+	state_block["pending_roll"] = {"hero": _int_rolls(hero_raws), "enemy": _int_rolls(enemy_raws)}
+	var out: Dictionary = checkpoint.duplicate(true)
+	out["state"] = var_to_str(state_block)
+	return out
+
+
+static func _int_rolls(rolls: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for id_variant in rolls:
+		out[str(id_variant)] = int(rolls[id_variant])
+	return out
+
+
+## A decoded pending roll, or {} when absent or malformed (a malformed one is
+## dropped: the battle then restores ready-to-roll, the pre-G-24 behaviour).
+static func pending_roll_of(state_block: Dictionary) -> Dictionary:
+	var pending: Variant = state_block.get("pending_roll", {})
+	if not (pending is Dictionary):
+		return {}
+	var p: Dictionary = pending
+	if not (p.get("hero") is Dictionary) or not (p.get("enemy") is Dictionary):
+		return {}
+	for side in ["hero", "enemy"]:
+		for id_variant in p[side]:
+			var v: Variant = (p[side] as Dictionary)[id_variant]
+			if not (v is int) or int(v) < 1 or int(v) > 20:
+				return {}
+	if (p["hero"] as Dictionary).is_empty():
+		return {}
+	return p
 
 
 ## The decoded `state` block, or {} when the checkpoint is unusable for the

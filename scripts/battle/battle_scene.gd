@@ -455,12 +455,23 @@ func _restore_battle_checkpoint(saved: Dictionary) -> bool:
 		if rule_text != "" and not bool(enemy_state_variant.get("dead", false)):
 			_append_log("%s: %s" % [str(enemy_state_variant["unit"].display_name), rule_text])
 	transition(PHASE_AWAIT_ROLL)
+	# G-24: dice that had already landed before the refresh come back exactly as
+	# they were — placed, not thrown.
+	var pending_roll: Dictionary = BattleCheckpoint.pending_roll_of(saved)
+	if not pending_roll.is_empty():
+		call_deferred("_replay_pending_roll", pending_roll)
 	# Brief, non-blocking "BATTLE RESUMED - ROUND X" once the board has laid out.
 	var resumed_round: int = _round_number
 	get_tree().create_timer(0.35).timeout.connect(func() -> void:
 		if is_instance_valid(self) and is_inside_tree():
 			_feedback.show_resume_callout(resumed_round))
 	return true
+
+
+func _replay_pending_roll(pending_roll: Dictionary) -> void:
+	if not is_inside_tree() or turn_phase != PHASE_AWAIT_ROLL:
+		return
+	await _begin_targeting_phase(false, pending_roll)
 
 
 # ── Read-only battle review ───────────────────────────────────────────────────
@@ -1142,7 +1153,15 @@ func _on_roll_button_pressed() -> void:
 		_resolve_current_turn()
 
 
-func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
+# `placed_rolls` (G-24): CONTINUE with a checkpoint's pending roll — the dice are
+# placed showing those landed raws instead of thrown.
+func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dictionary = {}) -> void:
+	# The ready-to-roll state, captured before anything changes: once this
+	# roll's dice settle it is re-saved with their landed values (pending roll),
+	# so a refresh restores these dice instead of rerolling. Never in the tutorial.
+	var pre_roll_checkpoint: Dictionary = {}
+	if dice_tray_3d != null and not skip_dice_visuals and placed_rolls.is_empty() and not _game_state().tutorial_mode and not _review_mode:
+		pre_roll_checkpoint = BattleCheckpoint.capture(self, _game_state())
 	roll_button.visible = false
 	roll_button.disabled = true
 	roll_button.text = ""
@@ -1172,13 +1191,23 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false) -> void:
 		if _game_state().tutorial_mode:
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.value_provider = _die_value
-		dice_tray_3d.play_rolls(
-			_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
-			_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
-		)
+		if placed_rolls.is_empty():
+			dice_tray_3d.play_rolls(
+				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+				_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
+			)
+		else:
+			dice_tray_3d.place_rolls(
+				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+				_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy"),
+				placed_rolls
+			)
 		await dice_tray_3d.roll_finished
 		hero_rolls = dice_tray_3d.get_hero_rolls()
 		enemy_rolls = dice_tray_3d.get_enemy_rolls()
+		# All dice have settled: save the landed raws as the pending roll.
+		if not pre_roll_checkpoint.is_empty():
+			SaveManager.checkpoint_battle_round(BattleCheckpoint.with_pending_roll(pre_roll_checkpoint, hero_rolls, enemy_rolls))
 	else:
 		hero_rolls = _roll_for_states(combat_manager.get_hero_states())
 		enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
