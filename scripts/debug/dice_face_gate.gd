@@ -1,34 +1,11 @@
-# Dice face gate (P0, docs/audits/DICE_FACE_AUDIT.md; Option C, Kev 2026-09-26).
-# HARD gate. Watches every die on every frame and FAILS if:
-#   (a) a die whose digits are LOCKED shows an up-face numeral (the Label3D that
-#       actually points up; no face table trusted) different from the value the
-#       unit will act on. The oracle is rebuilt here the way resolve_step and
-#       resolve_round build it (effective rolls, then hijack copies the heroes'
-#       highest), not read back from the tray or from _die_value.
-#   (b) a die with a pre-roll modifier LANDS on a value outside the range that
-#       modifier allows (the range is computed here from the setup, e.g. 4-20
-#       under +3), independent of the engine.
-#   (c) a die rotates after it settles: its body pose moves, or its face rig
-#       turns while the digits are locked (a turn is only legal mid-scramble,
-#       where it cannot be seen). Reroll is a deliberate re-throw and exempt.
-#   (d) a FROZEN die's number changes or scrambles while it is frozen (G-23:
-#       freeze locks the number on the face), including when a modifier is
-#       added or removed after the freeze, in the same or a later round.
-#
-# Part A: the tray alone, 7 slots (3 hero + 4 enemy) x all 20 values.
-# Part B: a live BattleScene, scripted naturals (a stub roll provider) so every
-#   modifier path meets all 20 naturals: +roll buff, roll penalty, jam, enemy
-#   rewrite, forced 20, Resonant Chorus, frozen 20s both sides.
-# Part C: after-landing changes on the live scene: Nudge, Set, Reroll, items
-#   (roll buff, penalty, enemy reroll, freeze, Deep Freeze Charge), Sync
-#   Antenna, and a live hijack following the heroes' highest die.
-# Part D: freeze locks the shown number — a +3 hero frozen on a buffed 20 by an
-#   item, and a buffed enemy frozen by the resolution path; modifiers added and
-#   removed afterwards, across two more rolls.
-#
-# Physics runs 8x (ticks and time scale raised together, so each step is still
-# 1/120 s: the same simulation, just less wall time).
-# Run: godot --headless --path . -s scripts/debug/dice_face_gate.gd
+# G-24..G-30 dice contract: observe actual Label3D text and world transforms.
+# (a) settled numeral = acted value; (b) static labels except at deliberate
+# tumble start; (c) same top face, tilt <90 degrees, upright at rest;
+# (d) pre-roll modifier ranges; (e) placed pending rolls restore the same dice;
+# (f) frozen value/pose and pending hijack; (g) Set ignores modifiers and prints
+# plain 1..20; (h) engine Nudge/Set/Reroll refuse frozen dice without spending.
+# Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
+# -- --break=a (through h) injects a real bad observation/state; must exit 1.
 extends SceneTree
 
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
@@ -59,13 +36,20 @@ var _synthetic: Dictionary = {}  # Part A oracle: "side:id" -> value
 var _use_scene_oracle: bool = false
 var _monitor_on: bool = false
 var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
-var _settled: Dictionary = {}     # die instance id -> Basis at settle
-var _rig_prev: Dictionary = {}    # die instance id -> [Basis, locked]
-var _reroll_exempt: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0}
+var _settled: Dictionary = {}     # die instance id -> physical top label at settle
+var _yaw_prev: Dictionary = {}
+var _yaw_travel: Dictionary = {}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0}
 var _frozen_lock: Dictionary = {}  # "side:id" -> the number the frozen die must keep
 var _landed_pairs: Dictionary = {}
+var _labels_prev: Dictionary = {}
+var _busy_prev: Dictionary = {}
+var _frozen_pose: Dictionary = {}
+var _break_kind := ""
+var _break_done := false
+var _stub: ScriptedRolls
+
 
 
 func _initialize() -> void:
@@ -76,6 +60,9 @@ func _run() -> void:
 	Engine.physics_ticks_per_second = 120 * SPEED
 	Engine.time_scale = SPEED
 	Engine.max_physics_steps_per_frame = 64
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--break="):
+			_break_kind = arg.trim_prefix("--break=")
 	seed(20260926)
 	await _part_a()
 	await _part_b_and_c()
@@ -95,71 +82,117 @@ func _process(_delta: float) -> bool:
 	return false
 
 
+func _labels(die: RigidBody3D) -> Array:
+	var result: Array = []
+	for value in range(1, 21):
+		result.append((die.get_node("Visuals/FaceNumber%d" % value) as Label3D).text)
+	return result
+
+
+func _top(die: RigidBody3D) -> Label3D:
+	var best: Label3D
+	var dot := -2.0
+	for value in range(1, 21):
+		var label := die.get_node("Visuals/FaceNumber%d" % value) as Label3D
+		var d := label.global_basis.z.normalized().dot(Vector3.UP)
+		if d > dot:
+			dot = d
+			best = label
+	return best
+
+
+func _check(kind: String, ok: bool, message: String) -> void:
+	_checks[kind] += 1
+	if not ok:
+		_fail(kind, message)
+
+
+func _inject(kind: String) -> bool:
+	if _break_kind == kind and not _break_done:
+		_break_done = true
+		print("[DICE_FACE_GATE] injected violation (" + kind + ")")
+		return true
+	return false
+
+
 func _sample() -> void:
-	var dice: Dictionary = _tray.get("_die_by_key")
-	for key in dice:
-		var die: RigidBody3D = dice[key] as RigidBody3D
-		if die == null or not is_instance_valid(die) or not die.is_inside_tree():
+	for key in _tray.get("_die_by_key"):
+		var die: RigidBody3D = _tray.get("_die_by_key")[key]
+		if not is_instance_valid(die) or not die.is_inside_tree():
 			continue
 		var entry: Dictionary = die.get_meta("entry", {})
 		var side: String = str(entry.get("side", ""))
 		var uid: String = str(entry.get("id", ""))
 		var iid: int = die.get_instance_id()
+		var busy: bool = bool(die.get_meta("busy", false))
 		var locked: bool = bool(_tray.call("is_die_locked", side, uid))
-		# (c) body pose: record at the first frozen frame (the settle), then never move.
-		if die.freeze and not _settled.has(iid) and not _reroll_exempt.has(iid):
-			_settled[iid] = die.global_transform.basis
-		if _settled.has(iid) and not _reroll_exempt.has(iid):
-			_checks["c"] += 1
-			var deg: float = _angle_deg(_settled[iid], die.global_transform.basis)
-			if deg > ROTATION_EPS_DEG:
-				_fail("c", "%s body rotated %.2f deg after settling" % [key, deg])
-				_settled[iid] = die.global_transform.basis
-		# (c) face rig: may only turn while the digits scramble.
-		var rig: Node3D = die.get_node_or_null("Visuals/FaceRig") as Node3D
-		if rig != null:
-			var rb: Basis = rig.basis.orthonormalized()
-			if _rig_prev.has(iid):
-				var prev: Array = _rig_prev[iid]
-				if bool(prev[1]) and locked and _angle_deg(prev[0], rb) > ROTATION_EPS_DEG:
-					_fail("c", "%s face rig turned %.1f deg with its digits locked" % [key, _angle_deg(prev[0], rb)])
-			_rig_prev[iid] = [rb, locked]
+		if _labels_prev.has(iid) and busy and bool(_busy_prev.get(iid, false)) and _inject("b"):
+			_top(die).text = "99"
+		var labels := _labels(die)
+		if _labels_prev.has(iid):
+			# Only the first frame of a deliberate change may replace the print.
+			var reprint_start: bool = busy and not bool(_busy_prev.get(iid, false)) and not bool(_tray.get("_is_rolling"))
+			_check("b", labels == _labels_prev[iid] or reprint_start, "%s changed labels outside tumble start" % key)
+		_labels_prev[iid] = labels
+		_busy_prev[iid] = busy
+		if busy:
+			_settled.erase(iid)
+			_yaw_prev.erase(iid)
+			_yaw_travel.erase(iid)
+		elif die.freeze:
+			var top := _top(die)
+			var heading := Vector3(top.global_basis.y.x, 0, top.global_basis.y.z).normalized()
+			if _yaw_prev.has(iid):
+				_yaw_travel[iid] = float(_yaw_travel.get(iid, 0.0)) + absf(rad_to_deg((_yaw_prev[iid] as Vector3).signed_angle_to(heading, Vector3.UP)))
+			_yaw_prev[iid] = heading
+			if not _settled.has(iid):
+				_settled[iid] = top.name
+				var tilt := rad_to_deg(acos(clampf(top.global_basis.z.normalized().dot(Vector3.UP), -1.0, 1.0)))
+				_check("c", tilt < 90.0, "%s flattening tilt %.2f >=90" % [key, tilt])
+			if locked and _inject("c"):
+				die.global_basis = die.global_basis.rotated(Vector3.RIGHT, PI)
+			_check("c", _top(die).name == _settled[iid], "%s changed top face after settling" % key)
+			if locked:
+				_check("c", float(_yaw_travel.get(iid, 0.0)) <= 180.05, "%s upright yaw exceeded 180 degrees" % key)
+				_check("c", _top(die).global_basis.z.normalized().dot(Vector3.UP) > 0.999, "%s not flat" % key)
+				_check("c", _top(die).global_basis.y.normalized().dot(Vector3.FORWARD) > 0.999, "%s numeral not upright" % key)
 		_check_frozen(key, side, uid, die, locked)
 		if not locked:
 			continue
-		var shown: int = int(_tray.call("up_face_numeral", side, uid))
+		if _inject("a"):
+			_top(die).text = "99"
+		var shown: int = int(_top(die).text)
 		var want: int = _oracle(side, uid)
 		if want > 0:
-			_checks["a"] += 1
-			if shown != want:
-				_fail("a", "%s locked on %d but the unit acts on %d" % [key, shown, want])
+			_check("a", shown == want, "%s shows %d but acts on %d" % [key, shown, want])
 		if _ranges.has(key):
-			_checks["b"] += 1
 			var allowed: Array = _ranges[key]
-			if not allowed.has(shown):
-				_fail("b", "%s landed on %d outside its modifier range %s" % [key, shown, _range_text(allowed)])
-			_ranges.erase(key)  # (b) is about the landing value
+			if _inject("d"):
+				_top(die).text = "1" if not allowed.has(1) else "99"
+				shown = int(_top(die).text)
+			_check("d", allowed.has(shown), "%s landed %d outside %s" % [key, shown, _range_text(allowed)])
+			_ranges.erase(key)
 
 
-# (d): while a unit's die is frozen, its number is fixed. The lock is taken
-# from what the die showed just BEFORE the freeze (set by the scenario), or at
-# its first locked sample for a die that was already frozen.
 func _check_frozen(key: String, side: String, uid: String, die: RigidBody3D, locked: bool) -> void:
 	if not _use_scene_oracle:
 		return
-	var st: Dictionary = _state_for(side, uid)
-	if st.is_empty() or int(st.get("die_freeze_turns", 0)) <= 0:
+	var st := _state_for(side, uid)
+	if st.is_empty() or (int(st.get("die_freeze_turns", 0)) <= 0 and not bool(st.get("die_freeze_repeat_this_round", false))):
 		_frozen_lock.erase(key)
+		_frozen_pose.erase(key)
 		return
-	if not _frozen_lock.has(key):
+	# The freeze action itself may tumble to 1 (Deep Freeze); capture when done.
+	if not _frozen_pose.has(key):
 		if locked:
-			_frozen_lock[key] = int(_tray.call("up_face_numeral", side, uid))
+			_frozen_lock[key] = int(_top(die).text)
+			_frozen_pose[key] = die.global_transform
 		return
-	_checks["d"] += 1
-	if bool(die.get_meta("scrambling", false)):
-		_fail("d", "%s scrambled while frozen (locked on %d)" % [key, int(_frozen_lock[key])])
-	elif locked and int(_tray.call("up_face_numeral", side, uid)) != int(_frozen_lock[key]):
-		_fail("d", "%s frozen on %d now shows %d" % [key, int(_frozen_lock[key]), int(_tray.call("up_face_numeral", side, uid))])
+	if _inject("f"):
+		die.position.x += 0.2
+	_check("f", die.global_transform.is_equal_approx(_frozen_pose[key]), "%s moved while frozen" % key)
+	_check("f", int(_top(die).text) == int(_frozen_lock[key]), "%s changed frozen numeral" % key)
+	_check("f", not bool(die.get_meta("busy", false)), "%s tumbled while frozen" % key)
 
 
 func _state_for(side: String, uid: String) -> Dictionary:
@@ -198,12 +231,6 @@ func _fail(kind: String, msg: String) -> void:
 	var arr: Array = _fails[kind]
 	if arr.size() < 200:
 		arr.append(msg)
-
-
-func _angle_deg(a: Basis, b: Basis) -> float:
-	var q: Quaternion = (b.orthonormalized() * a.orthonormalized().inverse()).get_rotation_quaternion()
-	var deg: float = rad_to_deg(q.get_angle())
-	return minf(deg, 360.0 - deg)
 
 
 func _range_text(arr: Array) -> String:
@@ -266,9 +293,37 @@ func _part_a() -> void:
 			_landed_pairs["A %s:%s=%d" % [side, uid, v]] = true
 			(hero_entries if side == "hero" else enemy_entries).append({"id": uid, "name": uid})
 			slot += 1
+		_tray.call("set_rigged_results", _synthetic)
 		_tray.call("play_rolls", hero_entries, enemy_entries)
 		await _await_all_locked()
-	# A live value change on the bare tray (scramble-and-lock, no rotation).
+	# Refresh placement preserves the physical raw face and every label.
+	var raws := {"hero": _tray.call("get_hero_rolls"), "enemy": _tray.call("get_enemy_rolls")}
+	var before: Dictionary = {}
+	for key in _tray.get("_die_by_key"):
+		var die: RigidBody3D = _tray.get("_die_by_key")[key]
+		before[key] = [_top(die).name, _labels(die)]
+	var thrown: int = _tray.get("thrown_dice_total")
+	_tray.call("place_rolls", heroes.map(func(uid): return {"id": uid, "name": uid}), enemies.map(func(uid): return {"id": uid, "name": uid}), raws)
+	await _await_all_locked()
+	for key in before:
+		var die: RigidBody3D = _tray.get("_die_by_key")[key]
+		if _inject("e"):
+			_top(die).text = "99"
+		_check("e", before[key] == [_top(die).name, _labels(die)], "%s changed on refresh" % key)
+	_check("e", int(_tray.get("thrown_dice_total")) == thrown, "refresh threw dice")
+	# Real, unrigged physical throws: landed face decides, same face during snap.
+	_synthetic.clear()
+	for trial in range(4):
+		_tray.call("play_rolls", heroes.map(func(uid): return {"id": uid}), enemies.map(func(uid): return {"id": uid}))
+		await _await_all_locked()
+		for key in _tray.get("_die_by_key"):
+			var die: RigidBody3D = _tray.get("_die_by_key")[key]
+			_check("a", int(_top(die).text) == int(die.get_meta("raw_result")), "%s live raw differs from landed numeral" % key)
+			_synthetic[key] = int(_top(die).text)
+		_synthetic.clear()
+	for key in _tray.get("_die_by_key"):
+		_synthetic[key] = int(_top(_tray.get("_die_by_key")[key]).text)
+	# A live deliberate tip-over on the bare tray.
 	_tray.call("set_values_live", true)
 	_synthetic["hero:h0"] = (int(_synthetic["hero:h0"]) % 20) + 1
 	_synthetic["enemy:e2"] = (int(_synthetic["enemy:e2"]) + 6) % 20 + 1
@@ -295,6 +350,7 @@ func _part_b_and_c() -> void:
 	_scene = current_scene
 	_tray = _scene.get("dice_tray_3d")
 	var stub := ScriptedRolls.new()
+	_stub = stub
 	stub.fallback.seed = 20260926
 	(_scene.get("_engine") as Object).set("roll_provider", stub)
 	var cm: Object = _scene.get("combat_manager")
@@ -332,9 +388,11 @@ func _part_b_and_c() -> void:
 
 	# B3: frozen 20s, hero and enemy (a frozen die repeats; nothing alters it).
 	_clear_statuses(heroes + enemies)
+	stub.queue = [20, 5, 9, 20, 4]
+	await _begin_roll()
+	await _await_all_locked()
 	for st in [heroes[0], enemies[0]]:
-		st["die_freeze_turns"] = 2
-		st["frozen_die_value"] = 20
+		_scene.get("_engine").item_freeze_die(_scene.get("_state"), st, 2)
 	await _roll(stub, 3, heroes.size() + enemies.size(), {"hero:%s" % h[0]: [20], "enemy:%s" % e[0]: [20]})
 	# ...and it stays frozen into the next roll (carried-over die).
 	await _roll(stub, 9, heroes.size() + enemies.size())
@@ -402,6 +460,7 @@ func _part_b_and_c() -> void:
 	# D: freeze locks the number on the face (G-23).
 	_clear_statuses(heroes + enemies)
 	_frozen_lock.clear()
+	_frozen_pose.clear()
 	_buff(heroes[0], 3)                               # h0: natural 17 +3 -> 20
 	enemies[1]["roll_buff_stacks"] = [{"amt": 2, "turns_left": 9}]  # e1: 9 +2 -> 11
 	enemies[1]["roll_buff"] = 2
@@ -442,6 +501,8 @@ func _part_b_and_c() -> void:
 		_expect_value("hero", h[0], 20, "the frozen 20 holds on a later roll with its buff gone")
 		_expect_value("enemy", e[1], 11, "the frozen 11 holds on a later roll with a new penalty")
 	print("[DICE_FACE_GATE] part D: freeze locks the shown number")
+	await _extra_contracts(heroes, enemies, pa, stub)
+
 	_monitor_on = false
 
 
@@ -474,7 +535,7 @@ func _roll(stub: Object, roll: int, count: int, ranges: Dictionary = {}) -> void
 	await _await_all_locked()
 	for key in ranges:
 		if _ranges.has(key):
-			_fail("b", "%s never locked a landing value to check" % key)
+			_fail("d", "%s never locked a landing value to check" % key)
 	_ranges.clear()
 
 
@@ -482,6 +543,11 @@ func _roll(stub: Object, roll: int, count: int, ranges: Dictionary = {}) -> void
 # tray rolls), so the previous roll's locked dice are never judged by them.
 func _begin_roll(ranges: Dictionary = {}) -> void:
 	_ranges.clear()
+	var rig: Dictionary = {}
+	for side in ["hero", "enemy"]:
+		for st in _scene.get("combat_manager").call("get_hero_states" if side == "hero" else "get_enemy_states"):
+			rig["%s:%s" % [side, str(st["id"])]] = _stub.roll_d20()
+	_tray.call("set_rigged_results", rig)
 	_scene.set("turn_phase", _scene.get("PHASE_AWAIT_ROLL"))
 	_scene.call("_begin_targeting_phase")
 	for _i in range(600):
@@ -495,12 +561,10 @@ func _begin_roll(ranges: Dictionary = {}) -> void:
 func _reroll(pa: Object, hero_id: String) -> void:
 	var die: RigidBody3D = (_tray.get("_die_by_key") as Dictionary).get("hero:%s" % hero_id, null)
 	var iid: int = die.get_instance_id() if die != null else 0
-	_reroll_exempt[iid] = true
 	_settled.erase(iid)
 	await pa.call("_apply_reroll", hero_id)
-	_reroll_exempt.erase(iid)
 	if die != null and is_instance_valid(die):
-		_settled[iid] = die.global_transform.basis
+		_settled[iid] = _top(die).name
 
 
 func _use_item(pa: Object, item_id: String, target: Dictionary) -> void:
@@ -521,8 +585,8 @@ func _expect_value(side: String, uid: String, want: int, label: String) -> void:
 
 func _finish() -> void:
 	Engine.time_scale = 1.0
-	var failed: bool = false
-	for kind in ["a", "b", "c", "d"]:
+	var failed: bool = not _break_kind.is_empty() and not _break_done
+	for kind in _fails:
 		var arr: Array = _fails[kind]
 		print("[DICE_FACE_GATE] (%s) checks=%d failures=%d" % [kind, int(_checks[kind]), arr.size()])
 		for i in range(mini(arr.size(), MAX_REPORTED)):
@@ -535,3 +599,107 @@ func _finish() -> void:
 	else:
 		print("[DICE_FACE_GATE] PASS")
 		quit(0)
+
+
+func _extra_contracts(heroes: Array, enemies: Array, pa: Object, stub: ScriptedRolls) -> void:
+	var engine: Object = _scene.get("_engine")
+	var bs: Object = _scene.get("_state")
+	var cm: Object = _scene.get("combat_manager")
+	var uid := str(heroes[0]["id"])
+	var eid := str(enemies[0]["id"])
+	# G-25: every chosen Set value, including a Set equal to the current value,
+	# under buffs, penalties, jam, Rewrite and forced-20 printed dice.
+	for mode in range(5):
+		_clear_statuses(heroes + enemies)
+		match mode:
+			0: _buff(heroes[0], 3)
+			1: heroes[0]["rfe_stacks"] = [{"amt": 3, "turns_left": 9}]
+			2: heroes[0]["jam_cap"] = 10
+			3: heroes[0]["rewrite_pending"] = true
+			4: heroes[0]["forced_20_pending"] = true
+		stub.queue = [9, 5, 7, 4, 8]
+		await _begin_roll()
+		await _await_all_locked()
+		if mode == 3:
+			_tray.call("play_rewrite_scramble", "hero", uid)
+			var marker: Label3D = _tray.get("_die_by_key")["hero:" + uid].get_node("Visuals/PendingMarker")
+			for frame in range(12):
+				await process_frame
+				_check("b", marker.text == "REWRITE->3", "Rewrite marker must remain static")
+		var choices: Array = [_oracle("hero", uid)] + _span(1, 20)
+		for chosen in choices:
+			bs.set("protocol_points", 100)
+			pa.call("_apply_set", uid, chosen)
+			await _await_all_locked()
+			var die: RigidBody3D = _tray.get("_die_by_key")["hero:" + uid]
+			if _inject("g"):
+				_top(die).text = "99"
+			_check("g", int(_top(die).text) == chosen and _oracle("hero", uid) == chosen,
+				"Set %d under mode %d must show and act on chosen value" % [chosen, mode])
+			_check("g", _labels(die) == _span(1, 20).map(func(v): return str(v)), "Set must print plain 1..20, even when value unchanged (mode %d)" % mode)
+	# G-27: Nudge beyond jam / all-3 print, subtract from all-20, and deep freeze
+	# on a buffed die. These specifically need a reprint before the new tumble.
+	for mode in range(3):
+		_clear_statuses(heroes + enemies)
+		if mode == 0:
+			heroes[0]["jam_cap"] = 10
+		elif mode == 1:
+			heroes[0]["rewrite_pending"] = true
+		else:
+			heroes[0]["forced_20_pending"] = true
+		stub.queue = [18, 5, 7, 4, 8]
+		await _begin_roll()
+		await _await_all_locked()
+		bs.set("protocol_points", 100)
+		engine.call("apply_nudge", bs, uid, false, true)
+		if mode == 2:
+			engine.call("apply_nudge", bs, uid, false, true)
+		_scene.call("_on_die_values_changed")
+		await _await_all_locked()
+		_expect_value("hero", uid, [13, 6, 17][mode], "Nudge reprint case %d" % mode)
+	_clear_statuses(heroes + enemies)
+	_buff(enemies[0], 4)
+	stub.queue = [5, 7, 9, 8, 6]
+	await _begin_roll()
+	await _await_all_locked()
+	await _use_item(pa, "deep_zero_pin", {})
+	await _await_all_locked()
+	_expect_value("enemy", eid, 1, "buffed enemy Deep Freeze reprints to 1")
+	# G-30: pending hijack survives every frozen tick and resumes after thaw.
+	enemies[0]["hijack_pending"] = true
+	enemies[0]["hijack_skip_next_tick"] = true
+	cm.call("_tick_state", enemies[0])
+	_check("f", bool(enemies[0]["hijack_pending"]), "frozen hijack must remain pending")
+	_expect_value("enemy", eid, 1, "frozen hijack holds its number")
+	enemies[0]["die_freeze_turns"] = 0
+	enemies[0]["die_freeze_repeat_this_round"] = false
+	_scene.call("_on_die_values_changed")
+	await _await_all_locked()
+	_expect_value("enemy", eid, 9, "hijack resumes copying after thaw")
+	cm.call("_tick_state", enemies[0])
+	_check("f", not bool(enemies[0]["hijack_pending"]), "hijack consumed after first unfrozen reveal")
+	# Freeze the hero through the engine, then call engine functions directly.
+	engine.call("item_freeze_die", bs, heroes[0], 2)
+	_scene.call("_on_die_values_changed")
+	await _await_all_locked()
+	for repeat_only in [false, true]:
+		heroes[0]["die_freeze_turns"] = 0 if repeat_only else 2
+		heroes[0]["die_freeze_repeat_this_round"] = repeat_only
+		for action in ["nudge", "set", "reroll"]:
+			var before := _spend_snapshot(bs, stub)
+			var result: Variant
+			match action:
+				"nudge": result = engine.call("apply_nudge", bs, uid, true, true)
+				"set": result = engine.call("apply_set", bs, uid, 20)
+				"reroll": result = engine.call("apply_reroll", bs, uid)
+			if _inject("h"):
+				bs.set("protocol_points", int(bs.get("protocol_points")) - 1)
+			_check("h", before == _spend_snapshot(bs, stub), "frozen %s changed state, spend flags or RNG" % action)
+			_check("h", result == {"kind": "frozen"} if action == "nudge" else result == (-1 if action == "set" else 0), "frozen %s must report refusal" % action)
+	print("[DICE_FACE_GATE] G-25..G-30: Set, reprints, frozen guards and hijack/thaw")
+
+
+func _spend_snapshot(bs: Object, stub: ScriptedRolls) -> String:
+	return var_to_str([bs.get("hero_rolls"), bs.get("hero_roll_nudges"), bs.get("hero_roll_sets"),
+		bs.get("protocol_points"), bs.get("free_nudge_used"), bs.get("root_access_used"),
+		stub.queue, stub.fallback.state])

@@ -119,11 +119,16 @@ func run() -> void:
 		root.size = Vector2i(1920, 1080)
 		await frames()
 		check(s._layout.is_landscape == (mode == 2), "mode frozen through override/resize")
+		# G-24 live rolls are physical; script the landings for layout comparisons.
+		var rig := {"hero:combat": 12, "hero:engineer": 7, "hero:medic": 8}
+		for enemy in s.combat_manager.get_enemy_states():
+			rig["enemy:%s" % str(enemy.id)] = 6
+		s.dice_tray_3d.set_rigged_results(rig)
 		s._on_roll_button_pressed()
 		await s.dice_tray_3d.roll_finished
 		await create_timer(0.5).timeout
-		check(s.hero_rolls.size() == 3 and s.enemy_rolls.size() == 3, "six seeded rolls")
-		check(s.hero_rolls == {"combat":12,"engineer":7,"medic":8}, "unchanged deterministic hero rolls")
+		check(s.hero_rolls.size() == 3 and s.enemy_rolls.size() == 3, "six landed rolls")
+		check(s.hero_rolls == {"combat":12,"engineer":7,"medic":8}, "scripted hero landings reach engine")
 		if mode == 2:
 			var zone: Rect2 = s._layout.get_combat_zone_rect()
 			for overlay in s._die_tooltip_overlays:

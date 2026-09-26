@@ -539,8 +539,18 @@ func _poll_values() -> void:
 		var die: RigidBody3D = _die_by_key[key] as RigidBody3D
 		if die == null or not is_instance_valid(die) or bool(die.get_meta("busy", false)):
 			continue
-		var v: int = _value_for_die(die)
-		if v != int(die.get_meta("shown_value", v)):
+		var entry: Dictionary = die.get_meta("entry", {})
+		var v: int = int(value_provider.call(str(entry.get("side", "")), str(entry.get("id", ""))))
+		# Between rounds the engine deliberately has no revealed value. Falling
+		# back to raw_result here could move a modified/frozen die during setup.
+		if v <= 0:
+			continue
+		var plain_reprint: bool = false
+		if print_provider.is_valid():
+			var plan: Dictionary = print_provider.call(str(entry.get("side", "")), str(entry.get("id", "")))
+			plain_reprint = bool(plan.get("plain", false)) and plan.get("faces", []) != die.get_meta("printed_values", [])
+		# Set must clear the printed modifiers even when its number is unchanged.
+		if v != int(die.get_meta("shown_value", v)) or plain_reprint:
 			_show_value_in_place(die, v)
 
 

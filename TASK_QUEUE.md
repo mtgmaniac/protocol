@@ -73,7 +73,7 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **Dice face snap after landing** | **Fixed on `dice-face-snap-p0` — awaiting Kev's review (not merged)** | One value source (the tray's copy of the effective-roll rule is deleted; hijack shows live), then Option C: numerals scramble while tumbling, the value is placed on the landed face by turning only the face rig, digits lock, and a settled die never rotates. Hard gate `dice face`. Open for Kev: dice still slide (no rotation) to their slots; numerals keep their natural angle; no pre-roll modifier indicator near the die. [DICE_FACE_AUDIT.md](docs/audits/DICE_FACE_AUDIT.md) §6–9. |
+| **Dice face snap after landing** | **G-24–G-30 implemented on `dice-face-snap-p0`; verification closeout in progress (not merged)** | Static printed faces; physical live landings; same-face upright snap; deliberate tip-overs/reprints; plain Set; scripted tutorial tumbles; frozen value/pose and pending hijack. Option C is removed. Replacement `dice face` gate covers eight criteria with deliberate-failure proof. See [HANDOFF.md](HANDOFF.md) for current evidence and remaining work. |
 
 ### P1
 
@@ -99,7 +99,7 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 | **Battle-win relics rework** | Open — design first | They drop too often for what they do. Design pass with the current relic list before any change, then a sim run. |
 | **Empty band under the header** | Open | 100+ px unused on most screens. Use it, or give the space to content that needs room. |
 | **Balance: voidCirclet +10.5 drift** | Open — Kev review | From the Medic `else` fallback heal (acf38d4). Kev reviews before any baseline re-pin. |
-| **Dice fix on a phone** | Open | Check the dice fix on a phone: scramble performance during rolls, and legibility of numerals tilted up to 60° at phone size. |
+| **Dice fix on a phone** | Open | Check G-24–G-30 static labels during physical rolls, same-face upright snap, deliberate tip-overs/reprints, and numeral legibility at phone size. |
 
 ### P3 / watch
 

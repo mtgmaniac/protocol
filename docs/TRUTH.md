@@ -154,6 +154,20 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 
 ## Combat rules (authoritative)
 
+**Dice presentation (G-24–G-30, 2026-09-26):** live raw rolls come from the
+physical landed face; the seeded provider remains authoritative in the sim
+and skip-visuals path. Pre-roll modifiers are printed before throwing and
+labels remain static during motion. The upright snap keeps the same top face,
+flattens tilt under 90 degrees and permits up to 180 degrees of yaw. Deliberate
+changes tip over in 0.30 seconds; when the new value is absent from the print,
+the die reprints for its current state at tumble start. Set always restores
+plain 1–20 labels, even if the chosen number already shows. Tutorial dice
+tumble directly onto their scripted face. REWRITE uses a static tag.
+Between rounds, absent revealed rolls never trigger a change to a raw face.
+The `dice face` gate checks these rules plus frozen poses, pending hijack,
+refresh placement and engine alteration guards; the separate mutation runner
+proves each of its eight criteria rejects a deliberately broken observation.
+
 1. All dice roll simultaneously at turn start.
 2. Player resolves first, in any order; then surviving enemies resolve.
 3. End of turn: status effects tick, dice reset.

@@ -2390,9 +2390,7 @@ func _get_effective_enemy_roll(state: Dictionary, unit_id: String) -> int:
 	return _engine.effective_enemy_roll(state, unit_id, _state)
 
 
-# True once this round's dice have LANDED (or there is no tray to watch).
-# hero_rolls alone no longer says that: the values are decided in game logic
-# before the throw (P0 dice-face audit), so they exist while the dice tumble.
+# True once this round's landed values exist and the tray has finished.
 func dice_landed() -> bool:
 	if hero_rolls.is_empty():
 		return false
@@ -2419,9 +2417,7 @@ func _die_value(side: String, unit_id: String) -> int:
 func _die_faces_now(side: String, unit_id: String) -> Dictionary:
 	var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
 	var state: Dictionary = _find_state_by_id(states, unit_id)
-	if state.is_empty():
-		return {}
-	return _engine.current_face_values(state, unit_id, side == "hero", _state)
+	return {} if state.is_empty() else _engine.current_face_values(state, unit_id, side == "hero", _state)
 
 
 # After ANY die value changes before resolution (Nudge, Set, Reroll, an item,

@@ -1,5 +1,11 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+**G-24–G-30 implementation (2026-09-26):** steps 1–9 are implemented on
+`dice-face-snap-p0`. The replacement dice contract covers all eight acceptance
+criteria, including unchanged-value Set reprints and frozen-die immobility
+between rolls. Full verification and balance evidence are recorded in the
+branch handoff; no baseline re-pin or merge is implied.
+
 ## G-27. Reprint on deliberate change (Kev, 2026-09-26)
 
 Extends G-25 to every case. When a deliberate after-landing change needs a value
