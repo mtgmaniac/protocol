@@ -58,7 +58,9 @@ func _run() -> void:
 			rig["%s:%s" % [side, id]] = v
 			(hero_entries if side == "hero" else enemy_entries).append({"id": id, "name": id})
 			slot += 1
-		_tray.set("value_provider", func(side: String, uid: String) -> int: return int(rig.get("%s:%s" % [side, uid], 0)))
+		# G-24: no value provider — the face a die lands on is its roll; `logic`
+		# below is therefore the landed face, and the check is that the upright
+		# snap keeps it.
 		_tray.call("play_rolls", hero_entries, enemy_entries)
 		var landed: Dictionary = {}
 		while bool(_tray.get("_is_rolling")):
@@ -71,7 +73,7 @@ func _run() -> void:
 					landed[key] = {"face": int(_tray.call("_get_most_visible_face_value", die)), "basis": die.global_transform.basis}
 		for key in rig:
 			var die: RigidBody3D = (_tray.get("_die_by_key") as Dictionary).get(key, null) as RigidBody3D
-			var logic: int = int(rig[key])
+			var logic: int = int(landed.get(key, {}).get("face", -1))
 			var land: Dictionary = landed.get(key, {})
 			var final_face: int = int(_tray.call("_get_most_visible_face_value", die))
 			var label_face: int = int(_tray.call("up_face_numeral", str(key).get_slice(":", 0), str(key).get_slice(":", 1)))
