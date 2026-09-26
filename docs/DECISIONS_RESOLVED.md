@@ -1,6 +1,35 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
-## G-25. Set overrides modifiers (Kev, 2026-09-26) — RECORDED, NOT YET IMPLEMENTED
+## G-27. Reprint on deliberate change (Kev, 2026-09-26)
+
+Extends G-25 to every case. When a deliberate after-landing change needs a value
+that no printed face shows (Nudge past a jam cap, a hijack copy outside the
+printed range, Deep Freeze Charge on a buffed die, any change to an all-3 or
+all-20 die), the die is reprinted for its new state and does a short tumble onto
+the face showing the new value. The reprint happens in the same frame the tumble
+starts; labels are static from then on. The top face must always show the value
+the unit acts on.
+
+## G-28. Upright snap definition (Kev, 2026-09-26)
+
+After settling: same top face, flattening tilt under 90°, and any yaw spin
+needed to make the numeral upright (up to 180°). This replaces the "rotates less
+than 90°" wording wherever it appears.
+
+## G-29. Rewrite marker is static (Kev, 2026-09-26)
+
+The REWRITE marker above a die no longer cycles digits: it shows a static
+`REWRITE->N` tag.
+
+## G-30. Hijack × freeze: the hijack waits (Kev, 2026-09-26)
+
+While a hijacking enemy die is frozen, it keeps its number (G-23) and the hijack
+stays pending — the round-end tick must not clear it. When the freeze ends, the
+hijack resumes copying the heroes' highest die. This corrects the earlier wording
+that frozen dice are "immune to Hijack": the hijack does not bounce off, it waits.
+Jam and Rewrite are unchanged (they still bounce off a frozen die).
+
+## G-25. Set overrides modifiers (Kev, 2026-09-26)
 
 The player can Set any value 1–20 and the unit acts on exactly that value,
 ignoring pre-roll buffs, penalties and jam caps. (The engine already resolves it
@@ -10,7 +39,7 @@ becomes a plain 1–20 die and does a short tumble onto the chosen face, with
 static labels throughout, then the normal upright snap. This resolves the "Set
 to a value no face prints" case of the G-24 step-6 blocker.
 
-## G-26. Tutorial dice land on their scripted face (Kev, 2026-09-26) — RECORDED, NOT YET IMPLEMENTED
+## G-26. Tutorial dice land on their scripted face (Kev, 2026-09-26)
 
 A few scripted tutorial rolls are fine. Tutorial dice use a short scripted
 tumble that lands directly on the scripted face. No rotation onto a different
@@ -293,7 +322,8 @@ same face, and its unit **acts again on that same result — same zone, same
 ability**. Targeting is re-picked fresh on each repeat (manual pick for heroes,
 personality choke-point for enemies); only the die result is locked. After its
 authored N repeats the die thaws and rerolls normally. Deep Freeze extends the
-repeat count. Frozen dice are immune to Jam, Rewrite, and Hijack. Non-damage
+repeat count. Frozen dice are immune to Jam and Rewrite; a Hijack waits until the
+freeze ends (G-30, 2026-09-26). Non-damage
 freeze abilities (incl. shield+freeze / heal+freeze) target ANY unit via manual
 pick (`freezeAnyDice`); freeze riders on damaging abilities stay enemy-side.
 Enemy AI freeze targets the hero's LOWEST revealed die, deterministically.
