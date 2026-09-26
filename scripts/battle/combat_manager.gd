@@ -188,6 +188,13 @@ var _battle_round: int = 0
 # freeze pick reads them to find the LOWEST revealed hero die.
 var _current_raw_hero_rolls: Dictionary = {}
 
+# The value each unit acts on this round, per side (state id -> value): the
+# effective rolls resolve_round is handed, hijack copies included — exactly
+# what the dice show during resolution. Freeze captures from here (G-23: freeze
+# locks the number on the face, not the raw face under it).
+var _acted_hero_values: Dictionary = {}
+var _acted_enemy_values: Dictionary = {}
+
 # Targeting personalities (Task 9): {enemy_id: hero_id} intent assignments for
 # the current round, written in SLOT ORDER (PACK reads insertion order).
 var _enemy_assignments: Dictionary = {}
@@ -843,6 +850,8 @@ func resolve_round(
 				enemy_rolls[str(enemy_state["id"])] = highest_hero_roll
 				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
 				_emit_event(enemy_state, "hijack", highest_hero_roll, "enemy")
+
+	stamp_acted_values(hero_rolls, enemy_rolls)
 
 	# Targeting personalities: fill enemy intents (slot order) before the hero
 	# phase. In UI play battle_scene already assigned them with the same
@@ -2390,7 +2399,13 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, flavor: String = "
 	var existing_turns: int = int(state.get("die_freeze_turns", 0))
 	state["die_freeze_turns"] = existing_turns + freeze_amount
 	state["freeze_flavor"] = flavor
+	# G-23 (Kev 2026-09-26): freeze locks the number ON THE FACE — the value the
+	# unit acts on this round, modifiers included — not the raw face. An
+	# already-frozen die keeps its locked value (re-freeze only adds repeats).
 	var frozen_value: int = int(state.get("frozen_die_value", 0))
+	if frozen_value <= 0:
+		var acted: Dictionary = _acted_hero_values if _is_hero_state(state) else _acted_enemy_values
+		frozen_value = int(acted.get(str(state.get("id", "")), 0))
 	if frozen_value <= 0:
 		frozen_value = int(state.get("last_die_value", 0))
 	if frozen_value > 0:
@@ -2402,6 +2417,18 @@ func _freeze_die_state(state: Dictionary, freeze_amount: int, flavor: String = "
 	# Protocol for the holder (audit A-062).
 	if from_enemy:
 		_grant_mirror_plate_protocol(state)
+
+
+# Record the values this round's units act on (resolve_round calls this with
+# the effective rolls it was handed, after the hijack copy). Public so tests can
+# drive a freeze capture without a full round.
+func stamp_acted_values(hero_values: Dictionary, enemy_values: Dictionary) -> void:
+	_acted_hero_values.clear()
+	_acted_enemy_values.clear()
+	for id_variant in hero_values:
+		_acted_hero_values[str(id_variant)] = int(hero_values[id_variant])
+	for id_variant in enemy_values:
+		_acted_enemy_values[str(id_variant)] = int(enemy_values[id_variant])
 
 
 # Enemy AI freeze pick: the living hero with the LOWEST revealed die face this

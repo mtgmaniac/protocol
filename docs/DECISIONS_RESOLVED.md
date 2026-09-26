@@ -187,6 +187,27 @@ carry rulings in chat memory.
 
 # RESOLVED & IMPLEMENTED
 
+## G-23. Freeze locks the number on the face (Kev, 2026-09-26)
+
+A frozen die keeps exactly the value it SHOWED when it froze — its effective
+value, including every roll modifier active at that moment — and nothing changes
+it while it stays frozen, including modifiers applied or removed in later rounds.
+This refines #1 (freeze = repeat): "keeps its face" means the number on the face,
+not the raw natural under it. Before this ruling the capture was the raw face
+(`last_die_value`), so a +3 die showing 20 repeated on 17 — a different band,
+contradicting #1's "same zone, same ability".
+
+As implemented: freeze captures the effective value (`BattleEngine.item_freeze_die`
+for items; `CombatManager._freeze_die_state` from `stamp_acted_values`, the values
+the round acts on, for abilities and riders). A frozen die returns its locked
+value from the moment it freezes (`BattleEngine._is_locked_by_freeze`), so it never
+scrambles or relocks while frozen. Deep Freeze Charge still pins to 1 (G-9): it
+sets the value to 1 and freezes it, and the die now shows 1 from that moment.
+Hard gate: `dice face` criterion (d).
+
+Also decided with this ruling: dice keep sliding (without rotating) to their slot
+after landing; after-landing changes scramble all faces.
+
 ## G-22. Version stamp renders at the 48 px text floor (Kev, 2026-09-26)
 
 Kev accepted the text legibility Step 1 web build (branch

@@ -1657,12 +1657,8 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 		die.set_meta("shown_value", display)
 		_set_die_result_scale(die, false)
 	_set_die_frozen_visual(die, true)
-	# A carried-over frozen die keeps its pose. Freeze captures the RAW face, so
-	# a die that showed a buffed value last round repeats on the raw one: that
-	# is a real change of the value it acts on, shown as scramble-and-lock.
-	if not fresh and int(die.get_meta("shown_value", display)) != display and not bool(die.get_meta("busy", false)):
-		_show_value_in_place(die, display)
-		return die
+	# A carried-over frozen die keeps its pose AND its number: freeze locks the
+	# value the die showed (G-23), so it never scrambles or relocks while frozen.
 	if not bool(die.get_meta("busy", false)):
 		die.set_meta("scrambling", false)
 		_reset_face_labels(die)

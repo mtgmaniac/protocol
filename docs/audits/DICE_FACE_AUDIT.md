@@ -494,3 +494,45 @@ and the final frame.
 - One capture frame is about 0.1 s of wall time, so a 0.26 s scramble shows as
   only 2–3 frames.
 - Motion feel (scramble speed, lock timing) needs a look on a device.
+
+## 10. G-23: freeze locks the number on the face (Kev, 2026-09-26)
+
+**What changed:**
+- **Freeze captures the effective value the die shows,** not the raw face.
+  - Items: `BattleEngine.item_freeze_die`.
+  - Abilities and riders: `CombatManager._freeze_die_state`, from
+    `stamp_acted_values`. These are the effective rolls `resolve_round` was
+    handed, including the hijack copy.
+- **A frozen die returns its locked value from the moment it freezes,** not only
+  on repeat rounds (`BattleEngine._is_locked_by_freeze`). So a frozen die never
+  scrambles or relocks.
+- **The tray's carried-over "raw vs buffed" relock is removed.** It can no
+  longer happen.
+
+**Gate criterion (d):** a frozen die's number never changes and never scrambles
+while frozen. Part D covers:
+- a +3 hero showing 20 (natural 17), frozen by Cryo Gel
+- a penalty added after the freeze
+- a buffed enemy frozen through the resolution path
+- two later rolls with the buffs gone and a new penalty
+
+Clean runs pass with 476 (d) checks.
+
+**Deliberate break:** item freeze captures the raw face again. **FAIL:** (d) 29
+failures ("hero:combat scrambled while frozen (locked on 20)"), plus the explicit
+checks showing 17.
+
+**Sim (300 runs, pinned ci_smoke), against the numbers before this change:**
+
+| | Before G-23 | After G-23 | Delta |
+|---|---|---|---|
+| facility | 0.3803 | 0.3944 | +1.4 |
+| hive | 0.2373 | 0.2373 | +0.0 |
+| stellarMenagerie | 0.1667 | 0.2083 | +4.2 |
+| veil | 0.2462 | 0.2615 | +1.5 |
+| voidCirclet | 0.3158 | 0.2632 | −5.3 |
+| overall | 0.2767 | 0.2800 | +0.3 |
+
+Against the pinned baseline, every operation is now within ±10: voidCirclet sits
+at +5.3, down from +10.5. The baseline was not re-pinned. Each operation has
+only about 60 of the 300 runs, so single-operation moves of ±5 are close to noise.

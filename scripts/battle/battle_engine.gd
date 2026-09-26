@@ -317,15 +317,23 @@ func item_enemy_reroll_all(bs: BattleState) -> void:
 
 
 # Freezes a die (either side — freeze = repeat, per Kev 2026-07-06): adds
-# repeat turns and captures the current face as the locked value (falling back
-# to last_die_value / an existing frozen value). The unit acts again on that
+# repeat turns and captures the value the die shows as the locked value
+# (G-23; falling back to last_die_value / an existing frozen value). The unit acts again on that
 # face for each repeat, then the die thaws.
 func item_freeze_die(bs: BattleState, target_state: Dictionary, repeats: int) -> void:
 	if target_state.is_empty():
 		return
-	var rolls: Dictionary = bs.hero_rolls if _is_hero_side_state(target_state) else bs.enemy_rolls
+	var is_hero: bool = _is_hero_side_state(target_state)
+	var rolls: Dictionary = bs.hero_rolls if is_hero else bs.enemy_rolls
+	# G-23 (Kev 2026-09-26): freeze locks the number the die SHOWS — its
+	# effective value (Nudge/Set/buffs/penalties/jam/rewrite/hijack included),
+	# captured before the freeze lands. An already-frozen die returns its locked
+	# value here, so a re-freeze keeps it.
+	var frozen_value: int = 0
+	var target_id: String = str(target_state.get("id", ""))
+	if roll_value_for_state(rolls, target_state) > 0:
+		frozen_value = effective_hero_roll(target_state, target_id, bs) if is_hero else effective_enemy_roll(target_state, target_id, bs)
 	target_state["die_freeze_turns"] = int(target_state.get("die_freeze_turns", 0)) + repeats
-	var frozen_value: int = roll_value_for_state(rolls, target_state)
 	if frozen_value <= 0:
 		frozen_value = int(target_state.get("last_die_value", target_state.get("frozen_die_value", 0)))
 	if frozen_value > 0:
@@ -453,7 +461,7 @@ func effective_hero_roll(state: Dictionary, unit_id: String, bs: BattleState) ->
 	var raw_roll: int = int(bs.hero_rolls.get(unit_id, bs.hero_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
-	if bool(state.get("die_freeze_repeat_this_round", false)):
+	if _is_locked_by_freeze(state):
 		var frozen: int = int(state.get("frozen_die_value", raw_roll))
 		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
 	# Set action forces an absolute effective roll, overriding nudge/buffs.
@@ -468,13 +476,22 @@ func effective_enemy_roll(state: Dictionary, unit_id: String, bs: BattleState) -
 	var raw_roll: int = int(bs.enemy_rolls.get(unit_id, bs.enemy_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
-	if bool(state.get("die_freeze_repeat_this_round", false)):
+	if _is_locked_by_freeze(state):
 		var frozen: int = int(state.get("frozen_die_value", raw_roll))
 		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
 	var hijacked: int = hijack_value(state, bs)
 	if hijacked > 0:
 		return hijacked
 	return combat_manager.get_effective_roll(state, raw_roll)
+
+
+# G-23 (Kev 2026-09-26): a frozen die is locked on its number from the moment
+# it freezes — on its repeat rounds (the old test) AND in the round a freeze
+# item lands, so a modifier added or removed afterwards can't move it.
+func _is_locked_by_freeze(state: Dictionary) -> bool:
+	if bool(state.get("die_freeze_repeat_this_round", false)):
+		return true
+	return int(state.get("die_freeze_turns", 0)) > 0 and int(state.get("frozen_die_value", 0)) > 0
 
 
 # Hijack (enemy-only): the die copies the heroes' current highest EFFECTIVE die

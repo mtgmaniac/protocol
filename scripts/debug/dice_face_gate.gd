@@ -11,6 +11,9 @@
 #   (c) a die rotates after it settles: its body pose moves, or its face rig
 #       turns while the digits are locked (a turn is only legal mid-scramble,
 #       where it cannot be seen). Reroll is a deliberate re-throw and exempt.
+#   (d) a FROZEN die's number changes or scrambles while it is frozen (G-23:
+#       freeze locks the number on the face), including when a modifier is
+#       added or removed after the freeze, in the same or a later round.
 #
 # Part A: the tray alone, 7 slots (3 hero + 4 enemy) x all 20 values.
 # Part B: a live BattleScene, scripted naturals (a stub roll provider) so every
@@ -19,6 +22,9 @@
 # Part C: after-landing changes on the live scene: Nudge, Set, Reroll, items
 #   (roll buff, penalty, enemy reroll, freeze, Deep Freeze Charge), Sync
 #   Antenna, and a live hijack following the heroes' highest die.
+# Part D: freeze locks the shown number — a +3 hero frozen on a buffed 20 by an
+#   item, and a buffed enemy frozen by the resolution path; modifiers added and
+#   removed afterwards, across two more rolls.
 #
 # Physics runs 8x (ticks and time scale raised together, so each step is still
 # 1/120 s: the same simulation, just less wall time).
@@ -56,8 +62,9 @@ var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
 var _settled: Dictionary = {}     # die instance id -> Basis at settle
 var _rig_prev: Dictionary = {}    # die instance id -> [Basis, locked]
 var _reroll_exempt: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0}
+var _frozen_lock: Dictionary = {}  # "side:id" -> the number the frozen die must keep
 var _landed_pairs: Dictionary = {}
 
 
@@ -117,6 +124,7 @@ func _sample() -> void:
 				if bool(prev[1]) and locked and _angle_deg(prev[0], rb) > ROTATION_EPS_DEG:
 					_fail("c", "%s face rig turned %.1f deg with its digits locked" % [key, _angle_deg(prev[0], rb)])
 			_rig_prev[iid] = [rb, locked]
+		_check_frozen(key, side, uid, die, locked)
 		if not locked:
 			continue
 		var shown: int = int(_tray.call("up_face_numeral", side, uid))
@@ -131,6 +139,35 @@ func _sample() -> void:
 			if not allowed.has(shown):
 				_fail("b", "%s landed on %d outside its modifier range %s" % [key, shown, _range_text(allowed)])
 			_ranges.erase(key)  # (b) is about the landing value
+
+
+# (d): while a unit's die is frozen, its number is fixed. The lock is taken
+# from what the die showed just BEFORE the freeze (set by the scenario), or at
+# its first locked sample for a die that was already frozen.
+func _check_frozen(key: String, side: String, uid: String, die: RigidBody3D, locked: bool) -> void:
+	if not _use_scene_oracle:
+		return
+	var st: Dictionary = _state_for(side, uid)
+	if st.is_empty() or int(st.get("die_freeze_turns", 0)) <= 0:
+		_frozen_lock.erase(key)
+		return
+	if not _frozen_lock.has(key):
+		if locked:
+			_frozen_lock[key] = int(_tray.call("up_face_numeral", side, uid))
+		return
+	_checks["d"] += 1
+	if bool(die.get_meta("scrambling", false)):
+		_fail("d", "%s scrambled while frozen (locked on %d)" % [key, int(_frozen_lock[key])])
+	elif locked and int(_tray.call("up_face_numeral", side, uid)) != int(_frozen_lock[key]):
+		_fail("d", "%s frozen on %d now shows %d" % [key, int(_frozen_lock[key]), int(_tray.call("up_face_numeral", side, uid))])
+
+
+func _state_for(side: String, uid: String) -> Dictionary:
+	var cm: Object = _scene.get("combat_manager")
+	for st in cm.call("get_hero_states" if side == "hero" else "get_enemy_states"):
+		if str(st["id"]) == uid:
+			return st
+	return {}
 
 
 func _oracle(side: String, uid: String) -> int:
@@ -361,6 +398,50 @@ func _part_b_and_c() -> void:
 	await _await_all_locked()
 	_expect_value("enemy", e[0], 1, "Deep Freeze Charge pins an enemy die to 1")
 	print("[DICE_FACE_GATE] part C2: Nudge, Set, Reroll, items, Sync Antenna")
+
+	# D: freeze locks the number on the face (G-23).
+	_clear_statuses(heroes + enemies)
+	_frozen_lock.clear()
+	_buff(heroes[0], 3)                               # h0: natural 17 +3 -> 20
+	enemies[1]["roll_buff_stacks"] = [{"amt": 2, "turns_left": 9}]  # e1: 9 +2 -> 11
+	enemies[1]["roll_buff"] = 2
+	stub.queue = [17, 5, 12, 4, 9]
+	await _begin_roll()
+	await _await_all_locked()
+	_expect_value("hero", h[0], 20, "the +3 hero shows its buffed 20 before the freeze")
+	_frozen_lock["hero:%s" % h[0]] = int(_tray.call("up_face_numeral", "hero", h[0]))
+	await _use_item(pa, "cryo_gel", heroes[0])        # item freeze: locks 20
+	await _await_all_locked()
+	_expect_value("hero", h[0], 20, "an item freeze locks the shown 20, not the raw 17")
+	heroes[0]["rfe_stacks"] = [{"amt": 2, "turns_left": 9}]  # modifier added after the freeze
+	_scene.call("_on_die_values_changed")
+	await _await_all_locked()
+	_expect_value("hero", h[0], 20, "a penalty added after the freeze can't move it")
+	# Resolution-path freeze (an enemy ability / hero freeze rider): capture from
+	# the values this round acts on, exactly as resolve_round stamps them.
+	var eng: Object = _scene.get("_engine")
+	var bs: Object = _scene.get("_state")
+	cm.call("stamp_acted_values",
+		eng.call("build_effective_rolls", bs.get("hero_rolls"), heroes, true, bs),
+		eng.call("build_effective_rolls", bs.get("enemy_rolls"), enemies, false, bs))
+	_frozen_lock["enemy:%s" % e[1]] = int(_tray.call("up_face_numeral", "enemy", e[1]))
+	cm.call("_freeze_die_state", enemies[1], 2)
+	_scene.call("_on_die_values_changed")
+	await _await_all_locked()
+	_expect_value("enemy", e[1], 11, "a resolution-path freeze locks the buffed 11, not the raw 9")
+	# Later rounds: the +3 and +2 expire, the penalty stays; both dice keep their number.
+	heroes[0]["roll_buff_stacks"] = []
+	heroes[0]["roll_buff"] = 0
+	enemies[1]["roll_buff_stacks"] = []
+	enemies[1]["roll_buff"] = 0
+	enemies[1]["rfe_stacks"] = [{"amt": 3, "turns_left": 9}]
+	for roll in range(2):
+		stub.queue = [3, 3, 3, 3, 3]
+		await _begin_roll()
+		await _await_all_locked()
+		_expect_value("hero", h[0], 20, "the frozen 20 holds on a later roll with its buff gone")
+		_expect_value("enemy", e[1], 11, "the frozen 11 holds on a later roll with a new penalty")
+	print("[DICE_FACE_GATE] part D: freeze locks the shown number")
 	_monitor_on = false
 
 
@@ -441,7 +522,7 @@ func _expect_value(side: String, uid: String, want: int, label: String) -> void:
 func _finish() -> void:
 	Engine.time_scale = 1.0
 	var failed: bool = false
-	for kind in ["a", "b", "c"]:
+	for kind in ["a", "b", "c", "d"]:
 		var arr: Array = _fails[kind]
 		print("[DICE_FACE_GATE] (%s) checks=%d failures=%d" % [kind, int(_checks[kind]), arr.size()])
 		for i in range(mini(arr.size(), MAX_REPORTED)):

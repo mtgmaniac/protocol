@@ -88,6 +88,7 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 | **Relic popup layout** | Open | Enlarge the icon box; remove or fill the empty band between the RELIC tag and the description. |
 | **Intercept screens — option layout + copy** | Open | Option descriptions sit between the buttons and read as belonging to either. Use Route Fork's boxed-option layout. Fix the lowercase start of "items cost 0 Protocol next battle." |
 | **Status badge long-press pass-through** | Open | Long-press on a status badge should pass through to the unit card underneath and show the unit's long-press. |
+| **On-die roll-modifier tag** | Open | Show an on-die tag when a roll modifier is active at roll time (e.g. +3, -2, pending forced 20, Chorus), using the existing die tag system (JAM ≤N / REWRITE→3 / HIJACK). With the dice fix, a +3 unit never shows 1-3, and nothing near the die explains why. |
 
 ### P2
 
@@ -98,6 +99,7 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 | **Battle-win relics rework** | Open — design first | They drop too often for what they do. Design pass with the current relic list before any change, then a sim run. |
 | **Empty band under the header** | Open | 100+ px unused on most screens. Use it, or give the space to content that needs room. |
 | **Balance: voidCirclet +10.5 drift** | Open — Kev review | From the Medic `else` fallback heal (acf38d4). Kev reviews before any baseline re-pin. |
+| **Dice fix on a phone** | Open | Check the dice fix on a phone: scramble performance during rolls, and legibility of numerals tilted up to 60° at phone size. |
 
 ### P3 / watch
 
