@@ -73,7 +73,7 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **Dice face snap after landing** | **Open — next session** | A die physically lands on one face, then snaps to a different face at the end of the roll. The face it lands on must be the face it resolves to. |
+| **Dice face snap after landing** | **Diagnosed, awaiting Kev's option** | A die physically lands on one face, then snaps to a different face at the end of the roll. The face it lands on must be the face it resolves to. Root cause is the design: since 1171eb8 every roll is rigged from the seeded stream, physics lands freely (landed ≠ result 96% of dice), and a 0.42 s tween rotates the rigged face up. It also found rewrite / hijack / post-roll buff dice that resolve a value the die doesn't show. Options A/A′/B/C and the planned gate: [DICE_FACE_AUDIT.md](docs/audits/DICE_FACE_AUDIT.md). |
 
 ### P1
 
