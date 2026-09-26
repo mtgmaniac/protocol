@@ -177,6 +177,10 @@ func _ready() -> void:
 
 	_hint_label = Label.new()
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# Wraps like the body (text legibility wrap-up, 2026-09-26): at the 64 px
+	# rung the longest tutorial hint is wider than the coach on a 1080-wide
+	# screen, so it takes two balanced lines instead of overflowing.
+	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.style_label(_hint_label, HINT_FONT, ACCENT, 1)
 	col.add_child(_hint_label)
@@ -371,5 +375,11 @@ func _coach_content_width(panel_max_width: float) -> float:
 		var hint_font: Font = _hint_label.get_theme_font("font")
 		var hint_size: int = _hint_label.get_theme_font_size("font_size")
 		if hint_font != null:
-			width = maxf(width, hint_font.get_string_size(_hint_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, hint_size).x)
+			# The hint sits under the glyph row, so it gets the full content width.
+			var hint_max: float = panel_max_width - chrome
+			var hint_w: float = hint_font.get_string_size(_hint_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, hint_size).x
+			if hint_w > hint_max and hint_max > 0.0:
+				var hint_lines: float = ceilf(hint_w / hint_max)
+				hint_w = minf(ceilf(hint_w / hint_lines) + COACH_BALANCE_SLACK, hint_max)
+			width = maxf(width, hint_w)
 	return ceilf(width + COACH_MEASURE_SLACK) + COACH_PAD * 2.0

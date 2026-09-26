@@ -178,11 +178,10 @@ const DITHER_TILE := "res://assets/ui/dither_2x2.png"
 const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
 const UI_FONT_SCALE := 1.35
 const UI_FONT_MIN_SIZE := TEXT_MIN_PX
-# Rendered-size ladder (text legibility Step 1): floor 48, rungs on the m5x7
-# native-16 lattice. 72 → 80 moved (fit everywhere). 56 stays off-lattice: 56 → 64
-# overflowed the single-line tutorial coach hint (1012 px vs the 952 px coach
-# width) — a layout decision for Kev, recorded in text_legibility_test.gd.
-const UI_FONT_STEPS := [48, 56, 64, 80]
+# Rendered-size ladder (text legibility Step 1): floor 48, every rung on the m5x7
+# native-16 lattice. 72 → 80 and (wrap-up, 2026-09-26) 56 → 64; the coach hint
+# that overflowed at 64 now wraps to two lines (spotlight_layer).
+const UI_FONT_STEPS := [48, 64, 80]
 const FRAME_SIMPLE := "res://assets/ui/frame_simple.png"
 const FRAME_GLOW := "res://assets/ui/frame_glow.png"
 const FRAME_CORNER_DOTS := "res://assets/ui/frame_corner_dots.png"

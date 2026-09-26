@@ -13,10 +13,6 @@
 extends SceneTree
 
 const NATIVE_EM := 16
-# Ladder rungs allowed off the 16-lattice, each with the reason it could not move.
-# 56 → 64 was tried in Step 1 and overflowed the single-line tutorial coach hint
-# (the longest hint measured 1012 px against the 952 px coach width, wording fit gate).
-const OFF_LATTICE_RUNGS := {56: "tutorial coach hint does not fit at 64"}
 const THEME_PATH := "res://assets/ui/theme_overload.tres"
 const SCREENS := {
 	"home": "res://scenes/ui/UnitSelect.tscn",
@@ -100,7 +96,7 @@ func _check_rules(pixel_ui: GDScript, min_px: int) -> void:
 	check(min_px % NATIVE_EM == 0, "TEXT_MIN_PX %d is not a multiple of the m5x7 native %d" % [min_px, NATIVE_EM])
 	for step in pixel_ui.UI_FONT_STEPS:
 		check(int(step) >= min_px, "UI_FONT_STEPS rung %d is below the floor" % int(step))
-		check(int(step) % NATIVE_EM == 0 or OFF_LATTICE_RUNGS.has(int(step)), "UI_FONT_STEPS rung %d is not a multiple of %d" % [int(step), NATIVE_EM])
+		check(int(step) % NATIVE_EM == 0, "UI_FONT_STEPS rung %d is not a multiple of %d" % [int(step), NATIVE_EM])
 	for nominal in range(1, 121):
 		check(int(pixel_ui.scale_font_size(nominal)) >= min_px, "scale_font_size(%d) renders below the floor" % nominal)
 	var theme: Theme = load(THEME_PATH)

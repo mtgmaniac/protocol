@@ -9,9 +9,10 @@ and hooks `SceneTree.node_added`, setting `TEXTURE_FILTER_NEAREST` on every
 text-drawing Control (`PixelUI.is_text_node`) whose filter is PARENT_NODE — every
 factory is covered automatically; an explicit per-node filter is respected.
 (2) **Rendered text floor `PixelUI.TEXT_MIN_PX` = 48**: `scale_font_size` floors
-there, the ladder is `UI_FONT_STEPS = [48, 56, 64, 80]` (72 → 80 moved onto the
-m5x7 native-16 lattice; 56 stays — at 64 the one-line tutorial coach hint
-overflows), raw-px factories route through `PixelUI.text_px()`, and
+there, the ladder is `UI_FONT_STEPS = [48, 64, 80]`, every rung on the m5x7 native-16
+lattice (72 → 80; 56 → 64 at the 2026-09-26 wrap-up — the spotlight coach hint now
+wraps to at most two lines, `wording fit` lays it out at ten test resolutions),
+raw-px factories route through `PixelUI.text_px()`, and
 `theme_overload.tres` `default_font_size` mirrors it. Sole exception: the EffectPip
 duration superscript (meta `text_min_exempt`) — its smaller size is its meaning.
 The version stamp's 2026-07-24 below-floor exemption is superseded.
