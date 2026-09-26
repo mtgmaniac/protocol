@@ -2349,22 +2349,14 @@ func play_jam_flicker(side: String, unit_id: String, jam_cap: int) -> void:
 const JAM_FALLBACK_CAP := 10
 
 
-# pkg8.4: Rewrite feedback — the pending marker scrambles through digits then
-# slams to →3 (the die itself keeps its current engraved result; the marker is
-# the telegraph).
+# Rewrite feedback: the pending marker shows a static REWRITE->N tag (G-29 —
+# no cycling digits anywhere on or over a die). The die keeps its face; the
+# marker is the telegraph.
 func play_rewrite_scramble(side: String, unit_id: String) -> void:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
 	if die == null:
 		return
 	_set_die_pending_marker(die, true, false)
-	var label: Label3D = _die_part(die, "PendingMarker") as Label3D
-	if label == null:
-		return
-	var tween: Tween = create_tween()
-	for _i in 6:
-		tween.tween_callback(func(): label.text = "REWRITE->%d" % (randi() % 20 + 1))
-		tween.tween_interval(0.05)
-	tween.tween_callback(func(): label.text = "REWRITE->3")
 
 
 # Rewrite / Hijack pending (pkg8.1): marker on the threatened die.
@@ -2381,7 +2373,7 @@ func _set_die_pending_marker(die: RigidBody3D, rewrite_pending: bool, hijack_pen
 		label.scale = Vector3(0.028, 0.028, 0.028)
 		_die_visuals(die).add_child(label)
 	if rewrite_pending:
-		label.text = "REWRITE->3"
+		label.text = "REWRITE->%d" % CombatManager.REWRITE_VALUE
 		label.modulate = Color(0.82, 0.55, 1.0, 0.95)
 	elif hijack_pending:
 		label.text = "HIJACK"

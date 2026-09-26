@@ -845,7 +845,7 @@ func resolve_round(
 		for enemy_state in _enemy_states:
 			if not enemy_state["dead"] and bool(enemy_state.get("hijack_pending", false)):
 				if int(enemy_state.get("die_freeze_turns", 0)) > 0:
-					_log("%s's die is frozen solid - the hijack can't take hold." % enemy_state["unit"].display_name)
+					_log("%s's die is frozen solid - the hijack waits for the thaw." % enemy_state["unit"].display_name)
 					continue
 				enemy_rolls[str(enemy_state["id"])] = highest_hero_roll
 				_log("%s HIJACKS the squad's highest die (%d)!" % [enemy_state["unit"].display_name, highest_hero_roll])
@@ -2952,9 +2952,14 @@ func _tick_state(state: Dictionary) -> void:
 			state["lured_by_id"] = ""
 
 	# Hijack fires at exactly one roll: skips the tick of the applying round,
-	# copies the heroes' highest die at the next reveal, then clears.
+	# copies the heroes' highest die at the next reveal, then clears. G-30: while
+	# the die is frozen the hijack WAITS — kept through the freeze, it copies at
+	# the first reveal after the thaw (the skip is spent here so it then clears
+	# after exactly that reveal).
 	if bool(state.get("hijack_pending", false)):
-		if bool(state.get("hijack_skip_next_tick", false)):
+		if int(state.get("die_freeze_turns", 0)) > 0:
+			state["hijack_skip_next_tick"] = false
+		elif bool(state.get("hijack_skip_next_tick", false)):
 			state["hijack_skip_next_tick"] = false
 		else:
 			state["hijack_pending"] = false
