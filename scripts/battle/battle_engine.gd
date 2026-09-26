@@ -461,6 +461,13 @@ func effective_hero_roll(state: Dictionary, unit_id: String, bs: BattleState) ->
 	var raw_roll: int = int(bs.hero_rolls.get(unit_id, bs.hero_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
+	return _hero_value_for_raw(state, unit_id, bs, raw_roll)
+
+
+# The hero's value if its raw roll were `raw_roll`, in its CURRENT state
+# (freeze lock, Set, Nudge, buffs/penalties/jam/rewrite). effective_hero_roll
+# and the printed faces (current_face_values) share it.
+func _hero_value_for_raw(state: Dictionary, unit_id: String, bs: BattleState, raw_roll: int) -> int:
 	if _is_locked_by_freeze(state):
 		var frozen: int = int(state.get("frozen_die_value", raw_roll))
 		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
@@ -476,6 +483,10 @@ func effective_enemy_roll(state: Dictionary, unit_id: String, bs: BattleState) -
 	var raw_roll: int = int(bs.enemy_rolls.get(unit_id, bs.enemy_rolls.get(str(unit_id), 0)))
 	if raw_roll == 0:
 		return 1
+	return _enemy_value_for_raw(state, bs, raw_roll)
+
+
+func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> int:
 	if _is_locked_by_freeze(state):
 		var frozen: int = int(state.get("frozen_die_value", raw_roll))
 		return clampi(frozen if frozen > 0 else raw_roll, 1, 20)
@@ -506,6 +517,24 @@ func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int, chorus_floor: 
 # The value printed on the face with natural number `natural`.
 func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
 	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural, chorus_floor))
+
+
+# G-27 / G-25: the faces a die prints for its CURRENT state — face n reads the
+# value the unit would act on with a raw roll of n. Used when a deliberate change
+# needs a value no printed face shows: the die is reprinted with these and
+# tumbles onto one showing the new value. Under a Set the die is a plain 1–20
+# die ("plain": true) and tumbles onto the chosen face (G-25).
+func current_face_values(state: Dictionary, unit_id: String, is_hero: bool, bs: BattleState) -> Dictionary:
+	var plain: bool = is_hero and not _is_locked_by_freeze(state) and (bs.hero_roll_sets.has(unit_id) or bs.hero_roll_sets.has(str(unit_id)))
+	var faces: Array = []
+	for natural in range(1, 21):
+		if plain:
+			faces.append(natural)
+		elif is_hero:
+			faces.append(_hero_value_for_raw(state, unit_id, bs, natural))
+		else:
+			faces.append(_enemy_value_for_raw(state, bs, natural))
+	return {"faces": faces, "plain": plain}
 
 
 # G-23 (Kev 2026-09-26): a frozen die is locked on its number from the moment

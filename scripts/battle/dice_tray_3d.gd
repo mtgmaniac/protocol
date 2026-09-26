@@ -105,6 +105,13 @@ var value_provider: Callable
 # the die without any call site having to remember to push it. The scene turns
 # it off when the round resolves: the acted-on values are snapshotted there.
 var _values_live: bool = false
+# G-27 / G-25: the faces a die prints for its CURRENT state, from the scene's
+# `_die_faces_now(side, unit_id) -> {"faces": [20 ints], "plain": bool}` (the
+# engine's current_face_values). Used only to reprint a die when a deliberate
+# change needs a value no printed face shows (or on a Set: plain 1–20).
+var print_provider: Callable
+# A deliberate change tips the die over onto a face showing the new value.
+const TIP_OVER_TIME := 0.30
 var _landscape_projection := false
 var _last_landscape_size := Vector2.ZERO
 
@@ -534,21 +541,71 @@ func _poll_values() -> void:
 			_show_value_in_place(die, v)
 
 
-# APPLIED-AFTER-LANDING change (Nudge, Set, items, Sync Antenna, a live
-# hijack copy): the die turns to a face showing the new value, reading upright.
-# INTERIM (G-24 step 4): an instant turn; the step-6 tip-over replaces it.
+# DELIBERATE change after landing (Nudge, Set, items, Sync Antenna, a live
+# hijack copy, a freeze pinning the die): the die tips over onto a face showing
+# the new value and settles upright (G-24). When no printed face shows it — or
+# on a Set, which makes it a plain 1–20 die (G-25) — the die is reprinted for its
+# new state in the same frame the tip starts (G-27); labels are static from then.
 func _show_value_in_place(die: RigidBody3D, target: int) -> void:
-	var face_index: int = _face_index_showing(die, target)
-	die.set_meta("shown_value", target)
-	if face_index >= 0:
-		var origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
-		var origin: Vector3 = origin_variant if origin_variant is Vector3 else die.global_transform.origin
-		origin.y = die.global_transform.origin.y
-		die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), origin)
-		die.set_meta("face_up", int(_face_values[face_index]))
+	die.set_meta("busy", true)
+	var face_index: int = _face_for_change(die, target)
+	if face_index < 0:
+		push_warning("[DiceTray3D] no face can show %d after a reprint" % target)
+		die.set_meta("busy", false)
+		return
 	_reset_face_highlights(die)
+	await _tip_over(die, face_index)
+	if not is_instance_valid(die):
+		return
+	die.set_meta("shown_value", target)
+	die.set_meta("face_up", int(_face_values[face_index]))
 	var entry: Dictionary = die.get_meta("entry", {})
 	_highlight_top_face(die, target, str(entry.get("side", "")), str(die.get_meta("zone", "")))
+	die.set_meta("busy", false)
+
+
+# The face a change lands on, reprinting the die first when needed.
+func _face_for_change(die: RigidBody3D, target: int) -> int:
+	var plan: Dictionary = {}
+	if print_provider.is_valid():
+		var entry: Dictionary = die.get_meta("entry", {})
+		plan = print_provider.call(str(entry.get("side", "")), str(entry.get("id", "")))
+	var desired: Array = plan.get("faces", [])
+	var must_reprint: bool = bool(plan.get("plain", false)) and desired != (die.get_meta("printed_values", []) as Array)
+	var face_index: int = -1 if must_reprint else _face_index_showing(die, target)
+	if face_index < 0 and desired.size() == 20:
+		die.set_meta("printed_values", desired.duplicate())
+		_reset_face_labels(die)
+		face_index = _face_index_showing(die, target)
+	return face_index
+
+
+# A short tip-over onto `face_index`, ending flat and upright at the die's slot.
+# The shortest rotation (quaternion slerp) with a small lift — a die rocking
+# over onto a neighbouring face, not a re-throw.
+func _tip_over(die: RigidBody3D, face_index: int) -> void:
+	var origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
+	var origin: Vector3 = origin_variant if origin_variant is Vector3 else die.global_transform.origin
+	origin.y = die.global_transform.origin.y
+	var from_q: Quaternion = die.global_transform.basis.orthonormalized().get_rotation_quaternion()
+	var to_basis: Basis = _get_face_forward_result_basis(face_index)
+	var to_q: Quaternion = to_basis.get_rotation_quaternion()
+	var from_origin: Vector3 = die.global_transform.origin
+	var elapsed: float = 0.0
+	while elapsed < TIP_OVER_TIME:
+		var tree: SceneTree = get_tree()
+		if _is_exiting_tree or tree == null:
+			return
+		await tree.process_frame
+		if _is_exiting_tree or not is_inside_tree() or not is_instance_valid(die):
+			return
+		elapsed += get_process_delta_time()
+		var t: float = clampf(elapsed / TIP_OVER_TIME, 0.0, 1.0)
+		var w: float = _ease_out_cubic(t)
+		var lift: float = sin(t * PI) * DIE_RADIUS * 0.45
+		die.global_transform = Transform3D(Basis(from_q.slerp(to_q, w)), from_origin.lerp(origin, w) + Vector3.UP * lift)
+	if is_instance_valid(die):
+		die.global_transform = Transform3D(to_basis, origin)
 
 
 # The face whose printed label reads `value`, nearest to the face now up (a
@@ -609,9 +666,9 @@ func reroll_die_to_result(side: String, unit_id: String) -> void:
 	if die == null:
 		return
 	var display: int = _value_for_die(die)
-	var face_index: int = _face_index_showing(die, display)
+	# Reprint first when the new value isn't printed (G-27), then the usual spin.
+	var face_index: int = _face_for_change(die, display)
 	if face_index < 0:
-		_show_value_in_place(die, display)
 		return
 	die.set_meta("busy", true)
 

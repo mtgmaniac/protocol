@@ -1191,6 +1191,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		if _game_state().tutorial_mode:
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.value_provider = _die_value
+		dice_tray_3d.print_provider = _die_faces_now
 		if placed_rolls.is_empty():
 			dice_tray_3d.play_rolls(
 				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
@@ -2415,6 +2416,15 @@ func _die_value(side: String, unit_id: String) -> int:
 	if enemy_state.is_empty() or bool(enemy_state.get("dead", false)) or int(enemy_rolls.get(unit_id, 0)) <= 0:
 		return 0
 	return _get_effective_enemy_roll(enemy_state, unit_id)
+
+
+# The faces a die prints for its current state (G-27 reprint / G-25 Set).
+func _die_faces_now(side: String, unit_id: String) -> Dictionary:
+	var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
+	var state: Dictionary = _find_state_by_id(states, unit_id)
+	if state.is_empty():
+		return {}
+	return _engine.current_face_values(state, unit_id, side == "hero", _state)
 
 
 # After ANY die value changes before resolution (Nudge, Set, Reroll, an item,
