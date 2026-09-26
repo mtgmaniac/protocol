@@ -109,6 +109,9 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 | **Off-lattice screen font sizes** | Watch | Not on 16 px multiples: home 52/60/72, battle cards 72, pips 50/53, sizes 84–150. |
 | **Thirds-step scaling option** | Watch | From the text legibility audit — only if Step 1 turns out not to be enough on desktop. |
 | **3D dice numerals and the NEAREST hook** | Watch | 3D labels are outside the text filter hook. Kev found them acceptable; revisit only if they look soft. |
+| **Planning CSVs imported as translations** | Open | CSVs under `docs/sweeps/` and `docs/visuals/2026-09-06/` are imported by Godot as translations. Set their `.import` importers to `skip`, as was done for `docs/TASK_MASTER_LIST.csv` (c3887be). |
+| **Rampage readout letters** | Open | Rampage still shows as "RA" letters in the ability readout; switch it to the rampage icon. Fix the stale "rampage has no icon" comments at `pixel_ui.gd:410` and `effect_pip.gd:98`. |
+| **Dead `status_list` in battle_card_view** | Open | `battle_card_view.gd` builds a `status_list` that nothing reads. Confirm it is dead code and remove it. |
 
 ---
 
