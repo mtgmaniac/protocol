@@ -596,7 +596,7 @@ func _get_card_width() -> float:
 		if vbar != null and vbar.visible:
 			available_width -= vbar.size.x
 	available_width = maxf(available_width - 24.0, 1.0)
-	return clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH)
+	return PixelUI.even_px(clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH))
 
 
 func _apply_visual_theme() -> void:

@@ -66,6 +66,9 @@ var _back_action := Callable()
 
 
 func _ready() -> void:
+	# Sharp (NEAREST) sampling for every pixel-font node, game-wide. This
+	# always-alive autoload is the one installer; PixelUI owns the rule.
+	PixelUI.install_text_filter(get_tree())
 	_fit_desktop_window()
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8

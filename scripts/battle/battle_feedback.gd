@@ -913,7 +913,8 @@ func show_resume_callout(round_number: int) -> void:
 	var roll_rect: Rect2 = _scene.roll_button.get_global_rect() if _scene.roll_button.visible else Rect2()
 	if roll_rect.size.y > 0.0 and pos.y + panel.size.y > roll_rect.position.y - 12.0:
 		pos.y = maxf(zone.position.y, roll_rect.position.y - 12.0 - panel.size.y)
-	panel.position = pos - layer_origin
+	pos -= layer_origin
+	panel.position = Vector2(PixelUI.even_px(pos.x), PixelUI.even_px(pos.y))
 	resume_callout = panel
 	var reduced: bool = PixelUI.reduced_motion_enabled()
 	panel.modulate.a = 1.0 if reduced else 0.0

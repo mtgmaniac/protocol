@@ -2,8 +2,8 @@
 #
 # Direction-05 "Dithered Terminal" styling, authored against the 1080x2400 logical
 # viewport (project base); on-screen px values are ~×2.4 in logical units. Fonts use
-# m5x7 at clean multiples via _make_pixel_label (bypasses PixelUI.scale_font_size so
-# small labels stay pixel-crisp). Colors pull from PixelUI DT_* tokens.
+# m5x7 at raw logical sizes via _make_pixel_label (bypasses PixelUI.scale_font_size,
+# but floored at PixelUI.TEXT_MIN_PX via text_px). Colors pull from PixelUI DT_* tokens.
 #
 # Squad-select redesign (2026-07-10, Kev-approved mockup):
 # - Encounter = ONE compact banner row: [◀] name + threat [boss thumb] [▶], dots
@@ -1183,7 +1183,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	# Center the panel once it has a size.
 	await get_tree().process_frame
 	if is_instance_valid(panel):
-		panel.position = (size - panel.size) * 0.5
+		panel.position = Vector2(PixelUI.even_px((size.x - panel.size.x) * 0.5), PixelUI.even_px((size.y - panel.size.y) * 0.5))
 
 
 func _on_directive_picked(relic_id: String) -> void:
@@ -1242,7 +1242,7 @@ func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_override("font", PixelUI.get_pixel_font())
-	label.add_theme_font_size_override("font_size", size_logical)
+	label.add_theme_font_size_override("font_size", PixelUI.text_px(size_logical))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_constant_override("outline_size", 0)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1257,7 +1257,7 @@ func _make_header_label(text: String, color: Color, align: int = HORIZONTAL_ALIG
 
 func _apply_button_font(button: Button, size_logical: int, color: Color) -> void:
 	button.add_theme_font_override("font", PixelUI.get_pixel_font())
-	button.add_theme_font_size_override("font_size", size_logical)
+	button.add_theme_font_size_override("font_size", PixelUI.text_px(size_logical))
 	_set_button_text_color(button, color)
 	button.add_theme_constant_override("outline_size", 0)
 

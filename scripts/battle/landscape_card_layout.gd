@@ -39,7 +39,7 @@ func refresh() -> void:
 		var desired_font: int = int(CompactUnitCard.CARD_NAME_FONT_SIZE * STYLE.card_text_scale)
 		var text_w: float = label.get_theme_font("font").get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, desired_font).x
 		var fitted: int = desired_font if text_w <= w else maxi(STYLE.card_min_text_font, int(floorf(desired_font * w / text_w)))
-		label.add_theme_font_size_override("font_size", fitted)
+		label.add_theme_font_size_override("font_size", PixelUI.text_px(fitted))
 	var y: float = pad + maxf(0.0, (inner.y - STYLE.card_name_height - STYLE.card_hp_number_height - STYLE.card_hp_bar_height - STYLE.card_status_height - STYLE.card_info_separation * 2.0) * 0.5)
 	place(_card._name_strip, Vector2(x, y), Vector2(w, STYLE.card_name_height))
 	y += STYLE.card_name_height

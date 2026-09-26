@@ -398,7 +398,8 @@ func _relayout(anchor_rect: Rect2) -> void:
 	if header_node != null:
 		top_limit = _header_band_height(header_node) + SCREEN_MARGIN
 
-	var width: float = clampf(viewport_size.x * PANEL_WIDTH_FRACTION, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH)
+	# Even whole design px: 1080 × 0.92 = 993.6 put every reveal on half screen px.
+	var width: float = PixelUI.even_px(clampf(viewport_size.x * PANEL_WIDTH_FRACTION, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH))
 	var max_height: float = viewport_size.y - top_limit - SCREEN_MARGIN
 	# Pin the width first so the inner content gets a width to wrap against, then measure
 	# the wrapped content height (a ScrollContainer's own min height is ~0, so we drive its
@@ -413,7 +414,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 	_scroll.custom_minimum_size = Vector2(0, scroll_height)
 	await get_tree().process_frame
 
-	var height: float = minf(_panel.get_combined_minimum_size().y, max_height)
+	var height: float = PixelUI.even_px(minf(_panel.get_combined_minimum_size().y, max_height))
 	_panel.custom_minimum_size = Vector2(width, height)
 	_panel.size = Vector2(width, height)
 
@@ -428,7 +429,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 		pos = Vector2(x, y)
 	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - width - SCREEN_MARGIN))
 	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
-	_panel.position = pos
+	_panel.position = Vector2(PixelUI.even_px(pos.x), PixelUI.even_px(pos.y))
 	_panel.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 

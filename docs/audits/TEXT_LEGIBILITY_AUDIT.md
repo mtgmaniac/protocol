@@ -3,6 +3,11 @@
 **Date:** 2026-09-26 · **Branch:** `audit/text-legibility` · **Scope:** audit only. No
 settings, fonts, themes, scenes or copy were changed. Kev decides what changes.
 
+**Status (2026-09-26):** Step 1 applied O1 (NEAREST text, central hook), O2 (48 px
+floor + `[48, 56, 64, 80]` ladder), the O3 popup/centering class and O7
+(`INSPECT_TEXT_DIM` → #71828f). See TRUTH "text legibility Step 1". The numbers below
+describe the pre-Step-1 state and are kept as the baseline.
+
 **Audited state:** committed `HEAD` (`eb319f4`). The main working tree has an
 **uncommitted** `project.godot` edit that changes `viewport_width/height` from
 1080×2400 to **640×960**. This audit does not use that edit, and every number below

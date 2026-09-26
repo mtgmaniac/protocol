@@ -415,7 +415,7 @@ func _normalize_result(result_data: Variant) -> Dictionary:
 
 func _apply_pixel_label(label: Label, font_size: int, color: Color, outline: int = 1) -> void:
 	PixelUI.apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_size_override("font_size", PixelUI.text_px(font_size))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)

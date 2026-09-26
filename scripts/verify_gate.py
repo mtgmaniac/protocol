@@ -189,6 +189,11 @@ GATES = [
     ("battle checkpoint", [sys.executable, str(ROOT / "scripts" / "checks" / "battle_checkpoint_gate.py")], "[BATTLE_CHECKPOINT] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
+    # Text legibility Step 1 (docs/audits/TEXT_LEGIBILITY_AUDIT.md): every live
+    # text node samples NEAREST and renders >= PixelUI.TEXT_MIN_PX; the ladder,
+    # the theme mirror, popup grid alignment and the INSPECT_TEXT_DIM contrast
+    # floor are asserted at the source.
+    ("text legibility", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/text_legibility_test.gd"], "[TEXT_LEGIBILITY] PASS", False),
     ("checkpoint lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/checkpoint_lifecycle_test.gd"], "[CHECKPOINT_LIFECYCLE] PASS", False),
 ]
 

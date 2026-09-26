@@ -724,7 +724,10 @@ static func _make_duration_superscript(duration: int, color: Color, profile: Dic
 	var ratio: float = float(profile.get("duration_ratio", 0.6))
 	var sup_size: int = maxi(28, int(round(float(value_font) * ratio)))
 	var outline: int = int(profile.get("duration_outline", 2))
-	return _make_text_label(str(duration), sup_size, color, outline, VERTICAL_ALIGNMENT_TOP)
+	# The ONE sanctioned exception to PixelUI.TEXT_MIN_PX: the duration
+	# superscript's smaller size is its meaning ("3" burn for "3" turns reads
+	# 3³, not 33). Flooring it to the value size would merge the two numbers.
+	return _make_text_label(str(duration), sup_size, color, outline, VERTICAL_ALIGNMENT_TOP, true)
 
 
 static func _make_text_label(
@@ -732,7 +735,8 @@ static func _make_text_label(
 	font_size: int,
 	color: Color,
 	outline: int = 1,
-	vertical: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
+	vertical: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER,
+	superscript: bool = false
 ) -> Label:
 	var label := Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -742,7 +746,9 @@ static func _make_text_label(
 	label.vertical_alignment = vertical
 	label.clip_text = false
 	PixelUI.apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_size_override("font_size", font_size if superscript else PixelUI.text_px(font_size))
+	if superscript:
+		label.set_meta("text_min_exempt", "duration_superscript")  # text_legibility_test honors this
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)

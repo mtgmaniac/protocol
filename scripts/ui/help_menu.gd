@@ -804,9 +804,9 @@ func _build_settings(host: VBoxContainer) -> void:
 				host.add_child(button)
 
 	# Version footer — PixelUI.version_label() (project.godot config/version is
-	# the single source; never hardcode the string). Nominal 24 → rendered 32,
-	# the smallest crisp m5x7 rung: the stamp is chrome, not player-read copy,
-	# sized below the ACCENT floor by ruling (Kev 2026-07-24).
+	# the single source; never hardcode the string). Nominal 24 renders at the
+	# PixelUI.TEXT_MIN_PX floor (48): the 2026-07-24 below-floor exemption for
+	# the stamp was superseded by the text legibility Step 1 floor (Kev 2026-09-26).
 	var version_label: Label = _make_label(
 		PixelUI.version_label(),
 		24, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 0)

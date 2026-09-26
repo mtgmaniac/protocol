@@ -378,7 +378,7 @@ func _go_home() -> void:
 
 func _style_label(label: Label, font_size: int, color: Color) -> void:
 	PixelUI.apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_size_override("font_size", PixelUI.text_px(font_size))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	label.add_theme_constant_override("outline_size", 2)

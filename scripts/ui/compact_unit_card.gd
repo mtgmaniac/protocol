@@ -131,16 +131,16 @@ func apply_battle_presentation(text_scale: float) -> void:
 	if is_equal_approx(_battle_text_scale, text_scale):
 		return
 	_battle_text_scale = text_scale
-	_name_label.add_theme_font_size_override("font_size", int(CARD_NAME_FONT_SIZE * text_scale))
-	_boss_label.add_theme_font_size_override("font_size", int(48 * text_scale))
+	_name_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(CARD_NAME_FONT_SIZE * text_scale)))
+	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
 	_boss_label.offset_top = -28.0 * text_scale
 	_boss_label.offset_bottom = -28.0 * text_scale
-	_hp_label.add_theme_font_size_override("font_size", int(CARD_HP_FONT_SIZE * text_scale))
+	_hp_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(CARD_HP_FONT_SIZE * text_scale)))
 	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
 	_hp_fill.offset_bottom = HP_FILL_HEIGHT * text_scale
 	_hp_chip.offset_bottom = HP_FILL_HEIGHT * text_scale
-	_cast_badge.add_theme_font_size_override("font_size", int(CAST_BADGE_FONT_SIZE * text_scale))
+	_cast_badge.add_theme_font_size_override("font_size", PixelUI.text_px(int(CAST_BADGE_FONT_SIZE * text_scale)))
 	_cast_badge.offset_right = CAST_BADGE_INSET + CAST_BADGE_SIZE * text_scale
 	_cast_badge.offset_bottom = CAST_BADGE_INSET + CAST_BADGE_SIZE * text_scale
 	_status_slot.offset_top = -8.0 - 68.0 * text_scale
@@ -844,7 +844,16 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 		# Keyword status now shown as its pip icon (cloak / mark / taunt / firewall).
 		chip.add_child(_make_status_icon_control(status, scale_step))
 	elif str(status.get("mode", "named")) == "numeric":
-		chip.add_child(_make_status_icon_control(status, scale_step))
+		# Text legibility Step 1: the value never renders below
+		# PixelUI.TEXT_MIN_PX. When the fitted step would take it there (wide
+		# multi-digit values on a constant plate), the value holds at the floor
+		# and the ICON gives up the width instead — layout yields, text doesn't.
+		var icon_step: float = scale_step
+		if plate_w > 0.0 and roundf(STATUS_VALUE_FONT_SIZE * scale_step) < PixelUI.TEXT_MIN_PX:
+			var value_w: float = PixelUI.get_pixel_font().get_string_size(_display_status_value(status), HORIZONTAL_ALIGNMENT_LEFT, -1, PixelUI.TEXT_MIN_PX).x
+			var icon_room: float = plate_w - 10.0 - 4.0 - 1.0 - maxf(value_w, roundf(STATUS_VALUE_MIN_WIDTH * scale_step))
+			icon_step = clampf(icon_room / STATUS_ICON_TEXTURE_SIZE, 0.0, scale_step)
+		chip.add_child(_make_status_icon_control(status, icon_step))
 		chip.add_child(_make_status_value_label(status, scale_step))
 	else:
 		chip.custom_minimum_size = Vector2(0, STATUS_CHIP_HEIGHT)
@@ -928,7 +937,7 @@ func _make_status_icon_label(status: Dictionary) -> Label:
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", int(STATUS_ICON_FONT_SIZE * _battle_text_scale))
+	label.add_theme_font_size_override("font_size", PixelUI.text_px(int(STATUS_ICON_FONT_SIZE * _battle_text_scale)))
 	label.add_theme_color_override("font_color", PixelUI.GOLD_ACCENT)
 	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
 	label.add_theme_constant_override("outline_size", 0)
@@ -1342,7 +1351,7 @@ func _set_descendants_mouse_filter(node: Node, filter: Control.MouseFilter) -> v
 
 func _apply_label(label: Label, font_size: int, color: Color, outline: int = 1) -> void:
 	PixelUI.apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", maxi(1, font_size))
+	label.add_theme_font_size_override("font_size", PixelUI.text_px(font_size))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT if outline <= 0 else Color(0.01, 0.015, 0.025, 0.98))
 	label.add_theme_constant_override("outline_size", outline)

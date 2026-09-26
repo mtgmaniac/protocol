@@ -31,6 +31,35 @@ const COLOR_ROLL := Color(0.96, 0.76, 0.24, 1.0)
 const FONT_INFO_MIN := 36
 const FONT_ACCENT_MIN := 28
 
+# ── Rendered text floor (text legibility Step 1, audit F3 / O2) ──
+# No pixel-font text RENDERS below 48 design px, whatever path built it: the
+# nominal floors above are pre-scale_font_size values, while this is the size
+# that actually reaches the font. 48 keeps one m5x7 pixel (native em 16) ≥ one
+# screen pixel down to a stretch scale of 1/3 — every desktop web case the audit
+# measured. scale_font_size floors here; raw-px factories (home picker, battle
+# card, pips, readouts, run end, unlock) route their size through text_px().
+# The ONE deliberate exception is the pip duration superscript (EffectPip) —
+# its smaller size IS its meaning. theme_overload.tres `default_font_size`
+# MIRRORS this value (unstyled Label.new() nodes); the regression gates the copy.
+# Regression: scripts/debug/text_legibility_test.gd.
+const TEXT_MIN_PX := 48
+
+
+static func text_px(font_size: int) -> int:
+	return maxi(font_size, TEXT_MIN_PX)
+
+
+## Snap a layout length or coordinate to a whole, EVEN design px (text
+## legibility Step 1, audit F5). The 540×1200 preview is exactly 0.5×, so an
+## even design px is a whole screen px — ratio-derived sizes (vw × 0.92 =
+## 993.6) and centering ((a − b) × 0.5) otherwise land on half screen px and
+## everything inside inherits the offset. Use for any text-bearing container
+## sized as a fraction of the screen or centered by arithmetic. (Engine
+## containers — CenterContainer, box alignment — floor to whole design px and
+## are not covered; NEAREST text sampling keeps those crisp.)
+static func even_px(value: float) -> float:
+	return roundf(value * 0.5) * 2.0
+
 # ── Long-form body copy (Polish Build A, Task 3) ──
 # Help/reference panels, ability descriptions, lore, and intel-popup prose use
 # a size one ladder step above FONT_INFO_MIN (42 design → 64 rendered via
@@ -134,7 +163,12 @@ static var INSPECT_BORDER := Color("2a3540")
 static var INSPECT_DIVIDER := Color("1b2226")
 static var INSPECT_TEXT := Color("dfe9ec")
 static var INSPECT_TEXT_MUTED := Color("8a99a6")
-static var INSPECT_TEXT_DIM := Color("57646e")
+# Tertiary text (hints, popup section heads, version stamp). Raised from
+# #57646e (2.97–3.28:1, text legibility Step 1 / audit F6) to clear 4.5:1 on
+# every panel surface in this palette — worst BG_PANEL_ALT 4.55, INSPECT_BG
+# 4.85, DT_FIELD_BG 5.03 — while staying a step below INSPECT_TEXT_MUTED.
+# web/shell.html mirrors it (web loader palette gate).
+static var INSPECT_TEXT_DIM := Color("71828f")
 # Single shared long-press hold duration (seconds), tuned for Android touch. Defined once
 # here so no surface re-declares it.
 const INSPECT_HOLD_SEC := 0.42
@@ -143,8 +177,12 @@ const DITHER_TILE := "res://assets/ui/dither_2x2.png"
 
 const UI_FONT_PATH := "res://assets/fonts/m5x7.ttf"
 const UI_FONT_SCALE := 1.35
-const UI_FONT_MIN_SIZE := 20
-const UI_FONT_STEPS := [20, 24, 28, 32, 36, 42, 48, 56, 64, 72]
+const UI_FONT_MIN_SIZE := TEXT_MIN_PX
+# Rendered-size ladder (text legibility Step 1): floor 48, rungs on the m5x7
+# native-16 lattice. 72 → 80 moved (fit everywhere). 56 stays off-lattice: 56 → 64
+# overflowed the single-line tutorial coach hint (1012 px vs the 952 px coach
+# width) — a layout decision for Kev, recorded in text_legibility_test.gd.
+const UI_FONT_STEPS := [48, 56, 64, 80]
 const FRAME_SIMPLE := "res://assets/ui/frame_simple.png"
 const FRAME_GLOW := "res://assets/ui/frame_glow.png"
 const FRAME_CORNER_DOTS := "res://assets/ui/frame_corner_dots.png"
@@ -296,6 +334,46 @@ static func get_pixel_font() -> Font:
 
 static func apply_pixel_font(control: Control) -> void:
 	control.add_theme_font_override("font", get_pixel_font())
+
+
+# ── Sharp text filtering (text legibility Step 1, audit F2) ──
+# The project default canvas filter stays LINEAR (downscaled portraits/art need
+# it), but LINEAR smears m5x7 glyphs into half-tones whenever they land off the
+# physical pixel grid — which is almost always below scale 1.0. Every node that
+# draws the pixel font samples it NEAREST instead. ONE owner, installed once by
+# the always-alive PersistentHeader: a sweep of the live tree plus a
+# SceneTree.node_added hook, so every text node — whichever factory built it,
+# including ones that never touch PixelUI — is covered the moment it enters the
+# tree. An explicit per-node filter is respected (only PARENT_NODE is set).
+# Regression: scripts/debug/text_legibility_test.gd.
+static var _text_filter_installed := false
+
+
+static func is_text_node(node: Node) -> bool:
+	return node is Label or node is RichTextLabel or node is LineEdit or node is TextEdit \
+		or node is Button or node is LinkButton or node is ItemList or node is Tree \
+		or node is TabBar or node is TabContainer or node is ProgressBar
+
+
+static func apply_text_filter(node: Node) -> void:
+	if is_text_node(node):
+		var item := node as CanvasItem
+		if item.texture_filter == CanvasItem.TEXTURE_FILTER_PARENT_NODE:
+			item.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+static func install_text_filter(tree: SceneTree) -> void:
+	if _text_filter_installed or tree == null:
+		return
+	_text_filter_installed = true
+	tree.node_added.connect(apply_text_filter)
+	_apply_text_filter_recursive(tree.root)
+
+
+static func _apply_text_filter_recursive(node: Node) -> void:
+	apply_text_filter(node)
+	for child in node.get_children():
+		_apply_text_filter_recursive(child)
 
 
 static func _load_texture(path: String) -> Texture2D:
@@ -1379,7 +1457,7 @@ const HP_NUMBER_OUTLINE_PX := 2
 
 static func style_hp_number(label: Label, font_size: int) -> void:
 	apply_pixel_font(label)
-	label.add_theme_font_size_override("font_size", maxi(1, font_size))
+	label.add_theme_font_size_override("font_size", text_px(font_size))
 	label.add_theme_color_override("font_color", HP_NUMBER_COLOR)
 	label.add_theme_color_override("font_outline_color", HP_NUMBER_OUTLINE)
 	label.add_theme_constant_override("outline_size", HP_NUMBER_OUTLINE_PX)

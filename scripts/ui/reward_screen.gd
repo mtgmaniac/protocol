@@ -324,7 +324,7 @@ func _get_card_width() -> float:
 	if available_width <= 1.0:
 		available_width = get_viewport().get_visible_rect().size.x
 	available_width = maxf(available_width - 24.0, 1.0)
-	return clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH)
+	return PixelUI.even_px(clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH))
 
 
 # Ordinary reward ROW (Build B): art LEFT at 128 integer scale, name + meta +
@@ -818,11 +818,11 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	var panel_width: float = clampf(
+	var panel_width: float = PixelUI.even_px(clampf(
 		get_viewport().get_visible_rect().size.x * GEAR_TARGET_WIDTH_FRACTION,
 		GEAR_TARGET_MIN_WIDTH,
 		GEAR_TARGET_MAX_WIDTH,
-	)
+	))
 	panel.custom_minimum_size = Vector2(panel_width, 0)
 	_style_card_panel(panel, _get_item_accent(item), false)
 	outer.add_child(panel)

@@ -340,7 +340,7 @@ func _place_coach(hole: Rect2, anchor: CoachAnchor, presentation: int) -> void:
 	# Whole design px (pixel-snap law); centered horizontally — full-width
 	# copy lands exactly on the old SCREEN_MARGIN position.
 	y = clampf(y, SCREEN_MARGIN + float(PixelUI.safe_top), maxf(SCREEN_MARGIN, s.y - ch - SCREEN_MARGIN - float(PixelUI.safe_bottom)))
-	_coach.position = Vector2(roundf((s.x - width) * 0.5), roundf(y))
+	_coach.position = Vector2(PixelUI.even_px((s.x - width) * 0.5), PixelUI.even_px(y))
 	_coach.size = Vector2(width, ch)
 
 

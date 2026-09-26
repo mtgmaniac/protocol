@@ -154,6 +154,17 @@ class: protocol pips laid out by an
 drawn without physical rounding, a container distributing ratio widths across pip rows,
 or a "1px" line whose measured width varies along the bar in a screenshot zoom.
 
+**Text corollary (text legibility Step 1, 2026-09-26):** below scale 1.0 Godot rounds
+glyph positions in DESIGN px, so almost every label lands off the physical grid; under
+the LINEAR default that smeared 27–98 % of glyph pixels into half-tones (audit F2).
+Pixel-font text therefore samples NEAREST (`PixelUI.install_text_filter` — never
+per-node), renders at ≥ `PixelUI.TEXT_MIN_PX` (48; below it one m5x7 pixel falls
+under one screen pixel on desktop web), and text containers derived from screen
+fractions or centering snap to even design px (`PixelUI.even_px`). **Violation
+looks like:** a text node with an explicit LINEAR filter, a raw
+`add_theme_font_size_override` below 48 that bypasses `text_px`, or a popup width
+like `viewport × 0.92` = 993.6.
+
 **Integer icon corollary (Polish Build B, 2026-07-14):** pixel-art item icons render
 ONLY at whole-integer multiples of their native size (`PixelUI.make_integer_icon`);
 low-res legacy art (≤48 native) renders at exactly 4x on a Reward-chrome emblem

@@ -1,5 +1,27 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-26 text legibility Step 1 (Kev):** basis
+[TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/
+scale mode, the 1080×2400 design size, the project-wide LINEAR default filter and
+the m5x7 font are unchanged. (1) **Text samples NEAREST, art stays LINEAR:**
+`PixelUI.install_text_filter` (installed once by PersistentHeader) sweeps the tree
+and hooks `SceneTree.node_added`, setting `TEXTURE_FILTER_NEAREST` on every
+text-drawing Control (`PixelUI.is_text_node`) whose filter is PARENT_NODE — every
+factory is covered automatically; an explicit per-node filter is respected.
+(2) **Rendered text floor `PixelUI.TEXT_MIN_PX` = 48**: `scale_font_size` floors
+there, the ladder is `UI_FONT_STEPS = [48, 56, 64, 80]` (72 → 80 moved onto the
+m5x7 native-16 lattice; 56 stays — at 64 the one-line tutorial coach hint
+overflows), raw-px factories route through `PixelUI.text_px()`, and
+`theme_overload.tres` `default_font_size` mirrors it. Sole exception: the EffectPip
+duration superscript (meta `text_min_exempt`) — its smaller size is its meaning.
+The version stamp's 2026-07-24 below-floor exemption is superseded.
+(3) **Grid:** text-bearing containers sized as a screen fraction or centered by
+arithmetic snap to whole EVEN design px (`PixelUI.even_px`; InspectPopup,
+LoadoutMenu, evolution/reward cards, gear-target panel, directive picker, coach,
+die tags, resume callout). (4) `INSPECT_TEXT_DIM` #57646e → **#71828f** (≥ 4.55:1 on
+every panel token; web loader mirrors it). Gate: `text legibility`
+(`scripts/debug/text_legibility_test.gd`). Web result NOT visually verified.
+
 **2026-09-25 landscape PARKED (Kev):** Stage A/B/B2 are merged with
 `LANDSCAPE_BATTLE_ENABLED := false` and tagged `landscape-parked`. Players always
 get the portrait battle; the `battle layout` gate keeps the parked path green. See

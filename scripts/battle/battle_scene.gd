@@ -1656,7 +1656,9 @@ func _estimate_tag_content_width(effects: Array, target: String, value_font: int
 func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	var tag_size: Vector2 = _die_tag_size()
 	var slot_w: float = round(_die_tag_diameter * _layout.presentation("tag_slot_width_ratio", DIE_TAG_SLOT_WIDTH_RATIO))
-	var base_font: int = int(round(tag_size.y * DIE_TAG_FONT_RATIO))
+	# Floored to the rendered text minimum so the fit estimates below measure
+	# the size that will actually draw (PixelUI.TEXT_MIN_PX).
+	var base_font: int = PixelUI.text_px(int(round(tag_size.y * DIE_TAG_FONT_RATIO)))
 	var value_font: int = base_font
 	var profile: Dictionary = _tag_pip_profile(value_font)
 	var rows: Array = [{"effects": effects, "target": target}]
@@ -1667,7 +1669,7 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 			rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
 		var needs_shrink: bool = rows.any(func(row): return _estimate_tag_content_width(row.effects, row.target, value_font, profile) > slot_w)
 		if needs_shrink:
-			value_font = int(round(base_font * DIE_TAG_SHRINK_STEP))
+			value_font = PixelUI.text_px(int(round(base_font * DIE_TAG_SHRINK_STEP)))
 			profile = _tag_pip_profile(value_font)
 			rows = [{"effects": effects, "target": target}]
 			if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w and effects.size() >= 2:
@@ -1724,7 +1726,7 @@ func _build_tag_content(side: String, effects: Array, target: String, value_font
 		target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		target_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		PixelUI.apply_pixel_font(target_label)
-		target_label.add_theme_font_size_override("font_size", value_font)
+		target_label.add_theme_font_size_override("font_size", PixelUI.text_px(value_font))
 		target_label.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
 		row.add_child(target_label)
 	return row
@@ -1749,7 +1751,7 @@ func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
 		y = die_bounds.end.y + DIE_TAG_GAP                 # flush below the die
 	else:
 		y = die_bounds.position.y - DIE_TAG_GAP - tag_size.y   # flush above the die
-	plate.global_position = Vector2(round(x), round(y))
+	plate.global_position = Vector2(PixelUI.even_px(x), PixelUI.even_px(y))
 
 
 # The screen rect of a unit's effect-pip readout (the AbilityReadout owned by its view),

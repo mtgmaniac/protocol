@@ -467,7 +467,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var height: float = minf(_panel.get_combined_minimum_size().y, viewport_size.y - top_limit - SCREEN_MARGIN)
+	var height: float = PixelUI.even_px(minf(_panel.get_combined_minimum_size().y, viewport_size.y - top_limit - SCREEN_MARGIN))
 	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, height)
 	_panel.size = Vector2(PANEL_WIDTH, height)
 
@@ -479,7 +479,7 @@ func _relayout(anchor_rect: Rect2) -> void:
 		pos = Vector2(anchor_rect.end.x - PANEL_WIDTH, anchor_rect.position.y - height - SCREEN_MARGIN)
 	pos.x = clampf(pos.x, SCREEN_MARGIN, maxf(SCREEN_MARGIN, viewport_size.x - PANEL_WIDTH - SCREEN_MARGIN))
 	pos.y = clampf(pos.y, top_limit, maxf(top_limit, viewport_size.y - height - SCREEN_MARGIN))
-	_panel.position = pos
+	_panel.position = Vector2(PixelUI.even_px(pos.x), PixelUI.even_px(pos.y))
 	_panel.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 
