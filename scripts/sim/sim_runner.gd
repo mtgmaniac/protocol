@@ -732,6 +732,11 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		var raw_hero_rolls: Dictionary = bs.hero_rolls.duplicate()
 		var raw_enemy_rolls: Dictionary = bs.enemy_rolls.duplicate()
 		var step: Dictionary = engine.resolve_step(bs)
+		if OS.get_environment("PROTOCOL_DICE_METRICS") == "1":
+			var metrics: Dictionary = load("res://scripts/sim/frozen_rider_metrics.gd").count(
+				(step["result"] as Dictionary).get("log", []), cm.get_hero_states())
+			metrics["type"] = "frozen_riders"
+			_tel.emit(metrics)
 		for uid in (step["eff_hero_rolls"] as Dictionary).keys():
 			gs.call("record_hero_effective_roll", str(uid), int((step["eff_hero_rolls"] as Dictionary)[uid]))
 		if int(step["protocol_grant"]) > 0:

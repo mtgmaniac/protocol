@@ -69,6 +69,17 @@ plus per type:
 ### `run_end` — last line
 `result` (victory/defeat/battles_limit/incomplete), `battles_cleared`.
 
+### Optional frozen-20 measurement
+
+With `PROTOCOL_DICE_METRICS=1`, each resolved round additionally emits a
+`frozen_riders` record before its ordinary `round` record. Its counters are
+`hero_repeats`, `enemy_repeats`, `capacitor_triggers`, `capacitor_protocol`,
+`echoes`, and `enemy_reinforcements`. They are read from the engine's resolved
+log: a repeat means the frozen 20 actually acted; reinforcement means a
+successful request, not every eligible chance. No RNG or game state is changed.
+The extra records advance envelope `t`; ordinary telemetry is byte-identical
+when the option is absent. `dice_balance_report.py` summarizes the opt-in batch.
+
 ## Determinism contract
 
 - No line may contain wall-clock time, absolute paths, or unseeded randomness.

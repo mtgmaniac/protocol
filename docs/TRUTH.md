@@ -1049,6 +1049,13 @@ to keep classification fixed; audit 234/0 before and after the bake).
 
 ## Sim baseline (current)
 
+**Dice measurement (2026-09-26):** `PROTOCOL_DICE_METRICS=1` enables optional
+resolved frozen-20 rider counters in sim telemetry. It observes the engine log
+without changing state or RNG; the default telemetry and pinned baseline are
+unchanged. `scripts/checks/dice_metrics_check.py` compares a seeded run with the
+option off/on; `scripts/sim/dice_balance_report.py` reports clear-rate intervals,
+the matching first 300 seeds, and frozen-20 rider frequency from a larger batch.
+
 **Baseline v2 — Cycle 0 re-baseline (2026-07-17, LOCKED; Synod attribution
 resolved Cycle 1).** Policy **l1**, **1000 runs per operation** (random squads,
 fixed op, matched seed sets across arms), post-Phase-0 harness fixes. Per-op
