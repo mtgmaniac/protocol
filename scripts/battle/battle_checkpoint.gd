@@ -28,6 +28,9 @@
 # dice SETTLE, the ready-to-roll state is re-saved with the landed raw values
 # {"hero": {id: raw}, "enemy": {id: raw}}; CONTINUE places the dice showing
 # them instead of rolling, so a refresh can never reroll dice the player saw.
+# A settled Reroll additionally captures current paid costs/consumed items and
+# optional pending_actions (Nudge/Set maps). That marker restores already-applied
+# roll effects without firing them twice. Target assignments may be chosen again.
 # Preloaded by path (const BattleCheckpoint := preload(...)) at every use, not a
 # class_name: headless gates and fresh clones parse before the editor rebuilds
 # the global class cache (the sim policies' gotcha).

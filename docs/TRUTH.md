@@ -1,5 +1,41 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-27 tutorial dice follow-up implemented and verified:** main
+now includes the Godot-reviewed dice work through d5c25e1 and, since
+2026-09-27, the follow-up branch `codex/tutorial-real-rolls`. Only battle 1 rounds 1–2 and battle 2 round 1
+stay scripted, via recorded real throws; later rounds and every Reroll
+use live physics. Outcome safety is measured below, with G-14 still in force.
+See DECISIONS_RESOLVED for the full approved scope.
+The approved free/scripted schedule is active and the post-landing
+tutorial dictionary override is deleted. Headless scripted inputs are selected
+before resolution; physical rolls always use the tray result. The three scripted
+rounds replay recorded real throws with their mesh oriented before launch.
+Four variants per slot preserve live trajectories and impact timing. The top
+face supplies the result, followed by the normal same-face upright snap.
+
+Outcome simulation measured 1,000 seeds per battle under each of two policies: zero losses
+and zero engine stalls in all four cases. Basic median/max victory rounds:
+battle 1 = 3/7; battle 2 = 4.5/7. L1: 3/5 and 4/7. Keep SCRAP's existing data
+and the retry prompt. See [measurement and limits](TUTORIAL_OUTCOMES_2026-09-27.md).
+
+YOUR PLAN shows its Burn reminder only while an enemy is alive with
+Burn stacks. The optional Reroll hint says there is enough Protocol, without
+claiming the player's pool is exactly 2. All other lesson copy is unchanged.
+
+Hero Reroll, Phase Scrambler and Cascade Jammer now physically rethrow
+each affected unfrozen die with the normal launch, settle and upright snap.
+Static modifier faces are printed before launch; the physical landing is
+committed afterward. Headless simulation keeps its seeded provider. After a
+reroll the checkpoint includes pending raws, current combat/run state, paid
+costs, consumed items and other dice's Nudge/Set state. Restore places those
+dice and skips already-applied roll-start effects. The dice-face gate and
+cross-process checkpoint gate cover this. Frozen dice remain unalterable.
+All hard gates, profile isolation, the pinned 300-run comparison, physics probe
+and both recorded-throw mutation checks pass. See
+[verification and visual-review limits](TUTORIAL_REAL_ROLLS_2026-09-27.md).
+The follow-up is merged into main; Kev's Godot visual review is still pending, and no web export or
+balance baseline re-pin was performed.
+
 **2026-09-26 text legibility Step 1 (Kev):** basis
 [TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/
 scale mode, the 1080×2400 design size, the project-wide LINEAR default filter and
@@ -161,8 +197,9 @@ labels remain static during motion. The upright snap keeps the same top face,
 flattens tilt under 90 degrees and permits up to 180 degrees of yaw. Deliberate
 changes tip over in 0.30 seconds; when the new value is absent from the print,
 the die reprints for its current state at tumble start. Set always restores
-plain 1–20 labels, even if the chosen number already shows. Tutorial dice
-tumble directly onto their scripted face. REWRITE uses a static tag.
+plain 1–20 labels, even if the chosen number already shows. The three guided
+tutorial rounds replay recorded real throws with preoriented meshes; all later
+rounds are free. Reroll physically rethrows one die. REWRITE uses a static tag.
 Between rounds, absent revealed rolls never trigger a change to a raw face.
 The `dice face` gate checks these rules plus frozen poses, pending hijack,
 refresh placement and engine alteration guards; the separate mutation runner
@@ -695,7 +732,7 @@ inspection remains available. Footer geometry stays compact and icon-only.
   Medic can shield Strike against the real 7-damage enemy attack. Round two
   rolls Strike 8 / Engineer 6 / Medic 3: Nudge changes Strike to 11 (10 damage),
   Engineer shields and Medic heals. The drone naturally retains 9 HP.
-- Round three is independent: Strike 8 / Engineer 12 / Medic 3. Order, friendly
+- Round three and all later rounds use free live rolls for both sides. Order, friendly
   targets and Protocol spending are unrestricted. No health floors, invulnerability,
   damage clamps, forced losses or outcome predicates. Later rounds remain playable.
 - Victory opens the real reward picker: Patch Kit, Scrap Plate or Calibration Chip.
@@ -703,8 +740,7 @@ inspection remains available. Footer geometry stays compact and icon-only.
   START YOUR RUN clears training and opens unit selection.
 - Optional practice: Strike / Pulse / Medic versus two real Scrap Drones. First
   rolls 3 / 4 / 3 teach Mark then Burn: Pulse's 6 damage becomes 9, with 2 Burn
-  for 1 turn resolving at the end of the following turn. Second rolls 8 / 4 / 3;
-  later rolls 11 / 10 / 3 support free play. Target and order choices remain legal.
+  for 1 turn resolving at the end of the following turn. Second and later rounds use free live rolls for both sides. Target and order choices remain legal.
   The inventory explanation highlights only the bottom-right inventory button.
   Once 2 Protocol and an unfrozen, unassigned die are available after rolling,
   a one-time Reroll tip appears; spending is optional. The ending introduces more

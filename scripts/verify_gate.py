@@ -98,6 +98,7 @@ GATES = [
     ("developer unlock", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dev_unlock_test.gd"], "[DEV_UNLOCK] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
+    ("tutorial recorded throws", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_throw_gate.gd"], "[TUTORIAL_THROWS] PASS", False),
     # Reachability, not logic: tutorial smoke drives the drill by calling scene
     # handlers directly, so it cannot see a scripted target the player could
     # never hit, nor a gated beat that never advances. This one synthesizes real

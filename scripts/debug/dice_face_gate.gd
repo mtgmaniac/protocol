@@ -415,12 +415,12 @@ func _part_b_and_c() -> void:
 	await _await_all_locked()
 	_expect_value("enemy", e[0], 19, "hijack follows a Set")
 	stub.queue = [4]
-	await _reroll(pa, h[1])                  # 19 -> 4
+	await _reroll(pa, h[1])                  # physical result
 	await _await_all_locked()
-	_expect_value("enemy", e[0], 15, "hijack follows a Reroll")
+	_expect_value("enemy", e[0], maxi(15, _scene._die_value("hero", h[1])), "hijack follows a Reroll")
 	await _use_item(pa, "momentum_core", heroes[2])  # +2 -> 17
 	await _await_all_locked()
-	_expect_value("enemy", e[0], 17, "hijack follows a roll-buff item")
+	_expect_value("enemy", e[0], maxi(17, _scene._die_value("hero", h[1])), "hijack follows a roll-buff item")
 	enemies[0]["hijack_pending"] = false
 	print("[DICE_FACE_GATE] part C1: live hijack")
 
@@ -562,7 +562,11 @@ func _reroll(pa: Object, hero_id: String) -> void:
 	var die: RigidBody3D = (_tray.get("_die_by_key") as Dictionary).get("hero:%s" % hero_id, null)
 	var iid: int = die.get_instance_id() if die != null else 0
 	_settled.erase(iid)
+	var launched: int = int(_tray.thrown_dice_total)
 	await pa.call("_apply_reroll", hero_id)
+	_check("a", int(_tray.thrown_dice_total) == launched + 1, "Reroll physically throws exactly one die")
+	var landed: RigidBody3D = _tray._get_die_for_entry("hero", hero_id)
+	_check("a", int(_scene.hero_rolls[hero_id]) == int(_tray._get_most_visible_face_value(landed)), "Reroll raw equals physical landed face")
 	if die != null and is_instance_valid(die):
 		_settled[iid] = _top(die).name
 

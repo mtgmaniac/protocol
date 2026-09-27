@@ -146,25 +146,16 @@ var enemy_units: Array = []
 # ── Tutorial rig (only used when GameState.tutorial_mode) ──────────────────────────
 # Training rigs inputs only. Core damage: 16, then 10, leaving independent play.
 const TUTORIAL_ENEMY_NAME := "Scrap Drone"
-const TUTORIAL_ENEMY_ROLL := 6
 const TUTORIAL_NUDGE_HERO := "combat"
-const TUTORIAL_HERO_ROLLS := [
-	{"combat": 9, "engineer": 12, "medic": 2},
-	{"combat": 8, "engineer": 6, "medic": 3},
-	{"combat": 8, "engineer": 12, "medic": 3},
-]
+const TutorialRollPlan := preload("res://scripts/battle/tutorial_roll_plan.gd")
 var _tutorial_turn: int = 0
 
 
-# The tray-rig map for the CURRENT tutorial turn ("side:state_id" -> raw
-# value), handed to dice_tray_3d BEFORE the physics roll so each die's settle
-# presentation rotates the RIGGED face up — no post-settle repaint, no
-# wrong-number flash. Does not advance the turn counter.
+# Pre-launch requests only. Empty on free rounds; never rewrites landed values.
 func _tutorial_rig_values() -> Dictionary:
-	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
-	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
-	if _game_state().current_battle == 2:
-		rig = {"combat": 3, "pulse": 4, "medic": 3} if turn_idx == 0 else ({"combat": 8, "pulse": 4, "medic": 3} if turn_idx == 1 else {"combat": 11, "pulse": 10, "medic": 3})
+	var rig: Dictionary = TutorialRollPlan.heroes(_game_state().current_battle, _tutorial_turn + 1)
+	if rig.is_empty():
+		return {}
 	var values: Dictionary = {}
 	for hero_state in combat_manager.get_hero_states():
 		var unit: Object = hero_state.get("unit") as Object
@@ -172,7 +163,7 @@ func _tutorial_rig_values() -> Dictionary:
 		if rig.has(unit_id):
 			values["hero:%s" % str(hero_state["id"])] = int(rig[unit_id])
 	for enemy_state in combat_manager.get_enemy_states():
-		values["enemy:%s" % str(enemy_state["id"])] = TUTORIAL_ENEMY_ROLL
+		values["enemy:%s" % str(enemy_state["id"])] = TutorialRollPlan.enemy_value(_game_state().current_battle, _tutorial_turn + 1)
 	return values
 
 
@@ -247,6 +238,7 @@ var _briefing_active: bool = false
 # True when this battle was rebuilt from an end-of-round checkpoint (CONTINUE
 # mid-battle): the entry briefing (deployment slate / boss alert) already showed.
 var _resumed_from_checkpoint: bool = false
+var _pending_actions_restore: Dictionary = {}
 
 var _is_resolving_turn: bool = false
 
@@ -458,6 +450,7 @@ func _restore_battle_checkpoint(saved: Dictionary) -> bool:
 	# G-24: dice that had already landed before the refresh come back exactly as
 	# they were — placed, not thrown.
 	var pending_roll: Dictionary = BattleCheckpoint.pending_roll_of(saved)
+	_pending_actions_restore = (saved.get("pending_actions", {}) as Dictionary).duplicate(true)
 	if not pending_roll.is_empty():
 		call_deferred("_replay_pending_roll", pending_roll)
 	# Brief, non-blocking "BATTLE RESUMED - ROUND X" once the board has laid out.
@@ -1128,6 +1121,8 @@ func _find_state_for_card(card: Control) -> Dictionary:
 
 
 func _on_roll_button_pressed() -> void:
+	if dice_tray_3d != null and bool(dice_tray_3d.get("_is_rolling")):
+		return
 	if _briefing_active:
 		return
 	if _review_mode:
@@ -1169,6 +1164,10 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
 	hero_roll_sets.clear()
+	var restoring_reroll: bool = not _pending_actions_restore.is_empty() and not placed_rolls.is_empty()
+	if restoring_reroll:
+		hero_roll_nudges.assign(_pending_actions_restore.get("nudges", {}))
+		hero_roll_sets.assign(_pending_actions_restore.get("sets", {}))
 	_clear_die_tooltip_overlays()
 	_card_view.hide_all_ability_readouts()
 	active_targeting_hero_id = ""
@@ -1186,7 +1185,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		await get_tree().process_frame
 		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
-		# Tutorial (G-26): scripted dice tumble straight onto their faces.
+		# Tutorial (G-26): guided rounds replay recorded real throws.
 		if _game_state().tutorial_mode:
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.value_provider = _die_value
@@ -1209,17 +1208,22 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		if not pre_roll_checkpoint.is_empty():
 			SaveManager.checkpoint_battle_round(BattleCheckpoint.with_pending_roll(pre_roll_checkpoint, hero_rolls, enemy_rolls))
 	else:
-		hero_rolls = _roll_for_states(combat_manager.get_hero_states())
-		enemy_rolls = _roll_for_states(combat_manager.get_enemy_states())
+		# No physical landing in the headless path: choose the source up front.
+		var requests: Dictionary = _tutorial_rig_values() if _game_state().tutorial_mode else {}
+		hero_rolls = _tutorial_headless_rolls(combat_manager.get_hero_states(), "hero", requests)
+		enemy_rolls = _tutorial_headless_rolls(combat_manager.get_enemy_states(), "enemy", requests)
 	_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
 	_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
 	if _game_state().tutorial_mode:
-		_apply_tutorial_dice_rig()
-	_apply_roll_relic_overrides()
+		_tutorial_turn += 1
+	if not restoring_reroll:
+		_apply_roll_relic_overrides()
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
 	# APPLIED AFTER LANDING: it reacts to the rolled result (a matching pair).
-	_apply_post_roll_gear_effects()
+	if not restoring_reroll:
+		_apply_post_roll_gear_effects()
+	_pending_actions_restore.clear()
 	if dice_tray_3d != null and not skip_dice_visuals:
 		# From here to resolution the dice follow game logic live.
 		dice_tray_3d.set_values_live(true)
@@ -1304,24 +1308,14 @@ func _sync_die_status_visuals() -> void:
 			})
 
 
-# Pin the roll DICTS to the scripted tutorial values and advance the turn
-# counter. In the windowed path the tray scripted the dice before the throw
-# (set_rigged_results -> a scripted tumble landing directly on the scripted
-# face, G-26), so this is a same-value no-op; headless (no tray) this IS the rig.
-func _apply_tutorial_dice_rig() -> void:
-	var turn_idx: int = clampi(_tutorial_turn, 0, TUTORIAL_HERO_ROLLS.size() - 1)
-	var rig: Dictionary = TUTORIAL_HERO_ROLLS[turn_idx]
-	if _game_state().current_battle == 2:
-		rig = {"combat": 3, "pulse": 4, "medic": 3} if turn_idx == 0 else ({"combat": 8, "pulse": 4, "medic": 3} if turn_idx == 1 else {"combat": 11, "pulse": 10, "medic": 3})
-	for hero_state in combat_manager.get_hero_states():
-		var unit: Object = hero_state.get("unit") as Object
-		var unit_id: String = str(unit.id) if unit != null else ""
-		if not rig.has(unit_id):
-			continue
-		hero_rolls[str(hero_state["id"])] = int(rig[unit_id])
-	for enemy_state in combat_manager.get_enemy_states():
-		enemy_rolls[str(enemy_state["id"])] = TUTORIAL_ENEMY_ROLL
-	_tutorial_turn += 1
+func _tutorial_headless_rolls(states: Array, side: String, requests: Dictionary) -> Dictionary:
+	if requests.is_empty():
+		return _roll_for_states(states)
+	var rolls: Dictionary = {}
+	for state in states:
+		var key: String = "%s:%s" % [side, str(state.id)]
+		rolls[str(state.id)] = int(requests[key]) if requests.has(key) else _roll_provider.roll_d20()
+	return rolls
 
 
 func _auto_assign_pending_targets(use_pauses: bool = true) -> void:
@@ -1450,6 +1444,8 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 			for natural in range(1, 21):
 				printed.append(_engine.pre_roll_face_value(state, side == "hero", natural, chorus_floor))
 			entry["face_values"] = printed
+			if not _pending_actions_restore.is_empty():
+				entry["face_values"] = _die_faces_now(side, str(state.id)).get("faces", printed)
 		entries.append(entry)
 	return entries
 

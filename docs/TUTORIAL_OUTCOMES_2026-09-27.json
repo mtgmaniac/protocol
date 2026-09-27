@@ -1,0 +1,58 @@
+{
+	"cases": [
+		{
+			"battle": 1,
+			"loss_pct": 0.0,
+			"loss_seeds": [],
+			"losses": 0,
+			"max_victory_rounds": 7,
+			"median_victory_rounds": 3.0,
+			"policy": "basic",
+			"soft_lock_seeds": [],
+			"soft_locks": 0,
+			"wins": 1000
+		},
+		{
+			"battle": 2,
+			"loss_pct": 0.0,
+			"loss_seeds": [],
+			"losses": 0,
+			"max_victory_rounds": 7,
+			"median_victory_rounds": 4.5,
+			"policy": "basic",
+			"soft_lock_seeds": [],
+			"soft_locks": 0,
+			"wins": 1000
+		},
+		{
+			"battle": 1,
+			"loss_pct": 0.0,
+			"loss_seeds": [],
+			"losses": 0,
+			"max_victory_rounds": 5,
+			"median_victory_rounds": 3.0,
+			"policy": "l1",
+			"soft_lock_seeds": [],
+			"soft_locks": 0,
+			"wins": 1000
+		},
+		{
+			"battle": 2,
+			"loss_pct": 0.0,
+			"loss_seeds": [],
+			"losses": 0,
+			"max_victory_rounds": 7,
+			"median_victory_rounds": 4.0,
+			"policy": "l1",
+			"soft_lock_seeds": [],
+			"soft_locks": 0,
+			"wins": 1000
+		}
+	],
+	"items": "held, unused",
+	"round_cap": 200,
+	"rounds_include_guided_opening": true,
+	"runs_per_case": 1000,
+	"seed_base": 27092026,
+	"validation_errors": []
+}

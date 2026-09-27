@@ -1,5 +1,6 @@
 class_name DiceTray3D
 extends Control
+signal recording_impact(key: String, speed: float)
 
 signal roll_finished
 
@@ -56,8 +57,6 @@ const MAX_ROLL_TIME := 6.0
 const RESULT_SNAP_DELAY := 0.20
 const RESULT_PRESENTATION_TIME := 0.42
 const RESULT_SCALE := 0.95
-const SELECTED_REROLL_TIME := 0.82
-const SELECTED_REROLL_LIFT := DIE_RADIUS * 0.70
 const RESULT_FACE_NORMAL := Vector3(0.0, 1.0, 0.0)
 const RESULT_FACE_TEXT_UP := Vector3(0.0, 0.0, -1.0)
 const RESULT_MIN_SEPARATION := DIE_RADIUS * 2.22
@@ -451,8 +450,8 @@ func _value_for_die(die: RigidBody3D) -> int:
 	return int(die.get_meta("raw_result", _get_most_visible_face_value(die)))
 
 
-# G-24: the natural each die LANDED on is its raw roll (the tutorial rig
-# replaces it, as before 1171eb8). battle_scene reads these after roll_finished
+# G-24: the natural each die LANDED on is its raw roll, including tutorials.
+# battle_scene reads these after roll_finished
 # and computes the effective values from them. Frozen dice report their
 # crusted value.
 func get_hero_rolls() -> Dictionary:
@@ -477,9 +476,9 @@ func _landed_rolls(side: String) -> Dictionary:
 
 
 # Scripted dice (G-26, one-shot per play_rolls): "side:unit_id" -> scripted raw
-# result, set BEFORE play_rolls. A scripted die is not thrown by physics: it
-# does a short scripted tumble that lands directly on the scripted face, flat
-# and upright — no turn after landing. The tutorial uses it; so do tests that
+# result, set BEFORE play_rolls. A scripted die replays a recorded live throw
+# with its mesh oriented before launch, followed by the normal same-face snap.
+# The tutorial uses it; so do tests that
 # need identical landings across processes.
 var _rigged_results: Dictionary = {}
 
@@ -601,7 +600,7 @@ func _tip_over(die: RigidBody3D, face_index: int) -> void:
 	var origin: Vector3 = origin_variant if origin_variant is Vector3 else die.global_transform.origin
 	origin.y = die.global_transform.origin.y
 	var from_q: Quaternion = die.global_transform.basis.orthonormalized().get_rotation_quaternion()
-	var to_basis: Basis = _get_face_forward_result_basis(face_index)
+	var to_basis: Basis = _get_face_forward_result_basis(face_index, die)
 	var to_q: Quaternion = to_basis.get_rotation_quaternion()
 	var from_origin: Vector3 = die.global_transform.origin
 	var elapsed: float = 0.0
@@ -672,61 +671,36 @@ func clear_die(side: String, unit_id: String) -> void:
 		die.queue_free()
 
 
-# Reroll keeps its own spin-and-arc; the new value is already in game logic
-# (BattleEngine.apply_reroll ran first) and is read from the one source.
-func reroll_die_to_result(side: String, unit_id: String) -> void:
-	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
-	if die == null:
-		return
-	var display: int = _value_for_die(die)
-	# Reprint first when the new value isn't printed (G-27), then the usual spin.
-	var face_index: int = _face_for_change(die, display)
-	if face_index < 0:
-		return
-	die.set_meta("busy", true)
-
-	var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
-	var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
-	target_origin.y = die.global_transform.origin.y
-	die.freeze = true
-	die.linear_velocity = Vector3.ZERO
-	die.angular_velocity = Vector3.ZERO
-	_set_die_collision_enabled(die, false)
-	_reset_face_labels(die)
-	_reset_face_highlights(die)
-
-	var from_transform: Transform3D = die.global_transform
-	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
-	var spin_axis: Vector3 = Vector3(randf_range(-0.4, 0.4), 1.0, randf_range(-0.4, 0.4)).normalized()
-	var elapsed: float = 0.0
-	while elapsed < SELECTED_REROLL_TIME:
-		var tree: SceneTree = get_tree()
-		if _is_exiting_tree or tree == null:
-			return
-		await tree.process_frame
-		if _is_exiting_tree or not is_inside_tree():
-			return
-		var delta: float = get_process_delta_time()
-		elapsed += delta
-		var t: float = clampf(elapsed / SELECTED_REROLL_TIME, 0.0, 1.0)
-		var weight: float = _ease_out_cubic(t)
-		var arc: float = sin(t * PI) * SELECTED_REROLL_LIFT
-		var origin: Vector3 = from_transform.origin.lerp(target_origin, weight) + Vector3.UP * arc
-		var spin_basis: Basis = from_transform.basis.rotated(spin_axis, TAU * 1.65 * (1.0 - t))
-		var basis: Basis = spin_basis.slerp(to_transform.basis, weight).orthonormalized()
-		if is_instance_valid(die):
-			die.global_transform = Transform3D(basis, origin)
-
-	if not is_instance_valid(die):
-		return
-	die.global_transform = to_transform
-	die.set_meta("face_up", int(_face_values[face_index]))
-	_set_die_result_scale(die, true)
-	die.set_meta("shown_value", display)
-	die.set_meta("assigned_result_origin", target_origin)
-	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
-	die.set_meta("busy", false)
-	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
+# G-24 reroll: launch one replacement body through the normal physics path.
+# The caller clears deliberate modifiers BEFORE this call and commits the
+# returned raw value only AFTER it settles. Other dice keep their exact poses.
+func reroll_die_to_result(side: String, unit_id: String) -> int:
+	var old: RigidBody3D = _get_die_for_entry(side, unit_id)
+	if old == null or _is_rolling or bool(old.get_meta("frozen", false)):
+		return 0
+	_is_rolling = true
+	var was_live: bool = _values_live
+	_values_live = false
+	var entry: Dictionary = (old.get_meta("entry", {}) as Dictionary).duplicate(true)
+	entry["frozen"] = false
+	if print_provider.is_valid():
+		entry["face_values"] = (print_provider.call(side, unit_id) as Dictionary).get("faces", [])
+	var origin: Vector3 = old.get_meta("assigned_result_origin", old.position)
+	old.free()
+	_throw_context = _make_throw_context(side)
+	var die: RigidBody3D = _spawn_die(entry, int(entry.get("slot_index", 0)), 1)
+	_print_faces(die, entry)
+	_launch_die(die)
+	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	if dice_audio != null:
+		dice_audio.on_roll_started(1)
+	await _wait_for_dice_to_settle([die], {die.get_instance_id(): origin})
+	if not is_instance_valid(die) or _is_exiting_tree:
+		return 0
+	var raw: int = int(die.get_meta("raw_result", 0))
+	await _finish_roll([die])
+	_values_live = was_live
+	return raw
 
 
 # CONTINUE with a pending roll (G-24): the dice appear at rest showing the
@@ -761,7 +735,7 @@ func place_rolls(hero_entries: Array, enemy_entries: Array, raws: Dictionary) ->
 			die.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 			_set_die_collision_enabled(die, false)
 			var face_index: int = _get_face_index_for_result(raw)
-			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), Vector3(die.position.x, DIE_RADIUS * 0.76, die.position.z))
+			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index, die), Vector3(die.position.x, DIE_RADIUS * 0.76, die.position.z))
 			die.set_meta("raw_result", raw)
 			die.set_meta("face_up", raw)
 			var printed_up: Label3D = _die_part(die, "FaceNumber%d" % raw) as Label3D
@@ -840,7 +814,7 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 			_print_faces(die, entry)
 			die.freeze = true
 			_set_die_collision_enabled(die, false)
-			die.set_meta("raw_result", clampi(int(_rigged_results[rig_key]), 1, 20))
+			die.set_meta("scripted_request", clampi(int(_rigged_results[rig_key]), 1, 20))
 			scripted_dice.append(die)
 		else:
 			die = _spawn_die(entry, side_slot, all_entries.size())
@@ -849,18 +823,19 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 			rolling_dice.append(die)
 		dice.append(die)
 
-	if not rolling_dice.is_empty():
+	if not dice.is_empty():
 		var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
 		if dice_audio != null:
-			dice_audio.on_roll_started(rolling_dice.size())
+			dice_audio.on_roll_started(dice.size())
 
 	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
 	_assign_frozen_die_origins(dice, target_origins)
+	var recording_variant: int = randi_range(0, RecordedThrows.VARIANTS - 1)
 	for scripted_variant in scripted_dice:
 		var scripted: RigidBody3D = scripted_variant as RigidBody3D
-		_scripted_tumble(scripted, target_origins.get(scripted.get_instance_id(), scripted.global_transform.origin))
+		_play_recorded_throw(scripted, target_origins.get(scripted.get_instance_id(), scripted.global_transform.origin), enemy_entries.size(), recording_variant)
 	await _wait_for_dice_to_settle(rolling_dice, target_origins)
-	# Scripted tumbles end within SCRIPTED_TUMBLE_TIME of the throw.
+	# Recorded throws run for their measured live duration.
 	for scripted_variant in scripted_dice:
 		var scripted: RigidBody3D = scripted_variant as RigidBody3D
 		while is_instance_valid(scripted) and bool(scripted.get_meta("busy", false)):
@@ -931,7 +906,7 @@ func _start_upright_snap(die: RigidBody3D, face_index: int, target_origin: Vecto
 	if _is_exiting_tree or not is_inside_tree() or face_index < 0:
 		return
 	var from_transform: Transform3D = die.global_transform
-	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
+	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index, die), target_origin)
 	var tween: Tween = create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
@@ -1095,7 +1070,7 @@ func _get_face_index_for_result(result: int) -> int:
 	return -1
 
 
-func _get_face_forward_result_basis(face_index: int) -> Basis:
+func _get_face_forward_result_basis(face_index: int, die: Node3D = null) -> Basis:
 	var local_face_basis: Basis = _face_text_bases[face_index] if face_index < _face_text_bases.size() else _basis_for_face_surface(_face_normals[face_index])
 	var target_normal: Vector3 = RESULT_FACE_NORMAL.normalized()
 	var target_text_up: Vector3 = RESULT_FACE_TEXT_UP - target_normal * RESULT_FACE_TEXT_UP.dot(target_normal)
@@ -1104,7 +1079,10 @@ func _get_face_forward_result_basis(face_index: int) -> Basis:
 	target_text_up = target_text_up.normalized()
 	var target_text_right: Vector3 = target_text_up.cross(target_normal).normalized()
 	var target_face_basis: Basis = Basis(target_text_right, target_text_up, target_normal).orthonormalized()
-	return (target_face_basis * local_face_basis.inverse()).orthonormalized()
+	var aligned: Basis = (target_face_basis * local_face_basis.inverse()).orthonormalized()
+	if die != null:
+		aligned = aligned * (die.get_node("Visuals") as Node3D).basis.orthonormalized().inverse()
+	return aligned
 
 
 # `result` is the value the die shows (drives the 20 styling); the panel lit is
@@ -1664,45 +1642,51 @@ func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 	return null
 
 
-const SCRIPTED_TUMBLE_TIME := 0.9
+const RecordedThrows := preload("res://scripts/battle/recorded_throw_library.gd")
 
 
-# G-26: a scripted die tumbles from the throw position to its slot and lands
-# directly on its scripted face, flat and upright — the tumble's last frame IS
-# the rest pose, so nothing turns after landing. Labels are static throughout.
-func _scripted_tumble(die: RigidBody3D, target_origin: Vector3) -> void:
+# G-26: replay immutable real physics transforms. Rotate all die cosmetics
+# before frame zero so the requested numbered face occupies the recorded top.
+# A group shares its variant, preserving recorded inter-die collision paths.
+func _play_recorded_throw(die: RigidBody3D, target_origin: Vector3, enemy_count: int, variant: int) -> void:
 	die.set_meta("busy", true)
-	var raw: int = int(die.get_meta("raw_result", 1))
-	var face_index: int = _get_face_index_for_result(raw)
-	var rest_origin: Vector3 = Vector3(target_origin.x, DIE_RADIUS * 0.76, target_origin.z)
-	var to_basis: Basis = _get_face_forward_result_basis(face_index)
-	var to_q: Quaternion = to_basis.get_rotation_quaternion()
-	var from_origin: Vector3 = die.global_transform.origin
-	var from_q: Quaternion = die.global_transform.basis.orthonormalized().get_rotation_quaternion()
-	var spin_axis: Vector3 = Vector3(randf_range(-1.0, 1.0), randf_range(0.2, 1.0), randf_range(-1.0, 1.0)).normalized()
-	var elapsed: float = 0.0
-	while elapsed < SCRIPTED_TUMBLE_TIME:
-		var tree: SceneTree = get_tree()
-		if _is_exiting_tree or tree == null:
-			return
-		await tree.process_frame
-		if _is_exiting_tree or not is_inside_tree() or not is_instance_valid(die):
-			return
-		elapsed += get_process_delta_time()
-		var t: float = clampf(elapsed / SCRIPTED_TUMBLE_TIME, 0.0, 1.0)
-		var w: float = _ease_out_cubic(t)
-		# Two decaying hops across the tray, then rest.
-		var hop: float = absf(sin(t * PI * 2.0)) * (1.0 - t) * DIE_RADIUS * 1.6
-		var spun: Quaternion = from_q * Quaternion(spin_axis, TAU * 2.0 * (1.0 - w))
-		die.global_transform = Transform3D(Basis(spun.slerp(to_q, w)), from_origin.lerp(rest_origin, w) + Vector3.UP * hop)
-	if not is_instance_valid(die):
+	var entry: Dictionary = die.get_meta("entry", {})
+	var track: Dictionary = RecordedThrows.get_track(enemy_count, variant, str(entry.side), int(entry.slot_index))
+	if track.is_empty():
+		die.set_meta("busy", false)
 		return
-	die.global_transform = Transform3D(to_basis, rest_origin)
-	die.set_meta("face_up", raw)
-	var printed: Label3D = _die_part(die, "FaceNumber%d" % raw) as Label3D
-	die.set_meta("shown_value", int(printed.text) if printed != null and printed.text.is_valid_int() else raw)
-	die.set_meta("assigned_result_origin", rest_origin)
+	var requested: int = int(die.get_meta("scripted_request", 1))
+	var recorded_index: int = _get_face_index_for_result(int(track.landed_raw))
+	var requested_index: int = _get_face_index_for_result(requested)
+	var visuals: Node3D = die.get_node("Visuals")
+	visuals.basis = _get_face_forward_result_basis(recorded_index).inverse() * _get_face_forward_result_basis(requested_index)
+	var frames: Array = track.frames
+	var impacts: Array = track.get("impacts", [])
+	var impact_index: int = 0
+	var hz: float = float(track.physics_hz)
+	var elapsed: float = 0.0
+	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	die.set_meta("recorded_track", track)
+	die.global_transform = RecordedThrows.frame_transform(frames[0])
+	while elapsed < float(track.seconds):
+		await get_tree().physics_frame
+		if not is_instance_valid(die) or _is_exiting_tree:
+			return
+		elapsed = minf(elapsed + get_physics_process_delta_time(), float(track.seconds))
+		var position_in_track: float = elapsed * hz
+		var index: int = mini(int(position_in_track), frames.size() - 1)
+		var next: int = mini(index + 1, frames.size() - 1)
+		die.global_transform = RecordedThrows.frame_transform(frames[index]).interpolate_with(RecordedThrows.frame_transform(frames[next]), position_in_track - index)
+		while impact_index < impacts.size() and float(impacts[impact_index][0]) <= position_in_track:
+			if dice_audio != null:
+				dice_audio.on_die_impact(die.get_instance_id(), float(impacts[impact_index][1]))
+			impact_index += 1
+	die.global_transform = RecordedThrows.frame_transform(frames.back())
+	if dice_audio != null:
+		dice_audio.on_die_settled(die.get_instance_id())
+	# The value comes from the oriented physical top, never from the request.
 	die.set_meta("busy", false)
+	_resolve_landed_die_face(die, target_origin)
 
 
 # Dice actually thrown by this tray (test surface: a restored pending roll must
@@ -1738,6 +1722,8 @@ func _launch_die(die: RigidBody3D) -> void:
 func _on_die_contact(_other: Node, die: RigidBody3D) -> void:
 	if die == null or not is_instance_valid(die) or die.freeze:
 		return
+	var entry: Dictionary = die.get_meta("entry", {})
+	recording_impact.emit(_entry_key(str(entry.get("side", "")), str(entry.get("id", ""))), die.linear_velocity.length())
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
 	if dice_audio != null:
 		dice_audio.on_die_impact(die.get_instance_id(), die.linear_velocity.length())
@@ -1770,7 +1756,7 @@ func _prepare_frozen_die(entry: Dictionary, index: int, total_count: int) -> Rig
 		# Never seen before (e.g. a restored checkpoint): placed, not rolled.
 		var face_index: int = _get_face_index_for_result(display)
 		if face_index >= 0:
-			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index), die.global_transform.origin)
+			die.global_transform = Transform3D(_get_face_forward_result_basis(face_index, die), die.global_transform.origin)
 		die.set_meta("face_up", display)
 		die.set_meta("shown_value", display)
 		_set_die_result_scale(die, false)
@@ -1880,7 +1866,7 @@ func _get_most_visible_face_value(die: RigidBody3D) -> int:
 	var best_dot: float = -999.0
 	var best_value: int = 1
 	for i in range(_face_normals.size()):
-		var world_normal: Vector3 = die.global_transform.basis * _face_normals[i]
+		var world_normal: Vector3 = (die.get_node("Visuals") as Node3D).global_basis * _face_normals[i]
 		var dot: float = world_normal.normalized().dot(view_normal)
 		if dot > best_dot:
 			best_dot = dot

@@ -227,11 +227,11 @@ func _hero_state_by_id(hero_id: String) -> Dictionary:
 
 
 # Returns the new raw roll, or 0 (nothing spent) when the die is frozen.
-func apply_reroll(bs: BattleState, hero_id: String) -> int:
+func apply_reroll(bs: BattleState, hero_id: String, landed_raw: int = 0) -> int:
 	if not can_alter_die(_hero_state_by_id(hero_id)):
 		return 0
 	bs.protocol_points -= 2
-	var new_roll: int = roll_provider.roll_d20()
+	var new_roll: int = landed_raw if landed_raw > 0 else roll_provider.roll_d20()
 	bs.hero_rolls[hero_id] = new_roll
 	bs.hero_roll_nudges.erase(hero_id)
 	bs.hero_roll_sets.erase(hero_id)
@@ -320,12 +320,12 @@ func item_cloak_all() -> void:
 
 # Rerolls an enemy die via the provider; returns the new roll. A frozen die
 # is crusted static — its face is locked, so the reroll fizzles (returns 0).
-func item_enemy_reroll(bs: BattleState, target_state: Dictionary) -> int:
+func item_enemy_reroll(bs: BattleState, target_state: Dictionary, landed_raw: int = 0) -> int:
 	if target_state.is_empty():
 		return 0
-	if int(target_state.get("die_freeze_turns", 0)) > 0:
+	if not can_alter_die(target_state):
 		return 0
-	var new_roll: int = roll_provider.roll_d20()
+	var new_roll: int = landed_raw if landed_raw > 0 else roll_provider.roll_d20()
 	bs.enemy_rolls[str(target_state["id"])] = new_roll
 	return new_roll
 
@@ -334,7 +334,7 @@ func item_enemy_reroll_all(bs: BattleState) -> void:
 	for enemy_state in combat_manager.get_enemy_states():
 		if bool(enemy_state.get("dead", true)):
 			continue
-		if int(enemy_state.get("die_freeze_turns", 0)) > 0:
+		if not can_alter_die(enemy_state):
 			continue
 		bs.enemy_rolls[str(enemy_state["id"])] = roll_provider.roll_d20()
 
