@@ -489,39 +489,23 @@ const HERO_PORTRAIT_REGION := Vector2(328.0, 380.0)
 # HERO_PORTRAIT_ZOOM: uniform extra scale applied inside cover_fit_portrait to
 # HERO art only (>1.0 = tighter). Enemies are the framing reference and are
 # NEVER zoomed. 1.2 picked by Kev 2026-07-12 against the RUST reference card.
-# HERO_PORTRAIT_ANCHOR_Y (+ per-portrait HERO_PORTRAIT_ANCHOR_Y_OVERRIDES):
-# vertical bias as a FRACTION of the frame height — positive shifts the art UP
-# in the frame (0.03 ≈ 11 px in the 380-tall region), negative down; scales
-# with the frame like PORTRAIT_TOP_PAD. Overrides add on top of the global.
-# The breaker family's source art draws the body lower in the canvas to fit
-# tall antennas/crown — the per-unit anchors re-seat their helmet DOMES at the
-# roster height (derived from the hand-declared portrait_anchors.json head_top
-# values, NOT from pixels). Antenna/crown crop-off is ruled acceptable
-# (TRUTH.md): the head is what must frame consistently, never the headgear.
-# HERO_PORTRAIT_ZOOM_OVERRIDES: per-portrait multiplier on top of the global
-# zoom, keyed by portrait key ("combat", "medic_synth", …). The global zoom does
-# the work; add an entry only for a genuine outlier, never as a substitute for
-# fixing the global value.
+# HERO_PORTRAIT_ANCHOR_Y: vertical bias as a FRACTION of the frame height —
+# positive shifts the art UP in the frame (0.03 ≈ 11 px in the 380-tall
+# region); scales with the frame like PORTRAIT_TOP_PAD.
+# Per-asset offsets are DATA, not code: the pre-anchor per-portrait hooks
+# (pulse_pyro's 0.94 zoom, the breaker family's anchor-Y 0.105/0.166/0.237,
+# Scrap/Rust Drone's 5 px seat) live in assets/portraits/portrait_anchors.json
+# as legacy_zoom / legacy_anchor_y / legacy_down_px, next to the hand-declared
+# head anchors they were derived from. Antenna/crown crop-off is ruled
+# acceptable (TRUTH.md): the head is what must frame consistently.
 const HERO_PORTRAIT_ZOOM := 1.2
 const HERO_PORTRAIT_ANCHOR_Y := 0.0
-const HERO_PORTRAIT_ZOOM_OVERRIDES := {
-	# pulse_pyro is the roster's one framing outlier: its source art draws the
-	# head 255 px tall (portrait_anchors.json head_top 45 → chin 300) against
-	# that file's declared _target_head_height of 240, and against 245 for its
-	# own sibling branch pulse_arc. Same frame, same cover fit — so Pyro alone
-	# reads noticeably tighter than every other portrait. 240/255 = 0.94 puts it
-	# back on the declared roster height. Derived from the HAND-DECLARED anchor
-	# numbers, never measured from pixels (INVARIANTS: automated head detection
-	# is what caused the 2026-07-12 framing failure). Display-time only — the
-	# PNG stays pristine; re-running scripts/assets/portrait_frame_crop.py is
-	# the permanent fix if the art is ever re-exported.
-	"pulse_pyro": 0.94,
-}
-const HERO_PORTRAIT_ANCHOR_Y_OVERRIDES := {
-	"breaker": 0.105,
-	"breaker_noise": 0.166,
-	"breaker_nullwire": 0.237,
-}
+# Every hero portrait sits this many final-display px LOWER than the shared
+# cover fit (UI consistency 2026-09-20/21: the old eight-pixel upward bias
+# exposed Engineer's source mat below its torso). It was two copies — the
+# battle card and the Squad Selector each added it locally — and is now one
+# class rule applied on every screen (framing editor task, 2026-09-27).
+const HERO_PORTRAIT_SEAT_DOWN_PX := 6.0
 
 
 # Cover-fit a portrait TextureRect inside its crop frame. Composition-aware:
@@ -552,6 +536,7 @@ const SHOW_BETA_UNIT_BADGES := false
 static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> void:
 	if tex_rect == null:
 		return
+	tex_rect.set_meta("framing_helper", "portrait")
 	var fw: float = frame_size.x
 	var fh: float = frame_size.y
 	if fw < 2.0 or fh < 2.0:
@@ -567,15 +552,24 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		tex_rect.position = Vector2.ZERO
 		tex_rect.size = frame_size
 		return
+	var entry: Dictionary = framing_entry_for(tex)
+	if bool(entry.get("use_anchors", false)) and entry.has("head_top") and entry.has("chin"):
+		_anchor_fit_portrait(tex_rect, tex, entry, fw, fh)
+		return
 	var cover_scale: float = maxf(fw / tw, fh / th)
-	# HERO art only: uniform display zoom (+ optional per-portrait override) and
-	# vertical anchor bias (fraction of frame height, + per-portrait override).
-	# Enemies stay untagged → zoom 1.0, anchor 0.
+	# HERO art: uniform display zoom and vertical anchor bias (fraction of frame
+	# height). Enemies: zoom 1.0, anchor 0. Per-asset legacy_* offsets come from
+	# the framing data (portrait_anchors.json), never from screen code.
 	var anchor_shift: float = 0.0
-	if bool(tex.get_meta("hero_portrait", false)):
-		var key: String = str(tex.get_meta("portrait_key", ""))
-		cover_scale *= HERO_PORTRAIT_ZOOM * float(HERO_PORTRAIT_ZOOM_OVERRIDES.get(key, 1.0))
-		anchor_shift = (HERO_PORTRAIT_ANCHOR_Y + float(HERO_PORTRAIT_ANCHOR_Y_OVERRIDES.get(key, 0.0))) * fh
+	var is_hero: bool = bool(tex.get_meta("hero_portrait", false))
+	if is_hero:
+		cover_scale *= HERO_PORTRAIT_ZOOM * float(entry.get("legacy_zoom", 1.0))
+		anchor_shift = (HERO_PORTRAIT_ANCHOR_Y + float(entry.get("legacy_anchor_y", 0.0))) * fh
+	else:
+		if entry.has("legacy_zoom"):
+			cover_scale *= float(entry["legacy_zoom"])
+		if entry.has("legacy_anchor_y"):
+			anchor_shift = float(entry["legacy_anchor_y"]) * fh
 	var nw: float = tw * cover_scale
 	var nh: float = th * cover_scale
 	var full_bleed: bool = bool(tex.get_meta("full_bleed", false))
@@ -596,6 +590,218 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		top_y -= PORTRAIT_CONTENT_UP_PHYSICAL_PX
 	tex_rect.position = Vector2((fw - nw) * 0.5, top_y)
 	tex_rect.size = Vector2(nw, nh)
+	# Seat-down offsets in final-display px, applied AFTER placement — the exact
+	# arithmetic the battle card and Squad Selector used when each carried these
+	# locally, so their captures stay pixel-identical.
+	var down_px: float = HERO_PORTRAIT_SEAT_DOWN_PX if is_hero else 0.0
+	down_px += float(entry.get("legacy_down_px", 0.0))
+	if down_px != 0.0 and physical_scale_y > 0.0:
+		tex_rect.position.y += down_px / physical_scale_y
+
+
+# Anchor framing (use_anchors): pure arithmetic from Kev's hand-declared
+# head_top / chin / center_x. The head is scaled to _targets[section]
+# .head_height of the frame height, its top seated at .head_top of the frame
+# height, its centre on the frame's horizontal centre. Everything is a
+# fraction of the frame, so a 96 px help thumb frames exactly like the 380 px
+# battle card. No pads, zooms or pixel nudges: the anchors ARE the framing.
+static func _anchor_fit_portrait(tex_rect: TextureRect, tex: Texture2D, entry: Dictionary, fw: float, fh: float) -> void:
+	var target: Dictionary = framing_target(str(tex.get_meta("framing_section", "")))
+	var region: Rect2 = framing_region(tex)
+	var source_size: Vector2 = tex.get_meta("framing_source_size", region.size)
+	var head_top: float = float(entry["head_top"])
+	var chin: float = float(entry["chin"])
+	var cx: float = float(entry.get("center_x", source_size.x * 0.5))
+	if bool(tex.get_meta("framing_mirrored", false)):
+		cx = source_size.x - cx
+	var s: float = float(target.get("head_height", 0.42)) * fh / maxf(chin - head_top, 1.0)
+	tex_rect.size = Vector2(float(tex.get_width()), float(tex.get_height())) * s
+	tex_rect.position = Vector2(
+		fw * 0.5 - (cx - region.position.x) * s,
+		float(target.get("head_top", 0.12)) * fh - (head_top - region.position.y) * s)
+
+
+# ── Framing data: ONE entry per asset, used on every screen ────────────────
+# assets/portraits/portrait_anchors.json (schema 2; fields in its _doc block
+# and docs/TRUTH.md). DataManager tags every portrait / item / relic texture
+# with its section + key when it loads the art; the two helpers
+# (cover_fit_portrait, fit_item_art) look the entry up from those tags. No
+# entry → the asset renders exactly as it did before framing data existed.
+const FRAMING_DATA_PATH := "res://assets/portraits/portrait_anchors.json"
+const FRAMING_PORTRAIT_SECTIONS: Array[String] = ["heroes", "enemies", "bosses"]
+const FRAMING_ART_SECTIONS: Array[String] = ["items", "relics"]
+static var _framing: Dictionary = {}
+static var _framing_loaded := false
+
+
+static func framing_data() -> Dictionary:
+	if not _framing_loaded:
+		_framing_loaded = true
+		_framing = {}
+		if FileAccess.file_exists(FRAMING_DATA_PATH):
+			var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(FRAMING_DATA_PATH))
+			if parsed is Dictionary:
+				_framing = parsed
+	return _framing
+
+
+# Dev framing editor only: swap in the live (unsaved) data it is editing.
+static func set_framing_data(data: Dictionary) -> void:
+	_framing = data
+	_framing_loaded = true
+
+
+static func framing_entry(section: String, key: String) -> Dictionary:
+	var sec: Variant = framing_data().get(section, {})
+	if sec is Dictionary:
+		var entry: Variant = (sec as Dictionary).get(key, {})
+		if entry is Dictionary:
+			return entry
+	return {}
+
+
+static func framing_entry_for(tex: Texture2D) -> Dictionary:
+	if tex == null or not tex.has_meta("framing_section"):
+		return {}
+	return framing_entry(str(tex.get_meta("framing_section")), str(tex.get_meta("framing_key", "")))
+
+
+static func framing_target(section: String) -> Dictionary:
+	var targets: Variant = framing_data().get("_targets", {})
+	if targets is Dictionary:
+		var t: Variant = (targets as Dictionary).get(section, {})
+		if t is Dictionary:
+			return t
+	return {}
+
+
+# The source-pixel rect left after the entry's per-edge crop insets, in the
+# DISPLAY orientation (a mirrored enemy's on-disk left inset trims its right).
+static func framing_inset_rect(entry: Dictionary, source_size: Vector2i, mirrored: bool = false) -> Rect2i:
+	var insets: Dictionary = {}
+	if entry.get("insets", {}) is Dictionary:
+		insets = entry.get("insets", {})
+	var left: int = maxi(int(insets.get("left", 0)), 0)
+	var right: int = maxi(int(insets.get("right", 0)), 0)
+	if mirrored:
+		var swap: int = left
+		left = right
+		right = swap
+	var top: int = maxi(int(insets.get("top", 0)), 0)
+	var bottom: int = maxi(int(insets.get("bottom", 0)), 0)
+	return Rect2i(left, top, maxi(source_size.x - left - right, 1), maxi(source_size.y - top - bottom, 1))
+
+
+static func framing_has_insets(entry: Dictionary) -> bool:
+	var probe := Vector2i(4096, 4096)
+	var r: Rect2i = framing_inset_rect(entry, probe)
+	return r.position != Vector2i.ZERO or r.size != probe
+
+
+static func tag_framing(tex: Texture2D, section: String, key: String, source_size: Vector2i, mirrored: bool = false) -> void:
+	if tex == null:
+		return
+	tex.set_meta("framing_section", section)
+	tex.set_meta("framing_key", key)
+	tex.set_meta("framing_source_size", Vector2(source_size))
+	tex.set_meta("framing_mirrored", mirrored)
+
+
+# Region of the display-orientation source image this texture draws.
+static func framing_region(tex: Texture2D) -> Rect2:
+	if tex is AtlasTexture and (tex as AtlasTexture).atlas != null:
+		return (tex as AtlasTexture).region
+	return Rect2(0.0, 0.0, float(tex.get_width()), float(tex.get_height()))
+
+
+# Item / relic art for one id. No framing entry → the shared imported texture,
+# untouched (identical to the pre-framing build). With an entry → a per-id
+# AtlasTexture (two ids share one PNG, so the tag cannot live on the shared
+# resource) whose region drops the crop insets.
+static func framed_art_texture(base: Texture2D, section: String, key: String) -> Texture2D:
+	if base == null:
+		return null
+	var entry: Dictionary = framing_entry(section, key)
+	if entry.is_empty():
+		return base
+	var source_size := Vector2i(base.get_width(), base.get_height())
+	var atlas := AtlasTexture.new()
+	atlas.atlas = base
+	atlas.region = Rect2(framing_inset_rect(entry, source_size))
+	atlas.filter_clip = true
+	tag_framing(atlas, section, key, source_size)
+	return atlas
+
+
+# ── Item / relic art helper (the item-side twin of cover_fit_portrait) ──────
+# Every item and relic display site builds its art through make_item_art (or
+# make_integer_icon, its integer-law form) so ONE framing entry — visual
+# centre, scale, crop insets — applies on every screen. Modes are each
+# screen's SIZE policy, not framing: "integer" (the pixel-art integer law —
+# reward / unlock / item-card surfaces), "contain" (whole art inside the box)
+# and "cover" (fill the box; square art in a square box equals contain).
+const ITEM_FIT_INTEGER := "integer"
+const ITEM_FIT_CONTAIN := "contain"
+const ITEM_FIT_COVER := "cover"
+
+
+static func fit_item_art(rect: TextureRect, frame_size: Vector2, mode: String = ITEM_FIT_CONTAIN) -> void:
+	if rect == null:
+		return
+	rect.set_meta("framing_helper", "item")
+	var tex: Texture2D = rect.texture
+	if tex == null or frame_size.x < 1.0 or frame_size.y < 1.0:
+		return
+	var entry: Dictionary = framing_entry_for(tex)
+	if entry.is_empty() and mode != ITEM_FIT_INTEGER:
+		# No framing data: TextureRect's own keep-aspect draw, exactly as these
+		# screens drew before the helper existed (its region sampling differs
+		# from a scaled draw by a pixel column at some sizes).
+		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED if mode == ITEM_FIT_COVER else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.position = Vector2.ZERO
+		rect.size = frame_size
+		return
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	var native := Vector2(maxf(float(tex.get_width()), 1.0), maxf(float(tex.get_height()), 1.0))
+	var k: float
+	match mode:
+		ITEM_FIT_INTEGER:
+			k = frame_size.x / native.x
+		ITEM_FIT_COVER:
+			k = maxf(frame_size.x / native.x, frame_size.y / native.y)
+		_:
+			k = minf(frame_size.x / native.x, frame_size.y / native.y)
+	var art_scale: float = float(entry.get("scale", 1.0))
+	if art_scale != 1.0:
+		k = maxf(1.0, roundf(k * art_scale)) if mode == ITEM_FIT_INTEGER else k * art_scale
+	var center: Vector2 = native * 0.5
+	if entry.has("center_x") or entry.has("center_y"):
+		var region: Rect2 = framing_region(tex)
+		var source_size: Vector2 = tex.get_meta("framing_source_size", region.size)
+		center = Vector2(float(entry.get("center_x", source_size.x * 0.5)),
+			float(entry.get("center_y", source_size.y * 0.5))) - region.position
+	rect.size = native * k
+	rect.position = (frame_size * 0.5 - center * k).round()
+
+
+## Item / relic art in a `box`-sized frame, positioned by fit_item_art.
+static func make_item_art(tex: Texture2D, box: Vector2, mode: String = ITEM_FIT_CONTAIN) -> Control:
+	var frame := Control.new()
+	frame.name = "ItemArt"
+	frame.custom_minimum_size = box
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.clip_contents = mode == ITEM_FIT_COVER
+	if tex == null:
+		return frame
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(rect)
+	frame.resized.connect(func() -> void: fit_item_art(rect, frame.size, mode))
+	return frame
 
 
 # ── Pixel snap law (INVARIANTS #14) ──────────────────────────────────────────
@@ -1180,14 +1386,10 @@ static func make_integer_icon(tex: Texture2D, box_px: float, accent: Color = Col
 	var native_h: float = maxf(float(tex.get_height()), 1.0)
 	var low_res: bool = native_w <= float(ICON_LOW_RES_MAX)
 	var k: int = ICON_LOW_RES_SCALE if low_res else maxi(int(floor(box_px / maxf(native_w, native_h))), 1)
-	var rect := TextureRect.new()
-	rect.texture = tex
-	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	rect.stretch_mode = TextureRect.STRETCH_SCALE
-	rect.custom_minimum_size = Vector2(native_w, native_h) * float(k)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.set_meta("item_icon", true)
+	# The art frame is native × k; fit_item_art places the art inside it (the
+	# framing entry's centre / scale / insets — none means exactly the frame).
+	var rect: Control = make_item_art(tex, Vector2(native_w, native_h) * float(k), ITEM_FIT_INTEGER)
+	(rect.get_child(0) as TextureRect).set_meta("item_icon", true)
 	if low_res or force_plate:
 		# Emblem plate: Reward chrome behind the 4x glyph — the frame declares
 		# the density choice instead of letting it read as a mistake.

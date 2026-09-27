@@ -427,14 +427,7 @@ func _make_icon(item: ItemData) -> Control:
 	center.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if item != null and item.icon != null:
-		var tex := TextureRect.new()
-		tex.custom_minimum_size = Vector2(ICON_TEXTURE, ICON_TEXTURE)
-		tex.texture = item.icon
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		center.add_child(tex)
+		center.add_child(PixelUI.make_item_art(item.icon, Vector2(ICON_TEXTURE, ICON_TEXTURE)))
 	return center
 
 

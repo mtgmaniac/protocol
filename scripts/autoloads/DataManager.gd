@@ -457,6 +457,7 @@ func _load_all_data() -> void:
 	_load_items()
 	_load_unlocks()
 	_load_operations()
+	_load_enemy_portraits()
 
 
 func _load_units() -> void:
@@ -502,9 +503,42 @@ func _load_enemies() -> void:
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
 		enemy.accrete = int(enemy_def.get("accrete", 0))
 		enemy.starts_cloaked = bool(enemy_def.get("startsCloaked", false))
-		enemy.portrait = _load_enemy_portrait(enemy.display_name)
 		enemy.dice_ranges = _build_enemy_dice_ranges(enemy_abilities.get(enemy_type, {}))
 		enemies[enemy.id] = enemy
+
+
+# Enemy portraits load after the operations so each can be filed under its
+# framing section: an operation's boss (its highest-HP enemy — the same rule
+# the encounter panel uses) frames from the "bosses" section, everyone else
+# from "enemies" (portrait_anchors.json).
+var boss_enemy_names: Dictionary = {}
+
+
+func _load_enemy_portraits() -> void:
+	boss_enemy_names.clear()
+	for op_variant in operations.values():
+		var best_name: String = ""
+		var best_hp: int = -1
+		for battle_variant in (op_variant as OperationData).battles:
+			for name_variant in (battle_variant as Dictionary).get("enemy_names", []):
+				var candidate: EnemyData = get_enemy_by_display_name(str(name_variant)) as EnemyData
+				if candidate != null and candidate.max_hp > best_hp:
+					best_hp = candidate.max_hp
+					best_name = candidate.display_name
+		if best_name != "":
+			boss_enemy_names[best_name] = true
+	for enemy_variant in enemies.values():
+		var enemy: EnemyData = enemy_variant
+		enemy.portrait = _load_enemy_portrait(enemy.display_name)
+
+
+func enemy_framing_section(enemy_name: String) -> String:
+	return "bosses" if boss_enemy_names.has(enemy_name) else "enemies"
+
+
+func enemy_portrait_file(enemy_name: String) -> String:
+	var mapped_path: String = str(ENEMY_PORTRAIT_BY_NAME.get(enemy_name, ""))
+	return mapped_path if mapped_path != "" else "%s.png" % _slugify(enemy_name)
 
 
 func _load_items() -> void:
@@ -648,7 +682,10 @@ func _build_item_resource(item_entry: Dictionary, item_type: String) -> ItemData
 	else:
 		icon_path = str(ITEM_ICON_BY_ID.get(item.id, ""))
 	if icon_path != "" and ResourceLoader.exists(icon_path):
-		item.icon = load(icon_path) as Texture2D
+		# One framing entry per id (portrait_anchors.json items / relics); no
+		# entry returns the shared imported texture untouched.
+		item.icon = PixelUI.framed_art_texture(load(icon_path) as Texture2D,
+			"relics" if item.item_type == "relic" else "items", item.id)
 	return item
 
 
@@ -762,12 +799,22 @@ func _finalize_hero_portrait(tex: Texture2D, portrait_key: String = "") -> Textu
 	var img: Image = tex.get_image()
 	if img == null:
 		return tex
+	var entry: Dictionary = PixelUI.framing_entry("heroes", portrait_key)
+	var inset_rect: Rect2i = PixelUI.framing_inset_rect(entry, img.get_size())
 	var out: Texture2D
 	if img.detect_alpha() == Image.ALPHA_NONE:
 		tex.set_meta("full_bleed", false)
 		out = tex
+		if PixelUI.framing_has_insets(entry):
+			var atlas := AtlasTexture.new()
+			atlas.atlas = tex
+			atlas.region = Rect2(inset_rect)
+			atlas.filter_clip = true
+			atlas.set_meta("full_bleed", false)
+			out = atlas
 	else:
-		out = _crop_to_content(tex, false)
+		out = _crop_to_content(tex, false, inset_rect)
+	PixelUI.tag_framing(out, "heroes", portrait_key, img.get_size())
 	# Tag as HERO art: cover_fit_portrait applies HERO_PORTRAIT_ZOOM (+ per-key
 	# override) to tagged textures only — enemies are the framing reference and
 	# stay untagged/unzoomed.
@@ -797,17 +844,23 @@ func get_evolution_portrait(hero_id: String, evo_id: String) -> Texture2D:
 
 func _load_enemy_portrait(enemy_name: String) -> Texture2D:
 	var mapped_path: String = str(ENEMY_PORTRAIT_BY_NAME.get(enemy_name, ""))
-	var file_name: String = mapped_path
-	if mapped_path == "":
-		# Fallback: a file named after the slugified enemy name (covers enemies/bosses
-		# not in the explicit map, e.g. conclave_overseer.png, aegis_anchor.png).
-		file_name = "%s.png" % _slugify(enemy_name)
+	# Fallback: a file named after the slugified enemy name (covers enemies/bosses
+	# not in the explicit map, e.g. conclave_overseer.png, aegis_anchor.png).
+	var file_name: String = enemy_portrait_file(enemy_name)
 	var tex: Texture2D
 	if mapped_path.begins_with("res://"):
 		tex = _load_texture_if_exists(mapped_path)
 	else:
 		tex = _load_texture_if_exists("%s%s" % [ENEMY_PORTRAIT_ROOT, file_name])
-	return _crop_to_content(_mirror_enemy_portrait(tex), MATTED_ENEMY_PORTRAITS.has(file_name.get_file()))
+	if tex == null:
+		return null
+	var section: String = enemy_framing_section(enemy_name)
+	var key: String = file_name.get_file().get_basename()
+	var source_size := Vector2i(tex.get_width(), tex.get_height())
+	var inset_rect: Rect2i = PixelUI.framing_inset_rect(PixelUI.framing_entry(section, key), source_size, true)
+	var out: Texture2D = _crop_to_content(_mirror_enemy_portrait(tex), MATTED_ENEMY_PORTRAITS.has(file_name.get_file()), inset_rect)
+	PixelUI.tag_framing(out, section, key, source_size, true)
+	return out
 
 
 # Facing rule (Kev, 2026-09-21): heroes face right, enemies face LEFT — the two
@@ -844,19 +897,30 @@ func _mirror_enemy_portrait(tex: Texture2D) -> Texture2D:
 #    as dark as a mat, so no heuristic can separate the styles).
 # The tags are how every screen frames all styles consistently without
 # per-unit offsets.
-func _crop_to_content(tex: Texture2D, matted_bust: bool = false) -> Texture2D:
+#
+# `inset_rect` (framing data crop insets, display orientation): the content
+# crop is MEASURED on a copy whose trimmed edge strips are blanked, then
+# clipped to the rect — so a stray neighbouring-sprite fragment neither shows
+# nor drags the bounding box out. The source file is never modified.
+func _crop_to_content(tex: Texture2D, matted_bust: bool = false, inset_rect: Rect2i = Rect2i()) -> Texture2D:
 	if tex == null:
 		return null
 	var img: Image = tex.get_image()
 	if img == null:
 		return tex
+	var full := Rect2i(Vector2i.ZERO, img.get_size())
+	var insets: bool = inset_rect.has_area() and inset_rect != full
+	var opaque: bool = img.detect_alpha() == Image.ALPHA_NONE
+	var measure: Image = _blank_outside(img, inset_rect, opaque) if insets else img
 	var used: Rect2i
-	if matted_bust and img.detect_alpha() == Image.ALPHA_NONE:
+	if matted_bust and opaque:
 		tex.set_meta("full_bleed", false)
-		used = _mat_content_rect(img)
+		used = _mat_content_rect(measure)
 	else:
 		tex.set_meta("full_bleed", _is_full_bleed(img))
-		used = img.get_used_rect()
+		used = measure.get_used_rect()
+	if insets:
+		used = used.intersection(inset_rect) if used.has_area() else inset_rect
 	if used.size.x <= 0 or used.size.y <= 0:
 		return tex
 	if used.position == Vector2i.ZERO and used.size == img.get_size():
@@ -867,6 +931,24 @@ func _crop_to_content(tex: Texture2D, matted_bust: bool = false) -> Texture2D:
 	atlas.filter_clip = true
 	atlas.set_meta("full_bleed", tex.get_meta("full_bleed", false))
 	return atlas
+
+
+# A measurement copy with everything outside `keep` blanked: transparent for
+# alpha art, the flat black mat for opaque matted art.
+func _blank_outside(img: Image, keep: Rect2i, opaque: bool) -> Image:
+	var copy: Image = img.duplicate() as Image
+	if copy.is_compressed():
+		copy.decompress()
+	if copy.get_format() != Image.FORMAT_RGBA8:
+		copy.convert(Image.FORMAT_RGBA8)
+	var blank: Color = Color(0, 0, 0, 1) if opaque else Color(0, 0, 0, 0)
+	var w: int = copy.get_width()
+	var h: int = copy.get_height()
+	copy.fill_rect(Rect2i(0, 0, w, keep.position.y), blank)
+	copy.fill_rect(Rect2i(0, keep.end.y, w, h - keep.end.y), blank)
+	copy.fill_rect(Rect2i(0, 0, keep.position.x, h), blank)
+	copy.fill_rect(Rect2i(keep.end.x, 0, w - keep.end.x, h), blank)
+	return copy
 
 
 # Subject bounding box of a matted bust: everything brighter than the flat

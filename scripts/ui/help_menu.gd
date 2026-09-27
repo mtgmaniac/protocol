@@ -1347,7 +1347,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		frame.add_child(crop)
 		crop.add_child(tex)
-		crop.resized.connect(_fit_thumbnail.bind(tex, crop))
+		crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(tex, crop.size))
 		row.add_child(frame)
 
 	var entry := VBoxContainer.new()
@@ -1380,17 +1380,6 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		row.add_child(long_press)
 		long_press.long_pressed.connect(
 			_on_reference_row_long_pressed.bind(source_kind, source_data, row))
-
-
-func _fit_thumbnail(texture: TextureRect, crop: Control) -> void:
-	# Same cover scale as the old square thumbnails; top-align instead of
-	# centre-cropping the head away. Every row uses the same fixed box.
-	if texture.texture == null or crop.size.x <= 0 or crop.size.y <= 0:
-		return
-	var native_size: Vector2 = texture.texture.get_size()
-	var ratio: float = maxf(crop.size.x / native_size.x, crop.size.y / native_size.y)
-	texture.size = native_size * ratio
-	texture.position = Vector2(roundf((crop.size.x - texture.size.x) * 0.5), 0)
 
 
 # The breakdown, on the battlefield's own gesture. HelpMenu sits ABOVE the

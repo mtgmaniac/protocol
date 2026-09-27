@@ -20,7 +20,7 @@ The card portrait-region aspect is READ from scripts/ui/home_screen.gd
 
 Usage:
     python scripts/assets/portrait_frame_crop.py                    # preview grid only
-    python scripts/assets/portrait_frame_crop.py apply              # overwrite the PNGs
+    python scripts/assets/portrait_frame_crop.py apply              # RETIRED (sources are never modified)
     python scripts/assets/portrait_frame_crop.py compare 448,560    # multi-height preview
 """
 from PIL import Image, ImageDraw
@@ -111,8 +111,10 @@ def simulate_card(crop, region_w, region_h):
 
 def load_config():
     raw = json.load(open(ANCHORS_PATH, encoding="utf-8"))
-    meta = {k: raw[k] for k in raw if k.startswith("_")}
-    anchors = {k: v for k, v in raw.items() if not k.startswith("_")}
+    # Schema 2: hero anchors live in the "heroes" section; this tool's
+    # constants in "_crop_tool" (kept under their old underscore names here).
+    meta = {"_" + k: v for k, v in raw["_crop_tool"].items()}
+    anchors = raw["heroes"]
     live = live_files()
     missing = [n for n in live if n not in anchors]
     extra = [n for n in anchors if n not in live]
@@ -190,7 +192,13 @@ def main():
         print("compare sheet (no asset writes): " + out)
         return
 
-    apply_mode = mode == "apply"
+    if mode == "apply":
+        # Retired 2026-09-27: source images are never modified. The runtime
+        # anchor fit (PixelUI.cover_fit_portrait, use_anchors) replaces the
+        # destructive crop pass; edit anchors in the framing editor instead
+        # (docs/tools/FRAMING_TOOL.md).
+        raise SystemExit("'apply' is retired - source portraits are never modified; use the framing editor")
+    apply_mode = False
     crop_h = int(meta["_crop_height"])
     crop_w = round(crop_h * (region_w / region_h))
     print("card region %dx%d (aspect %.4f) -> crop %dx%d, target head %d, margin %d"

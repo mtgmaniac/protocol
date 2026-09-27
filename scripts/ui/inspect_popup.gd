@@ -37,6 +37,7 @@ const BODY_FONT := 36
 const BODY_LONG_FONT := PixelUI.FONT_BODY_MIN  # free-form description prose (Polish Build A)
 const HINT_FONT := 34  # Batch 3: 26 → 34 ("Tap anywhere to close" is the only exit cue)
 const HEADER_ICON_SIZE := 84.0
+const GEAR_ICON_SIZE := 64.0
 
 static var _active: InspectPopup = null
 static var _active_source: int = 0
@@ -229,12 +230,7 @@ func _build_header(header: Dictionary) -> Control:
 		frame.custom_minimum_size = Vector2(HEADER_ICON_SIZE, HEADER_ICON_SIZE)
 		frame.clip_contents = true
 		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, _accent, 2))
-		var tex := TextureRect.new()
-		tex.texture = icon
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		frame.add_child(tex)
+		frame.add_child(PixelUI.make_item_art(icon, Vector2.ZERO, PixelUI.ITEM_FIT_COVER))
 		row.add_child(frame)
 	elif icon_char != "":
 		row.add_child(_make_label(icon_char, 48, _accent, false))
@@ -270,13 +266,7 @@ func _build_gear_row(entry: Dictionary) -> Control:
 		var center := CenterContainer.new()
 		center.custom_minimum_size = Vector2(72, 72)
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var tex := TextureRect.new()
-		tex.custom_minimum_size = Vector2(64, 64)
-		tex.texture = icon
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		center.add_child(tex)
+		center.add_child(PixelUI.make_item_art(icon, Vector2(GEAR_ICON_SIZE, GEAR_ICON_SIZE)))
 		row.add_child(center)
 	var name_label := _make_label(str(entry.get("name", "")), ABILITY_NAME_FONT, _accent)
 	name_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

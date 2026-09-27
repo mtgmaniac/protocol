@@ -80,6 +80,7 @@ const BATTLE_PORTRAIT_REGION := PixelUI.HERO_PORTRAIT_REGION
 # (kept even for the pixel-snap law; derivation must track HERO_PORTRAIT_REGION).
 const ENC_THUMB_W := 224
 const ENC_THUMB_H := 260
+const DIRECTIVE_ICON_BOX := 168.0  # Starting Directive relic art (PixelUI.make_item_art)
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
@@ -1153,13 +1154,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		row.add_theme_constant_override("separation", 28)
 		pick.add_child(row)
 		if relic.icon != null:
-			var icon := TextureRect.new()
-			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			icon.custom_minimum_size = Vector2(168, 168)
-			icon.texture = relic.icon
-			icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			var icon: Control = PixelUI.make_item_art(relic.icon, Vector2(DIRECTIVE_ICON_BOX, DIRECTIVE_ICON_BOX))
 			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(icon)
 		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], DETAIL_DESC_FONT, PixelUI.DT_CYAN_BRIGHT)
@@ -1227,15 +1222,9 @@ func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
 func _cover_fit_portrait(crop: Control, tex: TextureRect) -> void:
 	if crop == null or tex == null:
 		return
+	# The 6 px hero seat (2026-09-21) is PixelUI.HERO_PORTRAIT_SEAT_DOWN_PX,
+	# applied by the helper on every screen — no Selector-local offset.
 	PixelUI.cover_fit_portrait(tex, crop.size)
-	# Selector-only headroom: every hero tile sits 6 physical px lower than the
-	# shared cover-fit. Engineer got this first (its source canvas ends above a
-	# dark matte); the rest followed on 2026-09-21 because their helmets read as
-	# pinned to the frame top. Position only, never scale; battle cards untouched.
-	if tex.texture != null and bool(tex.texture.get_meta("hero_portrait", false)):
-		var pixel_scale: float = PixelUI.physical_transform(tex).get_scale().y
-		if pixel_scale > 0.0:
-			tex.position.y += 6.0 / pixel_scale
 
 
 func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:
