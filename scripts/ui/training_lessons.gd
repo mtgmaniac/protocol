@@ -47,7 +47,7 @@ static func practice() -> Array:
 		{"fullscreen": true, "title": "PROTECT YOUR SQUAD", "text": "Choose who needs Splice's heal and shield, then end the turn. Burn deals its damage at the end of the next turn."},
 		{"hide_coach": true, "advance": "turn_resolved", "free": true},
 		{"targets": ["item"], "title": "USE AN ITEM", "text": "After rolling, open your inventory to use your reward. Using an item costs 1 Protocol and consumes it."},
-		{"fullscreen": true, "title": "YOUR PLAN", "text": "Choose your targets and attack order. Spend Protocol if useful. Watch Burn deal damage at the end of this turn."},
+		{"fullscreen": true, "title": "YOUR PLAN", "text": "Choose your targets and attack order. Spend Protocol if useful.", "burn_reminder": true},
 		{"fullscreen": true, "hide_coach": true, "free": true, "advance": "won"},
 		{"fullscreen": true, "title": "MORE TO DISCOVER", "text": "You learned Mark and Burn. More effects will be explained when you first encounter them. Open Help to review them anytime."},
 		{"fullscreen": true, "title": "TRAINING COMPLETE", "text": "Thanks for training. Now select your squad and begin your run!", "advance": "tap_finish"},

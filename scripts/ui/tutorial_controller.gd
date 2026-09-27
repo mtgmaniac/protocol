@@ -145,7 +145,7 @@ func _offer_reroll_lesson() -> bool:
 	if not eligible:
 		return false
 	_reroll_taught = true
-	_steps.insert(_step, {"targets": ["reroll"], "title": "REROLL", "text": "You have 2 Protocol. Reroll costs 2 and rolls an unassigned die again. Use it if you want a different ability."})
+	_steps.insert(_step, {"targets": ["reroll"], "title": "REROLL", "text": "You have enough Protocol to reroll. Reroll costs 2 and rolls an unassigned die again. Use it if you want a different ability."})
 	_show_step(_step)
 	return true
 
@@ -651,7 +651,9 @@ func _refresh_geometry() -> void:
 
 
 func _layout_step(restart_assist: bool = true) -> void:
-	var step: Dictionary = _current()
+	var step: Dictionary = _current().duplicate()
+	if bool(step.get("burn_reminder", false)) and _has_living_burned_enemy():
+		step["text"] = str(step.text) + " Watch Burn deal damage at the end of this turn."
 	if step.is_empty():
 		return
 	var mode: String = _advance_mode()
@@ -707,6 +709,13 @@ func _layout_step(restart_assist: bool = true) -> void:
 		_arm_gate_assist()
 	if not tap_step and not _expected_target_visible():
 		_offer_gate_assist(0.0)
+
+
+func _has_living_burned_enemy() -> bool:
+	for enemy in _scene.combat_manager.get_enemy_states():
+		if not bool(enemy.get("dead", false)) and not (enemy.get("burn_stacks", []) as Array).is_empty():
+			return true
+	return false
 
 
 func _expected_target_visible() -> bool:

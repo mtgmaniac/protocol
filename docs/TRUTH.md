@@ -17,6 +17,10 @@ and zero engine stalls in all four cases. Basic median/max victory rounds:
 battle 1 = 3/7; battle 2 = 4.5/7. L1: 3/5 and 4/7. Keep SCRAP's existing data
 and the retry prompt. See [measurement and limits](TUTORIAL_OUTCOMES_2026-09-27.md).
 
+Step 4: YOUR PLAN shows its Burn reminder only while an enemy is alive with
+Burn stacks. The optional Reroll hint says there is enough Protocol, without
+claiming the player's pool is exactly 2. All other lesson copy is unchanged.
+
 **2026-09-26 text legibility Step 1 (Kev):** basis
 [TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/
 scale mode, the 1080×2400 design size, the project-wide LINEAR default filter and
