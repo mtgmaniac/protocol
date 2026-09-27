@@ -1,5 +1,39 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Tutorial real throws and Reroll follow-up (Kev, 2026-09-27) — IMPLEMENTATION PENDING
+
+Kev approved the Godot-reviewed dice branch through d5c25e1, except tutorial
+motion, for fast-forward into main. That fast-forward is complete. Follow-up
+work is on `codex/tutorial-real-rolls`; do not merge or web-export it, and do
+not re-pin the balance baseline.
+
+1. Script only battle 1 rounds 1–2 and battle 2 round 1. All later tutorial
+   rolls are free live physics throws, on both sides.
+2. Delete the post-landing tutorial dictionary override. Scripted throws must
+   land with their requested value already printed, using recorded live throws;
+   free throws use no rig. Landed values follow the normal result path.
+3. G-14 stands: measure without HP/damage clamps. Simulate at least 1,000 runs
+   per battle; report loss rate, soft-locks, median/max victory rounds. Above
+   1% loss or any soft-lock: STOP and propose a tutorial-only SCRAP ability
+   table change. At or below 1%, retain the retry prompt.
+4. YOUR PLAN's Burn reminder appears only while a burned enemy is alive and
+   burning. Reroll copy says there is enough Protocol, without an exact count.
+   Plain friendly copy, no em dashes or internal band names; list all changes.
+5. Reroll follows G-24 everywhere: hero and enemy item rerolls are live throws;
+   the landed face determines the result, with static preprinted modifiers and
+   normal same-face upright snap. Frozen dice refuse reroll. Update the pending
+   battle checkpoint after settling. This supersedes the earlier "Reroll keeps
+   its animation" note. Extend dice-face and checkpoint gates accordingly.
+6. Replace G-26's generated tumble with recordings made using live launch/tray
+   settings, one transform per physics frame through settle. Choose among
+   multiple recordings per slot. Orient the visual mesh before launch so the
+   requested value lands up; never relabel in flight. Apply the normal upright
+   snap afterward. Gate scripted top values, static labels and measured live
+   travel/time bounds; deliberately break the first two checks.
+
+Commit numbered steps separately. Finish with an updated handoff and push.
+Runtime still uses the previous tutorial rig until the implementation commits.
+
 **G-24–G-30 implementation (2026-09-26):** steps 1–9 are implemented on
 `dice-face-snap-p0`. The replacement dice contract covers all eight acceptance
 criteria, including unchanged-value Set reprints and frozen-die immobility

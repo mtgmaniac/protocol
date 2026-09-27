@@ -1,5 +1,14 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-27 tutorial dice follow-up approved, implementation pending:** main
+now includes the Godot-reviewed dice work through d5c25e1. The follow-up branch
+is `codex/tutorial-real-rolls`. Only battle 1 rounds 1–2 and battle 2 round 1
+will stay scripted, via recorded real throws; later rounds and every Reroll
+will use live physics. Before proceeding, measure tutorial outcome safety with
+at least 1,000 runs per battle and stop above 1% loss or on any soft-lock.
+G-14 remains in force. See DECISIONS_RESOLVED for the full approved scope.
+The runtime implementation described below remains current until replaced.
+
 **2026-09-26 text legibility Step 1 (Kev):** basis
 [TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/
 scale mode, the 1080×2400 design size, the project-wide LINEAR default filter and
