@@ -36,7 +36,10 @@ const ROLL_FONT := 34
 const BODY_FONT := 36
 const BODY_LONG_FONT := PixelUI.FONT_BODY_MIN  # free-form description prose (Polish Build A)
 const HINT_FONT := 34  # Batch 3: 26 → 34 ("Tap anywhere to close" is the only exit cue)
-const HEADER_ICON_SIZE := 84.0
+# Header art (UI batch B5): the 128 px item / relic art at 1x (integer law),
+# the same size the Starting Directive picker draws it, inside a 4 px inset.
+const HEADER_ICON_SIZE := 128.0
+const HEADER_ICON_FRAME := 136.0
 const GEAR_ICON_SIZE := 64.0
 
 static var _active: InspectPopup = null
@@ -227,10 +230,11 @@ func _build_header(header: Dictionary) -> Control:
 	var icon_char: String = str(header.get("icon_char", ""))
 	if icon != null:
 		var frame := PanelContainer.new()
-		frame.custom_minimum_size = Vector2(HEADER_ICON_SIZE, HEADER_ICON_SIZE)
+		frame.custom_minimum_size = Vector2(HEADER_ICON_FRAME, HEADER_ICON_FRAME)
+		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		frame.clip_contents = true
 		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.INSPECT_BG, _accent, 2))
-		frame.add_child(PixelUI.make_item_art(icon, Vector2.ZERO, PixelUI.ITEM_FIT_COVER))
+		frame.add_child(PixelUI.make_integer_icon(icon, HEADER_ICON_SIZE))
 		row.add_child(frame)
 	elif icon_char != "":
 		row.add_child(_make_label(icon_char, 48, _accent, false))
@@ -318,16 +322,22 @@ func _build_ability(ability: Dictionary) -> Control:
 	var limits := roll_text.split(" - ")
 	if limits.size() == 2 and limits[0] == limits[1]:
 		roll_text = limits[0]
-	var roll := _make_label(roll_text, ROLL_FONT, PixelUI.DT_CYAN)
-	roll.custom_minimum_size.x = 120
-	roll.size_flags_horizontal = Control.SIZE_FILL
-	roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	row.add_child(roll)
+	# An item / relic row has no roll and no name (UI batch B5): leave both
+	# out, or a blank name line and an empty 120 px roll column open a band
+	# between the header and the effect.
+	if roll_text != "":
+		var roll := _make_label(roll_text, ROLL_FONT, PixelUI.DT_CYAN)
+		roll.custom_minimum_size.x = 120
+		roll.size_flags_horizontal = Control.SIZE_FILL
+		roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		row.add_child(roll)
 	var body := VBoxContainer.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 4)
 	row.add_child(body)
-	body.add_child(_make_label(str(ability.get("name", "")), ABILITY_NAME_FONT, PixelUI.INSPECT_TEXT_MUTED, true))
+	var ability_name: String = str(ability.get("name", "")).strip_edges()
+	if ability_name != "":
+		body.add_child(_make_label(ability_name, ABILITY_NAME_FONT, PixelUI.INSPECT_TEXT_MUTED, true))
 	var text: String = str(ability.get("text", "")).strip_edges()
 	if text != "":
 		body.add_child(_make_label(text, BODY_FONT, PixelUI.INSPECT_TEXT, true))

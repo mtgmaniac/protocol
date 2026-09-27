@@ -18,7 +18,10 @@ func _initialize() -> void:
 
 func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
-	DisplayServer.window_set_size(Vector2i(1080, 2400))
+	if config.has("window"):
+		load("res://scripts/debug/capture_window.gd").apply(root, config["window"])
+	else:
+		DisplayServer.window_set_size(Vector2i(1080, 2400))
 	var host := _build_host()
 	current_scene = host
 	root.add_child(host)
@@ -30,7 +33,7 @@ func _run_capture() -> void:
 		push_error("Inspect capture: empty payload for kind=%s id=%s" % [config.get("kind"), config.get("id")])
 		quit(1)
 		return
-	InspectPopup.open(host, payload)
+	load("res://scripts/ui/inspect_popup.gd").open(host, payload)
 	await create_timer(float(config.get("delay_ms", DEFAULT_DELAY_MS)) / 1000.0).timeout
 	await process_frame
 	await RenderingServer.frame_post_draw
@@ -54,6 +57,10 @@ func _parse_args() -> Dictionary:
 			config["id"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-output="):
 			config["output"] = arg.get_slice("=", 1)
+		elif arg.begins_with("--capture-window="):
+			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
+			if window_parts.size() >= 2:
+				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
 		elif arg.begins_with("--capture-delay-ms="):
 			config["delay_ms"] = maxi(int(arg.get_slice("=", 1)), 100)
 	return config
@@ -76,25 +83,25 @@ func _build_payload(config: Dictionary) -> Dictionary:
 	match kind:
 		"unit":
 			var unit: Resource = data_manager.call("get_unit", item_id if item_id != "" else "pulse")
-			return InspectResolver.resolve_unit(unit)
+			return _resolver().resolve_unit(unit)
 		"enemy":
 			var enemy: Resource = data_manager.call("get_enemy", item_id) if item_id != "" else _first_enemy(data_manager)
-			return InspectResolver.resolve_unit(enemy)
+			return _resolver().resolve_unit(enemy)
 		"item":
 			var item: Resource = data_manager.call("get_item", item_id if item_id != "" else "ironCurtain")
-			return InspectResolver.resolve_item(item as ItemData)
+			return _resolver().resolve_item(item as ItemData)
 		"ability":
 			var ability_unit: Resource = data_manager.call("get_unit", item_id if item_id != "" else "pulse")
 			var ranges: Array = ability_unit.get("dice_ranges")
 			for entry_variant in ranges:
 				var entry: Dictionary = entry_variant
 				if str(entry.get("zone", "")) == "strike":
-					return InspectResolver.resolve_ability(entry.get("raw", {}), "hero", "STRIKE")
+					return _resolver().resolve_ability(entry.get("raw", {}), "hero", "STRIKE")
 			return {}
 		"status":
-			return InspectResolver.resolve_status({"type": "burn", "value": "6", "duration": 2})
+			return _resolver().resolve_status({"type": "burn", "value": "6", "duration": 2})
 		"protocol":
-			return InspectResolver.resolve_protocol_action(item_id if item_id != "" else "nudge")
+			return _resolver().resolve_protocol_action(item_id if item_id != "" else "nudge")
 	return {}
 
 
@@ -121,3 +128,9 @@ func _capture_viewport_to_file(absolute_output: String) -> Error:
 	if image == null:
 		return ERR_CANT_ACQUIRE_RESOURCE
 	return image.save_png(absolute_output)
+
+
+# Loaded at runtime: a bare class_name here compiles before the autoloads it
+# reaches exist and the -s script never starts.
+func _resolver() -> GDScript:
+	return load("res://scripts/ui/inspect_resolver.gd")
