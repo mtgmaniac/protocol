@@ -202,6 +202,16 @@ GATES = [
     # floor are asserted at the source.
     ("text legibility", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/text_legibility_test.gd"], "[TEXT_LEGIBILITY] PASS", False),
     ("checkpoint lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/checkpoint_lifecycle_test.gd"], "[CHECKPOINT_LIFECYCLE] PASS", False),
+    # Framing (docs/tools/FRAMING_TOOL.md): ONE framing entry per asset in
+    # portrait_anchors.json — ids exist and values are in range; every
+    # portrait/item/relic display site goes through its PixelUI helper and the
+    # dev/ editor is excluded from every export preset; the editor edits,
+    # previews, undoes and saves; the capture sheet renders one sample of each
+    # asset type on every screen that shows it (windowed: needs a renderer).
+    ("framing data", [sys.executable, str(ROOT / "scripts" / "checks" / "framing_data.py")], "[FRAMING_DATA] PASS", False),
+    ("framing sites", [sys.executable, str(ROOT / "scripts" / "checks" / "framing_sites.py")], "[FRAMING_SITES] PASS", False),
+    ("framing editor", [GODOT, "--headless", "--path", str(ROOT), "res://dev/framing_editor/FramingEditorTest.tscn"], "[FRAMING_EDITOR] PASS", False),
+    ("framing sheet", [GODOT, "--path", str(ROOT), "res://dev/framing_editor/FramingEditor.tscn", "--framing-sheet=res://debug_artifacts/framing/capture_sheet.png"], "[FRAMING_SHEET] PASS", False),
 ]
 
 

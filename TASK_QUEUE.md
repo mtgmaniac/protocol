@@ -114,6 +114,8 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 | **Planning CSVs imported as translations** | Open | CSVs under `docs/sweeps/` and `docs/visuals/2026-09-06/` are imported by Godot as translations. Set their `.import` importers to `skip`, as was done for `docs/TASK_MASTER_LIST.csv` (c3887be). |
 | **Rampage readout letters** | Open | Rampage still shows as "RA" letters in the ability readout; switch it to the rampage icon. Fix the stale "rampage has no icon" comments at `pixel_ui.gd:410` and `effect_pip.gd:98`. |
 | **Dead `status_list` in battle_card_view** | Open | `battle_card_view.gd` builds a `status_list` that nothing reads. Confirm it is dead code and remove it. |
+| **Split protocol_actions.gd** | Open | scripts/battle/protocol_actions.gd is 1154 lines (high-water mark 971) after the tutorial real-rolls work. Split it into modules per the architecture review instead of raising the mark. |
+| **Framing pass (Kev)** | Open | Framing editor landed 2026-09-27 (`docs/tools/FRAMING_TOOL.md`). Review the 61 stray-pixel flags (Y/N), turn anchor framing on per asset, set enemy/boss `_targets`, mark reviewed. Nothing changes on screen until entries are added. |
 
 ---
 

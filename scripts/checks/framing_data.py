@@ -36,7 +36,7 @@ PORTRAIT_FIELDS = {"head_top", "chin", "center_x", "use_anchors", "insets", "rev
                    "legacy_zoom", "legacy_anchor_y", "legacy_down_px"}
 ART_FIELDS = {"center_x", "center_y", "scale", "insets", "reviewed", "stray"}
 INSET_EDGES = {"left", "top", "right", "bottom"}
-MIN_ART_PX = 8  # insets must leave at least this much art on each axis
+MIN_ART_SHARE = 0.25  # insets must leave at least this share of each axis (and 8 px)
 
 
 def gd_dict(src: str, name: str) -> dict[str, str]:
@@ -156,8 +156,9 @@ def main() -> int:
             for edge, v in insets.items():
                 if isinstance(v, bool) or not isinstance(v, int) or v < 0:
                     errors.append(f"{where}.insets.{edge}: {v!r} must be a whole number >= 0")
-            if w - insets.get("left", 0) - insets.get("right", 0) < MIN_ART_PX or h - insets.get("top", 0) - insets.get("bottom", 0) < MIN_ART_PX:
-                errors.append(f"{where}.insets: leave less than {MIN_ART_PX} px of a {w}x{h} image")
+            if (w - insets.get("left", 0) - insets.get("right", 0) < max(8, w * MIN_ART_SHARE)
+                    or h - insets.get("top", 0) - insets.get("bottom", 0) < max(8, h * MIN_ART_SHARE)):
+                errors.append(f"{where}.insets: leave less than {MIN_ART_SHARE:.0%} of a {w}x{h} image")
             if section in ("heroes", "enemies", "bosses"):
                 num("head_top", 0, h - 1, True)
                 num("chin", 1, h, True)

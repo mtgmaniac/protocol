@@ -5,6 +5,7 @@
 #       --capture-mode=popup --capture-kind=item --capture-id=naniteField \
 #       --capture-output=<abs path.png>
 #
+# --capture-mode = popup (default) | directive | help_units.
 # --capture-kind = item | unit | enemy. A unit popup equips --capture-gear
 # (comma ids) so the gear rows show item art. Run WINDOWED (captures under
 # --headless are blank).
@@ -22,6 +23,9 @@ func _run() -> void:
 	DisplayServer.window_set_size(Vector2i(1080, 2400))
 	if str(config["mode"]) == "directive":
 		await _directive(config)
+		return
+	if str(config["mode"]) == "help_units":
+		await _help_units(config)
 		return
 	var host := Control.new()
 	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -49,6 +53,19 @@ func _directive(config: Dictionary) -> void:
 	add_child(screen)
 	await get_tree().create_timer(0.6).timeout
 	screen.call("_open_directive_picker", Array(str(config["id"]).split(",", false)))
+	await _save(config)
+
+
+# Help > Units rows (hero / enemy thumbnails) over the squad screen.
+func _help_units(config: Dictionary) -> void:
+	var screen: Node = (load("res://scenes/ui/UnitSelect.tscn") as PackedScene).instantiate()
+	add_child(screen)
+	await get_tree().create_timer(0.4).timeout
+	HelpMenu.open(screen)
+	await get_tree().process_frame
+	var menu: Node = HelpMenu._active
+	if menu != null:
+		menu.call("_select_tab", "units")
 	await _save(config)
 
 

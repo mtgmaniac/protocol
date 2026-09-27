@@ -225,7 +225,13 @@ Two portrait art styles coexist and are auto-classified at load:
 `DataManager._crop_to_content()` tags every portrait texture with a
 `full_bleed` meta (sampled opaque coverage > 90%). ALL portrait framing must go
 through **`PixelUI.cover_fit_portrait()`** — full-bleed art centres both axes,
-cutout art top-anchors (heads never crop). Never add per-unit pixel offsets.
+cutout art top-anchors (heads never crop). Never add per-unit pixel offsets in
+code: per-asset framing (head anchors, legacy offsets, crop insets) is DATA in
+`assets/portraits/portrait_anchors.json`, one entry per asset used on every
+screen; item and relic art goes through `PixelUI.make_item_art` /
+`make_integer_icon` (`fit_item_art`). Edit it with the dev framing editor
+(`docs/tools/FRAMING_TOOL.md`); the `framing sites` gate rejects any screen
+that frames art itself.
 
 White fringe on cutout art (semi-transparent near-white edge pixels baked by a
 white-background cutout) is fixed by the pipeline tool — rerun it whenever new

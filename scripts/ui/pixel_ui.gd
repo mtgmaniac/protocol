@@ -800,7 +800,12 @@ static func make_item_art(tex: Texture2D, box: Vector2, mode: String = ITEM_FIT_
 	rect.stretch_mode = TextureRect.STRETCH_SCALE
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.add_child(rect)
-	frame.resized.connect(func() -> void: fit_item_art(rect, frame.size, mode))
+	# Fit on every resize, and once on ready: a frame that is already at its
+	# final size when parented never emits `resized`. Idempotent — the same
+	# frame size always gives the same placement.
+	var fit := func() -> void: fit_item_art(rect, frame.size, mode)
+	frame.resized.connect(fit)
+	frame.ready.connect(fit)
 	return frame
 
 

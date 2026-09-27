@@ -86,6 +86,12 @@ advisory.
 > **head** is what must be framed consistently, not the headgear. Never adjust the
 > framing to preserve an antenna. (This is why the breaker family carries anchor-Y
 > overrides — its source art seats the body lower to fit tall antennas.)
+>
+> **One framing entry per asset, every screen (2026-09-27):** `portrait_anchors.json`
+> (schema 2) covers heroes, enemies, bosses, items and relics; per-asset offsets live
+> there, never in screen code. Portraits frame through `cover_fit_portrait`, items
+> and relics through `PixelUI.make_item_art` / `make_integer_icon`. Edit with the dev
+> framing editor (`docs/tools/FRAMING_TOOL.md`); the `framing sites` gate enforces it.
 
 ## Persistent header — one global header bar
 

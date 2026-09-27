@@ -133,7 +133,7 @@ def main() -> int:
                 flagged += 1
                 report[section][key] = r
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    OUT.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8", newline="\n")
     total = sum(len(v) for v in live.values())
     print(f"[STRAY_SCAN] {flagged} of {total} assets flagged -> {OUT.relative_to(ROOT).as_posix()}")
     for section in SECTIONS:

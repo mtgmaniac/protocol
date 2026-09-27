@@ -61,6 +61,10 @@ python scripts/verify_gate.py            # --skip-sim for the fast pass
 
 # Portrait pipeline (rerun when new cutout art lands; --dry-run to audit)
 python scripts/assets/defringe_alpha_edges.py
+
+# Framing (one entry per asset, every screen — docs/tools/FRAMING_TOOL.md)
+godot --path . res://dev/framing_editor/FramingEditor.tscn   # dev-only editor
+python scripts/assets/stray_pixel_scan.py                    # stray-pixel flags (detection only)
 ```
 
 **Verification policy:** During work, run only the gates relevant to the change. After fixing a
