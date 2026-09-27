@@ -57,6 +57,26 @@ func _run() -> void:
 			check(node.get_parent().size.is_equal_approx(Vector2(96, 96)), "Uniform thumbnail box: " + str(node.get_parent().size))
 	menu._select_bestiary_faction("squad")
 	await settle()
+	# UI batch B11: every evolution row shows that evolution's OWN portrait
+	# (its "<hero>_<evo>" file, framed by its own entry), never the base art.
+	var dm_node: Node = root.get_node("DataManager")
+	var row_art: Dictionary = {}
+	for tex_node in menu._content_host.find_children("*", "TextureRect", true, false):
+		var row: Node = tex_node.get_parent().get_parent().get_parent()
+		for label in row.find_children("*", "Label", true, false):
+			row_art[label.text] = tex_node.texture
+	var evo_rows := 0
+	for unit in dm_node.units.values():
+		var seen := {}
+		for path in unit.evolution_paths:
+			if seen.has(path.get("id", "")): continue
+			seen[path.get("id", "")] = true
+			var title: String = str(path.get("callsign", path.get("name", ""))).to_upper()
+			var want = dm_node.get_evolution_portrait(unit.id, str(path.get("id", "")))
+			evo_rows += 1
+			check(want != null, "%s has no evolution portrait file" % title)
+			check(row_art.get(title) == want and want != unit.portrait, "Help > Units %s row shows its own evolved portrait" % title)
+	check(evo_rows == 16, "Help > Units lists 16 evolution rows (saw %d)" % evo_rows)
 	var motion := InputEventMouseMotion.new()
 	motion.position = root.get_final_transform() * scroll.get_global_rect().get_center()
 	Input.parse_input_event(motion)

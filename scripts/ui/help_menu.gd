@@ -611,8 +611,12 @@ func _build_codex(host: VBoxContainer) -> void:
 			# names an evolution the same way the player will meet it.
 			var evo_title: String = str(group["callsign"]).to_upper()
 			var abilities: Array = group["abilities"]
+			# The evolution's OWN portrait (UI batch B11), framed by its own
+			# entry (DataManager tags it "<hero>_<evo>"); the base art only
+			# when an evolution has no file of its own.
+			var evo_portrait: Texture2D = _dm().get_evolution_portrait(unit.id, str(group.get("id", "")))
 			_add_reference_row(
-				list, unit.portrait, evo_title, int(group["hp"]),
+				list, evo_portrait if evo_portrait != null else unit.portrait, evo_title, int(group["hp"]),
 				_derive_keyword_line(abilities, "hero", 0), "evolution", group, true)
 
 
@@ -625,7 +629,7 @@ func _codex_evolution_groups(unit: UnitData) -> Array:
 		var path: Dictionary = path_variant
 		var key: String = str(path.get("name", ""))
 		if not groups.has(key):
-			groups[key] = {"callsign": key, "hp": 0, "abilities": []}
+			groups[key] = {"callsign": key, "hp": 0, "abilities": [], "id": str(path.get("id", ""))}
 			order.append(key)
 		var group: Dictionary = groups[key]
 		if str(path.get("callsign", "")) != "":
