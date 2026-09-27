@@ -20,6 +20,11 @@ Every task follows [docs/TASK_TEMPLATE.md](docs/TASK_TEMPLATE.md). The full gate
 `python scripts/verify_gate.py` (also `/verify`). One-time per clone:
 `git config core.hooksPath scripts/hooks` (baseline ceremony + growth warning).
 
+**Verification policy:** During work, run only the gates relevant to the change. After fixing a
+failure, rerun only the failing gate and closely related ones. Run the full
+gate (`scripts/verify_gate.py`) once, at the end of the task, before handing
+back. Use `--skip-sim` unless the change can affect combat or balance.
+
 When any doc conflicts, **docs/TRUTH.md wins** (it supersedes `offline-bundle/GROUND_TRUTH.md`).
 
 ## Orientation
