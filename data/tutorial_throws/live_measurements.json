@@ -1,770 +1,770 @@
 [
 	{
-		"distance": 17.9325767195089,
+		"distance": 13.4728415631201,
 		"enemy_count": 1,
-		"seconds": 3.64166666666667,
+		"seconds": 2.45,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 5.72845271347381,
+		"distance": 10.8503471969381,
 		"enemy_count": 1,
-		"seconds": 3.64166666666667,
+		"seconds": 2.45,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 12.6347793851788,
+		"distance": 10.1464320118924,
 		"enemy_count": 1,
-		"seconds": 3.64166666666667,
+		"seconds": 2.45,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 23.3414155863005,
+		"distance": 11.2057800740608,
 		"enemy_count": 1,
-		"seconds": 3.64166666666667,
+		"seconds": 2.45,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 13.1549964807937,
+		"distance": 9.24661739656142,
 		"enemy_count": 1,
-		"seconds": 3.78333333333333,
+		"seconds": 2.34166666666667,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 10.4650728484286,
+		"distance": 9.63217570552175,
 		"enemy_count": 1,
-		"seconds": 3.78333333333333,
+		"seconds": 2.34166666666667,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 6.60594545664338,
+		"distance": 11.0477681203994,
 		"enemy_count": 1,
-		"seconds": 3.78333333333333,
+		"seconds": 2.34166666666667,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 19.9879052706043,
+		"distance": 10.1104871389954,
 		"enemy_count": 1,
-		"seconds": 3.78333333333333,
+		"seconds": 2.34166666666667,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 12.8169340825753,
+		"distance": 9.39406650032829,
 		"enemy_count": 1,
-		"seconds": 3.01666666666667,
+		"seconds": 2.4,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 9.14555879092188,
+		"distance": 10.269934514689,
 		"enemy_count": 1,
-		"seconds": 3.01666666666667,
+		"seconds": 2.4,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 9.35844178468693,
+		"distance": 12.6552528458825,
 		"enemy_count": 1,
-		"seconds": 3.01666666666667,
+		"seconds": 2.4,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 16.5712617559908,
+		"distance": 7.13144983299949,
 		"enemy_count": 1,
-		"seconds": 3.01666666666667,
+		"seconds": 2.4,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 11.0861484115876,
+		"distance": 9.86274626071952,
 		"enemy_count": 1,
-		"seconds": 3.03333333333333,
+		"seconds": 2.7,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 11.731449854203,
+		"distance": 10.2920449854198,
 		"enemy_count": 1,
-		"seconds": 3.03333333333333,
+		"seconds": 2.7,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 11.4890935435999,
+		"distance": 13.1895492903007,
 		"enemy_count": 1,
-		"seconds": 3.03333333333333,
+		"seconds": 2.7,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 16.1514207296716,
+		"distance": 12.4950052842277,
 		"enemy_count": 1,
-		"seconds": 3.03333333333333,
+		"seconds": 2.7,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 10.0552740270205,
+		"distance": 10.808555216503,
 		"enemy_count": 1,
-		"seconds": 2.78333333333333,
+		"seconds": 2.89166666666667,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 7.16463735936929,
+		"distance": 12.0093731649862,
 		"enemy_count": 1,
-		"seconds": 2.78333333333333,
+		"seconds": 2.89166666666667,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 11.9057801346634,
+		"distance": 9.12350394560783,
 		"enemy_count": 1,
-		"seconds": 2.78333333333333,
+		"seconds": 2.89166666666667,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 10.8080398856921,
+		"distance": 16.8782052762282,
 		"enemy_count": 1,
-		"seconds": 2.78333333333333,
+		"seconds": 2.89166666666667,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 8.67173300663359,
+		"distance": 10.576434064614,
 		"enemy_count": 1,
+		"seconds": 2.3,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 6.7914330927922,
+		"enemy_count": 1,
+		"seconds": 2.3,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 8.69676976503428,
+		"enemy_count": 1,
+		"seconds": 2.3,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 12.2521218037053,
+		"enemy_count": 1,
+		"seconds": 2.3,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 12.2679102039452,
+		"enemy_count": 1,
+		"seconds": 2.83333333333333,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 11.1408958577224,
+		"enemy_count": 1,
+		"seconds": 2.83333333333333,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 14.8478951185745,
+		"enemy_count": 1,
+		"seconds": 2.83333333333333,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 12.0656398722895,
+		"enemy_count": 1,
+		"seconds": 2.83333333333333,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 9.12878020525463,
+		"enemy_count": 1,
+		"seconds": 2.11666666666667,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 8.44841695368126,
+		"enemy_count": 1,
+		"seconds": 2.11666666666667,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 10.9984473433269,
+		"enemy_count": 1,
+		"seconds": 2.11666666666667,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 9.60385682429023,
+		"enemy_count": 1,
+		"seconds": 2.11666666666667,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 13.9761176173726,
+		"enemy_count": 2,
+		"seconds": 2.73333333333333,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 8.50980459155153,
+		"enemy_count": 2,
+		"seconds": 2.73333333333333,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 5.08826193456216,
+		"enemy_count": 2,
+		"seconds": 2.73333333333333,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 9.78362247469897,
+		"enemy_count": 2,
+		"seconds": 2.73333333333333,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 10.1634747289041,
+		"enemy_count": 2,
+		"seconds": 2.73333333333333,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 6.84816929397596,
+		"enemy_count": 2,
 		"seconds": 2.525,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 6.92949129438563,
-		"enemy_count": 1,
+		"distance": 12.4378774226683,
+		"enemy_count": 2,
+		"seconds": 2.525,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 11.4826854751794,
+		"enemy_count": 2,
 		"seconds": 2.525,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 12.4015392297098,
-		"enemy_count": 1,
+		"distance": 6.13098141740818,
+		"enemy_count": 2,
 		"seconds": 2.525,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 9.02872701622709,
-		"enemy_count": 1,
+		"distance": 14.1253327673812,
+		"enemy_count": 2,
 		"seconds": 2.525,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 21.4888201306406,
-		"enemy_count": 1,
-		"seconds": 3.70833333333333,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 14.8866426600214,
-		"enemy_count": 1,
-		"seconds": 3.70833333333333,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 9.2448805377972,
-		"enemy_count": 1,
-		"seconds": 3.70833333333333,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 11.0313920412251,
-		"enemy_count": 1,
-		"seconds": 3.70833333333333,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 10.2587260018501,
-		"enemy_count": 1,
-		"seconds": 2.725,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 14.3513069047453,
-		"enemy_count": 1,
-		"seconds": 2.725,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 9.22539246582153,
-		"enemy_count": 1,
-		"seconds": 2.725,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 11.0394529565593,
-		"enemy_count": 1,
-		"seconds": 2.725,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 11.9587904488677,
+		"distance": 7.51231329175474,
 		"enemy_count": 2,
-		"seconds": 3.025,
+		"seconds": 2.58333333333333,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 8.77234045373424,
+		"distance": 7.86723156439314,
 		"enemy_count": 2,
-		"seconds": 3.025,
+		"seconds": 2.58333333333333,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 16.5353462758323,
+		"distance": 5.77740410975025,
 		"enemy_count": 2,
-		"seconds": 3.025,
+		"seconds": 2.58333333333333,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 7.26330199335774,
+		"distance": 15.4489268342385,
 		"enemy_count": 2,
-		"seconds": 3.025,
+		"seconds": 2.58333333333333,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 12.8485304646473,
+		"distance": 9.85851283295438,
 		"enemy_count": 2,
-		"seconds": 3.025,
+		"seconds": 2.58333333333333,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 9.81791855632204,
+		"distance": 3.48081622616836,
 		"enemy_count": 2,
-		"seconds": 2.775,
+		"seconds": 2.575,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 12.3134854071654,
+		"distance": 14.3704483175164,
 		"enemy_count": 2,
-		"seconds": 2.775,
+		"seconds": 2.575,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 5.46982446584866,
+		"distance": 4.39320661217681,
 		"enemy_count": 2,
-		"seconds": 2.775,
+		"seconds": 2.575,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 11.7803951462559,
+		"distance": 12.587368902016,
 		"enemy_count": 2,
-		"seconds": 2.775,
+		"seconds": 2.575,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 14.2655929141282,
+		"distance": 15.2761596284646,
 		"enemy_count": 2,
-		"seconds": 2.775,
+		"seconds": 2.575,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 10.4683155357692,
+		"distance": 8.49280213799901,
 		"enemy_count": 2,
+		"seconds": 2.83333333333333,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 10.4975764873072,
+		"enemy_count": 2,
+		"seconds": 2.83333333333333,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 7.01119140293144,
+		"enemy_count": 2,
+		"seconds": 2.83333333333333,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 12.1395455376643,
+		"enemy_count": 2,
+		"seconds": 2.83333333333333,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 15.5474205440148,
+		"enemy_count": 2,
+		"seconds": 2.83333333333333,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 5.48041263951239,
+		"enemy_count": 2,
+		"seconds": 2.825,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 11.2860438685581,
+		"enemy_count": 2,
+		"seconds": 2.825,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 7.82417769296768,
+		"enemy_count": 2,
+		"seconds": 2.825,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 15.2296571637009,
+		"enemy_count": 2,
+		"seconds": 2.825,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 9.7663307042493,
+		"enemy_count": 2,
+		"seconds": 2.825,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 5.81389535154044,
+		"enemy_count": 2,
+		"seconds": 2.59166666666667,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 12.1661153525274,
+		"enemy_count": 2,
+		"seconds": 2.59166666666667,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 8.14261936233729,
+		"enemy_count": 2,
+		"seconds": 2.59166666666667,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 7.9162399508447,
+		"enemy_count": 2,
+		"seconds": 2.59166666666667,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 7.53363851082133,
+		"enemy_count": 2,
+		"seconds": 2.59166666666667,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 9.36731780114484,
+		"enemy_count": 2,
+		"seconds": 2.25,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 6.65788165000163,
+		"enemy_count": 2,
+		"seconds": 2.25,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 4.50154936490182,
+		"enemy_count": 2,
+		"seconds": 2.25,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 11.0213233607064,
+		"enemy_count": 2,
+		"seconds": 2.25,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 7.40842791288676,
+		"enemy_count": 2,
+		"seconds": 2.25,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 7.01575842889625,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "enemy:e0"
+	},
+	{
+		"distance": 11.4828509750163,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "enemy:e1"
+	},
+	{
+		"distance": 10.7955136408281,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "enemy:e2"
+	},
+	{
+		"distance": 9.72231357116601,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "enemy:e3"
+	},
+	{
+		"distance": 5.66884611329442,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "hero:h0"
+	},
+	{
+		"distance": 8.73582271553862,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "hero:h1"
+	},
+	{
+		"distance": 12.1340711917853,
+		"enemy_count": 4,
+		"seconds": 2.38333333333333,
+		"slot": "hero:h2"
+	},
+	{
+		"distance": 6.84133662704204,
+		"enemy_count": 4,
 		"seconds": 2.64166666666667,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 11.0978623505923,
-		"enemy_count": 2,
+		"distance": 11.0880750479262,
+		"enemy_count": 4,
 		"seconds": 2.64166666666667,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 12.3327573644263,
-		"enemy_count": 2,
+		"distance": 12.1259172590176,
+		"enemy_count": 4,
+		"seconds": 2.64166666666667,
+		"slot": "enemy:e2"
+	},
+	{
+		"distance": 7.13251328313285,
+		"enemy_count": 4,
+		"seconds": 2.64166666666667,
+		"slot": "enemy:e3"
+	},
+	{
+		"distance": 4.14266230866613,
+		"enemy_count": 4,
 		"seconds": 2.64166666666667,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 8.71499457058749,
-		"enemy_count": 2,
+		"distance": 12.3588844714189,
+		"enemy_count": 4,
 		"seconds": 2.64166666666667,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 8.70823321088608,
-		"enemy_count": 2,
+		"distance": 6.27454305674161,
+		"enemy_count": 4,
 		"seconds": 2.64166666666667,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 17.7514401887159,
-		"enemy_count": 2,
-		"seconds": 2.725,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 9.72969414673938,
-		"enemy_count": 2,
-		"seconds": 2.725,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 10.5657898875581,
-		"enemy_count": 2,
-		"seconds": 2.725,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 8.90849857345586,
-		"enemy_count": 2,
-		"seconds": 2.725,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 10.1320792912871,
-		"enemy_count": 2,
-		"seconds": 2.725,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 12.9769072289985,
-		"enemy_count": 2,
-		"seconds": 2.61666666666667,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 5.45294366756382,
-		"enemy_count": 2,
-		"seconds": 2.61666666666667,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 7.56780087539255,
-		"enemy_count": 2,
-		"seconds": 2.61666666666667,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 16.0454575023653,
-		"enemy_count": 2,
-		"seconds": 2.61666666666667,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 6.65224113225548,
-		"enemy_count": 2,
-		"seconds": 2.61666666666667,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 7.27907105972866,
-		"enemy_count": 2,
-		"seconds": 3.60833333333333,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 11.786232839458,
-		"enemy_count": 2,
-		"seconds": 3.60833333333333,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 5.7348211978499,
-		"enemy_count": 2,
-		"seconds": 3.60833333333333,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 10.9554648826122,
-		"enemy_count": 2,
-		"seconds": 3.60833333333333,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 27.0871932843927,
-		"enemy_count": 2,
-		"seconds": 3.60833333333333,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 7.34482137376312,
-		"enemy_count": 2,
-		"seconds": 3.325,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 9.06915185202286,
-		"enemy_count": 2,
-		"seconds": 3.325,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 6.88234236175498,
-		"enemy_count": 2,
-		"seconds": 3.325,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 6.70747852936621,
-		"enemy_count": 2,
-		"seconds": 3.325,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 25.9269421215822,
-		"enemy_count": 2,
-		"seconds": 3.325,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 6.14283310539435,
-		"enemy_count": 2,
-		"seconds": 3.10833333333333,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 7.51751687428657,
-		"enemy_count": 2,
-		"seconds": 3.10833333333333,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 19.570677236063,
-		"enemy_count": 2,
-		"seconds": 3.10833333333333,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 13.4901655811744,
-		"enemy_count": 2,
-		"seconds": 3.10833333333333,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 9.29743343521147,
-		"enemy_count": 2,
-		"seconds": 3.10833333333333,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 14.2621546808682,
+		"distance": 4.44578612213061,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 9.08103360297019,
+		"distance": 12.5557961981462,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 15.3679966026382,
+		"distance": 13.1830619857103,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "enemy:e2"
 	},
 	{
-		"distance": 11.899758791689,
+		"distance": 7.27764386914325,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "enemy:e3"
 	},
 	{
-		"distance": 15.7970262351617,
+		"distance": 4.55872174153839,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 12.3909903058468,
+		"distance": 12.6670156931449,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 12.2663977543509,
+		"distance": 13.3755096889013,
 		"enemy_count": 4,
-		"seconds": 3.2,
+		"seconds": 2.65833333333333,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 8.46449475798102,
+		"distance": 6.21377510360394,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 8.76059533985,
+		"distance": 13.1846176629894,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 17.8585584553878,
+		"distance": 8.71838769783756,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e2"
 	},
 	{
-		"distance": 10.9117138503196,
+		"distance": 4.00281054385948,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e3"
 	},
 	{
-		"distance": 5.2023945626114,
+		"distance": 5.66054398721565,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 10.5314518339557,
+		"distance": 7.93722492631463,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 13.3463532861366,
+		"distance": 16.2749224006791,
 		"enemy_count": 4,
-		"seconds": 3.09166666666667,
+		"seconds": 2.74166666666667,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 6.04034235916544,
+		"distance": 5.25867752576647,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 17.2991114012208,
+		"distance": 11.3416518686945,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 14.2397007208029,
+		"distance": 8.05594471977432,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "enemy:e2"
 	},
 	{
-		"distance": 11.3598279840366,
+		"distance": 6.35031048890569,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "enemy:e3"
 	},
 	{
-		"distance": 4.84204563275455,
+		"distance": 6.81675294234645,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 17.9519957773373,
+		"distance": 8.66210141845102,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 13.2282761975124,
+		"distance": 8.24125195533945,
 		"enemy_count": 4,
-		"seconds": 3.1,
+		"seconds": 2.35833333333333,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 10.1845304119474,
+		"distance": 4.37200817411403,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 15.1490572349573,
+		"distance": 7.83441216325102,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 7.74916218922283,
+		"distance": 11.4460751947231,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "enemy:e2"
 	},
 	{
-		"distance": 5.80535245236621,
+		"distance": 8.3824682332376,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "enemy:e3"
 	},
 	{
-		"distance": 13.6697981760146,
+		"distance": 4.91703214253059,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 14.2397854818808,
+		"distance": 6.76135604499314,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 8.94552993108289,
+		"distance": 10.6719679800983,
 		"enemy_count": 4,
-		"seconds": 2.9,
+		"seconds": 2.39166666666667,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 7.13572882623066,
+		"distance": 4.94791516333721,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 16.7784416232394,
+		"distance": 9.99277016966323,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 11.2764285465984,
+		"distance": 10.5866536663191,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "enemy:e2"
 	},
 	{
-		"distance": 9.73115806675872,
+		"distance": 8.35627831131143,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "enemy:e3"
 	},
 	{
-		"distance": 6.76316654072048,
+		"distance": 6.86152814791637,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 9.93285069031154,
+		"distance": 10.3290261136838,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 17.6083621128898,
+		"distance": 8.5866369498001,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.25,
 		"slot": "hero:h2"
 	},
 	{
-		"distance": 7.61205504347618,
+		"distance": 3.63296604846235,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e0"
 	},
 	{
-		"distance": 18.8908688026484,
+		"distance": 4.78088709360279,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e1"
 	},
 	{
-		"distance": 8.13878947837947,
+		"distance": 14.3687645412422,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e2"
 	},
 	{
-		"distance": 14.7829230223505,
+		"distance": 7.48626829100812,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.74166666666667,
 		"slot": "enemy:e3"
 	},
 	{
-		"distance": 7.93209351372491,
+		"distance": 9.1973781608329,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.74166666666667,
 		"slot": "hero:h0"
 	},
 	{
-		"distance": 13.610818964662,
+		"distance": 11.7633200822607,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
+		"seconds": 2.74166666666667,
 		"slot": "hero:h1"
 	},
 	{
-		"distance": 9.32900250047533,
+		"distance": 7.21495611386365,
 		"enemy_count": 4,
-		"seconds": 3.23333333333333,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 14.1783182460225,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 7.73879604509068,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 8.25313061174589,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "enemy:e2"
-	},
-	{
-		"distance": 12.6650672869193,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "enemy:e3"
-	},
-	{
-		"distance": 8.02530574777737,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 14.2025764485269,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 13.1034259268106,
-		"enemy_count": 4,
-		"seconds": 2.9,
-		"slot": "hero:h2"
-	},
-	{
-		"distance": 7.43922107453039,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
-		"slot": "enemy:e0"
-	},
-	{
-		"distance": 18.7345599260869,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
-		"slot": "enemy:e1"
-	},
-	{
-		"distance": 17.1164529247367,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
-		"slot": "enemy:e2"
-	},
-	{
-		"distance": 6.6429465230666,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
-		"slot": "enemy:e3"
-	},
-	{
-		"distance": 9.72367552257742,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
-		"slot": "hero:h0"
-	},
-	{
-		"distance": 14.5997293738527,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
-		"slot": "hero:h1"
-	},
-	{
-		"distance": 17.2443509695947,
-		"enemy_count": 4,
-		"seconds": 3.26666666666667,
+		"seconds": 2.74166666666667,
 		"slot": "hero:h2"
 	}
 ]

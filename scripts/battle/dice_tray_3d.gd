@@ -830,7 +830,20 @@ func play_rolls(hero_entries: Array, enemy_entries: Array) -> void:
 
 	var target_origins: Dictionary = _get_non_overlapping_result_origins(_get_result_entries_for_dice(dice))
 	_assign_frozen_die_origins(dice, target_origins)
-	var recording_variant: int = randi_range(0, RecordedThrows.VARIANTS - 1)
+	var recording_variant: int = _pick_recording_variant(scripted_dice, enemy_entries.size())
+	if recording_variant < 0:
+		# G-31: no recorded variant stays inside THIS tray once mapped. Never
+		# play one that leaves the view; throw these dice for real instead.
+		push_warning("[DiceTray3D] no recorded throw fits a %.2f x %.2f tray; throwing live" % [_bounds_half_width * 2.0, _bounds_max_z - _bounds_min_z])
+		for scripted_variant in scripted_dice:
+			var scripted: RigidBody3D = scripted_variant as RigidBody3D
+			scripted.remove_meta("scripted_request")
+			scripted.freeze = false
+			_set_die_collision_enabled(scripted, true)
+			_throw_context = throw_contexts.get(str((scripted.get_meta("entry", {}) as Dictionary).get("side", "")), {})
+			_launch_die(scripted)
+			rolling_dice.append(scripted)
+		scripted_dice.clear()
 	for scripted_variant in scripted_dice:
 		var scripted: RigidBody3D = scripted_variant as RigidBody3D
 		_play_recorded_throw(scripted, target_origins.get(scripted.get_instance_id(), scripted.global_transform.origin), enemy_entries.size(), recording_variant)
@@ -1643,6 +1656,30 @@ func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 
 
 const RecordedThrows := preload("res://scripts/battle/recorded_throw_library.gd")
+var _variant_fit_cache: Dictionary = {}
+
+
+# G-31: a recorded variant is playable only if, mapped onto the LIVE tray,
+# every die of the throw stays inside the walls for every frame (landing
+# included). Picks at random among the variants that fit; -1 when none do.
+func _pick_recording_variant(scripted: Array, enemy_count: int) -> int:
+	if scripted.is_empty():
+		return 0
+	var bounds: Array = [_bounds_half_width, _bounds_min_z, _bounds_max_z]
+	var fitting: Array[int] = []
+	for variant in RecordedThrows.VARIANTS:
+		var keys: PackedStringArray = PackedStringArray()
+		var tracks: Array = []
+		for die_variant in scripted:
+			var entry: Dictionary = (die_variant as RigidBody3D).get_meta("entry", {})
+			keys.append(RecordedThrows.track_key(enemy_count, variant, str(entry.get("side", "")), int(entry.get("slot_index", 0))))
+			tracks.append(RecordedThrows.get_track(enemy_count, variant, str(entry.get("side", "")), int(entry.get("slot_index", 0))))
+		var cache_key: String = "%s@%.4f,%.4f,%.4f" % [",".join(keys), bounds[0], bounds[1], bounds[2]]
+		if not _variant_fit_cache.has(cache_key):
+			_variant_fit_cache[cache_key] = RecordedThrows.group_fits(tracks, bounds, _get_raw_d20_vertices())
+		if bool(_variant_fit_cache[cache_key]):
+			fitting.append(variant)
+	return -1 if fitting.is_empty() else fitting[randi_range(0, fitting.size() - 1)]
 
 
 # G-26: replay immutable real physics transforms. Rotate all die cosmetics
@@ -1666,8 +1703,10 @@ func _play_recorded_throw(die: RigidBody3D, target_origin: Vector3, enemy_count:
 	var hz: float = float(track.physics_hz)
 	var elapsed: float = 0.0
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	# Frames are tray-normalised; map them onto the tray as laid out now.
+	var bounds: Array = [_bounds_half_width, _bounds_min_z, _bounds_max_z]
 	die.set_meta("recorded_track", track)
-	die.global_transform = RecordedThrows.frame_transform(frames[0])
+	die.global_transform = RecordedThrows.frame_transform(frames[0], bounds)
 	while elapsed < float(track.seconds):
 		await get_tree().physics_frame
 		if not is_instance_valid(die) or _is_exiting_tree:
@@ -1676,12 +1715,12 @@ func _play_recorded_throw(die: RigidBody3D, target_origin: Vector3, enemy_count:
 		var position_in_track: float = elapsed * hz
 		var index: int = mini(int(position_in_track), frames.size() - 1)
 		var next: int = mini(index + 1, frames.size() - 1)
-		die.global_transform = RecordedThrows.frame_transform(frames[index]).interpolate_with(RecordedThrows.frame_transform(frames[next]), position_in_track - index)
+		die.global_transform = RecordedThrows.frame_transform(frames[index], bounds).interpolate_with(RecordedThrows.frame_transform(frames[next], bounds), position_in_track - index)
 		while impact_index < impacts.size() and float(impacts[impact_index][0]) <= position_in_track:
 			if dice_audio != null:
 				dice_audio.on_die_impact(die.get_instance_id(), float(impacts[impact_index][1]))
 			impact_index += 1
-	die.global_transform = RecordedThrows.frame_transform(frames.back())
+	die.global_transform = RecordedThrows.frame_transform(frames.back(), bounds)
 	if dice_audio != null:
 		dice_audio.on_die_settled(die.get_instance_id())
 	# The value comes from the oriented physical top, never from the request.

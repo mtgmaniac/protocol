@@ -1,15 +1,22 @@
 extends SceneTree
 
 const Plan := preload("res://scripts/battle/tutorial_roll_plan.gd")
+const RecordedThrows := preload("res://scripts/battle/recorded_throw_library.gd")
 var failures: Array[String] = []
 var break_kind := ""
 var injected := false
 var measured: Array = []
+# Window the gate runs at. Headless defaults to 64x64, which lays the tray out
+# 2400 wide — the layout the first recordings were wrongly made in.
+var window := Vector2i(1080, 2400)
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--break="):
 			break_kind = arg.trim_prefix("--break=")
+		elif arg.begins_with("--size="):
+			var parts: PackedStringArray = arg.trim_prefix("--size=").split("x")
+			window = Vector2i(int(parts[0]), int(parts[1]))
 	call_deferred("run")
 
 func check(ok: bool, why: String) -> void:
@@ -24,6 +31,7 @@ func labels(die: Node) -> Array:
 
 func run() -> void:
 	var live: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/tutorial_throws/live_measurements.json"))
+	root.size = window
 	var gs = root.get_node("GameState")
 	for battle in [1, 2]:
 		gs.start_run(["combat", "engineer" if battle == 1 else "pulse", "medic"], "facility", 27092026, true)
@@ -48,8 +56,10 @@ func run() -> void:
 						continue
 					if not watches.has(key):
 						watches[key] = {"labels": labels(die), "previous": die.position, "distance": 0.0, "ticks": 0, "done": false}
-						var bounds: Array = track.bounds
-						check(absf(float(bounds[0]) - float(tray._bounds_half_width)) < 0.01 and absf(float(bounds[1]) - float(tray._bounds_min_z)) < 0.01 and absf(float(bounds[2]) - float(tray._bounds_max_z)) < 0.01, "recorded tray bounds match the live tutorial")
+						check(int(track.get("version", 0)) == 2 and str(track.get("space", "")) == "tray_normalized", "recording is tray-normalised")
+					# G-31: the die stays inside the visible tray on every frame.
+					var die_rect: Rect2 = tray.get_die_screen_bounds(str(entry.side), str(entry.id))
+					check(tray.get_global_rect().grow(2.0).encloses(die_rect), "recorded die left the visible tray: %s %s outside %s" % [key, die_rect, tray.get_global_rect()])
 					var watch: Dictionary = watches[key]
 					if bool(watch.done):
 						continue
@@ -57,8 +67,13 @@ func run() -> void:
 						die.get_node("Visuals/FaceNumber1").text = "99"
 						injected = true
 					check(labels(die) == watch.labels, "labels changed during recorded playback")
-					watch.distance += die.position.distance_to(watch.previous)
-					watch.previous = die.position
+					# Travel is judged in the recorded tray's units: mapped onto a
+					# wider screen a throw legitimately covers more world distance.
+					var live_bounds: Array = [tray._bounds_half_width, tray._bounds_min_z, tray._bounds_max_z]
+					var rec_bounds: Array = track.recorded_tray.bounds
+					var in_recorded: Vector3 = RecordedThrows.denormalize_origin(RecordedThrows.normalize_origin(die.position, live_bounds), rec_bounds)
+					watch.distance += in_recorded.distance_to(watch.previous) if int(watch.ticks) > 0 else 0.0
+					watch.previous = in_recorded
 					watch.ticks += 1
 					if not bool(die.get_meta("busy", false)):
 						watch.done = true
@@ -112,5 +127,6 @@ func run() -> void:
 	var file := FileAccess.open("res://debug_artifacts/tutorial_playback_measurements.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(measured, "\t") + "\n")
 	check(break_kind == "" or injected, "requested mutation was injected")
+	print("[TUTORIAL_THROWS] window %s tray %s" % [window, root.get_visible_rect().size])
 	print("[TUTORIAL_THROWS] ", "PASS" if failures.is_empty() else "FAIL")
 	quit(0 if failures.is_empty() else 1)
