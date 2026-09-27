@@ -85,6 +85,24 @@ var _face_centers: Array[Vector3] = []
 var _face_text_bases: Array[Basis] = []
 var _face_values: Array[int] = []
 var _is_rolling: bool = false
+# G-33 (UI batch 2026-09-27, B10): during a single-die re-throw every other die
+# resting in the tray is a solid, immovable obstacle. Settled dice normally have
+# collision off (they are presentation); for the length of a re-throw they are
+# frozen STATIC bodies on the dice layer, so the thrown die bounces off them,
+# and the slide into its slot is routed around them. They never move or change
+# face. Restored to their previous collision state afterwards.
+var _rethrow_obstacles: Array = []
+var _rethrow_saved: Dictionary = {}  # die instance id -> [layer, mask, freeze_mode, shape]
+# A resting die's collider during a re-throw: its d20 hull enlarged past the
+# drawn die (drawn at RESULT_SCALE) so even a fast contact, which the solver
+# lets sink in by a few hundredths, stops before the visible die.
+const RETHROW_OBSTACLE_SCALE := 1.06
+var _rethrow_obstacle_shape: ConvexPolygonShape3D = null
+# Centre-to-centre clearance for the post-landing slide: the moving die's reach
+# (DIE_RADIUS, it is still full size) plus a resting die's (DIE_RADIUS at
+# RESULT_SCALE), plus a hair. Sphere-based, so it is conservative for a d20.
+const RETHROW_SLIDE_CLEARANCE := DIE_RADIUS * (1.0 + RESULT_SCALE) + 0.02
+const RETHROW_LANE_SAMPLES := 48
 var _dice_number_font: Font
 var _is_exiting_tree: bool = false
 var _bounds_half_width: float = TRAY_HALF_WIDTH
@@ -725,17 +743,189 @@ func reroll_die_to_result(side: String, unit_id: String) -> int:
 	_throw_context = _make_throw_context(side)
 	var die: RigidBody3D = _spawn_die(entry, int(entry.get("slot_index", 0)), 1)
 	_print_faces(die, entry)
+	_make_resting_dice_solid(die)
 	_launch_die(die)
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
 	if dice_audio != null:
 		dice_audio.on_roll_started(1)
 	await _wait_for_dice_to_settle([die], {die.get_instance_id(): origin})
 	if not is_instance_valid(die) or _is_exiting_tree:
+		_release_resting_dice()
 		return 0
 	var raw: int = int(die.get_meta("raw_result", 0))
 	await _finish_roll([die])
+	_release_resting_dice()
 	_values_live = was_live
 	return raw
+
+
+# G-33: every die resting in the tray becomes a frozen STATIC collider on the
+# dice layer for the length of a re-throw (see _rethrow_obstacles).
+func _make_resting_dice_solid(moving: RigidBody3D) -> void:
+	_release_resting_dice()
+	for key in _die_by_key:
+		var die: RigidBody3D = _die_by_key[key] as RigidBody3D
+		if die == null or die == moving or not is_instance_valid(die) or not die.is_inside_tree():
+			continue
+		var collider: CollisionShape3D = _die_collider(die)
+		_rethrow_saved[die.get_instance_id()] = [die.collision_layer, die.collision_mask, die.freeze_mode, collider.shape if collider != null else null]
+		if collider != null:
+			collider.shape = _rethrow_obstacle_hull()
+		die.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+		die.freeze = true
+		die.linear_velocity = Vector3.ZERO
+		die.angular_velocity = Vector3.ZERO
+		_set_die_collision_enabled(die, true)
+		_rethrow_obstacles.append(die)
+
+
+func _release_resting_dice() -> void:
+	for die_variant in _rethrow_obstacles:
+		var die: RigidBody3D = die_variant as RigidBody3D
+		if die == null or not is_instance_valid(die):
+			continue
+		var saved: Array = _rethrow_saved.get(die.get_instance_id(), [])
+		if saved.size() == 4:
+			die.collision_layer = int(saved[0])
+			die.collision_mask = int(saved[1])
+			die.freeze_mode = saved[2]
+			var collider: CollisionShape3D = _die_collider(die)
+			if collider != null and saved[3] != null:
+				collider.shape = saved[3]
+	_rethrow_obstacles.clear()
+	_rethrow_saved.clear()
+
+
+func _die_collider(die: RigidBody3D) -> CollisionShape3D:
+	for child in die.get_children():
+		if child is CollisionShape3D:
+			return child
+	return null
+
+
+func _rethrow_obstacle_hull() -> ConvexPolygonShape3D:
+	if _rethrow_obstacle_shape == null:
+		_rethrow_obstacle_shape = ConvexPolygonShape3D.new()
+		var points := PackedVector3Array()
+		for p in _get_d20_convex_points():
+			points.push_back(p * RETHROW_OBSTACLE_SCALE)
+		_rethrow_obstacle_shape.points = points
+	return _rethrow_obstacle_shape
+
+
+# G-33: the slide from where a re-thrown die landed to its slot, routed around
+# the dice resting in the tray. A die that came to rest against (or between)
+# resting dice first steps straight out, without turning, along the shortest
+# direction that never brings it closer to any of them, until it is clear by
+# RETHROW_SLIDE_CLEARANCE (a sphere bound: once clear, no turn can make two
+# d20s touch). From there it slides straight to its slot when that is clear,
+# otherwise across the shortest clear horizontal lane (up/down to the lane,
+# along it, down/up into the slot), and when no lane is clear it is lifted
+# over the row in its way. Returns {"path": waypoints (from first, to
+# last), "turn_from": index of the waypoint where the upright turn may start}.
+func _plan_rethrow_slide(from: Vector3, to: Vector3) -> Dictionary:
+	var centres: Array = []
+	for die_variant in _rethrow_obstacles:
+		var die: RigidBody3D = die_variant as RigidBody3D
+		if die != null and is_instance_valid(die):
+			centres.append(die.global_transform.origin)
+	var path: Array = [from]
+	if centres.is_empty():
+		path.append(to)
+		return {"path": path, "turn_from": 0}
+	var start: Vector3 = _rethrow_escape_point(from, centres)
+	var turn_from: int = 0
+	if start != from:
+		path.append(start)
+		turn_from = 1
+	var y: float = to.y
+	if _segment_clear(start, to, centres):
+		path.append(to)
+		return {"path": path, "turn_from": turn_from}
+	var best: Array = []
+	var best_len: float = INF
+	var lo: float = _bounds_min_z + DIE_RADIUS
+	var hi: float = _bounds_max_z - DIE_RADIUS
+	for i in range(RETHROW_LANE_SAMPLES + 1):
+		var z: float = lerpf(lo, hi, float(i) / float(RETHROW_LANE_SAMPLES))
+		var lane_a := Vector3(start.x, y, z)
+		var lane_b := Vector3(to.x, y, z)
+		if not (_segment_clear(start, lane_a, centres) and _segment_clear(lane_a, lane_b, centres) and _segment_clear(lane_b, to, centres)):
+			continue
+		var length: float = start.distance_to(lane_a) + lane_a.distance_to(lane_b) + lane_b.distance_to(to)
+		if length < best_len:
+			best_len = length
+			best = [lane_a, lane_b]
+	if best.is_empty():
+		# No clear route along the tray floor: a die that landed beyond a full row
+		# (the row's gaps are narrower than a die) is lifted clear of the row,
+		# carried across above it and set down in its slot. At that height every
+		# resting die is at least the clearance below it.
+		var lift: float = RETHROW_SLIDE_CLEARANCE
+		best = [Vector3(start.x, y + lift, start.z), Vector3(to.x, y + lift, to.z)]
+	path.append_array(best)
+	path.append(to)
+	return {"path": path, "turn_from": turn_from}
+
+
+# The nearest point, straight out from `start` in the tray plane, clear of every
+# resting die by RETHROW_SLIDE_CLEARANCE, reached without ever getting closer to
+# any of them and without leaving the tray. `start` itself when already clear.
+func _rethrow_escape_point(start: Vector3, centres: Array) -> Vector3:
+	var start_d: Array = []
+	var clear: bool = true
+	for c in centres:
+		var d: float = _plane_distance(start, c)
+		start_d.append(d)
+		if d < RETHROW_SLIDE_CLEARANCE:
+			clear = false
+	if clear:
+		return start
+	var edge: float = DIE_RADIUS
+	var best: Vector3 = start
+	var best_t: float = INF
+	for i in range(72):
+		var angle: float = TAU * float(i) / 72.0
+		var dir := Vector3(cos(angle), 0.0, sin(angle))
+		var t: float = 0.0
+		var ok: bool = true
+		var reached: bool = false
+		while t < 4.0 and ok and not reached:
+			t += 0.02
+			var p: Vector3 = start + dir * t
+			if absf(p.x) > _bounds_half_width - edge or p.z < _bounds_min_z + edge or p.z > _bounds_max_z - edge:
+				ok = false
+				break
+			reached = true
+			for j in range(centres.size()):
+				var d: float = _plane_distance(p, centres[j])
+				if d < minf(float(start_d[j]), RETHROW_SLIDE_CLEARANCE) - 0.0005:
+					ok = false
+					break
+				if d < RETHROW_SLIDE_CLEARANCE:
+					reached = false
+		if ok and reached and t < best_t:
+			best_t = t
+			best = start + dir * t
+	return best
+
+
+func _plane_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+# True when no centre is closer than the clearance to the segment a-b (tray plane).
+func _segment_clear(a: Vector3, b: Vector3, centres: Array) -> bool:
+	var a2 := Vector2(a.x, a.z)
+	var b2 := Vector2(b.x, b.z)
+	for c_variant in centres:
+		var c: Vector3 = c_variant
+		var c2 := Vector2(c.x, c.z)
+		var ab: Vector2 = b2 - a2
+		var t: float = 0.0 if ab.length_squared() < 0.000001 else clampf((c2 - a2).dot(ab) / ab.length_squared(), 0.0, 1.0)
+		if (a2 + ab * t).distance_to(c2) < RETHROW_SLIDE_CLEARANCE:
+			return false
+	return true
 
 
 # CONTINUE with a pending roll (G-24): the dice appear at rest showing the
@@ -954,7 +1144,7 @@ func _finish_roll(dice: Array) -> void:
 # G-24 upright snap: the settled die turns the least it must to lay its landed
 # face flat with the numeral reading upright, while it slides to its slot
 # under its unit. It keeps the same top face — this never rolls it over.
-func _start_upright_snap(die: RigidBody3D, face_index: int, target_origin: Vector3) -> void:
+func _start_upright_snap(die: RigidBody3D, face_index: int, target_origin: Vector3, slide: Dictionary = {}) -> void:
 	if _is_exiting_tree or not is_inside_tree() or face_index < 0:
 		return
 	var from_transform: Transform3D = die.global_transform
@@ -962,11 +1152,54 @@ func _start_upright_snap(die: RigidBody3D, face_index: int, target_origin: Vecto
 	var tween: Tween = create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
+	var path: Array = slide.get("path", [])
+	if path.size() > 2:
+		# G-33 routed slide: the origin follows the path; the turn to upright
+		# waits until the die has stepped clear of the dice it rested against.
+		var turn_start: float = _path_fraction(path, int(slide.get("turn_from", 0)))
+		tween.tween_method(
+			func(weight: float) -> void:
+				if is_instance_valid(die):
+					var turn_w: float = 0.0 if weight <= turn_start else (weight - turn_start) / maxf(1.0 - turn_start, 0.0001)
+					var turned: Transform3D = from_transform.interpolate_with(to_transform, turn_w)
+					die.global_transform = Transform3D(turned.basis, _point_along(path, weight))
+		, 0.0, 1.0, RESULT_PRESENTATION_TIME)
+		return
 	tween.tween_method(
 		func(weight: float) -> void:
 			if is_instance_valid(die):
 				die.global_transform = from_transform.interpolate_with(to_transform, weight)
 	, 0.0, 1.0, RESULT_PRESENTATION_TIME)
+
+
+# How far along the polyline (0..1, by length) waypoint `index` sits.
+func _path_fraction(path: Array, index: int) -> float:
+	var total: float = 0.0
+	var upto: float = 0.0
+	for i in range(1, path.size()):
+		var leg: float = (path[i - 1] as Vector3).distance_to(path[i] as Vector3)
+		total += leg
+		if i <= index:
+			upto += leg
+	return 0.0 if total <= 0.0 else upto / total
+
+
+# The point `weight` (0..1) of the way along a polyline, by length.
+func _point_along(path: Array, weight: float) -> Vector3:
+	var total: float = 0.0
+	for i in range(1, path.size()):
+		total += (path[i - 1] as Vector3).distance_to(path[i] as Vector3)
+	if total <= 0.0:
+		return path[path.size() - 1]
+	var remaining: float = clampf(weight, 0.0, 1.0) * total
+	for i in range(1, path.size()):
+		var a: Vector3 = path[i - 1]
+		var b: Vector3 = path[i]
+		var leg: float = a.distance_to(b)
+		if remaining <= leg:
+			return a.lerp(b, 0.0 if leg <= 0.0 else remaining / leg)
+		remaining -= leg
+	return path[path.size() - 1]
 
 
 func _enforce_assigned_result_origins(result_entries: Array) -> void:
@@ -1413,8 +1646,16 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 	var printed: Label3D = _die_part(die, "FaceNumber%d" % face_up) as Label3D
 	die.set_meta("shown_value", int(printed.text) if printed != null and printed.text.is_valid_int() else face_up)
 	target_origin.y = die.global_transform.origin.y
+	var slide: Dictionary = {}
+	if not _rethrow_obstacles.is_empty():
+		# A re-thrown die rests at the same height as the dice already in the
+		# tray (it may have come to rest leaning on one), and slides around them.
+		var rest: RigidBody3D = _rethrow_obstacles[0] as RigidBody3D
+		if rest != null and is_instance_valid(rest):
+			target_origin.y = rest.global_transform.origin.y
+		slide = _plan_rethrow_slide(die.global_transform.origin, target_origin)
 	die.set_meta("assigned_result_origin", target_origin)
-	_start_upright_snap(die, _get_face_index_for_result(face_up), target_origin)
+	_start_upright_snap(die, _get_face_index_for_result(face_up), target_origin, slide)
 
 
 # Late in the roll the "felt" grabs: damping ramps up so a die spiralling on a

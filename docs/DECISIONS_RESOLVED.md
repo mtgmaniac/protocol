@@ -1,5 +1,20 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-33. Re-thrown dice collide with resting dice (Kev, 2026-09-27)
+
+A re-thrown die collides with the dice resting in the tray, which act as
+immovable obstacles and never move or change face.
+
+This covers every single-die re-throw (hero Reroll, the enemy reroll items)
+and the Set / reprint tumbles. The moving die bounces off the resting dice;
+the resting dice never move, get pushed or change face (Dice rules 8), and
+the re-thrown die never ends up overlapping another die, its slide into its
+slot included.
+
+Why: settled dice had their collision switched off, so a rerolled die could
+roll straight through or under the dice already resting in the tray (UI batch
+2026-09-27, B10). See TRUTH "Dice rules", rule 10.
+
 ## UI batch 2026-09-27 (Kev) — encounter select fixed slots (B3)
 
 Transcribed from Kev's UI batch brief (`docs/batches/2026-09-27-ui-batch.md`).

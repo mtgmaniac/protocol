@@ -7,11 +7,15 @@
 # (i) every die stays inside the visible tray on every drawn frame, landing
 # included (G-31); (j) a die's pip tag / inspect hit-area is hidden on every
 # frame the die is mid-motion, and whenever shown it matches the value the die
-# shows and acts on (G-32). Paths covered: live throw (tray + scene), recorded
+# shows and acts on (G-32); (k) during every single-die re-throw and tip-over
+# (hero Reroll, enemy item rerolls, Set, reprint, Nudge, item changes) the
+# moving die's d20 hull never intersects a resting die's hull on any drawn
+# frame, tumble and slide into its slot included, and no resting die's pose or
+# top face changes (G-33). Paths covered: live throw (tray + scene), recorded
 # playback (tray + tutorial rounds), hero Reroll, enemy item rerolls, Nudge,
 # Set, G-27 reprints, live hijack, item changes, Sync Antenna, refresh.
 # Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
-# -- --break=a (through j) injects a real bad observation/state; must exit 1.
+# -- --break=a (through k) injects a real bad observation/state; must exit 1.
 # -- --size=WxH runs at that window (default 1080x2400; headless is 64x64).
 extends SceneTree
 
@@ -49,8 +53,20 @@ var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
 var _settled: Dictionary = {}     # die instance id -> physical top label at settle
 var _yaw_prev: Dictionary = {}
 var _yaw_travel: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0}
+# (k) G-33: re-throw paths, the resting dice's poses at the start of the current
+# motion, and the per-path count of moving/resting pairs actually judged.
+const RETHROW_PATHS := ["hero reroll", "enemy item reroll", "Nudge", "Set", "reprint", "item"]
+const HULL_EPS := 0.002
+const RETHROW_STRESS := 40
+# Penetration depth of the last overlapping pair (for the failure message).
+var last_depth: float = INF
+var _k_rest: Dictionary = {}      # resting die instance id -> [pose, top label name]
+var _k_pairs: Dictionary = {}     # path -> moving/resting pairs judged
+var _hull_points: Array = []      # d20 hull vertices, local, radius 1 die
+var _hull_normals: Array = []     # unique face-normal axes (local)
+var _hull_edges: Array = []       # unique edge directions (local)
 var _frozen_lock: Dictionary = {}  # "side:id" -> the number the frozen die must keep
 var _landed_pairs: Dictionary = {}
 var _labels_prev: Dictionary = {}
@@ -257,6 +273,127 @@ func _sample_late() -> void:
 		rec["moved"] = moved_now
 		rec["pose"] = pose
 		_late[iid] = rec
+	_sample_rethrow()
+
+
+# -- (k) G-33: a re-thrown / tipping die never passes through a resting die ----
+
+func _sample_rethrow() -> void:
+	if not (_current_path in RETHROW_PATHS):
+		_k_rest.clear()
+		return
+	if _hull_points.is_empty():
+		_build_hull()
+	var movers: Array = []
+	var resters: Array = []
+	for key in _tray.get("_die_by_key"):
+		var die: RigidBody3D = _tray.get("_die_by_key")[key]
+		if not is_instance_valid(die) or not die.is_inside_tree():
+			continue
+		if bool(die.get_meta("in_motion", false)) or bool(die.get_meta("busy", false)):
+			movers.append(die)
+		else:
+			resters.append(die)
+	if movers.is_empty():
+		_k_rest.clear()
+		return
+	for rester_variant in resters:
+		var rester: RigidBody3D = rester_variant
+		var iid: int = rester.get_instance_id()
+		var key: String = _key_of(rester)
+		if not _k_rest.has(iid):
+			_k_rest[iid] = [rester.global_transform, _top(rester).name]
+			continue
+		var was: Array = _k_rest[iid]
+		_check("k", (was[0] as Transform3D).is_equal_approx(rester.global_transform), "%s (resting) moved during %s" % [key, _current_path])
+		_check("k", _top(rester).name == was[1], "%s (resting) changed its top face during %s" % [key, _current_path])
+	for mover_variant in movers:
+		var mover: RigidBody3D = mover_variant
+		for rester_variant in resters:
+			var rester: RigidBody3D = rester_variant
+			if _current_path == "hero reroll" and _inject("k"):
+				mover.global_position = rester.global_position + Vector3(0.3, 0.0, 0.0)
+			_k_pairs[_current_path] = int(_k_pairs.get(_current_path, 0)) + 1
+			var overlap: bool = _hulls_overlap(mover, rester)
+			_check("k", not overlap,
+				"%s passed through resting %s during %s (centres %.2f apart, %.3f deep)" % [_key_of(mover), _key_of(rester), _current_path,
+				mover.global_position.distance_to(rester.global_position), last_depth])
+
+
+func _key_of(die: RigidBody3D) -> String:
+	var entry: Dictionary = die.get_meta("entry", {})
+	return "%s:%s" % [str(entry.get("side", "")), str(entry.get("id", ""))]
+
+
+func _build_hull() -> void:
+	_hull_points = Array(_tray.call("_get_d20_convex_points"))
+	var faces: Array = _tray.call("_get_d20_faces")
+	for face_variant in faces:
+		var f: Array = face_variant
+		var a: Vector3 = _hull_points[f[0]]
+		var b: Vector3 = _hull_points[f[1]]
+		var c: Vector3 = _hull_points[f[2]]
+		_add_axis(_hull_normals, (b - a).cross(c - a).normalized())
+		for pair in [[a, b], [b, c], [c, a]]:
+			_add_axis(_hull_edges, ((pair[1] as Vector3) - (pair[0] as Vector3)).normalized())
+
+
+func _add_axis(axes: Array, v: Vector3) -> void:
+	for existing in axes:
+		if absf((existing as Vector3).dot(v)) > 0.9999:
+			return
+	axes.append(v)
+
+
+# The die's drawn hull: the d20 at its Visuals scale (a settled die is shown at
+# RESULT_SCALE; its collider stays full size), in world space.
+func _world_hull(die: RigidBody3D) -> Array:
+	var visuals: Node3D = die.get_node_or_null("Visuals") as Node3D
+	var k: float = visuals.scale.x if visuals != null else 1.0
+	var xf: Transform3D = die.global_transform
+	var out: Array = []
+	for p in _hull_points:
+		out.append(xf * ((p as Vector3) * k))
+	return out
+
+
+# Separating-axis test for two convex d20 hulls (face normals of both, then
+# edge x edge). Touching (within HULL_EPS) is not an overlap.
+func _hulls_overlap(a: RigidBody3D, b: RigidBody3D) -> bool:
+	last_depth = INF
+	if a.global_position.distance_to(b.global_position) > 2.05:
+		return false
+	var pa: Array = _world_hull(a)
+	var pb: Array = _world_hull(b)
+	var ba: Basis = a.global_transform.basis.orthonormalized()
+	var bb: Basis = b.global_transform.basis.orthonormalized()
+	var axes: Array = []
+	for n in _hull_normals:
+		axes.append(ba * (n as Vector3))
+		axes.append(bb * (n as Vector3))
+	for ea in _hull_edges:
+		for eb in _hull_edges:
+			var axis: Vector3 = (ba * (ea as Vector3)).cross(bb * (eb as Vector3))
+			if axis.length_squared() > 0.000001:
+				axes.append(axis.normalized())
+	for axis_variant in axes:
+		var axis: Vector3 = axis_variant
+		var min_a := INF
+		var max_a := -INF
+		for p in pa:
+			var d: float = axis.dot(p)
+			min_a = minf(min_a, d)
+			max_a = maxf(max_a, d)
+		var min_b := INF
+		var max_b := -INF
+		for p in pb:
+			var d: float = axis.dot(p)
+			min_b = minf(min_b, d)
+			max_b = maxf(max_b, d)
+		if max_a <= min_b + HULL_EPS or max_b <= min_a + HULL_EPS:
+			return false
+		last_depth = minf(last_depth, minf(max_a - min_b, max_b - min_a))
+	return true
 
 
 func _note_path(die: RigidBody3D) -> void:
@@ -642,6 +779,22 @@ func _part_b_and_c() -> void:
 	print("[DICE_FACE_GATE] part D: freeze locks the shown number")
 	await _extra_contracts(heroes, enemies, pa, stub)
 
+	# E (G-33): re-throw stress. Many single-die re-throws on both sides, each
+	# landing wherever physics takes it, judged by (k) on every drawn frame.
+	_clear_statuses(heroes + enemies)
+	stub.queue = [8, 11, 14, 5, 17]
+	await _begin_roll()
+	await _await_all_locked()
+	for i in range(RETHROW_STRESS):
+		_scene.set("protocol_points", 60)
+		(_scene.get("_state") as Object).set("protocol_points", 60)
+		if i % 3 == 2:
+			await _use_item(pa, "phase_scrambler", enemies[i % enemies.size()])
+		else:
+			await _reroll(pa, h[i % h.size()])
+		await _await_all_locked()
+	print("[DICE_FACE_GATE] part E: %d single-die re-throws" % RETHROW_STRESS)
+
 	_monitor_on = false
 
 
@@ -690,6 +843,8 @@ const REQUIRED_PATHS := ["live throw", "live throw (scene)", "recorded playback"
 func _check_coverage() -> void:
 	for path in REQUIRED_PATHS:
 		_check("i", int(_paths.get(path, 0)) > 0, "roll path never observed moving: " + path)
+	for path in ["hero reroll", "enemy item reroll", "Set", "reprint"]:
+		_check("k", int(_k_pairs.get(path, 0)) > 0, "re-throw path never judged against resting dice: " + path)
 	_check("j", _mid_motion_frames > 0, "no mid-motion frame had a value display to hide")
 
 
@@ -782,6 +937,7 @@ func _finish() -> void:
 	_check_coverage()
 	print("[DICE_FACE_GATE] paths observed moving (die-frames): %s" % [_paths])
 	print("[DICE_FACE_GATE] mid-motion frames with a value display to hide: %d" % _mid_motion_frames)
+	print("[DICE_FACE_GATE] (k) moving/resting pairs judged per path: %s" % [_k_pairs])
 	var failed: bool = not _break_kind.is_empty() and not _break_done
 	for kind in _fails:
 		var arr: Array = _fails[kind]

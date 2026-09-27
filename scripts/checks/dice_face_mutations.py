@@ -3,7 +3,8 @@
 
 Runs sequentially: each case must exit 1, report its own criterion failing,
 and contain no script/runtime errors. Does not modify production source.
-(i) = a die leaves the visible tray; (j) = pips shown on a moving die.
+(i) = a die leaves the visible tray; (j) = pips shown on a moving die;
+(k) = a re-thrown die passes through a resting die (G-33).
 
     python scripts/checks/dice_face_mutations.py [--kinds ij] [--size 540x1200]
 """
@@ -19,7 +20,7 @@ GODOT = os.environ.get("GODOT_BIN", "C:/Users/Kev/Downloads/Godot_v4.6.2-stable_
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--kinds", default="abcdefghij")
+    parser.add_argument("--kinds", default="abcdefghijk")
     parser.add_argument("--size", default="1080x2400")
     args = parser.parse_args()
     out = ROOT / "results/dice_contract"
@@ -28,7 +29,7 @@ def main():
     for kind in args.kinds:
         proc = subprocess.run([GODOT, "--headless", "--path", str(ROOT),
                                "-s", "scripts/debug/dice_face_gate.gd", "--", f"--break={kind}", f"--size={args.size}"],
-                              cwd=ROOT, capture_output=True, text=True, timeout=150)
+                              cwd=ROOT, capture_output=True, text=True, timeout=240)
         log = proc.stdout + proc.stderr
         (out / f"mutation_{kind}.log").write_text(log, encoding="utf-8")
         found = re.search(rf"\({kind}\) checks=\d+ failures=([1-9]\d*)", log)

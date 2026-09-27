@@ -244,6 +244,18 @@ seem to disagree, the ruling wins and this list is corrected.
    ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26),
    [Tutorial real throws item 5](DECISIONS_RESOLVED.md#tutorial-real-throws-and-reroll-follow-up-kev-2026-09-27--implemented-and-verified)).
 
+10. **A re-thrown die collides with the dice resting in the tray, which act as
+    immovable obstacles and never move or change face**
+    ([G-33](DECISIONS_RESOLVED.md#g-33-re-thrown-dice-collide-with-resting-dice-kev-2026-09-27)).
+    During a single-die re-throw (hero Reroll, the enemy reroll items) every
+    other die becomes a frozen STATIC collider, slightly larger than the drawn
+    die (`RETHROW_OBSTACLE_SCALE` 1.06), and gets its old collision state back
+    afterwards. The slide into the slot is routed around them
+    (`DiceTray3D._plan_rethrow_slide`): a die resting against others first
+    steps straight out without turning, then slides straight, across a clear
+    lane, or, when a full row is in the way, is lifted over it. Set, reprint
+    and Nudge tip-overs turn in place inside their slot.
+
 Scripted tutorial rounds (battle 1 rounds 1–2, battle 2 round 1) replay
 recorded real throws, with each mesh oriented before launch; all later rounds
 are free ([G-26](DECISIONS_RESOLVED.md#g-26-tutorial-dice-use-recorded-real-throws-kev-updated-2026-09-27)).
@@ -252,8 +264,13 @@ are free ([G-26](DECISIONS_RESOLVED.md#g-26-tutorial-dice-use-recorded-real-thro
 moves dice on every path: live throw (bare tray and battle scene), recorded
 tutorial playback, hero Reroll, enemy item rerolls, Set, reprint, Nudge
 tip-over, hijack update, item changes and refresh. On every drawn frame it
-checks rules 1–9 above; it fails if any of those paths is never exercised.
-`scripts/checks/dice_face_mutations.py` breaks each of its ten criteria on
+checks rules 1–10 above; it fails if any of those paths is never exercised.
+Rule 10 is criterion (k): an exact separating-axis test of the moving die's
+d20 hull against every resting die's drawn hull, plus unchanged pose and top
+face for every resting die, on every re-throw and tip-over path, with a
+re-throw stress pass (40 single-die re-throws). The pre-G-33 tray fails it
+200 times.
+`scripts/checks/dice_face_mutations.py` breaks each of its eleven criteria on
 purpose and proves the gate fails. `tutorial recorded throws` separately checks
 scripted top values, static labels and containment at both sizes. Regenerate
 recordings with `scripts/debug/record_tutorial_throws.gd` whenever launch,
