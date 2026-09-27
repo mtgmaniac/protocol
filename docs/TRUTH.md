@@ -12,6 +12,11 @@ tutorial dictionary override is deleted. Headless scripted inputs are selected
 before resolution; physical rolls always use the tray result. The three scripted
 rounds still use the old tumble pending step 6 recordings.
 
+Step 3 measured 1,000 seeds per battle under each of two policies: zero losses
+and zero engine stalls in all four cases. Basic median/max victory rounds:
+battle 1 = 3/7; battle 2 = 4.5/7. L1: 3/5 and 4/7. Keep SCRAP's existing data
+and the retry prompt. See [measurement and limits](TUTORIAL_OUTCOMES_2026-09-27.md).
+
 **2026-09-26 text legibility Step 1 (Kev):** basis
 [TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/
 scale mode, the 1080×2400 design size, the project-wide LINEAR default filter and
