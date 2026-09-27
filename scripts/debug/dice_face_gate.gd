@@ -3,9 +3,16 @@
 # tumble start; (c) same top face, tilt <90 degrees, upright at rest;
 # (d) pre-roll modifier ranges; (e) placed pending rolls restore the same dice;
 # (f) frozen value/pose and pending hijack; (g) Set ignores modifiers and prints
-# plain 1..20; (h) engine Nudge/Set/Reroll refuse frozen dice without spending.
+# plain 1..20; (h) engine Nudge/Set/Reroll refuse frozen dice without spending;
+# (i) every die stays inside the visible tray on every drawn frame, landing
+# included (G-31); (j) a die's pip tag / inspect hit-area is hidden on every
+# frame the die is mid-motion, and whenever shown it matches the value the die
+# shows and acts on (G-32). Paths covered: live throw (tray + scene), recorded
+# playback (tray + tutorial rounds), hero Reroll, enemy item rerolls, Nudge,
+# Set, G-27 reprints, live hijack, item changes, Sync Antenna, refresh.
 # Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
-# -- --break=a (through h) injects a real bad observation/state; must exit 1.
+# -- --break=a (through j) injects a real bad observation/state; must exit 1.
+# -- --size=WxH runs at that window (default 1080x2400; headless is 64x64).
 extends SceneTree
 
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
@@ -13,6 +20,9 @@ const SQUAD := ["combat", "engineer", "medic"]
 const SPEED := 8
 const ROTATION_EPS_DEG := 0.05
 const MAX_REPORTED := 12
+# On-screen slack for containment: a die resting against a wall may press the
+# collider by a hair (~0.02 world units).
+const CONTAIN_PX := 2.0
 
 class ScriptedRolls extends "res://scripts/sim/roll_provider.gd":
 	var queue: Array = []
@@ -39,8 +49,8 @@ var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
 var _settled: Dictionary = {}     # die instance id -> physical top label at settle
 var _yaw_prev: Dictionary = {}
 var _yaw_travel: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0}
 var _frozen_lock: Dictionary = {}  # "side:id" -> the number the frozen die must keep
 var _landed_pairs: Dictionary = {}
 var _labels_prev: Dictionary = {}
@@ -49,7 +59,20 @@ var _frozen_pose: Dictionary = {}
 var _break_kind := ""
 var _break_done := false
 var _stub: ScriptedRolls
+var _window := Vector2i(1080, 2400)
+var _late: Dictionary = {}        # die instance id -> previous drawn-frame record
+var _mid_motion_frames: int = 0   # mid-motion frames of dice that had a display to hide
+var _paths: Dictionary = {}       # roll path -> die-frames observed moving on it
+var _current_path: String = ""
 
+
+# Samples AFTER every node's _process (the scene hides/shows die tags there),
+# so (i)/(j) judge the state that is actually drawn this frame.
+class LateSampler extends Node:
+	var gate: Object
+
+	func _process(_delta: float) -> void:
+		gate.call("_sample_late")
 
 
 func _initialize() -> void:
@@ -63,9 +86,19 @@ func _run() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--break="):
 			_break_kind = arg.trim_prefix("--break=")
+		elif arg.begins_with("--size="):
+			var parts: PackedStringArray = arg.trim_prefix("--size=").split("x")
+			_window = Vector2i(int(parts[0]), int(parts[1]))
+	root.size = _window
+	var sampler := LateSampler.new()
+	sampler.gate = self
+	sampler.process_priority = 1 << 30
+	root.add_child(sampler)
+	print("[DICE_FACE_GATE] window %s -> visible %s" % [_window, root.get_visible_rect().size])
 	seed(20260926)
 	await _part_a()
 	await _part_b_and_c()
+	await _part_tutorial()
 	# Let the last item SFX finish: a stream still playing at quit is reported
 	# as a leaked resource (an ERROR line the gate runner rejects).
 	Engine.time_scale = 1.0
@@ -174,6 +207,106 @@ func _sample() -> void:
 			_ranges.erase(key)
 
 
+# -- (i) containment and (j) value displays, judged on the drawn frame --------
+
+func _sample_late() -> void:
+	if not _monitor_on or _tray == null or not is_instance_valid(_tray):
+		return
+	var tray_rect: Rect2 = (_tray as Control).get_global_rect().grow(CONTAIN_PX)
+	for key in _tray.get("_die_by_key"):
+		var die: RigidBody3D = _tray.get("_die_by_key")[key]
+		if not is_instance_valid(die) or not die.is_inside_tree():
+			continue
+		var entry: Dictionary = die.get_meta("entry", {})
+		var side: String = str(entry.get("side", ""))
+		var uid: String = str(entry.get("id", ""))
+		var iid: int = die.get_instance_id()
+		var pose: Transform3D = die.global_transform
+		var rec: Dictionary = _late.get(iid, {})
+		var moved_now: bool = rec.has("pose") and not (rec["pose"] as Transform3D).is_equal_approx(pose)
+		if moved_now:
+			_note_path(die)
+		# (i) the whole silhouette stays inside the tray the player can see.
+		if moved_now and die.has_meta("recorded_track") and _inject("i"):
+			die.global_position.x = float(_tray.get("_bounds_half_width")) + 3.0
+		var r: Rect2 = _tray.call("get_die_screen_bounds", side, uid)
+		var locked: bool = bool(_tray.call("is_die_locked", side, uid))
+		_check("i", tray_rect.encloses(r), "%s %s at %s, outside the visible tray %s" % [key, "landed" if locked else "moved", r, tray_rect])
+		if not _use_scene_oracle:
+			rec["pose"] = pose
+			_late[iid] = rec
+			continue
+		# (j) judge the PREVIOUS drawn frame: it was mid-motion if the die moved
+		# into it and out of it. Arriving at rest or starting to move is not.
+		if bool(rec.get("moved", false)) and moved_now:
+			if bool(rec.get("hideable", false)):
+				_mid_motion_frames += 1
+			_check("j", not bool(rec.get("displays", false)), "%s showed its pips / inspect area mid-motion" % key)
+		if bool(rec.get("displays", false)):
+			_check("j", bool(rec.get("numeral_ok", false)), "%s pips shown for a value the die does not show or act on" % key)
+			_check("j", bool(rec.get("fresh", false)), "%s pip tag stale (built for an earlier value)" % key)
+		var plate: Control = _scene.call("get_die_tag_plate", side, uid)
+		# Mutation (j): the pre-fix bug — the old pips riding a rethrown die.
+		if moved_now and plate != null and bool(rec.get("moved", false)) and _current_path == "hero reroll" and not die.freeze and _inject("j"):
+			plate.visible = true
+		var overlay: Control = _overlay_for(side, uid)
+		rec["displays"] = (plate != null and plate.visible) or (overlay != null and overlay.visible)
+		rec["hideable"] = plate != null or overlay != null
+		rec["numeral_ok"] = int(_top(die).text) == _oracle(side, uid)
+		rec["fresh"] = plate == null or _plate_fresh(side, uid)
+		rec["moved"] = moved_now
+		rec["pose"] = pose
+		_late[iid] = rec
+
+
+func _note_path(die: RigidBody3D) -> void:
+	var path: String = _current_path if _current_path in ["hero reroll", "enemy item reroll", "live throw (scene)"] else "live throw"
+	if die.has_meta("recorded_track") and bool(die.get_meta("busy", false)) and bool(_tray.get("_is_rolling")):
+		path = "recorded playback"
+	elif bool(die.get_meta("busy", false)):
+		var entry: Dictionary = die.get_meta("entry", {})
+		var hijacked: bool = _use_scene_oracle and str(entry.get("side", "")) == "enemy" and bool(_state_for("enemy", str(entry.get("id", ""))).get("hijack_pending", false))
+		path = "tip-over (%s)" % ("hijack" if hijacked else (_current_path if _current_path != "" else "value change"))
+	_paths[path] = int(_paths.get(path, 0)) + 1
+
+
+func _overlay_for(side: String, uid: String) -> Control:
+	var wanted: String = "DieTooltip_%s_%s" % [side, uid]
+	for overlay_variant in _scene.get("_die_tooltip_overlays"):
+		var overlay: Control = overlay_variant as Control
+		if overlay != null and is_instance_valid(overlay) and str(overlay.name) == wanted:
+			return overlay
+	return null
+
+
+func _readout_for(side: String, uid: String) -> Object:
+	for view in _scene.get("hero_card_views" if side == "hero" else "enemy_card_views"):
+		if str(((view as Dictionary).get("state", {}) as Dictionary).get("id", "")) == uid:
+			return (view as Dictionary).get("readout")
+	return null
+
+
+func _plate_fresh(side: String, uid: String) -> bool:
+	var readout: Object = _readout_for(side, uid)
+	var tag: Dictionary = (_scene.get("_die_tags") as Dictionary).get("%s:%s" % [side, uid], {})
+	if readout == null or not is_instance_valid(readout) or tag.is_empty():
+		return false
+	return str(tag.get("sig", "")) == str(_scene.call("_die_tag_signature", readout.call("tag_effects"), readout.call("tag_target")))
+
+
+# After every settle in the scene: each die whose readout has effects shows a
+# visible, fresh tag for the value it now shows and acts on.
+func _check_displays_settled() -> void:
+	for key in _tray.get("_die_by_key"):
+		var parts: PackedStringArray = str(key).split(":", true, 1)
+		var readout: Object = _readout_for(parts[0], parts[1])
+		if readout == null or not is_instance_valid(readout) or not bool(readout.call("is_showing")) or (readout.call("tag_effects") as Array).is_empty():
+			continue
+		var plate: Control = _scene.call("get_die_tag_plate", parts[0], parts[1])
+		_check("j", plate != null and plate.visible, "%s pips missing after the die settled" % key)
+		_check("j", _plate_fresh(parts[0], parts[1]), "%s pips not updated after the die settled" % key)
+
+
 func _check_frozen(key: String, side: String, uid: String, die: RigidBody3D, locked: bool) -> void:
 	if not _use_scene_oracle:
 		return
@@ -261,6 +394,8 @@ func _await_all_locked() -> void:
 			# a few extra frames so the monitor samples the locked state
 			for _j in range(3):
 				await process_frame
+			if _use_scene_oracle and _scene != null and is_instance_valid(_scene):
+				_check_displays_settled()
 			return
 	_fail("a", "timed out waiting for the dice to lock")
 
@@ -408,9 +543,11 @@ func _part_b_and_c() -> void:
 	await _begin_roll()
 	await _await_all_locked()
 	_expect_value("enemy", e[0], 12, "hijack copies the highest hero die at landing")
+	_current_path = "Nudge"
 	pa.call("_apply_nudge", h[2])           # 12 -> 15
 	await _await_all_locked()
 	_expect_value("enemy", e[0], 15, "hijack follows a Nudge on the highest die")
+	_current_path = "Set"
 	pa.call("_apply_set", h[1], 19)          # 9 -> 19
 	await _await_all_locked()
 	_expect_value("enemy", e[0], 19, "hijack follows a Set")
@@ -433,8 +570,10 @@ func _part_b_and_c() -> void:
 	_expect_value("hero", h[0], 13, "Sync Antenna: matched 10s become 13 after landing")
 	_expect_value("hero", h[1], 13, "Sync Antenna: both dice of the pair")
 	gs.get("gear_by_unit").erase(h[0])
+	_current_path = "Nudge"
 	pa.call("_apply_nudge", h[2])
 	await _await_all_locked()
+	_current_path = "Set"
 	pa.call("_apply_set", h[2], 1)
 	await _await_all_locked()
 	stub.queue = [18]
@@ -506,6 +645,54 @@ func _part_b_and_c() -> void:
 	_monitor_on = false
 
 
+# -- Part T: the real tutorial's recorded rounds, then a free live scene throw --
+
+func _part_tutorial() -> void:
+	_monitor_on = false
+	_use_scene_oracle = false
+	var gs: Node = root.get_node("/root/GameState")
+	gs.call("start_run", ["combat", "engineer", "medic"], "facility", 27092026, true)
+	gs.set("current_battle", 1)
+	change_scene_to_file(BATTLE_SCENE)
+	for _i in range(240):
+		await process_frame
+		if current_scene != null and current_scene.scene_file_path == BATTLE_SCENE and current_scene != _scene:
+			break
+	await create_timer(1.0).timeout
+	_scene = current_scene
+	_tray = _scene.get("dice_tray_3d")
+	_labels_prev.clear()
+	_busy_prev.clear()
+	_late.clear()
+	_frozen_lock.clear()
+	_frozen_pose.clear()
+	_use_scene_oracle = true
+	_monitor_on = true
+	var recorded_before: int = int(_paths.get("recorded playback", 0))
+	for turn in [0, 1, 2]:   # rounds 1-2 are scripted recordings; round 3 is free
+		_current_path = "" if turn < 2 else "live throw (scene)"
+		_scene.set("_tutorial_turn", turn)
+		_scene.call("_begin_targeting_phase")
+		for _i in range(600):
+			if bool(_tray.get("_is_rolling")):
+				break
+			await process_frame
+		await _tray.roll_finished
+		await _await_all_locked()
+	_check("i", int(_paths.get("recorded playback", 0)) > recorded_before, "tutorial rounds played no recorded throw")
+	print("[DICE_FACE_GATE] part T: tutorial recorded rounds 1-2 + free live round at %s" % [_window])
+
+
+const REQUIRED_PATHS := ["live throw", "live throw (scene)", "recorded playback", "hero reroll",
+	"enemy item reroll", "tip-over (Nudge)", "tip-over (Set)", "tip-over (reprint)", "tip-over (hijack)"]
+
+
+func _check_coverage() -> void:
+	for path in REQUIRED_PATHS:
+		_check("i", int(_paths.get(path, 0)) > 0, "roll path never observed moving: " + path)
+	_check("j", _mid_motion_frames > 0, "no mid-motion frame had a value display to hide")
+
+
 func _clear_statuses(states: Array) -> void:
 	for st in states:
 		st["roll_buff_stacks"] = []
@@ -543,6 +730,7 @@ func _roll(stub: Object, roll: int, count: int, ranges: Dictionary = {}) -> void
 # tray rolls), so the previous roll's locked dice are never judged by them.
 func _begin_roll(ranges: Dictionary = {}) -> void:
 	_ranges.clear()
+	_current_path = ""
 	var rig: Dictionary = {}
 	for side in ["hero", "enemy"]:
 		for st in _scene.get("combat_manager").call("get_hero_states" if side == "hero" else "get_enemy_states"):
@@ -559,6 +747,7 @@ func _begin_roll(ranges: Dictionary = {}) -> void:
 
 
 func _reroll(pa: Object, hero_id: String) -> void:
+	_current_path = "hero reroll"
 	var die: RigidBody3D = (_tray.get("_die_by_key") as Dictionary).get("hero:%s" % hero_id, null)
 	var iid: int = die.get_instance_id() if die != null else 0
 	_settled.erase(iid)
@@ -576,6 +765,7 @@ func _use_item(pa: Object, item_id: String, target: Dictionary) -> void:
 	if item == null:
 		_fail("a", "missing item %s" % item_id)
 		return
+	_current_path = "enemy item reroll" if item_id in ["phase_scrambler", "cascade_jammer"] else "item"
 	pa.call("_apply_item_effect", item, target)
 	await process_frame
 
@@ -589,6 +779,9 @@ func _expect_value(side: String, uid: String, want: int, label: String) -> void:
 
 func _finish() -> void:
 	Engine.time_scale = 1.0
+	_check_coverage()
+	print("[DICE_FACE_GATE] paths observed moving (die-frames): %s" % [_paths])
+	print("[DICE_FACE_GATE] mid-motion frames with a value display to hide: %d" % _mid_motion_frames)
 	var failed: bool = not _break_kind.is_empty() and not _break_done
 	for kind in _fails:
 		var arr: Array = _fails[kind]
@@ -630,6 +823,7 @@ func _extra_contracts(heroes: Array, enemies: Array, pa: Object, stub: ScriptedR
 			for frame in range(12):
 				await process_frame
 				_check("b", marker.text == "REWRITE->3", "Rewrite marker must remain static")
+		_current_path = "Set"
 		var choices: Array = [_oracle("hero", uid)] + _span(1, 20)
 		for chosen in choices:
 			bs.set("protocol_points", 100)
@@ -655,6 +849,7 @@ func _extra_contracts(heroes: Array, enemies: Array, pa: Object, stub: ScriptedR
 		await _begin_roll()
 		await _await_all_locked()
 		bs.set("protocol_points", 100)
+		_current_path = "reprint"
 		engine.call("apply_nudge", bs, uid, false, true)
 		if mode == 2:
 			engine.call("apply_nudge", bs, uid, false, true)

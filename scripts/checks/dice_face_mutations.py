@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Prove each G-24..G-30 dice criterion detects an injected bad state.
+"""Prove each dice-rule criterion (G-24..G-32) detects an injected bad state.
 
 Runs sequentially: each case must exit 1, report its own criterion failing,
 and contain no script/runtime errors. Does not modify production source.
+(i) = a die leaves the visible tray; (j) = pips shown on a moving die.
+
+    python scripts/checks/dice_face_mutations.py [--kinds ij] [--size 540x1200]
 """
+import argparse
 import os
 from pathlib import Path
 import re
@@ -14,13 +18,17 @@ GODOT = os.environ.get("GODOT_BIN", "C:/Users/Kev/Downloads/Godot_v4.6.2-stable_
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--kinds", default="abcdefghij")
+    parser.add_argument("--size", default="1080x2400")
+    args = parser.parse_args()
     out = ROOT / "results/dice_contract"
     out.mkdir(parents=True, exist_ok=True)
     failures = []
-    for kind in "abcdefgh":
+    for kind in args.kinds:
         proc = subprocess.run([GODOT, "--headless", "--path", str(ROOT),
-                               "-s", "scripts/debug/dice_face_gate.gd", "--", f"--break={kind}"],
-                              cwd=ROOT, capture_output=True, text=True, timeout=90)
+                               "-s", "scripts/debug/dice_face_gate.gd", "--", f"--break={kind}", f"--size={args.size}"],
+                              cwd=ROOT, capture_output=True, text=True, timeout=150)
         log = proc.stdout + proc.stderr
         (out / f"mutation_{kind}.log").write_text(log, encoding="utf-8")
         found = re.search(rf"\({kind}\) checks=\d+ failures=([1-9]\d*)", log)
@@ -28,7 +36,7 @@ def main():
         print(f"[DICE_MUTATIONS] {kind}: {'detected' if ok else 'FAILED'}", flush=True)
         if not ok:
             failures.append(kind)
-    print(f"[DICE_MUTATIONS] {'FAIL' if failures else 'PASS'}: 8 criteria, {len(failures)} missed")
+    print(f"[DICE_MUTATIONS] {'FAIL' if failures else 'PASS'}: {len(args.kinds)} criteria at {args.size}, {len(failures)} missed")
     return bool(failures)
 
 

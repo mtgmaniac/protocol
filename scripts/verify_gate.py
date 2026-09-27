@@ -98,7 +98,8 @@ GATES = [
     ("developer unlock", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dev_unlock_test.gd"], "[DEV_UNLOCK] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
-    ("tutorial recorded throws", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_throw_gate.gd"], "[TUTORIAL_THROWS] PASS", False),
+    ("tutorial recorded throws", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_throw_gate.gd", "--", "--size=1080x2400"], "[TUTORIAL_THROWS] PASS", False),
+    ("tutorial recorded throws 540x1200", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_throw_gate.gd", "--", "--size=540x1200"], "[TUTORIAL_THROWS] PASS", False),
     # Reachability, not logic: tutorial smoke drives the drill by calling scene
     # handlers directly, so it cannot see a scripted target the player could
     # never hit, nor a gated beat that never advances. This one synthesizes real
@@ -141,7 +142,10 @@ GATES = [
     # Sync Antenna, live hijack). G-24..G-30: static labels, acted value,
     # same-face upright snap, modifier ranges, restore, freeze, Set, guards.
     # Mutation proof: scripts/checks/dice_face_mutations.py (separate run).
-    ("dice face", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dice_face_gate.gd"], "[DICE_FACE_GATE] PASS", False),
+    # Dice rules (TRUTH "Dice rules"): run at the phone window and the desktop
+    # preview window; headless alone is 64x64, which lays the tray out 2400 wide.
+    ("dice face", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dice_face_gate.gd", "--", "--size=1080x2400"], "[DICE_FACE_GATE] PASS", False),
+    ("dice face 540x1200", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dice_face_gate.gd", "--", "--size=540x1200"], "[DICE_FACE_GATE] PASS", False),
     ("auto-target preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/auto_target_preview_test.gd"], "[AUTO_PREVIEW] PASS", False),
     ("item burn preview", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/item_burn_preview_test.gd"], "[ITEM_BURN] PASS", False),
     # 2026-09-02, "the damage preview lies": heroes resolve BEFORE the enemy
