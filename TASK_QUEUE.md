@@ -9,6 +9,13 @@
   modelled. Example: an enemy that shields itself this round absorbs its own
   end-of-round burn tick, but the preview shows the tick as HP loss. Fix shape:
   extend `CombatManager.forecast_hero_phase` through the enemy phase and tick.
+- **Intercept copy: "of rare rarity or higher".** Several intercept choices
+  read "choose 1 of 3 gear pieces of rare rarity or higher" / "consumables of
+  uncommon rarity or higher" (`GameState.INTERCEPT_CARDS`). Suggest "rare or
+  better gear" style wording; copy change needs Kev.
+- **`intercept_choice_flow_test.gd` is not gated** and cannot run under `-s`
+  (extends Node, bare `GameState`). Either wrap it in a scene and add it to
+  verify_gate, or retire it.
 
 **2026-09-20 UI consistency:** Battle and Squad Selector framing, Basics-first
 four-tab Help, readable Units rows, desktop cursor/hover/scroll/Escape polish

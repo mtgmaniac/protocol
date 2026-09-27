@@ -199,6 +199,57 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true, 
 		_button_box.add_child(note_label)
 
 
+# Boxed option (UI batch B6, the Route Fork card layout): each choice is its
+# own box holding its description and its button, so a description can only
+# belong to the button beside it. The old layout put the description between
+# two buttons and it read as belonging to either.
+func _add_option_box(text: String, callback: Callable, enabled: bool, description: String) -> void:
+	if _button_box == null:
+		_add_gap(24)
+		_button_box = VBoxContainer.new()
+		_button_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_button_box.add_theme_constant_override("separation", 16)
+		_stage_box.add_child(_button_box)
+	var panel := PanelContainer.new()
+	panel.name = "OptionBox"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
+	var margin := MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(side, 28)
+	panel.add_child(margin)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 16)
+	margin.add_child(vbox)
+	if description != "":
+		var desc := Label.new()
+		desc.text = description
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.style_label(desc, BODY_FONT, PixelUI.TEXT_PRIMARY if enabled else PixelUI.LINE_DIM, 1)
+		vbox.add_child(desc)
+	var button := Button.new()
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(0, 96)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.text = text
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.disabled = not enabled
+	PixelUI.style_button(button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_AMBER if enabled else PixelUI.LINE_DIM, BUTTON_FONT)
+	button.pressed.connect(callback)
+	vbox.add_child(button)
+	_button_box.add_child(panel)
+
+
+# The split-off consequence is its own sentence on screen, so it starts with a
+# capital ("Items cost 0 Protocol next battle.", not "items ..."). The data
+# label keeps its "Action: consequence." shape for the result summary.
+static func sentence_start(text: String) -> String:
+	if text == "":
+		return text
+	return text.left(1).to_upper() + text.substr(1)
+
+
 func _show_card_stage() -> void:
 	_clear_stage()
 	# Rhythm: scene art banner · small amber event-type label · large title · blank line · body.
@@ -224,7 +275,7 @@ func _show_card_stage() -> void:
 		var modifier_note: String = _modifier_note(choice)
 		if modifier_note != "" and consequence == "":
 			consequence += ("\n" if consequence != "" else "") + modifier_note
-		_add_choice_button(action.to_upper(), _on_choice_pressed.bind(choice), enabled, consequence)
+		_add_option_box(action.to_upper(), _on_choice_pressed.bind(choice), enabled, sentence_start(consequence))
 		if enabled:
 			_enabled_choice_count += 1
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): a card with
