@@ -131,6 +131,9 @@ GATES = [
     # UI batch 2026-09-27 B2: every icon + number pair (all live abilities, the
     # live Detonate value, a stray-space value) sits exactly icon_value_gap from
     # its icon, measured on the laid-out glyphs in both pip profiles.
+    # UI batch 2026-09-27 B7: a hold anywhere on a unit card (portrait, status
+    # badge, +N, HP bar, body) opens the unit inspect; a tap selects.
+    ("card long press", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/card_long_press_test.gd"], "[CARD_LONG_PRESS] PASS", False),
     ("pip spacing", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/pip_spacing_test.gd"], "[PIP_SPACING] PASS", False),
     # Build G item 3: every item "upgrade" draw succeeds at EVERY unlock state
     # (gating forced, fresh profile included) and ELITE PRESENCE upgrades

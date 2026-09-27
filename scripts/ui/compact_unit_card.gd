@@ -120,6 +120,10 @@ var _locked_layout_size: Vector2 = Vector2.ZERO
 var _locked_portrait_width: float = 0.0
 var _locked_portrait_size: Vector2 = Vector2.ZERO
 var _portrait_long_press: LongPressInput = null
+# Card-level gesture (UI batch B7): the card body and every overlay that stops
+# input (status badges, the HP bar) feed this one handler, so a long-press
+# ANYWHERE on the card opens the unit's inspect, the same as the portrait.
+var _card_long_press: LongPressInput = null
 var _pip_icon_atlas: Texture2D = null
 var _battle_text_scale := 1.0
 var _battle_plate: RefCounted
@@ -230,19 +234,14 @@ func clear_combat_preview() -> void:
 	_wire_hp_passthrough()
 
 
+# Taps and long-presses on the card body are resolved by _card_long_press
+# (listening on this card's gui_input): tap -> card_pressed, hold -> the unit's
+# inspect. The body only has to stop the press from reaching the parent.
 func _gui_input(event: InputEvent) -> void:
 	if not interaction_enabled:
 		return
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			card_pressed.emit()
-			accept_event()
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		if touch_event.pressed:
-			card_pressed.emit()
-			accept_event()
+	if event is InputEventMouseButton or event is InputEventScreenTouch:
+		accept_event()
 
 
 func _build() -> void:
@@ -1314,10 +1313,15 @@ func _connect_passthrough_input(control: Control) -> void:
 	control.gui_input.connect(_on_passthrough_gui_input)
 
 
-# Forwards presses on the STOP'd HP-bar region to the card's own gui_input so a tap/long-press
-# there still selects/inspects the unit instead of being swallowed.
+# Forwards input on the STOP'd overlays (HP bar, status badges) to the card's
+# gesture handler, so a tap there selects the unit and a long-press opens its
+# inspect, exactly as on the portrait (B7: badges used to select on press and
+# ignore the hold).
 func _on_passthrough_gui_input(event: InputEvent) -> void:
-	_gui_input(event)
+	if _card_long_press != null and is_instance_valid(_card_long_press):
+		_card_long_press.call("_on_gui_input", event)
+	else:
+		_gui_input(event)
 
 
 func _wire_portrait_detail_input() -> void:
@@ -1332,6 +1336,11 @@ func _wire_portrait_detail_input() -> void:
 	_portrait_rect.add_child(_portrait_long_press)
 	_portrait_long_press.tapped.connect(_on_portrait_tapped)
 	_portrait_long_press.long_pressed.connect(_on_portrait_long_pressed)
+	if _card_long_press == null or not is_instance_valid(_card_long_press):
+		_card_long_press = LongPressInput.new()
+		add_child(_card_long_press)
+		_card_long_press.tapped.connect(_on_portrait_tapped)
+		_card_long_press.long_pressed.connect(_on_portrait_long_pressed)
 
 
 func _on_portrait_tapped() -> void:
