@@ -347,8 +347,7 @@ func _check_exact(label: String, actor_id: String) -> void:
 			int(current_scene.call("_get_effective_roll_for_state", actor, actor_id)))
 		var pips: Dictionary = {"effects": [{"kind": "detonate", "value": "DT"}]}
 		_card_view.call("_patch_live_detonate_value", pips, actor, entry)
-		var shown: PackedStringArray = str((pips["effects"][0] as Dictionary)["value"]).split(" ")
-		readout_burst = int(shown[1]) if shown.size() > 1 else 0
+		readout_burst = int(EffectPip.display_text_for_effect(pips["effects"][0]))
 
 	var engine: Object = current_scene.get("_engine")
 	var step: Dictionary = engine.call("resolve_step", current_scene.get("_state"))

@@ -521,7 +521,8 @@ func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary,
 		var effect: Dictionary = effect_variant
 		if str(effect.get("kind", "")) == "detonate":
 			var dt_code: String = EffectPip.keyword_code("detonate", "DT")
-			effect["value"] = "%s %d" % [dt_code, burst] if burst > 0 else dt_code
+			# "DT9", the SP3 / SI2 shape: code then number, no space (B2).
+			effect["value"] = "%s%d" % [dt_code, burst] if burst > 0 else dt_code
 
 
 # Build J Item 1 (presentation only): live chip tokens, with SNAPSHOT values

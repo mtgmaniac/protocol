@@ -122,6 +122,8 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 
 # Drop a leading run of letters (the keyword code) from a pip value, keeping any
 # numeric / ×N / % remainder. "SP3" -> "3", "CH×2" -> "×2", "BR" -> "".
+# Whitespace is trimmed: the live Detonate value was authored "DT 9", and the
+# leftover space pushed its number a glyph away from its icon (UI batch B2).
 static func _numeric_suffix(value: String) -> String:
 	var i: int = 0
 	while i < value.length():
@@ -130,7 +132,7 @@ static func _numeric_suffix(value: String) -> String:
 		if not is_alpha:
 			break
 		i += 1
-	return value.substr(i)
+	return value.substr(i).strip_edges()
 
 
 # Must mirror build_group's actual children (leading keyword icon · value ·

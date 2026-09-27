@@ -128,6 +128,10 @@ GATES = [
     # SILENTLY — everything past the third folds into a "+N" badge (the chip
     # row's overflow language). Twelve abilities were losing a keyword.
     ("effect pip overflow", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/effect_pip_overflow_test.gd"], "[EFFECT_PIP_OVERFLOW] PASS", False),
+    # UI batch 2026-09-27 B2: every icon + number pair (all live abilities, the
+    # live Detonate value, a stray-space value) sits exactly icon_value_gap from
+    # its icon, measured on the laid-out glyphs in both pip profiles.
+    ("pip spacing", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/pip_spacing_test.gd"], "[PIP_SPACING] PASS", False),
     # Build G item 3: every item "upgrade" draw succeeds at EVERY unlock state
     # (gating forced, fresh profile included) and ELITE PRESENCE upgrades
     # exactly one slot whenever its precondition holds (non-boss battles).
