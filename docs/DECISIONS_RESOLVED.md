@@ -137,7 +137,8 @@ From the P0 dice-face audit (`docs/audits/DICE_FACE_AUDIT.md`). Rulings:
    a settled die does not rotate again. (As implemented it still slides, without
    rotating, to its result slot under its unit.)
 5. **After-landing changes scramble-and-lock** on the die (~0.26 s): Nudge, Set,
-   after-landing relics/abilities, forced values. Reroll keeps its animation.
+   after-landing relics/abilities, forced values. The earlier "Reroll keeps its
+   animation" note is superseded by the 2026-09-27 real-throw ruling above.
    No single-frame jumps.
 6. **Hijack shows live** from landing and follows the heroes' highest die until
    resolution; its readout follows the die. Frozen behaviour unchanged.

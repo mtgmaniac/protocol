@@ -64,9 +64,9 @@ func _run() -> void:
 	_record = {"leg": _leg, "battle": _battle}
 	_dice_rng.seed = SEED + _battle
 	match _leg:
-		"full", "save", "save_phys":
+		"full", "save", "save_phys", "save_reroll":
 			await _play_leg()
-		"resume", "resume_phys":
+		"resume", "resume_phys", "resume_reroll":
 			await _resume_leg()
 		"resume_old":
 			_old_save_leg()
@@ -124,6 +124,17 @@ func _play_leg() -> void:
 		await scene._begin_targeting_phase()   # unrigged: whatever physics lands
 	else:
 		await _roll(scene)
+	if _leg == "save_reroll":
+		var launched: int = int(scene.dice_tray_3d.thrown_dice_total)
+		await scene._protocol._apply_reroll(str(heroes[0].id))
+		_expect(int(scene.dice_tray_3d.thrown_dice_total) == launched + 1, "hero reroll uses one live throw")
+		gs().consumables.append("phase_scrambler")
+		var item: Object = root.get_node("DataManager").get_item("phase_scrambler")
+		var target: Dictionary = scene.combat_manager.get_enemy_states()[0]
+		scene._protocol._phase_before_item = scene.turn_phase
+		await scene._protocol._apply_item_effect(item, target)
+		_expect(int(scene.dice_tray_3d.thrown_dice_total) == launched + 2, "enemy item uses one live throw")
+		_expect(not gs().consumables.has("phase_scrambler"), "reroll item consumed before checkpoint")
 	_record["round4_hero_rolls"] = scene.hero_rolls.duplicate()
 	_record["round4_enemy_rolls"] = scene.enemy_rolls.duplicate()
 	_record["post_roll_state"] = _live_state_text(scene)
@@ -169,7 +180,7 @@ func _resume_leg() -> void:
 	for key in shown:
 		var parts: PackedStringArray = str(key).split(":", true, 1)
 		_expect(int(shown[key]) == int(scene._die_value(parts[0], parts[1])), "restored die %s shows the value it acts on" % key)
-	if _leg == "resume_phys":
+	if _leg in ["resume_phys", "resume_reroll"]:
 		return
 	# The resume banner: shown after a successful restore, real round, non-blocking.
 	var callout: Variant = scene._feedback.resume_callout

@@ -238,6 +238,7 @@ var _briefing_active: bool = false
 # True when this battle was rebuilt from an end-of-round checkpoint (CONTINUE
 # mid-battle): the entry briefing (deployment slate / boss alert) already showed.
 var _resumed_from_checkpoint: bool = false
+var _pending_actions_restore: Dictionary = {}
 
 var _is_resolving_turn: bool = false
 
@@ -449,6 +450,7 @@ func _restore_battle_checkpoint(saved: Dictionary) -> bool:
 	# G-24: dice that had already landed before the refresh come back exactly as
 	# they were — placed, not thrown.
 	var pending_roll: Dictionary = BattleCheckpoint.pending_roll_of(saved)
+	_pending_actions_restore = (saved.get("pending_actions", {}) as Dictionary).duplicate(true)
 	if not pending_roll.is_empty():
 		call_deferred("_replay_pending_roll", pending_roll)
 	# Brief, non-blocking "BATTLE RESUMED - ROUND X" once the board has laid out.
@@ -1119,6 +1121,8 @@ func _find_state_for_card(card: Control) -> Dictionary:
 
 
 func _on_roll_button_pressed() -> void:
+	if not dice_landed():
+		return
 	if _briefing_active:
 		return
 	if _review_mode:
@@ -1160,6 +1164,10 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
 	hero_roll_sets.clear()
+	var restoring_reroll: bool = not _pending_actions_restore.is_empty() and not placed_rolls.is_empty()
+	if restoring_reroll:
+		hero_roll_nudges.assign(_pending_actions_restore.get("nudges", {}))
+		hero_roll_sets.assign(_pending_actions_restore.get("sets", {}))
 	_clear_die_tooltip_overlays()
 	_card_view.hide_all_ability_readouts()
 	active_targeting_hero_id = ""
@@ -1208,11 +1216,14 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
 	if _game_state().tutorial_mode:
 		_tutorial_turn += 1
-	_apply_roll_relic_overrides()
+	if not restoring_reroll:
+		_apply_roll_relic_overrides()
 	_record_roll_values_for_states(combat_manager.get_hero_states(), hero_rolls)
 	_record_roll_values_for_states(combat_manager.get_enemy_states(), enemy_rolls)
 	# APPLIED AFTER LANDING: it reacts to the rolled result (a matching pair).
-	_apply_post_roll_gear_effects()
+	if not restoring_reroll:
+		_apply_post_roll_gear_effects()
+	_pending_actions_restore.clear()
 	if dice_tray_3d != null and not skip_dice_visuals:
 		# From here to resolution the dice follow game logic live.
 		dice_tray_3d.set_values_live(true)
@@ -1433,6 +1444,8 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 			for natural in range(1, 21):
 				printed.append(_engine.pre_roll_face_value(state, side == "hero", natural, chorus_floor))
 			entry["face_values"] = printed
+			if not _pending_actions_restore.is_empty():
+				entry["face_values"] = _die_faces_now(side, str(state.id)).get("faces", printed)
 		entries.append(entry)
 	return entries
 

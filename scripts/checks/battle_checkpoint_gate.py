@@ -137,6 +137,14 @@ def main() -> int:
                 check(same_p, f"{name}: roll, settle, reload -> identical physics dice "
                               f"(hero {resume_p['round4_hero_rolls']}, enemy {resume_p['round4_enemy_rolls']})")
 
+    config = CONFIGS[0]
+    save_r = run_leg(config, "save_reroll")
+    resume_r = run_leg(config, "resume_reroll") if save_r else None
+    check(bool(save_r and resume_r) and not (save_r or {}).get("errors") and not (resume_r or {}).get("errors"), "live reroll save/resume legs ran clean")
+    if save_r and resume_r:
+        for key in ["round4_hero_rolls", "round4_enemy_rolls", "post_roll_state", "post_roll_run"]:
+            check(save_r[key] == resume_r[key], f"reroll reload preserves {key} (including cost and consumed item)")
+
     if failures:
         print(f"[BATTLE_CHECKPOINT] FAIL - {len(failures)} check(s)")
         return 1

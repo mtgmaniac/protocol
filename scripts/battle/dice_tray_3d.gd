@@ -56,8 +56,6 @@ const MAX_ROLL_TIME := 6.0
 const RESULT_SNAP_DELAY := 0.20
 const RESULT_PRESENTATION_TIME := 0.42
 const RESULT_SCALE := 0.95
-const SELECTED_REROLL_TIME := 0.82
-const SELECTED_REROLL_LIFT := DIE_RADIUS * 0.70
 const RESULT_FACE_NORMAL := Vector3(0.0, 1.0, 0.0)
 const RESULT_FACE_TEXT_UP := Vector3(0.0, 0.0, -1.0)
 const RESULT_MIN_SEPARATION := DIE_RADIUS * 2.22
@@ -672,61 +670,36 @@ func clear_die(side: String, unit_id: String) -> void:
 		die.queue_free()
 
 
-# Reroll keeps its own spin-and-arc; the new value is already in game logic
-# (BattleEngine.apply_reroll ran first) and is read from the one source.
-func reroll_die_to_result(side: String, unit_id: String) -> void:
-	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
-	if die == null:
-		return
-	var display: int = _value_for_die(die)
-	# Reprint first when the new value isn't printed (G-27), then the usual spin.
-	var face_index: int = _face_for_change(die, display)
-	if face_index < 0:
-		return
-	die.set_meta("busy", true)
-
-	var target_origin_variant: Variant = die.get_meta("assigned_result_origin", die.global_transform.origin)
-	var target_origin: Vector3 = target_origin_variant if target_origin_variant is Vector3 else die.global_transform.origin
-	target_origin.y = die.global_transform.origin.y
-	die.freeze = true
-	die.linear_velocity = Vector3.ZERO
-	die.angular_velocity = Vector3.ZERO
-	_set_die_collision_enabled(die, false)
-	_reset_face_labels(die)
-	_reset_face_highlights(die)
-
-	var from_transform: Transform3D = die.global_transform
-	var to_transform: Transform3D = Transform3D(_get_face_forward_result_basis(face_index), target_origin)
-	var spin_axis: Vector3 = Vector3(randf_range(-0.4, 0.4), 1.0, randf_range(-0.4, 0.4)).normalized()
-	var elapsed: float = 0.0
-	while elapsed < SELECTED_REROLL_TIME:
-		var tree: SceneTree = get_tree()
-		if _is_exiting_tree or tree == null:
-			return
-		await tree.process_frame
-		if _is_exiting_tree or not is_inside_tree():
-			return
-		var delta: float = get_process_delta_time()
-		elapsed += delta
-		var t: float = clampf(elapsed / SELECTED_REROLL_TIME, 0.0, 1.0)
-		var weight: float = _ease_out_cubic(t)
-		var arc: float = sin(t * PI) * SELECTED_REROLL_LIFT
-		var origin: Vector3 = from_transform.origin.lerp(target_origin, weight) + Vector3.UP * arc
-		var spin_basis: Basis = from_transform.basis.rotated(spin_axis, TAU * 1.65 * (1.0 - t))
-		var basis: Basis = spin_basis.slerp(to_transform.basis, weight).orthonormalized()
-		if is_instance_valid(die):
-			die.global_transform = Transform3D(basis, origin)
-
-	if not is_instance_valid(die):
-		return
-	die.global_transform = to_transform
-	die.set_meta("face_up", int(_face_values[face_index]))
-	_set_die_result_scale(die, true)
-	die.set_meta("shown_value", display)
-	die.set_meta("assigned_result_origin", target_origin)
-	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
-	die.set_meta("busy", false)
-	_highlight_top_face(die, display, side, str(die.get_meta("zone", "")))
+# G-24 reroll: launch one replacement body through the normal physics path.
+# The caller clears deliberate modifiers BEFORE this call and commits the
+# returned raw value only AFTER it settles. Other dice keep their exact poses.
+func reroll_die_to_result(side: String, unit_id: String) -> int:
+	var old: RigidBody3D = _get_die_for_entry(side, unit_id)
+	if old == null or _is_rolling or bool(old.get_meta("frozen", false)):
+		return 0
+	_is_rolling = true
+	var was_live: bool = _values_live
+	_values_live = false
+	var entry: Dictionary = (old.get_meta("entry", {}) as Dictionary).duplicate(true)
+	entry["frozen"] = false
+	if print_provider.is_valid():
+		entry["face_values"] = (print_provider.call(side, unit_id) as Dictionary).get("faces", [])
+	var origin: Vector3 = old.get_meta("assigned_result_origin", old.position)
+	old.free()
+	_throw_context = _make_throw_context(side)
+	var die: RigidBody3D = _spawn_die(entry, int(entry.get("slot_index", 0)), 1)
+	_print_faces(die, entry)
+	_launch_die(die)
+	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
+	if dice_audio != null:
+		dice_audio.on_roll_started(1)
+	await _wait_for_dice_to_settle([die], {die.get_instance_id(): origin})
+	if not is_instance_valid(die) or _is_exiting_tree:
+		return 0
+	var raw: int = int(die.get_meta("raw_result", 0))
+	await _finish_roll([die])
+	_values_live = was_live
+	return raw
 
 
 # CONTINUE with a pending roll (G-24): the dice appear at rest showing the

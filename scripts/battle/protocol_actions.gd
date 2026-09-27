@@ -22,6 +22,7 @@ class_name ProtocolActions
 extends Node
 
 var _scene: Node = null
+var _reroll_busy: bool = false
 
 
 func setup(scene: Node) -> void:
@@ -147,6 +148,8 @@ func update_item_panel() -> void:
 
 # Pick sub-phase routing: returns true when this module consumed the tap.
 func handle_hero_card_pressed(target_id: String) -> bool:
+	if _reroll_busy:
+		return true
 	if _scene.turn_phase == _scene.PHASE_REROLL_PICK:
 		var reroll_state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), target_id)
 		if reroll_state.is_empty() or bool(reroll_state["dead"]) or not _scene._has_roll_for_state(_scene.hero_rolls, reroll_state):
@@ -202,6 +205,8 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 
 
 func handle_enemy_card_pressed(target_id: String) -> bool:
+	if _reroll_busy:
+		return true
 	if not _in_item_phase():
 		return false
 	if (_scene.turn_phase == _scene.PHASE_ITEM_PICK_ENEMY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_ANY) and _scene.legal_target_ids.has(target_id) and _pending_item != null:
@@ -218,6 +223,8 @@ func handle_enemy_card_pressed(target_id: String) -> bool:
 # off-target tap (empty space) while a roll-modifier pick is armed cancels that
 # pick — the ARMED state's exit edge for taps that hit no unit (§1).
 func handle_unhandled_input(event: InputEvent) -> bool:
+	if _reroll_busy:
+		return true
 	if not _in_item_phase() and not in_roll_modifier_pick():
 		return false
 	var pressed := false
@@ -326,6 +333,8 @@ var _phase_before_item: int = -1
 
 
 func _on_reroll_button_pressed() -> void:
+	if _reroll_busy:
+		return
 	if not _scene._tutorial_allows("reroll"):
 		return
 	if _consume_protocol_long_press():
@@ -344,6 +353,8 @@ func _on_reroll_button_pressed() -> void:
 
 
 func _on_nudge_button_pressed() -> void:
+	if _reroll_busy:
+		return
 	if not _scene._tutorial_allows("nudge_button"):
 		return
 	if _consume_protocol_long_press():
@@ -378,18 +389,53 @@ func _add_nudge_button() -> void:
 
 
 func _apply_reroll(hero_id: String) -> void:
-	# Rule delegated to BattleEngine (A.1); this scene keeps the animation + UI.
-	var new_roll: int = _scene._engine.apply_reroll(_scene._state, hero_id)
+	var state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), hero_id)
+	if _reroll_busy or not _scene._engine.can_alter_die(state):
+		return
+	_reroll_busy = true
+	var landed: int = 0
+	if _scene.dice_tray_3d != null:
+		_scene.hero_roll_nudges.erase(hero_id)
+		_scene.hero_roll_sets.erase(hero_id)
+		landed = await _scene.dice_tray_3d.reroll_die_to_result("hero", hero_id)
+		if landed <= 0:
+			_reroll_busy = false
+			return
+	var new_roll: int = _scene._engine.apply_reroll(_scene._state, hero_id, landed)
 	if new_roll <= 0:
 		_scene._refresh_summary("That die is frozen solid - it can't be rerolled.")
 		return
+	_scene._engine.record_roll_values_for_states([state], _scene.hero_rolls)
 	_scene._update_protocol_bar()
 	_scene._append_log("Reroll: %s draws %d." % [hero_id, new_roll])
-	if _scene.dice_tray_3d != null:
-		await _scene.dice_tray_3d.reroll_die_to_result("hero", hero_id)
 	_scene._re_assign_hero_target(hero_id)
 	_scene._on_die_values_changed()
 	_scene._finish_roll_modifier_pick()
+	_reroll_busy = false
+	_checkpoint_reroll()
+
+
+func _checkpoint_reroll() -> void:
+	if _scene._game_state().tutorial_mode or _scene._review_mode:
+		return
+	var checkpoint = preload("res://scripts/battle/battle_checkpoint.gd")
+	var captured: Dictionary = checkpoint.capture(_scene, _scene._game_state())
+	var block: Dictionary = checkpoint.with_pending_roll(captured, _scene.hero_rolls, _scene.enemy_rolls)
+	if block.is_empty():
+		return
+	var saved: Dictionary = str_to_var(str(block.state))
+	saved["pending_actions"] = {"nudges": _scene.hero_roll_nudges.duplicate(), "sets": _scene.hero_roll_sets.duplicate()}
+	block.state = var_to_str(saved)
+	_scene.get_node("/root/SaveManager").checkpoint_battle_round(block)
+
+
+func _reroll_enemy(target: Dictionary) -> void:
+	if not _scene._engine.can_alter_die(target) or bool(target.get("dead", true)):
+		return
+	var landed: int = await _scene.dice_tray_3d.reroll_die_to_result("enemy", str(target.id))
+	if landed > 0:
+		_scene._engine.item_enemy_reroll(_scene._state, target, landed)
+		_scene._engine.record_roll_values_for_states([target], _scene.enemy_rolls)
 
 
 func _get_nudge_cost(hero_id: String) -> int:
@@ -490,6 +536,8 @@ func _get_set_cost() -> int:
 
 
 func _on_set_button_pressed() -> void:
+	if _reroll_busy:
+		return
 	if not _scene._tutorial_allows("set"):
 		return
 	if _cancel_armed_for_button(_scene.PHASE_SET_PICK):
@@ -809,6 +857,8 @@ func _update_item_panel() -> void:
 
 
 func _on_item_button_pressed_menu() -> void:
+	if _reroll_busy:
+		return
 	if item_button == null:
 		return
 	if not _scene._tutorial_allows("item"):
@@ -840,6 +890,8 @@ func _on_item_menu_id_pressed(id: int) -> void:
 # Returns true if the item tap was accepted (the loadout menu should close), false if it was
 # rejected for insufficient Protocol (the menu stays open and flashes the tapped row red).
 func _on_item_button_pressed(item: ItemData) -> bool:
+	if _reroll_busy:
+		return false
 	if _scene.battle_over:
 		return true
 	if not _can_use_item_in_current_phase():
@@ -1026,7 +1078,7 @@ func _add_confirm_card_highlight(card: PanelContainer) -> void:
 
 
 func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
-	if item == null:
+	if item == null or _reroll_busy:
 		return
 	_hide_item_targeting_card()
 	AudioManager.play_sfx("item")
@@ -1049,6 +1101,12 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 		var protocol_grant: int = int(effect.get("amount", 0))
 		_scene._gain_protocol(protocol_grant)
 		_scene._append_log("Item: %s grants +%d Protocol -> %d." % [item.display_name, protocol_grant, _scene.protocol_points])
+	elif effect_type in ["enemyRerollDie", "enemyRerollAll"] and _scene.dice_tray_3d != null:
+		_reroll_busy = true
+		for target in ([target_state] if effect_type == "enemyRerollDie" else _scene.combat_manager.get_enemy_states()):
+			await _reroll_enemy(target)
+		_reroll_busy = false
+		_scene._append_log("Item: %s rerolls unfrozen enemy dice." % item.display_name)
 	else:
 		# Combat-state mutation is shared with the sim (sim-D).
 		var revive_pct: int = _scene._game_state().get_revive_hp_pct(int(effect.get("pct", 50)))
@@ -1061,6 +1119,8 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	_scene._on_die_values_changed()
 
 	_consume_item(item.id)
+	if effect_type in ["enemyRerollDie", "enemyRerollAll"]:
+		_checkpoint_reroll()
 	_pending_item = null
 	_scene.legal_target_ids.clear()
 	_scene.legal_target_side = ""

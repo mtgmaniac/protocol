@@ -21,6 +21,15 @@ Step 4: YOUR PLAN shows its Burn reminder only while an enemy is alive with
 Burn stacks. The optional Reroll hint says there is enough Protocol, without
 claiming the player's pool is exactly 2. All other lesson copy is unchanged.
 
+Step 5: hero Reroll, Phase Scrambler and Cascade Jammer now physically rethrow
+each affected unfrozen die with the normal launch, settle and upright snap.
+Static modifier faces are printed before launch; the physical landing is
+committed afterward. Headless simulation keeps its seeded provider. After a
+reroll the checkpoint includes pending raws, current combat/run state, paid
+costs, consumed items and other dice's Nudge/Set state. Restore places those
+dice and skips already-applied roll-start effects. The dice-face gate and
+cross-process checkpoint gate cover this. Frozen dice remain unalterable.
+
 **2026-09-26 text legibility Step 1 (Kev):** basis
 [TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/
 scale mode, the 1080×2400 design size, the project-wide LINEAR default filter and
