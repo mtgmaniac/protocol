@@ -5,6 +5,8 @@
 # portrait_anchors.json is byte-identical afterwards.
 extends Node
 
+const FIXTURE_PATH := "res://dev/framing_editor/framing_editor_fixture.json"
+
 var _failures: int = 0
 var _checks: int = 0
 var editor: Node
@@ -59,6 +61,17 @@ func _run() -> void:
 
 	# 1. Load + serialize is byte-exact (Save never reformats the file).
 	_check(editor.serialize() == real_before, "serialize() round-trips portrait_anchors.json byte-exact")
+
+	# The behaviour checks below start from a frozen fixture, not the live file,
+	# so Kev's framing pass never moves their starting state (engineer without
+	# anchor framing, patrol_elite without an entry, Nanite Field's stray flag
+	# pending). Copied to user:// so a save still never touches res://.
+	var fixture: String = FileAccess.get_file_as_string(FIXTURE_PATH)
+	var copy := FileAccess.open(editor.save_path, FileAccess.WRITE)
+	copy.store_string(fixture)
+	copy.close()
+	editor.load_data(editor.save_path)
+	await _settle()
 
 	# 2. Hero: anchor framing on, then a head_top nudge moves the battle card.
 	editor.select_section("heroes")
