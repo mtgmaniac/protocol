@@ -16,6 +16,9 @@ func _initialize() -> void:
 
 func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
+	if config.has("window"):
+		DisplayServer.window_set_size(config["window"])
+		root.size = config["window"]
 	_prepare_run(config)
 	change_scene_to_file("res://scenes/battle/BattleScene.tscn")
 	await _wait_for_battle_scene(config)
@@ -93,6 +96,18 @@ func _parse_args() -> Dictionary:
 				config["inset_top"] = maxi(int(raw_parts[0]), 0)
 				config["inset_bottom"] = maxi(int(raw_parts[1]), 0)
 				config["insets_raw"] = true
+		elif arg.begins_with("--capture-window="):
+			# Window size WxH for before/after captures at 1080x2400 and 540x1200.
+			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
+			if window_parts.size() >= 2:
+				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		elif arg == "--capture-detonate-preview":
+			# UI batch B1: the first enemy burns 3 x 3 turns, Pulse's die shows
+			# 16 (Flash Detonation) and targets it, so the hero readout's
+			# Detonate number and the enemy's HP preview are both on screen.
+			config["detonate_preview"] = true
+			config["rolled"] = true
+			config["no_primers"] = true
 		elif arg == "--capture-debug-log":
 			config["debug_log"] = true
 		elif arg == "--capture-enemy-shield":
@@ -229,6 +244,8 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await _lock_n_targets(lock_count)
 	if bool(config.get("force_auto", false)):
 		await _force_auto_target_first_hero()
+	if bool(config.get("detonate_preview", false)):
+		await _force_detonate_preview()
 	if bool(config.get("enemy_shield", false)):
 		await _force_enemy_shield_scenario()
 	if bool(config.get("enemy_rolls_shield", false)):
@@ -714,6 +731,54 @@ func _force_enemy_shield_scenario() -> void:
 	if battle.has_method("_refresh_all_cards"):
 		battle.call("_refresh_all_cards")
 	await process_frame
+
+
+func _force_detonate_preview() -> void:
+	var battle: Node = current_scene
+	var cm: Object = battle.get("combat_manager")
+	var enemy_state: Dictionary = {}
+	for state_variant in cm.call("get_enemy_states"):
+		if not bool((state_variant as Dictionary).get("dead", false)):
+			enemy_state = state_variant
+			break
+	var pulse: Dictionary = {}
+	for state_variant in cm.call("get_hero_states"):
+		if str((state_variant as Dictionary)["unit"].id) == "pulse":
+			pulse = state_variant
+	if enemy_state.is_empty() or pulse.is_empty():
+		push_error("[BATTLE_UI_CAPTURE] detonate preview needs Pulse and a living enemy")
+		return
+	enemy_state["burn_stacks"] = [{"amt": 3, "turns_left": 3, "perm": false}]
+	enemy_state["burn"] = 3
+	enemy_state["burn_turns"] = 3
+	# Every other die is pinned so a before/after pair differs only by the code:
+	# the other heroes on a roll that deals no damage, every enemy on 1.
+	var dm: Object = battle.get("dice_manager")
+	for state_variant in cm.call("get_hero_states"):
+		var hero: Dictionary = state_variant
+		if hero == pulse or bool(hero.get("dead", false)):
+			continue
+		for r in range(1, 21):
+			var raw: Dictionary = (dm.call("get_ability_for_roll", hero["unit"], r) as Dictionary).get("raw", {})
+			if int(raw.get("dmg", 0)) == 0 and int(raw.get("burn", 0)) == 0:
+				(battle.get("hero_rolls") as Dictionary)[str(hero["id"])] = r
+				break
+	for state_variant in cm.call("get_enemy_states"):
+		if not bool((state_variant as Dictionary).get("dead", false)):
+			(battle.get("enemy_rolls") as Dictionary)[str((state_variant as Dictionary)["id"])] = 1
+	(battle.get("hero_rolls") as Dictionary)[str(pulse["id"])] = 16
+	battle.call("_on_die_values_changed")
+	await create_timer(1.2).timeout
+	var pulse_id: String = str(pulse["id"])
+	if (battle.get("pending_manual_target_ids") as Array).has(pulse_id):
+		battle.call("_select_targeting_hero", pulse_id)
+		await process_frame
+		battle.call("_assign_target_to_active_hero", str(enemy_state["id"]), "enemy")
+	else:
+		pulse["selected_target_id"] = str(enemy_state["id"])
+	await process_frame
+	battle.get("_card_view").call("refresh_all_cards")
+	await create_timer(0.4).timeout
 
 
 func _force_log(message: String) -> void:

@@ -1255,6 +1255,12 @@ func _layout_preview_overlays() -> void:
 	var absorbed: float = minf(inc_dmg, total_shield)
 	var hp_dmg: float = inc_dmg - absorbed
 	var shield_after: float = total_shield - absorbed
+	# Exact hero-phase result (enemy cards, UI batch B1): the dry run already
+	# knows the HP lost and the shield left, pierce and breach included, so
+	# the bar uses them instead of re-deriving them from a damage total.
+	if _preview_effects.has("hp_loss"):
+		hp_dmg = float(int(_preview_effects["hp_loss"]))
+		shield_after = float(int(_preview_effects.get("shield_after", 0))) + inc_shield
 	var hp_burn: float = burn_tick - minf(burn_tick, shield_after)
 	var final_hp: float = clampf(post_heal - hp_dmg - hp_burn, 0.0, hp_max)
 	var no_shield_final: float = clampf(post_heal - inc_dmg - burn_tick, 0.0, hp_max)

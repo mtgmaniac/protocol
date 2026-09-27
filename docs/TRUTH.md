@@ -1444,21 +1444,32 @@ share one shape — a surface stating something the round will not do.
   `combat_manager._resolve_enemy_hero_target`'s priority order; (c) LEECH
   healing reaches the net-HP projection — it heals the ATTACKER, so it never
   passed the "does this ability land on this card" gate and was simply absent.
-  The forecast models damage, shields, cast order, kills, taunt and leech, and
-  deliberately NOT mark / execute / chain / breach / detonate / relic
-  multipliers. **That asymmetry is the safety property, not laziness:** every
-  omitted effect only ADDS hero damage, so the forecast under-states the
-  squad's output and under-predicts kills — it errs toward showing damage that
-  will not land (the old behavior), never toward hiding damage that will. It
-  reads state and mutates nothing. **A fully accurate preview would need a
-  speculative-resolution path the UI does not have:** `snapshot_state` /
-  `restore_state` exist and the L2 sim solver already resolves candidate rounds
-  on them, but `resolve_round` also writes OUTSIDE that snapshot —
-  `SaveManager.record_nat20`, `SaveManager.record_hero_death`,
-  `GameState.grant_battle_start_consumables`, `GameState.dead_mans_hand_used` —
-  and advances the seeded RNG stream. Running it from the UI on every tap would
-  inflate lifetime stats and hand out consumables. Gate:
-  `scripts/debug/preview_accuracy_test.gd`.
+  **Exact since 2026-09-27 (UI batch B1, Kev: "the enemy preview always
+  equals the damage that resolves").** The forecast used to be a hand-written
+  model that left out mark / execute / chain / breach / detonate / spike /
+  relic multipliers, so a planned Detonate showed on the hero readout but not
+  on the enemy's bar. It now runs the REAL hero phase:
+  `CombatManager.forecast_hero_phase` swaps in deep copies of the unit states,
+  runs `_resolve_hero_phase` (the same function `resolve_round` runs: round-start
+  boss rules, hijack, acted-value stamps, intents, every hero in cast order with
+  its echo) and swaps the live states back. The writes that used to make this
+  unsafe are skipped while `_forecast_only` is set (`SaveManager.record_nat20`,
+  `SaveManager.record_hero_death`, `GameState.grant_battle_start_consumables`,
+  `GameState.dead_mans_hand_used`), and the roll provider's streams are saved and
+  restored, so the preview never changes stats, grants or later rolls. Enemy
+  cards read HP lost, shield left and death straight off the dry run
+  (`hp_loss` / `shield_after`, which the card bar uses directly), and the burn
+  tick is read on the post-hero-phase state (a Detonate consumes finite Burn).
+  Hero cards read the hero phase's heals, leech, shields and hits (spike
+  retaliation) off the same run, then add the enemy phase's telegraphs. The
+  hero readout's Detonate number is the burst the dry run lands
+  (`detonate_by_hero`). A hero whose ability takes a manual pick and has no
+  target yet is left out of the run. The enemy phase itself is still the raw
+  telegraph (see TASK_QUEUE). Gate: `scripts/debug/preview_accuracy_test.gd`,
+  whose EXACT cases compare every card's projected HP with a real
+  `resolve_step` (detonate finite / permanent / lethal, burn tick, execute,
+  chain, mark, breach, pierce, spike, relic multiplier, Overload Loop echo);
+  the pre-B1 forecast fails 11 of its 12 cases.
 - **One hit, one number.** `chain`, `detonate`, `spike` and `execute` each
   emitted a NUMBERED marker event and then called `_damage_state`, which emits
   the real `damage` event — two red floats on one card for a hit that applied

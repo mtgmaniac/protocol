@@ -224,93 +224,98 @@ func refresh_card_for_event(event: Dictionary) -> void:
 		return
 
 
-# ── Hero-phase forecast (2026-09-02, "the preview lies") ─────────────────────
-# The preview used to read the CURRENT board and telegraph every living enemy's
-# attack, which produced three lies the player could catch in one round:
-#   1. an enemy the squad is about to kill still telegraphed its damage,
-#   2. a taunt cast this round did not redirect the attacks it will redirect,
-#   3. leech healing never showed, so the net HP change was wrong.
-# All three come from one missing step: heroes resolve BEFORE the enemy phase,
-# so an honest forecast has to walk the hero phase first. This is a LIGHTWEIGHT
-# forecast, not a resolution — it models damage, shields, cast order, kills,
-# taunt and leech, and deliberately NOT mark / execute / chain / breach /
-# detonate / relic multipliers. Every one of those only ADDS hero damage, so
-# the forecast under-estimates the squad's output and therefore under-predicts
-# kills: it errs toward showing damage that will not land (today's behavior),
-# never toward hiding damage that will. It never touches combat state.
+# ── Hero-phase forecast (2026-09-02, "the preview lies"; exact since B1) ─────
+# Heroes resolve BEFORE the enemy phase, so an honest preview walks the hero
+# phase first: which enemies are still standing to act, who they may hit, how
+# much leech heals. Until 2026-09-27 this was a hand-written lightweight model
+# that left out detonate, execute, chain, mark, breach, spike and the relic
+# multipliers, so an enemy's preview and the damage that resolved disagreed
+# (UI batch B1). It now runs the REAL hero phase through
+# CombatManager.forecast_hero_phase on copies of the unit states — the same
+# code resolve_round runs — so every hero-phase rule is in the preview by
+# construction. It never touches live combat state.
+#
+# A hero whose ability takes a manual pick (battle_scene._get_manual_target_side)
+# and has no target yet is left out: the preview shows nothing for an ability
+# whose target the player has not chosen.
 #
 # Returns:
-#   dead_enemy_ids  {enemy_id: true}    enemies the assignment is projected to kill
-#   lured           {enemy_id: hero_id} taunt redirects this round's casts create
+#   dead_enemy_ids  {enemy_id: true}    enemies the hero phase kills
+#   lured           {enemy_id: hero_id} taunt lures standing after the hero phase
 #   taunter_id      the Anchor Frame aura taunter (redirects EVERY enemy), or ""
-#   leech_by_hero   {hero_id: int}      self-heal each leeching hero is owed
+#   leech_by_hero   {hero_id: int}      self-heal each leeching hero gets
+#   after           {state_id: state}   every unit's state copy after the hero phase
+#   events          the hero phase's combat events
+#   detonate_by_hero {hero_id: int}     Detonate burst each hero lands
 func _forecast_hero_phase() -> Dictionary:
 	var forecast: Dictionary = {
 		"dead_enemy_ids": {},
 		"lured": {},
 		"taunter_id": "",
 		"leech_by_hero": {},
+		"after": {},
+		"events": [],
+		"detonate_by_hero": {},
 	}
-	var enemy_states: Array = _scene.combat_manager.get_enemy_states()
-	# Working copy of the enemy line: HP and shield burn down IN CAST ORDER, so
-	# a second hero aimed at an already-dead target adds nothing and a leech
-	# only heals off damage that actually reached HP.
-	var hp_left: Dictionary = {}
-	var shield_left: Dictionary = {}
-	for enemy_variant in enemy_states:
-		var enemy_state: Dictionary = enemy_variant
-		if bool(enemy_state.get("dead", false)):
-			continue
-		hp_left[str(enemy_state["id"])] = int(enemy_state.get("current_hp", 0))
-		shield_left[str(enemy_state["id"])] = int(enemy_state.get("shield", 0))
-
-	for hero_variant in _heroes_in_forecast_order():
+	var cm: CombatManager = _scene.combat_manager
+	var hero_rolls: Dictionary = {}
+	var raw_hero_rolls: Dictionary = {}
+	var revealed_heroes: Dictionary = _revealed_rolls("hero")
+	for hero_variant in cm.get_hero_states():
 		var hero_state: Dictionary = hero_variant
-		if bool(hero_state.get("dead", false)):
-			continue
 		var hero_id: String = str(hero_state["id"])
-		if not _revealed_rolls("hero").has(hero_id):
+		if bool(hero_state.get("dead", false)) or not revealed_heroes.has(hero_id):
 			continue
 		var eff: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
-		if entry.is_empty():
+		if str(hero_state.get("selected_target_id", "")) == "" and _scene._get_manual_target_side(entry) != "":
 			continue
-		var raw: Dictionary = entry.get("raw", {})
-		var hero_target: String = str(hero_state.get("selected_target_id", ""))
-		var dmg: int = int(raw.get("dmg", 0))
-		var hp_dealt: int = 0
-		if dmg > 0:
-			if bool(raw.get("blastAll", false)):
-				for enemy_id in hp_left.keys():
-					hp_dealt += _forecast_apply_damage(hp_left, shield_left, str(enemy_id), dmg)
-			elif hero_target != "":
-				hp_dealt += _forecast_apply_damage(hp_left, shield_left, hero_target, dmg)
-		if bool(raw.get("leech", false)) and hp_dealt > 0:
-			# Mirrors combat_manager: the attacker heals 50% of the HP damage
-			# dealt after shields, rounded down.
-			var leech_heal: int = int(floor(float(hp_dealt) * 0.5))
-			if leech_heal > 0:
-				var leech_map: Dictionary = forecast["leech_by_hero"]
-				leech_map[hero_id] = int(leech_map.get(hero_id, 0)) + leech_heal
-		# Taunt (ruling G-4): the cast lures ONE enemy, which can then only
-		# strike the taunter. A firewall eats the taunt, so a warded enemy is
-		# NOT lured — the same order combat_manager resolves it in.
-		if bool(raw.get("taunt", false)):
-			var lured_state: Dictionary = _forecast_taunt_target(enemy_states, hero_target)
-			if not lured_state.is_empty() and not bool(lured_state.get("warded", false)):
-				var lure_map: Dictionary = forecast["lured"]
-				lure_map[str(lured_state["id"])] = hero_id
+		hero_rolls[hero_id] = eff
+		raw_hero_rolls[hero_id] = int(revealed_heroes[hero_id])
+	var enemy_rolls: Dictionary = {}
+	var revealed_enemies: Dictionary = _revealed_rolls("enemy")
+	for enemy_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_variant
+		var enemy_id: String = str(enemy_state["id"])
+		if bool(enemy_state.get("dead", false)) or not revealed_enemies.has(enemy_id):
+			continue
+		enemy_rolls[enemy_id] = _scene._get_effective_enemy_roll(enemy_state, enemy_id)
+	if hero_rolls.is_empty():
+		for state_variant in cm.get_hero_states() + cm.get_enemy_states():
+			var live: Dictionary = state_variant
+			forecast["after"][str(live["id"])] = live
+	else:
+		var run: Dictionary = cm.forecast_hero_phase(hero_rolls, enemy_rolls, _scene.dice_manager, raw_hero_rolls)
+		for state_variant in (run["hero_states"] as Array) + (run["enemy_states"] as Array):
+			var after_state: Dictionary = state_variant
+			forecast["after"][str(after_state["id"])] = after_state
+		forecast["events"] = run["events"]
+		forecast["detonate_by_hero"] = run["detonate_by_hero"]
 
 	var dead_map: Dictionary = forecast["dead_enemy_ids"]
-	for enemy_id in hp_left.keys():
-		if int(hp_left[enemy_id]) <= 0:
-			dead_map[str(enemy_id)] = true
+	var lure_map: Dictionary = forecast["lured"]
+	for enemy_variant in cm.get_enemy_states():
+		var enemy_id: String = str((enemy_variant as Dictionary)["id"])
+		var after_enemy: Dictionary = forecast["after"].get(enemy_id, {})
+		if after_enemy.is_empty():
+			continue
+		if bool(after_enemy.get("dead", false)) and not bool((enemy_variant as Dictionary).get("dead", false)):
+			dead_map[enemy_id] = true
+		var lured_by: String = str(after_enemy.get("lured_by_id", ""))
+		if lured_by != "":
+			lure_map[enemy_id] = lured_by
+	var leech_map: Dictionary = forecast["leech_by_hero"]
+	for event_variant in forecast["events"]:
+		var event: Dictionary = event_variant
+		if str(event.get("type", "")) == "leech":
+			var leecher: String = str(event.get("target_id", ""))
+			leech_map[leecher] = int(leech_map.get(leecher, 0)) + int(event.get("amount", 0))
 
 	# Anchor Frame gear: a standing aura, not a cast — already live on the board,
 	# redirecting EVERY enemy's single-target pick while its holder is above half
-	# HP (combat_manager._get_taunting_hero_state).
-	for hero_variant in _scene.combat_manager.get_hero_states():
-		var aura_state: Dictionary = hero_variant
+	# HP (combat_manager._get_taunting_hero_state). Read after the hero phase.
+	for hero_variant in cm.get_hero_states():
+		var aura_state: Dictionary = forecast["after"].get(str((hero_variant as Dictionary)["id"]), hero_variant)
 		if bool(aura_state.get("dead", false)) or not bool(aura_state.get("gear_anchor_taunt", false)):
 			continue
 		if int(aura_state.get("current_hp", 0)) * 2 > int(aura_state.get("max_hp", 1)):
@@ -319,52 +324,14 @@ func _forecast_hero_phase() -> Dictionary:
 	return forecast
 
 
-# Heroes in the order they will actually fire: stamped picks ascending, then
-# unstamped in squad order — the same rule as the private
-# combat_manager._hero_states_in_cast_order.
-func _heroes_in_forecast_order() -> Array:
-	var stamped: Array = []
-	var unstamped: Array = []
-	for state_variant in _scene.combat_manager.get_hero_states():
-		var state: Dictionary = state_variant
-		if int(state.get("cast_stamp", 0)) > 0:
-			stamped.append(state)
-		else:
-			unstamped.append(state)
-	if stamped.is_empty():
-		return unstamped
-	stamped.sort_custom(func(a, b): return int(a["cast_stamp"]) < int(b["cast_stamp"]))
-	return stamped + unstamped
-
-
-# Burns `amount` through one enemy's forecast shield then HP; returns the part
-# that reached HP (what a leech feeds on). A target already at 0 absorbs
-# nothing — combat_manager._damage_state returns early on a dead state.
-func _forecast_apply_damage(hp_left: Dictionary, shield_left: Dictionary, enemy_id: String, amount: int) -> int:
-	if not hp_left.has(enemy_id) or int(hp_left[enemy_id]) <= 0 or amount <= 0:
-		return 0
-	var absorbed: int = mini(amount, int(shield_left.get(enemy_id, 0)))
-	shield_left[enemy_id] = int(shield_left.get(enemy_id, 0)) - absorbed
-	var to_hp: int = mini(amount - absorbed, int(hp_left[enemy_id]))
-	hp_left[enemy_id] = int(hp_left[enemy_id]) - to_hp
-	return to_hp
-
-
-# The enemy a taunt cast lures, mirroring combat_manager._hostile_single_target:
-# the explicit pick when it is living and uncloaked, else the first living
-# uncloaked enemy.
-func _forecast_taunt_target(enemy_states: Array, selected_id: String) -> Dictionary:
-	for state_variant in enemy_states:
-		var state: Dictionary = state_variant
-		if str(state.get("id", "")) != selected_id:
-			continue
-		if not bool(state.get("dead", false)) and not bool(state.get("cloaked", false)):
-			return state
-	for state_variant in enemy_states:
-		var fallback: Dictionary = state_variant
-		if not bool(fallback.get("dead", false)) and not bool(fallback.get("cloaked", false)):
-			return fallback
-	return {}
+# Sums one unit's hero-phase events of the given types from a forecast.
+func _forecast_event_total(forecast: Dictionary, unit_id: String, types: Array) -> int:
+	var total: int = 0
+	for event_variant in forecast["events"]:
+		var event: Dictionary = event_variant
+		if str(event.get("target_id", "")) == unit_id and types.has(str(event.get("type", ""))):
+			total += int(event.get("amount", 0))
+	return total
 
 
 # The hero one enemy will actually hit, given this round's forecast. Priority is
@@ -416,148 +383,108 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 	# hero_target == target_id check below is the only gate single-target needs
 	# (an un-targeted ability has selected_target_id == "" and matches nothing).
 	var target_id: String = str(target_state["id"])
-	var total_dmg: int    = 0
-	var total_heal: int   = 0
-	var total_shield: int = 0
-	var found: bool = false
 	# Walk the hero phase first: heroes resolve BEFORE enemies, so which enemies
 	# are still standing to act, and who they are still allowed to hit, both
 	# depend on the assignment the player is looking at right now.
 	var forecast: Dictionary = _forecast_hero_phase()
-	var forecast_dead: Dictionary = forecast["dead_enemy_ids"]
-
-	# ── Hero abilities ────────────────────────────────────────────────────────
-	for hero_state in _scene.combat_manager.get_hero_states():
-		if bool(hero_state.get("dead", false)):
-			continue
-		var hero_id: String = str(hero_state["id"])
-		if not _revealed_rolls("hero").has(hero_id):
-			continue
-		var eff: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
-		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
-		if entry.is_empty():
-			continue
-		# Resolved like the readout: a revive whose `else` heal will fire projects
-		# as that heal on the net-HP forecast.
-		var raw: Dictionary     = ReviveResolution.display_raw(entry.get("raw", {}), hero_state,
-			str(entry.get("ability_name", "")), _scene.combat_manager.get_hero_states())
-		var hero_target: String = str(hero_state.get("selected_target_id", ""))
-		var blast_all: bool     = bool(raw.get("blastAll", false))
-		var heal_all: bool      = bool(raw.get("healAll", false))
-		var shield_all: bool    = bool(raw.get("shieldAll", false))
-
-		var hits_this: bool = false
-		if not is_hero:
-			if blast_all:
-				hits_this = true
-			elif hero_target == target_id and int(raw.get("dmg", 0)) > 0:
-				hits_this = true
-		if is_hero:
-			if heal_all or shield_all:
-				hits_this = true
-			elif hero_target == target_id and (int(raw.get("heal", 0)) > 0 or int(raw.get("shield", 0)) > 0):
-				hits_this = true
-
-		if not hits_this:
-			continue
-		found = true
-		if not is_hero:
-			total_dmg += int(raw.get("dmg", 0))
-		if is_hero:
-			total_heal   += int(raw.get("heal", 0))
-			total_shield += int(raw.get("shield", 0))
-
-	# ── Leech (hero self-heal) ────────────────────────────────────────────────
-	# Leech heals the ATTACKER, so it never passes the "does this ability land
-	# on this card" gate above and was missing from the net-HP projection
-	# entirely. The forecast already knows how much damage each leeching hero
-	# gets through shields, which is exactly what the heal is a fraction of.
 	if is_hero:
-		var leech_map: Dictionary = forecast["leech_by_hero"]
-		var leech_heal: int = int(leech_map.get(target_id, 0))
-		if leech_heal > 0:
-			found = true
-			total_heal += leech_heal
+		return _hero_preview(target_state, forecast)
+	return _enemy_preview(target_state, forecast)
 
-	# ── Enemy abilities ───────────────────────────────────────────────────────
+
+# An enemy card: what the hero phase does to it is read straight off the dry
+# run (HP lost, shield left, dead or not, every keyword and rider included),
+# then its own enemy-phase heal and the end-of-round burn tick on top.
+func _enemy_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionary:
+	var target_id: String = str(target_state["id"])
+	var after: Dictionary = forecast["after"].get(target_id, target_state)
+	var cur_hp: int = int(target_state.get("current_hp", 0))
+	var cur_shield: int = int(target_state.get("shield", 0))
+	var hp_loss: int = maxi(cur_hp - int(after.get("current_hp", cur_hp)), 0)
+	var shield_left: int = int(after.get("shield", cur_shield))
+	var blocked: int = _forecast_event_total(forecast, target_id, ["block"])
+	var dies: bool = bool(after.get("dead", false)) and not bool(target_state.get("dead", false))
+	var found: bool = hp_loss > 0 or blocked > 0 or shield_left != cur_shield or dies
+
+	var total_heal: int = 0
+	if not dies and _revealed_rolls("enemy").has(target_id):
+		var eff: int = _scene._get_effective_enemy_roll(target_state, target_id)
+		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(target_state["unit"], eff)
+		var raw: Dictionary = entry.get("raw", {})
+		# Heal previews fine (informational about end-of-turn HP). Shield
+		# previews are intentionally omitted: enemies act AFTER heroes, so a
+		# shield the enemy is about to cast cannot absorb hero damage this
+		# turn; it only becomes an active status next turn.
+		if str(target_state.get("selected_target_id", "")) == target_id and int(raw.get("heal", 0)) > 0:
+			found = true
+			total_heal = int(raw.get("heal", 0))
+
+	# Burn: exactly what _tick_state will deal this round, read on the state
+	# AFTER the hero phase (a Detonate consumes finite Burn, a new Burn may have
+	# landed). Single-sourced from combat_manager.
+	var active_burn: int = 0 if dies else _scene.combat_manager.get_expected_burn_tick(after)
+	if active_burn > 0:
+		found = true
+	if not found:
+		return {}
+	return {
+		"damage":          hp_loss + blocked,
+		"hp_loss":         hp_loss,
+		"shield_after":    shield_left,
+		"blocked":         blocked,
+		"heal":            total_heal,
+		"shield":          0,
+		"burn":            active_burn,
+		"current_shield":  cur_shield,
+		"lethal":          dies,
+	}
+
+
+# A hero card: the hero phase's effects on this hero come off the dry run
+# (heals, leech, shields, spike retaliation and every other hit), then the
+# enemy phase's telegraphed damage from each enemy still standing after it.
+func _hero_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionary:
+	var target_id: String = str(target_state["id"])
+	var forecast_dead: Dictionary = forecast["dead_enemy_ids"]
+	var total_heal: int = _forecast_event_total(forecast, target_id, ["heal"])
+	var total_shield: int = _forecast_event_total(forecast, target_id, ["shield"])
+	var total_dmg: int = _forecast_event_total(forecast, target_id, ["damage", "block"])
+	var found: bool = total_heal > 0 or total_shield > 0 or total_dmg > 0
+
 	for enemy_state in _scene.combat_manager.get_enemy_states():
 		if bool(enemy_state.get("dead", false)):
 			continue
-		# An enemy the assignment is about to KILL never reaches the enemy
-		# phase, so nothing it telegraphs can land: it contributes no damage to
-		# any hero bar and no self-heal to its own. Its card still previews the
-		# incoming kill normally — that is computed from the hero loop above.
-		if forecast_dead.has(str(enemy_state["id"])):
-			continue
+		# An enemy the hero phase KILLS never reaches the enemy phase, so
+		# nothing it telegraphs can land.
 		var enemy_id: String = str(enemy_state["id"])
-		if not _revealed_rolls("enemy").has(enemy_id):
+		if forecast_dead.has(enemy_id) or not _revealed_rolls("enemy").has(enemy_id):
 			continue
 		var eff: int = _scene._get_effective_enemy_roll(enemy_state, enemy_id)
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(enemy_state["unit"], eff)
 		if entry.is_empty():
 			continue
-		var raw: Dictionary   = entry.get("raw", {})
-		var e_target: String  = str(enemy_state.get("selected_target_id", ""))
-		var e_blast: bool     = bool(raw.get("blastAll", false))
+		var raw: Dictionary = entry.get("raw", {})
+		# The pick shown on the enemy card is not necessarily who it hits: a
+		# taunt cast this round (or the standing Anchor Frame aura) redirects it
+		# at resolve time. Preview the hero it will ACTUALLY strike.
+		var hostile_target: String = _forecast_enemy_target(enemy_state, forecast)
+		var hits_hero: bool = bool(raw.get("blastAll", false)) or hostile_target == target_id
+		if hits_hero and int(raw.get("dmg", 0)) > 0:
+			found = true
+			total_dmg += int(raw.get("dmg", 0))
 
-		if is_hero:
-			# The pick shown on the enemy card is not necessarily who it hits:
-			# a taunt cast this round (or the standing Anchor Frame aura)
-			# redirects it at resolve time. Preview the hero it will ACTUALLY
-			# strike. The self-heal branch below keeps the raw pick — the
-			# redirect is a HOSTILE-targeting rule only.
-			var hostile_target: String = _forecast_enemy_target(enemy_state, forecast)
-			var hits_hero: bool = e_blast or hostile_target == target_id
-			if hits_hero and int(raw.get("dmg", 0)) > 0:
-				found = true
-				total_dmg += int(raw.get("dmg", 0))
-
-		if not is_hero and e_target == target_id:
-			# Heal previews fine (informational about end-of-turn HP). Shield
-			# previews are intentionally omitted: enemies act AFTER heroes,
-			# so a shield the enemy is about to cast cannot absorb hero damage
-			# this turn — it only becomes an active status next turn.
-			var self_heal: int = int(raw.get("heal", 0))
-			if self_heal > 0:
-				found = true
-				total_heal += self_heal
-
-	# ── burn: exactly what _tick_state will deal this round (0 when the tick
-	# won't fire — expired, skip-flagged, or no burn), including the enemy-side
-	# relic amplification. Single-sourced from combat_manager.
 	var active_burn: int = _scene.combat_manager.get_expected_burn_tick(target_state)
 	if active_burn > 0:
 		found = true
-
 	if not found:
 		return {}
-
-	# ── Shield availability ───────────────────────────────────────────────────
-	# Both heroes and enemies have their existing shield stacks applied BEFORE
-	# damage resolves (combat_manager._damage_state absorbs from shield_stacks).
-	# For enemies the catch is that any shield they're about to cast THIS turn
-	# is not yet active when heroes attack, so we only count pre-existing stacks
-	# (their current shield total). Heroes likewise use their current shield
-	# plus any incoming shield from this turn's hero rolls (already aggregated
-	# above into total_shield), so the existing-shield contribution comes from
-	# state["shield"] for both sides.
-	var effective_shield: int = int(target_state.get("shield", 0))
-
-	# ── Lethal check (enemy units only) ──────────────────────────────────────
-	# If total player damage is enough to kill the enemy, flag it so the card
-	# can render the entire HP fill as red. Account for the enemy's existing
-	# shield stacks since those absorb damage before HP is reduced.
-	var lethal: bool = false
-	if not is_hero:
-		lethal = total_dmg >= int(target_state.get("current_hp", 0)) + effective_shield
-
 	return {
 		"damage":          total_dmg,
 		"heal":            total_heal,
 		"shield":          total_shield,
-		"burn":             active_burn,
-		"current_shield":  effective_shield,
-		"lethal":          lethal,
+		"burn":            active_burn,
+		"current_shield":  int(target_state.get("shield", 0)),
+		"lethal":          false,
 	}
 
 
@@ -577,29 +504,24 @@ func get_gear_detail_rows(unit_id: String) -> Array:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-# pkg8.2: Detonate pip live value — burn × remaining turns on the currently
-# selected target (Payload Fuse gear +50%, matching _detonate_burn).
+# pkg8.2: Detonate pip live value once the target is known. Since B1 (UI batch
+# 2026-09-27) it is the burst the hero phase dry run actually lands, so a Burn
+# an earlier hero adds this round, a Payload Fuse bonus or an Overload Loop echo
+# are all in the number, and the readout, the enemy's preview and the resolved
+# damage agree.
 func _patch_live_detonate_value(action_pips: Dictionary, hero_state: Dictionary, chosen_entry: Dictionary) -> void:
 	var raw: Dictionary = chosen_entry.get("raw", {})
 	if not bool(raw.get("detonate", false)):
 		return
-	var target_id: String = str(hero_state.get("selected_target_id", ""))
-	if target_id == "":
+	if str(hero_state.get("selected_target_id", "")) == "":
 		return
-	for enemy_variant in _scene.combat_manager.get_enemy_states():
-		var enemy_state: Dictionary = enemy_variant
-		if str(enemy_state.get("id", "")) != target_id:
-			continue
-		# Single-sourced from combat_manager so the pip can't drift from the
-		# actual burst (finite stacks × remaining turns + one tick per
-		# permanent stack, Payload Fuse +50%).
-		var burst: int = _scene.combat_manager.get_expected_detonate_burst(hero_state, enemy_state)
-		for effect_variant in action_pips.get("effects", []):
-			var effect: Dictionary = effect_variant
-			if str(effect.get("kind", "")) == "detonate":
-				var dt_code: String = EffectPip.keyword_code("detonate", "DT")
-				effect["value"] = "%s %d" % [dt_code, burst] if burst > 0 else dt_code
-		return
+	var forecast: Dictionary = _forecast_hero_phase()
+	var burst: int = int((forecast["detonate_by_hero"] as Dictionary).get(str(hero_state["id"]), 0))
+	for effect_variant in action_pips.get("effects", []):
+		var effect: Dictionary = effect_variant
+		if str(effect.get("kind", "")) == "detonate":
+			var dt_code: String = EffectPip.keyword_code("detonate", "DT")
+			effect["value"] = "%s %d" % [dt_code, burst] if burst > 0 else dt_code
 
 
 # Build J Item 1 (presentation only): live chip tokens, with SNAPSHOT values

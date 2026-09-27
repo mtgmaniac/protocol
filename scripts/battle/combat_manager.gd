@@ -19,6 +19,13 @@ var _kill_queue: Array = []  # pending [dead_state, killer_state] pairs
 # is neither consumed nor applied, so the echo can't eat the Mark its own first
 # pass just applied (audit A-074).
 var _echo_pass_active: bool = false
+# True only inside forecast_hero_phase: the preview dry-runs the real hero phase
+# on copies of the unit states. Writes that leave this manager (lifetime stats,
+# run flags, consumable grants) are skipped; everything else runs unchanged.
+var _forecast_only: bool = false
+# Detonate bursts per attacker id, recorded during a forecast only, so the hero
+# readout's Detonate number is the burst that will actually land.
+var _forecast_detonates: Dictionary = {}
 var _pending_protocol_grants: int = 0
 var _low_hp_squad_buff_used: bool = false
 
@@ -828,6 +835,78 @@ func resolve_round(
 	_round_events.clear()
 	_battle_round += 1
 
+	_resolve_hero_phase(hero_rolls, enemy_rolls, dice_manager, raw_hero_rolls)
+
+	if _all_states_dead(_enemy_states):
+		_log("All enemies are down.")
+		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+	# Apply per-enemy-turn relic effects before enemies act
+	apply_enemy_turn_start_relic_effects()
+
+	# Accretion: units with accrete gain N shield at the start of their turn;
+	# the shield survives the imminent tick to cover the next hero phase.
+	for accrete_state in _enemy_states:
+		if not accrete_state["dead"] and int(accrete_state.get("accrete", 0)) > 0:
+			_log("%s accretes armor." % accrete_state["unit"].display_name)
+			# Accrete marker for feedback/primers (the shield event carries the
+			# number; this one's float text is empty).
+			_emit_event(accrete_state, "accrete", int(accrete_state["accrete"]), "enemy")
+			_add_shield_stack(accrete_state, int(accrete_state["accrete"]), true)
+
+	# Boss turn-cadence standing rules (rebuild / brood / root access).
+	_apply_boss_enemy_phase_rules(hero_rolls)
+
+	# Regenerative route modifier: enemies heal each round.
+	if _battle_modifier == "regenerative":
+		for regen_state in _enemy_states:
+			if not regen_state["dead"]:
+				_heal_state(regen_state, 3)
+
+	var ordered_enemy_states: Array = _enemy_states.duplicate()
+	ordered_enemy_states.reverse()
+	for enemy_state in ordered_enemy_states:
+		if enemy_state["dead"]:
+			continue
+		# Decoy Beacon: the whole enemy line wastes turn 1 on the decoy.
+		if _decoy_round_one and _battle_round == 1:
+			_log("%s wastes its turn on the decoy." % enemy_state["unit"].display_name)
+			continue
+		var enemy_roll_value: Variant = enemy_rolls.get(enemy_state["id"], null)
+		if enemy_roll_value == null:
+			continue
+		# Freeze = repeat: the crusted die kept its face; the enemy acts again
+		# on the same result (its target re-picked by personality this round).
+		if bool(enemy_state.get("die_freeze_repeat_this_round", false)):
+			_log("%s's frozen die repeats its %d." % [enemy_state["unit"].display_name, int(enemy_roll_value)])
+		var enemy_ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(enemy_roll_value))
+		_log("%s uses %s." % [enemy_state["unit"].display_name, str(enemy_ability_entry.get("ability_name", "Unknown"))])
+		_emit_action_event(enemy_state, "enemy", str(enemy_ability_entry.get("ability_name", "Unknown")), str(enemy_ability_entry.get("zone", "")))
+		var enemy_raw_roll: int = int(raw_enemy_rolls.get(enemy_state["id"], enemy_roll_value))
+		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
+
+	_tick_end_of_round_states()
+
+	if _all_states_dead(_enemy_states):
+		_log("All enemies are down.")
+		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+	if _all_states_dead(_hero_states):
+		_log("The squad has been wiped out.")
+		return {"result": "defeat", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+	return {"result": "ongoing", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+
+# The round up to the end of the hero phase: round-start boss rules, hijack,
+# acted-value stamps, enemy intents, then every hero in cast order. Shared by
+# resolve_round and forecast_hero_phase, so the preview runs the same code.
+func _resolve_hero_phase(
+	hero_rolls: Dictionary,
+	enemy_rolls: Dictionary,
+	dice_manager: DiceManager,
+	raw_hero_rolls: Dictionary
+) -> void:
 	# Raw hero faces for this round — the enemy freeze pick (lowest revealed
 	# die, deterministic) reads these; falls back to last_die_value.
 	_current_raw_hero_rolls = raw_hero_rolls.duplicate()
@@ -912,7 +991,8 @@ func resolve_round(
 		# same as a rolled 20 (NK-02). Once per resolving turn, including frozen
 		# turns; the Loop/Rites echo does not double these payouts (G-8).
 		if int(roll_value) == 20:
-			SaveManager.record_nat20()
+			if not _forecast_only:
+				SaveManager.record_nat20()
 			var cap_gain: int = int(hero_state.get("gear_protocol_on_20", 0))
 			if cap_gain > 0:
 				_pending_protocol_grants += cap_gain
@@ -923,65 +1003,89 @@ func resolve_round(
 	for cleared_state_variant in _hero_states:
 		(cleared_state_variant as Dictionary)["cast_stamp"] = 0
 
-	if _all_states_dead(_enemy_states):
-		_log("All enemies are down.")
-		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
 
-	# Apply per-enemy-turn relic effects before enemies act
-	apply_enemy_turn_start_relic_effects()
+# ── Preview dry run (UI batch 2026-09-27, B1) ─────────────────────────────────
+# The damage preview used to re-model the hero phase by hand and left out
+# detonate, execute, chain, mark, breach, spike, relic multipliers and the rest,
+# so the preview and the resolved damage disagreed. This runs the REAL hero
+# phase (_resolve_hero_phase, the code resolve_round runs) on deep copies of the
+# unit states and hands back the copies as they stand after it. The live states,
+# every per-round field, the seeded streams and everything outside this manager
+# are left exactly as they were. Returns:
+#   hero_states / enemy_states  the copies after the hero phase (squad order)
+#   events                      the hero phase's combat events
+func forecast_hero_phase(
+	hero_rolls: Dictionary,
+	enemy_rolls: Dictionary,
+	dice_manager: DiceManager,
+	raw_hero_rolls: Dictionary = {}
+) -> Dictionary:
+	var live_heroes: Array = _hero_states
+	var live_enemies: Array = _enemy_states
+	var snap: Dictionary = snapshot_state()
+	var saved_log: Array = _round_log.duplicate()
+	var saved_events: Array = _round_events.duplicate(true)
+	var saved_kill_queue: Array = _kill_queue.duplicate()
+	var saved_raw_rolls: Dictionary = _current_raw_hero_rolls.duplicate()
+	var saved_acted_heroes: Dictionary = _acted_hero_values.duplicate(true)
+	var saved_acted_enemies: Dictionary = _acted_enemy_values.duplicate(true)
+	var saved_assignments: Dictionary = _enemy_assignments.duplicate(true)
+	var saved_cast_order: Array = _last_cast_order.duplicate()
+	var saved_echo: bool = _echo_pass_active
+	var saved_streams: Variant = _roll_provider_streams()
 
-	# Accretion: units with accrete gain N shield at the start of their turn;
-	# the shield survives the imminent tick to cover the next hero phase.
-	for accrete_state in _enemy_states:
-		if not accrete_state["dead"] and int(accrete_state.get("accrete", 0)) > 0:
-			_log("%s accretes armor." % accrete_state["unit"].display_name)
-			# Accrete marker for feedback/primers (the shield event carries the
-			# number; this one's float text is empty).
-			_emit_event(accrete_state, "accrete", int(accrete_state["accrete"]), "enemy")
-			_add_shield_stack(accrete_state, int(accrete_state["accrete"]), true)
+	_hero_states = snap["hero_states"]
+	_enemy_states = snap["enemy_states"]
+	_round_log = []
+	_round_events = []
+	_kill_queue = []
+	_battle_round += 1
+	_forecast_detonates = {}
+	_forecast_only = true
+	_resolve_hero_phase(hero_rolls.duplicate(), enemy_rolls.duplicate(), dice_manager, raw_hero_rolls.duplicate())
+	_forecast_only = false
+	var result: Dictionary = {
+		"hero_states": _hero_states,
+		"enemy_states": _enemy_states,
+		# Copies: restore_state clears the live log/event arrays in place.
+		"events": _round_events.duplicate(true),
+		"detonate_by_hero": _forecast_detonates,
+	}
+	_forecast_detonates = {}
 
-	# Boss turn-cadence standing rules (rebuild / brood / root access).
-	_apply_boss_enemy_phase_rules(hero_rolls)
+	restore_state(snap)
+	_hero_states = live_heroes
+	_enemy_states = live_enemies
+	_round_log = saved_log
+	_round_events = saved_events
+	_kill_queue = saved_kill_queue
+	_current_raw_hero_rolls = saved_raw_rolls
+	_acted_hero_values = saved_acted_heroes
+	_acted_enemy_values = saved_acted_enemies
+	_enemy_assignments = saved_assignments
+	_last_cast_order = saved_cast_order
+	_echo_pass_active = saved_echo
+	_restore_roll_provider_streams(saved_streams)
+	return result
 
-	# Regenerative route modifier: enemies heal each round.
-	if _battle_modifier == "regenerative":
-		for regen_state in _enemy_states:
-			if not regen_state["dead"]:
-				_heal_state(regen_state, 3)
 
-	var ordered_enemy_states: Array = _enemy_states.duplicate()
-	ordered_enemy_states.reverse()
-	for enemy_state in ordered_enemy_states:
-		if enemy_state["dead"]:
-			continue
-		# Decoy Beacon: the whole enemy line wastes turn 1 on the decoy.
-		if _decoy_round_one and _battle_round == 1:
-			_log("%s wastes its turn on the decoy." % enemy_state["unit"].display_name)
-			continue
-		var enemy_roll_value: Variant = enemy_rolls.get(enemy_state["id"], null)
-		if enemy_roll_value == null:
-			continue
-		# Freeze = repeat: the crusted die kept its face; the enemy acts again
-		# on the same result (its target re-picked by personality this round).
-		if bool(enemy_state.get("die_freeze_repeat_this_round", false)):
-			_log("%s's frozen die repeats its %d." % [enemy_state["unit"].display_name, int(enemy_roll_value)])
-		var enemy_ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(enemy_roll_value))
-		_log("%s uses %s." % [enemy_state["unit"].display_name, str(enemy_ability_entry.get("ability_name", "Unknown"))])
-		_emit_action_event(enemy_state, "enemy", str(enemy_ability_entry.get("ability_name", "Unknown")), str(enemy_ability_entry.get("zone", "")))
-		var enemy_raw_roll: int = int(raw_enemy_rolls.get(enemy_state["id"], enemy_roll_value))
-		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
+func _roll_provider_streams() -> Variant:
+	if roll_provider == null:
+		return null
+	if roll_provider.has_method("get_stream_states"):
+		return roll_provider.call("get_stream_states")
+	if roll_provider.has_method("get_state"):
+		return roll_provider.call("get_state")
+	return null
 
-	_tick_end_of_round_states()
 
-	if _all_states_dead(_enemy_states):
-		_log("All enemies are down.")
-		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
-
-	if _all_states_dead(_hero_states):
-		_log("The squad has been wiped out.")
-		return {"result": "defeat", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
-
-	return {"result": "ongoing", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+func _restore_roll_provider_streams(saved: Variant) -> void:
+	if roll_provider == null or saved == null:
+		return
+	if roll_provider.has_method("set_stream_states"):
+		roll_provider.call("set_stream_states", saved)
+	elif roll_provider.has_method("set_state"):
+		roll_provider.call("set_state", saved)
 
 
 func _next_enemy_instance_id(enemy: Resource) -> String:
@@ -1807,6 +1911,9 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 			remaining_stacks.append(stack_variant)
 	target_state["burn_stacks"] = remaining_stacks
 	_refresh_burn_totals(target_state)
+	if _forecast_only:
+		var attacker_id: String = str(attacker_state.get("id", ""))
+		_forecast_detonates[attacker_id] = int(_forecast_detonates.get(attacker_id, 0)) + burst
 	_log("%s detonates the burn on %s for %d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, burst])
 	_emit_event(target_state, "detonate", burst, _resolve_side_for_state(target_state))
 	_damage_state(target_state, burst, false, attacker_state)
@@ -2302,7 +2409,8 @@ func _damage_state(
 			# Dead Man's Hand relic: the first squad wipe each run — everyone
 			# survives at 1 HP and the next roll is all 20s.
 			if _is_hero_state(state) and _all_states_dead(_hero_states) and has_relic("squadWipeSurvive") and not GameState.dead_mans_hand_used:
-				GameState.dead_mans_hand_used = true
+				if not _forecast_only:
+					GameState.dead_mans_hand_used = true
 				_log("DEAD MAN'S HAND - the squad refuses to fall!")
 				for hero_state in _hero_states:
 					hero_state["dead"] = false
@@ -2538,7 +2646,8 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 	# Scavenger Manifest relic: the first kill each battle drops a consumable.
 	if not _is_hero_state(dead_state) and has_relic("firstKillDropsConsumable") and not _scavenger_drop_done:
 		_scavenger_drop_done = true
-		GameState.grant_battle_start_consumables(1)
+		if not _forecast_only:
+			GameState.grant_battle_start_consumables(1)
 		_log("Scavenger Manifest: a consumable drops from the wreck!")
 
 	# Kill Switch (gear): heroes with healOnKill heal when any enemy dies
@@ -2578,7 +2687,8 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 	# Killswitch Relay gear + hero-death bookkeeping: always fires (heroes are
 	# never "summoned"), now including deaths nested inside another kill.
 	if _is_hero_state(dead_state):
-		SaveManager.record_hero_death()
+		if not _forecast_only:
+			SaveManager.record_hero_death()
 		# SPITEFUL grudges die with the hero that earned them.
 		var dead_hero_id: String = str(dead_state.get("id", ""))
 		for enemy_state in _enemy_states:
