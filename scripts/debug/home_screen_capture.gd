@@ -14,8 +14,7 @@ func _run_capture() -> void:
 	if bool(config.get("native", false)):
 		DisplayServer.window_set_size(Vector2i(1080, 2400))
 	if config.has("window"):
-		DisplayServer.window_set_size(config["window"])
-		root.size = config["window"]
+		load("res://scripts/debug/capture_window.gd").apply(root, config["window"])
 	# Roster-state overrides mutate SaveManager.data in memory. NOTE: do NOT set
 	# _disk_enabled=false here — that flips _fully_unlocked_override() and forces
 	# everything unlocked regardless of the arrays. Callers who care about the

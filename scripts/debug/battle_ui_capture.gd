@@ -17,8 +17,7 @@ func _initialize() -> void:
 func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
 	if config.has("window"):
-		DisplayServer.window_set_size(config["window"])
-		root.size = config["window"]
+		load("res://scripts/debug/capture_window.gd").apply(root, config["window"])
 	_prepare_run(config)
 	change_scene_to_file("res://scenes/battle/BattleScene.tscn")
 	await _wait_for_battle_scene(config)
