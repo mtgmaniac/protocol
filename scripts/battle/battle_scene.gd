@@ -1580,7 +1580,7 @@ func _sync_die_tags() -> void:
 		var overlay: Control = overlay_variant as Control
 		if overlay != null and is_instance_valid(overlay) and overlay.has_meta("layout_die"):
 			var identity: Array = overlay.get_meta("layout_die")
-			overlay.visible = not die_value_displays_hidden(str(identity[0]), str(identity[1]))
+			overlay.visible = not dice_tray_3d.value_displays_hidden(str(identity[0]), str(identity[1]))
 	for key in _die_tags.keys():
 		if not live.has(key):
 			var plate_variant: Variant = (_die_tags[key] as Dictionary).get("plate")
@@ -1609,7 +1609,7 @@ func _sync_side_die_tags(side: String, views: Array, live: Dictionary) -> void:
 		var key: String = "%s:%s" % [side, unit_id]
 		var entry: Dictionary = _die_tags.get(key, {})
 		var plate_variant: Variant = entry.get("plate")
-		if die_value_displays_hidden(side, unit_id):
+		if dice_tray_3d.value_displays_hidden(side, unit_id):
 			# Keep the plate (rebuilt below once the die rests if its pips
 			# changed), but never let it ride along with a moving die.
 			if plate_variant is Control and is_instance_valid(plate_variant):
@@ -1630,21 +1630,6 @@ func _sync_side_die_tags(side: String, views: Array, live: Dictionary) -> void:
 		live[key] = true
 		(plate_variant as Control).visible = true
 		_position_die_tag(plate_variant as Control, side, bounds)
-
-
-# G-32 (Dice rules, TRUTH): anything showing a die's value or ability — its pip
-# tag, its inspect hit-area — is hidden while the die moves (throw, reroll,
-# recorded playback, Nudge/Set/hijack tip-over, reprint tumble) and until the
-# face it rests on is the value the unit acts on (a rethrown die before its raw
-# is committed). It reappears with the new value once both hold.
-func die_value_displays_hidden(side: String, unit_id: String) -> bool:
-	if dice_tray_3d == null or not is_instance_valid(dice_tray_3d):
-		return false
-	if dice_tray_3d.is_die_moving(side, unit_id):
-		return true
-	var shown: int = dice_tray_3d.die_shown_value(side, unit_id)
-	var acting: int = _die_value(side, unit_id)
-	return shown > 0 and acting > 0 and shown != acting
 
 
 # Signature carries the rounded diameter so tags rebuild + refit on a resize.

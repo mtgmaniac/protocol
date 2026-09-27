@@ -505,6 +505,20 @@ func is_die_moving(side: String, unit_id: String) -> bool:
 	return die != null and (bool(die.get_meta("in_motion", false)) or bool(die.get_meta("busy", false)))
 
 
+# G-32 (TRUTH "Dice rules"): anything showing a die's value or ability — its
+# pip tag, its inspect hit-area — is hidden while the die moves and until the
+# face it rests on is the value the unit acts on (a rethrown die before its raw
+# is committed). The scene checks this every frame before drawing them.
+func value_displays_hidden(side: String, unit_id: String) -> bool:
+	if is_die_moving(side, unit_id):
+		return true
+	if not value_provider.is_valid():
+		return false
+	var shown: int = die_shown_value(side, unit_id)
+	var acting: int = int(value_provider.call(side, unit_id))
+	return shown > 0 and acting > 0 and shown != acting
+
+
 # The value the die's up face reads at rest (0 when there is no die).
 func die_shown_value(side: String, unit_id: String) -> int:
 	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
