@@ -23,6 +23,12 @@ helpers / loader themselves):
                   nothing loads art without the framing tag.
   R5 dev only   — every export preset excludes the dev/ tree (the framing
                   editor), web AND Android.
+  R6 integer    — item / relic art renders at whole multiples of its native
+                  size (INVARIANTS #14 integer icon corollary): no screen
+                  calls make_item_art or names ITEM_FIT_CONTAIN / _COVER (they
+                  scale by fractions); every ITEM site in the framing editor's
+                  site list (dev/framing_editor/framing_sites.gd) is
+                  ITEM_FIT_INTEGER (UI batch 2026-09-27, B9).
 
 Known exception (documented in docs/tools/FRAMING_TOOL.md): the PARKED
 landscape battle plate (compact_unit_card._battle_plate, LANDSCAPE_BATTLE_
@@ -115,21 +121,47 @@ def check_exports() -> list[str]:
     return errors
 
 
+FRACTIONAL_ITEM_ART = re.compile(r"make_item_art\(|ITEM_FIT_CONTAIN|ITEM_FIT_COVER")
+
+
+def check_integer(rel: str, src: str) -> list[str]:
+    errors = []
+    for i, line in enumerate(src.splitlines(), 1):
+        if line.lstrip().startswith("#"):
+            continue
+        if FRACTIONAL_ITEM_ART.search(line):
+            errors.append(f"R6 {rel}:{i}: item art at a fractional scale; use PixelUI.make_integer_icon ({line.strip()})")
+    return errors
+
+
+def check_editor_sites() -> list[str]:
+    rel = "dev/framing_editor/framing_sites.gd"
+    errors = []
+    for i, line in enumerate((ROOT / rel).read_text(encoding="utf-8").splitlines(), 1):
+        if "_site(" in line and ", ITEM," in line and "ITEM_FIT_INTEGER" not in line:
+            errors.append(f"R6 {rel}:{i}: item site not in integer mode ({line.strip()})")
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     count = 0
     for path in game_scripts():
         rel = path.relative_to(ROOT).as_posix()
-        errors += check_source(rel, path.read_text(encoding="utf-8"))
+        src = path.read_text(encoding="utf-8")
+        errors += check_source(rel, src)
+        if rel not in HELPERS:
+            errors += check_integer(rel, src)
         count += 1
     errors += check_exports()
+    errors += check_editor_sites()
     errors = list(dict.fromkeys(errors))
     if errors:
         print(f"[FRAMING_SITES] FAIL - {len(errors)} violation(s):")
         for e in errors:
             print(f"   {e}")
         return 1
-    print(f"[FRAMING_SITES] PASS - {count} scripts: every portrait/item/relic site uses its helper; dev/ excluded from every export preset")
+    print(f"[FRAMING_SITES] PASS - {count} scripts: every portrait/item/relic site uses its helper, item art at integer scale; dev/ excluded from every export preset")
     return 0
 
 

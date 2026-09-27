@@ -37,12 +37,12 @@ static func all_sites() -> Array[Dictionary]:
 		_site("reward_row", "Reward row", ITEM, Vector2.ONE * REWARD.ROW_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["items"]),
 		_site("reward_relic", "Relic reward", ITEM, Vector2.ONE * REWARD.RELIC_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["relics"]),
 		_site("item_card", "Battle item card", ITEM, Vector2.ONE * (ItemCard.ICON_AREA_SIZE - 8.0), PixelUI.ITEM_FIT_INTEGER, ["items"], ["consumable"]),
-		_site("loadout", "Inventory (Item)", ITEM, Vector2.ONE * LoadoutMenu.ICON_TEXTURE, PixelUI.ITEM_FIT_CONTAIN, ["items", "relics"], ["consumable", "relic"]),
+		_site("loadout", "Inventory (Item)", ITEM, Vector2.ONE * LoadoutMenu.ICON_TEXTURE, PixelUI.ITEM_FIT_INTEGER, ["items", "relics"], ["consumable", "relic"]),
 		_site("unlock_grid", "Unlock grid", ITEM, Vector2.ONE * UNLOCK.GRID_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["items", "relics"]),
 		_site("unlock_boss", "Boss relic unlock", ITEM, Vector2.ONE * UNLOCK.BOSS_RELIC_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["relics"]),
-		_site("directive", "Starting Directive", ITEM, Vector2.ONE * HOME.DIRECTIVE_ICON_BOX, PixelUI.ITEM_FIT_CONTAIN, ["relics"]),
-		_site("inspect_header", "Inspect popup", ITEM, Vector2.ONE * InspectPopup.HEADER_ICON_SIZE, PixelUI.ITEM_FIT_COVER, ["items", "relics"]),
-		_site("inspect_gear", "Inspect gear row", ITEM, Vector2.ONE * InspectPopup.GEAR_ICON_SIZE, PixelUI.ITEM_FIT_CONTAIN, ["items"], ["gear"]),
+		_site("directive", "Starting Directive", ITEM, Vector2.ONE * HOME.DIRECTIVE_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["relics"]),
+		_site("inspect_header", "Inspect popup", ITEM, Vector2.ONE * InspectPopup.HEADER_ICON_SIZE, PixelUI.ITEM_FIT_INTEGER, ["items", "relics"]),
+		_site("inspect_gear", "Inspect gear row", ITEM, Vector2.ONE * InspectPopup.GEAR_ICON_SIZE, PixelUI.ITEM_FIT_INTEGER, ["items"], ["gear"]),
 	]
 	return sites
 

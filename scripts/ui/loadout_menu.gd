@@ -22,7 +22,8 @@ const ROW_SEP := 12
 # Consumable slot count is NOT a local constant — it derives from the single source
 # of truth (GameState.MAX_CONSUMABLES) so the loadout and the cap can never drift.
 const ICON_SIZE := 150.0
-const ICON_TEXTURE := 136.0
+# 128 px item art at 1x (integer law, INVARIANTS #14; was 136, a 1.06x stretch).
+const ICON_TEXTURE := 128.0
 const PANEL_BORDER := 3
 const HEADER_DIVIDER := 6
 const SECTION_DIVIDER := 2
@@ -427,7 +428,7 @@ func _make_icon(item: ItemData) -> Control:
 	center.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if item != null and item.icon != null:
-		center.add_child(PixelUI.make_item_art(item.icon, Vector2(ICON_TEXTURE, ICON_TEXTURE)))
+		center.add_child(PixelUI.make_integer_icon(item.icon, ICON_TEXTURE))
 	return center
 
 

@@ -40,7 +40,8 @@ const HINT_FONT := 34  # Batch 3: 26 → 34 ("Tap anywhere to close" is the only
 # the same size the Starting Directive picker draws it, inside a 4 px inset.
 const HEADER_ICON_SIZE := 128.0
 const HEADER_ICON_FRAME := 136.0
-const GEAR_ICON_SIZE := 64.0
+# Gear row art at 1x (integer law; was 64, a 0.5x shrink of 128 px art).
+const GEAR_ICON_SIZE := 128.0
 
 static var _active: InspectPopup = null
 static var _active_source: int = 0
@@ -268,9 +269,9 @@ func _build_gear_row(entry: Dictionary) -> Control:
 	var icon: Texture2D = entry.get("icon") as Texture2D
 	if icon != null:
 		var center := CenterContainer.new()
-		center.custom_minimum_size = Vector2(72, 72)
+		center.custom_minimum_size = Vector2(GEAR_ICON_SIZE + 8.0, GEAR_ICON_SIZE + 8.0)
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		center.add_child(PixelUI.make_item_art(icon, Vector2(GEAR_ICON_SIZE, GEAR_ICON_SIZE)))
+		center.add_child(PixelUI.make_integer_icon(icon, GEAR_ICON_SIZE))
 		row.add_child(center)
 	var name_label := _make_label(str(entry.get("name", "")), ABILITY_NAME_FONT, _accent)
 	name_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

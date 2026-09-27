@@ -89,7 +89,7 @@ const BATTLE_PORTRAIT_REGION := PixelUI.HERO_PORTRAIT_REGION
 # (kept even for the pixel-snap law; derivation must track HERO_PORTRAIT_REGION).
 const ENC_THUMB_W := 224
 const ENC_THUMB_H := 260
-const DIRECTIVE_ICON_BOX := 168.0  # Starting Directive relic art (PixelUI.make_item_art)
+const DIRECTIVE_ICON_BOX := 128.0  # Starting Directive relic art at 1x (integer law; was 168, a 1.31x stretch)
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
@@ -1111,7 +1111,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		row.add_theme_constant_override("separation", 28)
 		pick.add_child(row)
 		if relic.icon != null:
-			var icon: Control = PixelUI.make_item_art(relic.icon, Vector2(DIRECTIVE_ICON_BOX, DIRECTIVE_ICON_BOX))
+			var icon: Control = PixelUI.make_integer_icon(relic.icon, DIRECTIVE_ICON_BOX)
 			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(icon)
 		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], DETAIL_DESC_FONT, PixelUI.DT_CYAN_BRIGHT)
