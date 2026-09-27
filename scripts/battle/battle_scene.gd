@@ -1121,7 +1121,7 @@ func _find_state_for_card(card: Control) -> Dictionary:
 
 
 func _on_roll_button_pressed() -> void:
-	if not dice_landed():
+	if dice_tray_3d != null and bool(dice_tray_3d.get("_is_rolling")):
 		return
 	if _briefing_active:
 		return
@@ -1185,7 +1185,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		await get_tree().process_frame
 		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
-		# Tutorial (G-26): scripted dice tumble straight onto their faces.
+		# Tutorial (G-26): guided rounds replay recorded real throws.
 		if _game_state().tutorial_mode:
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.value_provider = _die_value

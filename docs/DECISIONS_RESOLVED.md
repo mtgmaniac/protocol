@@ -1,6 +1,6 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
-## Tutorial real throws and Reroll follow-up (Kev, 2026-09-27) — IMPLEMENTATION PENDING
+## Tutorial real throws and Reroll follow-up (Kev, 2026-09-27) — IMPLEMENTED AND VERIFIED
 
 Kev approved the Godot-reviewed dice branch through d5c25e1, except tutorial
 motion, for fast-forward into main. That fast-forward is complete. Follow-up
@@ -32,7 +32,11 @@ not re-pin the balance baseline.
    travel/time bounds; deliberately break the first two checks.
 
 Commit numbered steps separately. Finish with an updated handoff and push.
-Runtime still uses the previous tutorial rig until the implementation commits.
+The approved schedule, landed-value path, outcome measurement, conditional copy,
+physical rerolls and recorded tutorial playback are implemented on the work branch.
+Full gate, pinned 300-run comparison, physics probe and both deliberate-failure
+checks pass. See [verification](TUTORIAL_REAL_ROLLS_2026-09-27.md). Kev's Godot
+visual review remains; this follow-up is not merged or web-exported.
 
 **G-24–G-30 implementation (2026-09-26):** steps 1–9 are implemented on
 `dice-face-snap-p0`. The replacement dice contract covers all eight acceptance
@@ -79,12 +83,25 @@ becomes a plain 1–20 die and does a short tumble onto the chosen face, with
 static labels throughout, then the normal upright snap. This resolves the "Set
 to a value no face prints" case of the G-24 step-6 blocker.
 
-## G-26. Tutorial dice land on their scripted face (Kev, 2026-09-26)
+## G-26. Tutorial dice use recorded real throws (Kev, updated 2026-09-27)
 
-A few scripted tutorial rolls are fine. Tutorial dice use a short scripted
-tumble that lands directly on the scripted face. No rotation onto a different
-face after landing. This replaces the pre-1171eb8 tutorial rig restored in G-24
-step 2, which turns the scripted face up after the die lands.
+Only battle 1 rounds 1–2 and battle 2 round 1 are scripted. Their movement is
+recorded from live physics throws, with identical launch parameters and tray
+setup, sampled each physics frame through settle. Four variants per slot are
+stored under `data/tutorial_throws/`; a throw shares its selected variant across
+slots, preserving the recorded inter-die trajectories and impact timing.
+
+Before playback, the visual mesh is oriented so the recording's upper face
+carries the requested number. Labels never change in flight. The actual visible
+top supplies the result through the normal landed-value path. The normal upright
+snap follows, keeping that top face. Later tutorial rounds use unrigged live
+physics. The post-landing tutorial result override is deleted.
+
+This supersedes the 2026-09-26 short generated tumble. The recorder is
+`scripts/debug/record_tutorial_throws.gd`; regenerate when live physics settings
+change. `tutorial_throw_gate.gd` checks values, labels, live travel/time bounds,
+actual tutorial tray bounds and free landing integrity. Its first two checks
+have deliberate-failure proof in `scripts/checks/tutorial_throw_mutations.py`.
 
 ## G-24. Dice are real dice; the landed face is the roll (Kev, 2026-09-26)
 

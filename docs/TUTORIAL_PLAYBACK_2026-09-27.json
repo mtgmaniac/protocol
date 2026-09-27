@@ -1,0 +1,93 @@
+[
+	{
+		"battle": 1,
+		"distance": 11.086113298579,
+		"round": 1,
+		"seconds": 3.04166666666667,
+		"slot": "enemy:e0"
+	},
+	{
+		"battle": 1,
+		"distance": 11.7313938139321,
+		"round": 1,
+		"seconds": 3.04166666666667,
+		"slot": "hero:h0"
+	},
+	{
+		"battle": 1,
+		"distance": 11.4890491766391,
+		"round": 1,
+		"seconds": 3.04166666666667,
+		"slot": "hero:h1"
+	},
+	{
+		"battle": 1,
+		"distance": 16.1514207871326,
+		"round": 1,
+		"seconds": 3.04166666666667,
+		"slot": "hero:h2"
+	},
+	{
+		"battle": 1,
+		"distance": 11.086113298579,
+		"round": 2,
+		"seconds": 3.04166666666667,
+		"slot": "enemy:e0"
+	},
+	{
+		"battle": 1,
+		"distance": 11.7313938139321,
+		"round": 2,
+		"seconds": 3.04166666666667,
+		"slot": "hero:h0"
+	},
+	{
+		"battle": 1,
+		"distance": 11.4890491766391,
+		"round": 2,
+		"seconds": 3.04166666666667,
+		"slot": "hero:h1"
+	},
+	{
+		"battle": 1,
+		"distance": 16.1514207871326,
+		"round": 2,
+		"seconds": 3.04166666666667,
+		"slot": "hero:h2"
+	},
+	{
+		"battle": 2,
+		"distance": 10.4682881052759,
+		"round": 1,
+		"seconds": 2.65,
+		"slot": "enemy:e0"
+	},
+	{
+		"battle": 2,
+		"distance": 11.0978453451364,
+		"round": 1,
+		"seconds": 2.65,
+		"slot": "enemy:e1"
+	},
+	{
+		"battle": 2,
+		"distance": 12.3327397440007,
+		"round": 1,
+		"seconds": 2.65,
+		"slot": "hero:h0"
+	},
+	{
+		"battle": 2,
+		"distance": 8.71492993459105,
+		"round": 1,
+		"seconds": 2.65,
+		"slot": "hero:h1"
+	},
+	{
+		"battle": 2,
+		"distance": 8.70821133134916,
+		"round": 1,
+		"seconds": 2.65,
+		"slot": "hero:h2"
+	}
+]

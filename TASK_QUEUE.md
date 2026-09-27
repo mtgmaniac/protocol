@@ -73,7 +73,7 @@ Recorded at the text legibility Step 1 wrap-up. Priority: **P0** next session ·
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **Dice face snap after landing** | **G-24–G-30 implemented and verified on `dice-face-snap-p0`; awaiting Kev's Godot review (not merged)** | Static printed faces; physical live landings; same-face upright snap; deliberate tip-overs/reprints; plain Set; scripted tutorial tumbles; frozen value/pose and pending hijack. Option C is removed. Replacement `dice face` gate covers eight criteria with deliberate-failure proof. Full gate and physics probe pass. See [HANDOFF.md](HANDOFF.md) for balance evidence and review limits. |
+| **Dice face snap after landing** | **Godot-reviewed dice work merged through `d5c25e1`; tutorial/Reroll follow-up on `codex/tutorial-real-rolls` (not merged)** | G-24 governs static printed faces, landed results, same-face snaps and real physics Reroll. Revised G-26 uses recorded real throws for three guided rounds; later rounds are free. 4,000 tutorial engine simulations: zero losses/stalls. The follow-up retains the baseline and existing SCRAP data. See [HANDOFF.md](HANDOFF.md) for final gate results and Kev's remaining Godot visual review. |
 
 ### P1
 

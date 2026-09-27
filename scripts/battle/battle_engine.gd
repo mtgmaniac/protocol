@@ -334,7 +334,7 @@ func item_enemy_reroll_all(bs: BattleState) -> void:
 	for enemy_state in combat_manager.get_enemy_states():
 		if bool(enemy_state.get("dead", true)):
 			continue
-		if int(enemy_state.get("die_freeze_turns", 0)) > 0:
+		if not can_alter_die(enemy_state):
 			continue
 		bs.enemy_rolls[str(enemy_state["id"])] = roll_provider.roll_d20()
 

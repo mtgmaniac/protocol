@@ -390,7 +390,7 @@ func _add_nudge_button() -> void:
 
 func _apply_reroll(hero_id: String) -> void:
 	var state: Dictionary = _scene._find_state_by_id(_scene.combat_manager.get_hero_states(), hero_id)
-	if _reroll_busy or not _scene._engine.can_alter_die(state):
+	if _reroll_busy or not _scene.dice_landed() or not _scene._engine.can_alter_die(state):
 		return
 	_reroll_busy = true
 	var landed: int = 0
@@ -403,6 +403,7 @@ func _apply_reroll(hero_id: String) -> void:
 			return
 	var new_roll: int = _scene._engine.apply_reroll(_scene._state, hero_id, landed)
 	if new_roll <= 0:
+		_reroll_busy = false
 		_scene._refresh_summary("That die is frozen solid - it can't be rerolled.")
 		return
 	_scene._engine.record_roll_values_for_states([state], _scene.hero_rolls)
@@ -429,13 +430,16 @@ func _checkpoint_reroll() -> void:
 	_scene.get_node("/root/SaveManager").checkpoint_battle_round(block)
 
 
-func _reroll_enemy(target: Dictionary) -> void:
+func _reroll_enemy(target: Dictionary) -> int:
 	if not _scene._engine.can_alter_die(target) or bool(target.get("dead", true)):
-		return
+		return 0
 	var landed: int = await _scene.dice_tray_3d.reroll_die_to_result("enemy", str(target.id))
 	if landed > 0:
 		_scene._engine.item_enemy_reroll(_scene._state, target, landed)
 		_scene._engine.record_roll_values_for_states([target], _scene.enemy_rolls)
+		# A new support ability must not retain the previous hostile target.
+		_scene._set_state_target(target, "", "--")
+	return landed
 
 
 func _get_nudge_cost(hero_id: String) -> int:
@@ -1104,9 +1108,13 @@ func _apply_item_effect(item: ItemData, target_state: Dictionary) -> void:
 	elif effect_type in ["enemyRerollDie", "enemyRerollAll"] and _scene.dice_tray_3d != null:
 		_reroll_busy = true
 		for target in ([target_state] if effect_type == "enemyRerollDie" else _scene.combat_manager.get_enemy_states()):
-			await _reroll_enemy(target)
+			var result: int = await _reroll_enemy(target)
+			if effect_type == "enemyRerollDie":
+				var target_name: String = str(target.unit.display_name) if not target.is_empty() else "?"
+				_scene._append_log("Item: %s rerolls %s -> %d." % [item.display_name, target_name, result] if result > 0 else "Item: %s fizzles - %s's die is frozen solid." % [item.display_name, target_name])
 		_reroll_busy = false
-		_scene._append_log("Item: %s rerolls unfrozen enemy dice." % item.display_name)
+		if effect_type == "enemyRerollAll":
+			_scene._append_log("Item: %s - all unfrozen enemy dice rerolled." % item.display_name)
 	else:
 		# Combat-state mutation is shared with the sim (sim-D).
 		var revive_pct: int = _scene._game_state().get_revive_hp_pct(int(effect.get("pct", 50)))
