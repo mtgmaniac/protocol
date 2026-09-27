@@ -1,5 +1,33 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-31. Dice stay in the visible tray (Kev, 2026-09-27)
+
+Every die stays inside the visible dice tray for its whole motion and bounces
+off the tray walls; every landing happens in view. This applies to every path
+that moves a die, including recorded tutorial playback.
+
+Recorded throws are made inside the real battle tray at its real layout
+(1080×2400) with its walls, and stored relative to the tray (normalised to
+its bounds). Playback maps them onto the live tray, whose size depends on the
+screen. A recording in which any die leaves the tray, or lands out of view,
+after mapping is discarded. If no recorded variant fits, the dice are thrown
+live. Settled result slots are clamped to the live walls.
+
+Why: the first recordings were made headless, where the window is 64×64 and
+the tray laid out 2400 px wide, so the scripted dice flew out of the phone's
+view and snapped back in. See TRUTH "Dice rules", rule 3.
+
+## G-32. Value displays hide while a die moves (Kev, 2026-09-27)
+
+Anything that shows a die's value or its ability (pips, readouts, value tags,
+the inspect hit-area, the top-face highlight) is hidden while the die is
+moving. It appears with the new value after the die settles. This applies to
+every path where a die moves after the initial roll: hero and enemy-item
+rerolls, Set, reprints, Nudge tip-overs, hijack updates and item changes.
+
+Why: on Reroll the previous roll's pips rode along with the tumbling die and
+only updated after it settled. See TRUTH "Dice rules", rule 7.
+
 ## Tutorial real throws and Reroll follow-up (Kev, 2026-09-27) — IMPLEMENTED AND VERIFIED
 
 Kev approved the Godot-reviewed dice branch through d5c25e1, except tutorial
@@ -99,7 +127,7 @@ physics. The post-landing tutorial result override is deleted.
 
 This supersedes the 2026-09-26 short generated tumble. The recorder is
 `scripts/debug/record_tutorial_throws.gd`; regenerate when live physics settings
-change. `tutorial_throw_gate.gd` checks values, labels, live travel/time bounds,
+change. Recordings are tray-relative and mapped onto the live tray (G-31). `tutorial_throw_gate.gd` checks values, labels, live travel/time bounds,
 actual tutorial tray bounds and free landing integrity. Its first two checks
 have deliberate-failure proof in `scripts/checks/tutorial_throw_mutations.py`.
 

@@ -188,22 +188,81 @@ Portrait mobile (Android-first, Godot 4.6) dark sci-fi tactical dice roguelike. 
 
 ---
 
+## Dice rules
+
+**Every change that touches dice must satisfy every rule below.** The list
+collects the dice rulings in one place. Each ruling keeps its full text in
+`docs/DECISIONS_RESOLVED.md`; the links go there. When this list and a ruling
+seem to disagree, the ruling wins and this list is corrected.
+
+1. **Faces are static.** The numbers on a die never change while it moves.
+   The one exception: a deliberate change that needs a value no face shows
+   reprints the die once, in the frame its tumble starts, and the labels stay
+   static from then on ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26),
+   [G-27](DECISIONS_RESOLVED.md#g-27-reprint-on-deliberate-change-kev-2026-09-26)).
+2. **The face that lands up is the roll.** In live play the raw roll is the
+   face physically on top when the die settles. The engine computes the
+   effective value from it. The sim and the skip-visuals path draw from the
+   seeded stream ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26); INVARIANTS #1).
+3. **Every die stays inside the visible dice tray for its whole motion and
+   bounces off the tray walls. Every landing happens in view.** This covers
+   live throws, rerolls, recorded tutorial playback, tip-overs and the slide
+   into the result slot. Recorded throws are stored relative to the tray and
+   mapped onto the live tray; a recording that would leave the tray is never
+   played ([G-31](DECISIONS_RESOLVED.md#g-31-dice-stay-in-the-visible-tray-kev-2026-09-27),
+   [G-26](DECISIONS_RESOLVED.md#g-26-tutorial-dice-use-recorded-real-throws-kev-updated-2026-09-27)).
+4. **After settling, the die flattens and turns upright, keeping the same top
+   face.** It flattens any tilt under 90° and turns up to 180° so the numeral
+   reads upright. This is the only automatic motion after landing
+   ([G-28](DECISIONS_RESOLVED.md#g-28-upright-snap-definition-kev-2026-09-26)).
+5. **Pre-roll modifiers are printed on the faces before the throw.** Each face
+   shows its effective value, so the face that lands up reads the value the
+   unit acts on ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26)).
+6. **Deliberate changes are shown as the die moving to its new face, never a
+   jump.** Nudge, Set, hijack and items tip the die over onto the new face in
+   0.30 s. Reroll and the enemy reroll items rethrow the die physically. Set
+   makes the die a plain 1–20 die, even when the number is unchanged
+   ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26),
+   [G-25](DECISIONS_RESOLVED.md#g-25-set-overrides-modifiers-kev-2026-09-26),
+   [G-27](DECISIONS_RESOLVED.md#g-27-reprint-on-deliberate-change-kev-2026-09-26),
+   [Tutorial real throws item 5](DECISIONS_RESOLVED.md#tutorial-real-throws-and-reroll-follow-up-kev-2026-09-27--implemented-and-verified)).
+   REWRITE uses a static tag ([G-29](DECISIONS_RESOLVED.md#g-29-rewrite-marker-is-static-kev-2026-09-26)).
+7. **Anything showing a die's value or ability is hidden while the die moves
+   and updates after it settles.** This covers the pip tag, the inspect
+   hit-area, value tags and the top-face highlight. They reappear once the die
+   rests on the value the unit acts on
+   ([G-32](DECISIONS_RESOLVED.md#g-32-value-displays-hide-while-a-die-moves-kev-2026-09-27)).
+8. **Frozen dice never move and keep the value they showed.** A frozen die
+   keeps the number on its face, modifiers included, and refuses Nudge, Set,
+   Reroll, Jam and Rewrite. A hijack on a frozen die waits for the thaw
+   ([G-23](DECISIONS_RESOLVED.md#g-23-freeze-locks-the-number-on-the-face-kev-2026-09-26),
+   [G-30](DECISIONS_RESOLVED.md#g-30-hijack--freeze-the-hijack-waits-kev-2026-09-26), Combat rules §7 below).
+9. **A refresh restores the same dice.** Once all dice settle, the landed raws
+   are the pending roll in the battle checkpoint. CONTINUE places the dice
+   showing them without throwing. A refresh before the dice settle throws
+   again. After a Reroll, the checkpoint updates once the die settles
+   ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26),
+   [Tutorial real throws item 5](DECISIONS_RESOLVED.md#tutorial-real-throws-and-reroll-follow-up-kev-2026-09-27--implemented-and-verified)).
+
+Scripted tutorial rounds (battle 1 rounds 1–2, battle 2 round 1) replay
+recorded real throws, with each mesh oriented before launch; all later rounds
+are free ([G-26](DECISIONS_RESOLVED.md#g-26-tutorial-dice-use-recorded-real-throws-kev-updated-2026-09-27)).
+
+**Enforced by** the `dice face` gate, which runs at 1080×2400 and 540×1200. It
+moves dice on every path: live throw (bare tray and battle scene), recorded
+tutorial playback, hero Reroll, enemy item rerolls, Set, reprint, Nudge
+tip-over, hijack update, item changes and refresh. On every drawn frame it
+checks rules 1–9 above; it fails if any of those paths is never exercised.
+`scripts/checks/dice_face_mutations.py` breaks each of its ten criteria on
+purpose and proves the gate fails. `tutorial recorded throws` separately checks
+scripted top values, static labels and containment at both sizes. Regenerate
+recordings with `scripts/debug/record_tutorial_throws.gd` whenever launch,
+tray or physics settings change.
+
 ## Combat rules (authoritative)
 
-**Dice presentation (G-24–G-30, 2026-09-26):** live raw rolls come from the
-physical landed face; the seeded provider remains authoritative in the sim
-and skip-visuals path. Pre-roll modifiers are printed before throwing and
-labels remain static during motion. The upright snap keeps the same top face,
-flattens tilt under 90 degrees and permits up to 180 degrees of yaw. Deliberate
-changes tip over in 0.30 seconds; when the new value is absent from the print,
-the die reprints for its current state at tumble start. Set always restores
-plain 1–20 labels, even if the chosen number already shows. The three guided
-tutorial rounds replay recorded real throws with preoriented meshes; all later
-rounds are free. Reroll physically rethrows one die. REWRITE uses a static tag.
-Between rounds, absent revealed rolls never trigger a change to a raw face.
-The `dice face` gate checks these rules plus frozen poses, pending hijack,
-refresh placement and engine alteration guards; the separate mutation runner
-proves each of its eight criteria rejects a deliberately broken observation.
+**Dice presentation:** see [Dice rules](#dice-rules) above. Every dice change
+must satisfy that list.
 
 1. All dice roll simultaneously at turn start.
 2. Player resolves first, in any order; then surviving enemies resolve.
