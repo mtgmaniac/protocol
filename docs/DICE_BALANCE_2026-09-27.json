@@ -1,0 +1,122 @@
+{
+  "manifest": {
+    "name": "dice_g24_20260927_6000",
+    "runs": 6000,
+    "policy": "l1",
+    "seed_base": 900000,
+    "squad": "random",
+    "include_hero": "",
+    "op": "random",
+    "grant": "",
+    "archetype": "",
+    "tuning": "",
+    "pool_buckets": "",
+    "battle_slots": "",
+    "enemy_hp": "",
+    "hero_hp": "",
+    "item_field": "",
+    "order_mode": "",
+    "godot": "C:\\Users\\Kev\\Downloads\\Godot_v4.6.2-stable_win64.exe\\Godot_v4.6.2-stable_win64_console.exe"
+  },
+  "operations": {
+    "veil": {
+      "runs": 1203,
+      "wins": 272
+    },
+    "hive": {
+      "runs": 1210,
+      "wins": 294
+    },
+    "facility": {
+      "runs": 1152,
+      "wins": 437
+    },
+    "voidCirclet": {
+      "runs": 1197,
+      "wins": 327
+    },
+    "stellarMenagerie": {
+      "runs": 1238,
+      "wins": 249
+    }
+  },
+  "ci300": {
+    "veil": {
+      "runs": 65,
+      "wins": 17
+    },
+    "hive": {
+      "runs": 59,
+      "wins": 14
+    },
+    "facility": {
+      "runs": 71,
+      "wins": 29
+    },
+    "voidCirclet": {
+      "runs": 57,
+      "wins": 12
+    },
+    "stellarMenagerie": {
+      "runs": 48,
+      "wins": 11
+    }
+  },
+  "frozen_riders": {
+    "veil": {
+      "hero_repeats": 617,
+      "enemy_repeats": 297,
+      "capacitor_triggers": 21,
+      "capacitor_protocol": 28,
+      "echoes": 14,
+      "enemy_reinforcements": 93,
+      "rounds": 60801,
+      "runs_with_hero_repeat": 322,
+      "runs_with_enemy_repeat": 174
+    },
+    "hive": {
+      "hero_repeats": 801,
+      "enemy_repeats": 365,
+      "capacitor_triggers": 69,
+      "capacitor_protocol": 108,
+      "echoes": 41,
+      "enemy_reinforcements": 0,
+      "rounds": 71307,
+      "runs_with_hero_repeat": 361,
+      "runs_with_enemy_repeat": 161
+    },
+    "facility": {
+      "hero_repeats": 733,
+      "enemy_repeats": 303,
+      "capacitor_triggers": 39,
+      "capacitor_protocol": 47,
+      "echoes": 15,
+      "enemy_reinforcements": 0,
+      "rounds": 68350,
+      "runs_with_hero_repeat": 334,
+      "runs_with_enemy_repeat": 141
+    },
+    "voidCirclet": {
+      "hero_repeats": 1428,
+      "enemy_repeats": 542,
+      "capacitor_triggers": 105,
+      "capacitor_protocol": 139,
+      "echoes": 35,
+      "enemy_reinforcements": 96,
+      "rounds": 82179,
+      "runs_with_hero_repeat": 417,
+      "runs_with_enemy_repeat": 230
+    },
+    "stellarMenagerie": {
+      "hero_repeats": 1974,
+      "enemy_repeats": 369,
+      "capacitor_triggers": 169,
+      "capacitor_protocol": 243,
+      "echoes": 74,
+      "enemy_reinforcements": 25,
+      "rounds": 94949,
+      "runs_with_hero_repeat": 679,
+      "runs_with_enemy_repeat": 167
+    }
+  }
+}

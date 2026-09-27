@@ -1,5 +1,9 @@
 # Dice face audit: why a die lands on one face and snaps to another
 
+**Current status (2026-09-27):** G-24–G-30 are implemented and verified; see §12
+and the [6,000-run balance report](../DICE_BALANCE_2026-09-27.md). The original
+diagnosis and interim stops below are historical.
+
 **Date:** 2026-09-26 · **Branch:** `dice-face-snap-p0` · **Scope:** Phase 1 diagnosis
 of the P0 in TASK_QUEUE "Open backlog (2026-09-26)". No gameplay or tray code was
 changed. **The root cause is the design, so Phase 2 is waiting on Kev's choice** (see
@@ -577,3 +581,24 @@ showing a value the unit won't act on. Until Kev decides:
 - `battle layout` asserts a seeded live roll (physics now). Also step 7.
 - Every other hard gate passes (`--skip-sim`).
 - The balance sim was not run at this stop.
+
+## 12. G-24–G-30 completed (2026-09-27)
+
+The step-6 blocker and pending questions in §11 are historical: G-25–G-30
+resolve them, and steps 6–10 are implemented. Deliberate changes now tip over;
+missing values reprint at tumble start; Set restores plain 1–20 even when its
+chosen value already shows. Tutorial tumbles land directly on their scripted
+face. REWRITE is static. Hijack waits through a freeze. Engine alteration
+guards and effective-value AI/sim freeze banking are in place.
+
+The replacement dice gate has eight criteria, each proven to reject an injected
+violation. It exposed and fixed an unchanged-value Set reprint bug and a
+between-round raw fallback that could move frozen dice. The layout test now
+scripts physical landings explicitly. The full verification gate and its pinned
+300-run sim pass; the separate physics probe reports zero penetration, flyover,
+frozen displacement or tilted-rest events. No baseline was re-pinned.
+
+See [verification](../DICE_REWORK_VERIFICATION_2026-09-26.md) and
+[HANDOFF.md](../../HANDOFF.md) for the current state and larger-sample balance
+report. §§7–11 retain the chronology; their old gate criteria and open blockers
+are not current implementation instructions.

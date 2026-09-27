@@ -42,7 +42,7 @@ def summarize(directory):
             elif kind == "frozen_riders":
                 records += 1
                 counts.update({key: obj[key] for key in ("hero_repeats", "enemy_repeats", "capacitor_triggers", "capacitor_protocol", "echoes", "enemy_reinforcements")})
-        if not header or not end or records != rounds:
+        if not header or end.get("result") not in ("victory", "defeat") or records != rounds:
             errors.append(path.name)
             continue
         op = header["op"]
@@ -80,7 +80,7 @@ def main():
         total = sum(x["runs"] for x in group.values())
         wins = sum(x["wins"] for x in group.values())
         lines += ["", f"Overall: {wins}/{total} = {wins/total:.2%}; pinned {baseline['overall_clear']:.2%}; delta {(wins/total-baseline['overall_clear'])*100:+.2f} pp.", ""]
-    lines += ["The 300-seed table measures reproducible drift on the pinned sampling design. The larger table estimates current win rates; the historical pin has only 300 total runs, so its uncertainty remains and the larger table alone cannot establish a ±3-point causal change.", "", "## Frozen-20 rider frequency", "", "Counts below are **resolved frozen-20 turns**, not rolls that were frozen but never acted. Hero repeats each trigger the lifetime-20 rider once. Capacitor and echo counts require the corresponding equipment/relic; enemy reinforcement counts are successful requests, not all eligible summon rolls.", "", "| Operation | Combat rounds | Hero repeats | Runs with hero repeat | Enemy repeats | Capacitor triggers / Protocol | Echoes | Enemy reinforcements |", "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    lines += ["The 300-seed table measures reproducible drift on the pinned sampling design. The larger table estimates current win rates; the historical pin has only 300 total runs, so its uncertainty remains and the larger table alone cannot establish a ±3-point causal change.", "", "## Frozen-20 rider frequency", "", "Counts below are **resolved frozen-20 turns**, not rolls that were frozen but never acted. Hero repeats each trigger the lifetime-20 rider once. Capacitor and echo counts require the corresponding equipment/relic; Protocol totals are emitted grants before cap/overflow. Enemy reinforcement counts are successful requests, not all eligible summon rolls.", "", "| Operation | Combat rounds | Hero repeats | Runs with hero repeat | Enemy repeats | Capacitor triggers / Protocol | Echoes | Enemy reinforcements |", "|---|---:|---:|---:|---:|---:|---:|---:|"]
     totals = Counter()
     for op, row in sorted(riders.items()):
         totals.update(row)
