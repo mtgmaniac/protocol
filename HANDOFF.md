@@ -1,10 +1,63 @@
 # Overload Protocol — current handoff
 
-## 0. Dice rules follow-up (branch `codex/dice-rules-containment`, NOT merged)
+## 00. Merges, cleanup and two framing fixes (all on `main`, pushed)
+
+2026-09-27.
+
+**Merged into `main`:**
+- `codex/dice-rules-containment` (section 0 below), fast-forward.
+- `framing-pass` (Kev's framing pass, `portrait_anchors.json` only), merge
+  commit, no conflicts. The merged file is byte-identical to `framing-pass`.
+- Both local branches deleted with `git branch -d`; the spare worktree
+  `..\protocol-framing` is removed. The remote branches are left in place.
+
+**Framing editor test fixed after the merge.** Kev's pass anchored engineer
+and patrol_elite and accepted Nanite Field's inset, so 7 of the 34 `framing
+editor` checks lost the starting state they assumed. The byte-exact
+round-trip still runs on the live file; the behaviour checks now load a
+frozen fixture (`dev/framing_editor/framing_editor_fixture.json`, the
+pre-pass data from `630f307`) copied to `user://`.
+
+**Portrait backdrop.** `PixelUI.cover_fit_portrait` puts a solid black
+frame-sized backdrop behind every portrait (internal `ColorRect`,
+`show_behind_parent`). Wherever framing leaves the art short of its frame, the
+gap is now black on every screen instead of the host frame's colour: the
+brown strip above the Hive boss on the encounter panel, and the brown edges
+on enemy battle cards. All live portrait art is opaque, so nothing else
+changes. Before/after captures of squad select (Hive, Facility, Veil), the
+Hive boss battle and a Facility battle: every changed pixel went black, and no
+other pixel moved. No values in `portrait_anchors.json` changed.
+
+**Static Field icon.** Static Field now uses Shield Array's art and framing
+entry (`items/buckler_array`) through `DataManager.RELIC_ICON_SHARED_BY_ID`.
+It no longer has its own relic row in the framing editor, so framing Shield
+Array frames both. A probe confirmed both items resolve to the same entry, and
+the inspect popups show the same icon.
+
+**`project.godot`.** The uncommitted change was only the `config/icon` line
+moving; Godot rewrites it on every launch (it came back after each capture
+run). It was discarded each time and never committed.
+
+**Verification:** after the merges: dice face, tutorial recorded throws (both
+sizes), tutorial smoke and the four framing gates passed. After the fixes: the
+four framing gates passed. Full gate `python scripts/verify_gate.py --skip-sim` with an isolated APPDATA: exit 0, all 64 hard gates pass, including save resume, battle checkpoint and profile isolation. The sim was skipped (combat and balance unchanged).
+
+**Kev still needs to check in Godot (F5):**
+- Tutorial scripted rounds: dice stay inside the tray and bounce off its
+  walls, same as the free rounds.
+- Reroll, Nudge and Set: pips hide while the die moves and come back after it
+  lands.
+- Portraits: framing looks right on squad select, battle cards, the
+  encounter panel and the help menu, with black behind any zoomed-out art.
+- Static Field shows the Shield Array icon.
+- Still open from section 0: `battle_scene.gd` is 8 lines over its
+  high-water mark (warning only), and web and phone output were not checked.
+
+## 0. Dice rules follow-up (merged into `main` 2026-09-27)
 
 2026-09-27. Two dice bugs are fixed, and the dice rules are now written down in
-one place: TRUTH "Dice rules", with the new rulings G-31 and G-32. The branch
-is pushed and not merged, so Kev can test it in Godot first.
+one place: TRUTH "Dice rules", with the new rulings G-31 and G-32. Merged into
+`main` before Kev's visual check, at his request; he checks on `main`.
 
 **Bug 1: tutorial recorded throws left the tray.** Cause: the recorder and its
 gate ran headless, where the root window is 64×64. The "expand" stretch turns
