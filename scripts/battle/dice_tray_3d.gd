@@ -436,6 +436,10 @@ func show_result_actions(action_entries: Array) -> void:
 		if die == null or not is_instance_valid(die):
 			continue
 		die.set_meta("zone", str(entry.get("zone", "")))
+		# G-32: a moving die shows no value-dependent highlight; the change that
+		# moves it re-highlights with this zone once it settles.
+		if is_die_moving(str(entry.get("side", "")), str(entry.get("id", ""))):
+			continue
 		_highlight_top_face(die, int(die.get_meta("shown_value", int(entry.get("roll", 0)))), str(entry.get("side", "")), str(entry.get("zone", "")))
 
 
@@ -491,6 +495,20 @@ func set_values_live(live: bool) -> void:
 	_values_live = live
 	if live:
 		_poll_values()
+
+
+# G-32: true from the moment a die starts to move (thrown, rethrown, recorded
+# playback, a deliberate tip-over) until it has settled upright in its slot.
+# Anything that shows the die's value or ability hides while this is true.
+func is_die_moving(side: String, unit_id: String) -> bool:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	return die != null and (bool(die.get_meta("in_motion", false)) or bool(die.get_meta("busy", false)))
+
+
+# The value the die's up face reads at rest (0 when there is no die).
+func die_shown_value(side: String, unit_id: String) -> int:
+	var die: RigidBody3D = _get_die_for_entry(side, unit_id)
+	return 0 if die == null else int(die.get_meta("shown_value", 0))
 
 
 # Test/gate surface. A die is LOCKED when it is at rest on its value (not
@@ -560,9 +578,11 @@ func _poll_values() -> void:
 # new state in the same frame the tip starts (G-27); labels are static from then.
 func _show_value_in_place(die: RigidBody3D, target: int) -> void:
 	die.set_meta("busy", true)
+	die.set_meta("in_motion", true)
 	var face_index: int = _face_for_change(die, target)
 	if face_index < 0:
 		push_warning("[DiceTray3D] no face can show %d after a reprint" % target)
+		die.set_meta("in_motion", false)
 		die.set_meta("busy", false)
 		return
 	_reset_face_highlights(die)
@@ -573,6 +593,7 @@ func _show_value_in_place(die: RigidBody3D, target: int) -> void:
 	die.set_meta("face_up", int(_face_values[face_index]))
 	var entry: Dictionary = die.get_meta("entry", {})
 	_highlight_top_face(die, target, str(entry.get("side", "")), str(die.get_meta("zone", "")))
+	die.set_meta("in_motion", false)
 	die.set_meta("busy", false)
 
 
@@ -900,6 +921,10 @@ func _finish_roll(dice: Array) -> void:
 		_is_rolling = false
 		return
 	_enforce_assigned_result_origins(result_entries)
+	for result_entry_variant in result_entries:
+		var settled: RigidBody3D = (result_entry_variant as Dictionary).get("die", null) as RigidBody3D
+		if settled != null and is_instance_valid(settled):
+			settled.set_meta("in_motion", false)
 
 	_is_rolling = false
 	_rigged_results.clear()
@@ -1010,6 +1035,11 @@ func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
 	var front_overflow: float = RESULT_HERO_BOTTOM_OVERFLOW if side == "hero" else RESULT_ENEMY_BOTTOM_OVERFLOW
 	origin.x = clampf(origin.x, outer_min_x, outer_max_x)
 	origin.z = clampf(origin.z, -TRAY_HALF_DEPTH + RESULT_TOP_CLEARANCE, TRAY_HALF_DEPTH - RESULT_OUTER_MARGIN + front_overflow)
+	# G-31: a settled die never rests partly outside the visible tray, whatever
+	# the tray's live size (the constants above describe the shipped layout).
+	var settled_radius: float = DIE_RADIUS * RESULT_SCALE
+	origin.x = clampf(origin.x, -_bounds_half_width + settled_radius, _bounds_half_width - settled_radius)
+	origin.z = clampf(origin.z, _bounds_min_z + settled_radius, _bounds_max_z - settled_radius)
 	return origin
 
 
@@ -1687,6 +1717,7 @@ func _pick_recording_variant(scripted: Array, enemy_count: int) -> int:
 # A group shares its variant, preserving recorded inter-die collision paths.
 func _play_recorded_throw(die: RigidBody3D, target_origin: Vector3, enemy_count: int, variant: int) -> void:
 	die.set_meta("busy", true)
+	die.set_meta("in_motion", true)
 	var entry: Dictionary = die.get_meta("entry", {})
 	var track: Dictionary = RecordedThrows.get_track(enemy_count, variant, str(entry.side), int(entry.slot_index))
 	if track.is_empty():
@@ -1735,6 +1766,7 @@ var thrown_dice_total: int = 0
 
 func _launch_die(die: RigidBody3D) -> void:
 	thrown_dice_total += 1
+	die.set_meta("in_motion", true)
 	# Impact audio hooks — only on launched (rolling) dice; frozen and warm-up
 	# dice never get contact monitoring.
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
