@@ -7,7 +7,10 @@ will stay scripted, via recorded real throws; later rounds and every Reroll
 will use live physics. Before proceeding, measure tutorial outcome safety with
 at least 1,000 runs per battle and stop above 1% loss or on any soft-lock.
 G-14 remains in force. See DECISIONS_RESOLVED for the full approved scope.
-The runtime implementation described below remains current until replaced.
+Step 2: the approved free/scripted schedule is active and the post-landing
+tutorial dictionary override is deleted. Headless scripted inputs are selected
+before resolution; physical rolls always use the tray result. The three scripted
+rounds still use the old tumble pending step 6 recordings.
 
 **2026-09-26 text legibility Step 1 (Kev):** basis
 [TEXT_LEGIBILITY_AUDIT.md](audits/TEXT_LEGIBILITY_AUDIT.md). Stretch mode/aspect/

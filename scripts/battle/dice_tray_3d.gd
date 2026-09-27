@@ -451,8 +451,8 @@ func _value_for_die(die: RigidBody3D) -> int:
 	return int(die.get_meta("raw_result", _get_most_visible_face_value(die)))
 
 
-# G-24: the natural each die LANDED on is its raw roll (the tutorial rig
-# replaces it, as before 1171eb8). battle_scene reads these after roll_finished
+# G-24: the natural each die LANDED on is its raw roll, including tutorials.
+# battle_scene reads these after roll_finished
 # and computes the effective values from them. Frozen dice report their
 # crusted value.
 func get_hero_rolls() -> Dictionary:
