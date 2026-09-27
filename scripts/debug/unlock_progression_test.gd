@@ -243,22 +243,12 @@ func _test_first_profile_progression_and_presentation() -> void:
 		_check(bool(home.get("_current_op_locked")) and name_label.text == op.display_name.to_upper() and lock_label.text == "LOCKED", "%s remains visibly locked with its real name" % op_id)
 		_check(not blurb_label.visible and blurb_label.text == "" and deploy.disabled, "%s locked card hides its blurb and cannot deploy" % op_id)
 
-	# An empty locked-operation dossier must reserve the hero-dossier footprint.
-	home.get("_selected_unit_ids").clear()
-	home.set("_focused_unit_id", "")
-	home.call("_refresh_detail")
-	for _frame in 5:
-		await process_frame
-	var detail: Control = home.get("_detail_panel")
-	var empty_rect: Rect2 = detail.get_global_rect()
-	var tile_rect: Rect2 = (tiles["combat"]["frame"] as Control).get_global_rect()
-	_check(detail.visible and detail.modulate.a == 0.0, "Locked empty dossier is transparent, not collapsed")
-	home.call("_on_tile_tapped", "combat")
-	for _frame in 5:
-		await process_frame
-	_check(detail.modulate.a == 1.0, "Selecting a hero restores the dossier")
-	_check(detail.get_global_rect().is_equal_approx(empty_rect), "Detail footprint stays fixed on first selection")
-	_check((tiles["combat"]["frame"] as Control).get_global_rect().is_equal_approx(tile_rect), "Squad grid stays fixed on first selection")
+	# UI batch 2026-09-27, B3 (supersedes G-16's transparent locked dossier):
+	# fixed slots. Switching between ANY encounters, locked or not, moves
+	# nothing; a locked encounter shows its unlock condition in the subtitle
+	# slot, keeps LOCKED, and its detail box shows the lock info and
+	# "THREATS: ???". Unit info is long-press only; a tap only toggles.
+	await _check_encounter_slots(home, op_order, tiles)
 	_test_renamed_enemy_abilities()
 	_test_band_copy()
 	sm.set("_disk_enabled", original_disk_enabled)
@@ -377,3 +367,96 @@ func _data_manager() -> Node:
 
 func _save_manager() -> Node:
 	return root.get_node("/root/SaveManager")
+
+
+func _encounter_rects(home: Node, tiles: Dictionary) -> Dictionary:
+	var rects: Dictionary = {}
+	for key in ["_enc_banner", "_enc_name_label", "_enc_site_label", "_enc_progress_label", "_op_lore_label", "_dot_row", "_detail_panel", "_detail_desc", "_detail_threat_row", "_deploy_button"]:
+		var node: Control = home.get(key) as Control
+		rects[key] = [node.get_global_rect(), node.is_visible_in_tree()]
+	for hero_id in tiles.keys():
+		rects["tile:" + str(hero_id)] = [((tiles[hero_id] as Dictionary)["frame"] as Control).get_global_rect(), true]
+	return rects
+
+
+func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> void:
+	# The phone window: headless alone is 64x64, which the expand stretch lays
+	# out 2400 wide, and every "fits" check would pass on the wide column.
+	var saved_size: Vector2i = root.size
+	root.size = Vector2i(1080, 2400)
+	for _frame in 4:
+		await process_frame
+	_check(is_equal_approx((home.get("_enc_site_label") as Control).size.x, 486.0),
+		"the banner lays out at the phone column width (subtitle %.0f px, want 486)" % (home.get("_enc_site_label") as Control).size.x)
+	var site: Label = home.get("_enc_site_label") as Label
+	var detail_desc: Label = home.get("_detail_desc") as Label
+	var threats: Label = home.get("_detail_threats") as Label
+	var threat_label: Label = home.get("_detail_threat_label") as Label
+	var detail: Control = home.get("_detail_panel") as Control
+	var reference: Dictionary = {}
+	for pass_index in 2:
+		for index in range(op_order.size()):
+			var op_id := str(op_order[index])
+			home.set("_operation_index", index)
+			home.set("_selected_operation_id", op_id)
+			home.call("_refresh_encounter")
+			home.call("_refresh_detail")
+			for _frame in 3:
+				await process_frame
+			var rects: Dictionary = _encounter_rects(home, tiles)
+			if reference.is_empty():
+				reference = rects
+			else:
+				var moved: Array = []
+				for key in reference.keys():
+					var want: Array = reference[key]
+					var got: Array = rects[key]
+					if not (want[0] as Rect2).is_equal_approx(got[0] as Rect2) or bool(want[1]) != bool(got[1]):
+						moved.append("%s %s -> %s" % [key, str(want[0]), str(got[0])])
+				_check(moved.is_empty(), "switching to %s moves nothing (%s)" % [op_id, ", ".join(moved)])
+			if pass_index > 0:
+				continue
+			var locked: bool = bool(home.get("_current_op_locked"))
+			_check(detail.visible and detail.modulate.a == 1.0, "%s detail box is present and opaque" % op_id)
+			_check(threat_label.visible and threat_label.text == "THREATS:", "%s detail box shows the THREATS row" % op_id)
+			# No clipping: the subtitle fits its slot, the story fits its lines.
+			var font: Font = site.get_theme_font("font")
+			var site_w: float = font.get_string_size(site.text, HORIZONTAL_ALIGNMENT_LEFT, -1, site.get_theme_font_size("font_size")).x
+			_check(site_w <= site.size.x, "%s subtitle fits its slot unclipped (%.0f <= %.0f px)" % [op_id, site_w, site.size.x])
+			_check(detail_desc.get_line_count() <= detail_desc.max_lines_visible, "%s story fits the detail box (%d lines)" % [op_id, detail_desc.get_line_count()])
+			if locked:
+				var prev_id: String = str(root.get_node("/root/SaveManager").call("operation_unlocked_by", op_id))
+				var prev_op: OperationData = _data_manager().call("get_operation", prev_id) as OperationData
+				var want_condition: String = "Clear %s to unlock" % prev_op.display_name
+				_check(site.visible and site.text == want_condition, "%s subtitle slot shows the unlock condition (saw '%s')" % [op_id, site.text])
+				_check((home.get("_enc_progress_label") as Label).text == "LOCKED", "%s keeps its LOCKED status line" % op_id)
+				_check(detail_desc.text == "This encounter is locked. %s it." % want_condition, "%s detail box shows the lock info (saw '%s')" % [op_id, detail_desc.text])
+				_check(threats.text == "???", "%s detail box reads THREATS: ??? (saw '%s')" % [op_id, threats.text])
+			else:
+				_check(site.visible and site.text != "", "%s subtitle slot shows its site line" % op_id)
+				_check(detail_desc.text != "" and threats.text != "" and threats.text != "???", "%s detail box shows its story and THREATS" % op_id)
+	# A tap only toggles the squad: the detail box keeps the encounter.
+	home.set("_operation_index", 1)
+	home.set("_selected_operation_id", str(op_order[1]))
+	home.call("_refresh_encounter")
+	home.call("_refresh_detail")
+	var before_text: String = detail_desc.text
+	var before_rects: Dictionary = _encounter_rects(home, tiles)
+	var before_squad: Array = (home.get("_selected_unit_ids") as Array).duplicate()
+	home.call("_on_tile_tapped", "engineer")
+	for _frame in 3:
+		await process_frame
+	_check((home.get("_selected_unit_ids") as Array) != before_squad, "a tap toggles the hero in the squad")
+	_check(detail_desc.text == before_text, "a tap leaves the encounter detail box alone (saw '%s')" % detail_desc.text)
+	var after_rects: Dictionary = _encounter_rects(home, tiles)
+	var shifted: Array = []
+	for key in before_rects.keys():
+		if not ((before_rects[key] as Array)[0] as Rect2).is_equal_approx((after_rects[key] as Array)[0] as Rect2):
+			shifted.append(str(key))
+	_check(shifted.is_empty(), "toggling a hero moves nothing (%s)" % ", ".join(shifted))
+	# Long-press carries the unit info the detail box no longer shows.
+	var unit: UnitData = _data_manager().call("get_unit", "engineer") as UnitData
+	var payload: Dictionary = home.call("unit_inspect_payload", unit)
+	_check(str((payload.get("header", {}) as Dictionary).get("title", "")) == unit.display_name and str(payload.get("description", "")) == unit.picker_blurb.strip_edges(),
+		"long-press on a unit shows its name and blurb")
+	root.size = saved_size

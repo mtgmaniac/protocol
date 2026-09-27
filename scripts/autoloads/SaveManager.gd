@@ -645,6 +645,16 @@ func _next_operation(op_id: String) -> String:
 	return ""
 
 
+# The operation whose boss clear unlocks `op_id` (the one before it in
+# OPERATION_CHAIN), or "" for the first. Squad select names it in a locked
+# encounter's unlock condition (UI batch 2026-09-27, B3).
+func operation_unlocked_by(op_id: String) -> String:
+	var idx: int = OPERATION_CHAIN.find(op_id)
+	if idx > 0:
+		return OPERATION_CHAIN[idx - 1]
+	return ""
+
+
 func _award_hero(hero_id: String) -> void:
 	var heroes: Array = data["unlocks"]["heroes"]
 	if heroes.has(hero_id):

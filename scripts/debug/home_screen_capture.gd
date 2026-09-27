@@ -13,6 +13,9 @@ func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
 	if bool(config.get("native", false)):
 		DisplayServer.window_set_size(Vector2i(1080, 2400))
+	if config.has("window"):
+		DisplayServer.window_set_size(config["window"])
+		root.size = config["window"]
 	# Roster-state overrides mutate SaveManager.data in memory. NOTE: do NOT set
 	# _disk_enabled=false here — that flips _fully_unlocked_override() and forces
 	# everything unlocked regardless of the arrays. Callers who care about the
@@ -50,6 +53,11 @@ func _parse_args() -> Dictionary:
 	for arg in OS.get_cmdline_args():
 		if arg.begins_with("--capture-output="):
 			config["output"] = arg.get_slice("=", 1)
+		elif arg.begins_with("--capture-window="):
+			# Window size WxH (UI batch before/after captures).
+			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
+			if window_parts.size() >= 2:
+				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
 		elif arg.begins_with("--capture-delay-ms="):
 			config["delay_ms"] = maxi(int(arg.get_slice("=", 1)), 100)
 		elif arg.begins_with("--capture-select-units="):
@@ -127,7 +135,7 @@ func _wait_for_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 	if bool(config.get("help", false)) and current_scene != null:
-		HelpMenu.open(current_scene)
+		load("res://scripts/ui/help_menu.gd").open(current_scene)
 		await process_frame
 		await process_frame
 		await process_frame

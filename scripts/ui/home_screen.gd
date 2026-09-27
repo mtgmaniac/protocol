@@ -14,9 +14,13 @@
 #   boss reads identically to its battle card, smaller — no zoom (enemies are the
 #   framing reference and are never zoomed; the hero zoom is hero-only).
 # - Squad: the portrait IS the button (no name-button row); hero name is a label
-#   UNDER each portrait. Tap toggles selection (slot badge + cyan border); the
-#   detail panel follows the last-tapped hero. No role legend — role reads from
-#   the portrait corner pip + the named role tag in the detail panel.
+#   UNDER each portrait. Tap only toggles selection (slot badge + cyan border);
+#   long-press opens the unit's inspect popup (name, blurb, kit).
+# - Fixed slots (UI batch 2026-09-27, B3): switching encounters, locked or not,
+#   moves nothing. The banner's subtitle slot shows the site line, or the unlock
+#   condition on a locked encounter; the status line always holds its row; the
+#   detail box is always present at one height and shows encounter info only
+#   (story + THREATS; locked: the lock info + "THREATS: ???").
 # - Locked heroes: no full-size cells — one slim "lock: N LOCKED" strip under the grid.
 # - Detail panel is anchored ABOVE the deploy button.
 # - DEPLOY shows its own gate: "DEPLOY SQUAD (N MORE)" ghosted until full.
@@ -43,6 +47,10 @@ const ENC_NAME_FONT := 80          # biggest text in the banner by design; long 
                                    # (STELLAR MENAGERIE) wrap to two lines instead of clipping
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
 const ENC_SITE_FONT := 52          # site subtitle + THREATS line; 44 -> 52 readability bump (2026-09-21)
+# A locked encounter's unlock condition shares the subtitle slot. "Clear Facility
+# Sweep to unlock" is 511 px at 52 against a 486 px column, so it renders at the
+# text floor (48), inside the slot's fixed 52 px line height (B3).
+const ENC_UNLOCK_FONT := PixelUI.TEXT_MIN_PX
 const PROGRESS_FONT := 44          # one metadata-tier clearance line in the carousel card (Build B)
 const LORE_FONT := 48              # one unframed flavor sentence under the carousel (Build B slot; copy lands in Build C)
 const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
@@ -52,6 +60,7 @@ const DETAIL_NAME_FONT := 76
 static var DETAIL_DESC_FONT: int = PixelUI.scale_font_size(PixelUI.FONT_BODY_MIN)
 const FOCUS_CHIP_FONT := 40
 const DETAIL_THREAT_FONT := ENC_SITE_FONT
+const DETAIL_STORY_LINES := 3       # the longest operation origin wraps to 3 lines (B3)
 const DEPLOY_FONT := 84
 const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller than DEPLOY
 # Fixed DEPLOY button height so the locked→armed font swap never resizes it (measured
@@ -118,7 +127,6 @@ var _operation_index: int = 0
 var _selected_operation_id: String = ""
 var _unit_ids: Array[String] = []
 var _selected_unit_ids: Array[String] = []
-var _focused_unit_id: String = ""
 
 # Built nodes
 var _current_op_locked: bool = false
@@ -138,12 +146,7 @@ var _dot_nodes: Array[ColorRect] = []
 var _unit_tiles: Dictionary = {}    # unit_id -> { frame, role_badge, slot_panel, slot_label, name }
 var _counter_label: Label
 var _detail_panel: PanelContainer
-var _detail_name: Label
-var _detail_name_row: HBoxContainer
-var _detail_focus: Label
-var _detail_focus_chip: PanelContainer
 var _detail_desc: Label
-var _detail_desc_hero_height := 0.0  # the fixed 2-line reservation (hero dossier)
 var _detail_threat_row: HBoxContainer
 var _detail_threat_label: Label
 var _detail_threats: Label
@@ -290,17 +293,25 @@ func _build_encounter_section() -> Control:
 	_enc_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_col.add_child(_enc_name_label)
+	# Subtitle slot (B3): always present at one line of ENC_SITE_FONT, so a
+	# locked encounter (unlock condition) and an open one (site line) lay out
+	# identically. Clipped, never wrapped: a longer line can't grow the banner.
 	_enc_site_label = _make_pixel_label("", ENC_SITE_FONT, PixelUI.DT_AMBER)
 	_enc_site_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_enc_site_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_site_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_enc_site_label.visible = false
+	_enc_site_label.clip_text = true
+	_enc_site_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(ENC_SITE_FONT)))
 	text_col.add_child(_enc_site_label)
 	text_col.add_child(_build_threat_row())
 	# Progress/clearance — ONE metadata-tier line (caps law) inside the existing
 	# carousel card; not a module (Build B).
+	# Status slot (B3): always present, even when an unplayed encounter has no
+	# status text, so CLEARED / BEST / LOCKED never shift the column.
 	_enc_progress_label = _make_pixel_label("", PROGRESS_FONT, PixelUI.TEXT_MUTED)
 	_enc_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_enc_progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enc_progress_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(PROGRESS_FONT)))
 	text_col.add_child(_enc_progress_label)
 
 	# Boss thumb — the enemy is framed through the ONE portrait window
@@ -360,13 +371,16 @@ func _build_encounter_section() -> Control:
 
 	# Operation lore — one sentence of UNFRAMED flavor text directly under the
 	# carousel (Build B wires the slot; Build C supplies the copy via the
-	# operation data `lore` field). Empty lore hides the label entirely so no
-	# awkward space is reserved.
+	# operation data `lore` field). The slot is fixed (B3): it exists only when
+	# some operation has lore, and then holds two lines for every encounter
+	# (empty on a locked one). No operation has lore today, so it is absent.
 	_op_lore_label = _make_pixel_label("", LORE_FONT, PixelUI.TEXT_MUTED)
 	_op_lore_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_op_lore_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_op_lore_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_op_lore_label.visible = false
+	_op_lore_label.max_lines_visible = 2
+	_op_lore_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(LORE_FONT)) * 2.0 + float(PixelUI.BODY_LINE_SPACING))
+	_op_lore_label.visible = _any_operation_has_lore()
 	section.add_child(_op_lore_label)
 
 	return section
@@ -446,13 +460,19 @@ func _refresh_encounter() -> void:
 	if op == null:
 		return
 	_enc_name_label.text = op.display_name.to_upper()
+	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
 	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
 	if _enc_site_label != null:
-		_enc_site_label.text = str(presentation.get("site", ""))
-		_enc_site_label.visible = _enc_site_label.text != ""
 		var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
-		if accent is Color:
-			_enc_site_label.add_theme_color_override("font_color", accent as Color)
+		if _current_op_locked:
+			# Same slot, the unlock condition instead of the site (B3).
+			_enc_site_label.text = unlock_condition_text(_selected_operation_id)
+			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_UNLOCK_FONT))
+			_enc_site_label.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+		else:
+			_enc_site_label.text = str(presentation.get("site", ""))
+			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_SITE_FONT))
+			_enc_site_label.add_theme_color_override("font_color", accent as Color if accent is Color else PixelUI.DT_AMBER)
 	var boss_tex: Texture2D = _get_boss_portrait(op)
 	_enc_portrait.texture = boss_tex
 	if _enc_thumb_holder != null and is_instance_valid(_enc_thumb_holder):
@@ -468,32 +488,44 @@ func _refresh_encounter() -> void:
 	# until Build C authors operation lore).
 	if _enc_progress_label != null:
 		_enc_progress_label.text = _operation_progress_text(_selected_operation_id)
-		_enc_progress_label.visible = _enc_progress_label.text != ""
 	if _op_lore_label != null:
 		_op_lore_label.text = op.lore.strip_edges()
-		_op_lore_label.visible = _op_lore_label.text != ""
 
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
 	# Locked operations stay browsable: their own boss art is a dark silhouette
 	# and the real operation name remains visible. Their blurb and all detailed
-	# intel stay hidden, while DEPLOY remains disabled.
-	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
+	# intel stay hidden, while DEPLOY remains disabled. Every slot keeps its
+	# place (B3): only the text in it changes.
 	_enc_portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if _current_op_locked else Color.WHITE
 	if _enc_lock_overlay != null:
 		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
 		# Keep the true operation identity, but do not leak its description.
-		if _enc_site_label != null:
-			_enc_site_label.visible = false
 		if _enc_progress_label != null:
 			_enc_progress_label.text = "LOCKED"
-			_enc_progress_label.visible = true
 		if _op_lore_label != null:
 			_op_lore_label.text = ""
-			_op_lore_label.visible = false
 	_refresh_deploy()
+
+
+# "Clear Hive Incursion to unlock": the operation chain opens each encounter
+# with a boss clear of the one before it (SaveManager.OPERATION_CHAIN).
+static func unlock_condition_text(op_id: String) -> String:
+	var previous: String = SaveManager.operation_unlocked_by(op_id)
+	var prev_op: OperationData = DataManager.get_operation(previous) as OperationData
+	if prev_op == null:
+		return ""
+	return "Clear %s to unlock" % prev_op.display_name
+
+
+func _any_operation_has_lore() -> bool:
+	for op_id in _operation_ids:
+		var op: OperationData = DataManager.get_operation(op_id) as OperationData
+		if op != null and op.lore.strip_edges() != "":
+			return true
+	return false
 
 
 # One metadata-tier clearance line for the carousel card (Build B): cleared /
@@ -608,10 +640,10 @@ func _build_squad_section() -> Control:
 
 func _build_detail_bar() -> PanelContainer:
 	var panel := PanelContainer.new()
-	# Snug to content (refinement pass §3): header row + exactly two blurb lines
-	# + padding. The desc label reserves a fixed 2-line block (no picker blurb
-	# exceeds 2 lines at this width — verified against data), so swapping between
-	# 1- and 2-line heroes never reflows the layout.
+	# Encounter detail box (B3): always present at ONE height, encounter info
+	# only. A fixed story block (DETAIL_STORY_LINES) plus the THREATS row, so
+	# switching between any encounters, locked or not, reflows nothing. Unit
+	# info (name, blurb) lives on the unit tile's long-press.
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	# Grouping surface: filled plate, no stroked outline (INVARIANTS #7 — the
 	# old hero-border frame here was border noise).
@@ -628,50 +660,18 @@ func _build_detail_bar() -> PanelContainer:
 	col.add_theme_constant_override("separation", 10)
 	pad.add_child(col)
 
-	var name_row := HBoxContainer.new()
-	name_row.add_theme_constant_override("separation", 16)
-	var detail_font: Font = PixelUI.get_pixel_font()
-	name_row.custom_minimum_size = Vector2(0, ceilf(detail_font.get_height(DETAIL_NAME_FONT)))
-	col.add_child(name_row)
-	_detail_name_row = name_row
-
-	# No placeholder state — _ready() focuses the first unlocked hero, so the
-	# panel is populated from the first frame (composition pass §3).
-	_detail_name = _make_pixel_label("", DETAIL_NAME_FONT, PixelUI.TEXT_PRIMARY)
-	# Name takes the row; the focus tag is pushed to the top-right of the box.
-	_detail_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_detail_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	name_row.add_child(_detail_name)
-
-	_detail_focus_chip = PanelContainer.new()
-	_detail_focus_chip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_detail_focus_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_detail_focus_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var chip_pad := MarginContainer.new()
-	chip_pad.add_theme_constant_override("margin_left", 12)
-	chip_pad.add_theme_constant_override("margin_right", 12)
-	chip_pad.add_theme_constant_override("margin_top", 3)
-	chip_pad.add_theme_constant_override("margin_bottom", 3)
-	chip_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_detail_focus_chip.add_child(chip_pad)
-	_detail_focus = _make_pixel_label("", FOCUS_CHIP_FONT, PixelUI.TEXT_PRIMARY)
-	chip_pad.add_child(_detail_focus)
-	_detail_focus_chip.visible = false   # shown once a unit is tapped
-	name_row.add_child(_detail_focus_chip)
-
 	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Body-copy line spacing — set BEFORE the 2-line reservation below reads it.
+	# Body-copy line spacing — set BEFORE the reservation below reads it.
 	_detail_desc.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
-	# Reserve exactly two blurb lines INCLUDING the inter-line spacing so the
-	# panel height is constant. Reserving 2×font_height alone under-measured by
-	# the Label's line_spacing (3px): the first populate grew the panel and the
-	# whole centered cluster shifted up 1px (Batch 3 — the screen must never move).
+	# Reserve the story lines INCLUDING the inter-line spacing so the panel
+	# height is constant (reserving N x font_height alone under-measures by the
+	# line spacing; Batch 3 — the screen must never move).
 	var desc_font: Font = PixelUI.get_pixel_font()
 	var desc_line_spacing: int = _detail_desc.get_theme_constant("line_spacing")
-	_detail_desc_hero_height = ceilf(desc_font.get_height(DETAIL_DESC_FONT) * 2.0 + float(desc_line_spacing))
-	_detail_desc.custom_minimum_size = Vector2(0, _detail_desc_hero_height)
-	_detail_desc.max_lines_visible = 2
+	var desc_px: int = PixelUI.text_px(DETAIL_DESC_FONT)
+	_detail_desc.custom_minimum_size = Vector2(0, ceilf(desc_font.get_height(desc_px) * float(DETAIL_STORY_LINES) + float(desc_line_spacing * (DETAIL_STORY_LINES - 1))))
+	_detail_desc.max_lines_visible = DETAIL_STORY_LINES
 	col.add_child(_detail_desc)
 
 	_detail_threat_row = HBoxContainer.new()
@@ -685,10 +685,8 @@ func _build_detail_bar() -> PanelContainer:
 	_detail_threats.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_detail_threats.clip_text = true
 	_detail_threat_row.add_child(_detail_threats)
-	# This fixed empty row stays in hero-dossier mode so operation intel and hero
-	# descriptions never cause the surrounding squad layout to jump.
 	var threat_font: Font = PixelUI.get_pixel_font()
-	_detail_threat_row.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(DETAIL_THREAT_FONT)))
+	_detail_threat_row.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(PixelUI.text_px(DETAIL_THREAT_FONT))))
 	col.add_child(_detail_threat_row)
 
 	return panel
@@ -843,17 +841,10 @@ func _on_tile_tapped(unit_id: String) -> void:
 	# Locked heroes remain visible but never become selected or inspectable.
 	if not SaveManager.is_hero_unlocked(unit_id):
 		return
-	var was_selected: bool = _selected_unit_ids.has(unit_id)
+	# Tap only toggles (B3): the unit's name and blurb live on long-press.
 	_toggle_unit_selection(unit_id)
-	if _selected_unit_ids.is_empty():
-		_focused_unit_id = ""
-	elif was_selected:
-		_focused_unit_id = str(_selected_unit_ids.back())
-	else:
-		_focused_unit_id = unit_id
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
-	_refresh_detail()
 	_refresh_deploy()
 
 
@@ -866,7 +857,16 @@ func _on_tile_long_pressed(_global_position: Vector2, unit_id: String, anchor: C
 		return
 	AudioManager.play_click()
 	var anchor_rect: Rect2 = anchor.get_global_rect() if is_instance_valid(anchor) else Rect2()
-	InspectPopup.open(self, InspectResolver.resolve_unit(unit), anchor_rect, anchor.get_instance_id())
+	InspectPopup.open(self, unit_inspect_payload(unit), anchor_rect, anchor.get_instance_id())
+
+
+# The unit's inspect popup on squad select: its kit plus the picker blurb that
+# used to sit in the detail box (B3 moved unit info to long-press).
+static func unit_inspect_payload(unit: UnitData) -> Dictionary:
+	var payload: Dictionary = InspectResolver.resolve_unit(unit)
+	if unit.picker_blurb.strip_edges() != "":
+		payload["description"] = unit.picker_blurb.strip_edges()
+	return payload
 
 
 func _toggle_unit_selection(unit_id: String) -> void:
@@ -925,85 +925,42 @@ func _refresh_begin_button() -> void:
 	_refresh_deploy()
 
 
-# Focus a unit in the detail panel (capture harness drives this by name).
-func _show_unit_detail(unit_id: String) -> void:
-	_focused_unit_id = unit_id
-	_refresh_detail()
-
-
 func _on_back_to_title() -> void:
 	AudioManager.play_click()
 	SceneManager.go_to_main_menu()
 
 
+# The detail box shows ENCOUNTER info only (B3): the story and THREATS, or on a
+# locked encounter the lock info and "THREATS: ???". It is always present at
+# one height; unit info lives on the unit tile's long-press.
 func _refresh_detail() -> void:
-	# The box is ALWAYS there (Kev 2026-07-10 rev 2) — it just starts empty
-	# until a unit is tapped, so the layout never jumps.
-	if _detail_panel != null:
-		_detail_panel.visible = true
-		_detail_panel.modulate = Color.WHITE
-	if _focused_unit_id == "":
-		_show_operation_detail()
+	if _detail_panel == null or _detail_desc == null or _detail_threats == null:
 		return
-	_detail_name_row.visible = true
-	_detail_desc.custom_minimum_size.y = _detail_desc_hero_height
-	_detail_desc.max_lines_visible = 2
-	var unit: UnitData = DataManager.get_unit(_focused_unit_id) as UnitData
-	if unit == null:
-		return
-	# Locked unit: keep it a mystery — no name, focus, or dossier.
-	if not SaveManager.is_hero_unlocked(_focused_unit_id):
-		_detail_name.text = "[ LOCKED ]"
-		_detail_focus_chip.visible = false
-		_detail_desc.text = "Locked specialist."
-		_detail_threat_label.visible = false
-		_detail_threats.text = ""
-		return
-	_detail_name.text = unit.display_name.to_upper()
-	# Unit category is hidden from the player (Batch 2) — visibility change only.
-	# The picker_category field and _role_color (portrait badge + grid ordering)
-	# still read it on the backend; only this text chip is suppressed.
-	_detail_focus_chip.visible = false
-	var blurb: String = unit.picker_blurb if unit.picker_blurb != "" else "No dossier available."
-	_detail_desc.text = blurb
-	_detail_threat_label.visible = false
-	_detail_threats.text = ""
-
-
-func _show_operation_detail() -> void:
-	if _detail_name == null or _detail_desc == null or _detail_threats == null:
-		return
-	_detail_name_row.visible = false
-	# The operation origin can need a third line at the 1080 design width
-	# (Facility's was clipped after "army from the"). The hidden name row's
-	# height plus its column gap goes to the description, so the
-	# plate keeps the exact hero-dossier footprint.
-	var column_gap: float = float((_detail_desc.get_parent() as Control).get_theme_constant("separation"))
-	_detail_desc.custom_minimum_size.y = _detail_desc_hero_height + _detail_name_row.custom_minimum_size.y + column_gap
-	_detail_desc.max_lines_visible = 3
-	_detail_name.text = ""
-	_detail_focus_chip.visible = false
-	if _current_op_locked:
-		# Reserve the same footprint as a hero dossier without drawing empty chrome.
-		_detail_panel.modulate.a = 0.0
-		_detail_desc.text = ""
-		_detail_threat_label.visible = false
-		_detail_threats.text = ""
-		return
+	_detail_panel.visible = true
+	_detail_panel.modulate = Color.WHITE
+	_detail_threat_label.visible = true
 	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
-	if presentation.is_empty():
-		_detail_desc.text = ""
-		_detail_threat_label.visible = false
-		_detail_threats.text = ""
+	var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
+	var threat_color: Color = PixelUI.DT_AMBER
+	if accent is Color and not _current_op_locked:
+		threat_color = accent as Color
+	_detail_threat_label.add_theme_color_override("font_color", threat_color)
+	_detail_threats.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	if _current_op_locked:
+		_detail_desc.text = locked_story_text(_selected_operation_id)
+		_detail_threats.text = "???"
 		return
 	_detail_desc.text = str(presentation.get("origin", ""))
 	var threats: String = str(presentation.get("threats", ""))
-	_detail_threat_label.visible = threats != ""
-	_detail_threats.text = threats
-	var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
-	if accent is Color:
-		_detail_threat_label.add_theme_color_override("font_color", accent as Color)
-	_detail_threats.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
+	_detail_threats.text = threats if threats != "" else "???"
+
+
+# The detail box's story line for a locked encounter.
+static func locked_story_text(op_id: String) -> String:
+	var condition: String = unlock_condition_text(op_id)
+	if condition == "":
+		return "This encounter is locked."
+	return "This encounter is locked. %s it." % condition
 
 
 # Maps a unit's focus to a DT accent color for its badge + detail chip. Driven by

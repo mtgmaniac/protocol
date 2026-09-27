@@ -1,5 +1,18 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## UI batch 2026-09-27 (Kev) — encounter select fixed slots (B3)
+
+Transcribed from Kev's UI batch brief (`docs/batches/2026-09-27-ui-batch.md`).
+The encounter panel has fixed slots. Locked encounters show the unlock
+condition in the subtitle slot (e.g. "Clear Hive Incursion to unlock"), and the
+LOCKED status line stays. The detail box is always present at a fixed height and
+shows encounter info only (story text and THREATS); locked encounters show the
+lock info and "THREATS: ???". Unit info (name and blurb) moves to long-press on
+the unit tile; tapping a unit only toggles it in the squad. Switching between any
+encounters, locked or not, moves nothing. **Supersedes** G-16's "detail-panel
+footprint ... transparent when empty" on locked encounters and the hero dossier
+in the squad-select detail panel.
+
 ## G-31. Dice stay in the visible tray (Kev, 2026-09-27)
 
 Every die stays inside the visible dice tray for its whole motion and bounces
