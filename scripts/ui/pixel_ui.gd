@@ -527,6 +527,13 @@ const PORTRAIT_TOP_PAD := 12.0
 # cover fit. Keeping this in physical pixels makes the crop correction exactly
 # the same on the 540px capture, native phones, and smaller supported windows.
 const PORTRAIT_CONTENT_UP_PHYSICAL_PX := 8.0
+# Solid backdrop behind every framed portrait (Kev, 2026-09-27). Where framing
+# zooms out or shifts the art so it no longer covers its frame (the pad strip,
+# anchor framing, legacy_* offsets), the gap is black on every screen instead of
+# whatever the host frame paints (the brown strip above the Hive boss on the
+# encounter panel). All live portrait art is opaque, so the backdrop only ever
+# shows where the art does not reach.
+const PORTRAIT_BACKDROP_COLOR := Color("000000")
 
 # The small role-color square is retained as a component affordance for later
 # roster work, but is intentionally suppressed during the beta. Screens which
@@ -542,16 +549,41 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 	if fw < 2.0 or fh < 2.0:
 		return
 	var tex: Texture2D = tex_rect.texture
-	if tex == null:
+	if tex == null or tex.get_width() < 1 or tex.get_height() < 1:
 		tex_rect.position = Vector2.ZERO
 		tex_rect.size = frame_size
+		_sync_portrait_backdrop(tex_rect, frame_size, false)
 		return
+	_place_portrait(tex_rect, tex, fw, fh)
+	_sync_portrait_backdrop(tex_rect, frame_size, true)
+
+
+# The black frame-sized backdrop, drawn behind the art (show_behind_parent) as
+# an internal child of the portrait itself, so every screen gets it from the
+# helper with no node of its own. Offset by the art's placement so it covers
+# the frame exactly; refitting moves it with the art.
+static func _sync_portrait_backdrop(tex_rect: TextureRect, frame_size: Vector2, show: bool) -> void:
+	var backdrop: ColorRect = null
+	if tex_rect.has_meta("portrait_backdrop"):
+		backdrop = tex_rect.get_meta("portrait_backdrop") as ColorRect
+	if backdrop == null or not is_instance_valid(backdrop):
+		if not show:
+			return
+		backdrop = ColorRect.new()
+		backdrop.name = "PortraitBackdrop"
+		backdrop.color = PORTRAIT_BACKDROP_COLOR
+		backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		backdrop.show_behind_parent = true
+		tex_rect.add_child(backdrop, false, Node.INTERNAL_MODE_FRONT)
+		tex_rect.set_meta("portrait_backdrop", backdrop)
+	backdrop.visible = show
+	backdrop.position = -tex_rect.position
+	backdrop.size = frame_size
+
+
+static func _place_portrait(tex_rect: TextureRect, tex: Texture2D, fw: float, fh: float) -> void:
 	var tw: float = float(tex.get_width())
 	var th: float = float(tex.get_height())
-	if tw < 1.0 or th < 1.0:
-		tex_rect.position = Vector2.ZERO
-		tex_rect.size = frame_size
-		return
 	var entry: Dictionary = framing_entry_for(tex)
 	if bool(entry.get("use_anchors", false)) and entry.has("head_top") and entry.has("chin"):
 		_anchor_fit_portrait(tex_rect, tex, entry, fw, fh)

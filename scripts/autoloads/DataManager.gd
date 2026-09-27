@@ -96,7 +96,6 @@ const RELIC_ICON_BY_ID := {
 	"emergencySignal": "res://assets/icons/items/emergencySignal.png",
 	"aegisField": "res://assets/icons/items/aegisField.png",
 	"standingOrder": "res://assets/icons/items/standingOrder.png",
-	"staticField": "res://assets/icons/items/staticField.png",
 	"overflowVent": "res://assets/icons/items/overflowVent.png",
 	"salvageDirective": "res://assets/icons/items/salvageDirective.png",
 	"coldLogic": "res://assets/icons/items/coldLogic.png",
@@ -108,6 +107,15 @@ const RELIC_ICON_BY_ID := {
 	"resonantChorus": "res://assets/icons/items/resonantChorus.png",
 	"rootAccess": "res://assets/icons/items/rootAccess.png",
 	"mantleCore": "res://assets/icons/items/mantleCore.png",
+}
+
+# Relics drawn with another asset's art AND framing entry: [section, id] of the
+# asset they borrow. One framing edit (portrait_anchors.json) frames both, and
+# the borrower has no entry or row of its own in the framing editor.
+# Static Field uses Shield Array's icon (Kev, 2026-09-27; its own art could not
+# be framed).
+const RELIC_ICON_SHARED_BY_ID := {
+	"staticField": ["items", "buckler_array"],
 }
 
 const ENEMY_ZONE_RANGES := {
@@ -677,7 +685,13 @@ func _build_item_resource(item_entry: Dictionary, item_type: String) -> ItemData
 	item.effect = item_entry.get("effect", {}).duplicate(true)
 	item.boss_relic = bool(item_entry.get("bossRelic", false))
 	var icon_path: String = ""
-	if item.item_type == "relic":
+	var framing_section: String = "relics" if item.item_type == "relic" else "items"
+	var framing_key: String = item.id
+	if item.item_type == "relic" and RELIC_ICON_SHARED_BY_ID.has(item.id):
+		framing_section = str(RELIC_ICON_SHARED_BY_ID[item.id][0])
+		framing_key = str(RELIC_ICON_SHARED_BY_ID[item.id][1])
+		icon_path = str((RELIC_ICON_BY_ID if framing_section == "relics" else ITEM_ICON_BY_ID).get(framing_key, ""))
+	elif item.item_type == "relic":
 		icon_path = str(RELIC_ICON_BY_ID.get(item.id, ""))
 	else:
 		icon_path = str(ITEM_ICON_BY_ID.get(item.id, ""))
@@ -685,7 +699,7 @@ func _build_item_resource(item_entry: Dictionary, item_type: String) -> ItemData
 		# One framing entry per id (portrait_anchors.json items / relics); no
 		# entry returns the shared imported texture untouched.
 		item.icon = PixelUI.framed_art_texture(load(icon_path) as Texture2D,
-			"relics" if item.item_type == "relic" else "items", item.id)
+			framing_section, framing_key)
 	return item
 
 
