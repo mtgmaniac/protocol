@@ -3,7 +3,8 @@ extends RefCounted
 
 ## Single source of truth for ability / item / gear / relic effect pips.
 ## Notation: `)value(` = all, `(value)` = self, plain = single target.
-## Keyword letters: P C T CO RA; revive R{n}%; heal-lowest LOW; freeze = icon + superscript.
+## Keyword codes (P, C, T, ...) are dropped for kinds with an icon (CODE_ICON_KINDS);
+## revive R{n}%; heal-lowest LOW; freeze = icon + superscript.
 
 # Batch 155-179 gave every keyword its own pip icon; the 2026-07-10 icon batch
 # added rampage / pack_bonus / summon / self. Only `tag` remains text-rendered.
@@ -95,8 +96,6 @@ static func display_text_for_effect(effect: Dictionary) -> String:
 	var text: String
 
 	match kind:
-		"rampage":
-			text = keyword_code("rampage", "RA")  # no icon → keep the letters
 		"revive":
 			text = "%s%%" % raw_value.trim_suffix("%")  # icon + "50%"
 		"heal":

@@ -100,6 +100,11 @@ func _parse_args() -> Dictionary:
 			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
 			if window_parts.size() >= 2:
 				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		elif arg.begins_with("--capture-enemy-roll="):
+			# "Display Name:roll" pins that enemy's die (UI batch readout captures).
+			config["enemy_roll"] = arg.get_slice("=", 1)
+			config["rolled"] = true
+			config["no_primers"] = true
 		elif arg == "--capture-detonate-preview":
 			# UI batch B1: the first enemy burns 3 x 3 turns, Pulse's die shows
 			# 16 (Flash Detonation) and targets it, so the hero readout's
@@ -243,6 +248,15 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await _lock_n_targets(lock_count)
 	if bool(config.get("force_auto", false)):
 		await _force_auto_target_first_hero()
+	if str(config.get("enemy_roll", "")) != "":
+		var pin: PackedStringArray = str(config["enemy_roll"]).split(":")
+		var cm_pin: Object = current_scene.get("combat_manager")
+		for state_variant in cm_pin.call("get_enemy_states"):
+			var enemy: Dictionary = state_variant
+			if str(enemy["unit"].display_name) == pin[0]:
+				(current_scene.get("enemy_rolls") as Dictionary)[str(enemy["id"])] = int(pin[1])
+		current_scene.call("_on_die_values_changed")
+		await create_timer(1.2).timeout
 	if bool(config.get("detonate_preview", false)):
 		await _force_detonate_preview()
 	if bool(config.get("enemy_shield", false)):

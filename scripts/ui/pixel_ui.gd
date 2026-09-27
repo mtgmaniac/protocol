@@ -407,7 +407,8 @@ static func format_amount_no_sign(value: Variant) -> String:
 
 # Every keyword now has its own pip icon (batch 155-179). Roll is the single gold
 # d20 asset resolved as roll_up/roll_down so the caller can tint +roll green.
-# Only `rampage` and `tag` remain iconless (return "" → rendered as text).
+# Only `tag` remains iconless (return "" → rendered as text); rampage has had
+# its own icon since the 2026-07-10 icon batch.
 static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 	match kind.to_lower():
 		"dmg", "damage", "blast":
