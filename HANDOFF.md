@@ -1,5 +1,59 @@
 # Overload Protocol — current handoff
 
+## 0. Dice rules follow-up (branch `codex/dice-rules-containment`, NOT merged)
+
+2026-09-27. Two dice bugs are fixed, and the dice rules are now written down in
+one place: TRUTH "Dice rules", with the new rulings G-31 and G-32. The branch
+is pushed and not merged, so Kev can test it in Godot first.
+
+**Bug 1: tutorial recorded throws left the tray.** Cause: the recorder and its
+gate ran headless, where the root window is 64×64. The "expand" stretch turns
+that into a 2400×2400 visible rect, so the tray laid out 2360 px wide (walls
+at x = ±10.5) instead of the phone's 1040 px (±4.63). All 64 recorded tracks
+went outside the real tray, and 32 landed outside it before the upright snap
+pulled them in. The gate compared the recorded bounds against the same wrong
+headless tray, so it passed. Fix: the recorder forces 1080×2400, checks the
+tray, and discards any throw where a die leaves it (0 of 24 needed
+discarding). Frames are stored tray-normalised (format v2). Playback maps
+them onto the live tray and only plays a variant that stays inside on every
+frame; if none fits, the dice are thrown live. All scripted rounds were
+re-recorded.
+
+**Bug 2: ability pips rode a rerolled die.** Cause: die tags follow the die's
+live screen position every frame, and on Reroll the readout keeps the old
+roll until the new raw is committed after settling. Nudge, Set and hijack
+tip-overs had the mirror problem: the new pips appeared before the die
+reached its new face. Fix: `DiceTray3D` tracks per-die motion.
+`value_displays_hidden()` hides the pip tag, the inspect hit-area and the
+top-face highlight while the die moves. They also stay hidden until the face
+the die rests on is the value the unit acts on.
+
+**Also found by the new gate:** result slots were clamped to fixed constants,
+not the live walls, so on a narrower tray a settled die could sit partly
+off-screen. Slots are now clamped to the live tray.
+
+**Gate:** `dice face` has two new criteria, checked on every drawn frame:
+(i) the die stays inside the visible tray, landing included; (j) value
+displays are hidden mid-motion and correct after settling. It also adds a
+tutorial and live-scene part. It fails if any path is never exercised: live
+throw (tray and scene), recorded playback, hero Reroll, enemy item reroll,
+Nudge, Set, reprint and hijack. It runs at 1080×2400 and 540×1200, and so does
+`tutorial recorded throws`. The mutation runner now covers a–j, and all 10 are
+detected. With the hide rule disabled in production code, (j) fails with the
+reported symptom.
+
+**Verification:** full gate `python scripts/verify_gate.py --skip-sim`, with
+an isolated APPDATA, exit 0: all hard gates pass, including dice face at both
+sizes, tutorial recorded throws at both sizes, tutorial smoke, die reroll
+visual, battle checkpoint, save resume and profile isolation. Tutorial throws
+also pass at 720×1280 (a wider tray). Combat and balance are unchanged, so
+the sim was skipped.
+
+**Open:** Kev's visual check in Godot: scripted tutorial rounds stay in the
+tray, and pips hide during Reroll, Nudge and Set. `battle_scene.gd` is 3648
+lines against a high-water mark of 3640 (warning only; the mark is unchanged).
+Web and phone rendering were not checked.
+
 2026-09-27. `main` carries two finished pieces of work, each waiting on Kev's
 visual review in Godot:
 
