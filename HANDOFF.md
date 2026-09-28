@@ -29,6 +29,15 @@ monitors; `scripts/debug/capture_window.gd` renders the root at full size
 with viewport stretch. Three capture tools that no longer compiled under `-s`
 were fixed (home, inspect, choice screens).
 
+**Verification:** full gate `python scripts/verify_gate.py --skip-sim` with an
+isolated APPDATA: 66/66 hard gates pass. Dice mutations: 11/11 detected.
+Sim (`ci_smoke.py`, 300 runs, run separately because B1 moved the hero phase
+into `_resolve_hero_phase`): 13 metrics are outside tolerance against
+`baseline.json` (overall 25.0% -> 27.7%, stellarMenagerie 16.7% -> 22.9%, ...),
+and the SAME 13, to the digit, with `main`'s `combat_manager.gd` swapped back
+in. So B1 is combat-neutral and the drift predates this batch (the baseline
+was not re-pinned after the dice rework, per TRUTH). Baseline untouched.
+
 **Kev to check in Godot:** Reroll / Phase Scrambler with dice nearby (the
 re-thrown die bounces off resting dice; when it lands beyond a full row it is
 lifted over it into its slot); the enemy HP preview with Detonate; squad
