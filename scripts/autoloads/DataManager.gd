@@ -110,6 +110,7 @@ const RELIC_ICON_BY_ID := {
 	"firewallHack": "res://assets/icons/items/rootAccess.png",
 	"hereticSignal": "res://assets/icons/items/resonantChorus.png",
 	"tectonicCharge": "res://assets/icons/items/mantleCore.png",
+	"overhealRelay": "res://assets/icons/items/gravityWell.png",
 }
 
 # Relics drawn with another asset's art AND framing entry: [section, id] of the

@@ -54,6 +54,7 @@ func _run() -> void:
 	_firewall_hack()
 	_heretic_signal()
 	_tectonic_charge()
+	_overheal_relay()
 	_save_migration()
 	await _live_scrap_converter()
 	await _live_tectonic_charge()
@@ -131,7 +132,11 @@ func _data_counts() -> void:
 	var expected: Array = sm.BOSS_RELIC_BY_OP.values()
 	expected.sort()
 	_check(boss == expected, "the boss relics are exactly the five new ones (%s)" % [boss])
-	_check(draftable == 29, "29 draftable relics (got %d)" % draftable)
+	_check(draftable == 30, "30 draftable relics (got %d)" % draftable)
+	for relic_id in ["overhealRelay"]:
+		var item: Resource = dm.get_item(relic_id)
+		_check(item != null and not item.boss_relic, "%s is a normal draft relic" % relic_id)
+		_check(item != null and item.icon != null, "%s has placeholder art" % relic_id)
 	for relic_id in expected:
 		_check(dm.get_item(relic_id).icon != null, "%s has placeholder art" % relic_id)
 	for old_id in OLD_BOSS_RELIC_BY_OP.values():
@@ -371,6 +376,42 @@ func _tectonic_charge() -> void:
 	# A refresh in round 1 restores the enemy-only roll.
 	_check(not CHECKPOINT.pending_roll_of({"pending_roll": {"hero": {}, "enemy": {"e#1": 5}}}).is_empty(), "a pending roll of enemy dice only is kept")
 	_check(CHECKPOINT.pending_roll_of({"pending_roll": {"hero": {}, "enemy": {}}}).is_empty(), "an empty pending roll is still rejected")
+
+
+# ── Overheal Relay (G-39) ─────────────────────────────────────────────────────
+
+func _overheal_relay() -> void:
+	_section = "Overheal Relay"
+	var cm: Object = _mgr(["overhealRelay"], [_hero("h1")], [_enemy("e1")])
+	var h: Dictionary = cm.get_hero_states()[0]
+	var e: Dictionary = cm.get_enemy_states()[0]
+	h["current_hp"] = 95
+	cm.apply_item_heal(h, 10)
+	_check(int(h["current_hp"]) == 100 and int(e["current_hp"]) == 95, "healing 10 at 95/100 heals 5 and deals 5")
+	cm.apply_item_heal(h, 8)
+	_check(int(e["current_hp"]) == 87, "healing at full HP deals the whole amount")
+	h["current_hp"] = 40
+	cm.apply_item_heal(h, 10)
+	_check(int(e["current_hp"]) == 87, "no excess, no damage")
+	var eh: Object = _mgr(["overhealRelay"], [_hero("h1")], [_enemy("e1"), _enemy("e2")])
+	eh._heal_state(eh.get_enemy_states()[0], 20)
+	_check(int(eh.get_enemy_states()[1]["current_hp"]) == 100 and int(eh.get_hero_states()[0]["current_hp"]) == 100,
+		"an enemy's overheal does nothing")
+	var picks: Array = []
+	for _i in 2:
+		var pm: Object = _mgr(["overhealRelay"], [_hero("h1")], [_enemy("e1"), _enemy("e2"), _enemy("e3")])
+		_engine(pm, 41)
+		for _j in 6:
+			pm.apply_item_heal(pm.get_hero_states()[0], 3)
+		picks.append(pm.get_enemy_states().map(func(s): return int(s["current_hp"])))
+	_check(picks[0] == picks[1], "the random enemy is a seeded pick (%s)" % [picks[0]])
+	var none: Object = _mgr(["overhealRelay"], [_hero("h1")], [_enemy("e1")])
+	none.get_enemy_states()[0]["dead"] = true
+	none.apply_item_heal(none.get_hero_states()[0], 10)
+	_check(true, "no living enemy: nothing happens (no crash)")
+	var plain: Object = _mgr([], [_hero("h1")], [_enemy("e1")])
+	plain.apply_item_heal(plain.get_hero_states()[0], 10)
+	_check(int(plain.get_enemy_states()[0]["current_hp"]) == 100, "no relic, no damage")
 
 
 # ── Save migration (G-41) ─────────────────────────────────────────────────────

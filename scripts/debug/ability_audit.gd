@@ -1620,6 +1620,16 @@ func _run_new_relic_regressions() -> void:
 	_expect_and_record("Regression / relic hereticSignal once per battle", "rethrowAllOncePerBattle", "15/6/true",
 		"%d/%d/%s" % [int(signal_bs.hero_rolls[signal_hid]), int(signal_bs.enemy_rolls[signal_eid]), str(not signal_first.is_empty() and signal_second.is_empty())])
 
+	# Overheal Relay (G-39): healing past max HP hits a random enemy for the excess.
+	var relay_manager: CombatManager = CombatManager.new()
+	relay_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	relay_manager.setup_relics(["overhealRelay"])
+	var relay_hero: Dictionary = relay_manager.get_hero_states()[0]
+	relay_hero["current_hp"] = 96
+	relay_manager.apply_item_heal(relay_hero, 10)
+	_expect_and_record("Regression / relic overhealRelay excess heal damage", "overhealDamage", "100/94",
+		"%d/%d" % [int(relay_hero["current_hp"]), int(relay_manager.get_enemy_states()[0]["current_hp"])])
+
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
 	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])

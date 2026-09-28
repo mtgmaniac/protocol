@@ -2759,6 +2759,15 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 	var before_hp: int = int(state["current_hp"])
 	state["current_hp"] = mini(int(state["max_hp"]), int(state["current_hp"]) + amount)
 	var healed_amount: int = int(state["current_hp"]) - before_hp
+	# Overheal Relay (G-39): healing a hero past max HP deals the excess as
+	# damage to a random living enemy (seeded pick, INVARIANTS #1).
+	var overheal: int = amount - healed_amount
+	if overheal > 0 and _is_hero_state(state) and has_relic("overhealDamage"):
+		var living: Array = _enemy_states.filter(func(e): return not bool(e["dead"]))
+		if not living.is_empty():
+			var relay_target: Dictionary = living[_rand_index(living.size())]
+			_log("Overheal Relay: %d extra healing hits %s." % [overheal, relay_target["unit"].display_name])
+			_damage_state(relay_target, overheal)
 	if healed_amount > 0:
 		_log("%s heals %d HP." % [state["unit"].display_name, healed_amount])
 		_emit_event(state, "heal", healed_amount, _resolve_side_for_state(state))

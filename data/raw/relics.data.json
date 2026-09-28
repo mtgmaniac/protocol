@@ -203,6 +203,13 @@
     "effect": { "type": "squadWipeSurvive" }
   },
   {
+    "id": "overhealRelay",
+    "name": "Overheal Relay",
+    "desc": "Healing past max HP deals the extra as damage to a random enemy.",
+    "icon": "heart",
+    "effect": { "type": "overhealDamage" }
+  },
+  {
     "id": "scrapConverter",
     "name": "Scrap Converter",
     "desc": "A hero die lands showing 1 or 2: +1 Protocol.",

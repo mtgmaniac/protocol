@@ -80,6 +80,7 @@ relic,coldLogic,Cold Logic,-,12,73,bonus vs frozen dice - freeze synergy
 relic,chainDoctrine,Chain Doctrine,-,13,84,chains jump one extra time - keyword modifier
 relic,overflowVent,Overflow Vent,-,13,84,protocol past cap becomes damage - overflow conversion
 relic,standingOrder,Standing Order,-,14,96,band modification for every unit
+relic,overhealRelay,Overheal Relay,-,14,96,excess healing becomes damage - heal-to-damage conversion (placeholder name)
 relic,openingGambit,Opening Salvo,-,15,109,battle-start HP swing both ways - high-variance gamble
 relic,overloadLoop,Overload Loop,-,16,123,20s resolve twice - stacks rules on the 20 face
 relic,martyrdomProtocol,Vengeance Protocol,-,16,123,ally death triggers all-20s - death-as-resource

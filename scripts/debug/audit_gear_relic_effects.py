@@ -35,6 +35,8 @@ RELIC_HANDLED = {
     # boss relics (rework 2026-09-27, G-34..G-38)
     "protocolOnLowLanding", "killFreezesKillerDie", "enemyNudgeOncePerTurn",
     "rethrowAllOncePerBattle", "heroesHoldRoundOne",
+    # draft relics (G-39)
+    "overhealDamage",
 }
 
 GAMESTATE_ONLY = {"rewardsNoCommon", "reviveNoPenalty", "battleStartConsumable"}
