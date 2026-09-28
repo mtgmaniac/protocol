@@ -519,7 +519,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Decline.", "effects": []},
 	]},
 	"abandonedArmory": {"tier": "minor", "name": "ABANDONED ARMORY", "desc": "The garrison left sealed supply crates behind during the evacuation.", "choices": [
-		{"label": "Open the crates: choose 1 of 3 consumables of uncommon rarity or higher.", "draft": {"kind": "consumable", "min_rarity": "uncommon", "count": 3}, "effects": []},
+		{"label": "Open the crates: choose 1 of 3 uncommon or better consumables.", "draft": {"kind": "consumable", "min_rarity": "uncommon", "count": 3}, "effects": []},
 		{"label": "Strip the wiring: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
 	"trainingSim": {"tier": "minor", "name": "TRAINING SIM", "desc": "The garrison's combat simulator is still running.", "choices": [
@@ -527,7 +527,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Squad drills: all heroes gain +15 XP.", "effects": [{"type": "squadXp", "amount": 15}]},
 	]},
 	"salvageCache": {"tier": "minor", "name": "SALVAGE CACHE", "desc": "A supply locker sits beneath a live security alarm.", "choices": [
-		{"label": "Trigger the alarm: choose 1 of 3 gear pieces of rare rarity or higher. Enemies start the next battle with 8 shield.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
+		{"label": "Trigger the alarm: choose 1 of 3 rare or better gear. Enemies start the next battle with 8 shield.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "armModifier", "id": "hardened"}]},
 		{"label": "Take the loose crate: 1 common consumable.", "effects": [{"type": "consumable", "rarity": "common", "count": 1}]},
 	]},
 	"signalDecrypt": {"tier": "minor", "name": "SIGNAL INTERCEPT", "desc": "An enemy transmission carries details of the force ahead.", "choices": [
@@ -539,7 +539,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Keep it.", "effects": []},
 	]},
 	"driftingWreck": {"tier": "minor", "name": "WRECKED TRANSPORT", "desc": "A troop transport lies wrecked along the route. Its cargo bay is still sealed.", "choices": [
-		{"label": "Search the wreck: choose 1 of 3 gear pieces of uncommon rarity or higher. Next battle, each enemy death deals 4 damage to a random hero.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
+		{"label": "Search the wreck: choose 1 of 3 uncommon or better gear. Next battle, each enemy death deals 4 damage to a random hero.", "pick": "hero", "draft": {"kind": "gear", "min_rarity": "uncommon", "count": 3}, "effects": [{"type": "armModifier", "id": "deadMansCharge"}]},
 		{"label": "Siphon the tanks: +2 Protocol next battle.", "effects": [{"type": "protocolNextBattle", "amount": 2}]},
 	]},
 	"loadoutSwap": {"tier": "minor", "name": "FIELD WORKBENCH", "desc": "A field workbench has enough power for one equipment refit.", "choices": [
@@ -564,7 +564,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Refuse.", "effects": []},
 	]},
 	"blackMarketNode": {"tier": "major", "name": "BLACK MARKET DEPOT", "desc": "A quartermaster trades restricted equipment for working hardware.", "choices": [
-		{"label": "Trade: destroy one equipped gear piece and choose 1 of 3 gear pieces of rare rarity or higher.", "pick": "gear", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "destroyPickedGear"}]},
+		{"label": "Trade: destroy one equipped gear piece and choose 1 of 3 rare or better gear.", "pick": "gear", "draft": {"kind": "gear", "min_rarity": "rare", "count": 3}, "effects": [{"type": "destroyPickedGear"}]},
 		{"label": "Leave.", "effects": []},
 	]},
 	"unstableReactor": {"tier": "major", "name": "UNSTABLE REACTOR", "desc": "A damaged reactor can vent into the enemy-held sector ahead. Someone must open the valve.", "choices": [
