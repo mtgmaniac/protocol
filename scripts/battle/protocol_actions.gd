@@ -347,6 +347,9 @@ func _on_reroll_button_pressed() -> void:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Reroll.")
 		return
+	if _scene._engine.heroes_hold_this_round():
+		_scene._refresh_summary("Your heroes hold this round.")
+		return
 	if _scene.protocol_points < 2:
 		_scene._refresh_summary("Need 2 Protocol to Reroll.")
 		return
@@ -371,7 +374,7 @@ func _on_nudge_button_pressed() -> void:
 		_scene._refresh_summary("Need 1 Protocol to Nudge.")
 		return
 	if not _has_nudgeable_hero() and not _scene._relics.can_hack_any():
-		_scene._refresh_summary("Every die was already nudged this turn.")
+		_scene._refresh_summary("Your heroes hold this round." if _scene._engine.heroes_hold_this_round() else "Every die was already nudged this turn.")
 		return
 	AudioManager.play_select()
 	_scene.transition(_scene.PHASE_NUDGE_PICK)
@@ -552,6 +555,9 @@ func _on_set_button_pressed() -> void:
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Set.")
+		return
+	if _scene._engine.heroes_hold_this_round():
+		_scene._refresh_summary("Your heroes hold this round.")
 		return
 	if _scene.protocol_points < _get_set_cost():
 		_scene._refresh_summary("Need %d Protocol to Set." % _scene.SET_DIE_COST)

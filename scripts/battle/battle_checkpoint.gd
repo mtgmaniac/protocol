@@ -112,7 +112,9 @@ static func pending_roll_of(state_block: Dictionary) -> Dictionary:
 			var v: Variant = (p[side] as Dictionary)[id_variant]
 			if not (v is int) or int(v) < 1 or int(v) > 20:
 				return {}
-	if (p["hero"] as Dictionary).is_empty():
+	# Tectonic Charge's round 1 throws enemy dice only (the heroes hold), so a
+	# pending roll needs at least one die on either side.
+	if (p["hero"] as Dictionary).is_empty() and (p["enemy"] as Dictionary).is_empty():
 		return {}
 	return p
 

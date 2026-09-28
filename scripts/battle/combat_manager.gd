@@ -810,6 +810,13 @@ func take_pending_protocol_drain() -> int:
 	return drained
 
 
+# Tectonic Charge (G-38): true while round 1 of a battle is being planned - the
+# heroes hold (no hero dice are thrown, no hero acts). Read before the round
+# resolves (_battle_round counts resolved rounds).
+func heroes_hold_this_round() -> bool:
+	return has_relic("heroesHoldRoundOne") and _battle_round == 0
+
+
 func resolve_round(
 	hero_rolls: Dictionary,
 	enemy_rolls: Dictionary,
@@ -819,7 +826,10 @@ func resolve_round(
 ) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
+	var heroes_held: bool = heroes_hold_this_round()
 	_battle_round += 1
+	if heroes_held:
+		_log("TECTONIC CHARGE - your heroes hold this round.")
 
 	_resolve_hero_phase(hero_rolls, enemy_rolls, dice_manager, raw_hero_rolls)
 
@@ -872,6 +882,15 @@ func resolve_round(
 		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
 
 	_tick_end_of_round_states()
+
+	# Tectonic Charge (G-38): the hold ends with round 1; every hero (a fallen
+	# one too, for when it is revived) rolls with +N for the rest of the battle.
+	# A permanent roll buff, so the faces print it and the roll chip shows it.
+	if heroes_held:
+		var charge: int = int(_get_relic_value("heroesHoldRoundOne", "amount", 2))
+		for charged_state in _hero_states:
+			charged_state["perm_roll_buff"] = int(charged_state.get("perm_roll_buff", 0)) + charge
+		_log("TECTONIC CHARGE - the squad is charged: +%d to every hero roll." % charge)
 
 	if _all_states_dead(_enemy_states):
 		_log("All enemies are down.")

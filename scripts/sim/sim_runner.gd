@@ -714,8 +714,9 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 	var result: String = "ongoing"
 	while rounds < ROUND_SAFETY_CAP:
 		rounds += 1
-		# Roll (SeededRollProvider) → frozen overrides → record.
-		bs.hero_rolls = engine.roll_states(cm.get_hero_states())
+		# Roll (SeededRollProvider) → frozen overrides → record. Tectonic Charge:
+		# no hero die is thrown while the heroes hold (round 1).
+		bs.hero_rolls = {} if engine.heroes_hold_this_round() else engine.roll_states(cm.get_hero_states())
 		bs.enemy_rolls = engine.roll_states(cm.get_enemy_states())
 		bs.firewall_hack_used = false
 		engine.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)

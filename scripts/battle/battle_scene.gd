@@ -1199,12 +1199,12 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		dice_tray_3d.print_provider = _die_faces_now
 		if placed_rolls.is_empty():
 			dice_tray_3d.play_rolls(
-				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+				_build_dice_tray_entries(_relics.hero_roll_states(), "hero"),
 				_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
 			)
 		else:
 			dice_tray_3d.place_rolls(
-				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+				_build_dice_tray_entries(_relics.hero_roll_states(), "hero"),
 				_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy"),
 				placed_rolls
 			)
@@ -1217,7 +1217,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	else:
 		# No physical landing in the headless path: choose the source up front.
 		var requests: Dictionary = _tutorial_rig_values() if _game_state().tutorial_mode else {}
-		hero_rolls = _tutorial_headless_rolls(combat_manager.get_hero_states(), "hero", requests)
+		hero_rolls = _tutorial_headless_rolls(_relics.hero_roll_states(), "hero", requests)
 		enemy_rolls = _tutorial_headless_rolls(combat_manager.get_enemy_states(), "enemy", requests)
 	_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
 	_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
@@ -1864,7 +1864,7 @@ func clear_die_tooltip_overlay(side: String, unit_id: String) -> void:
 func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	if battle_over:
 		return
-	if hero_rolls.is_empty() or enemy_rolls.is_empty():
+	if (hero_rolls.is_empty() and not _engine.heroes_hold_this_round()) or enemy_rolls.is_empty():
 		_refresh_summary("Roll dice to begin.")
 		return
 
@@ -1883,6 +1883,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	# rolls, resolve_round, clear the spent roll state, drain pending protocol.
 	# This scene keeps XP recording, feedback, logging, income, and scene handoff.
 	var step: Dictionary = _engine.resolve_step(_state)
+	_relics.on_round_resolved()
 	var result: Dictionary = step["result"]
 	var eff_hero_rolls: Dictionary = step["eff_hero_rolls"]
 	for unit_id_variant in eff_hero_rolls.keys():

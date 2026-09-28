@@ -52,8 +52,10 @@ func _run() -> void:
 	_scrap_converter()
 	_blood_frenzy()
 	_firewall_hack()
+	_tectonic_charge()
 	_save_migration()
 	await _live_scrap_converter()
+	await _live_tectonic_charge()
 	await _live_firewall_hack()
 	await _teardown()
 	_finish()
@@ -282,6 +284,42 @@ func _firewall_hack() -> void:
 	_check(bs.enemy_roll_nudges.is_empty(), "resolving the round clears the hack")
 
 
+# ── Tectonic Charge (G-38) ────────────────────────────────────────────────────
+
+func _tectonic_charge() -> void:
+	_section = "Tectonic Charge"
+	var dm: Object = DMS.new()
+	var cm: Object = _mgr(["tectonicCharge"], [_hero("h1", {"dmg": 7}), _hero("h2", {"dmg": 7})], [_enemy("e1")])
+	var eng: Object = _engine(cm)
+	var e1: Dictionary = cm.get_enemy_states()[0]
+	_check(eng.heroes_hold_this_round(), "the heroes hold in round 1")
+	cm.get_hero_states()[1]["dead"] = true   # a fallen hero is charged too, for its revive
+	cm.resolve_round({}, {_id(e1): 5}, dm)
+	_check(int(e1["current_hp"]) == 100, "no hero acted in round 1")
+	_check(not eng.heroes_hold_this_round(), "from round 2 the heroes roll again")
+	for hs in cm.get_hero_states():
+		_check(int(hs.get("perm_roll_buff", 0)) == 2, "%s rolls +2 from round 2 (dead or alive)" % _id(hs))
+	var faces: Array = []
+	for n in range(1, 21):
+		faces.append(eng.pre_roll_face_value(cm.get_hero_states()[0], true, n))
+	var expected: Array = []
+	for n in range(1, 21):
+		expected.append(mini(n + 2, 20))
+	_check(faces == expected, "the +2 is printed on every face (%s)" % [faces])
+	_check(int(CM.roll_modifier_totals_of(cm.get_hero_states()[0])["roll_buff"]) == 2, "the roll chip shows +2")
+	# Round 3: still +2 (not +4).
+	cm.resolve_round({_id(cm.get_hero_states()[0]): 5}, {_id(e1): 5}, dm)
+	_check(int(cm.get_hero_states()[0]["perm_roll_buff"]) == 2, "the charge is granted once, not every round")
+	# Every battle: a new battle holds again.
+	cm.setup_battle([_hero("h1")], [_enemy("e1")])
+	_check(cm.heroes_hold_this_round() and int(cm.get_hero_states()[0].get("perm_roll_buff", 0)) == 0, "each battle starts with the hold again")
+	var plain: Object = _mgr([], [_hero("h1")], [_enemy("e1")])
+	_check(not plain.heroes_hold_this_round(), "no relic, no hold")
+	# A refresh in round 1 restores the enemy-only roll.
+	_check(not CHECKPOINT.pending_roll_of({"pending_roll": {"hero": {}, "enemy": {"e#1": 5}}}).is_empty(), "a pending roll of enemy dice only is kept")
+	_check(CHECKPOINT.pending_roll_of({"pending_roll": {"hero": {}, "enemy": {}}}).is_empty(), "an empty pending roll is still rejected")
+
+
 # ── Save migration (G-41) ─────────────────────────────────────────────────────
 
 func _save_migration() -> void:
@@ -376,7 +414,7 @@ func _enter(relics: Array, battle: int = 2) -> Node:
 func _roll(scene: Node, hero_vals: Array, enemy_vals: Array) -> void:
 	var rig: Dictionary = {}
 	var hi: int = 0
-	for st in scene.combat_manager.get_hero_states():
+	for st in scene._relics.hero_roll_states():
 		if bool(st.get("dead", false)):
 			continue
 		rig["hero:%s" % str(st["id"])] = int(hero_vals[hi % hero_vals.size()])
@@ -456,6 +494,67 @@ func _live_scrap_converter() -> void:
 	var pp: int = int(scene.protocol_points)
 	scene._relics.on_dice_landed(true)
 	_check(int(scene.protocol_points) == pp, "a restored landing is not paid again")
+
+
+func _live_tectonic_charge() -> void:
+	_section = "live Tectonic Charge"
+	var scene: Node = await _enter(["tectonicCharge"])
+	var gs: Node = root.get_node("/root/GameState")
+	await _roll(scene, [10], [6])
+	var hero_dice: int = 0
+	for key in scene.dice_tray_3d._die_by_key:
+		if str(key).begins_with("hero:"):
+			hero_dice += 1
+	_check(hero_dice == 0 and scene.hero_rolls.is_empty(), "round 1: no hero die is thrown")
+	_check(not scene.enemy_rolls.is_empty(), "round 1: the enemy dice are thrown")
+	var banner: Variant = scene._relics.get("_hold_banner")
+	_check(banner != null and is_instance_valid(banner), "the screen shows the heroes are holding")
+	if banner != null and is_instance_valid(banner):
+		var text: String = str((banner.find_children("*", "Label", true, false)[0] as Label).text)
+		_check(text == "YOUR HEROES HOLD THIS ROUND", "banner text (got '%s')" % text)
+		_check(int(banner.mouse_filter) == int(Control.MOUSE_FILTER_IGNORE), "the banner never blocks input")
+	_check(int(scene.turn_phase) == int(scene.PHASE_READY_TO_END), "round 1 goes straight to End Turn")
+	# Items stay usable while the heroes hold.
+	var hero_state: Dictionary = scene.combat_manager.get_hero_states()[0]
+	hero_state["current_hp"] = 10
+	gs.consumables.append("patch_kit")
+	scene.protocol_points = 3
+	scene._protocol._phase_before_item = int(scene.turn_phase)
+	await scene._protocol._apply_item_effect(root.get_node("/root/DataManager").get_item("patch_kit"), hero_state)
+	_check(int(hero_state["current_hp"]) > 10, "an item works in round 1")
+	# Dice spends have no hero die to work on.
+	scene._protocol._on_nudge_button_pressed()
+	_check(int(scene.turn_phase) != int(scene.PHASE_NUDGE_PICK), "Nudge doesn't arm while the heroes hold")
+	scene._protocol._on_reroll_button_pressed()
+	_check(int(scene.turn_phase) != int(scene.PHASE_REROLL_PICK), "Reroll doesn't arm while the heroes hold")
+	# A refresh now keeps the landed enemy dice.
+	var cp: Dictionary = root.get_node("/root/SaveManager").peek_run_save().get("battle_checkpoint", {})
+	var pending: Dictionary = CHECKPOINT.pending_roll_of(str_to_var(str(cp.get("state", ""))) if cp.has("state") else {})
+	_check(not pending.is_empty() and (pending.get("hero", {}) as Dictionary).is_empty(),
+		"round 1's enemy-only roll is saved as the pending roll (checkpoint %s, pending %s)" % ["present" if not cp.is_empty() else "missing", pending])
+	var hp_before: Array = scene.combat_manager.get_enemy_states().map(func(s): return int(s["current_hp"]))
+	await scene._resolve_current_turn(true)
+	_check(scene.combat_manager.get_last_cast_order().is_empty(), "no hero acted in round 1")
+	_check(scene.combat_manager.get_enemy_states().map(func(s): return int(s["current_hp"])) == hp_before, "the enemies took no hero damage")
+	_check(scene._relics.get("_hold_banner") == null, "the banner goes when round 1 ends")
+	# Round 2: every hero die is thrown with +2 printed on its faces. (Clear
+	# what the enemies did to the heroes in round 1 - a jam or a penalty would
+	# also move the faces.)
+	for hs in scene.combat_manager.get_hero_states():
+		hs["jam_cap"] = 0
+		hs["rfe_stacks"] = []
+		hs["perm_rfe"] = 0
+		hs["rewrite_pending"] = false
+		hs["roll_buff_stacks"] = []
+		_check(int(hs.get("perm_roll_buff", 0)) == 2, "%s is charged +2 after round 1" % str(hs["id"]))
+	await _roll(scene, [5, 9, 13], [6])
+	var ids: Array = _hero_ids(scene)
+	_check(scene.hero_rolls.size() == ids.size(), "round 2: the heroes roll")
+	for hid in ids:
+		var faces: Array = scene._die_faces_now("hero", hid).get("faces", [])
+		_check(faces.size() == 20 and int(faces[0]) == 3 and int(faces[19]) == 20, "%s prints +2 on its faces" % hid)
+		_check(int(scene._die_value("hero", hid)) == int(scene.hero_rolls[hid]) + 2, "%s acts on raw + 2" % hid)
+		_check(int(scene.dice_tray_3d.up_face_numeral("hero", hid)) == int(scene._die_value("hero", hid)), "%s shows the value it acts on" % hid)
 
 
 func _live_firewall_hack() -> void:

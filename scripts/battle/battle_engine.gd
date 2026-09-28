@@ -369,6 +369,13 @@ func apply_firewall_hack(bs: BattleState, enemy_state: Dictionary) -> bool:
 	return true
 
 
+# Tectonic Charge (G-38): in round 1 of each battle the heroes hold - their
+# dice are not thrown and they don't act. (The +2 from round 2 is a permanent
+# roll buff combat_manager grants when round 1 ends.)
+func heroes_hold_this_round() -> bool:
+	return combat_manager.heroes_hold_this_round()
+
+
 # ── Item effects not on combat_manager (extracted from battle_scene) ──────────
 # The item-effect dispatch + logging stay in battle_scene; these own the effect
 # mutations that used to be inline there. Most item types already delegate to

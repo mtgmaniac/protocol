@@ -1545,6 +1545,16 @@ func _run_new_relic_regressions() -> void:
 	var static_enemy: Dictionary = static_manager.get_enemy_states()[0]
 	_expect_and_record("Regression / relic staticField turn-1 jam", "battleStartJamEnemies", "10", str(static_manager.get_effective_roll(static_enemy, 18)))
 
+	# Tectonic Charge (G-38): heroes hold in round 1, then +2 on every hero roll.
+	var tectonic_manager: CombatManager = CombatManager.new()
+	tectonic_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	tectonic_manager.setup_relics(["tectonicCharge"])
+	var tectonic_hold: bool = tectonic_manager.heroes_hold_this_round()
+	tectonic_manager.resolve_round({}, {}, DiceManager.new())
+	var tectonic_hero: Dictionary = tectonic_manager.get_hero_states()[0]
+	_expect_and_record("Regression / relic tectonicCharge hold then +2", "heroesHoldRoundOne", "true/false/12",
+		"%s/%s/%d" % [str(tectonic_hold), str(tectonic_manager.heroes_hold_this_round()), tectonic_manager.get_effective_roll(tectonic_hero, 10)])
+
 	# Cold Logic: +4 damage against an enemy with a frozen die.
 	var cold_manager: CombatManager = CombatManager.new()
 	cold_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})], [_make_enemy("audit_enemy", "Audit Enemy")])
