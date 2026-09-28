@@ -128,6 +128,24 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 			var nudged: Dictionary = engine.apply_nudge(bs, unit_id, false, false)
 			if str(nudged.get("kind", "")) == "applied":
 				spends.append({"kind": "nudge", "unit": unit_id, "cost": int(nudged.get("cost", 1)), "detail": "+3"})
+	# 2b) Firewall Hack boss relic (G-36): once per turn, lower the most dangerous
+	#     enemy die (highest effective value) whose -3 drops it into a lower
+	#     band. Same 1-point buffer as the hero Nudge. Slot order on ties.
+	if bs.protocol_points >= 2:
+		var hack: Dictionary = {}
+		var hack_eff: int = 0
+		for enemy_state_variant in cm.get_enemy_states():
+			var enemy_state: Dictionary = enemy_state_variant
+			if engine.firewall_hack_block(bs, enemy_state) != "":
+				continue
+			var e_eff: int = engine.effective_enemy_roll(enemy_state, str(enemy_state["id"]), bs)
+			var e_zone: String = str(engine.dice_manager.get_ability_for_roll(enemy_state.get("unit"), e_eff).get("zone", ""))
+			var lowered: String = str(engine.dice_manager.get_ability_for_roll(enemy_state.get("unit"), maxi(e_eff - engine.firewall_hack_amount(), 1)).get("zone", ""))
+			if lowered != e_zone and e_eff > hack_eff:
+				hack = enemy_state
+				hack_eff = e_eff
+		if not hack.is_empty() and engine.apply_firewall_hack(bs, hack):
+			spends.append({"kind": "firewall_hack", "unit": str(hack["id"]), "cost": BattleEngine.FIREWALL_HACK_COST, "detail": "-%d" % engine.firewall_hack_amount()})
 	# 3) Set-a-die 20 when flush (cost + 3 buffer) and a die is still mid-band —
 	#    banked protocol is worthless in a lost run; convert it to an overload.
 	for hero_state_variant in cm.get_hero_states():

@@ -51,8 +51,10 @@ func _run() -> void:
 	_data_counts()
 	_scrap_converter()
 	_blood_frenzy()
+	_firewall_hack()
 	_save_migration()
 	await _live_scrap_converter()
+	await _live_firewall_hack()
 	await _teardown()
 	_finish()
 
@@ -235,6 +237,51 @@ func _blood_frenzy() -> void:
 	_check(int(foe.get_enemy_states()[0].get("die_freeze_turns", 0)) == 0, "an enemy's kill never freezes the enemy")
 
 
+# ── Firewall Hack (G-36) ──────────────────────────────────────────────────────
+
+func _firewall_hack() -> void:
+	_section = "Firewall Hack"
+	var cm: Object = _mgr(["firewallHack"], [_hero("h1")], [_enemy("e1"), _enemy("e2"), _enemy("e3"), _enemy("e4")])
+	var eng: Object = _engine(cm)
+	var bs: Object = BS.new()
+	var e: Array = cm.get_enemy_states()
+	var dm: Object = DMS.new()
+	bs.hero_rolls = {_id(cm.get_hero_states()[0]): 10}
+	bs.enemy_rolls = {_id(e[0]): 12, _id(e[1]): 5, _id(e[2]): 2, _id(e[3]): 15}
+	bs.protocol_points = 3
+	_check(eng.firewall_hack_block(bs, e[0]) == "", "an unfrozen enemy die can be hacked")
+	_check(eng.apply_firewall_hack(bs, e[0]), "the hack lands")
+	_check(eng.effective_enemy_roll(e[0], _id(e[0]), bs) == 9, "the die drops by 3 (12 -> 9)")
+	_check(bs.protocol_points == 2, "it costs the normal Nudge price of 1")
+	_check(str(dm.get_ability_for_roll(e[0]["unit"], eng.effective_enemy_roll(e[0], _id(e[0]), bs)).get("ability_name", "")) == "Low",
+		"the enemy's ability follows the new value (High -> Low)")
+	_check(int(eng.build_effective_rolls(bs.enemy_rolls, e, false, bs).get(_id(e[0]), 0)) == 9, "the round resolves on the hacked value")
+	_check(eng.firewall_hack_block(bs, e[1]) == "used" and not eng.apply_firewall_hack(bs, e[1]) and bs.protocol_points == 2,
+		"only once per turn (a second hack is refused, nothing spent)")
+	bs.firewall_hack_used = false   # the next turn
+	_check(eng.apply_firewall_hack(bs, e[2]) and eng.effective_enemy_roll(e[2], _id(e[2]), bs) == 1, "it can't go below 1 (2 -> 1)")
+	bs.firewall_hack_used = false
+	e[1]["die_freeze_turns"] = 1
+	e[1]["frozen_die_value"] = 5
+	_check(eng.firewall_hack_block(bs, e[1]) == "frozen", "a frozen die can't be hacked")
+	e[1]["die_freeze_turns"] = 0
+	e[1]["frozen_die_value"] = 0
+	e[3]["hijack_pending"] = true
+	_check(eng.firewall_hack_block(bs, e[3]) == "hijacked", "a hijacked die can't be hacked")
+	e[3]["hijack_pending"] = false
+	bs.protocol_points = 0
+	_check(eng.firewall_hack_block(bs, e[3]) == "protocol", "no Protocol, no hack")
+	bs.protocol_points = 5
+	e[3]["dead"] = true
+	_check(eng.firewall_hack_block(bs, e[3]) == "no_die", "a dead enemy's die can't be hacked")
+	e[3]["dead"] = false
+	var plain: Object = _mgr([], [_hero("h1")], [_enemy("e1")])
+	_check(_engine(plain).firewall_hack_block(bs, plain.get_enemy_states()[0]) == "no_relic", "no relic, no hack")
+	# The hack lasts for this round only.
+	eng.resolve_step(bs)
+	_check(bs.enemy_roll_nudges.is_empty(), "resolving the round clears the hack")
+
+
 # ── Save migration (G-41) ─────────────────────────────────────────────────────
 
 func _save_migration() -> void:
@@ -409,6 +456,44 @@ func _live_scrap_converter() -> void:
 	var pp: int = int(scene.protocol_points)
 	scene._relics.on_dice_landed(true)
 	_check(int(scene.protocol_points) == pp, "a restored landing is not paid again")
+
+
+func _live_firewall_hack() -> void:
+	_section = "live Firewall Hack"
+	var scene: Node = await _enter(["firewallHack"])
+	await _roll(scene, [10], [12])
+	var e: Array = _enemy_ids(scene)
+	scene.protocol_points = 5
+	scene._protocol._on_nudge_button_pressed()
+	_check(int(scene.turn_phase) == int(scene.PHASE_NUDGE_PICK), "Nudge arms")
+	scene._on_enemy_card_pressed(e[0])
+	await _settle(scene)
+	_check(int(scene._die_value("enemy", e[0])) == 9, "tapping an enemy die lowers it by 3 (12 -> 9)")
+	_check(int(scene.protocol_points) == 4, "for 1 Protocol")
+	_check(int(scene.dice_tray_3d.up_face_numeral("enemy", e[0])) == 9, "the die moved to a face showing 9")
+	_check(int(scene.turn_phase) != int(scene.PHASE_NUDGE_PICK), "the pick closes")
+	var die: RigidBody3D = scene.dice_tray_3d._get_die_for_entry("enemy", e[0])
+	var zone9: String = str(scene.dice_manager.get_ability_for_roll(scene.combat_manager.get_enemy_states()[0]["unit"], 9).get("zone", ""))
+	_check(die != null and str(die.get_meta("zone", "")) == zone9, "the die's ability highlight follows the new value")
+	_check(_log_has(scene, "Firewall Hack:"), "the log names the hack")
+	var second: String = e[1] if e.size() > 1 else e[0]
+	var value_before: int = int(scene._die_value("enemy", second))
+	scene._protocol._on_nudge_button_pressed()
+	scene._on_enemy_card_pressed(second)
+	_check(int(scene.protocol_points) == 4 and int(scene._die_value("enemy", second)) == value_before, "only once per turn")
+	if scene._protocol.in_roll_modifier_pick():
+		scene._protocol.cancel_roll_modifier_pick()
+	await scene._resolve_current_turn(true)
+	if bool(scene.battle_over):
+		_check(false, "fixture: the battle ended in round 1")
+		return
+	await _roll(scene, [10], [15])
+	scene.protocol_points = 5
+	e = _enemy_ids(scene)
+	scene._protocol._on_nudge_button_pressed()
+	scene._on_enemy_card_pressed(e[0])
+	await _settle(scene)
+	_check(int(scene._die_value("enemy", e[0])) == 12, "a new turn allows a new hack (15 -> 12)")
 
 
 func _teardown() -> void:

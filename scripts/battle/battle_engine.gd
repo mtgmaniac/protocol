@@ -57,6 +57,7 @@ func resolve_step(bs: BattleState) -> Dictionary:
 	bs.enemy_rolls.clear()
 	bs.hero_roll_nudges.clear()
 	bs.hero_roll_sets.clear()
+	bs.enemy_roll_nudges.clear()
 	return {
 		"result": result,
 		"eff_hero_rolls": eff_hero_rolls,
@@ -328,6 +329,46 @@ func thrown_hero_ids(bs: BattleState) -> Array:
 	return ids
 
 
+# Firewall Hack (G-36): once per turn, Nudge one enemy die DOWN by the relic's
+# amount for the normal Nudge cost. Never below 1 (the effective-roll clamp).
+# A frozen die can't be altered (Dice rules 8) and a hijacked die copies the
+# heroes' dice, so neither can be picked.
+const FIREWALL_HACK_COST := 1
+
+
+func firewall_hack_amount() -> int:
+	return int(combat_manager.get_relic_value("enemyNudgeOncePerTurn", "amount", 3))
+
+
+# "" when this die can be hacked now, else why not:
+# "no_relic" | "used" | "no_die" | "frozen" | "hijacked" | "protocol".
+func firewall_hack_block(bs: BattleState, enemy_state: Dictionary) -> String:
+	if not combat_manager.has_relic("enemyNudgeOncePerTurn"):
+		return "no_relic"
+	if bs.firewall_hack_used:
+		return "used"
+	if enemy_state.is_empty() or bool(enemy_state.get("dead", false)) \
+			or int(bs.enemy_rolls.get(str(enemy_state.get("id", "")), 0)) <= 0:
+		return "no_die"
+	if not can_alter_die(enemy_state):
+		return "frozen"
+	if bool(enemy_state.get("hijack_pending", false)):
+		return "hijacked"
+	if bs.protocol_points < FIREWALL_HACK_COST:
+		return "protocol"
+	return ""
+
+
+# Applies the hack. True when it landed (cost paid, die lowered).
+func apply_firewall_hack(bs: BattleState, enemy_state: Dictionary) -> bool:
+	if firewall_hack_block(bs, enemy_state) != "":
+		return false
+	bs.protocol_points -= FIREWALL_HACK_COST
+	bs.firewall_hack_used = true
+	bs.enemy_roll_nudges[str(enemy_state["id"])] = -firewall_hack_amount()
+	return true
+
+
 # ── Item effects not on combat_manager (extracted from battle_scene) ──────────
 # The item-effect dispatch + logging stay in battle_scene; these own the effect
 # mutations that used to be inline there. Most item types already delegate to
@@ -556,7 +597,9 @@ func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> 
 	var hijacked: int = hijack_value(state, bs)
 	if hijacked > 0:
 		return hijacked
-	return combat_manager.get_effective_roll(state, raw_roll)
+	# Firewall Hack: the player's -N Nudge on this enemy die (never below 1).
+	var nudge: int = int(bs.enemy_roll_nudges.get(str(state.get("id", "")), 0))
+	return clampi(combat_manager.get_effective_roll(state, raw_roll) + nudge, 1, 20)
 
 
 # ── Printed faces (G-24) ──────────────────────────────────────────────────────

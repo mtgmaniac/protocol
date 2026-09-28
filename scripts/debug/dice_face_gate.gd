@@ -735,6 +735,24 @@ func _part_b_and_c() -> void:
 	_expect_value("enemy", e[0], 1, "Deep Freeze Charge pins an enemy die to 1")
 	print("[DICE_FACE_GATE] part C2: Nudge, Set, Reroll, items, Sync Antenna")
 
+	# C3 (boss relic rework, G-36): Firewall Hack tips an enemy die down 3.
+	_clear_statuses(heroes + enemies)
+	var relic_effects: Array = cm.get("_active_relic_effects")
+	relic_effects.append({"type": "enemyNudgeOncePerTurn", "amount": 3})
+	stub.queue = [8, 11, 14, 9, 17]
+	await _begin_roll()
+	await _await_all_locked()
+	_scene.set("protocol_points", 60)
+	var hack_from: int = _oracle("enemy", e[0])
+	_current_path = "Firewall Hack"
+	pa.call("_on_nudge_button_pressed")
+	_scene.call("_on_enemy_card_pressed", e[0])
+	await _await_all_locked()
+	_expect_value("enemy", e[0], maxi(hack_from - 3, 1), "Firewall Hack lowers the enemy die by 3")
+	relic_effects.clear()
+	_current_path = ""
+	print("[DICE_FACE_GATE] part C3: Firewall Hack")
+
 	# D: freeze locks the number on the face (G-23).
 	_clear_statuses(heroes + enemies)
 	_frozen_lock.clear()
@@ -839,7 +857,8 @@ func _part_tutorial() -> void:
 
 
 const REQUIRED_PATHS := ["live throw", "live throw (scene)", "recorded playback", "hero reroll",
-	"enemy item reroll", "tip-over (Nudge)", "tip-over (Set)", "tip-over (reprint)", "tip-over (hijack)"]
+	"enemy item reroll", "tip-over (Nudge)", "tip-over (Set)", "tip-over (reprint)", "tip-over (hijack)",
+	"tip-over (Firewall Hack)"]
 
 
 func _check_coverage() -> void:

@@ -1581,6 +1581,20 @@ func _run_new_relic_regressions() -> void:
 	_expect_and_record("Regression / relic bloodFrenzy freezes the killer", "killFreezesKillerDie", "1/14",
 		"%d/%d" % [int(frenzy_hero.get("die_freeze_turns", 0)), int(frenzy_hero.get("frozen_die_value", 0))])
 
+	# Firewall Hack (G-36): once per turn, an enemy die -3 for 1 Protocol.
+	var hack_manager: CombatManager = CombatManager.new()
+	hack_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	hack_manager.setup_relics(["firewallHack"])
+	var hack_engine := BattleEngine.new(hack_manager, null, DiceManager.new())
+	var hack_bs := BattleState.new()
+	var hack_enemy: Dictionary = hack_manager.get_enemy_states()[0]
+	hack_bs.enemy_rolls = {str(hack_enemy["id"]): 10}
+	hack_bs.protocol_points = 3
+	var hack_first: bool = hack_engine.apply_firewall_hack(hack_bs, hack_enemy)
+	var hack_second: bool = hack_engine.apply_firewall_hack(hack_bs, hack_enemy)
+	_expect_and_record("Regression / relic firewallHack once per turn", "enemyNudgeOncePerTurn", "true/false/7/2",
+		"%s/%s/%d/%d" % [str(hack_first), str(hack_second), hack_engine.effective_enemy_roll(hack_enemy, str(hack_enemy["id"]), hack_bs), hack_bs.protocol_points])
+
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
 	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])

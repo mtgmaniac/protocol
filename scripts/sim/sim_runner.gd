@@ -717,6 +717,7 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		# Roll (SeededRollProvider) → frozen overrides → record.
 		bs.hero_rolls = engine.roll_states(cm.get_hero_states())
 		bs.enemy_rolls = engine.roll_states(cm.get_enemy_states())
+		bs.firewall_hack_used = false
 		engine.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)
 		engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
 		engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)

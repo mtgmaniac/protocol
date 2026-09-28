@@ -206,6 +206,9 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 func handle_enemy_card_pressed(target_id: String) -> bool:
 	if _reroll_busy:
 		return true
+	# Firewall Hack relic (G-36): the Nudge pick also takes one enemy die a turn.
+	if _scene.turn_phase == _scene.PHASE_NUDGE_PICK and _scene._relics.try_firewall_hack(target_id):
+		return true
 	if not _in_item_phase():
 		return false
 	if (_scene.turn_phase == _scene.PHASE_ITEM_PICK_ENEMY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_ANY) and _scene.legal_target_ids.has(target_id) and _pending_item != null:
@@ -367,7 +370,7 @@ func _on_nudge_button_pressed() -> void:
 	if _scene.protocol_points < 1 and not _has_free_nudge_available():
 		_scene._refresh_summary("Need 1 Protocol to Nudge.")
 		return
-	if not _has_nudgeable_hero():
+	if not _has_nudgeable_hero() and not _scene._relics.can_hack_any():
 		_scene._refresh_summary("Every die was already nudged this turn.")
 		return
 	AudioManager.play_select()
@@ -425,7 +428,8 @@ func _checkpoint_reroll() -> void:
 	if block.is_empty():
 		return
 	var saved: Dictionary = str_to_var(str(block.state))
-	saved["pending_actions"] = {"nudges": _scene.hero_roll_nudges.duplicate(), "sets": _scene.hero_roll_sets.duplicate()}
+	saved["pending_actions"] = {"nudges": _scene.hero_roll_nudges.duplicate(), "sets": _scene.hero_roll_sets.duplicate(),
+		"enemy_nudges": _scene._state.enemy_roll_nudges.duplicate(), "firewall_hack_used": _scene._state.firewall_hack_used}
 	block.state = var_to_str(saved)
 	_scene.get_node("/root/SaveManager").checkpoint_battle_round(block)
 

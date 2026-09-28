@@ -1169,10 +1169,12 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
 	hero_roll_sets.clear()
+	_relics.on_roll_started()
 	var restoring_reroll: bool = not _pending_actions_restore.is_empty() and not placed_rolls.is_empty()
 	if restoring_reroll:
 		hero_roll_nudges.assign(_pending_actions_restore.get("nudges", {}))
 		hero_roll_sets.assign(_pending_actions_restore.get("sets", {}))
+		_relics.restore_pending_actions(_pending_actions_restore)
 	_clear_die_tooltip_overlays()
 	_card_view.hide_all_ability_readouts()
 	active_targeting_hero_id = ""
