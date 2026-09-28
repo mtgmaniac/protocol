@@ -1,5 +1,39 @@
 # Overload Protocol — current handoff
 
+## 000. UI batch 2026-09-27 (branch `ui-batch-2026-09-27`, not merged)
+
+Kev's eleven-item UI batch. The item list, per-item status, findings, copy
+changes and questions live in `docs/batches/2026-09-27-ui-batch.md` (read it
+first; a cut-off session continues from its first `todo`). One commit per
+item. Captures (before / after / compare, 1080x2400 and 540x1200) are under
+`debug_artifacts/ui_batch_2026-09-27/` (ignored by git).
+
+**Done:** B1 exact damage preview (a dry run of the real hero phase), B2
+Detonate number gap, B3 encounter select fixed slots (supersedes G-16's
+transparent locked dossier), B5 relic / item popup icon and empty band, B6
+boxed intercept options + capitalised consequences, B7 long-press anywhere on
+a unit card, B8 rampage icon, B9 integer item art everywhere, B10 re-thrown
+dice collide with resting dice (G-33), B11 evolved portraits in Help > Units.
+
+**Skipped:** B4 event header art: the art itself has several aspects, so
+"one fixed aspect, no crop, no letterbox" needs Kev's decision (options in
+the batch file).
+
+**New / extended gates:** preview accuracy (12 EXACT cases), pip spacing,
+unlock progression (fixed slots), card long press, framing sites R6
+(integer item art), dice face (k) + part E stress, help polish (16 evolution
+rows). Dice mutation runner: 11 criteria.
+
+**Capture tooling:** 1080x2400 windows don't fit this machine's 1440 px
+monitors; `scripts/debug/capture_window.gd` renders the root at full size
+with viewport stretch. Three capture tools that no longer compiled under `-s`
+were fixed (home, inspect, choice screens).
+
+**Kev to check in Godot:** Reroll / Phase Scrambler with dice nearby (the
+re-thrown die bounces off resting dice; when it lands beyond a full row it is
+lifted over it into its slot); the enemy HP preview with Detonate; squad
+select switching encounters; long-press on status badges; intercept boxes.
+
 ## 00. Merges, cleanup and two framing fixes (all on `main`, pushed)
 
 2026-09-27.
