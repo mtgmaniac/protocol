@@ -20,6 +20,7 @@
 extends Node
 
 const HOLD_BANNER_FONT := 48
+const HOLD_DETAIL_FONT := PixelUI.FONT_INFO_MIN
 const CONFIRM_LAYER := 125
 
 var _scene: Node = null
@@ -66,7 +67,7 @@ func on_dice_landed(restoring: bool) -> void:
 	if not restoring:
 		grant_landing_protocol(_engine().thrown_hero_ids(_bs()))
 	if _engine().heroes_hold_this_round():
-		_scene._append_log("TECTONIC CHARGE - your heroes hold this round. +%d to every hero roll from round 2." % int(_scene.combat_manager.get_relic_value("heroesHoldRoundOne", "amount", 2)))
+		_scene._append_log("TECTONIC CHARGE - your heroes hold this round. %s" % hold_detail_text())
 		_show_hold_banner()
 
 
@@ -83,6 +84,19 @@ func grant_landing_protocol(hero_ids: Array) -> void:
 		return
 	_scene._gain_protocol(grant)
 	_scene._append_log("Scrap Converter: +%d Protocol -> %d" % [grant, _scene.protocol_points])
+
+
+# The hold's second line: the round-1 shield (when the relic grants one) and
+# the roll bonus from round 2. Shared by the banner (one line each) and the log.
+func hold_detail_text(separator: String = " ") -> String:
+	var cm: CombatManager = _scene.combat_manager
+	var shield: int = int(cm.get_relic_value("heroesHoldRoundOne", "shield", 0))
+	var charge: int = int(cm.get_relic_value("heroesHoldRoundOne", "amount", 3))
+	var parts: Array = []
+	if shield > 0:
+		parts.append("Each hero gains %d shield." % shield)
+	parts.append("+%d to every hero roll from round 2." % charge)
+	return separator.join(parts)
 
 
 # A plate where the hero dice's readouts would be: the heroes hold this round.
@@ -106,7 +120,18 @@ func _show_hold_banner() -> void:
 	label.text = "YOUR HEROES HOLD THIS ROUND"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	PixelUI.style_label(label, HOLD_BANNER_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
-	margin.add_child(label)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_theme_constant_override("separation", 6)
+	margin.add_child(column)
+	column.add_child(label)
+	var detail := Label.new()
+	detail.name = "HoldDetail"
+	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	detail.text = hold_detail_text("\n")
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(detail, HOLD_DETAIL_FONT, PixelUI.TEXT_PRIMARY, 2)
+	column.add_child(detail)
 	panel.z_as_relative = false
 	panel.z_index = 105
 	_scene.float_layer.add_child(panel)
@@ -189,9 +214,11 @@ func relic_menu_state() -> Dictionary:
 			continue
 		if _bs().heretic_signal_used:
 			notes[item.id] = "USED THIS BATTLE"
-		elif _planning_now():
+		elif _planning_now() and _engine().heretic_signal_available(_bs()):
 			notes[item.id] = "TAP TO USE"
 			usable.append(item.id)
+		elif _planning_now():
+			notes[item.id] = "NEEDS %d PROTOCOL" % _engine().heretic_signal_cost()
 		else:
 			notes[item.id] = "USE AFTER THE ROLL"
 	return {"usable": usable, "notes": notes}
@@ -249,7 +276,7 @@ func _open_confirm(item: ItemData) -> void:
 	PixelUI.style_label(title, 56, PixelUI.TEXT_PRIMARY, 3)
 	column.add_child(title)
 	var body := Label.new()
-	body.text = "Re-throw every die? This can't be undone."
+	body.text = "Spend %d Protocol to re-throw every die? This can't be undone." % _engine().heretic_signal_cost()
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -313,6 +340,7 @@ func rethrow_all() -> void:
 		await tray.roll_finished
 		landed = {"hero": tray.get_hero_rolls(), "enemy": tray.get_enemy_rolls()}
 	var thrown: Dictionary = _engine().apply_heretic_signal(_bs(), landed)
+	_scene._update_protocol_bar()
 	var cm: CombatManager = _scene.combat_manager
 	for side in ["hero", "enemy"]:
 		var states: Array = cm.get_hero_states() if side == "hero" else cm.get_enemy_states()
@@ -320,7 +348,7 @@ func rethrow_all() -> void:
 		_engine().record_roll_values_for_states(moved, _scene.hero_rolls if side == "hero" else _scene.enemy_rolls)
 		for state in moved:
 			_scene._set_state_target(state, "", "--")
-	_scene._append_log("Heretic Signal: every unfrozen die is re-thrown.")
+	_scene._append_log("Heretic Signal: spent %d Protocol. Every unfrozen die is re-thrown." % _engine().heretic_signal_cost())
 	grant_landing_protocol(thrown.get("hero", []))
 	if tray != null:
 		tray.set_values_live(true)

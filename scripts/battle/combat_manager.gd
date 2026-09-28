@@ -830,6 +830,14 @@ func resolve_round(
 	_battle_round += 1
 	if heroes_held:
 		_log("TECTONIC CHARGE - your heroes hold this round.")
+		# While they hold, every living hero is shielded for this round's enemy
+		# phase (an ordinary one-round shield, gone at the round-end tick).
+		var hold_shield: int = int(_get_relic_value("heroesHoldRoundOne", "shield", 0))
+		if hold_shield > 0:
+			for held_state in _hero_states:
+				if not bool(held_state["dead"]):
+					_add_shield_stack(held_state, hold_shield)
+			_log("TECTONIC CHARGE - every hero gains %d shield while holding." % hold_shield)
 
 	_resolve_hero_phase(hero_rolls, enemy_rolls, dice_manager, raw_hero_rolls)
 
@@ -887,7 +895,7 @@ func resolve_round(
 	# one too, for when it is revived) rolls with +N for the rest of the battle.
 	# A permanent roll buff, so the faces print it and the roll chip shows it.
 	if heroes_held:
-		var charge: int = int(_get_relic_value("heroesHoldRoundOne", "amount", 2))
+		var charge: int = int(_get_relic_value("heroesHoldRoundOne", "amount", 3))
 		for charged_state in _hero_states:
 			charged_state["perm_roll_buff"] = int(charged_state.get("perm_roll_buff", 0)) + charge
 		_log("TECTONIC CHARGE - the squad is charged: +%d to every hero roll." % charge)

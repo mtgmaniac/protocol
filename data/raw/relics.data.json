@@ -243,17 +243,17 @@
   {
     "id": "hereticSignal",
     "name": "Heretic Signal",
-    "desc": "Once per battle: re-throw every die that isn't frozen. Tap this relic in your loadout.",
+    "desc": "Once per battle, for 3 Protocol: re-throw every die that isn't frozen. Tap this relic in your loadout.",
     "icon": "die",
     "bossRelic": true,
-    "effect": { "type": "rethrowAllOncePerBattle" }
+    "effect": { "type": "rethrowAllOncePerBattle", "cost": 3 }
   },
   {
     "id": "tectonicCharge",
     "name": "Tectonic Charge",
-    "desc": "Round 1: your heroes hold and don't roll. From round 2: +2 to all hero rolls.",
+    "desc": "Round 1: your heroes hold, don't roll, and each gains 3 shield. From round 2: +3 to all hero rolls.",
     "icon": "die",
     "bossRelic": true,
-    "effect": { "type": "heroesHoldRoundOne", "amount": 2 }
+    "effect": { "type": "heroesHoldRoundOne", "amount": 3, "shield": 3 }
   }
 ]

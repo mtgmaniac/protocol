@@ -43,9 +43,9 @@ func _run() -> void:
 	var e0: Dictionary = enemies[0]
 
 	for hs in heroes:
-		hs["perm_roll_buff"] = 2
-	await _roll("roll with Tectonic Charge's +2")
-	_report("tectonic (no hero die below 3)")
+		hs["perm_roll_buff"] = 3
+	await _roll("roll with Tectonic Charge's +3")
+	_report("tectonic (no hero die below 4)")
 	for hs in heroes:
 		hs["perm_roll_buff"] = 0
 	# Post-roll +roll buff (Sync Antenna's code path: a 1-turn roll-buff stack

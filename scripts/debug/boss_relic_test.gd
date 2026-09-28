@@ -313,6 +313,13 @@ func _heretic_signal() -> void:
 	bs.hero_roll_nudges = {h[0]: 3}
 	bs.hero_roll_sets = {h[1]: 20}
 	bs.enemy_roll_nudges = {e[0]: -3}
+	var cost: int = int(eng.heretic_signal_cost())
+	_check(cost == 3, "it costs 3 Protocol (got %d)" % cost)
+	bs.protocol_points = 2
+	_check(not eng.heretic_signal_available(bs), "not with less than 3 Protocol")
+	_check(eng.apply_heretic_signal(bs, {"hero": {h[0]: 1}}).is_empty() and int(bs.hero_rolls[h[0]]) == 4 and int(bs.protocol_points) == 2,
+		"a use it can't afford does nothing and costs nothing")
+	bs.protocol_points = 5
 	_check(eng.heretic_signal_available(bs), "available once the dice are on the board")
 	var thrown: Dictionary = eng.apply_heretic_signal(bs, {"hero": {h[0]: 15, h[1]: 11, h[2]: 2}, "enemy": {e[0]: 3, e[1]: 20}})
 	_check((thrown.get("hero", []) as Array) == [h[0], h[1]] and (thrown.get("enemy", []) as Array) == [e[0], e[1]],
@@ -321,8 +328,11 @@ func _heretic_signal() -> void:
 	_check(int(bs.hero_rolls[h[0]]) == 15 and int(bs.enemy_rolls[e[0]]) == 3, "the landed faces become the raws")
 	_check(bs.hero_roll_nudges.is_empty() and bs.hero_roll_sets.is_empty() and bs.enemy_roll_nudges.is_empty(),
 		"a re-thrown die is a fresh roll: its Nudge, Set and Firewall Hack are cleared")
+	_check(int(bs.protocol_points) == 2, "the re-throw costs 3 Protocol (5 -> 2, got %d)" % int(bs.protocol_points))
 	_check(bs.heretic_signal_used and not eng.heretic_signal_available(bs), "used once, it is gone for the battle")
-	_check(eng.apply_heretic_signal(bs, {"hero": {h[0]: 1}}).is_empty() and int(bs.hero_rolls[h[0]]) == 15, "a second use does nothing")
+	bs.protocol_points = 9
+	_check(eng.apply_heretic_signal(bs, {"hero": {h[0]: 1}}).is_empty() and int(bs.hero_rolls[h[0]]) == 15 and int(bs.protocol_points) == 9,
+		"a second use does nothing, even with Protocol to spare")
 	var empty_bs: Object = BS.new()
 	var fresh_cm: Object = _mgr(["hereticSignal"], [_hero("h1")], [_enemy("e1")])
 	_check(not _engine(fresh_cm).heretic_signal_available(empty_bs), "not before the dice are rolled")
@@ -334,6 +344,7 @@ func _heretic_signal() -> void:
 		var sbs: Object = BS.new()
 		sbs.hero_rolls = {_id(scm.get_hero_states()[0]): 1, _id(scm.get_hero_states()[1]): 1}
 		sbs.enemy_rolls = {_id(scm.get_enemy_states()[0]): 20}
+		sbs.protocol_points = 3
 		seng.apply_heretic_signal(sbs)
 		draws.append([sbs.hero_rolls.values(), sbs.enemy_rolls.values()])
 	_check(draws[0] == draws[1], "the headless re-throw is seeded (identical from the same seed)")
@@ -344,6 +355,7 @@ func _heretic_signal() -> void:
 	var bh: String = _id(both.get_hero_states()[0])
 	bbs.hero_rolls = {bh: 12}
 	bbs.enemy_rolls = {_id(both.get_enemy_states()[0]): 12}
+	bbs.protocol_points = 3
 	var bthrown: Dictionary = beng.apply_heretic_signal(bbs, {"hero": {bh: 2}, "enemy": {_id(both.get_enemy_states()[0]): 9}})
 	_check(beng.landing_protocol(bbs, bthrown.get("hero", [])) == 1, "Scrap Converter pays on a re-thrown 2")
 
@@ -356,24 +368,33 @@ func _tectonic_charge() -> void:
 	var cm: Object = _mgr(["tectonicCharge"], [_hero("h1", {"dmg": 7}), _hero("h2", {"dmg": 7})], [_enemy("e1")])
 	var eng: Object = _engine(cm)
 	var e1: Dictionary = cm.get_enemy_states()[0]
+	var charge: int = int(cm.get_relic_value("heroesHoldRoundOne", "amount", 0))
+	var hold_shield: int = int(cm.get_relic_value("heroesHoldRoundOne", "shield", 0))
+	_check(charge == 3 and hold_shield > 0, "the relic data: +3 from round 2 and a round-1 shield (got +%d, %d shield)" % [charge, hold_shield])
 	_check(eng.heroes_hold_this_round(), "the heroes hold in round 1")
 	cm.get_hero_states()[1]["dead"] = true   # a fallen hero is charged too, for its revive
-	cm.resolve_round({}, {_id(e1): 5}, dm)
+	var r1: Dictionary = cm.resolve_round({}, {_id(e1): 5}, dm)
 	_check(int(e1["current_hp"]) == 100, "no hero acted in round 1")
+	var shield_events: Array = (r1.get("events", []) as Array).filter(func(ev): return str(ev["type"]) == "shield" and str(ev["side"]) == "hero")
+	_check(shield_events.size() == 1 and str(shield_events[0]["target_id"]) == _id(cm.get_hero_states()[0]) and int(shield_events[0]["amount"]) == hold_shield,
+		"round 1: each living hero gains the hold shield (got %s)" % [shield_events])
+	_check(int(cm.get_hero_states()[0]["current_hp"]) == 100, "the shield takes the round-1 enemy hit")
+	_check(int(cm.get_hero_states()[0].get("shield", 0)) == 0, "the shield is gone at the round-end tick")
 	_check(not eng.heroes_hold_this_round(), "from round 2 the heroes roll again")
 	for hs in cm.get_hero_states():
-		_check(int(hs.get("perm_roll_buff", 0)) == 2, "%s rolls +2 from round 2 (dead or alive)" % _id(hs))
+		_check(int(hs.get("perm_roll_buff", 0)) == 3, "%s rolls +3 from round 2 (dead or alive)" % _id(hs))
 	var faces: Array = []
 	for n in range(1, 21):
 		faces.append(eng.pre_roll_face_value(cm.get_hero_states()[0], true, n))
 	var expected: Array = []
 	for n in range(1, 21):
-		expected.append(mini(n + 2, 20))
-	_check(faces == expected, "the +2 is printed on every face (%s)" % [faces])
-	_check(int(CM.roll_modifier_totals_of(cm.get_hero_states()[0])["roll_buff"]) == 2, "the roll chip shows +2")
-	# Round 3: still +2 (not +4).
-	cm.resolve_round({_id(cm.get_hero_states()[0]): 5}, {_id(e1): 5}, dm)
-	_check(int(cm.get_hero_states()[0]["perm_roll_buff"]) == 2, "the charge is granted once, not every round")
+		expected.append(mini(n + 3, 20))
+	_check(faces == expected, "the +3 is printed on every face (%s)" % [faces])
+	_check(int(CM.roll_modifier_totals_of(cm.get_hero_states()[0])["roll_buff"]) == 3, "the roll chip shows +3")
+	# Round 3: still +3 (not +6), and no second shield.
+	var r2: Dictionary = cm.resolve_round({_id(cm.get_hero_states()[0]): 5}, {_id(e1): 5}, dm)
+	_check(int(cm.get_hero_states()[0]["perm_roll_buff"]) == 3, "the charge is granted once, not every round")
+	_check((r2.get("events", []) as Array).filter(func(ev): return str(ev["type"]) == "shield").is_empty(), "the hold shield is round 1 only")
 	# Every battle: a new battle holds again.
 	cm.setup_battle([_hero("h1")], [_enemy("e1")])
 	_check(cm.heroes_hold_this_round() and int(cm.get_hero_states()[0].get("perm_roll_buff", 0)) == 0, "each battle starts with the hold again")
@@ -662,6 +683,10 @@ func _live_tectonic_charge() -> void:
 	if banner != null and is_instance_valid(banner):
 		var text: String = str((banner.find_children("*", "Label", true, false)[0] as Label).text)
 		_check(text == "YOUR HEROES HOLD THIS ROUND", "banner text (got '%s')" % text)
+		var detail_node: Node = banner.find_child("HoldDetail", true, false)
+		var detail: String = str((detail_node as Label).text) if detail_node is Label else ""
+		var hold_shield: int = int(scene.combat_manager.get_relic_value("heroesHoldRoundOne", "shield", 0))
+		_check(detail == "Each hero gains %d shield.\n+3 to every hero roll from round 2." % hold_shield, "banner detail (got '%s')" % detail)
 		_check(int(banner.mouse_filter) == int(Control.MOUSE_FILTER_IGNORE), "the banner never blocks input")
 	_check(int(scene.turn_phase) == int(scene.PHASE_READY_TO_END), "round 1 goes straight to End Turn")
 	# Items stay usable while the heroes hold.
@@ -687,7 +712,7 @@ func _live_tectonic_charge() -> void:
 	_check(scene.combat_manager.get_last_cast_order().is_empty(), "no hero acted in round 1")
 	_check(scene.combat_manager.get_enemy_states().map(func(s): return int(s["current_hp"])) == hp_before, "the enemies took no hero damage")
 	_check(scene._relics.get("_hold_banner") == null, "the banner goes when round 1 ends")
-	# Round 2: every hero die is thrown with +2 printed on its faces. (Clear
+	# Round 2: every hero die is thrown with +3 printed on its faces. (Clear
 	# what the enemies did to the heroes in round 1 - a jam or a penalty would
 	# also move the faces.)
 	for hs in scene.combat_manager.get_hero_states():
@@ -696,14 +721,14 @@ func _live_tectonic_charge() -> void:
 		hs["perm_rfe"] = 0
 		hs["rewrite_pending"] = false
 		hs["roll_buff_stacks"] = []
-		_check(int(hs.get("perm_roll_buff", 0)) == 2, "%s is charged +2 after round 1" % str(hs["id"]))
+		_check(int(hs.get("perm_roll_buff", 0)) == 3, "%s is charged +3 after round 1" % str(hs["id"]))
 	await _roll(scene, [5, 9, 13], [6])
 	var ids: Array = _hero_ids(scene)
 	_check(scene.hero_rolls.size() == ids.size(), "round 2: the heroes roll")
 	for hid in ids:
 		var faces: Array = scene._die_faces_now("hero", hid).get("faces", [])
-		_check(faces.size() == 20 and int(faces[0]) == 3 and int(faces[19]) == 20, "%s prints +2 on its faces" % hid)
-		_check(int(scene._die_value("hero", hid)) == int(scene.hero_rolls[hid]) + 2, "%s acts on raw + 2" % hid)
+		_check(faces.size() == 20 and int(faces[0]) == 4 and int(faces[19]) == 20, "%s prints +3 on its faces" % hid)
+		_check(int(scene._die_value("hero", hid)) == int(scene.hero_rolls[hid]) + 3, "%s acts on raw + 3" % hid)
 		_check(int(scene.dice_tray_3d.up_face_numeral("hero", hid)) == int(scene._die_value("hero", hid)), "%s shows the value it acts on" % hid)
 
 
@@ -764,6 +789,13 @@ func _live_heretic_signal() -> void:
 	scene.protocol_points = 6
 	scene._protocol._apply_nudge(h[0])
 	await _settle(scene)
+	var saved_protocol: int = int(scene.protocol_points)
+	scene.protocol_points = 2
+	var short_state: Dictionary = scene._relics.relic_menu_state()
+	_check(not (short_state["usable"] as Array).has("hereticSignal") and str(short_state["notes"].get("hereticSignal", "")) == "NEEDS 3 PROTOCOL",
+		"with 2 Protocol it can't be used (got '%s')" % str(short_state["notes"].get("hereticSignal", "")))
+	_check(not bool(scene._relics.use_relic(item)), "a tap without 3 Protocol does nothing")
+	scene.protocol_points = saved_protocol
 	var state1: Dictionary = scene._relics.relic_menu_state()
 	_check((state1["usable"] as Array).has("hereticSignal") and str(state1["notes"].get("hereticSignal", "")) == "TAP TO USE", "after the roll it can be used")
 	_check(bool(scene._relics.use_relic(item)), "tapping the relic opens the confirm")
@@ -772,7 +804,7 @@ func _live_heretic_signal() -> void:
 	if layer == null or not is_instance_valid(layer):
 		return
 	var texts: Array = (layer.find_children("*", "Label", true, false) as Array).map(func(l): return str(l.text))
-	_check(texts.has("Re-throw every die? This can't be undone."), "confirm copy (got %s)" % [texts])
+	_check(texts.has("Spend 3 Protocol to re-throw every die? This can't be undone."), "confirm copy (got %s)" % [texts])
 	(layer.find_child("HereticCancel", true, false) as Button).emit_signal("pressed")
 	await process_frame
 	_check(not bool(scene._state.heretic_signal_used) and scene._relics.get("_confirm_layer") == null, "CANCEL keeps the relic unused")
@@ -797,7 +829,7 @@ func _live_heretic_signal() -> void:
 	_check(int(scene.hero_rolls[frozen_id]) == 17 and int(scene._die_value("hero", frozen_id)) == 17, "the frozen die keeps 17")
 	_check(scene.dice_tray_3d._get_die_for_entry("hero", frozen_id) == frozen_die, "the frozen die never moved (same die)")
 	_check(scene.hero_roll_nudges.is_empty(), "the old Nudge is cleared by the re-throw")
-	_check(int(scene.protocol_points) == 4, "Scrap Converter paid for the re-thrown 1 (3 -> 4, got %d)" % int(scene.protocol_points))
+	_check(int(scene.protocol_points) == 1, "the re-throw cost 3 and Scrap Converter paid for the re-thrown 1 (3 -> 0 -> 1, got %d)" % int(scene.protocol_points))
 	for key in scene.dice_tray_3d._die_by_key:
 		var parts: PackedStringArray = str(key).split(":", true, 1)
 		_check(int(scene.dice_tray_3d.up_face_numeral(parts[0], parts[1])) == int(scene._die_value(parts[0], parts[1])), "%s shows the value it acts on" % key)

@@ -47,19 +47,19 @@ At battle setup `CombatManager.setup_relics` copies each owned relic's effect di
 
 | id | Name | Effect key | Coded behavior | Trigger | Handler |
 |---|---|---|---|---|---|
-Boss relic rework (Kev, 2026-09-27; DECISIONS_RESOLVED G-34..G-41). The rules are in TRUTH "Boss relics"; the screen half is `scripts/battle/boss_relic_actions.gd`.
+Boss relic rework (Kev, 2026-09-27, tuned 2026-09-28; DECISIONS_RESOLVED G-34..G-42). The rules are in TRUTH "Boss relics"; the screen half is `scripts/battle/boss_relic_actions.gd`.
 
 | id | Name | Effect key | Coded behavior | Trigger | Handler |
 |---|---|---|---|---|---|
 | `scrapConverter` | Scrap Converter (facility) | `protocolOnLowLanding 1, maxFace 2` | +1 Protocol per hero die whose physical landing shows 1 or 2 (printed face); not Set, Nudge or frozen repeats | a roll, Reroll or Heretic re-throw settles | `BattleEngine.landing_protocol` |
 | `bloodFrenzy` | Blood Frenzy (hive) | `killFreezesKillerDie 1` | the killing hero's die freezes (one repeat, once per hero per round) | hero kill | `CombatManager._process_unit_killed` |
 | `firewallHack` | Firewall Hack (veil) | `enemyNudgeOncePerTurn 3` | once per turn, Nudge one unfrozen, unhijacked enemy die -3 for 1 Protocol (floor 1) | Nudge pick on an enemy die | `BattleEngine.apply_firewall_hack` |
-| `hereticSignal` | Heretic Signal (voidCirclet) | `rethrowAllOncePerBattle` | once per battle, re-throw every unfrozen die (heroes and enemies); tapped in the loadout, confirmed | planning phase | `BattleEngine.apply_heretic_signal`, `BossRelicActions.rethrow_all` |
-| `tectonicCharge` | Tectonic Charge (stellarMenagerie) | `heroesHoldRoundOne 2` | round 1: heroes hold (no hero dice, no hero actions); from round 2 a permanent +2 on every hero roll | round 1 / its end | `CombatManager.heroes_hold_this_round`, `resolve_round` |
+| `hereticSignal` | Heretic Signal (voidCirclet) | `rethrowAllOncePerBattle cost 3` | once per battle, for 3 Protocol, re-throw every unfrozen die (heroes and enemies); tapped in the loadout, confirmed | planning phase | `BattleEngine.apply_heretic_signal`, `BossRelicActions.rethrow_all` |
+| `tectonicCharge` | Tectonic Charge (stellarMenagerie) | `heroesHoldRoundOne 3, shield 3` | round 1: heroes hold (no hero dice, no hero actions) and each living hero gains 3 shield for that round; from round 2 a permanent +3 on every hero roll | round 1 / its end | `CombatManager.heroes_hold_this_round`, `resolve_round` |
 
 Retired in the rework (each old unlock migrates to its operation's new relic, `SaveManager.LEGACY_BOSS_RELIC_IDS`): Salvage Rig, Chitin Graft, Resonant Chorus, Root Access (the relic; the Signal Hierophant's standing rule keeps the name), Mantle Core.
 
-### Draft relics added 2026-09-27 (placeholder names)
+### Draft relics added 2026-09-27 (names kept, G-42)
 
 | id | Name | Effect key | Coded behavior | Bucket |
 |---|---|---|---|---|

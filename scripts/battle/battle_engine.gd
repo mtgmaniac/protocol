@@ -289,7 +289,7 @@ func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 # ── Boss relics (rework, Kev 2026-09-27; DECISIONS_RESOLVED G-34..G-38) ──────
 # The dice rules of the boss relics live here so the live screen and the
 # headless sim share them. Blood Frenzy is a kill hook in combat_manager, and
-# Tectonic Charge's +2 is granted there when round 1 ends.
+# Tectonic Charge's +3 is granted there when round 1 ends.
 
 # Scrap Converter (G-34): Protocol for each hero die in `hero_ids` whose
 # physical landing SHOWS 1 or 2 (the printed face, modifiers included). The
@@ -369,13 +369,18 @@ func apply_firewall_hack(bs: BattleState, enemy_state: Dictionary) -> bool:
 	return true
 
 
-# Heretic Signal (G-37): once per battle, every die on the board that isn't
-# frozen is thrown again. Each re-thrown die is a fresh roll, like a Reroll:
+# Heretic Signal (G-37): once per battle, for the relic's Protocol cost (3),
+# every die on the board that isn't frozen is thrown again. Each re-thrown die is a fresh roll, like a Reroll:
 # its Nudge / Set / Firewall Hack is cleared (not refunded). Frozen dice keep
 # their value.
+func heretic_signal_cost() -> int:
+	return int(combat_manager.get_relic_value("rethrowAllOncePerBattle", "cost", 0))
+
+
 func heretic_signal_available(bs: BattleState) -> bool:
 	return combat_manager.has_relic("rethrowAllOncePerBattle") and not bs.heretic_signal_used \
-		and not (bs.hero_rolls.is_empty() and bs.enemy_rolls.is_empty())
+		and not (bs.hero_rolls.is_empty() and bs.enemy_rolls.is_empty()) \
+		and bs.protocol_points >= heretic_signal_cost()
 
 
 # `landed` = {"hero": {id: raw}, "enemy": {id: raw}} from the live tray; empty =
@@ -385,6 +390,7 @@ func apply_heretic_signal(bs: BattleState, landed: Dictionary = {}) -> Dictionar
 	if not heretic_signal_available(bs):
 		return {}
 	bs.heretic_signal_used = true
+	bs.protocol_points -= heretic_signal_cost()
 	var thrown: Dictionary = {"hero": [], "enemy": []}
 	for side in ["hero", "enemy"]:
 		var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
@@ -408,7 +414,7 @@ func apply_heretic_signal(bs: BattleState, landed: Dictionary = {}) -> Dictionar
 
 
 # Tectonic Charge (G-38): in round 1 of each battle the heroes hold - their
-# dice are not thrown and they don't act. (The +2 from round 2 is a permanent
+# dice are not thrown and they don't act. (The round-1 shield and the +3 from round 2 is a permanent
 # roll buff combat_manager grants when round 1 ends.)
 func heroes_hold_this_round() -> bool:
 	return combat_manager.heroes_hold_this_round()

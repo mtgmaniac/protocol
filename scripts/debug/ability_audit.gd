@@ -1545,14 +1545,14 @@ func _run_new_relic_regressions() -> void:
 	var static_enemy: Dictionary = static_manager.get_enemy_states()[0]
 	_expect_and_record("Regression / relic staticField turn-1 jam", "battleStartJamEnemies", "10", str(static_manager.get_effective_roll(static_enemy, 18)))
 
-	# Tectonic Charge (G-38): heroes hold in round 1, then +2 on every hero roll.
+	# Tectonic Charge (G-38): heroes hold in round 1, then +3 on every hero roll.
 	var tectonic_manager: CombatManager = CombatManager.new()
 	tectonic_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
 	tectonic_manager.setup_relics(["tectonicCharge"])
 	var tectonic_hold: bool = tectonic_manager.heroes_hold_this_round()
 	tectonic_manager.resolve_round({}, {}, DiceManager.new())
 	var tectonic_hero: Dictionary = tectonic_manager.get_hero_states()[0]
-	_expect_and_record("Regression / relic tectonicCharge hold then +2", "heroesHoldRoundOne", "true/false/12",
+	_expect_and_record("Regression / relic tectonicCharge hold then +3", "heroesHoldRoundOne", "true/false/13",
 		"%s/%s/%d" % [str(tectonic_hold), str(tectonic_manager.heroes_hold_this_round()), tectonic_manager.get_effective_roll(tectonic_hero, 10)])
 
 	# Cold Logic: +4 damage against an enemy with a frozen die.
@@ -1615,10 +1615,11 @@ func _run_new_relic_regressions() -> void:
 	var signal_eid: String = str(signal_manager.get_enemy_states()[0]["id"])
 	signal_bs.hero_rolls = {signal_hid: 4}
 	signal_bs.enemy_rolls = {signal_eid: 18}
+	signal_bs.protocol_points = 3
 	var signal_first: Dictionary = signal_engine.apply_heretic_signal(signal_bs, {"hero": {signal_hid: 15}, "enemy": {signal_eid: 6}})
 	var signal_second: Dictionary = signal_engine.apply_heretic_signal(signal_bs, {"hero": {signal_hid: 1}, "enemy": {signal_eid: 1}})
-	_expect_and_record("Regression / relic hereticSignal once per battle", "rethrowAllOncePerBattle", "15/6/true",
-		"%d/%d/%s" % [int(signal_bs.hero_rolls[signal_hid]), int(signal_bs.enemy_rolls[signal_eid]), str(not signal_first.is_empty() and signal_second.is_empty())])
+	_expect_and_record("Regression / relic hereticSignal once per battle for 3 Protocol", "rethrowAllOncePerBattle", "15/6/true/0",
+		"%d/%d/%s/%d" % [int(signal_bs.hero_rolls[signal_hid]), int(signal_bs.enemy_rolls[signal_eid]), str(not signal_first.is_empty() and signal_second.is_empty()), signal_bs.protocol_points])
 
 	# Overheal Relay (G-39): healing past max HP hits a random enemy for the excess.
 	var relay_manager: CombatManager = CombatManager.new()

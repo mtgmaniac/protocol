@@ -648,17 +648,17 @@ func _part_b_and_c() -> void:
 		})
 	print("[DICE_FACE_GATE] part B1: +3 / -2 / jam 10 / rewrite x 20 naturals")
 
-	# B2: forced 20 + Tectonic Charge's permanent +2 x all 20 naturals.
+	# B2: forced 20 + Tectonic Charge's permanent +3 x all 20 naturals.
 	for roll in range(20):
 		_clear_statuses(heroes + enemies)
 		heroes[0]["forced_20_pending"] = true
 		for st in [heroes[1], heroes[2]]:
-			st["perm_roll_buff"] = 2
+			st["perm_roll_buff"] = 3
 		await _roll(stub, roll, heroes.size() + enemies.size(),
-			{"hero:%s" % h[0]: [20], "hero:%s" % h[1]: _span(3, 20), "hero:%s" % h[2]: _span(3, 20)})
+			{"hero:%s" % h[0]: [20], "hero:%s" % h[1]: _span(4, 20), "hero:%s" % h[2]: _span(4, 20)})
 	for st in heroes:
 		st["perm_roll_buff"] = 0
-	print("[DICE_FACE_GATE] part B2: forced 20 + Tectonic Charge +2 x 20 naturals")
+	print("[DICE_FACE_GATE] part B2: forced 20 + Tectonic Charge +3 x 20 naturals")
 
 	# B3: frozen 20s, hero and enemy (a frozen die repeats; nothing alters it).
 	_clear_statuses(heroes + enemies)
