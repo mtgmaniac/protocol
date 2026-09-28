@@ -44,6 +44,11 @@ const ROW_PIP_PROFILE := {
 static var _active: LoadoutMenu = null
 
 var _on_use: Callable = Callable()
+# Usable relics (Heretic Signal, G-37): tapping a listed relic row calls
+# _on_relic_use with its ItemData; notes are one short line under a relic's name.
+var _on_relic_use: Callable = Callable()
+var _usable_relic_ids: Array = []
+var _relic_notes: Dictionary = {}
 var _catcher: Control = null
 var _panel: PanelContainer = null
 
@@ -76,14 +81,20 @@ static func is_open() -> bool:
 
 # `items` = Array[ItemData] consumables; `relics` = Array[ItemData] (0-2, "two relics by
 # design" — GameState); `on_use` is called with the tapped ItemData. `anchor_rect` = the item
-# button's global rect (menu floats above it); empty Rect2 centers.
-static func open(host: Node, items: Array, relics: Array, on_use: Callable, anchor_rect: Rect2 = Rect2()) -> void:
+# button's global rect (menu floats above it); empty Rect2 centers. `on_relic_use`
+# + `usable_relic_ids` make those relic rows tappable (returns true = close);
+# `relic_notes` = {relic id: short note shown under the relic's name}.
+static func open(host: Node, items: Array, relics: Array, on_use: Callable, anchor_rect: Rect2 = Rect2(),
+		on_relic_use: Callable = Callable(), usable_relic_ids: Array = [], relic_notes: Dictionary = {}) -> void:
 	if host == null or not host.is_inside_tree():
 		return
 	dismiss()
 	var menu := LoadoutMenu.new()
 	host.get_tree().root.add_child(menu)
 	menu._on_use = on_use
+	menu._on_relic_use = on_relic_use
+	menu._usable_relic_ids = usable_relic_ids.duplicate()
+	menu._relic_notes = relic_notes.duplicate()
 	menu._build(items, relics, anchor_rect)
 	_active = menu
 
@@ -396,6 +407,10 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 	var name_label := _make_label(name_text, NAME_FONT, name_color, HORIZONTAL_ALIGNMENT_LEFT)
 	info.add_child(name_label)
 
+	# A usable relic's one-line note (TAP TO USE / USED THIS BATTLE).
+	if filled and not usable and _relic_notes.has(item.id):
+		info.add_child(_make_label(str(_relic_notes[item.id]), SECTION_FONT, PixelUI.DT_AMBER if _usable_relic_ids.has(item.id) else PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
+
 	# Effect-pip preview — the "what does it do" hint without the long text.
 	if filled:
 		var pips: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
@@ -418,6 +433,8 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 		long_press.long_pressed.connect(_on_row_long_pressed.bind(item, row))
 		if usable:
 			long_press.tapped.connect(_on_item_row_tapped.bind(row, item))
+		elif _usable_relic_ids.has(item.id) and _on_relic_use.is_valid():
+			long_press.tapped.connect(_on_relic_row_tapped.bind(row, item))
 	return row
 
 
@@ -487,6 +504,13 @@ func _on_item_row_tapped(row: Control, item: ItemData) -> void:
 	# the menu open and flash the tapped row red).
 	var accepted: bool = bool(_on_use.call(item))
 	if accepted:
+		LoadoutMenu.dismiss()
+	else:
+		_flash_row_rejected(row)
+
+
+func _on_relic_row_tapped(row: Control, item: ItemData) -> void:
+	if bool(_on_relic_use.call(item)):
 		LoadoutMenu.dismiss()
 	else:
 		_flash_row_rejected(row)

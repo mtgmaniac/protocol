@@ -166,6 +166,28 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 	return spends
 
 
+# ── Heretic Signal (G-37): re-throw when the board is lopsided against us —
+# the enemy dice sit at least 8 pips above an average d20 (10.5 each) more
+# than the hero dice do. A re-throw pulls both sides back to average, so it
+# pays exactly when enemies rolled high and heroes rolled low. Frozen dice
+# don't move, so they don't count. Deterministic.
+func wants_heretic_signal(engine: BattleEngine, bs: BattleState, cm: CombatManager) -> bool:
+	var edge: float = 0.0
+	for hero_state_variant in cm.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		var hid: String = str(hero_state["id"])
+		if bool(hero_state.get("dead", false)) or not bs.hero_rolls.has(hid) or not engine.can_alter_die(hero_state):
+			continue
+		edge -= float(engine.effective_hero_roll(hero_state, hid, bs)) - 10.5
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		var eid: String = str(enemy_state["id"])
+		if bool(enemy_state.get("dead", false)) or not bs.enemy_rolls.has(eid) or not engine.can_alter_die(enemy_state):
+			continue
+		edge += float(engine.effective_enemy_roll(enemy_state, eid, bs)) - 10.5
+	return edge >= 8.0
+
+
 # ── Consumable use (sim-D): one item per round, triage-first. ─────────────────
 # Effect-type → intent. Heals/shields when a hero is hurt; offensive items on
 # the focus enemy; Protocol top-up when the pool is low. Deterministic (no rng).

@@ -52,11 +52,13 @@ func _run() -> void:
 	_scrap_converter()
 	_blood_frenzy()
 	_firewall_hack()
+	_heretic_signal()
 	_tectonic_charge()
 	_save_migration()
 	await _live_scrap_converter()
 	await _live_tectonic_charge()
 	await _live_firewall_hack()
+	await _live_heretic_signal()
 	await _teardown()
 	_finish()
 
@@ -282,6 +284,57 @@ func _firewall_hack() -> void:
 	# The hack lasts for this round only.
 	eng.resolve_step(bs)
 	_check(bs.enemy_roll_nudges.is_empty(), "resolving the round clears the hack")
+
+
+# ── Heretic Signal (G-37) ─────────────────────────────────────────────────────
+
+func _heretic_signal() -> void:
+	_section = "Heretic Signal"
+	var cm: Object = _mgr(["hereticSignal", "firewallHack"], [_hero("h1"), _hero("h2"), _hero("h3")], [_enemy("e1"), _enemy("e2")])
+	var eng: Object = _engine(cm)
+	var bs: Object = BS.new()
+	var h: Array = cm.get_hero_states().map(func(s): return _id(s))
+	var e: Array = cm.get_enemy_states().map(func(s): return _id(s))
+	cm.get_hero_states()[2]["die_freeze_turns"] = 1
+	cm.get_hero_states()[2]["frozen_die_value"] = 17
+	bs.hero_rolls = {h[0]: 4, h[1]: 6, h[2]: 17}
+	bs.enemy_rolls = {e[0]: 18, e[1]: 11}
+	bs.hero_roll_nudges = {h[0]: 3}
+	bs.hero_roll_sets = {h[1]: 20}
+	bs.enemy_roll_nudges = {e[0]: -3}
+	_check(eng.heretic_signal_available(bs), "available once the dice are on the board")
+	var thrown: Dictionary = eng.apply_heretic_signal(bs, {"hero": {h[0]: 15, h[1]: 11, h[2]: 2}, "enemy": {e[0]: 3, e[1]: 20}})
+	_check((thrown.get("hero", []) as Array) == [h[0], h[1]] and (thrown.get("enemy", []) as Array) == [e[0], e[1]],
+		"every unfrozen die is re-thrown, heroes and enemies (%s)" % [thrown])
+	_check(int(bs.hero_rolls[h[2]]) == 17, "a frozen die is skipped and keeps its value")
+	_check(int(bs.hero_rolls[h[0]]) == 15 and int(bs.enemy_rolls[e[0]]) == 3, "the landed faces become the raws")
+	_check(bs.hero_roll_nudges.is_empty() and bs.hero_roll_sets.is_empty() and bs.enemy_roll_nudges.is_empty(),
+		"a re-thrown die is a fresh roll: its Nudge, Set and Firewall Hack are cleared")
+	_check(bs.heretic_signal_used and not eng.heretic_signal_available(bs), "used once, it is gone for the battle")
+	_check(eng.apply_heretic_signal(bs, {"hero": {h[0]: 1}}).is_empty() and int(bs.hero_rolls[h[0]]) == 15, "a second use does nothing")
+	var empty_bs: Object = BS.new()
+	var fresh_cm: Object = _mgr(["hereticSignal"], [_hero("h1")], [_enemy("e1")])
+	_check(not _engine(fresh_cm).heretic_signal_available(empty_bs), "not before the dice are rolled")
+	# Sim path: the seeded stream, deterministic.
+	var draws: Array = []
+	for _i in 2:
+		var scm: Object = _mgr(["hereticSignal"], [_hero("h1"), _hero("h2")], [_enemy("e1")])
+		var seng: Object = _engine(scm, 99)
+		var sbs: Object = BS.new()
+		sbs.hero_rolls = {_id(scm.get_hero_states()[0]): 1, _id(scm.get_hero_states()[1]): 1}
+		sbs.enemy_rolls = {_id(scm.get_enemy_states()[0]): 20}
+		seng.apply_heretic_signal(sbs)
+		draws.append([sbs.hero_rolls.values(), sbs.enemy_rolls.values()])
+	_check(draws[0] == draws[1], "the headless re-throw is seeded (identical from the same seed)")
+	# Scrap Converter pays on a re-throw landing.
+	var both: Object = _mgr(["hereticSignal", "scrapConverter"], [_hero("h1")], [_enemy("e1")])
+	var beng: Object = _engine(both)
+	var bbs: Object = BS.new()
+	var bh: String = _id(both.get_hero_states()[0])
+	bbs.hero_rolls = {bh: 12}
+	bbs.enemy_rolls = {_id(both.get_enemy_states()[0]): 12}
+	var bthrown: Dictionary = beng.apply_heretic_signal(bbs, {"hero": {bh: 2}, "enemy": {_id(both.get_enemy_states()[0]): 9}})
+	_check(beng.landing_protocol(bbs, bthrown.get("hero", [])) == 1, "Scrap Converter pays on a re-thrown 2")
 
 
 # ── Tectonic Charge (G-38) ────────────────────────────────────────────────────
@@ -593,6 +646,79 @@ func _live_firewall_hack() -> void:
 	scene._on_enemy_card_pressed(e[0])
 	await _settle(scene)
 	_check(int(scene._die_value("enemy", e[0])) == 12, "a new turn allows a new hack (15 -> 12)")
+
+
+func _live_heretic_signal() -> void:
+	_section = "live Heretic Signal"
+	var scene: Node = await _enter(["hereticSignal", "scrapConverter"])
+	var dm: Node = root.get_node("/root/DataManager")
+	var item: Resource = dm.get_item("hereticSignal")
+	var state0: Dictionary = scene._relics.relic_menu_state()
+	_check(not (state0["usable"] as Array).has("hereticSignal") and str(state0["notes"].get("hereticSignal", "")) == "USE AFTER THE ROLL",
+		"before the roll it can't be used (planning phase only)")
+	_check(not bool(scene._relics.use_relic(item)), "a tap before the roll does nothing")
+	var frozen_hero: Dictionary = scene.combat_manager.get_hero_states()[2]
+	frozen_hero["die_freeze_turns"] = 1
+	frozen_hero["frozen_die_value"] = 17
+	await _roll(scene, [9, 12, 5], [14])
+	var h: Array = _hero_ids(scene)
+	var frozen_id: String = str(frozen_hero["id"])
+	var frozen_die: RigidBody3D = scene.dice_tray_3d._get_die_for_entry("hero", frozen_id)
+	scene.protocol_points = 6
+	scene._protocol._apply_nudge(h[0])
+	await _settle(scene)
+	var state1: Dictionary = scene._relics.relic_menu_state()
+	_check((state1["usable"] as Array).has("hereticSignal") and str(state1["notes"].get("hereticSignal", "")) == "TAP TO USE", "after the roll it can be used")
+	_check(bool(scene._relics.use_relic(item)), "tapping the relic opens the confirm")
+	var layer: Variant = scene._relics.get("_confirm_layer")
+	_check(layer != null and is_instance_valid(layer), "the confirm is shown")
+	if layer == null or not is_instance_valid(layer):
+		return
+	var texts: Array = (layer.find_children("*", "Label", true, false) as Array).map(func(l): return str(l.text))
+	_check(texts.has("Re-throw every die? This can't be undone."), "confirm copy (got %s)" % [texts])
+	(layer.find_child("HereticCancel", true, false) as Button).emit_signal("pressed")
+	await process_frame
+	_check(not bool(scene._state.heretic_signal_used) and scene._relics.get("_confirm_layer") == null, "CANCEL keeps the relic unused")
+	var before_rolls: Dictionary = scene.hero_rolls.duplicate()
+	var old_die: RigidBody3D = scene.dice_tray_3d._get_die_for_entry("hero", h[0])
+	scene._relics.use_relic(item)
+	layer = scene._relics.get("_confirm_layer")
+	var rig: Dictionary = {"hero:%s" % h[0]: 1, "hero:%s" % h[1]: 11}
+	for eid in _enemy_ids(scene):
+		rig["enemy:%s" % eid] = 4
+	scene.dice_tray_3d.set_rigged_results(rig)
+	scene.protocol_points = 3
+	(layer.find_child("HereticConfirm", true, false) as Button).emit_signal("pressed")
+	for _i in 30:
+		await process_frame
+	await _settle(scene)
+	_check(bool(scene._state.heretic_signal_used), "confirmed: the relic is used")
+	_check(int(scene.hero_rolls[h[0]]) == 1 and int(scene.hero_rolls[h[1]]) == 11, "the heroes' dice were re-thrown (%s -> %s)" % [before_rolls, scene.hero_rolls])
+	_check(scene.dice_tray_3d._get_die_for_entry("hero", h[0]) != old_die, "a re-thrown die is a new throw")
+	for eid in _enemy_ids(scene):
+		_check(int(scene.enemy_rolls[eid]) == 4, "enemy %s re-thrown" % eid)
+	_check(int(scene.hero_rolls[frozen_id]) == 17 and int(scene._die_value("hero", frozen_id)) == 17, "the frozen die keeps 17")
+	_check(scene.dice_tray_3d._get_die_for_entry("hero", frozen_id) == frozen_die, "the frozen die never moved (same die)")
+	_check(scene.hero_roll_nudges.is_empty(), "the old Nudge is cleared by the re-throw")
+	_check(int(scene.protocol_points) == 4, "Scrap Converter paid for the re-thrown 1 (3 -> 4, got %d)" % int(scene.protocol_points))
+	for key in scene.dice_tray_3d._die_by_key:
+		var parts: PackedStringArray = str(key).split(":", true, 1)
+		_check(int(scene.dice_tray_3d.up_face_numeral(parts[0], parts[1])) == int(scene._die_value(parts[0], parts[1])), "%s shows the value it acts on" % key)
+	_check(int(scene.turn_phase) == int(scene.PHASE_TARGETING) or int(scene.turn_phase) == int(scene.PHASE_READY_TO_END), "back to planning")
+	var state2: Dictionary = scene._relics.relic_menu_state()
+	_check(str(state2["notes"].get("hereticSignal", "")) == "USED THIS BATTLE" and not (state2["usable"] as Array).has("hereticSignal"), "used for the battle")
+	_check(not bool(scene._relics.use_relic(item)), "a second tap does nothing")
+	# The checkpoint now holds the new dice and the used flag (a refresh restores them).
+	var cp: Dictionary = root.get_node("/root/SaveManager").peek_run_save().get("battle_checkpoint", {})
+	var st: Variant = str_to_var(str(cp.get("state", "")))
+	_check(st is Dictionary and bool((st as Dictionary).get("heretic_signal_used", false)), "the checkpoint records the use")
+	var pending: Dictionary = CHECKPOINT.pending_roll_of(st if st is Dictionary else {})
+	var same: bool = not pending.is_empty()
+	for hid in scene.hero_rolls:
+		same = same and int((pending.get("hero", {}) as Dictionary).get(str(hid), -1)) == int(scene.hero_rolls[hid])
+	for eid in scene.enemy_rolls:
+		same = same and int((pending.get("enemy", {}) as Dictionary).get(str(eid), -1)) == int(scene.enemy_rolls[eid])
+	_check(same, "the checkpoint's pending roll is the re-thrown dice")
 
 
 func _teardown() -> void:

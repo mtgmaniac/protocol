@@ -885,7 +885,11 @@ func _on_item_button_pressed_menu() -> void:
 		var relic_item: ItemData = _scene._data_manager().get_item(str(relic_id_variant)) as ItemData
 		if relic_item != null:
 			relic_items.append(relic_item)
-	LoadoutMenu.open(self, _item_menu_items, relic_items, _on_item_button_pressed, item_button.get_global_rect())
+	# Heretic Signal (G-37) is used by tapping its relic row; the relic module
+	# says which rows are usable now and what each row's note reads.
+	var relic_state: Dictionary = _scene._relics.relic_menu_state()
+	LoadoutMenu.open(self, _item_menu_items, relic_items, _on_item_button_pressed, item_button.get_global_rect(),
+		_scene._relics.use_relic, relic_state["usable"], relic_state["notes"])
 
 
 func _on_item_menu_id_pressed(id: int) -> void:

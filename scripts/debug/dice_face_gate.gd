@@ -397,7 +397,7 @@ func _hulls_overlap(a: RigidBody3D, b: RigidBody3D) -> bool:
 
 
 func _note_path(die: RigidBody3D) -> void:
-	var path: String = _current_path if _current_path in ["hero reroll", "enemy item reroll", "live throw (scene)"] else "live throw"
+	var path: String = _current_path if _current_path in ["hero reroll", "enemy item reroll", "live throw (scene)", "Heretic Signal"] else "live throw"
 	if die.has_meta("recorded_track") and bool(die.get_meta("busy", false)) and bool(_tray.get("_is_rolling")):
 		path = "recorded playback"
 	elif bool(die.get_meta("busy", false)):
@@ -735,10 +735,12 @@ func _part_b_and_c() -> void:
 	_expect_value("enemy", e[0], 1, "Deep Freeze Charge pins an enemy die to 1")
 	print("[DICE_FACE_GATE] part C2: Nudge, Set, Reroll, items, Sync Antenna")
 
-	# C3 (boss relic rework, G-36): Firewall Hack tips an enemy die down 3.
+	# C3 (boss relic rework, G-36 / G-37): Firewall Hack tips an enemy die down
+	# 3; Heretic Signal re-throws every unfrozen die through the full throw.
 	_clear_statuses(heroes + enemies)
 	var relic_effects: Array = cm.get("_active_relic_effects")
 	relic_effects.append({"type": "enemyNudgeOncePerTurn", "amount": 3})
+	relic_effects.append({"type": "rethrowAllOncePerBattle"})
 	stub.queue = [8, 11, 14, 9, 17]
 	await _begin_roll()
 	await _await_all_locked()
@@ -749,9 +751,18 @@ func _part_b_and_c() -> void:
 	_scene.call("_on_enemy_card_pressed", e[0])
 	await _await_all_locked()
 	_expect_value("enemy", e[0], maxi(hack_from - 3, 1), "Firewall Hack lowers the enemy die by 3")
+	_current_path = "Heretic Signal"
+	(_scene.get("_state") as Object).set("heretic_signal_used", false)
+	var heretic_launched: int = int(_tray.thrown_dice_total)
+	await _scene.get("_relics").rethrow_all()
+	await _await_all_locked()
+	_check("a", int(_tray.thrown_dice_total) - heretic_launched == heroes.size() + enemies.size(), "Heretic Signal physically throws every unfrozen die")
+	for side_ids in [["hero", h], ["enemy", e]]:
+		for uid in side_ids[1]:
+			_expect_value(str(side_ids[0]), str(uid), _oracle(str(side_ids[0]), str(uid)), "a re-thrown die shows the value it acts on")
 	relic_effects.clear()
 	_current_path = ""
-	print("[DICE_FACE_GATE] part C3: Firewall Hack")
+	print("[DICE_FACE_GATE] part C3: Firewall Hack + Heretic Signal")
 
 	# D: freeze locks the number on the face (G-23).
 	_clear_statuses(heroes + enemies)
@@ -858,7 +869,7 @@ func _part_tutorial() -> void:
 
 const REQUIRED_PATHS := ["live throw", "live throw (scene)", "recorded playback", "hero reroll",
 	"enemy item reroll", "tip-over (Nudge)", "tip-over (Set)", "tip-over (reprint)", "tip-over (hijack)",
-	"tip-over (Firewall Hack)"]
+	"tip-over (Firewall Hack)", "Heretic Signal"]
 
 
 func _check_coverage() -> void:

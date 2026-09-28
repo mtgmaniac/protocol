@@ -34,6 +34,13 @@ func decide_round(_engine: BattleEngine, _bs: BattleState, _cm: CombatManager, _
 	return []
 
 
+# ── Heretic Signal boss relic (G-37): re-throw every unfrozen die now? Asked
+# once the round's dice have landed, while the relic is still unused this
+# battle. Base policy never uses it.
+func wants_heretic_signal(_engine: BattleEngine, _bs: BattleState, _cm: CombatManager) -> bool:
+	return false
+
+
 # ── Consumable use in battle (sim-D). Returns a list of item actions to fire
 # this round: {item_id, target_id, side}. side "hero"/"enemy"/"" (none). The
 # runner resolves cost + effect through the engine and removes the item from

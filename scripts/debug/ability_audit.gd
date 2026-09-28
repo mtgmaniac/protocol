@@ -1605,6 +1605,21 @@ func _run_new_relic_regressions() -> void:
 	_expect_and_record("Regression / relic firewallHack once per turn", "enemyNudgeOncePerTurn", "true/false/7/2",
 		"%s/%s/%d/%d" % [str(hack_first), str(hack_second), hack_engine.effective_enemy_roll(hack_enemy, str(hack_enemy["id"]), hack_bs), hack_bs.protocol_points])
 
+	# Heretic Signal (G-37): one re-throw per battle.
+	var signal_manager: CombatManager = CombatManager.new()
+	signal_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	signal_manager.setup_relics(["hereticSignal"])
+	var signal_engine := BattleEngine.new(signal_manager, null, DiceManager.new())
+	var signal_bs := BattleState.new()
+	var signal_hid: String = str(signal_manager.get_hero_states()[0]["id"])
+	var signal_eid: String = str(signal_manager.get_enemy_states()[0]["id"])
+	signal_bs.hero_rolls = {signal_hid: 4}
+	signal_bs.enemy_rolls = {signal_eid: 18}
+	var signal_first: Dictionary = signal_engine.apply_heretic_signal(signal_bs, {"hero": {signal_hid: 15}, "enemy": {signal_eid: 6}})
+	var signal_second: Dictionary = signal_engine.apply_heretic_signal(signal_bs, {"hero": {signal_hid: 1}, "enemy": {signal_eid: 1}})
+	_expect_and_record("Regression / relic hereticSignal once per battle", "rethrowAllOncePerBattle", "15/6/true",
+		"%d/%d/%s" % [int(signal_bs.hero_rolls[signal_hid]), int(signal_bs.enemy_rolls[signal_eid]), str(not signal_first.is_empty() and signal_second.is_empty())])
+
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
 	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])

@@ -369,6 +369,44 @@ func apply_firewall_hack(bs: BattleState, enemy_state: Dictionary) -> bool:
 	return true
 
 
+# Heretic Signal (G-37): once per battle, every die on the board that isn't
+# frozen is thrown again. Each re-thrown die is a fresh roll, like a Reroll:
+# its Nudge / Set / Firewall Hack is cleared (not refunded). Frozen dice keep
+# their value.
+func heretic_signal_available(bs: BattleState) -> bool:
+	return combat_manager.has_relic("rethrowAllOncePerBattle") and not bs.heretic_signal_used \
+		and not (bs.hero_rolls.is_empty() and bs.enemy_rolls.is_empty())
+
+
+# `landed` = {"hero": {id: raw}, "enemy": {id: raw}} from the live tray; empty =
+# draw the seeded stream (sim / skip-visuals). Returns the re-thrown ids per
+# side ({"hero": [...], "enemy": [...]}), or {} when it can't be used now.
+func apply_heretic_signal(bs: BattleState, landed: Dictionary = {}) -> Dictionary:
+	if not heretic_signal_available(bs):
+		return {}
+	bs.heretic_signal_used = true
+	var thrown: Dictionary = {"hero": [], "enemy": []}
+	for side in ["hero", "enemy"]:
+		var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
+		var rolls: Dictionary = bs.hero_rolls if side == "hero" else bs.enemy_rolls
+		var landed_side: Dictionary = landed.get(side, {})
+		for state in states:
+			var uid: String = str(state["id"])
+			if bool(state.get("dead", false)) or not rolls.has(uid) or not can_alter_die(state):
+				continue
+			var raw: int = int(landed_side.get(uid, 0)) if not landed.is_empty() else roll_provider.roll_d20()
+			if raw <= 0:
+				continue
+			rolls[uid] = raw
+			if side == "hero":
+				bs.hero_roll_nudges.erase(uid)
+				bs.hero_roll_sets.erase(uid)
+			else:
+				bs.enemy_roll_nudges.erase(uid)
+			(thrown[side] as Array).append(uid)
+	return thrown
+
+
 # Tectonic Charge (G-38): in round 1 of each battle the heroes hold - their
 # dice are not thrown and they don't act. (The +2 from round 2 is a permanent
 # roll buff combat_manager grants when round 1 ends.)

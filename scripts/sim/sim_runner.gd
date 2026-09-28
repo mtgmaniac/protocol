@@ -726,8 +726,18 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		# Scrap Converter: the dice that just landed (the live screen grants the
 		# same engine amount when its tray settles).
 		engine.gain_protocol(bs, engine.landing_protocol(bs, engine.thrown_hero_ids(bs)), engine.max_protocol(cap_override))
+		var spends: Array = []
+		# Heretic Signal: the policy may re-throw every unfrozen die, once per battle.
+		if engine.heretic_signal_available(bs) and policy.wants_heretic_signal(engine, bs, cm):
+			var thrown: Dictionary = engine.apply_heretic_signal(bs)
+			for side in ["hero", "enemy"]:
+				var side_states: Array = cm.get_hero_states() if side == "hero" else cm.get_enemy_states()
+				engine.record_roll_values_for_states(side_states.filter(func(st): return (thrown.get(side, []) as Array).has(str(st["id"]))),
+					bs.hero_rolls if side == "hero" else bs.enemy_rolls)
+			engine.gain_protocol(bs, engine.landing_protocol(bs, thrown.get("hero", [])), engine.max_protocol(cap_override))
+			spends.append({"kind": "heretic_signal", "unit": "", "cost": 0, "detail": "%d dice" % ((thrown.get("hero", []) as Array).size() + (thrown.get("enemy", []) as Array).size())})
 		# Policy: hero targets + protocol spends before the round resolves.
-		var spends: Array = policy.decide_round(engine, bs, cm, gs)
+		spends.append_array(policy.decide_round(engine, bs, cm, gs))
 		# Scrap Converter on the policy's rerolled dice (physical landings too).
 		var rerolled: Array = []
 		for spend_variant in spends:
