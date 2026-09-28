@@ -15,6 +15,18 @@ Why: settled dice had their collision switched off, so a rerolled die could
 roll straight through or under the dice already resting in the tray (UI batch
 2026-09-27, B10). See TRUTH "Dice rules", rule 10.
 
+## UI batch 2026-09-27 (Kev) — event header art keeps its own aspect (B4)
+
+Every event header image keeps its own aspect ratio; the frame is fitted to the
+image, with no crop and no letterbox. There is no single fixed aspect across
+event screens. Intercept and run-end art already did this
+(`PixelUI.make_scene_banner`). Route Fork was the only screen that broke it:
+its 16:9 hallway art sat pillarboxed in a 420 px frame. Its frame is now full
+width at the art's own aspect and grows upward into the empty space above the
+window, so the route cards don't move. ("Split photos" in Kev's original
+report meant Route Fork.) **Supersedes** the brief's "one fixed aspect for all
+event header art" and the 2026-07-10 KEEP_ASPECT 420 px Route Fork banner.
+
 ## UI batch 2026-09-27 (Kev) — encounter select fixed slots (B3)
 
 Transcribed from Kev's UI batch brief (`docs/batches/2026-09-27-ui-batch.md`).

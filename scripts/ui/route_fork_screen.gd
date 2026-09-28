@@ -18,9 +18,18 @@ const BUTTON_FONT := 38
 # deterministically by battle number so successive forks show different corridors.
 const HALLWAY_ART := "res://assets/ui/events/hallway_%d.png"
 const HALLWAY_COUNT := 5
-# Kev 2026-07-10: taller banner + KEEP_ASPECT (not cover-crop) so more of the
-# corridor art shows — larger and zoomed out.
-const HALLWAY_BANNER_H := 420
+# The frame is full column width at the image's own aspect (about 16:9): no
+# crop, no letterbox (UI batch B4). The old frame was 420 px tall with the art
+# pillarboxed inside; the height it gains over that is taken from the empty
+# space above the window, so the route cards stay where they were.
+const HALLWAY_OLD_BANNER_H := 420.0
+const WINDOW_MARGIN_BOTTOM := 80
+
+var _margin: MarginContainer
+var _scroll: ScrollContainer
+var _window: PanelContainer
+var _banner: PanelContainer
+var _banner_aspect: float = 0.0  # height / width of the hallway art
 
 var _modifier_id: String = ""
 
@@ -61,14 +70,16 @@ func _ready() -> void:
 	# Safe area: +insets so the window clears the grown header band and the
 	# gesture bar on cutout devices (0 on desktop — no-op).
 	margin.add_theme_constant_override("margin_top", 150 + PixelUI.safe_top)
-	margin.add_theme_constant_override("margin_bottom", 80 + PixelUI.safe_bottom)
+	margin.add_theme_constant_override("margin_bottom", WINDOW_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
+	_margin = margin
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	margin.add_child(scroll)
+	_scroll = scroll
 	var center_col := VBoxContainer.new()
 	center_col.alignment = BoxContainer.ALIGNMENT_CENTER
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -80,6 +91,7 @@ func _ready() -> void:
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	PixelUI.style_transmission_panel(frame)
 	center_col.add_child(frame)
+	_window = frame
 
 	var pad := MarginContainer.new()
 	for pad_side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -141,8 +153,8 @@ func _ready() -> void:
 		return
 
 
-# Full-width corridor strip framed as a transmission window. Cover-cropped to a
-# short cinematic height (the source is already landscape, so little is lost).
+# Full-width corridor strip framed as a transmission window, at the art's own
+# aspect so the whole image shows with no bars.
 func _add_hallway_banner(column: VBoxContainer) -> void:
 	var index: int = (maxi(GameState.current_battle, 0) % HALLWAY_COUNT) + 1
 	var path: String = HALLWAY_ART % index
@@ -153,7 +165,7 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 		return
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.custom_minimum_size = Vector2(0, HALLWAY_BANNER_H)
+	frame.custom_minimum_size = Vector2(0, HALLWAY_OLD_BANNER_H)
 	frame.clip_contents = true
 	# Component: Normal card (a decorative banner is not a selection — the old
 	# strong-cyan frame was border noise).
@@ -162,12 +174,45 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	art.texture = tex
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# The frame's content rect is sized to the art's aspect (to the pixel), so
+	# SCALE fills it exactly; any rounding is under half a pixel.
+	art.stretch_mode = TextureRect.STRETCH_SCALE
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(art)
 	PixelUI.add_corner_brackets(frame, PixelUI.DT_HERO_BORDER, 24.0, 3.0, 8.0)
 	column.add_child(frame)
+	_banner = frame
+	_banner_aspect = float(tex.get_height()) / maxf(1.0, float(tex.get_width()))
+	# Height follows width, which only layout knows. Changing the height never
+	# changes the width, so this settles in one pass.
+	frame.resized.connect(_fit_hallway_banner)
+
+
+func _fit_hallway_banner() -> void:
+	var sb: StyleBox = _banner.get_theme_stylebox("panel")
+	var inner_w: float = _banner.size.x - sb.get_margin(SIDE_LEFT) - sb.get_margin(SIDE_RIGHT)
+	var extra_h: float = sb.get_margin(SIDE_TOP) + sb.get_margin(SIDE_BOTTOM)
+	var target_h: float = round(inner_w * _banner_aspect) + extra_h
+	if absf(_banner.custom_minimum_size.y - target_h) >= 0.5:
+		_banner.custom_minimum_size.y = target_h
+	_shift_window_up.call_deferred()
+
+
+# The window is centred, so a taller banner would push the route cards down by
+# half its growth. Adding the growth to the bottom margin keeps the window's
+# bottom edge fixed: the banner grows upward into the empty space instead. It
+# never takes more than the space left, so a short screen doesn't scroll for it.
+func _shift_window_up() -> void:
+	if not is_instance_valid(_banner) or not is_instance_valid(_window):
+		return
+	var base_bottom: int = WINDOW_MARGIN_BOTTOM + PixelUI.safe_bottom
+	var current_extra: int = _margin.get_theme_constant("margin_bottom") - base_bottom
+	var growth: float = maxf(0.0, _banner.size.y - HALLWAY_OLD_BANNER_H)
+	var room: float = _scroll.size.y + float(current_extra) - _window.size.y
+	var extra: int = int(round(clampf(growth, 0.0, maxf(room, 0.0))))
+	if extra != current_extra:
+		_margin.add_theme_constant_override("margin_bottom", base_bottom + extra)
 
 
 func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:

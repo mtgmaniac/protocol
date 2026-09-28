@@ -2,6 +2,7 @@
 # Mirrors home_screen_capture.gd's pattern.
 #   <godot> --path . --script res://scripts/debug/choice_screen_capture.gd \
 #     --capture-screen=fork|intercept [--capture-output=...] [--capture-delay-ms=...]
+#     [--capture-seed=N]  (a fixed run seed, so before/after shots show the same fork)
 extends SceneTree
 
 const DEFAULT_OUTPUT := "res://debug_artifacts/choice_ui/latest.png"
@@ -22,7 +23,7 @@ func _run_capture() -> void:
 		load("res://scripts/debug/capture_window.gd").apply(root, config["window"])
 	await process_frame
 	# A live run so the screen has an operation / battle context to read.
-	root.get_node("/root/GameState").call("start_run", ["combat", "avalanche", "medic"], "facility")
+	root.get_node("/root/GameState").call("start_run", ["combat", "avalanche", "medic"], "facility", int(config.get("seed", -1)))
 	root.get_node("/root/GameState").call("advance_to_next_battle")
 	var screen: String = str(config.get("screen", "fork"))
 	if str(config.get("card", "")) != "":
@@ -54,6 +55,8 @@ func _parse_args() -> Dictionary:
 			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
 			if window_parts.size() >= 2:
 				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		elif arg.begins_with("--capture-seed="):
+			config["seed"] = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--capture-card="):
 			config["card"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-screen="):
