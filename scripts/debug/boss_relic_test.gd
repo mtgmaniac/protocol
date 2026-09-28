@@ -55,6 +55,7 @@ func _run() -> void:
 	_heretic_signal()
 	_tectonic_charge()
 	_overheal_relay()
+	_spillover_charge()
 	_save_migration()
 	await _live_scrap_converter()
 	await _live_tectonic_charge()
@@ -132,8 +133,8 @@ func _data_counts() -> void:
 	var expected: Array = sm.BOSS_RELIC_BY_OP.values()
 	expected.sort()
 	_check(boss == expected, "the boss relics are exactly the five new ones (%s)" % [boss])
-	_check(draftable == 30, "30 draftable relics (got %d)" % draftable)
-	for relic_id in ["overhealRelay"]:
+	_check(draftable == 31, "31 draftable relics (got %d)" % draftable)
+	for relic_id in ["overhealRelay", "spilloverCharge"]:
 		var item: Resource = dm.get_item(relic_id)
 		_check(item != null and not item.boss_relic, "%s is a normal draft relic" % relic_id)
 		_check(item != null and item.icon != null, "%s has placeholder art" % relic_id)
@@ -412,6 +413,56 @@ func _overheal_relay() -> void:
 	var plain: Object = _mgr([], [_hero("h1")], [_enemy("e1")])
 	plain.apply_item_heal(plain.get_hero_states()[0], 10)
 	_check(int(plain.get_enemy_states()[0]["current_hp"]) == 100, "no relic, no damage")
+
+
+# ── Spillover Charge (G-40) ───────────────────────────────────────────────────
+
+# `setup`: "" | "shield" | "cloak" | "dead" | "ward" | "mark" on slot 2 (b).
+func _spill(target_index: int, dmg: int, setup: String = "") -> Array:
+	var cm: Object = _mgr(["spilloverCharge"], [_hero("h1", {"dmg": dmg})], [_enemy("a"), _enemy("b"), _enemy("c")])
+	var b: Dictionary = cm.get_enemy_states()[1]
+	match setup:
+		"shield":
+			cm._add_shield_stack(b, 20)
+		"cloak":
+			b["cloaked"] = true
+		"dead":
+			b["dead"] = true
+			b["current_hp"] = 0
+		"ward":
+			cm._apply_ward(b)
+		"mark":
+			cm._apply_mark(b)
+	var hero: Dictionary = cm.get_hero_states()[0]
+	hero["selected_target_id"] = _id(cm.get_enemy_states()[target_index])
+	cm.resolve_round({_id(hero): 10}, {}, DMS.new())
+	return cm.get_enemy_states().map(func(s): return int(s["current_hp"]))
+
+
+func _spillover_charge() -> void:
+	_section = "Spillover Charge"
+	_check(_spill(0, 130) == [0, 70, 100], "30 overkill on slot 1 hits slot 2")
+	_check(_spill(2, 130) == [70, 100, 0], "from the last slot it wraps to the first")
+	_check(_spill(0, 250) == [0, 0, 50], "a spill that kills spills again (150 then 50)")
+	_check(_spill(0, 130, "shield") == [0, 90, 100], "shields absorb the spill")
+	_check(_spill(0, 130, "cloak") == [0, 100, 70], "a cloaked enemy is skipped")
+	_check(_spill(0, 130, "dead") == [0, 0, 70], "a dead enemy is skipped")
+	_check(_spill(0, 130, "ward") == [0, 100, 100], "a Firewall blocks the spill")
+	_check(_spill(0, 130, "mark") == [0, 55, 100], "a Mark amplifies the spill (+50%)")
+	_check(_spill(0, 100) == [0, 100, 100], "an exact kill has nothing to spill")
+	var env: Object = _mgr(["spilloverCharge"], [_hero("h1")], [_enemy("a"), _enemy("b")])
+	env._damage_state(env.get_enemy_states()[0], 130)
+	_check(int(env.get_enemy_states()[1]["current_hp"]) == 100, "damage with no hero attacker (burn, items) doesn't spill")
+	var plain: Object = _mgr([], [_hero("h1", {"dmg": 130})], [_enemy("a"), _enemy("b")])
+	plain.get_hero_states()[0]["selected_target_id"] = _id(plain.get_enemy_states()[0])
+	plain.resolve_round({_id(plain.get_hero_states()[0]): 10}, {}, DMS.new())
+	_check(int(plain.get_enemy_states()[1]["current_hp"]) == 100, "no relic, no spill")
+	# A spill kill is the hero's kill (Blood Frenzy freezes once).
+	var both: Object = _mgr(["spilloverCharge", "bloodFrenzy"], [_hero("h1", {"dmg": 150})], [_enemy("a"), _enemy("b", 40), _enemy("c")])
+	both.get_hero_states()[0]["selected_target_id"] = _id(both.get_enemy_states()[0])
+	both.resolve_round({_id(both.get_hero_states()[0]): 10}, {}, DMS.new())
+	_check(bool(both.get_enemy_states()[1]["dead"]) and int(both.get_hero_states()[0].get("die_freeze_turns", 0)) == 1,
+		"a spill kill counts as the hero's kill")
 
 
 # ── Save migration (G-41) ─────────────────────────────────────────────────────

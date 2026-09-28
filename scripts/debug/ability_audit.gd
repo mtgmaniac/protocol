@@ -1630,6 +1630,16 @@ func _run_new_relic_regressions() -> void:
 	_expect_and_record("Regression / relic overhealRelay excess heal damage", "overhealDamage", "100/94",
 		"%d/%d" % [int(relay_hero["current_hp"]), int(relay_manager.get_enemy_states()[0]["current_hp"])])
 
+	# Spillover Charge (G-40): overkill carries to the next enemy in slot order.
+	var spill_manager: CombatManager = CombatManager.new()
+	spill_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 130})], [_make_enemy("audit_a", "Audit A"), _make_enemy("audit_b", "Audit B")])
+	spill_manager.setup_relics(["spilloverCharge"])
+	var spill_hero: Dictionary = spill_manager.get_hero_states()[0]
+	spill_hero["selected_target_id"] = str(spill_manager.get_enemy_states()[0]["id"])
+	spill_manager.resolve_round({str(spill_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic spilloverCharge overkill carries", "overkillSpillover", "70",
+		str(int(spill_manager.get_enemy_states()[1]["current_hp"])))
+
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
 	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])

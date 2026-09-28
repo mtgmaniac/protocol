@@ -33,7 +33,7 @@
       "overcharge", "ironCurtain", "coordinatedStrike", "signalJam",
       "bulwarkAura", "naniteField"
     ],
-    ["defib_spark", "corrosion_bomb", "dead_mans_chip"],
+    ["defib_spark", "corrosion_bomb", "dead_mans_chip", "spilloverCharge"],
     ["ghost_veil", "phase_weave", "gravityWell"],
     ["targeting_optic", "plagueProtocol", "overflowBuffer"],
     ["cascade_jammer", "mainline_bus", "fieldCache"],

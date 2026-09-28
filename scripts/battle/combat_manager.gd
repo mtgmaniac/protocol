@@ -2406,6 +2406,11 @@ func _damage_state(
 			_cancel_targets_involving_down_state(state)
 			_log("%s is down." % state["unit"].display_name)
 			_on_unit_killed(state, attacker_state)
+			# Spillover Charge (G-40): a hero attack's damage past the HP it
+			# needed carries to the next enemy in slot order.
+			if remaining_damage > hp_before and not _is_hero_state(state) \
+					and not attacker_state.is_empty() and _is_hero_state(attacker_state) and has_relic("overkillSpillover"):
+				_spill_overkill(state, remaining_damage - hp_before, attacker_state)
 			# Dead Man's Hand relic: the first squad wipe each run — everyone
 			# survives at 1 HP and the next roll is all 20s.
 			if _is_hero_state(state) and _all_states_dead(_hero_states) and has_relic("squadWipeSurvive") and not GameState.dead_mans_hand_used:
@@ -2419,6 +2424,27 @@ func _damage_state(
 					_emit_event(hero_state, "survive", 1, "hero")
 
 	return remaining_damage
+
+
+# Spillover Charge (G-40): `amount` overkill from `attacker_state`'s hit that
+# downed `dead_state` lands on the next living, uncloaked enemy after it in slot
+# order (wrapping to the first slot). It is still the hero's hit: shields absorb
+# it, a Mark amplifies it, a Firewall blocks it, and a kill it makes counts for
+# the hero and can spill again.
+func _spill_overkill(dead_state: Dictionary, amount: int, attacker_state: Dictionary) -> void:
+	var start: int = _enemy_states.find(dead_state)
+	if start < 0:
+		return
+	var count: int = _enemy_states.size()
+	for step in range(1, count):
+		var next_state: Dictionary = _enemy_states[(start + step) % count]
+		if bool(next_state.get("dead", false)) or bool(next_state.get("cloaked", false)):
+			continue
+		_log("Spillover Charge: %d overkill carries to %s." % [amount, next_state["unit"].display_name])
+		if _ward_blocks_hostile(next_state):
+			return
+		_damage_state(next_state, amount, false, attacker_state)
+		return
 
 
 func _trigger_low_hp_squad_roll_buff() -> void:

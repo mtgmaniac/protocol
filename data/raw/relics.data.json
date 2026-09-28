@@ -210,6 +210,13 @@
     "effect": { "type": "overhealDamage" }
   },
   {
+    "id": "spilloverCharge",
+    "name": "Spillover Charge",
+    "desc": "Hero attacks: overkill damage carries to the next enemy.",
+    "icon": "bolt",
+    "effect": { "type": "overkillSpillover" }
+  },
+  {
     "id": "scrapConverter",
     "name": "Scrap Converter",
     "desc": "A hero die lands showing 1 or 2: +1 Protocol.",

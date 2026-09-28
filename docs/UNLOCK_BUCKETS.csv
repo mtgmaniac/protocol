@@ -61,6 +61,7 @@ relic,coordinatedStrike,Coordinated Strike,-,0,0,permanent +2 roll
 relic,signalJam,Signal Jam,-,0,0,permanent enemy -2 roll
 relic,bulwarkAura,Bulwark Aura,-,0,0,flat shield per turn
 relic,naniteField,Nanite Field,-,0,0,flat heal per turn
+relic,spilloverCharge,Spillover Charge,-,1,3,overkill carries to the next enemy - simple damage overflow (placeholder name)
 relic,gravityWell,Gravity Well,-,2,6,flat AoE damage per turn
 relic,plagueProtocol,Plague Protocol,-,3,9,enemies start burning
 relic,overflowBuffer,Overflow Buffer,-,3,9,protocol carryover - changes the between-battle economy
