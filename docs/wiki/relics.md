@@ -47,17 +47,30 @@ At battle setup `CombatManager.setup_relics` copies each owned relic's effect di
 
 | id | Name | Effect key | Coded behavior | Trigger | Handler |
 |---|---|---|---|---|---|
-| `salvageRig` | Salvage Rig | `protocolOnShieldBreak 1` | +1 Protocol when damage reduces an enemy shield to 0 (Breach destruction does NOT count) | enemy shield break | `combat_manager.gd:1867-1870` |
-| `chitinGraft` | Chitin Graft | `heroHealOnOwnKill 3` | the killing hero heals 3 (direct kills) | hero kill | `combat_manager.gd:2142-2145` |
-| `resonantChorus` | Resonant Chorus | `turn1RollFloor 8` | turn-1 HERO dice below 8 are lifted to 8 (frozen dice untouched) | turn-1 roll | `battle_scene.gd:1413,1428-1431` |
-| `rootAccess` | Root Access | `setCostZeroOncePerBattle` | the first Set each battle costs 0 | Set action | `battle_engine.gd:246-249,254-261` |
-| `mantleCore` | Mantle Core | `shieldsPersist` | hero shields persist until broken (the single exception to one-round shields, TRUTH rule 5) | battle start flag | `combat_manager.gd:397-408` |
+Boss relic rework (Kev, 2026-09-27; DECISIONS_RESOLVED G-34..G-41). The rules are in TRUTH "Boss relics"; the screen half is `scripts/battle/boss_relic_actions.gd`.
+
+| id | Name | Effect key | Coded behavior | Trigger | Handler |
+|---|---|---|---|---|---|
+| `scrapConverter` | Scrap Converter (facility) | `protocolOnLowLanding 1, maxFace 2` | +1 Protocol per hero die whose physical landing shows 1 or 2 (printed face); not Set, Nudge or frozen repeats | a roll, Reroll or Heretic re-throw settles | `BattleEngine.landing_protocol` |
+| `bloodFrenzy` | Blood Frenzy (hive) | `killFreezesKillerDie 1` | the killing hero's die freezes (one repeat, once per hero per round) | hero kill | `CombatManager._process_unit_killed` |
+| `firewallHack` | Firewall Hack (veil) | `enemyNudgeOncePerTurn 3` | once per turn, Nudge one unfrozen, unhijacked enemy die -3 for 1 Protocol (floor 1) | Nudge pick on an enemy die | `BattleEngine.apply_firewall_hack` |
+| `hereticSignal` | Heretic Signal (voidCirclet) | `rethrowAllOncePerBattle` | once per battle, re-throw every unfrozen die (heroes and enemies); tapped in the loadout, confirmed | planning phase | `BattleEngine.apply_heretic_signal`, `BossRelicActions.rethrow_all` |
+| `tectonicCharge` | Tectonic Charge (stellarMenagerie) | `heroesHoldRoundOne 2` | round 1: heroes hold (no hero dice, no hero actions); from round 2 a permanent +2 on every hero roll | round 1 / its end | `CombatManager.heroes_hold_this_round`, `resolve_round` |
+
+Retired in the rework (each old unlock migrates to its operation's new relic, `SaveManager.LEGACY_BOSS_RELIC_IDS`): Salvage Rig, Chitin Graft, Resonant Chorus, Root Access (the relic; the Signal Hierophant's standing rule keeps the name), Mantle Core.
+
+### Draft relics added 2026-09-27 (placeholder names)
+
+| id | Name | Effect key | Coded behavior | Bucket |
+|---|---|---|---|---|
+| `overhealRelay` | Overheal Relay | `overhealDamage` | healing a hero past max HP deals the excess to a random living enemy (seeded) | 14 |
+| `spilloverCharge` | Spillover Charge | `overkillSpillover` | a hero attack's overkill carries to the next living, uncloaked enemy in slot order (wraps) | 1 |
 
 ## Why it works that way
 
 - The one-draft-per-run relic economy (battle 5 cache + optional Starting Directive) keeps relic×relic stacking bounded by design — most relic pairs can only coexist as boss-relic + drafted.
 - Overflow Vent damage routes through the RollProvider explicitly for the determinism fence (INVARIANTS #1); protocol grants flow through the pending-grant pool so the cap/vent rule lives once (`battle_engine.gd:182`).
-- `shieldsPersist` is the SINGLE named exception to per-side shield expiry (DECISIONS_RESOLVED #2); same flag drives the MANTLE TYRANT standing rule.
+- `shields_persist` is the SINGLE named exception to per-side shield expiry (DECISIONS_RESOLVED #2); since the boss relic rework only the MANTLE TYRANT standing rule sets it (the Mantle Core relic is retired, G-41).
 - Emergency Signal's `turns: 2` is the 2026-07-06 timer-contract repair (a 1t mid-round buff would expire before shaping a roll — TRUTH rule 10).
 - Boss relics landed as data in pkg3.5 (`248ada0`) and became drop/unlock content in pkg5; the battle-5 soft-lock fix (2026-07-06) made the draft key on `drafted_relic_count()` instead of `relics.is_empty()`.
 - `martyrdomProtocol`'s id ≠ its display name "Vengeance Protocol": internal ids are frozen (INVARIANTS #11).

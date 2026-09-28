@@ -2,9 +2,14 @@
 #
 #   godot --headless --path . -s scripts/debug/boss_relic_test.gd
 #
-# Pins every rule and edge case of the new relics as they land (one section
-# per relic), the save migration from the retired boss relics, and the live
-# battle-screen paths (a real BattleScene with rigged real throws).
+# Pins every rule and edge case of the five new boss relics (Scrap Converter,
+# Blood Frenzy, Firewall Hack, Heretic Signal, Tectonic Charge) and the two new
+# draft relics (Overheal Relay, Spillover Charge), the save migration from the
+# retired boss relics, and the live battle-screen paths (a real BattleScene with
+# rigged real throws). The cross-process Heretic Signal refresh is the
+# `battle checkpoint` gate's save_heretic / resume_heretic legs.
+# scripts/checks/boss_relic_mutations.py breaks each rule in the source on
+# purpose and proves this gate fails.
 extends SceneTree
 
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"

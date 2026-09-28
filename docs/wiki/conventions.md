@@ -287,7 +287,7 @@ the original spec value; the runtime constant wins.
 - `class_name` scripts need one Godot run with `--import` after a fresh clone so
   the class registers (`.godot/` is gitignored).
 - Wall of Static's cap-15 jam clause is an intentional exception to `JAM_CAP = 10`.
-- `shieldsPersist` (Mantle Core / MANTLE TYRANT) is the ONLY legal shield
+- `shields_persist` (MANTLE TYRANT) is the ONLY legal shield
   persistence; nothing else may persist a shield.
 
 ## ⚠ Open findings

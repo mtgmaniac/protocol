@@ -1,5 +1,17 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-09-27 boss relic rework (Kev, G-34..G-41; branch `boss-relic-rework`, not merged):**
+the five boss relics are replaced. Scrap Converter (Facility), Blood Frenzy (Hive),
+Firewall Hack (Veil), Heretic Signal (Signal Purge) and Tectonic Charge (Mantle
+Hunt) take the old slots; Salvage Rig, Chitin Graft, Resonant Chorus, Root Access
+and Mantle Core are gone, with every piece of code only they used. Overheal Relay
+and Spillover Charge (placeholder names) join the normal draft pool. A profile or
+run that held an old boss relic gets its operation's new one. Rules and edge cases:
+"Boss relics" under Rewards below. Relics are now 36 = 31 draftable + 5 boss.
+All seven relics use placeholder art. Gates: `boss relics`, `battle checkpoint`
+(Heretic Signal refresh legs), `dice face` (Firewall Hack tip-over and Heretic
+Signal re-throw paths).
+
 **2026-09-27 tutorial dice follow-up implemented and verified:** main
 now includes the Godot-reviewed dice work through d5c25e1 and, since
 2026-09-27, the follow-up branch `codex/tutorial-real-rolls`. Only battle 1 rounds 1–2 and battle 2 round 1

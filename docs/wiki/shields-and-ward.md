@@ -14,7 +14,7 @@ A shield is a stack `{amt, skip_next_tick}` appended by `_add_shield_stack` (`sc
 
 No shield duration field exists in data — the 2026-07-07 audit found zero `shT` offenders (TRUTH rule 5).
 
-**The single named exception — `shieldsPersist`:** the Mantle Core relic sets `shields_persist` on every hero and `setup_battle` sets it on MANTLE TYRANT (`:38-41`). Persistent shields skip expiry entirely and stack round over round; only damage (or Breach/wipeShields) removes them. **A unit's total shield is now capped at its max HP** (`_cap_shield_at_max_hp`, A-034 fix 2026-07-08) so persistent shields can't accumulate without bound from per-round drips (Bulwark Aura, Aegis Field). Audit-pinned: `_run_shield_timing_regression` (`ability_audit.gd:671`), boss Tyrant 6/12 stacking (`:1546`).
+**The single named exception, `shields_persist`:** `setup_battle` sets it on MANTLE TYRANT. (The Mantle Core relic that also set it on heroes was retired in the boss relic rework, G-41.) Persistent shields skip expiry entirely and stack round over round; only damage (or Breach/wipeShields) removes them. **A unit's total shield is now capped at its max HP** (`_cap_shield_at_max_hp`, A-034 fix 2026-07-08) so persistent shields can't accumulate without bound from per-round drips (Bulwark Aura, Aegis Field). Audit-pinned: `_run_shield_timing_regression` (`ability_audit.gd:671`), boss Tyrant 6/12 stacking (`:1546`).
 
 ### Absorption (`_damage_state`, `combat_manager.gd:1843-1874`)
 
