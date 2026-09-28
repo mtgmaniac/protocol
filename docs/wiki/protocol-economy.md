@@ -22,7 +22,7 @@ Protocol (PP) is the battle-only dice-manipulation resource. The pool lives in `
 |---|---|---|---|
 | Nudge (+3 effective) | **1** | `battle_engine.gd:220-242` | Priming Charge gear: holder's first Nudge each battle free (:221); Reverse Gimbal flip is free (:234) |
 | Reroll | **2** | `battle_engine.gd:210` | none |
-| Set a die | **4** (`SET_DIE_COST`, :18) | `battle_engine.gd:246-261` | Root Access boss relic: first Set each battle 0 (:247) |
+| Set a die | **4** (`SET_DIE_COST`, :18) | `battle_engine.gd:246-261` | (the Root Access relic's free Set was retired, G-41) |
 | Item (any rarity) | **1 flat** | `battle_engine.gd:287-294` | Protocol Override relic → 0; Supply Drone intercept (`items_free`) → 0; **Sealed Supplies route modifier → 2** |
 | Twin Fates copy | **0**, once per battle | `battle_engine.gd:266` | relic-gated button (`protocol_actions.gd:36`) |
 
@@ -41,7 +41,7 @@ UI affordability checks live in `scripts/battle/protocol_actions.gd` (:230 Rerol
 | Relic `protocolCarryover` — Overflow | 50% of unspent | battle victory → next battle start | `battle_scene.gd:1171-1175`, `GameState.gd:757-767` |
 | Relic `protocolOnItemUse` — Protocol Override | +1 (and items cost 0) | any item use | `protocol_actions.gd:934-936` |
 | Relic `protocolOnMarkedKill` — Salvage Directive | +2 | hero kills a target whose Mark was consumed by the killing hit | `combat_manager.gd:2147-2150` |
-| Relic `protocolOnShieldBreak` — Salvage Rig (boss relic) | +1 | a hero hit breaks the last of an enemy's shield | `combat_manager.gd:1867-1869` |
+| Relic `protocolOnLowLanding` (Scrap Converter, boss relic) | +1 per die | a hero die's physical landing shows 1 or 2 | `BattleEngine.landing_protocol` |
 | Ability `gainProtocol` (hero bands, e.g. Signal Breaker kit) | data | ability resolves | `combat_manager.gd:1011-1017`; Surge Wiring directive adds +2 on the named ability (:1013) |
 | Directive `rfeGrantsProtocol` — Signal Theft | +1 per roll-down applied | hero applies RFE | `combat_manager.gd:1178-1181` |
 | Item `gainProtocol` — Protocol Cell +2 / Pack +3 / Array +4 / Core +5 | data | item use | `protocol_actions.gd:941-945`; `data/raw/items.data.json:199-226` |

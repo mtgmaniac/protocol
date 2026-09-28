@@ -57,6 +57,7 @@ func resolve_step(bs: BattleState) -> Dictionary:
 	bs.enemy_rolls.clear()
 	bs.hero_roll_nudges.clear()
 	bs.hero_roll_sets.clear()
+	bs.enemy_roll_nudges.clear()
 	return {
 		"result": result,
 		"eff_hero_rolls": eff_hero_rolls,
@@ -266,26 +267,157 @@ func apply_nudge(bs: BattleState, hero_id: String, first_nudge_free_gear: bool, 
 	return {"kind": "applied", "cost": cost}
 
 
-# Root Access boss relic: the first Set each battle costs 0.
-func set_cost(bs: BattleState) -> int:
-	if combat_manager.has_relic("setCostZeroOncePerBattle") and not bs.root_access_used:
-		return 0
+# Set costs SET_DIE_COST. (Kept as a function: the UI and the sim policies
+# price Set through it.)
+func set_cost(_bs: BattleState) -> int:
 	return SET_DIE_COST
 
 
 # Set-a-die to an absolute effective value; an explicit Set overrides any prior
-# Nudge. Mutates bs; returns the cost paid (0 signals the Root Access freebie),
-# or -1 (nothing spent, nothing set) when the die is frozen.
+# Nudge. Mutates bs; returns the cost paid, or -1 (nothing spent, nothing set)
+# when the die is frozen.
 func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 	if not can_alter_die(_hero_state_by_id(hero_id)):
 		return -1
 	var cost: int = set_cost(bs)
-	if cost == 0:
-		bs.root_access_used = true
 	bs.protocol_points -= cost
 	bs.hero_roll_sets[hero_id] = value
 	bs.hero_roll_nudges.erase(hero_id)
 	return cost
+
+
+# ── Boss relics (rework, Kev 2026-09-27; DECISIONS_RESOLVED G-34..G-38) ──────
+# The dice rules of the boss relics live here so the live screen and the
+# headless sim share them. Blood Frenzy is a kill hook in combat_manager, and
+# Tectonic Charge's +3 is granted there when round 1 ends.
+
+# Scrap Converter (G-34): Protocol for each hero die in `hero_ids` whose
+# physical landing SHOWS 1 or 2 (the printed face, modifiers included). The
+# caller passes only dice that were just thrown or re-thrown, never a Set,
+# Nudge or frozen repeat, and applies the amount through its own gain wrapper
+# (the cap and Overflow Vent live there).
+func landing_protocol(bs: BattleState, hero_ids: Array) -> int:
+	if not combat_manager.has_relic("protocolOnLowLanding"):
+		return 0
+	var max_face: int = int(combat_manager.get_relic_value("protocolOnLowLanding", "maxFace", 2))
+	var per_die: int = int(combat_manager.get_relic_value("protocolOnLowLanding", "amount", 1))
+	var total: int = 0
+	for id_variant in hero_ids:
+		var hero_id: String = str(id_variant)
+		var state: Dictionary = _hero_state_by_id(hero_id)
+		if state.is_empty() or bool(state.get("dead", false)) or not can_alter_die(state):
+			continue
+		var raw: int = int(bs.hero_rolls.get(hero_id, 0))
+		if raw <= 0:
+			continue
+		# The printed face: the landed natural through the same value rule the
+		# faces were printed with (a fresh landing has no Nudge or Set).
+		if combat_manager.get_effective_roll(state, raw) <= max_face:
+			total += per_die
+	return total
+
+
+# The living hero dice that were thrown this roll (Scrap Converter's candidates
+# after a full throw). A frozen die repeats; it did not land.
+func thrown_hero_ids(bs: BattleState) -> Array:
+	var ids: Array = []
+	for state in combat_manager.get_hero_states():
+		var hero_id: String = str(state["id"])
+		if bool(state.get("dead", false)) or not bs.hero_rolls.has(hero_id) or not can_alter_die(state):
+			continue
+		ids.append(hero_id)
+	return ids
+
+
+# Firewall Hack (G-36): once per turn, Nudge one enemy die DOWN by the relic's
+# amount for the normal Nudge cost. Never below 1 (the effective-roll clamp).
+# A frozen die can't be altered (Dice rules 8) and a hijacked die copies the
+# heroes' dice, so neither can be picked.
+const FIREWALL_HACK_COST := 1
+
+
+func firewall_hack_amount() -> int:
+	return int(combat_manager.get_relic_value("enemyNudgeOncePerTurn", "amount", 3))
+
+
+# "" when this die can be hacked now, else why not:
+# "no_relic" | "used" | "no_die" | "frozen" | "hijacked" | "protocol".
+func firewall_hack_block(bs: BattleState, enemy_state: Dictionary) -> String:
+	if not combat_manager.has_relic("enemyNudgeOncePerTurn"):
+		return "no_relic"
+	if bs.firewall_hack_used:
+		return "used"
+	if enemy_state.is_empty() or bool(enemy_state.get("dead", false)) \
+			or int(bs.enemy_rolls.get(str(enemy_state.get("id", "")), 0)) <= 0:
+		return "no_die"
+	if not can_alter_die(enemy_state):
+		return "frozen"
+	if bool(enemy_state.get("hijack_pending", false)):
+		return "hijacked"
+	if bs.protocol_points < FIREWALL_HACK_COST:
+		return "protocol"
+	return ""
+
+
+# Applies the hack. True when it landed (cost paid, die lowered).
+func apply_firewall_hack(bs: BattleState, enemy_state: Dictionary) -> bool:
+	if firewall_hack_block(bs, enemy_state) != "":
+		return false
+	bs.protocol_points -= FIREWALL_HACK_COST
+	bs.firewall_hack_used = true
+	bs.enemy_roll_nudges[str(enemy_state["id"])] = -firewall_hack_amount()
+	return true
+
+
+# Heretic Signal (G-37): once per battle, for the relic's Protocol cost (3),
+# every die on the board that isn't frozen is thrown again. Each re-thrown die is a fresh roll, like a Reroll:
+# its Nudge / Set / Firewall Hack is cleared (not refunded). Frozen dice keep
+# their value.
+func heretic_signal_cost() -> int:
+	return int(combat_manager.get_relic_value("rethrowAllOncePerBattle", "cost", 0))
+
+
+func heretic_signal_available(bs: BattleState) -> bool:
+	return combat_manager.has_relic("rethrowAllOncePerBattle") and not bs.heretic_signal_used \
+		and not (bs.hero_rolls.is_empty() and bs.enemy_rolls.is_empty()) \
+		and bs.protocol_points >= heretic_signal_cost()
+
+
+# `landed` = {"hero": {id: raw}, "enemy": {id: raw}} from the live tray; empty =
+# draw the seeded stream (sim / skip-visuals). Returns the re-thrown ids per
+# side ({"hero": [...], "enemy": [...]}), or {} when it can't be used now.
+func apply_heretic_signal(bs: BattleState, landed: Dictionary = {}) -> Dictionary:
+	if not heretic_signal_available(bs):
+		return {}
+	bs.heretic_signal_used = true
+	bs.protocol_points -= heretic_signal_cost()
+	var thrown: Dictionary = {"hero": [], "enemy": []}
+	for side in ["hero", "enemy"]:
+		var states: Array = combat_manager.get_hero_states() if side == "hero" else combat_manager.get_enemy_states()
+		var rolls: Dictionary = bs.hero_rolls if side == "hero" else bs.enemy_rolls
+		var landed_side: Dictionary = landed.get(side, {})
+		for state in states:
+			var uid: String = str(state["id"])
+			if bool(state.get("dead", false)) or not rolls.has(uid) or not can_alter_die(state):
+				continue
+			var raw: int = int(landed_side.get(uid, 0)) if not landed.is_empty() else roll_provider.roll_d20()
+			if raw <= 0:
+				continue
+			rolls[uid] = raw
+			if side == "hero":
+				bs.hero_roll_nudges.erase(uid)
+				bs.hero_roll_sets.erase(uid)
+			else:
+				bs.enemy_roll_nudges.erase(uid)
+			(thrown[side] as Array).append(uid)
+	return thrown
+
+
+# Tectonic Charge (G-38): in round 1 of each battle the heroes hold - their
+# dice are not thrown and they don't act. (The round-1 shield and the +3 from round 2 is a permanent
+# roll buff combat_manager grants when round 1 ends.)
+func heroes_hold_this_round() -> bool:
+	return combat_manager.heroes_hold_this_round()
 
 
 # ── Item effects not on combat_manager (extracted from battle_scene) ──────────
@@ -516,30 +648,30 @@ func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> 
 	var hijacked: int = hijack_value(state, bs)
 	if hijacked > 0:
 		return hijacked
-	return combat_manager.get_effective_roll(state, raw_roll)
+	# Firewall Hack: the player's -N Nudge on this enemy die (never below 1).
+	var nudge: int = int(bs.enemy_roll_nudges.get(str(state.get("id", "")), 0))
+	return clampi(combat_manager.get_effective_roll(state, raw_roll) + nudge, 1, 20)
 
 
 # ── Printed faces (G-24) ──────────────────────────────────────────────────────
 # Modifiers known before the roll are printed on the die before it is thrown:
 # each face shows the value the unit would act on if the die landed on it. The
-# raw overrides are the ones battle_scene applies after landing (forced 20,
-# Resonant Chorus) and the value rule is get_effective_roll (buffs, penalties,
+# raw override is the one battle_scene applies after landing (a forced 20)
+# and the value rule is get_effective_roll (buffs, penalties,
 # jam, rewrite) — the same functions, so the landed face always reads the value
 # the engine then computes. Hijack is not known before the roll (it copies the
 # heroes' dice) and is not printed.
 
-# The raw roll a landed natural becomes under the pre-roll raw overrides.
-func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
+# The raw roll a landed natural becomes under the pre-roll raw override.
+func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int) -> int:
 	if is_hero and bool(state.get("forced_20_pending", false)):
 		return 20
-	if is_hero and chorus_floor and natural > 0 and natural < 8:
-		return 8
 	return natural
 
 
 # The value printed on the face with natural number `natural`.
-func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
-	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural, chorus_floor))
+func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int) -> int:
+	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural))
 
 
 # G-27 / G-25: the faces a die prints for its CURRENT state — face n reads the

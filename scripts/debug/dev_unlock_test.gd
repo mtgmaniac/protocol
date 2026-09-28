@@ -34,12 +34,12 @@ func run() -> void:
 	var sm: Node = root.get_node("SaveManager")
 	var saved: Dictionary = sm.get("data").duplicate(true)
 	var old_profile: Dictionary = saved.duplicate(true)
-	old_profile["unlocks"]["boss_relics"] = ["twinFates", "rootAccess"]
+	old_profile["unlocks"]["boss_relics"] = ["twinFates", "hereticSignal"]
 	old_profile["unlocks"]["item_gates_awarded"] = 14
 	old_profile["settings"]["dev_mode"] = true
 	sm.call("_merge_loaded", old_profile)
 	var migrated: Dictionary = sm.get("data")
-	check(migrated["unlocks"]["boss_relics"] == ["rootAccess"], "Removed relic must be pruned without losing other unlocks")
+	check(migrated["unlocks"]["boss_relics"] == ["hereticSignal"], "Removed relic must be pruned without losing other unlocks")
 	check(migrated["unlocks"]["item_gates_awarded"] == 14, "Unlock progression must survive migration")
 	check(not migrated["settings"].has("dev_mode"), "Old persisted developer mode must be discarded")
 	sm.set("data", saved)

@@ -83,6 +83,9 @@ GATES = [
     # + display, event-consumable pool filter, and the silent-loss/swap contract.
     ("loadout cap", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/ConsumableLoadoutRunner.tscn"], "[LOADOUT_CAP] PASS", False),
     ("ability audit", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/AbilityAuditRunner.tscn"], ", 0 failed", False),
+    # Boss relic rework (G-34..G-41): every rule + edge case of the seven new
+    # relics, the save migration, and the live screen paths.
+    ("boss relics", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/boss_relic_test.gd"], "[BOSS_RELICS] PASS", False),
     # Build F: counter integrity (once per encounter entered), run-end-only gate
     # evaluation, delta correctness, boss-relic announcement, sim pin.
     ("unlock progression", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/unlock_progression_test.gd"], "[UNLOCK_PROGRESSION] PASS", False),

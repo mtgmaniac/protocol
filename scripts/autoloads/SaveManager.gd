@@ -43,12 +43,29 @@ const RUN_SAVE_SCHEMA_FINGERPRINT := "4c439766b9384914"
 # First clear of an operation unlocks its boss's relic (drafted as a
 # Starting Directive at run start; excluded from normal relic drafts).
 const BOSS_RELIC_BY_OP := {
-	"facility": "salvageRig",
-	"hive": "chitinGraft",
-	"veil": "resonantChorus",
-	"voidCirclet": "rootAccess",
-	"stellarMenagerie": "mantleCore",
+	"facility": "scrapConverter",
+	"hive": "bloodFrenzy",
+	"veil": "firewallHack",
+	"voidCirclet": "hereticSignal",
+	"stellarMenagerie": "tectonicCharge",
 }
+# Boss relic rework (Kev, 2026-09-27, DECISIONS_RESOLVED G-41): each old boss
+# relic id maps to its operation's new relic. The profile's unlocked list and an
+# in-progress run (held relics, Starting Directive) both translate through this
+# one table, so nobody who earned an old boss relic loses it.
+const LEGACY_BOSS_RELIC_IDS := {
+	"salvageRig": "scrapConverter",
+	"chitinGraft": "bloodFrenzy",
+	"resonantChorus": "firewallHack",
+	"rootAccess": "hereticSignal",
+	"mantleCore": "tectonicCharge",
+}
+
+
+## A relic id as it reads today: legacy boss relic ids become their
+## operation's new relic; every other id passes through unchanged.
+static func current_relic_id(relic_id: String) -> String:
+	return str(LEGACY_BOSS_RELIC_IDS.get(relic_id, relic_id))
 
 # --- Progression / unlocks ---
 # Heroes the profile owns from the very first launch.
@@ -190,8 +207,11 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	var loaded_unlocks: Dictionary = loaded.get("unlocks", {})
 	var boss_relics: Array = []
 	for relic_id in loaded_unlocks.get("boss_relics", []):
-		if str(relic_id) != "twinFates":
-			boss_relics.append(str(relic_id))
+		# Legacy boss relics become their operation's new relic (never dropped);
+		# Twin Fates was removed outright (G-10).
+		var current_id: String = current_relic_id(str(relic_id))
+		if current_id != "twinFates" and not boss_relics.has(current_id):
+			boss_relics.append(current_id)
 	data["unlocks"]["boss_relics"] = boss_relics
 	# New unlock keys heal to their defaults when absent (older saves).
 	var had_new_schema: bool = loaded_unlocks.has("heroes")

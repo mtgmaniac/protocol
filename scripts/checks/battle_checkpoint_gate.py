@@ -145,6 +145,19 @@ def main() -> int:
         for key in ["round4_hero_rolls", "round4_enemy_rolls", "post_roll_state", "post_roll_run"]:
             check(save_r[key] == resume_r[key], f"reroll reload preserves {key} (including cost and consumed item)")
 
+    # Heretic Signal (boss relic rework, G-37): a refresh after the re-throw
+    # restores the re-thrown dice and keeps the relic used for the battle.
+    save_h = run_leg(config, "save_heretic")
+    resume_h = run_leg(config, "resume_heretic") if save_h else None
+    check(bool(save_h and resume_h) and not (save_h or {}).get("errors") and not (resume_h or {}).get("errors"),
+          "Heretic Signal save/resume legs ran clean")
+    if save_h and resume_h:
+        for key in ["round4_hero_rolls", "round4_enemy_rolls", "post_roll_state", "post_roll_run"]:
+            check(save_h[key] == resume_h[key], f"Heretic Signal reload preserves {key}")
+        check(resume_h.get("heretic_used_after_resume") is True and resume_h.get("heretic_available_after_resume") is False
+              and resume_h.get("heretic_menu_note") == "USED THIS BATTLE",
+              "after the reload Heretic Signal stays used for the battle")
+
     if failures:
         print(f"[BATTLE_CHECKPOINT] FAIL - {len(failures)} check(s)")
         return 1

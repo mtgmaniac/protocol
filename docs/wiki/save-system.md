@@ -44,7 +44,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 
   NOTE: the hint API (`hero_unlock_hint` / `operation_unlock_hint`, `:348-357`) has **zero callers** — locked heroes/ops deliberately render `[ LOCKED ]` with no hint (`home_screen.gd:599-613, 724-727`; TRUTH §Save system). Dead code, finding F-meta-06.
 
-- **Boss relics** (`BOSS_RELIC_BY_OP`, `:13-19`): facility→salvageRig, hive→chitinGraft, veil→resonantChorus, voidCirclet→rootAccess, stellarMenagerie→mantleCore. Offered as Starting Directives at DEPLOY (`home_screen.gd:819-906` → `GameState.set_starting_directive`, `GameState.gd:733-738`); excluded from normal relic drafts.
+- **Boss relics** (`BOSS_RELIC_BY_OP`, `:13-19`): facility→scrapConverter, hive→bloodFrenzy, veil→firewallHack, voidCirclet→hereticSignal, stellarMenagerie→tectonicCharge (boss relic rework, 2026-09-27). Profiles and runs holding a retired boss relic id migrate through `LEGACY_BOSS_RELIC_IDS` on load (G-41). Offered as Starting Directives at DEPLOY (`home_screen.gd:819-906` → `GameState.set_starting_directive`, `GameState.gd:733-738`); excluded from normal relic drafts.
 - `check_new_unlocks()` (`:370`) hands this run's awards to the run-end UNLOCKED panel (`run_end_screen.gd:107-126`); `_run_end_unlocks` is in-memory only.
 
 ### Grandfather clauses (`_merge_loaded`, `SaveManager.gd:103-144`)

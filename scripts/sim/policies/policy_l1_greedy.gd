@@ -128,6 +128,24 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 			var nudged: Dictionary = engine.apply_nudge(bs, unit_id, false, false)
 			if str(nudged.get("kind", "")) == "applied":
 				spends.append({"kind": "nudge", "unit": unit_id, "cost": int(nudged.get("cost", 1)), "detail": "+3"})
+	# 2b) Firewall Hack boss relic (G-36): once per turn, lower the most dangerous
+	#     enemy die (highest effective value) whose -3 drops it into a lower
+	#     band. Same 1-point buffer as the hero Nudge. Slot order on ties.
+	if bs.protocol_points >= 2:
+		var hack: Dictionary = {}
+		var hack_eff: int = 0
+		for enemy_state_variant in cm.get_enemy_states():
+			var enemy_state: Dictionary = enemy_state_variant
+			if engine.firewall_hack_block(bs, enemy_state) != "":
+				continue
+			var e_eff: int = engine.effective_enemy_roll(enemy_state, str(enemy_state["id"]), bs)
+			var e_zone: String = str(engine.dice_manager.get_ability_for_roll(enemy_state.get("unit"), e_eff).get("zone", ""))
+			var lowered: String = str(engine.dice_manager.get_ability_for_roll(enemy_state.get("unit"), maxi(e_eff - engine.firewall_hack_amount(), 1)).get("zone", ""))
+			if lowered != e_zone and e_eff > hack_eff:
+				hack = enemy_state
+				hack_eff = e_eff
+		if not hack.is_empty() and engine.apply_firewall_hack(bs, hack):
+			spends.append({"kind": "firewall_hack", "unit": str(hack["id"]), "cost": BattleEngine.FIREWALL_HACK_COST, "detail": "-%d" % engine.firewall_hack_amount()})
 	# 3) Set-a-die 20 when flush (cost + 3 buffer) and a die is still mid-band —
 	#    banked protocol is worthless in a lost run; convert it to an overload.
 	for hero_state_variant in cm.get_hero_states():
@@ -146,6 +164,28 @@ func decide_round(engine: BattleEngine, bs: BattleState, cm: CombatManager, _gs:
 			spends.append({"kind": "set", "unit": unit_id, "cost": paid, "detail": "= 20"})
 			break  # at most one Set per round
 	return spends
+
+
+# ── Heretic Signal (G-37): re-throw when the board is lopsided against us —
+# the enemy dice sit at least 8 pips above an average d20 (10.5 each) more
+# than the hero dice do. A re-throw pulls both sides back to average, so it
+# pays exactly when enemies rolled high and heroes rolled low. Frozen dice
+# don't move, so they don't count. Deterministic.
+func wants_heretic_signal(engine: BattleEngine, bs: BattleState, cm: CombatManager) -> bool:
+	var edge: float = 0.0
+	for hero_state_variant in cm.get_hero_states():
+		var hero_state: Dictionary = hero_state_variant
+		var hid: String = str(hero_state["id"])
+		if bool(hero_state.get("dead", false)) or not bs.hero_rolls.has(hid) or not engine.can_alter_die(hero_state):
+			continue
+		edge -= float(engine.effective_hero_roll(hero_state, hid, bs)) - 10.5
+	for enemy_state_variant in cm.get_enemy_states():
+		var enemy_state: Dictionary = enemy_state_variant
+		var eid: String = str(enemy_state["id"])
+		if bool(enemy_state.get("dead", false)) or not bs.enemy_rolls.has(eid) or not engine.can_alter_die(enemy_state):
+			continue
+		edge += float(engine.effective_enemy_roll(enemy_state, eid, bs)) - 10.5
+	return edge >= 8.0
 
 
 # ── Consumable use (sim-D): one item per round, triage-first. ─────────────────

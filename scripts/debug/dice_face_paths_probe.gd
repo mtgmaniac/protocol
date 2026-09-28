@@ -42,10 +42,12 @@ func _run() -> void:
 	var h2: Dictionary = heroes[2]
 	var e0: Dictionary = enemies[0]
 
-	cm.get("_active_relic_effects").append({"type": "turn1RollFloor"})
-	await _roll("round-1 roll with Resonant Chorus")
-	_report("chorus (no die below 8 on heroes)")
-	cm.get("_active_relic_effects").clear()
+	for hs in heroes:
+		hs["perm_roll_buff"] = 3
+	await _roll("roll with Tectonic Charge's +3")
+	_report("tectonic (no hero die below 4)")
+	for hs in heroes:
+		hs["perm_roll_buff"] = 0
 	# Post-roll +roll buff (Sync Antenna's code path: a 1-turn roll-buff stack
 	# applied after the dice settle) on the lowest hero die.
 	var low: Dictionary = h0

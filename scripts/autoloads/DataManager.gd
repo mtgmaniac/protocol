@@ -102,11 +102,16 @@ const RELIC_ICON_BY_ID := {
 	"chainDoctrine": "res://assets/icons/items/chainDoctrine.png",
 	"scavengerManifest": "res://assets/icons/items/scavengerManifest.png",
 	"deadMansHand": "res://assets/icons/items/deadMansHand.png",
-	"salvageRig": "res://assets/icons/items/salvageRig.png",
-	"chitinGraft": "res://assets/icons/items/chitinGraft.png",
-	"resonantChorus": "res://assets/icons/items/resonantChorus.png",
-	"rootAccess": "res://assets/icons/items/rootAccess.png",
-	"mantleCore": "res://assets/icons/items/mantleCore.png",
+	# PLACEHOLDER ART (boss relic rework, 2026-09-27): the five boss relics
+	# reuse the art of the relics they replaced, and the two new draft relics
+	# reuse unused relic art. All seven need new icons.
+	"scrapConverter": "res://assets/icons/items/salvageRig.png",
+	"bloodFrenzy": "res://assets/icons/items/chitinGraft.png",
+	"firewallHack": "res://assets/icons/items/rootAccess.png",
+	"hereticSignal": "res://assets/icons/items/resonantChorus.png",
+	"tectonicCharge": "res://assets/icons/items/mantleCore.png",
+	"overhealRelay": "res://assets/icons/items/gravityWell.png",
+	"spilloverCharge": "res://assets/icons/items/twinFates.png",
 }
 
 # Relics drawn with another asset's art AND framing entry: [section, id] of the

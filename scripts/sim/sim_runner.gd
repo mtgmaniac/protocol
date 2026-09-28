@@ -714,15 +714,38 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 	var result: String = "ongoing"
 	while rounds < ROUND_SAFETY_CAP:
 		rounds += 1
-		# Roll (SeededRollProvider) → frozen overrides → record.
-		bs.hero_rolls = engine.roll_states(cm.get_hero_states())
+		# Roll (SeededRollProvider) → frozen overrides → record. Tectonic Charge:
+		# no hero die is thrown while the heroes hold (round 1).
+		bs.hero_rolls = {} if engine.heroes_hold_this_round() else engine.roll_states(cm.get_hero_states())
 		bs.enemy_rolls = engine.roll_states(cm.get_enemy_states())
+		bs.firewall_hack_used = false
 		engine.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)
 		engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
 		engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
 		engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
+		# Scrap Converter: the dice that just landed (the live screen grants the
+		# same engine amount when its tray settles).
+		engine.gain_protocol(bs, engine.landing_protocol(bs, engine.thrown_hero_ids(bs)), engine.max_protocol(cap_override))
+		var spends: Array = []
+		# Heretic Signal: the policy may re-throw every unfrozen die, once per battle
+		# (the engine takes the relic's Protocol cost).
+		if engine.heretic_signal_available(bs) and policy.wants_heretic_signal(engine, bs, cm):
+			var heretic_cost: int = engine.heretic_signal_cost()
+			var thrown: Dictionary = engine.apply_heretic_signal(bs)
+			for side in ["hero", "enemy"]:
+				var side_states: Array = cm.get_hero_states() if side == "hero" else cm.get_enemy_states()
+				engine.record_roll_values_for_states(side_states.filter(func(st): return (thrown.get(side, []) as Array).has(str(st["id"]))),
+					bs.hero_rolls if side == "hero" else bs.enemy_rolls)
+			engine.gain_protocol(bs, engine.landing_protocol(bs, thrown.get("hero", [])), engine.max_protocol(cap_override))
+			spends.append({"kind": "heretic_signal", "unit": "", "cost": heretic_cost, "detail": "%d dice" % ((thrown.get("hero", []) as Array).size() + (thrown.get("enemy", []) as Array).size())})
 		# Policy: hero targets + protocol spends before the round resolves.
-		var spends: Array = policy.decide_round(engine, bs, cm, gs)
+		spends.append_array(policy.decide_round(engine, bs, cm, gs))
+		# Scrap Converter on the policy's rerolled dice (physical landings too).
+		var rerolled: Array = []
+		for spend_variant in spends:
+			if str((spend_variant as Dictionary).get("kind", "")) == "reroll":
+				rerolled.append(str((spend_variant as Dictionary).get("unit", "")))
+		engine.gain_protocol(bs, engine.landing_protocol(bs, rerolled), engine.max_protocol(cap_override))
 		# Policy: in-battle consumable use (sim-D). Applied through the same
 		# engine dispatch the live screen uses; removed from the run inventory.
 		for action_variant in policy.decide_items(bs, cm, gs):

@@ -527,20 +527,6 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			if not jam_state["dead"]:
 				apply_battle_start_jam(jam_state)
 
-	# Mantle Core: your shields persist until broken.
-	if has_relic("shieldsPersist"):
-		for persist_state in _hero_states:
-			persist_state["shields_persist"] = true
-
-	# Resonant Chorus is applied in battle_scene at roll time (turn-1 floor 8).
-
-	# shieldsPersist (Mantle Core): hero shields persist until broken instead of
-	# expiring at round end.
-	if has_relic("shieldsPersist"):
-		for hero_state in _hero_states:
-			hero_state["shields_persist"] = true
-		_log("Mantle Core: hero shields persist until broken.")
-
 	# plagueProtocol: all enemies start with 3 burn
 	if has_relic("enemyBurnPermanent"):
 		var burn_amt = int(_get_relic_value("enemyBurnPermanent", "amount", 3))
@@ -824,6 +810,13 @@ func take_pending_protocol_drain() -> int:
 	return drained
 
 
+# Tectonic Charge (G-38): true while round 1 of a battle is being planned - the
+# heroes hold (no hero dice are thrown, no hero acts). Read before the round
+# resolves (_battle_round counts resolved rounds).
+func heroes_hold_this_round() -> bool:
+	return has_relic("heroesHoldRoundOne") and _battle_round == 0
+
+
 func resolve_round(
 	hero_rolls: Dictionary,
 	enemy_rolls: Dictionary,
@@ -833,7 +826,18 @@ func resolve_round(
 ) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
+	var heroes_held: bool = heroes_hold_this_round()
 	_battle_round += 1
+	if heroes_held:
+		_log("TECTONIC CHARGE - your heroes hold this round.")
+		# While they hold, every living hero is shielded for this round's enemy
+		# phase (an ordinary one-round shield, gone at the round-end tick).
+		var hold_shield: int = int(_get_relic_value("heroesHoldRoundOne", "shield", 0))
+		if hold_shield > 0:
+			for held_state in _hero_states:
+				if not bool(held_state["dead"]):
+					_add_shield_stack(held_state, hold_shield)
+			_log("TECTONIC CHARGE - every hero gains %d shield while holding." % hold_shield)
 
 	_resolve_hero_phase(hero_rolls, enemy_rolls, dice_manager, raw_hero_rolls)
 
@@ -886,6 +890,15 @@ func resolve_round(
 		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
 
 	_tick_end_of_round_states()
+
+	# Tectonic Charge (G-38): the hold ends with round 1; every hero (a fallen
+	# one too, for when it is revived) rolls with +N for the rest of the battle.
+	# A permanent roll buff, so the faces print it and the roll chip shows it.
+	if heroes_held:
+		var charge: int = int(_get_relic_value("heroesHoldRoundOne", "amount", 3))
+		for charged_state in _hero_states:
+			charged_state["perm_roll_buff"] = int(charged_state.get("perm_roll_buff", 0)) + charge
+		_log("TECTONIC CHARGE - the squad is charged: +%d to every hero roll." % charge)
 
 	if _all_states_dead(_enemy_states):
 		_log("All enemies are down.")
@@ -1210,11 +1223,12 @@ func _get_total_shield(state: Dictionary) -> int:
 # opposing phase, gone at the round-end tick. Enemy abilities resolve AFTER the
 # hero phase, so shields they grant pass survives_current_tick=true — they live
 # through the imminent tick and cover exactly one hero phase instead of dying
-# before they could ever absorb. shields_persist (Mantle Core relic / MANTLE
-# TYRANT boss rule) exempts a state from expiry entirely.
+# before they could ever absorb. shields_persist (the MANTLE TYRANT boss rule)
+# exempts a state from expiry entirely.
 # CONFIRMED (per Kev 2026-07-06, DECISIONS_RESOLVED #2): "one round" IS the
-# per-side "one opposing action phase" reading; shieldsPersist (Mantle Core /
-# MANTLE TYRANT) is the single named exception. Data audited 2026-07-07: no
+# per-side "one opposing action phase" reading; shields_persist (MANTLE TYRANT)
+# is the single named exception (the Mantle Core relic that shared it was
+# removed in the boss relic rework, G-41). Data audited 2026-07-07: no
 # multi-phase shield exists anywhere in data/raw.
 func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false) -> void:
 	# Overcharge Mesh directive: shields gained by any squad member +2 while
@@ -1225,8 +1239,8 @@ func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bo
 				amount += _directive_value(mesh_state, "amount", 2)
 				break
 	state["shield_stacks"].append({"amt": amount, "skip_next_tick": survives_current_tick})
-	# Cap the total shield at max HP so persistent shields (Mantle Core /
-	# MANTLE TYRANT) can't accumulate without bound from per-round drips like
+	# Cap the total shield at max HP so persistent shields (MANTLE TYRANT)
+	# can't accumulate without bound from per-round drips like
 	# Bulwark Aura and Aegis Field (audit A-034). The one-round expiry that
 	# bounds ordinary shields does not apply under shields_persist, so this cap
 	# is the bound in that case.
@@ -2337,14 +2351,8 @@ func _damage_state(
 		for stack in stacks:
 			if int(stack["amt"]) > 0:
 				surviving_stacks.append(stack)
-		var shield_before_hit: int = int(state.get("shield", 0))
 		state["shield_stacks"] = surviving_stacks
 		state["shield"] = _get_total_shield(state)
-		# Salvage Rig (boss relic): +1 Protocol when an enemy shield fully breaks.
-		if shield_before_hit > 0 and int(state["shield"]) == 0 and not _is_hero_state(state) and has_relic("protocolOnShieldBreak"):
-			var rig_grant: int = int(_get_relic_value("protocolOnShieldBreak", "amount", 1))
-			_pending_protocol_grants += rig_grant
-			_log("Salvage Rig: +%d Protocol for shattering the shield." % rig_grant)
 
 	if total_absorbed > 0:
 		_log("%s absorbs %d damage with shields." % [state["unit"].display_name, total_absorbed])
@@ -2406,6 +2414,11 @@ func _damage_state(
 			_cancel_targets_involving_down_state(state)
 			_log("%s is down." % state["unit"].display_name)
 			_on_unit_killed(state, attacker_state)
+			# Spillover Charge (G-40): a hero attack's damage past the HP it
+			# needed carries to the next enemy in slot order.
+			if remaining_damage > hp_before and not _is_hero_state(state) \
+					and not attacker_state.is_empty() and _is_hero_state(attacker_state) and has_relic("overkillSpillover"):
+				_spill_overkill(state, remaining_damage - hp_before, attacker_state)
 			# Dead Man's Hand relic: the first squad wipe each run — everyone
 			# survives at 1 HP and the next roll is all 20s.
 			if _is_hero_state(state) and _all_states_dead(_hero_states) and has_relic("squadWipeSurvive") and not GameState.dead_mans_hand_used:
@@ -2419,6 +2432,27 @@ func _damage_state(
 					_emit_event(hero_state, "survive", 1, "hero")
 
 	return remaining_damage
+
+
+# Spillover Charge (G-40): `amount` overkill from `attacker_state`'s hit that
+# downed `dead_state` lands on the next living, uncloaked enemy after it in slot
+# order (wrapping to the first slot). It is still the hero's hit: shields absorb
+# it, a Mark amplifies it, a Firewall blocks it, and a kill it makes counts for
+# the hero and can spill again.
+func _spill_overkill(dead_state: Dictionary, amount: int, attacker_state: Dictionary) -> void:
+	var start: int = _enemy_states.find(dead_state)
+	if start < 0:
+		return
+	var count: int = _enemy_states.size()
+	for step in range(1, count):
+		var next_state: Dictionary = _enemy_states[(start + step) % count]
+		if bool(next_state.get("dead", false)) or bool(next_state.get("cloaked", false)):
+			continue
+		_log("Spillover Charge: %d overkill carries to %s." % [amount, next_state["unit"].display_name])
+		if _ward_blocks_hostile(next_state):
+			return
+		_damage_state(next_state, amount, false, attacker_state)
+		return
 
 
 func _trigger_low_hp_squad_roll_buff() -> void:
@@ -2668,11 +2702,14 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 			if protocol_any > 0:
 				_pending_protocol_grants += protocol_any
 				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_any])
-			# Chitin Graft (boss relic): heroes heal 3 on their kills.
-			if has_relic("heroHealOnOwnKill"):
-				var graft_heal: int = int(_get_relic_value("heroHealOnOwnKill", "amount", 3))
-				_heal_state(killer_state, graft_heal, killer_state)
-				_log("Chitin Graft: %s heals %d on the kill." % [killer_state["unit"].display_name, graft_heal])
+			# Blood Frenzy (G-35): the killer's die freezes (freeze = repeat): it
+			# keeps the value it acted on and repeats next round. Once per hero
+			# per round - more kills in the same round don't add repeats.
+			if has_relic("killFreezesKillerDie") and not bool(killer_state.get("dead", false)) \
+					and int(killer_state.get("blood_frenzy_round", -1)) != _battle_round:
+				killer_state["blood_frenzy_round"] = _battle_round
+				_log("Blood Frenzy: %s's die freezes on the kill." % killer_state["unit"].display_name)
+				_freeze_die_state(killer_state, int(_get_relic_value("killFreezesKillerDie", "repeats", 1)), "ice", false)
 			# Salvage Directive: killing a Marked enemy refunds Protocol.
 			if has_relic("protocolOnMarkedKill") and bool(dead_state.get("mark_consumed_this_hit", false)):
 				var refund: int = int(_get_relic_value("protocolOnMarkedKill", "amount", 2))
@@ -2756,6 +2793,15 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 	var before_hp: int = int(state["current_hp"])
 	state["current_hp"] = mini(int(state["max_hp"]), int(state["current_hp"]) + amount)
 	var healed_amount: int = int(state["current_hp"]) - before_hp
+	# Overheal Relay (G-39): healing a hero past max HP deals the excess as
+	# damage to a random living enemy (seeded pick, INVARIANTS #1).
+	var overheal: int = amount - healed_amount
+	if overheal > 0 and _is_hero_state(state) and has_relic("overhealDamage"):
+		var living: Array = _enemy_states.filter(func(e): return not bool(e["dead"]))
+		if not living.is_empty():
+			var relay_target: Dictionary = living[_rand_index(living.size())]
+			_log("Overheal Relay: %d extra healing hits %s." % [overheal, relay_target["unit"].display_name])
+			_damage_state(relay_target, overheal)
 	if healed_amount > 0:
 		_log("%s heals %d HP." % [state["unit"].display_name, healed_amount])
 		_emit_event(state, "heal", healed_amount, _resolve_side_for_state(state))

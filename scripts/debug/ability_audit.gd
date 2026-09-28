@@ -1545,12 +1545,15 @@ func _run_new_relic_regressions() -> void:
 	var static_enemy: Dictionary = static_manager.get_enemy_states()[0]
 	_expect_and_record("Regression / relic staticField turn-1 jam", "battleStartJamEnemies", "10", str(static_manager.get_effective_roll(static_enemy, 18)))
 
-	# Mantle Core: hero shields persist flag set at battle start.
-	var mantle_manager: CombatManager = CombatManager.new()
-	mantle_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
-	mantle_manager.setup_relics(["mantleCore"])
-	mantle_manager.apply_battle_start_relic_effects(0)
-	_expect_and_record("Regression / relic mantleCore persist flag", "shieldsPersist", "true", str(bool(mantle_manager.get_hero_states()[0].get("shields_persist", false))))
+	# Tectonic Charge (G-38): heroes hold in round 1, then +3 on every hero roll.
+	var tectonic_manager: CombatManager = CombatManager.new()
+	tectonic_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	tectonic_manager.setup_relics(["tectonicCharge"])
+	var tectonic_hold: bool = tectonic_manager.heroes_hold_this_round()
+	tectonic_manager.resolve_round({}, {}, DiceManager.new())
+	var tectonic_hero: Dictionary = tectonic_manager.get_hero_states()[0]
+	_expect_and_record("Regression / relic tectonicCharge hold then +3", "heroesHoldRoundOne", "true/false/13",
+		"%s/%s/%d" % [str(tectonic_hold), str(tectonic_manager.heroes_hold_this_round()), tectonic_manager.get_effective_roll(tectonic_hero, 10)])
 
 	# Cold Logic: +4 damage against an enemy with a frozen die.
 	var cold_manager: CombatManager = CombatManager.new()
@@ -1565,28 +1568,78 @@ func _run_new_relic_regressions() -> void:
 	cold_manager.resolve_round({str(cold_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	_expect_and_record("Regression / relic coldLogic +4 vs frozen", "frozenBonusDamage", "14", str(cold_before - int(cold_enemy["current_hp"])))
 
-	# Salvage Rig: +1 Protocol when an enemy shield fully breaks.
-	var rig_manager: CombatManager = CombatManager.new()
-	rig_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 10})], [_make_enemy("audit_enemy", "Audit Enemy")])
-	rig_manager.setup_relics(["salvageRig"])
-	var rig_hero: Dictionary = rig_manager.get_hero_states()[0]
-	var rig_enemy: Dictionary = rig_manager.get_enemy_states()[0]
-	rig_enemy["shield_stacks"] = [{"amt": 4, "skip_next_tick": true}]
-	rig_enemy["shield"] = 4
-	rig_hero["selected_target_id"] = str(rig_enemy["id"])
-	rig_manager.resolve_round({str(rig_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / relic salvageRig shield break", "protocolOnShieldBreak", "1", str(rig_manager.take_pending_protocol_grants()))
+	# Scrap Converter (G-34): a hero die landing on a printed 1 or 2 pays 1.
+	var scrap_manager: CombatManager = CombatManager.new()
+	scrap_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	scrap_manager.setup_relics(["scrapConverter"])
+	var scrap_engine := BattleEngine.new(scrap_manager, null, DiceManager.new())
+	var scrap_bs := BattleState.new()
+	var scrap_id: String = str(scrap_manager.get_hero_states()[0]["id"])
+	scrap_bs.hero_rolls = {scrap_id: 2}
+	var scrap_two: int = scrap_engine.landing_protocol(scrap_bs, [scrap_id])
+	scrap_bs.hero_rolls = {scrap_id: 3}
+	_expect_and_record("Regression / relic scrapConverter 1-2 landing", "protocolOnLowLanding", "1/0",
+		"%d/%d" % [scrap_two, scrap_engine.landing_protocol(scrap_bs, [scrap_id])])
 
-	# Chitin Graft: the killer heals 3 on its kill.
-	var graft_manager: CombatManager = CombatManager.new()
-	graft_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
-	graft_manager.setup_relics(["chitinGraft"])
-	var graft_hero: Dictionary = graft_manager.get_hero_states()[0]
-	var graft_enemy: Dictionary = graft_manager.get_enemy_states()[0]
-	graft_hero["current_hp"] = 30
-	graft_hero["selected_target_id"] = str(graft_enemy["id"])
-	graft_manager.resolve_round({str(graft_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / relic chitinGraft heal on kill", "heroHealOnOwnKill", "33", str(int(graft_hero["current_hp"])))
+	# Blood Frenzy (G-35): the killer's die freezes on the value it acted on.
+	var frenzy_manager: CombatManager = CombatManager.new()
+	frenzy_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	frenzy_manager.setup_relics(["bloodFrenzy"])
+	var frenzy_hero: Dictionary = frenzy_manager.get_hero_states()[0]
+	frenzy_hero["selected_target_id"] = str(frenzy_manager.get_enemy_states()[0]["id"])
+	frenzy_manager.resolve_round({str(frenzy_hero["id"]): 14}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic bloodFrenzy freezes the killer", "killFreezesKillerDie", "1/14",
+		"%d/%d" % [int(frenzy_hero.get("die_freeze_turns", 0)), int(frenzy_hero.get("frozen_die_value", 0))])
+
+	# Firewall Hack (G-36): once per turn, an enemy die -3 for 1 Protocol.
+	var hack_manager: CombatManager = CombatManager.new()
+	hack_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	hack_manager.setup_relics(["firewallHack"])
+	var hack_engine := BattleEngine.new(hack_manager, null, DiceManager.new())
+	var hack_bs := BattleState.new()
+	var hack_enemy: Dictionary = hack_manager.get_enemy_states()[0]
+	hack_bs.enemy_rolls = {str(hack_enemy["id"]): 10}
+	hack_bs.protocol_points = 3
+	var hack_first: bool = hack_engine.apply_firewall_hack(hack_bs, hack_enemy)
+	var hack_second: bool = hack_engine.apply_firewall_hack(hack_bs, hack_enemy)
+	_expect_and_record("Regression / relic firewallHack once per turn", "enemyNudgeOncePerTurn", "true/false/7/2",
+		"%s/%s/%d/%d" % [str(hack_first), str(hack_second), hack_engine.effective_enemy_roll(hack_enemy, str(hack_enemy["id"]), hack_bs), hack_bs.protocol_points])
+
+	# Heretic Signal (G-37): one re-throw per battle.
+	var signal_manager: CombatManager = CombatManager.new()
+	signal_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	signal_manager.setup_relics(["hereticSignal"])
+	var signal_engine := BattleEngine.new(signal_manager, null, DiceManager.new())
+	var signal_bs := BattleState.new()
+	var signal_hid: String = str(signal_manager.get_hero_states()[0]["id"])
+	var signal_eid: String = str(signal_manager.get_enemy_states()[0]["id"])
+	signal_bs.hero_rolls = {signal_hid: 4}
+	signal_bs.enemy_rolls = {signal_eid: 18}
+	signal_bs.protocol_points = 3
+	var signal_first: Dictionary = signal_engine.apply_heretic_signal(signal_bs, {"hero": {signal_hid: 15}, "enemy": {signal_eid: 6}})
+	var signal_second: Dictionary = signal_engine.apply_heretic_signal(signal_bs, {"hero": {signal_hid: 1}, "enemy": {signal_eid: 1}})
+	_expect_and_record("Regression / relic hereticSignal once per battle for 3 Protocol", "rethrowAllOncePerBattle", "15/6/true/0",
+		"%d/%d/%s/%d" % [int(signal_bs.hero_rolls[signal_hid]), int(signal_bs.enemy_rolls[signal_eid]), str(not signal_first.is_empty() and signal_second.is_empty()), signal_bs.protocol_points])
+
+	# Overheal Relay (G-39): healing past max HP hits a random enemy for the excess.
+	var relay_manager: CombatManager = CombatManager.new()
+	relay_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	relay_manager.setup_relics(["overhealRelay"])
+	var relay_hero: Dictionary = relay_manager.get_hero_states()[0]
+	relay_hero["current_hp"] = 96
+	relay_manager.apply_item_heal(relay_hero, 10)
+	_expect_and_record("Regression / relic overhealRelay excess heal damage", "overhealDamage", "100/94",
+		"%d/%d" % [int(relay_hero["current_hp"]), int(relay_manager.get_enemy_states()[0]["current_hp"])])
+
+	# Spillover Charge (G-40): overkill carries to the next enemy in slot order.
+	var spill_manager: CombatManager = CombatManager.new()
+	spill_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 130})], [_make_enemy("audit_a", "Audit A"), _make_enemy("audit_b", "Audit B")])
+	spill_manager.setup_relics(["spilloverCharge"])
+	var spill_hero: Dictionary = spill_manager.get_hero_states()[0]
+	spill_hero["selected_target_id"] = str(spill_manager.get_enemy_states()[0]["id"])
+	spill_manager.resolve_round({str(spill_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic spilloverCharge overkill carries", "overkillSpillover", "70",
+		str(int(spill_manager.get_enemy_states()[1]["current_hp"])))
 
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
@@ -1655,22 +1708,23 @@ func _run_new_relic_regressions() -> void:
 		GameState.relics = saved_relics
 		_expect_and_record("Regression / relic standingOrder crit extends down", "critBandExtend", "crit", order_zone)
 
-	# Root Access: the first Set each battle costs 0 (battle_scene cost path).
-	var root_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
-	if root_scene != null:
-		root_scene.combat_manager.setup_relics(["rootAccess"])
-		# Cost path lives in ProtocolActions (extraction, 2026-07-06); a bare
-		# scene never runs _ready, so build the module by hand.
-		var root_pa = PROTOCOL_ACTIONS_SCRIPT.new()
-		root_pa.setup(root_scene)
-		var root_cost: int = int(root_pa.call("_get_set_cost"))
-		root_pa.free()
-		root_scene.free()
-		_expect_and_record("Regression / relic rootAccess free set", "setCostZeroOncePerBattle", "0", str(root_cost))
+	# Set costs its flat price (the Root Access freebie left with the boss relic
+	# rework, G-41). Cost path lives in ProtocolActions; a bare scene never runs
+	# _ready, so build the module by hand.
+	var set_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if set_scene != null:
+		var set_pa = PROTOCOL_ACTIONS_SCRIPT.new()
+		set_pa.setup(set_scene)
+		var set_cost_now: int = int(set_pa.call("_get_set_cost"))
+		set_pa.free()
+		set_scene.free()
+		_expect_and_record("Regression / Set costs its flat price", "setCost", str(BattleEngine.SET_DIE_COST), str(set_cost_now))
 
 	# Removed relic IDs cannot enter new runs, including stale external grants.
 	var removed_ok: bool = DataManager.get_item("twinFates") == null and not GameState._grant_relic("twinFates")
-	_expect_and_record("Regression / removed Twin Fates", "twinFates", "true", str(removed_ok))
+	for retired_id in SaveManager.LEGACY_BOSS_RELIC_IDS:
+		removed_ok = removed_ok and DataManager.get_item(str(retired_id)) == null and not GameState._grant_relic(str(retired_id))
+	_expect_and_record("Regression / removed Twin Fates + retired boss relics", "twinFates", "true", str(removed_ok))
 
 	# Overflow Vent: protocol past the cap deals 2 damage per point to an enemy.
 	var vent_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
@@ -1684,18 +1738,19 @@ func _run_new_relic_regressions() -> void:
 		vent_scene.free()
 		_expect_and_record("Regression / relic overflowVent overflow damage", "protocolOverflowDamage", "96", str(vent_hp))
 
-	# Resonant Chorus: turn-1 dice below 8 are lifted to 8.
-	var chorus_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
-	if chorus_scene != null:
-		var chorus_mgr: CombatManager = chorus_scene.combat_manager
-		chorus_mgr.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
-		chorus_mgr.setup_relics(["resonantChorus"])
-		var chorus_id: String = str(chorus_mgr.get_hero_states()[0]["id"])
-		chorus_scene.hero_rolls = {chorus_id: 3}
-		chorus_scene.call("_apply_roll_relic_overrides")
-		var chorus_roll: int = int(chorus_scene.hero_rolls.get(chorus_id, 0))
-		chorus_scene.free()
-		_expect_and_record("Regression / relic resonantChorus turn-1 floor", "turn1RollFloor", "8", str(chorus_roll))
+	# Forced 20 (Vengeance Order / Dead Man's Hand) is the one roll-time face
+	# override left (Resonant Chorus retired, G-41).
+	var forced_scene: Control = BATTLE_SCENE_SCRIPT.new() as Control
+	if forced_scene != null:
+		var forced_mgr: CombatManager = forced_scene.combat_manager
+		forced_mgr.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+		var forced_state: Dictionary = forced_mgr.get_hero_states()[0]
+		forced_state["forced_20_pending"] = true
+		forced_scene.hero_rolls = {str(forced_state["id"]): 3}
+		forced_scene.call("_apply_roll_relic_overrides")
+		var forced_roll: int = int(forced_scene.hero_rolls.get(str(forced_state["id"]), 0))
+		forced_scene.free()
+		_expect_and_record("Regression / forced 20 roll override", "forced20", "20", str(forced_roll))
 
 
 func _run_boss_standing_rule_regressions() -> void:
@@ -1925,7 +1980,7 @@ func _run_save_manager_regressions() -> void:
 		int(stats.get("runs_started", 0)) == 1
 		and int(wins.get("facility", 0)) == 1
 		and int(stats.get("best_clear", 0)) == 10
-		and SaveManager.get_unlocked_boss_relics() == ["salvageRig"]
+		and SaveManager.get_unlocked_boss_relics() == ["scrapConverter"]
 	)
 	_expect_and_record("Regression / save run victory + unlock", "saveManager", "true", str(run_ok))
 
@@ -1933,7 +1988,7 @@ func _run_save_manager_regressions() -> void:
 	SaveManager.record_run_finished("defeat", "hive", 4)
 	var defeat_ok: bool = (
 		int(SaveManager.get_stats().get("best_clear", 0)) == 10
-		and SaveManager.get_unlocked_boss_relics() == ["salvageRig"]
+		and SaveManager.get_unlocked_boss_relics() == ["scrapConverter"]
 	)
 	_expect_and_record("Regression / save defeat ratchet", "saveManager", "true", str(defeat_ok))
 
@@ -2009,17 +2064,17 @@ func _run_save_manager_regressions() -> void:
 func _run_starting_directive_regressions() -> void:
 	var saved_save: Dictionary = SaveManager.data.duplicate(true)
 	SaveManager.data = SaveManager.default_data()
-	SaveManager.data["unlocks"]["boss_relics"] = ["rootAccess"]
+	SaveManager.data["unlocks"]["boss_relics"] = ["hereticSignal"]
 
 	GameState.start_run(["pulse", "combat", "ghost"], "facility")
 
 	# A locked relic can't be taken as a directive.
-	GameState.set_starting_directive("mantleCore")
+	GameState.set_starting_directive("tectonicCharge")
 	var locked_refused: bool = GameState.relics.is_empty()
 
 	# An unlocked one opens the run with it.
-	GameState.set_starting_directive("rootAccess")
-	var directive_taken: bool = GameState.relics == ["rootAccess"]
+	GameState.set_starting_directive("hereticSignal")
+	var directive_taken: bool = GameState.relics == ["hereticSignal"]
 
 	# The battle-5 draft still happens: a directive run may claim one drafted
 	# relic (ending with two), but never a second draft.
@@ -2027,7 +2082,7 @@ func _run_starting_directive_regressions() -> void:
 	var first_draft: bool = GameState.claim_reward("ironCurtain")
 	GameState.pending_reward_item_ids = ["overcharge"]
 	var second_draft_blocked: bool = not GameState.claim_reward("overcharge")
-	var two_relics: bool = GameState.relics == ["rootAccess", "ironCurtain"]
+	var two_relics: bool = GameState.relics == ["hereticSignal", "ironCurtain"]
 	_expect_and_record(
 		"Regression / starting directive run",
 		"startingDirective",
@@ -2360,7 +2415,8 @@ func _run_battle_slot_regressions() -> void:
 # Battle-5 "INTERCEPT: RELIC CACHE" soft lock (fixed 2026-07-06): a run that
 # opens with a pkg5 Starting Directive boss relic must STILL get its battle-5
 # relic draft — the old relics.is_empty() guards rolled ZERO options and dead-
-# ended the run. Pins the reproducing config (seed 424242 + salvageRig) through
+# ended the run. Pins the reproducing config (seed 424242 + the facility boss
+# relic, Salvage Rig then, Scrap Converter since the G-41 rework) through
 # the fixed flow, plus the draft invariants and the beat-gap exclusion.
 func _run_relic_cache_regression() -> void:
 	var gs: Node = GameState
@@ -2368,7 +2424,7 @@ func _run_relic_cache_regression() -> void:
 	sm.call("unlock_boss_relic_for_op", "facility")
 
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility", 424242)
-	gs.call("set_starting_directive", "salvageRig")
+	gs.call("set_starting_directive", "scrapConverter")
 	gs.set("current_battle", 5)
 	gs.call("prepare_battle_rewards")
 	var options: Array = gs.call("get_pending_reward_items")
@@ -2382,7 +2438,7 @@ func _run_relic_cache_regression() -> void:
 			all_relics = false
 		elif option.boss_relic:
 			no_boss = false
-		elif option.id == "salvageRig":
+		elif option.id == "scrapConverter":
 			no_owned_dup = false
 	_expect_and_record(
 		"Regression / relic cache drafts with a Starting Directive relic", "relicCache",
@@ -3683,7 +3739,7 @@ func _run_reinforcement_reward_regressions() -> void:
 		GameState.consumables.clear()
 		var manager := CombatManager.new()
 		manager.setup_battle([_make_unit("hero", "Hero", "Strike", {"dmg": 100})], [_make_enemy("enemy", "Enemy")])
-		manager.setup_relics(["salvageDirective", "chitinGraft", "scavengerManifest"])
+		manager.setup_relics(["salvageDirective", "bloodFrenzy", "scavengerManifest"])
 		var hero: Dictionary = manager.get_hero_states()[0]
 		var enemy: Dictionary = manager.get_enemy_states()[0]
 		if kind == "summoned":
@@ -3700,13 +3756,13 @@ func _run_reinforcement_reward_regressions() -> void:
 		hero["directive_effect"] = {"amount": 4}
 		enemy["mark_consumed_this_hit"] = true
 		manager.call("_process_unit_killed", enemy, hero, true)
-		_expect_and_record("Regression / " + kind + " kill rewards", "G-8", "38/4/4/1",
-			"%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size()])
+		_expect_and_record("Regression / " + kind + " kill rewards", "G-8", "35/4/4/1/1",
+			"%d/%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size(), int(hero.get("die_freeze_turns", 0))])
 		# A later environmental death still heals the holder; killer-only
 		# benefits do not pay, and Scavenger does not grant a second item.
 		manager.call("_process_unit_killed", _make_reward_dead_state(manager), {}, true)
-		_expect_and_record("Regression / " + kind + " reward limits", "G-8", "43/0/4/1",
-			"%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size()])
+		_expect_and_record("Regression / " + kind + " reward limits", "G-8", "40/0/4/1/1",
+			"%d/%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size(), int(hero.get("die_freeze_turns", 0))])
 	_restore_game_state_snapshot(snapshot)
 
 

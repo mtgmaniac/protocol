@@ -1,9 +1,34 @@
 # Overload Protocol — current handoff
 
-2026-09-27. Start here, then read `docs/TRUTH.md`, `docs/INVARIANTS.md`,
+2026-09-28. Start here, then read `docs/TRUTH.md`, `docs/INVARIANTS.md`,
 `docs/DECISIONS_RESOLVED.md` and `TASK_QUEUE.md` (see `AGENTS.md`).
 
-## Current state
+## Just finished: boss relic rework (merged to `main` 2026-09-28)
+
+Kev tested `boss-relic-rework` in Godot and approved it; it is merged into
+`main` and the branch is deleted. Rules: TRUTH "Boss relics"; rulings
+DECISIONS_RESOLVED G-34..G-42. Final tuning (G-42); every boss relic lands in
+the +2 to +5 band (Blood Frenzy's +5.3 is within noise of the edge):
+
+- **Heretic Signal costs 3 Protocol** (still once per battle): +2.9. Relic text
+  and confirm say so; with less than 3 Protocol the loadout row reads
+  NEEDS 3 PROTOCOL.
+- **Tectonic Charge: +3 from round 2, and 3 shield on each hero while they
+  hold in round 1**: +3.6 (shield 2: +2.8, 4: +5.1). The hold banner has a
+  second line with the shield and the +3.
+- Scrap Converter +4.9, Blood Frenzy +5.3, Firewall Hack +4.4 (unchanged).
+  Overheal Relay and Spillover Charge keep their names and numbers.
+- Four open readings confirmed by Kev (G-42): Blood Frenzy once per hero per
+  round with repeats adding repeats; re-throws clear Nudge / Set / Firewall
+  Hack with no refund; Spillover wraps last to first, skips cloaked, is
+  blocked by Firewall; the unlock buckets. The other open readings stand as
+  implemented.
+- Evidence: `docs/BOSS_RELIC_TUNING_2026-09-28.md` (final section).
+- **Still needed:** new art for the seven relics (all placeholders; rows in
+  the framing editor). Web and phone check of the hold banner, the Heretic
+  confirm and the loadout relic row happens with the web build below.
+
+## Current state of `main`
 
 `main` is pushed and clean (`main` = `origin/main`). Everything below is
 merged, approved by Kev and closed. Do not reopen it.
@@ -26,11 +51,12 @@ merged, approved by Kev and closed. Do not reopen it.
   band, boxed intercept options, long-press anywhere on a unit card, rampage
   icon, integer item art, re-thrown dice collide, evolved portraits in Help.
   Plus the intercept wording "rare or better gear".
-- **Balance baseline** re-pinned 2026-09-27 to the post-dice-rework tree
-  (BASELINE-APPROVED-BY-KEV): overall 0.2767, facility 0.4085, hive 0.2373,
-  veil 0.2615, voidCirclet 0.2105, stellarMenagerie 0.2292. `ci_smoke.py` is
+- **Balance baseline** re-pinned 2026-09-28 after the boss relic rework
+  (BASELINE-APPROVED-BY-KEV): overall 0.2567, facility 0.3662, hive 0.2542,
+  veil 0.2308, voidCirclet 0.2281, stellarMenagerie 0.1667. `ci_smoke.py` is
   green against it.
-- **Gate:** `python scripts/verify_gate.py --skip-sim` passes. Run it with an
+- **Gate:** full `python scripts/verify_gate.py` with the sim passes
+  (2026-09-28). Run it with an
   isolated `APPDATA` when Kev may have Godot open (a live session shares
   `dev_run.json`). Godot rewrites the `config/icon` line in `project.godot`
   on launch: discard it, never commit it.
@@ -41,9 +67,12 @@ merged, approved by Kev and closed. Do not reopen it.
   preview is exact, but each enemy hit on a hero is its raw `dmg`: enemy
   riders and enemy-phase shields (which can absorb the end-of-round burn
   tick) are not modelled. Fix shape in `TASK_QUEUE.md`.
-- **`battle_scene.gd` is over its line limit:** 3648 lines against a
-  high-water mark of 3640 (the pre-commit hook warns). Extract before adding
-  to it; raising the mark needs Kev.
+- **`battle_scene.gd` is at its line limit** (3640, since the relic UI lives
+  in `boss_relic_actions.gd`). `protocol_actions.gd` is 1165 against a mark of
+  971 (warning only; split task in `TASK_QUEUE.md`).
+- **Pre-existing engine error on fast Rerolls:** back-to-back Rerolls log
+  "Lambda capture at index 0 was freed". Harmless so far; P3 in
+  `TASK_QUEUE.md`.
 - **Android export size.** The Android preset excludes only `dev/*`, so its
   pack is about 422 MB with `debug_artifacts/`, `docs/` and `legacy-angular/`
   inside. Needs exclude filters before any Android build.
@@ -53,14 +82,11 @@ merged, approved by Kev and closed. Do not reopen it.
 
 ## Next up, in order
 
-1. **Boss relic rework.** Scrap Converter, Blood Frenzy, Firewall Hack,
-   Heretic Signal and Tectonic Charge replace the five old boss relics
-   (Salvage Rig, Chitin Graft, Resonant Chorus, Root Access, Mantle Core).
-   Overflow and Spillover join the normal draft pool. Kev has the full
-   prompt; wait for it, don't design from this line. It touches combat, so
-   run the sim and follow the baseline ceremony.
-2. **Fresh web build to itch.io, plus a devlog.** Export with the headless
-   console Godot (`C:/Users/Kev/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64_console.exe`),
-   check it on desktop browsers and a phone. Publishing is Kev's call.
-3. **Reddit distribution** to the planned subreddits (not Kev's guild).
+1. **Fresh web build to itch.io, plus a devlog.** Export with the headless
+   console Godot (`C:/Users/Kev/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64_console.exe`;
+   9-file flat zip), check it on desktop browsers and a phone (first web
+   build since the dice rework, the UI batch and the boss relics). Write the
+   devlog (boss relic rework, real dice). Publishing is Kev's call.
+2. **Reddit distribution** to the planned subreddits (not Kev's guild).
    Posting is Kev's to do or approve.
+3. New art for the seven relics.

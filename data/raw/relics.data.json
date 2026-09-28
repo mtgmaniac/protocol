@@ -203,43 +203,57 @@
     "effect": { "type": "squadWipeSurvive" }
   },
   {
-    "id": "salvageRig",
-    "name": "Salvage Rig",
-    "desc": "Break an enemy shield with an attack: +1 Protocol.",
-    "icon": "bolt",
-    "bossRelic": true,
-    "effect": { "type": "protocolOnShieldBreak", "amount": 1 }
-  },
-  {
-    "id": "chitinGraft",
-    "name": "Chitin Graft",
-    "desc": "Hero kills an enemy: heal that hero 3 HP.",
+    "id": "overhealRelay",
+    "name": "Overheal Relay",
+    "desc": "Healing past max HP deals the extra as damage to a random enemy.",
     "icon": "heart",
-    "bossRelic": true,
-    "effect": { "type": "heroHealOnOwnKill", "amount": 3 }
+    "effect": { "type": "overhealDamage" }
   },
   {
-    "id": "resonantChorus",
-    "name": "Resonant Chorus",
-    "desc": "First-round hero dice roll at least 8.",
+    "id": "spilloverCharge",
+    "name": "Spillover Charge",
+    "desc": "Hero attacks: overkill damage carries to the next enemy.",
+    "icon": "bolt",
+    "effect": { "type": "overkillSpillover" }
+  },
+  {
+    "id": "scrapConverter",
+    "name": "Scrap Converter",
+    "desc": "A hero die lands showing 1 or 2: +1 Protocol.",
     "icon": "die",
     "bossRelic": true,
-    "effect": { "type": "turn1RollFloor", "floor": 8 }
+    "effect": { "type": "protocolOnLowLanding", "amount": 1, "maxFace": 2 }
   },
   {
-    "id": "rootAccess",
-    "name": "Root Access",
-    "desc": "First Set each battle is free.",
+    "id": "bloodFrenzy",
+    "name": "Blood Frenzy",
+    "desc": "A hero kills an enemy: that hero's die freezes and repeats next round.",
     "icon": "die",
     "bossRelic": true,
-    "effect": { "type": "setCostZeroOncePerBattle" }
+    "effect": { "type": "killFreezesKillerDie", "repeats": 1 }
   },
   {
-    "id": "mantleCore",
-    "name": "Mantle Core",
-    "desc": "Hero shields last until depleted or removed.",
-    "icon": "shield",
+    "id": "firewallHack",
+    "name": "Firewall Hack",
+    "desc": "Once per turn: Nudge an enemy die down 3 for 1 Protocol.",
+    "icon": "die",
     "bossRelic": true,
-    "effect": { "type": "shieldsPersist" }
+    "effect": { "type": "enemyNudgeOncePerTurn", "amount": 3 }
+  },
+  {
+    "id": "hereticSignal",
+    "name": "Heretic Signal",
+    "desc": "Once per battle, for 3 Protocol: re-throw every die that isn't frozen. Tap this relic in your loadout.",
+    "icon": "die",
+    "bossRelic": true,
+    "effect": { "type": "rethrowAllOncePerBattle", "cost": 3 }
+  },
+  {
+    "id": "tectonicCharge",
+    "name": "Tectonic Charge",
+    "desc": "Round 1: your heroes hold, don't roll, and each gains 3 shield. From round 2: +3 to all hero rolls.",
+    "icon": "die",
+    "bossRelic": true,
+    "effect": { "type": "heroesHoldRoundOne", "amount": 3, "shield": 3 }
   }
 ]

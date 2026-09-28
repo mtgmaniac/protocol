@@ -1,5 +1,164 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Boss relic rework (Kev, 2026-09-27): G-34 to G-42
+
+Transcribed from Kev's task brief ("Replace the five boss relics and add two
+relics to the normal draft pool. All design decisions below are final.").
+Implemented on branch `boss-relic-rework`; Kev tested it in Godot and approved
+it, merged to `main` 2026-09-28. The rules below are the ruling; the "As
+implemented" notes record how the engine reads it, including the points the
+brief left open (flagged **open reading** so Kev can overrule them; the ones
+Kev has since approved are marked **confirmed**, see G-42). TRUTH "Rewards /
+Boss relics" carries the same rules.
+
+### G-42. Boss relic tuning and confirmed readings (Kev, 2026-09-28)
+
+Kev tested the branch in Godot and approved it, with two tuning changes:
+
+- **Heretic Signal costs 3 Protocol** to use (still once per battle). The
+  relic text and the confirm say so ("Spend 3 Protocol to re-throw every die?
+  This can't be undone."). Amends G-37.
+- **Tectonic Charge: +3 to hero rolls from round 2 (was +2), and while the
+  heroes hold in round 1 each hero gains a shield.** The shield amount was
+  tuned with the sim to land the relic at +2 to +5 clear rate versus no relic
+  (value and numbers: `docs/BOSS_RELIC_TUNING_2026-09-28.md`, final section).
+  The relic text and the hold banner say so. Amends G-38.
+
+Kev approved four of the open readings (marked **confirmed** below):
+
+1. Blood Frenzy freezes once per hero per round, and a kill on a repeat round
+   adds another repeat (G-35).
+2. A re-throw clears Nudge, Set and Firewall Hack with no refund (G-36, G-37).
+3. Spillover Charge wraps from the last slot to the first, skips cloaked
+   enemies and is blocked by a Firewall (G-40).
+4. The unlock buckets: Spillover Charge in bucket 1, Overheal Relay in bucket
+   14 (G-41).
+
+Overheal Relay and Spillover Charge keep their names and numbers. The other
+open readings (who counts as the killer, Sync Antenna on a re-throw, the
+round-1 re-throw under Tectonic Charge, Overheal Relay's attacker-less damage)
+were not raised and stay as implemented.
+
+### G-34. Scrap Converter (Facility boss relic)
+
+"When a hero die lands showing 1 or 2, gain 1 Protocol. 'Showing' means the
+printed face, so a buffed die that can't show 1 or 2 never triggers it. Only
+physical landings count (rolls and rerolls), not Set, Nudge or frozen repeats."
+
+As implemented: `protocolOnLowLanding` (amount 1, maxFace 2),
+`BattleEngine.landing_protocol`. Paid per die as the dice settle (two dice on
+1 and 2 pay 2). The Heretic Signal re-throw is a landing and pays. A refresh
+into a settled roll pays once (the pending-roll checkpoint holds the pre-roll
+Protocol; a restored re-throw is not paid again).
+
+### G-35. Blood Frenzy (Hive boss relic)
+
+"When a hero kills an enemy, that hero's die freezes (keeps its value and
+repeats next round, per the freeze rules)."
+
+As implemented: `killFreezesKillerDie` (repeats 1). The die freezes on the value
+the hero acted on (G-23) and follows every frozen-die rule. **Confirmed (G-42):**
+once per hero per round (an AoE that kills two freezes once, not twice); a kill
+on a repeat round adds a repeat, so a hero that keeps killing keeps repeating
+(the freeze rules' "re-freezing adds repeats"). **Open readings:** only kills with a hero attacker
+count (burn ticks, items, relic damage don't); summoned and rebuilt enemies
+count (G-8); a Spillover Charge kill is the hero's kill.
+
+### G-36. Firewall Hack (Veil boss relic)
+
+"Once per turn, Nudge one enemy die down by 3 for the normal Nudge cost. Can't
+go below 1. Can't target frozen or hijacked dice. The die moves to its new face
+per the Dice rules, and that enemy's intent updates if its ability changes."
+
+As implemented: `enemyNudgeOncePerTurn` (amount 3). The Nudge action accepts an
+enemy die once per turn (arm Nudge, tap the enemy die). Cost is a flat 1
+Protocol (Priming Charge's free hero Nudge doesn't apply to it). The -3 lives in
+`BattleState.enemy_roll_nudges` for the round. **Confirmed (G-42):** a Heretic
+Signal re-throw clears it without a refund, like a Reroll clears a Nudge.
+
+### G-37. Heretic Signal (Signal Purge boss relic)
+
+"Once per battle, re-throw every die on the board, heroes and enemies.
+Activated by tapping the relic in the relic/items menu, then confirming
+('Re-throw every die? This can't be undone.'). Planning phase only. Frozen dice
+are skipped. Everything else follows the Dice rules, and the battle checkpoint
+updates so a refresh restores the new dice."
+
+**Amended by G-42: costs 3 Protocol** (`cost: 3` on the effect).
+
+As implemented: `rethrowAllOncePerBattle`. The re-throw is the normal full
+throw (frozen dice stay put as blockers). The checkpoint after it holds the new
+dice, the pending actions and `heretic_signal_used`. The cost is paid when the
+re-throw lands; with less than 3 Protocol the relic row says NEEDS 3 PROTOCOL.
+**Confirmed (G-42):** a re-thrown die is a fresh roll, so its Nudge, Set or
+Firewall Hack is cleared without a refund (the Reroll rule). **Open readings:**
+Sync Antenna does not fire again; in
+Tectonic Charge's round 1 only the enemy dice are on the board, so only they
+are re-thrown.
+
+### G-38. Tectonic Charge (Mantle Hunt boss relic)
+
+"In round 1 of each battle, heroes don't act (their dice don't roll; items stay
+usable; show clearly that heroes are holding). From round 2 on, all hero rolls
+get +2, printed on the faces."
+
+**Amended by G-42: +3 from round 2, and a round-1 shield on every hero while
+they hold** (`amount: 3`, `shield` on the effect; an ordinary one-round shield,
+granted to each living hero as round 1 resolves).
+
+As implemented: `heroesHoldRoundOne` (originally amount 2). Round 1 throws only
+enemy dice; the screen shows YOUR HEROES HOLD THIS ROUND over the hero readouts
+until the round resolves, with a second line naming the shield and the roll
+bonus, and the log says so. As round 1 resolves each living hero gains the
+shield (it covers that round's enemy phase and is gone at the round-end tick).
+When round 1 ends every hero (a fallen one too, for a later revive) gains a
+permanent +3 roll buff, so the faces print it and the roll chip shows +3. Reroll, Set and hero Nudge have no die to act on
+in round 1 (they say "Your heroes hold this round."). A refresh in round 1
+restores the enemy-only roll.
+
+### G-39. Overheal Relay (draft relic; name kept, G-42)
+
+"Healing beyond max HP deals that much damage to a random enemy."
+
+As implemented: `overhealDamage`, unlock bucket 14. Any heal on a hero counts
+(abilities, items, relics, gear, lifesteal); the random pick is seeded
+(INVARIANTS #1). **Open reading:** the damage has no attacker, so it doesn't
+consume a Mark, doesn't spill, and its kill is nobody's kill.
+
+### G-40. Spillover Charge (draft relic; name kept, G-42)
+
+"Overkill damage carries to the next enemy in slot order."
+
+As implemented: `overkillSpillover`, unlock bucket 1. **Confirmed (G-42):** the
+next enemy is the next living, uncloaked one after the dead one's slot, wrapping
+from the last to the first; a Firewall blocks the spill. **Open readings:** only
+a hero attack's overkill spills (burn ticks, items and relic damage don't); the
+spill is still the hero's hit (shields absorb it, a Mark amplifies it, its kill
+is the hero's kill and can spill again).
+
+### G-41. Removals, save migration and relic counts
+
+"Remove the five old boss relics (Salvage Rig, Chitin Graft, Resonant Chorus,
+Root Access, Mantle Core) and any code only they used. The Signal Hierophant's
+standing rule keeps the name ROOT ACCESS." "SAVES: anyone who unlocked an old
+boss relic gets the new one for the same operation. Nothing is lost."
+
+As implemented: the five relics and their effect handlers are gone
+(`protocolOnShieldBreak`, `heroHealOnOwnKill`, `turn1RollFloor`,
+`setCostZeroOncePerBattle`, the relic half of `shieldsPersist`). The MANTLE
+TYRANT keeps `shields_persist`, now its alone, so it remains the single named
+exception to one-round shields (#2). `SaveManager.LEGACY_BOSS_RELIC_IDS` maps
+Salvage Rig → Scrap Converter, Chitin Graft → Blood Frenzy, Resonant Chorus →
+Firewall Hack, Root Access → Heretic Signal, Mantle Core → Tectonic Charge. The
+profile's unlocked list migrates on load and is saved back under the new ids;
+a run in progress keeps its held relic and Starting Directive as the new id.
+The run save's shape did not change, so `RUN_SAVE_VERSION` stays 3 (the
+`save schema` gate confirms the fingerprint). Relics: 36 = 31 draftable + 5
+boss (was 34 = 29 + 5). **Confirmed (G-42):** bucket placement of the two draft
+relics (Spillover Charge in bucket 1, Overheal Relay in bucket 14), which was
+not in the brief. All seven relics use placeholder art (the retired relics' icons and
+two unused relic icons) and need new art.
+
 ## G-33. Re-thrown dice collide with resting dice (Kev, 2026-09-27)
 
 A re-thrown die collides with the dice resting in the tray, which act as

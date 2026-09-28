@@ -126,21 +126,21 @@
   },
   "relics": {
     "aegisField": {"center_x": 63, "center_y": 61},
+    "bloodFrenzy": {"center_x": 63, "center_y": 64},
     "bulwarkAura": {"center_x": 69, "center_y": 63},
     "chainDoctrine": {"center_x": 64, "center_y": 67},
     "chainReaction": {"center_x": 62, "center_y": 64},
-    "chitinGraft": {"center_x": 63, "center_y": 64},
     "fieldCache": {"center_x": 62, "center_y": 66},
+    "firewallHack": {"center_x": 63, "center_y": 63},
+    "hereticSignal": {"center_x": 65, "center_y": 60},
     "naniteField": {"center_x": 71, "center_y": 64, "insets": {"left": 40}},
     "openingGambit": {"center_x": 74, "center_y": 63, "insets": {"left": 40}},
     "overflowVent": {"insets": {"left": 45}, "center_x": 64, "center_y": 60},
     "plagueProtocol": {"center_x": 65, "center_y": 64},
     "resonanceCascade": {"center_x": 65, "center_y": 65},
-    "resonantChorus": {"center_x": 65, "center_y": 60},
-    "rootAccess": {"center_x": 63, "center_y": 63},
     "salvageDirective": {"insets": {"left": 45}, "center_x": 66, "center_y": 63},
-    "salvageRig": {"center_x": 66, "center_y": 64},
     "scavengerManifest": {"center_x": 66, "center_y": 65},
+    "scrapConverter": {"center_x": 66, "center_y": 64},
     "standingOrder": {"insets": {"right": 45}, "center_x": 57, "center_y": 64}
   }
 }

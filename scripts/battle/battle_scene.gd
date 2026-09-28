@@ -37,6 +37,7 @@ const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing
 # Protocol-spend subsystem (ARCHITECTURE_REVIEW_JUL2026 §1 rec 1) — preload,
 # not the global class name, for fresh-checkout headless parses.
 const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
+const BOSS_RELIC_ACTIONS_SCRIPT := preload("res://scripts/battle/boss_relic_actions.gd")
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 # Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
@@ -227,6 +228,7 @@ var _footer_frame: PanelContainer = null
 var _die_tooltip_overlays: Array = []
 var _layout: BattleLayout = null
 var _protocol = null  # ProtocolActions — the protocol-spend subsystem
+var _relics = null  # BossRelicActions — boss relic dice presentation + input
 var _card_view: BattleCardView = null
 var _feedback: BattleFeedback = null
 var _round_complete_modal: Control = null
@@ -270,6 +272,9 @@ func _ready() -> void:
 	_protocol = PROTOCOL_ACTIONS_SCRIPT.new()
 	add_child(_protocol)
 	_protocol.setup(self)
+	_relics = BOSS_RELIC_ACTIONS_SCRIPT.new()
+	add_child(_relics)
+	_relics.setup(self)
 	_apply_battle_theme()
 	_build_round_complete_modal()
 	# Review re-entry (from the reward screen): rebuild the finished board
@@ -433,7 +438,7 @@ func _restore_battle_checkpoint(saved: Dictionary) -> bool:
 	protocol_points = int(saved["protocol_points"])
 	_income_debt = int(saved["income_debt"])
 	_free_nudge_used = (saved["free_nudge_used"] as Dictionary).duplicate(true)
-	_root_access_used = bool(saved["root_access_used"])
+	_state.heretic_signal_used = bool(saved.get("heretic_signal_used", false))
 	_round_number = int(saved["round_number"])
 	_battle_effects = (saved["battle_effects"] as Dictionary).duplicate(true)
 	_update_protocol_bar()
@@ -1164,10 +1169,12 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	enemy_rolls.clear()
 	hero_roll_nudges.clear()
 	hero_roll_sets.clear()
+	_relics.on_roll_started()
 	var restoring_reroll: bool = not _pending_actions_restore.is_empty() and not placed_rolls.is_empty()
 	if restoring_reroll:
 		hero_roll_nudges.assign(_pending_actions_restore.get("nudges", {}))
 		hero_roll_sets.assign(_pending_actions_restore.get("sets", {}))
+		_relics.restore_pending_actions(_pending_actions_restore)
 	_clear_die_tooltip_overlays()
 	_card_view.hide_all_ability_readouts()
 	active_targeting_hero_id = ""
@@ -1192,12 +1199,12 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		dice_tray_3d.print_provider = _die_faces_now
 		if placed_rolls.is_empty():
 			dice_tray_3d.play_rolls(
-				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+				_build_dice_tray_entries(_relics.hero_roll_states(), "hero"),
 				_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy")
 			)
 		else:
 			dice_tray_3d.place_rolls(
-				_build_dice_tray_entries(combat_manager.get_hero_states(), "hero"),
+				_build_dice_tray_entries(_relics.hero_roll_states(), "hero"),
 				_build_dice_tray_entries(combat_manager.get_enemy_states(), "enemy"),
 				placed_rolls
 			)
@@ -1210,7 +1217,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	else:
 		# No physical landing in the headless path: choose the source up front.
 		var requests: Dictionary = _tutorial_rig_values() if _game_state().tutorial_mode else {}
-		hero_rolls = _tutorial_headless_rolls(combat_manager.get_hero_states(), "hero", requests)
+		hero_rolls = _tutorial_headless_rolls(_relics.hero_roll_states(), "hero", requests)
 		enemy_rolls = _tutorial_headless_rolls(combat_manager.get_enemy_states(), "enemy", requests)
 	_apply_frozen_roll_overrides(combat_manager.get_hero_states(), hero_rolls)
 	_apply_frozen_roll_overrides(combat_manager.get_enemy_states(), enemy_rolls)
@@ -1223,6 +1230,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	# APPLIED AFTER LANDING: it reacts to the rolled result (a matching pair).
 	if not restoring_reroll:
 		_apply_post_roll_gear_effects()
+	_relics.on_dice_landed(restoring_reroll)
 	_pending_actions_restore.clear()
 	if dice_tray_3d != null and not skip_dice_visuals:
 		# From here to resolution the dice follow game logic live.
@@ -1440,9 +1448,8 @@ func _build_dice_tray_entries(states: Array, side: String = "") -> Array:
 		# thrown and keeps its faces.
 		if not is_frozen:
 			var printed: Array = []
-			var chorus_floor: bool = _chorus_floor_active()
 			for natural in range(1, 21):
-				printed.append(_engine.pre_roll_face_value(state, side == "hero", natural, chorus_floor))
+				printed.append(_engine.pre_roll_face_value(state, side == "hero", natural))
 			entry["face_values"] = printed
 			if not _pending_actions_restore.is_empty():
 				entry["face_values"] = _die_faces_now(side, str(state.id)).get("faces", printed)
@@ -1857,7 +1864,7 @@ func clear_die_tooltip_overlay(side: String, unit_id: String) -> void:
 func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	if battle_over:
 		return
-	if hero_rolls.is_empty() or enemy_rolls.is_empty():
+	if (hero_rolls.is_empty() and not _engine.heroes_hold_this_round()) or enemy_rolls.is_empty():
 		_refresh_summary("Roll dice to begin.")
 		return
 
@@ -1876,6 +1883,7 @@ func _resolve_current_turn(skip_feedback: bool = false) -> void:
 	# rolls, resolve_round, clear the spent roll state, drain pending protocol.
 	# This scene keeps XP recording, feedback, logging, income, and scene handoff.
 	var step: Dictionary = _engine.resolve_step(_state)
+	_relics.on_round_resolved()
 	var result: Dictionary = step["result"]
 	var eff_hero_rolls: Dictionary = step["eff_hero_rolls"]
 	for unit_id_variant in eff_hero_rolls.keys():
@@ -2275,23 +2283,13 @@ var _free_nudge_used: Dictionary:
 	get: return _state.free_nudge_used
 	set(value): _state.free_nudge_used = value
 
-# Round counter (1-based) for turn-scoped relics (Resonant Chorus).
-var _round_number: int = 1
+var _round_number: int = 1  # round counter (1-based)
 
-# Root Access boss relic: once per battle, Set costs 0.
-var _root_access_used: bool:
-	get: return _state.root_access_used
-	set(value): _state.root_access_used = value
-
-# Vengeance Protocol / Dead Man's Hand (forced 20s) and Resonant Chorus (turn-1
-# dice can't land below 8) — roll-time face overrides. There is no "natural 20"
-# concept: forcing a 20 sets the die's face to 20 like any other override
-# (ruling NK-02).
-#
-# KNOWN BEFORE THE ROLL: runs before the dice are thrown, so the die lands
-# directly on 20 / 8 and never shows the stream face first.
+# Vengeance Protocol / Dead Man's Hand (forced 20s) — a roll-time face override.
+# There is no "natural 20" concept: forcing a 20 sets the die's face to 20 like
+# any other override (ruling NK-02). KNOWN BEFORE THE ROLL: printed before the
+# throw, so the die lands directly on 20 and never shows the stream face first.
 func _apply_roll_relic_overrides() -> void:
-	var chorus_floor: bool = _chorus_floor_active()
 	for hero_state_variant in combat_manager.get_hero_states():
 		var hero_state: Dictionary = hero_state_variant
 		if bool(hero_state.get("dead", false)):
@@ -2304,17 +2302,11 @@ func _apply_roll_relic_overrides() -> void:
 		if natural <= 0:
 			continue
 		# The same override the printed faces used (BattleEngine.pre_roll_raw).
-		var raw: int = _engine.pre_roll_raw(hero_state, true, natural, chorus_floor)
+		var raw: int = _engine.pre_roll_raw(hero_state, true, natural)
 		if bool(hero_state.get("forced_20_pending", false)):
 			hero_state["forced_20_pending"] = false
 			_append_log("%s rolls a forced 20!" % hero_id)
-		elif raw != natural:
-			_append_log("Resonant Chorus: %s's die is lifted to %d." % [hero_id, raw])
 		hero_rolls[hero_id] = raw
-
-
-func _chorus_floor_active() -> bool:
-	return combat_manager.has_relic("turn1RollFloor") and _round_number == 1
 
 
 # Roll-time gear: Sync Antenna (holder + an ally rolling the same number both

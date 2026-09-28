@@ -37,8 +37,7 @@ func build_footer_buttons() -> void:
 	_build_item_panel()
 	# Cost badges (UI review S-4, restyled per Kev 2026-07-10): a bare PP number
 	# in the button's bottom-right corner — no plate. The item button carries no
-	# number (its cost varies per item; the loadout shows it). Set's cost can
-	# change mid-battle (Root Access) and
+	# number (its cost varies per item; the loadout shows it). Set's badge
 	# refreshes in refresh_action_affordability.
 	_attach_cost_badge(nudge_button, "1")
 	_attach_cost_badge(_scene.protocol_spend_button, "2")
@@ -207,6 +206,9 @@ func handle_hero_card_pressed(target_id: String) -> bool:
 func handle_enemy_card_pressed(target_id: String) -> bool:
 	if _reroll_busy:
 		return true
+	# Firewall Hack relic (G-36): the Nudge pick also takes one enemy die a turn.
+	if _scene.turn_phase == _scene.PHASE_NUDGE_PICK and _scene._relics.try_firewall_hack(target_id):
+		return true
 	if not _in_item_phase():
 		return false
 	if (_scene.turn_phase == _scene.PHASE_ITEM_PICK_ENEMY or _scene.turn_phase == _scene.PHASE_ITEM_PICK_ANY) and _scene.legal_target_ids.has(target_id) and _pending_item != null:
@@ -345,6 +347,9 @@ func _on_reroll_button_pressed() -> void:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Reroll.")
 		return
+	if _scene._engine.heroes_hold_this_round():
+		_scene._refresh_summary("Your heroes hold this round.")
+		return
 	if _scene.protocol_points < 2:
 		_scene._refresh_summary("Need 2 Protocol to Reroll.")
 		return
@@ -368,8 +373,8 @@ func _on_nudge_button_pressed() -> void:
 	if _scene.protocol_points < 1 and not _has_free_nudge_available():
 		_scene._refresh_summary("Need 1 Protocol to Nudge.")
 		return
-	if not _has_nudgeable_hero():
-		_scene._refresh_summary("Every die was already nudged this turn.")
+	if not _has_nudgeable_hero() and not _scene._relics.can_hack_any():
+		_scene._refresh_summary("Your heroes hold this round." if _scene._engine.heroes_hold_this_round() else "Every die was already nudged this turn.")
 		return
 	AudioManager.play_select()
 	_scene.transition(_scene.PHASE_NUDGE_PICK)
@@ -409,6 +414,7 @@ func _apply_reroll(hero_id: String) -> void:
 	_scene._engine.record_roll_values_for_states([state], _scene.hero_rolls)
 	_scene._update_protocol_bar()
 	_scene._append_log("Reroll: %s draws %d." % [hero_id, new_roll])
+	_scene._relics.grant_landing_protocol([hero_id])  # Scrap Converter: a physical landing
 	_scene._re_assign_hero_target(hero_id)
 	_scene._on_die_values_changed()
 	_scene._finish_roll_modifier_pick()
@@ -425,7 +431,8 @@ func _checkpoint_reroll() -> void:
 	if block.is_empty():
 		return
 	var saved: Dictionary = str_to_var(str(block.state))
-	saved["pending_actions"] = {"nudges": _scene.hero_roll_nudges.duplicate(), "sets": _scene.hero_roll_sets.duplicate()}
+	saved["pending_actions"] = {"nudges": _scene.hero_roll_nudges.duplicate(), "sets": _scene.hero_roll_sets.duplicate(),
+		"enemy_nudges": _scene._state.enemy_roll_nudges.duplicate(), "firewall_hack_used": _scene._state.firewall_hack_used}
 	block.state = var_to_str(saved)
 	_scene.get_node("/root/SaveManager").checkpoint_battle_round(block)
 
@@ -534,7 +541,6 @@ func _has_nudgeable_hero() -> bool:
 	return false
 
 
-# Root Access boss relic: once per battle, Set costs 0.
 func _get_set_cost() -> int:
 	return _scene._engine.set_cost(_scene._state)
 
@@ -549,6 +555,9 @@ func _on_set_button_pressed() -> void:
 	if _scene.turn_phase != _scene.PHASE_READY_TO_END and _scene.turn_phase != _scene.PHASE_TARGETING:
 		if _scene.hero_rolls.is_empty():
 			_scene._refresh_summary("Roll dice before using Set.")
+		return
+	if _scene._engine.heroes_hold_this_round():
+		_scene._refresh_summary("Your heroes hold this round.")
 		return
 	if _scene.protocol_points < _get_set_cost():
 		_scene._refresh_summary("Need %d Protocol to Set." % _scene.SET_DIE_COST)
@@ -806,8 +815,6 @@ func _apply_set(hero_id: String, value: int) -> void:
 	if set_cost < 0:
 		_scene._refresh_summary("That die is frozen solid - it can't be Set.")
 		return
-	if set_cost == 0:
-		_scene._append_log("Root Access: free Set.")
 	_scene._update_protocol_bar()
 	_scene._append_log("Set: %s die set to %d." % [hero_id, value])
 	# The die follows the new value on its own (DiceTray3D live values).
@@ -878,7 +885,11 @@ func _on_item_button_pressed_menu() -> void:
 		var relic_item: ItemData = _scene._data_manager().get_item(str(relic_id_variant)) as ItemData
 		if relic_item != null:
 			relic_items.append(relic_item)
-	LoadoutMenu.open(self, _item_menu_items, relic_items, _on_item_button_pressed, item_button.get_global_rect())
+	# Heretic Signal (G-37) is used by tapping its relic row; the relic module
+	# says which rows are usable now and what each row's note reads.
+	var relic_state: Dictionary = _scene._relics.relic_menu_state()
+	LoadoutMenu.open(self, _item_menu_items, relic_items, _on_item_button_pressed, item_button.get_global_rect(),
+		_scene._relics.use_relic, relic_state["usable"], relic_state["notes"])
 
 
 func _on_item_menu_id_pressed(id: int) -> void:

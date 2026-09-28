@@ -13,7 +13,7 @@ Known incoherences are catalogued in the [Interaction & Coherence Audit](../audi
 Economy & core rules
 - **Protocol:** start 0, +1 at end of every turn, cap **10**. Nudge **1** (±3), Reroll **2**, Set **3**. Consumable items cost **1 flat** (all rarities). → [protocol-economy.md](protocol-economy.md)
 - **Squad size is 3.** → [combat-resolution.md](combat-resolution.md)
-- **Shields expire after one round** (per-side "one opposing action phase" expiry; DECISIONS #2). No multi-round shield durations (`shT`) anywhere. Single named exception: `shieldsPersist` (Mantle Core relic / MANTLE TYRANT). → [shields-and-ward.md](shields-and-ward.md)
+- **Shields expire after one round** (per-side "one opposing action phase" expiry; DECISIONS #2). No multi-round shield durations (`shT`) anywhere. Single named exception: `shields_persist` (the MANTLE TYRANT standing rule; the Mantle Core relic was retired, G-41). → [shields-and-ward.md](shields-and-ward.md)
 - **XP consumable items were removed entirely.** XP flows only from battle wins. → [rewards-and-shop.md](rewards-and-shop.md)
 - **Max ONE manually-picked component per hero ability** (canonical example: Cover Fire = 5 dmg picked + auto 7 shield to lowest-HP ally). → [targeting.md](targeting.md)
 - **One keyword per ability; overload faces may carry two** (pierce counts as a keyword). → [keywords.md](keywords.md)

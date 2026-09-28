@@ -14,6 +14,9 @@
 #            back PLACED (the checkpoint's pending roll, G-24), not thrown;
 #            record them and the state, finish the battle, record the outcome
 #   save_phys / resume_phys : the same refresh with an UNRIGGED physics roll
+#   save_heretic / resume_heretic : Heretic Signal re-throws every unfrozen
+#            round-4 die, then the refresh: the re-thrown dice and the
+#            once-per-battle flag come back (boss relic rework, G-37)
 #
 # The rounds go through the real live path: Roll throws the physics tray (the
 # full/save legs pin the landed values through the tray's rig from a seeded test
@@ -64,9 +67,9 @@ func _run() -> void:
 	_record = {"leg": _leg, "battle": _battle}
 	_dice_rng.seed = SEED + _battle
 	match _leg:
-		"full", "save", "save_phys", "save_reroll":
+		"full", "save", "save_phys", "save_reroll", "save_heretic":
 			await _play_leg()
-		"resume", "resume_phys", "resume_reroll":
+		"resume", "resume_phys", "resume_reroll", "resume_heretic":
 			await _resume_leg()
 		"resume_old":
 			_old_save_leg()
@@ -85,6 +88,8 @@ func _play_leg() -> void:
 	gs().advance_to_next_battle()
 	gs().current_battle = _battle
 	gs().consumables.append("defib_spark")
+	if _leg == "save_heretic":
+		gs().relics.append("hereticSignal")
 	if not await _enter_battle():
 		return
 	var scene: Node = current_scene
@@ -135,6 +140,21 @@ func _play_leg() -> void:
 		await scene._protocol._apply_item_effect(item, target)
 		_expect(int(scene.dice_tray_3d.thrown_dice_total) == launched + 2, "enemy item uses one live throw")
 		_expect(not gs().consumables.has("phase_scrambler"), "reroll item consumed before checkpoint")
+	if _leg == "save_heretic":
+		var before_rolls: Dictionary = scene.hero_rolls.duplicate()
+		var frozen_id: String = str(heroes[2].id)
+		_expect(scene._engine.heretic_signal_available(scene._state), "Heretic Signal is available after the roll")
+		var expected: int = 0
+		for st in scene.combat_manager.get_hero_states() + scene.combat_manager.get_enemy_states():
+			if not bool(st["dead"]) and scene._engine.can_alter_die(st) and (scene.hero_rolls.has(str(st.id)) or scene.enemy_rolls.has(str(st.id))):
+				expected += 1
+		var launched: int = int(scene.dice_tray_3d.thrown_dice_total)
+		await scene._relics.rethrow_all()
+		_expect(int(scene.dice_tray_3d.thrown_dice_total) - launched == expected,
+			"one live throw per unfrozen die (%d, expected %d)" % [int(scene.dice_tray_3d.thrown_dice_total) - launched, expected])
+		_expect(bool(scene._state.heretic_signal_used), "Heretic Signal is used")
+		_expect(int(scene.hero_rolls.get(frozen_id, 0)) == int(before_rolls.get(frozen_id, -1)), "the frozen hero die was not re-thrown")
+		_record["heretic_before_rolls"] = before_rolls
 	_record["round4_hero_rolls"] = scene.hero_rolls.duplicate()
 	_record["round4_enemy_rolls"] = scene.enemy_rolls.duplicate()
 	_record["post_roll_state"] = _live_state_text(scene)
@@ -180,7 +200,11 @@ func _resume_leg() -> void:
 	for key in shown:
 		var parts: PackedStringArray = str(key).split(":", true, 1)
 		_expect(int(shown[key]) == int(scene._die_value(parts[0], parts[1])), "restored die %s shows the value it acts on" % key)
-	if _leg in ["resume_phys", "resume_reroll"]:
+	if _leg == "resume_heretic":
+		_record["heretic_used_after_resume"] = bool(scene._state.heretic_signal_used)
+		_record["heretic_available_after_resume"] = bool(scene._engine.heretic_signal_available(scene._state))
+		_record["heretic_menu_note"] = str(scene._relics.relic_menu_state()["notes"].get("hereticSignal", ""))
+	if _leg in ["resume_phys", "resume_reroll", "resume_heretic"]:
 		return
 	# The resume banner: shown after a successful restore, real round, non-blocking.
 	var callout: Variant = scene._feedback.resume_callout
@@ -343,7 +367,9 @@ func _layer_temporary_state(scene: Node) -> void:
 	scene.protocol_points = 7
 	scene._income_debt = 1
 	scene._free_nudge_used = {str(heroes[0]["id"]): true}
-	scene._root_access_used = true
+	# The per-battle relic flag rides along (set here unless this leg is about
+	# to use Heretic Signal for real).
+	scene._state.heretic_signal_used = _leg != "save_heretic"
 
 
 func _finish_battle(scene: Node) -> void:
