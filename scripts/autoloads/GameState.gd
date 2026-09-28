@@ -1851,6 +1851,11 @@ func load_from_dict(data: Dictionary) -> void:
 	# looks up int 3 against a key of "3" and finds nothing — every beat in the
 	# run would vanish on resume, with no error anywhere.
 	run_beats = _int_keyed(run_beats)
+	# Boss relic rework (G-41): a run saved while holding an old boss relic keeps
+	# it as that operation's new relic. Same shape, so no save version bump.
+	for i in relics.size():
+		relics[i] = SaveManager.current_relic_id(str(relics[i]))
+	starting_directive_relic_id = SaveManager.current_relic_id(starting_directive_relic_id)
 	_reward_rng.state = SaveIO.decode_i64(data.get("reward_rng_state", ""), int(_reward_rng.state))
 
 

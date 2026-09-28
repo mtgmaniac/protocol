@@ -343,7 +343,7 @@ func _layer_temporary_state(scene: Node) -> void:
 	scene.protocol_points = 7
 	scene._income_debt = 1
 	scene._free_nudge_used = {str(heroes[0]["id"]): true}
-	scene._root_access_used = true
+	scene._state.heretic_signal_used = true
 
 
 func _finish_battle(scene: Node) -> void:

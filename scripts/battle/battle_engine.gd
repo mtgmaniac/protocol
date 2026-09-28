@@ -266,22 +266,19 @@ func apply_nudge(bs: BattleState, hero_id: String, first_nudge_free_gear: bool, 
 	return {"kind": "applied", "cost": cost}
 
 
-# Root Access boss relic: the first Set each battle costs 0.
-func set_cost(bs: BattleState) -> int:
-	if combat_manager.has_relic("setCostZeroOncePerBattle") and not bs.root_access_used:
-		return 0
+# Set costs SET_DIE_COST. (Kept as a function: the UI and the sim policies
+# price Set through it.)
+func set_cost(_bs: BattleState) -> int:
 	return SET_DIE_COST
 
 
 # Set-a-die to an absolute effective value; an explicit Set overrides any prior
-# Nudge. Mutates bs; returns the cost paid (0 signals the Root Access freebie),
-# or -1 (nothing spent, nothing set) when the die is frozen.
+# Nudge. Mutates bs; returns the cost paid, or -1 (nothing spent, nothing set)
+# when the die is frozen.
 func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 	if not can_alter_die(_hero_state_by_id(hero_id)):
 		return -1
 	var cost: int = set_cost(bs)
-	if cost == 0:
-		bs.root_access_used = true
 	bs.protocol_points -= cost
 	bs.hero_roll_sets[hero_id] = value
 	bs.hero_roll_nudges.erase(hero_id)
@@ -522,24 +519,22 @@ func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> 
 # ── Printed faces (G-24) ──────────────────────────────────────────────────────
 # Modifiers known before the roll are printed on the die before it is thrown:
 # each face shows the value the unit would act on if the die landed on it. The
-# raw overrides are the ones battle_scene applies after landing (forced 20,
-# Resonant Chorus) and the value rule is get_effective_roll (buffs, penalties,
+# raw override is the one battle_scene applies after landing (a forced 20)
+# and the value rule is get_effective_roll (buffs, penalties,
 # jam, rewrite) — the same functions, so the landed face always reads the value
 # the engine then computes. Hijack is not known before the roll (it copies the
 # heroes' dice) and is not printed.
 
-# The raw roll a landed natural becomes under the pre-roll raw overrides.
-func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
+# The raw roll a landed natural becomes under the pre-roll raw override.
+func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int) -> int:
 	if is_hero and bool(state.get("forced_20_pending", false)):
 		return 20
-	if is_hero and chorus_floor and natural > 0 and natural < 8:
-		return 8
 	return natural
 
 
 # The value printed on the face with natural number `natural`.
-func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int, chorus_floor: bool) -> int:
-	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural, chorus_floor))
+func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int) -> int:
+	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural))
 
 
 # G-27 / G-25: the faces a die prints for its CURRENT state — face n reads the

@@ -37,8 +37,7 @@ func build_footer_buttons() -> void:
 	_build_item_panel()
 	# Cost badges (UI review S-4, restyled per Kev 2026-07-10): a bare PP number
 	# in the button's bottom-right corner — no plate. The item button carries no
-	# number (its cost varies per item; the loadout shows it). Set's cost can
-	# change mid-battle (Root Access) and
+	# number (its cost varies per item; the loadout shows it). Set's badge
 	# refreshes in refresh_action_affordability.
 	_attach_cost_badge(nudge_button, "1")
 	_attach_cost_badge(_scene.protocol_spend_button, "2")
@@ -534,7 +533,6 @@ func _has_nudgeable_hero() -> bool:
 	return false
 
 
-# Root Access boss relic: once per battle, Set costs 0.
 func _get_set_cost() -> int:
 	return _scene._engine.set_cost(_scene._state)
 
@@ -806,8 +804,6 @@ func _apply_set(hero_id: String, value: int) -> void:
 	if set_cost < 0:
 		_scene._refresh_summary("That die is frozen solid - it can't be Set.")
 		return
-	if set_cost == 0:
-		_scene._append_log("Root Access: free Set.")
 	_scene._update_protocol_bar()
 	_scene._append_log("Set: %s die set to %d." % [hero_id, value])
 	# The die follows the new value on its own (DiceTray3D live values).

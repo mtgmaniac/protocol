@@ -32,9 +32,9 @@ RELIC_HANDLED = {
     "critBandExtend", "battleStartJamEnemies", "protocolOverflowDamage",
     "protocolOnMarkedKill", "frozenBonusDamage", "chainExtraJump",
     "firstKillDropsConsumable", "squadWipeSurvive",
-    # boss relics (data now; dropped/unlocked in pkg5)
-    "protocolOnShieldBreak", "heroHealOnOwnKill", "turn1RollFloor",
-    "setCostZeroOncePerBattle", "shieldsPersist",
+    # boss relics (rework 2026-09-27, G-34..G-38)
+    "protocolOnLowLanding", "killFreezesKillerDie", "enemyNudgeOncePerTurn",
+    "rethrowAllOncePerBattle", "heroesHoldRoundOne",
 }
 
 GAMESTATE_ONLY = {"rewardsNoCommon", "reviveNoPenalty", "battleStartConsumable"}

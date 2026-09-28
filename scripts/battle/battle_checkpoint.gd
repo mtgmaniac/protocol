@@ -58,7 +58,7 @@ static func capture(scene: Node, game_state: Node) -> Dictionary:
 		"protocol_points": bs.protocol_points,
 		"income_debt": bs.income_debt,
 		"free_nudge_used": bs.free_nudge_used.duplicate(true),
-		"root_access_used": bs.root_access_used,
+		"heretic_signal_used": bs.heretic_signal_used,
 		"round_number": int(scene._round_number),
 		"battle_effects": (scene._battle_effects as Dictionary).duplicate(true),
 		"xp": game_state.export_battle_xp_tracking(),
@@ -138,8 +138,11 @@ static func decode(checkpoint: Dictionary, current_battle: int) -> Dictionary:
 	var state_block: Dictionary = parsed
 	if _find_object(state_block, "state") != "":
 		return {}
+	# heretic_signal_used (boss relic rework, 2026-09-27) is optional: a
+	# checkpoint written before it reads as "not used yet". The retired
+	# root_access_used key an older checkpoint may carry is ignored.
 	for key in ["combat", "streams", "protocol_points", "income_debt", "free_nudge_used",
-			"root_access_used", "round_number", "battle_effects", "xp"]:
+			"round_number", "battle_effects", "xp"]:
 		if not state_block.has(key):
 			return {}
 	var combat: Dictionary = state_block["combat"]

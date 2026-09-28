@@ -20,7 +20,7 @@ func _run() -> void:
 	change_scene_to_file("res://scenes/ui/UnitSelect.tscn")
 	await create_timer(1.2).timeout
 	if current_scene != null and current_scene.has_method("_open_directive_picker"):
-		current_scene.call("_open_directive_picker", ["salvageRig", "chitinGraft", "resonantChorus", "rootAccess", "mantleCore"])
+		current_scene.call("_open_directive_picker", ["scrapConverter", "bloodFrenzy", "firewallHack", "hereticSignal", "tectonicCharge"])
 	await create_timer(0.6).timeout
 	await RenderingServer.frame_post_draw
 	var out: String = OUTPUT

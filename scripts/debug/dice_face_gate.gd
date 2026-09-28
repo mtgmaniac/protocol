@@ -648,15 +648,17 @@ func _part_b_and_c() -> void:
 		})
 	print("[DICE_FACE_GATE] part B1: +3 / -2 / jam 10 / rewrite x 20 naturals")
 
-	# B2: forced 20 + Resonant Chorus (round 1) x all 20 naturals.
-	cm.get("_active_relic_effects").append({"type": "turn1RollFloor"})
+	# B2: forced 20 + Tectonic Charge's permanent +2 x all 20 naturals.
 	for roll in range(20):
 		_clear_statuses(heroes + enemies)
 		heroes[0]["forced_20_pending"] = true
+		for st in [heroes[1], heroes[2]]:
+			st["perm_roll_buff"] = 2
 		await _roll(stub, roll, heroes.size() + enemies.size(),
-			{"hero:%s" % h[0]: [20], "hero:%s" % h[1]: _span(8, 20), "hero:%s" % h[2]: _span(8, 20)})
-	cm.get("_active_relic_effects").clear()
-	print("[DICE_FACE_GATE] part B2: forced 20 + Resonant Chorus x 20 naturals")
+			{"hero:%s" % h[0]: [20], "hero:%s" % h[1]: _span(3, 20), "hero:%s" % h[2]: _span(3, 20)})
+	for st in heroes:
+		st["perm_roll_buff"] = 0
+	print("[DICE_FACE_GATE] part B2: forced 20 + Tectonic Charge +2 x 20 naturals")
 
 	# B3: frozen 20s, hero and enemy (a frozen die repeats; nothing alters it).
 	_clear_statuses(heroes + enemies)
@@ -1056,5 +1058,5 @@ func _extra_contracts(heroes: Array, enemies: Array, pa: Object, stub: ScriptedR
 
 func _spend_snapshot(bs: Object, stub: ScriptedRolls) -> String:
 	return var_to_str([bs.get("hero_rolls"), bs.get("hero_roll_nudges"), bs.get("hero_roll_sets"),
-		bs.get("protocol_points"), bs.get("free_nudge_used"), bs.get("root_access_used"),
+		bs.get("protocol_points"), bs.get("free_nudge_used"), bs.get("heretic_signal_used"),
 		stub.queue, stub.fallback.state])

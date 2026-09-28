@@ -527,20 +527,6 @@ func apply_battle_start_relic_effects(battle_index: int) -> void:
 			if not jam_state["dead"]:
 				apply_battle_start_jam(jam_state)
 
-	# Mantle Core: your shields persist until broken.
-	if has_relic("shieldsPersist"):
-		for persist_state in _hero_states:
-			persist_state["shields_persist"] = true
-
-	# Resonant Chorus is applied in battle_scene at roll time (turn-1 floor 8).
-
-	# shieldsPersist (Mantle Core): hero shields persist until broken instead of
-	# expiring at round end.
-	if has_relic("shieldsPersist"):
-		for hero_state in _hero_states:
-			hero_state["shields_persist"] = true
-		_log("Mantle Core: hero shields persist until broken.")
-
 	# plagueProtocol: all enemies start with 3 burn
 	if has_relic("enemyBurnPermanent"):
 		var burn_amt = int(_get_relic_value("enemyBurnPermanent", "amount", 3))
@@ -1210,11 +1196,12 @@ func _get_total_shield(state: Dictionary) -> int:
 # opposing phase, gone at the round-end tick. Enemy abilities resolve AFTER the
 # hero phase, so shields they grant pass survives_current_tick=true — they live
 # through the imminent tick and cover exactly one hero phase instead of dying
-# before they could ever absorb. shields_persist (Mantle Core relic / MANTLE
-# TYRANT boss rule) exempts a state from expiry entirely.
+# before they could ever absorb. shields_persist (the MANTLE TYRANT boss rule)
+# exempts a state from expiry entirely.
 # CONFIRMED (per Kev 2026-07-06, DECISIONS_RESOLVED #2): "one round" IS the
-# per-side "one opposing action phase" reading; shieldsPersist (Mantle Core /
-# MANTLE TYRANT) is the single named exception. Data audited 2026-07-07: no
+# per-side "one opposing action phase" reading; shields_persist (MANTLE TYRANT)
+# is the single named exception (the Mantle Core relic that shared it was
+# removed in the boss relic rework, G-41). Data audited 2026-07-07: no
 # multi-phase shield exists anywhere in data/raw.
 func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false) -> void:
 	# Overcharge Mesh directive: shields gained by any squad member +2 while
@@ -1225,8 +1212,8 @@ func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bo
 				amount += _directive_value(mesh_state, "amount", 2)
 				break
 	state["shield_stacks"].append({"amt": amount, "skip_next_tick": survives_current_tick})
-	# Cap the total shield at max HP so persistent shields (Mantle Core /
-	# MANTLE TYRANT) can't accumulate without bound from per-round drips like
+	# Cap the total shield at max HP so persistent shields (MANTLE TYRANT)
+	# can't accumulate without bound from per-round drips like
 	# Bulwark Aura and Aegis Field (audit A-034). The one-round expiry that
 	# bounds ordinary shields does not apply under shields_persist, so this cap
 	# is the bound in that case.
@@ -2337,14 +2324,8 @@ func _damage_state(
 		for stack in stacks:
 			if int(stack["amt"]) > 0:
 				surviving_stacks.append(stack)
-		var shield_before_hit: int = int(state.get("shield", 0))
 		state["shield_stacks"] = surviving_stacks
 		state["shield"] = _get_total_shield(state)
-		# Salvage Rig (boss relic): +1 Protocol when an enemy shield fully breaks.
-		if shield_before_hit > 0 and int(state["shield"]) == 0 and not _is_hero_state(state) and has_relic("protocolOnShieldBreak"):
-			var rig_grant: int = int(_get_relic_value("protocolOnShieldBreak", "amount", 1))
-			_pending_protocol_grants += rig_grant
-			_log("Salvage Rig: +%d Protocol for shattering the shield." % rig_grant)
 
 	if total_absorbed > 0:
 		_log("%s absorbs %d damage with shields." % [state["unit"].display_name, total_absorbed])
@@ -2668,11 +2649,6 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 			if protocol_any > 0:
 				_pending_protocol_grants += protocol_any
 				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_any])
-			# Chitin Graft (boss relic): heroes heal 3 on their kills.
-			if has_relic("heroHealOnOwnKill"):
-				var graft_heal: int = int(_get_relic_value("heroHealOnOwnKill", "amount", 3))
-				_heal_state(killer_state, graft_heal, killer_state)
-				_log("Chitin Graft: %s heals %d on the kill." % [killer_state["unit"].display_name, graft_heal])
 			# Salvage Directive: killing a Marked enemy refunds Protocol.
 			if has_relic("protocolOnMarkedKill") and bool(dead_state.get("mark_consumed_this_hit", false)):
 				var refund: int = int(_get_relic_value("protocolOnMarkedKill", "amount", 2))

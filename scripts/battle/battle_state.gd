@@ -27,7 +27,7 @@ var protocol_points: int = 0             # battles start at 0; +1 income at end 
 # ── Per-battle spend / economy status ─────────────────────────────────────────
 var income_debt: int = 0                 # Deep Cache intercept: turns of owed income
 var free_nudge_used: Dictionary = {}     # hero id -> Priming Charge free-Nudge consumed
-var root_access_used: bool = false       # Root Access relic: first Set each battle is free
+var heretic_signal_used: bool = false    # Heretic Signal relic: once per battle
 
 
 # Deep copy for L2 speculative lookahead: mutate the clone, keep the original.
@@ -40,5 +40,5 @@ func duplicate_for_search() -> BattleState:
 	copy.protocol_points = protocol_points
 	copy.income_debt = income_debt
 	copy.free_nudge_used = free_nudge_used.duplicate(true)
-	copy.root_access_used = root_access_used
+	copy.heretic_signal_used = heretic_signal_used
 	return copy

@@ -134,7 +134,7 @@ func _fake_checkpoint() -> Dictionary:
 			"enemy_states": [{"id": "scrap_drone#1", "unit": {"kind": "enemy", "name": "Scrap Drone", "starts_cloaked": false}}],
 		},
 		"streams": {"d20": 1, "pick": 2}, "protocol_points": 1, "income_debt": 0,
-		"free_nudge_used": {}, "root_access_used": false, "round_number": 2,
+		"free_nudge_used": {}, "heretic_signal_used": false, "round_number": 2,
 		"battle_effects": {}, "xp": {"effective_rolls": {}, "end_alive": {}},
 	}
 	return {"format": BattleCheckpoint.FORMAT, "battle": int(gs().current_battle), "round": 2,

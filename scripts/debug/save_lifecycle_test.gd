@@ -209,7 +209,7 @@ func _test_meta_survives_restart() -> void:
 	sm().load_save()
 
 	_check(sm().is_tutorial_done(), "G9: tutorial_done did not survive a restart")
-	_check((sm().get_unlocked_boss_relics() as Array).has("salvageRig"),
+	_check((sm().get_unlocked_boss_relics() as Array).has("scrapConverter"),
 		"G9: a boss relic did not survive a restart")
 	_check((sm().data["unlocks"]["heroes"] as Array).has("shield"),
 		"G9: an unlocked hero did not survive a restart")

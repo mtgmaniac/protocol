@@ -142,7 +142,7 @@ func _test_gating_and_delta() -> void:
 				hero_ids.append(str(entry.get("id", "")))
 			_:
 				item_ids[str(entry.get("id", ""))] = true
-	_check(boss_ids == ["salvageRig"], "boss kill announces its relic (BOSS RELIC section feed)")
+	_check(boss_ids == ["scrapConverter"], "boss kill announces its relic (BOSS RELIC section feed)")
 	_check(str((delta[0] as Dictionary).get("type", "")) == "boss_relic", "boss relic leads the delta (biggest news first)")
 	var expected_items: Dictionary = {}
 	for bucket_index in range(1, 3):

@@ -99,7 +99,7 @@ func _build_checkpoint(squad: Array = SQUAD) -> Dictionary:
 	# Every array that would otherwise be EMPTY. An empty array fingerprints as
 	# "[]" — element shape unknown — so leaving one empty hides changes to what
 	# it holds, and makes the gate fire later when ordinary play first fills it.
-	gs().relics.append("salvageRig")
+	gs().relics.append("scrapConverter")
 	gs().deferred_evolution_unit_ids.append(lead)
 	gs().consumed_beats.append(2)
 	# Twice: the first call shifts into deaths_prev_battle, so both are non-empty.
