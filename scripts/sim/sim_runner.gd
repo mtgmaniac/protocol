@@ -721,8 +721,17 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
 		engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
 		engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
+		# Scrap Converter: the dice that just landed (the live screen grants the
+		# same engine amount when its tray settles).
+		engine.gain_protocol(bs, engine.landing_protocol(bs, engine.thrown_hero_ids(bs)), engine.max_protocol(cap_override))
 		# Policy: hero targets + protocol spends before the round resolves.
 		var spends: Array = policy.decide_round(engine, bs, cm, gs)
+		# Scrap Converter on the policy's rerolled dice (physical landings too).
+		var rerolled: Array = []
+		for spend_variant in spends:
+			if str((spend_variant as Dictionary).get("kind", "")) == "reroll":
+				rerolled.append(str((spend_variant as Dictionary).get("unit", "")))
+		engine.gain_protocol(bs, engine.landing_protocol(bs, rerolled), engine.max_protocol(cap_override))
 		# Policy: in-battle consumable use (sim-D). Applied through the same
 		# engine dispatch the live screen uses; removed from the run inventory.
 		for action_variant in policy.decide_items(bs, cm, gs):

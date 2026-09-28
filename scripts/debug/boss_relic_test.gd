@@ -49,7 +49,9 @@ func _run() -> void:
 	ENEMY = load("res://scripts/resources/enemy_data.gd")
 	CHECKPOINT = load("res://scripts/battle/battle_checkpoint.gd")
 	_data_counts()
+	_scrap_converter()
 	_save_migration()
+	await _live_scrap_converter()
 	await _teardown()
 	_finish()
 
@@ -127,6 +129,56 @@ func _data_counts() -> void:
 		_check(dm.get_item(relic_id).icon != null, "%s has placeholder art" % relic_id)
 	for old_id in OLD_BOSS_RELIC_BY_OP.values():
 		_check(dm.get_item(old_id) == null, "retired %s is gone from data" % old_id)
+
+
+# ── Scrap Converter (G-34) ────────────────────────────────────────────────────
+
+func _scrap_converter() -> void:
+	_section = "Scrap Converter"
+	var cm: Object = _mgr(["scrapConverter"], [_hero("h1"), _hero("h2"), _hero("h3")], [_enemy("e1")])
+	var eng: Object = _engine(cm)
+	var bs: Object = BS.new()
+	var h: Array = cm.get_hero_states()
+	var ids: Array = h.map(func(s): return _id(s))
+	bs.hero_rolls = {ids[0]: 1, ids[1]: 2, ids[2]: 3}
+	_check(eng.landing_protocol(bs, ids) == 2, "landings showing 1 and 2 pay 1 each, 3 pays nothing")
+	h[0]["perm_roll_buff"] = 2
+	bs.hero_rolls = {ids[0]: 1}
+	_check(eng.landing_protocol(bs, [ids[0]]) == 0, "a +2 die landing on natural 1 shows 3: no Protocol")
+	h[0]["perm_roll_buff"] = 0
+	h[0]["perm_rfe"] = 2
+	bs.hero_rolls = {ids[0]: 4}
+	_check(eng.landing_protocol(bs, [ids[0]]) == 1, "a -2 die landing on natural 4 shows 2: pays")
+	h[0]["perm_rfe"] = 0
+	h[0]["rewrite_pending"] = true
+	bs.hero_rolls = {ids[0]: 1}
+	_check(eng.landing_protocol(bs, [ids[0]]) == 0, "a rewritten die prints 3 on every face: no Protocol")
+	h[0]["rewrite_pending"] = false
+	h[1]["die_freeze_turns"] = 1
+	h[1]["frozen_die_value"] = 1
+	bs.hero_rolls = {ids[0]: 9, ids[1]: 1, ids[2]: 9}
+	_check(not eng.thrown_hero_ids(bs).has(ids[1]), "a frozen repeat is not a landing")
+	_check(eng.landing_protocol(bs, ids) == 0, "a frozen die repeating 1 pays nothing")
+	h[1]["die_freeze_turns"] = 0
+	h[1]["frozen_die_value"] = 0
+	h[2]["dead"] = true
+	bs.hero_rolls = {ids[2]: 1}
+	_check(eng.landing_protocol(bs, [ids[2]]) == 0, "a dead hero's die pays nothing")
+	h[2]["dead"] = false
+	var plain: Object = _mgr([], [_hero("h1")], [_enemy("e1")])
+	var plain_bs: Object = BS.new()
+	plain_bs.hero_rolls = {_id(plain.get_hero_states()[0]): 1}
+	_check(_engine(plain).landing_protocol(plain_bs, [_id(plain.get_hero_states()[0])]) == 0, "no relic, no Protocol")
+	# Set and Nudge never land a die: they don't call the landing check, and the
+	# engine's own spend paths change only the cost.
+	bs.hero_rolls = {ids[0]: 9, ids[1]: 9, ids[2]: 9}
+	bs.protocol_points = 10
+	eng.apply_set(bs, ids[0], 1)
+	eng.apply_nudge(bs, ids[1], false, false)
+	_check(bs.protocol_points == 5, "Set 4 + Nudge 1 cost exactly 5 (no landing Protocol)")
+	# A Reroll is a physical landing; so is the Heretic Signal re-throw.
+	var raw: int = eng.apply_reroll(bs, ids[2], 2)
+	_check(raw == 2 and eng.landing_protocol(bs, [ids[2]]) == 1, "a Reroll landing on 2 pays")
 
 
 # ── Save migration (G-41) ─────────────────────────────────────────────────────
@@ -265,6 +317,44 @@ func _enemy_ids(scene: Node) -> Array:
 
 func _log_has(scene: Node, text: String) -> bool:
 	return str(scene.battle_log_label.get_parsed_text()).contains(text)
+
+
+func _live_scrap_converter() -> void:
+	_section = "live Scrap Converter"
+	var scene: Node = await _enter(["scrapConverter"])
+	scene.protocol_points = 0
+	await _roll(scene, [1, 2, 9], [10])
+	_check(int(scene.protocol_points) == 2, "landing 1 and 2 pays +2 as the dice settle (got %d)" % int(scene.protocol_points))
+	_check(_log_has(scene, "Scrap Converter: +2 Protocol"), "the log names the grant")
+	var h: Array = _hero_ids(scene)
+	scene.protocol_points = 10
+	scene._protocol._apply_set(h[2], 1)
+	_check(int(scene.protocol_points) == 6, "a Set to 1 is not a landing (cost only)")
+	scene._protocol._apply_nudge(h[0])
+	_check(int(scene.protocol_points) == 5, "a Nudge is not a landing (cost only)")
+	await _settle(scene)
+	# Rerolls are physical landings: each one pays exactly when it shows 1 or 2.
+	# The first four with a -18 penalty (every face prints 1 or 2, so every
+	# landing must pay), then plain dice (pay only on a 1 or 2).
+	var low_seen: int = 0
+	var penalized: Dictionary = scene.combat_manager.get_hero_states()[1]
+	for i in 10:
+		penalized["perm_rfe"] = 18 if i < 4 else 0
+		scene.protocol_points = 10
+		var before: int = int(scene.protocol_points)
+		await scene._protocol._apply_reroll(h[1])
+		await _settle(scene)
+		var shown: int = int(scene._die_value("hero", h[1]))
+		var want: int = before - 2 + (1 if shown <= 2 else 0)
+		if shown <= 2:
+			low_seen += 1
+		_check(int(scene.protocol_points) == want, "a Reroll landing on %d pays %d" % [shown, 1 if shown <= 2 else 0])
+	_check(low_seen >= 4, "the penalized rerolls all landed showing 1 or 2 (%d of 10 low)" % low_seen)
+	penalized["perm_rfe"] = 0
+	# CONTINUE into a settled re-throw never pays twice.
+	var pp: int = int(scene.protocol_points)
+	scene._relics.on_dice_landed(true)
+	_check(int(scene.protocol_points) == pp, "a restored landing is not paid again")
 
 
 func _teardown() -> void:

@@ -37,6 +37,7 @@ const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing
 # Protocol-spend subsystem (ARCHITECTURE_REVIEW_JUL2026 §1 rec 1) — preload,
 # not the global class name, for fresh-checkout headless parses.
 const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
+const BOSS_RELIC_ACTIONS_SCRIPT := preload("res://scripts/battle/boss_relic_actions.gd")
 const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
 const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
 # Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
@@ -227,6 +228,7 @@ var _footer_frame: PanelContainer = null
 var _die_tooltip_overlays: Array = []
 var _layout: BattleLayout = null
 var _protocol = null  # ProtocolActions — the protocol-spend subsystem
+var _relics = null  # BossRelicActions — boss relic dice presentation + input
 var _card_view: BattleCardView = null
 var _feedback: BattleFeedback = null
 var _round_complete_modal: Control = null
@@ -270,6 +272,9 @@ func _ready() -> void:
 	_protocol = PROTOCOL_ACTIONS_SCRIPT.new()
 	add_child(_protocol)
 	_protocol.setup(self)
+	_relics = BOSS_RELIC_ACTIONS_SCRIPT.new()
+	add_child(_relics)
+	_relics.setup(self)
 	_apply_battle_theme()
 	_build_round_complete_modal()
 	# Review re-entry (from the reward screen): rebuild the finished board
@@ -1223,6 +1228,7 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 	# APPLIED AFTER LANDING: it reacts to the rolled result (a matching pair).
 	if not restoring_reroll:
 		_apply_post_roll_gear_effects()
+	_relics.on_dice_landed(restoring_reroll)
 	_pending_actions_restore.clear()
 	if dice_tray_3d != null and not skip_dice_visuals:
 		# From here to resolution the dice follow game logic live.

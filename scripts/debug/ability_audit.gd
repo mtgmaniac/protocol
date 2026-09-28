@@ -1558,6 +1558,19 @@ func _run_new_relic_regressions() -> void:
 	cold_manager.resolve_round({str(cold_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	_expect_and_record("Regression / relic coldLogic +4 vs frozen", "frozenBonusDamage", "14", str(cold_before - int(cold_enemy["current_hp"])))
 
+	# Scrap Converter (G-34): a hero die landing on a printed 1 or 2 pays 1.
+	var scrap_manager: CombatManager = CombatManager.new()
+	scrap_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	scrap_manager.setup_relics(["scrapConverter"])
+	var scrap_engine := BattleEngine.new(scrap_manager, null, DiceManager.new())
+	var scrap_bs := BattleState.new()
+	var scrap_id: String = str(scrap_manager.get_hero_states()[0]["id"])
+	scrap_bs.hero_rolls = {scrap_id: 2}
+	var scrap_two: int = scrap_engine.landing_protocol(scrap_bs, [scrap_id])
+	scrap_bs.hero_rolls = {scrap_id: 3}
+	_expect_and_record("Regression / relic scrapConverter 1-2 landing", "protocolOnLowLanding", "1/0",
+		"%d/%d" % [scrap_two, scrap_engine.landing_protocol(scrap_bs, [scrap_id])])
+
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
 	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])

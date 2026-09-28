@@ -408,6 +408,7 @@ func _apply_reroll(hero_id: String) -> void:
 	_scene._engine.record_roll_values_for_states([state], _scene.hero_rolls)
 	_scene._update_protocol_bar()
 	_scene._append_log("Reroll: %s draws %d." % [hero_id, new_roll])
+	_scene._relics.grant_landing_protocol([hero_id])  # Scrap Converter: a physical landing
 	_scene._re_assign_hero_target(hero_id)
 	_scene._on_die_values_changed()
 	_scene._finish_roll_modifier_pick()

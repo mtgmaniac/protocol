@@ -285,6 +285,49 @@ func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 	return cost
 
 
+# ── Boss relics (rework, Kev 2026-09-27; DECISIONS_RESOLVED G-34..G-38) ──────
+# The dice rules of the boss relics live here so the live screen and the
+# headless sim share them. Blood Frenzy is a kill hook in combat_manager, and
+# Tectonic Charge's +2 is granted there when round 1 ends.
+
+# Scrap Converter (G-34): Protocol for each hero die in `hero_ids` whose
+# physical landing SHOWS 1 or 2 (the printed face, modifiers included). The
+# caller passes only dice that were just thrown or re-thrown, never a Set,
+# Nudge or frozen repeat, and applies the amount through its own gain wrapper
+# (the cap and Overflow Vent live there).
+func landing_protocol(bs: BattleState, hero_ids: Array) -> int:
+	if not combat_manager.has_relic("protocolOnLowLanding"):
+		return 0
+	var max_face: int = int(combat_manager.get_relic_value("protocolOnLowLanding", "maxFace", 2))
+	var per_die: int = int(combat_manager.get_relic_value("protocolOnLowLanding", "amount", 1))
+	var total: int = 0
+	for id_variant in hero_ids:
+		var hero_id: String = str(id_variant)
+		var state: Dictionary = _hero_state_by_id(hero_id)
+		if state.is_empty() or bool(state.get("dead", false)) or not can_alter_die(state):
+			continue
+		var raw: int = int(bs.hero_rolls.get(hero_id, 0))
+		if raw <= 0:
+			continue
+		# The printed face: the landed natural through the same value rule the
+		# faces were printed with (a fresh landing has no Nudge or Set).
+		if combat_manager.get_effective_roll(state, raw) <= max_face:
+			total += per_die
+	return total
+
+
+# The living hero dice that were thrown this roll (Scrap Converter's candidates
+# after a full throw). A frozen die repeats; it did not land.
+func thrown_hero_ids(bs: BattleState) -> Array:
+	var ids: Array = []
+	for state in combat_manager.get_hero_states():
+		var hero_id: String = str(state["id"])
+		if bool(state.get("dead", false)) or not bs.hero_rolls.has(hero_id) or not can_alter_die(state):
+			continue
+		ids.append(hero_id)
+	return ids
+
+
 # ── Item effects not on combat_manager (extracted from battle_scene) ──────────
 # The item-effect dispatch + logging stay in battle_scene; these own the effect
 # mutations that used to be inline there. Most item types already delegate to
