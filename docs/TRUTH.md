@@ -175,7 +175,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2500**, facility **0.3662** (re-pinned 2026-09-21 with the Facility anti-sponginess package — see "Sim baseline (current)"). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2767**, facility **0.4085** (re-pinned 2026-09-27 to the post-dice-rework tree — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -1561,6 +1561,13 @@ confirmation runs.
   runs in the batch). `ci_smoke.py` is green against the new pin.
   `scripts/sim/acknowledged_drift.json` and the `verify_gate` carve-out that read
   it are deleted, since the pin makes them dead.
+- **Baseline re-pin (2026-09-27, BASELINE-APPROVED-BY-KEV):** `baseline.json` →
+  overall **0.2767** · facility **0.4085** · hive **0.2373** · veil **0.2615** ·
+  voidCirclet **0.2105** · stellarMenagerie **0.2292** (was 0.2500 · 0.3662 ·
+  0.2203 · 0.2462 · 0.2105 · 0.1667; largest per-op move +6.2 pts). The drift is
+  the dice rework (G-24 real dice, landed face = roll), not the UI batch: the UI
+  batch reproduced the same 13 out-of-tolerance metrics to the digit with main's
+  `combat_manager.gd` swapped back in. Kev confirmed the balance is fine.
 
 ## Out of scope (don't build)
 
