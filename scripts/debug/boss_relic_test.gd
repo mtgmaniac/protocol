@@ -50,6 +50,7 @@ func _run() -> void:
 	CHECKPOINT = load("res://scripts/battle/battle_checkpoint.gd")
 	_data_counts()
 	_scrap_converter()
+	_blood_frenzy()
 	_save_migration()
 	await _live_scrap_converter()
 	await _teardown()
@@ -179,6 +180,59 @@ func _scrap_converter() -> void:
 	# A Reroll is a physical landing; so is the Heretic Signal re-throw.
 	var raw: int = eng.apply_reroll(bs, ids[2], 2)
 	_check(raw == 2 and eng.landing_protocol(bs, [ids[2]]) == 1, "a Reroll landing on 2 pays")
+
+
+# ── Blood Frenzy (G-35) ───────────────────────────────────────────────────────
+
+func _blood_frenzy() -> void:
+	_section = "Blood Frenzy"
+	var dm: Object = DMS.new()
+	# Single kill: the killer's die freezes on the value it acted on.
+	var cm: Object = _mgr(["bloodFrenzy"], [_hero("h1", {"dmg": 100}), _hero("h2")], [_enemy("e1"), _enemy("e2")])
+	var h1: Dictionary = cm.get_hero_states()[0]
+	var h2: Dictionary = cm.get_hero_states()[1]
+	h1["selected_target_id"] = _id(cm.get_enemy_states()[0])
+	cm.resolve_round({_id(h1): 17, _id(h2): 5}, {}, dm)
+	_check(bool(cm.get_enemy_states()[0]["dead"]), "fixture: the hit killed e1")
+	_check(int(h1.get("die_freeze_turns", 0)) == 1 and int(h1.get("frozen_die_value", 0)) == 17,
+		"the killer's die freezes for one repeat on the value it acted on (17)")
+	_check(int(h2.get("die_freeze_turns", 0)) == 0, "a hero that didn't kill stays unfrozen")
+	# Next round: the die repeats 17 and can't be altered.
+	var eng: Object = BE.new(cm, PROV.new(3), dm)
+	var bs: Object = BS.new()
+	bs.hero_rolls = {_id(h1): 4, _id(h2): 6}
+	eng.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)
+	eng.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
+	_check(int(bs.hero_rolls[_id(h1)]) == 17, "next round the frozen die repeats 17")
+	bs.protocol_points = 10
+	_check(str(eng.apply_nudge(bs, _id(h1), false, false).get("kind", "")) == "frozen" \
+		and eng.apply_set(bs, _id(h1), 20) == -1 and eng.apply_reroll(bs, _id(h1), 5) == 0 and bs.protocol_points == 10,
+		"the frozen die refuses Nudge, Set and Reroll at no cost")
+	# Killing again on the repeat round extends the freeze by one more repeat.
+	var fresh: Dictionary = cm.inject_enemy(_enemy("e3")).get("state", {})
+	h1["selected_target_id"] = _id(fresh)
+	cm.resolve_round(eng.build_effective_rolls(bs.hero_rolls, cm.get_hero_states(), true, bs), {}, dm)
+	_check(bool(fresh.get("dead", false)), "fixture: the repeat killed a summoned enemy")
+	_check(int(h1.get("die_freeze_turns", 0)) == 1 and int(h1.get("frozen_die_value", 0)) == 17,
+		"a kill on the repeat round re-freezes (repeats again next round, still 17)")
+	# AoE double kill: one freeze, not one per kill.
+	var aoe: Object = _mgr(["bloodFrenzy"], [_hero("h1", {"dmg": 100, "blastAll": true})], [_enemy("e1"), _enemy("e2"), _enemy("e3", 500)])
+	var ah: Dictionary = aoe.get_hero_states()[0]
+	aoe.resolve_round({_id(ah): 12}, {}, dm)
+	_check(bool(aoe.get_enemy_states()[0]["dead"]) and bool(aoe.get_enemy_states()[1]["dead"]), "fixture: the blast killed two")
+	_check(int(ah.get("die_freeze_turns", 0)) == 1, "two kills in one round freeze once (1 repeat, got %d)" % int(ah.get("die_freeze_turns", 0)))
+	# No hero killer: an environmental death freezes nobody; a dead killer can't freeze.
+	var env: Object = _mgr(["bloodFrenzy"], [_hero("h1")], [_enemy("e1"), _enemy("e2")])
+	env._damage_state(env.get_enemy_states()[0], 500)
+	_check(int(env.get_hero_states()[0].get("die_freeze_turns", 0)) == 0, "a death with no hero killer freezes nothing")
+	var dead_killer: Dictionary = env.get_hero_states()[0]
+	dead_killer["dead"] = true
+	env._process_unit_killed(env.get_enemy_states()[1], dead_killer, true)
+	_check(int(dead_killer.get("die_freeze_turns", 0)) == 0, "a dead killer's die doesn't freeze")
+	# An enemy killing a hero is not a hero kill.
+	var foe: Object = _mgr(["bloodFrenzy"], [_hero("h1"), _hero("h2")], [_enemy("e1")])
+	foe._damage_state(foe.get_hero_states()[0], 500, false, foe.get_enemy_states()[0])
+	_check(int(foe.get_enemy_states()[0].get("die_freeze_turns", 0)) == 0, "an enemy's kill never freezes the enemy")
 
 
 # ── Save migration (G-41) ─────────────────────────────────────────────────────

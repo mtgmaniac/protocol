@@ -2649,6 +2649,14 @@ func _process_unit_killed(dead_state: Dictionary, killer_state: Dictionary, is_t
 			if protocol_any > 0:
 				_pending_protocol_grants += protocol_any
 				_log("%s gains %d Protocol from the kill." % [killer_state["unit"].display_name, protocol_any])
+			# Blood Frenzy (G-35): the killer's die freezes (freeze = repeat): it
+			# keeps the value it acted on and repeats next round. Once per hero
+			# per round - more kills in the same round don't add repeats.
+			if has_relic("killFreezesKillerDie") and not bool(killer_state.get("dead", false)) \
+					and int(killer_state.get("blood_frenzy_round", -1)) != _battle_round:
+				killer_state["blood_frenzy_round"] = _battle_round
+				_log("Blood Frenzy: %s's die freezes on the kill." % killer_state["unit"].display_name)
+				_freeze_die_state(killer_state, int(_get_relic_value("killFreezesKillerDie", "repeats", 1)), "ice", false)
 			# Salvage Directive: killing a Marked enemy refunds Protocol.
 			if has_relic("protocolOnMarkedKill") and bool(dead_state.get("mark_consumed_this_hit", false)):
 				var refund: int = int(_get_relic_value("protocolOnMarkedKill", "amount", 2))

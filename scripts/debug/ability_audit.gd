@@ -1571,6 +1571,16 @@ func _run_new_relic_regressions() -> void:
 	_expect_and_record("Regression / relic scrapConverter 1-2 landing", "protocolOnLowLanding", "1/0",
 		"%d/%d" % [scrap_two, scrap_engine.landing_protocol(scrap_bs, [scrap_id])])
 
+	# Blood Frenzy (G-35): the killer's die freezes on the value it acted on.
+	var frenzy_manager: CombatManager = CombatManager.new()
+	frenzy_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
+	frenzy_manager.setup_relics(["bloodFrenzy"])
+	var frenzy_hero: Dictionary = frenzy_manager.get_hero_states()[0]
+	frenzy_hero["selected_target_id"] = str(frenzy_manager.get_enemy_states()[0]["id"])
+	frenzy_manager.resolve_round({str(frenzy_hero["id"]): 14}, {}, DiceManager.new())
+	_expect_and_record("Regression / relic bloodFrenzy freezes the killer", "killFreezesKillerDie", "1/14",
+		"%d/%d" % [int(frenzy_hero.get("die_freeze_turns", 0)), int(frenzy_hero.get("frozen_die_value", 0))])
+
 	# Salvage Directive: killing a Marked enemy refunds 2 Protocol.
 	var directive_manager: CombatManager = CombatManager.new()
 	directive_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Strike", {"dmg": 100})], [_make_enemy("audit_enemy", "Audit Enemy")])
@@ -3669,7 +3679,7 @@ func _run_reinforcement_reward_regressions() -> void:
 		GameState.consumables.clear()
 		var manager := CombatManager.new()
 		manager.setup_battle([_make_unit("hero", "Hero", "Strike", {"dmg": 100})], [_make_enemy("enemy", "Enemy")])
-		manager.setup_relics(["salvageDirective", "scavengerManifest"])
+		manager.setup_relics(["salvageDirective", "bloodFrenzy", "scavengerManifest"])
 		var hero: Dictionary = manager.get_hero_states()[0]
 		var enemy: Dictionary = manager.get_enemy_states()[0]
 		if kind == "summoned":
@@ -3686,13 +3696,13 @@ func _run_reinforcement_reward_regressions() -> void:
 		hero["directive_effect"] = {"amount": 4}
 		enemy["mark_consumed_this_hit"] = true
 		manager.call("_process_unit_killed", enemy, hero, true)
-		_expect_and_record("Regression / " + kind + " kill rewards", "G-8", "35/4/4/1",
-			"%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size()])
+		_expect_and_record("Regression / " + kind + " kill rewards", "G-8", "35/4/4/1/1",
+			"%d/%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size(), int(hero.get("die_freeze_turns", 0))])
 		# A later environmental death still heals the holder; killer-only
 		# benefits do not pay, and Scavenger does not grant a second item.
 		manager.call("_process_unit_killed", _make_reward_dead_state(manager), {}, true)
-		_expect_and_record("Regression / " + kind + " reward limits", "G-8", "40/0/4/1",
-			"%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size()])
+		_expect_and_record("Regression / " + kind + " reward limits", "G-8", "40/0/4/1/1",
+			"%d/%d/%d/%d/%d" % [int(hero["current_hp"]), manager.take_pending_protocol_grants(), int(hero.get("momentum_bonus", 0)), GameState.consumables.size(), int(hero.get("die_freeze_turns", 0))])
 	_restore_game_state_snapshot(snapshot)
 
 
