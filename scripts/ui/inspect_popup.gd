@@ -90,7 +90,7 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 	_catcher = Control.new()
 	_catcher.mouse_filter = Control.MOUSE_FILTER_STOP
 	_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_catcher.gui_input.connect(_on_dismiss_input)
+	_catcher.gui_input.connect(_on_dismiss_input.bind(_catcher))
 	add_child(_catcher)
 
 	# Shared modal scrim so nothing beneath (e.g. the battle Roll button) shows through
@@ -101,7 +101,7 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 	_panel = PanelContainer.new()
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel.add_theme_stylebox_override("panel", _panel_style())
-	_panel.gui_input.connect(_on_dismiss_input)
+	_panel.gui_input.connect(_on_dismiss_input.bind(_panel))
 	# Transparent until _relayout has positioned it, so it never flashes at the top-left
 	# corner for the frame before layout resolves. We use modulate (not `visible`) because a
 	# hidden PanelContainer won't sort its subtree, so the width never reaches the autowrap
@@ -119,6 +119,7 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	PixelUI.enable_touch_scroll(_scroll)
 	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	margin.add_child(_scroll)
@@ -132,6 +133,9 @@ func _build(payload: Dictionary, anchor_rect: Rect2) -> void:
 	# Mouse-ignore everything inside the panel so a press anywhere on the popup falls
 	# through to the panel (or the catcher, when outside) and dismisses it.
 	_set_descendants_ignore(_panel)
+	# ...except the scroll itself, which must see a drag to scroll a long popup on
+	# touch (playtest 2026-10-01); a drag never dismisses (see _on_dismiss_input).
+	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	# Size + position once layout has resolved.
 	call_deferred("_relayout", anchor_rect)
@@ -444,13 +448,40 @@ func _header_band_height(header: Node) -> float:
 
 
 # ── Dismiss ───────────────────────────────────────────────────────────────────
-func _on_dismiss_input(event: InputEvent) -> void:
+# Tap to close (playtest 2026-10-01): it closed on the PRESS, so a long popup
+# could never be drag-scrolled. It now closes on a release that follows a press
+# made on the popup and didn't travel past the long-press drag tolerance, so a
+# scroll drag never closes it. The finger that long-pressed to OPEN the popup
+# pressed elsewhere, so its release is ignored.
+var _dismiss_press_at: Vector2 = Vector2.INF
+
+
+func _on_dismiss_input(event: InputEvent, source: Control) -> void:
 	var pressed := false
+	var canceled := false
+	var at := Vector2.INF
 	if event is InputEventMouseButton:
-		pressed = (event as InputEventMouseButton).pressed
+		var mb: InputEventMouseButton = event
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		pressed = mb.pressed
+		canceled = mb.canceled
+		at = mb.global_position
 	elif event is InputEventScreenTouch:
-		pressed = (event as InputEventScreenTouch).pressed
+		var touch: InputEventScreenTouch = event
+		pressed = touch.pressed
+		canceled = touch.canceled
+		at = source.get_global_transform() * touch.position
+	else:
+		return
 	if pressed:
+		_dismiss_press_at = at
+		return
+	var started: Vector2 = _dismiss_press_at
+	_dismiss_press_at = Vector2.INF
+	if canceled or started == Vector2.INF:
+		return
+	if at.distance_to(started) <= LongPressInput.cancel_distance_for(get_viewport()):
 		InspectPopup.dismiss()
 
 

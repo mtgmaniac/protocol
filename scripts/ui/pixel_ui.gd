@@ -1451,6 +1451,44 @@ static func make_integer_icon(tex: Texture2D, box_px: float, accent: Color = Col
 ## the popup's full-rect root/catcher so the popup panel renders on top of it. Every
 ## popup/overlay (inspect, equip chooser, reward detail, settings, help) uses this so
 ## nothing beneath a popup shows through at full brightness.
+# ── Touch scrolling (playtest 2026-10-01) ────────────────────────────────────
+# Godot 4.6's ScrollContainer only drag-scrolls when the press reaches it, and a
+# MOUSE_FILTER_STOP child (card panels, buttons — Button's default) swallows it:
+# a drag that started on a card scrolled nothing, and on a button it could
+# press it. Every STOP control inside the scroll becomes PASS: it still gets its
+# own input (taps, long-press, button presses — Godot cancels a button press
+# once a drag starts scrolling) and the scroll sees the gesture. Content added
+# later is converted too (after its builder finished setting filters). Sliders,
+# scrollbars, text fields and nested scrolls keep their own drags.
+static func enable_touch_scroll(scroll: ScrollContainer) -> void:
+	if scroll == null or scroll.has_meta("touch_scroll"):
+		return
+	scroll.set_meta("touch_scroll", true)
+	_pass_scroll_input(scroll, scroll)
+	var watch := func(node: Node) -> void:
+		if is_instance_valid(scroll) and scroll.is_ancestor_of(node):
+			_pass_scroll_input.call_deferred(scroll, node)
+	scroll.tree_entered.connect(func() -> void:
+		if not scroll.get_tree().node_added.is_connected(watch):
+			scroll.get_tree().node_added.connect(watch))
+	scroll.tree_exiting.connect(func() -> void:
+		if scroll.get_tree().node_added.is_connected(watch):
+			scroll.get_tree().node_added.disconnect(watch))
+	if scroll.is_inside_tree():
+		scroll.get_tree().node_added.connect(watch)
+
+
+static func _pass_scroll_input(scroll: ScrollContainer, node: Node) -> void:
+	if not is_instance_valid(scroll) or not is_instance_valid(node):
+		return
+	if node != scroll and (node is ScrollContainer or node is Range or node is LineEdit or node is TextEdit):
+		return
+	if node != scroll and node is Control and (node as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_PASS
+	for child in node.get_children():
+		_pass_scroll_input(scroll, child)
+
+
 static func make_modal_scrim(alpha: float = 0.6, block_input: bool = false) -> ColorRect:
 	var scrim: ColorRect = ColorRect.new()
 	scrim.name = "ModalScrim"

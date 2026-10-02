@@ -276,6 +276,7 @@ func _update_reward_layout() -> void:
 	reward_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	reward_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	reward_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	PixelUI.enable_touch_scroll(reward_scroll)
 	reward_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# The inner column fills the scroll viewport. Paired flexible spacers place
 	# the choice group in the usable well below the heading; when content exceeds
@@ -343,7 +344,7 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	panel.set_meta("item_id", selection_id)
 	panel.set_meta("reward_kind", "row")
 	_style_card_panel(panel, accent, false)
-	panel.gui_input.connect(_on_card_input.bind(selection_id))
+	_attach_tap_select(panel, selection_id)
 	_attach_item_inspect(panel, item)
 
 	var margin := MarginContainer.new()
@@ -419,7 +420,7 @@ func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelConta
 	panel.set_meta("item_id", selection_id)
 	panel.set_meta("reward_kind", "relic")
 	_style_relic_panel(panel, false)
-	panel.gui_input.connect(_on_card_input.bind(selection_id))
+	_attach_tap_select(panel, selection_id)
 	_attach_item_inspect(panel, item)
 
 	var margin := MarginContainer.new()
@@ -627,16 +628,17 @@ func _place_bracket_arm(rect: ColorRect, corner: int, arm: String) -> void:
 
 
 # ─── Selection ──────────────────────────────────────────────────────────────────
-func _on_card_input(event: InputEvent, item_id: String) -> void:
-	var clicked := false
-	if event is InputEventMouseButton:
-		var mb: InputEventMouseButton = event
-		clicked = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
-	elif event is InputEventScreenTouch:
-		clicked = (event as InputEventScreenTouch).pressed
-	if not clicked:
-		return
-	accept_event()
+# A row selects on a TAP (LongPressInput: a quick release that didn't drag),
+# not on the press (playtest 2026-10-01): selecting on press, and accepting the
+# event, meant a swipe that started on a row selected it and never scrolled.
+func _attach_tap_select(panel: Control, item_id: String) -> void:
+	var tap := LongPressInput.new()
+	tap.name = "TapSelect"
+	panel.add_child(tap)
+	tap.tapped.connect(_on_card_tapped.bind(item_id))
+
+
+func _on_card_tapped(item_id: String) -> void:
 	if _selected_item_id == item_id:
 		return
 	AudioManager.play_select()

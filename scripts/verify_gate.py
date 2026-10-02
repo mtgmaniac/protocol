@@ -77,6 +77,10 @@ GATES = [
     # integer icon law + containment at both inset budgets; and the selection
     # screen's zero-new-framed-panels pin.
     ("reward model", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/reward_model_test.gd"], "[REWARD_MODEL] PASS", False),
+    # Playtest 2026-10-01: every scrolling list drag-scrolls on touch from a
+    # start ON a button / card / row (phone touch and touch-laptop mouse), a
+    # drag never presses, a tap still does; the inspect popup closes on a tap.
+    ("touch scroll", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/touch_scroll_test.gd"], "[TOUCH_SCROLL] PASS", False),
     ("panel count", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/panel_count_test.gd"], "[PANEL_COUNT] PASS", False),
     ("boss nameplate", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/boss_nameplate_test.gd"], "[BOSS_NAMEPLATE] PASS", False),
     # Polish Build D: consumable cap (4) + discard picker state machine, relic cap (2)

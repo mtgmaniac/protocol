@@ -885,6 +885,22 @@ inspection remains available. Footer geometry stays compact and icon-only.
   No lesson is skipped or silently freed. Resize refreshes highlights and the coach
   without resetting the recovery budget or removing an offer. Coach presses are
   consumed before callbacks, so assisting Nudge cannot also cancel its pick.
+- **Touch scrolling (playtest 2026-10-01):** Godot 4.6's ScrollContainer only
+  drag-scrolls when the press reaches it, and a `MOUSE_FILTER_STOP` child (card
+  panels, buttons) swallowed it: the evolution screen could not be scrolled from
+  a card, and a swipe on a reward row selected it. Every scrolling list
+  (evolution, reward, unlock, route fork, intercept, Help, inspect) runs
+  `PixelUI.enable_touch_scroll`, which turns STOP controls inside it to PASS
+  (sliders, scrollbars, text fields and nested scrolls excepted; content added
+  later too). Godot cancels a button press once a drag scrolls. Reward rows
+  select on a tap (`LongPressInput.tapped`), not on the press. `LongPressInput`
+  no longer reads the nonexistent `global_position` of touch events (a script
+  error on every touch; gestures had only worked through the emulated mouse),
+  and drops a tap whose release was cancelled or travelled past the tolerance.
+  The inspect popup closes on a TAP that started on it (it closed on the press,
+  so a long popup could never be scrolled); the opening long-press's release
+  never closes it. Gate: `touch scroll` (phone touch and touch-laptop mouse,
+  drag and tap, all seven screens).
 - **Long-press cancel tolerance is a screen-pixel distance** (`LongPressInput.
   MOVE_CANCEL_DEVICE_PX` = 26, scaled by the viewport's final transform; Web also
   accounts for devicePixelRatio so the tolerance is 26 CSS pixels). It was

@@ -68,6 +68,7 @@ func _ready() -> void:
 	choice_area.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	choice_area.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	choice_area.follow_focus = true
+	PixelUI.enable_touch_scroll(choice_area)
 	# ScrollContainer draws a themed panel by default; this screen's cards carry
 	# their own frames, so keep the scroll viewport invisible (INVARIANTS #7 —
 	# no extra framed panels).

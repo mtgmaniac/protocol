@@ -76,6 +76,7 @@ func _ready() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	PixelUI.enable_touch_scroll(scroll)
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	margin.add_child(scroll)

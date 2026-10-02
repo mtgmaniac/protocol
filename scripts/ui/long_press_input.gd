@@ -49,18 +49,29 @@ func _on_gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_begin(mb.global_position)
+			elif mb.canceled:
+				_cancel()  # a ScrollContainer took the gesture over
 			else:
-				_release()
+				_release(mb.global_position)
 	elif event is InputEventScreenTouch:
+		# Touch events carry no global_position (it was read anyway, a script
+		# error on every touch — the gesture only worked through the emulated
+		# mouse events). Their local position maps through the target instead.
 		var touch: InputEventScreenTouch = event
 		if touch.pressed:
-			_begin(touch.global_position)
+			_begin(_touch_global(touch.position))
+		elif touch.canceled:
+			_cancel()
 		else:
-			_release()
+			_release(_touch_global(touch.position))
 	elif event is InputEventMouseMotion:
 		_check_drag((event as InputEventMouseMotion).global_position)
 	elif event is InputEventScreenDrag:
-		_check_drag((event as InputEventScreenDrag).global_position)
+		_check_drag(_touch_global((event as InputEventScreenDrag).position))
+
+
+func _touch_global(local_pos: Vector2) -> Vector2:
+	return _target.get_global_transform() * local_pos
 
 
 func _begin(global_pos: Vector2) -> void:
@@ -86,7 +97,12 @@ func _check_drag(global_pos: Vector2) -> void:
 func move_cancel_distance() -> float:
 	if _target == null or not is_instance_valid(_target) or not _target.is_inside_tree():
 		return MOVE_CANCEL_DEVICE_PX
-	var viewport: Viewport = _target.get_viewport()
+	return cancel_distance_for(_target.get_viewport())
+
+
+## The same tolerance for any surface that tells a tap from a drag (the inspect
+## popup's tap-to-close shares it, rather than a copy of the constant).
+static func cancel_distance_for(viewport: Viewport) -> float:
 	if viewport == null:
 		return MOVE_CANCEL_DEVICE_PX
 	var scale: float = viewport.get_final_transform().get_scale().x
@@ -107,8 +123,14 @@ func _on_hold_elapsed() -> void:
 	long_pressed.emit(_press_pos)
 
 
-func _release() -> void:
+# `global_pos`: where the pointer came up. A ScrollContainer that takes over a
+# drag stops the motion events reaching this target, so the travel is checked
+# again at release (playtest 2026-10-01: a swipe on a reward row selected it).
+func _release(global_pos: Vector2 = Vector2.INF) -> void:
 	if not _pressed:
+		return
+	if global_pos != Vector2.INF and global_pos.distance_to(_press_pos) > move_cancel_distance():
+		_cancel()
 		return
 	_pressed = false
 	if _timer != null:

@@ -196,6 +196,7 @@ func _build() -> void:
 
 	_content_scroll = ScrollContainer.new()
 	_content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	PixelUI.enable_touch_scroll(_content_scroll)
 	_content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL

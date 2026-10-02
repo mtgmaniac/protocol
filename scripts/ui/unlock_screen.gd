@@ -48,6 +48,7 @@ func _ready() -> void:
 	content.offset_top += float(PixelUI.safe_top)
 	content.offset_bottom -= float(PixelUI.safe_bottom)
 	PersistentHeader.set_run_active(false)
+	PixelUI.enable_touch_scroll(award_scroll)
 	PersistentHeader.clear_battle_actions()
 
 	var unlocks: Array = SaveManager.check_new_unlocks()

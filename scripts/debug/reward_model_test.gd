@@ -95,6 +95,12 @@ func _tap(control: Control) -> void:
 	press.position = pos
 	press.global_position = pos
 	control.emit_signal("gui_input", press)
+	# Rows select on a TAP (press + release without a drag), not on the press
+	# (playtest 2026-10-01 touch-scroll fix).
+	var release: InputEventMouseButton = press.duplicate()
+	release.pressed = false
+	release.button_mask = 0
+	control.emit_signal("gui_input", release)
 
 
 # Match by the `reward_kind` meta (Godot @-renames duplicate sibling names, so
