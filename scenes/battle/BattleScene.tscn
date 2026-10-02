@@ -11,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_c4j2v")
 
 [node name="Background" type="TextureRect" parent="."]
@@ -133,6 +134,7 @@ theme_override_constants/margin_bottom = 4
 
 [node name="CenterVBox" type="Control" parent="Content/VBox/Board/CenterPanel/CenterMargin"]
 layout_mode = 2
+mouse_filter = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 

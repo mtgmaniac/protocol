@@ -1531,7 +1531,7 @@ func _build_die_tooltip_overlays_for_states(states: Array, rolls: Dictionary, si
 		overlay.name = "DieTooltip_%s_%s" % [side, unit_id]
 		overlay.set_meta("layout_die", [side, unit_id])
 		overlay.color = Color(1.0, 1.0, 1.0, 0.0)
-		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+		_protocol.claim_die_taps(overlay)
 		overlay.custom_minimum_size = overlay_rect.size
 		overlay.size = overlay_rect.size
 		overlay.z_index = 90
@@ -3371,7 +3371,7 @@ func _is_card_clickable(state: Dictionary, accent_color: Color) -> bool:
 		return accent_color == HERO_ACCENT and not bool(state["dead"]) \
 			and _has_roll_for_state(hero_rolls, state) and _engine.can_alter_die(state)
 	if turn_phase == PHASE_NUDGE_PICK:
-		return accent_color == HERO_ACCENT and _protocol.can_nudge_hero(state)
+		return _protocol.can_nudge_hero(state) if accent_color == HERO_ACCENT else _relics.can_pick_for_hack(state)
 
 	# Item pick phases
 	if turn_phase == PHASE_ITEM_PICK_ALLY:
@@ -3425,7 +3425,7 @@ func _on_enemy_card_pressed(target_id: String) -> void:
 	# An enemy card is never a valid target for a roll-modifier pick — tapping one
 	# cancels the armed pick and passes through (§1).
 	if _protocol.in_roll_modifier_pick():
-		_protocol.cancel_roll_modifier_pick()
+		_protocol.cancel_roll_modifier_pick(true)
 		return
 	if turn_phase != PHASE_TARGETING:
 		return

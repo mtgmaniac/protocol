@@ -732,31 +732,45 @@ func _live_tectonic_charge() -> void:
 		_check(int(scene.dice_tray_3d.up_face_numeral("hero", hid)) == int(scene._die_value("hero", hid)), "%s shows the value it acts on" % hid)
 
 
+# Driven through the REAL input path (playtest 2026-10-01): taps go into the
+# root viewport with push_input, so GUI picking, card clickability, the die
+# hit-areas and the unhandled-tap cancel are all exercised, not the handlers.
 func _live_firewall_hack() -> void:
 	_section = "live Firewall Hack"
 	var scene: Node = await _enter(["firewallHack"])
 	await _roll(scene, [10], [12])
 	var e: Array = _enemy_ids(scene)
 	scene.protocol_points = 5
-	scene._protocol._on_nudge_button_pressed()
-	_check(int(scene.turn_phase) == int(scene.PHASE_NUDGE_PICK), "Nudge arms")
-	scene._on_enemy_card_pressed(e[0])
+	await _tap(scene._protocol.nudge_button.get_global_rect().get_center())
+	_check(int(scene.turn_phase) == int(scene.PHASE_NUDGE_PICK), "tapping Nudge arms it")
+	_check(scene._relics.hack_ring_ids().size() == e.size(), "every enemy die the hack can take is ringed (%s)" % str(scene._relics.hack_ring_ids()))
+	_check(str(scene._relics.pick_note_text()).contains("enemy"), "the armed prompt names enemy dice (%s)" % scene._relics.pick_note_text())
+	await _tap(scene.dice_tray_3d.get_die_screen_position("enemy", e[0]))
 	await _settle(scene)
 	_check(int(scene._die_value("enemy", e[0])) == 9, "tapping an enemy die lowers it by 3 (12 -> 9)")
 	_check(int(scene.protocol_points) == 4, "for 1 Protocol")
 	_check(int(scene.dice_tray_3d.up_face_numeral("enemy", e[0])) == 9, "the die moved to a face showing 9")
 	_check(int(scene.turn_phase) != int(scene.PHASE_NUDGE_PICK), "the pick closes")
+	_check(scene._relics.hack_ring_ids().is_empty(), "the rings go when the pick closes")
 	var die: RigidBody3D = scene.dice_tray_3d._get_die_for_entry("enemy", e[0])
 	var zone9: String = str(scene.dice_manager.get_ability_for_roll(scene.combat_manager.get_enemy_states()[0]["unit"], 9).get("zone", ""))
 	_check(die != null and str(die.get_meta("zone", "")) == zone9, "the die's ability highlight follows the new value")
 	_check(_log_has(scene, "Firewall Hack:"), "the log names the hack")
+	# A second hack this turn: tapping the enemy's CARD answers (it no longer
+	# silently cancels the armed Nudge) and says why nothing happened.
 	var second: String = e[1] if e.size() > 1 else e[0]
 	var value_before: int = int(scene._die_value("enemy", second))
-	scene._protocol._on_nudge_button_pressed()
-	scene._on_enemy_card_pressed(second)
+	await _tap(scene._protocol.nudge_button.get_global_rect().get_center())
+	await _tap(_enemy_card(scene, second).get_global_rect().get_center())
 	_check(int(scene.protocol_points) == 4 and int(scene._die_value("enemy", second)) == value_before, "only once per turn")
-	if scene._protocol.in_roll_modifier_pick():
-		scene._protocol.cancel_roll_modifier_pick()
+	_check(int(scene.turn_phase) == int(scene.PHASE_NUDGE_PICK), "a blocked enemy tap keeps the Nudge armed")
+	_check(str(scene._relics.pick_note_text()).contains("used up"), "and says why (%s)" % scene._relics.pick_note_text())
+	# A tap that hits no die cancels the Nudge out loud.
+	var empty: Vector2 = await _empty_point(scene)
+	_check(empty != Vector2.INF, "fixture: an empty spot to tap exists")
+	await _tap(empty)
+	_check(int(scene.turn_phase) != int(scene.PHASE_NUDGE_PICK), "a tap on empty space cancels the Nudge")
+	_check(scene._relics.pick_note_text() == "Nudge cancelled.", "and says so (%s)" % scene._relics.pick_note_text())
 	await scene._resolve_current_turn(true)
 	if bool(scene.battle_over):
 		_check(false, "fixture: the battle ended in round 1")
@@ -764,10 +778,57 @@ func _live_firewall_hack() -> void:
 	await _roll(scene, [10], [15])
 	scene.protocol_points = 5
 	e = _enemy_ids(scene)
-	scene._protocol._on_nudge_button_pressed()
-	scene._on_enemy_card_pressed(e[0])
+	await _tap(scene._protocol.nudge_button.get_global_rect().get_center())
+	await _tap(_enemy_card(scene, e[0]).get_global_rect().get_center())
 	await _settle(scene)
-	_check(int(scene._die_value("enemy", e[0])) == 12, "a new turn allows a new hack (15 -> 12)")
+	_check(int(scene._die_value("enemy", e[0])) == 12, "a new turn allows a new hack, picked by the enemy's card (15 -> 12)")
+
+
+# One tap at a canvas position, through the root viewport's real input path.
+func _tap(at: Vector2) -> void:
+	var window_at: Vector2 = root.get_final_transform() * at
+	for pressed in [true, false]:
+		var tap := InputEventMouseButton.new()
+		tap.button_index = MOUSE_BUTTON_LEFT
+		tap.pressed = pressed
+		tap.position = window_at
+		tap.global_position = window_at
+		root.push_input(tap)
+	# Press and release in one frame: the gate runs physics at 8x time scale, so
+	# frames between them would outlast the long-press hold and open inspect.
+	await process_frame
+	await process_frame
+
+
+# A point whose press no control consumes, so it reaches _unhandled_input:
+# where a real off-target tap cancels an armed pick.
+func _empty_point(scene: Node) -> Vector2:
+	var size: Vector2 = root.get_visible_rect().size
+	for fy in range(2, 40):
+		for fx in range(1, 20):
+			var at := Vector2(size.x * fx / 20.0, size.y * fy / 40.0)
+			var motion := InputEventMouseMotion.new()
+			motion.position = root.get_final_transform() * at
+			motion.global_position = motion.position
+			root.push_input(motion)
+			await process_frame
+			var stopped: bool = false
+			var node: Node = root.gui_get_hovered_control()
+			while node is Control:
+				if (node as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
+					stopped = true
+					break
+				node = node.get_parent()
+			if not stopped:
+				return at
+	return Vector2.INF
+
+
+func _enemy_card(scene: Node, enemy_id: String) -> Control:
+	for view in scene.enemy_card_views:
+		if str((view["state"] as Dictionary)["id"]) == enemy_id:
+			return view["card"] as Control
+	return null
 
 
 func _live_heretic_signal() -> void:

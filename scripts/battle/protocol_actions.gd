@@ -50,6 +50,8 @@ func build_footer_buttons() -> void:
 func on_phase_changed(next_phase: int) -> void:
 	if next_phase != _scene.PHASE_SET_PICK:
 		_close_set_value_popup()
+	if _scene._relics != null:
+		_scene._relics.sync_hack_rings(next_phase == _scene.PHASE_NUDGE_PICK)
 
 
 func reset_battle_over_state() -> void:
@@ -241,7 +243,7 @@ func handle_unhandled_input(event: InputEvent) -> bool:
 	if _in_item_phase():
 		_cancel_item_to_loadout()
 	else:
-		cancel_roll_modifier_pick()
+		cancel_roll_modifier_pick(true)
 	return true
 
 
@@ -257,10 +259,27 @@ func in_roll_modifier_pick() -> bool:
 # resting phase (READY_TO_END / TARGETING) via _finish_roll_modifier_pick, which
 # commits nothing and spends NO Protocol. Arming never deducts Protocol (reroll/
 # nudge/set/twin only pay inside their _apply_*), so a cancel is always free.
-func cancel_roll_modifier_pick() -> void:
+# A die's hit-area claims its own presses (playtest 2026-10-01). It never
+# accepted them, so the press fell through to _unhandled_input and cancelled an
+# armed Reroll / Nudge / Set (handle_unhandled_input) before the release's tap
+# could pick the die: tapping an enemy die never reached Firewall Hack.
+func claim_die_taps(overlay: Control) -> void:
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton or event is InputEventScreenTouch:
+			overlay.accept_event())
+
+
+# `announce`: a tap that missed every legal die says the pick was cancelled
+# (playtest 2026-10-01: a silent cancel read as Firewall Hack not working).
+func cancel_roll_modifier_pick(announce: bool = false) -> void:
+	var action: String = {_scene.PHASE_REROLL_PICK: "Reroll", _scene.PHASE_NUDGE_PICK: "Nudge",
+		_scene.PHASE_SET_PICK: "Set"}.get(_scene.turn_phase, "")
 	_close_set_value_popup()
 	_pending_set_hero_id = ""
 	_scene._finish_roll_modifier_pick()
+	if announce and action != "" and not _scene._game_state().tutorial_mode:
+		_scene._relics.show_pick_note("%s cancelled." % action, _scene._relics.PICK_NOTE_HOLD)
 
 
 # A Protocol button pressed while another action is armed cancels the armed one

@@ -155,6 +155,135 @@ func can_hack_any() -> bool:
 	return false
 
 
+# While Nudge is armed, an enemy card answers taps whenever the relic is held
+# and the enemy has a die (playtest 2026-10-01): a blocked pick (used, frozen,
+# hijacked, no Protocol) then says why instead of silently cancelling the Nudge.
+func can_pick_for_hack(enemy_state: Dictionary) -> bool:
+	return not (_engine().firewall_hack_block(_bs(), enemy_state) in ["no_relic", "no_die"])
+
+
+# The armed Nudge's prompt names every die it can take.
+func nudge_prompt() -> String:
+	if not can_hack_any():
+		return "Tap a hero die to nudge (+3, once per die)."
+	for hero_state in _scene.combat_manager.get_hero_states():
+		if _scene._protocol.can_nudge_hero(hero_state):
+			return "Tap a die: hero +3, enemy -3."
+	return "Tap an enemy die: -3."
+
+
+# Amber rings around the enemy dice the armed Nudge can take; rebuilt on every
+# phase change, so they are gone the moment the pick closes.
+const HACK_RING_MARGIN := 10.0
+const HACK_RING_WIDTH := 6.0
+var _hack_rings: Array = []
+
+
+func sync_hack_rings(armed: bool) -> void:
+	for ring in _hack_rings:
+		if is_instance_valid(ring):
+			ring.queue_free()
+	_hack_rings.clear()
+	clear_pick_note()
+	var tray: Variant = _scene.dice_tray_3d
+	if not armed or tray == null or _scene.float_layer == null:
+		return
+	for enemy_state in _scene.combat_manager.get_enemy_states():
+		if _engine().firewall_hack_block(_bs(), enemy_state) != "":
+			continue
+		var bounds: Rect2 = tray.get_die_screen_bounds("enemy", str(enemy_state["id"]))
+		if bounds.size.x <= 0.0 or is_inf(bounds.position.x):
+			continue
+		var at: Vector2 = bounds.get_center()
+		var side: float = maxf(bounds.size.x, bounds.size.y) + 2.0 * HACK_RING_MARGIN
+		var ring := Control.new()
+		ring.name = "FirewallHackRing_%s" % str(enemy_state["id"])
+		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ring.size = Vector2(PixelUI.even_px(side), PixelUI.even_px(side))
+		ring.z_index = 89
+		ring.set_as_top_level(true)
+		ring.draw.connect(func() -> void:
+			ring.draw_rect(Rect2(Vector2.ZERO, ring.size), PixelUI.DT_AMBER, false, HACK_RING_WIDTH))
+		_scene.float_layer.add_child(ring)
+		var corner: Vector2 = at - ring.size * 0.5
+		ring.global_position = Vector2(PixelUI.even_px(corner.x), PixelUI.even_px(corner.y))
+		_hack_rings.append(ring)
+	if not _hack_rings.is_empty():
+		show_pick_note(nudge_prompt())
+
+
+# The pick note: a plate in the middle of the combat zone, styled like the resume
+# callout. battle_scene._refresh_summary has never drawn its text, so the armed
+# Nudge's prompt, a blocked hack's reason and "Nudge cancelled." need their own
+# surface. hold 0 = stays until the next note or phase change; > 0 = fades,
+# then the prompt returns if the Nudge is still armed.
+const PICK_NOTE_FONT := 48
+const PICK_NOTE_HOLD := 1.6
+var _pick_note: PanelContainer = null
+
+
+func show_pick_note(text: String, hold: float = 0.0) -> void:
+	clear_pick_note()
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var panel := PanelContainer.new()
+	panel.name = "PickNote"
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PixelUI.style_component(panel, PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true)
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 28)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 12)
+	panel.add_child(margin)
+	var label := Label.new()
+	label.name = "PickNoteText"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.style_label(label, PICK_NOTE_FONT, PixelUI.DT_AMBER, 3)
+	margin.add_child(label)
+	panel.z_as_relative = false
+	panel.z_index = 110
+	_scene.float_layer.add_child(panel)
+	panel.reset_size()
+	panel.size = panel.get_combined_minimum_size()
+	var zone: Rect2 = _scene.center_panel.get_global_rect()
+	# Centred in the gap between the enemy and hero dice rows.
+	var pos: Vector2 = zone.get_center() - panel.size * 0.5
+	pos -= _scene.float_layer.get_global_position()
+	panel.position = Vector2(PixelUI.even_px(pos.x), PixelUI.even_px(pos.y))
+	_pick_note = panel
+	if hold > 0.0:
+		var tween := panel.create_tween()
+		tween.tween_interval(hold)
+		tween.tween_callback(func() -> void:
+			if _pick_note != panel:
+				return
+			if _scene.turn_phase == _scene.PHASE_NUDGE_PICK and can_hack_any():
+				show_pick_note(nudge_prompt())
+			else:
+				clear_pick_note())
+
+
+func clear_pick_note() -> void:
+	if _pick_note != null and is_instance_valid(_pick_note):
+		_pick_note.queue_free()
+	_pick_note = null
+
+
+func pick_note_text() -> String:
+	if _pick_note == null or not is_instance_valid(_pick_note):
+		return ""
+	var label: Label = _pick_note.find_child("PickNoteText", true, false) as Label
+	return label.text if label != null else ""
+
+
+func hack_ring_ids() -> Array:
+	return _hack_rings.filter(func(r): return is_instance_valid(r)).map(func(r): return str(r.name).trim_prefix("FirewallHackRing_"))
+
+
 # The Nudge pick landed on an enemy die. True when this module handled the tap.
 func try_firewall_hack(enemy_id: String) -> bool:
 	if not _scene.combat_manager.has_relic("enemyNudgeOncePerTurn"):
@@ -164,16 +293,16 @@ func try_firewall_hack(enemy_id: String) -> bool:
 		"":
 			pass
 		"used":
-			_scene._refresh_summary("Firewall Hack is used up this turn.")
+			show_pick_note("Firewall Hack is used up this turn.", PICK_NOTE_HOLD)
 			return true
 		"frozen":
-			_scene._refresh_summary("That die is frozen solid - it can't be nudged.")
+			show_pick_note("That die is frozen solid - it can't be nudged.", PICK_NOTE_HOLD)
 			return true
 		"hijacked":
-			_scene._refresh_summary("A hijacked die can't be nudged.")
+			show_pick_note("A hijacked die can't be nudged.", PICK_NOTE_HOLD)
 			return true
 		"protocol":
-			_scene._refresh_summary("Need 1 Protocol to Nudge.")
+			show_pick_note("Need 1 Protocol to Nudge.", PICK_NOTE_HOLD)
 			return true
 		_:
 			return true
