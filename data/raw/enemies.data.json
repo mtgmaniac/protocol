@@ -2450,7 +2450,7 @@
       "type": "voidCircletBoss",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "HIEROPHANT",
+      "callsign": "ROOT",
       "role": "Plates its line behind a firewall, then buries your rolls under penalties."
     },
     "Pumice Climber": {
