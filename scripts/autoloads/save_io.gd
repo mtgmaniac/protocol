@@ -232,6 +232,13 @@ static func _heal_primary(path: String, data: Dictionary) -> void:
 		push_warning("[SaveIO] could not heal %s from the surviving copy" % path)
 
 
+## Writes `data` exactly as given (its own save_seq kept, no .bak rotation, no
+## web mirror). Only the dev state-code import uses it (StateCode), after
+## erasing every copy, so the imported save is the one copy that exists.
+static func write_exact(path: String, data: Dictionary) -> bool:
+	return _atomic_write(path, JSON.stringify(data, "  "))
+
+
 ## Which sources yielded a parseable payload, for diagnostics and the gate.
 ## Shape: {"primary": bool, "backup": bool, "web": bool}.
 static func describe_sources(path: String) -> Dictionary:

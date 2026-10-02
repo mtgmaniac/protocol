@@ -46,6 +46,9 @@ func set_battle_landscape(enabled: bool) -> void:
 ## re-apply their insets on this (BattleScene does); regular screens just read
 ## PixelUI.safe_* at build time since every screen rebuilds on entry.
 signal safe_area_changed
+## Fired once, when seven quick taps unlock the session's dev tools (the title
+## screen adds its dev-only controls on it).
+signal dev_tools_unlocked_now
 
 @onready var _band: Control = $HeaderBand
 @onready var _bar: Control = $HeaderBand/Bar
@@ -267,6 +270,7 @@ var dev_tools_unlocked := false
 var dev_mode_enabled := false
 var _dev_tap_count := 0
 var _dev_last_tap_ms := -2000
+var _dev_tap_sources: Array = []  # WeakRefs to extra tap targets
 
 func _input(event: InputEvent) -> void:
 	var press := false
@@ -277,11 +281,32 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenTouch:
 		press = event.pressed
 		pos = event.position
-	if press and not _summary_label.get_global_rect().has_point(pos):
+	if press and not _summary_label.get_global_rect().has_point(pos) and not _on_extra_tap_source(pos):
 		_dev_tap_count = 0
 
-func _register_dev_tap(now_ms: int = -1) -> void:
-	if dev_tools_unlocked or _summary_label.text.is_empty():
+
+## Another control that counts toward the seven-tap unlock: the title screen's
+## version stamp (dev state-code tool, 2026-10-02), so the tools are reachable
+## with no run in progress. Same rule as the operation title: seven quick taps,
+## a press anywhere else breaks the sequence.
+func add_dev_tap_source(source: Control) -> void:
+	source.mouse_filter = Control.MOUSE_FILTER_STOP
+	var gesture := LongPressInput.new()
+	gesture.tapped.connect(func() -> void: _register_dev_tap(-1, false))
+	source.add_child(gesture)
+	_dev_tap_sources.append(weakref(source))
+
+
+func _on_extra_tap_source(pos: Vector2) -> bool:
+	for ref in _dev_tap_sources:
+		var source: Control = (ref as WeakRef).get_ref() as Control
+		if source != null and source.is_visible_in_tree() and source.get_global_rect().has_point(pos):
+			return true
+	return false
+
+
+func _register_dev_tap(now_ms: int = -1, from_run_title: bool = true) -> void:
+	if dev_tools_unlocked or (from_run_title and _summary_label.text.is_empty()):
 		return
 	if now_ms < 0:
 		now_ms = Time.get_ticks_msec()
@@ -293,6 +318,7 @@ func _register_dev_tap(now_ms: int = -1) -> void:
 		return
 	dev_tools_unlocked = true
 	set_dev_mode(true)
+	dev_tools_unlocked_now.emit()
 	var notice := Label.new()
 	notice.text = "DEV TOOLS UNLOCKED"
 	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE

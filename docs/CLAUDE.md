@@ -61,6 +61,7 @@ Important working rule:
 
 (the live set, in `project.godot` load order)
 
+- `DiagnosticsLog` (first: keeps recent errors/warnings in memory for the dev state code)
 - `GameState`
 - `DataManager`
 - `SceneManager`

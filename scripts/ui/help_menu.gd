@@ -783,6 +783,12 @@ func _build_settings(host: VBoxContainer) -> void:
 		var reset_primers_btn := _make_dev_button("RESET PRIMERS (DEV)", false)
 		reset_primers_btn.pressed.connect(_with_click(_on_dev_reset_primers))
 		host.add_child(reset_primers_btn)
+		# Exports the saved run, profile, live state and recent errors as one
+		# pasteable line (StateCode). Synchronous in the tap for the web clipboard.
+		var state_code_btn := _make_dev_button("COPY STATE CODE (DEV)", false)
+		state_code_btn.name = "StateCodeButton"
+		state_code_btn.pressed.connect(func() -> void: StateCodePanel.open(self))
+		host.add_child(state_code_btn)
 
 		# --- Debug (Build #3) --- STRUCTURALLY absent outside debug builds: the
 		# section is never instantiated in release, so a player cannot reach it.

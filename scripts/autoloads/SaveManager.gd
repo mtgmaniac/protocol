@@ -112,7 +112,13 @@ func _ready() -> void:
 		_save_path = DEV_SAVE_PATH
 		_run_save_path = DEV_RUN_SAVE_PATH
 		print("[SaveManager] dev context - profile isolated to %s (real save untouchable)" % _save_path)
+	# Dev import of a pasted state code (-- --load-state=<file>; debug builds,
+	# dev_* paths only). Runs before anything is loaded so the game boots into it.
+	var imported: Dictionary = StateCode.import_from_launch_args(_run_save_path, _save_path, _save_path == DEV_SAVE_PATH)
 	load_save()
+	# Headless keeps the profile in memory only, so apply it directly there.
+	if not _disk_enabled and imported.get("profile") is Dictionary and not (imported["profile"] as Dictionary).is_empty():
+		_migrate_profile(imported["profile"] as Dictionary)
 
 
 func default_data() -> Dictionary:

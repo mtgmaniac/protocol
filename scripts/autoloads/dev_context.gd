@@ -14,6 +14,8 @@
 #     screenshot harness — windowed WITHOUT -s, so both guards above missed it;
 #     found in Build #3 when the real profile carried 26 harness-bumped
 #     runs_started and a stray settings key)
+#   - any `-- --load-state=<file>` launch (dev import of a pasted state code,
+#     StateCode: somebody else's save must never overwrite the real one)
 # Persistence owners (SaveManager save.json, AudioManager settings.cfg) consult
 # this at _ready and swap to dev_* scratch files. The verify gate's "profile
 # isolation" check hashes the real files across the whole suite and fails on
@@ -31,5 +33,9 @@ static func is_isolated() -> bool:
 			return true
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--debug-battle" or arg == "--debug-screen" or arg.begins_with("--debug-screen="):
+			return true
+		# A pasted state code (StateCode) is somebody else's save: it lands in
+		# the dev_* files, never on top of the real profile.
+		if arg.begins_with("--load-state="):
 			return true
 	return false

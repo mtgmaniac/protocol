@@ -34,6 +34,8 @@ const CONTINUE_SIZE := Vector2(640, 136)
 const ABANDON_SIZE := Vector2(420, 84)
 const ABANDON_FONT := 30
 const NOTICE_FONT := 28
+# Dev-only state-code export, bottom-right opposite the version stamp.
+const STATE_CODE_SIZE := Vector2(460, 84)
 
 var _logo: Control
 var _begin_button: Button
@@ -216,6 +218,42 @@ func _add_version_stamp() -> void:
 	stamp.offset_bottom = -(16.0 + float(PixelUI.safe_bottom))
 	stamp.offset_top = stamp.offset_bottom - 44.0
 	add_child(stamp)
+	# Seven quick taps on the stamp unlock the session's dev tools, the same
+	# rule as the in-run operation title, so they are reachable without a run
+	# (and without CONTINUE). Then COPY STATE CODE appears (StateCode).
+	if is_instance_valid(PersistentHeader):
+		PersistentHeader.add_dev_tap_source(stamp)
+		if PersistentHeader.dev_tools_unlocked:
+			_add_state_code_button()
+		else:
+			PersistentHeader.dev_tools_unlocked_now.connect(_add_state_code_button)
+
+
+# Dev only (after the seven-tap unlock): exports the saved run, the profile and
+# recent errors as one pasteable line WITHOUT loading the run, so a run that
+# freezes on CONTINUE can still be sent for reproduction.
+func _add_state_code_button() -> void:
+	if not is_inside_tree() or get_node_or_null("StateCodeButton") != null:
+		return
+	var button := Button.new()
+	button.name = "StateCodeButton"
+	button.text = "COPY STATE CODE (DEV)"
+	button.custom_minimum_size = STATE_CODE_SIZE
+	PixelUI.style_button(button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, ABANDON_FONT)
+	button.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	button.anchor_left = 1.0
+	button.anchor_right = 1.0
+	button.anchor_top = 1.0
+	button.anchor_bottom = 1.0
+	button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	button.offset_right = -(24.0 + float(PixelUI.safe_right))
+	button.offset_bottom = -(16.0 + float(PixelUI.safe_bottom))
+	button.offset_left = button.offset_right - STATE_CODE_SIZE.x
+	button.offset_top = button.offset_bottom - STATE_CODE_SIZE.y
+	# Synchronous in the tap: the web clipboard needs the live user activation.
+	button.pressed.connect(func() -> void: StateCodePanel.open(self))
+	add_child(button)
 
 
 func _start_web_dice_warmup() -> void:

@@ -1,5 +1,9 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-02 dev state code (Kev):** a dev-only export of the exact game state,
+for reproducing a phone bug on a desktop. See "Dev state code" under Save system.
+No change to the run save format (no `RUN_SAVE_VERSION` bump). Gate: `state code`.
+
 **2026-09-27 boss relic rework (Kev, G-34..G-42; approved and merged to `main` 2026-09-28):**
 the five boss relics are replaced. Scrap Converter (Facility), Blood Frenzy (Hive),
 Firewall Hack (Veil), Heretic Signal (Signal Purge) and Tectonic Charge (Mantle
@@ -611,6 +615,55 @@ player's phone. The two constants move together.
 
 **Menu.** CONTINUE (built only when a valid run save exists) resumes on the saved
 screen; ABANDON RUN asks first and then deletes the run, keeping the profile.
+
+### Dev state code (Kev, 2026-10-02)
+
+**Unlock.** The session's dev tools unlock with seven quick taps on the in-run
+operation title (G-10) **or on the title screen's version stamp** (so they are
+reachable with no run and without pressing CONTINUE). Unlocking adds
+`COPY STATE CODE (DEV)` to the title screen (bottom right) and to Help ->
+SETTINGS -> DEV. Players never see either without the unlock.
+
+**Export** (`StateCode`, `scripts/autoloads/state_code.gd`): one line,
+`OPSTATE1:<base64 of gzip(JSON)>:<first 8 hex of sha256(base64)>`. The payload
+holds the build id, engine version, debug flag, platform, web user agent,
+window, the current scene, **the run save exactly as stored** (read through
+SaveIO's best-of primary / .bak / web mirror, never loaded or healed, so a run
+that freezes on CONTINUE can still be exported) and which copies exist, the
+in-memory profile, the live run (operation, battle, pending evolution, run seed,
+battle seed, reward RNG state; 64-bit values as strings) and, in a battle, its
+round, phase, Protocol, landed dice and RNG stream positions, plus the last 200
+errors/warnings and 80 log lines. Those come from `DiagnosticsLog`, the first
+autoload, a Godot Logger (`OS.add_logger`) that works in release builds and
+keeps everything in memory only.
+
+**Copy** (`StateCodePanel`): the button calls it synchronously in its tap so the
+browser still sees the user gesture. Web tries `execCommand('copy')`, then
+`navigator.clipboard.writeText`, and then **always** lays a read-only HTML
+textarea, pre-selected, over the panel, so the phone's own long-press -> Copy
+works when the clipboard is refused (e.g. an iframe without clipboard
+permission). Desktop uses the engine clipboard plus a read-only, all-selected
+TextEdit. The web path is NOT verified in a browser here (no export templates
+in the dev container); the first check is Kev's phone.
+
+**Import** (debug builds only, launch argument only):
+`godot --path . -- --load-state=<file holding the code>`. `SaveManager._ready`
+decodes it before loading anything and writes the run save and profile into
+the `dev_*` files, replacing every copy there; `--load-state` also makes
+`DevContext.is_isolated()` true, so a pasted code can never touch the real
+profile. CONTINUE then resumes it through the normal path. Headless applies the
+profile in memory. Outside Godot: `python scripts/debug/state_code_decode.py
+<file> [--out <dir>]`.
+
+**Gate `state code`** (`scripts/checks/state_code_gate.py` +
+`scripts/debug/state_code_test.gd`): a live battle round writes an end-of-round
+checkpoint, the code is exported, the run save erased, and a SEPARATE process
+imports it: run save and profile identical, CONTINUE rebuilds the battle at the
+same round, the raised error travels with it; a changed character, a wrong
+checksum, a cut-short code and a wrong prefix are refused, a wrapped code
+decodes, and the Python decoder agrees. Three deliberate breaks, injected only
+through the debug-build `--state-code-break=` seam the game never sets (dropped
+run save, no checksum check, an import that writes nothing), must each fail it.
 
 ### Unlock progression — THE FENCE (Build F, Kev 2026-07-15)
 

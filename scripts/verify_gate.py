@@ -216,6 +216,10 @@ GATES = [
     ("save lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/save_lifecycle_test.gd"], "[SAVE_LIFECYCLE] PASS", False),
     ("save resume", [sys.executable, str(ROOT / "scripts" / "checks" / "save_resume_gate.py")], "[SAVE_RESUME] PASS", False),
     ("battle checkpoint", [sys.executable, str(ROOT / "scripts" / "checks" / "battle_checkpoint_gate.py")], "[BATTLE_CHECKPOINT] PASS", False),
+    # Dev state code (2026-10-02): export -> separate-process import -> CONTINUE
+    # round-trips, the Python decoder agrees, and three deliberate breaks
+    # (dropped run save, no checksum, import that writes nothing) must each fail.
+    ("state code", [sys.executable, str(ROOT / "scripts" / "checks" / "state_code_gate.py")], "[STATE_CODE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
     # Text legibility Step 1 (docs/audits/TEXT_LEGIBILITY_AUDIT.md): every live
@@ -292,6 +296,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "upgrade draws": 180,       # 18 unlock states x 5 seeds x every draw
     "save resume": 420,         # 6 full Godot processes (2 configs x 3 legs)
     "battle checkpoint": 360,   # 10 Godot processes (2 configs x 3 legs + 4 fallback legs); ~160s measured
+    "state code": 300,          # 8 Godot processes (round trip + 3 deliberate breaks); ~70s measured on Linux
 }
 
 

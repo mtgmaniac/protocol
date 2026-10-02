@@ -24,6 +24,7 @@ driver/output_latency.web=150
 
 [autoload]
 
+DiagnosticsLog="*res://scripts/autoloads/DiagnosticsLog.gd"
 GameState="*res://scripts/autoloads/GameState.gd"
 DataManager="*res://scripts/autoloads/DataManager.gd"
 SceneManager="*res://scripts/autoloads/SceneManager.gd"
