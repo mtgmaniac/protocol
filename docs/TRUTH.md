@@ -1141,6 +1141,8 @@ two-player crossfade pair, tracks in `assets/audio/music/sci_fi_loop_N.ogg`
 
 **Hound art gap CLOSED (2026-07-07 Accretion drop):** Slag Hound has its own `slag_hound.png`; Obsidian Hound keeps `obsidian_hound.png`. No shared enemy art files remain.
 
+**Aegis Anchor / Shard Drone (2026-10-01 playtest fix):** the 2026-07-11 `aegis_anchor.png` <-> `shardmite.png` swap (ef24d16) put a Hive-style bug on Aegis Anchor; it is reverted, files and framing entries together. Aegis Anchor shows its hex-shield art again; Shard Drone keeps the Hive-pack bug until Veil-style art exists (TASK_MASTER_LIST ART-001). A file swap must `touch` the PNGs: Godot skips reimport when the mtime is unchanged.
+
 **Quarantine:** unreferenced files live in `assets/portraits/enemies/unused/` (cyber_phoenix, harmonic_hexnode, veil_spare) — kept, not deleted.
 
 ---
