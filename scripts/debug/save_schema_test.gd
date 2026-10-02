@@ -106,6 +106,9 @@ func _build_checkpoint(squad: Array = SQUAD) -> Dictionary:
 	gs().record_battle_hero_deaths([str(squad[2])])
 	gs().record_battle_hero_deaths([second])
 	gs().record_battle_turns(6)
+	# The finished battle's XP owed at the reward claim (run save v4).
+	gs().record_hero_effective_roll(lead, 12)
+	gs().capture_battle_end_survival([{"id": lead, "dead": false}])
 	gs().prepare_battle_rewards()
 	var first: String = gs().roll_route_modifier()
 	if first != "":

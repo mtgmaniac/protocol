@@ -31,14 +31,17 @@ const DEV_RUN_SAVE_PATH := "user://dev_run.json"
 ## stores the 64-bit run/battle seeds as strings (GameState.I64_RUN_FIELDS).
 ## Older run saves are DISCARDED, not migrated (Kev 2026-09-21: no backward
 ## compatibility for pre-v3 runs — their seeds were already rounded on disk).
-const RUN_SAVE_VERSION := 3
+## v4 (2026-10-02) saves the finished battle's XP accumulators, owed until the
+## reward claim (a reload on the reward screen paid that battle 0 XP). v3 runs
+## are DISCARDED, not migrated (Kev 2026-10-02); the profile is untouched.
+const RUN_SAVE_VERSION := 4
 ## Hash of the run save's SHAPE — every key name and value type, recursively,
 ## never the values (SaveIO.structure_fingerprint). The save_schema gate
 ## recomputes this from a live checkpoint and fails when it moves, so changing
 ## what to_save_dict() produces without bumping RUN_SAVE_VERSION cannot ship.
 ## These two constants move TOGETHER: a version bump needs a new fingerprint,
 ## and a new fingerprint needs a version bump plus a migration decision.
-const RUN_SAVE_SCHEMA_FINGERPRINT := "4c439766b9384914"
+const RUN_SAVE_SCHEMA_FINGERPRINT := "acbacd4a06a81ae9"
 
 # First clear of an operation unlocks its boss's relic (drafted as a
 # Starting Directive at run start; excluded from normal relic drafts).

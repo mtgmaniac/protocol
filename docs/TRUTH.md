@@ -464,7 +464,7 @@ quit-to-menu path already routes through `reset_run`. Dev contexts resolve
 `user://dev_run.json` through DevContext exactly as the profile does, and
 verify_gate's profile-isolation fingerprint now covers `run.json` too.
 
-Shape: `{schema_version: 3, build_id, saved_at, save_seq, screen, run: {...},
+Shape: `{schema_version: 4, build_id, saved_at, save_seq, screen, run: {...},
 extra: {...}, battle_checkpoint: {...}}` (`SaveManager.build_run_payload`, plus `save_seq` stamped by
 SaveIO at write time). `screen` is where CONTINUE resumes (`battle` /
 `reward` / `evolution` / `fork` / `intercept`); `extra` is opaque to SaveManager
@@ -513,6 +513,17 @@ mid-run and final victory, defeat, abandon, rewards, new run, tutorial — leave
 nothing restorable).
 **Accepted trade (narrowed):** a player losing a battle can reload to the start of
 the current round; the dice will not change.
+
+**Battle XP survives a reload on the reward screen (run save v4, Kev 2026-10-02).**
+A battle's XP is paid at the reward CLAIM (`award_battle_xp`), from the per-battle
+accumulators (`_battle_effective_rolls`, `_battle_end_alive`). They were transient,
+so a reload on the reward screen paid that battle 0 XP (measured: 32 XP per hero
+without a reload, 0 after one), which could silently skip an evolution or
+Directive. They are now SAVED run fields (ID-keyed). `RUN_SAVE_VERSION` 3 -> 4:
+a v3 run save is discarded on load with the existing menu notice ("Your previous
+run was from an older build and couldn't be restored."); `save.json` (unlocks,
+stats, settings) is untouched. Pinned by `save roundtrip`
+(`_check_reward_xp_survives_reload`, fails on v3).
 
 **`battles_fought` stays exactly-once across a resume** —
 `GameState.battle_entry_counted` makes `battle_scene._init_live_battle` skip the

@@ -47,6 +47,7 @@ func _run() -> void:
 	_check_same_offers_reward()
 	_check_same_offers_intercept()
 	_check_same_offers_fork()
+	_check_reward_xp_survives_reload()
 
 	if _failures.is_empty():
 		print("[SAVE_ROUNDTRIP] PASS")
@@ -393,6 +394,31 @@ func _check_same_offers_fork() -> void:
 	# The used-modifier ledger has to survive too, or the no-repeats rule resets
 	# and the run can be offered the same modifier twice.
 	_expect_same(used_before, restored.used_battle_modifiers, "used_battle_modifiers")
+
+
+## The finished battle's XP is paid at the reward CLAIM, so a reload on the
+## reward screen must still owe it (playtest 2026-10-02: it paid 0 - the
+## accumulators were not saved). Fails on run save v3.
+func _check_reward_xp_survives_reload() -> void:
+	_build_run_at("reward")
+	gs().begin_battle_xp_tracking()
+	var alive: Array = []
+	for unit_id in SQUAD:
+		for roll in [14, 9, 17]:
+			gs().record_hero_effective_roll(str(unit_id), roll)
+		alive.append({"id": str(unit_id), "dead": unit_id == SQUAD[2]})
+	gs().capture_battle_end_survival(alive)
+	var saved: Variant = JSON.parse_string(JSON.stringify(gs().to_save_dict()))
+	var xp_before: Dictionary = gs().unit_xp.duplicate()
+	gs().award_battle_xp()
+	var paid: Dictionary = gs().unit_xp.duplicate()
+	if paid == xp_before:
+		_fail("reward XP fixture paid nothing - the check is not under test")
+		return
+	gs().reset_run()
+	gs().load_from_dict(saved as Dictionary)
+	gs().award_battle_xp()
+	_expect_same(paid, gs().unit_xp, "battle XP paid after a reload on the reward screen")
 
 
 ## Serializes the current run, wipes GameState, and loads it back — the closest

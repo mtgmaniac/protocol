@@ -1797,6 +1797,11 @@ const SAVED_RUN_FIELDS := [
 	"pending_choice_request", "pending_intercept_state",
 	# Run report
 	"run_hero_deaths", "run_total_turns",
+	# The finished battle's XP, owed until the reward claim pays it
+	# (award_battle_xp). Saved since run save v4 (playtest 2026-10-02): a reload
+	# on the reward screen paid that battle 0 XP. Mid-battle, the end-of-round
+	# checkpoint still restores its own copy (BattleCheckpoint "xp").
+	"_battle_effective_rolls", "_battle_end_alive",
 ]
 
 ## Saved fields holding full-width 64-bit ints (a randomized run seed and every
@@ -1819,6 +1824,7 @@ const ID_KEYED_RUN_FIELDS := [
 	"unit_evolutions", "unit_directives",         # unit id -> chosen name
 	"hero_run_mods",                              # unit id -> mod struct
 	"run_beats",                                  # battle number -> beat struct
+	"_battle_effective_rolls", "_battle_end_alive",  # unit id -> rolls / alive
 ]
 
 ## Deliberately NOT saved, each for a stated reason. Anything here is expected
@@ -1834,11 +1840,6 @@ const TRANSIENT_RUN_FIELDS := [
 	# leaving for the battle review and cleared on return. Tied to the review
 	# state above, so it goes with it; a resumed reward screen opens unselected.
 	"reward_picker_ui_state",
-	# Per-battle XP accumulators. Not run fields: a battle restarted from its
-	# entry restarts its own tracking from begin_battle_xp_tracking(), and an
-	# end-of-round battle checkpoint carries them in its own state block
-	# (export_battle_xp_tracking / BattleCheckpoint).
-	"_battle_effective_rolls", "_battle_end_alive",
 	# The tutorial is not resumable by design (Kev, Q4): no run save is ever
 	# written while tutorial_mode is true, so these can never need restoring.
 	"tutorial_mode", "tutorial_reward_item_id", "tutorial_continue_to_play",
