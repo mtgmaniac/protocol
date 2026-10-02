@@ -2404,6 +2404,23 @@ func _run_battle_slot_regressions() -> void:
 			detail = "%s signature comp %s" % [op_id, str(sig_names)]
 	_expect_and_record("Regression / slot comps resolved at run start", "battleSlots", "true", "%s%s" % [str(all_ok), "" if all_ok else " (" + detail + ")"])
 
+	# Playtest 2026-10-01: a slot battle never repeats the lineup of the battle
+	# just before it. Every operation x 200 seeded runs; the pre-fix roller
+	# repeated Veil b4->b5 in ~38% and Veil b1->b2 in ~50% of runs.
+	var repeats: Array = []
+	for op_id_variant in DataManager.get_operation_order():
+		var rep_op_id: String = str(op_id_variant)
+		var rep_op = DataManager.get_operation(rep_op_id)
+		for seed_i in 200:
+			GameState.start_run(["pulse", "combat", "ghost"], rep_op_id, 9100 + seed_i)
+			var rep_comps: Array = GameState.resolved_battle_comps
+			for i in range(1, rep_comps.size()):
+				if not ((rep_op.battles[i] as Dictionary).get("enemy_names", []) as Array).is_empty():
+					continue
+				if GameState.same_lineup((rep_comps[i] as Dictionary).get("names", []), (rep_comps[i - 1] as Dictionary).get("names", [])):
+					repeats.append("%s b%d" % [rep_op_id, i + 1])
+	_expect_and_record("Regression / no back-to-back identical slot battles", "battleSlots", "0", "%d%s" % [repeats.size(), "" if repeats.is_empty() else " " + str(repeats.slice(0, 4))])
+
 	# The Accretion signature panther spawns cloaked.
 	GameState.start_run(["pulse", "combat", "ghost"], "stellarMenagerie")
 	var panther_comp: Dictionary = GameState.resolved_battle_comps[3]

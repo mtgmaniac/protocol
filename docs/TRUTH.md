@@ -189,7 +189,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2567**, facility **0.3662** (re-pinned 2026-09-28 after the boss relic rework; before that 2026-09-27 to the post-dice-rework tree — see "Sim baseline (current)"). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2833**, facility **0.4085** (re-pinned 2026-10-01 for the no-repeat comp re-roll; before that 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -706,7 +706,7 @@ buckets, same bucket membership and order; **thresholds only.**
 
 - **Item & relic caps (Polish Build D, Kev 2026-07-15):** consumables cap at **4** (`GameState.MAX_CONSUMABLES`, single source; `LoadoutMenu` derives its slot count from it). A pickup at cap opens the **discard picker** (`LoadoutMenu.open_discard`) — incoming stats shown, held items inspectable, **ABANDON**/tap-outside keeps all four and drops the incoming; nothing is destroyed by a dismissal, and a non-interactive event grant at cap forfeits explicitly. Relics cap at **2** (`GameState.MAX_RELICS`, one choke `_grant_relic`); they display **only** in the LoadoutMenu (one row per relic, up to two, no placeholder) and never on battle chrome. See INVARIANTS #15/#16.
 
-- **Templated slots:** fixed comps (b1, b10, one signature per op) or slot patterns rolled ONCE at run start (`GameState.resolved_battle_comps`); previews always show exact comps.
+- **Templated slots:** fixed comps (b1, b10, one signature per op) or slot patterns rolled ONCE at run start (`GameState.resolved_battle_comps`); previews always show exact comps. **No back-to-back repeats (playtest 2026-10-01, Kev):** a slot battle that rolls the same lineup as the battle before it (fixed or rolled, any slot order) re-rolls, up to `GameState.COMP_REROLL_CAP` (12) times. Before this, Veil b1->b2 repeated in ~50% of runs and b4->b5 in ~38% (Veil's elite pool has one member, so "two elites" is always Phaseblade x2). Regression: ability audit "no back-to-back identical slot battles" (5 ops x 200 seeds).
 - **Beats:** battle-5 relic draft = INTERCEPT: RELIC CACHE (renders through the reward picker in event chrome). The draft fires on `GameState.drafted_relic_count() == 0` — a pkg5 Starting Directive boss relic never consumes the slot and is excluded from the offer (the 2026-07-06 battle-5 soft-lock fix; regression-pinned). Exactly 3 random beats per run in distinct gaps from {after b2,b3,b4,b6,b7,b8} — the relic battle's gap is structurally excluded; Fork/Intercept 50/50 with ≥1 of each; b6+ = major tier.
 - **Zero-options guard (permanent fixture):** any between-battle choice screen (reward, relic cache, intercept, route fork, evolution/directive) that builds ZERO interactive options asserts loudly in debug and auto-resolves a logged default in release (`scripts/ui/choice_screen_guard.gd`, `[CHOICE_GUARD]` log tag + telemetry stub) so a playtest build can never soft-lock on a dead screen. A guard firing is always a bug in the offer roll — fix the offer, never widen the guard.
 - **Route Fork:** standard vs flagged (same comp + 1 of 10 modifiers from `GameState.BATTLE_MODIFIERS`, no repeats; SUPPLY GRADE +2 = reward ladder two rows deeper, cap row 10). A flagged route into the **battle-5 relic cache** (which has no rarity ladder) does NOT spend the grade — it **carries forward to the next item draft** (per Kev NK-15). **Intercept-armed modifiers consume the fork no-repeats pool** and won't silently overwrite an already-armed modifier; declined fork modifiers may still be re-offered (per Kev NK-16, audit A-077).
@@ -1599,6 +1599,14 @@ confirmation runs.
   the boss relic rework's two new draft relics (Overheal Relay, Spillover
   Charge) changing the battle-5 relic cache; the CI batch holds no boss relic.
   Tuning evidence: `docs/BOSS_RELIC_TUNING_2026-09-28.md`.
+- **Baseline re-pin (2026-10-01, BASELINE-APPROVED-BY-KEV — Kev's rule: re-pin only if
+  within noise):** `baseline.json` → overall **0.2833** · facility **0.4085** · hive **0.2542** ·
+  veil **0.2615** · voidCirclet **0.2807** · stellarMenagerie **0.1667** (was 0.2567 · 0.3662 ·
+  0.2542 · 0.2308 · 0.2281 · 0.1667). The cause is the no-repeat comp re-roll (Run structure,
+  Templated slots): its extra draws shift the run's reward stream. A matched 1,500-run
+  comparison (re-roll on vs off, same seeds) moved only veil +2.0 and voidCirclet +0.7
+  points, every other op 0.0, against a 2xSE of about 7 points per op, so the 300-run
+  pin's larger moves (+4.2 / +3.1 / +5.3) are small-sample noise.
 
 ## Out of scope (don't build)
 

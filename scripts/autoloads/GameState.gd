@@ -269,7 +269,31 @@ func _resolve_battle_comps(operation: OperationData) -> void:
 		var cloaked: Array = (battle.get("cloaked_names", []) as Array).duplicate()
 		if names.is_empty():
 			names = _roll_slot_names(faction, battle.get("slots", []))
+			# Back-to-back identical fights (playtest 2026-10-01): a slot battle
+			# that rolls the same lineup as the battle before it re-rolls, up to
+			# COMP_REROLL_CAP times. Small pools (Veil's single elite, one-fodder
+			# factions) can still repeat once the cap runs out.
+			var previous: Array = [] if resolved_battle_comps.is_empty() \
+				else (resolved_battle_comps.back() as Dictionary).get("names", [])
+			for _attempt in COMP_REROLL_CAP:
+				if not same_lineup(names, previous):
+					break
+				names = _roll_slot_names(faction, battle.get("slots", []))
 		resolved_battle_comps.append({"names": names, "cloaked": cloaked})
+
+
+const COMP_REROLL_CAP := 12
+
+
+# True when two comps field the same units, in any slot order.
+static func same_lineup(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	var sa: Array = a.map(func(n): return str(n))
+	var sb: Array = b.map(func(n): return str(n))
+	sa.sort()
+	sb.sort()
+	return sa == sb
 
 
 func _roll_slot_names(faction: String, slots: Array) -> Array:
