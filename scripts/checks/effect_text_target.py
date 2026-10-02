@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Verify concise ability targets against coded effects (G-9).
 
-Hero self is implicit; enemy self stays explicit. Group targets name their side.
+Hero self is implicit; enemy self stays explicit. Group targets name their side,
+except an enemy's own side, which reads "(all allies)" like the single "(ally)"
+(G-44, Kev 2026-10-01: "(all enemies)" on an enemy buff read as the heroes).
 Compare (effect, target) counts so duplicate or misplaced suffixes also fail.
 Equipment still cannot carry (self). Replaces NK-17's abbreviated suffixes.
 
@@ -21,12 +23,12 @@ ROOT = Path(__file__).resolve().parents[2]
 def required_targets(a, side):
     targets = []
     own = "" if side == "hero" else "self"
-    friends = "all heroes" if side == "hero" else "all enemies"
+    friends = "all heroes" if side == "hero" else "all allies"
     foes = "all enemies" if side == "hero" else "all heroes"
     if max(a.get("dmg", 0), a.get("dMin", 0), a.get("dMax", 0)) > 0:
         targets.append(("damage", foes if a.get("blastAll") else ""))
     if a.get("shieldAllyAll") and a.get("shieldAlly", 0) > 0:
-        targets.append(("shield", "all enemies"))
+        targets.append(("shield", "all allies"))
     else:
         if a.get("shield", 0) > 0:
             scope = friends if a.get("shieldAll") else "lowest HP" if a.get("shieldLowest") else "hero" if a.get("shTgt") else own
@@ -43,9 +45,13 @@ def required_targets(a, side):
     if side == "enemy" and a.get("rfm", 0) > 0:
         targets.append(("roll", ""))
     if a.get("erb", 0) > 0:
-        targets.append(("roll", "all enemies" if a.get("erbAll") else "self"))
+        targets.append(("roll", "all allies" if a.get("erbAll") else "self"))
     if a.get("rfe", 0) > 0:
         targets.append(("roll", "all enemies" if a.get("rfeAll") else ""))
+    if a.get("grantRampageAll", 0) > 0:
+        targets.append(("rampage", friends))
+    elif a.get("grantRampage", 0) > 0:
+        targets.append(("rampage", own))
     return Counter(targets)
 
 
@@ -59,7 +65,7 @@ def actual_targets(eff):
             scopes = re.findall(r"\(([^)]+)\)", alternative.group(2))
             targets.append(("else heal", scopes[0] if scopes else ""))
             continue
-        match = re.match(r"\s*[+−-]?\d+ (damage|dmg|heal|shield|roll)\b(.*)", clause)
+        match = re.match(r"\s*[+−-]?\d+ (damage|dmg|heal|shield|roll|rampage)\b(.*)", clause)
         if not match:
             continue
         kind, tail = match.groups()

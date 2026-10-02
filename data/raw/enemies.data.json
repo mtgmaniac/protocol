@@ -174,7 +174,7 @@
     "guard": {
       "recharge": {
         "name": "Bulwark Link",
-        "eff": "4 shield (all enemies)",
+        "eff": "4 shield (all allies)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -196,7 +196,7 @@
       },
       "surge": {
         "name": "Cover Field",
-        "eff": "12 damage, 5 shield (ally), +2 roll (all enemies) 1 turn",
+        "eff": "12 damage, 5 shield (ally), +2 roll (all allies) 1 turn",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
@@ -287,7 +287,7 @@
     "volt": {
       "recharge": {
         "name": "Grounding",
-        "eff": "5 shield (all enemies), 4 spike (self)",
+        "eff": "5 shield (all allies), 4 spike (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -558,7 +558,7 @@
     "carapace": {
       "recharge": {
         "name": "Chitin Link",
-        "eff": "6 shield (all enemies), 3 spike (self)",
+        "eff": "6 shield (all allies), 3 spike (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -890,7 +890,7 @@
     "veilAegis": {
       "recharge": {
         "name": "Lattice Link",
-        "eff": "6 shield (self), 6 shield (ally), +1 roll (all enemies) 1 turn, firewall (self)",
+        "eff": "6 shield (self), 6 shield (ally), +1 roll (all allies) 1 turn, firewall (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -905,7 +905,7 @@
       },
       "strike": {
         "name": "Aegis Bash",
-        "eff": "12 damage, 6 shield (ally), +1 roll (all enemies) 1 turn",
+        "eff": "12 damage, 6 shield (ally), +1 roll (all allies) 1 turn",
         "dmg": 12,
         "burn": 0,
         "burnT": 0,
@@ -919,7 +919,7 @@
       },
       "surge": {
         "name": "Bulwark Pulse",
-        "eff": "14 damage, 8 shield (ally), +1 roll (all enemies) 1 turn",
+        "eff": "14 damage, 8 shield (ally), +1 roll (all allies) 1 turn",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
@@ -933,7 +933,7 @@
       },
       "crit": {
         "name": "Fortress Lash",
-        "eff": "18 damage, 9 shield (ally), +2 roll (all enemies) 1 turn, firewall (self)",
+        "eff": "18 damage, 9 shield (ally), +2 roll (all allies) 1 turn, firewall (self)",
         "dmg": 18,
         "burn": 0,
         "burnT": 0,
@@ -948,7 +948,7 @@
       },
       "overload": {
         "name": "Shieldline Rally",
-        "eff": "20 damage, 12 shield (ally), +2 roll (all enemies) 2 turns, firewall (self), 42% summon",
+        "eff": "20 damage, 12 shield (ally), +2 roll (all allies) 2 turns, firewall (self), 42% summon",
         "dmg": 20,
         "burn": 0,
         "burnT": 0,
@@ -967,7 +967,7 @@
     "veilResonance": {
       "recharge": {
         "name": "Harmonic Mend",
-        "eff": "7 shield (self), 7 heal (self), +1 roll (all enemies) 1 turn, firewall (self)",
+        "eff": "7 shield (self), 7 heal (self), +1 roll (all allies) 1 turn, firewall (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -991,7 +991,7 @@
       },
       "surge": {
         "name": "Pulse Burn",
-        "eff": "12 damage, 3 burn 3 turns, +1 roll (all enemies) 1 turn",
+        "eff": "12 damage, 3 burn 3 turns, +1 roll (all allies) 1 turn",
         "dmg": 12,
         "burn": 3,
         "burnT": 3,
@@ -1004,7 +1004,7 @@
       },
       "crit": {
         "name": "Resonant Hammer",
-        "eff": "22 damage, +2 roll (all enemies) 1 turn",
+        "eff": "22 damage, +2 roll (all allies) 1 turn",
         "dmg": 22,
         "burn": 0,
         "burnT": 0,
@@ -1017,7 +1017,7 @@
       },
       "overload": {
         "name": "Veil Rally",
-        "eff": "28 damage, 6 heal (self), +2 roll (all enemies) 2 turns, 40% summon",
+        "eff": "28 damage, 6 heal (self), +2 roll (all allies) 2 turns, 40% summon",
         "dmg": 28,
         "burn": 0,
         "burnT": 0,
@@ -1034,7 +1034,7 @@
     "veilNull": {
       "recharge": {
         "name": "Phase Alignment",
-        "eff": "5 shield (self), +1 roll (all enemies) 1 turn",
+        "eff": "5 shield (self), +1 roll (all allies) 1 turn",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1092,7 +1092,7 @@
     "veilStorm": {
       "recharge": {
         "name": "Capacitor Hum",
-        "eff": "+1 roll (all enemies) 1 turn",
+        "eff": "+1 roll (all allies) 1 turn",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1115,7 +1115,7 @@
       },
       "surge": {
         "name": "Storm Weave",
-        "eff": "12 damage, 2 burn 2 turns, +1 roll (all enemies) 1 turn",
+        "eff": "12 damage, 2 burn 2 turns, +1 roll (all allies) 1 turn",
         "dmg": 12,
         "burn": 2,
         "burnT": 2,
@@ -1128,7 +1128,7 @@
       },
       "crit": {
         "name": "Ion Tempest",
-        "eff": "14 damage, 3 burn 3 turns, +1 roll (all enemies) 1 turn",
+        "eff": "14 damage, 3 burn 3 turns, +1 roll (all allies) 1 turn",
         "dmg": 14,
         "burn": 3,
         "burnT": 3,
@@ -1141,7 +1141,7 @@
       },
       "overload": {
         "name": "Lattice Storm",
-        "eff": "16 damage, 5 burn 4 turns, +2 roll (all enemies) 2 turns, 42% summon",
+        "eff": "16 damage, 5 burn 4 turns, +2 roll (all allies) 2 turns, 42% summon",
         "dmg": 16,
         "burn": 5,
         "burnT": 4,
@@ -1158,7 +1158,7 @@
     "veilSynapse": {
       "recharge": {
         "name": "Relay Tune",
-        "eff": "+2 roll (all enemies) 1 turn, firewall (self)",
+        "eff": "+2 roll (all allies) 1 turn, firewall (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1183,7 +1183,7 @@
       },
       "surge": {
         "name": "Weave Shield",
-        "eff": "10 damage, 7 shield (ally), +1 roll (all enemies) 1 turn",
+        "eff": "10 damage, 7 shield (ally), +1 roll (all allies) 1 turn",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
@@ -1197,7 +1197,7 @@
       },
       "crit": {
         "name": "Conduit Spear",
-        "eff": "15 damage, 8 shield (ally), +1 roll (all enemies) 2 turns",
+        "eff": "15 damage, 8 shield (ally), +1 roll (all allies) 2 turns",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
@@ -1211,7 +1211,7 @@
       },
       "overload": {
         "name": "Relay Reinforcements",
-        "eff": "17 damage, 8 heal (self), +2 roll (all enemies) 2 turns, 40% summon",
+        "eff": "17 damage, 8 heal (self), +2 roll (all allies) 2 turns, 40% summon",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1228,7 +1228,7 @@
     "veilBoss": {
       "recharge": {
         "name": "Overseer Mantle",
-        "eff": "22 shield (self), 8 shield (ally), +2 roll (all enemies) 1 turn",
+        "eff": "22 shield (self), 8 shield (ally), +2 roll (all allies) 1 turn",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1254,7 +1254,7 @@
       },
       "surge": {
         "name": "Judgment Arc",
-        "eff": "22 damage, 2 burn 2 turns, +1 roll (all enemies) 1 turn",
+        "eff": "22 damage, 2 burn 2 turns, +1 roll (all allies) 1 turn",
         "dmg": 22,
         "burn": 2,
         "burnT": 2,
@@ -1267,7 +1267,7 @@
       },
       "crit": {
         "name": "Suppressor Beam",
-        "eff": "26 damage, -3 roll 2 turns, +1 roll (all enemies) 1 turn",
+        "eff": "26 damage, -3 roll 2 turns, +1 roll (all allies) 1 turn",
         "dmg": 26,
         "burn": 0,
         "burnT": 0,
@@ -1282,7 +1282,7 @@
       },
       "overload": {
         "name": "Veil Cataclysm",
-        "eff": "remove all hero shields, 30 damage, +2 roll (all enemies) 2 turns, 30% summon",
+        "eff": "remove all hero shields, 30 damage, +2 roll (all allies) 2 turns, 30% summon",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -1417,7 +1417,7 @@
     "voidScribe": {
       "recharge": {
         "name": "Signal Litany",
-        "eff": "+1 roll (all enemies) 1 turn",
+        "eff": "+1 roll (all allies) 1 turn",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1463,7 +1463,7 @@
       },
       "overload": {
         "name": "Summon Verse",
-        "eff": "16 damage, +2 roll (all enemies) 2 turns, 45% summon",
+        "eff": "16 damage, +2 roll (all allies) 2 turns, 45% summon",
         "dmg": 16,
         "burn": 0,
         "burnT": 0,
@@ -1654,7 +1654,7 @@
     "voidCircletBoss": {
       "recharge": {
         "name": "Hierophant Mantle",
-        "eff": "20 shield (self), 8 shield (ally), +2 roll (all enemies) 1 turn, firewall (self)",
+        "eff": "20 shield (self), 8 shield (ally), +2 roll (all allies) 1 turn, firewall (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1681,7 +1681,7 @@
       },
       "surge": {
         "name": "Cinder Sermon",
-        "eff": "22 damage, 2 burn 2 turns, +1 roll (all enemies) 1 turn",
+        "eff": "22 damage, 2 burn 2 turns, +1 roll (all allies) 1 turn",
         "dmg": 22,
         "burn": 2,
         "burnT": 2,
@@ -1706,7 +1706,7 @@
       },
       "overload": {
         "name": "Machine Crusade",
-        "eff": "remove all hero shields, 30 damage, +2 roll (all enemies) 2 turns, 32% summon",
+        "eff": "remove all hero shields, 30 damage, +2 roll (all allies) 2 turns, 32% summon",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -2052,7 +2052,7 @@
     "beastTyrant": {
       "recharge": {
         "name": "Tyrant Mantle",
-        "eff": "20 shield (self), 1 rampage",
+        "eff": "20 shield (self), 1 rampage (self)",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -2086,7 +2086,7 @@
       },
       "crit": {
         "name": "Dominance Roar",
-        "eff": "24 damage, 1 rampage (all enemies)",
+        "eff": "24 damage, 1 rampage (all allies)",
         "dmg": 24,
         "burn": 0,
         "burnT": 0,
@@ -2097,7 +2097,7 @@
       },
       "overload": {
         "name": "Mantle Rupture",
-        "eff": "remove all hero shields, 26 damage, freeze all heroes 1 turn, 1 rampage (all enemies)",
+        "eff": "remove all hero shields, 26 damage, freeze all heroes 1 turn, 1 rampage (all allies)",
         "dmg": 26,
         "burn": 0,
         "burnT": 0,

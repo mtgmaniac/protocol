@@ -1,5 +1,24 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-44. Enemy own-side group targets read "(all allies)" (Kev, 2026-10-01; amends G-9)
+
+Playtest report: "+1 roll (all enemies)" on an enemy's ability read as hitting
+the heroes, when it buffs the enemy's own side. Ruling (Kev): "Approve (all
+allies) on enemy abilities as a G-9 amendment. Update the gate."
+
+G-9's group-target grammar named the side absolutely (`7 shield (all enemies)`
+on an enemy). From now on an ENEMY ability's own-side group target reads
+`(all allies)`, matching the single-target `(ally)` it already used. Hero
+abilities are unchanged (`(all heroes)` / `(all enemies)`), and an enemy's
+hostile group target still reads `(all heroes)`. 33 enemy eff strings changed
+(roll buffs, ally shields, Mantle Tyrant's rampage grant).
+
+As implemented: `scripts/checks/effect_text_target.py` requires `all allies` for
+an enemy's `shieldAll`/`healAll`/`shieldAllyAll`/`erbAll`/`grantRampageAll`, and
+now also checks rampage clauses, which it never parsed. That exposed one
+pre-existing G-9 miss, Mantle Tyrant's recharge "1 rampage" without the
+enemy-self `(self)`; it now reads "1 rampage (self)".
+
 ## Boss relic rework (Kev, 2026-09-27): G-34 to G-42
 
 Transcribed from Kev's task brief ("Replace the five boss relics and add two
