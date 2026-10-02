@@ -1,5 +1,30 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-43. Rewrite is applied after landing (Kev, 2026-10-01; amends Dice rule 5 for Rewrite)
+
+Playtest report: under the Signal Hierophant's ROOT ACCESS the squad's highest
+die was thrown printed with 3 on every face. Ruling (Kev, approving the
+proposal "as written, including the plain-die reprint when there's no 3 face"):
+
+- **Rewrite is no longer printed on the faces before the throw.** The die rolls
+  naturally (its other known-before-roll modifiers still printed, Dice rule 5),
+  lands, then visibly tips onto a face showing 3: the hijack pattern, a
+  deliberate change after landing (Dice rule 6).
+- **If no printed face shows 3** (for example a +3 buffed die printing 4-20), the
+  die is reprinted as a plain 1-20 die in the frame the tip starts, like Set
+  (G-25, G-27), and tips onto its 3.
+- The dice rules still hold throughout: static faces while tumbling, a natural
+  landing in the tray, and value displays (pip tag, inspect hit-area, top-face
+  highlight) hidden from landing until the die rests on 3 (G-32), so nothing
+  ever shows a value the unit can't act on once the rewrite applies.
+- One keyword, both sides: this covers every Rewrite (the ROOT ACCESS rule, the
+  enemy Synod rewrites and the hero rewrites on enemy dice). The engine is
+  unchanged: the unit still acts on 3, and the sim and skip-visuals path are
+  unaffected.
+
+The Signal Hierophant's cloak stalemate is a separate design decision and is
+not part of this ruling.
+
 ## G-44. Enemy own-side group targets read "(all allies)" (Kev, 2026-10-01; amends G-9)
 
 Playtest report: "+1 roll (all enemies)" on an enemy's ability read as hitting
