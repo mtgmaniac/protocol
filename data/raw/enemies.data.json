@@ -2350,7 +2350,7 @@
       "type": "veilNull",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "NULL",
+      "callsign": "PHASE",
       "role": "Straight, heavy damage, with a firewall up when it needs to survive."
     },
     "Stormweaver": {
@@ -2370,7 +2370,7 @@
       "type": "veilSynapse",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "SYNAPSE",
+      "callsign": "HERALD",
       "role": "Feeds shields and roll bonuses to its allies, and shrugs off one ability with a firewall."
     },
     "Veil Overseer": {
@@ -2389,7 +2389,7 @@
       "dMax": 9,
       "type": "voidWisp",
       "ai": "dumb",
-      "callsign": "GLITCH",
+      "callsign": "WISP",
       "role": "Nibbles your rolls down and siphons Protocol out of your pool."
     },
     "Circuit Acolyte": {
@@ -2399,7 +2399,7 @@
       "type": "voidAcolyte",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "INIT",
+      "callsign": "ACOLYTE",
       "role": "Hides behind firewalls, drains your Protocol, and rewrites a die to 3."
     },
     "Cipher Scribe": {
@@ -2419,7 +2419,7 @@
       "type": "voidBinder",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "AXIOM",
+      "callsign": "BINDER",
       "role": "A slow grinder: roll penalties, drained Protocol, and a die rewritten to 3."
     },
     "False Image": {
@@ -2429,7 +2429,7 @@
       "type": "voidGlimmer",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "FORK",
+      "callsign": "IMAGE",
       "startsCloaked": true,
       "role": "Cloaks out of reach, wipes your shields, and takes your highest die for itself."
     },
@@ -2440,7 +2440,7 @@
       "type": "voidChanneler",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "DAEMON",
+      "callsign": "ASH",
       "role": "Winds up its own rolls, then lands the Synod's heaviest burn."
     },
     "Signal Hierophant": {
@@ -2450,7 +2450,7 @@
       "type": "voidCircletBoss",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "ROOT",
+      "callsign": "HIEROPHANT",
       "role": "Plates its line behind a firewall, then buries your rolls under penalties."
     },
     "Pumice Climber": {
