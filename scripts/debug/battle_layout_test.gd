@@ -177,9 +177,12 @@ func run() -> void:
 			mouse(die_at, true)
 			mouse(die_at, false)
 			await frames()
-			# Reproduced in the untouched portrait source (external baseline probe).
-			# Do not repair this pre-existing input cancellation in a layout task.
-			check(s.protocol_points == before and s.turn_phase == s.PHASE_TARGETING, "existing die-press cancellation preserved")
+			# The die-press cancellation this used to pin is fixed (playtest
+			# 2026-10-01, ProtocolActions.claim_die_taps): tapping the die while
+			# Nudge is armed nudges it.
+			check(s.protocol_points == before - 1 and s.hero_roll_nudges.has("combat"), "a die tap during the Nudge pick nudges that die")
+			s.hero_roll_nudges.erase("combat")
+			s.protocol_points = before
 			s._protocol._on_nudge_button_pressed()
 			s._on_hero_card_pressed("combat")
 			check(s.protocol_points == before - 1 and s.hero_roll_nudges.has("combat"), "shared card Nudge handler spends once")
