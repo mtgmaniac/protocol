@@ -163,6 +163,9 @@ GATES = [
     # stops telegraphing, a taunt redirects the telegraph, and leech healing
     # reaches the net-HP projection.
     ("preview accuracy", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/preview_accuracy_test.gd"], "[PREVIEW_ACCURACY] PASS", False),
+    # Playtest 2026-10-01: a taunt picked during planning shows its TAUNT chip
+    # on the chosen enemy before End Turn (none when a Firewall will eat it).
+    ("taunt planning chip", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/taunt_planning_chip_test.gd"], "[TAUNT_CHIP] PASS", False),
     # Same batch, two "the game told me something untrue" defects: Chain and its
     # siblings floated a SECOND number for one hit, and a revive with no downed
     # ally still played its banner.

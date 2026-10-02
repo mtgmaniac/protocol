@@ -569,6 +569,24 @@ func _composed_status_tokens(state: Dictionary) -> Array:
 	return out
 
 
+# A taunt picked this planning phase (playtest 2026-10-01: Sentinel's taunt
+# "didn't work" because nothing showed it before End Turn). The TAUNT chip
+# shows on the chosen enemy as soon as the pick lands. It is read off the
+# hero-phase dry run, so a Firewall that will eat the taunt shows no chip.
+func _planned_taunt_on(state: Dictionary) -> bool:
+	if _scene.turn_phase != _scene.PHASE_TARGETING and _scene.turn_phase != _scene.PHASE_READY_TO_END:
+		return false
+	var enemy_id: String = str(state.get("id", ""))
+	var picked: bool = false
+	for hero_state in _scene.combat_manager.get_hero_states():
+		if not bool(hero_state.get("dead", false)) and str(hero_state.get("selected_target_id", "")) == enemy_id:
+			picked = true
+			break
+	if not picked:
+		return false
+	return str((_forecast_hero_phase()["lured"] as Dictionary).get(enemy_id, "")) != ""
+
+
 func _build_compact_status_tokens(state: Dictionary) -> Array:
 	var statuses: Array = []
 	if bool(state.get("dead", false)):
@@ -625,7 +643,7 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	# Taunted unit (internal lured_by state, BOTH directions since G-4): its
 	# targeting is restricted to the taunter — the chip makes the restriction
 	# legible on the unit that carries it (a lured hero or a hero-taunted enemy).
-	if str(state.get("lured_by_id", "")) != "":
+	if str(state.get("lured_by_id", "")) != "" or _planned_taunt_on(state):
 		statuses.append(_make_compact_icon_status("taunt", 3))
 
 	# Kev 2026-07-10: the chip TYPE limit is lifted — every active status gets a
