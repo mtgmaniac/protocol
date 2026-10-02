@@ -642,11 +642,34 @@ func _part_b_and_c() -> void:
 		heroes[2]["jam_skip_next_tick"] = true
 		enemies[1]["rewrite_pending"] = true                    # rewrite -> 3
 		enemies[1]["rewrite_skip_next_tick"] = true
+		_check("d", _throw_print("enemy", enemies[1]) == _span(1, 20),
+			"G-43: a Rewrite die is thrown with its natural faces, never an all-3 print (got %s)" % str(_throw_print("enemy", enemies[1])))
 		await _roll(stub, roll, heroes.size() + enemies.size(), {
 			"hero:%s" % h[0]: _span(4, 20), "hero:%s" % h[1]: _span(1, 18),
 			"hero:%s" % h[2]: _span(1, 10), "enemy:%s" % e[1]: [3],
 		})
+		# G-43: Rewrite is applied AFTER landing — the die is thrown with its
+		# natural faces (never an all-3 print), lands, then tips onto its 3.
+		var rw_die: RigidBody3D = _tray.get("_die_by_key")["enemy:" + e[1]]
+		_check("d", _labels(rw_die) == _span(1, 20).map(func(v): return str(v)),
+			"G-43: a Rewrite die keeps its natural 1-20 faces (got %s)" % str(_labels(rw_die)))
 	print("[DICE_FACE_GATE] part B1: +3 / -2 / jam 10 / rewrite x 20 naturals")
+	# G-43: a buffed die (+3 prints 4-20, no 3 face) under Rewrite (ROOT ACCESS)
+	# lands naturally, is reprinted as a plain 1-20 die and tips onto its 3.
+	for roll in range(0, 20, 4):
+		_clear_statuses(heroes + enemies)
+		_buff(heroes[0], 3)
+		heroes[0]["rewrite_pending"] = true
+		heroes[0]["rewrite_skip_next_tick"] = true
+		_check("d", _throw_print("hero", heroes[0]) == _span(4, 20).slice(0, 17) + [20, 20, 20],
+			"G-43: a buffed Rewrite die is thrown printed 4-20, not all 3 (got %s)" % str(_throw_print("hero", heroes[0])))
+		await _roll(stub, roll, heroes.size() + enemies.size())
+		var root_die: RigidBody3D = _tray.get("_die_by_key")["hero:" + h[0]]
+		_check("d", _labels(root_die) == _span(1, 20).map(func(v): return str(v)),
+			"G-43: a buffed Rewrite die is reprinted plain 1-20 (got %s)" % str(_labels(root_die)))
+		_check("d", int(_top(root_die).text) == 3 and _oracle("hero", h[0]) == 3,
+			"G-43: a buffed Rewrite die rests on 3 (shows %s)" % _top(root_die).text)
+	print("[DICE_FACE_GATE] part B1b: Rewrite applied after landing (plain reprint when no 3 face)")
 
 	# B2: forced 20 + Tectonic Charge's permanent +3 x all 20 naturals.
 	for roll in range(20):
@@ -915,6 +938,13 @@ func _roll(stub: Object, roll: int, count: int, ranges: Dictionary = {}) -> void
 
 # Ranges arm once the NEW throw has started (no die reads as locked while the
 # tray rolls), so the previous roll's locked dice are never judged by them.
+# The faces a die is PRINTED with for its next throw: the scene's own entry
+# builder, the source play_rolls prints from (G-24 / G-43).
+func _throw_print(side: String, state: Dictionary) -> Array:
+	var entries: Array = _scene.call("_build_dice_tray_entries", [state], side)
+	return [] if entries.is_empty() else (entries[0] as Dictionary).get("face_values", [])
+
+
 func _begin_roll(ranges: Dictionary = {}) -> void:
 	_ranges.clear()
 	_current_path = ""

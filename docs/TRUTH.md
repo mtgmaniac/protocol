@@ -232,6 +232,11 @@ seem to disagree, the ruling wins and this list is corrected.
 5. **Pre-roll modifiers are printed on the faces before the throw.** Each face
    shows its effective value, so the face that lands up reads the value the
    unit acts on ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26)).
+   **Exception, Rewrite (G-43, Kev 2026-10-01):** a pending Rewrite (ROOT
+   ACCESS, Synod and hero rewrites) is not printed. The die rolls naturally,
+   lands, then tips onto a face showing 3 (rule 6), reprinted first as a plain
+   1-20 die when no printed face shows 3, like Set. Value displays stay hidden
+   until it rests on 3 (rule 7).
 6. **Deliberate changes are shown as the die moving to its new face, never a
    jump.** Nudge, Set, hijack and items tip the die over onto the new face in
    0.30 s. Reroll and the enemy reroll items rethrow the die physically. Set

@@ -652,9 +652,11 @@ func _get_total_burn_bonus() -> int:
 
 # PUBLIC: Returns the effective roll for a state factoring in RFE stacks and roll buff.
 # battle_scene passes nudge on top of this, so nudge is NOT included here.
-func get_effective_roll(state: Dictionary, raw_roll: int) -> int:
+func get_effective_roll(state: Dictionary, raw_roll: int, include_rewrite: bool = true) -> int:
 	# Rewrite: the next roll is SET to 3 — trumps every other modifier.
-	if bool(state.get("rewrite_pending", false)):
+	# include_rewrite false = the faces a die PRINTS before its throw: Rewrite is
+	# applied after landing (G-43), so the die rolls naturally and then tips to 3.
+	if include_rewrite and bool(state.get("rewrite_pending", false)):
 		return REWRITE_VALUE
 	var mods: Dictionary = get_roll_modifier_totals(state)
 	var effective: int = clampi(raw_roll + int(mods["roll_buff"]) - int(mods["roll_rfe"]), 1, 20)

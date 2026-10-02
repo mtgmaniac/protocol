@@ -660,7 +660,8 @@ func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> 
 # and the value rule is get_effective_roll (buffs, penalties,
 # jam, rewrite) — the same functions, so the landed face always reads the value
 # the engine then computes. Hijack is not known before the roll (it copies the
-# heroes' dice) and is not printed.
+# heroes' dice) and is not printed; Rewrite is known but applied AFTER landing
+# (G-43, Kev 2026-10-01): the die lands naturally, then tips onto its 3.
 
 # The raw roll a landed natural becomes under the pre-roll raw override.
 func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int) -> int:
@@ -671,7 +672,7 @@ func pre_roll_raw(state: Dictionary, is_hero: bool, natural: int) -> int:
 
 # The value printed on the face with natural number `natural`.
 func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int) -> int:
-	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural))
+	return combat_manager.get_effective_roll(state, pre_roll_raw(state, is_hero, natural), false)
 
 
 # G-27 / G-25: the faces a die prints for its CURRENT state — face n reads the
@@ -680,7 +681,11 @@ func pre_roll_face_value(state: Dictionary, is_hero: bool, natural: int) -> int:
 # tumbles onto one showing the new value. Under a Set the die is a plain 1–20
 # die ("plain": true) and tumbles onto the chosen face (G-25).
 func current_face_values(state: Dictionary, unit_id: String, is_hero: bool, bs: BattleState) -> Dictionary:
-	var plain: bool = is_hero and not _is_locked_by_freeze(state) and (bs.hero_roll_sets.has(unit_id) or bs.hero_roll_sets.has(str(unit_id)))
+	# G-43: a Rewrite is a Set to 3 applied after landing, so a rewritten die is
+	# a plain 1–20 die too, either side: it tips onto its 3 face, reprinted
+	# first only when its printed faces carry no 3.
+	var rewritten: bool = bool(state.get("rewrite_pending", false))
+	var plain: bool = not _is_locked_by_freeze(state) and (rewritten 		or (is_hero and (bs.hero_roll_sets.has(unit_id) or bs.hero_roll_sets.has(str(unit_id)))))
 	var faces: Array = []
 	for natural in range(1, 21):
 		if plain:
