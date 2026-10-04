@@ -293,9 +293,12 @@ tip-over, hijack update, item changes and refresh. On every drawn frame it
 checks rules 1–10 above; it fails if any of those paths is never exercised.
 Rule 10 is criterion (k): an exact separating-axis test of the moving die's
 d20 hull against every resting die's drawn hull, plus unchanged pose and top
-face for every resting die, on every re-throw and tip-over path, with a
-re-throw stress pass (40 single-die re-throws). The pre-G-33 tray fails it
-200 times.
+face for every resting die, on every re-throw and tip-over path, judged on
+every physics step as well as every drawn frame (at the gate's 8x speed a
+drawn frame sees about one physics step in eight, so a one-step graze used to
+pass or fail by frame timing), with two re-throw stress passes: 40 single-die
+re-throws on a five-die board and 60 on a six-die board (part S). The pre-G-33
+tray fails it 200 times.
 `scripts/checks/dice_face_mutations.py` breaks each of its eleven criteria on
 purpose and proves the gate fails. `tutorial recorded throws` separately checks
 scripted top values, static labels and containment at both sizes. Regenerate

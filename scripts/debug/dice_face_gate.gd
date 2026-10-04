@@ -64,6 +64,7 @@ const RETHROW_STRESS := 40
 var last_depth: float = INF
 var _k_rest: Dictionary = {}      # resting die instance id -> [pose, top label name]
 var _k_pairs: Dictionary = {}     # path -> moving/resting pairs judged
+var _k_steps: int = 0             # physics steps (k) was judged on
 var _hull_points: Array = []      # d20 hull vertices, local, radius 1 die
 var _hull_normals: Array = []     # unique face-normal axes (local)
 var _hull_edges: Array = []       # unique edge directions (local)
@@ -114,6 +115,7 @@ func _run() -> void:
 	seed(20260926)
 	await _part_a()
 	await _part_b_and_c()
+	await _part_six_dice()
 	await _part_tutorial()
 	# Let the last item SFX finish: a stream still playing at quit is reported
 	# as a leaked resource (an ERROR line the gate runner rejects).
@@ -128,6 +130,16 @@ func _run() -> void:
 func _process(_delta: float) -> bool:
 	if _monitor_on and _tray != null and is_instance_valid(_tray):
 		_sample()
+	return false
+
+
+# (k) is judged on EVERY physics step, not only on drawn frames: at SPEED 8 a
+# drawn frame sees about one physics step in eight, so a one-step graze was
+# caught or missed by frame timing (4 of 15 runs failed, 2026-10-02).
+func _physics_process(_delta: float) -> bool:
+	if _monitor_on and _tray != null and is_instance_valid(_tray) and _current_path in RETHROW_PATHS:
+		_k_steps += 1
+		_sample_rethrow()
 	return false
 
 
@@ -852,6 +864,64 @@ func _part_b_and_c() -> void:
 	_monitor_on = false
 
 
+# -- Part S (G-33): six-die re-throw stress ------------------------------------
+# A full board (3 heroes + 3 enemies): every re-throw lands among five resting
+# dice, where pinned landings and fast contacts happen most (2026-10-04: 13 of
+# 200 such re-throws grazed a resting die before the contact-distance fix).
+
+const SIX_DICE_OP := "facility"
+const SIX_DICE_SEED := 1004
+const SIX_DICE_BATTLE := 6
+const SIX_DICE_RETHROWS := 60
+
+
+func _part_six_dice() -> void:
+	_monitor_on = false
+	_use_scene_oracle = false
+	var gs: Node = root.get_node("/root/GameState")
+	gs.call("reset_run")
+	gs.call("start_run", SQUAD, SIX_DICE_OP, SIX_DICE_SEED)
+	gs.call("advance_to_next_battle")
+	gs.set("current_battle", SIX_DICE_BATTLE)
+	change_scene_to_file(BATTLE_SCENE)
+	for _i in range(240):
+		await process_frame
+		if current_scene != null and current_scene.scene_file_path == BATTLE_SCENE and current_scene != _scene:
+			break
+	await create_timer(1.0).timeout
+	_scene = current_scene
+	_tray = _scene.get("dice_tray_3d")
+	var stub := ScriptedRolls.new()
+	_stub = stub
+	stub.fallback.seed = SIX_DICE_SEED
+	(_scene.get("_engine") as Object).set("roll_provider", stub)
+	var cm: Object = _scene.get("combat_manager")
+	var heroes: Array = cm.call("get_hero_states")
+	var enemies: Array = cm.call("get_enemy_states")
+	_check("k", heroes.size() == 3 and enemies.size() == 3,
+		"six-die fixture: %s battle %d (seed %d) has %d heroes + %d enemies, not 3 + 3" % [SIX_DICE_OP, SIX_DICE_BATTLE, SIX_DICE_SEED, heroes.size(), enemies.size()])
+	if heroes.size() != 3 or enemies.size() != 3:
+		return
+	var h: Array = heroes.map(func(st): return str(st["id"]))
+	var pa: Object = _scene.get("_protocol")
+	_use_scene_oracle = true
+	_monitor_on = true
+	_clear_statuses(heroes + enemies)
+	stub.queue = [8, 11, 14, 5, 17, 2]
+	await _begin_roll()
+	await _await_all_locked()
+	for i in range(SIX_DICE_RETHROWS):
+		_scene.set("protocol_points", 60)
+		(_scene.get("_state") as Object).set("protocol_points", 60)
+		if i % 3 == 2:
+			await _use_item(pa, "phase_scrambler", enemies[i % enemies.size()])
+		else:
+			await _reroll(pa, h[i % h.size()])
+		await _await_all_locked()
+	print("[DICE_FACE_GATE] part S: %d single-die re-throws on a six-die board" % SIX_DICE_RETHROWS)
+	_monitor_on = false
+
+
 # -- Part T: the real tutorial's recorded rounds, then a free live scene throw --
 
 func _part_tutorial() -> void:
@@ -999,7 +1069,7 @@ func _finish() -> void:
 	_check_coverage()
 	print("[DICE_FACE_GATE] paths observed moving (die-frames): %s" % [_paths])
 	print("[DICE_FACE_GATE] mid-motion frames with a value display to hide: %d" % _mid_motion_frames)
-	print("[DICE_FACE_GATE] (k) moving/resting pairs judged per path: %s" % [_k_pairs])
+	print("[DICE_FACE_GATE] (k) moving/resting pairs judged per path: %s (over %d physics steps)" % [_k_pairs, _k_steps])
 	var failed: bool = not _break_kind.is_empty() and not _break_done
 	for kind in _fails:
 		var arr: Array = _fails[kind]

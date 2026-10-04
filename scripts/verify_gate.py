@@ -297,6 +297,8 @@ GATE_TIMEOUT_OVERRIDES = {
     "save resume": 420,         # 6 full Godot processes (2 configs x 3 legs)
     "battle checkpoint": 360,   # 10 Godot processes (2 configs x 3 legs + 4 fallback legs); ~160s measured
     "state code": 300,          # 8 Godot processes (round trip + 3 deliberate breaks); ~70s measured on Linux
+    "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
+    "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
 }
 
 
