@@ -279,7 +279,10 @@ seem to disagree, the ruling wins and this list is corrected.
     a six-die board; 0 in 200 at 0.1, measured 2026-10-04). The slide into the slot is routed around them
     (`DiceTray3D._plan_rethrow_slide`): a die resting against others first
     steps straight out without turning, then slides straight, across a clear
-    lane, or, when a full row is in the way, is lifted over it. Set, reprint
+    lane, or, when a full row is in the way, is lifted over it. **The lift is
+    withdrawn by [G-45](DECISIONS_RESOLVED.md#g-45-a-re-thrown-die-never-passes-over-resting-dice-kev-2026-10-04-amends-g-33)**
+    (dice never visibly pass over other dice); it stays in the code until its
+    replacement is ruled. Set, reprint
     and Nudge tip-overs turn in place inside their slot.
 
 Scripted tutorial rounds (battle 1 rounds 1–2, battle 2 round 1) replay

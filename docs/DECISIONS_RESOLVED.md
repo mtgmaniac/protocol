@@ -1,5 +1,21 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-45. A re-thrown die never passes over resting dice (Kev, 2026-10-04; amends G-33)
+
+Playtest report: a re-thrown die "rolled but just stayed in the corner" with the
+other five slots full. Investigation (2026-10-04): on a full board 15-20% of
+re-throw landings end pinned between a wall and resting dice, where the slide
+planner finds no floor route; the die then turns upright in place and is
+lifted over the row, which the top-down camera shows as the die gliding across
+the resting dice. Ruling (Kev): "The lift/glide over resting dice counts as a
+G-33 violation: dice shouldn't visibly pass over other dice."
+
+G-33's "lifted over a full row" fallback is therefore withdrawn. How a pinned
+die reaches its slot instead is not yet ruled (proposals pending, Phase 1).
+The stuck-in-the-corner report itself is not reproduced (1,520 re-throws on
+six-die boards, seven phone sizes, 8x and real time: every die reached its
+slot); open.
+
 ## G-43. Rewrite is applied after landing (Kev, 2026-10-01; amends Dice rule 5 for Rewrite)
 
 Playtest report: under the Signal Hierophant's ROOT ACCESS the squad's highest
