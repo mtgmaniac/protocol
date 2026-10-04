@@ -61,6 +61,7 @@ debug/safe_area_overlay=false
 
 common/physics_ticks_per_second=120
 3d/physics_engine="Jolt Physics"
+jolt_physics_3d/simulation/speculative_contact_distance=0.1
 
 [rendering]
 

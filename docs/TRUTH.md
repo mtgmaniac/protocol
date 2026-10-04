@@ -273,7 +273,10 @@ seem to disagree, the ruling wins and this list is corrected.
     During a single-die re-throw (hero Reroll, the enemy reroll items) every
     other die becomes a frozen STATIC collider, slightly larger than the drawn
     die (`RETHROW_OBSTACLE_SCALE` 1.06), and gets its old collision state back
-    afterwards. The slide into the slot is routed around them
+    afterwards. Jolt's `speculative_contact_distance` is 0.1 (project setting;
+    the engine default 0.02 let a fast, spinning die sink up to 0.14 into a
+    resting die's collider, past the drawn margin, on about 1 re-throw in 15 on
+    a six-die board; 0 in 200 at 0.1, measured 2026-10-04). The slide into the slot is routed around them
     (`DiceTray3D._plan_rethrow_slide`): a die resting against others first
     steps straight out without turning, then slides straight, across a clear
     lane, or, when a full row is in the way, is lifted over it. Set, reprint
