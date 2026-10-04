@@ -148,8 +148,12 @@ and the sim does not separate them.
 cloaked unit's own ability dealing damage — checked **before** the damage resolves,
 on both sides (`combat_manager.gd` 1356, 2019); (b) any AoE hit (2245); (c) death.
 While cloaked a unit can't be picked by hostile single-target abilities; friendly
-picks stay legal (DECISIONS #12). If every hero is cloaked, enemies fall back to the
-first living hero. Cloak is 2 clauses since the keyword batch (K1: pierce-from-cloak
+picks stay legal (DECISIONS #12). If every legal target is cloaked, a hostile
+single-target ability fizzles, on both sides: the enemy pick returns no target
+(`targeting_personality.gd` 138–143) and so does resolution
+(`combat_manager._hostile_single_target`, 2225–2242). AoE still lands and breaks the
+cloak. *(Corrected 2026-10-04: this line first said enemies fall back to the first
+living hero; the code has no such fallback.)* Cloak is 2 clauses since the keyword batch (K1: pierce-from-cloak
 removed).
 
 **Every cloak source**
@@ -512,8 +516,11 @@ False Image it re-cloaks them.
 Running it re-cloaks after every no-damage ability. Shadow Operative's 3 is Ghost
 Step (5 damage, then cloak): the damage breaks any cloak, then it re-cloaks. ROOT
 ACCESS therefore cloaks a Phantom Engineer that rolled highest; cloak lasts until
-broken (section 2). Cloak alone does not stall the fight: enemies fall back to the
-first living hero when all are cloaked, and the other two heroes still act.
+broken (section 2). While every hero is cloaked, enemy single-target abilities
+fizzle (only AoE lands, and it breaks the cloak); the same holds for heroes against an
+all-cloaked enemy side. A cloaked hero that deals damage uncloaks first, so a squad
+that keeps attacking does not stay hidden. *(Corrected 2026-10-04: this paragraph first
+said enemies fall back to the first living hero when all are cloaked.)*
 
 **Every forced value × threshold interaction found**
 
