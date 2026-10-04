@@ -379,6 +379,11 @@ func _play_run(gs: Node, dm: Node, provider: RollProvider, policy, battle_limit:
 			gs.call("finish_run", "defeat")
 			final_result = "defeat"
 			break
+		# A stalemate is not a clear: the run ends here, without reward or a
+		# win (it used to fall through, and on the final battle score a victory).
+		if outcome["result"] == "stalemate":
+			final_result = "stalemate"
+			break
 		if bool(gs.call("is_final_battle")):
 			gs.call("finish_run", "victory")
 			final_result = "victory"
@@ -789,6 +794,9 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		})
 		if result == "victory" or result == "defeat":
 			break
+	# A battle still going at the safety cap is a stalemate: neither side won.
+	if result != "victory" and result != "defeat":
+		result = "stalemate"
 
 	gs.call("capture_battle_end_survival", cm.get_hero_states())
 	gs.call("record_battle_hero_deaths", _dead_hero_ids(cm.get_hero_states()))
