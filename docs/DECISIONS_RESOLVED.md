@@ -23,7 +23,7 @@ another die's edge).
 As implemented: `DiceTray3D.reroll_die_to_result` reprints the die for its new
 state in the frame the hop starts (G-27), locks its horizontal movement, makes
 it all but frictionless for the hop (so it cannot hang on an edge) and
-launches it up with a random spin; the static-obstacle colliders, the slide
+launches it up from a uniformly random orientation with a random spin (the hop is too short for spin alone to randomize the face: it landed on its own starting face 19% of the time instead of 5%); the static-obstacle colliders, the slide
 planner and the lift are deleted. Gate `reroll hop` (1,000 rerolls: uniform
 faces, no contact, never leaves its slot, the snap never changes the face;
 each broken on purpose). Heretic Signal is not a reroll: it still re-throws

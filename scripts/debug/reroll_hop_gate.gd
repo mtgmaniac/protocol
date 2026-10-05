@@ -1,8 +1,10 @@
 # G-47 reroll hop gate (Kev, 2026-10-05): a reroll is a real hop in the die's
 # own slot. On a six-die tray (place_rolls: every die at rest in its slot) the
 # script rerolls the dice in turn, many times, judged on every physics step:
-#   uniform   the landed faces are uniform over 1-20 (chi-square, 19 df,
-#             fails above 43.82 = p 0.001)
+#   uniform   the landed faces are uniform over 1-20 (chi-square, 19 df), AND
+#             uniform for dice that start on 1-5, 6-10, 11-15 and 16-20 each,
+#             AND a die lands back on its starting face about 1 time in 20
+#             (the die must forget where it started)
 #   contact   the hopping die never touches another die (no contact reported
 #             by the physics server, no touching or overlapping drawn hulls),
 #             and no other die moves
@@ -11,23 +13,39 @@
 #             never changes from the moment the die settles, through the
 #             upright snap, and it is the raw roll
 #   godot --headless --path . -s scripts/debug/reroll_hop_gate.gd -- --n=1000
-#   -- --break=uniform|contact|slot|snap injects a real violation; must exit 1.
+#   -- --break=uniform|start|contact|slot|snap injects a real violation; exit 1.
+# scripts/checks/reroll_hop_gate.py shards the hops over several processes
+# (--seed, --pairs-out, --physics-only) and pools them through --analyze=<files>,
+# which runs the uniformity tests alone, with no physics, on the pooled pairs.
 extends SceneTree
 
 const SPEED := 16
-const CHI2_CRITICAL := 43.82
+# 19 df, p 0.0001: the gate runs six uniformity tests per run and must pass ten
+# runs in ten, so each is held to a false-failure rate far below 1 in 1,000.
+const CHI2_CRITICAL := 50.80
+# Two-sided z for "lands on its starting face 1 time in 20", p 0.00001.
+const Z_CRITICAL := 4.42
+# Per-starting-face groups: a die that starts on 1-5 must land uniformly too.
+const START_GROUPS := [[1, 5], [6, 10], [11, 15], [16, 20]]
+# Fewer hops than this in a group and its chi-square is meaningless (cells < 5).
+const MIN_PER_GROUP := 100
 const SLOT_TOLERANCE := 0.02
 const HEROES := ["h0", "h1", "h2"]
 const ENEMIES := ["e0", "e1", "e2"]
 
 var _n: int = 1000
 var _break: String = ""
+var _seed: int = 20261005
+var _pairs_out: String = ""
+var _physics_only: bool = false
+var _min_group: int = MIN_PER_GROUP
+var _analyze: Array = []
+var _rest_basis := Basis.IDENTITY
 var _tray: Node
 var _hull: Array = []
 var _norms: Array = []
 var _edges: Array = []
 var _fails: Dictionary = {"uniform": [], "contact": [], "slot": [], "snap": []}
-var _faces: Dictionary = {}
 # The hop being judged.
 var _die: RigidBody3D = null
 var _slot := Vector3.ZERO
@@ -38,6 +56,14 @@ var _injected: bool = false
 var _max_travel: float = 0.0
 var _contacts: int = 0
 var _steps: int = 0
+# Diagnostics (the landed face against the starting face, turns and bounces).
+var _start_face: int = 0
+var _turns: float = 0.0
+var _bounces: int = 0
+var _prev_vy: float = 0.0
+var _pairs: Array = []       # [start face, landed face] per hop
+var _turn_log: Array = []
+var _bounce_log: Array = []
 
 
 func _initialize() -> void:
@@ -46,15 +72,28 @@ func _initialize() -> void:
 			_n = int(arg.trim_prefix("--n="))
 		elif arg.begins_with("--break="):
 			_break = arg.trim_prefix("--break=")
+		elif arg.begins_with("--seed="):
+			_seed = int(arg.trim_prefix("--seed="))
+		elif arg.begins_with("--pairs-out="):
+			_pairs_out = arg.trim_prefix("--pairs-out=")
+		elif arg == "--physics-only":
+			_physics_only = true
+		elif arg.begins_with("--min-group="):
+			_min_group = int(arg.trim_prefix("--min-group="))
+		elif arg.begins_with("--analyze="):
+			_analyze = Array(arg.trim_prefix("--analyze=").split(","))
 	call_deferred("_run")
 
 
 func _run() -> void:
+	if not _analyze.is_empty():
+		_run_analysis()
+		return
 	root.size = Vector2i(1080, 2400)
 	Engine.physics_ticks_per_second = 120 * SPEED
 	Engine.time_scale = SPEED
 	Engine.max_physics_steps_per_frame = 64
-	seed(20261005)
+	seed(_seed)
 	var host := Control.new()
 	host.size = Vector2(1056, 1100)
 	root.add_child(host)
@@ -108,13 +147,20 @@ func _begin_hop(die: RigidBody3D) -> void:
 	_airborne = false
 	_settled_top = ""
 	_injected = false
+	_start_face = int(_top(die).name.trim_prefix("FaceNumber"))
+	_rest_basis = die.global_basis
+	_turns = 0.0
+	_bounces = 0
+	_prev_vy = 0.0
 
 
 func _end_hop(raw: int) -> void:
 	if _die == null or not is_instance_valid(_die):
 		_fail("snap", "the hopping die was freed")
 		return
-	_faces[raw] = int(_faces.get(raw, 0)) + 1
+	_pairs.append([_start_face, raw])
+	_turn_log.append(_turns)
+	_bounce_log.append(_bounces)
 	var top: String = _top(_die).name
 	_expect("snap", top == _settled_top, "%s settled showing %s, ended showing %s" % [_name(_die), _settled_top, top])
 	_expect("snap", top == "FaceNumber%d" % raw, "%s acts on %d but shows %s" % [_name(_die), raw, top])
@@ -133,6 +179,10 @@ func _physics_process(_delta: float) -> bool:
 	_steps += 1
 	var moving: bool = not _die.freeze
 	if moving:
+		_turns += _die.angular_velocity.length() * _delta / TAU
+		if _airborne and _prev_vy < 0.0 and _die.linear_velocity.y > 0.0:
+			_bounces += 1
+		_prev_vy = _die.linear_velocity.y
 		if not _airborne:
 			_airborne = true
 			if _break == "uniform":
@@ -141,6 +191,12 @@ func _physics_process(_delta: float) -> bool:
 				_die.angular_velocity = Vector3.ZERO
 				if not _injected:
 					print("[REROLL_HOP] injected violation (uniform)")
+				_injected = true
+			elif _break == "start":
+				# The launch randomization removed: the die leaves in the pose it rested in.
+				_die.global_basis = _rest_basis
+				if not _injected:
+					print("[REROLL_HOP] injected violation (start)")
 				_injected = true
 		elif _break == "slot" and not _injected and _die.linear_velocity.y < 0.0:
 			_die.axis_lock_linear_x = false
@@ -169,17 +225,54 @@ func _physics_process(_delta: float) -> bool:
 
 
 func _report() -> void:
-	var total: int = 0
-	for v in range(1, 21):
-		total += int(_faces.get(v, 0))
-	var chi := 0.0
-	var expected: float = float(total) / 20.0
-	for v in range(1, 21):
-		chi += pow(float(_faces.get(v, 0)) - expected, 2) / maxf(expected, 0.0001)
-	_expect("uniform", total == _n, "%d hops landed, %d expected" % [total, _n])
-	_expect("uniform", chi < CHI2_CRITICAL, "landed faces not uniform: chi-square %.1f >= %.2f over %d hops %s" % [chi, CHI2_CRITICAL, total, str(_faces)])
-	print("[REROLL_HOP] hops=%d chi2=%.1f (critical %.2f) faces=%s" % [total, chi, CHI2_CRITICAL, str(_faces)])
+	if _pairs_out != "":
+		var lines := PackedStringArray()
+		for pr in _pairs:
+			lines.append("%d,%d" % [pr[0], pr[1]])
+		var f := FileAccess.open(_pairs_out, FileAccess.WRITE)
+		f.store_string("
+".join(lines) + "
+")
+		f.close()
+	if not _physics_only:
+		_judge_uniform(_pairs)
+	var tsum := 0.0
+	var tmin := INF
+	var tmax := 0.0
+	for t in _turn_log:
+		tsum += t
+		tmin = minf(tmin, t)
+		tmax = maxf(tmax, t)
+	var bsum := 0
+	var bmax := 0
+	for b in _bounce_log:
+		bsum += b
+		bmax = maxi(bmax, b)
+	var h: float = maxf(float(_turn_log.size()), 1.0)
+	print("[REROLL_HOP] turns per hop mean %.2f (min %.2f max %.2f); bounces before rest mean %.2f max %d" % [tsum / h, tmin, tmax, bsum / h, bmax])
 	print("[REROLL_HOP] physics steps judged=%d max slot travel=%.4f physics contacts=%d" % [_steps, _max_travel, _contacts])
+	_finish()
+
+
+# No physics: the uniformity tests alone, on the hops pooled from the shards.
+func _run_analysis() -> void:
+	var pairs: Array = []
+	for path in _analyze:
+		var f := FileAccess.open(str(path), FileAccess.READ)
+		if f == null:
+			_fail("uniform", "cannot read pairs file %s" % path)
+			continue
+		for line in f.get_as_text().split("
+", false):
+			var parts: PackedStringArray = line.split(",")
+			if parts.size() == 2:
+				pairs.append([int(parts[0]), int(parts[1])])
+	_n = pairs.size()
+	_judge_uniform(pairs)
+	_finish()
+
+
+func _finish() -> void:
 	var ok := true
 	for kind in _fails:
 		var list: Array = _fails[kind]
@@ -192,6 +285,45 @@ func _report() -> void:
 	Engine.time_scale = 1.0
 	await create_timer(0.5).timeout
 	quit(0 if ok else 1)
+
+
+# The landed faces over every hop, then split by the face the die started on. The
+# die must forget where it started: every start group (1-5, 6-10, 11-15, 16-20)
+# lands uniformly, and it lands back on its own starting face about 1 time in 20.
+func _judge_uniform(pairs: Array) -> void:
+	var faces: Dictionary = {}
+	var same: int = 0
+	for pr in pairs:
+		faces[int(pr[1])] = int(faces.get(int(pr[1]), 0)) + 1
+		if int(pr[0]) == int(pr[1]):
+			same += 1
+	var chi: float = _chi2(faces, pairs.size())
+	_expect("uniform", pairs.size() == _n, "%d hops landed, %d expected" % [pairs.size(), _n])
+	_expect("uniform", chi < CHI2_CRITICAL, "landed faces not uniform: chi-square %.1f >= %.2f over %d hops %s" % [chi, CHI2_CRITICAL, pairs.size(), str(faces)])
+	print("[REROLL_HOP] hops=%d chi2=%.1f (critical %.2f) faces=%s" % [pairs.size(), chi, CHI2_CRITICAL, str(faces)])
+	var p_same: float = float(same) / maxf(float(pairs.size()), 1.0)
+	var z: float = (float(same) - 0.05 * pairs.size()) / sqrt(maxf(pairs.size() * 0.05 * 0.95, 0.0001))
+	print("[REROLL_HOP] landed on its own starting face %.4f of hops (fair d20 0.0500, z=%.2f)" % [p_same, z])
+	_expect("uniform", absf(z) < Z_CRITICAL, "landed on its starting face %.4f of the time (fair 0.05, z=%.2f)" % [p_same, z])
+	for g in START_GROUPS:
+		var counts: Dictionary = {}
+		var n: int = 0
+		for pr in pairs:
+			if int(pr[0]) >= int(g[0]) and int(pr[0]) <= int(g[1]):
+				counts[int(pr[1])] = int(counts.get(int(pr[1]), 0)) + 1
+				n += 1
+		var c2: float = _chi2(counts, n)
+		print("[REROLL_HOP] starts on %d-%d: hops=%d chi2=%.1f" % [g[0], g[1], n, c2])
+		_expect("uniform", n >= _min_group, "only %d hops started on %d-%d (need %d)" % [n, g[0], g[1], _min_group])
+		_expect("uniform", c2 < CHI2_CRITICAL, "hops starting on %d-%d not uniform: chi-square %.1f >= %.2f over %d hops %s" % [g[0], g[1], c2, CHI2_CRITICAL, n, str(counts)])
+
+
+func _chi2(counts: Dictionary, n: int) -> float:
+	var expected: float = float(n) / 20.0
+	var c2 := 0.0
+	for v in range(1, 21):
+		c2 += pow(float(counts.get(v, 0)) - expected, 2) / maxf(expected, 0.0001)
+	return c2
 
 
 func _expect(kind: String, ok: bool, msg: String) -> void:

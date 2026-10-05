@@ -99,6 +99,8 @@ const HOP_SPIN_MAX := 55.0
 # tilted (a tie between two faces). Without friction gravity always brings it
 # down onto a face. Its own material is restored once it has settled.
 const HOP_FRICTION := 0.02
+# The launch pose is lifted until its lowest corner is this far above the floor.
+const HOP_FLOOR_CLEARANCE := 0.02
 var _hop_material: PhysicsMaterial = null
 var _dice_number_font: Font
 var _is_exiting_tree: bool = false
@@ -781,6 +783,19 @@ func _hop_die(die: RigidBody3D) -> void:
 		die.contact_monitor = true
 		die.max_contacts_reported = 4
 		die.body_entered.connect(_on_die_contact.bind(die))
+	# The hop is short (the walls and the floor cap its air time), so the die
+	# leaves the slot already in a uniformly random orientation: the face it
+	# lands on cannot depend on the face it started on. Physics still decides the
+	# result from that state. The die is lifted just clear of the floor first.
+	var quat := Quaternion(randfn(0.0, 1.0), randfn(0.0, 1.0), randfn(0.0, 1.0), randfn(0.0, 1.0))
+	if quat.length_squared() < 0.000001:
+		quat = Quaternion.IDENTITY
+	var launch := Transform3D(Basis(quat.normalized()), die.global_transform.origin)
+	var lowest := INF
+	for point in _get_d20_convex_points():
+		lowest = minf(lowest, (launch.basis * point).y)
+	launch.origin.y = HOP_FLOOR_CLEARANCE - lowest
+	die.global_transform = launch
 	var axis := Vector3(randfn(0.0, 1.0), randfn(0.0, 1.0), randfn(0.0, 1.0))
 	if axis.length_squared() < 0.000001:
 		axis = Vector3.RIGHT

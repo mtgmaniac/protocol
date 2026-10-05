@@ -302,7 +302,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "state code": 300,          # 8 Godot processes (round trip + 3 deliberate breaks); ~70s measured on Linux
     "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
     "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
-    "reroll hop": 420,          # 1,000 hops + 4 break legs; ~150s measured on Linux
+    "reroll hop": 300,          # 10,000 hops in 8 shards + 5 break legs; ~185s measured on Windows
 }
 
 
