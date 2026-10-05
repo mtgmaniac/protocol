@@ -1,5 +1,27 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-46. No round limit; a stalled fight is exited by abandoning the run (Kev, 2026-10-05)
+
+The 2026-10-02 design audit found fights no player action can end (a boss
+repeating its non-damaging 1-4 face under freeze = repeat while the squad's
+damage stays below its shield), and the game has no round limit. A round-40
+backstop ("STANDOFF") was proposed and approved in principle on 2026-10-04,
+then dropped. Ruling (Kev): "drop the round-40 standoff entirely. Players can
+abandon the run from the menu if a fight stalls."
+
+- **There is no round limit** on a live battle. Do not re-propose a round cap,
+  a standoff/draw result, or an escalation timer as the answer to stalls.
+- **A stalled fight is exited by abandoning the run** (quit to the menu; the
+  run save is destroyed, `GameState` reset path).
+- **The known lock is still live:** a Glacier Rig with the Deep Freeze directive
+  can keep a boss frozen on its 1-4 self-shield face (10 of 583 such boss fights
+  in the audit sims, 0 of 1,897 without that pairing). The candidate fix is the
+  re-freeze rule (audit option C1: re-freezing does not add repeats, or a thawed
+  unit cannot be re-frozen at once), **post-demo**. It amends Combat rule 7 /
+  DECISIONS #1 ("re-freezing adds repeats"), so it needs its own ruling.
+- The sim keeps its 500-round safety cap; a battle that reaches it is a
+  stalemate and never a clear (`b44787b`).
+
 ## G-45. A re-thrown die never passes over resting dice (Kev, 2026-10-04; amends G-33)
 
 Playtest report: a re-thrown die "rolled but just stayed in the corner" with the
