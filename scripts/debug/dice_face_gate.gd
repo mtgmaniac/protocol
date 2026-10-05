@@ -11,11 +11,13 @@
 # (hero Reroll, enemy item rerolls, Set, reprint, Nudge, item changes) the
 # moving die's d20 hull never intersects a resting die's hull on any drawn
 # frame, tumble and slide into its slot included, and no resting die's pose or
-# top face changes (G-33). Paths covered: live throw (tray + scene), recorded
+# top face changes (G-33); (l) after it lands, a re-thrown die never visibly
+# passes over a resting die: its top-down silhouette never overlaps a resting
+# die's more than it did at landing (G-45). Paths covered: live throw (tray + scene), recorded
 # playback (tray + tutorial rounds), hero Reroll, enemy item rerolls, Nudge,
 # Set, G-27 reprints, live hijack, item changes, Sync Antenna, refresh.
 # Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
-# -- --break=a (through k) injects a real bad observation/state; must exit 1.
+# -- --break=a (through l) injects a real bad observation/state; must exit 1.
 # -- --size=WxH runs at that window (default 1080x2400; headless is 64x64).
 extends SceneTree
 
@@ -53,8 +55,8 @@ var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
 var _settled: Dictionary = {}     # die instance id -> physical top label at settle
 var _yaw_prev: Dictionary = {}
 var _yaw_travel: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": [], "l": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0, "l": 0}
 # (k) G-33: re-throw paths, the resting dice's poses at the start of the current
 # motion, and the per-path count of moving/resting pairs actually judged.
 const RETHROW_PATHS := ["hero reroll", "enemy item reroll", "Nudge", "Set", "reprint", "item"]
@@ -65,6 +67,14 @@ var last_depth: float = INF
 var _k_rest: Dictionary = {}      # resting die instance id -> [pose, top label name]
 var _k_pairs: Dictionary = {}     # path -> moving/resting pairs judged
 var _k_steps: int = 0             # physics steps (k) was judged on
+# (l) G-45: per moving die, each resting die's top-down silhouette overlap at
+# the moment it landed (a die may land leaning on another; it may not slide
+# over it), and the airborne/tumbling frames where its centre was over a
+# resting die (reported, not judged: physics).
+const FOOTPRINT_EPS := 0.002
+var _l_landing: Dictionary = {}   # mover instance id -> {rester instance id: depth}
+var _l_pairs: int = 0
+var _l_hops: int = 0
 var _hull_points: Array = []      # d20 hull vertices, local, radius 1 die
 var _hull_normals: Array = []     # unique face-normal axes (local)
 var _hull_edges: Array = []       # unique edge directions (local)
@@ -326,10 +336,77 @@ func _sample_rethrow() -> void:
 			if _current_path == "hero reroll" and _inject("k"):
 				mover.global_position = rester.global_position + Vector3(0.3, 0.0, 0.0)
 			_k_pairs[_current_path] = int(_k_pairs.get(_current_path, 0)) + 1
+			_sample_footprint(mover, rester)
 			var overlap: bool = _hulls_overlap(mover, rester)
 			_check("k", not overlap,
 				"%s passed through resting %s during %s (centres %.2f apart, %.3f deep)" % [_key_of(mover), _key_of(rester), _current_path,
 				mover.global_position.distance_to(rester.global_position), last_depth])
+
+
+# (l) G-45. While the die tumbles (physics) a hop over a resting die is
+# counted for the report; once it has landed (frozen, sliding and turning into
+# its slot) its silhouette may never overlap a resting die more than at landing.
+func _sample_footprint(mover: RigidBody3D, rester: RigidBody3D) -> void:
+	var miid: int = mover.get_instance_id()
+	var riid: int = rester.get_instance_id()
+	var depth: float = _footprint_depth(mover, rester)
+	if not mover.freeze:
+		_l_landing.erase(miid)
+		var r_poly: Array = _footprint(rester)
+		if depth > 0.0 and Geometry2D.is_point_in_polygon(Vector2(mover.global_position.x, mover.global_position.z), PackedVector2Array(r_poly)):
+			_l_hops += 1
+		return
+	if not _l_landing.has(miid):
+		_l_landing[miid] = {}
+	var landed: Dictionary = _l_landing[miid]
+	if not landed.has(riid):
+		landed[riid] = depth
+		return
+	if _inject("l"):
+		mover.global_position = rester.global_position + Vector3(0.0, 2.1, 0.0)
+		depth = _footprint_depth(mover, rester)
+	_l_pairs += 1
+	_check("l", depth <= float(landed[riid]) + FOOTPRINT_EPS,
+		"%s passed over resting %s during %s (silhouettes overlap %.3f, %.3f at landing)" % [_key_of(mover), _key_of(rester), _current_path, depth, float(landed[riid])])
+
+
+# The die's drawn hull seen from the top-down camera: its convex outline in
+# the tray plane (x, z).
+func _footprint(die: RigidBody3D) -> Array:
+	var pts := PackedVector2Array()
+	for p in _world_hull(die):
+		pts.append(Vector2((p as Vector3).x, (p as Vector3).z))
+	return Array(Geometry2D.convex_hull(pts))
+
+
+# Penetration depth of two top-down silhouettes (0.0 when apart).
+func _footprint_depth(a: RigidBody3D, b: RigidBody3D) -> float:
+	if Vector2(a.global_position.x - b.global_position.x, a.global_position.z - b.global_position.z).length() > 2.05:
+		return 0.0
+	var pa: Array = _footprint(a)
+	var pb: Array = _footprint(b)
+	var depth := INF
+	for poly in [pa, pb]:
+		for i in range(poly.size() - 1):
+			var e: Vector2 = (poly[i + 1] as Vector2) - (poly[i] as Vector2)
+			if e.length_squared() < 0.0000001:
+				continue
+			var axis := Vector2(-e.y, e.x).normalized()
+			var min_a := INF
+			var max_a := -INF
+			for p in pa:
+				min_a = minf(min_a, axis.dot(p))
+				max_a = maxf(max_a, axis.dot(p))
+			var min_b := INF
+			var max_b := -INF
+			for p in pb:
+				min_b = minf(min_b, axis.dot(p))
+				max_b = maxf(max_b, axis.dot(p))
+			var overlap: float = minf(max_a - min_b, max_b - min_a)
+			if overlap <= 0.0:
+				return 0.0
+			depth = minf(depth, overlap)
+	return 0.0 if depth == INF else depth
 
 
 func _key_of(die: RigidBody3D) -> String:
@@ -1070,6 +1147,7 @@ func _finish() -> void:
 	print("[DICE_FACE_GATE] paths observed moving (die-frames): %s" % [_paths])
 	print("[DICE_FACE_GATE] mid-motion frames with a value display to hide: %d" % _mid_motion_frames)
 	print("[DICE_FACE_GATE] (k) moving/resting pairs judged per path: %s (over %d physics steps)" % [_k_pairs, _k_steps])
+	print("[DICE_FACE_GATE] (l) landed-die/resting pairs judged: %d; tumbling-die samples over a resting die (physics, reported): %d" % [_l_pairs, _l_hops])
 	var failed: bool = not _break_kind.is_empty() and not _break_done
 	for kind in _fails:
 		var arr: Array = _fails[kind]

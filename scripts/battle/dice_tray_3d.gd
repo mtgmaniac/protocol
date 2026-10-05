@@ -102,7 +102,19 @@ var _rethrow_obstacle_shape: ConvexPolygonShape3D = null
 # (DIE_RADIUS, it is still full size) plus a resting die's (DIE_RADIUS at
 # RESULT_SCALE), plus a hair. Sphere-based, so it is conservative for a d20.
 const RETHROW_SLIDE_CLEARANCE := DIE_RADIUS * (1.0 + RESULT_SCALE) + 0.02
-const RETHROW_LANE_SAMPLES := 48
+# G-45 floor router (see _plan_rethrow_slide): grid cell, search budget,
+# samples of the in-place turn, its time, and the slide's pace (a long route
+# around a row takes longer than the default presentation time, never > MAX).
+const RETHROW_ROUTE_CELL := 0.1
+const RETHROW_ROUTE_MAX_NODES := 20000
+const RETHROW_TURN_SAMPLES := 8
+const RETHROW_TURN_TIME := 0.18
+const RETHROW_SLIDE_SPEED := 9.0
+const RETHROW_SLIDE_MAX_TIME := 1.2
+const ROUTE_STEPS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1),
+]
 var _dice_number_font: Font
 var _is_exiting_tree: bool = false
 var _bounds_half_width: float = TRAY_HALF_WIDTH
@@ -813,101 +825,268 @@ func _rethrow_obstacle_hull() -> ConvexPolygonShape3D:
 	return _rethrow_obstacle_shape
 
 
-# G-33: the slide from where a re-thrown die landed to its slot, routed around
-# the dice resting in the tray. A die that came to rest against (or between)
-# resting dice first steps straight out, without turning, along the shortest
-# direction that never brings it closer to any of them, until it is clear by
-# RETHROW_SLIDE_CLEARANCE (a sphere bound: once clear, no turn can make two
-# d20s touch). From there it slides straight to its slot when that is clear,
-# otherwise across the shortest clear horizontal lane (up/down to the lane,
-# along it, down/up into the slot), and when no lane is clear it is lifted
-# over the row in its way. Returns {"path": waypoints (from first, to
-# last), "turn_from": index of the waypoint where the upright turn may start}.
-func _plan_rethrow_slide(from: Vector3, to: Vector3) -> Dictionary:
+# G-33 / G-45: the slide from where a re-thrown die landed to its slot. It
+# never visibly passes over or through a resting die: the moving die's top-down
+# silhouette never overlaps a resting die's (more than it did at landing, when
+# it came to rest leaning on one). Disjoint silhouettes also mean the dice
+# cannot touch in 3D. The route is searched on the tray floor (A* on a
+# RETHROW_ROUTE_CELL grid, 8 directions) in two phases:
+#   near   - the die slides at its landing orientation;
+#   turned - it has turned upright, in place, at a spot where every step of
+#            the turn is clear, and slides the rest of the way at its final
+#            orientation.
+# Each resting die's forbidden zone for a given moving-die shape is the
+# Minkowski sum of the two silhouettes (built once per re-throw), so a grid
+# check is a point-in-polygon test. The die never gets closer to a wall than it
+# landed, nor closer than one die radius once it is clear of the walls.
+# Returns {"path": waypoints (from first, to last), "turn_at": index of the
+# waypoint where it turns in place (-1: it turns while sliding, the plain
+# slide), "routed": false only for the no-route fallback (lifted over the row,
+# which G-45 forbids; warned, and the dice face gate fails on it)}.
+func _plan_rethrow_slide(die: RigidBody3D, to: Vector3, final_basis: Basis) -> Dictionary:
+	var from: Vector3 = die.global_transform.origin
 	var centres: Array = []
+	var rests: Array = []
 	for die_variant in _rethrow_obstacles:
-		var die: RigidBody3D = die_variant as RigidBody3D
-		if die != null and is_instance_valid(die):
-			centres.append(die.global_transform.origin)
+		var rest: RigidBody3D = die_variant as RigidBody3D
+		if rest != null and is_instance_valid(rest):
+			centres.append(rest.global_transform.origin)
+			rests.append(rest)
+	if centres.is_empty() or (_all_clear(from, centres) and _segment_clear(from, to, centres)):
+		print("[ROUTE_STAT] direct")
+		return {"path": [from, to], "turn_at": -1, "routed": true}
+	var route: Dictionary = _route_on_floor(die, to, final_basis, rests)
+	if not route.is_empty():
+		print("[ROUTE_STAT] routed len=%.2f" % _path_length(route["path"]))
+		return route
+	print("[ROUTE_STAT] boxed")
+	push_warning("[DiceTray3D] no floor route for a re-thrown die; lifting it over the row (G-45 violation)")
+	var lift: float = RETHROW_SLIDE_CLEARANCE
+	return {"path": [from, Vector3(from.x, to.y + lift, from.z), Vector3(to.x, to.y + lift, to.z), to], "turn_at": -1, "routed": false}
+
+
+func _route_on_floor(die: RigidBody3D, to: Vector3, final_basis: Basis, rests: Array) -> Dictionary:
+	var from: Vector3 = die.global_transform.origin
+	var land_basis: Basis = die.global_transform.basis
+	var mover_scale: float = _die_drawn_scale(die)
+	# Moving-die silhouettes (relative to its centre) through the turn:
+	# index 0 = landing orientation, last = upright.
+	var shapes: Array = []
+	for k in range(RETHROW_TURN_SAMPLES):
+		var t: float = float(k) / float(RETHROW_TURN_SAMPLES - 1)
+		shapes.append(_silhouette(land_basis.orthonormalized().slerp(final_basis.orthonormalized(), t), mover_scale, Vector2.ZERO))
+	var ctx: Dictionary = {"from": from, "rests": [], "shapes": shapes,
+		"wall_min": minf(DIE_RADIUS, _wall_distance(from)) - 0.0005}
+	for rest_variant in rests:
+		var rest: RigidBody3D = rest_variant
+		var origin: Vector3 = rest.global_transform.origin
+		var poly: PackedVector2Array = _silhouette(rest.global_transform.basis, _die_drawn_scale(rest), Vector2(origin.x, origin.z))
+		var forbidden: Array = []
+		for shape in shapes:
+			forbidden.append(_minkowski_zone(poly, shape))
+		var allowed: float = _silhouette_depth(shapes[0], Vector2(from.x, from.z), poly)
+		ctx["rests"].append({"centre": Vector2(origin.x, origin.z), "poly": poly, "forbidden": forbidden, "allowed": allowed})
+	var last: int = RETHROW_TURN_SAMPLES - 1
+	var cell: float = RETHROW_ROUTE_CELL
+	var origin_key := Vector3i(0, 0, 0)
+	var goal2 := Vector2(to.x, to.z)
+	var g: Dictionary = {origin_key: 0.0}
+	var parent: Dictionary = {origin_key: origin_key}
+	var heap: Array = []
+	_heap_push(heap, Vector2(from.x, from.z).distance_to(goal2), origin_key)
+	var goal_key := Vector3i(0, 0, -1)
+	var expanded: int = 0
+	while not heap.is_empty() and expanded < RETHROW_ROUTE_MAX_NODES:
+		var cur: Vector3i = _heap_pop(heap)
+		expanded += 1
+		var p := Vector3(from.x + cur.x * cell, from.y, from.z + cur.y * cell)
+		if cur.z == 1 and _route_segment_ok(ctx, p, Vector3(to.x, from.y, to.z), last):
+			goal_key = cur
+			break
+		var moves: Array = []
+		if cur.z == 0 and _turn_ok(ctx, p):
+			moves.append(Vector3i(cur.x, cur.y, 1))
+		for d in ROUTE_STEPS:
+			moves.append(Vector3i(cur.x + d.x, cur.y + d.y, cur.z))
+		for nxt_variant in moves:
+			var nxt: Vector3i = nxt_variant
+			var q := Vector3(from.x + nxt.x * cell, from.y, from.z + nxt.y * cell)
+			if nxt.z == cur.z and not _route_point_ok(ctx, q, 0 if nxt.z == 0 else last):
+				continue
+			var step: float = Vector2(nxt.x - cur.x, nxt.y - cur.y).length() * cell
+			var cost: float = float(g[cur]) + step
+			if g.has(nxt) and float(g[nxt]) <= cost:
+				continue
+			g[nxt] = cost
+			parent[nxt] = cur
+			_heap_push(heap, cost + Vector2(q.x, q.z).distance_to(goal2), nxt)
+	if goal_key.z < 0:
+		print("[ROUTE_DBG] expanded=%d heap_left=%d start_ok=%s start_turn_ok=%s goal_ok=%s goal_wall=%.3f wall_min=%.3f from=%s to=%s allowed=%s" % [expanded, heap.size(), _route_point_ok(ctx, from, 0), _turn_ok(ctx, from), _route_point_ok(ctx, Vector3(to.x, from.y, to.z), last), _wall_distance(to), float(ctx["wall_min"]), from, to, (ctx["rests"] as Array).map(func(r): return snappedf(float(r["allowed"]), 0.001))])
+		return {}
+	var nodes: Array = []
+	var k: Vector3i = goal_key
+	while true:
+		nodes.push_front(k)
+		if k == origin_key:
+			break
+		k = parent[k]
+	# String-pull each phase on its own; the turn spot stays a waypoint.
 	var path: Array = [from]
-	if centres.is_empty():
-		path.append(to)
-		return {"path": path, "turn_from": 0}
-	var start: Vector3 = _rethrow_escape_point(from, centres)
-	var turn_from: int = 0
-	if start != from:
-		path.append(start)
-		turn_from = 1
-	var y: float = to.y
-	if _segment_clear(start, to, centres):
-		path.append(to)
-		return {"path": path, "turn_from": turn_from}
-	var best: Array = []
-	var best_len: float = INF
-	var lo: float = _bounds_min_z + DIE_RADIUS
-	var hi: float = _bounds_max_z - DIE_RADIUS
-	for i in range(RETHROW_LANE_SAMPLES + 1):
-		var z: float = lerpf(lo, hi, float(i) / float(RETHROW_LANE_SAMPLES))
-		var lane_a := Vector3(start.x, y, z)
-		var lane_b := Vector3(to.x, y, z)
-		if not (_segment_clear(start, lane_a, centres) and _segment_clear(lane_a, lane_b, centres) and _segment_clear(lane_b, to, centres)):
+	var turn_at: int = -1
+	var i: int = 0
+	while i < nodes.size() - 1:
+		var a: Vector3i = nodes[i]
+		if nodes[i + 1].z != a.z:
+			turn_at = path.size() - 1
+			i += 1
 			continue
-		var length: float = start.distance_to(lane_a) + lane_a.distance_to(lane_b) + lane_b.distance_to(to)
-		if length < best_len:
-			best_len = length
-			best = [lane_a, lane_b]
-	if best.is_empty():
-		# No clear route along the tray floor: a die that landed beyond a full row
-		# (the row's gaps are narrower than a die) is lifted clear of the row,
-		# carried across above it and set down in its slot. At that height every
-		# resting die is at least the clearance below it.
-		var lift: float = RETHROW_SLIDE_CLEARANCE
-		best = [Vector3(start.x, y + lift, start.z), Vector3(to.x, y + lift, to.z)]
-	path.append_array(best)
-	path.append(to)
-	return {"path": path, "turn_from": turn_from}
-
-
-# The nearest point, straight out from `start` in the tray plane, clear of every
-# resting die by RETHROW_SLIDE_CLEARANCE, reached without ever getting closer to
-# any of them and without leaving the tray. `start` itself when already clear.
-func _rethrow_escape_point(start: Vector3, centres: Array) -> Vector3:
-	var start_d: Array = []
-	var clear: bool = true
-	for c in centres:
-		var d: float = _plane_distance(start, c)
-		start_d.append(d)
-		if d < RETHROW_SLIDE_CLEARANCE:
-			clear = false
-	if clear:
-		return start
-	var edge: float = DIE_RADIUS
-	var best: Vector3 = start
-	var best_t: float = INF
-	for i in range(72):
-		var angle: float = TAU * float(i) / 72.0
-		var dir := Vector3(cos(angle), 0.0, sin(angle))
-		var t: float = 0.0
-		var ok: bool = true
-		var reached: bool = false
-		while t < 4.0 and ok and not reached:
-			t += 0.02
-			var p: Vector3 = start + dir * t
-			if absf(p.x) > _bounds_half_width - edge or p.z < _bounds_min_z + edge or p.z > _bounds_max_z - edge:
-				ok = false
+		var j: int = i + 1
+		var pa := Vector3(from.x + a.x * cell, from.y, from.z + a.y * cell)
+		var shape_index: int = 0 if a.z == 0 else last
+		for cand in range(nodes.size() - 1, i + 1, -1):
+			var b: Vector3i = nodes[cand]
+			if b.z == a.z and _route_segment_ok(ctx, pa, Vector3(from.x + b.x * cell, from.y, from.z + b.y * cell), shape_index):
+				j = cand
 				break
-			reached = true
-			for j in range(centres.size()):
-				var d: float = _plane_distance(p, centres[j])
-				if d < minf(float(start_d[j]), RETHROW_SLIDE_CLEARANCE) - 0.0005:
-					ok = false
-					break
-				if d < RETHROW_SLIDE_CLEARANCE:
-					reached = false
-		if ok and reached and t < best_t:
-			best_t = t
-			best = start + dir * t
-	return best
+		var bj: Vector3i = nodes[j]
+		path.append(Vector3(from.x + bj.x * cell, from.y, from.z + bj.y * cell))
+		i = j
+	if turn_at < 0:
+		turn_at = 0
+	path.append(to)
+	return {"path": path, "turn_at": turn_at, "routed": true}
+
+
+# The die (silhouette `shape_index`) at `p`: inside the tray and clear of every
+# resting die (or no deeper than it landed, for one it came to rest against).
+func _route_point_ok(ctx: Dictionary, p: Vector3, shape_index: int) -> bool:
+	if _wall_distance(p) < float(ctx["wall_min"]):
+		return false
+	var p2 := Vector2(p.x, p.z)
+	for rest_variant in ctx["rests"]:
+		var rest: Dictionary = rest_variant
+		if p2.distance_to(rest["centre"]) >= RETHROW_SLIDE_CLEARANCE:
+			continue
+		if float(rest["allowed"]) > 0.0:
+			if _silhouette_depth((ctx["shapes"] as Array)[shape_index], p2, rest["poly"]) > float(rest["allowed"]) + 0.002:
+				return false
+		elif Geometry2D.is_point_in_polygon(p2, (rest["forbidden"] as Array)[shape_index]):
+			return false
+	return true
+
+
+func _turn_ok(ctx: Dictionary, p: Vector3) -> bool:
+	for k in range(RETHROW_TURN_SAMPLES):
+		if not _route_point_ok(ctx, p, k):
+			return false
+	return true
+
+
+func _route_segment_ok(ctx: Dictionary, a: Vector3, b: Vector3, shape_index: int) -> bool:
+	var steps: int = maxi(1, int(ceil(a.distance_to(b) / (RETHROW_ROUTE_CELL * 0.5))))
+	for s in range(1, steps + 1):
+		if not _route_point_ok(ctx, a.lerp(b, float(s) / float(steps)), shape_index):
+			return false
+	return true
+
+
+# The drawn die's outline seen from the top-down camera, around `centre`.
+func _silhouette(basis: Basis, scale: float, centre: Vector2) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for v in _get_raw_d20_vertices():
+		var w: Vector3 = basis * (v * scale)
+		pts.append(centre + Vector2(w.x, w.z))
+	return Geometry2D.convex_hull(pts)
+
+
+# Where the moving die's centre may NOT be: the resting outline grown by the
+# moving outline (Minkowski sum), plus a hair so touching counts as clear.
+func _minkowski_zone(rest_poly: PackedVector2Array, mover_shape: PackedVector2Array) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for a in rest_poly:
+		for b in mover_shape:
+			pts.append(a - b)
+	var hull: PackedVector2Array = Geometry2D.convex_hull(pts)
+	var grown: Array = Geometry2D.offset_polygon(hull, 0.01)
+	return grown[0] if not grown.is_empty() else hull
+
+
+# Overlap depth of the shape placed at `at` and a resting outline (0 if apart).
+func _silhouette_depth(shape: PackedVector2Array, at: Vector2, rest_poly: PackedVector2Array) -> float:
+	var moved := PackedVector2Array()
+	for v in shape:
+		moved.append(v + at)
+	var depth := INF
+	for poly in [moved, rest_poly]:
+		for i in range(poly.size() - 1):
+			var e: Vector2 = poly[i + 1] - poly[i]
+			if e.length_squared() < 0.0000001:
+				continue
+			var axis := Vector2(-e.y, e.x).normalized()
+			var min_a := INF
+			var max_a := -INF
+			for v in moved:
+				min_a = minf(min_a, axis.dot(v))
+				max_a = maxf(max_a, axis.dot(v))
+			var min_b := INF
+			var max_b := -INF
+			for v in rest_poly:
+				min_b = minf(min_b, axis.dot(v))
+				max_b = maxf(max_b, axis.dot(v))
+			var overlap: float = minf(max_a - min_b, max_b - min_a)
+			if overlap <= 0.0:
+				return 0.0
+			depth = minf(depth, overlap)
+	return 0.0 if depth == INF else depth
+
+
+func _heap_push(heap: Array, priority: float, key: Vector3i) -> void:
+	heap.append([priority, key])
+	var i: int = heap.size() - 1
+	while i > 0:
+		var up: int = (i - 1) / 2
+		if float(heap[up][0]) <= priority:
+			break
+		heap[i] = heap[up]
+		i = up
+	heap[i] = [priority, key]
+
+
+func _heap_pop(heap: Array) -> Vector3i:
+	var top: Vector3i = heap[0][1]
+	var tail: Array = heap.pop_back()
+	if heap.is_empty():
+		return top
+	var i: int = 0
+	var n: int = heap.size()
+	while true:
+		var c: int = 2 * i + 1
+		if c >= n:
+			break
+		if c + 1 < n and float(heap[c + 1][0]) < float(heap[c][0]):
+			c += 1
+		if float(heap[c][0]) >= float(tail[0]):
+			break
+		heap[i] = heap[c]
+		i = c
+	heap[i] = tail
+	return top
+
+
+func _all_clear(p: Vector3, centres: Array) -> bool:
+	for c in centres:
+		if _plane_distance(p, c) < RETHROW_SLIDE_CLEARANCE:
+			return false
+	return true
+
+
+func _wall_distance(p: Vector3) -> float:
+	return minf(minf(_bounds_half_width - absf(p.x), p.z - _bounds_min_z), _bounds_max_z - p.z)
+
+
+func _die_drawn_scale(die: RigidBody3D) -> float:
+	var visuals: Node3D = _die_visuals(die)
+	return visuals.scale.x if visuals != null else 1.0
 
 
 func _plane_distance(a: Vector3, b: Vector3) -> float:
@@ -1120,7 +1299,13 @@ func _finish_roll(dice: Array) -> void:
 	if _is_exiting_tree or tree == null:
 		_is_rolling = false
 		return
-	await tree.create_timer(RESULT_PRESENTATION_TIME).timeout
+	var presentation: float = RESULT_PRESENTATION_TIME
+	for result_entry_variant in result_entries:
+		var sliding: RigidBody3D = (result_entry_variant as Dictionary).get("die", null) as RigidBody3D
+		if sliding != null and is_instance_valid(sliding) and sliding.has_meta("slide_time"):
+			presentation = maxf(presentation, float(sliding.get_meta("slide_time")))
+			sliding.remove_meta("slide_time")
+	await tree.create_timer(presentation).timeout
 	if _is_exiting_tree or not is_inside_tree():
 		_is_rolling = false
 		return
@@ -1153,15 +1338,43 @@ func _start_upright_snap(die: RigidBody3D, face_index: int, target_origin: Vecto
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
 	var path: Array = slide.get("path", [])
+	var turn_at: int = int(slide.get("turn_at", -1))
+	if turn_at >= 0 and path.size() >= 2:
+		# G-45 routed slide (_plan_rethrow_slide): along the route at the landing
+		# orientation up to waypoint `turn_at`, turn upright there in place,
+		# then on to the slot. Time follows length (RETHROW_SLIDE_SPEED) plus the
+		# turn; _finish_roll waits for it.
+		var before: Array = path.slice(0, turn_at + 1)
+		var after: Array = path.slice(turn_at)
+		var len_before: float = _path_length(before)
+		var len_after: float = _path_length(after)
+		var raw_time: float = (len_before + len_after) / RETHROW_SLIDE_SPEED + RETHROW_TURN_TIME
+		var slide_time: float = clampf(raw_time, RESULT_PRESENTATION_TIME, RETHROW_SLIDE_MAX_TIME)
+		die.set_meta("slide_time", slide_time)
+		var w_turn: float = (len_before / RETHROW_SLIDE_SPEED) / raw_time
+		var w_after: float = w_turn + RETHROW_TURN_TIME / raw_time
+		var from_basis: Basis = from_transform.basis.orthonormalized()
+		var to_basis: Basis = to_transform.basis.orthonormalized()
+		var routed := create_tween()
+		routed.tween_method(
+			func(weight: float) -> void:
+				if not is_instance_valid(die):
+					return
+				if weight < w_turn:
+					die.global_transform = Transform3D(from_basis, _point_along(before, weight / maxf(w_turn, 0.0001)))
+				elif weight < w_after:
+					die.global_transform = Transform3D(from_basis.slerp(to_basis, (weight - w_turn) / maxf(w_after - w_turn, 0.0001)), path[turn_at])
+				else:
+					die.global_transform = Transform3D(to_basis, _point_along(after, (weight - w_after) / maxf(1.0 - w_after, 0.0001)))
+		, 0.0, 1.0, slide_time)
+		tween.kill()
+		return
 	if path.size() > 2:
-		# G-33 routed slide: the origin follows the path; the turn to upright
-		# waits until the die has stepped clear of the dice it rested against.
-		var turn_start: float = _path_fraction(path, int(slide.get("turn_from", 0)))
+		# The no-route fallback (G-45 forbids it; warned): turn while lifted.
 		tween.tween_method(
 			func(weight: float) -> void:
 				if is_instance_valid(die):
-					var turn_w: float = 0.0 if weight <= turn_start else (weight - turn_start) / maxf(1.0 - turn_start, 0.0001)
-					var turned: Transform3D = from_transform.interpolate_with(to_transform, turn_w)
+					var turned: Transform3D = from_transform.interpolate_with(to_transform, weight)
 					die.global_transform = Transform3D(turned.basis, _point_along(path, weight))
 		, 0.0, 1.0, RESULT_PRESENTATION_TIME)
 		return
@@ -1172,16 +1385,11 @@ func _start_upright_snap(die: RigidBody3D, face_index: int, target_origin: Vecto
 	, 0.0, 1.0, RESULT_PRESENTATION_TIME)
 
 
-# How far along the polyline (0..1, by length) waypoint `index` sits.
-func _path_fraction(path: Array, index: int) -> float:
+func _path_length(path: Array) -> float:
 	var total: float = 0.0
-	var upto: float = 0.0
 	for i in range(1, path.size()):
-		var leg: float = (path[i - 1] as Vector3).distance_to(path[i] as Vector3)
-		total += leg
-		if i <= index:
-			upto += leg
-	return 0.0 if total <= 0.0 else upto / total
+		total += (path[i - 1] as Vector3).distance_to(path[i] as Vector3)
+	return total
 
 
 # The point `weight` (0..1) of the way along a polyline, by length.
@@ -1653,7 +1861,7 @@ func _resolve_landed_die_face(die: RigidBody3D, target_origin: Vector3) -> void:
 		var rest: RigidBody3D = _rethrow_obstacles[0] as RigidBody3D
 		if rest != null and is_instance_valid(rest):
 			target_origin.y = rest.global_transform.origin.y
-		slide = _plan_rethrow_slide(die.global_transform.origin, target_origin)
+		slide = _plan_rethrow_slide(die, target_origin, _get_face_forward_result_basis(_get_face_index_for_result(face_up), die))
 	die.set_meta("assigned_result_origin", target_origin)
 	_start_upright_snap(die, _get_face_index_for_result(face_up), target_origin, slide)
 
