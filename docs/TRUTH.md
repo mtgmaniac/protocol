@@ -267,23 +267,19 @@ seem to disagree, the ruling wins and this list is corrected.
    ([G-24](DECISIONS_RESOLVED.md#g-24-dice-are-real-dice-the-landed-face-is-the-roll-kev-2026-09-26),
    [Tutorial real throws item 5](DECISIONS_RESOLVED.md#tutorial-real-throws-and-reroll-follow-up-kev-2026-09-27--implemented-and-verified)).
 
-10. **A re-thrown die collides with the dice resting in the tray, which act as
-    immovable obstacles and never move or change face**
-    ([G-33](DECISIONS_RESOLVED.md#g-33-re-thrown-dice-collide-with-resting-dice-kev-2026-09-27)).
-    During a single-die re-throw (hero Reroll, the enemy reroll items) every
-    other die becomes a frozen STATIC collider, slightly larger than the drawn
-    die (`RETHROW_OBSTACLE_SCALE` 1.06), and gets its old collision state back
-    afterwards. Jolt's `speculative_contact_distance` is 0.1 (project setting;
-    the engine default 0.02 let a fast, spinning die sink up to 0.14 into a
-    resting die's collider, past the drawn margin, on about 1 re-throw in 15 on
-    a six-die board; 0 in 200 at 0.1, measured 2026-10-04). The slide into the slot is routed around them
-    (`DiceTray3D._plan_rethrow_slide`): a die resting against others first
-    steps straight out without turning, then slides straight, across a clear
-    lane, or, when a full row is in the way, is lifted over it. **The lift is
-    withdrawn by [G-45](DECISIONS_RESOLVED.md#g-45-a-re-thrown-die-never-passes-over-resting-dice-kev-2026-10-04-amends-g-33)**
-    (dice never visibly pass over other dice); it stays in the code until its
-    replacement is ruled. Set, reprint
-    and Nudge tip-overs turn in place inside their slot.
+10. **A reroll is a real hop in the die's own slot**
+    ([G-47](DECISIONS_RESOLVED.md#g-47-a-reroll-is-a-real-hop-in-the-dies-own-slot-kev-2026-10-05-replaces-the-reroll-re-throw)).
+    Every reroll (hero Reroll, the enemy reroll items, one die or all) launches
+    the same die straight up from where it rests, with a random spin, while its
+    horizontal movement is locked and it is all but frictionless
+    (`DiceTray3D.reroll_die_to_result`, `HOP_*`). It never leaves its slot and
+    never reaches another die; the other dice never move. Physics decides the
+    face: the face that lands up is the roll (G-24), and the upright snap only
+    turns it in place, never to another face. It is reprinted for its new state
+    in the frame the hop starts (G-27). Set, reprint and Nudge tip-overs turn in
+    place inside their slot. Jolt's `speculative_contact_distance` is 0.1
+    (project setting, 2026-10-04): it keeps fast, spinning dice from sinking
+    into each other on live throws.
 
 Scripted tutorial rounds (battle 1 rounds 1–2, battle 2 round 1) replay
 recorded real throws, with each mesh oriented before launch; all later rounds
@@ -296,12 +292,17 @@ tip-over, hijack update, item changes and refresh. On every drawn frame it
 checks rules 1–10 above; it fails if any of those paths is never exercised.
 Rule 10 is criterion (k): an exact separating-axis test of the moving die's
 d20 hull against every resting die's drawn hull, plus unchanged pose and top
-face for every resting die, on every re-throw and tip-over path, judged on
+face for every resting die, on every reroll and tip-over path, judged on
 every physics step as well as every drawn frame (at the gate's 8x speed a
 drawn frame sees about one physics step in eight, so a one-step graze used to
-pass or fail by frame timing), with two re-throw stress passes: 40 single-die
-re-throws on a five-die board and 60 on a six-die board (part S). The pre-G-33
-tray fails it 200 times.
+pass or fail by frame timing), with two reroll stress passes: 40 single-die
+rerolls on a five-die board and 60 on a six-die board (part S). Path coverage
+is noted on physics steps too. The `reroll hop` gate
+(`scripts/checks/reroll_hop_gate.py`) runs 1,000 rerolls on a six-die tray and
+fails unless the landed faces are uniform over 1-20 (chi-square, p 0.001), the
+hopping die never touches another die and no other die moves, it never leaves
+its slot, and the snap never changes the face that landed; each of the four is
+broken on purpose in the same run and must be caught.
 `scripts/checks/dice_face_mutations.py` breaks each of its eleven criteria on
 purpose and proves the gate fails. `tutorial recorded throws` separately checks
 scripted top values, static labels and containment at both sizes. Regenerate

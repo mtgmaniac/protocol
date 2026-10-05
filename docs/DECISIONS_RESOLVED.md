@@ -1,5 +1,34 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-47. A reroll is a real hop in the die's own slot (Kev, 2026-10-05; replaces the reroll re-throw)
+
+Ruling (Kev): "rerolls become a real in-place hop." Every reroll (hero
+Reroll, the enemy reroll items, one die or all; abilities and items alike)
+is a physical hop of the same die in its own slot: a real upward impulse with
+spin, and physics decides the face. Neighbouring dice stay frozen and are never
+touched or passed over. The die lands back in its slot; the landed face is the
+roll (G-24), and the upright snap may correct tilt but never changes the top
+face.
+
+**Replaces** the reroll as a re-throw: item 5 of "Tutorial real throws and
+Reroll follow-up" (Kev, 2026-09-27; "hero and enemy item rerolls are live
+throws", implemented in `7d90891` / `e98fe2f`), G-33 (re-thrown dice collide
+with resting dice; `ed19a68`) and G-45 (a re-thrown die never passes over
+resting dice). G-24 itself stands. **Why:** re-throwing one die into a
+crowded tray boxed it in behind a full row (about 1 re-throw in 6 on a six-die
+board had no route to its slot that did not pass over a resting die), stacked
+it on top of other dice, and let the snap change its face (a die balanced on
+another die's edge).
+
+As implemented: `DiceTray3D.reroll_die_to_result` reprints the die for its new
+state in the frame the hop starts (G-27), locks its horizontal movement, makes
+it all but frictionless for the hop (so it cannot hang on an edge) and
+launches it up with a random spin; the static-obstacle colliders, the slide
+planner and the lift are deleted. Gate `reroll hop` (1,000 rerolls: uniform
+faces, no contact, never leaves its slot, the snap never changes the face;
+each broken on purpose). Heretic Signal is not a reroll: it still re-throws
+every unfrozen die through the full throw (G-37).
+
 ## G-46. No round limit; a stalled fight is exited by abandoning the run (Kev, 2026-10-05)
 
 The 2026-10-02 design audit found fights no player action can end (a boss
@@ -23,6 +52,8 @@ abandon the run from the menu if a fight stalls."
   stalemate and never a clear (`b44787b`).
 
 ## G-45. A re-thrown die never passes over resting dice (Kev, 2026-10-04; amends G-33)
+
+**Superseded by G-47 (2026-10-05):** a reroll is now a hop in the die's own slot; there is no re-throw.
 
 Playtest report: a re-thrown die "rolled but just stayed in the corner" with the
 other five slots full. Investigation (2026-10-04): on a full board 15-20% of
@@ -243,6 +274,8 @@ two unused relic icons) and need new art.
 
 ## G-33. Re-thrown dice collide with resting dice (Kev, 2026-09-27)
 
+**Superseded by G-47 (2026-10-05):** a reroll is now a hop in the die's own slot; there is no re-throw.
+
 A re-thrown die collides with the dice resting in the tray, which act as
 immovable obstacles and never move or change face.
 
@@ -328,7 +361,8 @@ not re-pin the balance baseline.
 4. YOUR PLAN's Burn reminder appears only while a burned enemy is alive and
    burning. Reroll copy says there is enough Protocol, without an exact count.
    Plain friendly copy, no em dashes or internal band names; list all changes.
-5. Reroll follows G-24 everywhere: hero and enemy item rerolls are live throws;
+5. *(Re-throw superseded by G-47, 2026-10-05: a reroll is a hop in its own slot.)*
+   Reroll follows G-24 everywhere: hero and enemy item rerolls are live throws;
    the landed face determines the result, with static preprinted modifiers and
    normal same-face upright snap. Frozen dice refuse reroll. Update the pending
    battle checkpoint after settling. This supersedes the earlier "Reroll keeps

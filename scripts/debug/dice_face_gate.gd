@@ -7,11 +7,11 @@
 # (i) every die stays inside the visible tray on every drawn frame, landing
 # included (G-31); (j) a die's pip tag / inspect hit-area is hidden on every
 # frame the die is mid-motion, and whenever shown it matches the value the die
-# shows and acts on (G-32); (k) during every single-die re-throw and tip-over
+# shows and acts on (G-32); (k) during every reroll hop and tip-over
 # (hero Reroll, enemy item rerolls, Set, reprint, Nudge, item changes) the
 # moving die's d20 hull never intersects a resting die's hull on any drawn
 # frame, tumble and slide into its slot included, and no resting die's pose or
-# top face changes (G-33). Paths covered: live throw (tray + scene), recorded
+# top face changes (G-33, G-47). Paths covered: live throw (tray + scene), recorded
 # playback (tray + tutorial rounds), hero Reroll, enemy item rerolls, Nudge,
 # Set, G-27 reprints, live hijack, item changes, Sync Antenna, refresh.
 # Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
@@ -55,7 +55,7 @@ var _yaw_prev: Dictionary = {}
 var _yaw_travel: Dictionary = {}
 var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": []}
 var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0}
-# (k) G-33: re-throw paths, the resting dice's poses at the start of the current
+# (k) G-33/G-47: reroll and tip-over paths, the resting dice's poses at the start of the current
 # motion, and the per-path count of moving/resting pairs actually judged.
 const RETHROW_PATHS := ["hero reroll", "enemy item reroll", "Nudge", "Set", "reprint", "item"]
 const HULL_EPS := 0.002
@@ -72,6 +72,7 @@ var _frozen_lock: Dictionary = {}  # "side:id" -> the number the frozen die must
 var _landed_pairs: Dictionary = {}
 var _labels_prev: Dictionary = {}
 var _busy_prev: Dictionary = {}
+var _motion_prev: Dictionary = {}
 var _frozen_pose: Dictionary = {}
 var _break_kind := ""
 var _break_done := false
@@ -137,10 +138,30 @@ func _process(_delta: float) -> bool:
 # drawn frame sees about one physics step in eight, so a one-step graze was
 # caught or missed by frame timing (4 of 15 runs failed, 2026-10-02).
 func _physics_process(_delta: float) -> bool:
-	if _monitor_on and _tray != null and is_instance_valid(_tray) and _current_path in RETHROW_PATHS:
-		_k_steps += 1
-		_sample_rethrow()
+	if _monitor_on and _tray != null and is_instance_valid(_tray):
+		_note_paths_this_step()
+		if _current_path in RETHROW_PATHS:
+			_k_steps += 1
+			_sample_rethrow()
 	return false
+
+
+# Path coverage is noted on physics steps as well as drawn frames: a short
+# tip-over (~52 ms real at SPEED 8) can fall between two drawn frames, and the
+# coverage check then failed by frame timing (Firewall Hack, 2026-10-05).
+var _step_pose: Dictionary = {}   # die instance id -> pose at the previous physics step
+
+
+func _note_paths_this_step() -> void:
+	for key in _tray.get("_die_by_key"):
+		var die_variant: Variant = _tray.get("_die_by_key")[key]
+		if not is_instance_valid(die_variant) or not (die_variant as Node).is_inside_tree():
+			continue
+		var die: RigidBody3D = die_variant
+		var iid: int = die.get_instance_id()
+		if _step_pose.has(iid) and not (_step_pose[iid] as Transform3D).is_equal_approx(die.global_transform):
+			_note_path(die)
+		_step_pose[iid] = die.global_transform
 
 
 func _labels(die: RigidBody3D) -> Array:
@@ -190,13 +211,18 @@ func _sample() -> void:
 		if _labels_prev.has(iid) and busy and bool(_busy_prev.get(iid, false)) and _inject("b"):
 			_top(die).text = "99"
 		var labels := _labels(die)
+		var moving: bool = bool(die.get_meta("in_motion", false))
 		if _labels_prev.has(iid):
-			# Only the first frame of a deliberate change may replace the print.
-			var reprint_start: bool = busy and not bool(_busy_prev.get(iid, false)) and not bool(_tray.get("_is_rolling"))
+			# Only the first frame of a deliberate change may replace the print:
+			# a tip-over starting, or a reroll hop starting (G-47, same die).
+			var reprint_start: bool = (busy and not bool(_busy_prev.get(iid, false)) and not bool(_tray.get("_is_rolling"))) \
+				or (moving and not bool(_motion_prev.get(iid, false)) and not die.freeze)
 			_check("b", labels == _labels_prev[iid] or reprint_start, "%s changed labels outside tumble start" % key)
 		_labels_prev[iid] = labels
 		_busy_prev[iid] = busy
-		if busy:
+		_motion_prev[iid] = moving
+		# A die tumbling again (a reroll hop) starts a fresh settle record.
+		if busy or not die.freeze:
 			_settled.erase(iid)
 			_yaw_prev.erase(iid)
 			_yaw_travel.erase(iid)
@@ -288,7 +314,7 @@ func _sample_late() -> void:
 	_sample_rethrow()
 
 
-# -- (k) G-33: a re-thrown / tipping die never passes through a resting die ----
+# -- (k) G-47: a hopping / tipping die never passes through a resting die ----
 
 func _sample_rethrow() -> void:
 	if not (_current_path in RETHROW_PATHS):
@@ -784,6 +810,17 @@ func _part_b_and_c() -> void:
 	_current_path = "Firewall Hack"
 	pa.call("_on_nudge_button_pressed")
 	_scene.call("_on_enemy_card_pressed", e[0])
+	# Wait for THIS die's tip-over to finish (it shows the hacked value and is
+	# no longer busy) before moving on: the tip may start a few frames later,
+	# and the next step (Heretic Signal re-throws every die) used to begin
+	# first, so the tip was counted under the wrong path (2026-10-05).
+	var hacked: RigidBody3D = _tray.call("_get_die_for_entry", "enemy", e[0])
+	for _i in range(600):
+		if hacked == null or not is_instance_valid(hacked):
+			break
+		if int(hacked.get_meta("shown_value", -1)) == maxi(hack_from - 3, 1) and not bool(hacked.get_meta("busy", false)):
+			break
+		await process_frame
 	await _await_all_locked()
 	_expect_value("enemy", e[0], maxi(hack_from - 3, 1), "Firewall Hack lowers the enemy die by 3")
 	_current_path = "Heretic Signal"
@@ -845,8 +882,8 @@ func _part_b_and_c() -> void:
 	print("[DICE_FACE_GATE] part D: freeze locks the shown number")
 	await _extra_contracts(heroes, enemies, pa, stub)
 
-	# E (G-33): re-throw stress. Many single-die re-throws on both sides, each
-	# landing wherever physics takes it, judged by (k) on every drawn frame.
+	# E (G-47): reroll stress. Many single-die rerolls on both sides, each a hop
+	# in its own slot, judged by (k) on every physics step and drawn frame.
 	_clear_statuses(heroes + enemies)
 	stub.queue = [8, 11, 14, 5, 17]
 	await _begin_roll()
@@ -859,15 +896,15 @@ func _part_b_and_c() -> void:
 		else:
 			await _reroll(pa, h[i % h.size()])
 		await _await_all_locked()
-	print("[DICE_FACE_GATE] part E: %d single-die re-throws" % RETHROW_STRESS)
+	print("[DICE_FACE_GATE] part E: %d single-die rerolls (hops)" % RETHROW_STRESS)
 
 	_monitor_on = false
 
 
-# -- Part S (G-33): six-die re-throw stress ------------------------------------
-# A full board (3 heroes + 3 enemies): every re-throw lands among five resting
-# dice, where pinned landings and fast contacts happen most (2026-10-04: 13 of
-# 200 such re-throws grazed a resting die before the contact-distance fix).
+# -- Part S (G-47): six-die reroll stress --------------------------------------
+# A full board (3 heroes + 3 enemies): every reroll hops among five resting
+# dice, the crowded case that broke the old re-throw (2026-10-04: boxed
+# landings, grazes, stacking).
 
 const SIX_DICE_OP := "facility"
 const SIX_DICE_SEED := 1004
@@ -918,7 +955,7 @@ func _part_six_dice() -> void:
 		else:
 			await _reroll(pa, h[i % h.size()])
 		await _await_all_locked()
-	print("[DICE_FACE_GATE] part S: %d single-die re-throws on a six-die board" % SIX_DICE_RETHROWS)
+	print("[DICE_FACE_GATE] part S: %d single-die rerolls (hops) on a six-die board" % SIX_DICE_RETHROWS)
 	_monitor_on = false
 
 
@@ -969,7 +1006,7 @@ func _check_coverage() -> void:
 	for path in REQUIRED_PATHS:
 		_check("i", int(_paths.get(path, 0)) > 0, "roll path never observed moving: " + path)
 	for path in ["hero reroll", "enemy item reroll", "Set", "reprint"]:
-		_check("k", int(_k_pairs.get(path, 0)) > 0, "re-throw path never judged against resting dice: " + path)
+		_check("k", int(_k_pairs.get(path, 0)) > 0, "reroll or tip-over path never judged against resting dice: " + path)
 	_check("j", _mid_motion_frames > 0, "no mid-motion frame had a value display to hide")
 
 

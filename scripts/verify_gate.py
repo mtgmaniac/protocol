@@ -220,6 +220,9 @@ GATES = [
     # round-trips, the Python decoder agrees, and three deliberate breaks
     # (dropped run save, no checksum, import that writes nothing) must each fail.
     ("state code", [sys.executable, str(ROOT / "scripts" / "checks" / "state_code_gate.py")], "[STATE_CODE] PASS", False),
+    # G-47: a reroll is a hop in the die's own slot (uniform faces, no contact,
+    # never leaves its slot, the snap never changes the face) + 4 deliberate breaks.
+    ("reroll hop", [sys.executable, str(ROOT / "scripts" / "checks" / "reroll_hop_gate.py")], "[REROLL_HOP_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
     # Text legibility Step 1 (docs/audits/TEXT_LEGIBILITY_AUDIT.md): every live
@@ -299,6 +302,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "state code": 300,          # 8 Godot processes (round trip + 3 deliberate breaks); ~70s measured on Linux
     "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
     "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
+    "reroll hop": 420,          # 1,000 hops + 4 break legs; ~150s measured on Linux
 }
 
 
