@@ -11,11 +11,13 @@
 # (hero Reroll, enemy item rerolls, Set, reprint, Nudge, item changes) the
 # moving die's d20 hull never intersects a resting die's hull on any drawn
 # frame, tumble and slide into its slot included, and no resting die's pose or
-# top face changes (G-33). Paths covered: live throw (tray + scene), recorded
+# top face changes (G-33); (m) no die ever appears inside another die: each
+# die's first pose, at the physics step it appears, is clear of every other
+# die on the tray. Paths covered: live throw (tray + scene), recorded
 # playback (tray + tutorial rounds), hero Reroll, enemy item rerolls, Nudge,
 # Set, G-27 reprints, live hijack, item changes, Sync Antenna, refresh.
 # Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
-# -- --break=a (through k) injects a real bad observation/state; must exit 1.
+# -- --break=a (through k, and m) injects a real bad observation/state; must exit 1.
 # -- --size=WxH runs at that window (default 1080x2400; headless is 64x64).
 extends SceneTree
 
@@ -53,8 +55,8 @@ var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
 var _settled: Dictionary = {}     # die instance id -> physical top label at settle
 var _yaw_prev: Dictionary = {}
 var _yaw_travel: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": [], "m": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0, "m": 0}
 # (k) G-33: re-throw paths, the resting dice's poses at the start of the current
 # motion, and the per-path count of moving/resting pairs actually judged.
 const RETHROW_PATHS := ["hero reroll", "enemy item reroll", "Nudge", "Set", "reprint", "item"]
@@ -65,6 +67,9 @@ var last_depth: float = INF
 var _k_rest: Dictionary = {}      # resting die instance id -> [pose, top label name]
 var _k_pairs: Dictionary = {}     # path -> moving/resting pairs judged
 var _k_steps: int = 0             # physics steps (k) was judged on
+var _m_seen: Dictionary = {}      # die instance id -> true once its first pose was judged
+var _m_spawns: int = 0
+var _m_recorded: int = 0          # recorded-playback dice that appear inside another (reported)
 var _hull_points: Array = []      # d20 hull vertices, local, radius 1 die
 var _hull_normals: Array = []     # unique face-normal axes (local)
 var _hull_edges: Array = []       # unique edge directions (local)
@@ -137,10 +142,68 @@ func _process(_delta: float) -> bool:
 # drawn frame sees about one physics step in eight, so a one-step graze was
 # caught or missed by frame timing (4 of 15 runs failed, 2026-10-02).
 func _physics_process(_delta: float) -> bool:
-	if _monitor_on and _tray != null and is_instance_valid(_tray) and _current_path in RETHROW_PATHS:
-		_k_steps += 1
-		_sample_rethrow()
+	if _monitor_on and _tray != null and is_instance_valid(_tray):
+		_sample_spawns()
+		_note_paths_this_step()
+		if _current_path in RETHROW_PATHS:
+			_k_steps += 1
+			_sample_rethrow()
 	return false
+
+
+# Path coverage is noted on physics steps as well as drawn frames: a short
+# tip-over (~52 ms real at SPEED 8) can fall between two drawn frames, and the
+# coverage check then failed by frame timing (Firewall Hack, 2026-10-05).
+var _step_pose: Dictionary = {}   # die instance id -> pose at the previous physics step
+
+
+func _note_paths_this_step() -> void:
+	for key in _tray.get("_die_by_key"):
+		var die_variant: Variant = _tray.get("_die_by_key")[key]
+		if not is_instance_valid(die_variant) or not (die_variant as Node).is_inside_tree():
+			continue
+		var die: RigidBody3D = die_variant
+		var iid: int = die.get_instance_id()
+		if _step_pose.has(iid) and not (_step_pose[iid] as Transform3D).is_equal_approx(die.global_transform):
+			_note_path(die)
+		_step_pose[iid] = die.global_transform
+
+
+# (m) Runs before the physics step, so a die spawned since the last step is
+# judged at the pose it was given, before the solver pushes anything apart.
+func _sample_spawns() -> void:
+	if _hull_points.is_empty():
+		_build_hull()
+	var dice: Array = []
+	for key in _tray.get("_die_by_key"):
+		var die_variant: Variant = _tray.get("_die_by_key")[key]
+		if is_instance_valid(die_variant) and (die_variant as Node).is_inside_tree():
+			dice.append(die_variant)
+	for die_variant in dice:
+		var die: RigidBody3D = die_variant
+		var iid: int = die.get_instance_id()
+		if _m_seen.has(iid):
+			continue
+		_m_seen[iid] = true
+		# Recorded tutorial throws replay stored transforms; 10 of 12 variants
+		# were recorded with the old spawn bug and start with dice inside each
+		# other for 3-9 frames. Reported, not judged, until they are re-recorded.
+		if die.has_meta("recorded_track"):
+			for other_variant in dice:
+				if other_variant != die and _hulls_overlap(die, other_variant):
+					_m_recorded += 1
+			continue
+		_m_spawns += 1
+		for other_variant in dice:
+			var other: RigidBody3D = other_variant
+			if other == die:
+				continue
+			if _inject("m"):
+				die.global_position = other.global_position + Vector3(0.3, 0.0, 0.0)
+			var overlap: bool = _hulls_overlap(die, other)
+			_check("m", not overlap, "%s appeared inside %s during %s (centres %.2f apart, %.3f deep)" % [
+				_key_of(die), _key_of(other), _current_path if _current_path != "" else "a roll",
+				die.global_position.distance_to(other.global_position), last_depth])
 
 
 func _labels(die: RigidBody3D) -> Array:
@@ -784,6 +847,17 @@ func _part_b_and_c() -> void:
 	_current_path = "Firewall Hack"
 	pa.call("_on_nudge_button_pressed")
 	_scene.call("_on_enemy_card_pressed", e[0])
+	# Wait for THIS die's tip-over to finish (it shows the hacked value and is
+	# no longer busy) before moving on: the tip may start a few frames later,
+	# and the next step (Heretic Signal re-throws every die) used to begin
+	# first, so the tip was counted under the wrong path (2026-10-05).
+	var hacked: RigidBody3D = _tray.call("_get_die_for_entry", "enemy", e[0])
+	for _i in range(600):
+		if hacked == null or not is_instance_valid(hacked):
+			break
+		if int(hacked.get_meta("shown_value", -1)) == maxi(hack_from - 3, 1) and not bool(hacked.get_meta("busy", false)):
+			break
+		await process_frame
 	await _await_all_locked()
 	_expect_value("enemy", e[0], maxi(hack_from - 3, 1), "Firewall Hack lowers the enemy die by 3")
 	_current_path = "Heretic Signal"
@@ -971,6 +1045,7 @@ func _check_coverage() -> void:
 	for path in ["hero reroll", "enemy item reroll", "Set", "reprint"]:
 		_check("k", int(_k_pairs.get(path, 0)) > 0, "re-throw path never judged against resting dice: " + path)
 	_check("j", _mid_motion_frames > 0, "no mid-motion frame had a value display to hide")
+	_check("m", _m_spawns > 0, "no die was judged at the pose it appeared in")
 
 
 func _clear_statuses(states: Array) -> void:
@@ -1070,6 +1145,7 @@ func _finish() -> void:
 	print("[DICE_FACE_GATE] paths observed moving (die-frames): %s" % [_paths])
 	print("[DICE_FACE_GATE] mid-motion frames with a value display to hide: %d" % _mid_motion_frames)
 	print("[DICE_FACE_GATE] (k) moving/resting pairs judged per path: %s (over %d physics steps)" % [_k_pairs, _k_steps])
+	print("[DICE_FACE_GATE] (m) live dice judged at their first pose: %d; recorded-playback pairs starting inside each other (reported): %d" % [_m_spawns, _m_recorded])
 	var failed: bool = not _break_kind.is_empty() and not _break_done
 	for kind in _fails:
 		var arr: Array = _fails[kind]

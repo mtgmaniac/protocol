@@ -30,6 +30,9 @@ const THROW_YAW_JITTER := 0.10
 # from the top-down camera is indistinguishable from clipping through it.
 const THROW_HAND_HEIGHT_MIN := 1.35
 const THROW_HAND_HEIGHT_MAX := 1.75
+# A crowded spawn rises to this many die radii above the die in its way:
+# just past _find_die_near_spawn's vertical reach (2.0), so the spot is free.
+const SPAWN_STACK_GAP := 2.05
 # Per-die offsets within one hand toss: (lateral, up, along-throw). Spread wide
 # enough that no two dice spawn overlapping (centres >= 2 radii apart).
 const THROW_CLUSTER_OFFSETS: Array[Vector3] = [
@@ -1907,8 +1910,11 @@ func _get_cluster_spawn_position(index: int) -> Vector3:
 
 
 # Never materialise a die inside (or directly above) a die already on the tray —
-# typically a frozen die parked in a result row near the hand. Sidestep
-# laterally first; only if the row is fully crowded, drop in from above.
+# typically a frozen die parked in a result row near the hand, or another die
+# of the same hand. Sidestep laterally first; only if the row is fully crowded,
+# drop in from above, rising over whatever is actually there until the spot is
+# verifiably free (it used to lift to a fixed height and assume it was: on a
+# six-die throw two hand dice started up to ~1.0 deep in each other).
 func _adjust_spawn_for_occupants(pos: Vector3, lateral: Vector3, dir: Vector3) -> Vector3:
 	var margin: float = DIE_RADIUS * 1.05
 	for _attempt in range(5):
@@ -1924,13 +1930,22 @@ func _adjust_spawn_for_occupants(pos: Vector3, lateral: Vector3, dir: Vector3) -
 		pos.x = clampf(pos.x, -_bounds_half_width + margin, _bounds_half_width - margin)
 		pos.z = clampf(pos.z, _bounds_min_z + margin, _bounds_max_z - margin)
 	pos.y = maxf(pos.y, DIE_RADIUS * 2.6)
-	return pos
+	var ceiling: float = COLLISION_WALL_HEIGHT - DIE_RADIUS * 1.1
+	while pos.y <= ceiling:
+		var blocker: RigidBody3D = _find_die_near_spawn(pos)
+		if blocker == null:
+			return pos
+		pos.y = blocker.global_transform.origin.y + DIE_RADIUS * SPAWN_STACK_GAP
+	push_warning("[DiceTray3D] no free spawn spot below the tray ceiling; die spawns at the ceiling")
+	return Vector3(pos.x, minf(pos.y, ceiling), pos.z)
 
 
 func _find_die_near_spawn(pos: Vector3) -> RigidBody3D:
 	for die_variant in _die_by_key.values():
+		if not is_instance_valid(die_variant):
+			continue
 		var die: RigidBody3D = die_variant as RigidBody3D
-		if die == null or not is_instance_valid(die) or not die.is_inside_tree():
+		if die == null or not die.is_inside_tree():
 			continue
 		var o: Vector3 = die.global_transform.origin
 		if absf(o.y - pos.y) > DIE_RADIUS * 2.0:

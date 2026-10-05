@@ -4,7 +4,8 @@
 Runs sequentially: each case must exit 1, report its own criterion failing,
 and contain no script/runtime errors. Does not modify production source.
 (i) = a die leaves the visible tray; (j) = pips shown on a moving die;
-(k) = a re-thrown die passes through a resting die (G-33).
+(k) = a re-thrown die passes through a resting die (G-33);
+(m) = a live-thrown die appears inside another die.
 
     python scripts/checks/dice_face_mutations.py [--kinds ij] [--size 540x1200]
 """
@@ -20,7 +21,7 @@ GODOT = os.environ.get("GODOT_BIN", "C:/Users/Kev/Downloads/Godot_v4.6.2-stable_
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--kinds", default="abcdefghijk")
+    parser.add_argument("--kinds", default="abcdefghijkm")
     parser.add_argument("--size", default="1080x2400")
     args = parser.parse_args()
     out = ROOT / "results/dice_contract"
