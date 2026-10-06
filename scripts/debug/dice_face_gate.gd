@@ -15,7 +15,7 @@
 # playback (tray + tutorial rounds), hero Reroll, enemy item rerolls, Nudge,
 # Set, G-27 reprints, live hijack, item changes, Sync Antenna, refresh.
 # Real cross-process checkpoint coverage also lives in battle_checkpoint_gate.py.
-# -- --break=a (through k) injects a real bad observation/state; must exit 1.
+# -- --break=a (through l) injects a real bad observation/state; must exit 1.
 # -- --size=WxH runs at that window (default 1080x2400; headless is 64x64).
 extends SceneTree
 
@@ -53,13 +53,20 @@ var _ranges: Dictionary = {}      # "side:id" -> Array[int] allowed at landing
 var _settled: Dictionary = {}     # die instance id -> physical top label at settle
 var _yaw_prev: Dictionary = {}
 var _yaw_travel: Dictionary = {}
-var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": []}
-var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0}
+var _fails: Dictionary = {"a": [], "b": [], "c": [], "d": [], "e": [], "f": [], "g": [], "h": [], "i": [], "j": [], "k": [], "l": []}
+var _checks: Dictionary = {"a": 0, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0, "g": 0, "h": 0, "i": 0, "j": 0, "k": 0, "l": 0}
 # (k) G-33/G-47: reroll and tip-over paths, the resting dice's poses at the start of the current
 # motion, and the per-path count of moving/resting pairs actually judged.
 const RETHROW_PATHS := ["hero reroll", "enemy item reroll", "Nudge", "Set", "reprint", "item"]
 const HULL_EPS := 0.002
 const RETHROW_STRESS := 40
+# Firewall Hack is driven once per start value, each on a fresh roll, plus once on
+# a die at 1; the tray must tip every driven die, and sampled motion must see
+# at least HACK_MOTION_MIN of those tips.
+const HACK_STARTS := [4, 8, 11, 14, 17]
+const HACK_MOTION_MIN := 3
+var _hack_tips: int = 0
+var _hack_moving: int = 0
 # Penetration depth of the last overlapping pair (for the failure message).
 var last_depth: float = INF
 var _k_rest: Dictionary = {}      # resting die instance id -> [pose, top label name]
@@ -802,27 +809,49 @@ func _part_b_and_c() -> void:
 	var relic_effects: Array = cm.get("_active_relic_effects")
 	relic_effects.append({"type": "enemyNudgeOncePerTurn", "amount": 3})
 	relic_effects.append({"type": "rethrowAllOncePerBattle"})
-	stub.queue = [8, 11, 14, 9, 17]
-	await _begin_roll()
-	await _await_all_locked()
-	_scene.set("protocol_points", 60)
-	var hack_from: int = _oracle("enemy", e[0])
-	_current_path = "Firewall Hack"
-	pa.call("_on_nudge_button_pressed")
-	_scene.call("_on_enemy_card_pressed", e[0])
-	# Wait for THIS die's tip-over to finish (it shows the hacked value and is
-	# no longer busy) before moving on: the tip may start a few frames later,
-	# and the next step (Heretic Signal re-throws every die) used to begin
-	# first, so the tip was counted under the wrong path (2026-10-05).
-	var hacked: RigidBody3D = _tray.call("_get_die_for_entry", "enemy", e[0])
-	for _i in range(600):
-		if hacked == null or not is_instance_valid(hacked):
-			break
-		if int(hacked.get_meta("shown_value", -1)) == maxi(hack_from - 3, 1) and not bool(hacked.get_meta("busy", false)):
-			break
-		await process_frame
-	await _await_all_locked()
-	_expect_value("enemy", e[0], maxi(hack_from - 3, 1), "Firewall Hack lowers the enemy die by 3")
+	# Firewall Hack is driven HACK_STARTS.size() times, every time on a fresh roll
+	# (it is once per turn), from different start values, then once on a die
+	# already at 1 (nothing to lower: no tip). Whether the tip-over happened is
+	# read from the tray itself (the die's shown value, face and pose), never
+	# from sampled frames: a tip is a few drawn frames long, so a frame-timing
+	# check was lucky, not reliable (3 of 16 runs failed). Sampled motion is kept
+	# as a second, weaker check (HACK_MOTION_MIN of the driven hacks).
+	for hack_start in HACK_STARTS + [1]:
+		stub.queue = [8, 11, 14, hack_start, 12, 12]
+		await _begin_roll()
+		await _await_all_locked()
+		_scene.set("protocol_points", 60)
+		var hack_from: int = _oracle("enemy", e[0])
+		var hacked: RigidBody3D = _tray.call("_get_die_for_entry", "enemy", e[0])
+		var expect_tip: bool = maxi(hack_from - 3, 1) != hack_from
+		var top_before: String = _top(hacked).name
+		var pose_before: Transform3D = hacked.global_transform
+		var moving_before: int = int(_paths.get("tip-over (Firewall Hack)", 0))
+		_current_path = "Firewall Hack"
+		pa.call("_on_nudge_button_pressed")
+		_scene.call("_on_enemy_card_pressed", e[0])
+		# Wait for THIS die's tip-over to finish (it shows the hacked value and is
+		# no longer busy) before moving on; the tip may start a few frames later.
+		# A hack with nothing to lower never tips: wait a moment and move on.
+		for _i in range(600 if expect_tip else 30):
+			if hacked == null or not is_instance_valid(hacked):
+				break
+			if int(hacked.get_meta("shown_value", -1)) == maxi(hack_from - 3, 1) and not bool(hacked.get_meta("busy", false)) and expect_tip:
+				break
+			await process_frame
+		await _await_all_locked()
+		_expect_value("enemy", e[0], maxi(hack_from - 3, 1), "Firewall Hack lowers the enemy die by 3 (from %d)" % hack_from)
+		if _inject("l"):
+			# The tray never tipped: the die is back on its old face and pose.
+			hacked.set_meta("shown_value", hack_from)
+			hacked.global_transform = pose_before
+		var tipped: bool = int(hacked.get_meta("shown_value", -1)) != hack_from and _top(hacked).name != top_before 				and not hacked.global_transform.is_equal_approx(pose_before)
+		_check("l", tipped == expect_tip, "Firewall Hack from %d: the tray %s the die (shown %s, top %s -> %s)" % [hack_from, "never tipped" if expect_tip else "tipped", hacked.get_meta("shown_value", -1), top_before, _top(hacked).name])
+		if expect_tip:
+			_hack_tips += 1
+			if int(_paths.get("tip-over (Firewall Hack)", 0)) > moving_before:
+				_hack_moving += 1
+		_current_path = ""
 	_current_path = "Heretic Signal"
 	(_scene.get("_state") as Object).set("heretic_signal_used", false)
 	var heretic_launched: int = int(_tray.thrown_dice_total)
@@ -999,12 +1028,14 @@ func _part_tutorial() -> void:
 
 const REQUIRED_PATHS := ["live throw", "live throw (scene)", "recorded playback", "hero reroll",
 	"enemy item reroll", "tip-over (Nudge)", "tip-over (Set)", "tip-over (reprint)", "tip-over (hijack)",
-	"tip-over (Firewall Hack)", "Heretic Signal"]
+	"Heretic Signal"]
 
 
 func _check_coverage() -> void:
 	for path in REQUIRED_PATHS:
 		_check("i", int(_paths.get(path, 0)) > 0, "roll path never observed moving: " + path)
+	_check("l", _hack_tips == HACK_STARTS.size(), "Firewall Hack: the tray tipped %d of %d driven hacks" % [_hack_tips, HACK_STARTS.size()])
+	_check("l", _hack_moving >= HACK_MOTION_MIN, "Firewall Hack: sampled motion saw %d of %d tips (need %d)" % [_hack_moving, HACK_STARTS.size(), HACK_MOTION_MIN])
 	for path in ["hero reroll", "enemy item reroll", "Set", "reprint"]:
 		_check("k", int(_k_pairs.get(path, 0)) > 0, "reroll or tip-over path never judged against resting dice: " + path)
 	_check("j", _mid_motion_frames > 0, "no mid-motion frame had a value display to hide")
