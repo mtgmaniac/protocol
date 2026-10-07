@@ -1,5 +1,67 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-48. Resume guard: a CONTINUE that hangs on load offers an earlier point (Kev, 2026-10-06)
+
+**Ruling (Kev, transcribed).** "Problem: the save records the destination screen
+before it loads. If that screen hangs on load, CONTINUE hangs every time and the
+only way out is ABANDON RUN. Build the design already proposed:
+
+- CONTINUE writes a marker to its own small file, user://resume_guard.json, with
+  the save_seq, screen, battle number and round it resumed from. The run save
+  format does not change.
+- The marker clears once the run moves past that point (a run save with a
+  different screen, a later battle, or a later checkpoint round).
+- If the menu finds the marker still set, CONTINUE stays the main button and a
+  second option appears: RESUME EARLIER POINT, with the line "The last resume
+  didn't get past loading." It loads run.json.bak (the previous save the system
+  already keeps) and says which point it restored. Nothing switches
+  automatically.
+- The state-code button keeps working throughout."
+
+Gate (Kev): "a resume that hangs on load must produce the RESUME EARLIER POINT
+option on the next launch, and a normal resume must not. Add a deliberate break
+that fails."
+
+**As implemented, and where the code had to differ from the proposal's
+assumptions (each one is Kev's to overturn):**
+
+1. **`run.json.bak` is not an earlier point, so the guard keeps its own copy,
+   `run.json.prev`.** `.bak` is the previous WRITE, and every screen saves twice
+   on entry (the routing save, then the screen's own), so once a screen has
+   loaded `.bak` holds the same point as the save. `.prev` is the last save from
+   the previous screen, copied when a save changes screen or battle. `.bak` and
+   G-21's write-safety rules are unchanged.
+2. **CONTINUE no longer re-saves the run before the screen loads.** The menu
+   routed through `SceneManager.go_to_battle`, whose pre-load save replaced the
+   end-of-round checkpoint with a fresh battle entry: through the real menu a
+   mid-battle CONTINUE had never restored its round (it restarted at round 1 on
+   the checkpoint's mid-battle run state). Same cause as the ruling's problem
+   statement (the save written before the destination loads); the gates missed
+   it because they called `resume_run` and changed scene directly.
+   `SceneManager.resume_to` now lands on the saved screen without saving.
+3. **The marker also clears when the resumed screen finishes loading with no
+   error** (scene ready, no error logged since CONTINUE, still running 1 second
+   later), as well as on the ruled progress rule. Without it, anyone who
+   reloaded twice on one screen got the option with a false "didn't get past
+   loading", and could use it to rewind at will: replay a battle already won, or
+   re-throw dice already seen (Dice rule 9). Cost: a stall that begins after a
+   clean load is not offered the option.
+4. **RESUME EARLIER POINT is two taps.** It makes the earlier save the run save
+   and rebuilds the menu, which says "Restored the rewards after battle 8."
+   (or the start of a battle, the upgrade, the route choice, the intercept);
+   CONTINUE then resumes it.
+5. **A restored battle starts from its entry**, never from a round checkpoint,
+   so a finished battle's last round can never come back.
+6. **`battles_fought` stays exactly-once** (INVARIANTS #18): restoring a point
+   before a battle the profile already counted does not count it again.
+7. The marker carries `run_seed` as well, so a marker from another run is
+   ignored, and it is cleared by writing an inactive marker (never by deleting
+   the file): on web a deleted file can come back from IndexedDB.
+
+Not offered when no earlier save exists (a hang on the run's first battle) or
+when the earlier save is unusable: the menu is then unchanged. Details: TRUTH
+"Resume guard". Gate: `resume guard`.
+
 ## G-47. A reroll is a real hop in the die's own slot (Kev, 2026-10-05; replaces the reroll re-throw)
 
 Ruling (Kev): "rerolls become a real in-place hop." Every reroll (hero

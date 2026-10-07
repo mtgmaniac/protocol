@@ -10,6 +10,14 @@ const UNLOCK_SCENE := "res://scenes/ui/UnlockScreen.tscn"
 const EVOLUTION_SCENE := "res://scenes/ui/EvolutionScreen.tscn"
 const ROUTE_FORK_SCENE := "res://scenes/ui/RouteForkScreen.tscn"
 const INTERCEPT_SCENE := "res://scenes/ui/InterceptScreen.tscn"
+const ResumeGuard := preload("res://scripts/autoloads/resume_guard.gd")
+# The run save's `screen` -> the scene CONTINUE lands on (anything else: battle).
+const RESUME_SCENES := {
+	"reward": REWARD_SCENE,
+	"evolution": EVOLUTION_SCENE,
+	"fork": ROUTE_FORK_SCENE,
+	"intercept": INTERCEPT_SCENE,
+}
 
 
 # All scene changes route through TransitionManager (docs/TRANSITIONS_SCOPE.md):
@@ -45,6 +53,36 @@ func go_to_next_battle_or_beat() -> void:
 				return
 	GameState.advance_to_next_battle()
 	go_to_battle()
+
+
+# CONTINUE: lands on the screen the run save names WITHOUT saving again. The
+# save on disk already says exactly that, and the routing save above would
+# replace an end-of-round battle checkpoint with a fresh battle entry before
+# the battle scene could restore it (G-48: through the real menu a mid-battle
+# CONTINUE never restored its round). Screens still write their own entry save.
+func resume_to(screen: String) -> void:
+	if ResumeGuard.break_mode() == "routing_save":
+		_resume_with_routing_save(screen)
+		return
+	var scene_path: String = str(RESUME_SCENES.get(screen, BATTLE_SCENE))
+	go_to(scene_path)
+	SaveManager.watch_resume_landing(scene_path)
+
+
+# The pre-G-48 CONTINUE routing, kept only for the resume guard gate's
+# deliberate break (debug builds, --resume-guard-break=routing_save).
+func _resume_with_routing_save(screen: String) -> void:
+	match screen:
+		"reward":
+			go_to_reward_screen()
+		"evolution":
+			go_to_evolution()
+		"fork":
+			go_to_route_fork()
+		"intercept":
+			go_to_intercept()
+		_:
+			go_to_battle()
 
 
 func go_to_main_menu() -> void:

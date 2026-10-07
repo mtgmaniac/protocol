@@ -260,10 +260,11 @@ func _test_battles_fought_exactly_once() -> void:
 	_check(sm().get_battles_fought() == before + 1,
 		"fixture: the first battle entry did not count")
 
-	# The tab dies and the player hits CONTINUE, twice over. Each resume also
-	# writes the routing checkpoint SceneManager.go_to_battle() writes, so the
-	# flag has to survive being re-saved by a call site that knows nothing
-	# about it — which is the point of it being run state and not an argument.
+	# The tab dies and the player hits CONTINUE, twice over. Each resume is also
+	# re-saved the way the battle's own entry save does (and, until G-48, the
+	# routing save CONTINUE used to write), so the flag has to survive being
+	# re-saved by a call site that knows nothing about it — which is the point
+	# of it being run state and not an argument.
 	for attempt in 2:
 		# The flag must come back from the FILE. Asserted two ways, because
 		# reading it off the live GameState alone proves nothing: this process
@@ -281,7 +282,7 @@ func _test_battles_fought_exactly_once() -> void:
 		_check(screen == "battle", "resume %d returned screen '%s', expected battle" % [attempt, screen])
 		_check(gs().battle_entry_counted,
 			"EXACTLY ONCE: resume %d did not restore battle_entry_counted" % attempt)
-		sm().checkpoint_run("battle")  # the routing checkpoint
+		sm().checkpoint_run("battle")  # the battle's entry save
 		_enter_battle_like_battle_scene()
 
 	_check(sm().get_battles_fought() == before + 1,

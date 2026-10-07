@@ -220,6 +220,11 @@ GATES = [
     # round-trips, the Python decoder agrees, and three deliberate breaks
     # (dropped run save, no checksum, import that writes nothing) must each fail.
     ("state code", [sys.executable, str(ROOT / "scripts" / "checks" / "state_code_gate.py")], "[STATE_CODE] PASS", False),
+    # Resume guard (G-48): real menu CONTINUE in separate processes. A resume
+    # that dies while loading offers RESUME EARLIER POINT on the next launch, a
+    # normal one does not, a mid-battle resume restores its round; four
+    # deliberate breaks must each fail.
+    ("resume guard", [sys.executable, str(ROOT / "scripts" / "checks" / "resume_guard_gate.py")], "[RESUME_GUARD] PASS", False),
     # G-47: a reroll is a hop in the die's own slot (uniform faces, no contact,
     # never leaves its slot, the snap never changes the face) + 4 deliberate breaks.
     ("reroll hop", [sys.executable, str(ROOT / "scripts" / "checks" / "reroll_hop_gate.py")], "[REROLL_HOP_GATE] PASS", False),
@@ -253,7 +258,7 @@ GATES = [
 # run.json joins the fingerprint with the save system: an active-run save is
 # player data too, and a rig that escaped DevContext could now destroy a run in
 # progress as well as a profile.
-REAL_PROFILE_FILES = ["save.json", "settings.cfg", "run.json"]
+REAL_PROFILE_FILES = ["save.json", "settings.cfg", "run.json", "run.json.prev", "resume_guard.json"]
 
 
 def _real_profile_dir() -> Path:
@@ -300,6 +305,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "save resume": 420,         # 6 full Godot processes (2 configs x 3 legs)
     "battle checkpoint": 360,   # 10 Godot processes (2 configs x 3 legs + 4 fallback legs); ~160s measured
     "state code": 300,          # 8 Godot processes (round trip + 3 deliberate breaks); ~70s measured on Linux
+    "resume guard": 120,        # 11 Godot processes (6 legs + 4 deliberate breaks); ~52s measured on Windows
     "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
     "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
     "reroll hop": 300,          # 10,000 hops in 8 shards + 5 break legs; ~185s measured on Windows

@@ -23,8 +23,16 @@ const SAVE_VERSION := 1
 # unlocks, and that is only structurally true if they are not the same file.
 # Profile isolation applies identically — a rig writes dev_run.json.
 const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
+const ResumeGuard := preload("res://scripts/autoloads/resume_guard.gd")
 const RUN_SAVE_PATH := "user://run.json"
 const DEV_RUN_SAVE_PATH := "user://dev_run.json"
+# Resume guard (G-48): the marker CONTINUE writes before its screen loads.
+const RESUME_GUARD_PATH := "user://resume_guard.json"
+const DEV_RESUME_GUARD_PATH := "user://dev_resume_guard.json"
+## A resumed screen counts as loaded once it is ready, has raised no error and
+## the game is still running this long afterwards.
+const RESUME_SETTLE_SECS := 1.0
+const RESUME_LOAD_WAIT_FRAMES := 600
 ## Bump ONLY when a run save from the previous build can no longer be trusted.
 ## A mismatch discards run.json (and says so on the menu); save.json migrates.
 ## v2 (2026-09-21) added the optional `battle_checkpoint` block; v3 (same day)
@@ -90,6 +98,18 @@ var data: Dictionary = {}
 var _disk_enabled: bool = true
 var _save_path: String = SAVE_PATH
 var _run_save_path: String = RUN_SAVE_PATH
+var _resume_guard_path: String = RESUME_GUARD_PATH
+## The resume guard file as last read or written: {active, resumed_seq, screen,
+## battle, round, run_seed} plus an optional counted_battle. {} until the menu
+## or CONTINUE touches it.
+var _guard: Dictionary = {}
+## The marker for the save resume_run() last loaded (written by CONTINUE only).
+var _resumed_marker: Dictionary = {}
+## DiagnosticsLog.error_count() when CONTINUE was pressed.
+var _resume_errors_before: int = 0
+var _resume_watch_id: int = 0
+## ResumeGuard.screen_key of the run save on file ("" = not known, read it).
+var _saved_screen_key: String = ""
 ## Set at boot when a run.json was found but could not be used, so the menu can
 ## say so once. Shape: "" (nothing to report) or a player-facing sentence.
 var _run_save_notice: String = ""
@@ -114,6 +134,7 @@ func _ready() -> void:
 	if DevContext.is_isolated():
 		_save_path = DEV_SAVE_PATH
 		_run_save_path = DEV_RUN_SAVE_PATH
+		_resume_guard_path = DEV_RESUME_GUARD_PATH
 		print("[SaveManager] dev context - profile isolated to %s (real save untouchable)" % _save_path)
 	# Dev import of a pasted state code (-- --load-state=<file>; debug builds,
 	# dev_* paths only). Runs before anything is loaded so the game boots into it.
@@ -328,7 +349,7 @@ func checkpoint_run(screen: String, extra: Dictionary = {}) -> void:
 	# starts a fresh one, and any other screen means the battle is behind us.
 	_pending_battle_restore = {}
 	_battle_entry_run = GameState.to_save_dict() if screen == "battle" else {}
-	SaveIO.write_dict(_run_save_path, build_run_payload(screen, extra))
+	_write_run(build_run_payload(screen, extra))
 
 
 ## End-of-round battle checkpoint (BattleCheckpoint.capture). Written beside the
@@ -337,7 +358,7 @@ func checkpoint_run(screen: String, extra: Dictionary = {}) -> void:
 func checkpoint_battle_round(checkpoint: Dictionary) -> void:
 	if bool(GameState.tutorial_mode) or _battle_entry_run.is_empty() or checkpoint.is_empty():
 		return
-	SaveIO.write_dict(_run_save_path, build_run_payload("battle", {}, checkpoint, _battle_entry_run))
+	_write_run(build_run_payload("battle", {}, checkpoint, _battle_entry_run))
 
 
 ## The battle ended normally: drop its checkpoint so a finished encounter can
@@ -348,7 +369,22 @@ func clear_battle_checkpoint() -> void:
 	_pending_battle_restore = {}
 	if bool(GameState.tutorial_mode) or _battle_entry_run.is_empty():
 		return
-	SaveIO.write_dict(_run_save_path, build_run_payload("battle", {}, {}, _battle_entry_run))
+	_write_run(build_run_payload("battle", {}, {}, _battle_entry_run))
+
+
+## THE run save write. Before it, the save on file is kept as `.prev` when this
+## one belongs to another screen (ResumeGuard: the earlier point). After it, a
+## resume marker this save has moved past is cleared.
+func _write_run(payload: Dictionary) -> void:
+	var key: String = ResumeGuard.screen_key(payload)
+	if _saved_screen_key == "":
+		_saved_screen_key = ResumeGuard.screen_key(SaveIO._read_file(_run_save_path))
+	if _saved_screen_key != "" and _saved_screen_key != key:
+		ResumeGuard.keep_previous(_run_save_path)
+	SaveIO.write_dict(_run_save_path, payload)
+	_saved_screen_key = key
+	if bool(_guard.get("active", false)) and ResumeGuard.moved_past(_guard, ResumeGuard.point_of(payload)):
+		_clear_resume_marker()
 
 
 ## Fallback for a checkpoint that validated but could not be rebuilt: put
@@ -395,6 +431,7 @@ func build_run_payload(screen: String, extra: Dictionary = {}, battle_checkpoint
 ## The stored run, or {} when there is none / it cannot be used. Sets the menu
 ## notice as a side effect when a save was found but rejected.
 func peek_run_save() -> Dictionary:
+	_keep_previous_before_heal()
 	var loaded: Dictionary = SaveIO.read_dict(_run_save_path, true)
 	if loaded.is_empty():
 		return {}
@@ -444,6 +481,15 @@ func resume_run() -> String:
 	if _pending_battle_restore.is_empty():
 		GameState.load_from_dict(run_block)
 	_resume_extra = (loaded.get("extra", {}) as Dictionary).duplicate(true)
+	_saved_screen_key = ResumeGuard.screen_key(loaded)
+	_resumed_marker = {
+		"active": true,
+		"resumed_seq": int(loaded.get(SaveIO.SEQ_KEY, 0)),
+		"screen": screen,
+		"battle": int(run_block.get("current_battle", 0)),
+		"round": int(_pending_battle_restore.get("round", 0)),
+		"run_seed": ResumeGuard.run_seed_of(loaded),
+	}
 	return screen
 
 
@@ -456,6 +502,157 @@ func clear_run_save() -> void:
 	_battle_entry_run = {}
 	_pending_battle_restore = {}
 	SaveIO.erase(_run_save_path)
+	ResumeGuard.drop_previous(_run_save_path)
+	_saved_screen_key = ""
+	_resumed_marker = {}
+	if bool(_guard.get("active", false)) or _guard.has("counted_battle"):
+		_guard = {"active": false}
+		_write_guard()
+
+
+# ── Resume guard (G-48) ───────────────────────────────────────────────────────
+# Rules and file shapes: ResumeGuard. SaveManager decides WHEN: CONTINUE writes
+# the marker, a clean load or a save past the point clears it, and the menu
+# offers RESUME EARLIER POINT while it is still set.
+
+## CONTINUE, right after resume_run(): records the point being resumed BEFORE
+## its screen loads. Only the menu calls this; harness resumes write no marker.
+func note_resume_started() -> void:
+	if _resumed_marker.is_empty() or ResumeGuard.break_mode() == "no_marker":
+		return
+	var counted: int = int(_guard.get("counted_battle", 0))
+	var counted_seed: String = str(_guard.get("run_seed", ""))
+	_guard = _resumed_marker.duplicate()
+	if counted > 0 and counted_seed == str(_guard["run_seed"]):
+		_guard["counted_battle"] = counted
+	_resume_errors_before = _logged_error_count()
+	_write_guard()
+
+
+## Clears the marker once the resumed screen has loaded cleanly: it is the
+## current scene and ready, nothing has raised an error since CONTINUE, and the
+## game is still running RESUME_SETTLE_SECS later. A hang, a crash or a script
+## error on the way leaves the marker set.
+func watch_resume_landing(scene_path: String) -> void:
+	_resume_watch_id += 1
+	var watch_id: int = _resume_watch_id
+	if not bool(_guard.get("active", false)):
+		return
+	var landed: bool = false
+	for i in RESUME_LOAD_WAIT_FRAMES:
+		await get_tree().process_frame
+		var scene: Node = get_tree().current_scene
+		if scene != null and scene.scene_file_path == scene_path and scene.is_node_ready():
+			landed = true
+			break
+	if not landed:
+		return
+	await get_tree().create_timer(RESUME_SETTLE_SECS).timeout
+	if watch_id != _resume_watch_id or not bool(_guard.get("active", false)):
+		return
+	if _logged_error_count() != _resume_errors_before:
+		return
+	_clear_resume_marker()
+
+
+## What the menu shows beside CONTINUE: {} (nothing), or {"label": the point
+## RESUME EARLIER POINT would restore}. Reads the marker from disk, and clears
+## one that belongs to another run or that the run save has already moved past.
+func earlier_point_offer() -> Dictionary:
+	_guard = SaveIO.read_dict(_resume_guard_path)
+	if not bool(_guard.get("active", false)):
+		return {}
+	var current: Dictionary = SaveIO.read_dict(_run_save_path)
+	if current.is_empty():
+		return {}
+	if ResumeGuard.run_seed_of(current) != str(_guard.get("run_seed", "")) \
+			or ResumeGuard.moved_past(_guard, ResumeGuard.point_of(current)):
+		_clear_resume_marker()
+		return {}
+	var earlier: Dictionary = ResumeGuard.earlier_point(_run_save_path, current, RUN_SAVE_VERSION)
+	if earlier.is_empty():
+		return {}
+	return {"label": ResumeGuard.describe(ResumeGuard.point_of(earlier))}
+
+
+## RESUME EARLIER POINT: makes the previous screen's save the run save again and
+## leaves a menu notice naming it. Returns false when there was nothing to
+## restore. The player still presses CONTINUE; nothing is resumed here.
+func restore_earlier_point() -> bool:
+	var current: Dictionary = SaveIO.read_dict(_run_save_path)
+	var earlier: Dictionary = ResumeGuard.earlier_point(_run_save_path, current, RUN_SAVE_VERSION)
+	if earlier.is_empty():
+		return false
+	# A battle always restarts from its entry: a finished battle's last round
+	# must never come back (the envelope's run block is the entry snapshot).
+	earlier["battle_checkpoint"] = {}
+	var current_run: Dictionary = current.get("run", {}) as Dictionary
+	var earlier_run: Dictionary = earlier.get("run", {}) as Dictionary
+	_guard = {"active": false}
+	# INVARIANTS #18: the profile already counted the battle being left. The
+	# restored run does not know that, so record it for record_battle_entered.
+	if bool(current_run.get("battle_entry_counted", false)) and (
+			int(earlier_run.get("current_battle", 0)) < int(current_run.get("current_battle", 0))
+			or not bool(earlier_run.get("battle_entry_counted", false))):
+		_guard["counted_battle"] = int(current_run.get("current_battle", 0))
+		_guard["run_seed"] = ResumeGuard.run_seed_of(current)
+	# Marker first: a crash after this line leaves the old save and no marker.
+	_write_guard()
+	_battle_entry_run = {}
+	_pending_battle_restore = {}
+	_resumed_marker = {}
+	# write_dict stamps one past the highest seq on record, so the restored save
+	# beats the copy that hung in every store (file, .bak, web mirror).
+	SaveIO.write_dict(_run_save_path, earlier)
+	ResumeGuard.drop_previous(_run_save_path)
+	_saved_screen_key = ResumeGuard.screen_key(earlier)
+	_run_save_notice = "Restored %s." % ResumeGuard.describe(ResumeGuard.point_of(earlier))
+	return true
+
+
+## Inactive, not deleted: on web a deleted file can come back from IndexedDB if
+## the page dies before the next sync, while a newer write wins by save_seq
+## (and reaches the localStorage mirror at once).
+func _clear_resume_marker() -> void:
+	if ResumeGuard.break_mode() == "never_clear":
+		return
+	_guard["active"] = false
+	_write_guard()
+
+
+func _write_guard() -> void:
+	SaveIO.write_dict(_resume_guard_path, _guard)
+
+
+func _logged_error_count() -> int:
+	var log: Node = get_node_or_null("/root/DiagnosticsLog")
+	return int(log.call("error_count")) if log != null else 0
+
+
+## True once, for a battle the profile counted before RESUME EARLIER POINT put
+## the run back in front of it.
+func _battle_already_counted() -> bool:
+	if int(_guard.get("counted_battle", 0)) != int(GameState.current_battle) \
+			or str(_guard.get("run_seed", "")) != SaveIO.encode_i64(int(GameState.run_seed)):
+		return false
+	_guard.erase("counted_battle")
+	_write_guard()
+	return true
+
+
+## Web only. A page that froze right after a save holds the NEW save in the
+## localStorage mirror alone; the file is still the previous screen. Healing
+## overwrites that file, and with it the only earlier point, so keep it first.
+func _keep_previous_before_heal() -> void:
+	if not SaveIO._web_available():
+		return
+	var on_file: Dictionary = SaveIO._read_file(_run_save_path)
+	if on_file.is_empty():
+		return
+	var best: Dictionary = SaveIO.read_dict(_run_save_path)
+	if int(best.get(SaveIO.SEQ_KEY, 0)) > int(on_file.get(SaveIO.SEQ_KEY, 0)) \
+			and ResumeGuard.screen_key(best) != ResumeGuard.screen_key(on_file):
+		ResumeGuard.keep_previous(_run_save_path)
 
 
 ## One-shot: the menu asks once and the notice is consumed.
@@ -563,6 +760,8 @@ func record_run_started() -> void:
 # the tutorial never reach it). Farm-proof by construction: nothing
 # round-based touches this counter.
 func record_battle_entered() -> void:
+	if _battle_already_counted():
+		return
 	data["stats"]["battles_fought"] = int(data["stats"].get("battles_fought", 0)) + 1
 	save()
 

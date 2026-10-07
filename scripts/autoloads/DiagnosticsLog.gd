@@ -33,6 +33,12 @@ func recent_messages() -> Array:
 	return _logger.snapshot(false)
 
 
+## Errors and script errors raised since boot (warnings excluded). Only ever
+## grows, unlike the ring: the resume guard compares it across a screen load.
+func error_count() -> int:
+	return _logger.error_total()
+
+
 ## Logger callbacks can arrive on any thread, so both rings sit behind a mutex.
 ## Nothing in here may print: a print would re-enter _log_message.
 class _RingLogger extends Logger:
@@ -42,6 +48,7 @@ class _RingLogger extends Logger:
 	var _mutex := Mutex.new()
 	var _errors: Array = []
 	var _messages: Array = []
+	var _error_total: int = 0
 
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String,
 			_editor_notify: bool, error_type: int, _script_backtraces: Array) -> void:
@@ -53,6 +60,8 @@ class _RingLogger extends Logger:
 			"where": "%s:%d %s" % [file, line, function],
 		}
 		_mutex.lock()
+		if entry["kind"] != "warning":
+			_error_total += 1
 		_errors.append(entry)
 		if _errors.size() > MAX_ERRORS:
 			_errors.pop_front()
@@ -64,6 +73,12 @@ class _RingLogger extends Logger:
 		if _messages.size() > MAX_MESSAGES:
 			_messages.pop_front()
 		_mutex.unlock()
+
+	func error_total() -> int:
+		_mutex.lock()
+		var total: int = _error_total
+		_mutex.unlock()
+		return total
 
 	func snapshot(errors: bool) -> Array:
 		_mutex.lock()

@@ -12,9 +12,14 @@
 # so the first-launch menu is unchanged. Two one-line notices can appear under
 # the buttons: a discarded run from an older build, and — on web only — a
 # warning that this browser mode will not persist progress at all.
+#
+# Resume guard (G-48): CONTINUE marks the resume before its screen loads. If
+# the marker is still set at the next launch, RESUME EARLIER POINT appears under
+# CONTINUE; it puts the previous screen's save back and the menu says which.
 extends Control
 
 const TITLE_LOGO_SCENE := preload("res://scenes/ui/TitleLogo.tscn")
+const ResumeGuard := preload("res://scripts/autoloads/resume_guard.gd")
 const BEGIN_SIZE := Vector2(640, 136)
 const BEGIN_FONT := 52
 # FEEDBACK keeps the amber secondary treatment; BEGIN is the primary action.
@@ -34,6 +39,7 @@ const CONTINUE_SIZE := Vector2(640, 136)
 const ABANDON_SIZE := Vector2(420, 84)
 const ABANDON_FONT := 30
 const NOTICE_FONT := 28
+const EARLIER_SIZE := Vector2(600, 84)
 # Dev-only state-code export, bottom-right opposite the version stamp.
 const STATE_CODE_SIZE := Vector2(460, 84)
 
@@ -42,6 +48,7 @@ var _begin_button: Button
 var _feedback_button: Button
 var _continue_button: Button
 var _abandon_button: Button
+var _earlier_button: Button
 var _has_run_save: bool = false
 
 
@@ -100,6 +107,7 @@ func _ready() -> void:
 		resume.pressed.connect(_on_continue_pressed)
 		col.add_child(resume)
 		_continue_button = resume
+		_add_earlier_point_option(col)
 
 	var begin := Button.new()
 	begin.text = "BEGIN"
@@ -140,7 +148,7 @@ func _ready() -> void:
 	begin.modulate.a = 0.0
 	feedback.disabled = true
 	feedback.modulate.a = 0.0
-	for extra in [_continue_button, _abandon_button]:
+	for extra in [_continue_button, _earlier_button, _abandon_button]:
 		if extra != null:
 			extra.disabled = true
 			extra.modulate.a = 0.0
@@ -156,7 +164,7 @@ func _ready() -> void:
 	fade.tween_property(feedback, "modulate:a", 1.0, 0.25)
 	begin.disabled = false
 	feedback.disabled = false
-	for extra in [_continue_button, _abandon_button]:
+	for extra in [_continue_button, _earlier_button, _abandon_button]:
 		if extra != null:
 			fade.tween_property(extra, "modulate:a", 1.0, 0.25)
 			extra.disabled = false
@@ -349,22 +357,49 @@ func _on_continue_pressed() -> void:
 	if screen == "":
 		_continue_button.disabled = false
 		return
+	# Resume guard: on record BEFORE the screen loads, so a load that hangs
+	# leaves the marker for the next launch to find.
+	SaveManager.note_resume_started()
 	MusicManager.play_for_faction(GameState.selected_operation_id)
 	_logo.flare_out()
 	await _logo.flare_finished
 	if not is_inside_tree():
 		return
-	match screen:
-		"reward":
-			SceneManager.go_to_reward_screen()
-		"evolution":
-			SceneManager.go_to_evolution()
-		"fork":
-			SceneManager.go_to_route_fork()
-		"intercept":
-			SceneManager.go_to_intercept()
-		_:
-			SceneManager.go_to_battle()
+	SceneManager.resume_to(screen)
+
+
+# ── Resume guard: RESUME EARLIER POINT ────────────────────────────────────────
+# Built only when the last CONTINUE never got past loading AND an earlier save
+# exists. CONTINUE stays the primary button; this never acts on its own.
+
+func _add_earlier_point_option(col: VBoxContainer) -> void:
+	if SaveManager.earlier_point_offer().is_empty():
+		return
+	var group := VBoxContainer.new()
+	group.name = "EarlierPoint"
+	group.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	group.add_theme_constant_override("separation", 12)
+	col.add_child(group)
+	var earlier := Button.new()
+	earlier.text = "RESUME EARLIER POINT"
+	earlier.custom_minimum_size = EARLIER_SIZE
+	earlier.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_button(earlier, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, ABANDON_FONT)
+	earlier.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	earlier.pressed.connect(_on_earlier_point_pressed)
+	group.add_child(earlier)
+	_earlier_button = earlier
+	group.add_child(_make_notice(ResumeGuard.LINE, PixelUI.DT_AMBER_TEXT))
+
+
+func _on_earlier_point_pressed() -> void:
+	_earlier_button.disabled = true
+	_continue_button.disabled = true
+	AudioManager.play_click()
+	# Puts the earlier save back and leaves a notice naming it; the rebuilt menu
+	# shows that notice and CONTINUE then resumes it.
+	SaveManager.restore_earlier_point()
+	SceneManager.go_to_main_menu()
 
 
 func _on_abandon_pressed() -> void:

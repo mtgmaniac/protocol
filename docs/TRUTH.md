@@ -1,5 +1,11 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-06 resume guard (Kev, G-48):** a CONTINUE that hangs on load no longer
+leaves ABANDON RUN as the only way out: the next launch offers RESUME EARLIER
+POINT. A mid-battle CONTINUE from the real menu now restores its round (it never
+had). See "Resume guard" under Save system. No change to the run save format
+(no `RUN_SAVE_VERSION` bump). Gate: `resume guard`.
+
 **2026-10-02 dev state code (Kev):** a dev-only export of the exact game state,
 for reproducing a phone bug on a desktop. See "Dev state code" under Save system.
 No change to the run save format (no `RUN_SAVE_VERSION` bump). Gate: `state code`.
@@ -636,6 +642,75 @@ player's phone. The two constants move together.
 
 **Menu.** CONTINUE (built only when a valid run save exists) resumes on the saved
 screen; ABANDON RUN asks first and then deletes the run, keeping the profile.
+**CONTINUE does not save before its screen loads** (G-48): the menu calls
+`SaveManager.resume_run`, then `SceneManager.resume_to(screen)`, which changes
+scene without the routing save the `go_to_*` functions write. Until 2026-10-06 it
+routed through `go_to_battle`, whose save replaced the end-of-round checkpoint
+with a fresh battle entry before the battle scene could take it, so through the
+real menu a mid-battle CONTINUE restarted the battle at round 1 on the
+checkpoint's mid-battle run state. The `battle checkpoint` and `state code`
+gates never saw it: they call `resume_run` and change scene themselves. The
+`resume guard` gate presses the real CONTINUE button.
+
+### Resume guard (G-48, Kev 2026-10-06)
+
+The run save names the screen CONTINUE resumes on, and it is written before that
+screen has ever loaded. If the screen hangs on load, every CONTINUE hangs the
+same way. Two small files beside the run save give a way out; the run save's
+format is unchanged. Rules in `scripts/autoloads/resume_guard.gd` (`ResumeGuard`),
+timing in SaveManager.
+
+- **The marker, `user://resume_guard.json`** (`dev_resume_guard.json` in dev
+  contexts): `{active, resumed_seq, screen, battle, round, run_seed}`.
+  `resumed_seq` is the `save_seq` of the run save that was resumed (the file's
+  own `save_seq` is SaveIO's counter for the marker itself). The menu's CONTINUE
+  writes it (`note_resume_started`) before the screen loads; harness resumes
+  write none. It goes through SaveIO, so on web it also lands in the
+  localStorage mirror at once: a page that freezes during the load never
+  reaches the IndexedDB sync.
+- **It clears two ways.** (1) Progress, as ruled: a run save with a different
+  screen, a later battle or a later checkpoint round (`ResumeGuard.moved_past`,
+  checked in the one run save writer, `SaveManager._write_run`). (2) A clean
+  load: the resumed scene is current and ready, `DiagnosticsLog.error_count()`
+  has not moved since CONTINUE, and the game is still running
+  `RESUME_SETTLE_SECS` (1 s) later (`watch_resume_landing`). So a hang, a crash,
+  a closed tab or a script error during the load leaves it set; reloading twice
+  on a screen that loaded fine does not. A stall that starts after a clean load
+  is not covered. Clearing writes `active: false` rather than deleting the
+  file: on web a deleted file can come back from IndexedDB.
+- **The earlier point, `run.json.prev`:** the last save from the previous
+  screen. `_write_run` copies the save on file there whenever the new save
+  belongs to another screen or battle (`ResumeGuard.screen_key`), so a battle's
+  own saves never replace it. `run.json.bak` cannot serve: it is the previous
+  write, and every screen saves twice on entry, so it holds the same point.
+  `.bak` and the write-safety rules above are unchanged. On web, a load the
+  mirror wins keeps the stale file as `.prev` before healing it
+  (`_keep_previous_before_heal`): after a freeze right behind a save, that file
+  is the only earlier point. `.prev` is deleted with the run.
+- **The menu.** With the marker set for this run, not moved past, and a usable
+  `.prev` (this build's schema, same `run_seed`, another screen, older
+  `save_seq`), RESUME EARLIER POINT appears under CONTINUE with the line "The
+  last resume didn't get past loading." CONTINUE stays the main button and
+  nothing switches automatically. Pressing it makes the `.prev` save the run
+  save (stamped past every other copy), uses `.prev` up, clears the marker and
+  rebuilds the menu, which says "Restored the rewards after battle 8." (or "the
+  start of battle N", "the upgrade / route choice / intercept after battle N").
+  CONTINUE then resumes it. With no usable earlier save (a hang on the run's
+  first battle) the menu is unchanged. COPY STATE CODE works throughout.
+- **A restored battle starts from its entry.** `restore_earlier_point` empties
+  `battle_checkpoint`, so a finished battle's last round can never come back.
+- **`battles_fought` stays exactly-once** (INVARIANTS #18). When the save being
+  left had counted its battle and the restored one has not, the marker file
+  keeps `counted_battle`; `record_battle_entered` skips that one entry.
+- Gate `resume guard` (`scripts/checks/resume_guard_gate.py` +
+  `scripts/debug/resume_guard_test.gd`), separate processes, real menu buttons:
+  a normal resume restores its round and shows no option on the next launch; a
+  resume whose process dies as the screen loads shows the option, its line,
+  CONTINUE as the main button and a working state code, and the option restores
+  the rewards and says so; an error during the load keeps the marker until a
+  round resolves. Four deliberate breaks through the debug-build
+  `--resume-guard-break=` seam (no marker, never cleared, CONTINUE saving before
+  the screen, no earlier save kept) must each fail it.
 
 ### Dev state code (Kev, 2026-10-02)
 
