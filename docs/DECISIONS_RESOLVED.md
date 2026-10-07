@@ -1,5 +1,69 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-49. Two settings: Auto-select sole valid target, No animations (Kev, 2026-10-06)
+
+**Ruling (Kev, transcribed).** "Add both to the Settings screen using its current
+styling. The UI redesign will restyle it later, so don't polish the visuals.
+
+- AUTO-SELECT SOLE VALID TARGET (off by default): when an armed action has
+  exactly one valid target, apply it automatically, with a short visible cue
+  showing what was picked.
+- NO ANIMATIONS (off by default): disables non-essential animations beyond what
+  Reduced Motion already covers. Gameplay and dice results must stay fully
+  readable. Report exactly what it turns off. Dice tumbling may count as
+  essential, so if you're unsure how to handle the dice, propose an approach
+  and wait before building that part.
+
+Gates: each setting on and off, with a deliberate break for each."
+
+**Auto-select, as implemented** (`scripts/battle/auto_pick.gd`, called from
+`ProtocolActions._auto_pick_armed`). "Armed action" is read as the four actions
+that arm and wait for a tap: Reroll, Nudge, Set and an item that needs a
+target. A target is valid when the pick would go through: a hero die that can
+be altered (not frozen, has a roll) and that the pool can pay for; with
+Firewall Hack, an enemy die it may take; for an item, a unit it may legally
+target. With exactly one, the pick is made through the same handler a tap
+reaches, and a note in the combat zone reads "Only target: Strike Unit." (for
+Set the note sits in the number picker: the die is picked, the number is still
+the player's). With two or more, or none, nothing changes. Never in the
+tutorial. **Hero abilities are not part of the setting:** a hero ability with
+one legal target has always been assigned on its own, outside the tutorial,
+and that stays on regardless.
+
+**No animations, as implemented** (`PixelUI.no_animations_enabled`). It applies
+everything Reduced Motion does, and also turns off:
+
+- battle numbers: no rise, no size punch, no fade (shown 1.5 s, then removed)
+- the card tint flash on a hit, heal or shield
+- the hit pause and the slow-motion beat on a 20
+- the Siphon / Hijack label drifting to its target (it appears on the target)
+- the fade on the ability name shown for a 20
+- the HP bar draining or growing (it lands on the new value)
+- the ability pips fading in
+- the pulse on the item confirm card and on the tutorial spotlight ring; the
+  fade on the tutorial redirect ring
+- the jam overlay flicker on a die
+- the red fade on a refused loadout row (red, then back in one step)
+- the title buttons fading in and the logo's exit fade
+
+**Kept on purpose:** the pause between actions as a round resolves (0.10 s
+before and 0.34 s after each), because that is what lets each result be read
+in order; timed notes and banners, which appear and go without motion; audio
+fades; the web loader's pulse (it runs before the game can read a setting).
+
+**Dice: not built, waiting on Kev.** With the setting on the dice still throw,
+hop on a reroll, tip onto a changed face, turn upright and slide to their
+slots, exactly as before. Removing any of that touches G-24 (the landed face
+is the roll) or Dice rule 6 (a change is shown as the die moving, never a
+jump). Proposal on the table (2026-10-06 handoff): place the dice already
+showing their roll, drawn from the battle's seeded d20 stream as the
+skip-visuals path does. It needs a ruling that amends G-24 and rule 6 for this
+setting.
+
+Gates: `auto-select target` and `no animations` (each `scripts/checks/
+break_gate.py` over its test: off and on, then deliberate breaks that must
+fail it).
+
 ## G-48. Resume guard: a CONTINUE that hangs on load offers an earlier point (Kev, 2026-10-06)
 
 **Ruling (Kev, transcribed).** "Problem: the save records the destination screen

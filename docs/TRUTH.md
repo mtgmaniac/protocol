@@ -1,5 +1,36 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-06 two settings (Kev, G-49):** Help > SETTINGS > ACCESSIBILITY gains
+**Auto-select sole valid target** and **No animations**, both off by default
+and stored in the profile's settings (`auto_select_sole_target`,
+`no_animations`). Current Settings styling; the UI redesign restyles it later.
+
+- **Auto-select sole valid target** (`scripts/battle/auto_pick.gd`): when the
+  action just armed (Reroll, Nudge, Set, or an item that needs a target) has
+  exactly one valid target, the pick is made at once through the same handler
+  a tap reaches, and a pick note reads "Only target: Strike Unit." Set still
+  asks for the number (its picker carries the note). Valid = the pick would go
+  through (an unfrozen hero die with a roll that the pool can pay for; a
+  Firewall Hack enemy die; an item's legal unit). Two or more valid targets, or
+  none: unchanged. Never in the tutorial. Hero abilities are separate and
+  unchanged: one legal target has always been assigned on its own.
+- **No animations** (`PixelUI.no_animations_enabled`; it also makes
+  `reduced_motion_enabled` true, so everything Reduced Motion removes is
+  removed too): battle numbers stay put at full strength for their 1.5 s and
+  are then removed; no card tint flash; no hit pause or slow-motion beat; the
+  Siphon / Hijack label appears on its target; the 20's ability name is shown
+  and removed without a fade; HP bars land on their new value; ability pips
+  appear at once; the item confirm ring and tutorial spotlight ring are steady;
+  no jam flicker on a die; a refused loadout row goes red and back in one step;
+  title buttons and the logo exit are immediate. **Not changed:** the dice
+  (throw, reroll hop, tip-over, upright turn, slide to slot: waiting on a
+  ruling, G-49), and the pause between actions as a round resolves.
+- Gates: `auto-select target` (`scripts/debug/auto_pick_test.gd`; breaks: the
+  setting ignored, picking with several valid targets, no note) and
+  `no animations` (`scripts/debug/no_animations_test.gd`; break: the setting
+  ignored; also asserts the dice still roll for real with it on). Both run
+  through `scripts/checks/break_gate.py`: clean pass, then each break must fail.
+
 **2026-10-06 resume guard (Kev, G-48):** a CONTINUE that hangs on load no longer
 leaves ABANDON RUN as the only way out: the next launch offers RESUME EARLIER
 POINT. A mid-battle CONTINUE from the real menu now restores its round (it never

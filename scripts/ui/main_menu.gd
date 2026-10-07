@@ -160,13 +160,14 @@ func _ready() -> void:
 		return
 	var fade := create_tween()
 	fade.set_parallel(true)
-	fade.tween_property(begin, "modulate:a", 1.0, 0.25)
-	fade.tween_property(feedback, "modulate:a", 1.0, 0.25)
+	var fade_secs: float = 0.0 if PixelUI.no_animations_enabled() else 0.25
+	fade.tween_property(begin, "modulate:a", 1.0, fade_secs)
+	fade.tween_property(feedback, "modulate:a", 1.0, fade_secs)
 	begin.disabled = false
 	feedback.disabled = false
 	for extra in [_continue_button, _earlier_button, _abandon_button]:
 		if extra != null:
-			fade.tween_property(extra, "modulate:a", 1.0, 0.25)
+			fade.tween_property(extra, "modulate:a", 1.0, fade_secs)
 			extra.disabled = false
 
 

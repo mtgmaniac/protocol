@@ -158,6 +158,9 @@ func show_pips() -> void:
 	if _lower_underline != null and _lower_frame != null:
 		_lower_underline.visible = _lower_frame.visible
 	_row_layer.visible = true
+	if PixelUI.no_animations_enabled():
+		_row_layer.modulate = Color(1, 1, 1, 1)
+		return
 	_row_layer.modulate = Color(1, 1, 1, 0)
 	_pips_tween = create_tween()
 	_pips_tween.tween_property(_row_layer, "modulate", Color(1, 1, 1, 1), PIP_REVEAL_TIME)

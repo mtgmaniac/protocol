@@ -122,7 +122,7 @@ func flare_out() -> void:
 			tween.kill()
 	if PixelUI.reduced_motion_enabled():
 		var fade := create_tween()
-		fade.tween_property(self, "modulate:a", 0.0, 0.18)
+		fade.tween_property(self, "modulate:a", 0.0, 0.0 if PixelUI.no_animations_enabled() else 0.18)
 		fade.finished.connect(flare_finished.emit, CONNECT_ONE_SHOT)
 		return
 	var flare := create_tween()
@@ -209,10 +209,11 @@ func _settle_reduced_logo() -> void:
 	_proto_glow.modulate.a = proto_pulse_lo
 
 
-func _on_setting_changed(key: String, value: Variant) -> void:
-	if key != "reduced_motion" or _flaring:
+func _on_setting_changed(key: String, _value: Variant) -> void:
+	if (key != "reduced_motion" and key != PixelUI.NO_ANIMATIONS_SETTING) or _flaring:
 		return
-	if bool(value):
+	# Either setting stops the loops; they come back only with both off.
+	if PixelUI.reduced_motion_enabled():
 		for tween in _motion_tweens + [_core_pulse_tween, _proto_pulse_tween, _glitch_tween]:
 			if tween != null and tween.is_valid():
 				tween.kill()

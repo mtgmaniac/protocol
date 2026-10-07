@@ -132,9 +132,11 @@ func _ready() -> void:
 	_dim_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_dim_canvas)
 	# Looping ring pulse — drives ring_alpha on the canvas (its setter triggers a redraw).
-	_ring_tween = create_tween().set_loops()
-	_ring_tween.tween_property(_dim_canvas, "ring_alpha", 0.35, 0.55).set_trans(Tween.TRANS_SINE)
-	_ring_tween.tween_property(_dim_canvas, "ring_alpha", 1.0, 0.55).set_trans(Tween.TRANS_SINE)
+	# No animations: the ring stays at full strength.
+	if not PixelUI.no_animations_enabled():
+		_ring_tween = create_tween().set_loops()
+		_ring_tween.tween_property(_dim_canvas, "ring_alpha", 0.35, 0.55).set_trans(Tween.TRANS_SINE)
+		_ring_tween.tween_property(_dim_canvas, "ring_alpha", 1.0, 0.55).set_trans(Tween.TRANS_SINE)
 
 	_coach = PanelContainer.new()
 	_coach.mouse_filter = Control.MOUSE_FILTER_STOP

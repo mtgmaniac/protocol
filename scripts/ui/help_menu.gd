@@ -4,6 +4,7 @@
 class_name HelpMenu
 extends CanvasLayer
 
+const AutoPick := preload("res://scripts/battle/auto_pick.gd")
 const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8)
 # ...except while THIS screen is showing a breakdown: a popup the help menu
 # itself opened has to render above the help panel, so the menu ducks under
@@ -748,8 +749,16 @@ func _build_settings(host: VBoxContainer) -> void:
 	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
 
 	host.add_child(_make_label("ACCESSIBILITY", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
-	_add_toggle_row(host, "Reduced motion", PixelUI.reduced_motion_enabled(), _on_toggle_reduced_motion)
+	# Each row shows its OWN stored setting (No animations implies reduced
+	# motion in PixelUI, which must not flip the Reduced motion row).
+	_add_toggle_row(host, "Reduced motion", _setting_on("reduced_motion"), _on_toggle_reduced_motion)
 	host.add_child(_make_wrap_label("Less shake, flashing and zoom. Dice and results stay visible.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
+	_add_toggle_row(host, "No animations", _setting_on(PixelUI.NO_ANIMATIONS_SETTING),
+		_on_toggle_setting.bind(PixelUI.NO_ANIMATIONS_SETTING)).name = "NoAnimationsToggleRow"
+	host.add_child(_make_wrap_label("Effects appear at once with no movement or fading. Dice still roll.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
+	_add_toggle_row(host, "Auto-select sole valid target", _setting_on(AutoPick.SETTING),
+		_on_toggle_setting.bind(AutoPick.SETTING)).name = "AutoSelectToggleRow"
+	host.add_child(_make_wrap_label("When an action has only one valid target, it is picked for you.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
 
 	# --- Tutorials (Kev 2026-07-10) ---
 	host.add_child(_make_label("TUTORIALS", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
@@ -840,6 +849,18 @@ func _on_toggle_reduced_motion(pressed: bool) -> void:
 	var sm: Variant = _save_manager()
 	if sm != null:
 		sm.set_setting("reduced_motion", pressed)
+
+
+# A plain stored on/off setting (off by default), by its SaveManager key.
+func _on_toggle_setting(pressed: bool, key: String) -> void:
+	var sm: Variant = _save_manager()
+	if sm != null:
+		sm.set_setting(key, pressed)
+
+
+func _setting_on(key: String) -> bool:
+	var sm: Variant = _save_manager()
+	return sm != null and bool(sm.get_setting(key, false))
 
 
 func _on_toggle_ability_primers(pressed: bool) -> void:

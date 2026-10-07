@@ -228,6 +228,14 @@ GATES = [
     # G-47: a reroll is a hop in the die's own slot (uniform faces, no contact,
     # never leaves its slot, the snap never changes the face) + 4 deliberate breaks.
     ("reroll hop", [sys.executable, str(ROOT / "scripts" / "checks" / "reroll_hop_gate.py")], "[REROLL_HOP_GATE] PASS", False),
+    # G-49: the two Settings options, each off and on, then deliberate breaks
+    # that must fail (break_gate.py: a clean pass alone proves nothing).
+    ("auto-select target", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "AUTO_PICK",
+        "--script", "scripts/debug/auto_pick_test.gd", "--break-arg=--auto-pick-break=", "--breaks", "off,any_count,no_cue"],
+        "[AUTO_PICK_GATE] PASS", False),
+    ("no animations", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "NO_ANIMATIONS",
+        "--script", "scripts/debug/no_animations_test.gd", "--break-arg=--no-animations-break=", "--breaks", "ignored"],
+        "[NO_ANIMATIONS_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
     # Text legibility Step 1 (docs/audits/TEXT_LEGIBILITY_AUDIT.md): every live

@@ -2490,7 +2490,7 @@ func play_jam_flicker(side: String, unit_id: String, jam_cap: int) -> void:
 		return
 	_set_die_jam_visual(die, jam_cap if jam_cap > 0 else JAM_FALLBACK_CAP)
 	var filter: MeshInstance3D = _die_part(die, "JamFilter") as MeshInstance3D
-	if filter == null:
+	if filter == null or PixelUI.no_animations_enabled():
 		return
 	var tween: Tween = create_tween()
 	for _i in 3:

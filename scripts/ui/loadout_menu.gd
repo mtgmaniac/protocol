@@ -532,6 +532,13 @@ func _flash_row_rejected(row: Control) -> void:
 		return
 	row.modulate = Color(1.0, 0.30, 0.30, 1.0)
 	var tween := create_tween()
+	if PixelUI.no_animations_enabled():
+		# Still red for the same time, then back in one step.
+		tween.tween_interval(0.35)
+		tween.tween_callback(func() -> void:
+			if is_instance_valid(row):
+				row.modulate = Color(1.0, 1.0, 1.0, 1.0))
+		return
 	tween.tween_property(row, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.35) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 

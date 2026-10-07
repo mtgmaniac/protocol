@@ -1956,9 +1956,35 @@ static func _to_design(physical_px: float, inv_scale: float) -> int:
 
 
 # Optional presentation preference; safe for class-name consumers in test rigs.
+# "No animations" turns off everything Reduced Motion does and more, so it
+# counts as reduced motion too.
 static func reduced_motion_enabled() -> bool:
+	return _setting_on("reduced_motion") or no_animations_enabled()
+
+
+const NO_ANIMATIONS_SETTING := "no_animations"
+## Debug-build seam for the `no animations` gate's deliberate break (never set
+## by the game): `ignored` makes the setting do nothing.
+const NO_ANIMATIONS_BREAK_ARG := "--no-animations-break="
+static var _no_animations_break: String = "?"
+
+
+## "No animations" (G-49, off by default): the animation Reduced Motion still
+## leaves is off too (fades, bar drains, pulses, flashes, hit pauses). Dice
+## motion and the pause between actions are not part of it.
+static func no_animations_enabled() -> bool:
+	if _no_animations_break == "?":
+		_no_animations_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(NO_ANIMATIONS_BREAK_ARG):
+					_no_animations_break = arg.trim_prefix(NO_ANIMATIONS_BREAK_ARG)
+	return _no_animations_break != "ignored" and _setting_on(NO_ANIMATIONS_SETTING)
+
+
+static func _setting_on(key: String) -> bool:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null:
 		return false
 	var settings := tree.root.get_node_or_null("SaveManager")
-	return settings != null and bool(settings.get_setting("reduced_motion", false))
+	return settings != null and bool(settings.get_setting(key, false))

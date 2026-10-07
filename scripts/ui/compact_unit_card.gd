@@ -583,6 +583,13 @@ func _set_hp_display(displayed: float, forecast: float) -> void:
 		return
 	if animating:
 		_hp_drain_tween.kill()
+	if PixelUI.no_animations_enabled():
+		# No animations: the bar lands on its new value at once.
+		_hp_drain_tween = null
+		_set_bar_right(_hp_fill, displayed)
+		_set_chip_span(forecast, displayed)
+		_hp_ratio_shown = displayed
+		return
 	_hp_drain_tween = create_tween()
 	_hp_drain_tween.set_parallel(true)
 	if displayed < old_displayed:

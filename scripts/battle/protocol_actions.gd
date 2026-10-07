@@ -21,6 +21,8 @@
 class_name ProtocolActions
 extends Node
 
+const AutoPick := preload("res://scripts/battle/auto_pick.gd")
+
 var _scene: Node = null
 var _reroll_busy: bool = false
 
@@ -374,6 +376,7 @@ func _on_reroll_button_pressed() -> void:
 		return
 	AudioManager.play_select()
 	_scene.transition(_scene.PHASE_REROLL_PICK)
+	_auto_pick_armed()
 
 
 func _on_nudge_button_pressed() -> void:
@@ -397,6 +400,7 @@ func _on_nudge_button_pressed() -> void:
 		return
 	AudioManager.play_select()
 	_scene.transition(_scene.PHASE_NUDGE_PICK)
+	_auto_pick_armed()
 
 
 func _add_nudge_button() -> void:
@@ -583,6 +587,30 @@ func _on_set_button_pressed() -> void:
 		return
 	AudioManager.play_select()
 	_scene.transition(_scene.PHASE_SET_PICK)
+	_auto_pick_armed()
+
+
+# Setting "Auto-select sole valid target" (AutoPick, off by default): the
+# action just armed has exactly one valid target, so the pick is made through
+# the same handler a tap reaches and a note names it. True when it picked.
+var _set_value_note: String = ""
+
+func _auto_pick_armed() -> bool:
+	var pick: Dictionary = AutoPick.sole_target(self)
+	if pick.is_empty():
+		return false
+	var note: String = AutoPick.cue_text(pick)
+	# Set opens its value popup over the board, so the note goes inside it.
+	var on_set: bool = _scene.turn_phase == _scene.PHASE_SET_PICK
+	_set_value_note = note if on_set else ""
+	if str(pick["side"]) == "enemy":
+		handle_enemy_card_pressed(str(pick["id"]))
+	else:
+		handle_hero_card_pressed(str(pick["id"]))
+	_set_value_note = ""
+	if not on_set and note != "":
+		_scene._relics.show_pick_note(note, _scene._relics.PICK_NOTE_HOLD)
+	return true
 
 
 func _attach_protocol_inspect(button: Button, action_key: String) -> void:
@@ -690,6 +718,13 @@ func _open_set_value_popup() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	PixelUI.style_label(title, 36, PixelUI.INSPECT_TEXT_DIM, 3)
 	vb.add_child(title)
+	if _set_value_note != "":
+		var note: Label = Label.new()
+		note.name = "AutoPickNote"
+		note.text = _set_value_note
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		PixelUI.style_label(note, 36, PixelUI.DT_AMBER, 3)
+		vb.add_child(note)
 
 	_set_value_display = Label.new()
 	_set_value_display.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -971,7 +1006,8 @@ func _on_item_button_pressed(item: ItemData) -> bool:
 			_cancel_item_targeting("%s cannot find a valid target type." % item.display_name)
 
 	if _scene.is_item_pick_phase(_scene.turn_phase):
-		_show_item_targeting_card(item)
+		if not _auto_pick_armed():
+			_show_item_targeting_card(item)
 	elif _scene.turn_phase == _scene.PHASE_ITEM_CONFIRM:
 		_show_item_targeting_card(item, true)
 	return true
@@ -1105,6 +1141,8 @@ func _add_confirm_card_highlight(card: PanelContainer) -> void:
 	# (pixel-snap law — the old 7 was already min_stroke'd elsewhere).
 	ring.add_theme_stylebox_override("panel", PixelUI.make_hard_style(Color.TRANSPARENT, PixelUI.DT_HERO_DITHER, 8))
 	card.add_child(ring)
+	if PixelUI.no_animations_enabled():
+		return
 	# Bound to the card so the loop dies with it; pulses the ring's alpha as the "tap me" cue.
 	var tween := card.create_tween().set_loops()
 	tween.tween_property(ring, "modulate:a", 0.25, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

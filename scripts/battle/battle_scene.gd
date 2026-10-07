@@ -743,7 +743,7 @@ func _pulse_tutorial_redirect(rect: Rect2, primary: bool = true) -> void:
 	if PixelUI.reduced_motion_enabled():
 		ring.modulate.a = peak
 		tween.tween_interval(TUTORIAL_REDIRECT_CYCLES * TUTORIAL_REDIRECT_HALF_CYCLE * 1.7)
-		tween.tween_property(ring, "modulate:a", 0.0, 0.15)
+		tween.tween_property(ring, "modulate:a", 0.0, 0.0 if PixelUI.no_animations_enabled() else 0.15)
 		tween.tween_callback(ring.queue_free)
 		return
 	for _cycle in range(TUTORIAL_REDIRECT_CYCLES):

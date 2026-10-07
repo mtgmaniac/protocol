@@ -502,6 +502,8 @@ func _find_card_by_state_id(side: String, state_id: String) -> Control:
 # ── Visual primitives ─────────────────────────────────────────────────────────
 
 func _flash_card(card: Control, event_type: String) -> void:
+	if PixelUI.no_animations_enabled():
+		return
 	var tween: Tween = create_tween()
 	var base_modulate: Color = card.modulate
 	var flash_color: Color = Color(1, 1, 1, 1)
@@ -656,10 +658,14 @@ func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	# Rise over the whole lifetime; hold full alpha for a beat, then fade out.
+	# No animations: the number stays put at full strength, then is removed.
 	var tween: Tween = label.create_tween()
-	tween.tween_property(label, "position", label.position + Vector2(0, -rise), FLOAT_LIFETIME)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, FLOAT_LIFETIME - FLOAT_FADE_HOLD) \
-		.set_delay(FLOAT_FADE_HOLD)
+	if PixelUI.no_animations_enabled():
+		tween.tween_interval(FLOAT_LIFETIME)
+	else:
+		tween.tween_property(label, "position", label.position + Vector2(0, -rise), FLOAT_LIFETIME)
+		tween.parallel().tween_property(label, "modulate:a", 0.0, FLOAT_LIFETIME - FLOAT_FADE_HOLD) \
+			.set_delay(FLOAT_FADE_HOLD)
 	tween.tween_callback(label.queue_free)
 
 
@@ -762,7 +768,7 @@ const SLOWMO_REAL_DUR := 0.12
 var _global_fx_active: bool = false
 
 func _hit_pause(amount: int, extra: float = 0.0) -> void:
-	if _global_fx_active:
+	if _global_fx_active or PixelUI.no_animations_enabled():
 		return
 	if not is_inside_tree() or get_tree() == null:
 		return
@@ -779,7 +785,7 @@ func _hit_pause(amount: int, extra: float = 0.0) -> void:
 # wall-clock duration regardless of the slowed scene clock. Shares the arbiter
 # gate with _hit_pause, so a slow-mo and a hit-pause can never stack.
 func _slow_mo() -> void:
-	if _global_fx_active:
+	if _global_fx_active or PixelUI.no_animations_enabled():
 		return
 	if not is_inside_tree() or get_tree() == null:
 		return
@@ -1208,6 +1214,11 @@ func _drift_pip(from_position: Vector2, to_card: Control, color: Color, text: St
 	pip.z_index = 195
 	pip.position = from_position - layer_origin
 	_scene.float_layer.add_child(pip)
+	if PixelUI.no_animations_enabled():
+		# No drift, no fade: the label sits on its target for the same time.
+		pip.position = to_card.get_global_rect().get_center() - layer_origin
+		get_tree().create_timer(0.54).timeout.connect(pip.queue_free)
+		return
 	var tween: Tween = create_tween()
 	tween.tween_property(pip, "position", to_card.get_global_rect().get_center() - layer_origin, 0.40) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
@@ -1257,7 +1268,7 @@ func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
 	if PixelUI.reduced_motion_enabled():
 		var fade := label.create_tween()
 		fade.tween_interval(0.62)
-		fade.tween_property(label, "modulate:a", 0.0, 0.12)
+		fade.tween_property(label, "modulate:a", 0.0, 0.0 if PixelUI.no_animations_enabled() else 0.12)
 		fade.tween_callback(label.queue_free)
 		return
 	label.scale = Vector2(0.2, 0.2)
