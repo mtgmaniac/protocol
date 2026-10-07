@@ -52,3 +52,6 @@ results/
 # launch and deletes it on clean exit; never source, locked while editor runs)
 ~*.dll
 ~*.dll~*.TMP
+
+# Hop launch capture frames (scripts/debug/hop_launch_capture.gd); regenerate, don't commit
+docs/ui_reference/hop_launch/
