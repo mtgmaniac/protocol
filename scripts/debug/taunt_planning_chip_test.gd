@@ -57,7 +57,13 @@ func _run() -> void:
 		_finish()
 		return
 	var rig: Dictionary = {}
-	var hero_vals := [2, 9, 3]   # Sentinel rolls 3: Challenge (4 shield, taunt)
+	# The face comes from the data: the lowest one in Sentinel's taunt band.
+	var taunt_roll: int = 0
+	for band in heroes[2]["unit"].dice_ranges:
+		if bool(((band as Dictionary).get("raw", {}) as Dictionary).get("taunt", false)):
+			taunt_roll = int((band as Dictionary).get("min", 0))
+	_check(taunt_roll > 0, "fixture: Sentinel has a taunt band")
+	var hero_vals := [2, 9, taunt_roll]   # Sentinel rolls Challenge (4 shield, taunt)
 	for i in heroes.size():
 		rig["hero:%s" % heroes[i]["id"]] = hero_vals[i]
 	for e in enemies:

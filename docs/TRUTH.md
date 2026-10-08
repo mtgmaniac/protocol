@@ -1,5 +1,149 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-08 new roll windows (Kev, G-53; on branch `claude/cloak-and-windows`, not merged):**
+every unit keeps its five bands and its abilities. Only the ranges changed.
+Very few units fire their top ability on more than a 20.
+
+- **Heroes and evolutions** (`range` on each ability in
+  `data/raw/heroes.data.json`):
+
+| Unit | Band 1 | Band 2 | Band 3 | Band 4 | Top |
+|---|---|---|---|---|---|
+| **Pulse Tech** | 1–5 | 6–9 | 10–13 | 14–19 | 20 |
+| Pyro Specialist | 1–6 | 7–9 | 10–12 | 13–18 | 19–20 |
+| Arc Specialist | 1–3 | 4–8 | 9–14 | 15–19 | 20 |
+| **Strike Unit** | 1–5 | 6–10 | 11–14 | 15–19 | 20 |
+| Blade Trooper | 1–3 | 4–8 | 9–15 | 16–19 | 20 |
+| Ravager | 1–7 | 8–9 | 10–11 | 12–19 | 20 |
+| **Spike Guard** | 1–2 | 3–8 | 9–15 | 16–19 | 20 |
+| Bulwark | 1–2 | 3–10 | 11–17 | 18–19 | 20 |
+| Sentinel | 1–2 | 3–7 | 8–14 | 15–19 | 20 |
+| **Avalanche Suit** | 1–3 | 4–9 | 10–14 | 15–19 | 20 |
+| Glacier Rig | 1–3 | 4–11 | 12–16 | 17–19 | 20 |
+| Trench Rig | 1–2 | 3–9 | 10–16 | 17–19 | 20 |
+| **Splice Medic** | 1–4 | 5–9 | 10–14 | 15–19 | 20 |
+| Combat Medic | 1–3 | 4–9 | 10–15 | 16–19 | 20 |
+| Synth Medic | 1–3 | 4–8 | 9–13 | 14–19 | 20 |
+| **Field Engineer** | 1–4 | 5–10 | 11–14 | 15–19 | 20 |
+| Overclock Engineer | 1–6 | 7–9 | 10–13 | 14–19 | 20 |
+| Phantom Engineer | 1–3 | 4–10 | 11–15 | 16–19 | 20 |
+| **Ghost Operative** | 1–6 | 7–10 | 11–13 | 14–19 | 20 |
+| Shadow Operative | 1–4 | 5–7 | 8–10 | 11–19 | 20 |
+| Wraith | 1–6 | 7–10 | 11–14 | 15–18 | 19–20 |
+| **Signal Breaker** | 1–2 | 3–9 | 10–15 | 16–19 | 20 |
+| Noise Specialist | 1–2 | 3–10 | 11–16 | 17–19 | 20 |
+| Nullwire | 1–4 | 5–8 | 9–15 | 16–19 | 20 |
+
+- **Enemies: one shape per operation**, adjusted by role. Shapes (band 1 /
+  2 / 3 / 4 / top): Facility 1–3 / 4–9 / 10–15 / 16–19 / 20 · Hive 1–5 /
+  6–11 / 12–16 / 17–19 / 20 · Veil 1–3 / 4–8 / 9–15 / 16–19 / 20 · Signal
+  Purge 1–4 / 5–8 / 9–12 / 13–19 / 20 · Mantle Hunt 1–6 / 7–9 / 10–12 /
+  13–19 / 20. **Regular** enemies and **bosses** use the shape as it is.
+  **Tanks and supports** move one face from each end into the middle: band 1
+  gives its last face to band 2, band 4 gives its first face to band 3.
+  **Elites** have band 4 one face wider, taken from band 3. **Phaseblade and
+  Spine Stalker** are elites whose top band is 19–20 (band 4 ends at 18).
+  Every other enemy tops out on the 20 alone. Roles are the game's own
+  (`DataManager._classify_enemy_role`: fodder = regular, heavy = tank,
+  support, elite; the five units with a standing rule are the bosses).
+
+| Operation | Unit | Role | Band 1 / 2 / 3 / 4 / top |
+|---|---|---|---|
+| Facility | Scrap Drone | regular | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Facility | Rust Drone | regular | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Facility | Static Skimmer | regular | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Facility | Patrol Enforcer | elite | 1–3 / 4–9 / 10–14 / 15–19 / 20 |
+| Facility | Shield Enforcer | support | 1–2 / 3–9 / 10–16 / 17–19 / 20 |
+| Facility | Heavy Warden | tank | 1–2 / 3–9 / 10–16 / 17–19 / 20 |
+| Facility | Volt Enforcer | elite | 1–3 / 4–9 / 10–14 / 15–19 / 20 |
+| Facility | Scrapmaster | boss | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Hive | Skitterling | regular | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
+| Hive | Bloodmite | regular | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
+| Hive | Spine Stalker | elite | 1–5 / 6–11 / 12–15 / 16–18 / 19–20 |
+| Hive | Carapace Beetle | support | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
+| Hive | Broodwarden | tank | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
+| Hive | Caustic Spewer | tank | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
+| Hive | Hive Matriarch | boss | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
+| Veil | Shard Drone | regular | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
+| Veil | Prism Charger | regular | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
+| Veil | Aegis Anchor | support | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Resonance Warden | tank | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Phaseblade | elite | 1–3 / 4–8 / 9–14 / 15–18 / 19–20 |
+| Veil | Stormweaver | tank | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Relay Herald | support | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Veil Overseer | boss | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
+| Signal Purge | Signal Wisp | regular | 1–4 / 5–8 / 9–12 / 13–19 / 20 |
+| Signal Purge | Circuit Acolyte | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Signal Purge | Cipher Scribe | support | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
+| Signal Purge | Oath Binder | tank | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
+| Signal Purge | False Image | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Signal Purge | Ash Channeler | tank | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
+| Signal Purge | Signal Hierophant | boss | 1–4 / 5–8 / 9–12 / 13–19 / 20 |
+| Mantle Hunt | Pumice Climber | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+| Mantle Hunt | Obsidian Hound | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+| Mantle Hunt | Slag Hound | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+| Mantle Hunt | Geode Panther | elite | 1–6 / 7–9 / 10–11 / 12–19 / 20 |
+| Mantle Hunt | Basalt Ape | tank | 1–5 / 6–9 / 10–13 / 14–19 / 20 |
+| Mantle Hunt | Cinder Raptor | elite | 1–6 / 7–9 / 10–11 / 12–19 / 20 |
+| Mantle Hunt | Magma Drake | tank | 1–5 / 6–9 / 10–13 / 14–19 / 20 |
+| Mantle Hunt | Mantle Tyrant | boss | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+
+- **The ranges are data.** Each enemy kit carries a `range` per band in
+  `data/raw/enemies.data.json`, as heroes always have; the shared table
+  `DataManager.ENEMY_ZONE_RANGES` (1–4 / 5–10 / 11–16 / 17–19 / 20 for every
+  enemy) is deleted, with its two copies in tool scripts. Nothing that shows a
+  range holds one: the inspect table, the evolution screen, the briefing and
+  the die's long-press all print the loaded `min` / `max`. `heroZones` at the
+  top of heroes.data.json is a copy of the base ranges; the gate keeps it
+  equal. Text written before this date that names an enemy's "1-4" band means
+  its first band.
+- **Roll modifiers and printed faces** are unchanged: a die's printed faces
+  are its effective values and the band is looked up from the value it rests
+  on, clamped to 1–20.
+- **Gear that moves a band edge never empties a band.** Band Compressor, Wide
+  Aperture, Standing Order and the Splice Deal take faces from the
+  neighbouring band, which always keeps one (`DiceManager._grow_down` /
+  `_grow_up`). With two-face bands in the data this now matters: Ravager's
+  8–9 gives Wide Aperture one face, not two, and gives the Splice Deal one.
+  Band Compressor does nothing for Pyro and Wraith, whose top band is already
+  19–20.
+- **Tutorial:** the scripted die for Pulse Tech in battle 2, round 1 is 6 (was
+  4). Its Burn lesson needs Arc Burst, which moved from 4–9 to 6–9. Every
+  other scripted die lands in the same band as before. No throw was
+  re-recorded: a recording is turned to show the requested face. Outcomes
+  re-measured with `scripts/debug/tutorial_outcome_sim.gd` (1,000 seeds per
+  battle, two policies): no losses, no stalls; median / longest win 3 / 6 and
+  4 / 7 rounds (basic), 3 / 5 and 4 / 6 (L1).
+- **Sim, baseline not re-pinned (Kev decides after review):**
+
+| Clear rate | before (`main`) | cloak only | cloak + windows | change |
+|---|--:|--:|--:|--:|
+| **Pinned 300 runs** overall | 28.0% | 27.3% | 24.0% | -4.0 |
+| Facility | 40.8% | 42.3% | 32.4% | -8.5 |
+| Hive | 25.4% | 28.8% | 32.2% | +6.8 |
+| Veil | 26.2% | 26.2% | 21.5% | -4.6 |
+| Signal Purge | 28.1% | 19.3% | 19.3% | -8.8 |
+| Mantle Hunt | 14.6% | 14.6% | 10.4% | -4.2 |
+| **1,500 matched runs** overall | 26.7% | 30.3% | 23.9% | -2.8 |
+| Facility | 37.5% | 42.2% | 32.4% | -5.1 |
+| Hive | 29.4% | 37.0% | 38.3% | +8.9 |
+| Veil | 23.3% | 25.0% | 17.7% | -5.6 |
+| Signal Purge | 27.2% | 29.8% | 17.9% | -9.3 |
+| Mantle Hunt | 16.7% | 18.0% | 13.5% | -3.2 |
+
+  The windows alone cost the squad about 6 points overall (30.3% to 23.9%):
+  every operation but Hive gets harder. Hero by hero and the Signal
+  Hierophant by squad: `HANDOFF_2026-10-08_cloak_and_windows.md`.
+
+- Gates: `roll windows` (`scripts/checks/roll_windows.py`: five contiguous
+  bands covering 1–20 for every hero, evolution and enemy kit; only Pyro,
+  Wraith, Phaseblade and Spine Stalker wider than the 20 at the top;
+  `heroZones` equal; no shared table; eleven in-memory breaks) and `roll
+  windows live` (`scripts/debug/roll_windows_test.gd`: the loaded resources
+  equal the data, every face resolves to its band, the inspect table follows
+  the data, the four band shifts on all 24 hero kits; breaks `shared_table`,
+  `squeeze`).
+
 **2026-10-08 cloak is an ambush (Kev, G-52; on branch `claude/cloak-and-windows`, not merged):**
 cloak made a unit untargetable but broke on its first attack and paid nothing
 for it, so it almost never lasted and cloak items were wasted on attackers.
@@ -603,6 +747,8 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 direc
 | `ghost` | Ghost Operative | GHOST | control | 45 | Shadow (SHADOW) / Wraith (WRAITH) |
 | `breaker` | Signal Breaker | BREAKER | control | 45 | Noise (NOISE) / Nullwire (NULLWIRE) |
 
+**Roll windows:** each kit's five ranges are in the 2026-10-08 "new roll windows" entry at the top (heroes, evolutions and every enemy). They are data (`range` per ability), never code.
+
 **Legacy id quirks (do NOT change):** Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`. Freeze belongs to the Avalanche line only (hero-side); ±Roll chips to the Signal Breaker line only. Starters: `combat`, `engineer`, `medic`, `pulse`; the default selected squad remains `combat`, `engineer`, `medic`. Avalanche unlocks at hero-ladder rung 1.
 
 **Unit Category is INTERNAL-ONLY (Batch 2, do NOT surface player-side):** the `pickerCategory` field (damage/defense/support/control) stays in the data and drives backend ordering + role-badge tint, but is **never shown to the player as text** (`home_screen.gd:869` hides the category chip). Do not "fix" it back into any card/detail UI — its absence from player copy is deliberate. **Violation looks like:** a category label rendered on a unit card, squad tile, or detail panel; or code reading `picker_category` to build visible player text.
@@ -680,6 +826,8 @@ the condition icon participates in first-sight primer teaching like any other ic
 | `veil` | Veil Breach | lattice: ally shields, firewalls, buffs | Veil Overseer (+Aegis Anchor) |
 | `voidCirclet` | Signal Purge | machine cult: rewrite, hijack, siphon, ±roll | Signal Hierophant (+Cipher Scribe) |
 | `stellarMenagerie` | Mantle Hunt | igneous beasts: accrete, petrify, spike, cloak | Mantle Tyrant (+Geode Panther) |
+
+**Enemy roll windows (G-53, 2026-10-08):** one shape per operation, adjusted by role (regular / tank / support / elite / boss); only Phaseblade and Spine Stalker top out on 19–20. Each kit's `range` per band is in `enemies.data.json`; full table in the top entry. The old single table (1–4 / 5–10 / 11–16 / 17–19 / 20 for every enemy) is gone.
 
 Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, Conclave Bulwark, Harmonic Mend, Annulment, Synaptic Tune · 4 Synod: Seal Sigil, Init Collar, Mass Snare, Hierophant Mantle). Enemies don't use Protocol.
 

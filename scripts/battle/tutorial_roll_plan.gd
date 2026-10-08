@@ -9,7 +9,9 @@ static func heroes(battle: int, round_number: int) -> Dictionary:
 		if round_number == 2:
 			return {"combat": 8, "engineer": 6, "medic": 3}
 	elif battle == 2 and round_number == 1:
-		return {"combat": 3, "pulse": 4, "medic": 3}
+		# Pulse was 4 until the 2026-10-08 roll windows: its burn lesson needs
+		# Arc Burst, which moved from 4-9 to 6-9.
+		return {"combat": 3, "pulse": 6, "medic": 3}
 	return {}
 
 

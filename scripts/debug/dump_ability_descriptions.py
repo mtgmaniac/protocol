@@ -10,13 +10,6 @@ HEROES_PATH = ROOT / "data/raw/heroes.data.json"
 ENEMIES_PATH = ROOT / "data/raw/enemies.data.json"
 OUT_PATH = ROOT / "docs/ABILITY_DESCRIPTIONS_FULL.md"
 
-ENEMY_ZONE_RANGES = {
-    "recharge": (1, 4),
-    "strike": (5, 10),
-    "surge": (11, 16),
-    "crit": (17, 19),
-    "overload": (20, 20),
-}
 ZONES = ["recharge", "strike", "surge", "crit", "overload"]
 
 
@@ -59,7 +52,7 @@ def inspect_resolver_ability_text(raw: dict) -> str:
         pct = int(raw.get("revivePct", 50) or 50)
         parts.append(f"Revive a fallen ally at {pct}% max HP.")
     if raw.get("cloak"):
-        parts.append("Cloak: untargetable by hostile single-target abilities; breaks on dealing damage or an AoE hit.")
+        parts.append("Cloak: untargetable by hostile single-target abilities; its next attack deals +50% damage and breaks the cloak; an AoE hit breaks it too.")
     if raw.get("taunt"):
         parts.append("Taunt: enemies must target this unit.")
     if raw.get("ignSh"):
@@ -125,7 +118,7 @@ def main() -> None:
             if not ab:
                 continue
             enemy_count += 1
-            lo, hi = ENEMY_ZONE_RANGES[zone]
+            lo, hi = ab["range"]
             roll = f"{lo}-{hi}" if lo != hi else str(lo)
             name = ab.get("name", "")
             eff = ab.get("eff", "")

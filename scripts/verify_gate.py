@@ -268,6 +268,16 @@ GATES = [
         "--script", "scripts/debug/cloak_ambush_test.gd", "--break-arg=--cloak-ambush-break=",
         "--breaks", "no_bonus,always,keep_cloak,fizzle,first,no_chip"],
         "[CLOAK_AMBUSH_GATE] PASS", False),
+    # Roll windows (G-53, Kev 2026-10-08): every hero, evolution and enemy kit
+    # has five contiguous bands covering 1-20, and only Pyro, Wraith, Phaseblade
+    # and Spine Stalker have a top band wider than the 20. Static over the data
+    # (eleven in-memory breaks), then the loaded resources, the inspect table
+    # and the band-shifting gear at run time (two breaks).
+    ("roll windows", [sys.executable, str(ROOT / "scripts" / "checks" / "roll_windows.py")], "[ROLL_WINDOWS] PASS", False),
+    ("roll windows live", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "ROLL_WINDOWS_LIVE",
+        "--script", "scripts/debug/roll_windows_test.gd", "--break-arg=--roll-windows-break=",
+        "--breaks", "shared_table,squeeze"],
+        "[ROLL_WINDOWS_LIVE_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
     # automatic resume share a flag key by copy; plus listener order and copy.

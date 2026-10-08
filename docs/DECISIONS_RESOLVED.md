@@ -1,5 +1,119 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-53. New roll windows for every unit (Kev, 2026-10-08)
+
+**Ruling (Kev, transcribed from the task).** "Every unit keeps five bands and
+its current abilities. Only the ranges change. Very few units fire their top
+move on more than a 20.
+
+Heroes and evolutions, exactly as follows (band 1 -> top):
+- Pulse Tech 1–5 / 6–9 / 10–13 / 14–19 / 20
+  - Pyro 1–6 / 7–9 / 10–12 / 13–18 / 19–20
+  - Arc 1–3 / 4–8 / 9–14 / 15–19 / 20
+- Strike Unit 1–5 / 6–10 / 11–14 / 15–19 / 20
+  - Bladecore 1–3 / 4–8 / 9–15 / 16–19 / 20
+  - Ravager 1–7 / 8–9 / 10–11 / 12–19 / 20
+- Spike Guard 1–2 / 3–8 / 9–15 / 16–19 / 20
+  - Bulwark 1–2 / 3–10 / 11–17 / 18–19 / 20
+  - Sentinel 1–2 / 3–7 / 8–14 / 15–19 / 20
+- Avalanche Suit 1–3 / 4–9 / 10–14 / 15–19 / 20
+  - Glacier 1–3 / 4–11 / 12–16 / 17–19 / 20
+  - Trench 1–2 / 3–9 / 10–16 / 17–19 / 20
+- Splice Medic 1–4 / 5–9 / 10–14 / 15–19 / 20
+  - Medic 1–3 / 4–9 / 10–15 / 16–19 / 20
+  - Synth 1–3 / 4–8 / 9–13 / 14–19 / 20
+- Field Engineer 1–4 / 5–10 / 11–14 / 15–19 / 20
+  - Overclocked 1–6 / 7–9 / 10–13 / 14–19 / 20
+  - Phantom 1–3 / 4–10 / 11–15 / 16–19 / 20
+- Ghost Operative 1–6 / 7–10 / 11–13 / 14–19 / 20
+  - Shadow 1–4 / 5–7 / 8–10 / 11–19 / 20
+  - Wraith 1–6 / 7–10 / 11–14 / 15–18 / 19–20
+- Signal Breaker 1–2 / 3–9 / 10–15 / 16–19 / 20
+  - Noise 1–2 / 3–10 / 11–16 / 17–19 / 20
+  - Nullwire 1–4 / 5–8 / 9–15 / 16–19 / 20
+
+Enemies: one shape per operation:
+- Facility (steady): 1–3 / 4–9 / 10–15 / 16–19 / 20
+- Hive (swarm): 1–5 / 6–11 / 12–16 / 17–19 / 20
+- Veil (precise middle): 1–3 / 4–8 / 9–15 / 16–19 / 20
+- Signal Purge (heavy band 4): 1–4 / 5–8 / 9–12 / 13–19 / 20
+- Mantle Hunt (swingy): 1–6 / 7–9 / 10–12 / 13–19 / 20
+
+Role adjustments within each operation:
+- Regular enemies: the shape as-is.
+- Tanks and supports: move one face from each end into the middle bands.
+- Elites: widen band 4 by one.
+- Bosses: the operation's shape, top on 20 only.
+- Only Phaseblade and Spine Stalker get a 19–20 top. Every other enemy tops
+  out on 20 alone.
+Classify each enemy's role from its kit, and if one is ambiguous, say which
+role you gave it.
+
+Also:
+- Roll modifiers and printed faces must still work with the new ranges.
+- Ability text, inspect, help and anything showing ranges must update from
+  the data, with no hard-coded ranges.
+- Gate: every unit has exactly five contiguous bands covering 1–20, and only
+  Pyro, Wraith, Phaseblade and Spine Stalker have a top band wider than one
+  face. Add a deliberate break."
+
+**As built:** TRUTH, top entry ("2026-10-08 new roll windows"), with the hero
+table and the full enemy table (unit, operation, role, ranges). Gates `roll
+windows` and `roll windows live`. On branch `claude/cloak-and-windows`,
+waiting for Kev's review. The baseline is not re-pinned.
+
+**My readings, each Kev's to overturn:**
+
+1. **Roles are the game's own classifier**, not a new list:
+   `DataManager._classify_enemy_role`, which already sorts enemies into the
+   encounter slots. `fodder` (a unit whose `ai` is `dumb`) is a regular
+   enemy; `heavy` (90 HP or more) is a tank; `support` (two or more bands
+   that aid an ally) is a support; anything else is an elite. The five units
+   with a standing rule are the bosses.
+2. **"One face from each end into the middle":** band 1 gives its last face
+   to band 2, and band 4 gives its first face to band 3. The top band is the
+   20 alone and has nothing to give, so the upper end is band 4.
+3. **"Widen band 4 by one":** it starts one face lower; band 3 loses that
+   face. The top band stays the 20.
+4. **Phaseblade and Spine Stalker** are elites by their kits, so band 4
+   starts one face lower, then the 19–20 top takes the 19 from it:
+   Phaseblade 1–3 / 4–8 / 9–14 / 15–18 / 19–20, Spine Stalker 1–5 / 6–11 /
+   12–15 / 16–18 / 19–20. Band 4 ends up the same width as the shape's.
+5. **Ambiguous roles, and what I gave them:**
+   - **Cinder Raptor: elite.** 86 HP, under the 90 line. Its kit heals
+     itself and taunts, so tank is the other reading (1–5 / 6–9 / 10–13 /
+     14–19 / 20 instead of 1–6 / 7–9 / 10–11 / 12–19 / 20).
+   - **Ash Channeler: tank.** 94 HP, but its kit is a damage dealer (the
+     Synod's heaviest burn). Elite is the other reading.
+   - **Caustic Spewer: tank.** 90 HP, exactly on the line; its kit is hijack
+     and long burn.
+   - **Oath Binder: tank.** 112 HP; its kit is roll penalties and Protocol
+     drain, not protection.
+   - **Volt Enforcer: elite.** One band shields all allies; the rest is burn.
+   - **Resonance Warden, Stormweaver:** tank by HP and support by kit. The
+     two roles give the same windows.
+   - **Rust Drone, Static Skimmer, Prism Charger: regular.** They debuff or
+     taunt, but they are the small units.
+6. **Evolution names in the ruling** are read as: Pyro = Pyro Specialist, Arc
+   = Arc Specialist, Bladecore = Blade Trooper, Glacier = Glacier Rig, Trench
+   = Trench Rig, Medic = Combat Medic, Synth = Synth Medic, Overclocked =
+   Overclock Engineer, Phantom = Phantom Engineer, Shadow = Shadow Operative,
+   Noise = Noise Specialist.
+7. **The tutorial's scripted Pulse Tech die moves from 4 to 6** (battle 2,
+   round 1) so its Burn lesson still gets Arc Burst. Nothing else in the
+   tutorial changed, and no throw was re-recorded.
+8. **A band shift keeps one face in the band it takes from.** The old
+   arithmetic left an empty or overlapping band once a band had two faces
+   (Ravager 8–9 with Wide Aperture). Wide Aperture then gives Ravager one
+   face, and the Splice Deal one.
+9. **Band Compressor is unchanged**, so it does nothing for Pyro and Wraith
+   (their top band is already 19–20). Say if it should reach 18 for them.
+10. **`heroZones` is kept and gated**, not deleted: the schema requires it
+    and nothing in the game reads it.
+11. **Kits, not units, carry the ranges.** Obsidian Hound and Slag Hound
+    share a kit and a role, so they share windows. The gate fails if a kit is
+    ever shared by a unit with the wide top and one without.
+
 ## G-52. Cloak is an ambush (Kev, 2026-10-08)
 
 **Ruling (Kev, transcribed from the task).** "Today cloak makes a unit

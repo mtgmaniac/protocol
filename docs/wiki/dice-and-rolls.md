@@ -10,18 +10,34 @@ Every living unit rolls one D20 at turn start; all dice roll simultaneously (`sc
 
 Zone thresholds are **per-unit data**, not global constants:
 
-| Hero id | recharge | strike | surge | crit | overload |
+| Unit | band 1 | band 2 | band 3 | band 4 | top |
 |---|---|---|---|---|---|
-| `pulse` | 1–3 | 4–9 | 10–15 | 16–19 | 20 |
-| `combat` (Strike Unit) | 1–4 | 5–10 | 11–15 | 16–19 | 20 |
-| `shield` (Spike Guard) | 1–6 | 7–12 | 13–16 | 17–19 | 20 |
-| `medic` (Splice Medic) | 1–4 | 5–11 | 12–16 | 17–19 | 20 |
-| `engineer` | 1–4 | 5–10 | 11–15 | 16–19 | 20 |
-| `ghost` | 1–2 | 3–8 | 9–13 | 14–19 | 20 |
-| `avalanche` | 1–6 | 7–12 | 13–16 | 17–19 | 20 |
-| `breaker` | 1–2 | 3–8 | 9–13 | 14–19 | 20 |
+| Pulse Tech (`pulse`) | 1–5 | 6–9 | 10–13 | 14–19 | 20 |
+| ↳ Pyro Specialist | 1–6 | 7–9 | 10–12 | 13–18 | 19–20 |
+| ↳ Arc Specialist | 1–3 | 4–8 | 9–14 | 15–19 | 20 |
+| Strike Unit (`combat`) | 1–5 | 6–10 | 11–14 | 15–19 | 20 |
+| ↳ Blade Trooper | 1–3 | 4–8 | 9–15 | 16–19 | 20 |
+| ↳ Ravager | 1–7 | 8–9 | 10–11 | 12–19 | 20 |
+| Spike Guard (`shield`) | 1–2 | 3–8 | 9–15 | 16–19 | 20 |
+| ↳ Bulwark | 1–2 | 3–10 | 11–17 | 18–19 | 20 |
+| ↳ Sentinel | 1–2 | 3–7 | 8–14 | 15–19 | 20 |
+| Avalanche Suit (`avalanche`) | 1–3 | 4–9 | 10–14 | 15–19 | 20 |
+| ↳ Glacier Rig | 1–3 | 4–11 | 12–16 | 17–19 | 20 |
+| ↳ Trench Rig | 1–2 | 3–9 | 10–16 | 17–19 | 20 |
+| Splice Medic (`medic`) | 1–4 | 5–9 | 10–14 | 15–19 | 20 |
+| ↳ Combat Medic | 1–3 | 4–9 | 10–15 | 16–19 | 20 |
+| ↳ Synth Medic | 1–3 | 4–8 | 9–13 | 14–19 | 20 |
+| Field Engineer (`engineer`) | 1–4 | 5–10 | 11–14 | 15–19 | 20 |
+| ↳ Overclock Engineer | 1–6 | 7–9 | 10–13 | 14–19 | 20 |
+| ↳ Phantom Engineer | 1–3 | 4–10 | 11–15 | 16–19 | 20 |
+| Ghost Operative (`ghost`) | 1–6 | 7–10 | 11–13 | 14–19 | 20 |
+| ↳ Shadow Operative | 1–4 | 5–7 | 8–10 | 11–19 | 20 |
+| ↳ Wraith | 1–6 | 7–10 | 11–14 | 15–18 | 19–20 |
+| Signal Breaker (`breaker`) | 1–2 | 3–9 | 10–15 | 16–19 | 20 |
+| ↳ Noise Specialist | 1–2 | 3–10 | 11–16 | 17–19 | 20 |
+| ↳ Nullwire | 1–4 | 5–8 | 9–15 | 16–19 | 20 |
 
-Source: `heroZones` in `data/raw/heroes.data.json` (each ability entry also carries its own `range`). Control heroes (ghost/breaker) have wide crit bands; defense heroes (shield/avalanche) have wide recharge bands. **Every enemy kit uses one fixed table**: recharge 1–4, strike 5–10, surge 11–16, crit 17–19, overload 20 (`DataManager.ENEMY_ZONE_RANGES`, `scripts/autoloads/DataManager.gd:68`). Overload is always exactly 20 for both sides in authored data.
+Ranges as of the 2026-10-08 roll windows (DECISIONS_RESOLVED G-53). Source: the `range` on each ability in `data/raw/heroes.data.json` (base kits and evolutions); `heroZones` at the top of that file is a copy of the base ranges, kept equal by the `roll windows` gate. **Enemy kits carry their own `range` per band** in `data/raw/enemies.data.json`: one shape per operation, adjusted by role (table in TRUTH, "Roll windows"). There is no shared enemy table. Only Pyro, Wraith, Phaseblade and Spine Stalker have a top band wider than the 20 (19–20).
 
 ### Runtime band shifts (heroes only)
 
@@ -30,6 +46,7 @@ Source: `heroZones` in `data/raw/heroes.data.json` (each ability entry also carr
 - **Wide Aperture** gear (`surgeBandExtend`): surge extends N lower.
 - **Standing Order** relic (`critBandExtend`): every crit band extends 1 down.
 - **Splice Deal** intercept (`splice_bands` in `GameState.hero_run_mods`): overload 19–20 + recharge widens 2.
+- A shift never empties the band it takes from: that band always keeps one face, so a two-face band gives up one (Ravager's 8–9 under Wide Aperture gives one face, not two).
 
 ### Where the roll value comes from (determinism fence)
 
@@ -111,7 +128,7 @@ A frozen die crusts static in the tray at its current face — a real physics bl
 - `scripts/battle/protocol_actions.gd` — spend UI, pick sub-phases, legality guards
 - `scripts/battle/combat_manager.gd` — `get_effective_roll`, jam/rewrite/hijack/freeze state
 - `scripts/sim/roll_provider.gd`, `physics_roll_provider.gd`, `seeded_roll_provider.gd` — the determinism seam
-- `data/raw/heroes.data.json` (`heroZones`), `scripts/autoloads/DataManager.gd` (`ENEMY_ZONE_RANGES`)
+- `data/raw/heroes.data.json` and `data/raw/enemies.data.json` (`range` per ability); gates `scripts/checks/roll_windows.py`, `scripts/debug/roll_windows_test.gd`
 
 ## Known edge cases
 

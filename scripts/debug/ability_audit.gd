@@ -6,6 +6,7 @@ const HEROES_DATA_PATH := "res://data/raw/heroes.data.json"
 const ENEMIES_DATA_PATH := "res://data/raw/enemies.data.json"
 const BATTLE_SCENE_SCRIPT := preload("res://scripts/battle/battle_scene.gd")
 const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
+const TutorialRollPlan := preload("res://scripts/battle/tutorial_roll_plan.gd")
 const AUDIT_ROLL := 10
 
 const META_FIELDS := [
@@ -1705,7 +1706,8 @@ func _run_new_relic_regressions() -> void:
 	if order_pulse != null:
 		var saved_relics: Array = GameState.relics.duplicate()
 		GameState.relics = ["standingOrder"]
-		var order_zone: String = str(order_dm.get_ability_for_roll(order_pulse, 15).get("zone", ""))
+		# 13 is the top face of Pulse Tech's 10-13 band; the relic hands it to the band above.
+		var order_zone: String = str(order_dm.get_ability_for_roll(order_pulse, 13).get("zone", ""))
 		GameState.relics = saved_relics
 		_expect_and_record("Regression / relic standingOrder crit extends down", "critBandExtend", "crit", order_zone)
 
@@ -2709,13 +2711,13 @@ func _run_intercept_regressions() -> void:
 		foundry_ok = forged != null and GameState.RARITY_LADDER.find(forged.rarity) == mini(old_tier + 1, 3) and foundry_info != ""
 	_expect_and_record("Regression / intercept foundry upgrade", "interceptEffects", "true", str(foundry_ok))
 
-	# Splice Deal bands: overload 19-20, recharge widened by 2.
+	# Splice Deal bands: overload 19-20, recharge widened by 2 (Pulse Tech's 1-5 becomes 1-7).
 	GameState.hero_run_mods["pulse"] = {"splice_bands": true}
 	var splice_dm: DiceManager = DiceManager.new()
 	var pulse_unit: UnitData = DataManager.get_unit("pulse") as UnitData
 	var splice_ok: bool = (
 		str(splice_dm.get_ability_for_roll(pulse_unit, 19).get("zone", "")) == "overload"
-		and str(splice_dm.get_ability_for_roll(pulse_unit, 5).get("zone", "")) == "recharge"
+		and str(splice_dm.get_ability_for_roll(pulse_unit, 7).get("zone", "")) == "recharge"
 	)
 	_expect_and_record("Regression / intercept splice bands", "interceptEffects", "true", str(splice_ok))
 	GameState.reset_run()
@@ -3389,17 +3391,18 @@ func _run_tutorial_kill_math_regression() -> void:
 	_tutorial_resolve_turn(mgr, {"combat": 8, "engineer": 12, "medic": 3}, ["engineer", "medic", "combat"])
 	_expect_and_record("Tutorial / free T3 reversed order wins without spending", "tutorial", "true", str(bool(enemy["dead"])))
 
-	# The second battle combines real Mark with Pulse's low-band Burn.
+	# The second battle combines real Mark with Pulse's Burn (Arc Burst, 6-9;
+	# the scripted die is the plan's, scripts/battle/tutorial_roll_plan.gd).
 	var practice := CombatManager.new()
 	practice.setup_battle([combat, DataManager.get_unit("pulse"), medic], [scrap.duplicate(true), scrap.duplicate(true)])
-	_tutorial_resolve_turn(practice, {"combat": 3, "pulse": 4, "medic": 3}, ["combat", "pulse", "medic"])
+	_tutorial_resolve_turn(practice, TutorialRollPlan.heroes(2, 1), ["combat", "pulse", "medic"])
 	_expect_and_record("Tutorial / Mark raises Pulse 6 to 9 before delayed Burn", "tutorial", "26", str(int(practice.get_enemy_states()[0].current_hp)))
-	_tutorial_resolve_turn(practice, {"combat": 8, "pulse": 4, "medic": 3}, ["combat", "pulse", "medic"])
+	_tutorial_resolve_turn(practice, {"combat": 8, "pulse": 6, "medic": 3}, ["combat", "pulse", "medic"])
 	_expect_and_record("Tutorial / next turn includes 2 delayed Burn damage", "tutorial", "12", str(int(practice.get_enemy_states()[0].current_hp)))
 
 	# The taught band jump and its double-Nudge safety: 8 -> 11 flips
 	# Suppression Fire (6) into Rail Strike (10); a stray second +3 (14) stays
-	# in Rail Strike's 11-15 band.
+	# in Rail Strike's 11-14 band.
 	var dm := DiceManager.new()
 	var band_11: String = str(dm.get_ability_for_roll(combat, 11).get("ability_name", ""))
 	var band_14: String = str(dm.get_ability_for_roll(combat, 14).get("ability_name", ""))
