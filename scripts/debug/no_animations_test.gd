@@ -9,13 +9,17 @@
 #   ability name on a 20, HP bar, ability pips, item confirm ring, jam flicker
 #   (live battle); tutorial spotlight ring; title buttons and logo exit; scene
 #   transition
-# and what it must NOT touch: the dice still roll for real with it ON.
+# and what it must NOT touch: the dice still roll for real with it ON, and the
+# 20's stinger sound and music duck still play (sound is not motion; checked
+# with everything off, Reduced Motion alone, and No animations).
 # scripts/checks/break_gate.py reruns it with --no-animations-break=ignored
-# (the setting does nothing) and requires a FAIL.
+# (the setting does nothing) and =silent_stinger (reduced motion drops the
+# stinger again) and requires a FAIL from each.
 extends SceneTree
 
 class FloatHost extends Control:
 	var float_layer: Control
+	var board: Control
 
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const MENU_SCENE := "res://scenes/ui/MainMenu.tscn"
@@ -63,6 +67,7 @@ func _run() -> void:
 
 	await _check_settings_rows()
 	await _check_feedback()
+	await _check_stinger()
 	await _check_spotlight()
 	await _check_battle()
 	await _check_menu_and_transition()
@@ -204,6 +209,41 @@ func _check_feedback() -> void:
 		await create_timer(0.85).timeout
 		_expect(not is_instance_valid(name_label), "%s: the ability name is removed" % tag)
 
+	_set_on(false)
+	host.queue_free()
+	await process_frame
+
+
+# ── The 20's stinger: sound is not motion ─────────────────────────────────────
+# Reduced Motion and No animations remove the gold wash and the shake. They
+# never remove the stinger sound or the music duck under it.
+func _check_stinger() -> void:
+	var audio: Node = root.get_node("/root/AudioManager")
+	var music: Node = root.get_node("/root/MusicManager")
+	var host := FloatHost.new()
+	host.size = Vector2(1080, 2400)
+	root.add_child(host)
+	host.float_layer = Control.new()
+	host.add_child(host.float_layer)
+	var feedback: Node = load("res://scripts/battle/battle_feedback.gd").new()
+	host.add_child(feedback)
+	feedback.setup(host)
+	audio.set_suppressed(false)
+	for mode in ["motion on", "Reduced Motion", "No animations"]:
+		sm().set_setting("reduced_motion", mode == "Reduced Motion")
+		_set_on(mode == "No animations")
+		(audio.get("_recent") as Dictionary).erase("overload")
+		var duck_before: Tween = music.get("_duck_tween")
+		var washes_before: int = host.float_layer.get_child_count()
+		feedback._celebrate_overload()
+		_expect((audio.get("_recent") as Dictionary).has("overload"), "%s: a 20 plays its stinger sound" % mode)
+		var duck: Tween = music.get("_duck_tween")
+		_expect(duck != null and duck != duck_before and duck.is_valid(), "%s: a 20 ducks the music under the stinger" % mode)
+		var washed: bool = host.float_layer.get_child_count() > washes_before
+		_expect(washed == (mode == "motion on"), "%s: the gold wash is %s" % [mode, "shown" if mode == "motion on" else "off"])
+		await create_timer(0.4).timeout
+	audio.set_suppressed(true)
+	sm().set_setting("reduced_motion", false)
 	_set_on(false)
 	host.queue_free()
 	await process_frame

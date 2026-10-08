@@ -800,10 +800,15 @@ func _slow_mo() -> void:
 # board-wide shake, framing the payoff beat. Flat, no glow — just a flash. Fires
 # on any ability whose die's final face is 20, however it reached 20 (NK-02).
 func _celebrate_overload() -> void:
-	if PixelUI.reduced_motion_enabled():
+	# Sound is not motion (Kev, 2026-10-08): the stinger and its music duck play
+	# under Reduced Motion and No animations too. Only the wash and the shake
+	# below are motion.
+	var reduced: bool = PixelUI.reduced_motion_enabled()
+	if not (reduced and PixelUI.no_animations_break() == "silent_stinger"):
+		MusicManager.duck_for_stinger()  # drop the bed so the stinger cuts through
+		AudioManager.play_sfx("overload")
+	if reduced:
 		return
-	MusicManager.duck_for_stinger()  # drop the bed so the stinger cuts through
-	AudioManager.play_sfx("overload")
 	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):
 		var wash: ColorRect = ColorRect.new()
 		wash.mouse_filter = Control.MOUSE_FILTER_IGNORE

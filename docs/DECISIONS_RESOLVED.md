@@ -51,18 +51,23 @@ before and 0.34 s after each), because that is what lets each result be read
 in order; timed notes and banners, which appear and go without motion; audio
 fades; the web loader's pulse (it runs before the game can read a setting).
 
-**Dice: not built, waiting on Kev.** With the setting on the dice still throw,
-hop on a reroll, tip onto a changed face, turn upright and slide to their
-slots, exactly as before. Removing any of that touches G-24 (the landed face
-is the roll) or Dice rule 6 (a change is shown as the die moving, never a
-jump). Proposal on the table (2026-10-06 handoff): place the dice already
-showing their roll, drawn from the battle's seeded d20 stream as the
-skip-visuals path does. It needs a ruling that amends G-24 and rule 6 for this
-setting.
+**Sound is not motion (Kev, 2026-10-08).** Reduced Motion dropped the 20's
+stinger sound and the music duck under it, and No animations inherited that.
+Ruling: "Sound isn't motion. Restore the stinger under both settings and gate
+it." Both settings now remove only the gold wash and the shake on a 20. Neither
+setting may silence a sound.
+
+**Dice: ruled (Kev, 2026-10-08): option A, the dice stay as they are.** With
+the setting on the dice still throw, hop on a reroll, tip onto a changed face,
+turn upright and slide to their slots, exactly as before, and the setting's
+line keeps "Dice still roll." The two alternatives from the 2026-10-06 handoff
+(dice placed already showing their roll; a hidden fast throw) are not built.
+Do not re-propose them: G-24 and Dice rule 6 stand for this setting too.
 
 Gates: `auto-select target` and `no animations` (each `scripts/checks/
 break_gate.py` over its test: off and on, then deliberate breaks that must
-fail it).
+fail it; `no animations` also checks the stinger under motion on, Reduced
+Motion and No animations, with a break that silences it).
 
 ## G-48. Resume guard: a CONTINUE that hangs on load offers an earlier point (Kev, 2026-10-06)
 

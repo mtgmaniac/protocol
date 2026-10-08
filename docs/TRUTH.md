@@ -1,5 +1,17 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-08 follow-ups to the resume guard and the two settings (Kev):**
+
+- **The 20's stinger sound always plays.** Reduced Motion (and No animations,
+  which includes it) used to drop the stinger and the music duck under it along
+  with the gold wash and the shake, because all four sat behind one early
+  return in `BattleFeedback._celebrate_overload`. Sound is not motion: the
+  stinger and the duck now play under both settings; only the wash and the
+  shake are removed. Gated in `no animations` (motion on, Reduced Motion alone,
+  No animations; break `silent_stinger`).
+- **Dice under No animations: they stay as they are** (G-49, option A). The
+  setting's line keeps "Dice still roll."
+
 **2026-10-06 two settings (Kev, G-49):** Help > SETTINGS > ACCESSIBILITY gains
 **Auto-select sole valid target** and **No animations**, both off by default
 and stored in the profile's settings (`auto_select_sole_target`,
@@ -23,12 +35,14 @@ and stored in the profile's settings (`auto_select_sole_target`,
   appear at once; the item confirm ring and tutorial spotlight ring are steady;
   no jam flicker on a die; a refused loadout row goes red and back in one step;
   title buttons and the logo exit are immediate. **Not changed:** the dice
-  (throw, reroll hop, tip-over, upright turn, slide to slot: waiting on a
-  ruling, G-49), and the pause between actions as a round resolves.
+  (throw, reroll hop, tip-over, upright turn, slide to slot: ruled 2026-10-08,
+  they stay, G-49), the pause between actions as a round resolves, and sound
+  (the 20's stinger and its music duck play under both settings).
 - Gates: `auto-select target` (`scripts/debug/auto_pick_test.gd`; breaks: the
   setting ignored, picking with several valid targets, no note) and
-  `no animations` (`scripts/debug/no_animations_test.gd`; break: the setting
-  ignored; also asserts the dice still roll for real with it on). Both run
+  `no animations` (`scripts/debug/no_animations_test.gd`; breaks: the setting
+  ignored, the stinger silenced under reduced motion; also asserts the dice
+  still roll for real with it on). Both run
   through `scripts/checks/break_gate.py`: clean pass, then each break must fail.
 
 **2026-10-06 resume guard (Kev, G-48):** a CONTINUE that hangs on load no longer
@@ -1130,7 +1144,7 @@ Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
 > (self) + +1 roll (self) had stamped two self markers.)
 
 **View Battlefield** (between-battle choices): `battle_scene` captures the final combat state at victory into transient `GameState.battle_review_state` (skipped headless/auto). Reward, Intercept, and evolution/directive choices show `VIEW BATTLEFIELD` when that state exists; it re-enters the real battle scene read-only, then returns to the originating choice. Reward/Intercept offers, selection, recipient/swap choice, and scroll state are retained in the transient picker session; no reward rolls again and no event transaction can commit twice.
-Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
+Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam (Reduced Motion and No animations remove the wash and the shake, never the stinger sound or its music duck) — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
 

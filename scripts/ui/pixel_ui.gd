@@ -1963,8 +1963,9 @@ static func reduced_motion_enabled() -> bool:
 
 
 const NO_ANIMATIONS_SETTING := "no_animations"
-## Debug-build seam for the `no animations` gate's deliberate break (never set
-## by the game): `ignored` makes the setting do nothing.
+## Debug-build seam for the `no animations` gate's deliberate breaks (never set
+## by the game): `ignored` makes the setting do nothing; `silent_stinger` drops
+## the 20's stinger sound whenever motion is reduced (the pre-2026-10-08 bug).
 const NO_ANIMATIONS_BREAK_ARG := "--no-animations-break="
 static var _no_animations_break: String = "?"
 
@@ -1973,13 +1974,17 @@ static var _no_animations_break: String = "?"
 ## leaves is off too (fades, bar drains, pulses, flashes, hit pauses). Dice
 ## motion and the pause between actions are not part of it.
 static func no_animations_enabled() -> bool:
+	return no_animations_break() != "ignored" and _setting_on(NO_ANIMATIONS_SETTING)
+
+
+static func no_animations_break() -> String:
 	if _no_animations_break == "?":
 		_no_animations_break = ""
 		if OS.is_debug_build():
 			for arg in OS.get_cmdline_user_args():
 				if arg.begins_with(NO_ANIMATIONS_BREAK_ARG):
 					_no_animations_break = arg.trim_prefix(NO_ANIMATIONS_BREAK_ARG)
-	return _no_animations_break != "ignored" and _setting_on(NO_ANIMATIONS_SETTING)
+	return _no_animations_break
 
 
 static func _setting_on(key: String) -> bool:

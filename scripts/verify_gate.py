@@ -234,7 +234,7 @@ GATES = [
         "--script", "scripts/debug/auto_pick_test.gd", "--break-arg=--auto-pick-break=", "--breaks", "off,any_count,no_cue"],
         "[AUTO_PICK_GATE] PASS", False),
     ("no animations", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "NO_ANIMATIONS",
-        "--script", "scripts/debug/no_animations_test.gd", "--break-arg=--no-animations-break=", "--breaks", "ignored"],
+        "--script", "scripts/debug/no_animations_test.gd", "--break-arg=--no-animations-break=", "--breaks", "ignored,silent_stinger"],
         "[NO_ANIMATIONS_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
