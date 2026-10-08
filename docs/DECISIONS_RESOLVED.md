@@ -1,5 +1,27 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-54. Closed items, not to be re-proposed (Kev, 2026-10-08)
+
+**Ruling (Kev, transcribed from the task).** "In the handoff, record these as
+decided and not to be re-proposed: enemy low bands (1–4) stay as they are;
+the Medic/Signal Hierophant imbalance stays for now; spawn overlap, the hop
+launch pop, tutorial throw re-recording and the Glacier Rig lock are not worth
+fixing." And: "Summons are on hold pending my decision; don't change them."
+
+- **Enemy low bands stay as they are.** My reading: what enemies do on their
+  lowest band (the mostly non-attacking abilities that sat on 1–4 until
+  G-53) is not to be changed. The range of that band is whatever G-53's
+  shapes give it (1–2 to 1–6).
+- **The Splice Medic / Signal Hierophant imbalance stays for now.** Measured
+  again on 2026-10-08 (1,680 Signal Purge runs): boss fights won with Splice
+  Medic 36.9%, without 21.1%. Do not propose a fix until Kev reopens it.
+- **Not worth fixing:** spawn overlap on main rolls, the hop launch pop,
+  re-recording the tutorial throws, and the Glacier Rig lock (G-46's "known
+  lock"; its candidate fix, the re-freeze rule, is not to be re-proposed
+  either).
+- **Summons are on hold** pending Kev's decision. Do not change summon
+  chances, summon content or summon rules until he rules.
+
 ## G-53. New roll windows for every unit (Kev, 2026-10-08)
 
 **Ruling (Kev, transcribed from the task).** "Every unit keeps five bands and
