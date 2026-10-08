@@ -328,3 +328,22 @@ three commits above plus their G-51 entry): all 78 hard gates PASS, plus
 profile isolation. Sim unchanged from the run above (overall 0.2800,
 stellarMenagerie 0.1458, within tolerance). Same environment notes: Godot run
 from a scratch copy through `GODOT_BIN`, `APPDATA` on a scratch folder.
+
+## Second follow-up (same day)
+
+**1. Rule text, the moment it lands.** One change:
+
+| Where | Before | After |
+|---|---|---|
+| Veil Overseer, THE COURT, second sentence | It raises that firewall on itself at the start of every round, for as long as any ally lives. | It raises that firewall on itself every round, before your heroes act, for as long as any ally lives. |
+
+Checked and left alone, because the wording already matches the moment or
+names none: ASSEMBLY LINE ("every 2nd enemy phase"), THE BROOD ("every 3
+rounds"), ROOT ACCESS ("every round"), the Accrete keyword's definition, primer
+and inspect line ("at the start of each of its turns"), the REGENERATIVE route
+modifier ("At the start of each enemy phase"), the Burn primer and status
+line, Tectonic Charge, Firewall Hack and the intercept choices. Details: G-51.
+
+**2. Help text.** Targets Self now reads: "The figure under an arrow, or (self)
+in text, means the ability affects its caster."
+

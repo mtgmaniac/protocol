@@ -25,7 +25,7 @@ Cadence constants are provisional pending the global balance pass (BALANCE-TODO 
 - Signature faces: Chitin Bulwark 22 shield; Acid Cataclysm (overload) wipe shields → 28 dmg + lifesteal 40%.
 
 ### CONCLAVE OVERSEER (veil) — THE COURT
-- Rule text: "an ability you aim at the Overseer is negated outright. It raises that firewall on itself at the start of every round, for as long as any ally lives."
+- Rule text: "an ability you aim at the Overseer is negated outright. It raises that firewall on itself every round, before your heroes act, for as long as any ally lives." (reworded 2026-10-08 with the ACCRETION text: the Firewall goes up as the round resolves, ahead of the hero phase, not at the dice throw)
 - Code (`combat_manager.gd:219-227`): round start, if any other living enemy exists and it is not already warded, `_apply_ward` (Firewall doesn't stack — an unbroken Firewall just stays).
 - Stats: 180 HP, d19–25, kit `veilBoss`. Escort: Aegis Anchor — kill it and the Court falls, ending the Firewall stream.
 - Signature faces: Veil Cataclysm (overload) wipe shields → 30 dmg, +2 roll allies 2t, summon ~30% nat20 (Prism Charger).

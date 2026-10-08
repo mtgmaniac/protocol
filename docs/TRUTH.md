@@ -74,7 +74,11 @@
     `CombatManager.accrete_rule`; in battle and in the Help reference.) The
     boss line and the ACCRETION rule text name the moment the +6 is seen to
     land: as the round resolves, ahead of the hero phase, not at the dice
-    throw (no rules change; Kev 2026-10-08).
+    throw (no rules change; Kev 2026-10-08). The Veil Overseer's THE COURT
+    text had the same phrase for a Firewall raised at that same moment and
+    now reads "It raises that firewall on itself every round, before your
+    heroes act, for as long as any ally lives." Every other rule text was
+    checked against the moment it lands and none mismatched (list: G-51).
   No combat change: four seeded Mantle Hunt sim runs are identical to the
   previous commit apart from their events. The boss rule's event does not
   trigger the keyword primer (its cadence differs). Gate `accrete display`

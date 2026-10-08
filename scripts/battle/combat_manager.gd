@@ -132,7 +132,7 @@ const PERMANENT_BURN_TURNS := 9999
 const BOSS_STANDING_RULES := {
 	BOSS_SCRAPMASTER: "ASSEMBLY LINE - a Scrap Drone you already destroyed stands back up at 50% HP. The Scrapmaster rebuilds one every 2nd enemy phase, counting from its first.",
 	BOSS_MATRIARCH: "THE BROOD - a new Bloodmite joins the fight. The Matriarch births one every 3 rounds.",
-	BOSS_OVERSEER: "THE COURT - an ability you aim at the Overseer is negated outright. It raises that firewall on itself at the start of every round, for as long as any ally lives.",
+	BOSS_OVERSEER: "THE COURT - an ability you aim at the Overseer is negated outright. It raises that firewall on itself every round, before your heroes act, for as long as any ally lives.",
 	BOSS_HIEROPHANT: "ROOT ACCESS - your squad's highest die is seized and rewritten to 3. The Hierophant does this every round.",
 	BOSS_MANTLE: "ACCRETION - the Tyrant plates itself with 6 more shield and keeps every layer. It accretes every 2nd round, before your heroes act; its shields persist and stack.",
 }

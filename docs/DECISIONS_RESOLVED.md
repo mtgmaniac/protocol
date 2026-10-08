@@ -102,7 +102,41 @@
   turns" is when theirs lands: after the heroes, before the enemies act).
   **Not changed:** the Veil Overseer's THE COURT text says "at the start of
   every round" for a Firewall that is raised at the same moment. Same phrase,
-  same timing, not part of this ruling.
+  same timing, not part of this ruling. **Ruled next, see below.**
+
+**Second follow-up (Kev, 2026-10-08, transcribed).** "Veil Overseer: reword its
+Firewall rule text to match the Accrete fix: the moment the player actually
+sees it happen, short and plain. Check every other boss and unit rule text for
+the same 'at the start of every round' phrasing, and fix any that also mismatch
+the moment it lands." And: "Help text: rewrite the Targets Self line without
+nested parentheses."
+
+- **Changed (1):** THE COURT, second sentence: "It raises that firewall on
+  itself at the start of every round, for as long as any ally lives." is now
+  "It raises that firewall on itself every round, before your heroes act, for
+  as long as any ally lives." The Firewall goes up as the round resolves,
+  ahead of the hero phase (`_apply_boss_round_start_rules`), the moment the
+  ACCRETION +6 lands.
+- **Checked, no mismatch, unchanged:**
+  - ASSEMBLY LINE: "rebuilds one every 2nd enemy phase, counting from its
+    first". It lands at the start of the enemy phase, as it says.
+  - THE BROOD: "births one every 3 rounds". Names no moment; it lands in the
+    enemy phase of rounds 3, 6 and so on.
+  - ROOT ACCESS: "does this every round". Names no moment; the rewrite is set
+    in the enemy phase and shows on the next roll.
+  - Accrete keyword (definition, primer, inspect line): "at the start of each
+    of its turns". It lands at the start of the enemy phase: after the heroes,
+    before any enemy acts.
+  - REGENERATIVE route modifier: "At the start of each enemy phase". It lands
+    there.
+  - Burn primer and status line ("at the end of each round", "each round"):
+    the tick is at round end.
+  - Tectonic Charge, Firewall Hack and the intercept choices name a round
+    number, "once per turn" or a battle start, not a round start.
+  My reading: only round-start wording was in question, so text that names no
+  moment at all was left alone even where a moment could be added.
+- **Targets Self** (Help > Keywords): "The figure under an arrow, or (self) in
+  text, means the ability affects its caster."
 
 ## G-50. A lost display reloads and resumes by itself (Kev, 2026-10-08)
 

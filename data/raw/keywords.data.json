@@ -233,7 +233,7 @@
       "id": "target_self",
       "term": "Targets Self",
       "category": "support",
-      "def": "The figure under an arrow (or (self) in text) means the ability affects its own caster.",
+      "def": "The figure under an arrow, or (self) in text, means the ability affects its caster.",
       "syntax": "(self)"
     },
     {
