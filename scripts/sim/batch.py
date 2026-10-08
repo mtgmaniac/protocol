@@ -38,7 +38,9 @@ OPS = ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
 
 
 def godot_bin() -> str:
-    return os.environ.get("GODOT", DEFAULT_GODOT)
+    # GODOT_BIN is what verify_gate.py and every gate script read; GODOT is the
+    # older name this driver used, kept as the fallback.
+    return os.environ.get("GODOT_BIN") or os.environ.get("GODOT") or DEFAULT_GODOT
 
 
 def run_one(seed: int, squad: str, op: str, policy: str, grant: str, archetype: str, tuning: str, pool_buckets: str, battle_slots: str, enemy_hp: str, hero_hp: str, item_field: str, order_mode: str, out_path: Path) -> dict:

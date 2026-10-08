@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DIGEST_FILE = Path(__file__).resolve().parent / "state_hash_tripwire.digest"
-GODOT = os.environ.get("GODOT", r"C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe")
+GODOT = os.environ.get("GODOT_BIN") or os.environ.get("GODOT") or (r"C:\Users\Kev\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64_console.exe")
 OUT = ROOT / "results" / "_tripwire" / "run.jsonl"
 ARGS = ["--seed", "31337", "--squad", "shield,medic,combat", "--op", "hive",
         "--policy", "l1", "--out", str(OUT.relative_to(ROOT)).replace("\\", "/")]
