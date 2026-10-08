@@ -2996,8 +2996,8 @@ func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: St
 		return
 	if not pending_manual_target_ids.has(hero_id):
 		pending_manual_target_ids.append(hero_id)
-	hero_state["target_display"] = "--"
-	# Back in the pending queue: uncommitted until the target tap lands.
+	# Back in the pending queue, uncommitted, holding NO target: a stale one made the forecast run this hero unstamped ([CAST_ORDER]).
+	_set_state_target(hero_state, "", "--")
 	_clear_cast_stamp(hero_state)
 
 

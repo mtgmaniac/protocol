@@ -236,6 +236,11 @@ GATES = [
     ("no animations", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "NO_ANIMATIONS",
         "--script", "scripts/debug/no_animations_test.gd", "--break-arg=--no-animations-break=", "--breaks", "ignored,silent_stinger"],
         "[NO_ANIMATIONS_GATE] PASS", False),
+    # A Nudge that changes a hero's ability logs nothing (the hero waits with no
+    # stale target for the forecast to run unstamped); break: the stale target.
+    ("nudge cast order", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "NUDGE_CAST_ORDER",
+        "--script", "scripts/debug/nudge_cast_order_test.gd", "--break-arg=--nudge-cast-order-break=", "--breaks", "stale_target"],
+        "[NUDGE_CAST_ORDER_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
     # Text legibility Step 1 (docs/audits/TEXT_LEGIBILITY_AUDIT.md): every live

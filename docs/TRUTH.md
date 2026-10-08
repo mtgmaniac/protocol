@@ -11,6 +11,19 @@
   No animations; break `silent_stinger`).
 - **Dice under No animations: they stay as they are** (G-49, option A). The
   setting's line keeps "Dice still roll."
+- **A hero sent back to the pick queue holds no target.** A roll change that
+  swaps a hero's ability (Nudge, Set, Reroll) puts the hero back in the pick
+  queue. It used to keep the previous ability's target while it waited, so the
+  damage forecast ran the new ability at that stale target with no cast stamp
+  and logged a `[CAST_ORDER] ... reached resolution unstamped` warning on every
+  refresh (about twelve per Nudge, enough to push real entries out of the state
+  code's 200-entry list). `_queue_or_auto_assign_manual_target` now clears the
+  target as `_unassign_hero_cast` always did, so the forecast leaves that hero
+  out until the player picks, as its own rule says. The warning itself is
+  unchanged and still fires for a real unstamped hero. Gate `nudge cast order`
+  (`scripts/debug/nudge_cast_order_test.gd`: real Nudge button and tap handler,
+  nothing logged through the end of the round, state-code error list
+  unchanged; break: the stale target put back).
 
 **2026-10-06 two settings (Kev, G-49):** Help > SETTINGS > ACCESSIBILITY gains
 **Auto-select sole valid target** and **No animations**, both off by default
