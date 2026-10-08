@@ -190,7 +190,7 @@ func _check_inspect() -> void:
 	var resolver: GDScript = load(INSPECT_SOURCE)
 	for case in [
 		[KEYWORD_UNIT, int((dm().get_enemy_by_display_name(KEYWORD_UNIT) as EnemyData).accrete), "ACCRETE: always gains %d shield at the start of each of its turns."],
-		[BOSS, _rule_amount(), "ACCRETE: always gains %d shield at the start of every 2nd round."],
+		[BOSS, _rule_amount(), "ACCRETE: always gains %d shield every 2nd round, before your heroes act."],
 	]:
 		var unit: Resource = dm().get_enemy_by_display_name(str(case[0]))
 		var payload: Dictionary = resolver.resolve_unit(unit, {})

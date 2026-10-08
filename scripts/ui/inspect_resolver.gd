@@ -284,7 +284,10 @@ static func accrete_entry(data: Resource) -> Dictionary:
 
 static func accrete_text(amount: int, every_rounds: int) -> String:
 	if every_rounds > 1:
-		return "ACCRETE: always gains %d shield at the start of every %s round." % [amount, _ordinal(every_rounds)]
+		# The rule fires as the round resolves, ahead of the hero phase: that
+		# is the moment the player sees the number land, so the line names it
+		# (Kev 2026-10-08; "at the start of the round" read as the dice throw).
+		return "ACCRETE: always gains %d shield every %s round, before your heroes act." % [amount, _ordinal(every_rounds)]
 	return "ACCRETE: always gains %d shield at the start of each of its turns." % amount
 
 

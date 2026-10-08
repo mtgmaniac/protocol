@@ -69,9 +69,12 @@
   - **The inspect said nothing about the keyword** (and buried the boss's in
     its rule paragraph). A unit with Accrete now leads its inspect with the
     Accrete pip and one line: **"ACCRETE: always gains 4 shield at the start of
-    each of its turns."** / **"ACCRETE: always gains 6 shield at the start of
-    every 2nd round."** (`InspectResolver.accrete_entry`, numbers from
-    `CombatManager.accrete_rule`; in battle and in the Help reference.)
+    each of its turns."** / **"ACCRETE: always gains 6 shield every 2nd round,
+    before your heroes act."** (`InspectResolver.accrete_entry`, numbers from
+    `CombatManager.accrete_rule`; in battle and in the Help reference.) The
+    boss line and the ACCRETION rule text name the moment the +6 is seen to
+    land: as the round resolves, ahead of the hero phase, not at the dice
+    throw (no rules change; Kev 2026-10-08).
   No combat change: four seeded Mantle Hunt sim runs are identical to the
   previous commit apart from their events. The boss rule's event does not
   trigger the keyword primer (its cadence differs). Gate `accrete display`
