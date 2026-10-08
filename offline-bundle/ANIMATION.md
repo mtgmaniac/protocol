@@ -36,7 +36,7 @@ itself.)
 
 | Phase | What it looks like | Hook |
 |---|---|---|
-| **Action** | Attacker lunges toward target & back. Support = gentle rise/pulse (so attack vs support read differently). | `play_action_feedback(kind)` + `_lunge` ✅ |
+| **Action** | Attacker lunges toward target & back. An ability that does not attack (buff, debuff, shield, heal, control) shakes in place, sideways to the lunge. Class per ability: `scripts/battle/action_motion.gd`. | `_play_action_motion` → `_lunge` / `_wiggle` ✅ |
 | **Impact** | hit-pause (40–90ms, scale w/ damage) + target card shake + recoil + pixel-particle burst. | `_hit_pause` · `_shake` · `_burst_particles` · `_flash_card` ✅ |
 | **Reaction** | flash + animated HP drain with a red "chip" ghost bar trailing the loss. Shield-break = distinct shatter. | `_set_hp_display` (drain + chip-ghost) ✅ · `_shield_shatter` ✅ |
 | **Settle** | Number punches in big then shrinks while floating; execute bigger/red. | `_spawn_floating_text` punch-scale ✅ |
@@ -56,6 +56,7 @@ nat/raw check** — that concept is removed game-wide (NK-02). ✅
 ## Primitive library (the reusable toolbox — all built, in `battle_feedback.gd`)
 Every effect is a composition of these small generic functions:
 - `_lunge(card, side)` — actor step-in / recoil
+- `_wiggle(card)` — the non-attacker's shake in place (smaller under Reduced Motion, none under No animations)
 - `_shake(node, amplitude, dur)` — decaying jitter (per-card recoil AND board shake)
 - `_hit_pause(amount, extra)` — brief scene freeze (routed through the global arbiter)
 - `_slow_mo()` — the 20-celebration time beat (global arbiter; never stacks with `_hit_pause`)

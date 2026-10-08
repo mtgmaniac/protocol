@@ -193,6 +193,12 @@ func run() -> void:
 			check(card.position.x > rest.x and is_equal_approx(card.position.y, rest.y), "hero lunge points right")
 			await create_timer(0.3).timeout
 			check(card.position.is_equal_approx(rest), "lunge restores rest position")
+			# The support wiggle shakes across the lunge: up and down here.
+			s._feedback._wiggle(card)
+			await create_timer(0.05).timeout
+			check(not is_equal_approx(card.position.y, rest.y) and is_equal_approx(card.position.x, rest.x), "hero wiggle shakes across the lunge")
+			await create_timer(0.4).timeout
+			check(card.position.is_equal_approx(rest), "wiggle restores rest position")
 			var stress_data := {"name":"SCRAPMASTER", "current_hp":135, "max_hp":200,
 				"cast_rank":3, "statuses":[
 					{"type":"burn", "mode":"numeric", "value":"125"},

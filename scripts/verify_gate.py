@@ -241,6 +241,13 @@ GATES = [
     ("nudge cast order", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "NUDGE_CAST_ORDER",
         "--script", "scripts/debug/nudge_cast_order_test.gd", "--break-arg=--nudge-cast-order-break=", "--breaks", "stale_target"],
         "[NUDGE_CAST_ORDER_GATE] PASS", False),
+    # Playtest 2026-10-08: an ability that does not attack shakes in place
+    # instead of standing still. Motion class per ability (all of them), a live
+    # round, Reduced Motion and No animations; four deliberate breaks.
+    ("action motion", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "ACTION_MOTION",
+        "--script", "scripts/debug/action_motion_test.gd", "--break-arg=--action-motion-break=",
+        "--breaks", "no_wiggle,all_lunge,reduced_full,no_anim_ignored"],
+        "[ACTION_MOTION_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
     # automatic resume share a flag key by copy; plus listener order and copy.

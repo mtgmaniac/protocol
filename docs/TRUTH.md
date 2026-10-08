@@ -1,5 +1,22 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-08 feedback polish (Kev, playtest):**
+
+- **A unit that does not attack shakes in place.** Attackers lunge; a unit
+  using an ability that buffs, debuffs, shields, heals or controls without
+  attacking used to stand still (its tell lived on the old unit card and was
+  lost with it). It now wiggles: sideways to the lunge, 12 / 12 / 7 / 7 design
+  px, back to rest. Heroes and enemies. The class is read from the ability's
+  own data (`scripts/battle/action_motion.gd`): `dmg`, `burn` or `detonate`
+  means it attacks and lunges, whatever else it carries (an attack that also
+  shields, heals or buffs lunges); everything else wiggles. An attack a
+  Firewall blocks still lunges. Round ticks play no motion. **Reduced Motion:**
+  a smaller wiggle (5 / 5 px); the lunge stays off, as before. **No
+  animations:** no wiggle. Gate `action motion`
+  (`scripts/debug/action_motion_test.gd`: every ability in the data, a live
+  round on both sides, both settings; breaks `no_wiggle`, `all_lunge`,
+  `reduced_full`, `no_anim_ignored`); the landscape axis is in `battle layout`.
+
 **2026-10-08 web display recovery (Kev, G-50):** when a browser drops the
 game's display (WebGL context loss, on a phone usually an app switch) the game
 used to keep running under a dead picture until the player reloaded by hand.

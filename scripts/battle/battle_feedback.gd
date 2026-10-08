@@ -1,6 +1,8 @@
 class_name BattleFeedback
 extends Node
 
+const ActionMotion := preload("res://scripts/battle/action_motion.gd")
+
 var _scene: Control
 var _death_sfx_played_ids: Dictionary = {}
 # Two bounded portrait lanes per card. New outcomes retire the oldest float
@@ -288,11 +290,10 @@ func _play_action_feedback_group(group: Dictionary, group_index: int = -1) -> vo
 	var actor_card: Control = null
 	if not action.is_empty():
 		actor_card = _find_card_by_state_id(str(action.get("side", "")), str(action.get("actor_id", "")))
-	if actor_card != null:
-		if actor_card.has_method("play_action_feedback"):
-			actor_card.call("play_action_feedback", action_kind if not is_tick else "neutral")
-		if action_kind == "attack" and not is_tick:
-			_lunge(actor_card, str(action.get("side", "")))
+	# The actor's tell. (The support tell used to be the old unit card's
+	# play_action_feedback; the live card never had it, so only attackers moved.)
+	if actor_card != null and not is_tick:
+		_play_action_motion(actor_card, action, action_kind)
 	# Tier 2: the overload signature — gold screen wash + screen shake framing the
 	# whole beat, with a longer impact freeze below. Fires on any die whose final
 	# face is 20 (rolled, Nudged, Set, or buffed into the overload zone) — there
@@ -1288,6 +1289,59 @@ func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
 	slam.tween_property(label, "modulate:a", 0.0, 0.12)
 	slam.parallel().tween_property(label, "scale", Vector2(0.85, 0.85), 0.12)
 	slam.tween_callback(label.queue_free)
+
+
+# The acting card's motion, by ability class (ActionMotion): an attack lunges,
+# anything else the unit does shakes in place. `action_motion` reports what
+# played so the gate can pin the class per ability.
+signal action_motion(actor_id: String, kind: String)
+
+
+func _play_action_motion(card: Control, action: Dictionary, event_kind: String) -> void:
+	var kind: String = _action_motion_kind(action, event_kind)
+	var side: String = str(action.get("side", ""))
+	match kind:
+		ActionMotion.LUNGE:
+			_lunge(card, side)
+		ActionMotion.WIGGLE:
+			_wiggle(card)
+	action_motion.emit(str(action.get("actor_id", "")), kind)
+
+
+# The class of the ability this action announced, read off the actor's own kit.
+# An action with no kit entry (none today) falls back to the events it produced.
+func _action_motion_kind(action: Dictionary, event_kind: String) -> String:
+	var side: String = str(action.get("side", ""))
+	var states: Array = _scene.combat_manager.get_hero_states() if side == "hero" else _scene.combat_manager.get_enemy_states()
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if str(state.get("id", "")) != str(action.get("actor_id", "")):
+			continue
+		for entry_variant in state["unit"].dice_ranges:
+			var entry: Dictionary = entry_variant
+			if str(entry.get("ability_name", "")) == str(action.get("ability", "")) 					and str(entry.get("zone", "")) == str(action.get("zone", "")):
+				return ActionMotion.for_ability(entry.get("raw", {}) as Dictionary)
+	match event_kind:
+		"attack":
+			return ActionMotion.LUNGE
+		"support":
+			return ActionMotion.WIGGLE
+	return ActionMotion.NONE
+
+
+# Support shake: sideways to the lunge, fixed offsets, back to rest. Reduced
+# Motion plays the smaller set; No animations plays none (ActionMotion).
+func _wiggle(card: Control) -> void:
+	var offsets: Array[float] = ActionMotion.wiggle_offsets()
+	if offsets.is_empty() or card == null or not is_instance_valid(card):
+		return
+	var axis := Vector2(0.0, 1.0) if _scene._layout.is_landscape else Vector2(1.0, 0.0)
+	var base: Vector2 = _fx_rest_position(card)
+	var tween: Tween = create_tween()
+	for offset in offsets:
+		tween.tween_property(card, "position", base + axis * offset, ActionMotion.WIGGLE_STEP) 			.set_trans(Tween.TRANS_SINE)
+	tween.tween_property(card, "position", base, ActionMotion.WIGGLE_STEP).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(_fx_release_rest.bind(card))
 
 
 # Attacker step-in + recoil. Direction is decided by side (heroes on the bottom

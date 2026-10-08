@@ -41,8 +41,8 @@ Hijack/Nudge/Reroll/Set never reach a frozen die, so no die-surface conflict can
 
 | Feedback | Site | Exact condition |
 |---|---|---|
-| Actor lunge (attack tell) | `_lunge:661-670` | `action_kind == "attack" and not is_tick` (`:89-90`); 26px toward the opposing rail (hero up / enemy down), 0.08s out / 0.16s back |
-| Actor action tell (support) | `compact_unit_card.play_action_feedback(kind)` | `:87-88`; `kind` from `_get_action_feedback_kind` — attack (dmg/burn) vs support (shield/heal/cloak/roll_buff/freeze) vs neutral |
+| Actor lunge (attack tell) | `_lunge` | the acting ability attacks (`ActionMotion.for_ability` = lunge: `dmg`, `burn` or `detonate`), not a tick; 26px toward the opposing rail (hero up / enemy down), 0.08s out / 0.16s back. Off under Reduced Motion |
+| Actor wiggle (support tell) | `_wiggle` | the acting ability does not attack (buff, debuff, shield, heal, control); sideways steps of 12 / 12 / 7 / 7 px, 0.055s each, back to rest. Reduced Motion: 5 / 5 px. No animations: none. Gate `action motion`. (The old `compact_unit_card.play_action_feedback` never existed on the live card.) |
 | **Frame shake (ONLY caller)** | `_shake:678-689` | fires **only** on a `damage` effect event (`:135-139`); amplitude `clampf(2.0 + amt*0.16, 2, 11)`, 0.22s, 7 decaying steps. **No shake on death, burn, or crit** |
 | Portrait ghosted (cloak) | `compact_unit_card.gd:468-469` | `cloaked` state → portrait modulate `(0.70,0.80,0.95,0.42)`. State-driven, not a chip (pkg8.1) |
 | Portrait grayed (dead) | `compact_unit_card.gd:467` | `dead` → modulate `(0.48,0.50,0.58,0.55)`, **plus `_death_scatter`** debris fired at the fatal-hit event (F-08) |
