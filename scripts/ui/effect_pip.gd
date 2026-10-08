@@ -241,7 +241,7 @@ static func build_group(
 			group.add_child(cond_rect)
 
 	# Scope markers sit AFTER the value: "hits all" (aoe cardinal-arrow burst),
-	# "targets self" (circled figure — replaces the old parentheses, Kev 2026-07-10),
+	# "targets self" (a figure under a marker arrow since 2026-10-08; it replaced the old parentheses, Kev 2026-07-10),
 	# and "targets lowest" (reticle + down arrow — replaces the old ↓ text, Batch 5).
 	var scope: String = str(effect.get("scope", ""))
 	if scope == "all" or scope == "self" or scope == "lowest":
@@ -443,7 +443,7 @@ static func effects_from_ability_raw(raw: Dictionary, side: String = "hero") -> 
 	# Hero self-buff exception (Kev, copy/UI batch): the self-target marker is
 	# information only on the ENEMY side, where "who does this hit?" is the open
 	# question. On your own squad card a self-buff is already obvious, so the
-	# circled-figure icon is noise — strip the `self` scope on the hero side and
+	# self icon is noise — strip the `self` scope on the hero side and
 	# keep it on the enemy side. `all` / `lowest` stay on both sides, and the
 	# authored eff TEXT is untouched (NK-17 still owns the "(self)" suffix).
 	if side == "hero":

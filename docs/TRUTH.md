@@ -1251,7 +1251,7 @@ Protocol primer remain. Tutorial is a separate controller using `SpotlightLayer`
 Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
 `training_capture.gd`. Implementation evidence: [tutorial pass](TUTORIAL_IMPLEMENTATION_2026-09-08.md).
 
-**Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = circled figure, `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
+**Pip / scope-marker icons** (`assets/ui/pips/`, `PixelUI.PIP_ICON_BY_KEY`, `EffectPip`): scope markers sit after the value — `all` = the AoE cardinal-arrow burst (Batch 5: re-cut from the 8-arrow starburst that read like freeze), `self` = a figure under a marker arrow (2026-10-08, Kev's pick; it was a figure in a ring, which at pip size differed from Summon only by the ring's colour), `summon` = a figure with a purple plus (same pick; options and the pip-size comparisons, heal included, are in `docs/ui_reference/icon_options/`), `lowest` = the new **target_lowest** reticle (replaces the old "↓" text; heal-lowest / shield-lowest fold into a `lowest` scope). Taunt / leech / summon icons were also re-cut from the Batch-5 sheets.
 
 > **Pip-row cap + `+N` overflow (ruled 2026-09-02):** a pip row shows the first
 > `EffectPip.MAX_VISIBLE_EFFECTS` (3) effects in AUTHORING order; everything
