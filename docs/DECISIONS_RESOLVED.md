@@ -1,5 +1,67 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-51. Feedback polish: support motion, Firewall block, Accrete (Kev, 2026-10-08)
+
+**Rulings (Kev, transcribed from the task).**
+
+1. "Units using a buff or debuff ability don't move like attackers do. They
+   should still make a motion, but a small wiggle or shake in place instead of
+   the forward lunge. Applies to heroes and enemies, for any ability that
+   buffs, debuffs, shields or heals without attacking. Reduced Motion: a
+   smaller version. No animations: none."
+2. "A Firewall silently cancels a taunt (and possibly other effects) with no
+   feedback to the player. Treat it as a class: find every effect a Firewall
+   can cancel. When it cancels one, show it: a brief chip on the affected unit
+   and a battle log line. Copy short and plain, e.g. 'BLOCKED' and 'Firewall
+   blocked Taunt.' Respect Reduced Motion and No animations (the chip still
+   appears, without animation)."
+3. "The operation 5 boss had Accrete and gained a seemingly random amount of
+   shield, with nothing explaining it, and Accrete doesn't display correctly
+   on the boss. Investigate the display bug and fix it. When Accrete triggers,
+   show the shield gained as a number on the unit, plus a log line. The
+   inspect text should explain how the amount is calculated, in one short
+   line."
+
+**As built:** TRUTH, top entry ("2026-10-08 feedback polish"). Gates
+`action motion`, `firewall feedback`, `accrete display`.
+
+**My readings, each Kev's to overturn:**
+
+1. **Motion follows the ability, not the outcome.** An ability with `dmg`,
+   `burn` or `detonate` attacks and lunges; everything else wiggles. An attack
+   that also shields, heals or buffs lunges (attack wins). An attack a
+   Firewall blocks still lunges. No ability in the data plants a burn with no
+   damage; if one is authored it lunges.
+2. **Reduced Motion: the lunge stays off.** G-13 removed it and this ruling
+   only names the wiggle. So under Reduced Motion a supporter moves a little
+   (5 px) and an attacker does not move at all.
+3. **The log line is lowercase and names the unit:** "Firewall blocked taunt
+   on Scrap Drone." The example was "Firewall blocked Taunt."; the
+   capitalization law keeps keywords lowercase inside a sentence, and with
+   several units on the board the line needs to say whose Firewall it was.
+4. **The BLOCKED chip replaces the X.** The X over the unit was the old
+   Firewall cue; both together said the same thing twice. A shield absorbing a
+   hit keeps its "X N" number.
+5. **One block names every effect it cancelled:** "Firewall blocked damage,
+   burn and jam on Strike Unit." One chip and one line per ability per unit,
+   not one per effect.
+6. **Accrete's number is a labelled chip, "ACCRETE +6",** not a bare "+6". The
+   bare number is what the playtest saw and could not explain.
+7. **The boss rule and the unit keyword are shown the same way** (chip, log
+   line, inspect line), since the player meets both as "Accrete". The boss
+   rule does not trigger the keyword's primer, whose line says "each of its
+   turns".
+8. **Beyond Accrete, two display fixes came with it** because they were the
+   bug on the boss: the shield chip now follows the round beat by beat for
+   every unit, and a rampage grant has an event so its chip lands when it is
+   granted. Shield grants report the shield applied, not the amount asked for.
+9. **Inspect line: "ACCRETE: always gains 6 shield at the start of every 2nd
+   round."** "Always" is the answer to "how is the amount calculated": it is a
+   fixed number. The boss's ACCRETION paragraph is unchanged below it.
+10. **The +6 still lands when the round resolves,** as THE COURT's Firewall
+    does, not when the dice are thrown. Moving it would change what an item
+    used during planning hits; that is a rules change and was not asked for.
+
 ## G-50. A lost display reloads and resumes by itself (Kev, 2026-10-08)
 
 **Ruling (Kev, transcribed).** "App-switch freeze: build the fix. Add a reload

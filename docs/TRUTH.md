@@ -1,6 +1,6 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
-**2026-10-08 feedback polish (Kev, playtest):**
+**2026-10-08 feedback polish (Kev, playtest; rulings and readings: G-51):**
 
 - **A unit that does not attack shakes in place.** Attackers lunge; a unit
   using an ability that buffs, debuffs, shields, heals or controls without
