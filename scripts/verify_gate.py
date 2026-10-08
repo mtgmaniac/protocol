@@ -261,6 +261,13 @@ GATES = [
         "--script", "scripts/debug/accrete_display_test.gd", "--break-arg=--accrete-display-break=",
         "--breaks", "asked,no_chip,stale_chip,no_line"],
         "[ACCRETE_DISPLAY_GATE] PASS", False),
+    # Cloak ambush (G-52, Kev 2026-10-08): the attack that breaks a cloak deals
+    # +50% damage, once, on both sides; every target cloaked -> one is hit at
+    # random; the cloak chip, inspect, keyword and primer name the bonus.
+    ("cloak ambush", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "CLOAK_AMBUSH",
+        "--script", "scripts/debug/cloak_ambush_test.gd", "--break-arg=--cloak-ambush-break=",
+        "--breaks", "no_bonus,always,keep_cloak,fizzle,first,no_chip"],
+        "[CLOAK_AMBUSH_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
     # automatic resume share a flag key by copy; plus listener order and copy.

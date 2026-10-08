@@ -53,7 +53,7 @@
       "id": "primer_cloak",
       "trigger": { "type": "status_applied", "param": "cloak" },
       "target": "unit_card",
-      "text": "CLOAK: can't be targeted directly; breaks when it deals damage.",
+      "text": "CLOAK: can't be targeted directly; its next attack deals +50% damage.",
       "priority": 40,
       "requires_feature": null
     },

@@ -1,5 +1,98 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-52. Cloak is an ambush (Kev, 2026-10-08)
+
+**Ruling (Kev, transcribed from the task).** "Today cloak makes a unit
+untargetable but attacking breaks it immediately, so it almost never lasts (4
+of 7,037 cloaks survived a round in the audit sim) and cloak items are useless
+on attackers. New rule:
+
+- Cloak still makes the unit untargetable by single-target attacks, and
+  attacking still breaks it.
+- The unit's first attack out of cloak gets a large bonus. Start at double
+  damage; tune it with the sim and report what you chose and why.
+- Same rule for heroes and enemies. Enemy dice are face-up, so the player can
+  see an enemy ambush coming.
+- If every valid target of a single-target attack is cloaked, the attack hits
+  one of them at random instead of fizzling. This removes the all-cloaked
+  stalemate.
+- Shield + cloak abilities stay as they are.
+- UI: a cloaked unit shows that its ambush bonus is ready, using existing UI
+  elements, kept minimal (the UI is being redesigned separately).
+- Update keyword text, inspect lines and the primer. Copy short and plain, no
+  em dashes."
+
+This amends K1 (cloak = 2 clauses) and replaces "everyone cloaked -> the
+ability fizzles". K1's "do not re-add pierce-from-cloak" stands: the ambush
+does not pierce. #12 stands: friendly picks on cloaked allies are legal.
+
+**As built:** TRUTH, top entry ("2026-10-08 cloak is an ambush"). Gate
+`cloak ambush`. On branch `claude/cloak-and-windows`, waiting for Kev's review.
+
+**The number: +50%, not double.** Matched batches, 1,500 runs each, same seeds
+(`ambush_mult` = 1.0 is the new targeting rule with no bonus):
+
+| | main | 1.0 | **1.5** | 2.0 | 2.5 |
+|---|--:|--:|--:|--:|--:|
+| Overall clear | 26.7% | 24.9% | **30.3%** | 32.5% | 35.7% |
+| Facility | 37.5% | 36.5% | **42.2%** | 42.2% | 45.9% |
+| Hive | 29.4% | 27.1% | **37.0%** | 39.6% | 45.2% |
+| Veil | 23.3% | 21.5% | **25.0%** | 29.2% | 28.5% |
+| Signal Purge | 27.2% | 25.8% | **29.8%** | 30.1% | 33.4% |
+| Mantle Hunt | 16.7% | 13.8% | **18.0%** | 21.5% | 25.7% |
+| Ghost Operative | 29.0% | 24.7% | **38.1%** | 44.3% | 52.4% |
+| Best other hero (Splice Medic) | 36.4% | 31.5% | **38.8%** | 38.4% | 40.7% |
+| Biggest single hit on a hero | 52 | 52 | **52** | 64 | 90 |
+
+- With no bonus the random-hit rule alone costs the heroes 1.8 points (a fully
+  cloaked squad is no longer safe from single-target attacks), and Ghost 4.3.
+- At 2.0 Ghost gains 15.3 points and is the best hero by six; Hive moves 10.2
+  (past the +-10 sign-off line of INVARIANTS #9); a cloaked enemy with Rampage
+  hits for 64, more than any unevolved hero's HP.
+- At 1.5 cloak pays (Ghost +9.1, from mid-pack to level with the best), no
+  operation moves more than 7.6, and the biggest hit is unchanged.
+- The sim's player never cloaks on purpose or puts a cloak item on its
+  hardest hitter, so real play gets more from the bonus than the sim shows.
+  That argues for the lower number too.
+- +50% is also Mark's number, so the player learns one bonus, not two.
+
+One constant (`CombatManager.AMBUSH_MULT`) and two data strings (keyword,
+primer) change it; the log, the chip and the inspect line follow the constant.
+
+**My readings, each Kev's to overturn:**
+
+1. **"Attack" is an ability that deals damage** (`dmg` > 0): the test that has
+   always broken a cloak. No ability in the data plants burn without damage.
+2. **The bonus multiplies the ability's damage number.** Flat extras added
+   after it are not multiplied: first-hit gear, Momentum, the vs-frozen bonus,
+   execute's +8, burn. A chain jump is half of the ambush hit.
+3. **An area attack from cloak pays the bonus on every target.**
+4. **Only out of cloak:** a cloak torn off by an area hit pays nothing.
+5. **An attack that also cloaks** (Ghost Step, Strike and Fade) spends the
+   cloak it had and puts up a new one, which pays again. A Shadow Operative
+   who rolls those two bands back to back ambushes every round. You named
+   shield + cloak as unchanged; attack + cloak follows the same rule and was
+   not changed either.
+6. **Ambush Wiring's +5 is added after the bonus** (10 becomes 15, then 20).
+   Its text, "attacks from cloak deal +5 damage", is still true.
+7. **Rampage and ambush stack** (x2 and x1.5 = x3). Both chips are on the
+   enemy before it acts. Only the Geode Panther can have both (it cloaks; the
+   Mantle Tyrant grants Rampage); its highest such hit is Petrifying Shriek,
+   18 x 3 = 54.
+8. **The random hit is for single-target attacks only.** A lone mark, jam or
+   taunt with every target cloaked still finds no target, as before. The
+   attack's own riders land on the unit it hit.
+9. **The unit that is hit at random keeps its cloak.** Only an area hit or
+   its own attack breaks it.
+10. **The enemy freeze rider** ("freeze lowest hero die") still skips cloaked
+    heroes; it has its own pick and is not an attack.
+11. **The chip is the cloak icon plus "+50%"**, replacing the icon-only cloak
+    chip. No new element, no float text, no sound.
+12. **A hero's random hit is not in the HP preview.** The preview leaves out a
+    hero who has no chosen target, and there is none to choose.
+13. **Enemy inspect: "TARGETING: RANDOM"** when its attack will hit a cloaked
+    hero at random.
+
 ## G-51. Feedback polish: support motion, Firewall block, Accrete (Kev, 2026-10-08)
 
 **Rulings (Kev, transcribed from the task).**
@@ -1103,6 +1196,8 @@ Untargetable by hostile single-target abilities; breaks on dealing damage or bei
 hit by an AoE. The third clause ("first attack from Cloak gains Pierce") was
 REMOVED — one keyword was doing two jobs. Ghost post-nerf sim: 43.5→50.8, no
 compensation needed. Do not re-add pierce-from-cloak.
+**Amended by G-52 (2026-10-08):** the attack that breaks a cloak is an ambush
+(+50% damage), and an attack with every target cloaked hits one at random.
 
 ## K2. Pierce AND Breach both kept, distinct sentences *(keyword batch Task 6)*
 Pierce (`ignSh`): damage ignores shields (they remain). Breach: destroys all

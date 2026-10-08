@@ -174,6 +174,25 @@ static func accrete_display_break() -> String:
 	return _accrete_break
 
 
+## Debug-build seam for the `cloak ambush` gate's deliberate breaks (never set
+## by the game): `no_bonus` drops the ambush multiplier; `always` pays it on
+## every attack, cloaked or not; `keep_cloak` leaves the cloak up after the
+## attack; `fizzle` restores the old all-cloaked fizzle; `first` always hits
+## the first cloaked unit; `no_chip` drops the bonus from the cloak chip.
+const CLOAK_BREAK_ARG := "--cloak-ambush-break="
+static var _cloak_break: String = "?"
+
+
+static func cloak_ambush_break() -> String:
+	if _cloak_break == "?":
+		_cloak_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(CLOAK_BREAK_ARG):
+					_cloak_break = arg.trim_prefix(CLOAK_BREAK_ARG)
+	return _cloak_break
+
+
 func set_tuning(overrides: Dictionary) -> void:
 	tuning = overrides.duplicate(true)
 
@@ -253,7 +272,9 @@ func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) ->
 		var pick: Dictionary = TargetingPersonality.personality_pick_target(enemy_state, _hero_states, _enemy_assignments)
 		if pick.is_empty():
 			enemy_state["selected_target_id"] = ""
-			enemy_state["target_display"] = "--"
+			# Every hero cloaked: a single-target attack hits one at random at
+			# resolve time (G-52), and the inspect says so.
+			enemy_state["target_display"] = "Random" if _attack_will_hit_at_random(ability_entry.get("raw", {}), _hero_states) else "--"
 			continue
 		enemy_state["selected_target_id"] = str(pick["id"])
 		# Display string only — battle_name() (the callsign) so every surface
@@ -301,6 +322,28 @@ func _ability_fizzles_for_lack_of_target(ability_entry: Dictionary) -> bool:
 		if bool((state_variant as Dictionary).get("dead", false)):
 			return false
 	return true
+
+
+# A single-target attack: it deals damage to one unit. The all-cloaked fallback
+# (G-52) applies to these and to nothing else.
+static func ability_is_single_target_attack(raw: Dictionary) -> bool:
+	return int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false))
+
+
+# True when a single-target attack has only cloaked units to hit, so the
+# all-cloaked fallback will pick one at random.
+func _attack_will_hit_at_random(raw: Dictionary, states: Array) -> bool:
+	if not ability_is_single_target_attack(raw) or cloak_ambush_break() == "fizzle":
+		return false
+	var any_living: bool = false
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if bool(state.get("dead", false)):
+			continue
+		if not bool(state.get("cloaked", false)):
+			return false
+		any_living = true
+	return any_living
 
 
 # True when the ability needs a single hero pick (AoE and support don't).
@@ -1404,6 +1447,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	_ability_ward_block_notes.clear()
 	_ability_rider_target_ids.clear()
 	_ability_spike_carrier_ids.clear()
+	_ability_cloaked_pick_id = ""
 	var raw: Dictionary = ability_entry.get("raw", {})
 	var damage: int = int(raw.get("dmg", 0))
 	var heal: int = int(raw.get("heal", 0))
@@ -1421,10 +1465,11 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var roll_buff_targeted: bool = bool(raw.get("rfmTgt", false)) or shield_targeted or heal_targeted
 	var ignores_shield: bool = bool(raw.get("ignSh", false))
 
-	# Dealing damage breaks the cloak (no pierce — the decloak strike is a
-	# plain attack; Ambush Wiring / Ghostblade add their own effects).
-	if damage > 0 and bool(hero_state.get("cloaked", false)):
-		hero_state["cloaked"] = false
+	# Dealing damage breaks the cloak, and that attack is an ambush (G-52): the
+	# ability's damage is multiplied. No pierce. Ambush Wiring adds its flat
+	# bonus on top of the ambush, and Ghostblade adds its execute.
+	if damage > 0 and ambush_ready(hero_state):
+		damage = _ambush_from_cloak(hero_state, damage)
 		# Ambush Wiring directive: attacks from Cloak hit harder.
 		if _has_directive(hero_state, "cloakAttackBonus"):
 			damage += _directive_value(hero_state, "amount", 5)
@@ -1432,8 +1477,10 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		# the damage pass).
 		if _has_directive(hero_state, "decloakExecute"):
 			hero_state["decloak_execute_pending"] = true
-		_log("%s strikes from the shadows!" % hero_state["unit"].display_name)
-		_emit_event(hero_state, "decloak", 0, "hero")
+
+	# Every enemy cloaked: a single-target attack hits one of them at random.
+	if damage > 0 and not hits_all and _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state).is_empty():
+		_ability_cloaked_pick_id = str(_random_cloaked_target(_enemy_states, hero_state).get("id", ""))
 
 	if damage > 0:
 		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, burn_amount, burn_turns)
@@ -2058,12 +2105,16 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	_ability_ward_block_notes.clear()
 	_ability_rider_target_ids.clear()
 	_ability_spike_carrier_ids.clear()
+	_ability_cloaked_pick_id = ""
 	var raw: Dictionary = ability_entry.get("raw", {})
 	# One shared hero target for every hostile single-target component of this
 	# ability (taunt override / assigned intent / personality fallback).
 	var hostile_hero_target: Dictionary = {}
 	if _ability_targets_single_hero(raw):
 		hostile_hero_target = _resolve_enemy_hero_target(enemy_state)
+		# Every hero cloaked: a single-target attack hits one at random (G-52).
+		if hostile_hero_target.is_empty() and ability_is_single_target_attack(raw):
+			hostile_hero_target = _random_cloaked_target(_hero_states, enemy_state)
 	var damage: int = int(raw.get("dmg", 0))
 	# Ferocity route modifier: enemy hits deal +2.
 	if damage > 0 and _battle_modifier == "ferocity":
@@ -2093,12 +2144,10 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if heal > 0:
 		_heal_state(enemy_state, heal)
 
-	# Dealing damage breaks the cloak (no pierce — Geode Panther's
-	# decloak-strike is a plain attack).
-	if damage > 0 and bool(enemy_state.get("cloaked", false)):
-		enemy_state["cloaked"] = false
-		_log("%s strikes from the shadows!" % enemy_state["unit"].display_name)
-		_emit_event(enemy_state, "decloak", 0, "enemy")
+	# Dealing damage breaks the cloak, and that attack is an ambush (G-52): the
+	# same rule the heroes get. No pierce.
+	if damage > 0 and ambush_ready(enemy_state):
+		damage = _ambush_from_cloak(enemy_state, damage)
 
 	if damage > 0:
 		var hits_all_heroes: bool = bool(raw.get("blastAll", false))
@@ -2307,9 +2356,93 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
 
 
+# ── Cloak ambush (G-52, Kev 2026-10-08) ──────────────────────────────────────
+# The attack that breaks a unit's cloak is an ambush: its damage is multiplied
+# by AMBUSH_MULT (round up, like Mark). One rule, both sides. It is paid by the
+# cloak itself, so it lands exactly once per cloak and never for a unit that is
+# not cloaked when it attacks (a cloak torn off by an area hit pays nothing).
+# 1.5 after the 2026-10-08 sweep: at 2.0 the Ghost line became the best hero by
+# a wide margin and an enemy with Rampage could hit for 64.
+const AMBUSH_MULT := 1.5
+
+
+func ambush_mult() -> float:
+	return _tuned_float("ambush_mult", AMBUSH_MULT)
+
+
+# True while the unit's next attack would be an ambush. The card chip and the
+# inspect line read this, so the screen and the engine cannot disagree.
+static func ambush_ready(state: Dictionary) -> bool:
+	if cloak_ambush_break() == "always":
+		return not bool(state.get("dead", false))
+	return bool(state.get("cloaked", false)) and not bool(state.get("dead", false))
+
+
+# The bonus as the player reads it: "double damage" at 2, "+50% damage" at 1.5.
+static func ambush_bonus_text(mult: float = AMBUSH_MULT) -> String:
+	if is_equal_approx(mult, 2.0):
+		return "double damage"
+	return "+%d%% damage" % int(round((mult - 1.0) * 100.0))
+
+
+# What the cloak chip shows beside the icon: "+50%" at 1.5, "x2" at 2.
+static func ambush_chip_text(mult: float = AMBUSH_MULT) -> String:
+	if is_equal_approx(mult, roundf(mult)):
+		return "x%d" % int(roundf(mult))
+	return "+%d%%" % int(round((mult - 1.0) * 100.0))
+
+
+# What an attack of `damage` deals when `attacker_state` makes it: the ambush
+# damage while its cloak is up, `damage` otherwise. The engine and the enemy
+# phase's HP preview both read this.
+func ambush_damage(attacker_state: Dictionary, damage: int) -> int:
+	if damage <= 0 or not ambush_ready(attacker_state) or cloak_ambush_break() == "no_bonus":
+		return damage
+	return int(ceil(float(damage) * ambush_mult()))
+
+
+# Breaks `attacker_state`'s cloak for an attack of `damage` and returns the
+# ambush damage. Call only when the attack deals damage and the unit is cloaked.
+func _ambush_from_cloak(attacker_state: Dictionary, damage: int) -> int:
+	var boosted: int = ambush_damage(attacker_state, damage)
+	if cloak_ambush_break() != "keep_cloak":
+		attacker_state["cloaked"] = false
+	_log("%s ambushes from cloak for %s." % [attacker_state["unit"].display_name, ambush_bonus_text(ambush_mult())])
+	_emit_event(attacker_state, "decloak", 0, _resolve_side_for_state(attacker_state))
+	return boosted
+
+
+# All-cloaked fallback (G-52): the cloaked unit this ability's single-target
+# ATTACK was sent to at random. Every hostile component of that attack shares
+# it; cleared at the start of every ability.
+var _ability_cloaked_pick_id: String = ""
+
+
+# A single-target attack with every candidate cloaked hits one of them at
+# random instead of fizzling (seeded pick, INVARIANTS #1). The cloak of the
+# unit it hits stays up. Returns {} when a visible target exists or nobody is
+# left to hit.
+func _random_cloaked_target(states: Array, attacker_state: Dictionary) -> Dictionary:
+	var cloaked: Array = []
+	for state_variant in states:
+		var state: Dictionary = state_variant
+		if bool(state.get("dead", false)):
+			continue
+		if not bool(state.get("cloaked", false)):
+			return {}
+		cloaked.append(state)
+	if cloaked.is_empty() or cloak_ambush_break() == "fizzle":
+		return {}
+	var pick: Dictionary = cloaked[0 if cloak_ambush_break() == "first" else _rand_index(cloaked.size())]
+	_log("Every target is cloaked. %s hits %s at random." % [attacker_state["unit"].display_name, pick["unit"].display_name])
+	return pick
+
+
 # Cloak: untargetable by hostile single-target abilities. Resolves the selected
 # target, retargeting to the first living non-cloaked unit when the pick is
-# invalid or cloaked; {} when every candidate is cloaked (the ability fizzles).
+# invalid or cloaked. When every candidate is cloaked: the unit this ability's
+# attack was sent to at random (_ability_cloaked_pick_id), else {} (an ability
+# that does not attack finds no target).
 func _hostile_single_target(states: Array, selected_id: String, attacker_state: Dictionary = {}) -> Dictionary:
 	# Enemy-side Taunt (internal lured_by state): a taunted hero must aim its
 	# hostile picks at the taunter while it lives.
@@ -2326,7 +2459,7 @@ func _hostile_single_target(states: Array, selected_id: String, attacker_state: 
 		var state: Dictionary = state_variant
 		if not state["dead"] and not bool(state.get("cloaked", false)):
 			return state
-	return {}
+	return _find_target_by_id(states, _ability_cloaked_pick_id)
 
 
 # AoE contact: the hit lands normally and the cloak breaks.

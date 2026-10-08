@@ -1,5 +1,60 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-08 cloak is an ambush (Kev, G-52; on branch `claude/cloak-and-windows`, not merged):**
+cloak made a unit untargetable but broke on its first attack and paid nothing
+for it, so it almost never lasted and cloak items were wasted on attackers.
+
+- **The attack that breaks a cloak is an ambush: +50% damage** (round up, as
+  Mark does), heroes and enemies alike. `CombatManager.AMBUSH_MULT` = 1.5;
+  `ambush_damage` is the one place the bonus is computed. It multiplies the
+  ability's own damage number, so flat extras added later (first-hit gear,
+  Momentum, the vs-frozen bonus, execute's +8, burn) are not multiplied; a
+  chain jump is half of the ambush hit; an area attack from cloak pays it on
+  every target. The cloak pays it, so it lands **once per cloak and only out
+  of cloak**: a unit that is not cloaked when it attacks gets nothing, and a
+  cloak torn off by an area hit pays nothing. An ability that does not attack
+  keeps the cloak and the bonus. An attack that also cloaks (Ghost Step,
+  Strike and Fade) spends the cloak it had, then puts up a new one that pays
+  again. Ambush Wiring adds its +5 after the bonus; Ghostblade is unchanged.
+  An enemy with Rampage and a cloak gets both (x3).
+- **Every target cloaked: a single-target attack hits one of them at random**
+  instead of fizzling (`_random_cloaked_target`, picked from the battle's
+  seeded stream, INVARIANTS #1). The attack's riders (burn, jam, mark and the
+  rest) land on the same unit; the unit keeps its cloak. Both sides. An
+  ability that does not attack (a lone mark, jam or taunt) still finds no
+  target. A hero in this case needs no pick; an enemy's inspect reads
+  TARGETING: RANDOM. With any visible target the old rule holds: the pick
+  moves to the first living, uncloaked unit.
+- **Shown:** the cloak chip carries the bonus beside the cloak icon
+  (**+50%**) for as long as the cloak is up, on both sides, and goes when the
+  cloak does. The enemy phase's HP preview counts a cloaked enemy's ambush;
+  a hero's own ambush is in the hero phase dry run. Log: **"Ghost Operative
+  ambushes from cloak for +50% damage."** and **"Every target is cloaked.
+  Strike Unit hits Geode Panther at random."**
+- **Copy** (the number comes from `AMBUSH_MULT`; the gate fails if the data
+  files disagree with it). Keyword: "Enemies can't single-target this unit;
+  allies still can. Its next attack deals +50% damage and breaks the cloak. An
+  area hit breaks it too. If every target is cloaked, a single-target attack
+  hits one at random." Inspect: "Can't be targeted. Next attack deals +50%
+  damage." Primer: "CLOAK: can't be targeted directly; its next attack deals
+  +50% damage."
+- **Why +50% and not double:** matched 1,500-run batches at 1.0 / 1.5 / 2.0 /
+  2.5 (table in G-52). At 2.0 Ghost Operative went from 29.0% to 44.3%, six
+  points clear of every other hero, Hive moved 10.2 points and the biggest
+  single hit on a hero went from 52 to 64. At 1.5 Ghost is 38.1% (level with
+  Splice Medic, 38.8%), no operation moves more than 7.6 and the biggest hit
+  is still 52. The sim's player never plans around cloak, so a real player
+  gets more out of it than these numbers show.
+- **Sim, 300 pinned runs, baseline not re-pinned (Kev decides after review):**
+  overall 0.2800 -> 0.2733; Facility +1.4, Hive +3.4, Veil 0.0, Signal Purge
+  -8.8, Mantle Hunt 0.0. The pinned batch has about 60 runs per operation;
+  the 1,500-run batch has Signal Purge at +2.6. Sweepable as `ambush_mult`
+  (`scripts/sim/knobs.json`).
+- Gate `cloak ambush` (`scripts/debug/cloak_ambush_test.gd`: once and only out
+  of cloak, both sides; the attack breaks the cloak; every target cloaked ->
+  one hit, random over seeds, repeatable per seed; chip, preview, log, copy;
+  breaks `no_bonus`, `always`, `keep_cloak`, `fizzle`, `first`, `no_chip`).
+
 **2026-10-08 feedback polish (Kev, playtest; rulings and readings: G-51):**
 
 - **A unit that does not attack shakes in place.** Attackers lunge; a unit
@@ -383,7 +438,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Jam cap | 12 | **10** (`combat_manager.JAM_CAP := 10`, keyword batch Task 5) |
 | Ward | "Ward", 17 enemy instances | **Firewall** (code FW; internal field still `ward`), enemy instances culled to **10** (6 Veil + 4 Synod); hero-side 3 renamed not culled |
 | Lure | separate keyword | **Deleted** — unified into **Taunt** both directions |
-| Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7) |
+| Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7); since 2026-10-08 the attack that breaks it is an ambush, +50% damage (G-52) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
 | Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2833**, facility **0.4085** (re-pinned 2026-10-01 for the no-repeat comp re-roll; before that 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
@@ -611,7 +666,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Accrete | — | enemy-only: the unit gains N shield at the start of each of its turns (Basalt Ape 3, Magma Drake 4; an ordinary one-round shield that covers the next hero phase). The Mantle Tyrant's ACCRETION rule is the same effect on its own cadence (6, every 2nd round, persisting). Both go through `_apply_accrete`: own beat, ACCRETE +N chip, "<unit> accretes N shield.", N = the shield actually gained (the max-HP cap can trim it). Inspect line from `InspectResolver.accrete_entry` |
 | Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
 
-**Cloak (2 clauses):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal.
+**Cloak (2 clauses + ambush, G-52):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. **The attack that breaks it is an ambush: +50% damage, once, both sides** (`CombatManager.AMBUSH_MULT`; a cloak torn off by an AoE pays nothing). **If every target of a single-target attack is cloaked, the attack hits one at random** (seeded) and that unit keeps its cloak; an ability that does not attack still finds no target. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal. Full rule: the 2026-10-08 entry at the top.
 **One keyword per ability** (pierce counts), **two allowed in overload** — audit-enforced.
 
 ---
@@ -1287,7 +1342,7 @@ Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
 > (self) + +1 roll (self) had stamped two self markers.)
 
 **View Battlefield** (between-battle choices): `battle_scene` captures the final combat state at victory into transient `GameState.battle_review_state` (skipped headless/auto). Reward, Intercept, and evolution/directive choices show `VIEW BATTLEFIELD` when that state exists; it re-enters the real battle scene read-only, then returns to the originating choice. Reward/Intercept offers, selection, recipient/swap choice, and scroll state are retained in the transient picker session; no reward rolls again and no event transaction can commit twice.
-Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam (Reduced Motion and No animations remove the wash and the shake, never the stinger sound or its music duck) — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
+Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait, plus a chip with the cloak icon and the ambush bonus ("+50%", G-52) · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam (Reduced Motion and No animations remove the wash and the shake, never the stinger sound or its music duck) — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
 
@@ -1804,7 +1859,8 @@ added to the taps the player already makes.
 - **Kill-mid-sequence (documented existing rules, NOT new behavior):** if an
   earlier hero kills a later hero's target, `_find_target_by_id` skips dead
   states, so `_hostile_single_target` retargets the later hero to the FIRST
-  LIVING non-cloaked enemy in slot order (taunt lure still overrides); with no
+  LIVING non-cloaked enemy in slot order (taunt lure still overrides); if every
+  living enemy is cloaked an attack hits one at random (G-52); with no
   living enemy the ability logs "finds no visible target - the attack fizzles."
   Friendly picks fall back per-effect (heal/shield → lowest-HP living ally).
   A hero killed mid-phase (enemy Spike) keeps its stamp but does not act

@@ -984,8 +984,9 @@ func _run_cloak_regression() -> void:
 	else:
 		_record_failure("Regression / AoE breaks cloak and hits", "cloak", "cloak broken and 6 damage taken", "delta=%d cloaked=%s" % [aoe_before - int(aoe_enemy["current_hp"]), str(aoe_enemy.get("cloaked", false))])
 
-	# Dealing damage breaks the cloak, but the attack no longer pierces —
-	# the target's shield absorbs it like any other hit.
+	# Dealing damage breaks the cloak and is an ambush (G-52: +50%, round up),
+	# but the attack does not pierce: the target's shield absorbs it like any
+	# other hit.
 	var strike_manager: CombatManager = CombatManager.new()
 	strike_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Phase Blade", {"dmg": 9})], [_make_enemy("audit_enemy", "Audit Enemy")])
 	var strike_hero: Dictionary = strike_manager.get_hero_states()[0]
@@ -996,12 +997,12 @@ func _run_cloak_regression() -> void:
 	strike_enemy["shield"] = 20
 	var strike_before: int = int(strike_enemy["current_hp"])
 	strike_manager.resolve_round({str(strike_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	var absorbed: bool = int(strike_enemy["current_hp"]) == strike_before and int(strike_enemy["shield"]) == 11
+	var absorbed: bool = int(strike_enemy["current_hp"]) == strike_before and int(strike_enemy["shield"]) == 6
 	var decloaked: bool = not bool(strike_hero.get("cloaked", false))
 	if absorbed and decloaked:
 		_record_pass("Regression / attack from cloak decloaks without pierce", "cloak")
 	else:
-		_record_failure("Regression / attack from cloak decloaks without pierce", "cloak", "shield absorbs 9 (20 -> 11), no HP damage; attacker decloaked", "hp_delta=%d shield=%d cloaked=%s" % [strike_before - int(strike_enemy["current_hp"]), int(strike_enemy["shield"]), str(strike_hero.get("cloaked", false))])
+		_record_failure("Regression / attack from cloak decloaks without pierce", "cloak", "shield absorbs the ambush's 14 (20 -> 6), no HP damage; attacker decloaked", "hp_delta=%d shield=%d cloaked=%s" % [strike_before - int(strike_enemy["current_hp"]), int(strike_enemy["shield"]), str(strike_hero.get("cloaked", false))])
 
 
 # Cleanse (Build I): purges the target's unit-level negatives (burn, negative
@@ -2268,7 +2269,8 @@ func _run_directive_combat_regressions() -> void:
 	reaper_manager.resolve_round({str(reaper_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	_expect_and_record("Regression / directive reaper threshold", "executeThresholdPct", "24", str(int(reaper_enemy["current_hp"])))
 
-	# Ambush Wiring + Ghostblade: cloak strike hits harder and Executes.
+	# Ambush Wiring + Ghostblade: cloak strike hits harder and Executes. Both
+	# ride the ambush (G-52): 10 becomes 15, then Ambush Wiring adds its 5.
 	var ambush_manager: CombatManager = CombatManager.new()
 	ambush_manager.setup_battle(
 		[_make_directive_unit("audit_hero", "Audit Hero", "Shadow Cut", {"dmg": 10}, {"type": "cloakAttackBonus", "amount": 5})],
@@ -2279,7 +2281,7 @@ func _run_directive_combat_regressions() -> void:
 	ambush_hero["cloaked"] = true
 	ambush_hero["selected_target_id"] = str(ambush_enemy["id"])
 	ambush_manager.resolve_round({str(ambush_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / directive ambush wiring", "cloakAttackBonus", "85", str(int(ambush_enemy["current_hp"])))
+	_expect_and_record("Regression / directive ambush wiring", "cloakAttackBonus", "80", str(int(ambush_enemy["current_hp"])))
 
 	var ghost_manager: CombatManager = CombatManager.new()
 	ghost_manager.setup_battle(
@@ -2289,7 +2291,7 @@ func _run_directive_combat_regressions() -> void:
 	var ghost_hero: Dictionary = ghost_manager.get_hero_states()[0]
 	var ghost_enemy: Dictionary = ghost_manager.get_enemy_states()[0]
 	ghost_hero["cloaked"] = true
-	ghost_enemy["current_hp"] = 30  # 30-10=20 -> below 25% -> execute +8
+	ghost_enemy["current_hp"] = 35  # 35-15 (ambush) = 20 -> below 25% -> execute +8
 	ghost_hero["selected_target_id"] = str(ghost_enemy["id"])
 	ghost_manager.resolve_round({str(ghost_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
 	_expect_and_record("Regression / directive ghostblade execute", "decloakExecute", "12", str(int(ghost_enemy["current_hp"])))
@@ -4027,7 +4029,7 @@ func _run_text_alignment_audits() -> void:
 	# old hover tooltips that used to carry this text in compact_unit_card). Canonical short
 	# forms per the 2026-07-10 status-text trim (Kev: one short line per active effect).
 	var status_text: String = FileAccess.get_file_as_string("res://scripts/ui/inspect_resolver.gd")
-	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak untargetable text", "contains cloak untargetable text" if status_text.contains("Can't be targeted; breaks on dealing damage.") else "missing")
+	_expect_and_record("Text alignment / inspect cloak text", "text", "contains cloak untargetable text", "contains cloak untargetable text" if status_text.contains("Can't be targeted. Next attack deals %s.") else "missing")
 	_expect_and_record("Text alignment / inspect ward text", "text", "contains ward block text", "contains ward block text" if status_text.contains("Blocks the next ability, then breaks.") else "missing")
 
 
