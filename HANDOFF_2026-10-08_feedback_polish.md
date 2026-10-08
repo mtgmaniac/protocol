@@ -323,3 +323,8 @@ acts. "At the start of every 2nd round" read as the dice throw. Reworded:
 Not changed: the Veil Overseer's rule says "at the start of every round" for a
 Firewall raised at the same moment. Say if you want it to match.
 
+**Gate.** Full `python scripts/verify_gate.py` with the sim on `69e2e6a` (the
+three commits above plus their G-51 entry): all 78 hard gates PASS, plus
+profile isolation. Sim unchanged from the run above (overall 0.2800,
+stellarMenagerie 0.1458, within tolerance). Same environment notes: Godot run
+from a scratch copy through `GODOT_BIN`, `APPDATA` on a scratch folder.
