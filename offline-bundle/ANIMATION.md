@@ -100,7 +100,7 @@ Drive feedback from a TABLE, not branching code, so new effects = new rows.
 | `rewrite` | pending marker scrambles digits, slams to "REWRITE→3" |
 | `hijack` | ghost label drifts from the tray to the enemy card |
 | `mark` | gold "◎ MARKED" crosshair stamp punch |
-| `block` (amount 0 = firewall) | hex flash (flat cyan hexagon pop) + "✕ NEGATED" tick |
+| `block` (amount 0 = firewall) | BLOCKED chip on the unit (1.5s) + hex flash (flat cyan hexagon pop); the log names what was cancelled |
 | `leech` | dim red return tracer from the drained enemy (paired `leech` event) + the heal event's green number |
 | `decloak` | portrait resolves sharp + white flash |
 | `freeze` | crust + tint on the die (ice cyan / petrify stone-gray) |

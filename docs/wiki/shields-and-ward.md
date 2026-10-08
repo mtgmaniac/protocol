@@ -52,7 +52,7 @@ Breach against a `shields_persist` target destroys the accumulated plate — Bre
 - What Firewall does NOT stop: burn ticks, aura/chip damage, Spike retaliation (no targeting), Siphon riding a blocked hit (the hit didn't connect, so no drain either — `attack_connected` stays false), and boss standing rules (Root Access rewrites through it, `:1336`).
 - Enemy Firewall census (TRUTH): exactly 10 instances (6 Veil, 4 Synod). Hero-side: 3 abilities plus items/gear.
 
-Feedback: ward consume = hex flash + "✕ NEGATED" (`battle_feedback.gd:447, 521`); `block` events carry amount 0 for a ward vs amount N for shield absorption (`_build_floating_text :337`).
+Feedback: a Firewall block = a BLOCKED chip on the unit + hex flash + the log line "Firewall blocked <effects> on <unit>." (`battle_feedback._show_blocked_chip`, copy in `scripts/battle/firewall_feedback.gd`, gate `firewall feedback`). `block` events carry amount 0 and an `effects` list for a Firewall vs amount N for shield absorption (which keeps its `X N` float).
 
 ## Why it works that way
 

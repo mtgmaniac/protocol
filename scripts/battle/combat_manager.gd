@@ -2,6 +2,8 @@
 class_name CombatManager
 extends RefCounted
 
+const FirewallFeedback := preload("res://scripts/battle/firewall_feedback.gd")
+
 var _hero_states: Array = []
 var _enemy_states: Array = []
 var _round_log: Array = []
@@ -732,6 +734,7 @@ func restore_state(snap: Dictionary) -> void:
 	_scavenger_drop_done = bool(snap["scavenger_drop_done"])
 	_decoy_round_one = bool(snap["decoy_round_one"])
 	_ability_ward_blocked_ids = (snap["ward_blocked_ids"] as Dictionary).duplicate(true)
+	_ability_ward_block_notes.clear()
 	_ability_rider_target_ids = (snap.get("rider_target_ids", {}) as Dictionary).duplicate(true)
 	_ability_spike_carrier_ids = (snap.get("spike_carrier_ids", {}) as Dictionary).duplicate(true)
 	_round_log.clear()
@@ -1332,6 +1335,7 @@ func _add_roll_buff(state: Dictionary, amount: int, turns: int, shapes_current_r
 
 func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> void:
 	_ability_ward_blocked_ids.clear()
+	_ability_ward_block_notes.clear()
 	_ability_rider_target_ids.clear()
 	_ability_spike_carrier_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
@@ -1443,7 +1447,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 
 	if damage <= 0 and burn_amount > 0:
 		var burn_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target):
+		if not burn_target.is_empty() and not _ward_blocks_hostile(burn_target, [FirewallFeedback.BURN]):
 			_apply_burn_from_hero(hero_state, burn_target, burn_amount, burn_turns)
 
 	# Mark without damage (Build I — Target Lock is now a 0-dmg setup band):
@@ -1452,7 +1456,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	# burn-without-damage case above; a firewall blocks it like any hostile.
 	if damage <= 0 and bool(raw.get("mark", false)):
 		var mark_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-		if not mark_target.is_empty() and not _ward_blocks_hostile(mark_target):
+		if not mark_target.is_empty() and not _ward_blocks_hostile(mark_target, [FirewallFeedback.MARK]):
 			_apply_mark(mark_target)
 
 	# RFE application (roll debuff on enemies)
@@ -1462,12 +1466,12 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if rfe_amount > 0:
 		if rfe_all:
 			for enemy_state in _enemy_states:
-				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state):
+				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state, [FirewallFeedback.ROLL_PENALTY]):
 					_add_rfe_stack(enemy_state, rfe_amount, rfe_turns)
 					_apply_roll_down_directives(hero_state, enemy_state, true)
 		else:
 			var rfe_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-			if not rfe_target.is_empty() and not _ward_blocks_hostile(rfe_target):
+			if not rfe_target.is_empty() and not _ward_blocks_hostile(rfe_target, [FirewallFeedback.ROLL_PENALTY]):
 				_add_rfe_stack(rfe_target, rfe_amount, rfe_turns)
 				_apply_roll_down_directives(hero_state, rfe_target, false)
 
@@ -1482,7 +1486,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		# multiple heroes may taunt different enemies in one round.
 		hero_state["taunting"] = true
 		var taunt_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-		if not taunt_target.is_empty() and not _ward_blocks_hostile(taunt_target):
+		if not taunt_target.is_empty() and not _ward_blocks_hostile(taunt_target, [FirewallFeedback.TAUNT]):
 			taunt_target["lured_by_id"] = str(hero_state["id"])
 			_log("%s taunts %s - it can only strike back this round!" % [hero_state["unit"].display_name, taunt_target["unit"].display_name])
 			_emit_event(taunt_target, "taunt", 0, "enemy")
@@ -1553,7 +1557,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if freeze_amount > 0:
 		if freeze_all_enemy > 0:
 			for es in _enemy_states:
-				if not es["dead"] and not _ward_blocks_hostile(es):
+				if not es["dead"] and not _ward_blocks_hostile(es, [FirewallFeedback.FREEZE]):
 					_freeze_die_state(es, freeze_amount, freeze_flavor)
 		else:
 			var freeze_target: Dictionary = {}
@@ -1566,24 +1570,24 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 				_freeze_die_state(freeze_target, freeze_amount, freeze_flavor, false)
 			else:
 				freeze_target = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target):
+				if not freeze_target.is_empty() and not _ward_blocks_hostile(freeze_target, [FirewallFeedback.FREEZE]):
 					_freeze_die_state(freeze_target, freeze_amount, freeze_flavor)
 
 	# Jam: cap the target's next roll at 10 (die status, telegraphed for the
 	# next reveal). jamAll caps every living enemy die.
 	if bool(raw.get("jamAll", false)):
 		for es in _enemy_states:
-			if not es["dead"] and not _ward_blocks_hostile(es):
+			if not es["dead"] and not _ward_blocks_hostile(es, [FirewallFeedback.JAM]):
 				_apply_jam(es, JAM_CAP, true)
 	elif bool(raw.get("jam", false)):
 		var jam_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target):
+		if not jam_target.is_empty() and not _ward_blocks_hostile(jam_target, [FirewallFeedback.JAM]):
 			_apply_jam(jam_target, JAM_CAP, true)
 
 	# Rewrite: force the target's next roll to 3.
 	if bool(raw.get("rewrite", false)):
 		var rewrite_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
-		if not rewrite_target.is_empty() and not _ward_blocks_hostile(rewrite_target):
+		if not rewrite_target.is_empty() and not _ward_blocks_hostile(rewrite_target, [FirewallFeedback.REWRITE]):
 			_apply_rewrite(rewrite_target, true)
 
 	if damage > 0 and bool(hero_state.get("gear_first_ability_echo", false)) and not bool(hero_state.get("gear_first_ability_echo_used", false)):
@@ -1692,12 +1696,16 @@ func _apply_hero_ability_damage(
 	var breach_all: bool = bool(raw.get("breachAll", false))
 	var leech: bool = bool(raw.get("leech", false))
 	var leech_hp_dealt: int = 0
+	# What a Firewall on the target cancels from this attack (the log names it).
+	var attack_effects: Array = [FirewallFeedback.DAMAGE]
+	if burn_amount > 0 and burn_turns > 0:
+		attack_effects.append(FirewallFeedback.BURN)
 
 	if hits_all:
 		for enemy_state in _enemy_states:
 			if enemy_state["dead"]:
 				continue
-			if _ward_blocks_hostile(enemy_state):
+			if _ward_blocks_hostile(enemy_state, attack_effects):
 				continue
 			_break_cloak_on_aoe(enemy_state)
 			if breach_all or breach:
@@ -1714,10 +1722,14 @@ func _apply_hero_ability_damage(
 		# shields before the hit lands.
 		if breach_all:
 			for enemy_state in _enemy_states:
-				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state):
+				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state, [FirewallFeedback.BREACH]):
 					_breach_shields(hero_state, enemy_state)
 		if not target_enemy.is_empty():
-			if not _ward_blocks_hostile(target_enemy):
+			if breach and not breach_all:
+				attack_effects.append(FirewallFeedback.BREACH)
+			if bool(raw.get("mark", false)) and not _echo_pass_active:
+				attack_effects.append(FirewallFeedback.MARK)
+			if not _ward_blocks_hostile(target_enemy, attack_effects):
 				if breach and not breach_all:
 					_breach_shields(hero_state, target_enemy)
 				# vsFrozenBonus rider (Shatter Lance): bonus damage against a
@@ -1970,13 +1982,14 @@ func _apply_chain_jumps(
 		hit_ids[str(next_target["id"])] = true
 		_log("%s's attack chains to %s for %d." % [hero_state["unit"].display_name, next_target["unit"].display_name, chain_damage])
 		_emit_event(next_target, "chain", chain_damage, "enemy")
-		if _ward_blocks_hostile(next_target):
+		if _ward_blocks_hostile(next_target, [FirewallFeedback.CHAIN]):
 			continue
 		_damage_state(next_target, chain_damage, ignores_shield, hero_state, shield_pierce)
 
 
 func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, raw_roll: int = -1) -> void:
 	_ability_ward_blocked_ids.clear()
+	_ability_ward_block_notes.clear()
 	_ability_rider_target_ids.clear()
 	_ability_spike_carrier_ids.clear()
 	var raw: Dictionary = ability_entry.get("raw", {})
@@ -2056,11 +2069,15 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		if should_wipe_shields:
 			_wipe_all_hero_shields(enemy_state)
 		var attack_connected: bool = false
+		# What a Firewall on the target cancels from this attack (the log names it).
+		var attack_effects: Array = [FirewallFeedback.DAMAGE]
+		if burn_amount > 0 and burn_turns > 0:
+			attack_effects.append(FirewallFeedback.BURN)
 		if hits_all_heroes:
 			for hero_state in _hero_states:
 				if bool(hero_state["dead"]):
 					continue
-				if _ward_blocks_hostile(hero_state):
+				if _ward_blocks_hostile(hero_state, attack_effects):
 					continue
 				attack_connected = true
 				_break_cloak_on_aoe(hero_state)
@@ -2076,7 +2093,10 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			var target_hero: Dictionary = hostile_hero_target
 			if target_hero.is_empty():
 				_log("%s finds no visible target - the attack fizzles." % enemy_state["unit"].display_name)
-			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero):
+			# A blocked single-target hit never connects, so its siphon is lost too.
+			if int(raw.get("siphon", 0)) > 0:
+				attack_effects.append(FirewallFeedback.SIPHON)
+			if not target_hero.is_empty() and not _ward_blocks_hostile(target_hero, attack_effects):
 				attack_connected = true
 				_damage_state(target_hero, final_damage, false, enemy_state)
 				_apply_burn(target_hero, burn_amount, burn_turns)
@@ -2099,14 +2119,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_wipe_all_hero_shields(enemy_state)
 
 	if damage <= 0 and burn_amount > 0:
-		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target, [FirewallFeedback.BURN]):
 			_apply_burn(hostile_hero_target, burn_amount, burn_turns)
 
 	# RFE on heroes (roll debuff from enemies using rfm/rfmT keys)
 	var rfm_amount: int = int(raw.get("rfm", 0))
 	var rfm_turns: int = int(raw.get("rfmT", 1))
 	if rfm_amount > 0:
-		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target, [FirewallFeedback.ROLL_PENALTY]):
 			_add_rfe_stack(hostile_hero_target, rfm_amount, rfm_turns)
 
 	# ERB: enemy roll buff
@@ -2132,11 +2152,11 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var enemy_freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
 	if enemy_freeze_all > 0:
 		for hero_state in _hero_states:
-			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
+			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state, [FirewallFeedback.FREEZE]):
 				_freeze_die_state(hero_state, enemy_freeze_all, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
 		var freeze_rider_target: Dictionary = _freeze_pick_hero_lowest_die(enemy_state)
-		if not freeze_rider_target.is_empty() and not _ward_blocks_hostile(freeze_rider_target):
+		if not freeze_rider_target.is_empty() and not _ward_blocks_hostile(freeze_rider_target, [FirewallFeedback.FREEZE]):
 			_freeze_die_state(freeze_rider_target, enemy_freeze_one, enemy_freeze_flavor)
 
 	# Rampage grants (self or all enemies)
@@ -2160,15 +2180,15 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	# Jam hero dice: cap the targeted hero's (or every hero's) next roll at 10.
 	if bool(raw.get("jamAll", false)):
 		for hero_state in _hero_states:
-			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state):
+			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state, [FirewallFeedback.JAM]):
 				_apply_jam(hero_state, JAM_CAP, true)
 	elif bool(raw.get("jam", false)):
-		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target, [FirewallFeedback.JAM]):
 			_apply_jam(hostile_hero_target, JAM_CAP, true)
 
 	# Rewrite hero dice (Synod): force the targeted hero's next roll to 3.
 	if bool(raw.get("rewrite", false)):
-		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target, [FirewallFeedback.REWRITE]):
 			_apply_rewrite(hostile_hero_target, true)
 
 	# Hijack (enemy-only): this enemy's next roll copies the heroes' current
@@ -2188,7 +2208,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	# Enemy-side Taunt (formerly Lure, Accretion): the targeted hero can only
 	# target this enemy next turn. Internal state keeps the lured_by split.
 	if bool(raw.get("taunt", false)):
-		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target):
+		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target, [FirewallFeedback.TAUNT]):
 			hostile_hero_target["lured_by_id"] = str(enemy_state["id"])
 			hostile_hero_target["lure_skip_next_tick"] = true
 			_log("%s TAUNTS %s - next turn they can only strike back!" % [enemy_state["unit"].display_name, hostile_hero_target["unit"].display_name])
@@ -2451,7 +2471,7 @@ func _spill_overkill(dead_state: Dictionary, amount: int, attacker_state: Dictio
 		if bool(next_state.get("dead", false)) or bool(next_state.get("cloaked", false)):
 			continue
 		_log("Spillover Charge: %d overkill carries to %s." % [amount, next_state["unit"].display_name])
-		if _ward_blocks_hostile(next_state):
+		if _ward_blocks_hostile(next_state, [FirewallFeedback.SPILLOVER]):
 			return
 		_damage_state(next_state, amount, false, attacker_state)
 		return
@@ -2501,6 +2521,12 @@ func _wipe_all_hero_shields(source_state: Dictionary = {}) -> void:
 # Every hostile component of the SAME ability (damage, burn, debuff, freeze) is
 # negated together via _ability_ward_blocked_ids, which resets per ability.
 var _ability_ward_blocked_ids: Dictionary = {}
+# The block each of those ids produced this ability: target id -> {"event":
+# the block event, "log": its line's index, "line": the line}. A later
+# component of the same ability adds its name to that one event and line, so a
+# blocked "damage, burn, jam" reads as one block, not three. Transient like the
+# memo above; never saved.
+var _ability_ward_block_notes: Dictionary = {}
 # NK-06: spike and flat vs-state riders (Cold Logic / Deep Cuts / Shatterpoint)
 # fire once per ABILITY, not per damage packet. These per-ability memos (target
 # id → true) reset at each hero/enemy ability start, so a multi-packet ability
@@ -2518,19 +2544,47 @@ func _apply_ward(state: Dictionary) -> void:
 	_emit_event(state, "ward", 0, _resolve_side_for_state(state))
 
 
-func _ward_blocks_hostile(target_state: Dictionary) -> bool:
+# `effects` names what the caller was about to apply (FirewallFeedback
+# constants). Every call site passes it, so nothing a Firewall cancels goes
+# unreported (gate `firewall feedback`).
+func _ward_blocks_hostile(target_state: Dictionary, effects: Array) -> bool:
 	if target_state.is_empty():
 		return false
 	var target_id: String = str(target_state.get("id", ""))
 	if _ability_ward_blocked_ids.has(target_id):
+		_note_ward_blocked(target_state, effects)
 		return true
 	if not bool(target_state.get("warded", false)):
 		return false
 	target_state["warded"] = false
 	_ability_ward_blocked_ids[target_id] = true
-	_log("%s's firewall blocks the ability!" % target_state["unit"].display_name)
 	_emit_event(target_state, "block", 0, _resolve_side_for_state(target_state))
+	var block_event: Dictionary = _round_events.back()
+	block_event["effects"] = []
+	var line: String = FirewallFeedback.log_line([], str(target_state["unit"].display_name))
+	_log(line)
+	_ability_ward_block_notes[target_id] = {"event": block_event, "log": _round_log.size() - 1, "line": line}
+	_note_ward_blocked(target_state, effects)
 	return true
+
+
+# Add effect names to this ability's block on `target_state`: the event's
+# "effects" list and its log line, rewritten in place.
+func _note_ward_blocked(target_state: Dictionary, effects: Array) -> void:
+	var note: Dictionary = _ability_ward_block_notes.get(str(target_state.get("id", "")), {})
+	if note.is_empty():
+		return
+	var named: Array = (note["event"] as Dictionary)["effects"]
+	var grew: bool = false
+	for effect in FirewallFeedback.named(effects):
+		if not named.has(effect):
+			named.append(effect)
+			grew = true
+	var index: int = int(note["log"])
+	if not grew or index >= _round_log.size() or str(_round_log[index]) != str(note["line"]):
+		return
+	note["line"] = FirewallFeedback.log_line(named, str(target_state["unit"].display_name))
+	_round_log[index] = note["line"]
 
 
 # Freeze = repeat (per Kev 2026-07-06): the die crusts static in the tray

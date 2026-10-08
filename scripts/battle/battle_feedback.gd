@@ -2,6 +2,7 @@ class_name BattleFeedback
 extends Node
 
 const ActionMotion := preload("res://scripts/battle/action_motion.gd")
+const FirewallFeedback := preload("res://scripts/battle/firewall_feedback.gd")
 
 var _scene: Control
 var _death_sfx_played_ids: Dictionary = {}
@@ -50,7 +51,7 @@ const CHIP_CANONICAL_ORDER: Array = ["burn", "shield", "mark", "roll",
 # _rules` raises the firewall at the top of resolve_round; the hero phase inside
 # the SAME call consumes it via `_ward_blocks_hostile`. Every card built
 # afterwards reads `warded = false`, so the player's attack was eaten every
-# round with the ✕ float negating something they were never shown.
+# round with the block negating something they were never shown.
 #
 # So: replay the grant/clear pair from the event list and INJECT the chip for
 # exactly the beats it was live. Presentation only — combat state is untouched,
@@ -529,8 +530,8 @@ func _flash_card(card: Control, event_type: String) -> void:
 
 
 # Floating-number presentation (float-text redesign): big signed numbers, no
-# words — the ward-negate ✕ is the single glyph exception (nothing happening IS
-# that event). Font is RAW px like the rest of the battle card text (name/HP are
+# words. (A Firewall block used to be the one glyph here, an X; it is the
+# BLOCKED chip now.) Font is RAW px like the rest of the battle card text (name/HP are
 # raw 72, not scale_font_size-scaled): floats sit ABOVE the card's own text so
 # the number is the loudest thing on the card while it's alive.
 const FLOAT_FONT_SIZE := 96
@@ -701,7 +702,7 @@ func _get_card_float_origin(card: Control) -> Vector2:
 
 # The float vocabulary: colored signed numbers only. Words are cut — statuses
 # already read through chips + keyword visuals (freeze crust, mark flash,
-# shield chips vanishing). The ward-negate ✕ is THE glyph exception: negation
+# shield chips vanishing). A Firewall block has its own BLOCKED chip: negation
 # is otherwise invisible. roll_buff floats at the die via
 # _spawn_roll_buff_float, never here.
 func _build_floating_text(event_type: String, amount: int) -> String:
@@ -711,7 +712,11 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 		"heal", "shield":
 			return "+%d" % amount
 		"block":
-			return "X" if amount <= 0 else "X %d" % amount
+			# amount 0 is a Firewall block: the BLOCKED chip says it, not a float
+			# (_show_blocked_chip). A shield absorbing a hit keeps its number.
+			if amount <= 0:
+				return "X" if FirewallFeedback.break_mode() == "no_chip" else ""
+			return "X %d" % amount
 		_:
 			# freeze / mark / wipe_shields: cut (redundant with chip + keyword
 			# visual). leech / pierce / accrete / revive: the paired damage /
@@ -832,8 +837,8 @@ func _celebrate_overload() -> void:
 # on the attacker · Siphon = amber pip drifts from the protocol bar to the
 # enemy · Hijack = ghost die label drifts from the hero rail to the enemy
 # card · Jam = static flicker on the die · Rewrite = the die's marker
-# scrambles then slams to 3 · Decloak = the portrait resolves sharp · Ward
-# consume = hex flash + ✕ float. Chain/Leech read through their floats (the
+# scrambles then slams to 3 · Decloak = the portrait resolves sharp · Firewall
+# block = BLOCKED chip + hex flash. Chain/Leech read through their floats (the
 # card-to-card tracer line was cut 2026-07-10 — disruptive). All cues stay
 # local to their target, flat and palette-driven.
 func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: Control, target_card: Control) -> void:
@@ -850,7 +855,8 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 			_burst_particles(target_card, Color(0.86, 0.42, 0.28, 1.0), 8)
 		"block":
 			if int(event.get("amount", 0)) <= 0:
-				# Ward consume — hex flash in the shield channel.
+				# Firewall block: the chip names it; the hex flash is the accent.
+				_show_blocked_chip(target_card)
 				_hex_flash(target_card, Color(0.55, 0.82, 1.0, 0.95))
 		"siphon":
 			var bar_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y - 60.0)
@@ -1030,6 +1036,69 @@ func _chip_flash_then_burst(card: Control, chip_color: Color, burst_color: Color
 		chip.queue_free()
 		_burst_particles(card, burst_color, count)
 	)
+
+
+# Firewall block (playtest 2026-10-08): a BLOCKED chip sits on the unit whose
+# Firewall just cancelled something, for the time a battle number stays. The
+# log line beside it names what was cancelled. It always appears: Reduced
+# Motion drops the pop, No animations drops the fade too.
+func _show_blocked_chip(card: Control) -> void:
+	if FirewallFeedback.break_mode() == "no_chip":
+		return
+	if card == null or not is_instance_valid(card):
+		return
+	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
+		return
+	var chip := PanelContainer.new()
+	chip.name = "BlockedChip"
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A filled plate in the shield channel, the same tokens as the shield chip.
+	var tokens: Dictionary = PixelUI.DT_STATUS["shield"]
+	chip.add_theme_stylebox_override("panel", PixelUI.make_hard_style(tokens["fill"], tokens["border"], 4))
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 18)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 8)
+	chip.add_child(margin)
+	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = FirewallFeedback.CHIP_TEXT
+	PixelUI.style_label(label, 44, tokens["text"], 0)
+	margin.add_child(label)
+	chip.z_as_relative = false
+	chip.z_index = 120
+	_scene.float_layer.add_child(chip)
+	chip.reset_size()
+	chip.size = chip.get_combined_minimum_size()
+	# Over the portrait, clear of the nameplate and the HP strip, and never off
+	# the side of the screen on an edge card.
+	var card_rect: Rect2 = card.get_global_rect()
+	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var pos := Vector2(
+		card_rect.get_center().x - chip.size.x * 0.5,
+		card_rect.position.y + card_rect.size.y * 0.46 - chip.size.y * 0.5
+	) - layer_origin
+	pos.x = clampf(pos.x, 8.0, maxf(8.0, _scene.float_layer.size.x - chip.size.x - 8.0))
+	chip.position = Vector2(PixelUI.even_px(pos.x), PixelUI.even_px(pos.y))
+	chip.pivot_offset = chip.size * 0.5
+	if PixelUI.no_animations_enabled() and FirewallFeedback.break_mode() != "animated_chip":
+		get_tree().create_timer(FirewallFeedback.CHIP_HOLD).timeout.connect(chip.queue_free)
+		return
+	# The same life in every mode: [pop 0.18] + hold + fade 0.20 = CHIP_HOLD.
+	var tween: Tween = chip.create_tween()
+	var hold: float = FirewallFeedback.CHIP_HOLD - 0.20
+	if not PixelUI.reduced_motion_enabled():
+		hold -= 0.18
+		chip.scale = Vector2(0.6, 0.6)
+		tween.tween_property(chip, "scale", Vector2(1.12, 1.12), 0.10) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(chip, "scale", Vector2.ONE, 0.08) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(hold)
+	tween.tween_property(chip, "modulate:a", 0.0, 0.20)
+	tween.tween_callback(chip.queue_free)
 
 
 # Ward consume: a flat hexagon outline pops over the card and fades — the

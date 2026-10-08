@@ -16,6 +16,28 @@
   (`scripts/debug/action_motion_test.gd`: every ability in the data, a live
   round on both sides, both settings; breaks `no_wiggle`, `all_lunge`,
   `reduced_full`, `no_anim_ignored`); the landscape axis is in `battle layout`.
+- **A Firewall says what it blocked.** A Firewall that cancelled a taunt (or
+  anything else) showed an X over the unit and the line "<unit>'s firewall
+  blocks the ability!", which named neither the Firewall nor what was lost.
+  Now a **BLOCKED** chip sits on the unit for 1.5 s (a filled plate in the
+  shield colours, over the portrait; it replaces the X) and the battle log
+  reads **"Firewall blocked taunt on Scrap Drone."** Every place
+  `CombatManager` asks a Firewall (`_ward_blocks_hostile`, 25 call sites) names
+  the effect it was about to apply; the names for one ability on one unit are
+  gathered into one block event (`effects`) and one line ("Firewall blocked
+  damage, burn and jam on Strike Unit."). What a Firewall can cancel, both
+  sides unless noted: damage (one target or an area), burn, mark, breach
+  (hero), chain damage (hero), roll penalty, taunt, freeze, jam, rewrite,
+  siphon (enemy: a blocked hit never connects), Spillover Charge (the relic's
+  carry). What it never stops is unchanged: burn ticks, spike, items, boss
+  standing rules, an enemy's "remove all hero shields". Copy and effect names:
+  `scripts/battle/firewall_feedback.gd` (sentence case, keywords lowercase,
+  per the capitalization law). **Reduced Motion:** the chip appears at once
+  (no pop) and fades. **No animations:** it appears, holds and is removed with
+  no pop and no fade. Gate `firewall feedback`
+  (`scripts/debug/firewall_feedback_test.gd`: 30 cases, each run with and
+  without a Firewall; a live taunt into a Firewall; the chip under all three
+  settings; breaks `silent_taunt`, `old_log`, `no_chip`, `animated_chip`).
 
 **2026-10-08 web display recovery (Kev, G-50):** when a browser drops the
 game's display (WebGL context loss, on a phone usually an app switch) the game
@@ -444,7 +466,7 @@ must satisfy that list.
 5. Shields last **one opposing action phase** (per-side expiry, CONFIRMED per Kev 2026-07-06, DECISIONS_RESOLVED #2): granted this round, absorb through this round's opposing phase, gone at the round-end tick (no `shT` field exists anywhere in data — audited 2026-07-07, zero offenders). Enemy-phase grants survive one tick so they cover exactly one hero phase. **The SINGLE named exception is `shields_persist`** (the Mantle Tyrant standing rule; the Mantle Core relic that shared it was retired in the boss relic rework, G-41), which keeps shields until broken — nothing else may persist a shield. A unit's **total shield is capped at its max HP** (`_cap_shield_at_max_hp`), so persistent shields can't accumulate without bound from per-round drips like Bulwark Projector / Aegis Field (audit A-034). Aegis Field (`healGrantsShieldAll`) only fires on **friendly** heals — an enemy heal no longer shields the squad (audit A-033).
 6. Protocol resets each battle (does NOT carry over; Overflow relic carries 50%).
 7. **Freeze = REPEAT** (one keyword, identical both sides; per Kev 2026-07-06, FINAL — restores the original design intent, supersedes both the next-turn lockout and the fix-1.4 bank/thaw banked-face model, see `docs/DECISIONS_RESOLVED.md` #1): a frozen die crusts and stays static in the tray as a hard physics blocker other dice bounce off. On each of its next N rolls it does NOT reroll — it keeps the same face, and its unit **acts again on that same result: same zone, same ability**. **Freeze locks the number on the face (G-23, Kev 2026-09-26):** the locked value is exactly what the die SHOWED when it froze — its effective value, every modifier included (a +3 die showing a buffed 20 freezes as 20, not its natural 17) — captured by `BattleEngine.item_freeze_die` (items) and `CombatManager._freeze_die_state` from the values the round acts on (`stamp_acted_values`: effective rolls, hijack copy included). From the moment it freezes, nothing changes that number — a buff, penalty, jam or rewrite added or removed later, in the same round or a later one, leaves it alone, and the die never moves or changes face while frozen (`BattleEngine._is_locked_by_freeze`; hard gate `dice face`). Targeting is re-picked fresh on each repeat (manual pick for heroes, personality choke-point for enemies); only the die result is locked. After its authored N repeats the die thaws and rerolls normally. While frozen the die is **fully immune to alteration** — Jam, Rewrite, **Nudge**, Reroll, Set, and Twin-Fates all bounce off (one clean rule: "a frozen die can't be altered", per Kev NK-03; the engine's own `apply_nudge`/`apply_set`/`apply_reroll` refuse a frozen die). **Hijack waits (G-30):** a hijack on a frozen enemy die stays pending through the freeze (the round-end tick keeps it) and copies the heroes' highest die at the first reveal after the thaw. 20-face riders (Overload Capacitor Protocol, the 20s stat, Overload Loop, the enemy elite-summon roll) fire **on every resolving turn, including frozen turns** (Kev G-8, 2026-09-05, supersedes NK-04). Loop/Rites add one activation; Protocol and the 20s stat pay once per resolving turn, not per echo. Enemy summon chances and field limits still apply. Any freeze ability with **no damage component** (incl. shield+freeze / heal+freeze) uses `freezeAnyDice` — one manual pick, EITHER side (freezing an ally repeats their good roll on purpose); freeze riders on damaging abilities stay enemy-side. **Enemy AI freeze targets the hero's LOWEST revealed die** — deterministic, no randi (taunt still overrides; cloak still hides). Re-freezing adds repeats; a frozen unit whose repeated ability applies freeze chains legally (each repeat decrements — no infinite loop). Deep Freeze directive extends the repeat count. Cosmetic `freeze_flavor`: ice (default) / petrify.
-8. **Firewall** (internal field `ward`, displayed Firewall/FW): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only.
+8. **Firewall** (internal field `ward`, displayed Firewall/FW): blocks the next ability that targets the unit, then breaks; an AoE that includes the unit is blocked for that unit only. The block is shown: a BLOCKED chip on the unit and a log line naming what was cancelled ("Firewall blocked taunt on Scrap Drone."; see the 2026-10-08 feedback polish entry).
 9. Zone names in data: `recharge` (low) → `strike` → `surge` → `crit` → `overload` (the 20). **These five words are INTERNAL KEYS ONLY** (Batch 2 band-vocabulary rule): never use them to name or describe dice bands in player-facing copy, documentation, or design discussion — player text refers to a band by its numeric range ("1–4", "20") or not at all, and never claims higher bands are strictly stronger (they are not). Proper nouns are exempt (Strike Unit, Overload Protocol, Overload Capacitor, Core Cell, etc.).
 10. **Buff/DoT timers are independent instances** (per Kev 2026-07-06, FINAL — resolves old DECISIONS #3, see `docs/DECISIONS_RESOLVED.md`): roll buffs (`rfm` heroes / `erb` enemies, identical) and Burn no longer refresh on re-cast. Each application is its own instance with its own remaining duration; the effective value is the SUM of live instances; each expires on its own clock. Canonical stacking case: +3/2t cast turn 1 plus +5/2t cast turn 2 → turn 2 total +8, turn 3 total +5, turn 4 zero. Burn instances run independent clocks; the display aggregates ONE chip: summed value, longest remaining duration.
    **Duration convention (Kev 2026-07-13, supersedes the old "N−1 / eat-a-turn" encoding):** a duration field stores **N effective turns** — the status is present for exactly N turns and absent on turn N+1. Whether the CAST round counts toward N depends on whether the buff can shape that round's roll:
@@ -1664,7 +1686,7 @@ the beats it was live; the card view merges injected tokens ONLY where the chip
 type is absent from both live and snapshot, so real state always wins. This is
 what makes THE COURT's firewall visible — the Conclave Overseer's standing rule
 raises the ward at the top of `resolve_round` and the hero phase inside the
-same call consumes it, so `warded` read false on every card and the block's ✕
+same call consumes it, so `warded` read false on every card and the block
 negated something the player was never shown (a lifetime bug). Regression
 `firewall_display_test.gd`. **Known remaining leak
 (flagged, out of Item-1 scope): die-crust visuals (`_sync_die_status_visuals`)

@@ -248,6 +248,13 @@ GATES = [
         "--script", "scripts/debug/action_motion_test.gd", "--break-arg=--action-motion-break=",
         "--breaks", "no_wiggle,all_lunge,reduced_full,no_anim_ignored"],
         "[ACTION_MOTION_GATE] PASS", False),
+    # Playtest 2026-10-08: every effect a Firewall cancels says so (BLOCKED
+    # chip + a log line naming it). 30 cases over the 25 call sites, a live
+    # taunt into a Firewall, the chip under each motion setting; four breaks.
+    ("firewall feedback", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "FIREWALL_FEEDBACK",
+        "--script", "scripts/debug/firewall_feedback_test.gd", "--break-arg=--firewall-feedback-break=",
+        "--breaks", "silent_taunt,old_log,no_chip,animated_chip"],
+        "[FIREWALL_FEEDBACK_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
     # automatic resume share a flag key by copy; plus listener order and copy.

@@ -93,9 +93,10 @@ func _play_scenario(scenario: String) -> void:
 		"shield":
 			fb.call("_spawn_floating_text", _card("hero", 0), "shield", 8)
 		"negate":
-			var card: Control = _card("hero", 1)
-			fb.call("_spawn_floating_text", card, "block", 0)
-			fb.call("_hex_flash", card, Color(0.55, 0.82, 1.0, 0.95))
+			# A Firewall block: the BLOCKED chip on the unit, hero and enemy side.
+			for card in [_card("hero", 1), _card("enemy", 0)]:
+				fb.call("_show_blocked_chip", card)
+				fb.call("_hex_flash", card, Color(0.55, 0.82, 1.0, 0.95))
 		"stack":
 			# Two numeric floats on ONE card in the same resolution — the
 			# stacking rule keeps them separated.

@@ -145,7 +145,7 @@ func _initialize() -> void:
 	var st: Dictionary = cm.call("get_hero_states")[0]
 	cm.call("_apply_ward", st)
 	_check(bool(st.get("warded", false)), "_apply_ward arms the warded state")
-	_check(bool(cm.call("_ward_blocks_hostile", st)), "the next hostile ability is blocked")
+	_check(bool(cm.call("_ward_blocks_hostile", st, ["damage"])), "the next hostile ability is blocked")
 	_check(not bool(st.get("warded", false)), "the firewall breaks after blocking (expiry)")
 	# CombatManager is RefCounted — no free; it drops with the last reference.
 

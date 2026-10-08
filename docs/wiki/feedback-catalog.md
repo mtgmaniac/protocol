@@ -69,7 +69,7 @@ Hijack/Nudge/Reroll/Set never reach a frozen die, so no die-surface conflict can
 | Spike | `:441-442` | `spike` event → rust `(0.86,0.42,0.28)` 8-shard burst on the retaliating card + `-N` float. **Readout pip only otherwise** |
 | Mark applied | `MARK` chip only | `mark` event / `marked` state — the `◎ MARKED` float was cut (redundant with the chip) |
 | Mark consumed | (no dedicated pip) | `marked` cleared in `combat_manager` on the next real hit — chip disappears state-driven |
-| Ward consume (firewall) | `_hex_flash` (`_play_keyword_feedback` block branch) | `block` event with `amount <= 0` → cyan hexagon pop + `✕` float (was `✕ NEGATED` — the word cut, the glyph kept) |
+| Firewall block | `_show_blocked_chip` + `_hex_flash` (`_play_keyword_feedback` block branch) | `block` event with `amount <= 0` -> a BLOCKED chip on the unit for 1.5s (pop in; no pop under Reduced Motion; no pop and no fade under No animations) + cyan hexagon pop (off under Reduced Motion). The log names what was cancelled. Replaces the old X float |
 
 ## 4. Screen / global
 
