@@ -540,7 +540,12 @@ func _composed_status_tokens(state: Dictionary) -> Array:
 	# resolve, so they are in neither `live` nor the snapshot. BattleFeedback
 	# hands them over only for the beats they were actually up.
 	var injected: Array = feedback.injected_chip_tokens(str(state.get("id", "")))
-	if suppressed.is_empty() and injected.is_empty():
+	# The shield at the current beat (BattleFeedback._beat_shield), once one of
+	# this unit's events has played: it replaces the shield chip's value.
+	var beat_shield: int = feedback.beat_shield_for(str(state.get("id", "")))
+	if bool(state.get("dead", false)):
+		beat_shield = -1
+	if suppressed.is_empty() and injected.is_empty() and beat_shield < 0:
 		return live
 	var merged: Dictionary = {}
 	for token_variant in live:
@@ -558,6 +563,10 @@ func _composed_status_tokens(state: Dictionary) -> Array:
 		var token: Dictionary = token_variant
 		if not merged.has(str(token.get("type", ""))):
 			merged[str(token.get("type", ""))] = token
+	if beat_shield == 0:
+		merged.erase("shield")
+	elif beat_shield > 0:
+		merged["shield"] = {"type": "shield", "mode": "numeric", "icon": "S", "value": beat_shield, "priority": 1}
 	var out: Array = []
 	for chip_type in feedback.CHIP_CANONICAL_ORDER:
 		if merged.has(chip_type):

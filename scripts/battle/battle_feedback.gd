@@ -35,6 +35,9 @@ const STATUS_EVENT_CHIP: Dictionary = {
 	"roll_buff": ["roll"], "rfe": ["roll"], "roll_down": ["roll"],
 	"ward": ["firewall"], "taunt": ["taunt"], "jam": ["jam"],
 	"rewrite": ["rewrite"], "spike_up": ["spike"], "cloak": ["cloak"],
+	# Accrete grants shield through its own event; a rampage charge is granted
+	# (rampage_up) and spent (rampage) on the beats that do it.
+	"accrete": ["shield"], "rampage_up": ["rampage"], "rampage": ["rampage"],
 	"cleanse": ["burn", "roll", "jam", "taunt", "mark"],
 }
 const CHIP_CANONICAL_ORDER: Array = ["burn", "shield", "mark", "roll",
@@ -73,6 +76,13 @@ var _suppression_sides: Dictionary = {} # state_id -> side (release refresh)
 # state_id -> {chip_type: {"from": group_index, "until": group_index (-1 = never)}}
 var _chip_injection: Dictionary = {}
 var _played_group: int = -1             # last group whose beat has played
+# Shield chip, beat by beat (playtest 2026-10-08, the Mantle Tyrant's Accrete):
+# suppression can only show a chip's value from before the round or after it,
+# so a shield that changed more than once in a round (accrete +6, a hit
+# absorbs 6, an ability adds 20) sat on its old number, then jumped. Every
+# combat event carries its target's `shield_after`; once one has played for a
+# unit, its shield chip shows that number until the sequence ends.
+var _beat_shield: Dictionary = {}       # state_id -> shield at the current beat
 
 
 # Called by battle_scene immediately BEFORE resolve_step: capture every card's
@@ -92,6 +102,7 @@ func snapshot_pre_resolve_statuses() -> void:
 # maps. Each (target, chip type) is suppressed until the LAST group that
 # mutates it has played.
 func plan_status_suppression(events: Array) -> void:
+	_beat_shield.clear()
 	_chip_suppression.clear()
 	_suppression_sides.clear()
 	_chip_injection.clear()
@@ -199,7 +210,28 @@ func release_group_suppression(group_index: int) -> void:
 		})
 
 
+# The unit's shield at the current beat, or -1 when none of its events has
+# played this sequence (the card view then uses its usual tokens).
+func beat_shield_for(state_id: String) -> int:
+	if CombatManager.accrete_display_break() == "stale_chip":
+		return -1
+	return int(_beat_shield.get(state_id, -1))
+
+
+func _note_beat_shield(event: Dictionary) -> void:
+	if event.has("shield_after") and str(event.get("target_id", "")) != "":
+		_beat_shield[str(event["target_id"])] = int(event["shield_after"])
+	# "Remove all hero shields" targets its caster, not the heroes it strips.
+	if str(event.get("type", "")) == "wipe_shields" and _scene != null and is_instance_valid(_scene):
+		for hero_state in _scene.combat_manager.get_hero_states():
+			var hero_id: String = str(hero_state.get("id", ""))
+			if not bool(hero_state.get("dead", false)):
+				_beat_shield[hero_id] = 0
+				_scene._card_view.refresh_card_for_event({"side": "hero", "target_id": hero_id})
+
+
 func clear_status_suppression() -> void:
+	_beat_shield.clear()
 	_chip_suppression.clear()
 	_suppression_sides.clear()
 	_status_snapshot.clear()
@@ -339,6 +371,7 @@ func _play_action_feedback_group(group: Dictionary, group_index: int = -1) -> vo
 			had_fatal_hit = true
 		# Die-tray hooks and SFX are not tied to card lookup (freeze targets a die, not always a card flash).
 		apply_live_event_visual_state(event)
+		_note_beat_shield(event)
 		# Keyword primers observe (queue only — display waits for the group
 		# boundary so the beat is never interrupted mid-swing).
 		var primer: Variant = _scene.get("_primer")
@@ -425,7 +458,7 @@ func _play_event_sfx(event_type: String, _event: Dictionary) -> bool:
 			AudioManager.play_sfx("burn")
 		"heal":
 			AudioManager.play_sfx("heal")
-		"shield":
+		"shield", "accrete":
 			AudioManager.play_sfx("shield")
 		"freeze":
 			AudioManager.play_sfx("freeze")
@@ -858,6 +891,8 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 				# Firewall block: the chip names it; the hex flash is the accent.
 				_show_blocked_chip(target_card)
 				_hex_flash(target_card, Color(0.55, 0.82, 1.0, 0.95))
+		"accrete":
+			_show_accrete_chip(target_card, int(event.get("amount", 0)))
 		"siphon":
 			var bar_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y - 60.0)
 			if _scene.protocol_bar != null and is_instance_valid(_scene.protocol_bar):
@@ -1045,12 +1080,28 @@ func _chip_flash_then_burst(card: Control, chip_color: Color, burst_color: Color
 func _show_blocked_chip(card: Control) -> void:
 	if FirewallFeedback.break_mode() == "no_chip":
 		return
+	_show_unit_chip(card, FirewallFeedback.CHIP_TEXT, "BlockedChip", FirewallFeedback.break_mode() == "animated_chip")
+
+
+# Accrete (playtest 2026-10-08): the shield a unit just accreted, named, on the
+# unit. The number is the event's amount, which is the shield actually gained.
+const ACCRETE_CHIP_TEXT := "ACCRETE +%d"
+
+func _show_accrete_chip(card: Control, gained: int) -> void:
+	if gained > 0 and CombatManager.accrete_display_break() != "no_chip":
+		_show_unit_chip(card, ACCRETE_CHIP_TEXT % gained, "AccreteChip")
+
+
+# A short word on a filled plate over the unit, for an outcome a number cannot
+# say. It always appears: Reduced Motion drops the pop, No animations drops the
+# fade too. (`always_animate` is the firewall gate's break.)
+func _show_unit_chip(card: Control, text: String, node_name: String, always_animate: bool = false) -> void:
 	if card == null or not is_instance_valid(card):
 		return
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
 		return
 	var chip := PanelContainer.new()
-	chip.name = "BlockedChip"
+	chip.name = node_name
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# A filled plate in the shield channel, the same tokens as the shield chip.
 	var tokens: Dictionary = PixelUI.DT_STATUS["shield"]
@@ -1064,7 +1115,7 @@ func _show_blocked_chip(card: Control) -> void:
 	chip.add_child(margin)
 	var label := Label.new()
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = FirewallFeedback.CHIP_TEXT
+	label.text = text
 	PixelUI.style_label(label, 44, tokens["text"], 0)
 	margin.add_child(label)
 	chip.z_as_relative = false
@@ -1072,18 +1123,19 @@ func _show_blocked_chip(card: Control) -> void:
 	_scene.float_layer.add_child(chip)
 	chip.reset_size()
 	chip.size = chip.get_combined_minimum_size()
-	# Over the portrait, clear of the nameplate and the HP strip, and never off
-	# the side of the screen on an edge card.
+	# Low on the portrait: under the lane a battle number rises through, above
+	# the status chips and the HP strip, and never off the side of the screen
+	# on an edge card.
 	var card_rect: Rect2 = card.get_global_rect()
 	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
 	var pos := Vector2(
 		card_rect.get_center().x - chip.size.x * 0.5,
-		card_rect.position.y + card_rect.size.y * 0.46 - chip.size.y * 0.5
+		card_rect.position.y + card_rect.size.y * 0.58 - chip.size.y * 0.5
 	) - layer_origin
 	pos.x = clampf(pos.x, 8.0, maxf(8.0, _scene.float_layer.size.x - chip.size.x - 8.0))
 	chip.position = Vector2(PixelUI.even_px(pos.x), PixelUI.even_px(pos.y))
 	chip.pivot_offset = chip.size * 0.5
-	if PixelUI.no_animations_enabled() and FirewallFeedback.break_mode() != "animated_chip":
+	if PixelUI.no_animations_enabled() and not always_animate:
 		get_tree().create_timer(FirewallFeedback.CHIP_HOLD).timeout.connect(chip.queue_free)
 		return
 	# The same life in every mode: [pop 0.18] + hold + fade 0.20 = CHIP_HOLD.

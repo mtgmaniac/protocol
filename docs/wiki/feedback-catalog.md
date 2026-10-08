@@ -82,6 +82,7 @@ Hijack/Nudge/Reroll/Set never reach a frozen die, so no die-surface conflict can
 | Round tick / turn transition | `combat_manager._tick_end_of_round_states` | burn ticks, shields + roll buffs expire per-side here. **No dedicated banner** — component events (shield-expiry, burn tick) drive card refresh |
 | Protocol pip fill / spend | `protocol_pips.gd:_draw:37-77`; updated `battle_scene.gd:~1607-1626` | filled = `DT_AMBER`, empty = border + dark inset, physical-pixel grid. `+1`/turn, Nudge 1 / Reroll 2 / Set 3, cap 10 (economy in `battle_engine`/`protocol_actions`) |
 | Boss standing-rule cue | *(none dedicated)* | ROOT ACCESS → `rewrite` feedback; ACCRETION → `shield`/`accrete` feedback; ASSEMBLY LINE / THE BROOD → `summon`. **No standing-rule banner** — surfaces only via component events + round log (Finding) |
+| Accrete (keyword and the ACCRETION rule) | `_show_accrete_chip` (`_play_keyword_feedback` accrete branch) | `accrete` event, amount = shield gained -> own beat (`action_start` zone `tick`), ACCRETE +N chip for 1.5s, shield sfx, shield-blue flash. Gate `accrete display` |
 | Reward / relic-draft / header | `PersistentHeader.update_progress` (`reward_screen:761`, `intercept_screen:31`, `route_fork_screen:25`, `evolution_screen:429`) | sets the run label on screen entry. No dedicated transition animation |
 
 ## 5. Audio — the Prompt-8 worklist

@@ -38,6 +38,47 @@
   (`scripts/debug/firewall_feedback_test.gd`: 30 cases, each run with and
   without a Firewall; a live taunt into a Firewall; the chip under all three
   settings; breaks `silent_taunt`, `old_log`, `no_chip`, `animated_chip`).
+- **Accrete is shown and explained.** Playtest: the Mantle Tyrant "gained a
+  seemingly random amount of shield, with nothing explaining it". Its shield
+  has two sources, neither random: the ACCRETION rule (+6 at the start of
+  rounds 1, 3, 5 and so on) and its own 1-4 ability (20 shield); all of it
+  persists. What was wrong on screen:
+  - **The shield chip sat on a stale number.** The rule's +6 lands at the top
+    of the resolve, a hero hit can eat it, and the boss may add 20 later in the
+    same round. The chip could only show the value from before the round or
+    after it, so it stayed on the old number while "+6" floated, then jumped.
+    On round 1 the +6 was gained and absorbed with no chip at all. Every combat
+    event now carries its target's `shield_after`, and during the round's
+    feedback a unit's shield chip shows that value beat by beat
+    (`BattleFeedback._beat_shield`, all units, both sides).
+  - **The rampage chip arrived early.** A rampage grant had no event, so the
+    chip appeared at the start of the resolve, on the same beat as the +6 (it
+    read as an Accrete marker). Grants now emit `rampage_up`; the chip lands
+    when the boss grants it and leaves when it is spent.
+  - **A shield gain could show more than was applied.** A unit's shield is
+    capped at its max HP; the number shown was the amount asked for. Shield
+    grants now report the shield actually gained (log and event), and say
+    "<unit>'s shield is at its limit." when none fits.
+  - **Nothing named it.** The unit keyword (Basalt Ape 3, Magma Drake 4) and
+    the boss rule now run through one path (`CombatManager._apply_accrete`):
+    its own beat (units accreting together share one; the keyword's used to
+    play inside the last hero's beat), an **ACCRETE +N** chip on the unit (the
+    BLOCKED chip's plate; N is the shield gained), and one log line, **"Mantle
+    Tyrant accretes 6 shield."** At the cap: no chip, and "<unit>'s shield is
+    at its limit. Accrete adds nothing."
+  - **The inspect said nothing about the keyword** (and buried the boss's in
+    its rule paragraph). A unit with Accrete now leads its inspect with the
+    Accrete pip and one line: **"ACCRETE: always gains 4 shield at the start of
+    each of its turns."** / **"ACCRETE: always gains 6 shield at the start of
+    every 2nd round."** (`InspectResolver.accrete_entry`, numbers from
+    `CombatManager.accrete_rule`; in battle and in the Help reference.)
+  No combat change: four seeded Mantle Hunt sim runs are identical to the
+  previous commit apart from their events. The boss rule's event does not
+  trigger the keyword primer (its cadence differs). Gate `accrete display`
+  (`scripts/debug/accrete_display_test.gd`: shown value against shield gained,
+  free, capped and at the cap; the rule on rounds 1 and 3 of 4; the inspect
+  line; a live round against the boss; breaks `asked`, `no_chip`,
+  `stale_chip`, `no_line`).
 
 **2026-10-08 web display recovery (Kev, G-50):** when a browser drops the
 game's display (WebGL context loss, on a phone usually an app switch) the game
@@ -560,6 +601,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Hijack | HJ | enemy-only: next roll copies heroes' current highest die (the highest EFFECTIVE hero die, as `resolve_round` copies it; shown live on the enemy die and readout from landing, following any Nudge/Set/Reroll/buff until resolution — `BattleEngine.hijack_value`, Kev 2026-09-26) (voidScribe Checksum Copy, voidGlimmer Afterimage, spewer Mimic Gland) |
 | Siphon | SI | enemy-only: on hit drain N Protocol (floor 0) |
 | Taunt | T | unified (Lure deleted): "The taunted unit can only target the taunter." **SINGLE-TARGET (Build G ruling G-4, Kev 2026-07-15):** a hero taunt is a manual ONE-ENEMY pick — that enemy gets `lured_by_id` and every one of its targeting paths (`_resolve_enemy_hero_target`, the freeze lowest-die pick, `personality_pick_target`) redirects to the taunter, overriding cloak; other enemies keep their personalities; multiple heroes may taunt different enemies in one round; a firewall blocks (and is consumed by) the taunt; no pick supplied (sim/auto) falls back deterministically via `_hostile_single_target`. Enemy-side keeps its shapes: beastHyena's lure restricts the hit hero; veilPrism's `enemySelfTaunt` self-aura restricts all heroes (each taunted unit → the one taunter, def-consistent). The TAUNT chip sits on whichever unit is LURED, either side; **during planning it also shows on the enemy a hero's taunt has picked** (playtest 2026-10-01), read off the hero-phase dry run, so an enemy whose Firewall will eat the taunt shows none (gate `taunt planning chip`). Anchor Frame gear keeps its stance aura pending its own ruling — the one remaining aura-form taunt. **Both sides clear at round end** (per Kev NK-08) |
+| Accrete | — | enemy-only: the unit gains N shield at the start of each of its turns (Basalt Ape 3, Magma Drake 4; an ordinary one-round shield that covers the next hero phase). The Mantle Tyrant's ACCRETION rule is the same effect on its own cadence (6, every 2nd round, persisting). Both go through `_apply_accrete`: own beat, ACCRETE +N chip, "<unit> accretes N shield.", N = the shield actually gained (the max-HP cap can trim it). Inspect line from `InspectResolver.accrete_entry` |
 | Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
 
 **Cloak (2 clauses):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal.
@@ -1827,7 +1869,7 @@ share one shape — a surface stating something the round will not do.
   once. Display-only (the damage was never double-counted), but the marker also
   carried the PRE-mitigation figure, and a chain jump into a firewall floated
   its number before `_ward_blocks_hostile` cancelled the packet. They now join
-  leech / pierce / accrete / revive in the silent-marker family: the keyword
+  leech / pierce / revive in the silent-marker family (accrete left it on 2026-10-08: its event is the one number for that gain): the keyword
   visuals still fire from `_play_keyword_feedback`, only the duplicate numeral
   is gone.
 - **No legal target, no announcement.** A revive with no downed ally played its

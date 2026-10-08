@@ -157,6 +157,11 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 			"text": _ability_inspect_text(raw, str(entry.get("description", ""))),
 		})
 	var statuses: Array = _unit_status_entries(state)
+	# Accrete is a standing trait, not a status that comes and goes: it leads
+	# the list, in a battle and in the Help reference alike.
+	var accrete: Dictionary = accrete_entry(data)
+	if not accrete.is_empty() and not bool(state.get("dead", false)):
+		statuses.push_front(accrete)
 	# No role subtitle (Kev 2026-07-10: "HEALER / COMBAT AUGMENTOR" is irrelevant
 	# here) — the header carries just the name; statuses render below it.
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
@@ -263,6 +268,33 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 	if int(state.get("spike", 0)) > 0:
 		entries.append(_status_entry("spike", "%d" % int(state["spike"]), 0, _status_text("spike", str(state["spike"]), 0)))
 	return entries
+
+
+# The Accrete line of a unit that has it (its own keyword, or the Mantle
+# Tyrant's ACCRETION rule): the pip with the amount, and one line saying how
+# much and when. The numbers come from CombatManager.accrete_rule, the same
+# ones combat applies.
+static func accrete_entry(data: Resource) -> Dictionary:
+	var rule: Dictionary = CombatManager.accrete_rule(data)
+	if rule.is_empty() or CombatManager.accrete_display_break() == "no_line":
+		return {}
+	var amount: int = int(rule["amount"])
+	return _status_entry("accrete", "%d" % amount, 0, accrete_text(amount, int(rule["every_rounds"])))
+
+
+static func accrete_text(amount: int, every_rounds: int) -> String:
+	if every_rounds > 1:
+		return "ACCRETE: always gains %d shield at the start of every %s round." % [amount, _ordinal(every_rounds)]
+	return "ACCRETE: always gains %d shield at the start of each of its turns." % amount
+
+
+static func _ordinal(n: int) -> String:
+	match n:
+		2:
+			return "2nd"
+		3:
+			return "3rd"
+	return "%dth" % n
 
 
 static func _status_entry(kind: String, value: String, duration: int, text: String) -> Dictionary:

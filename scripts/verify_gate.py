@@ -255,6 +255,12 @@ GATES = [
         "--script", "scripts/debug/firewall_feedback_test.gd", "--break-arg=--firewall-feedback-break=",
         "--breaks", "silent_taunt,old_log,no_chip,animated_chip"],
         "[FIREWALL_FEEDBACK_GATE] PASS", False),
+    # Playtest 2026-10-08: an Accrete shows the shield it applied (chip, log,
+    # shield chip on that beat) and the inspect names amount and cadence.
+    ("accrete display", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "ACCRETE_DISPLAY",
+        "--script", "scripts/debug/accrete_display_test.gd", "--break-arg=--accrete-display-break=",
+        "--breaks", "asked,no_chip,stale_chip,no_line"],
+        "[ACCRETE_DISPLAY_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
     # automatic resume share a flag key by copy; plus listener order and copy.

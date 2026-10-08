@@ -155,6 +155,24 @@ const BROOD_CADENCE := 3
 # committed as the real constants/data, then the baseline ceremony applies.
 var tuning: Dictionary = {}
 
+## Debug-build seam for the `accrete display` gate's deliberate breaks (never
+## set by the game): `asked` makes a shield grant report the amount asked for
+## instead of the shield applied (the pre-2026-10-08 behaviour); `no_chip`
+## drops the ACCRETE chip; `stale_chip` leaves the shield chip on its old
+## number through the round; `no_line` drops the inspect line.
+const ACCRETE_BREAK_ARG := "--accrete-display-break="
+static var _accrete_break: String = "?"
+
+
+static func accrete_display_break() -> String:
+	if _accrete_break == "?":
+		_accrete_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(ACCRETE_BREAK_ARG):
+					_accrete_break = arg.trim_prefix(ACCRETE_BREAK_ARG)
+	return _accrete_break
+
 
 func set_tuning(overrides: Dictionary) -> void:
 	tuning = overrides.duplicate(true)
@@ -349,8 +367,10 @@ func _apply_boss_round_start_rules() -> void:
 					enemy_state["mantle_rounds"] = mantle_rounds
 					mantle_fires = (mantle_rounds - 1) % mantle_cadence == 0
 				if mantle_fires:
-					_log("The Tyrant accretes its mantle.")
-					_add_shield_stack(enemy_state, _tuned_int("mantle_round_shield", MANTLE_ROUND_SHIELD), true)
+					if _apply_accrete(enemy_state, _tuned_int("mantle_round_shield", MANTLE_ROUND_SHIELD), true) > 0:
+						# The keyword primer says "each of its turns"; this rule's
+						# cadence differs, so it does not teach that line.
+						(_round_events.back() as Dictionary)["standing_rule"] = true
 
 
 # Enemy-phase rules (turn-cadence actions): Assembly Line rebuild, Brood
@@ -855,13 +875,11 @@ func resolve_round(
 
 	# Accretion: units with accrete gain N shield at the start of their turn;
 	# the shield survives the imminent tick to cover the next hero phase.
+	var accrete_beat_open: bool = false
 	for accrete_state in _enemy_states:
 		if not accrete_state["dead"] and int(accrete_state.get("accrete", 0)) > 0:
-			_log("%s accretes armor." % accrete_state["unit"].display_name)
-			# Accrete marker for feedback/primers (the shield event carries the
-			# number; this one's float text is empty).
-			_emit_event(accrete_state, "accrete", int(accrete_state["accrete"]), "enemy")
-			_add_shield_stack(accrete_state, int(accrete_state["accrete"]), true)
+			if _apply_accrete(accrete_state, int(accrete_state["accrete"]), not accrete_beat_open) > 0:
+				accrete_beat_open = true
 
 	# Boss turn-cadence standing rules (rebuild / brood / root access).
 	_apply_boss_enemy_phase_rules(hero_rolls)
@@ -1235,7 +1253,12 @@ func _get_total_shield(state: Dictionary) -> int:
 # is the single named exception (the Mantle Core relic that shared it was
 # removed in the boss relic rework, G-41). Data audited 2026-07-07: no
 # multi-phase shield exists anywhere in data/raw.
-func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false) -> void:
+# Returns the shield actually gained (the max-HP cap can trim it, to 0 when the
+# unit is already at the cap). The log line and the event carry that number,
+# never the amount asked for. `announce` false: the caller reports the gain
+# itself (Accrete).
+func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false, announce: bool = true) -> int:
+	var shield_before: int = _get_total_shield(state)
 	# Overcharge Mesh directive: shields gained by any squad member +2 while
 	# a living carrier stands.
 	if _is_hero_state(state):
@@ -1251,8 +1274,51 @@ func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bo
 	# is the bound in that case.
 	_cap_shield_at_max_hp(state)
 	state["shield"] = _get_total_shield(state)
-	_log("%s gains %d shield." % [state["unit"].display_name, amount])
-	_emit_event(state, "shield", amount, _resolve_side_for_state(state))
+	var gained: int = int(state["shield"]) - shield_before
+	if accrete_display_break() == "asked":
+		gained = amount
+	if announce:
+		if gained > 0:
+			_log("%s gains %d shield." % [state["unit"].display_name, gained])
+			_emit_event(state, "shield", gained, _resolve_side_for_state(state))
+		else:
+			_log("%s's shield is at its limit." % state["unit"].display_name)
+	return gained
+
+
+# Accrete: a unit plates itself with shield, from its own keyword (Basalt Ape,
+# Magma Drake: every enemy turn) or the Mantle Tyrant's ACCRETION rule (every
+# 2nd round). One path for both, so both read the same: its own beat
+# (`open_beat`; units accreting together share one), one `accrete` event whose
+# amount is the shield actually gained, and one log line with that number.
+# Returns the shield gained.
+func _apply_accrete(state: Dictionary, amount: int, open_beat: bool) -> int:
+	if amount <= 0 or bool(state.get("dead", false)):
+		return 0
+	var beat_index: int = _round_events.size()
+	if open_beat:
+		_emit_action_event(state, "enemy", "Accrete", "tick")
+	var gained: int = _add_shield_stack(state, amount, true, false)
+	if gained <= 0:
+		if open_beat:
+			_round_events.remove_at(beat_index)
+		_log("%s's shield is at its limit. Accrete adds nothing." % state["unit"].display_name)
+		return 0
+	_log("%s accretes %d shield." % [state["unit"].display_name, gained])
+	_emit_event(state, "accrete", gained, "enemy")
+	return gained
+
+
+# What the inspect says about a unit's Accrete: {} when it has none, else
+# {"amount": N, "every_rounds": 0 for "each of its turns" or the round cadence}.
+# The numbers the two rules above apply, read from the same sources.
+static func accrete_rule(unit: Resource) -> Dictionary:
+	if unit == null:
+		return {}
+	if str(unit.get("display_name")) == BOSS_MANTLE:
+		return {"amount": MANTLE_ROUND_SHIELD, "every_rounds": MANTLE_SHIELD_CADENCE}
+	var own: int = int(unit.get("accrete")) if unit is EnemyData else 0
+	return {"amount": own, "every_rounds": 0} if own > 0 else {}
 
 
 # Trims shield stacks (newest first) so their total never exceeds the unit's
@@ -2169,9 +2235,11 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				if not es["dead"]:
 					es["rampage_charges"] = int(es.get("rampage_charges", 0)) + charges
 					_log("%s gains %d rampage charge(s)." % [es["unit"].display_name, charges])
+					_emit_event(es, "rampage_up", charges, "enemy")
 		else:
 			enemy_state["rampage_charges"] = int(enemy_state.get("rampage_charges", 0)) + charges
 			_log("%s gains %d rampage charge(s)." % [enemy_state["unit"].display_name, charges])
+			_emit_event(enemy_state, "rampage_up", charges, "enemy")
 
 	# Ward: block the next ability that targets this enemy, then break.
 	if bool(raw.get("ward", false)):
@@ -3389,6 +3457,9 @@ func _emit_event(state: Dictionary, event_type: String, amount: int, side: Strin
 		"target_name": str(state["unit"].display_name),
 		"hp_after": int(state.get("current_hp", 0)),
 		"hp_max": int(state.get("max_hp", 1)),
+		# Same idea for the shield chip: the target's shield as this event
+		# fires, so the chip can step with the beats (accrete, absorb, grant).
+		"shield_after": int(state.get("shield", 0)),
 	})
 
 

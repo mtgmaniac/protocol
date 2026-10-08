@@ -50,6 +50,8 @@ Roll buffs (`rfm` hero / `erb` enemy — identical), roll-downs (`rfe`) and Burn
 | `die_freeze_turns`, `frozen_die_value`, `die_freeze_repeat_this_round`, `freeze_flavor` | Freeze = repeat | one repeat spent per round-end tick |
 | `rampage_charges` | next damaging hit ×2 per charge (`:1548`) | consumed per hit |
 | `accrete` | +N shield at the start of its enemy phase (`:698`) | while alive |
+
+Shield chip timing (2026-10-08): during a round's feedback the shield chip shows the unit's shield at the current beat (each event's `shield_after`), not only the before/after value. Rampage chips land on the granting beat (`rampage_up`).
 | `cursed` | DEAD — cleared with no effect (`battle_scene.gd:562`) | n/a |
 | `dmg_scale` | enemy damage scale (summon/elite tuning) | battle |
 | `last_attacker_id` | SPITEFUL grudge (cleared when that hero dies `:2161`) | on hero death |

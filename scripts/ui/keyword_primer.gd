@@ -162,6 +162,10 @@ func notice_event(event: Dictionary) -> void:
 	var mapping: Variant = EVENT_TRIGGERS.get(str(event.get("type", "")))
 	if mapping == null:
 		return
+	# A boss standing rule that borrows a keyword's event (the Mantle Tyrant's
+	# ACCRETION) runs on its own cadence: the keyword's line would mislead.
+	if bool(event.get("standing_rule", false)):
+		return
 	_queue(str(mapping[0]), str(mapping[1]), {
 		"side": str(event.get("side", "")),
 		"target_id": str(event.get("target_id", "")),
