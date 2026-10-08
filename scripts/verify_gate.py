@@ -242,6 +242,9 @@ GATES = [
         "--script", "scripts/debug/nudge_cast_order_test.gd", "--break-arg=--nudge-cast-order-break=", "--breaks", "stale_target"],
         "[NUDGE_CAST_ORDER_GATE] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
+    # App-switch freeze: the shell's lost-display overlay and the menu's
+    # automatic resume share a flag key by copy; plus listener order and copy.
+    ("web display recovery", [sys.executable, str(ROOT / "scripts" / "checks" / "web_display_recovery.py")], "[WEB_DISPLAY_RECOVERY] PASS", False),
     ("wording fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/wording_fit_test.gd"], "[WORDING_FIT] PASS", False),
     # Text legibility Step 1 (docs/audits/TEXT_LEGIBILITY_AUDIT.md): every live
     # text node samples NEAREST and renders >= PixelUI.TEXT_MIN_PX; the ladder,
@@ -318,7 +321,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "save resume": 420,         # 6 full Godot processes (2 configs x 3 legs)
     "battle checkpoint": 360,   # 10 Godot processes (2 configs x 3 legs + 4 fallback legs); ~160s measured
     "state code": 300,          # 8 Godot processes (round trip + 3 deliberate breaks); ~70s measured on Linux
-    "resume guard": 120,        # 11 Godot processes (6 legs + 4 deliberate breaks); ~52s measured on Windows
+    "resume guard": 150,        # 15 Godot processes (8 legs + 5 deliberate breaks); ~52s measured on Windows before the 4 display-recovery processes
     "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
     "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
     "reroll hop": 300,          # 10,000 hops in 8 shards + 5 break legs; ~185s measured on Windows

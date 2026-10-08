@@ -11,9 +11,13 @@ Runs scripts/debug/resume_guard_test.gd as SEPARATE Godot processes, because
     progress    next launch: no option. Then a resume whose load raised an
                 error: the marker stays until a round resolves
     hang        real menu CONTINUE, the process dies as the screen loads
+    auto_blocked  web display recovery on that launch: the page reloaded itself,
+                but the last resume never finished, so nothing resumes by itself
     after_hang  next launch: RESUME EARLIER POINT and its line, CONTINUE still
                 the main button, the state code still exports; the option puts
                 the rewards back, says so, and CONTINUE resumes them
+    auto        web display recovery from a healthy save: the menu resumes with
+                no tap through CONTINUE's own path, round restored
 
 Ruled (Kev): "a resume that hangs on load must produce the RESUME EARLIER POINT
 option on the next launch, and a normal resume must not."
@@ -26,6 +30,7 @@ named leg fail:
     never_clear   the marker is never cleared          -> normal
     routing_save  CONTINUE re-saves before the screen  -> normal (the round is lost)
     no_prev       the previous screen is never kept    -> seed
+    auto_past_marker  the display recovery ignores the marker -> auto_blocked
 
 Exit 0 = the guard holds AND every break is detected.
 """
@@ -52,6 +57,7 @@ BREAKS = {
     "never_clear": (["normal"], "normal"),
     "routing_save": (["normal"], "normal"),
     "no_prev": (["seed"], "seed"),
+    "auto_past_marker": (["hang", "auto_blocked"], "auto_blocked"),
 }
 
 
@@ -87,7 +93,7 @@ def main() -> int:
     # `normal` and `hang` start from the seed's snapshot; `progress` and
     # `after_hang` are the launch AFTER them and read what they left behind.
     plan = [("unit", []), ("seed", []), ("normal", ["--restore"]), ("progress", []),
-            ("hang", ["--restore"]), ("after_hang", [])]
+            ("hang", ["--restore"]), ("auto_blocked", []), ("after_hang", []), ("auto", ["--restore"])]
     for leg, extra in plan:
         failures = run_leg(clean, leg, extra)
         if failures is None:

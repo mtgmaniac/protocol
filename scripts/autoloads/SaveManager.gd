@@ -555,6 +555,17 @@ func watch_resume_landing(scene_path: String) -> void:
 	_clear_resume_marker()
 
 
+## True while the last CONTINUE is still on record as never having got past
+## loading, for this run at this point (whether or not an earlier point exists
+## to offer). The web display recovery does not resume by itself then.
+func last_resume_unfinished() -> bool:
+	var guard: Dictionary = SaveIO.read_dict(_resume_guard_path)
+	if not bool(guard.get("active", false)):
+		return false
+	var current: Dictionary = SaveIO.read_dict(_run_save_path)
+	return not current.is_empty() 		and ResumeGuard.run_seed_of(current) == str(guard.get("run_seed", "")) 		and not ResumeGuard.moved_past(guard, ResumeGuard.point_of(current))
+
+
 ## What the menu shows beside CONTINUE: {} (nothing), or {"label": the point
 ## RESUME EARLIER POINT would restore}. Reads the marker from disk, and clears
 ## one that belongs to another run or that the run save has already moved past.

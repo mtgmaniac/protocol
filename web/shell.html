@@ -153,6 +153,66 @@ body {
 	letter-spacing: 0;
 }
 
+/* ---- Lost display (WebGL context loss) ---------------------------------
+   Mobile browsers drop a backgrounded page's WebGL context. The engine cannot
+   rebuild it: the game keeps running under a dead picture. This covers the
+   canvas (so blind taps cannot reach the game) while the page reloads; the
+   game then resumes the run by itself. Loader styling, PixelUI colors only. */
+#op-lost {
+	position: fixed;
+	inset: 0;
+	z-index: 20;
+	display: none;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: clamp(10px, 3vmin, 24px);
+	padding: 0 6vw;
+	background-color: #07090b;
+	color: #6fe0ef;
+	font-family: 'm5x7-loader', 'Consolas', 'Menlo', monospace;
+	text-align: center;
+	user-select: none;
+	-webkit-user-select: none;
+	touch-action: manipulation;
+}
+
+#op-lost.op-shown {
+	display: flex;
+}
+
+#op-lost-title {
+	font-size: clamp(28px, 8vmin, 64px);
+	line-height: 1;
+	letter-spacing: 0.12em;
+	color: #6fe0ef;
+}
+
+#op-lost-line {
+	font-size: clamp(18px, 4.4vmin, 34px);
+	line-height: 1.1;
+	letter-spacing: 0.06em;
+	color: #8a99a6;   /* PixelUI.INSPECT_TEXT_MUTED */
+}
+
+#op-lost-reload {
+	display: none;
+	margin-top: clamp(8px, 2.4vmin, 20px);
+	padding: clamp(10px, 2.6vmin, 20px) clamp(28px, 8vmin, 64px);
+	border: 2px solid #3fd0e2;
+	background-color: #07090b;
+	color: #6fe0ef;
+	font-family: inherit;
+	font-size: clamp(22px, 5.4vmin, 44px);
+	line-height: 1;
+	letter-spacing: 0.12em;
+	cursor: pointer;
+}
+
+#op-lost.op-manual #op-lost-reload {
+	display: block;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	#op-core { animation: none; opacity: 0.8; }
 	#op-loader { transition: none; }
@@ -355,6 +415,7 @@ body {
 		} catch (e) { err('silent kick: ' + e.message); }
 	}
 	function unlockAll(via) {
+		if (window.__opDisplayLost) { return; }  // lost display: audio stays parked until the reload
 		var acted = false;
 		AD.contexts.forEach(function (ctx) {
 			if (ctx.state !== 'running') {
@@ -388,7 +449,7 @@ body {
 	// route changes, or calls; re-resume when we come back.
 	['visibilitychange', 'pageshow', 'focus'].forEach(function (t) {
 		window.addEventListener(t, function () {
-			if (document.visibilityState === 'visible') {
+			if (document.visibilityState === 'visible' && !window.__opDisplayLost) {
 				AD.contexts.forEach(function (ctx) {
 					if (ctx.state !== 'running') {
 						log('re-resume after ' + t + ' (state=' + ctx.state + ')');
@@ -566,11 +627,119 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
+		<div id="op-lost" role="alert" aria-live="assertive">
+			<div id="op-lost-title">DISPLAY LOST</div>
+			<div id="op-lost-line">Reloading to bring it back.</div>
+			<button id="op-lost-reload" type="button">RELOAD</button>
+		</div>
+
 		<script src="$GODOT_URL"></script>
 		<script>
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 const engine = new Engine(GODOT_CONFIG);
+
+// ============================================================================
+// LOST DISPLAY (WebGL context loss; docs/audits/APP_SWITCH_FREEZE_2026-10-06.md)
+// A mobile browser drops a backgrounded page's WebGL context. Godot 4.6 cannot
+// rebuild it: the loop, input and audio carry on under a dead picture, and its
+// only notice is an alert() that an embedding frame blocks. So: catch the loss
+// here (this listener is registered before the engine's and stops the event, so
+// that alert never fires), cover the canvas, and reload once the page is on
+// screen. OP_RESUME_KEY tells the game the reload was ours; its menu then goes
+// straight back into the run through CONTINUE's own path (main_menu.gd, same
+// key: the `web display recovery` gate checks the two copies match).
+// A second loss within OP_LOOP_MS of our own reload is not reloaded again
+// automatically: the player gets a RELOAD button instead of a loop.
+// ============================================================================
+const OP_RESUME_KEY = 'op_resume_after_reload';
+const OP_RELOADED_AT_KEY = 'op_display_reloaded_at';
+const OP_LOOP_MS = 20000;
+const OP_RELOAD_DELAY_MS = 700;
+window.__opDisplayLost = false;
+window.__opGameStarted = false;
+
+(function () {
+	const canvas = document.getElementById('canvas');
+	const lost = document.getElementById('op-lost');
+	const line = document.getElementById('op-lost-line');
+	const button = document.getElementById('op-lost-reload');
+
+	function put(key, value) {
+		try { sessionStorage.setItem(key, value); } catch (e) { /* storage blocked: the menu shows CONTINUE instead */ }
+	}
+	function get(key) {
+		try { return sessionStorage.getItem(key); } catch (e) { return null; }
+	}
+
+	function reload() {
+		put(OP_RESUME_KEY, '1');
+		put(OP_RELOADED_AT_KEY, String(Date.now()));
+		window.location.reload();
+	}
+
+	function reloadWhenVisible() {
+		if (document.visibilityState === 'visible') {
+			setTimeout(reload, OP_RELOAD_DELAY_MS);
+			return;
+		}
+		// Lost while in the background: a reload there would only build a new
+		// display the browser may drop again. Wait until the player is back.
+		const onShow = function () {
+			if (document.visibilityState !== 'visible') {
+				return;
+			}
+			document.removeEventListener('visibilitychange', onShow);
+			setTimeout(reload, OP_RELOAD_DELAY_MS);
+		};
+		document.addEventListener('visibilitychange', onShow);
+	}
+
+	function displayLost() {
+		if (window.__opDisplayLost) {
+			return;
+		}
+		window.__opDisplayLost = true;
+		// The game is still running blind: park its audio and take the keyboard.
+		try {
+			((window.__audioDebug || {}).contexts || []).forEach(function (ctx) { ctx.suspend(); });
+		} catch (e) { /* no-op */ }
+		try { canvas.blur(); } catch (e) { /* no-op */ }
+		const looping = Date.now() - Number(get(OP_RELOADED_AT_KEY) || 0) < OP_LOOP_MS;
+		if (looping) {
+			line.textContent = 'Tap RELOAD to bring it back.';
+			lost.classList.add('op-manual');
+		}
+		lost.classList.add('op-shown');
+		if (!looping) {
+			reloadWhenVisible();
+		}
+	}
+
+	button.addEventListener('click', reload);
+	// Capture phase and registered first: the engine's own listener (alert) never runs.
+	canvas.addEventListener('webglcontextlost', function (ev) {
+		ev.preventDefault();
+		ev.stopImmediatePropagation();
+		displayLost();
+	}, true);
+	// A page frozen in the background can come back without having seen the
+	// event. Ask the context directly, but only once the engine has made it
+	// (getContext on a fresh canvas would create the wrong one).
+	const recheck = function () {
+		if (!window.__opGameStarted || window.__opDisplayLost || document.visibilityState !== 'visible') {
+			return;
+		}
+		try {
+			const gl = canvas.getContext('webgl2');
+			if (gl && gl.isContextLost()) {
+				displayLost();
+			}
+		} catch (e) { /* no-op */ }
+	};
+	document.addEventListener('visibilitychange', recheck);
+	window.addEventListener('pageshow', recheck);
+}());
 
 (function () {
 	const loader = document.getElementById('op-loader');
@@ -675,7 +844,10 @@ const engine = new Engine(GODOT_CONFIG);
 					loaderBarFill.style.width = Math.min(100, (current / total) * 100).toFixed(1) + '%';
 				}
 			},
-		}).then(hideLoader, displayFailureNotice);
+		}).then(function () {
+			window.__opGameStarted = true;
+			hideLoader();
+		}, displayFailureNotice);
 	}
 }());
 		</script>

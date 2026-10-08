@@ -1,5 +1,47 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-08 web display recovery (Kev, G-50):** when a browser drops the
+game's display (WebGL context loss, on a phone usually an app switch) the game
+used to keep running under a dead picture until the player reloaded by hand.
+`web/shell.html` now catches the loss, covers the game, and reloads the page;
+the menu then goes straight back into the run through CONTINUE's own path, so
+the player lands on their round with BATTLE RESUMED.
+
+- **Shell** (`web/shell.html`, "LOST DISPLAY"): a capture-phase
+  `webglcontextlost` listener on the canvas, registered before the engine's and
+  stopping the event, so the engine's `alert()` never fires. It shows the
+  `#op-lost` overlay over the canvas (taps cannot reach the game running blind
+  underneath), suspends the audio contexts, sets sessionStorage
+  `op_resume_after_reload`, and reloads 0.7 s later. A loss while the page is
+  hidden waits and reloads when the page is visible again. On return it also
+  asks the context directly (`isContextLost`), in case a frozen page never saw
+  the event.
+- **Copy:** "DISPLAY LOST" / "Reloading to bring it back." If the display is
+  lost again within 20 s of that reload, it does not reload by itself a second
+  time: "DISPLAY LOST" / "Tap RELOAD to bring it back." with a RELOAD button.
+- **Game** (`scripts/ui/main_menu.gd`): on boot the menu reads and clears the
+  flag (`DISPLAY_RELOAD_FLAG`, the same key). With a run save it resumes at
+  once through `_start_resume` (the code CONTINUE runs: `resume_run`, the resume
+  guard's marker, `SceneManager.resume_to`). It stands down, and shows the
+  ordinary menu, when there is no run save or when the resume guard's marker is
+  still set (`SaveManager.last_resume_unfinished`): a screen that loses the
+  display while loading gets CONTINUE and RESUME EARLIER POINT, not a loop.
+- **What comes back:** whatever CONTINUE restores. In a battle that is the last
+  end-of-round checkpoint, so dice thrown and targets picked in the round in
+  progress are redone; a loss during round 1 restarts the battle from its entry
+  (no BATTLE RESUMED message, as before). No run active (menu, squad select,
+  tutorial): the player is back on the menu.
+- **Gates:** `web display recovery` (static: the flag key matches in both
+  files, listener order, overlay copy; six in-memory breaks) and `resume guard`
+  legs `auto` / `auto_blocked` with the break `auto_past_marker` (the game's
+  half, headless, through `main_menu.display_reload_flag_override`). The real
+  browser run is `node scripts/debug/web_display_loss_test.cjs` after a Web
+  export (forces the loss with `WEBGL_lose_context`; overlay, no alert, reload,
+  loop guard, hidden page, automatic resume into a battle). It needs a browser
+  and an export, so it sits beside `web_loader_test.cjs`, outside
+  `verify_gate.py`.
+- **Not verified on a phone.** See G-50.
+
 **2026-10-08 follow-ups to the resume guard and the two settings (Kev):**
 
 - **The 20's stinger sound always plays.** Reduced Motion (and No animations,

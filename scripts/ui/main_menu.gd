@@ -16,6 +16,13 @@
 # Resume guard (G-48): CONTINUE marks the resume before its screen loads. If
 # the marker is still set at the next launch, RESUME EARLIER POINT appears under
 # CONTINUE; it puts the previous screen's save back and the menu says which.
+#
+# Web display recovery (2026-10-08): when the browser drops the game's display
+# (WebGL context loss, usually an app switch on a phone) web/shell.html reloads
+# the page and leaves DISPLAY_RELOAD_FLAG in sessionStorage. This menu then goes
+# straight back into the run through CONTINUE's own path, with no tap. It
+# stands down when the resume guard's marker is still set, so a screen that
+# loses the display while loading cannot loop.
 extends Control
 
 const TITLE_LOGO_SCENE := preload("res://scenes/ui/TitleLogo.tscn")
@@ -40,6 +47,11 @@ const ABANDON_SIZE := Vector2(420, 84)
 const ABANDON_FONT := 30
 const NOTICE_FONT := 28
 const EARLIER_SIZE := Vector2(600, 84)
+## sessionStorage key web/shell.html sets before it reloads a page whose display
+## was lost (OP_RESUME_KEY there; the `web display recovery` gate compares them).
+const DISPLAY_RELOAD_FLAG := "op_resume_after_reload"
+## Test seam: null reads the browser; true / false stands in for the flag.
+static var display_reload_flag_override: Variant = null
 # Dev-only state-code export, bottom-right opposite the version stamp.
 const STATE_CODE_SIZE := Vector2(460, 84)
 
@@ -142,6 +154,17 @@ func _ready() -> void:
 		_abandon_button = abandon
 
 	_add_notices(col)
+
+	# Web display recovery: the page reloaded itself after losing its display.
+	# The flag is always consumed, whatever happens next.
+	if _take_display_reload_flag() and _has_run_save and (
+			not SaveManager.last_resume_unfinished() or ResumeGuard.break_mode() == "auto_past_marker"):
+		var resumed_screen: String = _start_resume()
+		print("[MainMenu] display reload: resuming '%s'" % resumed_screen)
+		if resumed_screen != "":
+			_continue_button.disabled = true
+			SceneManager.resume_to.call_deferred(resumed_screen)
+			return
 
 	# Buttons arrive only after the reactor ignites.
 	begin.disabled = true
@@ -350,23 +373,47 @@ func _on_first_run_skip_pressed() -> void:
 func _on_continue_pressed() -> void:
 	_continue_button.disabled = true
 	AudioManager.play_select()
-	# resume_run() restores GameState and returns the screen the run was
-	# checkpointed at. An empty return means the save evaporated between the
-	# menu build and this tap (another tab, a cleared store) — fall back to the
-	# normal start rather than dead-ending on a disabled button.
-	var screen: String = SaveManager.resume_run()
+	var screen: String = _start_resume()
 	if screen == "":
 		_continue_button.disabled = false
 		return
-	# Resume guard: on record BEFORE the screen loads, so a load that hangs
-	# leaves the marker for the next launch to find.
-	SaveManager.note_resume_started()
-	MusicManager.play_for_faction(GameState.selected_operation_id)
 	_logo.flare_out()
 	await _logo.flare_finished
 	if not is_inside_tree():
 		return
 	SceneManager.resume_to(screen)
+
+
+# The one resume path, shared by the CONTINUE tap and the web display recovery.
+# Returns the screen to land on, or "" when there was nothing to resume.
+func _start_resume() -> String:
+	# resume_run() restores GameState and returns the screen the run was
+	# checkpointed at. An empty return means the save evaporated between the
+	# menu build and this point (another tab, a cleared store) — fall back to
+	# the normal start rather than dead-ending on a disabled button.
+	var screen: String = SaveManager.resume_run()
+	if screen == "":
+		return ""
+	# Resume guard: on record BEFORE the screen loads, so a load that hangs
+	# leaves the marker for the next launch to find.
+	SaveManager.note_resume_started()
+	MusicManager.play_for_faction(GameState.selected_operation_id)
+	return screen
+
+
+# Reads AND clears the shell's flag: one reload, one automatic resume.
+func _take_display_reload_flag() -> bool:
+	if display_reload_flag_override != null:
+		var forced: bool = bool(display_reload_flag_override)
+		display_reload_flag_override = null
+		return forced
+	if not OS.has_feature("web"):
+		return false
+	# Returns 1 / 0 like SaveIO's bridge calls (a number crosses the bridge the
+	# same way on every browser).
+	var taken: Variant = JavaScriptBridge.eval(
+		"(function(){try{var k='%s';var v=sessionStorage.getItem(k);sessionStorage.removeItem(k);return v==='1'?1:0;}catch(e){return 0;}})()" % DISPLAY_RELOAD_FLAG, true)
+	return int(taken if taken != null else 0) == 1
 
 
 # ── Resume guard: RESUME EARLIER POINT ────────────────────────────────────────

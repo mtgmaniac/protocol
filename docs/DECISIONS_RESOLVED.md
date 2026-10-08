@@ -1,5 +1,45 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-50. A lost display reloads and resumes by itself (Kev, 2026-10-08)
+
+**Ruling (Kev, transcribed).** "App-switch freeze: build the fix. Add a reload
+overlay in web/shell.html that detects the lost context, then reloads and
+resumes automatically through the existing resume path, so the player lands
+back in their battle with BATTLE RESUMED. Copy: short, plain, no em dashes."
+
+This answers the open question in `docs/audits/APP_SWITCH_FREEZE_2026-10-06.md`
+(a reload prompt, or reload and resume by itself): by itself.
+
+**As built** (details: TRUTH, top entry):
+
+- Copy: "DISPLAY LOST" / "Reloading to bring it back." With the RELOAD button:
+  "DISPLAY LOST" / "Tap RELOAD to bring it back."
+- The reload waits until the page is on screen. A loss in the background
+  reloads when the player returns.
+- The resume is CONTINUE's own code, not a second path, so it restores exactly
+  what CONTINUE restores and writes the resume guard's marker.
+
+**Readings of mine, Kev's to overturn:**
+
+1. **No second automatic reload within 20 s.** If the display is lost again
+   that soon after our own reload, the overlay offers a RELOAD button instead.
+   Without it, a device that cannot hold a display would reload forever.
+2. **No automatic resume while the resume guard's marker is set.** If the last
+   resume never finished loading, the reloaded page shows the menu (CONTINUE,
+   and RESUME EARLIER POINT when there is one) and waits for the player.
+3. **The resume skips the title animation and goes straight to the screen.**
+4. **Audio is suspended while the overlay is up** and comes back with the
+   reload. After a reload the browser needs one tap before it plays sound
+   again (its rule, not ours), so the resumed battle is silent until the first
+   tap.
+
+**Not verified on a phone.** Verified in desktop Chrome with a forced context
+loss (`WEBGL_lose_context`), on a fresh export of this branch. Not verified:
+that Android Chrome or iOS Safari loses the context on an app switch in the way
+the audit predicts, that the event (or the on-return check) is seen there, the
+behaviour inside the itch frame on a phone, and the overlay's look on a real
+screen.
+
 ## G-49. Two settings: Auto-select sole valid target, No animations (Kev, 2026-10-06)
 
 **Ruling (Kev, transcribed).** "Add both to the Settings screen using its current

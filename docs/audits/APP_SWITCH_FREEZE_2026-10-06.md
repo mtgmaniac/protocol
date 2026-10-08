@@ -2,6 +2,12 @@
 
 Report only. Nothing in the game changed for this item.
 
+**Built 2026-10-08 (G-50):** steps 1 and 2 below, with the automatic reload and
+resume. What was built, the copy and what was and was not tested: TRUTH (top
+entry) and DECISIONS_RESOLVED G-50. One correction to "Consequences worth
+knowing": the mid-battle CONTINUE bug it mentions was real on the shipped builds
+(`CONTINUE_ROUND_RESTORE_2026-10-08.md`).
+
 **Playtest report (Kev):** on the phone, switching to another app and coming
 back freezes the game, and the page has to be reloaded.
 

@@ -24,6 +24,12 @@
 #               the state code still exports; RESUME EARLIER POINT puts the
 #               rewards back and says so; CONTINUE resumes them; the battle the
 #               profile already counted is not counted twice
+#   auto_blocked  web display recovery, the launch after `hang`: the page
+#               reloaded itself, but the last resume never finished loading, so
+#               the menu does NOT resume by itself and still offers its options
+#   auto        web display recovery from a healthy save: the menu resumes with
+#               no tap, through CONTINUE's own path (round restored, marker set
+#               while loading and clear once loaded, flag used up)
 # --restore copies the seed leg's snapshot back first. Each leg writes
 # <dir>/<leg>.json: {"errors": [...], ...}. The menu legs (normal, hang,
 # after_hang) also run windowed from a headless seed's snapshot; with --shots,
@@ -92,6 +98,8 @@ func _run() -> void:
 		"progress": await _progress_leg()
 		"hang": await _hang_leg()
 		"after_hang": await _after_hang_leg()
+		"auto_blocked": await _auto_blocked_leg()
+		"auto": await _auto_leg()
 		_: _errors.append("unknown --leg '%s'" % _leg)
 	_record["errors"] = Array(_errors)
 	var file := FileAccess.open(_out_dir.path_join("%s.json" % _leg), FileAccess.WRITE)
@@ -389,6 +397,46 @@ func _hang_leg() -> void:
 	if not await _wait_scene(BATTLE_SCENE):
 		_errors.append("CONTINUE did not reach the battle")
 	_record["marker_set"] = _marker_set()
+
+
+# ── web display recovery (the shell's reload flag, through its test seam) ─────
+func _menu_script() -> GDScript:
+	return load("res://scripts/ui/main_menu.gd")
+
+
+func _auto_blocked_leg() -> void:
+	var hung: Dictionary = SaveIO.read_dict(run_path())
+	_expect(_marker_set(), "fixture: the marker is still set from the resume that hung")
+	_menu_script().display_reload_flag_override = true
+	await _open_menu()
+	_expect(_menu_script().display_reload_flag_override == null, "the reload flag is used up even when nothing resumes")
+	await create_timer(1.0).timeout
+	_expect(current_scene != null and current_scene.scene_file_path == MENU_SCENE, "a reload after a resume that never finished loading stays on the menu")
+	var resume: Button = _find_button("CONTINUE")
+	_expect(resume != null and not resume.disabled, "CONTINUE is offered instead of resuming by itself")
+	_expect(_find_button("RESUME EARLIER POINT") != null, "RESUME EARLIER POINT is still offered")
+	_expect(_marker_set() and _point(SaveIO.read_dict(run_path())) == _point(hung), "nothing was resumed or saved")
+
+
+func _auto_leg() -> void:
+	var want: Dictionary = _expected()
+	_menu_script().display_reload_flag_override = true
+	change_scene_to_file(MENU_SCENE)
+	if not await _wait_scene(BATTLE_SCENE):
+		_errors.append("the menu did not resume by itself after a display reload")
+		return
+	_expect(_menu_script().display_reload_flag_override == null, "the reload flag is used up by the resume")
+	_expect(_marker_set(), "the automatic resume sets the marker while its screen loads, like CONTINUE")
+	var scene: Node = current_scene
+	_expect(bool(scene.get("_resumed_from_checkpoint")), "the automatic resume rebuilt the battle from its round checkpoint")
+	_expect(int(scene._round_number) == int(want.get("round", -1)), "resumed at round %d (got %d)" % [int(want.get("round", -1)), int(scene._round_number)])
+	await create_timer(float(sm().RESUME_SETTLE_SECS) + 1.0).timeout
+	_expect(not _marker_set(), "the marker clears once the screen has loaded cleanly")
+	_expect(_point(SaveIO.read_dict(run_path())) == str(want.get("point", "")), "the automatic resume leaves the run save where it was")
+	# The flag was one use: the next launch is an ordinary menu.
+	await _open_menu()
+	await create_timer(0.5).timeout
+	_expect(current_scene != null and current_scene.scene_file_path == MENU_SCENE, "the launch after that is an ordinary menu")
 
 
 # ── after_hang ────────────────────────────────────────────────────────────────
