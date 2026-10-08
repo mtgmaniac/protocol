@@ -13,6 +13,9 @@ pick. No itch build. Spawn overlap on main rolls was not touched (backlog).
 | branch only | 2 | Self and Summon icon options (nothing replaced) |
 
 Rules: TRUTH, top entry. Rulings and my readings of them: G-51.
+
+**Follow-up, same day (your three decisions): see the last section,
+"Follow-up". Where it differs from the sections below, it wins.**
 Screens: `debug_artifacts/feedback_polish_2026-10-08/` (local).
 
 ## Before starting
@@ -284,3 +287,39 @@ No gate failed for any reason.
 | enemy | Signal Hierophant | Cinder Sermon (22 damage, 2 burn 2 turns, +1 roll (all allies) 1 turn); Machine Crusade (remove all hero shields, 30 damage, +2 roll (all allies) 2 turns, 32% summon) |
 | enemy | Cinder Raptor | Brood Call (13 damage, 2 burn 3 turns, 50% summon) |
 | enemy | Mantle Tyrant | Dominance Roar (24 damage, 1 rampage (all allies)); Mantle Rupture (remove all hero shields, 26 damage, freeze all heroes 1 turn, 1 rampage (all allies)) |
+
+## Follow-up (same day): your three decisions
+
+| Commit | Decision | Change |
+|---|---|---|
+| `bba42f4` | 2 | Reduced Motion: attackers lunge 11 px (26 x 5/12). No animations: still |
+| `845e478` | 3 | The boss's Accrete wording names the moment the +6 lands |
+| `31ac3e4` | 1 | Self and Summon icons replaced with Self A and Summon A |
+
+**1. Icons.** Heal check passed, so they are committed. At 40 px and 20 px, in
+colour and greyscale, heal is one large cross filling the pip and Summon A is a
+figure with a small plus at its shoulder. They do not read as the same glyph.
+One caveat: a plus beside a person is also a common "heal this unit" cue, so a
+new player can still guess wrong before the Summon primer shows. Renders:
+`docs/ui_reference/icon_options/heal_vs_summon_A.png` and
+`chosen_in_battle.png` (both new icons in real readout rows). The Targets Self
+definition in Help now reads "The figure under an arrow (or (self) in text)
+means the ability affects its own caster."
+
+**2. Reduced Motion lunge.** 11 px, same timing as the full lunge. The
+`action motion` gate now checks the small lunge under Reduced Motion and no
+lunge under No animations; its `reduced_full` and `no_anim_ignored` breaks
+fail on the lunge too.
+
+**3. Wording.** The +6 lands after you commit the round and before any hero
+acts. "At the start of every 2nd round" read as the dice throw. Reworded:
+
+- Inspect line: `ACCRETE: always gains 6 shield every 2nd round, before your
+  heroes act.`
+- ACCRETION rule text, second sentence: `It accretes every 2nd round, before
+  your heroes act; its shields persist and stack.` It carried the same phrase
+  and sits in the same inspect, so it changed with it.
+
+Not changed: the Veil Overseer's rule says "at the start of every round" for a
+Firewall raised at the same moment. Say if you want it to match.
+

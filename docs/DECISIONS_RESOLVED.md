@@ -34,7 +34,8 @@
    damage; if one is authored it lunges.
 2. **Reduced Motion: the lunge stays off.** G-13 removed it and this ruling
    only names the wiggle. So under Reduced Motion a supporter moves a little
-   (5 px) and an attacker does not move at all.
+   (5 px) and an attacker does not move at all. **OVERTURNED by Kev the same
+   day, see the follow-up below: attackers get a small lunge.**
 3. **The log line is lowercase and names the unit:** "Firewall blocked taunt
    on Scrap Drone." The example was "Firewall blocked Taunt."; the
    capitalization law keeps keywords lowercase inside a sentence, and with
@@ -58,9 +59,50 @@
 9. **Inspect line: "ACCRETE: always gains 6 shield at the start of every 2nd
    round."** "Always" is the answer to "how is the amount calculated": it is a
    fixed number. The boss's ACCRETION paragraph is unchanged below it.
+   **REWORDED the same day, see the follow-up below.**
 10. **The +6 still lands when the round resolves,** as THE COURT's Firewall
     does, not when the dice are thrown. Moving it would change what an item
     used during planning hits; that is a rules change and was not asked for.
+
+**Follow-up rulings (Kev, 2026-10-08, transcribed).**
+
+- "Icons: Self A, Summon A. Before committing, render the chosen Summon icon
+  next to the heal chip at pip size and confirm they can't be confused. If
+  they can, tell me and don't commit."
+- "Reduced Motion: attackers get a small lunge, scaled down the same way the
+  wiggle is (5 px vs 12). No animations stays fully still. Update the action
+  motion gate."
+- "Boss +6 timing: no rules change. Make sure the inspect wording matches the
+  moment the player sees the +6 land. If 'start of every 2nd round' reads as a
+  different moment, reword it, short and plain."
+
+**As built:**
+
+- **Icons.** `assets/ui/pips/self.png` is the figure under a marker arrow,
+  `summon.png` the figure with a purple plus. Heal check: at 40 px and 20 px,
+  colour and greyscale, heal is one large cross filling the pip and Summon is
+  a figure with a small plus at its shoulder; they do not read as the same
+  glyph (`docs/ui_reference/icon_options/heal_vs_summon_A.png`). My reading:
+  "can't be confused" means on sight. A plus beside a person is also a common
+  cue for healing a unit, so the meaning still has to be learned; the purple
+  and the Summon primer carry that.
+- **Reduced Motion lunge.** 11 px: 26 x 5 / 12, rounded. Same timing as the
+  full lunge. No animations: no lunge, no wiggle. The `action motion` gate
+  checks both; its `reduced_full` and `no_anim_ignored` breaks fail on the
+  lunge as well as the wiggle.
+- **Wording.** The +6 lands as the round resolves, ahead of the hero phase,
+  which is after the player commits and before any hero acts. "At the start of
+  every 2nd round" read as the dice throw, so both places that said it were
+  reworded: the inspect line is **"ACCRETE: always gains 6 shield every 2nd
+  round, before your heroes act."** and the ACCRETION rule text ends **"It
+  accretes every 2nd round, before your heroes act; its shields persist and
+  stack."** My reading: the rule text is part of the same inspect (and of the
+  briefing), so leaving the old phrase there would have contradicted the new
+  line. The keyword units' line is unchanged ("at the start of each of its
+  turns" is when theirs lands: after the heroes, before the enemies act).
+  **Not changed:** the Veil Overseer's THE COURT text says "at the start of
+  every round" for a Firewall that is raised at the same moment. Same phrase,
+  same timing, not part of this ruling.
 
 ## G-50. A lost display reloads and resumes by itself (Kev, 2026-10-08)
 
