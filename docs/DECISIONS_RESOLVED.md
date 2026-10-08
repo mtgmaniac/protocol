@@ -126,6 +126,19 @@ Not offered when no earlier save exists (a hang on the run's first battle) or
 when the earlier save is unusable: the menu is then unchanged. Details: TRUTH
 "Resume guard". Gate: `resume guard`.
 
+**Confirmed (Kev, 2026-10-08): keep all five deviations.** `.prev` instead of
+`.bak` (1), the marker clearing on a clean load (3), two taps (4), back one
+screen with a battle restarting from its entry (5), and no option when nothing
+earlier exists. These are closed; do not reopen them.
+
+**Point 2 was disputed and checked (2026-10-08).** Kev's playtests had resumed
+at the round with BATTLE RESUMED. The round loss reproduces with real clicks on
+the shipped itch builds (v0.1.1 of 2026-09-25, v0.2 of 2026-09-28) and on `main`
+at `fc0607b`: the save holds a round-2 checkpoint before CONTINUE and none
+after it, and the battle is back at its entry. It was not a test artifact, so
+`SceneManager.resume_to` stays. Evidence and method:
+`docs/audits/CONTINUE_ROUND_RESTORE_2026-10-08.md`.
+
 ## G-47. A reroll is a real hop in the die's own slot (Kev, 2026-10-05; replaces the reroll re-throw)
 
 Ruling (Kev): "rerolls become a real in-place hop." Every reroll (hero
