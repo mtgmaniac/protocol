@@ -1469,21 +1469,20 @@ func _wiggle(card: Control) -> void:
 # rail lunge up toward the enemy rail; enemies lunge down). The card is a
 # container child, so we tween position transiently and return to base — the beat
 # is layout-quiet, so the container doesn't fight it. Fire-and-forget tween.
-const LUNGE_DIST := 26.0
 const LUNGE_OUT := 0.08
 const LUNGE_BACK := 0.16
 
 func _lunge(card: Control, side: String) -> void:
-	if PixelUI.reduced_motion_enabled():
-		return
-	if card == null or not is_instance_valid(card):
+	# Full, the smaller Reduced Motion step, or none under No animations.
+	var distance: float = ActionMotion.lunge_distance()
+	if distance <= 0.0 or card == null or not is_instance_valid(card):
 		return
 	var direction := Vector2(0.0, -1.0 if side == "hero" else 1.0)
 	if _scene._layout.is_landscape:
 		direction = Vector2(1.0 if side == "hero" else -1.0, 0.0)
 	var base: Vector2 = _fx_rest_position(card)
 	var tween: Tween = create_tween()
-	tween.tween_property(card, "position", base + direction * LUNGE_DIST, LUNGE_OUT) \
+	tween.tween_property(card, "position", base + direction * distance, LUNGE_OUT) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card, "position", base, LUNGE_BACK) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

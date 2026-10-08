@@ -11,8 +11,8 @@
   means it attacks and lunges, whatever else it carries (an attack that also
   shields, heals or buffs lunges); everything else wiggles. An attack a
   Firewall blocks still lunges. Round ticks play no motion. **Reduced Motion:**
-  a smaller wiggle (5 / 5 px); the lunge stays off, as before. **No
-  animations:** no wiggle. Gate `action motion`
+  a smaller wiggle (5 / 5 px) and a smaller lunge (11 px, the same 5-of-12
+  scale; Kev 2026-10-08, it was off before). **No animations:** neither. Gate `action motion`
   (`scripts/debug/action_motion_test.gd`: every ability in the data, a live
   round on both sides, both settings; breaks `no_wiggle`, `all_lunge`,
   `reduced_full`, `no_anim_ignored`); the landscape axis is in `battle layout`.

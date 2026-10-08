@@ -15,18 +15,22 @@ const LUNGE := "lunge"
 const WIGGLE := "wiggle"
 const NONE := "none"
 
+# How far the lunge steps toward the other side, in design px.
+const LUNGE_DIST := 26.0
+
 # Sideways offsets of the wiggle, in design px, stepped in order and then back
 # to rest. Fixed values (no RNG) so it never reads as a hit recoil, and well
 # under the lunge's 26 so the two are told apart by size as well as direction.
 const WIGGLE_OFFSETS: Array[float] = [12.0, -12.0, 7.0, -7.0]
-# Reduced Motion keeps a smaller one.
+# Reduced Motion keeps a smaller one. The lunge shrinks by the same ratio
+# (5 of 12: 26 px becomes 11), ruled by Kev 2026-10-08.
 const WIGGLE_REDUCED_OFFSETS: Array[float] = [5.0, -5.0]
 const WIGGLE_STEP := 0.055
 
 ## Debug-build seam for the `action motion` gate's deliberate breaks (never set
 ## by the game): `no_wiggle` leaves non-attackers still (the reported bug),
 ## `all_lunge` makes every ability lunge, `reduced_full` ignores Reduced
-## Motion, `no_anim_ignored` ignores No animations.
+## Motion (wiggle and lunge), `no_anim_ignored` ignores No animations.
 const BREAK_ARG := "--action-motion-break="
 static var _break: String = "?"
 
@@ -54,6 +58,16 @@ static func for_ability(raw: Dictionary) -> String:
 	if attacks(raw) or break_mode() == "all_lunge":
 		return LUNGE
 	return NONE if break_mode() == "no_wiggle" else WIGGLE
+
+
+## The lunge's distance under the current settings: full, the smaller Reduced
+## Motion step, or 0 (no lunge) under No animations.
+static func lunge_distance() -> float:
+	if PixelUI.no_animations_enabled() and break_mode() != "no_anim_ignored":
+		return 0.0
+	if PixelUI.reduced_motion_enabled() and break_mode() != "reduced_full":
+		return roundf(LUNGE_DIST * WIGGLE_REDUCED_OFFSETS[0] / WIGGLE_OFFSETS[0])
+	return LUNGE_DIST
 
 
 ## The wiggle's offsets under the current settings: full, the smaller Reduced

@@ -11,8 +11,9 @@
 #              class of the ability it rolled, heroes and enemies, both classes
 #              on both sides.
 #   C. motion  the wiggle moves sideways to the lunge and returns to rest; it is
-#              smaller than the lunge; Reduced Motion plays a smaller one; No
-#              animations plays none. (The landscape axis is pinned in
+#              smaller than the lunge; Reduced Motion plays a smaller wiggle
+#              and a smaller lunge, scaled alike (5 of 12); No animations
+#              plays neither. (The landscape axis is pinned in
 #              battle_layout_test, on a real landscape scene.)
 # scripts/checks/break_gate.py reruns it with each ActionMotion.BREAK_ARG mode
 # (no_wiggle, all_lunge, reduced_full, no_anim_ignored) and requires a FAIL.
@@ -226,11 +227,18 @@ func _check_motion(scene: Node) -> void:
 	sm().set_setting("reduced_motion", true)
 	var reduced: Vector2 = await _peak(card, func() -> void: feedback._wiggle(card))
 	_expect(reduced.x > 1.0 and reduced.x < wiggle.x * 0.6 and reduced.y < 0.5, "Reduced Motion: a smaller wiggle (peak %s, full %s)" % [str(reduced), str(wiggle)])
+	# The lunge shrinks by the same ratio as the wiggle: 5 of 12, so 26 -> 11.
+	var small_lunge: Vector2 = await _peak(card, func() -> void: feedback._lunge(card, "hero"))
+	var want: float = roundf(LUNGE_DIST * 5.0 / 12.0)
+	_expect(small_lunge.x < 0.5 and small_lunge.y > want * 0.6 and small_lunge.y <= want + 0.5, "Reduced Motion: a small lunge of about %d px (peak %s, full %s)" % [int(want), str(small_lunge), str(lunge)])
+	_expect(card.position.is_equal_approx(rest), "Reduced Motion: the small lunge returns the card to rest")
 	sm().set_setting("reduced_motion", false)
 
 	sm().set_setting("no_animations", true)
 	var still: Vector2 = await _peak(card, func() -> void: feedback._wiggle(card))
 	_expect(still.is_zero_approx(), "No animations: no wiggle (peak %s)" % str(still))
+	var no_lunge: Vector2 = await _peak(card, func() -> void: feedback._lunge(card, "hero"))
+	_expect(no_lunge.is_zero_approx(), "No animations: no lunge (peak %s)" % str(no_lunge))
 	sm().set_setting("no_animations", false)
 
 	_expect(card.position.is_equal_approx(rest), "the card ends at rest")
