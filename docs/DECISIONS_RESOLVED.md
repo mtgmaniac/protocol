@@ -1,5 +1,59 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-55. Decisions on the cloak and windows branch (Kev, 2026-10-08)
+
+**Rulings (Kev, transcribed).**
+
+1. "Cloak: keep +50%."
+2. "Signature moves: Spike Guard lost most of its taunt because its taunt sits
+   in band 1, which the tank shape shrank to two faces. Treat it as a class:
+   for every hero and enemy, check whether its defining ability sits in a band
+   that shrank. List each case and propose moving that ability into the band
+   the shape intends for it (e.g. a tank's taunt into a middle band). Don't
+   change any shapes. Show me the list, then apply the swaps I approve."
+3. "Roles: classify enemies by kit, not HP. Ash Channeler, Caustic Spewer and
+   Oath Binder get their kit-based role and shape. Cinder Raptor stays elite."
+4. "Phaseblade: top band back to 20 only, pending my summons decision. Spine
+   Stalker keeps 19–20."
+5. "Difficulty: keep the new windows. After items 2–4, tune ability numbers
+   (damage, shield, heal amounts) so each operation's clear rate lands within
+   about 3 points of its old value on 1,500-run batches: Facility 37.5%, Hive
+   29.4%, Veil 23.3%, Signal Purge 27.2%, Mantle Hunt 16.7%. Report every
+   number you changed."
+6. "Accept as-is: Shadow ambushing on consecutive rounds, Rampage and ambush
+   stacking, and the low band reading (abilities closed, ranges moved)."
+
+**Closed by this:** G-52's number (+50%) and its readings 5 and 7; G-54's
+reading of the enemy low bands; G-53's reading 5 for Cinder Raptor (elite).
+**Overturned:** G-53's reading 1 (roles from the HP-based classifier) and its
+reading 4 for Phaseblade.
+
+**As built (items 3 and 4):**
+
+- **Roles are by kit.** A tank protects itself (self shield, heal or growing
+  armour); a support aids its allies in two or more bands; the small units
+  are regular; the five with a standing rule are bosses; the rest are elites.
+  Three units change: **Ash Channeler** and **Oath Binder** take the Signal
+  Purge elite shape (1–4 / 5–8 / 9–11 / 12–19 / 20) and **Caustic Spewer**
+  the Hive elite shape (1–5 / 6–11 / 12–15 / 16–19 / 20). Every other tank
+  was checked against its kit and stays a tank or a support: Heavy Warden,
+  Broodwarden, Resonance Warden (shield and heal themselves), Basalt Ape,
+  Magma Drake (self shield and Accrete), Stormweaver (lifts ally rolls in four
+  bands; a support, which is the same shape). The encounter slots still use
+  `DataManager._classify_enemy_role` unchanged; only the windows table moved.
+- **My reading on Oath Binder:** elite. Four of its five bands are attacks of
+  14 to 21 damage with a debuff riding on them, and it aids no ally. If a
+  debuffer should count as a support it keeps the windows it had (1–3 / 4–8 /
+  9–13 / 14–19 / 20).
+- **Phaseblade** is an elite with the 20 alone on top: 1–3 / 4–8 / 9–14 /
+  15–19 / 20. Its summon ability fires on 5% of rolls again. The `roll
+  windows` gate now allows the wide top for Pyro, Wraith and Spine Stalker
+  only, and has a break for Phaseblade getting it back.
+
+**Item 2** is a list for Kev to approve (handoff, "Signature moves"); nothing
+was swapped. **Item 5** waits for those approvals, as ruled ("after items
+2–4"). No ability number was changed.
+
 ## G-54. Closed items, not to be re-proposed (Kev, 2026-10-08)
 
 **Ruling (Kev, transcribed from the task).** "In the handoff, record these as
@@ -86,7 +140,7 @@ waiting for Kev's review. The baseline is not re-pinned.
 
 **My readings, each Kev's to overturn:**
 
-1. **Roles are the game's own classifier**, not a new list:
+1. **OVERTURNED by G-55 (roles are by kit, not HP).** Roles are the game's own classifier, not a new list:
    `DataManager._classify_enemy_role`, which already sorts enemies into the
    encounter slots. `fodder` (a unit whose `ai` is `dumb`) is a regular
    enemy; `heavy` (90 HP or more) is a tank; `support` (two or more bands
@@ -97,7 +151,7 @@ waiting for Kev's review. The baseline is not re-pinned.
    20 alone and has nothing to give, so the upper end is band 4.
 3. **"Widen band 4 by one":** it starts one face lower; band 3 loses that
    face. The top band stays the 20.
-4. **Phaseblade and Spine Stalker** are elites by their kits, so band 4
+4. **Phaseblade's part OVERTURNED by G-55 (its top is the 20 alone).** Phaseblade and Spine Stalker are elites by their kits, so band 4
    starts one face lower, then the 19–20 top takes the 19 from it:
    Phaseblade 1–3 / 4–8 / 9–14 / 15–18 / 19–20, Spine Stalker 1–5 / 6–11 /
    12–15 / 16–18 / 19–20. Band 4 ends up the same width as the shape's.

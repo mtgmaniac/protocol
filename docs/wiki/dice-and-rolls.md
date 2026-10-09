@@ -37,7 +37,7 @@ Zone thresholds are **per-unit data**, not global constants:
 | ↳ Noise Specialist | 1–2 | 3–10 | 11–16 | 17–19 | 20 |
 | ↳ Nullwire | 1–4 | 5–8 | 9–15 | 16–19 | 20 |
 
-Ranges as of the 2026-10-08 roll windows (DECISIONS_RESOLVED G-53). Source: the `range` on each ability in `data/raw/heroes.data.json` (base kits and evolutions); `heroZones` at the top of that file is a copy of the base ranges, kept equal by the `roll windows` gate. **Enemy kits carry their own `range` per band** in `data/raw/enemies.data.json`: one shape per operation, adjusted by role (table in TRUTH, "Roll windows"). There is no shared enemy table. Only Pyro, Wraith, Phaseblade and Spine Stalker have a top band wider than the 20 (19–20).
+Ranges as of the 2026-10-08 roll windows (DECISIONS_RESOLVED G-53). Source: the `range` on each ability in `data/raw/heroes.data.json` (base kits and evolutions); `heroZones` at the top of that file is a copy of the base ranges, kept equal by the `roll windows` gate. **Enemy kits carry their own `range` per band** in `data/raw/enemies.data.json`: one shape per operation, adjusted by role (table in TRUTH, "Roll windows"). There is no shared enemy table. Only Pyro, Wraith and Spine Stalker have a top band wider than the 20 (19–20); roles are by kit (G-55).
 
 ### Runtime band shifts (heroes only)
 

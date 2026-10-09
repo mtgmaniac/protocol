@@ -7,8 +7,9 @@ enemies.data.json per enemy kit) and nowhere else. This gate checks the data:
 
   * every hero, every evolution and every enemy kit has exactly five bands, in
     band order, contiguous, covering 1-20 with no gap and no overlap
-  * only Pyro, Wraith, Phaseblade and Spine Stalker have a top band wider than
-    one face (19-20); every other unit's top band is the 20 alone
+  * only Pyro, Wraith and Spine Stalker have a top band wider than one face
+    (19-20); every other unit's top band is the 20 alone (Phaseblade's went
+    back to the 20 on 2026-10-08, pending the summons decision, G-55)
   * `heroZones` (the per-hero copy at the top of heroes.data.json) matches the
     base abilities' ranges
   * every enemy unit's kit exists, and no kit is shared by a unit that has the
@@ -36,7 +37,7 @@ DATA_MANAGER = ROOT / "scripts" / "autoloads" / "DataManager.gd"
 ZONES = ["recharge", "strike", "surge", "crit", "overload"]
 # The only units whose top band is wider than one face.
 WIDE_TOP_EVOLUTIONS = {"pyro": "Pyro", "wraith": "Wraith"}
-WIDE_TOP_ENEMIES = {"Phaseblade", "Spine Stalker"}
+WIDE_TOP_ENEMIES = {"Spine Stalker"}
 WIDE_TOP = [19, 20]
 NARROW_TOP = [20, 20]
 SHARED_TABLE = "ENEMY_ZONE_RANGES"
@@ -74,7 +75,7 @@ def top_errors(label: str, bands: list, wide: bool) -> list[str]:
     shown = "-".join(str(v) for v in bands[-1])
     if wide:
         return [f"{label}: the top band is {shown}; this unit's is 19-20"]
-    return [f"{label}: the top band is {shown}; only Pyro, Wraith, Phaseblade and Spine Stalker go wider than the 20"]
+    return [f"{label}: the top band is {shown}; only Pyro, Wraith and Spine Stalker go wider than the 20"]
 
 
 def ability_bands(label: str, abilities: list) -> tuple[list, list[str]]:
@@ -202,6 +203,11 @@ def breaks(heroes: dict, enemies: dict, data_manager: str) -> list:
         e["enemyAbilities"]["boss"]["crit"]["range"][1] = 18
         e["enemyAbilities"]["boss"]["overload"]["range"] = [19, 20]
     add("a boss given a 19-20 top", wide_enemy)
+
+    def phaseblade(h, e, s):
+        e["enemyAbilities"]["veilNull"]["crit"]["range"][1] = 18
+        e["enemyAbilities"]["veilNull"]["overload"]["range"] = [19, 20]
+    add("Phaseblade given its 19-20 top back", phaseblade)
 
     def narrow(h, e, s):
         evolution(h, "pulse", "pyro")["abilities"][3]["range"][1] = 19

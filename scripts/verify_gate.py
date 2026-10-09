@@ -269,9 +269,9 @@ GATES = [
         "--breaks", "no_bonus,always,keep_cloak,fizzle,first,no_chip"],
         "[CLOAK_AMBUSH_GATE] PASS", False),
     # Roll windows (G-53, Kev 2026-10-08): every hero, evolution and enemy kit
-    # has five contiguous bands covering 1-20, and only Pyro, Wraith, Phaseblade
-    # and Spine Stalker have a top band wider than the 20. Static over the data
-    # (eleven in-memory breaks), then the loaded resources, the inspect table
+    # has five contiguous bands covering 1-20, and only Pyro, Wraith and Spine
+    # Stalker have a top band wider than the 20. Static over the data (twelve
+    # in-memory breaks), then the loaded resources, the inspect table
     # and the band-shifting gear at run time (two breaks).
     ("roll windows", [sys.executable, str(ROOT / "scripts" / "checks" / "roll_windows.py")], "[ROLL_WINDOWS] PASS", False),
     ("roll windows live", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "ROLL_WINDOWS_LIVE",

@@ -41,11 +41,18 @@ Very few units fire their top ability on more than a 20.
   13–19 / 20. **Regular** enemies and **bosses** use the shape as it is.
   **Tanks and supports** move one face from each end into the middle: band 1
   gives its last face to band 2, band 4 gives its first face to band 3.
-  **Elites** have band 4 one face wider, taken from band 3. **Phaseblade and
-  Spine Stalker** are elites whose top band is 19–20 (band 4 ends at 18).
-  Every other enemy tops out on the 20 alone. Roles are the game's own
-  (`DataManager._classify_enemy_role`: fodder = regular, heavy = tank,
-  support, elite; the five units with a standing rule are the bosses).
+  **Elites** have band 4 one face wider, taken from band 3. **Spine
+  Stalker** is an elite whose top band is 19–20 (band 4 ends at 18). Every
+  other enemy tops out on the 20 alone; Phaseblade's top went back to the 20
+  the same day, pending the summons decision (G-55). **Roles are by kit, not
+  HP** (G-55): a tank protects itself (self shield, heal or growing armour), a
+  support aids its allies in two or more bands, a regular enemy is one of the
+  small units, the five units with a standing rule are the bosses, and
+  everything else is an elite. So Ash Channeler, Caustic Spewer and Oath
+  Binder, 90 HP or more but attackers by kit, are elites; Cinder Raptor stays
+  an elite. This is the table below and nothing else: the encounter slots'
+  own classifier (`DataManager._classify_enemy_role`, which does use HP) is
+  unchanged.
 
 | Operation | Unit | Role | Band 1 / 2 / 3 / 4 / top |
 |---|---|---|---|
@@ -62,22 +69,22 @@ Very few units fire their top ability on more than a 20.
 | Hive | Spine Stalker | elite | 1–5 / 6–11 / 12–15 / 16–18 / 19–20 |
 | Hive | Carapace Beetle | support | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
 | Hive | Broodwarden | tank | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
-| Hive | Caustic Spewer | tank | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
+| Hive | Caustic Spewer | elite | 1–5 / 6–11 / 12–15 / 16–19 / 20 |
 | Hive | Hive Matriarch | boss | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
 | Veil | Shard Drone | regular | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
 | Veil | Prism Charger | regular | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
 | Veil | Aegis Anchor | support | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
 | Veil | Resonance Warden | tank | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
-| Veil | Phaseblade | elite | 1–3 / 4–8 / 9–14 / 15–18 / 19–20 |
+| Veil | Phaseblade | elite | 1–3 / 4–8 / 9–14 / 15–19 / 20 |
 | Veil | Stormweaver | tank | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
 | Veil | Relay Herald | support | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
 | Veil | Veil Overseer | boss | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
 | Signal Purge | Signal Wisp | regular | 1–4 / 5–8 / 9–12 / 13–19 / 20 |
 | Signal Purge | Circuit Acolyte | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
 | Signal Purge | Cipher Scribe | support | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
-| Signal Purge | Oath Binder | tank | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
+| Signal Purge | Oath Binder | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
 | Signal Purge | False Image | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
-| Signal Purge | Ash Channeler | tank | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
+| Signal Purge | Ash Channeler | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
 | Signal Purge | Signal Hierophant | boss | 1–4 / 5–8 / 9–12 / 13–19 / 20 |
 | Mantle Hunt | Pumice Climber | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
 | Mantle Hunt | Obsidian Hound | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
@@ -137,8 +144,8 @@ Very few units fire their top ability on more than a 20.
 
 - Gates: `roll windows` (`scripts/checks/roll_windows.py`: five contiguous
   bands covering 1–20 for every hero, evolution and enemy kit; only Pyro,
-  Wraith, Phaseblade and Spine Stalker wider than the 20 at the top;
-  `heroZones` equal; no shared table; eleven in-memory breaks) and `roll
+  Wraith and Spine Stalker wider than the 20 at the top; `heroZones` equal;
+  no shared table; twelve in-memory breaks) and `roll
   windows live` (`scripts/debug/roll_windows_test.gd`: the loaded resources
   equal the data, every face resolves to its band, the inspect table follows
   the data, the four band shifts on all 24 hero kits; breaks `shared_table`,
@@ -827,7 +834,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 | `voidCirclet` | Signal Purge | machine cult: rewrite, hijack, siphon, ±roll | Signal Hierophant (+Cipher Scribe) |
 | `stellarMenagerie` | Mantle Hunt | igneous beasts: accrete, petrify, spike, cloak | Mantle Tyrant (+Geode Panther) |
 
-**Enemy roll windows (G-53, 2026-10-08):** one shape per operation, adjusted by role (regular / tank / support / elite / boss); only Phaseblade and Spine Stalker top out on 19–20. Each kit's `range` per band is in `enemies.data.json`; full table in the top entry. The old single table (1–4 / 5–10 / 11–16 / 17–19 / 20 for every enemy) is gone.
+**Enemy roll windows (G-53, 2026-10-08):** one shape per operation, adjusted by role (regular / tank / support / elite / boss, by kit); only Spine Stalker tops out on 19–20. Each kit's `range` per band is in `enemies.data.json`; full table in the top entry. The old single table (1–4 / 5–10 / 11–16 / 17–19 / 20 for every enemy) is gone.
 
 Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, Conclave Bulwark, Harmonic Mend, Annulment, Synaptic Tune · 4 Synod: Seal Sigil, Init Collar, Mass Snare, Hierophant Mantle). Enemies don't use Protocol.
 
