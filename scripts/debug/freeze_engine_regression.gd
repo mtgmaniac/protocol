@@ -6,7 +6,7 @@
 #
 # Asserts FREEZE = REPEAT (per Kev 2026-07-06, final — supersedes both the
 # next-turn static lockout and the fix-1.4 bank/thaw model):
-# Round 1: Avalanche (roll 3 -> Glacial Lattice, freezeAnyDice) freezes an
+# Round 1: Avalanche (its freezeAnyDice roll, read from the data) freezes an
 # enemy that STILL lands its hit this round and is left frozen at its face.
 # Round 2: the crusted die keeps that face and the enemy ACTS AGAIN on the
 # same result (same damage lands), then the repeat is spent.
@@ -39,7 +39,7 @@ func _ready() -> void:
 
 	# ── Round 1: Avalanche freezes; the enemy STILL hits this round. ──────────
 	var hp_start: int = int(hero["current_hp"])
-	bs.hero_rolls = {str(hero["id"]): 3}          # Glacial Lattice (freeze any)
+	bs.hero_rolls = {str(hero["id"]): _find_freeze_any_roll(dmgr, avalanche)}
 	bs.enemy_rolls = {str(en["id"]): enemy_roll}
 	engine.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)
 	engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
@@ -100,6 +100,16 @@ func _find_damage_roll(dmgr: DiceManager, enemy: EnemyData) -> int:
 		if int((ability.get("raw", {}) as Dictionary).get("dmg", 0)) > 0:
 			return roll
 	return 20
+
+
+# Avalanche's freeze-any roll, from the data: its band moved on 2026-10-09
+# (it was pinned to 3) and the test must follow the kit.
+func _find_freeze_any_roll(dmgr: DiceManager, unit: UnitData) -> int:
+	for roll in range(1, 21):
+		var ability: Dictionary = dmgr.get_ability_for_roll(unit, roll)
+		if int((ability.get("raw", {}) as Dictionary).get("freezeAnyDice", 0)) > 0:
+			return roll
+	return 0
 
 
 # A roll different from `taken`, so an unwanted reroll is detectable.

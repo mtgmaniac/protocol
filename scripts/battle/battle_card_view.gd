@@ -471,7 +471,9 @@ func _hero_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionary
 		var hits_hero: bool = bool(raw.get("blastAll", false)) or hostile_target == target_id
 		if hits_hero and int(raw.get("dmg", 0)) > 0:
 			found = true
-			total_dmg += int(raw.get("dmg", 0))
+			# An enemy still cloaked after the hero phase attacks from cloak:
+			# its hit is an ambush (G-52).
+			total_dmg += _scene.combat_manager.ambush_damage(forecast["after"].get(enemy_id, enemy_state), int(raw.get("dmg", 0)))
 
 	var active_burn: int = _scene.combat_manager.get_expected_burn_tick(target_state)
 	if active_burn > 0:
@@ -658,9 +660,19 @@ func _build_compact_status_tokens(state: Dictionary) -> Array:
 	# Kev 2026-07-10: the chip TYPE limit is lifted — every active status gets a
 	# chip (the row still visually caps and overflows into the "+N" badge; the
 	# full list lives in the unit long-press). Cloak / Jam / Rewrite / Spike:
-	if bool(state.get("cloaked", false)):
+	# A cloaked unit's next attack is an ambush (G-52): the chip carries the
+	# bonus beside the cloak icon, for as long as the cloak is up.
+	if CombatManager.ambush_ready(state) and CombatManager.cloak_ambush_break() != "no_chip":
+		statuses.append({
+			"type": "cloak",
+			"mode": "numeric",
+			"icon": "C",
+			"value": CombatManager.ambush_chip_text(_scene.combat_manager.ambush_mult()),
+			"priority": 3,
+		})
+	elif bool(state.get("cloaked", false)):
 		statuses.append(_make_compact_icon_status("cloak", 3))
-	# Rampage (a charged enemy's next hit doubles): icon only, like cloak.
+	# Rampage (a charged enemy's next hit doubles): icon only.
 	if int(state.get("rampage_charges", 0)) > 0:
 		statuses.append(_make_compact_icon_status("rampage", 3))
 	if int(state.get("jam_cap", 0)) > 0:

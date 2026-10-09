@@ -379,7 +379,7 @@ def format_inspect(raw: dict[str, Any], side: str) -> str:
         friendly.append("Taunt: enemies must target this unit.")
 
     if _bool(raw, "cloak"):
-        friendly.append("Cloak: untargetable by hostile single-target abilities; breaks on dealing damage or an AoE hit.")
+        friendly.append("Cloak: untargetable by hostile single-target abilities; its next attack deals +50% damage and breaks the cloak; an AoE hit breaks it too.")
 
     if _bool(raw, "reviveAll"):
         friendly.append(f"Revive all fallen allies at {_int(raw, 'revivePct', 50)}% max HP.")

@@ -255,7 +255,13 @@ func _check_live() -> void:
 	if heroes.size() != 3 or enemies.size() < 2:
 		return
 	var rig: Dictionary = {}
-	var hero_vals := [2, 2, 3]
+	# The face comes from the data: the lowest one in Sentinel's taunt band.
+	var taunt_roll: int = 0
+	for band in heroes[2]["unit"].dice_ranges:
+		if bool(((band as Dictionary).get("raw", {}) as Dictionary).get("taunt", false)):
+			taunt_roll = int((band as Dictionary).get("min", 0))
+	_expect(taunt_roll > 0, "fixture: Sentinel has a taunt band")
+	var hero_vals := [2, 2, taunt_roll]
 	for i in heroes.size():
 		rig["hero:%s" % heroes[i]["id"]] = hero_vals[i]
 	for enemy_state in enemies:

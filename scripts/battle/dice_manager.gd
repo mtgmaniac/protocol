@@ -15,6 +15,24 @@ extends RefCounted
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
+## Debug-build seam for the `roll windows live` gate's deliberate breaks (never
+## set by the game): `shared_table` gives every enemy one fixed table again
+## (read by DataManager); `squeeze` lets a band shift empty the band it takes
+## from (the pre-2026-10-08 arithmetic).
+const WINDOWS_BREAK_ARG := "--roll-windows-break="
+static var _windows_break: String = "?"
+
+
+static func roll_windows_break() -> String:
+	if _windows_break == "?":
+		_windows_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(WINDOWS_BREAK_ARG):
+					_windows_break = arg.trim_prefix(WINDOWS_BREAK_ARG)
+	return _windows_break
+
+
 func _init() -> void:
 	_rng.randomize()
 
@@ -87,19 +105,33 @@ func get_adjusted_ranges(unit_data: Resource) -> Array:
 	for i in adjusted.size():
 		var zone: String = str(adjusted[i].get("zone", ""))
 		if splice and zone == "recharge":
-			adjusted[i]["max"] = int(adjusted[i]["max"]) + 2
-			if i + 1 < adjusted.size():
-				adjusted[i + 1]["min"] = maxi(int(adjusted[i + 1]["min"]), int(adjusted[i]["max"]) + 1)
+			_grow_up(adjusted, i, 2)
 		if compress_overload and zone == "overload":
-			adjusted[i]["min"] = mini(int(adjusted[i]["min"]), 19)
-			if i > 0:
-				adjusted[i - 1]["max"] = mini(int(adjusted[i - 1]["max"]), 18)
+			_grow_down(adjusted, i, int(adjusted[i]["min"]) - 19)
 		if surge_extend > 0 and zone == "surge":
-			adjusted[i]["min"] = maxi(1, int(adjusted[i]["min"]) - surge_extend)
-			if i > 0:
-				adjusted[i - 1]["max"] = maxi(int(adjusted[i - 1]["min"]), int(adjusted[i]["min"]) - 1)
+			_grow_down(adjusted, i, surge_extend)
 		if crit_extend > 0 and zone == "crit":
-			adjusted[i]["min"] = maxi(1, int(adjusted[i]["min"]) - crit_extend)
-			if i > 0:
-				adjusted[i - 1]["max"] = maxi(int(adjusted[i - 1]["min"]), int(adjusted[i]["min"]) - 1)
+			_grow_down(adjusted, i, crit_extend)
 	return adjusted
+
+
+# Band `i` takes up to `faces` faces from the band below it. A squeezed band
+# always keeps at least one face, so every shift leaves five contiguous bands
+# covering 1-20 (a two-face band can only give one: roll windows, 2026-10-08).
+static func _grow_down(ranges: Array, i: int, faces: int) -> void:
+	if i <= 0 or faces <= 0:
+		return
+	var room: int = int(ranges[i - 1]["max"]) - int(ranges[i - 1]["min"])
+	var taken: int = faces if roll_windows_break() == "squeeze" else mini(faces, maxi(room, 0))
+	ranges[i]["min"] = int(ranges[i]["min"]) - taken
+	ranges[i - 1]["max"] = int(ranges[i]["min"]) - 1
+
+
+# Band `i` takes up to `faces` faces from the band above it, same floor.
+static func _grow_up(ranges: Array, i: int, faces: int) -> void:
+	if i + 1 >= ranges.size() or faces <= 0:
+		return
+	var room: int = int(ranges[i + 1]["max"]) - int(ranges[i + 1]["min"])
+	var taken: int = mini(faces, maxi(room, 0))
+	ranges[i]["max"] = int(ranges[i]["max"]) + taken
+	ranges[i + 1]["min"] = int(ranges[i]["max"]) + 1

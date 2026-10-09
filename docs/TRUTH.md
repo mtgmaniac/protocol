@@ -1,5 +1,417 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 signature moves and retuning (Kev, G-56 and G-57; merged to `main` 2026-10-09):**
+the new roll windows shrank some bands that held the ability a unit is known
+for. Ten units swap two abilities between two of their own bands. No range,
+shape or number changed in the swap; the two abilities just changed places.
+
+| Unit | Now on | Ability | Was on | Its old slot now holds |
+|---|---|---|---|---|
+| Spike Guard | 3–8 | Challenge Beacon (taunt) | 1–2 | Reactive Cover |
+| Sentinel | 8–14 | Challenge (taunt) | 1–2 | Punish |
+| Bulwark | 3–10 | Fortify (taunt) | 1–2 | Cover Fire |
+| Avalanche Suit | 10–14 | Cryo Lattice (freeze any die) | 1–3 | Whiteout Spray |
+| Ravager | 12–19 | Deep Extraction (leech) | 10–11 | Wound Ignition |
+| Pulse Tech | 14–19 | Plasma Lance (burn) | 10–13 | Flash Detonation |
+| Pumice Climber | 13–19 | Pumice Grasp (pack bonus) | 7–9 | Arterial Bite |
+| Obsidian Hound, Slag Hound | 13–19 | Rending Fang (pack bonus) | 7–9 | Throat Clamp |
+| Oath Binder | 12–19 | Compulsion (roll penalty) | 5–8 | Dominion Bolt |
+| Ash Channeler | 12–19 | Cinder Litany (burn) | 9–11 | Sacrificial Drain |
+
+  Checked and left alone (Kev): Signal Breaker's Phase Tear, Heavy Warden's
+  Field Service, Resonance Warden's Harmonic Mend. A band's internal key no
+  longer says what kind of ability it holds: Bulwark's and Spike Guard's first
+  band now attack or cover, and the taunt sits in the second.
+
+- **Enemy damage retuned, operation by operation** (G-56 ruling 2), so each
+  operation clears about as often as it did before the windows. 68 attack
+  numbers on 19 units changed, by 1 to 3 points each. Damage only: no shield,
+  heal, burn, range or HP changed. Facility, Veil, Signal Purge and Mantle
+  Hunt hit a little softer; the Hive hits harder.
+
+| Operation | Unit | Damage, was → now |
+|---|---|---|
+| Facility | Shield Enforcer | Covering Shot 13 → 12, Cover Field 12 → 11, Barrier Burst 17 → 16, Fortress Advance 21 → 20 |
+| Hive | Spine Stalker | Spine Lunge 14 → 15, Caustic Spine 15 → 16, Shredding Spines 17 → 18, Impaler Gland 19 → 20 |
+| Hive | Carapace Beetle | Ramming Plate 12 → 13, Caustic Guard 10 → 11, Carapace Burst 13 → 14, Fortress Charge 16 → 17 |
+| Hive | Broodwarden | Brood Slam 11 → 12, Acid Saliva 9 → 10, Caustic Crush 18 → 19, Culling Feed 27 → 29 |
+| Hive | Caustic Spewer | Feeding Spit 8 → 9, Caustic Spray 9 → 10, Acid Torrent 10 → 11, Corrosive Deluge 12 → 13 |
+| Hive | Hive Matriarch | Royal Mandibles 19 → 22, Brood Venom 20 → 22, Biomass Purge 25 → 27, Acid Cataclysm 28 → 30 |
+| Veil | Aegis Anchor | Aegis Bash 12 → 11, Bulwark Pulse 14 → 13, Fortress Lash 18 → 17, Shieldline Rally 20 → 19 |
+| Veil | Resonance Warden | Resonant Slam 12 → 11, Pulse Burn 12 → 11, Resonant Hammer 22 → 21, Veil Rally 28 → 27 |
+| Veil | Phaseblade | Phase Slash 14 → 13, Vector Cut 16 → 15, Guarded Cut 19 → 18, Phase Reinforcements 24 → 23 |
+| Veil | Stormweaver | Storm Weave 12 → 11, Ion Tempest 14 → 13, Lattice Storm 16 → 15 |
+| Signal Purge | Circuit Acolyte | Binding Lash 12 → 11, Command Needle 14 → 13, Warded Lash 17 → 16, Ritual Muster 18 → 17 |
+| Signal Purge | Cipher Scribe | Glyph Strike 11 → 10, Stolen Pattern 10 → 9, Prophecy Needle 15 → 14, Summon Verse 16 → 15 |
+| Signal Purge | Oath Binder | Dominion Bolt 19 → 17, Tribute Drain 16 → 15, Compulsion 14 → 13, Binding Decree 21 → 19 |
+| Signal Purge | False Image | False Edge 13 → 12, Mirror Break 12 → 11, Stolen Reflex 17 → 16, False Command 19 → 17 |
+| Signal Purge | Ash Channeler | Arc Lance 16 → 15, Sacrificial Drain 20 → 18, Cinder Litany 15 → 14, Ashen Muster 22 → 20 |
+| Signal Purge | Signal Hierophant | Absolute Binding 26 → 25, Machine Crusade 30 → 29 |
+| Mantle Hunt | Geode Panther | Stonefang Pounce 16 → 15, Petrifying Shriek 18 → 17 |
+| Mantle Hunt | Basalt Ape | Fistfall 14 → 13, Bonebreaker 17 → 16, Basalt Crush 16 → 15 |
+| Mantle Hunt | Cinder Raptor | Challenge Screech 15 → 14, Brood Call 13 → 12 |
+
+  Not changed: every small unit (the three drones, Skitterling, Bloodmite,
+  Shard Drone, Prism Charger, Signal Wisp, Pumice Climber, both Hounds),
+  Patrol Enforcer, Heavy Warden, Volt Enforcer, Relay Herald, Magma Drake,
+  Scrapmaster, Veil Overseer and Mantle Tyrant. The small units' numbers did
+  not move the clear rate in the sim. The others were left alone, or put back,
+  to keep each operation on its target.
+
+  Clear rate, `l1` policy (first evolutions), 1,500 matched runs. "Target" is
+  `main` before the cloak and windows changes. "New seeds" is a second 1,500
+  runs on seeds the tuning never saw:
+
+| Operation | Target | Swaps only | Tuned | Off target | New seeds: `main` | New seeds: tuned | Both sets pooled, tuned minus `main` |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| Facility | 37.5% | 32.1% | 37.2% | -0.3 | 34.4% | 39.4% | +2.2 |
+| Hive | 29.4% | 40.9% | 29.4% | +0.0 | 28.7% | 32.3% | +1.8 |
+| Veil | 23.3% | 18.4% | 23.3% | +0.0 | 23.3% | 26.7% | +1.6 |
+| Signal Purge | 27.2% | 22.5% | 26.5% | -0.7 | 24.4% | 24.4% | -0.3 |
+| Mantle Hunt | 16.7% | 14.5% | 17.0% | +0.3 | 15.9% | 13.8% | -1.0 |
+| Overall | 26.7% | 25.7% | 26.6% | -0.1 | 25.1% | 26.9% | +0.8 |
+
+  The fit is to the first seed set; on new seeds Facility, Hive and Veil run
+  3 to 5 points easier than `main` did there, and Mantle Hunt 2 harder. One
+  operation in a 1,500-run batch is about 300 runs, so a rate moves about 3
+  points between seed sets by itself. Measured with the
+  hero changes of the next two points in.
+
+- **Two heroes brought back toward their old win rate** (G-56 ruling 3),
+  through four numbers of their own:
+
+| Unit | Ability | Rolls | Number | Was | Now |
+|---|---|---|---|--:|--:|
+| Pyro Specialist | Backdraft | 13–18 | damage | 14 | 16 |
+| Spike Guard | Challenge Beacon | 3–8 | spike | 3 | 5 |
+| Spike Guard | Spike Stance | 9–15 | shield | 5 | 7 |
+| Bulwark | Fortify | 3–10 | shield | 7 | 9 |
+
+  Spike Guard won 16.0% with the swaps alone, against 20.1% before the
+  windows. Pulse Tech sat 5.0 points under its old rate once the enemies were
+  tuned (21.6% against 26.6%); raising its base kit's damage did nothing in
+  the sim, so its one number is on Pyro Specialist, the evolution the sim
+  plays. Win rate of runs that include the hero, same batches as above:
+
+| Hero | `main` | Swaps only | Tuned | Change from `main` | New seeds: `main` | New seeds: tuned |
+|---|--:|--:|--:|--:|--:|--:|
+| Pulse Tech | 26.6% | 22.5% | 22.0% | -4.6 | 25.7% | 26.3% |
+| Strike Unit | 31.3% | 31.3% | 33.5% | +2.2 | 30.3% | 32.7% |
+| Spike Guard | 20.1% | 16.0% | 18.5% | -1.6 | 14.8% | 16.1% |
+| Avalanche Suit | 20.0% | 20.5% | 21.5% | +1.5 | 19.3% | 20.3% |
+| Splice Medic | 36.4% | 34.0% | 35.3% | -1.1 | 30.8% | 32.7% |
+| Field Engineer | 23.6% | 22.3% | 24.3% | +0.7 | 24.7% | 24.2% |
+| Ghost Operative | 29.0% | 34.5% | 32.9% | +4.0 | 30.4% | 37.7% |
+| Signal Breaker | 27.2% | 24.5% | 25.2% | -2.0 | 24.7% | 25.4% |
+
+  Pulse Tech ends 4.6 under on the first seed set and level on the second.
+  Ghost Operative is 4 to 7 points up; that is the cloak ambush. No other hero was
+  more than 5 points under.
+
+- **Second evolutions tuned to their first-evolution sibling** (G-56 ruling
+  4): 20 numbers, second evolutions only. Five go up (Ravager, Sentinel,
+  Synth Medic, Phantom Engineer, Wraith). Three go down a little (Arc
+  Specialist, Trench Rig, Nullwire): in the second-evolution batch every
+  squadmate is a second evolution too, so lifting the five weak ones lifted
+  all eight, and those three ended 6 to 8 points above their sibling until
+  trimmed.
+
+| Unit | Ability | Rolls | Number | Was | Now |
+|---|---|---|---|--:|--:|
+| Arc Specialist | Forked Lightning | 9–14 | damage | 12 | 11 |
+| Arc Specialist | Arc Cascade | 15–19 | damage | 15 | 14 |
+| Ravager | Thermal Cut | 1–7 | damage | 6 | 7 |
+| Ravager | Siphon Slash | 8–9 | damage | 9 | 11 |
+| Ravager | Deep Extraction | 12–19 | damage | 12 | 15 |
+| Sentinel | Counter Stance | 3–7 | spike | 6 | 8 |
+| Sentinel | Challenge | 8–14 | shield | 4 | 8 |
+| Sentinel | Repulsion Field | 15–19 | damage | 8 | 9 |
+| Sentinel | Repulsion Field | 15–19 | shield | 6 | 7 |
+| Trench Rig | Dig In | 3–9 | shield | 8 | 6 |
+| Trench Rig | Trench Breaker | 17–19 | damage | 18 | 16 |
+| Synth Medic | Nanite Crossfire | 14–19 | damage | 6 | 9 |
+| Phantom Engineer | EMP Pulse | 4–10 | damage | 7 | 10 |
+| Wraith | Scan Weakness | 1–6 | damage | 4 | 6 |
+| Wraith | Neural Trace | 7–10 | damage | 8 | 10 |
+| Wraith | Assassinate | 11–14 | damage | 14 | 16 |
+| Wraith | Wraith Blade | 15–18 | damage | 15 | 17 |
+| Nullwire | Bit Spike | 5–8 | damage | 9 | 8 |
+| Nullwire | Deep Interference | 9–15 | damage | 12 | 11 |
+| Nullwire | Signal Sever | 16–19 | damage | 14 | 13 |
+
+  Win rate of runs where the evolution was picked. First evolutions on the
+  `l1` batch, second evolutions on the `l1_evo2` batch, 1,500 runs each;
+  "Before" is with the swaps and no tuning:
+
+| First evolution | Rate | Second evolution | Before | Now | Gap | New seeds: first | New seeds: second | Gap |
+|---|--:|---|--:|--:|--:|--:|--:|--:|
+| Pyro Specialist | 27.1% | Arc Specialist | 29.3% | 30.2% | +3.1 | 33.0% | 32.2% | -0.8 |
+| Blade Trooper | 37.9% | Ravager | 25.1% | 33.6% | -4.3 | 36.7% | 41.1% | +4.4 |
+| Bulwark | 22.8% | Sentinel | 14.3% | 22.6% | -0.2 | 19.3% | 22.3% | +3.0 |
+| Glacier Rig | 30.0% | Trench Rig | 27.2% | 30.8% | +0.8 | 28.4% | 34.1% | +5.7 |
+| Combat Medic | 40.3% | Synth Medic | 30.0% | 40.6% | +0.3 | 37.9% | 39.6% | +1.8 |
+| Overclock Engineer | 29.4% | Phantom Engineer | 20.1% | 27.3% | -2.1 | 28.7% | 32.5% | +3.8 |
+| Shadow Operative | 40.7% | Wraith | 28.7% | 40.5% | -0.2 | 45.9% | 43.6% | -2.4 |
+| Noise Specialist | 32.6% | Nullwire | 32.4% | 34.3% | +1.7 | 32.1% | 35.1% | +3.0 |
+
+  A gap here is the difference of two rates of about 450 runs each, so it
+  moves about 4 points between seed sets (Ravager: -4.3 on one, +4.4 on the
+  other). Averaged over both sets every pair is within about 3.5.
+
+  The second-evolution batch by operation (it was never played before
+  2026-10-09, so it has no target of its own):
+
+| Operation | `main` | Swaps only | Tuned | New seeds, tuned |
+|---|--:|--:|--:|--:|
+| Facility | 31.8% | 32.4% | 41.9% | 43.6% |
+| Hive | 18.2% | 29.4% | 33.7% | 35.0% |
+| Veil | 13.5% | 13.9% | 23.3% | 28.5% |
+| Signal Purge | 17.5% | 9.6% | 22.5% | 23.5% |
+| Mantle Hunt | 7.7% | 13.8% | 12.5% | 17.2% |
+| Overall | 17.7% | 19.8% | 26.7% | 29.1% |
+
+- **Baseline re-pinned to the tuned game (2026-10-09,
+  BASELINE-APPROVED-BY-KEV, G-57).** The pinned 300 runs moved:
+
+| Pinned 300 runs | old pin | new pin | change |
+|---|--:|--:|--:|
+| Facility | 40.8% | 29.6% | -11.3 |
+| Hive | 25.4% | 33.9% | +8.5 |
+| Veil | 26.2% | 32.3% | +6.2 |
+| Signal Purge | 28.1% | 15.8% | -12.3 |
+| Mantle Hunt | 16.7% | 14.6% | -2.1 |
+| Overall | 28.3% | 26.0% | -2.3 |
+
+  About 60 runs per operation: it disagrees with both 1,500-run sets. Kev
+  signed off the two moves beyond 10 points (Facility, Signal Purge). Full
+  report: `HANDOFF_2026-10-08_cloak_and_windows.md`, "Follow-up 2" and
+  "Follow-up 3".
+- **How noisy the pinned 300 runs are, measured (G-57; nothing changed
+  yet).** The same change (`main` to the tuned game) read on ten separate
+  300-run blocks gave per-operation moves from -15 to +19 points, standard
+  deviation 5 to 9 points per operation and 4 overall. Its real size, on
+  3,000 runs, is under 2.5 points on every operation. So the 10-point line
+  on 300 runs trips on a change with almost no real effect about half the
+  time (5 of the 10 blocks, and the pinned block too), and by the same spread
+  misses a real 10-point move about half the time. The pin still works as a
+  tripwire: an unchanged tree reproduces it exactly, so any move at all means
+  combat changed. A proposed setup is in G-57; the gate is as it was.
+- **Tests read the roll from the kit** (G-57). A test that needs a unit to
+  use a kind of ability no longer rigs a fixed face. Converted: `preview
+  accuracy` (detonate, breach, chain, pierce, execute, single-target attack),
+  `freeze regression`, `action motion`, `accrete display`, `taunt planning
+  chip`, the live part of `cloak ambush`, and the detonate capture in
+  `battle_ui_capture.gd`. Left as they are, on purpose: the tutorial's own
+  scripted dice and the checks of its math, the gear checks whose subject is
+  a band edge, tests on made-up units, and dice that only have to land.
+
+
+**2026-10-08 new roll windows (Kev, G-53; merged to `main` 2026-10-09):**
+every unit keeps its five bands and its abilities. Only the ranges changed.
+Very few units fire their top ability on more than a 20.
+
+- **Heroes and evolutions** (`range` on each ability in
+  `data/raw/heroes.data.json`):
+
+| Unit | Band 1 | Band 2 | Band 3 | Band 4 | Top |
+|---|---|---|---|---|---|
+| **Pulse Tech** | 1–5 | 6–9 | 10–13 | 14–19 | 20 |
+| Pyro Specialist | 1–6 | 7–9 | 10–12 | 13–18 | 19–20 |
+| Arc Specialist | 1–3 | 4–8 | 9–14 | 15–19 | 20 |
+| **Strike Unit** | 1–5 | 6–10 | 11–14 | 15–19 | 20 |
+| Blade Trooper | 1–3 | 4–8 | 9–15 | 16–19 | 20 |
+| Ravager | 1–7 | 8–9 | 10–11 | 12–19 | 20 |
+| **Spike Guard** | 1–2 | 3–8 | 9–15 | 16–19 | 20 |
+| Bulwark | 1–2 | 3–10 | 11–17 | 18–19 | 20 |
+| Sentinel | 1–2 | 3–7 | 8–14 | 15–19 | 20 |
+| **Avalanche Suit** | 1–3 | 4–9 | 10–14 | 15–19 | 20 |
+| Glacier Rig | 1–3 | 4–11 | 12–16 | 17–19 | 20 |
+| Trench Rig | 1–2 | 3–9 | 10–16 | 17–19 | 20 |
+| **Splice Medic** | 1–4 | 5–9 | 10–14 | 15–19 | 20 |
+| Combat Medic | 1–3 | 4–9 | 10–15 | 16–19 | 20 |
+| Synth Medic | 1–3 | 4–8 | 9–13 | 14–19 | 20 |
+| **Field Engineer** | 1–4 | 5–10 | 11–14 | 15–19 | 20 |
+| Overclock Engineer | 1–6 | 7–9 | 10–13 | 14–19 | 20 |
+| Phantom Engineer | 1–3 | 4–10 | 11–15 | 16–19 | 20 |
+| **Ghost Operative** | 1–6 | 7–10 | 11–13 | 14–19 | 20 |
+| Shadow Operative | 1–4 | 5–7 | 8–10 | 11–19 | 20 |
+| Wraith | 1–6 | 7–10 | 11–14 | 15–18 | 19–20 |
+| **Signal Breaker** | 1–2 | 3–9 | 10–15 | 16–19 | 20 |
+| Noise Specialist | 1–2 | 3–10 | 11–16 | 17–19 | 20 |
+| Nullwire | 1–4 | 5–8 | 9–15 | 16–19 | 20 |
+
+- **Enemies: one shape per operation**, adjusted by role. Shapes (band 1 /
+  2 / 3 / 4 / top): Facility 1–3 / 4–9 / 10–15 / 16–19 / 20 · Hive 1–5 /
+  6–11 / 12–16 / 17–19 / 20 · Veil 1–3 / 4–8 / 9–15 / 16–19 / 20 · Signal
+  Purge 1–4 / 5–8 / 9–12 / 13–19 / 20 · Mantle Hunt 1–6 / 7–9 / 10–12 /
+  13–19 / 20. **Regular** enemies and **bosses** use the shape as it is.
+  **Tanks and supports** move one face from each end into the middle: band 1
+  gives its last face to band 2, band 4 gives its first face to band 3.
+  **Elites** have band 4 one face wider, taken from band 3. **Spine
+  Stalker** is an elite whose top band is 19–20 (band 4 ends at 18). Every
+  other enemy tops out on the 20 alone; Phaseblade's top went back to the 20
+  the same day, pending the summons decision (G-55). **Roles are by kit, not
+  HP** (G-55): a tank protects itself (self shield, heal or growing armour), a
+  support aids its allies in two or more bands, a regular enemy is one of the
+  small units, the five units with a standing rule are the bosses, and
+  everything else is an elite. So Ash Channeler, Caustic Spewer and Oath
+  Binder, 90 HP or more but attackers by kit, are elites; Cinder Raptor stays
+  an elite. This is the table below and nothing else: the encounter slots'
+  own classifier (`DataManager._classify_enemy_role`, which does use HP) is
+  unchanged.
+
+| Operation | Unit | Role | Band 1 / 2 / 3 / 4 / top |
+|---|---|---|---|
+| Facility | Scrap Drone | regular | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Facility | Rust Drone | regular | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Facility | Static Skimmer | regular | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Facility | Patrol Enforcer | elite | 1–3 / 4–9 / 10–14 / 15–19 / 20 |
+| Facility | Shield Enforcer | support | 1–2 / 3–9 / 10–16 / 17–19 / 20 |
+| Facility | Heavy Warden | tank | 1–2 / 3–9 / 10–16 / 17–19 / 20 |
+| Facility | Volt Enforcer | elite | 1–3 / 4–9 / 10–14 / 15–19 / 20 |
+| Facility | Scrapmaster | boss | 1–3 / 4–9 / 10–15 / 16–19 / 20 |
+| Hive | Skitterling | regular | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
+| Hive | Bloodmite | regular | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
+| Hive | Spine Stalker | elite | 1–5 / 6–11 / 12–15 / 16–18 / 19–20 |
+| Hive | Carapace Beetle | support | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
+| Hive | Broodwarden | tank | 1–4 / 5–11 / 12–17 / 18–19 / 20 |
+| Hive | Caustic Spewer | elite | 1–5 / 6–11 / 12–15 / 16–19 / 20 |
+| Hive | Hive Matriarch | boss | 1–5 / 6–11 / 12–16 / 17–19 / 20 |
+| Veil | Shard Drone | regular | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
+| Veil | Prism Charger | regular | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
+| Veil | Aegis Anchor | support | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Resonance Warden | tank | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Phaseblade | elite | 1–3 / 4–8 / 9–14 / 15–19 / 20 |
+| Veil | Stormweaver | tank | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Relay Herald | support | 1–2 / 3–8 / 9–16 / 17–19 / 20 |
+| Veil | Veil Overseer | boss | 1–3 / 4–8 / 9–15 / 16–19 / 20 |
+| Signal Purge | Signal Wisp | regular | 1–4 / 5–8 / 9–12 / 13–19 / 20 |
+| Signal Purge | Circuit Acolyte | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Signal Purge | Cipher Scribe | support | 1–3 / 4–8 / 9–13 / 14–19 / 20 |
+| Signal Purge | Oath Binder | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Signal Purge | False Image | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Signal Purge | Ash Channeler | elite | 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Signal Purge | Signal Hierophant | boss | 1–4 / 5–8 / 9–12 / 13–19 / 20 |
+| Mantle Hunt | Pumice Climber | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+| Mantle Hunt | Obsidian Hound | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+| Mantle Hunt | Slag Hound | regular | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+| Mantle Hunt | Geode Panther | elite | 1–6 / 7–9 / 10–11 / 12–19 / 20 |
+| Mantle Hunt | Basalt Ape | tank | 1–5 / 6–9 / 10–13 / 14–19 / 20 |
+| Mantle Hunt | Cinder Raptor | elite | 1–6 / 7–9 / 10–11 / 12–19 / 20 |
+| Mantle Hunt | Magma Drake | tank | 1–5 / 6–9 / 10–13 / 14–19 / 20 |
+| Mantle Hunt | Mantle Tyrant | boss | 1–6 / 7–9 / 10–12 / 13–19 / 20 |
+
+- **The ranges are data.** Each enemy kit carries a `range` per band in
+  `data/raw/enemies.data.json`, as heroes always have; the shared table
+  `DataManager.ENEMY_ZONE_RANGES` (1–4 / 5–10 / 11–16 / 17–19 / 20 for every
+  enemy) is deleted, with its two copies in tool scripts. Nothing that shows a
+  range holds one: the inspect table, the evolution screen, the briefing and
+  the die's long-press all print the loaded `min` / `max`. `heroZones` at the
+  top of heroes.data.json is a copy of the base ranges; the gate keeps it
+  equal. Text written before this date that names an enemy's "1-4" band means
+  its first band.
+- **Roll modifiers and printed faces** are unchanged: a die's printed faces
+  are its effective values and the band is looked up from the value it rests
+  on, clamped to 1–20.
+- **Gear that moves a band edge never empties a band.** Band Compressor, Wide
+  Aperture, Standing Order and the Splice Deal take faces from the
+  neighbouring band, which always keeps one (`DiceManager._grow_down` /
+  `_grow_up`). With two-face bands in the data this now matters: Ravager's
+  8–9 gives Wide Aperture one face, not two, and gives the Splice Deal one.
+  Band Compressor does nothing for Pyro and Wraith, whose top band is already
+  19–20.
+- **Tutorial:** the scripted die for Pulse Tech in battle 2, round 1 is 6 (was
+  4). Its Burn lesson needs Arc Burst, which moved from 4–9 to 6–9. Every
+  other scripted die lands in the same band as before. No throw was
+  re-recorded: a recording is turned to show the requested face. Outcomes
+  re-measured with `scripts/debug/tutorial_outcome_sim.gd` (1,000 seeds per
+  battle, two policies): no losses, no stalls; median / longest win 3 / 6 and
+  4 / 7 rounds (basic), 3 / 5 and 4 / 6 (L1).
+- **Sim, baseline not re-pinned (Kev decides after review; re-pinned 2026-10-09, G-57):**
+
+| Clear rate | before (`main`) | cloak only | cloak + windows | change |
+|---|--:|--:|--:|--:|
+| **Pinned 300 runs** overall | 28.0% | 27.3% | 24.0% | -4.0 |
+| Facility | 40.8% | 42.3% | 32.4% | -8.5 |
+| Hive | 25.4% | 28.8% | 32.2% | +6.8 |
+| Veil | 26.2% | 26.2% | 21.5% | -4.6 |
+| Signal Purge | 28.1% | 19.3% | 19.3% | -8.8 |
+| Mantle Hunt | 14.6% | 14.6% | 10.4% | -4.2 |
+| **1,500 matched runs** overall | 26.7% | 30.3% | 23.9% | -2.8 |
+| Facility | 37.5% | 42.2% | 32.4% | -5.1 |
+| Hive | 29.4% | 37.0% | 38.3% | +8.9 |
+| Veil | 23.3% | 25.0% | 17.7% | -5.6 |
+| Signal Purge | 27.2% | 29.8% | 17.9% | -9.3 |
+| Mantle Hunt | 16.7% | 18.0% | 13.5% | -3.2 |
+
+  The windows alone cost the squad about 6 points overall (30.3% to 23.9%):
+  every operation but Hive gets harder. Hero by hero and the Signal
+  Hierophant by squad: `HANDOFF_2026-10-08_cloak_and_windows.md`.
+
+- Gates: `roll windows` (`scripts/checks/roll_windows.py`: five contiguous
+  bands covering 1–20 for every hero, evolution and enemy kit; only Pyro,
+  Wraith and Spine Stalker wider than the 20 at the top; `heroZones` equal;
+  no shared table; twelve in-memory breaks) and `roll
+  windows live` (`scripts/debug/roll_windows_test.gd`: the loaded resources
+  equal the data, every face resolves to its band, the inspect table follows
+  the data, the four band shifts on all 24 hero kits; breaks `shared_table`,
+  `squeeze`).
+
+**2026-10-08 cloak is an ambush (Kev, G-52; merged to `main` 2026-10-09):**
+cloak made a unit untargetable but broke on its first attack and paid nothing
+for it, so it almost never lasted and cloak items were wasted on attackers.
+
+- **The attack that breaks a cloak is an ambush: +50% damage** (round up, as
+  Mark does), heroes and enemies alike. `CombatManager.AMBUSH_MULT` = 1.5;
+  `ambush_damage` is the one place the bonus is computed. It multiplies the
+  ability's own damage number, so flat extras added later (first-hit gear,
+  Momentum, the vs-frozen bonus, execute's +8, burn) are not multiplied; a
+  chain jump is half of the ambush hit; an area attack from cloak pays it on
+  every target. The cloak pays it, so it lands **once per cloak and only out
+  of cloak**: a unit that is not cloaked when it attacks gets nothing, and a
+  cloak torn off by an area hit pays nothing. An ability that does not attack
+  keeps the cloak and the bonus. An attack that also cloaks (Ghost Step,
+  Strike and Fade) spends the cloak it had, then puts up a new one that pays
+  again. Ambush Wiring adds its +5 after the bonus; Ghostblade is unchanged.
+  An enemy with Rampage and a cloak gets both (x3).
+- **Every target cloaked: a single-target attack hits one of them at random**
+  instead of fizzling (`_random_cloaked_target`, picked from the battle's
+  seeded stream, INVARIANTS #1). The attack's riders (burn, jam, mark and the
+  rest) land on the same unit; the unit keeps its cloak. Both sides. An
+  ability that does not attack (a lone mark, jam or taunt) still finds no
+  target. A hero in this case needs no pick; an enemy's inspect reads
+  TARGETING: RANDOM. With any visible target the old rule holds: the pick
+  moves to the first living, uncloaked unit.
+- **Shown:** the cloak chip carries the bonus beside the cloak icon
+  (**+50%**) for as long as the cloak is up, on both sides, and goes when the
+  cloak does. The enemy phase's HP preview counts a cloaked enemy's ambush;
+  a hero's own ambush is in the hero phase dry run. Log: **"Ghost Operative
+  ambushes from cloak for +50% damage."** and **"Every target is cloaked.
+  Strike Unit hits Geode Panther at random."**
+- **Copy** (the number comes from `AMBUSH_MULT`; the gate fails if the data
+  files disagree with it). Keyword: "Enemies can't single-target this unit;
+  allies still can. Its next attack deals +50% damage and breaks the cloak. An
+  area hit breaks it too. If every target is cloaked, a single-target attack
+  hits one at random." Inspect: "Can't be targeted. Next attack deals +50%
+  damage." Primer: "CLOAK: can't be targeted directly; its next attack deals
+  +50% damage."
+- **Why +50% and not double:** matched 1,500-run batches at 1.0 / 1.5 / 2.0 /
+  2.5 (table in G-52). At 2.0 Ghost Operative went from 29.0% to 44.3%, six
+  points clear of every other hero, Hive moved 10.2 points and the biggest
+  single hit on a hero went from 52 to 64. At 1.5 Ghost is 38.1% (level with
+  Splice Medic, 38.8%), no operation moves more than 7.6 and the biggest hit
+  is still 52. The sim's player never plans around cloak, so a real player
+  gets more out of it than these numbers show.
+- **Sim, 300 pinned runs, baseline not re-pinned (Kev decides after review; re-pinned 2026-10-09, G-57):**
+  overall 0.2800 -> 0.2733; Facility +1.4, Hive +3.4, Veil 0.0, Signal Purge
+  -8.8, Mantle Hunt 0.0. The pinned batch has about 60 runs per operation;
+  the 1,500-run batch has Signal Purge at +2.6. Sweepable as `ambush_mult`
+  (`scripts/sim/knobs.json`).
+- Gate `cloak ambush` (`scripts/debug/cloak_ambush_test.gd`: once and only out
+  of cloak, both sides; the attack breaks the cloak; every target cloaked ->
+  one hit, random over seeds, repeatable per seed; chip, preview, log, copy;
+  breaks `no_bonus`, `always`, `keep_cloak`, `fizzle`, `first`, `no_chip`).
+
 **2026-10-08 feedback polish (Kev, playtest; rulings and readings: G-51):**
 
 - **A unit that does not attack shakes in place.** Attackers lunge; a unit
@@ -383,10 +795,10 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Jam cap | 12 | **10** (`combat_manager.JAM_CAP := 10`, keyword batch Task 5) |
 | Ward | "Ward", 17 enemy instances | **Firewall** (code FW; internal field still `ward`), enemy instances culled to **10** (6 Veil + 4 Synod); hero-side 3 renamed not culled |
 | Lure | separate keyword | **Deleted** — unified into **Taunt** both directions |
-| Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7) |
+| Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7); since 2026-10-08 the attack that breaks it is an ambush, +50% damage (G-52) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2833**, facility **0.4085** (re-pinned 2026-10-01 for the no-repeat comp re-roll; before that 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2600**, facility **0.2958** (re-pinned 2026-10-09 for the cloak ambush, the roll windows and the retuning, G-57; before that 2026-10-01 for the no-repeat comp re-roll and 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -548,6 +960,8 @@ Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 direc
 | `ghost` | Ghost Operative | GHOST | control | 45 | Shadow (SHADOW) / Wraith (WRAITH) |
 | `breaker` | Signal Breaker | BREAKER | control | 45 | Noise (NOISE) / Nullwire (NULLWIRE) |
 
+**Roll windows:** each kit's five ranges are in the 2026-10-08 "new roll windows" entry at the top (heroes, evolutions and every enemy). They are data (`range` per ability), never code.
+
 **Legacy id quirks (do NOT change):** Strike Unit=`combat`, Spike Guard=`shield`, Splice Medic=`medic`. Freeze belongs to the Avalanche line only (hero-side); ±Roll chips to the Signal Breaker line only. Starters: `combat`, `engineer`, `medic`, `pulse`; the default selected squad remains `combat`, `engineer`, `medic`. Avalanche unlocks at hero-ladder rung 1.
 
 **Unit Category is INTERNAL-ONLY (Batch 2, do NOT surface player-side):** the `pickerCategory` field (damage/defense/support/control) stays in the data and drives backend ordering + role-badge tint, but is **never shown to the player as text** (`home_screen.gd:869` hides the category chip). Do not "fix" it back into any card/detail UI — its absence from player copy is deliberate. **Violation looks like:** a category label rendered on a unit card, squad tile, or detail panel; or code reading `picker_category` to build visible player text.
@@ -611,7 +1025,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Accrete | — | enemy-only: the unit gains N shield at the start of each of its turns (Basalt Ape 3, Magma Drake 4; an ordinary one-round shield that covers the next hero phase). The Mantle Tyrant's ACCRETION rule is the same effect on its own cadence (6, every 2nd round, persisting). Both go through `_apply_accrete`: own beat, ACCRETE +N chip, "<unit> accretes N shield.", N = the shield actually gained (the max-HP cap can trim it). Inspect line from `InspectResolver.accrete_entry` |
 | Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
 
-**Cloak (2 clauses):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal.
+**Cloak (2 clauses + ambush, G-52):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. **The attack that breaks it is an ambush: +50% damage, once, both sides** (`CombatManager.AMBUSH_MULT`; a cloak torn off by an AoE pays nothing). **If every target of a single-target attack is cloaked, the attack hits one at random** (seeded) and that unit keeps its cloak; an ability that does not attack still finds no target. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal. Full rule: the 2026-10-08 entry at the top.
 **One keyword per ability** (pierce counts), **two allowed in overload** — audit-enforced.
 
 ---
@@ -625,6 +1039,8 @@ the condition icon participates in first-sight primer teaching like any other ic
 | `veil` | Veil Breach | lattice: ally shields, firewalls, buffs | Veil Overseer (+Aegis Anchor) |
 | `voidCirclet` | Signal Purge | machine cult: rewrite, hijack, siphon, ±roll | Signal Hierophant (+Cipher Scribe) |
 | `stellarMenagerie` | Mantle Hunt | igneous beasts: accrete, petrify, spike, cloak | Mantle Tyrant (+Geode Panther) |
+
+**Enemy roll windows (G-53, 2026-10-08):** one shape per operation, adjusted by role (regular / tank / support / elite / boss, by kit); only Spine Stalker tops out on 19–20. Each kit's `range` per band is in `enemies.data.json`; full table in the top entry. The old single table (1–4 / 5–10 / 11–16 / 17–19 / 20 for every enemy) is gone.
 
 Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, Conclave Bulwark, Harmonic Mend, Annulment, Synaptic Tune · 4 Synod: Seal Sigil, Init Collar, Mass Snare, Hierophant Mantle). Enemies don't use Protocol.
 
@@ -1287,7 +1703,7 @@ Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
 > (self) + +1 roll (self) had stamped two self markers.)
 
 **View Battlefield** (between-battle choices): `battle_scene` captures the final combat state at victory into transient `GameState.battle_review_state` (skipped headless/auto). Reward, Intercept, and evolution/directive choices show `VIEW BATTLEFIELD` when that state exists; it re-enters the real battle scene read-only, then returns to the originating choice. Reward/Intercept offers, selection, recipient/swap choice, and scroll state are retained in the transient picker session; no reward rolls again and no event transaction can commit twice.
-Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam (Reduced Motion and No animations remove the wash and the shake, never the stinger sound or its music duck) — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
+Chip doctrine: card chips are Burn / **Shield** / Mark / ±Roll / Firewall / Taunt (cap 3, +N overflow badge). The Shield chip was RESTORED per Kev 2026-07-06 (DECISIONS_RESOLVED #16, reversing the pkg8.1 cut): active shield total, both sides, live on grant/break/expiry, dropping at the per-side phase tick (rule 5). Cloak = ghosted portrait, plus a chip with the cloak icon and the ambush bonus ("+50%", G-52) · Freeze/Petrify = die crust (ice cyan / stone gray) · Jam = **die numeral shows the CAPPED value** (Build G item 2 — every die reads the ONE source `battle_scene._die_value` → `get_effective_roll`; the tray keeps no copy of the rule since the dice-face audit; regressions `jam_display_test.gd`, `dice_face_gate.gd`) + die tint + "JAM ≤10" marker · **Firewall = an ordinary bottom-row chip** on `warded`, both sides, cleared on break/expiry — under the same 3-chip cap and the same `+N` overflow as every other chip, so it CAN sit in overflow (accepted cost: long-press shows the full breakdown). Ruled 2026-09-02, reversing Build G item 11 — **portrait corners carry no status markers**; the portrait-corner FW badge is deleted. Regression `firewall_display_test.gd` · Rewrite/Hijack = pending die marker + readout entry · Spike = readout pip only. Result die face renders bright with a light outline, non-result faces dimmed ~40%. A **final die face of 20** = gold wash + shake + stinger + ability-name slam (Reduced Motion and No animations remove the wash and the shake, never the stinger sound or its music duck) — however the die reached 20 (rolled, Nudged, Set, buffed); there is **no separate "natural 20"** (per Kev NK-02, the raw-vs-shown-face concept was removed game-wide — every 20-triggered effect keys only on the die's final effective face). Keyword feedback table: `offline-bundle/ANIMATION.md`.
 
 ## Visual identity
 
@@ -1804,7 +2220,8 @@ added to the taps the player already makes.
 - **Kill-mid-sequence (documented existing rules, NOT new behavior):** if an
   earlier hero kills a later hero's target, `_find_target_by_id` skips dead
   states, so `_hostile_single_target` retargets the later hero to the FIRST
-  LIVING non-cloaked enemy in slot order (taunt lure still overrides); with no
+  LIVING non-cloaked enemy in slot order (taunt lure still overrides); if every
+  living enemy is cloaked an attack hits one at random (G-52); with no
   living enemy the ability logs "finds no visible target - the attack fizzles."
   Friendly picks fall back per-effect (heal/shield → lowest-HP living ally).
   A hero killed mid-phase (enemy Spike) keeps its stamp but does not act
@@ -1965,6 +2382,14 @@ confirmation runs.
   comparison (re-roll on vs off, same seeds) moved only veil +2.0 and voidCirclet +0.7
   points, every other op 0.0, against a 2xSE of about 7 points per op, so the 300-run
   pin's larger moves (+4.2 / +3.1 / +5.3) are small-sample noise.
+- **Baseline re-pin (2026-10-09, BASELINE-APPROVED-BY-KEV, G-57):** `baseline.json` →
+  overall **0.2600** · facility **0.2958** · hive **0.3390** · veil **0.3231** ·
+  voidCirclet **0.1579** · stellarMenagerie **0.1458** (was 0.2833 · 0.4085 · 0.2542 ·
+  0.2615 · 0.2807 · 0.1667; largest per-op moves -12.3 and -11.3, signed off by Kev).
+  The cause is the cloak ambush, the new roll windows, the ten swaps and the retuning
+  (G-52, G-53, G-56). On 1,500 matched runs the tuned game is within 0.7 points of
+  `main` on every operation, and within 2.2 pooled over two seed sets; the pin's
+  larger moves are small-sample noise, measured in the 2026-10-09 entry at the top.
 
 ## Out of scope (don't build)
 

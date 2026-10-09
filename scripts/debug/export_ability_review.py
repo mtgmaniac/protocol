@@ -21,13 +21,6 @@ ENEMIES_PATH = ROOT / "data/raw/enemies.data.json"
 OUT_PATH = ROOT / "docs/ABILITY_TEXT_REVIEW.xlsx"
 OUT_PATH_FALLBACK = ROOT / "docs/ABILITY_TEXT_REVIEW_v2.xlsx"
 
-ENEMY_ZONE_RANGES = {
-    "recharge": (1, 4),
-    "strike": (5, 10),
-    "surge": (11, 16),
-    "crit": (17, 19),
-    "overload": (20, 20),
-}
 ZONES = ["recharge", "strike", "surge", "crit", "overload"]
 
 HEADERS = [
@@ -123,7 +116,7 @@ def legacy_inspect(raw: dict, side: str) -> str:
     if raw.get("revive") or raw.get("reviveAll"):
         parts.append(f"Revive a fallen ally at {int(raw.get('revivePct', 50))}% max HP.")
     if raw.get("cloak"):
-        parts.append("Cloak: untargetable by hostile single-target abilities; breaks on dealing damage or an AoE hit.")
+        parts.append("Cloak: untargetable by hostile single-target abilities; its next attack deals +50% damage and breaks the cloak; an AoE hit breaks it too.")
     if raw.get("taunt"):
         parts.append("Taunt: enemies must target this unit.")
     if raw.get("ignSh"):
@@ -216,7 +209,7 @@ def collect_rows(prior: dict[tuple[str, ...], tuple[str, str]]) -> list[dict[str
             ab = suite.get(zone)
             if not ab:
                 continue
-            lo, hi = ENEMY_ZONE_RANGES[zone]
+            lo, hi = ab["range"]
             add_row(
                 "enemy",
                 str(etype),

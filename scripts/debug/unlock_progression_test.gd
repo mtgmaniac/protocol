@@ -267,7 +267,9 @@ func _test_renamed_enemy_abilities() -> void:
 	for case_entry in cases:
 		var source: Dictionary = (abilities.get(str(case_entry["enemy"]), {}) as Dictionary).get(str(case_entry["band"]), {}) as Dictionary
 		var mechanics: Dictionary = case_entry["mechanics"] as Dictionary
-		var mechanics_match := source.size() == mechanics.size() + 1
+		# Beside its mechanics an ability carries its name and its roll window
+		# (`range`, per kit since the 2026-10-08 roll windows): neither is a mechanic.
+		var mechanics_match := source.size() == mechanics.size() + 2 and source.has("range")
 		for key in mechanics:
 			mechanics_match = mechanics_match and source.has(key) and source[key] == mechanics[key]
 		_check(str(source.get("name", "")) == str(case_entry["name"]) and mechanics_match, "%s rename preserves byte-equivalent mechanics" % str(case_entry["name"]))

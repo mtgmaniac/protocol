@@ -90,8 +90,14 @@ func choose_intercept_draft(options: Array, _gs: Node) -> String:
 
 
 # ── Progression stops. ────────────────────────────────────────────────────────
+# Which evolution path this policy takes: 0 = each hero's first (the default,
+# and all the pinned baseline has ever played), 1 = its second. Sim-only seam
+# (policy `l1_evo2`): without it half the evolutions are never measured.
+var evolution_index: int = 0
+
+
 func choose_evolution(paths: Array, _gs: Node) -> String:
-	return str((paths[0] as Dictionary).get("name", "")) if not paths.is_empty() else ""
+	return str((paths[mini(evolution_index, paths.size() - 1)] as Dictionary).get("name", "")) if not paths.is_empty() else ""
 
 
 func choose_directive(choices: Array, _gs: Node) -> String:

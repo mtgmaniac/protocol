@@ -189,6 +189,9 @@ func _make_policy(policy_name: String, policy_seed: int, archetype: String = "",
 		"l1_focus", "l1_norekill":  # boss-aware L1 (sponginess study, sim-only)
 			policy = PolicyL1Script.new(policy_seed)
 			policy.boss_mode = policy_name.to_lower().trim_prefix("l1_")
+		"l1_evo2":  # plain L1 that takes each hero's SECOND evolution (sim-only)
+			policy = PolicyL1Script.new(policy_seed)
+			policy.evolution_index = 1
 		"l2", "solver":
 			policy = PolicyL2Script.new(policy_seed)
 		_:

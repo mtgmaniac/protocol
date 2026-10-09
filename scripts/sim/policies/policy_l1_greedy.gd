@@ -39,6 +39,8 @@ var boss_mode: String = ""
 
 func describe() -> String:
 	var base: String = "l1" if archetype == "" or archetype == "value" else "l1_%s" % archetype
+	if evolution_index > 0:
+		base = "%s_evo%d" % [base, evolution_index + 1]
 	return base if boss_mode == "" else "%s_%s" % [base, boss_mode]
 
 

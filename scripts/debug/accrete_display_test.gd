@@ -234,13 +234,27 @@ func _check_live() -> void:
 	_expect(not boss.is_empty(), "fixture: the Mantle Tyrant is on the field")
 	if boss.is_empty():
 		return
-	# Round 1: the boss rolls its 1-4 ability (20 shield, 1 rampage), so the
-	# round changes its shield three times: accrete, a hero hit, its own grant.
+	# Round 1: the boss rolls its shield-and-rampage ability, so the round
+	# changes its shield three times: accrete, a hero hit, its own grant. The
+	# boss's face and the first hero's attack come from the kits; the other
+	# dice only have to land.
+	var boss_roll: int = 0
+	for roll in range(20, 0, -1):
+		var boss_raw: Dictionary = scene.dice_manager.get_ability_for_roll(boss["unit"], roll).get("raw", {})
+		if int(boss_raw.get("grantRampage", 0)) > 0 and int(boss_raw.get("shield", 0)) > 0:
+			boss_roll = roll
+	_expect(boss_roll > 0, "fixture: the boss has a shield-and-rampage ability")
+	var hitter_roll: int = 0
+	for roll in [9] + range(1, 21):
+		var hit_raw: Dictionary = scene.dice_manager.get_ability_for_roll(heroes[0]["unit"], roll).get("raw", {})
+		if hitter_roll == 0 and int(hit_raw.get("dmg", 0)) > 0:
+			hitter_roll = roll
+	_expect(hitter_roll > 0, "fixture: the first hero has an attack")
 	var rig: Dictionary = {}
 	for hero_state in heroes:
-		rig["hero:%s" % hero_state["id"]] = 9
+		rig["hero:%s" % hero_state["id"]] = hitter_roll if hero_state == heroes[0] else 9
 	for enemy_state in enemies:
-		rig["enemy:%s" % enemy_state["id"]] = 1 if enemy_state == boss else 12
+		rig["enemy:%s" % enemy_state["id"]] = boss_roll if enemy_state == boss else 12
 	scene.dice_tray_3d.set_rigged_results(rig)
 	await scene._begin_targeting_phase()
 	await _settle(scene)

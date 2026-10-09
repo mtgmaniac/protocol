@@ -109,7 +109,9 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 - **Enemy self-taunt** (`enemySelfTaunt`): all heroes must target this enemy next player phase; cleared every round end (`:1720-1724`, `:2418-2421`). No chip renders for it.
 - **Audit:** covered inside targeting/personality regressions; taunt-over-cloak via choke-point tests.
 
-### Cloak (C) — 2 clauses (pierce-from-cloak REMOVED, DECISIONS_RESOLVED K1/#12)
+### Cloak (C) — 2 clauses + ambush (pierce-from-cloak REMOVED, DECISIONS_RESOLVED K1/#12; ambush G-52, 2026-10-08)
+
+- **Ambush (G-52):** the attack that breaks a cloak deals +50% damage (`CombatManager.AMBUSH_MULT`, `ambush_damage`), once per cloak, both sides; a cloak torn off by an AoE pays nothing. If every target of a single-target attack is cloaked the attack hits one at random (`_random_cloaked_target`, seeded) and the unit keeps its cloak. The card chip is the cloak icon plus "+50%". Gate `cloak ambush`. The two bullets below predate this: "everyone cloaked → the ability fizzles" now holds only for abilities that do not attack, and "no chip" is superseded.
 
 - **Rule:** untargetable by hostile single-target abilities (friendly picks always legal); breaks when the unit deals damage or is hit by an AoE (`combat_manager.gd:947, 1538, 1733-1760`).
 - **Resolution detail:** a hostile pick landing on a cloaked unit retargets to the first living non-cloaked unit in slot order; everyone cloaked → the ability fizzles (`_hostile_single_target :1736`). AoE hits land normally and tear the cloak (`_break_cloak_on_aoe :1756`). Chain jumps skip cloaked enemies (`:2318`).

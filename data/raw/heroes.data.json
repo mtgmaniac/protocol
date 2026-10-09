@@ -4,21 +4,21 @@
     "pulse": [
       [
         1,
-        3,
+        5,
         "recharge"
       ],
       [
-        4,
+        6,
         9,
         "strike"
       ],
       [
         10,
-        15,
+        13,
         "surge"
       ],
       [
-        16,
+        14,
         19,
         "crit"
       ],
@@ -31,21 +31,21 @@
     "combat": [
       [
         1,
-        4,
+        5,
         "recharge"
       ],
       [
-        5,
+        6,
         10,
         "strike"
       ],
       [
         11,
-        15,
+        14,
         "surge"
       ],
       [
-        16,
+        15,
         19,
         "crit"
       ],
@@ -58,21 +58,21 @@
     "shield": [
       [
         1,
-        6,
+        2,
         "recharge"
       ],
       [
-        7,
-        12,
+        3,
+        8,
         "strike"
       ],
       [
-        13,
-        16,
+        9,
+        15,
         "surge"
       ],
       [
-        17,
+        16,
         19,
         "crit"
       ],
@@ -90,16 +90,16 @@
       ],
       [
         5,
-        11,
+        9,
         "strike"
       ],
       [
-        12,
-        16,
+        10,
+        14,
         "surge"
       ],
       [
-        17,
+        15,
         19,
         "crit"
       ],
@@ -122,11 +122,11 @@
       ],
       [
         11,
-        15,
+        14,
         "surge"
       ],
       [
-        16,
+        15,
         19,
         "crit"
       ],
@@ -139,16 +139,16 @@
     "ghost": [
       [
         1,
-        2,
+        6,
         "recharge"
       ],
       [
-        3,
-        8,
+        7,
+        10,
         "strike"
       ],
       [
-        9,
+        11,
         13,
         "surge"
       ],
@@ -166,21 +166,21 @@
     "avalanche": [
       [
         1,
-        6,
+        3,
         "recharge"
       ],
       [
-        7,
-        12,
+        4,
+        9,
         "strike"
       ],
       [
-        13,
-        16,
+        10,
+        14,
         "surge"
       ],
       [
-        17,
+        15,
         19,
         "crit"
       ],
@@ -198,16 +198,16 @@
       ],
       [
         3,
-        8,
+        9,
         "strike"
       ],
       [
-        9,
-        13,
+        10,
+        15,
         "surge"
       ],
       [
-        14,
+        16,
         19,
         "crit"
       ],
@@ -232,7 +232,7 @@
           "zone": "recharge",
           "range": [
             1,
-            3
+            5
           ],
           "name": "Static Ping",
           "eff": "4 damage, chain",
@@ -248,7 +248,7 @@
         {
           "zone": "strike",
           "range": [
-            4,
+            6,
             9
           ],
           "name": "Arc Burst",
@@ -265,23 +265,7 @@
           "zone": "surge",
           "range": [
             10,
-            15
-          ],
-          "name": "Plasma Lance",
-          "eff": "9 damage, 3 burn 1 turn",
-          "dmg": 9,
-          "burn": 3,
-          "burnT": 1,
-          "rfe": 0,
-          "heal": 0,
-          "dMin": 9,
-          "dMax": 9
-        },
-        {
-          "zone": "crit",
-          "range": [
-            16,
-            19
+            13
           ],
           "name": "Flash Detonation",
           "eff": "12 damage, detonate",
@@ -293,6 +277,22 @@
           "dMin": 12,
           "dMax": 12,
           "detonate": true
+        },
+        {
+          "zone": "crit",
+          "range": [
+            14,
+            19
+          ],
+          "name": "Plasma Lance",
+          "eff": "9 damage, 3 burn 1 turn",
+          "dmg": 9,
+          "burn": 3,
+          "burnT": 1,
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 9,
+          "dMax": 9
         },
         {
           "zone": "overload",
@@ -324,7 +324,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                6
               ],
               "name": "Ignition Flash",
               "eff": "6 damage, 2 burn 2 turns",
@@ -339,8 +339,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                7,
+                9
               ],
               "name": "Accelerant",
               "eff": "8 damage, 3 burn 2 turns",
@@ -355,8 +355,8 @@
             {
               "zone": "surge",
               "range": [
-                11,
-                15
+                10,
+                12
               ],
               "name": "Meltdown",
               "eff": "5 damage, 6 burn 3 turns",
@@ -371,24 +371,24 @@
             {
               "zone": "crit",
               "range": [
-                16,
-                19
+                13,
+                18
               ],
               "name": "Backdraft",
-              "eff": "14 damage, detonate",
-              "dmg": 14,
+              "eff": "16 damage, detonate",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 16,
+              "dMax": 16,
               "detonate": true
             },
             {
               "zone": "overload",
               "range": [
-                20,
+                19,
                 20
               ],
               "name": "Firestorm",
@@ -432,7 +432,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                3
               ],
               "name": "Static Coil",
               "eff": "6 damage",
@@ -447,8 +447,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                4,
+                8
               ],
               "name": "Arc Whip",
               "eff": "9 damage, chain",
@@ -464,35 +464,35 @@
             {
               "zone": "surge",
               "range": [
-                11,
-                15
+                9,
+                14
               ],
               "name": "Forked Lightning",
-              "eff": "12 damage, chain",
-              "dmg": 12,
+              "eff": "11 damage, chain",
+              "dmg": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
+              "dMin": 11,
+              "dMax": 11,
               "chain": 1
             },
             {
               "zone": "crit",
               "range": [
-                16,
+                15,
                 19
               ],
               "name": "Arc Cascade",
-              "eff": "15 damage, chain",
-              "dmg": 15,
+              "eff": "14 damage, chain",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 15,
-              "dMax": 15,
+              "dMin": 14,
+              "dMax": 14,
               "chain": 1
             },
             {
@@ -546,7 +546,7 @@
           "zone": "recharge",
           "range": [
             1,
-            4
+            5
           ],
           "name": "Target Lock",
           "eff": "mark",
@@ -562,7 +562,7 @@
         {
           "zone": "strike",
           "range": [
-            5,
+            6,
             10
           ],
           "name": "Rifle Burst",
@@ -579,7 +579,7 @@
           "zone": "surge",
           "range": [
             11,
-            15
+            14
           ],
           "name": "Rail Strike",
           "eff": "10 damage",
@@ -594,7 +594,7 @@
         {
           "zone": "crit",
           "range": [
-            16,
+            15,
             19
           ],
           "name": "Precision Shot",
@@ -638,7 +638,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                3
               ],
               "name": "Target Paint",
               "eff": "5 damage, mark",
@@ -654,8 +654,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                4,
+                8
               ],
               "name": "Blade Sweep",
               "eff": "7 damage (all enemies)",
@@ -671,7 +671,7 @@
             {
               "zone": "surge",
               "range": [
-                11,
+                9,
                 15
               ],
               "name": "Blade Rush",
@@ -750,57 +750,40 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                7
               ],
               "name": "Thermal Cut",
-              "eff": "6 damage, 2 burn 2 turns",
-              "dmg": 6,
+              "eff": "7 damage, 2 burn 2 turns",
+              "dmg": 7,
               "burn": 2,
               "burnT": 2,
               "rfe": 0,
               "heal": 0,
-              "dMin": 6,
-              "dMax": 6
+              "dMin": 7,
+              "dMax": 7
             },
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                8,
+                9
               ],
               "name": "Siphon Slash",
-              "eff": "9 damage, leech",
-              "dmg": 9,
+              "eff": "11 damage, leech",
+              "dmg": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 9,
-              "dMax": 9,
+              "dMin": 11,
+              "dMax": 11,
               "leech": true
             },
             {
               "zone": "surge",
               "range": [
-                11,
-                15
-              ],
-              "name": "Deep Extraction",
-              "eff": "12 damage, leech",
-              "dmg": 12,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
-              "leech": true
-            },
-            {
-              "zone": "crit",
-              "range": [
-                16,
-                19
+                10,
+                11
               ],
               "name": "Wound Ignition",
               "eff": "14 damage, detonate",
@@ -812,6 +795,23 @@
               "dMin": 14,
               "dMax": 14,
               "detonate": true
+            },
+            {
+              "zone": "crit",
+              "range": [
+                12,
+                19
+              ],
+              "name": "Deep Extraction",
+              "eff": "15 damage, leech",
+              "dmg": 15,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 15,
+              "dMax": 15,
+              "leech": true
             },
             {
               "zone": "overload",
@@ -865,25 +865,7 @@
           "zone": "recharge",
           "range": [
             1,
-            6
-          ],
-          "name": "Challenge Beacon",
-          "eff": "3 spike, taunt",
-          "dmg": 0,
-          "burn": 0,
-          "burnT": 0,
-          "rfe": 0,
-          "heal": 0,
-          "dMin": 0,
-          "dMax": 0,
-          "taunt": true,
-          "spike": 3
-        },
-        {
-          "zone": "strike",
-          "range": [
-            7,
-            12
+            2
           ],
           "name": "Reactive Cover",
           "eff": "6 shield (hero), 3 spike (hero)",
@@ -899,13 +881,13 @@
           "spike": 3
         },
         {
-          "zone": "surge",
+          "zone": "strike",
           "range": [
-            13,
-            16
+            3,
+            8
           ],
-          "name": "Spike Stance",
-          "eff": "5 shield, 5 spike",
+          "name": "Challenge Beacon",
+          "eff": "5 spike, taunt",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -913,13 +895,31 @@
           "heal": 0,
           "dMin": 0,
           "dMax": 0,
-          "shield": 5,
+          "taunt": true,
+          "spike": 5
+        },
+        {
+          "zone": "surge",
+          "range": [
+            9,
+            15
+          ],
+          "name": "Spike Stance",
+          "eff": "7 shield, 5 spike",
+          "dmg": 0,
+          "burn": 0,
+          "burnT": 0,
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
+          "shield": 7,
           "spike": 5
         },
         {
           "zone": "crit",
           "range": [
-            17,
+            16,
             19
           ],
           "name": "Breach Slam",
@@ -964,25 +964,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                6
-              ],
-              "name": "Fortify",
-              "eff": "7 shield, taunt",
-              "dmg": 0,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "shield": 7,
-              "taunt": true
-            },
-            {
-              "zone": "strike",
-              "range": [
-                7,
-                12
+                2
               ],
               "name": "Cover Fire",
               "eff": "5 damage, 7 shield (lowest HP)",
@@ -997,10 +979,28 @@
               "shieldLowest": true
             },
             {
+              "zone": "strike",
+              "range": [
+                3,
+                10
+              ],
+              "name": "Fortify",
+              "eff": "9 shield, taunt",
+              "dmg": 0,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 9,
+              "taunt": true
+            },
+            {
               "zone": "surge",
               "range": [
-                13,
-                16
+                11,
+                17
               ],
               "name": "Iron Wall",
               "eff": "6 shield (all heroes)",
@@ -1017,7 +1017,7 @@
             {
               "zone": "crit",
               "range": [
-                17,
+                18,
                 19
               ],
               "name": "Bastion",
@@ -1082,42 +1082,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
-              ],
-              "name": "Challenge",
-              "eff": "4 shield, taunt",
-              "dmg": 0,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "taunt": true,
-              "shield": 4
-            },
-            {
-              "zone": "strike",
-              "range": [
-                6,
-                10
-              ],
-              "name": "Counter Stance",
-              "eff": "6 spike",
-              "dmg": 0,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "spike": 6
-            },
-            {
-              "zone": "surge",
-              "range": [
-                11,
-                15
+                2
               ],
               "name": "Punish",
               "eff": "10 damage",
@@ -1130,22 +1095,57 @@
               "dMax": 10
             },
             {
-              "zone": "crit",
+              "zone": "strike",
               "range": [
-                16,
-                19
+                3,
+                7
               ],
-              "name": "Repulsion Field",
-              "eff": "8 damage (all enemies), 6 shield",
-              "dmg": 8,
+              "name": "Counter Stance",
+              "eff": "8 spike",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 8,
-              "dMax": 8,
+              "dMin": 0,
+              "dMax": 0,
+              "spike": 8
+            },
+            {
+              "zone": "surge",
+              "range": [
+                8,
+                14
+              ],
+              "name": "Challenge",
+              "eff": "8 shield, taunt",
+              "dmg": 0,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
+              "taunt": true,
+              "shield": 8
+            },
+            {
+              "zone": "crit",
+              "range": [
+                15,
+                19
+              ],
+              "name": "Repulsion Field",
+              "eff": "9 damage (all enemies), 7 shield",
+              "dmg": 9,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 9,
+              "dMax": 9,
               "blastAll": true,
-              "shield": 6
+              "shield": 7
             },
             {
               "zone": "overload",
@@ -1200,24 +1200,24 @@
           "zone": "recharge",
           "range": [
             1,
-            6
+            3
           ],
-          "name": "Cryo Lattice",
-          "eff": "freeze any die 1 turn",
-          "dmg": 0,
+          "name": "Whiteout Spray",
+          "eff": "9 damage (all enemies)",
+          "dmg": 9,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 0,
-          "dMax": 0,
-          "freezeAnyDice": 1
+          "dMin": 9,
+          "dMax": 9,
+          "blastAll": true
         },
         {
           "zone": "strike",
           "range": [
-            7,
-            12
+            4,
+            9
           ],
           "name": "Glacial Shove",
           "eff": "6 damage, freeze 1 turn",
@@ -1233,24 +1233,24 @@
         {
           "zone": "surge",
           "range": [
-            13,
-            16
+            10,
+            14
           ],
-          "name": "Whiteout Spray",
-          "eff": "9 damage (all enemies)",
-          "dmg": 9,
+          "name": "Cryo Lattice",
+          "eff": "freeze any die 1 turn",
+          "dmg": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 9,
-          "dMax": 9,
-          "blastAll": true
+          "dMin": 0,
+          "dMax": 0,
+          "freezeAnyDice": 1
         },
         {
           "zone": "crit",
           "range": [
-            17,
+            15,
             19
           ],
           "name": "Cryo Recovery",
@@ -1295,7 +1295,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                6
+                3
               ],
               "name": "Permafrost Weave",
               "eff": "5 shield, freeze any die 1 turn",
@@ -1312,8 +1312,8 @@
             {
               "zone": "strike",
               "range": [
-                7,
-                12
+                4,
+                11
               ],
               "name": "Whiteout Salvo",
               "eff": "5 damage (all enemies), freeze 1 enemy 1 turn",
@@ -1330,7 +1330,7 @@
             {
               "zone": "surge",
               "range": [
-                13,
+                12,
                 16
               ],
               "name": "Shatter Lance",
@@ -1410,7 +1410,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                6
+                2
               ],
               "name": "Stabilize",
               "eff": "10 heal (hero)",
@@ -1426,11 +1426,11 @@
             {
               "zone": "strike",
               "range": [
-                7,
-                12
+                3,
+                9
               ],
               "name": "Dig In",
-              "eff": "8 shield, taunt",
+              "eff": "6 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1438,13 +1438,13 @@
               "heal": 0,
               "dMin": 0,
               "dMax": 0,
-              "shield": 8,
+              "shield": 6,
               "taunt": true
             },
             {
               "zone": "surge",
               "range": [
-                13,
+                10,
                 16
               ],
               "name": "Bunker Firewall",
@@ -1466,14 +1466,14 @@
                 19
               ],
               "name": "Trench Breaker",
-              "eff": "breach, 18 damage",
-              "dmg": 18,
+              "eff": "breach, 16 damage",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 18,
-              "dMax": 18,
+              "dMin": 16,
+              "dMax": 16,
               "breach": true
             },
             {
@@ -1550,7 +1550,7 @@
           "zone": "strike",
           "range": [
             5,
-            11
+            9
           ],
           "name": "Infusion",
           "eff": "10 heal (hero), cleanse",
@@ -1567,8 +1567,8 @@
         {
           "zone": "surge",
           "range": [
-            12,
-            16
+            10,
+            14
           ],
           "name": "Neural Tap",
           "eff": "8 damage, leech",
@@ -1584,7 +1584,7 @@
         {
           "zone": "crit",
           "range": [
-            17,
+            15,
             19
           ],
           "name": "Synaptic Drain",
@@ -1627,7 +1627,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                3
               ],
               "name": "Triage",
               "eff": "6 heal (hero)",
@@ -1643,8 +1643,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                4,
+                9
               ],
               "name": "Bioelectric Tap",
               "eff": "9 damage, leech",
@@ -1660,7 +1660,7 @@
             {
               "zone": "surge",
               "range": [
-                11,
+                10,
                 15
               ],
               "name": "Trauma Care",
@@ -1742,7 +1742,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                3
               ],
               "name": "System Patch",
               "eff": "8 heal (lowest HP)",
@@ -1758,8 +1758,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                4,
+                8
               ],
               "name": "Barrier Mesh",
               "eff": "5 shield (all heroes)",
@@ -1776,8 +1776,8 @@
             {
               "zone": "surge",
               "range": [
-                11,
-                15
+                9,
+                13
               ],
               "name": "Emergency Repair",
               "eff": "12 heal (lowest HP)",
@@ -1793,18 +1793,18 @@
             {
               "zone": "crit",
               "range": [
-                16,
+                14,
                 19
               ],
               "name": "Nanite Crossfire",
-              "eff": "6 damage (all enemies), 6 heal (all heroes)",
-              "dmg": 6,
+              "eff": "9 damage (all enemies), 6 heal (all heroes)",
+              "dmg": 9,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 6,
-              "dMin": 6,
-              "dMax": 6,
+              "dMin": 9,
+              "dMax": 9,
               "blastAll": true,
               "healAll": true
             },
@@ -1902,7 +1902,7 @@
           "zone": "surge",
           "range": [
             11,
-            15
+            14
           ],
           "name": "Overdrive",
           "eff": "10 damage",
@@ -1917,7 +1917,7 @@
         {
           "zone": "crit",
           "range": [
-            16,
+            15,
             19
           ],
           "name": "Missile Volley",
@@ -1962,7 +1962,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                6
               ],
               "name": "Bias Charge",
               "eff": "4 shield, +1 Protocol",
@@ -1979,8 +1979,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                7,
+                9
               ],
               "name": "Chain Shot",
               "eff": "9 damage, chain",
@@ -1996,8 +1996,8 @@
             {
               "zone": "surge",
               "range": [
-                11,
-                15
+                10,
+                13
               ],
               "name": "Overclock Burst",
               "eff": "14 damage",
@@ -2012,7 +2012,7 @@
             {
               "zone": "crit",
               "range": [
-                16,
+                14,
                 19
               ],
               "name": "Cascade Array",
@@ -2075,7 +2075,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                3
               ],
               "name": "Stealth Field",
               "eff": "cloak",
@@ -2091,18 +2091,18 @@
             {
               "zone": "strike",
               "range": [
-                6,
+                4,
                 10
               ],
               "name": "EMP Pulse",
-              "eff": "7 damage, jam",
-              "dmg": 7,
+              "eff": "10 damage, jam",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 7,
-              "dMax": 7,
+              "dMin": 10,
+              "dMax": 10,
               "jam": true
             },
             {
@@ -2194,7 +2194,7 @@
           "zone": "recharge",
           "range": [
             1,
-            2
+            6
           ],
           "name": "Active Camouflage",
           "eff": "cloak",
@@ -2210,8 +2210,8 @@
         {
           "zone": "strike",
           "range": [
-            3,
-            8
+            7,
+            10
           ],
           "name": "Probe Strike",
           "eff": "5 damage",
@@ -2226,7 +2226,7 @@
         {
           "zone": "surge",
           "range": [
-            9,
+            11,
             13
           ],
           "name": "System Breach",
@@ -2287,7 +2287,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                4
               ],
               "name": "Ghost Step",
               "eff": "5 damage, cloak",
@@ -2303,8 +2303,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                5,
+                7
               ],
               "name": "Shadow Strike",
               "eff": "12 damage",
@@ -2319,8 +2319,8 @@
             {
               "zone": "surge",
               "range": [
-                11,
-                15
+                8,
+                10
               ],
               "name": "Strike and Fade",
               "eff": "10 damage, cloak",
@@ -2336,7 +2336,7 @@
             {
               "zone": "crit",
               "range": [
-                16,
+                11,
                 19
               ],
               "name": "Phase Cutter",
@@ -2397,74 +2397,74 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                6
               ],
               "name": "Scan Weakness",
-              "eff": "4 damage, mark",
-              "dmg": 4,
+              "eff": "6 damage, mark",
+              "dmg": 6,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 4,
-              "dMax": 4,
+              "dMin": 6,
+              "dMax": 6,
               "mark": true
             },
             {
               "zone": "strike",
               "range": [
-                6,
+                7,
                 10
               ],
               "name": "Neural Trace",
-              "eff": "8 damage, mark",
-              "dmg": 8,
+              "eff": "10 damage, mark",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 8,
-              "dMax": 8,
+              "dMin": 10,
+              "dMax": 10,
               "mark": true
             },
             {
               "zone": "surge",
               "range": [
                 11,
-                15
+                14
               ],
               "name": "Assassinate",
-              "eff": "14 damage, execute",
-              "dmg": 14,
+              "eff": "16 damage, execute",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 16,
+              "dMax": 16,
               "execute": true
             },
             {
               "zone": "crit",
               "range": [
-                16,
-                19
+                15,
+                18
               ],
               "name": "Wraith Blade",
-              "eff": "15 damage, pierce",
-              "dmg": 15,
+              "eff": "17 damage, pierce",
+              "dmg": 17,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 15,
-              "dMax": 15,
+              "dMin": 17,
+              "dMax": 17,
               "ignSh": true
             },
             {
               "zone": "overload",
               "range": [
-                20,
+                19,
                 20
               ],
               "name": "Death Warrant",
@@ -2531,7 +2531,7 @@
           "zone": "strike",
           "range": [
             3,
-            8
+            9
           ],
           "name": "Disruptor Coupler",
           "eff": "7 damage, -2 roll 2 turns",
@@ -2547,8 +2547,8 @@
         {
           "zone": "surge",
           "range": [
-            9,
-            13
+            10,
+            15
           ],
           "name": "Harmonic Glitch",
           "eff": "-2 roll (all enemies) 2 turns",
@@ -2565,7 +2565,7 @@
         {
           "zone": "crit",
           "range": [
-            14,
+            16,
             19
           ],
           "name": "Phase Tear",
@@ -2611,7 +2611,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                2
               ],
               "name": "Carrier Wash",
               "eff": "3 damage (all enemies), -1 roll (all enemies) 2 turns",
@@ -2629,8 +2629,8 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                11
+                3,
+                10
               ],
               "name": "Scatter Static",
               "eff": "7 damage (all enemies), -1 roll (all enemies) 2 turns",
@@ -2648,8 +2648,8 @@
             {
               "zone": "surge",
               "range": [
-                12,
-                14
+                11,
+                16
               ],
               "name": "Resonant Cage",
               "eff": "-3 roll (all enemies) 3 turns",
@@ -2666,7 +2666,7 @@
             {
               "zone": "crit",
               "range": [
-                15,
+                17,
                 19
               ],
               "name": "Collapse Field",
@@ -2730,7 +2730,7 @@
               "zone": "recharge",
               "range": [
                 1,
-                5
+                4
               ],
               "name": "Lock Tone",
               "eff": "6 damage, -2 roll 2 turns",
@@ -2746,35 +2746,35 @@
             {
               "zone": "strike",
               "range": [
-                6,
-                10
+                5,
+                8
               ],
               "name": "Bit Spike",
-              "eff": "9 damage, jam",
-              "dmg": 9,
+              "eff": "8 damage, jam",
+              "dmg": 8,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 9,
-              "dMax": 9,
+              "dMin": 8,
+              "dMax": 8,
               "jam": true
             },
             {
               "zone": "surge",
               "range": [
-                11,
+                9,
                 15
               ],
               "name": "Deep Interference",
-              "eff": "12 damage, -2 roll 2 turns",
-              "dmg": 12,
+              "eff": "11 damage, -2 roll 2 turns",
+              "dmg": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 2,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
+              "dMin": 11,
+              "dMax": 11,
               "rfT": 2
             },
             {
@@ -2784,14 +2784,14 @@
                 19
               ],
               "name": "Signal Sever",
-              "eff": "14 damage, rewrite",
-              "dmg": 14,
+              "eff": "13 damage, rewrite",
+              "dmg": 13,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 13,
+              "dMax": 13,
               "rewrite": true
             },
             {

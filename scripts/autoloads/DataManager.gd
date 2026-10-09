@@ -123,14 +123,6 @@ const RELIC_ICON_SHARED_BY_ID := {
 	"staticField": ["items", "buckler_array"],
 }
 
-const ENEMY_ZONE_RANGES := {
-	"recharge": Vector2i(1, 4),
-	"strike": Vector2i(5, 10),
-	"surge": Vector2i(11, 16),
-	"crit": Vector2i(17, 19),
-	"overload": Vector2i(20, 20),
-}
-
 const HERO_ROLE_BY_ID := {
 	"pulse": "Protocol/utility",
 	"combat": "Damage",
@@ -664,12 +656,18 @@ func _build_evolution_paths(evolutions: Array) -> Array[Dictionary]:
 
 func _build_enemy_dice_ranges(ability_set: Dictionary) -> Array[Dictionary]:
 	var ranges: Array[Dictionary] = []
+	# Each band carries its own `range` in the data, like a hero's (roll
+	# windows, Kev 2026-10-08); there is no shared enemy table.
 	for zone_name in ["recharge", "strike", "surge", "crit", "overload"]:
 		var ability_entry: Dictionary = ability_set.get(zone_name, {})
-		var zone_range: Vector2i = ENEMY_ZONE_RANGES.get(zone_name, Vector2i(1, 1))
+		var range_pair: Array = ability_entry.get("range", [])
+		if DiceManager.roll_windows_break() == "shared_table":
+			range_pair = [[1, 4], [5, 10], [11, 16], [17, 19], [20, 20]][ranges.size()]
+		var min_roll := int(range_pair[0]) if range_pair.size() > 0 else 0
+		var max_roll := int(range_pair[1]) if range_pair.size() > 1 else min_roll
 		ranges.append({
-			"min": zone_range.x,
-			"max": zone_range.y,
+			"min": min_roll,
+			"max": max_roll,
 			"zone": zone_name,
 			"ability_name": str(ability_entry.get("name", "")),
 			"description": str(ability_entry.get("eff", "")),

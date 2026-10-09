@@ -460,7 +460,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"frozen", "freeze", "die_freeze":
 			return "Die keeps this face - acts again on it%s." % ((" for " + turns) if turns != "" else "")
 		"cloak":
-			return "Can't be targeted; breaks on dealing damage."
+			return "Can't be targeted. Next attack deals %s." % CombatManager.ambush_bonus_text()
 		"taunt":
 			return "The taunted unit can only target this unit."
 		"taunted":
