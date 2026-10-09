@@ -23,6 +23,60 @@ shape or number changed in the swap; the two abilities just changed places.
   longer says what kind of ability it holds: Bulwark's and Spike Guard's first
   band now attack or cover, and the taunt sits in the second.
 
+- **Enemy damage retuned, operation by operation** (G-56 ruling 2), so each
+  operation clears about as often as it did before the windows. 68 attack
+  numbers on 19 units changed, by 1 to 3 points each. Damage only: no shield,
+  heal, burn, range or HP changed. Facility, Veil, Signal Purge and Mantle
+  Hunt hit a little softer; the Hive hits harder.
+
+| Operation | Unit | Damage, was → now |
+|---|---|---|
+| Facility | Shield Enforcer | Covering Shot 13 → 12, Cover Field 12 → 11, Barrier Burst 17 → 16, Fortress Advance 21 → 20 |
+| Hive | Spine Stalker | Spine Lunge 14 → 15, Caustic Spine 15 → 16, Shredding Spines 17 → 18, Impaler Gland 19 → 20 |
+| Hive | Carapace Beetle | Ramming Plate 12 → 13, Caustic Guard 10 → 11, Carapace Burst 13 → 14, Fortress Charge 16 → 17 |
+| Hive | Broodwarden | Brood Slam 11 → 12, Acid Saliva 9 → 10, Caustic Crush 18 → 19, Culling Feed 27 → 29 |
+| Hive | Caustic Spewer | Feeding Spit 8 → 9, Caustic Spray 9 → 10, Acid Torrent 10 → 11, Corrosive Deluge 12 → 13 |
+| Hive | Hive Matriarch | Royal Mandibles 19 → 22, Brood Venom 20 → 22, Biomass Purge 25 → 27, Acid Cataclysm 28 → 30 |
+| Veil | Aegis Anchor | Aegis Bash 12 → 11, Bulwark Pulse 14 → 13, Fortress Lash 18 → 17, Shieldline Rally 20 → 19 |
+| Veil | Resonance Warden | Resonant Slam 12 → 11, Pulse Burn 12 → 11, Resonant Hammer 22 → 21, Veil Rally 28 → 27 |
+| Veil | Phaseblade | Phase Slash 14 → 13, Vector Cut 16 → 15, Guarded Cut 19 → 18, Phase Reinforcements 24 → 23 |
+| Veil | Stormweaver | Storm Weave 12 → 11, Ion Tempest 14 → 13, Lattice Storm 16 → 15 |
+| Signal Purge | Circuit Acolyte | Binding Lash 12 → 11, Command Needle 14 → 13, Warded Lash 17 → 16, Ritual Muster 18 → 17 |
+| Signal Purge | Cipher Scribe | Glyph Strike 11 → 10, Stolen Pattern 10 → 9, Prophecy Needle 15 → 14, Summon Verse 16 → 15 |
+| Signal Purge | Oath Binder | Dominion Bolt 19 → 17, Tribute Drain 16 → 15, Compulsion 14 → 13, Binding Decree 21 → 19 |
+| Signal Purge | False Image | False Edge 13 → 12, Mirror Break 12 → 11, Stolen Reflex 17 → 16, False Command 19 → 17 |
+| Signal Purge | Ash Channeler | Arc Lance 16 → 15, Sacrificial Drain 20 → 18, Cinder Litany 15 → 14, Ashen Muster 22 → 20 |
+| Signal Purge | Signal Hierophant | Absolute Binding 26 → 25, Machine Crusade 30 → 29 |
+| Mantle Hunt | Geode Panther | Stonefang Pounce 16 → 15, Petrifying Shriek 18 → 17 |
+| Mantle Hunt | Basalt Ape | Fistfall 14 → 13, Bonebreaker 17 → 16, Basalt Crush 16 → 15 |
+| Mantle Hunt | Cinder Raptor | Challenge Screech 15 → 14, Brood Call 13 → 12 |
+
+  Not changed: every small unit (the three drones, Skitterling, Bloodmite,
+  Shard Drone, Prism Charger, Signal Wisp, Pumice Climber, both Hounds),
+  Patrol Enforcer, Heavy Warden, Volt Enforcer, Relay Herald, Magma Drake,
+  Scrapmaster, Veil Overseer and Mantle Tyrant. The small units' numbers did
+  not move the clear rate in the sim. The others were left alone, or put back,
+  to keep each operation on its target.
+
+  Clear rate, `l1` policy (first evolutions), 1,500 matched runs. "Target" is
+  `main` before the cloak and windows changes. "New seeds" is a second 1,500
+  runs on seeds the tuning never saw:
+
+| Operation | Target | Swaps only | Tuned | Off target | New seeds: `main` | New seeds: tuned | Both sets pooled, tuned minus `main` |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| Facility | 37.5% | 32.1% | 37.2% | -0.3 | 34.4% | 39.4% | +2.2 |
+| Hive | 29.4% | 40.9% | 29.4% | +0.0 | 28.7% | 32.3% | +1.8 |
+| Veil | 23.3% | 18.4% | 23.3% | +0.0 | 23.3% | 26.7% | +1.6 |
+| Signal Purge | 27.2% | 22.5% | 26.5% | -0.7 | 24.4% | 24.4% | -0.3 |
+| Mantle Hunt | 16.7% | 14.5% | 17.0% | +0.3 | 15.9% | 13.8% | -1.0 |
+| Overall | 26.7% | 25.7% | 26.6% | -0.1 | 25.1% | 26.9% | +0.8 |
+
+  The fit is to the first seed set; on new seeds Facility, Hive and Veil run
+  3 to 5 points easier than `main` did there, and Mantle Hunt 2 harder. One
+  operation in a 1,500-run batch is about 300 runs, so a rate moves about 3
+  points between seed sets by itself. Measured with the
+  hero changes of the next two points in.
+
 
 **2026-10-08 new roll windows (Kev, G-53; on branch `claude/cloak-and-windows`, not merged):**
 every unit keeps its five bands and its abilities. Only the ranges changed.

@@ -40,6 +40,47 @@ ranges, shapes and numbers stay.
 Not swapped, as ruled: H7 (Signal Breaker), E5 (Heavy Warden), E6 (Resonance
 Warden).
 
+**As built, ruling 2 (enemy numbers).** 68 damage numbers on 19 enemies, by
+1 to 3 points; the table is in TRUTH (2026-10-09 entry). Per operation:
+
+- **Facility:** Shield Enforcer -1 on each attack. Nothing else.
+- **Hive (harder):** Spine Stalker, Carapace Beetle, Broodwarden and Caustic
+  Spewer +1 on each attack (Broodwarden's 20 is +2); Hive Matriarch +2 on each
+  attack, +3 on Royal Mandibles (19 to 22).
+- **Veil:** Aegis Anchor, Resonance Warden, Phaseblade and Stormweaver -1 on
+  each attack (Stormweaver's lightest is unchanged).
+- **Signal Purge:** the five larger units -1 on each attack, -2 on the heaviest hits
+  of Oath Binder, False Image and Ash Channeler; Signal Hierophant -1
+  on Absolute Binding and on its 20.
+- **Mantle Hunt:** Geode Panther, Basalt Ape and Cinder Raptor -1 on their
+  heavier attacks.
+
+**How it was fitted.** A per-operation damage multiplier was swept first
+(sim knob `enemy_dmg_scalar`): about -5% on four operations and +6% on the
+Hive put all five near target. That was baked into whole numbers, then
+trimmed: units whose numbers did not move the clear rate went back to what
+they had (all small units, Patrol Enforcer), and others went back to stop an
+operation overshooting (Heavy Warden, Volt Enforcer, Relay Herald, Magma
+Drake, three bosses). Sensitivity is high: 5% of enemy damage is about 6
+points of clear rate.
+
+**My readings, ruling 2:**
+
+1. **Damage only.** The ruling allows shield and heal amounts too; damage
+   was enough, so nothing else moved.
+2. **"Within about 3 points" is met on the batch the targets came from**
+   (seed base 500000): every operation is within 0.7. I also ran `main` and
+   the tuned game on a second 1,500 runs (seed base 700000) to see how much
+   of that is fit to one set of seeds. There the tuned game is 5.0 (Facility),
+   3.6 (Hive) and 3.4 (Veil) points easier than `main`, level on Signal Purge,
+   and 2.1 harder on Mantle Hunt. Pooled over both sets no operation is more
+   than 2.2 from `main`.
+3. **The pinned 300-run batch is not re-pinned** and disagrees with both big
+   batches: Facility -11.3, Hive +8.5, Veil +6.2, Signal Purge -12.3, Mantle
+   Hunt -2.1 against `baseline.json`. That is about 60 runs per operation.
+   The full gate's sim leg will stop on the 10-point line for Facility and
+   Signal Purge until Kev re-pins.
+
 ## G-55. Decisions on the cloak and windows branch (Kev, 2026-10-08)
 
 **Rulings (Kev, transcribed).**
