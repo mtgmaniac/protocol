@@ -5,8 +5,8 @@
 **Resuming work?** Read **`docs/TRUTH.md`** first (canonical — when any doc disagrees with it, TRUTH.md wins), then **`docs/INVARIANTS.md` immediately after** (the WHY rules — non-negotiable), then **`docs/DECISIONS_RESOLVED.md`** (closed rulings: do not relitigate; pending rulings must be transcribed there before implementing), then **`docs/AI_AGENT_GAME_REFERENCE.md`** and **`TASK_QUEUE.md`**. Every task follows **`docs/TASK_TEMPLATE.md`**. Remote: [github.com/mtgmaniac/protocol](https://github.com/mtgmaniac/protocol).
 
 **One-time setup per clone:** `git config core.hooksPath scripts/hooks` — enables the
-baseline ceremony (±10 pts per-op drift needs `BASELINE-APPROVED-BY-KEV` in the commit
-message) and the battle_scene.gd growth warning.
+baseline ceremony (a sim size-pin move beyond 8 pts on an operation or 4 overall needs
+`BASELINE-APPROVED-BY-KEV` in the commit message) and the battle_scene.gd growth warning.
 
 ## Branch split (backend vs UI)
 

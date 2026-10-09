@@ -104,8 +104,8 @@ Guarantees (verify after touching the seam):
   are seed-matched, so two points differ ONLY by the knob value). Re-check
   with `tests/sim_determinism.sh` after seam changes.
 - **Shipping a value:** a sweep result is evidence, not a change. Commit the
-  winner as the real constant/data, run the full gate, and the ±10 baseline
-  ceremony applies (docs/INVARIANTS.md #9). Knobs behind ruled-pending
+  winner as the real constant/data, run the full gate, and the baseline
+  ceremony applies (docs/INVARIANTS.md #9: the size line, 8 per operation and 4 overall). Knobs behind ruled-pending
   decisions (execute_bonus #9, chain_ratio #10) need their ruling transcribed
   into docs/DECISIONS_RESOLVED.md first.
 
@@ -116,16 +116,29 @@ hive enters the 25–40% band at **≈0.75–0.78**, with a breakpoint cliff bel
 `results/sweeps/<name>/` (gitignored); copy reports worth keeping into
 `docs/sweeps/`.
 
-## CI regression test
+## The sim gate: a tripwire, then a size check (G-58)
 
 ```bash
-python scripts/sim/ci_smoke.py                   # diff vs baseline.json (exit≠0 on drift)
-python scripts/sim/ci_smoke.py --update-baseline # re-accept after an intended change
+python scripts/sim/ci_smoke.py                   # tripwire; size check only if it moved
+python scripts/sim/ci_smoke.py --update-baseline # re-pin all four pins together
+python scripts/checks/sim_size_break.py          # the deliberate breaks (gate `sim size break`)
 ```
 
-The sim is byte-deterministic and the CI batch is pinned, so an unchanged tree
-reproduces `baseline.json` exactly — any data/rule change that shifts balance
-is caught the next morning.
+The sim is byte-deterministic and the batches are pinned (seed base 900000), so
+an unchanged tree reproduces the pins exactly.
+
+- **Tripwire:** 300 runs each for `l1` and `l1_evo2`. Any figure that differs
+  from its pin means combat changed. Do not read the size of the move: at 300
+  runs an operation has about 60, and the same change reads -15 to +19 points
+  from one block to the next.
+- **Size check:** 1,500 runs, only for the policy whose tripwire moved. Beyond
+  8 points on an operation or 4 overall is the ceremony (exit 3, Kev's token
+  to re-pin). Inside the line: exit 0, and re-pin if the change is intended.
+- **Pins:** `baseline.json` (`l1` tripwire) and `baseline_pins.json`
+  (`l1_evo2` tripwire, both size pins, and a tie to `baseline.json`). Never
+  edit either by hand.
+- **Tuning to a target:** also run the before and the after on a second seed
+  base and report both (INVARIANTS #8). A fit to one seed set flatters itself.
 
 ## Files
 

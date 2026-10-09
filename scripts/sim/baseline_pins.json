@@ -1,0 +1,136 @@
+{
+  "$comment": "Written by ci_smoke.py --update-baseline, together with baseline.json (the l1 tripwire). Never edit by hand; pinned_with ties the two files.",
+  "seed_base": 900000,
+  "pinned_with": "6433d9a74b5c6b4b8087145d9ea343ab738e44f1fda8dfa474fd2735186465e0",
+  "tripwire": {
+    "l1_evo2": {
+      "runs": 300,
+      "policy": "l1_evo2",
+      "overall_clear": 0.29,
+      "clear_by_op": {
+        "facility": 0.3944,
+        "hive": 0.4068,
+        "stellarMenagerie": 0.125,
+        "veil": 0.2769,
+        "voidCirclet": 0.193
+      },
+      "clear_by_hero": {
+        "avalanche": 0.2105,
+        "breaker": 0.3304,
+        "combat": 0.3846,
+        "engineer": 0.2523,
+        "ghost": 0.3387,
+        "medic": 0.3238,
+        "pulse": 0.271,
+        "shield": 0.1963
+      },
+      "content_lift": {
+        "hero__pulse": -0.119,
+        "hero__engineer": -0.401,
+        "hero__shield": -0.528,
+        "consumable__calibration_chip": 0.217,
+        "gear__wide_aperture": 0.0,
+        "consumable__cryo_gel": 0.0,
+        "consumable__deep_zero_pin": 0.0,
+        "gear__payload_fuse": 0.045,
+        "hero__avalanche": -0.551,
+        "hero__medic": 0.0,
+        "consumable__corrosion_bomb": 0.0,
+        "gear__triage_gel": 0.0,
+        "gear__stim_injector": -0.375,
+        "consumable__entropy_seed": 0.0,
+        "consumable__scrap_plate": 0.0,
+        "gear__neural_splice": 0.392,
+        "gear__counterweight": 0.195,
+        "gear__ignition_coil": 0.28,
+        "gear__anchor_frame": 0.043,
+        "gear__warframe_core": 0.0,
+        "consumable__cascade_jammer": 0.0,
+        "consumable__cryo_web": 0.0,
+        "gear__echo_matrix": 0.835,
+        "consumable__core_surge": 0.0,
+        "consumable__scatter_veil_array": 0.248,
+        "gear__sync_antenna": 0.028,
+        "consumable__shock_charge": 0.0,
+        "gear__siphon_loop": 0.0,
+        "gear__overkill_matrix": 0.024,
+        "hero__combat": 0.222,
+        "consumable__triage_broadcast": 0.0,
+        "consumable__grounding_clip": 0.0,
+        "gear__mirror_plate": 0.0,
+        "gear__breach_tip": 0.0,
+        "gear__killswitch_relay": 0.545,
+        "gear__hemophage_nexus": 0.019,
+        "gear__overload_capacitor": 0.44,
+        "gear__mainline_bus": 0.0,
+        "hero__breaker": 0.0,
+        "consumable__capacitor_dose": 0.0,
+        "gear__targeting_optic": 0.0,
+        "consumable__defib_spark": 0.002,
+        "hero__ghost": 0.012,
+        "consumable__buckler_array": -0.59,
+        "consumable__momentum_core": 0.0,
+        "gear__dead_mans_chip": 0.146,
+        "gear__predator_lens": 0.645,
+        "consumable__archive_cascade": 0.403,
+        "consumable__acid_vial": 0.0,
+        "gear__band_compressor": 0.157,
+        "consumable__mainline_cache": 0.283,
+        "consumable__patch_kit": 0.0,
+        "consumable__harmonic_injector": 0.0,
+        "consumable__protocol_cell": 0.0,
+        "consumable__phase_scrambler": -0.419,
+        "gear__priming_charge": 0.0,
+        "consumable__ghost_veil": 0.0,
+        "gear__combat_plating": 0.0,
+        "gear__spike_driver": 0.0
+      }
+    }
+  },
+  "size": {
+    "l1": {
+      "runs": 1500,
+      "policy": "l1",
+      "overall_clear": 0.2653,
+      "clear_by_op": {
+        "facility": 0.3246,
+        "hive": 0.3079,
+        "stellarMenagerie": 0.1886,
+        "veil": 0.2606,
+        "voidCirclet": 0.2391
+      },
+      "clear_by_hero": {
+        "avalanche": 0.2035,
+        "breaker": 0.2405,
+        "combat": 0.3147,
+        "engineer": 0.2482,
+        "ghost": 0.3413,
+        "medic": 0.3582,
+        "pulse": 0.2616,
+        "shield": 0.1499
+      }
+    },
+    "l1_evo2": {
+      "runs": 1500,
+      "policy": "l1_evo2",
+      "overall_clear": 0.276,
+      "clear_by_op": {
+        "facility": 0.377,
+        "hive": 0.3238,
+        "stellarMenagerie": 0.1785,
+        "veil": 0.2866,
+        "voidCirclet": 0.2029
+      },
+      "clear_by_hero": {
+        "avalanche": 0.2088,
+        "breaker": 0.2837,
+        "combat": 0.3489,
+        "engineer": 0.25,
+        "ghost": 0.3242,
+        "medic": 0.3369,
+        "pulse": 0.2894,
+        "shield": 0.1627
+      }
+    }
+  }
+}

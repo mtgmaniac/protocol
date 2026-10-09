@@ -1,6 +1,8 @@
 #!/bin/sh
-# Baseline ceremony (docs/INVARIANTS.md #9): abort baseline.json commits with
-# per-op drift beyond +-10 pts unless the message contains BASELINE-APPROVED-BY-KEV.
+# Baseline ceremony (docs/INVARIANTS.md #9, G-58): abort a sim-pin commit whose
+# 1,500-run size pins move beyond the line (8 pts per operation, 4 overall)
+# unless the message contains BASELINE-APPROVED-BY-KEV, and any commit whose two
+# pin files were not written together.
 TOP="$(git rev-parse --show-toplevel)"
 python "$TOP/scripts/hooks/baseline_ceremony.py" "$1" || exit 1
 # Threshold ratchet (docs/INVARIANTS.md #13): raising any enforcement threshold

@@ -1,5 +1,110 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-58. Two-tier sim gate (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Approved: build the two-tier sim gate as proposed.
+- Keep the 300-run pin as a tripwire on every full gate. Its output says that
+  any move means combat changed, and that size is unreliable.
+- Add a 1,500-run second pin, run only when the tripwire moves, with
+  thresholds of 8 points per operation and 4 overall.
+- Pin second evolutions (l1_evo2) the same way.
+- Process rule: whenever numbers are tuned to a target, report a second seed
+  base too.
+Record it in DECISIONS_RESOLVED. Add a deliberate break showing the size check
+fails on a real 10-point change. Gate, merge to main, push."
+
+This is the setup proposed in G-57, now built. It replaces the single 300-run
+leg and its 10-point line. BASELINE-APPROVED-BY-KEV is on the commit: it
+changes an enforcement threshold (INVARIANTS #13).
+
+**As built.**
+
+- **Tier 1, the tripwire.** 300 pinned runs for `l1` and 300 for `l1_evo2`
+  (seed base 900000), on every full gate, about 75 seconds. An unchanged tree
+  reproduces them exactly. If any pinned figure differs (overall, an
+  operation, a hero, a content figure) the output says: the tripwire moved,
+  any move at all means combat changed, and the size shown is unreliable on
+  300 runs and must not be read.
+- **Tier 2, the size check.** 1,500 pinned runs, run only for a policy whose
+  tripwire moved (about 3.5 minutes each). A move beyond **8 points on an
+  operation or 4 overall** is the ceremony: exit 3, and the re-pin needs Kev's
+  token. Inside the line the gate passes and says to re-pin.
+- **Pins.** `scripts/sim/baseline.json` is still the `l1` tripwire.
+  `scripts/sim/baseline_pins.json` holds the `l1_evo2` tripwire and both size
+  pins. `ci_smoke.py --update-baseline` writes all four together, and the
+  second file carries a tie to the first (`pinned_with`): the gate and the
+  commit hook both refuse pins that were not written together, so a tripwire
+  cannot be re-pinned alone to hide a change from the size check.
+
+| Pin | `l1` tripwire (300) | `l1` size (1,500) | `l1_evo2` tripwire (300) | `l1_evo2` size (1,500) |
+|---|--:|--:|--:|--:|
+| Overall | 0.2600 | 0.2653 | 0.2900 | 0.2760 |
+| Facility | 0.2958 | 0.3246 | 0.3944 | 0.3770 |
+| Hive | 0.3390 | 0.3079 | 0.4068 | 0.3238 |
+| Veil | 0.3231 | 0.2606 | 0.2769 | 0.2866 |
+| Signal Purge | 0.1579 | 0.2391 | 0.1930 | 0.2029 |
+| Mantle Hunt | 0.1458 | 0.1886 | 0.1250 | 0.1785 |
+
+- **One place for the line.** `ci_smoke.SIZE_OP_PTS` (8) and
+  `SIZE_OVERALL_PTS` (4). `verify_gate.py` imports them and the commit hook
+  reads them from the file being committed. The old `CEREMONY_PTS` was kept in
+  two files and guarded in both; it is gone, with `ci_smoke`'s four tolerance
+  constants (the exact tripwire does their job). `threshold_guard.py` now
+  watches the two lines (may not rise) and the two run counts (may not fall).
+- **Commit hook.** `baseline_ceremony.py` judges the size pins against HEAD at
+  8 and 4, not `baseline.json` at 10. It does not judge the 300-run pins.
+- **The deliberate break: gate `sim size break`**
+  (`scripts/checks/sim_size_break.py`).
+  - Part A, on made-up figures: 8.0 on an operation passes and 8.1 does not;
+    4.0 overall passes and 4.1 does not; one run's worth on one hero is a
+    tripwire move; untied pins are refused; the hook agrees with the gate.
+    Four in-memory breaks must each make it fail: the operation line back at
+    10, the overall line at 10, a tripwire that never reports, an unchecked
+    tie.
+  - Part B, a real change through the real size check: **+8% enemy damage in
+    the Hive** (`ci_smoke.SIZE_BREAK_TUNING`). On three 1,500-run seed sets it
+    costs the Hive 9.8, 8.9 and 10.3 points: a real 10-point change. On the
+    pinned 1,500 runs it reads -9.8 and is flagged.
+  - The same change under the old check: the pinned 300 runs read it as -6.8,
+    inside the old 10-point line, so the old gate would have passed it. Over
+    fifteen blocks of 300 runs it read from -19.7 to +1.8 and crossed 10 in
+    nine.
+
+**Process rule (ruling, last point).** Recorded as INVARIANTS #8: whenever
+numbers are tuned until a batch hits a target, the before and the after are
+also run on a second seed base the tuning never saw, and both are reported
+with the pooled difference.
+
+**My readings.**
+
+1. **A "move" is any pinned figure that differs**, the content figures
+   included. So a change to what rewards are offered also trips it; that is a
+   change to how runs play, and worth the size check.
+2. **The size check runs only for the policy that moved.** A change to a
+   second evolution leaves the `l1` pins untouched and costs one 1,500-run
+   batch, not two.
+3. **Inside the line the gate passes (exit 0) and the pins stay as they
+   were.** Later changes are still measured against the last pin, so small
+   moves cannot add up unseen. Until someone re-pins, every full gate pays for
+   the size check. A re-pin inside the line needs no token; beyond it the hook
+   asks for Kev's.
+4. **`--runs` is gone** from `verify_gate.py` and `ci_smoke.py`. A tripwire
+   on another run count cannot reproduce a pin.
+5. **Cost.** The tripwire is 75 seconds where the old leg was 36. The break
+   gate adds about 4 minutes to every full gate (a 300-run tripwire and one
+   1,500-run batch). If that is too much for every gate, Part B can move to
+   run only when `ci_smoke.py` changes; Part A is instant. Kev's call.
+6. **What the size check cannot do.** At 1,500 runs one operation is about
+   300 runs, and a real move still reads 2 to 4 points either way. The same
+   calibration cut enemy damage 7% in Veil: a real move of about 9 points,
+   which read +8.1, +7.3 and +12.6 on the three sets, so one set in three
+   stayed inside the line. A real 10-point move on one operation is caught
+   most of the time, not every time; 12 and over is caught reliably. A change
+   that moves every operation is caught far sooner by the 4-point overall
+   line.
+
 ## G-57. Numbers approved; re-pin, gate and merge (Kev, 2026-10-09)
 
 **Rulings (Kev, transcribed).**
