@@ -254,7 +254,10 @@ var _enemy_assignments: Dictionary = {}
 # this again at resolve time never overwrites a displayed intent.
 # battle_scene calls this for the intent display; resolve_round calls it so
 # the headless sim/audit shares the exact same implementation. No randi().
-func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) -> void:
+# `hero_values`: the value each hero die shows now (id -> value). An attack that
+# freezes the lowest die picks from these; without them it falls back to the
+# values stamped at the last resolve.
+func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager, hero_values: Dictionary = {}) -> void:
 	_enemy_assignments.clear()
 	for enemy_state in _enemy_states:
 		if bool(enemy_state["dead"]):
@@ -265,6 +268,15 @@ func assign_enemy_intents(enemy_rolls: Dictionary, dice_manager: DiceManager) ->
 		var ability_entry: Dictionary = dice_manager.get_ability_for_roll(enemy_state["unit"], int(roll_value))
 		if not _ability_targets_single_hero(ability_entry.get("raw", {})):
 			continue
+		if attack_freezes_lowest_die(ability_entry.get("raw", {})):
+			# Never a kept pick: the lowest die can change while the player plans.
+			var lowest: Dictionary = _freeze_pick_hero_lowest_die(enemy_state, {} if geode_break() == "stale" else hero_values)
+			if not lowest.is_empty():
+				enemy_state["selected_target_id"] = str(lowest["id"])
+				enemy_state["target_display"] = str(lowest["unit"].battle_name())
+				_enemy_assignments[str(enemy_state["id"])] = str(lowest["id"])
+				continue
+			enemy_state["selected_target_id"] = ""
 		var current: Dictionary = _find_target_by_id(_hero_states, str(enemy_state.get("selected_target_id", "")))
 		if not current.is_empty() and not bool(current.get("cloaked", false)):
 			_enemy_assignments[str(enemy_state["id"])] = str(current["id"])
@@ -322,6 +334,33 @@ func _ability_fizzles_for_lack_of_target(ability_entry: Dictionary) -> bool:
 		if bool((state_variant as Dictionary).get("dead", false)):
 			return false
 	return true
+
+
+# A single-target attack that also freezes one die (Geode Panther's Calcifying
+# Bite and Stonefang Pounce). It attacks the hero it freezes: the one with the
+# lowest die (G-61, Kev 2026-10-09). Before, the freeze went to the lowest die
+# and the hit went wherever the unit's targeting personality sent it.
+static func attack_freezes_lowest_die(raw: Dictionary) -> bool:
+	if geode_break() == "split":
+		return false
+	return ability_is_single_target_attack(raw) and int(raw.get("freezeEnemyDice", 0)) > 0
+
+
+# Deliberate breaks for the `geode targeting` gate (never set by the game):
+#   split  the hit follows the targeting personality again, apart from the freeze
+#   stale  the planning pick reads last round's dice
+const GEODE_BREAK_ARG := "--geode-break="
+static var _geode_break: String = "?"
+
+
+static func geode_break() -> String:
+	if _geode_break == "?":
+		_geode_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(GEODE_BREAK_ARG):
+					_geode_break = arg.trim_prefix(GEODE_BREAK_ARG)
+	return _geode_break
 
 
 # A single-target attack: it deals damage to one unit. The all-cloaked fallback
@@ -1017,7 +1056,7 @@ func _resolve_hero_phase(
 	# phase. In UI play battle_scene already assigned them with the same
 	# choke-point, so this pass just re-records the picks; headless sim/audit
 	# runs get their assignment here.
-	assign_enemy_intents(enemy_rolls, dice_manager)
+	assign_enemy_intents(enemy_rolls, dice_manager, hero_rolls)
 
 	# Player-chosen cast order: stamped heroes fire in ascending stamp order,
 	# unstamped append in squad order. The array itself stays in squad order.
@@ -2113,7 +2152,9 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	# ability (taunt override / assigned intent / personality fallback).
 	var hostile_hero_target: Dictionary = {}
 	if _ability_targets_single_hero(raw):
-		hostile_hero_target = _resolve_enemy_hero_target(enemy_state)
+		# An attack that freezes one die (Geode Panther) goes for the hero with
+		# the lowest die: the hit and the freeze land on the same unit (G-61).
+		hostile_hero_target = _freeze_pick_hero_lowest_die(enemy_state) if attack_freezes_lowest_die(raw) else _resolve_enemy_hero_target(enemy_state)
 		# Every hero cloaked: a single-target attack hits one at random (G-52).
 		if hostile_hero_target.is_empty() and ability_is_single_target_attack(raw):
 			hostile_hero_target = _random_cloaked_target(_hero_states, enemy_state)
@@ -2279,7 +2320,8 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			if not hero_state["dead"] and not _ward_blocks_hostile(hero_state, [FirewallFeedback.FREEZE]):
 				_freeze_die_state(hero_state, enemy_freeze_all, enemy_freeze_flavor)
 	elif enemy_freeze_one > 0:
-		var freeze_rider_target: Dictionary = _freeze_pick_hero_lowest_die(enemy_state)
+		# With an attack, the freeze rides the unit that was hit (G-61).
+		var freeze_rider_target: Dictionary = hostile_hero_target if attack_freezes_lowest_die(raw) else _freeze_pick_hero_lowest_die(enemy_state)
 		if not freeze_rider_target.is_empty() and not _ward_blocks_hostile(freeze_rider_target, [FirewallFeedback.FREEZE]):
 			_freeze_die_state(freeze_rider_target, enemy_freeze_one, enemy_freeze_flavor)
 
@@ -2908,7 +2950,8 @@ func stamp_acted_values(hero_values: Dictionary, enemy_values: Dictionary) -> vo
 # Enemy AI freeze pick: the living hero with the LOWEST revealed die face this
 # round — deterministic (ties break to slot order, no randi). Taunt overrides
 # everything; cloaked heroes can't be picked by hostile single-target effects.
-func _freeze_pick_hero_lowest_die(enemy_state: Dictionary = {}) -> Dictionary:
+func _freeze_pick_hero_lowest_die(enemy_state: Dictionary = {}, shown_values: Dictionary = {}) -> Dictionary:
+	var values: Dictionary = shown_values if not shown_values.is_empty() else _acted_hero_values
 	# Single-target taunt (G-4): a lured caster freezes its taunter's die.
 	var lurer: Dictionary = _lurer_for_enemy(enemy_state)
 	if not lurer.is_empty():
@@ -2923,7 +2966,7 @@ func _freeze_pick_hero_lowest_die(enemy_state: Dictionary = {}) -> Dictionary:
 			continue
 		# The value the die SHOWS and the hero acts on this round (stamped at
 		# resolve start), not its raw face — the player picks by what they see.
-		var face: int = int(_acted_hero_values.get(str(hero_state["id"]), 0))
+		var face: int = int(values.get(str(hero_state["id"]), 0))
 		if face <= 0:
 			face = int(hero_state.get("last_die_value", 0))
 		if face <= 0:

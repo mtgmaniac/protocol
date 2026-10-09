@@ -286,6 +286,14 @@ GATES = [
         "--script", "scripts/debug/rampage_test.gd", "--break-arg=--rampage-break=",
         "--breaks", "stack,keep,pack_one"],
         "[RAMPAGE_GATE] PASS", False),
+    # Geode Panther (G-61): an attack that freezes one die hits the hero it
+    # freezes, the lowest die, in combat and in the intent shown while
+    # planning. Breaks: the hit aimed apart from the freeze again; a planning
+    # pick read from last round's dice.
+    ("geode targeting", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "GEODE_TARGET",
+        "--script", "scripts/debug/geode_target_test.gd", "--break-arg=--geode-break=",
+        "--breaks", "split,stale"],
+        "[GEODE_TARGET_GATE] PASS", False),
     # Two-tier sim gate (G-58). Part A: the size line and the tripwire on made-up
     # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
     # an unlinked pin). Part B: a REAL change of about 10 points on one

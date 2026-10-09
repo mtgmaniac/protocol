@@ -2470,7 +2470,7 @@
           9
         ],
         "name": "Calcifying Bite",
-        "eff": "10 damage, freeze lowest hero die 1 turn",
+        "eff": "10 damage, freeze 1 turn (lowest hero die)",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
@@ -2500,7 +2500,7 @@
           19
         ],
         "name": "Stonefang Pounce",
-        "eff": "15 damage, freeze lowest hero die 1 turn",
+        "eff": "15 damage, freeze 1 turn (lowest hero die)",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,

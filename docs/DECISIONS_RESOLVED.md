@@ -1,5 +1,33 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-61. Geode Panther attacks the die it freezes (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Geode currently freezes the lowest die but attacks a different target. Change
+it so it freezes and attacks the same target, the lowest. Update its text."
+
+**As built.** Calcifying Bite and Stonefang Pounce aim at the hero showing the
+lowest die, and the freeze lands on the hero that was hit. The rule is by
+ability shape, not by unit name: a single-target attack that also freezes one
+die. Only the Panther's two abilities have that shape today. The intent shown
+while planning names that hero and follows the dice as the player changes
+them. Full rule in TRUTH.
+
+**Readings I made.**
+
+- **"The lowest" is the lowest die showing,** the same pick the freeze always
+  used (ties to squad order, cloaked and fallen heroes passed over, a taunt
+  overrides).
+- **Petrifying Shriek is left alone.** It freezes every die, so there is no one
+  die to aim at.
+- **Text:** "10 damage, freeze 1 turn (lowest hero die)". The parenthesis names
+  the target of the whole line, the convention "(lowest HP)" already uses.
+
+**Gate.** `geode targeting`. Breaks: `split` (the hit aims apart from the
+freeze, the old behaviour) and `stale` (the planning intent reads last round's
+dice).
+
 ## G-60. Beasts rework: rampage and pack bonus (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

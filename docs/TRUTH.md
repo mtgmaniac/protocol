@@ -1,5 +1,30 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 Geode Panther hits the die it freezes (Kev, G-61; on branch
+`claude/traits-beasts-geode`, not merged):** Calcifying Bite (7-9) and
+Stonefang Pounce (12-19) froze the hero with the lowest die but hit whoever the
+Panther's targeting chose. Now one hero takes both: the one with the lowest
+die.
+
+- **Rule:** a single-target attack that also freezes one die
+  (`CombatManager.attack_freezes_lowest_die`: `dmg` without `blastAll`, plus
+  `freezeEnemyDice`) aims at the living, uncloaked hero showing the lowest die.
+  A tie goes to the first in squad order. A taunt on the Panther redirects the
+  hit and the freeze together. Every hero cloaked: the hit lands on one at
+  random and the freeze lands on that same hero (the G-52 rule for riders).
+- **The intent shown while planning is that hero,** read from the dice as they
+  show now, and it moves when a Nudge, Set or Reroll changes which die is
+  lowest (`assign_enemy_intents` takes the shown hero values). The enemy
+  phase's HP preview follows the intent as before.
+- **Not changed:** Petrifying Shriek (the 20: damage to one hero, freeze on
+  every die) still aims by the Panther's targeting. The damage and freeze
+  numbers are the same.
+- **Text:** "10 damage, freeze 1 turn (lowest hero die)" and "15 damage, freeze
+  1 turn (lowest hero die)" (were "10 damage, freeze lowest hero die 1 turn").
+  The target sits in parentheses at the end, as "(lowest HP)" does.
+- Gate `geode targeting` (`scripts/debug/geode_target_test.gd`: combat,
+  planning, the Panther's data, a live round; breaks `split`, `stale`).
+
 **2026-10-09 beasts rework: rampage and pack bonus (Kev, G-60; on branch
 `claude/traits-beasts-geode`, not merged):**
 

@@ -2885,7 +2885,15 @@ func _assign_enemy_targets() -> void:
 		if bool(enemy_state["dead"]) or enemy_rolls.get(enemy_state["id"], null) == null:
 			continue
 		effective_enemy_rolls[enemy_state["id"]] = _get_effective_enemy_roll(enemy_state, str(enemy_state["id"]))
-	combat_manager.assign_enemy_intents(effective_enemy_rolls, dice_manager)
+	# The hero dice as they show now: an attack that freezes the lowest die
+	# (Geode Panther) aims at it, and follows it when a Nudge, Set or Reroll
+	# changes which die is lowest.
+	var shown_hero_values: Dictionary = {}
+	for hero_state_variant in combat_manager.get_hero_states():
+		var shown_id: String = str((hero_state_variant as Dictionary)["id"])
+		if not bool((hero_state_variant as Dictionary).get("dead", false)) and int(hero_rolls.get(shown_id, 0)) > 0:
+			shown_hero_values[shown_id] = _get_effective_roll_for_state(hero_state_variant, shown_id)
+	combat_manager.assign_enemy_intents(effective_enemy_rolls, dice_manager, shown_hero_values)
 	for enemy_view_variant in enemy_card_views:
 		var enemy_view: Dictionary = enemy_view_variant
 		var enemy_state: Dictionary = enemy_view["state"]
