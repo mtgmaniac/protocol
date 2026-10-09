@@ -157,7 +157,7 @@
       "id": "primer_rampage",
       "trigger": { "type": "attack_keyword_resolved", "param": "rampage" },
       "target": "unit_card",
-      "text": "RAMPAGE: a stored charge doubled that hit's damage.",
+      "text": "RAMPAGE: double damage on its next turn, then it ends.",
       "priority": 30,
       "requires_feature": null
     },
@@ -165,7 +165,7 @@
       "id": "primer_pack_bonus",
       "trigger": { "type": "attack_keyword_resolved", "param": "pack_bonus" },
       "target": "unit_card",
-      "text": "PACK BONUS: +1 damage per other living pack member.",
+      "text": "PACK BONUS: +3 damage per other living pack member.",
       "priority": 30,
       "requires_feature": null
     },

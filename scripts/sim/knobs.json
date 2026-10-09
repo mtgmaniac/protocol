@@ -80,6 +80,19 @@
       "notes": "ACCRETION fires every Nth round from the first (2 = shipped rule, Cycle-4 Kev ruling)."
     },
     {
+      "id": "pack_bonus_per_member",
+      "kind": "engine_tuning",
+      "scope": "global (only Mantle Hunt's packBonus attacks use it)",
+      "path": "combat_manager.pack_bonus_per_member _tuned_int('pack_bonus_per_member', PACK_BONUS_PER_MEMBER=3)",
+      "default": 3,
+      "range": [
+        1,
+        6
+      ],
+      "step": 1,
+      "notes": "Damage a packBonus attack gains per other living pack member of the same kind. 1 until 2026-10-09 (G-60)."
+    },
+    {
       "id": "execute_bonus",
       "kind": "engine_tuning",
       "scope": "global",

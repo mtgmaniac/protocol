@@ -35,9 +35,11 @@ const STATUS_EVENT_CHIP: Dictionary = {
 	"roll_buff": ["roll"], "rfe": ["roll"], "roll_down": ["roll"],
 	"ward": ["firewall"], "taunt": ["taunt"], "jam": ["jam"],
 	"rewrite": ["rewrite"], "spike_up": ["spike"], "cloak": ["cloak"],
-	# Accrete grants shield through its own event; a rampage charge is granted
-	# (rampage_up) and spent (rampage) on the beats that do it.
+	# Accrete grants shield through its own event; rampage is granted
+	# (rampage_up), spent on an attack (rampage) or let go by a turn that does
+	# not attack (rampage_end) on the beats that do it.
 	"accrete": ["shield"], "rampage_up": ["rampage"], "rampage": ["rampage"],
+	"rampage_end": ["rampage"],
 	"cleanse": ["burn", "roll", "jam", "taunt", "mark"],
 }
 const CHIP_CANONICAL_ORDER: Array = ["burn", "shield", "mark", "roll",

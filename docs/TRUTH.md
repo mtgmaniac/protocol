@@ -1,5 +1,52 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 beasts rework: rampage and pack bonus (Kev, G-60; on branch
+`claude/traits-beasts-geode`, not merged):**
+
+- **Rampage is on or off, and it lasts until the unit's next turn.** That turn
+  spends it: an attack deals double damage, and a turn that does not attack
+  lets it go. It does not stack: a grant to a unit that is already rampaging
+  changes nothing. Game-wide, every source (Tyrant Mantle, Dominance Roar,
+  Mantle Rupture, and the Pack Rage trait).
+  - Before: every grant added a charge and a charge sat until an attack spent
+    it, so charges piled up over a long fight.
+  - A rampage granted during a unit's own turn is for the turn after. An
+    attack that also grants (Dominance Roar on a rampaging Tyrant) is doubled
+    once and leaves one new rampage.
+  - A turn wasted on the Decoy Beacon spends it. A unit that takes no turn
+    (no die this round) keeps it.
+  - `rampage_charges` on the unit state is now 0 or 1 (name kept).
+    `CombatManager._grant_rampage` / `_take_rampage` / `_expire_rampage`.
+  - Events: `rampage_up` (granted), `rampage` (the doubled hit), and new
+    `rampage_end` (ended unused); the chip leaves on either of the last two.
+    Log: "Mantle Tyrant gains rampage." / "Mantle Tyrant's rampage ends
+    unused." / "Slag Hound is already rampaging. Rampage does not stack."
+  - Copy. Keyword: "On its next turn, this unit's attack deals double damage.
+    Rampage ends after that turn and does not stack." Inspect: "Its next
+    turn's attack deals double damage. Ends after that turn." Primer:
+    "RAMPAGE: double damage on its next turn, then it ends." Ability text is
+    unchanged ("1 rampage (self)", "1 rampage (all allies)").
+- **Pack bonus is +3 per other living pack member of the same kind** (was +1).
+  `CombatManager.PACK_BONUS_PER_MEMBER`, sweepable as `pack_bonus_per_member`.
+  Proposed numbers, on the branch for play; not tuned against the sim.
+
+| Ability | Rolls | Alone | One packmate, was -> now | Two packmates, was -> now |
+|---|---|--:|--:|--:|
+| Pumice Grasp (Pumice Climber) | 13-19 | 6 | 7 -> 9 | 8 -> 12 |
+| Rending Fang (Obsidian Hound, Slag Hound) | 13-19 | 7 | 8 -> 10 | 9 -> 13 |
+| Pack Assault (both Hounds) | 20 | 14 | 15 -> 17 | 16 -> 20 |
+
+  At +1 a full pack's bonus attack (8 or 9) was weaker than the same unit's
+  plain attack on 7-9 (Arterial Bite 11, Throat Clamp 12). At +3 a full pack
+  beats it by 1 and a pack of two is 2 short of it. "Same kind" is unchanged:
+  the two Hounds pack together, a Pumice Climber packs only with Climbers.
+- Gate `rampage` (`scripts/debug/rampage_test.gd`: duration, stacking, the
+  pack numbers and every printed copy of them; breaks `stack`, `keep`,
+  `pack_one`).
+- **`verify_gate.py --only "name, name"`** runs just the named gates (no sim
+  leg, no profile check, no pre-run cleanup); `--list` prints the names. For
+  the Working rules (G-59).
+
 **2026-10-09 working rules and the break gate's real leg (Kev, G-59):**
 
 - **The full gate is run only when the prompt asks for it.** During a task,
@@ -1087,7 +1134,8 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Siphon | SI | enemy-only: on hit drain N Protocol (floor 0) |
 | Taunt | T | unified (Lure deleted): "The taunted unit can only target the taunter." **SINGLE-TARGET (Build G ruling G-4, Kev 2026-07-15):** a hero taunt is a manual ONE-ENEMY pick — that enemy gets `lured_by_id` and every one of its targeting paths (`_resolve_enemy_hero_target`, the freeze lowest-die pick, `personality_pick_target`) redirects to the taunter, overriding cloak; other enemies keep their personalities; multiple heroes may taunt different enemies in one round; a firewall blocks (and is consumed by) the taunt; no pick supplied (sim/auto) falls back deterministically via `_hostile_single_target`. Enemy-side keeps its shapes: beastHyena's lure restricts the hit hero; veilPrism's `enemySelfTaunt` self-aura restricts all heroes (each taunted unit → the one taunter, def-consistent). The TAUNT chip sits on whichever unit is LURED, either side; **during planning it also shows on the enemy a hero's taunt has picked** (playtest 2026-10-01), read off the hero-phase dry run, so an enemy whose Firewall will eat the taunt shows none (gate `taunt planning chip`). Anchor Frame gear keeps its stance aura pending its own ruling — the one remaining aura-form taunt. **Both sides clear at round end** (per Kev NK-08) |
 | Accrete | — | enemy-only: the unit gains N shield at the start of each of its turns (Basalt Ape 3, Magma Drake 4; an ordinary one-round shield that covers the next hero phase). The Mantle Tyrant's ACCRETION rule is the same effect on its own cadence (6, every 2nd round, persisting). Both go through `_apply_accrete`: own beat, ACCRETE +N chip, "<unit> accretes N shield.", N = the shield actually gained (the max-HP cap can trim it). Inspect line from `InspectResolver.accrete_entry` |
-| Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
+| Rampage | RA | on or off, never stacked (G-60, Kev 2026-10-09): the unit's next turn spends it. An attack on that turn deals double damage; a turn that does not attack lets it go. A grant to a rampaging unit changes nothing. `rampage_charges` is 0 or 1 |
+| Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+3 per OTHER living pack member of the same KIND** (`CombatManager.PACK_BONUS_PER_MEMBER`; +1 until 2026-10-09, G-60) (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
 
 **Cloak (2 clauses + ambush, G-52):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. **The attack that breaks it is an ambush: +50% damage, once, both sides** (`CombatManager.AMBUSH_MULT`; a cloak torn off by an AoE pays nothing). **If every target of a single-target attack is cloaked, the attack hits one at random** (seeded) and that unit keeps its cloak; an ability that does not attack still finds no target. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal. Full rule: the 2026-10-08 entry at the top.
 **One keyword per ability** (pierce counts), **two allowed in overload** — audit-enforced.

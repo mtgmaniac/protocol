@@ -466,7 +466,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"taunted":
 			return "Can only target the taunter."
 		"rampage":
-			return "Next hit deals double damage."
+			return "Its next turn's attack deals double damage. Ends after that turn."
 		"ward":
 			return "Blocks the next ability, then breaks."
 		"mark":

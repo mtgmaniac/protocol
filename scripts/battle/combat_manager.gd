@@ -941,6 +941,8 @@ func resolve_round(
 		# Decoy Beacon: the whole enemy line wastes turn 1 on the decoy.
 		if _decoy_round_one and _battle_round == 1:
 			_log("%s wastes its turn on the decoy." % enemy_state["unit"].display_name)
+			if _take_rampage(enemy_state):
+				_expire_rampage(enemy_state)
 			continue
 		var enemy_roll_value: Variant = enemy_rolls.get(enemy_state["id"], null)
 		if enemy_roll_value == null:
@@ -2149,20 +2151,26 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	if damage > 0 and ambush_ready(enemy_state):
 		damage = _ambush_from_cloak(enemy_state, damage)
 
+	# Rampage lasts until the unit's next turn (G-60): this turn spends it,
+	# whether or not it attacks. A grant later in this same ability is a new
+	# rampage for the turn after.
+	var rampaging: bool = _take_rampage(enemy_state)
+	var rampage_used: bool = false
+
 	if damage > 0:
 		var hits_all_heroes: bool = bool(raw.get("blastAll", false))
 		var should_wipe_shields: bool = bool(raw.get("wipeShields", false))
 		var scaled_damage: int = int(round(float(damage) * float(enemy_state.get("dmg_scale", 1.0))))
 		var final_damage: int = scaled_damage
-		if final_damage > 0 and int(enemy_state.get("rampage_charges", 0)) > 0:
+		if final_damage > 0 and rampaging:
 			final_damage = scaled_damage * 2
-			enemy_state["rampage_charges"] = int(enemy_state["rampage_charges"]) - 1
+			rampage_used = true
 			_log("%s triggers Rampage! (2× damage)" % enemy_state["unit"].display_name)
 			# Presentation-only marker (primer first-sighting + feedback hook);
 			# floats/sfx ignore unknown types, no state or RNG touched.
 			_emit_event(enemy_state, "rampage", final_damage, "enemy")
 		if bool(raw.get("packBonus", false)) and final_damage > 0:
-			# Pack Bonus: +1 per OTHER living pack member of the SAME KIND. "Kind"
+			# Pack Bonus: +PACK_BONUS_PER_MEMBER per OTHER living pack member of the SAME KIND. "Kind"
 			# is the enemy_type (kit) — Obsidian and Slag hounds both count as
 			# beastWolf pack. Compare enemy_type, not the per-instance id: instance
 			# ids are unique (`beastWolf#1` vs `beastWolf#2`) so the old id compare
@@ -2175,11 +2183,12 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 				if not es["dead"] and str(es["unit"].enemy_type) == pack_kind:
 					pack_count += 1
 			if pack_count > 0:
-				final_damage += pack_count
-				_log("%s pack bonus +%d (%d fellow pack member(s))." % [enemy_state["unit"].display_name, pack_count, pack_count])
+				var pack_gain: int = pack_count * pack_bonus_per_member()
+				final_damage += pack_gain
+				_log("%s pack bonus +%d (%d fellow pack member(s))." % [enemy_state["unit"].display_name, pack_gain, pack_count])
 				# Presentation-only marker (primer first-sighting); floats/sfx
 				# ignore unknown types, no state or RNG touched.
-				_emit_event(enemy_state, "pack_bonus", pack_count, "enemy")
+				_emit_event(enemy_state, "pack_bonus", pack_gain, "enemy")
 		final_damage = int(floor(float(final_damage) * _get_enemy_dmg_mult()))
 		if should_wipe_shields:
 			_wipe_all_hero_shields(enemy_state)
@@ -2274,21 +2283,18 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		if not freeze_rider_target.is_empty() and not _ward_blocks_hostile(freeze_rider_target, [FirewallFeedback.FREEZE]):
 			_freeze_die_state(freeze_rider_target, enemy_freeze_one, enemy_freeze_flavor)
 
-	# Rampage grants (self or all enemies)
+	# Rampage grants (self or all enemies). On or off: a unit that is already
+	# rampaging gains nothing more (G-60).
 	var grant_rampage: int = int(raw.get("grantRampage", 0))
 	var grant_rampage_all: bool = bool(raw.get("grantRampageAll", false))
-	if grant_rampage > 0 or grant_rampage_all:
-		var charges: int = maxi(grant_rampage, 1)
-		if grant_rampage_all:
-			for es in _enemy_states:
-				if not es["dead"]:
-					es["rampage_charges"] = int(es.get("rampage_charges", 0)) + charges
-					_log("%s gains %d rampage charge(s)." % [es["unit"].display_name, charges])
-					_emit_event(es, "rampage_up", charges, "enemy")
-		else:
-			enemy_state["rampage_charges"] = int(enemy_state.get("rampage_charges", 0)) + charges
-			_log("%s gains %d rampage charge(s)." % [enemy_state["unit"].display_name, charges])
-			_emit_event(enemy_state, "rampage_up", charges, "enemy")
+	var regrants_self: bool = grant_rampage > 0 or grant_rampage_all
+	if rampaging and not rampage_used and not regrants_self:
+		_expire_rampage(enemy_state)
+	if grant_rampage_all:
+		for es in _enemy_states:
+			_grant_rampage(es)
+	elif grant_rampage > 0:
+		_grant_rampage(enemy_state)
 
 	# Ward: block the next ability that targets this enemy, then break.
 	if bool(raw.get("ward", false)):
@@ -2354,6 +2360,75 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var summon_name: String = str(raw.get("summonName", ""))
 	if summon_chance > 0 and summon_name != "":
 		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
+
+
+# Pack bonus (G-60): a `packBonus` attack deals this much more for each OTHER
+# living pack member of the same kind. Was 1 until 2026-10-09. The ability
+# text, the keyword and the primer print this number; the `rampage` gate fails
+# when they disagree with it.
+const PACK_BONUS_PER_MEMBER := 3
+
+
+func pack_bonus_per_member() -> int:
+	if rampage_break() == "pack_one":
+		return 1
+	return _tuned_int("pack_bonus_per_member", PACK_BONUS_PER_MEMBER)
+
+
+# ── Rampage (G-60, Kev 2026-10-09) ───────────────────────────────────────────
+# Rampage is on or off (`rampage_charges` is 0 or 1; the name is kept for the
+# chip and the saves). It lasts until the unit's next turn and that turn spends
+# it: an attack deals double damage, anything else lets it go. It does not
+# stack: a grant to a unit that is already rampaging changes nothing.
+
+# Gives `state` rampage. False when it already had it (or is down).
+func _grant_rampage(state: Dictionary) -> bool:
+	if state.is_empty() or bool(state.get("dead", false)):
+		return false
+	if int(state.get("rampage_charges", 0)) > 0 and rampage_break() != "stack":
+		_log("%s is already rampaging. Rampage does not stack." % state["unit"].display_name)
+		return false
+	state["rampage_charges"] = int(state.get("rampage_charges", 0)) + 1
+	_log("%s gains rampage." % state["unit"].display_name)
+	_emit_event(state, "rampage_up", 1, _resolve_side_for_state(state))
+	return true
+
+
+# The start of `state`'s turn: takes its rampage off and says whether it had it.
+func _take_rampage(state: Dictionary) -> bool:
+	var charges: int = int(state.get("rampage_charges", 0))
+	if charges <= 0:
+		return false
+	state["rampage_charges"] = charges - 1 if rampage_break() == "stack" else 0
+	return true
+
+
+# A turn that did not attack: the rampage is gone and the chip leaves.
+func _expire_rampage(state: Dictionary) -> void:
+	if rampage_break() == "keep":
+		state["rampage_charges"] = 1
+		return
+	_log("%s's rampage ends unused." % state["unit"].display_name)
+	_emit_event(state, "rampage_end", 0, _resolve_side_for_state(state))
+
+
+# Deliberate breaks for the `rampage` gate (scripts/debug/rampage_test.gd; never
+# set by the game):
+#   stack  grants add up and each attack spends one (the old rule)
+#   keep   a turn that does not attack keeps the rampage (the old rule)
+#   pack_one  the pack bonus is +1 per pack member again
+const RAMPAGE_BREAK_ARG := "--rampage-break="
+static var _rampage_break: String = "?"
+
+
+static func rampage_break() -> String:
+	if _rampage_break == "?":
+		_rampage_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(RAMPAGE_BREAK_ARG):
+					_rampage_break = arg.trim_prefix(RAMPAGE_BREAK_ARG)
+	return _rampage_break
 
 
 # ── Cloak ambush (G-52, Kev 2026-10-08) ──────────────────────────────────────

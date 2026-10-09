@@ -1,5 +1,52 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-60. Beasts rework: rampage and pack bonus (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Beasts rework
+- Rampage, game-wide: lasts until the unit's next turn and doesn't stack.
+- Pack bonus: make it noticeably stronger. Propose the new numbers in the
+  report, with the old values beside them."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. Kev plays it before
+deciding on tuning.
+
+**As built.**
+
+- **Rampage.** On or off. The unit's next turn spends it: an attack on that
+  turn deals double damage, a turn that does not attack lets it go. A grant
+  to a unit that already has it changes nothing.
+- **Pack bonus: +3 per other living pack member of the same kind** (was +1).
+  One constant, `CombatManager.PACK_BONUS_PER_MEMBER`. The table is in TRUTH.
+
+**Readings I made (say if any is wrong).**
+
+- **"Until the unit's next turn" includes that turn.** Read the other way
+  (it ends as the turn starts) a rampage could never double anything, since a
+  unit only attacks on its turn.
+- **A rampage a unit grants itself during its turn is for its next turn.** So
+  Tyrant Mantle (20 shield, rampage) still sets up the following round.
+- **A rampaging unit whose turn grants rampage again keeps exactly one.** No
+  "ends unused" line is shown for the old one.
+- **A turn lost to the Decoy Beacon spends it.** A unit with no die this round
+  took no turn and keeps it.
+- **Ability text left alone:** "1 rampage (self)" and "1 rampage (all allies)"
+  still read correctly, and changing them would mean changing the ability
+  text format and its three checkers.
+- **Pack bonus counts the same units as before** (same `enemy_type`; the dead
+  do not count). Only the number changed.
+
+**Why +3.** At +1 the pack-bonus attack was the weakest attack in the kit even
+with a full pack. At +3 a full pack makes it the strongest non-20 attack, a
+pack of two sits just under the plain attack, and killing one packmate takes 3
+off every later bite. With Pack Rage (G-62) the trade is visible both ways: a
+kill weakens the pack bonus and enrages the survivors for one turn.
+
+**Gate.** `rampage`: `scripts/debug/rampage_test.gd` through `break_gate.py`.
+Breaks: `stack` (grants add up again), `keep` (an unused rampage carries
+over), `pack_one` (+1 again).
+
 ## G-59. Working rules; the break gate's real leg runs on change (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**
