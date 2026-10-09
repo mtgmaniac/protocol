@@ -468,14 +468,14 @@
                 14
               ],
               "name": "Forked Lightning",
-              "eff": "12 damage, chain",
-              "dmg": 12,
+              "eff": "11 damage, chain",
+              "dmg": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
+              "dMin": 11,
+              "dMax": 11,
               "chain": 1
             },
             {
@@ -485,14 +485,14 @@
                 19
               ],
               "name": "Arc Cascade",
-              "eff": "15 damage, chain",
-              "dmg": 15,
+              "eff": "14 damage, chain",
+              "dmg": 14,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 15,
-              "dMax": 15,
+              "dMin": 14,
+              "dMax": 14,
               "chain": 1
             },
             {
@@ -753,14 +753,14 @@
                 7
               ],
               "name": "Thermal Cut",
-              "eff": "6 damage, 2 burn 2 turns",
-              "dmg": 6,
+              "eff": "7 damage, 2 burn 2 turns",
+              "dmg": 7,
               "burn": 2,
               "burnT": 2,
               "rfe": 0,
               "heal": 0,
-              "dMin": 6,
-              "dMax": 6
+              "dMin": 7,
+              "dMax": 7
             },
             {
               "zone": "strike",
@@ -769,14 +769,14 @@
                 9
               ],
               "name": "Siphon Slash",
-              "eff": "9 damage, leech",
-              "dmg": 9,
+              "eff": "11 damage, leech",
+              "dmg": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 9,
-              "dMax": 9,
+              "dMin": 11,
+              "dMax": 11,
               "leech": true
             },
             {
@@ -803,14 +803,14 @@
                 19
               ],
               "name": "Deep Extraction",
-              "eff": "12 damage, leech",
-              "dmg": 12,
+              "eff": "15 damage, leech",
+              "dmg": 15,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
+              "dMin": 15,
+              "dMax": 15,
               "leech": true
             },
             {
@@ -1101,7 +1101,7 @@
                 7
               ],
               "name": "Counter Stance",
-              "eff": "6 spike",
+              "eff": "8 spike",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1109,7 +1109,7 @@
               "heal": 0,
               "dMin": 0,
               "dMax": 0,
-              "spike": 6
+              "spike": 8
             },
             {
               "zone": "surge",
@@ -1118,7 +1118,7 @@
                 14
               ],
               "name": "Challenge",
-              "eff": "4 shield, taunt",
+              "eff": "8 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1127,7 +1127,7 @@
               "dMin": 0,
               "dMax": 0,
               "taunt": true,
-              "shield": 4
+              "shield": 8
             },
             {
               "zone": "crit",
@@ -1136,16 +1136,16 @@
                 19
               ],
               "name": "Repulsion Field",
-              "eff": "8 damage (all enemies), 6 shield",
-              "dmg": 8,
+              "eff": "9 damage (all enemies), 7 shield",
+              "dmg": 9,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 8,
-              "dMax": 8,
+              "dMin": 9,
+              "dMax": 9,
               "blastAll": true,
-              "shield": 6
+              "shield": 7
             },
             {
               "zone": "overload",
@@ -1430,7 +1430,7 @@
                 9
               ],
               "name": "Dig In",
-              "eff": "8 shield, taunt",
+              "eff": "6 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -1438,7 +1438,7 @@
               "heal": 0,
               "dMin": 0,
               "dMax": 0,
-              "shield": 8,
+              "shield": 6,
               "taunt": true
             },
             {
@@ -1466,14 +1466,14 @@
                 19
               ],
               "name": "Trench Breaker",
-              "eff": "breach, 18 damage",
-              "dmg": 18,
+              "eff": "breach, 16 damage",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 18,
-              "dMax": 18,
+              "dMin": 16,
+              "dMax": 16,
               "breach": true
             },
             {
@@ -1797,14 +1797,14 @@
                 19
               ],
               "name": "Nanite Crossfire",
-              "eff": "6 damage (all enemies), 6 heal (all heroes)",
-              "dmg": 6,
+              "eff": "9 damage (all enemies), 6 heal (all heroes)",
+              "dmg": 9,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 6,
-              "dMin": 6,
-              "dMax": 6,
+              "dMin": 9,
+              "dMax": 9,
               "blastAll": true,
               "healAll": true
             },
@@ -2095,14 +2095,14 @@
                 10
               ],
               "name": "EMP Pulse",
-              "eff": "7 damage, jam",
-              "dmg": 7,
+              "eff": "10 damage, jam",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 7,
-              "dMax": 7,
+              "dMin": 10,
+              "dMax": 10,
               "jam": true
             },
             {
@@ -2400,14 +2400,14 @@
                 6
               ],
               "name": "Scan Weakness",
-              "eff": "4 damage, mark",
-              "dmg": 4,
+              "eff": "6 damage, mark",
+              "dmg": 6,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 4,
-              "dMax": 4,
+              "dMin": 6,
+              "dMax": 6,
               "mark": true
             },
             {
@@ -2417,14 +2417,14 @@
                 10
               ],
               "name": "Neural Trace",
-              "eff": "8 damage, mark",
-              "dmg": 8,
+              "eff": "10 damage, mark",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 8,
-              "dMax": 8,
+              "dMin": 10,
+              "dMax": 10,
               "mark": true
             },
             {
@@ -2434,14 +2434,14 @@
                 14
               ],
               "name": "Assassinate",
-              "eff": "14 damage, execute",
-              "dmg": 14,
+              "eff": "16 damage, execute",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 16,
+              "dMax": 16,
               "execute": true
             },
             {
@@ -2451,14 +2451,14 @@
                 18
               ],
               "name": "Wraith Blade",
-              "eff": "15 damage, pierce",
-              "dmg": 15,
+              "eff": "17 damage, pierce",
+              "dmg": 17,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 15,
-              "dMax": 15,
+              "dMin": 17,
+              "dMax": 17,
               "ignSh": true
             },
             {
@@ -2750,14 +2750,14 @@
                 8
               ],
               "name": "Bit Spike",
-              "eff": "9 damage, jam",
-              "dmg": 9,
+              "eff": "8 damage, jam",
+              "dmg": 8,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 9,
-              "dMax": 9,
+              "dMin": 8,
+              "dMax": 8,
               "jam": true
             },
             {
@@ -2767,14 +2767,14 @@
                 15
               ],
               "name": "Deep Interference",
-              "eff": "12 damage, -2 roll 2 turns",
-              "dmg": 12,
+              "eff": "11 damage, -2 roll 2 turns",
+              "dmg": 11,
               "burn": 0,
               "burnT": 0,
               "rfe": 2,
               "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
+              "dMin": 11,
+              "dMax": 11,
               "rfT": 2
             },
             {
@@ -2784,14 +2784,14 @@
                 19
               ],
               "name": "Signal Sever",
-              "eff": "14 damage, rewrite",
-              "dmg": 14,
+              "eff": "13 damage, rewrite",
+              "dmg": 13,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 13,
+              "dMax": 13,
               "rewrite": true
             },
             {

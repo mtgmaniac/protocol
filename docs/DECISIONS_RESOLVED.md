@@ -107,6 +107,40 @@ points of clear rate.
    on the second (26.3% against 25.7%). I stopped there: the two sets disagree
    by more than the gap.
 
+**As built, ruling 4 (second evolutions).** 20 numbers on the eight second
+evolutions; the table is in TRUTH (2026-10-09 entry).
+
+- **Up:** Ravager (Thermal Cut 6 to 7, Siphon Slash 9 to 11, Deep Extraction
+  12 to 15), Sentinel (Counter Stance spike 6 to 8, Challenge shield 4 to 8,
+  Repulsion Field 8 damage and 6 shield to 9 and 7), Synth Medic (Nanite
+  Crossfire damage 6 to 9), Phantom Engineer (EMP Pulse 7 to 10), Wraith (Scan
+  Weakness 4 to 6, Neural Trace 8 to 10, Assassinate 14 to 16, Wraith Blade 15
+  to 17).
+- **Down:** Arc Specialist (Forked Lightning 12 to 11, Arc Cascade 15 to 14),
+  Trench Rig (Dig In shield 8 to 6, Trench Breaker 18 to 16), Nullwire (Bit
+  Spike 9 to 8, Deep Interference 12 to 11, Signal Sever 14 to 13).
+
+**My readings, ruling 4:**
+
+1. **What is compared.** A second evolution's rate on the `l1_evo2` batch
+   against its sibling's rate on the standard `l1` batch, both counted over
+   runs where that evolution was picked.
+2. **Three second evolutions were tuned down.** The ruling says to tune the
+   second evolutions' own numbers so each lands within about 3 points. Arc
+   Specialist, Trench Rig and Nullwire started within 3 of their sibling while
+   playing beside five weak squadmates. Once those five were lifted, the three
+   stood 6 to 8 points above their sibling. Leaving them would have broken the
+   target the other way, so they came down by 2 or 3 numbers each. If Kev
+   would sooner leave them strong, those seven numbers go back and the three
+   would read roughly 5 points high (my estimate, not measured).
+3. **Where it ended.** On the batch named in the ruling, seven of eight are
+   within about 3 (Arc Specialist +3.1) and Ravager is 4.3 under. On the
+   second seed set Ravager is 4.4 over and Trench Rig 5.7 over. I stopped
+   rather than chase a gap that changes sign between seed sets.
+4. **Sensitivity.** A second evolution's first trial buff (2 to 4 points on
+   three or four abilities each) took the batch from 21% to 35% overall. The
+   final numbers are about half of that.
+
 ## G-55. Decisions on the cloak and windows branch (Kev, 2026-10-08)
 
 **Rulings (Kev, transcribed).**

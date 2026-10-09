@@ -108,6 +108,84 @@ shape or number changed in the swap; the two abilities just changed places.
   Ghost Operative is 4 to 7 points up; that is the cloak ambush. No other hero was
   more than 5 points under.
 
+- **Second evolutions tuned to their first-evolution sibling** (G-56 ruling
+  4): 20 numbers, second evolutions only. Five go up (Ravager, Sentinel,
+  Synth Medic, Phantom Engineer, Wraith). Three go down a little (Arc
+  Specialist, Trench Rig, Nullwire): in the second-evolution batch every
+  squadmate is a second evolution too, so lifting the five weak ones lifted
+  all eight, and those three ended 6 to 8 points above their sibling until
+  trimmed.
+
+| Unit | Ability | Rolls | Number | Was | Now |
+|---|---|---|---|--:|--:|
+| Arc Specialist | Forked Lightning | 9–14 | damage | 12 | 11 |
+| Arc Specialist | Arc Cascade | 15–19 | damage | 15 | 14 |
+| Ravager | Thermal Cut | 1–7 | damage | 6 | 7 |
+| Ravager | Siphon Slash | 8–9 | damage | 9 | 11 |
+| Ravager | Deep Extraction | 12–19 | damage | 12 | 15 |
+| Sentinel | Counter Stance | 3–7 | spike | 6 | 8 |
+| Sentinel | Challenge | 8–14 | shield | 4 | 8 |
+| Sentinel | Repulsion Field | 15–19 | damage | 8 | 9 |
+| Sentinel | Repulsion Field | 15–19 | shield | 6 | 7 |
+| Trench Rig | Dig In | 3–9 | shield | 8 | 6 |
+| Trench Rig | Trench Breaker | 17–19 | damage | 18 | 16 |
+| Synth Medic | Nanite Crossfire | 14–19 | damage | 6 | 9 |
+| Phantom Engineer | EMP Pulse | 4–10 | damage | 7 | 10 |
+| Wraith | Scan Weakness | 1–6 | damage | 4 | 6 |
+| Wraith | Neural Trace | 7–10 | damage | 8 | 10 |
+| Wraith | Assassinate | 11–14 | damage | 14 | 16 |
+| Wraith | Wraith Blade | 15–18 | damage | 15 | 17 |
+| Nullwire | Bit Spike | 5–8 | damage | 9 | 8 |
+| Nullwire | Deep Interference | 9–15 | damage | 12 | 11 |
+| Nullwire | Signal Sever | 16–19 | damage | 14 | 13 |
+
+  Win rate of runs where the evolution was picked. First evolutions on the
+  `l1` batch, second evolutions on the `l1_evo2` batch, 1,500 runs each;
+  "Before" is with the swaps and no tuning:
+
+| First evolution | Rate | Second evolution | Before | Now | Gap | New seeds: first | New seeds: second | Gap |
+|---|--:|---|--:|--:|--:|--:|--:|--:|
+| Pyro Specialist | 27.1% | Arc Specialist | 29.3% | 30.2% | +3.1 | 33.0% | 32.2% | -0.8 |
+| Blade Trooper | 37.9% | Ravager | 25.1% | 33.6% | -4.3 | 36.7% | 41.1% | +4.4 |
+| Bulwark | 22.8% | Sentinel | 14.3% | 22.6% | -0.2 | 19.3% | 22.3% | +3.0 |
+| Glacier Rig | 30.0% | Trench Rig | 27.2% | 30.8% | +0.8 | 28.4% | 34.1% | +5.7 |
+| Combat Medic | 40.3% | Synth Medic | 30.0% | 40.6% | +0.3 | 37.9% | 39.6% | +1.8 |
+| Overclock Engineer | 29.4% | Phantom Engineer | 20.1% | 27.3% | -2.1 | 28.7% | 32.5% | +3.8 |
+| Shadow Operative | 40.7% | Wraith | 28.7% | 40.5% | -0.2 | 45.9% | 43.6% | -2.4 |
+| Noise Specialist | 32.6% | Nullwire | 32.4% | 34.3% | +1.7 | 32.1% | 35.1% | +3.0 |
+
+  A gap here is the difference of two rates of about 450 runs each, so it
+  moves about 4 points between seed sets (Ravager: -4.3 on one, +4.4 on the
+  other). Averaged over both sets every pair is within about 3.5.
+
+  The second-evolution batch by operation (it was never played before
+  2026-10-09, so it has no target of its own):
+
+| Operation | `main` | Swaps only | Tuned | New seeds, tuned |
+|---|--:|--:|--:|--:|
+| Facility | 31.8% | 32.4% | 41.9% | 43.6% |
+| Hive | 18.2% | 29.4% | 33.7% | 35.0% |
+| Veil | 13.5% | 13.9% | 23.3% | 28.5% |
+| Signal Purge | 17.5% | 9.6% | 22.5% | 23.5% |
+| Mantle Hunt | 7.7% | 13.8% | 12.5% | 17.2% |
+| Overall | 17.7% | 19.8% | 26.7% | 29.1% |
+
+- **Baseline not re-pinned** (Kev decides). On the pinned 300 runs:
+
+| Pinned 300 runs | `baseline.json` | tuned | change |
+|---|--:|--:|--:|
+| Facility | 40.8% | 29.6% | -11.3 |
+| Hive | 25.4% | 33.9% | +8.5 |
+| Veil | 26.2% | 32.3% | +6.2 |
+| Signal Purge | 28.1% | 15.8% | -12.3 |
+| Mantle Hunt | 16.7% | 14.6% | -2.1 |
+| Overall | 28.3% | 26.0% | -2.3 |
+
+  About 60 runs per operation: it disagrees with both 1,500-run sets, and
+  `verify_gate.py`'s sim leg will stop on the 10-point line for Facility and
+  Signal Purge until it is re-pinned. Full report:
+  `HANDOFF_2026-10-08_cloak_and_windows.md`, "Follow-up 2".
+
 
 **2026-10-08 new roll windows (Kev, G-53; on branch `claude/cloak-and-windows`, not merged):**
 every unit keeps its five bands and its abilities. Only the ranges changed.

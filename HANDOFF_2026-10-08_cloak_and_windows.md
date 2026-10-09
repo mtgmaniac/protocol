@@ -554,3 +554,192 @@ On `bf3bb20`: `validate-data`, `roll windows`, `roll windows live`, `cloak
 ambush` and `unlock progression` all pass. The full gate was not run. Godot
 ran from the scratch copy through `GODOT_BIN`, with `APPDATA` on a scratch
 folder (the editor is open on the project).
+
+## Follow-up 2 (2026-10-09): swaps applied, numbers tuned
+
+Rulings: G-56. Where this differs from the sections above, it wins. Not
+merged, baseline not re-pinned, full gate not run, summons untouched.
+
+| Commit | Ruling | Change |
+|---|---|---|
+| `a8950c3` | 1 | The ten approved swaps (H1 to H6, E1 to E4) |
+| `e2da97f` | | Two tests the swaps broke now read the roll from the kit |
+| `7d03608` | 2 | 68 enemy damage numbers, operation by operation |
+| `93fb5d3` | 3 | Spike Guard and Pulse Tech: four numbers |
+| this commit | 4 | Second evolutions: 20 numbers |
+
+### Where it landed
+
+Clear rate, standard batch (first evolutions), 1,500 matched runs. "New
+seeds" is a second 1,500 runs the tuning never saw, for `main` and for the
+tuned game.
+
+| Operation | Target | Swaps only | Tuned | Off target | New seeds: `main` | New seeds: tuned | Both sets pooled, tuned minus `main` |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| Facility | 37.5% | 32.1% | 37.2% | -0.3 | 34.4% | 39.4% | +2.2 |
+| Hive | 29.4% | 40.9% | 29.4% | +0.0 | 28.7% | 32.3% | +1.8 |
+| Veil | 23.3% | 18.4% | 23.3% | +0.0 | 23.3% | 26.7% | +1.6 |
+| Signal Purge | 27.2% | 22.5% | 26.5% | -0.7 | 24.4% | 24.4% | -0.3 |
+| Mantle Hunt | 16.7% | 14.5% | 17.0% | +0.3 | 15.9% | 13.8% | -1.0 |
+| Overall | 26.7% | 25.7% | 26.6% | -0.1 | 25.1% | 26.9% | +0.8 |
+
+Every operation is within 0.7 of its target on the batch the targets came
+from. On new seeds it is not as tight: Facility, Hive and Veil run 3 to 5
+points easier than `main` did there, Mantle Hunt 2 harder. Pooled over both
+sets nothing is more than 2.2 from `main`. One operation in a batch is about
+300 runs, which is worth about 3 points either way.
+
+The second-evolution batch beside it, as asked:
+
+| Operation | `main` | Swaps only | Tuned | New seeds, tuned |
+|---|--:|--:|--:|--:|
+| Facility | 31.8% | 32.4% | 41.9% | 43.6% |
+| Hive | 18.2% | 29.4% | 33.7% | 35.0% |
+| Veil | 13.5% | 13.9% | 23.3% | 28.5% |
+| Signal Purge | 17.5% | 9.6% | 22.5% | 23.5% |
+| Mantle Hunt | 7.7% | 13.8% | 12.5% | 17.2% |
+| Overall | 17.7% | 19.8% | 26.7% | 29.1% |
+
+As a squad, second evolutions now clear as often as first ones overall, but
+not operation by operation: better in Facility and Hive, worse in Signal
+Purge and Mantle Hunt. The enemy numbers were fitted on first evolutions
+only, as ruled.
+
+### Every number changed
+
+**Enemies (68 numbers, damage only).**
+
+| Operation | Unit | Damage, was → now |
+|---|---|---|
+| Facility | Shield Enforcer | Covering Shot 13 → 12, Cover Field 12 → 11, Barrier Burst 17 → 16, Fortress Advance 21 → 20 |
+| Hive | Spine Stalker | Spine Lunge 14 → 15, Caustic Spine 15 → 16, Shredding Spines 17 → 18, Impaler Gland 19 → 20 |
+| Hive | Carapace Beetle | Ramming Plate 12 → 13, Caustic Guard 10 → 11, Carapace Burst 13 → 14, Fortress Charge 16 → 17 |
+| Hive | Broodwarden | Brood Slam 11 → 12, Acid Saliva 9 → 10, Caustic Crush 18 → 19, Culling Feed 27 → 29 |
+| Hive | Caustic Spewer | Feeding Spit 8 → 9, Caustic Spray 9 → 10, Acid Torrent 10 → 11, Corrosive Deluge 12 → 13 |
+| Hive | Hive Matriarch | Royal Mandibles 19 → 22, Brood Venom 20 → 22, Biomass Purge 25 → 27, Acid Cataclysm 28 → 30 |
+| Veil | Aegis Anchor | Aegis Bash 12 → 11, Bulwark Pulse 14 → 13, Fortress Lash 18 → 17, Shieldline Rally 20 → 19 |
+| Veil | Resonance Warden | Resonant Slam 12 → 11, Pulse Burn 12 → 11, Resonant Hammer 22 → 21, Veil Rally 28 → 27 |
+| Veil | Phaseblade | Phase Slash 14 → 13, Vector Cut 16 → 15, Guarded Cut 19 → 18, Phase Reinforcements 24 → 23 |
+| Veil | Stormweaver | Storm Weave 12 → 11, Ion Tempest 14 → 13, Lattice Storm 16 → 15 |
+| Signal Purge | Circuit Acolyte | Binding Lash 12 → 11, Command Needle 14 → 13, Warded Lash 17 → 16, Ritual Muster 18 → 17 |
+| Signal Purge | Cipher Scribe | Glyph Strike 11 → 10, Stolen Pattern 10 → 9, Prophecy Needle 15 → 14, Summon Verse 16 → 15 |
+| Signal Purge | Oath Binder | Dominion Bolt 19 → 17, Tribute Drain 16 → 15, Compulsion 14 → 13, Binding Decree 21 → 19 |
+| Signal Purge | False Image | False Edge 13 → 12, Mirror Break 12 → 11, Stolen Reflex 17 → 16, False Command 19 → 17 |
+| Signal Purge | Ash Channeler | Arc Lance 16 → 15, Sacrificial Drain 20 → 18, Cinder Litany 15 → 14, Ashen Muster 22 → 20 |
+| Signal Purge | Signal Hierophant | Absolute Binding 26 → 25, Machine Crusade 30 → 29 |
+| Mantle Hunt | Geode Panther | Stonefang Pounce 16 → 15, Petrifying Shriek 18 → 17 |
+| Mantle Hunt | Basalt Ape | Fistfall 14 → 13, Bonebreaker 17 → 16, Basalt Crush 16 → 15 |
+| Mantle Hunt | Cinder Raptor | Challenge Screech 15 → 14, Brood Call 13 → 12 |
+
+Not changed: every small unit, Patrol Enforcer, Heavy Warden, Volt Enforcer,
+Relay Herald, Magma Drake, Scrapmaster, Veil Overseer, Mantle Tyrant.
+
+**Outlier heroes (4 numbers).**
+
+| Unit | Ability | Rolls | Number | Was | Now |
+|---|---|---|---|--:|--:|
+| Pyro Specialist | Backdraft | 13–18 | damage | 14 | 16 |
+| Spike Guard | Challenge Beacon | 3–8 | spike | 3 | 5 |
+| Spike Guard | Spike Stance | 9–15 | shield | 5 | 7 |
+| Bulwark | Fortify | 3–10 | shield | 7 | 9 |
+
+**Second evolutions (20 numbers).**
+
+| Unit | Ability | Rolls | Number | Was | Now |
+|---|---|---|---|--:|--:|
+| Arc Specialist | Forked Lightning | 9–14 | damage | 12 | 11 |
+| Arc Specialist | Arc Cascade | 15–19 | damage | 15 | 14 |
+| Ravager | Thermal Cut | 1–7 | damage | 6 | 7 |
+| Ravager | Siphon Slash | 8–9 | damage | 9 | 11 |
+| Ravager | Deep Extraction | 12–19 | damage | 12 | 15 |
+| Sentinel | Counter Stance | 3–7 | spike | 6 | 8 |
+| Sentinel | Challenge | 8–14 | shield | 4 | 8 |
+| Sentinel | Repulsion Field | 15–19 | damage | 8 | 9 |
+| Sentinel | Repulsion Field | 15–19 | shield | 6 | 7 |
+| Trench Rig | Dig In | 3–9 | shield | 8 | 6 |
+| Trench Rig | Trench Breaker | 17–19 | damage | 18 | 16 |
+| Synth Medic | Nanite Crossfire | 14–19 | damage | 6 | 9 |
+| Phantom Engineer | EMP Pulse | 4–10 | damage | 7 | 10 |
+| Wraith | Scan Weakness | 1–6 | damage | 4 | 6 |
+| Wraith | Neural Trace | 7–10 | damage | 8 | 10 |
+| Wraith | Assassinate | 11–14 | damage | 14 | 16 |
+| Wraith | Wraith Blade | 15–18 | damage | 15 | 17 |
+| Nullwire | Bit Spike | 5–8 | damage | 9 | 8 |
+| Nullwire | Deep Interference | 9–15 | damage | 12 | 11 |
+| Nullwire | Signal Sever | 16–19 | damage | 14 | 13 |
+
+### Heroes
+
+| Hero | `main` | Swaps only | Tuned | Change from `main` | New seeds: `main` | New seeds: tuned |
+|---|--:|--:|--:|--:|--:|--:|
+| Pulse Tech | 26.6% | 22.5% | 22.0% | -4.6 | 25.7% | 26.3% |
+| Strike Unit | 31.3% | 31.3% | 33.5% | +2.2 | 30.3% | 32.7% |
+| Spike Guard | 20.1% | 16.0% | 18.5% | -1.6 | 14.8% | 16.1% |
+| Avalanche Suit | 20.0% | 20.5% | 21.5% | +1.5 | 19.3% | 20.3% |
+| Splice Medic | 36.4% | 34.0% | 35.3% | -1.1 | 30.8% | 32.7% |
+| Field Engineer | 23.6% | 22.3% | 24.3% | +0.7 | 24.7% | 24.2% |
+| Ghost Operative | 29.0% | 34.5% | 32.9% | +4.0 | 30.4% | 37.7% |
+| Signal Breaker | 27.2% | 24.5% | 25.2% | -2.0 | 24.7% | 25.4% |
+
+- **Spike Guard** is back to 18.5% from 16.0%, against 20.1% before.
+- **Pulse Tech** was exactly 5.0 under once the enemies were tuned, so I
+  counted it. Its base kit did not respond in the sim; Backdraft (Pyro) did.
+  It still reads 4.6 under on the first seed set and level on the second.
+- **Ghost Operative** is 4 to 7 points above its old rate. That is the cloak
+  ambush, which you kept at +50%.
+
+### Second evolutions against their sibling
+
+| First evolution | Rate | Second evolution | Before | Now | Gap | New seeds: first | New seeds: second | Gap |
+|---|--:|---|--:|--:|--:|--:|--:|--:|
+| Pyro Specialist | 27.1% | Arc Specialist | 29.3% | 30.2% | +3.1 | 33.0% | 32.2% | -0.8 |
+| Blade Trooper | 37.9% | Ravager | 25.1% | 33.6% | -4.3 | 36.7% | 41.1% | +4.4 |
+| Bulwark | 22.8% | Sentinel | 14.3% | 22.6% | -0.2 | 19.3% | 22.3% | +3.0 |
+| Glacier Rig | 30.0% | Trench Rig | 27.2% | 30.8% | +0.8 | 28.4% | 34.1% | +5.7 |
+| Combat Medic | 40.3% | Synth Medic | 30.0% | 40.6% | +0.3 | 37.9% | 39.6% | +1.8 |
+| Overclock Engineer | 29.4% | Phantom Engineer | 20.1% | 27.3% | -2.1 | 28.7% | 32.5% | +3.8 |
+| Shadow Operative | 40.7% | Wraith | 28.7% | 40.5% | -0.2 | 45.9% | 43.6% | -2.4 |
+| Noise Specialist | 32.6% | Nullwire | 32.4% | 34.3% | +1.7 | 32.1% | 35.1% | +3.0 |
+
+- Seven of eight are within about 3 on the batch you named; **Ravager** is
+  4.3 under there and 4.4 over on the new seeds. **Trench Rig** is 5.7 over
+  on the new seeds only. A gap here moves about 4 points between seed sets.
+- **Three second evolutions went down**: Arc Specialist, Trench Rig,
+  Nullwire. In this batch every squadmate is a second evolution, so lifting
+  the five weak ones lifted all eight, and these three ended 6 to 8 points
+  above their sibling. Seven numbers bring them back. If you would sooner
+  leave them strong, those go back and they read roughly 5 points high (my
+  estimate).
+
+### Things to know
+
+- **The pinned 300-run batch disagrees with both big batches.**
+
+| Pinned 300 runs | `baseline.json` | tuned | change |
+|---|--:|--:|--:|
+| Facility | 40.8% | 29.6% | -11.3 |
+| Hive | 25.4% | 33.9% | +8.5 |
+| Veil | 26.2% | 32.3% | +6.2 |
+| Signal Purge | 28.1% | 15.8% | -12.3 |
+| Mantle Hunt | 16.7% | 14.6% | -2.1 |
+| Overall | 28.3% | 26.0% | -2.3 |
+
+  About 60 runs per operation. The full gate's sim leg will stop on the
+  10-point line for Facility and Signal Purge until you re-pin.
+- **The swaps broke two tests** outside the targeted set (`preview accuracy`,
+  `freeze regression`): each rigged a roll by number. Both now read the roll
+  from the kit. I found them by running the battle and ability gates beside
+  the five you named; there may be others in the gates I did not run.
+- **Clear rate is very sensitive to numbers.** 5% of enemy damage is about 6
+  points. Heavy Warden's four numbers alone were worth 4 points of Facility.
+- `docs/wiki/heroes.md` and `docs/wiki/enemies.md` list ability numbers and
+  ranges that were already out of date before this branch. Not touched.
+
+### Gates
+
+Targeted, as asked, on the final data: `validate-data`, `roll windows`, `roll
+windows live`, `cloak ambush`, `unlock progression`. Also run because they
+read kits or numbers: `ability audit`, `taunt planning chip`, `effect target`,
+`preview accuracy`, `freeze regression`, `firewall feedback`, `action motion`,
+`tutorial smoke`, `tutorial reachability`, `doc consistency`, `knobs
+contract`, `caps law`. All pass. The full gate was not run.
