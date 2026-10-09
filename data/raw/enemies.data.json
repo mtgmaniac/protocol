@@ -1999,16 +1999,14 @@
           5,
           8
         ],
-        "name": "Compulsion",
-        "eff": "14 damage, -1 roll 2 turns",
-        "dmg": 14,
+        "name": "Dominion Bolt",
+        "eff": "19 damage",
+        "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "rfm": 1,
-        "rfmT": 2
+        "shield": 0
       },
       "surge": {
         "range": [
@@ -2030,14 +2028,16 @@
           12,
           19
         ],
-        "name": "Dominion Bolt",
-        "eff": "19 damage",
-        "dmg": 19,
+        "name": "Compulsion",
+        "eff": "14 damage, -1 roll 2 turns",
+        "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "rfm": 1,
+        "rfmT": 2
       },
       "overload": {
         "range": [
@@ -2170,20 +2170,6 @@
           9,
           11
         ],
-        "name": "Cinder Litany",
-        "eff": "15 damage, 2 burn 3 turns",
-        "dmg": 15,
-        "burn": 2,
-        "burnT": 3,
-        "heal": 0,
-        "rfe": 0,
-        "shield": 0
-      },
-      "crit": {
-        "range": [
-          12,
-          19
-        ],
         "name": "Sacrificial Drain",
         "eff": "20 damage, 2 Protocol drain",
         "dmg": 20,
@@ -2193,6 +2179,20 @@
         "rfe": 0,
         "shield": 0,
         "siphon": 2
+      },
+      "crit": {
+        "range": [
+          12,
+          19
+        ],
+        "name": "Cinder Litany",
+        "eff": "15 damage, 2 burn 3 turns",
+        "dmg": 15,
+        "burn": 2,
+        "burnT": 3,
+        "heal": 0,
+        "rfe": 0,
+        "shield": 0
       },
       "overload": {
         "range": [
@@ -2321,15 +2321,14 @@
           7,
           9
         ],
-        "name": "Pumice Grasp",
-        "eff": "6 damage, +1 damage per other pack member",
-        "dmg": 6,
+        "name": "Arterial Bite",
+        "eff": "11 damage",
+        "dmg": 11,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "packBonus": true
+        "shield": 0
       },
       "surge": {
         "range": [
@@ -2350,14 +2349,15 @@
           13,
           19
         ],
-        "name": "Arterial Bite",
-        "eff": "11 damage",
-        "dmg": 11,
+        "name": "Pumice Grasp",
+        "eff": "6 damage, +1 damage per other pack member",
+        "dmg": 6,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "packBonus": true
       },
       "overload": {
         "range": [
@@ -2394,15 +2394,14 @@
           7,
           9
         ],
-        "name": "Rending Fang",
-        "eff": "7 damage, +1 damage per other pack member",
-        "dmg": 7,
+        "name": "Throat Clamp",
+        "eff": "12 damage",
+        "dmg": 12,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "packBonus": true
+        "shield": 0
       },
       "surge": {
         "range": [
@@ -2423,14 +2422,15 @@
           13,
           19
         ],
-        "name": "Throat Clamp",
-        "eff": "12 damage",
-        "dmg": 12,
+        "name": "Rending Fang",
+        "eff": "7 damage, +1 damage per other pack member",
+        "dmg": 7,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "packBonus": true
       },
       "overload": {
         "range": [

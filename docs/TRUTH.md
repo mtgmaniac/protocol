@@ -1,5 +1,29 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 signature moves and retuning (Kev, G-56; on branch `claude/cloak-and-windows`, not merged):**
+the new roll windows shrank some bands that held the ability a unit is known
+for. Ten units swap two abilities between two of their own bands. No range,
+shape or number changed in the swap; the two abilities just changed places.
+
+| Unit | Now on | Ability | Was on | Its old slot now holds |
+|---|---|---|---|---|
+| Spike Guard | 3–8 | Challenge Beacon (taunt) | 1–2 | Reactive Cover |
+| Sentinel | 8–14 | Challenge (taunt) | 1–2 | Punish |
+| Bulwark | 3–10 | Fortify (taunt) | 1–2 | Cover Fire |
+| Avalanche Suit | 10–14 | Cryo Lattice (freeze any die) | 1–3 | Whiteout Spray |
+| Ravager | 12–19 | Deep Extraction (leech) | 10–11 | Wound Ignition |
+| Pulse Tech | 14–19 | Plasma Lance (burn) | 10–13 | Flash Detonation |
+| Pumice Climber | 13–19 | Pumice Grasp (pack bonus) | 7–9 | Arterial Bite |
+| Obsidian Hound, Slag Hound | 13–19 | Rending Fang (pack bonus) | 7–9 | Throat Clamp |
+| Oath Binder | 12–19 | Compulsion (roll penalty) | 5–8 | Dominion Bolt |
+| Ash Channeler | 12–19 | Cinder Litany (burn) | 9–11 | Sacrificial Drain |
+
+  Checked and left alone (Kev): Signal Breaker's Phase Tear, Heavy Warden's
+  Field Service, Resonance Warden's Harmonic Mend. A band's internal key no
+  longer says what kind of ability it holds: Bulwark's and Spike Guard's first
+  band now attack or cover, and the taunt sits in the second.
+
+
 **2026-10-08 new roll windows (Kev, G-53; on branch `claude/cloak-and-windows`, not merged):**
 every unit keeps its five bands and its abilities. Only the ranges changed.
 Very few units fire their top ability on more than a 20.

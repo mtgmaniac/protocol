@@ -267,22 +267,6 @@
             10,
             13
           ],
-          "name": "Plasma Lance",
-          "eff": "9 damage, 3 burn 1 turn",
-          "dmg": 9,
-          "burn": 3,
-          "burnT": 1,
-          "rfe": 0,
-          "heal": 0,
-          "dMin": 9,
-          "dMax": 9
-        },
-        {
-          "zone": "crit",
-          "range": [
-            14,
-            19
-          ],
           "name": "Flash Detonation",
           "eff": "12 damage, detonate",
           "dmg": 12,
@@ -293,6 +277,22 @@
           "dMin": 12,
           "dMax": 12,
           "detonate": true
+        },
+        {
+          "zone": "crit",
+          "range": [
+            14,
+            19
+          ],
+          "name": "Plasma Lance",
+          "eff": "9 damage, 3 burn 1 turn",
+          "dmg": 9,
+          "burn": 3,
+          "burnT": 1,
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 9,
+          "dMax": 9
         },
         {
           "zone": "overload",
@@ -785,23 +785,6 @@
                 10,
                 11
               ],
-              "name": "Deep Extraction",
-              "eff": "12 damage, leech",
-              "dmg": 12,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "dMin": 12,
-              "dMax": 12,
-              "leech": true
-            },
-            {
-              "zone": "crit",
-              "range": [
-                12,
-                19
-              ],
               "name": "Wound Ignition",
               "eff": "14 damage, detonate",
               "dmg": 14,
@@ -812,6 +795,23 @@
               "dMin": 14,
               "dMax": 14,
               "detonate": true
+            },
+            {
+              "zone": "crit",
+              "range": [
+                12,
+                19
+              ],
+              "name": "Deep Extraction",
+              "eff": "12 damage, leech",
+              "dmg": 12,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 12,
+              "dMax": 12,
+              "leech": true
             },
             {
               "zone": "overload",
@@ -867,24 +867,6 @@
             1,
             2
           ],
-          "name": "Challenge Beacon",
-          "eff": "3 spike, taunt",
-          "dmg": 0,
-          "burn": 0,
-          "burnT": 0,
-          "rfe": 0,
-          "heal": 0,
-          "dMin": 0,
-          "dMax": 0,
-          "taunt": true,
-          "spike": 3
-        },
-        {
-          "zone": "strike",
-          "range": [
-            3,
-            8
-          ],
           "name": "Reactive Cover",
           "eff": "6 shield (hero), 3 spike (hero)",
           "dmg": 0,
@@ -896,6 +878,24 @@
           "dMax": 0,
           "shield": 6,
           "shTgt": true,
+          "spike": 3
+        },
+        {
+          "zone": "strike",
+          "range": [
+            3,
+            8
+          ],
+          "name": "Challenge Beacon",
+          "eff": "3 spike, taunt",
+          "dmg": 0,
+          "burn": 0,
+          "burnT": 0,
+          "rfe": 0,
+          "heal": 0,
+          "dMin": 0,
+          "dMax": 0,
+          "taunt": true,
           "spike": 3
         },
         {
@@ -966,24 +966,6 @@
                 1,
                 2
               ],
-              "name": "Fortify",
-              "eff": "7 shield, taunt",
-              "dmg": 0,
-              "burn": 0,
-              "burnT": 0,
-              "rfe": 0,
-              "heal": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "shield": 7,
-              "taunt": true
-            },
-            {
-              "zone": "strike",
-              "range": [
-                3,
-                10
-              ],
               "name": "Cover Fire",
               "eff": "5 damage, 7 shield (lowest HP)",
               "dmg": 5,
@@ -995,6 +977,24 @@
               "dMax": 5,
               "shield": 7,
               "shieldLowest": true
+            },
+            {
+              "zone": "strike",
+              "range": [
+                3,
+                10
+              ],
+              "name": "Fortify",
+              "eff": "7 shield, taunt",
+              "dmg": 0,
+              "burn": 0,
+              "burnT": 0,
+              "rfe": 0,
+              "heal": 0,
+              "dMin": 0,
+              "dMax": 0,
+              "shield": 7,
+              "taunt": true
             },
             {
               "zone": "surge",
@@ -1084,17 +1084,15 @@
                 1,
                 2
               ],
-              "name": "Challenge",
-              "eff": "4 shield, taunt",
-              "dmg": 0,
+              "name": "Punish",
+              "eff": "10 damage",
+              "dmg": 10,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 0,
-              "dMax": 0,
-              "taunt": true,
-              "shield": 4
+              "dMin": 10,
+              "dMax": 10
             },
             {
               "zone": "strike",
@@ -1119,15 +1117,17 @@
                 8,
                 14
               ],
-              "name": "Punish",
-              "eff": "10 damage",
-              "dmg": 10,
+              "name": "Challenge",
+              "eff": "4 shield, taunt",
+              "dmg": 0,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 10,
-              "dMax": 10
+              "dMin": 0,
+              "dMax": 0,
+              "taunt": true,
+              "shield": 4
             },
             {
               "zone": "crit",
@@ -1202,16 +1202,16 @@
             1,
             3
           ],
-          "name": "Cryo Lattice",
-          "eff": "freeze any die 1 turn",
-          "dmg": 0,
+          "name": "Whiteout Spray",
+          "eff": "9 damage (all enemies)",
+          "dmg": 9,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 0,
-          "dMax": 0,
-          "freezeAnyDice": 1
+          "dMin": 9,
+          "dMax": 9,
+          "blastAll": true
         },
         {
           "zone": "strike",
@@ -1236,16 +1236,16 @@
             10,
             14
           ],
-          "name": "Whiteout Spray",
-          "eff": "9 damage (all enemies)",
-          "dmg": 9,
+          "name": "Cryo Lattice",
+          "eff": "freeze any die 1 turn",
+          "dmg": 0,
           "burn": 0,
           "burnT": 0,
           "rfe": 0,
           "heal": 0,
-          "dMin": 9,
-          "dMax": 9,
-          "blastAll": true
+          "dMin": 0,
+          "dMax": 0,
+          "freezeAnyDice": 1
         },
         {
           "zone": "crit",

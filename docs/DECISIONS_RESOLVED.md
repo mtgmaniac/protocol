@@ -1,5 +1,45 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-56. Swaps approved; tune enemies, outlier heroes and second evolutions (Kev, 2026-10-09)
+
+**Rulings (Kev, transcribed).**
+
+1. "Swaps: approve H1–H6 and E1–E4. Skip H7, E5 and E6."
+2. "Item 5, enemy tuning: proceed as you planned. Tune enemy numbers operation
+   by operation to the targets on the standard first-evolution batch, and
+   report the second-evolution batch beside it. Hive needs to come up in
+   difficulty too, not only the others down."
+3. "Hero gaps: close outliers only. Bring Spike Guard (and any hero more than
+   about 5 points below its pre-windows rate) back toward its old rate through
+   its own ability numbers. Leave other heroes alone."
+4. "Second evolutions: after the enemy tuning, do a hero-side pass so each
+   second evolution lands within about 3 points of its first-evolution sibling
+   on the l1_evo2 batch. Tune only the second evolutions' own ability numbers.
+   Report every number changed."
+
+The targets in ruling 2 are G-55's: Facility 37.5%, Hive 29.4%, Veil 23.3%,
+Signal Purge 27.2%, Mantle Hunt 16.7%, within about 3 points, on 1,500-run
+batches.
+
+**As built, ruling 1 (the swaps).** Two abilities of one unit change places;
+ranges, shapes and numbers stay.
+
+| # | Unit | Swap | Result |
+|---|---|---|---|
+| H1 | Spike Guard | Challenge Beacon with Reactive Cover | taunt on 3–8 (6 faces, was 2) |
+| H2 | Sentinel | Challenge with Punish | taunt on 8–14 (7 faces, was 2) |
+| H3 | Bulwark | Fortify with Cover Fire | taunt on 3–10 (8 faces, was 2) |
+| H4 | Avalanche Suit | Cryo Lattice with Whiteout Spray | freeze any die on 10–14 (5 faces, was 3) |
+| H5 | Ravager | Deep Extraction with Wound Ignition | leech on 8–9, 12–19 and the 20 (11 faces, was 5) |
+| H6 | Pulse Tech | Plasma Lance with Flash Detonation | burn on 6–9, 14–19 and the 20 (11 faces, was 9) |
+| E1 | Pumice Climber | Pumice Grasp with Arterial Bite | pack attack on 13–19 (7 faces, was 3) |
+| E2 | Obsidian Hound, Slag Hound | Rending Fang with Throat Clamp | pack attack on 13–19 and the 20 (8 faces, was 4) |
+| E3 | Oath Binder | Compulsion with Dominion Bolt | roll penalty on 1–4 and 12–19 (12 faces, was 8) |
+| E4 | Ash Channeler | Cinder Litany with Sacrificial Drain | burn on 12–19 and the 20 (9 faces, was 4); drain on 9–11 (3 faces, was 8) |
+
+Not swapped, as ruled: H7 (Signal Breaker), E5 (Heavy Warden), E6 (Resonance
+Warden).
+
 ## G-55. Decisions on the cloak and windows branch (Kev, 2026-10-08)
 
 **Rulings (Kev, transcribed).**
