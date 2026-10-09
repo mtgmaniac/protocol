@@ -239,15 +239,17 @@ func _run_exact_cases() -> void:
 	var base: Dictionary = _cm.call("snapshot_state")
 
 	# [name, hero unit id ("" = nobody attacks), roll, board setup, relic effects]
+	# A roll given as a String is an ability flag: the case uses the first roll
+	# whose ability carries it, so a kit whose bands move keeps its case.
 	var cases: Array = [
-		["detonate, finite burn is consumed", "pulse", 16, _setup_burn.bind(3, 3, false, 0), []],
-		["detonate, permanent burn keeps ticking", "pulse", 16, _setup_burn.bind(3, 9999, true, 0), []],
-		["detonate is lethal where the base hit is not", "pulse", 16, _setup_burn.bind(4, 3, false, 20), []],
+		["detonate, finite burn is consumed", "pulse", "detonate", _setup_burn.bind(3, 3, false, 0), []],
+		["detonate, permanent burn keeps ticking", "pulse", "detonate", _setup_burn.bind(3, 9999, true, 0), []],
+		["detonate is lethal where the base hit is not", "pulse", "detonate", _setup_burn.bind(4, 3, false, 20), []],
 		["burn tick with no hit", "", 0, _setup_burn.bind(5, 2, false, 0), []],
 		["execute", "combat", 20, _setup_execute, []],
 		["chain", "pulse", 1, _setup_none, []],
 		["mark", "ghost", 14, _setup_mark, []],
-		["breach", "ghost", 9, _setup_shield, []],
+		["breach", "ghost", "breach", _setup_shield, []],
 		["pierce", "combat", 16, _setup_shield, []],
 		["spike retaliation", "ghost", 14, _setup_spike, []],
 		["relic multiplier", "ghost", 14, _setup_none, [{"type": "heroDmgMult", "mult": 1.1}]],
@@ -277,7 +279,9 @@ func _run_exact_cases() -> void:
 		if str(case[1]) != "":
 			var actor: Dictionary = _find_by_unit(_cm.call("get_hero_states"), str(case[1]))
 			actor_id = str(actor["id"])
-			hero_rolls[actor_id] = int(case[2])
+			var case_roll: int = _find_flag_roll(actor, str(case[2])) if case[2] is String else int(case[2])
+			_expect(case_roll > 0, "exact [%s]: the hero has a roll for it" % str(case[0]))
+			hero_rolls[actor_id] = case_roll
 			actor["selected_target_id"] = str(live_enemies[0]["id"])
 		else:
 			# A hero must have a revealed roll for the preview to run at all;
@@ -453,6 +457,13 @@ func _find_roll(state: Dictionary, kind: String) -> int:
 						and int(raw.get("heal", 0)) == 0 and not bool(raw.get("healAll", false)) \
 						and not bool(raw.get("shieldAll", false)) and not bool(raw.get("taunt", false)):
 					return r
+	return 0
+
+
+func _find_flag_roll(state: Dictionary, flag: String) -> int:
+	for r in range(1, 21):
+		if bool(_ability_raw(state, r).get(flag, false)):
+			return r
 	return 0
 
 
