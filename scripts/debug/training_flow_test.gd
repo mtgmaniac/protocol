@@ -124,6 +124,35 @@ func assign(scene: Node, uid: String, friendly: String = "") -> void:
 	scene.call("_on_enemy_card_pressed" if side == "enemy" else "_on_hero_card_pressed", target)
 	await pause()
 
+# The Burn lesson's proof. Pulse's round-one burn ticks at the END of the next
+# round, and only if the burned enemy is still alive and nobody detonated the
+# burn first. Free-round dice are live physics, so that used to be luck: the
+# check failed about one run in eight after the 2026-10-08 roll windows. Until
+# the tick has been seen, each hero's die is set to its kit's gentlest roll
+# (least damage, never a detonate), read from the kit and not a fixed face.
+# Enemy dice stay live, and so does every round after the tick. The request
+# survives because a free tutorial round has no plan of its own to set
+# (battle_scene._tutorial_rig_values is empty there).
+func _hold_fire(scene: Node) -> void:
+	var rig: Dictionary = {}
+	for state in scene.get("combat_manager").get_hero_states():
+		if bool(state.get("dead", false)):
+			continue
+		var gentlest: int = 0
+		var least: int = 1 << 30
+		for roll in range(1, 21):
+			var raw: Dictionary = scene.get("dice_manager").get_ability_for_roll(state["unit"], roll).get("raw", {})
+			if bool(raw.get("detonate", false)):
+				continue
+			var dmg: int = int(raw.get("dmg", 0)) * (2 if bool(raw.get("blastAll", false)) else 1)
+			if dmg < least:
+				least = dmg
+				gentlest = roll
+		if gentlest > 0:
+			rig["hero:%s" % str(state["id"])] = gentlest
+	scene.get("dice_tray_3d").set_rigged_results(rig)
+
+
 func drive_battle(practice: bool) -> void:
 	var scene: Node = current_scene
 	if practice:
@@ -154,6 +183,8 @@ func drive_battle(practice: bool) -> void:
 		elif bool(step.get("free", false)):
 			check(tut.call("allows_action", "nudge_pick", {"hero": "engineer"}), "Free play permits Engineer Nudge")
 			if phase == "await_roll" and not scene.get("roll_button").disabled:
+				if practice and not burn_ticked and bool(tut.call("_has_living_burned_enemy")):
+					_hold_fire(scene)
 				scene.call("_on_roll_button_pressed")
 			elif (phase == "targeting" or phase == "ready_to_end") and not bool(scene.get("_is_resolving_turn")):
 				if practice and reroll_notices > 0 and not item_used and int(scene.get("protocol_points")) >= 1:

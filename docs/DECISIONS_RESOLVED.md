@@ -105,6 +105,28 @@ with the pooled difference.
    that moves every operation is caught far sooner by the 4-point overall
    line.
 
+**Found while gating: `tutorial smoke` was a coin that mostly landed heads.**
+It failed once in the full gate and passed alone. Its last check wants to see
+Pulse Tech's round-one burn tick in the practice battle. That burn ticks at
+the end of round two, and round two is free play on live dice: if the heroes
+kill the burned drone first, or Pulse rolls its Detonate on it, nothing ticks
+and the check fails. It failed about one run in eight since the 2026-10-08
+windows (my estimate from today's runs: 1 of 8). Nothing is wrong for a
+player: the tutorial only adds "Watch Burn deal damage at the end of this
+turn" when a burned enemy is alive.
+
+- The test now sets each hero's die for that one round to its kit's gentlest
+  roll (least damage, never a Detonate), read from the kit, until the tick has
+  been seen. Checked with the dice printed out: three runs, the three gentle
+  rolls landed and the burn ticked each time.
+- For that to work, one line of `battle_scene.gd` changed: in tutorial mode
+  the scene sets the tray's requested faces only when the round has a plan. It
+  used to set an empty plan on free rounds, which wiped anything a test had
+  asked for. No difference in play: the tray clears its requests after every
+  throw, and nothing but the tutorial plan and the tests ever sets them.
+- My first attempt at this fix did nothing (the wipe above), and six passes in
+  a row hid that. I only caught it by printing the dice.
+
 ## G-57. Numbers approved; re-pin, gate and merge (Kev, 2026-10-09)
 
 **Rulings (Kev, transcribed).**

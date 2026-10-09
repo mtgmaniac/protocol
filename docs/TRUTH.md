@@ -40,6 +40,12 @@ instruments, because 300 runs can say THAT combat changed but not BY HOW MUCH
   runs and would have passed it.
 - **Process rule (INVARIANTS #8):** numbers tuned to a target are also
   reported on a second seed base.
+- **Tutorial, free rounds:** in tutorial mode the scene sets the tray's
+  requested faces only when the round has a plan
+  (`battle_scene._tutorial_rig_values`). A free round leaves them alone. Same
+  play as before (the tray clears its requests after every throw); it lets
+  `tutorial smoke` hold the heroes' dice for the one round its Burn check
+  depends on, which was live dice and failed about one run in eight (G-58).
 
 **2026-10-09 signature moves and retuning (Kev, G-56 and G-57; merged to `main` 2026-10-09):**
 the new roll windows shrank some bands that held the ability a unit is known

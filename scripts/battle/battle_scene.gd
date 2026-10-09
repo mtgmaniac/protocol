@@ -1192,8 +1192,8 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 		await get_tree().process_frame
 		_layout.layout_dice_from_combat_zone()
 		await get_tree().process_frame
-		# Tutorial (G-26): guided rounds replay recorded real throws.
-		if _game_state().tutorial_mode:
+		# Tutorial (G-26): guided rounds replay recorded real throws. A free round has no plan and leaves the tray's requests alone (a test may have set some).
+		if _game_state().tutorial_mode and not _tutorial_rig_values().is_empty():
 			dice_tray_3d.set_rigged_results(_tutorial_rig_values())
 		dice_tray_3d.value_provider = _die_value
 		dice_tray_3d.print_provider = _die_faces_now
