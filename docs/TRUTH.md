@@ -1,5 +1,144 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 unit traits (Kev, G-62; on branch `claude/traits-beasts-geode`,
+not merged):** some units carry one always-on trait. One system for heroes and
+enemies.
+
+- **Who has one.** Every hero evolution (16). Every elite (9). In Mantle Hunt,
+  every regular and elite unit has Pack Rage (5). Nobody else: base heroes,
+  regular units in the other four operations, tanks, supports and all five
+  bosses have none. "Elite", "regular", "tank" and "support" are the roles of
+  the roll-windows table (G-55).
+- **Data:** `data/raw/traits.data.json`. `traits` holds each trait's name, its
+  one line and its numbers; `evolutions` and `enemies` say who has which. A
+  `{key}` in the line is filled from the trait's own numbers, and `{band}`
+  from the unit's first roll window, so the text cannot print a number the
+  engine does not apply. Loaded by `scripts/battle/unit_traits.gd`; a unit
+  carries its trait as `unit_trait` (UnitData, EnemyData) and its battle state
+  as `trait` (the id). `GameState.get_run_unit_data` puts an evolution's trait
+  on the evolved hero.
+
+| Unit | Trait | Line shown |
+|---|---|---|
+| Pyro Specialist | Afterburn | Detonating leaves 1 burn for 2 turns. |
+| Arc Specialist | Live Wire | Each chain jump deals +1 damage. |
+| Blade Trooper | Exposed | Its area attacks deal +2 to marked enemies. |
+| Ravager | Bloodlust | After rolling 1-7, its next leech heals 50% more. |
+| Bulwark | Anchor | Takes 2 less damage while taunting. |
+| Sentinel | Retaliate | When hit while taunting, its spike deals +2. |
+| Glacier Rig | Glacial Armor | At round start, gains 1 shield per frozen enemy. |
+| Trench Rig | Dug In | At round start, gains 3 shield while below half HP. |
+| Combat Medic | Triage | Its heals restore +3 on the lowest-HP ally. |
+| Synth Medic | Overflow | Its healing past full HP becomes shield. |
+| Overclock Engineer | Redline | +2 damage on every attack while you have 5 or more Protocol. |
+| Phantom Engineer | Ghost Signal | Jams it applies from cloak last 1 extra round. |
+| Shadow Operative | Silent Kill | An ambush that kills its target keeps the cloak. |
+| Wraith | Clean Kill | When it kills, the lowest-HP enemy becomes marked. |
+| Noise Specialist | Static | At round start, the highest enemy die drops by 1. |
+| Nullwire | Zero Day | Enemies it rewrites take +2 damage until the rewrite ends. |
+| Patrol Enforcer | Backup | When an ally is hit, gains 2 shield. |
+| Volt Enforcer | Discharge | When it dies, deals 4 damage to each hero. |
+| Spine Stalker | Barbed | Heroes that hit it take 2 damage. |
+| Caustic Spewer | Corrosive | Its burns ignore shields. |
+| Phaseblade | Blink | After rolling 1-3, it cloaks. |
+| Circuit Acolyte | Litany | At round start, the lowest enemy die rises by 2. |
+| False Image | Decoy | The first hit against it each battle is negated. |
+| Ash Channeler | Kindle | Heals 3 whenever any burn ticks. |
+| Oath Binder | Compel | Its roll penalties last 1 extra round. |
+| Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor | Pack Rage | When an ally dies, gains rampage. |
+
+- **How each one resolves** (the readings are listed in G-62):
+  - *Afterburn:* only when something was detonated; a plain 1 burn for 2 turns.
+  - *Live Wire:* +1 on every jump, after the jump's half damage is worked out.
+  - *Exposed:* added before the mark's +50%, on area attacks only.
+  - *Bloodlust:* rolling the first window arms it; it is spent by the next
+    attack that leeches (50% of HP dealt becomes 75%), not by an attack that
+    does not leech. It does not stack.
+  - *Anchor:* every source of damage, for as long as the taunt is up.
+  - *Retaliate, Barbed:* spike damage with or without a spike up (a spike adds
+    to it), once per ability like any spike.
+  - *Triage:* the unit's own heals (one hero, lowest HP, all heroes), not
+    leech. "Lowest HP" is the existing rule: lowest share of max HP.
+  - *Overflow:* on heroes; an ordinary one-round shield. With Overheal Relay
+    both happen.
+  - *Redline:* the Protocol held as the round resolves, so spending below 5
+    turns it off. A flat bonus like Momentum: added before a chain jump is
+    halved, not multiplied by an ambush.
+  - *Ghost Signal:* "from cloak" is cloaked when the ability starts (the
+    ambush takes the cloak down before the jam lands). The jam caps two rolls.
+  - *Silent Kill:* a single-target attack from cloak whose target dies in that
+    ability. The cloak stays up and pays its ambush again next time.
+  - *Clean Kill:* the lowest-HP living enemy, unless it is already marked.
+  - *Zero Day:* from the moment the rewrite lands until it ends (the end of
+    the round the die shows 3). +2 once per ability per target, hero attacks.
+  - *Backup:* once per ability for each ally hit; being hit itself does not
+    count. An ordinary one-round shield.
+  - *Discharge:* 4 to each living hero; shields absorb it.
+  - *Corrosive:* its burn stacks are marked and their part of each tick skips
+    shields. The HP preview counts it (`get_expected_burn_tick_pierce`).
+  - *Blink:* after its first-window ability resolves.
+  - *Decoy:* the first attack that would damage it, each battle. Burn ticks
+    and items are not hits. The attack's riders still land.
+  - *Kindle:* 3 for each unit whose burn ticks, on either side.
+  - *Pack Rage:* any ally's death, summons included. Rampage does not stack
+    (G-60), so a second death while rampaging adds nothing.
+  - A trait is not an ability: a Firewall does not block one.
+- **The four round-start traits** (Glacial Armor, Dug In, Static, Litany) fire
+  once this round's dice are down and before the player plans
+  (`BattleEngine.apply_round_start_traits`: the live screen calls it as the
+  tray settles, the sim at the same point).
+  - **Order: Glacial Armor and Dug In, then Static, then Litany.** Heroes
+    first, as in the round itself. So when both dice traits fire, Litany
+    raises whichever die is lowest after Static's drop (dice 8 and 7: Static
+    makes them 7 and 7, Litany makes them 9 and 7).
+  - **Static and Litany change the die's one value.** They write a shift
+    beside the Firewall Hack's (`BattleState.enemy_roll_shifts`), read by the
+    one value rule (`_enemy_value_for_raw`); the tray tips the die onto a face
+    showing the new value and reprints it first when no face does (G-24,
+    G-27). The landed number is kept. The shift is cleared when the round
+    resolves and when its die is thrown again (Heretic Signal, an enemy
+    reroll item).
+  - **A frozen die keeps its number** (G-23): Static and Litany pass over
+    frozen dice and take the next one. A hijacked die is passed over too (it
+    copies the heroes' highest). A die already on 1 (or 20) does not move and
+    nothing is shown. Litany never lifts a jammed die past its cap.
+  - A CONTINUE into a settled re-throw restores the shifts with the other
+    pending actions (`enemy_shifts`) and does not fire the traits again.
+- **Shown** (existing components; the UI redesign restyles them):
+  - *Long-press:* "AFTERBURN: Detonating leaves 1 burn for 2 turns." is the
+    first entry, above the roll breakdown (`InspectResolver.trait_entry`).
+  - *Evolution picker:* the same line in each choice's header, which the
+    minimized card always shows.
+  - *Battle card:* the trait's name in the name strip, on the line the BOSS
+    tag uses (no boss has a trait). Never in a portrait corner (G-5). Volt
+    Enforcer's reads **DEATH: 4 TO ALL**, in the warning colour.
+  - *When it triggers:* a chip on the unit with the trait's name (the Accrete
+    chip's plate and life; under Reduced Motion and No animations it still
+    appears, without the pop or the fade) and a log line, "Afterburn: the
+    detonation leaves 1 burn on Scrap Drone." One chip per trait per unit per
+    ability; a log line every time.
+  - *Help:* every unit's and evolution's breakdown leads with its trait line.
+- **Sim, not tuned and not re-pinned (Kev decides after playing).** 1,500
+  pinned runs per policy, the branch (traits, beasts and Geode together)
+  against the size pins from `main`:
+
+| Clear rate | First evolutions: main | branch | change | Second evolutions: main | branch | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 32.5% | 40.7% | +8.2 | 37.7% | 46.9% | +9.2 |
+| Hive | 30.8% | 36.2% | +5.4 | 32.4% | 33.7% | +1.3 |
+| Veil | 26.1% | 26.4% | +0.3 | 28.7% | 27.4% | -1.3 |
+| Signal Purge | 23.9% | 29.7% | +5.8 | 20.3% | 20.6% | +0.4 |
+| Mantle Hunt | 18.9% | 27.6% | +8.8 | 17.8% | 25.9% | +8.1 |
+| Overall | 26.5% | 32.2% | +5.7 | 27.6% | 31.1% | +3.5 |
+
+  Beyond the size line on both policies, so a re-pin needs the ceremony. Hero
+  by hero: `HANDOFF_2026-10-09_traits_beasts_geode.md`.
+- Gate `traits` (`scripts/debug/traits_test.gd`: the roster, all 26 rules by
+  their data numbers with and without the trait, the dice rules, where each
+  is shown, the copy, a live round in both animation modes; breaks `off`,
+  `no_chip`, `frozen_dice`, `litany_first`, `boss_trait`). `validate-data`
+  now checks `traits.data.json` against its schema and its cross-references.
+
 **2026-10-09 Geode Panther hits the die it freezes (Kev, G-61; on branch
 `claude/traits-beasts-geode`, not merged):** Calcifying Bite (7-9) and
 Stonefang Pounce (12-19) froze the hero with the lowest die but hit whoever the

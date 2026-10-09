@@ -25,16 +25,19 @@ const heroesSchema = readJson('data/schemas/heroes.data.schema.json');
 const enemiesSchema = readJson('data/schemas/enemies.data.schema.json');
 const battleModesSchema = readJson('data/schemas/battle-modes.schema.json');
 const primersSchema = readJson('data/schemas/primers.data.schema.json');
+const traitsSchema = readJson('data/schemas/traits.data.schema.json');
 
 const vHeroes = ajv.compile(heroesSchema);
 const vEnemies = ajv.compile(enemiesSchema);
 const vBattleModes = ajv.compile(battleModesSchema);
 const vPrimers = ajv.compile(primersSchema);
+const vTraits = ajv.compile(traitsSchema);
 
 const heroes = readJson('data/raw/heroes.data.json');
 const enemies = readJson('data/raw/enemies.data.json');
 const battleModes = readJson('data/raw/battle-modes.json');
 const primers = readJson('data/raw/primers.data.json');
+const traits = readJson('data/raw/traits.data.json');
 
 let ok = true;
 if (!vBattleModes(battleModes)) {
@@ -56,6 +59,50 @@ if (!vPrimers(primers)) {
   ok = false;
   console.error('primers.data.json:', ajv.errorsText(vPrimers.errors, { separator: '\n' }));
   console.error(vPrimers.errors);
+}
+
+if (!vTraits(traits)) {
+  ok = false;
+  console.error('traits.data.json:', ajv.errorsText(vTraits.errors, { separator: '\n' }));
+  console.error(vTraits.errors);
+}
+
+// Unit traits (G-62): every assignment names a defined trait and a real unit,
+// every {key} in a trait's text is one of its own numbers (or {band}), and
+// every trait defined is given to someone.
+function validateTraits(traits, heroes, enemies) {
+  const errs = [];
+  const defined = traits.traits || {};
+  const used = new Set();
+  const evolutionKeys = new Set();
+  for (const h of heroes.heroes || []) {
+    for (const e of h.evolutions || []) evolutionKeys.add(`${h.id}/${e.id}`);
+  }
+  for (const [key, id] of Object.entries(traits.evolutions || {})) {
+    if (!evolutionKeys.has(key)) errs.push(`traits.data.json: evolutions '${key}' is not a hero evolution`);
+    if (!defined[id]) errs.push(`traits.data.json: evolutions '${key}' names an undefined trait '${id}'`);
+    used.add(id);
+  }
+  for (const [name, id] of Object.entries(traits.enemies || {})) {
+    if (!enemies.enemyUnitDefs?.[name]) errs.push(`traits.data.json: enemies '${name}' is not an enemy unit`);
+    if (!defined[id]) errs.push(`traits.data.json: enemies '${name}' names an undefined trait '${id}'`);
+    used.add(id);
+  }
+  for (const [id, def] of Object.entries(defined)) {
+    if (!used.has(id)) errs.push(`traits.data.json: trait '${id}' is given to no unit`);
+    for (const field of ['text', 'warn']) {
+      for (const m of String(def[field] || '').matchAll(/\{(\w+)\}/g)) {
+        if (m[1] !== 'band' && typeof def[m[1]] !== 'number') {
+          errs.push(`traits.data.json: trait '${id}' ${field} uses {${m[1]}} but has no such number`);
+        }
+      }
+    }
+  }
+  return errs;
+}
+for (const err of validateTraits(traits, heroes, enemies)) {
+  ok = false;
+  console.error(err);
 }
 
 // Evolution ids: stable keys for portrait resolution

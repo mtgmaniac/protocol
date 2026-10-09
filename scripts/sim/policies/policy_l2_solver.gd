@@ -107,6 +107,7 @@ func _score_candidate(engine, bs, cm, snapshot: Dictionary, reseed: int,
 	var eff_enemy: Dictionary = engine.build_effective_rolls(bs_try.enemy_rolls, cm.get_enemy_states(), false, bs_try)
 	var pre: Dictionary = _measure(cm)
 	seed(reseed)
+	cm.protocol_pool = bs_try.protocol_points
 	var result: Dictionary = cm.resolve_round(eff_hero, eff_enemy, engine.dice_manager,
 		bs_try.enemy_rolls.duplicate(), bs_try.hero_rolls.duplicate())
 	var post: Dictionary = _measure(cm)

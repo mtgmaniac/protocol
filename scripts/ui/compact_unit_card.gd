@@ -90,9 +90,14 @@ var cast_rank: int = 0
 var show_action_pips: bool = true
 var unit_data: Resource = null
 var gear_detail_rows: Array = []
+# The unit's trait marker (G-62): its trait's name, or the warning a trait
+# carries (Volt Enforcer). "" for a unit without a trait.
+var trait_marker: String = ""
+var trait_warning: bool = false
 
 var _name_label: Label = null
 var _boss_label: Label = null
+var _trait_label: Label = null
 var _name_strip: PanelContainer = null
 var _portrait_frame: Control = null
 var _portrait_crop: Control = null
@@ -137,9 +142,12 @@ func apply_battle_presentation(text_scale: float) -> void:
 	_battle_text_scale = text_scale
 	_name_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(CARD_NAME_FONT_SIZE * text_scale)))
 	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
+	_trait_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
 	_boss_label.offset_top = -28.0 * text_scale
 	_boss_label.offset_bottom = -28.0 * text_scale
+	_trait_label.offset_top = -28.0 * text_scale
+	_trait_label.offset_bottom = -28.0 * text_scale
 	_hp_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(CARD_HP_FONT_SIZE * text_scale)))
 	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
 	_hp_fill.offset_bottom = HP_FILL_HEIGHT * text_scale
@@ -193,6 +201,8 @@ func configure(data: Dictionary) -> void:
 	show_action_pips = bool(data.get("show_action_pips", show_action_pips))
 	unit_data = data.get("unit_data", unit_data) as Resource
 	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
+	trait_marker = str(data.get("trait", trait_marker))
+	trait_warning = bool(data.get("trait_warning", trait_warning))
 	_refresh()
 
 
@@ -288,6 +298,19 @@ func _build() -> void:
 	_boss_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_boss_label.offset_top = -28
 	_boss_label.offset_bottom = -28
+	# The trait marker sits where the BOSS line does, in the name strip and
+	# never over the portrait (G-5: portrait corners carry no markers).
+	_trait_label = Label.new()
+	_trait_label.name = "TraitMarker"
+	_trait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_trait_label.clip_text = true
+	_trait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_label(_trait_label, 48, PixelUI.DT_AMBER, 0)
+	name_content.add_child(_trait_label)
+	_trait_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_trait_label.offset_top = -28
+	_trait_label.offset_bottom = -28
 
 	# Plain Control (NOT a Container) so the crop + status overlay can be positioned
 	# by anchors; a PanelContainer would force-lay-out both children.
@@ -523,8 +546,13 @@ func _refresh() -> void:
 	_name_label.text = unit_name.to_upper()
 	_name_label.add_theme_color_override("font_color", _name_font_color(is_hero))
 	_boss_label.visible = is_boss
-	_name_label.offset_top = 8 * _battle_text_scale if is_boss else 0
-	_name_label.offset_bottom = 8 * _battle_text_scale if is_boss else 0
+	var has_trait_marker: bool = trait_marker != "" and not is_boss
+	_trait_label.visible = has_trait_marker
+	_trait_label.text = trait_marker
+	_trait_label.add_theme_color_override("font_color", PixelUI.DT_RUST_BRIGHT if trait_warning else PixelUI.DT_AMBER)
+	var two_lines: bool = is_boss or has_trait_marker
+	_name_label.offset_top = 8 * _battle_text_scale if two_lines else 0
+	_name_label.offset_bottom = 8 * _battle_text_scale if two_lines else 0
 	if is_boss:
 		_name_label.add_theme_color_override("font_color", PixelUI.DT_BOSS_INK)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
@@ -1267,7 +1295,9 @@ func _layout_preview_overlays() -> void:
 	if _preview_effects.has("hp_loss"):
 		hp_dmg = float(int(_preview_effects["hp_loss"]))
 		shield_after = float(int(_preview_effects.get("shield_after", 0))) + inc_shield
-	var hp_burn: float = burn_tick - minf(burn_tick, shield_after)
+	# Corrosive burn (G-62) ticks past shields; the rest of the tick is absorbed first.
+	var burn_pierce: float = minf(float(int(_preview_effects.get("burn_pierce", 0))), burn_tick)
+	var hp_burn: float = burn_pierce + (burn_tick - burn_pierce) - minf(burn_tick - burn_pierce, shield_after)
 	var final_hp: float = clampf(post_heal - hp_dmg - hp_burn, 0.0, hp_max)
 	var no_shield_final: float = clampf(post_heal - inc_dmg - burn_tick, 0.0, hp_max)
 

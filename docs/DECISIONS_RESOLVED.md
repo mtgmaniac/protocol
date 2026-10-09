@@ -1,5 +1,132 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-62. Unit traits (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"A new system: some units get one always-on trait. It works the same way for
+heroes and enemies.
+- Hero evolutions get a trait on evolving. Base heroes have none.
+- Elite enemies get a trait.
+- Mantle Hunt is the only operation where regular units also get a trait (Pack
+  Rage, below). Regular units in other operations and all bosses have none.
+- Traits should feel noticeable but small.
+
+Hero evolutions:
+- Pyro, Afterburn: detonating leaves 1 burn on the target.
+- Arc, Live Wire: each chain jump deals +1 damage.
+- Bladecore, Exposed: marked enemies take +2 from its area attacks.
+- Ravager, Bloodlust: after rolling band 1, its next attack leeches 50% more.
+- Bulwark, Anchor: takes 2 less damage while taunting.
+- Sentinel, Retaliate: when hit while taunting, its spike deals +2.
+- Glacier, Glacial Armor: at round start, gains 1 shield per frozen enemy.
+- Trench, Dug In: at round start, gains 3 shield while below half HP.
+- Medic, Triage: heals on the lowest-HP ally restore +3.
+- Synth, Overflow: healing past full HP becomes shield.
+- Overclocked, Redline: +2 damage on every attack while the player has 5 or
+  more Protocol.
+- Phantom, Ghost Signal: its jams last 1 extra round while it's cloaked.
+- Shadow, Silent Kill: an ambush that kills its target doesn't break cloak.
+- Wraith, Clean Kill: when it kills a target, the lowest-HP enemy becomes
+  marked.
+- Noise, Static: at round start, the highest enemy die drops by 1.
+- Nullwire, Zero Day: enemies it rewrites take +2 damage that round.
+
+Elites:
+- Patrol Enforcer, Backup: when an ally is hit, gains 2 shield.
+- Volt Enforcer, Discharge: when it dies, deals 4 to each hero. Its card must
+  warn about this clearly.
+- Spine Stalker, Barbed: heroes that hit it take 2.
+- Caustic Spewer, Corrosive: its burns ignore shields.
+- Phaseblade, Blink: after rolling band 1, it cloaks.
+- Circuit Acolyte, Litany: at round start, the lowest enemy die rises by 2.
+- False Image, Decoy: the first hit against it each battle is negated.
+- Ash Channeler, Kindle: heals 3 whenever any burn ticks.
+- Oath Binder, Compel: its roll penalties last 1 extra round.
+
+Mantle Hunt: every regular and elite beast (not the boss, which keeps Accrete):
+- Pack Rage: when an ally dies, this unit gains rampage. This replaces any
+  other trait on Geode Panther and Cinder Raptor.
+
+Dice rules that apply:
+- Static and Litany change dice that are already showing. Use the existing
+  deliberate-change path so the die visibly tips to its new face and the shown
+  value always matches.
+- A frozen die keeps its number (freeze ruling), so Static and Litany skip
+  frozen dice.
+- If both fire in the same round, define the order and tell me what you chose.
+
+UI (use existing components, kept minimal; the UI is being redesigned
+separately):
+- Long-press: the trait (name and one-line effect) appears above the unit's
+  roll breakdown.
+- Evolution picker: the trait is shown in the minimized view of each choice,
+  so the player always knows it before choosing.
+- Battle card: a small trait marker on units that have one, never in portrait
+  corners.
+- When a trait triggers: a brief chip on the unit naming the trait, plus a
+  battle log line, the same pattern as Accrete and Firewall. Respect Reduced
+  Motion and No animations (the chip still appears, without animation).
+- Help/unit reference: show each unit's trait.
+- Copy short, plain, no em dashes."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. Not tuned: Kev
+plays it first.
+
+**The order I chose: Static first, then Litany.** The four round-start traits
+fire heroes first, as the round itself does, so Litany has the last word. On
+dice 8 and 7 the result is 9 and 7 (the other order gives 8 and 8). The
+enemy's trait answers the player's, not the reverse; if that feels wrong in
+play it is one line to flip.
+
+**Readings I made (each is a place the ruling left a choice).**
+
+1. **Mantle Hunt's Pack Rage is on five units**, the three regular and two
+   elite ones by the G-55 role table. Basalt Ape and Magma Drake are tanks in
+   that table and have none (they keep the Accrete keyword). If "every beast
+   but the boss" was meant, that is two lines in `traits.data.json`.
+2. **"At round start" is when the dice have landed**, before planning. All
+   four round-start traits fire there, so the shields and the moved dice are
+   in front of the player while they plan.
+3. **"Skip frozen dice" means pass over them**: the next highest (or lowest)
+   die is taken. A hijacked die is passed over too. A die that cannot move
+   (already 1 or 20, or held by a jam cap) is left alone and no other die is
+   taken in its place.
+4. **Afterburn's burn lasts 2 turns**, and only a detonation that had burn to
+   detonate leaves it.
+5. **Bloodlust is spent by the next attack that leeches**, not by any next
+   attack. Ravager's first window has no leech, so "next attack" read
+   literally would often waste it on a hit that cannot leech.
+6. **Retaliate and Barbed work with no spike up.** Sentinel's taunt and its
+   spike are on different rolls, so "its spike deals +2" while taunting would
+   otherwise never apply.
+7. **Ghost Signal's "while it's cloaked" is cloaked as the ability starts.**
+   Both of Phantom Engineer's jams ride attacks, and the attack breaks the
+   cloak before the jam lands.
+8. **Zero Day's "that round" is until the rewrite ends**: the rest of the
+   round it is applied in, and the round the die shows 3.
+9. **Backup's shield is an ordinary one-round shield**, so it covers the rest
+   of the heroes' attacks that round.
+10. **Kindle heals once for each unit whose burn ticks**, heroes or enemies.
+    Against a squad with burn on all three heroes that is 9 a round.
+11. **Decoy negates the damage of the first attack.** The attack's burn, mark
+    or jam still lands.
+12. **Traits are not abilities**: a Firewall does not block one.
+13. **Bloodlust and Blink print their unit's own first roll window** ("After
+    rolling 1-7"), never a band name, per the band vocabulary rule.
+
+**Two things to know.**
+
+- **Combat Medic now has an ability and a trait both called Triage** (its 1-3
+  ability, "6 heal (hero)", and this trait). I kept the ruling's name. One of
+  them probably wants renaming.
+- **`EnemyData.traits`** (an unused array field) is replaced by `unit_trait`.
+
+**Gate.** `traits`, through `break_gate.py`. Five breaks: `off` (no trait
+applies), `no_chip` (a trait applies without its chip), `frozen_dice` (Static
+and Litany move frozen dice), `litany_first`, `boss_trait` (every unit that
+should have none is given one).
+
 ## G-61. Geode Panther attacks the die it freezes (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

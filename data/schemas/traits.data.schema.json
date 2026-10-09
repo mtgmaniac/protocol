@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unit traits (data/raw/traits.data.json)",
+  "type": "object",
+  "required": ["traits", "evolutions", "enemies"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "traits": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][A-Za-z]*$" },
+      "additionalProperties": { "$ref": "#/$defs/trait" }
+    },
+    "evolutions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]+/[a-z]+$" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "enemies": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "trait": {
+      "type": "object",
+      "required": ["name", "text"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 90, "pattern": "\\.$" },
+        "warn": { "type": "string", "minLength": 1, "maxLength": 24 }
+      },
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    }
+  }
+}

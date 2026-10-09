@@ -143,6 +143,8 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"side": "hero" if accent_color == _scene.HERO_ACCENT else "enemy",
 			"name": unit.battle_name(),
 			"boss": accent_color == _scene.ENEMY_ACCENT and CombatManager.BOSS_STANDING_RULES.has(str(unit.display_name)),
+			"trait": CombatManager.UnitTraits.marker_text(CombatManager.UnitTraits.of_unit(unit)),
+			"trait_warning": CombatManager.UnitTraits.is_warning(CombatManager.UnitTraits.of_unit(unit)),
 			"current_hp": shown_hp,
 			"forecast_hp": forecast_hp,
 			"max_hp": int(state["max_hp"]),
@@ -285,6 +287,7 @@ func _forecast_hero_phase() -> Dictionary:
 			var live: Dictionary = state_variant
 			forecast["after"][str(live["id"])] = live
 	else:
+		cm.protocol_pool = _scene.protocol_points  # Redline reads it, in the forecast as in the round
 		var run: Dictionary = cm.forecast_hero_phase(hero_rolls, enemy_rolls, _scene.dice_manager, raw_hero_rolls)
 		for state_variant in (run["hero_states"] as Array) + (run["enemy_states"] as Array):
 			var after_state: Dictionary = state_variant
@@ -435,6 +438,7 @@ func _enemy_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionar
 		"heal":            total_heal,
 		"shield":          0,
 		"burn":            active_burn,
+		"burn_pierce":     0 if dies else _scene.combat_manager.get_expected_burn_tick_pierce(after),
 		"current_shield":  cur_shield,
 		"lethal":          dies,
 	}
@@ -485,6 +489,7 @@ func _hero_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionary
 		"heal":            total_heal,
 		"shield":          total_shield,
 		"burn":            active_burn,
+		"burn_pierce":     _scene.combat_manager.get_expected_burn_tick_pierce(target_state),
 		"current_shield":  int(target_state.get("shield", 0)),
 		"lethal":          false,
 	}

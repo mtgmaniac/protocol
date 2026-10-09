@@ -53,6 +53,10 @@ func _parse_args() -> Dictionary:
 			# Comma-separated unitId:Path Name pairs, e.g.
 			# --capture-evolve=engineer:Phantom,avalanche:Trench Rig
 			config["evolve"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-comp="):
+			# The battle's enemy lineup by display name, in slot order:
+			# --capture-comp=Volt Enforcer,Patrol Enforcer
+			config["comp"] = arg.get_slice("=", 1).split(",")
 		elif arg.begins_with("--capture-hero-hp="):
 			# Set the first hero's current HP (UI precision acceptance: HP number legibility).
 			config["hero_hp"] = int(arg.get_slice("=", 1))
@@ -223,6 +227,13 @@ func _prepare_run(config: Dictionary) -> void:
 	var battle_number: int = int(config.get("battle_number", DEFAULT_BATTLE_NUMBER))
 	for _i in range(battle_number):
 		_game_state().advance_to_next_battle()
+	if config.has("comp"):
+		var comp_names: Array = []
+		for comp_name in config["comp"]:
+			comp_names.append(str(comp_name).strip_edges())
+		var comps: Array = _game_state().resolved_battle_comps
+		if battle_number - 1 < comps.size():
+			comps[battle_number - 1] = {"names": comp_names, "cloaked": []}
 	var relics: Variant = config.get("relics", null)
 	if relics != null:
 		var relic_ids: Array = []

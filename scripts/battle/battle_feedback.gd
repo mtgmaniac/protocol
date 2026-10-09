@@ -895,6 +895,8 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 				_hex_flash(target_card, Color(0.55, 0.82, 1.0, 0.95))
 		"accrete":
 			_show_accrete_chip(target_card, int(event.get("amount", 0)))
+		"trait":
+			show_trait_chip(target_card, str(event.get("trait_name", "")))
 		"siphon":
 			var bar_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y - 60.0)
 			if _scene.protocol_bar != null and is_instance_valid(_scene.protocol_bar):
@@ -1092,6 +1094,35 @@ const ACCRETE_CHIP_TEXT := "ACCRETE +%d"
 func _show_accrete_chip(card: Control, gained: int) -> void:
 	if gained > 0 and CombatManager.accrete_display_break() != "no_chip":
 		_show_unit_chip(card, ACCRETE_CHIP_TEXT % gained, "AccreteChip")
+
+
+# A trait just triggered (G-62): its name on the unit, the Accrete chip's plate
+# and life. The battle log line beside it says what it did.
+func show_trait_chip(card: Control, trait_name: String) -> void:
+	if trait_name != "" and CombatManager.trait_break() != "no_chip":
+		_show_unit_chip(card, trait_name.to_upper(), "TraitChip")
+
+
+# The round-start traits fire as the dice settle, outside the round's event
+# replay: `fired` is BattleEngine.apply_round_start_traits' list. One chip per
+# unit and one log line per trigger.
+func show_trait_triggers(fired: Array) -> void:
+	var chipped: Dictionary = {}
+	for note_variant in fired:
+		var note: Dictionary = note_variant
+		var state: Dictionary = note.get("state", {})
+		_scene._append_log(str(note.get("text", "")))
+		var state_id: String = str(state.get("id", ""))
+		if chipped.has(state_id):
+			continue
+		chipped[state_id] = true
+		for side in ["hero", "enemy"]:
+			var card: Control = _find_card_by_state_id(side, state_id)
+			if card != null:
+				show_trait_chip(card, str(note.get("name", "")))
+				break
+	if not fired.is_empty():
+		_scene._card_view.refresh_all_cards()
 
 
 # A short word on a filled plate over the unit, for an outcome a number cannot

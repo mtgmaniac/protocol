@@ -294,6 +294,15 @@ GATES = [
         "--script", "scripts/debug/geode_target_test.gd", "--break-arg=--geode-break=",
         "--breaks", "split,stale"],
         "[GEODE_TARGET_GATE] PASS", False),
+    # Unit traits (G-62): who has one (the ruling's roster), all 26 rules by
+    # their data numbers, Static and Litany through the die's one value, the
+    # log line and chip on every trigger, the inspect / card / copy, and a
+    # live round. Breaks: traits off, no chip, frozen dice moved, Litany before
+    # Static, a trait on every unit that should have none.
+    ("traits", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "TRAITS",
+        "--script", "scripts/debug/traits_test.gd", "--break-arg=--trait-break=",
+        "--breaks", "off,no_chip,frozen_dice,litany_first,boss_trait"],
+        "[TRAITS_GATE] PASS", False),
     # Two-tier sim gate (G-58). Part A: the size line and the tripwire on made-up
     # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
     # an unlinked pin). Part B: a REAL change of about 10 points on one
