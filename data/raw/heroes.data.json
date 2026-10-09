@@ -375,14 +375,14 @@
                 18
               ],
               "name": "Backdraft",
-              "eff": "14 damage, detonate",
-              "dmg": 14,
+              "eff": "16 damage, detonate",
+              "dmg": 16,
               "burn": 0,
               "burnT": 0,
               "rfe": 0,
               "heal": 0,
-              "dMin": 14,
-              "dMax": 14,
+              "dMin": 16,
+              "dMax": 16,
               "detonate": true
             },
             {
@@ -887,7 +887,7 @@
             8
           ],
           "name": "Challenge Beacon",
-          "eff": "3 spike, taunt",
+          "eff": "5 spike, taunt",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -896,7 +896,7 @@
           "dMin": 0,
           "dMax": 0,
           "taunt": true,
-          "spike": 3
+          "spike": 5
         },
         {
           "zone": "surge",
@@ -905,7 +905,7 @@
             15
           ],
           "name": "Spike Stance",
-          "eff": "5 shield, 5 spike",
+          "eff": "7 shield, 5 spike",
           "dmg": 0,
           "burn": 0,
           "burnT": 0,
@@ -913,7 +913,7 @@
           "heal": 0,
           "dMin": 0,
           "dMax": 0,
-          "shield": 5,
+          "shield": 7,
           "spike": 5
         },
         {
@@ -985,7 +985,7 @@
                 10
               ],
               "name": "Fortify",
-              "eff": "7 shield, taunt",
+              "eff": "9 shield, taunt",
               "dmg": 0,
               "burn": 0,
               "burnT": 0,
@@ -993,7 +993,7 @@
               "heal": 0,
               "dMin": 0,
               "dMax": 0,
-              "shield": 7,
+              "shield": 9,
               "taunt": true
             },
             {

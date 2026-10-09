@@ -77,6 +77,37 @@ shape or number changed in the swap; the two abilities just changed places.
   points between seed sets by itself. Measured with the
   hero changes of the next two points in.
 
+- **Two heroes brought back toward their old win rate** (G-56 ruling 3),
+  through four numbers of their own:
+
+| Unit | Ability | Rolls | Number | Was | Now |
+|---|---|---|---|--:|--:|
+| Pyro Specialist | Backdraft | 13–18 | damage | 14 | 16 |
+| Spike Guard | Challenge Beacon | 3–8 | spike | 3 | 5 |
+| Spike Guard | Spike Stance | 9–15 | shield | 5 | 7 |
+| Bulwark | Fortify | 3–10 | shield | 7 | 9 |
+
+  Spike Guard won 16.0% with the swaps alone, against 20.1% before the
+  windows. Pulse Tech sat 5.0 points under its old rate once the enemies were
+  tuned (21.6% against 26.6%); raising its base kit's damage did nothing in
+  the sim, so its one number is on Pyro Specialist, the evolution the sim
+  plays. Win rate of runs that include the hero, same batches as above:
+
+| Hero | `main` | Swaps only | Tuned | Change from `main` | New seeds: `main` | New seeds: tuned |
+|---|--:|--:|--:|--:|--:|--:|
+| Pulse Tech | 26.6% | 22.5% | 22.0% | -4.6 | 25.7% | 26.3% |
+| Strike Unit | 31.3% | 31.3% | 33.5% | +2.2 | 30.3% | 32.7% |
+| Spike Guard | 20.1% | 16.0% | 18.5% | -1.6 | 14.8% | 16.1% |
+| Avalanche Suit | 20.0% | 20.5% | 21.5% | +1.5 | 19.3% | 20.3% |
+| Splice Medic | 36.4% | 34.0% | 35.3% | -1.1 | 30.8% | 32.7% |
+| Field Engineer | 23.6% | 22.3% | 24.3% | +0.7 | 24.7% | 24.2% |
+| Ghost Operative | 29.0% | 34.5% | 32.9% | +4.0 | 30.4% | 37.7% |
+| Signal Breaker | 27.2% | 24.5% | 25.2% | -2.0 | 24.7% | 25.4% |
+
+  Pulse Tech ends 4.6 under on the first seed set and level on the second.
+  Ghost Operative is 4 to 7 points up; that is the cloak ambush. No other hero was
+  more than 5 points under.
+
 
 **2026-10-08 new roll windows (Kev, G-53; on branch `claude/cloak-and-windows`, not merged):**
 every unit keeps its five bands and its abilities. Only the ranges changed.

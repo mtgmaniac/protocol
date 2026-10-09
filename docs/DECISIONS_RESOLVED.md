@@ -81,6 +81,32 @@ points of clear rate.
    The full gate's sim leg will stop on the 10-point line for Facility and
    Signal Purge until Kev re-pins.
 
+**As built, ruling 3 (outlier heroes).** Four numbers:
+
+- **Spike Guard:** Challenge Beacon spike 3 to 5; Spike Stance shield 5 to 7.
+  **Bulwark:** Fortify shield 7 to 9. Spike Guard goes 16.0% (swaps alone) to
+  18.5%, against 20.1% before the windows; on the second seed set 16.1%
+  against 14.8%.
+- **Pulse Tech:** Pyro Specialist's Backdraft damage 14 to 16.
+
+**My readings, ruling 3:**
+
+1. **"Pre-windows rate" is the hero's rate on `main`**, the same batch the
+   operation targets came from.
+2. **Pulse Tech counted as an outlier.** With the enemies tuned and Spike
+   Guard's two base numbers in, it was 21.6% against 26.6%, 5.0 under. No
+   other hero was more than 2 under.
+3. **Pulse Tech's number is on its evolution, not its base kit.** +1 damage on
+   Static Ping, Arc Burst and Plasma Lance did not help (21.6% to 20.9%). Backdraft +2 moved it 2 points. The sim always evolves Pulse
+   into Pyro, so this helps the Pyro line only; Arc Specialist is handled by
+   ruling 4.
+4. **Spike Guard's Bulwark number.** The two base numbers alone left it at
+   about 18%; Fortify added about 1.5 points when it went in. Sentinel is matched to Bulwark
+   under ruling 4.
+5. Pulse Tech still reads 4.6 under on the first seed set (22.0%) and level
+   on the second (26.3% against 25.7%). I stopped there: the two sets disagree
+   by more than the gap.
+
 ## G-55. Decisions on the cloak and windows branch (Kev, 2026-10-08)
 
 **Rulings (Kev, transcribed).**
