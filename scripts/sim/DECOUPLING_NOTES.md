@@ -296,6 +296,9 @@ C note) — the sim's first real combat bug, caught by L0/L1 telemetry.
   re-accept, `--runs 2000` for a heavier nightly. Because the sim is
   byte-deterministic and the config is pinned, an unchanged tree reproduces
   the baseline exactly — the diff is an exact regression test.
+  **Superseded 2026-10-09 (G-58):** `ci_smoke.py` is now a two-tier gate, a
+  300-run tripwire per policy and a 1,500-run size check; the tolerances and
+  `--runs` are gone. See `README.md`, "The sim gate".
 - Verified end to end: perturbing Scrap Drone HP 35→90 flagged 18 metrics
   (facility clear 78.9%→19.7%); reverted, CI PASS.
 

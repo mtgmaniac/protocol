@@ -163,10 +163,13 @@ for primers/feedback must be observer-only and never change outcomes.
 - **Numbers move together** (INVARIANTS #8) — tune in passes, measure the whole
   table (`python scripts/sim/ci_smoke.py`, sweeps via `scripts/sim/sweep.py` +
   `scripts/sim/knobs.json`).
-- **Baseline ceremony (INVARIANTS #9):** report per-op deltas vs the pre-change
-  snapshot BEFORE any baseline update; any per-op move beyond **±10 points**
-  requires Kev's sign-off — the commit must contain the literal token
-  `BASELINE-APPROVED-BY-KEV` or the commit-msg hook aborts it.
+- **Baseline ceremony (INVARIANTS #9, two tiers since 2026-10-09, G-58):** the
+  300-run tripwire says THAT combat changed, never by how much; the 1,500-run
+  size check judges it. Report the size table vs the pre-change pins BEFORE any
+  re-pin; a move beyond **8 points on an operation or 4 overall** requires Kev's
+  sign-off — the commit must contain the literal token
+  `BASELINE-APPROVED-BY-KEV` or the commit-msg hook aborts it. Numbers tuned to
+  a target are also reported on a second seed base (INVARIANTS #8).
 - Deferred numbers (#6–#10, #17) re-anchor to the crit-banking checkpoint
   (overall 0.2867); Avalanche 23.7% is the known repricing target — **no ability
   numbers move until that ruling**.
@@ -177,8 +180,8 @@ Installed via `git config core.hooksPath scripts/hooks`.
 
 | Hook | File | Rule |
 |---|---|---|
-| commit-msg | `scripts/hooks/baseline_ceremony.py` | ABORTS a `baseline.json` commit with any per-op drift beyond ±10 pts unless the message contains `BASELINE-APPROVED-BY-KEV` |
-| commit-msg | `scripts/hooks/threshold_guard.py` | the ratchet (INVARIANTS #13): LOOSENING any watched enforcement threshold needs the token; tightening is free. Watched: growth watermarks (max), `CEREMONY_PTS` (max), ci_smoke tolerances (max), `AUDIT_MIN_PASSED` (a FLOOR — lowering needs the token) |
+| commit-msg | `scripts/hooks/baseline_ceremony.py` | ABORTS a sim-pin commit whose 1,500-run size pins move beyond 8 pts on an operation or 4 overall unless the message contains `BASELINE-APPROVED-BY-KEV`; always aborts pins that were not written together |
+| commit-msg | `scripts/hooks/threshold_guard.py` | the ratchet (INVARIANTS #13): LOOSENING any watched enforcement threshold needs the token; tightening is free. Watched: growth watermarks (max), the sim size line `SIZE_OP_PTS` / `SIZE_OVERALL_PTS` (max) and the pinned run counts `SIZE_RUNS` / `TRIPWIRE_RUNS` (floors), `AUDIT_MIN_PASSED` (a FLOOR — lowering needs the token) |
 | pre-commit | `scripts/hooks/battle_scene_growth.py` | WARNS (never blocks) when `battle_scene.gd` (> 2610 lines) or `protocol_actions.gd` (> 971) grows past its watermark — these files get SPLIT, not grown |
 
 Principle: **you can't loosen enforcement on yourself.** Precedents: the
@@ -191,7 +194,7 @@ Godot binary:
 `C:/Users/Kev/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64_console.exe`
 
 ```
-python scripts/verify_gate.py            # everything + per-op delta table (--skip-sim / --runs N)
+python scripts/verify_gate.py            # everything + the two-tier sim leg (--skip-sim)
 npm run validate-data                    # JSON schema gate
 <godot> --headless <proj> scenes/debug/AbilityAuditRunner.tscn   # expect 0 failed, count >= AUDIT_MIN_PASSED
 <godot> --headless <proj> -s scripts/debug/flow_smoke_test.gd
@@ -201,7 +204,7 @@ npm run validate-data                    # JSON schema gate
 <godot> --headless <proj> scenes/debug/freeze_engine_regression.tscn
 <godot> --headless <proj> scenes/debug/DiceTrayPhysicsProbe.tscn  # any dice change: 0/0/0
 <godot> <proj> -- --debug-battle         # windowed battle + screenshot
-python scripts/sim/ci_smoke.py           # balance diff vs baseline.json
+python scripts/sim/ci_smoke.py           # sim tripwire, then the size check if it moved
 ```
 
 Gotchas: run the ability audit as a SCENE (autoloads required), not `--script`;

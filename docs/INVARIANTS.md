@@ -94,14 +94,29 @@ tuning one in isolation is how voidCirclet silently jumped +26 pts (keyword batc
 how freeze=repeat cratered Avalanche −67 pts. Tune in passes, measure the whole table.
 **Violation looks like:** "just bump execute to +10" without a batch run and the per-op
 delta table in the commit.
+**Tuned to a target? Report a second seed base (G-58, Kev 2026-10-09).** Whenever
+numbers are tuned until a batch hits a target, run the before and the after on a second
+seed base the tuning never saw, and report both with the pooled difference. Tuning to one
+set of seeds fits that set: on 2026-10-09 numbers within 1 point of target on the tuned
+set were 3 to 6 points off on a new one. **Violation looks like:** reporting only the
+batch the numbers were tuned on.
 
-## 9. Baseline ceremony (±10)
-`scripts/sim/baseline.json` is only updated after reviewing per-op deltas against the
-pre-change snapshot; any per-op move beyond ±10 points requires Kev's explicit sign-off —
-commit must contain `BASELINE-APPROVED-BY-KEV` (enforced by the commit-msg hook).
-Precedents: voidCirclet +26 (flagged, pass still owed) and freeze=repeat −27.7 overall
-(reported, baseline left stale on purpose). **Violation looks like:** running
-`ci_smoke.py --update-baseline` to "make CI green" after a mechanics change.
+## 9. Baseline ceremony (two tiers: a tripwire, then a size check)
+The sim gate has two tiers (G-58, Kev 2026-10-09; `scripts/sim/ci_smoke.py`).
+**The tripwire:** 300 pinned runs per policy (`l1`, and `l1_evo2` for the second
+evolutions) on every full gate. An unchanged tree reproduces them exactly, so ANY move
+means combat changed. Its size is noise at 300 runs (the same change reads −15 to +19
+points from one block to the next, G-57) and is never judged.
+**The size check:** 1,500 pinned runs, only for a policy whose tripwire moved. A move
+beyond **8 points on an operation or 4 overall** requires Kev's explicit sign-off — the
+commit that re-pins must contain `BASELINE-APPROVED-BY-KEV` (enforced by the commit-msg
+hook, which judges the size pins and refuses pins that were not written together).
+The pins (`baseline.json`, `baseline_pins.json`) are only written by
+`ci_smoke.py --update-baseline`, after reviewing the size table against the pre-change
+pins. Precedents: voidCirclet +26 (flagged, pass still owed) and freeze=repeat −27.7
+overall (reported, baseline left stale on purpose). **Violation looks like:** running
+`ci_smoke.py --update-baseline` to "make CI green" after a mechanics change; reading the
+size of a change off the 300-run tripwire; re-pinning one pin file without the other.
 
 ## 10. Doc supremacy
 TRUTH.md wins every doc conflict; when TRUTH disagrees with code, code wins and TRUTH is
@@ -124,8 +139,8 @@ one enemy) count once; `freezeAnyDice` counts as the pick. **Violation looks lik
 ability needing two different targets ("heal an ally AND jam an enemy").
 
 ## 13. Enforcement thresholds only ratchet DOWN for free
-Raising the battle_scene.gd line watermark — or ANY enforcement threshold (ceremony ±10,
-ci_smoke tolerances) — requires `BASELINE-APPROVED-BY-KEV` in the commit message; lowering
+Raising the battle_scene.gd line watermark — or ANY enforcement threshold (the sim size line,
+the pinned sim run counts) — requires `BASELINE-APPROVED-BY-KEV` in the commit message; lowering
 a threshold is always free. Enforcement that the enforced party can loosen isn't
 enforcement — precedent: the 3378→3416 watermark self-raise for primer wiring, reasonable
 in the moment but decided by the same agent it constrained. For FLOOR-type thresholds

@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """The full verification gate, one command (successor kit, 2026-07-06).
 
-Runs every hard gate, then the balance sim, and prints per-op clear-rate deltas
-vs scripts/sim/baseline.json as a table. Dumb and loud on purpose.
+Runs every hard gate, then the balance sim in two tiers (G-58): a 300-run
+tripwire per policy (any move means combat changed; its size is not judged),
+and, only when the tripwire moves, a 1,500-run size check against the pinned
+line. Config, pins and thresholds live in scripts/sim/ci_smoke.py. Dumb and
+loud on purpose.
 
-  python scripts/verify_gate.py                # everything (sim = 300 runs, ~minutes)
+  python scripts/verify_gate.py                # everything (sim tripwire ~75 s)
   python scripts/verify_gate.py --skip-sim     # hard gates only (fast)
-  python scripts/verify_gate.py --runs 100     # quicker, noisier sim
 
-Exit codes: 0 = all green · 1 = a hard gate FAILED · 3 = gates green but a
-per-op delta exceeds the ±10-point ceremony line (baseline update requires
-Kev's sign-off: commit message must contain BASELINE-APPROVED-BY-KEV — see
-docs/INVARIANTS.md #9).
+Exit codes: 0 = all green · 1 = a hard gate FAILED · 3 = gates green but the
+size check found a move beyond the line, 8 points on an operation or 4 overall
+(the re-pin requires Kev's sign-off: commit message must contain
+BASELINE-APPROVED-BY-KEV — see docs/INVARIANTS.md #9).
 """
 import argparse
 import hashlib
@@ -28,8 +30,6 @@ GODOT = os.environ.get(
     "GODOT_BIN",
     "C:/Users/Kev/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64_console.exe",
 )
-BASELINE = ROOT / "scripts" / "sim" / "baseline.json"
-CEREMONY_PTS = 10.0  # per-op clear-rate points
 # Audit pass-count FLOOR: "0 failed" alone can't see tests silently vanishing
 # (precedent: the Job-2a extraction cost 6 recordings unnoticed until a manual
 # count check). Raise when adding tests; LOWERING needs BASELINE-APPROVED-BY-KEV
@@ -278,6 +278,12 @@ GATES = [
         "--script", "scripts/debug/roll_windows_test.gd", "--break-arg=--roll-windows-break=",
         "--breaks", "shared_table,squeeze"],
         "[ROLL_WINDOWS_LIVE_GATE] PASS", False),
+    # Two-tier sim gate (G-58). Part A: the size line and the tripwire on made-up
+    # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
+    # an unlinked pin). Part B: a REAL change of about 10 points on one
+    # operation (+8% enemy damage in the Hive, ci_smoke.SIZE_BREAK_TUNING) run
+    # through the 1,500-run size check, which must flag it.
+    ("sim size break", [sys.executable, str(ROOT / "scripts" / "checks" / "sim_size_break.py")], "[SIM_SIZE_BREAK] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
     # automatic resume share a flag key by copy; plus listener order and copy.
@@ -362,6 +368,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
     "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
     "reroll hop": 300,          # 10,000 hops in 8 shards + 5 break legs; ~185s measured on Windows
+    "sim size break": 600,      # a 300-run tripwire + one 1,500-run sim batch; ~240s measured on Windows
 }
 
 
@@ -421,36 +428,11 @@ def run_gate(name: str, cmd: list, needle: str, use_shell: bool) -> bool:
     return ok
 
 
-def sim_deltas(runs: int) -> int:
+def sim_deltas() -> int:
     sys.path.insert(0, str(ROOT / "scripts" / "sim"))
-    import ci_smoke  # noqa: E402 — reuse the pinned batch config, one source of truth
+    import ci_smoke  # noqa: E402 — the pinned config, pins and thresholds: one source of truth
 
-    print(f"── balance sim ({runs} runs, pinned ci_smoke config) ...", flush=True)
-    cur = ci_smoke.build_metrics(runs)
-    base = json.loads(BASELINE.read_text())
-    print(f"\n   overall clear: {base['overall_clear']:.4f} -> {cur['overall_clear']:.4f} "
-          f"({(cur['overall_clear'] - base['overall_clear']) * 100:+.1f} pts)")
-    print(f"   {'operation':<18}{'baseline':>10}{'current':>10}{'delta':>9}")
-    beyond = []
-    for op in sorted(base["clear_by_op"]):
-        b = base["clear_by_op"][op]
-        c = cur["clear_by_op"].get(op, 0.0)
-        d = (c - b) * 100
-        flag = "  <-- BEYOND ±10" if abs(d) > CEREMONY_PTS else ""
-        if flag:
-            beyond.append(op)
-        print(f"   {op:<18}{b:>10.4f}{c:>10.4f}{d:>+8.1f}{flag}")
-    if beyond:
-        print(
-            "\n   ⚠ CEREMONY: per-op drift beyond ±10 points ({}). A human signs off\n"
-            "   on drift this size (precedents: voidCirclet +26, freeze=repeat −27.7).\n"
-            "   Do NOT run ci_smoke.py --update-baseline; the baseline commit must\n"
-            "   contain BASELINE-APPROVED-BY-KEV or the commit-msg hook aborts it."
-            .format(", ".join(beyond))
-        )
-        return 3
-    print("   within tolerance.")
-    return 0
+    return ci_smoke.run_two_tier()
 
 
 def main() -> int:
@@ -460,7 +442,6 @@ def main() -> int:
         pass
     ap = argparse.ArgumentParser(description="Full verification gate + baseline delta table")
     ap.add_argument("--skip-sim", action="store_true")
-    ap.add_argument("--runs", type=int, default=300)
     args = ap.parse_args()
 
     kill_lingering_headless()
@@ -475,11 +456,14 @@ def main() -> int:
         print("\nAll hard gates PASS (sim skipped).")
         return 0
     try:
-        rc = sim_deltas(args.runs)
+        rc = sim_deltas()
     except Exception as exc:  # noqa: BLE001 — a crashed sim leg must FAIL loudly
         print(f"\nGATE FAILED: balance sim crashed ({exc})")
         return 1
-    print("\nAll hard gates PASS." + ("" if rc == 0 else " Balance drift needs the ceremony — see above."))
+    if rc == 1:
+        print("\nGATE FAILED: balance sim pins (see above)")
+        return 1
+    print("\nAll hard gates PASS." + ("" if rc == 0 else " A real move beyond the size line needs the ceremony — see above."))
     return rc
 
 

@@ -1,5 +1,52 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 two-tier sim gate (Kev, G-58):** the gate's sim leg is now two
+instruments, because 300 runs can say THAT combat changed but not BY HOW MUCH
+(G-57).
+
+- **Tripwire, every full gate:** 300 pinned runs for `l1` (first evolutions)
+  and 300 for `l1_evo2` (second evolutions), seed base 900000. An unchanged
+  tree reproduces them exactly. Any pinned figure that differs is a move, and
+  the output says so: any move means combat changed, and its size on 300 runs
+  is unreliable and is not judged.
+- **Size check, only when the tripwire moved:** 1,500 pinned runs for the
+  policy that moved. Beyond **8 points on an operation or 4 overall** is the
+  ceremony (exit 3; the re-pin needs `BASELINE-APPROVED-BY-KEV`). Inside the
+  line the gate passes and says to re-pin.
+- **Pins:** `scripts/sim/baseline.json` (the `l1` tripwire, as before) and
+  `scripts/sim/baseline_pins.json` (the `l1_evo2` tripwire and both size
+  pins). `python scripts/sim/ci_smoke.py --update-baseline` writes all four
+  together; pins not written together are refused by the gate and by the
+  commit hook.
+
+| Pin | `l1` tripwire (300) | `l1` size (1,500) | `l1_evo2` tripwire (300) | `l1_evo2` size (1,500) |
+|---|--:|--:|--:|--:|
+| Overall | 0.2600 | 0.2653 | 0.2900 | 0.2760 |
+| Facility | 0.2958 | 0.3246 | 0.3944 | 0.3770 |
+| Hive | 0.3390 | 0.3079 | 0.4068 | 0.3238 |
+| Veil | 0.3231 | 0.2606 | 0.2769 | 0.2866 |
+| Signal Purge | 0.1579 | 0.2391 | 0.1930 | 0.2029 |
+| Mantle Hunt | 0.1458 | 0.1886 | 0.1250 | 0.1785 |
+
+- **The line lives in one place:** `ci_smoke.SIZE_OP_PTS` and
+  `SIZE_OVERALL_PTS`. The old 10-point `CEREMONY_PTS` (two copies) and
+  `ci_smoke`'s tolerance constants are gone. `verify_gate.py --runs` and
+  `ci_smoke.py --runs` are gone too.
+- **Gate `sim size break`** (`scripts/checks/sim_size_break.py`): the line and
+  the tripwire on made-up figures with four in-memory breaks, then a real
+  change through the real size check. +8% enemy damage in the Hive costs the
+  Hive about 10 points (9.8, 8.9 and 10.3 on three seed sets); the size check
+  must flag it. The old check read the same change as -6.8 on its pinned 300
+  runs and would have passed it.
+- **Process rule (INVARIANTS #8):** numbers tuned to a target are also
+  reported on a second seed base.
+- **Tutorial, free rounds:** in tutorial mode the scene sets the tray's
+  requested faces only when the round has a plan
+  (`battle_scene._tutorial_rig_values`). A free round leaves them alone. Same
+  play as before (the tray clears its requests after every throw); it lets
+  `tutorial smoke` hold the heroes' dice for the one round its Burn check
+  depends on, which was live dice and failed about one run in eight (G-58).
+
 **2026-10-09 signature moves and retuning (Kev, G-56 and G-57; merged to `main` 2026-10-09):**
 the new roll windows shrank some bands that held the ability a unit is known
 for. Ten units swap two abilities between two of their own bands. No range,
@@ -195,7 +242,8 @@ shape or number changed in the swap; the two abilities just changed places.
   time (5 of the 10 blocks, and the pinned block too), and by the same spread
   misses a real 10-point move about half the time. The pin still works as a
   tripwire: an unchanged tree reproduces it exactly, so any move at all means
-  combat changed. A proposed setup is in G-57; the gate is as it was.
+  combat changed. The setup proposed in G-57 was built the same day: see
+  the two-tier sim gate entry at the top (G-58).
 - **Tests read the roll from the kit** (G-57). A test that needs a unit to
   use a kind of ability no longer rigs a fixed face. Converted: `preview
   accuracy` (detonate, breach, chain, pierce, execute, single-target attack),
@@ -1933,7 +1981,8 @@ npm run validate-data                                          # JSON schema gat
 <godot> --headless <proj> -s scripts/debug/primer_smoke_test.gd    # keyword primers
 <godot> --headless <proj> -s scripts/debug/run_smoke_test.gd   # one full headless run
 <godot> <proj> -- --debug-battle                                # windowed battle + screenshot
-python scripts/sim/ci_smoke.py                                 # balance diff vs baseline.json
+python scripts/sim/ci_smoke.py                                 # the two-tier sim check: tripwire, then size (G-58)
+python scripts/sim/ci_smoke.py --update-baseline               # re-pin all four pins together (ceremony: INVARIANTS #9)
 python scripts/sim/sweep.py --name X --knob K --values ...     # balance workbench (measurement only; scripts/sim/README.md)
 ```
 Gotcha: `--check-only -s file.gd` false-fails on autoload identifiers; compile-check by `load()` from a headless SceneTree or just run the audit.

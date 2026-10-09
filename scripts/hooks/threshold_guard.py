@@ -18,16 +18,16 @@ TOKEN = "BASELINE-APPROVED-BY-KEV"
 WATCHED = [
     ("scripts/hooks/battle_scene_growth.py", "HIGH_WATER_LINES", "max"),
     ("scripts/hooks/battle_scene_growth.py", "PROTOCOL_ACTIONS_HIGH_WATER", "max"),
-    ("scripts/hooks/baseline_ceremony.py", "CEREMONY_PTS", "max"),
-    ("scripts/sim/ci_smoke.py", "TOL_OVERALL", "max"),
-    ("scripts/sim/ci_smoke.py", "TOL_OP", "max"),
-    ("scripts/sim/ci_smoke.py", "TOL_HERO", "max"),
-    ("scripts/sim/ci_smoke.py", "TOL_LIFT", "max"),
+    # The two-tier sim gate (G-58, Kev 2026-10-09). The ceremony line is the
+    # size line and it lives in ci_smoke.py ONLY: verify_gate imports it and
+    # the ceremony hook reads it from the committed file, so there is no copy
+    # to drift (the old CEREMONY_PTS was kept twice and guarded twice). Fewer
+    # runs is a looser check too: the run counts are floors.
+    ("scripts/sim/ci_smoke.py", "SIZE_OP_PTS", "max"),
+    ("scripts/sim/ci_smoke.py", "SIZE_OVERALL_PTS", "max"),
+    ("scripts/sim/ci_smoke.py", "SIZE_RUNS", "min"),
+    ("scripts/sim/ci_smoke.py", "TRIPWIRE_RUNS", "min"),
     ("scripts/verify_gate.py", "AUDIT_MIN_PASSED", "min"),
-    # verify_gate keeps its OWN copy of the ceremony line. A duplicated constant
-    # is a bug with a delay fuse: guard the copies instead of trusting them to
-    # stay in sync with baseline_ceremony.py.
-    ("scripts/verify_gate.py", "CEREMONY_PTS", "max"),
     # GDScript thresholds (2026-09-02): read_const only ever matched the Python
     # form, so a `const NAME := value` sailed through UNGUARDED — the guard's
     # own "Adding a threshold? List it" was a promise it could not keep. Both of
