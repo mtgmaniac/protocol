@@ -3,13 +3,14 @@
 
 Part A, instant, on made-up figures: the size line (8 points per operation, 4
 overall), the tripwire (any pinned figure that differs is a move), the tie
-between the two pin files, and the commit hook agreeing with the gate. Then
-four in-memory breaks, each of which must make Part A fail:
+between the two pin files, Part B's stamp, and the commit hook agreeing with
+the gate. Then five in-memory breaks, each of which must make Part A fail:
 
     old_line        the per-operation line back at 10 (a 9-point move passes)
     loose_overall   the overall line at 10 (a 5-point move passes)
     blind_tripwire  the tripwire never reports a move
     untied_pins     the tie between the pin files is not checked
+    stale_stamp     Part B's stamp never sees a change (it would never rerun)
 
 Part B, a REAL change run through the real size check: enemy damage in the
 Hive raised by ci_smoke.SIZE_BREAK_TUNING (+8%), which costs about 10 points
@@ -18,12 +19,20 @@ of Hive clear rate (-9.8 / -8.9 / -10.3 on three seed sets, G-58). The
 still reproduces the l1 tripwire, and against a fresh clean batch when it does
 not (a change in progress must not mask or fake the break).
 
-    python scripts/checks/sim_size_break.py              # A + B (about 4 minutes)
+Part B runs only when scripts/sim/ci_smoke.py or a pin file has changed since
+it last passed (Kev 2026-10-09, G-59). A passing Part B writes the fingerprint
+of those three files to scripts/sim/size_break_stamp.json; while the stamp
+matches, Part B is skipped and the gate says so. Commit the stamp with the
+change that moved it.
+
+    python scripts/checks/sim_size_break.py              # A; B only if ci_smoke.py or the pins changed
+    python scripts/checks/sim_size_break.py --real       # A + B (about 4 minutes), whatever the stamp says
     python scripts/checks/sim_size_break.py --logic-only # A only
 
 Prints [SIM_SIZE_BREAK] PASS, exit 0; anything else is a failure.
 """
 import copy
+import hashlib
 import json
 import sys
 import tempfile
@@ -36,6 +45,39 @@ import ci_smoke  # noqa: E402
 import baseline_ceremony  # noqa: E402
 
 OPS = ["facility", "hive", "stellarMenagerie", "veil", "voidCirclet"]
+
+# Part B reruns when any of these changes (G-59). The stamp holds their
+# fingerprint from the last time Part B passed.
+STAMP = ROOT / "scripts" / "sim" / "size_break_stamp.json"
+STAMPED_FILES = [Path(ci_smoke.__file__).resolve(), ci_smoke.BASELINE, ci_smoke.PINS]
+CRLF, LF, SEP = bytes([13, 10]), bytes([10]), bytes([0])
+
+
+def stamp_fingerprint(files: list = None) -> str:
+    """sha256 over the stamped files, line endings normalized (a checkout's
+    CRLF must not read as a change)."""
+    h = hashlib.sha256()
+    for path in (files or STAMPED_FILES):
+        h.update(Path(path).name.encode("utf-8") + SEP)
+        h.update(Path(path).read_bytes().replace(CRLF, LF) + SEP)
+    return h.hexdigest()
+
+
+def real_leg_due(stamp: Path = None, files: list = None) -> bool:
+    """True when ci_smoke.py or a pin file differs from the last passing Part B."""
+    try:
+        return json.loads((stamp or STAMP).read_text(encoding="utf-8"))["part_b_passed_for"] != stamp_fingerprint(files)
+    except (OSError, ValueError, KeyError):
+        return True
+
+
+def write_stamp() -> None:
+    body = json.dumps({
+        "_note": "Written by scripts/checks/sim_size_break.py when its real leg (Part B) passes. Never edit by hand.",
+        "files": [p.relative_to(ROOT).as_posix() for p in STAMPED_FILES],
+        "part_b_passed_for": stamp_fingerprint(),
+    }, indent=2)
+    STAMP.write_bytes(body.encode("utf-8") + LF)
 
 
 def made_up(runs: int = 1500) -> dict:
@@ -115,6 +157,27 @@ def logic_failures() -> list:
         finally:
             ci_smoke.BASELINE, ci_smoke.PINS = real_base, real_pins
 
+    # Part B's stamp (G-59), on scratch copies: due with no stamp, skipped once
+    # stamped, and due again when any one stamped file changes.
+    with tempfile.TemporaryDirectory() as scratch:
+        copies = []
+        for src in STAMPED_FILES:
+            dst = Path(scratch) / src.name
+            dst.write_bytes(src.read_bytes())
+            copies.append(dst)
+        stamp = Path(scratch) / "stamp.json"
+        expect(real_leg_due(stamp, copies), "with no stamp the real leg is due")
+        stamp.write_text(json.dumps({"part_b_passed_for": stamp_fingerprint(copies)}), encoding="utf-8")
+        expect(not real_leg_due(stamp, copies), "with a matching stamp the real leg is skipped")
+        copies[0].write_bytes(copies[0].read_bytes().replace(CRLF, LF).replace(LF, CRLF))
+        expect(not real_leg_due(stamp, copies), "line endings alone are not a change")
+        for dst in copies:
+            before = dst.read_bytes()
+            dst.write_bytes(before + b"# changed")
+            expect(real_leg_due(stamp, copies), f"a change to {dst.name} makes the real leg due")
+            dst.write_bytes(before)
+        expect(not real_leg_due(stamp, copies), "with the files put back the real leg is skipped again")
+
     # The commit hook must judge what the gate judges.
     expect(baseline_ceremony.digest(pin) == ci_smoke.digest(pin), "the hook's digest is the gate's")
     hook = lambda cur: baseline_ceremony.beyond_the_line({"l1": pin}, {"l1": cur}, ci_smoke.SIZE_OP_PTS, ci_smoke.SIZE_OVERALL_PTS)  # noqa: E731
@@ -126,7 +189,9 @@ def logic_failures() -> list:
 
 
 def with_break(name: str) -> list:
+    global stamp_fingerprint
     saved = (ci_smoke.SIZE_OP_PTS, ci_smoke.SIZE_OVERALL_PTS, ci_smoke.tripwire_moves, ci_smoke.digest)
+    saved_fingerprint = stamp_fingerprint
     try:
         if name == "old_line":
             ci_smoke.SIZE_OP_PTS = 10.0
@@ -137,8 +202,11 @@ def with_break(name: str) -> list:
         elif name == "untied_pins":
             tie = json.loads(ci_smoke.PINS.read_text(encoding="utf-8"))["pinned_with"]
             ci_smoke.digest = lambda metrics: tie
+        elif name == "stale_stamp":
+            stamp_fingerprint = lambda files=None: "unchanged"
         return logic_failures()
     finally:
+        stamp_fingerprint = saved_fingerprint
         ci_smoke.SIZE_OP_PTS, ci_smoke.SIZE_OVERALL_PTS, ci_smoke.tripwire_moves, ci_smoke.digest = saved
 
 
@@ -153,14 +221,19 @@ def main() -> int:
     for what in clean:
         errors.append(f"part A: {what}")
     print(f"part A: {'the size line, the tripwire, the pin tie and the hook hold' if not clean else '%d check(s) failed' % len(clean)}")
-    for name in ("old_line", "loose_overall", "blind_tripwire", "untied_pins"):
+    for name in ("old_line", "loose_overall", "blind_tripwire", "untied_pins", "stale_stamp"):
         caught = with_break(name)
         if caught:
             print(f"part A: break {name} is caught ({caught[0]})")
         else:
             errors.append(f"part A: break {name} was NOT caught")
 
-    if "--logic-only" not in sys.argv and not errors:
+    run_real = "--logic-only" not in sys.argv and not errors
+    if run_real and "--real" not in sys.argv and not real_leg_due():
+        run_real = False
+        print("part B: skipped. scripts/sim/ci_smoke.py and the pin files are unchanged since it last passed "
+              "(scripts/sim/size_break_stamp.json). --real runs it anyway")
+    if run_real:
         pins = ci_smoke.load_pins()
         tripwire = ci_smoke.build_metrics(ci_smoke.TRIPWIRE_RUNS, "l1")
         if ci_smoke.tripwire_moves(tripwire, pins["tripwire"]["l1"]):
@@ -181,6 +254,9 @@ def main() -> int:
         others = [name for name in hit if name not in (op, "overall")]
         if others:
             errors.append(f"part B: the break touches only {op}, but the size check also flagged {', '.join(others)}")
+        if not errors:
+            write_stamp()
+            print("part B: passed; stamp written (commit scripts/sim/size_break_stamp.json if it changed)")
 
     if errors:
         for line in errors:

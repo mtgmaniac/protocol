@@ -1,0 +1,9 @@
+{
+  "_note": "Written by scripts/checks/sim_size_break.py when its real leg (Part B) passes. Never edit by hand.",
+  "files": [
+    "scripts/sim/ci_smoke.py",
+    "scripts/sim/baseline.json",
+    "scripts/sim/baseline_pins.json"
+  ],
+  "part_b_passed_for": "2e31dd973f2d3190226aabbd764b846a0dfec2dca7e118e946d6d96dce33aa09"
+}

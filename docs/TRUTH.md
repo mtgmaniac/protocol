@@ -1,5 +1,21 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 working rules and the break gate's real leg (Kev, G-59):**
+
+- **The full gate is run only when the prompt asks for it.** During a task,
+  run the gates related to the change; after a fix, rerun the gate that
+  failed. An unrelated failure or flake is reported, not investigated. The
+  five rules are in the root `CLAUDE.md`, "Working rules". This replaces "run
+  the full gate once at the end of every task".
+- **`sim size break` runs its real leg only when `scripts/sim/ci_smoke.py`,
+  `baseline.json` or `baseline_pins.json` has changed since that leg last
+  passed.** A pass writes the three files' fingerprint to
+  `scripts/sim/size_break_stamp.json` (committed; line endings do not count
+  as a change). While the stamp matches, the gate runs its made-up-figures
+  part only and says the real leg was skipped: under a second instead of
+  about 4 minutes. `--real` forces it. A fifth in-memory break, `stale_stamp`
+  (a stamp that never sees a change), must fail the gate.
+
 **2026-10-09 two-tier sim gate (Kev, G-58):** the gate's sim leg is now two
 instruments, because 300 runs can say THAT combat changed but not BY HOW MUCH
 (G-57).

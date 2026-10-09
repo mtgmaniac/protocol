@@ -1,5 +1,49 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-59. Working rules; the break gate's real leg runs on change (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"sim size break: run its real leg only when ci_smoke.py or the pin files
+change, not on every full gate.
+
+Working rules
+- Never run the full verify_gate.py unless the prompt explicitly asks for it.
+  Run only gates related to the change.
+- After fixing a failure, rerun only the gate that failed, not the full suite.
+- If an unrelated test fails or looks flaky, report it and move on. Don't
+  investigate unless asked.
+- Time-box: if a task runs well past its main work, stop and report where
+  things stand instead of continuing.
+- Before any wait longer than 10 minutes, check the process is alive and
+  progressing."
+
+**As built.**
+
+- The rules are in the root `CLAUDE.md` under "Working rules". The older
+  "Verification policy" paragraph there said to run the full gate once at the
+  end of every task; it now defers to the rules. `docs/TASK_TEMPLATE.md` says
+  the same.
+- **The real leg's trigger is a committed stamp**,
+  `scripts/sim/size_break_stamp.json`: the sha256 of `scripts/sim/ci_smoke.py`,
+  `baseline.json` and `baseline_pins.json` (line endings normalized), written
+  by `sim_size_break.py` when the real leg passes. The gate runs the real leg
+  when the stamp is missing or does not match, and otherwise prints that it
+  was skipped. `--real` forces it; `--logic-only` is unchanged.
+- **Why a stamp and not git:** "changed" has to mean the same thing before
+  and after a commit, on any clone. A diff against HEAD is empty the moment
+  the change is committed, so the leg would never run in a gate after the
+  commit.
+- **The first stamp was written without rerunning the leg.** It passed on
+  `cf30e31` (222 seconds, Hive flagged at -9.8) and none of the three files
+  has changed since.
+- **Not in the trigger, by the ruling:** game data and combat code. A combat
+  change moves the tripwire, and re-pinning for it changes the pin files,
+  which makes the real leg due.
+- **Deliberate break:** `stale_stamp` (the fingerprint never changes) joins
+  the four in Part A. The clean run also checks that a change to each of the
+  three files, one at a time, makes the leg due, and that CRLF alone does not.
+
 ## G-58. Two-tier sim gate (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

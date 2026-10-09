@@ -282,7 +282,9 @@ GATES = [
     # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
     # an unlinked pin). Part B: a REAL change of about 10 points on one
     # operation (+8% enemy damage in the Hive, ci_smoke.SIZE_BREAK_TUNING) run
-    # through the 1,500-run size check, which must flag it.
+    # through the 1,500-run size check, which must flag it. Part B runs only
+    # when scripts/sim/ci_smoke.py or a pin file changed since it last passed
+    # (scripts/sim/size_break_stamp.json, G-59); otherwise this gate is instant.
     ("sim size break", [sys.executable, str(ROOT / "scripts" / "checks" / "sim_size_break.py")], "[SIM_SIZE_BREAK] PASS", False),
     ("web loader palette", [sys.executable, str(ROOT / "scripts" / "checks" / "web_loader_palette.py")], "[WEB_LOADER_PALETTE] PASS", False),
     # App-switch freeze: the shell's lost-display overlay and the menu's
@@ -368,7 +370,7 @@ GATE_TIMEOUT_OVERRIDES = {
     "dice face": 240,           # (k) on every physics step + part S six-die stress; ~100s measured on Linux
     "dice face 540x1200": 240,  # same gate at the half-size window; ~100s measured on Linux
     "reroll hop": 300,          # 10,000 hops in 8 shards + 5 break legs; ~185s measured on Windows
-    "sim size break": 600,      # a 300-run tripwire + one 1,500-run sim batch; ~240s measured on Windows
+    "sim size break": 600,      # instant unless ci_smoke.py or the pins changed (G-59); then a 300-run tripwire + one 1,500-run sim batch, ~240s measured on Windows
 }
 
 

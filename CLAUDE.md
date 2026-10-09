@@ -20,10 +20,16 @@ Every task follows [docs/TASK_TEMPLATE.md](docs/TASK_TEMPLATE.md). The full gate
 `python scripts/verify_gate.py` (also `/verify`). One-time per clone:
 `git config core.hooksPath scripts/hooks` (baseline ceremony + growth warning).
 
-**Verification policy:** During work, run only the gates relevant to the change. After fixing a
-failure, rerun only the failing gate and closely related ones. Run the full
-gate (`scripts/verify_gate.py`) once, at the end of the task, before handing
-back. Use `--skip-sim` unless the change can affect combat or balance.
+**Verification policy:** see "Working rules" below. Run only the gates related to the
+change; the full gate (`scripts/verify_gate.py`) runs only when the prompt asks for it.
+When it is asked for, use `--skip-sim` unless the change can affect combat or balance.
+
+## Working rules
+- Never run the full verify_gate.py unless the prompt explicitly asks for it. Run only gates related to the change.
+- After fixing a failure, rerun only the gate that failed, not the full suite.
+- If an unrelated test fails or looks flaky, report it and move on. Don't investigate unless asked.
+- Time-box: if a task runs well past its main work, stop and report where things stand instead of continuing.
+- Before any wait longer than 10 minutes, check the process is alive and progressing.
 
 When any doc conflicts, **docs/TRUTH.md wins** (it supersedes `offline-bundle/GROUND_TRUTH.md`).
 

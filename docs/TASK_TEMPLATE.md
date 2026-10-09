@@ -14,7 +14,8 @@ STEP 0 — CONTEXT (do before any edit):
 - Read docs/TRUTH.md, then docs/INVARIANTS.md, then docs/DECISIONS_RESOLVED.md
   (check the task doesn't relitigate a ruling; if it implements a RULED-pending
   item, transcribe the ruling text into DECISIONS_RESOLVED.md FIRST).
-- Run the baseline gate on the untouched tree and record the per-op snapshot:
+- Only when the prompt asks for the full gate: run it on the untouched tree and
+  record the per-op snapshot (root CLAUDE.md, "Working rules", G-59):
     python scripts/verify_gate.py            (or --skip-sim if no balance surface)
 
 CONSTRAINTS (explicit, incl. relevant invariants by number):
@@ -26,7 +27,8 @@ CHANGE:
 - <the actual work, smallest coherent slice>
 
 VERIFY (all must pass; paste outputs):
-- python scripts/verify_gate.py
+- the gates related to the change, by name (the full `python scripts/verify_gate.py`
+  only when the prompt asks for it; G-59)
 - <task-specific regression: name the new/updated test in ability_audit.gd or
   the dedicated runner that pins the changed behavior>
 

@@ -122,6 +122,7 @@ hive enters the 25–40% band at **≈0.75–0.78**, with a breakpoint cliff bel
 python scripts/sim/ci_smoke.py                   # tripwire; size check only if it moved
 python scripts/sim/ci_smoke.py --update-baseline # re-pin all four pins together
 python scripts/checks/sim_size_break.py          # the deliberate breaks (gate `sim size break`)
+python scripts/checks/sim_size_break.py --real   # the same, with the real 1,500-run leg forced
 ```
 
 The sim is byte-deterministic and the batches are pinned (seed base 900000), so
@@ -137,6 +138,10 @@ an unchanged tree reproduces the pins exactly.
 - **Pins:** `baseline.json` (`l1` tripwire) and `baseline_pins.json`
   (`l1_evo2` tripwire, both size pins, and a tie to `baseline.json`). Never
   edit either by hand.
+- **The break gate's real leg** (a real change through the 1,500-run size
+  check, about 4 minutes) runs only when `ci_smoke.py` or a pin file has
+  changed since it last passed (G-59). A pass writes `size_break_stamp.json`;
+  commit it with the change. The made-up-figures part runs every time.
 - **Tuning to a target:** also run the before and the after on a second seed
   base and report both (INVARIANTS #8). A fit to one seed set flatters itself.
 
