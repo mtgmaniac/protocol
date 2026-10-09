@@ -30,6 +30,13 @@ Policies: **stub** (auto-target, no spends) · **L0** random-legal (floor) ·
 **L1** greedy heuristic (the workhorse; focus fire + band-aware spends) · **L2**
 exact round solver (searches order × targets × spends on the real engine).
 
+**Evolutions:** every policy but L0 takes each hero's FIRST evolution (Pyro,
+Blade Trooper, Bulwark, Glacier Rig, Combat Medic, Overclock Engineer, Shadow
+Operative, Noise Specialist), so the pinned baseline has never played the
+other eight. `--policy l1_evo2` is plain L1 taking the second one (Arc,
+Ravager, Sentinel, Trench Rig, Synth Medic, Phantom Engineer, Wraith,
+Nullwire). Run both when a change touches hero kits.
+
 ## Analysis (needs `pip install -r requirements.txt`)
 
 ```bash

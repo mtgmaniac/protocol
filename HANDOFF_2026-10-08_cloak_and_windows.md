@@ -384,3 +384,173 @@ all 79 hard gates of that commit pass.
 - `scripts/debug/state_hash_tripwire.py` is still stale on `main` and is not
   in the gate.
 - `battle_scene.gd` and `protocol_actions.gd` were not touched.
+
+## Follow-up (2026-10-09): your six decisions
+
+Rulings: G-55. Where this differs from the sections above, it wins.
+
+| Commit | Decision | Change |
+|---|---|---|
+| `bf3bb20` | 3, 4 | Roles by kit; Phaseblade tops out on the 20 |
+| this commit | 2 | The signature-move list, for your approval. Nothing swapped |
+| this commit | | Sim: a policy that plays the second evolutions (`l1_evo2`) |
+
+Not done, waiting on you: the swaps (item 2) and the number tuning (item 5,
+which you set after items 2 to 4). No ability number has changed.
+
+**1. Cloak** stays at +50%. **6.** Shadow's back-to-back ambush, Rampage with
+ambush and the low band reading are recorded as accepted.
+
+**3. Roles by kit.** Three units changed shape:
+
+| Unit | Was | Now |
+|---|---|---|
+| Ash Channeler | tank, 1–3 / 4–8 / 9–13 / 14–19 / 20 | elite, 1–4 / 5–8 / 9–11 / 12–19 / 20 |
+| Oath Binder | tank, same | elite, same |
+| Caustic Spewer | tank, 1–4 / 5–11 / 12–17 / 18–19 / 20 | elite, 1–5 / 6–11 / 12–15 / 16–19 / 20 |
+
+Every other tank protects itself by kit and stays as it was (Heavy Warden,
+Broodwarden, Resonance Warden, Basalt Ape, Magma Drake; Stormweaver is a
+support, the same shape). Cinder Raptor stays an elite. The encounter slots
+still use their own HP-based classifier; I did not touch it.
+One reading: **Oath Binder is an elite** because four of its five bands are
+attacks. If a debuffer should count as a support, it keeps its old windows.
+
+**4. Phaseblade** is 1–3 / 4–8 / 9–14 / 15–19 / 20. Spine Stalker keeps
+19–20.
+
+Clear rates after items 3 and 4 (1,500 matched runs): overall 23.9% to 24.1%.
+No operation moved more than one point.
+
+### 2. Signature moves: the list
+
+A swap exchanges two abilities between two bands of one unit. The ranges
+stay. "Faces" is how many of the 20 the ability fires on: before the windows,
+now, and after the swap.
+
+**Heroes.**
+
+| # | Unit | Ability that shrank | Faces | Swap with | After | My view |
+|---|---|---|---|---|---|---|
+| H1 | Spike Guard | Challenge Beacon (3 spike, taunt) | 6 to 2 | Reactive Cover (band 2) | taunt 6, Reactive Cover 2 | Yes |
+| H2 | Sentinel | Challenge (4 shield, taunt) | 5 to 2 | Punish (band 3) | taunt 7, Punish 2 | Yes |
+| H3 | Bulwark | Fortify (7 shield, taunt) | 6 to 2 | Cover Fire (band 2) | taunt 8, Cover Fire 2 | Yes |
+| H4 | Avalanche Suit | Cryo Lattice (freeze any die) | 6 to 3 | Whiteout Spray (band 3) | freeze-any 5, Whiteout Spray 3 | Yes |
+| H5 | Ravager | Siphon Slash and Deep Extraction (leech) | 5 + 5 to 2 + 2 | Deep Extraction with Wound Ignition (band 4) | leech 10 plus the 20, detonate 2 | Yes |
+| H6 | Pulse Tech | Arc Burst and Plasma Lance (burn) | 6 + 6 to 4 + 4 | Plasma Lance with Flash Detonation (band 4) | burn 10 plus the 20, detonate 4 | Yes, mildly |
+| H7 | Signal Breaker | Phase Tear (12 damage, jam) | 6 to 4 | Harmonic Glitch (band 3) | jam 6, Harmonic Glitch 4 | Your call; I would skip |
+
+- **H2** could go to band 2 instead (taunt 5 faces), but that band holds
+  Counter Stance, Sentinel's spike, which is the other half of its name.
+- **H3**: taunt is not Bulwark's stated focus ("Squad-wide shields"), but it
+  is the kit's only taunt, and it is the swap the sim rewards most (below).
+- **H5**: without it Ravager, "Leech-fueled brawling", leeches on 5 faces of
+  20 and detonates on 8.
+- **H6**: Pulse "plants burn on every hit" but now plants it on 9 faces and
+  detonates on 6. The tutorial's scripted die is not affected.
+
+Checked, no swap proposed:
+
+- **Shadow Operative.** Its two hit-and-cloak moves went from 10 faces to 7.
+  The only wider band is band 4 (9 faces); putting one there would have it
+  cloaked on 65% of rolls.
+- **Glacier Rig.** Permafrost Weave (freeze any die) went 6 to 3, but its
+  other freeze grew: 13 freeze faces before, 12 now.
+- **Pyro.** Two burn bands went 5 to 3 each; burn overall 16 faces to 14.
+- **Phantom Engineer.** Stealth Field 5 to 3; cloak overall 10 to 8.
+- **Splice Medic** (Infusion 7 to 5) and **Trench Rig** (Stabilize 6 to 2,
+  while its named taunt and firewall grew).
+
+**Enemies.**
+
+| # | Unit | Ability that shrank | Faces | Swap with | After | My view |
+|---|---|---|---|---|---|---|
+| E1 | Pumice Climber | Pumice Grasp (pack bonus) | 6 to 3 | Arterial Bite (band 4) | pack attack 7, Arterial Bite 3 | Yes |
+| E2 | Obsidian Hound, Slag Hound | Rending Fang (pack bonus) | 6 to 3 | Throat Clamp (band 4) | pack attacks 7 plus the 20, Throat Clamp 3 | Yes |
+| E3 | Oath Binder | Compulsion (14 damage, -1 roll) | 6 to 4 | Dominion Bolt (band 4) | roll penalties 12, plain bolt 4 | Yes |
+| E4 | Ash Channeler | Cinder Litany (15 damage, burn) | 6 to 3 | Sacrificial Drain (band 4) | burn 8 plus the 20, drain 3 | Yes |
+| E5 | Heavy Warden | Field Service (7 shield, 4 heal, self) | 4 to 2 | Crushing Blow (band 2) | self-heal 7, Crushing Blow 2 | I would skip |
+| E6 | Resonance Warden | Harmonic Mend (shield, heal, firewall, self) | 4 to 2 | Resonant Slam (band 2) | self-heal 6, Resonant Slam 2 | I would skip |
+
+- **E3 and E4** come from item 3. In the elite shape band 4 is 8 faces. For
+  Oath Binder that band holds a plain 19 damage; for Ash Channeler it holds a
+  2 Protocol drain, on 40% of its rolls.
+- **E5 and E6** are your tank example, but the middle band is wider than
+  their old band 1 (4 faces): a Warden that heals itself on 30 to 35% of
+  rolls makes its fights longer. Their named traits did not shrink.
+
+Checked, no swap proposed:
+
+- **Circuit Acolyte.** Rewrite went 6 to 3 and drain 6 to 4, but its
+  first-named trait, the firewall, went from 7 faces to 12.
+- **False Image.** The shield wipe went 6 to 3; its hijack went 3 to 8.
+- **Shield Enforcer, Aegis Anchor, Stormweaver, Relay Herald.** Their opener
+  went 4 to 2, but every other band carries the same ally shields and roll
+  bonuses, and those grew. Relay Herald's firewall is only on that opener.
+
+**What the sim says about the swaps: very little.** They restore what a unit
+is known for; they barely move win rates.
+
+| 1,500 matched runs | `main` | Branch now | + H1, H2, H4, H5, H6, E1 to E4 | + H3, H7 |
+|---|--:|--:|--:|--:|
+| Overall | 26.7% | 24.1% | 24.5% | 25.5% |
+| Spike Guard | 20.1% | 11.6% | 12.9% | 15.5% |
+| Bulwark (picked) | 23.7% | 14.6% | 17.0% | 20.2% |
+| Pulse Tech | 26.6% | 20.9% | 21.4% | 23.0% |
+
+Spike Guard's fall in the sim is mostly Bulwark, because of the next point.
+
+### The sim only ever played first evolutions
+
+Its player takes each hero's first evolution every time: Pyro, Blade Trooper,
+Bulwark, Glacier Rig, Combat Medic, Overclock Engineer, Shadow Operative,
+Noise Specialist. The other eight have never been in a batch, the pinned
+baseline included. So yesterday's hero figures say nothing about Sentinel,
+Ravager and the rest.
+
+I added a sim-only policy, `l1_evo2`, that takes the second evolution. The
+default is untouched, so the pinned batch is byte for byte what it was.
+
+| 1,500 runs, second evolutions | `main` | Branch now | + recommended swaps |
+|---|--:|--:|--:|
+| Overall | 17.7% | 20.6% | 19.8% |
+| Facility | 31.8% | 31.8% | 32.4% |
+| Hive | 18.2% | 33.3% | 29.4% |
+| Veil | 13.5% | 14.2% | 13.9% |
+| Signal Purge | 17.5% | 11.3% | 9.6% |
+| Mantle Hunt | 7.7% | 12.5% | 13.8% |
+| Sentinel (picked) | 11.9% | 13.1% | 14.3% |
+| Ravager (picked) | 23.1% | 26.6% | 25.1% |
+| Phantom Engineer (picked) | 10.6% | 20.5% | 20.1% |
+
+Second evolutions are much weaker than first ones in the sim, on `main` too
+(17.7% against 26.7%). That is older than this branch.
+
+### 5. Tuning: where it starts, and how I plan to do it
+
+Against your targets, after items 3 and 4:
+
+| Operation | Target | Now | With the recommended swaps |
+|---|--:|--:|--:|
+| Facility | 37.5% | 32.4% | 32.4% |
+| Hive | 29.4% | 38.0% | 38.3% |
+| Veil | 23.3% | 18.1% | 18.1% |
+| Signal Purge | 27.2% | 18.9% | 19.5% |
+| Mantle Hunt | 16.7% | 13.5% | 14.1% |
+
+My plan, unless you say otherwise:
+
+- Tune **enemy** ability numbers, operation by operation, since the targets
+  are per operation and a hero number moves all five at once. Damage first;
+  shield and heal where an operation needs it.
+- Measure on the standard batch (first evolutions), which is how your targets
+  were measured, and report the second-evolution batch beside it.
+- Leave hero numbers alone. That leaves Spike Guard low (about 13 to 15%).
+  Say if you want hero gaps closed too.
+
+### Gates (targeted only, as asked)
+
+On `bf3bb20`: `validate-data`, `roll windows`, `roll windows live`, `cloak
+ambush` and `unlock progression` all pass. The full gate was not run. Godot
+ran from the scratch copy through `GODOT_BIN`, with `APPDATA` on a scratch
+folder (the editor is open on the project).
