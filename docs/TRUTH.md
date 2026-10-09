@@ -1,6 +1,6 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
-**2026-10-09 signature moves and retuning (Kev, G-56; on branch `claude/cloak-and-windows`, not merged):**
+**2026-10-09 signature moves and retuning (Kev, G-56 and G-57; merged to `main` 2026-10-09):**
 the new roll windows shrank some bands that held the ability a unit is known
 for. Ten units swap two abilities between two of their own bands. No range,
 shape or number changed in the swap; the two abilities just changed places.
@@ -170,9 +170,10 @@ shape or number changed in the swap; the two abilities just changed places.
 | Mantle Hunt | 7.7% | 13.8% | 12.5% | 17.2% |
 | Overall | 17.7% | 19.8% | 26.7% | 29.1% |
 
-- **Baseline not re-pinned** (Kev decides). On the pinned 300 runs:
+- **Baseline re-pinned to the tuned game (2026-10-09,
+  BASELINE-APPROVED-BY-KEV, G-57).** The pinned 300 runs moved:
 
-| Pinned 300 runs | `baseline.json` | tuned | change |
+| Pinned 300 runs | old pin | new pin | change |
 |---|--:|--:|--:|
 | Facility | 40.8% | 29.6% | -11.3 |
 | Hive | 25.4% | 33.9% | +8.5 |
@@ -181,13 +182,31 @@ shape or number changed in the swap; the two abilities just changed places.
 | Mantle Hunt | 16.7% | 14.6% | -2.1 |
 | Overall | 28.3% | 26.0% | -2.3 |
 
-  About 60 runs per operation: it disagrees with both 1,500-run sets, and
-  `verify_gate.py`'s sim leg will stop on the 10-point line for Facility and
-  Signal Purge until it is re-pinned. Full report:
-  `HANDOFF_2026-10-08_cloak_and_windows.md`, "Follow-up 2".
+  About 60 runs per operation: it disagrees with both 1,500-run sets. Kev
+  signed off the two moves beyond 10 points (Facility, Signal Purge). Full
+  report: `HANDOFF_2026-10-08_cloak_and_windows.md`, "Follow-up 2" and
+  "Follow-up 3".
+- **How noisy the pinned 300 runs are, measured (G-57; nothing changed
+  yet).** The same change (`main` to the tuned game) read on ten separate
+  300-run blocks gave per-operation moves from -15 to +19 points, standard
+  deviation 5 to 9 points per operation and 4 overall. Its real size, on
+  3,000 runs, is under 2.5 points on every operation. So the 10-point line
+  on 300 runs trips on a change with almost no real effect about half the
+  time (5 of the 10 blocks, and the pinned block too), and by the same spread
+  misses a real 10-point move about half the time. The pin still works as a
+  tripwire: an unchanged tree reproduces it exactly, so any move at all means
+  combat changed. A proposed setup is in G-57; the gate is as it was.
+- **Tests read the roll from the kit** (G-57). A test that needs a unit to
+  use a kind of ability no longer rigs a fixed face. Converted: `preview
+  accuracy` (detonate, breach, chain, pierce, execute, single-target attack),
+  `freeze regression`, `action motion`, `accrete display`, `taunt planning
+  chip`, the live part of `cloak ambush`, and the detonate capture in
+  `battle_ui_capture.gd`. Left as they are, on purpose: the tutorial's own
+  scripted dice and the checks of its math, the gear checks whose subject is
+  a band edge, tests on made-up units, and dice that only have to land.
 
 
-**2026-10-08 new roll windows (Kev, G-53; on branch `claude/cloak-and-windows`, not merged):**
+**2026-10-08 new roll windows (Kev, G-53; merged to `main` 2026-10-09):**
 every unit keeps its five bands and its abilities. Only the ranges changed.
 Very few units fire their top ability on more than a 20.
 
@@ -308,7 +327,7 @@ Very few units fire their top ability on more than a 20.
   re-measured with `scripts/debug/tutorial_outcome_sim.gd` (1,000 seeds per
   battle, two policies): no losses, no stalls; median / longest win 3 / 6 and
   4 / 7 rounds (basic), 3 / 5 and 4 / 6 (L1).
-- **Sim, baseline not re-pinned (Kev decides after review):**
+- **Sim, baseline not re-pinned (Kev decides after review; re-pinned 2026-10-09, G-57):**
 
 | Clear rate | before (`main`) | cloak only | cloak + windows | change |
 |---|--:|--:|--:|--:|
@@ -338,7 +357,7 @@ Very few units fire their top ability on more than a 20.
   the data, the four band shifts on all 24 hero kits; breaks `shared_table`,
   `squeeze`).
 
-**2026-10-08 cloak is an ambush (Kev, G-52; on branch `claude/cloak-and-windows`, not merged):**
+**2026-10-08 cloak is an ambush (Kev, G-52; merged to `main` 2026-10-09):**
 cloak made a unit untargetable but broke on its first attack and paid nothing
 for it, so it almost never lasted and cloak items were wasted on attackers.
 
@@ -383,7 +402,7 @@ for it, so it almost never lasted and cloak items were wasted on attackers.
   Splice Medic, 38.8%), no operation moves more than 7.6 and the biggest hit
   is still 52. The sim's player never plans around cloak, so a real player
   gets more out of it than these numbers show.
-- **Sim, 300 pinned runs, baseline not re-pinned (Kev decides after review):**
+- **Sim, 300 pinned runs, baseline not re-pinned (Kev decides after review; re-pinned 2026-10-09, G-57):**
   overall 0.2800 -> 0.2733; Facility +1.4, Hive +3.4, Veil 0.0, Signal Purge
   -8.8, Mantle Hunt 0.0. The pinned batch has about 60 runs per operation;
   the 1,500-run batch has Signal Purge at +2.6. Sweepable as `ambush_mult`
@@ -779,7 +798,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7); since 2026-10-08 the attack that breaks it is an ambush, +50% damage (G-52) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2833**, facility **0.4085** (re-pinned 2026-10-01 for the no-repeat comp re-roll; before that 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2600**, facility **0.2958** (re-pinned 2026-10-09 for the cloak ambush, the roll windows and the retuning, G-57; before that 2026-10-01 for the no-repeat comp re-roll and 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -2363,6 +2382,14 @@ confirmation runs.
   comparison (re-roll on vs off, same seeds) moved only veil +2.0 and voidCirclet +0.7
   points, every other op 0.0, against a 2xSE of about 7 points per op, so the 300-run
   pin's larger moves (+4.2 / +3.1 / +5.3) are small-sample noise.
+- **Baseline re-pin (2026-10-09, BASELINE-APPROVED-BY-KEV, G-57):** `baseline.json` →
+  overall **0.2600** · facility **0.2958** · hive **0.3390** · veil **0.3231** ·
+  voidCirclet **0.1579** · stellarMenagerie **0.1458** (was 0.2833 · 0.4085 · 0.2542 ·
+  0.2615 · 0.2807 · 0.1667; largest per-op moves -12.3 and -11.3, signed off by Kev).
+  The cause is the cloak ambush, the new roll windows, the ten swaps and the retuning
+  (G-52, G-53, G-56). On 1,500 matched runs the tuned game is within 0.7 points of
+  `main` on every operation, and within 2.2 pooled over two seed sets; the pin's
+  larger moves are small-sample noise, measured in the 2026-10-09 entry at the top.
 
 ## Out of scope (don't build)
 

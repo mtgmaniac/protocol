@@ -1,5 +1,106 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-57. Numbers approved; re-pin, gate and merge (Kev, 2026-10-09)
+
+**Rulings (Kev, transcribed).**
+
+1. "Keep all numbers as they are, including the Arc, Trench and Nullwire
+   nerfs."
+2. "Re-pin baseline.json to the final tuned state. Tell me whether 300 runs is
+   too noisy for the gate's sim leg, given it disagrees with the 1,500-run
+   batches by up to 12 points. If so, propose a better setup (more runs, or
+   tolerances based on measured noise) but don't change it yet."
+3. "Run every gate that hasn't passed on the final data (71d8bb0), including
+   the five layout and flow gates that ran before the last trim, plus the sim
+   leg after re-pinning. Skip gates that already passed on the final data. Fix
+   any test that rigged rolls or abilities by number the way preview accuracy
+   and freeze regression did, reading from the kit instead. Report anything
+   that fails."
+4. "If everything passes, merge claude/cloak-and-windows into main and push.
+   No itch build."
+
+**Closed by ruling 1:** every number in G-56 stands, the three second
+evolutions tuned down included (G-56 ruling 4, my reading 2). Not to be
+re-proposed.
+
+**As built, ruling 2 (re-pin).** `baseline.json` is the tuned game: overall
+0.2600, Facility 0.2958, Hive 0.3390, Veil 0.3231, Signal Purge 0.1579, Mantle
+Hunt 0.1458. `ci_smoke.py` reproduces it exactly.
+
+**Is 300 runs too noisy? Yes, for judging size. No, as a tripwire.** Measured:
+the change from `main` to the tuned game, read on ten separate 300-run blocks
+of the two 1,500-run sets.
+
+| Per 300 runs | Real move (3,000 runs) | Spread between blocks (SD) | Lowest and highest block |
+|---|--:|--:|--:|
+| Facility | +2.3 | 8.0 | -12 to +12 |
+| Hive | +1.8 | 9.1 | -15 to +19 |
+| Veil | +1.7 | 6.9 | -11 to +10 |
+| Signal Purge | -0.3 | 6.7 | -13 to +12 |
+| Mantle Hunt | -0.9 | 4.9 | -8 to +7 |
+| Overall | +0.8 | 3.9 | -5 to +8 |
+
+- A change whose real effect is under 2.5 points on every operation crossed
+  the 10-point line on at least one operation in 5 of those 10 blocks. The
+  pinned 300 runs, an eleventh block, crossed it too (Facility -11.3, Signal
+  Purge -12.3).
+- What still works: the sim is deterministic, so a tree that does not touch
+  combat reproduces the pin exactly. Any move at all is a true signal that
+  combat changed. Only its size is unreliable.
+- At 1,500 runs the spread per operation is about 2 to 4 points (SD) and
+  under 2 overall (the 300-run spread divided by the square root of 5; the
+  750-run blocks agree).
+
+**Proposed setup (not built; needs Kev's yes, and the token, since it changes
+an enforcement threshold, INVARIANTS #13):**
+
+1. **Keep the 300-run leg as the tripwire**, and say so in its output: "any
+   move means combat changed". It costs 36 seconds and stays in every full
+   gate.
+2. **Judge size on 1,500 runs, only when the tripwire moves.** A second pinned
+   file from the same seed base at 1,500 runs (about 3.5 minutes). A change
+   that does not touch combat never pays for it.
+3. **Set the line from the measured spread:** 8 points per operation (2 SD
+   or more at 1,500 runs) and 4 overall, in place of 10 per operation on 300.
+   That is tighter than today and trips far less often by chance.
+4. **Pin the second evolutions too:** the same two legs for `l1_evo2`. Today
+   nothing in the gate plays them.
+5. When a change is tuned to a target, also report a second seed base. Tuning
+   to one set of seeds fits that set (G-56 ruling 2, my reading 2).
+
+**As built, ruling 3 (tests and gates).**
+
+- **Tests that rigged a roll by number now read the kit.** Beside the two
+  fixed in `e2da97f`: `preview accuracy` (chain, pierce, execute and the three
+  single-target cases), `action motion` (which hero attacks, which enemy does
+  not), `accrete display` (the boss's shield-and-rampage roll, the first
+  hero's attack), `taunt planning chip` (the enemies' attack), the live part
+  of `cloak ambush` (the two cloaked units' attacks), and the detonate capture
+  in the dev tool `battle_ui_capture.gd`. Where the old number is still the
+  right kind of ability it is kept, so today's runs are unchanged.
+- **Left alone, and why:** the tutorial's scripted dice and the audit's checks
+  of its math (the numbers are the product, and the checks fail loudly if a
+  band moves); the gear checks whose subject is a band edge (Band Compressor,
+  Wide Aperture, Standing Order, the Splice Deal); tests built on made-up
+  units; dice that only have to land (layout, checkpoint, resume, dice face);
+  and `unlock progression`'s three Rust and Scrap Drone abilities, which are
+  pinned on purpose to prove a rename kept their mechanics.
+- **Correction to my last report.** I said five layout and flow gates had last
+  run before the final trim. It was 25 gates. All of them, and every gate that
+  had never run on this branch's final data, were run for this ruling.
+- **One gate failed and was fixed: `save resume`.** It played seed 4242's
+  Facility squad to a checkpoint before battle 4; with the new balance that
+  squad dies in battle 3, so the checkpoint leg wrote no save. Saving was not
+  at fault. The gate now uses the first seed from 4242 upward whose run
+  reaches the checkpoint (4243 for Facility on this data).
+- **Result:** all 81 hard gates pass on the final data, with profile
+  isolation, and the sim leg reads +0.0 on every operation against the new
+  pin. 64 gates were run for this ruling; the other 17 had already passed on
+  the final data, and five of those were run again after their tests changed.
+
+**As built, ruling 4.** `claude/cloak-and-windows` merged into `main` and
+pushed. No itch build.
+
 ## G-56. Swaps approved; tune enemies, outlier heroes and second evolutions (Kev, 2026-10-09)
 
 **Rulings (Kev, transcribed).**

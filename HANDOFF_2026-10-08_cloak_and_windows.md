@@ -743,3 +743,63 @@ read kits or numbers: `ability audit`, `taunt planning chip`, `effect target`,
 `preview accuracy`, `freeze regression`, `firewall feedback`, `action motion`,
 `tutorial smoke`, `tutorial reachability`, `doc consistency`, `knobs
 contract`, `caps law`. All pass. The full gate was not run.
+
+## Follow-up 3 (2026-10-09): re-pinned, gated, merged
+
+Rulings: G-57. Numbers stay as they are, the three second evolutions tuned
+down included.
+
+**Baseline.** `baseline.json` is the tuned game (BASELINE-APPROVED-BY-KEV):
+overall 0.2600, Facility 0.2958, Hive 0.3390, Veil 0.3231, Signal Purge
+0.1579, Mantle Hunt 0.1458. The gate's sim leg reads +0.0 on every operation
+against it.
+
+**Is 300 runs too noisy for the sim leg?** For judging the size of a change,
+yes. As a tripwire, no. The change from `main` to the tuned game, read on ten
+separate 300-run blocks:
+
+| Per 300 runs | Real move (3,000 runs) | Spread between blocks (SD) | Lowest and highest block |
+|---|--:|--:|--:|
+| Facility | +2.3 | 8.0 | -12 to +12 |
+| Hive | +1.8 | 9.1 | -15 to +19 |
+| Veil | +1.7 | 6.9 | -11 to +10 |
+| Signal Purge | -0.3 | 6.7 | -13 to +12 |
+| Mantle Hunt | -0.9 | 4.9 | -8 to +7 |
+| Overall | +0.8 | 3.9 | -5 to +8 |
+
+Five of the ten blocks crossed the 10-point line on some operation, and so
+did the pinned block, for a change whose real size is under 2.5 points
+everywhere. The pin is still exact for a tree that does not touch combat, so
+any move at all is a true signal that combat changed.
+
+Proposed, not built (G-57 has the detail): keep the 300 runs as the tripwire;
+judge size on a second pin of 1,500 runs, run only when the tripwire moves;
+set the line at 8 points per operation and 4 overall from the measured
+spread; pin the second evolutions (`l1_evo2`) the same way; report a second
+seed base whenever numbers are tuned to a target.
+
+**Gates.** All 81 hard gates pass on the final data, plus profile isolation
+and the sim leg. 64 were run for this step; the other 17 had passed on the
+final data already (five of those were run again after their tests changed).
+Correction to Follow-up 2: I said five layout and flow gates had last run
+before the final trim. It was 25. All were run again here.
+
+**One gate failed and is fixed: `save resume`.** It played seed 4242's
+Facility squad to a checkpoint before battle 4, and with the new balance that
+squad dies in battle 3, so no save was written. Nothing was wrong with
+saving. The gate now takes the first seed from 4242 upward whose run reaches
+the checkpoint (4243 for Facility today).
+
+**Tests that rigged a roll by number now read the kit:** `preview accuracy`
+(chain, pierce, execute, the three single-target cases; detonate and breach
+were done in `e2da97f`), `action motion`, `accrete display`, `taunt planning
+chip`, the live part of `cloak ambush`, and the detonate capture in
+`battle_ui_capture.gd`. Where the old number is still the right kind of
+ability it is kept, so today's runs are unchanged.
+
+Left alone on purpose: the tutorial's scripted dice and the checks of its
+math, the gear checks whose subject is a band edge, tests on made-up units,
+dice that only have to land, and `unlock progression`'s three pinned drone
+abilities (they prove a rename kept the mechanics).
+
+**Merged** into `main` and pushed. No itch build.
