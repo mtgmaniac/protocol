@@ -104,6 +104,19 @@ func _all_abilities() -> Array:
 
 
 # The gate's own statement of the rule, kept apart from ActionMotion.attacks.
+# A roll for a kind of ability, read from the unit's kit so the fixture
+# follows the roll windows. `prefer` is used when it already is that kind.
+func _kit_roll(scene: Node, unit: Resource, attack: bool, prefer: int, single_target: bool = false) -> int:
+	for roll in [prefer] + range(1, 21):
+		var raw: Dictionary = scene.dice_manager.get_ability_for_roll(unit, roll).get("raw", {})
+		var hits: bool = int(raw.get("dmg", 0)) > 0 or int(raw.get("burn", 0)) > 0 or bool(raw.get("detonate", false))
+		if single_target and (int(raw.get("dmg", 0)) <= 0 or bool(raw.get("blastAll", false))):
+			continue
+		if hits == attack:
+			return roll
+	return 0
+
+
 func _expected(raw: Dictionary) -> String:
 	for key in ["dmg", "burn"]:
 		if int(raw.get(key, 0)) > 0:
@@ -164,14 +177,14 @@ func _check_live() -> void:
 	_expect(heroes.size() == 3 and enemies.size() >= 2, "fixture: three heroes, two or more enemies")
 	if heroes.size() != 3 or enemies.size() < 2:
 		return
-	# Strike attacks; Engineer and Medic roll their low, non-attacking bands.
-	# The first enemy rolls its low band (a shield), the rest attack.
+	# Strike attacks; Engineer and Medic roll an ability that does not. The
+	# first enemy rolls one that does not attack, the rest attack. The faces
+	# come from the kits, not from fixed numbers.
 	var rig: Dictionary = {}
-	var hero_vals := [9, 2, 2]
 	for i in heroes.size():
-		rig["hero:%s" % heroes[i]["id"]] = hero_vals[i]
+		rig["hero:%s" % heroes[i]["id"]] = _kit_roll(scene, heroes[i]["unit"], i == 0, 9 if i == 0 else 2)
 	for i in enemies.size():
-		rig["enemy:%s" % enemies[i]["id"]] = 1 if i == 0 else 12
+		rig["enemy:%s" % enemies[i]["id"]] = _kit_roll(scene, enemies[i]["unit"], i != 0, 1 if i == 0 else 12)
 	scene.dice_tray_3d.set_rigged_results(rig)
 	await scene._begin_targeting_phase()
 	await _settle(scene)

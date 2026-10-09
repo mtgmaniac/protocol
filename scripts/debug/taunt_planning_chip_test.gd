@@ -66,8 +66,16 @@ func _run() -> void:
 	var hero_vals := [2, 9, taunt_roll]   # Sentinel rolls Challenge (4 shield, taunt)
 	for i in heroes.size():
 		rig["hero:%s" % heroes[i]["id"]] = hero_vals[i]
+	# Every enemy rolls an attack (the last check needs the taunted one to hit
+	# Sentinel); the face comes from its kit.
 	for e in enemies:
-		rig["enemy:%s" % e["id"]] = 12
+		var attack_roll: int = 0
+		for roll in [12] + range(1, 21):
+			var enemy_raw: Dictionary = scene.dice_manager.get_ability_for_roll(e["unit"], roll).get("raw", {})
+			if attack_roll == 0 and int(enemy_raw.get("dmg", 0)) > 0 and not bool(enemy_raw.get("blastAll", false)):
+				attack_roll = roll
+		_check(attack_roll > 0, "fixture: %s has a single-target attack" % str(e["unit"].display_name))
+		rig["enemy:%s" % e["id"]] = attack_roll
 	scene.dice_tray_3d.set_rigged_results(rig)
 	await scene._begin_targeting_phase()
 	await _settle(scene)

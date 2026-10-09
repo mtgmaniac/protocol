@@ -51,6 +51,12 @@ CONFIGS = [
      "policy": "l1", "battles": 5, "checkpoint": 2},
 ]
 SEED = 4242
+# The seeded run has to live to its checkpoint, and that depends on balance:
+# after the 2026-10-09 retuning seed 4242's Facility squad died in battle 3 and
+# the gate failed for a reason that has nothing to do with saving. So the seed
+# is not pinned to one balance: each config uses the first seed from SEED
+# upward whose run parks at the checkpoint.
+SEED_TRIES = 12
 
 # Fields that CANNOT match across separately-launched processes, and why.
 # Everything else must be identical — the exclusion list is deliberately tiny,
@@ -67,10 +73,10 @@ IGNORED = {
 }
 
 
-def run_leg(config: dict, extra: list[str], label: str) -> bool:
+def run_leg(config: dict, extra: list[str], label: str, seed: int) -> bool:
     cmd = [
         GODOT, "--headless", "--path", str(ROOT), SCENE, "--",
-        "--seed", str(SEED), "--squad", config["squad"], "--op", config["op"],
+        "--seed", str(seed), "--squad", config["squad"], "--op", config["op"],
         "--policy", config["policy"], "--battles-only", str(config["battles"]),
         "--out", str(OUT_DIR / f"{config['name']}_{label}.jsonl"),
     ] + extra
@@ -133,16 +139,30 @@ def check(config: dict) -> bool:
         if stale.exists():
             stale.unlink()
 
+    seed = None
+    for candidate in range(SEED, SEED + SEED_TRIES):
+        clear_run_save()
+        if not run_leg(config, ["--checkpoint-at", str(config["checkpoint"])], "save", candidate):
+            return False
+        if (user_dir() / "dev_run.json").exists():
+            seed = candidate
+            break
+        print(f"   {name}: seed {candidate} ends before battle {config['checkpoint']}, trying the next")
+    if seed is None:
+        print(f"   FAIL - {name}: no seed in {SEED}..{SEED + SEED_TRIES - 1} reaches the checkpoint "
+              f"(the checkpoint leg wrote no run save)")
+        return False
+
     clear_run_save()
-    if not run_leg(config, ["--fingerprint", str(full_fp)], "full"):
+    if not run_leg(config, ["--fingerprint", str(full_fp)], "full", seed):
         return False
     clear_run_save()
-    if not run_leg(config, ["--checkpoint-at", str(config["checkpoint"])], "save"):
+    if not run_leg(config, ["--checkpoint-at", str(config["checkpoint"])], "save", seed):
         return False
     if not (user_dir() / "dev_run.json").exists():
         print(f"   FAIL - {name}: the checkpoint leg wrote no run save")
         return False
-    if not run_leg(config, ["--resume", "--fingerprint", str(resumed_fp)], "resume"):
+    if not run_leg(config, ["--resume", "--fingerprint", str(resumed_fp)], "resume", seed):
         return False
 
     if not full_fp.exists() or not resumed_fp.exists():
@@ -171,7 +191,7 @@ def check(config: dict) -> bool:
             print(f"      {line}")
         return False
     print(f"   {name}: identical at battle {config['battles']} "
-          f"(checkpointed before battle {config['checkpoint']})")
+          f"(checkpointed before battle {config['checkpoint']}, seed {seed})")
     return True
 
 

@@ -241,18 +241,19 @@ func _run_exact_cases() -> void:
 	# [name, hero unit id ("" = nobody attacks), roll, board setup, relic effects]
 	# A roll given as a String is an ability flag: the case uses the first roll
 	# whose ability carries it, so a kit whose bands move keeps its case.
+	# "single" is the first single-target attack. 20 is every kit's top band.
 	var cases: Array = [
 		["detonate, finite burn is consumed", "pulse", "detonate", _setup_burn.bind(3, 3, false, 0), []],
 		["detonate, permanent burn keeps ticking", "pulse", "detonate", _setup_burn.bind(3, 9999, true, 0), []],
 		["detonate is lethal where the base hit is not", "pulse", "detonate", _setup_burn.bind(4, 3, false, 20), []],
 		["burn tick with no hit", "", 0, _setup_burn.bind(5, 2, false, 0), []],
-		["execute", "combat", 20, _setup_execute, []],
-		["chain", "pulse", 1, _setup_none, []],
-		["mark", "ghost", 14, _setup_mark, []],
+		["execute", "combat", "execute", _setup_execute, []],
+		["chain", "pulse", "chain", _setup_none, []],
+		["mark", "ghost", "single", _setup_mark, []],
 		["breach", "ghost", "breach", _setup_shield, []],
-		["pierce", "combat", 16, _setup_shield, []],
-		["spike retaliation", "ghost", 14, _setup_spike, []],
-		["relic multiplier", "ghost", 14, _setup_none, [{"type": "heroDmgMult", "mult": 1.1}]],
+		["pierce", "combat", "ignSh", _setup_shield, []],
+		["spike retaliation", "ghost", "single", _setup_spike, []],
+		["relic multiplier", "ghost", "single", _setup_none, [{"type": "heroDmgMult", "mult": 1.1}]],
 		["Overload Loop echo", "pulse", 20, _setup_none, [{"type": "critResolveTwice"}]],
 	]
 	for case_variant in cases:
@@ -461,6 +462,8 @@ func _find_roll(state: Dictionary, kind: String) -> int:
 
 
 func _find_flag_roll(state: Dictionary, flag: String) -> int:
+	if flag == "single":
+		return _find_roll(state, "single")
 	for r in range(1, 21):
 		if bool(_ability_raw(state, r).get(flag, false)):
 			return r

@@ -107,7 +107,7 @@ func _parse_args() -> Dictionary:
 			config["no_primers"] = true
 		elif arg == "--capture-detonate-preview":
 			# UI batch B1: the first enemy burns 3 x 3 turns, Pulse's die shows
-			# 16 (Flash Detonation) and targets it, so the hero readout's
+			# its Detonate ability (read from the kit) and targets it, so the hero readout's
 			# Detonate number and the enemy's HP preview are both on screen.
 			config["detonate_preview"] = true
 			config["rolled"] = true
@@ -779,7 +779,11 @@ func _force_detonate_preview() -> void:
 	for state_variant in cm.call("get_enemy_states"):
 		if not bool((state_variant as Dictionary).get("dead", false)):
 			(battle.get("enemy_rolls") as Dictionary)[str((state_variant as Dictionary)["id"])] = 1
-	(battle.get("hero_rolls") as Dictionary)[str(pulse["id"])] = 16
+	var detonate_roll: int = 0
+	for r in range(1, 21):
+		if detonate_roll == 0 and bool(((dm.call("get_ability_for_roll", pulse["unit"], r) as Dictionary).get("raw", {}) as Dictionary).get("detonate", false)):
+			detonate_roll = r
+	(battle.get("hero_rolls") as Dictionary)[str(pulse["id"])] = detonate_roll
 	battle.call("_on_die_values_changed")
 	await create_timer(1.2).timeout
 	var pulse_id: String = str(pulse["id"])

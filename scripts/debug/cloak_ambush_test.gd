@@ -117,6 +117,15 @@ func _round(cm: Object, heroes_act: bool = true, enemies_act: bool = true) -> Ar
 	return cm.resolve_round(hero_rolls, enemy_rolls, _dice)["log"]
 
 
+# A unit's single-target attack roll, from its kit; `prefer` when it is one.
+func _single_attack_roll(scene: Node, unit: Resource, prefer: int) -> int:
+	for roll in [prefer] + range(1, 21):
+		var raw: Dictionary = scene.dice_manager.get_ability_for_roll(unit, roll).get("raw", {})
+		if int(raw.get("dmg", 0)) > 0 and not bool(raw.get("blastAll", false)):
+			return roll
+	return 0
+
+
 func _mult() -> float:
 	return float(load(COMBAT_SOURCE).new().ambush_mult())
 
@@ -359,11 +368,13 @@ func _check_live() -> void:
 	var lurker: Dictionary = enemies[1]
 	striker["cloaked"] = true
 	lurker["cloaked"] = true
+	# The two cloaked units roll a single-target attack, read from their kits;
+	# the other dice only have to land.
 	var rig: Dictionary = {}
 	for hero_state in heroes:
-		rig["hero:%s" % hero_state["id"]] = 9
+		rig["hero:%s" % hero_state["id"]] = _single_attack_roll(scene, striker["unit"], 9) if hero_state == striker else 9
 	for enemy_state in enemies:
-		rig["enemy:%s" % enemy_state["id"]] = 12
+		rig["enemy:%s" % enemy_state["id"]] = _single_attack_roll(scene, lurker["unit"], 12) if enemy_state == lurker else 12
 	scene.dice_tray_3d.set_rigged_results(rig)
 	await scene._begin_targeting_phase()
 	await _settle(scene)
