@@ -202,10 +202,18 @@ const ENEMY_STABLE_IDS := {
 	"Oath Binder": "axiom_binder",
 	"False Image": "forked_double",
 	"Ash Channeler": "daemon_channeler",
-	"Signal Hierophant": "root_hierophant",
+	"Signal Hierarch": "root_hierophant",
 	"Pumice Climber": "pumice_macaque",
 	"Cinder Raptor": "pyroclast_raptor",
 	"Mantle Tyrant": "mantle_tyrant",
+}
+
+# Old display names a run in progress may still hold. A run save stores its
+# resolved encounters, and a battle checkpoint its enemies, by display NAME, so
+# a renamed unit's old name must keep resolving or the save loses that enemy.
+# Old name -> current name. Add a row with every enemy rename.
+const ENEMY_LEGACY_NAMES := {
+	"Signal Hierophant": "Signal Hierarch",  # 2026-10-10 (G-69)
 }
 
 const ENEMY_PORTRAIT_BY_NAME := {
@@ -241,7 +249,7 @@ const ENEMY_PORTRAIT_BY_NAME := {
 	"Oath Binder": "axiom_binder.png",
 	"False Image": "forked_double.png",
 	"Ash Channeler": "daemon_channeler.png",
-	"Signal Hierophant": "root_hierophant.png",
+	"Signal Hierarch": "root_hierophant.png",
 	# Veil Concord — previously resolved only through the _slugify fallback
 	# (audited 2026-07-07: every unit landed on its own file; veil_spare.png
 	# and harmonic_hexnode.png were referenced by nothing → moved to unused/).
@@ -347,6 +355,7 @@ func get_enemy(enemy_id: String) -> Resource:
 
 
 func get_enemy_by_display_name(enemy_name: String) -> Resource:
+	enemy_name = str(ENEMY_LEGACY_NAMES.get(enemy_name, enemy_name))
 	return enemies.get(str(ENEMY_STABLE_IDS.get(enemy_name, _slugify(enemy_name))))
 
 

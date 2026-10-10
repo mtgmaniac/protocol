@@ -11,7 +11,7 @@ Five factions, one per operation. The faction is derived from the enemy's kit vi
 | `facility` | Facility sweep | FACILITY | drones: jam, −roll, shields as breach bait | SCRAPMASTER | 8 |
 | `hive` | Hive incursion | HIVE | swarm: burn, leech (lifesteal), spawns, spike | Hive Matriarch | 7 |
 | `veil` | Veil Concord | VEIL | lattice: ally shields, roll buffs, 6 firewall faces, nat20 summons | CONCLAVE OVERSEER | 8 |
-| `voidCirclet` | Null Synod | SYNOD | machine cult: rewrite, hijack, siphon, ±roll, 4 firewall faces | ROOT HIEROPHANT | 7 |
+| `voidCirclet` | Null Synod | SYNOD | machine cult: rewrite, hijack, siphon, ±roll, 4 firewall faces | SIGNAL HIERARCH | 7 |
 | `stellarMenagerie` | The Accretion | ACCRETION | igneous beasts: accrete shields, petrify freeze, spike, cloak, rampage | MANTLE TYRANT | 8 |
 
 ### Faction identities in data (verified)
@@ -19,7 +19,7 @@ Five factions, one per operation. The faction is derived from the enemy's kit vi
 - **Facility** — fodder drones debuff and jam (`rust`, `signalSkimmer`); elites shield each other (`guard`); Volt Elite is one of the game's four **spike** carriers. Wall-up-then-breach is the intended player loop (blurb: "Bank Protocol and breach through").
 - **Hive** — every core kit leeches (`lifestealPct` 35–55%) and burns; Spine Stalker + Carapace Beetle carry **spike**; the Matriarch's THE BROOD is the faction's spawn engine; Caustic Spewer's "Mimic Gland" is one of exactly three **hijack** carriers. Note: TRUTH's identity line says "siphon" — no hive kit has siphon; that's the Synod's (finding F-enemies-12).
 - **Veil Concord** — support lattice: nearly every kit grants ally shields and `erb` roll buffs; carries 6 of the 10 enemy **firewall** instances (Lattice Link, Fortress Lash, Conclave Bulwark, Harmonic Mend, Annulment, Synaptic Tune); five smart units summon on nat20 (Shardmite / Prism Charger).
-- **Null Synod** — dice suppression: **rewrite** (4 faces), **hijack** (Checksum Copy, Afterimage), **siphon** (the ONLY siphon carriers: voidWisp, voidAcolyte, voidBinder, voidChanneler), ±roll; 4 firewall instances (Seal Sigil, Init Collar, Mass Snare, Hierophant Mantle); all five smart units summon Glitch Sprites on nat20.
+- **Null Synod** — dice suppression: **rewrite** (4 faces), **hijack** (Checksum Copy, Afterimage), **siphon** (the ONLY siphon carriers: voidWisp, voidAcolyte, voidBinder, voidChanneler), ±roll; 4 firewall instances (Seal Sigil, Init Collar, Mass Snare, Hierarch Mantle); all five smart units summon Glitch Sprites on nat20.
 - **The Accretion** — attrition beasts: `accrete` shields every enemy phase (Basalt Ape 3, Magma Drake 4), **petrify**-flavored freeze (Geode Panther), **spike** (Basalt Ape), cloak (Panther, and the b4 comp flag), pack fodder, and MANTLE TYRANT's rampage. Default targeting SPITEFUL — the faction holds grudges ([targeting.md](targeting.md)).
 
 Keyword exclusivity across factions (audit-verified): spike = Volt Elite, Spine Stalker, Carapace Beetle, Basalt Ape only · hijack = Spewer, Scribe, Forked Double only · siphon = Synod only · firewall = exactly 10 instances (6 Veil + 4 Synod) · shatter = nowhere in enemies.
@@ -38,7 +38,7 @@ Naming history (old → new, renamed in the master-prompt/keyword era; player-fa
 | Stellar Menagerie | **The Accretion** | `stellarMenagerie` |
 | Spite Guard (hero faction name) | **Spike Guard** (hero, id `shield`) | — |
 
-- The rename is complete in `battle-modes.json` (labels/callsigns/blurbs) and unit/ability strings with two exceptions found by this audit: the help-menu bestiary headers still say "VOID CIRCLET" / "STELLAR MENAGERIE" (`scripts/ui/help_menu.gd:41-42`, finding F-enemies-01) and the ROOT HIEROPHANT surge is still named "Circlet Cataclysm" (`data/raw/enemies.data.json:1683`, F-enemies-02).
+- The rename is complete in `battle-modes.json` (labels/callsigns/blurbs) and unit/ability strings with two exceptions found by this audit: the help-menu bestiary headers still say "VOID CIRCLET" / "STELLAR MENAGERIE" (`scripts/ui/help_menu.gd:41-42`, finding F-enemies-01) and the SIGNAL HIERARCH surge is still named "Circlet Cataclysm" (`data/raw/enemies.data.json:1683`, F-enemies-02).
 - Unit-name lineage from the same era survives only in git history and renamed portraits (eclipse_panther→geode_panther, void_reaver→mantle_tyrant, chronicle_scribe→checksum_scribe, etc. — TRUTH §Assets). `legacy-angular/` keeps old-name art as a warehouse (INVARIANTS #11); `.godot/imported/` caches with dead names are regenerated artifacts.
 - Internal-id occurrence inventory (frozen, needs-Kev-ruling ledger only): see findings F-enemies-21.
 

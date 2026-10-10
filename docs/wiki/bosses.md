@@ -30,11 +30,11 @@ Cadence constants are provisional pending the global balance pass (BALANCE-TODO 
 - Stats: 180 HP, d19–25, kit `veilBoss`. Escort: Aegis Anchor — kill it and the Court falls, ending the Firewall stream.
 - Signature faces: Veil Cataclysm (overload) wipe shields → 30 dmg, +2 roll allies 2t, summon ~30% nat20 (Prism Charger).
 
-### ROOT HIEROPHANT (voidCirclet / Null Synod) — ROOT ACCESS
-- Rule text: "your squad's highest die is seized and rewritten to 3. The Hierophant does this every round."
+### SIGNAL HIERARCH (voidCirclet / Null Synod) — ROOT ACCESS
+- Rule text: "your squad's highest die is seized and rewritten to 3. The Hierarch does this every round."
 - Code (`combat_manager.gd:263-275`): each enemy phase, finds the living hero with the highest roll THIS round (strict `>`, ties go to the lower slot) and applies Rewrite — the hero's **next** roll is set to 3 (standard telegraphed Rewrite, `apply_rewrite_to_state` :1336; frozen dice are immune, :1314 — which is why ally crit-banking counters this boss, TRUTH §sim baseline).
 - Stats: 180 HP, d19–25, kit `voidCircletBoss`. Escort: Checksum Scribe.
-- Signature faces: Hierophant Mantle (recharge) 20 shield + ally 8 + buffs + Firewall (one of the 4 Synod firewall instances); "Circlet Cataclysm" (surge) carries the dead faction name — finding F-enemies-02; Void Gate (overload) wipe shields → 30 dmg + summon ~32% (Glitch Sprite).
+- Signature faces: Hierarch Mantle (recharge) 20 shield + ally 8 + buffs + Firewall (one of the 4 Synod firewall instances); "Circlet Cataclysm" (surge) carries the dead faction name — finding F-enemies-02; Void Gate (overload) wipe shields → 30 dmg + summon ~32% (Glitch Sprite).
 
 ### MANTLE TYRANT (stellarMenagerie / The Accretion) — ACCRETION
 - Rule text: "the Tyrant plates itself with 6 more shield and keeps every layer. It accretes every 2nd round, before your heroes act; its shields persist and stack." (reworded 2026-10-08: "at the start of every 2nd round" read as the dice throw; the +6 lands as the round resolves, ahead of the hero phase) (the old wiki copy said "every round" — the code has been every 2ND round since the Cycle-4 ruling) Display (2026-10-08): the rule runs through `_apply_accrete` like the unit keyword: its own beat, an ACCRETE +6 chip, "Mantle Tyrant accretes 6 shield.", and the inspect line "ACCRETE: always gains 6 shield every 2nd round, before your heroes act." The boss's shield chip steps with the beats (`shield_after`).

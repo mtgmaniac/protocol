@@ -89,7 +89,7 @@ Legend: *timing* = where in the round it resolves · *feedback* = `battle_feedba
 
 - **Rule:** the target's next roll is SET to 3 (`REWRITE_VALUE := 3`, `combat_manager.gd:1305`), telegraphed: applied this turn, fires at the next reveal, then clears (`:1308-1321`, tick `:2493`).
 - **Precedence:** in `get_effective_roll` it trumps buffs/rfe/jam (`:537`) — but a player Set replaces it outright and a Nudge stacks on the 3 (`battle_engine.gd:461-465`). Frozen dice are immune (`:1314`). Mirror Plate pays out on hero dice (`:1321`).
-- **Boss hook:** ROOT HIEROPHANT's Root Access rewrites the squad's highest effective die every round via `apply_rewrite_to_state` (`:1336`, rule at `:263`) — no ward/cloak check.
+- **Boss hook:** SIGNAL HIERARCH's Root Access rewrites the squad's highest effective die every round via `apply_rewrite_to_state` (`:1336`, rule at `:263`) — no ward/cloak check.
 - **Feedback:** pending die marker; die scramble-then-slam-to-3 (`battle_feedback.gd:461`).
 - **Audit:** `_run_rewrite_regression` (`ability_audit.gd:1110`).
 

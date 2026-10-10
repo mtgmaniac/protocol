@@ -57,7 +57,7 @@ Boss relic rework (Kev, 2026-09-27, tuned 2026-09-28; DECISIONS_RESOLVED G-34..G
 | `hereticSignal` | Heretic Signal (voidCirclet) | `rethrowAllOncePerBattle cost 3` | once per battle, for 3 Protocol, re-throw every unfrozen die (heroes and enemies); tapped in the loadout, confirmed | planning phase | `BattleEngine.apply_heretic_signal`, `BossRelicActions.rethrow_all` |
 | `tectonicCharge` | Tectonic Charge (stellarMenagerie) | `heroesHoldRoundOne 3, shield 3` | round 1: heroes hold (no hero dice, no hero actions) and each living hero gains 3 shield for that round; from round 2 a permanent +3 on every hero roll | round 1 / its end | `CombatManager.heroes_hold_this_round`, `resolve_round` |
 
-Retired in the rework (each old unlock migrates to its operation's new relic, `SaveManager.LEGACY_BOSS_RELIC_IDS`): Salvage Rig, Chitin Graft, Resonant Chorus, Root Access (the relic; the Signal Hierophant's standing rule keeps the name), Mantle Core.
+Retired in the rework (each old unlock migrates to its operation's new relic, `SaveManager.LEGACY_BOSS_RELIC_IDS`): Salvage Rig, Chitin Graft, Resonant Chorus, Root Access (the relic; the Signal Hierarch's standing rule keeps the name), Mantle Core.
 
 ### Draft relics added 2026-09-27 (names kept, G-42)
 

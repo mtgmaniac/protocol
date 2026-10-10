@@ -259,7 +259,7 @@
       "label": "Signal Purge",
       "blurb": "Machine cultists corrupt targeting systems and drain power.",
       "victoryTitle": "VICTORY",
-      "victorySub": "Hierophant eliminated. Broadcast silenced.",
+      "victorySub": "Hierarch eliminated. Broadcast silenced.",
       "battles": [
         {
           "enemies": [
@@ -327,7 +327,7 @@
         {
           "enemies": [
             {
-              "name": "Signal Hierophant"
+              "name": "Signal Hierarch"
             },
             {
               "name": "Cipher Scribe"

@@ -641,7 +641,7 @@ implement a pending ruling that hasn't been transcribed into DECISIONS_RESOLVED.
 | Void Circlet | **Null Synod** | pkg3.3 `3b16f36` | id `voidCirclet` FROZEN |
 | Stellar Menagerie | **The Accretion** | pkg3.3 `3b16f36` | id `stellarMenagerie` FROZEN |
 | Void Reaver | **MANTLE TYRANT** | pkg3.3 `3b16f36` | portrait file renamed 2026-07-07 |
-| Circlet Hierophant | **ROOT HIEROPHANT** | pkg3.3 `3b16f36` | |
+| Circlet Hierophant | **ROOT HIEROPHANT** | pkg3.3 `3b16f36` | later Signal Hierophant (2026-09-06); now **Signal Hierarch**, callsign HIERARCH (2026-10-10, G-69) |
 | Systems Medic | **Splice Medic** | pre-TRUTH (adjudicated stale) | id `medic` FROZEN |
 | Boss phase-2 stat jumps | **standing rules** | pkg4 `3b2f159`/`2453d7b` | one always-on rule per boss |
 | 4-unit squad | **3-unit squad** | Godot port era `5715774` | |

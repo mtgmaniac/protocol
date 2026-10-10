@@ -45,7 +45,7 @@ Two independent unit fields (INVARIANTS #2):
 | Axiom Binder | voidBinder | voidCirclet | 112 | 17–23 | smart | WOUNDED | firewall+rewrite overload, siphon |
 | Forked Double | voidGlimmer | voidCirclet | 68 | 13–17 | smart | SPITEFUL | `startsCloaked`; **hijack** (Afterimage); inert summonElite |
 | Daemon Channeler | voidChanneler | voidCirclet | 94 | 15–21 | smart | WOUNDED | siphon on crit |
-| ROOT HIEROPHANT | voidCircletBoss | voidCirclet | 180 | 19–25 | smart | WOUNDED | boss |
+| SIGNAL HIERARCH | voidCircletBoss | voidCirclet | 180 | 19–25 | smart | WOUNDED | boss |
 | Pumice Macaque | beastMonkey | stellarMenagerie (The Accretion) | 38 | 5–9 | dumb | PACK | packBonus (+1 dmg per other same-kind pack member; fixed 2026-07-08) |
 | Obsidian Hound | beastWolf | stellarMenagerie | 42 | 6–10 | dumb | PACK | packBonus (+1 per other beastWolf; packs with Slag Hound) |
 | Slag Hound | beastWolf | stellarMenagerie | 34 | 5–9 | dumb | PACK | Raptor's summon species; shares kit |
@@ -107,7 +107,7 @@ Eff strings verbatim from data (comma grammar; generator `scripts/assets/sync-en
 | voidBinder | Quiet Pact — -1 roll, 2t | Compulsion — 14 dmg, -1 roll, 2t | Geas Burst — 16 dmg, siphon 2 | Dominion Mark — 19 dmg | Mass Snare — 21 dmg, summon ~35% nat20, **firewall**, rewrite |
 | voidGlimmer | Refork — 6 shield, cloak | False Edge — 13 dmg | Mirror Break — wipe shields, then 12 dmg | Afterimage — 17 dmg, hijack | Fork Collapse — 19 dmg, rewrite |
 | voidChanneler | Channel Focus — +2 roll | Arc Lance — 16 dmg | Storm Loom — 15 dmg, 2 burn, 3t | Starfall — 20 dmg, siphon 2 | Warp Nova — 22 dmg, 4 burn, 4t, summon ~42% nat20 |
-| voidCircletBoss | Hierophant Mantle — 20 shield, ally 8 shield, +2 roll to allies, **firewall** | Decree of Stillness — 19 dmg, -2 roll, 2t | Circlet Cataclysm — 22 dmg, 2 burn, 2t, +1 roll to allies | Absolute Binding — 26 dmg, -3 roll, 2t | Void Gate — wipe shields, then 30 dmg, +2 roll to allies, 2t, summon ~32% nat20 |
+| voidCircletBoss | Hierarch Mantle — 20 shield, ally 8 shield, +2 roll to allies, **firewall** | Decree of Stillness — 19 dmg, -2 roll, 2t | Circlet Cataclysm — 22 dmg, 2 burn, 2t, +1 roll to allies | Absolute Binding — 26 dmg, -3 roll, 2t | Void Gate — wipe shields, then 30 dmg, +2 roll to allies, 2t, summon ~32% nat20 |
 
 **The Accretion** (internal id `stellarMenagerie`)
 

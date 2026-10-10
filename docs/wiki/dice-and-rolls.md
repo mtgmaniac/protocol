@@ -86,7 +86,7 @@ Nudge is deliberately NOT inside `get_effective_roll` — the scene/engine adds 
 All three are **die statuses, not chips** — they render on the die itself (tint/markers, `dice_tray_3d.gd:1767-1853`; wiring `battle_scene.gd:597` `_sync_die_status_visuals`).
 
 - **Jam** (`_apply_jam`, `combat_manager.gd:1344`): next roll capped at `JAM_CAP` = 10. Re-jams keep the LOWER cap. Applied mid-round it survives the imminent tick and caps the next reveal; battle-start jams (Static Field relic, :391) cap the first roll directly. Wall of Static directive uses its own intentional cap 15 (:1169). Cleared at the round-end tick after it bites (`_tick_state`).
-- **Rewrite** (`_apply_rewrite`, :1311): next roll SET to 3, telegraphed one round ahead (`rewrite_skip_next_tick`). ROOT HIEROPHANT's standing rule rewrites the squad's highest die every round via `apply_rewrite_to_state` (:1336).
+- **Rewrite** (`_apply_rewrite`, :1311): next roll SET to 3, telegraphed one round ahead (`rewrite_skip_next_tick`). SIGNAL HIERARCH's standing rule rewrites the squad's highest die every round via `apply_rewrite_to_state` (:1336).
 - **Hijack** (enemy-only): the enemy's next roll copies the heroes' current highest die (`hijack_pending` set at :1682, consumed at resolve start :650-662). Skips one tick, fires at exactly one reveal.
 
 **Mirror Plate** gear: when an **enemy** Jams, Rewrites, or Freezes a hero die, the holder gains +2 Protocol (`_grant_mirror_plate_protocol`). A friendly `freezeAnyDice` on an ally does NOT pay out (audit A-062, fixed 2026-07-08 — the freeze source is threaded so only enemy tampers grant).

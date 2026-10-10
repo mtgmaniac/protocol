@@ -2217,7 +2217,7 @@
           1,
           4
         ],
-        "name": "Hierophant Mantle",
+        "name": "Hierarch Mantle",
         "eff": "20 shield (self), 8 shield (ally), +2 roll (all allies) 1 turn, firewall (self)",
         "dmg": 0,
         "burn": 0,
@@ -3183,14 +3183,14 @@
       "callsign": "ASH",
       "role": "Winds up its own rolls, then lands the Synod's heaviest burn."
     },
-    "Signal Hierophant": {
+    "Signal Hierarch": {
       "hp": 180,
       "dMin": 19,
       "dMax": 25,
       "type": "voidCircletBoss",
       "ai": "smart",
       "summonElite": true,
-      "callsign": "ROOT",
+      "callsign": "HIERARCH",
       "role": "Plates its line behind a firewall, then buries your rolls under penalties."
     },
     "Pumice Climber": {

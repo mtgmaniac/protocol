@@ -152,12 +152,12 @@ The extra `pulse_base_new.png` on the source sheet is not one of the 24 mapped p
 | Facility Sweep | Scrap's exposed cables, Rust's corrosion, Heavy Warden's furnace | Several enforcers resemble friendly soldiers; shield/volt roles rely on small details | Built, repaired, riveted machinery; asymmetric tools and exposed workings. |
 | Hive Incursion | Beetle plates, Spewer mouth, Broodwarden sacs | Bloodmite's purple crystals cross into mineral/energy factions; several insect busts read humanoid | Organic joints, sacs, chitin and mouthparts; asymmetry from growth, not machinery. |
 | Veil Breach | Shard Drone, Prism Charger, Resonance Warden | Aegis Anchor resembles Hive Matriarch; Stormweaver and Overseer resemble Signal cultists | Luminous geometry, resonators, planar shields, deliberate symmetry. Highest-priority faction cleanup. |
-| Signal Purge | Circuit Acolyte, Scribe, False Image, Hierophant | Gold hooded machinery overlaps too much with Veil | Hoods, masks, broken transmissions, circuit inscriptions; ritual technology belongs here most strongly. |
+| Signal Purge | Circuit Acolyte, Scribe, False Image, Hierarch | Gold hooded machinery overlaps too much with Veil | Hoods, masks, broken transmissions, circuit inscriptions; ritual technology belongs here most strongly. |
 | Mantle Hunt | Raptor profile, magma fractures, crystal panther | Pumice/Basalt apes and Obsidian/Slag hounds can merge when small | Rock anatomy with unmistakably animal outlines; distinct glass, slag, basalt and geode materials. |
 
 The strongest direct mismatch is **Aegis Anchor versus Hive Matriarch**: both use a narrow gold/chitin head. The biggest boss issue is **rank**. A boss should still read as exceptional when its card is no larger than everyone else's. Give each a clear crown, dominant mass, unusual face structure or framed rule signal, rather than relying on more surface texture.
 
-Boss recommendations: keep Scrapmaster's furnace mouth and crown; strengthen Matriarch's brood silhouette; rebuild Overseer's silhouette around geometric resonance rather than another hood; retain Hierophant's circuit crown; increase Mantle Tyrant's jaw/edge separation so it does not read as another hound. Display standing rules clearly in the relevant encounter/inspect flow; do not invent a new boss phase UI.
+Boss recommendations: keep Scrapmaster's furnace mouth and crown; strengthen Matriarch's brood silhouette; rebuild Overseer's silhouette around geometric resonance rather than another hood; retain Hierarch's circuit crown; increase Mantle Tyrant's jaw/edge separation so it does not read as another hound. Display standing rules clearly in the relevant encounter/inspect flow; do not invent a new boss phase UI.
 
 The three portraits under `assets/portraits/enemies/unused/` are indexed but excluded from the current-art score. Each of the 38 mapped enemies has a separate note in the content index, including the two independently illustrated hounds.
 

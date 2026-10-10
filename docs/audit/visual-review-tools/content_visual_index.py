@@ -59,7 +59,7 @@ enemy_notes={
 'Oath Binder':'Keep heavy mechanical chest; distinguish restraint/clamp shapes from general cult machinery.',
 'False Image':'Keep split/double face; readable deception motif.',
 'Ash Channeler':'Keep violet core and hood; support role can use larger central emitter.',
-'Signal Hierophant':'Keep ceremonial red-purple circuit crown; preserve head outline in boss crop.',
+'Signal Hierarch':'Keep ceremonial red-purple circuit crown; preserve head outline in boss crop.',
 'Pumice Climber':'Keep columnar rock mane; close to Basalt Ape, so exaggerate smaller agile head silhouette.',
 'Obsidian Hound':'Keep shard-edged canine; separate black glass from Slag molten material.',
 'Slag Hound':'Keep orange fractures; make soft/flowing slag contour distinct from Obsidian sharp plates.',

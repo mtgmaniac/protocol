@@ -41,9 +41,9 @@ Every op pins three anchors: **b1** (authored intro comp), one **faction signatu
 | 7 | heavy + fodder | **Broodwarden** (signature) | **Aegis Anchor ×2** (signature) | heavy + fodder | heavy + fodder |
 | 8 | heavy + elite | heavy + elite | heavy + elite | heavy + elite | heavy + elite |
 | 9 | elite + support + fodder | elite + support + fodder | elite + support + fodder | elite + support + fodder | elite + support + fodder |
-| 10 | **SCRAPMASTER + 2× Scrap Drone** | **Spine Stalker + Hive Matriarch** | **CONCLAVE OVERSEER + Aegis Anchor** | **ROOT HIEROPHANT + Checksum Scribe** | **MANTLE TYRANT + Geode Panther** |
+| 10 | **SCRAPMASTER + 2× Scrap Drone** | **Spine Stalker + Hive Matriarch** | **CONCLAVE OVERSEER + Aegis Anchor** | **SIGNAL HIERARCH + Checksum Scribe** | **MANTLE TYRANT + Geode Panther** |
 
-Per-op strings: `label`, `callsign`, `blurb`, `victoryTitle`/`victorySub` (e.g. Synod: "Hierophant down. Gate sealed."). Each op also carries `trackHpScale` (1.05 / 1.0 / 0.94 / 0.94 / 0.94) — loaded into `OperationData.track_hp_scale` (`DataManager.gd:411`) but **read by nothing** (finding F-enemies-06); combat uses flat unit stats.
+Per-op strings: `label`, `callsign`, `blurb`, `victoryTitle`/`victorySub` (e.g. Synod: "Hierarch eliminated. Broadcast silenced."). Each op also carries `trackHpScale` (1.05 / 1.0 / 0.94 / 0.94 / 0.94) — loaded into `OperationData.track_hp_scale` (`DataManager.gd:411`) but **read by nothing** (finding F-enemies-06); combat uses flat unit stats.
 
 ### Unlock chain
 

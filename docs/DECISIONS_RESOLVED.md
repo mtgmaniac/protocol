@@ -1,5 +1,41 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-69. Signal Hierophant is Signal Hierarch, callsign HIERARCH (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"Rename Signal Hierophant to Signal Hierarch, callsign HIERARCH. Update every
+player-facing place the name appears: boss nameplate, cards, Help, lore, battle
+log, relic and intercept text, and any docs that name it. Keep the internal ID
+unchanged so saves still load. List every string you changed so I can mirror
+them in the copy workbook."
+
+"Keep RESONANT and MATRON as they are."
+
+**As built.** Player-facing strings, old to new:
+
+| Where | Was | Now |
+|---|---|---|
+| Unit name (`enemies.data.json`, `battle-modes.json`) | Signal Hierophant | Signal Hierarch |
+| Callsign | ROOT | HIERARCH |
+| Ability, roll 1–4 | Hierophant Mantle | Hierarch Mantle |
+| Standing rule text | ...rewritten to 3. The Hierophant does this every round. | ...rewritten to 3. The Hierarch does this every round. |
+| Battle log line | ROOT ACCESS - the Hierophant seizes the squad's highest die. | ROOT ACCESS - the Hierarch seizes the squad's highest die. |
+| Operation briefing directive | Eliminate the Signal Hierophant | Eliminate the Signal Hierarch |
+| Signal Purge victory line | Hierophant eliminated. Broadcast silenced. | Hierarch eliminated. Broadcast silenced. |
+
+The rule's name, ROOT ACCESS, and the boss's lore line are unchanged (the lore
+line never named it). No relic or intercept text named the unit.
+
+**Saves.** Stable id `root_hierophant`, type `voidCircletBoss` and the portrait
+file are unchanged. Run saves and battle checkpoints store enemies by display
+name, so the old name is kept as an alias (`DataManager.ENEMY_LEGACY_NAMES`): a
+Signal Purge run saved before the rename still loads its boss.
+
+**What this closes.** The Signal Hierophant callsign item of the 2026-10-02
+handoff and of G-68. RESONANT (Resonance Warden) and MATRON (Hive Matriarch)
+stay, by ruling.
+
 ## G-68. One shared portrait frame on every screen; Shield Enforcer is SHIELD (Kev, 2026-10-10)
 
 **Ruling (Kev, transcribed).**

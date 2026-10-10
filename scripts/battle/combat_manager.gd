@@ -114,7 +114,7 @@ func set_decoy_round_one() -> void:
 const BOSS_SCRAPMASTER := "Scrapmaster"
 const BOSS_MATRIARCH := "Hive Matriarch"
 const BOSS_OVERSEER := "Veil Overseer"
-const BOSS_HIEROPHANT := "Signal Hierophant"
+const BOSS_HIEROPHANT := "Signal Hierarch"
 const BOSS_MANTLE := "Mantle Tyrant"
 const SCRAP_DRONE_NAME := "Scrap Drone"
 const BROOD_SPAWN_NAME := "Bloodmite"
@@ -141,7 +141,7 @@ const BOSS_STANDING_RULES := {
 	BOSS_SCRAPMASTER: "ASSEMBLY LINE - a Scrap Drone you already destroyed stands back up at 50% HP. The Scrapmaster rebuilds one every 2nd enemy phase, counting from its first.",
 	BOSS_MATRIARCH: "THE BROOD - a new Bloodmite joins the fight. The Matriarch births one every 3 rounds.",
 	BOSS_OVERSEER: "THE COURT - an ability you aim at the Overseer is negated outright. It raises that firewall on itself every round, before your heroes act, for as long as any ally lives.",
-	BOSS_HIEROPHANT: "ROOT ACCESS - your squad's highest die is seized and rewritten to 3. The Hierophant does this every round.",
+	BOSS_HIEROPHANT: "ROOT ACCESS - your squad's highest die is seized and rewritten to 3. The Hierarch does this every round.",
 	BOSS_MANTLE: "ACCRETION - the Tyrant plates itself with 6 more shield and keeps every layer. It accretes every 2nd round, before your heroes act; its shields persist and stack.",
 }
 
@@ -464,7 +464,7 @@ func _apply_boss_round_start_rules() -> void:
 
 
 # Enemy-phase rules (turn-cadence actions): Assembly Line rebuild, Brood
-# spawn, and the Hierophant's Root Access rewrite of the squad's highest die.
+# spawn, and the Hierarch's Root Access rewrite of the squad's highest die.
 func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 	for enemy_state in _enemy_states:
 		if bool(enemy_state["dead"]):
@@ -505,7 +505,7 @@ func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 						highest_roll = hero_roll
 						highest_hero = hero_state
 				if not highest_hero.is_empty():
-					_log("ROOT ACCESS - the Hierophant seizes the squad's highest die.")
+					_log("ROOT ACCESS - the Hierarch seizes the squad's highest die.")
 					apply_rewrite_to_state(highest_hero, true)
 
 
@@ -2107,7 +2107,7 @@ func _grant_mirror_plate_protocol(state: Dictionary) -> void:
 		_log("Mirror Plate: +%d Protocol." % amount)
 
 
-# Public hook for the ROOT HIEROPHANT boss rule (rewrite the heroes' highest die).
+# Public hook for the Signal Hierarch boss rule (rewrite the heroes' highest die).
 func apply_rewrite_to_state(state: Dictionary, survives_current_tick: bool = true) -> void:
 	_apply_rewrite(state, survives_current_tick)
 

@@ -55,7 +55,7 @@ const OPERATION_COPY := {
 		"site": "Colony signal archive",
 		"threats": "REWRITE · HIJACK · SIPHON",
 		"failure": "Hostile signal broadcast",
-		"directive": "Eliminate the Signal Hierophant",
+		"directive": "Eliminate the Signal Hierarch",
 		"accent": Color("B653C8"),
 	},
 	"stellarMenagerie": {
@@ -74,7 +74,7 @@ const BOSS_FLAVOR := {
 	"Scrapmaster": "An industrial assembler that turns fallen drones into fresh troops.",
 	"Hive Matriarch": "A living brood factory that sends its offspring into the fight.",
 	"Veil Overseer": "The Veil commander fights behind a firewall sustained by its surviving troops.",
-	"Signal Hierophant": "A machine priest whose broadcasts override the squad's targeting systems.",
+	"Signal Hierarch": "A machine priest whose broadcasts override the squad's targeting systems.",
 	"Mantle Tyrant": "An apex predator that grows fresh mineral armor as it fights.",
 }
 

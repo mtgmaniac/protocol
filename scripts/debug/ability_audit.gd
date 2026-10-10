@@ -1837,11 +1837,11 @@ func _run_boss_standing_rule_regressions() -> void:
 	var alone_unwarded: bool = not bool(alone_boss.get("warded", false))
 	_expect_and_record("Regression / boss Overseer court ward", "bossStandingRule", "true", str(court_warded and alone_unwarded))
 
-	# ROOT HIEROPHANT — Root Access: the squad's highest die is Rewritten to 3.
+	# Signal Hierarch — Root Access: the squad's highest die is Rewritten to 3.
 	var root_manager: CombatManager = CombatManager.new()
 	root_manager.setup_battle(
 		[_make_unit("audit_low", "Audit Low", "Noop", {}), _make_unit("audit_high", "Audit High", "Noop", {})],
-		[_make_enemy("hierophant", "Signal Hierophant")]
+		[_make_enemy("hierophant", "Signal Hierarch")]
 	)
 	var low_hero: Dictionary = root_manager.get_hero_states()[0]
 	var high_hero: Dictionary = root_manager.get_hero_states()[1]
@@ -1879,7 +1879,7 @@ const PINNED_BOSS_COMPS := {
 	"facility": ["Scrap Drone", "Scrapmaster", "Scrap Drone"],
 	"hive": ["Spine Stalker", "Hive Matriarch"],
 	"veil": ["Veil Overseer", "Aegis Anchor"],
-	"voidCirclet": ["Signal Hierophant", "Cipher Scribe"],
+	"voidCirclet": ["Signal Hierarch", "Cipher Scribe"],
 	"stellarMenagerie": ["Mantle Tyrant", "Geode Panther"],
 }
 

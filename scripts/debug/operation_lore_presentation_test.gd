@@ -5,7 +5,7 @@ extends Node
 
 const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
 const OPERATION_IDS := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
-const BOSS_NAMES := ["Scrapmaster", "Hive Matriarch", "Veil Overseer", "Signal Hierophant", "Mantle Tyrant"]
+const BOSS_NAMES := ["Scrapmaster", "Hive Matriarch", "Veil Overseer", "Signal Hierarch", "Mantle Tyrant"]
 
 var _errors: Array[String] = []
 
@@ -52,6 +52,16 @@ func _test_runtime_metadata() -> void:
 		if enemy != null:
 			var inspect_payload: Dictionary = InspectResolver.resolve_unit(enemy)
 			_expect(str(inspect_payload.get("description", "")).contains(runtime_rule), "%s long-press inspection exposes its literal standing rule" % boss_name)
+	# A run saved before a rename still holds the old enemy name (resolved
+	# encounters and battle checkpoints store names): it must resolve to the
+	# same unit, under its unchanged id.
+	for old_name in DataManager.ENEMY_LEGACY_NAMES.keys():
+		var renamed: Resource = data_manager.call("get_enemy_by_display_name", str(old_name)) as Resource
+		var current_name: String = str(DataManager.ENEMY_LEGACY_NAMES[old_name])
+		_expect(renamed != null and str(renamed.get("display_name")) == current_name, "a save's old enemy name %s resolves to %s" % [old_name, current_name])
+	var hierarch: Resource = data_manager.call("get_enemy_by_display_name", "Signal Hierophant") as Resource
+	_expect(hierarch != null and str(hierarch.get("id")) == "root_hierophant" and str(hierarch.get("callsign")) == "HIERARCH",
+		"Signal Hierophant (the old name) resolves to Signal Hierarch with its id root_hierophant unchanged")
 
 
 func _test_save_defaults_and_migration() -> void:
