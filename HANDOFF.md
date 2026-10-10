@@ -76,6 +76,16 @@ merged, approved by Kev and closed. Do not reopen it.
 - **Android export size.** The Android preset excludes only `dev/*`, so its
   pack is about 422 MB with `debug_artifacts/`, `docs/` and `legacy-angular/`
   inside. Needs exclude filters before any Android build.
+- **Saves store enemies by display name (found 2026-10-10, G-69).** A run
+  save keeps its resolved encounters (`GameState.resolved_battle_comps`), and
+  a battle checkpoint its enemies (`battle_checkpoint._unit_ref`), by display
+  NAME. So every enemy rename needs a row in `DataManager.ENEMY_LEGACY_NAMES`
+  (old name to current name), or a run saved before the rename loses that
+  enemy; the `operation lore` gate checks the rows that exist, not that a
+  rename added one. Long-term fix, not built: store the unit's stable ID
+  (`EnemyData.id`, `DataManager.ENEMY_STABLE_IDS`) in saves instead of the
+  name. That changes the save's contents, so it comes with a
+  `RUN_SAVE_VERSION` decision (root `CLAUDE.md`, "Save schema rule").
 - `intercept_choice_flow_test.gd` is not gated (see `TASK_QUEUE.md`).
 - Web and physical-phone rendering of the dice rework and the UI batch have
   not been checked (no web export since).
