@@ -182,6 +182,9 @@ func default_data() -> Dictionary:
 			# One-time operation-origin acknowledgement lives beside primers so save
 			# migration has one onboarding surface.
 			"operation_origins_seen": [],
+			# Set when the player's first run ends, win or lose (G-72). Until
+			# then no enemy has a trait (enemy_traits_enabled).
+			"first_run_finished": false,
 		},
 		"settings": {},
 	}
@@ -288,6 +291,10 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	var saved_onboarding: Dictionary = loaded.get("onboarding", {}) as Dictionary
 	if not saved_onboarding.has("operation_origins_seen"):
 		data["onboarding"]["operation_origins_seen"] = (data["unlocks"].get("operations", []) as Array).duplicate()
+	# First-run flag (G-72). A profile that finished a run before the flag
+	# existed has it set, so nobody who has already met enemy traits loses them.
+	data["onboarding"]["first_run_finished"] = bool(saved_onboarding.get("first_run_finished", false)) \
+		or int(stats.get("runs_finished", 0)) > 0 or int(stats.get("best_clear", 0)) > 0
 	# The old rung 3 meant Pulse. Rungs now mean the ordered heroes above, so a
 	# stored number cannot be carried forward safely. Derive it from actual owned
 	# ladder heroes instead; ownership itself is always preserved.
@@ -755,6 +762,51 @@ func mark_tutorial_done() -> void:
 	save()
 
 
+# --- First run (G-72, Kev 2026-10-10) ---
+# Elites and Mantle Hunt beasts have no trait until the player's first run
+# ends, win or lose. The flag is set at run end (record_run_finished), so a
+# whole run is played one way; an abandoned run does not set it. Hero traits
+# are not affected. One rule, asked in two places: DataManager.enemy_for_battle
+# (the copy a battle fields) and InspectResolver.trait_entry (what a unit's
+# inspect prints outside a battle).
+#
+# Every harness reads as past the first run (isolated contexts: the sim, the
+# audit, every gate and capture rig), so no balance number and no other gate
+# depends on a profile. The `first run` gate turns the real rule on with
+# force_first_run_gating_for_test.
+var _first_run_gating_forced: bool = false
+
+
+func enemy_traits_enabled() -> bool:
+	if first_run_break() == "traits_on":
+		return true
+	if DevContext.is_isolated() and not _first_run_gating_forced:
+		return true
+	return bool((data.get("onboarding", {}) as Dictionary).get("first_run_finished", false))
+
+
+func force_first_run_gating_for_test() -> void:
+	_first_run_gating_forced = true
+
+
+# Deliberate breaks for the `first run` gate (scripts/debug/first_run_test.gd;
+# never set by the game):
+#   traits_on   enemies have their traits on a first run
+#   no_flag     the end of a run does not set the flag
+const FIRST_RUN_BREAK_ARG := "--first-run-break="
+static var _first_run_break: String = "?"
+
+
+static func first_run_break() -> String:
+	if _first_run_break == "?":
+		_first_run_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(FIRST_RUN_BREAK_ARG):
+					_first_run_break = arg.trim_prefix(FIRST_RUN_BREAK_ARG)
+	return _first_run_break
+
+
 # --- Stats ---
 
 func get_stats() -> Dictionary:
@@ -797,6 +849,9 @@ func record_run_finished(result: String, op_id: String, battle_reached: int) -> 
 	_run_end_unlocks.clear()
 	var stats: Dictionary = data["stats"]
 	stats["runs_finished"] = int(stats.get("runs_finished", 0)) + 1
+	# The first run has ended (G-72): enemy traits are on from the next run.
+	if first_run_break() != "no_flag":
+		data["onboarding"]["first_run_finished"] = true
 	stats["best_clear"] = maxi(int(stats.get("best_clear", 0)), battle_reached)
 	var best_by_op: Dictionary = stats.get("best_clear_by_op", {})
 	best_by_op[op_id] = maxi(int(best_by_op.get(op_id, 0)), battle_reached)

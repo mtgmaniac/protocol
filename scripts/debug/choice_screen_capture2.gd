@@ -15,8 +15,8 @@ func _run() -> void:
 	var gs: Node = root.get_node("/root/GameState")
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
 	gs.set("pending_evolution_unit_id", "avalanche")
-	# --directive: jump to the tier-3 directive pick (evolution already chosen).
-	if "--directive" in OS.get_cmdline_args():
+	# --trait: jump to the 250 XP trait pick (evolution already chosen).
+	if "--trait" in OS.get_cmdline_args():
 		(gs.get("unit_evolutions") as Dictionary)["avalanche"] = "Glacier Rig"
 	change_scene_to_file("res://scenes/ui/EvolutionScreen.tscn")
 	await create_timer(1.5).timeout

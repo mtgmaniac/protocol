@@ -43,7 +43,7 @@ Two independent unit fields (INVARIANTS #2):
 | Init Acolyte | voidAcolyte | voidCirclet | 62 | 12–16 | smart | SYSTEMATIC | 2× firewall, rewrite, siphon |
 | Checksum Scribe | voidScribe | voidCirclet | 74 | 12–16 | smart | SYSTEMATIC | **hijack** (Checksum Copy), rewrite |
 | Axiom Binder | voidBinder | voidCirclet | 112 | 17–23 | smart | WOUNDED | firewall+rewrite overload, siphon |
-| Forked Double | voidGlimmer | voidCirclet | 68 | 13–17 | smart | SPITEFUL | `startsCloaked`; **hijack** (Afterimage); inert summonElite |
+| Forked Double | voidGlimmer | voidCirclet | 68 | 13–17 | smart | SPITEFUL | `startsCloaked`; **hijack** (Afterimage); the inert summonElite flag was removed 2026-10-10 (G-73) |
 | Daemon Channeler | voidChanneler | voidCirclet | 94 | 15–21 | smart | WOUNDED | siphon on crit |
 | SIGNAL HIERARCH | voidCircletBoss | voidCirclet | 180 | 19–25 | smart | WOUNDED | boss |
 | Pumice Macaque | beastMonkey | stellarMenagerie (The Accretion) | 38 | 5–9 | dumb | PACK | packBonus (+1 dmg per other same-kind pack member; fixed 2026-07-08) |

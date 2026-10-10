@@ -37,6 +37,12 @@ other eight. `--policy l1_evo2` is plain L1 taking the second one (Arc,
 Ravager, Sentinel, Trench Rig, Synth Medic, Phantom Engineer, Wraith,
 Nullwire). Run both when a change touches hero kits.
 
+**Traits (G-71):** at 250 XP a hero picks one of its branch's two traits. The
+same index decides it: `l1` (and every policy but L0) takes the branch's
+signature trait, `l1_evo2` the second one, the trait that was a Directive. So
+the two pinned policies are "first evolutions, signature traits" and "second
+evolutions, second traits"; the other two pairings are not measured.
+
 ## Analysis (needs `pip install -r requirements.txt`)
 
 ```bash

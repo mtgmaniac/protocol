@@ -122,9 +122,6 @@ def _walk_body_and_names():
                 for a in e.get("abilities", []):
                     yield "name", f"heroes:{hid}.evo:{eid}.ability:{a.get('name','?')}", a.get("name", "")
                     yield "body", f"heroes:{hid}.evo:{eid}.ability:{a.get('name','?')}.eff", a.get("eff", "")
-                for dr in e.get("directives", []):
-                    yield "name", f"heroes:{hid}.evo:{eid}.directive:{dr.get('name','?')}", dr.get("name", "")
-                    yield "body", f"heroes:{hid}.evo:{eid}.directive:{dr.get('name','?')}.desc", dr.get("desc", "")
 
     def enemy_stream(d):
         for kit, zones in d.get("enemyAbilities", {}).items():

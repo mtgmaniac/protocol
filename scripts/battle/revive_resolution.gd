@@ -8,11 +8,17 @@ extends RefCounted
 ## 20 heal (hero)`. The `else` clause fires when NOBODY is down, so a 20 is never
 ## a dead roll. Decided at FIRE time, not pick time — an ally can fall between
 ## the pick and the cast, and the ability must do the more useful thing then.
-## Directives (Field Surgeon, Resuscitation Loop) override the revive PERCENTAGE
-## only; the fallback heal is unchanged by them.
+## The Reviving trait overrides the revive PERCENTAGE only; the fallback heal
+## is unchanged by it.
 ##
 ## Autoloads resolve through the scene tree, never the bare global identifier:
 ## this script is reached from headless -s tests (TRUTH.md, Verify commands).
+
+
+const UnitTraits := preload("res://scripts/battle/unit_traits.gd")
+## Reviving (G-71; it was the Field Surgeon Directive): the hero's single-hero
+## revive restores the trait's percentage.
+const REVIVING_TRAIT := "fieldSurgeon"
 
 
 static func is_revive_family(raw: Dictionary) -> bool:
@@ -37,17 +43,22 @@ static func fallback_active(raw: Dictionary, hero_states: Array) -> bool:
 
 
 ## The percentage a revive actually restores: authored revivePct, then the
-## reviveNoPenalty relic, then the hero's revive directive (which replaces it).
-static func resolved_pct(raw: Dictionary, hero_state: Dictionary = {}, ability_name: String = "") -> int:
+## reviveNoPenalty relic, then the caster's Reviving trait (which replaces it).
+## `traits_off`: combat passes true when no trait may act (a gate's break).
+static func resolved_pct(raw: Dictionary, hero_state: Dictionary = {}, _ability_name: String = "", traits_off: bool = false) -> int:
 	var pct: int = int(raw.get("revivePct", 50))
 	var game_state: Node = _autoload("GameState")
 	if game_state != null:
 		pct = int(game_state.call("get_revive_hp_pct", pct))
-	if str(hero_state.get("directive_type", "")) == "abilityRevivePctOverride":
-		var directive: Dictionary = hero_state.get("directive_effect", {}) as Dictionary
-		if str(directive.get("ability", "")) == ability_name and ability_name != "":
-			pct = int(directive.get("pct", pct))
+	if reviving_applies(raw, hero_state, traits_off):
+		pct = int(UnitTraits.of_unit(hero_state.get("unit")).get("pct", pct))
 	return pct
+
+
+## True when this revive is raised by the caster's Reviving trait: a revive of
+## one hero, cast by a hero that carries the trait.
+static func reviving_applies(raw: Dictionary, hero_state: Dictionary, traits_off: bool = false) -> bool:
+	return not traits_off and bool(raw.get("revive", false)) and str(hero_state.get("trait", "")) == REVIVING_TRAIT
 
 
 ## Manual pick side: a living hero when the fallback will fire, otherwise a
@@ -63,7 +74,7 @@ static func manual_side(raw: Dictionary, hero_states: Array) -> String:
 ## Board-aware copy of the ability for pips: exactly what this roll does now.
 ## Fallback active -> the heal it will perform; otherwise the revive at its
 ## RESOLVED percentage (the readout used to show raw revivePct and ignore the
-## directive and relic).
+## trait and relic).
 static func display_raw(raw: Dictionary, hero_state: Dictionary, ability_name: String, hero_states: Array) -> Dictionary:
 	if not is_revive_family(raw):
 		return raw

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Unit traits (data/raw/traits.data.json)",
   "type": "object",
-  "required": ["requirements", "traits", "evolutions", "enemies"],
+  "required": ["requirements", "traits", "evolutions", "legacyDirectives", "enemies"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
@@ -21,7 +21,19 @@
     },
     "evolutions": {
       "type": "object",
+      "description": "The two traits a branch chooses between at 250 XP (G-71): its signature trait, then the one that was a Directive.",
       "propertyNames": { "pattern": "^[a-z]+/[a-z]+$" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "uniqueItems": true,
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "legacyDirectives": {
+      "type": "object",
+      "description": "Directive name (as a run saved before G-71 stores it) -> the trait it became.",
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "enemies": {
@@ -39,7 +51,7 @@
         "any": { "$ref": "#/$defs/fields" },
         "none": { "$ref": "#/$defs/fields" }
       },
-      "anyOf": [{ "required": ["all"] }, { "required": ["any"] }]
+      "anyOf": [{ "required": ["all"] }, { "required": ["any"] }, { "required": ["none"] }]
     },
     "fields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
     "trait": {

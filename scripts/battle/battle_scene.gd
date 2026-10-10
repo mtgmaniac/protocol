@@ -2553,7 +2553,7 @@ func _ensure_protocol_stack_layout() -> void:
 	protocol_bar.custom_minimum_size = Vector2.ZERO
 
 
-# Deep Cells directive: the Protocol cap rises while a living carrier stands.
+# Capacitive: the Protocol cap rises while a living hero with the trait stands.
 # Rogue Engineer intercept: the cap override replaces the base cap.
 func _max_protocol() -> int:
 	# Rule delegated to BattleEngine (A.1). The is_inside_tree guard stays here
@@ -2664,10 +2664,9 @@ func _build_runtime_units() -> void:
 	if enemy_names.is_empty():
 		enemy_names = battle_entry.get("enemy_names", [])
 		cloaked_names = battle_entry.get("cloaked_names", [])
-	# Prisoner Exchange intercept: this battle fields one fewer enemy.
-	if bool(_game_state().next_battle_effects.get("minus_one_enemy", false)) and enemy_names.size() > 1:
-		enemy_names = enemy_names.duplicate()
-		enemy_names.remove_at(enemy_names.size() - 1)
+	# Prisoner Exchange intercept: this battle fields one fewer enemy, never
+	# a boss (GameState owns the rule; the sim fields the same lineup).
+	enemy_names = _game_state().lineup_for_battle(enemy_names)
 	for enemy_name in enemy_names:
 		if enemy_units.size() >= GameState.SQUAD_UNIT_LIMIT:
 			break
@@ -3587,8 +3586,7 @@ func _ensure_panel_background(panel: PanelContainer) -> void:
 
 ## Per-battle instance copy — stats always match `enemyUnitDefs` (no fight-index scaling).
 func _duplicate_enemy(base_enemy: EnemyData) -> EnemyData:
-	var copy: EnemyData = base_enemy.duplicate(true) as EnemyData
-	return copy if copy != null else base_enemy
+	return _data_manager().enemy_for_battle(base_enemy)
 
 
 # --- Item System (Phase 3) ---

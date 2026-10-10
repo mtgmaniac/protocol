@@ -121,7 +121,7 @@ static func resolve_ability(raw: Dictionary, side: String = "hero", meta: String
 # When it carries active statuses they REPLACE the role subtitle, shown as pip + description
 # rows; with no statuses the role subtitle is kept.
 # Revive pips show the percentage that actually fires (reviveNoPenalty relic,
-# then the hero's revive directive), not raw revivePct. Inspect has no squad
+# then the hero's Reviving trait), not raw revivePct. Inspect has no squad
 # state, so it is NOT board-aware: it keeps the revive pip and the eff text
 # carries the `else` clause; the battle readout is the board-aware surface.
 static func _with_resolved_revive_pct(raw: Dictionary, hero_state: Dictionary = {}, ability_name: String = "") -> Dictionary:
@@ -282,8 +282,20 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 # The trait line (UnitTraits.line: the name, then one sentence) for a unit with a trait,
 # {} without. Text only: a trait has no pip.
 static func trait_entry(data: Resource) -> Dictionary:
+	# On a player's first run no enemy has a trait (G-72). A battle's enemies
+	# already carry none; this covers an inspect outside one (Help, a preview).
+	if data is EnemyData and not _enemy_traits_enabled():
+		return {}
 	var line: String = CombatManager.UnitTraits.line(CombatManager.UnitTraits.of_unit(data))
 	return {} if line == "" else {"effects": [], "text": line, "trait": true}
+
+
+# SaveManager, looked up at call time: this script is reached from `-s` gates
+# that compile before the autoloads are registered.
+static func _enemy_traits_enabled() -> bool:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var save_manager: Node = tree.root.get_node_or_null("SaveManager") if tree != null and tree.root != null else null
+	return save_manager == null or bool(save_manager.call("enemy_traits_enabled"))
 
 
 static func accrete_entry(data: Resource) -> Dictionary:

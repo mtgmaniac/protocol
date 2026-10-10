@@ -680,10 +680,6 @@ func apply_battle_start_gear_effects() -> void:
 	for hero_state in _hero_states:
 		if hero_state["dead"]:
 			continue
-		# Entrench directive: open every battle dug in behind shields.
-		if _has_directive(hero_state, "battleStartShieldSelf"):
-			_add_shield_stack(hero_state, _directive_value(hero_state, "amount", 10))
-			_log("Entrench: %s starts dug in." % hero_state["unit"].display_name)
 		var gear_ids: Array = GameState.gear_by_unit.get(str(hero_state["id"]), [])
 		for gear_id in gear_ids:
 			var item: ItemData = DataManager.get_item(str(gear_id)) as ItemData
@@ -1382,19 +1378,22 @@ func _create_runtime_state(unit: Resource, runtime_id: String = "") -> Dictionar
 		if bool(unit.starts_cloaked):
 			state["cloaked"] = true
 		state["accrete"] = int(unit.accrete)
-	# Tier-3 Directive (pkg6): a data-driven passive attached by
-	# GameState.get_run_unit_data once picked.
+	# A retired Directive (G-71). Nothing in the game sets one: the 250 XP pick
+	# is a trait. The seven effect types below still have a regression in the
+	# ability audit, which builds its unit with `directive` set.
 	if unit is UnitData and not (unit as UnitData).directive.is_empty():
 		var directive_effect: Dictionary = ((unit as UnitData).directive as Dictionary).get("effect", {})
 		state["directive_type"] = str(directive_effect.get("type", ""))
 		state["directive_effect"] = (directive_effect as Dictionary).duplicate(true)
-		# Reaper: raise the execute threshold via the per-state hook.
-		if str(state["directive_type"]) == "executeThresholdPct":
-			state["execute_threshold_pct"] = int(directive_effect.get("pct", 25))
 	return state
 
 
-# --- Directive helpers (pkg6 tier-3 passives) ---
+# --- Retired Directives (G-71) ---
+# The 250 XP pick was 1 of 2 Directives until 2026-10-10. Sixteen became traits
+# (see `_has_trait`); the other sixteen are no longer offered. Seven of their
+# effect types are still read here, only because the ability audit pins each:
+# burnDurationBonus, chainFullDamage, killNextAbilityDamage, shieldGrantsSpike,
+# cloakAttackBonus, decloakExecute, rfeAlsoJam. No data sets one.
 
 func _has_directive(state: Dictionary, effect_type: String) -> bool:
 	return str(state.get("directive_type", "")) == effect_type
@@ -1402,10 +1401,6 @@ func _has_directive(state: Dictionary, effect_type: String) -> bool:
 
 func _directive_value(state: Dictionary, key: String, default_val: int) -> int:
 	return int((state.get("directive_effect", {}) as Dictionary).get(key, default_val))
-
-
-func _directive_ability(state: Dictionary) -> String:
-	return str((state.get("directive_effect", {}) as Dictionary).get("ability", ""))
 
 
 # --- Shield stack helpers ---
@@ -1434,12 +1429,13 @@ func _get_total_shield(state: Dictionary) -> int:
 # itself (Accrete).
 func _add_shield_stack(state: Dictionary, amount: int, survives_current_tick: bool = false, announce: bool = true) -> int:
 	var shield_before: int = _get_total_shield(state)
-	# Overcharge Mesh directive: shields gained by any squad member +2 while
-	# a living carrier stands.
+	# Reinforcing: every shield a squad member gains is larger while a living
+	# hero with the trait stands.
 	if _is_hero_state(state):
 		for mesh_state in _hero_states:
-			if not bool(mesh_state["dead"]) and _has_directive(mesh_state, "squadShieldBonus"):
-				amount += _directive_value(mesh_state, "amount", 2)
+			if not bool(mesh_state["dead"]) and _has_trait(mesh_state, "reinforcedMesh"):
+				amount += _trait_num(mesh_state, "amount", 2)
+				_trait_fired(mesh_state, "%s's shield is %d larger." % [state["unit"].display_name, _trait_num(mesh_state, "amount", 2)], _trait_num(mesh_state, "amount", 2))
 				break
 	state["shield_stacks"].append({"amt": amount, "skip_next_tick": survives_current_tick})
 	# Cap the total shield at max HP so persistent shields (MANTLE TYRANT)
@@ -1629,10 +1625,11 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			_keep_cloak_after_kill(hero_state, kill_target, events_at_cast)
 
 	if shield > 0:
-		# Rampart directive: shields this hero grants are bigger.
+		# Fortified: shields this hero's abilities grant are bigger.
 		var shield_grant: int = shield
-		if _has_directive(hero_state, "ownShieldBonus"):
-			shield_grant += _directive_value(hero_state, "amount", 2)
+		if _has_trait(hero_state, "rampart"):
+			shield_grant += _trait_num(hero_state, "amount", 2)
+			_trait_fired(hero_state, "%s's shield is %d larger." % [hero_state["unit"].display_name, _trait_num(hero_state, "amount", 2)], _trait_num(hero_state, "amount", 2))
 		if shield_all:
 			for ally_state in _hero_states:
 				if not ally_state["dead"]:
@@ -1696,9 +1693,6 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 					_add_roll_buff(ally_state, roll_buff_amount, roll_buff_turns, false)
 
 	var gain_protocol: int = int(raw.get("gainProtocol", 0))
-	# Surge Wiring directive: the named ability generates extra Protocol.
-	if gain_protocol > 0 and _has_directive(hero_state, "abilityProtocolBonus") and _directive_ability(hero_state) == str(ability_entry.get("ability_name", "")):
-		gain_protocol += _directive_value(hero_state, "amount", 2)
 	if gain_protocol > 0:
 		_pending_protocol_grants += gain_protocol
 		_log("%s generates %d Protocol." % [hero_state["unit"].display_name, gain_protocol])
@@ -1726,12 +1720,12 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			for enemy_state in _enemy_states:
 				if not enemy_state["dead"] and not _ward_blocks_hostile(enemy_state, [FirewallFeedback.ROLL_PENALTY]):
 					_add_rfe_stack(enemy_state, rfe_amount, rfe_turns)
-					_apply_roll_down_directives(hero_state, enemy_state, true)
+					_apply_roll_down_riders(hero_state, enemy_state, true)
 		else:
 			var rfe_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 			if not rfe_target.is_empty() and not _ward_blocks_hostile(rfe_target, [FirewallFeedback.ROLL_PENALTY]):
 				_add_rfe_stack(rfe_target, rfe_amount, rfe_turns)
-				_apply_roll_down_directives(hero_state, rfe_target, false)
+				_apply_roll_down_riders(hero_state, rfe_target, false)
 
 	if bool(raw.get("taunt", false)):
 		# Build G ruling G-4: taunt marks ONE enemy — the taunted unit can only
@@ -1754,9 +1748,10 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 
 	# Spike: this round, any enemy that damages this unit takes N back.
 	var spike_amount: int = int(raw.get("spike", 0))
-	# Counterweight directive: this hero's Spike hits harder.
-	if spike_amount > 0 and _has_directive(hero_state, "spikeBonus"):
-		spike_amount += _directive_value(hero_state, "amount", 4)
+	# Bristling: this hero's spike abilities grant more spike.
+	if spike_amount > 0 and _has_trait(hero_state, "counterweight"):
+		spike_amount += _trait_num(hero_state, "amount", 4)
+		_trait_fired(hero_state, "%s's spike is %d larger." % [hero_state["unit"].display_name, _trait_num(hero_state, "amount", 4)], _trait_num(hero_state, "amount", 4))
 	if spike_amount > 0:
 		# Build I (Enforce rider): when the band ALSO carries a targeted shield
 		# (shTgt), the spike rides the SHIELDED target — the guard hardens
@@ -1809,9 +1804,6 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	var freeze_any: int = int(raw.get("freezeAnyDice", 0))
 	var freeze_amount: int = maxi(maxi(freeze_enemy, freeze_all_enemy), freeze_any)
 	var freeze_flavor: String = str(raw.get("freeze_flavor", "ice"))
-	# Deep Freeze directive: this hero's freezes repeat more results.
-	if freeze_amount > 0 and _has_directive(hero_state, "freezeDurationBonus"):
-		freeze_amount += _directive_value(hero_state, "amount", 1)
 	if freeze_amount > 0:
 		if freeze_all_enemy > 0:
 			for es in _enemy_states:
@@ -1871,10 +1863,10 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		hero_state["bloodlust_ready"] = true
 		_trait_fired(hero_state, "%s's next leech heals %d%% more." % [hero_state["unit"].display_name, _trait_num(hero_state, "pct", 50)])
 
-	# Silent Running directive: non-damage abilities re-Cloak the caster.
-	if damage <= 0 and _has_directive(hero_state, "nonDamageRecloak") and not bool(hero_state.get("cloaked", false)) and not bool(hero_state.get("dead", false)):
+	# Shrouded: an ability that deals no damage cloaks the caster.
+	if damage <= 0 and _has_trait(hero_state, "silentRunning") and not bool(hero_state.get("cloaked", false)) and not bool(hero_state.get("dead", false)):
 		hero_state["cloaked"] = true
-		_log("%s slips back into cloak (Silent Running)." % hero_state["unit"].display_name)
+		_trait_fired(hero_state, "%s slips into cloak." % hero_state["unit"].display_name)
 		_emit_event(hero_state, "cloak", 0, "hero")
 
 
@@ -1887,24 +1879,22 @@ func _apply_bunker_doctrine_spike(granter_state: Dictionary, holder_state: Dicti
 	_log("Bunker Doctrine: %s gains spike %d." % [holder_state["unit"].display_name, spike_value])
 
 
-# Roll-down riders (Noise Floor / Nullwire directives): fired per enemy that
-# takes one of this hero's rfe applications.
-func _apply_roll_down_directives(hero_state: Dictionary, target_state: Dictionary, is_tray_wide: bool) -> void:
-	# Wall of Static: tray-wide roll-downs also Jam (higher cap).
-	if is_tray_wide and _has_directive(hero_state, "rfeAllAlsoJam"):
-		_apply_jam(target_state, _directive_value(hero_state, "cap", 15), true)
-	# Hard Lock: single-target roll-downs also Jam.
+# Roll-penalty riders: fired per enemy that takes one of this hero's rfe
+# applications.
+func _apply_roll_down_riders(hero_state: Dictionary, target_state: Dictionary, is_tray_wide: bool) -> void:
+	# Hard Lock (a retired Directive): single-target roll-downs also Jam.
 	if not is_tray_wide and _has_directive(hero_state, "rfeAlsoJam"):
 		_apply_jam(target_state, JAM_CAP, true)
-	# Feedback: enemies under this hero's roll-downs burn Protocol-out — take
-	# damage each round while a roll-down is active.
-	if _has_directive(hero_state, "rfeDamagePerRound"):
-		target_state["feedback_per_round"] = maxi(int(target_state.get("feedback_per_round", 0)), _directive_value(hero_state, "amount", 2))
-	# Signal Theft: every roll-down applied feeds the pool.
-	if _has_directive(hero_state, "rfeGrantsProtocol"):
-		var theft: int = _directive_value(hero_state, "amount", 1)
+	# Shrieking: an enemy under this hero's roll penalties takes damage each
+	# round while one is active.
+	if _has_trait(hero_state, "feedback"):
+		target_state["feedback_per_round"] = maxi(int(target_state.get("feedback_per_round", 0)), _trait_num(hero_state, "amount", 2))
+		_trait_fired(hero_state, "%s takes %d each round under the roll penalty." % [target_state["unit"].display_name, _trait_num(hero_state, "amount", 2)])
+	# Siphoning: every enemy a roll penalty lands on feeds the pool.
+	if _has_trait(hero_state, "signalTheft"):
+		var theft: int = _trait_num(hero_state, "amount", 1)
 		_pending_protocol_grants += theft
-		_log("Signal Theft: +%d Protocol." % theft)
+		_trait_fired(hero_state, "+%d Protocol for the roll penalty on %s." % [theft, target_state["unit"].display_name], theft)
 
 
 # Field Surgeon / Lazarus Loop: the named ability revives at a fixed percent.
@@ -1927,7 +1917,7 @@ func _resolve_revive_family(hero_state: Dictionary, ability_entry: Dictionary, r
 			heal_target = _lowest_hp_state(_hero_states)
 		_heal_state(heal_target, fallback, hero_state)
 		return
-	var revive_pct: int = ReviveResolution.resolved_pct(raw, hero_state, str(ability_entry.get("ability_name", "")))
+	var revive_pct: int = ReviveResolution.resolved_pct(raw, hero_state, str(ability_entry.get("ability_name", "")), _traits_off())
 	if bool(raw.get("reviveAll", false)):
 		for ally_state in _hero_states:
 			if bool(ally_state.get("dead", false)):
@@ -1936,6 +1926,9 @@ func _resolve_revive_family(hero_state: Dictionary, ability_entry: Dictionary, r
 	var revive_target: Dictionary = _find_target_by_id_including_dead(_hero_states, str(hero_state.get("selected_target_id", "")))
 	if revive_target.is_empty() or not bool(revive_target.get("dead", false)):
 		revive_target = _first_dead_state(_hero_states)
+	# Reviving: the hero comes back at the trait's percentage.
+	if not revive_target.is_empty() and ReviveResolution.reviving_applies(raw, hero_state, _traits_off()):
+		_trait_fired(hero_state, "%s returns at %d%% HP." % [revive_target["unit"].display_name, revive_pct])
 	_revive_state(revive_target, revive_pct)
 
 
@@ -1968,8 +1961,9 @@ func _apply_hero_ability_damage(
 	var shield_pierce: int = int(hero_state.get("gear_shield_pierce", 0))
 
 	var breach: bool = bool(raw.get("breach", false))
-	# Serrated directive: this hero's Pierce attacks also Breach.
-	if ignores_shield and _has_directive(hero_state, "pierceAlsoBreach"):
+	# Serrated: this hero's pierce attacks also breach.
+	var serrated: bool = ignores_shield and not breach and _has_trait(hero_state, "serrated")
+	if serrated:
 		breach = true
 	var breach_all: bool = bool(raw.get("breachAll", false))
 	var leech: bool = bool(raw.get("leech", false))
@@ -1987,7 +1981,7 @@ func _apply_hero_ability_damage(
 				continue
 			_break_cloak_on_aoe(enemy_state)
 			if breach_all or breach:
-				_breach_shields(hero_state, enemy_state)
+				_breach_shields(hero_state, enemy_state, serrated and not breach_all)
 			# Ruthless: this hero's area attacks hit marked enemies harder.
 			var area_dmg: int = final_dmg
 			if _has_trait(hero_state, "exposed") and bool(enemy_state.get("marked", false)):
@@ -2014,7 +2008,7 @@ func _apply_hero_ability_damage(
 				attack_effects.append(FirewallFeedback.MARK)
 			if not _ward_blocks_hostile(target_enemy, attack_effects):
 				if breach and not breach_all:
-					_breach_shields(hero_state, target_enemy)
+					_breach_shields(hero_state, target_enemy, serrated)
 				# vsFrozenBonus rider (Shatter Lance): bonus damage against a
 				# target whose die is frozen. A rider, not a keyword.
 				var single_target_dmg: int = final_dmg
@@ -2025,9 +2019,6 @@ func _apply_hero_ability_damage(
 				leech_hp_dealt += _damage_state(target_enemy, single_target_dmg, ignores_shield, hero_state, shield_pierce)
 				if bool(raw.get("detonate", false)):
 					_detonate_burn(hero_state, target_enemy)
-				# Open Veins directive: the overload zone Detonates after its damage.
-				elif str(ability_entry.get("zone", "")) == "overload" and _has_directive(hero_state, "overloadDetonateAfter"):
-					_detonate_burn(hero_state, target_enemy)
 				if bool(raw.get("execute", false)):
 					_apply_execute_bonus(hero_state, target_enemy)
 				# Ghostblade directive: the decloak strike also Executes.
@@ -2037,12 +2028,7 @@ func _apply_hero_ability_damage(
 				if burn_amount > 0 and burn_turns > 0:
 					_apply_burn_from_hero(hero_state, target_enemy, burn_amount, burn_turns)
 				# Mark applies AFTER this hit — the NEXT hit gets the +50%.
-				# Combat Sense / Marked for Death directives Mark on any
-				# damaging single-target hit.
-				# CONFIRMED, never AoE Mark (per Kev 2026-07-06,
-				# DECISIONS_RESOLVED #14): directive Marks land on the primary
-				# target of single-target hits only.
-				if (bool(raw.get("mark", false)) or _has_directive(hero_state, "damageAppliesMark")) and not _echo_pass_active:
+				if bool(raw.get("mark", false)) and not _echo_pass_active:
 					_apply_mark(target_enemy)
 			# Chain jumps continue even when the primary hit was ward-blocked —
 			# the ward only negates the ability for its own carrier.
@@ -2137,15 +2123,20 @@ func apply_battle_start_jam(state: Dictionary, cap: int = JAM_CAP) -> void:
 # Hero-applied Burn: routes through the Ignition Coil gear hook — the Burn
 # also ticks once immediately on apply (extra tick, turns untouched).
 func _apply_burn_from_hero(hero_state: Dictionary, target_state: Dictionary, amount: int, turns: int) -> void:
-	# Slow Roast directive: this hero's Burns last longer.
+	# Slow Roast (a retired Directive): this hero's Burns last longer.
 	var total_turns: int = turns
 	if _has_directive(hero_state, "burnDurationBonus"):
 		total_turns += _directive_value(hero_state, "amount", 1)
 	_apply_burn(target_state, amount, total_turns)
-	# Ignition Coil gear / Flashpoint directive: the Burn ticks once on apply.
-	var ignites: bool = bool(hero_state.get("gear_burn_immediate", false)) or _has_directive(hero_state, "burnImmediateTick")
+	# Ignition Coil gear / Searing: the burn ticks once as it lands. Having
+	# both is still one tick.
+	var searing: bool = _has_trait(hero_state, "flashpoint")
+	var ignites: bool = bool(hero_state.get("gear_burn_immediate", false)) or searing
 	if ignites and amount > 0 and not bool(target_state.get("dead", false)):
-		_log("The burn ignites instantly for %d!" % amount)
+		if searing:
+			_trait_fired(hero_state, "the burn on %s ticks at once for %d." % [target_state["unit"].display_name, amount], amount)
+		else:
+			_log("The burn ignites instantly for %d!" % amount)
 		_damage_state(target_state, amount)
 
 
@@ -2164,12 +2155,15 @@ func apply_item_mark(target_state: Dictionary) -> void:
 
 
 # Breach: destroy ALL shield on the target before the damage applies.
-func _breach_shields(attacker_state: Dictionary, target_state: Dictionary) -> void:
+# `from_trait`: the breach is Serrated's, so the trait is named when it lands.
+func _breach_shields(attacker_state: Dictionary, target_state: Dictionary, from_trait: bool = false) -> void:
 	if target_state.is_empty() or bool(target_state.get("dead", false)):
 		return
 	var destroyed: int = int(target_state.get("shield", 0))
 	if destroyed <= 0:
 		return
+	if from_trait:
+		_trait_fired(attacker_state, "the pierce attack breaches %s." % target_state["unit"].display_name)
 	target_state["shield_stacks"] = []
 	target_state["shield"] = 0
 	_log("%s BREACHES %s's shields (%d destroyed)!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, destroyed])
@@ -2177,15 +2171,23 @@ func _breach_shields(attacker_state: Dictionary, target_state: Dictionary) -> vo
 
 
 # Execute: if the target sits below the execute threshold of its max HP AFTER
-# the base damage, deal bonus damage. Reaper directive raises the threshold via
-# the per-state execute_threshold_pct hook.
+# the base damage, deal bonus damage. Reaping raises the threshold.
+const EXECUTE_THRESHOLD_PCT := 25
+
+
 func _apply_execute_bonus(attacker_state: Dictionary, target_state: Dictionary) -> void:
 	if target_state.is_empty() or bool(target_state.get("dead", false)):
 		return
-	var threshold_pct: int = int(attacker_state.get("execute_threshold_pct", 25))
+	var threshold_pct: int = EXECUTE_THRESHOLD_PCT
+	if _has_trait(attacker_state, "reaper"):
+		threshold_pct = maxi(threshold_pct, _trait_num(attacker_state, "pct", 35))
 	var max_hp: int = maxi(int(target_state.get("max_hp", 1)), 1)
-	if int(target_state.get("current_hp", 0)) * 100 >= max_hp * threshold_pct:
+	var hp_pct_x: int = int(target_state.get("current_hp", 0)) * 100
+	if hp_pct_x >= max_hp * threshold_pct:
 		return
+	# Named only when the trait made the difference.
+	if hp_pct_x >= max_hp * EXECUTE_THRESHOLD_PCT:
+		_trait_fired(attacker_state, "the execute triggers on %s below %d%% HP." % [target_state["unit"].display_name, threshold_pct])
 	# BALANCE-TODO: execute bonus damage is a flat +8
 	var bonus: int = _tuned_int("execute_bonus", 8)
 	_log("%s EXECUTES %s for +%d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, bonus])
@@ -2258,12 +2260,13 @@ func _apply_chain_jumps(
 		return
 	if has_relic("chainExtraJump"):
 		jumps += 1
-	# Conductor directive: this hero's Chains jump one extra target.
-	if _has_directive(hero_state, "chainExtraJump"):
-		jumps += 1
+	# Forking: this hero's chains jump further.
+	var own_jumps: int = jumps
+	if _has_trait(hero_state, "conductor"):
+		jumps += _trait_num(hero_state, "jumps", 1)
 	# chain jump damage is 50% of base, round down (chain_ratio; set 0.6→0.5 in
 	# Batch-1, Kev 2026-07-11 — see DECISIONS_RESOLVED #10).
-	# Amplifier directive: chain hits carry the full base damage.
+	# Amplifier (a retired Directive): chain hits carry the full base damage.
 	var chain_damage: int = base_damage if _has_directive(hero_state, "chainFullDamage") else int(floor(float(base_damage) * _tuned_float("chain_ratio", 0.5)))
 	# Charged: every jump of this hero's chains hits a little harder.
 	var live_wire: int = _trait_num(hero_state, "amount", 1) if _has_trait(hero_state, "liveWire") else 0
@@ -2276,6 +2279,8 @@ func _apply_chain_jumps(
 		if next_target.is_empty():
 			return
 		hit_ids[str(next_target["id"])] = true
+		if _i >= own_jumps:
+			_trait_fired(hero_state, "the chain jumps on to %s." % next_target["unit"].display_name)
 		if live_wire > 0:
 			_trait_fired(hero_state, "the chain jump deals +%d." % live_wire, live_wire)
 		_log("%s's attack chains to %s for %d." % [hero_state["unit"].display_name, next_target["unit"].display_name, chain_damage])
@@ -2972,9 +2977,6 @@ func _damage_state(
 	# Gear: dmgReduction for hero states
 	if _is_hero_state(state):
 		var reduction: int = int(state.get("gear_dmg_reduction", 0))
-		# Ironclad directive: while taunting, incoming hits are blunted.
-		if bool(state.get("taunting", false)) and _has_directive(state, "tauntDamageReduction"):
-			reduction += _directive_value(state, "amount", 2)
 		# Anchored: takes less damage while taunting.
 		if bool(state.get("taunting", false)) and _has_trait(state, "anchor"):
 			reduction += _trait_num(state, "amount", 2)
@@ -3005,16 +3007,17 @@ func _damage_state(
 			var cold_bonus: int = int(_get_relic_value("frozenBonusDamage", "amount", 4))
 			amount += cold_bonus
 			_log("Cold Logic: +%d against the frozen die." % cold_bonus)
-		# Attacker directives: Deep Cuts (vs Burning) and Shatterpoint (vs frozen).
+		# The attacker's trait: Scalding (a burning target) and Shattering (a
+		# frozen die).
 		if _is_hero_state(attacker_state):
-			if int(state.get("burn", 0)) > 0 and _has_directive(attacker_state, "bonusVsBurning"):
-				var cuts_bonus: int = _directive_value(attacker_state, "amount", 3)
-				amount += cuts_bonus
-				_log("Deep Cuts: +%d against the burning target." % cuts_bonus)
-			if int(state.get("die_freeze_turns", 0)) > 0 and _has_directive(attacker_state, "bonusVsFrozen"):
-				var shatter_bonus: int = _directive_value(attacker_state, "amount", 6)
+			if int(state.get("burn", 0)) > 0 and _has_trait(attacker_state, "thermalTrauma"):
+				var scald_bonus: int = _trait_num(attacker_state, "amount", 3)
+				amount += scald_bonus
+				_trait_fired(attacker_state, "+%d damage to the burning %s." % [scald_bonus, state["unit"].display_name], scald_bonus)
+			if int(state.get("die_freeze_turns", 0)) > 0 and _has_trait(attacker_state, "shatterpoint"):
+				var shatter_bonus: int = _trait_num(attacker_state, "amount", 6)
 				amount += shatter_bonus
-				_log("Shatterpoint: +%d against the frozen die." % shatter_bonus)
+				_trait_fired(attacker_state, "+%d damage to %s, whose die is frozen." % [shatter_bonus, state["unit"].display_name], shatter_bonus)
 		# Zero-Day: a die Nullwire rewrote makes its unit take more from
 		# attacks until the rewrite ends.
 		if int(state.get("zero_day", 0)) > 0 and not _traits_off():
@@ -3108,14 +3111,14 @@ func _damage_state(
 		if hp_before > max_hp / 2 and int(state["current_hp"]) <= max_hp / 2:
 			_trigger_low_hp_squad_roll_buff()
 
-	# Vanish directive: the first time this hero drops below the threshold,
-	# they Cloak (once per battle).
-	if _is_hero_state(state) and int(state["current_hp"]) > 0 and _has_directive(state, "lowHpCloakOnce") and not bool(state.get("vanish_used", false)):
-		var vanish_pct: int = _directive_value(state, "pct", 50)
+	# Vanishing: the first time damage leaves this hero alive below the
+	# threshold, it cloaks (once per battle).
+	if _is_hero_state(state) and int(state["current_hp"]) > 0 and _has_trait(state, "vanish") and not bool(state.get("vanish_used", false)):
+		var vanish_pct: int = _trait_num(state, "pct", 50)
 		if int(state["current_hp"]) * 100 < int(state["max_hp"]) * vanish_pct:
 			state["vanish_used"] = true
 			state["cloaked"] = true
-			_log("%s vanishes into cloak!" % state["unit"].display_name)
+			_trait_fired(state, "%s drops below %d%% HP and cloaks." % [state["unit"].display_name, vanish_pct])
 			_emit_event(state, "cloak", 0, "hero")
 
 	if int(state["current_hp"]) <= 0:
@@ -3573,11 +3576,11 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 			if shield_bonus > 0:
 				_add_shield_stack(state, shield_bonus)
 				_log("%s grants %d shield from the heal." % [healer_state["unit"].display_name, shield_bonus])
-		# Field Triage directive: this hero's heals also plate the target.
-		if not healer_state.is_empty() and _has_directive(healer_state, "healGrantsShield") and not bool(state.get("dead", false)):
-			var triage_shield: int = _directive_value(healer_state, "amount", 3)
-			_add_shield_stack(state, triage_shield)
-			_log("Field Triage: the heal grants %d shield." % triage_shield)
+		# Sheltering: this hero's heals also shield whoever they heal.
+		if not healer_state.is_empty() and _has_trait(healer_state, "fieldTriage") and not bool(state.get("dead", false)):
+			var shelter_shield: int = _trait_num(healer_state, "amount", 3)
+			_trait_fired(healer_state, "the heal grants %s %d shield." % [state["unit"].display_name, shelter_shield], shelter_shield)
+			_add_shield_stack(state, shelter_shield)
 		# Aegis Field: a heal grants all allies shield — but only friendly heals
 		# (the healed unit is a hero). Enemy heals (regenerative modifier, enemy
 		# lifesteal) no longer arm the squad's defense (audit A-033).
@@ -3950,11 +3953,11 @@ func _tick_state(state: Dictionary) -> void:
 		state["shield_stacks"] = new_shield_stacks
 		state["shield"] = _get_total_shield(state)
 
-	# Feedback directive: enemies under an active roll-down take chip damage
-	# each round (fires before the stacks decay so a 1-turn rfe still bites).
-	if not state["dead"] and int(state.get("feedback_per_round", 0)) > 0 and _get_total_rfe(state) > 0:
+	# Shrieking: an enemy under an active roll penalty takes damage each
+	# round (before the stacks decay, so a 1-turn penalty still bites).
+	if not state["dead"] and int(state.get("feedback_per_round", 0)) > 0 and _get_total_rfe(state) > 0 and not _traits_off():
 		var feedback_dmg: int = int(state["feedback_per_round"])
-		_log("Feedback: %s takes %d from the static." % [state["unit"].display_name, feedback_dmg])
+		_log("%s: %s takes %d under the roll penalty." % [UnitTraits.name_of("feedback"), state["unit"].display_name, feedback_dmg])
 		_damage_state(state, feedback_dmg)
 
 	# Tick RFE stacks: decrement turns_left, remove expired

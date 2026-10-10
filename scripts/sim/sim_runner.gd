@@ -17,7 +17,7 @@
 # scripts/sim/telemetry_schema.md; replay with scripts/sim/replay.py (B.4).
 #
 # A.3 scope: stub policy (no protocol spends; hero abilities auto-target the
-# first living enemy via combat_manager's fallback; drafts/evolutions/directives
+# first living enemy via combat_manager's fallback; drafts/evolutions/traits
 # take option 0). Beats are consumed without applying their effects.
 # SIM-TODO(kev): real policy layer lands in Package B.2/B.3; beat effects
 # (fork modifiers / intercept cards) and the fuller battle-start setup
@@ -891,16 +891,14 @@ func _build_enemy_units(gs: Node, dm: Node) -> Array:
 	if enemy_names.is_empty():
 		enemy_names = battle_entry.get("enemy_names", [])
 		cloaked_names = battle_entry.get("cloaked_names", [])
-	if bool((gs.get("next_battle_effects") as Dictionary).get("minus_one_enemy", false)) and enemy_names.size() > 1:
-		enemy_names = enemy_names.duplicate()
-		enemy_names.remove_at(enemy_names.size() - 1)
+	enemy_names = gs.call("lineup_for_battle", enemy_names)
 	var units: Array = []
 	for enemy_name in enemy_names:
 		if units.size() >= GameState.SQUAD_UNIT_LIMIT:
 			break
 		var enemy: EnemyData = dm.call("get_enemy_by_display_name", str(enemy_name)) as EnemyData
 		if enemy != null:
-			var copy: EnemyData = enemy.duplicate(true) as EnemyData
+			var copy: EnemyData = dm.call("enemy_for_battle", enemy) as EnemyData
 			if cloaked_names.has(str(enemy_name)):
 				copy.starts_cloaked = true
 			units.append(copy)
@@ -919,7 +917,7 @@ func _process_summons(cm: CombatManager, dm: Node, events: Array) -> void:
 		var base_enemy: EnemyData = dm.call("get_enemy_by_display_name", summon_name) as EnemyData
 		if base_enemy == null or base_enemy.ai_type != "dumb":
 			continue
-		var injected: Dictionary = cm.inject_enemy(base_enemy.duplicate(true) as EnemyData)
+		var injected: Dictionary = cm.inject_enemy(dm.call("enemy_for_battle", base_enemy) as EnemyData)
 		# Workbench scalars cover summons too (same measurement as spawns).
 		if not injected.is_empty() and (_tuning_hp_scalar != 1.0 or _tuning_dmg_scalar != 1.0):
 			var slot: int = int(injected.get("slot_index", -1))
@@ -948,17 +946,19 @@ func _claim_reward(gs: Node, policy, battle_index: int) -> void:
 
 
 func _resolve_progression_stop(gs: Node, policy) -> void:
-	if bool(gs.call("is_pending_directive_stage")):
-		var choices: Array = gs.call("get_pending_directive_choices")
+	if bool(gs.call("is_pending_trait_stage")):
+		# The 250 XP pick (G-71): one of the branch's two traits, by id.
+		var trait_unit: String = str(gs.get("pending_evolution_unit_id"))
+		var choices: Array = gs.call("get_pending_trait_choices")
 		if not choices.is_empty():
-			var directive_names: Array = []
+			var trait_ids: Array = []
 			for choice_variant in choices:
-				directive_names.append(str((choice_variant as Dictionary).get("name", "")))
-			var picked_directive: String = str(policy.choose_directive(choices, gs))
-			gs.call("apply_pending_directive", picked_directive)
+				trait_ids.append(str((choice_variant as Dictionary).get("id", "")))
+			var picked_trait: String = str(policy.choose_trait(choices, gs))
+			gs.call("apply_pending_trait", picked_trait)
 			_tel.emit({
-				"type": "progression", "unit": str(gs.get("pending_evolution_unit_id")),
-				"kind": "directive", "options": directive_names, "picked": picked_directive,
+				"type": "progression", "unit": trait_unit,
+				"kind": "trait", "options": trait_ids, "picked": picked_trait,
 			})
 	elif bool(gs.call("has_pending_evolution")):
 		var unit_id: String = str(gs.get("pending_evolution_unit_id"))

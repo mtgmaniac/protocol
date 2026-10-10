@@ -1,4 +1,5 @@
-# Evolution branch picker shown when a unit reaches a run-long upgrade.
+# Progression picker: the evolution branch at 100 XP, and the trait at 250 XP
+# (G-71: one of the branch's two traits; it becomes the hero's title).
 extends Control
 
 const ChoiceScreenGuardScript := preload("res://scripts/ui/choice_screen_guard.gd")
@@ -17,22 +18,12 @@ const PORTRAIT_BORDER := 4
 const TITLE_FONT_SIZE := 58
 const SUMMARY_FONT_SIZE := 36
 const CARD_TITLE_FONT_SIZE := 44
-const BODY_FONT_SIZE := PixelUI.FONT_BODY_MIN  # long-form prose (path focus, directive desc) — Polish Build A
+const BODY_FONT_SIZE := PixelUI.FONT_BODY_MIN  # long-form prose (path focus, trait line) — Polish Build A
 const SMALL_FONT_SIZE := 32
 # Band effect rows are the substance of a PERMANENT choice — floor them
 # (UI review S-1: the densest decision screen had the smallest text).
 const ABILITY_NAME_FONT_SIZE := PixelUI.FONT_INFO_MIN
 const ABILITY_DESC_FONT_SIZE := PixelUI.FONT_INFO_MIN
-# Directive cards (Kev 2026-07-10): the effect pips ARE the item image — large.
-const DIRECTIVE_PIP_PROFILE := {
-	"icon_size": 96,
-	"value_font": 84,
-	"duration_ratio": 0.6,
-	"icon_value_gap": 6,
-	"group_min_width": 110,
-	"outline": 3,
-	"duration_outline": 2,
-}
 const BUTTON_FONT_SIZE := 36
 
 @onready var background: ColorRect = $Background
@@ -85,7 +76,7 @@ func _ready() -> void:
 	_update_battle_header()
 	_refresh_summary()
 	_build_choice_cards()
-	if not GameState.is_pending_directive_stage():
+	if not GameState.is_pending_trait_stage():
 		_confirm_path = Button.new()
 		_confirm_path.name = "ConfirmEvolution"
 		_confirm_path.text = "SELECT A BRANCH"
@@ -215,9 +206,9 @@ func _build_choice_cards() -> void:
 
 	var unit_id: String = GameState.get_pending_evolution_unit_id()
 	var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
-	if GameState.is_pending_directive_stage():
-		for choice_variant in GameState.get_pending_directive_choices():
-			choice_cards.add_child(_create_directive_card(choice_variant, unit))
+	if GameState.is_pending_trait_stage():
+		for choice_variant in GameState.get_pending_trait_choices():
+			choice_cards.add_child(_create_trait_card(choice_variant, unit))
 	else:
 		var paths: Array = GameState.get_pending_evolution_paths()
 		for path_variant in paths:
@@ -230,9 +221,11 @@ func _build_choice_cards() -> void:
 	call_deferred("_update_choice_layout")
 
 
-# Tier-3 Directive pick (pkg6): a compact card — name, passive text, choose.
-func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> PanelContainer:
+# The 250 XP trait pick (G-71): a compact card. The trait's name, its one
+# line, the name the hero will carry on its battle card, and the button.
+func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
+	panel.set_meta("trait_id", str(unit_trait.get("id", "")))
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.custom_minimum_size = Vector2(_get_card_width(), 0)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -253,56 +246,51 @@ func _create_directive_card(directive: Dictionary, base_unit: UnitData) -> Panel
 	vbox.add_theme_constant_override("separation", 14)
 	margin.add_child(vbox)
 
-	var directive_name: String = str(directive.get("name", "Directive"))
-	vbox.add_child(_make_label(directive_name.to_upper(), CARD_TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
-	# Kev 2026-07-10: image beside description — the directive's effect pip
-	# icons render LARGE on the left, the passive text reads to the right.
-	var body_row: HBoxContainer = HBoxContainer.new()
-	body_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body_row.add_theme_constant_override("separation", 20)
-	var pips: Array = EffectPip.effects_from_directive(directive.get("effect", {}))
-	if not pips.is_empty():
-		var pip_col: VBoxContainer = VBoxContainer.new()
-		pip_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		pip_col.add_theme_constant_override("separation", 8)
-		for pip_variant in pips:
-			pip_col.add_child(EffectPip.build_group(pip_variant, DIRECTIVE_PIP_PROFILE))
-		body_row.add_child(pip_col)
-	var desc: Label = _make_label(str(directive.get("desc", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
+	# The name is read from the trait (UnitTraits.marker_text), amber like the
+	# marker it becomes on the battle card.
+	var trait_title: String = CombatManager.UnitTraits.marker_text(unit_trait)
+	var title: Label = _make_label(trait_title, CARD_TITLE_FONT_SIZE, PixelUI.DT_AMBER, 3)
+	title.name = "TraitName"
+	vbox.add_child(title)
+	var desc: Label = _make_label(str(unit_trait.get("text", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
+	desc.name = "TraitText"
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	desc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	body_row.add_child(desc)
-	vbox.add_child(body_row)
+	vbox.add_child(desc)
 	if base_unit != null:
-		var evolved_name: String = GameState.get_unit_evolution_name(base_unit.id)
-		vbox.add_child(_make_label("PERMANENT PASSIVE FOR %s" % evolved_name.to_upper(), SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+		var becomes: Label = _make_label("BATTLE CARD: %s %s" % [trait_title, _evolved_callsign(base_unit)], SMALL_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
+		becomes.name = "TraitBecomes"
+		vbox.add_child(becomes)
 	vbox.add_child(_create_divider())
 
 	var choose_button: Button = Button.new()
 	# Kev 2026-07-10 (rev 2): big tap target, label vertically comfortable.
 	choose_button.custom_minimum_size = Vector2(0, 128)
-	choose_button.text = "CHOOSE %s" % directive_name.to_upper()
+	choose_button.name = "ChooseTrait"
+	choose_button.text = "CHOOSE %s" % trait_title
 	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
 	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
 	choose_button.expand_icon = true
 	choose_button.add_theme_constant_override("icon_max_width", 44)
 	choose_button.add_theme_color_override("icon_normal_color", PixelUI.DT_CYAN)
 	choose_button.add_theme_constant_override("h_separation", 14)
-	choose_button.pressed.connect(_on_choose_directive_pressed.bind(directive_name))
+	choose_button.pressed.connect(_on_choose_trait_pressed.bind(str(unit_trait.get("id", ""))))
 	vbox.add_child(choose_button)
 	return panel
 
 
-func _on_choose_directive_pressed(directive_name: String) -> void:
-	var pending_unit_id: String = GameState.get_pending_evolution_unit_id()
-	if not GameState.apply_pending_directive(directive_name):
-		footer_label.text = "That directive could not be applied."
+# The callsign the evolved hero shows on its battle card (its trait is drawn
+# on the line above it).
+func _evolved_callsign(base_unit: UnitData) -> String:
+	var evolved: UnitData = GameState.get_run_unit_data(base_unit.id)
+	return (evolved if evolved != null else base_unit).battle_name().to_upper()
+
+
+func _on_choose_trait_pressed(trait_id: String) -> void:
+	if not GameState.apply_pending_trait(trait_id):
+		footer_label.text = "That trait could not be applied."
 		return
 	AudioManager.play_sfx("evolve")
-	var unit: UnitData = DataManager.get_unit(pending_unit_id) as UnitData
-	var unit_name: String = unit.display_name if unit != null else pending_unit_id
-	footer_label.text = "%s adopted the %s directive." % [unit_name, directive_name]
 	SceneManager.go_to_next_battle_or_beat()
 
 
@@ -345,6 +333,17 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	for entry in ranges:
 		abilities.add_child(_create_ability_row(entry))
 	vbox.add_child(abilities)
+	# The expanded view also says what each of the branch's two traits does.
+	var trait_effects := VBoxContainer.new()
+	trait_effects.name = "TraitEffects"
+	trait_effects.visible = false
+	trait_effects.add_theme_constant_override("separation", 14)
+	for trait_variant in path.get("traits", []):
+		var trait_effect: Label = _make_label(CombatManager.UnitTraits.line(trait_variant), ABILITY_DESC_FONT_SIZE, PixelUI.DT_AMBER, 1)
+		trait_effect.name = "TraitEffect_%s" % str((trait_variant as Dictionary).get("id", ""))
+		trait_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		trait_effects.add_child(trait_effect)
+	vbox.add_child(trait_effects)
 	var expand := Button.new()
 	expand.name = "ExpandAbilities"
 	expand.text = "VIEW ALL %d ABILITIES" % ranges.size()
@@ -352,6 +351,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	PixelUI.style_button(expand, CARD_BG, PixelUI.LINE_DIM, BUTTON_FONT_SIZE)
 	expand.pressed.connect(func() -> void:
 		abilities.visible = not abilities.visible
+		trait_effects.visible = abilities.visible
 		preview.visible = not abilities.visible
 		expand.text = "HIDE ABILITIES" if abilities.visible else "VIEW ALL %d ABILITIES" % ranges.size()
 	)
@@ -400,9 +400,10 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		focus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text_stack.add_child(focus)
 
-	# The evolution's trait (G-62): in the header, so it shows before the
-	# abilities are expanded and the player knows it before choosing.
-	var trait_line: String = CombatManager.UnitTraits.line(path.get("trait", {}))
+	# What the branch can earn (G-71): the two traits it chooses between at
+	# 250 XP, by name, in the header the minimized card always shows. What
+	# each does is in the expanded view.
+	var trait_line: String = CombatManager.UnitTraits.preview_line(path.get("traits", []))
 	if trait_line != "":
 		var trait_label: Label = _make_label(trait_line, BODY_FONT_SIZE, PixelUI.DT_AMBER, 2)
 		trait_label.name = "TraitLine"
@@ -521,10 +522,10 @@ func _refresh_summary() -> void:
 	if unit == null:
 		summary_label.text = "No evolution is ready."
 		return
-	if GameState.is_pending_directive_stage():
-		summary_label.text = "%s reached %d XP. Choose a permanent Directive." % [
+	if GameState.is_pending_trait_stage():
+		summary_label.text = "%s reached %d XP. Choose a trait." % [
 			GameState.get_unit_evolution_name(unit_id),
-			GameState.XP_TO_DIRECTIVE,
+			GameState.XP_TO_PRESTIGE,
 		]
 		return
 	summary_label.text = "%s reached %d XP. Choose a permanent branch." % [

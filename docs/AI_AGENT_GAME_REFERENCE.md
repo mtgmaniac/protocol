@@ -69,8 +69,9 @@ Current high-level loop:
 5. battle plays until win/loss
 6. on victory:
    - reward selection if not run-complete
-   - evolution selection at 100 XP; Directive (tier-3 passive) selection at
-     250 XP for evolved units — both on the evolution screen, one stop per win
+   - evolution selection at 100 XP; trait selection (one of the branch's two,
+     G-71) at 250 XP for evolved units — both on the evolution screen, one stop
+     per win
    - beat detour (pkg7): `SceneManager.go_to_next_battle_or_beat()` may route
      through RouteForkScreen or InterceptScreen before the next battle
    - next battle if no pending evolution/reward/beat

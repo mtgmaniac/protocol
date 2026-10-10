@@ -1,5 +1,360 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-73. False Image's summon flag is removed (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"False Image carries a summon flag but has no summon ability. Remove the flag,
+and confirm nothing else reads it."
+
+**As built.** `summonElite` is gone from False Image in `enemies.data.json`.
+Nothing changes in play: the flag was never used.
+
+**Who reads the flag.** One place. `DataManager` copies it to
+`EnemyData.can_summon_elite`, and `CombatManager._try_emit_enemy_summon` is the
+only reader. That function is only reached from an ability that has both
+`summonChance` and `summonName`, and False Image has neither. The role pools,
+the targeting personalities, the inspect popup and Help do not read it.
+
+**Kept from coming back.** `validate-data` now refuses a unit that has the flag
+and no summon ability, and a unit that has a summon ability and no flag (which
+would never fire). It proves the rule can fail on every run by putting the flag
+back on a copy of False Image. Every other unit already agreed: twelve have
+both, twenty-five have neither.
+
+**What this closes.** Audit item A-049 ("Forked Double's `summonElite: true` is
+inert"; Forked Double is False Image's old name).
+
+## G-72. No enemy traits on a player's first run (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"Elites and Mantle Hunt beasts have no traits until the player's first run ends
+(win or lose), tracked by a profile flag. On the first run, enemy cards show no
+trait line and no enemy trait triggers. Hero traits work normally. Gate it with
+a deliberate break."
+
+**As built.** The profile has `onboarding.first_run_finished`. It is set when a
+run ends in victory or defeat (`SaveManager.record_run_finished`). Until then
+`SaveManager.enemy_traits_enabled()` is false, and every enemy a battle fields
+is a copy with no trait (`DataManager.enemy_for_battle`). With no trait on the
+unit there is no title line on its card, no trait line in its long-press, and
+nothing for the rules to trigger. Heroes are not touched.
+
+**Readings I made.**
+
+1. **The flag moves at run end, so a whole run is played one way.** The first
+   run has no enemy traits from battle 1 to its last battle; the second run has
+   them from battle 1.
+2. **An abandoned run does not count.** "Ends (win or lose)" is a victory or a
+   defeat. A player who quits their first run from the menu still has no enemy
+   traits in the next one. If abandoning should count, that is one line.
+3. **The tutorial does not count.** It is not a run (it never reaches run end),
+   as it does not count toward `runs_started`.
+4. **Help and previews follow the same rule.** On a first run the Help
+   reference and an inspect outside a battle print no trait line for an enemy
+   (`InspectResolver.trait_entry`). Showing a trait the unit does not have in
+   the player's run would be wrong.
+5. **A profile that already finished a run has the flag set.** A save with
+   `runs_finished` or `best_clear` above 0 loads with it on, so nobody who has
+   already met enemy traits loses them. A profile that only started runs and
+   finished none is still on its first run.
+6. **Harnesses are past the first run.** The sim, the audit and every gate read
+   enemy traits as on, whatever profile is on disk (the rule the item pools
+   follow, INVARIANTS #18). The sim pins do not move for this.
+
+**Saves.** A new key in `save.json`. The profile is never discarded: an older
+profile loads with the key filled in as reading 5 says. `run.json` is not
+touched.
+
+**Gate.** `first run`, through `break_gate.py`. Breaks: `traits_on` (enemies
+keep their traits on a first run) and `no_flag` (the end of a run does not set
+the flag).
+
+## G-71. Prestige traits replace Directives (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"Hero traits move from the 100 XP evolution to the 250 XP prestige pick,
+replacing Directives. Each branch chooses one of two traits. The chosen trait
+becomes the hero's title on its battle card; before prestige the card shows the
+callsign only. Starting Directives (run-wide picks at deploy) don't change.
+
+Option A is the branch's existing signature trait. Option B is an existing
+Directive converted into a trait with a new name and the same effect:
+
+- Pyro: SMOLDERING | SEARING (was Flashpoint)
+- Arc: CHARGED | FORKING (was Conductor)
+- Blade Trooper: RUTHLESS | SERRATED (was Serrated)
+- Ravager: BLOODLUST | SCALDING (was Thermal Trauma)
+- Bulwark: ANCHORED | FORTIFIED (was Rampart)
+- Sentinel: VENGEFUL | BRISTLING (was Counterweight)
+- Glacier Rig: GLACIAL | SHATTERING (was Shatterpoint)
+- Trench Rig: ENTRENCHED | SHELTERING (was Field Triage)
+- Combat Medic: WATCHFUL | REVIVING (was Field Surgeon)
+- Synth Medic: OVERFLOWING | REINFORCING (was Reinforced Mesh)
+- Overclock: REDLINE | CAPACITIVE (was Deep Cells)
+- Phantom: SPECTRAL | SHROUDED (was Silent Running)
+- Shadow: SILENT | VANISHING (was Vanish)
+- Wraith: RELENTLESS | REAPING (was Reaper)
+- Noise: STATIC | SHRIEKING (was Feedback)
+- Nullwire: ZERO-DAY | SIPHONING (was Signal Theft)
+
+The other 16 Directives are no longer offered. Remove them from the prestige
+pick. Report which handlers become unused, but only delete code that nothing
+else uses.
+
+Also:
+- Add the new Option B traits to traits.data.json with requirement tags;
+  validate-data must pass.
+- Evolution picker at 100 XP: replace the trait line with a preview of what the
+  branch can earn, e.g. "AT 250 XP: SMOLDERING or SEARING", with each effect on
+  long-press or in the expanded view.
+- The 250 XP screen: player-facing copy says trait, not Directive. Copy short,
+  plain, no em dashes. Show me all new copy in the report.
+- Saved runs: a hero who already picked a Directive gets the matching Option B
+  trait if that Directive was converted, otherwise its branch's Option A. A hero
+  who evolved but hasn't reached 250 XP loses its trait until prestige. Confirm
+  no run save is discarded, or tell me if a save-version bump is unavoidable
+  before doing it.
+- Confirm the HP preview handles the new traits (it dry-runs the real combat
+  code, so it should); extend the trait preview gate to cover them.
+- Update the sim so it picks a trait at 250 XP: Option A on the l1 policy,
+  Option B on l1_evo2."
+
+This replaces "hero evolutions get a trait on evolving" in G-62. G-62's rules
+for the sixteen signature traits stand; a hero now has one only after its pick.
+
+**As built.** `traits.data.json` lists two traits for each evolution: its
+signature trait, then the one that was a Directive. An evolved hero has no
+trait. At 250 XP it picks one, and from then on the unit carries it like any
+trait: the card title, the long-press line, the chip and log line when it
+triggers. The sixteen new traits are real traits in the one trait system, with
+their numbers in the data. `heroes.data.json` has no `directives` any more.
+
+**The sixteen new traits** (the effect of each is the Directive's, by the same
+number):
+
+| Trait | Branch | Line shown | Needs |
+|---|---|---|---|
+| Searing | Pyro Specialist | Its burns deal one tick of damage as they land. | burn |
+| Forking | Arc Specialist | Its chains jump to 1 more enemy. | chain |
+| Serrated | Blade Trooper | Its pierce attacks also breach the target. | pierce |
+| Scalding | Ravager | Its attacks deal +3 to burning enemies. | attack, burn |
+| Fortified | Bulwark | Its shield abilities grant +2 shield. | shield |
+| Bristling | Sentinel | Its spike abilities grant +4 spike. | spike |
+| Shattering | Glacier Rig | Its attacks deal +6 to enemies with a frozen die. | attack, freeze |
+| Sheltering | Trench Rig | Its heals also grant 3 shield. | heal |
+| Reviving | Combat Medic | Its revive brings a hero back at 100% HP. | revive |
+| Reinforcing | Synth Medic | While it lives, shields the squad gains are +2. | shield |
+| Capacitive | Overclock Engineer | While it lives, the Protocol cap is +2. | nothing |
+| Shrouded | Phantom Engineer | Cloaks after using an ability that deals no damage. | noDamage |
+| Vanishing | Shadow Operative | Once per battle, cloaks when damage leaves it below 50% HP. | nothing |
+| Reaping | Wraith | Its execute triggers below 35% HP. | execute |
+| Shrieking | Noise Specialist | Enemies under its roll penalties take 2 damage each round. | rollDown |
+| Siphoning | Nullwire | Gain 1 Protocol for each enemy its roll penalties hit. | rollDown |
+
+Seven requirements are new: `rollDown` (`rfe`), `pierce` (`dmg` and `ignSh`),
+`shield`, `spike`, `revive` (`revive` or `reviveAll`), `execute`, and `noDamage`
+(an ability with no `dmg`; a requirement may now be a `none` list alone).
+
+**Readings I made.**
+
+1. **The data key of a new trait is the Directive's name** (`flashpoint`,
+   `deepCells`, `signalTheft`), as G-63 kept each trait's first id. It is never
+   shown. `legacyDirectives` in the data maps each old Directive name to it,
+   for saved runs.
+2. **A new trait needs what its line reads from the board and the kit must be
+   able to make** (G-64, reading 1). So Scalding needs burn as well as an
+   attack, Shattering needs freeze, Reinforcing needs a shield ability. All
+   sixteen branches meet their tags. Capacitive and Vanishing need nothing.
+3. **Reviving is "its revive", not "Resuscitate".** A trait's numbers are whole
+   numbers, so it cannot name an ability. It applies to the hero's revive of
+   one hero. Combat Medic has one such ability, Resuscitate, so the effect is
+   the Directive's. A revive of the whole squad is not raised (the trait is not
+   on Synth Medic).
+4. **A new trait shows like every other trait.** Each has a log line that names
+   it and a chip on the unit when it triggers. Two are quiet: Capacitive (a
+   higher cap has no moment) and Shrieking's damage at the end of the round,
+   which logs with the trait's name and has no chip of its own (the chip shows
+   when the roll penalty lands).
+5. **Reaping is named only when it made the difference**: the execute triggers
+   between 25% and 35% HP. Below 25% the execute would have triggered anyway.
+6. **The 250 XP card has no picture.** A Directive card showed its effect as
+   large pips. A trait has no pip (G-62: text only), and half the traits never
+   had a Directive to draw one from, so both cards show name, line and the
+   name the hero will carry. If the cards should have art, that is new work.
+7. **The saved field keeps its name.** A hero's pick is stored in
+   `unit_directives`, the field that held its Directive, now holding a trait
+   id. Renaming it would change the save's shape and discard every run save.
+8. **`XP_TO_DIRECTIVE` is `XP_TO_PRESTIGE`**, 250 as before, defined once
+   (`UnitTraits.PRESTIGE_XP`).
+
+**Saved runs. No run save is discarded and the save version did not move.**
+The run save has the same keys and types (`RUN_SAVE_VERSION` 4, the same
+fingerprint; the `save schema` gate passes unchanged). On load:
+
+- A hero holding a converted Directive has the trait it became (Flashpoint to
+  Searing, and so on for all sixteen).
+- A hero holding one of the other sixteen has its branch's signature trait.
+- A hero that evolved and had no Directive has no trait until it reaches 250
+  XP. It is still evolved.
+- A battle saved mid-fight reads each hero's trait again from the run, so the
+  round it resumes on uses the new rule.
+
+The `traits` gate loads a run for each of the 32 Directives and checks the
+trait the hero comes back with.
+
+**Directive code: what became unused.** Fourteen effect types have no data
+behind them now (the sixteen retired Directives; two pairs shared a type, and
+`abilityRevivePctOverride` is still used through Reviving).
+
+- **Deleted, seven:** `battleStartShieldSelf` (Entrench), `abilityProtocolBonus`
+  (Power Wiring, with `_directive_ability`), `freezeDurationBonus` (Deep
+  Freeze), `overloadDetonateAfter` (Flash Cautery), `damageAppliesMark` (Combat
+  Sense, Marked for Death), `tauntDamageReduction` (Ironclad), `rfeAllAlsoJam`
+  (Wall of Static). Nothing else read them. Also deleted: the Directive card,
+  `EffectPip.DIRECTIVE_PIP_KINDS` and `effects_from_directive`, the hero
+  schema's `directive` definition, the `execute_threshold_pct` state hook
+  (Reaping reads the trait).
+- **Kept, seven, because the ability audit has a regression on each:**
+  `burnDurationBonus` (Sustained Ignition), `chainFullDamage` (Amplifier),
+  `killNextAbilityDamage` (Momentum), `shieldGrantsSpike` (Bunker Doctrine),
+  `cloakAttackBonus` (Ambush Wiring), `decloakExecute` (Ghostblade),
+  `rfeAlsoJam` (Hard Lock). Nothing in the game can set one. Deleting them
+  means deleting seven audit cases, which takes the audit from 287 passes to
+  280, under its floor of 282. Lowering that floor needs Kev's token
+  (INVARIANTS #13), so they stay until he says.
+- **Shared code, untouched:** the burn tick on apply (also Ignition Coil gear)
+  and the extra chain jump (also the `chainExtraJump` relic) each keep their
+  other user.
+
+**The HP preview.** It needed no change: the bar is a dry run of the real
+round. The `trait preview` gate has a case for each new trait (47 cases, was
+31). Twelve move a previewed number in the round they act and each goes wrong
+when the dry run is blind to traits. Reviving is checked on the HP the fallen
+hero returns with. Capacitive and Siphoning move Protocol, not HP. Vanishing's
+cloak moves no HP in the round it happens: enemy targets are set before the
+enemy phase, so an enemy already aiming at the hero still hits it.
+
+**The sim.** `l1` plays first evolutions and picks Option A; `l1_evo2` plays
+second evolutions and picks Option B (`player_policy.choose_trait`). The other
+two pairings are not measured. Not tuned and not re-pinned: the pins on file
+are still the game before this change.
+
+| Clear rate, 1,500 pinned runs | `l1` before | after | change | `l1_evo2` before | after | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 40.7% | 31.5% | -9.2 | 46.9% | 39.0% | -7.9 |
+| Hive | 36.2% | 24.1% | -12.1 | 33.7% | 28.2% | -5.4 |
+| Veil | 26.4% | 14.7% | -11.7 | 27.4% | 21.5% | -5.9 |
+| Signal Purge | 29.7% | 21.0% | -8.7 | 20.6% | 14.5% | -6.2 |
+| Mantle Hunt | 25.6% | 13.8% | -11.8 | 24.2% | 20.2% | -4.0 |
+| Overall | 31.8% | 21.1% | -10.7 | 30.8% | 24.9% | -5.9 |
+
+| Clear rate by hero in the squad | `l1` before | after | change | `l1_evo2` before | after | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Pulse Tech | 31.0% | 18.6% | -12.4 | 30.2% | 26.5% | -3.7 |
+| Strike Unit | 34.2% | 25.7% | -8.5 | 37.6% | 30.0% | -7.6 |
+| Spike Guard | 19.7% | 10.6% | -9.1 | 21.4% | 16.1% | -5.3 |
+| Avalanche Suit | 24.4% | 14.9% | -9.5 | 21.9% | 18.9% | -3.0 |
+| Splice Medic | 42.5% | 26.4% | -16.1 | 40.6% | 31.9% | -8.7 |
+| Field Engineer | 29.3% | 21.6% | -7.7 | 28.9% | 23.8% | -5.2 |
+| Ghost Operative | 40.4% | 29.2% | -11.3 | 35.0% | 27.0% | -8.0 |
+| Signal Breaker | 32.2% | 20.9% | -11.2 | 30.4% | 25.1% | -5.4 |
+
+"Before" is the 1,500-run size pin on file (the game as merged for v0.3); an
+unchanged tree reproduces it exactly. "After" is the same 1,500 seeds (seed
+base 900000) on this branch. No run failed.
+
+- **Both policies moved beyond the size line** (8 points on an operation, 4
+  overall): `l1` on every operation and overall, `l1_evo2` overall. The pins
+  were not written. The next full gate will report the same move and stop at
+  the ceremony until Kev re-pins or tunes.
+- **The whole move is the trait change.** The sim's policy always refuses
+  Prisoner Exchange (it did in all 140 draws across the two batches), so the
+  boss fix moves no sim number; the first-run rule does not apply to a harness;
+  the False Image flag did nothing.
+- **Why it is this large: the pick comes late.** A hero reaches 250 XP after
+  battle 8 or 9 of 10 (97% of picks; the rest after battle 7), so it has its
+  trait for one or two battles. 64% of runs make at least one pick (65% on
+  `l1_evo2`), and 36% of heroes ever get a trait. Before this change a hero had
+  its signature trait from about battle 4 and a Directive on top from battle 8
+  or 9.
+- **`l1` and `l1_evo2` are not the same hero with a different trait.** `l1` is
+  first evolutions with signature traits, `l1_evo2` second evolutions with the
+  second traits. The gap between the two columns is not a measure of A against
+  B.
+
+**Gates.** `traits` (same five breaks; now 42 traits, the pick, the two
+screens, the 32 saved-run cases), `trait preview` (same two breaks),
+`validate-data` (thirteen deliberate breaks, was nine), `ability audit` (287
+passes, as before).
+
+## G-70. Bosses are never replaced or removed by a modifier (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"ELITE PRESENCE (from the Prisoner Exchange intercept or a flagged fork)
+replaces the first unit not from the elite pool, and nothing excludes bosses.
+Taken after battle 8, it can replace a battle 10 boss. Bosses must never be
+replaced or removed by any modifier. Treat it as a class: check every lineup
+modifier (OVERRUN, ELITE PRESENCE, Prisoner Exchange's unit removal) against
+boss slots. Gate it with a deliberate break."
+
+**The bug.** ELITE PRESENCE took the first unit that was not in the elite pool.
+A boss is in no pool, so it counted. Prisoner Exchange taken after battle 8
+arms ELITE PRESENCE for battle 10, and in four of the five operations the boss
+was the unit replaced:
+
+| Operation | Battle 10 | Was replaced |
+|---|---|---|
+| Facility | Scrap Drone, Scrapmaster, Scrap Drone | The first Scrap Drone |
+| Hive | Spine Stalker, Hive Matriarch | **Hive Matriarch** |
+| Veil | Veil Overseer, Aegis Anchor | **Veil Overseer** |
+| Signal Purge | Signal Hierarch, Cipher Scribe | **Signal Hierarch** |
+| Mantle Hunt | Mantle Tyrant, Geode Panther | **Mantle Tyrant** |
+
+**The class, checked.** Three things change who a battle fields.
+
+| Modifier | What it does | Could it take a boss? | Now |
+|---|---|---|---|
+| ELITE PRESENCE | Replaces one unit with an elite | Yes: the bug | Takes the first unit that is neither an elite nor a boss |
+| Prisoner Exchange, "one fewer enemy" | Drops the last unit | Not today (it applies to battle 9 at the latest, and no boss is fielded before battle 10), but nothing stopped it | Drops the last unit that is not a boss |
+| OVERRUN | Adds a regular unit | No: it only adds, and only with a free slot | Unchanged |
+
+The other seven modifiers change no lineup. On top of the two fixes, the one
+function every modifier shapes a lineup through
+(`GameState._shape_comp_for_modifier`) refuses any result that lost a boss, so
+a modifier added later cannot do it either.
+
+**As built.** A boss is a unit with a standing rule, the same test the role
+pools use (`GameState.is_boss_name`). "One fewer enemy" lived in two copies,
+one in the battle screen and one in the sim; both now ask
+`GameState.lineup_for_battle`.
+
+**What the player sees in the boss fight after Prisoner Exchange.**
+
+| Operation | Battle 10 after the fix |
+|---|---|
+| Facility | The first Scrap Drone becomes an elite, as before |
+| Veil | Aegis Anchor becomes an elite; the Overseer stays |
+| Signal Purge | Cipher Scribe becomes an elite; the Hierarch stays |
+| Mantle Hunt | Nothing changes: Geode Panther is already an elite |
+| Hive | Nothing changes: Spine Stalker is already an elite |
+
+**Open, for Kev.** In Hive and Mantle Hunt the exchange now costs nothing when
+it is taken after battle 8: the boss fight has no unit left to upgrade, so
+ELITE PRESENCE does not arm. That follows from the ruling. If the price should
+still be paid there (an elite added beside the boss, or the card not offered
+that late), that is a design call.
+
+**Gate.** `boss lineup`, through `break_gate.py`: every modifier on every
+battle of every operation over five seeds, the boss placed in every slot,
+Prisoner Exchange taken before battle 9, and both readers using the one rule.
+Breaks: `elite_boss` (the bug) and `minus_boss` ("one fewer enemy" drops the
+last unit, boss or not). `upgrade draws` now includes battle 10, which it left
+out with a note about this bug.
+
 ## G-69. Signal Hierophant is Signal Hierarch, callsign HIERARCH (Kev, 2026-10-10)
 
 **Ruling (Kev, transcribed).**

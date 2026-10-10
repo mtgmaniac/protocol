@@ -41,16 +41,13 @@ RELIC_HANDLED = {
 
 GAMESTATE_ONLY = {"rewardsNoCommon", "reviveNoPenalty", "battleStartConsumable"}
 
-# pkg6 tier-3 directive passives (combat_manager/battle_scene handlers)
+# Retired Directives (G-71, 2026-10-10): the 250 XP pick is a trait now, and
+# heroes.data.json has no `directives`. These seven effect types are still read
+# by combat_manager only because the ability audit pins each; they show below
+# as "handler unused in data".
 DIRECTIVE_HANDLED = {
-    "burnImmediateTick", "burnDurationBonus", "chainExtraJump", "chainFullDamage",
-    "pierceAlsoBreach", "killNextAbilityDamage", "bonusVsBurning", "overloadDetonateAfter",
-    "ownShieldBonus", "shieldGrantsSpike", "tauntDamageReduction", "spikeBonus",
-    "freezeDurationBonus", "bonusVsFrozen", "healGrantsShield", "battleStartShieldSelf",
-    "damageAppliesMark", "abilityRevivePctOverride", "squadShieldBonus", "protocolCapBonus",
-    "abilityProtocolBonus", "nonDamageRecloak", "cloakAttackBonus", "decloakExecute",
-    "lowHpCloakOnce", "executeThresholdPct", "rfeAllAlsoJam", "rfeDamagePerRound",
-    "rfeAlsoJam", "rfeGrantsProtocol",
+    "burnDurationBonus", "chainFullDamage", "killNextAbilityDamage", "shieldGrantsSpike",
+    "cloakAttackBonus", "decloakExecute", "rfeAlsoJam",
 }
 
 

@@ -164,7 +164,7 @@ func apply_battle_start_external_effects(effects: Dictionary, hero_run_mods: Dic
 # ── Protocol economy (extracted from battle_scene) ────────────────────────────
 # The pool value itself stays with the caller (battle_scene owns protocol_points
 # for its bar; the sim owns its own int). These methods own the RULES: the cap
-# (base 10, run override, Deep Cells directive) and gain-with-overflow (Overflow
+# (base 10, run override, the Capacitive trait) and gain-with-overflow (Overflow
 # Vent relic damage, routed through the RollProvider so it is deterministic).
 
 # cap_override: the caller passes GameState.run_protocol_cap_override (Rogue
@@ -175,11 +175,11 @@ func max_protocol(cap_override: int) -> int:
 		cap = cap_override
 	if combat_manager == null:
 		return cap
-	# Deep Cells directive: the cap rises while a living carrier stands.
+	# Capacitive: the cap rises while a living hero with the trait stands.
 	for hero_state_variant in combat_manager.get_hero_states():
 		var hero_state: Dictionary = hero_state_variant
-		if not bool(hero_state.get("dead", false)) and str(hero_state.get("directive_type", "")) == "protocolCapBonus":
-			cap += int((hero_state.get("directive_effect", {}) as Dictionary).get("amount", 2))
+		if not bool(hero_state.get("dead", false)) and combat_manager.has_trait(hero_state, "deepCells"):
+			cap += combat_manager.trait_num(hero_state, "amount", 2)
 			break
 	return cap
 

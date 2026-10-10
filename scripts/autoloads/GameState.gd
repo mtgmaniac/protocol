@@ -2,6 +2,7 @@
 extends Node
 
 const SaveIO = preload("res://scripts/autoloads/save_io.gd")
+const UnitTraits = preload("res://scripts/battle/unit_traits.gd")
 
 # Hard cap on carried consumables — the SINGLE SOURCE of truth. The in-battle
 # LoadoutMenu derives its slot count from this constant (no twin constant to drift).
@@ -28,7 +29,11 @@ var last_run_result: String = ""
 var unit_xp: Dictionary = {}
 var unit_levels: Dictionary = {}
 var unit_evolutions: Dictionary = {}
-## unit_id -> chosen Directive name (tier-3 passives, pkg6).
+## unit_id -> the id of the trait the hero chose at 250 XP (G-71, Kev
+## 2026-10-10). The field keeps the name it had when the 250 XP pick was a
+## Directive: it is a saved run field, and renaming it would discard every run
+## save. A run saved before G-71 holds a Directive NAME here; load_from_dict
+## turns it into a trait id (_migrated_trait_picks).
 var unit_directives: Dictionary = {}
 var pending_evolution_unit_id: String = ""
 var deferred_evolution_unit_ids: Array = []
@@ -139,8 +144,9 @@ var reward_picker_ui_state: Dictionary = {}
 
 const XP_SURVIVAL_BONUS := 20
 const XP_TO_EVOLVE := 100
-## Tier-3 progression (pkg6): evolved units hitting this pick a Directive.
-const XP_TO_DIRECTIVE := 250
+## Prestige (G-71): an evolved hero reaching this picks one of its branch's two
+## traits. Until then it has none.
+const XP_TO_PRESTIGE := UnitTraits.PRESTIGE_XP
 const SQUAD_UNIT_LIMIT := 3
 
 var _battle_effective_rolls: Dictionary = {}
@@ -424,15 +430,12 @@ func _modifier_precondition_ok(modifier_id: String, comp_names: Array) -> bool:
 		"has_support":
 			return not _support_names_in_comp(comp_names).is_empty()
 		"non_elite_slot":
-			# Elite Presence: at least one non-elite slot to upgrade, and an
-			# elite pool to upgrade it from.
+			# Elite Presence: at least one slot it may upgrade (not an elite
+			# already, never a boss), and an elite pool to upgrade it from.
 			var elite_pool: Array = DataManager.get_role_pool(selected_operation_id, "elite")
 			if elite_pool.is_empty():
 				return false
-			for comp_name in comp_names:
-				if not elite_pool.has(str(comp_name)):
-					return true
-			return false
+			return _elite_presence_slot(comp_names, elite_pool) >= 0
 		_:
 			return true
 
@@ -477,6 +480,81 @@ func _arm_next_battle_modifier(modifier_id: String) -> bool:
 	return true
 
 
+# ── Bosses hold their slot (Kev 2026-10-10, DECISIONS G-70) ──────────────────
+# No lineup modifier may replace or remove a boss. Three things change who a
+# battle fields: OVERRUN (adds a unit), ELITE PRESENCE (replaces one, from a
+# flagged fork or Prisoner Exchange's follow-up) and Prisoner Exchange's "one
+# fewer enemy". Each picks its slot through the helpers below, and
+# `_shape_comp_for_modifier` refuses any result that lost a boss, so a
+# modifier added later cannot do it either.
+
+# A boss is a unit with a standing rule: the same test the role pools use.
+static func is_boss_name(display_name: String) -> bool:
+	return CombatManager.get_boss_standing_rule(display_name) != ""
+
+
+static func boss_names_in(names: Array) -> Array:
+	var bosses: Array = []
+	for name_variant in names:
+		if is_boss_name(str(name_variant)):
+			bosses.append(str(name_variant))
+	bosses.sort()
+	return bosses
+
+
+# The slot ELITE PRESENCE upgrades: the first unit that is neither an elite
+# already nor a boss. -1 when there is none.
+func _elite_presence_slot(names: Array, elite_pool: Array) -> int:
+	for i in names.size():
+		var unit_name: String = str(names[i])
+		if elite_pool.has(unit_name):
+			continue
+		if is_boss_name(unit_name) and lineup_break() != "elite_boss":
+			continue
+		return i
+	return -1
+
+
+# Prisoner Exchange's "one fewer enemy": the lineup less its last unit that is
+# not a boss. A lone unit stays, and so does a lineup of bosses only. The live
+# battle and the sim both field what this returns.
+func lineup_minus_one(enemy_names: Array) -> Array:
+	var names: Array = enemy_names.duplicate()
+	if names.size() <= 1:
+		return names
+	for i in range(names.size() - 1, -1, -1):
+		if not is_boss_name(str(names[i])) or lineup_break() == "minus_boss":
+			names.remove_at(i)
+			break
+	return names
+
+
+# The names the current battle fields: its resolved comp, less one unit while
+# Prisoner Exchange's `minus_one_enemy` is armed for it.
+func lineup_for_battle(enemy_names: Array) -> Array:
+	if bool(next_battle_effects.get("minus_one_enemy", false)):
+		return lineup_minus_one(enemy_names)
+	return enemy_names
+
+
+# Deliberate breaks for the `boss lineup` gate (scripts/debug/boss_lineup_test.gd;
+# never set by the game):
+#   elite_boss   ELITE PRESENCE takes the first non-elite slot, boss or not
+#   minus_boss   "one fewer enemy" drops the last unit, boss or not
+const LINEUP_BREAK_ARG := "--lineup-break="
+static var _lineup_break: String = "?"
+
+
+static func lineup_break() -> String:
+	if _lineup_break == "?":
+		_lineup_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(LINEUP_BREAK_ARG):
+					_lineup_break = arg.trim_prefix(LINEUP_BREAK_ARG)
+	return _lineup_break
+
+
 # Pure comp shaper: returns a shaped duplicate, never mutates the input. The
 # roll stage uses it to build the flagged-route preview; acceptance commits
 # that same comp.
@@ -490,15 +568,18 @@ func _shape_comp_for_modifier(modifier_id: String, comp: Dictionary) -> Dictiona
 				names.append(extra_fodder)
 		"elitePresence":
 			var elite_pool: Array = DataManager.get_role_pool(selected_operation_id, "elite")
-			for i in names.size():
-				if not elite_pool.has(str(names[i])):
-					var elite_pick: String = _pick_from_role_pool(selected_operation_id, "elite", [])
-					if elite_pick != "":
-						names[i] = elite_pick
-					break
+			var slot: int = _elite_presence_slot(names, elite_pool)
+			if slot >= 0:
+				var elite_pick: String = _pick_from_role_pool(selected_operation_id, "elite", [])
+				if elite_pick != "":
+					names[slot] = elite_pick
 		"warded":
 			shaped["warded"] = _support_names_in_comp(names)
 	shaped["names"] = names
+	# The class guard: whatever the modifier did, every boss is still there.
+	if lineup_break() == "" and boss_names_in(names) != boss_names_in(comp.get("names", [])):
+		push_error("Modifier '%s' would replace or remove a boss; the lineup is left as it was." % modifier_id)
+		return comp.duplicate(true)
 	return shaped
 
 
@@ -1288,41 +1369,46 @@ func get_unit_evolution_name(unit_id: String) -> String:
 	return str(unit_evolutions.get(unit_id, ""))
 
 
-func get_unit_directive_name(unit_id: String) -> String:
+# The id of the trait the hero chose at 250 XP ("" before that).
+func get_unit_trait_id(unit_id: String) -> String:
 	return str(unit_directives.get(unit_id, ""))
 
 
-# True when the pending progression stop is a tier-3 Directive pick
-# (the unit already evolved) rather than an evolution branch pick.
-func is_pending_directive_stage() -> bool:
+# True when the pending progression stop is the 250 XP trait pick (the unit
+# already evolved) rather than an evolution branch pick.
+func is_pending_trait_stage() -> bool:
 	return pending_evolution_unit_id != "" and get_unit_evolution_name(pending_evolution_unit_id) != ""
 
 
-# The 1-of-2 Directive choices scoped to the pending unit's evolution path.
-func get_pending_directive_choices() -> Array:
-	if pending_evolution_unit_id == "":
+# The two traits a hero's branch chooses between, as a unit carries one
+# ({id, name, text, ...}): the signature trait, then the one that was a
+# Directive. [] for a hero that has not evolved.
+func get_unit_trait_options(unit_id: String) -> Array:
+	var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
+	var evolved_name: String = get_unit_evolution_name(unit_id)
+	if unit == null or evolved_name == "":
 		return []
-	var unit: UnitData = DataManager.get_unit(pending_evolution_unit_id) as UnitData
-	if unit == null:
-		return []
-	var evolved_name: String = get_unit_evolution_name(pending_evolution_unit_id)
-	for path_variant in _group_evolution_paths(unit.evolution_paths):
+	for path_variant in unit.evolution_paths:
 		var path: Dictionary = path_variant
 		if str(path.get("name", "")) == evolved_name:
-			return (path.get("directives", []) as Array).duplicate(true)
+			return (path.get("traits", []) as Array).duplicate(true)
 	return []
 
 
-func apply_pending_directive(directive_name: String) -> bool:
-	if pending_evolution_unit_id == "" or directive_name == "":
+func get_pending_trait_choices() -> Array:
+	return get_unit_trait_options(pending_evolution_unit_id)
+
+
+func apply_pending_trait(trait_id: String) -> bool:
+	if pending_evolution_unit_id == "" or trait_id == "":
 		return false
 	var valid: bool = false
-	for choice_variant in get_pending_directive_choices():
-		if str((choice_variant as Dictionary).get("name", "")) == directive_name:
+	for choice_variant in get_pending_trait_choices():
+		if str((choice_variant as Dictionary).get("id", "")) == trait_id:
 			valid = true
 	if not valid:
 		return false
-	unit_directives[pending_evolution_unit_id] = directive_name
+	unit_directives[pending_evolution_unit_id] = trait_id
 	pending_evolution_unit_id = ""
 	return true
 
@@ -1368,8 +1454,8 @@ func award_battle_xp() -> void:
 	var newly_crossed_threshold: Array = []
 	for unit_id_variant in selected_units:
 		var unit_id: String = str(unit_id_variant)
-		# Fully progressed (evolution + directive) units stop accruing.
-		if get_unit_directive_name(unit_id) != "":
+		# Fully progressed (evolution + trait) units stop accruing.
+		if get_unit_trait_id(unit_id) != "":
 			continue
 		var xp_before: int = get_unit_xp(unit_id)
 		var gain: int = _compute_battle_xp_gain(unit_id)
@@ -1377,7 +1463,7 @@ func award_battle_xp() -> void:
 		unit_xp[unit_id] = new_total
 		var new_level: int = 1 + int(floor(float(new_total) / float(XP_TO_EVOLVE)))
 		unit_levels[unit_id] = maxi(new_level, 1)
-		var threshold: int = XP_TO_DIRECTIVE if get_unit_evolution_name(unit_id) != "" else XP_TO_EVOLVE
+		var threshold: int = XP_TO_PRESTIGE if get_unit_evolution_name(unit_id) != "" else XP_TO_EVOLVE
 		if xp_before < threshold and new_total >= threshold:
 			newly_crossed_threshold.append(unit_id)
 
@@ -1445,7 +1531,7 @@ func _queue_evolution_after_win(newly_crossed_threshold: Array) -> void:
 func _is_evolution_eligible(unit_id: String) -> bool:
 	if get_unit_evolution_name(unit_id) == "":
 		return get_unit_xp(unit_id) >= XP_TO_EVOLVE
-	return get_unit_directive_name(unit_id) == "" and get_unit_xp(unit_id) >= XP_TO_DIRECTIVE
+	return get_unit_trait_id(unit_id) == "" and get_unit_xp(unit_id) >= XP_TO_PRESTIGE
 
 
 func _squad_unit_id_from_state(state: Dictionary) -> String:
@@ -1522,14 +1608,13 @@ func get_run_unit_data(unit_id: String) -> UnitData:
 			else:
 				merged_ranges.append(base_range.duplicate(true))
 		built_unit.dice_ranges = merged_ranges
-		# The evolution's trait (G-62). A base hero has none.
-		built_unit.unit_trait = (path.get("trait", {}) as Dictionary).duplicate(true)
-		# Attach the chosen tier-3 Directive so combat can read its passive.
-		var directive_name: String = get_unit_directive_name(unit_id)
-		if directive_name != "":
-			for directive_variant in path.get("directives", []):
-				if str((directive_variant as Dictionary).get("name", "")) == directive_name:
-					built_unit.directive = (directive_variant as Dictionary).duplicate(true)
+		# The trait the hero chose at 250 XP (G-71). A base hero has none,
+		# and neither has an evolved hero that has not picked yet.
+		built_unit.unit_trait = {}
+		var chosen_trait: String = get_unit_trait_id(unit_id)
+		for trait_variant in path.get("traits", []):
+			if chosen_trait != "" and str((trait_variant as Dictionary).get("id", "")) == chosen_trait:
+				built_unit.unit_trait = (trait_variant as Dictionary).duplicate(true)
 		return built_unit
 
 	return base_unit
@@ -1715,8 +1800,7 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 				"focus": str(entry.get("focus", "")),
 				"hp": int(entry.get("hp", 0)),
 				"abilities_by_zone": {},
-				"directives": (entry.get("directives", []) as Array).duplicate(true),
-				"trait": (entry.get("trait", {}) as Dictionary).duplicate(true),
+				"traits": (entry.get("traits", []) as Array).duplicate(true),
 			}
 
 		var grouped_entry: Dictionary = grouped[path_name]
@@ -1884,7 +1968,31 @@ func load_from_dict(data: Dictionary) -> void:
 	for i in relics.size():
 		relics[i] = SaveManager.current_relic_id(str(relics[i]))
 	starting_directive_relic_id = SaveManager.current_relic_id(starting_directive_relic_id)
+	# Prestige traits (G-71): a run saved while a hero held a Directive keeps
+	# that hero's 250 XP pick as a trait. Same shape, so no save version bump.
+	unit_directives = _migrated_trait_picks(unit_directives)
 	_reward_rng.state = SaveIO.decode_i64(data.get("reward_rng_state", ""), int(_reward_rng.state))
+
+
+# What each hero's saved 250 XP pick reads as today. A run saved before G-71
+# stored the NAME of a Directive: one that became a trait reads as that trait
+# (the branch's second option), any other as the branch's signature trait. A
+# pick that is already one of the branch's two traits is kept. A hero that
+# evolved and has no pick has no trait until it reaches 250 XP.
+func _migrated_trait_picks(picks: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for unit_id_variant in picks:
+		var unit_id: String = str(unit_id_variant)
+		var stored: String = str(picks[unit_id_variant])
+		var option_ids: Array = get_unit_trait_options(unit_id).map(func(option: Variant) -> String: return str((option as Dictionary).get("id", "")))
+		if stored == "" or option_ids.is_empty():
+			continue
+		if option_ids.has(stored):
+			out[unit_id] = stored
+			continue
+		var converted: String = UnitTraits.legacy_directive_trait(stored)
+		out[unit_id] = converted if option_ids.has(converted) else str(option_ids[0])
+	return out
 
 
 ## Godot's JSON parser returns every number as a float. Run state holds no

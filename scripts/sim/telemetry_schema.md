@@ -63,8 +63,10 @@ plus per type:
 - intercept: `card` (card id), `choice` (choice index), `hero` (picked hero id
   or ""), `drafted` (item id or "").
 
-### `progression` — evolution / directive stop
-`unit`, `kind` (evolution/directive), `options` [names], `picked` (name).
+### `progression` — evolution / trait stop
+`unit`, `kind` (evolution/trait), `options` [evolution names, or trait ids],
+`picked` (the name or id). The 250 XP stop was `directive` until G-71
+(2026-10-10); a batch from before then has that kind and Directive names.
 
 ### `run_end` — last line
 `result` (victory/defeat/battles_limit/incomplete), `battles_cleared`.

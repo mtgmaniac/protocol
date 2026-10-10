@@ -359,6 +359,19 @@ func get_enemy_by_display_name(enemy_name: String) -> Resource:
 	return enemies.get(str(ENEMY_STABLE_IDS.get(enemy_name, _slugify(enemy_name))))
 
 
+# The copy of an enemy a battle fields: its own instance, so a battle can
+# change it. On a player's first run it carries no trait (G-72,
+# SaveManager.enemy_traits_enabled). Every battle builds its enemies here: the
+# opening lineup, a summon, a restored checkpoint and the sim.
+func enemy_for_battle(base_enemy: EnemyData) -> EnemyData:
+	var copy: EnemyData = base_enemy.duplicate(true) as EnemyData
+	if copy == null:
+		return base_enemy
+	if not SaveManager.enemy_traits_enabled():
+		copy.unit_trait = {}
+	return copy
+
+
 func get_item(item_id: String) -> Resource:
 	return items.get(item_id)
 
@@ -662,9 +675,11 @@ func _build_evolution_paths(evolutions: Array, hero_id: String = "") -> Array[Di
 			"focus": str(evolution_entry.get("focus", "")),
 			"hp": int(evolution_entry.get("hp", 0)),
 			"abilities": abilities,
-			"directives": (evolution_entry.get("directives", []) as Array).duplicate(true),
-			# The evolution's trait (G-62), from traits.data.json.
-			"trait": UnitTraits.build(UnitTraits.evolution_trait_id(hero_id, evolution_id), abilities),
+			# The two traits the branch chooses between at 250 XP (G-71), from
+			# traits.data.json: its signature trait, then the one that was a
+			# Directive.
+			"traits": UnitTraits.evolution_trait_ids(hero_id, evolution_id).map(
+				func(trait_id: Variant) -> Dictionary: return UnitTraits.build(str(trait_id), abilities)),
 		})
 	return paths
 

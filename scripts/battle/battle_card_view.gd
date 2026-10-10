@@ -123,7 +123,7 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			if accent_color == _scene.HERO_ACCENT:
 				# Board-aware revive family (Kev 2026-09-25): show what this roll
 				# does NOW — the fallback heal when nobody is down, else the
-				# revive at its resolved (directive/relic) percentage.
+				# revive at its resolved (trait/relic) percentage.
 				readout_raw = ReviveResolution.display_raw(readout_raw, state,
 					str(chosen_entry.get("ability_name", "")), _scene.combat_manager.get_hero_states())
 			action_pips = EffectPip.ability_readout_payload(

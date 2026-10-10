@@ -132,10 +132,10 @@ func choose_evolution(paths: Array, _gs: Node) -> String:
 	return str((paths[rng.randi_range(0, paths.size() - 1)] as Dictionary).get("name", ""))
 
 
-func choose_directive(choices: Array, _gs: Node) -> String:
+func choose_trait(choices: Array, _gs: Node) -> String:
 	if choices.is_empty():
 		return ""
-	return str((choices[rng.randi_range(0, choices.size() - 1)] as Dictionary).get("name", ""))
+	return str((choices[rng.randi_range(0, choices.size() - 1)] as Dictionary).get("id", ""))
 
 
 func _all_equipped_gear(gs: Node) -> Array:

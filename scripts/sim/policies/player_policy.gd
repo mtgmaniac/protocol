@@ -1,12 +1,12 @@
 # PlayerPolicy — the decision seam between the sim runner and the game
 # (Package B.2). The runner asks the policy for every choice a human makes by
 # tapping: per-round hero targets + protocol spends, post-win drafts, fork
-# routes, intercept cards, and evolution / directive picks.
+# routes, intercept cards, and evolution / trait picks.
 #
 # The BASE class IS the deterministic "stub" policy Package A.3 shipped: no
 # spends, combat_manager's first-living-enemy target fallback, first viable
 # draft option, standard fork route, effect-free intercept choice, first
-# evolution/directive. L0/L1 override the hooks.
+# evolution/trait. L0/L1 override the hooks.
 #
 # Determinism: policies may only draw randomness from `rng`, which the runner
 # seeds from the master seed (third stream). Never the global RNG.
@@ -93,6 +93,10 @@ func choose_intercept_draft(options: Array, _gs: Node) -> String:
 # Which evolution path this policy takes: 0 = each hero's first (the default,
 # and all the pinned baseline has ever played), 1 = its second. Sim-only seam
 # (policy `l1_evo2`): without it half the evolutions are never measured.
+# The same index picks the trait at 250 XP (G-71): 0 = the branch's signature
+# trait (Option A, policy `l1`), 1 = the one that was a Directive (Option B,
+# policy `l1_evo2`). So `l1` plays first evolutions with Option A and `l1_evo2`
+# second evolutions with Option B; the other two pairings are not measured.
 var evolution_index: int = 0
 
 
@@ -100,8 +104,8 @@ func choose_evolution(paths: Array, _gs: Node) -> String:
 	return str((paths[mini(evolution_index, paths.size() - 1)] as Dictionary).get("name", "")) if not paths.is_empty() else ""
 
 
-func choose_directive(choices: Array, _gs: Node) -> String:
-	return str((choices[0] as Dictionary).get("name", "")) if not choices.is_empty() else ""
+func choose_trait(choices: Array, _gs: Node) -> String:
+	return str((choices[mini(evolution_index, choices.size() - 1)] as Dictionary).get("id", "")) if not choices.is_empty() else ""
 
 
 func _first_unit(gs: Node) -> String:

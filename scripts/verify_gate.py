@@ -144,8 +144,16 @@ GATES = [
     ("pip spacing", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/pip_spacing_test.gd"], "[PIP_SPACING] PASS", False),
     # Build G item 3: every item "upgrade" draw succeeds at EVERY unlock state
     # (gating forced, fresh profile included) and ELITE PRESENCE upgrades
-    # exactly one slot whenever its precondition holds (non-boss battles).
+    # exactly one slot whenever its precondition holds, the boss fight included.
     ("upgrade draws", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/upgrade_draw_test.gd"], "[UPGRADE_DRAW] PASS", False),
+    # Boss lineup (G-70): no lineup modifier replaces or removes a boss. Every
+    # modifier on every battle of every operation, the boss in every slot,
+    # Prisoner Exchange taken before battle 9, and one rule for the live
+    # battle and the sim. Breaks: ELITE PRESENCE takes the first non-elite
+    # slot again (the bug), "one fewer enemy" drops the last unit again.
+    ("boss lineup", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "BOSS_LINEUP",
+        "--script", "scripts/debug/boss_lineup_test.gd", "--break-arg=--lineup-break=", "--breaks", "elite_boss,minus_boss"],
+        "[BOSS_LINEUP_GATE] PASS", False),
     ("freeze regression", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/freeze_engine_regression.tscn"], "[FREEZE] RESULT: freeze = repeat", False),
     # Batch 4 combat-bug regressions (each launches a live battle).
     ("protocol cancel", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/protocol_cancel_test.gd"], "[PROTOCOL_CANCEL] PASS", False),
@@ -312,6 +320,14 @@ GATES = [
         "--script", "scripts/debug/trait_preview_test.gd", "--break-arg=--preview-break=",
         "--breaks", "trait_blind,hero_phase_only"],
         "[TRAIT_PREVIEW_GATE] PASS", False),
+    # First run (G-72): no enemy has a trait until the player's first run ends,
+    # win or lose; hero traits are not affected. The copy a battle fields, what
+    # triggers in combat, what an inspect and Help print, what sets the profile
+    # flag, older profiles, and a live battle before and after. Breaks: enemy
+    # traits on during a first run; the end of a run not setting the flag.
+    ("first run", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "FIRST_RUN",
+        "--script", "scripts/debug/first_run_test.gd", "--break-arg=--first-run-break=", "--breaks", "traits_on,no_flag"],
+        "[FIRST_RUN_GATE] PASS", False),
     # Two-tier sim gate (G-58). Part A: the size line and the tripwire on made-up
     # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
     # an unlinked pin). Part B: a REAL change of about 10 points on one

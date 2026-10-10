@@ -32,7 +32,7 @@ func _run_flow() -> void:
 	await _step_battle_auto_win_to_reward()
 	await _step_reward_claim_and_continue()
 	await _step_evolution_back_to_home()
-	await _step_directive_choice()
+	await _step_trait_choice()
 	await _step_route_fork()
 	await _step_intercept()
 	await _step_main_menu_to_home()
@@ -233,11 +233,11 @@ func _step_intercept() -> void:
 	await _wait_frames(2)
 
 
-# Forced 250-XP path (pkg6): an evolved unit at the directive threshold gets
-# the 1-of-2 Directive screen; picking one applies it and deploys to battle.
-func _step_directive_choice() -> void:
+# Forced 250-XP path (G-71): an evolved unit at the prestige threshold gets
+# the 1-of-2 trait screen; picking one applies it and deploys to battle.
+func _step_trait_choice() -> void:
 	_step += 1
-	print("[FLOW_SMOKE] Step %d: forced 250-XP directive pick -> battle" % _step)
+	print("[FLOW_SMOKE] Step %d: forced 250-XP trait pick -> battle" % _step)
 	var gs := _game_state()
 	var op_id: String = str(_data_manager().call("get_operation_order")[0])
 	gs.call("start_run", DEFAULT_SQUAD, op_id)
@@ -248,24 +248,28 @@ func _step_directive_choice() -> void:
 	gs.get("unit_evolutions")[unit_id] = evolution_name
 	gs.get("unit_xp")[unit_id] = 250
 	gs.set("pending_evolution_unit_id", unit_id)
-	if not bool(gs.call("is_pending_directive_stage")):
-		_errors.append("Directive stage not detected for evolved unit at 250 XP")
+	if not bool(gs.call("is_pending_trait_stage")):
+		_errors.append("Trait stage not detected for evolved unit at 250 XP")
 		return
 	_scene_manager().call("go_to_evolution")
 	await _wait_for_scene(EVOLUTION_SCENE)
 	var screen := _current()
-	if screen == null or not screen.has_method("_on_choose_directive_pressed"):
-		_errors.append("Evolution screen missing the directive choose handler")
+	if screen == null or not screen.has_method("_on_choose_trait_pressed"):
+		_errors.append("Evolution screen missing the trait choose handler")
 		return
-	var choices: Array = gs.call("get_pending_directive_choices")
+	var choices: Array = gs.call("get_pending_trait_choices")
 	if choices.size() != 2:
-		_errors.append("Expected 2 directive choices, got %d" % choices.size())
+		_errors.append("Expected 2 trait choices, got %d" % choices.size())
 		return
-	var pick_name: String = str((choices[0] as Dictionary).get("name", ""))
-	screen.call("_on_choose_directive_pressed", pick_name)
+	var pick_id: String = str((choices[1] as Dictionary).get("id", ""))
+	screen.call("_on_choose_trait_pressed", pick_id)
 	await _wait_for_scene(BATTLE_SCENE)
-	if str(gs.get("unit_directives").get(unit_id, "")) != pick_name:
-		_errors.append("Directive '%s' was not applied to %s" % [pick_name, unit_id])
+	if str(gs.call("get_unit_trait_id", unit_id)) != pick_id:
+		_errors.append("Trait '%s' was not applied to %s" % [pick_id, unit_id])
+		return
+	var carried: Dictionary = gs.call("get_run_unit_data", unit_id).get("unit_trait")
+	if str(carried.get("id", "")) != pick_id:
+		_errors.append("%s does not carry the trait it picked (%s)" % [unit_id, str(carried)])
 		return
 	await _wait_frames(2)
 

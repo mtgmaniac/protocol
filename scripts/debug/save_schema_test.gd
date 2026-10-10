@@ -89,7 +89,7 @@ func _build_checkpoint(squad: Array = SQUAD) -> Dictionary:
 	gs().unit_xp[lead] = 140
 	gs().unit_levels[lead] = 2
 	gs().unit_evolutions[lead] = "Vanguard"
-	gs().unit_directives[lead] = "Entrench"
+	gs().unit_directives[lead] = "dugIn"  # the 250 XP trait pick, by trait id (G-71)
 	gs().gear_by_unit[lead] = ["predator_lens"]
 	gs().equipped_gear[lead] = ["predator_lens"]
 	gs().consumables.append("field_patch")

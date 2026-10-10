@@ -469,7 +469,7 @@ func _run_regression_audits() -> void:
 	_run_save_manager_regressions()
 	_run_starting_directive_regressions()
 	_run_evolution_kit_regression()
-	_run_directive_progression_regressions()
+	_run_trait_progression_regressions()
 	_run_directive_combat_regressions()
 	_run_battle_slot_regressions()
 	_run_beat_regressions()
@@ -2106,7 +2106,7 @@ func _run_starting_directive_regressions() -> void:
 	SaveManager.data = saved_save
 
 
-func _run_directive_progression_regressions() -> void:
+func _run_trait_progression_regressions() -> void:
 	var saved: Dictionary = {
 		"selected_units": GameState.selected_units.duplicate(),
 		"unit_xp": GameState.unit_xp.duplicate(true),
@@ -2124,26 +2124,28 @@ func _run_directive_progression_regressions() -> void:
 	GameState.pending_evolution_unit_id = ""
 	GameState.deferred_evolution_unit_ids = []
 
-	# An evolved unit past 250 XP queues a Directive stop.
+	# An evolved unit past 250 XP queues a trait stop (G-71), and has no trait
+	# until it picks.
 	GameState._queue_evolution_after_win([])
-	var stage_ok: bool = GameState.pending_evolution_unit_id == "pulse" and GameState.is_pending_directive_stage()
+	var stage_ok: bool = GameState.pending_evolution_unit_id == "pulse" and GameState.is_pending_trait_stage()
+	var none_yet: bool = GameState.get_run_unit_data("pulse").unit_trait.is_empty()
 
-	# The offer is the evolution path's 1-of-2 pair; picking one applies it.
-	var choice_names: Array = []
-	for choice_variant in GameState.get_pending_directive_choices():
-		choice_names.append(str((choice_variant as Dictionary).get("name", "")))
-	var bogus_refused: bool = not GameState.apply_pending_directive("Slow Roast")
-	var applied: bool = GameState.apply_pending_directive("Conductor")
+	# The offer is the branch's two traits; picking one applies it.
+	var choice_ids: Array = []
+	for choice_variant in GameState.get_pending_trait_choices():
+		choice_ids.append(str((choice_variant as Dictionary).get("id", "")))
+	var bogus_refused: bool = not GameState.apply_pending_trait("afterburn")
+	var applied: bool = GameState.apply_pending_trait("conductor")
 	var run_unit: UnitData = GameState.get_run_unit_data("pulse")
-	var effect_type: String = str(((run_unit.directive if run_unit != null else {}) as Dictionary).get("effect", {}).get("type", ""))
+	var carried_id: String = str((run_unit.unit_trait if run_unit != null else {}).get("id", ""))
 	_expect_and_record(
-		"Regression / directive stage at 250 XP",
-		"directiveProgression",
+		"Regression / trait stage at 250 XP",
+		"traitProgression",
 		"true",
-		str(stage_ok and choice_names == ["Conductor", "Amplifier"] and bogus_refused and applied and effect_type == "chainExtraJump")
+		str(stage_ok and none_yet and choice_ids == ["liveWire", "conductor"] and bogus_refused and applied and carried_id == "conductor")
 	)
 
-	# An unevolved unit past 100 XP still gets an evolution stop, not a directive.
+	# An unevolved unit past 100 XP still gets an evolution stop, not a trait.
 	GameState.selected_units = ["combat"]
 	GameState.unit_evolutions = {}
 	GameState.unit_directives = {}
@@ -2151,8 +2153,8 @@ func _run_directive_progression_regressions() -> void:
 	GameState.pending_evolution_unit_id = ""
 	GameState.deferred_evolution_unit_ids = []
 	GameState._queue_evolution_after_win([])
-	var evo_stage: bool = GameState.pending_evolution_unit_id == "combat" and not GameState.is_pending_directive_stage()
-	_expect_and_record("Regression / evolution stage before directive", "directiveProgression", "true", str(evo_stage))
+	var evo_stage: bool = GameState.pending_evolution_unit_id == "combat" and not GameState.is_pending_trait_stage()
+	_expect_and_record("Regression / evolution stage before trait", "traitProgression", "true", str(evo_stage))
 
 	GameState.selected_units = saved["selected_units"]
 	GameState.unit_xp = saved["unit_xp"]
@@ -2163,6 +2165,15 @@ func _run_directive_progression_regressions() -> void:
 	GameState.deferred_evolution_unit_ids = saved["deferred"]
 
 
+# A hero carrying one trait from traits.data.json (the 250 XP pick, G-71).
+func _make_trait_unit(id: String, display_name: String, ability_name: String, raw: Dictionary, trait_id: String) -> UnitData:
+	var unit: UnitData = _make_unit(id, display_name, ability_name, raw)
+	unit.unit_trait = CombatManager.UnitTraits.build(trait_id, unit.dice_ranges)
+	return unit
+
+
+# A hero carrying a retired Directive (G-71): nothing in the game builds one;
+# the seven effect types still read by the engine are pinned through this.
 func _make_directive_unit(id: String, display_name: String, ability_name: String, raw: Dictionary, effect: Dictionary) -> UnitData:
 	var unit: UnitData = _make_unit(id, display_name, ability_name, raw)
 	unit.directive = {"name": "Audit Directive", "desc": "", "effect": effect}
@@ -2218,7 +2229,7 @@ func _run_directive_combat_regressions() -> void:
 	var rampart_manager: CombatManager = CombatManager.new()
 	rampart_manager.setup_battle(
 		[
-			_make_directive_unit("audit_granter", "Audit Granter", "Aegis", {"shield": 6, "shieldAll": true}, {"type": "ownShieldBonus", "amount": 2}),
+			_make_trait_unit("audit_granter", "Audit Granter", "Aegis", {"shield": 6, "shieldAll": true}, "rampart"),
 			_make_unit("audit_holder", "Audit Holder", "Noop", {}),
 		],
 		[_make_enemy("audit_enemy", "Audit Enemy")]
@@ -2227,7 +2238,7 @@ func _run_directive_combat_regressions() -> void:
 	var rampart_holder: Dictionary = rampart_manager.get_hero_states()[1]
 	# Apply the ability directly — round-granted shields expire at the tick.
 	rampart_manager._apply_hero_ability(rampart_granter, rampart_granter["unit"].dice_ranges[0])
-	_expect_and_record("Regression / directive rampart shield bonus", "ownShieldBonus", "8", str(int(rampart_holder.get("shield", 0))))
+	_expect_and_record("Regression / trait Fortified shield bonus", "rampart", "8", str(int(rampart_holder.get("shield", 0))))
 
 	var bunker_manager: CombatManager = CombatManager.new()
 	bunker_manager.setup_battle(
@@ -2246,7 +2257,7 @@ func _run_directive_combat_regressions() -> void:
 	var triage_manager: CombatManager = CombatManager.new()
 	triage_manager.setup_battle(
 		[
-			_make_directive_unit("audit_medic", "Audit Medic", "Mend", {"heal": 6, "healTgt": true}, {"type": "healGrantsShield", "amount": 3}),
+			_make_trait_unit("audit_medic", "Audit Medic", "Mend", {"heal": 6, "healTgt": true}, "fieldTriage"),
 			_make_unit("audit_patient", "Audit Patient", "Noop", {}),
 		],
 		[_make_enemy("audit_enemy", "Audit Enemy")]
@@ -2256,12 +2267,12 @@ func _run_directive_combat_regressions() -> void:
 	triage_patient["current_hp"] = 50
 	triage_medic["selected_target_id"] = str(triage_patient["id"])
 	triage_manager._apply_hero_ability(triage_medic, triage_medic["unit"].dice_ranges[0])
-	_expect_and_record("Regression / directive field triage", "healGrantsShield", "56/3", "%d/%d" % [int(triage_patient["current_hp"]), int(triage_patient.get("shield", 0))])
+	_expect_and_record("Regression / trait Sheltering", "fieldTriage", "56/3", "%d/%d" % [int(triage_patient["current_hp"]), int(triage_patient.get("shield", 0))])
 
 	# Reaper: the execute threshold rises to the directive pct.
 	var reaper_manager: CombatManager = CombatManager.new()
 	reaper_manager.setup_battle(
-		[_make_directive_unit("audit_hero", "Audit Hero", "Cull", {"dmg": 10, "execute": true}, {"type": "executeThresholdPct", "pct": 35})],
+		[_make_trait_unit("audit_hero", "Audit Hero", "Cull", {"dmg": 10, "execute": true}, "reaper")],
 		[_make_enemy("audit_enemy", "Audit Enemy")]
 	)
 	var reaper_hero: Dictionary = reaper_manager.get_hero_states()[0]
@@ -2269,7 +2280,7 @@ func _run_directive_combat_regressions() -> void:
 	reaper_enemy["current_hp"] = 42  # 42-10=32 -> below 35% of 100, above the stock 25%
 	reaper_hero["selected_target_id"] = str(reaper_enemy["id"])
 	reaper_manager.resolve_round({str(reaper_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / directive reaper threshold", "executeThresholdPct", "24", str(int(reaper_enemy["current_hp"])))
+	_expect_and_record("Regression / trait Reaping threshold", "reaper", "24", str(int(reaper_enemy["current_hp"])))
 
 	# Ambush Wiring + Ghostblade: cloak strike hits harder and Executes. Both
 	# ride the ambush (G-52): 10 becomes 15, then Ambush Wiring adds its 5.
@@ -2301,13 +2312,13 @@ func _run_directive_combat_regressions() -> void:
 	# Signal Theft + Hard Lock: single-target roll-downs jam and feed the pool.
 	var theft_manager: CombatManager = CombatManager.new()
 	theft_manager.setup_battle(
-		[_make_directive_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, {"type": "rfeGrantsProtocol", "amount": 1})],
+		[_make_trait_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, "signalTheft")],
 		[_make_enemy("audit_enemy", "Audit Enemy")]
 	)
 	var theft_hero: Dictionary = theft_manager.get_hero_states()[0]
 	theft_hero["selected_target_id"] = str(theft_manager.get_enemy_states()[0]["id"])
 	theft_manager.resolve_round({str(theft_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / directive signal theft", "rfeGrantsProtocol", "1", str(theft_manager.take_pending_protocol_grants()))
+	_expect_and_record("Regression / trait Siphoning", "signalTheft", "1", str(theft_manager.take_pending_protocol_grants()))
 
 	var lock_manager: CombatManager = CombatManager.new()
 	lock_manager.setup_battle(
@@ -2323,26 +2334,26 @@ func _run_directive_combat_regressions() -> void:
 	# Feedback: enemies under an active roll-down take chip damage each round.
 	var feedback_manager: CombatManager = CombatManager.new()
 	feedback_manager.setup_battle(
-		[_make_directive_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, {"type": "rfeDamagePerRound", "amount": 2})],
+		[_make_trait_unit("audit_hero", "Audit Hero", "Static Lash", {"rfe": 2, "rfT": 2}, "feedback")],
 		[_make_enemy("audit_enemy", "Audit Enemy")]
 	)
 	var feedback_hero: Dictionary = feedback_manager.get_hero_states()[0]
 	var feedback_enemy: Dictionary = feedback_manager.get_enemy_states()[0]
 	feedback_hero["selected_target_id"] = str(feedback_enemy["id"])
 	feedback_manager.resolve_round({str(feedback_hero["id"]): AUDIT_ROLL}, {}, DiceManager.new())
-	_expect_and_record("Regression / directive feedback chip", "rfeDamagePerRound", "98", str(int(feedback_enemy["current_hp"])))
+	_expect_and_record("Regression / trait Shrieking", "feedback", "98", str(int(feedback_enemy["current_hp"])))
 
 	# Vanish: dropping below half HP cloaks the hero once per battle.
 	var vanish_manager: CombatManager = CombatManager.new()
 	vanish_manager.setup_battle(
-		[_make_directive_unit("audit_hero", "Audit Hero", "Noop", {}, {"type": "lowHpCloakOnce", "pct": 50})],
+		[_make_trait_unit("audit_hero", "Audit Hero", "Noop", {}, "vanish")],
 		[_make_enemy("audit_enemy", "Audit Enemy", "Crush", {"dmg": 60})]
 	)
 	var vanish_hero: Dictionary = vanish_manager.get_hero_states()[0]
 	var vanish_enemy: Dictionary = vanish_manager.get_enemy_states()[0]
 	vanish_enemy["selected_target_id"] = str(vanish_hero["id"])
 	vanish_manager.resolve_round({}, {str(vanish_enemy["id"]): AUDIT_ROLL}, DiceManager.new())
-	_expect_and_record("Regression / directive vanish", "lowHpCloakOnce", "true/true", "%s/%s" % [str(bool(vanish_hero.get("cloaked", false))), str(bool(vanish_hero.get("vanish_used", false)))])
+	_expect_and_record("Regression / trait Vanishing", "vanish", "true/true", "%s/%s" % [str(bool(vanish_hero.get("cloaked", false))), str(bool(vanish_hero.get("vanish_used", false)))])
 
 
 const SIGNATURE_FIGHTS := {
@@ -3468,7 +3479,7 @@ func _run_revive_pct_regression() -> void:
 
 
 # NK-17 conditional alternative (Kev 2026-09-25): `revive 50% HP, else 20 heal
-# (hero)`. Decided at FIRE time; directives override the revive % only.
+# (hero)`. Decided at FIRE time; the Reviving trait overrides the revive % only.
 const FALLBACK_SINGLE_RAW := {"revive": true, "healTgt": true, "revivePct": 50, "fallbackHeal": 20}
 const FALLBACK_ALL_RAW := {"reviveAll": true, "revivePct": 30, "fallbackHeal": 12, "fallbackHealAll": true}
 
@@ -3482,12 +3493,12 @@ func _run_revive_fallback_regressions() -> void:
 	# fire time decides, so the fallen ally is revived instead.
 	_expect_revive_fallback("Regression / revive decided at fire time",
 		FALLBACK_SINGLE_RAW, "", false, true, [60, 0], ["60:alive", "50:alive"])
-	# Field Surgeon: nobody down -> the 20 heal is unchanged by the directive.
-	_expect_revive_fallback("Regression / revive directive leaves the fallback heal",
-		FALLBACK_SINGLE_RAW, "Resuscitate", false, false, [60, 60], ["", "80:alive"])
-	# Field Surgeon: someone down -> the revive fires at the directive's 100%.
-	_expect_revive_fallback("Regression / revive directive sets the revive pct",
-		FALLBACK_SINGLE_RAW, "Resuscitate", true, false, [60, 0], ["", "100:alive"])
+	# Reviving: nobody down -> the 20 heal is unchanged by the trait.
+	_expect_revive_fallback("Regression / Reviving leaves the fallback heal",
+		FALLBACK_SINGLE_RAW, "fieldSurgeon", false, false, [60, 60], ["", "80:alive"])
+	# Reviving: someone down -> the revive fires at the trait's 100%.
+	_expect_revive_fallback("Regression / Reviving sets the revive pct",
+		FALLBACK_SINGLE_RAW, "fieldSurgeon", true, false, [60, 0], ["", "100:alive"])
 
 	var up: Array = [{"dead": false}, {"dead": false}]
 	var down: Array = [{"dead": false}, {"dead": true}]
@@ -3503,9 +3514,9 @@ func _run_revive_fallback_regressions() -> void:
 	_expect_and_record("Readout / revive shows the fallback heal when nobody is down", "display_raw",
 		"heal=20 healTgt=true revive=false",
 		"heal=%d healTgt=%s revive=%s" % [int(heal_shown.get("heal", 0)), str(bool(heal_shown.get("healTgt", false))).to_lower(), str(bool(heal_shown.get("revive", false))).to_lower()])
-	var surgeon: Dictionary = {"directive_type": "abilityRevivePctOverride", "directive_effect": {"ability": "Resuscitate", "pct": 100}}
+	var surgeon: Dictionary = {"trait": "fieldSurgeon", "unit": _make_trait_unit("audit_surgeon", "Audit Surgeon", "Resuscitate", FALLBACK_SINGLE_RAW, "fieldSurgeon")}
 	var revive_shown: Dictionary = ReviveResolution.display_raw(FALLBACK_SINGLE_RAW, surgeon, "Resuscitate", down)
-	_expect_and_record("Readout / revive shows the directive-resolved pct", "display_raw",
+	_expect_and_record("Readout / revive shows the trait-resolved pct", "display_raw",
 		"revive=true revivePct=100",
 		"revive=%s revivePct=%d" % [str(bool(revive_shown.get("revive", false))).to_lower(), int(revive_shown.get("revivePct", 0))])
 
@@ -3514,18 +3525,16 @@ func _run_revive_fallback_regressions() -> void:
 # current HP. `ally_down_at_pick` downs the ally before targeting (the revive
 # case); `ally_falls_late` downs it after a LIVING pick, before the cast fires
 # (the fire-time case). Expected entries are "hp:alive" per state, "" to skip.
-func _expect_revive_fallback(label: String, raw: Dictionary, directive_ability: String,
+func _expect_revive_fallback(label: String, raw: Dictionary, trait_id: String,
 		ally_down_at_pick: bool, ally_falls_late: bool, hp: Array, expected: Array) -> void:
 	var manager: CombatManager = CombatManager.new()
 	var actor_unit: UnitData = _make_unit("audit_actor", "Audit Actor", "Resuscitate", raw)
+	actor_unit.unit_trait = CombatManager.UnitTraits.build(trait_id, actor_unit.dice_ranges)
 	var ally_unit: UnitData = _make_unit("audit_ally_a", "Audit Ally A", "Noop", {})
 	manager.setup_battle([actor_unit, ally_unit], [])
 	var states: Array = manager.get_hero_states()
 	var actor: Dictionary = states[0]
 	var ally: Dictionary = states[1]
-	if directive_ability != "":
-		actor["directive_type"] = "abilityRevivePctOverride"
-		actor["directive_effect"] = {"ability": directive_ability, "pct": 100}
 	actor["current_hp"] = int(hp[0])
 	ally["current_hp"] = int(hp[1])
 	actor["selected_target_id"] = str(ally["id"])

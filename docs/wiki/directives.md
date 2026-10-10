@@ -1,5 +1,10 @@
 # Directives
 
+> **Retired 2026-10-10 (DECISIONS G-71).** The 250 XP pick is now one of the
+> branch's two traits. Sixteen Directives became traits with the same effect
+> and sixteen are no longer offered. This page describes the system as it was;
+> the live reference is `docs/TRUTH.md` and `data/raw/traits.data.json`.
+
 > Part of the [Overload Protocol wiki](INDEX.md). See also: [heroes.md](heroes.md), [keywords.md](keywords.md), [protocol-economy.md](protocol-economy.md), [statuses-and-chips.md](statuses-and-chips.md).
 
 ## How it works

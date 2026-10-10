@@ -4,15 +4,20 @@
 #
 # Some units carry one always-on trait: every hero evolution, every elite, and
 # in Mantle Hunt every unit but the boss (G-66). Pinned here:
-#   A. who      the roster from the rulings, unit by unit: 16 evolutions, 9
+#   A. who      the roster from the rulings, unit by unit: 16 evolutions, each
+#               with the two traits it chooses between at 250 XP (G-71), 9
 #               elites, 7 Mantle Hunt units with Feral (Basalt Ape and Magma
 #               Drake keep Accrete too; the Mantle Tyrant has Accrete and no
 #               trait); base heroes, the other regular units, the other
-#               operations' tanks and supports, and bosses have none; an
-#               evolved hero carries its trait into a run; every trait
-#               defined is used.
-#   B. rules    every one of the 26 traits does what its line says, by the
+#               operations' tanks and supports, and bosses have none; every
+#               trait defined is used.
+#   B. rules    every one of the 42 traits does what its line says, by the
 #               number in its data, and does nothing without the trait.
+#   B3. pick    an evolved hero has no trait until 250 XP; it then picks one
+#               of its branch's two; the trait is its title on the battle
+#               card; the 250 XP screen says trait, never Directive; the
+#               100 XP picker previews both traits; a run saved with a
+#               Directive loads with the matching trait.
 #   C. dice     Static and Zealous move the die's one value (the path a
 #               deliberate change takes), pass over frozen and hijacked dice,
 #               never lift a jammed die past its cap, and fire Static first.
@@ -62,6 +67,38 @@ const ENEMY_TRAITS := {
 	"Geode Panther": "Feral", "Cinder Raptor": "Feral",
 	"Basalt Ape": "Feral", "Magma Drake": "Feral",
 }
+# The 250 XP pick (G-71): each branch chooses between its signature trait
+# (EVOLUTION_TRAITS above) and one that was a Directive. [first, second].
+const PRESTIGE_TRAITS := {
+	"pulse/pyro": ["Smoldering", "Searing"], "pulse/arc": ["Charged", "Forking"],
+	"combat/blade": ["Ruthless", "Serrated"], "combat/ravager": ["Bloodlust", "Scalding"],
+	"shield/bulwark": ["Anchored", "Fortified"], "shield/sentinel": ["Vengeful", "Bristling"],
+	"avalanche/glacier": ["Glacial", "Shattering"], "avalanche/trench": ["Entrenched", "Sheltering"],
+	"medic/medic": ["Watchful", "Reviving"], "medic/synth": ["Overflowing", "Reinforcing"],
+	"engineer/overclocked": ["Redline", "Capacitive"], "engineer/phantom": ["Spectral", "Shrouded"],
+	"ghost/shadow": ["Silent", "Vanishing"], "ghost/wraith": ["Relentless", "Reaping"],
+	"breaker/noise": ["Static", "Shrieking"], "breaker/nullwire": ["Zero-Day", "Siphoning"],
+}
+# Every Directive a run saved before G-71 may hold, by branch, and the trait
+# its hero has after loading: the trait it became, or the branch's first trait.
+const LEGACY_DIRECTIVES := {
+	"pulse/pyro": {"Flashpoint": "Searing", "Sustained Ignition": "Smoldering"},
+	"pulse/arc": {"Conductor": "Forking", "Amplifier": "Charged"},
+	"combat/blade": {"Serrated": "Serrated", "Momentum": "Ruthless"},
+	"combat/ravager": {"Thermal Trauma": "Scalding", "Flash Cautery": "Bloodlust"},
+	"shield/bulwark": {"Rampart": "Fortified", "Bunker Doctrine": "Anchored"},
+	"shield/sentinel": {"Ironclad": "Vengeful", "Counterweight": "Bristling"},
+	"avalanche/glacier": {"Deep Freeze": "Glacial", "Shatterpoint": "Shattering"},
+	"avalanche/trench": {"Field Triage": "Sheltering", "Entrench": "Entrenched"},
+	"medic/medic": {"Combat Sense": "Watchful", "Field Surgeon": "Reviving"},
+	"medic/synth": {"Reinforced Mesh": "Reinforcing", "Resuscitation Loop": "Overflowing"},
+	"engineer/overclocked": {"Deep Cells": "Capacitive", "Power Wiring": "Redline"},
+	"engineer/phantom": {"Silent Running": "Shrouded", "Ambush Wiring": "Spectral"},
+	"ghost/shadow": {"Ghostblade": "Silent", "Vanish": "Vanishing"},
+	"ghost/wraith": {"Marked for Death": "Relentless", "Reaper": "Reaping"},
+	"breaker/noise": {"Wall of Static": "Static", "Feedback": "Shrieking"},
+	"breaker/nullwire": {"Hard Lock": "Zero-Day", "Signal Theft": "Siphoning"},
+}
 # Mantle Hunt (G-66): every unit of the faction but its boss has Feral.
 const MANTLE_BOSS := "Mantle Tyrant"
 const MANTLE_ACCRETE_AND_FERAL := ["Basalt Ape", "Magma Drake"]
@@ -109,6 +146,8 @@ func _run() -> void:
 	_traits = load(TRAITS_SOURCE)
 	_check_roster()
 	_check_hero_rules()
+	_check_prestige_rules()
+	await _check_prestige_pick()
 	_check_enemy_rules()
 	_check_round_start()
 	_check_shown()
@@ -229,10 +268,13 @@ func _check_roster() -> void:
 		_expect(_traits.of_unit(unit).is_empty(), "roster: base hero %s has no trait" % unit.display_name)
 		for path in unit.evolution_paths:
 			var key: String = "%s/%s" % [unit.id, str(path["id"])]
-			var carried: Dictionary = path.get("trait", {})
+			var options: Array = path.get("traits", [])
+			var option_names: Array = options.map(func(option: Variant) -> String: return str((option as Dictionary).get("name", "")))
 			_expect(EVOLUTION_TRAITS.has(key), "roster: evolution %s is in the ruling's list" % key)
-			_expect(str(carried.get("name", "")) == str(EVOLUTION_TRAITS.get(key, "?")), "roster: %s has %s (%s)" % [key, str(EVOLUTION_TRAITS.get(key, "?")), str(carried.get("name", "none"))])
-			used[str(carried.get("id", ""))] = true
+			_expect(option_names == PRESTIGE_TRAITS.get(key, []), "roster: %s chooses between %s (%s)" % [key, str(PRESTIGE_TRAITS.get(key, [])), str(option_names)])
+			_expect(str(option_names.front()) == str(EVOLUTION_TRAITS.get(key, "?")), "roster: %s's first option is its signature trait %s" % [key, str(EVOLUTION_TRAITS.get(key, "?"))])
+			for option in options:
+				used[str((option as Dictionary).get("id", ""))] = true
 	var evolutions: int = 0
 	for unit in dm().units.values():
 		evolutions += unit.evolution_paths.size()
@@ -270,14 +312,19 @@ func _check_roster() -> void:
 	for trait_id in (_traits.data()["traits"] as Dictionary):
 		_expect(used.has(trait_id), "roster: trait %s is carried by a unit" % trait_id)
 
-	# An evolved hero takes its trait into the run; the base hero has none.
+	# A hero takes the trait it picked at 250 XP into the run (G-71); the base
+	# hero has none, and neither has an evolved hero before its pick.
 	var gs: Node = root.get_node("/root/GameState")
 	gs.reset_run()
 	gs.start_run(["pulse", "combat", "medic"], "facility", 5)
 	_expect(_traits.of_unit(gs.get_run_unit_data("pulse")).is_empty(), "run: an unevolved hero has no trait")
 	gs.unit_evolutions["pulse"] = "Pyro Specialist"
 	var evolved: Resource = gs.get_run_unit_data("pulse")
-	_expect(str(_traits.of_unit(evolved).get("name", "")) == "Smoldering", "run: Pyro Specialist carries Smoldering (%s)" % str(_traits.of_unit(evolved)))
+	_expect(_traits.of_unit(evolved).is_empty(), "run: Pyro Specialist has no trait before 250 XP (%s)" % str(_traits.of_unit(evolved)))
+	_expect(str(_h(_battle([evolved], [_enemy("x")]))["trait"]) == "", "run: and its battle state carries none")
+	gs.unit_directives["pulse"] = "afterburn"
+	evolved = gs.get_run_unit_data("pulse")
+	_expect(str(_traits.of_unit(evolved).get("name", "")) == "Smoldering", "run: with Smoldering picked, Pyro Specialist carries it (%s)" % str(_traits.of_unit(evolved)))
 	var cm: Object = _battle([evolved], [_enemy("x")])
 	_expect(str(_h(cm)["trait"]) == "afterburn", "run: its battle state carries the trait id (%s)" % str(_h(cm)["trait"]))
 	gs.reset_run()
@@ -620,6 +667,349 @@ func _check_enemy_rules() -> void:
 		_expect_shown(result, "Feral", "Feral on Basalt Ape")
 
 
+# ── B2. The sixteen traits that were Directives (G-71) ───────────────────────
+# Each is the second option of its branch. Same effect as the Directive it
+# replaces, by the number in its data; nothing without the trait.
+func _shield_events(result: Dictionary, target_id: String) -> int:
+	var total: int = 0
+	for event in result.get("events", []):
+		if str(event["type"]) == "shield" and str(event["target_id"]) == target_id:
+			total += int(event["amount"])
+	return total
+
+
+func _give_shield(state: Dictionary, amount: int) -> void:
+	state["shield_stacks"] = [{"amt": amount, "skip_next_tick": true}]
+	state["shield"] = amount
+
+
+func _check_prestige_rules() -> void:
+	var cm: Object
+	var result: Dictionary
+	var lost: Dictionary = {}
+
+	# Searing: a burn it applies ticks once as it lands.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"dmg": 5, "burn": 3, "burnT": 2}, {}, "flashpoint" if with else "")], [_enemy("x")])
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		lost[with] = _lost(_e(cm))
+		if with:
+			_expect_shown(result, "Searing", "Searing")
+	_expect(int(lost[true]) - int(lost[false]) == 3, "Searing: the 3 burn ticks once more, as it lands (%d with, %d without)" % [int(lost[true]), int(lost[false])])
+
+	# Forking: its chains jump to one more enemy.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"dmg": 10, "chain": 1}, {}, "conductor" if with else "")], [_enemy("x"), _enemy("y"), _enemy("z")])
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		var jumped: int = (1 if _lost(_e(cm, 1)) > 0 else 0) + (1 if _lost(_e(cm, 2)) > 0 else 0)
+		_expect(jumped == 1 + (_num("conductor", "jumps") if with else 0), "Forking %s: the chain reaches %d more enemies (%d)" % ["on" if with else "off", 1 + (_num("conductor", "jumps") if with else 0), jumped])
+		_expect(_lost(_e(cm, 1)) + _lost(_e(cm, 2)) == 5 * jumped, "Forking: every jump deals the chain's 5 (%d over %d jumps)" % [_lost(_e(cm, 1)) + _lost(_e(cm, 2)), jumped])
+		if with:
+			_expect_shown(result, "Forking", "Forking")
+
+	# Serrated: its pierce attacks also breach.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"dmg": 10, "ignSh": true}, {}, "serrated" if with else "")], [_enemy("x")])
+		_give_shield(_e(cm), 8)
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		_expect(int(_e(cm)["shield"]) == (0 if with else 8), "Serrated %s: a pierce attack leaves %d of the 8 shield (%d)" % ["on" if with else "off", 0 if with else 8, int(_e(cm)["shield"])])
+		_expect(_lost(_e(cm)) == 10, "Serrated: the pierce attack still deals its 10 (%d)" % _lost(_e(cm)))
+		if with:
+			_expect_shown(result, "Serrated", "Serrated")
+	cm = _battle([_hero("a", {"dmg": 4}, {}, "serrated")], [_enemy("x")])
+	_give_shield(_e(cm), 8)
+	_aim(cm, 0, 0)
+	_round(cm, {0: 5})
+	_expect(int(_e(cm)["shield"]) == 4 and _lost(_e(cm)) == 0, "Serrated: an attack without pierce does not breach (%d shield left)" % int(_e(cm)["shield"]))
+
+	# Scalding: more damage to a burning enemy.
+	for case in [["thermalTrauma", true], ["", true], ["thermalTrauma", false]]:
+		cm = _battle([_hero("a", {"dmg": 10}, {}, str(case[0]))], [_enemy("x")])
+		if case[1]:
+			cm._apply_burn(_e(cm), 2, 3)
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		lost[str(case)] = _lost(_e(cm))
+		if case[0] != "" and case[1]:
+			_expect_shown(result, "Scalding", "Scalding")
+	_expect(int(lost[str(["thermalTrauma", true])]) - int(lost[str(["", true])]) == _num("thermalTrauma", "amount"), "Scalding: +%d to a burning enemy (%d with, %d without)" % [_num("thermalTrauma", "amount"), int(lost[str(["thermalTrauma", true])]), int(lost[str(["", true])])])
+	_expect(int(lost[str(["thermalTrauma", false])]) == 10, "Scalding: an enemy that is not burning takes the plain 10 (%d)" % int(lost[str(["thermalTrauma", false])]))
+
+	# Fortified: its shield abilities grant more.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"shield": 6, "shieldAll": true}, {}, "rampart" if with else ""), _hero("b")], [_enemy("x")])
+		result = _round(cm, {0: 5})
+		var want_shield: int = 6 + (_num("rampart", "amount") if with else 0)
+		_expect(_shield_events(result, "b") == want_shield, "Fortified %s: an ally gains %d shield (%d)" % ["on" if with else "off", want_shield, _shield_events(result, "b")])
+		if with:
+			_expect_shown(result, "Fortified", "Fortified")
+
+	# Bristling: its spike abilities grant more spike.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"spike": 5}, {}, "counterweight" if with else "")], [_enemy("x", {"dmg": 10})])
+		_e(cm)["selected_target_id"] = "a"
+		result = _round(cm, {0: 5}, {0: 5})
+		var want_spike: int = 5 + (_num("counterweight", "amount") if with else 0)
+		_expect(_lost(_e(cm)) == want_spike, "Bristling %s: the attacker takes %d spike damage (%d)" % ["on" if with else "off", want_spike, _lost(_e(cm))])
+		if with:
+			_expect_shown(result, "Bristling", "Bristling")
+
+	# Shattering: more damage to an enemy whose die is frozen.
+	for case in [["shatterpoint", 1], ["", 1], ["shatterpoint", 0]]:
+		cm = _battle([_hero("a", {"dmg": 10}, {}, str(case[0]))], [_enemy("x")])
+		_e(cm)["die_freeze_turns"] = int(case[1])
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		var shatter: int = _num("shatterpoint", "amount") if (case[0] != "" and int(case[1]) > 0) else 0
+		_expect(_lost(_e(cm)) == 10 + shatter, "Shattering (trait %s, frozen %s): the attack deals %d (%d)" % [str(case[0] != ""), str(int(case[1]) > 0), 10 + shatter, _lost(_e(cm))])
+		if shatter > 0:
+			_expect_shown(result, "Shattering", "Shattering")
+
+	# Sheltering: its heals also shield whoever they heal.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"heal": 6, "healTgt": true}, {}, "fieldTriage" if with else ""), _hero("b")], [_enemy("x")])
+		_h(cm, 1)["current_hp"] = 50
+		_h(cm, 0)["selected_target_id"] = "b"
+		result = _round(cm, {0: 5})
+		_expect(int(_h(cm, 1)["current_hp"]) == 56, "Sheltering: the heal is still 6 (%d)" % (int(_h(cm, 1)["current_hp"]) - 50))
+		_expect(_shield_events(result, "b") == (_num("fieldTriage", "amount") if with else 0), "Sheltering %s: the healed hero gains %d shield (%d)" % ["on" if with else "off", _num("fieldTriage", "amount") if with else 0, _shield_events(result, "b")])
+		if with:
+			_expect_shown(result, "Sheltering", "Sheltering")
+
+	# Reviving: its revive brings a hero back at more HP.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"revive": true, "healTgt": true, "revivePct": 50, "fallbackHeal": 20}, {}, "fieldSurgeon" if with else ""), _hero("b")], [_enemy("x")])
+		_h(cm, 1)["dead"] = true
+		_h(cm, 1)["current_hp"] = 0
+		_h(cm, 0)["selected_target_id"] = "b"
+		result = _round(cm, {0: 5})
+		var want_hp: int = _num("fieldSurgeon", "pct") if with else 50
+		_expect(not bool(_h(cm, 1)["dead"]) and int(_h(cm, 1)["current_hp"]) == want_hp, "Reviving %s: the hero returns at %d HP of 100 (%d)" % ["on" if with else "off", want_hp, int(_h(cm, 1)["current_hp"])])
+		if with:
+			_expect_shown(result, "Reviving", "Reviving")
+	cm = _battle([_hero("a", {"revive": true, "healTgt": true, "revivePct": 50, "fallbackHeal": 20}, {}, "fieldSurgeon"), _hero("b")], [_enemy("x")])
+	_h(cm, 1)["current_hp"] = 60
+	_h(cm, 0)["selected_target_id"] = "b"
+	_round(cm, {0: 5})
+	_expect(int(_h(cm, 1)["current_hp"]) == 80, "Reviving: with nobody down the heal is the plain 20 (%d)" % (int(_h(cm, 1)["current_hp"]) - 60))
+	cm = _battle([_hero("a", {"reviveAll": true, "revivePct": 30}, {}, "fieldSurgeon"), _hero("b")], [_enemy("x")])
+	_h(cm, 1)["dead"] = true
+	_h(cm, 1)["current_hp"] = 0
+	_round(cm, {0: 5})
+	_expect(int(_h(cm, 1)["current_hp"]) == 30, "Reviving: a revive of the whole squad keeps its own 30%% (%d)" % int(_h(cm, 1)["current_hp"]))
+
+	# Reinforcing: while it lives, every shield the squad gains is larger.
+	for case in [["reinforcedMesh", false], ["", false], ["reinforcedMesh", true]]:
+		cm = _battle([_hero("a", {"shield": 0}, {}, str(case[0])), _hero("b", {"shield": 6})], [_enemy("x")])
+		if case[1]:
+			_h(cm, 0)["dead"] = true
+			_h(cm, 0)["current_hp"] = 0
+		result = _round(cm, {1: 5})
+		var mesh: int = _num("reinforcedMesh", "amount") if (case[0] != "" and not case[1]) else 0
+		_expect(_shield_events(result, "b") == 6 + mesh, "Reinforcing (trait %s, alive %s): a squadmate's shield is %d (%d)" % [str(case[0] != ""), str(not case[1]), 6 + mesh, _shield_events(result, "b")])
+		if mesh > 0:
+			_expect_shown(result, "Reinforcing", "Reinforcing")
+
+	# Capacitive: while it lives, the Protocol cap is higher.
+	for case in [["deepCells", false], ["", false], ["deepCells", true]]:
+		cm = _battle([_hero("a", {"dmg": 1}, {}, str(case[0]))], [_enemy("x")])
+		if case[1]:
+			_h(cm)["dead"] = true
+		var cap: int = int(_engine_for(cm).max_protocol(0))
+		var raised: int = _num("deepCells", "amount") if (case[0] != "" and not case[1]) else 0
+		_expect(cap == 10 + raised, "Capacitive (trait %s, alive %s): the Protocol cap is %d (%d)" % [str(case[0] != ""), str(not case[1]), 10 + raised, cap])
+
+	# Shrouded: an ability that deals no damage cloaks the caster.
+	for case in [["silentRunning", 5], ["", 5], ["silentRunning", 15]]:
+		cm = _battle([_hero("a", {"shield": 4}, {"dmg": 5}, str(case[0]))], [_enemy("x")])
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: int(case[1])})
+		var shrouds: bool = case[0] != "" and int(case[1]) <= 10
+		_expect(bool(_h(cm)["cloaked"]) == shrouds, "Shrouded (trait %s, %s ability): the hero is %s" % [str(case[0] != ""), "a no-damage" if int(case[1]) <= 10 else "an attack", "cloaked" if shrouds else "not cloaked"])
+		if shrouds:
+			_expect_shown(result, "Shrouded", "Shrouded")
+
+	# Vanishing: once per battle, cloaks when damage leaves it below the line.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"shield": 0}, {}, "vanish" if with else "")], [_enemy("x", {"dmg": 30})])
+		_e(cm)["selected_target_id"] = "a"
+		_round(cm, {}, {0: 5})
+		_expect(not bool(_h(cm)["cloaked"]), "Vanishing: at 70 HP of 100 nothing happens")
+		_e(cm)["selected_target_id"] = "a"
+		result = _round(cm, {}, {0: 5})
+		_expect(int(_h(cm)["current_hp"]) == 40 and bool(_h(cm)["cloaked"]) == with, "Vanishing %s: at 40 HP of 100 the hero is %s" % ["on" if with else "off", "cloaked" if with else "not cloaked"])
+		if with:
+			_expect_shown(result, "Vanishing", "Vanishing")
+		_h(cm)["cloaked"] = false
+		_e(cm)["selected_target_id"] = "a"
+		_round(cm, {}, {0: 5})
+		_expect(int(_h(cm)["current_hp"]) == 10 and not bool(_h(cm)["cloaked"]), "Vanishing: it happens once a battle (%d HP, cloaked %s)" % [int(_h(cm)["current_hp"]), str(bool(_h(cm)["cloaked"]))])
+
+	# Reaping: its execute triggers below a higher line.
+	for case in [["reaper", 42], ["", 42], ["reaper", 60], ["", 30]]:
+		cm = _battle([_hero("a", {"dmg": 10, "execute": true}, {}, str(case[0]))], [_enemy("x")])
+		_e(cm)["current_hp"] = int(case[1])
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		var after_hit: int = int(case[1]) - 10
+		var line: int = _num("reaper", "pct") if case[0] != "" else 25
+		var want_left: int = after_hit - 8 if after_hit < line else after_hit
+		_expect(int(_e(cm)["current_hp"]) == want_left, "Reaping (trait %s, enemy at %d of 100 after the hit): %d HP left (%d)" % [str(case[0] != ""), after_hit, want_left, int(_e(cm)["current_hp"])])
+		if case[0] != "" and after_hit < line and after_hit >= 25:
+			_expect_shown(result, "Reaping", "Reaping")
+
+	# Shrieking: an enemy under its roll penalty takes damage each round.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"rfe": 2, "rfT": 2}, {}, "feedback" if with else "")], [_enemy("x")])
+		_aim(cm, 0, 0)
+		result = _round(cm, {0: 5})
+		_expect(_lost(_e(cm)) == (_num("feedback", "amount") if with else 0), "Shrieking %s: the enemy under the roll penalty takes %d this round (%d)" % ["on" if with else "off", _num("feedback", "amount") if with else 0, _lost(_e(cm))])
+		if with:
+			_expect_shown(result, "Shrieking", "Shrieking")
+			_expect(_logged(result, "Shrieking: Enemy x takes"), "Shrieking: the tick names the trait too (%s)" % str(result.get("log", [])))
+		for _i in 4:
+			_round(cm)
+		var settled: int = _lost(_e(cm))
+		_round(cm)
+		_expect(_lost(_e(cm)) == settled, "Shrieking: it stops when the roll penalty ends (%d then %d)" % [settled, _lost(_e(cm))])
+
+	# Siphoning: Protocol for each enemy its roll penalty lands on.
+	for with in [true, false]:
+		cm = _battle([_hero("a", {"rfe": 1, "rfT": 2, "rfeAll": true}, {}, "signalTheft" if with else "")], [_enemy("x"), _enemy("y")])
+		result = _round(cm, {0: 5})
+		var siphoned: int = int(cm.take_pending_protocol_grants())
+		_expect(siphoned == (2 * _num("signalTheft", "amount") if with else 0), "Siphoning %s: %d Protocol for two enemies (%d)" % ["on" if with else "off", 2 * _num("signalTheft", "amount") if with else 0, siphoned])
+		if with:
+			_expect_shown(result, "Siphoning", "Siphoning")
+
+
+# ── B3. The 250 XP pick (G-71) ───────────────────────────────────────────────
+func _labels_of(node: Node, label_name: String) -> Array:
+	var out: Array = []
+	for label in node.find_children(label_name, "Label", true, false):
+		out.append(str((label as Label).text))
+	return out
+
+
+func _frames(count: int) -> void:
+	for _i in count:
+		await process_frame
+
+
+func _check_prestige_pick() -> void:
+	var gs: Node = root.get_node("/root/GameState")
+	_expect(int(gs.XP_TO_PRESTIGE) == 250 and int(_traits.PRESTIGE_XP) == 250, "pick: the trait is chosen at 250 XP")
+
+	# Before the pick an evolved hero has no trait; the card shows the callsign only.
+	gs.reset_run()
+	gs.start_run(["pulse", "combat", "medic"], "facility", 5)
+	gs.unit_evolutions["pulse"] = "Pyro Specialist"
+	gs.unit_xp["pulse"] = 250
+	gs.pending_evolution_unit_id = "pulse"
+	_expect(gs.is_pending_trait_stage(), "pick: an evolved hero at 250 XP is at the trait stage")
+	var names: Array = []
+	for choice in gs.get_pending_trait_choices():
+		names.append(str(choice["name"]))
+	_expect(names == ["Smoldering", "Searing"], "pick: Pyro chooses between Smoldering and Searing (%s)" % str(names))
+	_expect(_traits.marker_text(_traits.of_unit(gs.get_run_unit_data("pulse"))) == "", "pick: before it, the battle card has no title")
+	_expect(not gs.apply_pending_trait("liveWire"), "pick: a trait of another branch is refused")
+	_expect(not gs.apply_pending_trait("Flashpoint"), "pick: a Directive name is refused")
+
+	# The 250 XP screen: two cards, trait copy, no Directive anywhere.
+	var screen: Node = load("res://scenes/ui/EvolutionScreen.tscn").instantiate()
+	root.add_child(screen)
+	await _frames(3)
+	_expect(_labels_of(screen, "TraitName") == ["SMOLDERING", "SEARING"], "250 XP screen: one card per trait (%s)" % str(_labels_of(screen, "TraitName")))
+	_expect(_labels_of(screen, "TraitText") == [_traits.build("afterburn")["text"], _traits.build("flashpoint")["text"]], "250 XP screen: each card prints its trait's line (%s)" % str(_labels_of(screen, "TraitText")))
+	_expect(_labels_of(screen, "TraitBecomes") == ["BATTLE CARD: SMOLDERING PYRO", "BATTLE CARD: SEARING PYRO"], "250 XP screen: each card shows the name the hero will carry (%s)" % str(_labels_of(screen, "TraitBecomes")))
+	_expect(str(screen.summary_label.text) == "Pyro Specialist reached 250 XP. Choose a trait.", "250 XP screen: the summary says trait (%s)" % str(screen.summary_label.text))
+	var buttons: Array = []
+	for button in screen.find_children("ChooseTrait", "Button", true, false):
+		buttons.append(str((button as Button).text))
+	_expect(buttons == ["CHOOSE SMOLDERING", "CHOOSE SEARING"], "250 XP screen: the buttons name the trait (%s)" % str(buttons))
+	for node in screen.find_children("*", "Control", true, false):
+		var shown: String = str(node.get("text")) if (node is Label or node is Button) else ""
+		_expect(not shown.to_lower().contains("directive") and not shown.contains("—"), "250 XP screen: no Directive and no em dash in '%s'" % shown)
+	screen.queue_free()
+	await _frames(3)
+
+	_expect(gs.apply_pending_trait("flashpoint"), "pick: the second option is accepted")
+	var picked: Resource = gs.get_run_unit_data("pulse")
+	_expect(str(_traits.of_unit(picked).get("name", "")) == "Searing" and _traits.marker_text(_traits.of_unit(picked)) == "SEARING", "pick: Pyro now carries Searing as its title (%s)" % str(_traits.of_unit(picked)))
+	_expect(str(_h(_battle([picked], [_enemy("x")]))["trait"]) == "flashpoint", "pick: its battle state carries the trait id")
+	_expect(gs.pending_evolution_unit_id == "" and not gs._is_evolution_eligible("pulse"), "pick: a hero with its trait has no further stop")
+	# The card: no title line without a trait, the trait above the callsign with one.
+	for case in [["", false], ["SEARING", true]]:
+		var card: Control = load("res://scripts/ui/compact_unit_card.gd").new()
+		root.add_child(card)
+		card.configure({"side": "hero", "name": "PYRO", "trait": case[0]})
+		_expect((card.find_child("TraitMarker", true, false) as Label).visible == bool(case[1]), "card: the title line is %s for trait '%s'" % ["shown" if case[1] else "hidden", str(case[0])])
+		card.free()
+
+	# The 100 XP picker: each branch previews the two traits it can earn; what
+	# each does is in the expanded view.
+	gs.reset_run()
+	gs.start_run(["pulse", "combat", "medic"], "facility", 5)
+	gs.pending_evolution_unit_id = "pulse"
+	screen = load("res://scenes/ui/EvolutionScreen.tscn").instantiate()
+	root.add_child(screen)
+	await _frames(3)
+	_expect(_labels_of(screen, "TraitLine") == ["AT 250 XP: SMOLDERING or SEARING", "AT 250 XP: CHARGED or FORKING"], "100 XP picker: each branch previews its two traits (%s)" % str(_labels_of(screen, "TraitLine")))
+	var effects: Array = _labels_of(screen, "TraitEffect_*")
+	_expect(effects.size() == 4 and effects.has(_traits.line(_traits.build("afterburn"))) and effects.has(_traits.line(_traits.build("flashpoint"))) and effects.has(_traits.line(_traits.build("conductor"))), "100 XP picker: the expanded view prints each trait's effect (%s)" % str(effects))
+	for label in screen.find_children("TraitEffect_*", "Label", true, false):
+		_expect(not (label as Label).is_visible_in_tree(), "100 XP picker: the effects are in the expanded view, not the minimized card")
+	screen.queue_free()
+	await _frames(3)
+	gs.reset_run()
+
+	# Saved runs. A hero that had a Directive keeps its 250 XP pick: the trait
+	# the Directive became, or the branch's signature trait when it was not
+	# converted. A hero that evolved and had no Directive has no trait.
+	var all_ok: bool = true
+	for hero in dm().units.values():
+		for path in hero.evolution_paths:
+			var key: String = "%s/%s" % [hero.id, str(path["id"])]
+			for directive_name in LEGACY_DIRECTIVES.get(key, []):
+				gs.reset_run()
+				gs.start_run([hero.id, "combat" if hero.id != "combat" else "pulse", "medic" if hero.id != "medic" else "pulse"], "facility", 5)
+				gs.unit_evolutions[hero.id] = str(path["name"])
+				gs.unit_directives[hero.id] = directive_name
+				var saved: Dictionary = JSON.parse_string(JSON.stringify(gs.to_save_dict()))
+				gs.reset_run()
+				gs.load_from_dict(saved)
+				var now: String = str(_traits.of_unit(gs.get_run_unit_data(hero.id)).get("name", ""))
+				var want: String = str(LEGACY_DIRECTIVES[key][directive_name])
+				if now != want:
+					all_ok = false
+					_errors.append("saved run: %s with the Directive %s now has %s (%s)" % [str(path["name"]), directive_name, want, now])
+				# Saving and loading again changes nothing.
+				var again: Dictionary = JSON.parse_string(JSON.stringify(gs.to_save_dict()))
+				gs.load_from_dict(again)
+				_expect(str(_traits.of_unit(gs.get_run_unit_data(hero.id)).get("name", "")) == want, "saved run: %s keeps %s on the next load" % [str(path["name"]), want])
+	_expect(all_ok and LEGACY_DIRECTIVES.size() == 16, "saved run: all 32 Directives were checked")
+	var converted: int = 0
+	for key in LEGACY_DIRECTIVES:
+		for directive_name in LEGACY_DIRECTIVES[key]:
+			if _traits.legacy_directive_trait(directive_name) != "":
+				converted += 1
+				_expect(str(LEGACY_DIRECTIVES[key][directive_name]) == str(PRESTIGE_TRAITS[key][1]), "saved run: %s became its branch's second trait" % directive_name)
+			else:
+				_expect(str(LEGACY_DIRECTIVES[key][directive_name]) == str(PRESTIGE_TRAITS[key][0]), "saved run: %s was not converted, so the branch's first trait stands in" % directive_name)
+	_expect(converted == 16, "saved run: sixteen Directives became traits (%d)" % converted)
+	gs.reset_run()
+	gs.start_run(["pulse", "combat", "medic"], "facility", 5)
+	gs.unit_evolutions["pulse"] = "Pyro Specialist"
+	var no_pick: Dictionary = JSON.parse_string(JSON.stringify(gs.to_save_dict()))
+	gs.reset_run()
+	gs.load_from_dict(no_pick)
+	_expect(_traits.of_unit(gs.get_run_unit_data("pulse")).is_empty() and str(gs.get_run_unit_data("pulse").display_name) == "Pyro Specialist", "saved run: a hero that evolved and had not reached 250 XP has no trait, and is still evolved")
+	gs.reset_run()
+
+
 # ── C. The round-start traits and the dice ────────────────────────────────────
 func _engine_for(cm: Object) -> Object:
 	return load(ENGINE_SOURCE).new(cm, cm.roll_provider, _dice)
@@ -786,9 +1176,10 @@ func _check_shown() -> void:
 	for group in help._codex_evolution_groups(dm().get_unit("pulse")):
 		if str(group.get("id", "")) == "pyro":
 			pyro = group
-	var help_payload: Dictionary = help._evolution_breakdown_payload("PYRO", int(pyro.get("hp", 0)), pyro.get("abilities", []), pyro.get("trait", {}))
+	var help_payload: Dictionary = help._evolution_breakdown_payload("PYRO", int(pyro.get("hp", 0)), pyro.get("abilities", []), pyro.get("traits", []))
 	var help_statuses: Array = help_payload.get("statuses", [])
-	_expect(not help_statuses.is_empty() and str((help_statuses[0] as Dictionary).get("text", "")).begins_with("SMOLDERING: "), "help: Pyro's breakdown leads with SMOLDERING (%s)" % str(help_statuses))
+	_expect(help_statuses.size() >= 3 and str((help_statuses[0] as Dictionary).get("text", "")) == "AT 250 XP: SMOLDERING or SEARING", "help: Pyro's breakdown leads with the 250 XP choice (%s)" % str(help_statuses))
+	_expect(help_statuses.size() >= 3 and str((help_statuses[1] as Dictionary).get("text", "")).begins_with("SMOLDERING: ") and str((help_statuses[2] as Dictionary).get("text", "")).begins_with("SEARING: "), "help: then each trait's own line (%s)" % str(help_statuses))
 	_expect(str((help._enemy_breakdown_payload(volt).get("statuses", [{}]) as Array)[0].get("text", "")).begins_with("VOLATILE: "), "help: Volt Enforcer's breakdown leads with VOLATILE")
 	help.free()
 
@@ -817,10 +1208,11 @@ func _check_copy() -> void:
 	var units: Array = dm().enemies.values()
 	for hero in dm().units.values():
 		for path in hero.evolution_paths:
-			var holder: UnitData = UnitData.new()
-			holder.display_name = str(path["name"])
-			holder.unit_trait = path.get("trait", {})
-			units.append(holder)
+			for option in path.get("traits", []):
+				var holder: UnitData = UnitData.new()
+				holder.display_name = str(path["name"])
+				holder.unit_trait = option
+				units.append(holder)
 	for unit in units:
 		var carried: Dictionary = _traits.of_unit(unit)
 		if carried.is_empty():
@@ -841,7 +1233,8 @@ func _check_copy() -> void:
 		if str(path["id"]) == "ravager":
 			ravager = path
 	var first: Dictionary = (ravager.get("abilities", [{}]) as Array)[0]
-	_expect(str((ravager.get("trait", {}) as Dictionary).get("text", "")).contains("After rolling %d-%d," % [int(first.get("min", 0)), int(first.get("max", 0))]), "copy: Bloodlust prints Ravager's first roll window (%s)" % str((ravager.get("trait", {}) as Dictionary).get("text", "")))
+	var bloodlust_text: String = str(((ravager.get("traits", [{}]) as Array)[0] as Dictionary).get("text", ""))
+	_expect(bloodlust_text.contains("After rolling %d-%d," % [int(first.get("min", 0)), int(first.get("max", 0))]), "copy: Bloodlust prints Ravager's first roll window (%s)" % bloodlust_text)
 	var blade: Resource = dm().get_enemy_by_display_name("Phaseblade")
 	var blade_first: Dictionary = blade.dice_ranges[0]
 	_expect(str(_traits.of_unit(blade)["text"]).contains("After rolling %d-%d," % [int(blade_first["min"]), int(blade_first["max"])]), "copy: Flickering prints Phaseblade's first roll window (%s)" % str(_traits.of_unit(blade)["text"]))
@@ -888,8 +1281,9 @@ func _check_card_fit(card: Control) -> void:
 	for hero in dm().units.values():
 		for path in hero.evolution_paths:
 			var callsign: String = str(path.get("callsign", ""))
-			pairs.append([_traits.marker_text(path.get("trait", {})), (callsign if callsign != "" else str(path.get("name", ""))).to_upper()])
-	_expect(pairs.size() >= 30, "fit: every unit with a trait is measured (%d)" % pairs.size())
+			for option in path.get("traits", []):
+				pairs.append([_traits.marker_text(option), (callsign if callsign != "" else str(path.get("name", ""))).to_upper()])
+	_expect(pairs.size() >= 48, "fit: every unit with a trait is measured, both options of every branch (%d)" % pairs.size())
 	var widest: Array = [0.0, "", 0.0, ""]
 	for pair in pairs:
 		var trait_w: float = marker.get_theme_font("font").get_string_size(str(pair[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, marker.get_theme_font_size("font_size")).x
@@ -916,6 +1310,7 @@ func _check_live() -> void:
 		gs.reset_run()
 		gs.start_run(["breaker", "combat", "medic"], "facility", 77)
 		gs.unit_evolutions["breaker"] = "Noise Specialist"
+		gs.unit_directives["breaker"] = "static"  # its 250 XP pick (G-71)
 		gs.advance_to_next_battle()
 		change_scene_to_file(BATTLE_SCENE)
 		for _i in 300:

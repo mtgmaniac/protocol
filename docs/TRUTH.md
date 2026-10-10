@@ -1,5 +1,176 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-10 prestige traits, the first run, and two fixes (Kev, G-70 to G-73; branch `claude/prestige-traits`, not merged):**
+
+**A hero's trait is chosen at 250 XP (G-71).** It replaces the Directive.
+
+- **Who has a trait now.** A base hero has none. An evolved hero has none
+  until 250 XP, where it picks one of its branch's two. Every elite, and in
+  Mantle Hunt every unit but the boss, as before (and see the first run,
+  below). No boss has one.
+- **The two options of each branch:** its signature trait (the one G-62 gave
+  the evolution), or a second one that was a Directive, with the same effect.
+
+| Branch | Signature trait | Second trait | Line shown for the second | It was |
+|---|---|---|---|---|
+| Pyro Specialist | Smoldering | Searing | Its burns deal one tick of damage as they land. | Flashpoint |
+| Arc Specialist | Charged | Forking | Its chains jump to 1 more enemy. | Conductor |
+| Blade Trooper | Ruthless | Serrated | Its pierce attacks also breach the target. | Serrated |
+| Ravager | Bloodlust | Scalding | Its attacks deal +3 to burning enemies. | Thermal Trauma |
+| Bulwark | Anchored | Fortified | Its shield abilities grant +2 shield. | Rampart |
+| Sentinel | Vengeful | Bristling | Its spike abilities grant +4 spike. | Counterweight |
+| Glacier Rig | Glacial | Shattering | Its attacks deal +6 to enemies with a frozen die. | Shatterpoint |
+| Trench Rig | Entrenched | Sheltering | Its heals also grant 3 shield. | Field Triage |
+| Combat Medic | Watchful | Reviving | Its revive brings a hero back at 100% HP. | Field Surgeon |
+| Synth Medic | Overflowing | Reinforcing | While it lives, shields the squad gains are +2. | Reinforced Mesh |
+| Overclock Engineer | Redline | Capacitive | While it lives, the Protocol cap is +2. | Deep Cells |
+| Phantom Engineer | Spectral | Shrouded | Cloaks after using an ability that deals no damage. | Silent Running |
+| Shadow Operative | Silent | Vanishing | Once per battle, cloaks when damage leaves it below 50% HP. | Vanish |
+| Wraith | Relentless | Reaping | Its execute triggers below 35% HP. | Reaper |
+| Noise Specialist | Static | Shrieking | Enemies under its roll penalties take 2 damage each round. | Feedback |
+| Nullwire | Zero-Day | Siphoning | Gain 1 Protocol for each enemy its roll penalties hit. | Signal Theft |
+
+- **The other sixteen Directives are gone** from the game. A Starting
+  Directive (the boss relic picked at deploy) is a different thing and did not
+  change.
+- **Data:** `traits.data.json` `evolutions` lists both ids for each branch,
+  signature first. `heroes.data.json` has no `directives`. A hero's pick is the
+  run field `unit_directives` (unit id to trait id; the name is kept so the
+  save's shape does not move). `XP_TO_PRESTIGE` = 250
+  (`UnitTraits.PRESTIGE_XP`); it was `XP_TO_DIRECTIVE`.
+- **How each second trait resolves:**
+  - *Searing:* the burn deals its amount once as it lands, then ticks as usual.
+    With Ignition Coil it is still one tick.
+  - *Forking:* one more jump, to the next lowest-HP enemy not yet hit. Charged
+    is the other option, so the two never meet.
+  - *Serrated:* a pierce attack removes the target's shields before it lands.
+    An area pierce attack breaches every enemy it hits.
+  - *Scalding, Shattering:* once per ability per target, added after a mark's
+    +50%, on the hero's own attacks.
+  - *Fortified, Bristling:* on the hero's own shield and spike abilities.
+  - *Sheltering:* an ordinary one-round shield on whoever the heal restores HP
+    to.
+  - *Reviving:* the hero's revive of one hero. The fallback heal, when nobody
+    is down, is unchanged.
+  - *Reinforcing:* every shield a hero gains, from any source, while the hero
+    with the trait is alive.
+  - *Capacitive:* +2 on whatever the cap is (10, or the Rogue Engineer's 8),
+    while it lives.
+  - *Shrouded:* after any ability of its own that deals no damage, if it is not
+    already cloaked.
+  - *Vanishing:* an enemy already aiming at the hero that round still hits it.
+  - *Reaping:* replaces the 25% line for its own executes.
+  - *Shrieking:* at the end of each round while any roll penalty is on that
+    enemy; it stops when the penalties end.
+  - *Siphoning:* at once, for each enemy the penalty lands on (a Firewall that
+    blocks the penalty blocks the Protocol).
+- **Shown:**
+  - *Battle card:* the chosen trait is the hero's title, on the line above the
+    callsign (SEARING PYRO). Before the pick the card shows the callsign only.
+  - *100 XP picker:* each branch's header reads "AT 250 XP: SMOLDERING or
+    SEARING". What each does is in the expanded view (VIEW ALL ABILITIES).
+  - *250 XP screen:* one card per trait: the name, its line, "BATTLE CARD:
+    SEARING PYRO" and a CHOOSE button. The summary reads "Pyro Specialist
+    reached 250 XP. Choose a trait." No picture: a trait has no pip.
+  - *Help:* an evolution's entry leads with "AT 250 XP: SMOLDERING or SEARING",
+    then each trait's line.
+- **Saved runs.** No run save is discarded; `RUN_SAVE_VERSION` is still 4 and
+  the shape fingerprint did not move. On load a hero holding a converted
+  Directive has the trait it became; a hero holding any other has its branch's
+  signature trait; a hero that evolved and held none has no trait until 250 XP.
+  A battle saved mid-fight takes each hero's trait from the run again.
+- **The HP preview needed no change** (it dry-runs the real round, G-65). Gate
+  `trait preview` has 47 cases (was 31), one for each new trait.
+- **Directive code.** Seven retired effect types were deleted. Seven remain in
+  `combat_manager.gd` behind `_has_directive`, unreachable in play, because the
+  ability audit has a regression on each and removing those would take it under
+  its floor (list in `DECISIONS_RESOLVED.md` G-71).
+- **Sim:** `l1` picks the signature trait, `l1_evo2` the second one. Numbers
+  below. Not tuned, not re-pinned.
+
+| Clear rate, 1,500 pinned runs | `l1` before | after | change | `l1_evo2` before | after | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 40.7% | 31.5% | -9.2 | 46.9% | 39.0% | -7.9 |
+| Hive | 36.2% | 24.1% | -12.1 | 33.7% | 28.2% | -5.4 |
+| Veil | 26.4% | 14.7% | -11.7 | 27.4% | 21.5% | -5.9 |
+| Signal Purge | 29.7% | 21.0% | -8.7 | 20.6% | 14.5% | -6.2 |
+| Mantle Hunt | 25.6% | 13.8% | -11.8 | 24.2% | 20.2% | -4.0 |
+| Overall | 31.8% | 21.1% | -10.7 | 30.8% | 24.9% | -5.9 |
+
+| Clear rate by hero in the squad | `l1` before | after | change | `l1_evo2` before | after | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Pulse Tech | 31.0% | 18.6% | -12.4 | 30.2% | 26.5% | -3.7 |
+| Strike Unit | 34.2% | 25.7% | -8.5 | 37.6% | 30.0% | -7.6 |
+| Spike Guard | 19.7% | 10.6% | -9.1 | 21.4% | 16.1% | -5.3 |
+| Avalanche Suit | 24.4% | 14.9% | -9.5 | 21.9% | 18.9% | -3.0 |
+| Splice Medic | 42.5% | 26.4% | -16.1 | 40.6% | 31.9% | -8.7 |
+| Field Engineer | 29.3% | 21.6% | -7.7 | 28.9% | 23.8% | -5.2 |
+| Ghost Operative | 40.4% | 29.2% | -11.3 | 35.0% | 27.0% | -8.0 |
+| Signal Breaker | 32.2% | 20.9% | -11.2 | 30.4% | 25.1% | -5.4 |
+
+"Before" is the 1,500-run size pin on file (the game as merged for v0.3); an
+unchanged tree reproduces it exactly. "After" is the same 1,500 seeds (seed
+base 900000) on this branch. No run failed.
+
+- **Both policies moved beyond the size line** (8 points on an operation, 4
+  overall): `l1` on every operation and overall, `l1_evo2` overall. The pins
+  were not written. The next full gate will report the same move and stop at
+  the ceremony until Kev re-pins or tunes.
+- **The whole move is the trait change.** The sim's policy always refuses
+  Prisoner Exchange (it did in all 140 draws across the two batches), so the
+  boss fix moves no sim number; the first-run rule does not apply to a harness;
+  the False Image flag did nothing.
+- **Why it is this large: the pick comes late.** A hero reaches 250 XP after
+  battle 8 or 9 of 10 (97% of picks; the rest after battle 7), so it has its
+  trait for one or two battles. 64% of runs make at least one pick (65% on
+  `l1_evo2`), and 36% of heroes ever get a trait. Before this change a hero had
+  its signature trait from about battle 4 and a Directive on top from battle 8
+  or 9.
+- **`l1` and `l1_evo2` are not the same hero with a different trait.** `l1` is
+  first evolutions with signature traits, `l1_evo2` second evolutions with the
+  second traits. The gap between the two columns is not a measure of A against
+  B.
+
+**No enemy has a trait on a player's first run (G-72).**
+
+- Elites and Mantle Hunt beasts have no trait until the player's first run
+  ends in a victory or a defeat. Their cards show no title line, their
+  long-press and Help entries no trait line, and no enemy trait triggers. Hero
+  traits work as usual.
+- **Profile flag:** `save.json` `onboarding.first_run_finished`, set by
+  `SaveManager.record_run_finished`. It moves at run end, so a whole run is
+  played one way. An abandoned run and the tutorial do not set it.
+- **One rule:** `SaveManager.enemy_traits_enabled()`. Every battle builds its
+  enemies through `DataManager.enemy_for_battle` (the opening lineup, a summon,
+  a restored checkpoint, the sim), which strips the trait while the rule is
+  off.
+- **Older profiles:** a profile with a finished run (`runs_finished` or
+  `best_clear` above 0) loads with the flag set.
+- **Harnesses** (the sim, the audit, every gate) read enemy traits as on,
+  whatever profile is on disk. The sim pins do not depend on it.
+- Gate `first run` (breaks: `traits_on`, `no_flag`).
+
+**A boss is never replaced or removed by a modifier (G-70).**
+
+- **The bug:** ELITE PRESENCE replaced the first unit not in the elite pool,
+  and a boss is in no pool. Prisoner Exchange taken after battle 8 arms it for
+  battle 10, where it replaced the boss in four of five operations (Hive, Veil,
+  Signal Purge, Mantle Hunt).
+- **Now:** ELITE PRESENCE takes the first unit that is neither an elite nor a
+  boss, and is not offered when there is none. Prisoner Exchange's "one fewer
+  enemy" drops the last unit that is not a boss. OVERRUN only adds a unit. The
+  shaper every modifier goes through refuses a lineup that lost a boss.
+- "One fewer enemy" is one rule (`GameState.lineup_for_battle`), read by the
+  battle screen and the sim; it was two copies.
+- In Hive and Mantle Hunt the boss fight has no unit left to upgrade, so a
+  Prisoner Exchange taken after battle 8 costs nothing there (open for Kev,
+  `DECISIONS_RESOLVED.md` G-70).
+- Gate `boss lineup` (breaks: `elite_boss`, `minus_boss`).
+
+**False Image has no summon flag (G-73).** It carried `summonElite` with no
+summon ability; nothing read it. `validate-data` now refuses a flag without a
+summon ability, and a summon ability without the flag.
+
 **2026-10-10 sim pins re-pinned to the traits branch (Kev, G-67,
 BASELINE-APPROVED-BY-KEV):** all four pins now hold the game as it is after
 G-60 to G-66 (rampage, pack bonus, Geode, traits, Feral on seven units).
@@ -208,7 +379,9 @@ SMOLDERING PYRO, BARBED STALKER, FERAL HOUND. Effects did not change.
 **2026-10-09 unit traits (Kev, G-62; merged to `main` 2026-10-10):** some units carry one always-on trait. One system for heroes and
 enemies.
 
-- **Who has one.** Every hero evolution (16). Every elite (9). In Mantle Hunt,
+- **Who has one.** *(Since G-71, 2026-10-10, a hero evolution has a trait only
+  after its 250 XP pick, one of two; see the entry at the top.)* Every hero
+  evolution (16). Every elite (9). In Mantle Hunt,
   every unit but the boss has Feral (7 since G-66, tanks included; it was 5).
   Nobody else: base heroes, regular units, tanks and supports in the other
   four operations, and all five bosses have none. "Elite", "regular", "tank"
@@ -1428,7 +1601,7 @@ must satisfy that list.
 
 ## The 8 heroes (heroes.data.json — COMPLETE)
 
-Each has 5 base abilities + 2 evolution paths (each path = 5 abilities + 2 directives). Callsign in combat, full name in menus.
+Each has 5 base abilities + 2 evolution paths (each path = 5 abilities, and 2 traits to choose between at 250 XP, G-71). Callsign in combat, full name in menus.
 
 | ID | Name | Callsign | Category | HP | Evolutions |
 |---|---|---|---|---|---|
@@ -1544,8 +1717,8 @@ Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, C
   - **Save migration:** `SaveManager.LEGACY_BOSS_RELIC_IDS` maps each old id to its operation's new relic (Salvage Rig → Scrap Converter, Chitin Graft → Blood Frenzy, Resonant Chorus → Firewall Hack, Root Access → Heretic Signal, Mantle Core → Tectonic Charge). The profile's unlocked list migrates on load (never discarded); a run in progress keeps its held relic and Starting Directive as the new id. The run save's shape is unchanged (no version bump). The Signal Hierarch's standing rule keeps the name ROOT ACCESS.
 - **Draft relics added (G-39, G-40; names and numbers kept, G-42).** **Overheal Relay** (`overhealDamage`, unlock bucket 14): healing a hero past max HP deals the excess to a random living enemy (seeded pick). **Spillover Charge** (`overkillSpillover`, unlock bucket 1): a hero attack's damage past the HP its target had carries to the next living, uncloaked enemy in slot order (wrapping from the last to the first; confirmed with the Firewall block, G-42); it is still the hero's hit (shields absorb, Mark amplifies, a Firewall blocks it, its kill is the hero's kill and can spill again). Damage with no hero attacker never spills.
 - **Rarity ladders:** an effect family may span **any number of rarity tiers** — 2-, 3-, and 4-tier chains are all permitted (roll-buff and gainProtocol run four tiers; enemyRfe three). The old "single-entry + max 4 two-tier pairs" cap is **removed** (per Kev NK-12); no pool content was cut.
-- **XP:** `XP_TO_EVOLVE = 100`, `XP_TO_DIRECTIVE = 250`. Per win: alive → `20 + round(avg effective roll)`; dead → `round(avg effective roll)`. One progression stop per win (extras deferred).
-- **Directives (tier-3 passives):** at 250 XP an evolved unit picks 1 of 2 path-scoped directives (`directives` block per evolution). Full list in `heroes.data.json`; handlers in combat_manager (+battle_scene for Deep Cells).
+- **XP:** `XP_TO_EVOLVE = 100`, `XP_TO_PRESTIGE = 250` (it was `XP_TO_DIRECTIVE` until G-71). Per win: alive → `20 + round(avg effective roll)`; dead → `round(avg effective roll)`. One progression stop per win (extras deferred).
+- **Prestige traits (G-71, 2026-10-10):** at 250 XP an evolved unit picks 1 of its branch's 2 traits (`traits.data.json` `evolutions`); until then it has none. The pick is the hero's title on its battle card. Rules in combat_manager (`_has_trait`); Capacitive's cap in battle_engine. Directives, the earlier 250 XP pick, were retired: sixteen became these traits and sixteen are no longer offered.
 
 ## Save system + progression (SaveManager autoload)
 

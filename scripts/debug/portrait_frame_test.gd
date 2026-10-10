@@ -41,7 +41,7 @@ const SITES := {
 	"tutorial battle": 4,
 	"evolution": 16,
 	"unlock / run end": 1,
-	"directive": 0,
+	"trait pick": 0,
 	"reward": 0,
 	"route fork": 0,
 	"intercept": 0,
@@ -117,7 +117,7 @@ func _run() -> void:
 	await _show("res://scenes/battle/BattleScene.tscn")
 	_walk("tutorial battle")
 
-	# Evolution: both branch portraits of every hero, then a Directive pick.
+	# Evolution: both branch portraits of every hero, then a 250 XP trait pick.
 	for hero in HEROES:
 		var squad: Array = [hero]
 		for other in HEROES:
@@ -132,7 +132,7 @@ func _run() -> void:
 	(gs.get("unit_evolutions") as Dictionary)["combat"] = str(first_path.get("name", ""))
 	gs.set("pending_evolution_unit_id", "combat")
 	await _show("res://scenes/ui/EvolutionScreen.tscn")
-	_walk("directive")
+	_walk("trait pick")
 
 	for entry in [["reward", "res://scenes/ui/RewardScreen.tscn"], ["route fork", "res://scenes/ui/RouteForkScreen.tscn"],
 			["intercept", "res://scenes/ui/InterceptScreen.tscn"], ["run end", "res://scenes/ui/RunEndScreen.tscn"]]:

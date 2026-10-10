@@ -36,6 +36,8 @@
 # the global class cache (the sim policies' gotcha).
 extends RefCounted
 
+const UnitTraits := preload("res://scripts/battle/unit_traits.gd")
+
 const FORMAT := 1
 
 
@@ -165,9 +167,12 @@ static func decode(checkpoint: Dictionary, current_battle: int) -> Dictionary:
 
 
 ## Replaces every unit reference in a decoded combat block with a live Resource:
-## heroes from GameState.get_run_unit_data (the run's evolved/directed kit, the
-## same source _build_runtime_units uses), enemies as fresh copies of their data
-## definition. Returns false if any reference no longer resolves.
+## heroes from GameState.get_run_unit_data (the run's evolved kit and chosen
+## trait, the same source _build_runtime_units uses), enemies as fresh copies of
+## their data definition. Returns false if any reference no longer resolves.
+## A hero's `trait` is read again from its unit: a checkpoint written before
+## G-71 stored the evolution's trait there and a Directive beside it, and the
+## state must carry the trait the unit has now (and no Directive).
 static func link_units(combat: Dictionary, game_state: Node) -> bool:
 	for state_variant in combat["hero_states"]:
 		var state: Dictionary = state_variant
@@ -175,17 +180,19 @@ static func link_units(combat: Dictionary, game_state: Node) -> bool:
 		if unit == null:
 			return false
 		state["unit"] = unit
+		state["trait"] = str(UnitTraits.of_unit(unit).get("id", ""))
+		state["directive_type"] = ""
+		state["directive_effect"] = {}
 	for state_variant in combat["enemy_states"]:
 		var state: Dictionary = state_variant
 		var ref: Dictionary = state["unit"]
 		var base: EnemyData = _data_manager().get_enemy_by_display_name(str(ref.get("name", ""))) as EnemyData
 		if base == null:
 			return false
-		var copy: EnemyData = base.duplicate(true) as EnemyData
-		if copy == null:
-			copy = base
+		var copy: EnemyData = _data_manager().enemy_for_battle(base)
 		copy.starts_cloaked = bool(ref.get("starts_cloaked", false))
 		state["unit"] = copy
+		state["trait"] = str(UnitTraits.of_unit(copy).get("id", ""))
 	return true
 
 

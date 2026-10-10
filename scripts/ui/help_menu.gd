@@ -365,7 +365,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "EVOLUTION / REWARDS", [
 		"After a win: XP equals average effective roll, rounded; survivors gain +20.",
 		"At 100 XP, choose an evolution after a win.",
-		"One hero upgrades per win; other eligible heroes wait. More XP unlocks a directive.",
+		"One hero upgrades per win; other eligible heroes wait. At 250 XP, choose a trait.",
 		"Items are one-use; equipped gear and relics last for the run.",
 		"Reward cards show their type and rarity.",
 	])
@@ -632,7 +632,7 @@ func _codex_evolution_groups(unit: UnitData) -> Array:
 		var key: String = str(path.get("name", ""))
 		if not groups.has(key):
 			groups[key] = {"callsign": key, "hp": 0, "abilities": [], "id": str(path.get("id", "")),
-				"trait": (path.get("trait", {}) as Dictionary).duplicate(true)}
+				"traits": (path.get("traits", []) as Array).duplicate(true)}
 			order.append(key)
 		var group: Dictionary = groups[key]
 		if str(path.get("callsign", "")) != "":
@@ -1445,7 +1445,7 @@ func _resolve_row_payload(source_kind: String, source_data: Variant) -> Dictiona
 				str(group.get("callsign", "")).to_upper(),
 				int(group.get("hp", 0)),
 				group.get("abilities", []) as Array,
-				group.get("trait", {}) as Dictionary)
+				group.get("traits", []) as Array)
 	return {}
 
 
@@ -1467,17 +1467,27 @@ func _enemy_breakdown_payload(enemy: EnemyData) -> Dictionary:
 # An evolution is not its own UnitData — it lives in unit.evolution_paths in the
 # SAME dice_ranges shape — so the breakdown is resolved through a throwaway
 # UnitData rather than by teaching InspectResolver a second entry point.
-func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array, unit_trait: Dictionary = {}) -> Dictionary:
+# `traits`: the two the branch chooses between at 250 XP (G-71). The breakdown
+# leads with the choice ("AT 250 XP: SMOLDERING or SEARING"), then each trait's
+# own line.
+func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array, traits: Array = []) -> Dictionary:
 	var stand_in := UnitData.new()
 	stand_in.id = ""
 	stand_in.display_name = evo_name
 	stand_in.max_hp = hp
-	stand_in.unit_trait = unit_trait
 	var bands: Array[Dictionary] = []
 	for ability_variant in abilities:
 		bands.append(ability_variant as Dictionary)
 	stand_in.dice_ranges = bands
-	return InspectResolver.resolve_unit(stand_in)
+	var payload: Dictionary = InspectResolver.resolve_unit(stand_in)
+	var entries: Array = []
+	var preview: String = CombatManager.UnitTraits.preview_line(traits)
+	if preview != "":
+		entries.append({"effects": [], "text": preview, "trait": true})
+	for trait_variant in traits:
+		entries.append({"effects": [], "text": CombatManager.UnitTraits.line(trait_variant), "trait": true})
+	payload["statuses"] = entries + (payload.get("statuses", []) as Array)
+	return payload
 
 func _make_label(text: String, font_size: int, color: Color, align: int = HORIZONTAL_ALIGNMENT_LEFT, outline: int = 2) -> Label:
 	var label := Label.new()

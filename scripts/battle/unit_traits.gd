@@ -10,6 +10,13 @@
 # `name` is a title read with the unit's callsign: SMOLDERING PYRO, BARBED
 # STALKER (G-63). `id` is the data key the rules test; it is never shown.
 #
+# Who carries one (G-71, Kev 2026-10-10): an enemy carries the trait the data
+# gives it. A hero evolution has TWO to choose between and carries neither
+# until its 250 XP pick (GameState.get_run_unit_data puts the chosen one on
+# the unit); `evolution_trait_ids` lists both, the branch's signature trait
+# first. On a player's first run no enemy carries one (G-72,
+# DataManager.enemy_for_battle).
+#
 # `text` is the trait's line with its {numbers} filled in from the same entry
 # the engine reads, so the text cannot print a number the engine does not
 # apply. {band} is the unit's first roll window, read from its kit.
@@ -25,6 +32,9 @@
 extends RefCounted
 
 const DATA_PATH := "res://data/raw/traits.data.json"
+# The XP at which an evolved hero picks one of its branch's two traits (G-71).
+# GameState.XP_TO_PRESTIGE is this number.
+const PRESTIGE_XP := 250
 
 static var _data: Dictionary = {}
 
@@ -36,9 +46,18 @@ static func data() -> Dictionary:
 	return _data
 
 
-# The trait id for a hero evolution ("" when it has none).
-static func evolution_trait_id(hero_id: String, evolution_id: String) -> String:
-	return str((data().get("evolutions", {}) as Dictionary).get("%s/%s" % [hero_id, evolution_id], ""))
+# The ids of the two traits a hero evolution chooses between at 250 XP (G-71):
+# the branch's signature trait, then the one that was a Directive. [] for an
+# unknown evolution. A hero carries neither until it picks.
+static func evolution_trait_ids(hero_id: String, evolution_id: String) -> Array:
+	var listed: Variant = (data().get("evolutions", {}) as Dictionary).get("%s/%s" % [hero_id, evolution_id], [])
+	return (listed as Array).duplicate() if listed is Array else []
+
+
+# The trait a Directive became, by the Directive's name ("" for one that was
+# not converted). Only a run saved before G-71 still holds such a name.
+static func legacy_directive_trait(directive_name: String) -> String:
+	return str((data().get("legacyDirectives", {}) as Dictionary).get(directive_name, ""))
 
 
 # The trait id for an enemy by display name ("" when it has none).
@@ -98,6 +117,15 @@ static func line(unit_trait: Dictionary) -> String:
 	if unit_trait.is_empty():
 		return ""
 	return "%s: %s" % [str(unit_trait.get("name", "")).to_upper(), str(unit_trait.get("text", ""))]
+
+
+# What a branch shows before the pick (G-71): "AT 250 XP: SMOLDERING or SEARING".
+# `options` are the branch's traits as built; "" when it has none.
+static func preview_line(options: Array) -> String:
+	var names: PackedStringArray = []
+	for option in options:
+		names.append(marker_text(option as Dictionary))
+	return "" if names.is_empty() else "AT %d XP: %s" % [PRESTIGE_XP, " or ".join(names)]
 
 
 # The battle card's marker: the trait's name, on the line above the callsign,

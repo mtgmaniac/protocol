@@ -1,6 +1,6 @@
 # Plays one FULL run headless (pkg7 gate): auto-battles through all 10
 # battles of the first operation, claiming rewards, resolving evolutions,
-# directives, route forks, and intercepts as they surface.
+# traits, route forks, and intercepts as they surface.
 # Run: godot --headless --path <project> --script res://scripts/debug/run_smoke_test.gd
 extends SceneTree
 
@@ -129,13 +129,13 @@ func _claim_reward_and_continue() -> void:
 func _resolve_progression_stop() -> void:
 	var gs := _game_state()
 	var screen := _current()
-	if bool(gs.call("is_pending_directive_stage")):
-		var choices: Array = gs.call("get_pending_directive_choices")
-		if choices.is_empty() or not screen.has_method("_on_choose_directive_pressed"):
-			_errors.append("Directive stop offered no choices")
+	if bool(gs.call("is_pending_trait_stage")):
+		var choices: Array = gs.call("get_pending_trait_choices")
+		if choices.is_empty() or not screen.has_method("_on_choose_trait_pressed"):
+			_errors.append("Trait stop offered no choices")
 			return
-		print("[RUN_SMOKE] Directive stop -> %s" % str((choices[0] as Dictionary).get("name", "")))
-		screen.call("_on_choose_directive_pressed", str((choices[0] as Dictionary).get("name", "")))
+		print("[RUN_SMOKE] Trait stop -> %s" % str((choices[0] as Dictionary).get("name", "")))
+		screen.call("_on_choose_trait_pressed", str((choices[0] as Dictionary).get("id", "")))
 	else:
 		var paths: Array = gs.call("get_pending_evolution_paths")
 		if paths.is_empty() or not screen.has_method("_on_choose_path_pressed"):

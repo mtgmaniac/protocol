@@ -71,10 +71,10 @@ func _initialize() -> void:
 		for seed_value in SEEDS:
 			gs.call("start_run", ["combat", "engineer", "medic"], op_id, seed_value)
 			var comps: Array = gs.get("resolved_battle_comps")
-			# Battle 10 excluded ON PURPOSE: the shaper treats the BOSS as "a
-			# non-elite slot" and would replace it — reported as a pre-F bug
-			# (Build G item 3 Phase 0), pending a ruling; do not pin it here.
-			for comp_index in mini(comps.size(), 9):
+			# Battle 10 is included since G-70 (2026-10-10): a boss is never the
+			# slot upgraded, so the count below holds in the boss fight too.
+			# The `boss lineup` gate pins the boss itself.
+			for comp_index in comps.size():
 				var comp: Dictionary = comps[comp_index] as Dictionary
 				var names: Array = comp.get("names", [])
 				if not bool(gs.call("_modifier_precondition_ok", "elitePresence", names)):

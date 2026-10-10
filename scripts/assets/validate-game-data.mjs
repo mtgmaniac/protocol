@@ -94,7 +94,9 @@ function unmetNeeds(def, requirements, kit) {
 // every {key} in a trait's text is one of its own numbers (or {band}), and
 // every trait defined is given to someone. Requirements (G-64): every `needs`
 // entry is a defined requirement, every requirement field is a real ability
-// field, and every unit's kit meets what its trait needs.
+// field, and every unit's kit meets what its trait needs. Prestige traits
+// (G-71): every hero evolution lists two different traits, its kit meets the
+// needs of both, and every legacy Directive name maps to a second option.
 function validateTraits(traits, heroes, enemies) {
   const errs = [];
   const defined = traits.traits || {};
@@ -124,11 +126,28 @@ function validateTraits(traits, heroes, enemies) {
       errs.push(`traits.data.json: ${who} carries '${id}' (${defined[id].name}), which needs '${need}', and its kit has none`);
     }
   };
-  for (const [key, id] of Object.entries(traits.evolutions || {})) {
+  const secondOptions = new Set();
+  for (const [key, ids] of Object.entries(traits.evolutions || {})) {
     if (!evolutionKits.has(key)) errs.push(`traits.data.json: evolutions '${key}' is not a hero evolution`);
-    if (!defined[id]) errs.push(`traits.data.json: evolutions '${key}' names an undefined trait '${id}'`);
-    needsMet(`evolutions '${key}'`, id, evolutionKits.get(key) || []);
-    used.add(id);
+    const options = Array.isArray(ids) ? ids : [ids];
+    if (options.length !== 2 || options[0] === options[1]) {
+      errs.push(`traits.data.json: evolutions '${key}' must list two different traits to choose between`);
+    }
+    for (const id of options) {
+      if (!defined[id]) errs.push(`traits.data.json: evolutions '${key}' names an undefined trait '${id}'`);
+      if (used.has(id)) errs.push(`traits.data.json: trait '${id}' is offered by more than one evolution`);
+      needsMet(`evolutions '${key}'`, id, evolutionKits.get(key) || []);
+      used.add(id);
+    }
+    if (options.length > 1) secondOptions.add(options[1]);
+  }
+  for (const key of evolutionKits.keys()) {
+    if (!traits.evolutions?.[key]) errs.push(`traits.data.json: evolution '${key}' has no traits to choose between`);
+  }
+  for (const [directive, id] of Object.entries(traits.legacyDirectives || {})) {
+    if (!secondOptions.has(id)) {
+      errs.push(`traits.data.json: legacyDirectives '${directive}' maps to '${id}', which is not the second option of an evolution`);
+    }
   }
   for (const [name, id] of Object.entries(traits.enemies || {})) {
     const unit = enemies.enemyUnitDefs?.[name];
@@ -162,7 +181,15 @@ function traitRequirementBreaks(traits, heroes, enemies) {
   const copy = (value) => JSON.parse(JSON.stringify(value));
   const breaks = {
     // A trait on a unit whose kit lacks what it needs.
-    'Anchored on Pyro Specialist (no taunt)': ["needs 'taunt'", (t) => { t.evolutions['pulse/pyro'] = 'anchor'; }],
+    'Anchored on Pyro Specialist (no taunt)': ["needs 'taunt'", (t) => { t.evolutions['pulse/pyro'][0] = 'anchor'; }],
+    // The second option is checked like the first.
+    'Bristling as Pyro Specialist\'s second option (no spike)': ["needs 'spike'", (t) => { t.evolutions['pulse/pyro'][1] = 'counterweight'; }],
+    'Shrouded on a kit where every ability deals damage': ["needs 'noDamage'", (t, h) => {
+      for (const a of h.heroes.find((x) => x.id === 'engineer').evolutions.find((x) => x.id === 'phantom').abilities) a.dmg = a.dmg || 1;
+    }],
+    // A branch offers two traits, and a legacy Directive maps to a second option.
+    'a branch with one trait to choose from': ['two different traits', (t) => { t.evolutions['pulse/arc'] = ['liveWire', 'liveWire']; }],
+    'a legacy Directive mapped to a signature trait': ['not the second option', (t) => { t.legacyDirectives.Flashpoint = 'afterburn'; }],
     'Corrosive on Patrol Enforcer (no burn)': ["needs 'burn'", (t) => { t.enemies['Patrol Enforcer'] = 'corrosive'; }],
     // A kit that loses the ability its trait needs.
     'Pyro Specialist without detonate': ["needs 'detonate'", (t, h) => {
@@ -331,6 +358,39 @@ function validateSummonRefs(enemies) {
 for (const err of validateSummonRefs(enemies)) {
   ok = false;
   console.error('enemies.data.json:', err);
+}
+
+// The summon flag and the summon ability go together (2026-10-10: False Image
+// carried `summonElite` with no summon ability). The engine only summons for a
+// unit that has both, so one without the other is a flag that says something
+// the kit does not do.
+function validateSummonFlags(enemies) {
+  const errs = [];
+  for (const [name, def] of Object.entries(enemies.enemyUnitDefs || {})) {
+    const kit = Object.values(enemies.enemyAbilities?.[def.type] || {});
+    const summons = kit.some((ab) => ab && ab.summonName && ab.summonChance > 0);
+    if (def.summonElite && !summons) {
+      errs.push(`enemyUnitDefs.${name}: summonElite is set but its kit '${def.type}' has no summon ability`);
+    }
+    if (summons && !def.summonElite) {
+      errs.push(`enemyUnitDefs.${name}: its kit '${def.type}' has a summon ability but summonElite is not set, so it never fires`);
+    }
+  }
+  return errs;
+}
+
+for (const err of validateSummonFlags(enemies)) {
+  ok = false;
+  console.error('enemies.data.json:', err);
+}
+{
+  // The rule proves it can fail: False Image with its old flag back.
+  const withFlag = JSON.parse(JSON.stringify(enemies));
+  withFlag.enemyUnitDefs['False Image'].summonElite = true;
+  if (!validateSummonFlags(withFlag).some((err) => err.includes('False Image'))) {
+    ok = false;
+    console.error('enemies.data.json: the summon flag rule let a deliberate break through (False Image with summonElite)');
+  }
 }
 
 if (!ok) process.exit(1);

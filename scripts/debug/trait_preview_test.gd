@@ -89,11 +89,12 @@ func _run() -> void:
 	_base = _cm.snapshot_state()
 
 	_check_moving_traits()
+	_check_prestige_traits()
 	_check_round_start_traits()
 	_check_still_traits()
 	_check_rampage_and_pack()
 	await _check_card_draws()
-	_expect(_cases_run >= 24, "every case ran to its checks (%d)" % _cases_run)
+	_expect(_cases_run >= 40, "every case ran to its checks (%d)" % _cases_run)
 	_finish()
 
 
@@ -420,6 +421,148 @@ func _check_moving_traits() -> void:
 	a = _hero(0, {"dmg": 5, "detonate": true}, "afterburn", x)
 	var detonated: int = int(_cm.get_expected_detonate_burst(a, x))
 	_case(_name("afterburn"), x, 100 - 5 - detonated, false)
+
+
+# ── The sixteen traits that were Directives (G-71) ───────────────────────────
+# Twelve move a previewed number in the round they act; each must go wrong
+# when the dry run is blind to traits. Capacitive and Siphoning move Protocol,
+# not HP, and Vanishing's cloak changes nothing until the next round. Reviving
+# moves the HP a fallen hero returns with.
+func _check_prestige_traits() -> void:
+	var a: Dictionary
+	var b: Dictionary
+	var x: Dictionary
+	var y: Dictionary
+	var z: Dictionary
+
+	# Searing: the burn it applies ticks once as it lands. (Enemy card.)
+	_reset()
+	x = _enemy(0, QUIET)
+	a = _hero(0, {"dmg": 5, "burn": 3, "burnT": 2}, "flashpoint", x)
+	_case(_name("flashpoint"), x, 100 - 5 - 3)
+
+	# Forking: the chain reaches one more enemy. (That enemy's card.)
+	_reset()
+	x = _enemy(0, QUIET)
+	y = _enemy(1, QUIET)
+	z = _enemy(2, QUIET)
+	a = _hero(0, {"dmg": 10, "chain": 1}, "conductor", x)
+	_case(_name("conductor"), z, 100 - 5)
+
+	# Serrated: its pierce attack breaches, so the next hero's hit meets no shield.
+	_reset()
+	x = _enemy(0, QUIET)
+	_shield(x, 8)
+	a = _hero(0, {"dmg": 10, "ignSh": true}, "serrated", x)
+	b = _hero(1, {"dmg": 6}, "", x)
+	_case(_name("serrated"), x, 100 - 10 - 6)
+
+	# Scalding: more damage to a burning enemy. (The burn's own tick is 2.)
+	_reset()
+	x = _enemy(0, QUIET)
+	_burn(x, 2)
+	a = _hero(0, {"dmg": 10}, "thermalTrauma", x)
+	_case(_name("thermalTrauma"), x, 100 - 10 - _num("thermalTrauma", "amount") - 2)
+
+	# Fortified: the larger shield it grants eats more of the hit. (Hero card.)
+	_reset()
+	x = _enemy(0, {"dmg": 10}, "", _h(1))
+	a = _hero(0, {"shield": 6, "shieldAll": true}, "rampart")
+	_case(_name("rampart"), _h(1), 100 - (10 - 6 - _num("rampart", "amount")))
+
+	# Bristling: the larger spike hurts the enemy that hits it. (Enemy card.)
+	_reset()
+	x = _enemy(0, {"dmg": 10}, "", _h(0))
+	a = _hero(0, {"spike": 5}, "counterweight")
+	_case(_name("counterweight"), x, 100 - 5 - _num("counterweight", "amount"))
+
+	# Shattering: more damage to an enemy whose die is frozen.
+	_reset()
+	x = _enemy(0, QUIET)
+	x["die_freeze_turns"] = 1
+	a = _hero(0, {"dmg": 10}, "shatterpoint", x)
+	_case(_name("shatterpoint"), x, 100 - 10 - _num("shatterpoint", "amount"))
+
+	# Sheltering: the heal's shield eats part of the hit that follows. (Hero card.)
+	_reset()
+	x = _enemy(0, {"dmg": 10}, "", _h(1))
+	_h(1)["current_hp"] = 50
+	a = _hero(0, {"heal": 6, "healTgt": true}, "fieldTriage", _h(1))
+	_case(_name("fieldTriage"), _h(1), 50 + 6 - (10 - _num("fieldTriage", "amount")))
+
+	# Reinforcing: a squadmate's own shield is larger while this hero lives.
+	_reset()
+	x = _enemy(0, {"dmg": 10}, "", _h(1))
+	a = _hero(0, QUIET, "reinforcedMesh")
+	b = _hero(1, {"shield": 6})
+	_case(_name("reinforcedMesh"), b, 100 - (10 - 6 - _num("reinforcedMesh", "amount")))
+
+	# Shrouded: it cloaks in the hero phase, so the enemy aiming at it hits
+	# someone else. (Its own card, and the card of whoever is hit instead.)
+	_reset()
+	x = _enemy(0, {"dmg": 10}, "", _h(0))
+	a = _hero(0, {"shield": 4}, "silentRunning")
+	_case(_name("silentRunning"), a, 100)
+
+	# Vanishing cloaks it when a hit leaves it below half. Enemy targets are
+	# set before the enemy phase, so a second enemy already aiming at it still
+	# hits this round: the cloak moves no HP until the next one.
+	_reset()
+	x = _enemy(0, {"dmg": 60}, "", _h(0))
+	y = _enemy(1, {"dmg": 10}, "", _h(0))
+	a = _hero(0, QUIET, "vanish")
+	_case(_name("vanish"), a, 100 - 60 - 10, false)
+
+	# Reaping: the execute triggers at 32 of 100 HP, above the plain 25%.
+	_reset()
+	x = _enemy(0, QUIET)
+	x["current_hp"] = 42
+	a = _hero(0, {"dmg": 10, "execute": true}, "reaper", x)
+	_case(_name("reaper"), x, 42 - 10 - int(_cm._tuned_int("execute_bonus", 8)))
+
+	# Shrieking: the enemy under its roll penalty takes damage at the tick.
+	_reset()
+	x = _enemy(0, QUIET)
+	a = _hero(0, {"rfe": 2, "rfT": 2}, "feedback", x)
+	_case(_name("feedback"), x, 100 - _num("feedback", "amount"))
+
+	# Capacitive raises the Protocol cap. Its hit is the same either way.
+	_reset()
+	x = _enemy(0, QUIET)
+	a = _hero(0, {"dmg": 5}, "deepCells", x)
+	_case(_name("deepCells"), x, 100 - 5, false)
+
+	# Siphoning gains Protocol. Its hit is the same either way.
+	_reset()
+	x = _enemy(0, QUIET)
+	a = _hero(0, {"dmg": 5, "rfe": 1, "rfT": 2}, "signalTheft", x)
+	_case(_name("signalTheft"), x, 100 - 5, false)
+
+	# Reviving: the fallen hero returns at the trait's percentage. A card
+	# previews a living unit, so this one is read off the dry run itself: the
+	# forecast the cards are drawn from must hold the HP the hero returns with,
+	# and a forecast blind to traits must hold the plain 50.
+	_reset()
+	b = _h(1)
+	b["dead"] = true
+	b["current_hp"] = 0
+	a = _hero(0, {"revive": true, "healTgt": true, "revivePct": 50, "fallbackHeal": 20}, "fieldSurgeon", b)
+	var before: String = _fingerprint()
+	var seen_hp: int = _forecast_hp(b)
+	_cm.forecast_blind_to_traits = true
+	var blind_hp: int = _forecast_hp(b)
+	_cm.forecast_blind_to_traits = false
+	_expect(_fingerprint() == before, "%s: the dry run leaves the live battle untouched" % _name("fieldSurgeon"))
+	_scene._engine.resolve_step(_bs)
+	_expect(not bool(b["dead"]) and int(b["current_hp"]) == _num("fieldSurgeon", "pct"), "%s: the hero returns at %d of 100 HP (%d)" % [_name("fieldSurgeon"), _num("fieldSurgeon", "pct"), int(b["current_hp"])])
+	_expect(seen_hp == int(b["current_hp"]), "%s: the dry run holds the HP the hero returns with (forecast %d, real %d)" % [_name("fieldSurgeon"), seen_hp, int(b["current_hp"])])
+	_expect(blind_hp == 50, "%s: a dry run blind to traits holds the plain 50, so the case depends on the trait (%d)" % [_name("fieldSurgeon"), blind_hp])
+	_cases_run += 1
+
+
+# The HP the card of `state` previews for the end of the round (-1 for none).
+func _forecast_hp(state: Dictionary) -> int:
+	return int(_scene._card_view.compute_preview_for_unit(state, true).get("final_hp", -1))
 
 
 # ── The round-start traits: already on the board when the preview is made ─────
