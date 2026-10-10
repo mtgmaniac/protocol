@@ -1,5 +1,52 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-65. The HP preview includes traits (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Hero card incoming-damage previews currently ignore traits (e.g. Anchored's
+-2). They must include every trait that changes damage or its target:
+Anchored, Illusory's negated first hit, Volatile's death damage where it
+applies, and any others. Treat it as a class: list every trait that affects a
+previewed number and fix them all. Gate it with a deliberate break."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged.
+
+**The cause, and why the fix is not a list.** A hero's bar ran the real hero
+phase and then summed each enemy's printed damage. A trait was missing
+whenever it acted in the enemy phase or at the tick. Adding the missing traits
+to that sum one by one would be right until the next trait. So the sum is
+gone: the preview dry-runs the whole round with the code that resolves it
+(`CombatManager.forecast_round`), and both kinds of card end their bar on the
+result. This is the fix shape TASK_QUEUE already named for the enemy phase.
+
+**The list** (all 26, with what was wrong before) is the table in TRUTH. Six
+things were wrong: Anchored, Vengeful, Feral, Fervent, and Volatile when the
+unit dies in the enemy phase or at the burn tick. Thirteen traits were already
+right and are now pinned. Seven move no HP in the round they act.
+
+**Readings I made.**
+
+1. **"Any others" includes the enemy's own bar.** Vengeful hurts the attacker
+   and Fervent heals its owner; both are numbers a card previews.
+2. **"Volatile where it applies"** is every way the unit can die in the round:
+   a hero's kill, a spike it runs into on its own turn, the burn tick.
+3. **Rampage and the pack bonus are fixed too.** They are not traits, but the
+   old sum missed them for the same reason and the handoff named them. The
+   dry run cannot include traits and leave these out.
+4. **The pips are left alone.** A die's pips print the ability; the bar shows
+   the outcome. Redline's +2 is in the enemy's bar, not on the attack pip.
+5. **A random pick shows as it will fall.** The dry run replays the seeded
+   stream and puts it back, as it already did for the hero phase. When every
+   hero is cloaked an enemy hits one at random; the bar now shows the hero the
+   stream will pick.
+
+**Gate.** `trait preview`, through `break_gate.py`. Breaks: `trait_blind` (the
+dry run resolves the round with every trait off) and `hero_phase_only` (the
+dry run stops after the hero phase, which is the old preview). In the clean
+run each trait case also asks the blind dry run and requires it to be wrong,
+so a case that does not depend on its trait fails.
+
 ## G-64. Trait requirements (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

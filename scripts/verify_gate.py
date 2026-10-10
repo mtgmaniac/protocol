@@ -303,6 +303,15 @@ GATES = [
         "--script", "scripts/debug/traits_test.gd", "--break-arg=--trait-break=",
         "--breaks", "off,no_chip,frozen_dice,litany_first,boss_trait"],
         "[TRAITS_GATE] PASS", False),
+    # Trait preview (G-65): a card's HP bar ends where the round really leaves
+    # the unit, for every trait that moves a previewed number, plus Rampage and
+    # the pack bonus. The preview dry-runs the whole round with the real combat
+    # code. Breaks: the dry run blind to traits, and stopped after the hero
+    # phase (the preview as it was).
+    ("trait preview", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "TRAIT_PREVIEW",
+        "--script", "scripts/debug/trait_preview_test.gd", "--break-arg=--preview-break=",
+        "--breaks", "trait_blind,hero_phase_only"],
+        "[TRAIT_PREVIEW_GATE] PASS", False),
     # Two-tier sim gate (G-58). Part A: the size line and the tripwire on made-up
     # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
     # an unlinked pin). Part B: a REAL change of about 10 points on one

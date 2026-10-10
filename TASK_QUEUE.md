@@ -2,13 +2,6 @@
 
 ## Noticed during UI batch 2026-09-27 (not fixed; `docs/batches/2026-09-27-ui-batch.md`)
 
-- **Enemy-phase preview is still a raw telegraph.** Since B1 the hero phase in
-  the damage preview is exact (a dry run of the real code), but each enemy's
-  hit on a hero is still its raw `dmg`. Enemy riders (enemy mark consumption,
-  pierce, lifesteal, hero gear damage reduction) and enemy-phase shields are not
-  modelled. Example: an enemy that shields itself this round absorbs its own
-  end-of-round burn tick, but the preview shows the tick as HP loss. Fix shape:
-  extend `CombatManager.forecast_hero_phase` through the enemy phase and tick.
 - **`intercept_choice_flow_test.gd` is not gated** and cannot run under `-s`
   (extends Node, bare `GameState`). Either wrap it in a scene and add it to
   verify_gate, or retire it.

@@ -1,5 +1,67 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 the HP preview is the whole round, traits included (Kev, G-65;
+on branch `claude/traits-beasts-geode`, not merged):** the bar on a battle
+card ends where the round will really leave the unit.
+
+- **Before:** the preview ran the real hero phase, then added each enemy's
+  printed damage by hand. Nothing that acts in the enemy phase or at the
+  end-of-round tick was in it.
+- **Now:** `CombatManager.forecast_round` dry-runs the three steps
+  `resolve_round` takes (`_open_round`, `_resolve_hero_phase`,
+  `_resolve_enemy_phase`, then `_tick_end_of_round_states`) on copies of the
+  unit states. `resolve_round` is those same steps, so the preview cannot
+  leave a rule out. Nothing live changes: states, per-round fields and the
+  seeded streams are put back, as before.
+- **Both kinds of card read the end of that run.** The preview carries
+  `final_hp` (HP after the tick, 0 when dead), `burn_hp` (the burn tick's
+  share) and `lethal`; the card ends its bar on `final_hp`. The older fields
+  stay: `damage` on a hero's card is now the hits that land in the hero phase
+  and the enemy phase (they size the shield ghost).
+- **A hero whose ability still needs a target does not act in the dry run,**
+  as before. Its die still counts for what reads the dice (a hijack, the
+  enemy intents), which the old run left out.
+- **Every trait, and whether it moves a previewed number.** "Was wrong" is
+  measured: the gate's cases run against the preview as it was.
+
+| Trait | What it moves this round | Before |
+|---|---|---|
+| Anchored | The taunter's bar: each hit it pulls is 2 less | Was wrong |
+| Vengeful | The attacker's bar: 2 for hitting the taunter | Was wrong |
+| Volatile | Every hero's bar when it dies. Killed by a hero: | Right |
+| | killed in the enemy phase (a spike) or by the burn tick: | Was wrong |
+| Feral | A hero's bar: a packmate dies in the hero phase, so its attack this round is doubled | Was wrong |
+| Fervent | Its own bar: heals 3 for each unit whose burn ticks | Was wrong |
+| Barbed | The attacking hero's bar: 2 | Right |
+| Illusory | Its own bar: the first hit is negated | Right |
+| Redline, Ruthless, Charged, Zero-Day, Relentless | The enemy's bar: the bonus damage | Right |
+| Bloodlust, Watchful | A hero's bar: the larger heal | Right |
+| Overflowing | A hero's bar: the shield from healing past full eats the next hit | Right |
+| Vigilant | Its own bar: the shield it gains eats the next hit | Right |
+| Corrosive | A hero's bar: its burn ticks through a shield | Right |
+| Static, Zealous | Which ability an enemy uses: the preview reads the moved die | Right |
+| Entrenched, Glacial | A hero's bar: the shield is on the board before planning | Right |
+| Smoldering | Nothing this round: the burn it leaves ticks from next round | n/a |
+| Silent, Spectral, Flickering, Commanding | Nothing: a cloak, or how long something lasts | n/a |
+
+- **Fixed with it, not traits:** an enemy's Rampage (double damage) and the
+  pack bonus (+3 per packmate) were missing from a hero's bar for the same
+  reason. So were enemy lifesteal, an enemy's spike damage taken, the
+  Regenerative modifier and a shield an enemy raises before its own burn
+  ticks. All come from the dry run now.
+- **Not changed:** the pips beside a die print the ability's own numbers (an
+  attack under Redline still prints its base damage). The bar is the preview.
+- **Cost:** refreshing all six cards, each with its own dry run, takes about
+  5 ms.
+- **The split of `resolve_round` changes no result:** 120 seeded sim runs
+  (`l1`, seed base 900000) are byte for byte the same before and after.
+- Gate `trait preview` (`scripts/debug/trait_preview_test.gd`, 31 cases on a
+  real battle screen: every card's previewed HP against the HP after a real
+  `resolve_step`; each trait case must go wrong when the dry run is blind to
+  traits; the dry run leaves the battle untouched; the bar the card draws
+  ends on the number). Breaks: `trait_blind` (19 trait cases fail) and
+  `hero_phase_only` (the preview as it was).
+
 **2026-10-09 trait requirements (Kev, G-64; on branch
 `claude/traits-beasts-geode`, not merged):** every trait in
 `traits.data.json` says what it needs from its unit's kit, and
@@ -2646,8 +2708,10 @@ share one shape — a surface stating something the round will not do.
   retaliation) off the same run, then add the enemy phase's telegraphs. The
   hero readout's Detonate number is the burst the dry run lands
   (`detonate_by_hero`). A hero whose ability takes a manual pick and has no
-  target yet is left out of the run. The enemy phase itself is still the raw
-  telegraph (see TASK_QUEUE). Gate: `scripts/debug/preview_accuracy_test.gd`,
+  target yet is left out of the run. **Since G-65 (2026-10-09) the dry run is
+  the whole round** (`CombatManager.forecast_round`: enemy phase and tick
+  too), and both kinds of card end their bar on its result; see the G-65 entry
+  at the top. Gate: `scripts/debug/preview_accuracy_test.gd`,
   whose EXACT cases compare every card's projected HP with a real
   `resolve_step` (detonate finite / permanent / lethal, burn tick, execute,
   chain, mark, breach, pierce, spike, relic multiplier, Overload Loop echo);

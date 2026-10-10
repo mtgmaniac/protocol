@@ -22,10 +22,17 @@ var _kill_queue: Array = []  # pending [dead_state, killer_state] pairs
 # is neither consumed nor applied, so the echo can't eat the Mark its own first
 # pass just applied (audit A-074).
 var _echo_pass_active: bool = false
-# True only inside forecast_hero_phase: the preview dry-runs the real hero phase
-# on copies of the unit states. Writes that leave this manager (lifetime stats,
+# True only inside forecast_round: the preview dry-runs the real round on
+# copies of the unit states. Writes that leave this manager (lifetime stats,
 # run flags, consumable grants) are skipped; everything else runs unchanged.
 var _forecast_only: bool = false
+# Heroes a forecast holds back: their ability needs a target the player has not
+# chosen yet. Their dice still count (hijack, enemy intents); they do not act.
+var _forecast_waiting_hero_ids: Dictionary = {}
+# Test seam (the `trait preview` gate): a dry run with every trait off, to
+# prove a case's previewed number really depends on its trait. Never set by
+# the game.
+var forecast_blind_to_traits: bool = false
 # Detonate bursts per attacker id, recorded during a forecast only, so the hero
 # readout's Detonate number is the burst that will actually land.
 var _forecast_detonates: Dictionary = {}
@@ -898,7 +905,8 @@ func _hero_states_in_cast_order(hero_rolls: Dictionary) -> Array:
 	stamped.sort_custom(func(a, b): return int(a["cast_stamp"]) < int(b["cast_stamp"]))
 	for state_variant in unstamped:
 		var state: Dictionary = state_variant
-		if not bool(state.get("dead", false)) and hero_rolls.has(str(state["id"])):
+		# A hero a forecast holds back has no stamp by design: it has no target yet.
+		if not bool(state.get("dead", false)) and hero_rolls.has(str(state["id"])) 				and not _forecast_waiting_hero_ids.has(str(state["id"])):
 			push_warning("[CAST_ORDER] %s reached resolution unstamped - appending in squad order." % str(state["unit"].display_name))
 	return stamped + unstamped
 
@@ -934,6 +942,42 @@ func resolve_round(
 ) -> Dictionary:
 	_round_log.clear()
 	_round_events.clear()
+	var heroes_held: bool = _open_round()
+
+	_resolve_hero_phase(hero_rolls, enemy_rolls, dice_manager, raw_hero_rolls)
+
+	if _all_states_dead(_enemy_states):
+		_log("All enemies are down.")
+		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+	_resolve_enemy_phase(hero_rolls, enemy_rolls, dice_manager, raw_enemy_rolls)
+
+	_tick_end_of_round_states()
+
+	# Tectonic Charge (G-38): the hold ends with round 1; every hero (a fallen
+	# one too, for when it is revived) rolls with +N for the rest of the battle.
+	# A permanent roll buff, so the faces print it and the roll chip shows it.
+	if heroes_held:
+		var charge: int = int(_get_relic_value("heroesHoldRoundOne", "amount", 3))
+		for charged_state in _hero_states:
+			charged_state["perm_roll_buff"] = int(charged_state.get("perm_roll_buff", 0)) + charge
+		_log("TECTONIC CHARGE - the squad is charged: +%d to every hero roll." % charge)
+
+	if _all_states_dead(_enemy_states):
+		_log("All enemies are down.")
+		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+	if _all_states_dead(_hero_states):
+		_log("The squad has been wiped out.")
+		return {"result": "defeat", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+	return {"result": "ongoing", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
+
+
+# The round opens: the counter moves and a Tectonic Charge hold shields the
+# squad. True when the heroes hold this round. Shared by resolve_round and
+# forecast_round.
+func _open_round() -> bool:
 	var heroes_held: bool = heroes_hold_this_round()
 	_battle_round += 1
 	if heroes_held:
@@ -946,13 +990,18 @@ func resolve_round(
 				if not bool(held_state["dead"]):
 					_add_shield_stack(held_state, hold_shield)
 			_log("TECTONIC CHARGE - every hero gains %d shield while holding." % hold_shield)
+	return heroes_held
 
-	_resolve_hero_phase(hero_rolls, enemy_rolls, dice_manager, raw_hero_rolls)
 
-	if _all_states_dead(_enemy_states):
-		_log("All enemies are down.")
-		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
-
+# The enemy phase: turn-start relics, Accrete, the boss cadence rules, then
+# every living enemy in reverse slot order. Shared by resolve_round and
+# forecast_round, so the preview runs the same code.
+func _resolve_enemy_phase(
+	hero_rolls: Dictionary,
+	enemy_rolls: Dictionary,
+	dice_manager: DiceManager,
+	raw_enemy_rolls: Dictionary
+) -> void:
 	# Apply per-enemy-turn relic effects before enemies act
 	apply_enemy_turn_start_relic_effects()
 
@@ -997,31 +1046,10 @@ func resolve_round(
 		var enemy_raw_roll: int = int(raw_enemy_rolls.get(enemy_state["id"], enemy_roll_value))
 		_apply_enemy_ability(enemy_state, enemy_ability_entry, enemy_raw_roll)
 
-	_tick_end_of_round_states()
-
-	# Tectonic Charge (G-38): the hold ends with round 1; every hero (a fallen
-	# one too, for when it is revived) rolls with +N for the rest of the battle.
-	# A permanent roll buff, so the faces print it and the roll chip shows it.
-	if heroes_held:
-		var charge: int = int(_get_relic_value("heroesHoldRoundOne", "amount", 3))
-		for charged_state in _hero_states:
-			charged_state["perm_roll_buff"] = int(charged_state.get("perm_roll_buff", 0)) + charge
-		_log("TECTONIC CHARGE - the squad is charged: +%d to every hero roll." % charge)
-
-	if _all_states_dead(_enemy_states):
-		_log("All enemies are down.")
-		return {"result": "victory", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
-
-	if _all_states_dead(_hero_states):
-		_log("The squad has been wiped out.")
-		return {"result": "defeat", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
-
-	return {"result": "ongoing", "log": _round_log.duplicate(), "events": _round_events.duplicate(true)}
-
 
 # The round up to the end of the hero phase: round-start boss rules, hijack,
 # acted-value stamps, enemy intents, then every hero in cast order. Shared by
-# resolve_round and forecast_hero_phase, so the preview runs the same code.
+# resolve_round and forecast_round, so the preview runs the same code.
 func _resolve_hero_phase(
 	hero_rolls: Dictionary,
 	enemy_rolls: Dictionary,
@@ -1065,7 +1093,8 @@ func _resolve_hero_phase(
 	_last_cast_order = []
 	for hero_state_variant in cast_ordered:
 		var hero_state: Dictionary = hero_state_variant
-		if not bool(hero_state.get("dead", false)) and hero_rolls.has(str(hero_state["id"])):
+		if not bool(hero_state.get("dead", false)) and hero_rolls.has(str(hero_state["id"])) \
+				and not _forecast_waiting_hero_ids.has(str(hero_state["id"])):
 			_last_cast_order.append(str(hero_state["id"]))
 	if _last_cast_order.size() > 1:
 		var order_names: Array = []
@@ -1078,7 +1107,7 @@ func _resolve_hero_phase(
 		if hero_state["dead"]:
 			continue
 		var roll_value: Variant = hero_rolls.get(hero_state["id"], null)
-		if roll_value == null:
+		if roll_value == null or _forecast_waiting_hero_ids.has(str(hero_state["id"])):
 			continue
 		# Freeze = repeat: a frozen die kept its face, so the unit acts again on
 		# the same result. Targeting was re-picked fresh this round.
@@ -1125,21 +1154,36 @@ func _resolve_hero_phase(
 		(cleared_state_variant as Dictionary)["cast_stamp"] = 0
 
 
-# ── Preview dry run (UI batch 2026-09-27, B1) ─────────────────────────────────
-# The damage preview used to re-model the hero phase by hand and left out
-# detonate, execute, chain, mark, breach, spike, relic multipliers and the rest,
-# so the preview and the resolved damage disagreed. This runs the REAL hero
-# phase (_resolve_hero_phase, the code resolve_round runs) on deep copies of the
-# unit states and hands back the copies as they stand after it. The live states,
-# every per-round field, the seeded streams and everything outside this manager
-# are left exactly as they were. Returns:
+# ── Preview dry run (UI batch 2026-09-27, B1; whole round since G-65) ─────────
+# The damage preview used to re-model the round by hand: first the hero phase
+# (it left out detonate, execute, chain, mark, breach, spike and the relic
+# multipliers), then, until G-65, the enemy phase (it summed each enemy's
+# printed damage, so no trait, no Rampage and no pack bonus was in it). This
+# runs the REAL round, the three steps resolve_round takes, on deep copies of
+# the unit states and hands back the copies as they stand after each step. The
+# live states, every per-round field, the seeded streams and everything outside
+# this manager are left exactly as they were.
+#
+# `hero_rolls` holds every revealed hero die, so a hijack, the enemy intents
+# and the boss rules read the dice the round will. `waiting_hero_ids` are the
+# heroes whose ability still needs a target from the player: their dice count,
+# but they do not act.
+# Returns:
 #   hero_states / enemy_states  the copies after the hero phase (squad order)
 #   events                      the hero phase's combat events
-func forecast_hero_phase(
+#   detonate_by_hero            {hero_id: burst} each Detonate lands
+#   enemy_events                the enemy phase's combat events
+#   tick_events                 the end-of-round tick's combat events
+#   pre_tick                    {state_id: copy} after the enemy phase
+#   end                         {state_id: copy} after the end-of-round tick
+# When the hero phase kills every enemy the round ends there, as in
+# resolve_round: `pre_tick` and `end` are the states after the hero phase.
+func forecast_round(
 	hero_rolls: Dictionary,
 	enemy_rolls: Dictionary,
 	dice_manager: DiceManager,
-	raw_hero_rolls: Dictionary = {}
+	raw_hero_rolls: Dictionary = {},
+	waiting_hero_ids: Dictionary = {}
 ) -> Dictionary:
 	var live_heroes: Array = _hero_states
 	var live_enemies: Array = _enemy_states
@@ -1160,18 +1204,35 @@ func forecast_hero_phase(
 	_round_log = []
 	_round_events = []
 	_kill_queue = []
-	_battle_round += 1
 	_forecast_detonates = {}
 	_forecast_only = true
-	_resolve_hero_phase(hero_rolls.duplicate(), enemy_rolls.duplicate(), dice_manager, raw_hero_rolls.duplicate())
-	_forecast_only = false
+	_forecast_waiting_hero_ids = waiting_hero_ids
+	var rolls: Dictionary = hero_rolls.duplicate()
+	var enemy_values: Dictionary = enemy_rolls.duplicate()
+	_open_round()
+	_resolve_hero_phase(rolls, enemy_values, dice_manager, raw_hero_rolls.duplicate())
+	_forecast_waiting_hero_ids = {}
 	var result: Dictionary = {
-		"hero_states": _hero_states,
-		"enemy_states": _enemy_states,
+		"hero_states": _hero_states.map(func(st): return (st as Dictionary).duplicate(true)),
+		"enemy_states": _enemy_states.map(func(st): return (st as Dictionary).duplicate(true)),
 		# Copies: restore_state clears the live log/event arrays in place.
 		"events": _round_events.duplicate(true),
 		"detonate_by_hero": _forecast_detonates,
+		"enemy_events": [],
+		"tick_events": [],
 	}
+	var hero_phase_events: int = _round_events.size()
+	var enemy_phase_events: int = hero_phase_events
+	result["pre_tick"] = _states_by_id(true)
+	if not _all_states_dead(_enemy_states) and preview_break() != "hero_phase_only":
+		_resolve_enemy_phase(rolls, enemy_values, dice_manager, {})
+		enemy_phase_events = _round_events.size()
+		result["enemy_events"] = _round_events.slice(hero_phase_events, enemy_phase_events).duplicate(true)
+		result["pre_tick"] = _states_by_id(true)
+		_tick_end_of_round_states()
+		result["tick_events"] = _round_events.slice(enemy_phase_events).duplicate(true)
+	result["end"] = _states_by_id(false)
+	_forecast_only = false
 	_forecast_detonates = {}
 
 	restore_state(snap)
@@ -1188,6 +1249,33 @@ func forecast_hero_phase(
 	_echo_pass_active = saved_echo
 	_restore_roll_provider_streams(saved_streams)
 	return result
+
+
+# Every unit state by its id; deep copies when `copy`.
+func _states_by_id(copy: bool) -> Dictionary:
+	var by_id: Dictionary = {}
+	for state_variant in _hero_states + _enemy_states:
+		var state: Dictionary = state_variant
+		by_id[str(state["id"])] = state.duplicate(true) if copy else state
+	return by_id
+
+
+# Deliberate breaks for the `trait preview` gate (scripts/debug/
+# trait_preview_test.gd; never set by the game):
+#   trait_blind      the dry run resolves the round with every trait off
+#   hero_phase_only  the dry run stops after the hero phase (the old preview)
+const PREVIEW_BREAK_ARG := "--preview-break="
+static var _preview_break: String = "?"
+
+
+static func preview_break() -> String:
+	if _preview_break == "?":
+		_preview_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(PREVIEW_BREAK_ARG):
+					_preview_break = arg.trim_prefix(PREVIEW_BREAK_ARG)
+	return _preview_break
 
 
 func _roll_provider_streams() -> Variant:
@@ -2490,7 +2578,14 @@ var _ability_trait_chips: Dictionary = {}
 
 
 func _has_trait(state: Dictionary, trait_id: String) -> bool:
-	return trait_break() != "off" and not state.is_empty() and str(state.get("trait", "")) == trait_id
+	return not _traits_off() and not state.is_empty() and str(state.get("trait", "")) == trait_id
+
+
+# True when no trait may do anything: the `traits` gate's `off` break, or a
+# dry run that is blind to traits (the `trait preview` gate: its `trait_blind`
+# break, and the check it makes that each of its cases depends on a trait).
+func _traits_off() -> bool:
+	return trait_break() == "off" or (_forecast_only and (forecast_blind_to_traits or preview_break() == "trait_blind"))
 
 
 func _trait_num(state: Dictionary, key: String, default_value: int) -> int:
@@ -2922,7 +3017,7 @@ func _damage_state(
 				_log("Shatterpoint: +%d against the frozen die." % shatter_bonus)
 		# Zero-Day: a die Nullwire rewrote makes its unit take more from
 		# attacks until the rewrite ends.
-		if int(state.get("zero_day", 0)) > 0 and trait_break() != "off":
+		if int(state.get("zero_day", 0)) > 0 and not _traits_off():
 			amount += int(state["zero_day"])
 			_log("%s: +%d against the rewritten %s." % [UnitTraits.name_of("zeroDay"), int(state["zero_day"]), state["unit"].display_name])
 		_ability_rider_target_ids[rider_target_id] = true
@@ -3744,7 +3839,7 @@ func get_expected_burn_tick(state: Dictionary) -> int:
 # The part of this round's burn tick that ignores shields (Corrosive stacks).
 # Never more than get_expected_burn_tick.
 func get_expected_burn_tick_pierce(state: Dictionary) -> int:
-	if bool(state.get("dead", false)) or trait_break() == "off":
+	if bool(state.get("dead", false)) or _traits_off():
 		return 0
 	var piercing: int = 0
 	for stack_variant in state.get("burn_stacks", []):

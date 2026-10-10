@@ -118,6 +118,9 @@ var _status_row: HBoxContainer = null
 var _status_tint: ColorRect = null
 var _status_divider: ColorRect = null
 var _preview_effects: Dictionary = {}
+# The HP the preview bar ends on as last drawn; -1 with no preview up. Read by
+# the `trait preview` gate.
+var preview_end_hp: int = -1
 var _preview_rect_red: ColorRect = null
 var _preview_rect_blue: ColorRect = null
 var _preview_rect_purple: ColorRect = null
@@ -1300,6 +1303,12 @@ func _layout_preview_overlays() -> void:
 	var burn_pierce: float = minf(float(int(_preview_effects.get("burn_pierce", 0))), burn_tick)
 	var hp_burn: float = burn_pierce + (burn_tick - burn_pierce) - minf(burn_tick - burn_pierce, shield_after)
 	var final_hp: float = clampf(post_heal - hp_dmg - hp_burn, 0.0, hp_max)
+	# Exact end of the round (G-65): the dry run resolved the whole round, the
+	# enemy phase and the tick included, so the bar ends where the round ends
+	# it. The totals above still size the shield ghost.
+	if _preview_effects.has("final_hp"):
+		final_hp = clampf(float(int(_preview_effects["final_hp"])), 0.0, hp_max)
+		hp_burn = float(int(_preview_effects.get("burn_hp", 0)))
 	var no_shield_final: float = clampf(post_heal - inc_dmg - burn_tick, 0.0, hp_max)
 
 	_hide_preview_rects()
@@ -1331,7 +1340,8 @@ func _layout_preview_overlays() -> void:
 # ("41 → 25 / 55") was never scoped. The projected endpoint lives ONLY in the
 # bar zones painted by _layout_preview_overlays (red loss / purple burn slice /
 # mint gain / blue shield-saved ghost).
-func _update_hp_label_preview(_final_hp_preview: int) -> void:
+func _update_hp_label_preview(final_hp_preview: int) -> void:
+	preview_end_hp = final_hp_preview
 	if _hp_label == null:
 		return
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
