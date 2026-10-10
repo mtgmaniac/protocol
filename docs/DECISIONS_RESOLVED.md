@@ -28,6 +28,10 @@ together with `ci_smoke.py --update-baseline`. Nothing was tuned.
 evolutions overall (+5.3 against 4) and Facility (+8.2 against 8), second
 evolutions Facility (+9.2).
 
+**Merge and version.** The full gate passed (all hard gates, the sim
+tripwire with no move against the new pins). The branch was merged to `main`
+and the version is `0.3`, shown as DEMO v0.3.
+
 **What this closes.** Decision 4 of the G-62 handoff (the pins were not
 re-pinned). Tuning is still open: it is Kev's, after playing.
 
@@ -43,7 +47,7 @@ evolutions 27.6% to 25.6%, second 25.9% to 24.2%).
 Drake, which also keep their Accrete keyword. The Mantle Tyrant keeps Accrete
 only."
 
-On branch `claude/traits-beasts-geode`, pushed, not merged. This answers the
+Merged to `main` 2026-10-10 (built on branch `claude/traits-beasts-geode`). This answers the
 first open decision in the G-62 handoff and replaces G-62 reading 1 (Feral on
 five units).
 
@@ -77,7 +81,7 @@ Anchored, Illusory's negated first hit, Volatile's death damage where it
 applies, and any others. Treat it as a class: list every trait that affects a
 previewed number and fix them all. Gate it with a deliberate break."
 
-On branch `claude/traits-beasts-geode`, pushed, not merged.
+Merged to `main` 2026-10-10 (built on branch `claude/traits-beasts-geode`).
 
 **The cause, and why the fix is not a list.** A hero's bar ran the real hero
 phase and then summed each enemy's printed damage. A trait was missing
@@ -124,7 +128,7 @@ and jam). validate-data must fail if a unit carries a trait whose requirements
 its kit doesn't meet. This is groundwork for possible future trait pools;
 don't build any pools, difficulty modes or unlocks."
 
-On branch `claude/traits-beasts-geode`, pushed, not merged.
+Merged to `main` 2026-10-10 (built on branch `claude/traits-beasts-geode`).
 
 **As built.** Each trait has `needs`, a list of requirement names. The names
 are defined once, in the same file (`requirements`), over the ability fields.
@@ -241,7 +245,7 @@ Update every place trait names appear: card, long-press, evolution picker,
 Help, battle log and trigger chips. Check every trait + callsign pair fits the
 card at phone width, and list any that overflow."
 
-On branch `claude/traits-beasts-geode`, pushed, not merged. This replaces the
+Merged to `main` 2026-10-10 (built on branch `claude/traits-beasts-geode`). This replaces the
 names in G-62; G-62's rules and readings stand, under the new names.
 
 **As built.** The 21 names changed in `traits.data.json` and nowhere else:
@@ -341,7 +345,7 @@ separately):
 - Help/unit reference: show each unit's trait.
 - Copy short, plain, no em dashes."
 
-On branch `claude/traits-beasts-geode`, pushed, not merged. Not tuned: Kev
+Merged to `main` 2026-10-10 (built on branch `claude/traits-beasts-geode`). Not tuned: Kev
 plays it first.
 
 **The order I chose: Static first, then Litany.** The four round-start traits
@@ -435,7 +439,7 @@ dice).
 - Pack bonus: make it noticeably stronger. Propose the new numbers in the
   report, with the old values beside them."
 
-On branch `claude/traits-beasts-geode`, pushed, not merged. Kev plays it before
+Merged to `main` 2026-10-10 (built on branch `claude/traits-beasts-geode`). Kev plays it before
 deciding on tuning.
 
 **As built.**

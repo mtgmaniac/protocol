@@ -20,6 +20,9 @@ Nothing was tuned; Kev tunes after playing.
 - **The game is easier than the last pin everywhere but Veil.** Every hero
   evolution gained a trait; the enemy traits sit on units a run meets a few
   times.
+- **Released as DEMO v0.3** (`project.godot` `config/version` = `0.3`): the
+  branch was merged to `main` on 2026-10-10 after one full `verify_gate.py`
+  (all hard gates pass). Player-facing notes: `docs/devlog_2026-10-10.md`.
 - **G-66 made Mantle Hunt about 2 points harder** than the branch was with
   Feral on five units (first evolutions 27.6% to 25.6%, second 25.9% to
   24.2%, same 1,500 seeds).
@@ -36,8 +39,7 @@ Nothing was tuned; Kev tunes after playing.
   The 300-run tripwire figures only say whether combat changed; read sizes
   off the 1,500-run columns (G-57).
 
-**2026-10-09 Feral on every Mantle Hunt unit but the boss (Kev, G-66; on
-branch `claude/traits-beasts-geode`, not merged):** Basalt Ape and Magma Drake
+**2026-10-09 Feral on every Mantle Hunt unit but the boss (Kev, G-66; merged to `main` 2026-10-10):** Basalt Ape and Magma Drake
 now have Feral too, so seven Mantle Hunt units carry it (were five).
 
 - **Who:** Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder
@@ -58,8 +60,7 @@ now have Feral too, so seven Mantle Hunt units carry it (were five).
   no unit outside Mantle Hunt has Feral, and a Basalt Ape whose ally dies
   both gains rampage and accretes that round.
 
-**2026-10-09 the HP preview is the whole round, traits included (Kev, G-65;
-on branch `claude/traits-beasts-geode`, not merged):** the bar on a battle
+**2026-10-09 the HP preview is the whole round, traits included (Kev, G-65; merged to `main` 2026-10-10):** the bar on a battle
 card ends where the round will really leave the unit.
 
 - **Before:** the preview ran the real hero phase, then added each enemy's
@@ -120,8 +121,7 @@ card ends where the round will really leave the unit.
   ends on the number). Breaks: `trait_blind` (19 trait cases fail) and
   `hero_phase_only` (the preview as it was).
 
-**2026-10-09 trait requirements (Kev, G-64; on branch
-`claude/traits-beasts-geode`, not merged):** every trait in
+**2026-10-09 trait requirements (Kev, G-64; merged to `main` 2026-10-10):** every trait in
 `traits.data.json` says what it needs from its unit's kit, and
 `validate-data` fails when a unit carries a trait its kit cannot use.
 Groundwork for trait pools. No pool, difficulty mode or unlock was built, and
@@ -177,8 +177,7 @@ nothing in the game reads the tags.
   the `all` and `none` forms, a bad name, a bad field) and fails if any one
   is let through.
 
-**2026-10-09 trait names are titles (Kev, G-63; on branch
-`claude/traits-beasts-geode`, not merged):** every trait name is one word that
+**2026-10-09 trait names are titles (Kev, G-63; merged to `main` 2026-10-10):** every trait name is one word that
 reads as a title with the unit's callsign under it on the battle card:
 SMOLDERING PYRO, BARBED STALKER, FERAL HOUND. Effects did not change.
 
@@ -206,8 +205,7 @@ SMOLDERING PYRO, BARBED STALKER, FERAL HOUND. Effects did not change.
   trait and callsign fits its card line. The schema caps a name at 12
   letters, one word.
 
-**2026-10-09 unit traits (Kev, G-62; on branch `claude/traits-beasts-geode`,
-not merged):** some units carry one always-on trait. One system for heroes and
+**2026-10-09 unit traits (Kev, G-62; merged to `main` 2026-10-10):** some units carry one always-on trait. One system for heroes and
 enemies.
 
 - **Who has one.** Every hero evolution (16). Every elite (9). In Mantle Hunt,
@@ -349,8 +347,7 @@ enemies.
   `no_chip`, `frozen_dice`, `litany_first`, `boss_trait`). `validate-data`
   now checks `traits.data.json` against its schema and its cross-references.
 
-**2026-10-09 Geode Panther hits the die it freezes (Kev, G-61; on branch
-`claude/traits-beasts-geode`, not merged):** Calcifying Bite (7-9) and
+**2026-10-09 Geode Panther hits the die it freezes (Kev, G-61; merged to `main` 2026-10-10):** Calcifying Bite (7-9) and
 Stonefang Pounce (12-19) froze the hero with the lowest die but hit whoever the
 Panther's targeting chose. Now one hero takes both: the one with the lowest
 die.
@@ -374,8 +371,7 @@ die.
 - Gate `geode targeting` (`scripts/debug/geode_target_test.gd`: combat,
   planning, the Panther's data, a live round; breaks `split`, `stale`).
 
-**2026-10-09 beasts rework: rampage and pack bonus (Kev, G-60; on branch
-`claude/traits-beasts-geode`, not merged):**
+**2026-10-09 beasts rework: rampage and pack bonus (Kev, G-60; merged to `main` 2026-10-10):**
 
 - **Rampage is on or off, and it lasts until the unit's next turn.** That turn
   spends it: an attack deals double damage, and a turn that does not attack
@@ -1200,7 +1196,7 @@ Project settings and non-battle presentation are unchanged. See
 
 **2026-09-21 portrait facing (Kev):** heroes face right, enemies face left. Enemy source art mostly faces right, so `DataManager._mirror_enemy_portrait` mirrors every enemy portrait once at load; all screens read `enemy.portrait`, so none flips on its own. Hero art is not flipped. Framing data is authored in on-disk (unmirrored) source pixels; `PixelUI.cover_fit_portrait` mirrors an enemy's `center_x` and left/right crop insets itself, so the mirror never needs its own framing.
 
-**2026-09-21 versioning (Kev):** public-demo numbering restarts at `0.1.1` (was `0.9.0-demo4`). `project.godot` `config/version` is the only version source; players see `DEMO vX` via `PixelUI.version_label()` (title stamp and Help footer). Run saves record it as `build_id`, which is informational only and never compared on load. Release ZIPs keep dated names (`overload_protocol_web_YYYY-MM-DD.zip`). Current: `0.2` (`DEMO v0.2`, bumped 2026-09-28).
+**2026-09-21 versioning (Kev):** public-demo numbering restarts at `0.1.1` (was `0.9.0-demo4`). `project.godot` `config/version` is the only version source; players see `DEMO vX` via `PixelUI.version_label()` (title stamp and Help footer). Run saves record it as `build_id`, which is informational only and never compared on load. Release ZIPs keep dated names (`overload_protocol_web_YYYY-MM-DD.zip`). Current: `0.3` (`DEMO v0.3`, bumped 2026-10-10 for the traits release; before that `0.2`, 2026-09-28).
 
 **2026-09-20 UI consistency polish (0.9.0-demo4):** Help has four primary tabs: Basics, Units, Battle Log, Settings. Basics is the default and directly contains turn/card rules, Protocol, evolution/rewards, win/loss and Replay Tutorial; Keywords / Icon Guide is its single secondary glossary. Esc backs out of the glossary or unit inspection before closing Help. Unit rows share 96px square thumbnails, larger descriptors, and aligned HP. Battle portrait zoom is unchanged: all friendly content shifts down 6 physical pixels; only Scrap/Rust enemy content shifts down 5 pixels. Every hero portrait sits 6 physical pixels lower than the shared cover-fit (Engineer first; all heroes on the Squad Selector and battle card since 2026-09-21; one class rule `PixelUI.HERO_PORTRAIT_SEAT_DOWN_PX` on every screen since 2026-09-27), position only; its site subtitle and THREATS line are 52px (was 44). Desktop cursors are solid native 32px cyan pointers with a 2px hotspot and hover variant. [Evidence and verification](UI_CONSISTENCY_2026-09-20.md).
 

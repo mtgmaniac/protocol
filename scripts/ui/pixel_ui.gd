@@ -1690,7 +1690,7 @@ class CornerBracketLayer extends Control:
 		), color, true)
 
 
-## Player-facing version text ("DEMO v0.2"). The number itself lives ONLY in
+## Player-facing version text ("DEMO v0.3"). The number itself lives ONLY in
 ## project.godot config/version (also written to run saves as build_id); this
 ## adds the public-demo prefix so every stamp reads the same.
 const VERSION_LABEL_PREFIX := "DEMO v"
