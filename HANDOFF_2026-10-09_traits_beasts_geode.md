@@ -4,6 +4,21 @@ Rulings: G-59 (Part A, on `main`), G-60, G-61, G-62 (Part B, on branch
 `claude/traits-beasts-geode`, pushed, not merged). No itch build. Nothing
 tuned. Sim pins not touched.
 
+## Follow-ups on the branch, same day (G-63 to G-66)
+
+Four commits after this handoff was written. Where they differ, they replace
+what is below; TRUTH has the current state.
+
+| Ruling | Change | What it replaces below |
+|---|---|---|
+| G-63 | Trait names are titles (Smoldering, Feral, Volatile...). 21 renamed, 5 kept | The names in "Trait copy". Volt Enforcer's card reads VOLATILE in red, not DEATH: 4 TO ALL |
+| G-64 | Each trait says what it needs from the kit; `validate-data` enforces it | New |
+| G-65 | The HP preview dry-runs the whole round, so traits, Rampage and the pack bonus are in a hero's bar. Gate `trait preview` | "The HP preview on a hero's card still sums the enemies' printed damage" |
+| G-66 | Feral is on Basalt Ape and Magma Drake too (seven units); they keep Accrete | Decision 1, and "Pack Rage is on five Mantle Hunt units" |
+
+Still open from this handoff: decision 3 (the readings), decision 4 (the sim
+pins are not re-pinned; G-66 adds to the move and was not simmed).
+
 ## Part A, on `main` (`55f4ff3`)
 
 - The two-tier sim gate was already merged and pushed (`5519f2c`); nothing to do.

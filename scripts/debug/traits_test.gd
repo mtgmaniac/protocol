@@ -3,12 +3,14 @@
 #   godot --headless --path . -s scripts/debug/traits_test.gd [-- --trait-break=off]
 #
 # Some units carry one always-on trait: every hero evolution, every elite, and
-# in Mantle Hunt every regular and elite unit. Pinned here:
-#   A. who      the roster from the ruling, unit by unit: 16 evolutions, 9
-#               elites, 5 Mantle Hunt units with Feral; base heroes, the
-#               other regular units, tanks, supports and bosses have none; an
-#               evolved hero carries its trait into a run; every trait defined
-#               is used.
+# in Mantle Hunt every unit but the boss (G-66). Pinned here:
+#   A. who      the roster from the rulings, unit by unit: 16 evolutions, 9
+#               elites, 7 Mantle Hunt units with Feral (Basalt Ape and Magma
+#               Drake keep Accrete too; the Mantle Tyrant has Accrete and no
+#               trait); base heroes, the other regular units, the other
+#               operations' tanks and supports, and bosses have none; an
+#               evolved hero carries its trait into a run; every trait
+#               defined is used.
 #   B. rules    every one of the 26 traits does what its line says, by the
 #               number in its data, and does nothing without the trait.
 #   C. dice     Static and Zealous move the die's one value (the path a
@@ -58,7 +60,11 @@ const ENEMY_TRAITS := {
 	"False Image": "Illusory", "Ash Channeler": "Fervent", "Oath Binder": "Commanding",
 	"Pumice Climber": "Feral", "Obsidian Hound": "Feral", "Slag Hound": "Feral",
 	"Geode Panther": "Feral", "Cinder Raptor": "Feral",
+	"Basalt Ape": "Feral", "Magma Drake": "Feral",
 }
+# Mantle Hunt (G-66): every unit of the faction but its boss has Feral.
+const MANTLE_BOSS := "Mantle Tyrant"
+const MANTLE_ACCRETE_AND_FERAL := ["Basalt Ape", "Magma Drake"]
 # The names G-63 retired. None may come back in the data or in a log line.
 const RETIRED_NAMES := ["Afterburn", "Live Wire", "Exposed", "Anchor", "Retaliate", "Glacial Armor", "Dug In",
 	"Triage", "Overflow", "Ghost Signal", "Silent Kill", "Clean Kill", "Zero Day", "Backup", "Discharge", "Blink",
@@ -240,6 +246,27 @@ func _check_roster() -> void:
 			_expect(carried.is_empty(), "roster: boss %s has no trait" % enemy_name)
 	for enemy_name in ENEMY_TRAITS:
 		_expect(dm().get_enemy_by_display_name(enemy_name) != null, "roster: %s exists" % enemy_name)
+	# Mantle Hunt (G-66): every unit but the boss has Feral, whatever its role.
+	# The two that also Accrete keep it; the boss keeps Accrete and has no trait.
+	var combat: Object = load(COMBAT_SOURCE)
+	var tyrant: Resource = dm().get_enemy_by_display_name(MANTLE_BOSS)
+	var beasts: int = 0
+	for enemy in dm().enemies.values():
+		if tyrant == null or str(enemy.faction) != str(tyrant.faction) or str(enemy.display_name) == MANTLE_BOSS:
+			continue
+		beasts += 1
+		_expect(str(_traits.of_unit(enemy).get("id", "")) == "packRage", "Mantle Hunt: %s has Feral (%s)" % [str(enemy.display_name), str(_traits.of_unit(enemy).get("name", "no trait"))])
+	_expect(beasts == 7, "Mantle Hunt: seven units besides the boss (%d)" % beasts)
+	for enemy_name in MANTLE_ACCRETE_AND_FERAL:
+		var both: Resource = dm().get_enemy_by_display_name(enemy_name)
+		_expect(both != null and int(both.accrete) > 0 and not (combat.accrete_rule(both) as Dictionary).is_empty(), "Mantle Hunt: %s keeps its Accrete keyword beside Feral" % enemy_name)
+	_expect(tyrant != null and _traits.of_unit(tyrant).is_empty() and not (combat.accrete_rule(tyrant) as Dictionary).is_empty(), "Mantle Hunt: the Mantle Tyrant keeps Accrete and has no trait")
+	# In the other four operations nothing changed: only elites have a trait.
+	for enemy in dm().enemies.values():
+		if tyrant != null and str(enemy.faction) == str(tyrant.faction):
+			continue
+		if not _traits.of_unit(enemy).is_empty():
+			_expect(str(_traits.of_unit(enemy).get("id", "")) != "packRage", "roster: %s is not a Mantle Hunt unit and does not have Feral" % str(enemy.display_name))
 	for trait_id in (_traits.data()["traits"] as Dictionary):
 		_expect(used.has(trait_id), "roster: trait %s is carried by a unit" % trait_id)
 
@@ -576,6 +603,21 @@ func _check_enemy_rules() -> void:
 			var hp: int = int(_h(cm)["current_hp"])
 			_round(cm, {}, {0: 5})
 			_expect(hp - int(_h(cm)["current_hp"]) == 12 and int(_e(cm, 0)["rampage_charges"]) == 0, "Feral: the rampage doubles its next turn (6 -> %d) and ends" % (hp - int(_h(cm)["current_hp"])))
+
+
+	# Feral beside Accrete (G-66): a Basalt Ape whose ally dies gains rampage and
+	# still accretes on its turn that round.
+	var ape: Resource = dm().get_enemy_by_display_name("Basalt Ape")
+	if ape == null:
+		_errors.append("Feral and Accrete: Basalt Ape exists")
+	else:
+		cm = _battle([_hero("a", {"dmg": 50})], [ape, _enemy("n")])
+		_e(cm, 1)["current_hp"] = 10
+		_aim(cm, 0, 1)
+		result = _round(cm, {0: 5})
+		_expect(int(_e(cm, 0)["rampage_charges"]) == 1, "Feral and Accrete: Basalt Ape gains rampage when its ally dies (%d)" % int(_e(cm, 0)["rampage_charges"]))
+		_expect(int(_e(cm, 0)["shield"]) == int(ape.accrete) and int(ape.accrete) > 0, "Feral and Accrete: it still accretes %d that round (%d)" % [int(ape.accrete), int(_e(cm, 0)["shield"])])
+		_expect_shown(result, "Feral", "Feral on Basalt Ape")
 
 
 # ── C. The round-start traits and the dice ────────────────────────────────────

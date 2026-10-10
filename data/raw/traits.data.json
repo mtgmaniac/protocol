@@ -1,5 +1,5 @@
 {
-  "$comment": "Unit traits (G-62, Kev 2026-10-09): one always-on rule per unit. `traits` defines each trait: its name, its one-line text and its numbers. A trait's name is a title read with the unit's callsign (BARBED STALKER, G-63); its key here is the internal id the engine tests and never shows. `warning: true` draws the card marker in the warning colour. `needs` (G-64) lists what the trait needs from its unit's kit, as keys of `requirements`; [] for a trait that needs nothing. `requirements` defines each one over the ability fields of heroes.data.json and enemies.data.json: a kit meets it when ONE ability has every `all` field set, at least one `any` field set (when given) and no `none` field set (set = true or above 0). validate-data refuses a unit whose kit does not meet its trait's needs. Nothing in the game reads `needs` yet: it is groundwork for trait pools. A {key} in the text is filled from the trait's own numbers; {band} is the unit's first roll window. `evolutions` (heroId/evolutionId) and `enemies` (display name) say who has which. Who may have one: every hero evolution, every elite, and in Mantle Hunt every regular and elite unit (Pack Rage). Base heroes, every other regular unit, tanks, supports and bosses have none. The `traits` gate checks that rule, that every trait is used, and that every number printed is the number the engine applies.",
+  "$comment": "Unit traits (G-62, Kev 2026-10-09): one always-on rule per unit. `traits` defines each trait: its name, its one-line text and its numbers. A trait's name is a title read with the unit's callsign (BARBED STALKER, G-63); its key here is the internal id the engine tests and never shows. `warning: true` draws the card marker in the warning colour. `needs` (G-64) lists what the trait needs from its unit's kit, as keys of `requirements`; [] for a trait that needs nothing. `requirements` defines each one over the ability fields of heroes.data.json and enemies.data.json: a kit meets it when ONE ability has every `all` field set, at least one `any` field set (when given) and no `none` field set (set = true or above 0). validate-data refuses a unit whose kit does not meet its trait's needs. Nothing in the game reads `needs` yet: it is groundwork for trait pools. A {key} in the text is filled from the trait's own numbers; {band} is the unit's first roll window. `evolutions` (heroId/evolutionId) and `enemies` (display name) say who has which. Who may have one: every hero evolution, every elite, and in Mantle Hunt every unit but the boss (Feral, G-66; Basalt Ape and Magma Drake keep their Accrete keyword as well). Base heroes, every other regular unit, the tanks and supports of the other four operations, and all five bosses have none. The `traits` gate checks that rule, that every trait is used, and that every number printed is the number the engine applies.",
   "requirements": {
     "attack": { "all": ["dmg"] },
     "singleAttack": { "all": ["dmg"], "none": ["blastAll"] },
@@ -77,6 +77,8 @@
     "Obsidian Hound": "packRage",
     "Slag Hound": "packRage",
     "Geode Panther": "packRage",
-    "Cinder Raptor": "packRage"
+    "Basalt Ape": "packRage",
+    "Cinder Raptor": "packRage",
+    "Magma Drake": "packRage"
   }
 }

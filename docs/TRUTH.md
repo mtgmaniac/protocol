@@ -1,5 +1,27 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 Feral on every Mantle Hunt unit but the boss (Kev, G-66; on
+branch `claude/traits-beasts-geode`, not merged):** Basalt Ape and Magma Drake
+now have Feral too, so seven Mantle Hunt units carry it (were five).
+
+- **Who:** Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder
+  Raptor, Basalt Ape, Magma Drake. The rule is "in Mantle Hunt, every unit
+  but the boss", whatever its role in the roll-windows table.
+- **Basalt Ape and Magma Drake keep Accrete** (3 and 4 shield at the start of
+  each of their turns). Accrete is their keyword and Feral is their trait;
+  both apply. Their cards read FERAL BASALT and FERAL MAGMA, and both fit.
+- **The Mantle Tyrant is unchanged:** Accrete (its standing rule) and no
+  trait. No boss has a trait.
+- **Elsewhere nothing changed:** in the other four operations only elites
+  have a trait.
+- Two lines of data (`traits.data.json`, `enemies`). Feral needs an attack
+  (G-64) and both have one. Not tuned and not simmed: with seven Feral units
+  every kill in Mantle Hunt now enrages every survivor.
+- Gate `traits` pins it: every unit of the Mantle Hunt faction but the boss
+  has Feral, the two keep their Accrete, the Tyrant has Accrete and no trait,
+  no unit outside Mantle Hunt has Feral, and a Basalt Ape whose ally dies
+  both gains rampage and accretes that round.
+
 **2026-10-09 the HP preview is the whole round, traits included (Kev, G-65;
 on branch `claude/traits-beasts-geode`, not merged):** the bar on a battle
 card ends where the round will really leave the unit.
@@ -141,7 +163,7 @@ SMOLDERING PYRO, BARBED STALKER, FERAL HOUND. Effects did not change.
   string).
 - **Fit:** on the battle card at 1080 design px a name line is 332 px wide.
   The widest trait, OVERFLOWING, is 204 px; the widest callsign under a trait,
-  OVERCLOCK, is 243 px. All 30 pairs fit; none is cut.
+  OVERCLOCK, is 243 px. All 32 pairs fit (30 before G-66); none is cut.
 - Gate `traits` now also pins: every name is one title word, no retired name
   is in the data, no screen or log line types a trait name, the warning
   colour is a red apart from the amber and from the name under it, and every
@@ -153,10 +175,10 @@ not merged):** some units carry one always-on trait. One system for heroes and
 enemies.
 
 - **Who has one.** Every hero evolution (16). Every elite (9). In Mantle Hunt,
-  every regular and elite unit has Feral (5). Nobody else: base heroes,
-  regular units in the other four operations, tanks, supports and all five
-  bosses have none. "Elite", "regular", "tank" and "support" are the roles of
-  the roll-windows table (G-55).
+  every unit but the boss has Feral (7 since G-66, tanks included; it was 5).
+  Nobody else: base heroes, regular units, tanks and supports in the other
+  four operations, and all five bosses have none. "Elite", "regular", "tank"
+  and "support" are the roles of the roll-windows table (G-55).
 - **Data:** `data/raw/traits.data.json`. `traits` holds each trait's name, its
   one line and its numbers; `evolutions` and `enemies` say who has which. A
   `{key}` in the line is filled from the trait's own numbers, and `{band}`
@@ -193,7 +215,7 @@ enemies.
 | False Image | Illusory | The first hit against it each battle is negated. |
 | Ash Channeler | Fervent | Heals 3 whenever any burn ticks. |
 | Oath Binder | Commanding | Its roll penalties last 1 extra round. |
-| Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor | Feral | When an ally dies, gains rampage. |
+| Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor, Basalt Ape, Magma Drake | Feral | When an ally dies, gains rampage. |
 
 - **How each one resolves** (the readings are listed in G-62):
   - *Smoldering:* only when something was detonated; a plain 1 burn for 2 turns.

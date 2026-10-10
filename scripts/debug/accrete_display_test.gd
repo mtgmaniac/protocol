@@ -195,8 +195,13 @@ func _check_inspect() -> void:
 		var unit: Resource = dm().get_enemy_by_display_name(str(case[0]))
 		var payload: Dictionary = resolver.resolve_unit(unit, {})
 		var statuses: Array = payload.get("statuses", [])
-		var entry: Dictionary = statuses[0] if not statuses.is_empty() else {}
-		var pip: Dictionary = (entry.get("effects", [{}]) as Array)[0] if not entry.is_empty() else {}
+		# A unit with a trait as well (Feral, G-66) leads with the trait's
+		# line; the Accrete line is the first one after it.
+		var has_trait: bool = not statuses.is_empty() and bool((statuses[0] as Dictionary).get("trait", false))
+		_expect(has_trait == (not (unit.unit_trait as Dictionary).is_empty()), "inspect %s: a trait line leads only when the unit has a trait" % case[0])
+		var entry: Dictionary = statuses[1 if has_trait else 0] if statuses.size() > (1 if has_trait else 0) else {}
+		var pips: Array = entry.get("effects", [])
+		var pip: Dictionary = pips[0] if not pips.is_empty() else {}
 		_expect(str(pip.get("kind", "")) == "accrete" and str(pip.get("value", "")) == str(case[1]), "inspect %s: the Accrete pip shows %d (%s)" % [case[0], case[1], str(pip)])
 		_expect(str(entry.get("text", "")) == str(case[2]) % int(case[1]), "inspect %s: the line reads \"%s\" (\"%s\")" % [case[0], str(case[2]) % int(case[1]), str(entry.get("text", ""))])
 	_expect(_rule_cadence() == 2, "the inspect's \"every 2nd round\" is the cadence combat uses")

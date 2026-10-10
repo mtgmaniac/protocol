@@ -1,5 +1,37 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-66. Feral on every non-boss beast (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Every non-boss Mantle Hunt unit gets Feral, including Basalt Ape and Magma
+Drake, which also keep their Accrete keyword. The Mantle Tyrant keeps Accrete
+only."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. This answers the
+first open decision in the G-62 handoff and replaces G-62 reading 1 (Feral on
+five units).
+
+**As built.** Two lines in `traits.data.json`. Feral is now on seven units:
+Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor,
+Basalt Ape, Magma Drake. Accrete is a keyword on the unit and Feral is its
+trait, so nothing had to give way: the Ape and the Drake gain their shield
+each turn and gain rampage when an ally dies.
+
+**Scope, as ruled.**
+
+- **In:** every unit of the Mantle Hunt faction but its boss, whatever its
+  role (regular, elite, tank).
+- **Out:** the Mantle Tyrant (Accrete only, no trait). Every boss stays
+  without a trait.
+- **Unchanged:** the other four operations. Only their elites have a trait.
+
+**Not done.** Not tuned and not simmed. The sim pins were already owed a
+re-pin for this branch (G-62 handoff); this adds to that move.
+
+**Gate.** `traits` (the same five breaks; `boss_trait` gives the Tyrant a
+trait and must fail).
+
 ## G-65. The HP preview includes traits (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**
