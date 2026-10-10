@@ -90,11 +90,9 @@ function validateTraits(traits, heroes, enemies) {
   }
   for (const [id, def] of Object.entries(defined)) {
     if (!used.has(id)) errs.push(`traits.data.json: trait '${id}' is given to no unit`);
-    for (const field of ['text', 'warn']) {
-      for (const m of String(def[field] || '').matchAll(/\{(\w+)\}/g)) {
-        if (m[1] !== 'band' && typeof def[m[1]] !== 'number') {
-          errs.push(`traits.data.json: trait '${id}' ${field} uses {${m[1]}} but has no such number`);
-        }
+    for (const m of String(def.text || '').matchAll(/\{(\w+)\}/g)) {
+      if (m[1] !== 'band' && typeof def[m[1]] !== 'number') {
+        errs.push(`traits.data.json: trait '${id}' text uses {${m[1]}} but has no such number`);
       }
     }
   }

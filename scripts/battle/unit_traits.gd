@@ -4,8 +4,11 @@
 # line of text, its numbers, and who has it. This file reads it and hands a
 # unit its trait as one Dictionary (`unit_trait` on UnitData / EnemyData):
 #
-#   {"id": "afterburn", "name": "Afterburn", "text": "Detonating leaves 1 burn
+#   {"id": "afterburn", "name": "Smoldering", "text": "Detonating leaves 1 burn
 #    for 2 turns.", "burn": 1, "turns": 2}
+#
+# `name` is a title read with the unit's callsign: SMOLDERING PYRO, BARBED
+# STALKER (G-63). `id` is the data key the rules test; it is never shown.
 #
 # `text` is the trait's line with its {numbers} filled in from the same entry
 # the engine reads, so the text cannot print a number the engine does not
@@ -58,8 +61,6 @@ static func build(trait_id: String, dice_ranges: Array = []) -> Dictionary:
 	var values: Dictionary = built.duplicate()
 	values["band"] = first_band_text(dice_ranges)
 	built["text"] = str(definition.get("text", "")).format(values)
-	if built.has("warn"):
-		built["warn"] = str(definition["warn"]).format(values)
 	return built
 
 
@@ -81,7 +82,13 @@ static func of_unit(unit: Variant) -> Dictionary:
 	return carried if carried is Dictionary else {}
 
 
-# What every screen prints: "AFTERBURN: Detonating leaves 1 burn for 2 turns."
+# A trait's name by its id ("" for an unknown id). For a log line about a
+# trait whose owner is not at hand.
+static func name_of(trait_id: String) -> String:
+	return str(((data().get("traits", {}) as Dictionary).get(trait_id, {}) as Dictionary).get("name", ""))
+
+
+# What every screen prints: "SMOLDERING: Detonating leaves 1 burn for 2 turns."
 # "" when the unit has no trait.
 static func line(unit_trait: Dictionary) -> String:
 	if unit_trait.is_empty():
@@ -89,14 +96,13 @@ static func line(unit_trait: Dictionary) -> String:
 	return "%s: %s" % [str(unit_trait.get("name", "")).to_upper(), str(unit_trait.get("text", ""))]
 
 
-# The battle card's marker: the trait's name, or its warning when it has one
-# (Discharge: the card must say what killing this unit costs).
+# The battle card's marker: the trait's name, on the line above the callsign,
+# so the two read as the unit's full name (VOLATILE VOLT).
 static func marker_text(unit_trait: Dictionary) -> String:
-	if unit_trait.is_empty():
-		return ""
-	return str(unit_trait.get("warn", str(unit_trait.get("name", "")).to_upper()))
+	return str(unit_trait.get("name", "")).to_upper()
 
 
-# True for a trait whose marker is a warning to the player.
+# True for a trait whose marker is drawn in the warning colour (Volatile:
+# killing this unit costs the squad HP; the long-press says how much).
 static func is_warning(unit_trait: Dictionary) -> bool:
-	return unit_trait.has("warn")
+	return bool(unit_trait.get("warning", false))

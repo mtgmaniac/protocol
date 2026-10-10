@@ -90,8 +90,9 @@ var cast_rank: int = 0
 var show_action_pips: bool = true
 var unit_data: Resource = null
 var gear_detail_rows: Array = []
-# The unit's trait marker (G-62): its trait's name, or the warning a trait
-# carries (Volt Enforcer). "" for a unit without a trait.
+# The unit's trait marker (G-62, G-63): its trait's name, read with the
+# callsign under it as the unit's full name. "" for a unit without a trait.
+# `trait_warning` draws it in the damage red (Volt Enforcer's VOLATILE).
 var trait_marker: String = ""
 var trait_warning: bool = false
 
@@ -549,7 +550,7 @@ func _refresh() -> void:
 	var has_trait_marker: bool = trait_marker != "" and not is_boss
 	_trait_label.visible = has_trait_marker
 	_trait_label.text = trait_marker
-	_trait_label.add_theme_color_override("font_color", PixelUI.DT_RUST_BRIGHT if trait_warning else PixelUI.DT_AMBER)
+	_trait_label.add_theme_color_override("font_color", PixelUI.COLOR_DAMAGE if trait_warning else PixelUI.DT_AMBER)
 	var two_lines: bool = is_boss or has_trait_marker
 	_name_label.offset_top = 8 * _battle_text_scale if two_lines else 0
 	_name_label.offset_bottom = 8 * _battle_text_scale if two_lines else 0

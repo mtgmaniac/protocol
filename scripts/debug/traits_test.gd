@@ -5,21 +5,25 @@
 # Some units carry one always-on trait: every hero evolution, every elite, and
 # in Mantle Hunt every regular and elite unit. Pinned here:
 #   A. who      the roster from the ruling, unit by unit: 16 evolutions, 9
-#               elites, 5 Mantle Hunt units with Pack Rage; base heroes, the
+#               elites, 5 Mantle Hunt units with Feral; base heroes, the
 #               other regular units, tanks, supports and bosses have none; an
 #               evolved hero carries its trait into a run; every trait defined
 #               is used.
 #   B. rules    every one of the 26 traits does what its line says, by the
 #               number in its data, and does nothing without the trait.
-#   C. dice     Static and Litany move the die's one value (the path a
+#   C. dice     Static and Zealous move the die's one value (the path a
 #               deliberate change takes), pass over frozen and hijacked dice,
 #               never lift a jammed die past its cap, and fire Static first.
 #   D. shown    each trigger writes a log line that names the trait and one
 #               `trait` event per ability; the inspect leads with the trait
 #               line above the roll breakdown; the evolution picker and the
 #               Help reference print it; the battle card carries the marker
-#               (Volt Enforcer's is its warning) and never in a portrait corner.
-#   E. copy     no leftover {key}, no em dash, no band word, short lines.
+#               (Volt Enforcer's in the warning colour) and never in a
+#               portrait corner.
+#   E. copy     no leftover {key}, no em dash, no band word, short lines; every
+#               name is one title word (G-63), no retired name is left in the
+#               data or typed into a log line in code; every trait and
+#               callsign fits its line of the battle card.
 #   F. live     a real battle: Static tips an enemy die and the tray shows the
 #               value the unit acts on; the chip and the log line appear; with
 #               No animations the chip still appears.
@@ -39,22 +43,31 @@ const SPEED := 8
 
 # The ruling's roster (G-62). Hero evolutions by "hero/evolution" id.
 const EVOLUTION_TRAITS := {
-	"pulse/pyro": "Afterburn", "pulse/arc": "Live Wire",
-	"combat/blade": "Exposed", "combat/ravager": "Bloodlust",
-	"shield/bulwark": "Anchor", "shield/sentinel": "Retaliate",
-	"avalanche/glacier": "Glacial Armor", "avalanche/trench": "Dug In",
-	"medic/medic": "Triage", "medic/synth": "Overflow",
-	"engineer/overclocked": "Redline", "engineer/phantom": "Ghost Signal",
-	"ghost/shadow": "Silent Kill", "ghost/wraith": "Clean Kill",
-	"breaker/noise": "Static", "breaker/nullwire": "Zero Day",
+	"pulse/pyro": "Smoldering", "pulse/arc": "Charged",
+	"combat/blade": "Ruthless", "combat/ravager": "Bloodlust",
+	"shield/bulwark": "Anchored", "shield/sentinel": "Vengeful",
+	"avalanche/glacier": "Glacial", "avalanche/trench": "Entrenched",
+	"medic/medic": "Watchful", "medic/synth": "Overflowing",
+	"engineer/overclocked": "Redline", "engineer/phantom": "Spectral",
+	"ghost/shadow": "Silent", "ghost/wraith": "Relentless",
+	"breaker/noise": "Static", "breaker/nullwire": "Zero-Day",
 }
 const ENEMY_TRAITS := {
-	"Patrol Enforcer": "Backup", "Volt Enforcer": "Discharge", "Spine Stalker": "Barbed",
-	"Caustic Spewer": "Corrosive", "Phaseblade": "Blink", "Circuit Acolyte": "Litany",
-	"False Image": "Decoy", "Ash Channeler": "Kindle", "Oath Binder": "Compel",
-	"Pumice Climber": "Pack Rage", "Obsidian Hound": "Pack Rage", "Slag Hound": "Pack Rage",
-	"Geode Panther": "Pack Rage", "Cinder Raptor": "Pack Rage",
+	"Patrol Enforcer": "Vigilant", "Volt Enforcer": "Volatile", "Spine Stalker": "Barbed",
+	"Caustic Spewer": "Corrosive", "Phaseblade": "Flickering", "Circuit Acolyte": "Zealous",
+	"False Image": "Illusory", "Ash Channeler": "Fervent", "Oath Binder": "Commanding",
+	"Pumice Climber": "Feral", "Obsidian Hound": "Feral", "Slag Hound": "Feral",
+	"Geode Panther": "Feral", "Cinder Raptor": "Feral",
 }
+# The names G-63 retired. None may come back in the data or in a log line.
+const RETIRED_NAMES := ["Afterburn", "Live Wire", "Exposed", "Anchor", "Retaliate", "Glacial Armor", "Dug In",
+	"Triage", "Overflow", "Ghost Signal", "Silent Kill", "Clean Kill", "Zero Day", "Backup", "Discharge", "Blink",
+	"Litany", "Decoy", "Kindle", "Compel", "Pack Rage"]
+# Where a trait's log line, chip or marker is written. A trait's name is read
+# from the data there, never typed.
+const NAME_SOURCES := [COMBAT_SOURCE, ENGINE_SOURCE, "res://scripts/battle/battle_feedback.gd", "res://scripts/battle/battle_scene.gd",
+	"res://scripts/battle/boss_relic_actions.gd", "res://scripts/battle/battle_card_view.gd", "res://scripts/ui/compact_unit_card.gd",
+	"res://scripts/ui/evolution_screen.gd", "res://scripts/ui/help_menu.gd", INSPECT_SOURCE]
 const BAND_WORDS := ["recharge", "strike", "surge", "crit", "overload"]
 const MAX_TRAIT_LINE := 80
 
@@ -237,7 +250,7 @@ func _check_roster() -> void:
 	_expect(_traits.of_unit(gs.get_run_unit_data("pulse")).is_empty(), "run: an unevolved hero has no trait")
 	gs.unit_evolutions["pulse"] = "Pyro Specialist"
 	var evolved: Resource = gs.get_run_unit_data("pulse")
-	_expect(str(_traits.of_unit(evolved).get("name", "")) == "Afterburn", "run: Pyro Specialist carries Afterburn (%s)" % str(_traits.of_unit(evolved)))
+	_expect(str(_traits.of_unit(evolved).get("name", "")) == "Smoldering", "run: Pyro Specialist carries Smoldering (%s)" % str(_traits.of_unit(evolved)))
 	var cm: Object = _battle([evolved], [_enemy("x")])
 	_expect(str(_h(cm)["trait"]) == "afterburn", "run: its battle state carries the trait id (%s)" % str(_h(cm)["trait"]))
 	gs.reset_run()
@@ -248,7 +261,7 @@ func _check_hero_rules() -> void:
 	var cm: Object
 	var result: Dictionary
 
-	# Afterburn: detonating leaves a burn.
+	# Smoldering: detonating leaves a burn.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 5, "detonate": true}, {}, "afterburn" if with else "")], [_enemy("x")])
 		cm._apply_burn(_e(cm), 3, 2)
@@ -256,40 +269,40 @@ func _check_hero_rules() -> void:
 		result = _round(cm, {0: 5})
 		var left: Array = _e(cm)["burn_stacks"]
 		if with:
-			_expect(left.size() == 1 and int(left[0]["amt"]) == _num("afterburn", "burn") and int(left[0]["turns_left"]) == _num("afterburn", "turns"), "Afterburn: the detonation leaves %d burn for %d turns (%s)" % [_num("afterburn", "burn"), _num("afterburn", "turns"), str(left)])
-			_expect_shown(result, "Afterburn", "Afterburn")
+			_expect(left.size() == 1 and int(left[0]["amt"]) == _num("afterburn", "burn") and int(left[0]["turns_left"]) == _num("afterburn", "turns"), "Smoldering: the detonation leaves %d burn for %d turns (%s)" % [_num("afterburn", "burn"), _num("afterburn", "turns"), str(left)])
+			_expect_shown(result, "Smoldering", "Smoldering")
 		else:
 			_expect(left.is_empty(), "no trait: a detonation leaves no burn (%s)" % str(left))
 	cm = _battle([_hero("a", {"dmg": 5, "detonate": true}, {}, "afterburn")], [_enemy("x")])
 	_aim(cm, 0, 0)
 	_round(cm, {0: 5})
-	_expect((_e(cm)["burn_stacks"] as Array).is_empty(), "Afterburn: a detonate with no burn to detonate leaves nothing")
+	_expect((_e(cm)["burn_stacks"] as Array).is_empty(), "Smoldering: a detonate with no burn to detonate leaves nothing")
 
-	# Live Wire: each chain jump deals more.
+	# Charged: each chain jump deals more.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 10, "chain": 1}, {}, "liveWire" if with else "")], [_enemy("x"), _enemy("y")])
 		_aim(cm, 0, 0)
 		result = _round(cm, {0: 5})
-		_expect(_lost(_e(cm, 1)) == 5 + (_num("liveWire", "amount") if with else 0), "Live Wire %s: the chain jump deals %d (%d)" % ["on" if with else "off", 5 + (_num("liveWire", "amount") if with else 0), _lost(_e(cm, 1))])
-		_expect(_lost(_e(cm, 0)) == 10, "Live Wire: the first hit is unchanged (%d)" % _lost(_e(cm, 0)))
+		_expect(_lost(_e(cm, 1)) == 5 + (_num("liveWire", "amount") if with else 0), "Charged %s: the chain jump deals %d (%d)" % ["on" if with else "off", 5 + (_num("liveWire", "amount") if with else 0), _lost(_e(cm, 1))])
+		_expect(_lost(_e(cm, 0)) == 10, "Charged: the first hit is unchanged (%d)" % _lost(_e(cm, 0)))
 		if with:
-			_expect_shown(result, "Live Wire", "Live Wire")
+			_expect_shown(result, "Charged", "Charged")
 
-	# Exposed: area attacks hit marked enemies harder.
+	# Ruthless: area attacks hit marked enemies harder.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 6, "blastAll": true}, {}, "exposed" if with else "")], [_enemy("x"), _enemy("y")])
 		_e(cm, 0)["marked"] = true
 		result = _round(cm, {0: 5})
 		var bonus: int = _num("exposed", "amount") if with else 0
-		_expect(_lost(_e(cm, 0)) == int(ceil((6 + bonus) * 1.5)), "Exposed %s: the marked enemy takes %d (%d)" % ["on" if with else "off", int(ceil((6 + bonus) * 1.5)), _lost(_e(cm, 0))])
-		_expect(_lost(_e(cm, 1)) == 6, "Exposed: an unmarked enemy takes the plain 6 (%d)" % _lost(_e(cm, 1)))
+		_expect(_lost(_e(cm, 0)) == int(ceil((6 + bonus) * 1.5)), "Ruthless %s: the marked enemy takes %d (%d)" % ["on" if with else "off", int(ceil((6 + bonus) * 1.5)), _lost(_e(cm, 0))])
+		_expect(_lost(_e(cm, 1)) == 6, "Ruthless: an unmarked enemy takes the plain 6 (%d)" % _lost(_e(cm, 1)))
 		if with:
-			_expect_shown(result, "Exposed", "Exposed")
+			_expect_shown(result, "Ruthless", "Ruthless")
 	cm = _battle([_hero("a", {"dmg": 6}, {}, "exposed")], [_enemy("x")])
 	_e(cm)["marked"] = true
 	_aim(cm, 0, 0)
 	_round(cm, {0: 5})
-	_expect(_lost(_e(cm)) == 9, "Exposed: a single-target attack gets nothing from it (%d)" % _lost(_e(cm)))
+	_expect(_lost(_e(cm)) == 9, "Ruthless: a single-target attack gets nothing from it (%d)" % _lost(_e(cm)))
 
 	# Bloodlust: the first band arms the next leech.
 	for with in [true, false]:
@@ -310,18 +323,18 @@ func _check_hero_rules() -> void:
 		_round(cm, {0: 15})
 		_expect(int(_h(cm)["current_hp"]) - before == 10, "Bloodlust: the leech after that is the plain 10 (%d)" % (int(_h(cm)["current_hp"]) - before))
 
-	# Anchor: less damage while taunting.
+	# Anchored: less damage while taunting.
 	for case in [["anchor", true], ["anchor", false], ["", true]]:
 		cm = _battle([_hero("a", {"taunt": true} if case[1] else {"shield": 0}, {}, str(case[0]))], [_enemy("x", {"dmg": 10})])
 		_aim(cm, 0, 0)
 		_e(cm)["selected_target_id"] = "a"
 		result = _round(cm, {0: 5}, {0: 5})
 		var cut: int = _num("anchor", "amount") if (case[0] == "anchor" and case[1]) else 0
-		_expect(_lost(_h(cm)) == 10 - cut, "Anchor (trait %s, taunting %s): takes %d (%d)" % [str(case[0] != ""), str(case[1]), 10 - cut, _lost(_h(cm))])
+		_expect(_lost(_h(cm)) == 10 - cut, "Anchored (trait %s, taunting %s): takes %d (%d)" % [str(case[0] != ""), str(case[1]), 10 - cut, _lost(_h(cm))])
 		if cut > 0:
-			_expect_shown(result, "Anchor", "Anchor")
+			_expect_shown(result, "Anchored", "Anchored")
 
-	# Retaliate: hit while taunting, the attacker takes spike damage.
+	# Vengeful: hit while taunting, the attacker takes spike damage.
 	for case in [["retaliate", {"taunt": true}, 0], ["retaliate", {"shield": 0}, 0], ["", {"taunt": true}, 0], ["retaliate", {"taunt": true, "spike": 3}, 3]]:
 		cm = _battle([_hero("a", case[1], {}, str(case[0]))], [_enemy("x", {"dmg": 10})])
 		_aim(cm, 0, 0)
@@ -329,46 +342,46 @@ func _check_hero_rules() -> void:
 		result = _round(cm, {0: 5}, {0: 5})
 		var taunting: bool = (case[1] as Dictionary).has("taunt")
 		var back: int = int(case[2]) + (_num("retaliate", "amount") if (case[0] == "retaliate" and taunting) else 0)
-		_expect(_lost(_e(cm)) == back, "Retaliate (trait %s, taunting %s, spike %d): the attacker takes %d (%d)" % [str(case[0] != ""), str(taunting), int(case[2]), back, _lost(_e(cm))])
+		_expect(_lost(_e(cm)) == back, "Vengeful (trait %s, taunting %s, spike %d): the attacker takes %d (%d)" % [str(case[0] != ""), str(taunting), int(case[2]), back, _lost(_e(cm))])
 		if case[0] == "retaliate" and taunting:
-			_expect_shown(result, "Retaliate", "Retaliate")
+			_expect_shown(result, "Vengeful", "Vengeful")
 
-	# Triage: more healing on the lowest-HP ally.
+	# Watchful: more healing on the lowest-HP ally.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"heal": 6, "healTgt": true}, {}, "triage" if with else ""), _hero("b"), _hero("c")], [_enemy("x")])
 		_h(cm, 1)["current_hp"] = 30
 		_h(cm, 2)["current_hp"] = 60
 		_h(cm, 0)["selected_target_id"] = "b"
 		result = _round(cm, {0: 5})
-		_expect(int(_h(cm, 1)["current_hp"]) == 36 + (_num("triage", "amount") if with else 0), "Triage %s: the lowest-HP ally is healed %d (%d)" % ["on" if with else "off", 6 + (_num("triage", "amount") if with else 0), int(_h(cm, 1)["current_hp"]) - 30])
+		_expect(int(_h(cm, 1)["current_hp"]) == 36 + (_num("triage", "amount") if with else 0), "Watchful %s: the lowest-HP ally is healed %d (%d)" % ["on" if with else "off", 6 + (_num("triage", "amount") if with else 0), int(_h(cm, 1)["current_hp"]) - 30])
 		if with:
-			_expect_shown(result, "Triage", "Triage")
+			_expect_shown(result, "Watchful", "Watchful")
 		_h(cm, 0)["selected_target_id"] = "c"
 		_round(cm, {0: 5})
-		_expect(int(_h(cm, 2)["current_hp"]) == 66, "Triage: an ally that is not the lowest gets the plain 6 (%d)" % (int(_h(cm, 2)["current_hp"]) - 60))
+		_expect(int(_h(cm, 2)["current_hp"]) == 66, "Watchful: an ally that is not the lowest gets the plain 6 (%d)" % (int(_h(cm, 2)["current_hp"]) - 60))
 	cm = _battle([_hero("a", {"heal": 6, "healAll": true}, {}, "triage"), _hero("b"), _hero("c")], [_enemy("x")])
 	_h(cm, 0)["current_hp"] = 50
 	_h(cm, 1)["current_hp"] = 30
 	_h(cm, 2)["current_hp"] = 60
 	_round(cm, {0: 5})
-	_expect(int(_h(cm, 1)["current_hp"]) == 36 + _num("triage", "amount") and int(_h(cm, 0)["current_hp"]) == 56 and int(_h(cm, 2)["current_hp"]) == 66, "Triage: a heal on everyone adds its bonus on the lowest only")
+	_expect(int(_h(cm, 1)["current_hp"]) == 36 + _num("triage", "amount") and int(_h(cm, 0)["current_hp"]) == 56 and int(_h(cm, 2)["current_hp"]) == 66, "Watchful: a heal on everyone adds its bonus on the lowest only")
 
-	# Overflow: healing past full HP becomes shield.
+	# Overflowing: healing past full HP becomes shield.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"heal": 10, "healTgt": true}, {}, "overflow" if with else ""), _hero("b")], [_enemy("x")])
 		_h(cm, 1)["current_hp"] = 96
 		_h(cm, 0)["selected_target_id"] = "b"
 		result = _round(cm, {0: 5})
-		_expect(int(_h(cm, 1)["current_hp"]) == 100, "Overflow: the heal still fills the HP")
+		_expect(int(_h(cm, 1)["current_hp"]) == 100, "Overflowing: the heal still fills the HP")
 		# The shield is an ordinary one-round shield, gone at the round-end tick:
 		# read what it was from the round's events.
 		var gained: int = 0
 		for event in result["events"]:
 			if str(event["type"]) == "shield" and str(event["target_id"]) == "b":
 				gained += int(event["amount"])
-		_expect(gained == (6 if with else 0), "Overflow %s: 6 healing past full becomes %d shield (%d)" % ["on" if with else "off", 6 if with else 0, gained])
+		_expect(gained == (6 if with else 0), "Overflowing %s: 6 healing past full becomes %d shield (%d)" % ["on" if with else "off", 6 if with else 0, gained])
 		if with:
-			_expect_shown(result, "Overflow", "Overflow")
+			_expect_shown(result, "Overflowing", "Overflowing")
 
 	# Redline: a flat bonus while the player holds enough Protocol.
 	for case in [["redline", _num("redline", "protocol")], ["redline", _num("redline", "protocol") - 1], ["", 10]]:
@@ -381,22 +394,22 @@ func _check_hero_rules() -> void:
 		if redline > 0:
 			_expect_shown(result, "Redline", "Redline")
 
-	# Ghost Signal: a jam applied from cloak holds one more roll.
+	# Spectral: a jam applied from cloak holds one more roll.
 	for case in [["ghostSignal", true], ["ghostSignal", false], ["", true]]:
 		cm = _battle([_hero("a", {"dmg": 5, "jam": true}, {}, str(case[0]))], [_enemy("x")])
 		_h(cm)["cloaked"] = bool(case[1])
 		_aim(cm, 0, 0)
 		result = _round(cm, {0: 5})
 		var extra: bool = case[0] == "ghostSignal" and bool(case[1])
-		_expect(int(_e(cm)["jam_cap"]) > 0, "Ghost Signal: the jam is on after the round it was applied")
+		_expect(int(_e(cm)["jam_cap"]) > 0, "Spectral: the jam is on after the round it was applied")
 		_round(cm)
-		_expect((int(_e(cm)["jam_cap"]) > 0) == extra, "Ghost Signal (trait %s, from cloak %s): the jam %s a second roll" % [str(case[0] != ""), str(case[1]), "holds" if extra else "does not hold"])
+		_expect((int(_e(cm)["jam_cap"]) > 0) == extra, "Spectral (trait %s, from cloak %s): the jam %s a second roll" % [str(case[0] != ""), str(case[1]), "holds" if extra else "does not hold"])
 		_round(cm)
-		_expect(int(_e(cm)["jam_cap"]) == 0, "Ghost Signal: the jam is gone after its extra roll")
+		_expect(int(_e(cm)["jam_cap"]) == 0, "Spectral: the jam is gone after its extra roll")
 		if extra:
-			_expect_shown(result, "Ghost Signal", "Ghost Signal")
+			_expect_shown(result, "Spectral", "Spectral")
 
-	# Silent Kill: an ambush that kills keeps the cloak.
+	# Silent: an ambush that kills keeps the cloak.
 	for case in [["silentKill", 10], ["silentKill", 100], ["", 10]]:
 		cm = _battle([_hero("a", {"dmg": 20}, {}, str(case[0]))], [_enemy("x"), _enemy("y")])
 		_e(cm, 0)["current_hp"] = int(case[1])
@@ -404,52 +417,52 @@ func _check_hero_rules() -> void:
 		_aim(cm, 0, 0)
 		result = _round(cm, {0: 5})
 		var kept: bool = case[0] == "silentKill" and int(case[1]) <= 30
-		_expect(bool(_h(cm)["cloaked"]) == kept, "Silent Kill (trait %s, kill %s): the cloak is %s" % [str(case[0] != ""), str(bool(_e(cm, 0)["dead"])), "kept" if kept else "broken"])
+		_expect(bool(_h(cm)["cloaked"]) == kept, "Silent (trait %s, kill %s): the cloak is %s" % [str(case[0] != ""), str(bool(_e(cm, 0)["dead"])), "kept" if kept else "broken"])
 		var decloaks: int = 0
 		for event in result["events"]:
 			if str(event["type"]) == "decloak":
 				decloaks += 1
-		_expect(decloaks == (0 if kept else 1), "Silent Kill: the cloak chip %s (%d decloak beats)" % ["never leaves" if kept else "leaves", decloaks])
+		_expect(decloaks == (0 if kept else 1), "Silent: the cloak chip %s (%d decloak beats)" % ["never leaves" if kept else "leaves", decloaks])
 		if kept:
-			_expect_shown(result, "Silent Kill", "Silent Kill")
+			_expect_shown(result, "Silent", "Silent")
 
-	# Clean Kill: a kill marks the lowest-HP enemy left.
+	# Relentless: a kill marks the lowest-HP enemy left.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 50}, {}, "cleanKill" if with else "")], [_enemy("x"), _enemy("y"), _enemy("z")])
 		_e(cm, 0)["current_hp"] = 10
 		_e(cm, 2)["current_hp"] = 50
 		_aim(cm, 0, 0)
 		result = _round(cm, {0: 5})
-		_expect(bool(_e(cm, 2).get("marked", false)) == with and not bool(_e(cm, 1).get("marked", false)), "Clean Kill %s: the lowest-HP enemy left is %s" % ["on" if with else "off", "marked" if with else "not marked"])
+		_expect(bool(_e(cm, 2).get("marked", false)) == with and not bool(_e(cm, 1).get("marked", false)), "Relentless %s: the lowest-HP enemy left is %s" % ["on" if with else "off", "marked" if with else "not marked"])
 		if with:
-			_expect_shown(result, "Clean Kill", "Clean Kill")
+			_expect_shown(result, "Relentless", "Relentless")
 
-	# Zero Day: an enemy it rewrote takes more until the rewrite ends.
+	# Zero-Day: an enemy it rewrote takes more until the rewrite ends.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 5, "rewrite": true}, {"shield": 0}, "zeroDay" if with else ""), _hero("b", {"dmg": 10})], [_enemy("x")])
 		_aim(cm, 0, 0)
 		_aim(cm, 1, 0)
 		result = _round(cm, {0: 5, 1: 5})
 		var zero: int = _num("zeroDay", "amount") if with else 0
-		_expect(_lost(_e(cm)) == 15 + zero, "Zero Day %s: the next hero's hit on the rewritten enemy deals %d (total %d)" % ["on" if with else "off", 10 + zero, _lost(_e(cm))])
+		_expect(_lost(_e(cm)) == 15 + zero, "Zero-Day %s: the next hero's hit on the rewritten enemy deals %d (total %d)" % ["on" if with else "off", 10 + zero, _lost(_e(cm))])
 		if with:
-			_expect_shown(result, "Zero Day", "Zero Day")
+			_expect_shown(result, "Zero-Day", "Zero-Day")
 		# The round the die is rewritten: still on.
 		_aim(cm, 1, 0)
 		_round(cm, {0: 15, 1: 5})
-		_expect(_lost(_e(cm)) == 25 + zero * 2, "Zero Day %s: it holds through the round the die is rewritten (total %d)" % ["on" if with else "off", _lost(_e(cm))])
-		_expect(not bool(_e(cm)["rewrite_pending"]) and int(_e(cm).get("zero_day", 0)) == 0, "Zero Day: it ends with the rewrite")
+		_expect(_lost(_e(cm)) == 25 + zero * 2, "Zero-Day %s: it holds through the round the die is rewritten (total %d)" % ["on" if with else "off", _lost(_e(cm))])
+		_expect(not bool(_e(cm)["rewrite_pending"]) and int(_e(cm).get("zero_day", 0)) == 0, "Zero-Day: it ends with the rewrite")
 		_aim(cm, 1, 0)
 		_round(cm, {0: 15, 1: 5})
-		_expect(_lost(_e(cm)) == 35 + zero * 2, "Zero Day: the round after, the hit is the plain 10 (total %d)" % _lost(_e(cm)))
+		_expect(_lost(_e(cm)) == 35 + zero * 2, "Zero-Day: the round after, the hit is the plain 10 (total %d)" % _lost(_e(cm)))
 
 
-# ── B. The elite traits and Pack Rage ─────────────────────────────────────────
+# ── B. The elite traits and Feral ─────────────────────────────────────────
 func _check_enemy_rules() -> void:
 	var cm: Object
 	var result: Dictionary
 
-	# Backup: gains shield when an ally is hit.
+	# Vigilant: gains shield when an ally is hit.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 5}, {"dmg": 5, "blastAll": true})], [_enemy("p", {}, {}, "backup" if with else ""), _enemy("q")])
 		_aim(cm, 0, 1)
@@ -458,27 +471,27 @@ func _check_enemy_rules() -> void:
 		for event in result["events"]:
 			if str(event["type"]) == "shield" and str(event["target_id"]) == str(_e(cm, 0)["id"]):
 				gained += int(event["amount"])
-		_expect(gained == (_num("backup", "amount") if with else 0), "Backup %s: an ally hit gives it %d shield (%d)" % ["on" if with else "off", _num("backup", "amount") if with else 0, gained])
+		_expect(gained == (_num("backup", "amount") if with else 0), "Vigilant %s: an ally hit gives it %d shield (%d)" % ["on" if with else "off", _num("backup", "amount") if with else 0, gained])
 		if with:
-			_expect_shown(result, "Backup", "Backup")
+			_expect_shown(result, "Vigilant", "Vigilant")
 			# An area attack hits it and one ally: one gain, for the ally.
 			result = _round(cm, {0: 15})
 			gained = 0
 			for event in result["events"]:
 				if str(event["type"]) == "shield" and str(event["target_id"]) == str(_e(cm, 0)["id"]):
 					gained += int(event["amount"])
-			_expect(gained == _num("backup", "amount"), "Backup: being hit itself does not count, one ally hit is one gain (%d)" % gained)
+			_expect(gained == _num("backup", "amount"), "Vigilant: being hit itself does not count, one ally hit is one gain (%d)" % gained)
 
-	# Discharge: dying, it hits every hero.
+	# Volatile: dying, it hits every hero.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 50}), _hero("b"), _hero("c")], [_enemy("v", {}, {}, "discharge" if with else ""), _enemy("w")])
 		_e(cm, 0)["current_hp"] = 10
 		_aim(cm, 0, 0)
 		result = _round(cm, {0: 5})
 		for index in 3:
-			_expect(_lost(_h(cm, index)) == (_num("discharge", "amount") if with else 0), "Discharge %s: hero %d takes %d (%d)" % ["on" if with else "off", index, _num("discharge", "amount") if with else 0, _lost(_h(cm, index))])
+			_expect(_lost(_h(cm, index)) == (_num("discharge", "amount") if with else 0), "Volatile %s: hero %d takes %d (%d)" % ["on" if with else "off", index, _num("discharge", "amount") if with else 0, _lost(_h(cm, index))])
 		if with:
-			_expect_shown(result, "Discharge", "Discharge")
+			_expect_shown(result, "Volatile", "Volatile")
 
 	# Barbed: a hero that hits it takes damage.
 	for with in [true, false]:
@@ -501,68 +514,68 @@ func _check_enemy_rules() -> void:
 		_round(cm)
 		_expect(hp - int(_h(cm)["current_hp"]) == (3 if with else 0), "Corrosive %s: a 3 burn tick on a shielded hero costs %d HP (%d)" % ["on" if with else "off", 3 if with else 0, hp - int(_h(cm)["current_hp"])])
 
-	# Blink: the first band cloaks it.
+	# Flickering: the first band cloaks it.
 	for case in [["blink", 5], ["blink", 15], ["", 5]]:
 		cm = _battle([_hero("a")], [_enemy("b", {"shield": 1}, {"shield": 2}, str(case[0]))])
 		result = _round(cm, {}, {0: int(case[1])})
 		var blinked: bool = case[0] == "blink" and int(case[1]) <= 10
-		_expect(bool(_e(cm)["cloaked"]) == blinked, "Blink (trait %s, roll %d): it %s" % [str(case[0] != ""), int(case[1]), "cloaks" if blinked else "does not cloak"])
+		_expect(bool(_e(cm)["cloaked"]) == blinked, "Flickering (trait %s, roll %d): it %s" % [str(case[0] != ""), int(case[1]), "cloaks" if blinked else "does not cloak"])
 		if blinked:
-			_expect_shown(result, "Blink", "Blink")
+			_expect_shown(result, "Flickering", "Flickering")
 
-	# Decoy: the first hit of the battle is negated.
+	# Illusory: the first hit of the battle is negated.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 10})], [_enemy("f", {}, {}, "decoy" if with else "")])
 		_aim(cm, 0, 0)
 		result = _round(cm, {0: 5})
-		_expect(_lost(_e(cm)) == (0 if with else 10), "Decoy %s: the first hit deals %d (%d)" % ["on" if with else "off", 0 if with else 10, _lost(_e(cm))])
+		_expect(_lost(_e(cm)) == (0 if with else 10), "Illusory %s: the first hit deals %d (%d)" % ["on" if with else "off", 0 if with else 10, _lost(_e(cm))])
 		if with:
-			_expect_shown(result, "Decoy", "Decoy")
+			_expect_shown(result, "Illusory", "Illusory")
 		_aim(cm, 0, 0)
 		_round(cm, {0: 5})
-		_expect(_lost(_e(cm)) == (10 if with else 20), "Decoy: the second hit lands (%d)" % _lost(_e(cm)))
+		_expect(_lost(_e(cm)) == (10 if with else 20), "Illusory: the second hit lands (%d)" % _lost(_e(cm)))
 	cm = _battle([_hero("a")], [_enemy("f", {}, {}, "decoy")])
 	cm._apply_burn(_e(cm), 4, 2)
 	_round(cm)
 	_round(cm)
-	_expect(_lost(_e(cm)) == 4 and not bool(_e(cm).get("decoy_spent", false)), "Decoy: a burn tick is not a hit; it lands and the decoy is still up")
+	_expect(_lost(_e(cm)) == 4 and not bool(_e(cm).get("decoy_spent", false)), "Illusory: a burn tick is not a hit; it lands and the decoy is still up")
 
-	# Kindle: heals when any burn ticks.
+	# Fervent: heals when any burn ticks.
 	for with in [true, false]:
 		cm = _battle([_hero("a")], [_enemy("k", {}, {}, "kindle" if with else "")])
 		_e(cm)["current_hp"] = 50
 		cm._apply_burn(_h(cm), 2, 3)
 		_round(cm)
-		_expect(int(_e(cm)["current_hp"]) == 50, "Kindle: nothing ticks the round a burn is applied")
+		_expect(int(_e(cm)["current_hp"]) == 50, "Fervent: nothing ticks the round a burn is applied")
 		result = _round(cm)
-		_expect(int(_e(cm)["current_hp"]) == 50 + (_num("kindle", "amount") if with else 0), "Kindle %s: a burn tick on a hero heals it %d (%d)" % ["on" if with else "off", _num("kindle", "amount") if with else 0, int(_e(cm)["current_hp"]) - 50])
+		_expect(int(_e(cm)["current_hp"]) == 50 + (_num("kindle", "amount") if with else 0), "Fervent %s: a burn tick on a hero heals it %d (%d)" % ["on" if with else "off", _num("kindle", "amount") if with else 0, int(_e(cm)["current_hp"]) - 50])
 		if with:
-			_expect_shown(result, "Kindle", "Kindle")
+			_expect_shown(result, "Fervent", "Fervent")
 
-	# Compel: its roll penalties last longer.
+	# Commanding: its roll penalties last longer.
 	for with in [true, false]:
 		cm = _battle([_hero("a")], [_enemy("o", {"rfm": 1, "rfmT": 2}, {}, "compel" if with else "")])
 		_e(cm)["selected_target_id"] = "a"
 		result = _round(cm, {}, {0: 5})
 		var stacks: Array = _h(cm)["rfe_stacks"]
-		_expect(stacks.size() == 1 and int(stacks[0]["turns_left"]) == 2 + (_num("compel", "rounds") if with else 0), "Compel %s: a 2-turn roll penalty lasts %d (%s)" % ["on" if with else "off", 2 + (_num("compel", "rounds") if with else 0), str(stacks)])
+		_expect(stacks.size() == 1 and int(stacks[0]["turns_left"]) == 2 + (_num("compel", "rounds") if with else 0), "Commanding %s: a 2-turn roll penalty lasts %d (%s)" % ["on" if with else "off", 2 + (_num("compel", "rounds") if with else 0), str(stacks)])
 		if with:
-			_expect_shown(result, "Compel", "Compel")
+			_expect_shown(result, "Commanding", "Commanding")
 
-	# Pack Rage: an ally's death gives it rampage.
+	# Feral: an ally's death gives it rampage.
 	for with in [true, false]:
 		cm = _battle([_hero("a", {"dmg": 50})], [_enemy("m", {"dmg": 6}, {}, "packRage" if with else ""), _enemy("n")])
 		_e(cm, 1)["current_hp"] = 10
 		_aim(cm, 0, 1)
 		_e(cm, 0)["selected_target_id"] = "a"
 		result = _round(cm, {0: 5})
-		_expect(int(_e(cm, 0)["rampage_charges"]) == (1 if with else 0), "Pack Rage %s: an ally's death gives it rampage (%d)" % ["on" if with else "off", int(_e(cm, 0)["rampage_charges"])])
+		_expect(int(_e(cm, 0)["rampage_charges"]) == (1 if with else 0), "Feral %s: an ally's death gives it rampage (%d)" % ["on" if with else "off", int(_e(cm, 0)["rampage_charges"])])
 		if with:
-			_expect_shown(result, "Pack Rage", "Pack Rage")
+			_expect_shown(result, "Feral", "Feral")
 			# Its next turn deals double, and a second death while rampaging adds nothing.
 			var hp: int = int(_h(cm)["current_hp"])
 			_round(cm, {}, {0: 5})
-			_expect(hp - int(_h(cm)["current_hp"]) == 12 and int(_e(cm, 0)["rampage_charges"]) == 0, "Pack Rage: the rampage doubles its next turn (6 -> %d) and ends" % (hp - int(_h(cm)["current_hp"])))
+			_expect(hp - int(_h(cm)["current_hp"]) == 12 and int(_e(cm, 0)["rampage_charges"]) == 0, "Feral: the rampage doubles its next turn (6 -> %d) and ends" % (hp - int(_h(cm)["current_hp"])))
 
 
 # ── C. The round-start traits and the dice ────────────────────────────────────
@@ -588,25 +601,25 @@ func _values(engine: Object, cm: Object, bs: Object) -> Array:
 
 
 func _check_round_start() -> void:
-	# Glacial Armor: shield for each frozen enemy.
+	# Glacial: shield for each frozen enemy.
 	var cm: Object = _battle([_hero("a", {}, {}, "glacialArmor")], [_enemy("x"), _enemy("y"), _enemy("z")])
 	_e(cm, 0)["die_freeze_turns"] = 1
 	_e(cm, 2)["die_freeze_turns"] = 2
 	var engine: Object = _engine_for(cm)
 	var fired: Array = engine.apply_round_start_traits(_dice_state(cm, [5, 5, 5]))
-	_expect(int(_h(cm)["shield"]) == 2 * _num("glacialArmor", "amount"), "Glacial Armor: two frozen enemies give %d shield (%d)" % [2 * _num("glacialArmor", "amount"), int(_h(cm)["shield"])])
-	_expect(fired.size() == 1 and str(fired[0]["name"]) == "Glacial Armor" and str(fired[0]["text"]).begins_with("Glacial Armor: "), "Glacial Armor: it reports itself for the chip and the log (%s)" % str(fired))
+	_expect(int(_h(cm)["shield"]) == 2 * _num("glacialArmor", "amount"), "Glacial: two frozen enemies give %d shield (%d)" % [2 * _num("glacialArmor", "amount"), int(_h(cm)["shield"])])
+	_expect(fired.size() == 1 and str(fired[0]["name"]) == "Glacial" and str(fired[0]["text"]).begins_with("Glacial: "), "Glacial: it reports itself for the chip and the log (%s)" % str(fired))
 	cm = _battle([_hero("a", {}, {}, "glacialArmor")], [_enemy("x")])
 	fired = _engine_for(cm).apply_round_start_traits(_dice_state(cm, [5]))
-	_expect(int(_h(cm)["shield"]) == 0 and fired.is_empty(), "Glacial Armor: no frozen enemy, no shield and no chip")
+	_expect(int(_h(cm)["shield"]) == 0 and fired.is_empty(), "Glacial: no frozen enemy, no shield and no chip")
 
-	# Dug In: shield while below half HP.
+	# Entrenched: shield while below half HP.
 	for hp in [40, 50, 60]:
 		cm = _battle([_hero("a", {}, {}, "dugIn")], [_enemy("x")])
 		_h(cm)["current_hp"] = hp
 		fired = _engine_for(cm).apply_round_start_traits(_dice_state(cm, [5]))
-		_expect(int(_h(cm)["shield"]) == (_num("dugIn", "amount") if hp < 50 else 0), "Dug In at %d of 100 HP: %d shield (%d)" % [hp, _num("dugIn", "amount") if hp < 50 else 0, int(_h(cm)["shield"])])
-		_expect(fired.size() == (1 if hp < 50 else 0), "Dug In at %d HP: %s" % [hp, "reported" if hp < 50 else "silent"])
+		_expect(int(_h(cm)["shield"]) == (_num("dugIn", "amount") if hp < 50 else 0), "Entrenched at %d of 100 HP: %d shield (%d)" % [hp, _num("dugIn", "amount") if hp < 50 else 0, int(_h(cm)["shield"])])
+		_expect(fired.size() == (1 if hp < 50 else 0), "Entrenched at %d HP: %s" % [hp, "reported" if hp < 50 else "silent"])
 
 	# Static: the highest enemy die drops.
 	cm = _battle([_hero("a", {}, {}, "static")], [_enemy("x"), _enemy("y"), _enemy("z")])
@@ -645,15 +658,15 @@ func _check_round_start() -> void:
 	fired = engine.apply_round_start_traits(bs)
 	_expect(_values(engine, cm, bs) == [1] and fired.is_empty() and int(bs.enemy_roll_shifts.get(str(_e(cm)["id"]), 0)) == 0, "Static: a die on 1 stays on 1, silently")
 
-	# Litany: the lowest enemy die rises.
+	# Zealous: the lowest enemy die rises.
 	cm = _battle([_hero("a")], [_enemy("x", {}, {}, "litany"), _enemy("y"), _enemy("z")])
 	engine = _engine_for(cm)
 	bs = _dice_state(cm, [12, 7, 9])
 	fired = engine.apply_round_start_traits(bs)
-	_expect(_values(engine, cm, bs) == [12, 7 + _num("litany", "amount"), 9], "Litany: the lowest die rises by %d (%s)" % [_num("litany", "amount"), str(_values(engine, cm, bs))])
-	_expect(fired.size() == 1 and str(fired[0]["name"]) == "Litany", "Litany: it reports itself (%s)" % str(fired))
+	_expect(_values(engine, cm, bs) == [12, 7 + _num("litany", "amount"), 9], "Zealous: the lowest die rises by %d (%s)" % [_num("litany", "amount"), str(_values(engine, cm, bs))])
+	_expect(fired.size() == 1 and str(fired[0]["name"]) == "Zealous", "Zealous: it reports itself (%s)" % str(fired))
 
-	# Litany and a frozen lowest die: the next lowest rises.
+	# Zealous and a frozen lowest die: the next lowest rises.
 	cm = _battle([_hero("a")], [_enemy("x", {}, {}, "litany"), _enemy("y"), _enemy("z")])
 	engine = _engine_for(cm)
 	_e(cm, 1)["die_freeze_turns"] = 1
@@ -661,7 +674,7 @@ func _check_round_start() -> void:
 	_e(cm, 1)["die_freeze_repeat_this_round"] = true
 	bs = _dice_state(cm, [12, 3, 9])
 	engine.apply_round_start_traits(bs)
-	_expect(_values(engine, cm, bs) == [12, 3, 11], "Litany: a frozen die is passed over and the next lowest rises (%s)" % str(_values(engine, cm, bs)))
+	_expect(_values(engine, cm, bs) == [12, 3, 11], "Zealous: a frozen die is passed over and the next lowest rises (%s)" % str(_values(engine, cm, bs)))
 
 	# A jammed die is never lifted past its cap.
 	cm = _battle([_hero("a")], [_enemy("x", {}, {}, "litany"), _enemy("y")])
@@ -669,15 +682,15 @@ func _check_round_start() -> void:
 	_e(cm, 1)["jam_cap"] = 10
 	bs = _dice_state(cm, [15, 9])
 	engine.apply_round_start_traits(bs)
-	_expect(_values(engine, cm, bs) == [15, 10], "Litany: a jammed die rises to its cap and no further (%s)" % str(_values(engine, cm, bs)))
+	_expect(_values(engine, cm, bs) == [15, 10], "Zealous: a jammed die rises to its cap and no further (%s)" % str(_values(engine, cm, bs)))
 
-	# Both in one round: Static first, then Litany on what is lowest after it.
+	# Both in one round: Static first, then Zealous on what is lowest after it.
 	cm = _battle([_hero("a", {}, {}, "static")], [_enemy("x", {}, {}, "litany"), _enemy("y")])
 	engine = _engine_for(cm)
 	bs = _dice_state(cm, [8, 7])
 	fired = engine.apply_round_start_traits(bs)
-	_expect(_values(engine, cm, bs) == [9, 7], "Static then Litany on 8 and 7: 8 drops to 7, then the first 7 rises to 9 (%s)" % str(_values(engine, cm, bs)))
-	_expect(fired.size() == 2 and str(fired[0]["name"]) == "Static" and str(fired[1]["name"]) == "Litany", "both: Static reports first, then Litany")
+	_expect(_values(engine, cm, bs) == [9, 7], "Static then Zealous on 8 and 7: 8 drops to 7, then the first 7 rises to 9 (%s)" % str(_values(engine, cm, bs)))
+	_expect(fired.size() == 2 and str(fired[0]["name"]) == "Static" and str(fired[1]["name"]) == "Zealous", "both: Static reports first, then Zealous")
 
 	# The round resolves on the shifted value, and the shift is spent with the round.
 	cm = _battle([_hero("a", {}, {}, "static")], [_enemy("x", {"dmg": 3}, {"dmg": 30})])
@@ -704,13 +717,27 @@ func _check_shown() -> void:
 	_expect(inspect.trait_entry(drone).is_empty(), "inspect: a unit without a trait has no entry")
 	var resolved: Dictionary = inspect.resolve_unit(volt, {})
 	var statuses: Array = resolved.get("statuses", [])
-	_expect(not statuses.is_empty() and str((statuses[0] as Dictionary).get("text", "")).begins_with("DISCHARGE: "), "inspect: Volt Enforcer's inspect leads with DISCHARGE (%s)" % str(statuses))
+	_expect(not statuses.is_empty() and str((statuses[0] as Dictionary).get("text", "")).begins_with("VOLATILE: "), "inspect: Volt Enforcer's inspect leads with VOLATILE (%s)" % str(statuses))
 	_expect(str((statuses[0] as Dictionary).get("text", "")).contains("4 damage to each hero"), "inspect: and says what it does")
 	# The battle card's marker; Volt Enforcer's is a warning that says the cost.
-	_expect(_traits.marker_text(_traits.of_unit(volt)) == "DEATH: 4 TO ALL" and _traits.is_warning(_traits.of_unit(volt)), "card: Volt Enforcer's marker is its warning (%s)" % _traits.marker_text(_traits.of_unit(volt)))
+	_expect(_traits.marker_text(_traits.of_unit(volt)) == "VOLATILE" and _traits.is_warning(_traits.of_unit(volt)), "card: Volt Enforcer's marker is VOLATILE, flagged as a warning (%s)" % _traits.marker_text(_traits.of_unit(volt)))
 	var stalker: Resource = dm().get_enemy_by_display_name("Spine Stalker")
 	_expect(_traits.marker_text(_traits.of_unit(stalker)) == "BARBED" and not _traits.is_warning(_traits.of_unit(stalker)), "card: any other trait's marker is its name")
 	_expect(_traits.marker_text(_traits.of_unit(drone)) == "", "card: a unit without a trait has no marker")
+	# The warning marker is a different colour from every other trait's amber,
+	# and from the enemy name under it. Never green (INVARIANTS #7).
+	var colours: Array = []
+	for unit in [volt, stalker]:
+		var card: Control = load("res://scripts/ui/compact_unit_card.gd").new()
+		root.add_child(card)
+		card.configure({"side": "enemy", "name": unit.battle_name(), "trait": _traits.marker_text(_traits.of_unit(unit)), "trait_warning": _traits.is_warning(_traits.of_unit(unit))})
+		colours.append([(card.find_child("TraitMarker", true, false) as Label).get_theme_color("font_color"), (card._name_label as Label).get_theme_color("font_color")])
+		card.free()
+	var warn_colour: Color = colours[0][0]
+	_expect((colours[1][0] as Color).is_equal_approx(PixelUI.DT_AMBER), "card: a trait marker is amber (%s)" % str(colours[1][0]))
+	_expect(_colour_gap(warn_colour, PixelUI.DT_AMBER) >= 0.5, "card: VOLATILE is drawn in a colour apart from the amber of the other traits (%s vs %s)" % [warn_colour.to_html(false), PixelUI.DT_AMBER.to_html(false)])
+	_expect(_colour_gap(warn_colour, colours[0][1]) >= 0.5, "card: VOLATILE is drawn in a colour apart from the name under it (%s vs %s)" % [warn_colour.to_html(false), (colours[0][1] as Color).to_html(false)])
+	_expect(warn_colour.r > warn_colour.g * 2.0, "card: the warning colour is a red, never a green (%s)" % warn_colour.to_html(false))
 	# Help: an evolution's breakdown is built from its group, trait included.
 	var help: Node = load("res://scripts/ui/help_menu.gd").new()
 	var pyro: Dictionary = {}
@@ -719,13 +746,32 @@ func _check_shown() -> void:
 			pyro = group
 	var help_payload: Dictionary = help._evolution_breakdown_payload("PYRO", int(pyro.get("hp", 0)), pyro.get("abilities", []), pyro.get("trait", {}))
 	var help_statuses: Array = help_payload.get("statuses", [])
-	_expect(not help_statuses.is_empty() and str((help_statuses[0] as Dictionary).get("text", "")).begins_with("AFTERBURN: "), "help: Pyro's breakdown leads with AFTERBURN (%s)" % str(help_statuses))
-	_expect(str((help._enemy_breakdown_payload(volt).get("statuses", [{}]) as Array)[0].get("text", "")).begins_with("DISCHARGE: "), "help: Volt Enforcer's breakdown leads with DISCHARGE")
+	_expect(not help_statuses.is_empty() and str((help_statuses[0] as Dictionary).get("text", "")).begins_with("SMOLDERING: "), "help: Pyro's breakdown leads with SMOLDERING (%s)" % str(help_statuses))
+	_expect(str((help._enemy_breakdown_payload(volt).get("statuses", [{}]) as Array)[0].get("text", "")).begins_with("VOLATILE: "), "help: Volt Enforcer's breakdown leads with VOLATILE")
 	help.free()
+
+
+func _colour_gap(a: Color, b: Color) -> float:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
 
 
 # ── E. Copy ───────────────────────────────────────────────────────────────────
 func _check_copy() -> void:
+	# A name is one title word, read with the callsign: BARBED STALKER (G-63).
+	var title: RegEx = RegEx.create_from_string("^[A-Z][A-Za-z-]*$")
+	var names: Array = []
+	for trait_id in (_traits.data()["traits"] as Dictionary):
+		var trait_name: String = _traits.name_of(trait_id)
+		names.append(trait_name)
+		_expect(title.search(trait_name) != null, "copy: the trait name '%s' is one title word" % trait_name)
+		_expect(not RETIRED_NAMES.has(trait_name), "copy: the retired name '%s' is not in the data" % trait_name)
+	# No log line, chip or marker types a trait's name: it is read from the data.
+	for path in NAME_SOURCES:
+		var source: String = FileAccess.get_file_as_string(path)
+		_expect(source != "", "copy: %s is readable" % path)
+		for typed in names + RETIRED_NAMES:
+			for form in ['"%s: ' % typed, '"%s"' % str(typed).to_upper(), '"%s: ' % str(typed).to_upper()]:
+				_expect(not source.contains(form), "copy: %s does not type the trait name %s" % [path.get_file(), form])
 	var units: Array = dm().enemies.values()
 	for hero in dm().units.values():
 		for path in hero.evolution_paths:
@@ -756,7 +802,7 @@ func _check_copy() -> void:
 	_expect(str((ravager.get("trait", {}) as Dictionary).get("text", "")).contains("After rolling %d-%d," % [int(first.get("min", 0)), int(first.get("max", 0))]), "copy: Bloodlust prints Ravager's first roll window (%s)" % str((ravager.get("trait", {}) as Dictionary).get("text", "")))
 	var blade: Resource = dm().get_enemy_by_display_name("Phaseblade")
 	var blade_first: Dictionary = blade.dice_ranges[0]
-	_expect(str(_traits.of_unit(blade)["text"]).contains("After rolling %d-%d," % [int(blade_first["min"]), int(blade_first["max"])]), "copy: Blink prints Phaseblade's first roll window (%s)" % str(_traits.of_unit(blade)["text"]))
+	_expect(str(_traits.of_unit(blade)["text"]).contains("After rolling %d-%d," % [int(blade_first["min"]), int(blade_first["max"])]), "copy: Flickering prints Phaseblade's first roll window (%s)" % str(_traits.of_unit(blade)["text"]))
 
 
 # ── F. A live round ───────────────────────────────────────────────────────────
@@ -782,6 +828,39 @@ func _chip_texts(scene: Node) -> Array:
 			for label in child.find_children("*", "Label", true, false):
 				out.append(str((label as Label).text))
 	return out
+
+
+# Every trait name and every callsign under one fits its line of the battle
+# card as the battle lays it out at phone width (1080 design px, three cards
+# across). The two lines read as the unit's full name: BARBED / STALKER.
+func _check_card_fit(card: Control) -> void:
+	if card == null:
+		_errors.append("fit: no battle card to measure")
+		return
+	var marker: Label = card.find_child("TraitMarker", true, false) as Label
+	var name_label: Label = card._name_label
+	var pairs: Array = []
+	for enemy in dm().enemies.values():
+		if not _traits.of_unit(enemy).is_empty():
+			pairs.append([_traits.marker_text(_traits.of_unit(enemy)), str(enemy.battle_name()).to_upper()])
+	for hero in dm().units.values():
+		for path in hero.evolution_paths:
+			var callsign: String = str(path.get("callsign", ""))
+			pairs.append([_traits.marker_text(path.get("trait", {})), (callsign if callsign != "" else str(path.get("name", ""))).to_upper()])
+	_expect(pairs.size() >= 30, "fit: every unit with a trait is measured (%d)" % pairs.size())
+	var widest: Array = [0.0, "", 0.0, ""]
+	for pair in pairs:
+		var trait_w: float = marker.get_theme_font("font").get_string_size(str(pair[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, marker.get_theme_font_size("font_size")).x
+		var name_w: float = name_label.get_theme_font("font").get_string_size(str(pair[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, name_label.get_theme_font_size("font_size")).x
+		_expect(trait_w <= marker.size.x, "fit: %s %s: the trait is %d px wide on a %d px line" % [str(pair[0]), str(pair[1]), int(trait_w), int(marker.size.x)])
+		_expect(name_w <= name_label.size.x, "fit: %s %s: the callsign is %d px wide on a %d px line" % [str(pair[0]), str(pair[1]), int(name_w), int(name_label.size.x)])
+		if trait_w > float(widest[0]):
+			widest[0] = trait_w
+			widest[1] = str(pair[0])
+		if name_w > float(widest[2]):
+			widest[2] = name_w
+			widest[3] = str(pair[1])
+	print("[TRAITS] fit: %d pairs on a %d px line; widest trait %s %d px, widest callsign %s %d px" % [pairs.size(), int(marker.size.x), str(widest[1]), int(widest[0]), str(widest[3]), int(widest[2])])
 
 
 func _check_live() -> void:
@@ -814,6 +893,8 @@ func _check_live() -> void:
 		_expect(enemies.size() >= 2, "live (%s): fixture, two enemies" % mode)
 		if enemies.size() < 2:
 			return
+		if not no_animations:
+			_check_card_fit(scene._feedback._find_card_by_state_id("hero", str(noise["id"])))
 		# The card carries the trait marker, and not in a portrait corner.
 		var card: Control = scene._feedback._find_card_by_state_id("hero", str(noise["id"]))
 		var marker: Control = card.find_child("TraitMarker", true, false) as Control if card != null else null

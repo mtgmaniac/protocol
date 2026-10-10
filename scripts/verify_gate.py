@@ -295,9 +295,9 @@ GATES = [
         "--breaks", "split,stale"],
         "[GEODE_TARGET_GATE] PASS", False),
     # Unit traits (G-62): who has one (the ruling's roster), all 26 rules by
-    # their data numbers, Static and Litany through the die's one value, the
+    # their data numbers, Static and Zealous through the die's one value, the
     # log line and chip on every trigger, the inspect / card / copy, and a
-    # live round. Breaks: traits off, no chip, frozen dice moved, Litany before
+    # live round. Breaks: traits off, no chip, frozen dice moved, Zealous before
     # Static, a trait on every unit that should have none.
     ("traits", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "TRAITS",
         "--script", "scripts/debug/traits_test.gd", "--break-arg=--trait-break=",

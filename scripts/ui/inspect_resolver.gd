@@ -279,7 +279,7 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 # Tyrant's ACCRETION rule): the pip with the amount, and one line saying how
 # much and when. The numbers come from CombatManager.accrete_rule, the same
 # ones combat applies.
-# "AFTERBURN: Detonating leaves 1 burn for 2 turns." for a unit with a trait,
+# The trait line (UnitTraits.line: the name, then one sentence) for a unit with a trait,
 # {} without. Text only: a trait has no pip.
 static func trait_entry(data: Resource) -> Dictionary:
 	var line: String = CombatManager.UnitTraits.line(CombatManager.UnitTraits.of_unit(data))

@@ -1495,7 +1495,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	_ability_backup_ids.clear()
 	_ability_cloaked_pick_id = ""
 	var raw: Dictionary = ability_entry.get("raw", {})
-	# Cloaked as the ability starts: Ghost Signal and Silent Kill ask this after
+	# Cloaked as the ability starts: Spectral and Silent ask this after
 	# the ambush has already taken the cloak down.
 	var cast_from_cloak: bool = bool(hero_state.get("cloaked", false))
 	var events_at_cast: int = _round_events.size()
@@ -1535,7 +1535,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 	if damage > 0:
 		var kill_target: Dictionary = {} if hits_all else _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		_apply_hero_ability_damage(hero_state, ability_entry, damage, hits_all, ignores_shield, burn_amount, burn_turns)
-		# Silent Kill: an ambush that kills its target does not break the cloak.
+		# Silent: an ambush that kills its target does not break the cloak.
 		if cast_from_cloak and _has_trait(hero_state, "silentKill") and not kill_target.is_empty() \
 				and bool(kill_target.get("dead", false)) and not bool(hero_state.get("dead", false)):
 			_keep_cloak_after_kill(hero_state, kill_target, events_at_cast)
@@ -1566,7 +1566,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 			_add_shield_stack(hero_state, shield_grant)
 
 	if heal > 0:
-		# Triage: this ability's heal restores more on the lowest-HP ally.
+		# Watchful: this ability's heal restores more on the lowest-HP ally.
 		var triage_target: Dictionary = _lowest_hp_state(_hero_states) if _has_trait(hero_state, "triage") else {}
 		if heal_all:
 			for ally_state in _hero_states:
@@ -1745,7 +1745,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 
 	# Jam: cap the target's next roll at 10 (die status, telegraphed for the
 	# next reveal). jamAll caps every living enemy die.
-	# Ghost Signal: a jam this hero applies from cloak lasts extra rounds.
+	# Spectral: a jam this hero applies from cloak lasts extra rounds.
 	var jam_extra: int = _trait_num(hero_state, "rounds", 1) if cast_from_cloak and _has_trait(hero_state, "ghostSignal") else 0
 	if bool(raw.get("jamAll", false)):
 		for es in _enemy_states:
@@ -1763,7 +1763,7 @@ func _apply_hero_ability(hero_state: Dictionary, ability_entry: Dictionary) -> v
 		var rewrite_target: Dictionary = _hostile_single_target(_enemy_states, str(hero_state.get("selected_target_id", "")), hero_state)
 		if not rewrite_target.is_empty() and not _ward_blocks_hostile(rewrite_target, [FirewallFeedback.REWRITE]):
 			_apply_rewrite(rewrite_target, true)
-			# Zero Day: an enemy this hero rewrites takes more from attacks
+			# Zero-Day: an enemy this hero rewrites takes more from attacks
 			# until the rewrite ends.
 			if _has_trait(hero_state, "zeroDay") and bool(rewrite_target.get("rewrite_pending", false)):
 				rewrite_target["zero_day"] = _trait_num(hero_state, "amount", 2)
@@ -1900,7 +1900,7 @@ func _apply_hero_ability_damage(
 			_break_cloak_on_aoe(enemy_state)
 			if breach_all or breach:
 				_breach_shields(hero_state, enemy_state)
-			# Exposed: this hero's area attacks hit marked enemies harder.
+			# Ruthless: this hero's area attacks hit marked enemies harder.
 			var area_dmg: int = final_dmg
 			if _has_trait(hero_state, "exposed") and bool(enemy_state.get("marked", false)):
 				area_dmg += _trait_num(hero_state, "amount", 2)
@@ -2146,7 +2146,7 @@ func _detonate_burn(attacker_state: Dictionary, target_state: Dictionary) -> voi
 	_log("%s detonates the burn on %s for %d!" % [attacker_state["unit"].display_name, target_state["unit"].display_name, burst])
 	_emit_event(target_state, "detonate", burst, _resolve_side_for_state(target_state))
 	_damage_state(target_state, burst, false, attacker_state)
-	# Afterburn: a detonation leaves a small burn behind on what it hit.
+	# Smoldering: a detonation leaves a small burn behind on what it hit.
 	if _has_trait(attacker_state, "afterburn") and not bool(target_state.get("dead", false)):
 		_trait_fired(attacker_state, "the detonation leaves %d burn on %s." % [_trait_num(attacker_state, "burn", 1), target_state["unit"].display_name])
 		_apply_burn(target_state, _trait_num(attacker_state, "burn", 1), _trait_num(attacker_state, "turns", 2))
@@ -2177,7 +2177,7 @@ func _apply_chain_jumps(
 	# Batch-1, Kev 2026-07-11 — see DECISIONS_RESOLVED #10).
 	# Amplifier directive: chain hits carry the full base damage.
 	var chain_damage: int = base_damage if _has_directive(hero_state, "chainFullDamage") else int(floor(float(base_damage) * _tuned_float("chain_ratio", 0.5)))
-	# Live Wire: every jump of this hero's chains hits a little harder.
+	# Charged: every jump of this hero's chains hits a little harder.
 	var live_wire: int = _trait_num(hero_state, "amount", 1) if _has_trait(hero_state, "liveWire") else 0
 	chain_damage += live_wire
 	if chain_damage <= 0:
@@ -2350,7 +2350,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 	var rfm_turns: int = int(raw.get("rfmT", 1))
 	if rfm_amount > 0:
 		if not hostile_hero_target.is_empty() and not _ward_blocks_hostile(hostile_hero_target, [FirewallFeedback.ROLL_PENALTY]):
-			# Compel: this unit's roll penalties last longer.
+			# Commanding: this unit's roll penalties last longer.
 			if _has_trait(enemy_state, "compel"):
 				rfm_turns += _trait_num(enemy_state, "rounds", 1)
 				_trait_fired(enemy_state, "the roll penalty on %s lasts %d extra round." % [hostile_hero_target["unit"].display_name, _trait_num(enemy_state, "rounds", 1)])
@@ -2432,7 +2432,7 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		_log("%s fades from view (cloaked)." % enemy_state["unit"].display_name)
 		_emit_event(enemy_state, "cloak", 0, "enemy")
 
-	# Blink: rolling the unit's first band cloaks it.
+	# Flickering: rolling the unit's first band cloaks it.
 	if _has_trait(enemy_state, "blink") and _is_first_band(enemy_state, ability_entry) \
 			and not bool(enemy_state.get("cloaked", false)) and not bool(enemy_state.get("dead", false)):
 		enemy_state["cloaked"] = true
@@ -2534,8 +2534,8 @@ func apply_trait_shield(state: Dictionary, amount: int) -> int:
 # set by the game):
 #   off          no trait does anything
 #   no_chip      a trait applies but shows no chip
-#   frozen_dice  Static and Litany move frozen dice
-#   litany_first Litany fires before Static
+#   frozen_dice  Static and Zealous move frozen dice
+#   litany_first Zealous fires before Static
 #   boss_trait   every unit without a trait is given one when the data loads
 const TRAIT_BREAK_ARG := "--trait-break="
 static var _trait_break: String = "?"
@@ -2551,14 +2551,14 @@ static func trait_break() -> String:
 	return _trait_break
 
 
-# True when `ability_entry` is the unit's first roll window (Bloodlust, Blink).
+# True when `ability_entry` is the unit's first roll window (Bloodlust, Flickering).
 func _is_first_band(state: Dictionary, ability_entry: Dictionary) -> bool:
 	var ranges: Array = state["unit"].dice_ranges
 	return not ranges.is_empty() and str((ranges[0] as Dictionary).get("zone", "")) == str(ability_entry.get("zone", "?")) \
 		and str((ranges[0] as Dictionary).get("ability_name", "")) == str(ability_entry.get("ability_name", "?"))
 
 
-# Triage: `heal` on `target`, raised when it is the lowest-HP ally.
+# Watchful: `heal` on `target`, raised when it is the lowest-HP ally.
 func _triage_heal(healer_state: Dictionary, target: Dictionary, lowest: Dictionary, heal: int) -> int:
 	if lowest.is_empty() or target != lowest or bool(target.get("dead", false)):
 		return heal
@@ -2567,7 +2567,7 @@ func _triage_heal(healer_state: Dictionary, target: Dictionary, lowest: Dictiona
 	return heal + bonus
 
 
-# Ghost Signal: the jam just applied to `target` holds for `extra` more rolls.
+# Spectral: the jam just applied to `target` holds for `extra` more rolls.
 func _extend_jam(hero_state: Dictionary, target: Dictionary, extra: int) -> void:
 	if extra <= 0 or int(target.get("jam_cap", 0)) <= 0:
 		return
@@ -2575,7 +2575,7 @@ func _extend_jam(hero_state: Dictionary, target: Dictionary, extra: int) -> void
 	_trait_fired(hero_state, "the jam on %s lasts %d extra round." % [target["unit"].display_name, extra])
 
 
-# Silent Kill: the ambush killed its target, so the cloak it broke is put back
+# Silent: the ambush killed its target, so the cloak it broke is put back
 # and the beat that showed it leaving is dropped.
 func _keep_cloak_after_kill(hero_state: Dictionary, killed: Dictionary, events_from: int) -> void:
 	if bool(hero_state.get("cloaked", false)):
@@ -2597,7 +2597,7 @@ func _apply_burn_from_enemy(enemy_state: Dictionary, target_state: Dictionary, a
 		_trait_fired(enemy_state, "the burn on %s ignores shields." % target_state["unit"].display_name)
 
 
-# Kindle: every living unit with it heals when a burn ticks on anyone.
+# Fervent: every living unit with it heals when a burn ticks on anyone.
 func _apply_kindle_for_tick(ticked_state: Dictionary) -> void:
 	for kindler in _hero_states + _enemy_states:
 		if not _has_trait(kindler, "kindle") or bool(kindler.get("dead", false)):
@@ -2608,7 +2608,7 @@ func _apply_kindle_for_tick(ticked_state: Dictionary) -> void:
 		_heal_state(kindler, _trait_num(kindler, "amount", 3))
 
 
-# Backup: `hit_state` was just hit by an attack; each living ally of it with
+# Vigilant: `hit_state` was just hit by an attack; each living ally of it with
 # the trait gains shield. Once per ability for each unit hit.
 var _ability_backup_ids: Dictionary = {}
 
@@ -2628,26 +2628,26 @@ func _apply_backup_for_hit(hit_state: Dictionary) -> void:
 			_emit_event(ally, "shield", gained, _resolve_side_for_state(ally))
 
 
-# The traits that answer a death: Clean Kill (the killer's), Discharge (the
-# dead unit's) and Pack Rage (its surviving allies').
+# The traits that answer a death: Relentless (the killer's), Volatile (the
+# dead unit's) and Feral (its surviving allies').
 func _apply_death_traits(dead_state: Dictionary, killer_state: Dictionary) -> void:
 	var dead_is_hero: bool = _is_hero_state(dead_state)
 	var allies: Array = _hero_states if dead_is_hero else _enemy_states
 	var foes: Array = _enemy_states if dead_is_hero else _hero_states
-	# Clean Kill: the lowest-HP unit left on the dead unit's side is marked.
+	# Relentless: the lowest-HP unit left on the dead unit's side is marked.
 	if _has_trait(killer_state, "cleanKill") and not bool(killer_state.get("dead", false)) and killer_state != dead_state:
 		var next_mark: Dictionary = _lowest_hp_state(allies)
 		if not next_mark.is_empty() and not bool(next_mark.get("marked", false)):
 			_trait_fired(killer_state, "%s marks %s, the lowest-HP enemy." % [killer_state["unit"].display_name, next_mark["unit"].display_name])
 			_apply_mark(next_mark)
-	# Discharge: the dead unit hits every unit on the other side.
+	# Volatile: the dead unit hits every unit on the other side.
 	if _has_trait(dead_state, "discharge"):
 		var discharge: int = _trait_num(dead_state, "amount", 4)
 		_trait_fired(dead_state, "%s dies and deals %d to each hero." % [dead_state["unit"].display_name, discharge], discharge)
 		for foe in foes:
 			if not bool(foe.get("dead", false)):
 				_damage_state(foe, discharge)
-	# Pack Rage: every surviving ally with the trait gains rampage.
+	# Feral: every surviving ally with the trait gains rampage.
 	for ally in allies:
 		if ally == dead_state or bool(ally.get("dead", false)) or not _has_trait(ally, "packRage"):
 			continue
@@ -2850,7 +2850,7 @@ func _damage_state(
 	if state.is_empty() or state["dead"] or amount <= 0:
 		return 0
 
-	# Decoy: the first hit against this unit each battle is negated. A hit is
+	# Illusory: the first hit against this unit each battle is negated. A hit is
 	# an attack (it has an attacker); burn ticks and items are not.
 	if _has_trait(state, "decoy") and not attacker_state.is_empty() and not bool(state.get("decoy_spent", false)):
 		state["decoy_spent"] = true
@@ -2880,7 +2880,7 @@ func _damage_state(
 		# Ironclad directive: while taunting, incoming hits are blunted.
 		if bool(state.get("taunting", false)) and _has_directive(state, "tauntDamageReduction"):
 			reduction += _directive_value(state, "amount", 2)
-		# Anchor: takes less damage while taunting.
+		# Anchored: takes less damage while taunting.
 		if bool(state.get("taunting", false)) and _has_trait(state, "anchor"):
 			reduction += _trait_num(state, "amount", 2)
 			_trait_fired(state, "%s takes %d less damage while taunting." % [state["unit"].display_name, _trait_num(state, "amount", 2)])
@@ -2920,17 +2920,17 @@ func _damage_state(
 				var shatter_bonus: int = _directive_value(attacker_state, "amount", 6)
 				amount += shatter_bonus
 				_log("Shatterpoint: +%d against the frozen die." % shatter_bonus)
-		# Zero Day: a die Nullwire rewrote makes its unit take more from
+		# Zero-Day: a die Nullwire rewrote makes its unit take more from
 		# attacks until the rewrite ends.
 		if int(state.get("zero_day", 0)) > 0 and trait_break() != "off":
 			amount += int(state["zero_day"])
-			_log("Zero Day: +%d against the rewritten %s." % [int(state["zero_day"]), state["unit"].display_name])
+			_log("%s: +%d against the rewritten %s." % [UnitTraits.name_of("zeroDay"), int(state["zero_day"]), state["unit"].display_name])
 		_ability_rider_target_ids[rider_target_id] = true
 
 	# Spike triggers on any damaging attempt that connects this round; read it
 	# before the hit possibly downs this unit and clears its statuses.
 	var spike_retaliation: int = int(state.get("spike", 0))
-	# Retaliate (while taunting) and Barbed (always, against heroes) hit an
+	# Vengeful (while taunting) and Barbed (always, against heroes) hit an
 	# attacker back even with no spike up; with one, they add to it.
 	var trait_spike: int = 0
 	if not attacker_state.is_empty():
@@ -2940,7 +2940,7 @@ func _damage_state(
 			trait_spike = _trait_num(state, "amount", 2)
 	spike_retaliation += trait_spike
 
-	# Backup: a unit with this trait gains shield when one of its allies is
+	# Vigilant: a unit with this trait gains shield when one of its allies is
 	# hit by an attack. Once per ability for each ally hit.
 	if not attacker_state.is_empty():
 		_apply_backup_for_hit(state)
@@ -3464,7 +3464,7 @@ func _heal_state(state: Dictionary, amount: int, healer_state: Dictionary = {}) 
 			var relay_target: Dictionary = living[_rand_index(living.size())]
 			_log("Overheal Relay: %d extra healing hits %s." % [overheal, relay_target["unit"].display_name])
 			_damage_state(relay_target, overheal)
-	# Overflow: this healer's healing past full HP becomes shield on the target.
+	# Overflowing: this healer's healing past full HP becomes shield on the target.
 	if overheal > 0 and _has_trait(healer_state, "overflow") and _is_hero_state(state):
 		var overflow_shield: int = _add_shield_stack(state, overheal, false, false)
 		if overflow_shield > 0:
@@ -3769,7 +3769,7 @@ func _tick_state(state: Dictionary) -> void:
 			# Corrosive stacks tick past shields; the rest of the tick does not.
 			var pierce_dmg: int = get_expected_burn_tick_pierce(state)
 			if pierce_dmg > 0:
-				_log("Corrosive: %d of the burn on %s ignores shields." % [pierce_dmg, state["unit"].display_name])
+				_log("%s: %d of the burn on %s ignores shields." % [UnitTraits.name_of("corrosive"), pierce_dmg, state["unit"].display_name])
 				_damage_state(state, pierce_dmg, true)
 			_damage_state(state, tick_dmg - pierce_dmg)
 			_apply_kindle_for_tick(state)
@@ -3819,7 +3819,7 @@ func _tick_state(state: Dictionary) -> void:
 			state["rewrite_skip_next_tick"] = false
 		else:
 			state["rewrite_pending"] = false
-	# Zero Day lasts exactly as long as the rewrite it rode in on.
+	# Zero-Day lasts exactly as long as the rewrite it rode in on.
 	if not bool(state.get("rewrite_pending", false)):
 		state["zero_day"] = 0
 
@@ -3829,7 +3829,7 @@ func _tick_state(state: Dictionary) -> void:
 		if bool(state.get("jam_skip_next_tick", false)):
 			state["jam_skip_next_tick"] = false
 		elif int(state.get("jam_extra_rounds", 0)) > 0:
-			# Ghost Signal: the jam holds for another roll.
+			# Spectral: the jam holds for another roll.
 			state["jam_extra_rounds"] = int(state["jam_extra_rounds"]) - 1
 		else:
 			state["jam_cap"] = 0

@@ -68,7 +68,7 @@ func restore_pending_actions(actions: Dictionary) -> void:
 func on_dice_landed(restoring: bool) -> void:
 	if not restoring:
 		grant_landing_protocol(_engine().thrown_hero_ids(_bs()))
-		# Round-start traits (G-62): Glacial Armor, Dug In, Static, Litany.
+		# Round-start traits (G-62): Glacial, Entrenched, Static, Zealous.
 		# Skipped when restoring a settled re-throw: that checkpoint was taken
 		# after they fired and carries their shifts (pending `enemy_shifts`).
 		_scene._feedback.show_trait_triggers(_engine().apply_round_start_traits(_bs()))

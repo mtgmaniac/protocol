@@ -1,5 +1,83 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-63. Trait names are titles (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"The battle card shows the trait name above the unit's callsign. I like that
+display: trait + callsign reads as the unit's full name (e.g. BARBED STALKER),
+so keep it.
+
+Rename traits so every one reads as a title with its callsign. Effects don't
+change.
+
+Hero evolutions:
+- Afterburn -> Smoldering (Pyro)
+- Live Wire -> Charged (Arc)
+- Exposed -> Ruthless (Bladecore)
+- Bloodlust -> keep (Ravager)
+- Anchor -> Anchored (Bulwark)
+- Retaliate -> Vengeful (Sentinel)
+- Glacial Armor -> Glacial (Glacier)
+- Dug In -> Entrenched (Trench)
+- Triage -> Watchful (Combat Medic; also fixes the clash with its Triage
+  ability)
+- Overflow -> Overflowing (Synth)
+- Redline -> keep (Overclocked)
+- Ghost Signal -> Spectral (Phantom)
+- Silent Kill -> Silent (Shadow)
+- Clean Kill -> Relentless (Wraith)
+- Static -> keep (Noise)
+- Zero Day -> Zero-Day (Nullwire)
+
+Elites:
+- Backup -> Vigilant (Patrol Enforcer)
+- Discharge -> Volatile (Volt Enforcer). Replace "DEATH: 4 TO ALL" on its card
+  with VOLATILE, in a warning color distinct from the other traits' amber. The
+  death damage stays in the long-press text.
+- Barbed -> keep (Spine Stalker)
+- Corrosive -> keep (Caustic Spewer)
+- Blink -> Flickering (Phaseblade)
+- Litany -> Zealous (Circuit Acolyte)
+- Decoy -> Illusory (False Image)
+- Kindle -> Fervent (Ash Channeler)
+- Compel -> Commanding (Oath Binder)
+- Pack Rage -> Feral (all Mantle Hunt beasts that have it)
+
+Update every place trait names appear: card, long-press, evolution picker,
+Help, battle log and trigger chips. Check every trait + callsign pair fits the
+card at phone width, and list any that overflow."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. This replaces the
+names in G-62; G-62's rules and readings stand, under the new names.
+
+**As built.** The 21 names changed in `traits.data.json` and nowhere else:
+every screen and every log line reads a trait's name from the data. No pair
+overflows the card (numbers in TRUTH).
+
+**Readings I made.**
+
+1. **The data key is not renamed.** Each trait keeps its first id
+   (`afterburn`, `discharge`, `packRage`) as an internal key, as the roll
+   windows keep theirs and Strike Unit keeps `combat`. The id is what the
+   rules test and what a saved battle carries, so a rename there could turn a
+   trait off in a resumed battle and would change 40 rule sites for no shown
+   difference. The data file says so in its comment.
+2. **The warning colour is the damage red** (`PixelUI.COLOR_DAMAGE`), the red
+   of a damage number and of the HP a hit will take. It is an existing
+   `PixelUI` colour, so no new colour was added. It replaces the pale rust the
+   old marker used, which sat close to amber.
+3. **"The death damage stays in the long-press text"** is the trait line as it
+   was: "VOLATILE: When it dies, deals 4 damage to each hero."
+4. **A name is one word of at most 12 letters** (a hyphen is allowed, for
+   Zero-Day). The schema enforces it, so a later name cannot be a phrase that
+   stops reading as a title.
+
+**Gate.** `traits` (same five breaks). New checks: one title word per name; no
+retired name in the data; no trait name typed in the nine files that print
+one; VOLATILE's colour apart from amber and from the name under it; all 30
+trait and callsign pairs fit their card line.
+
 ## G-62. Unit traits (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

@@ -22,7 +22,7 @@ var hero_roll_nudges: Dictionary = {}    # hero id -> +N Nudge applied to the ef
 var hero_roll_sets: Dictionary = {}      # hero id -> absolute effective roll from the Set action
 var enemy_roll_nudges: Dictionary = {}   # enemy id -> -N Firewall Hack Nudge on the effective roll
 var firewall_hack_used: bool = false     # Firewall Hack relic: once per turn (reset each roll)
-var enemy_roll_shifts: Dictionary = {}   # enemy id -> +/-N from the round-start traits Static and Litany (reset each roll)
+var enemy_roll_shifts: Dictionary = {}   # enemy id -> +/-N from the round-start traits Static and Zealous (reset each roll)
 
 # ── Protocol economy ──────────────────────────────────────────────────────────
 var protocol_points: int = 0             # battles start at 0; +1 income at end of each turn

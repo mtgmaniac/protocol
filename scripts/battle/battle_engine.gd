@@ -293,12 +293,12 @@ func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 # The four traits that fire "at round start": once this round's dice are down
 # and before the player plans. Called by the live screen when the tray settles
 # and by the sim at the same point, after the frozen overrides and the roll
-# records. Order, fixed: Glacial Armor and Dug In (shields, squad order), then
-# Static (the heroes' side), then Litany (the enemies' side, slot order). The
-# heroes go first here as they do in the round itself, so when both fire Litany
+# records. Order, fixed: Glacial and Entrenched (shields, squad order), then
+# Static (the heroes' side), then Zealous (the enemies' side, slot order). The
+# heroes go first here as they do in the round itself, so when both fire Zealous
 # has the last word: it raises whichever die is lowest AFTER Static's drop.
 #
-# Static and Litany change dice that are already showing. They write a shift
+# Static and Zealous change dice that are already showing. They write a shift
 # beside the Firewall Hack's (bs.enemy_roll_shifts), which the one value rule
 # reads (_enemy_value_for_raw); the tray then tips the die onto a face showing
 # the new value, reprinting it first when no face does (G-24, G-27). A frozen
@@ -740,7 +740,7 @@ func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> 
 		return hijacked
 	# Firewall Hack: the player's -N Nudge on this enemy die (never below 1).
 	var nudge: int = int(bs.enemy_roll_nudges.get(str(state.get("id", "")), 0))
-	# Static / Litany: the round-start shift on this die. A raise never lifts
+	# Static / Zealous: the round-start shift on this die. A raise never lifts
 	# a jammed die past its cap.
 	var shift: int = int(bs.enemy_roll_shifts.get(str(state.get("id", "")), 0))
 	var base: int = combat_manager.get_effective_roll(state, raw_roll)

@@ -28,9 +28,9 @@
       "type": "object",
       "required": ["name", "text"],
       "properties": {
-        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 12, "pattern": "^[A-Z][A-Za-z-]*$" },
         "text": { "type": "string", "minLength": 1, "maxLength": 90, "pattern": "\\.$" },
-        "warn": { "type": "string", "minLength": 1, "maxLength": 24 }
+        "warning": { "type": "boolean" }
       },
       "additionalProperties": { "type": "integer", "minimum": 0 }
     }

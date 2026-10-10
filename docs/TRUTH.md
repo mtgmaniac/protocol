@@ -1,11 +1,40 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 trait names are titles (Kev, G-63; on branch
+`claude/traits-beasts-geode`, not merged):** every trait name is one word that
+reads as a title with the unit's callsign under it on the battle card:
+SMOLDERING PYRO, BARBED STALKER, FERAL HOUND. Effects did not change.
+
+- **21 renamed, 5 kept** (Bloodlust, Redline, Static, Barbed, Corrosive). The
+  table under G-62 below carries the new names; old to new is in
+  `DECISIONS_RESOLVED.md` G-63. Combat Medic's trait is Watchful, so it no
+  longer shares a name with its Triage ability.
+- **The data key did not change.** `traits.data.json` still keys each trait by
+  its first id (`afterburn`, `packRage`); that id is what the rules test and
+  what a battle checkpoint stores, and it is never shown. Only `name` moved.
+- **A name is typed in one place.** The card, long-press, evolution picker,
+  Help, log lines and trigger chips all read it from the data
+  (`UnitTraits.line`, `marker_text`, `name_of`). Two log lines that typed a
+  name (Zero-Day's bonus, Corrosive's tick) now read it too.
+- **Volt Enforcer's card reads VOLATILE** (was DEATH: 4 TO ALL), in the damage
+  red, apart from the amber of every other trait. The 4 damage to each hero is
+  in the long-press line. The data flag is `warning: true` (was a `warn`
+  string).
+- **Fit:** on the battle card at 1080 design px a name line is 332 px wide.
+  The widest trait, OVERFLOWING, is 204 px; the widest callsign under a trait,
+  OVERCLOCK, is 243 px. All 30 pairs fit; none is cut.
+- Gate `traits` now also pins: every name is one title word, no retired name
+  is in the data, no screen or log line types a trait name, the warning
+  colour is a red apart from the amber and from the name under it, and every
+  trait and callsign fits its card line. The schema caps a name at 12
+  letters, one word.
+
 **2026-10-09 unit traits (Kev, G-62; on branch `claude/traits-beasts-geode`,
 not merged):** some units carry one always-on trait. One system for heroes and
 enemies.
 
 - **Who has one.** Every hero evolution (16). Every elite (9). In Mantle Hunt,
-  every regular and elite unit has Pack Rage (5). Nobody else: base heroes,
+  every regular and elite unit has Feral (5). Nobody else: base heroes,
   regular units in the other four operations, tanks, supports and all five
   bosses have none. "Elite", "regular", "tank" and "support" are the roles of
   the roll-windows table (G-55).
@@ -20,101 +49,103 @@ enemies.
 
 | Unit | Trait | Line shown |
 |---|---|---|
-| Pyro Specialist | Afterburn | Detonating leaves 1 burn for 2 turns. |
-| Arc Specialist | Live Wire | Each chain jump deals +1 damage. |
-| Blade Trooper | Exposed | Its area attacks deal +2 to marked enemies. |
+| Pyro Specialist | Smoldering | Detonating leaves 1 burn for 2 turns. |
+| Arc Specialist | Charged | Each chain jump deals +1 damage. |
+| Blade Trooper | Ruthless | Its area attacks deal +2 to marked enemies. |
 | Ravager | Bloodlust | After rolling 1-7, its next leech heals 50% more. |
-| Bulwark | Anchor | Takes 2 less damage while taunting. |
-| Sentinel | Retaliate | When hit while taunting, its spike deals +2. |
-| Glacier Rig | Glacial Armor | At round start, gains 1 shield per frozen enemy. |
-| Trench Rig | Dug In | At round start, gains 3 shield while below half HP. |
-| Combat Medic | Triage | Its heals restore +3 on the lowest-HP ally. |
-| Synth Medic | Overflow | Its healing past full HP becomes shield. |
+| Bulwark | Anchored | Takes 2 less damage while taunting. |
+| Sentinel | Vengeful | When hit while taunting, its spike deals +2. |
+| Glacier Rig | Glacial | At round start, gains 1 shield per frozen enemy. |
+| Trench Rig | Entrenched | At round start, gains 3 shield while below half HP. |
+| Combat Medic | Watchful | Its heals restore +3 on the lowest-HP ally. |
+| Synth Medic | Overflowing | Its healing past full HP becomes shield. |
 | Overclock Engineer | Redline | +2 damage on every attack while you have 5 or more Protocol. |
-| Phantom Engineer | Ghost Signal | Jams it applies from cloak last 1 extra round. |
-| Shadow Operative | Silent Kill | An ambush that kills its target keeps the cloak. |
-| Wraith | Clean Kill | When it kills, the lowest-HP enemy becomes marked. |
+| Phantom Engineer | Spectral | Jams it applies from cloak last 1 extra round. |
+| Shadow Operative | Silent | An ambush that kills its target keeps the cloak. |
+| Wraith | Relentless | When it kills, the lowest-HP enemy becomes marked. |
 | Noise Specialist | Static | At round start, the highest enemy die drops by 1. |
-| Nullwire | Zero Day | Enemies it rewrites take +2 damage until the rewrite ends. |
-| Patrol Enforcer | Backup | When an ally is hit, gains 2 shield. |
-| Volt Enforcer | Discharge | When it dies, deals 4 damage to each hero. |
+| Nullwire | Zero-Day | Enemies it rewrites take +2 damage until the rewrite ends. |
+| Patrol Enforcer | Vigilant | When an ally is hit, gains 2 shield. |
+| Volt Enforcer | Volatile | When it dies, deals 4 damage to each hero. |
 | Spine Stalker | Barbed | Heroes that hit it take 2 damage. |
 | Caustic Spewer | Corrosive | Its burns ignore shields. |
-| Phaseblade | Blink | After rolling 1-3, it cloaks. |
-| Circuit Acolyte | Litany | At round start, the lowest enemy die rises by 2. |
-| False Image | Decoy | The first hit against it each battle is negated. |
-| Ash Channeler | Kindle | Heals 3 whenever any burn ticks. |
-| Oath Binder | Compel | Its roll penalties last 1 extra round. |
-| Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor | Pack Rage | When an ally dies, gains rampage. |
+| Phaseblade | Flickering | After rolling 1-3, it cloaks. |
+| Circuit Acolyte | Zealous | At round start, the lowest enemy die rises by 2. |
+| False Image | Illusory | The first hit against it each battle is negated. |
+| Ash Channeler | Fervent | Heals 3 whenever any burn ticks. |
+| Oath Binder | Commanding | Its roll penalties last 1 extra round. |
+| Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor | Feral | When an ally dies, gains rampage. |
 
 - **How each one resolves** (the readings are listed in G-62):
-  - *Afterburn:* only when something was detonated; a plain 1 burn for 2 turns.
-  - *Live Wire:* +1 on every jump, after the jump's half damage is worked out.
-  - *Exposed:* added before the mark's +50%, on area attacks only.
+  - *Smoldering:* only when something was detonated; a plain 1 burn for 2 turns.
+  - *Charged:* +1 on every jump, after the jump's half damage is worked out.
+  - *Ruthless:* added before the mark's +50%, on area attacks only.
   - *Bloodlust:* rolling the first window arms it; it is spent by the next
     attack that leeches (50% of HP dealt becomes 75%), not by an attack that
     does not leech. It does not stack.
-  - *Anchor:* every source of damage, for as long as the taunt is up.
-  - *Retaliate, Barbed:* spike damage with or without a spike up (a spike adds
+  - *Anchored:* every source of damage, for as long as the taunt is up.
+  - *Vengeful, Barbed:* spike damage with or without a spike up (a spike adds
     to it), once per ability like any spike.
-  - *Triage:* the unit's own heals (one hero, lowest HP, all heroes), not
+  - *Watchful:* the unit's own heals (one hero, lowest HP, all heroes), not
     leech. "Lowest HP" is the existing rule: lowest share of max HP.
-  - *Overflow:* on heroes; an ordinary one-round shield. With Overheal Relay
+  - *Overflowing:* on heroes; an ordinary one-round shield. With Overheal Relay
     both happen.
   - *Redline:* the Protocol held as the round resolves, so spending below 5
     turns it off. A flat bonus like Momentum: added before a chain jump is
     halved, not multiplied by an ambush.
-  - *Ghost Signal:* "from cloak" is cloaked when the ability starts (the
+  - *Spectral:* "from cloak" is cloaked when the ability starts (the
     ambush takes the cloak down before the jam lands). The jam caps two rolls.
-  - *Silent Kill:* a single-target attack from cloak whose target dies in that
+  - *Silent:* a single-target attack from cloak whose target dies in that
     ability. The cloak stays up and pays its ambush again next time.
-  - *Clean Kill:* the lowest-HP living enemy, unless it is already marked.
-  - *Zero Day:* from the moment the rewrite lands until it ends (the end of
+  - *Relentless:* the lowest-HP living enemy, unless it is already marked.
+  - *Zero-Day:* from the moment the rewrite lands until it ends (the end of
     the round the die shows 3). +2 once per ability per target, hero attacks.
-  - *Backup:* once per ability for each ally hit; being hit itself does not
+  - *Vigilant:* once per ability for each ally hit; being hit itself does not
     count. An ordinary one-round shield.
-  - *Discharge:* 4 to each living hero; shields absorb it.
+  - *Volatile:* 4 to each living hero; shields absorb it.
   - *Corrosive:* its burn stacks are marked and their part of each tick skips
     shields. The HP preview counts it (`get_expected_burn_tick_pierce`).
-  - *Blink:* after its first-window ability resolves.
-  - *Decoy:* the first attack that would damage it, each battle. Burn ticks
+  - *Flickering:* after its first-window ability resolves.
+  - *Illusory:* the first attack that would damage it, each battle. Burn ticks
     and items are not hits. The attack's riders still land.
-  - *Kindle:* 3 for each unit whose burn ticks, on either side.
-  - *Pack Rage:* any ally's death, summons included. Rampage does not stack
+  - *Fervent:* 3 for each unit whose burn ticks, on either side.
+  - *Feral:* any ally's death, summons included. Rampage does not stack
     (G-60), so a second death while rampaging adds nothing.
   - A trait is not an ability: a Firewall does not block one.
-- **The four round-start traits** (Glacial Armor, Dug In, Static, Litany) fire
+- **The four round-start traits** (Glacial, Entrenched, Static, Zealous) fire
   once this round's dice are down and before the player plans
   (`BattleEngine.apply_round_start_traits`: the live screen calls it as the
   tray settles, the sim at the same point).
-  - **Order: Glacial Armor and Dug In, then Static, then Litany.** Heroes
-    first, as in the round itself. So when both dice traits fire, Litany
+  - **Order: Glacial and Entrenched, then Static, then Zealous.** Heroes
+    first, as in the round itself. So when both dice traits fire, Zealous
     raises whichever die is lowest after Static's drop (dice 8 and 7: Static
-    makes them 7 and 7, Litany makes them 9 and 7).
-  - **Static and Litany change the die's one value.** They write a shift
+    makes them 7 and 7, Zealous makes them 9 and 7).
+  - **Static and Zealous change the die's one value.** They write a shift
     beside the Firewall Hack's (`BattleState.enemy_roll_shifts`), read by the
     one value rule (`_enemy_value_for_raw`); the tray tips the die onto a face
     showing the new value and reprints it first when no face does (G-24,
     G-27). The landed number is kept. The shift is cleared when the round
     resolves and when its die is thrown again (Heretic Signal, an enemy
     reroll item).
-  - **A frozen die keeps its number** (G-23): Static and Litany pass over
+  - **A frozen die keeps its number** (G-23): Static and Zealous pass over
     frozen dice and take the next one. A hijacked die is passed over too (it
     copies the heroes' highest). A die already on 1 (or 20) does not move and
-    nothing is shown. Litany never lifts a jammed die past its cap.
+    nothing is shown. Zealous never lifts a jammed die past its cap.
   - A CONTINUE into a settled re-throw restores the shifts with the other
     pending actions (`enemy_shifts`) and does not fire the traits again.
 - **Shown** (existing components; the UI redesign restyles them):
-  - *Long-press:* "AFTERBURN: Detonating leaves 1 burn for 2 turns." is the
+  - *Long-press:* "SMOLDERING: Detonating leaves 1 burn for 2 turns." is the
     first entry, above the roll breakdown (`InspectResolver.trait_entry`).
   - *Evolution picker:* the same line in each choice's header, which the
     minimized card always shows.
   - *Battle card:* the trait's name in the name strip, on the line the BOSS
-    tag uses (no boss has a trait). Never in a portrait corner (G-5). Volt
-    Enforcer's reads **DEATH: 4 TO ALL**, in the warning colour.
+    tag uses (no boss has a trait). Never in a portrait corner (G-5). The
+    name and the callsign under it read as the unit's full name (BARBED
+    STALKER, G-63). Volt Enforcer's VOLATILE is drawn in the damage red
+    (`PixelUI.COLOR_DAMAGE`); every other marker is amber.
   - *When it triggers:* a chip on the unit with the trait's name (the Accrete
     chip's plate and life; under Reduced Motion and No animations it still
-    appears, without the pop or the fade) and a log line, "Afterburn: the
+    appears, without the pop or the fade) and a log line, "Smoldering: the
     detonation leaves 1 burn on Scrap Drone." One chip per trait per unit per
     ability; a log line every time.
   - *Help:* every unit's and evolution's breakdown leads with its trait line.
@@ -171,7 +202,7 @@ die.
   spends it: an attack deals double damage, and a turn that does not attack
   lets it go. It does not stack: a grant to a unit that is already rampaging
   changes nothing. Game-wide, every source (Tyrant Mantle, Dominance Roar,
-  Mantle Rupture, and the Pack Rage trait).
+  Mantle Rupture, and the Feral trait).
   - Before: every grant added a charge and a charge sat until an attack spent
     it, so charges piled up over a long fight.
   - A rampage granted during a unit's own turn is for the turn after. An
