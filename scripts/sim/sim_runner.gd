@@ -727,10 +727,13 @@ func _play_battle(gs: Node, dm: Node, provider: RollProvider, policy, battle_ind
 		bs.hero_rolls = {} if engine.heroes_hold_this_round() else engine.roll_states(cm.get_hero_states())
 		bs.enemy_rolls = engine.roll_states(cm.get_enemy_states())
 		bs.firewall_hack_used = false
+		bs.enemy_roll_shifts.clear()
 		engine.apply_frozen_roll_overrides(cm.get_hero_states(), bs.hero_rolls)
 		engine.apply_frozen_roll_overrides(cm.get_enemy_states(), bs.enemy_rolls)
 		engine.record_roll_values_for_states(cm.get_hero_states(), bs.hero_rolls)
 		engine.record_roll_values_for_states(cm.get_enemy_states(), bs.enemy_rolls)
+		# Round-start traits (G-62): the live screen fires them when the tray settles.
+		engine.apply_round_start_traits(bs)
 		# Scrap Converter: the dice that just landed (the live screen grants the
 		# same engine amount when its tray settles).
 		engine.gain_protocol(bs, engine.landing_protocol(bs, engine.thrown_hero_ids(bs)), engine.max_protocol(cap_override))

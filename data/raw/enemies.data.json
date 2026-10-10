@@ -2350,7 +2350,7 @@
           19
         ],
         "name": "Pumice Grasp",
-        "eff": "6 damage, +1 damage per other pack member",
+        "eff": "6 damage, +3 damage per other pack member",
         "dmg": 6,
         "burn": 0,
         "burnT": 0,
@@ -2423,7 +2423,7 @@
           19
         ],
         "name": "Rending Fang",
-        "eff": "7 damage, +1 damage per other pack member",
+        "eff": "7 damage, +3 damage per other pack member",
         "dmg": 7,
         "burn": 0,
         "burnT": 0,
@@ -2438,7 +2438,7 @@
           20
         ],
         "name": "Pack Assault",
-        "eff": "14 damage, +1 damage per other pack member",
+        "eff": "14 damage, +3 damage per other pack member",
         "dmg": 14,
         "burn": 0,
         "burnT": 0,
@@ -2470,7 +2470,7 @@
           9
         ],
         "name": "Calcifying Bite",
-        "eff": "10 damage, freeze lowest hero die 1 turn",
+        "eff": "10 damage, freeze 1 turn (lowest hero die)",
         "dmg": 10,
         "burn": 0,
         "burnT": 0,
@@ -2500,7 +2500,7 @@
           19
         ],
         "name": "Stonefang Pounce",
-        "eff": "15 damage, freeze lowest hero die 1 turn",
+        "eff": "15 damage, freeze 1 turn (lowest hero die)",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,

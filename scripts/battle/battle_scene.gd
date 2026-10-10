@@ -2885,7 +2885,7 @@ func _assign_enemy_targets() -> void:
 		if bool(enemy_state["dead"]) or enemy_rolls.get(enemy_state["id"], null) == null:
 			continue
 		effective_enemy_rolls[enemy_state["id"]] = _get_effective_enemy_roll(enemy_state, str(enemy_state["id"]))
-	combat_manager.assign_enemy_intents(effective_enemy_rolls, dice_manager)
+	combat_manager.assign_enemy_intents(effective_enemy_rolls, dice_manager, _engine.build_effective_rolls(hero_rolls, combat_manager.get_hero_states(), true, _state))
 	for enemy_view_variant in enemy_card_views:
 		var enemy_view: Dictionary = enemy_view_variant
 		var enemy_state: Dictionary = enemy_view["state"]

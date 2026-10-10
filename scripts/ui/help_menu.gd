@@ -631,7 +631,8 @@ func _codex_evolution_groups(unit: UnitData) -> Array:
 		var path: Dictionary = path_variant
 		var key: String = str(path.get("name", ""))
 		if not groups.has(key):
-			groups[key] = {"callsign": key, "hp": 0, "abilities": [], "id": str(path.get("id", ""))}
+			groups[key] = {"callsign": key, "hp": 0, "abilities": [], "id": str(path.get("id", "")),
+				"trait": (path.get("trait", {}) as Dictionary).duplicate(true)}
 			order.append(key)
 		var group: Dictionary = groups[key]
 		if str(path.get("callsign", "")) != "":
@@ -1458,7 +1459,8 @@ func _resolve_row_payload(source_kind: String, source_data: Variant) -> Dictiona
 			return _evolution_breakdown_payload(
 				str(group.get("callsign", "")).to_upper(),
 				int(group.get("hp", 0)),
-				group.get("abilities", []) as Array)
+				group.get("abilities", []) as Array,
+				group.get("trait", {}) as Dictionary)
 	return {}
 
 
@@ -1480,11 +1482,12 @@ func _enemy_breakdown_payload(enemy: EnemyData) -> Dictionary:
 # An evolution is not its own UnitData — it lives in unit.evolution_paths in the
 # SAME dice_ranges shape — so the breakdown is resolved through a throwaway
 # UnitData rather than by teaching InspectResolver a second entry point.
-func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array) -> Dictionary:
+func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array, unit_trait: Dictionary = {}) -> Dictionary:
 	var stand_in := UnitData.new()
 	stand_in.id = ""
 	stand_in.display_name = evo_name
 	stand_in.max_hp = hp
+	stand_in.unit_trait = unit_trait
 	var bands: Array[Dictionary] = []
 	for ability_variant in abilities:
 		bands.append(ability_variant as Dictionary)

@@ -159,16 +159,13 @@ func _run() -> void:
 	bystander["gear_anchor_taunt"] = false
 
 	# The cast form (ruling G-4, per-enemy lured_by_id) goes through the same
-	# choke point — assert the resolver honours a lure recorded for this round.
-	var forecast: Dictionary = {
-		"dead_enemy_ids": {},
-		"lured": {str(attacker["id"]): str(bystander["id"])},
-		"taunter_id": "",
-		"leech_by_hero": {},
-	}
-	var lured_to: String = str(_card_view.call("_forecast_enemy_target", attacker, forecast))
-	_expect(lured_to == str(bystander["id"]),
-		"taunt: a taunt cast THIS round redirects the enemy in the forecast (got '%s', want '%s')" % [lured_to, str(bystander["id"])])
+	# choke point: a lure standing on the enemy moves its hit to the lurer.
+	attacker["lured_by_id"] = str(bystander["id"])
+	var lured_victim: int = int(_preview(victim, true).get("damage", 0))
+	var lured_bystander: int = int(_preview(bystander, true).get("damage", 0))
+	_expect(lured_victim == base_dmg - attacker_dmg and lured_bystander >= attacker_dmg,
+		"taunt: a lure on the enemy redirects its hit in the forecast (victim %d, lurer %d, hit %d)" % [lured_victim, lured_bystander, attacker_dmg])
+	attacker["lured_by_id"] = ""
 
 	# ── CASE 4: LEECH — the attacker's self-heal reaches the projection. ─────
 	var leecher: Dictionary = {}
@@ -398,6 +395,9 @@ func _projected_hp(state: Dictionary, preview: Dictionary) -> int:
 		shield_after = int(preview.get("shield_after", 0)) + int(preview.get("shield", 0))
 	var burn: int = int(preview.get("burn", 0))
 	var hp_burn: int = burn - mini(burn, shield_after)
+	# The exact end of the round, when the preview carries it (G-65).
+	if preview.has("final_hp"):
+		return clampi(int(preview["final_hp"]), 0, hp_max)
 	return clampi(post_heal - hp_dmg - hp_burn, 0, hp_max)
 
 

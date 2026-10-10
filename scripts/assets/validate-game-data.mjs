@@ -25,16 +25,19 @@ const heroesSchema = readJson('data/schemas/heroes.data.schema.json');
 const enemiesSchema = readJson('data/schemas/enemies.data.schema.json');
 const battleModesSchema = readJson('data/schemas/battle-modes.schema.json');
 const primersSchema = readJson('data/schemas/primers.data.schema.json');
+const traitsSchema = readJson('data/schemas/traits.data.schema.json');
 
 const vHeroes = ajv.compile(heroesSchema);
 const vEnemies = ajv.compile(enemiesSchema);
 const vBattleModes = ajv.compile(battleModesSchema);
 const vPrimers = ajv.compile(primersSchema);
+const vTraits = ajv.compile(traitsSchema);
 
 const heroes = readJson('data/raw/heroes.data.json');
 const enemies = readJson('data/raw/enemies.data.json');
 const battleModes = readJson('data/raw/battle-modes.json');
 const primers = readJson('data/raw/primers.data.json');
+const traits = readJson('data/raw/traits.data.json');
 
 let ok = true;
 if (!vBattleModes(battleModes)) {
@@ -56,6 +59,156 @@ if (!vPrimers(primers)) {
   ok = false;
   console.error('primers.data.json:', ajv.errorsText(vPrimers.errors, { separator: '\n' }));
   console.error(vPrimers.errors);
+}
+
+if (!vTraits(traits)) {
+  ok = false;
+  console.error('traits.data.json:', ajv.errorsText(vTraits.errors, { separator: '\n' }));
+  console.error(vTraits.errors);
+}
+
+// A field of an ability is set when it is true or above 0.
+function fieldSet(ability, field) {
+  const v = ability?.[field];
+  return v === true || (typeof v === 'number' && v > 0);
+}
+
+// Trait requirements (G-64). A kit meets a requirement when ONE of its
+// abilities has every `all` field set, at least one `any` field set (when the
+// requirement lists any) and no `none` field set.
+function kitMeets(requirement, kit) {
+  return kit.some(
+    (ability) =>
+      (requirement.all || []).every((f) => fieldSet(ability, f)) &&
+      (!requirement.any || requirement.any.some((f) => fieldSet(ability, f))) &&
+      !(requirement.none || []).some((f) => fieldSet(ability, f)),
+  );
+}
+
+// The requirements of `def` that `kit` does not meet.
+function unmetNeeds(def, requirements, kit) {
+  return (def?.needs || []).filter((need) => requirements[need] && !kitMeets(requirements[need], kit));
+}
+
+// Unit traits (G-62): every assignment names a defined trait and a real unit,
+// every {key} in a trait's text is one of its own numbers (or {band}), and
+// every trait defined is given to someone. Requirements (G-64): every `needs`
+// entry is a defined requirement, every requirement field is a real ability
+// field, and every unit's kit meets what its trait needs.
+function validateTraits(traits, heroes, enemies) {
+  const errs = [];
+  const defined = traits.traits || {};
+  const requirements = traits.requirements || {};
+  const used = new Set();
+  const evolutionKits = new Map();
+  const abilityFields = new Set();
+  for (const h of heroes.heroes || []) {
+    for (const a of h.abilities || []) Object.keys(a).forEach((k) => abilityFields.add(k));
+    for (const e of h.evolutions || []) {
+      evolutionKits.set(`${h.id}/${e.id}`, e.abilities || []);
+      for (const a of e.abilities || []) Object.keys(a).forEach((k) => abilityFields.add(k));
+    }
+  }
+  for (const kit of Object.values(enemies.enemyAbilities || {})) {
+    for (const a of Object.values(kit || {})) Object.keys(a || {}).forEach((k) => abilityFields.add(k));
+  }
+  for (const [need, requirement] of Object.entries(requirements)) {
+    for (const field of [...(requirement.all || []), ...(requirement.any || []), ...(requirement.none || [])]) {
+      if (!abilityFields.has(field)) {
+        errs.push(`traits.data.json: requirement '${need}' reads '${field}', which no ability has`);
+      }
+    }
+  }
+  const needsMet = (who, id, kit) => {
+    for (const need of unmetNeeds(defined[id], requirements, kit)) {
+      errs.push(`traits.data.json: ${who} carries '${id}' (${defined[id].name}), which needs '${need}', and its kit has none`);
+    }
+  };
+  for (const [key, id] of Object.entries(traits.evolutions || {})) {
+    if (!evolutionKits.has(key)) errs.push(`traits.data.json: evolutions '${key}' is not a hero evolution`);
+    if (!defined[id]) errs.push(`traits.data.json: evolutions '${key}' names an undefined trait '${id}'`);
+    needsMet(`evolutions '${key}'`, id, evolutionKits.get(key) || []);
+    used.add(id);
+  }
+  for (const [name, id] of Object.entries(traits.enemies || {})) {
+    const unit = enemies.enemyUnitDefs?.[name];
+    if (!unit) errs.push(`traits.data.json: enemies '${name}' is not an enemy unit`);
+    if (!defined[id]) errs.push(`traits.data.json: enemies '${name}' names an undefined trait '${id}'`);
+    needsMet(`enemies '${name}'`, id, Object.values(enemies.enemyAbilities?.[unit?.type] || {}));
+    used.add(id);
+  }
+  for (const [id, def] of Object.entries(defined)) {
+    if (!used.has(id)) errs.push(`traits.data.json: trait '${id}' is given to no unit`);
+    for (const need of def.needs || []) {
+      if (!requirements[need]) errs.push(`traits.data.json: trait '${id}' needs '${need}', which is not a defined requirement`);
+    }
+    for (const m of String(def.text || '').matchAll(/\{(\w+)\}/g)) {
+      if (m[1] !== 'band' && typeof def[m[1]] !== 'number') {
+        errs.push(`traits.data.json: trait '${id}' text uses {${m[1]}} but has no such number`);
+      }
+    }
+  }
+  return errs;
+}
+for (const err of validateTraits(traits, heroes, enemies)) {
+  ok = false;
+  console.error(err);
+}
+
+// The requirement rule must be able to fail (G-64). Each deliberate break is
+// made on a copy of the real data and names the error it must raise; one the
+// rule lets through fails this run.
+function traitRequirementBreaks(traits, heroes, enemies) {
+  const copy = (value) => JSON.parse(JSON.stringify(value));
+  const breaks = {
+    // A trait on a unit whose kit lacks what it needs.
+    'Anchored on Pyro Specialist (no taunt)': ["needs 'taunt'", (t) => { t.evolutions['pulse/pyro'] = 'anchor'; }],
+    'Corrosive on Patrol Enforcer (no burn)': ["needs 'burn'", (t) => { t.enemies['Patrol Enforcer'] = 'corrosive'; }],
+    // A kit that loses the ability its trait needs.
+    'Pyro Specialist without detonate': ["needs 'detonate'", (t, h) => {
+      for (const a of h.heroes.find((x) => x.id === 'pulse').evolutions.find((x) => x.id === 'pyro').abilities) delete a.detonate;
+    }],
+    'Oath Binder without a roll penalty': ["needs 'rollPenalty'", (t, h, e) => {
+      for (const a of Object.values(e.enemyAbilities.voidBinder)) a.rfm = 0;
+    }],
+    // Both halves of a two-part need are checked on their own.
+    'Phantom Engineer without jam': ["needs 'jam'", (t, h) => {
+      for (const a of h.heroes.find((x) => x.id === 'engineer').evolutions.find((x) => x.id === 'phantom').abilities) {
+        delete a.jam;
+        delete a.jamAll;
+      }
+    }],
+    // `all` must hold on ONE ability: an area attack is damage and blastAll together.
+    'Blade Trooper whose area abilities deal no damage': ["needs 'areaAttack'", (t, h) => {
+      for (const a of h.heroes.find((x) => x.id === 'combat').evolutions.find((x) => x.id === 'blade').abilities) {
+        if (a.blastAll) a.dmg = 0;
+      }
+    }],
+    // `none`: a single-target attack is damage without blastAll.
+    'Shadow Operative with only area attacks': ["needs 'singleAttack'", (t, h) => {
+      for (const a of h.heroes.find((x) => x.id === 'ghost').evolutions.find((x) => x.id === 'shadow').abilities) {
+        if (a.dmg > 0) a.blastAll = true;
+      }
+    }],
+    // The vocabulary itself.
+    'a need that is not a defined requirement': ['not a defined requirement', (t) => { t.traits.barbed.needs = ['spikes']; }],
+    'a requirement that reads a field no ability has': ['which no ability has', (t) => { t.requirements.detonate = { all: ['detonat'] }; }],
+  };
+  const missed = [];
+  for (const [what, [expected, apply]] of Object.entries(breaks)) {
+    const t = copy(traits);
+    const h = copy(heroes);
+    const e = copy(enemies);
+    apply(t, h, e);
+    if (!validateTraits(t, h, e).some((err) => err.includes(expected))) missed.push(what);
+  }
+  return missed;
+}
+if (ok) {
+  for (const what of traitRequirementBreaks(traits, heroes, enemies)) {
+    ok = false;
+    console.error(`traits.data.json: the requirement rule let a deliberate break through: ${what}`);
+  }
 }
 
 // Evolution ids: stable keys for portrait resolution

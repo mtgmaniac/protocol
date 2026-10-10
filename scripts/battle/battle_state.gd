@@ -22,6 +22,7 @@ var hero_roll_nudges: Dictionary = {}    # hero id -> +N Nudge applied to the ef
 var hero_roll_sets: Dictionary = {}      # hero id -> absolute effective roll from the Set action
 var enemy_roll_nudges: Dictionary = {}   # enemy id -> -N Firewall Hack Nudge on the effective roll
 var firewall_hack_used: bool = false     # Firewall Hack relic: once per turn (reset each roll)
+var enemy_roll_shifts: Dictionary = {}   # enemy id -> +/-N from the round-start traits Static and Zealous (reset each roll)
 
 # ── Protocol economy ──────────────────────────────────────────────────────────
 var protocol_points: int = 0             # battles start at 0; +1 income at end of each turn
@@ -41,6 +42,7 @@ func duplicate_for_search() -> BattleState:
 	copy.hero_roll_sets = hero_roll_sets.duplicate(true)
 	copy.enemy_roll_nudges = enemy_roll_nudges.duplicate(true)
 	copy.firewall_hack_used = firewall_hack_used
+	copy.enemy_roll_shifts = enemy_roll_shifts.duplicate(true)
 	copy.protocol_points = protocol_points
 	copy.income_debt = income_debt
 	copy.free_nudge_used = free_nudge_used.duplicate(true)

@@ -46,6 +46,8 @@ func resolve_step(bs: BattleState) -> Dictionary:
 	var eff_enemy_rolls: Dictionary = build_effective_rolls(bs.enemy_rolls, enemy_states, false, bs)
 	var raw_enemy_rolls: Dictionary = bs.enemy_rolls.duplicate()
 	var raw_hero_rolls: Dictionary = bs.hero_rolls.duplicate()
+	# Redline reads the Protocol the player holds as the round resolves.
+	combat_manager.protocol_pool = bs.protocol_points
 	var result: Dictionary = combat_manager.resolve_round(
 		eff_hero_rolls,
 		eff_enemy_rolls,
@@ -58,6 +60,7 @@ func resolve_step(bs: BattleState) -> Dictionary:
 	bs.hero_roll_nudges.clear()
 	bs.hero_roll_sets.clear()
 	bs.enemy_roll_nudges.clear()
+	bs.enemy_roll_shifts.clear()
 	return {
 		"result": result,
 		"eff_hero_rolls": eff_hero_rolls,
@@ -286,6 +289,90 @@ func apply_set(bs: BattleState, hero_id: String, value: int) -> int:
 	return cost
 
 
+# ── Round-start traits (G-62, Kev 2026-10-09) ────────────────────────────────
+# The four traits that fire "at round start": once this round's dice are down
+# and before the player plans. Called by the live screen when the tray settles
+# and by the sim at the same point, after the frozen overrides and the roll
+# records. Order, fixed: Glacial and Entrenched (shields, squad order), then
+# Static (the heroes' side), then Zealous (the enemies' side, slot order). The
+# heroes go first here as they do in the round itself, so when both fire Zealous
+# has the last word: it raises whichever die is lowest AFTER Static's drop.
+#
+# Static and Zealous change dice that are already showing. They write a shift
+# beside the Firewall Hack's (bs.enemy_roll_shifts), which the one value rule
+# reads (_enemy_value_for_raw); the tray then tips the die onto a face showing
+# the new value, reprinting it first when no face does (G-24, G-27). A frozen
+# die keeps its number (G-23) and a hijacked die copies the heroes' highest, so
+# both are passed over and the next die is taken.
+#
+# Returns what fired, for the caller to show:
+#   [{"state": unit state, "name": trait name, "text": log line}, ...]
+func apply_round_start_traits(bs: BattleState) -> Array:
+	var fired: Array = []
+	for hero_state in combat_manager.get_hero_states():
+		if bool(hero_state.get("dead", false)):
+			continue
+		if combat_manager.has_trait(hero_state, "glacialArmor"):
+			var frozen: int = 0
+			for enemy_state in combat_manager.get_enemy_states():
+				if not bool(enemy_state.get("dead", false)) and int(enemy_state.get("die_freeze_turns", 0)) > 0:
+					frozen += 1
+			var armor: int = combat_manager.apply_trait_shield(hero_state, frozen * combat_manager.trait_num(hero_state, "amount", 1))
+			if armor > 0:
+				fired.append(_trait_note(hero_state, "%s gains %d shield for %d frozen %s." % [_state_display_name(hero_state), armor, frozen, "enemy" if frozen == 1 else "enemies"]))
+		if combat_manager.has_trait(hero_state, "dugIn") and int(hero_state["current_hp"]) * 2 < int(hero_state["max_hp"]):
+			var dug: int = combat_manager.apply_trait_shield(hero_state, combat_manager.trait_num(hero_state, "amount", 3))
+			if dug > 0:
+				fired.append(_trait_note(hero_state, "%s gains %d shield below half HP." % [_state_display_name(hero_state), dug]))
+	var sides: Array = [[combat_manager.get_hero_states(), "static", -1], [combat_manager.get_enemy_states(), "litany", 1]]
+	if CombatManager.trait_break() == "litany_first":
+		sides.reverse()
+	for side in sides:
+		for owner_state in side[0]:
+			if bool(owner_state.get("dead", false)) or not combat_manager.has_trait(owner_state, str(side[1])):
+				continue
+			var amount: int = combat_manager.trait_num(owner_state, "amount", 1) * int(side[2])
+			var die_state: Dictionary = _extreme_enemy_die(bs, int(side[2]) < 0)
+			if die_state.is_empty():
+				continue
+			var die_id: String = str(die_state["id"])
+			var before: int = effective_enemy_roll(die_state, die_id, bs)
+			bs.enemy_roll_shifts[die_id] = int(bs.enemy_roll_shifts.get(die_id, 0)) + amount
+			var after: int = effective_enemy_roll(die_state, die_id, bs)
+			if after == before:
+				# Already at the end of the die (or held by a jam): nothing moved.
+				bs.enemy_roll_shifts[die_id] = int(bs.enemy_roll_shifts[die_id]) - amount
+				continue
+			fired.append(_trait_note(owner_state, "%s's die %s from %d to %d." % [_state_display_name(die_state), "drops" if amount < 0 else "rises", before, after]))
+	return fired
+
+
+func _trait_note(state: Dictionary, what: String) -> Dictionary:
+	var trait_name: String = str(CombatManager.UnitTraits.of_unit(state.get("unit")).get("name", ""))
+	return {"state": state, "name": trait_name, "text": "%s: %s" % [trait_name, what]}
+
+
+# The living enemy whose die shows the highest (or lowest) value this round,
+# among the dice a trait may move: not frozen, not hijacked. Ties go to the
+# first in slot order. {} when there is none.
+func _extreme_enemy_die(bs: BattleState, highest: bool) -> Dictionary:
+	var best: Dictionary = {}
+	var best_value: int = 0
+	for enemy_state in combat_manager.get_enemy_states():
+		var enemy_id: String = str(enemy_state["id"])
+		if bool(enemy_state.get("dead", false)) or int(bs.enemy_rolls.get(enemy_id, 0)) <= 0:
+			continue
+		if CombatManager.trait_break() != "frozen_dice" and (not can_alter_die(enemy_state) or _is_locked_by_freeze(enemy_state)):
+			continue
+		if bool(enemy_state.get("hijack_pending", false)):
+			continue
+		var value: int = effective_enemy_roll(enemy_state, enemy_id, bs)
+		if best.is_empty() or (value > best_value if highest else value < best_value):
+			best = enemy_state
+			best_value = value
+	return best
+
+
 # ── Boss relics (rework, Kev 2026-09-27; DECISIONS_RESOLVED G-34..G-38) ──────
 # The dice rules of the boss relics live here so the live screen and the
 # headless sim share them. Blood Frenzy is a kill hook in combat_manager, and
@@ -409,6 +496,7 @@ func apply_heretic_signal(bs: BattleState, landed: Dictionary = {}) -> Dictionar
 				bs.hero_roll_sets.erase(uid)
 			else:
 				bs.enemy_roll_nudges.erase(uid)
+				bs.enemy_roll_shifts.erase(uid)
 			(thrown[side] as Array).append(uid)
 	return thrown
 
@@ -459,6 +547,7 @@ func item_enemy_reroll(bs: BattleState, target_state: Dictionary, landed_raw: in
 		return 0
 	var new_roll: int = landed_raw if landed_raw > 0 else roll_provider.roll_d20()
 	bs.enemy_rolls[str(target_state["id"])] = new_roll
+	bs.enemy_roll_shifts.erase(str(target_state["id"]))
 	return new_roll
 
 
@@ -469,6 +558,7 @@ func item_enemy_reroll_all(bs: BattleState) -> void:
 		if not can_alter_die(enemy_state):
 			continue
 		bs.enemy_rolls[str(enemy_state["id"])] = roll_provider.roll_d20()
+		bs.enemy_roll_shifts.erase(str(enemy_state["id"]))
 
 
 # Freezes a die (either side — freeze = repeat, per Kev 2026-07-06): adds
@@ -650,7 +740,15 @@ func _enemy_value_for_raw(state: Dictionary, bs: BattleState, raw_roll: int) -> 
 		return hijacked
 	# Firewall Hack: the player's -N Nudge on this enemy die (never below 1).
 	var nudge: int = int(bs.enemy_roll_nudges.get(str(state.get("id", "")), 0))
-	return clampi(combat_manager.get_effective_roll(state, raw_roll) + nudge, 1, 20)
+	# Static / Zealous: the round-start shift on this die. A raise never lifts
+	# a jammed die past its cap.
+	var shift: int = int(bs.enemy_roll_shifts.get(str(state.get("id", "")), 0))
+	var base: int = combat_manager.get_effective_roll(state, raw_roll)
+	var value: int = clampi(base + nudge + shift, 1, 20)
+	var jam_cap: int = int(state.get("jam_cap", 0))
+	if shift > 0 and jam_cap > 0:
+		value = mini(value, maxi(jam_cap, base))
+	return value
 
 
 # ── Printed faces (G-24) ──────────────────────────────────────────────────────

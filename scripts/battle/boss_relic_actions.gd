@@ -46,6 +46,7 @@ func _bs() -> BattleState:
 func on_roll_started() -> void:
 	_bs().firewall_hack_used = false
 	_bs().enemy_roll_nudges.clear()
+	_bs().enemy_roll_shifts.clear()
 
 
 # Tectonic Charge (G-38): no hero die is thrown while the heroes hold.
@@ -58,6 +59,7 @@ func hero_roll_states() -> Array:
 # A refresh after a settled re-throw puts back this round's Firewall Hack too.
 func restore_pending_actions(actions: Dictionary) -> void:
 	_bs().enemy_roll_nudges.assign(actions.get("enemy_nudges", {}))
+	_bs().enemy_roll_shifts.assign(actions.get("enemy_shifts", {}))
 	_bs().firewall_hack_used = bool(actions.get("firewall_hack_used", false))
 
 
@@ -66,6 +68,10 @@ func restore_pending_actions(actions: Dictionary) -> void:
 func on_dice_landed(restoring: bool) -> void:
 	if not restoring:
 		grant_landing_protocol(_engine().thrown_hero_ids(_bs()))
+		# Round-start traits (G-62): Glacial, Entrenched, Static, Zealous.
+		# Skipped when restoring a settled re-throw: that checkpoint was taken
+		# after they fired and carries their shifts (pending `enemy_shifts`).
+		_scene._feedback.show_trait_triggers(_engine().apply_round_start_traits(_bs()))
 	if _engine().heroes_hold_this_round():
 		_scene._append_log("TECTONIC CHARGE - your heroes hold this round. %s" % hold_detail_text())
 		_show_hold_banner()

@@ -1,5 +1,478 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-67. Re-pin the sim to the traits branch; merge and build v0.3 (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"On claude/traits-beasts-geode, run the sim leg. I approve re-pinning both
+policies to the branch's current state: BASELINE-APPROVED-BY-KEV. No tuning;
+I'll tune after playing."
+
+The same message asks for one full `verify_gate.py`, the merge into `main`,
+the version bump to DEMO v0.3 and a Web export for itch (not uploaded).
+
+**As built.** The sim leg was run first against the old pins (it exits 3:
+beyond the size line on both policies), then all four pins were written
+together with `ci_smoke.py --update-baseline`. Nothing was tuned.
+
+| Clear rate, 1,500 pinned runs | First evolutions: was | now | change | Second evolutions: was | now | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 32.5% | 40.7% | +8.2 | 37.7% | 46.9% | +9.2 |
+| Hive | 30.8% | 36.2% | +5.4 | 32.4% | 33.7% | +1.3 |
+| Veil | 26.1% | 26.4% | +0.3 | 28.7% | 27.4% | -1.3 |
+| Signal Purge | 23.9% | 29.7% | +5.8 | 20.3% | 20.7% | +0.4 |
+| Mantle Hunt | 18.9% | 25.6% | +6.7 | 17.9% | 24.2% | +6.4 |
+| Overall | 26.5% | 31.8% | +5.3 | 27.6% | 30.8% | +3.2 |
+
+"Was" is the size pin written on `main` for G-57. Beyond the line: first
+evolutions overall (+5.3 against 4) and Facility (+8.2 against 8), second
+evolutions Facility (+9.2).
+
+**What this closes.** Decision 4 of the G-62 handoff (the pins were not
+re-pinned). Tuning is still open: it is Kev's, after playing.
+
+**One measurement to keep.** With Feral on seven units instead of five
+(G-66), Mantle Hunt clears about 2 points less often on the same seeds (first
+evolutions 27.6% to 25.6%, second 25.9% to 24.2%).
+
+## G-66. Feral on every non-boss beast (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Every non-boss Mantle Hunt unit gets Feral, including Basalt Ape and Magma
+Drake, which also keep their Accrete keyword. The Mantle Tyrant keeps Accrete
+only."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. This answers the
+first open decision in the G-62 handoff and replaces G-62 reading 1 (Feral on
+five units).
+
+**As built.** Two lines in `traits.data.json`. Feral is now on seven units:
+Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor,
+Basalt Ape, Magma Drake. Accrete is a keyword on the unit and Feral is its
+trait, so nothing had to give way: the Ape and the Drake gain their shield
+each turn and gain rampage when an ally dies.
+
+**Scope, as ruled.**
+
+- **In:** every unit of the Mantle Hunt faction but its boss, whatever its
+  role (regular, elite, tank).
+- **Out:** the Mantle Tyrant (Accrete only, no trait). Every boss stays
+  without a trait.
+- **Unchanged:** the other four operations. Only their elites have a trait.
+
+**Not done.** Not tuned and not simmed. The sim pins were already owed a
+re-pin for this branch (G-62 handoff); this adds to that move.
+
+**Gate.** `traits` (the same five breaks; `boss_trait` gives the Tyrant a
+trait and must fail).
+
+## G-65. The HP preview includes traits (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Hero card incoming-damage previews currently ignore traits (e.g. Anchored's
+-2). They must include every trait that changes damage or its target:
+Anchored, Illusory's negated first hit, Volatile's death damage where it
+applies, and any others. Treat it as a class: list every trait that affects a
+previewed number and fix them all. Gate it with a deliberate break."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged.
+
+**The cause, and why the fix is not a list.** A hero's bar ran the real hero
+phase and then summed each enemy's printed damage. A trait was missing
+whenever it acted in the enemy phase or at the tick. Adding the missing traits
+to that sum one by one would be right until the next trait. So the sum is
+gone: the preview dry-runs the whole round with the code that resolves it
+(`CombatManager.forecast_round`), and both kinds of card end their bar on the
+result. This is the fix shape TASK_QUEUE already named for the enemy phase.
+
+**The list** (all 26, with what was wrong before) is the table in TRUTH. Six
+things were wrong: Anchored, Vengeful, Feral, Fervent, and Volatile when the
+unit dies in the enemy phase or at the burn tick. Thirteen traits were already
+right and are now pinned. Seven move no HP in the round they act.
+
+**Readings I made.**
+
+1. **"Any others" includes the enemy's own bar.** Vengeful hurts the attacker
+   and Fervent heals its owner; both are numbers a card previews.
+2. **"Volatile where it applies"** is every way the unit can die in the round:
+   a hero's kill, a spike it runs into on its own turn, the burn tick.
+3. **Rampage and the pack bonus are fixed too.** They are not traits, but the
+   old sum missed them for the same reason and the handoff named them. The
+   dry run cannot include traits and leave these out.
+4. **The pips are left alone.** A die's pips print the ability; the bar shows
+   the outcome. Redline's +2 is in the enemy's bar, not on the attack pip.
+5. **A random pick shows as it will fall.** The dry run replays the seeded
+   stream and puts it back, as it already did for the hero phase. When every
+   hero is cloaked an enemy hits one at random; the bar now shows the hero the
+   stream will pick.
+
+**Gate.** `trait preview`, through `break_gate.py`. Breaks: `trait_blind` (the
+dry run resolves the round with every trait off) and `hero_phase_only` (the
+dry run stops after the hero phase, which is the old preview). In the clean
+run each trait case also asks the blind dry run and requires it to be wrong,
+so a case that does not depend on its trait fails.
+
+## G-64. Trait requirements (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Tag each trait in traits.data.json with what it needs from the unit's kit
+(e.g. Smoldering needs detonate, Vengeful needs taunt, Spectral needs cloak
+and jam). validate-data must fail if a unit carries a trait whose requirements
+its kit doesn't meet. This is groundwork for possible future trait pools;
+don't build any pools, difficulty modes or unlocks."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged.
+
+**As built.** Each trait has `needs`, a list of requirement names. The names
+are defined once, in the same file (`requirements`), over the ability fields.
+`validate-data` checks every unit against its trait. Tables in TRUTH.
+
+**The tags.**
+
+| Trait | Needs |
+|---|---|
+| Smoldering | detonate |
+| Charged | chain |
+| Ruthless | areaAttack, mark |
+| Bloodlust | leech |
+| Anchored | taunt |
+| Vengeful | taunt |
+| Glacial | freeze |
+| Entrenched | nothing |
+| Watchful | heal |
+| Overflowing | heal |
+| Redline | attack |
+| Spectral | cloak, jam |
+| Silent | cloak, singleAttack |
+| Relentless | attack |
+| Static | nothing |
+| Zero-Day | rewrite |
+| Vigilant | nothing |
+| Volatile | nothing |
+| Barbed | nothing |
+| Corrosive | burn |
+| Flickering | nothing |
+| Zealous | nothing |
+| Illusory | nothing |
+| Fervent | burn |
+| Commanding | rollPenalty |
+| Feral | attack |
+
+**Readings I made (each is a tag the ruling did not give).**
+
+1. **A trait needs what its line reads and the unit's own kit must be able to
+   make.** So Glacial needs freeze ("per frozen enemy"), Fervent needs burn
+   ("whenever any burn ticks") and Ruthless needs mark as well as an area
+   attack, though a teammate or the player could supply each. A pool that gave
+   Glacial to a unit that cannot freeze would hand out a trait that does
+   nothing in most squads. If these three should be looser, drop the tag:
+   one word each.
+2. **What a trait makes itself is not a need.** Flickering cloaks its unit, so
+   it does not need a cloak ability; Relentless marks, so it does not need
+   mark.
+3. **Vengeful needs taunt only, not spike,** as the ruling says: it hits back
+   with no spike up (G-62, reading 6).
+4. **Smoldering needs detonate only,** as the ruling says. Burn to detonate
+   can come from anyone.
+5. **Feral needs an attack.** Rampage doubles an attack; a unit that never
+   attacks would gain nothing.
+6. **Silent needs a single-target attack,** since only one can "kill its
+   target" from cloak (G-62).
+7. **A need is met by one ability,** not by fields spread over two: an area
+   attack is damage and `blastAll` on the same ability.
+8. **The definitions are data, not validator code.** A trait pool will have to
+   ask the same question in the game; reading one table keeps the two from
+   drifting. The game does not read it yet.
+
+**Gate.** `validate-data`. It also proves the rule can fail: nine deliberate
+breaks on a copy of the real data, each of which must raise its own error. I
+also fed it three bad edits to the real file (Vengeful on Wraith, Spectral on
+Volt Enforcer, a trait with no `needs`) and two weakened rules (every need
+met; `none` ignored); it refused all five.
+
+## G-63. Trait names are titles (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"The battle card shows the trait name above the unit's callsign. I like that
+display: trait + callsign reads as the unit's full name (e.g. BARBED STALKER),
+so keep it.
+
+Rename traits so every one reads as a title with its callsign. Effects don't
+change.
+
+Hero evolutions:
+- Afterburn -> Smoldering (Pyro)
+- Live Wire -> Charged (Arc)
+- Exposed -> Ruthless (Bladecore)
+- Bloodlust -> keep (Ravager)
+- Anchor -> Anchored (Bulwark)
+- Retaliate -> Vengeful (Sentinel)
+- Glacial Armor -> Glacial (Glacier)
+- Dug In -> Entrenched (Trench)
+- Triage -> Watchful (Combat Medic; also fixes the clash with its Triage
+  ability)
+- Overflow -> Overflowing (Synth)
+- Redline -> keep (Overclocked)
+- Ghost Signal -> Spectral (Phantom)
+- Silent Kill -> Silent (Shadow)
+- Clean Kill -> Relentless (Wraith)
+- Static -> keep (Noise)
+- Zero Day -> Zero-Day (Nullwire)
+
+Elites:
+- Backup -> Vigilant (Patrol Enforcer)
+- Discharge -> Volatile (Volt Enforcer). Replace "DEATH: 4 TO ALL" on its card
+  with VOLATILE, in a warning color distinct from the other traits' amber. The
+  death damage stays in the long-press text.
+- Barbed -> keep (Spine Stalker)
+- Corrosive -> keep (Caustic Spewer)
+- Blink -> Flickering (Phaseblade)
+- Litany -> Zealous (Circuit Acolyte)
+- Decoy -> Illusory (False Image)
+- Kindle -> Fervent (Ash Channeler)
+- Compel -> Commanding (Oath Binder)
+- Pack Rage -> Feral (all Mantle Hunt beasts that have it)
+
+Update every place trait names appear: card, long-press, evolution picker,
+Help, battle log and trigger chips. Check every trait + callsign pair fits the
+card at phone width, and list any that overflow."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. This replaces the
+names in G-62; G-62's rules and readings stand, under the new names.
+
+**As built.** The 21 names changed in `traits.data.json` and nowhere else:
+every screen and every log line reads a trait's name from the data. No pair
+overflows the card (numbers in TRUTH).
+
+**Readings I made.**
+
+1. **The data key is not renamed.** Each trait keeps its first id
+   (`afterburn`, `discharge`, `packRage`) as an internal key, as the roll
+   windows keep theirs and Strike Unit keeps `combat`. The id is what the
+   rules test and what a saved battle carries, so a rename there could turn a
+   trait off in a resumed battle and would change 40 rule sites for no shown
+   difference. The data file says so in its comment.
+2. **The warning colour is the damage red** (`PixelUI.COLOR_DAMAGE`), the red
+   of a damage number and of the HP a hit will take. It is an existing
+   `PixelUI` colour, so no new colour was added. It replaces the pale rust the
+   old marker used, which sat close to amber.
+3. **"The death damage stays in the long-press text"** is the trait line as it
+   was: "VOLATILE: When it dies, deals 4 damage to each hero."
+4. **A name is one word of at most 12 letters** (a hyphen is allowed, for
+   Zero-Day). The schema enforces it, so a later name cannot be a phrase that
+   stops reading as a title.
+
+**Gate.** `traits` (same five breaks). New checks: one title word per name; no
+retired name in the data; no trait name typed in the nine files that print
+one; VOLATILE's colour apart from amber and from the name under it; all 30
+trait and callsign pairs fit their card line.
+
+## G-62. Unit traits (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"A new system: some units get one always-on trait. It works the same way for
+heroes and enemies.
+- Hero evolutions get a trait on evolving. Base heroes have none.
+- Elite enemies get a trait.
+- Mantle Hunt is the only operation where regular units also get a trait (Pack
+  Rage, below). Regular units in other operations and all bosses have none.
+- Traits should feel noticeable but small.
+
+Hero evolutions:
+- Pyro, Afterburn: detonating leaves 1 burn on the target.
+- Arc, Live Wire: each chain jump deals +1 damage.
+- Bladecore, Exposed: marked enemies take +2 from its area attacks.
+- Ravager, Bloodlust: after rolling band 1, its next attack leeches 50% more.
+- Bulwark, Anchor: takes 2 less damage while taunting.
+- Sentinel, Retaliate: when hit while taunting, its spike deals +2.
+- Glacier, Glacial Armor: at round start, gains 1 shield per frozen enemy.
+- Trench, Dug In: at round start, gains 3 shield while below half HP.
+- Medic, Triage: heals on the lowest-HP ally restore +3.
+- Synth, Overflow: healing past full HP becomes shield.
+- Overclocked, Redline: +2 damage on every attack while the player has 5 or
+  more Protocol.
+- Phantom, Ghost Signal: its jams last 1 extra round while it's cloaked.
+- Shadow, Silent Kill: an ambush that kills its target doesn't break cloak.
+- Wraith, Clean Kill: when it kills a target, the lowest-HP enemy becomes
+  marked.
+- Noise, Static: at round start, the highest enemy die drops by 1.
+- Nullwire, Zero Day: enemies it rewrites take +2 damage that round.
+
+Elites:
+- Patrol Enforcer, Backup: when an ally is hit, gains 2 shield.
+- Volt Enforcer, Discharge: when it dies, deals 4 to each hero. Its card must
+  warn about this clearly.
+- Spine Stalker, Barbed: heroes that hit it take 2.
+- Caustic Spewer, Corrosive: its burns ignore shields.
+- Phaseblade, Blink: after rolling band 1, it cloaks.
+- Circuit Acolyte, Litany: at round start, the lowest enemy die rises by 2.
+- False Image, Decoy: the first hit against it each battle is negated.
+- Ash Channeler, Kindle: heals 3 whenever any burn ticks.
+- Oath Binder, Compel: its roll penalties last 1 extra round.
+
+Mantle Hunt: every regular and elite beast (not the boss, which keeps Accrete):
+- Pack Rage: when an ally dies, this unit gains rampage. This replaces any
+  other trait on Geode Panther and Cinder Raptor.
+
+Dice rules that apply:
+- Static and Litany change dice that are already showing. Use the existing
+  deliberate-change path so the die visibly tips to its new face and the shown
+  value always matches.
+- A frozen die keeps its number (freeze ruling), so Static and Litany skip
+  frozen dice.
+- If both fire in the same round, define the order and tell me what you chose.
+
+UI (use existing components, kept minimal; the UI is being redesigned
+separately):
+- Long-press: the trait (name and one-line effect) appears above the unit's
+  roll breakdown.
+- Evolution picker: the trait is shown in the minimized view of each choice,
+  so the player always knows it before choosing.
+- Battle card: a small trait marker on units that have one, never in portrait
+  corners.
+- When a trait triggers: a brief chip on the unit naming the trait, plus a
+  battle log line, the same pattern as Accrete and Firewall. Respect Reduced
+  Motion and No animations (the chip still appears, without animation).
+- Help/unit reference: show each unit's trait.
+- Copy short, plain, no em dashes."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. Not tuned: Kev
+plays it first.
+
+**The order I chose: Static first, then Litany.** The four round-start traits
+fire heroes first, as the round itself does, so Litany has the last word. On
+dice 8 and 7 the result is 9 and 7 (the other order gives 8 and 8). The
+enemy's trait answers the player's, not the reverse; if that feels wrong in
+play it is one line to flip.
+
+**Readings I made (each is a place the ruling left a choice).**
+
+1. **Mantle Hunt's Pack Rage is on five units**, the three regular and two
+   elite ones by the G-55 role table. Basalt Ape and Magma Drake are tanks in
+   that table and have none (they keep the Accrete keyword). If "every beast
+   but the boss" was meant, that is two lines in `traits.data.json`.
+2. **"At round start" is when the dice have landed**, before planning. All
+   four round-start traits fire there, so the shields and the moved dice are
+   in front of the player while they plan.
+3. **"Skip frozen dice" means pass over them**: the next highest (or lowest)
+   die is taken. A hijacked die is passed over too. A die that cannot move
+   (already 1 or 20, or held by a jam cap) is left alone and no other die is
+   taken in its place.
+4. **Afterburn's burn lasts 2 turns**, and only a detonation that had burn to
+   detonate leaves it.
+5. **Bloodlust is spent by the next attack that leeches**, not by any next
+   attack. Ravager's first window has no leech, so "next attack" read
+   literally would often waste it on a hit that cannot leech.
+6. **Retaliate and Barbed work with no spike up.** Sentinel's taunt and its
+   spike are on different rolls, so "its spike deals +2" while taunting would
+   otherwise never apply.
+7. **Ghost Signal's "while it's cloaked" is cloaked as the ability starts.**
+   Both of Phantom Engineer's jams ride attacks, and the attack breaks the
+   cloak before the jam lands.
+8. **Zero Day's "that round" is until the rewrite ends**: the rest of the
+   round it is applied in, and the round the die shows 3.
+9. **Backup's shield is an ordinary one-round shield**, so it covers the rest
+   of the heroes' attacks that round.
+10. **Kindle heals once for each unit whose burn ticks**, heroes or enemies.
+    Against a squad with burn on all three heroes that is 9 a round.
+11. **Decoy negates the damage of the first attack.** The attack's burn, mark
+    or jam still lands.
+12. **Traits are not abilities**: a Firewall does not block one.
+13. **Bloodlust and Blink print their unit's own first roll window** ("After
+    rolling 1-7"), never a band name, per the band vocabulary rule.
+
+**Two things to know.**
+
+- **Combat Medic now has an ability and a trait both called Triage** (its 1-3
+  ability, "6 heal (hero)", and this trait). I kept the ruling's name. One of
+  them probably wants renaming.
+- **`EnemyData.traits`** (an unused array field) is replaced by `unit_trait`.
+
+**Gate.** `traits`, through `break_gate.py`. Five breaks: `off` (no trait
+applies), `no_chip` (a trait applies without its chip), `frozen_dice` (Static
+and Litany move frozen dice), `litany_first`, `boss_trait` (every unit that
+should have none is given one).
+
+## G-61. Geode Panther attacks the die it freezes (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Geode currently freezes the lowest die but attacks a different target. Change
+it so it freezes and attacks the same target, the lowest. Update its text."
+
+**As built.** Calcifying Bite and Stonefang Pounce aim at the hero showing the
+lowest die, and the freeze lands on the hero that was hit. The rule is by
+ability shape, not by unit name: a single-target attack that also freezes one
+die. Only the Panther's two abilities have that shape today. The intent shown
+while planning names that hero and follows the dice as the player changes
+them. Full rule in TRUTH.
+
+**Readings I made.**
+
+- **"The lowest" is the lowest die showing,** the same pick the freeze always
+  used (ties to squad order, cloaked and fallen heroes passed over, a taunt
+  overrides).
+- **Petrifying Shriek is left alone.** It freezes every die, so there is no one
+  die to aim at.
+- **Text:** "10 damage, freeze 1 turn (lowest hero die)". The parenthesis names
+  the target of the whole line, the convention "(lowest HP)" already uses.
+
+**Gate.** `geode targeting`. Breaks: `split` (the hit aims apart from the
+freeze, the old behaviour) and `stale` (the planning intent reads last round's
+dice).
+
+## G-60. Beasts rework: rampage and pack bonus (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Beasts rework
+- Rampage, game-wide: lasts until the unit's next turn and doesn't stack.
+- Pack bonus: make it noticeably stronger. Propose the new numbers in the
+  report, with the old values beside them."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged. Kev plays it before
+deciding on tuning.
+
+**As built.**
+
+- **Rampage.** On or off. The unit's next turn spends it: an attack on that
+  turn deals double damage, a turn that does not attack lets it go. A grant
+  to a unit that already has it changes nothing.
+- **Pack bonus: +3 per other living pack member of the same kind** (was +1).
+  One constant, `CombatManager.PACK_BONUS_PER_MEMBER`. The table is in TRUTH.
+
+**Readings I made (say if any is wrong).**
+
+- **"Until the unit's next turn" includes that turn.** Read the other way
+  (it ends as the turn starts) a rampage could never double anything, since a
+  unit only attacks on its turn.
+- **A rampage a unit grants itself during its turn is for its next turn.** So
+  Tyrant Mantle (20 shield, rampage) still sets up the following round.
+- **A rampaging unit whose turn grants rampage again keeps exactly one.** No
+  "ends unused" line is shown for the old one.
+- **A turn lost to the Decoy Beacon spends it.** A unit with no die this round
+  took no turn and keeps it.
+- **Ability text left alone:** "1 rampage (self)" and "1 rampage (all allies)"
+  still read correctly, and changing them would mean changing the ability
+  text format and its three checkers.
+- **Pack bonus counts the same units as before** (same `enemy_type`; the dead
+  do not count). Only the number changed.
+
+**Why +3.** At +1 the pack-bonus attack was the weakest attack in the kit even
+with a full pack. At +3 a full pack makes it the strongest non-20 attack, a
+pack of two sits just under the plain attack, and killing one packmate takes 3
+off every later bite. With Pack Rage (G-62) the trade is visible both ways: a
+kill weakens the pack bonus and enrages the survivors for one turn.
+
+**Gate.** `rampage`: `scripts/debug/rampage_test.gd` through `break_gate.py`.
+Breaks: `stack` (grants add up again), `keep` (an unused rampage carries
+over), `pack_one` (+1 again).
+
 ## G-59. Working rules; the break gate's real leg runs on change (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

@@ -416,6 +416,15 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		focus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text_stack.add_child(focus)
 
+	# The evolution's trait (G-62): in the header, so it shows before the
+	# abilities are expanded and the player knows it before choosing.
+	var trait_line: String = CombatManager.UnitTraits.line(path.get("trait", {}))
+	if trait_line != "":
+		var trait_label: Label = _make_label(trait_line, BODY_FONT_SIZE, PixelUI.DT_AMBER, 2)
+		trait_label.name = "TraitLine"
+		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text_stack.add_child(trait_label)
+
 	var hp_value: int = int(path.get("hp", 0))
 	var hp_label_text: String = "MAX HP UNCHANGED"
 	if hp_value > 0:

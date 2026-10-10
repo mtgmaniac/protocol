@@ -1522,6 +1522,8 @@ func get_run_unit_data(unit_id: String) -> UnitData:
 			else:
 				merged_ranges.append(base_range.duplicate(true))
 		built_unit.dice_ranges = merged_ranges
+		# The evolution's trait (G-62). A base hero has none.
+		built_unit.unit_trait = (path.get("trait", {}) as Dictionary).duplicate(true)
 		# Attach the chosen tier-3 Directive so combat can read its passive.
 		var directive_name: String = get_unit_directive_name(unit_id)
 		if directive_name != "":
@@ -1714,6 +1716,7 @@ func _group_evolution_paths(evolution_entries: Array) -> Array:
 				"hp": int(entry.get("hp", 0)),
 				"abilities_by_zone": {},
 				"directives": (entry.get("directives", []) as Array).duplicate(true),
+				"trait": (entry.get("trait", {}) as Dictionary).duplicate(true),
 			}
 
 		var grouped_entry: Dictionary = grouped[path_name]

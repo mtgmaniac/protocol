@@ -61,14 +61,14 @@
       "term": "Rampage",
       "category": "offense",
       "code": "RA",
-      "def": "The unit's next damaging hit deals double damage, then the charge is consumed.",
+      "def": "On its next turn, this unit's attack deals double damage. Rampage ends after that turn and does not stack.",
       "syntax": "rampage"
     },
     {
       "id": "pack_bonus",
       "term": "Pack Bonus",
       "category": "offense",
-      "def": "Enemy-only: this attack deals +1 for each other living pack member of the same kind.",
+      "def": "Enemy-only: this attack deals +3 for each other living pack member of the same kind.",
       "syntax": "pack bonus"
     },
     {

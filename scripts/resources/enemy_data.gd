@@ -24,7 +24,9 @@ extends Resource
 @export var starts_cloaked: bool = false
 @export var portrait: Texture2D
 @export var dice_ranges: Array[Dictionary] = []
-@export var traits: Array[Dictionary] = []
+## The unit's trait (G-62): {id, name, text, ...numbers} from
+## scripts/battle/unit_traits.gd. Empty for a unit without one.
+@export var unit_trait: Dictionary = {}
 
 func battle_name() -> String:
 	return callsign if callsign != "" else display_name

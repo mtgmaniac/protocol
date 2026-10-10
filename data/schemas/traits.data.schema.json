@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unit traits (data/raw/traits.data.json)",
+  "type": "object",
+  "required": ["requirements", "traits", "evolutions", "enemies"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "requirements": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][A-Za-z]*$" },
+      "additionalProperties": { "$ref": "#/$defs/requirement" }
+    },
+    "traits": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][A-Za-z]*$" },
+      "additionalProperties": { "$ref": "#/$defs/trait" }
+    },
+    "evolutions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]+/[a-z]+$" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "enemies": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "requirement": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "all": { "$ref": "#/$defs/fields" },
+        "any": { "$ref": "#/$defs/fields" },
+        "none": { "$ref": "#/$defs/fields" }
+      },
+      "anyOf": [{ "required": ["all"] }, { "required": ["any"] }]
+    },
+    "fields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "trait": {
+      "type": "object",
+      "required": ["name", "needs", "text"],
+      "properties": {
+        "needs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "name": { "type": "string", "minLength": 1, "maxLength": 12, "pattern": "^[A-Z][A-Za-z-]*$" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 90, "pattern": "\\.$" },
+        "warning": { "type": "boolean" }
+      },
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    }
+  }
+}

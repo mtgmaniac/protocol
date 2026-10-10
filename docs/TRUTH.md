@@ -1,5 +1,426 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-10 sim pins re-pinned to the traits branch (Kev, G-67,
+BASELINE-APPROVED-BY-KEV):** all four pins now hold the game as it is after
+G-60 to G-66 (rampage, pack bonus, Geode, traits, Feral on seven units).
+Nothing was tuned; Kev tunes after playing.
+
+| Clear rate, 1,500 pinned runs | First evolutions: was | now | change | Second evolutions: was | now | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 32.5% | 40.7% | +8.2 | 37.7% | 46.9% | +9.2 |
+| Hive | 30.8% | 36.2% | +5.4 | 32.4% | 33.7% | +1.3 |
+| Veil | 26.1% | 26.4% | +0.3 | 28.7% | 27.4% | -1.3 |
+| Signal Purge | 23.9% | 29.7% | +5.8 | 20.3% | 20.7% | +0.4 |
+| Mantle Hunt | 18.9% | 25.6% | +6.7 | 17.9% | 24.2% | +6.4 |
+| Overall | 26.5% | 31.8% | +5.3 | 27.6% | 30.8% | +3.2 |
+
+- Beyond the size line on both policies (first evolutions overall +5.3 against
+  4 and Facility +8.2 against 8; second evolutions Facility +9.2), so this is
+  the ceremony, signed off by Kev.
+- **The game is easier than the last pin everywhere but Veil.** Every hero
+  evolution gained a trait; the enemy traits sit on units a run meets a few
+  times.
+- **G-66 made Mantle Hunt about 2 points harder** than the branch was with
+  Feral on five units (first evolutions 27.6% to 25.6%, second 25.9% to
+  24.2%, same 1,500 seeds).
+
+| Pin | `l1` tripwire (300) | `l1` size (1,500) | `l1_evo2` tripwire (300) | `l1_evo2` size (1,500) |
+|---|--:|--:|--:|--:|
+| Overall | 0.2933 | 0.3180 | 0.2967 | 0.3080 |
+| Facility | 0.3380 | 0.4066 | 0.4366 | 0.4689 |
+| Hive | 0.4237 | 0.3619 | 0.3390 | 0.3365 |
+| Veil | 0.2308 | 0.2638 | 0.2308 | 0.2736 |
+| Signal Purge | 0.3333 | 0.2971 | 0.3158 | 0.2065 |
+| Mantle Hunt | 0.1042 | 0.2559 | 0.1042 | 0.2424 |
+
+  The 300-run tripwire figures only say whether combat changed; read sizes
+  off the 1,500-run columns (G-57).
+
+**2026-10-09 Feral on every Mantle Hunt unit but the boss (Kev, G-66; on
+branch `claude/traits-beasts-geode`, not merged):** Basalt Ape and Magma Drake
+now have Feral too, so seven Mantle Hunt units carry it (were five).
+
+- **Who:** Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder
+  Raptor, Basalt Ape, Magma Drake. The rule is "in Mantle Hunt, every unit
+  but the boss", whatever its role in the roll-windows table.
+- **Basalt Ape and Magma Drake keep Accrete** (3 and 4 shield at the start of
+  each of their turns). Accrete is their keyword and Feral is their trait;
+  both apply. Their cards read FERAL BASALT and FERAL MAGMA, and both fit.
+- **The Mantle Tyrant is unchanged:** Accrete (its standing rule) and no
+  trait. No boss has a trait.
+- **Elsewhere nothing changed:** in the other four operations only elites
+  have a trait.
+- Two lines of data (`traits.data.json`, `enemies`). Feral needs an attack
+  (G-64) and both have one. Not tuned and not simmed: with seven Feral units
+  every kill in Mantle Hunt now enrages every survivor.
+- Gate `traits` pins it: every unit of the Mantle Hunt faction but the boss
+  has Feral, the two keep their Accrete, the Tyrant has Accrete and no trait,
+  no unit outside Mantle Hunt has Feral, and a Basalt Ape whose ally dies
+  both gains rampage and accretes that round.
+
+**2026-10-09 the HP preview is the whole round, traits included (Kev, G-65;
+on branch `claude/traits-beasts-geode`, not merged):** the bar on a battle
+card ends where the round will really leave the unit.
+
+- **Before:** the preview ran the real hero phase, then added each enemy's
+  printed damage by hand. Nothing that acts in the enemy phase or at the
+  end-of-round tick was in it.
+- **Now:** `CombatManager.forecast_round` dry-runs the three steps
+  `resolve_round` takes (`_open_round`, `_resolve_hero_phase`,
+  `_resolve_enemy_phase`, then `_tick_end_of_round_states`) on copies of the
+  unit states. `resolve_round` is those same steps, so the preview cannot
+  leave a rule out. Nothing live changes: states, per-round fields and the
+  seeded streams are put back, as before.
+- **Both kinds of card read the end of that run.** The preview carries
+  `final_hp` (HP after the tick, 0 when dead), `burn_hp` (the burn tick's
+  share) and `lethal`; the card ends its bar on `final_hp`. The older fields
+  stay: `damage` on a hero's card is now the hits that land in the hero phase
+  and the enemy phase (they size the shield ghost).
+- **A hero whose ability still needs a target does not act in the dry run,**
+  as before. Its die still counts for what reads the dice (a hijack, the
+  enemy intents), which the old run left out.
+- **Every trait, and whether it moves a previewed number.** "Was wrong" is
+  measured: the gate's cases run against the preview as it was.
+
+| Trait | What it moves this round | Before |
+|---|---|---|
+| Anchored | The taunter's bar: each hit it pulls is 2 less | Was wrong |
+| Vengeful | The attacker's bar: 2 for hitting the taunter | Was wrong |
+| Volatile | Every hero's bar when it dies. Killed by a hero: | Right |
+| | killed in the enemy phase (a spike) or by the burn tick: | Was wrong |
+| Feral | A hero's bar: a packmate dies in the hero phase, so its attack this round is doubled | Was wrong |
+| Fervent | Its own bar: heals 3 for each unit whose burn ticks | Was wrong |
+| Barbed | The attacking hero's bar: 2 | Right |
+| Illusory | Its own bar: the first hit is negated | Right |
+| Redline, Ruthless, Charged, Zero-Day, Relentless | The enemy's bar: the bonus damage | Right |
+| Bloodlust, Watchful | A hero's bar: the larger heal | Right |
+| Overflowing | A hero's bar: the shield from healing past full eats the next hit | Right |
+| Vigilant | Its own bar: the shield it gains eats the next hit | Right |
+| Corrosive | A hero's bar: its burn ticks through a shield | Right |
+| Static, Zealous | Which ability an enemy uses: the preview reads the moved die | Right |
+| Entrenched, Glacial | A hero's bar: the shield is on the board before planning | Right |
+| Smoldering | Nothing this round: the burn it leaves ticks from next round | n/a |
+| Silent, Spectral, Flickering, Commanding | Nothing: a cloak, or how long something lasts | n/a |
+
+- **Fixed with it, not traits:** an enemy's Rampage (double damage) and the
+  pack bonus (+3 per packmate) were missing from a hero's bar for the same
+  reason. So were enemy lifesteal, an enemy's spike damage taken, the
+  Regenerative modifier and a shield an enemy raises before its own burn
+  ticks. All come from the dry run now.
+- **Not changed:** the pips beside a die print the ability's own numbers (an
+  attack under Redline still prints its base damage). The bar is the preview.
+- **Cost:** refreshing all six cards, each with its own dry run, takes about
+  5 ms.
+- **The split of `resolve_round` changes no result:** 120 seeded sim runs
+  (`l1`, seed base 900000) are byte for byte the same before and after.
+- Gate `trait preview` (`scripts/debug/trait_preview_test.gd`, 31 cases on a
+  real battle screen: every card's previewed HP against the HP after a real
+  `resolve_step`; each trait case must go wrong when the dry run is blind to
+  traits; the dry run leaves the battle untouched; the bar the card draws
+  ends on the number). Breaks: `trait_blind` (19 trait cases fail) and
+  `hero_phase_only` (the preview as it was).
+
+**2026-10-09 trait requirements (Kev, G-64; on branch
+`claude/traits-beasts-geode`, not merged):** every trait in
+`traits.data.json` says what it needs from its unit's kit, and
+`validate-data` fails when a unit carries a trait its kit cannot use.
+Groundwork for trait pools. No pool, difficulty mode or unlock was built, and
+nothing in the game reads the tags.
+
+- **`needs`** on each trait: a list of requirement names, `[]` for a trait
+  that needs nothing. Required on every trait.
+- **`requirements`** in the same file defines each name over the ability
+  fields of `heroes.data.json` and `enemies.data.json`. A kit meets one when
+  ONE of its abilities has every `all` field set, at least one `any` field
+  set (when given) and no `none` field set. Set means true or above 0.
+
+| Requirement | An ability with |
+|---|---|
+| attack | `dmg` |
+| singleAttack | `dmg` and no `blastAll` |
+| areaAttack | `dmg` and `blastAll` |
+| detonate, chain, mark, heal, cloak, rewrite, burn | that field |
+| leech | `leech` or `lifestealPct` |
+| taunt | `taunt` or `enemySelfTaunt` |
+| freeze | `freezeAnyDice`, `freezeEnemyDice` or `freezeAllEnemyDice` |
+| jam | `jam` or `jamAll` |
+| rollPenalty | `rfe` or `rfm` |
+
+| Trait | Needs |
+|---|---|
+| Smoldering | detonate |
+| Charged | chain |
+| Ruthless | areaAttack, mark |
+| Bloodlust | leech |
+| Anchored, Vengeful | taunt |
+| Glacial | freeze |
+| Watchful, Overflowing | heal |
+| Redline, Relentless, Feral | attack |
+| Spectral | cloak, jam |
+| Silent | cloak, singleAttack |
+| Zero-Day | rewrite |
+| Corrosive, Fervent | burn |
+| Commanding | rollPenalty |
+| Entrenched, Static, Vigilant, Volatile, Barbed, Flickering, Zealous, Illusory | nothing |
+
+- **The rule: a trait needs each thing its line reads from the board that
+  the unit's own kit must be able to make.** What the trait itself produces
+  is not a need (Flickering cloaks the unit; it does not need a cloak
+  ability).
+- **`validate-data` refuses:** a unit whose kit does not meet a need, a
+  `needs` entry that is not a defined requirement, a requirement that reads a
+  field no ability has, and a trait with no `needs`. An evolution is checked
+  against its own five abilities, an enemy against its kit.
+- **The rule proves it can fail on every run.** `validate-data` makes nine
+  deliberate breaks on a copy of the real data (a trait moved to a unit that
+  cannot use it, a kit stripped of the ability, each half of a two-part need,
+  the `all` and `none` forms, a bad name, a bad field) and fails if any one
+  is let through.
+
+**2026-10-09 trait names are titles (Kev, G-63; on branch
+`claude/traits-beasts-geode`, not merged):** every trait name is one word that
+reads as a title with the unit's callsign under it on the battle card:
+SMOLDERING PYRO, BARBED STALKER, FERAL HOUND. Effects did not change.
+
+- **21 renamed, 5 kept** (Bloodlust, Redline, Static, Barbed, Corrosive). The
+  table under G-62 below carries the new names; old to new is in
+  `DECISIONS_RESOLVED.md` G-63. Combat Medic's trait is Watchful, so it no
+  longer shares a name with its Triage ability.
+- **The data key did not change.** `traits.data.json` still keys each trait by
+  its first id (`afterburn`, `packRage`); that id is what the rules test and
+  what a battle checkpoint stores, and it is never shown. Only `name` moved.
+- **A name is typed in one place.** The card, long-press, evolution picker,
+  Help, log lines and trigger chips all read it from the data
+  (`UnitTraits.line`, `marker_text`, `name_of`). Two log lines that typed a
+  name (Zero-Day's bonus, Corrosive's tick) now read it too.
+- **Volt Enforcer's card reads VOLATILE** (was DEATH: 4 TO ALL), in the damage
+  red, apart from the amber of every other trait. The 4 damage to each hero is
+  in the long-press line. The data flag is `warning: true` (was a `warn`
+  string).
+- **Fit:** on the battle card at 1080 design px a name line is 332 px wide.
+  The widest trait, OVERFLOWING, is 204 px; the widest callsign under a trait,
+  OVERCLOCK, is 243 px. All 32 pairs fit (30 before G-66); none is cut.
+- Gate `traits` now also pins: every name is one title word, no retired name
+  is in the data, no screen or log line types a trait name, the warning
+  colour is a red apart from the amber and from the name under it, and every
+  trait and callsign fits its card line. The schema caps a name at 12
+  letters, one word.
+
+**2026-10-09 unit traits (Kev, G-62; on branch `claude/traits-beasts-geode`,
+not merged):** some units carry one always-on trait. One system for heroes and
+enemies.
+
+- **Who has one.** Every hero evolution (16). Every elite (9). In Mantle Hunt,
+  every unit but the boss has Feral (7 since G-66, tanks included; it was 5).
+  Nobody else: base heroes, regular units, tanks and supports in the other
+  four operations, and all five bosses have none. "Elite", "regular", "tank"
+  and "support" are the roles of the roll-windows table (G-55).
+- **Data:** `data/raw/traits.data.json`. `traits` holds each trait's name, its
+  one line and its numbers; `evolutions` and `enemies` say who has which. A
+  `{key}` in the line is filled from the trait's own numbers, and `{band}`
+  from the unit's first roll window, so the text cannot print a number the
+  engine does not apply. Loaded by `scripts/battle/unit_traits.gd`; a unit
+  carries its trait as `unit_trait` (UnitData, EnemyData) and its battle state
+  as `trait` (the id). `GameState.get_run_unit_data` puts an evolution's trait
+  on the evolved hero.
+
+| Unit | Trait | Line shown |
+|---|---|---|
+| Pyro Specialist | Smoldering | Detonating leaves 1 burn for 2 turns. |
+| Arc Specialist | Charged | Each chain jump deals +1 damage. |
+| Blade Trooper | Ruthless | Its area attacks deal +2 to marked enemies. |
+| Ravager | Bloodlust | After rolling 1-7, its next leech heals 50% more. |
+| Bulwark | Anchored | Takes 2 less damage while taunting. |
+| Sentinel | Vengeful | When hit while taunting, its spike deals +2. |
+| Glacier Rig | Glacial | At round start, gains 1 shield per frozen enemy. |
+| Trench Rig | Entrenched | At round start, gains 3 shield while below half HP. |
+| Combat Medic | Watchful | Its heals restore +3 on the lowest-HP ally. |
+| Synth Medic | Overflowing | Its healing past full HP becomes shield. |
+| Overclock Engineer | Redline | +2 damage on every attack while you have 5 or more Protocol. |
+| Phantom Engineer | Spectral | Jams it applies from cloak last 1 extra round. |
+| Shadow Operative | Silent | An ambush that kills its target keeps the cloak. |
+| Wraith | Relentless | When it kills, the lowest-HP enemy becomes marked. |
+| Noise Specialist | Static | At round start, the highest enemy die drops by 1. |
+| Nullwire | Zero-Day | Enemies it rewrites take +2 damage until the rewrite ends. |
+| Patrol Enforcer | Vigilant | When an ally is hit, gains 2 shield. |
+| Volt Enforcer | Volatile | When it dies, deals 4 damage to each hero. |
+| Spine Stalker | Barbed | Heroes that hit it take 2 damage. |
+| Caustic Spewer | Corrosive | Its burns ignore shields. |
+| Phaseblade | Flickering | After rolling 1-3, it cloaks. |
+| Circuit Acolyte | Zealous | At round start, the lowest enemy die rises by 2. |
+| False Image | Illusory | The first hit against it each battle is negated. |
+| Ash Channeler | Fervent | Heals 3 whenever any burn ticks. |
+| Oath Binder | Commanding | Its roll penalties last 1 extra round. |
+| Pumice Climber, Obsidian Hound, Slag Hound, Geode Panther, Cinder Raptor, Basalt Ape, Magma Drake | Feral | When an ally dies, gains rampage. |
+
+- **How each one resolves** (the readings are listed in G-62):
+  - *Smoldering:* only when something was detonated; a plain 1 burn for 2 turns.
+  - *Charged:* +1 on every jump, after the jump's half damage is worked out.
+  - *Ruthless:* added before the mark's +50%, on area attacks only.
+  - *Bloodlust:* rolling the first window arms it; it is spent by the next
+    attack that leeches (50% of HP dealt becomes 75%), not by an attack that
+    does not leech. It does not stack.
+  - *Anchored:* every source of damage, for as long as the taunt is up.
+  - *Vengeful, Barbed:* spike damage with or without a spike up (a spike adds
+    to it), once per ability like any spike.
+  - *Watchful:* the unit's own heals (one hero, lowest HP, all heroes), not
+    leech. "Lowest HP" is the existing rule: lowest share of max HP.
+  - *Overflowing:* on heroes; an ordinary one-round shield. With Overheal Relay
+    both happen.
+  - *Redline:* the Protocol held as the round resolves, so spending below 5
+    turns it off. A flat bonus like Momentum: added before a chain jump is
+    halved, not multiplied by an ambush.
+  - *Spectral:* "from cloak" is cloaked when the ability starts (the
+    ambush takes the cloak down before the jam lands). The jam caps two rolls.
+  - *Silent:* a single-target attack from cloak whose target dies in that
+    ability. The cloak stays up and pays its ambush again next time.
+  - *Relentless:* the lowest-HP living enemy, unless it is already marked.
+  - *Zero-Day:* from the moment the rewrite lands until it ends (the end of
+    the round the die shows 3). +2 once per ability per target, hero attacks.
+  - *Vigilant:* once per ability for each ally hit; being hit itself does not
+    count. An ordinary one-round shield.
+  - *Volatile:* 4 to each living hero; shields absorb it.
+  - *Corrosive:* its burn stacks are marked and their part of each tick skips
+    shields. The HP preview counts it (`get_expected_burn_tick_pierce`).
+  - *Flickering:* after its first-window ability resolves.
+  - *Illusory:* the first attack that would damage it, each battle. Burn ticks
+    and items are not hits. The attack's riders still land.
+  - *Fervent:* 3 for each unit whose burn ticks, on either side.
+  - *Feral:* any ally's death, summons included. Rampage does not stack
+    (G-60), so a second death while rampaging adds nothing.
+  - A trait is not an ability: a Firewall does not block one.
+- **The four round-start traits** (Glacial, Entrenched, Static, Zealous) fire
+  once this round's dice are down and before the player plans
+  (`BattleEngine.apply_round_start_traits`: the live screen calls it as the
+  tray settles, the sim at the same point).
+  - **Order: Glacial and Entrenched, then Static, then Zealous.** Heroes
+    first, as in the round itself. So when both dice traits fire, Zealous
+    raises whichever die is lowest after Static's drop (dice 8 and 7: Static
+    makes them 7 and 7, Zealous makes them 9 and 7).
+  - **Static and Zealous change the die's one value.** They write a shift
+    beside the Firewall Hack's (`BattleState.enemy_roll_shifts`), read by the
+    one value rule (`_enemy_value_for_raw`); the tray tips the die onto a face
+    showing the new value and reprints it first when no face does (G-24,
+    G-27). The landed number is kept. The shift is cleared when the round
+    resolves and when its die is thrown again (Heretic Signal, an enemy
+    reroll item).
+  - **A frozen die keeps its number** (G-23): Static and Zealous pass over
+    frozen dice and take the next one. A hijacked die is passed over too (it
+    copies the heroes' highest). A die already on 1 (or 20) does not move and
+    nothing is shown. Zealous never lifts a jammed die past its cap.
+  - A CONTINUE into a settled re-throw restores the shifts with the other
+    pending actions (`enemy_shifts`) and does not fire the traits again.
+- **Shown** (existing components; the UI redesign restyles them):
+  - *Long-press:* "SMOLDERING: Detonating leaves 1 burn for 2 turns." is the
+    first entry, above the roll breakdown (`InspectResolver.trait_entry`).
+  - *Evolution picker:* the same line in each choice's header, which the
+    minimized card always shows.
+  - *Battle card:* the trait's name in the name strip, on the line the BOSS
+    tag uses (no boss has a trait). Never in a portrait corner (G-5). The
+    name and the callsign under it read as the unit's full name (BARBED
+    STALKER, G-63). Volt Enforcer's VOLATILE is drawn in the damage red
+    (`PixelUI.COLOR_DAMAGE`); every other marker is amber.
+  - *When it triggers:* a chip on the unit with the trait's name (the Accrete
+    chip's plate and life; under Reduced Motion and No animations it still
+    appears, without the pop or the fade) and a log line, "Smoldering: the
+    detonation leaves 1 burn on Scrap Drone." One chip per trait per unit per
+    ability; a log line every time.
+  - *Help:* every unit's and evolution's breakdown leads with its trait line.
+- **Sim, not tuned (Kev decides after playing). Re-pinned on 2026-10-10 with
+  G-63 to G-66 included: see the G-67 entry at the top.** The table below is
+  the branch at G-62, before Feral reached seven units. 1,500
+  pinned runs per policy, the branch (traits, beasts and Geode together)
+  against the size pins from `main`:
+
+| Clear rate | First evolutions: main | branch | change | Second evolutions: main | branch | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 32.5% | 40.7% | +8.2 | 37.7% | 46.9% | +9.2 |
+| Hive | 30.8% | 36.2% | +5.4 | 32.4% | 33.7% | +1.3 |
+| Veil | 26.1% | 26.4% | +0.3 | 28.7% | 27.4% | -1.3 |
+| Signal Purge | 23.9% | 29.7% | +5.8 | 20.3% | 20.6% | +0.4 |
+| Mantle Hunt | 18.9% | 27.6% | +8.8 | 17.8% | 25.9% | +8.1 |
+| Overall | 26.5% | 32.2% | +5.7 | 27.6% | 31.1% | +3.5 |
+
+  Beyond the size line on both policies, so a re-pin needs the ceremony. Hero
+  by hero: `HANDOFF_2026-10-09_traits_beasts_geode.md`.
+- Gate `traits` (`scripts/debug/traits_test.gd`: the roster, all 26 rules by
+  their data numbers with and without the trait, the dice rules, where each
+  is shown, the copy, a live round in both animation modes; breaks `off`,
+  `no_chip`, `frozen_dice`, `litany_first`, `boss_trait`). `validate-data`
+  now checks `traits.data.json` against its schema and its cross-references.
+
+**2026-10-09 Geode Panther hits the die it freezes (Kev, G-61; on branch
+`claude/traits-beasts-geode`, not merged):** Calcifying Bite (7-9) and
+Stonefang Pounce (12-19) froze the hero with the lowest die but hit whoever the
+Panther's targeting chose. Now one hero takes both: the one with the lowest
+die.
+
+- **Rule:** a single-target attack that also freezes one die
+  (`CombatManager.attack_freezes_lowest_die`: `dmg` without `blastAll`, plus
+  `freezeEnemyDice`) aims at the living, uncloaked hero showing the lowest die.
+  A tie goes to the first in squad order. A taunt on the Panther redirects the
+  hit and the freeze together. Every hero cloaked: the hit lands on one at
+  random and the freeze lands on that same hero (the G-52 rule for riders).
+- **The intent shown while planning is that hero,** read from the dice as they
+  show now, and it moves when a Nudge, Set or Reroll changes which die is
+  lowest (`assign_enemy_intents` takes the shown hero values). The enemy
+  phase's HP preview follows the intent as before.
+- **Not changed:** Petrifying Shriek (the 20: damage to one hero, freeze on
+  every die) still aims by the Panther's targeting. The damage and freeze
+  numbers are the same.
+- **Text:** "10 damage, freeze 1 turn (lowest hero die)" and "15 damage, freeze
+  1 turn (lowest hero die)" (were "10 damage, freeze lowest hero die 1 turn").
+  The target sits in parentheses at the end, as "(lowest HP)" does.
+- Gate `geode targeting` (`scripts/debug/geode_target_test.gd`: combat,
+  planning, the Panther's data, a live round; breaks `split`, `stale`).
+
+**2026-10-09 beasts rework: rampage and pack bonus (Kev, G-60; on branch
+`claude/traits-beasts-geode`, not merged):**
+
+- **Rampage is on or off, and it lasts until the unit's next turn.** That turn
+  spends it: an attack deals double damage, and a turn that does not attack
+  lets it go. It does not stack: a grant to a unit that is already rampaging
+  changes nothing. Game-wide, every source (Tyrant Mantle, Dominance Roar,
+  Mantle Rupture, and the Feral trait).
+  - Before: every grant added a charge and a charge sat until an attack spent
+    it, so charges piled up over a long fight.
+  - A rampage granted during a unit's own turn is for the turn after. An
+    attack that also grants (Dominance Roar on a rampaging Tyrant) is doubled
+    once and leaves one new rampage.
+  - A turn wasted on the Decoy Beacon spends it. A unit that takes no turn
+    (no die this round) keeps it.
+  - `rampage_charges` on the unit state is now 0 or 1 (name kept).
+    `CombatManager._grant_rampage` / `_take_rampage` / `_expire_rampage`.
+  - Events: `rampage_up` (granted), `rampage` (the doubled hit), and new
+    `rampage_end` (ended unused); the chip leaves on either of the last two.
+    Log: "Mantle Tyrant gains rampage." / "Mantle Tyrant's rampage ends
+    unused." / "Slag Hound is already rampaging. Rampage does not stack."
+  - Copy. Keyword: "On its next turn, this unit's attack deals double damage.
+    Rampage ends after that turn and does not stack." Inspect: "Its next
+    turn's attack deals double damage. Ends after that turn." Primer:
+    "RAMPAGE: double damage on its next turn, then it ends." Ability text is
+    unchanged ("1 rampage (self)", "1 rampage (all allies)").
+- **Pack bonus is +3 per other living pack member of the same kind** (was +1).
+  `CombatManager.PACK_BONUS_PER_MEMBER`, sweepable as `pack_bonus_per_member`.
+  Proposed numbers, on the branch for play; not tuned against the sim.
+
+| Ability | Rolls | Alone | One packmate, was -> now | Two packmates, was -> now |
+|---|---|--:|--:|--:|
+| Pumice Grasp (Pumice Climber) | 13-19 | 6 | 7 -> 9 | 8 -> 12 |
+| Rending Fang (Obsidian Hound, Slag Hound) | 13-19 | 7 | 8 -> 10 | 9 -> 13 |
+| Pack Assault (both Hounds) | 20 | 14 | 15 -> 17 | 16 -> 20 |
+
+  At +1 a full pack's bonus attack (8 or 9) was weaker than the same unit's
+  plain attack on 7-9 (Arterial Bite 11, Throat Clamp 12). At +3 a full pack
+  beats it by 1 and a pack of two is 2 short of it. "Same kind" is unchanged:
+  the two Hounds pack together, a Pumice Climber packs only with Climbers.
+- Gate `rampage` (`scripts/debug/rampage_test.gd`: duration, stacking, the
+  pack numbers and every printed copy of them; breaks `stack`, `keep`,
+  `pack_one`).
+- **`verify_gate.py --only "name, name"`** runs just the named gates (no sim
+  leg, no profile check, no pre-run cleanup); `--list` prints the names. For
+  the Working rules (G-59).
+
 **2026-10-09 working rules and the break gate's real leg (Kev, G-59):**
 
 - **The full gate is run only when the prompt asks for it.** During a task,
@@ -862,7 +1283,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7); since 2026-10-08 the attack that breaks it is an ambush, +50% damage (G-52) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2600**, facility **0.2958** (re-pinned 2026-10-09 for the cloak ambush, the roll windows and the retuning, G-57; before that 2026-10-01 for the no-repeat comp re-roll and 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2933**, facility **0.3380** (re-pinned 2026-10-10 for the traits branch, G-67; before that 2026-10-09 for the cloak ambush, the roll windows and the retuning, G-57; 2026-10-01 for the no-repeat comp re-roll and 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -1087,7 +1508,8 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Siphon | SI | enemy-only: on hit drain N Protocol (floor 0) |
 | Taunt | T | unified (Lure deleted): "The taunted unit can only target the taunter." **SINGLE-TARGET (Build G ruling G-4, Kev 2026-07-15):** a hero taunt is a manual ONE-ENEMY pick — that enemy gets `lured_by_id` and every one of its targeting paths (`_resolve_enemy_hero_target`, the freeze lowest-die pick, `personality_pick_target`) redirects to the taunter, overriding cloak; other enemies keep their personalities; multiple heroes may taunt different enemies in one round; a firewall blocks (and is consumed by) the taunt; no pick supplied (sim/auto) falls back deterministically via `_hostile_single_target`. Enemy-side keeps its shapes: beastHyena's lure restricts the hit hero; veilPrism's `enemySelfTaunt` self-aura restricts all heroes (each taunted unit → the one taunter, def-consistent). The TAUNT chip sits on whichever unit is LURED, either side; **during planning it also shows on the enemy a hero's taunt has picked** (playtest 2026-10-01), read off the hero-phase dry run, so an enemy whose Firewall will eat the taunt shows none (gate `taunt planning chip`). Anchor Frame gear keeps its stance aura pending its own ruling — the one remaining aura-form taunt. **Both sides clear at round end** (per Kev NK-08) |
 | Accrete | — | enemy-only: the unit gains N shield at the start of each of its turns (Basalt Ape 3, Magma Drake 4; an ordinary one-round shield that covers the next hero phase). The Mantle Tyrant's ACCRETION rule is the same effect on its own cadence (6, every 2nd round, persisting). Both go through `_apply_accrete`: own beat, ACCRETE +N chip, "<unit> accretes N shield.", N = the shield actually gained (the max-HP cap can trim it). Inspect line from `InspectResolver.accrete_entry` |
-| Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+1 per OTHER living pack member of the same KIND** (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
+| Rampage | RA | on or off, never stacked (G-60, Kev 2026-10-09): the unit's next turn spends it. An attack on that turn deals double damage; a turn that does not attack lets it go. A grant to a rampaging unit changes nothing. `rampage_charges` is 0 or 1 |
+| Pack Bonus | — | enemy-only (Accretion `beastMonkey`/`beastWolf`): a `packBonus` attack deals **+3 per OTHER living pack member of the same KIND** (`CombatManager.PACK_BONUS_PER_MEMBER`; +1 until 2026-10-09, G-60) (`enemy_type`, so Obsidian + Slag hounds pack together); self excluded. Fixed 2026-07-08 — the count compared unique instance ids (`beastWolf#1` vs `#2`) so it never fired; now compares `enemy_type` |
 
 **Cloak (2 clauses + ambush, G-52):** untargetable by hostile single-target abilities — friendly picks on cloaked allies are ALWAYS legal (CONFIRMED, DECISIONS_RESOLVED #12); breaks when the unit deals damage OR is hit by an AoE. **The attack that breaks it is an ambush: +50% damage, once, both sides** (`CombatManager.AMBUSH_MULT`; a cloak torn off by an AoE pays nothing). **If every target of a single-target attack is cloaked, the attack hits one at random** (seeded) and that unit keeps its cloak; an ability that does not attack still finds no target. The "first attack from Cloak gains Pierce" clause is REMOVED. Friendly picks on cloaked allies stay legal. Full rule: the 2026-10-08 entry at the top.
 **One keyword per ability** (pierce counts), **two allowed in overload** — audit-enforced.
@@ -2346,8 +2768,10 @@ share one shape — a surface stating something the round will not do.
   retaliation) off the same run, then add the enemy phase's telegraphs. The
   hero readout's Detonate number is the burst the dry run lands
   (`detonate_by_hero`). A hero whose ability takes a manual pick and has no
-  target yet is left out of the run. The enemy phase itself is still the raw
-  telegraph (see TASK_QUEUE). Gate: `scripts/debug/preview_accuracy_test.gd`,
+  target yet is left out of the run. **Since G-65 (2026-10-09) the dry run is
+  the whole round** (`CombatManager.forecast_round`: enemy phase and tick
+  too), and both kinds of card end their bar on its result; see the G-65 entry
+  at the top. Gate: `scripts/debug/preview_accuracy_test.gd`,
   whose EXACT cases compare every card's projected HP with a real
   `resolve_step` (detonate finite / permanent / lethal, burn tick, execute,
   chain, mark, breach, pierce, spike, relic multiplier, Overload Loop echo);
@@ -2455,6 +2879,12 @@ confirmation runs.
   (G-52, G-53, G-56). On 1,500 matched runs the tuned game is within 0.7 points of
   `main` on every operation, and within 2.2 pooled over two seed sets; the pin's
   larger moves are small-sample noise, measured in the 2026-10-09 entry at the top.
+- **Baseline re-pin (2026-10-10, BASELINE-APPROVED-BY-KEV, G-67):** `baseline.json` →
+  overall **0.2933** · facility **0.3380** · hive **0.4237** · veil **0.2308** ·
+  voidCirclet **0.3333** · stellarMenagerie **0.1042** (was 0.2600 · 0.2958 · 0.3390 ·
+  0.3231 · 0.1579 · 0.1458). The cause is the traits branch (G-60 to G-66), not tuned.
+  The 1,500-run size pins, which judge the move, are in the G-67 entry at the top:
+  overall +5.3 on first evolutions and +3.2 on second, Facility +8.2 and +9.2.
 
 ## Out of scope (don't build)
 

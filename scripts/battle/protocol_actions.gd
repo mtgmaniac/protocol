@@ -455,7 +455,8 @@ func _checkpoint_reroll() -> void:
 		return
 	var saved: Dictionary = str_to_var(str(block.state))
 	saved["pending_actions"] = {"nudges": _scene.hero_roll_nudges.duplicate(), "sets": _scene.hero_roll_sets.duplicate(),
-		"enemy_nudges": _scene._state.enemy_roll_nudges.duplicate(), "firewall_hack_used": _scene._state.firewall_hack_used}
+		"enemy_nudges": _scene._state.enemy_roll_nudges.duplicate(), "enemy_shifts": _scene._state.enemy_roll_shifts.duplicate(),
+		"firewall_hack_used": _scene._state.firewall_hack_used}
 	block.state = var_to_str(saved)
 	_scene.get_node("/root/SaveManager").checkpoint_battle_round(block)
 

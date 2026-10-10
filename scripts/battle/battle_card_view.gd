@@ -143,6 +143,8 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"side": "hero" if accent_color == _scene.HERO_ACCENT else "enemy",
 			"name": unit.battle_name(),
 			"boss": accent_color == _scene.ENEMY_ACCENT and CombatManager.BOSS_STANDING_RULES.has(str(unit.display_name)),
+			"trait": CombatManager.UnitTraits.marker_text(CombatManager.UnitTraits.of_unit(unit)),
+			"trait_warning": CombatManager.UnitTraits.is_warning(CombatManager.UnitTraits.of_unit(unit)),
 			"current_hp": shown_hp,
 			"forecast_hp": forecast_hp,
 			"max_hp": int(state["max_hp"]),
@@ -224,20 +226,22 @@ func refresh_card_for_event(event: Dictionary) -> void:
 		return
 
 
-# ── Hero-phase forecast (2026-09-02, "the preview lies"; exact since B1) ─────
-# Heroes resolve BEFORE the enemy phase, so an honest preview walks the hero
-# phase first: which enemies are still standing to act, who they may hit, how
-# much leech heals. Until 2026-09-27 this was a hand-written lightweight model
-# that left out detonate, execute, chain, mark, breach, spike and the relic
-# multipliers, so an enemy's preview and the damage that resolved disagreed
-# (UI batch B1). It now runs the REAL hero phase through
-# CombatManager.forecast_hero_phase on copies of the unit states — the same
-# code resolve_round runs — so every hero-phase rule is in the preview by
+# ── Round forecast (2026-09-02, "the preview lies"; exact since B1 and G-65) ──
+# Heroes resolve BEFORE the enemy phase, so an honest preview walks the round in
+# order: the hero phase, the enemy phase, the end-of-round tick. Until
+# 2026-09-27 the hero phase was a hand-written lightweight model that left out
+# detonate, execute, chain, mark, breach, spike and the relic multipliers (UI
+# batch B1). Until G-65 the enemy phase was one too: each enemy's printed
+# damage, summed, so no trait (Anchored, Feral's rampage, Volatile on a late
+# death), no Rampage and no pack bonus reached a hero's bar. It now runs the
+# REAL round through CombatManager.forecast_round on copies of the unit states,
+# the same code resolve_round runs, so every rule is in the preview by
 # construction. It never touches live combat state.
 #
 # A hero whose ability takes a manual pick (battle_scene._get_manual_target_side)
-# and has no target yet is left out: the preview shows nothing for an ability
-# whose target the player has not chosen.
+# and has no target yet does not act in the dry run: the preview shows nothing
+# for an ability whose target the player has not chosen. Its die still counts
+# for what reads the dice (a hijack, the enemy intents).
 #
 # Returns:
 #   dead_enemy_ids  {enemy_id: true}    enemies the hero phase kills
@@ -247,6 +251,9 @@ func refresh_card_for_event(event: Dictionary) -> void:
 #   after           {state_id: state}   every unit's state copy after the hero phase
 #   events          the hero phase's combat events
 #   detonate_by_hero {hero_id: int}     Detonate burst each hero lands
+#   enemy_events / tick_events          the enemy phase's and the tick's events
+#   pre_tick        {state_id: state}   every unit's state copy after the enemy phase
+#   end             {state_id: state}   every unit's state copy after the tick
 func _forecast_hero_phase() -> Dictionary:
 	var forecast: Dictionary = {
 		"dead_enemy_ids": {},
@@ -256,10 +263,15 @@ func _forecast_hero_phase() -> Dictionary:
 		"after": {},
 		"events": [],
 		"detonate_by_hero": {},
+		"enemy_events": [],
+		"tick_events": [],
+		"pre_tick": {},
+		"end": {},
 	}
 	var cm: CombatManager = _scene.combat_manager
 	var hero_rolls: Dictionary = {}
 	var raw_hero_rolls: Dictionary = {}
+	var waiting: Dictionary = {}
 	var revealed_heroes: Dictionary = _revealed_rolls("hero")
 	for hero_variant in cm.get_hero_states():
 		var hero_state: Dictionary = hero_variant
@@ -269,7 +281,7 @@ func _forecast_hero_phase() -> Dictionary:
 		var eff: int = _scene._get_effective_roll_for_state(hero_state, hero_id)
 		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(hero_state["unit"], eff)
 		if str(hero_state.get("selected_target_id", "")) == "" and _scene._get_manual_target_side(entry) != "":
-			continue
+			waiting[hero_id] = true
 		hero_rolls[hero_id] = eff
 		raw_hero_rolls[hero_id] = int(revealed_heroes[hero_id])
 	var enemy_rolls: Dictionary = {}
@@ -280,17 +292,20 @@ func _forecast_hero_phase() -> Dictionary:
 		if bool(enemy_state.get("dead", false)) or not revealed_enemies.has(enemy_id):
 			continue
 		enemy_rolls[enemy_id] = _scene._get_effective_enemy_roll(enemy_state, enemy_id)
-	if hero_rolls.is_empty():
+	if hero_rolls.is_empty() and enemy_rolls.is_empty():
 		for state_variant in cm.get_hero_states() + cm.get_enemy_states():
 			var live: Dictionary = state_variant
 			forecast["after"][str(live["id"])] = live
+		forecast["pre_tick"] = forecast["after"]
+		forecast["end"] = forecast["after"]
 	else:
-		var run: Dictionary = cm.forecast_hero_phase(hero_rolls, enemy_rolls, _scene.dice_manager, raw_hero_rolls)
+		cm.protocol_pool = _scene.protocol_points  # Redline reads it, in the forecast as in the round
+		var run: Dictionary = cm.forecast_round(hero_rolls, enemy_rolls, _scene.dice_manager, raw_hero_rolls, waiting)
 		for state_variant in (run["hero_states"] as Array) + (run["enemy_states"] as Array):
 			var after_state: Dictionary = state_variant
 			forecast["after"][str(after_state["id"])] = after_state
-		forecast["events"] = run["events"]
-		forecast["detonate_by_hero"] = run["detonate_by_hero"]
+		for key in ["events", "detonate_by_hero", "enemy_events", "tick_events", "pre_tick", "end"]:
+			forecast[key] = run[key]
 
 	var dead_map: Dictionary = forecast["dead_enemy_ids"]
 	var lure_map: Dictionary = forecast["lured"]
@@ -324,39 +339,38 @@ func _forecast_hero_phase() -> Dictionary:
 	return forecast
 
 
-# Sums one unit's hero-phase events of the given types from a forecast.
-func _forecast_event_total(forecast: Dictionary, unit_id: String, types: Array) -> int:
+# Sums one unit's events of the given types from a forecast. `phases` names the
+# event lists to read: "events" is the hero phase, "enemy_events" the enemy
+# phase, "tick_events" the end-of-round tick.
+func _forecast_event_total(forecast: Dictionary, unit_id: String, types: Array, phases: Array = ["events"]) -> int:
 	var total: int = 0
-	for event_variant in forecast["events"]:
-		var event: Dictionary = event_variant
-		if str(event.get("target_id", "")) == unit_id and types.has(str(event.get("type", ""))):
-			total += int(event.get("amount", 0))
+	for phase in phases:
+		for event_variant in forecast.get(phase, []):
+			var event: Dictionary = event_variant
+			if str(event.get("target_id", "")) == unit_id and types.has(str(event.get("type", ""))):
+				total += int(event.get("amount", 0))
 	return total
 
 
-# The hero one enemy will actually hit, given this round's forecast. Priority is
-# combat_manager._resolve_enemy_hero_target's: a standing lure, then a taunt
-# cast this round, then the Anchor Frame aura, then the enemy's own pick.
-func _forecast_enemy_target(enemy_state: Dictionary, forecast: Dictionary) -> String:
-	var standing_lure: String = str(enemy_state.get("lured_by_id", ""))
-	if standing_lure != "" and _forecast_hero_is_live(standing_lure):
-		return standing_lure
-	var lure_map: Dictionary = forecast["lured"]
-	var new_lure: String = str(lure_map.get(str(enemy_state["id"]), ""))
-	if new_lure != "" and _forecast_hero_is_live(new_lure):
-		return new_lure
-	var aura: String = str(forecast.get("taunter_id", ""))
-	if aura != "" and _forecast_hero_is_live(aura):
-		return aura
-	return str(enemy_state.get("selected_target_id", ""))
-
-
-func _forecast_hero_is_live(hero_id: String) -> bool:
-	for state_variant in _scene.combat_manager.get_hero_states():
-		var state: Dictionary = state_variant
-		if str(state.get("id", "")) == hero_id:
-			return not bool(state.get("dead", false))
-	return false
+# Where the dry run leaves a unit when the round is over, for the card's bar:
+#   final_hp     its HP after the hero phase, the enemy phase and the tick (0 dead)
+#   pre_tick_hp  its HP after the enemy phase, before the tick (0 dead)
+#   lethal       it is alive now and the round kills it
+#   pre_tick     its state copy as the tick will find it
+# Read off the real round, so the bar ends where the round will end it.
+func _forecast_round_end(target_state: Dictionary, forecast: Dictionary) -> Dictionary:
+	var target_id: String = str(target_state["id"])
+	var pre_tick: Dictionary = forecast["pre_tick"].get(target_id, target_state)
+	var end: Dictionary = forecast["end"].get(target_id, target_state)
+	var end_dead: bool = bool(end.get("dead", false))
+	var pre_tick_hp: int = 0 if bool(pre_tick.get("dead", false)) else int(pre_tick.get("current_hp", 0))
+	var final_hp: int = 0 if end_dead else int(end.get("current_hp", 0))
+	return {
+		"final_hp": final_hp,
+		"pre_tick_hp": pre_tick_hp,
+		"lethal": end_dead and not bool(target_state.get("dead", false)),
+		"pre_tick": pre_tick,
+	}
 
 
 func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictionary:
@@ -393,39 +407,31 @@ func compute_preview_for_unit(target_state: Dictionary, is_hero: bool) -> Dictio
 
 
 # An enemy card: what the hero phase does to it is read straight off the dry
-# run (HP lost, shield left, dead or not, every keyword and rider included),
-# then its own enemy-phase heal and the end-of-round burn tick on top.
+# run (HP lost, shield left, dead or not, every keyword and rider included).
+# Where its bar ends is the dry run's end of the round, so its own heal, a
+# spike it runs into, a Fervent heal and the burn tick are all in it.
 func _enemy_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionary:
 	var target_id: String = str(target_state["id"])
 	var after: Dictionary = forecast["after"].get(target_id, target_state)
+	var round_end: Dictionary = _forecast_round_end(target_state, forecast)
 	var cur_hp: int = int(target_state.get("current_hp", 0))
 	var cur_shield: int = int(target_state.get("shield", 0))
 	var hp_loss: int = maxi(cur_hp - int(after.get("current_hp", cur_hp)), 0)
 	var shield_left: int = int(after.get("shield", cur_shield))
 	var blocked: int = _forecast_event_total(forecast, target_id, ["block"])
-	var dies: bool = bool(after.get("dead", false)) and not bool(target_state.get("dead", false))
-	var found: bool = hp_loss > 0 or blocked > 0 or shield_left != cur_shield or dies
-
-	var total_heal: int = 0
-	if not dies and _revealed_rolls("enemy").has(target_id):
-		var eff: int = _scene._get_effective_enemy_roll(target_state, target_id)
-		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(target_state["unit"], eff)
-		var raw: Dictionary = entry.get("raw", {})
-		# Heal previews fine (informational about end-of-turn HP). Shield
-		# previews are intentionally omitted: enemies act AFTER heroes, so a
-		# shield the enemy is about to cast cannot absorb hero damage this
-		# turn; it only becomes an active status next turn.
-		if str(target_state.get("selected_target_id", "")) == target_id and int(raw.get("heal", 0)) > 0:
-			found = true
-			total_heal = int(raw.get("heal", 0))
-
+	var dies: bool = bool(round_end["lethal"])
+	# Heals from the enemy phase and the tick. Shield previews are intentionally
+	# omitted: enemies act AFTER heroes, so a shield the enemy is about to cast
+	# cannot absorb hero damage this turn; it only becomes an active status
+	# next turn.
+	var total_heal: int = _forecast_event_total(forecast, target_id, ["heal"], ["enemy_events", "tick_events"])
 	# Burn: exactly what _tick_state will deal this round, read on the state
-	# AFTER the hero phase (a Detonate consumes finite Burn, a new Burn may have
+	# the tick will find (a Detonate consumes finite Burn, a new Burn may have
 	# landed). Single-sourced from combat_manager.
-	var active_burn: int = 0 if dies else _scene.combat_manager.get_expected_burn_tick(after)
-	if active_burn > 0:
-		found = true
-	if not found:
+	var pre_tick: Dictionary = round_end["pre_tick"]
+	var active_burn: int = 0 if bool(pre_tick.get("dead", false)) else _scene.combat_manager.get_expected_burn_tick(pre_tick)
+	if hp_loss <= 0 and blocked <= 0 and shield_left == cur_shield and not dies \
+			and total_heal <= 0 and active_burn <= 0 and int(round_end["final_hp"]) == cur_hp:
 		return {}
 	return {
 		"damage":          hp_loss + blocked,
@@ -435,58 +441,43 @@ func _enemy_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionar
 		"heal":            total_heal,
 		"shield":          0,
 		"burn":            active_burn,
+		"burn_pierce":     0 if bool(pre_tick.get("dead", false)) else _scene.combat_manager.get_expected_burn_tick_pierce(pre_tick),
 		"current_shield":  cur_shield,
 		"lethal":          dies,
+		"final_hp":        int(round_end["final_hp"]),
+		# The burn tick's share of the loss. Never more than the burn that
+		# ticks: other HP lost at the tick (a Volatile death) is a hit.
+		"burn_hp":         clampi(int(round_end["pre_tick_hp"]) - int(round_end["final_hp"]), 0, active_burn),
 	}
 
 
-# A hero card: the hero phase's effects on this hero come off the dry run
-# (heals, leech, shields, spike retaliation and every other hit), then the
-# enemy phase's telegraphed damage from each enemy still standing after it.
+# A hero card: everything the round does to this hero comes off the dry run.
+# The hero phase's heals, leech, shields, spike retaliation and every other
+# hit; the enemy phase's hits as they land (a taunt's redirect, an ambush, a
+# rampage, a pack bonus, Anchored's cut); the end-of-round tick.
 func _hero_preview(target_state: Dictionary, forecast: Dictionary) -> Dictionary:
 	var target_id: String = str(target_state["id"])
-	var forecast_dead: Dictionary = forecast["dead_enemy_ids"]
-	var total_heal: int = _forecast_event_total(forecast, target_id, ["heal"])
+	var round_end: Dictionary = _forecast_round_end(target_state, forecast)
+	var total_heal: int = _forecast_event_total(forecast, target_id, ["heal"], ["events", "enemy_events", "tick_events"])
 	var total_shield: int = _forecast_event_total(forecast, target_id, ["shield"])
-	var total_dmg: int = _forecast_event_total(forecast, target_id, ["damage", "block"])
-	var found: bool = total_heal > 0 or total_shield > 0 or total_dmg > 0
-
-	for enemy_state in _scene.combat_manager.get_enemy_states():
-		if bool(enemy_state.get("dead", false)):
-			continue
-		# An enemy the hero phase KILLS never reaches the enemy phase, so
-		# nothing it telegraphs can land.
-		var enemy_id: String = str(enemy_state["id"])
-		if forecast_dead.has(enemy_id) or not _revealed_rolls("enemy").has(enemy_id):
-			continue
-		var eff: int = _scene._get_effective_enemy_roll(enemy_state, enemy_id)
-		var entry: Dictionary = _scene.dice_manager.get_ability_for_roll(enemy_state["unit"], eff)
-		if entry.is_empty():
-			continue
-		var raw: Dictionary = entry.get("raw", {})
-		# The pick shown on the enemy card is not necessarily who it hits: a
-		# taunt cast this round (or the standing Anchor Frame aura) redirects it
-		# at resolve time. Preview the hero it will ACTUALLY strike.
-		var hostile_target: String = _forecast_enemy_target(enemy_state, forecast)
-		var hits_hero: bool = bool(raw.get("blastAll", false)) or hostile_target == target_id
-		if hits_hero and int(raw.get("dmg", 0)) > 0:
-			found = true
-			# An enemy still cloaked after the hero phase attacks from cloak:
-			# its hit is an ambush (G-52).
-			total_dmg += _scene.combat_manager.ambush_damage(forecast["after"].get(enemy_id, enemy_state), int(raw.get("dmg", 0)))
-
-	var active_burn: int = _scene.combat_manager.get_expected_burn_tick(target_state)
-	if active_burn > 0:
-		found = true
-	if not found:
+	var total_dmg: int = _forecast_event_total(forecast, target_id, ["damage", "block"], ["events", "enemy_events"])
+	var pre_tick: Dictionary = round_end["pre_tick"]
+	var active_burn: int = 0 if bool(pre_tick.get("dead", false)) else _scene.combat_manager.get_expected_burn_tick(pre_tick)
+	if total_heal <= 0 and total_shield <= 0 and total_dmg <= 0 and active_burn <= 0 \
+			and int(round_end["final_hp"]) == int(target_state.get("current_hp", 0)):
 		return {}
 	return {
 		"damage":          total_dmg,
 		"heal":            total_heal,
 		"shield":          total_shield,
 		"burn":            active_burn,
+		"burn_pierce":     0 if bool(pre_tick.get("dead", false)) else _scene.combat_manager.get_expected_burn_tick_pierce(pre_tick),
 		"current_shield":  int(target_state.get("shield", 0)),
-		"lethal":          false,
+		"lethal":          bool(round_end["lethal"]),
+		"final_hp":        int(round_end["final_hp"]),
+		# The burn tick's share of the loss. Never more than the burn that
+		# ticks: other HP lost at the tick (a Volatile death) is a hit.
+		"burn_hp":         clampi(int(round_end["pre_tick_hp"]) - int(round_end["final_hp"]), 0, active_burn),
 	}
 
 

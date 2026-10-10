@@ -162,6 +162,11 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 	var accrete: Dictionary = accrete_entry(data)
 	if not accrete.is_empty() and not bool(state.get("dead", false)):
 		statuses.push_front(accrete)
+	# The unit's trait (G-62) leads everything: name and one line, above the
+	# roll breakdown, in a battle and in the Help reference alike.
+	var unit_trait: Dictionary = trait_entry(data)
+	if not unit_trait.is_empty():
+		statuses.push_front(unit_trait)
 	# No role subtitle (Kev 2026-07-10: "HEALER / COMBAT AUGMENTOR" is irrelevant
 	# here) — the header carries just the name; statuses render below it.
 	# No portrait, no separate roll-range table — each ability carries its own roll band.
@@ -274,6 +279,13 @@ static func _unit_status_entries(state: Dictionary) -> Array:
 # Tyrant's ACCRETION rule): the pip with the amount, and one line saying how
 # much and when. The numbers come from CombatManager.accrete_rule, the same
 # ones combat applies.
+# The trait line (UnitTraits.line: the name, then one sentence) for a unit with a trait,
+# {} without. Text only: a trait has no pip.
+static func trait_entry(data: Resource) -> Dictionary:
+	var line: String = CombatManager.UnitTraits.line(CombatManager.UnitTraits.of_unit(data))
+	return {} if line == "" else {"effects": [], "text": line, "trait": true}
+
+
 static func accrete_entry(data: Resource) -> Dictionary:
 	var rule: Dictionary = CombatManager.accrete_rule(data)
 	if rule.is_empty() or CombatManager.accrete_display_break() == "no_line":
@@ -466,7 +478,7 @@ static func _status_text(kind: String, value: String, duration: int) -> String:
 		"taunted":
 			return "Can only target the taunter."
 		"rampage":
-			return "Next hit deals double damage."
+			return "Its next turn's attack deals double damage. Ends after that turn."
 		"ward":
 			return "Blocks the next ability, then breaks."
 		"mark":

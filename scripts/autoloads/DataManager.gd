@@ -1,6 +1,7 @@
 # Loads structured game data from the migrated Angular JSON tables and exposes it as Resources.
 extends Node
 
+const UnitTraits := preload("res://scripts/battle/unit_traits.gd")
 const HEROES_DATA_PATH := "res://data/raw/heroes.data.json"
 const ENEMIES_DATA_PATH := "res://data/raw/enemies.data.json"
 const ITEMS_DATA_PATH := "res://data/raw/items.data.json"
@@ -481,7 +482,7 @@ func _load_units() -> void:
 		unit.source_key = str(hero_entry.get("sk", unit.id))
 		unit.portrait = _load_hero_portrait(unit.id)
 		unit.dice_ranges = _build_hero_dice_ranges(hero_entry.get("abilities", []))
-		unit.evolution_paths = _build_evolution_paths(hero_entry.get("evolutions", []))
+		unit.evolution_paths = _build_evolution_paths(hero_entry.get("evolutions", []), unit.id)
 		units[unit.id] = unit
 
 
@@ -509,6 +510,7 @@ func _load_enemies() -> void:
 		enemy.accrete = int(enemy_def.get("accrete", 0))
 		enemy.starts_cloaked = bool(enemy_def.get("startsCloaked", false))
 		enemy.dice_ranges = _build_enemy_dice_ranges(enemy_abilities.get(enemy_type, {}))
+		enemy.unit_trait = UnitTraits.build(UnitTraits.enemy_trait_id(str(enemy_name)), enemy.dice_ranges)
 		enemies[enemy.id] = enemy
 
 
@@ -639,17 +641,21 @@ func _build_hero_dice_ranges(abilities: Array) -> Array[Dictionary]:
 	return ranges
 
 
-func _build_evolution_paths(evolutions: Array) -> Array[Dictionary]:
+func _build_evolution_paths(evolutions: Array, hero_id: String = "") -> Array[Dictionary]:
 	var paths: Array[Dictionary] = []
 	for evolution_entry in evolutions:
+		var evolution_id: String = str(evolution_entry.get("id", ""))
+		var abilities: Array[Dictionary] = _build_hero_dice_ranges(evolution_entry.get("abilities", []))
 		paths.append({
-			"id": str(evolution_entry.get("id", "")),
+			"id": evolution_id,
 			"name": str(evolution_entry.get("name", "")),
 			"callsign": str(evolution_entry.get("callsign", "")),
 			"focus": str(evolution_entry.get("focus", "")),
 			"hp": int(evolution_entry.get("hp", 0)),
-			"abilities": _build_hero_dice_ranges(evolution_entry.get("abilities", [])),
+			"abilities": abilities,
 			"directives": (evolution_entry.get("directives", []) as Array).duplicate(true),
+			# The evolution's trait (G-62), from traits.data.json.
+			"trait": UnitTraits.build(UnitTraits.evolution_trait_id(hero_id, evolution_id), abilities),
 		})
 	return paths
 

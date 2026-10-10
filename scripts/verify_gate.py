@@ -278,6 +278,40 @@ GATES = [
         "--script", "scripts/debug/roll_windows_test.gd", "--break-arg=--roll-windows-break=",
         "--breaks", "shared_table,squeeze"],
         "[ROLL_WINDOWS_LIVE_GATE] PASS", False),
+    # Rampage and pack bonus (G-60): rampage is on or off, lasts until the
+    # unit's next turn and is spent by it; pack bonus is +3 per packmate and
+    # every printed copy agrees. Breaks: the old stacking, the old carry-over,
+    # the old +1.
+    ("rampage", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "RAMPAGE",
+        "--script", "scripts/debug/rampage_test.gd", "--break-arg=--rampage-break=",
+        "--breaks", "stack,keep,pack_one"],
+        "[RAMPAGE_GATE] PASS", False),
+    # Geode Panther (G-61): an attack that freezes one die hits the hero it
+    # freezes, the lowest die, in combat and in the intent shown while
+    # planning. Breaks: the hit aimed apart from the freeze again; a planning
+    # pick read from last round's dice.
+    ("geode targeting", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "GEODE_TARGET",
+        "--script", "scripts/debug/geode_target_test.gd", "--break-arg=--geode-break=",
+        "--breaks", "split,stale"],
+        "[GEODE_TARGET_GATE] PASS", False),
+    # Unit traits (G-62): who has one (the ruling's roster), all 26 rules by
+    # their data numbers, Static and Zealous through the die's one value, the
+    # log line and chip on every trigger, the inspect / card / copy, and a
+    # live round. Breaks: traits off, no chip, frozen dice moved, Zealous before
+    # Static, a trait on every unit that should have none.
+    ("traits", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "TRAITS",
+        "--script", "scripts/debug/traits_test.gd", "--break-arg=--trait-break=",
+        "--breaks", "off,no_chip,frozen_dice,litany_first,boss_trait"],
+        "[TRAITS_GATE] PASS", False),
+    # Trait preview (G-65): a card's HP bar ends where the round really leaves
+    # the unit, for every trait that moves a previewed number, plus Rampage and
+    # the pack bonus. The preview dry-runs the whole round with the real combat
+    # code. Breaks: the dry run blind to traits, and stopped after the hero
+    # phase (the preview as it was).
+    ("trait preview", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "TRAIT_PREVIEW",
+        "--script", "scripts/debug/trait_preview_test.gd", "--break-arg=--preview-break=",
+        "--breaks", "trait_blind,hero_phase_only"],
+        "[TRAIT_PREVIEW_GATE] PASS", False),
     # Two-tier sim gate (G-58). Part A: the size line and the tripwire on made-up
     # figures, with in-memory breaks (the old 10-point line, a blind tripwire,
     # an unlinked pin). Part B: a REAL change of about 10 points on one
@@ -444,7 +478,27 @@ def main() -> int:
         pass
     ap = argparse.ArgumentParser(description="Full verification gate + baseline delta table")
     ap.add_argument("--skip-sim", action="store_true")
+    ap.add_argument("--only", default="", help="comma-separated gate names: run just these (no sim leg, no profile check, no pre-run cleanup)")
+    ap.add_argument("--list", action="store_true", help="print the gate names and exit")
     args = ap.parse_args()
+
+    if args.list:
+        for name, _cmd, _needle, _sh in GATES:
+            print(name)
+        return 0
+    # Working rules (root CLAUDE.md, G-59): during a task, run the gates the
+    # change touches, by name. No cleanup here: it would kill a sim batch or
+    # another gate running beside this one.
+    if args.only:
+        wanted = [name.strip() for name in args.only.split(",") if name.strip()]
+        known = {name for name, _cmd, _needle, _sh in GATES}
+        unknown = [name for name in wanted if name not in known]
+        if unknown:
+            print(f"GATE FAILED: no gate named {', '.join(unknown)} (see --list)")
+            return 1
+        failed = [name for name, cmd, needle, sh in GATES if name in wanted and not run_gate(name, cmd, needle, sh)]
+        print(f"\n{len(wanted) - len(failed)} of {len(wanted)} named gate(s) PASS." + (f" FAILED: {', '.join(failed)}" if failed else ""))
+        return 1 if failed else 0
 
     kill_lingering_headless()
     profile_before = profile_fingerprint()
