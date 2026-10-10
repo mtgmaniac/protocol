@@ -1,5 +1,62 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-09 trait requirements (Kev, G-64; on branch
+`claude/traits-beasts-geode`, not merged):** every trait in
+`traits.data.json` says what it needs from its unit's kit, and
+`validate-data` fails when a unit carries a trait its kit cannot use.
+Groundwork for trait pools. No pool, difficulty mode or unlock was built, and
+nothing in the game reads the tags.
+
+- **`needs`** on each trait: a list of requirement names, `[]` for a trait
+  that needs nothing. Required on every trait.
+- **`requirements`** in the same file defines each name over the ability
+  fields of `heroes.data.json` and `enemies.data.json`. A kit meets one when
+  ONE of its abilities has every `all` field set, at least one `any` field
+  set (when given) and no `none` field set. Set means true or above 0.
+
+| Requirement | An ability with |
+|---|---|
+| attack | `dmg` |
+| singleAttack | `dmg` and no `blastAll` |
+| areaAttack | `dmg` and `blastAll` |
+| detonate, chain, mark, heal, cloak, rewrite, burn | that field |
+| leech | `leech` or `lifestealPct` |
+| taunt | `taunt` or `enemySelfTaunt` |
+| freeze | `freezeAnyDice`, `freezeEnemyDice` or `freezeAllEnemyDice` |
+| jam | `jam` or `jamAll` |
+| rollPenalty | `rfe` or `rfm` |
+
+| Trait | Needs |
+|---|---|
+| Smoldering | detonate |
+| Charged | chain |
+| Ruthless | areaAttack, mark |
+| Bloodlust | leech |
+| Anchored, Vengeful | taunt |
+| Glacial | freeze |
+| Watchful, Overflowing | heal |
+| Redline, Relentless, Feral | attack |
+| Spectral | cloak, jam |
+| Silent | cloak, singleAttack |
+| Zero-Day | rewrite |
+| Corrosive, Fervent | burn |
+| Commanding | rollPenalty |
+| Entrenched, Static, Vigilant, Volatile, Barbed, Flickering, Zealous, Illusory | nothing |
+
+- **The rule: a trait needs each thing its line reads from the board that
+  the unit's own kit must be able to make.** What the trait itself produces
+  is not a need (Flickering cloaks the unit; it does not need a cloak
+  ability).
+- **`validate-data` refuses:** a unit whose kit does not meet a need, a
+  `needs` entry that is not a defined requirement, a requirement that reads a
+  field no ability has, and a trait with no `needs`. An evolution is checked
+  against its own five abilities, an enemy against its kit.
+- **The rule proves it can fail on every run.** `validate-data` makes nine
+  deliberate breaks on a copy of the real data (a trait moved to a unit that
+  cannot use it, a kit stripped of the ability, each half of a two-part need,
+  the `all` and `none` forms, a bad name, a bad field) and fails if any one
+  is let through.
+
 **2026-10-09 trait names are titles (Kev, G-63; on branch
 `claude/traits-beasts-geode`, not merged):** every trait name is one word that
 reads as a title with the unit's callsign under it on the battle card:

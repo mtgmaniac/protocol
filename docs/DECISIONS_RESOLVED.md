@@ -1,5 +1,84 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-64. Trait requirements (Kev, 2026-10-09)
+
+**Ruling (Kev, transcribed).**
+
+"Tag each trait in traits.data.json with what it needs from the unit's kit
+(e.g. Smoldering needs detonate, Vengeful needs taunt, Spectral needs cloak
+and jam). validate-data must fail if a unit carries a trait whose requirements
+its kit doesn't meet. This is groundwork for possible future trait pools;
+don't build any pools, difficulty modes or unlocks."
+
+On branch `claude/traits-beasts-geode`, pushed, not merged.
+
+**As built.** Each trait has `needs`, a list of requirement names. The names
+are defined once, in the same file (`requirements`), over the ability fields.
+`validate-data` checks every unit against its trait. Tables in TRUTH.
+
+**The tags.**
+
+| Trait | Needs |
+|---|---|
+| Smoldering | detonate |
+| Charged | chain |
+| Ruthless | areaAttack, mark |
+| Bloodlust | leech |
+| Anchored | taunt |
+| Vengeful | taunt |
+| Glacial | freeze |
+| Entrenched | nothing |
+| Watchful | heal |
+| Overflowing | heal |
+| Redline | attack |
+| Spectral | cloak, jam |
+| Silent | cloak, singleAttack |
+| Relentless | attack |
+| Static | nothing |
+| Zero-Day | rewrite |
+| Vigilant | nothing |
+| Volatile | nothing |
+| Barbed | nothing |
+| Corrosive | burn |
+| Flickering | nothing |
+| Zealous | nothing |
+| Illusory | nothing |
+| Fervent | burn |
+| Commanding | rollPenalty |
+| Feral | attack |
+
+**Readings I made (each is a tag the ruling did not give).**
+
+1. **A trait needs what its line reads and the unit's own kit must be able to
+   make.** So Glacial needs freeze ("per frozen enemy"), Fervent needs burn
+   ("whenever any burn ticks") and Ruthless needs mark as well as an area
+   attack, though a teammate or the player could supply each. A pool that gave
+   Glacial to a unit that cannot freeze would hand out a trait that does
+   nothing in most squads. If these three should be looser, drop the tag:
+   one word each.
+2. **What a trait makes itself is not a need.** Flickering cloaks its unit, so
+   it does not need a cloak ability; Relentless marks, so it does not need
+   mark.
+3. **Vengeful needs taunt only, not spike,** as the ruling says: it hits back
+   with no spike up (G-62, reading 6).
+4. **Smoldering needs detonate only,** as the ruling says. Burn to detonate
+   can come from anyone.
+5. **Feral needs an attack.** Rampage doubles an attack; a unit that never
+   attacks would gain nothing.
+6. **Silent needs a single-target attack,** since only one can "kill its
+   target" from cloak (G-62).
+7. **A need is met by one ability,** not by fields spread over two: an area
+   attack is damage and `blastAll` on the same ability.
+8. **The definitions are data, not validator code.** A trait pool will have to
+   ask the same question in the game; reading one table keeps the two from
+   drifting. The game does not read it yet.
+
+**Gate.** `validate-data`. It also proves the rule can fail: nine deliberate
+breaks on a copy of the real data, each of which must raise its own error. I
+also fed it three bad edits to the real file (Vengeful on Wraith, Spectral on
+Volt Enforcer, a trait with no `needs`) and two weakened rules (every need
+met; `none` ignored); it refused all five.
+
 ## G-63. Trait names are titles (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**

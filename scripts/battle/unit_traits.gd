@@ -14,6 +14,10 @@
 # the engine reads, so the text cannot print a number the engine does not
 # apply. {band} is the unit's first roll window, read from its kit.
 #
+# `needs` (G-64) lists what the trait needs from its unit's kit, as keys of the
+# file's `requirements` table. validate-data enforces it; nothing in the game
+# reads it yet (groundwork for trait pools).
+#
 # Rules live in CombatManager (`_has_trait`) and, for the four round-start
 # traits, BattleEngine.apply_round_start_traits. Nothing here changes combat.
 # Preloaded by path, no class_name: headless gates parse before the editor's
