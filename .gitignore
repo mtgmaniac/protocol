@@ -55,3 +55,8 @@ results/
 
 # Hop launch capture frames (scripts/debug/hop_launch_capture.gd); regenerate, don't commit
 docs/ui_reference/hop_launch/
+
+# UI reference screenshots: local reference only, kept on disk and out of the
+# repo (Kev, 2026-10-10). Files tracked before this rule stay tracked; a new
+# one that should be tracked needs `git add -f`.
+docs/ui_reference/
