@@ -16,8 +16,9 @@ what is below; TRUTH has the current state.
 | G-65 | The HP preview dry-runs the whole round, so traits, Rampage and the pack bonus are in a hero's bar. Gate `trait preview` | "The HP preview on a hero's card still sums the enemies' printed damage" |
 | G-66 | Feral is on Basalt Ape and Magma Drake too (seven units); they keep Accrete | Decision 1, and "Pack Rage is on five Mantle Hunt units" |
 
-Still open from this handoff: decision 3 (the readings), decision 4 (the sim
-pins are not re-pinned; G-66 adds to the move and was not simmed).
+Decision 4 is closed: the pins were re-pinned on 2026-10-10 with Kev's
+sign-off (G-67; the table is in TRUTH). Still open: decision 3 (the readings)
+and tuning, which Kev does after playing.
 
 ## Part A, on `main` (`55f4ff3`)
 

@@ -1,5 +1,41 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-10 sim pins re-pinned to the traits branch (Kev, G-67,
+BASELINE-APPROVED-BY-KEV):** all four pins now hold the game as it is after
+G-60 to G-66 (rampage, pack bonus, Geode, traits, Feral on seven units).
+Nothing was tuned; Kev tunes after playing.
+
+| Clear rate, 1,500 pinned runs | First evolutions: was | now | change | Second evolutions: was | now | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 32.5% | 40.7% | +8.2 | 37.7% | 46.9% | +9.2 |
+| Hive | 30.8% | 36.2% | +5.4 | 32.4% | 33.7% | +1.3 |
+| Veil | 26.1% | 26.4% | +0.3 | 28.7% | 27.4% | -1.3 |
+| Signal Purge | 23.9% | 29.7% | +5.8 | 20.3% | 20.7% | +0.4 |
+| Mantle Hunt | 18.9% | 25.6% | +6.7 | 17.9% | 24.2% | +6.4 |
+| Overall | 26.5% | 31.8% | +5.3 | 27.6% | 30.8% | +3.2 |
+
+- Beyond the size line on both policies (first evolutions overall +5.3 against
+  4 and Facility +8.2 against 8; second evolutions Facility +9.2), so this is
+  the ceremony, signed off by Kev.
+- **The game is easier than the last pin everywhere but Veil.** Every hero
+  evolution gained a trait; the enemy traits sit on units a run meets a few
+  times.
+- **G-66 made Mantle Hunt about 2 points harder** than the branch was with
+  Feral on five units (first evolutions 27.6% to 25.6%, second 25.9% to
+  24.2%, same 1,500 seeds).
+
+| Pin | `l1` tripwire (300) | `l1` size (1,500) | `l1_evo2` tripwire (300) | `l1_evo2` size (1,500) |
+|---|--:|--:|--:|--:|
+| Overall | 0.2933 | 0.3180 | 0.2967 | 0.3080 |
+| Facility | 0.3380 | 0.4066 | 0.4366 | 0.4689 |
+| Hive | 0.4237 | 0.3619 | 0.3390 | 0.3365 |
+| Veil | 0.2308 | 0.2638 | 0.2308 | 0.2736 |
+| Signal Purge | 0.3333 | 0.2971 | 0.3158 | 0.2065 |
+| Mantle Hunt | 0.1042 | 0.2559 | 0.1042 | 0.2424 |
+
+  The 300-run tripwire figures only say whether combat changed; read sizes
+  off the 1,500-run columns (G-57).
+
 **2026-10-09 Feral on every Mantle Hunt unit but the boss (Kev, G-66; on
 branch `claude/traits-beasts-geode`, not merged):** Basalt Ape and Magma Drake
 now have Feral too, so seven Mantle Hunt units carry it (were five).
@@ -290,7 +326,9 @@ enemies.
     detonation leaves 1 burn on Scrap Drone." One chip per trait per unit per
     ability; a log line every time.
   - *Help:* every unit's and evolution's breakdown leads with its trait line.
-- **Sim, not tuned and not re-pinned (Kev decides after playing).** 1,500
+- **Sim, not tuned (Kev decides after playing). Re-pinned on 2026-10-10 with
+  G-63 to G-66 included: see the G-67 entry at the top.** The table below is
+  the branch at G-62, before Feral reached seven units. 1,500
   pinned runs per policy, the branch (traits, beasts and Geode together)
   against the size pins from `main`:
 
@@ -1245,7 +1283,7 @@ Verdicts from GROUND_TRUTH, re-verified against current code, plus corrections f
 | Cloak | 3 clauses (first attack gains Pierce) | **2 clauses** — pierce-from-cloak removed (keyword batch Task 7); since 2026-10-08 the attack that breaks it is an ambush, +50% damage (G-52) |
 | Freeze semantics | banked-face bank/thaw model (GROUND_TRUTH §7); later a next-turn static lockout | **FREEZE = REPEAT** (per Kev 2026-07-06, FINAL): the crusted die keeps its face and its unit acts AGAIN on that result for N repeats, then thaws. **The locked result is the NUMBER ON THE FACE** — the effective value the die showed when it froze, modifiers included (G-23, Kev 2026-09-26). Both older models are dead — full lineage in `docs/DECISIONS_RESOLVED.md` #1 |
 | Cross-run unlocks | "out of scope" (GROUND_TRUTH §out of scope) | **In scope and shipped**: hero ladder + operation chain in SaveManager (persistent XP remains out of scope) |
-| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2600**, facility **0.2958** (re-pinned 2026-10-09 for the cloak ambush, the roll windows and the retuning, G-57; before that 2026-10-01 for the no-repeat comp re-roll and 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
+| Sim clear rate | "flat sim ~1.7%" (TASK_QUEUE); 0.53 pre-repeat; 0.2533 pre-crit-banking; 0.2867 crit-banking pin | **`scripts/sim/baseline.json`**: policy `l1`, 300 runs — overall **0.2933**, facility **0.3380** (re-pinned 2026-10-10 for the traits branch, G-67; before that 2026-10-09 for the cloak ambush, the roll windows and the retuning, G-57; 2026-10-01 for the no-repeat comp re-roll and 2026-09-28 after the boss relic rework — see "Sim baseline (current)"). Older figures are reference only |
 
 **Docs archived** (in `docs/archive/`, do not use): PHASE_0_STATUS.md, CURSOR_HANDOFF.md, HANDOFF_loadout_item_bugs.md, ANGULAR_TO_GODOT_MAPPING.md, BASELINE.md.
 **Living docs:** `docs/INVARIANTS.md` (the WHY rules — read immediately after this file), `docs/DECISIONS_RESOLVED.md` (closed rulings — never relitigate), `docs/TASK_TEMPLATE.md` (every task's skeleton), `docs/AI_AGENT_GAME_REFERENCE.md` (runtime map), `docs/BATTLE_UI_V2_SPEC.md` (layout contract), `docs/GDD.md` (design intent only), `offline-bundle/CODEBASE_MAP.md`. `offline-bundle/GROUND_TRUTH.md` is superseded by this file.
@@ -2841,6 +2879,12 @@ confirmation runs.
   (G-52, G-53, G-56). On 1,500 matched runs the tuned game is within 0.7 points of
   `main` on every operation, and within 2.2 pooled over two seed sets; the pin's
   larger moves are small-sample noise, measured in the 2026-10-09 entry at the top.
+- **Baseline re-pin (2026-10-10, BASELINE-APPROVED-BY-KEV, G-67):** `baseline.json` →
+  overall **0.2933** · facility **0.3380** · hive **0.4237** · veil **0.2308** ·
+  voidCirclet **0.3333** · stellarMenagerie **0.1042** (was 0.2600 · 0.2958 · 0.3390 ·
+  0.3231 · 0.1579 · 0.1458). The cause is the traits branch (G-60 to G-66), not tuned.
+  The 1,500-run size pins, which judge the move, are in the G-67 entry at the top:
+  overall +5.3 on first evolutions and +3.2 on second, Facility +8.2 and +9.2.
 
 ## Out of scope (don't build)
 

@@ -1,5 +1,40 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-67. Re-pin the sim to the traits branch; merge and build v0.3 (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"On claude/traits-beasts-geode, run the sim leg. I approve re-pinning both
+policies to the branch's current state: BASELINE-APPROVED-BY-KEV. No tuning;
+I'll tune after playing."
+
+The same message asks for one full `verify_gate.py`, the merge into `main`,
+the version bump to DEMO v0.3 and a Web export for itch (not uploaded).
+
+**As built.** The sim leg was run first against the old pins (it exits 3:
+beyond the size line on both policies), then all four pins were written
+together with `ci_smoke.py --update-baseline`. Nothing was tuned.
+
+| Clear rate, 1,500 pinned runs | First evolutions: was | now | change | Second evolutions: was | now | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 32.5% | 40.7% | +8.2 | 37.7% | 46.9% | +9.2 |
+| Hive | 30.8% | 36.2% | +5.4 | 32.4% | 33.7% | +1.3 |
+| Veil | 26.1% | 26.4% | +0.3 | 28.7% | 27.4% | -1.3 |
+| Signal Purge | 23.9% | 29.7% | +5.8 | 20.3% | 20.7% | +0.4 |
+| Mantle Hunt | 18.9% | 25.6% | +6.7 | 17.9% | 24.2% | +6.4 |
+| Overall | 26.5% | 31.8% | +5.3 | 27.6% | 30.8% | +3.2 |
+
+"Was" is the size pin written on `main` for G-57. Beyond the line: first
+evolutions overall (+5.3 against 4) and Facility (+8.2 against 8), second
+evolutions Facility (+9.2).
+
+**What this closes.** Decision 4 of the G-62 handoff (the pins were not
+re-pinned). Tuning is still open: it is Kev's, after playing.
+
+**One measurement to keep.** With Feral on seven units instead of five
+(G-66), Mantle Hunt clears about 2 points less often on the same seeds (first
+evolutions 27.6% to 25.6%, second 25.9% to 24.2%).
+
 ## G-66. Feral on every non-boss beast (Kev, 2026-10-09)
 
 **Ruling (Kev, transcribed).**
