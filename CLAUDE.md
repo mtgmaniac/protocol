@@ -75,17 +75,27 @@ advisory.
 ## Portrait region — single source of truth
 
 > **The hero portrait window is `PixelUI.HERO_PORTRAIT_REGION` = 328 × 380, aspect
-> 0.863** — measured live from the battle card. Every screen that displays a hero
-> portrait uses this aspect (scaled to its physical size) and routes through
-> `PixelUI.cover_fit_portrait`. Do not define a portrait window anywhere else, and
-> do not hardcode a second aspect.
+> 0.863** — measured live from the battle card. Every screen that displays a
+> portrait uses this aspect (scaled to its physical size). Do not define a portrait
+> window anywhere else, and do not hardcode a second aspect.
 >
-> Portraits are authored to this window. A *taller* display frame cover-fits by
-> height and trims the sides, which is harmless. A *shorter* frame trims the bottom
-> and destroys the framing — that was the 320×486 bug: squad select and the battle
-> card showed different windows onto the same art, and every framing pass authored
-> against the wrong one. Never derive head positions from pixels — framing anchors
-> are hand-declared in `assets/portraits/portrait_anchors.json`.
+> **One shared portrait frame (Kev, 2026-10-10):** every portrait outside the battle
+> card is built by `PixelUI.make_portrait_frame(texture, window_w, style)`. A screen
+> names only the window WIDTH and its border style; the helper owns the height, the
+> crop, the fit (`cover_fit_portrait`) and the frame's size. Never assign a portrait
+> texture, call `cover_fit_portrait`, do `HERO_PORTRAIT_REGION` arithmetic or set the
+> frame's `custom_minimum_size` / `SIZE_FILL` / `SIZE_EXPAND` in a screen (swap art
+> with `PixelUI.set_portrait`; place the frame with `SIZE_SHRINK_*`). The battle card
+> is the window's reference and keeps its own frame.
+>
+> Portraits are authored to this window, and a frame of any other aspect is a
+> defect. A *taller* frame cover-fits by height, which zooms the art in and trims
+> its sides — the 2026-10-10 evolution-screen bug: the frame asked for the right
+> MINIMUM size and its row stretched it. A *shorter* frame trims the bottom — the
+> 320×486 bug: squad select and the battle card showed different windows onto the
+> same art, and every framing pass authored against the wrong one. Never derive head
+> positions from pixels — framing anchors are hand-declared in
+> `assets/portraits/portrait_anchors.json`.
 >
 > **Antenna / crown rule (design ruling, Kev):** it is acceptable for antennas,
 > crowns, and silhouette flourishes to be cropped out of the portrait frame. The
@@ -95,9 +105,11 @@ advisory.
 >
 > **One framing entry per asset, every screen (2026-09-27):** `portrait_anchors.json`
 > (schema 2) covers heroes, enemies, bosses, items and relics; per-asset offsets live
-> there, never in screen code. Portraits frame through `cover_fit_portrait`, items
+> there, never in screen code. Portraits frame through `make_portrait_frame`, items
 > and relics through `PixelUI.make_item_art` / `make_integer_icon`. Edit with the dev
-> framing editor (`docs/tools/FRAMING_TOOL.md`); the `framing sites` gate enforces it.
+> framing editor (`docs/tools/FRAMING_TOOL.md`). Two gates enforce it: `framing sites`
+> (static: each screen asks for the shared frame) and `portrait frame` (live: every
+> screen is loaded and its laid-out frame and drawn art are measured).
 
 ## Persistent header — one global header bar
 

@@ -54,7 +54,7 @@ func _run() -> void:
 				if hp_right >= 0: check(is_equal_approx(hp_right, node.get_global_rect().end.x), "HP right alignment")
 				hp_right = node.get_global_rect().end.x
 		for node in menu._bestiary_detail.find_children("*", "TextureRect", true, false):
-			check(node.get_parent().size.is_equal_approx(Vector2(96, 96)), "Uniform thumbnail box: " + str(node.get_parent().size))
+			check(node.get_parent().size.is_equal_approx(load("res://scripts/ui/pixel_ui.gd").portrait_window(menu.ROW_PORTRAIT_W)), "Uniform thumbnail box: " + str(node.get_parent().size))
 	menu._select_bestiary_faction("squad")
 	await settle()
 	# UI batch B11: every evolution row shows that evolution's OWN portrait

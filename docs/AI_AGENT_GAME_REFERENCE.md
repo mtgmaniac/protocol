@@ -225,7 +225,11 @@ Two portrait art styles coexist and are auto-classified at load:
 `DataManager._crop_to_content()` tags every portrait texture with a
 `full_bleed` meta (sampled opaque coverage > 90%). ALL portrait framing must go
 through **`PixelUI.cover_fit_portrait()`** — full-bleed art centres both axes,
-cutout art top-anchors (heads never crop). Never add per-unit pixel offsets in
+cutout art top-anchors (heads never crop). Outside the battle card a screen
+never calls it directly: it builds the portrait with
+**`PixelUI.make_portrait_frame()`** (2026-10-10), which owns the window, the
+crop and the frame's size; the `portrait frame` gate measures the laid-out
+frames on the live screens. Never add per-unit pixel offsets in
 code: per-asset framing (head anchors, legacy offsets, crop insets) is DATA in
 `assets/portraits/portrait_anchors.json`, one entry per asset used on every
 screen; item and relic art goes through `PixelUI.make_item_art` /

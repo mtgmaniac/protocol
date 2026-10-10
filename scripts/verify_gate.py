@@ -341,6 +341,16 @@ GATES = [
     ("framing sites", [sys.executable, str(ROOT / "scripts" / "checks" / "framing_sites.py")], "[FRAMING_SITES] PASS", False),
     ("framing editor", [GODOT, "--headless", "--path", str(ROOT), "res://dev/framing_editor/FramingEditorTest.tscn"], "[FRAMING_EDITOR] PASS", False),
     ("framing sheet", [GODOT, "--path", str(ROOT), "res://dev/framing_editor/FramingEditor.tscn", "--framing-sheet=res://debug_artifacts/framing/capture_sheet.png"], "[FRAMING_SHEET] PASS", False),
+    # Portrait frame (2026-10-10): the framing gates above prove each screen
+    # ASKS for the shared frame; this one loads every screen that can show a
+    # portrait and measures the frame it really lays out and the art drawn in
+    # it: one window aspect, no stretched art, no portrait without the helper.
+    # Breaks: one frame stretched tall (the evolution-screen bug those gates
+    # missed), one portrait drawn off-aspect, one shown without the helper.
+    ("portrait frame", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "PORTRAIT_FRAME",
+        "--script", "scripts/debug/portrait_frame_test.gd", "--break-arg=--portrait-frame-break=",
+        "--breaks", "stretch,squash,bypass"],
+        "[PORTRAIT_FRAME_GATE] PASS", False),
 ]
 
 

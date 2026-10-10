@@ -1,5 +1,58 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-68. One shared portrait frame on every screen; Shield Enforcer is SHIELD (Kev, 2026-10-10)
+
+**Ruling (Kev, transcribed).**
+
+"The evolution screen's choice portraits are stretched into a tall, narrow box
+instead of using the shared portrait framing. The ruling: every portrait uses
+one shared file and framing, applied identically on every screen. Fix the
+evolution screen to use the shared framing component and aspect ratio."
+
+"Treat it as a class: check every screen that shows a portrait (squad select,
+help/unit reference, battle cards, long-press, evolution, reward, unlocks,
+intercept, victory/defeat, anywhere else) and list any that don't use the
+shared framing or that distort its aspect. Fix them all."
+
+"The existing framing gates missed this. Extend them to cover every screen in
+that list, with a deliberate break that stretches one portrait and must fail."
+
+"Callsigns: Shield Enforcer's callsign GUARD is a leftover from the September
+renames. Change it to SHIELD. Check Hive Matriarch's MATRON and any other
+callsign that doesn't match its unit's current name, and list them with
+proposed fixes; don't apply those without asking."
+
+**As built.** One component, `PixelUI.make_portrait_frame`, builds every
+portrait outside the battle card (TRUTH, "Portrait frame"). Measured on the
+live screens, art window in design px:
+
+| Screen | Was | Now |
+|---|---|---|
+| Evolution branches | 162×255 and 162×309, stretched by the row | 162×188 |
+| Help › Units rows | 96×96, a square second window | 96×112 |
+| Encounter panel boss thumb | 216×252, 2 px too tall | 216×250 |
+| Unlock row | 144×167 | 144×166 (even px) |
+| Squad select tiles | 230×266 | unchanged |
+| Battle cards (the reference) | 332×384 | unchanged |
+
+Long-press popups, reward, route fork, intercept, run end and the Directive
+picker show no portrait. A taller frame is a defect like a shorter one; the
+docs that called it harmless are corrected.
+
+**Gates.** `framing sites` gained rule R7 (static). New gate `portrait frame`
+measures every laid-out frame on the live screens, with three deliberate
+breaks (`stretch`, `squash`, `bypass`).
+
+**Callsign.** Shield Enforcer: GUARD to SHIELD (`enemies.data.json`).
+
+**Still Kev's (listed, not applied).** Signal Hierophant is ROOT, from its old
+name Root Hierophant; the schema caps a callsign at 8 characters, so
+HIEROPHANT does not fit (candidates from the 2026-10-02 handoff: SIGNAL,
+PRIEST, ORACLE). Resonance Warden is RESONANT, not a word of its name
+(WARDEN is Heavy Warden's; RESONANCE is 9 characters). MATRON for Hive
+Matriarch is not a rename leftover (the unit was never renamed); MATRIARCH is
+9 characters.
+
 ## G-67. Re-pin the sim to the traits branch; merge and build v0.3 (Kev, 2026-10-10)
 
 **Ruling (Kev, transcribed).**

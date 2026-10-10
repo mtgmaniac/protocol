@@ -22,18 +22,18 @@ const ITEM := "item"
 # One row per site: id, label, kind, size, fit mode (items), sections shown,
 # item_types filter (items: consumable / gear; empty = any), chrome colours.
 static func all_sites() -> Array[Dictionary]:
-	var region: Vector2 = PixelUI.HERO_PORTRAIT_REGION
-	var squad_w: float = float(HOME.PORTRAIT_CELL - 2 * HOME.PANEL_BORDER)  # home_screen._build_unit_tile
-	var evo_w: float = float(EVOLUTION.PORTRAIT_W - 2 * EVOLUTION.PORTRAIT_BORDER)  # evolution_screen:378
-	var unlock_w := 144.0  # unlock_screen._make_hero_row token_w
+	# Portrait sites: each screen names only its window WIDTH and builds the
+	# frame with PixelUI.make_portrait_frame; portrait_window gives the same
+	# size here. The live, laid-out frames are measured by the `portrait frame`
+	# gate (scripts/debug/portrait_frame_test.gd) — this list is a preview.
+	var evo_w: float = float(EVOLUTION.PORTRAIT_W - 2 * EVOLUTION.PORTRAIT_BORDER)  # evolution_screen._create_path_header
 	var sites: Array[Dictionary] = [
-		_site("battle_card", "Battle card", PORTRAIT, region, "", ["heroes", "enemies", "bosses"]),
-		_site("squad_tile", "Squad select", PORTRAIT, Vector2(squad_w, roundf(squad_w * region.y / region.x)), "", ["heroes"]),
-		_site("encounter", "Encounter panel", PORTRAIT,
-			Vector2(HOME.ENC_THUMB_W - 2 * HOME.PANEL_BORDER, HOME.ENC_THUMB_H - 2 * HOME.PANEL_BORDER), "", ["bosses"]),
-		_site("evolution", "Evolution", PORTRAIT, Vector2(evo_w, roundf(evo_w * region.y / region.x)), "", ["heroes"]),
-		_site("unlock_unit", "Unlock / run end", PORTRAIT, Vector2(unlock_w, roundf(unlock_w * region.y / region.x)), "", ["heroes"]),
-		_site("help_row", "Help units", PORTRAIT, Vector2(HelpMenu.ROW_PORTRAIT_BOX, HelpMenu.ROW_PORTRAIT_BOX), "", ["heroes", "enemies", "bosses"]),
+		_site("battle_card", "Battle card", PORTRAIT, PixelUI.HERO_PORTRAIT_REGION, "", ["heroes", "enemies", "bosses"]),
+		_site("squad_tile", "Squad select", PORTRAIT, PixelUI.portrait_window(HOME.TILE_PORTRAIT_W), "", ["heroes"]),
+		_site("encounter", "Encounter panel", PORTRAIT, PixelUI.portrait_window(HOME.ENC_PORTRAIT_W), "", ["bosses"]),
+		_site("evolution", "Evolution", PORTRAIT, PixelUI.portrait_window(evo_w), "", ["heroes"]),
+		_site("unlock_unit", "Unlock / run end", PORTRAIT, PixelUI.portrait_window(UNLOCK.HERO_PORTRAIT_W), "", ["heroes"]),
+		_site("help_row", "Help units", PORTRAIT, PixelUI.portrait_window(HelpMenu.ROW_PORTRAIT_W), "", ["heroes", "enemies", "bosses"]),
 		_site("reward_row", "Reward row", ITEM, Vector2.ONE * REWARD.ROW_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["items"]),
 		_site("reward_relic", "Relic reward", ITEM, Vector2.ONE * REWARD.RELIC_ICON_BOX, PixelUI.ITEM_FIT_INTEGER, ["relics"]),
 		_site("item_card", "Battle item card", ITEM, Vector2.ONE * (ItemCard.ICON_AREA_SIZE - 8.0), PixelUI.ITEM_FIT_INTEGER, ["items"], ["consumable"]),

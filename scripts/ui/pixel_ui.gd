@@ -477,13 +477,14 @@ static func pip_key_for_effect(kind: String, value: Variant = "") -> String:
 # ── Portrait region (single source of truth) ────────────────────────────────
 # The hero portrait window is 328×380 (aspect ≈0.863) — measured live from the
 # battle card (2026-07-12, stable pre/post-roll). EVERY screen that displays a
-# hero portrait uses this aspect; a screen needing a different physical size
-# scales this aspect — it never defines its own. A TALLER display frame
-# cover-fits by height and trims the sides (harmless); a SHORTER frame trims
-# the bottom and destroys the framing — that was the 320×486 bug: squad select
-# and the battle card showed different windows onto the same art, and every
-# framing pass authored against the wrong one. Do not define a portrait window
-# anywhere else, and do not hardcode a second aspect.
+# portrait uses this aspect; a screen needing a different physical size scales
+# this aspect through make_portrait_frame — it never defines its own. A frame
+# of any other aspect is a defect: a TALLER one cover-fits by height, which
+# zooms the art in and trims its sides (the 2026-10-10 evolution-screen bug); a
+# SHORTER one trims the bottom and destroys the framing — the 320×486 bug:
+# squad select and the battle card showed different windows onto the same art,
+# and every framing pass authored against the wrong one. Do not define a
+# portrait window anywhere else, and do not hardcode a second aspect.
 const HERO_PORTRAIT_REGION := Vector2(328.0, 380.0)
 
 # ── Hero portrait display zoom (display-time only; the PNGs stay pristine) ──
@@ -541,8 +542,98 @@ const PORTRAIT_BACKDROP_COLOR := Color("000000")
 # host it must consult this single flag rather than carrying local exceptions.
 const SHOW_BETA_UNIT_BADGES := false
 
+## Debug-build seam for the `portrait frame` gate's deliberate breaks (never set
+## by the game). Each one hits the FIRST portrait built: `stretch` makes its
+## frame half again as tall (the 2026-10-10 evolution-screen bug, where a row
+## stretched the frame), `squash` draws its art off-aspect, `bypass` shows it
+## without the helper's tag.
+const PORTRAIT_FRAME_BREAK_ARG := "--portrait-frame-break="
+static var _portrait_frame_break: String = "?"
+static var _portrait_break_target: int = 0
+
+
+static func portrait_frame_break() -> String:
+	if _portrait_frame_break == "?":
+		_portrait_frame_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(PORTRAIT_FRAME_BREAK_ARG):
+					_portrait_frame_break = arg.trim_prefix(PORTRAIT_FRAME_BREAK_ARG)
+	return _portrait_frame_break
+
+
+static func _is_portrait_break_target(node: Object) -> bool:
+	if _portrait_break_target == 0:
+		_portrait_break_target = node.get_instance_id()
+	return _portrait_break_target == node.get_instance_id()
+
+
+# The portrait window at a given width: HERO_PORTRAIT_REGION's aspect, height
+# on whole even design px (INVARIANTS #14). The ONLY place the aspect becomes a
+# size — a screen never repeats this arithmetic.
+static func portrait_window(width: float) -> Vector2:
+	return Vector2(width, even_px(width * HERO_PORTRAIT_REGION.y / HERO_PORTRAIT_REGION.x))
+
+
+# ── Portrait frame: the ONE portrait component ──────────────────────────────
+# Every portrait outside the battle card is built here: a frame whose art
+# window is portrait_window(window_w), a clipping crop and the art, fitted by
+# cover_fit_portrait on every resize. `style` is the screen's chrome (border and
+# fill); its content margins sit OUTSIDE the window, so a bordered frame is the
+# window plus its border. The frame never stretches — it shrinks to its own
+# size in any container, because a frame a row may stretch stops being the
+# portrait window (the evolution choice portraits, 2026-10-10: right minimum
+# size, wrong laid-out size, and no gate measured the laid-out size). A screen
+# may pick where the frame sits (SIZE_SHRINK_BEGIN / _CENTER / _END), never
+# SIZE_FILL or SIZE_EXPAND. The battle card is the window's reference and
+# builds its own; the `portrait frame` gate measures both on the live screens.
+# Returns {frame, crop, tex}; swap the art later with set_portrait.
+static func make_portrait_frame(texture: Texture2D, window_w: float, style: StyleBox) -> Dictionary:
+	var window: Vector2 = portrait_window(window_w)
+	var frame := PanelContainer.new()
+	frame.name = "PortraitFrame"
+	frame.clip_contents = true
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_theme_stylebox_override("panel", style)
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if portrait_frame_break() == "stretch" and _is_portrait_break_target(frame):
+		window.y = even_px(window.y * 1.5)
+	frame.custom_minimum_size = window + style.get_minimum_size()
+	var crop := Control.new()
+	crop.name = "PortraitCrop"
+	crop.clip_contents = true
+	crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(crop)
+	var tex := TextureRect.new()
+	tex.name = "Portrait"
+	tex.texture = texture
+	tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_SCALE  # position and size come from cover_fit_portrait
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crop.add_child(tex)
+	crop.resized.connect(func() -> void: cover_fit_portrait(tex, crop.size))
+	return {"frame": frame, "crop": crop, "tex": tex}
+
+
+# Swap the art in a make_portrait_frame portrait and refit it to its window.
+static func set_portrait(tex_rect: TextureRect, texture: Texture2D) -> void:
+	if tex_rect == null:
+		return
+	tex_rect.texture = texture
+	var crop: Control = tex_rect.get_parent() as Control
+	if crop != null:
+		cover_fit_portrait(tex_rect, crop.size)
+
+
 static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> void:
 	if tex_rect == null:
+		return
+	var break_mode: String = portrait_frame_break()
+	if break_mode == "bypass" and _is_portrait_break_target(tex_rect):
+		tex_rect.position = Vector2.ZERO
+		tex_rect.size = frame_size
 		return
 	tex_rect.set_meta("framing_helper", "portrait")
 	var fw: float = frame_size.x
@@ -556,6 +647,8 @@ static func cover_fit_portrait(tex_rect: TextureRect, frame_size: Vector2) -> vo
 		_sync_portrait_backdrop(tex_rect, frame_size, false)
 		return
 	_place_portrait(tex_rect, tex, fw, fh)
+	if break_mode == "squash" and _is_portrait_break_target(tex_rect):
+		tex_rect.size.y *= 0.8
 	_sync_portrait_backdrop(tex_rect, frame_size, true)
 
 

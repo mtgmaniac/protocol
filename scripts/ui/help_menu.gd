@@ -1186,7 +1186,7 @@ func _make_body_label(text: String, color: Color) -> Label:
 # Both screens call _add_reference_row, so they cannot drift apart.
 
 const ROW_KEYWORD_CAP := 4
-const ROW_PORTRAIT_BOX := 96.0
+const ROW_PORTRAIT_W := 96.0  # thumb width; PixelUI.make_portrait_frame owns the height
 const ROW_NAME_FONT := 44
 const ROW_DESCRIPTOR_FONT := 46
 const ROW_CHILD_INDENT := 34.0
@@ -1350,7 +1350,6 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	row.add_theme_constant_override("separation", 14)
 	host.add_child(row)
 
-	var box: float = ROW_PORTRAIT_BOX
 	if indented:
 		var indent := Control.new()
 		indent.custom_minimum_size = Vector2(ROW_CHILD_INDENT, 0)
@@ -1362,26 +1361,12 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		row.add_child(connector)
 
 	if portrait != null:
-		var frame := PanelContainer.new()
-		frame.custom_minimum_size = Vector2(box, box)
-		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		frame.clip_contents = true
-		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# The shared portrait frame. It was a 96×96 square: a second window,
+		# shorter for its width than the battle card's, so each thumb lost the
+		# bottom of the framing its battle card shows (2026-10-10).
 		var border: Color = PixelUI.DT_ENEMY_BORDER if source_kind == "enemy" else PixelUI.DT_CYAN
-		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, border, 2))
-		var tex := TextureRect.new()
-		tex.texture = portrait
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_SCALE
-		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var crop := Control.new()
-		crop.clip_contents = true
-		crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(crop)
-		crop.add_child(tex)
-		crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(tex, crop.size))
-		row.add_child(frame)
+		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, border, 2)
+		row.add_child(PixelUI.make_portrait_frame(portrait, ROW_PORTRAIT_W, frame_style)["frame"])
 
 	var entry := VBoxContainer.new()
 	entry.mouse_filter = Control.MOUSE_FILTER_IGNORE

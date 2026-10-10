@@ -34,7 +34,7 @@ const HERO_PAYLOADS := [
 		{"kind": "dmg", "value": "18", "duration": 0, "scope": ""},
 		{"kind": "burn", "value": "12", "duration": 3, "scope": ""},
 		{"kind": "rfm", "value": "+12", "duration": 2, "scope": "all"},
-	], "target": "GUARD"},
+	], "target": "SHIELD"},
 ]
 const ENEMY_PAYLOAD := {"effects": [
 	{"kind": "dmg", "value": "11", "duration": 0, "scope": ""},

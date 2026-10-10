@@ -2952,7 +2952,7 @@
       "dMax": 18,
       "type": "guard",
       "ai": "smart",
-      "callsign": "GUARD",
+      "callsign": "SHIELD",
       "role": "Attacks and shields in the same breath, keeping its whole line plated."
     },
     "Heavy Warden": {

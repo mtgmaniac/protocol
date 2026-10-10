@@ -10,6 +10,7 @@ helpers / loader themselves):
                   `.texture =` mentions "portrait") lives in a file that calls
                   PixelUI.cover_fit_portrait, and its function never picks a
                   TextureRect STRETCH_KEEP_ASPECT* mode (private framing).
+                  Only the battle card may do this at all — see R7.
   R2 item art   — item / relic art (`<x>.icon`, a payload "icon") is never
                   assigned to a TextureRect directly; it goes through
                   PixelUI.make_item_art / make_integer_icon.
@@ -29,6 +30,19 @@ helpers / loader themselves):
                   scale by fractions); every ITEM site in the framing editor's
                   site list (dev/framing_editor/framing_sites.gd) is
                   ITEM_FIT_INTEGER (UI batch 2026-09-27, B9).
+  R7 one frame  — outside the battle card (the window's reference), no screen
+                  builds a portrait itself: it never assigns a portrait
+                  texture, calls cover_fit_portrait or names
+                  HERO_PORTRAIT_REGION (its own aspect arithmetic). It builds
+                  the art with PixelUI.make_portrait_frame and swaps it with
+                  PixelUI.set_portrait, and it never gives that frame a
+                  custom_minimum_size, SIZE_FILL or SIZE_EXPAND (2026-10-10:
+                  the evolution choice portraits called the helper with the
+                  right minimum size and were stretched by their row).
+
+These rules are static: they prove a screen ASKS for the right frame. What
+the screen really lays out is measured on the live screens by the `portrait
+frame` gate (scripts/debug/portrait_frame_test.gd).
 
 Known exception (documented in docs/tools/FRAMING_TOOL.md): the PARKED
 landscape battle plate (compact_unit_card._battle_plate, LANDSCAPE_BATTLE_
@@ -45,6 +59,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SKIP_DIRS = ("scripts/debug/", "scripts/sim/")
 HELPERS = {"scripts/ui/pixel_ui.gd", "scripts/autoloads/DataManager.gd"}
+BATTLE_CARD = "scripts/ui/compact_unit_card.gd"
+OWN_FRAMING = re.compile(r"cover_fit_portrait\(|HERO_PORTRAIT_REGION")
+FRAME_VAR = re.compile(r"^\s*var\s+(\w+)\b.*\bmake_portrait_frame\(")
+FRAME_PART = re.compile(r"^\s*var\s+(\w+)\b[^=]*=\s*(\w+)\[\"frame\"\]")
+FRAME_RESIZE = re.compile(r"custom_minimum_size|SIZE_FILL|SIZE_EXPAND")
 ASSIGN = re.compile(r"^\s*([\w\.\[\]\"]+)\.texture\s*=\s*(.+)$")
 ITEM_RHS = re.compile(r"\.icon\b|get\(\"icon\"|\[\"icon\"\]")
 TAG_READ = re.compile(r"(get_meta|has_meta|set_meta)\(\"(hero_portrait|portrait_key|framing_\w*)\"")
@@ -91,6 +110,8 @@ def check_source(rel: str, src: str) -> list[str]:
                 errors.append(f"R2 {rel}:{i + 1}: item/relic art assigned directly - use PixelUI.make_item_art")
             if "portrait" in (lhs + rhs).lower():
                 s, e = enclosing(ranges, i)
+                if rel != BATTLE_CARD:
+                    errors.append(f"R7 {rel}:{i + 1}: portrait texture assigned by a screen - build it with PixelUI.make_portrait_frame, swap it with PixelUI.set_portrait")
                 if "PixelUI.cover_fit_portrait(" not in src:
                     errors.append(f"R1 {rel}:{i + 1}: portrait texture in a file that never calls PixelUI.cover_fit_portrait")
                 if any("STRETCH_KEEP_ASPECT" in l.split("#", 1)[0] for l in lines[s:e]):
@@ -106,6 +127,26 @@ def check_source(rel: str, src: str) -> list[str]:
                     errors.append(f"R3 {rel}:{j + 1}: portrait nudged after the helper - put the offset in the framing data")
         if ART_PATH.search(code):
             errors.append(f"R4 {rel}:{i + 1}: art path outside DataManager - load through DataManager so it is tagged")
+        if rel != BATTLE_CARD and OWN_FRAMING.search(code):
+            errors.append(f"R7 {rel}:{i + 1}: screen frames a portrait itself - PixelUI.make_portrait_frame owns the window and the fit")
+    if not is_helper:
+        errors += check_frame_sizing(rel, lines, ranges)
+    return errors
+
+
+def check_frame_sizing(rel: str, lines: list[str], ranges: list[tuple[int, int]]) -> list[str]:
+    """R7: a frame from make_portrait_frame keeps the size the helper gave it."""
+    errors: list[str] = []
+    for s, e in ranges:
+        body = [l.split("#", 1)[0] for l in lines[s:e]]
+        boxes = {m.group(1) for l in body for m in [FRAME_VAR.match(l)] if m}
+        frames = {m.group(1) for l in body for m in [FRAME_PART.match(l)] if m and m.group(2) in boxes}
+        for k, l in enumerate(body):
+            if "make_portrait_frame(" in l and FRAME_RESIZE.search(l):
+                errors.append(f"R7 {rel}:{s + k + 1}: portrait frame resized or stretched on the line that builds it")
+            for name in frames:
+                if re.match(rf"^\s*{name}\.(custom_minimum_size|size_flags_\w+)\b", l) and FRAME_RESIZE.search(l):
+                    errors.append(f"R7 {rel}:{s + k + 1}: portrait frame '{name}' resized or stretched - the helper owns its size (place it with SIZE_SHRINK_*)")
     return errors
 
 
@@ -161,7 +202,7 @@ def main() -> int:
         for e in errors:
             print(f"   {e}")
         return 1
-    print(f"[FRAMING_SITES] PASS - {count} scripts: every portrait/item/relic site uses its helper, item art at integer scale; dev/ excluded from every export preset")
+    print(f"[FRAMING_SITES] PASS - {count} scripts: every portrait/item/relic site uses its helper, one shared portrait frame, item art at integer scale; dev/ excluded from every export preset")
     return 0
 
 

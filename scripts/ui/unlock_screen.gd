@@ -17,6 +17,7 @@ const BUTTON_SIZE := Vector2(360, 120)
 const GRID_COLUMNS := 4
 const GRID_ICON_BOX := 128.0
 const BOSS_RELIC_ICON_BOX := 256.0
+const HERO_PORTRAIT_W := 144.0  # NEW UNIT portrait width; PixelUI.make_portrait_frame owns the height
 const COMPACT_AWARD_PADDING := 48.0
 
 # Section order is the ruling: biggest news first.
@@ -220,8 +221,8 @@ func _make_boss_relic_card(entry: Dictionary) -> Control:
 	return card
 
 
-# NEW UNIT: portrait through the ONE portrait window (HERO_PORTRAIT_REGION
-# aspect via cover_fit_portrait — same rule as the battle card and squad tiles).
+# NEW UNIT: the shared portrait frame (PixelUI.make_portrait_frame — the same
+# window and framing as the battle card and squad tiles).
 func _make_hero_row(entry: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -230,25 +231,8 @@ func _make_hero_row(entry: Dictionary) -> Control:
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
 	var unit := DataManager.get_unit(str(entry.get("id", ""))) as UnitData
 	if unit != null and unit.portrait != null:
-		var frame := PanelContainer.new()
-		var token_w := 144.0
-		frame.custom_minimum_size = Vector2(token_w, roundf(token_w * PixelUI.HERO_PORTRAIT_REGION.y / PixelUI.HERO_PORTRAIT_REGION.x))
-		frame.clip_contents = true
-		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2))
-		var crop := Control.new()
-		crop.clip_contents = true
-		crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(crop)
-		var tex := TextureRect.new()
-		tex.texture = unit.portrait
-		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_SCALE
-		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		crop.add_child(tex)
-		crop.resized.connect(func() -> void: PixelUI.cover_fit_portrait(tex, crop.size))
-		row.add_child(frame)
+		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, 2)
+		row.add_child(PixelUI.make_portrait_frame(unit.portrait, HERO_PORTRAIT_W, frame_style)["frame"])
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", ""))
 	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER

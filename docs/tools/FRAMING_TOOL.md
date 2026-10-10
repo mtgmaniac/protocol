@@ -90,14 +90,19 @@ fails on any screen that frames art itself. Sizes are design px (1080-wide);
 `dev/framing_editor/framing_sites.gd` reads them from each screen's own
 constants.
 
+Portraits outside the battle card are built by `PixelUI.make_portrait_frame`
+(2026-10-10): the screen gives a window WIDTH and a border style, the helper
+owns the height, the crop, the fit and the frame's size. The Frame column is the
+art window the `portrait frame` gate measures on the live screen.
+
 | Class | Screen | Code | Frame | Helper |
 |---|---|---|---|---|
-| Hero, enemy, boss | Battle card | `compact_unit_card._update_portrait_rect_transform` | 328×380 | `cover_fit_portrait` |
-| Hero | Squad select tile | `home_screen._build_unit_tile` / `_cover_fit_portrait` | 230×266 | `cover_fit_portrait` |
-| Boss | Encounter panel thumb | `home_screen` (boss thumb) | 216×252 | `cover_fit_portrait` |
-| Hero | Evolution branches | `evolution_screen` | 162×188 | `cover_fit_portrait` |
-| Hero | Unlock screen / run end | `unlock_screen._make_hero_row` | 144×167 | `cover_fit_portrait` |
-| Hero, enemy, boss | Help › Units rows | `help_menu` unit rows | 96×96 | `cover_fit_portrait` (was a private cover-fit) |
+| Hero, enemy, boss | Battle card | `compact_unit_card._update_portrait_rect_transform` | 332×384 (the window's reference) | `cover_fit_portrait` |
+| Hero | Squad select tile | `home_screen._build_unit_tile` | 230×266 | `make_portrait_frame` |
+| Boss | Encounter panel thumb | `home_screen` (boss thumb) | 216×250 (was 216×252) | `make_portrait_frame` |
+| Hero | Evolution branches | `evolution_screen._create_path_header` | 162×188 (was stretched to 162×255 / 309) | `make_portrait_frame` |
+| Hero | Unlock screen / run end | `unlock_screen._make_hero_row` | 144×166 (was 144×167) | `make_portrait_frame` |
+| Hero, enemy, boss | Help › Units rows | `help_menu._add_reference_row` | 96×112 (was a 96×96 square) | `make_portrait_frame` |
 | Item | Reward row | `reward_screen` | 256 | `make_integer_icon` |
 | Relic | Relic reward card | `reward_screen` | 256 | `make_integer_icon` |
 | Consumable | Battle item card | `item_card` (via `protocol_actions`) | 182 | `make_integer_icon` |
@@ -126,7 +131,16 @@ to the integer law is a one-word mode change at its call.
 - `framing data`: `scripts/checks/framing_data.py`. Schema, every key is a live
   asset in the right section, values in range.
 - `framing sites`: `scripts/checks/framing_sites.py`. Static helper routing,
-  plus `dev/*` in every export preset's exclude filter.
+  plus `dev/*` in every export preset's exclude filter. Rule R7: outside the
+  battle card no screen assigns a portrait texture, calls `cover_fit_portrait`,
+  names `HERO_PORTRAIT_REGION` or resizes a `make_portrait_frame` frame.
+- `portrait frame`: `scripts/debug/portrait_frame_test.gd` through
+  `break_gate.py`. Loads every screen that can show a portrait and measures
+  each laid-out frame against the window aspect and each drawn portrait
+  against its texture's aspect; fails on portrait art shown without the
+  helper, and on a site that shows fewer portraits than expected. Deliberate
+  breaks: `stretch`, `squash`, `bypass`. The static gates prove a screen asks
+  for the right frame; only this one sees what the screen lays out.
 - `framing editor`: `dev/framing_editor/FramingEditorTest.tscn`. Editing,
   previews, undo, stray accept/reject, save round trip, and a check that the
   real file is untouched.

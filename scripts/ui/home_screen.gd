@@ -10,7 +10,7 @@
 #   under. The flavor blurb is NOT on screen — long-press the banner opens the
 #   InspectPopup (InspectResolver.resolve_encounter) with the verbatim copy.
 #   The boss thumb frames the enemy through the SAME portrait window as the battle
-#   card (PixelUI.HERO_PORTRAIT_REGION aspect + PixelUI.cover_fit_portrait), so the
+#   card (the shared PixelUI.make_portrait_frame), so the
 #   boss reads identically to its battle card, smaller — no zoom (enemies are the
 #   framing reference and are never zoomed; the hero zoom is hero-only).
 # - Squad: the portrait IS the button (no name-button row); hero name is a label
@@ -76,19 +76,15 @@ const PANEL_RADIUS := 0
 # 1000; 4 columns with 3×16 gaps → (1000 − 48) / 4 = 238 exactly (even → crisp
 # halves at 540 preview). Width is DERIVED from the usable width, not a target.
 const PORTRAIT_CELL := 238
-# Battle-scene portrait framing: tiles reuse the ONE portrait region
-# (PixelUI.HERO_PORTRAIT_REGION, 328×380 — measured live from the battle card)
-# + the same cover-fit function (PixelUI.cover_fit_portrait), scaled to cell
-# width — the hero you pick is framed identically to the hero in battle,
-# smaller. The old local 320×486 constant was STALE (a pre-redesign card
-# anatomy) and gave squad select a different window than battle — the
-# 2026-07-12 portrait-framing bug. Never define a second portrait aspect.
-const BATTLE_PORTRAIT_REGION := PixelUI.HERO_PORTRAIT_REGION
-# Banner boss thumb: the SAME portrait region aspect, so the boss is framed
-# identically to its battle card, smaller. 224 × round(224·380/328) = 260
-# (kept even for the pixel-snap law; derivation must track HERO_PORTRAIT_REGION).
-const ENC_THUMB_W := 224
-const ENC_THUMB_H := 260
+# Portrait art windows, as WIDTHS only: PixelUI.make_portrait_frame owns the
+# height (the one portrait window) and adds the frame border outside it, so the
+# hero you pick and the boss you face are framed identically to their battle
+# cards, smaller. Never define a portrait height or aspect here: the old local
+# 320×486 tile gave squad select a different window than battle (the 2026-07-12
+# bug), and the old 224×260 thumb put the aspect on the frame and left the art
+# window 216×252, 2 px too tall (found 2026-10-10).
+const TILE_PORTRAIT_W := PORTRAIT_CELL - 2 * PANEL_BORDER
+const ENC_PORTRAIT_W := 216
 const DIRECTIVE_ICON_BOX := 128.0  # Starting Directive relic art at 1x (integer law; was 168, a 1.31x stretch)
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
@@ -314,34 +310,17 @@ func _build_encounter_section() -> Control:
 	_enc_progress_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(PROGRESS_FONT)))
 	text_col.add_child(_enc_progress_label)
 
-	# Boss thumb — the enemy is framed through the ONE portrait window
-	# (ENC_THUMB_W/H carry the PixelUI.HERO_PORTRAIT_REGION aspect) and COVER-fit by
-	# PixelUI.cover_fit_portrait (below), exactly like the enemy battle card: same
-	# region, same crop rule, no zoom. The boss reads identically to its battle
-	# card, smaller. (The old letterboxed / dominant-art-aspect thumb was unified
-	# into this window by fix 9322a30, matching the hero-tile fix.)
-	var thumb_frame := PanelContainer.new()
-	thumb_frame.clip_contents = true
-	thumb_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	thumb_frame.custom_minimum_size = Vector2(ENC_THUMB_W, ENC_THUMB_H)
-	thumb_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Boss thumb — the shared portrait frame (PixelUI.make_portrait_frame), so
+	# the boss is framed exactly like its enemy battle card, smaller: same
+	# window, same crop rule, no zoom. (The old letterboxed / dominant-art-aspect
+	# thumb was unified into this window by fix 9322a30, matching the hero tiles.)
 	var thumb_style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_ENEMY)
 	thumb_style.set_content_margin_all(float(PANEL_BORDER))
-	thumb_frame.add_theme_stylebox_override("panel", thumb_style)
-	var thumb_holder := Control.new()
-	thumb_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Cover-crop like the battle cards (Kev 2026-07-10: heads to the top of the
-	# box, no letterboxing) — PixelUI.cover_fit_portrait is the framing rule.
-	thumb_holder.clip_contents = true
-	thumb_frame.add_child(thumb_holder)
+	var thumb: Dictionary = PixelUI.make_portrait_frame(null, ENC_PORTRAIT_W, thumb_style)
+	var thumb_frame: PanelContainer = thumb["frame"]
+	var thumb_holder: Control = thumb["crop"]
 	_enc_thumb_holder = thumb_holder
-	_enc_portrait = TextureRect.new()
-	_enc_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_enc_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_enc_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	thumb_holder.add_child(_enc_portrait)
-	thumb_holder.resized.connect(func() -> void:
-		PixelUI.cover_fit_portrait(_enc_portrait, _enc_thumb_holder.size))
+	_enc_portrait = thumb["tex"]
 	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
 	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -416,7 +395,7 @@ func _build_threat_row() -> Control:
 func _make_nav_button(direction: int) -> Button:
 	var button := Button.new()
 	# Full banner height (= the boss thumb) so the swipe targets are easy thumbs.
-	button.custom_minimum_size = Vector2(NAV_BUTTON_W, ENC_THUMB_H)
+	button.custom_minimum_size = Vector2(NAV_BUTTON_W, PixelUI.portrait_window(ENC_PORTRAIT_W).y + 2.0 * PANEL_BORDER)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	# The selector uses the project arrow artwork, never a font-dependent < or >
@@ -474,9 +453,7 @@ func _refresh_encounter() -> void:
 			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_SITE_FONT))
 			_enc_site_label.add_theme_color_override("font_color", accent as Color if accent is Color else PixelUI.DT_AMBER)
 	var boss_tex: Texture2D = _get_boss_portrait(op)
-	_enc_portrait.texture = boss_tex
-	if _enc_thumb_holder != null and is_instance_valid(_enc_thumb_holder):
-		PixelUI.cover_fit_portrait(_enc_portrait, _enc_thumb_holder.size)
+	PixelUI.set_portrait(_enc_portrait, boss_tex)
 	_enc_portrait_placeholder.visible = boss_tex == null
 
 	var level: int = _threat_level(_operation_index)
@@ -707,23 +684,19 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	long_press.tapped.connect(_on_tile_tapped.bind(unit_id))
 	long_press.long_pressed.connect(_on_tile_long_pressed.bind(unit_id, cell))
 
-	var portrait_box: Dictionary = _make_portrait_box(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
+	# The shared portrait frame: the battle card's window at tile width, with the
+	# border inset outside it so the art sits INSIDE the frame, never over it.
+	var frame_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
+	frame_style.set_content_margin_all(float(PANEL_BORDER))
+	var portrait_box: Dictionary = PixelUI.make_portrait_frame(unit.portrait, TILE_PORTRAIT_W, frame_style)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
-	# Crop region carries the battle card's exact portrait aspect
-	# (PixelUI.HERO_PORTRAIT_REGION, 328:380); frame height = region height +
-	# the border insets on both edges.
-	var inner_w: float = float(PORTRAIT_CELL - 2 * PANEL_BORDER)
-	var inner_h: float = roundf(inner_w * BATTLE_PORTRAIT_REGION.y / BATTLE_PORTRAIT_REGION.x)
-	frame.custom_minimum_size = Vector2(PORTRAIT_CELL, inner_h + 2.0 * float(PANEL_BORDER))
 	cell.add_child(frame)
 	var is_locked := not SaveManager.is_hero_unlocked(unit_id)
 	var portrait: TextureRect = portrait_box["tex"] as TextureRect
-	portrait.texture = unit.portrait
 	# Keep the hero's own composition, but reduce it to an unmistakably dark
 	# silhouette until the profile owns that hero.
 	portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if is_locked else Color.WHITE
-	call_deferred("_cover_fit_portrait", portrait_box["crop"], portrait_box["tex"])
 
 	# Role-color corner badge (top-right) remains implemented for later roster
 	# work, but beta presentation keeps it hidden through PixelUI's shared rule.
@@ -892,7 +865,7 @@ func _refresh_unit_tiles() -> void:
 		var is_selected := _selected_unit_ids.has(unit_id)
 		# Components: Selected (strong cyan) / Normal hero tile.
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
-		# (matches _make_portrait_box; otherwise the portrait would cover the border).
+		# (matches _build_unit_tile; otherwise the portrait would cover the border).
 		var frame_style: StyleBoxFlat = PixelUI.component_style(
 			PixelUI.COMPONENT_SELECTED if is_selected else PixelUI.COMPONENT_NORMAL,
 			Color.TRANSPARENT, true)
@@ -1147,43 +1120,6 @@ func _on_directive_picked(relic_id: String) -> void:
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
-# A hard-square DT portrait frame whose texture COVER-fills the box (top-aligned, so
-# the head stays and the bottom is cropped) — same technique as the battle cards.
-# Returns the frame, the inner crop Control (for badges), and the texture.
-func _make_portrait_box(bg: Color, border: Color) -> Dictionary:
-	var frame := PanelContainer.new()
-	frame.clip_contents = true
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Inset the content by the border width so the portrait sits INSIDE the frame
-	# instead of covering it — the border always stays on top of the image.
-	var frame_style: StyleBoxFlat = _make_panel_style(bg, border)
-	frame_style.set_content_margin_all(float(PANEL_BORDER))
-	frame.add_theme_stylebox_override("panel", frame_style)
-	var crop := Control.new()
-	crop.clip_contents = true
-	crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(crop)
-	var tex := TextureRect.new()
-	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex.stretch_mode = TextureRect.STRETCH_SCALE   # position/size set manually by cover-fit
-	tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	crop.add_child(tex)
-	# Re-fit whenever the box is (re)laid out.
-	crop.resized.connect(_cover_fit_portrait.bind(crop, tex))
-	return {"frame": frame, "crop": crop, "tex": tex}
-
-
-# Cover-scale the texture to fill `crop`, centered horizontally and top-aligned so the
-# subject's head stays visible while the box is fully filled (overflow clipped).
-func _cover_fit_portrait(crop: Control, tex: TextureRect) -> void:
-	if crop == null or tex == null:
-		return
-	# The 6 px hero seat (2026-09-21) is PixelUI.HERO_PORTRAIT_SEAT_DOWN_PX,
-	# applied by the helper on every screen — no Selector-local offset.
-	PixelUI.cover_fit_portrait(tex, crop.size)
-
-
 func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
