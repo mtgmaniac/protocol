@@ -1,5 +1,48 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-74. Prestige traits kept as built; sim re-pinned; four open questions closed (Kev, 2026-10-11)
+
+**Ruling (Kev, transcribed).**
+
+"Keep it as built (traits at 250 XP replacing Directives). Enemy tuning happens
+later, after I rework encounters. Re-pin both sim policies to this branch's
+current state, no tuning."
+
+**What was measured first.** Four arms, 1,500 matched runs each, seed base
+900000, both policies (clear rate, overall):
+
+| Arm | `l1` | `l1_evo2` |
+|---|---|---|
+| A. main: trait at 100 XP, Directive at 250 XP | 31.8 | 30.8 |
+| B. trait at 100 XP, trait choice at 250 XP | 25.7 | 28.2 |
+| C. no trait at 100 XP, Directive at 250 XP | 24.9 | 25.9 |
+| D. as built: trait at 250 XP only | 21.1 | 24.9 |
+
+Both halves of the change cost clear rate: replacing the Directive (A to B) is
+-6.1 on `l1` and -2.6 on `l1_evo2`; moving the trait from 100 XP to 250 XP
+(B to D) is -4.6 and -3.3. On main the `l1` sim took a Directive that was later
+retired in 911 of 1,701 picks (four of eight branches), `l1_evo2` in 556 of
+1,725. Arm D is the pinned game. These numbers are not a target: enemy tuning
+waits for the encounter rework.
+
+**Re-pin.** `baseline.json` and `baseline_pins.json` were re-pinned together by
+`ci_smoke.py --update-baseline`, nothing tuned. The move is beyond the size
+line on both policies, and the commit carries BASELINE-APPROVED-BY-KEV.
+
+**Defaults for the four open questions (Kev).**
+
+1. **The seven kept Directive handlers stay.** Seven retired Directive effect
+   types keep their handler because the ability audit pins a case for each.
+   The audit stays at or above its floor (INVARIANTS #13); no handler is
+   dropped to chase a smaller file.
+2. **Prisoner Exchange after battle 8: no change for now.** G-70 stands (a boss
+   is never replaced or removed); nothing else about the card moves until the
+   encounter rework.
+3. **Abandoned first runs do not turn enemy traits on.** Confirms G-72 reading
+   2: only a victory or a defeat sets `onboarding.first_run_finished`.
+4. **A 250 XP trait with no picture is left for the UI redesign.** No stopgap
+   art or placeholder is added to the trait cards before then.
+
 ## G-73. False Image's summon flag is removed (Kev, 2026-10-10)
 
 **Ruling (Kev, transcribed).**
