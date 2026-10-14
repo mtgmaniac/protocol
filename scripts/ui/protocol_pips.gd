@@ -26,6 +26,13 @@ var filled: int = 0:
 		queue_redraw()
 
 
+# Held for the node's life. A style made inside _draw is freed when _draw
+# returns, and its texture goes with it: the queued draw then has no texture and
+# paints plain white (the white empty cells of the 2026-10-13 depth prototype).
+var _empty_cell: StyleBoxTexture = PixelUI.battle_surface_style("cell")
+var _charged_cell: StyleBoxTexture = PixelUI.battle_surface_style("cell_charged")
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -53,8 +60,6 @@ func _draw() -> void:
 		remainder = track - total * pip_w - (total - 1) * gap
 	var top: int = int(round(origin_y))
 	var bottom: int = int(round(origin_y + size.y * scale_y))
-	var empty_cell := PixelUI.battle_surface_style("cell")
-	var charged_cell := PixelUI.battle_surface_style("cell_charged")
 	# One recessed meter bed; cell positions and capacity are unchanged.
 	draw_rect(Rect2(Vector2.ZERO, size), PixelUI.BATTLE_INNER_EDGE, true)
 	# Remainder pixels pad the OUTSIDE of the row (centred), keeping every gap
@@ -68,5 +73,5 @@ func _draw() -> void:
 			float(pip_w) / scale_x,
 			float(bottom - top) / scale_y
 		)
-		draw_style_box(charged_cell if i < filled else empty_cell, rect)
+		draw_style_box(_charged_cell if i < filled else _empty_cell, rect)
 		x += pip_w + gap
