@@ -28,6 +28,7 @@ var filled: int = 0:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	resized.connect(queue_redraw)
 	# Window resizes change the FINAL transform without resizing controls —
 	# re-snap or the layout keeps the previous window scale.
@@ -52,7 +53,10 @@ func _draw() -> void:
 		remainder = track - total * pip_w - (total - 1) * gap
 	var top: int = int(round(origin_y))
 	var bottom: int = int(round(origin_y + size.y * scale_y))
-	var border: int = 1  # 1 physical px, on the grid by construction
+	var empty_cell := PixelUI.battle_surface_style("cell")
+	var charged_cell := PixelUI.battle_surface_style("cell_charged")
+	# One recessed meter bed; cell positions and capacity are unchanged.
+	draw_rect(Rect2(Vector2.ZERO, size), PixelUI.BATTLE_INNER_EDGE, true)
 	# Remainder pixels pad the OUTSIDE of the row (centred), keeping every gap
 	# identical.
 	var x: int = int(round(origin_x)) + remainder / 2
@@ -64,14 +68,5 @@ func _draw() -> void:
 			float(pip_w) / scale_x,
 			float(bottom - top) / scale_y
 		)
-		if i < filled:
-			draw_rect(rect, PixelUI.DT_AMBER, true)
-		else:
-			draw_rect(rect, PixelUI.DT_PROTO_EMPTY_BORDER, true)
-			var inset := Rect2(
-				rect.position + Vector2(float(border) / scale_x, float(border) / scale_y),
-				rect.size - Vector2(2.0 * border / scale_x, 2.0 * border / scale_y)
-			)
-			if inset.size.x > 0.0 and inset.size.y > 0.0:
-				draw_rect(inset, PixelUI.DT_PROTO_EMPTY, true)
+		draw_style_box(charged_cell if i < filled else empty_cell, rect)
 		x += pip_w + gap

@@ -15,6 +15,38 @@ const GOLD_ACCENT := Color(0.82, 0.58, 0.24, 1.0)
 # borders) is NOT implicated. Do not "correct" this token into a chrome role.
 const COLOR_CLEANSE_PIP := Color(0.92, 0.76, 0.32, 1.0)
 const BLACK_EDGE := Color(0.005, 0.006, 0.010, 1.0)
+# Restrained battle palette; other screens retain their existing DT colors.
+const BATTLE_FIELD := Color("0c1012")
+const BATTLE_PANEL := Color("10161a")
+const BATTLE_BORDER := Color("35424a")
+const BATTLE_HERO_LINE := Color("405563")
+const BATTLE_ENEMY_LINE := Color("694334")
+const BATTLE_HERO_TEXT := Color("a5c7d9")
+const BATTLE_ENEMY_TEXT := Color("cd9274")
+const BATTLE_TEXT := Color("eceee5")
+const BATTLE_HP_TRACK := Color("101714")
+const BATTLE_HP_FILL := Color("4a783f")
+const BATTLE_HP_INK := Color("ffffff")
+const BATTLE_PROTO_EMPTY := Color("181e21")
+const BATTLE_PANEL_FILL := Color("11191e")
+const BATTLE_INNER_EDGE := Color("06090b")
+const BATTLE_TRAY_FILL := Color("11171b")
+# Single environmental treatment for the battle-depth prototype.
+const BATTLE_BAY_FLOOR := Color("20272b")
+const BATTLE_BAY_WALL := Color("151b1f")
+const BATTLE_BAY_LIP := Color("3b454a")
+const BATTLE_BAY_SEAM := Color("171e22")
+const BATTLE_BAY_AMBER := Color("685035")
+const BATTLE_DEPTH_BACK := 0.90
+const BATTLE_DEPTH_FRONT := 1.10
+const BATTLE_PORTRAIT_FIELD := Color("080b0e")
+const BATTLE_HERO_HEADER := Color("172127")
+const BATTLE_ENEMY_HEADER := Color("211713")
+const BATTLE_SHELL_WIDTH := 8
+const BATTLE_INSET_WIDTH := 4
+static var _battle_panel_textures: Dictionary = {}
+static var _battle_pixel_font: Font = null
+const BATTLE_SKIN_PATH := "res://assets/ui/battle_skin/"
 const COLOR_DAMAGE := Color(0.96, 0.22, 0.18, 1.0)
 const COLOR_HEAL := Color(0.28, 0.90, 0.46, 1.0)
 const COLOR_SHIELD := Color(0.34, 0.66, 1.0, 1.0)
@@ -291,6 +323,63 @@ static func make_hard_style(bg: Color, border: Color, width: int = 2) -> StyleBo
 	s.corner_radius_bottom_right = 0
 	s.set_content_margin_all(0.0)
 	return s
+
+
+## Battle skin resources. All shells have a solid rim and ONE dark inset step;
+## title plates join the card sides instead of nesting another outlined box.
+## Each resource has explicit content margins, independent of its painted rim.
+## Callers must sample NEAREST: these are authored pixel bands, not bevels.
+static func battle_panel_style(fill: Color, border: Color, margin: float = 0.0) -> StyleBoxTexture:
+	var key := fill.to_html() + border.to_html()
+	var inset := BATTLE_SHELL_WIDTH + BATTLE_INSET_WIDTH
+	if not _battle_panel_textures.has(key):
+		var pixels := Image.create(36, 36, false, Image.FORMAT_RGBA8)
+		pixels.fill(border)
+		pixels.fill_rect(Rect2i(8, 8, 20, 20), BATTLE_INNER_EDGE)
+		pixels.fill_rect(Rect2i(12, 12, 12, 12), fill)
+		_battle_panel_textures[key] = ImageTexture.create_from_image(pixels)
+	var style := StyleBoxTexture.new()
+	style.texture = _battle_panel_textures[key]
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		style.set_texture_margin(side, inset)
+		style.set_content_margin(side, margin)
+	return style
+
+
+## Authored pixel surfaces, nine-sliced without changing control content margins.
+static func battle_surface_style(surface: String, margin: float = 0.0) -> StyleBoxTexture:
+	var style := StyleBoxTexture.new()
+	style.texture = _load_texture(BATTLE_SKIN_PATH + surface + ".svg")
+	var slice := 4.0 if surface.begins_with("cell") else 12.0
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		style.set_texture_margin(side, slice)
+		style.set_content_margin(side, margin)
+	return style
+
+
+static func battle_layout_style(margin: float = 0.0) -> StyleBoxEmpty:
+	var style := StyleBoxEmpty.new()
+	style.set_content_margin_all(margin)
+	return style
+
+
+static func battle_tray_style(frame_only: bool = false) -> StyleBoxTexture:
+	var style := battle_surface_style("tray")
+	style.draw_center = not frame_only
+	return style
+
+
+static func battle_strip_style(margin: float = 0.0) -> StyleBoxTexture:
+	return battle_surface_style("strip", margin)
+
+
+static func battle_button_style(border: Color, pressed: bool) -> StyleBoxTexture:
+	var style := battle_surface_style("button", 14.0)
+	style.modulate_color = Color(border.r / BATTLE_BORDER.r, border.g / BATTLE_BORDER.g,
+		border.b / BATTLE_BORDER.b, 1.0)
+	if pressed:
+		style.modulate_color = style.modulate_color.darkened(0.25)
+	return style
 
 
 ## A tiling 2x2 dither overlay (the signature of Direction 05). tint+alpha via modulate.
@@ -1163,7 +1252,7 @@ static func style_frame_icon_button(
 
 ## Direction-05 flat icon button: dark square (DT_BTN_BG) + 2px hard border, our
 ## pixel icon centered & expanded. Pass border_color = DT_CYAN for the active state.
-static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE) -> void:
+static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE, battle: bool = false) -> void:
 	if button == null or not (button is Button):
 		return
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1178,6 +1267,17 @@ static func style_dt_icon_button(button: BaseButton, icon_path: String, border_c
 	}
 	for stylebox_variant in styles.values():
 		(stylebox_variant as StyleBoxFlat).set_content_margin_all(14.0)
+	if battle:
+		for state in styles:
+			var style: StyleBoxFlat = styles[state]
+			style.bg_color = BATTLE_PANEL
+			if border_color == DT_BTN_BORDER:
+				style.border_color = BATTLE_BORDER.lightened(0.12) if state == "hover" else BATTLE_BORDER
+			if state == "pressed":
+				style.bg_color = BATTLE_BORDER
+			elif state == "disabled":
+				style.border_color = BATTLE_BORDER.darkened(0.25)
+			styles[state] = battle_button_style(style.border_color, state == "pressed")
 	var b := button as Button
 	b.text = ""
 	b.flat = false
@@ -1831,6 +1931,22 @@ static func style_hp_number(label: Label, font_size: int) -> void:
 	label.add_theme_color_override("font_color", HP_NUMBER_COLOR)
 	label.add_theme_color_override("font_outline_color", HP_NUMBER_OUTLINE)
 	label.add_theme_constant_override("outline_size", HP_NUMBER_OUTLINE_PX)
+
+
+## Battle-only bitmap lettering. Other screens retain the original font.
+static func style_battle_text(label: Control, ink: Color = BATTLE_TEXT, hp: bool = false) -> void:
+	if _battle_pixel_font == null:
+		_battle_pixel_font = load("res://assets/fonts/battle_block.fnt") as Font
+		if _battle_pixel_font == null:
+			push_error("Battle Block bitmap font failed to load")
+			_battle_pixel_font = get_pixel_font()
+		else:
+			_battle_pixel_font.fallbacks = [get_pixel_font()]
+	label.add_theme_font_override("font", _battle_pixel_font)
+	label.add_theme_color_override("font_color", ink)
+	label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
+	label.add_theme_color_override("font_outline_color", BLACK_EDGE)
+	label.add_theme_constant_override("outline_size", 2 if hp else 0)
 
 
 static func style_progress_bar(bar: ProgressBar, fill: Color, bg: Color = Color(0.015, 0.020, 0.035, 1.0), border: Color = LINE_DIM) -> void:

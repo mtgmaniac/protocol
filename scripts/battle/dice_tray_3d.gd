@@ -357,14 +357,35 @@ func _set_die_result_scale(die: RigidBody3D, animate: bool) -> void:
 	var visuals: Node3D = _die_visuals(die)
 	if visuals == null:
 		return
-	var target_scale := Vector3.ONE * RESULT_SCALE
 	if not animate or PixelUI.reduced_motion_enabled():
-		visuals.scale = target_scale
+		_set_presentation_scale(RESULT_SCALE, die)
 		return
 	var tween: Tween = create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(visuals, "scale", target_scale, RESULT_PRESENTATION_TIME)
+	tween.tween_method(_set_presentation_scale.bind(die), float(die.get_meta("presentation_scale", 1.0)), RESULT_SCALE, RESULT_PRESENTATION_TIME)
+
+
+func _set_presentation_scale(value: float, die: RigidBody3D) -> void:
+	if not is_instance_valid(die):
+		return
+	die.set_meta("presentation_scale", value)
+	_apply_depth_scale(die)
+
+
+func depth_scale_at_y(y: float) -> float:
+	if _landscape_projection:
+		return 1.0
+	return lerpf(PixelUI.BATTLE_DEPTH_BACK, PixelUI.BATTLE_DEPTH_FRONT, clampf(y / maxf(size.y, 1.0), 0.0, 1.0))
+
+
+func _apply_depth_scale(die: RigidBody3D) -> void:
+	if _camera == null:
+		return
+	var visuals: Node3D = _die_visuals(die)
+	if visuals != null:
+		var factor: float = depth_scale_at_y(_camera.unproject_position(die.global_position).y)
+		visuals.scale = Vector3.ONE * float(die.get_meta("presentation_scale", 1.0)) * factor
 
 
 func _die_visuals(die: RigidBody3D) -> Node3D:
@@ -571,6 +592,31 @@ func up_face_numeral(side: String, unit_id: String) -> int:
 
 func _process(_delta: float) -> void:
 	_poll_values()
+	for die: RigidBody3D in _die_by_key.values():
+		if is_instance_valid(die):
+			_apply_depth_scale(die)
+	if visible:
+		queue_redraw()
+
+
+func _draw() -> void:
+	if _camera == null or _landscape_projection:
+		return
+	# Draw beneath the transparent dice viewport. Soft ellipses follow positions,
+	# deepen toward the front, and spread/fade slightly when a die hops.
+	for die: RigidBody3D in _die_by_key.values():
+		if not is_instance_valid(die):
+			continue
+		var center: Vector2 = _camera.unproject_position(die.global_position)
+		var depth: float = depth_scale_at_y(center.y)
+		var lift: float = clampf(die.position.y - DIE_RADIUS, 0.0, 3.0)
+		var radius: float = DIE_RADIUS * size.y / _camera.size * depth
+		var opacity: float = lerpf(.15, .23, clampf(center.y / maxf(size.y, 1.0), 0.0, 1.0)) / (1.0 + lift * .4)
+		center += Vector2(radius * .12, radius * .48 + lift * 3.0)
+		draw_set_transform(center, 0.0, Vector2(1.0, .46))
+		for layer in range(4):
+			draw_circle(Vector2.ZERO, radius * (1.12 + lift * .10 - layer * .15), Color(0, 0, 0, opacity * .38), true, -1.0, true)
+		draw_set_transform(Vector2.ZERO)
 
 
 # Follow game logic: a die whose shown value no longer matches the one source

@@ -1,0 +1,2024 @@
+{
+ "_about": "Unit variety pass (archetypes). For each unit: new max HP and new dmg per band (bands ordered by roll range, 1 = lowest). 'dmg_now' is the value this was drafted from; if the live value differs, report it instead of overwriting. Only dmg and hp change; shields, heals, burn and debuffs are untouched. Bosses unchanged.",
+ "archetypes": {
+  "Glass cannon": {
+   "hp_mult": 0.75,
+   "band_dmg_mults": [
+    1.0,
+    1.3,
+    1.4,
+    1.5,
+    1.6
+   ]
+  },
+  "Artillery": {
+   "hp_mult": 0.95,
+   "band_dmg_mults": [
+    0.7,
+    0.8,
+    0.9,
+    1.4,
+    1.9
+   ]
+  },
+  "Bruiser": {
+   "hp_mult": 1.05,
+   "band_dmg_mults": [
+    1.1,
+    1.1,
+    1.1,
+    1.1,
+    1.1
+   ]
+  },
+  "Tank": {
+   "hp_mult": 1.25,
+   "band_dmg_mults": [
+    0.7,
+    0.75,
+    0.75,
+    0.8,
+    0.85
+   ]
+  },
+  "Disruptor": {
+   "hp_mult": 0.9,
+   "band_dmg_mults": [
+    0.75,
+    0.75,
+    0.8,
+    0.8,
+    0.85
+   ]
+  },
+  "Swarm": {
+   "hp_mult": 0.85,
+   "band_dmg_mults": [
+    0.9,
+    0.9,
+    0.9,
+    0.9,
+    0.9
+   ]
+  },
+  "Boss (unchanged)": {
+   "hp_mult": 1.0,
+   "band_dmg_mults": [
+    1,
+    1,
+    1,
+    1,
+    1
+   ]
+  }
+ },
+ "units": [
+  {
+   "unit": "Scrap Drone",
+   "operation": "Facility",
+   "archetype": "Glass cannon",
+   "hp_now": 35,
+   "hp_new": 26,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Salvage Shell",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      9
+     ],
+     "ability": "Scrap Blade",
+     "dmg_now": 7,
+     "dmg_new": 9
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      15
+     ],
+     "ability": "Welding Arc",
+     "dmg_now": 10,
+     "dmg_new": 14
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      19
+     ],
+     "ability": "Furnace Cut",
+     "dmg_now": 15,
+     "dmg_new": 22
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Incendiary Charge",
+     "dmg_now": 20,
+     "dmg_new": 32
+    }
+   ]
+  },
+  {
+   "unit": "Rust Drone",
+   "operation": "Facility",
+   "archetype": "Tank",
+   "hp_now": 45,
+   "hp_new": 56,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Power Reroute",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      9
+     ],
+     "ability": "Sparking Cut",
+     "dmg_now": 6,
+     "dmg_new": 4
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      15
+     ],
+     "ability": "Disruptor Pulse",
+     "dmg_now": 9,
+     "dmg_new": 7
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      19
+     ],
+     "ability": "Voltage Drop",
+     "dmg_now": 12,
+     "dmg_new": 10
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Signal Crush",
+     "dmg_now": 14,
+     "dmg_new": 12
+    }
+   ]
+  },
+  {
+   "unit": "Static Skimmer",
+   "operation": "Facility",
+   "archetype": "Disruptor",
+   "hp_now": 40,
+   "hp_new": 36,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Jammer Screen",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      9
+     ],
+     "ability": "Signal Needle",
+     "dmg_now": 5,
+     "dmg_new": 4
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      15
+     ],
+     "ability": "Sideband Cut",
+     "dmg_now": 8,
+     "dmg_new": 6
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      19
+     ],
+     "ability": "Static Burst",
+     "dmg_now": 11,
+     "dmg_new": 9
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "White Noise Barrage",
+     "dmg_now": 13,
+     "dmg_new": 11
+    }
+   ]
+  },
+  {
+   "unit": "Patrol Enforcer",
+   "operation": "Facility",
+   "archetype": "Bruiser",
+   "hp_now": 60,
+   "hp_new": 63,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Defensive Plating",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      9
+     ],
+     "ability": "Assault",
+     "dmg_now": 15,
+     "dmg_new": 16
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      14
+     ],
+     "ability": "Heavy Burst",
+     "dmg_now": 18,
+     "dmg_new": 20
+    },
+    {
+     "band": 4,
+     "range": [
+      15,
+      19
+     ],
+     "ability": "Disruptor Round",
+     "dmg_now": 21,
+     "dmg_new": 23
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Final Sweep",
+     "dmg_now": 23,
+     "dmg_new": 25
+    }
+   ]
+  },
+  {
+   "unit": "Volt Enforcer",
+   "operation": "Facility",
+   "archetype": "Artillery",
+   "hp_now": 65,
+   "hp_new": 62,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Grounding",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      9
+     ],
+     "ability": "Arc Jab",
+     "dmg_now": 10,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      14
+     ],
+     "ability": "Arc Strike",
+     "dmg_now": 12,
+     "dmg_new": 11
+    },
+    {
+     "band": 4,
+     "range": [
+      15,
+      19
+     ],
+     "ability": "Conduction",
+     "dmg_now": 14,
+     "dmg_new": 20
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Meltdown Arc",
+     "dmg_now": 16,
+     "dmg_new": 30
+    }
+   ]
+  },
+  {
+   "unit": "Shield Enforcer",
+   "operation": "Facility",
+   "archetype": "Tank",
+   "hp_now": 70,
+   "hp_new": 88,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      2
+     ],
+     "ability": "Bulwark Link",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      3,
+      9
+     ],
+     "ability": "Covering Shot",
+     "dmg_now": 12,
+     "dmg_new": 9
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      16
+     ],
+     "ability": "Cover Field",
+     "dmg_now": 11,
+     "dmg_new": 8
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Barrier Burst",
+     "dmg_now": 16,
+     "dmg_new": 13
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Fortress Advance",
+     "dmg_now": 20,
+     "dmg_new": 17
+    }
+   ]
+  },
+  {
+   "unit": "Heavy Warden",
+   "operation": "Facility",
+   "archetype": "Bruiser",
+   "hp_now": 95,
+   "hp_new": 100,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      2
+     ],
+     "ability": "Field Service",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      3,
+      9
+     ],
+     "ability": "Crushing Blow",
+     "dmg_now": 12,
+     "dmg_new": 13
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      16
+     ],
+     "ability": "Sustained Fire",
+     "dmg_now": 12,
+     "dmg_new": 13
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Jammer Cannon",
+     "dmg_now": 26,
+     "dmg_new": 29
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Reclamation Shot",
+     "dmg_now": 32,
+     "dmg_new": 35
+    }
+   ]
+  },
+  {
+   "unit": "Skitterling",
+   "operation": "Hive",
+   "archetype": "Glass cannon",
+   "hp_now": 30,
+   "hp_new": 22,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      5
+     ],
+     "ability": "Burrow Repair",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      6,
+      11
+     ],
+     "ability": "Mandible Rake",
+     "dmg_now": 8,
+     "dmg_new": 10
+    },
+    {
+     "band": 3,
+     "range": [
+      12,
+      16
+     ],
+     "ability": "Searing Nip",
+     "dmg_now": 9,
+     "dmg_new": 13
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Caustic Bite",
+     "dmg_now": 12,
+     "dmg_new": 18
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Splatter Gland",
+     "dmg_now": 17,
+     "dmg_new": 27
+    }
+   ]
+  },
+  {
+   "unit": "Bloodmite",
+   "operation": "Hive",
+   "archetype": "Swarm",
+   "hp_now": 26,
+   "hp_new": 22,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      5
+     ],
+     "ability": "Nutrient Pulse",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      6,
+      11
+     ],
+     "ability": "Proboscis Jab",
+     "dmg_now": 6,
+     "dmg_new": 5
+    },
+    {
+     "band": 3,
+     "range": [
+      12,
+      16
+     ],
+     "ability": "Venom Bite",
+     "dmg_now": 8,
+     "dmg_new": 7
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Acid Barb",
+     "dmg_now": 10,
+     "dmg_new": 9
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Caustic Latch",
+     "dmg_now": 11,
+     "dmg_new": 10
+    }
+   ]
+  },
+  {
+   "unit": "Spine Stalker",
+   "operation": "Hive",
+   "archetype": "Glass cannon",
+   "hp_now": 49,
+   "hp_new": 37,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      5
+     ],
+     "ability": "Spine Guard",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      6,
+      11
+     ],
+     "ability": "Spine Lunge",
+     "dmg_now": 15,
+     "dmg_new": 20
+    },
+    {
+     "band": 3,
+     "range": [
+      12,
+      15
+     ],
+     "ability": "Caustic Spine",
+     "dmg_now": 16,
+     "dmg_new": 22
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      18
+     ],
+     "ability": "Shredding Spines",
+     "dmg_now": 18,
+     "dmg_new": 27
+    },
+    {
+     "band": 5,
+     "range": [
+      19,
+      20
+     ],
+     "ability": "Impaler Gland",
+     "dmg_now": 20,
+     "dmg_new": 32
+    }
+   ]
+  },
+  {
+   "unit": "Carapace Beetle",
+   "operation": "Hive",
+   "archetype": "Tank",
+   "hp_now": 80,
+   "hp_new": 100,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "Chitin Link",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      11
+     ],
+     "ability": "Ramming Plate",
+     "dmg_now": 13,
+     "dmg_new": 10
+    },
+    {
+     "band": 3,
+     "range": [
+      12,
+      17
+     ],
+     "ability": "Caustic Guard",
+     "dmg_now": 11,
+     "dmg_new": 8
+    },
+    {
+     "band": 4,
+     "range": [
+      18,
+      19
+     ],
+     "ability": "Carapace Burst",
+     "dmg_now": 14,
+     "dmg_new": 11
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Fortress Charge",
+     "dmg_now": 17,
+     "dmg_new": 14
+    }
+   ]
+  },
+  {
+   "unit": "Broodwarden",
+   "operation": "Hive",
+   "archetype": "Bruiser",
+   "hp_now": 90,
+   "hp_new": 94,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "Nutrient Reserve",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      11
+     ],
+     "ability": "Brood Slam",
+     "dmg_now": 12,
+     "dmg_new": 13
+    },
+    {
+     "band": 3,
+     "range": [
+      12,
+      17
+     ],
+     "ability": "Acid Saliva",
+     "dmg_now": 10,
+     "dmg_new": 11
+    },
+    {
+     "band": 4,
+     "range": [
+      18,
+      19
+     ],
+     "ability": "Caustic Crush",
+     "dmg_now": 19,
+     "dmg_new": 21
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Culling Feed",
+     "dmg_now": 29,
+     "dmg_new": 32
+    }
+   ]
+  },
+  {
+   "unit": "Caustic Spewer",
+   "operation": "Hive",
+   "archetype": "Disruptor",
+   "hp_now": 90,
+   "hp_new": 81,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      5
+     ],
+     "ability": "Mimic Gland",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      6,
+      11
+     ],
+     "ability": "Feeding Spit",
+     "dmg_now": 9,
+     "dmg_new": 7
+    },
+    {
+     "band": 3,
+     "range": [
+      12,
+      15
+     ],
+     "ability": "Caustic Spray",
+     "dmg_now": 10,
+     "dmg_new": 8
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      19
+     ],
+     "ability": "Acid Torrent",
+     "dmg_now": 11,
+     "dmg_new": 9
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Corrosive Deluge",
+     "dmg_now": 13,
+     "dmg_new": 11
+    }
+   ]
+  },
+  {
+   "unit": "Shard Drone",
+   "operation": "Veil",
+   "archetype": "Tank",
+   "hp_now": 34,
+   "hp_new": 42,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Phase Shell",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      8
+     ],
+     "ability": "Shard Cut",
+     "dmg_now": 7,
+     "dmg_new": 5
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      15
+     ],
+     "ability": "Lattice Bolt",
+     "dmg_now": 9,
+     "dmg_new": 7
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      19
+     ],
+     "ability": "Crystal Break",
+     "dmg_now": 12,
+     "dmg_new": 10
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Prism Scorch",
+     "dmg_now": 15,
+     "dmg_new": 13
+    }
+   ]
+  },
+  {
+   "unit": "Prism Charger",
+   "operation": "Veil",
+   "archetype": "Glass cannon",
+   "hp_now": 32,
+   "hp_new": 24,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Lattice Guard",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      8
+     ],
+     "ability": "Prism Ram",
+     "dmg_now": 8,
+     "dmg_new": 10
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      15
+     ],
+     "ability": "Prism Drive",
+     "dmg_now": 11,
+     "dmg_new": 15
+    },
+    {
+     "band": 4,
+     "range": [
+      16,
+      19
+     ],
+     "ability": "Focused Beam",
+     "dmg_now": 14,
+     "dmg_new": 21
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Crystal Impact",
+     "dmg_now": 18,
+     "dmg_new": 29
+    }
+   ]
+  },
+  {
+   "unit": "Phaseblade",
+   "operation": "Veil",
+   "archetype": "Glass cannon",
+   "hp_now": 60,
+   "hp_new": 45,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Phase Alignment",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      8
+     ],
+     "ability": "Phase Slash",
+     "dmg_now": 13,
+     "dmg_new": 17
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      14
+     ],
+     "ability": "Vector Cut",
+     "dmg_now": 15,
+     "dmg_new": 21
+    },
+    {
+     "band": 4,
+     "range": [
+      15,
+      19
+     ],
+     "ability": "Guarded Cut",
+     "dmg_now": 18,
+     "dmg_new": 27
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Phase Reinforcements",
+     "dmg_now": 23,
+     "dmg_new": 37
+    }
+   ]
+  },
+  {
+   "unit": "Aegis Anchor",
+   "operation": "Veil",
+   "archetype": "Tank",
+   "hp_now": 58,
+   "hp_new": 72,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      2
+     ],
+     "ability": "Lattice Link",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      3,
+      8
+     ],
+     "ability": "Aegis Bash",
+     "dmg_now": 11,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      16
+     ],
+     "ability": "Bulwark Pulse",
+     "dmg_now": 13,
+     "dmg_new": 10
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Fortress Lash",
+     "dmg_now": 17,
+     "dmg_new": 14
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Shieldline Rally",
+     "dmg_now": 19,
+     "dmg_new": 16
+    }
+   ]
+  },
+  {
+   "unit": "Relay Herald",
+   "operation": "Veil",
+   "archetype": "Disruptor",
+   "hp_now": 65,
+   "hp_new": 58,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      2
+     ],
+     "ability": "Relay Tune",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      3,
+      8
+     ],
+     "ability": "Herald Strike",
+     "dmg_now": 11,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      16
+     ],
+     "ability": "Weave Shield",
+     "dmg_now": 10,
+     "dmg_new": 8
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Conduit Spear",
+     "dmg_now": 15,
+     "dmg_new": 12
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Relay Reinforcements",
+     "dmg_now": 17,
+     "dmg_new": 14
+    }
+   ]
+  },
+  {
+   "unit": "Resonance Warden",
+   "operation": "Veil",
+   "archetype": "Bruiser",
+   "hp_now": 100,
+   "hp_new": 105,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      2
+     ],
+     "ability": "Harmonic Mend",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      3,
+      8
+     ],
+     "ability": "Resonant Slam",
+     "dmg_now": 11,
+     "dmg_new": 12
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      16
+     ],
+     "ability": "Pulse Burn",
+     "dmg_now": 11,
+     "dmg_new": 12
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Resonant Hammer",
+     "dmg_now": 21,
+     "dmg_new": 23
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Veil Rally",
+     "dmg_now": 27,
+     "dmg_new": 30
+    }
+   ]
+  },
+  {
+   "unit": "Stormweaver",
+   "operation": "Veil",
+   "archetype": "Artillery",
+   "hp_now": 90,
+   "hp_new": 86,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      2
+     ],
+     "ability": "Capacitor Hum",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      3,
+      8
+     ],
+     "ability": "Arc Needle",
+     "dmg_now": 10,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      16
+     ],
+     "ability": "Storm Weave",
+     "dmg_now": 11,
+     "dmg_new": 10
+    },
+    {
+     "band": 4,
+     "range": [
+      17,
+      19
+     ],
+     "ability": "Ion Tempest",
+     "dmg_now": 13,
+     "dmg_new": 18
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Lattice Storm",
+     "dmg_now": 15,
+     "dmg_new": 28
+    }
+   ]
+  },
+  {
+   "unit": "Signal Wisp",
+   "operation": "Signal Purge",
+   "archetype": "Swarm",
+   "hp_now": 38,
+   "hp_new": 32,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "Static Hiss",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      8
+     ],
+     "ability": "Spark Lash",
+     "dmg_now": 6,
+     "dmg_new": 5
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      12
+     ],
+     "ability": "Scorching Arc",
+     "dmg_now": 8,
+     "dmg_new": 7
+    },
+    {
+     "band": 4,
+     "range": [
+      13,
+      19
+     ],
+     "ability": "Signal Rot",
+     "dmg_now": 10,
+     "dmg_new": 9
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Power Theft",
+     "dmg_now": 11,
+     "dmg_new": 10
+    }
+   ]
+  },
+  {
+   "unit": "Circuit Acolyte",
+   "operation": "Signal Purge",
+   "archetype": "Glass cannon",
+   "hp_now": 62,
+   "hp_new": 46,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "Seal Sigil",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      8
+     ],
+     "ability": "Binding Lash",
+     "dmg_now": 11,
+     "dmg_new": 14
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      11
+     ],
+     "ability": "Command Needle",
+     "dmg_now": 13,
+     "dmg_new": 18
+    },
+    {
+     "band": 4,
+     "range": [
+      12,
+      19
+     ],
+     "ability": "Warded Lash",
+     "dmg_now": 16,
+     "dmg_new": 24
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Ritual Muster",
+     "dmg_now": 17,
+     "dmg_new": 27
+    }
+   ]
+  },
+  {
+   "unit": "False Image",
+   "operation": "Signal Purge",
+   "archetype": "Glass cannon",
+   "hp_now": 68,
+   "hp_new": 51,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "False Image",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      8
+     ],
+     "ability": "False Edge",
+     "dmg_now": 12,
+     "dmg_new": 16
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      11
+     ],
+     "ability": "Mirror Break",
+     "dmg_now": 11,
+     "dmg_new": 15
+    },
+    {
+     "band": 4,
+     "range": [
+      12,
+      19
+     ],
+     "ability": "Stolen Reflex",
+     "dmg_now": 16,
+     "dmg_new": 24
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "False Command",
+     "dmg_now": 17,
+     "dmg_new": 27
+    }
+   ]
+  },
+  {
+   "unit": "Cipher Scribe",
+   "operation": "Signal Purge",
+   "archetype": "Disruptor",
+   "hp_now": 74,
+   "hp_new": 67,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      3
+     ],
+     "ability": "Signal Litany",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      4,
+      8
+     ],
+     "ability": "Glyph Strike",
+     "dmg_now": 10,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      13
+     ],
+     "ability": "Stolen Pattern",
+     "dmg_now": 9,
+     "dmg_new": 7
+    },
+    {
+     "band": 4,
+     "range": [
+      14,
+      19
+     ],
+     "ability": "Prophecy Needle",
+     "dmg_now": 14,
+     "dmg_new": 11
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Summon Verse",
+     "dmg_now": 15,
+     "dmg_new": 13
+    }
+   ]
+  },
+  {
+   "unit": "Oath Binder",
+   "operation": "Signal Purge",
+   "archetype": "Tank",
+   "hp_now": 112,
+   "hp_new": 140,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "Silencing Rite",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      8
+     ],
+     "ability": "Dominion Bolt",
+     "dmg_now": 17,
+     "dmg_new": 13
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      11
+     ],
+     "ability": "Tribute Drain",
+     "dmg_now": 15,
+     "dmg_new": 11
+    },
+    {
+     "band": 4,
+     "range": [
+      12,
+      19
+     ],
+     "ability": "Compulsion",
+     "dmg_now": 13,
+     "dmg_new": 10
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Binding Decree",
+     "dmg_now": 19,
+     "dmg_new": 16
+    }
+   ]
+  },
+  {
+   "unit": "Ash Channeler",
+   "operation": "Signal Purge",
+   "archetype": "Artillery",
+   "hp_now": 94,
+   "hp_new": 89,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      4
+     ],
+     "ability": "Channel Focus",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      5,
+      8
+     ],
+     "ability": "Arc Lance",
+     "dmg_now": 15,
+     "dmg_new": 12
+    },
+    {
+     "band": 3,
+     "range": [
+      9,
+      11
+     ],
+     "ability": "Sacrificial Drain",
+     "dmg_now": 18,
+     "dmg_new": 16
+    },
+    {
+     "band": 4,
+     "range": [
+      12,
+      19
+     ],
+     "ability": "Cinder Litany",
+     "dmg_now": 14,
+     "dmg_new": 20
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Ashen Muster",
+     "dmg_now": 20,
+     "dmg_new": 38
+    }
+   ]
+  },
+  {
+   "unit": "Pumice Climber",
+   "operation": "Mantle Hunt",
+   "archetype": "Glass cannon",
+   "hp_now": 38,
+   "hp_new": 28,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      6
+     ],
+     "ability": "Still Perch",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      7,
+      9
+     ],
+     "ability": "Arterial Bite",
+     "dmg_now": 11,
+     "dmg_new": 14
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      12
+     ],
+     "ability": "Caustic Spittle",
+     "dmg_now": 8,
+     "dmg_new": 11
+    },
+    {
+     "band": 4,
+     "range": [
+      13,
+      19
+     ],
+     "ability": "Pumice Grasp",
+     "dmg_now": 6,
+     "dmg_new": 9
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Troop Frenzy",
+     "dmg_now": 13,
+     "dmg_new": 21
+    }
+   ]
+  },
+  {
+   "unit": "Obsidian Hound",
+   "operation": "Mantle Hunt",
+   "archetype": "Bruiser",
+   "hp_now": 42,
+   "hp_new": 44,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      6
+     ],
+     "ability": "Slag Coat",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      7,
+      9
+     ],
+     "ability": "Throat Clamp",
+     "dmg_now": 12,
+     "dmg_new": 13
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      12
+     ],
+     "ability": "Searing Lunge",
+     "dmg_now": 9,
+     "dmg_new": 10
+    },
+    {
+     "band": 4,
+     "range": [
+      13,
+      19
+     ],
+     "ability": "Rending Fang",
+     "dmg_now": 7,
+     "dmg_new": 8
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Pack Assault",
+     "dmg_now": 14,
+     "dmg_new": 15
+    }
+   ]
+  },
+  {
+   "unit": "Slag Hound",
+   "operation": "Mantle Hunt",
+   "archetype": "Glass cannon",
+   "hp_now": 34,
+   "hp_new": 26,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      6
+     ],
+     "ability": "Slag Coat",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      7,
+      9
+     ],
+     "ability": "Throat Clamp",
+     "dmg_now": 12,
+     "dmg_new": 16
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      12
+     ],
+     "ability": "Searing Lunge",
+     "dmg_now": 9,
+     "dmg_new": 13
+    },
+    {
+     "band": 4,
+     "range": [
+      13,
+      19
+     ],
+     "ability": "Rending Fang",
+     "dmg_now": 7,
+     "dmg_new": 10
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Pack Assault",
+     "dmg_now": 14,
+     "dmg_new": 22
+    }
+   ]
+  },
+  {
+   "unit": "Geode Panther",
+   "operation": "Mantle Hunt",
+   "archetype": "Glass cannon",
+   "hp_now": 74,
+   "hp_new": 56,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      6
+     ],
+     "ability": "Geode Veil",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      7,
+      9
+     ],
+     "ability": "Calcifying Bite",
+     "dmg_now": 10,
+     "dmg_new": 13
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      11
+     ],
+     "ability": "Ember Rake",
+     "dmg_now": 12,
+     "dmg_new": 17
+    },
+    {
+     "band": 4,
+     "range": [
+      12,
+      19
+     ],
+     "ability": "Stonefang Pounce",
+     "dmg_now": 15,
+     "dmg_new": 22
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Petrifying Shriek",
+     "dmg_now": 17,
+     "dmg_new": 27
+    }
+   ]
+  },
+  {
+   "unit": "Cinder Raptor",
+   "operation": "Mantle Hunt",
+   "archetype": "Bruiser",
+   "hp_now": 86,
+   "hp_new": 90,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      6
+     ],
+     "ability": "Scavenge",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      7,
+      9
+     ],
+     "ability": "Crack Jaw",
+     "dmg_now": 9,
+     "dmg_new": 10
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      11
+     ],
+     "ability": "Searing Talon",
+     "dmg_now": 11,
+     "dmg_new": 12
+    },
+    {
+     "band": 4,
+     "range": [
+      12,
+      19
+     ],
+     "ability": "Challenge Screech",
+     "dmg_now": 14,
+     "dmg_new": 15
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Brood Call",
+     "dmg_now": 12,
+     "dmg_new": 13
+    }
+   ]
+  },
+  {
+   "unit": "Basalt Ape",
+   "operation": "Mantle Hunt",
+   "archetype": "Tank",
+   "hp_now": 112,
+   "hp_new": 140,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      5
+     ],
+     "ability": "Basalt Set",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      6,
+      9
+     ],
+     "ability": "Skull Drive",
+     "dmg_now": 11,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      13
+     ],
+     "ability": "Fistfall",
+     "dmg_now": 13,
+     "dmg_new": 10
+    },
+    {
+     "band": 4,
+     "range": [
+      14,
+      19
+     ],
+     "ability": "Bonebreaker",
+     "dmg_now": 16,
+     "dmg_new": 13
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Basalt Crush",
+     "dmg_now": 15,
+     "dmg_new": 13
+    }
+   ]
+  },
+  {
+   "unit": "Magma Drake",
+   "operation": "Mantle Hunt",
+   "archetype": "Artillery",
+   "hp_now": 98,
+   "hp_new": 93,
+   "bands": [
+    {
+     "band": 1,
+     "range": [
+      1,
+      5
+     ],
+     "ability": "Magma Coil",
+     "dmg_now": 0,
+     "dmg_new": 0
+    },
+    {
+     "band": 2,
+     "range": [
+      6,
+      9
+     ],
+     "ability": "Magma Bite",
+     "dmg_now": 10,
+     "dmg_new": 8
+    },
+    {
+     "band": 3,
+     "range": [
+      10,
+      13
+     ],
+     "ability": "Lava Wake",
+     "dmg_now": 12,
+     "dmg_new": 11
+    },
+    {
+     "band": 4,
+     "range": [
+      14,
+      19
+     ],
+     "ability": "Molten Rake",
+     "dmg_now": 16,
+     "dmg_new": 22
+    },
+    {
+     "band": 5,
+     "range": [
+      20,
+      20
+     ],
+     "ability": "Eruption",
+     "dmg_now": 20,
+     "dmg_new": 38
+    }
+   ]
+  }
+ ]
+}

@@ -1,5 +1,36 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**2026-10-13 battle depth prototype (`codex/battle-depth-prototype`, review only):**
+The existing central tray gains one painted, shallow metal bay (`battle_bay_floor.gd`)
+with converging floor seams, raised sides and two muted amber wear plates. No new
+environment art replaces portraits, cards, header, controls or dice art. Dice keep
+their existing orthographic camera and physics; only `Visuals` scale by projected
+tray-local y, linearly from 0.90 at the back to 1.10 at the front (1.00 midway),
+multiplied by the existing settle animation scale. Soft ellipses below the transparent
+dice viewport follow their positions, grow/darken toward the front and spread/fade
+on a hop. Physics bodies, collision shapes, throws, face results and combat are
+unchanged. The parked landscape presentation is excluded. This builds on the
+uncommitted component-review UI already present; it does not finalize that restyle.
+Review capture: `debug_artifacts/battle_depth_prototype.png`.
+Scope and checks: `docs/BATTLE_DEPTH_PROTOTYPE.md`.
+
+**2026-10-12 battle component review (`codex/battle-ui-pixel-restyle`, not
+merged):** PixelUI owns dedicated nine-slice surface resources in
+`assets/ui/battle_skin/` for the tray, header/footer strip, buttons and meter
+cells. `BattleCardSkin` paints one composite card, using the existing title and
+HP controls as region boundaries. Separate name-strip/HP frame boxes are removed;
+HP becomes a full-width footer with the original animated layers. The common
+8px rim has one 4px dark inset step (battle-only exception recorded in
+DECISIONS_RESOLVED). The tray has a charcoal backing behind the dice. Protocol
+cells have flat faces, with amber occupying each charged cell's interior.
+Battle heading/name/HP/Protocol text uses the authored Battle Block bitmap font
+with existing font sizes; m5x7 is the fallback and stays on other screens.
+It approximates the reference lettering, not an identified source typeface.
+HP has white numbers, a dark track and flat green fill. Content margins stay
+fixed. No rails, ticks, ornaments or gradients. Header styling restores on exit.
+Interactions, portrait placement, dice and HP logic are unchanged. Kev requested
+only minimum load/style checks and the first screenshot, then stop for review.
+
 **2026-10-10 prestige traits, the first run, and two fixes (Kev, G-70 to G-73; branch `claude/prestige-traits`, not merged):**
 
 **A hero's trait is chosen at 250 XP (G-71).** It replaces the Directive.

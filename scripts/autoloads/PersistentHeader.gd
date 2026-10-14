@@ -29,6 +29,7 @@ const SUMMARY_FONT_SIZE := 112
 const BUTTON_SIZE := Vector2(112, 112)
 const LANDSCAPE_STYLE := preload("res://scripts/battle/landscape_battle_style.gd").VALUES
 var _battle_landscape := false
+var _battle_visuals := false
 var _battle_style: Dictionary = {}
 
 
@@ -75,6 +76,7 @@ func _ready() -> void:
 	_fit_desktop_window()
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
+	_background.draw.connect(_draw_battle_frame)
 	_style()
 	# The "?" opens the shared HelpMenu on every screen (battle, squad picker, …). The help
 	# content is screen-agnostic, so it no longer needs a per-screen binding.
@@ -182,7 +184,11 @@ func _dispatch(action: Callable, play_click: bool = true) -> void:
 # so the bar looks identical now that it lives here.
 func _style() -> void:
 	_background.color = PixelUI.DT_PANEL_BG
+	_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if _battle_visuals else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 	_divider.color = PixelUI.DT_LINE
+	if _battle_visuals:
+		_background.color = PixelUI.BATTLE_PANEL
+		_divider.color = PixelUI.BATTLE_BORDER
 	PixelUI.apply_pixel_font(_summary_label)
 	_summary_label.add_theme_font_size_override("font_size", _battle_style.get("header_font", SUMMARY_FONT_SIZE))
 	_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
@@ -191,12 +197,23 @@ func _style() -> void:
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_summary_label.clip_text = false
 	_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP)
-	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG)
-	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2)
-	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK)
+	if _battle_visuals:
+		PixelUI.style_battle_text(_summary_label)
+	else:
+		_summary_label.remove_theme_color_override("font_shadow_color")
+	_background.queue_redraw()
+	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
+	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
+	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
+	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
 		b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
+
+
+func _draw_battle_frame() -> void:
+	if _battle_visuals:
+		var frame := PixelUI.battle_strip_style()
+		_background.draw_style_box(frame, Rect2(Vector2.ZERO, _background.size))
 
 
 # ─────────────────────────── Public API ───────────────────────────
@@ -227,6 +244,8 @@ func set_run_active(active: bool) -> void:
 ## The active battle screen binds its button handlers here. Re-binding replaces any
 ## previous binding, so re-entering battle never stacks duplicate handlers.
 func bind_battle_actions(help: Callable, debug: Callable, debug2: Callable, back: Callable) -> void:
+	_battle_visuals = true
+	_style()
 	_help_action = help
 	_debug_action = debug
 	_debug2_action = debug2
@@ -235,6 +254,8 @@ func bind_battle_actions(help: Callable, debug: Callable, debug2: Callable, back
 
 ## Called by BattleScene._exit_tree so the buttons go inert off-battle.
 func clear_battle_actions() -> void:
+	_battle_visuals = false
+	_style()
 	_help_action = Callable()
 	_debug_action = Callable()
 	_debug2_action = Callable()

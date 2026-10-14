@@ -1,5 +1,29 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Battle depth prototype (Kev, 2026-10-13; review only)
+
+Create and switch to `codex/battle-depth-prototype`. Test one restrained environmental
+tray behind the existing central battle area, dice scaling by vertical position
+(about 90% back, 100% middle, 110% front), and subtle depth-dependent shadows if
+feasible. Preserve the existing header, cards, actions, portraits, dice art and
+gameplay. Keep existing dice physics; do not rebuild the system. Capture a screenshot
+or test view, then stop for review. The shallow bay is a scoped environmental
+exception to the previous component review's no-decoration direction; this is not
+approval to restyle any other UI. Visual constants remain in PixelUI.
+
+## Battle component review exception (Kev, 2026-10-12; UI branch only)
+
+Kev explicitly requested rebuilding the battle presentation as a reusable component
+set, targeting the LEFT mockup: "chunky pixel panels, inset dark fields, integrated
+header/body/footer regions, stronger rectangular framing". This permits a shared
+shell heavier than the ordinary 4px component border. Implementation choice for
+review: 8px painted shell with one 4px dark inset step. PixelUI remains the style
+owner; semantic selection colors remain. Existing content margins, component
+rectangles, interactions and gameplay stay fixed. No industrial decoration.
+Scope: header, unit cards/name strips/HP, tray, Protocol and bottom buttons, on
+codex/battle-ui-pixel-restyle only. Stop at the first screenshot for review;
+only minimum load/style checks, no full gate.
+
 ## G-74. Prestige traits kept as built; sim re-pinned; four open questions closed (Kev, 2026-10-11)
 
 **Ruling (Kev, transcribed).**

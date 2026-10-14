@@ -35,6 +35,7 @@ var _landscape: RefCounted
 var _scene: Control
 
 var _combat_zone_frame: PanelContainer = null
+var _combat_zone_backing: Panel = null
 var _combat_zone_enemy_lane: HBoxContainer = null
 var _combat_zone_hero_lane: HBoxContainer = null
 var _combat_zone_enemy_slots: Array = []
@@ -340,9 +341,25 @@ func stabilize_board_layout() -> void:
 func ensure_combat_zone_frame() -> void:
 	if _scene.float_layer == null:
 		return
+	if _combat_zone_backing == null or not is_instance_valid(_combat_zone_backing):
+		_combat_zone_backing = Panel.new()
+		_combat_zone_backing.name = "CombatZoneBacking"
+		_combat_zone_backing.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_combat_zone_backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_combat_zone_backing.set_as_top_level(true)
+		# Root layer behind the dice, not the foreground FloatCanvas.
+		_scene.add_child(_combat_zone_backing)
+		_scene.move_child(_combat_zone_backing, _scene.get_node("Background").get_index() + 1)
+		_combat_zone_backing.add_theme_stylebox_override("panel", PixelUI.battle_tray_style())
+		if not is_landscape:
+			var bay: Control = preload("res://scripts/ui/battle_bay_floor.gd").new()
+			bay.name = "EnvironmentalBay"
+			_combat_zone_backing.add_child(bay)
+			bay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
 		_combat_zone_frame = PanelContainer.new()
 		_combat_zone_frame.name = "CombatZoneFrame"
+		_combat_zone_frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_combat_zone_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_combat_zone_frame.set_as_top_level(true)
 		_combat_zone_frame.z_as_relative = false
@@ -357,9 +374,8 @@ func ensure_combat_zone_frame() -> void:
 		_combat_zone_frame.add_child(_combat_zone_hero_lane)
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
 	# Direction-05 tray: the frame is an OVERLAY above the dice viewport, so its fill
-	# must be fully transparent (any tint darkens the dice). Border + corner ticks only.
-	PixelUI.style_panel(_combat_zone_frame, Color.TRANSPARENT, PixelUI.LINE_DIM, 3, 0)
-	_ensure_tray_corner_ticks()
+	# must be fully transparent (any tint darkens the dice). Plain rectangle only.
+	_combat_zone_frame.add_theme_stylebox_override("panel", PixelUI.battle_tray_style(true))
 
 
 # Direction-05 tray detail: four L-shaped corner ticks (hard, no blur) pinned to
@@ -436,7 +452,11 @@ func sync_combat_zone_frame(combat_zone: Rect2) -> void:
 		return
 	if combat_zone.size.x <= 2.0 or combat_zone.size.y <= 2.0:
 		_combat_zone_frame.visible = false
+		_combat_zone_backing.visible = false
 		return
+	_combat_zone_backing.visible = true
+	_combat_zone_backing.global_position = combat_zone.position
+	_combat_zone_backing.size = combat_zone.size
 	_combat_zone_frame.visible = true
 	_combat_zone_frame.global_position = combat_zone.position
 	_combat_zone_frame.size = combat_zone.size

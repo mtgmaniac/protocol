@@ -13,13 +13,13 @@ const ACTION_PANEL_HEIGHT := 88.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
 # static var (not const) because PixelUI's DT_* tokens are themselves static var
 # and a const can't be initialized from a non-const value.
-static var HERO_LINE := PixelUI.DT_HERO_BORDER
-static var ENEMY_LINE := PixelUI.DT_ENEMY_BORDER
+static var HERO_LINE := PixelUI.BATTLE_HERO_LINE
+static var ENEMY_LINE := PixelUI.BATTLE_ENEMY_LINE
 # Selection is the Selected component: strong cyan (Polish Build A). Gold is
 # reserved for the major-event tier — the old GOLD_ACCENT selection was the
 # single biggest strong-gold leak in the game.
 static var SELECT_LINE := PixelUI.DT_CYAN
-static var HP_FILL := PixelUI.DT_HP_GREEN
+static var HP_FILL := PixelUI.BATTLE_HP_FILL
 static var HP_CHIP := PixelUI.COLOR_DAMAGE  # "doomed HP" forecast overlay — pending damage, drains per hit
 static var HP_BACK := PixelUI.DT_FIELD_BG
 # HP scale notches were REMOVED (Batch 6): they duplicated the HP number printed on
@@ -61,6 +61,9 @@ const STATUS_CONTENT_SCALE_STEP := 0.78
 # The component frame width (PixelUI.COMPONENT_FRAME_WIDTH). Border noise fix:
 # cards rank by border COLOR, and every component frame is 4px.
 const CARD_BORDER_WIDTH := 4
+const CARD_SKIN := preload("res://scripts/ui/battle_card_skin.gd")
+var _skin_back := CARD_SKIN.new()
+var _skin_front := CARD_SKIN.new()
 var side: String = "hero"
 var unit_name: String = "SYSTEMS MED"
 var is_boss: bool = false
@@ -371,7 +374,9 @@ func _build() -> void:
 
 	# Uniform thin gap between portrait and HP bar so the card panel color
 	# shows through as a subtle separator on every card.
-	var portrait_hp_spacer: Control = Control.new()
+	var portrait_hp_spacer := ColorRect.new()
+	portrait_hp_spacer.color = PixelUI.BATTLE_INNER_EDGE
+	portrait_hp_spacer.name = "HealthFooterShelf"
 	portrait_hp_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait_hp_spacer.custom_minimum_size = Vector2(0, PORTRAIT_HP_GAP_PX)
 	portrait_hp_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -426,6 +431,7 @@ func _build() -> void:
 	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	PixelUI.style_hp_number(_hp_label, CARD_HP_FONT_SIZE)
+	PixelUI.style_battle_text(_hp_label, PixelUI.BATTLE_HP_INK, true)
 	_hp_back.add_child(_hp_label)
 
 	_action_panel = PanelContainer.new()
@@ -501,6 +507,15 @@ func _build() -> void:
 	_status_row.clip_contents = false
 	_status_row.add_theme_constant_override("separation", int(STATUS_PLATE_SEP))
 	status_margin.add_child(_status_row)
+	# Two paint layers form one skin around the unchanged card regions.
+	_skin_back.name = "CardSkinBackground"
+	add_child(_skin_back)
+	move_child(_skin_back, 0)
+	_skin_back.setup(self, _name_strip, _hp_back, false)
+	_skin_front.name = "CardSkinForeground"
+	_skin_front.z_index = 4
+	add_child(_skin_front)
+	_skin_front.setup(self, _name_strip, _hp_back, true)
 
 
 func _refresh() -> void:
@@ -522,25 +537,28 @@ func _refresh() -> void:
 		card_style = PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true)
 	else:
 		card_style = PixelUI.component_style(PixelUI.COMPONENT_ENEMY)
+	card_style.bg_color = PixelUI.BATTLE_PANEL_FILL
+	if not selected:
+		card_style.border_color = line_color
 	if not selected and targetable:
 		card_style.border_color = line_color
 	card_style.set_content_margin_all(CARD_BORDER_WIDTH)
-	add_theme_stylebox_override("panel", card_style)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_theme_stylebox_override("panel", PixelUI.battle_layout_style(CARD_BORDER_WIDTH))
 	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
-	# Direction-05 card: header strip + HP track use darker team tints, divided by a
-	# 2px hard border in the card's line color (no rounded corners).
+	# One shell, three regions: title plate, inset portrait field, health footer.
 	if _name_strip != null:
-		var header_bg: Color = PixelUI.DT_HERO_HEADER if is_hero else PixelUI.DT_ENEMY_HEADER
+		var header_bg: Color = PixelUI.BATTLE_HERO_HEADER if is_hero else PixelUI.BATTLE_ENEMY_HEADER
 		if is_boss:
 			header_bg = PixelUI.DT_BOSS_HEADER.darkened(0.45) if dead else PixelUI.DT_BOSS_HEADER
-		var header_style: StyleBoxFlat = _style(header_bg, line_color, 0, 0)
-		header_style.border_width_bottom = 2
-		_name_strip.add_theme_stylebox_override("panel", header_style)
-	var track_bg: Color = PixelUI.DT_HERO_TRACK if is_hero else PixelUI.DT_ENEMY_TRACK
+		_name_strip.add_theme_stylebox_override("panel", PixelUI.battle_layout_style())
+		_skin_back.set_palette(card_style.border_color, header_bg)
+		_skin_front.set_palette(card_style.border_color, header_bg)
+	var track_bg: Color = PixelUI.BATTLE_HP_TRACK
 	var track_style: StyleBoxFlat = _style(track_bg, line_color, 0, 0)
-	track_style.border_width_top = 2
+	track_style.border_width_top = 0
 	_hp_back.add_theme_stylebox_override("panel", track_style)
 	if _portrait_dither != null:
 		_portrait_dither.modulate = Color(0.0, 0.0, 0.0, 0.10 if is_hero else 0.12)
@@ -548,7 +566,7 @@ func _refresh() -> void:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
-	_name_label.add_theme_color_override("font_color", _name_font_color(is_hero))
+	PixelUI.style_battle_text(_name_label, _name_font_color(is_hero))
 	_boss_label.visible = is_boss
 	var has_trait_marker: bool = trait_marker != "" and not is_boss
 	_trait_label.visible = has_trait_marker
@@ -1150,7 +1168,7 @@ func _line_color() -> Color:
 
 
 func _name_font_color(is_hero: bool) -> Color:
-	var base: Color = PixelUI.DT_HERO_NAME if is_hero else PixelUI.DT_ENEMY_NAME
+	var base: Color = PixelUI.BATTLE_HERO_TEXT if is_hero else PixelUI.BATTLE_ENEMY_TEXT
 	if dead:
 		return base.darkened(0.4).lerp(PixelUI.TEXT_MUTED, 0.55)
 	if needs_manual_target and not selected and is_hero:

@@ -2489,7 +2489,7 @@ func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
 	var divider: ColorRect = ColorRect.new()
 	divider.name = node_name
 	# Match the PersistentHeader's bottom divider exactly: DT_LINE, full-width, 3px.
-	divider.color = PixelUI.DT_LINE
+	divider.color = PixelUI.BATTLE_BORDER
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Full-width, top-relative anchors; exact Y is set each layout pass by
 	# BattleLayout._position_zone_dividers so the gap to the cards stays consistent.
@@ -2784,7 +2784,7 @@ func _style_roll_button_for_phase() -> void:
 			# Active primary action: ready to roll — teal primary button.
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, action_font)
+			PixelUI.style_primary_button(roll_button, action_font, false, false)
 		PHASE_TARGETING:
 			# Hidden: targetable cards use team border color (see CompactUnitCard).
 			pass
@@ -2792,7 +2792,7 @@ func _style_roll_button_for_phase() -> void:
 			# Active primary action: close out the turn — amber (commit) variant.
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, action_font, true)
+			PixelUI.style_primary_button(roll_button, action_font, true, false)
 		_:
 			# Item-pick / fallback states are also hidden; the affordance
 			# is the highlighted card the player must tap.
@@ -2827,7 +2827,7 @@ func _style_frame_icon_action_button(
 	# Direction-05 flat dark square. frame_modulate carries the border accent (e.g.
 	# gold for the protocol spend button); default uses the neutral DT button border.
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
-	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate)
+	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate, true)
 
 
 func _update_phase_target_sets() -> void:
@@ -3525,9 +3525,7 @@ func _apply_battle_theme() -> void:
 		if background.get_node_or_null("FieldFill") == null:
 			var field_fill: ColorRect = ColorRect.new()
 			field_fill.name = "FieldFill"
-			# Slightly lifted off pure-black so the whole screen reads less dull than
-			# the raw design token (which felt too dark in-engine).
-			field_fill.color = Color(0.055, 0.070, 0.095, 1.0)
+			field_fill.color = PixelUI.BATTLE_FIELD
 			field_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			field_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
 			background.add_child(field_fill)
@@ -3540,6 +3538,7 @@ func _apply_battle_theme() -> void:
 	protocol_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	protocol_label.add_theme_constant_override("outline_size", 2)
+	PixelUI.style_battle_text(protocol_label)
 	PixelUI.apply_pixel_font(protocol_value_label)
 	protocol_value_label.add_theme_font_size_override("font_size", PROTOCOL_VALUE_FONT_SIZE)
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
@@ -3555,9 +3554,9 @@ func _apply_battle_theme() -> void:
 	# spots (over the bar / among buttons) — hide it; the segments convey the count.
 	protocol_value_label.visible = false
 	if protocol_panel != null:
-		# Footer plate (no top border — the FooterDivider ColorRect is the divider line).
-		var footer_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_PANEL_BG, 0)
-		footer_style.set_content_margin_all(4.0)
+		# Filled footer shell; its original content margins preserve every hitbox.
+		var footer_style := PixelUI.battle_strip_style(4.0)
+		protocol_panel.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		protocol_panel.add_theme_stylebox_override("panel", footer_style)
 		# Align footer content with the dice-tray edges (room before the screen edge).
 		var pm := protocol_panel.get_node_or_null("ProtocolMargin") as MarginContainer
