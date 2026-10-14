@@ -31,14 +31,28 @@ const BATTLE_PROTO_EMPTY := Color("181e21")
 const BATTLE_PANEL_FILL := Color("11191e")
 const BATTLE_INNER_EDGE := Color("06090b")
 const BATTLE_TRAY_FILL := Color("11171b")
-# Single environmental treatment for the battle-depth prototype.
-const BATTLE_BAY_FLOOR := Color("20272b")
-const BATTLE_BAY_WALL := Color("151b1f")
-const BATTLE_BAY_LIP := Color("3b454a")
-const BATTLE_BAY_SEAM := Color("171e22")
+# Battle depth prototype v2: one tray scene, dark and low-contrast under the dice
+# (docs/BATTLE_DEPTH_PROTOTYPE.md). Per-operation art and the edge accent token
+# come from data/raw/battle-tray-scenes.json.
+const BATTLE_BAY_FLOOR := Color("192025")
+const BATTLE_BAY_WALL := Color("0c1114")
+const BATTLE_BAY_WALL_BACK := Color("121a1f")
+const BATTLE_BAY_SEAM := Color("172026")
 const BATTLE_BAY_AMBER := Color("685035")
-const BATTLE_DEPTH_BACK := 0.90
-const BATTLE_DEPTH_FRONT := 1.10
+const BATTLE_BAY_AMBER_LIT := Color("8e6a36")
+const BATTLE_BAY_DECAL_ALPHA := 0.15
+const BATTLE_BAY_SHADOW_ALPHA := 0.85
+# Die tags sit on a solid plate so the scene never runs behind a number.
+const BATTLE_TAG_PLATE := Color("06090b")
+# The draw-time projection (scripts/ui/battle_depth.gd reads these). Die scale at
+# the tray's back and front edge; the floor's width at the back edge as a share
+# of the front; how far the back edge is pushed down; where the back wall ends.
+# The last two are shares of the tray height.
+const BATTLE_DEPTH_BACK := 0.75
+const BATTLE_DEPTH_FRONT := 1.12
+const BATTLE_DEPTH_TAPER := 0.80
+const BATTLE_DEPTH_PUSH := 0.03
+const BATTLE_DEPTH_WALL := 0.155
 const BATTLE_PORTRAIT_FIELD := Color("080b0e")
 const BATTLE_HERO_HEADER := Color("172127")
 const BATTLE_ENEMY_HEADER := Color("211713")
@@ -361,6 +375,27 @@ static func battle_layout_style(margin: float = 0.0) -> StyleBoxEmpty:
 	var style := StyleBoxEmpty.new()
 	style.set_content_margin_all(margin)
 	return style
+
+
+## The solid plate under a die tag's pips (battle depth prototype v2): a filled
+## field with no outline, padded just past the content.
+static func battle_tag_plate_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = BATTLE_TAG_PLATE
+	style.content_margin_left = 12.0
+	style.content_margin_right = 12.0
+	style.content_margin_top = 2.0
+	style.content_margin_bottom = 2.0
+	return style
+
+
+## The container a die tag's pip rows go in. `plated` is false where the tag
+## keeps reading straight over the tray (the parked landscape presentation).
+static func make_battle_tag_field(plated: bool) -> PanelContainer:
+	var field := PanelContainer.new()
+	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.add_theme_stylebox_override("panel", battle_tag_plate_style() if plated else battle_layout_style())
+	return field
 
 
 static func battle_tray_style(frame_only: bool = false) -> StyleBoxTexture:

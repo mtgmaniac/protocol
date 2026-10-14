@@ -1718,11 +1718,13 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	plate.add_child(center)
+	var field: PanelContainer = PixelUI.make_battle_tag_field(not _layout.is_landscape)
+	center.add_child(field)
 	var stack: VBoxContainer = VBoxContainer.new()
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	stack.add_theme_constant_override("separation", 0)
-	center.add_child(stack)
+	field.add_child(stack)
 	for row_variant in rows:
 		var row: Dictionary = row_variant
 		var line: Control = _build_tag_content(side, row.get("effects", []), str(row.get("target", "")), value_font, profile)
@@ -3593,7 +3595,7 @@ func _duplicate_enemy(base_enemy: EnemyData) -> EnemyData:
 # While choosing an item target (or confirming a no-target item), a press that no unit
 # handled (empty space) cancels back to the loadout.
 func _unhandled_input(event: InputEvent) -> void:
-	if _protocol.handle_unhandled_input(event):
+	if _layout.handle_depth_debug_key(event) or _protocol.handle_unhandled_input(event):
 		return
 
 

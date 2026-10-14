@@ -1,0 +1,30 @@
+{
+  "_about": "Battle depth prototype v2. One dice-tray scene per operation: the back-wall art slot, the floor material and the floor edge accent. `edge_accent` names a PixelUI colour token, never a hex. An entry with empty fields draws the bare bay (plain floor, empty wall, no accent). Operations without an entry use `fallback`.",
+  "fallback": "bare",
+  "scenes": {
+    "facility": {
+      "label": "Foundry line (PLACEHOLDER art)",
+      "wall_art": "res://assets/battle_tray/placeholder_facility_wall.png",
+      "floor_texture": "res://assets/battle_tray/placeholder_facility_floor.png",
+      "edge_accent": "BATTLE_BAY_AMBER"
+    },
+    "hive": {
+      "label": "STUB: no art yet",
+      "wall_art": "",
+      "floor_texture": "",
+      "edge_accent": ""
+    },
+    "veil": {
+      "label": "STUB: no art yet",
+      "wall_art": "",
+      "floor_texture": "",
+      "edge_accent": ""
+    },
+    "bare": {
+      "label": "Bare bay",
+      "wall_art": "",
+      "floor_texture": "",
+      "edge_accent": ""
+    }
+  }
+}

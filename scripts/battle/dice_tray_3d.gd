@@ -373,19 +373,57 @@ func _set_presentation_scale(value: float, die: RigidBody3D) -> void:
 	_apply_depth_scale(die)
 
 
-func depth_scale_at_y(y: float) -> float:
+# ── Draw-time depth (battle depth prototype v2) ──────────────────────────────
+# The dice simulate in the flat rectangle the orthographic camera sees. Only the
+# cosmetic `Visuals` container is moved and scaled, through battle_depth.gd:
+# smaller and nearer the centre line at the back. Bodies, collision shapes,
+# walls, result slots and landed faces never read any of it.
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
+# A die in the air is drawn this share of its radius higher per unit of height,
+# up to DEPTH_LIFT_MAX units, so it parts from its shadow on a throw or a hop.
+const DEPTH_LIFT_RATIO := 0.10
+const DEPTH_LIFT_MAX := 3.0
+
+
+# Where and how large a die is drawn, in tray-local pixels. `ground` is the
+# drawn centre with no height (the shadow sits under it); `center` adds the
+# lift. The drawn die never leaves the tray rectangle or the floor's edge.
+func _die_projection(die: RigidBody3D) -> Dictionary:
+	var flat: Vector2 = _camera.unproject_position(die.global_position)
+	var presentation: float = float(die.get_meta("presentation_scale", 1.0))
 	if _landscape_projection:
-		return 1.0
-	return lerpf(PixelUI.BATTLE_DEPTH_BACK, PixelUI.BATTLE_DEPTH_FRONT, clampf(y / maxf(size.y, 1.0), 0.0, 1.0))
+		return {"flat": flat, "ground": flat, "center": flat, "scale": presentation, "radius": DIE_RADIUS * size.y / _camera.size * presentation, "lift": 0.0}
+	var depth: float = DEPTH.depth_at(flat.y, size)
+	var drawn_scale: float = presentation * DEPTH.die_scale(depth)
+	var radius: float = DIE_RADIUS * size.y / _camera.size * drawn_scale
+	var ground: Vector2 = DEPTH.die_center(flat, size)
+	var floor_half: float = size.x * 0.5 * lerpf(PixelUI.BATTLE_DEPTH_TAPER, 1.0, depth)
+	var reach: float = maxf(minf(floor_half, size.x * 0.5) - radius, 0.0)
+	ground.x = clampf(ground.x, size.x * 0.5 - reach, size.x * 0.5 + reach)
+	ground.y = clampf(ground.y, minf(radius, size.y * 0.5), maxf(size.y - radius, size.y * 0.5))
+	var lift: float = clampf(die.global_position.y - DIE_RADIUS, 0.0, DEPTH_LIFT_MAX)
+	var center := Vector2(ground.x, maxf(ground.y - lift * radius * DEPTH_LIFT_RATIO, minf(radius, ground.y)))
+	return {"flat": flat, "ground": ground, "center": center, "scale": drawn_scale, "radius": radius, "lift": lift}
 
 
 func _apply_depth_scale(die: RigidBody3D) -> void:
 	if _camera == null:
 		return
 	var visuals: Node3D = _die_visuals(die)
-	if visuals != null:
-		var factor: float = depth_scale_at_y(_camera.unproject_position(die.global_position).y)
-		visuals.scale = Vector3.ONE * float(die.get_meta("presentation_scale", 1.0)) * factor
+	if visuals == null:
+		return
+	var drawn: Dictionary = _die_projection(die)
+	visuals.scale = Vector3.ONE * float(drawn.scale)
+	# Camera looks straight down: screen x is world x, screen y is world z.
+	var shift: Vector2 = ((drawn.center as Vector2) - (drawn.flat as Vector2)) * (_camera.size / maxf(size.y, 1.0))
+	visuals.position = die.global_basis.inverse() * Vector3(shift.x, 0.0, shift.y)
+
+
+# How far the die is drawn from where it simulates, in world units.
+func _drawn_offset(die: RigidBody3D) -> Vector3:
+	_apply_depth_scale(die)
+	var visuals: Node3D = _die_visuals(die)
+	return visuals.global_position - die.global_position if visuals != null else Vector3.ZERO
 
 
 func _die_visuals(die: RigidBody3D) -> Node3D:
@@ -408,7 +446,7 @@ func get_die_screen_position(side: String, unit_id: String) -> Vector2:
 		return Vector2.INF
 	if _viewport_container == null or not is_instance_valid(_viewport_container):
 		return Vector2.INF
-	var die_origin: Vector3 = die.global_transform.origin
+	var die_origin: Vector3 = die.global_transform.origin + _drawn_offset(die)
 	if _camera.is_position_behind(die_origin):
 		return Vector2.INF
 	return _viewport_container.get_global_rect().position + _camera.unproject_position(die_origin)
@@ -442,11 +480,12 @@ func get_die_screen_bounds(side: String, unit_id: String) -> Rect2:
 		return Rect2(Vector2.INF, Vector2.ZERO)
 	if _camera == null or not is_instance_valid(_camera) or _viewport_container == null or not is_instance_valid(_viewport_container):
 		return Rect2(Vector2.INF, Vector2.ZERO)
+	var drawn_offset: Vector3 = _drawn_offset(die)
 	var vis_scale: float = 1.0
 	var visuals: Node3D = die.get_node_or_null("Visuals") as Node3D
 	if visuals != null:
 		vis_scale = visuals.scale.x
-	var xform: Transform3D = die.global_transform
+	var xform: Transform3D = die.global_transform.translated(drawn_offset)
 	var base: Vector2 = _viewport_container.get_global_rect().position
 	var min_p: Vector2 = Vector2(INF, INF)
 	var max_p: Vector2 = Vector2(-INF, -INF)
@@ -602,21 +641,24 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if _camera == null or _landscape_projection:
 		return
-	# Draw beneath the transparent dice viewport. Soft ellipses follow positions,
-	# deepen toward the front, and spread/fade slightly when a die hops.
+	# Contact shadows, drawn beneath the transparent dice viewport, on the floor
+	# under each die's drawn position. They shrink with depth like the die, and
+	# on a throw or a hop they stay on the floor, spreading and fading with height.
 	for die: RigidBody3D in _die_by_key.values():
 		if not is_instance_valid(die):
 			continue
-		var center: Vector2 = _camera.unproject_position(die.global_position)
-		var depth: float = depth_scale_at_y(center.y)
-		var lift: float = clampf(die.position.y - DIE_RADIUS, 0.0, 3.0)
-		var radius: float = DIE_RADIUS * size.y / _camera.size * depth
-		var opacity: float = lerpf(.15, .23, clampf(center.y / maxf(size.y, 1.0), 0.0, 1.0)) / (1.0 + lift * .4)
-		center += Vector2(radius * .12, radius * .48 + lift * 3.0)
-		draw_set_transform(center, 0.0, Vector2(1.0, .46))
-		for layer in range(4):
-			draw_circle(Vector2.ZERO, radius * (1.12 + lift * .10 - layer * .15), Color(0, 0, 0, opacity * .38), true, -1.0, true)
+		var drawn: Dictionary = _die_projection(die)
+		var radius: float = drawn.radius
+		var lift: float = drawn.lift
+		var strength: float = PixelUI.BATTLE_BAY_SHADOW_ALPHA / (1.0 + lift * 0.45)
+		draw_set_transform((drawn.ground as Vector2) + Vector2(radius * 0.08, radius * 0.66), 0.0, Vector2(1.0, 0.46))
+		for layer in range(SHADOW_LAYERS):
+			var spread: float = 1.22 + lift * 0.08 - float(layer) * 0.12
+			draw_circle(Vector2.ZERO, radius * spread, Color(0.0, 0.0, 0.0, strength / SHADOW_LAYERS), true, -1.0, true)
 		draw_set_transform(Vector2.ZERO)
+
+
+const SHADOW_LAYERS := 5
 
 
 # Follow game logic: a die whose shown value no longer matches the one source

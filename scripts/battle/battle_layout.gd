@@ -30,12 +30,14 @@ const RAIL_SLOT_GAP_PX := 2.0
 
 const POLICY := preload("res://scripts/battle/battle_layout_policy.gd")
 const LANDSCAPE_LAYOUT := preload("res://scripts/battle/landscape_battle_layout.gd")
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 var is_landscape := false
 var _landscape: RefCounted
 var _scene: Control
 
 var _combat_zone_frame: PanelContainer = null
 var _combat_zone_backing: Panel = null
+var _combat_zone_bay: Control = null
 var _combat_zone_enemy_lane: HBoxContainer = null
 var _combat_zone_hero_lane: HBoxContainer = null
 var _combat_zone_enemy_slots: Array = []
@@ -49,6 +51,25 @@ func setup(scene: Control) -> void:
 		_landscape = LANDSCAPE_LAYOUT.new()
 		_landscape.setup(scene)
 	_scene.resized.connect(queue_board_layout_refresh)
+
+
+# Depth prototype v2 A/B, debug builds only: F6 swaps the tray scene for the
+# plain tray, F7 hides the floor decal. Returns true when it used the key.
+func handle_depth_debug_key(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo or not OS.is_debug_build():
+		return false
+	if key.keycode == KEY_F6:
+		DEPTH.backdrop_on = not DEPTH.backdrop_on
+	elif key.keycode == KEY_F7:
+		DEPTH.decal_on = not DEPTH.decal_on
+	else:
+		return false
+	if _combat_zone_bay != null and is_instance_valid(_combat_zone_bay):
+		_combat_zone_bay.queue_redraw()
+	if _scene != null:
+		_scene.get_viewport().set_input_as_handled()
+	return true
 
 
 func refresh_hit_areas() -> void:
@@ -354,8 +375,10 @@ func ensure_combat_zone_frame() -> void:
 		if not is_landscape:
 			var bay: Control = preload("res://scripts/ui/battle_bay_floor.gd").new()
 			bay.name = "EnvironmentalBay"
+			bay.operation_id = str(_scene._game_state().selected_operation_id)
 			_combat_zone_backing.add_child(bay)
 			bay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			_combat_zone_bay = bay
 	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
 		_combat_zone_frame = PanelContainer.new()
 		_combat_zone_frame.name = "CombatZoneFrame"

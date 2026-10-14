@@ -29,6 +29,21 @@ func _run_capture() -> void:
 		quit(1)
 		return
 	print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % absolute_output)
+	if config.has("depth_flat_output"):
+		var depth: Script = load("res://scripts/ui/battle_depth.gd")
+		depth.set("backdrop_on", false)
+		depth.set("decal_on", false)
+		var bay: CanvasItem = current_scene.find_child("EnvironmentalBay", true, false) as CanvasItem
+		if bay != null:
+			bay.queue_redraw()
+		for _frame in range(4):
+			await process_frame
+		var flat_output: String = _resolve_output_path(str(config["depth_flat_output"]))
+		if _capture_viewport_to_file(flat_output) != OK:
+			push_error("Battle UI capture failed: flat depth frame")
+			quit(1)
+			return
+		print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % flat_output)
 	quit(0)
 
 
@@ -104,6 +119,10 @@ func _parse_args() -> Dictionary:
 			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
 			if window_parts.size() >= 2:
 				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		elif arg.begins_with("--capture-depth-flat-output="):
+			# Depth prototype v2 A/B: after the normal capture, save the SAME
+			# frame again with the tray scene and floor decal off (F6 + F7).
+			config["depth_flat_output"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-enemy-roll="):
 			# "Display Name:roll" pins that enemy's die (UI batch readout captures).
 			config["enemy_roll"] = arg.get_slice("=", 1)
