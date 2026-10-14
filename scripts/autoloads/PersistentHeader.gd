@@ -229,10 +229,18 @@ func _style() -> void:
 		b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
 
 
+# Held for the node's life: a style made inside the draw callback is freed when
+# it returns, taking its texture along, and the queued draw then paints plain
+# white (the white header band on the reward screen, where nothing else holds
+# the strip texture; same bug class as ProtocolPips, aaed29a).
+var _battle_frame: StyleBox = null
+
+
 func _draw_battle_frame() -> void:
 	if _battle_visuals:
-		var frame := PixelUI.battle_strip_style()
-		_background.draw_style_box(frame, Rect2(Vector2.ZERO, _background.size))
+		if _battle_frame == null:
+			_battle_frame = PixelUI.battle_strip_style()
+		_background.draw_style_box(_battle_frame, Rect2(Vector2.ZERO, _background.size))
 		if _count_tint.a > 0.0:
 			# The thin rule under the title, from the bar's edge to the buttons.
 			var right: float = _bar.position.x + (_bar.get_node("ButtonRow") as Control).position.x - BAR_PAD_X

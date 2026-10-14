@@ -27,11 +27,15 @@ extends Control
 
 const TITLE_LOGO_SCENE := preload("res://scenes/ui/TitleLogo.tscn")
 const ResumeGuard := preload("res://scripts/autoloads/resume_guard.gd")
+# UI restyle A: one column of equal-width buttons. The primary action (CONTINUE
+# when a run waits, otherwise BEGIN) is taller; the rest are secondary.
 const BEGIN_SIZE := Vector2(640, 136)
-const BEGIN_FONT := 52
-# FEEDBACK keeps the amber secondary treatment; BEGIN is the primary action.
-const FEEDBACK_SIZE := Vector2(420, 92)
-const FEEDBACK_FONT := 34
+const BEGIN_FONT := 64
+const SECONDARY_SIZE := Vector2(640, 116)
+const SECONDARY_FONT := 56
+const FEEDBACK_SIZE := SECONDARY_SIZE
+const FEEDBACK_FONT := SECONDARY_FONT
+const TITLE_BACKDROP := preload("res://scripts/ui/title_backdrop.gd")
 # First-run choice overlay (question card after the first BEGIN).
 const PROMPT_WIDTH := 780.0
 const PROMPT_PAD := 36
@@ -43,10 +47,11 @@ const PROMPT_SKIP_FONT := 30
 # CONTINUE matches BEGIN's primary weight (it is the primary action when a run
 # is waiting); ABANDON RUN is the quiet destructive option, sized like FEEDBACK.
 const CONTINUE_SIZE := Vector2(640, 136)
-const ABANDON_SIZE := Vector2(420, 84)
-const ABANDON_FONT := 30
+const ABANDON_SIZE := SECONDARY_SIZE
+const ABANDON_FONT := 56
 const NOTICE_FONT := 28
-const EARLIER_SIZE := Vector2(600, 84)
+const EARLIER_SIZE := SECONDARY_SIZE
+const VERSION_UNDERLINE := 120.0
 ## sessionStorage key web/shell.html sets before it reloads a page whose display
 ## was lost (OP_RESUME_KEY there; the `web display recovery` gate compares them).
 const DISPLAY_RELOAD_FLAG := "op_resume_after_reload"
@@ -78,10 +83,14 @@ func _ready() -> void:
 		_start_web_dice_warmup.call_deferred()
 
 	var bg := ColorRect.new()
-	bg.color = PixelUI.DT_FIELD_BG
+	bg.color = PixelUI.UI_BG
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	# Placeholder street backdrop on the shared pixel grid.
+	var backdrop: SubViewportContainer = PixelUI.make_art_grid_view(TITLE_BACKDROP.new(), "TitleBackdrop")
+	add_child(backdrop)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	# Side margins so the wide logo always fits the screen width.
 	var margin := MarginContainer.new()
@@ -115,7 +124,7 @@ func _ready() -> void:
 		resume.text = "CONTINUE"
 		resume.custom_minimum_size = CONTINUE_SIZE
 		resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		PixelUI.style_primary_button(resume, BEGIN_FONT)
+		PixelUI.style_ui_primary_button(resume, BEGIN_FONT)
 		resume.pressed.connect(_on_continue_pressed)
 		col.add_child(resume)
 		_continue_button = resume
@@ -123,9 +132,12 @@ func _ready() -> void:
 
 	var begin := Button.new()
 	begin.text = "BEGIN"
-	begin.custom_minimum_size = BEGIN_SIZE
+	begin.custom_minimum_size = SECONDARY_SIZE if _has_run_save else BEGIN_SIZE
 	begin.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_primary_button(begin, BEGIN_FONT)
+	if _has_run_save:
+		PixelUI.style_ui_secondary_button(begin, SECONDARY_FONT)
+	else:
+		PixelUI.style_ui_primary_button(begin, BEGIN_FONT)
 	begin.pressed.connect(_on_begin_pressed)
 	col.add_child(begin)
 	_begin_button = begin
@@ -134,10 +146,7 @@ func _ready() -> void:
 	feedback.text = "FEEDBACK"
 	feedback.custom_minimum_size = FEEDBACK_SIZE
 	feedback.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_button(feedback, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, FEEDBACK_FONT)
-	feedback.add_theme_color_override("font_color", PixelUI.DT_AMBER)
-	feedback.add_theme_color_override("font_hover_color", PixelUI.DT_AMBER)
-	feedback.add_theme_color_override("font_pressed_color", PixelUI.DT_AMBER)
+	PixelUI.style_ui_secondary_button(feedback, FEEDBACK_FONT)
 	feedback.pressed.connect(_on_feedback_pressed)
 	col.add_child(feedback)
 	_feedback_button = feedback
@@ -147,8 +156,7 @@ func _ready() -> void:
 		abandon.text = "ABANDON RUN"
 		abandon.custom_minimum_size = ABANDON_SIZE
 		abandon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		PixelUI.style_button(abandon, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, ABANDON_FONT)
-		abandon.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+		PixelUI.style_ui_secondary_button(abandon, ABANDON_FONT)
 		abandon.pressed.connect(_on_abandon_pressed)
 		col.add_child(abandon)
 		_abandon_button = abandon
@@ -239,7 +247,7 @@ func _add_version_stamp() -> void:
 	var stamp := Label.new()
 	stamp.text = PixelUI.version_label()
 	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_label(stamp, 24, PixelUI.INSPECT_TEXT_DIM, 0)
+	PixelUI.style_label(stamp, 24, PixelUI.UI_TEXT_DIM, 0)
 	stamp.anchor_left = 0.0
 	stamp.anchor_right = 0.0
 	stamp.anchor_top = 1.0
@@ -250,6 +258,16 @@ func _add_version_stamp() -> void:
 	stamp.offset_bottom = -(16.0 + float(PixelUI.safe_bottom))
 	stamp.offset_top = stamp.offset_bottom - 44.0
 	add_child(stamp)
+	# A short accent underline under the version.
+	var underline := ColorRect.new()
+	underline.color = PixelUI.UI_ACCENT
+	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	underline.anchor_top = 1.0
+	underline.anchor_bottom = 1.0
+	underline.offset_top = 2.0
+	underline.offset_bottom = 2.0 + PixelUI.MIN_STROKE
+	underline.offset_right = VERSION_UNDERLINE
+	stamp.add_child(underline)
 	# Seven quick taps on the stamp unlock the session's dev tools, the same
 	# rule as the in-run operation title, so they are reachable without a run
 	# (and without CONTINUE). Then COPY STATE CODE appears (StateCode).
@@ -271,8 +289,7 @@ func _add_state_code_button() -> void:
 	button.name = "StateCodeButton"
 	button.text = "COPY STATE CODE (DEV)"
 	button.custom_minimum_size = STATE_CODE_SIZE
-	PixelUI.style_button(button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, ABANDON_FONT)
-	button.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	PixelUI.style_ui_secondary_button(button, ABANDON_FONT)
 	button.anchor_left = 1.0
 	button.anchor_right = 1.0
 	button.anchor_top = 1.0
@@ -309,7 +326,7 @@ func _show_first_run_prompt() -> void:
 	add_child(scrim)
 
 	var panel := PanelContainer.new()
-	PixelUI.style_panel(panel, PixelUI.BG_PANEL, PixelUI.LINE_BRIGHT, 3)
+	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
 	panel.custom_minimum_size = Vector2(PROMPT_WIDTH, 0)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -328,7 +345,7 @@ func _show_first_run_prompt() -> void:
 	var title := Label.new()
 	title.text = "FIRST TIME?"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
+	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.UI_TEXT, 0)
 	box.add_child(title)
 
 	var body := Label.new()
@@ -342,7 +359,7 @@ func _show_first_run_prompt() -> void:
 	run.text = "RUN TUTORIAL"
 	run.custom_minimum_size = PROMPT_BUTTON_SIZE
 	run.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_primary_button(run, PROMPT_BUTTON_FONT)
+	PixelUI.style_ui_primary_button(run, PROMPT_BUTTON_FONT)
 	run.pressed.connect(_on_first_run_tutorial_pressed)
 	box.add_child(run)
 
@@ -350,8 +367,7 @@ func _show_first_run_prompt() -> void:
 	skip.text = "SKIP TUTORIAL"
 	skip.custom_minimum_size = Vector2(PROMPT_BUTTON_SIZE.x, 92)
 	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_button(skip, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, PROMPT_SKIP_FONT)
-	skip.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	PixelUI.style_ui_secondary_button(skip, PROMPT_SKIP_FONT)
 	skip.pressed.connect(_on_first_run_skip_pressed)
 	box.add_child(skip)
 
@@ -432,12 +448,11 @@ func _add_earlier_point_option(col: VBoxContainer) -> void:
 	earlier.text = "RESUME EARLIER POINT"
 	earlier.custom_minimum_size = EARLIER_SIZE
 	earlier.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_button(earlier, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, ABANDON_FONT)
-	earlier.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	PixelUI.style_ui_secondary_button(earlier, ABANDON_FONT)
 	earlier.pressed.connect(_on_earlier_point_pressed)
 	group.add_child(earlier)
 	_earlier_button = earlier
-	group.add_child(_make_notice(ResumeGuard.LINE, PixelUI.DT_AMBER_TEXT))
+	group.add_child(_make_notice(ResumeGuard.LINE, PixelUI.UI_WARN))
 
 
 func _on_earlier_point_pressed() -> void:
@@ -483,7 +498,7 @@ func _show_abandon_confirm() -> void:
 	var title := Label.new()
 	title.text = "ABANDON RUN?"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.DT_AMBER, 3)
+	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.UI_WARN, 0)
 	box.add_child(title)
 
 	var body := Label.new()
@@ -497,7 +512,7 @@ func _show_abandon_confirm() -> void:
 	confirm.text = "ABANDON RUN"
 	confirm.custom_minimum_size = PROMPT_BUTTON_SIZE
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_primary_button(confirm, PROMPT_BUTTON_FONT, true)
+	PixelUI.style_ui_primary_button(confirm, PROMPT_BUTTON_FONT)
 	confirm.pressed.connect(_on_abandon_confirmed.bind(scrim, panel))
 	box.add_child(confirm)
 
@@ -505,8 +520,7 @@ func _show_abandon_confirm() -> void:
 	keep.text = "KEEP RUN"
 	keep.custom_minimum_size = Vector2(PROMPT_BUTTON_SIZE.x, 92)
 	keep.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_button(keep, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, PROMPT_SKIP_FONT)
-	keep.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	PixelUI.style_ui_secondary_button(keep, PROMPT_SKIP_FONT)
 	keep.pressed.connect(_dismiss_abandon_confirm.bind(scrim, panel))
 	box.add_child(keep)
 
@@ -543,7 +557,7 @@ func _add_notices(col: VBoxContainer) -> void:
 	# A run save from an older build, already discarded by peek_run_save().
 	var discarded: String = SaveManager.take_run_save_notice()
 	if discarded != "":
-		col.add_child(_make_notice(discarded, PixelUI.DT_AMBER_TEXT))
+		col.add_child(_make_notice(discarded, PixelUI.UI_WARN))
 	# Web private/incognito mode, or a browser that refused the IndexedDB mount:
 	# user:// is a RAM disk for this session and nothing will outlive the tab.
 	# Worth saying plainly — the alternative is a player losing a run and
@@ -551,7 +565,7 @@ func _add_notices(col: VBoxContainer) -> void:
 	if OS.has_feature("web") and not OS.is_userfs_persistent():
 		col.add_child(_make_notice(
 			"This browser mode can't save progress. Your run won't be kept.",
-			PixelUI.TEXT_MUTED))
+			PixelUI.UI_WARN))
 
 
 func _make_notice(text: String, color: Color) -> Label:

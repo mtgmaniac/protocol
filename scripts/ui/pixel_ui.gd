@@ -129,6 +129,29 @@ static func even_px(value: float) -> float:
 const FONT_BODY_MIN := 42
 const BODY_LINE_SPACING := 10
 
+# ── UI restyle A tokens (2026-10-14, docs/UI_RESTYLE.md) ──
+# ONE amber: every amber on a restyled screen comes from UI_ACCENT. The rest is
+# the charcoal family the mocks share. Strokes are MIN_STROKE (4 design px).
+const UI_ACCENT := Color("edb03e")
+const UI_ACCENT_INK := Color("17120a")      # dark text on an amber fill
+const UI_BG := Color("0e1216")              # screen field
+const UI_PANEL := Color("161c1f")           # section panel / card fill
+const UI_PANEL_EDGE := Color("22292d")      # section panel frame
+const UI_ROW := Color("202427")             # row plate inside a section
+const UI_BUTTON := Color("1a1c20")          # button fill
+const UI_LINE := Color("4a5057")            # gray border (secondary, tabs, toggles off)
+const UI_CARD_LINE := Color("34424d")       # selectable card border at rest
+const UI_RULE := Color("53595d")            # thin rule under a section header
+const UI_BAR := Color("8c8478")             # secondary button's left accent bar
+const UI_TRACK := Color("3c4247")           # slider empty track
+const UI_TEXT := Color("e8e6df")
+const UI_TEXT_DIM := Color("8a8f94")
+const UI_TEXT_OFF := Color("4f5458")
+const UI_STEEL := Color("7f9cb8")           # uncommon rarity
+# Warnings (save discarded, resume problems, destructive confirms) are rust
+# orange-red: a different hue from UI_ACCENT and never on a button frame.
+const UI_WARN := Color("e06a3c")
+
 # ── Direction 05 "Dithered Terminal" palette (battle HUD redesign) ──
 # Green is reserved for HP + the ROLL commit only; heroes read cyan, enemies rust.
 static var DT_FIELD_BG := Color("07090b")
@@ -206,11 +229,13 @@ static var DT_STATUS := {
 # Rarity ladder (Kev ruling 2026-07-10, UI review S-2): green exits the rarity
 # palette entirely — green stays reserved for HP/heals (INVARIANTS #7).
 # gray -> blue -> purple -> orange. "epic" is unused in data (kept aligned).
-static var RARITY_COMMON := Color("7a8290")
-static var RARITY_UNCOMMON := Color("5b7fe8")
+# UI restyle A (2026-10-14): legendary is the UI accent, uncommon steel blue,
+# common gray (supersedes the 2026-07-10 orange legendary; docs/UI_RESTYLE.md).
+static var RARITY_COMMON := UI_TEXT_DIM
+static var RARITY_UNCOMMON := UI_STEEL
 static var RARITY_RARE := Color("9d52d8")
 static var RARITY_EPIC := Color("9d52d8")
-static var RARITY_LEGENDARY := Color("ff8230")
+static var RARITY_LEGENDARY := UI_ACCENT
 
 # ── Inspect popup tokens (the unified long-press reveal) ──
 # Neutral Dithered-Terminal surface; side/rarity accents are layered on by the caller
@@ -2285,3 +2310,279 @@ static func _setting_on(key: String) -> bool:
 		return false
 	var settings := tree.root.get_node_or_null("SaveManager")
 	return settings != null and bool(settings.get_setting(key, false))
+
+
+# ══ UI restyle A components (2026-10-14) ═════════════════════════════════════
+# Reusable pieces for the restyled screens (title, help/settings, reward); see
+# docs/UI_RESTYLE.md. Pixel font throughout; every stroke is MIN_STROKE.
+
+const UI_TAB_H := 12          # primary button's top-left tab height
+const UI_TAB_W := 152         # its flat length before the stair-step slant
+const UI_PRIMARY_BAR := 12    # primary button's thick left edge
+const UI_SECONDARY_BAR := 8   # secondary button's lighter left bar
+static var _ui_patches: Dictionary = {}
+
+
+# A nine-patch texture from filled rects, cached by key. Margins are drawn 1:1.
+static func _ui_patch(key: String, size: Vector2i, rects: Array) -> ImageTexture:
+	if not _ui_patches.has(key):
+		var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+		image.fill(Color.TRANSPARENT)
+		for entry: Array in rects:
+			image.fill_rect(entry[0], entry[1])
+		_ui_patches[key] = ImageTexture.create_from_image(image)
+	return _ui_patches[key]
+
+
+static func _ui_patch_style(texture: Texture2D, margins: Array, content: Array) -> StyleBoxTexture:
+	var style := StyleBoxTexture.new()
+	style.texture = texture
+	var sides := [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]
+	for i in range(4):
+		style.set_texture_margin(sides[i], margins[i])
+		style.set_content_margin(sides[i], content[i])
+	return style
+
+
+## Primary: dark fill, amber border, a thick amber left edge and ONE notched tab
+## on the top-left edge (no four-corner notches). `fill`/`edge` vary by state.
+static func ui_primary_style(fill: Color, edge: Color) -> StyleBoxTexture:
+	var w: int = UI_TAB_W + UI_TAB_H + 40
+	var h: int = UI_TAB_H + 40
+	var rects: Array = [
+		[Rect2i(0, UI_TAB_H, w, h - UI_TAB_H), edge],
+		[Rect2i(UI_PRIMARY_BAR, UI_TAB_H + MIN_STROKE, w - UI_PRIMARY_BAR - MIN_STROKE, h - UI_TAB_H - MIN_STROKE * 2), fill],
+	]
+	for row in range(UI_TAB_H):
+		# The tab's right end steps out one pixel per row: a hard 45-degree notch.
+		rects.append([Rect2i(0, row, UI_TAB_W + row, 1), edge])
+	var texture := _ui_patch("primary:%s:%s" % [fill.to_html(), edge.to_html()], Vector2i(w, h), rects)
+	return _ui_patch_style(texture,
+		[UI_TAB_W + UI_TAB_H + 8, UI_TAB_H + MIN_STROKE, MIN_STROKE, MIN_STROKE],
+		[UI_PRIMARY_BAR + 16, UI_TAB_H + 10, 20, 10])
+
+
+## Secondary (and, dimmed, disabled): dark fill, gray border, a thin lighter bar
+## on the left edge.
+static func ui_secondary_style(fill: Color, border: Color, bar: Color) -> StyleBoxTexture:
+	var size := Vector2i(40, 40)
+	var rects: Array = [
+		[Rect2i(0, 0, size.x, size.y), border],
+		[Rect2i(UI_SECONDARY_BAR, MIN_STROKE, size.x - UI_SECONDARY_BAR - MIN_STROKE, size.y - MIN_STROKE * 2), fill],
+		[Rect2i(0, 0, UI_SECONDARY_BAR, size.y), bar],
+	]
+	var texture := _ui_patch("secondary:%s:%s:%s" % [fill.to_html(), border.to_html(), bar.to_html()], size, rects)
+	return _ui_patch_style(texture, [UI_SECONDARY_BAR, MIN_STROKE, MIN_STROKE, MIN_STROKE],
+		[UI_SECONDARY_BAR + 16, 10, 20, 10])
+
+
+static func _ui_button_fonts(button: Button, font_size: int, normal: Color, hover: Color, pressed: Color, disabled: Color) -> void:
+	# Screens that add their own hover pass skip buttons carrying this mark.
+	button.set_meta("ui_styled", true)
+	apply_pixel_font(button)
+	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	button.add_theme_color_override("font_color", normal)
+	button.add_theme_color_override("font_hover_color", hover)
+	button.add_theme_color_override("font_focus_color", hover)
+	button.add_theme_color_override("font_pressed_color", pressed)
+	button.add_theme_color_override("font_hover_pressed_color", pressed)
+	button.add_theme_color_override("font_disabled_color", disabled)
+	button.add_theme_constant_override("outline_size", 0)
+	_refresh_corner_brackets(button, Color.TRANSPARENT)
+
+
+static func style_ui_primary_button(button: Button, font_size: int = 48) -> void:
+	if button == null:
+		return
+	button.text = button.text.to_upper()
+	_ui_button_fonts(button, font_size, UI_ACCENT, UI_ACCENT.lightened(0.25), UI_ACCENT_INK, UI_TEXT_OFF)
+	button.add_theme_stylebox_override("normal", ui_primary_style(UI_BUTTON, UI_ACCENT))
+	button.add_theme_stylebox_override("hover", ui_primary_style(UI_BUTTON.lightened(0.05), UI_ACCENT.lightened(0.15)))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", ui_primary_style(UI_ACCENT, UI_ACCENT))
+	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
+
+
+static func style_ui_secondary_button(button: Button, font_size: int = 44) -> void:
+	if button == null:
+		return
+	button.text = button.text.to_upper()
+	_ui_button_fonts(button, font_size, UI_TEXT, UI_TEXT, UI_ACCENT_INK, UI_TEXT_OFF)
+	button.add_theme_stylebox_override("normal", ui_secondary_style(UI_BUTTON, UI_LINE, UI_BAR))
+	button.add_theme_stylebox_override("hover", ui_secondary_style(UI_BUTTON.lightened(0.05), UI_LINE.lightened(0.15), UI_BAR.lightened(0.15)))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", ui_secondary_style(UI_BAR, UI_BAR, UI_BAR))
+	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
+
+
+## Disabled = the secondary shape, its border, bar and text dimmed.
+static func _ui_disabled_style() -> StyleBoxTexture:
+	return ui_secondary_style(UI_BUTTON.darkened(0.2), UI_LINE.darkened(0.45), UI_BAR.darkened(0.55))
+
+
+## Tabs: equal-width boxes; active is solid amber with dark text, inactive dark
+## with gray text.
+static func style_ui_tab(button: Button, active: bool, font_size: int = 36) -> void:
+	if button == null:
+		return
+	var fill: Color = UI_ACCENT if active else UI_BUTTON
+	var border: Color = UI_ACCENT if active else UI_LINE
+	var ink: Color = UI_ACCENT_INK if active else UI_TEXT_DIM
+	_ui_button_fonts(button, font_size, ink, UI_ACCENT_INK if active else UI_TEXT, ink, UI_TEXT_OFF)
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var hover: bool = state == "hover" and not active
+		var style: StyleBoxFlat = make_hard_style(fill.lightened(0.05) if hover else fill, border.lightened(0.15) if hover else border, MIN_STROKE)
+		style.set_content_margin_all(8.0)
+		button.add_theme_stylebox_override(state, style)
+
+
+## Toggle: ON is an amber outline and amber text, OFF a gray outline and gray
+## text. Also sets the ON / OFF label.
+static func style_ui_toggle(button: Button, font_size: int = 36) -> void:
+	if button == null:
+		return
+	var on: bool = button.button_pressed
+	var ink: Color = UI_ACCENT if on else UI_TEXT_DIM
+	button.text = "ON" if on else "OFF"
+	_ui_button_fonts(button, font_size, ink, ink.lightened(0.2), ink, UI_TEXT_OFF)
+	for state in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
+		var style: StyleBoxFlat = make_hard_style(UI_PANEL, UI_ACCENT if on else UI_LINE, MIN_STROKE)
+		style.set_content_margin_all(8.0)
+		button.add_theme_stylebox_override(state, style)
+
+
+## Slider: amber filled track, dark empty track, amber rectangular thumb.
+static var _ui_thumb: ImageTexture = null
+static func style_ui_slider(slider: HSlider, track_px: int = 16) -> void:
+	var track: StyleBoxFlat = make_hard_style(UI_TRACK, UI_TRACK, 0)
+	var fill: StyleBoxFlat = make_hard_style(UI_ACCENT, UI_ACCENT, 0)
+	for style: StyleBoxFlat in [track, fill]:
+		style.content_margin_top = track_px * 0.5
+		style.content_margin_bottom = track_px * 0.5
+	slider.add_theme_stylebox_override("slider", track)
+	slider.add_theme_stylebox_override("grabber_area", fill)
+	slider.add_theme_stylebox_override("grabber_area_highlight", fill)
+	if _ui_thumb == null:
+		var thumb_image := Image.create(24, 56, false, Image.FORMAT_RGBA8)
+		thumb_image.fill(UI_ACCENT)
+		_ui_thumb = ImageTexture.create_from_image(thumb_image)
+	for icon in ["grabber", "grabber_highlight", "grabber_disabled"]:
+		slider.add_theme_icon_override(icon, _ui_thumb)
+
+
+## Section panel: a dark panel, its header in large pixel caps over a thin gray
+## rule. Returns the body the caller fills with rows (make_ui_row).
+static func make_ui_section(parent: Container, title: String, font_size: int = 56) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style: StyleBoxFlat = make_hard_style(UI_PANEL, UI_PANEL_EDGE, MIN_STROKE)
+	style.set_content_margin_all(24.0)
+	panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(panel)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_PASS
+	column.add_theme_constant_override("separation", 16)
+	panel.add_child(column)
+	var header := Label.new()
+	header.text = title.to_upper()
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	style_label(header, font_size, UI_TEXT, 0)
+	column.add_child(header)
+	var rule := ColorRect.new()
+	rule.color = UI_RULE
+	rule.custom_minimum_size = Vector2(0, MIN_STROKE)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(rule)
+	var body := VBoxContainer.new()
+	body.mouse_filter = Control.MOUSE_FILTER_PASS
+	body.add_theme_constant_override("separation", 12)
+	column.add_child(body)
+	return body
+
+
+## A row plate inside a section: a slightly lighter filled background.
+static func make_ui_row() -> PanelContainer:
+	var row := PanelContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style: StyleBoxFlat = make_hard_style(UI_ROW, UI_ROW, 0)
+	style.content_margin_left = 20.0
+	style.content_margin_right = 12.0
+	style.content_margin_top = 10.0
+	style.content_margin_bottom = 10.0
+	row.add_theme_stylebox_override("panel", style)
+	return row
+
+
+## Selectable card: gray border at rest; selected is an amber border over a faint
+## amber-tinted fill.
+static func ui_card_style(selected: bool) -> StyleBoxFlat:
+	if selected:
+		return make_hard_style(UI_PANEL.lerp(UI_ACCENT, 0.10), UI_ACCENT, MIN_STROKE)
+	return make_hard_style(UI_PANEL, UI_CARD_LINE, MIN_STROKE)
+
+
+## The square frame around a piece of item art on a selectable card. The art
+## inside is the shared item framing (make_integer_icon), unchanged.
+static func ui_art_frame_style(selected: bool) -> StyleBoxFlat:
+	var style: StyleBoxFlat = make_hard_style(UI_BG, UI_ACCENT.darkened(0.45) if selected else UI_CARD_LINE, MIN_STROKE)
+	style.set_content_margin_all(8.0)
+	return style
+
+
+## A placeholder art backdrop on the shared pixel grid: `painter` draws in design
+## px into a SubViewport a quarter of the screen's size, shown 4x with NEAREST,
+## so every edge lands on the 4 design px grid the portraits use. The painter
+## draws with draw_set_transform scale 1 / UI_ART_PX.
+const UI_ART_PX := 4
+static func make_art_grid_view(painter: Control, view_name: String) -> SubViewportContainer:
+	var view := SubViewportContainer.new()
+	view.name = view_name
+	view.stretch = true
+	view.stretch_shrink = UI_ART_PX
+	view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var viewport := SubViewport.new()
+	viewport.disable_3d = true
+	viewport.gui_disable_input = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_PARENT_VISIBLE
+	view.add_child(viewport)
+	viewport.add_child(painter)
+	painter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return view
+
+
+## Recolors a layer of the title logo into UI_ACCENT. `glow` keeps the layer's
+## additive blend (the core and PROTOCOL glows) and tints all of it; otherwise
+## only the logo's saturated teal pixels (the core and the PROTOCOL letters) are
+## keyed over, and its grays stay gray.
+static var _accent_materials: Dictionary = {}
+static func accent_tint_material(glow: bool) -> ShaderMaterial:
+	if not _accent_materials.has(glow):
+		var shader := Shader.new()
+		shader.code = ACCENT_TINT_SHADER % ["blend_add" if glow else "blend_mix", "1.15" if glow else "2.6", "tinted" if glow else "teal ? tinted : texel.rgb"]
+		var material := ShaderMaterial.new()
+		material.shader = shader
+		material.set_shader_parameter("accent", UI_ACCENT)
+		_accent_materials[glow] = material
+	return _accent_materials[glow]
+
+
+const ACCENT_TINT_SHADER := """shader_type canvas_item;
+render_mode %s;
+uniform vec4 accent : source_color;
+varying vec4 tint_modulate;
+void vertex() {
+	tint_modulate = COLOR;
+}
+void fragment() {
+	vec4 texel = texture(TEXTURE, UV);
+	float lum = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
+	float top = max(texel.r, max(texel.g, texel.b));
+	float sat = top > 0.0 ? (top - min(texel.r, min(texel.g, texel.b))) / top : 0.0;
+	bool teal = sat > 0.3 && texel.g > texel.r + 0.10 && abs(texel.g - texel.b) < 0.16;
+	vec3 tinted = accent.rgb * clamp(lum * %s, 0.0, 1.25);
+	COLOR = vec4(%s, texel.a) * tint_modulate;
+}
+"""

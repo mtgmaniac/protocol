@@ -358,7 +358,14 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	hbox.add_theme_constant_override("separation", ROW_HGAP)
 	margin.add_child(hbox)
 
-	# LEFT: item art at integer scale (the icon is the identity carrier).
+	# LEFT: item art at integer scale (the icon is the identity carrier), in a
+	# square frame (UI restyle A). The art inside is the shared item framing.
+	var art_frame := PanelContainer.new()
+	art_frame.name = "RewardArtFrame"
+	art_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	art_frame.add_theme_stylebox_override("panel", PixelUI.ui_art_frame_style(false))
+	panel.set_meta("art_frame", art_frame)
 	var icon_holder: Control = PixelUI.make_integer_icon(item.icon, ROW_ICON_BOX, accent)
 	icon_holder.name = "RewardArtwork"
 	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -367,7 +374,8 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 		glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		icon_holder.add_child(glyph)
-	hbox.add_child(icon_holder)
+	art_frame.add_child(icon_holder)
+	hbox.add_child(art_frame)
 
 	# RIGHT: name / metadata / effect line, left-aligned with reading room.
 	var info := VBoxContainer.new()
@@ -377,7 +385,7 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	info.add_theme_constant_override("separation", 6)
 	hbox.add_child(info)
 
-	var name_label := _make_fixed_slot_label(item.display_name, ROW_NAME_FONT, PixelUI.TEXT_PRIMARY, ROW_NAME_SLOT_HEIGHT, 2)
+	var name_label := _make_fixed_slot_label(item.display_name, ROW_NAME_FONT, PixelUI.UI_TEXT, ROW_NAME_SLOT_HEIGHT, 0)
 	name_label.name = "RewardNameSlot"
 	info.add_child(name_label)
 
@@ -386,7 +394,8 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 		meta_text = "%s %s" % [_rarity_name(item).to_upper(), meta_text]
 	if owner_id != "":
 		meta_text += "  |  EQUIPPED: %s" % _run_unit_label(owner_id)
-	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, PixelUI.TEXT_MUTED, ROW_META_SLOT_HEIGHT, 1)
+	# The rarity label, small caps under the name, in its rarity color.
+	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, accent, ROW_META_SLOT_HEIGHT, 0)
 	meta_label.name = "RewardMetaSlot"
 	info.add_child(meta_label)
 
@@ -439,11 +448,11 @@ func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelConta
 	var name_strip := PanelContainer.new()
 	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var strip_style: StyleBoxFlat = PixelUI.component_header_style(PixelUI.COMPONENT_MAJOR)
+	var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_PANEL.lerp(PixelUI.UI_ACCENT, 0.18), PixelUI.UI_PANEL, 0)
 	strip_style.set_content_margin(SIDE_TOP, 8.0)
 	strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
 	name_strip.add_theme_stylebox_override("panel", strip_style)
-	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, PixelUI.GOLD_ACCENT, 3))
+	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, PixelUI.UI_ACCENT, 0))
 	vbox.add_child(name_strip)
 
 	# Large relic art at integer scale (128 native -> 2x; the low-res
@@ -453,7 +462,7 @@ func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelConta
 	icon_holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	vbox.add_child(icon_holder)
 
-	vbox.add_child(_make_centered_label("RELIC", TYPE_HEADER_FONT, PixelUI.GOLD_ACCENT, 2))
+	vbox.add_child(_make_centered_label("RELIC", TYPE_HEADER_FONT, PixelUI.UI_ACCENT, 0))
 
 	var pip_row := HBoxContainer.new()
 	pip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -511,28 +520,23 @@ func _add_selection_brackets(panel: PanelContainer, selection_id: String, accent
 	_cards[selection_id] = {"panel": panel, "brackets": brackets, "accent": accent, "kind": kind}
 
 
-func _style_card_panel(panel: PanelContainer, accent: Color, selected: bool) -> void:
-	# Components: Reward (rarity accent) at rest, Selected (strong cyan) on pick —
-	# selection is the ONE cyan-border state, same read as squad tiles and battle
-	# cards. The rarity identity stays on the name/type text and icon.
-	var style: StyleBoxFlat
-	if selected:
-		style = PixelUI.component_style(PixelUI.COMPONENT_SELECTED)
-		style.bg_color = PixelUI.DT_PANEL_BG.lightened(0.05)
-	else:
-		style = PixelUI.component_style(PixelUI.COMPONENT_REWARD, accent)
-	panel.add_theme_stylebox_override("panel", style)
+func _style_card_panel(panel: PanelContainer, _accent: Color, selected: bool) -> void:
+	# UI restyle A selectable card: gray border at rest, accent border over a
+	# faint accent fill when picked. The rarity identity is the label color.
+	panel.add_theme_stylebox_override("panel", PixelUI.ui_card_style(selected))
+	var frame: Variant = panel.get_meta("art_frame") if panel.has_meta("art_frame") else null
+	if frame is PanelContainer and is_instance_valid(frame):
+		(frame as PanelContainer).add_theme_stylebox_override("panel", PixelUI.ui_art_frame_style(selected))
 
 
 func _style_relic_panel(panel: PanelContainer, selected: bool) -> void:
 	# Components: Major-event (ceremonial gold) at rest, Selected on pick —
 	# the selection language stays cyan even on the ceremonial tier.
-	var style: StyleBoxFlat
-	if selected:
-		style = PixelUI.component_style(PixelUI.COMPONENT_SELECTED)
-		style.bg_color = PixelUI.DT_PANEL_BG.lightened(0.05)
-	else:
-		style = PixelUI.component_style(PixelUI.COMPONENT_MAJOR)
+	# UI restyle A: the ceremonial tier keeps a dimmed accent frame at rest and
+	# takes the same selected-card state as ordinary rows when picked.
+	var style: StyleBoxFlat = PixelUI.ui_card_style(true)
+	if not selected:
+		style = PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.UI_ACCENT.darkened(0.35), PixelUI.MIN_STROKE)
 	panel.add_theme_stylebox_override("panel", style)
 
 
@@ -672,8 +676,10 @@ func _refresh_selection() -> void:
 			_style_relic_panel(entry["panel"], is_selected)
 		else:
 			_style_card_panel(entry["panel"], entry["accent"], is_selected)
+		# UI restyle A: the selected border and fill carry selection; the old
+		# cyan corner brackets stay registered but hidden.
 		for rect_variant in entry["brackets"]:
-			(rect_variant as ColorRect).visible = is_selected
+			(rect_variant as ColorRect).visible = false
 	_refresh_confirm()
 
 
@@ -690,8 +696,7 @@ func _build_view_battle_button() -> void:
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(0, VIEW_BATTLE_HEIGHT)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(button, Color(0.04, 0.09, 0.12, 0.96), PixelUI.DT_HERO_BORDER, VIEW_BATTLE_FONT)
-	button.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME)
+	PixelUI.style_ui_secondary_button(button, VIEW_BATTLE_FONT)
 	button.pressed.connect(_on_view_battle_pressed)
 	content_vbox.add_child(button)
 
@@ -733,13 +738,13 @@ func _refresh_confirm() -> void:
 	if armed:
 		# Requirement met → actionable teal primary button.
 		_confirm_button.text = "CONFIRM"
-		PixelUI.style_primary_button(_confirm_button, CONFIRM_FONT)
+		PixelUI.style_ui_primary_button(_confirm_button, CONFIRM_FONT)
 		_confirm_button.disabled = false
 		_confirm_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
 		# Requirement unmet → explicit progress-locked button (no border, dim text).
 		_confirm_button.text = "SELECT AN ITEM"
-		PixelUI.style_locked_button(_confirm_button, CONFIRM_FONT)
+		PixelUI.style_ui_secondary_button(_confirm_button, CONFIRM_FONT)
 		_confirm_button.disabled = true
 		_confirm_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -854,7 +859,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 		target_button.focus_mode = Control.FOCUS_NONE
 		target_button.custom_minimum_size = Vector2(0, GEAR_TARGET_BUTTON_HEIGHT)
 		target_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		PixelUI.style_button(target_button, Color(0.022, 0.034, 0.050, 0.95), _get_item_accent(item), GEAR_TARGET_BUTTON_FONT_SIZE)
+		PixelUI.style_ui_secondary_button(target_button, GEAR_TARGET_BUTTON_FONT_SIZE)
 		var captured_unit_id := unit_id
 		target_button.pressed.connect(func() -> void:
 			AudioManager.play_select()
@@ -1016,7 +1021,7 @@ func _run_unit_label(unit_id: String) -> String:
 # ─── Theme / tokens ─────────────────────────────────────────────────────────────
 func _apply_visual_theme() -> void:
 	# Direction-05: flat dark DT field (matches the battle screen), no bright grid.
-	background.color = Color(0.055, 0.070, 0.095, 1.0)
+	background.color = PixelUI.UI_BG
 	var pattern: Control = get_node_or_null("BackgroundPattern")
 	if pattern != null:
 		pattern.visible = false
@@ -1064,11 +1069,11 @@ func _apply_visual_theme() -> void:
 	footer_label.visible = true
 	footer_label.text = ""
 	footer_label.custom_minimum_size = Vector2(0, FOOTER_RESERVED_HEIGHT)
-	PixelUI.style_label(title_label, 44, PixelUI.GOLD_ACCENT, 2)
-	PixelUI.style_label(reward_title_label, 62, PixelUI.GOLD_ACCENT, 3)
-	PixelUI.style_label(summary_label, 32, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_label(inventory_label, 28, PixelUI.TEXT_MUTED, 1)
-	PixelUI.style_label(footer_label, FOOTER_FONT, PixelUI.TEXT_PRIMARY, 2)
+	PixelUI.style_label(title_label, 44, PixelUI.UI_ACCENT, 0)
+	PixelUI.style_label(reward_title_label, 72, PixelUI.UI_ACCENT, 0)
+	PixelUI.style_label(summary_label, 32, PixelUI.UI_TEXT, 0)
+	PixelUI.style_label(inventory_label, 28, PixelUI.UI_TEXT_DIM, 0)
+	PixelUI.style_label(footer_label, FOOTER_FONT, PixelUI.UI_TEXT, 0)
 	reward_content.add_theme_constant_override("separation", 18)
 	reward_cards.add_theme_constant_override("separation", 18)
 	reward_scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())

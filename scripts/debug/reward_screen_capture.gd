@@ -31,6 +31,8 @@ func _initialize() -> void:
 
 func _run_capture() -> void:
 	var config: Dictionary = _parse_args()
+	if config.has("window"):
+		load("res://scripts/debug/capture_window.gd").apply(root, config["window"])
 	if bool(config.get("native", false)):
 		DisplayServer.window_set_size(Vector2i(1080, 2400))
 	_prepare_run(config)
@@ -66,6 +68,10 @@ func _parse_args() -> Dictionary:
 			config["force_items"] = arg.get_slice("=", 1).split(",", false)
 		elif arg.begins_with("--capture-intercept-kind="):
 			config["intercept_kind"] = arg.get_slice("=", 1)
+		elif arg.begins_with("--capture-window="):
+			var parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
+			if parts.size() >= 2:
+				config["window"] = Vector2i(int(parts[0]), int(parts[1]))
 		elif arg == "--capture-native":
 			config["native"] = true
 	return config

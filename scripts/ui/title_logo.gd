@@ -45,6 +45,10 @@ var _motion_tweens: Array[Tween] = []
 
 func _ready() -> void:
 	SaveManager.setting_changed.connect(_on_setting_changed)
+	# UI restyle A: the reactor core and the PROTOCOL line read in UI_ACCENT.
+	_base.material = PixelUI.accent_tint_material(false)
+	_core_glow.material = PixelUI.accent_tint_material(true)
+	_proto_glow.material = PixelUI.accent_tint_material(true)
 	_rest_x = _stack.position.x
 	_update_pivot()
 	_stack.resized.connect(_update_pivot)

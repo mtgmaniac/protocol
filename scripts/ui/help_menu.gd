@@ -47,7 +47,7 @@ const HELP_KEYWORD_ICON := {
 }
 const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
-const SECTION_HEADER_COLOR := Color(0.72, 0.88, 1.0, 1.0)
+const SECTION_HEADER_COLOR := PixelUI.UI_TEXT
 
 static var _active: HelpMenu = null
 
@@ -170,7 +170,7 @@ func _build() -> void:
 	close_button.custom_minimum_size = Vector2(76, 70)
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_button(close_button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, 38)
+	PixelUI.style_ui_tab(close_button, false, 38)
 	close_button.pressed.connect(_with_click(HelpMenu.dismiss))
 
 	var tab_grid := GridContainer.new()
@@ -205,9 +205,9 @@ func _build() -> void:
 	root.add_child(_content_scroll)
 	var scrollbar := _content_scroll.get_v_scroll_bar()
 	scrollbar.custom_minimum_size.x = 18
-	scrollbar.add_theme_stylebox_override("scroll", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.LINE_DIM, 0))
+	scrollbar.add_theme_stylebox_override("scroll", PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.UI_PANEL, 0))
 	for state_name in ["grabber", "grabber_highlight", "grabber_pressed"]:
-		var color: Color = PixelUI.DT_HERO_BORDER if state_name == "grabber" else PixelUI.DT_CYAN
+		var color: Color = PixelUI.UI_LINE if state_name == "grabber" else PixelUI.UI_ACCENT
 		var style := PixelUI.make_hard_style(color, color, 0)
 		style.content_margin_left = 9
 		style.content_margin_right = 9
@@ -292,6 +292,8 @@ func _refresh_hover() -> void:
 	for node in find_children("*", "Button", true, false):
 		var button := node as Button
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		if button.has_meta("ui_styled"):
+			continue  # restyled components carry their own hover
 		button.add_theme_color_override("font_hover_color", PixelUI.DT_CYAN_BRIGHT)
 		var base := button.get_theme_stylebox("normal") as StyleBoxFlat
 		if base != null:
@@ -316,12 +318,8 @@ func _input(event: InputEvent) -> void:
 func _style_tab_button(button: Button, active: bool) -> void:
 	if button == null:
 		return
-	if active:
-		PixelUI.style_button(button, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, TAB_FONT)
-		button.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
-	else:
-		PixelUI.style_button(button, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
-		button.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
+	# UI restyle A tab component: equal-width boxes, the active one solid accent.
+	PixelUI.style_ui_tab(button, active, TAB_FONT)
 	_refresh_hover.call_deferred()
 
 
@@ -479,7 +477,7 @@ func _add_icon_guide_row(host: VBoxContainer, texture: Texture2D, title: String,
 	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_box.add_theme_constant_override("separation", 4)
 	row.add_child(text_box)
-	text_box.add_child(_make_wrap_label(title, SECTION_FONT, PixelUI.GOLD_ACCENT, 2))
+	text_box.add_child(_make_wrap_label(title, SECTION_FONT, PixelUI.UI_ACCENT, 2))
 	text_box.add_child(_make_body_label(description, PixelUI.TEXT_PRIMARY))
 
 
@@ -581,7 +579,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	text_box.add_theme_constant_override("separation", 2)
 	row.add_child(text_box)
 
-	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2))
+	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.UI_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2))
 	text_box.add_child(_make_body_label(str(kw.get("def", "")), PixelUI.TEXT_PRIMARY))
 	# No trailing syntax line (Kev 2026-07-10): it just repeated the keyword
 	# name under its own definition.
@@ -729,88 +727,90 @@ func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
 
 
 func _build_settings(host: VBoxContainer) -> void:
-	host.add_child(_make_label("AUDIO", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	# UI restyle A: section panels with row plates, toggles and sliders from the
+	# shared PixelUI components. Every setting, label and behavior is unchanged.
+	var audio: VBoxContainer = PixelUI.make_ui_section(host, "AUDIO")
 	# Four channel rows (slider + ON/OFF each): MUSIC on MusicManager; SOUND FX /
 	# DICE / UI on AudioManager buses. SOUND FX is the parent bus of DICE and UI,
 	# so its row scales/mutes both; their rows are independent trims.
 	var mm: Variant = _music()
 	var am: Variant = _audio()
-	_add_channel_row(host, "MUSIC",
+	_add_channel_row(audio, "MUSIC",
 		0.3 if mm == null else float(mm.get_music_volume()), _on_music_volume_changed,
 		mm == null or bool(mm.is_music_enabled()), _on_toggle_music)
-	_add_channel_row(host, "SOUND FX",
+	_add_channel_row(audio, "SOUND FX",
 		1.0 if am == null else float(am.get_channel_volume("SFX")), _on_channel_volume_changed.bind("SFX"),
 		am == null or bool(am.is_channel_enabled("SFX")), _on_channel_toggled.bind("SFX"))
-	_add_channel_row(host, "DICE",
+	_add_channel_row(audio, "DICE",
 		1.0 if am == null else float(am.get_channel_volume("DICE")), _on_channel_volume_changed.bind("DICE"),
 		am == null or bool(am.is_channel_enabled("DICE")), _on_channel_toggled.bind("DICE"))
-	_add_channel_row(host, "UI",
+	_add_channel_row(audio, "UI",
 		1.0 if am == null else float(am.get_channel_volume("UI")), _on_channel_volume_changed.bind("UI"),
 		am == null or bool(am.is_channel_enabled("UI")), _on_channel_toggled.bind("UI"))
-	_add_toggle_row(host, "Mute all audio", _audio_muted(), _on_toggle_mute)
+	_add_toggle_row(audio, "Mute all audio", _audio_muted(), _on_toggle_mute)
 
-	host.add_child(_make_label("ACCESSIBILITY", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var access: VBoxContainer = PixelUI.make_ui_section(host, "ACCESSIBILITY")
 	# Each row shows its OWN stored setting (No animations implies reduced
 	# motion in PixelUI, which must not flip the Reduced motion row).
-	_add_toggle_row(host, "Reduced motion", _setting_on("reduced_motion"), _on_toggle_reduced_motion)
-	host.add_child(_make_wrap_label("Less shake, flashing and zoom. Dice and results stay visible.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
-	_add_toggle_row(host, "No animations", _setting_on(PixelUI.NO_ANIMATIONS_SETTING),
-		_on_toggle_setting.bind(PixelUI.NO_ANIMATIONS_SETTING)).name = "NoAnimationsToggleRow"
-	host.add_child(_make_wrap_label("Effects appear at once with no movement or fading. Dice still roll.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
-	_add_toggle_row(host, "Auto-select sole valid target", _setting_on(AutoPick.SETTING),
-		_on_toggle_setting.bind(AutoPick.SETTING)).name = "AutoSelectToggleRow"
-	host.add_child(_make_wrap_label("When an action has only one valid target, it is picked for you.", BODY_FONT, PixelUI.INSPECT_TEXT_MUTED))
+	_add_toggle_row(access, "Reduced motion", _setting_on("reduced_motion"), _on_toggle_reduced_motion,
+		"Less shake, flashing and zoom. Dice and results stay visible.")
+	_add_toggle_row(access, "No animations", _setting_on(PixelUI.NO_ANIMATIONS_SETTING),
+		_on_toggle_setting.bind(PixelUI.NO_ANIMATIONS_SETTING),
+		"Effects appear at once with no movement or fading. Dice still roll.").name = "NoAnimationsToggleRow"
+	_add_toggle_row(access, "Auto-select sole valid target", _setting_on(AutoPick.SETTING),
+		_on_toggle_setting.bind(AutoPick.SETTING),
+		"When an action has only one valid target, it is picked for you.").name = "AutoSelectToggleRow"
 
 	# --- Tutorials (Kev 2026-07-10) ---
-	host.add_child(_make_label("TUTORIALS", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var tutorials: VBoxContainer = PixelUI.make_ui_section(host, "TUTORIALS")
 	var sm_t: Variant = _save_manager()
 	var primers_on: bool = sm_t == null or bool(sm_t.get_setting("ability_primers_enabled", true))
-	_add_toggle_row(host, "One-time ability tips (keyword primers)", primers_on, _on_toggle_ability_primers)
+	_add_toggle_row(tutorials, "One-time ability tips (keyword primers)", primers_on, _on_toggle_ability_primers)
 
 	# --- Feedback (mirrors the main-menu FEEDBACK button; one URL, feedback.gd) ---
-	host.add_child(_make_label("FEEDBACK", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+	var feedback: VBoxContainer = PixelUI.make_ui_section(host, "FEEDBACK")
 	var feedback_btn := _make_dev_button("SEND FEEDBACK", true)
 	feedback_btn.pressed.connect(_with_click(_on_send_feedback))
-	host.add_child(feedback_btn)
+	feedback.add_child(feedback_btn)
 
 	var header: Variant = get_node_or_null("/root/PersistentHeader")
 	if header != null and header.dev_tools_unlocked:
 		# --- Dev tools ---
-		host.add_child(_make_label("DEV", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+		var dev: VBoxContainer = PixelUI.make_ui_section(host, "DEV")
 		# Developer mode: shows the header debug buttons (hidden by default for
 		# non-dev hands — UI review DB-1). Available for this session after seven taps on the operation title.
 		var sm: Variant = _save_manager()
 		var dev_mode_on: bool = header.dev_mode_enabled
-		_add_toggle_row(host, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
+		_add_toggle_row(dev, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
 		var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
 		unlock_btn.pressed.connect(_with_click(_on_dev_unlock_all))
-		host.add_child(unlock_btn)
+		dev.add_child(unlock_btn)
 		_reset_armed = false
 		_reset_dev_button = _make_dev_button("RESET SAVE PROFILE (DEV)", true)
 		_reset_dev_button.pressed.connect(_with_click(_on_dev_reset_profile))
-		host.add_child(_reset_dev_button)
+		dev.add_child(_reset_dev_button)
 		# Clears only onboarding.primers_seen — every keyword primer fires fresh again.
 		var reset_primers_btn := _make_dev_button("RESET PRIMERS (DEV)", false)
 		reset_primers_btn.pressed.connect(_with_click(_on_dev_reset_primers))
-		host.add_child(reset_primers_btn)
+		dev.add_child(reset_primers_btn)
 		# Exports the saved run, profile, live state and recent errors as one
 		# pasteable line (StateCode). Synchronous in the tap for the web clipboard.
 		var state_code_btn := _make_dev_button("COPY STATE CODE (DEV)", false)
 		state_code_btn.name = "StateCodeButton"
 		state_code_btn.pressed.connect(func() -> void: StateCodePanel.open(self))
-		host.add_child(state_code_btn)
+		dev.add_child(state_code_btn)
 
 		# --- Debug (Build #3) --- STRUCTURALLY absent outside debug builds: the
 		# section is never instantiated in release, so a player cannot reach it.
 		# Both sections require the session unlock.
 		if _is_debug_build():
-			host.add_child(_make_label("DEBUG", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+			var debug: VBoxContainer = PixelUI.make_ui_section(host, "DEBUG")
 			var overlay_default: bool = bool(ProjectSettings.get_setting("overload/debug/safe_area_overlay", false))
 			var overlay_on: bool = sm != null and bool(sm.get_setting("safe_area_overlay", overlay_default))
-			var row: HBoxContainer = _add_toggle_row(host, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
+			var row: HBoxContainer = _add_toggle_row(debug, "Safe-area / font diagnostic overlay", overlay_on, _on_toggle_safe_area_overlay)
 			row.name = "DebugOverlayToggleRow"
 			var policy = preload("res://scripts/battle/battle_layout_policy.gd")
-			host.add_child(_make_label("BATTLE LAYOUT (NEXT BATTLE)", SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
+			var layout_section: VBoxContainer = PixelUI.make_ui_section(host, "BATTLE LAYOUT (NEXT BATTLE)")
 			var layout_group := ButtonGroup.new()
 			for mode in ["AUTO", "FORCE PORTRAIT", "FORCE LANDSCAPE"]:
 				var index: int = ["AUTO", "FORCE PORTRAIT", "FORCE LANDSCAPE"].find(mode)
@@ -822,7 +822,7 @@ func _build_settings(host: VBoxContainer) -> void:
 				button.pressed.connect(_with_click(func() -> void:
 					policy.dev_override = index
 				))
-				host.add_child(button)
+				layout_section.add_child(button)
 
 	# Version footer — PixelUI.version_label() (project.godot config/version is
 	# the single source; never hardcode the string). Nominal 24 renders at the
@@ -830,7 +830,7 @@ func _build_settings(host: VBoxContainer) -> void:
 	# 2026-07-24 below-floor ruling).
 	var version_label: Label = _make_label(
 		PixelUI.version_label(),
-		24, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 0)
+		24, PixelUI.UI_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 0)
 	host.add_child(version_label)
 
 
@@ -911,8 +911,12 @@ func _make_dev_button(text: String, amber: bool) -> Button:
 	btn.custom_minimum_size = Vector2(0, 110)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Kev 2026-07-10: settings buttons + text sized up for phone hands.
-	PixelUI.style_primary_button(btn, 44, amber)
+	# Kev 2026-07-10: settings buttons + text sized up for phone hands. UI
+	# restyle A: the accent variant is the primary component, the rest secondary.
+	if amber:
+		PixelUI.style_ui_primary_button(btn, 44)
+	else:
+		PixelUI.style_ui_secondary_button(btn, 44)
 	return btn
 
 
@@ -930,7 +934,7 @@ func _on_dev_reset_profile() -> void:
 	if not _reset_armed:
 		_reset_armed = true
 		_reset_dev_button.text = "SELECT AGAIN TO CONFIRM"
-		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
+		PixelUI.style_ui_primary_button(_reset_dev_button, BODY_FONT)
 		_disarm_reset_after_delay()
 		return
 	var sm: Variant = _save_manager()
@@ -948,7 +952,7 @@ func _disarm_reset_after_delay() -> void:
 	if _reset_armed and is_instance_valid(_reset_dev_button):
 		_reset_armed = false
 		_reset_dev_button.text = "RESET SAVE PROFILE (DEV)"
-		PixelUI.style_primary_button(_reset_dev_button, BODY_FONT, true)
+		PixelUI.style_ui_primary_button(_reset_dev_button, BODY_FONT)
 
 
 # Live AudioManager node (Variant) so this compiles even when the autoload is absent
@@ -1013,26 +1017,35 @@ func _on_channel_toggled(pressed: bool, channel: String) -> void:
 		am.set_channel_enabled(channel, pressed)
 
 
-# A label + ON/OFF toggle button row, styled like the active/inactive tab buttons.
-# Returns the row so callers may name/inspect it (Build #3: the DEBUG overlay
-# row is asserted structurally absent in release by the safe-area test).
-func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, on_toggle: Callable) -> HBoxContainer:
+# A label + ON/OFF toggle row on a row plate, with an optional one-line
+# description under the label. Returns the row so callers may name/inspect it
+# (Build #3: the DEBUG overlay row is asserted structurally absent in release by
+# the safe-area test).
+func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, on_toggle: Callable, description: String = "") -> HBoxContainer:
+	var plate: PanelContainer = PixelUI.make_ui_row()
+	parent.add_child(plate)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 12)
-	parent.add_child(row)
+	plate.add_child(row)
 
-	var label := _make_wrap_label(label_text, 40, PixelUI.TEXT_PRIMARY, 2)
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(label)
+	var text := VBoxContainer.new()
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	text.add_theme_constant_override("separation", 4)
+	row.add_child(text)
+	text.add_child(_make_wrap_label(label_text, 40, PixelUI.UI_TEXT, 0))
+	if description != "":
+		text.add_child(_make_wrap_label(description, BODY_FONT, PixelUI.UI_TEXT_DIM, 0))
 
 	var btn := Button.new()
 	btn.toggle_mode = true
 	btn.button_pressed = initial
-	btn.custom_minimum_size = Vector2(190, 96)
+	btn.custom_minimum_size = Vector2(170, 88)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_toggle_button(btn)
 	btn.toggled.connect(func(pressed: bool) -> void:
@@ -1043,18 +1056,21 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	return row
 
 
-# One audio channel row: label + slider + ON/OFF toggle on a single line, so the
-# four channels (MUSIC / SOUND FX / DICE / UI) stack without pushing the section
-# below the fold. Slider live-applies on drag; toggle is the channel mute.
+# One audio channel row on a row plate: label + slider + ON/OFF toggle on a
+# single line, so the four channels (MUSIC / SOUND FX / DICE / UI) stack without
+# pushing the section below the fold. Slider live-applies on drag; toggle is the
+# channel mute.
 func _add_channel_row(parent: VBoxContainer, label_text: String, initial_volume: float,
 		on_volume: Callable, initial_on: bool, on_toggle: Callable) -> void:
+	var plate: PanelContainer = PixelUI.make_ui_row()
+	parent.add_child(plate)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 12)
-	parent.add_child(row)
+	row.add_theme_constant_override("separation", 16)
+	plate.add_child(row)
 
-	var label := _make_wrap_label(label_text, 40, PixelUI.TEXT_PRIMARY, 2)
+	var label := _make_wrap_label(label_text, 40, PixelUI.UI_TEXT, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(label)
@@ -1064,8 +1080,9 @@ func _add_channel_row(parent: VBoxContainer, label_text: String, initial_volume:
 	var btn := Button.new()
 	btn.toggle_mode = true
 	btn.button_pressed = initial_on
-	btn.custom_minimum_size = Vector2(160, 96)
+	btn.custom_minimum_size = Vector2(150, 88)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_style_toggle_button(btn)
 	btn.toggled.connect(func(pressed: bool) -> void:
@@ -1089,22 +1106,8 @@ func _make_volume_slider(initial: float, on_change: Callable) -> HSlider:
 	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slider.mouse_filter = Control.MOUSE_FILTER_STOP
 	slider.focus_mode = Control.FOCUS_NONE
-	# The track/fill styleboxes need explicit content height or HSlider draws them
-	# as a hairline. 32 design px → 16 window px at the half-scale preview.
-	var track := PixelUI.make_hard_style(PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, 2)
-	track.content_margin_top = 16
-	track.content_margin_bottom = 16
-	# Slider fill is a CONTROL accent (button-family teal tokens), not a panel
-	# frame — strong cyan panel borders stay Selected-only.
-	var fill := PixelUI.make_hard_style(PixelUI.BTN_PRIMARY_BG_HOVER, PixelUI.BTN_TEAL_BORDER, 2)
-	fill.content_margin_top = 16
-	fill.content_margin_bottom = 16
-	slider.add_theme_stylebox_override("slider", track)
-	slider.add_theme_stylebox_override("grabber_area", fill)
-	slider.add_theme_stylebox_override("grabber_area_highlight", fill)
-	slider.add_theme_icon_override("grabber", _slider_grabber_icon())
-	slider.add_theme_icon_override("grabber_highlight", _slider_grabber_icon())
-	slider.add_theme_icon_override("grabber_disabled", _slider_grabber_icon())
+	# Amber filled track, dark empty track, amber rectangular thumb (UI restyle A).
+	PixelUI.style_ui_slider(slider)
 	slider.value_changed.connect(on_change)
 	# One click when a drag or track tap settles on a new value — not per
 	# value_changed step, which would machine-gun through the debounce.
@@ -1114,26 +1117,8 @@ func _make_volume_slider(initial: float, on_change: Callable) -> HSlider:
 	return slider
 
 
-var _grabber_icon: ImageTexture
-
-
-func _slider_grabber_icon() -> Texture2D:
-	if _grabber_icon == null:
-		var img := Image.create(28, 64, false, Image.FORMAT_RGBA8)
-		img.fill(PixelUI.DT_CYAN)
-		_grabber_icon = ImageTexture.create_from_image(img)
-	return _grabber_icon
-
-
 func _style_toggle_button(btn: Button) -> void:
-	if btn.button_pressed:
-		PixelUI.style_button(btn, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, TAB_FONT)
-		btn.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
-		btn.text = "ON"
-	else:
-		PixelUI.style_button(btn, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
-		btn.add_theme_color_override("font_color", PixelUI.TEXT_MUTED)
-		btn.text = "OFF"
+	PixelUI.style_ui_toggle(btn, TAB_FONT)
 
 
 # ── Shared builders ─────────────────────────────────────────────────────────────
@@ -1159,7 +1144,7 @@ func _add_bullet(parent: VBoxContainer, text: String) -> void:
 	# row height and center itself against a wrapped bullet. SHRINK_BEGIN pins
 	# its one-line box to the top of the row; the body tier font matches the
 	# prose line box so the two first lines share a baseline.
-	var bullet := _make_label(">", BODY_LONG_FONT, PixelUI.GOLD_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2)
+	var bullet := _make_label(">", BODY_LONG_FONT, PixelUI.UI_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2)
 	bullet.custom_minimum_size = Vector2(30, 0)
 	bullet.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	bullet.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -1380,7 +1365,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_constant_override("separation", 10)
 	entry.add_child(head)
-	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.GOLD_ACCENT, 2)
+	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.UI_ACCENT, 2)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(name_label)
 	var hp_label := _make_label("%d HP" % hp, BODY_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_RIGHT, 1)
