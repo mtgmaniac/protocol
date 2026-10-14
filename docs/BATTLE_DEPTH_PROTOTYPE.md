@@ -125,3 +125,98 @@ CLOSEOUT: TRUTH and DECISIONS_RESOLVED updated. Nothing committed: the work is
 uncommitted on `proto/battle-depth-v2` for review. Captures:
 `debug_artifacts/battle_depth_v2.png` and `battle_depth_v2_flat.png` (390 px wide,
 the same roll), with 1080 px copies in `debug_artifacts/battle_depth_v2/`.
+
+---
+
+# Battle depth prototype v3 (rendering only), 2026-10-13
+
+TASK: Push the scene toward the reference mood (composition, atmosphere,
+layering; not its painterly rendering) and make the die tags transparent again,
+on `proto/battle-depth-v3`. Then stop for a feel review.
+
+STEP 0 - CONTEXT: v2 was committed first, as asked: `aaed29a` (the ProtocolPips
+fix alone) and `f2b2beb` (the rest of v2). The v2 TRUTH.md and DECISIONS_RESOLVED.md
+edits stay uncommitted and untouched; this log is the only record of v3. Dice
+rulings re-read; nothing here touches them. The reference is
+`debug_artifacts/battle_depth_v2/reference_chatgpt_mockup.png`.
+`assets/fonts/battle_block.svg.import` was already modified in the working tree
+by something other than this task; it is left out of every commit.
+
+CONSTRAINTS: As v2 (INVARIANTS #1, #7, #11, #13, #14; Dice rules 1 to 10). No
+dice physics, tray bounds, gameplay, balance data, copy, card or footer change.
+Die tags go back to transparent (the 2026-07-09 ruling); the v2 plate survives
+only behind F8. No verify_gate and no dice face gate: a boot/smoke check only.
+
+CHANGE:
+- **Full-bleed scene** (`scripts/ui/battle_bay_floor.gd`, rewritten). It now sits
+  behind the whole board, not in the tray: a back wall behind the enemy cards
+  (slab texture, a ledge at its foot, a rust run near the top right), slab side
+  walls down both edges with horizontal seams toward the vanishing point and four
+  lit amber window slots near the top, and one floor that runs from the back wall
+  through the tray and on under the hero cards, widening the whole way. The floor
+  edges are the same lines the dice are clamped to, so a die meets the floor's
+  edge where it bounces. The tray's frame and fill are off while the scene is on.
+- **Pixel grid.** BattleLayout puts the painter in a SubViewport a quarter of the
+  screen's size, shown 4x with NEAREST, so every slanted edge, step and warped
+  texel is one art pixel (4 design px), like the portraits. No gradients; the only
+  soft edges are the dice's contact shadows.
+- **Floor:** flat dark panels (`placeholder_facility_floor_panels.png`) in
+  perspective, darker toward the back in flat bands; a dark seam plus short amber
+  hazard dashes on both slanted edges.
+- **Reticle decal** (`placeholder_reactor_reticle_decal.png`): the logo's reactor
+  emblem at the centre with its core as a filled disc, a dashed inner ring, a
+  four-arc outer ring and crosshair ticks. Tinted with the operation accent at
+  22%, under the dice and shadows.
+- **Vignette:** hard steps of black (`PixelUI.BATTLE_VIGNETTE_STEPS`) toward both
+  screen edges, around both card rows (lighter), and under both die tag rows
+  (the back wall's foot and the floor's front edge, which is the darker edge
+  where the floor meets the hero row).
+- **Header:** the battle count is a second label in the operation accent, and a
+  4 px rule runs under the title to the buttons. Both are off outside battle and
+  with the scene off. No other header change.
+- **Transparent die tags:** no plate; every icon gets a hard dark outline (eight
+  black copies one 4 px step out, behind it) and every digit a dark text outline
+  (`PixelUI.make_battle_tag_field`). Sizes, positions and content are unchanged.
+  F8 restores the v2 plate. F6 and F7 still switch the scene and the decal.
+- **Data** (`data/raw/battle-tray-scenes.json`): per operation, `wall_texture`,
+  `floor_texture`, `accent` (decal and battle count), `edge_accent` (hazard dashes
+  and window slots) and `streak`, all PixelUI token names. Facility filled; Hive,
+  Veil and the fallback stay bare stubs. The v2 conveyor wall art and grating are
+  deleted: the wall strip where they sat now carries the enemy tags.
+- New art comes from `debug_artifacts/battle_depth_v3/make_placeholder_art_v3.py`
+  (PLACEHOLDER, scripted). `reactor_emblem_decal.png` stays as the reticle's source.
+- `scripts/debug/battle_ui_capture.gd`: `--capture-depth-plates-output=` (the same
+  frame with F8 on), `--capture-depth-flat-output=` (then scene and decal off), and
+  `--capture-mid-roll-ms=` (press Roll, capture mid-throw).
+
+VERIFY:
+- Boot: `BattleScene.tscn` loads headless, no script errors. Four rendered captures
+  at 390x867 completed with no errors.
+- `component_contract.py`: PASS. `battle_scene_growth.py`: 3,639 lines (watermark
+  3,640). `git diff --check`: clean.
+- Dice code is untouched since v2 (`dice_tray_3d.gd` unchanged), so the v2 probe
+  and dice face results stand; not re-run.
+
+REPORT:
+- Deliverables (390 px wide, `debug_artifacts/battle_depth_v3/`):
+  `battle_depth_v3.png`, `battle_depth_v3_plates.png` and `battle_depth_v3_flat.png`
+  are the same frame; `battle_depth_v3_tumble.png` is 380 ms into a throw.
+- **"BATTLE RESUMED" banner over the enemy dice: it happens on main too.** The
+  banner code (`BattleFeedback.show_resume_callout`) is identical on main. It is
+  placed 24 px below the top of the centre panel, which is the enemy dice row.
+  Running the checkpoint save and resume legs windowed on a scratch main worktree,
+  the banner sits across both enemy dice:
+  `debug_artifacts/battle_depth_v3/resume_banner_main.png` (main) and
+  `resume_banner_v3.png` (this branch). Not fixed. Separately, those windowed resume
+  legs fail their own "banner names the restored round" check on main and here
+  alike (they resumed round 2 and round 1); not investigated.
+- Could not / did not:
+  - The mockup's header has no box; ours keeps its framed band (no other header
+    change was allowed), so the scene starts below it and the rust run starts at
+    the header's bottom edge, visible only between the enemy cards.
+  - With three enemies the middle card covers the rust run.
+  - Most of the back wall sits behind the enemy cards; only the strip below them,
+    the gap between them and the side walls show.
+  - Tag row darkening is placed by fixed shares of the tray height, not read from
+    the live tags. It matches the measured rows at the shipped layout.
+  - F6, F7 and F8 are keyboard only.

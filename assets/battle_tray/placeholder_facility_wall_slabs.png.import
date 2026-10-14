@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://iupx7hf3lv35"
-path="res://.godot/imported/placeholder_facility_wall.png-8941ac9842b4a2819610aacc13c97807.ctex"
+uid="uid://d0jsuyde8jqk"
+path="res://.godot/imported/placeholder_facility_wall_slabs.png-e5a1ca05a873fa3b88225d8915190c45.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle_tray/placeholder_facility_wall.png"
-dest_files=["res://.godot/imported/placeholder_facility_wall.png-8941ac9842b4a2819610aacc13c97807.ctex"]
+source_file="res://assets/battle_tray/placeholder_facility_wall_slabs.png"
+dest_files=["res://.godot/imported/placeholder_facility_wall_slabs.png-e5a1ca05a873fa3b88225d8915190c45.ctex"]
 
 [params]
 

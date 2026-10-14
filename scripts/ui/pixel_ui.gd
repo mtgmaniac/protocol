@@ -31,19 +31,30 @@ const BATTLE_PROTO_EMPTY := Color("181e21")
 const BATTLE_PANEL_FILL := Color("11191e")
 const BATTLE_INNER_EDGE := Color("06090b")
 const BATTLE_TRAY_FILL := Color("11171b")
-# Battle depth prototype v2: one tray scene, dark and low-contrast under the dice
-# (docs/BATTLE_DEPTH_PROTOTYPE.md). Per-operation art and the edge accent token
-# come from data/raw/battle-tray-scenes.json.
-const BATTLE_BAY_FLOOR := Color("192025")
-const BATTLE_BAY_WALL := Color("0c1114")
-const BATTLE_BAY_WALL_BACK := Color("121a1f")
-const BATTLE_BAY_SEAM := Color("172026")
+# Battle depth prototype v3: the full-screen battle scene, warm charcoal and kept
+# dark so cards and dice carry the contrast (docs/BATTLE_DEPTH_PROTOTYPE.md).
+# Per-operation textures and accent tokens come from data/raw/battle-tray-scenes.json.
+const BATTLE_BAY_VOID := Color("0a0a0b")
+const BATTLE_BAY_FLOOR := Color("201f1d")
+const BATTLE_BAY_WALL := Color("141415")
+const BATTLE_BAY_WALL_BACK := Color("171718")
+const BATTLE_BAY_SEAM := Color("0e0e0f")
+const BATTLE_BAY_LEDGE := Color("252524")
 const BATTLE_BAY_AMBER := Color("685035")
-const BATTLE_BAY_AMBER_LIT := Color("8e6a36")
-const BATTLE_BAY_DECAL_ALPHA := 0.15
+const BATTLE_BAY_AMBER_LIT := Color("9a7038")
+const BATTLE_BAY_WINDOW_FRAME := Color("221a14")
+const BATTLE_BAY_RUST := Color("4e2817")
+const BATTLE_BAY_RUST_LIT := Color("7a3d1f")
+const BATTLE_BAY_DECAL_ALPHA := 0.22
+const BATTLE_HEADER_RULE := Color("3a454c")
 const BATTLE_BAY_SHADOW_ALPHA := 0.85
-# Die tags sit on a solid plate so the scene never runs behind a number.
+# The vignette: hard-edged steps of black, darkest first (no smooth ramp).
+const BATTLE_VIGNETTE_STEPS: Array[float] = [0.42, 0.26, 0.12]
+# Die tags: transparent over the scene (2026-07-09 ruling); F8 brings the v2
+# plate back for A/B. Icons get a hard dark pixel outline instead.
 const BATTLE_TAG_PLATE := Color("06090b")
+const BATTLE_TAG_OUTLINE := Color("050506")
+const BATTLE_TAG_OUTLINE_PX := 4
 # The draw-time projection (scripts/ui/battle_depth.gd reads these). Die scale at
 # the tray's back and front edge; the floor's width at the back edge as a share
 # of the front; how far the back edge is pushed down; where the back wall ends.
@@ -389,13 +400,50 @@ static func battle_tag_plate_style() -> StyleBoxFlat:
 	return style
 
 
-## The container a die tag's pip rows go in. `plated` is false where the tag
-## keeps reading straight over the tray (the parked landscape presentation).
-static func make_battle_tag_field(plated: bool) -> PanelContainer:
+## The container a die tag's pip rows go in. `plated` puts the v2 solid plate
+## behind them; `outlined` (the transparent v3 tag, 2026-07-09 ruling) gives
+## every icon and digit a hard dark pixel outline instead. Landscape: neither.
+static func make_battle_tag_field(plated: bool, outlined: bool = false) -> PanelContainer:
 	var field := PanelContainer.new()
 	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	field.add_theme_stylebox_override("panel", battle_tag_plate_style() if plated else battle_layout_style())
+	if outlined:
+		# The pips are added after the field is built; outline them once they are in.
+		field.ready.connect(_outline_tag.bind(field), CONNECT_ONE_SHOT)
 	return field
+
+
+const _TAG_OUTLINE_DIRECTIONS: Array[Vector2] = [
+	Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0),
+	Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1)]
+
+
+static func _outline_tag(node: Node) -> void:
+	for child in node.get_children():
+		_outline_tag(child)
+	if node is Label:
+		node.add_theme_color_override("font_outline_color", BATTLE_TAG_OUTLINE)
+		node.add_theme_constant_override("outline_size", BATTLE_TAG_OUTLINE_PX * 2)
+	elif node is TextureRect:
+		var icon := node as TextureRect
+		# Eight black copies one outline step out, drawn behind the icon. The
+		# icon's tint multiplies into them and stays black.
+		for direction: Vector2 in _TAG_OUTLINE_DIRECTIONS:
+			var copy := TextureRect.new()
+			copy.texture = icon.texture
+			copy.expand_mode = icon.expand_mode
+			copy.stretch_mode = icon.stretch_mode
+			copy.texture_filter = icon.texture_filter
+			copy.self_modulate = BATTLE_TAG_OUTLINE
+			copy.show_behind_parent = true
+			copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			icon.add_child(copy)
+			var shift: Vector2 = direction * BATTLE_TAG_OUTLINE_PX
+			copy.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			copy.offset_left = shift.x
+			copy.offset_right = shift.x
+			copy.offset_top = shift.y
+			copy.offset_bottom = shift.y
 
 
 static func battle_tray_style(frame_only: bool = false) -> StyleBoxTexture:

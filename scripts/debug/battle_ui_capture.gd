@@ -29,21 +29,22 @@ func _run_capture() -> void:
 		quit(1)
 		return
 	print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % absolute_output)
-	if config.has("depth_flat_output"):
-		var depth: Script = load("res://scripts/ui/battle_depth.gd")
-		depth.set("backdrop_on", false)
-		depth.set("decal_on", false)
-		var bay: CanvasItem = current_scene.find_child("EnvironmentalBay", true, false) as CanvasItem
-		if bay != null:
-			bay.queue_redraw()
-		for _frame in range(4):
-			await process_frame
-		var flat_output: String = _resolve_output_path(str(config["depth_flat_output"]))
-		if _capture_viewport_to_file(flat_output) != OK:
-			push_error("Battle UI capture failed: flat depth frame")
+	var depth: Script = load("res://scripts/ui/battle_depth.gd")
+	for step: Array in [["depth_plates_output", "plates_on", true], ["depth_flat_output", "backdrop_on", false]]:
+		if not config.has(step[0]):
+			continue
+		depth.set(step[1], step[2])
+		if step[1] == "backdrop_on":
+			depth.set("decal_on", false)
+		current_scene.get("_layout").call("refresh_depth_scene")
+		# Die tags rebuild on the scene's next frames; let them land and draw.
+		await create_timer(0.5).timeout
+		var extra_output: String = _resolve_output_path(str(config[step[0]]))
+		if _capture_viewport_to_file(extra_output) != OK:
+			push_error("Battle UI capture failed: %s" % step[0])
 			quit(1)
 			return
-		print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % flat_output)
+		print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % extra_output)
 	quit(0)
 
 
@@ -119,10 +120,16 @@ func _parse_args() -> Dictionary:
 			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
 			if window_parts.size() >= 2:
 				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		elif arg.begins_with("--capture-depth-plates-output="):
+			# Depth prototype A/B: after the normal capture, save the SAME frame
+			# again with the die tag plates on (F8).
+			config["depth_plates_output"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-depth-flat-output="):
-			# Depth prototype v2 A/B: after the normal capture, save the SAME
-			# frame again with the tray scene and floor decal off (F6 + F7).
+			# ...and again with the scene and the floor decal off (F6 + F7).
 			config["depth_flat_output"] = arg.get_slice("=", 1)
+		elif arg.begins_with("--capture-mid-roll-ms="):
+			# Press Roll and capture this many ms later, dice in the air.
+			config["mid_roll_ms"] = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--capture-enemy-roll="):
 			# "Display Name:roll" pins that enemy's die (UI batch readout captures).
 			config["enemy_roll"] = arg.get_slice("=", 1)
@@ -271,6 +278,12 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 			break
 	await create_timer(float(delay_ms) / 1000.0).timeout
 	var debug_log_enabled: bool = bool(config.get("debug_log", false))
+	if config.has("mid_roll_ms"):
+		var roll: Button = current_scene.get_node_or_null("%RollButton") as Button
+		if roll != null and roll.visible and not roll.disabled:
+			roll.emit_signal("pressed")
+			await create_timer(float(config["mid_roll_ms"]) / 1000.0).timeout
+		return
 	if bool(config.get("rolled", DEFAULT_CAPTURE_ROLLED)):
 		await _capture_after_roll(debug_log_enabled)
 	var lock_count: int = int(config.get("lock_targets", DEFAULT_CAPTURE_LOCK_TARGETS))

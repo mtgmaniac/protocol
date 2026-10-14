@@ -67,6 +67,11 @@ var _help_action := Callable()
 var _debug_action := Callable()
 var _debug2_action := Callable()
 var _back_action := Callable()
+# Battle depth prototype v3: the battle count in the operation's accent, and a
+# thin rule under the title. Off (transparent) unless the battle scene sets it.
+var _count_tint := Color.TRANSPARENT
+var _count_label: Label = null
+var _progress: Array = []
 
 
 func _ready() -> void:
@@ -77,6 +82,15 @@ func _ready() -> void:
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_background.draw.connect(_draw_battle_frame)
+	_count_label = Label.new()
+	_count_label.name = "CountLabel"
+	_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_count_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_count_label.visible = false
+	_summary_label.add_sibling(_count_label)
+	(_bar as Container).sort_children.connect(_background.queue_redraw)
 	_style()
 	# The "?" opens the shared HelpMenu on every screen (battle, squad picker, …). The help
 	# content is screen-agnostic, so it no longer needs a per-screen binding.
@@ -201,6 +215,11 @@ func _style() -> void:
 		PixelUI.style_battle_text(_summary_label)
 	else:
 		_summary_label.remove_theme_color_override("font_shadow_color")
+	if _count_label != null:
+		PixelUI.apply_pixel_font(_count_label)
+		_count_label.add_theme_font_size_override("font_size", _battle_style.get("header_font", SUMMARY_FONT_SIZE))
+		PixelUI.style_battle_text(_count_label, _count_tint)
+	_refresh_summary()
 	_background.queue_redraw()
 	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
 	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
@@ -214,6 +233,36 @@ func _draw_battle_frame() -> void:
 	if _battle_visuals:
 		var frame := PixelUI.battle_strip_style()
 		_background.draw_style_box(frame, Rect2(Vector2.ZERO, _background.size))
+		if _count_tint.a > 0.0:
+			# The thin rule under the title, from the bar's edge to the buttons.
+			var right: float = _bar.position.x + (_bar.get_node("ButtonRow") as Control).position.x - BAR_PAD_X
+			_background.draw_rect(Rect2(_bar.position.x, HEADER_HEIGHT - HEADER_RULE_INSET, right - _bar.position.x, HEADER_RULE_PX), PixelUI.BATTLE_HEADER_RULE)
+
+
+const HEADER_RULE_PX := 4.0
+const HEADER_RULE_INSET := 24.0
+
+
+## Battle depth prototype v3: tints the battle count and shows the rule under the
+## title. Color.TRANSPARENT turns both off.
+func set_count_tint(tint: Color) -> void:
+	_count_tint = tint
+	_style()
+
+
+func _refresh_summary() -> void:
+	if _summary_label == null or _count_label == null:
+		return
+	var split: bool = _battle_visuals and _count_tint.a > 0.0 and not _progress.is_empty()
+	_count_label.visible = split
+	_summary_label.size_flags_horizontal = Control.SIZE_FILL if split else Control.SIZE_EXPAND_FILL
+	# A trimming label asks for no width, so unsplit it would vanish beside the count.
+	_summary_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING if split else TextServer.OVERRUN_TRIM_ELLIPSIS
+	if _progress.is_empty():
+		return
+	var count: String = "%d/%d" % [_progress[0], _progress[1]]
+	_summary_label.text = "%s " % _progress[2] if split else "%s  %s" % [_progress[2], count]
+	_count_label.text = count
 
 
 # ─────────────────────────── Public API ───────────────────────────
@@ -223,13 +272,17 @@ func _draw_battle_frame() -> void:
 func update_progress(battle_number: int, total_battles: int, operation_name: String) -> void:
 	if _summary_label == null:
 		return
+	_progress = [battle_number, total_battles, operation_name]
 	_summary_label.text = "%s  %d/%d" % [operation_name, battle_number, total_battles]
+	_refresh_summary()
 
 
 ## A bare run label with no battle count (the tutorial reads just "TUTORIAL").
 func set_run_label(text: String) -> void:
 	if _summary_label == null:
 		return
+	_progress = []
+	_refresh_summary()
 	_summary_label.text = text
 
 
@@ -238,6 +291,8 @@ func set_run_active(active: bool) -> void:
 	if _summary_label == null:
 		return
 	if not active:
+		_progress = []
+		_refresh_summary()
 		_summary_label.text = ""
 
 
@@ -255,6 +310,7 @@ func bind_battle_actions(help: Callable, debug: Callable, debug2: Callable, back
 ## Called by BattleScene._exit_tree so the buttons go inert off-battle.
 func clear_battle_actions() -> void:
 	_battle_visuals = false
+	_count_tint = Color.TRANSPARENT
 	_style()
 	_help_action = Callable()
 	_debug_action = Callable()

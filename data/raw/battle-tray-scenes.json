@@ -1,30 +1,38 @@
 {
-  "_about": "Battle depth prototype v2. One dice-tray scene per operation: the back-wall art slot, the floor material and the floor edge accent. `edge_accent` names a PixelUI colour token, never a hex. An entry with empty fields draws the bare bay (plain floor, empty wall, no accent). Operations without an entry use `fallback`.",
+  "_about": "Battle depth prototype v3. One full-screen battle scene per operation: wall and floor textures, the accent (floor decal and the header's battle count), the floor's hazard edging and window slots, and the back-wall streak. Colours are PixelUI token names, never hexes. Empty fields draw the bare scene (plain walls and floor, no accents). Operations without an entry use `fallback`.",
   "fallback": "bare",
   "scenes": {
     "facility": {
-      "label": "Foundry line (PLACEHOLDER art)",
-      "wall_art": "res://assets/battle_tray/placeholder_facility_wall.png",
-      "floor_texture": "res://assets/battle_tray/placeholder_facility_floor.png",
-      "edge_accent": "BATTLE_BAY_AMBER"
+      "label": "Foundry hall (PLACEHOLDER art)",
+      "wall_texture": "res://assets/battle_tray/placeholder_facility_wall_slabs.png",
+      "floor_texture": "res://assets/battle_tray/placeholder_facility_floor_panels.png",
+      "accent": "DT_AMBER",
+      "edge_accent": "BATTLE_BAY_AMBER_LIT",
+      "streak": "BATTLE_BAY_RUST"
     },
     "hive": {
       "label": "STUB: no art yet",
-      "wall_art": "",
+      "wall_texture": "",
       "floor_texture": "",
-      "edge_accent": ""
+      "accent": "",
+      "edge_accent": "",
+      "streak": ""
     },
     "veil": {
       "label": "STUB: no art yet",
-      "wall_art": "",
+      "wall_texture": "",
       "floor_texture": "",
-      "edge_accent": ""
+      "accent": "",
+      "edge_accent": "",
+      "streak": ""
     },
     "bare": {
-      "label": "Bare bay",
-      "wall_art": "",
+      "label": "Bare scene",
+      "wall_texture": "",
       "floor_texture": "",
-      "edge_accent": ""
+      "accent": "",
+      "edge_accent": "",
+      "streak": ""
     }
   }
 }

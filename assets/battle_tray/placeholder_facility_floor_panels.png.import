@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3vt01kwu7jds"
-path="res://.godot/imported/placeholder_facility_floor.png-a918befa60c2aa86dd1d39c6cb45f36c.ctex"
+uid="uid://b72wer7es800y"
+path="res://.godot/imported/placeholder_facility_floor_panels.png-bbe7c85cb9dd42ebf79a58a740132679.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle_tray/placeholder_facility_floor.png"
-dest_files=["res://.godot/imported/placeholder_facility_floor.png-a918befa60c2aa86dd1d39c6cb45f36c.ctex"]
+source_file="res://assets/battle_tray/placeholder_facility_floor_panels.png"
+dest_files=["res://.godot/imported/placeholder_facility_floor_panels.png-bbe7c85cb9dd42ebf79a58a740132679.ctex"]
 
 [params]
 

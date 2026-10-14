@@ -31,13 +31,15 @@ const RAIL_SLOT_GAP_PX := 2.0
 const POLICY := preload("res://scripts/battle/battle_layout_policy.gd")
 const LANDSCAPE_LAYOUT := preload("res://scripts/battle/landscape_battle_layout.gd")
 const DEPTH := preload("res://scripts/ui/battle_depth.gd")
+const PAINTER := preload("res://scripts/ui/battle_bay_floor.gd")
 var is_landscape := false
 var _landscape: RefCounted
 var _scene: Control
 
 var _combat_zone_frame: PanelContainer = null
 var _combat_zone_backing: Panel = null
-var _combat_zone_bay: Control = null
+var _depth_backdrop: SubViewportContainer = null
+var _depth_painter: Control = null
 var _combat_zone_enemy_lane: HBoxContainer = null
 var _combat_zone_hero_lane: HBoxContainer = null
 var _combat_zone_enemy_slots: Array = []
@@ -53,8 +55,9 @@ func setup(scene: Control) -> void:
 	_scene.resized.connect(queue_board_layout_refresh)
 
 
-# Depth prototype v2 A/B, debug builds only: F6 swaps the tray scene for the
-# plain tray, F7 hides the floor decal. Returns true when it used the key.
+# Depth prototype A/B, debug builds only: F6 swaps the scene for the plain tray,
+# F7 hides the floor decal, F8 puts the v2 plates back behind the die tags.
+# Returns true when it used the key.
 func handle_depth_debug_key(event: InputEvent) -> bool:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or not OS.is_debug_build():
@@ -63,13 +66,48 @@ func handle_depth_debug_key(event: InputEvent) -> bool:
 		DEPTH.backdrop_on = not DEPTH.backdrop_on
 	elif key.keycode == KEY_F7:
 		DEPTH.decal_on = not DEPTH.decal_on
+	elif key.keycode == KEY_F8:
+		DEPTH.plates_on = not DEPTH.plates_on
 	else:
 		return false
-	if _combat_zone_bay != null and is_instance_valid(_combat_zone_bay):
-		_combat_zone_bay.queue_redraw()
+	refresh_depth_scene()
 	if _scene != null:
 		_scene.get_viewport().set_input_as_handled()
 	return true
+
+
+# Applies the depth switches: the full-screen scene with no tray frame, or the
+# plain framed tray; the header's accent; die tags rebuilt with or without plates.
+func refresh_depth_scene() -> void:
+	if _scene == null or is_landscape:
+		return
+	var scene_on: bool = DEPTH.backdrop_on
+	if _depth_backdrop != null and is_instance_valid(_depth_backdrop):
+		_depth_backdrop.visible = scene_on
+		_depth_painter.queue_redraw()
+	if _combat_zone_backing != null and is_instance_valid(_combat_zone_backing):
+		_combat_zone_backing.add_theme_stylebox_override("panel", PixelUI.battle_layout_style() if scene_on else PixelUI.battle_tray_style())
+	if _combat_zone_frame != null and is_instance_valid(_combat_zone_frame):
+		_combat_zone_frame.add_theme_stylebox_override("panel", PixelUI.battle_layout_style() if scene_on else PixelUI.battle_tray_style(true))
+	var header: Node = _scene.get_tree().root.get_node_or_null("PersistentHeader")
+	if header != null and header.has_method("set_count_tint"):
+		var accent: Color = DEPTH.token(str(DEPTH.scene_for(_operation_id()).get("accent", "")))
+		header.call("set_count_tint", accent if scene_on else Color.TRANSPARENT)
+	for entry: Dictionary in _scene._die_tags.values():
+		if entry.get("plate") is Node and is_instance_valid(entry.plate):
+			(entry.plate as Node).queue_free()
+	_scene._die_tags.clear()
+
+
+# A die tag's container: transparent with outlined pips over the scene, or the
+# v2 plate while F8 is on. The parked landscape tags keep neither.
+func make_tag_field() -> PanelContainer:
+	var portrait: bool = not is_landscape
+	return PixelUI.make_battle_tag_field(portrait and DEPTH.plates_on, portrait and not DEPTH.plates_on)
+
+
+func _operation_id() -> String:
+	return str(_scene._game_state().selected_operation_id)
 
 
 func refresh_hit_areas() -> void:
@@ -373,12 +411,7 @@ func ensure_combat_zone_frame() -> void:
 		_scene.move_child(_combat_zone_backing, _scene.get_node("Background").get_index() + 1)
 		_combat_zone_backing.add_theme_stylebox_override("panel", PixelUI.battle_tray_style())
 		if not is_landscape:
-			var bay: Control = preload("res://scripts/ui/battle_bay_floor.gd").new()
-			bay.name = "EnvironmentalBay"
-			bay.operation_id = str(_scene._game_state().selected_operation_id)
-			_combat_zone_backing.add_child(bay)
-			bay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			_combat_zone_bay = bay
+			_build_depth_backdrop()
 	if _combat_zone_frame == null or not is_instance_valid(_combat_zone_frame):
 		_combat_zone_frame = PanelContainer.new()
 		_combat_zone_frame.name = "CombatZoneFrame"
@@ -398,7 +431,44 @@ func ensure_combat_zone_frame() -> void:
 		_combat_zone_hero_slots = _build_combat_zone_lane_slots(_combat_zone_hero_lane)
 	# Direction-05 tray: the frame is an OVERLAY above the dice viewport, so its fill
 	# must be fully transparent (any tint darkens the dice). Plain rectangle only.
+	# Both styles have zero content margins, so the dice lanes never move.
 	_combat_zone_frame.add_theme_stylebox_override("panel", PixelUI.battle_tray_style(true))
+	refresh_depth_scene()
+
+
+# Depth prototype v3: the full-screen scene, behind the whole board. It paints at
+# a quarter of the screen's size and is shown 4x with NEAREST sampling, so its
+# pixels match the portraits' and every edge lands on that grid.
+func _build_depth_backdrop() -> void:
+	var background: Control = _scene.get_node("Background")
+	_depth_backdrop = SubViewportContainer.new()
+	_depth_backdrop.name = "DepthBackdrop"
+	_depth_backdrop.stretch = true
+	_depth_backdrop.stretch_shrink = int(PAINTER.ART_PX)
+	_depth_backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_depth_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.add_child(_depth_backdrop)
+	_depth_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var viewport := SubViewport.new()
+	viewport.disable_3d = true
+	viewport.gui_disable_input = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_PARENT_VISIBLE
+	_depth_backdrop.add_child(viewport)
+	_depth_painter = PAINTER.new()
+	_depth_painter.name = "EnvironmentalBay"
+	_depth_painter.operation_id = _operation_id()
+	viewport.add_child(_depth_painter)
+	_depth_painter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	refresh_depth_scene()
+
+
+func _cards_rect(views: Array) -> Rect2:
+	var rect := Rect2()
+	for view: Dictionary in views:
+		var card: Control = view.get("card", null) as Control
+		if card != null and is_instance_valid(card) and card.is_inside_tree():
+			rect = card.get_global_rect() if rect.size == Vector2.ZERO else rect.merge(card.get_global_rect())
+	return rect
 
 
 # Direction-05 tray detail: four L-shaped corner ticks (hard, no blur) pinned to
@@ -480,6 +550,10 @@ func sync_combat_zone_frame(combat_zone: Rect2) -> void:
 	_combat_zone_backing.visible = true
 	_combat_zone_backing.global_position = combat_zone.position
 	_combat_zone_backing.size = combat_zone.size
+	if _depth_painter != null and is_instance_valid(_depth_painter):
+		var origin: Vector2 = _depth_backdrop.global_position
+		_depth_painter.set_geometry(_depth_backdrop.size, Rect2(combat_zone.position - origin, combat_zone.size),
+			_cards_rect(_scene.enemy_card_views), _cards_rect(_scene.hero_card_views))
 	_combat_zone_frame.visible = true
 	_combat_zone_frame.global_position = combat_zone.position
 	_combat_zone_frame.size = combat_zone.size

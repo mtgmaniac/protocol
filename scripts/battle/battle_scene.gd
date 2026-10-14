@@ -1718,7 +1718,7 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	plate.add_child(center)
-	var field: PanelContainer = PixelUI.make_battle_tag_field(not _layout.is_landscape)
+	var field: PanelContainer = _layout.make_tag_field()
 	center.add_child(field)
 	var stack: VBoxContainer = VBoxContainer.new()
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
