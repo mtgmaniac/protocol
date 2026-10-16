@@ -30,9 +30,29 @@ var filled: int = 0:
 # returns, and its texture goes with it: the queued draw then has no texture and
 # paints plain white (the white empty cells of the 2026-10-13 depth prototype).
 var _empty_cell: StyleBoxTexture = PixelUI.battle_surface_style("cell")
-## A charged cell is the empty cell with its interior filled in PLAYER_ACCENT
-## (flat pixel B; the cell_charged.svg skin has amber baked in). Design px.
+## A charged cell is the empty cell with its interior filled in PROTOCOL_ACCENT
+## (ui-unify; the cell_charged.svg skin has amber baked in). Design px. An empty
+## cell is the dark skin alone, so empty reads as clearly empty.
 const CHARGED_INSET := 4.0
+# At a full meter the charged cells pulse gently between PROTOCOL_ACCENT and a
+# few darker flat steps (PixelUI.PROTOCOL_PULSE_STEPS); off under Reduced Motion
+# and No Animations.
+var _pulse_time := 0.0
+var _pulse_step := 0
+
+
+func _process(delta: float) -> void:
+	var pulsing: bool = filled >= total and total > 0 \
+		and not PixelUI.reduced_motion_enabled() and not PixelUI.no_animations_enabled()
+	var step: int = 0
+	if pulsing:
+		_pulse_time = fmod(_pulse_time + delta, PixelUI.PROTOCOL_PULSE_PERIOD)
+		step = int(_pulse_time / PixelUI.PROTOCOL_PULSE_PERIOD * PixelUI.PROTOCOL_PULSE_STEPS.size())
+	else:
+		_pulse_time = 0.0
+	if step != _pulse_step:
+		_pulse_step = step
+		queue_redraw()
 
 
 func _ready() -> void:
@@ -77,5 +97,6 @@ func _draw() -> void:
 		)
 		draw_style_box(_empty_cell, rect)
 		if i < filled:
-			draw_rect(rect.grow(-CHARGED_INSET), PixelUI.PLAYER_ACCENT, true)
+			var dim: float = PixelUI.PROTOCOL_PULSE_STEPS[_pulse_step % PixelUI.PROTOCOL_PULSE_STEPS.size()]
+			draw_rect(rect.grow(-CHARGED_INSET), PixelUI.PROTOCOL_ACCENT.darkened(dim), true)
 		x += pip_w + gap

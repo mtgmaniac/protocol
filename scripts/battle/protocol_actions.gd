@@ -76,7 +76,7 @@ func restyle_buttons() -> void:
 # whole button dims while the pool can't cover it. Called from
 # battle_scene._update_protocol_bar so it tracks every pool change.
 
-const _UNAFFORDABLE_DIM := Color(1.0, 1.0, 1.0, 0.45)
+const _UNAFFORDABLE_DIM := Color(1.0, 1.0, 1.0, PixelUI.UNAFFORDABLE_ALPHA)
 var _cost_badges: Dictionary = {}   # Button -> Label
 
 
@@ -84,7 +84,7 @@ var _cost_badges: Dictionary = {}   # Button -> Label
 func refresh_cost_badges() -> void:
 	for badge: Variant in _cost_badges.values():
 		if badge is Label and is_instance_valid(badge):
-			(badge as Label).add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
+			(badge as Label).add_theme_color_override("font_color", PixelUI.PROTOCOL_ACCENT)
 
 
 func _attach_cost_badge(button: Button, text: String) -> void:
@@ -98,8 +98,8 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	PixelUI.apply_pixel_font(badge)
 	badge.add_theme_font_size_override("font_size", _scene._layout.presentation("protocol_cost_font", 48) if _scene._layout != null else 48)
-	# Protocol costs read in the player color, like the meter (flat pixel B).
-	badge.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
+	# Protocol costs read in the Protocol color, like the meter (ui-unify), SMALL.
+	badge.add_theme_color_override("font_color", PixelUI.PROTOCOL_ACCENT)
 	# Bare number, no plate (Kev 2026-07-10) — a dark glyph outline separates it
 	# from the button art instead of a box.
 	badge.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)

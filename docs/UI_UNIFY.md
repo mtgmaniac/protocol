@@ -739,7 +739,7 @@ the type system except DISPLAY and LABEL helpers.
 a 24 px hazard-stripe accent down the left edge (4 px diagonal bands, WARNING /
 WARNING_INK), no notch. Applied in Phase 5.
 
-**Replaced:** 158 literal sites became tokens in battle feedback, battle cards,
+**Replaced:** 82 literal sites became tokens (183 literal sites -> 101, of which 76 are the allowed classes) in battle feedback, battle cards,
 readouts, effect pips, the header, the battle scene (scrim, minimal buttons,
 Protocol labels and the hidden Protocol bar, which now fills PROTOCOL_ACCENT),
 Protocol actions, the battle layout, squad select, reward, loadout, run end,
@@ -764,3 +764,27 @@ take inline color today: every description, help line and primer is a plain
 `Label`, and the battle log is a `RichTextLabel` with BBCode off. The brief says
 to apply keyword colors only where inline color already exists, so none were
 applied; converting the description labels to BBCode is a follow-up.
+
+## Phase 4: Protocol meter and footer
+
+- **Meter** (`protocol_pips.gd`): segmented pixel cells as before; a charged
+  cell's interior is `PROTOCOL_ACCENT` (was PLAYER_ACCENT), an empty cell is the
+  dark skin alone (`cell.svg`: a `303a41` frame around `181e23`), so empty reads
+  as clearly empty. The label is SMALL (m5x7 48, Phase 2).
+- **Full-meter pulse:** at 10/10 the charged cells step through
+  `PixelUI.PROTOCOL_PULSE_STEPS` (0 / 12 / 24 / 12 % darker) over
+  `PROTOCOL_PULSE_PERIOD` 1.6 s: flat tones, no smooth ramp, redrawn only when
+  the step changes. Off (steady full brightness) under Reduced Motion and No
+  Animations.
+- **Footer cost numbers** (1, 2, 4): `PROTOCOL_ACCENT` (were PLAYER light), SMALL
+  (48). The footer icons stay PLAYER light (they are the player's actions; the
+  number is the Protocol price).
+- **Unaffordable actions** keep one rule: the whole button (frame, icon, price)
+  at `UNAFFORDABLE_ALPHA` 0.45 opacity, the same for Nudge, Protocol spend and
+  Set (`refresh_action_affordability`). The Item button has no Protocol price
+  and does not dim for Protocol.
+- **"Protocol" in item, relic and help text: not colored.** It needs inline
+  color, which no text in the game supports (Phase 3); `KW_PROTOCOL` is ready
+  for when descriptions move to BBCode.
+- The hidden legacy Protocol progress bar (`protocol_bar`, kept for layout
+  code) fills PROTOCOL_ACCENT on a BATTLE_PROTO_EMPTY track (Phase 3).

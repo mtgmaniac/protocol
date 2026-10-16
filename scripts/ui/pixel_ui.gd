@@ -294,6 +294,11 @@ const NEUTRAL_BLUEGRAY := Color("4c5a66")
 # logo's reactor core, clearly brighter than PLAYER_ACCENT. The Protocol meter's
 # filled cells, the Protocol cost numbers, the Protocol keyword in text.
 const PROTOCOL_ACCENT := Color("c4dcff")
+# The full meter's pulse: brightness steps (flat tones, no smooth ramp) and the
+# cycle time; and the opacity an unaffordable footer action is drawn at.
+const PROTOCOL_PULSE_STEPS: Array[float] = [0.0, 0.12, 0.24, 0.12]
+const PROTOCOL_PULSE_PERIOD := 1.6
+const UNAFFORDABLE_ALPHA := 0.45
 #
 # WARNING (ui-unify): amber, for warning text and the DESTRUCTIVE button (with a
 # hazard-stripe accent, never the notch). UI_WARN is this token.
