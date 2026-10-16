@@ -49,7 +49,8 @@ func geometry(landscape: bool) -> void:
 	check(s._layout.is_landscape == landscape, "selected mode")
 	var header: Node = root.get_node("PersistentHeader")
 	check(header.band_height() == (192.0 if landscape else 144.0) + PixelUI.safe_top, "scoped header height")
-	check(header._summary_label.get_theme_font_size("font_size") == (144 if landscape else 112), "header typography and restoration")
+	# ui-unify / ui-cleanup type roles: DISPLAY 96 in portrait; landscape's 144 snaps to Battle Block's lattice.
+	check(header._summary_label.get_theme_font_size("font_size") == (PixelUI.lattice_px(144, "block") if landscape else PixelUI.type_px(PixelUI.TYPE_DISPLAY)), "header typography and restoration")
 	for views in [s.hero_card_views, s.enemy_card_views]:
 		var last := Rect2()
 		for view in views:
@@ -59,7 +60,7 @@ func geometry(landscape: bool) -> void:
 			check(rect.end.y <= footer.position.y, "card clears Protocol")
 			check(not last.intersects(rect), "cards do not overlap")
 			var card_font: int = card._name_label.get_theme_font_size("font_size")
-			check(card_font >= 88 and card_font <= 108 if landscape else card_font == 72, "card font is scoped and fits")
+			check(card_font >= 88 and card_font <= 108 if landscape else card_font == PixelUI.type_px(PixelUI.TYPE_CARD), "card font is scoped and fits")
 			for corner in [Vector2.ZERO, Vector2(card._hp_back.size.x, 0), card._hp_back.size, Vector2(0, card._hp_back.size.y)]:
 				check(rect.grow(1).has_point(card._hp_back.get_global_transform() * corner), "HP band stays inside card in either orientation")
 			if landscape:
@@ -257,7 +258,7 @@ func run() -> void:
 	await frames(16)
 	var header: Node = root.get_node("PersistentHeader")
 	check(header.band_height() == 144.0 + PixelUI.safe_top, "non-battle header height restored")
-	check(header._summary_label.get_theme_font_size("font_size") == 112, "non-battle header font restored")
+	check(header._summary_label.get_theme_font_size("font_size") == PixelUI.type_px(PixelUI.TYPE_DISPLAY), "non-battle header font restored")
 	check(header._help_button.custom_minimum_size == Vector2(112,112), "non-battle header button restored")
 	POLICY.dev_override = 0
 	print("[BATTLE_LAYOUT] %s: %d checks, %d failures" % ["PASS" if failures.is_empty() else "FAIL", checks, failures.size()])

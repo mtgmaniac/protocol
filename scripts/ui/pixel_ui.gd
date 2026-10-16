@@ -128,9 +128,10 @@ static func text_px(font_size: int) -> int:
 
 # ── Type system (ui-unify, docs/UI_UNIFY.md + docs/UI_STYLE.md) ──
 # Two families. m5x7 (native em 16, full ASCII) carries every reading role;
-# Battle Block (bitmap, native 32, capitals and digits only) is the DISPLAY face.
+# Battle Block (bitmap, native 32, capitals and digits only) is the DISPLAY face
+# and, from ui-cleanup, the CARD face (battle card names and HP numbers).
 # Pixel fonts render only at whole multiples of their native size: m5x7 at
-# 48 / 64 / 80 / 96 (x3..x6), Battle Block at 96 (x3). At 360 px wide both land
+# 48 / 64 / 80 / 96 (x3..x6), Battle Block at 64 (x2, CARD) and 96 (x3, DISPLAY). At 360 px wide both land
 # one font pixel on one screen pixel at x3. No extra letter spacing on any role
 # (the fonts' own advance); capitals only on DISPLAY and LABEL (and, by the
 # 2026-07-14 capitalization law, on SMALL metadata copy that is already caps).
@@ -141,12 +142,17 @@ const TYPE_LABEL := "label"       # buttons, tabs, section headers, unit names
 const TYPE_BODY := "body"         # descriptions, help text, the battle log
 const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
 const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
+## ui-cleanup: battle card unit names and HP numbers. Battle Block x2: the largest
+## multiple where AVALANCHE (216) and a three-digit HP (216) fit the card's 332 px
+## label and the 80 px name row; x3 needs 324 px wide and a 96 px line.
+const TYPE_CARD := "card"
 const TYPE_ROLES := {
 	TYPE_DISPLAY: {"family": "block", "size": 96},
 	TYPE_LABEL: {"family": "m5x7", "size": 64},   # primary buttons step up the lattice
 	TYPE_BODY: {"family": "m5x7", "size": 64},
 	TYPE_SMALL: {"family": "m5x7", "size": 48},
 	TYPE_NUMERAL: {"family": "m5x7", "size": 64},
+	TYPE_CARD: {"family": "block", "size": 64},
 }
 
 
@@ -174,9 +180,9 @@ static func type_px(role: String, scale: float = 1.0) -> int:
 static func apply_type(control: Control, role: String, ink: Variant = null, scale: float = 1.0) -> void:
 	control.add_theme_font_override("font", type_font(role))
 	control.add_theme_font_size_override("font_size", type_px(role, scale))
-	# DISPLAY and LABEL are capitals (a display transform; the copy is unchanged,
-	# and Battle Block has no lowercase glyphs).
-	if control is Label and (role == TYPE_DISPLAY or role == TYPE_LABEL):
+	# DISPLAY, LABEL and CARD are capitals (a display transform; the copy is
+	# unchanged, and Battle Block has no lowercase glyphs).
+	if control is Label and (role == TYPE_DISPLAY or role == TYPE_LABEL or role == TYPE_CARD):
 		(control as Label).uppercase = true
 	if ink is Color:
 		control.add_theme_color_override("font_color", ink)

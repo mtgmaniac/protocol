@@ -29,6 +29,8 @@ func _run_capture() -> void:
 		quit(1)
 		return
 	print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % absolute_output)
+	if bool(config.get("card_fit", false)):
+		_print_card_fit(current_scene)
 	var depth: Script = load("res://scripts/ui/battle_depth.gd")
 	for step: Array in [["depth_perspective_output", "perspective_on", true], ["depth_plates_output", "plates_on", true], ["depth_flat_output", "backdrop_on", false]]:
 		if not config.has(step[0]):
@@ -94,6 +96,9 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-force-auto":
 			config["force_auto"] = true
 			config["rolled"] = true
+		elif arg == "--capture-card-fit":
+			# ui-cleanup: print each card's name / HP label width and text width.
+			config["card_fit"] = true
 		elif arg == "--capture-no-primers":
 			# Suppress first-sight keyword primers so a locked-target capture shows the
 			# board (e.g. the incoming-damage block behind an HP number) un-dimmed.
@@ -926,3 +931,18 @@ func _game_state() -> Node:
 
 func _save_manager() -> Node:
 	return root.get_node("/root/SaveManager")
+
+
+# ui-cleanup: the CARD type role's fit check. Widths in design px; "fits" when
+# the text is no wider than its label.
+func _print_card_fit(node: Node) -> void:
+	for card: Node in node.find_children("*", "CompactUnitCard", true, false):
+		for key: String in ["_name_label", "_hp_label"]:
+			var label: Label = card.get(key) as Label
+			if label == null or not label.is_visible_in_tree():
+				continue
+			var font: Font = label.get_theme_font("font")
+			var size: int = label.get_theme_font_size("font_size")
+			var text_w: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			print("[CARD_FIT] %s %s '%s' size=%d label_w=%d text_w=%d %s" % [card.get("side"), key, label.text, size,
+				label.size.x, text_w, "fits" if text_w <= label.size.x else "OVERFLOW"])

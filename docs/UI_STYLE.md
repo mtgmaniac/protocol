@@ -54,10 +54,18 @@ digits only). Sizes are whole multiples of the native size only
 | Role | Font | Size | Use | Case |
 |---|---|---|---|---|
 | DISPLAY | Battle Block | 96 | screen titles, battle header | caps |
-| LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names | caps |
+| CARD | Battle Block | 64 (x2) | battle card unit names and HP numbers | caps |
+| LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names off the battle card | caps |
 | BODY | m5x7 | 64, line spacing 10 | descriptions, help, battle log | sentence |
 | SMALL | m5x7 | 48 | rarity, version tag, cost labels, eyebrows | as written (metadata caps per the caps law) |
-| NUMERAL | m5x7 | 64 (die tags 80) | HP, intent, pip numbers | n/a |
+| NUMERAL | m5x7 | 64 (die tags 80) | intent and pip numbers, HP off the battle card | n/a |
+
+CARD is the largest Battle Block multiple that fits the card at 360 px: the
+longest name (AVALANCHE) and a three-digit HP ("140 / 140") are 216 px in a
+332 px label and its 64 px line sits in the 80 px name row. x3 (96) is 324 px
+wide, touches the frame, and its 96 px line overruns the row into the BOSS /
+trait tag. Landscape (dev) cards scale the role and step down its lattice to
+fit. Check with `battle_ui_capture.gd --capture-card-fit`.
 
 No extra letter spacing on any role. Text floor 48 (`TEXT_MIN_PX`); the pip
 duration superscript is the one smaller exception. The dice faces keep their own

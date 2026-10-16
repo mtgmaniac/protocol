@@ -1145,3 +1145,30 @@ blue than C (whose hue sits nearer the shield's), and still bright energy at
 11:1 on the button fill, so the small cost numbers stay legible. `KW_PROTOCOL`
 follows it (an alias). The logo core's light centre reads the same token (one
 source); on the title it shifts very slightly cooler.
+
+## Cleanup phase 4: card type role
+
+New role `TYPE_CARD` (`PixelUI.TYPE_ROLES`): Battle Block for battle card unit
+names and HP numbers (it has the capitals and digits they need), back from
+ui-unify's m5x7. Size: **64 (Battle Block x2)**.
+
+Measured (`battle_ui_capture.gd --capture-card-fit` at 360x800, plus
+`card_type_fit_probe.gd` over all 46 names a card can show): every card label
+is 332 design px wide, with three enemies too. The longest name, AVALANCHE, is
+108 / 216 / 324 px at x1 / x2 / x3; the widest HP, three digits ("140 / 140",
+the bosses; data max 180), is the same. x3 (96) passes the bare width check by
+8 px but the text touches the card frame, the 96 px line overruns the 80 px
+name row, and on a boss the name runs into the BOSS tag
+(`debug_artifacts/ui_cleanup/battle_360_x3_rejected.png`). x2 fits with room:
+**64**. The battle header stays DISPLAY 96.
+
+- `compact_unit_card.gd`: name and HP labels use TYPE_CARD (portrait and the
+  landscape presentation scale); the HP keeps its ink and outline.
+- `apply_type` upper-cases CARD like DISPLAY and LABEL.
+- `landscape_card_layout.gd` (the dev landscape path) sized names from the old
+  72 constant through the m5x7 lattice (112); it now scales the role and steps
+  down the Battle Block lattice to fit (`card_min_text_font`, now unused, removed).
+- `battle_layout_test.gd` pinned the pre-ui-unify sizes (header 112, card 72)
+  and had been failing 89 checks since ui-unify; it now reads the roles:
+  **PASS (1179 checks)**. `text_legibility_test` PASS (239), traits gate PASS,
+  `component_contract` and `caps_law` PASS.

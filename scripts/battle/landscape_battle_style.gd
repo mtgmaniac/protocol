@@ -6,7 +6,6 @@ const VALUES := {
 	"column_gap": 36,
 	"card_gap": 32,
 	"card_text_scale": 1.5,
-	"card_min_text_font": 88,
 	"card_aspect": 1.85,
 	"card_width_fraction": 0.21,
 	"card_padding": 12.0,

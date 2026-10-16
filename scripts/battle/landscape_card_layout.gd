@@ -36,10 +36,12 @@ func refresh() -> void:
 	var x: float = pad + portrait_w + STYLE.card_info_gap
 	var w: float = inner.x - portrait_w - STYLE.card_info_gap
 	for label in [_card._name_label, _card._hp_label]:
-		var desired_font: int = int(CompactUnitCard.CARD_NAME_FONT_SIZE * STYLE.card_text_scale)
+		# ui-cleanup: the CARD role (Battle Block); a long name steps DOWN its lattice.
+		var desired_font: int = PixelUI.type_px(PixelUI.TYPE_CARD, STYLE.card_text_scale)
 		var text_w: float = label.get_theme_font("font").get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, desired_font).x
-		var fitted: int = desired_font if text_w <= w else maxi(STYLE.card_min_text_font, int(floorf(desired_font * w / text_w)))
-		label.add_theme_font_size_override("font_size", PixelUI.text_px(fitted))
+		var step: int = PixelUI.FONT_NATIVE_BLOCK
+		var fitted: int = desired_font if text_w <= w else maxi(step * 2, int(floorf(desired_font * w / text_w / step)) * step)
+		label.add_theme_font_size_override("font_size", fitted)
 	var y: float = pad + maxf(0.0, (inner.y - STYLE.card_name_height - STYLE.card_hp_number_height - STYLE.card_hp_bar_height - STYLE.card_status_height - STYLE.card_info_separation * 2.0) * 0.5)
 	place(_card._name_strip, Vector2(x, y), Vector2(w, STYLE.card_name_height))
 	y += STYLE.card_name_height
