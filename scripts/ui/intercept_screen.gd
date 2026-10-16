@@ -57,7 +57,7 @@ func _ready() -> void:
 	_gear_context = GameState.pending_intercept_state.get("gear_context", {}) as Dictionary
 
 	var bg := ColorRect.new()
-	bg.color = PixelUI.DT_FIELD_BG
+	bg.color = PixelUI.UI_BG
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -145,7 +145,7 @@ func _add_event_banner(card_id: String) -> void:
 	# Fit the whole image inside the transmission panel's inner width x BANNER_MAX_H.
 	var side: int = PixelUI.screen_frame_side_margin()
 	var max_w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080)) - 2.0 * side - 2.0 * 36.0
-	var frame := PixelUI.make_scene_banner(tex, max_w, float(BANNER_MAX_H), PixelUI.DT_AMBER)
+	var frame := PixelUI.make_scene_banner(tex, max_w, float(BANNER_MAX_H), PixelUI.UI_PANEL_EDGE)
 	_stage_box.add_child(frame)
 	_add_gap(12)
 
@@ -186,7 +186,7 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true, 
 	button.text = text
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.disabled = not enabled
-	PixelUI.style_button(button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_AMBER if enabled else PixelUI.LINE_DIM, BUTTON_FONT)
+	PixelUI.style_ui_secondary_button(button, BUTTON_FONT)   # a choice: secondary (ui-unify)
 	button.pressed.connect(callback)
 	_button_box.add_child(button)
 	if note != "":
@@ -214,7 +214,7 @@ func _add_option_box(text: String, callback: Callable, enabled: bool, descriptio
 	var panel := PanelContainer.new()
 	panel.name = "OptionBox"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL))
 	var margin := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(side, 28)
@@ -236,7 +236,7 @@ func _add_option_box(text: String, callback: Callable, enabled: bool, descriptio
 	button.text = text
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.disabled = not enabled
-	PixelUI.style_button(button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_AMBER if enabled else PixelUI.LINE_DIM, BUTTON_FONT)
+	PixelUI.style_ui_secondary_button(button, BUTTON_FONT)   # a choice: secondary (ui-unify)
 	button.pressed.connect(callback)
 	vbox.add_child(button)
 	_button_box.add_child(panel)
@@ -255,8 +255,8 @@ func _show_card_stage() -> void:
 	_clear_stage()
 	# Rhythm: scene art banner · small amber event-type label · large title · blank line · body.
 	_add_event_banner(_card_id)
-	_add_label("INTERCEPT", TYPE_FONT, PixelUI.DT_AMBER, 2)
-	_add_label(str(_card.get("name", "")), TITLE_FONT, PixelUI.TEXT_PRIMARY, 3)
+	PixelUI.apply_type(_add_label("INTERCEPT", TYPE_FONT, PixelUI.CHROME_DIM, 2), PixelUI.TYPE_SMALL)
+	PixelUI.apply_type(_add_label(str(_card.get("name", "")), TITLE_FONT, PixelUI.CHROME, 3), PixelUI.TYPE_DISPLAY)
 	_add_gap(8)
 	_add_label(str(_card.get("desc", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 	_enabled_choice_count = 0
@@ -315,7 +315,7 @@ func _on_choice_pressed(choice: Dictionary) -> void:
 
 func _show_hero_pick_stage() -> void:
 	_clear_stage()
-	_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.DT_AMBER, 3)
+	PixelUI.apply_type(_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.CHROME, 3), PixelUI.TYPE_LABEL)
 	_add_label("Choose a hero.", BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 	for unit_id_variant in GameState.selected_units:
 		var unit_id: String = str(unit_id_variant)
@@ -414,7 +414,7 @@ static func draft_commits_directly(drafted_item: ItemData, info: String) -> bool
 
 func _show_result_stage(info: String, drafted_item: ItemData) -> void:
 	_clear_stage()
-	_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.DT_AMBER, 3)
+	PixelUI.apply_type(_add_label(str(_card.get("name", "")), CARD_TITLE_FONT, PixelUI.CHROME, 3), PixelUI.TYPE_LABEL)
 	var summary: String = str(_choice.get("label", ""))
 	if drafted_item != null:
 		summary += "\nAcquired: %s." % drafted_item.display_name

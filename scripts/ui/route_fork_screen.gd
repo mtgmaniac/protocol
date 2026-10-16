@@ -55,7 +55,7 @@ func _ready() -> void:
 	SaveManager.checkpoint_run("fork")
 
 	var bg := ColorRect.new()
-	bg.color = PixelUI.DT_FIELD_BG
+	bg.color = PixelUI.UI_BG
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -109,13 +109,15 @@ func _ready() -> void:
 	var type_label := Label.new()
 	type_label.text = "DECISION POINT"
 	type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(type_label, TYPE_FONT, PixelUI.DT_AMBER, 2)
+	PixelUI.style_label(type_label, TYPE_FONT, PixelUI.CHROME_DIM, 2)
+	PixelUI.apply_type(type_label, PixelUI.TYPE_SMALL)
 	column.add_child(type_label)
 
 	var title := Label.new()
 	title.text = "ROUTE FORK"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, TITLE_FONT, PixelUI.TEXT_PRIMARY, 3)
+	PixelUI.style_label(title, TITLE_FONT, PixelUI.CHROME, 3)
+	PixelUI.apply_type(title, PixelUI.TYPE_DISPLAY)
 	column.add_child(title)
 
 	var blurb := Label.new()
@@ -170,7 +172,7 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	frame.clip_contents = true
 	# Component: Normal card (a decorative banner is not a selection — the old
 	# strong-cyan frame was border noise).
-	frame.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
+	frame.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL))
 	var art := TextureRect.new()
 	art.texture = tex
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -181,7 +183,6 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(art)
-	PixelUI.add_corner_brackets(frame, PixelUI.DT_HERO_BORDER, 24.0, 3.0, 8.0)
 	column.add_child(frame)
 	_banner = frame
 	_banner_aspect = float(tex.get_height()) / maxf(1.0, float(tex.get_width()))
@@ -222,11 +223,14 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	# meaning-first color law); the standard route is a Normal hero-tint card.
 	# The old resting DT_CYAN border broke "strong cyan = Selected only" — the
 	# accent now colors TEXT only (text-tier accents are not frames).
-	var accent: Color = PixelUI.DT_RUST if flagged else PixelUI.DT_CYAN
+	# ui-unify: the flagged route is the enemy's risk (the encounter color); the
+	# standard route is neutral CHROME. Both are choices, so both buttons are
+	# secondary: neither is the screen's single primary.
+	var accent: Color = PixelUI.ENCOUNTER_ACCENT.lightened(0.2) if flagged else PixelUI.CHROME
 	if flagged:
 		panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_ENEMY))
 	else:
-		panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
+		panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL))
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var margin := MarginContainer.new()
@@ -241,6 +245,7 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	var card_title := Label.new()
 	card_title.text = "FLAGGED ROUTE" if flagged else "STANDARD ROUTE"
 	PixelUI.style_label(card_title, CARD_TITLE_FONT, accent, 3)
+	PixelUI.apply_type(card_title, PixelUI.TYPE_LABEL)
 	vbox.add_child(card_title)
 
 	if not comp_names.is_empty():
@@ -259,7 +264,7 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 		vbox.add_child(mod_chip)
 		var reward_chip := Label.new()
 		reward_chip.text = "REWARD: SUPPLY GRADE +2"
-		PixelUI.style_label(reward_chip, BODY_FONT, PixelUI.GOLD_ACCENT, 1)
+		PixelUI.style_label(reward_chip, BODY_FONT, PixelUI.CHROME, 1)
 		vbox.add_child(reward_chip)
 	else:
 		var plain_chip := Label.new()
@@ -271,8 +276,7 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	choose.focus_mode = Control.FOCUS_NONE
 	choose.custom_minimum_size = Vector2(0, 96)
 	choose.text = "TAKE THE FLAGGED ROUTE" if flagged else "TAKE THE STANDARD ROUTE"
-	# Standard = teal primary; flagged = amber (risk) variant.
-	PixelUI.style_primary_button(choose, BUTTON_FONT, flagged)
+	PixelUI.style_ui_secondary_button(choose, BUTTON_FONT)
 	choose.pressed.connect(_on_route_chosen.bind(flagged))
 	vbox.add_child(choose)
 	return panel

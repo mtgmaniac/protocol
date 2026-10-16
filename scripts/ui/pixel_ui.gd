@@ -174,6 +174,10 @@ static func type_px(role: String, scale: float = 1.0) -> int:
 static func apply_type(control: Control, role: String, ink: Variant = null, scale: float = 1.0) -> void:
 	control.add_theme_font_override("font", type_font(role))
 	control.add_theme_font_size_override("font_size", type_px(role, scale))
+	# DISPLAY and LABEL are capitals (a display transform; the copy is unchanged,
+	# and Battle Block has no lowercase glyphs).
+	if control is Label and (role == TYPE_DISPLAY or role == TYPE_LABEL):
+		(control as Label).uppercase = true
 	if ink is Color:
 		control.add_theme_color_override("font_color", ink)
 	if str(TYPE_ROLES[role]["family"]) == "block":

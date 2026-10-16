@@ -1055,9 +1055,8 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	_directive_layer.add_child(dim)
 
 	var panel := PanelContainer.new()
-	# Component: Modal with the amber commit accent (a Starting-Directive pick is
-	# a confirm moment — amber per the meaning-first color law, never gold here).
-	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_MODAL, PixelUI.DT_AMBER))
+	# Component: Modal, CHROME (ui-unify; the rows are the choices).
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_MODAL))
 	panel.custom_minimum_size = Vector2(920, 0)
 	_directive_layer.add_child(panel)
 
@@ -1070,7 +1069,9 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	col.add_theme_constant_override("separation", 32)
 	margin.add_child(col)
 
-	col.add_child(_make_pixel_label("STARTING DIRECTIVE", DETAIL_NAME_FONT, PixelUI.DT_AMBER))
+	var picker_title := _make_pixel_label("STARTING DIRECTIVE", DETAIL_NAME_FONT, PixelUI.CHROME)
+	PixelUI.apply_type(picker_title, PixelUI.TYPE_LABEL)
+	col.add_child(picker_title)
 	var blurb := _make_pixel_label("Open the run with a trophy from a fallen boss.", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(blurb)
@@ -1088,7 +1089,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		# cards: generous, equal-sized choices with readable art and rules.
 		pick.custom_minimum_size = Vector2(0, 232)
 		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		PixelUI.style_button(pick, PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, FOCUS_CHIP_FONT)
+		PixelUI.style_button(pick, PixelUI.UI_BUTTON, PixelUI.UI_LINE, FOCUS_CHIP_FONT)
 		pick.pressed.connect(_on_directive_picked.bind(relic_id))
 		var row := HBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1101,7 +1102,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 			var icon: Control = PixelUI.make_integer_icon(relic.icon, DIRECTIVE_ICON_BOX)
 			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(icon)
-		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], DETAIL_DESC_FONT, PixelUI.DT_CYAN_BRIGHT)
+		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], DETAIL_DESC_FONT, PixelUI.UI_TEXT)
 		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text_label.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
 		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1115,7 +1116,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	skip.custom_minimum_size = Vector2(0, 96)
 	skip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	skip.text = "NO DIRECTIVE"
-	PixelUI.style_button(skip, DEPLOY_IDLE_BG, DEPLOY_IDLE_BORDER, FOCUS_CHIP_FONT)
+	PixelUI.style_ui_secondary_button(skip, FOCUS_CHIP_FONT)
 	skip.pressed.connect(_on_directive_picked.bind(""))
 	col.add_child(skip)
 

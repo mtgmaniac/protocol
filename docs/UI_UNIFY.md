@@ -838,3 +838,44 @@ All in `pixel_ui.gd`; screens get them through the shared helpers.
 
 Checks: `component_contract.py` PASS, `framing_sites.py` PASS, MainMenu /
 UnitSelect / BattleScene load headless clean.
+
+## Phase 6: run flow screens
+
+Rules applied on every screen: the background is `UI_BG`; the screen title is
+DISPLAY (Battle Block 96, CHROME, capitals by the role's `uppercase`); eyebrow
+labels and section heads are SMALL in CHROME_DIM; card and option titles are
+LABEL; panels are the CHROME component; a choice between equals uses secondary
+buttons; the one button that commits the screen is the notched primary; no
+amber, gold or cyan outside their meanings. Copy, flow and logic are unchanged.
+
+- **Route Fork:** title DISPLAY; DECISION POINT SMALL; both route cards CHROME
+  panels; the standard card's title CHROME, the flagged card's title and frame
+  in the encounter color (the enemy's risk); REWARD line CHROME (was gold); both
+  TAKE buttons secondary (two equal choices, so no single primary; the flagged
+  one was an amber variant).
+- **Intercept:** title DISPLAY; INTERCEPT SMALL; banner frame CHROME (was amber);
+  option boxes CHROME panels; option buttons secondary (were amber-bordered
+  legacy buttons); card titles LABEL CHROME (were amber).
+- **Evolution:** title DISPLAY CHROME (was gold); branch names and trait titles
+  LABEL in PLAYER light (a hero's branches are the player's); trait and HP lines
+  CHROME (were amber / gold); roll ranges PLAYER light; VIEW ALL, SELECT, the
+  trait CHOOSE and VIEW BATTLEFIELD are secondary; CONFIRM (SELECT A BRANCH
+  until a branch is picked) is the notched primary; help dim SCRIM; card fills
+  `UI_PANEL` / `UI_ROW` (were literals). **The cards keep the gold MAJOR frame:**
+  evolutions are the ceremonial tier by ruling (Polish Build A, "strong gold
+  here and ONLY here"); selected cards turn PLAYER through the component.
+- **Unlock:** title DISPLAY CHROME (was amber); section heads SMALL CHROME_DIM on
+  a plain row plate (were amber on the reward strip); names CHROME (were amber);
+  grid emblem plates CHROME_DIM (were amber); CONTINUE is the notched primary.
+  The boss relic card keeps the gold MAJOR frame (ceremonial, ruled).
+- **Run End:** title DISPLAY, PLAYER light on a win and WARNING on a loss (were
+  teal / rust); the summary panel CHROME with that accent's dark border; section
+  heads SMALL CHROME_DIM (were amber); the notched primary CONTINUE.
+- **Starting Directive picker:** the modal is plain (was amber-accented); its
+  title LABEL CHROME (was amber); relic rows CHROME buttons (were cyan) with
+  UI_TEXT copy (was cyan bright); NO DIRECTIVE secondary.
+- `PersistentHeader` applies `--capture-window=WxH` in debug builds, so every
+  capture tool can shoot at 390 px without its own option.
+
+Checks: the five run-flow scenes load headless with no script errors;
+`component_contract.py` and `caps_law.py` PASS.

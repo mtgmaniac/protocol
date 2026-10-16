@@ -127,9 +127,10 @@ func _on_new_run_button_pressed() -> void:
 
 func _apply_visual_theme(victory: bool) -> void:
 	# Result accent: teal for a win (green is HP-only now), rust for a loss.
-	var accent: Color = PixelUI.BTN_TEAL_BORDER if victory else PixelUI.DT_RUST
+	# ui-unify: a win is the player's color, a loss the warning amber.
+	var accent: Color = PixelUI.PLAYER_ACCENT if victory else PixelUI.WARNING
 
-	background.color = PixelUI.DT_FIELD_BG   # flat DT field
+	background.color = PixelUI.UI_BG
 	# Edge vignette + faint scanlines behind the content (which we lift to the front).
 	PixelUI.add_terminal_backdrop(self)
 	move_child($Content, get_child_count() - 1)
@@ -141,18 +142,19 @@ func _apply_visual_theme(victory: bool) -> void:
 	button_row.add_theme_constant_override("separation", 28)
 
 	# Framed transmission window (result-tinted border + corner brackets).
-	summary_panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, accent, 2))
+	summary_panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.UI_PANEL, accent.darkened(0.3), PixelUI.MIN_STROKE))
 	PixelUI.add_corner_brackets(summary_panel, accent, 24.0, 3.0, 8.0)
 
 	var title_font: int = VICTORY_TITLE_FONT if victory else DEFEAT_TITLE_FONT
-	_style_label(title_label, title_font, accent)
+	_style_label(title_label, title_font, accent.lightened(0.3))
+	PixelUI.apply_type(title_label, PixelUI.TYPE_DISPLAY)
 
 	_add_result_banner(victory, accent)
 	_build_two_section_stats(accent)
 
 	# Continue is centered text, matching the unlock screen's primary action.
 	new_run_button.custom_minimum_size = BUTTON_SIZE
-	PixelUI.style_primary_button(new_run_button, BUTTON_FONT)
+	PixelUI.style_ui_primary_button(new_run_button, BUTTON_FONT)   # the screen's primary
 	new_run_button.icon = null
 
 
@@ -226,7 +228,8 @@ func _make_section_head(text: String, accent: Color) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_style_label(label, SECTION_HEAD_FONT, PixelUI.DT_AMBER)
+	_style_label(label, SECTION_HEAD_FONT, PixelUI.CHROME_DIM)
+	PixelUI.apply_type(label, PixelUI.TYPE_SMALL)
 	return label
 
 

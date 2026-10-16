@@ -98,17 +98,18 @@ func _fit_awards() -> void:
 
 
 func _apply_visual_theme() -> void:
-	background.color = PixelUI.DT_FIELD_BG
+	background.color = PixelUI.UI_BG
 	PixelUI.add_terminal_backdrop(self)
 	move_child($Content, get_child_count() - 1)
 	# Unlock accent is AMBER (visual identity: amber = unlock accents; gold is
 	# reserved for the major-event tier below).
-	_style_label(title_label, TITLE_FONT, PixelUI.DT_AMBER)
+	_style_label(title_label, TITLE_FONT, PixelUI.CHROME)
+	PixelUI.apply_type(title_label, PixelUI.TYPE_DISPLAY)
 	# Transmission window: full-screen event chrome (the documented
 	# none-of-the-six exception, same as intercept / route fork / run-end).
 	PixelUI.style_transmission_panel(window_panel)
 	continue_button.custom_minimum_size = BUTTON_SIZE
-	PixelUI.style_primary_button(continue_button, BUTTON_FONT)
+	PixelUI.style_ui_primary_button(continue_button, BUTTON_FONT)   # the screen's primary
 
 
 # ── Sections ──────────────────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ func _build_sections(unlocks: Array) -> void:
 		var head_strip := PanelContainer.new()
 		head_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		head_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var strip_style: StyleBoxFlat = PixelUI.component_header_style(PixelUI.COMPONENT_REWARD)
+		var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_ROW, PixelUI.UI_ROW, 0)
 		strip_style.set_content_margin(SIDE_TOP, 8.0)
 		strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
 		head_strip.add_theme_stylebox_override("panel", strip_style)
@@ -140,7 +141,8 @@ func _build_sections(unlocks: Array) -> void:
 		head.text = str(SECTION_LABELS[kind])
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		head.set_meta("unlock_section", kind)
-		_style_label(head, SECTION_HEAD_FONT, PixelUI.DT_AMBER)
+		_style_label(head, SECTION_HEAD_FONT, PixelUI.CHROME_DIM)
+		PixelUI.apply_type(head, PixelUI.TYPE_SMALL)
 		head_strip.add_child(head)
 		sections.add_child(head_strip)
 		match kind:
@@ -237,7 +239,7 @@ func _make_hero_row(entry: Dictionary) -> Control:
 	name_label.text = str(entry.get("display_name", ""))
 	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_style_label(name_label, NAME_FONT, PixelUI.DT_AMBER)
+	_style_label(name_label, NAME_FONT, PixelUI.CHROME)
 	row.add_child(name_label)
 	if unit != null:
 		var long_press := LongPressInput.new()
@@ -261,7 +263,7 @@ func _make_operation_row(entry: Dictionary) -> Control:
 	name_label.text = str(entry.get("display_name", ""))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_style_label(name_label, NAME_FONT, PixelUI.DT_AMBER)
+	_style_label(name_label, NAME_FONT, PixelUI.CHROME)
 	column.add_child(name_label)
 	var copy: Dictionary = OperationBriefingOverlay.operation_copy(operation_id)
 	var origin: String = str(copy.get("origin", ""))
@@ -311,7 +313,7 @@ func _make_grid_cell(entry: Dictionary) -> Control:
 		# Integer icon law: whole multiples of native only. force_plate: EVERY
 		# grid icon rides the emblem plate uniformly (Build G item 5 — a lone
 		# low-res plate read as a selection highlight).
-		var icon := PixelUI.make_integer_icon(item.icon, GRID_ICON_BOX, PixelUI.DT_AMBER, true)
+		var icon := PixelUI.make_integer_icon(item.icon, GRID_ICON_BOX, PixelUI.CHROME_DIM, true)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cell.add_child(icon)
@@ -321,7 +323,7 @@ func _make_grid_cell(entry: Dictionary) -> Control:
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.custom_minimum_size = Vector2(200, 0)
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_style_label(name_label, GRID_NAME_FONT, PixelUI.DT_AMBER)
+	_style_label(name_label, GRID_NAME_FONT, PixelUI.CHROME)
 	cell.add_child(name_label)
 	if item != null:
 		var long_press := LongPressInput.new()

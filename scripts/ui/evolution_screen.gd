@@ -9,8 +9,8 @@ const CARD_WIDTH_FRACTION := 0.92
 const CARD_MIN_WIDTH := 620.0
 const CARD_MAX_WIDTH := 1000.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
-const CARD_BG := Color(0.024, 0.040, 0.060, 0.82)
-const CARD_BG_HOVER := Color(0.036, 0.060, 0.086, 0.92)
+const CARD_BG := PixelUI.UI_PANEL
+const CARD_BG_HOVER := PixelUI.UI_ROW
 # Branch-portrait frame width; PixelUI.make_portrait_frame owns the height
 # (the one portrait window) — never define a portrait height or aspect here.
 const PORTRAIT_W := 170
@@ -82,7 +82,7 @@ func _ready() -> void:
 		_confirm_path.text = "SELECT A BRANCH"
 		_confirm_path.custom_minimum_size.y = 128
 		_confirm_path.disabled = true
-		PixelUI.style_primary_button(_confirm_path, BUTTON_FONT_SIZE)
+		PixelUI.style_ui_primary_button(_confirm_path, BUTTON_FONT_SIZE)   # the screen's primary
 		_confirm_path.pressed.connect(func() -> void: _on_choose_path_pressed(_selected_path))
 		content_vbox.add_child(_confirm_path)
 	_build_view_battle_button()
@@ -121,8 +121,7 @@ func _build_view_battle_button() -> void:
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(0, 96)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(button, Color(0.04, 0.09, 0.12, 0.96), PixelUI.DT_HERO_BORDER, 34)
-	button.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME)
+	PixelUI.style_ui_secondary_button(button, 34)
 	button.pressed.connect(_on_view_battle_pressed)
 	content_vbox.add_child(button)
 
@@ -151,7 +150,7 @@ func _build_help_overlay() -> void:
 	add_child(_help_overlay)
 
 	var dim: ColorRect = ColorRect.new()
-	dim.color = Color(0.005, 0.007, 0.012, 0.82)
+	dim.color = PixelUI.SCRIM
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_help_overlay.add_child(dim)
@@ -249,7 +248,8 @@ func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelCon
 	# The name is read from the trait (UnitTraits.marker_text), amber like the
 	# marker it becomes on the battle card.
 	var trait_title: String = CombatManager.UnitTraits.marker_text(unit_trait)
-	var title: Label = _make_label(trait_title, CARD_TITLE_FONT_SIZE, PixelUI.DT_AMBER, 3)
+	var title: Label = _make_label(trait_title, CARD_TITLE_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 3)
+	PixelUI.apply_type(title, PixelUI.TYPE_LABEL)
 	title.name = "TraitName"
 	vbox.add_child(title)
 	var desc: Label = _make_label(str(unit_trait.get("text", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
@@ -268,11 +268,11 @@ func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelCon
 	choose_button.custom_minimum_size = Vector2(0, 128)
 	choose_button.name = "ChooseTrait"
 	choose_button.text = "CHOOSE %s" % trait_title
-	PixelUI.style_button(choose_button, Color(0.022, 0.034, 0.050, 0.95), PixelUI.DT_CYAN, BUTTON_FONT_SIZE)
+	PixelUI.style_ui_secondary_button(choose_button, BUTTON_FONT_SIZE)   # one of two choices
 	choose_button.icon = load(PixelUI.ICON_EVOLVE) as Texture2D
 	choose_button.expand_icon = true
 	choose_button.add_theme_constant_override("icon_max_width", 44)
-	choose_button.add_theme_color_override("icon_normal_color", PixelUI.DT_CYAN)
+	choose_button.add_theme_color_override("icon_normal_color", PixelUI.CHROME)
 	choose_button.add_theme_constant_override("h_separation", 14)
 	choose_button.pressed.connect(_on_choose_trait_pressed.bind(str(unit_trait.get("id", ""))))
 	vbox.add_child(choose_button)
@@ -339,7 +339,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	trait_effects.visible = false
 	trait_effects.add_theme_constant_override("separation", 14)
 	for trait_variant in path.get("traits", []):
-		var trait_effect: Label = _make_label(CombatManager.UnitTraits.line(trait_variant), ABILITY_DESC_FONT_SIZE, PixelUI.DT_AMBER, 1)
+		var trait_effect: Label = _make_label(CombatManager.UnitTraits.line(trait_variant), ABILITY_DESC_FONT_SIZE, PixelUI.CHROME, 1)
 		trait_effect.name = "TraitEffect_%s" % str((trait_variant as Dictionary).get("id", ""))
 		trait_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		trait_effects.add_child(trait_effect)
@@ -348,7 +348,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	expand.name = "ExpandAbilities"
 	expand.text = "VIEW ALL %d ABILITIES" % ranges.size()
 	expand.custom_minimum_size.y = 128
-	PixelUI.style_button(expand, CARD_BG, PixelUI.LINE_DIM, BUTTON_FONT_SIZE)
+	PixelUI.style_ui_secondary_button(expand, BUTTON_FONT_SIZE)
 	expand.pressed.connect(func() -> void:
 		abilities.visible = not abilities.visible
 		trait_effects.visible = abilities.visible
@@ -360,7 +360,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	var choose_button := Button.new()
 	choose_button.custom_minimum_size.y = 128
 	choose_button.text = "SELECT"
-	PixelUI.style_primary_button(choose_button, BUTTON_FONT_SIZE)
+	PixelUI.style_ui_secondary_button(choose_button, BUTTON_FONT_SIZE)   # picks; CONFIRM is the primary
 	_path_buttons[path_name] = choose_button
 	choose_button.pressed.connect(_select_path.bind(path_name))
 	vbox.add_child(choose_button)
@@ -390,7 +390,8 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	header.add_child(text_stack)
 
 	# Branch name is a selection, not a rarity — cyan, not green (UI review S-2).
-	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.DT_CYAN, 3)
+	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 3)
+	PixelUI.apply_type(path_name, PixelUI.TYPE_LABEL)
 	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_stack.add_child(path_name)
 
@@ -405,7 +406,7 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	# each does is in the expanded view.
 	var trait_line: String = CombatManager.UnitTraits.preview_line(path.get("traits", []))
 	if trait_line != "":
-		var trait_label: Label = _make_label(trait_line, BODY_FONT_SIZE, PixelUI.DT_AMBER, 2)
+		var trait_label: Label = _make_label(trait_line, BODY_FONT_SIZE, PixelUI.CHROME, 2)
 		trait_label.name = "TraitLine"
 		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text_stack.add_child(trait_label)
@@ -416,7 +417,7 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		hp_label_text = "MAX HP %d" % hp_value
 		if base_unit != null:
 			hp_label_text += " (%+d)" % (hp_value - base_unit.max_hp)
-	text_stack.add_child(_make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.GOLD_ACCENT, 1))
+	text_stack.add_child(_make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.CHROME_DIM, 1))
 
 	# No FROM <unit> line (Kev 2026-07-10) — the player just came from that unit.
 	return header
@@ -431,7 +432,7 @@ func _create_ability_row(entry: Dictionary) -> VBoxContainer:
 	box.add_child(row)
 	var low := int(entry.get("min", 0))
 	var high := int(entry.get("max", 0))
-	var roll := _make_label(str(low) if low == high else "%d-%d" % [low, high], SMALL_FONT_SIZE, PixelUI.DT_CYAN, 1)
+	var roll := _make_label(str(low) if low == high else "%d-%d" % [low, high], SMALL_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 1)
 	roll.custom_minimum_size.x = 120
 	roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	row.add_child(roll)
@@ -596,7 +597,7 @@ func _get_card_width() -> float:
 
 func _apply_visual_theme() -> void:
 	# Direction-05: flat dark DT field (matches the battle screen), no bright grid.
-	background.color = Color(0.055, 0.070, 0.095, 1.0)
+	background.color = PixelUI.UI_BG
 	var pattern: Control = get_node_or_null("BackgroundPattern")
 	if pattern != null:
 		pattern.visible = false
@@ -607,7 +608,8 @@ func _apply_visual_theme() -> void:
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title_label, TITLE_FONT_SIZE, PixelUI.GOLD_ACCENT, 3)
+	PixelUI.style_label(title_label, TITLE_FONT_SIZE, PixelUI.CHROME, 3)
+	PixelUI.apply_type(title_label, PixelUI.TYPE_DISPLAY)
 	PixelUI.style_label(summary_label, SUMMARY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	PixelUI.style_label(footer_label, 30, PixelUI.TEXT_MUTED, 1)
 	_update_choice_layout()

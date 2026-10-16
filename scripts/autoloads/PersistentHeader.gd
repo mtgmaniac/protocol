@@ -84,6 +84,7 @@ func _ready() -> void:
 	PixelUI.install_text_filter(get_tree())
 	_apply_chrome_arg()
 	_fit_desktop_window()
+	_apply_capture_window_arg()
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_background.draw.connect(_draw_battle_frame)
@@ -396,6 +397,19 @@ func _handle_chrome_key(event: InputEvent) -> bool:
 	else:
 		chrome_changed.emit(id)
 	return true
+
+
+## Debug builds: `--capture-window=WxH` sizes the window for screenshot tools,
+## so every capture script can shoot at phone width (ui-unify) without its own
+## window option. Same sizing as scripts/debug/capture_window.gd.
+func _apply_capture_window_arg() -> void:
+	if not OS.is_debug_build():
+		return
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-window="):
+			var parts: PackedStringArray = arg.trim_prefix("--capture-window=").split("x")
+			if parts.size() == 2:
+				load("res://scripts/debug/capture_window.gd").apply(get_tree().root, Vector2i(int(parts[0]), int(parts[1])))
 
 
 ## `--system-accent=<id>` (bone / phosphor / cyan / amber) starts on that
