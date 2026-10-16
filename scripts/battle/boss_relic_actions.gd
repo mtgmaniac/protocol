@@ -125,7 +125,7 @@ func _show_hold_banner() -> void:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = "YOUR HEROES HOLD THIS ROUND"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(label, HOLD_BANNER_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
+	PixelUI.style_label(label, HOLD_BANNER_FONT, PixelUI.PLAYER_ACCENT_LIGHT, 3)
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_theme_constant_override("separation", 6)

@@ -13,12 +13,15 @@ const ACTION_PANEL_HEIGHT := 88.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
 # static var (not const) because PixelUI's DT_* tokens are themselves static var
 # and a const can't be initialized from a non-const value.
-static var HERO_LINE := PixelUI.BATTLE_HERO_LINE
+# Flat pixel B: friendly cards are PLAYER, enemy cards the ENCOUNTER accent
+# (PixelUI.unit_card_palette); these two are the resting frames for the bits that
+# still read a static line (cast badge).
+static var HERO_LINE := PixelUI.PLAYER_ACCENT_DIM
 static var ENEMY_LINE := PixelUI.BATTLE_ENEMY_LINE
 # Selection is the Selected component: strong cyan (Polish Build A). Gold is
 # reserved for the major-event tier — the old GOLD_ACCENT selection was the
 # single biggest strong-gold leak in the game.
-static var SELECT_LINE := PixelUI.DT_CYAN
+static var SELECT_LINE := PixelUI.PLAYER_ACCENT_LIGHT
 static var HP_FILL := PixelUI.BATTLE_HP_FILL
 static var HP_CHIP := PixelUI.COLOR_DAMAGE  # "doomed HP" forecast overlay — pending damage, drains per hit
 static var HP_BACK := PixelUI.DT_FIELD_BG
@@ -293,7 +296,7 @@ func _build() -> void:
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.DT_CYAN, 0)
+	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 0)
 	name_content.add_child(_name_label)
 	_name_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_boss_label = Label.new()
@@ -361,7 +364,7 @@ func _build() -> void:
 	_cast_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_cast_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cast_badge.add_theme_font_size_override("font_size", CAST_BADGE_FONT_SIZE)
-	_cast_badge.add_theme_color_override("font_color", PixelUI.DT_HERO_NAME)
+	_cast_badge.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
 	# Stroke law (INVARIANTS #14): borders are even design px and >= 4.
 	_cast_badge.add_theme_stylebox_override("normal", _style(Color(0.006, 0.012, 0.020, 0.80), HERO_LINE, 4, 0))
 	_cast_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -538,10 +541,8 @@ func _refresh() -> void:
 	else:
 		card_style = PixelUI.component_style(PixelUI.COMPONENT_ENEMY)
 	card_style.bg_color = PixelUI.BATTLE_PANEL_FILL
-	if not selected:
-		card_style.border_color = line_color
-	if not selected and targetable:
-		card_style.border_color = line_color
+	# Flat pixel B: the frame always reads the side palette (selected included).
+	card_style.border_color = line_color
 	card_style.set_content_margin_all(CARD_BORDER_WIDTH)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_theme_stylebox_override("panel", PixelUI.battle_layout_style(CARD_BORDER_WIDTH))
@@ -550,7 +551,7 @@ func _refresh() -> void:
 	_action_panel.visible = show_action_pips
 	# One shell, three regions: title plate, inset portrait field, health footer.
 	if _name_strip != null:
-		var header_bg: Color = PixelUI.BATTLE_HERO_HEADER if is_hero else PixelUI.BATTLE_ENEMY_HEADER
+		var header_bg: Color = PixelUI.unit_card_palette(is_hero)["header"]
 		if is_boss:
 			header_bg = PixelUI.DT_BOSS_HEADER.darkened(0.45) if dead else PixelUI.DT_BOSS_HEADER
 		_name_strip.add_theme_stylebox_override("panel", PixelUI.battle_layout_style())
@@ -1154,25 +1155,23 @@ func _status_icon_for_type(status_type: String) -> String:
 
 
 func _team_border_color() -> Color:
-	return HERO_LINE if side == "hero" else ENEMY_LINE
+	return PixelUI.unit_card_palette(side == "hero")["rest"]
 
 
 func _line_color() -> Color:
 	if selected:
 		return SELECT_LINE
 	if targetable:
-		if side == "enemy":
-			return PixelUI.DT_ENEMY_DITHER
-		return PixelUI.DT_HERO_DITHER
+		return PixelUI.unit_card_palette(side == "hero")["target"]
 	return _team_border_color()
 
 
 func _name_font_color(is_hero: bool) -> Color:
-	var base: Color = PixelUI.BATTLE_HERO_TEXT if is_hero else PixelUI.BATTLE_ENEMY_TEXT
+	var base: Color = PixelUI.unit_card_palette(is_hero)["name"]
 	if dead:
 		return base.darkened(0.4).lerp(PixelUI.TEXT_MUTED, 0.55)
 	if needs_manual_target and not selected and is_hero:
-		return PixelUI.DT_CYAN_BRIGHT.lerp(Color.WHITE, 0.38)
+		return PixelUI.PLAYER_ACCENT_LIGHT.lerp(Color.WHITE, 0.38)
 	return base
 
 

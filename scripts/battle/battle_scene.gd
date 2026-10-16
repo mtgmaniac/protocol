@@ -2783,7 +2783,7 @@ func _style_roll_button_for_phase() -> void:
 	var action_font: int = _layout.presentation("action_font", CENTER_ACTION_BUTTON_FONT_SIZE) if _layout != null else CENTER_ACTION_BUTTON_FONT_SIZE
 	match turn_phase:
 		PHASE_AWAIT_ROLL:
-			# Active primary action: ready to roll — teal primary button.
+			# Active primary action: ready to roll — player-color primary button.
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
 			PixelUI.style_primary_button(roll_button, action_font, false, false)
@@ -2791,10 +2791,10 @@ func _style_roll_button_for_phase() -> void:
 			# Hidden: targetable cards use team border color (see CompactUnitCard).
 			pass
 		PHASE_READY_TO_END:
-			# Active primary action: close out the turn — amber (commit) variant.
+			# END TURN: the battle's primary action, in the player color (flat pixel B).
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, action_font, true, false)
+			PixelUI.style_primary_button(roll_button, action_font, false, false)
 		_:
 			# Item-pick / fallback states are also hidden; the affordance
 			# is the highlighted card the player must tap.
@@ -2827,9 +2827,9 @@ func _style_frame_icon_action_button(
 	if _layout != null and min_size == BOTTOM_BAR_BUTTON_SIZE:
 		button.custom_minimum_size = _layout.presentation("protocol_button_size", min_size)
 	# Direction-05 flat dark square. frame_modulate carries the border accent (gold for
-	# protocol spend), else the neutral DT border; icons in the system color (flat pixel A).
+	# protocol spend), else the neutral DT border; icons in the player color (flat pixel B).
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
-	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate, true, true)
+	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate, true, PixelUI.PLAYER_ACCENT_LIGHT)
 
 
 func _update_phase_target_sets() -> void:

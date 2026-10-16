@@ -53,7 +53,7 @@ signal dev_tools_unlocked_now
 ## Flat pixel A: fired after F10 (debug builds) switches the system color. A
 ## screen that restyles in place connects to it (the battle screen, through
 ## BattleLayout); with no listener the current screen is reloaded instead.
-signal system_accent_changed(id: String)
+signal chrome_changed(id: String)
 
 @onready var _band: Control = $HeaderBand
 @onready var _bar: Control = $HeaderBand/Bar
@@ -82,7 +82,7 @@ func _ready() -> void:
 	# Sharp (NEAREST) sampling for every pixel-font node, game-wide. This
 	# always-alive autoload is the one installer; PixelUI owns the rule.
 	PixelUI.install_text_filter(get_tree())
-	_apply_system_accent_arg()
+	_apply_chrome_arg()
 	_fit_desktop_window()
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
@@ -226,10 +226,10 @@ func _style() -> void:
 		PixelUI.style_battle_text(_count_label, _count_tint)
 	_refresh_summary()
 	_background.queue_redraw()
-	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
-	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
-	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
-	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
+	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
 		b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
 
@@ -364,7 +364,7 @@ var _dev_last_tap_ms := -2000
 var _dev_tap_sources: Array = []  # WeakRefs to extra tap targets
 
 func _input(event: InputEvent) -> void:
-	if _handle_system_accent_key(event):
+	if _handle_chrome_key(event):
 		return
 	var press := false
 	var pos := Vector2.ZERO
@@ -378,34 +378,34 @@ func _input(event: InputEvent) -> void:
 		_dev_tap_count = 0
 
 
-## Flat pixel A, debug builds: F10 cycles the SYSTEM_ACCENT candidates. The
-## header restyles itself; a listener on system_accent_changed (the battle
+## Flat pixel A, debug builds: F10 cycles the CHROME candidates. The
+## header restyles itself; a listener on chrome_changed (the battle
 ## screen) restyles in place; with none, the screen is reloaded so it rebuilds
 ## in the new color. Returns true when it used the key.
-func _handle_system_accent_key(event: InputEvent) -> bool:
+func _handle_chrome_key(event: InputEvent) -> bool:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or key.keycode != KEY_F10 or not OS.is_debug_build():
 		return false
 	get_viewport().set_input_as_handled()
-	var id: String = PixelUI.set_system_accent(PixelUI.system_accent_index + 1)
-	print("[SYSTEM_ACCENT] %s" % id)
+	var id: String = PixelUI.set_chrome(PixelUI.chrome_index + 1)
+	print("[CHROME] %s" % id)
 	_style()
-	if system_accent_changed.get_connections().is_empty():
+	if chrome_changed.get_connections().is_empty():
 		if get_tree().current_scene != null:
 			get_tree().reload_current_scene()
 	else:
-		system_accent_changed.emit(id)
+		chrome_changed.emit(id)
 	return true
 
 
 ## `--system-accent=<id>` (bone / phosphor / cyan / amber) starts on that
 ## candidate, for captures. Read from both the engine and the user arguments.
-func _apply_system_accent_arg() -> void:
+func _apply_chrome_arg() -> void:
 	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
 		if arg.begins_with("--system-accent="):
-			var index: int = PixelUI.system_accent_index_of(arg.trim_prefix("--system-accent="))
+			var index: int = PixelUI.chrome_index_of(arg.trim_prefix("--system-accent="))
 			if index >= 0:
-				PixelUI.set_system_accent(index)
+				PixelUI.set_chrome(index)
 
 
 ## Another control that counts toward the seven-tap unlock: the title screen's
@@ -447,7 +447,7 @@ func _register_dev_tap(now_ms: int = -1, from_run_title: bool = true) -> void:
 	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.apply_pixel_font(notice)
 	notice.add_theme_font_size_override("font_size", 48)
-	notice.add_theme_color_override("font_color", PixelUI.DT_CYAN)
+	notice.add_theme_color_override("font_color", PixelUI.CHROME)
 	notice.add_theme_color_override("font_outline_color", PixelUI.DT_BTN_BG)
 	notice.add_theme_constant_override("outline_size", 8)
 	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

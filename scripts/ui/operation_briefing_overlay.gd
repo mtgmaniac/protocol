@@ -16,7 +16,6 @@ const SECTION_FONT := 40
 const BODY_FONT := PixelUI.FONT_BODY_MIN
 const ACTION_FONT := 52
 const ACTION_HEIGHT := 112
-const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 
 const OPERATION_COPY := {
 	"facility": {
@@ -83,8 +82,9 @@ var _content_container: VBoxContainer = null
 static func operation_copy(operation_id: String) -> Dictionary:
 	var copy: Dictionary = (OPERATION_COPY.get(operation_id, {}) as Dictionary).duplicate(true)
 	if not copy.is_empty():
-		# The operation's ENCOUNTER accent, from data (flat pixel A color roles).
-		copy["accent"] = DEPTH.encounter_accent(operation_id)
+		# Flat pixel B: the encounter color is reserved for the battle header and
+		# the enemy cards, so operation copy (squad select, briefing) reads CHROME.
+		copy["accent"] = PixelUI.CHROME
 	return copy
 
 
@@ -116,7 +116,7 @@ func present_deployment(operation_id: String) -> void:
 	_build_shell(PixelUI.COMPONENT_MODAL)
 	_add_title("OPERATION %s // %s" % [str(copy["number"]), str(copy["name"])], PixelUI.DT_CYAN)
 	_add_deployment_grid(copy)
-	_add_action("ENGAGE", PixelUI.DT_CYAN)
+	_add_action("ENGAGE", PixelUI.PLAYER_ACCENT)
 
 
 func present_boss_alert(boss_name: String, runtime_rule: String) -> void:

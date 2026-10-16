@@ -139,72 +139,95 @@ static func even_px(value: float) -> float:
 const FONT_BODY_MIN := 42
 const BODY_LINE_SPACING := 10
 
-# ── Color roles (flat pixel A, 2026-10-16, docs/FLAT_PIXEL_PROTOTYPE.md) ──
-# The single global accent is split into roles. Every color a screen uses comes
-# from one of them (or from the unchanged meaning tokens: hero / enemy coding,
-# rarity, warning, HP, heal and effect icons).
+# ── Color roles (flat pixel A 2026-10-16, ownership in flat pixel B) ──
+# docs/FLAT_PIXEL_PROTOTYPE.md. The player owns the bottom, the enemy owns the
+# top, the tray is shared ground. The world changes per operation; the player
+# never does. Every color a screen uses comes from one of these roles or from
+# the unchanged meaning tokens (hero / enemy dice, HP, heal and effect icons,
+# rarity, warning).
 #
-# SYSTEM: the game's identity color. Title, menus, help, settings, reward, squad
-# select, primary and selected states, the Protocol meter, the battle header's
-# ? and back icons, the footer icons. SYSTEM_ACCENT_DIM is its darker variant for
-# borders and inactive states; SYSTEM_ACCENT_INK is dark text on an accent fill.
-# They are vars: the debug key F10 cycles the candidates (set_system_accent).
-# Scores and the reason for the default: docs/FLAT_PIXEL_PROTOTYPE.md, Phase 2.
-const SYSTEM_ACCENT_CANDIDATES := [
+# CHROME: neutral text, panels, borders, secondary and disabled buttons, the
+# header ? and back icons. Carries no meaning. CHROME is its bright tone (bone by
+# default), CHROME_DIM the darker one, CHROME_INK dark text on a CHROME fill.
+# Vars: the debug key F10 cycles the candidates (set_chrome). Flat pixel A
+# scored the candidates and picked bone (FLAT_PIXEL_PROTOTYPE.md, Phase 2).
+const CHROME_CANDIDATES := [
 	{"id": "bone", "accent": Color("e6dec8"), "dim": Color("837d6e"), "ink": Color("15130e")},
 	{"id": "phosphor", "accent": Color("8fd16a"), "dim": Color("4c7338"), "ink": Color("0c1409")},
 	{"id": "cyan", "accent": Color("3fd0e2"), "dim": Color("1f6f7a"), "ink": Color("061217")},
 	{"id": "amber", "accent": Color("edb03e"), "dim": Color("8a6526"), "ink": Color("17120a")},
 ]
-const SYSTEM_ACCENT_DEFAULT := 0
-static var system_accent_index: int = SYSTEM_ACCENT_DEFAULT
-static var SYSTEM_ACCENT: Color = SYSTEM_ACCENT_CANDIDATES[SYSTEM_ACCENT_DEFAULT]["accent"]
-static var SYSTEM_ACCENT_DIM: Color = SYSTEM_ACCENT_CANDIDATES[SYSTEM_ACCENT_DEFAULT]["dim"]
-static var SYSTEM_ACCENT_INK: Color = SYSTEM_ACCENT_CANDIDATES[SYSTEM_ACCENT_DEFAULT]["ink"]
+const CHROME_DEFAULT := 0
+static var chrome_index: int = CHROME_DEFAULT
+static var CHROME: Color = CHROME_CANDIDATES[CHROME_DEFAULT]["accent"]
+static var CHROME_DIM: Color = CHROME_CANDIDATES[CHROME_DEFAULT]["dim"]
+static var CHROME_INK: Color = CHROME_CANDIDATES[CHROME_DEFAULT]["ink"]
 
 
-## Switches the system color to candidate `index` (wraps). Styles built before
-## the call keep the old color: the caller rebuilds them (PersistentHeader's F10
-## reloads the screen). Returns the candidate's id.
-static func set_system_accent(index: int) -> String:
-	system_accent_index = posmod(index, SYSTEM_ACCENT_CANDIDATES.size())
-	var candidate: Dictionary = SYSTEM_ACCENT_CANDIDATES[system_accent_index]
-	SYSTEM_ACCENT = candidate["accent"]
-	SYSTEM_ACCENT_DIM = candidate["dim"]
-	SYSTEM_ACCENT_INK = candidate["ink"]
-	_ui_thumb = null
-	for material: ShaderMaterial in _accent_materials.values():
-		material.set_shader_parameter("accent", SYSTEM_ACCENT)
+## Switches CHROME to candidate `index` (wraps). Styles built before the call
+## keep the old color: the caller rebuilds them (PersistentHeader's F10 reloads
+## the screen). Returns the candidate's id.
+static func set_chrome(index: int) -> String:
+	chrome_index = posmod(index, CHROME_CANDIDATES.size())
+	var candidate: Dictionary = CHROME_CANDIDATES[chrome_index]
+	CHROME = candidate["accent"]
+	CHROME_DIM = candidate["dim"]
+	CHROME_INK = candidate["ink"]
+	_refresh_logo_materials()
 	return str(candidate["id"])
 
 
 ## The candidate index for an id ("bone", "phosphor", "cyan", "amber"); -1 if none.
-static func system_accent_index_of(id: String) -> int:
-	for i in range(SYSTEM_ACCENT_CANDIDATES.size()):
-		if str(SYSTEM_ACCENT_CANDIDATES[i]["id"]) == id:
+static func chrome_index_of(id: String) -> int:
+	for i in range(CHROME_CANDIDATES.size()):
+		if str(CHROME_CANDIDATES[i]["id"]) == id:
 			return i
 	return -1
 #
+# PLAYER: a cobalt matched to the hero dice (their base is 1f6be0, the lit edge
+# about 2070f0), never the old cyan. Friendly card frames and name headers, squad
+# picks and pick badges, the footer action buttons and their numbers, the
+# Protocol meter, END TURN and every primary button, every selected or active
+# state (tabs, toggles ON, slider fills, the selected reward card), the logo
+# reactor core. PLAYER_ACCENT_LIGHT is for text and icons on dark fields,
+# PLAYER_ACCENT_DIM for resting frames, PLAYER_ACCENT_INK dark text on a fill.
+const PLAYER_ACCENT := Color("2a6ae6")
+const PLAYER_ACCENT_LIGHT := Color("9cbcff")
+const PLAYER_ACCENT_DIM := Color("1c3f82")
+const PLAYER_ACCENT_INK := Color("060d1c")
+#
 # ENCOUNTER: one per operation, named by token in data/raw/battle-tray-scenes.json
 # (`accent`), read through battle_depth.gd `encounter_accent`. In battle it drives
-# WORLD elements only: the floor rim, the floor decal, the battle count and the
-# header rule. The squad-select site line and the briefing read it too.
+# the header battle count and rule and the enemy card frames and name headers,
+# nothing else. ENCOUNTER_ACCENT is the current battle's (BattleLayout sets it).
 const ENCOUNTER_FACILITY := Color("cf9a36")   # amber
 const ENCOUNTER_HIVE := Color("c8404a")       # red
 const ENCOUNTER_VEIL := Color("8f7ae0")       # violet
 const ENCOUNTER_SIGNAL := Color("b653c8")     # magenta (the briefing's existing color)
 const ENCOUNTER_MANTLE := Color("d89b4a")     # ochre (the briefing's existing color)
+static var ENCOUNTER_ACCENT: Color = ENCOUNTER_FACILITY
+
+
+## A unit card's palette: rest / targetable / selected frame, title fill, name.
+## Friendly cards are PLAYER; enemy cards the ENCOUNTER accent. Selecting is the
+## player's act, so a selected card of either side is PLAYER_ACCENT_LIGHT.
+static func unit_card_palette(hero: bool) -> Dictionary:
+	if hero:
+		return {"rest": PLAYER_ACCENT_DIM, "target": PLAYER_ACCENT, "selected": PLAYER_ACCENT_LIGHT,
+			"header": PLAYER_ACCENT_DIM.darkened(0.55), "name": PLAYER_ACCENT_LIGHT}
+	var accent: Color = ENCOUNTER_ACCENT
+	return {"rest": accent.darkened(0.45), "target": accent, "selected": PLAYER_ACCENT_LIGHT,
+		"header": accent.darkened(0.78), "name": accent.lightened(0.35)}
 #
 # NEUTRAL chrome: steel and blue-gray for panels, borders, secondary and disabled
-# buttons. Most UI carries no accent. The UI_* charcoal family below (UI_BG,
-# UI_PANEL, UI_PANEL_EDGE, UI_ROW, UI_BUTTON, UI_LINE, UI_CARD_LINE, UI_RULE,
-# UI_TRACK, UI_TEXT*) belongs to this role.
+# buttons. The UI_* charcoal family below (UI_BG, UI_PANEL, UI_PANEL_EDGE, UI_ROW,
+# UI_BUTTON, UI_LINE, UI_CARD_LINE, UI_RULE, UI_TRACK, UI_TEXT*) belongs to it.
 const NEUTRAL_STEEL := Color("7d8a96")
 const NEUTRAL_BLUEGRAY := Color("4c5a66")
 
 # ── UI restyle A tokens (2026-10-14, docs/UI_RESTYLE.md) ──
 # The charcoal family the mocks share (NEUTRAL role). Strokes are MIN_STROKE
-# (4 design px). The restyle's one amber, UI_ACCENT, became SYSTEM_ACCENT.
+# (4 design px). The restyle's one amber, UI_ACCENT, became CHROME.
 const UI_BG := Color("0e1216")              # screen field
 const UI_PANEL := Color("161c1f")           # section panel / card fill
 const UI_PANEL_EDGE := Color("22292d")      # section panel frame
@@ -220,7 +243,7 @@ const UI_TEXT_DIM := Color("8a8f94")
 const UI_TEXT_OFF := Color("4f5458")
 const UI_STEEL := Color("7f9cb8")           # uncommon rarity
 # Warnings (save discarded, resume problems, destructive confirms) are rust
-# orange-red: a different hue from every SYSTEM_ACCENT candidate, never on a
+# orange-red: a different hue from every CHROME candidate, never on a
 # button frame.
 const UI_WARN := Color("e06a3c")
 
@@ -1432,8 +1455,9 @@ static func style_frame_icon_button(
 
 ## Direction-05 flat icon button: dark square (DT_BTN_BG) + 2px hard border, our
 ## pixel icon centered & expanded. Pass border_color = DT_CYAN for the active state.
-## `system_tint` (flat pixel A): the icon is drawn in SYSTEM_ACCENT (system_icon).
-static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE, battle: bool = false, system_tint: bool = false) -> void:
+## `icon_tint` (flat pixel A/B): a color draws the icon recolored (tinted_icon);
+## TRANSPARENT keeps the art as authored.
+static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE, battle: bool = false, icon_tint: Color = Color.TRANSPARENT) -> void:
 	if button == null or not (button is Button):
 		return
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1465,7 +1489,7 @@ static func style_dt_icon_button(button: BaseButton, icon_path: String, border_c
 	# No focus ring — keeps every button visually identical (a focused button was
 	# rendering with a different edge/outline).
 	b.focus_mode = Control.FOCUS_NONE
-	b.icon = system_icon(icon_path) if system_tint else _load_texture(icon_path)
+	b.icon = tinted_icon(icon_path, icon_tint) if icon_tint.a > 0.0 else _load_texture(icon_path)
 	b.expand_icon = true
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1766,22 +1790,22 @@ static func component_line_color(kind: String, hero_tint: bool = false) -> Color
 ## Selected component's sub-badge. The only routine cyan FILL; lives here so
 ## screens never construct strong-cyan styleboxes themselves.
 static func selection_badge_style() -> StyleBoxFlat:
-	return make_hard_style(SYSTEM_ACCENT, SYSTEM_ACCENT, 0)
+	return make_hard_style(PLAYER_ACCENT, PLAYER_ACCENT, 0)
 
 
-## Flat pixel A: the selected tile frame in the system color. Same fill, width and
-## geometry as COMPONENT_SELECTED (which stays cyan for the screens not moved to
-## the system color yet: battle card, evolution, discard picker).
-static func system_selected_style() -> StyleBoxFlat:
-	return make_hard_style(DT_HERO_BG, SYSTEM_ACCENT, COMPONENT_FRAME_WIDTH)
+## A squad tile frame (flat pixel B): PLAYER_ACCENT when picked; at rest the
+## neutral card line (an unpicked hero is not the squad yet, so picks stand out). Same fill, width and geometry as COMPONENT_SELECTED (which stays cyan
+## for the screens not moved yet: evolution, discard picker).
+static func player_tile_style(picked: bool) -> StyleBoxFlat:
+	return make_hard_style(DT_HERO_BG, PLAYER_ACCENT if picked else UI_CARD_LINE, COMPONENT_FRAME_WIDTH)
 
 
-## Flat pixel A: a one-hue icon (the cyan header / footer art) recolored into
-## SYSTEM_ACCENT. Each pixel keeps its alpha and its brightness relative to the
-## brightest pixel of the icon. Cached per path and color.
+## A one-hue icon (the cyan header / footer art) recolored into `tint`. Each
+## pixel keeps its alpha and its brightness relative to the brightest pixel of
+## the icon. Cached per path and color.
 static var _system_icons: Dictionary = {}
-static func system_icon(path: String) -> Texture2D:
-	var key := "%s:%s" % [path, SYSTEM_ACCENT.to_html()]
+static func tinted_icon(path: String, tint: Color) -> Texture2D:
+	var key := "%s:%s" % [path, tint.to_html()]
 	if _system_icons.has(key):
 		return _system_icons[key]
 	var source: Texture2D = _load_texture(path)
@@ -1804,7 +1828,7 @@ static func system_icon(path: String) -> Texture2D:
 		for x in range(image.get_width()):
 			var texel: Color = image.get_pixel(x, y)
 			var k: float = clampf(texel.get_luminance() / top, 0.0, 1.0)
-			image.set_pixel(x, y, Color(SYSTEM_ACCENT.r * k, SYSTEM_ACCENT.g * k, SYSTEM_ACCENT.b * k, texel.a))
+			image.set_pixel(x, y, Color(tint.r * k, tint.g * k, tint.b * k, texel.a))
 	_system_icons[key] = ImageTexture.create_from_image(image)
 	return _system_icons[key]
 
@@ -1957,9 +1981,9 @@ static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Col
 ## navy fill · 2px accent border · all-caps accent text · hover glow · pressed-invert ·
 ## border-less faded disabled · auto-tracking corner brackets. Pass amber = true for
 ## the risk / confirm variant. Uppercases the button label to match the UI.
-## `system` (flat pixel A): the same button in SYSTEM_ACCENT, for screens moved to
-## the system color whose layout must not change (squad select DEPLOY SQUAD).
-static func style_primary_button(button: Button, font_size: int = 32, amber: bool = false, brackets: bool = true, system: bool = false) -> void:
+## Flat pixel B: every caller is PLAYER_ACCENT (the player owns primary
+## actions); `amber` is kept only for route fork's flagged card (old screen).
+static func style_primary_button(button: Button, font_size: int = 32, amber: bool = false, brackets: bool = true) -> void:
 	if button == null:
 		return
 	apply_pixel_font(button)
@@ -1969,14 +1993,14 @@ static func style_primary_button(button: Button, font_size: int = 32, amber: boo
 	var border: Color = BTN_AMBER_BORDER if amber else BTN_TEAL_BORDER
 	var text_col: Color = BTN_AMBER_TEXT if amber else BTN_TEAL_TEXT
 	var text_bright: Color = BTN_AMBER_TEXT_BRIGHT if amber else BTN_TEAL_TEXT_BRIGHT
-	if system:
-		border = SYSTEM_ACCENT
-		text_col = SYSTEM_ACCENT
-		text_bright = SYSTEM_ACCENT.lightened(0.25)
+	if not amber:
+		border = PLAYER_ACCENT
+		text_col = PLAYER_ACCENT_LIGHT
+		text_bright = PLAYER_ACCENT_LIGHT.lightened(0.25)
 	button.add_theme_color_override("font_color", text_col)
 	button.add_theme_color_override("font_hover_color", text_bright)
 	button.add_theme_color_override("font_focus_color", text_bright)
-	button.add_theme_color_override("font_pressed_color", SYSTEM_ACCENT_INK if system else BTN_PRIMARY_INK)
+	button.add_theme_color_override("font_pressed_color", BTN_PRIMARY_INK if amber else PLAYER_ACCENT_INK)
 	button.add_theme_color_override("font_disabled_color", BTN_DISABLED_TEXT)
 	button.add_theme_constant_override("outline_size", 0)
 	var states := {
@@ -2514,11 +2538,11 @@ static func style_ui_primary_button(button: Button, font_size: int = 48) -> void
 	if button == null:
 		return
 	button.text = button.text.to_upper()
-	_ui_button_fonts(button, font_size, SYSTEM_ACCENT, SYSTEM_ACCENT.lightened(0.25), SYSTEM_ACCENT_INK, UI_TEXT_OFF)
-	button.add_theme_stylebox_override("normal", ui_primary_style(UI_BUTTON, SYSTEM_ACCENT))
-	button.add_theme_stylebox_override("hover", ui_primary_style(UI_BUTTON.lightened(0.05), SYSTEM_ACCENT.lightened(0.15)))
+	_ui_button_fonts(button, font_size, PLAYER_ACCENT_LIGHT, PLAYER_ACCENT_LIGHT.lightened(0.25), PLAYER_ACCENT_INK, UI_TEXT_OFF)
+	button.add_theme_stylebox_override("normal", ui_primary_style(UI_BUTTON, PLAYER_ACCENT))
+	button.add_theme_stylebox_override("hover", ui_primary_style(UI_BUTTON.lightened(0.05), PLAYER_ACCENT.lightened(0.15)))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.add_theme_stylebox_override("pressed", ui_primary_style(SYSTEM_ACCENT, SYSTEM_ACCENT))
+	button.add_theme_stylebox_override("pressed", ui_primary_style(PLAYER_ACCENT, PLAYER_ACCENT))
 	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
 
 
@@ -2526,7 +2550,7 @@ static func style_ui_secondary_button(button: Button, font_size: int = 44) -> vo
 	if button == null:
 		return
 	button.text = button.text.to_upper()
-	_ui_button_fonts(button, font_size, UI_TEXT, UI_TEXT, SYSTEM_ACCENT_INK, UI_TEXT_OFF)
+	_ui_button_fonts(button, font_size, UI_TEXT, UI_TEXT, CHROME_INK, UI_TEXT_OFF)
 	button.add_theme_stylebox_override("normal", ui_secondary_style(UI_BUTTON, UI_LINE, UI_BAR))
 	button.add_theme_stylebox_override("hover", ui_secondary_style(UI_BUTTON.lightened(0.05), UI_LINE.lightened(0.15), UI_BAR.lightened(0.15)))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
@@ -2539,15 +2563,15 @@ static func _ui_disabled_style() -> StyleBoxTexture:
 	return ui_secondary_style(UI_BUTTON.darkened(0.2), UI_LINE.darkened(0.45), UI_BAR.darkened(0.55))
 
 
-## Tabs: equal-width boxes; active is solid amber with dark text, inactive dark
-## with gray text.
+## Tabs: equal-width boxes; active is solid PLAYER_ACCENT with dark text,
+## inactive dark with gray text.
 static func style_ui_tab(button: Button, active: bool, font_size: int = 36) -> void:
 	if button == null:
 		return
-	var fill: Color = SYSTEM_ACCENT if active else UI_BUTTON
-	var border: Color = SYSTEM_ACCENT if active else UI_LINE
-	var ink: Color = SYSTEM_ACCENT_INK if active else UI_TEXT_DIM
-	_ui_button_fonts(button, font_size, ink, SYSTEM_ACCENT_INK if active else UI_TEXT, ink, UI_TEXT_OFF)
+	var fill: Color = PLAYER_ACCENT if active else UI_BUTTON
+	var border: Color = PLAYER_ACCENT if active else UI_LINE
+	var ink: Color = PLAYER_ACCENT_INK if active else UI_TEXT_DIM
+	_ui_button_fonts(button, font_size, ink, PLAYER_ACCENT_INK if active else UI_TEXT, ink, UI_TEXT_OFF)
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var hover: bool = state == "hover" and not active
 		var style: StyleBoxFlat = make_hard_style(fill.lightened(0.05) if hover else fill, border.lightened(0.15) if hover else border, MIN_STROKE)
@@ -2555,26 +2579,26 @@ static func style_ui_tab(button: Button, active: bool, font_size: int = 36) -> v
 		button.add_theme_stylebox_override(state, style)
 
 
-## Toggle: ON is an amber outline and amber text, OFF a gray outline and gray
-## text. Also sets the ON / OFF label.
+## Toggle: ON is a PLAYER_ACCENT outline and light player text, OFF a gray
+## outline and gray text. Also sets the ON / OFF label.
 static func style_ui_toggle(button: Button, font_size: int = 36) -> void:
 	if button == null:
 		return
 	var on: bool = button.button_pressed
-	var ink: Color = SYSTEM_ACCENT if on else UI_TEXT_DIM
+	var ink: Color = PLAYER_ACCENT_LIGHT if on else UI_TEXT_DIM
 	button.text = "ON" if on else "OFF"
 	_ui_button_fonts(button, font_size, ink, ink.lightened(0.2), ink, UI_TEXT_OFF)
 	for state in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
-		var style: StyleBoxFlat = make_hard_style(UI_PANEL, SYSTEM_ACCENT if on else UI_LINE, MIN_STROKE)
+		var style: StyleBoxFlat = make_hard_style(UI_PANEL, PLAYER_ACCENT if on else UI_LINE, MIN_STROKE)
 		style.set_content_margin_all(8.0)
 		button.add_theme_stylebox_override(state, style)
 
 
-## Slider: amber filled track, dark empty track, amber rectangular thumb.
+## Slider: PLAYER_ACCENT filled track, dark empty track, light player thumb.
 static var _ui_thumb: ImageTexture = null
 static func style_ui_slider(slider: HSlider, track_px: int = 16) -> void:
 	var track: StyleBoxFlat = make_hard_style(UI_TRACK, UI_TRACK, 0)
-	var fill: StyleBoxFlat = make_hard_style(SYSTEM_ACCENT, SYSTEM_ACCENT, 0)
+	var fill: StyleBoxFlat = make_hard_style(PLAYER_ACCENT, PLAYER_ACCENT, 0)
 	for style: StyleBoxFlat in [track, fill]:
 		style.content_margin_top = track_px * 0.5
 		style.content_margin_bottom = track_px * 0.5
@@ -2583,7 +2607,7 @@ static func style_ui_slider(slider: HSlider, track_px: int = 16) -> void:
 	slider.add_theme_stylebox_override("grabber_area_highlight", fill)
 	if _ui_thumb == null:
 		var thumb_image := Image.create(24, 56, false, Image.FORMAT_RGBA8)
-		thumb_image.fill(SYSTEM_ACCENT)
+		thumb_image.fill(PLAYER_ACCENT_LIGHT)
 		_ui_thumb = ImageTexture.create_from_image(thumb_image)
 	for icon in ["grabber", "grabber_highlight", "grabber_disabled"]:
 		slider.add_theme_icon_override(icon, _ui_thumb)
@@ -2638,14 +2662,14 @@ static func make_ui_row() -> PanelContainer:
 ## amber-tinted fill.
 static func ui_card_style(selected: bool) -> StyleBoxFlat:
 	if selected:
-		return make_hard_style(UI_PANEL.lerp(SYSTEM_ACCENT, 0.10), SYSTEM_ACCENT, MIN_STROKE)
+		return make_hard_style(UI_PANEL.lerp(PLAYER_ACCENT, 0.12), PLAYER_ACCENT, MIN_STROKE)
 	return make_hard_style(UI_PANEL, UI_CARD_LINE, MIN_STROKE)
 
 
 ## The square frame around a piece of item art on a selectable card. The art
 ## inside is the shared item framing (make_integer_icon), unchanged.
 static func ui_art_frame_style(selected: bool) -> StyleBoxFlat:
-	var style: StyleBoxFlat = make_hard_style(UI_BG, SYSTEM_ACCENT_DIM if selected else UI_CARD_LINE, MIN_STROKE)
+	var style: StyleBoxFlat = make_hard_style(UI_BG, PLAYER_ACCENT_DIM if selected else UI_CARD_LINE, MIN_STROKE)
 	style.set_content_margin_all(8.0)
 	return style
 
@@ -2672,18 +2696,26 @@ static func make_art_grid_view(painter: Control, view_name: String) -> SubViewpo
 	return view
 
 
-## Recolors a layer of the title logo into SYSTEM_ACCENT. `glow` keeps the layer's
+## Recolors a layer of the title logo into CHROME. `glow` keeps the layer's
 ## additive blend (the core and PROTOCOL glows) and tints all of it; otherwise
 ## only the logo's saturated teal pixels (the core and the PROTOCOL letters) are
 ## keyed over, and its grays stay gray.
 static var _accent_materials: Dictionary = {}
+
+
+# After F10: re-tint the cached logo materials.
+static func _refresh_logo_materials() -> void:
+	for material: ShaderMaterial in _accent_materials.values():
+		material.set_shader_parameter("accent", CHROME)
+
+
 static func accent_tint_material(glow: bool) -> ShaderMaterial:
 	if not _accent_materials.has(glow):
 		var shader := Shader.new()
 		shader.code = ACCENT_TINT_SHADER % ["blend_add" if glow else "blend_mix", "1.15" if glow else "2.6", "tinted" if glow else "teal ? tinted : texel.rgb"]
 		var material := ShaderMaterial.new()
 		material.shader = shader
-		material.set_shader_parameter("accent", SYSTEM_ACCENT)
+		material.set_shader_parameter("accent", CHROME)
 		_accent_materials[glow] = material
 	return _accent_materials[glow]
 

@@ -207,7 +207,7 @@ func _build() -> void:
 	scrollbar.custom_minimum_size.x = 18
 	scrollbar.add_theme_stylebox_override("scroll", PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.UI_PANEL, 0))
 	for state_name in ["grabber", "grabber_highlight", "grabber_pressed"]:
-		var color: Color = PixelUI.UI_LINE if state_name == "grabber" else PixelUI.SYSTEM_ACCENT
+		var color: Color = PixelUI.UI_LINE if state_name == "grabber" else PixelUI.CHROME
 		var style := PixelUI.make_hard_style(color, color, 0)
 		style.content_margin_left = 9
 		style.content_margin_right = 9
@@ -477,7 +477,7 @@ func _add_icon_guide_row(host: VBoxContainer, texture: Texture2D, title: String,
 	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_box.add_theme_constant_override("separation", 4)
 	row.add_child(text_box)
-	text_box.add_child(_make_wrap_label(title, SECTION_FONT, PixelUI.SYSTEM_ACCENT, 2))
+	text_box.add_child(_make_wrap_label(title, SECTION_FONT, PixelUI.CHROME, 2))
 	text_box.add_child(_make_body_label(description, PixelUI.TEXT_PRIMARY))
 
 
@@ -579,7 +579,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	text_box.add_theme_constant_override("separation", 2)
 	row.add_child(text_box)
 
-	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.SYSTEM_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2))
+	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_LEFT, 2))
 	text_box.add_child(_make_body_label(str(kw.get("def", "")), PixelUI.TEXT_PRIMARY))
 	# No trailing syntax line (Kev 2026-07-10): it just repeated the keyword
 	# name under its own definition.
@@ -1144,7 +1144,7 @@ func _add_bullet(parent: VBoxContainer, text: String) -> void:
 	# row height and center itself against a wrapped bullet. SHRINK_BEGIN pins
 	# its one-line box to the top of the row; the body tier font matches the
 	# prose line box so the two first lines share a baseline.
-	var bullet := _make_label(">", BODY_LONG_FONT, PixelUI.SYSTEM_ACCENT, HORIZONTAL_ALIGNMENT_LEFT, 2)
+	var bullet := _make_label(">", BODY_LONG_FONT, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_LEFT, 2)
 	bullet.custom_minimum_size = Vector2(30, 0)
 	bullet.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	bullet.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -1365,7 +1365,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_constant_override("separation", 10)
 	entry.add_child(head)
-	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.SYSTEM_ACCENT, 2)
+	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.CHROME, 2)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(name_label)
 	var hp_label := _make_label("%d HP" % hp, BODY_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_RIGHT, 1)

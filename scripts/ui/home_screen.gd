@@ -257,7 +257,8 @@ func _build_encounter_section() -> Control:
 	# game-wide inspect convention.
 	_enc_banner = PanelContainer.new()
 	_enc_banner.mouse_filter = Control.MOUSE_FILTER_STOP
-	_enc_banner.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true))
+	# Flat pixel B: CHROME (neutral) frame; the encounter is not a friendly card.
+	_enc_banner.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL))
 	section.add_child(_enc_banner)
 	var banner_press := LongPressInput.new()
 	_enc_banner.add_child(banner_press)
@@ -387,7 +388,7 @@ func _build_threat_row() -> Control:
 		pips.add_child(pip)
 		_threat_pips.append(pip)
 
-	_enc_level_label = _make_pixel_label("", ENC_META_FONT, PixelUI.DT_AMBER)
+	_enc_level_label = _make_pixel_label("", ENC_META_FONT, PixelUI.CHROME_DIM)
 	row.add_child(_enc_level_label)
 	return row
 
@@ -403,9 +404,9 @@ func _make_nav_button(direction: int) -> Button:
 	# one crisp nearest-filtered source and the existing target size.
 	button.text = ""
 	for state in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER, PANEL_BORDER))
+		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_FIELD_BORDER, PANEL_BORDER))
 	var icon := TextureRect.new()
-	icon.texture = NAV_ARROW_ICON
+	icon.texture = PixelUI.tinted_icon(NAV_ARROW_ICON.resource_path, PixelUI.CHROME)
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -447,7 +448,7 @@ func _refresh_encounter() -> void:
 			# Same slot, the unlock condition instead of the site (B3).
 			_enc_site_label.text = unlock_condition_text(_selected_operation_id)
 			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_UNLOCK_FONT))
-			_enc_site_label.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+			_enc_site_label.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
 		else:
 			_enc_site_label.text = str(presentation.get("site", ""))
 			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_SITE_FONT))
@@ -469,7 +470,7 @@ func _refresh_encounter() -> void:
 		_op_lore_label.text = op.lore.strip_edges()
 
 	for i in _dot_nodes.size():
-		_dot_nodes[i].color = PixelUI.SYSTEM_ACCENT if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
+		_dot_nodes[i].color = PixelUI.PLAYER_ACCENT if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
 	# Locked operations stay browsable: their own boss art is a dark silhouette
 	# and the real operation name remains visible. Their blurb and all detailed
@@ -576,10 +577,10 @@ func _build_squad_section() -> Control:
 
 	var header := HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title := _make_pixel_label("SELECT SQUAD", HEADER_FONT, PixelUI.SYSTEM_ACCENT)
+	var title := _make_pixel_label("SELECT SQUAD", HEADER_FONT, PixelUI.CHROME)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	_counter_label = _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT, PixelUI.SYSTEM_ACCENT)
+	_counter_label = _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT, PixelUI.CHROME)
 	header.add_child(_counter_label)
 	section.add_child(header)
 
@@ -686,7 +687,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 
 	# The shared portrait frame: the battle card's window at tile width, with the
 	# border inset outside it so the art sits INSIDE the frame, never over it.
-	var frame_style: StyleBoxFlat = _make_panel_style(PixelUI.DT_HERO_BG, PixelUI.DT_HERO_BORDER)
+	var frame_style: StyleBoxFlat = PixelUI.player_tile_style(false)
 	frame_style.set_content_margin_all(float(PANEL_BORDER))
 	var portrait_box: Dictionary = PixelUI.make_portrait_frame(unit.portrait, TILE_PORTRAIT_W, frame_style)
 	var frame: PanelContainer = portrait_box["frame"]
@@ -711,7 +712,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.visible = PixelUI.SHOW_BETA_UNIT_BADGES
 	crop.add_child(role_badge)
 
-	# Slot badge (top-left): filled system-color plate with the pick order (1/2/3) — the
+	# Slot badge (top-left): filled player-color plate with the pick order (1/2/3) — the
 	# selection indicator on the portrait itself, alongside the bright border.
 	var slot_badge := PanelContainer.new()
 	slot_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -720,7 +721,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	slot_badge.custom_minimum_size = Vector2(SLOT_BADGE_SIZE, SLOT_BADGE_SIZE)
 	slot_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot_badge.add_theme_stylebox_override("panel", PixelUI.selection_badge_style())
-	var slot_label := _make_pixel_label("", TILE_NAME_FONT, PixelUI.SYSTEM_ACCENT_INK)
+	var slot_label := _make_pixel_label("", TILE_NAME_FONT, PixelUI.PLAYER_ACCENT_INK)
 	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	slot_badge.add_child(slot_label)
@@ -738,7 +739,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	# Locked names remain blank, with their label height reserved.
 	var tile_name: String = "" if is_locked else (unit.callsign if unit.callsign != "" else unit.display_name)
 	var tile_font: int = PixelUI.FONT_INFO_MIN if is_locked else TILE_NAME_FONT
-	var name_label := _make_pixel_label(tile_name.to_upper(), tile_font, PixelUI.DT_HERO_NAME)
+	var name_label := _make_pixel_label(tile_name.to_upper(), tile_font, PixelUI.UI_TEXT_DIM)
 	name_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(tile_font))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.clip_text = true
@@ -768,7 +769,7 @@ func _make_lock_overlay() -> Control:
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(stack)
 	var icon := TextureRect.new()
-	icon.texture = load(PixelUI.ICON_LOCK) as Texture2D
+	icon.texture = PixelUI.tinted_icon(PixelUI.ICON_LOCK, PixelUI.CHROME_DIM)
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -866,12 +867,12 @@ func _refresh_unit_tiles() -> void:
 		# Components: Selected (strong cyan) / Normal hero tile.
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
 		# (matches _build_unit_tile; otherwise the portrait would cover the border).
-		# Flat pixel A: the selected frame is the system color (same geometry).
-		var frame_style: StyleBoxFlat = PixelUI.system_selected_style() if is_selected \
-			else PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true)
+		# Flat pixel B: player color, brighter when picked (same geometry).
+		var frame_style: StyleBoxFlat = PixelUI.player_tile_style(is_selected)
+		# Unpicked heroes are not the squad yet: their name reads CHROME.
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
-		name_label.add_theme_color_override("font_color", PixelUI.SYSTEM_ACCENT if is_selected else PixelUI.DT_HERO_NAME)
+		name_label.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT if is_selected else PixelUI.UI_TEXT_DIM)
 		# Slot badge = the on-portrait selection indicator (1/2/3 pick order).
 		var slot_badge: Variant = tile.get("slot_badge")
 		var slot_label: Variant = tile.get("slot_label")
@@ -914,7 +915,7 @@ func _refresh_detail() -> void:
 	_detail_threat_label.visible = true
 	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
 	var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
-	var threat_color: Color = PixelUI.DT_AMBER
+	var threat_color: Color = PixelUI.CHROME_DIM
 	if accent is Color and not _current_op_locked:
 		threat_color = accent as Color
 	_detail_threat_label.add_theme_color_override("font_color", threat_color)
@@ -980,7 +981,7 @@ func _refresh_deploy() -> void:
 	if ready:
 		# Requirement met → actionable teal primary button.
 		_deploy_button.text = "DEPLOY SQUAD"
-		PixelUI.style_primary_button(_deploy_button, DEPLOY_FONT, false, true, true)
+		PixelUI.style_primary_button(_deploy_button, DEPLOY_FONT)
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:

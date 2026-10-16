@@ -260,7 +260,7 @@ func _add_version_stamp() -> void:
 	add_child(stamp)
 	# A short accent underline under the version.
 	var underline := ColorRect.new()
-	underline.color = PixelUI.SYSTEM_ACCENT
+	underline.color = PixelUI.CHROME
 	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	underline.anchor_top = 1.0
 	underline.anchor_bottom = 1.0

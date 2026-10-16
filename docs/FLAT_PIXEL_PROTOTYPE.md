@@ -365,3 +365,98 @@ menu, inspect popups, keyword primers, training prompts and tutorial, operation
 briefing overlay frame, state code panel, discard picker; the squad-select
 encounter carousel frame and arrows (cyan hero chrome) and the old teal primary
 buttons on screens outside this batch; Help's non-settings page bodies.
+
+---
+
+# Flat pixel polish B (2026-10-16)
+
+Branch `proto/flat-pixel-b`, cut from `proto/flat-pixel-a` at `d0093ea` (nothing
+was outstanding). Rendering and UI only. TRUTH.md and DECISIONS_RESOLVED.md are
+not edited (unchanged since `40946c3`); this section is the record. Godot 4.6.2
+(`config/features` is still `"4.6", "Mobile"`; no 4.7 changes seen).
+`battle_block.svg.import` stays out of every commit.
+
+## B Phase 1: color ownership
+
+Principle: the player owns the bottom, the enemy owns the top, the tray is
+shared ground; the world changes per operation, the player never does.
+
+**Tokens** (`pixel_ui.gd`, "Color roles"):
+
+- **CHROME** = flat-pixel-a's system color, renamed: `SYSTEM_ACCENT*` became
+  `CHROME`, `CHROME_DIM`, `CHROME_INK`; `set_system_accent` became `set_chrome`;
+  the header signal is `chrome_changed`. Bone by default, F10 still cycles the
+  four candidates (`--system-accent=<id>` still works for captures).
+- **PLAYER_ACCENT** `2a6ae6` (cobalt matched to the hero die: base `1f6be0`, lit
+  edge about `2070f0`), **PLAYER_ACCENT_LIGHT** `9cbcff` (text and icons on
+  dark), **PLAYER_ACCENT_DIM** `1c3f82` (resting friendly frames),
+  **PLAYER_ACCENT_INK** `060d1c` (dark text on a player fill).
+- **ENCOUNTER_ACCENT**: a static var holding the current battle's encounter
+  color, set by `BattleLayout.setup` from the data (`encounter_accent`).
+- `PixelUI.unit_card_palette(hero)` derives each side's card palette from those
+  tokens (rest / targetable / selected frame, title fill, name text).
+- `system_icon(path)` became `tinted_icon(path, color)`; `style_dt_icon_button`
+  takes an `icon_tint` color instead of a flag.
+
+**Recolored to PLAYER:**
+
+1. Friendly battle cards: frame `PLAYER_ACCENT_DIM` at rest, `PLAYER_ACCENT` when
+   targetable, title plate `PLAYER_ACCENT_DIM` darkened, name `PLAYER_ACCENT_LIGHT`
+   (was BATTLE_HERO_LINE / HEADER / TEXT, steel and pale cyan).
+2. Selected card, either side: `PLAYER_ACCENT_LIGHT` (was DT_CYAN). The frame
+   now always reads the side palette, so the selected frame no longer falls back
+   to the cyan component border.
+3. The "needs a target" name highlight: PLAYER_ACCENT_LIGHT toward white (was
+   cyan toward white). Cast-order badge number: PLAYER_ACCENT_LIGHT (was
+   DT_HERO_NAME), its frame PLAYER_ACCENT_DIM.
+4. Squad select: picked tile frame `PLAYER_ACCENT`, pick badges `PLAYER_ACCENT`
+   with `PLAYER_ACCENT_INK` numerals, picked names `PLAYER_ACCENT_LIGHT`, the
+   active carousel dot, DEPLOY SQUAD.
+5. Footer action buttons (Nudge, Set, Item, Protocol spend): icons
+   `PLAYER_ACCENT_LIGHT`; their cost numbers `PLAYER_ACCENT_LIGHT`.
+6. Protocol meter charged cells: `PLAYER_ACCENT`.
+7. END TURN: the player primary (it was the amber variant, so it showed amber in
+   every operation, Hive included). ROLL: same player primary (was teal). The
+   Set-die confirm (`protocol_actions` confirm) lost its amber flag too.
+8. Every `style_primary_button` caller is player-colored now (border
+   PLAYER_ACCENT, text PLAYER_ACCENT_LIGHT, pressed ink PLAYER_ACCENT_INK); the
+   `amber` flag survives only for route fork's flagged card. This also reaches
+   old screens (evolution, route fork, run end, unlock, state code panel,
+   training prompt, battle stay / cancel buttons).
+9. Restyle components: the notched primary (title, reward CONFIRM, help), active
+   help tabs (PLAYER fill, PLAYER_ACCENT_INK text), settings toggles ON
+   (PLAYER outline, light text), slider fill (PLAYER) and thumb (LIGHT), the
+   selected reward card (PLAYER border over a faint PLAYER fill) and its art
+   frame (PLAYER_DIM).
+10. The briefing's ENGAGE button (was DT_CYAN). The boss-relic "YOUR HEROES HOLD
+    THIS ROUND" banner (was cyan bright).
+
+**Recolored to ENCOUNTER:** enemy battle cards: frame `ENCOUNTER_ACCENT`
+darkened at rest, full accent when targetable, title plate darkened, name
+lightened (was BATTLE_ENEMY_LINE / HEADER / TEXT rust). The death debris shards
+take each side's resting frame color. The header battle count and rule were
+already the encounter accent. Boss title plates keep the boss orange.
+
+**Recolored to CHROME (encounter or cyan removed):**
+
+- Squad select: the site line, the THREATS label and the LV label (were the
+  encounter accent / DT_AMBER; the brief reserves the encounter color for the
+  header and enemy cards, so operation copy now carries CHROME through
+  `operation_copy()`), the encounter banner frame and the carousel arrows (were
+  hero cyan), the lock icons, unpicked hero names, resting tile frames
+  (UI_CARD_LINE). Choice: a resting tile in PLAYER_DIM looked almost like a pick,
+  so unpicked heroes read neutral and picks stand out.
+- The briefing SITE value.
+- Header ? / back / debug icons (already CHROME), the "BATTLE RESUMED" callout
+  (was cyan), the generic status cue (was cyan; it fires on enemy summons, so a
+  player color would lie), the DEV TOOLS UNLOCKED notice.
+
+**Unchanged:** dice colors, HP, heal / effect icons, rarity, warning, the enemy
+rust on squad select's boss thumbnail and threat pips (enemy coding), the boss
+plate.
+
+**Collision reported:** PLAYER_ACCENT_LIGHT sits near the shield icon blue
+(`COLOR_SHIELD` `57a8ff`) and the uncommon steel blue; none were changed.
+
+`battle_scene.gd` stays at 3,639 lines (watermark 3,640). `component_contract`
+PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.

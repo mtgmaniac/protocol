@@ -448,11 +448,11 @@ func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelConta
 	var name_strip := PanelContainer.new()
 	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_PANEL.lerp(PixelUI.SYSTEM_ACCENT, 0.18), PixelUI.UI_PANEL, 0)
+	var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_PANEL.lerp(PixelUI.CHROME, 0.18), PixelUI.UI_PANEL, 0)
 	strip_style.set_content_margin(SIDE_TOP, 8.0)
 	strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
 	name_strip.add_theme_stylebox_override("panel", strip_style)
-	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, PixelUI.SYSTEM_ACCENT, 0))
+	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, PixelUI.CHROME, 0))
 	vbox.add_child(name_strip)
 
 	# Large relic art at integer scale (128 native -> 2x; the low-res
@@ -462,7 +462,7 @@ func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelConta
 	icon_holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	vbox.add_child(icon_holder)
 
-	vbox.add_child(_make_centered_label("RELIC", TYPE_HEADER_FONT, PixelUI.SYSTEM_ACCENT, 0))
+	vbox.add_child(_make_centered_label("RELIC", TYPE_HEADER_FONT, PixelUI.CHROME, 0))
 
 	var pip_row := HBoxContainer.new()
 	pip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -536,7 +536,7 @@ func _style_relic_panel(panel: PanelContainer, selected: bool) -> void:
 	# takes the same selected-card state as ordinary rows when picked.
 	var style: StyleBoxFlat = PixelUI.ui_card_style(true)
 	if not selected:
-		style = PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.SYSTEM_ACCENT_DIM, PixelUI.MIN_STROKE)
+		style = PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.CHROME_DIM, PixelUI.MIN_STROKE)
 	panel.add_theme_stylebox_override("panel", style)
 
 
@@ -1069,8 +1069,8 @@ func _apply_visual_theme() -> void:
 	footer_label.visible = true
 	footer_label.text = ""
 	footer_label.custom_minimum_size = Vector2(0, FOOTER_RESERVED_HEIGHT)
-	PixelUI.style_label(title_label, 44, PixelUI.SYSTEM_ACCENT, 0)
-	PixelUI.style_label(reward_title_label, 72, PixelUI.SYSTEM_ACCENT, 0)
+	PixelUI.style_label(title_label, 44, PixelUI.CHROME, 0)
+	PixelUI.style_label(reward_title_label, 72, PixelUI.CHROME, 0)
 	PixelUI.style_label(summary_label, 32, PixelUI.UI_TEXT, 0)
 	PixelUI.style_label(inventory_label, 28, PixelUI.UI_TEXT_DIM, 0)
 	PixelUI.style_label(footer_label, FOOTER_FONT, PixelUI.UI_TEXT, 0)

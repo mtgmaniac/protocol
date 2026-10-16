@@ -84,7 +84,7 @@ var _cost_badges: Dictionary = {}   # Button -> Label
 func refresh_cost_badges() -> void:
 	for badge: Variant in _cost_badges.values():
 		if badge is Label and is_instance_valid(badge):
-			(badge as Label).add_theme_color_override("font_color", PixelUI.SYSTEM_ACCENT)
+			(badge as Label).add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
 
 
 func _attach_cost_badge(button: Button, text: String) -> void:
@@ -98,8 +98,8 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	PixelUI.apply_pixel_font(badge)
 	badge.add_theme_font_size_override("font_size", _scene._layout.presentation("protocol_cost_font", 48) if _scene._layout != null else 48)
-	# Protocol costs read in the system color, like the meter (flat pixel A).
-	badge.add_theme_color_override("font_color", PixelUI.SYSTEM_ACCENT)
+	# Protocol costs read in the player color, like the meter (flat pixel B).
+	badge.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
 	# Bare number, no plate (Kev 2026-07-10) — a dark glyph outline separates it
 	# from the button art instead of a box.
 	badge.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
@@ -795,7 +795,7 @@ func _open_set_value_popup() -> void:
 	confirm_btn.text = "CONFIRM"
 	confirm_btn.custom_minimum_size = Vector2(0.0, 100.0)
 	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_primary_button(confirm_btn, 38, true)
+	PixelUI.style_primary_button(confirm_btn, 38)
 	confirm_btn.pressed.connect(_confirm_set_value_popup)
 	row.add_child(confirm_btn)
 

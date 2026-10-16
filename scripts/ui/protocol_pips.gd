@@ -30,8 +30,8 @@ var filled: int = 0:
 # returns, and its texture goes with it: the queued draw then has no texture and
 # paints plain white (the white empty cells of the 2026-10-13 depth prototype).
 var _empty_cell: StyleBoxTexture = PixelUI.battle_surface_style("cell")
-## A charged cell is the empty cell with its interior filled in SYSTEM_ACCENT
-## (flat pixel A; the cell_charged.svg skin has amber baked in). Design px.
+## A charged cell is the empty cell with its interior filled in PLAYER_ACCENT
+## (flat pixel B; the cell_charged.svg skin has amber baked in). Design px.
 const CHARGED_INSET := 4.0
 
 
@@ -77,5 +77,5 @@ func _draw() -> void:
 		)
 		draw_style_box(_empty_cell, rect)
 		if i < filled:
-			draw_rect(rect.grow(-CHARGED_INSET), PixelUI.SYSTEM_ACCENT, true)
+			draw_rect(rect.grow(-CHARGED_INSET), PixelUI.PLAYER_ACCENT, true)
 		x += pip_w + gap

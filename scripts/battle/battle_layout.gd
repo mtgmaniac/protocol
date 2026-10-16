@@ -48,6 +48,9 @@ var _combat_zone_hero_slots: Array = []
 
 func setup(scene: Control) -> void:
 	_scene = scene
+	# Flat pixel B: enemy cards and the header count read this battle's accent.
+	var accent: Color = DEPTH.encounter_accent(_operation_id())
+	PixelUI.ENCOUNTER_ACCENT = accent if accent.a > 0.0 else PixelUI.BATTLE_ENEMY_LINE
 	is_landscape = POLICY.select_for_battle(scene)
 	if is_landscape:
 		_landscape = LANDSCAPE_LAYOUT.new()
@@ -55,16 +58,16 @@ func setup(scene: Control) -> void:
 	_scene.resized.connect(queue_board_layout_refresh)
 	# Flat pixel A: F10 restyles the battle in place instead of reloading it.
 	var header: Node = scene.get_tree().root.get_node_or_null("PersistentHeader")
-	if header != null and header.has_signal("system_accent_changed"):
-		header.connect("system_accent_changed", _on_system_accent_changed)
+	if header != null and header.has_signal("chrome_changed"):
+		header.connect("chrome_changed", _on_chrome_changed)
 		scene.tree_exiting.connect(func() -> void:
-			if header.is_connected("system_accent_changed", _on_system_accent_changed):
-				header.disconnect("system_accent_changed", _on_system_accent_changed))
+			if header.is_connected("chrome_changed", _on_chrome_changed):
+				header.disconnect("chrome_changed", _on_chrome_changed))
 
 
-# The footer icons, the Protocol cost badges and the Protocol meter carry the
-# system color; restyle them after F10 (the header restyles itself).
-func _on_system_accent_changed(_id: String) -> void:
+# F10 cycles CHROME; the header restyles itself. Footer icons, cost badges and
+# the meter are PLAYER now, so they do not change, but are refreshed anyway.
+func _on_chrome_changed(_id: String) -> void:
 	if _scene == null or not is_instance_valid(_scene):
 		return
 	_scene._style_frame_icon_action_button(_scene.protocol_spend_button, PixelUI.ICON_SWAP, _scene.BOTTOM_BAR_BUTTON_SIZE)

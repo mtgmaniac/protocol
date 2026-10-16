@@ -957,7 +957,7 @@ func show_resume_callout(round_number: int) -> void:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = "BATTLE RESUMED - ROUND %d" % round_number
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(label, RESUME_CALLOUT_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
+	PixelUI.style_label(label, RESUME_CALLOUT_FONT, PixelUI.CHROME, 3)
 	margin.add_child(label)
 	panel.z_as_relative = false
 	panel.z_index = 110
@@ -1004,7 +1004,7 @@ func _local_status_cue(card: Control, kind: String) -> void:
 	cue.position = rect.get_center() - _scene.float_layer.get_global_position()
 	cue.z_index = 195
 	_scene.float_layer.add_child(cue)
-	var color: Color = PixelUI.DT_CYAN
+	var color: Color = PixelUI.CHROME
 	if kind == "burn" or kind == "burn_tick":
 		color = PixelUI.DT_STATUS["burn"]["border"]
 	elif kind == "revive":
@@ -1266,7 +1266,7 @@ func _death_scatter(card: Control, side: String, stagger: float = 0.0) -> void:
 	var origin: Vector2 = card_rect.get_center() - layer_origin
 	# Meaning-based color: the dying unit's own team line, flecked with ash — not
 	# damage-red (that reads as a hit, not a death).
-	var team: Color = PixelUI.DT_HERO_BORDER if side == "hero" else PixelUI.DT_ENEMY_BORDER
+	var team: Color = PixelUI.unit_card_palette(side == "hero")["rest"]
 	var ash: Color = Color(0.42, 0.44, 0.50, 1.0)
 	for i in DEATH_DEBRIS_COUNT:
 		var shard: ColorRect = ColorRect.new()
