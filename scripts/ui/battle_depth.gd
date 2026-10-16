@@ -8,10 +8,15 @@ extends RefCounted
 ## Preloaded by path (no class_name) so `-s` test scripts never resolve it early.
 
 ## Debug A/B switches (battle scene, debug builds): F6 the scene, F7 the floor
-## decal, F8 the v2 plates behind the die tags.
+## decal, F8 the v2 plates behind the die tags, F9 the v3 perspective.
 static var backdrop_on := true
 static var decal_on := true
 static var plates_on := false
+## Flat pixel A: the tray is drawn top-down and flat (every die the same size, no
+## depth scaling, the dice drawn exactly where they simulate, hard pixel drop
+## shadows, the flat floor scene). F9 brings back the v3 perspective path (the
+## projection below, soft contact shadows, the walled scene) to compare.
+static var perspective_on := false
 
 const SCENES_PATH := "res://data/raw/battle-tray-scenes.json"
 static var _scenes: Dictionary = {}
@@ -52,8 +57,10 @@ static func depth_at(flat_y: float, tray: Vector2) -> float:
 	return clampf(flat_y / maxf(tray.y, 1.0), 0.0, 1.0)
 
 
-## How large a die is drawn at this depth (1.0 = its physical size).
+## How large a die is drawn at this depth (1.0 = its physical size). Flat: 1.0.
 static func die_scale(depth: float) -> float:
+	if not perspective_on:
+		return 1.0
 	return lerpf(PixelUI.BATTLE_DEPTH_BACK, PixelUI.BATTLE_DEPTH_FRONT, depth)
 
 
@@ -61,6 +68,8 @@ static func die_scale(depth: float) -> float:
 ## back and nudged down the screen, both linear in depth, so a straight roll
 ## stays straight.
 static func die_center(flat: Vector2, tray: Vector2) -> Vector2:
+	if not perspective_on:
+		return flat
 	var depth: float = depth_at(flat.y, tray)
 	var mid: float = tray.x * 0.5
 	var push: float = tray.y * PixelUI.BATTLE_DEPTH_PUSH
@@ -71,7 +80,7 @@ static func die_center(flat: Vector2, tray: Vector2) -> Vector2:
 
 ## Where the back wall meets the floor, in tray-local y.
 static func wall_base(tray: Vector2) -> float:
-	return tray.y * PixelUI.BATTLE_DEPTH_WALL
+	return tray.y * PixelUI.BATTLE_DEPTH_WALL if perspective_on else 0.0
 
 
 ## The floor plane, for everything painted ON it (texture, decal). A true
@@ -83,6 +92,8 @@ static func floor_point(flat: Vector2, tray: Vector2) -> Vector2:
 
 
 static func floor_at(flat_x: float, depth: float, tray: Vector2) -> Vector2:
+	if not perspective_on:
+		return Vector2(flat_x, depth * tray.y)
 	var flat := Vector2(flat_x, 0.0)
 	var back: float = PixelUI.BATTLE_DEPTH_TAPER
 	var width: float = 1.0 / lerpf(1.0 / back, 1.0, depth)
@@ -96,6 +107,8 @@ static func floor_at(flat_x: float, depth: float, tray: Vector2) -> Vector2:
 ## The floor depth drawn at tray-local y (the inverse of floor_at's y); can be
 ## past 1 below the tray.
 static func depth_for_floor_y(y: float, tray: Vector2) -> float:
+	if not perspective_on:
+		return y / maxf(tray.y, 1.0)
 	var back: float = PixelUI.BATTLE_DEPTH_TAPER
 	var base: float = wall_base(tray)
 	var width: float = back + (y - base) / maxf(tray.y - base, 1.0) * (1.0 - back)

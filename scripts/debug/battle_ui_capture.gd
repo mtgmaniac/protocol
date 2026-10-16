@@ -30,7 +30,7 @@ func _run_capture() -> void:
 		return
 	print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % absolute_output)
 	var depth: Script = load("res://scripts/ui/battle_depth.gd")
-	for step: Array in [["depth_plates_output", "plates_on", true], ["depth_flat_output", "backdrop_on", false]]:
+	for step: Array in [["depth_perspective_output", "perspective_on", true], ["depth_plates_output", "plates_on", true], ["depth_flat_output", "backdrop_on", false]]:
 		if not config.has(step[0]):
 			continue
 		depth.set(step[1], step[2])
@@ -120,6 +120,10 @@ func _parse_args() -> Dictionary:
 			var window_parts: PackedStringArray = arg.get_slice("=", 1).split("x", false)
 			if window_parts.size() >= 2:
 				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		elif arg.begins_with("--capture-depth-perspective-output="):
+			# Flat pixel A: after the normal (flat) capture, save the SAME frame again
+			# with the v3 perspective path on (F9).
+			config["depth_perspective_output"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-depth-plates-output="):
 			# Depth prototype A/B: after the normal capture, save the SAME frame
 			# again with the die tag plates on (F8).

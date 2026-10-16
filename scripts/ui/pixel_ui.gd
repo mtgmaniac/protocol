@@ -48,6 +48,16 @@ const BATTLE_BAY_RUST_LIT := Color("7a3d1f")
 const BATTLE_BAY_DECAL_ALPHA := 0.22
 const BATTLE_HEADER_RULE := Color("3a454c")
 const BATTLE_BAY_SHADOW_ALPHA := 0.85
+# Flat pixel A: the flat tray (battle_bay_floor.gd flat scene, dice_tray_3d.gd
+# hard drop shadows). Floor tints per operation are named in the scene data; the
+# floor and backdrop textures are light gray masks these colors multiply.
+const BATTLE_FLAT_BACKDROP := Color("0b0d0f")
+const BATTLE_FLAT_BACKDROP_TINT := Color("15181b")
+const BATTLE_FLAT_FLOOR := Color("1d2023")
+const BATTLE_FLAT_FLOOR_FACILITY := Color("262420")
+const BATTLE_FLAT_FLOOR_HIVE := Color("2c191d")
+const BATTLE_FLAT_SHADOW := Color("040506")
+const BATTLE_FLAT_DECAL_ALPHA := 0.16
 # The vignette: hard-edged steps of black, darkest first (no smooth ramp).
 const BATTLE_VIGNETTE_STEPS: Array[float] = [0.42, 0.26, 0.12]
 # Die tags: transparent over the scene (2026-07-09 ruling); F8 brings the v2

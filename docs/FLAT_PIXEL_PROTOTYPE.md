@@ -179,3 +179,52 @@ Left cyan on purpose (not system layer, or screens outside this batch): hero
 coding everywhere, the battle card selection (`compact_unit_card`
 COMPONENT_SELECTED / SELECT_LINE), the evolution and discard-picker selected
 cards, the old teal `style_primary_button` on screens not in this batch.
+
+## Phase 4: flat tray
+
+- **Projection off by default.** `battle_depth.gd` has `perspective_on` (false).
+  Flat: `die_scale` is 1.0, `die_center` is the simulated point, the floor is the
+  tray rectangle (`floor_at`, `wall_base`, `depth_for_floor_y`). In
+  `dice_tray_3d.gd` the flat path draws each die exactly where it simulates, at
+  its settle scale only, so every die is the same size. **F9** (debug builds,
+  battle) turns the v3 path back on: depth scaling, the walled scene, the soft
+  ellipse shadows. `battle_ui_capture.gd --capture-depth-perspective-output=`
+  saves the same frame again with F9 on.
+- **Scene** (`battle_bay_floor.gd` flat branch, still drawn in the quarter-res
+  pixel-grid SubViewport): `flat_backdrop_tile.png` (staggered slabs, two tones
+  apart) tinted `BATTLE_FLAT_BACKDROP_TINT` over `BATTLE_FLAT_BACKDROP` behind the
+  whole board; the floor is the tray rectangle snapped to the art grid, tiled with
+  the operation's `flat_floor_texture` times its `flat_floor_tint`; the rim is two
+  art px just outside the tray (a dark seam outside, one art px of the ENCOUNTER
+  accent inside); the reticle decal sits flat at the tray centre, one texel per
+  art px, ENCOUNTER-tinted at `BATTLE_FLAT_DECAL_ALPHA` 0.16, under the dice. No
+  side walls, window slots, vignette or rust streak in the flat scene (they stay
+  in the F9 path).
+- **Data** (`battle-tray-scenes.json`): new `flat_floor_texture` and
+  `flat_floor_tint` per operation. Facility: deck plates
+  (`flat_floor_plates.png`, `BATTLE_FLAT_FLOOR_FACILITY`). **Hive filled:** resin
+  cells (`flat_floor_hive.png`, `BATTLE_FLAT_FLOOR_HIVE`, a dark maroon), red
+  rim, red decal. Veil, Signal, Mantle: no floor texture yet, plain
+  `BATTLE_FLAT_FLOOR`, with their accent on the rim and decal.
+- **Art:** `scripts/assets/make_flat_pixel_art.py` writes the three PLACEHOLDER
+  textures as light gray masks (the color lives in the tint tokens). Imported with
+  4.6.2 (`--headless --import`); no other `.import` file changed.
+- **Hard drop shadows** (`dice_tray_3d.gd _update_drop_shadow`): each die gets a
+  `DropShadow` mesh, the die's own d20 silhouette flattened onto the floor,
+  unshaded, solid `BATTLE_FLAT_SHADOW`, offset down-right, no blur. It renders in
+  the dice viewport, so it shares the dice pixel grid (Phase 5). It is a
+  top-level child of the die (freed with it, ignores the spin) with no collision.
+  A die in the air throws it further (+6 design px per world unit of height). The
+  soft ellipses only draw with F9 on.
+  - **Offset: 12 design px (3 art px), not the asked 1-2 design px.** At 390 px
+    wide a design px is 0.36 screen px, so 1-2 design px cannot show. 2 art px
+    (8 design px) was tried first: at 390 px it merged with the die's own dark
+    edge lines and read as no shadow. 3 art px reads as a hard shadow
+    (`DROP_SHADOW_PX`, one constant).
+- **Header:** the rule under the title is drawn in the ENCOUNTER accent
+  (`_count_tint`), like the battle count. `BattleLayout` reads the accent through
+  `encounter_accent`.
+- **Unchanged:** tray bounds, walls, bodies, throws, hops, slots, snaps; pips stay
+  transparent with their pixel outline (the v3 tag field). Dice stay inside the
+  floor: the floor is the tray rectangle, whose edges are the physics walls, and
+  flat dice are drawn where they simulate.

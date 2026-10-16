@@ -75,7 +75,8 @@ func _on_system_accent_changed(_id: String) -> void:
 
 
 # Depth prototype A/B, debug builds only: F6 swaps the scene for the plain tray,
-# F7 hides the floor decal, F8 puts the v2 plates back behind the die tags.
+# F7 hides the floor decal, F8 puts the v2 plates back behind the die tags, F9
+# switches the flat tray (flat pixel A) for the v3 perspective path.
 # Returns true when it used the key.
 func handle_depth_debug_key(event: InputEvent) -> bool:
 	var key := event as InputEventKey
@@ -87,6 +88,8 @@ func handle_depth_debug_key(event: InputEvent) -> bool:
 		DEPTH.decal_on = not DEPTH.decal_on
 	elif key.keycode == KEY_F8:
 		DEPTH.plates_on = not DEPTH.plates_on
+	elif key.keycode == KEY_F9:
+		DEPTH.perspective_on = not DEPTH.perspective_on
 	else:
 		return false
 	refresh_depth_scene()
@@ -110,7 +113,7 @@ func refresh_depth_scene() -> void:
 		_combat_zone_frame.add_theme_stylebox_override("panel", PixelUI.battle_layout_style() if scene_on else PixelUI.battle_tray_style(true))
 	var header: Node = _scene.get_tree().root.get_node_or_null("PersistentHeader")
 	if header != null and header.has_method("set_count_tint"):
-		var accent: Color = DEPTH.token(str(DEPTH.scene_for(_operation_id()).get("accent", "")))
+		var accent: Color = DEPTH.encounter_accent(_operation_id())
 		header.call("set_count_tint", accent if scene_on else Color.TRANSPARENT)
 	for entry: Dictionary in _scene._die_tags.values():
 		if entry.get("plate") is Node and is_instance_valid(entry.plate):

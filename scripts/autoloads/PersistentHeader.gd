@@ -249,7 +249,8 @@ func _draw_battle_frame() -> void:
 		if _count_tint.a > 0.0:
 			# The thin rule under the title, from the bar's edge to the buttons.
 			var right: float = _bar.position.x + (_bar.get_node("ButtonRow") as Control).position.x - BAR_PAD_X
-			_background.draw_rect(Rect2(_bar.position.x, HEADER_HEIGHT - HEADER_RULE_INSET, right - _bar.position.x, HEADER_RULE_PX), PixelUI.BATTLE_HEADER_RULE)
+			# Flat pixel A: the rule is in the operation's ENCOUNTER accent, like the count.
+			_background.draw_rect(Rect2(_bar.position.x, HEADER_HEIGHT - HEADER_RULE_INSET, right - _bar.position.x, HEADER_RULE_PX), _count_tint)
 
 
 const HEADER_RULE_PX := 4.0

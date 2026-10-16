@@ -391,8 +391,10 @@ const DEPTH_LIFT_MAX := 3.0
 func _die_projection(die: RigidBody3D) -> Dictionary:
 	var flat: Vector2 = _camera.unproject_position(die.global_position)
 	var presentation: float = float(die.get_meta("presentation_scale", 1.0))
-	if _landscape_projection:
-		return {"flat": flat, "ground": flat, "center": flat, "scale": presentation, "radius": DIE_RADIUS * size.y / _camera.size * presentation, "lift": 0.0}
+	# Flat pixel A (and landscape): the die is drawn exactly where it simulates.
+	if _landscape_projection or not DEPTH.perspective_on:
+		var lift_flat: float = clampf(die.global_position.y - DIE_RADIUS, 0.0, DEPTH_LIFT_MAX)
+		return {"flat": flat, "ground": flat, "center": flat, "scale": presentation, "radius": DIE_RADIUS * size.y / _camera.size * presentation, "lift": lift_flat}
 	var depth: float = DEPTH.depth_at(flat.y, size)
 	var drawn_scale: float = presentation * DEPTH.die_scale(depth)
 	var radius: float = DIE_RADIUS * size.y / _camera.size * drawn_scale
@@ -417,6 +419,51 @@ func _apply_depth_scale(die: RigidBody3D) -> void:
 	# Camera looks straight down: screen x is world x, screen y is world z.
 	var shift: Vector2 = ((drawn.center as Vector2) - (drawn.flat as Vector2)) * (_camera.size / maxf(size.y, 1.0))
 	visuals.position = die.global_basis.inverse() * Vector3(shift.x, 0.0, shift.y)
+	_update_drop_shadow(die, visuals, float(drawn.lift))
+
+
+# Flat pixel A: a hard pixel drop shadow. The die's own silhouette flattened onto
+# the floor, offset down-right, solid dark, no blur. It renders in the dice
+# viewport, so it lands on the same pixel grid as the dice. A die in the air
+# casts it further out. The v3 perspective path (F9) draws the soft ellipses in
+# _draw instead. Cosmetic only: no collision, never read by physics or faces.
+const DROP_SHADOW_PX := 12.0             # design px down and right: 3 art px
+const DROP_SHADOW_LIFT_PX := 6.0        # more per world unit of height
+var _drop_shadow_mesh: ArrayMesh = null
+
+
+func _update_drop_shadow(die: RigidBody3D, visuals: Node3D, lift: float) -> void:
+	var shown: bool = not DEPTH.perspective_on and not _landscape_projection
+	var shadow: MeshInstance3D = die.get_node_or_null("DropShadow") as MeshInstance3D
+	if shadow == null:
+		if not shown:
+			return
+		if _drop_shadow_mesh == null:
+			_drop_shadow_mesh = _build_d20_mesh()
+		shadow = MeshInstance3D.new()
+		shadow.name = "DropShadow"
+		# Child of the die so it is freed with it; top-level so the die's spin and
+		# the settle scale never reach it except through the transform set below.
+		shadow.top_level = true
+		shadow.mesh = _drop_shadow_mesh
+		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		shadow.material_override = _bank_material("drop_shadow", func() -> StandardMaterial3D: return _make_drop_shadow_material())
+		die.add_child(shadow)
+	shadow.visible = shown
+	if not shown:
+		return
+	var offset: float = (DROP_SHADOW_PX + lift * DROP_SHADOW_LIFT_PX) * _camera.size / maxf(size.y, 1.0)
+	var flat_basis: Basis = Basis.from_scale(Vector3(1.0, 0.001, 1.0)) * visuals.global_basis
+	var origin: Vector3 = visuals.global_position
+	shadow.global_transform = Transform3D(flat_basis, Vector3(origin.x + offset, 0.005, origin.z + offset))
+
+
+func _make_drop_shadow_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = PixelUI.BATTLE_FLAT_SHADOW
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return material
 
 
 # How far the die is drawn from where it simulates, in world units.
@@ -639,7 +686,9 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if _camera == null or _landscape_projection:
+	# Soft contact shadows belong to the v3 perspective path (F9); the flat tray
+	# casts hard drop shadows in the dice viewport (_update_drop_shadow).
+	if _camera == null or _landscape_projection or not DEPTH.perspective_on:
 		return
 	# Contact shadows, drawn beneath the transparent dice viewport, on the floor
 	# under each die's drawn position. They shrink with depth like the die, and
