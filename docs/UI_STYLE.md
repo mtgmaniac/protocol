@@ -76,6 +76,14 @@ DISPLAY 6 (96): 96 at 360, 88.6 at 390, 96 at 540. Never set a Battle Block
 label's font size directly; check with `scripts/checks/stroke_runs.py` on a
 capture (every ink run a multiple of k).
 
+**Card name row (88 design px).** A trait title or the BOSS tag (SMALL, m5x7 48,
+the text floor) sits fully above the callsign: both are placed by glyph
+extents, clear of the 3 px the card shell covers at the row's top and the 8 px
+title divider at its bottom (`compact_unit_card._layout_name_lines`). A card
+with neither keeps the centred callsign. The row grew 80 -> 88 for every card
+(boss, trait and plain cards stay aligned) and the HP bar gave the 8 px back
+(86 -> 78), so the portrait window keeps its ruled aspect.
+
 The CARD cap (96, x3) fits the card: the longest name (AVALANCHE) and a
 three-digit HP ("140 / 140") are 324 px in the 332 px label. Landscape (dev)
 cards step the role down to fit and keep the same draw rule. Check widths with

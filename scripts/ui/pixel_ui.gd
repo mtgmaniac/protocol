@@ -272,6 +272,23 @@ static func _unhook_block_snap(label: Control) -> void:
 		parent.sort_children.disconnect(redo)
 
 
+## The font size a bound Battle Block label is drawn at, in design px (its cap
+## when it is not in the tree yet).
+static func block_draw_size(label: Control) -> float:
+	if not label.has_meta("block_px"):
+		return float(label.get_theme_font_size("font_size"))
+	var px: Vector2 = label.get_meta("block_px")
+	var parent := label.get_parent() as CanvasItem
+	var at_scale: float = screen_scale_at(parent) if parent != null else 0.0
+	return block_pixel_px(px.x, px.y, at_scale) * 16.0
+
+
+## Re-applies a bound label's draw scale (after its alignment changes).
+static func refresh_block_snap(label: Control) -> void:
+	if label.has_meta("block_px"):
+		_queue_block_snap(label)
+
+
 static func _queue_block_snap(label: Variant) -> void:
 	_apply_block_snap.call_deferred(label)
 

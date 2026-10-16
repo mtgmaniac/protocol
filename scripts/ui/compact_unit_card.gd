@@ -6,9 +6,9 @@ signal unit_detail_requested(card)
 
 const CARD_SIZE := Vector2(260, 0)
 const PORTRAIT_HP_GAP_PX := 10.0
-const NAME_ROW_HEIGHT := 80.0
-const HP_BAR_HEIGHT := 86.0
-const HP_FILL_HEIGHT := 86.0
+const NAME_ROW_HEIGHT := 88.0   # ui-fix: 80 -> 88 so a trait / BOSS line fits above the callsign
+const HP_BAR_HEIGHT := 78.0   # ui-fix: 86 -> 78 pays for the taller name row; the portrait window keeps its aspect
+const HP_FILL_HEIGHT := 78.0
 const ACTION_PANEL_HEIGHT := 88.0
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
 # static var (not const) because PixelUI's DT_* tokens are themselves static var
@@ -154,10 +154,6 @@ func apply_battle_presentation(text_scale: float) -> void:
 	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_trait_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
-	_boss_label.offset_top = -28.0 * text_scale
-	_boss_label.offset_bottom = -28.0 * text_scale
-	_trait_label.offset_top = -28.0 * text_scale
-	_trait_label.offset_bottom = -28.0 * text_scale
 	PixelUI.apply_type(_hp_label, PixelUI.TYPE_CARD, null, text_scale)
 	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
 	_hp_fill.offset_bottom = HP_FILL_HEIGHT * text_scale
@@ -306,8 +302,6 @@ func _build() -> void:
 	_apply_label(_boss_label, 48, PixelUI.DT_BOSS_INK, 0)
 	name_content.add_child(_boss_label)
 	_boss_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_boss_label.offset_top = -28
-	_boss_label.offset_bottom = -28
 	# The trait marker sits where the BOSS line does, in the name strip and
 	# never over the portrait (G-5: portrait corners carry no markers).
 	_trait_label = Label.new()
@@ -319,8 +313,6 @@ func _build() -> void:
 	_apply_label(_trait_label, 48, PixelUI.DT_AMBER, 0)
 	name_content.add_child(_trait_label)
 	_trait_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_trait_label.offset_top = -28
-	_trait_label.offset_bottom = -28
 
 	# Plain Control (NOT a Container) so the crop + status overlay can be positioned
 	# by anchors; a PanelContainer would force-lay-out both children.
@@ -575,8 +567,7 @@ func _refresh() -> void:
 	_trait_label.text = trait_marker
 	_trait_label.add_theme_color_override("font_color", PixelUI.COLOR_DAMAGE if trait_warning else PixelUI.DT_AMBER)
 	var two_lines: bool = is_boss or has_trait_marker
-	_name_label.offset_top = 8 * _battle_text_scale if two_lines else 0
-	_name_label.offset_bottom = 8 * _battle_text_scale if two_lines else 0
+	_layout_name_lines(two_lines)
 	if is_boss:
 		_name_label.add_theme_color_override("font_color", PixelUI.DT_BOSS_INK)
 	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
@@ -1153,6 +1144,37 @@ func _status_icon_for_type(status_type: String) -> String:
 		"frozen", "freeze", "die_freeze":
 			return "FR"
 	return ""
+
+
+# ui-fix (trait names): a trait or BOSS line sits fully above the callsign in the
+# fixed name row, placed by glyph extents (the line boxes overlap; the glyphs
+# must not). The card skin paints over the row's top 3 px and bottom 8 px (its
+# shell and title divider), so the tag's caps start 3 + 4 below the row top and
+# the callsign's glyph (at its drawn size) ends 8 + 4 above the row bottom. A
+# card with neither keeps the centred callsign.
+const TWO_LINE_PAD_TOP := 7.0
+const TWO_LINE_PAD_BOTTOM := 12.0
+const M5X7_CAP_PAD_PX := 4.0        # m5x7 pixels between the line top and the caps
+const BLOCK_GLYPH_FOOT := 0.3125    # Battle Block: glyph bottom is 10/32 of the line above its foot
+
+
+func _layout_name_lines(two_lines: bool) -> void:
+	var s: float = _battle_text_scale
+	if not two_lines:
+		_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_name_label.offset_top = 0
+		_name_label.offset_bottom = 0
+	else:
+		var line_h: float = PixelUI.block_draw_size(_name_label)
+		_name_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		_name_label.offset_top = 0
+		_name_label.offset_bottom = roundf(line_h * BLOCK_GLYPH_FOOT - TWO_LINE_PAD_BOTTOM * s)
+	for tag: Label in [_boss_label, _trait_label]:
+		var font_px: float = float(tag.get_theme_font_size("font_size")) / float(PixelUI.FONT_NATIVE_M5X7)
+		tag.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		tag.offset_top = roundf(TWO_LINE_PAD_TOP * s - M5X7_CAP_PAD_PX * font_px)
+		tag.offset_bottom = tag.offset_top
+	PixelUI.refresh_block_snap(_name_label)   # its pivot follows the new alignment
 
 
 func _team_border_color() -> Color:
