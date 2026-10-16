@@ -121,7 +121,7 @@ func _ready() -> void:
 	blurb.text = "Two paths reach the same fight. One is flagged."
 	blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	PixelUI.style_label(blurb, BODY_FONT, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(blurb, BODY_FONT, PixelUI.CHROME, 1)
 	column.add_child(blurb)
 
 	var gap := Control.new()

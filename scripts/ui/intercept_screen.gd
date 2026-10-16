@@ -193,7 +193,7 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true, 
 		note_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		note_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		PixelUI.style_body_label(note_label, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED if enabled else PixelUI.LINE_DIM)
+		PixelUI.style_body_label(note_label, PixelUI.FONT_BODY_MIN, PixelUI.CHROME if enabled else PixelUI.LINE_DIM)
 		_button_box.add_child(note_label)
 
 
@@ -420,9 +420,9 @@ func _show_result_stage(info: String, drafted_item: ItemData) -> void:
 	# player meets next battle, so it is worth reading a second time.
 	var accepted_note: String = _modifier_note(_choice)
 	if accepted_note != "":
-		_add_label(accepted_note, BODY_FONT - 4, PixelUI.TEXT_MUTED, 1)
+		_add_label(accepted_note, BODY_FONT - 4, PixelUI.CHROME, 1)
 	if info != "":
-		_add_label(info, BODY_FONT - 4, PixelUI.TEXT_MUTED, 1)
+		_add_label(info, BODY_FONT - 4, PixelUI.CHROME, 1)
 	_add_choice_button("CONTINUE", _continue_to_battle)
 	_add_view_battle_button()
 

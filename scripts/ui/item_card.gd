@@ -158,7 +158,7 @@ static func _description(text: String) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	PixelUI.style_label(label, BODY_FONT, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(label, BODY_FONT, PixelUI.CHROME, 1)
 	return label
 
 

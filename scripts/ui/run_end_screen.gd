@@ -213,7 +213,7 @@ func _build_two_section_stats(accent: Color) -> void:
 	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	record.text = _service_record_text()
 	# Lifetime stats are the retention hook here — keep them on the info floor.
-	_style_label(record, maxi(SUMMARY_FONT - 6, PixelUI.FONT_INFO_MIN), PixelUI.TEXT_MUTED)
+	_style_label(record, maxi(SUMMARY_FONT - 6, PixelUI.FONT_INFO_MIN), PixelUI.CHROME)
 	col.add_child(record)
 
 	# Feedback pointer — one unobtrusive sentence-case line on the info floor
@@ -223,7 +223,7 @@ func _build_two_section_stats(accent: Color) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_style_label(feedback, PixelUI.scale_font_size(PixelUI.FONT_INFO_MIN), PixelUI.TEXT_MUTED)
+	_style_label(feedback, PixelUI.scale_font_size(PixelUI.FONT_INFO_MIN), PixelUI.CHROME)
 	col.add_child(feedback)
 
 

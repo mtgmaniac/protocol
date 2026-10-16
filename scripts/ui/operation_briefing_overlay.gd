@@ -200,7 +200,7 @@ func _add_section(text: String, color: Color) -> void:
 
 
 func _add_body(text: String) -> void:
-	var label := _make_label(text, BODY_FONT, PixelUI.TEXT_MUTED, 1)
+	var label := _make_label(text, BODY_FONT, PixelUI.CHROME, 1)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)

@@ -868,7 +868,7 @@ func _build_abandon_confirm() -> void:
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	PixelUI.style_body_label(body, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED)
+	PixelUI.style_body_label(body, PixelUI.FONT_BODY_MIN, PixelUI.CHROME)
 	column.add_child(body)
 
 	var row := HBoxContainer.new()
@@ -2180,7 +2180,7 @@ func _build_round_complete_modal() -> void:
 	detail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD
 	detail.custom_minimum_size = Vector2(320, 0)
-	PixelUI.style_label(detail, 24, PixelUI.TEXT_MUTED, 3)
+	PixelUI.style_label(detail, 24, PixelUI.CHROME, 3)
 	vbox.add_child(detail)
 
 	_round_complete_next_button = Button.new()

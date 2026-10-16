@@ -78,13 +78,13 @@ static func _show_blocked_panel(host: Node) -> void:
 	var url := Label.new()
 	url.text = FEEDBACK_URL_SHORT
 	url.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(url, BODY_FONT, PixelUI.DT_CYAN_BRIGHT, 2)
+	PixelUI.style_label(url, BODY_FONT, PixelUI.CHROME, 2)
 	box.add_child(url)
 
 	var hint := Label.new()
 	hint.text = "Tap anywhere to close."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(hint, PixelUI.FONT_ACCENT_MIN, PixelUI.TEXT_MUTED, 2)
+	PixelUI.style_label(hint, PixelUI.FONT_ACCENT_MIN, PixelUI.CHROME, 2)
 	box.add_child(hint)
 
 	scrim.gui_input.connect(func(event: InputEvent) -> void:

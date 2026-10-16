@@ -1077,3 +1077,48 @@ non-battle band, Run End and Unlock a blank label.
 - Capture harnesses `run_end_capture`, `unlock_screen_capture` and
   `choice_screen_capture2` now set a battle number so the count reads like a
   real run (they showed 0/10 or nothing).
+
+## Cleanup phase 2: text color roles
+
+Route Fork's subtitle was `TEXT_MUTED`, a legacy slate blue (`85 99 b3`) that
+reads as cobalt next to the player's buttons. The audit covered text in
+PLAYER_ACCENT, PLAYER_ACCENT_LIGHT, PROTOCOL_ACCENT, their legacy aliases
+(`DT_CYAN`, `DT_CYAN_BRIGHT`, `DT_HERO_NAME`, `BTN_TEAL_TEXT*`) and TEXT_MUTED.
+
+**Moved to CHROME** (flavor, description, body or instruction text with no
+player or Protocol meaning):
+
+| Site | Text | Was |
+|---|---|---|
+| `route_fork_screen.gd:124` | the subtitle "Two paths reach the same fight..." | TEXT_MUTED |
+| `battle_scene.gd:871` | leave-battle dialog body "Progress will be lost." | TEXT_MUTED |
+| `battle_scene.gd:2183` | round-complete detail "Collect rewards and prepare..." | TEXT_MUTED |
+| `boss_relic_actions.gd:418` | Heretic Signal pop-up body | TEXT_MUTED |
+| `evolution_screen.gd:186` | evolution help lines | TEXT_MUTED |
+| `evolution_screen.gd:611` | the footer status line ("X evolved into Y.") | TEXT_MUTED |
+| `feedback.gd:81` | the feedback URL | DT_CYAN_BRIGHT (player light) |
+| `feedback.gd:87` | the feedback hint | TEXT_MUTED |
+| `help_menu.gd:570` | the keyword glossary's pip-code chip letters | DT_CYAN (player) |
+| `home_screen.gd:360` | the operation lore line (empty today) | TEXT_MUTED |
+| `home_screen.gd:648` | the unit detail description | TEXT_MUTED |
+| `home_screen.gd:1080` | the Starting Directive blurb | TEXT_MUTED |
+| `intercept_screen.gd:196` | each option's rule note | TEXT_MUTED |
+| `intercept_screen.gd:423`, `:425` | the after-choice note and info | TEXT_MUTED |
+| `item_card.gd:161` | item card description text | TEXT_MUTED |
+| `operation_briefing_overlay.gd:203` | briefing body paragraphs | TEXT_MUTED |
+| `reward_screen.gd:231` | reward help lines | TEXT_MUTED |
+| `run_end_screen.gd:216`, `:226` | service record, feedback line | TEXT_MUTED |
+| `spotlight_layer.gd:187` | the coach / primer "Continue" hint | PLAYER_ACCENT_LIGHT |
+
+**Kept, they mean the player or Protocol:** hero card names and the cast badge
+(`compact_unit_card.gd:299`, `:367`), evolution branch and trait titles and roll
+ranges (a hero's branches), Help hero-row names, the selected operation name on
+squad select, the loadout's TAP TO USE note (the player's action), "YOUR HEROES
+HOLD THIS ROUND", the footer Protocol costs (`protocol_actions.gd`).
+
+**Left as TEXT_MUTED (metadata, not flavor), for a decision:** squad select's
+SELECT ENCOUNTER head, encounter progress and LOCKED tag, battle target label,
+ability readout placeholders, evolution's BATTLE CARD line and ability names,
+the unlock tag, the state-code size line. TEXT_MUTED is a slate blue outside the
+token table in `UI_STYLE.md`; retoning it to `UI_TEXT_DIM` (neutral) would fix
+these in one place, but it also moves the battle readouts, so it is not done here.

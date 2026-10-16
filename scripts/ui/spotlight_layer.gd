@@ -184,7 +184,7 @@ func _ready() -> void:
 	# screen, so it takes two balanced lines instead of overflowing.
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.style_label(_hint_label, HINT_FONT, ACCENT, 1)
+	PixelUI.style_label(_hint_label, HINT_FONT, PixelUI.CHROME, 1)
 	PixelUI.apply_type(_hint_label, PixelUI.TYPE_SMALL)
 	col.add_child(_hint_label)
 

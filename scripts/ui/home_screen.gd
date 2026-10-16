@@ -357,7 +357,7 @@ func _build_encounter_section() -> Control:
 	# operation data `lore` field). The slot is fixed (B3): it exists only when
 	# some operation has lore, and then holds two lines for every encounter
 	# (empty on a locked one). No operation has lore today, so it is absent.
-	_op_lore_label = _make_pixel_label("", LORE_FONT, PixelUI.TEXT_MUTED)
+	_op_lore_label = _make_pixel_label("", LORE_FONT, PixelUI.CHROME)
 	_op_lore_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_op_lore_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_op_lore_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -645,7 +645,7 @@ func _build_detail_bar() -> PanelContainer:
 	col.add_theme_constant_override("separation", 10)
 	pad.add_child(col)
 
-	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
+	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.CHROME)
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# Body-copy line spacing — set BEFORE the reservation below reads it.
 	_detail_desc.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
@@ -1077,7 +1077,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	var picker_title := _make_pixel_label("STARTING DIRECTIVE", DETAIL_NAME_FONT, PixelUI.CHROME)
 	PixelUI.apply_type(picker_title, PixelUI.TYPE_LABEL)
 	col.add_child(picker_title)
-	var blurb := _make_pixel_label("Open the run with a trophy from a fallen boss.", DETAIL_DESC_FONT, PixelUI.TEXT_MUTED)
+	var blurb := _make_pixel_label("Open the run with a trophy from a fallen boss.", DETAIL_DESC_FONT, PixelUI.CHROME)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(blurb)
 

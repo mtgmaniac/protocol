@@ -567,7 +567,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 		# without a code (e.g. Protocol Gain) fall back to the initial.
 		var chip_text: String = str(kw.get("code", str(kw.get("term", "?")).substr(0, 1).to_upper()))
 		var chip_font: int = 36 if chip_text.length() <= 1 else 28
-		var letter := _make_label(chip_text, chip_font, PixelUI.DT_CYAN, HORIZONTAL_ALIGNMENT_CENTER, 2)
+		var letter := _make_label(chip_text, chip_font, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_CENTER, 2)
 		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		icon_frame.add_child(letter)

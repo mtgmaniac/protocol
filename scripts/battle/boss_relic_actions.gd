@@ -415,7 +415,7 @@ func _open_confirm(item: ItemData) -> void:
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	PixelUI.style_body_label(body, PixelUI.FONT_BODY_MIN, PixelUI.TEXT_MUTED)
+	PixelUI.style_body_label(body, PixelUI.FONT_BODY_MIN, PixelUI.CHROME)
 	column.add_child(body)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS

@@ -228,7 +228,7 @@ func _build_help_overlay() -> void:
 		"Border color = rarity; the boxed word = type.",
 		"Press CONFIRM to take the selected reward.",
 	]:
-		content.add_child(_make_label(line, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1))
+		content.add_child(_make_label(line, BODY_FONT_SIZE, PixelUI.CHROME, 1))
 
 
 # ─── Reward cards ───────────────────────────────────────────────────────────────

@@ -183,7 +183,7 @@ func _build_help_overlay() -> void:
 		"View all abilities to compare each complete kit.",
 		"Select a branch, then confirm your permanent choice.",
 	]:
-		var label: Label = _make_label(line, BODY_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
+		var label: Label = _make_label(line, BODY_FONT_SIZE, PixelUI.CHROME, 1)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		content.add_child(label)
 
@@ -608,7 +608,7 @@ func _apply_visual_theme() -> void:
 	PixelUI.style_label(title_label, TITLE_FONT_SIZE, PixelUI.CHROME, 3)
 	PixelUI.apply_type(title_label, PixelUI.TYPE_DISPLAY)
 	PixelUI.style_label(summary_label, SUMMARY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-	PixelUI.style_label(footer_label, 30, PixelUI.TEXT_MUTED, 1)
+	PixelUI.style_label(footer_label, 30, PixelUI.CHROME, 1)
 	_update_choice_layout()
 
 
