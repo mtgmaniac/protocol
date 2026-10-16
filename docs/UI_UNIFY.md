@@ -981,3 +981,65 @@ Checks: `text_legibility_test` PASS (232 text nodes), `reward_model_test` PASS,
 `docs/UI_STYLE.md`: the reference for future UI work. Ownership rules, the color
 token table with hex and role, the type roles, the components, the notch rule,
 the Protocol color rule, the spacing grid and pixel-grid rules, keyword colors.
+
+## Phase 11: verify
+
+- **Boot / smoke:** every touched screen and overlay was captured at 390x867
+  with no script errors in any log (26 captures plus the primer sequence), and
+  MainMenu, UnitSelect, BattleScene, RewardScreen, RouteFork, Intercept,
+  Evolution, Unlock and RunEnd load headless clean.
+- Related gates run because font sizing and components changed system-wide:
+  `text_legibility_test` (232 text nodes), `reward_model_test`,
+  `panel_count_test`, `component_contract.py`, `caps_law.py`,
+  `framing_sites.py`: all PASS.
+- Dice rendering and physics untouched: no dice gates, no `verify_gate.py`, no
+  build or itch package.
+
+## Final report
+
+**Deliverables** (390 px, `debug_artifacts/ui_unify/`, gitignored): `title`,
+`squad_select`, `route_fork`, `intercept`, `evolution`, `unlock`, `run_end`,
+`run_end_defeat`, `directive_picker`, `loadout`, `inspect_enemy`, `inspect_hero`,
+`primer`, `discard_picker`, `briefing`, `briefing_boss`, `state_code`,
+`help_basics`, `help_units`, `help_battle_log`, `help_settings`, `tutorial`,
+`footer_4`, `footer_10`, `reward`, `battle`.
+
+**Fonts chosen and why:** m5x7 for LABEL, BODY, SMALL and NUMERAL (full charset
+with lowercase; at x3 = 48 design px it lands one font pixel per screen pixel on
+a 360 px phone, the crispest reading text available; the code already measures
+pip widths with it). Battle Block for DISPLAY only (chunky capitals for titles
+and the battle header; no lowercase, so it cannot carry reading text; 96 = x3).
+All sizes are whole multiples of the native size; the dice faces are untouched.
+
+**Remaining hardcoded colors or fonts:** one color, `DataManager.gd:991` (an
+image fill for placeholder art, not UI). Allowed classes reported apart: 37
+opacity-only modulates, 38 dice materials. No off-system fonts.
+
+**Could not do / decisions to review:**
+
+- **Keyword colors and "Protocol" in text are not applied:** no text in the game
+  supports inline color (plain Labels; the battle log's BBCode is off). Tokens
+  `KW_*` are ready; a BBCode conversion of description labels is the follow-up.
+- **"Caps only for DISPLAY and LABEL"** conflicts with the capitalization law
+  (metadata labels are ALL CAPS by ruling); SMALL keeps caps where the copy has
+  them.
+- **Gold kept** on the evolution cards and the unlock boss relic card: the
+  major-event tier is ruled ceremonial gold.
+- **Icons are not integer-scaled** (128 px art in 44-64 px boxes, NEAREST);
+  needs 32 / 64 px variants.
+- **34 off-grid spacing constants remain** in measured-layout files (battle
+  card, battle scene, Protocol / relic actions, reward, squad select).
+- **Battle card names and HP moved from Battle Block to m5x7** (LABEL /
+  NUMERAL), and the battle header shrank 112 -> 96: the type rules. Easy to
+  revisit if the chunkier battle lettering is preferred.
+- `operation_briefing_capture.gd` no longer compiles under `--script`; replaced
+  by `overlay_capture.gd`.
+
+**Still off-style:** Help's bestiary enemy rows keep the enemy rust (no
+encounter context in Help); squad select's DEPLOY sits in a panel whose default
+theme border draws a thin dark ring; the old `style_button` and
+`style_primary_button` helpers still exist for a few remaining callers (Help's
+reference / more buttons and the round-complete layout) with token colors but
+the legacy shape; the F9 v3 perspective path keeps its encounter-colored walls
+by design; float text and battle FX keep their pre-existing palette (now
+tokens, not re-designed).
