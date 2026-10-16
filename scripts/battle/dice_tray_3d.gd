@@ -279,8 +279,12 @@ func _notification(what: int) -> void:
 func _sync_viewport_size() -> void:
 	if _viewport == null:
 		return
-	var viewport_size := Vector2i(maxi(int(size.x), 2), maxi(int(size.y), 2))
-	_viewport.size = viewport_size
+	# The container sizes the viewport (1 / render_shrink of the tray, stretched
+	# back up with NEAREST); the physics bounds follow the tray itself.
+	_viewport_container.stretch_shrink = render_shrink
+	# Resize the container now (not on the next layout pass) so the viewport is
+	# never a frame stale when a die position is read right after a resize.
+	_viewport_container.size = size
 	_update_world_bounds()
 
 
@@ -291,7 +295,10 @@ func _sync_viewport_size() -> void:
 func _update_world_bounds() -> void:
 	if _camera == null or _viewport == null:
 		return
-	var vp: Vector2 = Vector2(_viewport.size)
+	# The tray size in whole px (what the viewport was sized to before the dice
+	# rendered at reduced resolution), so walls and bounces never depend on the
+	# render scale.
+	var vp: Vector2 = Vector2(maxi(int(size.x), 2), maxi(int(size.y), 2))
 	if vp.x <= 2.0 or vp.y <= 2.0:
 		return
 	var half_h: float = _camera.size * 0.5
@@ -385,11 +392,42 @@ const DEPTH_LIFT_RATIO := 0.10
 const DEPTH_LIFT_MAX := 3.0
 
 
+# Flat pixel A: the dice viewport renders at 1 / render_shrink of the tray (4 =
+# one dice pixel per 4 design px, the scene's art grid). The camera speaks
+# viewport pixels; everything outside the tray (tags, hit areas, slots, the
+# projection) speaks tray pixels, so every camera point goes through these two.
+# Choice and the options tried: docs/FLAT_PIXEL_PROTOTYPE.md, Phase 5.
+const DICE_RENDER_SHRINK := 3
+static var render_shrink: int = DICE_RENDER_SHRINK
+
+
+## `--dice-render-shrink=N` overrides the render scale (captures, comparison).
+static func _read_render_shrink_arg() -> void:
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg.begins_with("--dice-render-shrink="):
+			render_shrink = clampi(int(arg.trim_prefix("--dice-render-shrink=")), 1, 8)
+
+
+# Tray px per viewport px on each axis (the container stretches the viewport
+# over the whole tray, so this is about render_shrink, exactly what is drawn).
+func _view_scale() -> Vector2:
+	var vp := Vector2(_viewport.size) if _viewport != null else Vector2.ZERO
+	if vp.x < 1.0 or vp.y < 1.0:
+		return Vector2.ONE
+	var drawn: Vector2 = _viewport_container.size if _viewport_container != null else size
+	return Vector2(maxf(drawn.x, 1.0) / vp.x, maxf(drawn.y, 1.0) / vp.y)
+
+
+# A world point in tray-local pixels.
+func _unproject(point: Vector3) -> Vector2:
+	return _camera.unproject_position(point) * _view_scale()
+
+
 # Where and how large a die is drawn, in tray-local pixels. `ground` is the
 # drawn centre with no height (the shadow sits under it); `center` adds the
 # lift. The drawn die never leaves the tray rectangle or the floor's edge.
 func _die_projection(die: RigidBody3D) -> Dictionary:
-	var flat: Vector2 = _camera.unproject_position(die.global_position)
+	var flat: Vector2 = _unproject(die.global_position)
 	var presentation: float = float(die.get_meta("presentation_scale", 1.0))
 	# Flat pixel A (and landscape): the die is drawn exactly where it simulates.
 	if _landscape_projection or not DEPTH.perspective_on:
@@ -496,7 +534,7 @@ func get_die_screen_position(side: String, unit_id: String) -> Vector2:
 	var die_origin: Vector3 = die.global_transform.origin + _drawn_offset(die)
 	if _camera.is_position_behind(die_origin):
 		return Vector2.INF
-	return _viewport_container.get_global_rect().position + _camera.unproject_position(die_origin)
+	return _viewport_container.get_global_rect().position + _unproject(die_origin)
 
 
 # The die's diameter projected to screen pixels (same coordinate space as
@@ -513,8 +551,8 @@ func get_die_projected_diameter(side: String, unit_id: String) -> float:
 		return 0.0
 	var right: Vector3 = _camera.global_transform.basis.x.normalized()
 	var base: Vector2 = _viewport_container.get_global_rect().position
-	var left_edge: Vector2 = base + _camera.unproject_position(origin - right * DIE_RADIUS)
-	var right_edge: Vector2 = base + _camera.unproject_position(origin + right * DIE_RADIUS)
+	var left_edge: Vector2 = base + _unproject(origin - right * DIE_RADIUS)
+	var right_edge: Vector2 = base + _unproject(origin + right * DIE_RADIUS)
 	return absf(right_edge.x - left_edge.x)
 
 
@@ -541,7 +579,7 @@ func get_die_screen_bounds(side: String, unit_id: String) -> Rect2:
 		var world_point: Vector3 = xform * (vertex * vis_scale)
 		if _camera.is_position_behind(world_point):
 			continue
-		var screen_point: Vector2 = base + _camera.unproject_position(world_point)
+		var screen_point: Vector2 = base + _unproject(world_point)
 		min_p.x = minf(min_p.x, screen_point.x)
 		min_p.y = minf(min_p.y, screen_point.y)
 		max_p.x = maxf(max_p.x, screen_point.x)
@@ -1299,8 +1337,8 @@ func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -
 func _anchor_to_world_origin(anchor_point: Vector2, fallback_origin: Vector3) -> Vector3:
 	if _camera == null or not is_instance_valid(_camera):
 		return fallback_origin
-	var ray_origin: Vector3 = _camera.project_ray_origin(anchor_point)
-	var ray_dir: Vector3 = _camera.project_ray_normal(anchor_point)
+	var ray_origin: Vector3 = _camera.project_ray_origin(anchor_point / _view_scale())
+	var ray_dir: Vector3 = _camera.project_ray_normal(anchor_point / _view_scale())
 	if absf(ray_dir.y) < 0.0001:
 		return fallback_origin
 	var t: float = (0.0 - ray_origin.y) / ray_dir.y
@@ -1647,7 +1685,13 @@ func _build_ui() -> void:
 
 	_viewport_container = SubViewportContainer.new()
 	_viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_viewport_container.stretch = false
+	# Flat pixel A: the dice render at 1 / render_shrink resolution and are shown
+	# stretched back to the tray with NEAREST, so they sit on a pixel grid like the
+	# scene. render_shrink 1 is the old full-resolution render.
+	_read_render_shrink_arg()
+	_viewport_container.stretch = true
+	_viewport_container.stretch_shrink = render_shrink
+	_viewport_container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_viewport_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_viewport_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2362,6 +2406,18 @@ func _number_well_color_for(base: Color) -> Color:
 	return base.darkened(0.78)                   # soft oversize backing that reads as the carved well
 
 
+# Flat pixel A: no specular on the dice, so each d20 face (flat normal) lights to
+# one flat tone instead of carrying a highlight gradient that dithers into noise
+# at the reduced render scale. Docs: FLAT_PIXEL_PROTOTYPE.md, Phase 5.
+const DICE_FLAT_TONES := true
+
+
+func _flat_tones(m: StandardMaterial3D) -> StandardMaterial3D:
+	if DICE_FLAT_TONES:
+		m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	return m
+
+
 func _make_body_material(base: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
@@ -2374,7 +2430,7 @@ func _make_body_material(base: Color) -> StandardMaterial3D:
 	m.emission_energy_multiplier = 0.5
 	m.roughness = 0.35
 	m.metallic = 0.10
-	return m
+	return _flat_tones(m)
 
 
 func _make_inner_shell_material(base: Color) -> StandardMaterial3D:
@@ -2399,7 +2455,7 @@ func _make_face_panel_material(base: Color) -> StandardMaterial3D:
 	m.emission = _face_color_for(base).darkened(0.55)
 	m.emission_energy_multiplier = 0.4
 	m.roughness = 0.90
-	return m
+	return _flat_tones(m)
 
 
 func _make_bevel_material(base: Color) -> StandardMaterial3D:
@@ -2413,7 +2469,7 @@ func _make_bevel_material(base: Color) -> StandardMaterial3D:
 	m.emission = _bevel_color_for(base).darkened(0.55)
 	m.emission_energy_multiplier = 0.35
 	m.roughness = 0.95
-	return m
+	return _flat_tones(m)
 
 
 func _face_panel_material_for(die: RigidBody3D) -> StandardMaterial3D:

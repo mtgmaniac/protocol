@@ -228,3 +228,47 @@ cards, the old teal `style_primary_button` on screens not in this batch.
   transparent with their pixel outline (the v3 tag field). Dice stay inside the
   floor: the floor is the tray rectangle, whose edges are the physics walls, and
   flat dice are drawn where they simulate.
+
+## Phase 5: pixelated dice
+
+- **Reduced-resolution render.** The dice SubViewport's container now stretches
+  (`stretch = true`, `stretch_shrink = render_shrink`, NEAREST), so the 3D dice
+  (and their drop shadows) render at 1 / render_shrink of the tray and are shown
+  back at full size on a hard pixel grid. `DiceTray3D.DICE_RENDER_SHRINK` holds
+  the choice; `--dice-render-shrink=N` overrides it for captures.
+- **Coordinates.** The camera now speaks reduced viewport pixels, so every camera
+  point goes through `_unproject` (x `_view_scale()`, tray px per viewport px on
+  each axis) and the slot anchors through `/ _view_scale()` on the way in. Tags,
+  hit areas (`get_die_screen_position` / `_bounds` / `_projected_diameter`),
+  result slots and the projection all keep speaking tray pixels, so touch targets
+  stay on the drawn dice. The container is resized synchronously in
+  `_sync_viewport_size` so the viewport is never a frame stale.
+- **Physics untouched by the render scale:** `_update_world_bounds` now reads the
+  tray size in whole px (exactly the value the full-resolution viewport used to
+  have) instead of the viewport size, so walls and bounces are identical at any
+  render scale. Possible visual-only drift: the camera's horizontal extent comes
+  from the reduced viewport's aspect, which can differ from the tray's by under
+  one dice pixel.
+- **Options tried** (390x867 captures, `debug_artifacts/flat_pixel_a/dice_scales.png`;
+  each capture rolled its own dice):
+
+  | render | dice px per design px | top numeral | side-face numerals |
+  |---|---|---|---|
+  | 1/1 (old) | 1 | clear | readable |
+  | 1/2 | 1/2 | clear | readable |
+  | **1/3** | 1/3 | clear | **readable** (the lowest where they still are) |
+  | 1/4 | 1/4 | clear | broken into noise on most faces |
+  | 1/6 | 1/6 | blocky but legible | noise |
+
+  **Chosen: 1/3.** It is the lowest scale that keeps every face numeral readable
+  at 390 px. Trade-off reported: the scene's art grid is 4 design px, so a dice
+  pixel (3 design px) is slightly finer than a scene pixel; 1/4 would match the
+  scene grid exactly but loses the side-face numerals.
+- **Quantized shading: yes, light.** `DICE_FLAT_TONES` turns specular off on the
+  body, face panels and bevels, so each face (one flat normal) lights to one flat
+  tone instead of carrying a highlight gradient that dithers at reduced
+  resolution. Diffuse lighting, emission, colors and the edge lines are as before.
+  Compared side by side at 1/3: slightly cleaner faces, numerals unchanged.
+- **Behaviour unchanged by construction:** nothing in physics, face printing,
+  landing, the upright snap, Freeze, Set, hops or recorded throws reads the render
+  resolution. Checked in Phase 6.
