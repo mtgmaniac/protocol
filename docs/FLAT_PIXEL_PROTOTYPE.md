@@ -531,3 +531,24 @@ PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
   notch): evolution, route fork, run end, unlock, state code panel, training
   prompt, the battle's stay / cancel / Set confirm buttons. Listed under "still
   on old styling".
+
+## B Phase 5: title polish
+
+- **Reactor core in PLAYER, no blur.** The logo's base layer keeps the core and
+  the PROTOCOL letters in the same teal, so a new base shader
+  (`PixelUI.logo_base_material`) splits them by height (`LOGO_CORE_SPLIT`: the
+  core sits in rows 23-250 of the 504-row art, PROTOCOL starts at row 382). Core
+  teal maps to three hard PLAYER steps by brightness (deep / PLAYER_ACCENT_DIM /
+  PLAYER_ACCENT); PROTOCOL teal keeps the CHROME tint; grays are untouched. The
+  core glow layer (`logo_core_material`, additive) maps its light centre to
+  PLAYER_ACCENT_LIGHT lifted toward white, its ring to PLAYER_ACCENT and its
+  outer pixels to PLAYER_ACCENT_DIM, in hard steps, and drops the faint gray
+  speckle the art carried around the core (it read as haze). The art was already
+  hard-edged; nothing is blurred. Boot, pulse, glitch and flare animations are
+  unchanged.
+- **PROTOCOL line and version underline: CHROME** (the PROTOCOL glow layer keeps
+  the CHROME `accent_tint_material`; the underline already was CHROME). F10 still
+  re-tints the CHROME parts.
+- **Rust panel** (`title_backdrop.gd`): moved 65% toward the gray of the same
+  luminance and darkened 45% (its lit edge 22%), so it is a muted warm gray
+  instead of the brightest saturated shape on the title. Stencils follow it.

@@ -45,9 +45,10 @@ var _motion_tweens: Array[Tween] = []
 
 func _ready() -> void:
 	SaveManager.setting_changed.connect(_on_setting_changed)
-	# UI restyle A: the reactor core and the PROTOCOL line read in CHROME.
-	_base.material = PixelUI.accent_tint_material(false)
-	_core_glow.material = PixelUI.accent_tint_material(true)
+	# Flat pixel B: the reactor core glows in PLAYER (hard steps, no blur); the
+	# PROTOCOL line reads in CHROME.
+	_base.material = PixelUI.logo_base_material()
+	_core_glow.material = PixelUI.logo_core_material()
 	_proto_glow.material = PixelUI.accent_tint_material(true)
 	_rest_x = _stack.position.x
 	_update_pivot()

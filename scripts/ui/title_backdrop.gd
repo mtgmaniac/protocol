@@ -17,6 +17,10 @@ const RUBBLE := Color("141517")
 const RUBBLE_LIT := Color("1f2023")
 const GIRDER := Color("1b1c1f")
 const GIRDER_LIT := Color("292a2e")
+## Flat pixel B: the rust panel is pulled most of the way to gray and darkened so
+## it no longer outshines the menu (it was the brightest, most saturated shape).
+const RUST_DESATURATE := 0.65
+const RUST_DARKEN := 0.45
 
 
 func _ready() -> void:
@@ -81,11 +85,12 @@ func _draw_right_block(screen: Vector2) -> void:
 	var h: float = screen.y
 	_slab(w * 0.74, 0.0, w * 0.12, h * 0.86, SLAB_FAR, true)
 	_slab(w * 0.88, 0.0, w * 0.12, h * 0.95, SLAB, true)
-	# The rust panel: flat rust, a lit edge, ragged weathering and faint stencils.
+	# The rust panel: flat, muted rust, a lit edge, ragged weathering and faint stencils.
 	var panel := Rect2(w * 0.76, 0.0, w * 0.13, h * 0.33)
-	var rust: Color = PixelUI.BATTLE_BAY_RUST.darkened(0.3)
+	var muted: Color = _desaturate(PixelUI.BATTLE_BAY_RUST, RUST_DESATURATE)
+	var rust: Color = muted.darkened(RUST_DARKEN)
 	_rect(panel.position.x, panel.position.y, panel.size.x, panel.size.y, rust)
-	_rect(panel.position.x, 0.0, ART_PX, panel.size.y, PixelUI.BATTLE_BAY_RUST)
+	_rect(panel.position.x, 0.0, ART_PX, panel.size.y, muted.darkened(RUST_DARKEN * 0.5))
 	var lengths: Array[int] = [3, 7, 2, 9, 5, 1, 6, 4, 8, 2, 5, 3]
 	for i in range(lengths.size()):
 		# Weathered bottom edge: columns end at uneven heights.
@@ -103,6 +108,12 @@ func _draw_right_block(screen: Vector2) -> void:
 			_rect(sx + (7 - step) * ART_PX, cy + step * ART_PX, ART_PX * 2.0, ART_PX, stencil)
 	_window(w * 0.92, h * 0.55)
 	_window(w * 0.80, h * 0.72)
+
+
+# `colour` moved `amount` of the way to the gray of the same luminance.
+func _desaturate(colour: Color, amount: float) -> Color:
+	var lum: float = colour.get_luminance()
+	return colour.lerp(Color(lum, lum, lum, colour.a), amount)
 
 
 # Rubble and broken girders along the bottom.

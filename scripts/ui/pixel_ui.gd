@@ -2730,10 +2730,110 @@ static func make_art_grid_view(painter: Control, view_name: String) -> SubViewpo
 static var _accent_materials: Dictionary = {}
 
 
-# After F10: re-tint the cached logo materials.
+# After F10: re-tint the cached logo materials (the CHROME parts).
 static func _refresh_logo_materials() -> void:
 	for material: ShaderMaterial in _accent_materials.values():
 		material.set_shader_parameter("accent", CHROME)
+	if _logo_base_material != null:
+		_logo_base_material.set_shader_parameter("accent", CHROME)
+
+
+# ── Title logo (flat pixel B) ──
+# The reactor core glows in PLAYER: a light core, a cobalt pixel ring, a dim
+# rim, in hard steps (no blur); the PROTOCOL line stays CHROME. The base layer
+# holds both the core and the PROTOCOL letters in the same teal, so the base
+# shader splits them by height: everything above LOGO_CORE_SPLIT (the core sits
+# in the top 330 of the art's 504 rows, PROTOCOL starts at row 382) is core.
+const LOGO_CORE_SPLIT := 360.0 / 504.0
+static var _logo_base_material: ShaderMaterial = null
+static var _logo_core_material: ShaderMaterial = null
+
+
+static func _logo_core_ramp(material: ShaderMaterial) -> void:
+	material.set_shader_parameter("core_light", PLAYER_ACCENT_LIGHT.lightened(0.35))
+	material.set_shader_parameter("core_mid", PLAYER_ACCENT)
+	material.set_shader_parameter("core_dim", PLAYER_ACCENT_DIM)
+	material.set_shader_parameter("core_deep", PLAYER_ACCENT_DIM.darkened(0.5))
+
+
+## The logo's base layer: core teal in the PLAYER ramp, PROTOCOL teal in CHROME,
+## grays untouched.
+static func logo_base_material() -> ShaderMaterial:
+	if _logo_base_material == null:
+		var shader := Shader.new()
+		shader.code = LOGO_BASE_SHADER
+		_logo_base_material = ShaderMaterial.new()
+		_logo_base_material.shader = shader
+		_logo_base_material.set_shader_parameter("accent", CHROME)
+		_logo_base_material.set_shader_parameter("core_split", LOGO_CORE_SPLIT)
+		_logo_core_ramp(_logo_base_material)
+	return _logo_base_material
+
+
+## The core glow layer (additive): its light centre and its saturated ring in
+## PLAYER steps; the faint gray speckle around it is dropped.
+static func logo_core_material() -> ShaderMaterial:
+	if _logo_core_material == null:
+		var shader := Shader.new()
+		shader.code = LOGO_CORE_SHADER
+		_logo_core_material = ShaderMaterial.new()
+		_logo_core_material.shader = shader
+		_logo_core_ramp(_logo_core_material)
+	return _logo_core_material
+
+
+const LOGO_BASE_SHADER := """shader_type canvas_item;
+uniform vec4 accent : source_color;
+uniform vec4 core_light : source_color;
+uniform vec4 core_mid : source_color;
+uniform vec4 core_dim : source_color;
+uniform vec4 core_deep : source_color;
+uniform float core_split = 0.714;
+varying vec4 tint_modulate;
+void vertex() {
+	tint_modulate = COLOR;
+}
+void fragment() {
+	vec4 texel = texture(TEXTURE, UV);
+	float lum = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
+	float top = max(texel.r, max(texel.g, texel.b));
+	float sat = top > 0.0 ? (top - min(texel.r, min(texel.g, texel.b))) / top : 0.0;
+	bool teal = sat > 0.3 && texel.g > texel.r + 0.10 && abs(texel.g - texel.b) < 0.16;
+	vec3 rgb = texel.rgb;
+	if (teal) {
+		if (UV.y < core_split) {
+			rgb = lum < 0.17 ? core_deep.rgb : (lum < 0.28 ? core_dim.rgb : core_mid.rgb);
+		} else {
+			rgb = accent.rgb * clamp(lum * 2.6, 0.0, 1.25);
+		}
+	}
+	COLOR = vec4(rgb, texel.a) * tint_modulate;
+}
+"""
+
+
+const LOGO_CORE_SHADER := """shader_type canvas_item;
+render_mode blend_add;
+uniform vec4 core_light : source_color;
+uniform vec4 core_mid : source_color;
+uniform vec4 core_dim : source_color;
+uniform vec4 core_deep : source_color;
+varying vec4 tint_modulate;
+void vertex() {
+	tint_modulate = COLOR;
+}
+void fragment() {
+	vec4 texel = texture(TEXTURE, UV);
+	float lum = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
+	float top = max(texel.r, max(texel.g, texel.b));
+	float sat = top > 0.0 ? (top - min(texel.r, min(texel.g, texel.b))) / top : 0.0;
+	if (sat < 0.35 && lum < 0.6) {
+		discard;
+	}
+	vec3 rgb = lum >= 0.7 ? core_light.rgb : (lum >= 0.42 ? core_mid.rgb : core_dim.rgb);
+	COLOR = vec4(rgb, texel.a) * tint_modulate;
+}
+"""
 
 
 static func accent_tint_material(glow: bool) -> ShaderMaterial:
