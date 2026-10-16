@@ -54,7 +54,7 @@ it is almost all covered, and what peeks out should not look cut off.
 The cards (fill about `#11191e`) and the tray floor must stay the brightest,
 clearest things on screen.
 
-- **Most pixels: luminance 8 - 28** (of 255). The placeholder sits at 10 - 31.
+- **Most pixels: luminance 8 - 28** (of 255). The placeholder: 11 - 24 for 90% of pixels, max 35.
 - **Highlights at most 48**, and only as single pixels or short lines (lamps,
   rivets, embers).
 - **Saturation at most about 35%.** Low, warm or cool grays per operation.

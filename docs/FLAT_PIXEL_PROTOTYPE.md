@@ -493,7 +493,7 @@ PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
 - **Placeholder art** (`assets/battle_backdrops/`, labelled `placeholder_`):
   `placeholder_facility_backdrop_01.png` (girders, braces, pipes, machines, a few
   dim lamps) and `placeholder_facility_backdrop_boss.png` (the same hall with a
-  furnace ring behind the boss row). Luminance 10 - 31 for 90% of pixels, max 46.
+  furnace ring behind the boss row). Luminance 11 - 24 for 90% of pixels, max 35.
   Generator: `scripts/assets/make_placeholder_backdrops.py`. Facility is
   registered with both; the other operations have empty lists.
 - **`docs/BACKDROP_SPEC.md`**: 270 x 600 image px at 1 px = 4 design px (optional
