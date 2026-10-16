@@ -22,7 +22,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.035294, 0.047059, 0.054902, 1)
 
 [node name="Bar" type="HBoxContainer" parent="HeaderBand"]
 layout_mode = 1
@@ -97,4 +96,3 @@ offset_top = -3.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.105882, 0.133333, 0.14902, 1)

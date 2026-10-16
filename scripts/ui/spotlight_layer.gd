@@ -25,7 +25,7 @@ var _coach_y_ratio: float = -1.0
 
 func use_training_presentation() -> void:
 	_dim_canvas.dim_color.a = 0.22
-	_coach_label.add_theme_font_size_override("font_size", 60)
+	_coach_label.add_theme_font_size_override("font_size", PixelUI.type_px(PixelUI.TYPE_BODY))   # BODY (was 60)
 
 enum CoachAnchor { AUTO, BOTTOM, CENTER }
 
@@ -149,7 +149,7 @@ func _ready() -> void:
 	add_child(_coach)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", 12)
 	_coach.add_child(col)
 
 	# Body row: optional leading glyph (the ACTUAL icon a primer teaches —

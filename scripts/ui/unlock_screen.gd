@@ -196,7 +196,7 @@ func _make_boss_relic_card(entry: Dictionary) -> Control:
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	info.add_theme_constant_override("separation", 10)
+	info.add_theme_constant_override("separation", 12)
 	row.add_child(info)
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", ""))

@@ -274,7 +274,7 @@ func _make_incoming_block(item: ItemData) -> Control:
 	panel.add_child(pad)
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", 8)
 	pad.add_child(col)
 	var incoming_label := _make_label("INCOMING", DISCARD_STRIP_FONT, PixelUI.CHROME_DIM, HORIZONTAL_ALIGNMENT_LEFT)
 	PixelUI.apply_type(incoming_label, PixelUI.TYPE_SMALL)
@@ -298,7 +298,7 @@ func _make_item_line(item: ItemData) -> Control:
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	info.add_theme_constant_override("separation", 6)
+	info.add_theme_constant_override("separation", 8)
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(info)
 	var accent: Color = _slot_accent(item, true)
@@ -307,7 +307,7 @@ func _make_item_line(item: ItemData) -> Control:
 		var pips: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
 		if not pips.is_empty():
 			var pip_row := HBoxContainer.new()
-			pip_row.add_theme_constant_override("separation", 10)
+			pip_row.add_theme_constant_override("separation", 12)
 			pip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			for pip_variant in pips:
 				pip_row.add_child(EffectPip.build_group(pip_variant, ROW_PIP_PROFILE))
@@ -405,7 +405,7 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	info.add_theme_constant_override("separation", 6)
+	info.add_theme_constant_override("separation", 8)
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(info)
 
@@ -423,7 +423,7 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 		var pips: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
 		if not pips.is_empty():
 			var pip_row := HBoxContainer.new()
-			pip_row.add_theme_constant_override("separation", 10)
+			pip_row.add_theme_constant_override("separation", 12)
 			pip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			for pip_variant in pips:
 				pip_row.add_child(EffectPip.build_group(pip_variant, ROW_PIP_PROFILE))

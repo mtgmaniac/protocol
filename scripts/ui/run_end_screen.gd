@@ -189,7 +189,7 @@ func _build_two_section_stats(accent: Color) -> void:
 	var host := summary_label.get_parent() as MarginContainer   # SummaryMargin
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_theme_constant_override("separation", 14)
+	col.add_theme_constant_override("separation", 16)
 	host.remove_child(summary_label)
 	host.add_child(col)
 

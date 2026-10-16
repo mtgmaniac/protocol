@@ -178,7 +178,7 @@ func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> 
 	var column := VBoxContainer.new()
 	column.name = "BriefingContent"
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_theme_constant_override("separation", 18)
+	column.add_theme_constant_override("separation", 20)
 	pad.add_child(column)
 	_content_container = column
 
@@ -218,7 +218,7 @@ func _add_deployment_grid(copy: Dictionary) -> void:
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grid.custom_minimum_size = Vector2(DEPLOYMENT_GRID_WIDTH, 0)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	grid.add_theme_constant_override("separation", 10)
+	grid.add_theme_constant_override("separation", 12)
 	center.add_child(grid)
 	_add_key_value(grid, "SITE", str(copy["site"]), copy["accent"] as Color)
 	_add_key_value(grid, "SITUATION", str(copy["failure"]), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))

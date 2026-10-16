@@ -139,7 +139,7 @@ static func _pip_row(item: ItemData) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var parts: Array = EffectPip.effects_from_passive(item.effect, item.target_kind)
 	if parts.is_empty():

@@ -230,7 +230,7 @@ func _add_section(content: VBoxContainer, prepend_divider: bool, thick: bool, no
 func _build_header(header: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 16)
 
 	var icon: Texture2D = header.get("icon") as Texture2D
 	var icon_char: String = str(header.get("icon_char", ""))
@@ -248,7 +248,7 @@ func _build_header(header: Dictionary) -> Control:
 	var title_box := VBoxContainer.new()
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	title_box.add_theme_constant_override("separation", 2)
+	title_box.add_theme_constant_override("separation", 4)
 	row.add_child(title_box)
 
 	# Title centered (Kev 2026-07-10).
@@ -324,7 +324,7 @@ func _build_roll_table(rows: Array) -> Control:
 func _build_ability(ability: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 20)
 	var roll_text: String = str(ability.get("roll", ""))
 	var limits := roll_text.split(" - ")
 	if limits.size() == 2 and limits[0] == limits[1]:
@@ -362,7 +362,7 @@ func _build_statuses(entries: Array) -> Control:
 		var entry: Dictionary = entry_variant
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", 10)
+		row.add_theme_constant_override("separation", 12)
 		for effect_variant in entry.get("effects", []):
 			var group: Control = EffectPip.build_group(effect_variant, EffectPip.PROFILE_CARD)
 			group.size_flags_vertical = Control.SIZE_SHRINK_BEGIN

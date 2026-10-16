@@ -355,6 +355,10 @@ const PIP_BORDERS := {
 	"default": Color(0.34, 0.52, 0.70, 0.86),
 }
 const BATTLE_TICK := Color("2a333a")
+# The faint grid behind some screens (pattern_background.gd), neutral steel.
+const PATTERN_GRID := Color(0.49, 0.54, 0.59, 0.08)
+const PATTERN_GRID_MAJOR := Color(0.49, 0.54, 0.59, 0.12)
+const PATTERN_SCANLINE := Color(0.02, 0.03, 0.05, 0.22)
 # The title's placeholder street backdrop (title_backdrop.gd).
 const TITLE_VOID := Color("0c0d0f")
 const TITLE_SLAB_FAR := Color("111214")

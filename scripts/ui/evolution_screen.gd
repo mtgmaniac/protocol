@@ -168,13 +168,13 @@ func _build_help_overlay() -> void:
 
 	var margin: MarginContainer = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_top", 22)
+	margin.add_theme_constant_override("margin_top", 24)
 	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_bottom", 24)
 	panel.add_child(margin)
 
 	var content: VBoxContainer = VBoxContainer.new()
-	content.add_theme_constant_override("separation", 14)
+	content.add_theme_constant_override("separation", 16)
 	margin.add_child(content)
 
 	content.add_child(_make_label("EVOLUTION HELP", 40, PixelUI.TEXT_PRIMARY, 3))
@@ -234,15 +234,15 @@ func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelCon
 	panel.mouse_exited.connect(_style_evolution_panel.bind(panel, false))
 
 	var margin: MarginContainer = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_right", 20)
 	margin.add_theme_constant_override("margin_bottom", 16)
 	panel.add_child(margin)
 
 	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 16)
 	margin.add_child(vbox)
 
 	# The name is read from the trait (UnitTraits.marker_text), amber like the
@@ -273,7 +273,7 @@ func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelCon
 	choose_button.expand_icon = true
 	choose_button.add_theme_constant_override("icon_max_width", 44)
 	choose_button.add_theme_color_override("icon_normal_color", PixelUI.CHROME)
-	choose_button.add_theme_constant_override("h_separation", 14)
+	choose_button.add_theme_constant_override("h_separation", 16)
 	choose_button.pressed.connect(_on_choose_trait_pressed.bind(str(unit_trait.get("id", ""))))
 	vbox.add_child(choose_button)
 	return panel
@@ -306,16 +306,16 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	panel.mouse_exited.connect(_style_evolution_panel.bind(panel, false))
 
 	var margin: MarginContainer = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_right", 20)
 	margin.add_theme_constant_override("margin_bottom", 16)
 	panel.add_child(margin)
 
 	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 16)
 	margin.add_child(vbox)
 
 	vbox.add_child(_create_path_header(path, base_unit))
@@ -329,7 +329,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	var abilities := VBoxContainer.new()
 	abilities.name = "FullAbilities"
 	abilities.visible = false
-	abilities.add_theme_constant_override("separation", 14)
+	abilities.add_theme_constant_override("separation", 16)
 	for entry in ranges:
 		abilities.add_child(_create_ability_row(entry))
 	vbox.add_child(abilities)
@@ -337,7 +337,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	var trait_effects := VBoxContainer.new()
 	trait_effects.name = "TraitEffects"
 	trait_effects.visible = false
-	trait_effects.add_theme_constant_override("separation", 14)
+	trait_effects.add_theme_constant_override("separation", 16)
 	for trait_variant in path.get("traits", []):
 		var trait_effect: Label = _make_label(CombatManager.UnitTraits.line(trait_variant), ABILITY_DESC_FONT_SIZE, PixelUI.CHROME, 1)
 		trait_effect.name = "TraitEffect_%s" % str((trait_variant as Dictionary).get("id", ""))
@@ -370,7 +370,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_theme_constant_override("separation", 18)
+	header.add_theme_constant_override("separation", 20)
 
 	# The shared portrait frame at PORTRAIT_W, the border outside the art. It sits
 	# at the top of the row and keeps its own size: built here as a bare
@@ -386,7 +386,7 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 
 	var text_stack: VBoxContainer = VBoxContainer.new()
 	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_stack.add_theme_constant_override("separation", 6)
+	text_stack.add_theme_constant_override("separation", 8)
 	header.add_child(text_stack)
 
 	# Branch name is a selection, not a rarity — cyan, not green (UI review S-2).
@@ -428,7 +428,7 @@ func _create_ability_row(entry: Dictionary) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 20)
 	box.add_child(row)
 	var low := int(entry.get("min", 0))
 	var high := int(entry.get("max", 0))
@@ -570,8 +570,8 @@ func _update_choice_layout() -> void:
 	choice_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	choice_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choice_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	choice_content.add_theme_constant_override("separation", 18)
-	choice_cards.add_theme_constant_override("separation", 18)
+	choice_content.add_theme_constant_override("separation", 20)
+	choice_cards.add_theme_constant_override("separation", 20)
 	top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	for child in choice_cards.get_children():
 		var panel: PanelContainer = child as PanelContainer

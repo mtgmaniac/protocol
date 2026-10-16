@@ -5,9 +5,10 @@ extends Control
 @export var grid_step: int = 8
 @export var major_grid_step: int = 32
 @export var scanline_step: int = 3
-@export var grid_color: Color = Color(0.18, 0.35, 0.52, 0.12)
-@export var major_grid_color: Color = Color(0.24, 0.48, 0.70, 0.18)
-@export var scanline_color: Color = Color(0.02, 0.06, 0.10, 0.22)
+# ui-unify: neutral CHROME-family defaults from tokens (were a blue grid).
+@export var grid_color: Color = PixelUI.PATTERN_GRID
+@export var major_grid_color: Color = PixelUI.PATTERN_GRID_MAJOR
+@export var scanline_color: Color = PixelUI.PATTERN_SCANLINE
 
 
 func _ready() -> void:

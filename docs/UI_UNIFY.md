@@ -936,3 +936,42 @@ Checks: the five run-flow scenes load headless with no script errors;
   use LABEL / BODY and the primary / secondary buttons (Phase 7).
   `tutorial_controller.gd` and the training flow carry no colors of their own.
   Scripted logic, rolls, step order and copy are untouched.
+
+## Phase 9: pixel grid and sweep
+
+**Textures and icons.** The Phase 1 list has no texture drawn with a LINEAR or
+mipmapped filter set in code or scenes. Every icon TextureRect on it (pips,
+help icons, squad-select icons, the coach glyph, card status icons, the route
+banner) already sets NEAREST, the item art goes through `make_integer_icon`
+(integer multiples, enforced by `framing_sites` and `reward_model_test`), and
+portraits through the shared portrait frame (a cover fit by design, ruled).
+**Not integer-scaled, reported:** the UI icons are 128 px art shown in 44-64 px
+boxes (`STRETCH_KEEP_ASPECT_CENTERED`, NEAREST), a non-integer downscale; a clean
+fix is 32 / 64 px icon variants (an art task). The title logo (1588 px art) and
+the battle starfield are scaled the same way, by design.
+
+**Re-run of the Phase 1 searches** (`ui_audit.py`):
+
+- **Hardcoded colors: 1 real left**, `DataManager.gd:991`, a black / transparent
+  image fill used to build placeholder art (data, not a UI color; it stays).
+  The allowed classes: opacity 38, dice 38. Fixed in this phase: the five
+  scenes' Background / Divider `.tscn` color values (their scripts already set
+  them from tokens in `_ready`, so the values were dead and are removed) and
+  the pattern background's blue grid defaults (now `PATTERN_GRID`,
+  `PATTERN_GRID_MAJOR`, `PATTERN_SCANLINE`, neutral steel).
+- **Off-system fonts: none.** Only m5x7 and Battle Block are loaded; every size
+  choke point lands on the lattice. The last raw sizes off it were fixed: the
+  coach label in training presentation (60 -> BODY 64) and the footer Protocol
+  label constants (60 and 70 -> SMALL 48). The dice faces keep their own
+  Label3D sizes (out of scope by rule).
+- **Spacing:** 40 literal spacing constants rounded to the 4 px grid in the
+  restyled overlay and run-flow files (evolution, help, inspect, item card,
+  loadout, briefing, run end, spotlight, unlock). **34 remain, on purpose,** in
+  files whose layout is pinned by measured contracts: the battle card
+  (`compact_unit_card.gd`, 11: 1-2 px insets inside the card's measured
+  geometry), the battle scene, Protocol and boss-relic actions (4), reward (12,
+  `reward_model_test` geometry) and squad select (7, the frozen composition and
+  the DEPLOY clearance). They want their own pass with those tests.
+
+Checks: `text_legibility_test` PASS (232 text nodes), `reward_model_test` PASS,
+`panel_count_test` PASS; the touched scenes load headless clean.

@@ -146,9 +146,9 @@ func _build() -> void:
 
 	var panel_margin := MarginContainer.new()
 	panel_margin.mouse_filter = Control.MOUSE_FILTER_PASS
-	panel_margin.add_theme_constant_override("margin_left", 22)
+	panel_margin.add_theme_constant_override("margin_left", 24)
 	panel_margin.add_theme_constant_override("margin_top", 20)
-	panel_margin.add_theme_constant_override("margin_right", 22)
+	panel_margin.add_theme_constant_override("margin_right", 24)
 	panel_margin.add_theme_constant_override("margin_bottom", 20)
 	panel.add_child(panel_margin)
 
@@ -575,7 +575,7 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 	var text_box := VBoxContainer.new()
 	text_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_box.add_theme_constant_override("separation", 2)
+	text_box.add_theme_constant_override("separation", 4)
 	row.add_child(text_box)
 
 	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_LEFT, 2))
@@ -594,7 +594,7 @@ func _build_codex(host: VBoxContainer) -> void:
 	var list := VBoxContainer.new()
 	list.mouse_filter = Control.MOUSE_FILTER_PASS
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 18)
+	list.add_theme_constant_override("separation", 20)
 	host.add_child(list)
 
 	for unit_variant in _dm().units.values():
@@ -686,7 +686,7 @@ func _build_bestiary(host: VBoxContainer) -> void:
 	_bestiary_detail = VBoxContainer.new()
 	_bestiary_detail.mouse_filter = Control.MOUSE_FILTER_PASS
 	_bestiary_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bestiary_detail.add_theme_constant_override("separation", 14)
+	_bestiary_detail.add_theme_constant_override("separation", 16)
 	host.add_child(_bestiary_detail)
 
 	var target: String = _bestiary_faction if ordered.has(_bestiary_faction) else (str(ordered[0]) if not ordered.is_empty() else "")
@@ -1135,7 +1135,7 @@ func _add_bullet(parent: VBoxContainer, text: String) -> void:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 12)
 	parent.add_child(row)
 
 	# The chevron marks the entry's FIRST LINE, so it must not stretch to the
@@ -1330,7 +1330,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	row.custom_minimum_size.y = 154
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 16)
 	host.add_child(row)
 
 	if indented:
@@ -1363,7 +1363,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_theme_constant_override("separation", 10)
+	head.add_theme_constant_override("separation", 12)
 	entry.add_child(head)
 	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.CHROME if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_LIGHT, 2)
 	PixelUI.apply_type(name_label, PixelUI.TYPE_LABEL)
