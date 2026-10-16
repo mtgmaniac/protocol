@@ -460,3 +460,18 @@ plate.
 
 `battle_scene.gd` stays at 3,639 lines (watermark 3,640). `component_contract`
 PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
+
+## B Phase 2: neutral tray
+
+- The flat tray's floor tint, rim and decal come from `PixelUI.tray_palette()`,
+  derived from CHROME: floor = CHROME darkened 0.86 (times the floor mask), rim =
+  CHROME_DIM darkened 0.45 (one art px inside the dark seam), decal = CHROME at
+  7% alpha. F10 moves them with CHROME. No encounter color on or in the tray.
+- Removed: `flat_floor_tint` from the scene data and the
+  `BATTLE_FLAT_FLOOR*` / `BATTLE_FLAT_DECAL_ALPHA` tokens. The per-operation
+  floor PATTERN stays (`flat_floor_texture`: Facility plates, Hive cells); it is
+  texture, not color.
+- Kept: flat top-down tray, hard pixel shadows, transparent pips, physics and
+  bounds. F9 still switches to the v3 perspective path, which is unchanged (its
+  hazard edging, window slots and decal still use the encounter data; it is the
+  comparison path, not the shipped look).

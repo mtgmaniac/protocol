@@ -1,5 +1,5 @@
 {
-  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel A color roles): in battle it drives the floor rim, the floor decal, the battle count and the header rule, and the squad-select site line and briefing read it. `flat_floor_texture` and `flat_floor_tint` are the flat tray's floor (a gray mask times the tint; an empty tint uses BATTLE_FLAT_FLOOR). `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`.",
+  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else (the F9 v3 scene also tints its decal with it). `flat_floor_texture` is the flat tray's floor pattern (a gray mask; its color is the neutral PixelUI.tray_palette, never the encounter). `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`.",
   "fallback": "bare",
   "scenes": {
     "facility": {
@@ -9,18 +9,16 @@
       "accent": "ENCOUNTER_FACILITY",
       "edge_accent": "BATTLE_BAY_AMBER_LIT",
       "streak": "BATTLE_BAY_RUST",
-      "flat_floor_texture": "res://assets/battle_tray/flat_floor_plates.png",
-      "flat_floor_tint": "BATTLE_FLAT_FLOOR_FACILITY"
+      "flat_floor_texture": "res://assets/battle_tray/flat_floor_plates.png"
     },
     "hive": {
-      "label": "Hive (flat floor PLACEHOLDER art; no v3 art)",
+      "label": "Hive (flat floor pattern PLACEHOLDER art; no v3 art)",
       "wall_texture": "",
       "floor_texture": "",
       "accent": "ENCOUNTER_HIVE",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": "res://assets/battle_tray/flat_floor_hive.png",
-      "flat_floor_tint": "BATTLE_FLAT_FLOOR_HIVE"
+      "flat_floor_texture": "res://assets/battle_tray/flat_floor_hive.png"
     },
     "veil": {
       "label": "STUB: no art yet",
@@ -29,8 +27,7 @@
       "accent": "ENCOUNTER_VEIL",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": "",
-      "flat_floor_tint": ""
+      "flat_floor_texture": ""
     },
     "voidCirclet": {
       "label": "STUB: no art yet (Signal Purge)",
@@ -39,8 +36,7 @@
       "accent": "ENCOUNTER_SIGNAL",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": "",
-      "flat_floor_tint": ""
+      "flat_floor_texture": ""
     },
     "stellarMenagerie": {
       "label": "STUB: no art yet (Mantle Hunt)",
@@ -49,8 +45,7 @@
       "accent": "ENCOUNTER_MANTLE",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": "",
-      "flat_floor_tint": ""
+      "flat_floor_texture": ""
     },
     "bare": {
       "label": "Bare scene",
@@ -59,8 +54,7 @@
       "accent": "",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": "",
-      "flat_floor_tint": ""
+      "flat_floor_texture": ""
     }
   }
 }

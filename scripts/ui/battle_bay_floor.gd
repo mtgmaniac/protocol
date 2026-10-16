@@ -1,9 +1,10 @@
 extends Control
-## Flat pixel A (default): a flat, top-down scene. A dark low-contrast pixel
-## texture behind the whole board, the tray as one flat floor texture with a rim
-## in the operation's ENCOUNTER accent just outside the tray, and the reticle
-## decal at low opacity in the same accent. No walls, windows, vignette or
-## streak. Floor texture, floor tint and accent come from the scene data.
+## Flat pixel A/B (default): a flat, top-down scene. A dark low-contrast pixel
+## texture behind the whole board, the tray as one flat floor texture with a
+## neutral rim just outside the tray and the reticle decal at low opacity. The
+## tray is shared ground: floor tint, rim and decal come from CHROME
+## (PixelUI.tray_palette), never the encounter; the floor PATTERN comes from the
+## scene data. No walls, windows, vignette or streak.
 ##
 ## Battle depth prototype v3 (debug F9): the full-screen battle scene behind the board. A
 ## back wall behind the enemy cards, slab side walls down both edges, and one
@@ -63,7 +64,6 @@ var _accent := Color.TRANSPARENT
 var _edge := Color.TRANSPARENT
 var _streak := Color.TRANSPARENT
 var _flat_floor: Texture2D
-var _flat_floor_tint := Color.TRANSPARENT
 var _flat_backdrop: Texture2D
 
 
@@ -91,7 +91,6 @@ func _load_scene() -> void:
 	_edge = DEPTH.token(str(entry.get("edge_accent", "")))
 	_streak = DEPTH.token(str(entry.get("streak", "")))
 	_flat_floor = _texture(str(entry.get("flat_floor_texture", "")))
-	_flat_floor_tint = DEPTH.token(str(entry.get("flat_floor_tint", "")))
 	_flat_backdrop = _texture(FLAT_BACKDROP_PATH)
 
 
@@ -136,22 +135,21 @@ func _draw_flat() -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen), PixelUI.BATTLE_FLAT_BACKDROP)
 	_tile(Rect2(Vector2.ZERO, screen), _flat_backdrop, PixelUI.BATTLE_FLAT_BACKDROP_TINT)
 	var floor_rect := Rect2(_snap(tray.position), _snap(tray.end) - _snap(tray.position))
-	var rim: Color = _accent if _accent.a > 0.0 else PixelUI.NEUTRAL_BLUEGRAY
+	var tray_colors: Dictionary = PixelUI.tray_palette()
 	draw_rect(floor_rect.grow(ART_PX * FLAT_RIM_BANDS), PixelUI.BATTLE_BAY_SEAM)
-	draw_rect(floor_rect.grow(ART_PX), rim)
-	var tint: Color = _flat_floor_tint if _flat_floor_tint.a > 0.0 else PixelUI.BATTLE_FLAT_FLOOR
+	draw_rect(floor_rect.grow(ART_PX), tray_colors["rim"])
+	var tint: Color = tray_colors["floor"]
 	draw_rect(floor_rect, tint)
 	_tile(floor_rect, _flat_floor, tint)
 	_draw_flat_decal(floor_rect)
 
 
 # The reticle flat on the floor at the tray's centre, one texel per art pixel
-# where it fits (scaled down by whole steps where it does not), in the accent.
+# where it fits (scaled down by whole steps where it does not), neutral.
 func _draw_flat_decal(floor_rect: Rect2) -> void:
 	if _reticle == null or not DEPTH.decal_on:
 		return
-	var tint: Color = _accent if _accent.a > 0.0 else Color.WHITE
-	tint.a = PixelUI.BATTLE_FLAT_DECAL_ALPHA
+	var tint: Color = PixelUI.tray_palette()["decal"]
 	var side: float = _reticle.get_size().x * ART_PX
 	while side > floor_rect.size.y * 0.8 and side > ART_PX * 8.0:
 		side *= 0.5

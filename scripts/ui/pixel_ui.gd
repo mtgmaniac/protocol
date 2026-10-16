@@ -53,11 +53,21 @@ const BATTLE_BAY_SHADOW_ALPHA := 0.85
 # floor and backdrop textures are light gray masks these colors multiply.
 const BATTLE_FLAT_BACKDROP := Color("0b0d0f")
 const BATTLE_FLAT_BACKDROP_TINT := Color("15181b")
-const BATTLE_FLAT_FLOOR := Color("1d2023")
-const BATTLE_FLAT_FLOOR_FACILITY := Color("262420")
-const BATTLE_FLAT_FLOOR_HIVE := Color("2c191d")
 const BATTLE_FLAT_SHADOW := Color("040506")
-const BATTLE_FLAT_DECAL_ALPHA := 0.16
+# Flat pixel B: the tray is shared ground, so its floor, rim and decal are
+# neutral, derived from CHROME (F10 moves them with it); no encounter color on
+# or inside the tray. How dark each tone sits below CHROME:
+const BATTLE_TRAY_FLOOR_DARKEN := 0.86
+const BATTLE_TRAY_RIM_DARKEN := 0.45
+const BATTLE_TRAY_DECAL_ALPHA := 0.07
+
+
+## The neutral tray palette: floor tint (times the floor mask), rim, decal tint.
+static func tray_palette() -> Dictionary:
+	var decal: Color = CHROME
+	decal.a = BATTLE_TRAY_DECAL_ALPHA
+	return {"floor": CHROME.darkened(BATTLE_TRAY_FLOOR_DARKEN),
+		"rim": CHROME_DIM.darkened(BATTLE_TRAY_RIM_DARKEN), "decal": decal}
 # The vignette: hard-edged steps of black, darkest first (no smooth ramp).
 const BATTLE_VIGNETTE_STEPS: Array[float] = [0.42, 0.26, 0.12]
 # Die tags: transparent over the scene (2026-07-09 ruling); F8 brings the v2
