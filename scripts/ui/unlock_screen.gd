@@ -48,9 +48,10 @@ func _ready() -> void:
 	var content: MarginContainer = $Content
 	content.offset_top += float(PixelUI.safe_top)
 	content.offset_bottom -= float(PixelUI.safe_bottom)
-	PersistentHeader.set_run_active(false)
 	PixelUI.enable_touch_scroll(award_scroll)
 	PersistentHeader.clear_battle_actions()
+	# Still the finished run's screen: the in-operation header (ui-cleanup).
+	PersistentHeader.show_operation(GameState.selected_operation_id, GameState.current_battle, GameState.total_battles)
 
 	var unlocks: Array = SaveManager.check_new_unlocks()
 	if unlocks.is_empty():

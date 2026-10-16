@@ -1048,6 +1048,11 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	_directive_layer = Control.new()
 	_directive_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_directive_layer)
+	# The picker opens the run (it has no cancel): the in-operation header for
+	# the operation about to start, at its first battle (ui-cleanup).
+	var operation: OperationData = DataManager.get_operation(_selected_operation_id) as OperationData
+	if operation != null:
+		PersistentHeader.show_operation(_selected_operation_id, 1, operation.battles.size())
 
 	var dim := ColorRect.new()
 	dim.color = PixelUI.SCRIM

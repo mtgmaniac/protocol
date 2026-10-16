@@ -35,11 +35,8 @@ var _modifier_id: String = ""
 
 
 func _ready() -> void:
-	PersistentHeader.set_run_active(true)
 	PersistentHeader.clear_battle_actions()
-	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
-	if operation != null:
-		PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, operation.battle_name())
+	PersistentHeader.show_operation(GameState.selected_operation_id, GameState.current_battle, GameState.total_battles)
 
 	# Resume guard: roll ONCE per visit. Restoring the reward-RNG state would
 	# happen to reproduce the same modifier, but relying on that makes the

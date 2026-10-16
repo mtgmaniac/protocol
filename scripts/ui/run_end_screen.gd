@@ -28,10 +28,13 @@ func _ready() -> void:
 	# Encounter end (victory or defeat): crossfade back to loop 1.
 	MusicManager.play_track(&"sci_fi_loop_1")
 	MusicManager.set_combat(false)
-	# Run is over here — blank the persistent header's run label and make its
-	# buttons inert (this screen binds none of them).
-	PersistentHeader.set_run_active(false)
+	# The run's last screen keeps the in-operation header (ui-cleanup); its
+	# buttons stay inert (this screen binds none of them).
 	PersistentHeader.clear_battle_actions()
+	if GameState.tutorial_mode:
+		PersistentHeader.set_run_active(false)
+	else:
+		PersistentHeader.show_operation(GameState.selected_operation_id, GameState.current_battle, GameState.total_battles)
 
 	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
 	var operation_name: String = GameState.selected_operation_id

@@ -985,13 +985,11 @@ func _claim_reward(item: ItemData, target_unit_id: String, swap_consumable_id: S
 
 
 func _update_battle_header() -> void:
-	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
-	var op_name: String = operation.battle_name() if operation != null else "OP"
 	PersistentHeader.set_run_active(true)
 	if GameState.tutorial_mode:
 		PersistentHeader.set_run_label("TUTORIAL")
 		return
-	PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, op_name)
+	PersistentHeader.show_operation(GameState.selected_operation_id, GameState.current_battle, GameState.total_battles)
 
 
 func _refresh_inventory_summary() -> void:

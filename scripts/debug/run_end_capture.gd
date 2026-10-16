@@ -26,6 +26,8 @@ func _run_capture() -> void:
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
 	var result: String = str(config.get("result", "victory"))
 	gs.set("last_run_result", result)
+	# The battle the run ended on (the in-operation header shows it).
+	gs.set("current_battle", 10 if result == "victory" else 6)
 	# Representative run-report rows (duration / turns / fallen): a defeat is a
 	# full wipe, a victory here shows one casualty so the Fallen line renders
 	# both populated and "none" across the two capture results.

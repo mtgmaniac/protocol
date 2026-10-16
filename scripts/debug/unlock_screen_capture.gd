@@ -50,6 +50,10 @@ func _run_capture() -> void:
 		push_error("Capture scenario produced an empty delta - the screen would be skipped")
 		quit(1)
 		return
+	# The finished run the ceremony follows (the in-operation header reads it).
+	var gs: Node = root.get_node("/root/GameState")
+	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
+	gs.set("current_battle", 10 if str(config.get("scenario", "single")) != "single" else 3)
 	change_scene_to_file(SCENE)
 	await create_timer(float(config.get("delay_ms", DEFAULT_DELAY_MS)) / 1000.0).timeout
 	if bool(config.get("scroll_end", false)) and current_scene != null:

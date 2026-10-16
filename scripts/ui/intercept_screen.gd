@@ -30,11 +30,8 @@ var _button_box: VBoxContainer
 
 
 func _ready() -> void:
-	PersistentHeader.set_run_active(true)
 	PersistentHeader.clear_battle_actions()
-	var operation: OperationData = DataManager.get_operation(GameState.selected_operation_id) as OperationData
-	if operation != null:
-		PersistentHeader.update_progress(GameState.current_battle, GameState.total_battles, operation.battle_name())
+	PersistentHeader.show_operation(GameState.selected_operation_id, GameState.current_battle, GameState.total_battles)
 
 	if GameState.pending_intercept_state.is_empty():
 		var beat: Dictionary = GameState.get_beat_after_battle(GameState.current_battle)

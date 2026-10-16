@@ -14,6 +14,7 @@ func _run() -> void:
 	await process_frame
 	var gs: Node = root.get_node("/root/GameState")
 	gs.call("start_run", ["combat", "avalanche", "medic"], "facility")
+	gs.set("current_battle", 4)
 	gs.set("pending_evolution_unit_id", "avalanche")
 	# --trait: jump to the 250 XP trait pick (evolution already chosen).
 	if "--trait" in OS.get_cmdline_args():

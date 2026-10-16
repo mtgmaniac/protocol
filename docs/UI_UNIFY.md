@@ -1044,3 +1044,36 @@ shape (Help's BACK / reference / MORE and the Set-die CANCEL were moved to
 secondary in the last commit); the F9 v3 perspective path keeps its encounter-colored walls
 by design; float text and battle FX keep their pre-existing palette (now
 tokens, not re-designed).
+
+# UI cleanup pass (2026-10-16)
+
+Branch `proto/ui-cleanup`, cut from `proto/ui-unify` at `86f6037` (nothing was
+outstanding but `assets/fonts/battle_block.svg.import`, which stays out of every
+commit). Rendering and UI only. TRUTH.md and DECISIONS_RESOLVED.md are not
+edited. Godot 4.6.2 (no 4.7 changes seen). Reference: `docs/UI_STYLE.md`.
+Captures: `debug_artifacts/ui_cleanup/` (390 px wide, gitignored).
+
+## Cleanup phase 1: shared operation header
+
+The header was already one component (the `PersistentHeader` autoload), but only
+the battle screen turned on its in-operation look (the battle frame, the count in
+the ENCOUNTER accent, the rule under the title): Reward and Evolution had the
+frame with a plain-color count and no rule, Route Fork and Intercept the plain
+non-battle band, Run End and Unlock a blank label.
+
+- New `PersistentHeader.show_operation(operation_id, battle_number, total)`: the
+  battle frame, the operation name, the count and rule in the operation's
+  ENCOUNTER accent (`battle_depth.encounter_accent`), and it sets
+  `PixelUI.ENCOUNTER_ACCENT` for the screen built after it. An unknown operation
+  blanks the label. The battle screen keeps its own path (update_progress plus
+  `BattleLayout`'s tint, which the F6 debug toggle drives); the result is the
+  same header.
+- `set_run_active(false)` now also drops the count tint, so no screen outside a
+  run can inherit the rule.
+- **Screens changed:** Route Fork, Intercept, Reward (tutorial keeps the bare
+  TUTORIAL label), Evolution, Run End (was blank), Unlock (was blank), the
+  Starting Directive picker (squad select's modal: the header shows the
+  operation being started at 1/N while it is open; it has no cancel).
+- Capture harnesses `run_end_capture`, `unlock_screen_capture` and
+  `choice_screen_capture2` now set a battle number so the count reads like a
+  real run (they showed 0/10 or nothing).

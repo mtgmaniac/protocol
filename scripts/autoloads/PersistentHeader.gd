@@ -28,6 +28,7 @@ const BAR_PAD_X := 16.0
 const SUMMARY_FONT_SIZE := 96   # ui-unify: the DISPLAY role (Battle Block x3)
 const BUTTON_SIZE := Vector2(112, 112)
 const LANDSCAPE_STYLE := preload("res://scripts/battle/landscape_battle_style.gd").VALUES
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 var _battle_landscape := false
 var _battle_visuals := false
 var _battle_style: Dictionary = {}
@@ -292,6 +293,26 @@ func update_progress(battle_number: int, total_battles: int, operation_name: Str
 	_refresh_summary()
 
 
+## ui-cleanup: the in-operation header, the same on every screen shown inside a
+## run (route fork, intercept, reward, evolution, unlock, run end, the Starting
+## Directive picker): the battle frame, the operation name, the battle count in
+## the operation's ENCOUNTER accent and the rule under it in that accent. The
+## battle screen reaches the same state through update_progress and BattleLayout.
+## Also sets PixelUI.ENCOUNTER_ACCENT, so a screen built after this call reads
+## its operation's color. An unknown operation blanks the label instead.
+func show_operation(operation_id: String, battle_number: int, total_battles: int) -> void:
+	var operation: OperationData = DataManager.get_operation(operation_id) as OperationData
+	if operation == null:
+		set_run_active(false)
+		return
+	var accent: Color = DEPTH.encounter_accent(operation_id)
+	PixelUI.ENCOUNTER_ACCENT = accent if accent.a > 0.0 else PixelUI.BATTLE_ENEMY_LINE
+	_battle_visuals = true
+	_count_tint = PixelUI.ENCOUNTER_ACCENT
+	_progress = [battle_number, total_battles, operation.battle_name()]
+	_style()
+
+
 ## A bare run label with no battle count (the tutorial reads just "TUTORIAL").
 func set_run_label(text: String) -> void:
 	if _summary_label == null:
@@ -307,6 +328,10 @@ func set_run_active(active: bool) -> void:
 		return
 	if not active:
 		_progress = []
+		# No run, no operation: the encounter count and rule go with the label.
+		if _count_tint.a > 0.0:
+			_count_tint = Color.TRANSPARENT
+			_background.queue_redraw()
 		_refresh_summary()
 		_summary_label.text = ""
 
