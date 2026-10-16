@@ -917,3 +917,22 @@ Checks: the five run-flow scenes load headless with no script errors;
 
 `battle_scene.gd` is 3,638 lines (watermark 3,640). `component_contract.py` and
 `caps_law.py` PASS; BattleScene loads headless clean.
+
+## Phase 8: Help and tutorial
+
+- **Help pages** (Basics, Units with its operation sub-tabs, Battle Log, the icon
+  guide and bestiary that live on them): tabs and sub-tabs are the shared tab
+  component (active PLAYER); section headers are LABEL; bullets and keyword
+  definitions BODY (m5x7 64, line spacing 10; sizes were already on the lattice
+  through the choke points); hero rows in the Units list take the player's
+  resting frame and a LABEL name in PLAYER light (were cyan frames and CHROME
+  names); bestiary enemy rows keep the enemy rust frame and a CHROME name (Help
+  has no current encounter to borrow a color from); REPLAY TUTORIAL is
+  secondary (was a cyan legacy button with a literal fill). The Settings tab was
+  restyled in flat pixel A/B.
+- **Tutorial:** frames, highlights and prompts only. The coach card is the MODAL
+  component, the spotlight ring and the "Continue" hint PLAYER light, the dim
+  SCRIM (Phase 7, `spotlight_layer.gd`, shared with primers); training prompts
+  use LABEL / BODY and the primary / secondary buttons (Phase 7).
+  `tutorial_controller.gd` and the training flow carry no colors of their own.
+  Scripted logic, rolls, step order and copy are untouched.

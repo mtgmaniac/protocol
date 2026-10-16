@@ -377,8 +377,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	replay.text = "REPLAY TUTORIAL"
 	replay.custom_minimum_size = Vector2(0, 84)
 	replay.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_button(replay, Color(0.06, 0.13, 0.17, 0.98), PixelUI.DT_CYAN, 30)
-	replay.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT)
+	PixelUI.style_ui_secondary_button(replay, 30)   # ui-unify: was a cyan legacy button
 	replay.pressed.connect(_with_click(_replay_tutorial))
 	host.add_child(replay)
 
@@ -1125,7 +1124,9 @@ func _add_section(parent: VBoxContainer, title_text: String, bullet_lines: Array
 	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	section.add_theme_constant_override("separation", 8)
 	parent.add_child(section)
-	section.add_child(_make_wrap_label(title_text, SECTION_FONT, SECTION_HEADER_COLOR, 3))
+	var header := _make_wrap_label(title_text, SECTION_FONT, SECTION_HEADER_COLOR, 3)
+	PixelUI.apply_type(header, PixelUI.TYPE_LABEL)   # section headers: LABEL (ui-unify)
+	section.add_child(header)
 	for line_variant in bullet_lines:
 		_add_bullet(section, str(line_variant))
 
@@ -1346,7 +1347,9 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		# The shared portrait frame. It was a 96×96 square: a second window,
 		# shorter for its width than the battle card's, so each thumb lost the
 		# bottom of the framing its battle card shows (2026-10-10).
-		var border: Color = PixelUI.DT_ENEMY_BORDER if source_kind == "enemy" else PixelUI.DT_CYAN
+		# ui-unify: a hero's frame is the player's resting frame; an enemy keeps the
+		# enemy rust (Help has no current encounter to borrow a color from).
+		var border: Color = PixelUI.DT_ENEMY_BORDER if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_DIM
 		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, border, 2)
 		row.add_child(PixelUI.make_portrait_frame(portrait, ROW_PORTRAIT_W, frame_style)["frame"])
 
@@ -1362,7 +1365,8 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_constant_override("separation", 10)
 	entry.add_child(head)
-	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.CHROME, 2)
+	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.CHROME if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_LIGHT, 2)
+	PixelUI.apply_type(name_label, PixelUI.TYPE_LABEL)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(name_label)
 	var hp_label := _make_label("%d HP" % hp, BODY_FONT, PixelUI.TEXT_PRIMARY, HORIZONTAL_ALIGNMENT_RIGHT, 1)
