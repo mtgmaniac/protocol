@@ -7,7 +7,7 @@ static func present(parent: Node, heading: String, body: String, choices: Array)
 	parent.add_child(prompt)
 	prompt.layer = 115
 	var shade := ColorRect.new()
-	shade.color = PixelUI.DT_FIELD_BG
+	shade.color = PixelUI.SCRIM
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prompt.add_child(shade)
 	var center := CenterContainer.new()
@@ -28,14 +28,17 @@ static func present(parent: Node, heading: String, body: String, choices: Array)
 		var label := Label.new()
 		label.text = value
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.add_theme_font_size_override("font_size", 64 if value == heading else 56)
-		PixelUI.apply_pixel_font(label)
+		PixelUI.apply_type(label, PixelUI.TYPE_LABEL if value == heading else PixelUI.TYPE_BODY)
 		box.add_child(label)
 	for i in choices.size():
 		var button := Button.new()
 		button.text = str(choices[i])
 		button.custom_minimum_size.y = 128
-		PixelUI.style_primary_button(button, 60)
+		# The first choice is the prompt's primary; the rest are secondary.
+		if i == 0:
+			PixelUI.style_ui_primary_button(button, 60)
+		else:
+			PixelUI.style_ui_secondary_button(button, 60)
 		# get_node, not the AudioManager global: training_flow preloads this script
 		# from -s test scripts, where autoload identifiers do not exist at compile time.
 		button.pressed.connect(func():

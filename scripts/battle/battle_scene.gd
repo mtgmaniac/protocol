@@ -885,7 +885,7 @@ func _build_abandon_confirm() -> void:
 	stay.focus_mode = Control.FOCUS_NONE
 	stay.custom_minimum_size = Vector2(320, 112)
 	stay.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_primary_button(stay, 36)
+	PixelUI.style_ui_primary_button(stay, 36)   # the pop-up's primary (ui-unify)
 	stay.pressed.connect(func() -> void:
 		AudioManager.play_click()
 		_dismiss_abandon_confirm()
@@ -897,8 +897,7 @@ func _build_abandon_confirm() -> void:
 	leave.focus_mode = Control.FOCUS_NONE
 	leave.custom_minimum_size = Vector2(320, 112)
 	leave.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_button(leave, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, 36)
-	leave.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	PixelUI.style_ui_destructive_button(leave, 36)   # destructive confirm, no notch
 	leave.pressed.connect(_on_abandon_confirmed)
 	row.add_child(leave)
 
@@ -2187,7 +2186,7 @@ func _build_round_complete_modal() -> void:
 	_round_complete_next_button = Button.new()
 	_round_complete_next_button.text = "NEXT"
 	_round_complete_next_button.custom_minimum_size = Vector2(170, 58)
-	PixelUI.style_labeled_texture_button(_round_complete_next_button, PixelUI.BUTTON_LARGE_YELLOW_SCIFI, 28)
+	PixelUI.style_ui_primary_button(_round_complete_next_button, 28)   # was the old yellow sci-fi texture
 	_round_complete_next_button.pressed.connect(_on_round_complete_next_pressed)
 	vbox.add_child(_round_complete_next_button)
 

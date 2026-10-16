@@ -438,8 +438,9 @@ static func resolve_operation(op: OperationData) -> Dictionary:
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────────
+# ui-unify: an enemy's pop-up is the current ENCOUNTER_ACCENT, a hero's PLAYER.
 static func _side_accent(side: String) -> Color:
-	return PixelUI.DT_ENEMY_BORDER if side == "enemy" else PixelUI.DT_HERO_BORDER
+	return PixelUI.ENCOUNTER_ACCENT if side == "enemy" else PixelUI.PLAYER_ACCENT
 
 
 static func _status_keyword(kind: String) -> String:

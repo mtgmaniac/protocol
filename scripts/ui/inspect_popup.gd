@@ -211,6 +211,7 @@ func _build_sections(content: VBoxContainer, payload: Dictionary) -> void:
 
 	content.add_child(_divider())
 	var hint := _make_label("Tap anywhere to close", HINT_FONT, PixelUI.INSPECT_TEXT_DIM)
+	PixelUI.apply_type(hint, PixelUI.TYPE_SMALL)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(hint)
 
@@ -252,6 +253,7 @@ func _build_header(header: Dictionary) -> Control:
 
 	# Title centered (Kev 2026-07-10).
 	var title_label := _make_label(str(header.get("title", "")), TITLE_FONT, PixelUI.INSPECT_TEXT, false, 3)
+	PixelUI.apply_type(title_label, PixelUI.TYPE_LABEL)   # a pop-up title: LABEL caps (caps law: page heading)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_box.add_child(title_label)
@@ -304,7 +306,7 @@ func _build_roll_table(rows: Array) -> Control:
 		var line := HBoxContainer.new()
 		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_theme_constant_override("separation", 12)
-		var range_label := _make_label(str(entry.get("range", "")), BODY_FONT, _accent)
+		var range_label := _make_label(str(entry.get("range", "")), BODY_FONT, _accent.lightened(0.3))
 		range_label.custom_minimum_size = Vector2(120, 0)
 		line.add_child(range_label)
 		var zone_label := _make_label(str(entry.get("zone", "")), META_FONT, PixelUI.INSPECT_TEXT_DIM)
@@ -331,7 +333,7 @@ func _build_ability(ability: Dictionary) -> Control:
 	# out, or a blank name line and an empty 120 px roll column open a band
 	# between the header and the effect.
 	if roll_text != "":
-		var roll := _make_label(roll_text, ROLL_FONT, PixelUI.DT_CYAN)
+		var roll := _make_label(roll_text, ROLL_FONT, _accent.lightened(0.3))
 		roll.custom_minimum_size.x = 120
 		roll.size_flags_horizontal = Control.SIZE_FILL
 		roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP

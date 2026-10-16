@@ -114,7 +114,7 @@ func present_deployment(operation_id: String) -> void:
 		return
 	_mode = "deployment"
 	_build_shell(PixelUI.COMPONENT_MODAL)
-	_add_title("OPERATION %s // %s" % [str(copy["number"]), str(copy["name"])], PixelUI.DT_CYAN)
+	_add_title("OPERATION %s // %s" % [str(copy["number"]), str(copy["name"])], PixelUI.CHROME)
 	_add_deployment_grid(copy)
 	_add_action("ENGAGE", PixelUI.PLAYER_ACCENT)
 
@@ -123,11 +123,11 @@ func present_boss_alert(boss_name: String, runtime_rule: String) -> void:
 	var parsed := split_runtime_rule(runtime_rule)
 	_mode = "boss_alert"
 	_build_shell(PixelUI.COMPONENT_ENEMY)
-	_add_title("%s DETECTED" % boss_name.to_upper(), PixelUI.DT_ENEMY_BORDER)
+	_add_title("%s DETECTED" % boss_name.to_upper(), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))
 	_add_body(boss_flavor(boss_name))
-	_add_section("%s ACTIVE" % str(parsed["name"]), PixelUI.DT_ENEMY_BORDER)
+	_add_section("%s ACTIVE" % str(parsed["name"]), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))
 	_add_body(str(parsed["mechanic"]))
-	_add_action("ENGAGE", PixelUI.DT_ENEMY_BORDER)
+	_add_action("ENGAGE", PixelUI.PLAYER_ACCENT)
 
 
 func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> void:
@@ -157,7 +157,10 @@ func _build_shell(component_kind: String, accent: Color = Color.TRANSPARENT) -> 
 	var panel := PanelContainer.new()
 	panel.name = "BriefingPanel"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.custom_minimum_size = Vector2(0, 0)
+	# ui-unify: the slate's width (the deployment grid plus padding) so its text
+	# wraps inside the screen; the boss alert used to size to its longest line
+	# and run off a 390 px screen.
+	panel.custom_minimum_size = Vector2(DEPLOYMENT_GRID_WIDTH + PANEL_PAD * 2, 0)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# The slate owns the available width but keeps its content-derived height so
 	# the centered modal remains compact over the live battlefield.
@@ -218,7 +221,7 @@ func _add_deployment_grid(copy: Dictionary) -> void:
 	grid.add_theme_constant_override("separation", 10)
 	center.add_child(grid)
 	_add_key_value(grid, "SITE", str(copy["site"]), copy["accent"] as Color)
-	_add_key_value(grid, "SITUATION", str(copy["failure"]), PixelUI.DT_RUST)
+	_add_key_value(grid, "SITUATION", str(copy["failure"]), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))
 	_add_key_value(grid, "OBJECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
 
 
@@ -261,7 +264,8 @@ func _add_action(text: String, accent: Color) -> void:
 	_action.text = text
 	_action.custom_minimum_size = Vector2(0, ACTION_HEIGHT)
 	_action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(_action, PixelUI.DT_HERO_BG, accent, ACTION_FONT)
+	# The slate's confirm is the pop-up's primary (ui-unify).
+	PixelUI.style_ui_primary_button(_action, ACTION_FONT)
 	_action.pressed.connect(_dismiss)
 	_content().add_child(_action)
 
@@ -271,6 +275,7 @@ func _make_label(text: String, font_size: int, color: Color, outline: int) -> La
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	PixelUI.style_label(label, font_size, color, outline)
 	return label
 

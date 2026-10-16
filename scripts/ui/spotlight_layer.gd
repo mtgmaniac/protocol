@@ -29,8 +29,8 @@ func use_training_presentation() -> void:
 
 enum CoachAnchor { AUTO, BOTTOM, CENTER }
 
-const DIM := Color(0.01, 0.015, 0.02, 0.82)
-const ACCENT := Color("6fe0ef")  # PixelUI.DT_CYAN_BRIGHT
+const DIM := PixelUI.SCRIM
+const ACCENT := PixelUI.PLAYER_ACCENT_LIGHT   # ui-unify: the player's highlight (was cyan)
 const COACH_FONT := 32
 const HINT_FONT := 36  # Kev 2026-07-10: "tap to continue" was too small at 24
 const SCREEN_MARGIN := 40.0
@@ -65,8 +65,8 @@ var _presentation_id: int = 0
 # zones). Purely visual — MOUSE_FILTER_IGNORE — so input is handled by the catcher / real controls.
 class _DimCanvas extends Control:
 	var holes: Array = []          # Array[Rect2] in this control's local (== screen) space
-	var dim_color: Color = Color(0.01, 0.015, 0.02, 0.82)
-	var ring_color: Color = Color("6fe0ef")
+	var dim_color: Color = DIM
+	var ring_color: Color = ACCENT
 	var ring_thickness: float = 6.0
 	var ring_alpha: float = 1.0: set = _set_ring_alpha
 
@@ -185,6 +185,7 @@ func _ready() -> void:
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.style_label(_hint_label, HINT_FONT, ACCENT, 1)
+	PixelUI.apply_type(_hint_label, PixelUI.TYPE_SMALL)
 	col.add_child(_hint_label)
 
 	# Full-screen invisible tap target, above the spotlight. When interactive it

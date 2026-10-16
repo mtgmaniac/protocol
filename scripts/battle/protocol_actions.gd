@@ -795,7 +795,7 @@ func _open_set_value_popup() -> void:
 	confirm_btn.text = "CONFIRM"
 	confirm_btn.custom_minimum_size = Vector2(0.0, 100.0)
 	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_primary_button(confirm_btn, 38)
+	PixelUI.style_ui_primary_button(confirm_btn, 38)   # the pop-up's primary
 	confirm_btn.pressed.connect(_confirm_set_value_popup)
 	row.add_child(confirm_btn)
 

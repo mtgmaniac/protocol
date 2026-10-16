@@ -428,7 +428,7 @@ func _open_confirm(item: ItemData) -> void:
 	cancel.text = "CANCEL"
 	cancel.focus_mode = Control.FOCUS_NONE
 	cancel.custom_minimum_size = Vector2(320, 112)
-	PixelUI.style_primary_button(cancel, 36)
+	PixelUI.style_ui_secondary_button(cancel, 36)
 	cancel.pressed.connect(func() -> void:
 		AudioManager.play_click()
 		_close_confirm())
@@ -438,8 +438,7 @@ func _open_confirm(item: ItemData) -> void:
 	go.text = "RE-THROW"
 	go.focus_mode = Control.FOCUS_NONE
 	go.custom_minimum_size = Vector2(320, 112)
-	PixelUI.style_button(go, PixelUI.BG_PANEL_ALT, PixelUI.DT_AMBER, 36)
-	go.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	PixelUI.style_ui_primary_button(go, 36)   # the pop-up's primary (ui-unify)
 	go.pressed.connect(func() -> void:
 		_close_confirm()
 		rethrow_all())

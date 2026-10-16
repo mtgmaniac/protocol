@@ -93,7 +93,8 @@ func _build(copied: bool) -> void:
 	var title := Label.new()
 	title.text = "STATE CODE (DEV)"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, TITLE_FONT, PixelUI.DT_CYAN_BRIGHT, 3)
+	PixelUI.style_label(title, TITLE_FONT, PixelUI.CHROME, 3)
+	PixelUI.apply_type(title, PixelUI.TYPE_LABEL)
 	col.add_child(title)
 
 	_status = Label.new()
@@ -130,7 +131,7 @@ func _build(copied: bool) -> void:
 	close.text = "CLOSE"
 	close.custom_minimum_size = BUTTON_SIZE
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_primary_button(close, BUTTON_FONT)
+	PixelUI.style_ui_primary_button(close, BUTTON_FONT)   # the pop-up's primary
 	close.pressed.connect(_close)
 	col.add_child(close)
 

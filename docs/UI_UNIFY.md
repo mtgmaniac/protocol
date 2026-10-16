@@ -879,3 +879,41 @@ amber, gold or cyan outside their meanings. Copy, flow and logic are unchanged.
 
 Checks: the five run-flow scenes load headless with no script errors;
 `component_contract.py` and `caps_law.py` PASS.
+
+## Phase 7: battle overlays
+
+- **Inspect pop-ups:** an enemy's frame, ability names and ranges are the current
+  ENCOUNTER_ACCENT, a hero's PLAYER_ACCENT (`inspect_resolver._side_accent`, was
+  rust / steel-cyan); the title is LABEL (capitals: intel-popup titles are page
+  headings by the caps law); the roll column follows the side accent (was
+  cyan); "Tap anywhere to close" is SMALL.
+- **Loadout menu:** title LABEL CHROME; usable-relic notes PLAYER light (were
+  amber).
+- **Discard picker:** title LABEL in WARNING (a warning; was DT_AMBER); the
+  INCOMING card a plain reward component with a SMALL CHROME_DIM label (was
+  amber); **CONFIRM DISCARD is destructive** (it destroys a held item; was a
+  cyan legacy button) and ABANDON is secondary (it keeps all four).
+- **Briefing:** the deployment title CHROME (was cyan), SITUATION in the encounter
+  color (was rust); the boss alert's title and rule line in the encounter color
+  (were rust); **ENGAGE is the pop-up's notched primary** on both. **Layout fix:**
+  the boss alert sized itself to its longest unwrapped line and ran off a 390 px
+  screen; the slate now has the deployment grid's width plus padding and its
+  labels wrap.
+- **State code panel:** title LABEL CHROME (was cyan); CLOSE the pop-up's primary.
+- **Primers and the coach** (`spotlight_layer.gd`, shared with the tutorial): the
+  ring and the "Continue" hint PLAYER light (were cyan literals), the dim is
+  SCRIM, the hint SMALL.
+- **Battle pop-ups:** the leave-battle dialog's KEEP PLAYING is its primary and
+  ABANDON is destructive (was an amber legacy button); the round-complete NEXT is
+  the primary (it still used the old yellow sci-fi texture button); the Set-die
+  CONFIRM and Heretic Signal's RE-THROW are their pop-ups' primaries, its
+  CANCEL secondary (CANCEL was the bracketed primary).
+- **Training prompts:** heading LABEL, body BODY; the first choice is the
+  primary, the rest secondary; the shade is SCRIM.
+- New harness `scripts/debug/overlay_capture.gd` (briefing, boss alert, discard,
+  state code): it loads the overlay scripts at run time, because
+  `operation_briefing_capture.gd` no longer compiles under `--script` (it
+  preloads the overlay, which names the AudioManager autoload).
+
+`battle_scene.gd` is 3,638 lines (watermark 3,640). `component_contract.py` and
+`caps_law.py` PASS; BattleScene loads headless clean.

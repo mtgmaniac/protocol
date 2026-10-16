@@ -133,7 +133,9 @@ func _build(items: Array, relics: Array, anchor_rect: Rect2) -> void:
 	content.add_theme_constant_override("separation", SECTION_SEP)
 	margin.add_child(content)
 
-	content.add_child(_make_label("LOADOUT", HEADER_FONT, PixelUI.INSPECT_TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	var loadout_title := _make_label("LOADOUT", HEADER_FONT, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_LEFT)
+	PixelUI.apply_type(loadout_title, PixelUI.TYPE_LABEL)
+	content.add_child(loadout_title)
 	content.add_child(_divider(HEADER_DIVIDER, PixelUI.INSPECT_BORDER))
 
 	content.add_child(_make_label("ITEMS", SECTION_FONT, PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
@@ -208,7 +210,9 @@ func _build_discard() -> void:
 	margin.add_child(content)
 
 	# Alert-tier header (caps law).
-	content.add_child(_make_label("LOADOUT FULL - DISCARD ONE", DISCARD_HEADER_FONT, PixelUI.DT_AMBER, HORIZONTAL_ALIGNMENT_LEFT))
+	var discard_title := _make_label("LOADOUT FULL - DISCARD ONE", DISCARD_HEADER_FONT, PixelUI.WARNING, HORIZONTAL_ALIGNMENT_LEFT)
+	PixelUI.apply_type(discard_title, PixelUI.TYPE_LABEL)   # a warning: WARNING amber
+	content.add_child(discard_title)
 	content.add_child(_divider(HEADER_DIVIDER, PixelUI.INSPECT_BORDER))
 
 	# INCOMING — pinned, visually distinct (Reward-accent panel + amber strip). It is
@@ -238,7 +242,8 @@ func _build_discard() -> void:
 	_confirm_discard_button.custom_minimum_size = Vector2(0, DISCARD_BUTTON_HEIGHT)
 	_confirm_discard_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_confirm_discard_button.disabled = true
-	PixelUI.style_button(_confirm_discard_button, PixelUI.DT_HERO_BG, PixelUI.DT_CYAN, DISCARD_BUTTON_FONT)
+	# The pop-up's confirm destroys a held item: the DESTRUCTIVE style, no notch.
+	PixelUI.style_ui_destructive_button(_confirm_discard_button, DISCARD_BUTTON_FONT)
 	_confirm_discard_button.pressed.connect(_resolve_discard)
 	button_row.add_child(_confirm_discard_button)
 
@@ -248,7 +253,7 @@ func _build_discard() -> void:
 	abandon_button.focus_mode = Control.FOCUS_NONE
 	abandon_button.custom_minimum_size = Vector2(0, DISCARD_BUTTON_HEIGHT)
 	abandon_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(abandon_button, PixelUI.DT_HERO_BG, PixelUI.DT_ENEMY_BORDER, DISCARD_BUTTON_FONT)
+	PixelUI.style_ui_secondary_button(abandon_button, DISCARD_BUTTON_FONT)
 	abandon_button.pressed.connect(_resolve_abandon)
 	button_row.add_child(abandon_button)
 
@@ -261,7 +266,7 @@ func _make_incoming_block(item: ItemData) -> Control:
 	var panel := PanelContainer.new()
 	panel.name = "LoadoutIncoming"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_REWARD, PixelUI.DT_AMBER))
+	panel.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_REWARD))
 	var pad := MarginContainer.new()
 	for side in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
 		pad.add_theme_constant_override(side, 12)
@@ -271,7 +276,9 @@ func _make_incoming_block(item: ItemData) -> Control:
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_theme_constant_override("separation", 6)
 	pad.add_child(col)
-	col.add_child(_make_label("INCOMING", DISCARD_STRIP_FONT, PixelUI.DT_AMBER, HORIZONTAL_ALIGNMENT_LEFT))
+	var incoming_label := _make_label("INCOMING", DISCARD_STRIP_FONT, PixelUI.CHROME_DIM, HORIZONTAL_ALIGNMENT_LEFT)
+	PixelUI.apply_type(incoming_label, PixelUI.TYPE_SMALL)
+	col.add_child(incoming_label)
 	col.add_child(_make_item_line(item))
 	if item != null:
 		var long_press := LongPressInput.new()
@@ -409,7 +416,7 @@ func _make_slot_row(item: ItemData, usable: bool) -> Control:
 
 	# A usable relic's one-line note (TAP TO USE / USED THIS BATTLE).
 	if filled and not usable and _relic_notes.has(item.id):
-		info.add_child(_make_label(str(_relic_notes[item.id]), SECTION_FONT, PixelUI.DT_AMBER if _usable_relic_ids.has(item.id) else PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
+		info.add_child(_make_label(str(_relic_notes[item.id]), SECTION_FONT, PixelUI.PLAYER_ACCENT_LIGHT if _usable_relic_ids.has(item.id) else PixelUI.INSPECT_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT))
 
 	# Effect-pip preview — the "what does it do" hint without the long text.
 	if filled:
