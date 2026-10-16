@@ -294,10 +294,12 @@ static func unit_card_palette(hero: bool) -> Dictionary:
 const NEUTRAL_STEEL := Color("7d8a96")
 const NEUTRAL_BLUEGRAY := Color("4c5a66")
 #
-# PROTOCOL (ui-unify): an electric near-white blue, the light centre of the
-# logo's reactor core, clearly brighter than PLAYER_ACCENT. The Protocol meter's
-# filled cells, the Protocol cost numbers, the Protocol keyword in text.
-const PROTOCOL_ACCENT := Color("c4dcff")
+# PROTOCOL (ui-unify; ui-cleanup tuned it): an electric cyan-blue, the light
+# centre of the logo's reactor core. Clear of bone CHROME, cobalt PLAYER and the
+# shield blue (COLOR_SHIELD) by hue; was near-white c4dcff, which read as CHROME
+# at 10/10. The Protocol meter's filled cells, the Protocol cost numbers, the
+# Protocol keyword in text.
+const PROTOCOL_ACCENT := Color("66e0ff")
 # The full meter's pulse: brightness steps (flat tones, no smooth ramp) and the
 # cycle time; and the opacity an unaffordable footer action is drawn at.
 const PROTOCOL_PULSE_STEPS: Array[float] = [0.0, 0.12, 0.24, 0.12]

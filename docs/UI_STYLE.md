@@ -28,7 +28,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `PLAYER_ACCENT_LIGHT` | `9cbcff` | player text and icons on dark |
 | `PLAYER_ACCENT_DIM` | `1c3f82` | resting friendly frames |
 | `PLAYER_ACCENT_INK` | `060d1c` | text on a PLAYER fill (active tab, pressed primary) |
-| `PROTOCOL_ACCENT` | `c4dcff` | Protocol: meter cells, cost numbers, the keyword; the logo core's light centre |
+| `PROTOCOL_ACCENT` | `66e0ff` (electric cyan-blue) | Protocol: meter cells, cost numbers, the keyword; the logo core's light centre |
 | `ENCOUNTER_FACILITY` / `_HIVE` / `_VEIL` / `_SIGNAL` / `_MANTLE` | `cf9a36` / `c8404a` / `8f7ae0` / `b653c8` / `d89b4a` | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
 | `WARNING` | `e8a33a` | warning text; the DESTRUCTIVE button |
 | `WARNING_INK` | `1a1206` | on a WARNING fill; hazard stripes |
@@ -39,7 +39,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `UI_TEXT` / `UI_TEXT_DIM` / `UI_TEXT_OFF` | `e8e6df` / `8a8f94` / `4f5458` | body / secondary / disabled text |
 | `RARITY_LEGENDARY` / `RARITY_UNCOMMON` / `RARITY_COMMON` | `edb03e` gold / `aab4bd` silver / `8a8f94` gray | rarity (rare / epic `9d52d8`) |
 | `INK_OUTLINE`, `SCRIM` | near-black, 98% / 78% | dark text edge over art / modal dim |
-| `KW_DAMAGE` / `KW_HEAL` / `KW_SHIELD` / `KW_PROTOCOL` | `f2584c` / `5fd17a` / `a9bccb` / `c4dcff` | keyword colors in text |
+| `KW_DAMAGE` / `KW_HEAL` / `KW_SHIELD` / `KW_PROTOCOL` | `f2584c` / `5fd17a` / `a9bccb` / `66e0ff` | keyword colors in text |
 
 Battle-only families: `BATTLE_*` (cards, tray), `FX_*` (float text, flashes),
 `PORTRAIT_*`, `PIP_BORDERS`, effect icon colors `COLOR_*`. Never a hex in a

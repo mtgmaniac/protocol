@@ -1122,3 +1122,26 @@ ability readout placeholders, evolution's BATTLE CARD line and ability names,
 the unlock tag, the state-code size line. TEXT_MUTED is a slate blue outside the
 token table in `UI_STYLE.md`; retoning it to `UI_TEXT_DIM` (neutral) would fix
 these in one place, but it also moves the battle readouts, so it is not done here.
+
+## Cleanup phase 3: Protocol color
+
+`PROTOCOL_ACCENT` `c4dcff` (saturation 0.23) read nearly white at 10/10, close to
+bone CHROME. Three more saturated candidates were captured in the live footer at
+10/10 (`debug_artifacts/ui_cleanup/protocol_candidates.png`: the meter, the 1 / 2
+/ 4 cost numbers, a swatch, beside CHROME, PLAYER, PLAYER_LIGHT and the shield
+blue). Distances are CIE76 ΔE; contrast is against the button fill `1a1c20`.
+
+| Candidate | Hue / sat | ΔE CHROME | ΔE PLAYER | ΔE PLAYER_LIGHT | ΔE shield `57a8ff` | Contrast |
+|---|---|---|---|---|---|---|
+| `c4dcff` (was) | 216 / 0.23 | 31 | 68 | 21 | 37 | 12.2 |
+| A `8fe6ff` ice | 193 / 0.44 | 37 | 77 | 32 | 42 | 12.1 |
+| **B `66e0ff` arc** | 192 / 0.60 | **45** | **75** | **34** | **40** | **11.1** |
+| C `5fd8ff` volt | 195 / 0.63 | 47 | 70 | 29 | 35 | 10.4 |
+
+**Chosen: B `66e0ff`.** It moves Protocol off the blue-white axis to an electric
+cyan-blue: clearly apart from bone (A still reads pale beside it), the furthest
+from cobalt and the PLAYER_LIGHT footer icons after A, further from the shield
+blue than C (whose hue sits nearer the shield's), and still bright energy at
+11:1 on the button fill, so the small cost numbers stay legible. `KW_PROTOCOL`
+follows it (an alias). The logo core's light centre reads the same token (one
+source); on the title it shifts very slightly cooler.
