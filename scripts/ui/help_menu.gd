@@ -1347,9 +1347,10 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		# The shared portrait frame. It was a 96×96 square: a second window,
 		# shorter for its width than the battle card's, so each thumb lost the
 		# bottom of the framing its battle card shows (2026-10-10).
-		# ui-unify: a hero's frame is the player's resting frame; an enemy keeps the
-		# enemy rust (Help has no current encounter to borrow a color from).
-		var border: Color = PixelUI.DT_ENEMY_BORDER if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_DIM
+		# ui-unify: a hero's frame is the player's resting frame. ui-cleanup: an
+		# enemy's is ENEMY_DEFAULT (Help has no operation to borrow a color from),
+		# darkened as the battle darkens ENCOUNTER_ACCENT for an enemy frame.
+		var border: Color = PixelUI.ENEMY_DEFAULT.darkened(0.3) if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_DIM
 		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, border, 2)
 		row.add_child(PixelUI.make_portrait_frame(portrait, ROW_PORTRAIT_W, frame_style)["frame"])
 
@@ -1365,7 +1366,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_constant_override("separation", 12)
 	entry.add_child(head)
-	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.CHROME if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_LIGHT, 2)
+	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.ENEMY_DEFAULT if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_LIGHT, 2)
 	PixelUI.apply_type(name_label, PixelUI.TYPE_LABEL)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(name_label)

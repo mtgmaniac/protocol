@@ -2800,17 +2800,6 @@ func _style_roll_button_for_phase() -> void:
 			pass
 
 
-func _style_minimal_action_button(button: Button, label: String, min_size: Vector2, font_size: int, fill: Color = PixelUI.UI_BUTTON, border: Color = PixelUI.UI_LINE) -> void:
-	if button == null or not is_instance_valid(button):
-		return
-	button.icon = null
-	button.expand_icon = false
-	button.flat = false
-	button.text = label
-	button.custom_minimum_size = min_size
-	PixelUI.style_button(button, fill, border, font_size)
-
-
 # Wrap PixelUI.style_frame_icon_button while preserving the min-size we want
 # for the row layouts. Used for both the header and bottom-bar icon buttons.
 func _style_frame_icon_action_button(

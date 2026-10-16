@@ -281,6 +281,9 @@ const ENCOUNTER_VEIL := Color("8f7ae0")       # violet
 const ENCOUNTER_SIGNAL := Color("b653c8")     # magenta (the briefing's existing color)
 const ENCOUNTER_MANTLE := Color("d89b4a")     # ochre (the briefing's existing color)
 static var ENCOUNTER_ACCENT: Color = ENCOUNTER_FACILITY
+## ui-cleanup: enemy UI with no operation to borrow a color from (Help's
+## bestiary): the enemy rust, used the way ENCOUNTER_ACCENT is in battle.
+const ENEMY_DEFAULT := Color("c9755a")
 
 
 ## A unit card's palette: rest / targetable / selected frame, title fill, name.
@@ -2135,28 +2138,6 @@ const DEAD_SPACE_LIFT_PX := 7.0
 static func _recenter_button_text(style: StyleBoxFlat, font_px: int) -> void:
 	var offset: float = minf(roundf(float(font_px) * 0.15), DEAD_SPACE_LIFT_PX)
 	style.set_content_margin(SIDE_BOTTOM, style.get_content_margin(SIDE_TOP) + 2.0 * offset)
-
-
-static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Color = LINE_BRIGHT, font_size: int = 20) -> void:
-	apply_pixel_font(button)
-	var font_px: int = scale_font_size(font_size)
-	button.add_theme_font_size_override("font_size", font_px)
-	button.add_theme_color_override("font_color", TEXT_PRIMARY)
-	button.add_theme_color_override("font_hover_color", TEXT_PRIMARY)
-	button.add_theme_color_override("font_pressed_color", TEXT_PRIMARY)
-	button.add_theme_color_override("font_focus_color", TEXT_PRIMARY)
-	button.add_theme_constant_override("outline_size", 3)
-	button.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
-	var states := {
-		"normal": make_panel_style(fill, border.darkened(0.10), 4, 0),
-		"hover": make_panel_style(fill, border.lightened(0.05), 4, 0),
-		"pressed": make_panel_style(fill.darkened(0.18), border.darkened(0.12), 4, 0),
-		"disabled": make_panel_style(fill.darkened(0.25), border.darkened(0.45), 4, 0),
-	}
-	for state_name in states.keys():
-		var style: StyleBoxFlat = states[state_name]
-		_recenter_button_text(style, font_px)
-		button.add_theme_stylebox_override(state_name, style)
 
 
 ## The canonical PRIMARY action button (BEGIN / ROLL / DEPLOY / CONFIRM / …).

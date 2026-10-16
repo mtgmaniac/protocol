@@ -79,6 +79,9 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-help":
 			# Opens the shared HelpMenu on the squad picker (verifies it works off-battle).
 			config["help"] = true
+		elif arg.begins_with("--capture-help-faction="):
+			# ui-cleanup: the Units (bestiary) page of one operation's enemies.
+			config["help_faction"] = arg.get_slice("=", 1).strip_edges()
 		elif arg.begins_with("--capture-help-tab="):
 			# Opens the HelpMenu on one tab (basics / units / log / settings).
 			config["help"] = true
@@ -146,6 +149,8 @@ func _wait_for_scene(config: Dictionary) -> void:
 			for child: Node in root.get_children():
 				if child.get_script() == help_script:
 					child.call("_select_tab", tab)
+					if str(config.get("help_faction", "")) != "":
+						child.call("_select_bestiary_faction", str(config["help_faction"]))
 			await process_frame
 		await process_frame
 		await process_frame

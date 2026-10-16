@@ -1211,3 +1211,37 @@ ruled system: anchors, `portrait frame` gate), drawn at x0.33-0.73 with sub-px
 origins; making them integer means either x0.5 nearest (every other pixel) or
 new art at the grid, both your call. All filters were already NEAREST except the
 screen vignette (a gradient, LINEAR on purpose).
+
+## Cleanup phase 6: leftovers
+
+**Fixed:**
+
+- **DEPLOY SQUAD's ring:** its holder `PanelContainer` drew the theme's default
+  Panel style, a thin dark ring around the button; the holder is now
+  `StyleBoxEmpty` (`home_screen.gd`).
+- **Starting Directive rows** use the shared secondary button
+  (`style_ui_secondary_button`; equal choices). Rows also grow to fit their
+  rule text: Heretic Signal and Tectonic Charge were clipped at the fixed 232 px.
+- **The battle's minimal action buttons:** `_style_minimal_action_button` had no
+  caller left (the round and leave pop-ups moved to the shared components in
+  ui-unify); removed. With both callers gone, the legacy
+  `PixelUI.style_button` is removed too.
+- **Help bestiary enemy rows:** new token `ENEMY_DEFAULT` (`c9755a`, the enemy
+  rust) for enemy UI outside any operation; the rows' names are ENEMY_DEFAULT
+  and their frames ENEMY_DEFAULT darkened 0.3, as the battle darkens
+  ENCOUNTER_ACCENT for an enemy frame (heroes: PLAYER light name, PLAYER dim
+  frame). Note for a decision: the bestiary pages are per operation, so each
+  page could take its operation's ENCOUNTER color instead.
+- `home_screen_capture.gd --capture-help-faction=<op>` opens a bestiary page.
+
+**Remaining (not quick, or not style):** keyword colors need description labels
+moved to BBCode; UI icons are 128 px art shown at x0.44-0.5 (needs 32 / 64 px
+variants); 34 off-grid spacing constants in measured-layout files (battle card,
+battle scene, Protocol / relic actions, reward, squad select) want their own
+pass with those tests; float text and battle FX keep their pre-existing palette;
+the F9 v3 perspective walls keep the encounter color by design;
+`TEXT_MUTED` metadata labels (Phase 2); `operation_briefing_capture.gd` is still
+broken under `--script` (superseded by `overlay_capture.gd`).
+
+Checks: `component_contract`, `caps_law`, `framing_sites`, `panel_count_test`,
+`help_polish_test` PASS. `battle_scene.gd` 3,627 lines.

@@ -969,6 +969,9 @@ func _role_color(unit: UnitData) -> Color:
 func _build_deploy_button() -> Control:
 	_deploy_panel = PanelContainer.new()
 	_deploy_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# ui-cleanup: a holder only. The theme's default Panel style drew a thin dark
+	# ring around the button.
+	_deploy_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 	_deploy_button = Button.new()
 	_deploy_button.focus_mode = Control.FOCUS_NONE
@@ -1039,6 +1042,8 @@ func _launch_run(directive_relic_id: String) -> void:
 
 
 # ─── Starting Directive picker ───────────────────────────────────────────────
+const DIRECTIVE_ROW_MIN_H := 232.0
+const DIRECTIVE_ROW_PAD_Y := 48.0
 var _directive_layer: Control
 
 
@@ -1092,9 +1097,11 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		pick.focus_mode = Control.FOCUS_NONE
 		# Directive picks are deliberately closer to the ceremonial mid-run relic
 		# cards: generous, equal-sized choices with readable art and rules.
-		pick.custom_minimum_size = Vector2(0, 232)
+		pick.custom_minimum_size = Vector2(0, DIRECTIVE_ROW_MIN_H)
 		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		PixelUI.style_button(pick, PixelUI.UI_BUTTON, PixelUI.UI_LINE, FOCUS_CHIP_FONT)
+		# ui-cleanup: the shared secondary button (equal choices; was the legacy
+		# style_button shape). The icon and rule ride the row inside it.
+		PixelUI.style_ui_secondary_button(pick, FOCUS_CHIP_FONT)
 		pick.pressed.connect(_on_directive_picked.bind(relic_id))
 		var row := HBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1114,6 +1121,10 @@ func _open_directive_picker(relic_ids: Array) -> void:
 		text_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(text_label)
+		# ui-cleanup: a longer rule (Heretic Signal, Tectonic Charge) grows its
+		# row instead of clipping; the row never changes the label's width.
+		text_label.resized.connect(func() -> void:
+			pick.custom_minimum_size.y = maxf(DIRECTIVE_ROW_MIN_H, text_label.size.y + DIRECTIVE_ROW_PAD_Y))
 		col.add_child(pick)
 
 	var skip := Button.new()
