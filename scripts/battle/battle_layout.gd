@@ -518,7 +518,7 @@ func _ensure_tray_corner_ticks() -> void:
 	ticks.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ticks.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_combat_zone_frame.add_child(ticks)
-	var tick_color: Color = Color("2a333a")
+	var tick_color: Color = PixelUI.BATTLE_TICK
 	var arm: float = 20.0
 	var thick: float = 4.0
 	var inset: float = 6.0

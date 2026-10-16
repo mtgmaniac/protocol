@@ -8,15 +8,15 @@ extends Control
 ## holds its shape on any phone aspect.
 
 const ART_PX := float(PixelUI.UI_ART_PX)
-const VOID := Color("0c0d0f")
-const SLAB_FAR := Color("111214")
-const SLAB := Color("16171a")
-const SLAB_LIT := Color("1d1e21")
-const SEAM := Color("0a0a0b")
-const RUBBLE := Color("141517")
-const RUBBLE_LIT := Color("1f2023")
-const GIRDER := Color("1b1c1f")
-const GIRDER_LIT := Color("292a2e")
+const VOID := PixelUI.TITLE_VOID
+const SLAB_FAR := PixelUI.TITLE_SLAB_FAR
+const SLAB := PixelUI.TITLE_SLAB
+const SLAB_LIT := PixelUI.TITLE_SLAB_LIT
+const SEAM := PixelUI.TITLE_SEAM
+const RUBBLE := PixelUI.TITLE_RUBBLE
+const RUBBLE_LIT := PixelUI.TITLE_RUBBLE_LIT
+const GIRDER := PixelUI.TITLE_GIRDER
+const GIRDER_LIT := PixelUI.TITLE_GIRDER_LIT
 ## Flat pixel B: the rust panel is pulled most of the way to gray and darkened so
 ## it no longer outshines the menu (it was the brightest, most saturated shape).
 const RUST_DESATURATE := 0.65

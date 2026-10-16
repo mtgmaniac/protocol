@@ -707,6 +707,6 @@ static func _make_text_label(
 	if superscript:
 		label.set_meta("text_min_exempt", "duration_superscript")  # text_legibility_test honors this
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
+	label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	label.add_theme_constant_override("outline_size", outline)
 	return label

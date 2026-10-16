@@ -530,7 +530,7 @@ func _on_row_long_pressed(_global_position: Vector2, item: ItemData, row: Contro
 func _flash_row_rejected(row: Control) -> void:
 	if row == null or not is_instance_valid(row):
 		return
-	row.modulate = Color(1.0, 0.30, 0.30, 1.0)
+	row.modulate = PixelUI.FX_ROW_REJECT
 	var tween := create_tween()
 	if PixelUI.no_animations_enabled():
 		# Still red for the same time, then back in one step.

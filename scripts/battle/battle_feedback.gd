@@ -543,21 +543,21 @@ func _flash_card(card: Control, event_type: String) -> void:
 		return
 	var tween: Tween = create_tween()
 	var base_modulate: Color = card.modulate
-	var flash_color: Color = Color(1, 1, 1, 1)
+	var flash_color: Color = Color.WHITE
 	match event_type:
 		"damage":
-			flash_color = Color(1.0, 0.45, 0.45, 1.0)
+			flash_color = PixelUI.FX_DAMAGE_FLASH
 		"burn":
 			flash_color = PixelUI.DT_STATUS["burn"]["text"]
 		"heal", "leech", "revive":
-			flash_color = Color(0.45, 1.0, 0.65, 1.0)
+			flash_color = PixelUI.FX_HEAL_FLASH
 		"shield", "block", "roll_buff", "freeze", "accrete":
-			flash_color = Color(0.55, 0.82, 1.0, 1.0)
+			flash_color = PixelUI.FX_SHIELD
 		"wipe_shields":
-			flash_color = Color(1.0, 0.80, 0.20, 1.0)
+			flash_color = PixelUI.FX_GOLD
 		"execute":
 			# pkg8.4: Execute lands with its own deep-red flash (not default white).
-			flash_color = Color(1.0, 0.30, 0.30, 1.0)
+			flash_color = PixelUI.FX_EXECUTE
 	if PixelUI.reduced_motion_enabled():
 		flash_color = base_modulate.lerp(flash_color, 0.20)
 	card.modulate = flash_color
@@ -638,7 +638,7 @@ func _spawn_float_label(text: String, color: Color, origin: Vector2, mult: float
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", FLOAT_FONT_SIZE)
-	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	label.add_theme_constant_override("outline_size", FLOAT_OUTLINE_SIZE)
 	label.z_as_relative = false
 	label.z_index = 100
@@ -774,15 +774,15 @@ func _build_floating_text(event_type: String, amount: int) -> String:
 func _get_floating_color(event_type: String) -> Color:
 	match event_type:
 		"damage", "burn", "chain", "detonate", "spike":
-			return Color(1.0, 0.42, 0.42, 1.0)
+			return PixelUI.FX_DAMAGE
 		"execute":
-			return Color(1.0, 0.30, 0.30, 1.0)
+			return PixelUI.FX_EXECUTE
 		"heal":
-			return Color(0.5, 1.0, 0.62, 1.0)
+			return PixelUI.FX_HEAL
 		"shield", "block", "roll_buff":
-			return Color(0.55, 0.82, 1.0, 1.0)
+			return PixelUI.FX_SHIELD
 		_:
-			return Color(1, 1, 1, 1)
+			return Color.WHITE
 
 
 # ── Tier 1 primitives ─────────────────────────────────────────────────────────
@@ -853,7 +853,7 @@ func _celebrate_overload() -> void:
 	if _scene.float_layer != null and is_instance_valid(_scene.float_layer):
 		var wash: ColorRect = ColorRect.new()
 		wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		wash.color = Color(1.0, 0.82, 0.20, 0.0)
+		wash.color = Color(PixelUI.FX_GOLD, 0.0)
 		wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		wash.z_as_relative = false
 		wash.z_index = 200
@@ -881,18 +881,18 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 		"mark", "burn", "revive":
 			_local_status_cue(target_card, event_type)
 		"detonate":
-			_chip_flash_then_burst(target_card, PixelUI.DT_STATUS["burn"]["border"], Color(0.95, 0.55, 0.20, 1.0), 14)
+			_chip_flash_then_burst(target_card, PixelUI.DT_STATUS["burn"]["border"], PixelUI.FX_EMBER, 14)
 		"breach":
-			_shield_shatter(target_card, Color(1.0, 0.82, 0.20, 1.0))
+			_shield_shatter(target_card, PixelUI.FX_GOLD)
 		"wipe_shields":
-			_shield_shatter(target_card, Color(1.0, 0.80, 0.20, 1.0))
+			_shield_shatter(target_card, PixelUI.FX_GOLD)
 		"spike":
-			_burst_particles(target_card, Color(0.86, 0.42, 0.28, 1.0), 8)
+			_burst_particles(target_card, PixelUI.FX_RUST, 8)
 		"block":
 			if int(event.get("amount", 0)) <= 0:
 				# Firewall block: the chip names it; the hex flash is the accent.
 				_show_blocked_chip(target_card)
-				_hex_flash(target_card, Color(0.55, 0.82, 1.0, 0.95))
+				_hex_flash(target_card, Color(PixelUI.FX_SHIELD, 0.95))
 		"accrete":
 			_show_accrete_chip(target_card, int(event.get("amount", 0)))
 		"trait":
@@ -901,7 +901,8 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 			var bar_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y - 60.0)
 			if _scene.protocol_bar != null and is_instance_valid(_scene.protocol_bar):
 				bar_from = _scene.protocol_bar.get_global_rect().get_center()
-			_drift_pip(bar_from, target_card, Color(0.95, 0.76, 0.28, 1.0), "-%d" % int(event.get("amount", 0)))
+			# Protocol drained from the bar: the Protocol color (ui-unify).
+			_drift_pip(bar_from, target_card, PixelUI.PROTOCOL_ACCENT, "-%d" % int(event.get("amount", 0)))
 		"hijack":
 			var tray_from: Vector2 = Vector2(_scene.size.x * 0.5, _scene.size.y * 0.62)
 			if _scene._layout.is_landscape:
@@ -909,7 +910,7 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 				var source: Vector2 = _scene.dice_tray_3d.get_die_screen_position(str(event.get("side", "hero")), str(event.get("target_id", "")))
 				if source != Vector2.INF:
 					tray_from = source
-			_drift_pip(tray_from, target_card, Color(0.95, 0.45, 0.30, 1.0), EffectPip.keyword_code("hijack", "HJ"))
+			_drift_pip(tray_from, target_card, PixelUI.FX_HIJACK, EffectPip.keyword_code("hijack", "HJ"))
 		"jam":
 			if _scene.dice_tray_3d != null:
 				_scene.dice_tray_3d.play_jam_flicker(str(event.get("side", "")), str(event.get("target_id", "")), int(event.get("amount", 0)))
@@ -1267,7 +1268,7 @@ func _death_scatter(card: Control, side: String, stagger: float = 0.0) -> void:
 	# Meaning-based color: the dying unit's own team line, flecked with ash — not
 	# damage-red (that reads as a hit, not a death).
 	var team: Color = PixelUI.unit_card_palette(side == "hero")["rest"]
-	var ash: Color = Color(0.42, 0.44, 0.50, 1.0)
+	var ash: Color = PixelUI.FX_ASH
 	for i in DEATH_DEBRIS_COUNT:
 		var shard: ColorRect = ColorRect.new()
 		shard.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1368,7 +1369,7 @@ func _drift_pip(from_position: Vector2, to_card: Control, color: Color, text: St
 	pip.text = text
 	pip.add_theme_font_size_override("font_size", PixelUI.scale_font_size(16))
 	pip.add_theme_color_override("font_color", color)
-	pip.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	pip.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	pip.add_theme_constant_override("outline_size", 4)
 	pip.z_as_relative = false
 	pip.z_index = 195
@@ -1394,7 +1395,7 @@ func _resolve_portrait_sharp(card: Control) -> void:
 	if card == null or not is_instance_valid(card):
 		return
 	var base_modulate: Color = card.modulate
-	card.modulate = Color(1.35, 1.35, 1.4, 1.0)
+	card.modulate = PixelUI.FX_CARD_PULSE
 	var tween: Tween = create_tween()
 	tween.tween_property(card, "modulate", base_modulate, 0.24)
 
@@ -1411,8 +1412,8 @@ func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
 	label.text = ability_name.to_upper()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", PixelUI.scale_font_size(30))
-	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.20, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0.03, 0.03, 0.05, 1.0))
+	label.add_theme_color_override("font_color", PixelUI.FX_GOLD)
+	label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	label.add_theme_constant_override("outline_size", 6)
 	label.z_as_relative = false
 	label.z_index = 210

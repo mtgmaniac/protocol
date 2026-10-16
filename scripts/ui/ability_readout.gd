@@ -93,7 +93,7 @@ func _make_row_underline() -> ColorRect:
 	var underline := ColorRect.new()
 	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	underline.visible = false
-	underline.color = Color(0, 0, 0, 0)
+	underline.color = Color.TRANSPARENT
 	return underline
 
 
@@ -348,7 +348,7 @@ func _make_separator() -> Label:
 	label.custom_minimum_size = Vector2(10, 0)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.modulate = Color(0.84, 0.90, 0.96, 0.78)
+	label.modulate = PixelUI.READOUT_INK
 	_apply_pixel_label(label, 34, PixelUI.TEXT_MUTED, 2)
 	return label
 
@@ -359,7 +359,7 @@ func _make_target_label(target: String) -> Label:
 	label.text = target
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.modulate = Color(0.82, 0.90, 0.96, 0.88)
+	label.modulate = PixelUI.READOUT_INK_STRONG
 	_apply_pixel_label(label, TARGET_FONT_SIZE, PixelUI.TEXT_MUTED, 2)
 	return label
 
@@ -420,7 +420,7 @@ func _apply_pixel_label(label: Label, font_size: int, color: Color, outline: int
 	PixelUI.apply_pixel_font(label)
 	label.add_theme_font_size_override("font_size", PixelUI.text_px(font_size))
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0.01, 0.015, 0.025, 0.98))
+	label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	label.add_theme_constant_override("outline_size", outline)
 
 

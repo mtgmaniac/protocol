@@ -289,6 +289,73 @@ static func unit_card_palette(hero: bool) -> Dictionary:
 # UI_BUTTON, UI_LINE, UI_CARD_LINE, UI_RULE, UI_TRACK, UI_TEXT*) belongs to it.
 const NEUTRAL_STEEL := Color("7d8a96")
 const NEUTRAL_BLUEGRAY := Color("4c5a66")
+#
+# PROTOCOL (ui-unify): an electric near-white blue, the light centre of the
+# logo's reactor core, clearly brighter than PLAYER_ACCENT. The Protocol meter's
+# filled cells, the Protocol cost numbers, the Protocol keyword in text.
+const PROTOCOL_ACCENT := Color("c4dcff")
+#
+# WARNING (ui-unify): amber, for warning text and the DESTRUCTIVE button (with a
+# hazard-stripe accent, never the notch). UI_WARN is this token.
+const WARNING := Color("e8a33a")
+const WARNING_INK := Color("1a1206")
+#
+# Keyword colors in descriptions, help and the battle log (inline color only
+# where the text system already supports it; copy is unchanged).
+const KW_DAMAGE := Color("f2584c")
+const KW_HEAL := Color("5fd17a")
+const KW_SHIELD := Color("a9bccb")      # shield steel
+const KW_PROTOCOL := PROTOCOL_ACCENT
+#
+# Shared inks: the dark edge on text over art, and the scrim behind modals.
+const INK_OUTLINE := Color(0.02, 0.03, 0.05, 0.98)
+const SCRIM := Color(0.005, 0.007, 0.012, 0.78)
+#
+# Battle feedback (float text, card flashes, particles). Values unchanged from
+# their old literals; they are tokens now.
+const FX_DAMAGE := Color(1.0, 0.42, 0.42)
+const FX_DAMAGE_FLASH := Color(1.0, 0.45, 0.45)
+const FX_EXECUTE := Color(1.0, 0.30, 0.30)
+const FX_HEAL := Color(0.5, 1.0, 0.62)
+const FX_HEAL_FLASH := Color(0.45, 1.0, 0.65)
+const FX_SHIELD := Color(0.55, 0.82, 1.0)
+const FX_GOLD := Color(1.0, 0.82, 0.20)
+const FX_EMBER := Color(0.95, 0.55, 0.20)
+const FX_RUST := Color(0.86, 0.42, 0.28)
+const FX_HIJACK := Color(0.95, 0.45, 0.30)
+const FX_ASH := Color(0.42, 0.44, 0.50)
+const FX_CARD_PULSE := Color(1.35, 1.35, 1.4)   # overbright modulate: the act pulse
+const FX_ROW_REJECT := Color(1.0, 0.30, 0.30)
+#
+# Portrait and card states (modulate tints).
+const PORTRAIT_LIVE := Color(1.12, 1.12, 1.12)
+const PORTRAIT_DEAD := Color(0.48, 0.50, 0.58, 0.55)
+const PORTRAIT_CLOAKED := Color(0.70, 0.80, 0.95, 0.42)
+const CARD_DEAD := Color(0.55, 0.56, 0.62, 0.72)
+const SILHOUETTE := Color(0.035, 0.045, 0.065)  # a locked hero / operation portrait
+const PLATE_DARK := Color(0.006, 0.012, 0.020, 0.80)
+const PLATE_SHADOW := Color(0.0, 0.0, 0.0, 0.55)
+const SHIELD_PREVIEW := Color(0.22, 0.55, 0.95, 0.80)
+const READOUT_INK := Color(0.84, 0.90, 0.96, 0.78)
+const READOUT_INK_STRONG := Color(0.82, 0.90, 0.96, 0.88)
+# Pip borders on battle cards, by effect kind.
+const PIP_BORDERS := {
+	"damage": Color(0.86, 0.32, 0.28, 0.92), "heal": Color(0.38, 0.82, 0.55, 0.92),
+	"shield": Color(0.42, 0.66, 0.88, 0.92), "burn": Color(0.82, 0.40, 0.58, 0.92),
+	"roll": Color(0.86, 0.66, 0.26, 0.92), "freeze": Color(0.48, 0.78, 0.88, 0.92),
+	"default": Color(0.34, 0.52, 0.70, 0.86),
+}
+const BATTLE_TICK := Color("2a333a")
+# The title's placeholder street backdrop (title_backdrop.gd).
+const TITLE_VOID := Color("0c0d0f")
+const TITLE_SLAB_FAR := Color("111214")
+const TITLE_SLAB := Color("16171a")
+const TITLE_SLAB_LIT := Color("1d1e21")
+const TITLE_SEAM := Color("0a0a0b")
+const TITLE_RUBBLE := Color("141517")
+const TITLE_RUBBLE_LIT := Color("1f2023")
+const TITLE_GIRDER := Color("1b1c1f")
+const TITLE_GIRDER_LIT := Color("292a2e")
 
 # ── UI restyle A tokens (2026-10-14, docs/UI_RESTYLE.md) ──
 # The charcoal family the mocks share (NEUTRAL role). Strokes are MIN_STROKE
@@ -310,7 +377,7 @@ const UI_STEEL := Color("7f9cb8")           # uncommon rarity
 # Warnings (save discarded, resume problems, destructive confirms) are rust
 # orange-red: a different hue from every CHROME candidate, never on a
 # button frame.
-const UI_WARN := Color("e06a3c")
+const UI_WARN := WARNING   # ui-unify: amber (was rust e06a3c)
 
 # ── Direction 05 "Dithered Terminal" palette (battle HUD redesign) ──
 # Green is reserved for HP + the ROLL commit only; heroes read cyan, enemies rust.
@@ -392,7 +459,7 @@ static var DT_STATUS := {
 # UI restyle A (2026-10-14): legendary is the UI accent, uncommon steel blue,
 # common gray (supersedes the 2026-07-10 orange legendary; docs/UI_RESTYLE.md).
 static var RARITY_COMMON := UI_TEXT_DIM
-static var RARITY_UNCOMMON := UI_STEEL
+static var RARITY_UNCOMMON := Color("aab4bd")   # ui-unify: steel / silver, no longer blue
 static var RARITY_RARE := Color("9d52d8")
 static var RARITY_EPIC := Color("9d52d8")
 static var RARITY_LEGENDARY := Color("edb03e")   # legendary gold (restyle A value)
@@ -2652,6 +2719,38 @@ static func _ui_focus_style() -> StyleBoxFlat:
 	return style
 
 
+## DESTRUCTIVE (ui-unify): a WARNING border and WARNING text, and a hazard-stripe
+## accent down the left edge instead of a bar. Never the notch: a destructive
+## confirm is never styled as the screen's primary action.
+const UI_HAZARD_W := 24
+static func ui_destructive_style(fill: Color, edge: Color) -> StyleBoxTexture:
+	var size := Vector2i(56, 40)
+	var rects: Array = [
+		[Rect2i(0, 0, size.x, size.y), edge],
+		[Rect2i(UI_HAZARD_W, MIN_STROKE, size.x - UI_HAZARD_W - MIN_STROKE, size.y - MIN_STROKE * 2), fill],
+	]
+	# Hazard stripes: 4 px diagonal bands, edge / ink alternating (tiles every 8 rows).
+	for y in range(size.y):
+		for x in range(UI_HAZARD_W):
+			if ((x + y) / 4) % 2 == 1:
+				rects.append([Rect2i(x, y, 1, 1), WARNING_INK])
+	var texture := _ui_patch("destructive:%s:%s" % [fill.to_html(), edge.to_html()], size, rects)
+	return _ui_patch_style(texture, [UI_HAZARD_W, MIN_STROKE, MIN_STROKE, MIN_STROKE],
+		[UI_HAZARD_W + 16, 10, 20, 10])
+
+
+static func style_ui_destructive_button(button: Button, font_size: int = 44) -> void:
+	if button == null:
+		return
+	button.text = button.text.to_upper()
+	_ui_button_fonts(button, font_size, WARNING, WARNING.lightened(0.2), WARNING_INK, UI_TEXT_OFF)
+	button.add_theme_stylebox_override("normal", ui_destructive_style(UI_BUTTON, WARNING))
+	button.add_theme_stylebox_override("hover", ui_destructive_style(UI_BUTTON.lightened(0.05), WARNING.lightened(0.15)))
+	button.add_theme_stylebox_override("focus", _ui_focus_style())
+	button.add_theme_stylebox_override("pressed", ui_destructive_style(WARNING, WARNING))
+	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
+
+
 ## Disabled = the secondary shape, its border, bar and text dimmed.
 static func _ui_disabled_style() -> StyleBoxTexture:
 	return ui_secondary_style(UI_BUTTON.darkened(0.2), UI_LINE.darkened(0.45), UI_BAR.darkened(0.55))
@@ -2817,7 +2916,7 @@ static var _logo_core_material: ShaderMaterial = null
 
 
 static func _logo_core_ramp(material: ShaderMaterial) -> void:
-	material.set_shader_parameter("core_light", PLAYER_ACCENT_LIGHT.lightened(0.35))
+	material.set_shader_parameter("core_light", PROTOCOL_ACCENT)
 	material.set_shader_parameter("core_mid", PLAYER_ACCENT)
 	material.set_shader_parameter("core_dim", PLAYER_ACCENT_DIM)
 	material.set_shader_parameter("core_deep", PLAYER_ACCENT_DIM.darkened(0.5))

@@ -206,7 +206,7 @@ func _draw_windows(wall_width: float) -> void:
 
 func _draw_back_wall(slot: Rect2) -> void:
 	draw_rect(slot, PixelUI.BATTLE_BAY_WALL_BACK)
-	_tile(slot, _wall, Color(0.85, 0.85, 0.85))
+	_tile(slot, _wall, Color.WHITE.darkened(0.15))
 	# A ledge where the wall meets the floor.
 	draw_rect(Rect2(slot.position.x, slot.end.y - ART_PX * 5.0, slot.size.x, ART_PX * 2.0), PixelUI.BATTLE_BAY_LEDGE)
 	draw_rect(Rect2(slot.position.x, slot.end.y - ART_PX * 3.0, slot.size.x, ART_PX * 3.0), PixelUI.BATTLE_BAY_SEAM)

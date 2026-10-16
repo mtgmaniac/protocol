@@ -38,8 +38,8 @@ const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing
 # not the global class name, for fresh-checkout headless parses.
 const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
 const BOSS_RELIC_ACTIONS_SCRIPT := preload("res://scripts/battle/boss_relic_actions.gd")
-const HERO_ACCENT := Color(0.38, 0.64, 0.92, 1.0)
-const ENEMY_ACCENT := Color(0.42, 0.54, 0.68, 1.0)
+const HERO_ACCENT := PixelUI.PLAYER_ACCENT_LIGHT   # card-view side keys (ui-unify tokens)
+const ENEMY_ACCENT := PixelUI.NEUTRAL_STEEL
 # Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
 # tag is the SAME size (width = the die's projected diameter, height = a fixed fraction of
 # it), docked flush just outside the die's projected bounds (never overlapping the sprite):
@@ -2136,7 +2136,7 @@ func _build_round_complete_modal() -> void:
 
 	var scrim: ColorRect = ColorRect.new()
 	scrim.name = "Scrim"
-	scrim.color = Color(0.004, 0.006, 0.012, 0.58)
+	scrim.color = Color(PixelUI.SCRIM, 0.58)
 	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_round_complete_modal.add_child(scrim)
@@ -2801,7 +2801,7 @@ func _style_roll_button_for_phase() -> void:
 			pass
 
 
-func _style_minimal_action_button(button: Button, label: String, min_size: Vector2, font_size: int, fill: Color = Color(0.014, 0.020, 0.032, 0.92), border: Color = PixelUI.LINE_DIM) -> void:
+func _style_minimal_action_button(button: Button, label: String, min_size: Vector2, font_size: int, fill: Color = PixelUI.UI_BUTTON, border: Color = PixelUI.UI_LINE) -> void:
 	if button == null or not is_instance_valid(button):
 		return
 	button.icon = null
@@ -3538,13 +3538,13 @@ func _apply_battle_theme() -> void:
 	PixelUI.apply_pixel_font(protocol_label)
 	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_LABEL_FONT_SIZE)
 	protocol_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-	protocol_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	protocol_label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	protocol_label.add_theme_constant_override("outline_size", 2)
 	PixelUI.apply_type(protocol_label, PixelUI.TYPE_SMALL, PixelUI.BATTLE_TEXT)
 	PixelUI.apply_pixel_font(protocol_value_label)
 	protocol_value_label.add_theme_font_size_override("font_size", PROTOCOL_VALUE_FONT_SIZE)
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-	protocol_value_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	protocol_value_label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	protocol_value_label.add_theme_constant_override("outline_size", 2)
 	# Header buttons are styled by the PersistentHeader autoload itself.
 	_style_roll_button_for_phase()
@@ -3566,7 +3566,7 @@ func _apply_battle_theme() -> void:
 			pm.add_theme_constant_override("margin_left", TRAY_EDGE_INSET)
 			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
 	_ensure_protocol_stack_layout()
-	PixelUI.style_progress_bar(protocol_bar, PixelUI.GOLD_ACCENT, Color(0.010, 0.014, 0.022, 0.95), PixelUI.LINE_DIM)
+	PixelUI.style_progress_bar(protocol_bar, PixelUI.PROTOCOL_ACCENT, PixelUI.BATTLE_PROTO_EMPTY, PixelUI.LINE_DIM)
 	_update_protocol_bar()
 	if _header_frame != null and is_instance_valid(_header_frame):
 		_header_frame.queue_free()

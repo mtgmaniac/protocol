@@ -78,9 +78,6 @@ const PIP_PROFILE := {
 # Confirm button — exact clone of the squad screen's DEPLOY button (home_screen.gd).
 const CONFIRM_FONT := 84
 const CONFIRM_HEIGHT := 130
-const CONFIRM_IDLE_BG := Color(0.040, 0.050, 0.060, 1.0)
-const CONFIRM_IDLE_BORDER := Color(0.13, 0.15, 0.17, 1.0)
-const CONFIRM_IDLE_TEXT := Color(0.34, 0.38, 0.42, 1.0)
 
 @onready var background: ColorRect = $Background
 @onready var content_vbox: VBoxContainer = $Content/VBox
@@ -807,7 +804,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 	add_child(_gear_target_overlay)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.005, 0.007, 0.012, 0.76)
+	dim.color = PixelUI.SCRIM
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(event: InputEvent) -> void:

@@ -22,8 +22,15 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIRS = ["scripts/ui", "scripts/battle", "scripts/autoloads", "scripts/units", "scripts/resources"]
 SCENE_DIRS = ["scenes"]
 TOKEN_FILES = {"scripts/ui/pixel_ui.gd"}
-# Not UI: game logic or 3D dice materials (dice colors are constant by rule).
+# Not UI: game logic.
 COLOR_SKIP = {"scripts/battle/combat_manager.gd", "scripts/battle/battle_engine.gd"}
+# Allowed classes, reported apart from the real hardcoded colors:
+#  opacity  Color(1, 1, 1, a) / Color.WHITE / Color.BLACK used as a modulate or
+#           identity value: an opacity or a no-op, not a color
+#  dice     3D dice materials and die base colors (dice colors are constant by
+#           rule, and the dice rendering is out of scope for UI passes)
+OPACITY = re.compile(r'Color\(\s*1(\.0+)?\s*,\s*1(\.0+)?\s*,\s*1(\.0+)?\s*(,\s*[0-9.]+)?\s*\)|Color\.(WHITE|BLACK)\b|Color\(\s*0(\.0+)?\s*,\s*0(\.0+)?\s*,\s*0(\.0+)?\s*,\s*0(\.0+)?\s*\)')
+DICE_FILES = {"scripts/battle/dice_tray_3d.gd"}
 
 COLOR_HEX = re.compile(r'Color\("#?[0-9A-Fa-f]{6,8}"\)')
 COLOR_NUM = re.compile(r'Color\(\s*-?[0-9.]+\s*,\s*-?[0-9.]+\s*,\s*-?[0-9.]+(\s*,\s*-?[0-9.]+)?\s*\)')
@@ -133,6 +140,10 @@ def colors(summary):
                 continue
             for rx, kind in ((COLOR_HEX, "hex"), (COLOR_NUM, "rgb"), (COLOR_NAMED, "named")):
                 for m in rx.finditer(line):
+                    if r in DICE_FILES:
+                        kind = "dice"
+                    elif OPACITY.fullmatch(m.group(0)) or OPACITY.match(m.group(0)):
+                        kind = "opacity"
                     by_file[r].append((n, kind, m.group(0)))
     for p in files(SCENE_DIRS, ".tscn"):
         text = p.read_text(encoding="utf-8")
@@ -141,7 +152,9 @@ def colors(summary):
             by_file[rel(p)].append((n, "tscn " + m.group(1), m.group(3)))
     total = sum(len(v) for v in by_file.values())
     kinds = Counter(k.split(" ")[0] for v in by_file.values() for _, k, _ in v)
-    print(f"Total hardcoded color sites: **{total}** in {len(by_file)} files "
+    real = total - kinds.get("opacity", 0) - kinds.get("dice", 0)
+    print(f"**Real hardcoded colors: {real}** (excluding the allowed classes: opacity {kinds.get('opacity', 0)}, dice {kinds.get('dice', 0)}).\n")
+    print(f"All color literal sites: **{total}** in {len(by_file)} files "
           f"({', '.join(f'{k} {c}' for k, c in kinds.most_common())}). "
           "`pixel_ui.gd` (the token owner) and `theme_overload.tres` (its mirror) are excluded.\n")
     print("| file | sites | kinds |\n|---|---|---|")

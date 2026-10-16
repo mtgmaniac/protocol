@@ -716,3 +716,51 @@ law (INVARIANTS #7, Kev 2026-07-14), which puts small metadata labels in ALL
 CAPS ("LEGENDARY CONSUMABLE", "ROLL: 1 - 4"). Copy is unchanged and the law is a
 ruling, so SMALL keeps caps where the copy is caps; nothing is upper-cased by
 the type system except DISPLAY and LABEL helpers.
+
+## Phase 3: color system
+
+**New and changed tokens** (`pixel_ui.gd`, after the role block):
+
+| Token | Value | Role |
+|---|---|---|
+| `PROTOCOL_ACCENT` | `c4dcff` | electric near-white blue; also the logo core's light centre (the shader reads this token, one source) |
+| `WARNING` (= `UI_WARN`) | `e8a33a` | amber warnings; DESTRUCTIVE button. Was rust `e06a3c` |
+| `WARNING_INK` | `1a1206` | text on a WARNING fill; the hazard stripes' dark band |
+| `RARITY_UNCOMMON` | `aab4bd` | steel / silver (was `UI_STEEL` blue `7f9cb8`). Legendary gold and common gray unchanged |
+| `KW_DAMAGE` / `KW_HEAL` / `KW_SHIELD` / `KW_PROTOCOL` | `f2584c` / `5fd17a` / `a9bccb` / = PROTOCOL_ACCENT | keyword colors in text |
+| `INK_OUTLINE` | 0.02, 0.03, 0.05, 0.98 | the dark edge on text over art (replaced 14 literals) |
+| `SCRIM` | 0.005, 0.007, 0.012, 0.78 | the dim behind modals (replaced 5 literals) |
+| `FX_*` (13) | old literal values | battle float text, flashes, particles |
+| `PORTRAIT_LIVE / DEAD / CLOAKED`, `CARD_DEAD`, `SILHOUETTE` | old values | portrait and card state tints |
+| `PLATE_DARK`, `PLATE_SHADOW`, `SHIELD_PREVIEW`, `READOUT_INK(_STRONG)`, `PIP_BORDERS`, `BATTLE_TICK` | old values | battle card plates, previews, readouts |
+| `TITLE_*` (9) | old values | the title's placeholder street palette (was in `title_backdrop.gd`) |
+
+**DESTRUCTIVE button** (`style_ui_destructive_button`): WARNING border and text,
+a 24 px hazard-stripe accent down the left edge (4 px diagonal bands, WARNING /
+WARNING_INK), no notch. Applied in Phase 5.
+
+**Replaced:** 158 literal sites became tokens in battle feedback, battle cards,
+readouts, effect pips, the header, the battle scene (scrim, minimal buttons,
+Protocol labels and the hidden Protocol bar, which now fills PROTOCOL_ACCENT),
+Protocol actions, the battle layout, squad select, reward, loadout, run end,
+unlock, the bay painter and the title backdrop. Two dead idle-color constant
+sets in squad select and reward were removed (`CONFIRM_IDLE_*`) or pointed at
+tokens (`DEPLOY_IDLE_*`). The Siphon drift pip (Protocol drained from the bar)
+is PROTOCOL_ACCENT now (was gold).
+
+**Audit after Phase 3** (`ui_audit.py --section colors`): 25 real hardcoded
+colors left, all on screens restyled in Phases 6 to 8 (Evolution 6, Intercept 2,
+Help replay 1, tutorial spotlight 4, the pattern background 3, squad-select
+threat pips 2, scene background ColorRects in 5 `.tscn` files, PersistentHeader
+`.tscn` 2) plus `DataManager.gd:991`, an image fill used to build placeholder
+art (not a UI color). The audit now reports two allowed classes apart:
+**opacity** (`Color(1, 1, 1, a)`, `Color.WHITE` / `BLACK` as identity modulates,
+fully transparent black: 38) and **dice** (3D dice materials and die base colors
+in `dice_tray_3d.gd`, 38; dice colors are constant by rule and the dice
+rendering is out of scope).
+
+**Keyword colors: tokens defined, not applied inline.** No text in the game can
+take inline color today: every description, help line and primer is a plain
+`Label`, and the battle log is a `RichTextLabel` with BBCode off. The brief says
+to apply keyword colors only where inline color already exists, so none were
+applied; converting the description labels to BBCode is a follow-up.

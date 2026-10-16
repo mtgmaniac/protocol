@@ -211,7 +211,7 @@ func _style() -> void:
 	PixelUI.apply_pixel_font(_summary_label)
 	_summary_label.add_theme_font_size_override("font_size", _battle_style.get("header_font", SUMMARY_FONT_SIZE))
 	_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
-	_summary_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
+	_summary_label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	_summary_label.add_theme_constant_override("outline_size", 2)
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_summary_label.clip_text = false

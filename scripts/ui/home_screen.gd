@@ -112,9 +112,8 @@ const THREAT_FILL := Color("c25d3f")           # DT rust
 const THREAT_EMPTY := Color(0.10, 0.11, 0.07, 1.0)
 
 # Deploy button states
-const DEPLOY_IDLE_BG := Color(0.040, 0.050, 0.060, 1.0)
-const DEPLOY_IDLE_BORDER := Color(0.13, 0.15, 0.17, 1.0)
-const DEPLOY_IDLE_TEXT := Color(0.34, 0.38, 0.42, 1.0)
+const DEPLOY_IDLE_BG := PixelUI.UI_BUTTON
+const DEPLOY_IDLE_BORDER := PixelUI.UI_LINE
 
 
 # ─── State ────────────────────────────────────────────────────────────────────
@@ -179,7 +178,7 @@ func _ready() -> void:
 
 func _apply_background() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.055, 0.070, 0.095, 1.0)   # flat DT field, matches the battle screen
+	bg.color = PixelUI.UI_BG   # the screen field token
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -476,7 +475,7 @@ func _refresh_encounter() -> void:
 	# and the real operation name remains visible. Their blurb and all detailed
 	# intel stay hidden, while DEPLOY remains disabled. Every slot keeps its
 	# place (B3): only the text in it changes.
-	_enc_portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if _current_op_locked else Color.WHITE
+	_enc_portrait.modulate = PixelUI.SILHOUETTE if _current_op_locked else Color.WHITE
 	if _enc_lock_overlay != null:
 		_enc_lock_overlay.visible = _current_op_locked
 	if _current_op_locked:
@@ -697,7 +696,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var portrait: TextureRect = portrait_box["tex"] as TextureRect
 	# Keep the hero's own composition, but reduce it to an unmistakably dark
 	# silhouette until the profile owns that hero.
-	portrait.modulate = Color(0.035, 0.045, 0.065, 1.0) if is_locked else Color.WHITE
+	portrait.modulate = PixelUI.SILHOUETTE if is_locked else Color.WHITE
 
 	# Role-color corner badge (top-right) remains implemented for later roster
 	# work, but beta presentation keeps it hidden through PixelUI's shared rule.
@@ -946,7 +945,7 @@ func _role_color(unit: UnitData) -> Color:
 		"defense", "defence":
 			return PixelUI.DT_CYAN
 		"support":
-			return Color("9a6ad0")     # violet
+			return PixelUI.RARITY_RARE   # violet
 		"control":
 			return PixelUI.DT_AMBER
 	return PixelUI.TEXT_MUTED
@@ -1037,7 +1036,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	add_child(_directive_layer)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.72)
+	dim.color = PixelUI.SCRIM
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_directive_layer.add_child(dim)
 

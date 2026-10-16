@@ -366,7 +366,7 @@ func _build() -> void:
 	_cast_badge.add_theme_font_size_override("font_size", CAST_BADGE_FONT_SIZE)
 	_cast_badge.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
 	# Stroke law (INVARIANTS #14): borders are even design px and >= 4.
-	_cast_badge.add_theme_stylebox_override("normal", _style(Color(0.006, 0.012, 0.020, 0.80), HERO_LINE, 4, 0))
+	_cast_badge.add_theme_stylebox_override("normal", _style(PixelUI.PLATE_DARK, HERO_LINE, 4, 0))
 	_cast_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_cast_badge.offset_left = CAST_BADGE_INSET
 	_cast_badge.offset_top = CAST_BADGE_INSET
@@ -546,7 +546,7 @@ func _refresh() -> void:
 	card_style.set_content_margin_all(CARD_BORDER_WIDTH)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_theme_stylebox_override("panel", PixelUI.battle_layout_style(CARD_BORDER_WIDTH))
-	_portrait_frame.add_theme_stylebox_override("panel", _style(Color(0.0, 0.0, 0.0, 0.0), Color.TRANSPARENT, 0, 0))
+	_portrait_frame.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.add_theme_stylebox_override("panel", _style(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_action_panel.visible = show_action_pips
 	# One shell, three regions: title plate, inset portrait field, health footer.
@@ -589,17 +589,17 @@ func _refresh() -> void:
 
 	# Cloak (pkg8.1): ghosted, translucent portrait instead of a status chip.
 	if dead:
-		_portrait_rect.modulate = Color(0.48, 0.50, 0.58, 0.55)
+		_portrait_rect.modulate = PixelUI.PORTRAIT_DEAD
 	elif cloaked:
-		_portrait_rect.modulate = Color(0.70, 0.80, 0.95, 0.42)
+		_portrait_rect.modulate = PixelUI.PORTRAIT_CLOAKED
 	else:
-		_portrait_rect.modulate = Color(1.12, 1.12, 1.12, 1.0)
+		_portrait_rect.modulate = PixelUI.PORTRAIT_LIVE
 	# Cast-order badge: firing rank while committed this round (hero side only).
 	if _cast_badge != null:
 		_cast_badge.visible = side == "hero" and cast_rank > 0 and not dead
 		_cast_badge.text = str(cast_rank)
 	if dead:
-		modulate = Color(0.55, 0.56, 0.62, 0.72)
+		modulate = PixelUI.CARD_DEAD
 	else:
 		modulate = Color.WHITE
 	if show_action_pips:
@@ -772,7 +772,7 @@ func _make_action_pip(effect: Dictionary) -> PanelContainer:
 	panel.custom_minimum_size = Vector2(96, 74)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var pip_key: String = EffectPip.pip_key_for_effect(effect, side)
-	panel.add_theme_stylebox_override("panel", _style(Color(0.006, 0.012, 0.020, 0.72), _pip_border(pip_key if pip_key != "" else str(effect.get("kind", ""))), 3, 5))
+	panel.add_theme_stylebox_override("panel", _style(Color(PixelUI.PLATE_DARK, 0.72), _pip_border(pip_key if pip_key != "" else str(effect.get("kind", ""))), 3, 5))
 
 	var row: HBoxContainer = HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -850,7 +850,7 @@ func _status_badge_palette(status: Dictionary) -> Dictionary:
 			border = PixelUI.COLOR_ROLL
 	else:
 		border = _status_color(kind)
-	return {"border": border, "fill": Color(0.02, 0.03, 0.05, 0.92), "text": border}
+	return {"border": border, "fill": Color(PixelUI.INK_OUTLINE, 0.92), "text": border}
 
 
 # Tint every value LABEL inside a status badge to the status color so the border
@@ -871,7 +871,7 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var style: StyleBoxFlat = PixelUI.make_hard_style(pal["fill"], pal["border"], 2)
-	style.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+	style.shadow_color = PixelUI.PLATE_SHADOW
 	style.shadow_size = 3
 	style.shadow_offset = Vector2(5, 5)
 	style.set_content_margin_all(3.0)
@@ -1182,24 +1182,24 @@ func _status_color(token: String) -> Color:
 func _pip_border(kind: String) -> Color:
 	match kind:
 		"dmg", "blast", "pierce":
-			return Color(0.86, 0.32, 0.28, 0.92)
+			return PixelUI.PIP_BORDERS["damage"]
 		"heal", "revive":
-			return Color(0.38, 0.82, 0.55, 0.92)
+			return PixelUI.PIP_BORDERS["heal"]
 		"shield", "taunt":
-			return Color(0.42, 0.66, 0.88, 0.92)
+			return PixelUI.PIP_BORDERS["shield"]
 		"burn":
-			return Color(0.82, 0.40, 0.58, 0.92)
+			return PixelUI.PIP_BORDERS["burn"]
 		"roll", "rfe", "rfm", "roll_down":
-			return Color(0.86, 0.66, 0.26, 0.92)
+			return PixelUI.PIP_BORDERS["roll"]
 		"roll_up":
-			return Color(0.38, 0.82, 0.55, 0.92)
+			return PixelUI.PIP_BORDERS["heal"]
 		"frozen", "freeze", "die_freeze", "cloak":
-			return Color(0.48, 0.78, 0.88, 0.92)
+			return PixelUI.PIP_BORDERS["freeze"]
 		"overflow":
 			# The pip row's "+N" badge speaks the chip row's overflow language:
 			# gold (EffectPip.MAX_VISIBLE_EFFECTS / _make_status_overflow).
 			return Color(PixelUI.GOLD_ACCENT, 0.92)
-	return Color(0.34, 0.52, 0.70, 0.86)
+	return PixelUI.PIP_BORDERS["default"]
 
 
 func _display_status_value(status: Dictionary) -> String:
@@ -1348,7 +1348,7 @@ func _layout_preview_overlays() -> void:
 	# shield you would end HERE."
 	var protected_to: float = minf(final_hp, cur_hp)
 	if no_shield_final < protected_to:
-		_place_preview_rect(_preview_rect_blue, no_shield_final, protected_to - no_shield_final, hp_max, bar_w, HP_FILL_HEIGHT, Color(0.22, 0.55, 0.95, 0.80))
+		_place_preview_rect(_preview_rect_blue, no_shield_final, protected_to - no_shield_final, hp_max, bar_w, HP_FILL_HEIGHT, PixelUI.SHIELD_PREVIEW)
 
 	_update_hp_label_preview(int(roundf(final_hp)))
 
@@ -1429,7 +1429,7 @@ func _apply_label(label: Label, font_size: int, color: Color, outline: int = 1) 
 	PixelUI.apply_pixel_font(label)
 	label.add_theme_font_size_override("font_size", PixelUI.text_px(font_size))
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT if outline <= 0 else Color(0.01, 0.015, 0.025, 0.98))
+	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT if outline <= 0 else PixelUI.INK_OUTLINE)
 	label.add_theme_constant_override("outline_size", outline)
 
 

@@ -102,7 +102,7 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	badge.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
 	# Bare number, no plate (Kev 2026-07-10) — a dark glyph outline separates it
 	# from the button art instead of a box.
-	badge.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	badge.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	badge.add_theme_constant_override("outline_size", 5)
 	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	badge.offset_left = -66.0
@@ -696,7 +696,7 @@ func _open_set_value_popup() -> void:
 
 	var dim: ColorRect = ColorRect.new()
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.0, 0.0, 0.0, 0.62)
+	dim.color = PixelUI.SCRIM
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	catcher.add_child(dim)
 
