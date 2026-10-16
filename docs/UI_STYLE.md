@@ -24,15 +24,16 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `CHROME` | `e6dec8` (bone; F10 cycles candidates) | neutral bright: titles, labels, secondary text |
 | `CHROME_DIM` | `837d6e` | eyebrows, section heads, inactive |
 | `CHROME_INK` | `15130e` | text on a CHROME fill |
-| `PLAYER_ACCENT` | `2a6ae6` | primary buttons, selection, picks, friendly frames when targetable |
+| `PLAYER_ACCENT` | `2a6ae6` | primary button fill, selection, picks, friendly frames when targetable |
 | `PLAYER_ACCENT_LIGHT` | `9cbcff` | player text and icons on dark |
 | `PLAYER_ACCENT_DIM` | `1c3f82` | resting friendly frames |
-| `PLAYER_ACCENT_INK` | `060d1c` | text on a PLAYER fill (active tab, pressed primary) |
+| `PLAYER_ACCENT_INK` | `060d1c` | dark text on a PLAYER fill (active tab) |
+| `PLAYER_FILL_TEXT` | `f2f6ff` | light text on the solid primary button (4.5:1 on `PLAYER_ACCENT`) |
 | `PROTOCOL_ACCENT` | `66e0ff` (electric cyan-blue) | Protocol: meter cells, cost numbers, the keyword; the logo core's light centre |
 | `ENCOUNTER_FACILITY` / `_HIVE` / `_VEIL` / `_SIGNAL` / `_MANTLE` | `cf9a36` / `c8404a` / `8f7ae0` / `b653c8` / `d89b4a` | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
 | `ENEMY_DEFAULT` | `c9755a` (rust) | enemy UI outside any operation (Help's bestiary rows: name, and the frame darkened 0.3 as in battle) |
 | `WARNING` | `e8a33a` | warning text; the DESTRUCTIVE button |
-| `WARNING_INK` | `1a1206` | on a WARNING fill; hazard stripes |
+| `WARNING_INK` | `1a1206` | text on a WARNING fill (a pressed destructive button) |
 | `UI_BG` | `0e1216` | screen field |
 | `UI_PANEL` / `UI_PANEL_EDGE` | `161c1f` / `22292d` | section panel fill / frame |
 | `UI_ROW` | `202427` | row plate inside a panel |
@@ -88,10 +89,10 @@ font settings.
 
 | Component | Helper | Look |
 |---|---|---|
-| Primary button | `style_ui_primary_button` | PLAYER border, thick left edge, LIGHT text, **the notch** |
+| Primary button | `style_ui_primary_button` | **solid PLAYER fill**, `PLAYER_FILL_TEXT` (light) text, **the notch**; hover lighter, pressed `PLAYER_ACCENT_DIM` |
 | Secondary | `style_ui_secondary_button` | neutral border, steel left bar, UI_TEXT |
 | Disabled | (state of both) | the secondary shape, dimmed |
-| Destructive | `style_ui_destructive_button` | WARNING border and text, hazard-stripe left edge, no notch |
+| Destructive | `style_ui_destructive_button` | WARNING (amber) border and WARNING text on the button fill; **no stripes, no notch** |
 | Tab | `style_ui_tab` | active PLAYER fill + INK text; inactive neutral |
 | Toggle / slider | `style_ui_toggle` / `style_ui_slider` | ON / fill in PLAYER |
 | Section panel / row | `make_ui_section` / `make_ui_row` | CHROME panel, LABEL header, row plates |

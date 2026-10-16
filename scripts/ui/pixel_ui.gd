@@ -390,6 +390,8 @@ static func chrome_index_of(id: String) -> int:
 const PLAYER_ACCENT := Color("2a6ae6")
 const PLAYER_ACCENT_LIGHT := Color("9cbcff")
 const PLAYER_ACCENT_DIM := Color("1c3f82")
+## ui-fix: light text on a solid PLAYER_ACCENT fill (the primary button), 4.5:1.
+const PLAYER_FILL_TEXT := Color("f2f6ff")
 const PLAYER_ACCENT_INK := Color("060d1c")
 #
 # ENCOUNTER: one per operation, named by token in data/raw/battle-tray-scenes.json
@@ -436,8 +438,9 @@ const PROTOCOL_PULSE_STEPS: Array[float] = [0.0, 0.12, 0.24, 0.12]
 const PROTOCOL_PULSE_PERIOD := 1.6
 const UNAFFORDABLE_ALPHA := 0.45
 #
-# WARNING (ui-unify): amber, for warning text and the DESTRUCTIVE button (with a
-# hazard-stripe accent, never the notch). UI_WARN is this token.
+# WARNING (ui-unify): amber, for warning text and the DESTRUCTIVE button (amber
+# border and text; ui-fix removed its hazard stripes; never the notch). UI_WARN
+# is this token.
 const WARNING := Color("e8a33a")
 const WARNING_INK := Color("1a1206")
 #
@@ -2838,6 +2841,7 @@ static func _ui_button_fonts(button: Button, font_size: int, normal: Color, hove
 	_refresh_corner_brackets(button, Color.TRANSPARENT)
 
 
+## ui-fix: a SOLID PLAYER_ACCENT fill with PLAYER_FILL_TEXT, the notch kept.
 ## The NOTCH RULE (flat pixel B): this notched PLAYER button is used ONLY for a
 ## screen's one primary action: the title's CONTINUE (BEGIN with no saved run),
 ## reward CONFIRM, DEPLOY SQUAD, and the battle's centre action (END TURN, and
@@ -2848,11 +2852,11 @@ static func style_ui_primary_button(button: Button, font_size: int = 48) -> void
 	if button == null:
 		return
 	button.text = button.text.to_upper()
-	_ui_button_fonts(button, font_size, PLAYER_ACCENT_LIGHT, PLAYER_ACCENT_LIGHT.lightened(0.25), PLAYER_ACCENT_INK, UI_TEXT_OFF)
-	button.add_theme_stylebox_override("normal", ui_primary_style(UI_BUTTON, PLAYER_ACCENT))
-	button.add_theme_stylebox_override("hover", ui_primary_style(UI_BUTTON.lightened(0.05), PLAYER_ACCENT.lightened(0.15)))
+	_ui_button_fonts(button, font_size, PLAYER_FILL_TEXT, PLAYER_FILL_TEXT, PLAYER_FILL_TEXT, UI_TEXT_OFF)
+	button.add_theme_stylebox_override("normal", ui_primary_style(PLAYER_ACCENT, PLAYER_ACCENT))
+	button.add_theme_stylebox_override("hover", ui_primary_style(PLAYER_ACCENT.lightened(0.12), PLAYER_ACCENT.lightened(0.12)))
 	button.add_theme_stylebox_override("focus", _ui_focus_style())
-	button.add_theme_stylebox_override("pressed", ui_primary_style(PLAYER_ACCENT, PLAYER_ACCENT))
+	button.add_theme_stylebox_override("pressed", ui_primary_style(PLAYER_ACCENT_DIM, PLAYER_ACCENT_DIM))
 	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
 
 
@@ -2879,24 +2883,16 @@ static func _ui_focus_style() -> StyleBoxFlat:
 	return style
 
 
-## DESTRUCTIVE (ui-unify): a WARNING border and WARNING text, and a hazard-stripe
-## accent down the left edge instead of a bar. Never the notch: a destructive
-## confirm is never styled as the screen's primary action.
-const UI_HAZARD_W := 24
-static func ui_destructive_style(fill: Color, edge: Color) -> StyleBoxTexture:
-	var size := Vector2i(56, 40)
-	var rects: Array = [
-		[Rect2i(0, 0, size.x, size.y), edge],
-		[Rect2i(UI_HAZARD_W, MIN_STROKE, size.x - UI_HAZARD_W - MIN_STROKE, size.y - MIN_STROKE * 2), fill],
-	]
-	# Hazard stripes: 4 px diagonal bands, edge / ink alternating (tiles every 8 rows).
-	for y in range(size.y):
-		for x in range(UI_HAZARD_W):
-			if ((x + y) / 4) % 2 == 1:
-				rects.append([Rect2i(x, y, 1, 1), WARNING_INK])
-	var texture := _ui_patch("destructive:%s:%s" % [fill.to_html(), edge.to_html()], size, rects)
-	return _ui_patch_style(texture, [UI_HAZARD_W, MIN_STROKE, MIN_STROKE, MIN_STROKE],
-		[UI_HAZARD_W + 16, 10, 20, 10])
+## DESTRUCTIVE (ui-unify; ui-fix): a WARNING border and WARNING text on the
+## button fill. No hazard stripes, no notch: a destructive confirm is never styled
+## as the screen's primary action.
+static func ui_destructive_style(fill: Color, edge: Color) -> StyleBoxFlat:
+	var style: StyleBoxFlat = make_hard_style(fill, edge, MIN_STROKE)
+	style.content_margin_left = UI_SECONDARY_BAR + 16
+	style.content_margin_top = 10
+	style.content_margin_right = 20
+	style.content_margin_bottom = 10
+	return style
 
 
 static func style_ui_destructive_button(button: Button, font_size: int = 44) -> void:

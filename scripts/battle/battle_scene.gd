@@ -100,12 +100,8 @@ const MAX_PROTOCOL := 10
 # from was dead chrome (built, then unconditionally hidden by the theme pass)
 # and was deleted in Polish Build A.
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
-# ui-fix layout rhythm: the footer bar (144, as the header) less its divider and
-# a GAP above and below: 144 - 4 - 16 * 2 = 108, square.
-const BOTTOM_BAR_BUTTON_SIZE := Vector2(108, 108)
-# ui-fix: 136 -> 128 with the GAP-rhythm tray (30 px shorter), so the dice keep
-# the roll clearance floor (roll_button_clearance_test, 40 px).
-const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 128)
+const BOTTOM_BAR_BUTTON_SIZE := Vector2(108, 108)   # ui-fix: bar 144 - divider 4 - GAP x2
+const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 128)   # ui-fix: 136 -> 128 keeps the roll clearance floor
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
 const PROTOCOL_LABEL_FONT_SIZE := 64   # LABEL (ui-fix; ui-unify had SMALL 48)
 const PROTOCOL_VALUE_FONT_SIZE := 48
@@ -115,10 +111,7 @@ const PROTOCOL_VALUE_FONT_SIZE := 48
 # (bottom-anchored box raised to match) so the pips below never move.
 const PROTOCOL_STACK_LABEL_FONT := 64   # LABEL (ui-fix; ui-unify had SMALL 48)
 const PROTOCOL_LABEL_BOX_H := 64.0   # ui-fix: one LABEL line
-# Design px between the m5x7 line top and its caps at LABEL 64 (measured on a
-# capture; the label is raised by it so the caps meet the block's top).
-const PROTOCOL_LABEL_CAP_PAD := 16.0   # 4 m5x7 px at x4
-const PROTOCOL_LABEL_PIP_OVERLAP := -2.0
+const PROTOCOL_LABEL_CAP_PAD := 16.0   # m5x7's pad above its caps at 64 (4 px x4)
 const PROTOCOL_PIP_BAR_H := 52.0
 
 const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
@@ -2455,14 +2448,9 @@ var _protocol_pips: Control = null
 # Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
 # header/footer content lines up with the tray instead of running to the screen edge.
 const TRAY_EDGE_INSET := 16
-# Content's authored offsets (mirror the .tscn). ui-fix layout rhythm: the cards
-# sit one PixelUI.GAP from each bar, and a card's edge is CARD_EDGE_INSET inside
-# Content (Content margin 14 + rail margin 4 + slot inset 4), so each offset is
-# bar 144 + GAP 16 - 22 = 138 (the footer bar is the header's height). With the
-# board's minimums (rails 792 each, the centre band BattleLayout.CENTER_ZONE_HEIGHT)
-# the board fills Content exactly at 2400. _apply_safe_area() re-derives the
-# offsets, so the authored values must be named here or a zero inset (every
-# desktop run) would erase them.
+# Content's authored offsets (mirror the .tscn; _apply_safe_area re-derives them).
+# ui-fix: cards one GAP from each bar; a card edge is 22 inside Content (margin 14
+# + rail 4 + slot 4), so 144 + 16 - 22 = 138, and the board fills Content exactly.
 const CARD_EDGE_INSET := 22.0
 const HEADER_SCRIPT := preload("res://scripts/autoloads/PersistentHeader.gd")
 const BAR_HEIGHT: float = HEADER_SCRIPT.HEADER_HEIGHT
@@ -2481,9 +2469,7 @@ const CONTENT_BOTTOM_OFFSET: float = BAR_HEIGHT + PixelUI.GAP - CARD_EDGE_INSET
 # grown band clipping the enemy name plates on device — is what this fixes.
 func _apply_safe_area() -> void:
 	var content: MarginContainer = get_node_or_null("Content") as MarginContainer
-	# Portrait offsets only: the (parked) landscape layout owns Content's offsets
-	# and sizes its cards from them (ui-fix: writing these over them grew the
-	# landscape cards past their footer).
+	# Portrait only: the parked landscape layout owns Content's offsets (ui-fix).
 	if content != null and not (_layout != null and _layout.is_landscape):
 		content.offset_top = CONTENT_TOP_OFFSET + float(PixelUI.safe_top)
 		content.offset_bottom = -(CONTENT_BOTTOM_OFFSET + float(PixelUI.safe_bottom))
@@ -2560,9 +2546,7 @@ func _ensure_protocol_stack_layout() -> void:
 	# Label sits RIGHT on top of the pips (Kev 2026-07-10: anchoring it to the
 	# stack top clipped the glyphs under the panel above). Bottom-anchored just
 	# above the pip bar; the overlap eats m5x7's below-baseline padding.
-	# ui-fix layout rhythm: the label's visible caps sit at the block's top (the
-	# m5x7 line pads above its caps, PROTOCOL_LABEL_CAP_PAD), the cells at its
-	# bottom, so the whole block is one GAP from each bar edge.
+	# ui-fix: the label's caps on the block's top, the cells at its bottom.
 	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	protocol_label.offset_top = -PROTOCOL_LABEL_CAP_PAD
 	protocol_label.offset_bottom = protocol_label.offset_top + PROTOCOL_LABEL_BOX_H
@@ -3576,8 +3560,7 @@ func _apply_battle_theme() -> void:
 		if pm != null:
 			pm.add_theme_constant_override("margin_left", TRAY_EDGE_INSET)
 			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
-			# ui-fix layout rhythm: the footer row sits one GAP from both bar edges
-			# (less the panel's own 4 px content margin).
+			# ui-fix: the row sits GAP from both bar edges (less the panel's 4).
 			pm.add_theme_constant_override("margin_top", PixelUI.GAP - 4)
 			pm.add_theme_constant_override("margin_bottom", PixelUI.GAP - 4)
 	_ensure_protocol_stack_layout()

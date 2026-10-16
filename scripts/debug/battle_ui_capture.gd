@@ -21,6 +21,9 @@ func _run_capture() -> void:
 	_prepare_run(config)
 	change_scene_to_file("res://scenes/battle/BattleScene.tscn")
 	await _wait_for_battle_scene(config)
+	if bool(config.get("abandon", false)):
+		current_scene.call("_on_return_to_menu_button_pressed")
+		await create_timer(0.4).timeout
 	var output_path: String = str(config.get("output", DEFAULT_OUTPUT))
 	var absolute_output: String = _resolve_output_path(output_path)
 	var save_result: Error = _capture_viewport_to_file(absolute_output)
@@ -100,6 +103,9 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-force-auto":
 			config["force_auto"] = true
 			config["rolled"] = true
+		elif arg == "--capture-abandon":
+			# ui-fix: open the abandon confirm (the back button's pop-up) before the shot.
+			config["abandon"] = true
 		elif arg == "--capture-hover-probe":
 			# ui-fix: which control stops a tap at a few empty-looking points.
 			config["hover_probe"] = true

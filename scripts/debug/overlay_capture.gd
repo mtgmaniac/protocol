@@ -41,7 +41,12 @@ func _run() -> void:
 			for id: String in ["patch_kit", "calibration_chip", "scrap_plate", "grounding_clip"]:
 				held.append(data.call("get_item", id))
 			var incoming: Resource = data.call("get_item", "archive_cascade")
-			(load("res://scripts/ui/loadout_menu.gd") as Script).call("open_discard", host, held, incoming, func(_choice: Variant) -> void: pass)
+			var menu_script: Script = load("res://scripts/ui/loadout_menu.gd")
+			menu_script.call("open_discard", host, held, incoming, func(_choice: Variant) -> void: pass)
+			# ui-fix: pick the first held item so CONFIRM DISCARD shows its live (destructive) state.
+			var menu: Object = menu_script.get("_active")
+			if menu != null:
+				menu.call("_on_discard_row_tapped", held[0])
 		"state_code":
 			(load("res://scripts/ui/state_code_panel.gd") as Script).call("open", host)
 	for _i in range(20):
