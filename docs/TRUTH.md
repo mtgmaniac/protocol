@@ -1,6 +1,51 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
-**2026-10-13 battle depth prototype (`codex/battle-depth-prototype`, review only):**
+**2026-10-13 battle depth prototype v2 (`proto/battle-depth-v2`, review only;
+replaces the v1 entry below on this branch):** rendering only. Combat, balance,
+copy, layout and every dice rule are unchanged.
+
+- **The dice still simulate flat.** Bodies, collision shapes, walls, bounces,
+  result slots, the upright snap and the landed face are the top-down rectangle
+  they always were. Depth is applied when a die is DRAWN: `DiceTray3D` moves and
+  scales only the cosmetic `Visuals` container through one projection,
+  `scripts/ui/battle_depth.gd`. A die is drawn 0.75 of its size at the tray's back
+  edge and 1.12 at the front (linear), which puts the enemy row at about 83% of the
+  hero row. It is drawn nearer the centre line toward the back (the floor is 80% as
+  wide at the back wall as at the front) and 3% of the tray height lower at the
+  back edge. A die in the air is drawn slightly higher than its shadow. The drawn
+  die is clamped to the tray rectangle and the floor's edge. Tags, hit areas and
+  feedback read the drawn position (`get_die_screen_position` /
+  `get_die_screen_bounds`), so they stay on the die. Because the floor narrows,
+  a resting die sits a little inside the centre of its unit's card (about 40 px
+  for an enemy at 1080 wide, 20 px for a hero).
+- **Contact shadows** are soft ellipses on the floor under each die's drawn
+  position, sized by the same depth scale, resting and moving; on a throw or a hop
+  they stay on the floor and spread and fade with height.
+- **The tray scene** (`scripts/ui/battle_bay_floor.gd`) is a back wall with one
+  scene-art slot over the top 15.5% of the tray, two side walls, and a floor
+  carried through the same perspective. Per operation, `data/raw/battle-tray-scenes.json`
+  names the wall art, the floor texture and the floor's edge accent (a PixelUI
+  token name, never a hex). Facility has PLACEHOLDER art (`assets/battle_tray/placeholder_*`:
+  an overhead parts conveyor, girders, a half-assembled machine; steel grating with
+  amber edging). Hive and Veil are stubs and draw the bare bay, as does any
+  operation without an entry. One art pixel is 4 design px.
+- **Floor decal:** the title logo's reactor emblem (`assets/battle_tray/reactor_emblem_decal.png`,
+  made from `logo_base.png` + `logo_core.png`) on the floor at the tray's centre at
+  15% opacity, under the dice and their shadows.
+- **Die tags sit on a solid plate** (`PixelUI.battle_tag_plate_style`, portrait
+  only): a filled field with no outline, tight to the pips.
+- **Debug A/B (debug builds, battle screen):** F6 swaps the scene for the plain
+  tray, F7 hides the floor decal. The dice keep their depth either way.
+- **Protocol meter fix:** empty cells are dark again. `ProtocolPips` built its cell
+  styles inside `_draw`, so their textures were freed before the queued draw ran
+  and the cells painted plain white; it now holds them for the node's life.
+- The parked landscape presentation is excluded (no scene, no projection).
+
+Review captures: `debug_artifacts/battle_depth_v2.png` and
+`debug_artifacts/battle_depth_v2_flat.png` (390 px wide, the same roll).
+Scope and checks: `docs/BATTLE_DEPTH_PROTOTYPE.md`.
+
+**2026-10-13 battle depth prototype v1 (`codex/battle-depth-prototype`, review only; its bay, 0.90 to 1.10 scale and shadows are replaced by v2 above on `proto/battle-depth-v2`):**
 The existing central tray gains one painted, shallow metal bay (`battle_bay_floor.gd`)
 with converging floor seams, raised sides and two muted amber wear plates. No new
 environment art replaces portraits, cards, header, controls or dice art. Dice keep

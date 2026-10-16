@@ -1,5 +1,46 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Battle depth prototype v2: rendering only (Kev, 2026-10-13; review only)
+
+Branch `proto/battle-depth-v2`, from `codex/battle-depth-prototype` at `d18fda2`.
+Transcribed from Kev's task. **Goal:** "Give the tray a sense of place and depth
+without adding information or clutter. This is a feel test: does depth plus a
+Facility scene make the fight feel more real and more distinct? Gameplay, balance
+and copy must not change."
+
+- **The dice simulation stays flat.** "Keep the dice simulation flat in its current
+  rectangular space. Apply perspective at DRAW time only. Tray bounds, bounce,
+  landing visibility, snap-to-upright and static faces must behave exactly as
+  before." No 3D physics rebuild, no engine upgrade (Godot stays 4.6.2). The dice
+  rulings (G-24 to G-47) are closed and untouched.
+- **Contact shadows** under every die, on the floor plane, scaled by depth row,
+  visible resting and tumbling.
+- **Depth scaling** slightly stronger than v1: the back row about 80-85% of the
+  front row, back-row numerals readable at 390 px width.
+- **Tray scene:** a taller back wall with a scene-art slot, and a floor material
+  "defined in DATA per operation (floor texture + edge accent color)". Facility is
+  steel grating with amber edging; Hive and Veil are stubs.
+- **Floor decal:** the title logo's reactor emblem on the floor at the tray centre,
+  about 15-20% opacity, beneath everything.
+- **Facility back wall is PLACEHOLDER pixel art** (girders, a conveyor of parts, a
+  half-assembled machine), labelled placeholder in code and filename.
+- **Contrast budget:** the backdrop is dark and low-contrast near the dice; dice
+  are the highest-contrast objects in the tray; "intent icons and numbers sit on
+  solid plates".
+- **A debug toggle** for the backdrop and the floor decal, for A/B legibility.
+- **Protocol meter:** empty segments dark, not white.
+- **Not allowed:** new on-screen info, buttons or layout changes; gameplay, balance
+  data, copy or other scenes; the mockup's action bar, third enemy card, painterly
+  rendering or wall lamps. Only a targeted smoke check, no full gate, no build.
+
+Two scoped consequences, on this branch only, neither a general ruling:
+
+- **Die tags get a solid plate.** This sets aside the 2026-07-09 "transparent tag,
+  the text outline carries legibility" choice while a scene runs behind the tags.
+  The plate is a filled field with no outline (INVARIANTS #7).
+- **The edge accent in data is a PixelUI token name**, never a hex, so PixelUI stays
+  the one palette (INVARIANTS #7).
+
 ## Battle depth prototype (Kev, 2026-10-13; review only)
 
 Create and switch to `codex/battle-depth-prototype`. Test one restrained environmental
