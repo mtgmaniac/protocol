@@ -16,6 +16,7 @@ const SECTION_FONT := 40
 const BODY_FONT := PixelUI.FONT_BODY_MIN
 const ACTION_FONT := 52
 const ACTION_HEIGHT := 112
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 
 const OPERATION_COPY := {
 	"facility": {
@@ -26,7 +27,6 @@ const OPERATION_COPY := {
 		"threats": "SHIELDS · JAM · REBUILD",
 		"failure": "Security machines hostile",
 		"directive": "Destroy the Scrapmaster",
-		"accent": Color("C07A45"),
 	},
 	"hive": {
 		"number": "02",
@@ -36,7 +36,6 @@ const OPERATION_COPY := {
 		"threats": "BURN · SWARM · SIPHON",
 		"failure": "Hive containment lost",
 		"directive": "Kill the Hive Matriarch",
-		"accent": Color("B94A70"),
 	},
 	"veil": {
 		"number": "03",
@@ -46,7 +45,6 @@ const OPERATION_COPY := {
 		"threats": "FIREWALL · SHIELDS · SUPPORT",
 		"failure": "Command relay occupied",
 		"directive": "Eliminate the Veil Overseer",
-		"accent": Color("A6A9C9"),
 	},
 	"voidCirclet": {
 		"number": "04",
@@ -56,7 +54,6 @@ const OPERATION_COPY := {
 		"threats": "REWRITE · HIJACK · SIPHON",
 		"failure": "Hostile signal broadcast",
 		"directive": "Eliminate the Signal Hierarch",
-		"accent": Color("B653C8"),
 	},
 	"stellarMenagerie": {
 		"number": "05",
@@ -66,7 +63,6 @@ const OPERATION_COPY := {
 		"threats": "PACK · PETRIFY · ARMOR",
 		"failure": "Predators through the perimeter",
 		"directive": "Kill the Mantle Tyrant",
-		"accent": Color("D89B4A"),
 	},
 }
 
@@ -85,7 +81,11 @@ var _content_container: VBoxContainer = null
 
 
 static func operation_copy(operation_id: String) -> Dictionary:
-	return (OPERATION_COPY.get(operation_id, {}) as Dictionary).duplicate(true)
+	var copy: Dictionary = (OPERATION_COPY.get(operation_id, {}) as Dictionary).duplicate(true)
+	if not copy.is_empty():
+		# The operation's ENCOUNTER accent, from data (flat pixel A color roles).
+		copy["accent"] = DEPTH.encounter_accent(operation_id)
+	return copy
 
 
 static func boss_flavor(boss_name: String) -> String:

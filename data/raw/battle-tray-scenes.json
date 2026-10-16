@@ -1,12 +1,12 @@
 {
-  "_about": "Battle depth prototype v3. One full-screen battle scene per operation: wall and floor textures, the accent (floor decal and the header's battle count), the floor's hazard edging and window slots, and the back-wall streak. Colours are PixelUI token names, never hexes. Empty fields draw the bare scene (plain walls and floor, no accents). Operations without an entry use `fallback`.",
+  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel A color roles): it drives the world elements in battle (floor rim, floor decal, battle count, header rule) and the squad-select site line and briefing. Wall and floor textures, edge accent and streak feed the v3 perspective scene (debug F9). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`.",
   "fallback": "bare",
   "scenes": {
     "facility": {
       "label": "Foundry hall (PLACEHOLDER art)",
       "wall_texture": "res://assets/battle_tray/placeholder_facility_wall_slabs.png",
       "floor_texture": "res://assets/battle_tray/placeholder_facility_floor_panels.png",
-      "accent": "DT_AMBER",
+      "accent": "ENCOUNTER_FACILITY",
       "edge_accent": "BATTLE_BAY_AMBER_LIT",
       "streak": "BATTLE_BAY_RUST"
     },
@@ -14,7 +14,7 @@
       "label": "STUB: no art yet",
       "wall_texture": "",
       "floor_texture": "",
-      "accent": "",
+      "accent": "ENCOUNTER_HIVE",
       "edge_accent": "",
       "streak": ""
     },
@@ -22,7 +22,23 @@
       "label": "STUB: no art yet",
       "wall_texture": "",
       "floor_texture": "",
-      "accent": "",
+      "accent": "ENCOUNTER_VEIL",
+      "edge_accent": "",
+      "streak": ""
+    },
+    "voidCirclet": {
+      "label": "STUB: no art yet (Signal Purge)",
+      "wall_texture": "",
+      "floor_texture": "",
+      "accent": "ENCOUNTER_SIGNAL",
+      "edge_accent": "",
+      "streak": ""
+    },
+    "stellarMenagerie": {
+      "label": "STUB: no art yet (Mantle Hunt)",
+      "wall_texture": "",
+      "floor_texture": "",
+      "accent": "ENCOUNTER_MANTLE",
       "edge_accent": "",
       "streak": ""
     },

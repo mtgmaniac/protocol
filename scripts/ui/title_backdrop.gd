@@ -58,8 +58,8 @@ func _slab(x: float, top: float, w: float, bottom: float, body: Color, lit_left:
 
 func _window(x: float, y: float) -> void:
 	_rect(x - ART_PX, y - ART_PX, 24.0 + ART_PX * 2.0, 40.0 + ART_PX * 2.0, SEAM)
-	_rect(x, y, 24.0, 40.0, PixelUI.UI_ACCENT.darkened(0.62))
-	_rect(x, y, 24.0, ART_PX * 2.0, PixelUI.UI_ACCENT.darkened(0.45))
+	_rect(x, y, 24.0, 40.0, PixelUI.SYSTEM_ACCENT.darkened(0.62))
+	_rect(x, y, 24.0, ART_PX * 2.0, PixelUI.SYSTEM_ACCENT.darkened(0.45))
 
 
 func _draw_left_block(screen: Vector2) -> void:
@@ -71,7 +71,7 @@ func _draw_left_block(screen: Vector2) -> void:
 	_rect(w * 0.085, h * 0.10, w * 0.035, h * 0.06, SEAM)
 	_rect(w * 0.090, h * 0.105, w * 0.025, h * 0.05, SLAB_LIT)
 	for y_share: float in [0.30, 0.31, 0.32]:
-		_rect(w * 0.105, h * y_share, w * 0.03, ART_PX, PixelUI.UI_ACCENT.darkened(0.7))
+		_rect(w * 0.105, h * y_share, w * 0.03, ART_PX, PixelUI.SYSTEM_ACCENT.darkened(0.7))
 	_window(w * 0.14, h * 0.62)
 	_window(w * 0.04, h * 0.79)
 

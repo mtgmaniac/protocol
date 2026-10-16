@@ -30,6 +30,13 @@ static func scene_for(operation_id: String) -> Dictionary:
 	return scenes.get(operation_id, scenes.get(str(_scenes.get("fallback", "")), {}))
 
 
+## The operation's ENCOUNTER accent (flat pixel A color roles): the PixelUI token
+## its scene entry names as `accent`. Operations without one get the fallback's,
+## and an empty name is transparent.
+static func encounter_accent(operation_id: String) -> Color:
+	return token(str(scene_for(operation_id).get("accent", "")))
+
+
 ## A PixelUI colour named in the scene data. Empty name: transparent.
 static func token(name: String) -> Color:
 	if name == "":
