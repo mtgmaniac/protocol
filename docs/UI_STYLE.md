@@ -15,7 +15,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 - **CHROME carries no meaning:** text, panels, borders, secondary and disabled
   buttons. Most UI is CHROME.
 - **Dice colors are constant:** hero blue, enemy red, every operation.
-- Green is HP bars and heals only (INVARIANTS #7).
+- Green is HP bars, heals and the uncommon rarity only (INVARIANTS #7; the rarity green is its own leaf green).
 
 ## Color tokens
 
@@ -39,7 +39,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `UI_ROW` | `202427` | row plate inside a panel |
 | `UI_BUTTON` / `UI_LINE` | `1a1c20` / `4a5057` | button fill / neutral border |
 | `UI_TEXT` / `UI_TEXT_DIM` / `UI_TEXT_OFF` | `e8e6df` / `8a8f94` / `4f5458` | body / secondary / disabled text |
-| `RARITY_LEGENDARY` / `RARITY_UNCOMMON` / `RARITY_COMMON` | `edb03e` gold / `aab4bd` silver / `8a8f94` gray | rarity (rare / epic `9d52d8`) |
+| `RARITY_COMMON` / `RARITY_UNCOMMON` / `RARITY_RARE` / `RARITY_LEGENDARY` | `8a8f94` muted gray / `84b84a` leaf green / `9d52d8` violet / `edb03e` gold | rarity (epic = rare). The uncommon green leans yellow (hue ~88) so it never reads as a heal (`KW_HEAL` / `COLOR_HEAL`, hue ~136-141) |
 | `INK_OUTLINE`, `SCRIM` | near-black, 98% / 78% | dark text edge over art / modal dim |
 | `KW_DAMAGE` / `KW_HEAL` / `KW_SHIELD` / `KW_PROTOCOL` | `f2584c` / `5fd17a` / `a9bccb` / `66e0ff` | keyword colors in text |
 

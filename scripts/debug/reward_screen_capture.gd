@@ -17,6 +17,7 @@
 #   --capture-intercept-kind=draft         render the same forced offers through the
 #                                         shared Intercept reward handoff
 #   --capture-native                      force the 1080x2400 logical window size
+#   --capture-battle=<n>                  the battle just won (5: the relic cache)
 extends SceneTree
 
 const DEFAULT_OUTPUT := "res://debug_artifacts/reward_ui/latest.png"
@@ -74,6 +75,9 @@ func _parse_args() -> Dictionary:
 				config["window"] = Vector2i(int(parts[0]), int(parts[1]))
 		elif arg == "--capture-native":
 			config["native"] = true
+		elif arg.begins_with("--capture-battle="):
+			# ui-fix: the battle the reward follows (5 = the relic cache draft).
+			config["battle"] = int(arg.get_slice("=", 1))
 	return config
 
 
@@ -81,6 +85,8 @@ func _prepare_run(config: Dictionary) -> void:
 	var game_state: Node = _game_state()
 	game_state.start_run(DEFAULT_SQUAD, str(config.get("operation_id", DEFAULT_OPERATION_ID)))
 	game_state.advance_to_next_battle()
+	for _i in range(int(config.get("battle", 1)) - 1):
+		game_state.advance_to_next_battle()
 	var forced: Variant = config.get("force_items", null)
 	if (forced is Array and not (forced as Array).is_empty()) or (forced is PackedStringArray and not (forced as PackedStringArray).is_empty()):
 		# Override the roll with explicit ids (reward_screen skips its own roll when

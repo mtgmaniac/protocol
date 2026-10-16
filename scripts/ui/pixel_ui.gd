@@ -626,8 +626,12 @@ static var DT_STATUS := {
 # gray -> blue -> purple -> orange. "epic" is unused in data (kept aligned).
 # UI restyle A (2026-10-14): legendary is the UI accent, uncommon steel blue,
 # common gray (supersedes the 2026-07-10 orange legendary; docs/UI_RESTYLE.md).
+# ui-fix (Kev, 2026-10-16; supersedes the 2026-07-10 "green exits" ruling for
+# rarity only): common muted gray, uncommon GREEN, rare violet, legendary gold.
+# The uncommon green is a yellow-leaning leaf green (hue ~88), clearly apart from
+# the heal greens (COLOR_HEAL / KW_HEAL, hue ~136-141) and the dark HP fill.
 static var RARITY_COMMON := UI_TEXT_DIM
-static var RARITY_UNCOMMON := Color("aab4bd")   # ui-unify: steel / silver, no longer blue
+static var RARITY_UNCOMMON := Color("84b84a")
 static var RARITY_RARE := Color("9d52d8")
 static var RARITY_EPIC := Color("9d52d8")
 static var RARITY_LEGENDARY := Color("edb03e")   # legendary gold (restyle A value)
