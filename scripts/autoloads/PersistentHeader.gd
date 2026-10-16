@@ -50,6 +50,10 @@ signal safe_area_changed
 ## Fired once, when seven quick taps unlock the session's dev tools (the title
 ## screen adds its dev-only controls on it).
 signal dev_tools_unlocked_now
+## Flat pixel A: fired after F10 (debug builds) switches the system color. A
+## screen that restyles in place connects to it (the battle screen, through
+## BattleLayout); with no listener the current screen is reloaded instead.
+signal system_accent_changed(id: String)
 
 @onready var _band: Control = $HeaderBand
 @onready var _bar: Control = $HeaderBand/Bar
@@ -222,10 +226,10 @@ func _style() -> void:
 		PixelUI.style_battle_text(_count_label, _count_tint)
 	_refresh_summary()
 	_background.queue_redraw()
-	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
-	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
-	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
-	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals)
+	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
+	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
+	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
+	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, true)
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
 		b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
 
@@ -374,9 +378,9 @@ func _input(event: InputEvent) -> void:
 
 
 ## Flat pixel A, debug builds: F10 cycles the SYSTEM_ACCENT candidates. The
-## header restyles itself; a screen with `restyle_system_accent()` (the battle
-## screen) restyles in place; any other screen is reloaded so it rebuilds in the
-## new color. Returns true when it used the key.
+## header restyles itself; a listener on system_accent_changed (the battle
+## screen) restyles in place; with none, the screen is reloaded so it rebuilds
+## in the new color. Returns true when it used the key.
 func _handle_system_accent_key(event: InputEvent) -> bool:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or key.keycode != KEY_F10 or not OS.is_debug_build():
@@ -385,11 +389,11 @@ func _handle_system_accent_key(event: InputEvent) -> bool:
 	var id: String = PixelUI.set_system_accent(PixelUI.system_accent_index + 1)
 	print("[SYSTEM_ACCENT] %s" % id)
 	_style()
-	var scene: Node = get_tree().current_scene
-	if scene != null and scene.has_method("restyle_system_accent"):
-		scene.call("restyle_system_accent")
-	elif scene != null:
-		get_tree().reload_current_scene()
+	if system_accent_changed.get_connections().is_empty():
+		if get_tree().current_scene != null:
+			get_tree().reload_current_scene()
+	else:
+		system_accent_changed.emit(id)
 	return true
 
 

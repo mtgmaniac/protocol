@@ -137,3 +137,45 @@ button's label; the primary still reads by its bone border, thick left edge and
 tab. A cooler neutral `UI_TEXT` would separate them, but it is the body text color
 on every restyled screen, so it was left for a ruling. No HP, heal or hero color
 was changed to make any candidate work.
+
+## Phase 3: the system color applied
+
+Already reading SYSTEM_ACCENT through the restyle A components (Phase 1): the
+title (logo reactor core and PROTOCOL line through `accent_tint_material`, the
+primary button, the version underline, the backdrop window lights), Help (tabs,
+section terms, bullets, scrollbar grab), Settings (toggles, sliders, SEND
+FEEDBACK), Reward (CHOOSE REWARD, the selected card border and fill, the relic
+name strip, CONFIRM).
+
+New in this phase:
+
+- **Squad select (recolor only, no layout change):** the selected tile frame is
+  `PixelUI.system_selected_style()` (the COMPONENT_SELECTED geometry with a
+  SYSTEM_ACCENT border), the numbered pick badges are SYSTEM_ACCENT with
+  SYSTEM_ACCENT_INK numerals, a selected hero name is SYSTEM_ACCENT, and DEPLOY
+  SQUAD is `style_primary_button(..., system = true)`: the same button and
+  corner brackets in SYSTEM_ACCENT. Also moved (system-layer cyan, not hero
+  coding): the SELECT SQUAD heading, the 3 / 3 counter, the active carousel dot.
+  Unselected tile borders and names keep the hero cyan (hero coding).
+- **Header ? and back** (every screen, the header is global) and the dev-only
+  debug chevrons: icons drawn in SYSTEM_ACCENT. The icon art is baked cyan, so
+  `PixelUI.system_icon(path)` makes a recolored copy (alpha kept, brightness
+  relative to the brightest pixel), cached per color. Frames stay neutral.
+- **Battle footer icons** (Nudge, Set, Item, Protocol spend): the same
+  `system_icon` path through `_style_frame_icon_action_button`. The Protocol cost
+  badges on those buttons were DT_AMBER; they are SYSTEM_ACCENT now, so Protocol
+  reads in one color (meter and prices).
+- **Protocol meter:** `cell_charged.svg` has amber baked into the art, so a
+  charged cell is now the empty cell plus a SYSTEM_ACCENT fill inset 4 design px
+  (the art's own inset). `cell_charged.svg` is no longer used by the meter.
+- **F10 in battle** restyles in place: `PersistentHeader` emits
+  `system_accent_changed`; `BattleLayout` listens and restyles the footer icons,
+  the cost badges and the meter. Other screens have no listener and are reloaded.
+  `battle_scene.gd` stays at 3,639 lines (watermark 3,640): the handler lives in
+  `battle_layout.gd`.
+- `home_screen_capture.gd` gained `--capture-help-tab=<id>` (opens Help on a tab).
+
+Left cyan on purpose (not system layer, or screens outside this batch): hero
+coding everywhere, the battle card selection (`compact_unit_card`
+COMPONENT_SELECTED / SELECT_LINE), the evolution and discard-picker selected
+cards, the old teal `style_primary_button` on screens not in this batch.

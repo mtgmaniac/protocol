@@ -2826,10 +2826,10 @@ func _style_frame_icon_action_button(
 	button.custom_minimum_size = min_size
 	if _layout != null and min_size == BOTTOM_BAR_BUTTON_SIZE:
 		button.custom_minimum_size = _layout.presentation("protocol_button_size", min_size)
-	# Direction-05 flat dark square. frame_modulate carries the border accent (e.g.
-	# gold for the protocol spend button); default uses the neutral DT button border.
+	# Direction-05 flat dark square. frame_modulate carries the border accent (gold for
+	# protocol spend), else the neutral DT border; icons in the system color (flat pixel A).
 	var border_color: Color = PixelUI.DT_BTN_BORDER if frame_modulate == Color.WHITE else frame_modulate
-	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate, true)
+	PixelUI.style_dt_icon_button(button, icon_path, border_color, icon_modulate, true, true)
 
 
 func _update_phase_target_sets() -> void:

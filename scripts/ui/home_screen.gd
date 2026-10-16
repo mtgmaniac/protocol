@@ -469,7 +469,7 @@ func _refresh_encounter() -> void:
 		_op_lore_label.text = op.lore.strip_edges()
 
 	for i in _dot_nodes.size():
-		_dot_nodes[i].color = PixelUI.DT_CYAN if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
+		_dot_nodes[i].color = PixelUI.SYSTEM_ACCENT if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 
 	# Locked operations stay browsable: their own boss art is a dark silhouette
 	# and the real operation name remains visible. Their blurb and all detailed
@@ -576,10 +576,10 @@ func _build_squad_section() -> Control:
 
 	var header := HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title := _make_pixel_label("SELECT SQUAD", HEADER_FONT, PixelUI.DT_CYAN)
+	var title := _make_pixel_label("SELECT SQUAD", HEADER_FONT, PixelUI.SYSTEM_ACCENT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	_counter_label = _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT, PixelUI.DT_CYAN)
+	_counter_label = _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT, PixelUI.SYSTEM_ACCENT)
 	header.add_child(_counter_label)
 	section.add_child(header)
 
@@ -711,7 +711,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.visible = PixelUI.SHOW_BETA_UNIT_BADGES
 	crop.add_child(role_badge)
 
-	# Slot badge (top-left): filled cyan plate with the pick order (1/2/3) — the
+	# Slot badge (top-left): filled system-color plate with the pick order (1/2/3) — the
 	# selection indicator on the portrait itself, alongside the bright border.
 	var slot_badge := PanelContainer.new()
 	slot_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -720,7 +720,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	slot_badge.custom_minimum_size = Vector2(SLOT_BADGE_SIZE, SLOT_BADGE_SIZE)
 	slot_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot_badge.add_theme_stylebox_override("panel", PixelUI.selection_badge_style())
-	var slot_label := _make_pixel_label("", TILE_NAME_FONT, PixelUI.BTN_PRIMARY_INK)
+	var slot_label := _make_pixel_label("", TILE_NAME_FONT, PixelUI.SYSTEM_ACCENT_INK)
 	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	slot_badge.add_child(slot_label)
@@ -866,12 +866,12 @@ func _refresh_unit_tiles() -> void:
 		# Components: Selected (strong cyan) / Normal hero tile.
 		# Keep the border-width content margin so the portrait stays INSIDE the frame
 		# (matches _build_unit_tile; otherwise the portrait would cover the border).
-		var frame_style: StyleBoxFlat = PixelUI.component_style(
-			PixelUI.COMPONENT_SELECTED if is_selected else PixelUI.COMPONENT_NORMAL,
-			Color.TRANSPARENT, true)
+		# Flat pixel A: the selected frame is the system color (same geometry).
+		var frame_style: StyleBoxFlat = PixelUI.system_selected_style() if is_selected \
+			else PixelUI.component_style(PixelUI.COMPONENT_NORMAL, Color.TRANSPARENT, true)
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
-		name_label.add_theme_color_override("font_color", PixelUI.DT_CYAN_BRIGHT if is_selected else PixelUI.DT_HERO_NAME)
+		name_label.add_theme_color_override("font_color", PixelUI.SYSTEM_ACCENT if is_selected else PixelUI.DT_HERO_NAME)
 		# Slot badge = the on-portrait selection indicator (1/2/3 pick order).
 		var slot_badge: Variant = tile.get("slot_badge")
 		var slot_label: Variant = tile.get("slot_label")
@@ -980,7 +980,7 @@ func _refresh_deploy() -> void:
 	if ready:
 		# Requirement met → actionable teal primary button.
 		_deploy_button.text = "DEPLOY SQUAD"
-		PixelUI.style_primary_button(_deploy_button, DEPLOY_FONT)
+		PixelUI.style_primary_button(_deploy_button, DEPLOY_FONT, false, true, true)
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:

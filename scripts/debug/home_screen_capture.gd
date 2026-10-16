@@ -79,6 +79,10 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-help":
 			# Opens the shared HelpMenu on the squad picker (verifies it works off-battle).
 			config["help"] = true
+		elif arg.begins_with("--capture-help-tab="):
+			# Opens the HelpMenu on one tab (basics / units / log / settings).
+			config["help"] = true
+			config["help_tab"] = arg.get_slice("=", 1).strip_edges()
 		elif arg == "--capture-encounter-inspect":
 			# Drives the banner's long-press handler (squad-select redesign: the
 			# encounter blurb lives in the InspectPopup, not on the screen).
@@ -134,8 +138,15 @@ func _wait_for_scene(config: Dictionary) -> void:
 		await process_frame
 		await process_frame
 	if bool(config.get("help", false)) and current_scene != null:
-		load("res://scripts/ui/help_menu.gd").open(current_scene)
+		var help_script: Script = load("res://scripts/ui/help_menu.gd")
+		help_script.open(current_scene)
 		await process_frame
+		var tab: String = str(config.get("help_tab", ""))
+		if tab != "":
+			for child: Node in root.get_children():
+				if child.get_script() == help_script:
+					child.call("_select_tab", tab)
+			await process_frame
 		await process_frame
 		await process_frame
 	var pages: int = int(config.get("encounter_page", 0))

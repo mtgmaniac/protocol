@@ -53,6 +53,25 @@ func setup(scene: Control) -> void:
 		_landscape = LANDSCAPE_LAYOUT.new()
 		_landscape.setup(scene)
 	_scene.resized.connect(queue_board_layout_refresh)
+	# Flat pixel A: F10 restyles the battle in place instead of reloading it.
+	var header: Node = scene.get_tree().root.get_node_or_null("PersistentHeader")
+	if header != null and header.has_signal("system_accent_changed"):
+		header.connect("system_accent_changed", _on_system_accent_changed)
+		scene.tree_exiting.connect(func() -> void:
+			if header.is_connected("system_accent_changed", _on_system_accent_changed):
+				header.disconnect("system_accent_changed", _on_system_accent_changed))
+
+
+# The footer icons, the Protocol cost badges and the Protocol meter carry the
+# system color; restyle them after F10 (the header restyles itself).
+func _on_system_accent_changed(_id: String) -> void:
+	if _scene == null or not is_instance_valid(_scene):
+		return
+	_scene._style_frame_icon_action_button(_scene.protocol_spend_button, PixelUI.ICON_SWAP, _scene.BOTTOM_BAR_BUTTON_SIZE)
+	_scene._protocol.restyle_buttons()
+	_scene._protocol.refresh_cost_badges()
+	if _scene._protocol_pips != null and is_instance_valid(_scene._protocol_pips):
+		_scene._protocol_pips.queue_redraw()
 
 
 # Depth prototype A/B, debug builds only: F6 swaps the scene for the plain tray,

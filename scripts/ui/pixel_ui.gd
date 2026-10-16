@@ -1422,7 +1422,8 @@ static func style_frame_icon_button(
 
 ## Direction-05 flat icon button: dark square (DT_BTN_BG) + 2px hard border, our
 ## pixel icon centered & expanded. Pass border_color = DT_CYAN for the active state.
-static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE, battle: bool = false) -> void:
+## `system_tint` (flat pixel A): the icon is drawn in SYSTEM_ACCENT (system_icon).
+static func style_dt_icon_button(button: BaseButton, icon_path: String, border_color: Color = DT_BTN_BORDER, icon_modulate: Color = Color.WHITE, battle: bool = false, system_tint: bool = false) -> void:
 	if button == null or not (button is Button):
 		return
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1454,7 +1455,7 @@ static func style_dt_icon_button(button: BaseButton, icon_path: String, border_c
 	# No focus ring — keeps every button visually identical (a focused button was
 	# rendering with a different edge/outline).
 	b.focus_mode = Control.FOCUS_NONE
-	b.icon = _load_texture(icon_path)
+	b.icon = system_icon(icon_path) if system_tint else _load_texture(icon_path)
 	b.expand_icon = true
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1755,7 +1756,47 @@ static func component_line_color(kind: String, hero_tint: bool = false) -> Color
 ## Selected component's sub-badge. The only routine cyan FILL; lives here so
 ## screens never construct strong-cyan styleboxes themselves.
 static func selection_badge_style() -> StyleBoxFlat:
-	return make_hard_style(DT_CYAN, DT_CYAN, 0)
+	return make_hard_style(SYSTEM_ACCENT, SYSTEM_ACCENT, 0)
+
+
+## Flat pixel A: the selected tile frame in the system color. Same fill, width and
+## geometry as COMPONENT_SELECTED (which stays cyan for the screens not moved to
+## the system color yet: battle card, evolution, discard picker).
+static func system_selected_style() -> StyleBoxFlat:
+	return make_hard_style(DT_HERO_BG, SYSTEM_ACCENT, COMPONENT_FRAME_WIDTH)
+
+
+## Flat pixel A: a one-hue icon (the cyan header / footer art) recolored into
+## SYSTEM_ACCENT. Each pixel keeps its alpha and its brightness relative to the
+## brightest pixel of the icon. Cached per path and color.
+static var _system_icons: Dictionary = {}
+static func system_icon(path: String) -> Texture2D:
+	var key := "%s:%s" % [path, SYSTEM_ACCENT.to_html()]
+	if _system_icons.has(key):
+		return _system_icons[key]
+	var source: Texture2D = _load_texture(path)
+	if source == null:
+		return null
+	var image: Image = source.get_image()
+	if image == null:
+		return source
+	if image.is_compressed():
+		image.decompress()
+	image.convert(Image.FORMAT_RGBA8)
+	var top: float = 0.0
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var texel: Color = image.get_pixel(x, y)
+			if texel.a > 0.5:
+				top = maxf(top, texel.get_luminance())
+	top = maxf(top, 0.001)
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var texel: Color = image.get_pixel(x, y)
+			var k: float = clampf(texel.get_luminance() / top, 0.0, 1.0)
+			image.set_pixel(x, y, Color(SYSTEM_ACCENT.r * k, SYSTEM_ACCENT.g * k, SYSTEM_ACCENT.b * k, texel.a))
+	_system_icons[key] = ImageTexture.create_from_image(image)
+	return _system_icons[key]
 
 
 # ── Integer icon law (Polish Build B) ────────────────────────────────────────
@@ -1906,7 +1947,9 @@ static func style_button(button: Button, fill: Color = BG_PANEL_ALT, border: Col
 ## navy fill · 2px accent border · all-caps accent text · hover glow · pressed-invert ·
 ## border-less faded disabled · auto-tracking corner brackets. Pass amber = true for
 ## the risk / confirm variant. Uppercases the button label to match the UI.
-static func style_primary_button(button: Button, font_size: int = 32, amber: bool = false, brackets: bool = true) -> void:
+## `system` (flat pixel A): the same button in SYSTEM_ACCENT, for screens moved to
+## the system color whose layout must not change (squad select DEPLOY SQUAD).
+static func style_primary_button(button: Button, font_size: int = 32, amber: bool = false, brackets: bool = true, system: bool = false) -> void:
 	if button == null:
 		return
 	apply_pixel_font(button)
@@ -1916,10 +1959,14 @@ static func style_primary_button(button: Button, font_size: int = 32, amber: boo
 	var border: Color = BTN_AMBER_BORDER if amber else BTN_TEAL_BORDER
 	var text_col: Color = BTN_AMBER_TEXT if amber else BTN_TEAL_TEXT
 	var text_bright: Color = BTN_AMBER_TEXT_BRIGHT if amber else BTN_TEAL_TEXT_BRIGHT
+	if system:
+		border = SYSTEM_ACCENT
+		text_col = SYSTEM_ACCENT
+		text_bright = SYSTEM_ACCENT.lightened(0.25)
 	button.add_theme_color_override("font_color", text_col)
 	button.add_theme_color_override("font_hover_color", text_bright)
 	button.add_theme_color_override("font_focus_color", text_bright)
-	button.add_theme_color_override("font_pressed_color", BTN_PRIMARY_INK)
+	button.add_theme_color_override("font_pressed_color", SYSTEM_ACCENT_INK if system else BTN_PRIMARY_INK)
 	button.add_theme_color_override("font_disabled_color", BTN_DISABLED_TEXT)
 	button.add_theme_constant_override("outline_size", 0)
 	var states := {

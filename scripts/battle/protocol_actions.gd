@@ -80,6 +80,13 @@ const _UNAFFORDABLE_DIM := Color(1.0, 1.0, 1.0, 0.45)
 var _cost_badges: Dictionary = {}   # Button -> Label
 
 
+# After F10 switches the system color (flat pixel A).
+func refresh_cost_badges() -> void:
+	for badge: Variant in _cost_badges.values():
+		if badge is Label and is_instance_valid(badge):
+			(badge as Label).add_theme_color_override("font_color", PixelUI.SYSTEM_ACCENT)
+
+
 func _attach_cost_badge(button: Button, text: String) -> void:
 	if button == null or not is_instance_valid(button):
 		return
@@ -91,7 +98,8 @@ func _attach_cost_badge(button: Button, text: String) -> void:
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	PixelUI.apply_pixel_font(badge)
 	badge.add_theme_font_size_override("font_size", _scene._layout.presentation("protocol_cost_font", 48) if _scene._layout != null else 48)
-	badge.add_theme_color_override("font_color", PixelUI.DT_AMBER)
+	# Protocol costs read in the system color, like the meter (flat pixel A).
+	badge.add_theme_color_override("font_color", PixelUI.SYSTEM_ACCENT)
 	# Bare number, no plate (Kev 2026-07-10) — a dark glyph outline separates it
 	# from the button art instead of a box.
 	badge.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
