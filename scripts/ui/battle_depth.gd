@@ -42,6 +42,29 @@ static func encounter_accent(operation_id: String) -> Color:
 	return token(str(scene_for(operation_id).get("accent", "")))
 
 
+## Flat pixel B: the battle's full-screen backdrop image (docs/BACKDROP_SPEC.md).
+## A battle whose number is in `boss_backdrop_battles` (default [10]) uses
+## `boss_backdrop` when it is set; any other battle picks one of `backdrops`.
+## The pick is seeded from the run seed, the operation and the battle number (a
+## local generator, never the combat streams), so a resumed battle shows the
+## same image. "" means no image: the painter draws the plain dark texture.
+const BOSS_BACKDROP_BATTLES_DEFAULT := [10]
+
+
+static func backdrop_for(operation_id: String, battle_number: int, run_seed: int) -> String:
+	var entry: Dictionary = scene_for(operation_id)
+	var boss_battles: Array = entry.get("boss_backdrop_battles", BOSS_BACKDROP_BATTLES_DEFAULT)
+	var boss: String = str(entry.get("boss_backdrop", ""))
+	if boss != "" and (battle_number in boss_battles or float(battle_number) in boss_battles):
+		return boss
+	var choices: Array = entry.get("backdrops", [])
+	if choices.is_empty():
+		return ""
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, operation_id, battle_number])
+	return str(choices[rng.randi_range(0, choices.size() - 1)])
+
+
 ## A PixelUI colour named in the scene data. Empty name: transparent.
 static func token(name: String) -> Color:
 	if name == "":

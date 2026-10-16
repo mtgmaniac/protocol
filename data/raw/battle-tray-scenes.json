@@ -1,5 +1,5 @@
 {
-  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else (the F9 v3 scene also tints its decal with it). `flat_floor_texture` is the flat tray's floor pattern (a gray mask; its color is the neutral PixelUI.tray_palette, never the encounter). `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`.",
+  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else (the F9 v3 scene also tints its decal with it). `flat_floor_texture` is the flat tray's floor pattern (a gray mask; its color is the neutral PixelUI.tray_palette, never the encounter). `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. `backdrops` (image paths, one picked per battle), `boss_backdrop` (path) and `boss_backdrop_battles` (battle numbers that use it; default [10], 5 is a valid extra entry) are the full-screen battle backdrop behind the whole board (docs/BACKDROP_SPEC.md); empty falls back to the plain dark texture.",
   "fallback": "bare",
   "scenes": {
     "facility": {
@@ -9,7 +9,14 @@
       "accent": "ENCOUNTER_FACILITY",
       "edge_accent": "BATTLE_BAY_AMBER_LIT",
       "streak": "BATTLE_BAY_RUST",
-      "flat_floor_texture": "res://assets/battle_tray/flat_floor_plates.png"
+      "flat_floor_texture": "res://assets/battle_tray/flat_floor_plates.png",
+      "backdrops": [
+        "res://assets/battle_backdrops/placeholder_facility_backdrop_01.png"
+      ],
+      "boss_backdrop": "res://assets/battle_backdrops/placeholder_facility_backdrop_boss.png",
+      "boss_backdrop_battles": [
+        10
+      ]
     },
     "hive": {
       "label": "Hive (flat floor pattern PLACEHOLDER art; no v3 art)",
@@ -18,7 +25,12 @@
       "accent": "ENCOUNTER_HIVE",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": "res://assets/battle_tray/flat_floor_hive.png"
+      "flat_floor_texture": "res://assets/battle_tray/flat_floor_hive.png",
+      "backdrops": [],
+      "boss_backdrop": "",
+      "boss_backdrop_battles": [
+        10
+      ]
     },
     "veil": {
       "label": "STUB: no art yet",
@@ -27,7 +39,12 @@
       "accent": "ENCOUNTER_VEIL",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": ""
+      "flat_floor_texture": "",
+      "backdrops": [],
+      "boss_backdrop": "",
+      "boss_backdrop_battles": [
+        10
+      ]
     },
     "voidCirclet": {
       "label": "STUB: no art yet (Signal Purge)",
@@ -36,7 +53,12 @@
       "accent": "ENCOUNTER_SIGNAL",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": ""
+      "flat_floor_texture": "",
+      "backdrops": [],
+      "boss_backdrop": "",
+      "boss_backdrop_battles": [
+        10
+      ]
     },
     "stellarMenagerie": {
       "label": "STUB: no art yet (Mantle Hunt)",
@@ -45,7 +67,12 @@
       "accent": "ENCOUNTER_MANTLE",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": ""
+      "flat_floor_texture": "",
+      "backdrops": [],
+      "boss_backdrop": "",
+      "boss_backdrop_battles": [
+        10
+      ]
     },
     "bare": {
       "label": "Bare scene",
@@ -54,7 +81,12 @@
       "accent": "",
       "edge_accent": "",
       "streak": "",
-      "flat_floor_texture": ""
+      "flat_floor_texture": "",
+      "backdrops": [],
+      "boss_backdrop": "",
+      "boss_backdrop_battles": [
+        10
+      ]
     }
   }
 }

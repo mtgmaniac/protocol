@@ -65,6 +65,12 @@ var _edge := Color.TRANSPARENT
 var _streak := Color.TRANSPARENT
 var _flat_floor: Texture2D
 var _flat_backdrop: Texture2D
+## Flat pixel B: this battle's backdrop image (BattleLayout picks it through
+## battle_depth.gd backdrop_for). Null draws the plain dark texture instead.
+var backdrop_image: Texture2D = null:
+	set(value):
+		backdrop_image = value
+		queue_redraw()
 
 
 func _ready() -> void:
@@ -134,6 +140,11 @@ func _draw() -> void:
 func _draw_flat() -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen), PixelUI.BATTLE_FLAT_BACKDROP)
 	_tile(Rect2(Vector2.ZERO, screen), _flat_backdrop, PixelUI.BATTLE_FLAT_BACKDROP_TINT)
+	if backdrop_image != null:
+		# One texel per art px, centred on the screen; whatever it does not cover
+		# (a taller phone than the authored canvas) keeps the plain texture.
+		var drawn: Vector2 = backdrop_image.get_size() * ART_PX
+		draw_texture_rect(backdrop_image, Rect2(_snap((screen - drawn) * 0.5), drawn), false)
 	var floor_rect := Rect2(_snap(tray.position), _snap(tray.end) - _snap(tray.position))
 	var tray_colors: Dictionary = PixelUI.tray_palette()
 	draw_rect(floor_rect.grow(ART_PX * FLAT_RIM_BANDS), PixelUI.BATTLE_BAY_SEAM)

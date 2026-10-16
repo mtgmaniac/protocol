@@ -475,3 +475,32 @@ PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
   bounds. F9 still switches to the v3 perspective path, which is unchanged (its
   hazard edging, window slots and decal still use the encounter data; it is the
   comparison path, not the shipped look).
+
+## B Phase 3: operation backdrops
+
+- **Data** (`battle-tray-scenes.json`, every operation): `backdrops` (list of
+  image paths), `boss_backdrop` (path), `boss_backdrop_battles` (default `[10]`;
+  `[5, 10]` adds the mid-run boss). Empty lists fall back to the plain dark tile.
+- **Pick** (`battle_depth.gd backdrop_for`): a boss battle uses `boss_backdrop`
+  when set; otherwise one of `backdrops`, from a local generator seeded with
+  `hash([run_seed, operation, battle number])`. It reads the run's master seed
+  (never consumed, by design) and touches no combat stream (INVARIANTS #1), and a
+  resumed battle shows the same image.
+- **Drawn** by the flat scene painter behind everything, on the same quarter-res
+  pixel grid (one texel per art px), centred; uncovered screen keeps the plain
+  tile. The header and footer are opaque and sit on top. Not drawn on the F9 v3
+  path (its walls are the backdrop there).
+- **Placeholder art** (`assets/battle_backdrops/`, labelled `placeholder_`):
+  `placeholder_facility_backdrop_01.png` (girders, braces, pipes, machines, a few
+  dim lamps) and `placeholder_facility_backdrop_boss.png` (the same hall with a
+  furnace ring behind the boss row). Luminance 10 - 31 for 90% of pixels, max 46.
+  Generator: `scripts/assets/make_placeholder_backdrops.py`. Facility is
+  registered with both; the other operations have empty lists.
+- **`docs/BACKDROP_SPEC.md`**: 270 x 600 image px at 1 px = 4 design px (optional
+  bleed to 270 x 660, drawn centred), measured safe zones (the enemy-row band,
+  image y 36 - 186, is the visible area; the tray, hero row, header and footer are
+  covered), values (most pixels 8 - 28 luminance, highlights at most 48,
+  saturation at most ~35%, no strong player cobalt / encounter hue / green), PNG
+  lossless, path convention, and the JSON to register it.
+- Observed: in battle the backdrop is mostly covered by design. With two enemies
+  it shows between and beside the enemy cards; with three, only slivers.

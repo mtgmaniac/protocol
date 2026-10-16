@@ -131,6 +131,15 @@ func make_tag_field() -> PanelContainer:
 	return PixelUI.make_battle_tag_field(portrait and DEPTH.plates_on, portrait and not DEPTH.plates_on)
 
 
+# Flat pixel B: the backdrop image for this battle (null = the plain texture).
+func _battle_backdrop() -> Texture2D:
+	var game_state: Node = _scene._game_state()
+	var path: String = DEPTH.backdrop_for(_operation_id(), int(game_state.get("current_battle")), int(game_state.get("run_seed")))
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
+
 func _operation_id() -> String:
 	return str(_scene._game_state().selected_operation_id)
 
@@ -482,6 +491,7 @@ func _build_depth_backdrop() -> void:
 	_depth_painter = PAINTER.new()
 	_depth_painter.name = "EnvironmentalBay"
 	_depth_painter.operation_id = _operation_id()
+	_depth_painter.backdrop_image = _battle_backdrop()
 	viewport.add_child(_depth_painter)
 	_depth_painter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	refresh_depth_scene()
